@@ -55,9 +55,9 @@ class DaemonTaskForTest : public DaemonTask {
     quit_result_ = DaemonTask::Quit(completion_callback);
     dispatcher_->PostTask(
         FROM_HERE,
-        base::Bind(&EventDispatcher::QuitDispatchForever,
-                   // dispatcher_ will not be deleted before RunLoop quits.
-                   base::Unretained(dispatcher_.get())));
+        base::BindOnce(&EventDispatcher::QuitDispatchForever,
+                       // dispatcher_ will not be deleted before RunLoop quits.
+                       base::Unretained(dispatcher_.get())));
     return quit_result_;
   }
 

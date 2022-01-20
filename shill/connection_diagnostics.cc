@@ -210,8 +210,8 @@ bool ConnectionDiagnostics::StartAfterPortalDetection(
   running_ = true;
   dispatcher_->PostTask(
       FROM_HERE,
-      base::Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
-                 weak_ptr_factory_.GetWeakPtr(), result));
+      base::BindOnce(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
+                     weak_ptr_factory_.GetWeakPtr(), result));
   return true;
 }
 
@@ -305,9 +305,9 @@ void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
       } else if (result.http_status == PortalDetector::Status::kTimeout) {
         // DNS timeout occurred in portal detection. Ping DNS servers to make
         // sure they are reachable.
-        dispatcher_->PostTask(FROM_HERE,
-                              base::Bind(&ConnectionDiagnostics::PingDNSServers,
-                                         weak_ptr_factory_.GetWeakPtr()));
+        dispatcher_->PostTask(
+            FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
+                                      weak_ptr_factory_.GetWeakPtr()));
       } else {
         ReportResultAndStop(kIssueDNSServerMisconfig);
       }
@@ -327,8 +327,8 @@ void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
       } else {
         dispatcher_->PostTask(
             FROM_HERE,
-            base::Bind(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
-                       weak_ptr_factory_.GetWeakPtr(), dns_list_));
+            base::BindOnce(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
+                           weak_ptr_factory_.GetWeakPtr(), dns_list_));
       }
       break;
     }
@@ -477,8 +477,8 @@ void ConnectionDiagnostics::FindArpTableEntry(const IPAddress& address) {
       kTypeArpTableLookup, kPhaseEnd, kResultFailure,
       "Could not find ARP table entry for " + address.ToString());
   dispatcher_->PostTask(FROM_HERE,
-                        base::Bind(&ConnectionDiagnostics::CheckIpCollision,
-                                   weak_ptr_factory_.GetWeakPtr()));
+                        base::BindOnce(&ConnectionDiagnostics::CheckIpCollision,
+                                       weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
@@ -622,9 +622,9 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
         "No DNS servers responded to pings. Pinging first DNS server at " +
             first_dns_server_ip_addr.ToString());
     dispatcher_->PostTask(
-        FROM_HERE,
-        base::Bind(&ConnectionDiagnostics::FindRouteToHost,
-                   weak_ptr_factory_.GetWeakPtr(), first_dns_server_ip_addr));
+        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::FindRouteToHost,
+                                  weak_ptr_factory_.GetWeakPtr(),
+                                  first_dns_server_ip_addr));
     return;
   }
 
@@ -639,8 +639,8 @@ void ConnectionDiagnostics::OnPingDNSServerComplete(
   if (num_dns_attempts_ < kMaxDNSRetries) {
     dispatcher_->PostTask(
         FROM_HERE,
-        base::Bind(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
-                   weak_ptr_factory_.GetWeakPtr(), pingable_dns_servers_));
+        base::BindOnce(&ConnectionDiagnostics::ResolveTargetServerIPAddress,
+                       weak_ptr_factory_.GetWeakPtr(), pingable_dns_servers_));
   } else {
     SLOG(this, 3) << __func__ << ": max DNS resolution attempts reached";
     ReportResultAndStop(kIssueDNSServerNoResponse);
@@ -654,15 +654,15 @@ void ConnectionDiagnostics::OnDNSResolutionComplete(const Error& error,
   if (error.IsSuccess()) {
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseEnd, kResultSuccess,
                         "Target address is " + address.ToString());
-    dispatcher_->PostTask(FROM_HERE,
-                          base::Bind(&ConnectionDiagnostics::PingHost,
-                                     weak_ptr_factory_.GetWeakPtr(), address));
+    dispatcher_->PostTask(
+        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::PingHost,
+                                  weak_ptr_factory_.GetWeakPtr(), address));
   } else if (error.type() == Error::kOperationTimeout) {
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseEnd, kResultTimeout,
                         "DNS resolution timed out: " + error.message());
     dispatcher_->PostTask(FROM_HERE,
-                          base::Bind(&ConnectionDiagnostics::PingDNSServers,
-                                     weak_ptr_factory_.GetWeakPtr()));
+                          base::BindOnce(&ConnectionDiagnostics::PingDNSServers,
+                                         weak_ptr_factory_.GetWeakPtr()));
   } else {
     AddEventWithMessage(kTypeResolveTargetServerIP, kPhaseEnd, kResultFailure,
                         "DNS resolution failed: " + error.message());
@@ -703,20 +703,23 @@ void ConnectionDiagnostics::OnPingHostComplete(
   } else if (result_type == kResultFailure &&
              ping_event_type == kTypePingTargetServer) {
     dispatcher_->PostTask(
-        FROM_HERE, base::Bind(&ConnectionDiagnostics::FindRouteToHost,
-                              weak_ptr_factory_.GetWeakPtr(), address_pinged));
+        FROM_HERE,
+        base::BindOnce(&ConnectionDiagnostics::FindRouteToHost,
+                       weak_ptr_factory_.GetWeakPtr(), address_pinged));
   } else if (result_type == kResultFailure &&
              ping_event_type == kTypePingGateway &&
              address_pinged.family() == IPAddress::kFamilyIPv4) {
     dispatcher_->PostTask(
-        FROM_HERE, base::Bind(&ConnectionDiagnostics::FindArpTableEntry,
-                              weak_ptr_factory_.GetWeakPtr(), address_pinged));
+        FROM_HERE,
+        base::BindOnce(&ConnectionDiagnostics::FindArpTableEntry,
+                       weak_ptr_factory_.GetWeakPtr(), address_pinged));
   } else {
     // We failed to ping an IPv6 gateway. Check for neighbor table entry for
     // this gateway.
     dispatcher_->PostTask(
-        FROM_HERE, base::Bind(&ConnectionDiagnostics::FindNeighborTableEntry,
-                              weak_ptr_factory_.GetWeakPtr(), address_pinged));
+        FROM_HERE,
+        base::BindOnce(&ConnectionDiagnostics::FindNeighborTableEntry,
+                       weak_ptr_factory_.GetWeakPtr(), address_pinged));
   }
 }
 
@@ -828,20 +831,22 @@ void ConnectionDiagnostics::OnRouteQueryResponse(
     // We have a route to a remote destination, so ping the route gateway to
     // check if we have a means of reaching this host.
     dispatcher_->PostTask(
-        FROM_HERE, base::Bind(&ConnectionDiagnostics::PingHost,
-                              weak_ptr_factory_.GetWeakPtr(), entry.gateway));
+        FROM_HERE,
+        base::BindOnce(&ConnectionDiagnostics::PingHost,
+                       weak_ptr_factory_.GetWeakPtr(), entry.gateway));
   } else if (entry.dst.family() == IPAddress::kFamilyIPv4) {
     // We have a route to a local IPv4 destination, so check for an ARP table
     // entry.
     dispatcher_->PostTask(
-        FROM_HERE, base::Bind(&ConnectionDiagnostics::FindArpTableEntry,
-                              weak_ptr_factory_.GetWeakPtr(), entry.dst));
+        FROM_HERE, base::BindOnce(&ConnectionDiagnostics::FindArpTableEntry,
+                                  weak_ptr_factory_.GetWeakPtr(), entry.dst));
   } else {
     // We have a route to a local IPv6 destination, so check for a neighbor
     // table entry.
     dispatcher_->PostTask(
-        FROM_HERE, base::Bind(&ConnectionDiagnostics::FindNeighborTableEntry,
-                              weak_ptr_factory_.GetWeakPtr(), entry.dst));
+        FROM_HERE,
+        base::BindOnce(&ConnectionDiagnostics::FindNeighborTableEntry,
+                       weak_ptr_factory_.GetWeakPtr(), entry.dst));
   }
 }
 
