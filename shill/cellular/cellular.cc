@@ -756,7 +756,8 @@ void Cellular::OnBeforeSuspend(const ResultCallback& callback) {
   LOG(INFO) << __func__;
   Error error;
   StopPPP();
-  capability_->SetModemToLowPowerModeOnModemStop(true);
+  if (capability_)
+    capability_->SetModemToLowPowerModeOnModemStop(true);
   SetEnabledNonPersistent(false, &error, callback);
   if (error.IsFailure() && error.type() != Error::kInProgress) {
     // If we fail to disable the modem right away, proceed instead of wasting
