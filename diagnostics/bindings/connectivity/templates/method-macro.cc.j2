@@ -16,6 +16,64 @@
 {%-   endif -%}
 {%- endmacro -%}
 
+{#  Add optional if needed. #}
+{%- macro _cpp_optional_generator_type(kind) -%}
+{%-   if kind.is_nullable -%}
+::diagnostics::bindings::connectivity::OptionalGenerator<{{ caller() }}>
+{%-   else -%}
+{{ caller() }}
+{%-   endif -%}
+{%- endmacro -%}
+
+{#  Map kind to DataGenerator type. #}
+{%- macro cpp_generator_type(kind) -%}
+{%-     call _cpp_optional_generator_type(kind) -%}
+::diagnostics::bindings::connectivity::DataGenerator<{{
+  kind | cpp_wrapper_type(ignore_nullable=True)}}>
+{%-     endcall -%}
+{%- endmacro -%}
+
+{#  Declare data generator of parameters. #}
+{%- macro declare_data_generator(prefix, parameters) %}
+{%-   if parameters != None %}
+{%-     for param in parameters %}
+std::unique_ptr<{{cpp_generator_type(param.kind)}}> {{prefix}}{{
+  param.mojom_name}}__generator__;
+{%-     endfor %}
+{%-   endif %}
+{%- endmacro %}
+
+{#  Define data generator of parameters. #}
+{%- macro define_data_generator(prefix, context, parameters) -%}
+{%-   if parameters != None %}
+{%-     for param in parameters -%}
+{{prefix}}{{param.mojom_name}}__generator__ = {{
+  cpp_generator_type(param.kind)}}::Create({{context}});
+{%      endfor %}
+{%-   endif %}
+{%- endmacro %}
+
+{#  Statement of generating the parameters to pass to function. #}
+{%- macro generate_params(prefix, parameters) %}
+{%-   if parameters != None %}
+{%-     for param in parameters -%}
+{{prefix}}{{param.mojom_name}}__generator__->Generate()
+{%-       if not loop.last %}, {% endif -%}
+{%      endfor %}
+{%    endif %}
+{%- endmacro %}
+
+{#  Statement of checking if the generator of parameters has next. #}
+{%- macro params_has_next(prefix, parameters) %}
+{%-   if parameters != None -%}
+(
+{%-     for param in parameters -%}
+{{prefix}}{{param.mojom_name}}__generator__->HasNext() ||
+{%-     endfor -%}
+false)
+{%-   endif %}
+{%- endmacro %}
+
 {#  Used to forward arguments of a method to another function. #}
 {%- macro forward_params(prefix, method) %}
 {%-   for param in method.parameters -%}

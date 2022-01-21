@@ -68,6 +68,13 @@ TEST_F(MojoConnectivityTest, DataGenerator) {
   ASSERT_EQ(CountPossibleValues(
                 server::mojom::TestSuccessTestConsumer::Create(context())),
             1);
+  ASSERT_EQ(CountPossibleValues(DataGenerator<int32_t>::Create(context())), 1);
+  ASSERT_EQ(CountPossibleValues(DataGenerator<std::string>::Create(context())),
+            1);
+  ASSERT_EQ(
+      CountPossibleValues(
+          OptionalGenerator<DataGenerator<std::string>>::Create(context())),
+      2);
 }
 
 template <typename ConsumerType>
@@ -110,6 +117,9 @@ SUCCESSFUL_TEST(TestSuccess);
 FAILED_TEST(TestMissFunction);
 FAILED_TEST(TestWrongFunctionType1);
 FAILED_TEST(TestWrongFunctionType2);
+FAILED_TEST(TestWrongType);
+FAILED_TEST(TestWrongReturnType);
+FAILED_TEST(TestCannotBeNull);
 
 }  // namespace
 }  // namespace test

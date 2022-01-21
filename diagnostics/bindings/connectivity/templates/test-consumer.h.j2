@@ -1,3 +1,5 @@
+{%- import "method-macro.cc.j2" as method_macro %}
+
 {%- set class_name = "%sTestConsumer"|format(interface.mojom_name) %}
 
 class {{class_name}}
@@ -49,6 +51,11 @@ class {{class_name}}
   absl::optional<bool> check_result_;
 
   ::mojo::Remote<{{interface.mojom_name}}> remote_;
+
+{%- for method in interface.methods %}
+  {{method_macro.declare_data_generator(
+      method.mojom_name ~ "__", method.parameters)}}
+{%- endfor %}
 
   // Must be the last member of the class.
   base::WeakPtrFactory<{{class_name}}> weak_factory_{this};

@@ -9,7 +9,12 @@ std::unique_ptr<{{class_name}}> {{class_name}}::Create(
 
 {{class_name}}::{{class_name}}(
     ::diagnostics::bindings::connectivity::Context* context)
-  : context_(context) {}
+  : context_(context) {
+{%- for method in interface.methods %}
+  {{method_macro.define_data_generator(
+      method.mojom_name ~ "__", "context", method.parameters)}}
+{%- endfor %}
+}
 
 void {{class_name}}::Bind(::mojo::PendingRemote<{{
     interface.mojom_name}}> remote) {
@@ -41,7 +46,8 @@ void {{class_name}}::CheckStep1__{{method.mojom_name}}(CheckCallback callback) {
   CHECK(remote_.is_connected());
   remote_.set_disconnect_handler(
     context_->remote_state()->GetFulfillLastCallCallbackClosure());
-  remote_->{{method.mojom_name}}();
+  remote_->{{method.mojom_name}}({{method_macro.generate_params(
+      method.mojom_name ~ "__", method.parameters)}});
 {%-   else %}
   auto [next_callback1, next_callback2] =
     base::SplitOnceCallback(std::move(next_callback));
@@ -51,7 +57,11 @@ void {{class_name}}::CheckStep1__{{method.mojom_name}}(CheckCallback callback) {
     method_macro.declare_params("", method.response_parameters)}}
   ){}).Then(std::move(next_callback2));
 
-  remote_->{{method.mojom_name}}(std::move(response_callback));
+  remote_->{{method.mojom_name}}({{method_macro.generate_params(
+    method.mojom_name ~ "__", method.parameters)}}
+    {%- if method.parameters %}, {% endif -%}
+    std::move(response_callback)
+  );
 {%-   endif %}
 }
 
@@ -78,6 +88,13 @@ void {{class_name}}::CheckStep2__{{method.mojom_name}}(CheckCallback callback) {
 {#  Step3: Checks if need to do another check. If any parameter or
     response_parameter need to be checked, do the check again. #}
 void {{class_name}}::CheckStep3__{{method.mojom_name}}(CheckCallback callback) {
+{%-   if method.parameters %}
+  if ({{method_macro.params_has_next(
+        method.mojom_name ~"__", method.parameters)}}) {
+    CheckStep1__{{method.mojom_name}}(std::move(callback));
+    return;
+  }
+{%-   endif %}
 {%-   if method.response_parameters == None %}
   std::move(callback).Run(true);
 {%-   else %}

@@ -65,6 +65,11 @@ class {{class_name}}
 
   ::mojo::ReceiverSet<{{interface.mojom_name}}> receiver_set_;
 
+{%- for method in interface.methods %}
+  {{method_macro.declare_data_generator(
+      method.mojom_name ~ "__", method.response_parameters)}}
+{%- endfor %}
+
   // Must be the last member of the class.
   base::WeakPtrFactory<{{class_name}}> weak_factory_{this};
 };

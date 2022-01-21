@@ -7,6 +7,9 @@ module diagnostics.bindings.connectivity.test.server.mojom;
 interface TestSuccess {
   Foo();
   Bar() => ();
+  Args(int16 a, string b, string? c);
+  Response() => (int16 a, string b, string? c);
+  IO(int16 a, string b, string? c) => (int16 a, string b, string? c);
 };
 
 interface TestMissFunction {
@@ -19,4 +22,16 @@ interface TestWrongFunctionType1 {
 
 interface TestWrongFunctionType2 {
   Foo() => ();
+};
+
+interface TestWrongType {
+  Foo(string a);
+};
+
+interface TestWrongReturnType {
+  Foo() => (int32 a);
+};
+
+interface TestCannotBeNull {
+  Foo(string a);
 };

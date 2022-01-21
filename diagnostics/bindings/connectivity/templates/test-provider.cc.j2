@@ -9,7 +9,12 @@ std::unique_ptr<{{class_name}}> {{class_name}}::Create(
 
 {{class_name}}::{{class_name}}(
     ::diagnostics::bindings::connectivity::Context* context)
-  : context_(context) {}
+  : context_(context) {
+{%- for method in interface.methods -%}
+  {{method_macro.define_data_generator(
+      method.mojom_name ~ "__", "context", method.response_parameters)}}
+{%- endfor %}
+}
 
 void {{class_name}}::Bind(::mojo::PendingReceiver<{{
     interface.mojom_name}}> receiver) {
@@ -33,7 +38,11 @@ void {{class_name}}::{{method.mojom_name}}_Step1({{
     method_macro.declare_request_params("", method)}}) {
 {#  Create callback for Step2. #}
 {%-   if method.response_parameters != None -%}
-  auto response_callback = base::BindOnce(std::move(callback));
+  auto response_callback = base::BindOnce(
+        std::move(callback)
+        {%- if method.response_parameters %}, {% endif -%}
+        {{method_macro.generate_params(
+            method.mojom_name ~"__", method.response_parameters)}});
 {%-    else -%}
   auto response_callback = base::DoNothing();
 {%-    endif -%}
@@ -50,7 +59,8 @@ void {{class_name}}::{{method.mojom_name}}_Step1({{
 
 void {{class_name}}::{{method.mojom_name}}_Step2(base::OnceClosure callback) {
 {%-   if method.response_parameters != None %}
-    context_->local_state()->SetLastCallHasNext(false);
+    context_->local_state()->SetLastCallHasNext({{method_macro.params_has_next(
+        method.mojom_name ~"__", method.response_parameters)}});
 {%    else %}
   context_->local_state()->FulfillLastCallCallback();
 {%    endif %}
