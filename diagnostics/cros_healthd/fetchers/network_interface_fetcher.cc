@@ -267,26 +267,22 @@ void NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink(
     wireless_info_ = mojo_ipc::WirelessInterfaceInfo::New();
   }
   wireless_info_->interface_name = interface_name;
+
   std::string file_contents;
-  if (!ReadAndTrimString(
+  wireless_info_->power_management_on = false;
+  if (ReadAndTrimString(
           context_->root_dir().Append(kRelativeWirelessPowerSchemePath),
           &file_contents)) {
-    CreateErrorToSendBack(
-        mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read " + std::string(kRelativeWirelessPowerSchemePath));
-    return;
-  }
-  uint power_scheme;
-  if (!base::StringToUint(file_contents, &power_scheme)) {
-    CreateErrorToSendBack(
-        mojo_ipc::ErrorType::kParseError,
-        "Failed to convert power scheme to integer: " + file_contents);
-    return;
-  }
-  if ((power_scheme == 2) || (power_scheme == 3)) {
-    wireless_info_->power_management_on = true;
-  } else {
-    wireless_info_->power_management_on = false;
+    uint power_scheme;
+    if (!base::StringToUint(file_contents, &power_scheme)) {
+      CreateErrorToSendBack(
+          mojo_ipc::ErrorType::kParseError,
+          "Failed to convert power scheme to integer: " + file_contents);
+      return;
+    }
+    if ((power_scheme == 2) || (power_scheme == 3)) {
+      wireless_info_->power_management_on = true;
+    }
   }
 
   // Wireless device found. Get link information for the device.

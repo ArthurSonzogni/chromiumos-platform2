@@ -281,11 +281,23 @@ TEST_F(NetworkInterfaceFetcherTest, TestMissingPowerSchemeFile) {
   ASSERT_TRUE(
       base::DeleteFile(root_dir().Append(kRelativeWirelessPowerSchemePath)));
   MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
+  MockGetLink(EXIT_SUCCESS, kFakeGetLinkOutput);
+  MockGetInfo(EXIT_SUCCESS, kFakeGetInfoOutput);
+  MockGetScanDump(EXIT_SUCCESS, kFakeGetScanDumpOutput);
 
   auto result = FetchNetworkInterfaceInfo();
-  ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kFileReadError);
+  ASSERT_TRUE(result->is_network_interface_info());
+  const auto& network_infos = result->get_network_interface_info();
+  const auto& network_info = network_infos.at(0);
+
+  ASSERT_FALSE(network_info.is_null());
+  switch (network_info->which()) {
+    case mojo_ipc::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
+      const auto& wireless_info = network_info->get_wireless_interface_info();
+      EXPECT_FALSE(wireless_info->power_management_on);
+      break;
+    }
+  }
 }
 
 }  // namespace diagnostics
