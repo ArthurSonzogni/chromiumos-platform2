@@ -233,6 +233,9 @@ const std::array kCommandLogs {
   Log{kCommand, "crosvm.log", "nsenter -t1 -m /bin/sh -c 'tail -n+1"
     " /run/daemon-store/crosvm/*/log/*.log.1"
     " /run/daemon-store/crosvm/*/log/*.log'", kRoot, kRoot},
+  Log{kGlob, "display-debug", "/var/log/display_debug/*",
+    kRoot, kRoot,
+    4 * 1024 * 1024, LogTool::Encoding::kUtf8},
   // dmesg: add full timestamps to dmesg to match other logs.
   // 'dmesg' needs CAP_SYSLOG.
   Log{kCommand, "dmesg", "TZ=UTC /bin/dmesg --raw --time-format iso",

@@ -134,6 +134,12 @@ See the `/proc/cpuinfo` section of the [proc(5)] man page for more details.
 
 ## crosvm.log
 
+## display-debug
+
+Logs collected from the 'display_debug' crosh tool, such as annotated drm_trace
+logs and snapshots of the output of 'modetest'. See http://go/cros-displaydebug
+for more details.
+
 ## dmesg
 
 ## drm_gem_objects
