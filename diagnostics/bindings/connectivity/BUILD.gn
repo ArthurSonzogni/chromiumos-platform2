@@ -15,5 +15,6 @@ source_set("libconnectivity") {
     "context.cc",
     "local_state.cc",
     "remote_state.cc",
+    "utils.cc",
   ]
 }

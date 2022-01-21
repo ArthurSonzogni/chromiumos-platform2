@@ -44,6 +44,7 @@ namespace {{namespace}} {
 
 {%- for interface in module.interfaces %}
 {%    include "test-provider.h.j2" %}
+{%    include "test-consumer.h.j2" %}
 {%- endfor %}
 
 {{namespace_end()}}

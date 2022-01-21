@@ -5,6 +5,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/run_loop.h>
+#include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <gtest/gtest.h>
@@ -63,19 +65,49 @@ TEST_F(MojoConnectivityTest, DataGenerator) {
   ASSERT_EQ(CountPossibleValues(
                 server::mojom::TestSuccessTestProvider::Create(context())),
             1);
+  ASSERT_EQ(CountPossibleValues(
+                server::mojom::TestSuccessTestConsumer::Create(context())),
+            1);
 }
 
-#define INTERFACE_TEST_BASE(INTERFACE_NAME)                           \
-  auto provider =                                                     \
-      server::mojom::INTERFACE_NAME##TestProvider::Create(context()); \
-  ASSERT_NE(provider, nullptr);
+template <typename ConsumerType>
+bool Check(ConsumerType* consumer) {
+  base::RunLoop run_loop;
+  bool res;
+  consumer->Check(base::BindLambdaForTesting([&](bool res_inner) {
+    res = res_inner;
+    run_loop.Quit();
+  }));
+  run_loop.Run();
+  return res;
+}
+
+#define INTERFACE_TEST_BASE(INTERFACE_NAME)                              \
+  auto provider =                                                        \
+      server::mojom::INTERFACE_NAME##TestProvider::Create(context());    \
+  ASSERT_NE(provider, nullptr);                                          \
+  auto consumer =                                                        \
+      client::mojom::INTERFACE_NAME##TestConsumer::Create(context());    \
+  ASSERT_NE(consumer, nullptr);                                          \
+  auto pending_receiver = consumer->Generate();                          \
+  provider->Bind(::mojo::PendingReceiver<server::mojom::INTERFACE_NAME>( \
+      pending_receiver.PassPipe()));
 
 #define SUCCESSFUL_TEST(INTERFACE_NAME)          \
   TEST_F(MojoConnectivityTest, INTERFACE_NAME) { \
     INTERFACE_TEST_BASE(INTERFACE_NAME);         \
+    EXPECT_TRUE(Check(consumer.get()));          \
+  }
+
+#define FAILED_TEST(INTERFACE_NAME)              \
+  TEST_F(MojoConnectivityTest, INTERFACE_NAME) { \
+    INTERFACE_TEST_BASE(INTERFACE_NAME);         \
+    EXPECT_FALSE(Check(consumer.get()));         \
   }
 
 SUCCESSFUL_TEST(TestSuccess);
+
+FAILED_TEST(TestMissFunction);
 
 }  // namespace
 }  // namespace test

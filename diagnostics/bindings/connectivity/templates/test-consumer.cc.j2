@@ -1,0 +1,108 @@
+{%- set class_name = "%sTestConsumer"|format(interface.mojom_name) %}
+
+std::unique_ptr<{{class_name}}> {{class_name}}::Create(
+    ::diagnostics::bindings::connectivity::Context* context) {
+  return std::unique_ptr<{{class_name}}>(new {{class_name}}(context));
+}
+
+{{class_name}}::{{class_name}}(
+    ::diagnostics::bindings::connectivity::Context* context)
+  : context_(context) {}
+
+void {{class_name}}::Bind(::mojo::PendingRemote<{{
+    interface.mojom_name}}> remote) {
+  remote_.reset();
+  remote_.Bind(std::move(remote));
+}
+
+::mojo::PendingReceiver<{{interface.mojom_name}}> {{class_name}}::Generate() {
+  has_next_ = false;
+  remote_.reset();
+  return remote_.BindNewPipeAndPassReceiver();
+}
+
+base::OnceCallback<void({{class_name}}::CheckCallback)>
+{{class_name}}::CheckClosure() {
+  return base::BindOnce(&{{class_name}}::Check, weak_factory_.GetWeakPtr());
+}
+
+{%  for method in interface.methods %}
+{#- Step1: Call remote method and wait for it finished. #}
+void {{class_name}}::CheckStep1__{{method.mojom_name}}(CheckCallback callback) {
+  auto next_callback =
+      base::BindOnce(&{{class_name}}::CheckStep2__{{method.mojom_name}},
+                     weak_factory_.GetWeakPtr(),
+                     std::move(callback));
+
+  context_->remote_state()->WaitLastCall(std::move(next_callback));
+  CHECK(remote_.is_connected());
+  remote_.set_disconnect_handler(
+    context_->remote_state()->GetFulfillLastCallCallbackClosure());
+  remote_->{{method.mojom_name}}();
+}
+
+{#  Step2: Checks sub-interfaces. #}
+void {{class_name}}::CheckStep2__{{method.mojom_name}}(CheckCallback callback) {
+{#- If the remote was disconnected, connection error had occurred. #}
+  if (!remote_.is_connected()) {
+    LOG(ERROR) << "Check failed because connection error occurred. Failed on: "
+               <<"{{interface.mojom_name}}::{{method.mojom_name}}.";
+    std::move(callback).Run(false);
+    return;
+  }
+
+  auto callback_0 = base::BindOnce(
+    &{{class_name}}::CheckStep3__{{method.mojom_name}},
+    weak_factory_.GetWeakPtr());
+
+{#  TODO: Check sub-interfaces. #}
+
+  auto callback_last = std::move(callback_0);
+  std::move(callback_last).Run(std::move(callback));
+}
+
+{#  Step3: Checks if need to do another check. If any parameter or
+    response_parameter need to be checked, do the check again. #}
+void {{class_name}}::CheckStep3__{{method.mojom_name}}(CheckCallback callback) {
+  std::move(callback).Run(true);
+}
+{%  endfor %}
+
+void {{class_name}}::SetCheckResult(CheckCallback callback, bool res) {
+  check_reentry_status_ = false;
+  check_result_ = res;
+  std::move(callback).Run(res);
+}
+
+void {{class_name}}::Check(CheckCallback callback) {
+  if (check_result_.has_value()) {
+    std::move(callback).Run(check_result_.value());
+    return;
+  }
+
+  CHECK(!check_reentry_status_)
+    << "Check is call before the last run finished.";
+  check_reentry_status_ = true;
+  auto callback_0 = base::BindOnce(
+      [](CheckCallback callback){ std::move(callback).Run(true); });
+
+{#  Check each method of this interface. The next action will be run only if
+    the previous one succeeded. #}
+{%- for method in interface.methods | reverse %}
+  auto callback_{{loop.index}} = base::BindOnce(
+    &::diagnostics::bindings::connectivity::RunOrReturn,
+    /*return_value=*/false,
+    /*get_result=*/base::BindOnce(
+      &{{class_name}}::CheckStep1__{{method.mojom_name}},
+      weak_factory_.GetWeakPtr()),
+    /*run_callback=*/std::move(callback_{{loop.index - 1}}));
+{%-   if loop.last %}
+  auto callback_last = std::move(callback_{{loop.index}});
+{%-   endif %}
+{%- else %}
+  auto callback_last = std::move(callback_0);
+{%  endfor %}
+  std::move(callback_last).Run(base::BindOnce(
+      &{{class_name}}::SetCheckResult, weak_factory_.GetWeakPtr(),
+      std::move(callback)));
+}

@@ -7,3 +7,8 @@ module diagnostics.bindings.connectivity.test.client.mojom;
 interface TestSuccess {
   Foo();
 };
+
+interface TestMissFunction {
+  Foo();
+  Bar();
+};

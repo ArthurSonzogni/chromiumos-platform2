@@ -20,6 +20,8 @@ namespace {{namespace}} {
 #include <base/logging.h>
 
 #include "diagnostics/bindings/connectivity/local_state.h"
+#include "diagnostics/bindings/connectivity/remote_state.h"
+#include "diagnostics/bindings/connectivity/utils.h"
 
 {%- for imp in module.imports %}
 #include "{{imp.path}}-connectivity.h"
@@ -29,6 +31,7 @@ namespace {{namespace}} {
 
 {%- for interface in module.interfaces %}
 {%    include "test-provider.cc.j2" %}
+{%    include "test-consumer.cc.j2" %}
 {%- endfor %}
 
 {{namespace_end()}}

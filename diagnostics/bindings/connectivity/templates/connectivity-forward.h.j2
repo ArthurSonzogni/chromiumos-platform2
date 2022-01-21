@@ -30,6 +30,7 @@ namespace {{namespace}} {
 
 {%- for interface in module.interfaces %}
 class {{interface.mojom_name}}TestProvider;
+class {{interface.mojom_name}}TestConsumer;
 {%- endfor %}
 
 {{namespace_end()}}
