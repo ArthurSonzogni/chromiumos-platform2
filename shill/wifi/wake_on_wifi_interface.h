@@ -26,7 +26,7 @@ class PropertyStore;
 
 class WakeOnWiFiInterface {
  public:
-  using InitiateScanCallback = base::Callback<void(const WiFi::FreqSet&)>;
+  using InitiateScanCallback = base::OnceCallback<void(const WiFi::FreqSet&)>;
   // Callback used to report the wake reason for the current dark resume to
   // powerd.
   using RecordWakeReasonCallback = base::Callback<void(const std::string&)>;
@@ -49,8 +49,8 @@ class WakeOnWiFiInterface {
       bool is_connected,
       const std::vector<ByteString>& allowed_ssids,
       const ResultCallback& done_callback,
-      const base::Closure& renew_dhcp_lease_callback,
-      const base::Closure& remove_supplicant_networks_callback,
+      base::OnceClosure renew_dhcp_lease_callback,
+      base::OnceClosure remove_supplicant_networks_callback,
       bool have_dhcp_lease,
       uint32_t time_to_next_lease_renewal) = 0;
   virtual void OnAfterResume() = 0;
@@ -58,8 +58,8 @@ class WakeOnWiFiInterface {
       bool is_connected,
       const std::vector<ByteString>& allowed_ssids,
       const ResultCallback& done_callback,
-      const base::Closure& renew_dhcp_lease_callback,
-      const InitiateScanCallback& initiate_scan_callback,
+      base::OnceClosure renew_dhcp_lease_callback,
+      InitiateScanCallback initiate_scan_callback,
       const base::Closure& remove_supplicant_networks_callback) = 0;
   virtual void OnConnectedAndReachable(bool start_lease_renewal_timer,
                                        uint32_t time_to_next_lease_renewal) = 0;
@@ -67,8 +67,8 @@ class WakeOnWiFiInterface {
                                                  int seconds_in_suspend) = 0;
   virtual void OnNoAutoConnectableServicesAfterScan(
       const std::vector<ByteString>& allowed_ssids,
-      const base::Closure& remove_supplicant_networks_callback,
-      const InitiateScanCallback& initiate_scan_callback) = 0;
+      base::OnceClosure remove_supplicant_networks_callback,
+      InitiateScanCallback initiate_scan_callback) = 0;
   virtual void OnScanStarted(bool is_active_scan) = 0;
   virtual void OnScanCompleted() = 0;
   virtual void OnWiphyIndexReceived(uint32_t index) = 0;

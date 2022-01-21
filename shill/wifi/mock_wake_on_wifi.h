@@ -36,8 +36,8 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
               (bool,
                const std::vector<ByteString>&,
                const ResultCallback&,
-               const base::Closure&,
-               const base::Closure&,
+               base::OnceClosure,
+               base::OnceClosure,
                bool,
                uint32_t),
               (override));
@@ -47,8 +47,8 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
               (bool,
                const std::vector<ByteString>&,
                const ResultCallback&,
-               const base::Closure&,
-               const InitiateScanCallback&,
+               base::OnceClosure,
+               InitiateScanCallback,
                const base::Closure&),
               (override));
   MOCK_METHOD(void, OnConnectedAndReachable, (bool, uint32_t), (override));
@@ -56,8 +56,8 @@ class MockWakeOnWiFi : public WakeOnWiFiInterface {
   MOCK_METHOD(void,
               OnNoAutoConnectableServicesAfterScan,
               (const std::vector<ByteString>&,
-               const base::Closure&,
-               const InitiateScanCallback&),
+               base::OnceClosure,
+               InitiateScanCallback),
               (override));
   MOCK_METHOD(void, OnScanStarted, (bool), (override));
   MOCK_METHOD(void, OnScanCompleted, (), (override));

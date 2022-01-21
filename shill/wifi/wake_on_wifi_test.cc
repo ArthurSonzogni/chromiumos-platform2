@@ -618,14 +618,14 @@ class WakeOnWiFiTest : public ::testing::Test {
         base::Bind(&WakeOnWiFiTest::DoneCallback, base::Unretained(this)));
     base::Closure renew_dhcp_lease_callback(base::Bind(
         &WakeOnWiFiTest::RenewDHCPLeaseCallback, base::Unretained(this)));
-    WakeOnWiFi::InitiateScanCallback initiate_scan_callback(base::Bind(
+    WakeOnWiFi::InitiateScanCallback initiate_scan_callback(base::BindOnce(
         &WakeOnWiFiTest::InitiateScanCallback, base::Unretained(this)));
     base::Closure remove_supplicant_networks_callback(
         base::Bind(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
                    base::Unretained(this)));
     wake_on_wifi_->OnDarkResume(
         is_connected, allowed_ssids, done_callback, renew_dhcp_lease_callback,
-        initiate_scan_callback, remove_supplicant_networks_callback);
+        std::move(initiate_scan_callback), remove_supplicant_networks_callback);
   }
 
   void OnAfterResume() { wake_on_wifi_->OnAfterResume(); }
@@ -784,11 +784,11 @@ class WakeOnWiFiTest : public ::testing::Test {
     base::Closure remove_supplicant_networks_callback(
         base::Bind(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
                    base::Unretained(this)));
-    WakeOnWiFi::InitiateScanCallback initiate_scan_callback(base::Bind(
+    WakeOnWiFi::InitiateScanCallback initiate_scan_callback(base::BindOnce(
         &WakeOnWiFiTest::InitiateScanCallback, base::Unretained(this)));
     wake_on_wifi_->OnNoAutoConnectableServicesAfterScan(
         allowed_ssids, remove_supplicant_networks_callback,
-        initiate_scan_callback);
+        std::move(initiate_scan_callback));
   }
 
   EventHistory* GetDarkResumeHistory() {

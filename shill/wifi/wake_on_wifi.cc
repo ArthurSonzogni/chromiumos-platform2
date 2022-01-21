@@ -841,8 +841,8 @@ void WakeOnWiFi::OnBeforeSuspend(
     bool is_connected,
     const std::vector<ByteString>& allowed_ssids,
     const ResultCallback& done_callback,
-    const base::Closure& renew_dhcp_lease_callback,
-    const base::Closure& remove_supplicant_networks_callback,
+    base::OnceClosure renew_dhcp_lease_callback,
+    base::OnceClosure remove_supplicant_networks_callback,
     bool have_dhcp_lease,
     uint32_t time_to_next_lease_renewal) {
   connected_before_suspend_ = is_connected;
@@ -859,18 +859,20 @@ void WakeOnWiFi::OnBeforeSuspend(
   if (have_dhcp_lease && is_connected &&
       time_to_next_lease_renewal < kImmediateDHCPLeaseRenewalThresholdSeconds) {
     // Renew DHCP lease immediately if we have one that is expiring soon.
-    renew_dhcp_lease_callback.Run();
+    std::move(renew_dhcp_lease_callback).Run();
     dispatcher_->PostTask(
-        FROM_HERE, base::BindOnce(&WakeOnWiFi::BeforeSuspendActions,
-                                  weak_ptr_factory_.GetWeakPtr(), is_connected,
-                                  false, time_to_next_lease_renewal,
-                                  remove_supplicant_networks_callback));
+        FROM_HERE,
+        base::BindOnce(&WakeOnWiFi::BeforeSuspendActions,
+                       weak_ptr_factory_.GetWeakPtr(), is_connected, false,
+                       time_to_next_lease_renewal,
+                       std::move(remove_supplicant_networks_callback)));
   } else {
     dispatcher_->PostTask(
-        FROM_HERE, base::BindOnce(&WakeOnWiFi::BeforeSuspendActions,
-                                  weak_ptr_factory_.GetWeakPtr(), is_connected,
-                                  have_dhcp_lease, time_to_next_lease_renewal,
-                                  remove_supplicant_networks_callback));
+        FROM_HERE,
+        base::BindOnce(&WakeOnWiFi::BeforeSuspendActions,
+                       weak_ptr_factory_.GetWeakPtr(), is_connected,
+                       have_dhcp_lease, time_to_next_lease_renewal,
+                       std::move(remove_supplicant_networks_callback)));
   }
 }
 
@@ -890,8 +892,8 @@ void WakeOnWiFi::OnDarkResume(
     bool is_connected,
     const std::vector<ByteString>& allowed_ssids,
     const ResultCallback& done_callback,
-    const base::Closure& renew_dhcp_lease_callback,
-    const InitiateScanCallback& initiate_scan_callback,
+    base::OnceClosure renew_dhcp_lease_callback,
+    InitiateScanCallback initiate_scan_callback,
     const base::Closure& remove_supplicant_networks_callback) {
   if (WakeOnWiFiDisabled()) {
     // Wake on WiFi not supported or not enabled, so immediately report success.
@@ -953,7 +955,7 @@ void WakeOnWiFi::OnDarkResume(
     case kWakeTriggerDisconnect: {
       remove_supplicant_networks_callback.Run();
       metrics_->NotifyDarkResumeInitiateScan();
-      InitiateScanInDarkResume(initiate_scan_callback,
+      InitiateScanInDarkResume(std::move(initiate_scan_callback),
                                last_wake_reason_ == kWakeTriggerSSID
                                    ? last_ssid_match_freqs_
                                    : WiFi::FreqSet());
@@ -962,11 +964,12 @@ void WakeOnWiFi::OnDarkResume(
     case kWakeTriggerUnsupported:
     default: {
       if (is_connected) {
-        renew_dhcp_lease_callback.Run();
+        std::move(renew_dhcp_lease_callback).Run();
       } else {
         remove_supplicant_networks_callback.Run();
         metrics_->NotifyDarkResumeInitiateScan();
-        InitiateScanInDarkResume(initiate_scan_callback, WiFi::FreqSet());
+        InitiateScanInDarkResume(std::move(initiate_scan_callback),
+                                 WiFi::FreqSet());
       }
     }
   }
@@ -989,7 +992,7 @@ void WakeOnWiFi::BeforeSuspendActions(
     bool is_connected,
     bool start_lease_renewal_timer,
     uint32_t time_to_next_lease_renewal,
-    const base::Closure& remove_supplicant_networks_callback) {
+    base::OnceClosure remove_supplicant_networks_callback) {
   LOG(INFO) << __func__ << ": "
             << (is_connected ? "connected" : "not connected");
   // Note: No conditional compilation because all entry points to this functions
@@ -1019,7 +1022,7 @@ void WakeOnWiFi::BeforeSuspendActions(
       // Force a disconnect in case supplicant is currently in the process of
       // connecting, and remove all networks so scans triggered in dark resume
       // are passive.
-      remove_supplicant_networks_callback.Run();
+      std::move(remove_supplicant_networks_callback).Run();
       dhcp_lease_renewal_timer_->Stop();
       wake_on_wifi_triggers_.erase(kWakeTriggerDisconnect);
       if (!wake_on_allowed_ssids_.empty()) {
@@ -1123,8 +1126,7 @@ WiFi::FreqSet WakeOnWiFi::ParseWakeOnSSIDResults(
 }
 
 void WakeOnWiFi::InitiateScanInDarkResume(
-    const InitiateScanCallback& initiate_scan_callback,
-    const WiFi::FreqSet& freqs) {
+    InitiateScanCallback initiate_scan_callback, const WiFi::FreqSet& freqs) {
   SLOG(this, 3) << __func__;
   if (!freqs.empty() && freqs.size() <= kMaxFreqsForDarkResumeScanRetries) {
     SLOG(this, 3) << __func__ << ": "
@@ -1133,7 +1135,7 @@ void WakeOnWiFi::InitiateScanInDarkResume(
                   << " frequencies";
     dark_resume_scan_retries_left_ = kMaxDarkResumeScanRetries;
   }
-  initiate_scan_callback.Run(freqs);
+  std::move(initiate_scan_callback).Run(freqs);
 }
 
 void WakeOnWiFi::OnConnectedAndReachable(bool start_lease_renewal_timer,
@@ -1178,8 +1180,8 @@ void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected,
 
 void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
     const std::vector<ByteString>& allowed_ssids,
-    const base::Closure& remove_supplicant_networks_callback,
-    const InitiateScanCallback& initiate_scan_callback) {
+    base::OnceClosure remove_supplicant_networks_callback,
+    InitiateScanCallback initiate_scan_callback) {
   SLOG(this, 3) << __func__ << ": "
                 << (in_dark_resume_ ? "In dark resume" : "Not in dark resume");
   if (WakeOnWiFiDisabled()) {
@@ -1197,12 +1199,13 @@ void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
     metrics_->NotifyDarkResumeScanRetry();
     // Note: a scan triggered by supplicant in dark resume might cause a
     // retry, but we consider this acceptable.
-    initiate_scan_callback.Run(last_ssid_match_freqs_);
+    std::move(initiate_scan_callback).Run(last_ssid_match_freqs_);
   } else {
     wake_on_allowed_ssids_ = allowed_ssids;
     // Assume that if there are no services available for auto-connect, then we
     // cannot be connected. Therefore, no need for lease renewal parameters.
-    BeforeSuspendActions(false, false, 0, remove_supplicant_networks_callback);
+    BeforeSuspendActions(false, false, 0,
+                         std::move(remove_supplicant_networks_callback));
   }
 }
 

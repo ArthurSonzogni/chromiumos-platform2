@@ -200,8 +200,8 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   void OnBeforeSuspend(bool is_connected,
                        const std::vector<ByteString>& allowed_ssids,
                        const ResultCallback& done_callback,
-                       const base::Closure& renew_dhcp_lease_callback,
-                       const base::Closure& remove_supplicant_networks_callback,
+                       base::OnceClosure renew_dhcp_lease_callback,
+                       base::OnceClosure remove_supplicant_networks_callback,
                        bool have_dhcp_lease,
                        uint32_t time_to_next_lease_renewal) override;
   // Performs post-resume actions relevant to wake on wireless functionality.
@@ -223,8 +223,8 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
       bool is_connected,
       const std::vector<ByteString>& allowed_ssids,
       const ResultCallback& done_callback,
-      const base::Closure& renew_dhcp_lease_callback,
-      const InitiateScanCallback& initiate_scan_callback,
+      base::OnceClosure renew_dhcp_lease_callback,
+      InitiateScanCallback initiate_scan_callback,
       const base::Closure& remove_supplicant_networks_callback) override;
   // Called when we the current service is connected, and we have IP
   // reachability. Calls WakeOnWiFi::BeforeSuspendActions if we are in dark
@@ -240,8 +240,8 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // resume scan retries.
   void OnNoAutoConnectableServicesAfterScan(
       const std::vector<ByteString>& allowed_ssids,
-      const base::Closure& remove_supplicant_networks_callback,
-      const InitiateScanCallback& initiate_scan_callback) override;
+      base::OnceClosure remove_supplicant_networks_callback,
+      InitiateScanCallback initiate_scan_callback) override;
   // Called by WiFi when it is notified by the kernel that a scan has started.
   // If |is_active_scan| is true, the scan is an active scan. Otherwise, the
   // scan is a passive scan.
@@ -402,7 +402,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
       bool is_connected,
       bool start_lease_renewal_timer,
       uint32_t time_to_next_lease_renewal,
-      const base::Closure& remove_supplicant_networks_callback);
+      base::OnceClosure remove_supplicant_networks_callback);
 
   // Needed for |dhcp_lease_renewal_timer_| and |wake_to_scan_timer_| since
   // passing a empty base::Closure() causes a run-time DCHECK error when
@@ -425,9 +425,8 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
 
   // Sets the |dark_resume_scan_retries_left_| counter if necessary, then runs
   // |initiate_scan_callback| with |freqs|.
-  void InitiateScanInDarkResume(
-      const InitiateScanCallback& initiate_scan_callback,
-      const WiFi::FreqSet& freqs);
+  void InitiateScanInDarkResume(InitiateScanCallback initiate_scan_callback,
+                                const WiFi::FreqSet& freqs);
 
   // Pointers to objects owned by the WiFi object that created this object.
   EventDispatcher* dispatcher_;
