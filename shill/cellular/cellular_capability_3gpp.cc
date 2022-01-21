@@ -1906,7 +1906,7 @@ void CellularCapability3gpp::OnModem3gppProfileManagerUpdatedSignal() {
   SLOG(this, 3) << __func__;
   ResultVariantDictionariesOnceCallback cb =
       base::BindOnce(&CellularCapability3gpp::OnProfilesListReply,
-                     weak_ptr_factory_.GetWeakPtr(), ResultCallback());
+                     weak_ptr_factory_.GetWeakPtr(), base::DoNothing());
   modem_3gpp_profile_manager_proxy_->List(std::move(cb), kTimeoutDefault);
 }
 
