@@ -557,7 +557,20 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   bool AttachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
-    return false;
+    VLOG(1) << "attach-storage " << name;
+
+    Node* node = GetInodeTable().Ensure(FUSE_ROOT_ID, name.c_str());
+    if (!node) {
+      PLOG(ERROR) << "attach-storage " << name;
+      return false;
+    }
+
+    if (!node->device) {
+      node->device = ++device_;
+      CHECK(node->device) << "device id wrapped";
+    }
+
+    return true;
   }
 
   bool DetachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
@@ -579,6 +592,9 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
   // Fuse user-space frontend.
   std::unique_ptr<FuseFrontend> fuse_frontend_;
+
+  // Storage device number allocator.
+  dev_t device_ = 0;
 
   // Active readdir requests.
   std::map<uint64_t, std::unique_ptr<DirEntryResponse>> readdir_;
