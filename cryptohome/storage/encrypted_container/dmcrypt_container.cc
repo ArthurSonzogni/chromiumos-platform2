@@ -77,7 +77,6 @@ bool DmcryptContainer::Exists() {
 bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   // Check whether the kernel keyring provisioning is supported by the current
   // kernel.
-  bool keyring_support = platform_->IsDmcryptKeyringSupported();
   bool created = false;
   if (!backing_device_->Exists()) {
     if (!backing_device_->Create()) {
@@ -122,22 +121,15 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  brillo::SecureBlob key_descriptor =
-      brillo::SecureBlobToSecureHex(encryption_key.fek);
-
-  // If the dm-crypt kernel driver supports using the keyring, use it.
-  if (keyring_support) {
-    LOG(INFO) << "Using kernel keyring to provision key to dm-crypt.";
-    if (!keyring_->AddKey(Keyring::KeyType::kDmcryptKey, encryption_key,
-                          &key_reference_)) {
-      LOG(ERROR) << "Failed to insert logon key to session keyring.";
-      return false;
-    }
-
-    // Once the key is inserted, update the key descriptor.
-    key_descriptor = dmcrypt::GenerateDmcryptKeyDescriptor(
-        key_reference_.fek_sig, encryption_key.fek.size());
+  if (!keyring_->AddKey(Keyring::KeyType::kDmcryptKey, encryption_key,
+                        &key_reference_)) {
+    LOG(ERROR) << "Failed to insert logon key to session keyring.";
+    return false;
   }
+
+  // Once the key is inserted, update the key descriptor.
+  brillo::SecureBlob key_descriptor = dmcrypt::GenerateDmcryptKeyDescriptor(
+      key_reference_.fek_sig, encryption_key.fek.size());
 
   base::FilePath dmcrypt_device_path =
       base::FilePath("/dev/mapper").Append(dmcrypt_device_name_);
@@ -164,11 +156,9 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
   }
 
   // Once the key has been used by dm-crypt, remove it from the keyring.
-  if (keyring_support) {
-    LOG(INFO) << "Removing provisioned dm-crypt key from kernel keyring.";
-    if (!keyring_->RemoveKey(Keyring::KeyType::kDmcryptKey, key_reference_)) {
-      LOG(ERROR) << "Failed to remove key";
-    }
+  LOG(INFO) << "Removing provisioned dm-crypt key from kernel keyring.";
+  if (!keyring_->RemoveKey(Keyring::KeyType::kDmcryptKey, key_reference_)) {
+    LOG(ERROR) << "Failed to remove key";
   }
 
   // Wait for the dmcrypt device path to show up before continuing to setting

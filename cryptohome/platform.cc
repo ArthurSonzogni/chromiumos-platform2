@@ -1451,16 +1451,6 @@ bool Platform::ClearUserKeyring() {
   return (keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING) == 0);
 }
 
-bool Platform::IsDmcryptKeyringSupported() const {
-  const brillo::DeviceMapperVersion reference_version({1, 15, 0});
-
-  if (brillo::DeviceMapper().GetTargetVersion("crypt") < reference_version) {
-    return false;
-  }
-
-  return true;
-}
-
 FileEnumerator* Platform::GetFileEnumerator(const FilePath& root_path,
                                             bool recursive,
                                             int file_type) {

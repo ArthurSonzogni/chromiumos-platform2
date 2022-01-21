@@ -21,6 +21,7 @@
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
+#include "cryptohome/storage/keyring/utils.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -37,10 +38,16 @@ class DmcryptContainerTest : public ::testing::Test {
                  .mkfs_opts = {"-O", "encrypt,verity"},
                  .tune2fs_opts = {"-Q", "project"}}),
         key_({.fek = brillo::SecureBlob("random key")}),
+        key_reference_({.fek_sig = brillo::SecureBlob("random reference")}),
         device_mapper_(base::BindRepeating(&brillo::fake::CreateDevmapperTask)),
         backing_device_(std::make_unique<FakeBackingDevice>(
             BackingDeviceType::kLogicalVolumeBackingDevice,
-            base::FilePath("/dev/VG/LV"))) {}
+            base::FilePath("/dev/VG/LV"))) {
+    key_reference_ =
+        dmcrypt::GenerateKeyringDescription(key_reference_.fek_sig);
+    key_descriptor_ = dmcrypt::GenerateDmcryptKeyDescriptor(
+        key_reference_.fek_sig, key_.fek.size());
+  }
   ~DmcryptContainerTest() override = default;
 
   void GenerateContainer() {
@@ -54,13 +61,14 @@ class DmcryptContainerTest : public ::testing::Test {
  protected:
   DmcryptConfig config_;
 
-  FileSystemKeyReference key_reference_;
   FileSystemKey key_;
+  FileSystemKeyReference key_reference_;
   MockPlatform platform_;
   FakeKeyring keyring_;
   brillo::DeviceMapper device_mapper_;
   std::unique_ptr<BackingDevice> backing_device_;
   std::unique_ptr<DmcryptContainer> container_;
+  brillo::SecureBlob key_descriptor_;
 };
 
 // Tests the creation path for the dm-crypt container.
@@ -76,7 +84,7 @@ TEST_F(DmcryptContainerTest, SetupCreateCheck) {
   EXPECT_TRUE(container_->Setup(key_));
   // Check that the device mapper target exists.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            brillo::SecureBlobToSecureHex(key_.fek));
+            key_descriptor_);
   EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
 }
 
@@ -93,7 +101,7 @@ TEST_F(DmcryptContainerTest, SetupNoCreateCheck) {
   EXPECT_TRUE(container_->Setup(key_));
   // Check that the device mapper target exists.
   EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
-            brillo::SecureBlobToSecureHex(key_.fek));
+            key_descriptor_);
   EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
 }
 

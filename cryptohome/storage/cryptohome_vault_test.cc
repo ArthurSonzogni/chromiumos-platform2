@@ -271,11 +271,14 @@ TEST_P(CryptohomeVaultTest, MigratingContainerSetupFailed) {
   ExpectCacheContainerSetup(CacheContainerType());
 
   // In absence of a migrating container, the vault setup should succeed.
-  if (CacheContainerType() != EncryptedContainerType::kUnknown) {
-    keyring_.SetShouldFailAfter(2);
-  } else {
-    keyring_.SetShouldFailAfter(1);
+  int good_key_calls = 1;
+  if (ContainerType() == EncryptedContainerType::kDmcrypt) {
+    good_key_calls = 4;
+  } else if (CacheContainerType() != EncryptedContainerType::kUnknown) {
+    good_key_calls = 2;
   }
+  keyring_.SetShouldFailAfter(good_key_calls);
+
   MountError error =
       MigratingContainerType() != EncryptedContainerType::kUnknown
           ? MOUNT_ERROR_KEYRING_FAILED

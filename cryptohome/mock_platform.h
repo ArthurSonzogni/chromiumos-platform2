@@ -374,7 +374,6 @@ class MockPlatform : public Platform {
               (const dircrypto::KeyReference&, const base::FilePath&),
               (override));
   MOCK_METHOD(bool, ClearUserKeyring, (), (override));
-  MOCK_METHOD(bool, IsDmcryptKeyringSupported, (), (const, override));
   MOCK_METHOD(bool, FirmwareWriteProtected, (), (override));
   MOCK_METHOD(std::string, GetHardwareID, (), (override));
   MOCK_METHOD(bool, GetBlkSize, (const base::FilePath&, uint64_t*), (override));

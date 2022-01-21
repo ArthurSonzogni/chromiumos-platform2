@@ -769,10 +769,6 @@ class Platform {
   // Clears the kernel-managed user keyring
   virtual bool ClearUserKeyring();
 
-  // Check whether the dm-crypt driver version is greater than 1.15.0 and can
-  // support key provisioning via the kernel keyring.
-  virtual bool IsDmcryptKeyringSupported() const;
-
   // Override the location of the mountinfo file used.
   // Default is kMountInfoFile.
   virtual void set_mount_info_path(const base::FilePath& mount_info_path) {

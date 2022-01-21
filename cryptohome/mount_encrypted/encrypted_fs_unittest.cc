@@ -23,6 +23,7 @@
 #include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
+#include "cryptohome/storage/keyring/utils.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -56,6 +57,10 @@ class EncryptedFsTest : public ::testing::Test {
     brillo::SecureBlob secret;
     brillo::SecureBlob::HexStringToSecureBlob("0123456789ABCDEF", &secret);
     key_.fek = secret;
+    key_reference_ = cryptohome::dmcrypt::GenerateKeyringDescription(
+        brillo::SecureBlob("some ref"));
+    key_descriptor_ = cryptohome::dmcrypt::GenerateDmcryptKeyDescriptor(
+        key_reference_.fek_sig, key_.fek.size());
 
     auto container = std::make_unique<cryptohome::DmcryptContainer>(
         config_, std::move(fake_backing_device), key_reference_, &platform_,
@@ -100,6 +105,7 @@ class EncryptedFsTest : public ::testing::Test {
   cryptohome::FakeBackingDeviceFactory fake_backing_device_factory_;
   cryptohome::FileSystemKey key_;
   cryptohome::FileSystemKeyReference key_reference_;
+  brillo::SecureBlob key_descriptor_;
   cryptohome::BackingDevice* backing_device_;
   std::unique_ptr<EncryptedFs> encrypted_fs_;
 };
@@ -114,7 +120,7 @@ TEST_F(EncryptedFsTest, RebuildStateful) {
   // Check that the dm-crypt device is created and has the correct key.
   brillo::DevmapperTable table =
       encrypted_fs_->device_mapper_->GetTable(dmcrypt_name_);
-  EXPECT_EQ(table.CryptGetKey(), brillo::SecureBlobToSecureHex(key_.fek));
+  EXPECT_EQ(table.CryptGetKey(), key_descriptor_);
   // Check if backing device is attached.
   EXPECT_EQ(backing_device_->GetPath(), base::FilePath("/dev/encstateful"));
 
@@ -138,7 +144,7 @@ TEST_F(EncryptedFsTest, OldStateful) {
   // Check that the dm-crypt device is created and has the correct key.
   brillo::DevmapperTable table =
       encrypted_fs_->device_mapper_->GetTable(dmcrypt_name_);
-  EXPECT_EQ(table.CryptGetKey(), brillo::SecureBlobToSecureHex(key_.fek));
+  EXPECT_EQ(table.CryptGetKey(), key_descriptor_);
   // Check if backing device is attached.
   EXPECT_EQ(backing_device_->GetPath(), base::FilePath("/dev/encstateful"));
 
