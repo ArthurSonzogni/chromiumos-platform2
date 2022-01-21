@@ -138,7 +138,7 @@ class RTNLHandlerTest : public Test {
 
   MockSockets* sockets_;
   StrictMock<MockIOHandlerFactory> io_handler_factory_;
-  base::Callback<void(const RTNLMessage&)> callback_;
+  base::RepeatingCallback<void(const RTNLMessage&)> callback_;
 
  private:
   base::test::TaskEnvironment task_environment_{

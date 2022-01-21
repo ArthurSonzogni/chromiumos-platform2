@@ -161,9 +161,10 @@ RoutingTable* RoutingTable::GetInstance() {
 void RoutingTable::Start() {
   SLOG(this, 2) << __func__;
 
-  route_listener_.reset(new RTNLListener(
-      RTNLHandler::kRequestRoute | RTNLHandler::kRequestRule,
-      base::Bind(&RoutingTable::RouteMsgHandler, base::Unretained(this))));
+  route_listener_.reset(
+      new RTNLListener(RTNLHandler::kRequestRoute | RTNLHandler::kRequestRule,
+                       base::BindRepeating(&RoutingTable::RouteMsgHandler,
+                                           base::Unretained(this))));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRoute);
   rtnl_handler_->RequestDump(RTNLHandler::kRequestRule);
 

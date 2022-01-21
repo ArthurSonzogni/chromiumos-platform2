@@ -39,8 +39,8 @@ class RTNLListenerTest : public testing::Test {
 TEST_F(RTNLListenerTest, NoRun) {
   testing::StrictMock<RtnlWatcher> mock_listener;
   RTNLListener listener(RTNLHandler::kRequestAddr,
-                        base::Bind(&RtnlWatcher::ListenerCallback,
-                                   base::Unretained(&mock_listener)));
+                        base::BindRepeating(&RtnlWatcher::ListenerCallback,
+                                            base::Unretained(&mock_listener)));
   RTNLMessage message;
   listener.NotifyEvent(RTNLHandler::kRequestLink, message);
 }
@@ -48,8 +48,8 @@ TEST_F(RTNLListenerTest, NoRun) {
 TEST_F(RTNLListenerTest, Run) {
   testing::StrictMock<RtnlWatcher> mock_listener;
   RTNLListener listener(RTNLHandler::kRequestLink | RTNLHandler::kRequestAddr,
-                        base::Bind(&RtnlWatcher::ListenerCallback,
-                                   base::Unretained(&mock_listener)));
+                        base::BindRepeating(&RtnlWatcher::ListenerCallback,
+                                            base::Unretained(&mock_listener)));
   RTNLMessage message;
   EXPECT_CALL(mock_listener,
               ListenerCallback(testing::A<const RTNLMessage&>()));

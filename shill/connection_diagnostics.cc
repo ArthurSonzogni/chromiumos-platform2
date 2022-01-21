@@ -494,10 +494,10 @@ void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
     return;
   }
 
-  neighbor_msg_listener_.reset(
-      new RTNLListener(RTNLHandler::kRequestNeighbor,
-                       base::Bind(&ConnectionDiagnostics::OnNeighborMsgReceived,
-                                  weak_ptr_factory_.GetWeakPtr(), address)));
+  neighbor_msg_listener_.reset(new RTNLListener(
+      RTNLHandler::kRequestNeighbor,
+      base::BindRepeating(&ConnectionDiagnostics::OnNeighborMsgReceived,
+                          weak_ptr_factory_.GetWeakPtr(), address)));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestNeighbor);
 
   neighbor_request_timeout_callback_.Reset(

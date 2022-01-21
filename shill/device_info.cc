@@ -216,15 +216,18 @@ bool DeviceInfo::IsDeviceBlocked(const std::string& device_name) {
 }
 
 void DeviceInfo::Start() {
-  link_listener_.reset(new RTNLListener(
-      RTNLHandler::kRequestLink,
-      base::Bind(&DeviceInfo::LinkMsgHandler, base::Unretained(this))));
-  address_listener_.reset(new RTNLListener(
-      RTNLHandler::kRequestAddr,
-      base::Bind(&DeviceInfo::AddressMsgHandler, base::Unretained(this))));
-  rdnss_listener_.reset(new RTNLListener(
-      RTNLHandler::kRequestRdnss,
-      base::Bind(&DeviceInfo::RdnssMsgHandler, base::Unretained(this))));
+  link_listener_.reset(
+      new RTNLListener(RTNLHandler::kRequestLink,
+                       base::BindRepeating(&DeviceInfo::LinkMsgHandler,
+                                           base::Unretained(this))));
+  address_listener_.reset(
+      new RTNLListener(RTNLHandler::kRequestAddr,
+                       base::BindRepeating(&DeviceInfo::AddressMsgHandler,
+                                           base::Unretained(this))));
+  rdnss_listener_.reset(
+      new RTNLListener(RTNLHandler::kRequestRdnss,
+                       base::BindRepeating(&DeviceInfo::RdnssMsgHandler,
+                                           base::Unretained(this))));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink |
                              RTNLHandler::kRequestAddr);
   request_link_statistics_callback_.Reset(base::Bind(

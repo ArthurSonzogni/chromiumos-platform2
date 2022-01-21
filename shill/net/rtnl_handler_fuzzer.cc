@@ -21,7 +21,7 @@ class RTNLHandlerFuzz {
     InputData input(static_cast<const unsigned char*>(data), size);
 
     // Listen for all messages.
-    RTNLListener listener(~0, base::Bind(&RTNLHandlerFuzz::Listener));
+    RTNLListener listener(~0, base::BindRepeating(&RTNLHandlerFuzz::Listener));
     RTNLHandler::GetInstance()->ParseRTNL(&input);
   }
 
