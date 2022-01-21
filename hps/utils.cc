@@ -124,6 +124,10 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
         ret.push_back("kAppl");
         val ^= kAppl;
       }
+      if (val & kCmdInProgress) {
+        ret.push_back("kCmdInProgress");
+        val ^= kCmdInProgress;
+      }
       if (val) {
         ret.push_back(base::StringPrintf("0x%x", val));
       }
