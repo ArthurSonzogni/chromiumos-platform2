@@ -8,6 +8,10 @@
 
 #include <net/ethernet.h>
 
+#include <memory>
+#include <string>
+
+#include <base/logging.h>
 #include <gtest/gtest.h>
 
 namespace patchpanel {
@@ -157,6 +161,23 @@ const uint8_t tcp_frame[] = {
     0x80, 0x10, 0x01, 0x54, 0x04, 0xb9, 0x00, 0x00, 0x01, 0x01, 0x08,
     0x0a, 0x00, 0x5a, 0x59, 0xc0, 0x32, 0x53, 0x14, 0x3a};
 
+constexpr const char hex_chars[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                                      '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+std::string ToHexString(const uint8_t* buffer, size_t len) {
+  std::string s;
+  std::string sep;
+  for (int i = 0; i < len; i++) {
+    const uint8_t b = buffer[i];
+    s += sep;
+    s += "0x";
+    s += hex_chars[(b & 0xF0) >> 4];
+    s += hex_chars[(b & 0x0F) >> 0];
+    sep = ", ";
+  }
+  return s;
+}
+
 TEST(NDProxyTest, GetPrefixInfoOption) {
   uint8_t in_buffer_extended[IP_MAXPACKET + ETHER_HDR_LEN + 4];
   uint8_t* in_buffer = NDProxy::AlignFrameBuffer(in_buffer_extended);
@@ -181,57 +202,110 @@ TEST(NDProxyTest, TranslateFrame) {
 
   NDProxy ndproxy;
   ndproxy.Init();
-  memcpy(in_buffer, tcp_frame, sizeof(tcp_frame));
-  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(tcp_frame),
-                                    physical_if_mac, out_buffer);
-  EXPECT_EQ(NDProxy::kTranslateErrorNotICMPv6Frame, result);
 
-  memcpy(in_buffer, ping_frame, sizeof(ping_frame));
-  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(ping_frame),
-                                    physical_if_mac, out_buffer);
-  EXPECT_EQ(NDProxy::kTranslateErrorNotNDFrame, result);
+  struct {
+    std::string name;
+    const uint8_t* input_frame;
+    size_t input_frame_len;
+    MacAddress local_mac;
+    ssize_t expected_error;
+    const uint8_t* expected_output_frame;
+    size_t expected_output_frame_len;
+  } test_cases[] = {
+      {
+          "tcp_frame",
+          tcp_frame,
+          sizeof(tcp_frame),
+          physical_if_mac,
+          NDProxy::kTranslateErrorNotICMPv6Frame,
+      },
+      {
+          "ping_frame",
+          ping_frame,
+          sizeof(ping_frame),
+          physical_if_mac,
+          NDProxy::kTranslateErrorNotNDFrame,
+      },
+      {
+          "rs_frame_too_large_plen",
+          rs_frame_too_large_plen,
+          sizeof(rs_frame_too_large_plen),
+          physical_if_mac,
+          NDProxy::kTranslateErrorMismatchedIp6Length,
+      },
+      {
+          "rs_frame_too_small_plen",
+          rs_frame_too_small_plen,
+          sizeof(rs_frame_too_small_plen),
+          physical_if_mac,
+          NDProxy::kTranslateErrorMismatchedIp6Length,
+      },
+      {
+          "rs_frame",
+          rs_frame,
+          sizeof(rs_frame),
+          physical_if_mac,
+          0,  // no error
+          rs_frame_translated,
+          sizeof(rs_frame_translated),
+      },
+      {
+          "ra_frame",
+          ra_frame,
+          sizeof(ra_frame),
+          guest_if_mac,
+          0,  // no error
+          ra_frame_translated,
+          sizeof(ra_frame_translated),
+      },
+      {
+          "ra_frame_option_reordered",
+          ra_frame_option_reordered,
+          sizeof(ra_frame_option_reordered),
+          guest_if_mac,
+          0,  // no error
+          ra_frame_option_reordered_translated,
+          sizeof(ra_frame_option_reordered_translated),
+      },
+      {
+          "ns_frame",
+          ns_frame,
+          sizeof(ns_frame),
+          physical_if_mac,
+          0,  // no error
+          ns_frame_translated,
+          sizeof(ns_frame_translated),
+      },
+      {
+          "na_frame",
+          na_frame,
+          sizeof(na_frame),
+          guest_if_mac,
+          0,  // no error
+          na_frame_translated,
+          sizeof(na_frame_translated),
+      },
+  };
 
-  memcpy(in_buffer, rs_frame_too_large_plen, sizeof(rs_frame_too_large_plen));
-  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(rs_frame_too_large_plen),
-                                    physical_if_mac, out_buffer);
-  EXPECT_EQ(NDProxy::kTranslateErrorMismatchedIp6Length, result);
+  for (const auto& test_case : test_cases) {
+    LOG(INFO) << test_case.name;
 
-  memcpy(in_buffer, rs_frame_too_small_plen, sizeof(rs_frame_too_small_plen));
-  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(rs_frame_too_small_plen),
-                                    physical_if_mac, out_buffer);
-  EXPECT_EQ(NDProxy::kTranslateErrorMismatchedIp6Length, result);
+    memcpy(in_buffer, test_case.input_frame, test_case.input_frame_len);
+    result = ndproxy.TranslateNDFrame(in_buffer, test_case.input_frame_len,
+                                      test_case.local_mac, out_buffer);
 
-  memcpy(in_buffer, rs_frame, sizeof(rs_frame));
-  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(rs_frame),
-                                    physical_if_mac, out_buffer);
-  EXPECT_EQ(sizeof(rs_frame_translated), result);
-  EXPECT_EQ(0, memcmp(rs_frame_translated, out_buffer, sizeof(rs_frame)));
+    if (test_case.expected_error != 0) {
+      EXPECT_EQ(test_case.expected_error, result);
+    } else {
+      EXPECT_EQ(test_case.expected_output_frame_len, result);
 
-  memcpy(in_buffer, ra_frame, sizeof(ra_frame));
-  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(ra_frame), guest_if_mac,
-                                    out_buffer);
-  EXPECT_EQ(sizeof(ra_frame_translated), result);
-  EXPECT_EQ(0, memcmp(ra_frame_translated, out_buffer, sizeof(ra_frame)));
-
-  memcpy(in_buffer, ra_frame_option_reordered,
-         sizeof(ra_frame_option_reordered));
-  result = ndproxy.TranslateNDFrame(
-      in_buffer, sizeof(ra_frame_option_reordered), guest_if_mac, out_buffer);
-  EXPECT_EQ(sizeof(ra_frame_option_reordered_translated), result);
-  EXPECT_EQ(0, memcmp(ra_frame_option_reordered_translated, out_buffer,
-                      sizeof(ra_frame_option_reordered)));
-
-  memcpy(in_buffer, ns_frame, sizeof(ns_frame));
-  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(ns_frame),
-                                    physical_if_mac, out_buffer);
-  EXPECT_EQ(sizeof(ns_frame_translated), result);
-  EXPECT_EQ(0, memcmp(ns_frame_translated, out_buffer, sizeof(ns_frame)));
-
-  memcpy(in_buffer, na_frame, sizeof(na_frame));
-  result = ndproxy.TranslateNDFrame(in_buffer, sizeof(na_frame), guest_if_mac,
-                                    out_buffer);
-  EXPECT_EQ(sizeof(na_frame_translated), result);
-  EXPECT_EQ(0, memcmp(na_frame_translated, out_buffer, sizeof(na_frame)));
+      const auto expected = ToHexString(test_case.expected_output_frame,
+                                        test_case.expected_output_frame_len);
+      const auto received =
+          ToHexString(out_buffer, test_case.expected_output_frame_len);
+      EXPECT_EQ(expected, received);
+    }
+  }
 }
 
 }  // namespace patchpanel
