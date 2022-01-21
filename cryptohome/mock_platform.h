@@ -61,9 +61,6 @@ class MockFileEnumerator : public FileEnumerator {
 ACTION(CallComputeDirectoryDiskUsage) {
   return Platform().ComputeDirectoryDiskUsage(arg0);
 }
-ACTION(CallStatVFS) {
-  return Platform().StatVFS(arg0, arg1);
-}
 ACTION(CallReportFilesystemDetails) {
   return Platform().ReportFilesystemDetails(arg0, arg1);
 }

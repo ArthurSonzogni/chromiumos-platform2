@@ -50,6 +50,7 @@ class FakePlatform final : public Platform {
   bool Rename(const base::FilePath& from, const base::FilePath& to) override;
   bool Move(const base::FilePath& from, const base::FilePath& to) override;
   bool Copy(const base::FilePath& from, const base::FilePath& to) override;
+  bool StatVFS(const base::FilePath& path, struct statvfs* vfs) override;
   bool TouchFileDurable(const base::FilePath& path) override;
   bool DeleteFile(const base::FilePath& path) override;
   bool DeletePathRecursively(const base::FilePath& path) override;

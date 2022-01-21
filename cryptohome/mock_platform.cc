@@ -185,6 +185,8 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, AmountOfFreeDiskSpace(_))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::AmountOfFreeDiskSpace));
+  ON_CALL(*this, StatVFS(_, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::StatVFS));
 
   ON_CALL(*this, Mount(_, _, _, _, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Mount));
@@ -210,7 +212,6 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, SetGroupAccessible(_, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, GetCurrentTime())
       .WillByDefault(Return(base::Time::NowFromSystemTime()));
-  ON_CALL(*this, StatVFS(_, _)).WillByDefault(CallStatVFS());
   ON_CALL(*this, ReportFilesystemDetails(_, _))
       .WillByDefault(CallReportFilesystemDetails());
   ON_CALL(*this, FindFilesystemDevice(_, _))
