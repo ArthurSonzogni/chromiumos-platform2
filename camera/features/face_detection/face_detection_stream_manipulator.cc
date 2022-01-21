@@ -6,6 +6,7 @@
 
 #include "features/face_detection/face_detection_stream_manipulator.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace cros {
@@ -288,18 +289,27 @@ void FaceDetectionStreamManipulator::SetResultAeMetadata(
 
   FrameInfo& frame_info = GetOrCreateFrameInfoEntry(result->frame_number());
   if (frame_info.face_detect_mode != ANDROID_STATISTICS_FACE_DETECT_MODE_OFF) {
-    // This is mainly for displaying the face rectangles in camera app for
-    // development and debugging.
     std::vector<int32_t> face_coordinates;
+    std::vector<uint8_t> face_scores;
     for (const auto& f : latest_faces_) {
       face_coordinates.push_back(f.bounding_box.x1);
       face_coordinates.push_back(f.bounding_box.y1);
       face_coordinates.push_back(f.bounding_box.x2);
       face_coordinates.push_back(f.bounding_box.y2);
+      face_scores.push_back(static_cast<uint8_t>(
+          std::clamp(f.confidence * 100.0f, 0.0f, 100.0f)));
     }
     if (!result->UpdateMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES,
                                          face_coordinates)) {
       LOGF(ERROR) << "Cannot set ANDROID_STATISTICS_FACE_RECTANGLES";
+    }
+    if (!result->UpdateMetadata<uint8_t>(ANDROID_STATISTICS_FACE_SCORES,
+                                         face_scores)) {
+      LOGF(ERROR) << "Cannot set ANDROID_STATISTICS_FACE_SCORES";
+    }
+    if (frame_info.face_detect_mode ==
+        ANDROID_STATISTICS_FACE_DETECT_MODE_FULL) {
+      NOTIMPLEMENTED() << "FULL mode requires FACE_IDS and FACE_LANDMARKS";
     }
   }
 
