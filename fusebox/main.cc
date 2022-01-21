@@ -106,7 +106,14 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   }
 
   void Init(void* userdata, struct fuse_conn_info*) override {
-    CHECK(userdata);
+    VLOG(1) << "init";
+
+    Node* root = GetInodeTable().Lookup(FUSE_ROOT_ID);
+    struct stat root_stat = MakeTimeStat(S_IFDIR | 0770);
+    root_stat = MakeStat(root->ino, root_stat);
+    GetInodeTable().SetStat(root->ino, root_stat);
+
+    CHECK(userdata) << "FileSystem (userdata) is required";
   }
 
   void GetAttr(std::unique_ptr<AttrRequest> request, ino_t ino) override {
@@ -119,6 +126,13 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     if (!node) {
       request->ReplyError(errno);
       PLOG(ERROR) << "getattr " << ino;
+      return;
+    }
+
+    if (node->ino == FUSE_ROOT_ID) {
+      struct stat stat;
+      CHECK(GetInodeTable().GetStat(node->ino, &stat));
+      request->ReplyAttr(stat, kStatTimeoutSeconds);
       return;
     }
 
