@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include <base/callback.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/bindings/connectivity/mojom/state.mojom.h"
@@ -25,6 +26,24 @@ class RemoteState {
 
   static std::unique_ptr<RemoteState> Create(
       mojo::PendingRemote<mojom::State> remote);
+
+ public:
+  // Used by TestConsumer to get the LastCallHasNext state. Returns
+  // a callback for async call.
+  virtual base::OnceCallback<void(base::OnceCallback<void(bool)>)>
+  GetLastCallHasNextClosure() = 0;
+  // Used by TestConsumer to wait the last function call finished.
+  // This is used before each call to a function without callback (no response
+  // parameters). For recursive interface checking, the callback will be
+  // stacked.
+  virtual void WaitLastCall(base::OnceClosure callback) = 0;
+  // Used by TestConsumer as the disconnect handler to fulfill the callback of
+  // |WaitRemoteLastCall|. When connection error ocurrs (e.g. Interfaces
+  // mismatch), the connection will be reset. In this case, the callback of
+  // |WaitRemoteLastCall| won't be called. We cannot drop the callback because
+  // the |State| interface is still connected. Instead, this function is used to
+  // call the remote callback from this side.
+  virtual base::OnceClosure GetFulfillLastCallCallbackClosure() = 0;
 
  protected:
   RemoteState() = default;

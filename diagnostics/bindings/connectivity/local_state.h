@@ -26,6 +26,17 @@ class LocalState {
   static std::unique_ptr<LocalState> Create(
       mojo::PendingReceiver<mojom::State> receiver);
 
+ public:
+  // Used by TestProvider to set the LastCallHasNext state.
+  // LastCallHasNext reports whether there are more response parameters to be
+  // tested from the function last called. Only the function with response
+  // parameters sets this state.
+  virtual void SetLastCallHasNext(bool has_next) = 0;
+  // Used by TestProvider to fulfill the callback set by remote's
+  // |WaitRemoteLastCall|. Call this before the target function returns to
+  // notify remote that the function is finished.
+  virtual void FulfillLastCallCallback() = 0;
+
  protected:
   LocalState() = default;
 };

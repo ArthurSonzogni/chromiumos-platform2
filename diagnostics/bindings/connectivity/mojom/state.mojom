@@ -7,4 +7,26 @@ module diagnostics.bindings.connectivity.mojom;
 // State provides interface to sync the internal state of connectivity test
 // between two context object in each processes.
 interface State {
+  // The following functions are for mojo method with response parameters. (
+  // e.g. |Foo() => ();|).
+  //
+  // LastCallHasNext returns whether there are more response parameters to be
+  // tested from the function last called.
+  // Only the function with response parameters sets this state. Otherwise it is
+  // undefined behavior.
+  LastCallHasNext() => (bool has_next);
+
+  // The following functions are for mojo method without response parameters. (
+  // e.g. |Foo();|).
+  //
+  // WaitLastCall returns after the last function call finished. This should be
+  // used before each call to a function without response parameters.
+  WaitLastCall() => ();
+  // FulfillLastCallCallback fulfills the callback function of |WaitLastCall|.
+  // When connection error ocurrs (e.g. Interfaces mismatch), the connection
+  // will be reset. In this case, the callback of |WaitRemoteLastCall| won't be
+  // called. We cannot drop the callback because the |State| interface is still
+  // connected. Instead, this function is used to call the remote callback from
+  // this side.
+  FulfillLastCallCallback();
 };
