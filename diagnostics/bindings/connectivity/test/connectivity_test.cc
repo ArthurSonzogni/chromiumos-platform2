@@ -108,6 +108,8 @@ bool Check(ConsumerType* consumer) {
 SUCCESSFUL_TEST(TestSuccess);
 
 FAILED_TEST(TestMissFunction);
+FAILED_TEST(TestWrongFunctionType1);
+FAILED_TEST(TestWrongFunctionType2);
 
 }  // namespace
 }  // namespace test

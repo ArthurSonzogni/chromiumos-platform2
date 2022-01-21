@@ -6,8 +6,17 @@ module diagnostics.bindings.connectivity.test.server.mojom;
 
 interface TestSuccess {
   Foo();
+  Bar() => ();
 };
 
 interface TestMissFunction {
   Foo();
+};
+
+interface TestWrongFunctionType1 {
+  Foo();
+};
+
+interface TestWrongFunctionType2 {
+  Foo() => ();
 };

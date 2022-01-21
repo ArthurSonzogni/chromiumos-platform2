@@ -1,3 +1,5 @@
+{%- import "method-macro.cc.j2" as method_macro %}
+
 {%- set class_name = "%sTestProvider"|format(interface.mojom_name) %}
 
 class {{class_name}}
@@ -32,8 +34,10 @@ class {{class_name}}
     ~Service() = default;
    private:
 {%- for method in interface.methods %}
-    void {{method.mojom_name}}() override {
-      test_provider_->{{method.mojom_name}}_Step1();
+    void {{method.mojom_name}}({{method_macro.declare_request_params(
+        "", method)}}) override {
+      test_provider_->{{method.mojom_name}}_Step1({{method_macro.forward_params(
+      "", method)}});
     }
 {%- endfor %}
    private:
@@ -44,8 +48,12 @@ class {{class_name}}
 
 {#- Methods are splitted into multiple stages to be used as callback. #}
 {%- for method in interface.methods %}
-  void {{method.mojom_name}}_Step1();
-  void {{method.mojom_name}}_Step2();
+{%-   if method.response_parameters != None %}
+  using {{method.mojom_name}}Callback = Service::{{method.mojom_name}}Callback;
+{%-   endif -%}
+  void {{method.mojom_name}}_Step1({{method_macro.declare_request_params(
+    "", method)}});
+  void {{method.mojom_name}}_Step2(base::OnceClosure callback);
 {%- endfor %}
 
  private:

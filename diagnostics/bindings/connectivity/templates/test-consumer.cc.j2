@@ -1,3 +1,5 @@
+{%- import "method-macro.cc.j2" as method_macro %}
+
 {%- set class_name = "%sTestConsumer"|format(interface.mojom_name) %}
 
 std::unique_ptr<{{class_name}}> {{class_name}}::Create(
@@ -34,11 +36,23 @@ void {{class_name}}::CheckStep1__{{method.mojom_name}}(CheckCallback callback) {
                      weak_factory_.GetWeakPtr(),
                      std::move(callback));
 
+{%-   if method.response_parameters == None %}
   context_->remote_state()->WaitLastCall(std::move(next_callback));
   CHECK(remote_.is_connected());
   remote_.set_disconnect_handler(
     context_->remote_state()->GetFulfillLastCallCallbackClosure());
   remote_->{{method.mojom_name}}();
+{%-   else %}
+  auto [next_callback1, next_callback2] =
+    base::SplitOnceCallback(std::move(next_callback));
+  CHECK(remote_.is_connected());
+  remote_.set_disconnect_handler(std::move(next_callback1));
+  auto response_callback = base::BindOnce([]({{
+    method_macro.declare_params("", method.response_parameters)}}
+  ){}).Then(std::move(next_callback2));
+
+  remote_->{{method.mojom_name}}(std::move(response_callback));
+{%-   endif %}
 }
 
 {#  Step2: Checks sub-interfaces. #}
@@ -64,7 +78,17 @@ void {{class_name}}::CheckStep2__{{method.mojom_name}}(CheckCallback callback) {
 {#  Step3: Checks if need to do another check. If any parameter or
     response_parameter need to be checked, do the check again. #}
 void {{class_name}}::CheckStep3__{{method.mojom_name}}(CheckCallback callback) {
+{%-   if method.response_parameters == None %}
   std::move(callback).Run(true);
+{%-   else %}
+  ::diagnostics::bindings::connectivity::RunOrReturn(
+    /*return_value=*/true,
+    /*get_result=*/context_->remote_state()->GetLastCallHasNextClosure(),
+    /*run_callback=*/base::BindOnce(
+      &{{class_name}}::CheckStep1__{{method.mojom_name}},
+      weak_factory_.GetWeakPtr()),
+    std::move(callback));
+{%-   endif %}
 }
 {%  endfor %}
 
