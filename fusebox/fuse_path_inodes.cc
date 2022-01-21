@@ -67,11 +67,17 @@ Node* InodeTable::Create(ino_t parent, const char* name) {
   if (child.empty() || !parent)
     return NodeError(EINVAL);
 
+  auto parent_node = node_map_.find(parent);
+  if (parent_node == node_map_.end())
+    return NodeError(EINVAL);
+
   auto p = parent_map_.find(std::to_string(parent).append(child));
   if (p != parent_map_.end())
     return NodeError(EEXIST);
 
-  return InsertNode(CreateNode(parent, child, CreateIno()));
+  Node* node = InsertNode(CreateNode(parent, child, CreateIno()));
+  node->device = parent_node->second->device;
+  return node;
 }
 
 Node* InodeTable::Lookup(ino_t ino, uint64_t ref) {
@@ -103,6 +109,10 @@ Node* InodeTable::Ensure(ino_t parent, const char* name, uint64_t ref) {
   if (child.empty() || !parent)
     return NodeError(EINVAL);
 
+  auto parent_node = node_map_.find(parent);
+  if (parent_node == node_map_.end())
+    return NodeError(EINVAL);
+
   auto p = parent_map_.find(std::to_string(parent).append(child));
   if (p != parent_map_.end()) {
     p->second->refcount += ref;
@@ -110,6 +120,7 @@ Node* InodeTable::Ensure(ino_t parent, const char* name, uint64_t ref) {
   }
 
   Node* node = InsertNode(CreateNode(parent, child, CreateIno()));
+  node->device = parent_node->second->device;
   node->refcount += ref;
   return node;
 }
