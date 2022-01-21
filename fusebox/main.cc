@@ -567,13 +567,21 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
     if (!node->device) {
       node->device = ++device_;
-      CHECK(node->device) << "device id wrapped";
+      CHECK(node->device) << "device wrapped";
     }
 
     return true;
   }
 
   bool DetachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
+    VLOG(1) << "detach-storage " << name;
+
+    Node* node = GetInodeTable().Lookup(FUSE_ROOT_ID, name.c_str());
+    if (!node)
+      return true;
+
+    // TODO(crbug.com/1289493): remove all node->device nodes from inode table.
+    CHECK(node->device);
     return false;
   }
 
@@ -587,14 +595,14 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   // D-Bus.
   scoped_refptr<dbus::Bus> bus_;
 
+  // Device number allocator.
+  dev_t device_ = 0;
+
   // Fuse mount: not owned.
   FuseMount* fuse_ = nullptr;
 
   // Fuse user-space frontend.
   std::unique_ptr<FuseFrontend> fuse_frontend_;
-
-  // Storage device number allocator.
-  dev_t device_ = 0;
 
   // Active readdir requests.
   std::map<uint64_t, std::unique_ptr<DirEntryResponse>> readdir_;
