@@ -28,6 +28,10 @@ namespace {{namespace}} {
 
 {{namespace_begin()}}
 
+{%- for interface in module.interfaces %}
+class {{interface.mojom_name}}TestProvider;
+{%- endfor %}
+
 {{namespace_end()}}
 
 #endif  // {{header_guard}}

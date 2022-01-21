@@ -16,10 +16,19 @@ namespace {{namespace}} {
 
 #include "{{module.path}}-connectivity.h"
 
+#include <base/check.h>
+#include <base/logging.h>
+
+#include "diagnostics/bindings/connectivity/local_state.h"
+
 {%- for imp in module.imports %}
 #include "{{imp.path}}-connectivity.h"
 {%  endfor %}
 
 {{namespace_begin()}}
+
+{%- for interface in module.interfaces %}
+{%    include "test-provider.cc.j2" %}
+{%- endfor %}
 
 {{namespace_end()}}

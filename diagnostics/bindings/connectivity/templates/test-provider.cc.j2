@@ -1,0 +1,45 @@
+{%- set class_name = "%sTestProvider"|format(interface.mojom_name) %}
+
+std::unique_ptr<{{class_name}}> {{class_name}}::Create(
+    ::diagnostics::bindings::connectivity::Context* context) {
+  return std::unique_ptr<{{class_name}}>(new {{class_name}}(context));
+}
+
+{{class_name}}::{{class_name}}(
+    ::diagnostics::bindings::connectivity::Context* context)
+  : context_(context) {}
+
+void {{class_name}}::Bind(::mojo::PendingReceiver<{{
+    interface.mojom_name}}> receiver) {
+  receiver_set_.Add(&service_, std::move(receiver));
+}
+
+::mojo::PendingRemote<{{interface.mojom_name}}> {{class_name}}::Generate() {
+  has_next_ = false;
+  ::mojo::PendingReceiver<{{interface.mojom_name}}> receiver;
+  auto remote = receiver.InitWithNewPipeAndPassRemote();
+  receiver_set_.Add(&service_, std::move(receiver));
+  return remote;
+}
+
+void {{class_name}}::RemoveReceiver(::mojo::ReceiverId receiver_id) {
+  receiver_set_.Remove(receiver_id);
+}
+
+{%- for method in interface.methods %}
+void {{class_name}}::{{method.mojom_name}}_Step1() {
+  auto callback_0 = base::BindOnce(
+    &{{class_name}}::{{method.mojom_name}}_Step2,
+    weak_factory_.GetWeakPtr());
+
+{# TODO: Recursively check interface. #}
+
+  auto callback_last = std::move(callback_0);
+  std::move(callback_last).Run();
+}
+
+void {{class_name}}::{{method.mojom_name}}_Step2() {
+  context_->local_state()->FulfillLastCallCallback();
+}
+
+{%- endfor %}

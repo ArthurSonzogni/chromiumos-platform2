@@ -17,6 +17,8 @@
 #include "diagnostics/bindings/connectivity/context.h"
 #include "diagnostics/bindings/connectivity/local_state.h"
 #include "diagnostics/bindings/connectivity/remote_state.h"
+#include "diagnostics/bindings/connectivity/test/test_client.mojom-connectivity.h"
+#include "diagnostics/bindings/connectivity/test/test_server.mojom-connectivity.h"
 
 namespace diagnostics {
 namespace bindings {
@@ -47,9 +49,33 @@ class MojoConnectivityTest : public ::testing::Test {
   std::unique_ptr<Context> context_;
 };
 
-TEST_F(MojoConnectivityTest, TODO) {
-  ASSERT_TRUE(true);
+template <typename T>
+int CountPossibleValues(T type) {
+  int cnt = 0;
+  while (type->HasNext()) {
+    ++cnt;
+    type->Generate();
+  }
+  return cnt;
 }
+
+TEST_F(MojoConnectivityTest, DataGenerator) {
+  ASSERT_EQ(CountPossibleValues(
+                server::mojom::TestSuccessTestProvider::Create(context())),
+            1);
+}
+
+#define INTERFACE_TEST_BASE(INTERFACE_NAME)                           \
+  auto provider =                                                     \
+      server::mojom::INTERFACE_NAME##TestProvider::Create(context()); \
+  ASSERT_NE(provider, nullptr);
+
+#define SUCCESSFUL_TEST(INTERFACE_NAME)          \
+  TEST_F(MojoConnectivityTest, INTERFACE_NAME) { \
+    INTERFACE_TEST_BASE(INTERFACE_NAME);         \
+  }
+
+SUCCESSFUL_TEST(TestSuccess);
 
 }  // namespace
 }  // namespace test

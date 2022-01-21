@@ -1,0 +1,62 @@
+{%- set class_name = "%sTestProvider"|format(interface.mojom_name) %}
+
+class {{class_name}}
+  : public ::diagnostics::bindings::connectivity::DataGeneratorInterface<
+      ::mojo::PendingRemote<{{interface.mojom_name}}>> {
+ public:
+  {{class_name}}(const {{class_name}}&) = delete;
+  {{class_name}}& operator=(const {{class_name}}&) = delete;
+  virtual ~{{class_name}}() = default;
+
+  static std::unique_ptr<{{class_name}}> Create(
+    ::diagnostics::bindings::connectivity::Context* context);
+
+ public:
+  void Bind(::mojo::PendingReceiver<{{interface.mojom_name}}> receiver);
+
+  // DataGeneratorInterface overrides.
+  ::mojo::PendingRemote<{{interface.mojom_name}}> Generate() override;
+  bool HasNext() override { return has_next_; }
+
+ protected:
+  explicit {{
+    class_name}}(::diagnostics::bindings::connectivity::Context* context);
+
+ private:
+  // Proxy object for mojo recevier.
+  class Service : public {{interface.mojom_name}} {
+   public:
+    Service({{class_name}}* test_provider) : test_provider_(test_provider) {}
+    Service(const Service&) = delete;
+    Service& operator=(const Service&) = delete;
+    ~Service() = default;
+   private:
+{%- for method in interface.methods %}
+    void {{method.mojom_name}}() override {
+      test_provider_->{{method.mojom_name}}_Step1();
+    }
+{%- endfor %}
+   private:
+    {{class_name}}* test_provider_;
+  };
+
+  void RemoveReceiver(::mojo::ReceiverId receiver_id);
+
+{#- Methods are splitted into multiple stages to be used as callback. #}
+{%- for method in interface.methods %}
+  void {{method.mojom_name}}_Step1();
+  void {{method.mojom_name}}_Step2();
+{%- endfor %}
+
+ private:
+  ::diagnostics::bindings::connectivity::Context* context_;
+
+  bool has_next_ = true;
+
+  Service service_{this};
+
+  ::mojo::ReceiverSet<{{interface.mojom_name}}> receiver_set_;
+
+  // Must be the last member of the class.
+  base::WeakPtrFactory<{{class_name}}> weak_factory_{this};
+};

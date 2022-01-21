@@ -49,6 +49,8 @@ _connectivity_template_sources = [
   "$_connectivity_template_root/connectivity-forward.h.j2",
   "$_connectivity_template_root/connectivity.cc.j2",
   "$_connectivity_template_root/connectivity.h.j2",
+  "$_connectivity_template_root/test-provider.cc.j2",
+  "$_connectivity_template_root/test-provider.h.j2",
 ]
 
 # Generates C++ mojo bindings source code and headers.
