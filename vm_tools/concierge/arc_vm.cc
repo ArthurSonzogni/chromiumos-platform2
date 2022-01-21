@@ -309,14 +309,13 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .EnableBattery(true /* enable */)
       .EnableDelayRt(true /* enable */);
 
-  const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
-  // Enable vulkan only in dev mode for now.
-  if (is_dev_mode && USE_CROSVM_VULKAN) {
-    vm_builder.EnableVulkan(true);
+  if (USE_CROSVM_VULKAN) {
+    vm_builder.EnableVulkan(true).EnableRenderServer(true);
   }
 
   CustomParametersForDev custom_parameters;
 
+  const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
   // Load any custom parameters from the development configuration file if the
   // feature is turned on (default) and path exists (dev mode only).
   if (is_dev_mode && use_dev_conf()) {
