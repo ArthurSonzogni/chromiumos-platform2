@@ -102,6 +102,59 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
     return result;
   }
 
+  // Set the mock executor response for GetInterfaces.
+  void MockGetInterfaces(const int32_t return_code, const std::string& output) {
+    EXPECT_CALL(*mock_executor(), GetInterfaces(_))
+        .WillOnce(WithArg<0>(
+            Invoke([return_code, output](
+                       executor_ipc::Executor::GetInterfacesCallback callback) {
+              executor_ipc::ProcessResult result;
+              result.return_code = return_code;
+              result.out = output;
+              std::move(callback).Run(result.Clone());
+            })));
+  }
+
+  // Set the mock executor response for GetLink.
+  void MockGetLink(const int32_t return_code, const std::string& output) {
+    EXPECT_CALL(*mock_executor(), GetLink(_, _))
+        .WillOnce(Invoke([return_code, output](
+                             const std::string& interface_name,
+                             executor_ipc::Executor::GetLinkCallback callback) {
+          executor_ipc::ProcessResult result;
+          result.return_code = return_code;
+          result.out = output;
+          std::move(callback).Run(result.Clone());
+        }));
+  }
+
+  // Set the mock executor response for GetInfo.
+  void MockGetInfo(const int32_t return_code, const std::string& output) {
+    EXPECT_CALL(*mock_executor(), GetInfo(_, _))
+        .WillOnce(Invoke([return_code, output](
+                             const std::string& interface_name,
+                             executor_ipc::Executor::GetInfoCallback callback) {
+          executor_ipc::ProcessResult result;
+          result.return_code = return_code;
+          result.out = output;
+          std::move(callback).Run(result.Clone());
+        }));
+  }
+
+  // Set the mock executor response for GetScanDump.
+  void MockGetScanDump(const int32_t return_code, const std::string& output) {
+    EXPECT_CALL(*mock_executor(), GetScanDump(_, _))
+        .WillOnce(
+            Invoke([return_code, output](
+                       const std::string& interface_name,
+                       executor_ipc::Executor::GetScanDumpCallback callback) {
+              executor_ipc::ProcessResult result;
+              result.return_code = return_code;
+              result.out = output;
+              std::move(callback).Run(result.Clone());
+            }));
+  }
+
  private:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
@@ -111,46 +164,10 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
 
 // Test TestFetchNetworkInterfaceInfo matching with expected result.
 TEST_F(NetworkInterfaceFetcherTest, TestFetchNetworkInterfaceInfo) {
-  // Set the mock executor response for GetInterfaces.
-  EXPECT_CALL(*mock_executor(), GetInterfaces(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetInterfacesCallback callback) {
-            executor_ipc::ProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf("%s", kFakeGetInterfacesOutput);
-            std::move(callback).Run(result.Clone());
-          })));
-
-  // Set the mock executor response for GetLink.
-  EXPECT_CALL(*mock_executor(), GetLink(_, _))
-      .WillOnce(Invoke([](const std::string& interface_name,
-                          executor_ipc::Executor::GetLinkCallback callback) {
-        executor_ipc::ProcessResult result;
-        result.return_code = EXIT_SUCCESS;
-        result.out = base::StringPrintf("%s", kFakeGetLinkOutput);
-        std::move(callback).Run(result.Clone());
-      }));
-
-  // Set the mock executor response for GetInfo.
-  EXPECT_CALL(*mock_executor(), GetInfo(_, _))
-      .WillOnce(Invoke([](const std::string& interface_name,
-                          executor_ipc::Executor::GetInfoCallback callback) {
-        executor_ipc::ProcessResult result;
-        result.return_code = EXIT_SUCCESS;
-        result.out = base::StringPrintf("%s", kFakeGetInfoOutput);
-        std::move(callback).Run(result.Clone());
-      }));
-
-  // Set the mock executor response for GetScanDump.
-  EXPECT_CALL(*mock_executor(), GetScanDump(_, _))
-      .WillOnce(
-          Invoke([](const std::string& interface_name,
-                    executor_ipc::Executor::GetScanDumpCallback callback) {
-            executor_ipc::ProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf("%s", kFakeGetScanDumpOutput);
-            std::move(callback).Run(result.Clone());
-          }));
+  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
+  MockGetLink(EXIT_SUCCESS, kFakeGetLinkOutput);
+  MockGetInfo(EXIT_SUCCESS, kFakeGetInfoOutput);
+  MockGetScanDump(EXIT_SUCCESS, kFakeGetScanDumpOutput);
 
   auto result = FetchNetworkInterfaceInfo();
 
@@ -181,15 +198,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestFetchNetworkInterfaceInfo) {
 
 // Test case: GetInterfaces return failure.
 TEST_F(NetworkInterfaceFetcherTest, TestGetInterfacesReturnFailure) {
-  // Set the mock executor response for GetInterfaces.
-  EXPECT_CALL(*mock_executor(), GetInterfaces(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetInterfacesCallback callback) {
-            executor_ipc::ProcessResult result;
-            result.return_code = EXIT_FAILURE;
-            result.out = "Something wrong!!!";
-            std::move(callback).Run(result.Clone());
-          })));
+  MockGetInterfaces(EXIT_FAILURE, "Something wrong!!!");
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
@@ -199,25 +208,8 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetInterfacesReturnFailure) {
 
 // Test case: GetLink return failure.
 TEST_F(NetworkInterfaceFetcherTest, TestGetLinkReturnFailure) {
-  // Set the mock executor response for GetInterfaces.
-  EXPECT_CALL(*mock_executor(), GetInterfaces(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetInterfacesCallback callback) {
-            executor_ipc::ProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf("%s", kFakeGetInterfacesOutput);
-            std::move(callback).Run(result.Clone());
-          })));
-
-  // Set the mock executor response for GetLink.
-  EXPECT_CALL(*mock_executor(), GetLink(_, _))
-      .WillOnce(Invoke([](const std::string& interface_name,
-                          executor_ipc::Executor::GetLinkCallback callback) {
-        executor_ipc::ProcessResult result;
-        result.return_code = EXIT_FAILURE;
-        result.out = "Something wrong!!!";
-        std::move(callback).Run(result.Clone());
-      }));
+  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
+  MockGetLink(EXIT_FAILURE, "Something wrong!!!");
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
@@ -227,35 +219,9 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetLinkReturnFailure) {
 
 // Test case: GetInfo return failure.
 TEST_F(NetworkInterfaceFetcherTest, TestGetInfoReturnFailure) {
-  // Set the mock executor response for GetInterfaces.
-  EXPECT_CALL(*mock_executor(), GetInterfaces(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetInterfacesCallback callback) {
-            executor_ipc::ProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf("%s", kFakeGetInterfacesOutput);
-            std::move(callback).Run(result.Clone());
-          })));
-
-  // Set the mock executor response for GetLink.
-  EXPECT_CALL(*mock_executor(), GetLink(_, _))
-      .WillOnce(Invoke([](const std::string& interface_name,
-                          executor_ipc::Executor::GetLinkCallback callback) {
-        executor_ipc::ProcessResult result;
-        result.return_code = EXIT_SUCCESS;
-        result.out = base::StringPrintf("%s", kFakeGetLinkOutput);
-        std::move(callback).Run(result.Clone());
-      }));
-
-  // Set the mock executor response for GetInfo.
-  EXPECT_CALL(*mock_executor(), GetInfo(_, _))
-      .WillOnce(Invoke([](const std::string& interface_name,
-                          executor_ipc::Executor::GetInfoCallback callback) {
-        executor_ipc::ProcessResult result;
-        result.return_code = EXIT_FAILURE;
-        result.out = "Something wrong!!!";
-        std::move(callback).Run(result.Clone());
-      }));
+  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
+  MockGetLink(EXIT_SUCCESS, kFakeGetLinkOutput);
+  MockGetInfo(EXIT_FAILURE, "Something wrong!!!");
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
@@ -265,46 +231,10 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetInfoReturnFailure) {
 
 // Test case: GetScanDump return failure.
 TEST_F(NetworkInterfaceFetcherTest, TestGetScanDumpReturnFailure) {
-  // Set the mock executor response for GetInterfaces.
-  EXPECT_CALL(*mock_executor(), GetInterfaces(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetInterfacesCallback callback) {
-            executor_ipc::ProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf("%s", kFakeGetInterfacesOutput);
-            std::move(callback).Run(result.Clone());
-          })));
-
-  // Set the mock executor response for GetLink.
-  EXPECT_CALL(*mock_executor(), GetLink(_, _))
-      .WillOnce(Invoke([](const std::string& interface_name,
-                          executor_ipc::Executor::GetLinkCallback callback) {
-        executor_ipc::ProcessResult result;
-        result.return_code = EXIT_SUCCESS;
-        result.out = base::StringPrintf("%s", kFakeGetLinkOutput);
-        std::move(callback).Run(result.Clone());
-      }));
-
-  // Set the mock executor response for GetInfo.
-  EXPECT_CALL(*mock_executor(), GetInfo(_, _))
-      .WillOnce(Invoke([](const std::string& interface_name,
-                          executor_ipc::Executor::GetInfoCallback callback) {
-        executor_ipc::ProcessResult result;
-        result.return_code = EXIT_SUCCESS;
-        result.out = base::StringPrintf("%s", kFakeGetInfoOutput);
-        std::move(callback).Run(result.Clone());
-      }));
-
-  // Set the mock executor response for GetScanDump.
-  EXPECT_CALL(*mock_executor(), GetScanDump(_, _))
-      .WillOnce(
-          Invoke([](const std::string& interface_name,
-                    executor_ipc::Executor::GetScanDumpCallback callback) {
-            executor_ipc::ProcessResult result;
-            result.return_code = EXIT_FAILURE;
-            result.out = "Something wrong!!!";
-            std::move(callback).Run(result.Clone());
-          }));
+  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
+  MockGetLink(EXIT_SUCCESS, kFakeGetLinkOutput);
+  MockGetInfo(EXIT_SUCCESS, kFakeGetInfoOutput);
+  MockGetScanDump(EXIT_FAILURE, "Something wrong!!!");
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
@@ -315,26 +245,8 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetScanDumpReturnFailure) {
 // Test case: wireless device not connected to an access point. Expecting only
 // non-link data is available.
 TEST_F(NetworkInterfaceFetcherTest, TestWirelessNotConnected) {
-  // Set the mock executor response for GetInterfaces.
-  EXPECT_CALL(*mock_executor(), GetInterfaces(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetInterfacesCallback callback) {
-            executor_ipc::ProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf("%s", kFakeGetInterfacesOutput);
-            std::move(callback).Run(result.Clone());
-          })));
-
-  // Set the mock executor response for GetLink.
-  EXPECT_CALL(*mock_executor(), GetLink(_, _))
-      .WillOnce(Invoke([](const std::string& interface_name,
-                          executor_ipc::Executor::GetLinkCallback callback) {
-        executor_ipc::ProcessResult result;
-        result.return_code = EXIT_SUCCESS;
-        result.out =
-            base::StringPrintf("%s", kFakeGetLinkDeviceNotConnectedOutput);
-        std::move(callback).Run(result.Clone());
-      }));
+  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
+  MockGetLink(EXIT_SUCCESS, kFakeGetLinkDeviceNotConnectedOutput);
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_network_interface_info());
@@ -356,16 +268,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestWirelessNotConnected) {
 
 // Test case: wireless adapter not found.
 TEST_F(NetworkInterfaceFetcherTest, TestNoWirelessAdapterFound) {
-  // Set the mock executor response for GetInterfaces.
-  EXPECT_CALL(*mock_executor(), GetInterfaces(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetInterfacesCallback callback) {
-            executor_ipc::ProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf(
-                "%s", kFakeGetInterfacesNoWirelessAdapterOutput);
-            std::move(callback).Run(result.Clone());
-          })));
+  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesNoWirelessAdapterOutput);
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
@@ -377,15 +280,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestNoWirelessAdapterFound) {
 TEST_F(NetworkInterfaceFetcherTest, TestMissingPowerSchemeFile) {
   ASSERT_TRUE(
       base::DeleteFile(root_dir().Append(kRelativeWirelessPowerSchemePath)));
-  // Set the mock executor response for GetInterfaces.
-  EXPECT_CALL(*mock_executor(), GetInterfaces(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetInterfacesCallback callback) {
-            executor_ipc::ProcessResult result;
-            result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf("%s", kFakeGetInterfacesOutput);
-            std::move(callback).Run(result.Clone());
-          })));
+  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
