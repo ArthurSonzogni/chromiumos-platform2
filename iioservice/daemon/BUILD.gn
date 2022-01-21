@@ -5,7 +5,15 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":iioservice" ]
+  deps = [
+    ":iioservice",
+    ":install_dbus_conf",
+    ":install_init_conf",
+  ]
+
+  if (use.seccomp) {
+    deps += [ ":install_seccomp_policy" ]
+  }
 
   if (use.test) {
     deps += [ ":iioservice_testrunner" ]
@@ -48,7 +56,29 @@ static_library("libiioservice") {
 executable("iioservice") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults_pkg_deps" ]
+  install_path = "sbin"
   deps = [ ":libiioservice" ]
+}
+
+install_config("install_init_conf") {
+  sources = [
+    "init/cros-ec-accel.conf",
+    "init/iioservice.conf",
+  ]
+  install_path = "/etc/init"
+}
+
+install_config("install_dbus_conf") {
+  sources = [ "dbus/org.chromium.Iioservice.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+if (use.seccomp) {
+  install_config("install_seccomp_policy") {
+    sources = [ "seccomp/iioservice-" + getenv("ARCH") + ".policy" ]
+    install_path = "/usr/share/policy"
+    outputs = [ "iioservice-seccomp.policy" ]
+  }
 }
 
 if (use.test) {
@@ -78,6 +108,7 @@ if (use.test) {
       ":iioservice_testrunner_pkg_deps",
       ":target_defaults_pkg_deps",
     ]
+    run_test = true
     pkg_deps = [ "libmems_test_support" ]
     deps = [
       ":libiioservice",
