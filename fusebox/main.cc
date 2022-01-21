@@ -556,7 +556,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     request->ReplyOk();
   }
 
-  bool AttachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
+  bool AttachStorage(brillo::ErrorPtr*, const std::string& name) override {
     VLOG(1) << "attach-storage " << name;
 
     Node* node = GetInodeTable().Ensure(FUSE_ROOT_ID, name.c_str());
@@ -573,7 +573,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     return true;
   }
 
-  bool DetachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
+  bool DetachStorage(brillo::ErrorPtr*, const std::string& name) override {
     VLOG(1) << "detach-storage " << name;
 
     Node* node = GetInodeTable().Lookup(FUSE_ROOT_ID, name.c_str());
