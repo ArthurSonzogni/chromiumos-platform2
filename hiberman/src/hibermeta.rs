@@ -12,6 +12,7 @@ use log::info;
 use openssl::symm::{Cipher, Crypter, Mode};
 use serde::{Deserialize, Serialize};
 use sys_util::rand::{rand_bytes, Source};
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 use crate::diskfile::BouncedDiskFile;
 use crate::hiberutil::HibernateError;
@@ -75,6 +76,7 @@ const META_PRIVATE_DATA_SIZE: usize = META_PRIVATE_SIZE - META_TAG_SIZE;
 pub const META_ASYMMETRIC_KEY_SIZE: usize = 32;
 
 /// Define the software representation of the hibernate metadata.
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct HibernateMetadata {
     /// The size of the hibernate image data.
     pub image_size: u64,
@@ -110,7 +112,7 @@ pub struct HibernateMetadata {
 
 /// Define the structure of the public hibernate metadata, which is written
 /// out to disk unencrypted.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Zeroize, ZeroizeOnDrop)]
 pub struct PublicHibernateMetadata {
     /// This must be set to META_MAGIC.
     magic: u64,
@@ -134,7 +136,7 @@ pub struct PublicHibernateMetadata {
 
 /// Define the structure of the private hibernate metadata, which is written
 /// out to disk encrypted.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Zeroize, ZeroizeOnDrop)]
 pub struct PrivateHibernateMetadata {
     /// This must be set to META_VERSION.
     version: u32,
@@ -158,28 +160,28 @@ impl HibernateMetadata {
     /// Create a new metadata structure. The data key, data IV, and metadata IV
     /// will be initialized with data from /dev/urandom.
     pub fn new() -> Result<Self> {
-        let mut data_key = [0u8; META_SYMMETRIC_KEY_SIZE];
-        Self::fill_random(&mut data_key)?;
-        let mut data_iv = [0u8; META_OCB_IV_SIZE];
-        Self::fill_random(&mut data_iv)?;
-        let mut meta_iv = [0u8; META_OCB_IV_SIZE];
-        Self::fill_random(&mut meta_iv)?;
+        let mut data_key = Zeroizing::new([0u8; META_SYMMETRIC_KEY_SIZE]);
+        Self::fill_random(&mut *data_key)?;
+        let mut data_iv = Zeroizing::new([0u8; META_OCB_IV_SIZE]);
+        Self::fill_random(&mut *data_iv)?;
+        let mut meta_iv = Zeroizing::new([0u8; META_OCB_IV_SIZE]);
+        Self::fill_random(&mut *meta_iv)?;
         // Initialize the other keys with random junk as well to avoid bugs
         // where zeroed keys get used. These should never actually get used with
         // the random data (they'd be undecryptable if they were).
-        let mut meta_eph_public = [0u8; META_ASYMMETRIC_KEY_SIZE];
-        Self::fill_random(&mut meta_eph_public)?;
+        let mut meta_eph_public = Zeroizing::new([0u8; META_ASYMMETRIC_KEY_SIZE]);
+        Self::fill_random(&mut *meta_eph_public)?;
         Ok(Self {
             image_size: 0,
             flags: 0,
             pagemap_pages: 0,
             header_hash: [0u8; META_HASH_SIZE],
-            data_key,
-            data_iv,
+            data_key: *data_key,
+            data_iv: *data_iv,
             data_tag: [0u8; META_TAG_SIZE],
             first_data_byte: 0,
-            meta_iv,
-            meta_eph_public,
+            meta_iv: *meta_iv,
+            meta_eph_public: *meta_eph_public,
             private_blob: None,
             meta_key: None,
             save_private_data: true,
@@ -242,9 +244,10 @@ impl HibernateMetadata {
         crypter.set_tag_len(META_TAG_SIZE)?;
         let private_blob = self.private_blob.unwrap();
         crypter.set_tag(&private_blob[META_PRIVATE_DATA_SIZE..])?;
-        let mut private_buf = vec![0u8; META_PRIVATE_DATA_SIZE + cipher.block_size()];
+        let mut private_buf =
+            Zeroizing::new(vec![0u8; META_PRIVATE_DATA_SIZE + cipher.block_size()]);
         let mut decrypt_size = crypter
-            .update(&private_blob[..META_PRIVATE_DATA_SIZE], &mut private_buf)
+            .update(&private_blob[..META_PRIVATE_DATA_SIZE], &mut *private_buf)
             .context("Failed to decrypt private data")?;
 
         decrypt_size += crypter
@@ -397,10 +400,12 @@ impl HibernateMetadata {
         };
 
         let cipher = Cipher::aes_128_ocb();
-        let serialized_private_string =
-            serde_json::to_string(&private_data).context("Could not serialize private data")?;
+        let serialized_private_string = Zeroizing::new(
+            serde_json::to_string(&private_data).context("Could not serialize private data")?,
+        );
         // Encrypt a fixed number of bytes regardless of the serialized size.
-        let mut serialized_private = [0u8; META_PRIVATE_SIZE];
+        // Make sure this buffer gets zeroed out when dropped.
+        let mut serialized_private = Zeroizing::new([0u8; META_PRIVATE_SIZE]);
         let serialized_private_bytes = serialized_private_string.as_bytes();
         let serialized_bytes_length = serialized_private_bytes.len();
 
@@ -450,7 +455,7 @@ impl HibernateMetadata {
 
         // Copy back into a correctly sized buffer and return that.
         serialized_private.copy_from_slice(&ciphertext[..META_PRIVATE_SIZE]);
-        Ok(serialized_private)
+        Ok(*serialized_private)
     }
 
     /// Fill a buffer with random bytes, given an open file to /dev/urandom.

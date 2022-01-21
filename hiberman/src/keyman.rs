@@ -15,6 +15,7 @@ use anyhow::{Context, Result};
 use log::{info, warn};
 use openssl::derive::Deriver;
 use openssl::pkey::{Id, PKey, Private, Public};
+use zeroize::Zeroizing;
 
 use crate::hibermeta::{HibernateMetadata, META_ASYMMETRIC_KEY_SIZE, META_SYMMETRIC_KEY_SIZE};
 use crate::hiberutil::HibernateError;
@@ -62,6 +63,14 @@ impl HibernateKeyManager {
     pub fn set_private_key(&mut self, key: &[u8]) -> Result<()> {
         let private_key = PKey::private_key_from_raw_bytes(key, Id::X25519).unwrap();
         self.private_key = Some(private_key);
+        Ok(())
+    }
+
+    /// Clear the private key out of the key manager so it's not floating around
+    /// in memory.
+    pub fn clear_private_key(&mut self) -> Result<()> {
+        self.set_private_key(&TEST_KEY_MATERIAL[..])?;
+        self.private_key = None;
         Ok(())
     }
 
@@ -176,7 +185,7 @@ impl HibernateKeyManager {
     ) -> Result<()> {
         assert!(deriver.len().unwrap() >= META_ASYMMETRIC_KEY_SIZE);
 
-        let mut derived_metadata_key = vec![0u8; deriver.len().unwrap()];
+        let mut derived_metadata_key = Zeroizing::new(vec![0u8; deriver.len().unwrap()]);
         let key_size = deriver
             .derive(&mut derived_metadata_key)
             .context("Failed to derive DH key")?;

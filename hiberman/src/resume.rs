@@ -9,6 +9,7 @@ use std::io::{Read, Write};
 
 use anyhow::{Context, Result};
 use log::{debug, error, info, warn};
+use zeroize::Zeroize;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::crypto::{CryptoMode, CryptoReader};
@@ -134,13 +135,22 @@ impl ResumeConductor {
         redirect_log(HiberlogOut::File(Box::new(log_file)));
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
         snap_dev.set_platform_mode(false)?;
-        // Save the pending resume call even though it's never used, as it
-        // represents the object blocking the ResumeFromHibernate dbus call from
-        // completing and letting the rest of boot continue. This gets dropped
-        // at the end of the function, when resume has either completed (and not
-        // returned) or failed (so this boot can continue).
-        let _pending_resume_call =
+        // The pending resume call represents the object blocking the
+        // ResumeFromHibernate dbus call from completing and letting the rest of
+        // boot continue. This gets dropped at the end of the function, when
+        // resume has either completed (and not returned) or failed (so this
+        // boot can continue).
+        let pending_resume_call =
             self.read_image(header_file, hiber_file, &mut snap_dev, dbus_connection)?;
+        // Explicitly clear out the secret seed before resume is attempted, in
+        // case resume never returns.
+        if let Some(mut pending_resume_call) = pending_resume_call {
+            pending_resume_call.secret_seed.zeroize();
+        }
+
+        // Also explicitly clear the private key from the key manager. The
+        // public key is still needed so it can be saved.
+        self.key_manager.clear_private_key()?;
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
         if self.options.dry_run {

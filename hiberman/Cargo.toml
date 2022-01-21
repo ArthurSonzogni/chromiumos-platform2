@@ -30,3 +30,4 @@ sys_util = { path = "../../platform/crosvm/common/sys_util" } # provided by ebui
 syslog = "4.0.0"
 system_api = { path = "../../platform2/system_api" } # provided by ebuild
 thiserror = "1.0.20"
+zeroize = { version = "1.5.1", features = ["zeroize_derive"] }
