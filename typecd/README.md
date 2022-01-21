@@ -17,18 +17,19 @@ The general structure of the classes is best illustrated by a few diagrams:
                            |
                            |
                            |
-        ------------------------------------------------------------------------------------------
-        |                                     |                |               |                  |
-        |                                     |                |               |                  |
-        |                                     |                |               |                  |
-        |                                     |                |               |                  |
-   UdevMonitor ------usb- udev- events---> UsbMonitor          |               |                  |
-                 |                                             |               |                  |
-                  ---------typec- udev- events----------> PortManager -----> ECUtil      SessionManagerProxy
-                                                               /|\                                |
-                                                                |                                 |
-                                                                ----------------------------------
-                                                                      session_manager events
+        ------------------------------------------------------------------------------------------------------
+        |                                   |       |              |                  |                      |
+        |                                   |       |              |                  |                      |
+        |                                   |       |              |                  |                      |
+        |                                   |       |              |                  |                      |
+   UdevMonitor ----usb- udev- events--> UsbMonitor  |              |                  |                      |
+                |                                   |              |                  |                      |
+                ------typec- udev- events-----> PortManager ---> ECUtil  --> NotificationManager    SessionManagerProxy
+                                                   /|\      |            |                                   |
+                                                    |       --------------                                   |
+                                                    |                                                        |
+                                                    ----------------------------------------------------------
+                                                                     session_manager events
 ```
 
 ### UdevMonitor
@@ -226,6 +227,34 @@ port number if it is connected to a Type C port.
       -----------------------------
       |             |             |
     busnum       devnum     typec_port_num
+```
+
+### NotificationManager
+
+The `PortManager` contains a pointer to a `NotificationManager` instance which signals notification requests to Chromium over D-bus. In
+Chromium, Aura Shell (Ash) includes instances of the `PciePeripheralNotificationController` and `UsbPeripheralNotificationController`
+classes which inherit from the `TypecdClient` class. The `NotificationManager` supports two types of D-bus message. (1) `DeviceConnectedType`
+which signals the capabilities of the connected device and (2) `CableWarningType` which signals a scenario where the connected partner may
+be limited in some way by the cable. On receiving D-bus signals sent by the typec `NotificationManager`, the USB and PCIe notification
+controller classes in Ash will process the type of signal received to determine which notification, if any, to show the user.
+
+```
+
+                 PortManager -------> NotificationManager
+                                               |
+                                               |
+                                            (D-Bus)
+                                               |
+                                              \|/
+                                              Ash
+                                               |
+                                               |
+                  -----------------------------------------------------------
+                  |                                                         |
+                  |                                                         |
+  PciePeripheralNotificationController                      UsbPeripheralNotificationController
+       (implements TypecdClient)                                 (implements TypecdClient)
+
 ```
 
 ## Alternate Mode Entry examples
