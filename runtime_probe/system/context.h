@@ -5,6 +5,8 @@
 #ifndef RUNTIME_PROBE_SYSTEM_CONTEXT_H_
 #define RUNTIME_PROBE_SYSTEM_CONTEXT_H_
 
+#include <base/files/file_path.h>
+
 #include "runtime_probe/system/helper_invoker.h"
 
 namespace org {
@@ -34,6 +36,9 @@ class Context {
 
   // The object to invoke the runtime_probe helper.
   virtual HelperInvoker* helper_invoker() = 0;
+
+  // Returns the root directory. This can be overridden during test.
+  virtual const base::FilePath& root_dir();
 
  protected:
   Context();

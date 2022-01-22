@@ -11,6 +11,8 @@
 namespace runtime_probe {
 namespace {
 Context* g_instance = nullptr;
+
+const base::FilePath root_dir_{"/"};
 }
 
 // When the derived classes initialized, it will call the parent class's
@@ -31,6 +33,10 @@ Context::~Context() {
 Context* Context::Get() {
   DCHECK(g_instance) << "g_instance has not been set.";
   return g_instance;
+}
+
+const base::FilePath& Context::root_dir() {
+  return root_dir_;
 }
 
 }  // namespace runtime_probe

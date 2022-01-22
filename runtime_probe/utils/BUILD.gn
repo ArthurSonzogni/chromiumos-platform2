@@ -26,7 +26,11 @@ source_set("utils") {
 if (use.test) {
   source_set("test_utils") {
     configs += [ ":target_defaults" ]
-    sources = [ "file_test_utils.cc" ]
+    sources = [
+      "file_test_utils.cc",
+      "function_test_utils.cc",
+    ]
+    public_deps = [ "//runtime_probe/system:test_utils" ]
   }
   source_set("test") {
     sources = [

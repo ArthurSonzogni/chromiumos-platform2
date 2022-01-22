@@ -27,7 +27,7 @@ class EdidFunction final : public PrivilegedProbeFunction {
 
   template <typename T>
   static auto FromKwargsValue(const base::Value& dict_value) {
-    constexpr auto kSysfsEdidPath = "/sys/class/drm/*/edid";
+    constexpr auto kSysfsEdidPath = "sys/class/drm/*/edid";
     PARSE_BEGIN();
     PARSE_ARGUMENT(edid_patterns, {kSysfsEdidPath});
     PARSE_END();

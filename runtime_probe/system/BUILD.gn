@@ -38,8 +38,11 @@ if (use.test) {
   }
 
   source_set("test_utils") {
-    sources = [ "fake_helper_invoker.cc" ]
-    configs += [
+    sources = [
+      "context_mock_impl.cc",
+      "fake_helper_invoker.cc",
+    ]
+    public_configs = [
       ":target_defaults",
       ":test_pkg_deps",
     ]

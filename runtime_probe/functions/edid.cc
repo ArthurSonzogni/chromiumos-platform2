@@ -14,6 +14,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/values.h>
 
+#include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/edid.h"
 #include "runtime_probe/utils/file_utils.h"
 
@@ -27,9 +28,8 @@ base::Value ProbeEdidPath(const base::FilePath& edid_path) {
   std::string raw_bytes;
   if (!base::ReadFileToString(edid_path, &raw_bytes))
     return base::Value(base::Value::Type::DICTIONARY);
-  if (raw_bytes.length() == 0) {
+  if (raw_bytes.length() == 0)
     return base::Value(base::Value::Type::DICTIONARY);
-  }
 
   base::Value res(base::Value::Type::DICTIONARY);
   auto edid =
@@ -51,7 +51,9 @@ EdidFunction::DataType EdidFunction::EvalImpl() const {
   DataType result{};
 
   for (const auto& edid_pattern : edid_patterns_) {
-    for (const auto& edid_path : Glob(edid_pattern)) {
+    const auto rooted_edid_pattern =
+        Context::Get()->root_dir().Append(edid_pattern);
+    for (const auto& edid_path : Glob(rooted_edid_pattern)) {
       auto node_res = ProbeEdidPath(edid_path);
       if (node_res.DictEmpty())
         continue;
