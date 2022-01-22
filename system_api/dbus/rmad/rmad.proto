@@ -133,6 +133,12 @@ enum RmadErrorCode {
 
   // Update RO firmware failed.
   RMAD_ERROR_UPDATE_RO_FIRMWARE_FAILED = 40;
+
+  // WP is expected to be disabled, but it is enabled.
+  RMAD_ERROR_WP_ENABLED = 41;
+
+  // Unable to write data.
+  RMAD_ERROR_CANNOT_WRITE = 42;
 }
 
 // Defined Rmad components.

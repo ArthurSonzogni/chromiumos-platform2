@@ -17,6 +17,7 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/mock_cbi_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
+#include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_regions_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
 
@@ -57,6 +58,9 @@ constexpr uint32_t kNewSkuSelection = 1;
 constexpr uint32_t kNewWhitelabelSelection = 2;
 constexpr char kNewDramPartNum[] = "NewTestDramPartNum";
 
+// crossystem HWWP property name.
+constexpr char kHwwpProperty[] = "wpsw_cur";
+
 class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<UpdateDeviceInfoStateHandler> CreateStateHandler(
@@ -73,11 +77,20 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       bool set_sku = true,
       bool set_whitelabel = true,
       bool set_dram_part_num = true,
-      bool sku_overflow = false) {
+      bool sku_overflow = false,
+      bool wp_enabled = false,
+      bool flush_out_vpd = true) {
     auto cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
     auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
+    auto crossystem_utils = std::make_unique<NiceMock<MockCrosSystemUtils>>();
     auto regions_utils = std::make_unique<NiceMock<MockRegionsUtils>>();
     auto vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
+
+    ON_CALL(*crossystem_utils, GetInt(kHwwpProperty, _))
+        .WillByDefault(
+            DoAll(SetArgPointee<1>(wp_enabled ? 1 : 0), Return(true)));
+    ON_CALL(*vpd_utils, FlushOutRoVpdCache())
+        .WillByDefault(Return(flush_out_vpd));
 
     if (serial_number) {
       ON_CALL(*vpd_utils, GetSerialNumber(_))
@@ -154,7 +167,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       ON_CALL(*vpd_utils, SetRegion(_)).WillByDefault(Return(false));
     }
 
-    if (set_sku) {
+    if (set_sku && !wp_enabled) {
       ON_CALL(*cbi_utils, SetSku(_))
           .WillByDefault(DoAll(SaveArg<0>(&sku_set_), Return(true)));
     } else {
@@ -168,18 +181,17 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       ON_CALL(*vpd_utils, SetWhitelabelTag(_)).WillByDefault(Return(false));
     }
 
-    if (set_dram_part_num) {
+    if (set_dram_part_num && !wp_enabled) {
       ON_CALL(*cbi_utils, SetDramPartNum(_))
           .WillByDefault(DoAll(SaveArg<0>(&dram_part_num_set_), Return(true)));
     } else {
       ON_CALL(*cbi_utils, SetDramPartNum(_)).WillByDefault(Return(false));
     }
 
-    ON_CALL(*vpd_utils, FlushOutRoVpdCache()).WillByDefault(Return(true));
-
     return base::MakeRefCounted<UpdateDeviceInfoStateHandler>(
         json_store_, std::move(cbi_utils), std::move(cros_config_utils),
-        std::move(regions_utils), std::move(vpd_utils));
+        std::move(crossystem_utils), std::move(regions_utils),
+        std::move(vpd_utils));
   }
 
  protected:
@@ -212,7 +224,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, InitializeState_NonMlb_Failed) {
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       InitializeState_Noserial_number_Success) {
+       InitializeState_NoSerialNumberSuccess) {
   // serial_number
   auto handler = CreateStateHandler(false);
   json_store_->SetValue(kMlbRepair, false);
@@ -322,7 +334,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_MissingState) {
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
-TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_serial_numberFailed) {
+TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SerialNumberFailed) {
   // serial_number, region, sku, whitelabel, dram_part_num, region_list,
   // sku_list, whitelabel_list, set_serial_number
   auto handler =
@@ -340,7 +352,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_serial_numberFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(error, RMAD_ERROR_CANNOT_WRITE);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
@@ -362,7 +374,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(error, RMAD_ERROR_CANNOT_WRITE);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -386,7 +398,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(error, RMAD_ERROR_CANNOT_WRITE);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -412,7 +424,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_WhitelabelFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(error, RMAD_ERROR_CANNOT_WRITE);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -439,7 +451,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_DramPartNumFailed) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
 
-  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(error, RMAD_ERROR_CANNOT_WRITE);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 
   EXPECT_EQ(serial_number_set_, kNewSerialNumber);
@@ -465,8 +477,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionEmptyFailed) {
 
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
-
-  EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionWrongIndex) {
@@ -486,8 +496,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_RegionWrongIndex) {
 
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
-
-  EXPECT_EQ(serial_number_set_, kNewSerialNumber);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmptyFailed) {
@@ -507,9 +515,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuEmptyFailed) {
 
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
-
-  EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuWrongIndex) {
@@ -529,11 +534,6 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuWrongIndex) {
 
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
-
-  EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-
-  // The first option is always reserved for empty option, so subtract one.
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
@@ -580,14 +580,31 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
 
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
+}
 
-  EXPECT_EQ(serial_number_set_, kNewSerialNumber);
-  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
-  EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
+TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_ReadOnlyMlbFailed) {
+  auto handler = CreateStateHandler();
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
+  state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
+  state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
+  state.mutable_update_device_info()->set_whitelabel_index(
+      kNewWhitelabelSelection);
+  state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
+
+  state.mutable_update_device_info()->set_mlb_repair(true);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
 TEST_F(UpdateDeviceInfoStateHandlerTest,
-       GetNextStateCase_ReadOnlyserial_numberFailed) {
+       GetNextStateCase_ReadOnlySerialNumberFailed) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kMlbRepair, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -829,7 +846,7 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
-TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuOverflow_Success) {
+TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuOverflowSuccess) {
   // serial_number, region, sku, whitelabel, dram_part_num, region_list,
   // sku_list, whitelabel_list, set_serial_number, set_region, set_sku,
   // set_whitelabel, set_dram_part_num, sku_overflow
@@ -859,6 +876,66 @@ TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_SkuOverflow_Success) {
   EXPECT_EQ(sku_set_, kSkuList[kNewSkuSelection]);
   EXPECT_EQ(whitelabel_set_, kWhitelabelTagList[kNewWhitelabelSelection]);
   EXPECT_EQ(dram_part_num_set_, kNewDramPartNum);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_WPEnabledFailed) {
+  // serial_number, region, sku, whitelabel, dram_part_num, region_list,
+  // sku_list, whitelabel_list, set_serial_number, set_region, set_sku,
+  // set_whitelabel, set_dram_part_num, sku_overflow, wp_enabled
+  auto handler =
+      CreateStateHandler(true, true, true, true, true, true, true, true, true,
+                         true, true, true, true, false, true);
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
+  state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
+  state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
+  state.mutable_update_device_info()->set_whitelabel_index(
+      kNewWhitelabelSelection);
+  state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_WP_ENABLED);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
+
+  EXPECT_EQ(serial_number_set_, kNewSerialNumber);
+  EXPECT_EQ(region_set_, kRegionList[kNewRegionSelection]);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest, GetNextStateCase_FlushOutVpdFailed) {
+  // serial_number, region, sku, whitelabel, dram_part_num, region_list,
+  // sku_list, whitelabel_list, set_serial_number, set_region, set_sku,
+  // set_whitelabel, set_dram_part_num, sku_overflow, wp_enabled, flush_out_vpd
+  auto handler =
+      CreateStateHandler(true, true, true, true, true, true, true, true, true,
+                         true, true, true, true, false, false, false);
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  state.mutable_update_device_info()->set_serial_number(kNewSerialNumber);
+  state.mutable_update_device_info()->set_region_index(kNewRegionSelection);
+  state.mutable_update_device_info()->set_sku_index(kNewSkuSelection);
+  state.mutable_update_device_info()->set_whitelabel_index(
+      kNewWhitelabelSelection);
+  state.mutable_update_device_info()->set_dram_part_number(kNewDramPartNum);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+
+  EXPECT_EQ(error, RMAD_ERROR_CANNOT_WRITE);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest, TryGetNextStateCaseAtBoot_Failed) {
+  auto handler = CreateStateHandler();
+  json_store_->SetValue(kMlbRepair, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_TRANSITION_FAILED);
+  EXPECT_EQ(state_case, RmadState::StateCase::kUpdateDeviceInfo);
 }
 
 }  // namespace rmad

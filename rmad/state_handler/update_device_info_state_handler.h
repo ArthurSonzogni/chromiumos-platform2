@@ -11,6 +11,7 @@
 
 #include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cros_config_utils.h"
+#include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/regions_utils.h"
 #include "rmad/utils/vpd_utils.h"
 
@@ -20,11 +21,12 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
  public:
   explicit UpdateDeviceInfoStateHandler(scoped_refptr<JsonStore> json_store);
   // Used to inject mock |cbi_utils_|, |cros_config_utils_|,
-  // |regions_utils_|, and |vpd_utils_| for testing.
+  // |crossystem_utils_|, |regions_utils_|, and |vpd_utils_| for testing.
   UpdateDeviceInfoStateHandler(
       scoped_refptr<JsonStore> json_store,
       std::unique_ptr<CbiUtils> cbi_utils,
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
+      std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<RegionsUtils> regions_utils,
       std::unique_ptr<VpdUtils> vpd_utils);
 
@@ -48,6 +50,7 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
 
   std::unique_ptr<CbiUtils> cbi_utils_;
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<RegionsUtils> regions_utils_;
   std::unique_ptr<VpdUtils> vpd_utils_;
 };

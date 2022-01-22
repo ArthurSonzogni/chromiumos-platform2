@@ -15,14 +15,19 @@
 #include "rmad/constants.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/fake_cbi_utils.h"
 #include "rmad/utils/fake_cros_config_utils.h"
+#include "rmad/utils/fake_crossystem_utils.h"
 #include "rmad/utils/fake_regions_utils.h"
 #include "rmad/utils/fake_vpd_utils.h"
 #include "rmad/utils/regions_utils_impl.h"
 #include "rmad/utils/vpd_utils_impl.h"
 
 namespace {
+
+// crossystem HWWP property name.
+constexpr char kHwwpProperty[] = "wpsw_cur";
 
 template <typename T>
 bool IsRepeatedFieldSame(const T& list1, const T& list2) {
@@ -50,6 +55,7 @@ FakeUpdateDeviceInfoStateHandler::FakeUpdateDeviceInfoStateHandler(
           json_store,
           std::make_unique<FakeCbiUtils>(working_dir_path),
           std::make_unique<FakeCrosConfigUtils>(),
+          std::make_unique<FakeCrosSystemUtils>(working_dir_path),
           std::make_unique<FakeRegionsUtils>(),
           std::make_unique<FakeVpdUtils>(working_dir_path)) {}
 
@@ -60,6 +66,7 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     : BaseStateHandler(json_store) {
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
+  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   regions_utils_ = std::make_unique<RegionsUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
 }
@@ -68,15 +75,23 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     scoped_refptr<JsonStore> json_store,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
+    std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<RegionsUtils> regions_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store),
       cbi_utils_(std::move(cbi_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
+      crossystem_utils_(std::move(crossystem_utils)),
       regions_utils_(std::move(regions_utils)),
       vpd_utils_(std::move(vpd_utils)) {}
 
 RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
+  CHECK(cbi_utils_);
+  CHECK(cros_config_utils_);
+  CHECK(crossystem_utils_);
+  CHECK(regions_utils_);
+  CHECK(vpd_utils_);
+
   auto update_dev_info = std::make_unique<UpdateDeviceInfoState>();
 
   std::string serial_number;
@@ -95,11 +110,6 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   int32_t whitelabel_index = -1;
 
   bool mlb_repair;
-
-  if (!vpd_utils_ || !cbi_utils_ || !regions_utils_ || !cros_config_utils_) {
-    LOG(ERROR) << "Failed to initialize utils for the handler.";
-    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
-  }
 
   // We can allow incorrect device info in vpd and cbi before writing.
   if (!vpd_utils_->GetSerialNumber(&serial_number)) {
@@ -188,9 +198,19 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
-  if (!VerifyReadOnly(state.update_device_info()) ||
-      !WriteDeviceInfo(state.update_device_info())) {
+  if (!VerifyReadOnly(state.update_device_info())) {
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  }
+
+  if (!WriteDeviceInfo(state.update_device_info())) {
+    vpd_utils_->ClearRoVpdCache();
+    vpd_utils_->ClearRwVpdCache();
+    if (int hwwp_status;
+        crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status) &&
+        hwwp_status != 0) {
+      return NextStateCaseWrapper(RMAD_ERROR_WP_ENABLED);
+    }
+    return NextStateCaseWrapper(RMAD_ERROR_CANNOT_WRITE);
   }
 
   state_ = state;
@@ -259,6 +279,25 @@ bool UpdateDeviceInfoStateHandler::VerifyReadOnly(
     return false;
   }
 
+  if (device_info.region_index() < 0 ||
+      device_info.region_index() >= device_info.region_list_size()) {
+    LOG(ERROR) << "It is a wrong |region index| of |region list|.";
+    return false;
+  }
+
+  if (device_info.sku_index() < 0 ||
+      device_info.sku_index() >= device_info.sku_list_size()) {
+    LOG(ERROR) << "It is a wrong |sku index| of |sku list|.";
+    return false;
+  }
+
+  // We can allow empty whitelabel-tag, so we reserved negative index for
+  // empty string of whitelabel-tag.
+  if (device_info.whitelabel_index() >= device_info.whitelabel_list_size()) {
+    LOG(ERROR) << "It is a wrong |whitelabel index| of |whitelabel list|.";
+    return false;
+  }
+
   return true;
 }
 
@@ -269,33 +308,17 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
     return false;
   }
 
-  if (device_info.region_index() < 0 ||
-      device_info.region_index() >= device_info.region_list_size()) {
-    LOG(ERROR) << "It is a wrong |region index| of |region list|.";
-    return false;
-  }
   if (!vpd_utils_->SetRegion(
           device_info.region_list(device_info.region_index()))) {
     LOG(ERROR) << "Failed to save region to vpd cache.";
     return false;
   }
 
-  if (device_info.sku_index() < 0 ||
-      device_info.sku_index() >= device_info.sku_list_size()) {
-    LOG(ERROR) << "It is a wrong |sku index| of |sku list|.";
-    return false;
-  }
   if (!cbi_utils_->SetSku(device_info.sku_list(device_info.sku_index()))) {
     LOG(ERROR) << "Failed to write sku to cbi.";
     return false;
   }
 
-  // We can allow empty whitelabel-tag, so we reserved negative index for
-  // empty string of whitelabel-tag.
-  if (device_info.whitelabel_index() >= device_info.whitelabel_list_size()) {
-    LOG(ERROR) << "It is a wrong |whitelabel index| of |whitelabel list|.";
-    return false;
-  }
   // If the model does not have whitelabel, we also need to set it to an empty
   // string.
   std::string whitelabel = "";
