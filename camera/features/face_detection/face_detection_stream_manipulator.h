@@ -38,6 +38,9 @@ class FaceDetectionStreamManipulator : public StreamManipulator {
 
     // Whether to log per-frame metadata using MetadataLogger.
     bool log_frame_metadata = false;
+
+    // Whether to forcibly add face rectangles to result metadata.
+    bool debug = false;
   };
 
   explicit FaceDetectionStreamManipulator(base::FilePath config_file_path);

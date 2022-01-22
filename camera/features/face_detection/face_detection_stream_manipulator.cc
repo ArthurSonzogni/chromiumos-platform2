@@ -19,6 +19,7 @@ constexpr char kMetadataDumpPath[] =
 constexpr char kFaceDetectionEnableKey[] = "face_detection_enable";
 constexpr char kFdFrameIntervalKey[] = "fd_frame_interval";
 constexpr char kLogFrameMetadataKey[] = "log_frame_metadata";
+constexpr char kDebugKey[] = "debug";
 
 constexpr char kTagFaceRectangles[] = "face_rectangles";
 
@@ -252,6 +253,10 @@ void FaceDetectionStreamManipulator::RestoreClientRequestSettings(
   }
   FrameInfo& frame_info = GetOrCreateFrameInfoEntry(result->frame_number());
   std::array<uint8_t, 1> face_detect_mode = {frame_info.face_detect_mode};
+  if (options_.debug &&
+      face_detect_mode[0] == ANDROID_STATISTICS_FACE_DETECT_MODE_OFF) {
+    face_detect_mode[0] = ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE;
+  }
   if (!result->UpdateMetadata<uint8_t>(ANDROID_STATISTICS_FACE_DETECT_MODE,
                                        face_detect_mode)) {
     LOGF(ERROR) << "Cannot restore ANDROID_STATISTICS_FACE_DETECT_MODE";
@@ -288,7 +293,8 @@ void FaceDetectionStreamManipulator::SetResultAeMetadata(
   }
 
   FrameInfo& frame_info = GetOrCreateFrameInfoEntry(result->frame_number());
-  if (frame_info.face_detect_mode != ANDROID_STATISTICS_FACE_DETECT_MODE_OFF) {
+  if (options_.debug ||
+      frame_info.face_detect_mode != ANDROID_STATISTICS_FACE_DETECT_MODE_OFF) {
     std::vector<int32_t> face_coordinates;
     std::vector<uint8_t> face_scores;
     for (const auto& f : latest_faces_) {
@@ -329,6 +335,7 @@ void FaceDetectionStreamManipulator::OnOptionsUpdated(
     const base::Value& json_values) {
   LoadIfExist(json_values, kFaceDetectionEnableKey, &options_.enable);
   LoadIfExist(json_values, kFdFrameIntervalKey, &options_.fd_frame_interval);
+  LoadIfExist(json_values, kDebugKey, &options_.debug);
 
   bool log_frame_metadata;
   if (LoadIfExist(json_values, kLogFrameMetadataKey, &log_frame_metadata)) {
