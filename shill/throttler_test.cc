@@ -131,4 +131,32 @@ TEST_F(ThrottlerTest, DisablingThrottleClearsState) {
   EXPECT_EQ(throttler_.desired_download_rate_kbits_, 0);
 }
 
+TEST_F(ThrottlerTest, DisablingThrottleWhenNoThrottleExists) {
+  throttler_.desired_throttling_enabled_ = false;
+  throttler_.desired_upload_rate_kbits_ = 0;
+  throttler_.desired_download_rate_kbits_ = 0;
+  std::vector<std::string> interfaces = {kIfaceName0};
+  EXPECT_CALL(mock_manager_, GetDeviceInterfaceNames())
+      .WillOnce(Return(interfaces));
+  constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
+  EXPECT_CALL(mock_process_manager_,
+              StartProcessInMinijailWithPipes(
+                  _, base::FilePath(Throttler::kTCPath), _, _,
+                  AllOf(MinijailOptionsMatchUserGroup(Throttler::kTCUser,
+                                                      Throttler::kTCGroup),
+                        MinijailOptionsMatchCapMask(kExpectedCapMask)),
+                  _, _))
+      .Times(1)
+      .WillOnce(Return(kPID1));
+  EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
+      .Times(interfaces.size())
+      .WillRepeatedly(Return(false));
+  const ResultCallback callback;
+  throttler_.DisableThrottlingOnAllInterfaces(callback);
+  throttler_.OnProcessExited(1);
+  EXPECT_FALSE(throttler_.desired_throttling_enabled_);
+  EXPECT_EQ(throttler_.desired_upload_rate_kbits_, 0);
+  EXPECT_EQ(throttler_.desired_download_rate_kbits_, 0);
+}
+
 }  // namespace shill

@@ -64,6 +64,7 @@ class Throttler {
   FRIEND_TEST(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState);
   FRIEND_TEST(ThrottlerTest, NewlyAddedInterfaceIsThrottled);
   FRIEND_TEST(ThrottlerTest, DisablingThrottleClearsState);
+  FRIEND_TEST(ThrottlerTest, DisablingThrottleWhenNoThrottleExists);
 
   // Required for spawning the 'tc' process
   // and communicating with it.

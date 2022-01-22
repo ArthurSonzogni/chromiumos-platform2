@@ -56,6 +56,7 @@ class Error {
   Error();                    // Success by default.
   explicit Error(Type type);  // Uses the default message for |type|.
   Error(Type type, const std::string& message);
+  Error(Type type, const std::string& message, const base::Location& location);
   Error(const Error&) = delete;
   Error& operator=(const Error&) = delete;
 
@@ -66,6 +67,8 @@ class Error {
   void Populate(Type type,
                 const std::string& message,
                 const base::Location& location);
+
+  void Log();
 
   void Reset();
 
@@ -85,6 +88,10 @@ class Error {
 
   static std::string GetDBusResult(Type type);
   static std::string GetDefaultMessage(Type type);
+
+  static void LogMessage(const base::Location& from_here,
+                         Type type,
+                         const std::string& message);
 
   // Log an error message from |from_here|.  If |error| is non-NULL, also
   // populate it.

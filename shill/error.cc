@@ -70,6 +70,12 @@ Error::Error(Type type, const std::string& message) {
   Populate(type, message);
 }
 
+Error::Error(Type type,
+             const std::string& message,
+             const base::Location& location) {
+  Populate(type, message, location);
+}
+
 Error::~Error() = default;
 
 void Error::Populate(Type type) {
@@ -89,6 +95,10 @@ void Error::Populate(Type type,
   type_ = type;
   message_ = message;
   location_ = location;
+}
+
+void Error::Log() {
+  LogMessage(location_, type_, message_);
 }
 
 void Error::Reset() {
@@ -133,14 +143,21 @@ std::string Error::GetDefaultMessage(Type type) {
 }
 
 // static
-void Error::PopulateAndLog(const base::Location& from_here,
-                           Error* error,
-                           Type type,
-                           const std::string& message) {
+void Error::LogMessage(const base::Location& from_here,
+                       Type type,
+                       const std::string& message) {
   std::string file_name =
       base::FilePath(from_here.file_name()).BaseName().value();
   LOG(ERROR) << "[" << file_name << "(" << from_here.line_number()
              << ")]: " << message;
+}
+
+// static
+void Error::PopulateAndLog(const base::Location& from_here,
+                           Error* error,
+                           Type type,
+                           const std::string& message) {
+  LogMessage(from_here, type, message);
   if (error) {
     error->Populate(type, message, from_here);
   }

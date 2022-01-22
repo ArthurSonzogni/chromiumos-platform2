@@ -108,8 +108,10 @@ bool Throttler::DisableThrottlingOnAllInterfaces(
 void Throttler::Done(const ResultCallback& callback,
                      Error::Type error_type,
                      const std::string& message) {
-  Error error;
-  Error::PopulateAndLog(FROM_HERE, &error, error_type, message);
+  Error error(error_type, message, FROM_HERE);
+  if (error_type != Error::kSuccess) {
+    error.Log();
+  }
   if (!callback.is_null()) {
     callback.Run(error);
     SLOG(this, 4) << "ran callback";
@@ -301,17 +303,14 @@ void Throttler::OnProcessExited(int exit_status) {
   // Should keep track of interface names if throttling, but not if disabling
   CHECK(!desired_throttling_enabled_ || !tc_current_interface_.empty());
 
-  Error::Type error_type =
-      (exit_status == EXIT_SUCCESS) ? Error::kSuccess : Error::kOperationFailed;
-
-  std::string message =
-      ((desired_throttling_enabled_) ? "throttling " : "disabling throttle ") +
-      ((exit_status == EXIT_SUCCESS)
-           ? std::string("succeeded")
-           : (std::string("failed: ") + base::NumberToString(exit_status)));
-
-  Error error;
-  Error::PopulateAndLog(FROM_HERE, &error, error_type, message);
+  if (exit_status != EXIT_SUCCESS) {
+    if (!desired_throttling_enabled_) {
+      LOG(WARNING) << "Attempted to disable throttling when no throttles "
+                   << "were applied";
+    } else {
+      LOG(ERROR) << "Throttler failed with status: " << exit_status;
+    }
+  }
 
   std::string next_interface = GetNextInterface();
 
