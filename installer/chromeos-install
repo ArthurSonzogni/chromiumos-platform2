@@ -1151,7 +1151,9 @@ main() {
   copy_partition "${PARTITION_NUM_OEM}" "${SRC}" "${DST}" 1 1 false        # 8
   copy_partition "${PARTITION_NUM_ROOT_C}" "${SRC}" "${DST}" 1 1 false     # 7
   copy_partition "${PARTITION_NUM_KERN_C}" "${SRC}" "${DST}" 1 1 false     # 6
-  copy_partition "${PARTITION_NUM_KERN_B}" "${SRC}" "${DST}" 1 1 false     # 4
+  # Cache the first read of KERN so the second is read from RAM.
+  # This is okay as they read from the same source.
+  copy_partition "${PARTITION_NUM_KERN_B}" "${SRC}" "${DST}" 1 1 true      # 4
   copy_partition "${PARTITION_NUM_KERN_A}" "${SRC}" "${DST}" 1 1 false     # 2
 
   # We want to chunk up the root filesystem.  We do this because we're
@@ -1174,7 +1176,9 @@ main() {
   # We want the MINIOS partitions be last just in case writing to other
   # partitions fail at some point, we don't lose the ability to do recovery.
   if [ -n "${PARTITION_NUM_MINIOS_A}" ]; then
-    copy_partition "${PARTITION_NUM_MINIOS_A}" "${SRC}" "${DST}" 1 1 false # 9
+    # Cache the first read of MINIOS so the second is read from RAM.
+    # This is okay as they read from the same source.
+    copy_partition "${PARTITION_NUM_MINIOS_A}" "${SRC}" "${DST}" 1 1 true  # 9
   fi
   if [ -n "${PARTITION_NUM_MINIOS_B}" ]; then
     copy_partition "${PARTITION_NUM_MINIOS_B}" "${SRC}" "${DST}" 1 1 false # 10
