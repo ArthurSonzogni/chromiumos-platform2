@@ -42,6 +42,8 @@ class VpdUtilsImpl : public VpdUtils {
   bool SetStableDeviceSecret(const std::string& stable_device_secret) override;
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
+  void ClearRoVpdCache() override;
+  void ClearRwVpdCache() override;
 
  protected:
   bool SetRoVpd(const std::map<std::string, std::string>& key_value_map);

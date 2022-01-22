@@ -105,4 +105,16 @@ bool VpdUtilsImplThreadSafe::FlushOutRwVpdCache() {
   return VpdUtilsImpl::FlushOutRwVpdCache();
 }
 
+void VpdUtilsImplThreadSafe::ClearRoVpdCache() {
+  base::AutoLock scoped_lock(lock_);
+
+  VpdUtilsImpl::ClearRoVpdCache();
+}
+
+void VpdUtilsImplThreadSafe::ClearRwVpdCache() {
+  base::AutoLock scoped_lock(lock_);
+
+  VpdUtilsImpl::ClearRwVpdCache();
+}
+
 }  // namespace rmad

@@ -44,6 +44,8 @@ class VpdUtilsImplThreadSafe
   bool SetStableDeviceSecret(const std::string& stable_device_secret) override;
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
+  void ClearRoVpdCache() override;
+  void ClearRwVpdCache() override;
 
  protected:
   friend base::RefCountedThreadSafe<VpdUtilsImplThreadSafe>;

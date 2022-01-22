@@ -41,6 +41,8 @@ class FakeVpdUtils : public VpdUtils {
   bool SetStableDeviceSecret(const std::string& stable_device_secret) override;
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
+  void ClearRoVpdCache() override;
+  void ClearRwVpdCache() override;
 
  private:
   base::FilePath working_dir_path_;

@@ -205,6 +205,17 @@ TEST_F(VpdUtilsTest, GetRegistrationCode_NullptrGbind) {
   EXPECT_DEATH(vpd_utils->GetRegistrationCode(&ubind, nullptr), "");
 }
 
+TEST_F(VpdUtilsTest, GetStableDeviceSecret_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>("abc"), Return(true)));
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  std::string stable_dev_secret;
+  EXPECT_TRUE(vpd_utils->GetStableDeviceSecret(&stable_dev_secret));
+  EXPECT_EQ(stable_dev_secret, "abc");
+}
+
 TEST_F(VpdUtilsTest, SetSerialNumber_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   // Expect this to be called when flushing the cached values in destructor.
@@ -314,6 +325,68 @@ TEST_F(VpdUtilsTest, SetRegistrationCode_Success) {
   EXPECT_EQ(gbind, "def");
 }
 
+TEST_F(VpdUtilsTest, SetStableDeviceSecret_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  // Expect this to be called when flushing the cached values in destructor.
+  // The command can be in either order.
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
+        const std::vector<std::string> expect = {
+            "/usr/sbin/vpd", "-i", "RO_VPD", "-s",
+            "stable_device_secret_DO_NOT_SHARE=abc"};
+        EXPECT_EQ(argv, expect);
+        return true;
+      });
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  std::string stable_dev_secret;
+  EXPECT_TRUE(vpd_utils->SetStableDeviceSecret("abc"));
+  EXPECT_TRUE(vpd_utils->GetStableDeviceSecret(&stable_dev_secret));
+  EXPECT_EQ(stable_dev_secret, "abc");
+}
+
+TEST_F(VpdUtilsTest, FlushRoSuccess) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
+        const std::vector<std::string> expect = {
+            "/usr/sbin/vpd", "-i", "RO_VPD", "-s", "serial_number=abc"};
+        EXPECT_EQ(argv, expect);
+        return true;
+      });
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(vpd_utils->SetSerialNumber("abc"));
+  EXPECT_TRUE(vpd_utils->FlushOutRoVpdCache());
+}
+
+TEST_F(VpdUtilsTest, FlushRwSuccess) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
+        const std::vector<std::string> expect1 = {"/usr/sbin/vpd",
+                                                  "-i",
+                                                  "RW_VPD",
+                                                  "-s",
+                                                  "ubind_attribute=abc",
+                                                  "-s",
+                                                  "gbind_attribute=def"};
+        const std::vector<std::string> expect2 = {"/usr/sbin/vpd",
+                                                  "-i",
+                                                  "RW_VPD",
+                                                  "-s",
+                                                  "gbind_attribute=def",
+                                                  "-s",
+                                                  "ubind_attribute=abc"};
+        EXPECT_TRUE(argv == expect1 || argv == expect2);
+        return true;
+      });
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(vpd_utils->SetRegistrationCode("abc", "def"));
+  EXPECT_TRUE(vpd_utils->FlushOutRwVpdCache());
+}
+
 TEST_F(VpdUtilsTest, FlushRoFail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillRepeatedly(Return(false));
@@ -330,6 +403,28 @@ TEST_F(VpdUtilsTest, FlushRwFail) {
 
   EXPECT_TRUE(vpd_utils->SetRegistrationCode("abc", "def"));
   EXPECT_FALSE(vpd_utils->FlushOutRwVpdCache());
+}
+
+TEST_F(VpdUtilsTest, ClearRoSuccess) {
+  // If we clear the cache after setting the value, we expect nothing to
+  // happen during the flush.
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(vpd_utils->SetSerialNumber("abc"));
+  vpd_utils->ClearRoVpdCache();
+  EXPECT_TRUE(vpd_utils->FlushOutRoVpdCache());
+}
+
+TEST_F(VpdUtilsTest, ClearRwSuccess) {
+  // If we clear the cache after setting the value, we expect nothing to
+  // happen during the flush.
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(vpd_utils->SetRegistrationCode("abc", "def"));
+  vpd_utils->ClearRwVpdCache();
+  EXPECT_TRUE(vpd_utils->FlushOutRwVpdCache());
 }
 
 namespace fake {
@@ -456,6 +551,14 @@ TEST_F(FakeVpdUtilsTest, FlushOutRoVpdCache) {
 
 TEST_F(FakeVpdUtilsTest, FlushOutRwVpdCache) {
   EXPECT_TRUE(fake_vpd_utils_->FlushOutRwVpdCache());
+}
+
+TEST_F(FakeVpdUtilsTest, ClearRoVpdCache) {
+  fake_vpd_utils_->ClearRoVpdCache();
+}
+
+TEST_F(FakeVpdUtilsTest, ClearRwVpdCache) {
+  fake_vpd_utils_->ClearRwVpdCache();
 }
 
 }  // namespace fake

@@ -46,6 +46,8 @@ class MockVpdUtils : public VpdUtils {
   MOCK_METHOD(bool, SetStableDeviceSecret, (const std::string&), (override));
   MOCK_METHOD(bool, FlushOutRoVpdCache, (), (override));
   MOCK_METHOD(bool, FlushOutRwVpdCache, (), (override));
+  MOCK_METHOD(void, ClearRoVpdCache, (), (override));
+  MOCK_METHOD(void, ClearRwVpdCache, (), (override));
 };
 
 }  // namespace rmad

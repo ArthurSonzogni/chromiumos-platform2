@@ -223,4 +223,12 @@ bool VpdUtilsImpl::GetRwVpd(const std::string& key, std::string* value) const {
   return cmd_utils_->GetOutput(argv, value);
 }
 
+void VpdUtilsImpl::ClearRoVpdCache() {
+  cache_ro_.clear();
+}
+
+void VpdUtilsImpl::ClearRwVpdCache() {
+  cache_rw_.clear();
+}
+
 }  // namespace rmad

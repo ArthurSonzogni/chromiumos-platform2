@@ -70,6 +70,10 @@ class VpdUtils {
   // (key, value) pairs and then flush it all at once.
   virtual bool FlushOutRoVpdCache() = 0;
   virtual bool FlushOutRwVpdCache() = 0;
+
+  // Clear all values in the cache.
+  virtual void ClearRoVpdCache() = 0;
+  virtual void ClearRwVpdCache() = 0;
 };
 
 }  // namespace rmad

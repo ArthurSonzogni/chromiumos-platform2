@@ -130,5 +130,9 @@ bool FakeVpdUtils::FlushOutRwVpdCache() {
   return true;
 }
 
+void FakeVpdUtils::ClearRoVpdCache() {}
+
+void FakeVpdUtils::ClearRwVpdCache() {}
+
 }  // namespace fake
 }  // namespace rmad
