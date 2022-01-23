@@ -2540,8 +2540,8 @@ void WiFi::OnAfterResume() {
   }
   dispatcher()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&WiFi::ReportConnectedToServiceAfterWake,
-                 weak_ptr_factory_while_started_.GetWeakPtr()),
+      base::BindOnce(&WiFi::ReportConnectedToServiceAfterWake,
+                     weak_ptr_factory_while_started_.GetWeakPtr()),
       kPostWakeConnectivityReportDelayMilliseconds);
   if (wake_on_wifi_) {
     wake_on_wifi_->OnAfterResume();
@@ -3007,8 +3007,8 @@ void WiFi::ConnectToSupplicant() {
       } else {
         dispatcher()->PostDelayedTask(
             FROM_HERE,
-            base::Bind(&WiFi::ConnectToSupplicant,
-                       weak_ptr_factory_.GetWeakPtr()),
+            base::BindOnce(&WiFi::ConnectToSupplicant,
+                           weak_ptr_factory_.GetWeakPtr()),
             kRetryCreateInterfaceIntervalSeconds * 1000);
       }
       return;

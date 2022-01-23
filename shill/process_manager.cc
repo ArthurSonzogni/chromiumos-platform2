@@ -115,8 +115,8 @@ pid_t ProcessManager::StartProcess(
   pid_t pid = process->pid();
   CHECK(process_reaper_.WatchForChild(
       spawn_source, pid,
-      base::Bind(&ProcessManager::OnProcessExited, weak_factory_.GetWeakPtr(),
-                 pid)));
+      base::BindOnce(&ProcessManager::OnProcessExited,
+                     weak_factory_.GetWeakPtr(), pid)));
 
   // Release ownership of the child process from the |process| object, so that
   // child process will not get killed on destruction of |process| object.
@@ -354,8 +354,8 @@ pid_t ProcessManager::StartProcessInMinijailWithPipesInternal(
 
   CHECK(process_reaper_.WatchForChild(
       spawn_source, pid,
-      base::Bind(&ProcessManager::OnProcessExited, weak_factory_.GetWeakPtr(),
-                 pid)));
+      base::BindOnce(&ProcessManager::OnProcessExited,
+                     weak_factory_.GetWeakPtr(), pid)));
 
   return pid;
 }
