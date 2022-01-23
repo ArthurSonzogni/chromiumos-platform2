@@ -15,6 +15,7 @@ group("all") {
 
   if (use.test) {
     deps += [
+      ":camera_buffer_pool_test",
       ":camera_face_detection_test",
       ":camera_hal3_helpers_test",
       ":cbm_test",
@@ -73,6 +74,7 @@ source_set("base") {
   sources = [
     "//camera/common/camera_buffer_manager_impl.cc",
     "//camera/common/camera_buffer_manager_internal.cc",
+    "//camera/common/camera_buffer_pool.cc",
     "//camera/common/camera_buffer_utils.cc",
     "//camera/common/camera_hal3_helpers.cc",
     "//camera/common/device_config.cc",
@@ -314,6 +316,14 @@ config("target_defaults_test") {
 }
 
 if (use.test) {
+  executable("camera_buffer_pool_test") {
+    sources = [
+      "//camera/common/camera_buffer_pool.cc",
+      "//camera/common/camera_buffer_pool_test.cc",
+    ]
+    configs += [ ":target_defaults_test" ]
+  }
+
   executable("camera_face_detection_test") {
     sources = [
       "//camera/common/camera_face_detection.cc",
