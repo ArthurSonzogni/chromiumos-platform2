@@ -31,6 +31,8 @@ class ScreenWelcome : public ScreenBase {
 
   std::string GetName() override;
 
+  bool MoveForward(brillo::ErrorPtr* error) override;
+
  private:
   void ShowButtons();
 };

@@ -3,6 +3,9 @@
 // found in the LICENSE file.
 
 #include "minios/screens/screen_welcome.h"
+
+#include <linux/input.h>
+
 #include "minios/utils.h"
 
 namespace minios {
@@ -10,13 +13,18 @@ namespace minios {
 ScreenWelcome::ScreenWelcome(std::shared_ptr<DrawInterface> draw_utils,
                              ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/3, /*index_=*/1, draw_utils, screen_controller) {}
+          /*button_count=*/3,
+          /*index_=*/1,
+          State::IDLE,
+          draw_utils,
+          screen_controller) {}
 
 void ScreenWelcome::Show() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructionsWithTitle("MiniOS_welcome");
   draw_utils_->ShowStepper({"1-done", "2", "3"});
   ShowButtons();
+  SetState(State::IDLE);
 }
 
 void ScreenWelcome::ShowButtons() {
@@ -58,6 +66,12 @@ ScreenType ScreenWelcome::GetType() {
 
 std::string ScreenWelcome::GetName() {
   return "ScreenWelcome";
+}
+
+bool ScreenWelcome::MoveForward(brillo::ErrorPtr* error) {
+  index_ = 1;
+  OnKeyPress(KEY_ENTER);
+  return true;
 }
 
 }  // namespace minios

@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 
+#include <brillo/errors/error.h>
+
 #include "minios/screens/screen_base.h"
 
 namespace minios {
@@ -28,6 +30,8 @@ class ScreenError : public ScreenBase {
   void OnKeyPress(int key_changed) override;
   ScreenType GetType() override;
   std::string GetName() override;
+  bool MoveForward(brillo::ErrorPtr* error) override;
+  bool MoveBackward(brillo::ErrorPtr* error) override;
 
  private:
   // Updates buttons with current selection.

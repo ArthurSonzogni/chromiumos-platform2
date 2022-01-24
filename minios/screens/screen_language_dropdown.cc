@@ -12,6 +12,7 @@ ScreenLanguageDropdown::ScreenLanguageDropdown(
     ScreenControllerInterface* screen_controller)
     : ScreenBase(draw_utils->GetSupportedLocalesSize(),
                  /*index_=*/1,
+                 State::LANGUAGE_SELECTION,
                  draw_utils,
                  screen_controller) {}
 

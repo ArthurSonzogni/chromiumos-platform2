@@ -5,14 +5,14 @@
 #include "minios/screens/screen_network.h"
 
 #include <base/logging.h>
+#include <dbus/minios/dbus-constants.h>
 #include <dbus/shill/dbus-constants.h>
 
 #include "minios/draw_utils.h"
+#include "minios/error.h"
 #include "minios/utils.h"
 
 namespace minios {
-
-const char kShillEthernetLabel[] = "Ethernet";
 
 namespace {
 // Dropdown Item size
@@ -25,14 +25,18 @@ ScreenNetwork::ScreenNetwork(
     KeyReader* key_reader,
     ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/4, /*index_=*/1, draw_utils, screen_controller),
+          /*button_count=*/4,
+          /*index_=*/1,
+          State::NETWORK_SCANNING,
+          draw_utils,
+          screen_controller),
       network_manager_(network_manager),
       key_reader_(key_reader),
       state_(NetworkState::kDropdownClosed) {
   if (network_manager_) {
     network_manager_->AddObserver(this);
     // Query for networks.
-    network_manager_->GetNetworks();
+    GetNetworks();
   }
   // Calculate how much room is left for the dropdown, leave some space for the
   // back button.
@@ -58,6 +62,7 @@ void ScreenNetwork::Show() {
       draw_utils_->MessageBaseScreen();
       draw_utils_->ShowInstructionsWithTitle("MiniOS_password");
       draw_utils_->ShowStepper({"done", "2-done", "3"});
+      SetState(State::NETWORK_CREDENTIALS);
       break;
     default:
       break;
@@ -108,11 +113,24 @@ void ScreenNetwork::ShowButtons() {
   }
 }
 
+void ScreenNetwork::GetNetworks() {
+  network_manager_->GetNetworks();
+  SetState(State::NETWORK_SCANNING);
+}
+
+void ScreenNetwork::Connect(const std::string& ssid,
+                            const std::string& password) {
+  network_manager_->Connect(ssid, password);
+  state_ = NetworkState::kWaitForConnection;
+  WaitForConnection();
+}
+
 void ScreenNetwork::WaitForConnection() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowStepper({"done", "2-done", "3"});
   draw_utils_->ShowLanguageMenu(false);
   draw_utils_->ShowInstructions("title_MiniOS_wait_for_connection");
+  SetState(State::CONNECTING);
 }
 
 void ScreenNetwork::OnKeyPress(int key_changed) {
@@ -156,9 +174,7 @@ void ScreenNetwork::OnKeyPress(int key_changed) {
         }
         if (chosen_network_.security == shill::kSecurityNone) {
           // Network has no password. Just connect.
-          network_manager_->Connect(chosen_network_.ssid, "");
-          state_ = NetworkState::kWaitForConnection;
-          WaitForConnection();
+          Connect(chosen_network_.ssid, "");
           return;
         }
         // Update internal state and get password.
@@ -212,7 +228,7 @@ void ScreenNetwork::Reset() {
     // Reset from `kExpandedNetworkDropDownScreen` is only called when going
     // back to `kNetworkDropDownScreen`. Re-query for networks and reset
     // `ScreenType`.
-    network_manager_->GetNetworks();
+    GetNetworks();
     state_ = NetworkState::kDropdownClosed;
   }
   index_ = 1;
@@ -266,6 +282,7 @@ void ScreenNetwork::OnGetNetworks(
                 return false;
               return lhs.strength > rhs.strength;
             });
+  SetState(State::NETWORK_SELECTION);
 
   // If already waiting on the dropdown screen, refresh.
   if (state_ == NetworkState::kDropdownOpen) {
@@ -333,9 +350,7 @@ void ScreenNetwork::GetPassword() {
   } while (!enter);
   key_reader_->StartWatcher();
   // Wait to connect to network.
-  state_ = NetworkState::kWaitForConnection;
-  WaitForConnection();
-  network_manager_->Connect(chosen_network_.ssid, plain_text_password);
+  Connect(chosen_network_.ssid, plain_text_password);
 }
 
 void ScreenNetwork::ShowCollapsedNetworkDropDown(bool is_selected) {
@@ -402,6 +417,100 @@ void ScreenNetwork::ShowNetworkDropdown(int current_index) {
     }
     offset_y += kItemHeight;
   }
+}
+
+void ScreenNetwork::SetStateForTest(NetworkState state) {
+  button_count_ =
+      (state == NetworkState::kDropdownOpen) ? networks_.size() + 1 : 4;
+  state_ = state;
+}
+
+bool ScreenNetwork::MoveForward(brillo::ErrorPtr* error) {
+  switch (state_) {
+    case NetworkState::kDropdownClosed:
+      FALLTHROUGH;
+    case NetworkState::kDropdownOpen: {
+      if (ssid_.empty()) {
+        Error::AddTo(error, FROM_HERE, error::kFailedGoToNextScreen,
+                     "SSID has not been set.");
+        screen_controller_->OnError(ScreenType::kConnectionError);
+        return false;
+      }
+      if (!GetNetworkIndex(ssid_, &index_)) {
+        Error::AddTo(error, FROM_HERE, error::kFailedGoToNextScreen,
+                     "Network not found.");
+        screen_controller_->OnError(ScreenType::kConnectionError);
+        return false;
+      }
+      state_ = NetworkState::kDropdownOpen;
+      button_count_ = networks_.size() + 1;
+      OnKeyPress(KEY_ENTER);
+      return true;
+    }
+    case NetworkState::kGetPassword: {
+      if (password_.empty()) {
+        Error::AddTo(error, FROM_HERE, error::kFailedGoToNextScreen,
+                     "Password has not been set.");
+        screen_controller_->OnError(ScreenType::kPasswordError);
+        return false;
+      }
+      Connect(ssid_, password_);
+      return true;
+    }
+    default: {
+      Error::AddTo(error, FROM_HERE, error::kFailedGoToNextScreen,
+                   "Not supported for screen: " + GetName());
+      screen_controller_->OnError(ScreenType::kGeneralError);
+      return false;
+    }
+  }
+}
+
+bool ScreenNetwork::MoveBackward(brillo::ErrorPtr* error) {
+  switch (state_) {
+    case NetworkState::kDropdownClosed:
+      FALLTHROUGH;
+    case NetworkState::kGetPassword: {
+      index_ = 2;
+      OnKeyPress(KEY_ENTER);
+      return true;
+    }
+    case NetworkState::kDropdownOpen: {
+      index_ = networks_.size();
+      OnKeyPress(KEY_ENTER);
+      return true;
+    }
+    default: {
+      Error::AddTo(error, FROM_HERE, error::kFailedGoToPrevScreen,
+                   "Not supported for screen: " + GetName());
+      return false;
+    }
+  }
+}
+
+void ScreenNetwork::SeedCredentials(const std::string& ssid,
+                                    const std::string& password) {
+  ssid_ = ssid;
+  password_ = password;
+}
+
+bool ScreenNetwork::GetNetworkIndex(const std::string& ssid, int* index) const {
+  if (networks_.empty()) {
+    LOG(WARNING) << "No networks found.";
+    return false;
+  }
+  auto it = std::find_if(
+      networks_.begin(), networks_.end(),
+      [&ssid](const NetworkManagerInterface::NetworkProperties& props) {
+        return props.ssid == ssid;
+      });
+  if (it != networks_.end()) {
+    *index = it - networks_.begin();
+    LOG(INFO) << "Network " << ssid << " found at index " << *index;
+    return true;
+  }
+  LOG(ERROR) << "Network " << ssid << " not found.";
+  return false;
 }
 
 }  // namespace minios

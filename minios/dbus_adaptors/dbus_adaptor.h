@@ -15,6 +15,7 @@
 #include "minios/dbus_adaptors/org.chromium.MiniOsInterface.h"
 #include "minios/minios_interface.h"
 #include "minios/network_manager_interface.h"
+#include "minios/state_reporter_interface.h"
 
 namespace minios {
 
@@ -41,6 +42,17 @@ class DBusService : public org::chromium::MiniOsInterfaceInterface,
       brillo::dbus_utils::DBusMethodResponse<std::vector<std::string>>>;
   void GetNetworks(GetNetworksResponse response) override;
 
+  bool NextScreen(brillo::ErrorPtr* error) override;
+  bool PressKey(brillo::ErrorPtr* error, uint32_t in_keycode) override;
+  bool PrevScreen(brillo::ErrorPtr* error) override;
+  bool ResetState(brillo::ErrorPtr* error) override;
+  bool SetNetworkCredentials(brillo::ErrorPtr* error,
+                             const std::string& in_ssid,
+                             const std::string& in_passphrase) override;
+  bool StartRecovery(brillo::ErrorPtr* error,
+                     const std::string& in_ssid,
+                     const std::string& in_passphrase) override;
+
  private:
   // `NetworkManagerInterface::Observer` overrides.
   void OnConnect(const std::string& ssid, brillo::Error* error) override;
@@ -55,13 +67,17 @@ class DBusService : public org::chromium::MiniOsInterfaceInterface,
   std::shared_ptr<NetworkManagerInterface> network_manager_;
 };
 
-class DBusAdaptor : public org::chromium::MiniOsInterfaceAdaptor {
+class DBusAdaptor : public org::chromium::MiniOsInterfaceAdaptor,
+                    public StateReporterInterface {
  public:
   explicit DBusAdaptor(std::unique_ptr<DBusService> dbus_service);
   ~DBusAdaptor() = default;
 
   DBusAdaptor(const DBusAdaptor&) = delete;
   DBusAdaptor& operator=(const DBusAdaptor&) = delete;
+
+  // StateReporterInterface overrides.
+  void StateChanged(const State& state) override;
 
  private:
   std::unique_ptr<DBusService> dbus_service_;

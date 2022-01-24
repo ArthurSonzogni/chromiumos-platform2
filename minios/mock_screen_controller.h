@@ -6,6 +6,7 @@
 #define MINIOS_MOCK_SCREEN_CONTROLLER_H_
 
 #include <gmock/gmock.h>
+#include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/screen_controller_interface.h"
 #include "minios/screen_interface.h"
@@ -27,6 +28,7 @@ class MockScreenControllerInterface : public ScreenControllerInterface {
   MOCK_METHOD(void, OnForward, (ScreenInterface * screen));
   MOCK_METHOD(void, OnBackward, (ScreenInterface * screen));
   MOCK_METHOD(void, OnError, (ScreenType error_screen));
+  MOCK_METHOD(void, OnStateChanged, (State state));
   MOCK_METHOD(ScreenType, GetCurrentScreen, ());
 };
 

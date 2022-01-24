@@ -6,8 +6,13 @@
 
 #include <utility>
 
+#include <base/callback.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
+#include <base/time/time.h>
+#include <brillo/message_loops/message_loop.h>
 
+#include "minios/error.h"
 #include "minios/recovery_installer.h"
 #include "minios/screens/screen_debug_options.h"
 #include "minios/screens/screen_download.h"
@@ -61,9 +66,14 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
   switch (screen_type) {
     case ScreenType::kWelcomeScreen:
       return std::make_unique<ScreenWelcome>(draw_utils_, this);
-    case ScreenType::kNetworkDropDownScreen:
-      return std::make_unique<ScreenNetwork>(draw_utils_, network_manager_,
-                                             &key_reader_, this);
+    case ScreenType::kNetworkDropDownScreen: {
+      auto screen = std::make_unique<ScreenNetwork>(
+          draw_utils_, network_manager_, &key_reader_, this);
+      if (!seeded_ssid_.empty()) {
+        screen->SeedCredentials(seeded_ssid_, seeded_passphrase_);
+      }
+      return screen;
+    }
     case ScreenType::kLanguageDropDownScreen:
       return std::make_unique<ScreenLanguageDropdown>(draw_utils_, this);
     case ScreenType::kUserPermissionScreen:
@@ -235,6 +245,138 @@ void ScreenController::OnKeyPress(int fd_index,
     return;
   } else if (!key_released) {
     key_states_[fd_index][key_changed] = true;
+  }
+}
+
+void ScreenController::GetState(State* state_out) {
+  CHECK(current_screen_) << "Could not get State for current screen.";
+  state_out->CopyFrom(current_screen_->GetState());
+}
+
+bool ScreenController::MoveBackward(brillo::ErrorPtr* error) {
+  CHECK(current_screen_) << "Could not move to previous screen.";
+  LOG(INFO) << "MoveBackward from screen: " << current_screen_->GetName();
+  return current_screen_->MoveBackward(error);
+}
+
+bool ScreenController::MoveForward(brillo::ErrorPtr* error) {
+  CHECK(current_screen_) << "Could not move to next screen.";
+  LOG(INFO) << "MoveForward from screen: " << current_screen_->GetName();
+  return current_screen_->MoveForward(error);
+}
+
+void ScreenController::PressKey(int key_changed) {
+  CHECK(current_screen_) << "Could not send key event to screen.";
+  // TODO(hbarnor): Does not support GetPassword screen. Need to look into using
+  // `KeyReader` for this.
+  current_screen_->OnKeyPress(key_changed);
+}
+
+bool ScreenController::Reset(brillo::ErrorPtr* error) {
+  if (ResetScreen(error)) {
+    seeded_ssid_.clear();
+    seeded_passphrase_.clear();
+    dbus_recovery_state_.reset();
+    return true;
+  }
+  return false;
+}
+
+bool ScreenController::ResetScreen(brillo::ErrorPtr* error) {
+  // Don't allow reset in the middle of recovering.
+  if (current_screen_->GetType() == ScreenType::kStartDownload) {
+    Error::AddTo(error, FROM_HERE, error::kCannotReset,
+                 "Cannot reset whiles recovery in progress.");
+
+    return false;
+  }
+  previous_screen_ = nullptr;
+  current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
+  current_screen_->Show();
+  return true;
+}
+
+void ScreenController::SeedNetworkCredentials(const std::string& ssid,
+                                              const std::string& passphrase) {
+  seeded_ssid_ = ssid;
+  seeded_passphrase_ = passphrase;
+  if (current_screen_->GetType() == ScreenType::kNetworkDropDownScreen) {
+    ScreenNetwork* screen = dynamic_cast<ScreenNetwork*>(current_screen_.get());
+    if (screen)
+      screen->SeedCredentials(seeded_ssid_, seeded_passphrase_);
+  }
+}
+
+void ScreenController::StartRecovery(const std::string& ssid,
+                                     const std::string& passphrase) {
+  if (dbus_recovery_state_.has_value()) {
+    LOG(ERROR) << "Recovery already in progress.;";
+    return;
+  }
+  dbus_recovery_state_ = State::IDLE;
+  brillo::ErrorPtr error;
+  LOG(INFO) << "Starting Dbus triggered recovery flow.;";
+  // Always start from welcome screen.
+  bool result = ResetScreen(&error);
+  if (result) {
+    SeedNetworkCredentials(ssid, passphrase);
+    // Move forward from welcome screen.
+    brillo::MessageLoop::current()->PostTask(
+        FROM_HERE,
+        base::BindOnce(base::IgnoreResult(&ScreenController::MoveForward),
+                       base::Unretained(this), nullptr));
+  }
+
+  if (!result) {
+    LOG(ERROR) << "StartRecovery failed. Reason: " << error->GetMessage();
+
+    if (dbus_recovery_state_.value() != State::ERROR)
+      OnError(ScreenType::kGeneralError);
+  }
+}
+
+void ScreenController::SetStateReporter(
+    StateReporterInterface* state_reporter) {
+  state_reporter_ = state_reporter;
+}
+
+void ScreenController::OnStateChanged(State state) {
+  if (state_reporter_) {
+    // StateChanged observers cannot/should not modify state.
+    state_reporter_->StateChanged(state);
+  }
+  HandleStateChanged(state.state());
+}
+
+void ScreenController::HandleStateChanged(State::States state_state) {
+  if (!dbus_recovery_state_.has_value() ||
+      (dbus_recovery_state_.value() == state_state))
+    return;
+
+  LOG(INFO) << "Recovery flow transitioning state: "
+            << State_States_Name(dbus_recovery_state_.value()) << " -> "
+            << State_States_Name(state_state);
+  dbus_recovery_state_ = state_state;
+  switch (state_state) {
+    case State::CONNECTED:
+    case State::NETWORK_CREDENTIALS:
+    case State::NETWORK_SELECTION: {
+      brillo::MessageLoop::current()->PostTask(
+          FROM_HERE,
+          base::BindOnce(base::IgnoreResult(&ScreenController::MoveForward),
+                         base::Unretained(this), nullptr));
+
+      break;
+    }
+    case State::ERROR:
+    case State::COMPLETED: {
+      seeded_ssid_.clear();
+      seeded_passphrase_.clear();
+      dbus_recovery_state_.reset();
+      break;
+    }
+    default:
+      break;
   }
 }
 

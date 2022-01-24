@@ -22,6 +22,7 @@ class ScreenBase : public ScreenInterface {
  public:
   ScreenBase(int button_count,
              int index,
+             State::States state,
              std::shared_ptr<DrawInterface> draw_utils,
              ScreenControllerInterface* screen_controller);
 
@@ -33,9 +34,17 @@ class ScreenBase : public ScreenInterface {
 
   int GetIndexForTest() { return index_; }
 
+  // `ScreenInterface` overrides.
+  bool MoveForward(brillo::ErrorPtr* error) override;
+  bool MoveBackward(brillo::ErrorPtr* error) override;
+  State GetState() override { return state_; }
+
  protected:
   FRIEND_TEST(ScreenBaseTest, UpdateButtons);
   FRIEND_TEST(ScreenBaseTest, UpdateButtonsIsDetachable);
+
+  // Set the current state. Notify if the state changes.
+  void SetState(State::States state);
 
   // Changes the index and enter value based on the given key. Unknown keys are
   // ignored and index is kept within the range of menu items. Enter is whether
@@ -47,6 +56,9 @@ class ScreenBase : public ScreenInterface {
 
   // The current screen index.
   int index_;
+
+  // The current `State`.
+  State state_;
 
   std::shared_ptr<DrawInterface> draw_utils_;
 

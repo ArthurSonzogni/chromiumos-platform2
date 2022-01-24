@@ -4,6 +4,8 @@
 
 #include "minios/screens/screen_error.h"
 
+#include <linux/input.h>
+
 #include <base/logging.h>
 
 #include "minios/draw_utils.h"
@@ -15,7 +17,11 @@ ScreenError::ScreenError(ScreenType error_screen,
                          std::shared_ptr<DrawInterface> draw_utils,
                          ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/4, /*index_=*/1, draw_utils, screen_controller),
+          /*button_count=*/4,
+          /*index_=*/1,
+          State::ERROR,
+          draw_utils,
+          screen_controller),
       error_screen_(error_screen) {}
 
 std::string ScreenError::GetErrorMessage() {
@@ -54,6 +60,7 @@ void ScreenError::Show() {
 
   draw_utils_->ShowInstructionsWithTitle(error_message);
   ShowButtons();
+  SetState(State::ERROR);
 }
 
 void ScreenError::ShowButtons() {
@@ -117,6 +124,18 @@ std::string ScreenError::GetName() {
       LOG(ERROR) << "Not a valid error screen.";
       return "";
   }
+}
+
+bool ScreenError::MoveForward(brillo::ErrorPtr* error) {
+  index_ = 2;
+  OnKeyPress(KEY_ENTER);
+  return true;
+}
+
+bool ScreenError::MoveBackward(brillo::ErrorPtr* error) {
+  index_ = 1;
+  OnKeyPress(KEY_ENTER);
+  return true;
 }
 
 }  // namespace minios

@@ -4,7 +4,10 @@
 
 #include "minios/screens/screen_debug_options.h"
 
+#include <linux/input.h>
+
 #include <base/logging.h>
+#include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/draw_utils.h"
 #include "minios/utils.h"
@@ -15,7 +18,11 @@ ScreenDebugOptions::ScreenDebugOptions(
     std::shared_ptr<DrawInterface> draw_utils,
     ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/4, /*index_=*/1, draw_utils, screen_controller) {}
+          /*button_count=*/4,
+          /*index_=*/1,
+          State::DEBUG_OPTIONS,
+          draw_utils,
+          screen_controller) {}
 
 void ScreenDebugOptions::Show() {
   draw_utils_->MessageBaseScreen();
@@ -24,6 +31,7 @@ void ScreenDebugOptions::Show() {
   const auto kY = -frecon_size / 2 + 220 + 18;
   draw_utils_->ShowMessage("title_debug_options", kX, kY);
   ShowButtons();
+  SetState(State::DEBUG_OPTIONS);
 }
 
 void ScreenDebugOptions::ShowButtons() {
@@ -73,6 +81,18 @@ ScreenType ScreenDebugOptions::GetType() {
 
 std::string ScreenDebugOptions::GetName() {
   return "ScreenDebugOptions";
+}
+
+bool ScreenDebugOptions::MoveForward(brillo::ErrorPtr* error) {
+  index_ = 1;
+  OnKeyPress(KEY_ENTER);
+  return true;
+}
+
+bool ScreenDebugOptions::MoveBackward(brillo::ErrorPtr* error) {
+  index_ = 2;
+  OnKeyPress(KEY_ENTER);
+  return true;
 }
 
 }  // namespace minios

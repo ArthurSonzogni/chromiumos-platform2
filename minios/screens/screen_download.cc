@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <minios/proto_bindings/minios.pb.h>
 
 #include "minios/draw_utils.h"
 
@@ -19,7 +20,11 @@ ScreenDownload::ScreenDownload(
     std::unique_ptr<MetricsReporterInterface> metrics_reporter,
     ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/3, /*index_=*/1, draw_utils, screen_controller),
+          /*button_count=*/3,
+          /*index_=*/1,
+          State::RECOVERING,
+          draw_utils,
+          screen_controller),
       recovery_installer_(std::move(recovery_installer)),
       update_engine_proxy_(update_engine_proxy),
       display_update_engine_state_(false),
@@ -36,20 +41,22 @@ void ScreenDownload::Show() {
       0, -draw_utils_->GetFreconCanvasSize() / kProgressBarYScale,
       draw_utils_->GetFreconCanvasSize(), kProgressHeight, kMenuGrey);
   StartRecovery();
+  SetState(State::RECOVERING);
 }
 
 void ScreenDownload::Finalizing() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructionsWithTitle("MiniOS_finalizing");
   draw_utils_->ShowStepper({"done", "done", "3-done"});
+  SetState(State::FINALIZING);
 }
 
 void ScreenDownload::Completed() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructions("title_MiniOS_complete");
   draw_utils_->ShowStepper({"done", "done", "done"});
-
   metrics_reporter_->ReportNBRComplete();
+  SetState(State::COMPLETED);
   update_engine_proxy_->TriggerReboot();
 }
 

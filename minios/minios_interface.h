@@ -5,6 +5,8 @@
 #ifndef MINIOS_MINIOS_INTERFACE_H_
 #define MINIOS_MINIOS_INTERFACE_H_
 
+#include <string>
+
 #include <brillo/errors/error.h>
 #include <minios/proto_bindings/minios.pb.h>
 
@@ -15,6 +17,14 @@ class MiniOsInterface {
   virtual ~MiniOsInterface() = default;
 
   virtual bool GetState(State* state_out, brillo::ErrorPtr* error) = 0;
+  virtual bool NextScreen(brillo::ErrorPtr* error) = 0;
+  virtual void PressKey(uint32_t in_keycode) = 0;
+  virtual bool PrevScreen(brillo::ErrorPtr* error) = 0;
+  virtual bool Reset(brillo::ErrorPtr* error) = 0;
+  virtual void SetNetworkCredentials(const std::string& in_ssid,
+                                     const std::string& in_passphrase) = 0;
+  virtual void StartRecovery(const std::string& in_ssid,
+                             const std::string& in_passphrase) = 0;
 };
 
 }  // namespace minios

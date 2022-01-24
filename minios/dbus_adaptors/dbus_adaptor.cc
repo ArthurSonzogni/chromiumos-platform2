@@ -6,6 +6,8 @@
 
 #include <utility>
 
+#include <brillo/message_loops/message_loop.h>
+
 namespace minios {
 
 DBusService::DBusService(
@@ -44,6 +46,37 @@ void DBusService::GetNetworks(GetNetworksResponse response) {
   network_manager_->GetNetworks();
 }
 
+bool DBusService::NextScreen(brillo::ErrorPtr* error) {
+  return mini_os_->NextScreen(error);
+}
+
+bool DBusService::PressKey(brillo::ErrorPtr* error, uint32_t in_keycode) {
+  mini_os_->PressKey(in_keycode);
+  return true;
+}
+
+bool DBusService::PrevScreen(brillo::ErrorPtr* error) {
+  return mini_os_->PrevScreen(error);
+}
+
+bool DBusService::ResetState(brillo::ErrorPtr* error) {
+  return mini_os_->Reset(error);
+}
+
+bool DBusService::SetNetworkCredentials(brillo::ErrorPtr* error,
+                                        const std::string& in_ssid,
+                                        const std::string& in_passphrase) {
+  mini_os_->SetNetworkCredentials(in_ssid, in_passphrase);
+  return true;
+}
+
+bool DBusService::StartRecovery(brillo::ErrorPtr* error,
+                                const std::string& in_ssid,
+                                const std::string& in_passphrase) {
+  mini_os_->StartRecovery(in_ssid, in_passphrase);
+  return true;
+}
+
 void DBusService::OnConnect(const std::string& ssid, brillo::Error* error) {
   if (!connect_response_)
     return;
@@ -75,5 +108,11 @@ void DBusService::OnGetNetworks(
 DBusAdaptor::DBusAdaptor(std::unique_ptr<DBusService> dbus_service)
     : org::chromium::MiniOsInterfaceAdaptor(dbus_service.get()),
       dbus_service_(std::move(dbus_service)) {}
+
+void DBusAdaptor::StateChanged(const State& state) {
+  brillo::MessageLoop::current()->PostTask(
+      FROM_HERE, base::BindOnce(&DBusAdaptor::SendMiniOsStateChangedSignal,
+                                base::Unretained(this), state));
+}
 
 }  // namespace minios

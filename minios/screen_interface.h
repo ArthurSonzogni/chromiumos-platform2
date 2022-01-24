@@ -7,6 +7,9 @@
 
 #include <string>
 
+#include <brillo/errors/error.h>
+#include <minios/proto_bindings/minios.pb.h>
+
 #include "minios/screen_types.h"
 
 namespace minios {
@@ -34,6 +37,15 @@ class ScreenInterface {
 
   // Get the name of the screen as a string.
   virtual std::string GetName() = 0;
+
+  // Get the `State` for each screen.
+  virtual State GetState() = 0;
+
+  // Advance to the next screen iff all requirements are satisfied.
+  virtual bool MoveForward(brillo::ErrorPtr* error) = 0;
+
+  // Advance to the previous screen iff all requirements are satisfied.
+  virtual bool MoveBackward(brillo::ErrorPtr* error) = 0;
 };
 
 }  // namespace minios

@@ -18,8 +18,6 @@
 
 namespace minios {
 
-extern const char kShillEthernetLabel[];
-
 // The internal states of `ScreenNetwork`.
 enum class NetworkState {
   kDropdownClosed = 0,
@@ -46,6 +44,8 @@ class ScreenNetwork : public ScreenBase,
   void OnKeyPress(int key_changed) override;
   ScreenType GetType() override;
   std::string GetName() override;
+  bool MoveForward(brillo::ErrorPtr* error) override;
+  bool MoveBackward(brillo::ErrorPtr* error) override;
 
   // `NetworkManagerInterface::Observer` overrides.
   // Updates the list of networks stored by the UI to show in the drop down.
@@ -56,8 +56,12 @@ class ScreenNetwork : public ScreenBase,
   // Attempts to connect, shows error screen on failure.
   void OnConnect(const std::string& ssid, brillo::Error* error) override;
 
+  // Hook for programmatic seeding of network credentials.
+  void SeedCredentials(const std::string& ssid,
+                       const std::string& password = "");
+
   void SetIndexForTest(int index) { index_ = index; }
-  void SetStateForTest(NetworkState state) { state_ = state; }
+  void SetStateForTest(NetworkState state);
   NetworkState GetStateForTest() { return state_; }
 
  private:
@@ -80,6 +84,15 @@ class ScreenNetwork : public ScreenBase,
   // Shows a list of all available networks.
   void ShowNetworkDropdown(int current_index);
 
+  // Helper function for finding the button index for an ssid.
+  bool GetNetworkIndex(const std::string& ssid, int* index) const;
+
+  // Initiate a scan for available networks.
+  void GetNetworks();
+
+  // Connect to the a network using the provided credentials.
+  void Connect(const std::string& ssid, const std::string& password);
+
   std::shared_ptr<NetworkManagerInterface> network_manager_;
 
   KeyReader* key_reader_;
@@ -88,6 +101,10 @@ class ScreenNetwork : public ScreenBase,
 
   // The network the user has chosen.
   NetworkManagerInterface::NetworkProperties chosen_network_;
+
+  // Pre-seeded network credentials.
+  std::string ssid_;
+  std::string password_;
 
   // Number of items in the network dropdown.
   int items_per_page_;

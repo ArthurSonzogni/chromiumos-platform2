@@ -5,6 +5,8 @@
 #ifndef MINIOS_SCREEN_CONTROLLER_INTERFACE_H_
 #define MINIOS_SCREEN_CONTROLLER_INTERFACE_H_
 
+#include <minios/proto_bindings/minios.pb.h>
+
 #include "minios/screen_interface.h"
 #include "minios/screen_types.h"
 
@@ -32,6 +34,9 @@ class ScreenControllerInterface {
 
   // Returns the current screen in flow.
   virtual ScreenType GetCurrentScreen() = 0;
+
+  // Handle Screen state changes.
+  virtual void OnStateChanged(State state) = 0;
 };
 
 }  // namespace minios

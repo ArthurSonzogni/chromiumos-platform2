@@ -4,6 +4,8 @@
 
 #include "minios/screens/screen_permission.h"
 
+#include <linux/input.h>
+
 #include <base/logging.h>
 
 #include "minios/draw_utils.h"
@@ -14,13 +16,18 @@ namespace minios {
 ScreenPermission::ScreenPermission(std::shared_ptr<DrawInterface> draw_utils,
                                    ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/4, /*index_=*/1, draw_utils, screen_controller) {}
+          /*button_count=*/4,
+          /*index_=*/1,
+          State::CONNECTED,
+          draw_utils,
+          screen_controller) {}
 
 void ScreenPermission::Show() {
   draw_utils_->MessageBaseScreen();
   draw_utils_->ShowInstructionsWithTitle("MiniOS_user_confirm");
   draw_utils_->ShowStepper({"done", "2-done", "3"});
   ShowButtons();
+  SetState(State::CONNECTED);
 }
 
 void ScreenPermission::ShowButtons() {
@@ -70,6 +77,18 @@ ScreenType ScreenPermission::GetType() {
 
 std::string ScreenPermission::GetName() {
   return "ScreenUserPermission";
+}
+
+bool ScreenPermission::MoveForward(brillo::ErrorPtr* error) {
+  index_ = 1;
+  OnKeyPress(KEY_ENTER);
+  return true;
+}
+
+bool ScreenPermission::MoveBackward(brillo::ErrorPtr* error) {
+  index_ = 2;
+  OnKeyPress(KEY_ENTER);
+  return true;
 }
 
 }  // namespace minios

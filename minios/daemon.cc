@@ -20,6 +20,7 @@ namespace minios {
 Daemon::Daemon() : DBusServiceDaemon(kMiniOsServiceName) {}
 
 void Daemon::Start() {
+  mini_os_->SetStateReporter(dbus_adaptor_.get());
   mini_os_->Run();
 }
 

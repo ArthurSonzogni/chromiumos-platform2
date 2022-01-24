@@ -6,6 +6,7 @@
 
 #include <base/logging.h>
 
+#include "minios/error.h"
 #include "minios/key_reader.h"
 
 namespace minios {
@@ -14,12 +15,15 @@ const int kBtnYStep = 40;
 
 ScreenBase::ScreenBase(int button_count,
                        int index,
+                       State::States state,
                        std::shared_ptr<DrawInterface> draw_utils,
                        ScreenControllerInterface* screen_controller)
     : button_count_(button_count),
       index_(index),
       draw_utils_(draw_utils),
-      screen_controller_(screen_controller) {}
+      screen_controller_(screen_controller) {
+  state_.set_state(state);
+}
 
 void ScreenBase::UpdateButtonsIndex(int key, bool* enter) {
   int starting_index = index_;
@@ -42,6 +46,25 @@ void ScreenBase::UpdateButtonsIndex(int key, bool* enter) {
     LOG(ERROR) << "Unknown key value: " << key;
   }
   index_ = starting_index;
+}
+
+void ScreenBase::SetState(State::States state) {
+  state_.set_state(state);
+  screen_controller_->OnStateChanged(state_);
+}
+
+bool ScreenBase::MoveForward(brillo::ErrorPtr* error) {
+  Error::AddTo(error, FROM_HERE, error::kFailedGoToNextScreen,
+               "Not supported for screen: " + GetName());
+
+  return false;
+}
+
+bool ScreenBase::MoveBackward(brillo::ErrorPtr* error) {
+  Error::AddTo(error, FROM_HERE, error::kFailedGoToPrevScreen,
+               "Not supported for screen: " + GetName());
+
+  return false;
 }
 
 }  // namespace minios

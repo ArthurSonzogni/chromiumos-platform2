@@ -3,12 +3,15 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
     ":minios",
     ":minios_adaptors",
+    ":minios_client",
+    ":minios_proxies",
   ]
   if (use.test) {
     deps += [ ":minios_test" ]
@@ -19,6 +22,14 @@ generate_dbus_adaptors("minios_adaptors") {
   dbus_service_config = "dbus_adaptors/dbus-service-config.json"
   dbus_adaptors_out_dir = "include/minios/dbus_adaptors"
   sources = [ "dbus_adaptors/org.chromium.MiniOsInterface.xml" ]
+}
+
+generate_dbus_proxies("minios_proxies") {
+  sources = [ "dbus_adaptors/org.chromium.MiniOsInterface.xml" ]
+  dbus_service_config = "dbus_adaptors/dbus-service-config.json"
+  mock_output_file = "include/minios/client/dbus-proxy-mocks.h"
+  proxy_output_file = "include/minios/client/dbus-proxies.h"
+  proxy_path_in_mocks = "minios/client/dbus-proxies.h"
 }
 
 pkg_config("target_defaults") {
@@ -41,6 +52,7 @@ static_library("libminios") {
     "dbus_adaptors/dbus_adaptor.cc",
     "disk_util.cc",
     "draw_utils.cc",
+    "error.cc",
     "key_reader.cc",
     "logger.cc",
     "metrics_reporter.cc",
@@ -72,6 +84,12 @@ executable("minios") {
   deps = [ ":libminios" ]
 }
 
+executable("minios_client") {
+  sources = [ "client/minios_client.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":minios_proxies" ]
+}
+
 if (use.test) {
   pkg_config("test_config") {
     pkg_deps = [
@@ -90,8 +108,13 @@ if (use.test) {
       "recovery_installer_test.cc",
       "screen_controller_test.cc",
       "screens/screen_base_test.cc",
+      "screens/screen_debug_options_test.cc",
       "screens/screen_download_test.cc",
+      "screens/screen_error_test.cc",
+      "screens/screen_log_test.cc",
       "screens/screen_network_test.cc",
+      "screens/screen_permission_test.cc",
+      "screens/screen_welcome_test.cc",
       "utils_test.cc",
     ]
     configs += [

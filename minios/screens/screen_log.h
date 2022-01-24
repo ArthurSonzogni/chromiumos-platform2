@@ -28,6 +28,7 @@ class ScreenLog : public ScreenBase {
   void OnKeyPress(int key_changed) override;
   ScreenType GetType() override;
   std::string GetName() override;
+  bool MoveBackward(brillo::ErrorPtr* error) override;
 
  private:
   // Updates buttons with current selection.

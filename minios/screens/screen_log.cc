@@ -4,6 +4,8 @@
 
 #include "minios/screens/screen_log.h"
 
+#include <linux/input.h>
+
 #include <utility>
 
 #include <base/logging.h>
@@ -32,7 +34,11 @@ const char kLogPath[] = "/var/log/messages";
 ScreenLog::ScreenLog(std::shared_ptr<DrawInterface> draw_utils,
                      ScreenControllerInterface* screen_controller)
     : ScreenBase(
-          /*button_count=*/4, /*index_=*/1, draw_utils, screen_controller),
+          /*button_count=*/4,
+          /*index_=*/1,
+          State::DEBUG_LOGS,
+          draw_utils,
+          screen_controller),
       log_path_(base::FilePath(kLogPath)),
       log_offset_idx_(0),
       log_offsets_({0}) {}
@@ -45,6 +51,7 @@ void ScreenLog::Show() {
                            -frecon_size / 2 + 162);
   ShowButtons();
   UpdateLogArea();
+  SetState(State::DEBUG_LOGS);
 }
 
 void ScreenLog::ShowButtons() {
@@ -156,6 +163,12 @@ ScreenType ScreenLog::GetType() {
 
 std::string ScreenLog::GetName() {
   return "ScreenLog";
+}
+
+bool ScreenLog::MoveBackward(brillo::ErrorPtr* error) {
+  index_ = 3;
+  OnKeyPress(KEY_ENTER);
+  return true;
 }
 
 }  // namespace minios
