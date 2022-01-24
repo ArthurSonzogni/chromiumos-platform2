@@ -25,13 +25,13 @@ Client::Client(DeviceTracker* device_tracker,
                mojo::PendingRemote<arc::mojom::MidisClient> client)
     : device_tracker_(device_tracker),
       client_id_(client_id),
-      del_cb_(del_cb),
+      del_cb_(std::move(del_cb)),
       client_(std::move(client)),
       receiver_(this, std::move(receiver)),
       weak_factory_(this) {
   device_tracker_->AddDeviceObserver(this);
-  receiver_.set_disconnect_handler(
-      base::Bind(&Client::TriggerClientDeletion, weak_factory_.GetWeakPtr()));
+  receiver_.set_disconnect_handler(base::BindOnce(
+      &Client::TriggerClientDeletion, weak_factory_.GetWeakPtr()));
 }
 
 Client::~Client() {
@@ -41,7 +41,7 @@ Client::~Client() {
 
 void Client::TriggerClientDeletion() {
   brillo::MessageLoop::TaskId ret_id = brillo::MessageLoop::current()->PostTask(
-      FROM_HERE, base::Bind(del_cb_, client_id_));
+      FROM_HERE, base::BindOnce(std::move(del_cb_), client_id_));
   if (ret_id == brillo::MessageLoop::kTaskIdNull) {
     LOG(ERROR) << "Couldn't schedule the client deletion callback!";
   }

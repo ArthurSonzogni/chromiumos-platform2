@@ -81,7 +81,7 @@ void ClientTracker::MakeMojoClient(
   VLOG(1) << "MakeMojoClient called.";
   auto new_cli = std::make_unique<Client>(
       device_tracker_, client_id_counter_,
-      base::Bind(&ClientTracker::RemoveClient, weak_factory_.GetWeakPtr()),
+      base::BindOnce(&ClientTracker::RemoveClient, weak_factory_.GetWeakPtr()),
       std::move(receiver), std::move(client));
 
   if (new_cli) {

@@ -64,13 +64,13 @@ TEST_F(ClientTest, ListDevices) {
 
   ClientImpl client;
 
-  Client client_class(&tracker, 0, base::Bind([](uint32_t client_id) {}),
+  Client client_class(&tracker, 0, base::BindOnce([](uint32_t client_id) {}),
                       remote_server.BindNewPipeAndPassReceiver(),
                       client.CreatePendingRemote());
 
   // Check that initially there are no devices listed.
   int64_t num_devices = -1;
-  remote_server->ListDevices(base::Bind(
+  remote_server->ListDevices(base::BindOnce(
       [](int64_t* num_devices,
          std::vector<arc::mojom::MidisDeviceInfoPtr> devices) {
         *num_devices = devices.size();
