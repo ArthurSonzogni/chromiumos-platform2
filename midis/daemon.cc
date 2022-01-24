@@ -54,8 +54,8 @@ void Daemon::InitDBus() {
   CHECK(exported_object);
   CHECK(exported_object->ExportMethodAndBlock(
       kMidisInterfaceName, kBootstrapMojoConnectionMethod,
-      base::Bind(&Daemon::BootstrapMojoConnection,
-                 weak_factory_.GetWeakPtr())));
+      base::BindRepeating(&Daemon::BootstrapMojoConnection,
+                          weak_factory_.GetWeakPtr())));
   CHECK(bus->RequestOwnershipAndBlock(kMidisServiceName,
                                       dbus::Bus::REQUIRE_PRIMARY));
   VLOG(1) << "D-Bus Registration succeeded";

@@ -24,7 +24,7 @@ SubDeviceClientFdHolder::SubDeviceClientFdHolder(
     : client_id_(client_id),
       subdevice_id_(subdevice_id),
       fd_(std::move(fd)),
-      client_data_cb_(client_data_cb),
+      client_data_cb_(std::move(client_data_cb)),
       queue_(std::make_unique<midi::MidiMessageQueue>(true)),
       weak_factory_(this) {}
 
@@ -36,7 +36,7 @@ std::unique_ptr<SubDeviceClientFdHolder> SubDeviceClientFdHolder::Create(
     base::ScopedFD fd,
     ClientDataCallback client_data_cb) {
   auto holder = std::make_unique<SubDeviceClientFdHolder>(
-      client_id, subdevice_id, std::move(fd), client_data_cb);
+      client_id, subdevice_id, std::move(fd), std::move(client_data_cb));
   if (!holder->StartClientMonitoring()) {
     return nullptr;
   }

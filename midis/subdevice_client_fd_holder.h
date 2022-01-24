@@ -20,7 +20,7 @@ namespace midis {
 // corresponding pipe.
 class SubDeviceClientFdHolder {
  public:
-  using ClientDataCallback = base::Callback<void(
+  using ClientDataCallback = base::RepeatingCallback<void(
       uint32_t subdevice_id, const uint8_t* buffer, size_t buf_len)>;
 
   SubDeviceClientFdHolder(uint32_t client_id,

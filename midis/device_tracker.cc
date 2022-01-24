@@ -21,11 +21,14 @@ DeviceTracker::DeviceTracker() {}
 
 bool DeviceTracker::InitDeviceTracker() {
   seq_handler_ = std::make_unique<SeqHandler>(
-      base::Bind(&DeviceTracker::AddDevice, base::Unretained(this)),
-      base::Bind(&DeviceTracker::RemoveDevice, base::Unretained(this)),
-      base::Bind(&DeviceTracker::HandleReceiveData, base::Unretained(this)),
-      base::Bind(&DeviceTracker::IsDevicePresent, base::Unretained(this)),
-      base::Bind(&DeviceTracker::IsPortPresent, base::Unretained(this)));
+      base::BindRepeating(&DeviceTracker::AddDevice, base::Unretained(this)),
+      base::BindRepeating(&DeviceTracker::RemoveDevice, base::Unretained(this)),
+      base::BindRepeating(&DeviceTracker::HandleReceiveData,
+                          base::Unretained(this)),
+      base::BindRepeating(&DeviceTracker::IsDevicePresent,
+                          base::Unretained(this)),
+      base::BindRepeating(&DeviceTracker::IsPortPresent,
+                          base::Unretained(this)));
 
   if (!seq_handler_->InitSeq()) {
     LOG(ERROR) << "Failed to start snd_seq tracker.";

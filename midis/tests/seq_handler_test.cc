@@ -176,16 +176,16 @@ TEST_F(SeqHandlerTest, TestProcessMidiEventsPositive) {
   EXPECT_CALL(callbacks, IsPortPresentCallback(_, _, _)).Times(0);
 
   auto seq_handler = std::make_unique<SeqHandler>(
-      base::Bind(&CallbacksMock::FakeAddDeviceCallback,
-                 base::Unretained(&callbacks)),
-      base::Bind(&CallbacksMock::RemoveDeviceCallback,
-                 base::Unretained(&callbacks)),
-      base::Bind(&CallbacksMock::HandleReceiveDataCallback,
-                 base::Unretained(&callbacks)),
-      base::Bind(&CallbacksMock::IsDevicePresentCallback,
-                 base::Unretained(&callbacks)),
-      base::Bind(&CallbacksMock::IsPortPresentCallback,
-                 base::Unretained(&callbacks)));
+      base::BindRepeating(&CallbacksMock::FakeAddDeviceCallback,
+                          base::Unretained(&callbacks)),
+      base::BindRepeating(&CallbacksMock::RemoveDeviceCallback,
+                          base::Unretained(&callbacks)),
+      base::BindRepeating(&CallbacksMock::HandleReceiveDataCallback,
+                          base::Unretained(&callbacks)),
+      base::BindRepeating(&CallbacksMock::IsDevicePresentCallback,
+                          base::Unretained(&callbacks)),
+      base::BindRepeating(&CallbacksMock::IsPortPresentCallback,
+                          base::Unretained(&callbacks)));
 
   // Initialize decoder.
   seq_handler->decoder_ = SeqHandler::CreateMidiEvent(0);
@@ -223,16 +223,16 @@ TEST_F(SeqHandlerTest, TestProcessMidiEventsNegative) {
   EXPECT_CALL(callbacks, IsPortPresentCallback(_, _, _)).Times(0);
 
   auto seq_handler = std::make_unique<SeqHandler>(
-      base::Bind(&CallbacksMock::FakeAddDeviceCallback,
-                 base::Unretained(&callbacks)),
-      base::Bind(&CallbacksMock::RemoveDeviceCallback,
-                 base::Unretained(&callbacks)),
-      base::Bind(&CallbacksMock::HandleReceiveDataCallback,
-                 base::Unretained(&callbacks)),
-      base::Bind(&CallbacksMock::IsDevicePresentCallback,
-                 base::Unretained(&callbacks)),
-      base::Bind(&CallbacksMock::IsPortPresentCallback,
-                 base::Unretained(&callbacks)));
+      base::BindRepeating(&CallbacksMock::FakeAddDeviceCallback,
+                          base::Unretained(&callbacks)),
+      base::BindRepeating(&CallbacksMock::RemoveDeviceCallback,
+                          base::Unretained(&callbacks)),
+      base::BindRepeating(&CallbacksMock::HandleReceiveDataCallback,
+                          base::Unretained(&callbacks)),
+      base::BindRepeating(&CallbacksMock::IsDevicePresentCallback,
+                          base::Unretained(&callbacks)),
+      base::BindRepeating(&CallbacksMock::IsPortPresentCallback,
+                          base::Unretained(&callbacks)));
 
   // Initialize decoder.
   seq_handler->decoder_ = SeqHandler::CreateMidiEvent(0);

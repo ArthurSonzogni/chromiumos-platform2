@@ -38,11 +38,11 @@ SeqHandler::SeqHandler(AddDeviceCallback add_device_cb,
                        HandleReceiveDataCallback handle_rx_data_cb,
                        IsDevicePresentCallback is_device_present_cb,
                        IsPortPresentCallback is_port_present_cb)
-    : add_device_cb_(add_device_cb),
-      remove_device_cb_(remove_device_cb),
-      handle_rx_data_cb_(handle_rx_data_cb),
-      is_device_present_cb_(is_device_present_cb),
-      is_port_present_cb_(is_port_present_cb),
+    : add_device_cb_(std::move(add_device_cb)),
+      remove_device_cb_(std::move(remove_device_cb)),
+      handle_rx_data_cb_(std::move(handle_rx_data_cb)),
+      is_device_present_cb_(std::move(is_device_present_cb)),
+      is_port_present_cb_(std::move(is_port_present_cb)),
       weak_factory_(this) {}
 
 bool SeqHandler::InitSeq() {
@@ -233,11 +233,15 @@ void SeqHandler::AddSeqDevice(uint32_t device_id) {
       name, std::string(),
       0 /* card number; TODO(pmalani) remove card number */, device_id,
       port_caps.size(), 0 /* device flags TODO(pmalani): flags not needed. */,
-      base::Bind(&SeqHandler::SubscribeInPort, base::Unretained(this)),
-      base::Bind(&SeqHandler::SubscribeOutPort, base::Unretained(this)),
-      base::Bind(&SeqHandler::UnsubscribeInPort, weak_factory_.GetWeakPtr()),
-      base::Bind(&SeqHandler::UnsubscribeOutPort, weak_factory_.GetWeakPtr()),
-      base::Bind(&SeqHandler::SendMidiData, weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SeqHandler::SubscribeInPort, base::Unretained(this)),
+      base::BindRepeating(&SeqHandler::SubscribeOutPort,
+                          base::Unretained(this)),
+      base::BindRepeating(&SeqHandler::UnsubscribeInPort,
+                          weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SeqHandler::UnsubscribeOutPort,
+                          weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&SeqHandler::SendMidiData,
+                          weak_factory_.GetWeakPtr()),
       std::move(port_caps));
   add_device_cb_.Run(std::move(dev));
 }

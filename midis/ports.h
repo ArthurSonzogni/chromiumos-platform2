@@ -15,9 +15,9 @@ namespace midis {
 class InPort {
  public:
   using SubscribeCallback =
-      base::Callback<bool(uint32_t device_id, uint32_t port_id)>;
+      base::RepeatingCallback<bool(uint32_t device_id, uint32_t port_id)>;
   using DeletionCallback =
-      base::Callback<void(uint32_t device_id, uint32_t port_id)>;
+      base::RepeatingCallback<void(uint32_t device_id, uint32_t port_id)>;
 
   ~InPort();
 
@@ -49,9 +49,9 @@ class InPort {
 class OutPort {
  public:
   using SubscribeCallback =
-      base::Callback<int(uint32_t device_id, uint32_t port_id)>;
-  using DeletionCallback = base::Callback<void(int alsa_out_port_id)>;
-  using SendMidiDataCallback = base::Callback<void(
+      base::RepeatingCallback<int(uint32_t device_id, uint32_t port_id)>;
+  using DeletionCallback = base::RepeatingCallback<void(int alsa_out_port_id)>;
+  using SendMidiDataCallback = base::RepeatingCallback<void(
       int alsa_out_port_id, const uint8_t* buf, size_t buf_len)>;
 
   ~OutPort();

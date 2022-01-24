@@ -47,14 +47,16 @@ class SeqHandlerFuzzer {
  public:
   void SetUpSeqHandler() {
     seq_handler_ = std::make_unique<SeqHandler>(
-        base::Bind(&FakeCallbacks::AddDevice, base::Unretained(&callbacks_)),
-        base::Bind(&FakeCallbacks::RemoveDevice, base::Unretained(&callbacks_)),
-        base::Bind(&FakeCallbacks::HandleReceiveData,
-                   base::Unretained(&callbacks_)),
-        base::Bind(&FakeCallbacks::IsDevicePresent,
-                   base::Unretained(&callbacks_)),
-        base::Bind(&FakeCallbacks::IsPortPresent,
-                   base::Unretained(&callbacks_)));
+        base::BindRepeating(&FakeCallbacks::AddDevice,
+                            base::Unretained(&callbacks_)),
+        base::BindRepeating(&FakeCallbacks::RemoveDevice,
+                            base::Unretained(&callbacks_)),
+        base::BindRepeating(&FakeCallbacks::HandleReceiveData,
+                            base::Unretained(&callbacks_)),
+        base::BindRepeating(&FakeCallbacks::IsDevicePresent,
+                            base::Unretained(&callbacks_)),
+        base::BindRepeating(&FakeCallbacks::IsPortPresent,
+                            base::Unretained(&callbacks_)));
 
     seq_handler_->decoder_ = midis::SeqHandler::CreateMidiEvent(0);
   }
