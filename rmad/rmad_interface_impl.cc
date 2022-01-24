@@ -39,6 +39,11 @@ const RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
 
 const char kCroslogCmd[] = "/usr/sbin/croslog";
 
+const char kInitctlCmd[] = "/sbin/initctl";
+const std::vector<std::string> kWaitServices = {"system-services"};
+const int kWaitServicesPollInterval = 1;  // 1 second.
+const int kWaitServicesRetries = 10;
+
 }  // namespace
 
 RmadInterfaceImpl::RmadInterfaceImpl()
@@ -106,12 +111,40 @@ void RmadInterfaceImpl::InitializeExternalUtils() {
   }
 }
 
+bool RmadInterfaceImpl::WaitForServices() {
+  if (test_mode_) {
+    return true;
+  }
+  CHECK(external_utils_initialized_);
+  std::string output;
+  for (int i = 0; i < kWaitServicesRetries; ++i) {
+    LOG(INFO) << "Checking services";
+    bool all_running = true;
+    for (const std::string& service : kWaitServices) {
+      cmd_utils_->GetOutput({kInitctlCmd, "status", service}, &output);
+      if (output.find("running") == std::string::npos) {
+        all_running = false;
+        break;
+      }
+    }
+    if (all_running) {
+      return true;
+    }
+    sleep(kWaitServicesPollInterval);
+  }
+  return false;
+}
+
 bool RmadInterfaceImpl::SetUp() {
   // Initialize external utilities if needed.
   if (!external_utils_initialized_) {
     InitializeExternalUtils();
     external_utils_initialized_ = true;
     metrics_utils_ = std::make_unique<MetricsUtilsImpl>();
+  }
+  // Wait for system services to be ready.
+  if (!WaitForServices()) {
+    return false;
   }
   // Initialize |current state_|, |state_history_|, and |can_abort_| flag.
   current_state_case_ = RmadState::STATE_NOT_SET;

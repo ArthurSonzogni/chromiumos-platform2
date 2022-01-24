@@ -103,6 +103,7 @@ class RmadInterfaceImpl final : public RmadInterface {
 
  private:
   void InitializeExternalUtils();
+  bool WaitForServices();
 
   // Get and initialize the state handler for |state case|, and store it to
   // |state_handler|. If there's no state handler for |state_case|, or the

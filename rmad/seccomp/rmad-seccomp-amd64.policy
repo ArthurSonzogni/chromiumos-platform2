@@ -108,3 +108,4 @@ lchown: 1
 rmdir: 1
 sched_yield: 1
 readlink: 1
+clock_nanosleep: 1

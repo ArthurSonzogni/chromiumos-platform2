@@ -189,8 +189,16 @@ class RmadInterfaceImplTest : public testing::Test {
 
   std::unique_ptr<CmdUtils> CreateCmdUtils() {
     auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
-    ON_CALL(*mock_cmd_utils, GetOutput(_, _))
+    ON_CALL(*mock_cmd_utils,
+            GetOutput(std::vector<std::string>(
+                          {"/usr/sbin/croslog", "--identifier=rmad"}),
+                      _))
         .WillByDefault(DoAll(SetArgPointee<1>("fake_log"), Return(true)));
+    ON_CALL(*mock_cmd_utils,
+            GetOutput(std::vector<std::string>(
+                          {"/sbin/initctl", "status", "system-services"}),
+                      _))
+        .WillByDefault(DoAll(SetArgPointee<1>("running"), Return(true)));
     return mock_cmd_utils;
   }
 
