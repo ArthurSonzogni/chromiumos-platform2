@@ -83,7 +83,7 @@ class AuthSession final {
 
   // Return a const reference to FileSystemKeyset.
   const FileSystemKeyset file_system_keyset() const {
-    return auth_factor_->GetFileSystemKeyset();
+    return FileSystemKeyset(*vault_keyset_);
   }
 
   // Transfer ownership of password verifier that can be used to verify
@@ -98,9 +98,7 @@ class AuthSession final {
   bool ephemeral_user() const { return is_ephemeral_user_; }
 
   // Returns the key data with which this AuthSession is authenticated with.
-  cryptohome::KeyData current_key_data() const {
-    return auth_factor_->GetKeyData();
-  }
+  cryptohome::KeyData current_key_data() const { return key_data_; }
 
   // Returns the map of Key label and KeyData that will be used as a result of
   // StartAuthSession request.
@@ -154,6 +152,12 @@ class AuthSession final {
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.
   KeysetManagement* keyset_management_;
+  // This is used by User Session to verify users credentials at unlock.
+  std::unique_ptr<CredentialVerifier> credential_verifier_;
+  // Used to decrypt/ encrypt & store credentials.
+  std::unique_ptr<VaultKeyset> vault_keyset_;
+  // Used to store key meta data.
+  cryptohome::KeyData key_data_;
   // Bool that determines some state with AuthSession especially with adding
   // credentials.
   bool user_exists_;

@@ -16,9 +16,7 @@
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
-#include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {
@@ -29,8 +27,6 @@ namespace cryptohome {
 // it.
 class AuthFactor {
  public:
-  explicit AuthFactor(KeysetManagement* keyset_management);
-
   // Only for testing currently.
   AuthFactor(AuthFactorType type,
              const std::string& label,
@@ -38,15 +34,6 @@ class AuthFactor {
              const AuthBlockState& auth_block_state);
 
   ~AuthFactor() = default;
-
-  // AuthenticateAuthFactor validates the key should it exist on disk for the
-  // user.
-  MountError AuthenticateAuthFactor(const Credentials& credential,
-                                    bool is_ephemeral_user);
-
-  // Transfer ownership of password verifier that can be used to verify
-  // credentials during unlock.
-  std::unique_ptr<CredentialVerifier> TakeCredentialVerifier();
 
   const std::optional<AuthFactorType>& type() const { return type_; }
   const std::optional<std::string>& label() const { return label_; }
@@ -57,28 +44,7 @@ class AuthFactor {
     return auth_block_state_;
   }
 
-  // -------------------------------------------------------------------------
-  // Temporary functions below as we transition from AuthSession to AuthFactor
-  // -------------------------------------------------------------------------
-  // Returns the key data with which this AuthFactor is authenticated with.
-  const cryptohome::KeyData& GetKeyData() const;
-
-  // Return VaultKeyset of the authenticated user.
-  const VaultKeyset* vault_keyset() const { return vault_keyset_.get(); }
-
-  // Returns FileSystemKeyset of the authenticated user.
-  const FileSystemKeyset GetFileSystemKeyset() const;
-
  private:
-  // The creator of the AuthFactor object is responsible for the
-  // life of KeysetManagement object.
-  KeysetManagement* keyset_management_ = nullptr;
-  // This is used by User Session to verify users credentials at unlock.
-  std::unique_ptr<CredentialVerifier> credential_verifier_;
-  // Used to decrypt/ encrypt & store credentials.
-  std::unique_ptr<VaultKeyset> vault_keyset_;
-  // Used to store key meta data.
-  cryptohome::KeyData key_data_;
   // The auth factor public information. TODO(b:208351356): Make these
   // non-optional by implementing vault keyset conversion into these fields.
   const std::optional<AuthFactorType> type_;

@@ -110,10 +110,10 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
     }
 
     // At this point we have to have keyset since we have to be authed.
-    DCHECK(auth_factor_->vault_keyset());
+    DCHECK(vault_keyset_);
     return static_cast<user_data_auth::CryptohomeErrorCode>(
-        keyset_management_->AddKeyset(
-            *credentials, *auth_factor_->vault_keyset(), true /*clobber*/));
+        keyset_management_->AddKeyset(*credentials, *vault_keyset_,
+                                      true /*clobber*/));
   }
 
   // If AuthSession is not configured as an ephemeral user, then we save the
@@ -133,26 +133,46 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
 
 user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     const cryptohome::AuthorizationRequest& authorization_request) {
-  MountError code;
+  MountError code = MOUNT_ERROR_NONE;
 
   auto credentials = GetCredentials(authorization_request, &code);
   if (!credentials) {
     return MountErrorToCryptohomeError(code);
   }
-  if (authorization_request.key().data().type() == KeyData::KEY_TYPE_PASSWORD ||
-      authorization_request.key().data().type() == KeyData::KEY_TYPE_KIOSK) {
-    auth_factor_ = std::make_unique<AuthFactor>(keyset_management_);
+  if (authorization_request.key().data().type() != KeyData::KEY_TYPE_PASSWORD &&
+      authorization_request.key().data().type() != KeyData::KEY_TYPE_KIOSK) {
+    // AuthSession::Authenticate is only supported for two types of cases
+    return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
   }
 
-  code = auth_factor_->AuthenticateAuthFactor(*credentials, is_ephemeral_user_);
-  if (code == MOUNT_ERROR_NONE) {
-    status_ = AuthStatus::kAuthStatusAuthenticated;
+  // Store key data in current auth_factor for future use.
+  key_data_ = credentials->key_data();
+
+  if (!is_ephemeral_user_) {
+    // A persistent mount will always have a persistent key on disk. Here
+    // keyset_management tries to fetch that persistent credential.
+    MountError error = MOUNT_ERROR_NONE;
+    // TODO(dlunev): fix conditional error when we switch to StatusOr.
+    vault_keyset_ = keyset_management_->GetValidKeyset(*credentials, &error);
+    if (!vault_keyset_) {
+      return MountErrorToCryptohomeError(
+          error == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : error);
+    }
+    // Add the missing fields in the keyset, if any, and resave.
+    keyset_management_->ReSaveKeysetIfNeeded(*credentials, vault_keyset_.get());
   }
+
+  // Set the credential verifier for this credential.
+  credential_verifier_.reset(new ScryptVerifier());
+  credential_verifier_->Set(credentials->passkey());
+
+  status_ = AuthStatus::kAuthStatusAuthenticated;
+
   return MountErrorToCryptohomeError(code);
 }
 
 std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
-  return auth_factor_->TakeCredentialVerifier();
+  return std::move(credential_verifier_);
 }
 
 // static
