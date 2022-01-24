@@ -9063,6 +9063,26 @@ TPM_RC Tpm::ParseResponse_GetTestResult(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_data_bytes;
   rc = Parse_TPM2B_MAX_BUFFER(&buffer, out_data, &out_data_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -9072,19 +9092,6 @@ TPM_RC Tpm::ParseResponse_GetTestResult(
   rc = Parse_TPM_RC(&buffer, test_result, &test_result_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_data_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_data_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_MAX_BUFFER(&out_data_bytes, out_data, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -9352,23 +9359,30 @@ TPM_RC Tpm::ParseResponse_StartAuthSession(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string nonce_tpm_bytes;
   rc = Parse_TPM2B_NONCE(&buffer, nonce_tpm, &nonce_tpm_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = nonce_tpm_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    nonce_tpm_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_NONCE(&nonce_tpm_bytes, nonce_tpm, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -9835,6 +9849,26 @@ TPM_RC Tpm::ParseResponse_Create(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_private_bytes;
   rc = Parse_TPM2B_PRIVATE(&buffer, out_private, &out_private_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -9859,19 +9893,6 @@ TPM_RC Tpm::ParseResponse_Create(
   rc = Parse_TPMT_TK_CREATION(&buffer, creation_ticket, &creation_ticket_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_private_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_private_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_PRIVATE(&out_private_bytes, out_private, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -10126,23 +10147,30 @@ TPM_RC Tpm::ParseResponse_Load(const std::string& response,
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string name_bytes;
   rc = Parse_TPM2B_NAME(&buffer, name, &name_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = name_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    name_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_NAME(&name_bytes, name, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -10382,23 +10410,30 @@ TPM_RC Tpm::ParseResponse_LoadExternal(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string name_bytes;
   rc = Parse_TPM2B_NAME(&buffer, name, &name_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = name_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    name_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_NAME(&name_bytes, name, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -10606,6 +10641,26 @@ TPM_RC Tpm::ParseResponse_ReadPublic(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_public_bytes;
   rc = Parse_TPM2B_PUBLIC(&buffer, out_public, &out_public_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -10620,19 +10675,6 @@ TPM_RC Tpm::ParseResponse_ReadPublic(
   rc = Parse_TPM2B_NAME(&buffer, qualified_name, &qualified_name_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_public_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_public_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_PUBLIC(&out_public_bytes, out_public, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -10875,23 +10917,30 @@ TPM_RC Tpm::ParseResponse_ActivateCredential(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string cert_info_bytes;
   rc = Parse_TPM2B_DIGEST(&buffer, cert_info, &cert_info_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = cert_info_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    cert_info_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_DIGEST(&cert_info_bytes, cert_info, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -11133,6 +11182,26 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string credential_blob_bytes;
   rc = Parse_TPM2B_ID_OBJECT(&buffer, credential_blob, &credential_blob_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -11142,20 +11211,6 @@ TPM_RC Tpm::ParseResponse_MakeCredential(
   rc = Parse_TPM2B_ENCRYPTED_SECRET(&buffer, secret, &secret_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = credential_blob_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    credential_blob_bytes.replace(2, std::string::npos, tmp);
-    rc =
-        Parse_TPM2B_ID_OBJECT(&credential_blob_bytes, credential_blob, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -11367,23 +11422,30 @@ TPM_RC Tpm::ParseResponse_Unseal(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_data_bytes;
   rc = Parse_TPM2B_SENSITIVE_DATA(&buffer, out_data, &out_data_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_data_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_data_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_SENSITIVE_DATA(&out_data_bytes, out_data, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -11610,23 +11672,30 @@ TPM_RC Tpm::ParseResponse_ObjectChangeAuth(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_private_bytes;
   rc = Parse_TPM2B_PRIVATE(&buffer, out_private, &out_private_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_private_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_private_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_PRIVATE(&out_private_bytes, out_private, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -11877,6 +11946,26 @@ TPM_RC Tpm::ParseResponse_Duplicate(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string encryption_key_out_bytes;
   rc = Parse_TPM2B_DATA(&buffer, encryption_key_out, &encryption_key_out_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -11891,20 +11980,6 @@ TPM_RC Tpm::ParseResponse_Duplicate(
   rc = Parse_TPM2B_ENCRYPTED_SECRET(&buffer, out_sym_seed, &out_sym_seed_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = encryption_key_out_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    encryption_key_out_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_DATA(&encryption_key_out_bytes, encryption_key_out,
-                          nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -12170,6 +12245,26 @@ TPM_RC Tpm::ParseResponse_Rewrap(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_duplicate_bytes;
   rc = Parse_TPM2B_PRIVATE(&buffer, out_duplicate, &out_duplicate_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -12179,19 +12274,6 @@ TPM_RC Tpm::ParseResponse_Rewrap(
   rc = Parse_TPM2B_ENCRYPTED_SECRET(&buffer, out_sym_seed, &out_sym_seed_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_duplicate_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_duplicate_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_PRIVATE(&out_duplicate_bytes, out_duplicate, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -12460,23 +12542,30 @@ TPM_RC Tpm::ParseResponse_Import(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_private_bytes;
   rc = Parse_TPM2B_PRIVATE(&buffer, out_private, &out_private_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_private_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_private_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_PRIVATE(&out_private_bytes, out_private, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -12723,23 +12812,30 @@ TPM_RC Tpm::ParseResponse_RSA_Encrypt(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_data_bytes;
   rc = Parse_TPM2B_PUBLIC_KEY_RSA(&buffer, out_data, &out_data_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_data_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_data_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_PUBLIC_KEY_RSA(&out_data_bytes, out_data, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -12983,23 +13079,30 @@ TPM_RC Tpm::ParseResponse_RSA_Decrypt(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string message_bytes;
   rc = Parse_TPM2B_PUBLIC_KEY_RSA(&buffer, message, &message_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = message_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    message_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_PUBLIC_KEY_RSA(&message_bytes, message, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -13209,6 +13312,26 @@ TPM_RC Tpm::ParseResponse_ECDH_KeyGen(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string z_point_bytes;
   rc = Parse_TPM2B_ECC_POINT(&buffer, z_point, &z_point_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -13218,19 +13341,6 @@ TPM_RC Tpm::ParseResponse_ECDH_KeyGen(
   rc = Parse_TPM2B_ECC_POINT(&buffer, pub_point, &pub_point_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = z_point_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    z_point_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_ECC_POINT(&z_point_bytes, z_point, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -13451,23 +13561,30 @@ TPM_RC Tpm::ParseResponse_ECDH_ZGen(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_point_bytes;
   rc = Parse_TPM2B_ECC_POINT(&buffer, out_point, &out_point_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_point_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_point_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_ECC_POINT(&out_point_bytes, out_point, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -13918,6 +14035,26 @@ TPM_RC Tpm::ParseResponse_ZGen_2Phase(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_z1_bytes;
   rc = Parse_TPM2B_ECC_POINT(&buffer, out_z1, &out_z1_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -13927,19 +14064,6 @@ TPM_RC Tpm::ParseResponse_ZGen_2Phase(
   rc = Parse_TPM2B_ECC_POINT(&buffer, out_z2, &out_z2_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_z1_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_z1_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_ECC_POINT(&out_z1_bytes, out_z1, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -14190,6 +14314,26 @@ TPM_RC Tpm::ParseResponse_EncryptDecrypt(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_data_bytes;
   rc = Parse_TPM2B_MAX_BUFFER(&buffer, out_data, &out_data_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -14199,19 +14343,6 @@ TPM_RC Tpm::ParseResponse_EncryptDecrypt(
   rc = Parse_TPM2B_IV(&buffer, iv_out, &iv_out_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_data_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_data_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_MAX_BUFFER(&out_data_bytes, out_data, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -14451,6 +14582,26 @@ TPM_RC Tpm::ParseResponse_Hash(const std::string& response,
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_hash_bytes;
   rc = Parse_TPM2B_DIGEST(&buffer, out_hash, &out_hash_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -14460,19 +14611,6 @@ TPM_RC Tpm::ParseResponse_Hash(const std::string& response,
   rc = Parse_TPMT_TK_HASHCHECK(&buffer, validation, &validation_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_hash_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_hash_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_DIGEST(&out_hash_bytes, out_hash, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -14702,23 +14840,30 @@ TPM_RC Tpm::ParseResponse_HMAC(const std::string& response,
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_hmac_bytes;
   rc = Parse_TPM2B_DIGEST(&buffer, out_hmac, &out_hmac_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_hmac_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_hmac_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_DIGEST(&out_hmac_bytes, out_hmac, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -14921,23 +15066,30 @@ TPM_RC Tpm::ParseResponse_GetRandom(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string random_bytes_bytes;
   rc = Parse_TPM2B_DIGEST(&buffer, random_bytes, &random_bytes_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = random_bytes_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    random_bytes_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_DIGEST(&random_bytes_bytes, random_bytes, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -16040,6 +16192,26 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string result_bytes;
   rc = Parse_TPM2B_DIGEST(&buffer, result, &result_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -16049,19 +16221,6 @@ TPM_RC Tpm::ParseResponse_SequenceComplete(
   rc = Parse_TPMT_TK_HASHCHECK(&buffer, validation, &validation_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = result_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    result_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_DIGEST(&result_bytes, result, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -16554,6 +16713,26 @@ TPM_RC Tpm::ParseResponse_Certify(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string certify_info_bytes;
   rc = Parse_TPM2B_ATTEST(&buffer, certify_info, &certify_info_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -16563,19 +16742,6 @@ TPM_RC Tpm::ParseResponse_Certify(
   rc = Parse_TPMT_SIGNATURE(&buffer, signature, &signature_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = certify_info_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    certify_info_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_ATTEST(&certify_info_bytes, certify_info, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -16843,6 +17009,26 @@ TPM_RC Tpm::ParseResponse_CertifyCreation(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string certify_info_bytes;
   rc = Parse_TPM2B_ATTEST(&buffer, certify_info, &certify_info_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -16852,19 +17038,6 @@ TPM_RC Tpm::ParseResponse_CertifyCreation(
   rc = Parse_TPMT_SIGNATURE(&buffer, signature, &signature_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = certify_info_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    certify_info_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_ATTEST(&certify_info_bytes, certify_info, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -17121,6 +17294,26 @@ TPM_RC Tpm::ParseResponse_Quote(const std::string& response,
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string quoted_bytes;
   rc = Parse_TPM2B_ATTEST(&buffer, quoted, &quoted_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -17130,19 +17323,6 @@ TPM_RC Tpm::ParseResponse_Quote(const std::string& response,
   rc = Parse_TPMT_SIGNATURE(&buffer, signature, &signature_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = quoted_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    quoted_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_ATTEST(&quoted_bytes, quoted, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -17401,6 +17581,26 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string audit_info_bytes;
   rc = Parse_TPM2B_ATTEST(&buffer, audit_info, &audit_info_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -17410,19 +17610,6 @@ TPM_RC Tpm::ParseResponse_GetSessionAuditDigest(
   rc = Parse_TPMT_SIGNATURE(&buffer, signature, &signature_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = audit_info_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    audit_info_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_ATTEST(&audit_info_bytes, audit_info, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -17682,6 +17869,26 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string audit_info_bytes;
   rc = Parse_TPM2B_ATTEST(&buffer, audit_info, &audit_info_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -17691,19 +17898,6 @@ TPM_RC Tpm::ParseResponse_GetCommandAuditDigest(
   rc = Parse_TPMT_SIGNATURE(&buffer, signature, &signature_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = audit_info_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    audit_info_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_ATTEST(&audit_info_bytes, audit_info, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -17959,6 +18153,26 @@ TPM_RC Tpm::ParseResponse_GetTime(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string time_info_bytes;
   rc = Parse_TPM2B_ATTEST(&buffer, time_info, &time_info_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -17968,19 +18182,6 @@ TPM_RC Tpm::ParseResponse_GetTime(
   rc = Parse_TPMT_SIGNATURE(&buffer, signature, &signature_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = time_info_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    time_info_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_ATTEST(&time_info_bytes, time_info, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -21049,6 +21250,26 @@ TPM_RC Tpm::ParseResponse_PolicySigned(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string timeout_bytes;
   rc = Parse_TPM2B_TIMEOUT(&buffer, timeout, &timeout_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -21058,19 +21279,6 @@ TPM_RC Tpm::ParseResponse_PolicySigned(
   rc = Parse_TPMT_TK_AUTH(&buffer, policy_ticket, &policy_ticket_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = timeout_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    timeout_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_TIMEOUT(&timeout_bytes, timeout, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -21347,6 +21555,26 @@ TPM_RC Tpm::ParseResponse_PolicySecret(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string timeout_bytes;
   rc = Parse_TPM2B_TIMEOUT(&buffer, timeout, &timeout_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -21356,19 +21584,6 @@ TPM_RC Tpm::ParseResponse_PolicySecret(
   rc = Parse_TPMT_TK_AUTH(&buffer, policy_ticket, &policy_ticket_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = timeout_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    timeout_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_TIMEOUT(&timeout_bytes, timeout, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -24737,23 +24952,30 @@ TPM_RC Tpm::ParseResponse_PolicyGetDigest(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string policy_digest_bytes;
   rc = Parse_TPM2B_DIGEST(&buffer, policy_digest, &policy_digest_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = policy_digest_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    policy_digest_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_DIGEST(&policy_digest_bytes, policy_digest, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -25222,6 +25444,26 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string out_public_bytes;
   rc = Parse_TPM2B_PUBLIC(&buffer, out_public, &out_public_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -25246,19 +25488,6 @@ TPM_RC Tpm::ParseResponse_CreatePrimary(
   rc = Parse_TPM2B_NAME(&buffer, name, &name_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = out_public_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    out_public_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_PUBLIC(&out_public_bytes, out_public, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -28279,23 +28508,30 @@ TPM_RC Tpm::ParseResponse_FirmwareRead(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string fu_data_bytes;
   rc = Parse_TPM2B_MAX_BUFFER(&buffer, fu_data, &fu_data_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = fu_data_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    fu_data_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_MAX_BUFFER(&fu_data_bytes, fu_data, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -31003,6 +31239,26 @@ TPM_RC Tpm::ParseResponse_NV_ReadPublic(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string nv_public_bytes;
   rc = Parse_TPM2B_NV_PUBLIC(&buffer, nv_public, &nv_public_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -31012,19 +31268,6 @@ TPM_RC Tpm::ParseResponse_NV_ReadPublic(
   rc = Parse_TPM2B_NAME(&buffer, nv_name, &nv_name_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = nv_public_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    nv_public_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_NV_PUBLIC(&nv_public_bytes, nv_public, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -32570,23 +32813,30 @@ TPM_RC Tpm::ParseResponse_NV_Read(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string data_bytes;
   rc = Parse_TPM2B_MAX_NV_BUFFER(&buffer, data, &data_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = data_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    data_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_MAX_NV_BUFFER(&data_bytes, data, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }
@@ -33287,6 +33537,26 @@ TPM_RC Tpm::ParseResponse_NV_Certify(
       return TRUNKS_RC_AUTHORIZATION_FAILED;
     }
   }
+  if (tag == TPM_ST_SESSIONS) {
+    CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
+    // Decrypt just the parameter data, not the size.
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
+      return TRUNKS_RC_ENCRYPTION_FAILED;
+    }
+    buffer.replace(2, size, decrypted_data);
+  }
   std::string certify_info_bytes;
   rc = Parse_TPM2B_ATTEST(&buffer, certify_info, &certify_info_bytes);
   if (rc != TPM_RC_SUCCESS) {
@@ -33296,19 +33566,6 @@ TPM_RC Tpm::ParseResponse_NV_Certify(
   rc = Parse_TPMT_SIGNATURE(&buffer, signature, &signature_bytes);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
-  }
-  if (tag == TPM_ST_SESSIONS) {
-    CHECK(authorization_delegate) << "Authorization delegate missing!";
-    // Decrypt just the parameter data, not the size.
-    std::string tmp = certify_info_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
-      return TRUNKS_RC_ENCRYPTION_FAILED;
-    }
-    certify_info_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_TPM2B_ATTEST(&certify_info_bytes, certify_info, nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
   }
   return TPM_RC_SUCCESS;
 }

@@ -1378,19 +1378,23 @@ TPM_RC Tpm::ParseResponse_%(method_name)s(%(method_args)s) {
   _DECRYPT_PARAMETER = """
   if (tag == TPM_ST_SESSIONS) {
     CHECK(authorization_delegate) << "Authorization delegate missing!";
+
+    // Parse the encrypted parameter size.
+    UINT16 size;
+    std::string size_buffer = buffer.substr(0, 2);
+    if (TPM_RC result = Parse_UINT16(&size_buffer, &size, nullptr); result) {
+      return result;
+    }
+    if (buffer.size() < 2 + size) {
+      return TPM_RC_INSUFFICIENT;
+    }
+
     // Decrypt just the parameter data, not the size.
-    std::string tmp = %(var_name)s_bytes.substr(2);
-    if (!authorization_delegate->DecryptResponseParameter(&tmp)) {
+    std::string decrypted_data = buffer.substr(2, size);
+    if (!authorization_delegate->DecryptResponseParameter(&decrypted_data)) {
       return TRUNKS_RC_ENCRYPTION_FAILED;
     }
-    %(var_name)s_bytes.replace(2, std::string::npos, tmp);
-    rc = Parse_%(var_type)s(
-        &%(var_name)s_bytes,
-        %(var_name)s,
-        nullptr);
-    if (rc != TPM_RC_SUCCESS) {
-      return rc;
-    }
+    buffer.replace(2, size, decrypted_data);
   }"""
   _RESPONSE_PARSER_END = """
   return TPM_RC_SUCCESS;
@@ -1582,14 +1586,11 @@ TPM_RC Tpm::%(method_name)sSync(%(method_args)s) {
     # Do authorization related stuff.
     out_file.write(self._AUTHORIZE_RESPONSE)
     # Parse response parameters.
+    if parameters and IsTPM2B(parameters[0]['type']):
+      out_file.write(self._DECRYPT_PARAMETER)
     for arg in parameters:
       out_file.write(self._PARSE_ARG_VAR % {'var_name': arg['name'],
                                             'var_type': arg['type']})
-    if parameters and IsTPM2B(parameters[0]['type']):
-      out_file.write(self._DECRYPT_PARAMETER % {'var_name':
-                                                parameters[0]['name'],
-                                                'var_type':
-                                                parameters[0]['type']})
     out_file.write(self._RESPONSE_PARSER_END)
 
   def OutputMethodImplementation(self, out_file):
