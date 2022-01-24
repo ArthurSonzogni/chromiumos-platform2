@@ -436,4 +436,225 @@ TEST(FusePathInodesTest, NodeStatCacheForget) {
   EXPECT_FALSE(inodes.GetStat(node->ino, &stat));
 }
 
+TEST(FusePathInodesTest, DeviceMakeFromName) {
+  InodeTable inodes;
+
+  // Make a device struct.
+  Device device = inodes.MakeFromName("mtp filesystem://escaped-url");
+  EXPECT_EQ("mtp", device.name);
+  EXPECT_EQ("filesystem://escaped-url", device.path);
+  EXPECT_EQ("rw", device.mode);
+  EXPECT_EQ(0, device.device);
+  EXPECT_EQ(0, device.ino);
+
+  // Make a device struct: read-only case.
+  device = inodes.MakeFromName("mtp filesystem://escaped-url ro");
+  EXPECT_EQ("mtp", device.name);
+  EXPECT_EQ("filesystem://escaped-url", device.path);
+  EXPECT_EQ("ro", device.mode);
+  EXPECT_EQ(0, device.device);
+  EXPECT_EQ(0, device.ino);
+}
+
+TEST(FusePathInodesTest, DeviceRootNode) {
+  InodeTable inodes;
+
+  // Get the root node.
+  Node* root = inodes.Lookup(1);
+  EXPECT_TRUE(root);
+  EXPECT_EQ("/", inodes.GetName(root->ino));
+  EXPECT_EQ("/", inodes.GetPath(root));
+  EXPECT_EQ(0, root->device);
+  EXPECT_EQ(0, root->parent);
+
+  // Root node has a device path name.
+  auto device_path = inodes.GetDevicePath(root);
+  EXPECT_EQ("/", device_path);
+
+  // Create a device for the root node.
+  Device device;
+  device.mode = "rw";
+  EXPECT_EQ(root, inodes.AttachDevice(0, device));
+  EXPECT_TRUE(device.path.empty());
+  EXPECT_TRUE(device.name.empty());
+  EXPECT_EQ("rw", device.mode);
+
+  // Root node and device ino numbers should match.
+  EXPECT_EQ(root->device, device.device);
+  EXPECT_EQ(root->ino, device.ino);
+
+  // Root node device path name should not change.
+  device_path = inodes.GetDevicePath(root);
+  EXPECT_EQ("/", device_path);
+
+  // Create a child of the root node.
+  Node* node = inodes.Create(1, "foo");
+  EXPECT_TRUE(node);
+  EXPECT_EQ("/foo", inodes.GetName(node->ino));
+  EXPECT_EQ("/foo", inodes.GetPath(node));
+  EXPECT_EQ(root->device, node->device);
+  EXPECT_EQ(0, node->device);
+  EXPECT_EQ(1, node->parent);
+  EXPECT_EQ(2, node->ino);
+
+  // Root child node has a device path name.
+  device_path = inodes.GetDevicePath(node);
+  EXPECT_EQ("/foo", device_path);
+
+  // Root device cannot be detached (root node cannot be deleted).
+  errno = 0;
+  EXPECT_EQ(1, device.ino);
+  EXPECT_FALSE(inodes.DetachDevice(device.ino));
+  EXPECT_EQ(EINVAL, errno);
+
+  // Root device can be re-attached though: here with a path name.
+  device.path = "filesystem://escaped-url";
+  EXPECT_EQ(root, inodes.AttachDevice(0, device));
+  EXPECT_EQ("filesystem://escaped-url", device.path);
+  EXPECT_TRUE(device.name.empty());
+  EXPECT_EQ("rw", device.mode);
+  EXPECT_EQ(root->device, device.device);
+  EXPECT_EQ(root->ino, device.ino);
+
+  // Device node paths should be prefixed by the path name.
+  device_path = inodes.GetDevicePath(root);
+  EXPECT_EQ("filesystem://escaped-url", device_path);
+  device_path = inodes.GetDevicePath(node);
+  EXPECT_EQ("filesystem://escaped-url/foo", device_path);
+
+  // Create a child of the child node.
+  Node* child = inodes.Create(2, "bar");
+  EXPECT_TRUE(child);
+  EXPECT_EQ("/bar", inodes.GetName(child->ino));
+  EXPECT_EQ("/foo/bar", inodes.GetPath(child));
+  EXPECT_EQ(root->device, node->device);
+  EXPECT_EQ(0, child->device);
+  EXPECT_EQ(2, child->parent);
+  EXPECT_EQ(3, child->ino);
+
+  // Device node paths should be prefixed by the path name.
+  device_path = inodes.GetDevicePath(child);
+  EXPECT_EQ("filesystem://escaped-url/foo/bar", device_path);
+}
+
+TEST(FusePathInodesTest, DeviceChildNode) {
+  InodeTable inodes;
+
+  // Get the root node.
+  Node* root = inodes.Lookup(1);
+  EXPECT_TRUE(root);
+  EXPECT_EQ(0, root->device);
+  EXPECT_EQ(0, root->parent);
+
+  // Create a device node child of the root node.
+  auto device = inodes.MakeFromName("mtp filesystem://escaped-url");
+  Node* node = inodes.AttachDevice(1, device);
+  EXPECT_TRUE(node);
+
+  // Attached child node should have a new device number.
+  EXPECT_EQ("mtp", device.name);
+  EXPECT_EQ("filesystem://escaped-url", device.path);
+  EXPECT_EQ(node->device, device.device);
+  EXPECT_EQ(node->ino, device.ino);
+  EXPECT_EQ(1, node->device);
+  EXPECT_EQ(1, node->parent);
+  EXPECT_EQ(2, node->ino);
+
+  // Attaching the device again should error: errno EEXIST.
+  errno = 0;
+  EXPECT_FALSE(inodes.AttachDevice(1, device));
+  EXPECT_EQ(EEXIST, errno);
+  EXPECT_EQ("mtp", device.name);
+  EXPECT_EQ("filesystem://escaped-url", device.path);
+  EXPECT_EQ(1, device.device);
+  EXPECT_EQ(2, device.ino);
+
+  // Device nodes can be found by node lookup.
+  EXPECT_EQ(node, inodes.Lookup(1, device.name.c_str()));
+  EXPECT_EQ(node, inodes.Lookup(node->ino));
+  EXPECT_EQ("/mtp", inodes.GetName(node->ino));
+
+  // Device node child path name includes the device name.
+  EXPECT_EQ("/mtp", inodes.GetPath(node));
+
+  // Device node device path names elide the device name.
+  auto device_path = inodes.GetDevicePath(node);
+  EXPECT_EQ("filesystem://escaped-url", device_path);
+
+  // Device node children should have the same device number.
+  Node* child = inodes.Create(2, "foo");
+  EXPECT_TRUE(child);
+  EXPECT_EQ("/foo", inodes.GetName(child->ino));
+  EXPECT_EQ(node->device, device.device);
+  EXPECT_EQ(1, child->device);
+  EXPECT_EQ(2, child->parent);
+  EXPECT_EQ(3, child->ino);
+
+  // Device node child path name includes the device name.
+  EXPECT_EQ("/mtp/foo", inodes.GetPath(child));
+
+  // Device node device path names elide the device name.
+  device_path = inodes.GetDevicePath(child);
+  EXPECT_EQ("filesystem://escaped-url/foo", device_path);
+
+  // Device node children should have the same device number.
+  Node* child_child = inodes.Create(3, "bar");
+  EXPECT_TRUE(child_child);
+  EXPECT_EQ("/bar", inodes.GetName(child_child->ino));
+  EXPECT_EQ(child_child->device, device.device);
+  EXPECT_EQ(1, child_child->device);
+  EXPECT_EQ(3, child_child->parent);
+  EXPECT_EQ(4, child_child->ino);
+
+  // Device node child path name includes the device name.
+  EXPECT_EQ("/mtp/foo/bar", inodes.GetPath(child_child));
+
+  // Device node device path names elide the device name.
+  device_path = inodes.GetDevicePath(child_child);
+  EXPECT_EQ("filesystem://escaped-url/foo/bar", device_path);
+
+  // Device nodes must attach to the root node.
+  errno = 0;
+  EXPECT_FALSE(inodes.AttachDevice(3, device));
+  EXPECT_EQ(EINVAL, errno);
+
+  // Device nodes cannot be moved to a different device.
+  errno = 0;
+  EXPECT_FALSE(inodes.Move(child, 1, "name"));
+  EXPECT_EQ(ENOTSUP, errno);
+  EXPECT_FALSE(inodes.Lookup(1, "name"));
+  errno = 0;
+  EXPECT_FALSE(inodes.Move(node, 1, "name"));
+  EXPECT_EQ(ENOTSUP, errno);
+  EXPECT_FALSE(inodes.Lookup(1, "name"));
+
+  // Create a child of the root node.
+  Node* baz = inodes.Create(1, "baz");
+  EXPECT_EQ(0, baz->device);
+  EXPECT_EQ(1, baz->parent);
+  EXPECT_EQ(5, baz->ino);
+
+  // Detach the device nodes from the inode table.
+  EXPECT_EQ(2, device.ino);
+  EXPECT_TRUE(inodes.DetachDevice(device.ino));
+  EXPECT_FALSE(inodes.Lookup(4));
+  EXPECT_FALSE(inodes.Lookup(3));
+  EXPECT_FALSE(inodes.Lookup(2));
+
+  // Detaching the device again should error: errno EINVAL.
+  errno = 0;
+  EXPECT_EQ(2, device.ino);
+  EXPECT_FALSE(inodes.DetachDevice(device.ino));
+  EXPECT_EQ(EINVAL, errno);
+
+  // Root and baz nodes should remain in the inode table.
+  EXPECT_TRUE(inodes.Lookup(1));
+  EXPECT_TRUE(inodes.Lookup(5));
+
+  // Device nodes must attach to the root node.
+  errno = 0;
+  EXPECT_FALSE(inodes.AttachDevice(5, device));
+  EXPECT_EQ(EINVAL, errno);
+}
+
 }  // namespace fusebox

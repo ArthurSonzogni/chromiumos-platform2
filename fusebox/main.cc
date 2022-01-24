@@ -16,8 +16,8 @@
 #include <base/no_destructor.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
-
 #include <brillo/daemons/dbus_daemon.h>
+#include <brillo/errors/error_codes.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
@@ -556,33 +556,51 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     request->ReplyOk();
   }
 
-  bool AttachStorage(brillo::ErrorPtr*, const std::string& name) override {
-    VLOG(1) << "attach-storage " << name;
-
-    Node* node = GetInodeTable().Ensure(FUSE_ROOT_ID, name.c_str());
-    if (!node) {
-      PLOG(ERROR) << "attach-storage " << name;
-      return false;
-    }
-
-    if (!node->device) {
-      node->device = ++device_;
-      CHECK(node->device) << "device wrapped";
-    }
-
-    return true;
+  bool AttachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
+    int error = AttachStorage(name);
+    if (error)
+      brillo::errors::system::AddSystemError(ptr, FROM_HERE, error);
+    return !error;
   }
 
-  bool DetachStorage(brillo::ErrorPtr*, const std::string& name) override {
+  int AttachStorage(const std::string& name) {
+    VLOG(1) << "attach-storage " << name;
+
+    Device device = GetInodeTable().MakeFromName(name);
+    Node* node = GetInodeTable().AttachDevice(FUSE_ROOT_ID, device);
+    if (!node)
+      return errno;
+
+    struct stat stat = MakeTimeStat(S_IFDIR | 0770);
+    stat = MakeStat(node->ino, stat, device.mode == "ro");
+    device_dir_entry_[device.name] = {node->ino, device.name, stat.st_mode};
+    GetInodeTable().SetStat(node->ino, stat);
+
+    if (fuse_->debug)
+      ShowStat(stat, device.name);
+    return 0;
+  }
+
+  bool DetachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
+    int error = DetachStorage(name);
+    if (error)
+      brillo::errors::system::AddSystemError(ptr, FROM_HERE, error);
+    return !error;
+  }
+
+  int DetachStorage(const std::string& name) {
     VLOG(1) << "detach-storage " << name;
 
-    Node* node = GetInodeTable().Lookup(FUSE_ROOT_ID, name.c_str());
-    if (!node)
-      return true;
+    auto it = device_dir_entry_.find(name);
+    if (it == device_dir_entry_.end())
+      return errno = ENOENT;
 
-    // TODO(crbug.com/1289493): remove all node->device nodes from inode table.
-    CHECK(node->device);
-    return false;
+    ino_t device_ino = it->second.ino;
+    if (!GetInodeTable().DetachDevice(device_ino))
+      return errno;
+
+    device_dir_entry_.erase(it);
+    return 0;
   }
 
  private:
@@ -595,8 +613,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   // D-Bus.
   scoped_refptr<dbus::Bus> bus_;
 
-  // Device number allocator.
-  dev_t device_ = 0;
+  // Map device name to DirEntry.
+  std::map<std::string, struct DirEntry> device_dir_entry_;
 
   // Fuse mount: not owned.
   FuseMount* fuse_ = nullptr;

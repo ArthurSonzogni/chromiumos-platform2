@@ -4,7 +4,7 @@
 
 #include "fusebox/fuse_path_inodes.h"
 
-#include <deque>
+#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -49,7 +49,7 @@ Node* CreateNode(ino_t parent, const std::string& child, ino_t ino) {
 
 namespace fusebox {
 
-InodeTable::InodeTable() : ino_(0), stat_cache_(1024) {
+InodeTable::InodeTable() : stat_cache_(1024) {
   root_node_ = InsertNode(CreateNode(0, "/", CreateIno()));
 }
 
@@ -67,8 +67,8 @@ Node* InodeTable::Create(ino_t parent, const char* name) {
   if (child.empty() || !parent)
     return NodeError(EINVAL);
 
-  auto parent_node = node_map_.find(parent);
-  if (parent_node == node_map_.end())
+  auto parent_it = node_map_.find(parent);
+  if (parent_it == node_map_.end())
     return NodeError(EINVAL);
 
   auto p = parent_map_.find(std::to_string(parent).append(child));
@@ -76,7 +76,7 @@ Node* InodeTable::Create(ino_t parent, const char* name) {
     return NodeError(EEXIST);
 
   Node* node = InsertNode(CreateNode(parent, child, CreateIno()));
-  node->device = parent_node->second->device;
+  node->device = parent_it->second->device;
   return node;
 }
 
@@ -109,8 +109,8 @@ Node* InodeTable::Ensure(ino_t parent, const char* name, uint64_t ref) {
   if (child.empty() || !parent)
     return NodeError(EINVAL);
 
-  auto parent_node = node_map_.find(parent);
-  if (parent_node == node_map_.end())
+  auto parent_it = node_map_.find(parent);
+  if (parent_it == node_map_.end())
     return NodeError(EINVAL);
 
   auto p = parent_map_.find(std::to_string(parent).append(child));
@@ -120,7 +120,7 @@ Node* InodeTable::Ensure(ino_t parent, const char* name, uint64_t ref) {
   }
 
   Node* node = InsertNode(CreateNode(parent, child, CreateIno()));
-  node->device = parent_node->second->device;
+  node->device = parent_it->second->device;
   node->refcount += ref;
   return node;
 }
@@ -128,7 +128,8 @@ Node* InodeTable::Ensure(ino_t parent, const char* name, uint64_t ref) {
 Node* InodeTable::Move(Node* node, ino_t parent, const char* name) {
   CHECK_NE(node, root_node_);
 
-  if (node_map_.find(parent) == node_map_.end())
+  auto parent_it = node_map_.find(parent);
+  if (parent_it == node_map_.end())
     return NodeError(EINVAL);
 
   std::string child = GetParentChildName(name);
@@ -138,6 +139,9 @@ Node* InodeTable::Move(Node* node, ino_t parent, const char* name) {
   auto p = parent_map_.find(std::to_string(parent).append(child));
   if (p != parent_map_.end())
     return NodeError(EEXIST);
+
+  if (parent_it->second->device != node->device)
+    return NodeError(ENOTSUP);  // cross-device move
 
   RemoveNode(node);
   node->parent = parent;
@@ -243,6 +247,109 @@ Node* InodeTable::RemoveNode(Node* node) {
   node_map_.erase(n);
 
   return node;
+}
+
+Device InodeTable::MakeFromName(std::string name) const {
+  Device device;
+
+  const auto split_apart = [](std::string name) {
+    char* source = const_cast<char*>(name.c_str());
+    std::vector<std::string> parts;
+    for (char* part; (part = strtok_r(source, " ", &source));)
+      parts.push_back(part);
+    return parts;
+  };
+
+  const auto parts = split_apart(name);
+  if (parts.size() >= 1)
+    device.name = parts.at(0);
+  if (parts.size() >= 2)
+    device.path = parts.at(1);
+  device.mode = "rw";
+  if (parts.size() >= 3)
+    device.mode = parts.at(2);
+
+  return device;
+}
+
+dev_t InodeTable::CreateDev() {
+  dev_t dev = ++dev_;
+  CHECK(dev) << "devices wrapped";
+  return dev;
+}
+
+Node* InodeTable::AttachDevice(ino_t parent, struct Device& device) {
+  Node* node = nullptr;
+
+  if (parent == root_node_->ino) {
+    node = Create(root_node_->ino, device.name.c_str());
+  } else if (!parent) {
+    node = root_node_;
+  } else {  // Device node must attach to the root node.
+    return NodeError(EINVAL);
+  }
+
+  if (!node) {
+    DCHECK_NE(0, errno);
+    return nullptr;
+  }
+
+  device.device = 0;
+  if (node != root_node_)
+    device.device = node->device = CreateDev();
+  device.ino = node->ino;
+
+  device_map_[device.device] = device;
+  return node;
+}
+
+bool InodeTable::DetachDevice(ino_t ino) {
+  dev_t device = 0;
+  if (Node* node = Lookup(ino))
+    device = node->device;
+
+  auto it = device_map_.find(device);
+  if (!device || it == device_map_.end())
+    return errno = EINVAL, false;
+
+  for (Node* node : GetDeviceNodes(device))
+    Forget(node->ino);
+
+  device_map_.erase(it);
+  return true;
+}
+
+std::deque<Node*> InodeTable::GetDeviceNodes(dev_t device) const {
+  std::deque<Node*> nodes;
+
+  for (const auto& it : node_map_) {
+    Node* node = it.second.get();
+    if (device == node->device)
+      nodes.push_front(node);
+  }
+
+  return nodes;
+}
+
+std::string InodeTable::GetDevicePath(Node* node) {
+  DCHECK(node);
+
+  Device device;
+  auto it = device_map_.find(node->device);
+  if (it != device_map_.end())
+    device = it->second;
+
+  // Remove the device.name from the path.
+  std::string path = GetPath(node);
+  if (device.device && !device.name.empty())
+    path = path.substr(1 + device.name.size());
+
+  // Add the device.path prefix if needed.
+  if (path != "/")
+    return path.insert(0, device.path);
+  if (!device.path.empty())
+    return device.path;
+  return path;
 }
 
 }  // namespace fusebox
