@@ -15,7 +15,7 @@
 #include "patchpanel/system.h"
 
 void OnSocketReadReady(patchpanel::NDProxy* proxy, int fd) {
-  proxy->ReadAndProcessOneFrame(fd);
+  proxy->ReadAndProcessOnePacket(fd);
 }
 
 void OnGuestIpDiscovery(const std::string& ifname, const std::string& ip6addr) {

@@ -102,9 +102,9 @@ class NDProxy {
   // ioctl. Return false if failed.
   bool Init();
 
-  // Read one frame from AF_PACKET socket |fd| and process it. If proxying is
-  // needed, translated frame is sent out through the same socket.
-  void ReadAndProcessOneFrame(int fd);
+  // Read one IP packet from AF_PACKET socket |fd| and process it. If proxying
+  // is needed, translated packets are sent out through the same socket.
+  void ReadAndProcessOnePacket(int fd);
 
   // NDProxy can trigger a callback upon receiving NA frame with unicast IPv6
   // address from guest OS interface.
