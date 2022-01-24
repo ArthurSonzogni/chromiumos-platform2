@@ -98,18 +98,11 @@ PangoAttribute* ToPangoAttribute(const PreeditStyle& style) {
 GtkWindow* GdkWindowToGtkWindow(GdkWindow* window) {
   if (!window)
     return nullptr;
-  // TODO(timloh): This doesn't fully work yet (e.g. click the Open button in
-  // gedit). From GTK 3.24.19 (bullseye), set_client_window is changed to
-  // set_client_widget and this may no longer be necessary.
-  GdkWindow* toplevel = gdk_window_get_toplevel(window);
-  for (GList* list = gtk_window_list_toplevels(); list; list = list->next) {
-    GtkWindow* gtk_window = GTK_WINDOW(list->data);
-    if (gtk_widget_get_window(GTK_WIDGET(gtk_window)) == toplevel) {
-      return gtk_window;
-    }
-  }
-  g_warning("Failed to find GtkWindow matching GdkWindow.");
-  return nullptr;
+  GtkWidget* widget;
+  gdk_window_get_user_data(window, reinterpret_cast<void**>(&widget));
+  if (!widget || !GTK_IS_WINDOW(widget))
+    return nullptr;
+  return GTK_WINDOW(widget);
 }
 
 }  // namespace
@@ -130,8 +123,20 @@ CrosGtkIMContext::CrosGtkIMContext()
 CrosGtkIMContext::~CrosGtkIMContext() = default;
 
 void CrosGtkIMContext::SetClientWindow(GdkWindow* window) {
-  g_set_object(&window_, window);
-  g_set_object(&gtk_window_, GdkWindowToGtkWindow(window));
+  if (window) {
+    GdkWindow* toplevel = gdk_window_get_effective_toplevel(window);
+    g_set_object(&gdk_window_, window);
+    g_set_object(&top_level_gdk_window_, toplevel);
+    g_set_object(&top_level_gtk_window_, GdkWindowToGtkWindow(toplevel));
+    if (!top_level_gdk_window_)
+      g_warning("Top-level GdkWindow was null");
+    if (!top_level_gtk_window_)
+      g_warning("Top-level GtkWindow was null");
+  } else {
+    g_set_object(&gdk_window_, nullptr);
+    g_set_object(&top_level_gdk_window_, nullptr);
+    g_set_object(&top_level_gtk_window_, nullptr);
+  }
 }
 
 void CrosGtkIMContext::GetPreeditString(char** preedit,
@@ -157,12 +162,13 @@ gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* event) {
 }
 
 void CrosGtkIMContext::FocusIn() {
-  if (!window_) {
+  if (!top_level_gdk_window_) {
     g_warning("Received focus_in event without active window.");
     return;
   }
 
-  wl_surface* surface = gdk_wayland_window_get_wl_surface(window_);
+  wl_surface* surface =
+      gdk_wayland_window_get_wl_surface(top_level_gdk_window_);
   if (!surface) {
     g_warning("GdkWindow doesn't have an associated wl_surface.");
     return;
@@ -188,11 +194,11 @@ void CrosGtkIMContext::Reset() {
 }
 
 void CrosGtkIMContext::SetCursorLocation(GdkRectangle* area) {
-  if (!window_)
+  if (!gdk_window_)
     return;
 
   int offset_x = 0, offset_y = 0;
-  gdk_window_get_origin(window_, &offset_x, &offset_y);
+  gdk_window_get_origin(gdk_window_, &offset_x, &offset_y);
 
   backend_->SetCursorLocation(offset_x + area->x, offset_y + area->y,
                               area->width, area->height);
@@ -262,7 +268,7 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
     return;
   }
 
-  if (!context_->window_ || !context_->gtk_window_)
+  if (!context_->gdk_window_ || !context_->top_level_gtk_window_)
     return;
 
   // TODO(timloh): Chrome appears to only send press events currently.
@@ -271,7 +277,7 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
 
   GdkEventKey* event = reinterpret_cast<GdkEventKey*>(raw_event);
   // Ref is dropped in gdk_event_free.
-  g_set_object(&event->window, context_->window_);
+  g_set_object(&event->window, context_->gdk_window_);
   event->send_event = true;
   event->time = GDK_CURRENT_TIME;
   event->keyval = keysym;
@@ -300,8 +306,8 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   event->state = 0;
 
   bool result;
-  g_signal_emit_by_name(context_->gtk_window_, "key-press-event", event,
-                        &result);
+  g_signal_emit_by_name(context_->top_level_gtk_window_, "key-press-event",
+                        event, &result);
   if (!result)
     g_warning("Failed to send key press event.");
 

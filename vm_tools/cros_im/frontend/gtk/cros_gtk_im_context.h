@@ -65,8 +65,9 @@ class CrosGtkIMContext : public GtkIMContext {
   };
 
   // Ref counted
-  GdkWindow* window_ = nullptr;
-  GtkWindow* gtk_window_ = nullptr;
+  GdkWindow* gdk_window_ = nullptr;
+  GdkWindow* top_level_gdk_window_ = nullptr;
+  GtkWindow* top_level_gtk_window_ = nullptr;
 
   std::string preedit_;
   int32_t preedit_cursor_pos_ = 0;

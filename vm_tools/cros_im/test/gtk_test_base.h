@@ -43,6 +43,14 @@ class GtkTestBase : public ::testing::Test {
     Gtk::Main::quit();
   }
 
+  // Gtk::TextView or Gtk::Entry
+  template <typename T>
+  void RunAndExpectBufferChangeTo(T* text_widget_, const std::string& expect) {
+    RunUntilSignal(
+        text_widget_->get_buffer()->property_text().signal_changed());
+    EXPECT_EQ(text_widget_->get_buffer()->get_text(), expect);
+  }
+
   Gtk::Main main_;
 
   sigc::connection connection_;
@@ -60,15 +68,8 @@ class GtkSimpleTextViewTest : public GtkTestBase {
   ~GtkSimpleTextViewTest() override = default;
 
  protected:
-  std::string GetText() { return text_view_.get_buffer()->get_text(); }
-
-  void RunUntilTextChanged() {
-    RunUntilSignal(text_view_.get_buffer()->property_text().signal_changed());
-  }
-
   void RunAndExpectTextChangeTo(const std::string& expect) {
-    RunUntilTextChanged();
-    EXPECT_EQ(GetText(), expect);
+    RunAndExpectBufferChangeTo(&text_view_, expect);
   }
 
   Gtk::Window window_;
