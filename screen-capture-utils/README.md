@@ -76,3 +76,12 @@ To run unit-tests
 ```
 $ FEATURES=test emerge-$BOARD screen-capture-utils
 ```
+
+### Running with more logs
+
+With extra verbosity kmsvnc outputs things like fps logs. Use vmodule flag to
+enable such extra logging.
+
+```
+kmsvnc --vmodule=kmsvnc=2
+```
