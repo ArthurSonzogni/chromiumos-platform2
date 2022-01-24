@@ -343,4 +343,42 @@ void UpdateRoFirmwareStateHandler::Reboot() {
   }
 }
 
+namespace fake {
+
+FakeUpdateRoFirmwareStateHandler::FakeUpdateRoFirmwareStateHandler(
+    scoped_refptr<JsonStore> json_store)
+    : BaseStateHandler(json_store) {}
+
+RmadErrorCode FakeUpdateRoFirmwareStateHandler::InitializeState() {
+  if (!state_.has_update_ro_firmware()) {
+    auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
+    update_ro_firmware->set_optional(true);
+    state_.set_allocated_update_ro_firmware(update_ro_firmware.release());
+  }
+
+  status_signal_timer_.Start(
+      FROM_HERE, kPollInterval, this,
+      &FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal);
+
+  return RMAD_ERROR_OK;
+}
+
+void FakeUpdateRoFirmwareStateHandler::CleanUpState() {
+  if (status_signal_timer_.IsRunning()) {
+    status_signal_timer_.Stop();
+  }
+}
+
+BaseStateHandler::GetNextStateCaseReply
+FakeUpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
+  return NextStateCaseWrapper(RmadState::StateCase::kUpdateDeviceInfo);
+}
+
+void FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal() {
+  update_ro_firmware_status_signal_sender_->Run(
+      RMAD_UPDATE_RO_FIRMWARE_COMPLETE);
+}
+
+}  // namespace fake
+
 }  // namespace rmad
