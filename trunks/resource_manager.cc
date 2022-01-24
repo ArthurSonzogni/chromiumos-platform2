@@ -23,6 +23,12 @@
   (((c) == TPM_CC_VENDOR_SPECIFIC_MASK) || \
    ((c) == TPM_CC_CR50_EXTENSION_COMMAND))  // NOLINT(whitespace/indent)
 
+#define IS_TPM2_STD_CMD(x) \
+  ((x) >= trunks::TPM_CC_FIRST && (x) <= trunks::TPM_CC_LAST)
+#define IS_TPM2_EXT_CMD(x) \
+  ((x) >= trunks::TPM_CCE_FIRST && (x) <= trunks::TPM_CCE_LAST)
+#define IS_TPM2_CMD(x) (IS_TPM2_STD_CMD(x) || IS_TPM2_EXT_CMD(x))
+
 namespace {
 
 const int kMaxSuspendDurationSec = 10;

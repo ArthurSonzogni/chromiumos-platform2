@@ -379,12 +379,6 @@ class CommandTransceiver;
 #define HASH_COUNT 5
 #endif
 
-#define IS_TPM2_STD_CMD(x) \
-  ((x) >= trunks::TPM_CC_FIRST && (x) <= trunks::TPM_CC_LAST)
-#define IS_TPM2_EXT_CMD(x) \
-  ((x) >= trunks::TPM_CCE_FIRST && (x) <= trunks::TPM_CCE_LAST)
-#define IS_TPM2_CMD(x) (IS_TPM2_STD_CMD(x) || IS_TPM2_EXT_CMD(x))
-
 typedef uint8_t UINT8;
 typedef uint8_t BYTE;
 typedef int8_t INT8;
