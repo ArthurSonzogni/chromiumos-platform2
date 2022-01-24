@@ -84,7 +84,7 @@ TEST_F(ReportQueueFactoryTest, CreateAndGetQueueUsingDMToken) {
     reporting::ReportQueueFactory::Create(
         /*dm_token_value=*/"TOKEN", destination_,
         consumer_->GetReportQueueSetter(&set_waiter));
-    EXPECT_CALL(*provider_.get(), OnInitCompleted()).Times(1);
+    EXPECT_CALL(*provider_.get(), OnInitCompletedMock()).Times(1);
     provider_->ExpectCreateNewQueueAndReturnNewMockQueue(1);
   }
   // We expect the report queue to be existing in the consumer.
@@ -99,7 +99,7 @@ TEST_F(ReportQueueFactoryTest, CreateAndGetQueue) {
     reporting::ReportQueueFactory::Create(
         EventType::kDevice, destination_,
         consumer_->GetReportQueueSetter(&set_waiter));
-    EXPECT_CALL(*provider_.get(), OnInitCompleted()).Times(1);
+    EXPECT_CALL(*provider_.get(), OnInitCompletedMock()).Times(1);
     provider_->ExpectCreateNewQueueAndReturnNewMockQueue(1);
   }
   // We expect the report queue to be existing in the consumer.
@@ -113,7 +113,7 @@ TEST_F(ReportQueueFactoryTest, CreateQueueWithInvalidConfig) {
       EventType::kDevice, Destination::UNDEFINED_DESTINATION,
       consumer_->GetReportQueueSetter(nullptr));
   // Expect failure before it gets to the report queue provider
-  EXPECT_CALL(*provider_.get(), OnInitCompleted()).Times(0);
+  EXPECT_CALL(*provider_.get(), OnInitCompletedMock()).Times(0);
   // We do not expect the report queue to be existing in the consumer.
   EXPECT_FALSE(consumer_->GetReportQueue());
 }
@@ -141,7 +141,7 @@ TEST_F(ReportQueueFactoryTest, EmptyDmToken) {
     test::TestCallbackAutoWaiter set_waiter;
     reporting::ReportQueueFactory::Create(
         "", destination_, consumer_->GetReportQueueSetter(&set_waiter));
-    EXPECT_CALL(*provider_.get(), OnInitCompleted()).Times(1);
+    EXPECT_CALL(*provider_.get(), OnInitCompletedMock()).Times(1);
     provider_->ExpectCreateNewQueueAndReturnNewMockQueue(1);
   }
   // We expect the report queue to be existing in the consumer.
@@ -162,7 +162,7 @@ TEST_F(ReportQueueFactoryTest, SameProviderForMultipleThreads) {
     reporting::ReportQueueFactory::Create(
         EventType::kUser, destination_,
         consumer2->GetReportQueueSetter(&set_waiter));
-    EXPECT_CALL(*provider_.get(), OnInitCompleted()).Times(1);
+    EXPECT_CALL(*provider_.get(), OnInitCompletedMock()).Times(1);
     provider_->ExpectCreateNewQueueAndReturnNewMockQueue(2);
   }
   // We expect the report queue to be existing in the consumer.

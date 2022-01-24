@@ -91,7 +91,8 @@ ReportQueueFactory::CreateSpeculativeReportQueue(
       ::reporting::ReportQueueProvider::CreateSpeculativeQueue(
           std::move(config_result.ValueOrDie()));
   if (!speculative_queue_result.ok()) {
-    DVLOG(1) << "Failed to create speculative queue";
+    DVLOG(1) << "Failed to create speculative queue: "
+             << speculative_queue_result.status();
     return std::unique_ptr<::reporting::ReportQueue, base::OnTaskRunnerDeleter>(
         nullptr,
         base::OnTaskRunnerDeleter(base::SequencedTaskRunnerHandle::Get()));
@@ -123,7 +124,8 @@ ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
       ::reporting::ReportQueueProvider::CreateSpeculativeQueue(
           std::move(config_result.ValueOrDie()));
   if (!speculative_queue_result.ok()) {
-    DVLOG(1) << "Failed to create speculative queue";
+    DVLOG(1) << "Failed to create speculative queue: "
+             << speculative_queue_result.status();
     return std::unique_ptr<::reporting::ReportQueue, base::OnTaskRunnerDeleter>(
         nullptr,
         base::OnTaskRunnerDeleter(base::SequencedTaskRunnerHandle::Get()));
