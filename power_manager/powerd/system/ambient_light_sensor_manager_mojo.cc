@@ -377,9 +377,9 @@ void AmbientLightSensorManagerMojo::SetSensorDeviceMojo(Sensor* sensor,
   DCHECK(sensor->iio_device_id.has_value());
 
   mojo::Remote<cros::mojom::SensorDevice> sensor_device_remote;
-  DCHECK(sensor_service_handler_->GetDevice(
+  sensor_service_handler_->GetDevice(
       sensor->iio_device_id.value(),
-      sensor_device_remote.BindNewPipeAndPassReceiver()));
+      sensor_device_remote.BindNewPipeAndPassReceiver());
 
   sensor_device_remote.set_disconnect_with_reason_handler(
       base::BindOnce(&AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect,

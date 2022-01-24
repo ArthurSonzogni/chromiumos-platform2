@@ -88,15 +88,13 @@ void SensorServiceHandler::RemoveObserver(
   observers_.RemoveObserver(observer);
 }
 
-bool SensorServiceHandler::GetDevice(
+void SensorServiceHandler::GetDevice(
     int32_t iio_device_id,
     mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!sensor_service_remote_.is_bound())
-    return false;
+  DCHECK(sensor_service_remote_.is_bound());
 
   sensor_service_remote_->GetDevice(iio_device_id, std::move(pending_receiver));
-  return true;
 }
 
 void SensorServiceHandler::OnSensorHalClientDisconnect() {

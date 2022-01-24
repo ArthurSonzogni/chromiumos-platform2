@@ -48,9 +48,8 @@ class SensorServiceHandler
   void AddObserver(SensorServiceHandlerObserver* observer);
   void RemoveObserver(SensorServiceHandlerObserver* observer);
 
-  // If |sensor_service_remote_| is bound, calls |SensorService::GetDevice| and
-  // returns true. Returns false if not.
-  bool GetDevice(
+  // Passes |pending_receiver| to |SensorService::GetDevice|.
+  void GetDevice(
       int32_t iio_device_id,
       mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver);
 
