@@ -332,6 +332,9 @@
   <summary>
     Project for rmad to record Shimless RMA metrics. The metrics of the whole
     RMA procedure are only recorded once after it is completed or aborted.
+
+    Note: this project skips the platform2-side UMA consent check for technical
+    reasons, and relies on the chromium-side consent check instead.
   </summary>
 
   <event name="ShimlessRmaReport">

@@ -75,8 +75,18 @@ Recorder::Recorder(const std::string& events_directory,
 Recorder::~Recorder() = default;
 
 bool Recorder::Record(const EventBase& event) {
-  if (!metrics_library_.AreMetricsEnabled())
+  // Do not record if the UMA consent is opted out, except for metrics for the
+  // rmad project.
+  //
+  // rmad metrics skip this check because, at the time of recording, the UMA
+  // consent status is undetermined. These metrics will be discarded if needed
+  // by the consent check in chromium, which happens when the events are read
+  // from disk.
+  if (event.project_name_hash() !=
+          events::rmad::ShimlessRmaReport::kProjectNameHash &&
+      !metrics_library_.AreMetricsEnabled()) {
     return false;
+  }
 
   EventsProto events_proto;
   StructuredEventProto* event_proto;
