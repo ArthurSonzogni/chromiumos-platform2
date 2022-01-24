@@ -8,14 +8,21 @@
 namespace diagnostics {
 
 // Status messages reported by the battery discharge routine.
-extern const char kBatteryDischargeRoutineSucceededMessage[];
-extern const char kBatteryDischargeRoutineNotDischargingMessage[];
-extern const char kBatteryDischargeRoutineFailedExcessiveDischargeMessage[];
-extern const char
-    kBatteryDischargeRoutineFailedReadingBatteryAttributesMessage[];
-extern const char kBatteryDischargeRoutineInvalidParametersMessage[];
-extern const char kBatteryDischargeRoutineCancelledMessage[];
-extern const char kBatteryDischargeRoutineRunningMessage[];
+inline constexpr auto kBatteryDischargeRoutineSucceededMessage =
+    "Battery discharge routine passed.";
+inline constexpr auto kBatteryDischargeRoutineNotDischargingMessage =
+    "Battery is not discharging.";
+inline constexpr auto kBatteryDischargeRoutineFailedExcessiveDischargeMessage =
+    "Battery discharge rate greater than maximum allowed discharge rate.";
+inline constexpr auto
+    kBatteryDischargeRoutineFailedReadingBatteryAttributesMessage =
+        "Failed to read battery attributes from sysfs.";
+inline constexpr auto kBatteryDischargeRoutineInvalidParametersMessage =
+    "Maximum allowed discharge percent must be less than or equal to 100.";
+inline constexpr auto kBatteryDischargeRoutineCancelledMessage =
+    "Battery discharge routine cancelled.";
+inline constexpr auto kBatteryDischargeRoutineRunningMessage =
+    "Battery discharge routine running.";
 
 }  // namespace diagnostics
 

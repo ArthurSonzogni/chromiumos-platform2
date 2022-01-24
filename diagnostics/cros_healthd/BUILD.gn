@@ -35,7 +35,6 @@ source_set("libcros_healthd") {
     "cros_healthd_routine_service.cc",
     "fetch_aggregator.cc",
     "routine_parameter_fetcher.cc",
-    "routine_parameter_fetcher_constants.cc",
   ]
 }
 
