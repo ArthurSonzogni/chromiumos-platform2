@@ -12,29 +12,35 @@ not be reset, so the IM module can not be re-initialized.
 
 This script should be invoked from the build directory, e.g.
     cros_im/build$ ninja && ../test/run_tests.py
+    cros_im/build$ ninja && ../test/run_tests.py --gtest_filter=*KeySym*
 """
 
+import argparse
 import os
 import subprocess
+import typing
 
 TEST_BINARY = './cros_im_tests'
 
-def verify_in_build_directory():
+def verify_in_build_directory() -> bool:
     if not os.path.isfile(TEST_BINARY):
         print(f'Could not find {TEST_BINARY}. '
               'This script should be run from a cros_im build directory.')
         return False
     return True
 
-def set_up_immodules_cache():
+def set_up_immodules_cache() -> None:
     with open('test_immodules.cache', 'w') as f:
         subprocess.call([
             '/usr/lib/x86_64-linux-gnu/libgtk-3-0/gtk-query-immodules-3.0',
             'libim_test_cros_gtk.so'
             ], stdout=f)
 
-def get_test_names():
-    stdout = subprocess.check_output([TEST_BINARY, '--gtest_list_tests'])
+def get_test_names(test_filter: typing.Optional[str]) -> typing.List[str]:
+    args = [TEST_BINARY, '--gtest_list_tests']
+    if test_filter is not None:
+        args.append(f'--gtest_filter={test_filter}')
+    stdout = subprocess.check_output(args)
     lines = stdout.decode().strip().split('\n')
     result = []
     assert lines[0].startswith('Running main() from ')
@@ -51,7 +57,7 @@ def get_test_names():
 
     return result
 
-def run_gtk3_wayland_tests():
+def run_gtk3_wayland_tests(test_filter: typing.Optional[str]) -> None:
     env_override = {
         'GTK_IM_MODULE_FILE': 'test_immodules.cache',
         'GTK_IM_MODULE': 'test-cros',
@@ -65,7 +71,7 @@ def run_gtk3_wayland_tests():
 
     successes = []
     failures = []
-    for test in get_test_names():
+    for test in get_test_names(test_filter):
         args = [TEST_BINARY, f'--gtest_filter={test}']
         print('='*80)
         print(f'Running: {env_override_str} {" ".join(args)}')
@@ -97,11 +103,16 @@ def run_gtk3_wayland_tests():
         for test in failures:
             print(f'- {test}')
 
-def main():
+def main() -> None:
     if not verify_in_build_directory():
         return
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--gtest_filter', help='Restrict test cases run')
+    args = parser.parse_args()
+
     set_up_immodules_cache()
-    run_gtk3_wayland_tests()
+    run_gtk3_wayland_tests(args.gtest_filter)
 
 if __name__ == '__main__':
     main()
