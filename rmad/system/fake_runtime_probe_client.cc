@@ -22,11 +22,7 @@ const ComponentsWithIdentifier kDefaultProbedComponents = {
     {RMAD_COMPONENT_TOUCHSCREEN, "fake_touchscreen"},
     {RMAD_COMPONENT_CELLULAR, "fake_cellular"},
     {RMAD_COMPONENT_ETHERNET, "fake_ethernet"},
-    {RMAD_COMPONENT_WIRELESS, "fake_wireless"},
-    {RMAD_COMPONENT_BASE_ACCELEROMETER, "fake_base_accelerometer"},
-    {RMAD_COMPONENT_LID_ACCELEROMETER, "fake_lid_accelerometer"},
-    {RMAD_COMPONENT_BASE_GYROSCOPE, "fake_base_gyroscope"},
-    {RMAD_COMPONENT_LID_GYROSCOPE, "fake_lid_gyroscope"}};
+    {RMAD_COMPONENT_WIRELESS, "fake_wireless"}};
 
 }  // namespace
 

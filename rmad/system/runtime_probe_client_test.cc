@@ -135,7 +135,7 @@ TEST_F(FakeRuntimeProbeClientTest, ProbeCategories_Specified) {
 TEST_F(FakeRuntimeProbeClientTest, ProbeCategories_All) {
   ComponentsWithIdentifier components;
   EXPECT_TRUE(fake_runtime_probe_client_->ProbeCategories({}, &components));
-  EXPECT_EQ(12, components.size());
+  EXPECT_EQ(8, components.size());
 }
 
 }  // namespace fake
