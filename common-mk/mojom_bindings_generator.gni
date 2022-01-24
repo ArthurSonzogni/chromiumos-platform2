@@ -123,7 +123,6 @@ template("generate_mojom_bindings_gen") {
   action(mojo_templates_dir_action_name) {
     inputs = []
     outputs = [ mojo_templates_dir ]
-    print("Creating mojo C++ templates dir")
     script = "//common-mk/file_generator_wrapper.py"
     args = [
       "mkdir",
@@ -139,7 +138,6 @@ template("generate_mojom_bindings_gen") {
       mojo_templates_dir,
     ]
     outputs = [ "${mojo_templates_dir}/cpp_templates.zip" ]
-    print("Generating mojo C++ templates")
     script = mojom_bindings_generator
     args = [
       "--use_bundled_pylibs",
@@ -211,7 +209,6 @@ template("generate_mojom_bindings_gen") {
 
     response_file_contents = filelist
 
-    print("Generating mojo C++ bindings")
     script = _mojom_bindings_generator_wrapper
     args = [
              "${libbase_ver}",
