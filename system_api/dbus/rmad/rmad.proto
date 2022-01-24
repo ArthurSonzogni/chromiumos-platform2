@@ -301,6 +301,11 @@ message DeviceDestinationState {
   Destination destination = 1;
 }
 
+// Select whether we want to wipe the device at the end of the RMA process.
+message WipeSelectionState {
+  bool wipe_device = 1;
+}
+
 // Select the method to use to disable hardware write protection (HWWP).
 // TODO(gavindodd): Implement signal that updates Chrome on the HWWP state.
 message WriteProtectDisableMethodState {
@@ -531,6 +536,7 @@ message RmadState {
     WriteProtectEnablePhysicalState wp_enable_physical = 16;
     FinalizeState finalize = 17;
     RepairCompleteState repair_complete = 18;
+    WipeSelectionState wipe_selection = 19;
   }
 }
 
