@@ -25,6 +25,8 @@ extern const wl_interface zwp_text_input_manager_v1_interface;
 struct zwp_text_input_v1 {
   const zwp_text_input_v1_listener* listener;
   void* listener_data;
+  // The n'th (0-indexed) mock object created has an id of n.
+  int id;
 };
 
 struct zwp_text_input_v1_listener {
@@ -95,7 +97,7 @@ void zwp_text_input_v1_set_cursor_rectangle(
 namespace cros_im {
 namespace test {
 
-zwp_text_input_v1* GetTextInput();
+zwp_text_input_v1* GetTextInput(int text_input_id);
 
 }  // namespace test
 }  // namespace cros_im

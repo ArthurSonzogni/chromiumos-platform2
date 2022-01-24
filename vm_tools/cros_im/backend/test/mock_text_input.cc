@@ -7,24 +7,34 @@
 #include "backend/test/backend_test.h"
 #include "backend/test/request.h"
 
+#include <memory>
+#include <vector>
+
 using cros_im::test::Request;
 
 const wl_interface zwp_text_input_manager_v1_interface = {};
 
 namespace {
 
-// TODO(timloh): Support multiple text inputs.
-static zwp_text_input_v1 text_input;
+std::vector<std::unique_ptr<zwp_text_input_v1>>& GetTextInputs() {
+  static std::vector<std::unique_ptr<zwp_text_input_v1>> text_inputs;
+  return text_inputs;
+}
 
-void HandleRequest(Request::RequestType type) {
-  cros_im::test::BackendTest::GetInstance()->ProcessRequest(Request(type));
+void HandleRequest(zwp_text_input_v1* text_input, Request::RequestType type) {
+  cros_im::test::BackendTest::GetInstance()->ProcessRequest(
+      Request(text_input->id, type));
 }
 
 }  // namespace
 
 zwp_text_input_v1* zwp_text_input_manager_v1_create_text_input(
     zwp_text_input_manager_v1*) {
-  return &text_input;
+  auto& text_inputs = GetTextInputs();
+  int id = text_inputs.size();
+  text_inputs.emplace_back(new zwp_text_input_v1({nullptr, nullptr, id}));
+  HandleRequest(text_inputs.back().get(), Request::kCreateTextInput);
+  return text_inputs.back().get();
 }
 
 void zwp_text_input_v1_set_user_data(zwp_text_input_v1*, void*) {
@@ -38,44 +48,49 @@ void zwp_text_input_v1_add_listener(zwp_text_input_v1* text_input,
   text_input->listener_data = listener_data;
 }
 
-void zwp_text_input_v1_destroy(zwp_text_input_v1*) {
+void zwp_text_input_v1_destroy(zwp_text_input_v1* text_input) {
   // TODO(timloh): This probably should destroy the text_input object.
-  HandleRequest(Request::kDestroy);
+  HandleRequest(text_input, Request::kDestroy);
 }
 
-void zwp_text_input_v1_activate(zwp_text_input_v1*, wl_seat*, wl_surface*) {
-  HandleRequest(Request::kActivate);
+void zwp_text_input_v1_activate(zwp_text_input_v1* text_input,
+                                wl_seat*,
+                                wl_surface*) {
+  HandleRequest(text_input, Request::kActivate);
 }
 
-void zwp_text_input_v1_deactivate(zwp_text_input_v1*, wl_seat*) {
-  HandleRequest(Request::kDeactivate);
+void zwp_text_input_v1_deactivate(zwp_text_input_v1* text_input, wl_seat*) {
+  HandleRequest(text_input, Request::kDeactivate);
 }
 
-void zwp_text_input_v1_hide_input_panel(zwp_text_input_v1*) {
-  HandleRequest(Request::kHideInputPanel);
+void zwp_text_input_v1_hide_input_panel(zwp_text_input_v1* text_input) {
+  HandleRequest(text_input, Request::kHideInputPanel);
 }
 
-void zwp_text_input_v1_reset(zwp_text_input_v1*) {
-  HandleRequest(Request::kReset);
+void zwp_text_input_v1_reset(zwp_text_input_v1* text_input) {
+  HandleRequest(text_input, Request::kReset);
 }
 
-void zwp_text_input_v1_set_surrounding_text(zwp_text_input_v1*,
+void zwp_text_input_v1_set_surrounding_text(zwp_text_input_v1* text_input,
                                             const char* text,
                                             uint32_t cursor,
                                             uint32_t anchor) {
-  HandleRequest(Request::kSetSurroundingText);
+  HandleRequest(text_input, Request::kSetSurroundingText);
 }
 
-void zwp_text_input_v1_set_cursor_rectangle(
-    zwp_text_input_v1*, int32_t x, int32_t y, int32_t width, int32_t height) {
-  HandleRequest(Request::kSetCursorRectangle);
+void zwp_text_input_v1_set_cursor_rectangle(zwp_text_input_v1* text_input,
+                                            int32_t x,
+                                            int32_t y,
+                                            int32_t width,
+                                            int32_t height) {
+  HandleRequest(text_input, Request::kSetCursorRectangle);
 }
 
 namespace cros_im {
 namespace test {
 
-zwp_text_input_v1* GetTextInput() {
-  return &text_input;
+zwp_text_input_v1* GetTextInput(int text_input_id) {
+  return GetTextInputs().at(text_input_id).get();
 }
 
 }  // namespace test

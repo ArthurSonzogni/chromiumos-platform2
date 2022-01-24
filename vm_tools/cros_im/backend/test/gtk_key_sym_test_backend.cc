@@ -10,9 +10,7 @@ namespace cros_im {
 namespace test {
 
 BACKEND_TEST(GtkKeySymTextViewTest, TextInput) {
-  Ignore(Request::kSetCursorRectangle);
-  Ignore(Request::kSetSurroundingText);
-  Ignore(Request::kHideInputPanel);
+  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
 
   Expect(Request::kActivate);
   SendKeySym(XKB_KEY_d);
@@ -25,9 +23,7 @@ BACKEND_TEST(GtkKeySymTextViewTest, TextInput) {
 }
 
 BACKEND_TEST(GtkKeySymTextViewTest, NonAscii) {
-  Ignore(Request::kSetCursorRectangle);
-  Ignore(Request::kSetSurroundingText);
-  Ignore(Request::kHideInputPanel);
+  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
 
   Expect(Request::kActivate);
 
@@ -44,9 +40,7 @@ BACKEND_TEST(GtkKeySymTextViewTest, NonAscii) {
 }
 
 BACKEND_TEST(GtkKeySymTextViewTest, Whitespace) {
-  Ignore(Request::kSetCursorRectangle);
-  Ignore(Request::kSetSurroundingText);
-  Ignore(Request::kHideInputPanel);
+  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
 
   Expect(Request::kActivate);
 
@@ -64,9 +58,7 @@ BACKEND_TEST(GtkKeySymTextViewTest, Whitespace) {
 }
 
 BACKEND_TEST(GtkKeySymTextViewTest, Backspace) {
-  Ignore(Request::kSetCursorRectangle);
-  Ignore(Request::kSetSurroundingText);
-  Ignore(Request::kHideInputPanel);
+  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
 
   Expect(Request::kActivate);
 
@@ -86,9 +78,7 @@ BACKEND_TEST(GtkKeySymTextViewTest, Backspace) {
 }
 
 BACKEND_TEST(GtkKeySymEntryTest, Enter) {
-  Ignore(Request::kSetCursorRectangle);
-  Ignore(Request::kSetSurroundingText);
-  Ignore(Request::kHideInputPanel);
+  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
 
   Expect(Request::kActivate);
 
@@ -103,9 +93,7 @@ BACKEND_TEST(GtkKeySymEntryTest, Enter) {
 }
 
 BACKEND_TEST(GtkKeySymEntryTest, Tab) {
-  Ignore(Request::kSetCursorRectangle);
-  Ignore(Request::kSetSurroundingText);
-  Ignore(Request::kHideInputPanel);
+  ExpectCreateTextInput(CreateTextInputOptions::kIgnoreCommon);
 
   Expect(Request::kActivate);
 

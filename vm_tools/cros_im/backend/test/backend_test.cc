@@ -93,22 +93,6 @@ void BackendTest::RunNextEvent() {
   event->Run();
 }
 
-void BackendTest::Ignore(Request::RequestType request_type) {
-  ignored_requests_.push_back(std::make_unique<Request>(request_type));
-}
-
-void BackendTest::Expect(Request::RequestType request_type) {
-  actions_.emplace(std::make_unique<Request>(request_type));
-}
-
-void BackendTest::SendCommitString(const std::string& string) {
-  actions_.emplace(std::make_unique<CommitStringEvent>(string));
-}
-
-void BackendTest::SendKeySym(int keysym) {
-  actions_.emplace(std::make_unique<KeySymEvent>(keysym));
-}
-
 void BackendTest::PostEventIfNeeded() {
   if (actions_.empty() || actions_.front().is_request_)
     return;

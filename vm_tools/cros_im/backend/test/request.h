@@ -15,6 +15,9 @@ namespace test {
 class Request {
  public:
   enum RequestType {
+    // Requests on the text_input_manager
+    kCreateTextInput,
+    // Requests on a text_input object
     kDestroy,
     kActivate,
     kDeactivate,
@@ -24,12 +27,15 @@ class Request {
     kSetCursorRectangle,
   };
 
-  explicit Request(RequestType type) : type_(type) {}
+  Request(int text_input_id, RequestType type)
+      : text_input_id_(text_input_id), type_(type) {}
   virtual ~Request();
   virtual bool RequestMatches(const Request& actual) const;
   virtual std::string ToString() const;
 
  private:
+  friend std::ostream& operator<<(std::ostream& stream, const Request& request);
+  int text_input_id_;
   RequestType type_;
 };
 

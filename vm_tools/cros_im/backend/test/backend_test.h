@@ -72,11 +72,48 @@ class BackendTest {
   template <class T>
   void SetUpExpectations();
 
-  // For use in BACKEND_TEST().
-  void Ignore(Request::RequestType type);
-  void Expect(Request::RequestType type);
-  void SendCommitString(const std::string& string);
-  void SendKeySym(int keysym);
+  // Expectations and responses for use in BACKEND_TEST().
+
+  template <int text_input_id = 0>
+  void Ignore(Request::RequestType type) {
+    ignored_requests_.push_back(std::make_unique<Request>(text_input_id, type));
+  }
+
+  template <int text_input_id = 0>
+  void Expect(Request::RequestType type) {
+    actions_.emplace(std::make_unique<Request>(text_input_id, type));
+  }
+
+  enum class CreateTextInputOptions {
+    kDefault,
+    // Ignore set_cursor_rectangle, set_surrounding_text, hide_input_panel.
+    kIgnoreCommon,
+  };
+  template <int text_input_id = 0>
+  void ExpectCreateTextInput(CreateTextInputOptions options) {
+    actions_.emplace(
+        std::make_unique<Request>(text_input_id, Request::kCreateTextInput));
+    switch (options) {
+      case CreateTextInputOptions::kDefault:
+        break;
+      case CreateTextInputOptions::kIgnoreCommon:
+        Ignore<text_input_id>(Request::kSetCursorRectangle);
+        Ignore<text_input_id>(Request::kSetSurroundingText);
+        Ignore<text_input_id>(Request::kHideInputPanel);
+        break;
+    }
+  }
+
+  template <int text_input_id = 0>
+  void SendCommitString(const std::string& string) {
+    actions_.emplace(
+        std::make_unique<CommitStringEvent>(text_input_id, string));
+  }
+
+  template <int text_input_id = 0>
+  void SendKeySym(int keysym) {
+    actions_.emplace(std::make_unique<KeySymEvent>(text_input_id, keysym));
+  }
 
   // If the next action is an event, run it asynchronously.
   void PostEventIfNeeded();

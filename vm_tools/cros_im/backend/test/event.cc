@@ -23,7 +23,7 @@ std::ostream& operator<<(std::ostream& stream, const Event& event) {
 CommitStringEvent::~CommitStringEvent() = default;
 
 void CommitStringEvent::Run() const {
-  auto* text_input = GetTextInput();
+  auto* text_input = GetTextInput(text_input_id_);
   if (!text_input) {
     FAILED() << "Failed to find text_input object";
     return;
@@ -39,7 +39,7 @@ void CommitStringEvent::Print(std::ostream& stream) const {
 KeySymEvent::~KeySymEvent() = default;
 
 void KeySymEvent::Run() const {
-  auto* text_input = GetTextInput();
+  auto* text_input = GetTextInput(text_input_id_);
   if (!text_input) {
     FAILED() << "Failed to find text_input object";
     return;

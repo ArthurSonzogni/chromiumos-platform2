@@ -12,11 +12,13 @@ namespace test {
 Request::~Request() = default;
 
 bool Request::RequestMatches(const Request& actual) const {
-  return type_ == actual.type_;
+  return text_input_id_ == actual.text_input_id_ && type_ == actual.type_;
 }
 
 std::string Request::ToString() const {
   switch (type_) {
+    case kCreateTextInput:
+      return "create_text_input()";
     case kDestroy:
       return "destroy()";
     case kActivate:
@@ -36,7 +38,8 @@ std::string Request::ToString() const {
 }
 
 std::ostream& operator<<(std::ostream& stream, const Request& request) {
-  stream << "[Request: " << request.ToString() << "]";
+  stream << "[Request<" << request.text_input_id_ << ">: " << request.ToString()
+         << "]";
   return stream;
 }
 

@@ -14,16 +14,21 @@ namespace test {
 // Represents a Wayland event, i.e. a call from the compositor.
 class Event {
  public:
+  explicit Event(int text_input_id) : text_input_id_(text_input_id) {}
   virtual ~Event() {}
   virtual void Run() const = 0;
   virtual void Print(std::ostream& stream) const = 0;
+
+ protected:
+  int text_input_id_;
 };
 
 std::ostream& operator<<(std::ostream& stream, const Event& event);
 
 class CommitStringEvent : public Event {
  public:
-  explicit CommitStringEvent(const std::string& text) : text_(text) {}
+  CommitStringEvent(int text_input_id, const std::string& text)
+      : Event(text_input_id), text_(text) {}
   ~CommitStringEvent() override;
   void Run() const override;
   void Print(std::ostream& stream) const override;
@@ -34,7 +39,8 @@ class CommitStringEvent : public Event {
 
 class KeySymEvent : public Event {
  public:
-  explicit KeySymEvent(int keysym) : keysym_(keysym) {}
+  KeySymEvent(int text_input_id, int keysym)
+      : Event(text_input_id), keysym_(keysym) {}
   ~KeySymEvent() override;
   void Run() const override;
   void Print(std::ostream& stream) const override;
