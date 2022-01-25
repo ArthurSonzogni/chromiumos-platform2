@@ -21,6 +21,7 @@
 #include "rmad/state_handler/update_device_info_state_handler.h"
 #include "rmad/state_handler/update_ro_firmware_state_handler.h"
 #include "rmad/state_handler/welcome_screen_state_handler.h"
+#include "rmad/state_handler/wipe_selection_state_handler.h"
 #include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
 #include "rmad/state_handler/write_protect_disable_method_state_handler.h"
 #include "rmad/state_handler/write_protect_disable_physical_state_handler.h"
@@ -52,6 +53,8 @@ void StateHandlerManager::RegisterStateHandlers() {
       base::MakeRefCounted<ComponentsRepairStateHandler>(json_store_));
   RegisterStateHandler(
       base::MakeRefCounted<DeviceDestinationStateHandler>(json_store_));
+  RegisterStateHandler(
+      base::MakeRefCounted<WipeSelectionStateHandler>(json_store_));
   RegisterStateHandler(
       base::MakeRefCounted<WriteProtectDisableMethodStateHandler>(json_store_));
   RegisterStateHandler(
@@ -95,6 +98,8 @@ void StateHandlerManager::RegisterFakeStateHandlers() {
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeDeviceDestinationStateHandler>(
           json_store_, test_dir_path));
+  RegisterStateHandler(
+      base::MakeRefCounted<fake::FakeWipeSelectionStateHandler>(json_store_));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWriteProtectDisableMethodStateHandler>(
           json_store_));
