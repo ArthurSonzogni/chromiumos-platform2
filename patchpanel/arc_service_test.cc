@@ -900,7 +900,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
       [](const Device* dev) { return dev->phys_ifname() == "eth0"; });
   EXPECT_NE(it1, devs.end());
   EXPECT_EQ((*it1)->host_ifname(), "arc_eth0");
-  EXPECT_EQ((*it1)->guest_ifname(), "eth0");
+  EXPECT_EQ((*it1)->guest_ifname(), "eth1");
   EXPECT_EQ((*it1)->type(), GuestType::ARC_NET);
 
   const auto it2 = std::find_if(
@@ -908,7 +908,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
       [](const Device* dev) { return dev->phys_ifname() == "wlan0"; });
   EXPECT_NE(it2, devs.end());
   EXPECT_EQ((*it2)->host_ifname(), "arc_wlan0");
-  EXPECT_EQ((*it2)->guest_ifname(), "wlan0");
+  EXPECT_EQ((*it2)->guest_ifname(), "eth3");
   EXPECT_EQ((*it2)->type(), GuestType::ARC_NET);
 
   const auto it3 = std::find_if(
@@ -916,7 +916,7 @@ TEST_F(ArcServiceTest, VmImpl_GetDevices) {
       [](const Device* dev) { return dev->phys_ifname() == "eth1"; });
   EXPECT_NE(it3, devs.end());
   EXPECT_EQ((*it3)->host_ifname(), "arc_eth1");
-  EXPECT_EQ((*it3)->guest_ifname(), "eth1");
+  EXPECT_EQ((*it3)->guest_ifname(), "eth2");
   EXPECT_EQ((*it3)->type(), GuestType::ARC_NET);
 }
 
@@ -963,6 +963,31 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
               UnorderedElementsAre(
                   Pair(StrEq("arc_wlan0"), Device::ChangeEvent::ADDED)));
   Mock::VerifyAndClearExpectations(datapath_.get());
+}
+
+TEST_F(ArcServiceTest, VmImpl_ArcvmInterfaceMapping) {
+  // Expectations for tap devices pre-creation.
+  EXPECT_CALL(*datapath_, AddTAP(StrEq(""), _, nullptr, StrEq("crosvm")))
+      .WillOnce(Return("vmtap2"))
+      .WillOnce(Return("vmtap3"))
+      .WillOnce(Return("vmtap4"))
+      .WillOnce(Return("vmtap5"))
+      .WillOnce(Return("vmtap6"))
+      .WillOnce(Return("vmtap8"));
+
+  auto svc = NewService(GuestMessage::ARC_VM);
+  svc->Start(kTestPID);
+
+  std::map<std::string, std::string> arcvm_guest_ifnames = {
+      {"vmtap2", "eth0"}, {"vmtap3", "eth1"}, {"vmtap4", "eth2"},
+      {"vmtap5", "eth3"}, {"vmtap6", "eth4"}, {"vmtap8", "eth5"},
+  };
+
+  for (const auto& [tap, arcvm_ifname] : arcvm_guest_ifnames) {
+    auto it = svc->arcvm_guest_ifnames_.find(tap);
+    EXPECT_TRUE(it != svc->arcvm_guest_ifnames_.end());
+    EXPECT_EQ(it->second, arcvm_ifname);
+  }
 }
 
 }  // namespace patchpanel

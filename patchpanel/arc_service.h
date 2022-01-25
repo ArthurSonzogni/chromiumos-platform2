@@ -78,6 +78,7 @@ class ArcService {
 
   FRIEND_TEST(ArcServiceTest, NotStarted_AddDevice);
   FRIEND_TEST(ArcServiceTest, NotStarted_AddRemoveDevice);
+  FRIEND_TEST(ArcServiceTest, VmImpl_ArcvmInterfaceMapping);
 
   // Routing and iptables controller service, owned by Manager.
   Datapath* datapath_;
@@ -101,6 +102,9 @@ class ArcService {
   // The ARC Devices corresponding to the host upstream network interfaces,
   // keyed by upstream interface name.
   std::map<std::string, std::unique_ptr<Device>> devices_;
+  // ARCVM hardcodes its interface name as eth%d (starting from 0). This is a
+  // mapping of its TAP interface name to the interface name inside ARCVM.
+  std::map<std::string, std::string> arcvm_guest_ifnames_;
   // The ARC management Device associated with the ARC management interface arc0
   // used for legacy adb-over-tcp support and VPN forwarding.
   std::unique_ptr<Device> arc_device_;

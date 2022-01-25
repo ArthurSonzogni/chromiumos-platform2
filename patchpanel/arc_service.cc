@@ -35,6 +35,7 @@ const int32_t kAndroidRootUid = 655360;
 constexpr uint32_t kInvalidId = 0;
 constexpr char kArcNetnsName[] = "arc_netns";
 constexpr char kArcIfname[] = "arc0";
+constexpr char kArcVmIfnamePrefix[] = "eth";
 
 void RecordEvent(MetricsLibraryInterface* metrics, ArcServiceUmaEvent event) {
   metrics->SendEnumToUMA(kArcServiceUmaEventMetrics, event);
@@ -306,6 +307,7 @@ bool ArcService::Start(uint32_t id) {
   std::string arc_device_ifname;
   if (guest_ == GuestMessage::ARC_VM) {
     // Allocate TAP devices for all configs.
+    int arcvm_ifname_id = 0;
     for (auto* config : all_configs_) {
       auto mac = config->mac_addr();
       auto tap = datapath_->AddTAP("" /* auto-generate name */, &mac,
@@ -317,6 +319,12 @@ bool ArcService::Start(uint32_t id) {
       }
 
       config->set_tap_ifname(tap);
+
+      // Inside ARCVM, interface names follow the pattern eth%d (starting from
+      // 0) following the order of the TAP interface.
+      arcvm_guest_ifnames_[tap] =
+          kArcVmIfnamePrefix + std::to_string(arcvm_ifname_id);
+      arcvm_ifname_id++;
     }
     arc_device_ifname = arc_device_->config().tap_ifname();
   } else {
@@ -424,6 +432,7 @@ void ArcService::Stop(uint32_t id) {
     datapath_->RemoveInterface(config->tap_ifname());
     config->set_tap_ifname("");
   }
+  arcvm_guest_ifnames_.clear();
 
   datapath_->RemoveBridge(kArcBridge);
   LOG(INFO) << "Stopped ARC management Device " << *arc_device_.get();
@@ -453,8 +462,18 @@ void ArcService::AddDevice(const std::string& ifname,
     return;
   }
 
+  auto guest_ifname = ifname;
+  if (guest_ == GuestMessage::ARC_VM) {
+    const auto it = arcvm_guest_ifnames_.find(config->tap_ifname());
+    if (it == arcvm_guest_ifnames_.end()) {
+      LOG(ERROR) << "Cannot acquire a ARCVM guest ifname for " << ifname;
+    } else {
+      guest_ifname = it->second;
+    }
+  }
+
   auto device = std::make_unique<Device>(GuestType::ARC_NET, ifname,
-                                         ArcBridgeName(ifname), ifname,
+                                         ArcBridgeName(ifname), guest_ifname,
                                          std::move(config));
   LOG(INFO) << "Starting ARC Device " << *device;
 
