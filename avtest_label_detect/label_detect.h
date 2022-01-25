@@ -68,11 +68,6 @@ bool is_amd_implementation(int fd);
 #endif  // defined(USE_VAAPI)
 
 /* detectors */
-extern bool detect_builtin_usb_camera(void);
-extern bool detect_builtin_mipi_camera(void);
-extern bool detect_vivid_camera(void);
-extern bool detect_builtin_camera(void);
-extern bool detect_builtin_or_vivid_camera(void);
 extern bool detect_video_acc_h264(void);
 extern bool detect_video_acc_vp8(void);
 extern bool detect_video_acc_vp9(void);

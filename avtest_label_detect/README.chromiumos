@@ -2,7 +2,7 @@ License: BSD
 
 Description:
 
-Autotest label detector for audio/video/camera. This tool will do very basic
+Autotest label detector for audio/video. This tool will do very basic
 detections to suggest what autotest labels to apply. The full detailed tests
 are done in their corresponding tests, not here.
 
