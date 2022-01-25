@@ -32,21 +32,6 @@
 #include "fusebox/proto_bindings/fusebox.pb.h"
 #include "fusebox/util.h"
 
-using base::CommandLine;
-
-namespace {
-
-static std::string* g_device;  // TODO(crbug.com/1289493): remove this.
-
-void SetupDevice() {
-  static std::string device;
-  device = CommandLine::ForCurrentProcess()->GetSwitchValueASCII("storage");
-  LOG_IF(INFO, !device.empty()) << "device: " << device;
-  g_device = &device;
-}
-
-}  // namespace
-
 namespace fusebox {
 
 class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
@@ -113,6 +98,9 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     root_stat = MakeStat(root->ino, root_stat);
     GetInodeTable().SetStat(root->ino, root_stat);
 
+    if (!fuse_->name.empty())
+      CHECK_EQ(0, AttachStorage(fuse_->name));
+
     CHECK(userdata) << "FileSystem (userdata) is required";
   }
 
@@ -140,7 +128,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     dbus::MessageWriter writer(&method);
 
     writer.AppendString("stat");
-    auto item = *g_device + GetInodeTable().GetPath(node);
+    auto item = GetInodeTable().GetDevicePath(node);
     writer.AppendString(item);
 
     auto stat_response =
@@ -195,9 +183,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     dbus::MessageWriter writer(&method);
 
     writer.AppendString("stat");
-    const base::FilePath path(GetInodeTable().GetPath(parent_node));
-    auto item = *g_device + path.Append(name).value();
-    writer.AppendString(item);
+    auto item = GetInodeTable().GetDevicePath(parent_node);
+    writer.AppendString(item.append("/").append(name));
 
     auto lookup_response =
         base::BindOnce(&FuseBoxClient::LookupResponse, base::Unretained(this),
@@ -298,7 +285,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     dbus::MessageWriter writer(&method);
 
     writer.AppendString("readdir");
-    auto item = *g_device + GetInodeTable().GetPath(node);
+    auto item = GetInodeTable().GetDevicePath(node);
     writer.AppendString(item);
     writer.AppendUint64(handle);
 
@@ -400,7 +387,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     dbus::MessageWriter writer(&method);
 
     writer.AppendString("open");
-    auto item = *g_device + GetInodeTable().GetPath(node);
+    auto item = GetInodeTable().GetDevicePath(node);
     writer.AppendString(item);
     VLOG(1) << "open flags " << OpenFlagsToString(request->flags());
     writer.AppendInt32(request->flags() & O_ACCMODE);
@@ -477,7 +464,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     dbus::MessageWriter writer(&method);
 
     writer.AppendString("read");
-    auto item = *g_device + GetInodeTable().GetPath(node);
+    auto item = GetInodeTable().GetDevicePath(node);
     writer.AppendString(item);
     writer.AppendInt64(base::strict_cast<int64_t>(off));
     writer.AppendInt32(base::saturated_cast<int32_t>(size));
@@ -676,10 +663,12 @@ int Run(char** mountpoint, fuse_chan* chan, int foreground) {
   LOG(INFO) << "fusebox " << *mountpoint << " [" << getpid() << "]";
 
   FuseMount fuse = FuseMount(mountpoint, chan);
-  fuse.opts = CommandLine::ForCurrentProcess()->GetSwitchValueASCII("ll");
-  fuse.name = CommandLine::ForCurrentProcess()->GetSwitchValueASCII("storage");
-  fuse.debug = CommandLine::ForCurrentProcess()->HasSwitch("debug");
-  fuse.fake = CommandLine::ForCurrentProcess()->HasSwitch("fake");
+
+  auto* commandline_options = base::CommandLine::ForCurrentProcess();
+  fuse.opts = commandline_options->GetSwitchValueASCII("ll");
+  fuse.name = commandline_options->GetSwitchValueASCII("storage");
+  fuse.debug = commandline_options->HasSwitch("debug");
+  fuse.fake = commandline_options->HasSwitch("fake");
 
   if (!foreground)
     LOG(INFO) << "fusebox fuse_daemonizing";
@@ -692,9 +681,8 @@ int Run(char** mountpoint, fuse_chan* chan, int foreground) {
 }  // namespace fusebox
 
 int main(int argc, char** argv) {
-  CommandLine::Init(argc, argv);
+  base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-  SetupDevice();
 
   fuse_args args = FUSE_ARGS_INIT(argc, argv);
   char* mountpoint = nullptr;
