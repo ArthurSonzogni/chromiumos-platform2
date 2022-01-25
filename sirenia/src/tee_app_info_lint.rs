@@ -18,7 +18,7 @@ use getopts::Options;
 use libsirenia::cli::{HelpOption, VerbosityOption};
 use libsirenia::{
     app_info::{entries_from_path, AppManifestEntry, ExecutableInfo},
-    communication::Digest,
+    communication::{Digest, SHA256_SIZE},
     secrets::compute_sha256,
 };
 
@@ -43,23 +43,53 @@ fn validate_entries(entries: &[AppManifestEntry]) -> Result<()> {
 
 fn convert_entries<A: AsRef<Path>>(target_root: A, entries: &mut [AppManifestEntry]) -> Result<()> {
     for entry in entries {
+        let name = entry.app_name.clone();
         let exec_info = &mut entry.exec_info;
         if let ExecutableInfo::CrosPath(path, digest) = exec_info {
             let exec_path = target_root.as_ref().join(path.trim_start_matches('/'));
+            if !exec_path.exists() {
+                // This can happen for DLCs, so make sure a digest is set and continue.
+                if let Some(expected_digest) = digest {
+                    if expected_digest.len() == SHA256_SIZE {
+                        continue;
+                    } else {
+                        bail!(
+                            "Digest for {} has wrong length: {}; expected {}",
+                            &name,
+                            expected_digest.len(),
+                            SHA256_SIZE
+                        );
+                    }
+                }
+                bail!(
+                    "Digest missing for {} and executable not found at '{}'",
+                    &name,
+                    exec_path.display()
+                );
+            }
             let mut exec_data = Vec::<u8>::new();
             File::open(&exec_path)
-                .with_context(|| format!("Failed to open entry executable path: {:?}", &exec_path))?
+                .with_context(|| {
+                    format!(
+                        "Failed to open entry executable path for {}: {:?}",
+                        &name, &exec_path
+                    )
+                })?
                 .read_to_end(&mut exec_data)
                 .with_context(|| {
-                    format!("Failed to read entry executable path: {:?}", &exec_path)
+                    format!(
+                        "Failed to read executable path for {}: {:?}",
+                        &name, &exec_path
+                    )
                 })?;
             let exec_digest =
                 compute_sha256(&exec_data).context("Failed to compute SHA256 digest.")?;
             if let Some(expected_digest) = digest {
                 if **expected_digest != exec_digest.as_ref() {
                     bail!(
-                        "configured digest ({}) does not match executable ({})",
+                        "configured digest ({}) for {} does not match executable ({})",
                         expected_digest,
+                        &name,
                         Digest::try_from(exec_digest.as_ref()).expect("Digest size mismatch")
                     );
                 }
