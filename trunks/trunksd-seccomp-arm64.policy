@@ -26,6 +26,7 @@ write: 1
 writev: 1
 close: 1
 fstat: 1
+fstatfs: 1
 newfstatat: 1
 lseek: 1
 fcntl: 1

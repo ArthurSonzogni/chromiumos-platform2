@@ -31,6 +31,7 @@ open: 1
 close: 1
 creat: 1
 fstat: 1
+fstatfs: 1
 newfstatat: 1
 stat: 1
 lseek: 1
