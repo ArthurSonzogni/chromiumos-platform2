@@ -248,6 +248,16 @@
       <arg name="display_battery_percentage" direction="out" type="d" />
     </method>
 
+    <signal name="LidOpened">
+      <tp:docstring>
+        Lid open signal.
+      </tp:docstring>
+    </signal>
+    <signal name="LidClosed">
+      <tp:docstring>
+        Lid close signal.
+      </tp:docstring>
+    </signal>
 
     <signal name="SuspendImminent">
       <tp:docstring>
