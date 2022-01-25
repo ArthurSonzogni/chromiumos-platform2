@@ -57,9 +57,10 @@ struct FuseMount {
   FuseMount(char** m, fuse_chan* c) : mountpoint(m), chan(c) {}
   char** mountpoint;
   fuse_chan* chan;
+  std::string opts;
+  std::string name;
   bool debug = false;
   bool fake = false;
-  std::string opts;
 };
 
 class FuseFrontend {

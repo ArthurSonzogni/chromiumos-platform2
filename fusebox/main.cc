@@ -36,7 +36,7 @@ using base::CommandLine;
 
 namespace {
 
-static std::string* g_device;
+static std::string* g_device;  // TODO(crbug.com/1289493): remove this.
 
 void SetupDevice() {
   static std::string device;
@@ -676,9 +676,10 @@ int Run(char** mountpoint, fuse_chan* chan, int foreground) {
   LOG(INFO) << "fusebox " << *mountpoint << " [" << getpid() << "]";
 
   FuseMount fuse = FuseMount(mountpoint, chan);
+  fuse.opts = CommandLine::ForCurrentProcess()->GetSwitchValueASCII("ll");
+  fuse.name = CommandLine::ForCurrentProcess()->GetSwitchValueASCII("storage");
   fuse.debug = CommandLine::ForCurrentProcess()->HasSwitch("debug");
   fuse.fake = CommandLine::ForCurrentProcess()->HasSwitch("fake");
-  fuse.opts = CommandLine::ForCurrentProcess()->GetSwitchValueASCII("ll");
 
   if (!foreground)
     LOG(INFO) << "fusebox fuse_daemonizing";
