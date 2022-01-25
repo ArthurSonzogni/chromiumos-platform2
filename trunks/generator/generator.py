@@ -62,6 +62,7 @@ from __future__ import print_function
 import argparse
 import re
 import subprocess
+from collections import OrderedDict
 
 import union_selectors
 
@@ -659,12 +660,12 @@ std::string StringFrom_%(type)s(
     return self.name.startswith('TPM2B_') and self.fields[1][0] != 'BYTE'
 
   def _GetFieldTypes(self):
-    """Creates a set which holds all current field types.
+    """Creates a list which holds all current field types.
 
     Returns:
-      A set of field types.
+      A list of field types.
     """
-    return set([field[0] for field in self.fields])
+    return list(OrderedDict.fromkeys(field[0] for field in self.fields))
 
   def OutputForward(self, out_file, unused_defined_types, unused_typemap):
     """Writes a structure forward declaration to |out_file|.
