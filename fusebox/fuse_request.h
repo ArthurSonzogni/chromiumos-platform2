@@ -93,7 +93,7 @@ class CreateRequest : public FuseRequest {
 class BufferRequest : public FuseRequest {
  public:
   BufferRequest(fuse_req_t req, fuse_file_info* fi) : FuseRequest(req, fi) {}
-  void ReplyBuffer(const char* data, size_t size);
+  void ReplyBuffer(const void* data, size_t size);
 };
 
 // FUSE request with a bytes written count response.

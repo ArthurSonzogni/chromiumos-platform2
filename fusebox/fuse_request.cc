@@ -75,12 +75,12 @@ void CreateRequest::ReplyCreate(const fuse_entry_param& entry, uint64_t fh) {
   replied_ = true;
 }
 
-void BufferRequest::ReplyBuffer(const char* data, size_t size) {
+void BufferRequest::ReplyBuffer(const void* data, size_t size) {
   DCHECK(!replied_);
   replied_ = true;
 
   if (data) {
-    fuse_reply_buf(req_, data, size);
+    fuse_reply_buf(req_, static_cast<const char*>(data), size);
   } else {
     fuse_reply_buf(req_, nullptr, 0);
   }

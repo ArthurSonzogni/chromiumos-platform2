@@ -515,7 +515,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     size_t length = 0;
     reader.PopArrayOfBytes(&buf, &length);
 
-    request->ReplyBuffer(reinterpret_cast<const char*>(buf), length);
+    request->ReplyBuffer(buf, length);
   }
 
   void ReadFileDescriptor(std::unique_ptr<BufferRequest> request,
