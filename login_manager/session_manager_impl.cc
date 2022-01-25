@@ -6,6 +6,7 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <string.h>
 #include <sys/socket.h>
 
 #include <algorithm>
@@ -43,6 +44,7 @@
 #include <crypto/scoped_nss_types.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <dbus/scoped_dbus_error.h>
 #include <install_attributes/libinstallattributes.h>
 #include <libpasswordprovider/password.h>
 #include <libpasswordprovider/password_provider.h>
@@ -58,7 +60,6 @@
 #include "login_manager/device_policy_service.h"
 #include "login_manager/init_daemon_controller.h"
 #include "login_manager/key_generator.h"
-#include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
@@ -1489,9 +1490,18 @@ bool SessionManagerImpl::UpgradeArcContainer(
   android_container_->SetStatefulMode(StatefulMode::STATEFUL);
   auto env_vars = CreateUpgradeArcEnvVars(request, account_id, pid);
   const base::TimeTicks arc_continue_boot_impulse_time = base::TimeTicks::Now();
-  if (init_controller_->TriggerImpulseWithTimeout(
+
+  dbus::ScopedDBusError dbus_error;
+  std::unique_ptr<dbus::Response> response =
+      init_controller_->TriggerImpulseWithTimeoutAndError(
           kContinueArcBootImpulse, env_vars,
-          InitDaemonController::TriggerMode::SYNC, kArcBootContinueTimeout)) {
+          InitDaemonController::TriggerMode::SYNC, kArcBootContinueTimeout,
+          &dbus_error);
+  LoginMetrics::ArcContinueBootImpulseStatus status =
+      GetArcContinueBootImpulseStatus(&dbus_error);
+  login_metrics_->SendArcContinueBootImpulseStatus(status);
+
+  if (response) {
     login_metrics_->SendArcContinueBootImpulseTime(
         base::TimeTicks::Now() - arc_continue_boot_impulse_time);
   } else {
@@ -2067,6 +2077,24 @@ void SessionManagerImpl::OnAndroidContainerStopped(
   }
 
   adaptor_.SendArcInstanceStoppedSignal(static_cast<uint32_t>(reason));
+}
+
+LoginMetrics::ArcContinueBootImpulseStatus
+SessionManagerImpl::GetArcContinueBootImpulseStatus(
+    dbus::ScopedDBusError* dbus_error) {
+  DCHECK(dbus_error);
+  if (dbus_error->is_set()) {
+    // In case of timeout we see DBUS_ERROR_NO_REPLY
+    // as mentioned in dbus-protocol.h
+    if (strcmp(dbus_error->name(), DBUS_ERROR_NO_REPLY) == 0) {
+      return LoginMetrics::ArcContinueBootImpulseStatus::
+          kArcContinueBootImpulseStatusTimedOut;
+    }
+    return LoginMetrics::ArcContinueBootImpulseStatus::
+        kArcContinueBootImpulseStatusFailed;
+  }
+  return LoginMetrics::ArcContinueBootImpulseStatus::
+      kArcContinueBootImpulseStatusSuccess;
 }
 #endif  // USE_CHEETS
 }  // namespace login_manager

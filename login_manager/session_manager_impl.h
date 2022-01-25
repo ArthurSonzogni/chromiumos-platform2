@@ -31,6 +31,7 @@
 #include "login_manager/device_local_account_manager.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/key_generator.h"
+#include "login_manager/login_metrics.h"
 #include "login_manager/login_screen_storage.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/regen_mitigator.h"
@@ -42,6 +43,7 @@ namespace dbus {
 class Bus;
 class ObjectProxy;
 class Response;
+class ScopedDBusError;
 }  // namespace dbus
 
 namespace login_manager {
@@ -455,6 +457,9 @@ class SessionManagerImpl
 
   // Called when the Android container is stopped.
   void OnAndroidContainerStopped(pid_t pid, ArcContainerStopReason reason);
+
+  LoginMetrics::ArcContinueBootImpulseStatus GetArcContinueBootImpulseStatus(
+      dbus::ScopedDBusError* dbus_error);
 #endif
 
   bool session_started_ = false;

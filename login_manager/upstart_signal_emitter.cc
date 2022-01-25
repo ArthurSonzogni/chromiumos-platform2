@@ -11,6 +11,7 @@
 #include <base/time/time.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <dbus/scoped_dbus_error.h>
 
 namespace login_manager {
 
@@ -34,15 +35,18 @@ std::unique_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulse(
     const std::string& name,
     const std::vector<std::string>& args_keyvals,
     TriggerMode mode) {
-  return this->TriggerImpulseWithTimeout(name, args_keyvals, mode,
-                                         kDefaultTimeout);
+  dbus::ScopedDBusError error;
+  return this->TriggerImpulseWithTimeoutAndError(name, args_keyvals, mode,
+                                                 kDefaultTimeout, &error);
 }
 
-std::unique_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulseWithTimeout(
+std::unique_ptr<dbus::Response>
+UpstartSignalEmitter::TriggerImpulseWithTimeoutAndError(
     const std::string& name,
     const std::vector<std::string>& args_keyvals,
     TriggerMode mode,
-    base::TimeDelta timeout) {
+    base::TimeDelta timeout,
+    dbus::ScopedDBusError* error) {
   DLOG(INFO) << "Emitting " << name << " Upstart signal";
 
   dbus::MethodCall method_call(kInterface, kMethodName);
@@ -54,7 +58,8 @@ std::unique_ptr<dbus::Response> UpstartSignalEmitter::TriggerImpulseWithTimeout(
   writer.AppendBool(mode == TriggerMode::SYNC);
   int timeout_ms = timeout.is_min() ? dbus::ObjectProxy::TIMEOUT_USE_DEFAULT
                                     : timeout.InMilliseconds();
-  return upstart_dbus_proxy_->CallMethodAndBlock(&method_call, timeout_ms);
+  return upstart_dbus_proxy_->CallMethodAndBlockWithErrorDetails(
+      &method_call, timeout_ms, error);
 }
 
 }  // namespace login_manager

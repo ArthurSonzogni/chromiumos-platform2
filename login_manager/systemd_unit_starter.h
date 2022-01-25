@@ -17,6 +17,7 @@ class TimeDelta;
 }
 namespace dbus {
 class ObjectProxy;
+class ScopedDBusError;
 }
 
 namespace login_manager {
@@ -33,16 +34,17 @@ class SystemdUnitStarter : public InitDaemonController {
   ~SystemdUnitStarter() override;
 
   // InitDaemonController:
-  std::unique_ptr<dbus::Response> TriggerImpulseWithTimeout(
-      const std::string& unit_name,
-      const std::vector<std::string>& args_keyvals,
-      TriggerMode mode,
-      base::TimeDelta timeout) override;
-
   std::unique_ptr<dbus::Response> TriggerImpulse(
       const std::string& unit_name,
       const std::vector<std::string>& args_keyvals,
       TriggerMode mode) override;
+
+  std::unique_ptr<dbus::Response> TriggerImpulseWithTimeoutAndError(
+      const std::string& unit_name,
+      const std::vector<std::string>& args_keyvals,
+      TriggerMode mode,
+      base::TimeDelta timeout,
+      dbus::ScopedDBusError* error) override;
 
  private:
   dbus::ObjectProxy* systemd_dbus_proxy_;  // Weak, owned by caller.

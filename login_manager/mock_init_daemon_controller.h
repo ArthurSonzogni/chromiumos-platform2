@@ -16,6 +16,7 @@
 
 namespace base {
 class TimeDelta;
+class ScopedDBusError;
 }
 
 namespace login_manager {
@@ -26,18 +27,19 @@ class MockInitDaemonController : public InitDaemonController {
   ~MockInitDaemonController() override;
 
   MOCK_METHOD(std::unique_ptr<dbus::Response>,
-              TriggerImpulseWithTimeout,
-              (const std::string&,
-               const std::vector<std::string>&,
-               TriggerMode,
-               base::TimeDelta timeout),
-              (override));
-
-  MOCK_METHOD(std::unique_ptr<dbus::Response>,
               TriggerImpulse,
               (const std::string&,
                const std::vector<std::string>&,
                TriggerMode),
+              (override));
+
+  MOCK_METHOD(std::unique_ptr<dbus::Response>,
+              TriggerImpulseWithTimeoutAndError,
+              (const std::string&,
+               const std::vector<std::string>&,
+               TriggerMode,
+               base::TimeDelta timeout,
+               dbus::ScopedDBusError* error),
               (override));
 };
 

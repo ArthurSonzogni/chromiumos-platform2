@@ -66,7 +66,6 @@ class LoginMetrics {
     SWITCHES_INVALID = 2,
     NUM_SWITCHES_STATUSES = 3,
   };
-
   // Current state of the browser process at the moment we decide to abort it.
   // Includes the standard Linux process states. Also includes an error bucket
   // so we can see if LivenessCheckerImpl::GetBrowserState() is failing. Used by
@@ -85,7 +84,14 @@ class LoginMetrics {
     kErrorGettingState = 6,         // Failed to read status file from /proc.
     kMaxValue = kErrorGettingState  // Must be equal to the largest value
   };
-
+  enum class ArcContinueBootImpulseStatus {
+    // These values are persisted to logs. Entries should not be renumbered and
+    // numeric values should never be reused.
+    kArcContinueBootImpulseStatusSuccess = 0,
+    kArcContinueBootImpulseStatusFailed = 1,
+    kArcContinueBootImpulseStatusTimedOut = 2,
+    kMaxValue = kArcContinueBootImpulseStatusTimedOut
+  };
   // Holds the state of several policy-related files on disk.
   // We leave an extra bit for future state-space expansion.
   // Treat as, essentially, a base-4 number that we encode in decimal before
@@ -169,6 +175,10 @@ class LoginMetrics {
   // Submits to UMA the time to backup ARC bug report.
   virtual void SendArcBugReportBackupTime(
       base::TimeDelta arc_bug_report_backup_time);
+
+  // Submits to UMA the status of the Arc Continue Boot time.
+  virtual void SendArcContinueBootImpulseStatus(
+      ArcContinueBootImpulseStatus status);
 
   // Submits to UMA the time to execute continue-arc-boot impulse.
   virtual void SendArcContinueBootImpulseTime(

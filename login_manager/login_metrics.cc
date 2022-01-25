@@ -33,8 +33,10 @@ const char kLoginBrowserShutdownTimeMetric[] = "Login.BrowserShutdownTime";
 const char kArcBugReportBackupTimeMetric[] = "Login.ArcBugReportBackupTime";
 
 // A metric to track the time taken to execute arc-boot-continue impulse.
-const char kArcContinueBootImpulseTimeMetric[] =
-    "Login.ArcContinueBootImpulseTime";
+const char kArcContinueBootImpulseTime2Metric[] =
+    "Login.ArcContinueBootImpulseTime2";
+const char kArcContinueBootImpulseStatus[] =
+    "Login.ArcContinueBootImpulseStatus";
 
 const char kLoginConsumerAllowsNewUsersMetric[] =
     "Login.ConsumerNewUsersAllowed";
@@ -170,15 +172,22 @@ void LoginMetrics::SendArcBugReportBackupTime(
       static_cast<int>(base::TimeDelta::FromSeconds(60).InMilliseconds()), 50);
 }
 
+void LoginMetrics::SendArcContinueBootImpulseStatus(
+    ArcContinueBootImpulseStatus status) {
+  metrics_lib_.SendEnumToUMA(
+      kArcContinueBootImpulseStatus, static_cast<int>(status),
+      static_cast<int>(ArcContinueBootImpulseStatus::kMaxValue));
+}
+
 void LoginMetrics::SendArcContinueBootImpulseTime(
     base::TimeDelta arc_continue_boot_impulse_time) {
-  // ARC continue-arc-boot impulse time is between 0 - 30s and split it up into
-  // 30 buckets.
+  // ARC continue-arc-boot impulse time is between 0 - 60s and split it up into
+  // 50 buckets.
   metrics_lib_.SendToUMA(
-      kArcContinueBootImpulseTimeMetric,
+      kArcContinueBootImpulseTime2Metric,
       static_cast<int>(arc_continue_boot_impulse_time.InMilliseconds()),
       static_cast<int>(base::TimeDelta::FromMilliseconds(1).InMilliseconds()),
-      static_cast<int>(base::TimeDelta::FromSeconds(30).InMilliseconds()), 30);
+      static_cast<int>(base::TimeDelta::FromSeconds(60).InMilliseconds()), 50);
 }
 
 void LoginMetrics::SendSwitchToFeatureFlagMappingStatus(

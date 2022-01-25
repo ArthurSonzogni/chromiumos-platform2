@@ -19,6 +19,7 @@ class TimeDelta;
 
 namespace dbus {
 class ObjectProxy;
+class ScopedDBusError;
 }
 
 namespace login_manager {
@@ -54,11 +55,13 @@ class UpstartSignalEmitter : public InitDaemonController {
   // format "key=value".
   //
   // Returns null if emitting the signal fails or if |mode| is ASYNC.
-  std::unique_ptr<dbus::Response> TriggerImpulseWithTimeout(
+  // Also returns an error code in case of error.
+  std::unique_ptr<dbus::Response> TriggerImpulseWithTimeoutAndError(
       const std::string& name,
       const std::vector<std::string>& args_keyvals,
       TriggerMode mode,
-      base::TimeDelta timeout) override;
+      base::TimeDelta timeout,
+      dbus::ScopedDBusError* error) override;
 
  private:
   dbus::ObjectProxy* upstart_dbus_proxy_;  // Weak, owned by caller.

@@ -15,6 +15,7 @@
 #include "base/time/time.h"
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <dbus/scoped_dbus_error.h>
 
 namespace {
 
@@ -74,15 +75,18 @@ std::unique_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulse(
     const std::string& unit_name,
     const std::vector<std::string>& args_keyvals,
     TriggerMode mode) {
-  return this->TriggerImpulseWithTimeout(unit_name, args_keyvals, mode,
-                                         kDefaultTimeout);
+  dbus::ScopedDBusError dbus_error;
+  return this->TriggerImpulseWithTimeoutAndError(unit_name, args_keyvals, mode,
+                                                 kDefaultTimeout, &dbus_error);
 }
 
-std::unique_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulseWithTimeout(
+std::unique_ptr<dbus::Response>
+SystemdUnitStarter::TriggerImpulseWithTimeoutAndError(
     const std::string& unit_name,
     const std::vector<std::string>& args_keyvals,
     TriggerMode mode,
-    base::TimeDelta timeout) {
+    base::TimeDelta timeout,
+    dbus::ScopedDBusError* error) {
   DLOG(INFO) << "Starting " << unit_name << " unit";
 
   // If we are not able to properly set the environment for the
@@ -101,10 +105,11 @@ std::unique_ptr<dbus::Response> SystemdUnitStarter::TriggerImpulseWithTimeout(
   std::unique_ptr<dbus::Response> response;
   switch (mode) {
     case TriggerMode::SYNC:
-      response =
-          systemd_dbus_proxy_->CallMethodAndBlock(&method_call, timeout_ms);
+      response = systemd_dbus_proxy_->CallMethodAndBlockWithErrorDetails(
+          &method_call, timeout_ms, error);
       break;
     case TriggerMode::ASYNC:
+      // TODO(vsomani): replace with CallMethodWithErrorResponse when needed.
       systemd_dbus_proxy_->CallMethod(&method_call, timeout_ms,
                                       base::DoNothing());
       break;
