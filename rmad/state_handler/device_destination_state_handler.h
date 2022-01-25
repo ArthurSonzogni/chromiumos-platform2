@@ -8,6 +8,7 @@
 #include <memory>
 
 #include "rmad/state_handler/base_state_handler.h"
+#include "rmad/system/cryptohome_client.h"
 #include "rmad/utils/cr50_utils.h"
 
 namespace rmad {
@@ -15,9 +16,11 @@ namespace rmad {
 class DeviceDestinationStateHandler : public BaseStateHandler {
  public:
   explicit DeviceDestinationStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |cr50_utils_| for testing.
-  DeviceDestinationStateHandler(scoped_refptr<JsonStore> json_store,
-                                std::unique_ptr<Cr50Utils> cr50_utils);
+  // Used to inject mock |cryptohome_client_| and |cr50_utils_| for testing.
+  DeviceDestinationStateHandler(
+      scoped_refptr<JsonStore> json_store,
+      std::unique_ptr<CryptohomeClient> cryptohome_client,
+      std::unique_ptr<Cr50Utils> cr50_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kDeviceDestination);
   SET_REPEATABLE;
@@ -29,10 +32,9 @@ class DeviceDestinationStateHandler : public BaseStateHandler {
   ~DeviceDestinationStateHandler() override = default;
 
  private:
-  // Store variables that can be used by other state handlers to make decisions.
-  bool StoreVars() const;
-  bool CanSkipHwwp() const;
+  bool ReplacedComponentNeedHwwpDisabled() const;
 
+  std::unique_ptr<CryptohomeClient> cryptohome_client_;
   std::unique_ptr<Cr50Utils> cr50_utils_;
 };
 

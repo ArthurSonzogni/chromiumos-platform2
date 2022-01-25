@@ -7,12 +7,21 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 
+#include <memory>
+
+#include <base/files/file_path.h>
+
+#include "rmad/utils/cr50_utils.h"
+
 namespace rmad {
 
 class WriteProtectDisableMethodStateHandler : public BaseStateHandler {
  public:
   explicit WriteProtectDisableMethodStateHandler(
       scoped_refptr<JsonStore> json_store);
+  // Used to inject mock |cr50_utils_| for testing.
+  WriteProtectDisableMethodStateHandler(scoped_refptr<JsonStore> json_store,
+                                        std::unique_ptr<Cr50Utils> cr50_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableMethod);
   SET_REPEATABLE;
@@ -22,6 +31,11 @@ class WriteProtectDisableMethodStateHandler : public BaseStateHandler {
 
  protected:
   ~WriteProtectDisableMethodStateHandler() override = default;
+
+ private:
+  bool CheckVarsInStateFile() const;
+
+  std::unique_ptr<Cr50Utils> cr50_utils_;
 };
 
 namespace fake {
@@ -31,7 +45,8 @@ class FakeWriteProtectDisableMethodStateHandler
     : public WriteProtectDisableMethodStateHandler {
  public:
   explicit FakeWriteProtectDisableMethodStateHandler(
-      scoped_refptr<JsonStore> json_store);
+      scoped_refptr<JsonStore> json_store,
+      const base::FilePath& working_dir_path);
 
  protected:
   ~FakeWriteProtectDisableMethodStateHandler() override = default;

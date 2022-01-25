@@ -99,10 +99,11 @@ void StateHandlerManager::RegisterFakeStateHandlers() {
       base::MakeRefCounted<fake::FakeDeviceDestinationStateHandler>(
           json_store_, test_dir_path));
   RegisterStateHandler(
-      base::MakeRefCounted<fake::FakeWipeSelectionStateHandler>(json_store_));
+      base::MakeRefCounted<fake::FakeWipeSelectionStateHandler>(json_store_,
+                                                                test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWriteProtectDisableMethodStateHandler>(
-          json_store_));
+          json_store_, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeWriteProtectDisableRsuStateHandler>(
           json_store_, test_dir_path));

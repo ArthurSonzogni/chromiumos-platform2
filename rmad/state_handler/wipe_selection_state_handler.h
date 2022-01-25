@@ -7,11 +7,20 @@
 
 #include "rmad/state_handler/base_state_handler.h"
 
+#include <memory>
+
+#include <base/files/file_path.h>
+
+#include "rmad/utils/cr50_utils.h"
+
 namespace rmad {
 
 class WipeSelectionStateHandler : public BaseStateHandler {
  public:
   explicit WipeSelectionStateHandler(scoped_refptr<JsonStore> json_store);
+  // Used to inject mock |cr50_utils_| for testing.
+  WipeSelectionStateHandler(scoped_refptr<JsonStore> json_store,
+                            std::unique_ptr<Cr50Utils> cr50_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWipeSelection);
   SET_REPEATABLE;
@@ -26,6 +35,14 @@ class WipeSelectionStateHandler : public BaseStateHandler {
 
  protected:
   ~WipeSelectionStateHandler() override = default;
+
+ private:
+  bool InitializeVarsFromStateFile();
+
+  std::unique_ptr<Cr50Utils> cr50_utils_;
+
+  bool wp_disable_required_;
+  bool ccd_blocked_;
 };
 
 namespace fake {
@@ -33,7 +50,8 @@ namespace fake {
 // Nothing needs to be faked.
 class FakeWipeSelectionStateHandler : public WipeSelectionStateHandler {
  public:
-  explicit FakeWipeSelectionStateHandler(scoped_refptr<JsonStore> json_store);
+  FakeWipeSelectionStateHandler(scoped_refptr<JsonStore> json_store,
+                                const base::FilePath& working_dir_path);
 
  protected:
   ~FakeWipeSelectionStateHandler() override = default;

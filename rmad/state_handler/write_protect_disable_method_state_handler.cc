@@ -4,8 +4,16 @@
 
 #include "rmad/state_handler/write_protect_disable_method_state_handler.h"
 
+#include <memory>
+#include <utility>
+
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+
+#include "rmad/constants.h"
+#include "rmad/utils/cr50_utils_impl.h"
+#include "rmad/utils/fake_cr50_utils.h"
 
 namespace rmad {
 
@@ -13,20 +21,79 @@ namespace fake {
 
 FakeWriteProtectDisableMethodStateHandler::
     FakeWriteProtectDisableMethodStateHandler(
-        scoped_refptr<JsonStore> json_store)
-    : WriteProtectDisableMethodStateHandler(json_store) {}
+        scoped_refptr<JsonStore> json_store,
+        const base::FilePath& working_dir_path)
+    : WriteProtectDisableMethodStateHandler(
+          json_store, std::make_unique<FakeCr50Utils>(working_dir_path)) {}
 
 }  // namespace fake
 
 WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {}
+    : BaseStateHandler(json_store) {
+  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+}
+
+WriteProtectDisableMethodStateHandler::WriteProtectDisableMethodStateHandler(
+    scoped_refptr<JsonStore> json_store, std::unique_ptr<Cr50Utils> cr50_utils)
+    : BaseStateHandler(json_store), cr50_utils_(std::move(cr50_utils)) {}
 
 RmadErrorCode WriteProtectDisableMethodStateHandler::InitializeState() {
   if (!state_.has_wp_disable_method()) {
     state_.set_allocated_wp_disable_method(new WriteProtectDisableMethodState);
   }
+
+  if (!CheckVarsInStateFile()) {
+    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+  }
+
   return RMAD_ERROR_OK;
+}
+
+bool WriteProtectDisableMethodStateHandler::CheckVarsInStateFile() const {
+  // json_store should contain the following keys set by |DeviceDestination| and
+  // |WipeSelection| states.
+  // - kSameOwner
+  // - kWpDisableRequired
+  // - kCcdBlocked (only required when kWpDisableRequired is true)
+  // - kWipeDevice
+  bool same_owner, wp_disable_required, ccd_blocked, wipe_device;
+  if (!json_store_->GetValue(kSameOwner, &same_owner)) {
+    LOG(ERROR) << "Variable " << kSameOwner << " not found";
+    return false;
+  }
+  if (!json_store_->GetValue(kWpDisableRequired, &wp_disable_required)) {
+    LOG(ERROR) << "Variable " << kWpDisableRequired << " not found";
+    return false;
+  }
+  if (!json_store_->GetValue(kWipeDevice, &wipe_device)) {
+    LOG(ERROR) << "Variable " << kWipeDevice << " not found";
+    return false;
+  }
+  if (wp_disable_required &&
+      !json_store_->GetValue(kCcdBlocked, &ccd_blocked)) {
+    LOG(ERROR) << "Variable " << kCcdBlocked << " not found";
+    return false;
+  }
+
+  // The user only has the option to choose between RSU or physical when
+  // - Need to disable WP, and
+  // - CCD is not blocked, and
+  // - User wants to wipe the device, and
+  // - Cr50 factory mode is not enabled yet
+  // In other scenarios, either there is only one option to disable WP and we
+  // jump directly to the state, or cr50 factory mode is enabled and we skip the
+  // entire WP disabling steps.
+  if (!wp_disable_required || ccd_blocked || !wipe_device) {
+    LOG(ERROR) << "There is only one available method to disable WP.";
+    return false;
+  }
+  if (cr50_utils_->IsFactoryModeEnabled()) {
+    LOG(ERROR) << "Cr50 factory mode is already enabled.";
+    return false;
+  }
+
+  return true;
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -37,6 +104,9 @@ WriteProtectDisableMethodStateHandler::GetNextStateCase(
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
+  state_ = state;
+
+  // Go to the selected WP disabling method.
   switch (state.wp_disable_method().disable_method()) {
     case WriteProtectDisableMethodState::RMAD_WP_DISABLE_UNKNOWN:
       return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
