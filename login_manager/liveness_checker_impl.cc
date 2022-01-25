@@ -5,7 +5,10 @@
 #include "login_manager/liveness_checker_impl.h"
 
 #include <signal.h>
+
+#include <algorithm>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/bind.h>
@@ -15,16 +18,18 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
+#include <base/optional.h>
 #include <base/process/launch.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <brillo/files/safe_fd.h>
 #include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 
-#include "login_manager/login_metrics.h"
 #include "login_manager/process_manager_service_interface.h"
 
 namespace login_manager {
@@ -37,6 +42,7 @@ LivenessCheckerImpl::LivenessCheckerImpl(
     LoginMetrics* metrics)
     : manager_(manager),
       dbus_proxy_(dbus_proxy),
+      proc_directory_("/proc"),
       enable_aborting_(enable_aborting),
       interval_(interval),
       metrics_(metrics) {}
@@ -86,6 +92,8 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
     LOG(WARNING) << "Top output (trimmed):";
     LOG(WARNING) << top_output;
 
+    RecordStateForTimeout();
+
     if (enable_aborting_) {
       // Note: If this log message is changed, the desktopui_HangDetector
       // autotest must be updated.
@@ -128,6 +136,87 @@ void LivenessCheckerImpl::HandleAck(dbus::Response* response) {
   if (response != nullptr) {
     base::TimeDelta ping_response_time = base::TimeTicks::Now() - ping_sent_;
     metrics_->SendLivenessPingResponseTime(ping_response_time);
+  }
+}
+
+void LivenessCheckerImpl::SetProcForTests(base::FilePath&& proc_directory) {
+  proc_directory_ = std::move(proc_directory);
+}
+
+void LivenessCheckerImpl::RecordStateForTimeout() {
+  if (metrics_ != nullptr) {
+    metrics_->RecordStateForLivenessTimeout(GetBrowserState());
+  }
+}
+
+LoginMetrics::BrowserState LivenessCheckerImpl::GetBrowserState() {
+  base::Optional<pid_t> browser_pid = manager_->GetBrowserPid();
+  if (!browser_pid.has_value()) {
+    return LoginMetrics::BrowserState::kErrorGettingState;
+  }
+
+  base::FilePath status_file_path(proc_directory_);
+  status_file_path =
+      status_file_path.Append(base::NumberToString(browser_pid.value()))
+          .Append("status");
+
+  brillo::SafeFD::SafeFDResult result = brillo::SafeFD::Root();
+
+  if (brillo::SafeFD::IsError(result.second)) {
+    PLOG(WARNING) << "Could not get root directory "
+                  << static_cast<int>(result.second) << ": ";
+    return LoginMetrics::BrowserState::kErrorGettingState;
+  }
+
+  result =
+      result.first.OpenExistingFile(status_file_path, O_RDONLY | O_CLOEXEC);
+  if (brillo::SafeFD::IsError(result.second)) {
+    PLOG(WARNING) << "Could not open status file "
+                  << static_cast<int>(result.second) << ": ";
+    return LoginMetrics::BrowserState::kErrorGettingState;
+  }
+
+  std::pair<std::vector<char>, brillo::SafeFD::Error> read_result =
+      result.first.ReadContents();
+  if (brillo::SafeFD::IsError(read_result.second)) {
+    PLOG(WARNING) << "Could not read status file "
+                  << static_cast<int>(read_result.second) << ": ";
+    return LoginMetrics::BrowserState::kErrorGettingState;
+  }
+
+  const std::string kStateField = "\nState:\t";
+  std::vector<char>::const_iterator state_begin =
+      std::search(read_result.first.begin(), read_result.first.end(),
+                  kStateField.begin(), kStateField.end());
+
+  if (state_begin == read_result.first.end()) {
+    LOG(WARNING) << "Could not find '\\nState:\\t' in "
+                 << status_file_path.value();
+    return LoginMetrics::BrowserState::kErrorGettingState;
+  }
+
+  std::vector<char>::const_iterator state_end =
+      state_begin + kStateField.length();
+
+  if (state_end == read_result.first.end()) {
+    LOG(WARNING) << "State:\\t at very end of file";
+    return LoginMetrics::BrowserState::kErrorGettingState;
+  }
+
+  switch (*state_end) {
+    case 'R':
+      return LoginMetrics::BrowserState::kRunning;
+    case 'S':
+      return LoginMetrics::BrowserState::kSleeping;
+    case 'D':
+      return LoginMetrics::BrowserState::kUninterruptibleWait;
+    case 'Z':
+      return LoginMetrics::BrowserState::kZombie;
+    case 'T':
+      return LoginMetrics::BrowserState::kTracedOrStopped;
+    default:
+      LOG(WARNING) << "Unknown browser state " << *state_end;
+      return LoginMetrics::BrowserState::kUnknown;
   }
 }
 

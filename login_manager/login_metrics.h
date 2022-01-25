@@ -66,6 +66,26 @@ class LoginMetrics {
     SWITCHES_INVALID = 2,
     NUM_SWITCHES_STATUSES = 3,
   };
+
+  // Current state of the browser process at the moment we decide to abort it.
+  // Includes the standard Linux process states. Also includes an error bucket
+  // so we can see if LivenessCheckerImpl::GetBrowserState() is failing. Used by
+  // the "ChromeOS.Liveness.BrowserStateAtTimeout" UMA.
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused. Update Chrome's enums.xml if new
+  // values are added.
+  enum class BrowserState {
+    kRunning = 0,                   // State: R
+    kSleeping = 1,                  // State: S
+    kUninterruptibleWait = 2,       // State: D
+    kZombie = 3,                    // State: Z
+    kTracedOrStopped = 4,           // State: T
+    kUnknown = 5,                   // Got a State character from status file
+                                    // but it wasn't R, S, D, Z, or T
+    kErrorGettingState = 6,         // Failed to read status file from /proc.
+    kMaxValue = kErrorGettingState  // Must be equal to the largest value
+  };
+
   // Holds the state of several policy-related files on disk.
   // We leave an extra bit for future state-space expansion.
   // Treat as, essentially, a base-4 number that we encode in decimal before
@@ -161,6 +181,10 @@ class LoginMetrics {
   // Submits to UMA the time it took for a response to be received after a
   // liveness ping was sent.
   virtual void SendLivenessPingResponseTime(base::TimeDelta response_time);
+
+  // Submits to UMA the state of the browser when the liveness check times out
+  // (that is, when it sends an abort if enable_aborting_ is true).
+  virtual void RecordStateForLivenessTimeout(BrowserState state_at_timeout);
 
   // CrOS events are translated to an enum and reported to the generic
   // "Platform.CrOSEvent" enum histogram. The |event| string must be registered

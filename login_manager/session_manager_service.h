@@ -167,6 +167,7 @@ class SessionManagerService
       const std::map<std::string, std::string>& origin_list_flags) override;
   void SetBrowserDataMigrationArgsForUser(const std::string& userhash) override;
   bool IsBrowser(pid_t pid) override;
+  base::Optional<pid_t> GetBrowserPid() const override;
   base::TimeTicks GetLastBrowserRestartTime() override;
 
   // ChildExitHandler overrides:

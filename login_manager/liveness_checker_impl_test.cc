@@ -5,18 +5,23 @@
 #include "login_manager/liveness_checker_impl.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
+#include <base/files/file.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
 #include <brillo/message_loops/fake_message_loop.h>
+#include <brillo/syslog_logging.h>
 #include <dbus/message.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/login_metrics.h"
+#include "login_manager/mock_metrics.h"
 #include "login_manager/mock_process_manager_service.h"
 
 using ::base::TimeDelta;
@@ -42,11 +47,14 @@ class LivenessCheckerImplTest : public ::testing::Test {
         new dbus::MockObjectProxy(nullptr, "", dbus::ObjectPath("/fake/path"));
 
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    metrics_.reset(new LoginMetrics(tmpdir_.GetPath()));
+
+    metrics_.reset(new MockMetrics());
 
     checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
                                            true, TimeDelta::FromSeconds(10),
                                            metrics_.get()));
+    base::FilePath fake_proc_path(tmpdir_.GetPath());
+    checker_->SetProcForTests(std::move(fake_proc_path));
   }
 
   void ExpectUnAckedLivenessPing() {
@@ -79,7 +87,7 @@ class LivenessCheckerImplTest : public ::testing::Test {
   std::unique_ptr<LivenessCheckerImpl> checker_;
 
   base::ScopedTempDir tmpdir_;
-  std::unique_ptr<LoginMetrics> metrics_;
+  std::unique_ptr<MockMetrics> metrics_;
 
  private:
   void Respond(dbus::MethodCall* method_call,
@@ -92,6 +100,10 @@ class LivenessCheckerImplTest : public ::testing::Test {
 TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
   ExpectUnAckedLivenessPing();
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
+  EXPECT_CALL(*manager_.get(), GetBrowserPid()).WillOnce(Return(base::nullopt));
+  EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
+                             LoginMetrics::BrowserState::kErrorGettingState))
+      .Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
   fake_loop_.Run();  // Runs until the message loop is empty.
 }
@@ -99,6 +111,10 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
   ExpectLivenessPingResponsePing();
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
+  EXPECT_CALL(*manager_.get(), GetBrowserPid()).WillOnce(Return(base::nullopt));
+  EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
+                             LoginMetrics::BrowserState::kErrorGettingState))
+      .Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
   fake_loop_.Run();  // Runs until the message loop is empty.
 }
@@ -108,8 +124,16 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
                                          false,  // Disable aborting
                                          TimeDelta::FromSeconds(10),
                                          metrics_.get()));
+  base::FilePath fake_proc_path(tmpdir_.GetPath());
+  checker_->SetProcForTests(std::move(fake_proc_path));
   ExpectPingResponsePingCheckPingAndQuit();
   // Expect _no_ browser abort!
+  EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(0);
+  // But we still record the UMA.
+  EXPECT_CALL(*manager_.get(), GetBrowserPid()).WillOnce(Return(base::nullopt));
+  EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
+                             LoginMetrics::BrowserState::kErrorGettingState))
+      .Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta::FromSeconds(1));
   fake_loop_.Run();  // Runs until the message loop is empty.
 }
@@ -120,5 +144,83 @@ TEST_F(LivenessCheckerImplTest, StartStop) {
   checker_->Stop();  // Should cancel ping, so...
   EXPECT_FALSE(checker_->IsRunning());
 }
+
+struct TestFileAndStatus {
+  const char* const test_name;
+  const char* const file_name;
+  LoginMetrics::BrowserState expected_state;
+  const char* const expected_log_message;
+};
+
+const TestFileAndStatus kTestFilesAndStatuses[] = {
+    {"Running", "TEST_STATUS_RUNNING", LoginMetrics::BrowserState::kRunning,
+     nullptr},
+    {"Sleeping", "TEST_STATUS_SLEEPING", LoginMetrics::BrowserState::kSleeping,
+     nullptr},
+    {"Stopped", "TEST_STATUS_STOPPED",
+     LoginMetrics::BrowserState::kTracedOrStopped, nullptr},
+    {"UninterruptibleWait", "TEST_STATUS_UNINTERRUPTIBLE_WAIT",
+     LoginMetrics::BrowserState::kUninterruptibleWait, nullptr},
+    {"Zombie", "TEST_STATUS_ZOMBIE", LoginMetrics::BrowserState::kZombie,
+     nullptr},
+    {"UnknownState", "TEST_STATUS_UNKNOWN_STATE",
+     LoginMetrics::BrowserState::kUnknown, "Unknown browser state X"},
+    {"MissingStateLine", "TEST_STATUS_MISSING_STATE",
+     LoginMetrics::BrowserState::kErrorGettingState,
+     "Could not find '\\nState:\\t'"},
+    {"StateAtEnd", "TEST_STATUS_STATE_IS_LAST_CHARACTER",
+     LoginMetrics::BrowserState::kErrorGettingState,
+     "State:\\t at very end of file"},
+    {"MissingStatusFile", nullptr,
+     LoginMetrics::BrowserState::kErrorGettingState,
+     "Could not open status file"}};
+
+class LivenessCheckerImplParamTest
+    : public LivenessCheckerImplTest,
+      public testing::WithParamInterface<TestFileAndStatus> {};
+
+TEST_P(LivenessCheckerImplParamTest, BrowserStatusToUMA) {
+  brillo::InitLog(brillo::kLogToStderr);
+  if (GetParam().file_name != nullptr) {
+    base::FilePath fake_status_path = tmpdir_.GetPath().Append("123");
+    base::File::Error error;
+    ASSERT_TRUE(base::CreateDirectoryAndGetError(fake_status_path, &error))
+        << base::File::ErrorToString(error);
+    base::FilePath fake_status_file_name = fake_status_path.Append("status");
+    base::FilePath test_data_file_name =
+        base::FilePath("testdata").Append(GetParam().file_name);
+    ASSERT_TRUE(base::CopyFile(test_data_file_name, fake_status_file_name))
+        << "Could not copy " << test_data_file_name.value() << " to "
+        << fake_status_file_name.value();
+  }
+
+  if (GetParam().expected_log_message != nullptr) {
+    brillo::ClearLog();
+    brillo::LogToString(true);
+  }
+
+  ExpectUnAckedLivenessPing();
+  EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
+  EXPECT_CALL(*manager_.get(), GetBrowserPid()).WillOnce(Return(123));
+  EXPECT_CALL(*metrics_,
+              RecordStateForLivenessTimeout(GetParam().expected_state))
+      .Times(1);
+  checker_->CheckAndSendLivenessPing(TimeDelta());
+  fake_loop_.Run();  // Runs until the message loop is empty.
+
+  if (GetParam().expected_log_message != nullptr) {
+    EXPECT_TRUE(brillo::FindLog(GetParam().expected_log_message))
+        << "Did not find '" << GetParam().expected_log_message << "' in logs";
+    brillo::LogToString(false);
+    brillo::ClearLog();
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    LivenessChecker,
+    LivenessCheckerImplParamTest,
+    testing::ValuesIn(kTestFilesAndStatuses),
+    [](const ::testing::TestParamInfo<LivenessCheckerImplParamTest::ParamType>&
+           info) { return std::string(info.param.test_name); });
 
 }  // namespace login_manager

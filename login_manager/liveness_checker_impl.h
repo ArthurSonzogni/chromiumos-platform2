@@ -6,12 +6,14 @@
 #define LOGIN_MANAGER_LIVENESS_CHECKER_IMPL_H_
 
 #include <base/cancelable_callback.h>
+#include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 
 #include "login_manager/liveness_checker.h"
+#include "login_manager/login_metrics.h"
 
 namespace dbus {
 class ObjectProxy;
@@ -19,7 +21,6 @@ class Response;
 }  // namespace dbus
 
 namespace login_manager {
-class LoginMetrics;
 class ProcessManagerServiceInterface;
 
 // An implementation of LivenessChecker that pings a service (owned by Chrome)
@@ -56,13 +57,28 @@ class LivenessCheckerImpl : public LivenessChecker {
     manager_ = manager;
   }
 
+  // Override the /proc directory used for GetBrowserState().
+  void SetProcForTests(base::FilePath&& proc_directory);
+
  private:
   // Handle async response to liveness ping by setting last_ping_acked_,
   // iff there is a successful response.
   void HandleAck(dbus::Response* response);
 
+  // Reads /proc/browser_pid/status and returns the state of the browser at
+  // the current moment.
+  LoginMetrics::BrowserState GetBrowserState();
+
+  // Updates UMA stat recording the state of the browser process (running,
+  // sleeping, uninterruptible wait, zombie, traced-or-stopped) at the moment
+  // the liveness check times out.
+  void RecordStateForTimeout();
+
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
   dbus::ObjectProxy* dbus_proxy_;            // Owned by the caller.
+
+  // Normally "/proc". Allows overriding of the /proc directory in tests.
+  base::FilePath proc_directory_;
 
   bool enable_aborting_;
   const base::TimeDelta interval_;

@@ -56,6 +56,7 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
               (const std::string&),
               (override));
   MOCK_METHOD(bool, IsBrowser, (pid_t), (override));
+  MOCK_METHOD(base::Optional<pid_t>, GetBrowserPid, (), (const override));
   MOCK_METHOD(base::TimeTicks, GetLastBrowserRestartTime, (), (override));
 };
 }  // namespace login_manager

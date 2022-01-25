@@ -373,6 +373,13 @@ bool SessionManagerService::IsBrowser(pid_t pid) {
   return (browser_->CurrentPid() > 0 && pid == browser_->CurrentPid());
 }
 
+base::Optional<pid_t> SessionManagerService::GetBrowserPid() const {
+  if (browser_->CurrentPid() <= 0) {
+    return base::nullopt;
+  }
+  return browser_->CurrentPid();
+}
+
 base::TimeTicks SessionManagerService::GetLastBrowserRestartTime() {
   return last_browser_restart_time_;
 }
