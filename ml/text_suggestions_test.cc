@@ -10,7 +10,7 @@
 namespace ml {
 namespace {
 
-const float kScoringEqualityDelta = 0.0015f;
+const float kScoringEqualityDelta = 0.02f;
 
 TEST(TextSuggestionsTest, CanLoadLibrary) {
   auto* const instance = ml::TextSuggestions::GetInstance();

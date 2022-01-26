@@ -1604,7 +1604,7 @@ class TextSuggesterTest : public ::testing::Test {
  protected:
   mojo::Remote<TextSuggester> suggester_;
 
-  const float scoring_equality_delta_ = 0.0015f;
+  const float scoring_equality_delta_ = 0.02f;
 };
 
 TEST_F(TextSuggesterTest, LoadModelAndGenerateCompletionCandidate) {
