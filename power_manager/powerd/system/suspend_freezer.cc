@@ -15,6 +15,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
 namespace power_manager {
