@@ -134,9 +134,10 @@ class SafeFD {
   //
   // Parameters
   //  data - The buffer to read the file into.
-  //  max_size - The maximum number of bytes to read.
+  //  max_size - The maximum number of bytes to read (typically, the size of
+  //    the buffer).
   BRILLO_EXPORT std::pair<size_t, Error> ReadUntilEnd(
-      char* data, size_t max_size = kDefaultMaxRead) WARN_UNUSED_RESULT;
+      char* data, size_t max_size) WARN_UNUSED_RESULT;
 
   // Copy the contents of this file to |destination|.
   //
