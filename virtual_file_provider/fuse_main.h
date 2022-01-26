@@ -12,6 +12,7 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/optional.h>
 
 namespace virtual_file_provider {
 
