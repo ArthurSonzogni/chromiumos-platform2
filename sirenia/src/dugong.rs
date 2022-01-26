@@ -131,9 +131,9 @@ fn load_tee_app(
 
     let mut elf = Vec::<u8>::new();
     File::open(elf_path)
-        .with_context(|| format!("failed to open elf path '{}'", &elf_path.display()))?
+        .with_context(|| format!("failed to open app path '{}'", &elf_path.display()))?
         .read_to_end(&mut elf)
-        .with_context(|| format!("failed to read elf path '{}'", &elf_path.display()))?;
+        .with_context(|| format!("failed to read app path '{}'", &elf_path.display()))?;
 
     info!("Transmitting TEE app.");
     api_handle
@@ -324,14 +324,7 @@ fn main() -> Result<()> {
             (
                 name,
                 match exec_info {
-                    ExecutableInfo::CrosPath(p, _) => {
-                        let path = PathBuf::from(&p);
-                        if path.exists() {
-                            Some(path)
-                        } else {
-                            None
-                        }
-                    }
+                    ExecutableInfo::CrosPath(p, _) => Some(PathBuf::from(&p)),
                     ExecutableInfo::Digest(_) | ExecutableInfo::Path(_) => None,
                 },
             )
