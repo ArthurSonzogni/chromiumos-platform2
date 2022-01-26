@@ -99,7 +99,14 @@ class LibScryptCompatKeyObjects {
 // This struct is populated by the various authentication methods, with the
 // secrets derived from the user input.
 struct KeyBlobs {
-  // The file encryption key.
+  // Derives a secret used for wrapping the UserSecretStash main key. This
+  // secret is not returned by auth blocks directly, but rather calculated as a
+  // KDF of their output, allowing for adding new derived keys in the future.
+  std::optional<brillo::SecureBlob> DeriveUssCredentialSecret() const;
+
+  // The file encryption key. TODO(b/216474361): Rename to reflect this value is
+  // used for deriving various values and not only for vault keysets, and add a
+  // getter that returns the VKK.
   std::optional<brillo::SecureBlob> vkk_key;
   // The file encryption IV.
   std::optional<brillo::SecureBlob> vkk_iv;

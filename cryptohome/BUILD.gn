@@ -375,6 +375,7 @@ if (use.test) {
       "firmware_management_parameters_unittest.cc",
       "fwmp_checker_platform_index_test.cc",
       "install_attributes_unittest.cc",
+      "key_objects_unittest.cc",
       "keyset_management_unittest.cc",
       "le_credential_manager_impl_unittest.cc",
       "lockbox-cache-unittest.cc",
