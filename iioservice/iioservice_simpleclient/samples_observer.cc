@@ -227,14 +227,14 @@ void SamplesObserver::GetDeviceIdsCallback(
 void SamplesObserver::GetSensorDevice() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  if (sensor_device_remote_.is_bound())
-    sensor_device_remote_.reset();
+  if (!sensor_device_remote_.is_bound()) {
+    sensor_service_remote_->GetDevice(
+        device_id_, sensor_device_remote_.BindNewPipeAndPassReceiver());
 
-  sensor_service_remote_->GetDevice(
-      device_id_, sensor_device_remote_.BindNewPipeAndPassReceiver());
+    sensor_device_remote_.set_disconnect_handler(base::BindOnce(
+        &SamplesObserver::OnDeviceDisconnect, weak_factory_.GetWeakPtr()));
+  }
 
-  sensor_device_remote_.set_disconnect_handler(base::BindOnce(
-      &SamplesObserver::OnDeviceDisconnect, weak_factory_.GetWeakPtr()));
   GetAllChannelIds();
 }
 
