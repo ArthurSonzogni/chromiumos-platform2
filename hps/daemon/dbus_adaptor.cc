@@ -52,14 +52,13 @@ void DBusAdaptor::PollTask() {
   for (uint8_t feature = 0; feature < kFeatures; ++feature) {
     if (enabled_features_.test(feature)) {
       FeatureResult result = this->hps_->Result(feature);
-      VLOG(2) << "Poll: Feature: " << static_cast<int>(feature)
-              << " Valid: " << result.valid
-              << " Result: " << static_cast<int>(result.inference_result);
       DCHECK(feature_filters_[feature]);
       const auto res = feature_filters_[feature]->ProcessResult(
           result.inference_result, result.valid);
       VLOG(2) << "Poll: Feature: " << static_cast<int>(feature)
-              << "Filter: " << static_cast<int>(res);
+              << " Valid: " << result.valid
+              << " Result: " << static_cast<int>(result.inference_result)
+              << " Filter: " << static_cast<int>(res);
     }
   }
 }
