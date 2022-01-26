@@ -7,6 +7,7 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/time/time.h>
 
 #include "hps/hps_reg.h"
 
