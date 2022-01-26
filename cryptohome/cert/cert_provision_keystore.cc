@@ -62,7 +62,9 @@ OpResult KeyStoreImpl::Init() {
   CK_RV res;
   if (!initialized_) {
     res = C_Initialize(NULL /* pInitArgs */);
-    if (res != CKR_OK) {
+    if (res == CKR_OK) {
+      needs_finalize_ = true;
+    } else if (res != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
       return KeyStoreResError("Failed to initialize keystore", res);
     }
     initialized_ = true;
@@ -84,7 +86,9 @@ void KeyStoreImpl::TearDown() {
     session_ = CK_INVALID_HANDLE;
   }
   if (initialized_) {
-    C_Finalize(NULL);
+    if (needs_finalize_) {
+      C_Finalize(NULL);
+    }
     initialized_ = false;
   }
 }

@@ -111,6 +111,7 @@ class KeyStoreImpl : public KeyStore {
                 std::vector<CK_OBJECT_HANDLE>* objects);
 
   bool initialized_ = false;
+  bool needs_finalize_ = false;
   CK_SESSION_HANDLE session_ = CK_INVALID_HANDLE;
 };
 
