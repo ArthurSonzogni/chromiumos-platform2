@@ -4,6 +4,7 @@
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <linux/if_packet.h>
 #include <linux/in6.h>
 #include <linux/vm_sockets.h>
 #include <net/route.h>
@@ -19,6 +20,7 @@
 
 #include <string>
 
+#include <base/strings/stringprintf.h>
 #include <brillo/brillo_export.h>
 
 #include "patchpanel/mac_address_generator.h"
@@ -123,6 +125,8 @@ BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
                                        const struct sockaddr_un& addr);
 BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
                                        const struct sockaddr_vm& addr);
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
+                                       const struct sockaddr_ll& addr);
 
 BRILLO_EXPORT std::ostream& operator<<(std::ostream& stream,
                                        const struct rtentry& route);

@@ -202,6 +202,8 @@ std::ostream& operator<<(std::ostream& stream, const struct sockaddr& addr) {
       return stream << (const struct sockaddr_un&)addr;
     case AF_VSOCK:
       return stream << (const struct sockaddr_vm&)addr;
+    case AF_PACKET:
+      return stream << (const struct sockaddr_ll&)addr;
     default:
       return stream << "{family: " << addr.sa_family << ", (unknown)}";
   }
@@ -241,6 +243,47 @@ std::ostream& operator<<(std::ostream& stream, const struct sockaddr_un& addr) {
 std::ostream& operator<<(std::ostream& stream, const struct sockaddr_vm& addr) {
   return stream << "{family: AF_VSOCK, port: " << addr.svm_port
                 << ", cid: " << addr.svm_cid << "}";
+}
+
+std::ostream& operator<<(std::ostream& stream, const struct sockaddr_ll& addr) {
+  char ifname[IFNAMSIZ] = {};
+  if_indextoname(addr.sll_ifindex, ifname);
+  stream << "{family: AF_PACKET, ifindex=" << addr.sll_ifindex << " " << ifname;
+  switch (addr.sll_pkttype) {
+    case PACKET_HOST:
+      stream << ", PACKET_HOST";
+      break;
+    case PACKET_BROADCAST:
+      stream << ", PACKET_BROADCAST";
+      break;
+    case PACKET_MULTICAST:
+      stream << ", PACKET_MULTICAST";
+      break;
+    case PACKET_OTHERHOST:
+      stream << ", PACKET_OTHERHOST";
+      break;
+    case PACKET_OUTGOING:
+      stream << ", PACKET_OUTGOING";
+      break;
+    case PACKET_LOOPBACK:
+      stream << ", PACKET_LOOPBACK";
+      break;
+    case PACKET_USER:
+      stream << ", PACKET_USER";
+      break;
+    case PACKET_KERNEL:
+      stream << ", PACKET_KERNEL";
+      break;
+    default:
+      // do not print sll_pkttype
+      break;
+  }
+  return stream << base::StringPrintf(
+             ", addr=%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x, "
+             "protocol=0x%04xl}",
+             addr.sll_addr[0], addr.sll_addr[1], addr.sll_addr[2],
+             addr.sll_addr[3], addr.sll_addr[4], addr.sll_addr[5],
+             addr.sll_addr[6], addr.sll_addr[7], htons(addr.sll_protocol));
 }
 
 std::ostream& operator<<(std::ostream& stream, const struct rtentry& route) {

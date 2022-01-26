@@ -68,6 +68,41 @@ const sock_fprog kNDFrameBpfProgram = {
     .len = sizeof(kNDFrameBpfInstructions) / sizeof(sock_filter),
     .filter = kNDFrameBpfInstructions};
 
+std::string Icmp6TypeName(uint32_t type) {
+  switch (type) {
+    case ND_ROUTER_SOLICIT:
+      return "ND_ROUTER_SOLICIT";
+    case ND_ROUTER_ADVERT:
+      return "ND_ROUTER_ADVERT";
+    case ND_NEIGHBOR_SOLICIT:
+      return "ND_NEIGHBOR_SOLICIT";
+    case ND_NEIGHBOR_ADVERT:
+      return "ND_NEIGHBOR_ADVERT";
+    default:
+      return "UNKNOWN";
+  }
+}
+
+[[maybe_unused]] std::string Icmp6ToString(const uint8_t* packet, size_t len) {
+  const ip6_hdr* ip6 = reinterpret_cast<const ip6_hdr*>(packet);
+  const icmp6_hdr* icmp6 =
+      reinterpret_cast<const icmp6_hdr*>(packet + sizeof(ip6_hdr));
+
+  if (len < sizeof(ip6_hdr) + sizeof(icmp6_hdr))
+    return "<packet too small>";
+
+  if (ip6->ip6_nxt != IPPROTO_ICMPV6)
+    return "<not ICMP6 packet>";
+
+  if (icmp6->icmp6_type < ND_ROUTER_SOLICIT ||
+      icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
+    return "<not ND ICMP6 packet>";
+
+  return Icmp6TypeName(icmp6->icmp6_type) + " " +
+         IPv6AddressToString(ip6->ip6_src) + " -> " +
+         IPv6AddressToString(ip6->ip6_dst);
+}
+
 }  // namespace
 
 constexpr ssize_t NDProxy::kTranslateErrorNotICMPv6Frame;
@@ -423,10 +458,7 @@ void NDProxy::ReadAndProcessOneFrame(int fd) {
         case kTranslateErrorNotNDFrame:
           LOG(DFATAL) << "Attempt to TranslateNDFrame on a non-NDP frame, "
                          "icmpv6 type = "
-                      << static_cast<int>(reinterpret_cast<icmp6_hdr*>(
-                                              in_frame_buffer_ + ETHER_HDR_LEN +
-                                              sizeof(ip6_hdr))
-                                              ->icmp6_type);
+                      << static_cast<int>(icmp6->icmp6_type);
           return;
         case kTranslateErrorInsufficientLength:
           LOG(DFATAL) << "TranslateNDFrame failed: frame_len = " << len
