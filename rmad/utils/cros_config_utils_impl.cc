@@ -87,9 +87,8 @@ bool CrosConfigUtilsImpl::GetSkuIdList(std::vector<int>* sku_id_list) const {
 
   sku_id_list->clear();
   for (auto& value : values) {
-    int sku;
-    if (value.GetAsInteger(&sku)) {
-      sku_id_list->push_back(sku);
+    if (value.is_int()) {
+      sku_id_list->push_back(value.GetInt());
     }
   }
 
@@ -108,9 +107,8 @@ bool CrosConfigUtilsImpl::GetWhitelabelTagList(
 
   whitelabel_tag_list->clear();
   for (auto& value : values) {
-    std::string tag;
-    if (value.GetAsString(&tag)) {
-      whitelabel_tag_list->push_back(tag);
+    if (value.is_string()) {
+      whitelabel_tag_list->push_back(value.GetString());
     }
   }
 
