@@ -27,7 +27,7 @@ HpsResult AverageFilter::ProcessResultImpl(int result, bool valid) {
   last_n_results_.push(result);
 
   // Get the average.
-  int average = sum_result_ / last_n_results_.size();
+  int average = sum_result_ / static_cast<int>(last_n_results_.size());
 
   // Compare the average with two thresholds.
   if (average >= config_.positive_score_threshold()) {
