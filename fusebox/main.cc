@@ -117,7 +117,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    if (node->ino == FUSE_ROOT_ID) {
+    if (node->parent <= FUSE_ROOT_ID) {
       struct stat stat;
       CHECK(GetInodeTable().GetStat(node->ino, &stat));
       request->ReplyAttr(stat, kStatTimeoutSeconds);
@@ -167,7 +167,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   void Lookup(std::unique_ptr<EntryRequest> request,
               ino_t parent,
               const char* name) override {
-    VLOG(1) << "lookup parent " << parent << "/" << name;
+    VLOG(1) << "lookup " << parent << "/" << name;
 
     if (request->IsInterrupted())
       return;
@@ -176,6 +176,11 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     if (!parent_node) {
       request->ReplyError(errno);
       PLOG(ERROR) << "lookup parent " << parent;
+      return;
+    }
+
+    if (parent == FUSE_ROOT_ID) {
+      LookupLocal(std::move(request), FUSE_ROOT_ID, name);
       return;
     }
 
@@ -194,11 +199,32 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 
   const double kEntryTimeoutSeconds = 5.0;
 
+  void LookupLocal(std::unique_ptr<EntryRequest> request,
+                   ino_t parent,
+                   std::string name) {
+    VLOG(1) << "lookup-local " << parent << "/" << name;
+
+    auto it = device_dir_entry_.find(name);
+    if (it == device_dir_entry_.end()) {
+      errno = request->ReplyError(ENOENT);
+      PLOG(ERROR) << "lookup-local " << parent << "/" << name;
+      return;
+    }
+
+    fuse_entry_param entry = {0};
+    entry.ino = static_cast<fuse_ino_t>(it->second.ino);
+    CHECK(GetInodeTable().GetStat(it->second.ino, &entry.attr));
+    entry.attr_timeout = kStatTimeoutSeconds;
+    entry.entry_timeout = kEntryTimeoutSeconds;
+
+    request->ReplyEntry(entry);
+  }
+
   void LookupResponse(std::unique_ptr<EntryRequest> request,
                       ino_t parent,
                       std::string name,
                       dbus::Response* response) {
-    VLOG(1) << "lookup-resp parent " << parent << "/" << name;
+    VLOG(1) << "lookup-resp " << parent << "/" << name;
 
     if (request->IsInterrupted())
       return;
@@ -212,7 +238,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     Node* node = GetInodeTable().Ensure(parent, name.c_str());
     if (!node) {
       request->ReplyError(errno);
-      PLOG(ERROR) << "lookup-resp parent " << parent << "/" << name;
+      PLOG(ERROR) << "lookup-resp " << parent << "/" << name;
       return;
     }
 
@@ -281,6 +307,11 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     buffer.reset(new DirEntryResponse(node->ino, handle));
     buffer->Append(std::move(request));
 
+    if (node->ino == FUSE_ROOT_ID) {
+      ReadDirLocal(FUSE_ROOT_ID, off, buffer.get());
+      return;
+    }
+
     dbus::MethodCall method = GetFuseBoxServerMethod();
     dbus::MessageWriter writer(&method);
 
@@ -293,6 +324,16 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
         base::BindOnce(&FuseBoxClient::ReadDirStarted, base::Unretained(this),
                        node->ino, handle);
     CallFuseBoxServerMethod(&method, std::move(readdir_started));
+  }
+
+  void ReadDirLocal(ino_t ino, off_t off, DirEntryResponse* response) {
+    VLOG(1) << "readdir-local fh " << response->handle() << " off " << off;
+
+    std::vector<DirEntry> entries;
+    for (const auto& item : device_dir_entry_)
+      entries.push_back(item.second);
+
+    response->Append(std::move(entries), true);
   }
 
   void ReadDirStarted(ino_t ino, uint64_t handle, dbus::Response* response) {
@@ -600,8 +641,8 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
   // D-Bus.
   scoped_refptr<dbus::Bus> bus_;
 
-  // Map device name to DirEntry.
-  std::map<std::string, struct DirEntry> device_dir_entry_;
+  // Map device name to device DirEntry.
+  std::map<std::string, DirEntry> device_dir_entry_;
 
   // Fuse mount: not owned.
   FuseMount* fuse_ = nullptr;
