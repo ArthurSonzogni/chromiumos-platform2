@@ -65,6 +65,11 @@ constexpr uint8_t kTBT3CableDiscModeVDO_3_4_Gen_Rounded_Non_Rounded = 0x1;
 constexpr uint8_t kTBT3CableDiscModeVDOSpeedOffset = 16;
 constexpr uint8_t kTBT3CableDiscModeVDOSpeedMask = 0x7;
 constexpr uint8_t kTBT3CableDiscModeVDOSpeed10G20G = 0x3;
+// USB Type-C Cable & Connector spec release 2.1
+// Table F-11 TBT3 Cable Discover Mode VDO Responses
+constexpr uint8_t kTBT3CableDiscModeVDOModeOffset = 0;
+constexpr uint16_t kTBT3CableDiscModeVDOModeMask = 0xffff;
+constexpr uint16_t kTBT3CableDiscModeVDOModeTBT = 0x1;
 
 // Standard and Vendor Indentifications commonly expected in cables and partners
 constexpr uint16_t kDPAltModeSID = 0xff01;

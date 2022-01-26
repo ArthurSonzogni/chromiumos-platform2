@@ -158,6 +158,8 @@ class Port {
   FRIEND_TEST(PortTest, TestUSB4ToDPAltMode);
   FRIEND_TEST(PortTest, TestUSB4LimitedByCableFalse);
   FRIEND_TEST(PortTest, TestUSB4LimitedByCableTrue);
+  FRIEND_TEST(PortTest, TestUSB4LimitedByTBT3PassiveCableFalse);
+  FRIEND_TEST(PortTest, TestUSB4LimitedByTBT4PassiveLRDCableFalse);
 
   // Helper functions from test_util for defining devices used in unit tests.
   friend void AddUnbrandedUSB2Cable(Port& port);
@@ -171,6 +173,7 @@ class Port {
   friend void AddBelkinTBT3ActiveCable(Port& port);
   friend void AddAppleTBT3ProCable(Port& port);
   friend void AddCalDigitTBT4Cable(Port& port);
+  friend void AddCableMattersTBT4LRDCable(Port& port);
   friend void AddStartech40GbpsCable(Port& port);
   friend void AddCableMattersDock(Port& port);
   friend void AddDellWD19TBDock(Port& port);

@@ -292,6 +292,42 @@ void AddCalDigitTBT4Cable(Port& port) {
   port.AddCableAltMode(mode_path);
 }
 
+void AddCableMattersTBT4LRDCable(Port& port) {
+  base::ScopedTempDir scoped_temp_dir_;
+  if (!scoped_temp_dir_.CreateUniqueTempDir())
+    return;
+  base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
+
+  port.AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // Cable Matters TBT4 LRD Cable
+  port.cable_->SetPDRevision(PDRevision::k20);
+  port.cable_->SetIdHeaderVDO(0x1c002b1d);
+  port.cable_->SetCertStatVDO(0x0);
+  port.cable_->SetProductVDO(0x19010097);
+  port.cable_->SetProductTypeVDO1(0x3208485a);
+  port.cable_->SetProductTypeVDO2(0x0);
+  port.cable_->SetProductTypeVDO3(0x0);
+
+  // Add alternate modes.
+  port.cable_->SetNumAltModes(3);
+  auto mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
+  auto mode_path = temp_dir_.Append(mode_dirname);
+  if (!CreateFakeAltMode(mode_path, 0x04b4, 0x1, 0))
+    return;
+  port.AddCableAltMode(mode_path);
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
+  mode_path = temp_dir_.Append(mode_dirname);
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x28b0001, 0))
+    return;
+  port.AddCableAltMode(mode_path);
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 2);
+  mode_path = temp_dir_.Append(mode_dirname);
+  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0xc0c0c, 0))
+    return;
+  port.AddCableAltMode(mode_path);
+}
+
 void AddStartech40GbpsCable(Port& port) {
   port.AddCable(base::FilePath(kFakePort0CableSysPath));
 

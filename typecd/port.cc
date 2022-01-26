@@ -455,6 +455,34 @@ bool Port::CableLimitingUSBSpeed() {
 
   auto cable_speed = cable_->GetProductTypeVDO1() & kUSBSpeedBitMask;
   auto partner_speed = partner_->GetProductTypeVDO1() & kUSBSpeedBitMask;
+
+  // Check for TBT supporting cables which signal as USB 3.2 Gen2 passive
+  // cables in ID Header VDO and Passive Cable VDO, but can support USB4 with
+  // TBT3 Gen3 speed.
+  // USB Type-C Cable & Connector spec release 2.1
+  // Figure 5-1 USB4 Discovery and Entry Flow Model
+  if (cable_type == kIDHeaderVDOProductTypeCablePassive) {
+    for (int i = 0; i < cable_->GetNumAltModes(); i++) {
+      auto alt_mode = cable_->GetAltMode(i);
+
+      if (!alt_mode || alt_mode->GetSVID() != kTBTAltModeVID)
+        continue;
+
+      auto cable_tbt_mode =
+          (alt_mode->GetVDO() >> kTBT3CableDiscModeVDOModeOffset) &
+          kTBT3CableDiscModeVDOModeMask;
+      auto cable_tbt_speed =
+          (alt_mode->GetVDO() >> kTBT3CableDiscModeVDOSpeedOffset) &
+          kTBT3CableDiscModeVDOSpeedMask;
+
+      if (cable_tbt_mode == kTBT3CableDiscModeVDOModeTBT &&
+          cable_tbt_speed == kTBT3CableDiscModeVDOSpeed10G20G)
+        cable_speed = kUSB40SuperSpeedGen3;
+
+      break;
+    }
+  }
+
   return partner_speed > cable_speed;
 }
 

@@ -34,6 +34,7 @@ void AddBelkinTBT3PassiveCable(Port& port);
 void AddBelkinTBT3ActiveCable(Port& port);
 void AddAppleTBT3ProCable(Port& port);
 void AddCalDigitTBT4Cable(Port& port);
+void AddCableMattersTBT4LRDCable(Port& port);
 void AddStartech40GbpsCable(Port& port);
 
 // Helper functions for USB-C partners.

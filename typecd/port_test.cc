@@ -492,4 +492,30 @@ TEST_F(PortTest, TestUSB4LimitedByCableTrue) {
   EXPECT_TRUE(port->CableLimitingUSBSpeed());
 }
 
+// Check that CableLimitingUSBSpeed works for "false" case with passive TBT3
+// (USB 3.2 Gen2) Cable.
+// Case: Thunderbolt 4 OWC dock connected with unbranded TBT3 cable.
+TEST_F(PortTest, TestUSB4LimitedByTBT3PassiveCableFalse) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddOWCTBT4Dock(*port);
+  AddUnbrandedTBT3Cable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed());
+}
+
+// Check that CableLimitingUSBSpeed works for "false" case with passive TBT4
+// (USB 3.2 Gen2) LRD Cable.
+// Case: Thunderbolt 4 OWC dock connected with Cable Matters TBT4 LRD cable.
+TEST_F(PortTest, TestUSB4LimitedByTBT4PassiveLRDCableFalse) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddOWCTBT4Dock(*port);
+  AddCableMattersTBT4LRDCable(*port);
+
+  EXPECT_EQ(ModeEntryResult::kSuccess, port->CanEnterUSB4());
+  EXPECT_FALSE(port->CableLimitingUSBSpeed());
+}
+
 }  // namespace typecd
