@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/weak_ptr.h>
 #include <base/optional.h>
 #include <base/sequence_checker.h>
 #include <iioservice/mojo/cros_sensor_service.mojom.h>
@@ -105,8 +104,6 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
   // iio_device_ids and Weak pointers into the relevant entries of |sensors_|.
   Sensor lid_sensor_;
   Sensor base_sensor_;
-
-  base::WeakPtrFactory<AmbientLightSensorManagerMojo> weak_factory_{this};
 
   SEQUENCE_CHECKER(sequence_checker_);
 };
