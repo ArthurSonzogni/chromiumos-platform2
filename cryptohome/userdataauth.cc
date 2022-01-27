@@ -204,6 +204,8 @@ UserDataAuth::UserDataAuth()
       disk_cleanup_threshold_(kFreeSpaceThresholdToTriggerCleanup),
       disk_cleanup_aggressive_threshold_(
           kFreeSpaceThresholdToTriggerAggressiveCleanup),
+      disk_cleanup_critical_threshold_(
+          kFreeSpaceThresholdToTriggerCriticalCleanup),
       disk_cleanup_target_free_space_(kTargetFreeSpaceAfterCleanup),
       default_mount_factory_(new cryptohome::MountFactory()),
       mount_factory_(default_mount_factory_.get()),
@@ -334,6 +336,8 @@ bool UserDataAuth::Initialize() {
       disk_cleanup_threshold_);
   low_disk_space_handler_->disk_cleanup()->set_aggressive_cleanup_threshold(
       disk_cleanup_aggressive_threshold_);
+  low_disk_space_handler_->disk_cleanup()->set_critical_cleanup_threshold(
+      disk_cleanup_critical_threshold_);
   low_disk_space_handler_->disk_cleanup()->set_target_free_space(
       disk_cleanup_target_free_space_);
 
@@ -1069,6 +1073,11 @@ void UserDataAuth::set_cleanup_threshold(uint64_t cleanup_threshold) {
 void UserDataAuth::set_aggressive_cleanup_threshold(
     uint64_t aggressive_cleanup_threshold) {
   disk_cleanup_aggressive_threshold_ = aggressive_cleanup_threshold;
+}
+
+void UserDataAuth::set_critical_cleanup_threshold(
+    uint64_t critical_cleanup_threshold) {
+  disk_cleanup_critical_threshold_ = critical_cleanup_threshold;
 }
 
 void UserDataAuth::set_target_free_space(uint64_t target_free_space) {

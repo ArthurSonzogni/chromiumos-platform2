@@ -122,6 +122,16 @@ bool HomeDirs::KeylockerForStorageEncryptionEnabled() {
   return keylocker_for_storage_encryption_enabled;
 }
 
+bool HomeDirs::MustRunAutomaticCleanupOnLogin() {
+  // If the policy cannot be loaded, default to not run cleanup.
+  if (!policy_provider_->device_policy_is_loaded())
+    return false;
+
+  return policy_provider_->GetDevicePolicy()
+      .GetRunAutomaticCleanupOnLogin()
+      .value_or(false);
+}
+
 bool HomeDirs::SetLockedToSingleUser() const {
   return platform_->TouchFileDurable(base::FilePath(kLockedToSingleUserFile));
 }

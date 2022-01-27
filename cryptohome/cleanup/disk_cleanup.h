@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <base/time/time.h>
@@ -25,6 +26,7 @@ namespace cryptohome {
 // Cleanup parameters in bytes.
 const int64_t kFreeSpaceThresholdToTriggerCleanup = 1LL << 30;
 const int64_t kFreeSpaceThresholdToTriggerAggressiveCleanup = 768 * 1024 * 1024;
+const int64_t kFreeSpaceThresholdToTriggerCriticalCleanup = 512 * 1024 * 1024;
 const int64_t kTargetFreeSpaceAfterCleanup = 2LL << 30;
 
 class DiskCleanupRoutines;
@@ -40,6 +42,7 @@ class DiskCleanup {
     kAboveThreshold,         // above cleanup threshold but below cleanup target
     kNeedNormalCleanup,      // below threshold for normal cleanup
     kNeedAggressiveCleanup,  // below threshold for aggressive cleanup
+    kNeedCriticalCleanup,    // below threshold for critical cleanup
   };
 
   DiskCleanup() = default;
@@ -80,6 +83,12 @@ class DiskCleanup {
   // it goes up to cleanup_target_.
   virtual bool FreeDiskSpace();
 
+  // Frees disk space for unused cryptohomes to make sure enough space is
+  // available during login.
+  // If the available disk space is below critical_cleanup_threshold_, attempts
+  // to free space until it goes up to normal_cleanup_threshold_.
+  virtual bool FreeDiskSpaceDuringLogin(const std::string& logging_in);
+
   // Setters for cleanup thresholds.
   virtual void set_cleanup_threshold(uint64_t cleanup_threshold) {
     normal_cleanup_threshold_ = cleanup_threshold;
@@ -87,6 +96,10 @@ class DiskCleanup {
   virtual void set_aggressive_cleanup_threshold(
       uint64_t aggressive_cleanup_threshold) {
     aggressive_cleanup_threshold_ = aggressive_cleanup_threshold;
+  }
+  virtual void set_critical_cleanup_threshold(
+      uint64_t critical_cleanup_threshold) {
+    critical_cleanup_threshold_ = critical_cleanup_threshold;
   }
   virtual void set_target_free_space(uint64_t target_free_space) {
     target_free_space_ = target_free_space;
@@ -99,6 +112,9 @@ class DiskCleanup {
  private:
   // Actually performs disk cleanup. Called by FreeDiskSpace.
   bool FreeDiskSpaceInternal();
+
+  // Actually performs disk cleanup. Called by FreeDiskSpaceDuringLogin.
+  bool FreeDiskSpaceDuringLoginInternal(const std::string& obfuscated);
 
   // Removes all mounted homedirs from the vector
   void FilterMountedHomedirs(std::vector<HomeDirs::HomeDir>* homedirs);
@@ -118,6 +134,9 @@ class DiskCleanup {
   uint64_t normal_cleanup_threshold_ = kFreeSpaceThresholdToTriggerCleanup;
   uint64_t aggressive_cleanup_threshold_ =
       kFreeSpaceThresholdToTriggerAggressiveCleanup;
+  uint64_t critical_cleanup_threshold_ =
+      kFreeSpaceThresholdToTriggerCriticalCleanup;
+
   uint64_t target_free_space_ = kTargetFreeSpaceAfterCleanup;
 
   // Cleanup times.

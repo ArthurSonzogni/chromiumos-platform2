@@ -186,6 +186,7 @@ class UserDataAuth {
   // Set thresholds for automatic disk cleanup.
   void set_cleanup_threshold(uint64_t cleanup_threshold);
   void set_aggressive_cleanup_threshold(uint64_t aggressive_cleanup_threshold);
+  void set_critical_cleanup_threshold(uint64_t critical_cleanup_threshold);
   void set_target_free_space(uint64_t target_free_space);
 
   // Set the |low_disk_space_callback_| variable. This is usually called by the
@@ -1286,6 +1287,7 @@ class UserDataAuth {
   // whole initialization process of UserDataAuth to avoid such hacks.
   uint64_t disk_cleanup_threshold_;
   uint64_t disk_cleanup_aggressive_threshold_;
+  uint64_t disk_cleanup_critical_threshold_;
   uint64_t disk_cleanup_target_free_space_;
 
   // The default mount factory instance that is used for creating Mount objects.

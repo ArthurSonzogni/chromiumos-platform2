@@ -32,6 +32,7 @@ class MockHomeDirs : public HomeDirs {
   MOCK_METHOD(bool, GetPlainOwner, (std::string*), (override));
   MOCK_METHOD(bool, AreEphemeralUsersEnabled, (), (override));
   MOCK_METHOD(bool, KeylockerForStorageEncryptionEnabled, (), (override));
+  MOCK_METHOD(bool, MustRunAutomaticCleanupOnLogin, (), (override));
   MOCK_METHOD(bool, Create, (const std::string&), (override));
   MOCK_METHOD(bool, Remove, (const std::string&), (override));
   MOCK_METHOD(int64_t, ComputeDiskUsage, (const std::string&), (override));

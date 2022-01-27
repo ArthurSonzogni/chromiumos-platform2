@@ -36,6 +36,7 @@ static const char* kFscryptV2 = "fscrypt_v2";
 static const char* kNoDaemonize = "nodaemonize";
 static const char* kCleanupThreshold = "cleanup_threshold";
 static const char* kAggressiveThreshold = "aggressive_cleanup_threshold";
+static const char* kCriticalThreshold = "critical_cleanup_threshold";
 static const char* kTargetFreeSpace = "target_free_space";
 
 }  // namespace switches
@@ -91,6 +92,9 @@ int main(int argc, char** argv) {
   uint64_t aggressive_cleanup_threshold = ReadCleanupThreshold(
       cl, switches::kAggressiveThreshold,
       cryptohome::kFreeSpaceThresholdToTriggerAggressiveCleanup);
+  uint64_t critical_cleanup_threshold = ReadCleanupThreshold(
+      cl, switches::kCriticalThreshold,
+      cryptohome::kFreeSpaceThresholdToTriggerCriticalCleanup);
   uint64_t target_free_space = ReadCleanupThreshold(
       cl, switches::kTargetFreeSpace, cryptohome::kTargetFreeSpaceAfterCleanup);
 
@@ -129,6 +133,8 @@ int main(int argc, char** argv) {
       cleanup_threshold);
   user_data_auth_daemon.GetUserDataAuth()->set_aggressive_cleanup_threshold(
       aggressive_cleanup_threshold);
+  user_data_auth_daemon.GetUserDataAuth()->set_critical_cleanup_threshold(
+      critical_cleanup_threshold);
   user_data_auth_daemon.GetUserDataAuth()->set_target_free_space(
       target_free_space);
 

@@ -40,8 +40,7 @@ const struct test_homedir kHomedirs[] = {
     {"d5510a8dda6d743c46dadd979a61ae5603529742", {2011, 1, 6, 1}},
     {"8f995cdee8f0711fd32e1cf6246424002c483d47", {2011, 2, 2, 1}},
     {"973b9640e86f6073c6b6e2759ff3cf3084515e61", {2011, 3, 2, 1}},
-    {"60a354e3402f73ff4503b5d2efc5be53bc72be4d", {2011, 4, 5, 1}},
-    {"60a354e3402f73ff4503b5d2efc5be34bc72be4d", {2011, 4, 6, 1}}};
+    {"60a354e3402f73ff4503b5d2efc5be53bc72be4d", {2011, 4, 5, 1}}};
 
 const int kHomedirsCount = sizeof(kHomedirs) / sizeof(struct test_homedir);
 
@@ -153,12 +152,13 @@ TEST_F(DiskCleanupTest, GetFreeDiskSpaceState) {
   cleanup_->set_target_free_space(20);
   cleanup_->set_cleanup_threshold(10);
   cleanup_->set_aggressive_cleanup_threshold(5);
+  cleanup_->set_critical_cleanup_threshold(2);
 
   EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(std::nullopt),
             DiskCleanup::FreeSpaceState::kError);
 
   EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(0),
-            DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup);
+            DiskCleanup::FreeSpaceState::kNeedCriticalCleanup);
   EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(4),
             DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup);
 
@@ -182,10 +182,12 @@ TEST_F(DiskCleanupTest, GetFreeDiskSpaceStatePlatform) {
   cleanup_->set_target_free_space(20);
   cleanup_->set_cleanup_threshold(10);
   cleanup_->set_aggressive_cleanup_threshold(5);
+  cleanup_->set_critical_cleanup_threshold(2);
 
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
       .WillOnce(Return(-1))
       .WillOnce(Return(0))
+      .WillOnce(Return(1))
       .WillOnce(Return(4))
       .WillOnce(Return(5))
       .WillOnce(Return(9))
@@ -197,7 +199,9 @@ TEST_F(DiskCleanupTest, GetFreeDiskSpaceStatePlatform) {
   EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(),
             DiskCleanup::FreeSpaceState::kError);
   EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(),
-            DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup);
+            DiskCleanup::FreeSpaceState::kNeedCriticalCleanup);
+  EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(),
+            DiskCleanup::FreeSpaceState::kNeedCriticalCleanup);
   EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(),
             DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup);
   EXPECT_EQ(cleanup_->GetFreeDiskSpaceState(),
@@ -835,6 +839,111 @@ TEST_F(DiskCleanupTest, RepeatAggressiveCleanupAfterEarlyStop) {
   EXPECT_CALL(platform_, GetCurrentTime).WillRepeatedly(Return(cleanup_time));
 
   cleanup_->FreeDiskSpace();
+}
+
+TEST_F(DiskCleanupTest, FreeDiskSpaceDuringLoginOnlyEnterprise) {
+  EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot())).Times(0);
+
+  cleanup_->FreeDiskSpaceDuringLogin("testing");
+}
+
+TEST_F(DiskCleanupTest, FreeDiskSpaceDuringLoginPolicyControl) {
+  EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot())).Times(0);
+
+  EXPECT_CALL(homedirs_, MustRunAutomaticCleanupOnLogin())
+      .WillRepeatedly(Return(false));
+
+  cleanup_->FreeDiskSpaceDuringLogin("testing");
+}
+
+TEST_F(DiskCleanupTest, FreeDiskSpaceDuringLoginCleanAll) {
+  EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, MustRunAutomaticCleanupOnLogin())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
+      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCriticalCleanup - 1));
+
+  EXPECT_CALL(homedirs_, GetHomeDirs())
+      .WillRepeatedly(Return(unmounted_homedirs()));
+
+  {
+    InSequence seq;
+
+    // Skip last user.
+    for (int i = 0; i < kHomedirsCount; i++) {
+      EXPECT_CALL(*cleanup_routines_,
+                  DeleteUserProfile(kHomedirs[i].obfuscated))
+          .WillOnce(Return(true));
+      EXPECT_CALL(timestamp_manager_, RemoveUser(kHomedirs[i].obfuscated));
+    }
+  }
+
+  cleanup_->FreeDiskSpaceDuringLogin("testing");
+}
+
+TEST_F(DiskCleanupTest, FreeDiskSpaceDuringLoginSkipLogginIn) {
+  EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, MustRunAutomaticCleanupOnLogin())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
+      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCriticalCleanup - 1));
+
+  EXPECT_CALL(homedirs_, GetHomeDirs())
+      .WillRepeatedly(Return(unmounted_homedirs()));
+
+  {
+    InSequence seq;
+
+    // Skip last user.
+    for (int i = 0; i < kHomedirsCount; i++) {
+      if (i == 2) {
+        EXPECT_CALL(*cleanup_routines_,
+                    DeleteUserProfile(kHomedirs[i].obfuscated))
+            .Times(0);
+        continue;
+      }
+
+      EXPECT_CALL(*cleanup_routines_,
+                  DeleteUserProfile(kHomedirs[i].obfuscated))
+          .WillOnce(Return(true));
+      EXPECT_CALL(timestamp_manager_, RemoveUser(kHomedirs[i].obfuscated));
+    }
+  }
+
+  cleanup_->FreeDiskSpaceDuringLogin(kHomedirs[2].obfuscated);
+}
+
+TEST_F(DiskCleanupTest, FreeDiskSpaceDuringLoginEarlyStop) {
+  EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(true));
+  EXPECT_CALL(homedirs_, MustRunAutomaticCleanupOnLogin())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*cleanup_routines_, DeleteUserProfile(_)).Times(0);
+
+  EXPECT_CALL(homedirs_, GetHomeDirs())
+      .WillRepeatedly(Return(unmounted_homedirs()));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
+      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup + 1));
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
+      .Times(2)  // 1 initial query + 1 user cleanup.
+      .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCriticalCleanup - 1))
+      .RetiresOnSaturation();
+
+  {
+    InSequence seq;
+
+    // Only 2 users should be cleaned up.
+    for (int i = 0; i < 2; i++) {
+      EXPECT_CALL(*cleanup_routines_,
+                  DeleteUserProfile(kHomedirs[i].obfuscated))
+          .WillOnce(Return(true));
+      EXPECT_CALL(timestamp_manager_, RemoveUser(kHomedirs[i].obfuscated));
+    }
+  }
+
+  cleanup_->FreeDiskSpaceDuringLogin("testing");
 }
 
 }  // namespace cryptohome

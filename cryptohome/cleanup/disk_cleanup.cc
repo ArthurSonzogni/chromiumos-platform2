@@ -59,8 +59,10 @@ DiskCleanup::FreeSpaceState DiskCleanup::GetFreeDiskSpaceState(
     return DiskCleanup::FreeSpaceState::kAboveThreshold;
   } else if (value >= aggressive_cleanup_threshold_) {
     return DiskCleanup::FreeSpaceState::kNeedNormalCleanup;
-  } else {
+  } else if (value >= critical_cleanup_threshold_) {
     return DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup;
+  } else {
+    return DiskCleanup::FreeSpaceState::kNeedCriticalCleanup;
   }
 }
 
@@ -94,6 +96,7 @@ bool DiskCleanup::FreeDiskSpace() {
 
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
       // Trigger cleanup.
       VLOG(1) << "Starting cleanup with " << *free_space << " space available";
       break;
@@ -143,6 +146,77 @@ bool DiskCleanup::FreeDiskSpace() {
   VLOG(1) << "Disk cleanup cleared " << cleaned_in_mb << "MB.";
 
   LOG(INFO) << "Disk cleanup complete.";
+
+  return result;
+}
+
+bool DiskCleanup::FreeDiskSpaceDuringLogin(const std::string& obfuscated) {
+  base::ElapsedTimer total_timer;
+
+  // Only runs for enterprise users.
+  if (!homedirs_->enterprise_owned()) {
+    VLOG(1) << "Login cleanup skipped on a consumer device";
+    return true;
+  }
+
+  // Only run if enabled by policy.
+  if (!homedirs_->MustRunAutomaticCleanupOnLogin()) {
+    VLOG(1) << "Login cleanup not enabled by policy";
+    return true;
+  }
+
+  auto free_space = AmountOfFreeDiskSpace();
+
+  switch (GetFreeDiskSpaceState(free_space)) {
+    case DiskCleanup::FreeSpaceState::kAboveTarget:
+    case DiskCleanup::FreeSpaceState::kAboveThreshold:
+    case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+      // Already have enough space. No need to clean up.
+      VLOG(1) << "Skipping login cleanup with " << *free_space
+              << " space available";
+      ReportLoginDiskCleanupResult(DiskCleanupResult::kDiskCleanupSkip);
+      return true;
+
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
+      // Trigger cleanup.
+      break;
+
+    case DiskCleanup::FreeSpaceState::kError:
+      LOG(ERROR) << "Failed to get the amount of free disk space";
+      return false;
+    default:
+      LOG(ERROR) << "Unhandled free disk state";
+      return false;
+  }
+
+  LOG(WARNING) << "Starting login cleanup with " << *free_space
+               << " space available for " << obfuscated;
+
+  bool result = FreeDiskSpaceDuringLoginInternal(obfuscated);
+
+  if (result) {
+    ReportLoginDiskCleanupResult(DiskCleanupResult::kDiskCleanupSuccess);
+  } else {
+    ReportLoginDiskCleanupResult(DiskCleanupResult::kDiskCleanupError);
+  }
+
+  int cleanup_time = total_timer.Elapsed().InMilliseconds();
+  ReportLoginDiskCleanupTotalTime(cleanup_time);
+  VLOG(1) << "Login disk cleanup took " << cleanup_time << "ms.";
+
+  auto after_cleanup = AmountOfFreeDiskSpace();
+  if (!after_cleanup) {
+    LOG(ERROR) << "Failed to get the amount of free disk space";
+    return false;
+  }
+
+  auto cleaned_in_mb =
+      MAX(0, after_cleanup.value() - free_space.value()) / 1024 / 1024;
+
+  VLOG(1) << "Login disk cleanup cleared " << cleaned_in_mb << "MB.";
+
+  LOG(INFO) << "Login disk cleanup complete.";
 
   return result;
 }
@@ -279,6 +353,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
           DiskCleanupProgress::kCacheVaultsCleanedAboveMinimum);
       return result;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
       // continue cleanup
       break;
     case DiskCleanup::FreeSpaceState::kError:
@@ -323,6 +398,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
           DiskCleanupProgress::kAndroidCacheCleanedAboveMinimum);
       return result;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
       // continue cleanup
       break;
     case DiskCleanup::FreeSpaceState::kError:
@@ -401,6 +477,43 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
             : DiskCleanupProgress::kWholeUserProfilesCleaned);
   } else {
     ReportDiskCleanupProgress(DiskCleanupProgress::kNoUnmountedCryptohomes);
+  }
+
+  return result;
+}
+
+bool DiskCleanup::FreeDiskSpaceDuringLoginInternal(
+    const std::string& logging_in) {
+  auto unmounted_homedirs = homedirs_->GetHomeDirs();
+  FilterMountedHomedirs(&unmounted_homedirs);
+
+  std::sort(
+      unmounted_homedirs.begin(), unmounted_homedirs.end(),
+      [&](const HomeDirs::HomeDir& a, const HomeDirs::HomeDir& b) {
+        return timestamp_manager_->GetLastUserActivityTimestamp(a.obfuscated) >
+               timestamp_manager_->GetLastUserActivityTimestamp(b.obfuscated);
+      });
+
+  bool result = true;
+
+  for (auto dir = unmounted_homedirs.rbegin(); dir != unmounted_homedirs.rend();
+       dir++) {
+    if (dir->obfuscated == logging_in) {
+      LOG(INFO) << "Skipped deletion of the user logging in.";
+      continue;
+    }
+
+    LOG(INFO) << "Freeing disk space by deleting user " << dir->obfuscated;
+    if (!routines_->DeleteUserProfile(dir->obfuscated))
+      result = false;
+    timestamp_manager_->RemoveUser(dir->obfuscated);
+
+    // Login cleanup stops at kAboveThreshold.
+    auto state = GetFreeDiskSpaceState();
+    if (state == DiskCleanup::FreeSpaceState::kAboveThreshold ||
+        state == DiskCleanup::FreeSpaceState::kAboveTarget) {
+      break;
+    }
   }
 
   return result;

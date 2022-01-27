@@ -94,6 +94,9 @@ class HomeDirs {
   // Returns whether Keylocker should be used for per-user encrypted storage.
   virtual bool KeylockerForStorageEncryptionEnabled();
 
+  // Returns whether the automatic cleanup during login policy is enabled.
+  virtual bool MustRunAutomaticCleanupOnLogin();
+
   // Creates the cryptohome for the named user.
   virtual bool Create(const std::string& username);
 

@@ -36,6 +36,7 @@ class MockLowDiskSpaceHandler : public LowDiskSpaceHandler {
               (const base::RepeatingCallback<void()>&),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(DiskCleanup*, disk_cleanup, (), (override, const));
 };
 
 }  // namespace cryptohome
