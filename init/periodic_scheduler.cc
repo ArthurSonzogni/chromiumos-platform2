@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/threading/platform_thread.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
 
