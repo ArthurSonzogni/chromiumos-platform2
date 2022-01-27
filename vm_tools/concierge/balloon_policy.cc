@@ -140,6 +140,8 @@ LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(const MemoryMargins& margins,
             << "\"host_lwm\": " << host_lwm << ","
             << "\"guest_lwm\": " << guest_zoneinfo.sum_low << ","
             << "\"guest_totalreserve\": " << guest_zoneinfo.totalreserve << ","
+            << "\"max_free\": " << MaxFree() << ","
+            << "\"min_free\": " << MinFree() << ","
             << "\"reclaim_target_cache\": " << params.reclaim_target_cache
             << ","
             << "\"critical_target_cache\": " << params.critical_target_cache
@@ -230,10 +232,16 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
   }
 
   // Reduce how often we change the balloon size.
+  // When there is a multi-thread workload running in VM, frequent memory
+  // ballooning would trigger a huge number of VM-EXIT caused by external
+  // interrupts (Function call interrupt and TLB shootdowns). This hurts
+  // performance heavily. To mitigate the performance hit, try the best
+  // to reduce the ballooning triger frequency.
   const bool target_not_low = target_free == max_free;
-  const bool guest_not_low = guest_free >= max_free;
+  const bool guest_not_low =
+      guest_free >= (min_free + (max_free - min_free) / 4 * 3);
   const bool delta_not_big =
-      (guest_free / min_free) == ((guest_free + delta) / min_free);
+      (guest_free / max_free) == ((guest_free + delta) / max_free);
   if (target_not_low && guest_not_low && delta_not_big) {
     return 0;
   }
@@ -245,6 +253,7 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
             << "\"guest_cached\": " << guest_cache << ", "
             << "\"guest_unreclaimable\": " << guest_unreclaimable << ", "
             << "\"guest_free\": " << guest_free << ", "
+            << "\"target_free\": " << target_free << ", "
             << "\"host_available\": " << host_available << ", "
             << "\"host_free\": " << host_free << ", "
             << "\"delta\": " << delta << " }";

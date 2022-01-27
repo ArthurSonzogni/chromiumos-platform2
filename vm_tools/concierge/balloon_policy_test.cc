@@ -76,22 +76,23 @@ TEST(BalloonPolicyTest, LimitCacheNoLimit) {
                                                 "test"));
   }
 
-  // Test that we do inflate the balloon if it's a lot (more than MinFree()).
+  // Test that we do inflate the balloon if it's a lot (twice MaxFree()).
   {
-    const BalloonStats stats = {
-        .disk_caches = 0, .free_memory = policy.MaxFree() + policy.MinFree()};
-    EXPECT_EQ(policy.MinFree(), policy.ComputeBalloonDeltaImpl(
+    const BalloonStats stats = {.disk_caches = 0,
+                                .free_memory = policy.MaxFree() * 2};
+    EXPECT_EQ(policy.MaxFree(), policy.ComputeBalloonDeltaImpl(
                                     0 /* host_free */, stats,
                                     0 /* host_available */, false, "test"));
   }
 
-  // Test that we deflate the balloon even if we just need a little bit.
+  // Test that we deflate the balloon even if we just need a small piece.
   {
     const BalloonStats stats = {.disk_caches = 0,
-                                .free_memory = policy.MaxFree() - MIB};
-    EXPECT_EQ(-MIB, policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
-                                                   0 /* host_available */,
-                                                   false, "test"));
+                                .free_memory = policy.MaxFree() * 3 / 4};
+    EXPECT_EQ(
+        -(policy.MaxFree() / 4),
+        policy.ComputeBalloonDeltaImpl(0 /* host_free */, stats,
+                                       0 /* host_available */, false, "test"));
   }
 }
 
