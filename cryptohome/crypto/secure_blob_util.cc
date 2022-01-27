@@ -4,6 +4,8 @@
 
 #include "cryptohome/crypto/secure_blob_util.h"
 
+#include <base/numerics/safe_conversions.h>
+
 #include <string>
 
 #include <base/check_op.h>
