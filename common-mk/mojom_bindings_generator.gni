@@ -68,11 +68,16 @@ _mojom_bindings_suffixes = [
   "-shared-message-ids.h",
   "-shared.cc",
   "-shared.h",
-  "-test-utils.cc",
   "-test-utils.h",
   ".cc",
   ".h",
 ]
+
+# -test-utils.cc will be removed after libchrome r939949 uprev.
+# TODO(b/211560276): remove after uprev to >r932912.
+if ("${libbase_ver}" != "939949") {
+  _mojom_bindings_suffixes += [ "-test-utils.cc" ]
+}
 
 # Generates C++ mojo bindings source code and headers.
 template("generate_mojom_bindings_gen") {
