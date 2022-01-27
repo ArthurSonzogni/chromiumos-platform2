@@ -297,26 +297,26 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr& device) {
   }
 }
 
-base::FilePath DeviceInfo::GetDeviceInfoPath(const std::string& iface_name,
-                                             const std::string& path_name) {
+base::FilePath DeviceInfo::GetDeviceInfoPath(
+    const std::string& iface_name, const std::string& path_name) const {
   return device_info_root_.Append(iface_name).Append(path_name);
 }
 
 bool DeviceInfo::GetDeviceInfoContents(const std::string& iface_name,
                                        const std::string& path_name,
-                                       std::string* contents_out) {
+                                       std::string* contents_out) const {
   return base::ReadFileToString(GetDeviceInfoPath(iface_name, path_name),
                                 contents_out);
 }
 
 bool DeviceInfo::GetDeviceInfoSymbolicLink(const std::string& iface_name,
                                            const std::string& path_name,
-                                           base::FilePath* path_out) {
+                                           base::FilePath* path_out) const {
   return base::ReadSymbolicLink(GetDeviceInfoPath(iface_name, path_name),
                                 path_out);
 }
 
-int DeviceInfo::GetDeviceArpType(const std::string& iface_name) {
+int DeviceInfo::GetDeviceArpType(const std::string& iface_name) const {
   std::string type_string;
   int arp_type;
 
@@ -329,7 +329,8 @@ int DeviceInfo::GetDeviceArpType(const std::string& iface_name) {
 }
 
 Technology DeviceInfo::GetDeviceTechnology(
-    const std::string& iface_name, const base::Optional<std::string>& kind) {
+    const std::string& iface_name,
+    const base::Optional<std::string>& kind) const {
   int arp_type = GetDeviceArpType(iface_name);
 
   if (kind.has_value()) {
@@ -501,7 +502,7 @@ Technology DeviceInfo::GetDeviceTechnology(
   return Technology::kEthernet;
 }
 
-bool DeviceInfo::IsCdcEthernetModemDevice(const std::string& iface_name) {
+bool DeviceInfo::IsCdcEthernetModemDevice(const std::string& iface_name) const {
   // A cdc_ether / cdc_ncm device is a modem device if it also exposes tty
   // interfaces. To determine this, we look for the existence of the tty
   // interface in the USB device sysfs tree.
@@ -1477,7 +1478,7 @@ bool DeviceInfo::SetHostname(const std::string& hostname) const {
 // Verifies if a device is guest by checking if the owner of the device
 // identified by |interface_name| has the same UID as the user that runs the
 // Crostini VMs.
-bool DeviceInfo::IsGuestDevice(const std::string& interface_name) {
+bool DeviceInfo::IsGuestDevice(const std::string& interface_name) const {
   std::string owner;
   if (!GetDeviceInfoContents(interface_name, kInterfaceOwner, &owner)) {
     return false;
@@ -1533,7 +1534,7 @@ void DeviceInfo::OnNeighborReachabilityEvent(
   }
 }
 
-bool DeviceInfo::GetUserId(const std::string& user_name, uid_t* uid) {
+bool DeviceInfo::GetUserId(const std::string& user_name, uid_t* uid) const {
   return brillo::userdb::GetUserInfo(user_name, uid, nullptr);
 }
 

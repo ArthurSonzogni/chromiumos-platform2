@@ -151,7 +151,7 @@ class DeviceInfo {
 
   // Gets the real user ID of the given |user_name| and returns it via |uid|.
   // Returns true on success.
-  virtual bool GetUserId(const std::string& user_name, uid_t* uid);
+  virtual bool GetUserId(const std::string& user_name, uid_t* uid) const;
 
   // Notifies this object that patchpanel::Client is ready in Manager. Registers
   // neighbor connected events handler via manager_->patchpanel_client().
@@ -219,11 +219,11 @@ class DeviceInfo {
 
   // Return the ARP type (ARPHRD_* from <net/if_arp.h>) of interface
   // |iface_name|.
-  int GetDeviceArpType(const std::string& iface_name);
+  int GetDeviceArpType(const std::string& iface_name) const;
   // Return the FilePath for a given |path_name| in the device sysinfo for
   // a specific interface |iface_name|.
   base::FilePath GetDeviceInfoPath(const std::string& iface_name,
-                                   const std::string& path_name);
+                                   const std::string& path_name) const;
   // Return the preferred globally scoped IPv6 address for |interface_index|.
   // If no primary IPv6 address exists, return nullptr.
   const IPAddress* GetPrimaryIPv6Address(int interface_index);
@@ -232,22 +232,23 @@ class DeviceInfo {
   // read succeeded, false otherwise.
   bool GetDeviceInfoContents(const std::string& iface_name,
                              const std::string& path_name,
-                             std::string* contents_out);
+                             std::string* contents_out) const;
 
   // Return the filepath for the target of the device info symbolic link
   // |path_name| for interface |iface_name| in output parameter |path_out|.
   // Returns true if symbolic link read succeeded, false otherwise.
   bool GetDeviceInfoSymbolicLink(const std::string& iface_name,
                                  const std::string& path_name,
-                                 base::FilePath* path_out);
+                                 base::FilePath* path_out) const;
   // Classify the device named |iface_name| with RTNL kind |kind|, and return
   // an identifier indicating its type.
   virtual Technology GetDeviceTechnology(
-      const std::string& iface_name, const base::Optional<std::string>& kind);
+      const std::string& iface_name,
+      const base::Optional<std::string>& kind) const;
   // Checks the device specified by |iface_name| to see if it's a modem device.
   // This method assumes that |iface_name| has already been determined to be
   // using the cdc_ether / cdc_ncm driver.
-  bool IsCdcEthernetModemDevice(const std::string& iface_name);
+  bool IsCdcEthernetModemDevice(const std::string& iface_name) const;
   // Returns true if |base_dir| has a subdirectory named |subdir|.
   // |subdir| can be an immediate subdirectory of |base_dir| or can be
   // several levels deep.
@@ -282,7 +283,7 @@ class DeviceInfo {
 #endif  // DISABLE_WIFI
 
   // Returns whether a device with name |interface_name| is guest.
-  bool IsGuestDevice(const std::string& interface_name);
+  bool IsGuestDevice(const std::string& interface_name) const;
 
   void OnNeighborReachabilityEvent(
       const patchpanel::NeighborReachabilityEventSignal& signal);

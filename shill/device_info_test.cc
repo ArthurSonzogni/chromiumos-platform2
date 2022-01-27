@@ -1644,7 +1644,7 @@ class DeviceInfoForDelayedCreationTest : public DeviceInfo {
   MOCK_METHOD(Technology,
               GetDeviceTechnology,
               (const std::string&, const base::Optional<std::string>& kind),
-              (override));
+              (const, override));
 };
 
 class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
