@@ -11,6 +11,7 @@ use std::process::{Child, Command, Stdio};
 
 use libc::{self, pid_t};
 use minijail::{self, Minijail};
+use sys_util::info;
 
 use crate::sys::dup;
 
@@ -200,6 +201,8 @@ impl Sandbox for VmSandbox {
         // closed twice.
         let stdout: Stdio = dup(keep_fds[0].1).map_err(Error::Dup)?;
         let stderr: Stdio = dup(keep_fds[0].1).map_err(Error::Dup)?;
+
+        info!("crosvm args: {:?}", args);
 
         let vm = Command::new(&self.config.crosvm_path)
             .arg("--disable-sandbox")
