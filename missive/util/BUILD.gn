@@ -26,6 +26,14 @@ static_library("backoff_settings") {
   configs += [ ":target_defaults" ]
 }
 
+static_library("file") {
+  sources = [
+    "file.cc",
+    "file.h",
+  ]
+  configs += [ ":target_defaults" ]
+}
+
 static_library("status") {
   sources = [
     "status.cc",

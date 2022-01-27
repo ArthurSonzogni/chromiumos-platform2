@@ -35,6 +35,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_uploader_interface.h"
+#include "missive/util/file.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
@@ -335,7 +336,7 @@ class Storage::KeyInStorage {
       if (full_name == signed_encryption_key_result.value().first) {
         continue;  // This file is used.
       }
-      base::DeleteFile(full_name);  // Ignore errors, if any.
+      DeleteFileWarnIfFailed(full_name);  // Ignore errors, if any.
     }
 
     // Return the key.
@@ -435,7 +436,7 @@ class Storage::KeyInStorage {
     }
     // Delete all files assigned for deletion.
     for (const auto& file_to_remove : key_files_to_remove) {
-      base::DeleteFile(file_to_remove);  // Ignore errors, if any.
+      DeleteFileWarnIfFailed(file_to_remove);  // Ignore errors, if any.
     }
   }
 

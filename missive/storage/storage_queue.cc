@@ -47,6 +47,7 @@
 #include "missive/resources/resource_interface.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
+#include "missive/util/file.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
@@ -759,8 +760,8 @@ void StorageQueue::DeleteUnusedFiles(
     }
   }
   for (const auto& file_to_delete : files_to_delete) {
-    // Ignore result. If it fails, the file will be naturally handled next time.
-    base::DeleteFile(file_to_delete);
+    // If it fails, the file will be naturally handled next time.
+    DeleteFileWarnIfFailed(file_to_delete);
   }
 }
 
@@ -791,8 +792,8 @@ void StorageQueue::DeleteOutdatedMetadata(int64_t sequencing_id_to_keep) {
   for (const auto& file_to_delete : files_to_delete) {
     // Delete file on disk. Note: disk space has already been released when the
     // metafile was destructed, and so we don't need to do that here.
-    // Ignore result. If it fails, the file will be naturally handled next time.
-    base::DeleteFile(file_to_delete);
+    // If it fails, the file will be naturally handled next time.
+    DeleteFileWarnIfFailed(file_to_delete);
   }
 }
 
@@ -1631,7 +1632,7 @@ Status StorageQueue::RemoveConfirmedData(int64_t sequencing_id) {
     // Current file holds only ids <= sequencing_id.
     // Delete it.
     files_.begin()->second->Close();
-    (void)files_.begin()->second->Delete();  // ignore results
+    files_.begin()->second->DeleteWarnIfFailed();
     files_.erase(files_.begin());
   }
   // Even if there were errors, ignore them.
@@ -1743,15 +1744,11 @@ void StorageQueue::SingleFile::Close() {
   }
 }
 
-Status StorageQueue::SingleFile::Delete() {
+void StorageQueue::SingleFile::DeleteWarnIfFailed() {
   DCHECK(!handle_);
   GetDiskResource()->Discard(size_);
   size_ = 0;
-  if (!base::DeleteFile(filename_)) {
-    return Status(error::DATA_LOSS,
-                  base::StrCat({"Cannot delete file=", name()}));
-  }
-  return Status::StatusOK();
+  DeleteFileWarnIfFailed(filename_);
 }
 
 StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
