@@ -11,7 +11,7 @@ use std::collections::{BTreeMap as Map, VecDeque};
 use std::convert::TryFrom;
 use std::env;
 use std::fs::File;
-use std::io::{self, Seek, SeekFrom, Write};
+use std::io::{Seek, SeekFrom, Write};
 use std::iter::once;
 use std::mem::{replace, swap};
 use std::ops::{Deref, DerefMut};
@@ -392,8 +392,8 @@ impl ConnectionHandler for DugongConnectionHandler {
     }
 }
 
-fn fd_to_path(fd: RawFd) -> StdResult<PathBuf, io::Error> {
-    PathBuf::from(format!("/proc/self/fd/{}", fd)).read_link()
+fn fd_to_path(fd: RawFd) -> String {
+    format!("/proc/{}/fd/{}", getpid(), fd)
 }
 
 fn lookup_app_info<'a>(
@@ -542,9 +542,7 @@ fn spawn_tee_app(
         ExecutableInfo::Digest(digest) | ExecutableInfo::CrosPath(_, Some(digest)) => {
             match state.loaded_apps.borrow().get(digest) {
                 Some(shared_mem) => {
-                    let fd_path = fd_to_path(shared_mem.as_raw_fd())
-                        .map(|p| p.to_string_lossy().to_string())
-                        .unwrap_or_else(|_| "".into());
+                    let fd_path = fd_to_path(shared_mem.as_raw_fd());
                     let mut args = Vec::with_capacity(1 + exe_args.len());
                     args.push(fd_path.as_str());
                     args.extend(exe_args);

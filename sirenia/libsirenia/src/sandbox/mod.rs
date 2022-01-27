@@ -203,7 +203,7 @@ impl Sandbox for VmSandbox {
 
         let vm = Command::new(&self.config.crosvm_path)
             .arg("--disable-sandbox")
-            .arg(args[0])
+            .args(args)
             .stdout(stdout)
             .stderr(stderr)
             .spawn()
