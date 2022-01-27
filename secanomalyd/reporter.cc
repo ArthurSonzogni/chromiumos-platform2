@@ -175,8 +175,11 @@ bool SendReport(base::StringPiece report,
 bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
                            int weight,
                            bool report_in_dev_mode) {
+  MaybeMountEntries maybe_mounts = ReadMounts(MountFilter::kUploadableOnly);
+
+  // TODO(b/216855846): Include full list of processes.
   MaybeReport anomaly_report =
-      GenerateAnomalousSystemReport(wx_mounts, base::nullopt, base::nullopt);
+      GenerateAnomalousSystemReport(wx_mounts, maybe_mounts, base::nullopt);
 
   if (!anomaly_report) {
     LOG(ERROR) << "Failed to generate anomalous system report";

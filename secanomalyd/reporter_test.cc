@@ -38,6 +38,41 @@ constexpr char kWxMountUsrLocal[] =
     "/dev/sda1 /usr/local ext4 "
     "rw,seclabel,nodev,noatime,resgid=20119,commit=600,data=ordered 0 0";
 
+constexpr char kWxMountUsrLocal_FullDescription[] =
+    "/dev/sda1 /usr/local ext4 "
+    "rw,seclabel,nodev,noatime,resgid=20119,commit=600,data=ordered";
+
+constexpr char kMounts[] =
+    "/dev/root / ext2 rw,seclabel,relatime 0 0\n"
+    //
+    "proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0\n"
+    //
+    "tmpfs /run/namespaces tmpfs "
+    "rw,seclabel,nosuid,nodev,noexec,relatime,mode=755 0 0\n"
+    //
+    "/dev/sdb1 /media/removable/USB\040Drive ext2 "
+    "rw,dirsync,nosuid,nodev,noexec,seclabel,relatime,nosymfollow\n"
+    //
+    "fuse:/home/chronos/u-f0df208cd7759644d43f8d7c4c5900e4a4875275/MyFiles/"
+    "Downloads/sample.rar /media/archive/sample.rar fuse.rarfs "
+    "ro,dirsync,nosuid,nodev,noexec,relatime,nosymfollow,"
+    "user_id=1000,group_id=1001,default_permissions,allow_other 0 0\n"
+    //
+    "/dev/sda1 /usr/local ext4 "
+    "rw,seclabel,nodev,noatime,resgid=20119,commit=600,data=ordered 0 0";
+
+constexpr char kProcesses[] =
+    "  1 4026531836 init            /sbin/init\n"
+    "471 4026531836 agetty          agetty 115200 ttyS0 linux\n"
+    "506 4026531836 auditd          /sbin/auditd -n -c /etc/audit\n"
+    //
+    "739 4026532412 minijail-init   minijail0 -i -u iioservice -g iioservice "
+    "-N --uts -e -p -P /mnt/empty -b / -b /sys -k tmpfs /run tmpfs MS_NOSUID "
+    "MS_NODEV MS_NOEXEC -n -S /usr/share/policy/iioservice-seccomp.policy -b "
+    "/sys/bus -b /sys/devices  1 -b /dev  1 -b /sys/firmware -b /sys/class "
+    "-b /run/dbus -k tmpfs /var tmpfs MS_NOSUID MS_NODEV MS_NOEXEC -b "
+    "/var/lib/metrics  1 -R 13 40 40 -- /usr/sbin/iioservice\n";
+
 base::ScopedFD GetDevNullFd() {
   return base::ScopedFD(HANDLE_EINTR(open("/dev/null", O_WRONLY)));
 }
@@ -162,6 +197,62 @@ TEST(ReporterTest, SimplestReport) {
   // Empty sections.
   EXPECT_EQ(std::string(lines[5]), "Could not obtain mounts");
   EXPECT_EQ(std::string(lines[7]), "Could not obtain processes");
+}
+
+TEST(ReporterTest, FullReport) {
+  MountEntryMap wx_mounts;
+  wx_mounts.emplace(kUsrLocal, kWxMountUsrLocal);
+
+  MaybeMountEntries maybe_mounts =
+      ReadMountsFromString(kMounts, MountFilter::kUploadableOnly);
+  MaybeProcEntries maybe_procs =
+      ReadProcessesFromString(kProcesses, ProcessFilter::kInitPidNamespaceOnly);
+
+  MaybeReport report =
+      GenerateAnomalousSystemReport(wx_mounts, maybe_mounts, maybe_procs);
+
+  ASSERT_TRUE(report.has_value());
+
+  std::vector<base::StringPiece> lines = base::SplitStringPiece(
+      report.value(), "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+
+  // One signature line, one metadata line, three headers, one anomaly,
+  // two "empty section" messages.
+  ASSERT_EQ(lines.size(), 13u);
+
+  // Signature.
+  EXPECT_THAT(std::string(lines[0]), MatchesRegex("-usr-local-[0-9A-F]{10}"));
+
+  // Metadata.
+  base::StringPairs kvpairs;
+  ASSERT_TRUE(
+      base::SplitStringIntoKeyValuePairs(lines[1], '\x01', '\x02', &kvpairs));
+  for (const auto& kv : kvpairs) {
+    if (kv.first == "signal") {
+      // The anomaly was a writable+executable mount so the signal is
+      // "wx-mount".
+      EXPECT_EQ(kv.second, "wx-mount");
+    } else if (kv.first == "dest") {
+      // Metadata 'dest' key matches signature.
+      EXPECT_EQ(kv.second, "/usr/local");
+    }
+  }
+
+  // Headers.
+  EXPECT_EQ(std::string(lines[2]), "=== Anomalous conditions ===");
+  EXPECT_EQ(std::string(lines[4]), "=== Mounts ===");
+  EXPECT_EQ(std::string(lines[9]), "=== Processes ===");
+
+  // Anomalous mount.
+  EXPECT_EQ(std::string(lines[3]), "/dev/sda1 /usr/local ext4");
+
+  // Actual mounts.
+  EXPECT_EQ(std::string(lines[5]), "/dev/root / ext2 rw,seclabel,relatime");
+  EXPECT_EQ(std::string(lines[8]), kWxMountUsrLocal_FullDescription);
+
+  // Actual processes.
+  EXPECT_EQ(std::string(lines[10]), "/sbin/init");
+  EXPECT_EQ(std::string(lines[12]), "/sbin/auditd -n -c /etc/audit");
 }
 
 TEST(ReporterTest, CrashReporterSuceeds) {

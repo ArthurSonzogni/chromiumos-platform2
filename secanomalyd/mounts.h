@@ -17,9 +17,12 @@ namespace secanomalyd {
 using MountEntries = std::vector<MountEntry>;
 using MaybeMountEntries = base::Optional<MountEntries>;
 
-MaybeMountEntries ReadMounts();
+enum class MountFilter { kAll = 0, kUploadableOnly };
+
+MaybeMountEntries ReadMounts(MountFilter filter);
 // Used mostly for testing.
-MaybeMountEntries ReadMountsFromString(const std::string& mounts);
+MaybeMountEntries ReadMountsFromString(const std::string& mounts,
+                                       MountFilter filter);
 
 }  // namespace secanomalyd
 

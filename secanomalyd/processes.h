@@ -45,11 +45,14 @@ class ProcEntry {
 using ProcEntries = std::vector<ProcEntry>;
 using MaybeProcEntries = base::Optional<ProcEntries>;
 
-MaybeProcEntries ReadProcesses();
+enum class ProcessFilter { kAll = 0, kInitPidNamespaceOnly };
+
+MaybeProcEntries ReadProcesses(ProcessFilter filter);
 // Used mostly for testing.
 // |reader| is un-owned.
-MaybeProcEntries ReadProcesses(brillo::Process* reader);
-MaybeProcEntries ReadProcessesFromString(const std::string& procs);
+MaybeProcEntries ReadProcesses(brillo::Process* reader, ProcessFilter filter);
+MaybeProcEntries ReadProcessesFromString(const std::string& procs,
+                                         ProcessFilter filter);
 
 }  // namespace secanomalyd
 

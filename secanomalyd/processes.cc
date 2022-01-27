@@ -4,6 +4,8 @@
 
 #include "secanomalyd/processes.h"
 
+#include <algorithm>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
@@ -17,7 +19,8 @@ namespace secanomalyd {
 
 namespace {
 constexpr char kPsPath[] = "/bin/ps";
-}
+constexpr char kInitExecutable[] = "/sbin/init";
+}  // namespace
 
 ProcEntry::ProcEntry(base::StringPiece proc_str) {
   // These entries are of the form:
@@ -47,12 +50,12 @@ ProcEntry::ProcEntry(base::StringPiece proc_str) {
       base::JoinString(base::make_span(fields.begin() + 3, fields.end()), " ");
 }
 
-MaybeProcEntries ReadProcesses() {
+MaybeProcEntries ReadProcesses(ProcessFilter filter) {
   std::unique_ptr<brillo::Process> reader(new brillo::ProcessImpl());
-  return ReadProcesses(reader.get());
+  return ReadProcesses(reader.get(), filter);
 }
 
-MaybeProcEntries ReadProcesses(brillo::Process* reader) {
+MaybeProcEntries ReadProcesses(brillo::Process* reader, ProcessFilter filter) {
   // Collect processes.
   // Call |ps| with a user defined format listing pid namespaces.
   reader->AddArg(kPsPath);
@@ -62,7 +65,7 @@ MaybeProcEntries ReadProcesses(brillo::Process* reader) {
   reader->AddStringOption("-o", "pid,pidns,comm,args");
 
   reader->RedirectUsingMemory(STDOUT_FILENO);
-  if (!reader->Start()) {
+  if (reader->Run() != 0) {
     PLOG(ERROR) << "Failed to execute 'ps'";
     return base::nullopt;
   }
@@ -73,10 +76,11 @@ MaybeProcEntries ReadProcesses(brillo::Process* reader) {
     return base::nullopt;
   }
 
-  return ReadProcessesFromString(processes);
+  return ReadProcessesFromString(processes, filter);
 }
 
-MaybeProcEntries ReadProcessesFromString(const std::string& processes) {
+MaybeProcEntries ReadProcessesFromString(const std::string& processes,
+                                         ProcessFilter filter) {
   std::vector<base::StringPiece> pieces = base::SplitStringPiece(
       processes, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
@@ -85,12 +89,43 @@ MaybeProcEntries ReadProcessesFromString(const std::string& processes) {
   }
 
   ProcEntries res;
+  base::Optional<ino_t> init_pidns = base::nullopt;
   for (const auto& piece : pieces) {
     ProcEntry entry(piece);
-    // Only add the process to the list if it managed to parse a PID and a
-    // pidns.
+    // Only add the entry to the list if it managed to parse a PID and a pidns.
     if (entry.pid() > 0 && entry.pidns() > 0) {
-      res.push_back(entry);
+      if (filter == ProcessFilter::kInitPidNamespaceOnly &&
+          entry.args() == std::string(kInitExecutable)) {
+        init_pidns = entry.pidns();
+        // The init process has been found, add it to the list and continue the
+        // loop early.
+        res.push_back(entry);
+        continue;
+      }
+
+      // Add the entry to the list if:
+      //    -Caller requested all processes, or
+      //    -The init process hasn't yet been identified, or
+      //    -The init process has been successfully identified, and the PID
+      //     namespaces match.
+      if (filter == ProcessFilter::kAll || !init_pidns ||
+          entry.pidns() == init_pidns.value()) {
+        res.push_back(entry);
+      }
+    }
+  }
+
+  if (filter == ProcessFilter::kInitPidNamespaceOnly) {
+    if (init_pidns) {
+      // Remove all processes whose |pidns| does not match init's.
+      res.erase(std::remove_if(res.begin(), res.end(),
+                               [init_pidns](const ProcEntry& pe) {
+                                 return pe.pidns() != init_pidns.value();
+                               }),
+                res.end());
+    } else {
+      LOG(ERROR) << "Failed to find init process";
+      return base::nullopt;
     }
   }
 

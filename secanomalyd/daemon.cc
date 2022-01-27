@@ -69,7 +69,7 @@ void Daemon::ReportWXMountCount() {
 }
 
 void Daemon::DoWXMountCheck() {
-  MaybeMountEntries mount_entries = ReadMounts();
+  MaybeMountEntries mount_entries = ReadMounts(MountFilter::kAll);
   if (!mount_entries) {
     LOG(ERROR) << "Failed to read mounts";
     return;
