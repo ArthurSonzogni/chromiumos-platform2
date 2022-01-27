@@ -3468,6 +3468,16 @@ AuthSession* UserDataAuth::GetAuthenticatedAuthSession(
   return auth_session;
 }
 
+std::string UserDataAuth::SanitizedUserNameForSession(
+    const std::string& auth_session_id) {
+  AuthSession* auth_session =
+      auth_session_manager_->FindAuthSession(auth_session_id);
+  if (!auth_session) {
+    return "";
+  }
+  return SanitizeUserName(auth_session->username());
+}
+
 scoped_refptr<UserSession> UserDataAuth::GetMountableUserSession(
     AuthSession* auth_session, user_data_auth::CryptohomeErrorCode* error) {
   AssertOnMountThread();
@@ -3559,6 +3569,7 @@ void UserDataAuth::PrepareGuestVault(
   LOG(INFO) << "Preparing guest vault";
   user_data_auth::PrepareGuestVaultReply reply;
   reply.set_error(PrepareGuestVaultImpl());
+  reply.set_sanitized_username(SanitizeUserName(guest_user_));
   std::move(on_done).Run(reply);
   return;
 }
@@ -3572,6 +3583,8 @@ void UserDataAuth::PrepareEphemeralVault(
   LOG(INFO) << "Preparing ephemeral vault";
   user_data_auth::PrepareEphemeralVaultReply reply;
   reply.set_error(PrepareEphemeralVaultImpl(request.auth_session_id()));
+  reply.set_sanitized_username(
+      SanitizedUserNameForSession(request.auth_session_id()));
   std::move(on_done).Run(reply);
 }
 
@@ -3590,6 +3603,8 @@ void UserDataAuth::PreparePersistentVault(
   user_data_auth::PreparePersistentVaultReply reply;
   reply.set_error(
       PreparePersistentVaultImpl(request.auth_session_id(), options));
+  reply.set_sanitized_username(
+      SanitizedUserNameForSession(request.auth_session_id()));
   std::move(on_done).Run(reply);
 }
 
@@ -3606,6 +3621,8 @@ void UserDataAuth::PrepareVaultForMigration(
   user_data_auth::PrepareVaultForMigrationReply reply;
   reply.set_error(
       PreparePersistentVaultImpl(request.auth_session_id(), options));
+  reply.set_sanitized_username(
+      SanitizedUserNameForSession(request.auth_session_id()));
   std::move(on_done).Run(reply);
 }  // namespace cryptohome
 
@@ -3618,6 +3635,8 @@ void UserDataAuth::CreatePersistentUser(
   LOG(INFO) << "Creating persistent user";
   user_data_auth::CreatePersistentUserReply reply;
   reply.set_error(CreatePersistentUserImpl(request.auth_session_id()));
+  reply.set_sanitized_username(
+      SanitizedUserNameForSession(request.auth_session_id()));
   std::move(on_done).Run(reply);
 }
 

@@ -1030,6 +1030,10 @@ class UserDataAuth {
       const std::string& auth_session_id,
       user_data_auth::CryptohomeErrorCode* error);
 
+  // Returns sanitized username for an existing auth session or an empty string
+  // if the session wasn't found.
+  std::string SanitizedUserNameForSession(const std::string& auth_session_id);
+
   // Returns a reference to the user session, if the session is mountable. The
   // session is mountable if it is not already mounted, and the guest is not
   // mounted. If user session object doesn't exist, this method will create

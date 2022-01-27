@@ -610,6 +610,9 @@ message CreatePersistentUserRequest {
 message CreatePersistentUserReply {
   // The status of the operation.
   CryptohomeErrorCode error = 1;
+  // The sanitized username, this is basically a hashed representation
+  // of the username used in the paths of user's home directory.
+  string sanitized_username = 2;
 }
 
 message PrepareGuestVaultRequest {}
@@ -617,6 +620,9 @@ message PrepareGuestVaultRequest {}
 message PrepareGuestVaultReply {
   // The status of the operation.
   CryptohomeErrorCode error = 1;
+  // The sanitized username, this is basically a hashed representation
+  // of the username used in the paths of user's home directory.
+  string sanitized_username = 2;
 }
 
 message PrepareEphemeralVaultRequest {
@@ -628,6 +634,9 @@ message PrepareEphemeralVaultRequest {
 message PrepareEphemeralVaultReply {
   // The status of the operation.
   CryptohomeErrorCode error = 1;
+  // The sanitized username, this is basically a hashed representation
+  // of the username used in the paths of user's home directory.
+  string sanitized_username = 2;
 }
 
 enum VaultEncryptionType {
@@ -656,6 +665,9 @@ message PreparePersistentVaultRequest {
 message PreparePersistentVaultReply {
   // The status of the operation.
   CryptohomeErrorCode error = 1;
+  // The sanitized username, this is basically a hashed representation
+  // of the username used in the paths of user's home directory.
+  string sanitized_username = 2;
 }
 
 message PrepareVaultForMigrationRequest {
@@ -667,6 +679,9 @@ message PrepareVaultForMigrationRequest {
 message PrepareVaultForMigrationReply {
   // The status of the operation.
   CryptohomeErrorCode error = 1;
+  // The sanitized username, this is basically a hashed representation
+  // of the username used in the paths of user's home directory.
+  string sanitized_username = 2;
 }
 
 // ------------------------- ArcQuota Interface -------------------------
