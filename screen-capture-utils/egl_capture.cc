@@ -293,6 +293,7 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
 
   auto connected_planes = crtc_.GetConnectedPlanes();
   if (connected_planes.empty()) {
+    VLOG(3) << "Planes are empty, falling back to copying all";
     EGLImageKHR image =
         CreateImage(createImageKHR_, import_modifiers_exist_,
                     crtc_.file().GetPlatformFile(), display_, crtc_.fb2());
@@ -310,6 +311,7 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
 
     destroyImageKHR_(display_, image);
   } else {
+    VLOG(3) << "Multiple connected planes.";
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
