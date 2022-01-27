@@ -5,7 +5,12 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":libhwsec" ]
+  deps = [
+    ":install_error_h",
+    ":install_headers",
+    ":install_headers_overalls",
+    ":libhwsec",
+  ]
   deps += [ ":libhwsec_test" ]
   if (use.test) {
     deps += [ ":hwsec_testrunner" ]
@@ -41,16 +46,34 @@ source_set("error_library") {
     "error/tpm_error.cc",
     "error/tpm_retry_handler.cc",
   ]
+  deps = []
   if (use.tpm2 || use.fuzzer) {
     sources += [ "error/tpm2_error.cc" ]
+    deps += [ ":install_tpm2_error_h" ]
   }
   if (use.tpm || use.fuzzer) {
     sources += [ "error/tpm1_error.cc" ]
+    deps += [ ":install_tpm1_error_h" ]
   }
   configs += [
     ":target_defaults",
     "//common-mk:pic",
   ]
+}
+
+install_config("install_tpm1_headers") {
+  sources = [ "test_utils/tpm1/test_fixture.h" ]
+  install_path = "/usr/include/chromeos/libhwsec/test_utils/tpm1"
+}
+
+install_config("install_tpm1_error_h") {
+  sources = [ "error/tpm1_error.h" ]
+  install_path = "/usr/include/chromeos/libhwsec/error"
+}
+
+install_config("install_tpm2_error_h") {
+  sources = [ "error/tpm2_error.h" ]
+  install_path = "/usr/include/chromeos/libhwsec/error"
 }
 
 static_library("libhwsec_test") {
@@ -63,6 +86,7 @@ static_library("libhwsec_test") {
     "//common-mk:nouse_thin_archive",
   ]
   configs -= [ "//common-mk:use_thin_archive" ]
+  install_path = "lib"
 }
 
 config("libhwsec_tpm1_config") {
@@ -76,6 +100,7 @@ config("libhwsec_tpm2_config") {
 shared_library("libhwsec") {
   configs += [ ":target_defaults" ]
   all_dependent_configs = []
+  install_path = "lib"
   deps = [ ":error_library" ]
   if (use.tpm2 || use.fuzzer) {
     all_dependent_configs += [ ":libhwsec_tpm2_config" ]
@@ -84,6 +109,27 @@ shared_library("libhwsec") {
     all_dependent_configs += [ ":libhwsec_tpm1_config" ]
     deps += [ ":overalls_library" ]
   }
+}
+
+install_config("install_headers") {
+  sources = [
+    "hwsec_export.h",
+    "task_dispatching_framework.h",
+  ]
+  install_path = "/usr/include/chromeos/libhwsec"
+}
+
+install_config("install_headers_overalls") {
+  sources = [
+    "overalls/overalls.h",
+    "overalls/overalls_api.h",
+  ]
+  install_path = "/usr/include/chromeos/libhwsec/overalls"
+}
+
+install_config("install_error_h") {
+  sources = [ "error/tpm_error.h" ]
+  install_path = "/usr/include/chromeos/libhwsec/error"
 }
 
 if (use.test) {
@@ -101,6 +147,7 @@ if (use.test) {
       ":target_defaults",
       ":test_config",
     ]
+    run_test = true
     deps = [
       ":libhwsec",
       ":libhwsec_test",
