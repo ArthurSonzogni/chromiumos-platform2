@@ -371,7 +371,8 @@ TEST_F(CrashSerializerTest, SerializeCrashes) {
   while (pos < written.size()) {
     std::string size_str = written.substr(pos, sizeof(uint64_t));
     uint64_t size;
-    base::ReadBigEndian(size_str.data(), &size);
+    base::ReadBigEndian(reinterpret_cast<const uint8_t*>(size_str.data()),
+                        &size);
     pos += sizeof(size);
 
     // All of our payloads are small, so don't need to combine subsequent
@@ -460,7 +461,8 @@ TEST_F(CrashSerializerTest, WriteFetchCrashesResponse) {
   // Read the size and verify that it matches what we expect.
   std::string actual_size_str = actual.substr(0, sizeof(uint64_t));
   uint64_t actual_size;
-  base::ReadBigEndian(actual_size_str.data(), &actual_size);
+  base::ReadBigEndian(reinterpret_cast<const uint8_t*>(actual_size_str.data()),
+                      &actual_size);
   EXPECT_EQ(expected.size(), actual_size);
 
   // Note that we don't verify that the size in bytes matches, because to do so
@@ -517,7 +519,8 @@ TEST_F(CrashSerializerTest, WriteBlobs_Basic) {
     std::string actual_size_str = actual.substr(pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
     uint64_t actual_size;
-    base::ReadBigEndian(actual_size_str.data(), &actual_size);
+    base::ReadBigEndian(
+        reinterpret_cast<const uint8_t*>(actual_size_str.data()), &actual_size);
     crash::FetchCrashesResponse resp;
     resp.ParseFromString(actual.substr(pos, actual_size));
     EXPECT_EQ(resp.crash_id(), 42);
@@ -557,7 +560,8 @@ TEST_F(CrashSerializerTest, WriteBlobs_ManySizes) {
     std::string actual_size_str = actual.substr(pos, sizeof(uint64_t));
     pos += sizeof(uint64_t);
     uint64_t actual_size;
-    base::ReadBigEndian(actual_size_str.data(), &actual_size);
+    base::ReadBigEndian(
+        reinterpret_cast<const uint8_t*>(actual_size_str.data()), &actual_size);
     crash::FetchCrashesResponse resp;
     resp.ParseFromString(actual.substr(pos, actual_size));
     pos += actual_size;
@@ -639,7 +643,8 @@ TEST_F(CrashSerializerTest, WriteCoredump_Basic) {
 
   std::string actual_size_str = actual.substr(0, sizeof(uint64_t));
   uint64_t actual_size;
-  base::ReadBigEndian(actual_size_str.data(), &actual_size);
+  base::ReadBigEndian(reinterpret_cast<const uint8_t*>(actual_size_str.data()),
+                      &actual_size);
   EXPECT_EQ(expected.size(), actual_size);
   EXPECT_EQ(expected, actual.substr(sizeof(uint64_t)));
 }
@@ -677,7 +682,8 @@ TEST_F(CrashSerializerTest, WriteCoredump_LargerThanChunkSize) {
   std::string actual_size_str1 = actual.substr(0, sizeof(uint64_t));
   pos += sizeof(uint64_t);
   uint64_t actual_size1;
-  base::ReadBigEndian(actual_size_str1.data(), &actual_size1);
+  base::ReadBigEndian(reinterpret_cast<const uint8_t*>(actual_size_str1.data()),
+                      &actual_size1);
   EXPECT_EQ(expected1.size(), actual_size1);
   EXPECT_EQ(expected1, actual.substr(pos, actual_size1));
   pos += actual_size1;
@@ -685,7 +691,8 @@ TEST_F(CrashSerializerTest, WriteCoredump_LargerThanChunkSize) {
   std::string actual_size_str2 = actual.substr(pos, sizeof(uint64_t));
   pos += sizeof(uint64_t);
   uint64_t actual_size2;
-  base::ReadBigEndian(actual_size_str2.data(), &actual_size2);
+  base::ReadBigEndian(reinterpret_cast<const uint8_t*>(actual_size_str2.data()),
+                      &actual_size2);
   EXPECT_EQ(expected2.size(), actual_size2);
   EXPECT_EQ(expected2, actual.substr(pos));
 }
@@ -718,7 +725,9 @@ TEST_F(CrashSerializerTest, WriteCoredump_ManySizes) {
       std::string actual_size_str = actual.substr(0, sizeof(uint64_t));
       pos += sizeof(uint64_t);
       uint64_t actual_size;
-      base::ReadBigEndian(actual_size_str.data(), &actual_size);
+      base::ReadBigEndian(
+          reinterpret_cast<const uint8_t*>(actual_size_str.data()),
+          &actual_size);
 
       resp.ParseFromString(actual.substr(pos, actual_size));
       EXPECT_EQ(resp.crash_id(), 1) << "core size: " << core_size;
