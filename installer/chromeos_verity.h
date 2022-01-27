@@ -10,6 +10,8 @@
 
 #include <string>
 
+#include <verity/dm-bht.h>
+
 /* chromeos_verity
  * This calculated the verity hash-trie for a filesystem and places it
  * immdiately after the FS on the device, and checks that the expected
@@ -25,7 +27,8 @@
  * return - 0 for success, non-zero indicates failure
  *
  */
-int chromeos_verity(const std::string& alg,
+int chromeos_verity(verity::DmBhtInterface* bht,
+                    const std::string& alg,
                     const std::string& device,
                     unsigned blocksize,
                     uint64_t fs_blocks,

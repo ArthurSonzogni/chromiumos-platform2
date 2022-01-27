@@ -758,4 +758,47 @@ int dm_bht_salt(struct dm_bht* bht, char* hexsalt) {
   return 0;
 }
 
+DmBht::~DmBht() {
+  if (dm_bht_ptr_) {
+    dm_bht_destroy(dm_bht_ptr_.get());
+  }
+}
+
+int DmBht::Create(unsigned int blocksize, std::string alg) {
+  dm_bht_ptr_ = std::make_unique<struct dm_bht>();
+  return dm_bht_create(dm_bht_ptr_.get(), blocksize, alg.c_str());
+}
+
+void DmBht::SetReadCallback(dm_bht_callback callback) {
+  dm_bht_set_read_cb(dm_bht_ptr_.get(), callback);
+}
+
+void DmBht::SetSalt(std::string hexsalt) {
+  dm_bht_set_salt(dm_bht_ptr_.get(), hexsalt.c_str());
+}
+
+void DmBht::SetBuffer(void* buffer) {
+  dm_bht_set_buffer(dm_bht_ptr_.get(), buffer);
+}
+
+sector_t DmBht::Sectors() {
+  return dm_bht_sectors(dm_bht_ptr_.get());
+}
+
+unsigned int DmBht::DigestSize() {
+  return dm_bht_ptr_->digest_size;
+}
+
+int DmBht::StoreBlock(unsigned int block, uint8_t* block_data) {
+  return dm_bht_store_block(dm_bht_ptr_.get(), block, block_data);
+}
+
+int DmBht::Compute() {
+  return dm_bht_compute(dm_bht_ptr_.get());
+}
+
+void DmBht::HexDigest(uint8_t* hexdigest, int available) {
+  dm_bht_root_hexdigest(dm_bht_ptr_.get(), hexdigest, available);
+}
+
 }  // namespace verity

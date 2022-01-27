@@ -105,6 +105,7 @@ if (use.mtd) {
 if (!use.cros_host && use.test) {
   pkg_config("cros_installer_test_config") {
     pkg_deps = [
+      "libbrillo",
       "libchrome",
       "libchrome-test",
     ]
@@ -114,6 +115,7 @@ if (!use.cros_host && use.test) {
     sources = [
       "chromeos_install_config_test.cc",
       "chromeos_legacy_test.cc",
+      "chromeos_verity_test.cc",
       "inst_util_test.cc",
     ]
     if (use.enable_slow_boot_notify) {
