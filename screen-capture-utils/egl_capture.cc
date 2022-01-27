@@ -297,7 +297,6 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
     EGLImageKHR image =
         CreateImage(createImageKHR_, import_modifiers_exist_,
                     crtc_.file().GetPlatformFile(), display_, crtc_.fb2());
-    CHECK(image != EGL_NO_IMAGE_KHR) << "Failed to create image";
 
     SetUVRect(/*crop_x=*/0, /*crop_y=*/0,
               /*crop_width=*/static_cast<float>(crtc_.fb2()->width),
@@ -319,7 +318,6 @@ DisplayBuffer::Result EglDisplayBuffer::Capture() {
       EGLImageKHR image = CreateImage(createImageKHR_, import_modifiers_exist_,
                                       crtc_.file().GetPlatformFile(), display_,
                                       plane.first.get());
-      CHECK(image != EGL_NO_IMAGE_KHR) << "Failed to create image";
 
       // Handle the plane's crop rectangle.
       SetUVRect(plane.second.crop_x, plane.second.crop_y, plane.second.crop_w,
