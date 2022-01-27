@@ -54,6 +54,7 @@ struct sl_window {
   int activated = 0;
   int fullscreen = 0;
   int maximized = 0;
+  int iconified = 0;
   int allow_resize = 1;
   xcb_window_t transient_for = XCB_WINDOW_NONE;
   xcb_window_t client_leader = XCB_WINDOW_NONE;
@@ -126,7 +127,7 @@ struct sl_wm_size_hints {
 struct sl_wm_hints {
   uint32_t flags;
   uint32_t input;
-  uint32_t initiali_state;
+  uint32_t initial_state;
   xcb_pixmap_t icon_pixmap;
   xcb_window_t icon_window;
   int32_t icon_x;

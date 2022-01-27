@@ -420,6 +420,7 @@ void sl_create_window(struct sl_context* ctx,
                       int border_width);
 void sl_handle_client_message(struct sl_context* ctx,
                               xcb_client_message_event_t* event);
+void sl_handle_focus_in(struct sl_context* ctx, xcb_focus_in_event_t* event);
 
 #ifdef GAMEPAD_SUPPORT
 void sl_gaming_seat_add_listener(struct sl_context* ctx);

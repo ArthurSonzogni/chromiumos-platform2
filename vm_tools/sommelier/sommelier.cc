@@ -1617,12 +1617,12 @@ void sl_handle_client_message(struct sl_context* ctx,
                     window->name);
         if (action == NET_WM_STATE_ADD) {
           window->fullscreen = 1;
-          if (window->xdg_toplevel) {
+          if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_set_fullscreen(window->xdg_toplevel, NULL);
           }
         } else if (action == NET_WM_STATE_REMOVE) {
           window->fullscreen = 0;
-          if (window->xdg_toplevel) {
+          if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_unset_fullscreen(window->xdg_toplevel);
           }
         }
@@ -1637,12 +1637,12 @@ void sl_handle_client_message(struct sl_context* ctx,
             window->name);
         if (action == NET_WM_STATE_ADD) {
           window->maximized = 1;
-          if (window->xdg_toplevel) {
+          if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_set_maximized(window->xdg_toplevel);
           }
         } else if (action == NET_WM_STATE_REMOVE) {
           window->maximized = 0;
-          if (window->xdg_toplevel) {
+          if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_unset_maximized(window->xdg_toplevel);
           }
         }
@@ -1655,12 +1655,53 @@ void sl_handle_client_message(struct sl_context* ctx,
                 "window->name", window ? window->name : "<unknown>");
     if (window && window->xdg_toplevel) {
       xdg_toplevel_set_minimized(window->xdg_toplevel);
+#ifdef BLACK_SCREEN_FIX
+      // Workaround for some borealis apps showing a black screen after losing
+      // focus from fullscreen.
+      // When a window is iconified, it should be unmapped. To return it back
+      // to a visible state, it should be remapped. However sommelier does not
+      // do this. Therefore we are sending a synthetic unmap then map notify
+      // so that the app is rendered again.
+      xcb_unmap_notify_event_t unmap_event = {.response_type = XCB_UNMAP_NOTIFY,
+                                              .pad0 = 0,
+                                              .event = window->id,
+                                              .window = window->id,
+                                              .from_configure = 0};
+
+      xcb_send_event(ctx->connection, 0, window->id,
+                     XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+                     reinterpret_cast<char*>(&unmap_event));
+      sl_send_configure_notify(window);
+
+      sl_window_set_wm_state(window, WM_STATE_ICONIC);
+      sl_send_configure_notify(window);
+
+      xcb_map_notify_event_t map_event = {.response_type = XCB_MAP_NOTIFY,
+                                          .pad0 = 0,
+                                          .event = window->id,
+                                          .window = window->id,
+                                          .override_redirect = 0};
+
+      xcb_send_event(ctx->connection, 0, window->id,
+                     XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+                     reinterpret_cast<char*>(&map_event));
+      sl_send_configure_notify(window);
+
+      sl_window_set_wm_state(window, WM_STATE_NORMAL);
+      sl_send_configure_notify(window);
+
+      sl_set_input_focus(ctx, nullptr);
+      xcb_flush(ctx->connection);
+
+      // When we are iconified we want to suppress any calls that deiconify
+      // the window as it should in theory be unmapped.
+      window->iconified = 1;
+#endif
     }
   }
 }
 
-static void sl_handle_focus_in(struct sl_context* ctx,
-                               xcb_focus_in_event_t* event) {
+void sl_handle_focus_in(struct sl_context* ctx, xcb_focus_in_event_t* event) {
   struct sl_window* window = sl_lookup_window(ctx, event->event);
   if (window && window->transient_for != XCB_WINDOW_NONE) {
     // Set our parent now as it might not have been set properly when the
@@ -1669,6 +1710,7 @@ static void sl_handle_focus_in(struct sl_context* ctx,
     if (parent && parent->xdg_toplevel && window->xdg_toplevel)
       xdg_toplevel_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
   }
+  window->iconified = 0;
 }
 
 static void sl_handle_focus_out(struct sl_context* ctx,
