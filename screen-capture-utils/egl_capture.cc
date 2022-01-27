@@ -111,7 +111,7 @@ EGLImageKHR CreateImage(PFNEGLCREATEIMAGEKHRPROC CreateImageKHR,
 
   CHECK_GT(num_planes, 0);
 
-  EGLint attr_list[46] = {
+  EGLint attr_list[6 + GBM_MAX_PLANES * 10 + 1 /* for EGL_NONE */] = {
       EGL_WIDTH,
       static_cast<EGLint>(fb->width),
       EGL_HEIGHT,
