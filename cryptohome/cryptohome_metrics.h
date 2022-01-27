@@ -120,8 +120,8 @@ enum TimerType {
   kMountExTimer = 6,
   kDircryptoMigrationTimer = 7,
   kDircryptoMinimalMigrationTimer = 8,
-  kOOPMountOperationTimer = 9,
-  kOOPMountCleanupTimer = 10,
+  kOOPMountOperationTimer = 9,  // Obsolete.
+  kOOPMountCleanupTimer = 10,   // Obsolete.
   kSessionUnlockTimer = 11,
   kMountGuestExTimer = 12,
   kPerformEphemeralMountTimer = 13,

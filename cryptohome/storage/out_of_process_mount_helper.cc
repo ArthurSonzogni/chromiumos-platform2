@@ -143,11 +143,8 @@ void OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary() {
     return;
   }
 
-  ReportTimerStart(kOOPMountCleanupTimer);
-
   if (helper_process_->Kill(SIGTERM,
                             kOutOfProcessHelperReapTimeout.InSeconds())) {
-    ReportTimerStop(kOOPMountCleanupTimer);
     ReportOOPMountCleanupResult(OOPMountCleanupResult::kSuccess);
   } else {
     LOG(ERROR) << "Failed to send SIGTERM to OOP mount helper";
@@ -208,8 +205,6 @@ bool OutOfProcessMountHelper::LaunchOutOfProcessHelper(
   mount_helper->RedirectUsingPipe(
       STDOUT_FILENO, false /* is_input, from child's perspective */);
 
-  ReportTimerStart(kOOPMountOperationTimer);
-
   if (!mount_helper->Start()) {
     LOG(ERROR) << "Failed to start OOP mount helper";
     ReportOOPMountOperationResult(OOPMountOperationResult::kFailedToStart);
@@ -246,10 +241,6 @@ bool OutOfProcessMountHelper::LaunchOutOfProcessHelper(
         OOPMountOperationResult::kFailedToReadResponseProtobuf);
     return false;
   }
-
-  // OOP mount helper started successfully, report elapsed time since process
-  // was started.
-  ReportTimerStop(kOOPMountOperationTimer);
 
   // OOP mount helper started successfully, release the clean-up closure.
   ignore_result(kill_runner.Release());

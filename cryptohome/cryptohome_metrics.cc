@@ -130,11 +130,16 @@ const TimerHistogramParams kTimerHistogramParams[] = {
     // and minutes in the worst case if we forgot to blocklist files.
     {"Cryptohome.TimeToCompleteDircryptoMinimalMigration", 200, 2 * 60 * 1000,
      50},
+
+    // OBSOLETE.
     // The out-of-process mount operation will time out after 3 seconds.
     {"Cryptohome.TimeToPerformOOPMountOperation", 0, 3000, 50},
+
+    // OBSOLETE.
     // The out-of-process cleanup operation includes a call to waitpid(2) with
     // a 1-second timeout, so make the max sample a bit higher than that.
     {"Cryptohome.TimeToPerformOOPMountCleanup", 0, 1100, 50},
+
     // Latency of the LegacyUserSession::Verify operation that gets invoked on
     // session unlock.
     {"Cryptohome.TimeSessionUnlock", 0, 4000, 50},
