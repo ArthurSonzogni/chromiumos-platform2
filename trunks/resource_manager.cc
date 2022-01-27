@@ -63,8 +63,7 @@ ResourceManager::ResourceManager(const TrunksFactory& factory,
                                  CommandTransceiver* next_transceiver)
     : factory_(factory),
       next_transceiver_(next_transceiver),
-      max_suspend_duration_(
-          base::TimeDelta::FromSeconds(kMaxSuspendDurationSec)) {}
+      max_suspend_duration_(base::Seconds(kMaxSuspendDurationSec)) {}
 
 ResourceManager::~ResourceManager() {}
 

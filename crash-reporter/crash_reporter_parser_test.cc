@@ -154,7 +154,7 @@ class CrashReporterParserTest : public ::testing::Test {
     // constructor will advance on each Now() call. Less that the normal 10
     // seconds because each match calls Now() once, and the interleaved tests
     // want to get 3 matches without going past the timeout.
-    const base::TimeDelta kClockAdvanceAmount = base::TimeDelta::FromSeconds(1);
+    const base::TimeDelta kClockAdvanceAmount = base::Seconds(1);
 
     EXPECT_CALL(*metrics, Init()).Times(1);
     auto parser = std::make_unique<CrashReporterParser>(

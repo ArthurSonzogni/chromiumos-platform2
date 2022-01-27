@@ -211,8 +211,7 @@ int32_t PortraitModeEffect::ReprocessRequest(
         base::BindOnce(&PortraitModeEffect::ReturnCallback,
                        base::AsWeakPtr(this)));
     base::AutoLock auto_lock(lock_);
-    condvar_.TimedWait(
-        base::TimeDelta::FromSeconds(kPortraitProcessorTimeoutSecs));
+    condvar_.TimedWait(base::Seconds(kPortraitProcessorTimeoutSecs));
     result = return_status_;
 
     LOGF(INFO) << "Portrait processing finished, result: " << result;

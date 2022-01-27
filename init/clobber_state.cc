@@ -88,7 +88,7 @@ constexpr char kUbiRootDisk[] = "/dev/mtd0";
 constexpr char kUbiDevicePrefix[] = "/dev/ubi";
 constexpr char kUbiDeviceStatefulFormat[] = "/dev/ubi%d_0";
 
-constexpr base::TimeDelta kMinClobberDuration = base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kMinClobberDuration = base::Minutes(5);
 
 // |strip_partition| attempts to remove the partition number from the result.
 base::FilePath GetRootDevice(bool strip_partition) {
@@ -1551,7 +1551,7 @@ void ClobberState::ForceDelay() {
   LOG(INFO) << "Clobber has already run for " << elapsed.InSeconds()
             << " seconds";
   base::TimeDelta remaining = kMinClobberDuration - elapsed;
-  if (remaining <= base::TimeDelta::FromSeconds(0)) {
+  if (remaining <= base::Seconds(0)) {
     LOG(INFO) << "Skipping forced delay";
     return;
   }

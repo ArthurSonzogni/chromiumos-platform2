@@ -62,8 +62,7 @@ base::TimeTicks Clock::GetCurrentBootTime() {
     current_boot_time_for_testing_ += time_step_for_testing_;
     return current_boot_time_for_testing_;
   }
-  return base::TimeTicks() +
-         base::TimeDelta::FromMicroseconds(ClockNow(CLOCK_BOOTTIME));
+  return base::TimeTicks() + base::Microseconds(ClockNow(CLOCK_BOOTTIME));
 }
 
 base::Time Clock::GetCurrentWallTime() {

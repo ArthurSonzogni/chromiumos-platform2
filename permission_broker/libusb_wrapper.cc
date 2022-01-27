@@ -12,7 +12,7 @@
 
 namespace {
 
-constexpr base::TimeDelta kUsbControlTimeout = base::TimeDelta::FromSeconds(5);
+constexpr base::TimeDelta kUsbControlTimeout = base::Seconds(5);
 
 const int kLibusbUnrefDevices = 1;
 

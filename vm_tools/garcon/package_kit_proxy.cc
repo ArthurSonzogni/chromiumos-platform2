@@ -95,15 +95,14 @@ constexpr uint32_t kPackageKitTransactionFlagEnumNone = 0;
 // Timeout for when we are querying for package information.
 constexpr int kGetLinuxPackageInfoTimeoutSeconds = 60;
 constexpr base::TimeDelta kGetLinuxPackageInfoTimeout =
-    base::TimeDelta::FromSeconds(kGetLinuxPackageInfoTimeoutSeconds);
+    base::Seconds(kGetLinuxPackageInfoTimeoutSeconds);
 
 // Delay after startup for doing a repository cache refresh.
-constexpr base::TimeDelta kRefreshCacheStartupDelay =
-    base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kRefreshCacheStartupDelay = base::Minutes(5);
 
 // Periodic delay between repository cache refreshes after we do the initial one
 // after startup.
-constexpr base::TimeDelta kRefreshCachePeriod = base::TimeDelta::FromDays(1);
+constexpr base::TimeDelta kRefreshCachePeriod = base::Days(1);
 
 // Ridiculously large size for a config file.
 constexpr size_t kMaxConfigFileSize = 10 * 1024;  // 10 KB

@@ -81,7 +81,7 @@ TEST_F(AsynchronousSignalHandlerTest, CheckSignalUnregistration) {
   brillo_loop_.PostDelayedTask(
       FROM_HERE,
       base::Bind(&MessageLoop::BreakLoop, base::Unretained(&brillo_loop_)),
-      base::TimeDelta::FromMilliseconds(10));
+      base::Milliseconds(10));
   MessageLoop::current()->Run();
 
   // The signal handle should have been unregistered. No new message are

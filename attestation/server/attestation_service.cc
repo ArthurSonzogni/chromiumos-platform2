@@ -264,8 +264,7 @@ const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
 };
 
 // Default D-Bus call timeout.
-constexpr base::TimeDelta kPcaAgentDBusTimeout =
-    base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kPcaAgentDBusTimeout = base::Minutes(2);
 
 // Returns a human-readable description for a known 3-byte |mode|.
 std::string GetDescriptionForMode(const char* mode) {
@@ -1698,7 +1697,7 @@ void AttestationService::PrepareForEnrollment(
         FROM_HERE,
         base::BindOnce(&AttestationService::PrepareForEnrollment,
                        base::Unretained(this), std::move(callback)),
-        base::TimeDelta::FromSeconds(3));
+        base::Seconds(3));
     return;
   }
   base::TimeTicks start = base::TimeTicks::Now();

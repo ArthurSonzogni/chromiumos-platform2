@@ -303,7 +303,7 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
   // Just in case something goes wrong and |success_callback| isn't called,
   // post a time-out quit closure to abort the message loop after 1 second.
   task_executor.task_runner()->PostDelayedTask(
-      FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromSeconds(1));
+      FROM_HERE, run_loop.QuitClosure(), base::Seconds(1));
   run_loop.Run();
   EXPECT_EQ(1, success_call_count);
 
@@ -316,7 +316,7 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
 }
 
 TEST_F(HttpCurlTransportTest, RequestGetTimeout) {
-  transport_->SetDefaultTimeout(base::TimeDelta::FromMilliseconds(2000));
+  transport_->SetDefaultTimeout(base::Milliseconds(2000));
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
       .WillOnce(Return(CURLE_OK));

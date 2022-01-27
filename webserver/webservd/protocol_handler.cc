@@ -403,7 +403,7 @@ void ProtocolHandler::DoWork() {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
         base::Bind(&ProtocolHandler::DoWork, weak_ptr_factory_.GetWeakPtr()),
-        base::TimeDelta::FromMilliseconds(mhd_timeout));
+        base::Milliseconds(mhd_timeout));
   }
 }
 

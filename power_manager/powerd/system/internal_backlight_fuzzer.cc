@@ -80,8 +80,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
 
   int64_t target_brightness = data_provider.ConsumeIntegral<int64_t>();
-  const base::TimeDelta duration = base::TimeDelta::FromMilliseconds(
-      data_provider.ConsumeIntegral<uint32_t>());
+  const base::TimeDelta duration =
+      base::Milliseconds(data_provider.ConsumeIntegral<uint32_t>());
   const base::TimeTicks end_time = start_time + duration;
   real_backlight.SetBrightnessLevel(target_brightness, duration);
 

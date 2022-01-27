@@ -387,8 +387,7 @@ void Process::ReapWorkerProcess(pid_t child_pid,
         FROM_HERE,
         base::BindOnce(&Process::ReapWorkerProcess, base::Unretained(this),
                        child_pid, times_tried + 1, begin_time),
-        base::TimeDelta::FromMilliseconds(
-            kWaitPidRetrialDelayTimesMilliseconds[times_tried]));
+        base::Milliseconds(kWaitPidRetrialDelayTimesMilliseconds[times_tried]));
     return;
   } else {
     // Records the errno first to avoid it being changed.

@@ -59,12 +59,12 @@ Status DiskIoStat::Update() {
 
 base::TimeDelta DiskIoStat::GetReadTime() const {
   DCHECK(iostat_populated_);
-  return base::TimeDelta::FromMilliseconds(static_cast<int64_t>(read_ticks));
+  return base::Milliseconds(static_cast<int64_t>(read_ticks));
 }
 
 base::TimeDelta DiskIoStat::GetWriteTime() const {
   DCHECK(iostat_populated_);
-  return base::TimeDelta::FromMilliseconds(static_cast<int64_t>(write_ticks));
+  return base::Milliseconds(static_cast<int64_t>(write_ticks));
 }
 
 uint64_t DiskIoStat::GetReadSectors() const {
@@ -79,14 +79,13 @@ uint64_t DiskIoStat::GetWrittenSectors() const {
 
 base::TimeDelta DiskIoStat::GetIoTime() const {
   DCHECK(iostat_populated_);
-  return base::TimeDelta::FromMilliseconds(static_cast<int64_t>(io_ticks));
+  return base::Milliseconds(static_cast<int64_t>(io_ticks));
 }
 
 base::Optional<base::TimeDelta> DiskIoStat::GetDiscardTime() const {
   DCHECK(iostat_populated_);
   if (extended_iostat_) {
-    return base::TimeDelta::FromMilliseconds(
-        static_cast<int64_t>(discard_ticks));
+    return base::Milliseconds(static_cast<int64_t>(discard_ticks));
   }
   return base::nullopt;
 }

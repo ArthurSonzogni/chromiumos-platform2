@@ -45,15 +45,13 @@ namespace {
 constexpr char kCrosvmSocket[] = "arcvm.sock";
 
 // How long to wait before timing out on child process exits.
-constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 
 // How long to sleep between arc-powerctl connection attempts.
-constexpr base::TimeDelta kArcPowerctlConnectDelay =
-    base::TimeDelta::FromMilliseconds(250);
+constexpr base::TimeDelta kArcPowerctlConnectDelay = base::Milliseconds(250);
 
 // How long to wait before giving up on connecting to arc-powerctl.
-constexpr base::TimeDelta kArcPowerctlConnectTimeout =
-    base::TimeDelta::FromSeconds(5);
+constexpr base::TimeDelta kArcPowerctlConnectTimeout = base::Seconds(5);
 
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
 constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm";
@@ -109,8 +107,7 @@ constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
 
 // The amount of time after VM creation that we should wait to refresh counters
 // bassed on the zone watermarks, since they can change during boot.
-constexpr base::TimeDelta kBalloonRefreshTime =
-    base::TimeDelta::FromSeconds(60);
+constexpr base::TimeDelta kBalloonRefreshTime = base::Seconds(60);
 
 // ConnectVSock connects to arc-powerctl in the VM identified by |cid|. It
 // returns a pair. The first object is the connected socket if connection was

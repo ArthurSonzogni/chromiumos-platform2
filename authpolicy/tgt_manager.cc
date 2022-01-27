@@ -581,8 +581,7 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
   for (tries = 1; tries <= max_tries; ++tries) {
     // Sleep between subsequent tries (probably a propagation issue).
     if (tries > 1 && !kinit_retry_sleep_disabled_for_testing_) {
-      base::PlatformThread::Sleep(
-          base::TimeDelta::FromSeconds(kKinitRetryWaitSeconds));
+      base::PlatformThread::Sleep(base::Seconds(kKinitRetryWaitSeconds));
     }
     SetupKrb5Trace(kinit_cmd);
 
@@ -713,7 +712,7 @@ void TgtManager::UpdateTgtAutoRenewal() {
             base::BindOnce(&TgtManager::AutoRenewTgt, base::Unretained(this)));
         base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
             FROM_HERE, tgt_renewal_callback_.callback(),
-            base::TimeDelta::FromSeconds(delay_seconds));
+            base::Seconds(delay_seconds));
       }
     } else if (error == ERROR_KERBEROS_TICKET_EXPIRED) {
       // Expiry is the most likely error, print a nice message.

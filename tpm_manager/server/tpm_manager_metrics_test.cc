@@ -104,7 +104,7 @@ TEST_F(TpmManagerMetricsTest, ReportVersionFingerprint) {
 }
 
 TEST_F(TpmManagerMetricsTest, ReportTimeToTakeOwnership) {
-  const base::TimeDelta elapsed_time = base::TimeDelta::FromMinutes(3);
+  const base::TimeDelta elapsed_time = base::Minutes(3);
   EXPECT_CALL(mock_metrics_library_,
               SendToUMA(kTPMTimeToTakeOwnership, elapsed_time.InMilliseconds(),
                         _, _, _))

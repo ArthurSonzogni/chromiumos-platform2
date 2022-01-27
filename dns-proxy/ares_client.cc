@@ -170,7 +170,7 @@ void AresClient::ResetTimeout(ares_channel channel) {
       FROM_HERE,
       base::BindRepeating(&AresClient::ResetTimeout, weak_factory_.GetWeakPtr(),
                           channel),
-      base::TimeDelta::FromMilliseconds(timeout_ms));
+      base::Milliseconds(timeout_ms));
 }
 
 ares_channel AresClient::InitChannel() {

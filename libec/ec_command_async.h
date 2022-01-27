@@ -28,7 +28,7 @@ class EcCommandAsync : public EcCommand<O, I> {
  public:
   struct Options {
     int poll_for_result_num_attempts = 20;
-    base::TimeDelta poll_interval = base::TimeDelta::FromMilliseconds(100);
+    base::TimeDelta poll_interval = base::Milliseconds(100);
     /**
      * When polling for the result, the EC should normally return EC_RES_BUSY
      * when the command is still being processed. However, some commands

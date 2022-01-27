@@ -25,8 +25,7 @@ namespace {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 // Tpm manager and attestation require a long timeout.
-const int64_t DBUS_TIMEOUT_MS =
-    base::TimeDelta::FromMinutes(2).InMilliseconds();
+const int64_t DBUS_TIMEOUT_MS = base::Minutes(2).InMilliseconds();
 
 mojo_ipc::TpmGSCVersion GetGscVersion(
     const tpm_manager::GetVersionInfoReply& reply) {

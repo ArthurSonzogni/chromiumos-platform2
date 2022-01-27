@@ -47,7 +47,7 @@ void UpdateEngineProxy::TriggerReboot() {
       FROM_HERE,
       base::BindOnce(&UpdateEngineProxy::Reboot,
                      weak_ptr_factory_.GetWeakPtr()),
-      base::TimeDelta::FromSeconds(kTimeTillReboot));
+      base::Seconds(kTimeTillReboot));
 }
 
 void UpdateEngineProxy::Reboot() {

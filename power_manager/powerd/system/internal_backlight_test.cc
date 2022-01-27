@@ -149,7 +149,7 @@ TEST_F(InternalBacklightTest, Transitions) {
 
   // Start a transition to the backlight's halfway point.
   const int64_t kHalfBrightness = kMaxBrightness / 2;
-  const base::TimeDelta kDuration = base::TimeDelta::FromMilliseconds(1000);
+  const base::TimeDelta kDuration = base::Milliseconds(1000);
   backlight.SetBrightnessLevel(kHalfBrightness, kDuration);
 
   // If the timeout fires at this point, we should still be at the maximum
@@ -189,7 +189,7 @@ TEST_F(InternalBacklightTest, InterruptTransition) {
   ASSERT_TRUE(backlight.Init(test_path_, "*"));
 
   // Start a one-second transition to 0.
-  const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(1);
+  const base::TimeDelta kDuration = base::Seconds(1);
   backlight.SetBrightnessLevel(0, kDuration);
 
   // Let the timer fire after half a second. The backlight should be at half
@@ -282,7 +282,7 @@ TEST_F(InternalBacklightTest, BlPower) {
 
   // Now do an animated transition. bl_power should remain at FB_BLANK_UNBLANK
   // until the backlight level reaches 0.
-  const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(1);
+  const base::TimeDelta kDuration = base::Seconds(1);
   backlight.SetBrightnessLevel(0, kDuration);
   EXPECT_EQ(FB_BLANK_UNBLANK, ReadFile(kPowerFile));
 

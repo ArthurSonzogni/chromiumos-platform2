@@ -24,7 +24,7 @@ namespace cros_disks {
 
 namespace {
 
-constexpr auto kTimeout = base::TimeDelta::FromSeconds(30);
+constexpr auto kTimeout = base::Seconds(30);
 
 int CallFunc(std::function<int()> func) {
   return func();

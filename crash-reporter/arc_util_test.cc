@@ -207,22 +207,20 @@ TEST(ArcUtilTest, ListMetadataForBuildProperty) {
 
 TEST(ArcUtilTest, FormatDuration) {
   EXPECT_EQ(FormatDuration(base::TimeDelta()), "0s");
-  EXPECT_EQ(FormatDuration(base::TimeDelta::FromMilliseconds(999)), "0s");
-  EXPECT_EQ(FormatDuration(base::TimeDelta::FromSeconds(1)), "1s");
-  EXPECT_EQ(FormatDuration(base::TimeDelta::FromMinutes(2)), "2min 0s");
-  EXPECT_EQ(FormatDuration(base::TimeDelta::FromHours(3)), "3h 0min 0s");
-  EXPECT_EQ(FormatDuration(base::TimeDelta::FromDays(4)), "4d 0h 0min 0s");
-  EXPECT_EQ(FormatDuration(base::TimeDelta::FromHours(1) +
-                           base::TimeDelta::FromMinutes(2) +
-                           base::TimeDelta::FromSeconds(3)),
-            "1h 2min 3s");
-  EXPECT_EQ(FormatDuration(base::TimeDelta::FromMilliseconds(123456789)),
-            "1d 10h 17min 36s");
-  EXPECT_EQ(FormatDuration(base::TimeDelta::FromDays(365)), "365d 0h 0min 0s");
+  EXPECT_EQ(FormatDuration(base::Milliseconds(999)), "0s");
+  EXPECT_EQ(FormatDuration(base::Seconds(1)), "1s");
+  EXPECT_EQ(FormatDuration(base::Minutes(2)), "2min 0s");
+  EXPECT_EQ(FormatDuration(base::Hours(3)), "3h 0min 0s");
+  EXPECT_EQ(FormatDuration(base::Days(4)), "4d 0h 0min 0s");
+  EXPECT_EQ(
+      FormatDuration(base::Hours(1) + base::Minutes(2) + base::Seconds(3)),
+      "1h 2min 3s");
+  EXPECT_EQ(FormatDuration(base::Milliseconds(123456789)), "1d 10h 17min 36s");
+  EXPECT_EQ(FormatDuration(base::Days(365)), "365d 0h 0min 0s");
 }
 
 TEST(ArcUtilTest, GetArcContainerUptime) {
-  base::TimeDelta expected = base::TimeDelta::FromMilliseconds(1234567);
+  base::TimeDelta expected = base::Milliseconds(1234567);
   int64_t start_time = 1234567890;
   base::SimpleTestTickClock test_clock;
   test_clock.SetNowTicks(base::TimeTicks::FromInternalValue(start_time) +

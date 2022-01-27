@@ -51,14 +51,13 @@ TEST_F(MACAddressTest, AddressExpire) {
   MACAddress addr;
   addr.Randomize();
   EXPECT_TRUE(addr.is_set());
-  auto start_time =
-      base::Time::FromDeltaSinceWindowsEpoch(base::TimeDelta::FromSeconds(1));
+  auto start_time = base::Time::FromDeltaSinceWindowsEpoch(base::Seconds(1));
   EXPECT_FALSE(addr.IsExpired(start_time));
-  addr.set_expiration_time(start_time + base::TimeDelta::FromSeconds(10));
+  addr.set_expiration_time(start_time + base::Seconds(10));
   EXPECT_FALSE(addr.IsExpired(start_time));
-  EXPECT_FALSE(addr.IsExpired(start_time + base::TimeDelta::FromSeconds(9)));
-  EXPECT_FALSE(addr.IsExpired(start_time + base::TimeDelta::FromSeconds(10)));
-  EXPECT_TRUE(addr.IsExpired(start_time + base::TimeDelta::FromSeconds(11)));
+  EXPECT_FALSE(addr.IsExpired(start_time + base::Seconds(9)));
+  EXPECT_FALSE(addr.IsExpired(start_time + base::Seconds(10)));
+  EXPECT_TRUE(addr.IsExpired(start_time + base::Seconds(11)));
 }
 
 }  // namespace shill

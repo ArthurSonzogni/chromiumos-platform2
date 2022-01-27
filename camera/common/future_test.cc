@@ -56,7 +56,7 @@ TEST_F(FutureTest, WaitTest) {
       FROM_HERE,
       base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
                  cros::GetFutureCallback(future)),
-      base::TimeDelta::FromMilliseconds(2000));
+      base::Milliseconds(2000));
   ASSERT_TRUE(future->Wait());
 
   // Subsequent wait to a signalled future should return true.
@@ -95,8 +95,7 @@ TEST_F(FutureTest, TimeoutTest) {
   auto future = Future<void>::Create(&relay_);
   base::TimeTicks start = base::TimeTicks::Now();
   ASSERT_FALSE(future->Wait(1000));
-  ASSERT_GE(base::TimeTicks::Now() - start,
-            base::TimeDelta::FromMilliseconds(1000));
+  ASSERT_GE(base::TimeTicks::Now() - start, base::Milliseconds(1000));
   // Subsequent wait to a timed-out future can time out again.
   ASSERT_FALSE(future->Wait(1000));
   // Now we signal the future and the final wait should return true.
@@ -133,7 +132,7 @@ TEST_F(FutureTest, DelayedCancelTest) {
   thread_.task_runner()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&FutureTest::CancelCallback, base::Unretained(this)),
-      base::TimeDelta::FromMilliseconds(2000));
+      base::Milliseconds(2000));
   ASSERT_FALSE(future->Wait());
 }
 
@@ -150,7 +149,7 @@ TEST_F(FutureTest, FutureRefcountTest) {
       FROM_HERE,
       base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
                  cros::GetFutureCallback(future)),
-      base::TimeDelta::FromMilliseconds(2000));
+      base::Milliseconds(2000));
   ASSERT_FALSE(future->Wait());
 }
 

@@ -239,7 +239,7 @@ void Camera3SimpleStillCaptureTest::TakePictureTest(uint32_t num_still_pictures,
 
       // Take a brief pause to allow ZSL to accumulate raw buffers that can be
       // selected for private reprocessing.
-      base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(500));
+      base::PlatformThread::Sleep(base::Milliseconds(500));
     }
     zsl_metadata.unlock(raw_zsl_metadata);
   } else {

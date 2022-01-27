@@ -800,8 +800,7 @@ TEST_F(InternalBacklightControllerTest, GiveUpOnBrokenAmbientLightSensor) {
   // inactivity) should be honored.
   const base::TimeTicks kUpdateTime =
       init_time_ +
-      base::TimeDelta::FromSeconds(
-          InternalBacklightController::kAmbientLightSensorTimeoutSec);
+      base::Seconds(InternalBacklightController::kAmbientLightSensorTimeoutSec);
   controller_->clock()->set_current_time_for_testing(kUpdateTime);
   controller_->SetDimmedForInactivity(true);
   EXPECT_LT(backlight_.current_level(), initial_backlight_level_);
@@ -1009,7 +1008,7 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerBeforeBrightness) {
   // recording calls, and configure the clock to return increasing values.
   Clock clock;
   clock.set_current_time_for_testing(base::TimeTicks::FromInternalValue(1000));
-  clock.set_time_step_for_testing(base::TimeDelta::FromMilliseconds(1));
+  clock.set_time_step_for_testing(base::Milliseconds(1));
   backlight_.set_clock(&clock);
   display_power_setter_.set_clock(&clock);
 

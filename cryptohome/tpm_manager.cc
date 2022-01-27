@@ -29,7 +29,7 @@
 
 namespace {
 // Default D-Bus call Timeout
-constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kDefaultTimeout = base::Minutes(5);
 }  // namespace
 
 namespace cryptohome {

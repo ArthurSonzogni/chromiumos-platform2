@@ -61,8 +61,7 @@ void ThermalDevice::Init(bool read_immediately) {
 }
 
 void ThermalDevice::StartTimer() {
-  poll_timer_.Start(FROM_HERE,
-                    base::TimeDelta::FromMilliseconds(poll_interval_ms_), this,
+  poll_timer_.Start(FROM_HERE, base::Milliseconds(poll_interval_ms_), this,
                     &ThermalDevice::ReadDeviceState);
 }
 

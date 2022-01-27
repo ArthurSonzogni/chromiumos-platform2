@@ -31,10 +31,10 @@ constexpr char kInvalidData[] = "data'); DROP TABLE DataCache;--";
 
 constexpr char kNonExistingFile[] = "does_not_exist";
 
-constexpr base::TimeDelta kTwoDays = base::TimeDelta::FromDays(2);
-constexpr base::TimeDelta kThreeDays = base::TimeDelta::FromDays(3);
-constexpr base::TimeDelta kEightDays = base::TimeDelta::FromDays(8);
-constexpr base::TimeDelta kMinusOneSecond = base::TimeDelta::FromSeconds(-1);
+constexpr base::TimeDelta kTwoDays = base::Days(2);
+constexpr base::TimeDelta kThreeDays = base::Days(3);
+constexpr base::TimeDelta kEightDays = base::Days(8);
+constexpr base::TimeDelta kMinusOneSecond = base::Seconds(-1);
 
 }  // namespace
 

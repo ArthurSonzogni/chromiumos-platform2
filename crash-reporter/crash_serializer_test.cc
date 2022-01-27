@@ -72,11 +72,11 @@ class CrashSerializerTest : public testing::Test {
   // Creates test crash files in |crash_directory|. Returns true on success.
   bool CreateTestCrashFiles(const base::FilePath& crash_directory) {
     const base::Time now = test_util::GetDefaultTime();
-    const base::TimeDelta hour = base::TimeDelta::FromHours(1);
+    const base::TimeDelta hour = base::Hours(1);
 
     // Choose timestamps so that the return value of GetMetaFiles() is sorted
     // per timestamps correctly.
-    const base::Time old_os_meta_time = now - base::TimeDelta::FromDays(200);
+    const base::Time old_os_meta_time = now - base::Days(200);
     const base::Time good_meta_time = now - hour * 4;
     const base::Time absolute_meta_time = now - hour * 3;
     const base::Time uploaded_meta_time = now - hour * 2;
@@ -193,12 +193,12 @@ class CrashSerializerTest : public testing::Test {
     // This should be serialized despite the old OS timestamp.
     old_os_meta_ = crash_directory.Append("old_os.meta");
     if (!CreateFile(old_os_meta_,
-                    base::StringPrintf("payload=good.log\n"
-                                       "os_millis=%" PRId64 "\n"
-                                       "done=1\n",
-                                       ((now - base::Time::UnixEpoch()) -
-                                        base::TimeDelta::FromDays(200))
-                                           .InMilliseconds()),
+                    base::StringPrintf(
+                        "payload=good.log\n"
+                        "os_millis=%" PRId64 "\n"
+                        "done=1\n",
+                        ((now - base::Time::UnixEpoch()) - base::Days(200))
+                            .InMilliseconds()),
                     old_os_meta_time)) {
       return false;
     }

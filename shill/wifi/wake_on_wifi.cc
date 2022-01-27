@@ -941,7 +941,7 @@ void WakeOnWiFi::OnDarkResume(
     // resumes only |wake_to_scan_period_seconds_| later.
     dhcp_lease_renewal_timer_->Stop();
     wake_to_scan_timer_->Start(
-        FROM_HERE, base::TimeDelta::FromSeconds(wake_to_scan_period_seconds_),
+        FROM_HERE, base::Seconds(wake_to_scan_period_seconds_),
         base::Bind(&WakeOnWiFi::OnTimerWakeDoNothing, base::Unretained(this)));
     DisableWakeOnWiFi();
     dark_resume_history_.Clear();
@@ -1014,7 +1014,7 @@ void WakeOnWiFi::BeforeSuspendActions(
         // Timer callback is NO-OP since dark resume logic (the
         // kWakeTriggerUnsupported case) will initiate DHCP lease renewal.
         dhcp_lease_renewal_timer_->Start(
-            FROM_HERE, base::TimeDelta::FromSeconds(time_to_next_lease_renewal),
+            FROM_HERE, base::Seconds(time_to_next_lease_renewal),
             base::Bind(&WakeOnWiFi::OnTimerWakeDoNothing,
                        base::Unretained(this)));
       }
@@ -1045,11 +1045,10 @@ void WakeOnWiFi::BeforeSuspendActions(
         // NIC to wake on.
         // Timer callback is NO-OP since dark resume logic (the
         // kWakeTriggerUnsupported case) will initiate a passive scan.
-        wake_to_scan_timer_->Start(
-            FROM_HERE,
-            base::TimeDelta::FromSeconds(wake_to_scan_period_seconds_),
-            base::Bind(&WakeOnWiFi::OnTimerWakeDoNothing,
-                       base::Unretained(this)));
+        wake_to_scan_timer_->Start(FROM_HERE,
+                                   base::Seconds(wake_to_scan_period_seconds_),
+                                   base::Bind(&WakeOnWiFi::OnTimerWakeDoNothing,
+                                              base::Unretained(this)));
         // Trim SSID list to the max size that the NIC supports.
         wake_on_allowed_ssids_.resize(wake_on_wifi_max_ssids_);
       }

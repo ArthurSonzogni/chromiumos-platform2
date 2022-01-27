@@ -333,8 +333,7 @@ void Manager::OnSubprocessExited(pid_t pid, const siginfo_t&) {
       FROM_HERE,
       base::BindOnce(&Manager::RestartSubprocess, weak_factory_.GetWeakPtr(),
                      proc),
-      base::TimeDelta::FromMilliseconds((2 << proc->restarts()) *
-                                        kSubprocessRestartDelayMs));
+      base::Milliseconds((2 << proc->restarts()) * kSubprocessRestartDelayMs));
 }
 
 void Manager::RestartSubprocess(HelperProcess* subproc) {
@@ -394,7 +393,7 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
         FROM_HERE,
         base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
                        nsinfo.netns_name),
-        base::TimeDelta::FromMilliseconds(kIPv6RestartDelayMs));
+        base::Milliseconds(kIPv6RestartDelayMs));
   }
 }
 
@@ -427,7 +426,7 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
         FROM_HERE,
         base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
                        nsinfo.netns_name),
-        base::TimeDelta::FromMilliseconds(kIPv6RestartDelayMs));
+        base::Milliseconds(kIPv6RestartDelayMs));
   }
 }
 
@@ -471,7 +470,7 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
           FROM_HERE,
           base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
                          nsinfo.netns_name),
-          base::TimeDelta::FromMilliseconds(kIPv6RestartDelayMs));
+          base::Milliseconds(kIPv6RestartDelayMs));
     }
     datapath_->StartConnectionPinning(ifname);
     ShillClient::Device shill_device;
@@ -1313,7 +1312,7 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
       FROM_HERE,
       base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
                      nsinfo.netns_name),
-      base::TimeDelta::FromMilliseconds(kIPv6RestartDelayMs));
+      base::Milliseconds(kIPv6RestartDelayMs));
 
   // Store ConnectedNamespace
   connected_namespaces_next_id_++;

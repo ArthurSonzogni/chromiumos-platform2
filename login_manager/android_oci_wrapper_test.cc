@@ -185,15 +185,15 @@ TEST_F(AndroidOciWrapperTest, ForcefulShutdownAfterGracefulShutdownFailed) {
 TEST_F(AndroidOciWrapperTest, KillJobOnEnsure) {
   StartContainerAsParent();
 
-  base::TimeDelta delta = base::TimeDelta::FromSeconds(11);
+  base::TimeDelta delta = base::Seconds(11);
   EXPECT_CALL(system_utils_, ProcessIsGone(container_pid_, delta))
       .WillOnce(Return(false));
 
   EXPECT_CALL(system_utils_, kill(container_pid_, _, SIGKILL))
       .WillOnce(Return(true));
 
-  EXPECT_CALL(system_utils_, ProcessIsGone(container_pid_,
-                                           Le(base::TimeDelta::FromSeconds(5))))
+  EXPECT_CALL(system_utils_,
+              ProcessIsGone(container_pid_, Le(base::Seconds(5))))
       .WillOnce(Return(true));
 
   ExpectDestroy(0 /* exit_code */);
@@ -208,7 +208,7 @@ TEST_F(AndroidOciWrapperTest, CleanExitAfterRequest) {
 
   impl_->RequestJobExit(ArcContainerStopReason::USER_REQUEST);
 
-  base::TimeDelta delta = base::TimeDelta::FromSeconds(11);
+  base::TimeDelta delta = base::Seconds(11);
   EXPECT_CALL(system_utils_, ProcessIsGone(container_pid_, delta))
       .WillOnce(Return(true));
 

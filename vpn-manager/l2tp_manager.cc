@@ -367,7 +367,7 @@ int L2tpManager::Poll() {
   // setup, ppp connection setup.  Authentication happens after
   // the ppp device is created.
   if (base::TimeTicks::Now() - start_ticks_ >
-      base::TimeDelta::FromSeconds(ppp_setup_timeout_)) {
+      base::Seconds(ppp_setup_timeout_)) {
     RegisterError(kServiceErrorPppConnectionFailed);
     LOG(ERROR) << "PPP setup timed out";
     // Cleanly terminate if the control file exists.

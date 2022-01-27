@@ -88,7 +88,7 @@ void Suspender::Init(
   if (prefs->GetInt64(kMaxDarkSuspendDelayTimeoutMsPref,
                       &max_dark_suspend_delay_timeout_ms)) {
     max_dark_suspend_delay_timeout =
-        base::TimeDelta::FromMilliseconds(max_dark_suspend_delay_timeout_ms);
+        base::Milliseconds(max_dark_suspend_delay_timeout_ms);
   } else {
     max_dark_suspend_delay_timeout =
         SuspendDelayController::kDefaultMaxSuspendDelayTimeout;
@@ -102,7 +102,7 @@ void Suspender::Init(
   display_watcher->AddObserver(this);
   int64_t retry_delay_ms = 0;
   CHECK(prefs->GetInt64(kRetrySuspendMsPref, &retry_delay_ms));
-  retry_delay_ = base::TimeDelta::FromMilliseconds(retry_delay_ms);
+  retry_delay_ = base::Milliseconds(retry_delay_ms);
 
   CHECK(prefs->GetInt64(kRetrySuspendAttemptsPref, &max_retries_));
 

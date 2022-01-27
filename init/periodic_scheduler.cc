@@ -82,7 +82,7 @@ static void SigtermHandler(int signal) {
     // process to exit.
     base::Process p(child_pid);
     p.Terminate(-1, false /* wait */);
-    p.WaitForExitWithTimeout(base::TimeDelta::FromSeconds(kKillDelay), nullptr);
+    p.WaitForExitWithTimeout(base::Seconds(kKillDelay), nullptr);
   }
   exit(0);
 }
@@ -106,8 +106,7 @@ PeriodicScheduler::PeriodicScheduler(
     const std::vector<std::string>& task_command)
     : period_seconds_(period),
       timeout_seconds_(timeout),
-      check_frequency_seconds_(
-          base::TimeDelta::FromSeconds(kCheckDelay + kKillDelay)),
+      check_frequency_seconds_(base::Seconds(kCheckDelay + kKillDelay)),
       task_name_(task_name),
       spool_dir_(base::FilePath(kSpoolDir)),
       process_args_(task_command) {}

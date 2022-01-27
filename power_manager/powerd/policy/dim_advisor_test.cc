@@ -130,7 +130,7 @@ TEST_F(DimAdvisorTest, EnabledIfMlServiceAvailable) {
 TEST_F(DimAdvisorTest, NotReadyIfLessThanDimImminent) {
   InitWithMlServiceAvailabilityAndHpsResult(true);
 
-  base::TimeDelta screen_dim_imminent = base::TimeDelta::FromSeconds(2);
+  base::TimeDelta screen_dim_imminent = base::Seconds(2);
   // last_smart_dim_decision_request_time_ is initialized as base::TimeTicks().
   // now is set to be half of the duration of screen_dim_imminent.
   base::TimeTicks now = base::TimeTicks() + screen_dim_imminent / 2;
@@ -141,7 +141,7 @@ TEST_F(DimAdvisorTest, NotReadyIfLessThanDimImminent) {
 TEST_F(DimAdvisorTest, HandleSmartDimShouldDefer) {
   InitWithMlServiceAvailabilityAndHpsResult(true);
 
-  base::TimeDelta screen_dim_imminent = base::TimeDelta::FromSeconds(2);
+  base::TimeDelta screen_dim_imminent = base::Seconds(2);
   base::TimeTicks now = base::TimeTicks() + screen_dim_imminent;
 
   // The HandleDeferFromSmartDim should be called once.
@@ -156,7 +156,7 @@ TEST_F(DimAdvisorTest, HandleSmartDimShouldDefer) {
 TEST_F(DimAdvisorTest, HandleSmartDimShouldNotDefer) {
   InitWithMlServiceAvailabilityAndHpsResult(true);
 
-  base::TimeDelta screen_dim_imminent = base::TimeDelta::FromSeconds(2);
+  base::TimeDelta screen_dim_imminent = base::Seconds(2);
   base::TimeTicks now = base::TimeTicks() + screen_dim_imminent;
 
   // Exactly one dbus call should be sent.

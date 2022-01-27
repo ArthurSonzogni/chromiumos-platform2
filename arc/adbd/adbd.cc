@@ -407,7 +407,7 @@ base::ScopedFD InitializeVSockConnection(uint32_t cid) {
 }
 
 void StartArcVmAdbBridge(uint32_t cid) {
-  constexpr base::TimeDelta kConnectInterval = base::TimeDelta::FromSeconds(15);
+  constexpr base::TimeDelta kConnectInterval = base::Seconds(15);
   constexpr int kMaxRetries = 4;
 
   int retries = kMaxRetries;

@@ -1411,8 +1411,7 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
     } else if (errno != EACCES && errno != EBUSY && errno != ENOENT) {
       break;
     }
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kSleepTimeInMilliseconds));
+    base::PlatformThread::Sleep(base::Milliseconds(kSleepTimeInMilliseconds));
     elapsed_time = timer.Elapsed().InMillisecondsRoundedUp();
   }
   PLOGF(ERROR) << "Failed to open " << device_path;

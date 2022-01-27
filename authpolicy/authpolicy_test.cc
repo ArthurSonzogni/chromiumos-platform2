@@ -2618,8 +2618,7 @@ TEST_F(AuthPolicyTest, GpoCacheTTLCanBeSetByPolicy) {
   writer.WriteToFile(stub_gpo1_path_);
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_FALSE(samba().GetGpoVersionCacheForTesting()->IsEnabled());
-  EXPECT_EQ(base::TimeDelta::FromHours(kZeroHours),
-            samba().GetGpoVersionCacheTTLForTesting());
+  EXPECT_EQ(base::Hours(kZeroHours), samba().GetGpoVersionCacheTTLForTesting());
 
   // Setting the policy to > 0 should turn the cache on again and set the TTL.
   // Note that this part would fail (policy wouldn't reload) if the cache was
@@ -2629,7 +2628,7 @@ TEST_F(AuthPolicyTest, GpoCacheTTLCanBeSetByPolicy) {
   writer2.WriteToFile(stub_gpo1_path_);
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_TRUE(samba().GetGpoVersionCacheForTesting()->IsEnabled());
-  EXPECT_EQ(base::TimeDelta::FromHours(kNonZeroHours),
+  EXPECT_EQ(base::Hours(kNonZeroHours),
             samba().GetGpoVersionCacheTTLForTesting());
 
   // Fetch again to fill the cache.
@@ -2888,8 +2887,7 @@ TEST_F(AuthPolicyTest, AuthDataCacheTTLCanBeSetByPolicy) {
   writer.WriteToFile(stub_gpo1_path_);
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_FALSE(samba().GetAuthDataCacheForTesting()->IsEnabled());
-  EXPECT_EQ(base::TimeDelta::FromHours(kZeroHours),
-            samba().GetAuthDataCacheTTLForTesting());
+  EXPECT_EQ(base::Hours(kZeroHours), samba().GetAuthDataCacheTTLForTesting());
   EXPECT_FALSE(base::PathExists(cache_path));
 
   // Setting the policy to > 0 should turn the cache on again and set the TTL.
@@ -2899,7 +2897,7 @@ TEST_F(AuthPolicyTest, AuthDataCacheTTLCanBeSetByPolicy) {
   writer2.WriteToFile(stub_gpo1_path_);
   FetchAndValidateDevicePolicy(ERROR_NONE);
   EXPECT_TRUE(samba().GetAuthDataCacheForTesting()->IsEnabled());
-  EXPECT_EQ(base::TimeDelta::FromHours(kNonZeroHours),
+  EXPECT_EQ(base::Hours(kNonZeroHours),
             samba().GetAuthDataCacheTTLForTesting());
   EXPECT_FALSE(base::PathExists(cache_path));
 }

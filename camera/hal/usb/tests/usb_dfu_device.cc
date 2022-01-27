@@ -352,7 +352,7 @@ base::Optional<uint8_t> UsbDfuDevice::GetState() const {
 }
 
 bool UsbDfuDevice::SyncDownload() const {
-  constexpr base::TimeDelta kTimeout = base::TimeDelta::FromSeconds(1);
+  constexpr base::TimeDelta kTimeout = base::Seconds(1);
 
   base::ElapsedTimer timer;
   base::Optional<DfuStatus> status;
@@ -379,14 +379,14 @@ bool UsbDfuDevice::SyncDownload() const {
       return false;
     }
     VLOG(1) << "Poll timeout = " << status->poll_timeout;
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(
-        base::strict_cast<int64_t>(status->poll_timeout)));
+    base::PlatformThread::Sleep(
+        base::Milliseconds(base::strict_cast<int64_t>(status->poll_timeout)));
   }
   return true;
 }
 
 bool UsbDfuDevice::SyncManifest() const {
-  constexpr base::TimeDelta kTimeout = base::TimeDelta::FromSeconds(5);
+  constexpr base::TimeDelta kTimeout = base::Seconds(5);
 
   // TODO(kamesan): Support non-bitManifestationTolerant devices when needed.
   // Some devices still work but not setting this flag.
@@ -418,8 +418,8 @@ bool UsbDfuDevice::SyncManifest() const {
       return false;
     }
     VLOG(1) << "Poll timeout = " << status->poll_timeout;
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(
-        base::strict_cast<int64_t>(status->poll_timeout)));
+    base::PlatformThread::Sleep(
+        base::Milliseconds(base::strict_cast<int64_t>(status->poll_timeout)));
   }
   return true;
 }

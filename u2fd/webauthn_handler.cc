@@ -29,7 +29,7 @@ namespace u2f {
 namespace {
 
 // User a big timeout for cryptohome. See b/172945202.
-constexpr base::TimeDelta kCryptohomeTimeout = base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kCryptohomeTimeout = base::Minutes(2);
 
 constexpr int kCancelUVFlowTimeoutMs = 5000;
 

@@ -539,7 +539,7 @@ TEST_F(VPNServiceTest, OnPhysicalDefaultServiceChanged) {
 TEST_F(VPNServiceTest, ConnectTimeout) {
   Error error;
   VPNDriver::EventHandler* driver_event_handler;
-  constexpr base::TimeDelta kTestTimeout = base::TimeDelta::FromSeconds(10);
+  constexpr base::TimeDelta kTestTimeout = base::Seconds(10);
 
   // Timeout triggered.
   EXPECT_CALL(*driver_, ConnectAsync(_))
@@ -577,7 +577,7 @@ TEST_F(VPNServiceTest, ConnectTimeout) {
 TEST_F(VPNServiceTest, ReconnectTimeout) {
   Error error;
   VPNDriver::EventHandler* driver_event_handler;
-  constexpr base::TimeDelta kTestTimeout = base::TimeDelta::FromSeconds(10);
+  constexpr base::TimeDelta kTestTimeout = base::Seconds(10);
   EXPECT_CALL(*driver_, ConnectAsync(_))
       .WillRepeatedly(DoAll(SaveArg<0>(&driver_event_handler),
                             Return(VPNDriver::kTimeoutNone)));

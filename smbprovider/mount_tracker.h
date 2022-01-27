@@ -120,8 +120,7 @@ class MountTracker {
       auto cache_mode = metadata_cache_enabled ? MetadataCache::Mode::kStandard
                                                : MetadataCache::Mode::kDisabled;
       cache = std::make_unique<MetadataCache>(
-          tick_clock,
-          base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds),
+          tick_clock, base::Microseconds(kMetadataCacheLifetimeMicroseconds),
           cache_mode);
     }
     MountInfo(const MountInfo&) = delete;

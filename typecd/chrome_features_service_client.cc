@@ -52,8 +52,7 @@ bool ChromeFeaturesServiceClient::IsPeripheralDataAccessEnabled() {
     }
 
     LOG(WARNING) << "Chrome features D-Bus retries remaining: " << retries;
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kRetrySleepTimeoutMs));
+    base::PlatformThread::Sleep(base::Milliseconds(kRetrySleepTimeoutMs));
   }
 
   LOG(ERROR)

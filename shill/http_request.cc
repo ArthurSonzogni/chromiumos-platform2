@@ -103,8 +103,7 @@ HttpRequest::Result HttpRequest::Start(
   server_hostname_ = url.host();
   server_port_ = url.port();
   server_path_ = url.path();
-  transport_->SetDefaultTimeout(
-      base::TimeDelta::FromSeconds(kRequestTimeoutSeconds));
+  transport_->SetDefaultTimeout(base::Seconds(kRequestTimeoutSeconds));
 
   IPAddress addr(ip_family_);
 

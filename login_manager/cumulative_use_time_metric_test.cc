@@ -265,7 +265,7 @@ class CumulativeUseTimeMetricTest : public testing::Test {
 
     // Verifying some assumptions made in tests about timing of
     // updating/uploading use time metrics.
-    ASSERT_GT(UpdateCycle(), base::TimeDelta::FromSeconds(10));
+    ASSERT_GT(UpdateCycle(), base::Seconds(10));
     ASSERT_GT(UploadCycle(), 3 * UpdateCycle());
   }
 
@@ -419,7 +419,7 @@ TEST_F(CumulativeUseTimeMetricTest, RecoverOnUncleanRestart) {
 
   cumulative_use_time_metric_->Start();
 
-  AdvanceTime(2 * UpdateCycle() + base::TimeDelta::FromSeconds(10));
+  AdvanceTime(2 * UpdateCycle() + base::Seconds(10));
 
   ResetCumulativeUseTimeMetric();
   cumulative_use_time_metric_->Init("53.0.0.7");
@@ -464,7 +464,7 @@ TEST_F(CumulativeUseTimeMetricTest, IncreaseTimeOnlyWhileActive) {
   cumulative_use_time_metric_->Start();
   EXPECT_EQ(0, metrics_library_.GetTimesSent());
 
-  AdvanceTime(base::TimeDelta::FromSeconds(2));
+  AdvanceTime(base::Seconds(2));
   cumulative_use_time_metric_->Stop();
   AdvanceTime(UploadCycle());
   cumulative_use_time_metric_->Start();
@@ -477,7 +477,7 @@ TEST_F(CumulativeUseTimeMetricTest, HandleLeftoverFromRoundingToSeconds) {
   cumulative_use_time_metric_->Init("53.0.1.0");
   cumulative_use_time_metric_->Start();
 
-  base::TimeDelta residue = base::TimeDelta::FromMilliseconds(530);
+  base::TimeDelta residue = base::Milliseconds(530);
   AdvanceTime(UpdateCycle() + residue);
   cumulative_use_time_metric_->Stop();
 

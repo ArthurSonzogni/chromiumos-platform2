@@ -185,9 +185,8 @@ TEST_F(GrpcCompletionQueueDispatcherTest,
   dispatcher_.RegisterTag(
       kTag, tag_available_called_tester.GetTagAvailableCallback());
 
-  grpc::Alarm alarm(
-      &completion_queue_,
-      GprTimespecWithDeltaFromNow(base::TimeDelta::FromMilliseconds(1)), kTag);
+  grpc::Alarm alarm(&completion_queue_,
+                    GprTimespecWithDeltaFromNow(base::Milliseconds(1)), kTag);
   run_loop.Run();
 
   EXPECT_TRUE(tag_available_called_tester.has_been_called());
@@ -208,8 +207,7 @@ TEST_F(GrpcCompletionQueueDispatcherTest,
       kTag, tag_available_called_tester.GetTagAvailableCallback());
 
   grpc::Alarm alarm(&completion_queue_,
-                    GprTimespecWithDeltaFromNow(base::TimeDelta::FromHours(24)),
-                    kTag);
+                    GprTimespecWithDeltaFromNow(base::Hours(24)), kTag);
   alarm.Cancel();
   run_loop.Run();
 
@@ -238,14 +236,12 @@ TEST_F(GrpcCompletionQueueDispatcherTest, ReregisterTag) {
 
   tag_available_called_tester_2.CallWhenInvoked(run_loop_2.QuitClosure());
 
-  grpc::Alarm alarm_1(
-      &completion_queue_,
-      GprTimespecWithDeltaFromNow(base::TimeDelta::FromMilliseconds(1)), kTag);
+  grpc::Alarm alarm_1(&completion_queue_,
+                      GprTimespecWithDeltaFromNow(base::Milliseconds(1)), kTag);
   run_loop_1.Run();
 
-  grpc::Alarm alarm_2(
-      &completion_queue_,
-      GprTimespecWithDeltaFromNow(base::TimeDelta::FromMilliseconds(1)), kTag);
+  grpc::Alarm alarm_2(&completion_queue_,
+                      GprTimespecWithDeltaFromNow(base::Milliseconds(1)), kTag);
   run_loop_2.Run();
 
   EXPECT_TRUE(tag_available_called_tester_1.has_been_called());

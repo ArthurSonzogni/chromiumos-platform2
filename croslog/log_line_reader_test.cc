@@ -70,8 +70,7 @@ class LogLineReaderTest : public ::testing::Test,
     const int kTinyTimeoutMs = 100;
     int max_try = 50;
     while (previous_value == changed_event_receieved_) {
-      base::PlatformThread::Sleep(
-          base::TimeDelta::FromMilliseconds(kTinyTimeoutMs));
+      base::PlatformThread::Sleep(base::Milliseconds(kTinyTimeoutMs));
       base::RunLoop().RunUntilIdle();
       max_try--;
       EXPECT_NE(0u, max_try);

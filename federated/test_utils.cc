@@ -58,7 +58,7 @@ ExamplePtr CreateExamplePtr() {
 }
 
 base::Time SecondsAfterEpoch(const int64_t s) {
-  return base::Time::UnixEpoch() + base::TimeDelta::FromSeconds(s);
+  return base::Time::UnixEpoch() + base::Seconds(s);
 }
 
 }  // namespace federated

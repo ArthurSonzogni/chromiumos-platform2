@@ -84,7 +84,7 @@ TEST_F(ThermalEventHandlerTest, BasicThermalEvents) {
   };
 
   for (const auto& state : states) {
-    AdvanceTime(base::TimeDelta::FromSeconds(1));
+    AdvanceTime(base::Seconds(1));
     thermal_devices_[0].set_thermal_state(state);
     thermal_devices_[0].NotifyObservers();
     EXPECT_EQ(DeviceThermalStateToProto(state), GetThermalEventThermalState());
@@ -113,7 +113,7 @@ TEST_F(ThermalEventHandlerTest, ThermalEventNotChange) {
   // No thermal state change dbus signal because thermal_devices_[0] is always
   // at critical state which makes the overall state always at critical.
   for (const auto& state : states) {
-    AdvanceTime(base::TimeDelta::FromSeconds(1));
+    AdvanceTime(base::Seconds(1));
     thermal_devices_[1].set_thermal_state(state);
     thermal_devices_[1].NotifyObservers();
     EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
@@ -148,7 +148,7 @@ TEST_F(ThermalEventHandlerTest, ThermalEventVoting) {
   };
 
   for (const auto& state : states) {
-    AdvanceTime(base::TimeDelta::FromSeconds(1));
+    AdvanceTime(base::Seconds(1));
     thermal_devices_[0].set_thermal_state(state.input[0]);
     thermal_devices_[1].set_thermal_state(state.input[1]);
     thermal_devices_[0].NotifyObservers();
@@ -175,7 +175,7 @@ TEST_F(ThermalEventHandlerTest, IgnoreChargerWhenOnBattery) {
   dbus_wrapper_.ClearSentSignals();
 
   // Charger: Critical, Processor: Fair, Power: Battery -> Fair.
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   handler_.HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(DeviceThermalStateToProto(system::DeviceThermalState::kFair),
             GetThermalEventThermalState());
@@ -183,13 +183,13 @@ TEST_F(ThermalEventHandlerTest, IgnoreChargerWhenOnBattery) {
   dbus_wrapper_.ClearSentSignals();
 
   // Charger: Serious, Processor: Fair, Power: Battery -> No change.
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   thermal_devices_[0].set_thermal_state(system::DeviceThermalState::kSerious);
   thermal_devices_[0].NotifyObservers();
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 
   // Charger: Serious, Processor: Fair, Power: AC -> Serious.
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   handler_.HandlePowerSourceChange(PowerSource::AC);
   EXPECT_EQ(DeviceThermalStateToProto(system::DeviceThermalState::kSerious),
             GetThermalEventThermalState());
@@ -210,7 +210,7 @@ TEST_F(ThermalEventHandlerTest, GetThermalState) {
   thermal_devices_[0].set_thermal_state(system::DeviceThermalState::kUnknown);
 
   for (const auto& state : states) {
-    AdvanceTime(base::TimeDelta::FromSeconds(1));
+    AdvanceTime(base::Seconds(1));
     thermal_devices_[1].set_thermal_state(state);
     thermal_devices_[1].NotifyObservers();
     dbus::MethodCall method_call(kPowerManagerInterface,

@@ -45,7 +45,7 @@ void BackoffEntry::InformOfRequest(bool succeeded) {
     // failures.
     base::TimeDelta delay;
     if (policy_->always_use_initial_delay)
-      delay = base::TimeDelta::FromMilliseconds(policy_->initial_delay_ms);
+      delay = base::Milliseconds(policy_->initial_delay_ms);
     exponential_backoff_release_time_ =
         std::max(ImplGetTimeNow() + delay, exponential_backoff_release_time_);
   }
@@ -160,9 +160,8 @@ base::TimeTicks BackoffEntry::CalculateReleaseTime() const {
 
   // Never reduce previously set release horizon, e.g. due to Retry-After
   // header.
-  return std::max(
-      base::TimeTicks() + base::TimeDelta::FromMicroseconds(release_time_us),
-      exponential_backoff_release_time_);
+  return std::max(base::TimeTicks() + base::Microseconds(release_time_us),
+                  exponential_backoff_release_time_);
 }
 
 }  // namespace brillo

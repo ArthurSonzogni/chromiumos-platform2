@@ -302,8 +302,7 @@ uint32_t SubprocRoutine::CalculateProgressPercent() {
             100, std::max<uint32_t>(
                      0, static_cast<uint32_t>(
                             100 * (tick_clock_->NowTicks() - start_ticks_) /
-                            base::TimeDelta::FromSeconds(
-                                predicted_duration_in_seconds_))));
+                            base::Seconds(predicted_duration_in_seconds_))));
       }
       break;
     case kSubprocStatusCancelled:

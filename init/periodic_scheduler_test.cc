@@ -36,11 +36,10 @@ class PeriodicSchedulerTest : public ::testing::Test {
 
     // Create a periodic scheduler for basic sanity testing.
     std::vector<std::string> default_cmd({"touch", marker_file_.value()});
-    p = std::make_unique<PeriodicScheduler>(base::TimeDelta::FromSeconds(3),
-                                            base::TimeDelta::FromSeconds(10),
+    p = std::make_unique<PeriodicScheduler>(base::Seconds(3), base::Seconds(10),
                                             "boo", default_cmd);
     p->set_spool_dir_for_test(tmpdir_.GetPath().Append("spool"));
-    p->set_check_freq_for_test(base::TimeDelta::FromSeconds(1));
+    p->set_check_freq_for_test(base::Seconds(1));
   }
   ~PeriodicSchedulerTest() = default;
 

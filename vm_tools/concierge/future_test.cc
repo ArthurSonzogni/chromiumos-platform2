@@ -388,7 +388,7 @@ TEST_F(FutureTest, NoDeadlock) {
         FROM_HERE,
         base::BindOnce([](Promise<bool> promise) { promise.SetValue(true); },
                        std::move(promise)),
-        base::TimeDelta::FromMilliseconds(10));
+        base::Milliseconds(10));
     EXPECT_TRUE(future.Get().val);
   }
 
@@ -407,7 +407,7 @@ TEST_F(FutureTest, NoDeadlock) {
                   base::BindOnce(
                       [](Promise<bool> promise) { promise.SetValue(true); },
                       std::move(promise)),
-                  base::TimeDelta::FromMilliseconds(10));
+                  base::Milliseconds(10));
               EXPECT_TRUE(future.GetWithRunLoop().val);
               closure.Run();
             },
@@ -431,7 +431,7 @@ TEST_F(FutureTest, NoDeadlock) {
                       std::move(promise)));
             },
             std::move(promise), base::SequencedTaskRunnerHandle::Get()),
-        base::TimeDelta::FromMilliseconds(10));
+        base::Milliseconds(10));
     EXPECT_TRUE(future.GetWithRunLoop().val);
   }
 
@@ -444,8 +444,7 @@ TEST_F(FutureTest, NoDeadlock) {
         base::BindOnce(
             [](Promise<bool> promise,
                scoped_refptr<base::SequencedTaskRunner> main_thread_runner) {
-              base::PlatformThread::Sleep(
-                  base::TimeDelta::FromMilliseconds(10));
+              base::PlatformThread::Sleep(base::Milliseconds(10));
               main_thread_runner->PostTask(
                   FROM_HERE,
                   base::BindOnce(
@@ -510,10 +509,10 @@ TEST_F(FutureTest, WaitFor) {
         FROM_HERE,
         base::BindOnce([](Promise<bool> promise) { promise.SetValue(true); },
                        std::move(promise)),
-        base::TimeDelta::FromMilliseconds(1000));
-    EXPECT_FALSE(future.WaitFor(base::TimeDelta::FromMilliseconds(200)));
-    EXPECT_FALSE(future.WaitFor(base::TimeDelta::FromMilliseconds(400)));
-    EXPECT_TRUE(future.WaitFor(base::TimeDelta::FromMilliseconds(600)));
+        base::Milliseconds(1000));
+    EXPECT_FALSE(future.WaitFor(base::Milliseconds(200)));
+    EXPECT_FALSE(future.WaitFor(base::Milliseconds(400)));
+    EXPECT_TRUE(future.WaitFor(base::Milliseconds(600)));
     EXPECT_TRUE(future.Get().val);
   }
 }

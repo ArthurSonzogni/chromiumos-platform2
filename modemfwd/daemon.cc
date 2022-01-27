@@ -30,8 +30,8 @@
 
 namespace {
 
-constexpr base::TimeDelta kWedgeCheckDelay = base::TimeDelta::FromMinutes(5);
-constexpr base::TimeDelta kRebootCheckDelay = base::TimeDelta::FromMinutes(1);
+constexpr base::TimeDelta kWedgeCheckDelay = base::Minutes(5);
+constexpr base::TimeDelta kRebootCheckDelay = base::Minutes(1);
 constexpr char kDisableAutoUpdatePref[] =
     "/var/lib/modemfwd/disable_auto_update";
 
@@ -62,7 +62,7 @@ base::TimeDelta GetModemWedgeCheckDelay() {
     return kWedgeCheckDelay;
   }
 
-  base::TimeDelta wedge_delay = base::TimeDelta::FromMilliseconds(ms);
+  base::TimeDelta wedge_delay = base::Milliseconds(ms);
   LOG(INFO) << "Use customized wedge reboot delay: " << wedge_delay;
   return wedge_delay;
 }

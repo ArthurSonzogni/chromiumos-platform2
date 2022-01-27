@@ -134,8 +134,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   for (int i = 0; i < 100; i++) {
     thermal_device_fuzzer->WriteNewThermalData(fuzzed_data_provider.get());
-    task_runner->FastForwardBy(
-        base::TimeDelta::FromMilliseconds(kPollIntervalMs));
+    task_runner->FastForwardBy(base::Milliseconds(kPollIntervalMs));
   }
 
   return 0;

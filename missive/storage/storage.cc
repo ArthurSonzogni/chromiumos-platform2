@@ -56,18 +56,15 @@ constexpr char kImmediateQueuePrefix[] = "P_Immediate";
 
 constexpr char kFastBatchQueueSubdir[] = "FastBatch";
 constexpr char kFastBatchQueuePrefix[] = "P_FastBatch";
-constexpr base::TimeDelta kFastBatchUploadPeriod =
-    base::TimeDelta::FromSeconds(1);
+constexpr base::TimeDelta kFastBatchUploadPeriod = base::Seconds(1);
 
 constexpr char kSlowBatchQueueSubdir[] = "SlowBatch";
 constexpr char kSlowBatchQueuePrefix[] = "P_SlowBatch";
-constexpr base::TimeDelta kSlowBatchUploadPeriod =
-    base::TimeDelta::FromSeconds(20);
+constexpr base::TimeDelta kSlowBatchUploadPeriod = base::Seconds(20);
 
 constexpr char kBackgroundQueueSubdir[] = "Background";
 constexpr char kBackgroundQueuePrefix[] = "P_Background";
-constexpr base::TimeDelta kBackgroundQueueUploadPeriod =
-    base::TimeDelta::FromMinutes(1);
+constexpr base::TimeDelta kBackgroundQueueUploadPeriod = base::Minutes(1);
 
 constexpr char kManualQueueSubdir[] = "Manual";
 constexpr char kManualQueuePrefix[] = "P_Manual";
@@ -80,8 +77,7 @@ const uint64_t kQueueSize = 2 * 1024LL * 1024LL;
 // Failed upload retry delay: if an upload fails and there are no more incoming
 // events, collected events will not get uploaded for an indefinite time (see
 // b/192666219).
-constexpr base::TimeDelta kFailedUploadRetryDelay =
-    base::TimeDelta::FromSeconds(1);
+constexpr base::TimeDelta kFailedUploadRetryDelay = base::Seconds(1);
 
 // Returns vector of <priority, queue_options> for all expected queues in
 // Storage. Queues are all located under the given root directory.

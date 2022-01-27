@@ -198,7 +198,7 @@ void VideoCaptureServiceClientImpl::PushFrameToVirtualDevice(
     return;
   }
   mojo_connector_->PushFrameToVirtualDevice(
-      it->second, base::TimeDelta::FromMicroseconds(timestamp_in_microseconds),
+      it->second, base::Microseconds(timestamp_in_microseconds),
       std::move(data), data_size, static_cast<PixelFormat>(pixel_format),
       frame_width, frame_height);
 }

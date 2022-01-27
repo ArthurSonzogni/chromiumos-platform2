@@ -58,11 +58,9 @@ Metrics::ProcessType ProcessTypeOf(Proxy::Type t) {
 }
 }  // namespace
 
-constexpr base::TimeDelta kShillPropertyAttemptDelay =
-    base::TimeDelta::FromMilliseconds(200);
-constexpr base::TimeDelta kRequestTimeout = base::TimeDelta::FromSeconds(10);
-constexpr base::TimeDelta kRequestRetryDelay =
-    base::TimeDelta::FromMilliseconds(200);
+constexpr base::TimeDelta kShillPropertyAttemptDelay = base::Milliseconds(200);
+constexpr base::TimeDelta kRequestTimeout = base::Seconds(10);
+constexpr base::TimeDelta kRequestRetryDelay = base::Milliseconds(200);
 
 constexpr char kSystemProxyType[] = "sys";
 constexpr char kDefaultProxyType[] = "def";

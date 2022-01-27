@@ -76,8 +76,7 @@ bool TpmConnection::ConnectContextIfNeeded() {
     if (result != TSP_ERROR(TSS_E_COMM_FAILURE) || --remaining_runs == 0) {
       break;
     }
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kTpmConnectIntervalMs));
+    base::PlatformThread::Sleep(base::Milliseconds(kTpmConnectIntervalMs));
   }
   if (TPM_ERROR(result)) {
     TPM_LOG(ERROR, result) << "Failed to connect context.";

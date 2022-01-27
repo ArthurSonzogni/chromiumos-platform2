@@ -560,7 +560,7 @@ bool NetlinkManager::SendMessageInternal(
         &NetlinkManager::OnPendingDumpTimeout, weak_ptr_factory_.GetWeakPtr()));
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE, pending_dump_timeout_callback_.callback(),
-        base::TimeDelta::FromMilliseconds(kPendingDumpTimeoutMilliseconds));
+        base::Milliseconds(kPendingDumpTimeoutMilliseconds));
   }
   return true;
 }
@@ -832,7 +832,7 @@ void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
                  weak_ptr_factory_.GetWeakPtr()));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, resend_dump_message_callback_.callback(),
-      base::TimeDelta::FromMilliseconds(kNlMessageRetryDelayMilliseconds));
+      base::Milliseconds(kNlMessageRetryDelayMilliseconds));
 }
 
 }  // namespace shill.

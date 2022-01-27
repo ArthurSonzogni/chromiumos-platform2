@@ -3209,7 +3209,7 @@ bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
     const std::string obfuscated_username =
         SanitizeUserNameWithSalt(session_pair.first, system_salt_);
     success &= user_activity_timestamp_manager_->UpdateTimestamp(
-        obfuscated_username, base::TimeDelta::FromSeconds(time_shift_sec));
+        obfuscated_username, base::Seconds(time_shift_sec));
   }
 
   return success;
@@ -3338,7 +3338,7 @@ void UserDataAuth::UploadAlertsDataCallback() {
         FROM_HERE,
         base::BindOnce(&UserDataAuth::UploadAlertsDataCallback,
                        base::Unretained(this)),
-        base::TimeDelta::FromMilliseconds(upload_alerts_period_ms_));
+        base::Milliseconds(upload_alerts_period_ms_));
   }
 }
 
@@ -3492,8 +3492,7 @@ bool UserDataAuth::ExtendAuthSession(
   }
 
   // Extend specified AuthSession.
-  auto timer_extension =
-      base::TimeDelta::FromSeconds(request.extension_duration());
+  auto timer_extension = base::Seconds(request.extension_duration());
   reply.set_error(auth_session->ExtendTimer(timer_extension));
   std::move(on_done).Run(reply);
   return true;

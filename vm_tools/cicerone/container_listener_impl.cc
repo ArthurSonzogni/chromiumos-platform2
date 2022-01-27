@@ -25,7 +25,7 @@
 namespace {
 // These rate limit settings ensure that calls that open a new window/tab can't
 // be made more than 10 times in a 15 second interval approximately.
-constexpr base::TimeDelta kOpenRateWindow = base::TimeDelta::FromSeconds(15);
+constexpr base::TimeDelta kOpenRateWindow = base::Seconds(15);
 constexpr uint32_t kOpenRateLimit = 10;
 }  // namespace
 

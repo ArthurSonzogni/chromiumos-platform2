@@ -379,8 +379,7 @@ class Cellular : public Device,
 
   // Delay before connecting to pending connect requests. This helps prevent
   // connect failures while the Modem is still starting up.
-  static constexpr base::TimeDelta kPendingConnectDelay =
-      base::TimeDelta::FromSeconds(2);
+  static constexpr base::TimeDelta kPendingConnectDelay = base::Seconds(2);
 
  private:
   friend class CellularTest;

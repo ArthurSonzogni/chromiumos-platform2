@@ -47,7 +47,7 @@ constexpr char kDevSwBoot[] = "devsw_boot";
 constexpr char kDevMode[] = "dev";
 
 // If the OS version is older than this we do not upload crash reports.
-constexpr base::TimeDelta kAgeForNoUploads = base::TimeDelta::FromDays(180);
+constexpr base::TimeDelta kAgeForNoUploads = base::Days(180);
 
 #if USE_DIRENCRYPTION
 // Name of the session keyring.
@@ -278,7 +278,7 @@ bool IsBuildTimestampTooOldForUploads(int64_t build_time_millis,
     return false;
   }
   base::Time timestamp(base::Time::UnixEpoch() +
-                       base::TimeDelta::FromMilliseconds(build_time_millis));
+                       base::Milliseconds(build_time_millis));
   if (timestamp.is_null()) {
     return false;
   }

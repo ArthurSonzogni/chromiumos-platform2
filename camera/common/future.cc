@@ -40,7 +40,7 @@ bool FutureLock::Wait(int timeout_ms) {
   base::AutoLock l(lock_);
 
   base::TimeTicks end_time =
-      base::TimeTicks::Now() + base::TimeDelta::FromMilliseconds(timeout_ms);
+      base::TimeTicks::Now() + base::Milliseconds(timeout_ms);
   while (!signalled_ && !cancelled_) {
     if (timeout_ms > 0) {
       // Wait until the FutureLock is signalled or timeout.

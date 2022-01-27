@@ -124,22 +124,20 @@ void CrosHealthdRoutineService::RunBatteryChargeRoutine(
     uint32_t length_seconds,
     uint32_t minimum_charge_percent_required,
     RunBatteryChargeRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeBatteryChargeRoutine(
-                 base::TimeDelta::FromSeconds(length_seconds),
-                 minimum_charge_percent_required),
-             mojo_ipc::DiagnosticRoutineEnum::kBatteryCharge,
-             std::move(callback));
+  RunRoutine(
+      routine_factory_->MakeBatteryChargeRoutine(
+          base::Seconds(length_seconds), minimum_charge_percent_required),
+      mojo_ipc::DiagnosticRoutineEnum::kBatteryCharge, std::move(callback));
 }
 
 void CrosHealthdRoutineService::RunBatteryDischargeRoutine(
     uint32_t length_seconds,
     uint32_t maximum_discharge_percent_allowed,
     RunBatteryDischargeRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeBatteryDischargeRoutine(
-                 base::TimeDelta::FromSeconds(length_seconds),
-                 maximum_discharge_percent_allowed),
-             mojo_ipc::DiagnosticRoutineEnum::kBatteryDischarge,
-             std::move(callback));
+  RunRoutine(
+      routine_factory_->MakeBatteryDischargeRoutine(
+          base::Seconds(length_seconds), maximum_discharge_percent_allowed),
+      mojo_ipc::DiagnosticRoutineEnum::kBatteryDischarge, std::move(callback));
 }
 
 void CrosHealthdRoutineService::RunBatteryHealthRoutine(
@@ -161,7 +159,7 @@ void CrosHealthdRoutineService::RunCpuCacheRoutine(
     RunCpuCacheRoutineCallback callback) {
   base::Optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
-    exec_duration = base::TimeDelta::FromSeconds(length_seconds->value);
+    exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakeCpuCacheRoutine(exec_duration),
              mojo_ipc::DiagnosticRoutineEnum::kCpuCache, std::move(callback));
 }
@@ -171,7 +169,7 @@ void CrosHealthdRoutineService::RunCpuStressRoutine(
     RunCpuStressRoutineCallback callback) {
   base::Optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
-    exec_duration = base::TimeDelta::FromSeconds(length_seconds->value);
+    exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakeCpuStressRoutine(exec_duration),
              mojo_ipc::DiagnosticRoutineEnum::kCpuStress, std::move(callback));
 }
@@ -181,10 +179,9 @@ void CrosHealthdRoutineService::RunDiskReadRoutine(
     uint32_t length_seconds,
     uint32_t file_size_mb,
     RunDiskReadRoutineCallback callback) {
-  RunRoutine(
-      routine_factory_->MakeDiskReadRoutine(
-          type, base::TimeDelta::FromSeconds(length_seconds), file_size_mb),
-      mojo_ipc::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
+  RunRoutine(routine_factory_->MakeDiskReadRoutine(
+                 type, base::Seconds(length_seconds), file_size_mb),
+             mojo_ipc::DiagnosticRoutineEnum::kDiskRead, std::move(callback));
 }
 
 void CrosHealthdRoutineService::RunDnsLatencyRoutine(
@@ -212,7 +209,7 @@ void CrosHealthdRoutineService::RunFloatingPointAccuracyRoutine(
     RunFloatingPointAccuracyRoutineCallback callback) {
   base::Optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
-    exec_duration = base::TimeDelta::FromSeconds(length_seconds->value);
+    exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakeFloatingPointAccuracyRoutine(exec_duration),
              mojo_ipc::DiagnosticRoutineEnum::kFloatingPointAccuracy,
              std::move(callback));
@@ -288,7 +285,7 @@ void CrosHealthdRoutineService::RunPrimeSearchRoutine(
     RunPrimeSearchRoutineCallback callback) {
   base::Optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
-    exec_duration = base::TimeDelta::FromSeconds(length_seconds->value);
+    exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakePrimeSearchRoutine(exec_duration),
              mojo_ipc::DiagnosticRoutineEnum::kPrimeSearch,
              std::move(callback));

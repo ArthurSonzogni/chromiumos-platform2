@@ -14,10 +14,8 @@ namespace {
 constexpr int kDictionaryAttackCounterNumBuckets = 100;
 constexpr int kSecretStatusNumBuckets = kSecretMaxBit << 1;
 
-constexpr base::TimeDelta kTimeToTakeOwnershipMin =
-    base::TimeDelta::FromMilliseconds(1);
-constexpr base::TimeDelta kTimeToTakeOwnershipMax =
-    base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kTimeToTakeOwnershipMin = base::Milliseconds(1);
+constexpr base::TimeDelta kTimeToTakeOwnershipMax = base::Minutes(5);
 constexpr int kTimeToTakeOwnershipNumBuckets = 50;
 
 }  // namespace

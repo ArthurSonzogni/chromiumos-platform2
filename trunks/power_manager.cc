@@ -119,8 +119,7 @@ void PowerManager::Start() {
   Stop();
   // Register SuspendDelay.
   power_manager::RegisterSuspendDelayRequest request;
-  request.set_timeout(
-      base::TimeDelta::FromSeconds(kSuspendDelayTimeoutSec).ToInternalValue());
+  request.set_timeout(base::Seconds(kSuspendDelayTimeoutSec).ToInternalValue());
   request.set_description(kSuspendDelayDescription);
   std::vector<uint8_t> serialized_request;
   SerializeProto(request, &serialized_request);

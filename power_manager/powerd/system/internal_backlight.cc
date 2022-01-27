@@ -150,9 +150,9 @@ bool InternalBacklight::SetBrightnessLevel(int64_t level,
   transition_start_level_ = current_brightness_level_;
   transition_end_level_ = level;
   if (!transition_timer_.IsRunning()) {
-    transition_timer_.Start(
-        FROM_HERE, base::TimeDelta::FromMilliseconds(kTransitionIntervalMs),
-        this, &InternalBacklight::HandleTransitionTimeout);
+    transition_timer_.Start(FROM_HERE,
+                            base::Milliseconds(kTransitionIntervalMs), this,
+                            &InternalBacklight::HandleTransitionTimeout);
     transition_timer_start_time_ = transition_start_time_;
   }
   return true;

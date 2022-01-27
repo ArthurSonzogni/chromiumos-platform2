@@ -58,8 +58,7 @@ class ServiceThread : public base::Thread {
   // Waits for the FUSE mount to get ready.
   bool WaitForFuseMount() {
     constexpr int kMaxRetryCount = 3000;
-    constexpr base::TimeDelta kRetryInterval =
-        base::TimeDelta::FromMilliseconds(1);
+    constexpr base::TimeDelta kRetryInterval = base::Milliseconds(1);
 
     for (int retry_count = 0; retry_count < kMaxRetryCount; ++retry_count) {
       struct statfs buf = {};

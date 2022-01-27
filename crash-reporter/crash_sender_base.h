@@ -21,7 +21,7 @@
 namespace util {
 
 // Maximum time to wait for ensuring a meta file is complete.
-constexpr base::TimeDelta kMaxHoldOffTime = base::TimeDelta::FromSeconds(30);
+constexpr base::TimeDelta kMaxHoldOffTime = base::Seconds(30);
 constexpr char kUndefined[] = "undefined";
 constexpr char kChromeOsProduct[] = "ChromeOS";
 

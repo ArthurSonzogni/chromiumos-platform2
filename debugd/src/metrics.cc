@@ -16,8 +16,8 @@ namespace {
 
 // Histogram specifications
 const char kHistogramPrefix[] = "ChromeOS.Debugd.";
-const base::TimeDelta kHistogramMin = base::TimeDelta::FromMinutes(0);
-const base::TimeDelta kHistogramMax = base::TimeDelta::FromMinutes(2);
+const base::TimeDelta kHistogramMin = base::Minutes(0);
+const base::TimeDelta kHistogramMax = base::Minutes(2);
 const int kNumBuckets = 50;
 
 }  // namespace

@@ -87,7 +87,7 @@ void SensorDbus::ReconnectMojoWithDelay() {
       FROM_HERE,
       base::BindOnce(&SensorDbus::BootstrapMojoConnection,
                      weak_factory_.GetWeakPtr()),
-      base::TimeDelta::FromMilliseconds(kDelayBootstrapInMilliseconds));
+      base::Milliseconds(kDelayBootstrapInMilliseconds));
 }
 
 }  // namespace iioservice

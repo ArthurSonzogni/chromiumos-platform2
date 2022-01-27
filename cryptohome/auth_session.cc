@@ -37,8 +37,7 @@ constexpr int kHighTokenOffset = 0;
 // Offset where the low value is used in Serialized string.
 constexpr int kLowTokenOffset = kSizeOfSerializedValueInToken;
 // AuthSession will time out if it is active after this time interval.
-constexpr base::TimeDelta kAuthSessionTimeoutInMinutes =
-    base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kAuthSessionTimeoutInMinutes = base::Minutes(5);
 
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 

@@ -25,10 +25,8 @@ const base::FilePath kBasePath("/sys/fs/cgroup/freezer");
 const base::FilePath kWakeupCountPath("/sys/power/wakeup_count");
 
 namespace {
-static constexpr base::TimeDelta kFreezerTimeout =
-    base::TimeDelta::FromSeconds(10);
-static constexpr base::TimeDelta kFreezerSampleTime =
-    base::TimeDelta::FromMilliseconds(10);
+static constexpr base::TimeDelta kFreezerTimeout = base::Seconds(10);
+static constexpr base::TimeDelta kFreezerSampleTime = base::Milliseconds(10);
 }  // namespace
 
 SuspendFreezer::SuspendFreezer()

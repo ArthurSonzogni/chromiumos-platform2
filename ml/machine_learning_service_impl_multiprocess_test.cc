@@ -186,7 +186,7 @@ TEST(WebPlatformHandwritingModel, LoadModelAndRecognize) {
         is_timeout = true;
         runloop.Quit();
       }),
-      base::TimeDelta::FromMilliseconds(1000 * 60 * 5));
+      base::Milliseconds(1000 * 60 * 5));
 
   runloop.Run();
 

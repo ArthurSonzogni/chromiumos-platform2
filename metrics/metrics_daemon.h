@@ -85,7 +85,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   // measured at resume "ambient" (i.e. not influenced by the device) and
   // report them to UMA.
   static constexpr base::TimeDelta kMinSuspendDurationForAmbientTemperature =
-      base::TimeDelta::FromMinutes(30);
+      base::Minutes(30);
 
   // UMA Metrics used to report temperature data when resuming from a suspend
   // that exceeds the minimum duration.

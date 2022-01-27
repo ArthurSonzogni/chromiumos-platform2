@@ -16,7 +16,7 @@
 #include "cryptohome/bootlockbox/tpm_nvspace_impl.h"
 
 namespace {
-constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kDefaultTimeout = base::Minutes(2);
 
 // The index of the nv space for bootlockboxd. Refer to README.lockbox
 // for how the index is selected.

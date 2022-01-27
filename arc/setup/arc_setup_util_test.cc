@@ -367,7 +367,7 @@ TEST(ArcSetupUtil, TestCreateOrTruncate) {
 }
 
 TEST(ArcSetupUtil, TestWaitForPaths) {
-  constexpr base::TimeDelta timeout = base::TimeDelta::FromSeconds(1);
+  constexpr base::TimeDelta timeout = base::Seconds(1);
 
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());

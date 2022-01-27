@@ -40,7 +40,7 @@ class SuspendDelayController {
   // Default value corresponding to maximum suspend delay i.e. maximum time
   // spent waiting to suspend after it's initiated.
   static constexpr base::TimeDelta kDefaultMaxSuspendDelayTimeout =
-      base::TimeDelta::FromSeconds(20);
+      base::Seconds(20);
 
   bool ReadyForSuspend() const;
 
@@ -101,7 +101,7 @@ class SuspendDelayController {
   // resume. This delay helps for external monitor enumeration when the
   // device dark resumes on hot plug detect.
   static constexpr base::TimeDelta kDarkResumeMinDelayTimeout =
-      base::TimeDelta::FromSeconds(5);
+      base::Seconds(5);
 
   // Returns a substring to use in log messages to describe the types of
   // suspends controlled by this object. If |description_| is non-empty,

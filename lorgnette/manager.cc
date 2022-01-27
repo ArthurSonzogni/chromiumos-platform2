@@ -42,7 +42,7 @@ namespace lorgnette {
 namespace {
 
 constexpr base::TimeDelta kDefaultProgressSignalInterval =
-    base::TimeDelta::FromMilliseconds(20);
+    base::Milliseconds(20);
 constexpr size_t kUUIDStringLength = 37;
 
 std::string SerializeError(const brillo::ErrorPtr& error_ptr) {

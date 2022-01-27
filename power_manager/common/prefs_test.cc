@@ -52,8 +52,7 @@ class TestPrefsObserver : public PrefsObserver {
   // Runs |loop_| until OnPrefChanged() is called, then quits the loop
   // and returns a string containing the name of the pref that was changed.
   std::string RunUntilPrefChanged() {
-    CHECK(loop_runner_.StartLoop(
-        base::TimeDelta::FromMilliseconds(kPrefChangeTimeoutMs)))
+    CHECK(loop_runner_.StartLoop(base::Milliseconds(kPrefChangeTimeoutMs)))
         << "Pref change not received";
     return pref_name_;
   }
@@ -325,7 +324,7 @@ TEST_F(PrefsTest, WatchPrefs) {
 // Test that additional write requests made soon after an initial request
 // are deferred.
 TEST_F(PrefsTest, DeferredWrites) {
-  test_api_.set_write_interval(base::TimeDelta::FromSeconds(120));
+  test_api_.set_write_interval(base::Seconds(120));
   InitPrefs();
 
   // Write 1 to a pref.

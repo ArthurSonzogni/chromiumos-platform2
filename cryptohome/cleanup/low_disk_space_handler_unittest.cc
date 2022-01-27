@@ -145,7 +145,7 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanup) {
   task_runner_->FastForwardBy(handler_.low_disk_notification_period());
   task_runner_->RunUntilIdle();
 
-  auto delta = base::TimeDelta::FromMilliseconds(kAutoCleanupPeriodMS + 1);
+  auto delta = base::Milliseconds(kAutoCleanupPeriodMS + 1);
 
   for (int i = 0; i < 50; i++) {
     EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
@@ -172,8 +172,7 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanupEnrolled) {
   task_runner_->FastForwardBy(handler_.low_disk_notification_period());
   task_runner_->RunUntilIdle();
 
-  auto delta = handler_.low_disk_notification_period() +
-               base::TimeDelta::FromMilliseconds(1);
+  auto delta = handler_.low_disk_notification_period() + base::Milliseconds(1);
 
   for (int i = 0; i < 50; i++) {
     EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
@@ -196,7 +195,7 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicLastActivityUpdate) {
         }));
 
     auto delta = handler_.update_user_activity_timestamp_period() +
-                 base::TimeDelta::FromMilliseconds(1);
+                 base::Milliseconds(1);
 
     current_time_ += delta;
     task_runner_->FastForwardBy(delta);

@@ -17,8 +17,7 @@ namespace hwsec {
 
 struct RetryInternalData {
   static constexpr int kMaxTryCount = 5;
-  static constexpr base::TimeDelta kInitialRetry =
-      base::TimeDelta::FromSecondsD(0.1);
+  static constexpr base::TimeDelta kInitialRetry = base::Seconds(0.1);
   static constexpr double kRetryMultiplier = 2.0;
 
   int try_count = kMaxTryCount;

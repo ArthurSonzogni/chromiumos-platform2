@@ -240,7 +240,7 @@ base::TimeDelta DBusServer::GetDefaultRequestTimeout() const {
   int timeout_seconds = proxy_ ? proxy_->default_request_timeout() : -1;
   if (timeout_seconds <= 0)
     return base::TimeDelta::Max();
-  return base::TimeDelta::FromSeconds(timeout_seconds);
+  return base::Seconds(timeout_seconds);
 }
 
 }  // namespace libwebserv

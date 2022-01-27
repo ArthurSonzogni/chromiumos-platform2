@@ -398,10 +398,10 @@ void VmlogWriter::Init(const base::FilePath& vmlog_dir,
   // good time set for naming files. Wait 5 minutes.
   //
   // See crbug.com/724175 for details.
-  if (now - base::Time::UnixEpoch() < base::TimeDelta::FromDays(1)) {
+  if (now - base::Time::UnixEpoch() < base::Days(1)) {
     LOG(WARNING) << "Time seems incorrect, too close to epoch: " << now;
     valid_time_delay_timer_.Start(
-        FROM_HERE, base::TimeDelta::FromMinutes(5),
+        FROM_HERE, base::Minutes(5),
         base::BindOnce(&VmlogWriter::Init, base::Unretained(this), vmlog_dir,
                        log_interval));
     return;

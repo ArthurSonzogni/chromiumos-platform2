@@ -30,7 +30,7 @@ bool MACAddress::Load(const StoreInterface* storage, const std::string& id) {
     uint64_t expiration_time;
     if (storage->GetUint64(id, kStorageMACAddressExpiry, &expiration_time)) {
       expiration_time_ = base::Time::FromDeltaSinceWindowsEpoch(
-          base::TimeDelta::FromMicroseconds(expiration_time));
+          base::Microseconds(expiration_time));
     }
   }
   return true;

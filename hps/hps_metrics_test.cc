@@ -77,8 +77,7 @@ TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
     EXPECT_CALL(*GetMetricsLibraryMock(),
                 SendEnumToUMA(kHpsTurnOnResult, static_cast<int>(result), _))
         .Times(1);
-    hps_metrics_.SendHpsTurnOnResult(
-        result, base::TimeDelta::FromMilliseconds(kDuration));
+    hps_metrics_.SendHpsTurnOnResult(result, base::Milliseconds(kDuration));
   }
 }
 

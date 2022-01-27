@@ -124,7 +124,7 @@ void ParseCommandLine(int argc,
                << FLAGS_max_spread_time;
     exit(EXIT_FAILURE);
   }
-  flags->max_spread_time = base::TimeDelta::FromSeconds(FLAGS_max_spread_time);
+  flags->max_spread_time = base::Seconds(FLAGS_max_spread_time);
   flags->crash_directory = FLAGS_crash_directory;
   flags->ignore_rate_limits = FLAGS_ignore_rate_limits;
   flags->ignore_hold_off_time = FLAGS_ignore_hold_off_time;
@@ -243,8 +243,7 @@ bool IsAlreadyUploaded(const base::FilePath& meta_file) {
 }
 
 bool IsTimestampNewEnough(const base::FilePath& timestamp_file) {
-  const base::Time threshold =
-      base::Time::Now() - base::TimeDelta::FromHours(24);
+  const base::Time threshold = base::Time::Now() - base::Hours(24);
 
   base::File::Info info;
   if (!base::GetFileInfo(timestamp_file, &info)) {

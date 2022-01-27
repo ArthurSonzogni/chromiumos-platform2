@@ -39,10 +39,10 @@ namespace concierge {
 namespace {
 
 // How long we give VM to suspend.
-constexpr base::TimeDelta kVmSuspendTimeout = base::TimeDelta::FromSeconds(25);
+constexpr base::TimeDelta kVmSuspendTimeout = base::Seconds(25);
 
 // How long to wait before timing out on child process exits.
-constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 
 // The CPU cgroup where all the PluginVm crosvm processes should belong to.
 constexpr char kPluginVmCpuCgroup[] = "/sys/fs/cgroup/cpu/vms/plugin";
@@ -77,7 +77,7 @@ void TrySuspendVm(scoped_refptr<dbus::Bus> bus,
           LOG(INFO) << "Dispatcher is shutting down, will retry suspend";
           dispatcher_shutting_down = true;
         }
-        base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(1));
+        base::PlatformThread::Sleep(base::Seconds(1));
         break;
 
       case pvm::dispatcher::VmOpResult::DISPATCHER_NOT_AVAILABLE:

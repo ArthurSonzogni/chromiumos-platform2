@@ -108,7 +108,7 @@ void TgtRenewalScheduler::ScheduleRenewal(bool notify_expiration) {
       &TgtRenewalScheduler::RunScheduledTgtRenewal, base::Unretained(this)));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, tgt_renewal_callback_.callback(),
-      base::TimeDelta::FromSeconds(delay_seconds));
+      base::Seconds(delay_seconds));
 }
 
 void TgtRenewalScheduler::RunScheduledTgtRenewal() {

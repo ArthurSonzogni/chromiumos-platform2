@@ -225,8 +225,7 @@ void PortManager::HandleSessionStopped() {
       continue;
     }
 
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kExitModeWaitMs));
+    base::PlatformThread::Sleep(base::Milliseconds(kExitModeWaitMs));
 
     // Now run mode entry again.
     RunModeEntry(port_num);
@@ -272,8 +271,7 @@ void PortManager::HandleUnlock() {
       continue;
     }
 
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kExitModeWaitMs));
+    base::PlatformThread::Sleep(base::Milliseconds(kExitModeWaitMs));
 
     // Now run mode entry again.
     RunModeEntry(port_num);

@@ -8,13 +8,11 @@ namespace brillo {
 
 const int kMaxGrpcMessageSize = 4 * 1024 * 1024;
 
-const base::TimeDelta kMinGrpcReconnectBackoffTime =
-    base::TimeDelta::FromMilliseconds(100);
+const base::TimeDelta kMinGrpcReconnectBackoffTime = base::Milliseconds(100);
 const base::TimeDelta kInitialGrpcReconnectBackoffTime =
-    base::TimeDelta::FromMilliseconds(100);
-const base::TimeDelta kMaxGrpcReconnectBackoffTime =
-    base::TimeDelta::FromSeconds(5);
+    base::Milliseconds(100);
+const base::TimeDelta kMaxGrpcReconnectBackoffTime = base::Seconds(5);
 
-const base::TimeDelta kDefaultRpcDeadline = base::TimeDelta::FromMinutes(1);
+const base::TimeDelta kDefaultRpcDeadline = base::Minutes(1);
 
 }  // namespace brillo

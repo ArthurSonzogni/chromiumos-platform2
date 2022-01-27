@@ -56,9 +56,9 @@ base::TimeDelta GetTransitionDuration(
     case BacklightController::Transition::INSTANT:
       return base::TimeDelta();
     case BacklightController::Transition::FAST:
-      return base::TimeDelta::FromMilliseconds(kFastBacklightTransitionMs);
+      return base::Milliseconds(kFastBacklightTransitionMs);
     case BacklightController::Transition::SLOW:
-      return base::TimeDelta::FromMilliseconds(kSlowBacklightTransitionMs);
+      return base::Milliseconds(kSlowBacklightTransitionMs);
   }
   NOTREACHED() << "Unhandled transition style " << static_cast<int>(transition);
   return base::TimeDelta();
@@ -160,9 +160,9 @@ void KeyboardBacklightController::Init(
 
   int64_t delay_ms = 0;
   CHECK(prefs->GetInt64(kKeyboardBacklightKeepOnMsPref, &delay_ms));
-  keep_on_delay_ = base::TimeDelta::FromMilliseconds(delay_ms);
+  keep_on_delay_ = base::Milliseconds(delay_ms);
   CHECK(prefs->GetInt64(kKeyboardBacklightKeepOnDuringVideoMsPref, &delay_ms));
-  keep_on_during_video_delay_ = base::TimeDelta::FromMilliseconds(delay_ms);
+  keep_on_during_video_delay_ = base::Milliseconds(delay_ms);
 
   // Read the user-settable brightness steps (one per line).
   std::string input_str;
@@ -271,9 +271,8 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
 
   video_timer_.Stop();
   if (is_fullscreen) {
-    video_timer_.Start(
-        FROM_HERE, base::TimeDelta::FromMilliseconds(kVideoTimeoutIntervalMs),
-        this, &KeyboardBacklightController::HandleVideoTimeout);
+    video_timer_.Start(FROM_HERE, base::Milliseconds(kVideoTimeoutIntervalMs),
+                       this, &KeyboardBacklightController::HandleVideoTimeout);
   }
 }
 
@@ -495,7 +494,7 @@ void KeyboardBacklightController::UpdateTurnOffTimer() {
       fullscreen_video_playing_ ? keep_on_during_video_delay_ : keep_on_delay_;
   const base::TimeDelta remaining_delay =
       full_delay - (clock_->GetCurrentTime() - timeout_start);
-  if (remaining_delay <= base::TimeDelta::FromMilliseconds(0))
+  if (remaining_delay <= base::Milliseconds(0))
     return;
 
   turn_off_timer_.Start(

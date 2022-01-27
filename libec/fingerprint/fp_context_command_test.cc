@@ -34,8 +34,7 @@ TEST(FpContextCommand, FpContextCommand_v1) {
   EXPECT_EQ(cmd->Req()->action, FP_CONTEXT_ASYNC);
   EXPECT_EQ(memcmp(cmd->Req()->userid, expected.data(), expected.size()), 0);
   EXPECT_EQ(cmd->options().poll_for_result_num_attempts, 70);
-  EXPECT_EQ(cmd->options().poll_interval,
-            base::TimeDelta::FromMilliseconds(100));
+  EXPECT_EQ(cmd->options().poll_interval, base::Milliseconds(100));
 }
 
 template <typename T>

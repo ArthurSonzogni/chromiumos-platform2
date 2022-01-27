@@ -823,8 +823,7 @@ TEST_F(AsyncGrpcClientServerTest, RpcServerRestarted) {
 TEST_F(AsyncGrpcClientServerTest, RpcServerStopped) {
   CreateClient();
 
-  client_->SetDefaultRpcDeadlineForTesting(
-      base::TimeDelta::FromMilliseconds(50));
+  client_->SetDefaultRpcDeadlineForTesting(base::Milliseconds(50));
 
   base::TimeTicks start = base::TimeTicks::Now();
 
@@ -846,8 +845,7 @@ TEST_F(AsyncGrpcClientServerTest, RpcServerStopped) {
 TEST_F(AsyncGrpcClientServerTest, RpcServerStopped_PerRequestTimeout) {
   CreateClient();
 
-  client_->SetDefaultRpcDeadlineForTesting(
-      base::TimeDelta::FromMilliseconds(50));
+  client_->SetDefaultRpcDeadlineForTesting(base::Milliseconds(50));
 
   base::TimeTicks start = base::TimeTicks::Now();
 
@@ -855,8 +853,7 @@ TEST_F(AsyncGrpcClientServerTest, RpcServerStopped_PerRequestTimeout) {
   test_rpcs::EchoIntRpcRequest request;
   request.set_int_to_echo(1);
   client_->CallRpc(&test_rpcs::ExampleService::Stub::AsyncEchoIntRpc,
-                   base::TimeDelta::FromMilliseconds(200), request,
-                   rpc_reply.MakeWriter());
+                   base::Milliseconds(200), request, rpc_reply.MakeWriter());
 
   rpc_reply.Wait();
   EXPECT_TRUE(rpc_reply.IsError());

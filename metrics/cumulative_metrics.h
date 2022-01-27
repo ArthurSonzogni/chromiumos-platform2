@@ -14,9 +14,9 @@
 //   CumulativeMetrics cm(
 //     backing_dir,
 //     stat_names,
-//     TimeDelta::FromMinutes(5),
+//     base::Minutes(5),
 //     base::BindRepeating(&UpdateConnectivityStats),
-//     TimeDelta::FromDays(1),
+//     base::Days(1),
 //     base::BindRepeating(&ReportConnectivityStats,
 //     base::Unretained(metrics_lib_));
 //

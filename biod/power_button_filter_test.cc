@@ -39,8 +39,7 @@ class PowerButtonFilterTest : public testing::Test {
   std::unique_ptr<PowerButtonFilterInterface> InitializePowerButtonFilter(
       bool should_set_fp_type, bool is_fp_overlapped = true) {
     // Start at an arbitrary non-zero time.
-    test_clock_->SetNowTicks(
-        (base::TimeTicks() + base::TimeDelta::FromHours(1)));
+    test_clock_->SetNowTicks((base::TimeTicks() + base::Hours(1)));
     if (should_set_fp_type) {
       cros_config_prefs_ = new brillo::FakeCrosConfig();
       std::string fp_type = is_fp_overlapped
@@ -64,8 +63,7 @@ TEST_F(PowerButtonFilterTest, TestFilterOnPowerButtonDownEvent) {
   power_manager_client_->GeneratePowerButtonEvent(true,
                                                   test_clock_->NowTicks());
   // Advance time by |kAuthIgnoreTimeoutmsecs - 1|.
-  test_clock_->Advance(
-      base::TimeDelta::FromMilliseconds(biod::kAuthIgnoreTimeoutmsecs - 1));
+  test_clock_->Advance(base::Milliseconds(biod::kAuthIgnoreTimeoutmsecs - 1));
   EXPECT_TRUE(power_button_filter->ShouldFilterFingerprintMatch());
   // Now |power_button_filter| should return false on
   // ShouldFilterFingerprintMatch() as we have already suppressed one touch.
@@ -88,8 +86,7 @@ TEST_F(PowerButtonFilterTest, TestFilterOnPowerButtonUpEvent) {
   power_manager_client_->GeneratePowerButtonEvent(false,
                                                   test_clock_->NowTicks());
   // Advance time by |kAuthIgnoreTimeoutmsecs - 1|.
-  test_clock_->Advance(
-      base::TimeDelta::FromMilliseconds(biod::kAuthIgnoreTimeoutmsecs - 1));
+  test_clock_->Advance(base::Milliseconds(biod::kAuthIgnoreTimeoutmsecs - 1));
   EXPECT_FALSE(power_button_filter->ShouldFilterFingerprintMatch());
 }
 
@@ -102,8 +99,7 @@ TEST_F(PowerButtonFilterTest, TestFilterAfterkAuthIgnoreTimeoutmsecs) {
   power_manager_client_->GeneratePowerButtonEvent(true,
                                                   test_clock_->NowTicks());
   // Advance time by |kAuthIgnoreTimeoutmsecs| + 1.
-  test_clock_->Advance(
-      base::TimeDelta::FromMilliseconds(biod::kAuthIgnoreTimeoutmsecs + 1));
+  test_clock_->Advance(base::Milliseconds(biod::kAuthIgnoreTimeoutmsecs + 1));
   EXPECT_FALSE(power_button_filter->ShouldFilterFingerprintMatch());
 }
 
@@ -116,8 +112,7 @@ TEST_F(PowerButtonFilterTest, TestPowerButtonNotSeenOnStandAloneFp) {
   power_manager_client_->GeneratePowerButtonEvent(true,
                                                   test_clock_->NowTicks());
   // Advance time by |kAuthIgnoreTimeoutmsecs| - 1.
-  test_clock_->Advance(
-      base::TimeDelta::FromMilliseconds(biod::kAuthIgnoreTimeoutmsecs - 1));
+  test_clock_->Advance(base::Milliseconds(biod::kAuthIgnoreTimeoutmsecs - 1));
   EXPECT_FALSE(power_button_filter->ShouldFilterFingerprintMatch());
 }
 
@@ -130,8 +125,7 @@ TEST_F(PowerButtonFilterTest, TestPowerButtonDownFilterWithUseFlag) {
   power_manager_client_->GeneratePowerButtonEvent(true,
                                                   test_clock_->NowTicks());
   // Advance time by |kAuthIgnoreTimeoutmsecs| - 1.
-  test_clock_->Advance(
-      base::TimeDelta::FromMilliseconds(biod::kAuthIgnoreTimeoutmsecs - 1));
+  test_clock_->Advance(base::Milliseconds(biod::kAuthIgnoreTimeoutmsecs - 1));
 #if defined(FP_ON_POWER_BUTTON)
   EXPECT_TRUE(power_button_filter->ShouldFilterFingerprintMatch());
 #else

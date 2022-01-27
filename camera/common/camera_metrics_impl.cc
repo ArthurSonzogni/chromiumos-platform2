@@ -30,8 +30,8 @@ namespace {
 
 constexpr char kCameraJpegProcessLatency[] =
     "ChromeOS.Camera.Jpeg.Latency.%s.%s";
-constexpr base::TimeDelta kMinLatency = base::TimeDelta::FromMicroseconds(1);
-constexpr base::TimeDelta kMaxLatency = base::TimeDelta::FromSeconds(1);
+constexpr base::TimeDelta kMinLatency = base::Microseconds(1);
+constexpr base::TimeDelta kMaxLatency = base::Seconds(1);
 constexpr int kBucketLatency = 100;
 
 constexpr char kCameraJpegResolution[] =
@@ -60,10 +60,8 @@ constexpr char kCameraFacing[] = "ChromeOS.Camera.Facing";
 constexpr int kNumCameraFacings = 3;
 
 constexpr char kCameraSessionDuration[] = "ChromeOS.Camera.SessionDuration";
-constexpr base::TimeDelta kMinCameraSessionDuration =
-    base::TimeDelta::FromSeconds(1);
-constexpr base::TimeDelta kMaxCameraSessionDuration =
-    base::TimeDelta::FromDays(1);
+constexpr base::TimeDelta kMinCameraSessionDuration = base::Seconds(1);
+constexpr base::TimeDelta kMaxCameraSessionDuration = base::Days(1);
 constexpr int kBucketCameraSessionDuration = 100;
 
 constexpr char kCameraFaceAeFunction[] =

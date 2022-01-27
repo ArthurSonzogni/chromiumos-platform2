@@ -29,8 +29,7 @@ constexpr int32_t kInvalidID = 0;
 constexpr int kDbusTimeoutMs = 200;
 // The maximum number of ADB sideloading query failures before stopping.
 constexpr int kAdbSideloadMaxTry = 5;
-constexpr base::TimeDelta kAdbSideloadUpdateDelay =
-    base::TimeDelta::FromMilliseconds(5000);
+constexpr base::TimeDelta kAdbSideloadUpdateDelay = base::Milliseconds(5000);
 
 std::string MakeKey(uint64_t vm_id, bool is_termina) {
   return base::StringPrintf("%s:%s", is_termina ? "t" : "p",

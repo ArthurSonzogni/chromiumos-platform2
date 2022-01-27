@@ -77,8 +77,7 @@ class VPNDriver {
 
   // Might be returned by ConnectAsync() or OnDriverReconnecting(). Indicates
   // the VPNService should not set a timeout for this connection attempt.
-  static constexpr base::TimeDelta kTimeoutNone =
-      base::TimeDelta::FromSeconds(0);
+  static constexpr base::TimeDelta kTimeoutNone = base::Seconds(0);
 
   virtual ~VPNDriver();
 

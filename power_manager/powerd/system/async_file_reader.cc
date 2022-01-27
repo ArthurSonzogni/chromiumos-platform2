@@ -164,8 +164,7 @@ bool AsyncFileReader::AsyncRead(int size, int offset) {
     return false;
   }
 
-  update_state_timer_.Start(FROM_HERE,
-                            base::TimeDelta::FromMilliseconds(kPollMs), this,
+  update_state_timer_.Start(FROM_HERE, base::Milliseconds(kPollMs), this,
                             &AsyncFileReader::UpdateState);
   return true;
 }

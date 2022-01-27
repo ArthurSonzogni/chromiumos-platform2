@@ -80,7 +80,7 @@ class FakePcaAgentProxy : public org::chromium::PcaAgentProxyMock {
     bool is_good_pca_response{true};
 
     // Delay the task is posted with.
-    base::TimeDelta delay{base::TimeDelta::FromMilliseconds(0)};
+    base::TimeDelta delay{base::Milliseconds(0)};
   };
 
   // Respective configurations for enrollment and certification.

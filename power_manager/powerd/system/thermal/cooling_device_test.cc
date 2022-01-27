@@ -46,8 +46,7 @@ class TestObserver : public ThermalDeviceObserver {
 
   // Runs |loop_| until OnThermalChanged() is called.
   bool RunUntilThermalChanged() {
-    return loop_runner_.StartLoop(
-        base::TimeDelta::FromMilliseconds(kUpdateTimeoutMs));
+    return loop_runner_.StartLoop(base::Milliseconds(kUpdateTimeoutMs));
   }
 
   void OnThermalChanged(ThermalDeviceInterface* sensor) override {

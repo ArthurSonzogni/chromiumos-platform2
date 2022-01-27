@@ -46,8 +46,7 @@ GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info) {
   // Calculate the age based on the current time. We have to
   // reconstitute last_seen into a TimeTicks so we can get a TimeDelta.
   base::TimeDelta age =
-      base::TimeTicks::Now() -
-      (base::TimeTicks() + base::TimeDelta::FromSeconds(last_seen));
+      base::TimeTicks::Now() - (base::TimeTicks() + base::Seconds(last_seen));
 
   GeolocationInfo new_info(info);
   new_info.erase(kLastSeenKey);

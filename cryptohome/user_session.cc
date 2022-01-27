@@ -164,7 +164,7 @@ void UserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
   // minimize the timer for clearing WebAuthn secret for security. Set the timer
   // to appropriate duration after secret enforcement.
   clear_webauthn_secret_timer_.Start(
-      FROM_HERE, base::TimeDelta::FromSeconds(0),
+      FROM_HERE, base::Seconds(0),
       base::BindOnce(&UserSession::ClearWebAuthnSecret,
                      base::Unretained(this)));
 }
@@ -192,7 +192,7 @@ void UserSession::PrepareHibernateSecret(const brillo::SecureBlob& fek,
                  brillo::Blob(message.cbegin(), message.cend())));
 
   clear_hibernate_secret_timer_.Start(
-      FROM_HERE, base::TimeDelta::FromSeconds(600),
+      FROM_HERE, base::Seconds(600),
       base::BindOnce(&UserSession::ClearHibernateSecret,
                      base::Unretained(this)));
 }

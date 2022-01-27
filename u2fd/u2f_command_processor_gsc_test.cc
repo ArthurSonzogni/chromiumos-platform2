@@ -33,10 +33,8 @@ using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 
-constexpr base::TimeDelta kVerificationTimeout =
-    base::TimeDelta::FromSeconds(10);
-constexpr base::TimeDelta kRequestPresenceDelay =
-    base::TimeDelta::FromMilliseconds(500);
+constexpr base::TimeDelta kVerificationTimeout = base::Seconds(10);
+constexpr base::TimeDelta kRequestPresenceDelay = base::Milliseconds(500);
 constexpr int kMaxRetries = kVerificationTimeout / kRequestPresenceDelay;
 constexpr uint32_t kCr50StatusSuccess = 0;
 constexpr uint32_t kCr50StatusNotAllowed = 0x507;

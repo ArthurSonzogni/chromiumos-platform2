@@ -20,7 +20,7 @@ using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<>;
 using ThreadSafeDBusMethodResponse = hwsec::ThreadSafeDBusMethodResponse<>;
 using DBusMethodResponseCallback = std::unique_ptr<DBusMethodResponse>;
 
-constexpr base::TimeDelta kTestTimeout = base::TimeDelta::FromMinutes(1);
+constexpr base::TimeDelta kTestTimeout = base::Minutes(1);
 
 class DBusMethodResponseWrapperTestBase : public testing::Test {
  public:

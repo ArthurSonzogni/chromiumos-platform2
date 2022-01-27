@@ -182,7 +182,7 @@ TEST_F(FakeStreamTest, ReadMultiplePackets) {
 TEST_F(FakeStreamTest, ReadPacketsWithDelay) {
   CreateStream(Stream::AccessMode::READ);
   stream_->AddReadPacketString({}, "foobar");
-  stream_->AddReadPacketString(base::TimeDelta::FromSeconds(1), "baz");
+  stream_->AddReadPacketString(base::Seconds(1), "baz");
   std::string data;
   bool eos = false;
   EXPECT_TRUE(ReadString(100, &data, &eos));
@@ -197,7 +197,7 @@ TEST_F(FakeStreamTest, ReadPacketsWithDelay) {
   EXPECT_FALSE(eos);
   EXPECT_TRUE(data.empty());
 
-  clock_.Advance(base::TimeDelta::FromSeconds(1));
+  clock_.Advance(base::Seconds(1));
 
   EXPECT_TRUE(ReadString(100, &data, &eos));
   EXPECT_FALSE(eos);
@@ -207,8 +207,7 @@ TEST_F(FakeStreamTest, ReadPacketsWithDelay) {
 TEST_F(FakeStreamTest, ReadPacketsWithError) {
   CreateStream(Stream::AccessMode::READ);
   stream_->AddReadPacketString({}, "foobar");
-  stream_->QueueReadErrorWithMessage(base::TimeDelta::FromSeconds(1),
-                                     "Dummy error");
+  stream_->QueueReadErrorWithMessage(base::Seconds(1), "Dummy error");
   stream_->AddReadPacketString({}, "baz");
 
   std::string data;
@@ -225,7 +224,7 @@ TEST_F(FakeStreamTest, ReadPacketsWithError) {
   EXPECT_FALSE(eos);
   EXPECT_TRUE(data.empty());
 
-  clock_.Advance(base::TimeDelta::FromSeconds(1));
+  clock_.Advance(base::Seconds(1));
 
   EXPECT_FALSE(ReadString(100, &data, &eos));
 
@@ -260,7 +259,7 @@ TEST_F(FakeStreamTest, WaitForDataRead) {
 
   stream_->ClearReadQueue();
 
-  auto one_sec_delay = base::TimeDelta::FromSeconds(1);
+  auto one_sec_delay = base::Seconds(1);
   stream_->AddReadPacketString(one_sec_delay, "baz");
   EXPECT_CALL(mock_loop_, PostDelayedTask(_, _, one_sec_delay)).Times(1);
   EXPECT_TRUE(
@@ -274,7 +273,7 @@ TEST_F(FakeStreamTest, ReadAsync) {
   std::string input_data = "foobar-baz";
   size_t split_pos = input_data.find('-');
 
-  auto one_sec_delay = base::TimeDelta::FromSeconds(1);
+  auto one_sec_delay = base::Seconds(1);
   stream_->AddReadPacketString({}, input_data.substr(0, split_pos));
   stream_->AddReadPacketString(one_sec_delay, input_data.substr(split_pos));
 
@@ -356,7 +355,7 @@ TEST_F(FakeStreamTest, WriteAndVerifyData) {
 TEST_F(FakeStreamTest, WriteWithDelay) {
   CreateStream(Stream::AccessMode::WRITE);
 
-  const auto delay = base::TimeDelta::FromMilliseconds(500);
+  const auto delay = base::Milliseconds(500);
 
   stream_->ExpectWritePacketSize({}, 3);
   stream_->ExpectWritePacketSize(delay, 3);
@@ -373,7 +372,7 @@ TEST_F(FakeStreamTest, WriteWithDelay) {
 TEST_F(FakeStreamTest, WriteWithError) {
   CreateStream(Stream::AccessMode::WRITE);
 
-  const auto delay = base::TimeDelta::FromMilliseconds(500);
+  const auto delay = base::Milliseconds(500);
 
   stream_->ExpectWritePacketSize({}, 3);
   stream_->QueueWriteError({});
@@ -418,7 +417,7 @@ TEST_F(FakeStreamTest, WaitForDataWrite) {
 
   stream_->ClearWriteQueue();
 
-  auto one_sec_delay = base::TimeDelta::FromSeconds(1);
+  auto one_sec_delay = base::Seconds(1);
   stream_->ExpectWritePacketString(one_sec_delay, "baz");
   EXPECT_CALL(mock_loop_, PostDelayedTask(_, _, one_sec_delay)).Times(1);
   EXPECT_TRUE(
@@ -432,7 +431,7 @@ TEST_F(FakeStreamTest, WriteAsync) {
   std::string output_data = "foobar-baz";
   size_t split_pos = output_data.find('-');
 
-  auto one_sec_delay = base::TimeDelta::FromSeconds(1);
+  auto one_sec_delay = base::Seconds(1);
   stream_->ExpectWritePacketString({}, output_data.substr(0, split_pos));
   stream_->ExpectWritePacketString(one_sec_delay,
                                    output_data.substr(split_pos));
@@ -462,8 +461,8 @@ TEST_F(FakeStreamTest, WriteAsync) {
 
 TEST_F(FakeStreamTest, WaitForDataReadWrite) {
   CreateStream(Stream::AccessMode::READ_WRITE);
-  auto one_sec_delay = base::TimeDelta::FromSeconds(1);
-  auto two_sec_delay = base::TimeDelta::FromSeconds(2);
+  auto one_sec_delay = base::Seconds(1);
+  auto two_sec_delay = base::Seconds(2);
 
   int call_count = 0;
   auto callback = base::Bind(

@@ -73,9 +73,9 @@ class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
 
   bool service_ready_ = false;
   // Timeout waiting for trunksd service readiness on dbus when initializing.
-  base::TimeDelta init_timeout_ = base::TimeDelta::FromSeconds(30);
+  base::TimeDelta init_timeout_ = base::Seconds(30);
   // Delay between subsequent checks if trunksd is ready on dbus.
-  base::TimeDelta init_attempt_delay_ = base::TimeDelta::FromMilliseconds(300);
+  base::TimeDelta init_attempt_delay_ = base::Milliseconds(300);
 
   base::PlatformThreadId origin_thread_id_;
   scoped_refptr<dbus::Bus> bus_;

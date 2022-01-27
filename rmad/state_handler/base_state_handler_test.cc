@@ -220,8 +220,7 @@ TEST_F(BaseStateHandlerTest, StoreAdditionalActivity_Success) {
                   activity) != kExpectedPowerCycleActivities.end()) {
       EXPECT_TRUE(json_store_->SetValue(kSetupTimestamp,
                                         base::Time::Now().ToDoubleT()));
-      task_environment_.FastForwardBy(
-          base::TimeDelta::FromSeconds(kDelayTimeInSec));
+      task_environment_.FastForwardBy(base::Seconds(kDelayTimeInSec));
 
       double pre_running_time = 0.0;
       json_store_->GetValue(kRunningTime, &pre_running_time);
@@ -300,8 +299,7 @@ TEST_F(BaseStateHandlerTest, NextStateCaseWrapper_Sucesss) {
                   activity) != kExpectedPowerCycleActivities.end()) {
       EXPECT_TRUE(json_store_->SetValue(kSetupTimestamp,
                                         base::Time::Now().ToDoubleT()));
-      task_environment_.FastForwardBy(
-          base::TimeDelta::FromSeconds(kDelayTimeInSec));
+      task_environment_.FastForwardBy(base::Seconds(kDelayTimeInSec));
 
       double pre_running_time = 0.0;
       json_store_->GetValue(kRunningTime, &pre_running_time);

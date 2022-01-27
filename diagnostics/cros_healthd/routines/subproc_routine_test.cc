@@ -172,7 +172,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithMultipleCmdsWithSuccess) {
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
                                  mojo_ipc::RoutineUpdateUnion::New()};
-  tick_clock()->Advance(base::TimeDelta::FromSeconds(5));
+  tick_clock()->Advance(base::Seconds(5));
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
                      mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, update);
@@ -264,7 +264,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithMultipleCmdsAndPreStartCallback) {
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
                                  mojo_ipc::RoutineUpdateUnion::New()};
-  tick_clock()->Advance(base::TimeDelta::FromSeconds(5));
+  tick_clock()->Advance(base::Seconds(5));
   routine()->PopulateStatusUpdate(&update, false);
   CheckRoutineUpdate(50, kSubprocRoutineProcessRunningMessage,
                      mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, update);
@@ -311,7 +311,7 @@ TEST_F(SubprocRoutineTest, TestHalfProgressPercent) {
 
   routine()->Start();
 
-  tick_clock()->Advance(base::TimeDelta::FromSeconds(5));
+  tick_clock()->Advance(base::Seconds(5));
 
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
                                  mojo_ipc::RoutineUpdateUnion::New()};
@@ -336,7 +336,7 @@ TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
 
   routine()->Start();
 
-  tick_clock()->Advance(base::TimeDelta::FromSeconds(5));
+  tick_clock()->Advance(base::Seconds(5));
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
                                  mojo_ipc::RoutineUpdateUnion::New()};
   routine()->PopulateStatusUpdate(&update, false);
@@ -346,7 +346,7 @@ TEST_F(SubprocRoutineTest, TestHalfProgressThenCancel) {
 
   routine()->Cancel();
 
-  tick_clock()->Advance(base::TimeDelta::FromSeconds(1));
+  tick_clock()->Advance(base::Seconds(1));
 
   routine()->PopulateStatusUpdate(&update, false);
 

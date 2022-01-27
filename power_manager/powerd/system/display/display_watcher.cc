@@ -33,7 +33,7 @@ const char kI2CDevPath[] = "/dev";
 
 // The delay to advertise about change in display configuration after udev
 // event.
-constexpr base::TimeDelta kDebounceDelay = base::TimeDelta::FromSeconds(1);
+constexpr base::TimeDelta kDebounceDelay = base::Seconds(1);
 
 // Returns true if the device described by |drm_device_dir| is connected.
 bool IsConnectorStatus(const base::FilePath& drm_device_dir,

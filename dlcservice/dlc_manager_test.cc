@@ -181,7 +181,7 @@ TEST_F(DlcManagerTest, CleanupDanglingDlcs) {
   EXPECT_TRUE(base::PathExists(ref_count_path));
 
   // Advance the time so the |kFirstDlc| becomes dangling.
-  clock_.Advance(base::TimeDelta::FromDays(6));
+  clock_.Advance(base::Days(6));
 
   // Reinitialize the |dlc_manager_| so it initializes the |kFirstDlc| again.
   dlc_manager_->Initialize();
@@ -197,7 +197,7 @@ TEST_F(DlcManagerTest, CleanupDanglingDlcs) {
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
   // Advance by 31 minutes so it kicks in the cleanup method.
-  clock_.Advance(base::TimeDelta::FromDays(31));
+  clock_.Advance(base::Days(31));
   loop_.RunOnce(false);
 
   // |kFirstDLC| should be gone by now.

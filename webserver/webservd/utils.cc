@@ -137,7 +137,7 @@ X509Ptr LoadAndValidateCertificate(const base::FilePath& file) {
   cert.reset(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
   if (cert) {
     // Regenerate certificate 30 days before it expires.
-    time_t deadline = (GetTimeNow() + base::TimeDelta::FromDays(30)).ToTimeT();
+    time_t deadline = (GetTimeNow() + base::Days(30)).ToTimeT();
     if (X509_cmp_time(X509_get_notAfter(cert.get()), &deadline) < 0) {
       LOG(WARNING) << "Certificate is expiring soon. Regenerating new one.";
       cert.reset();

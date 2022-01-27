@@ -41,8 +41,7 @@ constexpr char kLineTerminator = 0xa;
 constexpr size_t kMaxCoreBufferSize = 1024;
 constexpr char kSessionManagerCPUSubsetSubpath[] =
     "fs/cgroup/cpuset/session_manager_containers/cpus";
-constexpr base::TimeDelta kWriteRetryDelay =
-    base::TimeDelta::FromMilliseconds(100);
+constexpr base::TimeDelta kWriteRetryDelay = base::Milliseconds(100);
 
 }  // namespace
 

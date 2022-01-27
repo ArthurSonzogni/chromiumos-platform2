@@ -114,10 +114,9 @@ class SessionManagerProcessTest : public ::testing::Test {
   }
 
   void InitManager(std::unique_ptr<BrowserJobInterface> job) {
-    manager_ =
-        new SessionManagerService(std::move(job), getuid(), base::nullopt,
-                                  base::TimeDelta::FromSeconds(3), false,
-                                  base::TimeDelta(), &metrics_, &utils_);
+    manager_ = new SessionManagerService(std::move(job), getuid(),
+                                         base::nullopt, base::Seconds(3), false,
+                                         base::TimeDelta(), &metrics_, &utils_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);
     manager_->test_api().set_aborted_browser_pid_path(

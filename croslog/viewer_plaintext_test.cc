@@ -19,9 +19,9 @@ class ViewerPlaintextTest : public ::testing::Test {
 
   static std::vector<BootRecords::BootEntry> GenerateBootLog(base::Time now) {
     std::vector<BootRecords::BootEntry> boot_entries;
-    boot_entries.emplace_back(now + base::TimeDelta::FromSeconds(0),
+    boot_entries.emplace_back(now + base::Seconds(0),
                               "46640bbceeb149a696171d1ea34516ad");
-    boot_entries.emplace_back(now + base::TimeDelta::FromSeconds(2),
+    boot_entries.emplace_back(now + base::Seconds(2),
                               "9fa644cb05dc4e3ebe3be322ac8d1e86");
     return boot_entries;
   }
@@ -99,9 +99,9 @@ TEST_F(ViewerPlaintextTest, ShouldFilterOutEntryWithSinceAndUntil) {
     Config c;
     c.since = TimeFromExploded(2020, 12, 10, 11, 12, 13);
 
-    LogEntry e1 = GenerateLogEntry(c.since - base::TimeDelta::FromSeconds(2));
-    LogEntry e2 = GenerateLogEntry(c.since + base::TimeDelta::FromSeconds(0));
-    LogEntry e3 = GenerateLogEntry(c.since + base::TimeDelta::FromSeconds(2));
+    LogEntry e1 = GenerateLogEntry(c.since - base::Seconds(2));
+    LogEntry e2 = GenerateLogEntry(c.since + base::Seconds(0));
+    LogEntry e3 = GenerateLogEntry(c.since + base::Seconds(2));
 
     ViewerPlaintext v(c);
     EXPECT_TRUE(v.ShouldFilterOutEntry(e1));
@@ -113,9 +113,9 @@ TEST_F(ViewerPlaintextTest, ShouldFilterOutEntryWithSinceAndUntil) {
     Config c;
     c.until = TimeFromExploded(2020, 12, 10, 11, 12, 13);
 
-    LogEntry e1 = GenerateLogEntry(c.until - base::TimeDelta::FromSeconds(2));
-    LogEntry e2 = GenerateLogEntry(c.until + base::TimeDelta::FromSeconds(0));
-    LogEntry e3 = GenerateLogEntry(c.until + base::TimeDelta::FromSeconds(2));
+    LogEntry e1 = GenerateLogEntry(c.until - base::Seconds(2));
+    LogEntry e2 = GenerateLogEntry(c.until + base::Seconds(0));
+    LogEntry e3 = GenerateLogEntry(c.until + base::Seconds(2));
 
     ViewerPlaintext v(c);
     EXPECT_FALSE(v.ShouldFilterOutEntry(e1));
@@ -132,9 +132,9 @@ TEST_F(ViewerPlaintextTest, ShouldFilterOutEntryWithBootId) {
     Config c;
     c.boot = "46640bbceeb149a696171d1ea34516ad";
 
-    LogEntry e1 = GenerateLogEntry(now - base::TimeDelta::FromSeconds(2));
-    LogEntry e2 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(0));
-    LogEntry e3 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(2));
+    LogEntry e1 = GenerateLogEntry(now - base::Seconds(2));
+    LogEntry e2 = GenerateLogEntry(now + base::Seconds(0));
+    LogEntry e3 = GenerateLogEntry(now + base::Seconds(2));
 
     ViewerPlaintext v(c, BootRecords(GenerateBootLog(now)));
     EXPECT_TRUE(v.ShouldFilterOutEntry(e1));
@@ -147,9 +147,9 @@ TEST_F(ViewerPlaintextTest, ShouldFilterOutEntryWithBootId) {
     Config c;
     c.boot = "9fa644cb05dc4e3ebe3be322ac8d1e86";
 
-    LogEntry e1 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(0));
-    LogEntry e2 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(2));
-    LogEntry e3 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(4));
+    LogEntry e1 = GenerateLogEntry(now + base::Seconds(0));
+    LogEntry e2 = GenerateLogEntry(now + base::Seconds(2));
+    LogEntry e3 = GenerateLogEntry(now + base::Seconds(4));
 
     ViewerPlaintext v(c, BootRecords(GenerateBootLog(now)));
     EXPECT_TRUE(v.ShouldFilterOutEntry(e1));
@@ -162,9 +162,9 @@ TEST_F(ViewerPlaintextTest, ShouldFilterOutEntryWithBootId) {
     Config c;
     c.boot = "";
 
-    LogEntry e1 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(0));
-    LogEntry e2 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(2));
-    LogEntry e3 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(4));
+    LogEntry e1 = GenerateLogEntry(now + base::Seconds(0));
+    LogEntry e2 = GenerateLogEntry(now + base::Seconds(2));
+    LogEntry e3 = GenerateLogEntry(now + base::Seconds(4));
 
     ViewerPlaintext v(c, BootRecords(GenerateBootLog(now)));
     EXPECT_TRUE(v.ShouldFilterOutEntry(e1));
@@ -177,9 +177,9 @@ TEST_F(ViewerPlaintextTest, ShouldFilterOutEntryWithBootId) {
     Config c;
     c.boot = "0";
 
-    LogEntry e1 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(0));
-    LogEntry e2 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(2));
-    LogEntry e3 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(4));
+    LogEntry e1 = GenerateLogEntry(now + base::Seconds(0));
+    LogEntry e2 = GenerateLogEntry(now + base::Seconds(2));
+    LogEntry e3 = GenerateLogEntry(now + base::Seconds(4));
 
     ViewerPlaintext v(c, BootRecords(GenerateBootLog(now)));
     EXPECT_TRUE(v.ShouldFilterOutEntry(e1));
@@ -192,8 +192,8 @@ TEST_F(ViewerPlaintextTest, ShouldFilterOutEntryWithBootId) {
     Config c;
     c.boot = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
 
-    LogEntry e1 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(0));
-    LogEntry e2 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(2));
+    LogEntry e1 = GenerateLogEntry(now + base::Seconds(0));
+    LogEntry e2 = GenerateLogEntry(now + base::Seconds(2));
 
     ViewerPlaintext v(c, BootRecords(GenerateBootLog(now)));
     EXPECT_TRUE(v.ShouldFilterOutEntry(e1));
@@ -208,9 +208,9 @@ TEST_F(ViewerPlaintextTest, ShouldFilterOutEntryWithCursor) {
     Config c;
     c.cursor = GenerateCursor(now);
 
-    LogEntry e1 = GenerateLogEntry(now - base::TimeDelta::FromSeconds(2));
-    LogEntry e2 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(0));
-    LogEntry e3 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(2));
+    LogEntry e1 = GenerateLogEntry(now - base::Seconds(2));
+    LogEntry e2 = GenerateLogEntry(now + base::Seconds(0));
+    LogEntry e3 = GenerateLogEntry(now + base::Seconds(2));
 
     ViewerPlaintext v(c);
     EXPECT_TRUE(v.ShouldFilterOutEntry(e1));
@@ -222,9 +222,9 @@ TEST_F(ViewerPlaintextTest, ShouldFilterOutEntryWithCursor) {
     Config c;
     c.after_cursor = GenerateCursor(now);
 
-    LogEntry e1 = GenerateLogEntry(now - base::TimeDelta::FromSeconds(2));
-    LogEntry e2 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(0));
-    LogEntry e3 = GenerateLogEntry(now + base::TimeDelta::FromSeconds(2));
+    LogEntry e1 = GenerateLogEntry(now - base::Seconds(2));
+    LogEntry e2 = GenerateLogEntry(now + base::Seconds(0));
+    LogEntry e3 = GenerateLogEntry(now + base::Seconds(2));
 
     ViewerPlaintext v(c);
     EXPECT_TRUE(v.ShouldFilterOutEntry(e1));
@@ -241,20 +241,20 @@ TEST_F(ViewerPlaintextTest, GetBootIdAt) {
     ViewerPlaintext v(c, BootRecords(GenerateBootLog(now)));
 
     // Found no corresponding boot (before the 1st boot).
-    EXPECT_TRUE(v.GetBootIdAt(now - base::TimeDelta::FromSeconds(100)).empty());
+    EXPECT_TRUE(v.GetBootIdAt(now - base::Seconds(100)).empty());
 
     // Found the 1st boot.
     EXPECT_EQ("46640bbceeb149a696171d1ea34516ad", v.GetBootIdAt(now));
     EXPECT_EQ("46640bbceeb149a696171d1ea34516ad",
-              v.GetBootIdAt(now + base::TimeDelta::FromSeconds(1)));
+              v.GetBootIdAt(now + base::Seconds(1)));
 
     // Found the 2nd (current) boot.
     EXPECT_EQ("9fa644cb05dc4e3ebe3be322ac8d1e86",
-              v.GetBootIdAt(now + base::TimeDelta::FromSeconds(2)));
+              v.GetBootIdAt(now + base::Seconds(2)));
     EXPECT_EQ("9fa644cb05dc4e3ebe3be322ac8d1e86",
-              v.GetBootIdAt(now + base::TimeDelta::FromSeconds(3)));
+              v.GetBootIdAt(now + base::Seconds(3)));
     EXPECT_EQ("9fa644cb05dc4e3ebe3be322ac8d1e86",
-              v.GetBootIdAt(now + base::TimeDelta::FromSeconds(100)));
+              v.GetBootIdAt(now + base::Seconds(100)));
   }
 
   {
@@ -263,17 +263,17 @@ TEST_F(ViewerPlaintextTest, GetBootIdAt) {
 
     // Found the 2nd (current) boot.
     EXPECT_EQ("9fa644cb05dc4e3ebe3be322ac8d1e86",
-              v.GetBootIdAt(now + base::TimeDelta::FromSeconds(100)));
+              v.GetBootIdAt(now + base::Seconds(100)));
     EXPECT_EQ("9fa644cb05dc4e3ebe3be322ac8d1e86",
-              v.GetBootIdAt(now + base::TimeDelta::FromSeconds(2)));
+              v.GetBootIdAt(now + base::Seconds(2)));
 
     // Found the 1st boot.
     EXPECT_EQ("46640bbceeb149a696171d1ea34516ad",
-              v.GetBootIdAt(now + base::TimeDelta::FromSeconds(1)));
+              v.GetBootIdAt(now + base::Seconds(1)));
     EXPECT_EQ("46640bbceeb149a696171d1ea34516ad", v.GetBootIdAt(now));
 
     // Found no corresponding boot (before the 1st boot).
-    EXPECT_TRUE(v.GetBootIdAt(now - base::TimeDelta::FromSeconds(100)).empty());
+    EXPECT_TRUE(v.GetBootIdAt(now - base::Seconds(100)).empty());
   }
 }
 

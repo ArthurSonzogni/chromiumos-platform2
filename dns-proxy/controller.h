@@ -63,8 +63,7 @@ class Controller : public brillo::DBusDaemon {
 
   struct ProxyRestarts {
     static constexpr int kRestartLimit = 10;
-    static constexpr base::TimeDelta kRestartWindow =
-        base::TimeDelta::FromSeconds(20);
+    static constexpr base::TimeDelta kRestartWindow = base::Seconds(20);
 
     bool is_valid() const { return count > 0; }
 

@@ -159,8 +159,8 @@ void LoginMetrics::SendBrowserShutdownTime(
   metrics_lib_.SendToUMA(
       kLoginBrowserShutdownTimeMetric,
       static_cast<int>(browser_shutdown_time.InMilliseconds()),
-      static_cast<int>(base::TimeDelta::FromMilliseconds(1).InMilliseconds()),
-      static_cast<int>(base::TimeDelta::FromSeconds(12).InMilliseconds()), 50);
+      static_cast<int>(base::Milliseconds(1).InMilliseconds()),
+      static_cast<int>(base::Seconds(12).InMilliseconds()), 50);
 }
 
 void LoginMetrics::SendArcBugReportBackupTime(
@@ -170,8 +170,8 @@ void LoginMetrics::SendArcBugReportBackupTime(
   metrics_lib_.SendToUMA(
       kArcBugReportBackupTimeMetric,
       static_cast<int>(arc_bug_report_backup_time.InMilliseconds()),
-      static_cast<int>(base::TimeDelta::FromMilliseconds(1).InMilliseconds()),
-      static_cast<int>(base::TimeDelta::FromSeconds(60).InMilliseconds()), 50);
+      static_cast<int>(base::Milliseconds(1).InMilliseconds()),
+      static_cast<int>(base::Seconds(60).InMilliseconds()), 50);
 }
 
 void LoginMetrics::SendArcContinueBootImpulseStatus(
@@ -188,8 +188,8 @@ void LoginMetrics::SendArcContinueBootImpulseTime(
   metrics_lib_.SendToUMA(
       kArcContinueBootImpulseTime2Metric,
       static_cast<int>(arc_continue_boot_impulse_time.InMilliseconds()),
-      static_cast<int>(base::TimeDelta::FromMilliseconds(1).InMilliseconds()),
-      static_cast<int>(base::TimeDelta::FromSeconds(60).InMilliseconds()), 50);
+      static_cast<int>(base::Milliseconds(1).InMilliseconds()),
+      static_cast<int>(base::Seconds(60).InMilliseconds()), 50);
 }
 
 void LoginMetrics::SendSwitchToFeatureFlagMappingStatus(
@@ -204,8 +204,8 @@ void LoginMetrics::SendLivenessPingResponseTime(base::TimeDelta response_time) {
   metrics_lib_.SendToUMA(
       kLivenessPingResponseTimeMetric,
       static_cast<int>(response_time.InMilliseconds()),
-      static_cast<int>(base::TimeDelta::FromMilliseconds(1).InMilliseconds()),
-      static_cast<int>(base::TimeDelta::FromSeconds(60).InMilliseconds()), 50);
+      static_cast<int>(base::Milliseconds(1).InMilliseconds()),
+      static_cast<int>(base::Seconds(60).InMilliseconds()), 50);
 }
 
 void LoginMetrics::SendLivenessPingResult(bool success) {

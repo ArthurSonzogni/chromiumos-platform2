@@ -549,8 +549,7 @@ int IpsecManager::Poll() {
   if (start_ticks_.is_null())
     return -1;
   if (!base::PathExists(FilePath(ipsec_up_file_))) {
-    if (base::TimeTicks::Now() - start_ticks_ >
-        base::TimeDelta::FromSeconds(ipsec_timeout_)) {
+    if (base::TimeTicks::Now() - start_ticks_ > base::Seconds(ipsec_timeout_)) {
       LOG(ERROR) << "IPsec connection timed out";
       RegisterError(kServiceErrorIpsecConnectionFailed);
       OnStopped(false);

@@ -95,7 +95,7 @@ const char kUncleanShutdownDetectedFile[] =
 const char kCroutonStartedFile[] =
     "/run/metrics/external/crouton/crouton-started";
 
-constexpr base::TimeDelta kVmlogInterval = base::TimeDelta::FromSeconds(2);
+constexpr base::TimeDelta kVmlogInterval = base::Seconds(2);
 
 constexpr char kVmlogDir[] = "/var/log/vmlog";
 
@@ -166,7 +166,7 @@ const int MetricsDaemon::kMetricStatsLongInterval = 30;       // seconds
 const int MetricsDaemon::kMetricMeminfoInterval = 30;         // seconds
 const int MetricsDaemon::kMetricDetachableBaseInterval = 30;  // seconds
 constexpr base::TimeDelta MetricsDaemon::kMetricReportProcessMemoryInterval =
-    base::TimeDelta::FromMinutes(10);
+    base::Minutes(10);
 
 // Assume a max rate of 250Mb/s for reads (worse for writes) and 512 byte
 // sectors.
@@ -506,7 +506,7 @@ int MetricsDaemon::OnInit() {
       FROM_HERE,
       base::BindOnce(&MetricsDaemon::HandleUpdateStatsTimeout,
                      GET_THIS_FOR_POSTTASK()),
-      base::TimeDelta::FromMilliseconds(kInitialUpdateStatsIntervalMs));
+      base::Milliseconds(kInitialUpdateStatsIntervalMs));
 
   // Emit a "0" value on start, to provide a baseline for this metric.
   SendLinearSample(kMetricCroutonStarted, 0, 2, 3);
@@ -603,7 +603,7 @@ TimeDelta MetricsDaemon::GetIncrementalCpuUse() {
       !base::StringToUint64(proc_stat_totals[2], &user_nice_ticks) ||
       !base::StringToUint64(proc_stat_totals[3], &system_ticks)) {
     LOG(WARNING) << "cannot parse first line: " << proc_stat_lines[0];
-    return TimeDelta(base::TimeDelta::FromSeconds(0));
+    return TimeDelta(base::Seconds(0));
   }
 
   uint64_t total_cpu_use_ticks = user_ticks + user_nice_ticks + system_ticks;
@@ -618,8 +618,7 @@ TimeDelta MetricsDaemon::GetIncrementalCpuUse() {
   uint64_t diff = total_cpu_use_ticks - latest_cpu_use_ticks_;
   latest_cpu_use_ticks_ = total_cpu_use_ticks;
   // Use microseconds to avoid significant truncations.
-  return base::TimeDelta::FromMicroseconds(diff * 1000 * 1000 /
-                                           ticks_per_second_);
+  return base::Microseconds(diff * 1000 * 1000 / ticks_per_second_);
 }
 
 void MetricsDaemon::ProcessUserCrash() {
@@ -698,7 +697,7 @@ void MetricsDaemon::ScheduleStatsCallback(int wait) {
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&MetricsDaemon::StatsCallback, GET_THIS_FOR_POSTTASK()),
-      base::TimeDelta::FromSeconds(wait));
+      base::Seconds(wait));
 }
 
 bool MetricsDaemon::DiskStatsReadStats(uint64_t* read_sectors,
@@ -1002,7 +1001,7 @@ void MetricsDaemon::StatsCallback() {
 void MetricsDaemon::ScheduleMeminfoCallback(int wait) {
   if (testing_)
     return;
-  base::TimeDelta wait_delta = base::TimeDelta::FromSeconds(wait);
+  base::TimeDelta wait_delta = base::Seconds(wait);
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::MeminfoCallback, GET_THIS_FOR_POSTTASK(),
@@ -1085,7 +1084,7 @@ void MetricsDaemon::ScheduleDetachableBaseCallback(int wait) {
   if (testing_)
     return;
 
-  base::TimeDelta wait_delta = base::TimeDelta::FromSeconds(wait);
+  base::TimeDelta wait_delta = base::Seconds(wait);
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::DetachableBaseCallback,
@@ -1437,7 +1436,7 @@ void MetricsDaemon::ScheduleMemuseCallback(double interval) {
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&MetricsDaemon::MemuseCallback, GET_THIS_FOR_POSTTASK()),
-      base::TimeDelta::FromSeconds(interval));
+      base::Seconds(interval));
 }
 
 void MetricsDaemon::MemuseCallback() {
@@ -1619,7 +1618,7 @@ void MetricsDaemon::SendCroutonStats() {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE,
         base::Bind(&MetricsDaemon::SendCroutonStats, GET_THIS_FOR_POSTTASK()),
-        base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
+        base::Milliseconds(kUpdateStatsIntervalMs));
   }
 }
 
@@ -1690,7 +1689,7 @@ void MetricsDaemon::HandleUpdateStatsTimeout() {
       FROM_HERE,
       base::Bind(&MetricsDaemon::HandleUpdateStatsTimeout,
                  GET_THIS_FOR_POSTTASK()),
-      base::TimeDelta::FromMilliseconds(kUpdateStatsIntervalMs));
+      base::Milliseconds(kUpdateStatsIntervalMs));
 }
 
 }  // namespace chromeos_metrics

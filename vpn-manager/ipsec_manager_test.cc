@@ -218,7 +218,7 @@ TEST_F(IpsecManagerTest, PollTimeoutWaiting) {
   }
 
   ipsec_->start_ticks_ =
-      base::TimeTicks::Now() - base::TimeDelta::FromSeconds(ipsec_timeout + 1);
+      base::TimeTicks::Now() - base::Seconds(ipsec_timeout + 1);
   EXPECT_EQ(1000, ipsec_->Poll());
   EXPECT_TRUE(FindLog("IPsec connection timed out"));
   EXPECT_TRUE(ipsec_->was_stopped());

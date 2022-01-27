@@ -395,7 +395,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
     // Rate limit reporting crash_reporter failures to prevent crash loops.
     if (crash_reporter_last_crashed_.is_null() ||
         (base::TimeTicks::Now() - crash_reporter_last_crashed_) >
-            base::TimeDelta::FromHours(1)) {
+            base::Hours(1)) {
       crash_reporter_last_crashed_ = base::TimeTicks::Now();
       return CrashReport("", {std::move("--crash_reporter_crashed")});
     }

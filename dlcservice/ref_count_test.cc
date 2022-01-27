@@ -197,7 +197,7 @@ TEST_F(RefCountTest, ShouldPurgeDlcHasUser) {
   // We have a user using it, so we can't remove it.
   EXPECT_FALSE(ref_count.ShouldPurgeDlc());
 
-  clock_.Advance(base::TimeDelta::FromDays(6));
+  clock_.Advance(base::Days(6));
   // Now the expiration is passed, but it should not be purged because it still
   // has a user.
   EXPECT_FALSE(ref_count.ShouldPurgeDlc());
@@ -209,14 +209,14 @@ TEST_F(RefCountTest, ShouldPurgeDlcExpirationDelay) {
   // Add a user.
   EXPECT_TRUE(ref_count.InstalledDlc());
   // Move the time a bit.
-  clock_.Advance(base::TimeDelta::FromMinutes(6));
+  clock_.Advance(base::Minutes(6));
   // Now remove the user so we can test the expiration.
   EXPECT_TRUE(ref_count.UninstalledDlc());
 
   // We don't have a user, but expiration hasn't passed yet.
   EXPECT_FALSE(ref_count.ShouldPurgeDlc());
 
-  clock_.Advance(base::TimeDelta::FromDays(6));
+  clock_.Advance(base::Days(6));
   // We have now reached the 5 days timeout. So with no user, it should be
   // removed.
   EXPECT_TRUE(ref_count.ShouldPurgeDlc());

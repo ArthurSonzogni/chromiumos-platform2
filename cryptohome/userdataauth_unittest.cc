@@ -105,9 +105,9 @@ bool AssignSalt(SecureBlob* salt) {
 
 // Set to match the 5 minute timer and a 1 minute extension in AuthSession.
 constexpr int kAuthSessionExtensionDuration = 60;
-constexpr auto kAuthSessionTimeout = base::TimeDelta::FromMinutes(5);
+constexpr auto kAuthSessionTimeout = base::Minutes(5);
 constexpr auto kAuthSessionExtension =
-    base::TimeDelta::FromSeconds(kAuthSessionExtensionDuration);
+    base::Seconds(kAuthSessionExtensionDuration);
 
 }  // namespace
 
@@ -1731,7 +1731,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
 
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
   EXPECT_CALL(user_activity_timestamp_manager_,
-              UpdateTimestamp(_, base::TimeDelta::FromSeconds(kTimeshift)))
+              UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
@@ -1742,7 +1742,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
 
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
   EXPECT_CALL(user_activity_timestamp_manager_,
-              UpdateTimestamp(_, base::TimeDelta::FromSeconds(kTimeshift)))
+              UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .WillOnce(Return(true))
       .WillOnce(Return(true));
 
@@ -1758,7 +1758,7 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
 
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
   EXPECT_CALL(user_activity_timestamp_manager_,
-              UpdateTimestamp(_, base::TimeDelta::FromSeconds(kTimeshift)))
+              UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .WillOnce(Return(false));
 
   EXPECT_FALSE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
@@ -3944,7 +3944,7 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
   auto requested_delay = auth_session->timer_.GetCurrentDelay();
   auto time_difference =
       (kAuthSessionTimeout + kAuthSessionExtension) - requested_delay;
-  EXPECT_LT(time_difference, base::TimeDelta::FromSeconds(1));
+  EXPECT_LT(time_difference, base::Seconds(1));
 }
 
 class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
@@ -4175,7 +4175,7 @@ TEST_F(UserDataAuthTestTasked, UploadAlertsCallbackPeriodical) {
 
   EXPECT_CALL(tpm_, GetAlertsData(_)).Times(5);
 
-  FastForwardBy(base::TimeDelta::FromMilliseconds(kUploadAlertsPeriodMS) * 5);
+  FastForwardBy(base::Milliseconds(kUploadAlertsPeriodMS) * 5);
 }
 
 TEST_F(UserDataAuthTestThreaded, DetectEnterpriseOwnership) {

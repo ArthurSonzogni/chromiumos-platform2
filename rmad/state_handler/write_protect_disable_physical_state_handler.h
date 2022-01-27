@@ -23,11 +23,9 @@ namespace rmad {
 class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
  public:
   // Poll every 2 seconds.
-  static constexpr base::TimeDelta kPollInterval =
-      base::TimeDelta::FromSeconds(2);
+  static constexpr base::TimeDelta kPollInterval = base::Seconds(2);
   // Wait for 5 seconds before rebooting.
-  static constexpr base::TimeDelta kRebootDelay =
-      base::TimeDelta::FromSeconds(5);
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(5);
 
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store);

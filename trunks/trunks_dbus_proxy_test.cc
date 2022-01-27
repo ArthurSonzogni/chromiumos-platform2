@@ -128,7 +128,7 @@ TEST_F(TrunksDBusProxyTest, InitFailure) {
 }
 
 TEST_F(TrunksDBusProxyTest, InitRetrySuccess) {
-  proxy_.set_init_timeout(base::TimeDelta::FromMilliseconds(100));
+  proxy_.set_init_timeout(base::Milliseconds(100));
   EXPECT_CALL(*bus_, GetServiceOwnerAndBlock(_, _))
       .WillOnce(Return(""))
       .WillOnce(Return("test-service-owner"))

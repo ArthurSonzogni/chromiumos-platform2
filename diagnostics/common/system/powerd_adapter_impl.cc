@@ -21,8 +21,7 @@ namespace diagnostics {
 namespace {
 
 // The maximum amount of time to wait for a powerd response.
-constexpr base::TimeDelta kPowerManagerDBusTimeout =
-    base::TimeDelta::FromSeconds(3);
+constexpr base::TimeDelta kPowerManagerDBusTimeout = base::Seconds(3);
 
 // Handles the result of an attempt to connect to a D-Bus signal.
 void HandleSignalConnected(const std::string& interface,

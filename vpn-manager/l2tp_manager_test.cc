@@ -192,7 +192,7 @@ TEST_F(L2tpManagerTest, PollWaitIfNotUpYet) {
 TEST_F(L2tpManagerTest, PollTimeoutWaitingForControl) {
   l2tp_->start_ticks_ =
       base::TimeTicks::Now() -
-      base::TimeDelta::FromSeconds(l2tp_->GetPppSetupTimeoutForTesting() + 1);
+      base::Seconds(l2tp_->GetPppSetupTimeoutForTesting() + 1);
   EXPECT_EQ(1000, l2tp_->Poll());
   EXPECT_TRUE(FindLog("PPP setup timed out"));
   EXPECT_TRUE(l2tp_->was_stopped());
@@ -202,7 +202,7 @@ TEST_F(L2tpManagerTest, PollTimeoutWaitingForControl) {
 TEST_F(L2tpManagerTest, PollTimeoutWaitingForUp) {
   l2tp_->start_ticks_ =
       base::TimeTicks::Now() -
-      base::TimeDelta::FromSeconds(l2tp_->GetPppSetupTimeoutForTesting() + 1);
+      base::Seconds(l2tp_->GetPppSetupTimeoutForTesting() + 1);
   l2tp_->was_initiated_ = true;
   EXPECT_EQ(1000, l2tp_->Poll());
   EXPECT_TRUE(FindLog("PPP setup timed out"));

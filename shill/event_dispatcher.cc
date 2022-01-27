@@ -35,7 +35,7 @@ void EventDispatcher::PostDelayedTask(const base::Location& location,
                                       base::OnceClosure task,
                                       int64_t delay_ms) {
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-      location, std::move(task), base::TimeDelta::FromMilliseconds(delay_ms));
+      location, std::move(task), base::Milliseconds(delay_ms));
 }
 
 void EventDispatcher::QuitDispatchForever() {

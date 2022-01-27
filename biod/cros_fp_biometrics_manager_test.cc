@@ -779,18 +779,18 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
 TEST_F(CrosFpBiometricsManagerMockTest,
        DISABLED_TestMaintenanceTimer_TooShort) {
   EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(0);
-  task_environment_.FastForwardBy(base::TimeDelta::FromHours(12));
+  task_environment_.FastForwardBy(base::Hours(12));
 }
 
 TEST_F(CrosFpBiometricsManagerMockTest, DISABLED_TestMaintenanceTimer_Once) {
   EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(1);
-  task_environment_.FastForwardBy(base::TimeDelta::FromDays(1));
+  task_environment_.FastForwardBy(base::Days(1));
 }
 
 TEST_F(CrosFpBiometricsManagerMockTest,
        DISABLED_TestMaintenanceTimer_Multiple) {
   EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(2);
-  task_environment_.FastForwardBy(base::TimeDelta::FromDays(2));
+  task_environment_.FastForwardBy(base::Days(2));
 }
 
 // TODO(b/187951992): The following test must be removed when the
@@ -799,7 +799,7 @@ TEST_F(CrosFpBiometricsManagerMockTest,
 // b/184783529.
 TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_Disabled) {
   EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(0);
-  task_environment_.FastForwardBy(base::TimeDelta::FromDays(1));
+  task_environment_.FastForwardBy(base::Days(1));
 }
 
 TEST_F(CrosFpBiometricsManagerMockTest, TestOnMaintenanceTimerFired) {

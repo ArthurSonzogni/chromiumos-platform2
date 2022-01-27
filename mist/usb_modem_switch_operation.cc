@@ -92,8 +92,8 @@ void UsbModemSwitchOperation::Start(CompletionCallback completion_callback) {
   // Schedule the execution of the first task using the message loop, even when
   // the initial delay is 0, as multiple UsbModemSwitchOperation objects may be
   // created and started in a tight loop.
-  base::TimeDelta initial_delay = base::TimeDelta::FromMilliseconds(
-      switch_context_->modem_info()->initial_delay_ms());
+  base::TimeDelta initial_delay =
+      base::Milliseconds(switch_context_->modem_info()->initial_delay_ms());
   LOG(INFO) << "Starting the modem switch operation in "
             << initial_delay.InMilliseconds() << " ms.";
   ScheduleDelayedTask(&UsbModemSwitchOperation::OpenDeviceAndSelectInterface,
@@ -569,7 +569,7 @@ void UsbModemSwitchOperation::StartWaitingForDeviceToReconnect() {
       &UsbModemSwitchOperation::OnReconnectTimeout, base::Unretained(this)));
   context_->event_dispatcher()->PostDelayedTask(
       reconnect_timeout_callback_.callback(),
-      base::TimeDelta::FromMilliseconds(kReconnectTimeoutMilliseconds));
+      base::Milliseconds(kReconnectTimeoutMilliseconds));
 }
 
 void UsbModemSwitchOperation::OnReconnectTimeout() {

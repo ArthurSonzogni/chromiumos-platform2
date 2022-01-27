@@ -6,7 +6,6 @@
 
 namespace diagnostics {
 
-const base::TimeDelta kDefaultCpuStressRuntime =
-    base::TimeDelta::FromMinutes(1);
+const base::TimeDelta kDefaultCpuStressRuntime = base::Minutes(1);
 
 }  // namespace diagnostics

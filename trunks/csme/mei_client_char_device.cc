@@ -25,8 +25,7 @@ namespace csme {
 
 namespace {
 
-constexpr base::TimeDelta kSelectTimeout = base::TimeDelta::FromSeconds(20);
-
+constexpr base::TimeDelta kSelectTimeout = base::Seconds(20);
 };
 
 MeiClientCharDevice::MeiClientCharDevice(const std::string& mei_path,

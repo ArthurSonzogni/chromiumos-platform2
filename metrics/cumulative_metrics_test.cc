@@ -72,9 +72,9 @@ TEST_F(CumulativeMetricsTest, TestLoop) {
   ASSERT_TRUE(base::CreateDirectory(pi_path));
 
   std::vector<std::string> names = {kMetricNameX, kMetricNameY, kMetricNameZ};
-  CumulativeMetrics cm(pi_path, names, base::TimeDelta::FromMilliseconds(100),
+  CumulativeMetrics cm(pi_path, names, base::Milliseconds(100),
                        base::BindRepeating(&UpdateAccumulators),
-                       base::TimeDelta::FromMilliseconds(500),
+                       base::Milliseconds(500),
                        base::BindRepeating(&ReportAccumulators));
 
   run_loop.Run();

@@ -29,11 +29,10 @@ using std::string;
 namespace {
 
 // Abort if it an expected battery update hasn't been received after this long.
-constexpr base::TimeDelta kUpdateTimeout = base::TimeDelta::FromSeconds(3);
+constexpr base::TimeDelta kUpdateTimeout = base::Seconds(3);
 
 // Shorter update timeout to use when failure is expected.
-constexpr base::TimeDelta kShortUpdateTimeout =
-    base::TimeDelta::FromMilliseconds(100);
+constexpr base::TimeDelta kShortUpdateTimeout = base::Milliseconds(100);
 
 const char kDeviceModelName[] = "Test HID Mouse";
 const char kWacomUevent[] = "HID_UNIQ=aa:aa:aa:aa:aa:aa";

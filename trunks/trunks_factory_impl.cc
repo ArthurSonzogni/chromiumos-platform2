@@ -30,7 +30,7 @@ constexpr int kDefaultRetryTimeoutInMS = 10 * 1000;
 constexpr int kDefaultRetries =
     kDefaultRetryTimeoutInMS / kDefaultRetryDelayInMS;
 constexpr base::TimeDelta kDefaultRetryDelay =
-    base::TimeDelta::FromMilliseconds(kDefaultRetryDelayInMS);
+    base::Milliseconds(kDefaultRetryDelayInMS);
 
 }  // namespace
 

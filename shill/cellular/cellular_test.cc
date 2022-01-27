@@ -1269,7 +1269,7 @@ TEST_P(CellularTest, PendingConnect) {
   // Fast forward the task environment by the pending connect delay plus
   // time to complete the connect.
   constexpr base::TimeDelta kTestTimeout =
-      Cellular::kPendingConnectDelay + base::TimeDelta::FromSeconds(10);
+      Cellular::kPendingConnectDelay + base::Seconds(10);
   dispatcher_.task_environment().FastForwardBy(kTestTimeout);
   EXPECT_EQ(device_->state(), Cellular::State::kConnected);
   EXPECT_TRUE(device_->connect_pending_iccid().empty());

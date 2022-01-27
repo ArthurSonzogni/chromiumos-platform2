@@ -153,8 +153,7 @@ bool DecodeWeeklyTimeFromValue(const base::Value& dict_value,
     return false;
   }
 
-  *time_out = base::TimeDelta::FromMinutes(*minutes) +
-              base::TimeDelta::FromHours(*hours);
+  *time_out = base::Minutes(*minutes) + base::Hours(*hours);
   return true;
 }
 

@@ -54,7 +54,7 @@ namespace {
 // TODO(crbug.com/1084279) Remove after migration is complete.
 const char kStorageDeprecatedPassphrase[] = "Passphrase";
 
-constexpr auto kMinDisconnectOffset = base::TimeDelta::FromHours(4);
+constexpr auto kMinDisconnectOffset = base::Hours(4);
 
 static const std::map<WiFiService::RandomizationPolicy, std::string>
     RandomizationPolicyMap = {
@@ -474,12 +474,10 @@ bool WiFiService::Load(const StoreInterface* storage) {
 
   uint64_t delta;
   if (storage->GetUint64(id, kStorageLeaseExpiry, &delta)) {
-    dhcp4_lease_expiry_.FromDeltaSinceWindowsEpoch(
-        base::TimeDelta::FromMicroseconds(delta));
+    dhcp4_lease_expiry_.FromDeltaSinceWindowsEpoch(base::Microseconds(delta));
   }
   if (storage->GetUint64(id, kStorageDisconnectTime, &delta)) {
-    disconnect_time_.FromDeltaSinceWindowsEpoch(
-        base::TimeDelta::FromMicroseconds(delta));
+    disconnect_time_.FromDeltaSinceWindowsEpoch(base::Microseconds(delta));
   }
 
   // NB: mode, security and ssid parameters are never read in from
@@ -610,8 +608,7 @@ void WiFiService::SetState(ConnectState state) {
       // address for this network.
       uint32_t lease_time;
       if (wifi_->ipconfig()->TimeToLeaseExpiry(&lease_time)) {
-        dhcp4_lease_expiry_ =
-            clock_->Now() + base::TimeDelta::FromSeconds(lease_time);
+        dhcp4_lease_expiry_ = clock_->Now() + base::Seconds(lease_time);
       } else {
         LOG(WARNING) << "Failed to get lease time";
       }

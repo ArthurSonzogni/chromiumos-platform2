@@ -1048,7 +1048,7 @@ TEST_F(FileStreamTest, FromFileDescriptor_ReadAsync) {
   // Write to the pipe with a bit of delay.
   brillo_loop.PostDelayedTask(FROM_HERE,
                               base::Bind(write_data_callback, fds[1]),
-                              base::TimeDelta::FromMilliseconds(10));
+                              base::Milliseconds(10));
 
   EXPECT_TRUE(stream->ReadAsync(
       buffer, 100, base::Bind(success_callback, &succeeded, buffer),
@@ -1057,7 +1057,7 @@ TEST_F(FileStreamTest, FromFileDescriptor_ReadAsync) {
   auto end_condition = [](bool* failed, bool* succeeded) {
     return *failed || *succeeded;
   };
-  MessageLoopRunUntil(&brillo_loop, base::TimeDelta::FromSeconds(1),
+  MessageLoopRunUntil(&brillo_loop, base::Seconds(1),
                       base::Bind(end_condition, &failed, &succeeded));
 
   EXPECT_TRUE(succeeded);
@@ -1096,7 +1096,7 @@ TEST_F(FileStreamTest, FromFileDescriptor_WriteAsync) {
   auto end_condition = [](bool* failed, bool* succeeded) {
     return *failed || *succeeded;
   };
-  MessageLoopRunUntil(&brillo_loop, base::TimeDelta::FromSeconds(1),
+  MessageLoopRunUntil(&brillo_loop, base::Seconds(1),
                       base::Bind(end_condition, &failed, &succeeded));
 
   EXPECT_TRUE(succeeded);

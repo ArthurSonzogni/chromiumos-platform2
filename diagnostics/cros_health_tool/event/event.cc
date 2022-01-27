@@ -127,7 +127,7 @@ int event_main(int argc, char** argv) {
       FROM_HERE,
       base::BindOnce([](brillo::BaseMessageLoop* loop) { loop->BreakLoop(); },
                      &message_loop),
-      base::TimeDelta::FromSeconds(FLAGS_length_seconds));
+      base::Seconds(FLAGS_length_seconds));
 
   message_loop.Run();
 

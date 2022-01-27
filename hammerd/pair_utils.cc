@@ -44,8 +44,7 @@ ChallengeStatus PairManager::PairChallenge(FirmwareUpdaterInterface* fw_updater,
     // There is a short delay between device disconnected and kernel react to
     // it. Add a short delay before check.
     constexpr int kernel_delay_ms = 100;
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kernel_delay_ms));
+    base::PlatformThread::Sleep(base::Milliseconds(kernel_delay_ms));
     if (!fw_updater->UsbSysfsExists()) {
       LOG(ERROR) << "USB device is disconnected.";
       return ChallengeStatus::kConnectionError;

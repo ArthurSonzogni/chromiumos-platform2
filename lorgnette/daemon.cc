@@ -61,8 +61,7 @@ void Daemon::PostponeShutdown(size_t ms) {
   shutdown_callback_.Reset(
       base::BindOnce(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-      FROM_HERE, shutdown_callback_.callback(),
-      base::TimeDelta::FromMilliseconds(ms));
+      FROM_HERE, shutdown_callback_.callback(), base::Milliseconds(ms));
 }
 
 }  // namespace lorgnette

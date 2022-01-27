@@ -27,9 +27,8 @@ using testing::ElementsAreArray;
 
 namespace dns_proxy {
 namespace {
-constexpr base::TimeDelta kRequestTimeout = base::TimeDelta::FromSeconds(10000);
-constexpr base::TimeDelta kRequestRetryDelay =
-    base::TimeDelta::FromMilliseconds(200);
+constexpr base::TimeDelta kRequestTimeout = base::Seconds(10000);
+constexpr base::TimeDelta kRequestRetryDelay = base::Milliseconds(200);
 constexpr int32_t kRequestMaxRetry = 1;
 
 int make_fd() {

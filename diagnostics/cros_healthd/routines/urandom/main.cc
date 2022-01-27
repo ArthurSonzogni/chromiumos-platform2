@@ -29,8 +29,7 @@ int main(int argc, char** argv) {
 
   char urandom_data[kNumBytesRead];
   base::TimeTicks end_time =
-      base::TimeTicks::Now() +
-      base::TimeDelta::FromMilliseconds(FLAGS_time_delta_ms);
+      base::TimeTicks::Now() + base::Milliseconds(FLAGS_time_delta_ms);
   while (base::TimeTicks::Now() < end_time) {
     if (kNumBytesRead != urandom_file.Read(0, urandom_data, kNumBytesRead))
       return EXIT_FAILURE;

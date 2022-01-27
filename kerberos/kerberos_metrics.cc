@@ -125,8 +125,7 @@ bool KerberosMetrics::ShouldReportDailyUsageStats() {
 
   // Don't set the new file time to |now|. This would result in an average
   // frequency of less than one day.
-  base::Time new_time =
-      last_file_time + days_elapsed * base::TimeDelta::FromDays(1);
+  base::Time new_time = last_file_time + days_elapsed * base::Days(1);
   const bool res = base::TouchFile(daily_report_time_path_, new_time, new_time);
   if (!res)
     LOG(WARNING) << "Failed to touch " << daily_report_time_path_.value();

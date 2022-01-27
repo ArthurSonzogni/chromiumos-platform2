@@ -286,8 +286,7 @@ void ArcTimerManager::HandleStartArcTimer(
     return;
   }
   base::TimeTicks absolute_expiration_time =
-      base::TimeTicks() +
-      base::TimeDelta::FromMicroseconds(absolute_expiration_time_us);
+      base::TimeTicks() + base::Microseconds(absolute_expiration_time_us);
 
   // If a timer for the given clock is not created prior to this call then
   // return error. Else retrieve the timer associated with it.

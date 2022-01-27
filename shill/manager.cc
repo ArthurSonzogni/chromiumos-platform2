@@ -106,12 +106,10 @@ constexpr int kDeviceStatusCheckIntervalMilliseconds =
     180000;  // every 3 minutes
 
 // Interval for attempting to initialize patchpanel connection.
-constexpr base::TimeDelta kInitPatchpanelClientInterval =
-    base::TimeDelta::FromMinutes(1);
+constexpr base::TimeDelta kInitPatchpanelClientInterval = base::Minutes(1);
 
 // Interval for polling patchpanel and refreshing traffic counters.
-constexpr base::TimeDelta kTrafficCounterRefreshInterval =
-    base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kTrafficCounterRefreshInterval = base::Minutes(5);
 
 // Technologies to probe for.
 const char* const kProbeTechnologies[] = {
@@ -166,8 +164,7 @@ const char* const kUserTrafficUsernames[] = {
 
 // Backoff time increment used to compute the delay before always-on VPN next
 // attempt after a connection failure.
-constexpr base::TimeDelta kAlwaysOnVpnBackoffDelay =
-    base::TimeDelta::FromMilliseconds(500);
+constexpr base::TimeDelta kAlwaysOnVpnBackoffDelay = base::Milliseconds(500);
 // Maximum shift value used to compute the always-on VPN backoff time.
 constexpr uint32_t kAlwaysOnVpnBackoffMaxShift = 7u;
 
@@ -366,7 +363,7 @@ void Manager::Start() {
 
   power_manager_.reset(new PowerManager(control_interface_));
   power_manager_->Start(
-      base::TimeDelta::FromMilliseconds(kTerminationActionsTimeoutMilliseconds),
+      base::Milliseconds(kTerminationActionsTimeoutMilliseconds),
       base::Bind(&Manager::OnSuspendImminent, weak_factory_.GetWeakPtr()),
       base::Bind(&Manager::OnSuspendDone, weak_factory_.GetWeakPtr()),
       base::Bind(&Manager::OnDarkSuspendImminent, weak_factory_.GetWeakPtr()));

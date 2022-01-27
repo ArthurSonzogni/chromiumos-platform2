@@ -30,8 +30,7 @@ namespace {
 
 constexpr char kDeviceName[] = "Integrated U2F";
 constexpr int kWinkSignalMinIntervalMs = 1000;
-constexpr base::TimeDelta kRequestPresenceDelay =
-    base::TimeDelta::FromMilliseconds(500);
+constexpr base::TimeDelta kRequestPresenceDelay = base::Milliseconds(500);
 
 // The U2F counter stored in cr50 is stored in a format resistant to rollbacks,
 // and that guarantees monotonicity even in the presence of partial writes.
@@ -367,7 +366,7 @@ void U2fDaemon::SendWinkSignal() {
 
 void U2fDaemon::IgnorePowerButtonPress() {
   // Duration of the user presence persistence on the firmware side.
-  const base::TimeDelta kPresenceTimeout = base::TimeDelta::FromSeconds(10);
+  const base::TimeDelta kPresenceTimeout = base::Seconds(10);
 
   brillo::ErrorPtr err;
   // Mask the next power button press for the UI

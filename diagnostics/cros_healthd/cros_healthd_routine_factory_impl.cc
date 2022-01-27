@@ -57,11 +57,10 @@ CrosHealthdRoutineFactoryImpl::~CrosHealthdRoutineFactoryImpl() = default;
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeUrandomRoutine(
     chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds) {
-  return CreateUrandomRoutine(
-      length_seconds.is_null()
-          ? base::nullopt
-          : base::Optional<base::TimeDelta>(
-                base::TimeDelta::FromSeconds(length_seconds->value)));
+  return CreateUrandomRoutine(length_seconds.is_null()
+                                  ? base::nullopt
+                                  : base::Optional<base::TimeDelta>(
+                                        base::Seconds(length_seconds->value)));
 }
 
 std::unique_ptr<DiagnosticRoutine>

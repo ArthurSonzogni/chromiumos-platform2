@@ -51,8 +51,7 @@ class MetricsCollector {
       "/sys/kernel/debug/telemetry/s0ix_residency_usec";
   // Expected overhead time to enter/exit S0ix after suspending. This is just an
   // approximation to prevent aggressive warnings.
-  static constexpr base::TimeDelta KS0ixOverheadTime =
-      base::TimeDelta::FromSeconds(15);
+  static constexpr base::TimeDelta KS0ixOverheadTime = base::Seconds(15);
 
   // Returns a copy of |enum_name| with a suffix describing |power_source|
   // appended to it. Public so it can be called by tests.

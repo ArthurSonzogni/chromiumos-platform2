@@ -21,8 +21,8 @@ base::Time TimeFromExploded(int year,
       base::Time::Exploded{year, month, 0, day_of_month, hour, minute, second,
                            0},
       &time));
-  time += base::TimeDelta::FromMicroseconds(micro_second);
-  time -= base::TimeDelta::FromHours(timezone_offset_hour);
+  time += base::Microseconds(micro_second);
+  time -= base::Hours(timezone_offset_hour);
   return time;
 }
 

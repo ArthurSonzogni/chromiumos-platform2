@@ -232,8 +232,7 @@ int main(int argc, char* argv[]) {
   // Schedule a task to fire after the timeout.
   if (FLAGS_timeout) {
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-        FROM_HERE, base::Bind(&OnTimeout),
-        base::TimeDelta::FromSeconds(FLAGS_timeout));
+        FROM_HERE, base::Bind(&OnTimeout), base::Seconds(FLAGS_timeout));
   }
 
   run_loop.Run();

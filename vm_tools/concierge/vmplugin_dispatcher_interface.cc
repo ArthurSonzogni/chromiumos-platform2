@@ -29,8 +29,8 @@ namespace pvm {
 namespace dispatcher {
 namespace {
 
-constexpr base::TimeDelta kVmShutdownTimeout = base::TimeDelta::FromMinutes(2);
-constexpr base::TimeDelta kVmSuspendTimeout = base::TimeDelta::FromSeconds(20);
+constexpr base::TimeDelta kVmShutdownTimeout = base::Minutes(2);
+constexpr base::TimeDelta kVmSuspendTimeout = base::Seconds(20);
 
 // Native Parallels error codes.
 constexpr int PRL_ERR_SUCCESS = 0;

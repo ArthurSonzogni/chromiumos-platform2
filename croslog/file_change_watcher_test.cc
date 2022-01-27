@@ -31,8 +31,7 @@ class FileChangeWatcherTest : public ::testing::Test,
     const int kTinyTimeoutMs = 100;
     int max_try = 50;
     while (counter() < target_value) {
-      base::PlatformThread::Sleep(
-          base::TimeDelta::FromMilliseconds(kTinyTimeoutMs));
+      base::PlatformThread::Sleep(base::Milliseconds(kTinyTimeoutMs));
       base::RunLoop().RunUntilIdle();
       if (--max_try == 0)
         return false;

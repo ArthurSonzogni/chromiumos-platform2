@@ -39,7 +39,7 @@
 
 namespace cros {
 
-constexpr base::TimeDelta kMonitorTimeDelta = base::TimeDelta::FromSeconds(2);
+constexpr base::TimeDelta kMonitorTimeDelta = base::Seconds(2);
 
 CameraMonitor::CameraMonitor(const std::string& name)
     : name_(name), thread_(name + "Monitor"), is_kicked_(false) {}

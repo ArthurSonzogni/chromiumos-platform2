@@ -28,7 +28,7 @@ constexpr char kSeccompFilterPath[] =
 // static
 const char ImageLoader::kImageLoaderGroupName[] = "imageloaderd";
 const char ImageLoader::kImageLoaderUserName[] = "imageloaderd";
-constexpr base::TimeDelta kShutdownTimeout = base::TimeDelta::FromSeconds(20);
+constexpr base::TimeDelta kShutdownTimeout = base::Seconds(20);
 const char ImageLoader::kLoadedMountsBase[] = "/run/imageloader";
 
 ImageLoader::ImageLoader(ImageLoaderConfig config,

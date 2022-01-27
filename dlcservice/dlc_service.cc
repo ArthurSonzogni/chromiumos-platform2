@@ -226,7 +226,7 @@ void DlcService::PeriodicInstallCheck() {
   auto* system_state = SystemState::Get();
   if ((system_state->clock()->Now() -
        system_state->update_engine_status_timestamp()) >
-      base::TimeDelta::FromSeconds(kNotSeenStatusDelay)) {
+      base::Seconds(kNotSeenStatusDelay)) {
     if (GetUpdateEngineStatus()) {
       ErrorPtr tmp_error;
       if (!HandleStatusResult(&tmp_error)) {
@@ -248,7 +248,7 @@ void DlcService::SchedulePeriodicInstallCheck() {
       FROM_HERE,
       base::BindOnce(&DlcService::PeriodicInstallCheck,
                      weak_ptr_factory_.GetWeakPtr()),
-      base::TimeDelta::FromSeconds(kUECheckTimeout));
+      base::Seconds(kUECheckTimeout));
 }
 
 bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {

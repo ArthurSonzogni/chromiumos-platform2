@@ -247,7 +247,7 @@ class ArcTimerManagerTest : public ::testing::Test {
             &runner, &watcher));
 
     // Start run loop and error out if the fd isn't readable after a timeout.
-    if (!runner.StartLoop(base::TimeDelta::FromSeconds(30))) {
+    if (!runner.StartLoop(base::Seconds(30))) {
       LOG(ERROR) << "Timed out waiting for expiration";
       return false;
     }
@@ -344,9 +344,8 @@ TEST_F(ArcTimerManagerTest, CreateAndStartTimer) {
   std::vector<clockid_t> clocks = {CLOCK_REALTIME_ALARM, CLOCK_BOOTTIME_ALARM};
   const std::string kTag = "Test";
   ASSERT_TRUE(CreateTimers(kTag, clocks));
-  ASSERT_TRUE(StartTimer(
-      kTag, CLOCK_BOOTTIME_ALARM,
-      base::TimeTicks::Now() + base::TimeDelta::FromMilliseconds(1)));
+  ASSERT_TRUE(StartTimer(kTag, CLOCK_BOOTTIME_ALARM,
+                         base::TimeTicks::Now() + base::Milliseconds(1)));
   ASSERT_TRUE(WaitForExpiration(kTag, CLOCK_BOOTTIME_ALARM));
 }
 
@@ -359,9 +358,8 @@ TEST_F(ArcTimerManagerTest, CreateAndDeleteTimers) {
   // Delete created timers and then try to start a timer. The call should fail
   // as the timer doesn't exist.
   ASSERT_TRUE(DeleteTimers(kTag));
-  ASSERT_FALSE(StartTimer(
-      kTag, CLOCK_BOOTTIME_ALARM,
-      base::TimeTicks::Now() + base::TimeDelta::FromMilliseconds(1)));
+  ASSERT_FALSE(StartTimer(kTag, CLOCK_BOOTTIME_ALARM,
+                          base::TimeTicks::Now() + base::Milliseconds(1)));
 }
 
 TEST_F(ArcTimerManagerTest, CheckInvalidCreateTimersArgs) {
@@ -376,9 +374,8 @@ TEST_F(ArcTimerManagerTest, CheckInvalidStartTimerArgs) {
   const std::string kTag = "Test";
   ASSERT_TRUE(CreateTimers(kTag, clocks));
   // Starting timer for unregistered clock id should fail.
-  ASSERT_FALSE(StartTimer(
-      kTag, CLOCK_BOOTTIME_ALARM,
-      base::TimeTicks::Now() + base::TimeDelta::FromMilliseconds(1)));
+  ASSERT_FALSE(StartTimer(kTag, CLOCK_BOOTTIME_ALARM,
+                          base::TimeTicks::Now() + base::Milliseconds(1)));
 }
 
 TEST_F(ArcTimerManagerTest, CheckMultipleCreateTimers) {
@@ -414,9 +411,8 @@ TEST_F(ArcTimerManagerTest, CheckDeleteAndStartOther) {
   const std::string kTag2 = "Test2";
   ASSERT_TRUE(CreateTimers(kTag2, clocks));
   ASSERT_TRUE(DeleteTimers(kTag1));
-  ASSERT_TRUE(StartTimer(
-      kTag2, CLOCK_REALTIME_ALARM,
-      base::TimeTicks::Now() + base::TimeDelta::FromMilliseconds(1)));
+  ASSERT_TRUE(StartTimer(kTag2, CLOCK_REALTIME_ALARM,
+                         base::TimeTicks::Now() + base::Milliseconds(1)));
   ASSERT_TRUE(WaitForExpiration(kTag2, CLOCK_REALTIME_ALARM));
 }
 

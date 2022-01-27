@@ -40,12 +40,12 @@ class TimerTest : public testing::Test {
  protected:
   virtual void SetUp() {
     EXPECT_EQ(Timer::kTimerStopped, timer_.timer_state_);
-    stime += base::TimeDelta::FromMilliseconds(kStime1MSec);
-    etime += base::TimeDelta::FromMilliseconds(kEtime1MSec);
-    stime2 += base::TimeDelta::FromMilliseconds(kStime2MSec);
-    etime2 += base::TimeDelta::FromMilliseconds(kEtime2MSec);
-    stime3 += base::TimeDelta::FromMilliseconds(kStime3MSec);
-    etime3 += base::TimeDelta::FromMilliseconds(kEtime3MSec);
+    stime += base::Milliseconds(kStime1MSec);
+    etime += base::Milliseconds(kEtime1MSec);
+    stime2 += base::Milliseconds(kStime2MSec);
+    etime2 += base::Milliseconds(kEtime2MSec);
+    stime3 += base::Milliseconds(kStime3MSec);
+    etime3 += base::Milliseconds(kEtime3MSec);
   }
 
   virtual void TearDown() {}
@@ -416,8 +416,8 @@ class TimerReporterTest : public testing::Test {
     EXPECT_EQ(timer_reporter_.min_, kMinSample);
     EXPECT_EQ(timer_reporter_.max_, kMaxSample);
     EXPECT_EQ(timer_reporter_.num_buckets_, kNumBuckets);
-    stime += base::TimeDelta::FromMilliseconds(kStime1MSec);
-    etime += base::TimeDelta::FromMilliseconds(kEtime1MSec);
+    stime += base::Milliseconds(kStime1MSec);
+    etime += base::Milliseconds(kEtime1MSec);
   }
 
   virtual void TearDown() { timer_reporter_.set_metrics_lib(nullptr); }

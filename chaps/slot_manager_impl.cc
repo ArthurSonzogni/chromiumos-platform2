@@ -50,7 +50,7 @@ namespace {
 // I18N Note: The descriptive strings are needed for PKCS #11 compliance but
 // they should not appear on any UI.
 constexpr base::TimeDelta kTokenInitBlockSystemShutdownFallbackTimeout =
-    base::TimeDelta::FromSeconds(10);
+    base::Seconds(10);
 constexpr CK_VERSION kDefaultVersion = {1, 0};
 constexpr char kManufacturerID[] = "Chromium OS";
 constexpr CK_ULONG kMaxPinLen = 127;

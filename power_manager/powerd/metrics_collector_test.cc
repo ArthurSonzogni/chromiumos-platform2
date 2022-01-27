@@ -238,7 +238,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRate) {
   // This much time must elapse before the discharge rate will be reported
   // again.
   const base::TimeDelta interval =
-      base::TimeDelta::FromSeconds(kBatteryDischargeRateIntervalSec);
+      base::Seconds(kBatteryDischargeRateIntervalSec);
 
   power_status_.battery_energy_rate = 5.0;
   ExpectBatteryDischargeRateMetric(5000);
@@ -343,7 +343,7 @@ TEST_F(MetricsCollectorTest, SessionStartOrStop) {
         kUserAdjustments[i], kUserBrightnessAdjustmentsPerSessionMin,
         kUserBrightnessAdjustmentsPerSessionMax, kDefaultBuckets);
 
-    AdvanceTime(base::TimeDelta::FromSeconds(kSessionSecs[i]));
+    AdvanceTime(base::Seconds(kSessionSecs[i]));
     ExpectMetric(kLengthOfSessionName, kSessionSecs[i], kLengthOfSessionMin,
                  kLengthOfSessionMax, kDefaultBuckets);
 
@@ -457,7 +457,7 @@ TEST_F(MetricsCollectorTest, PowerButtonDownMetric) {
 
   // Send a regular sequence of events and check that the duration is reported.
   collector_.HandlePowerButtonEvent(ButtonState::DOWN);
-  const base::TimeDelta kDuration = base::TimeDelta::FromMilliseconds(243);
+  const base::TimeDelta kDuration = base::Milliseconds(243);
   AdvanceTime(kDuration);
   ExpectMetric(kPowerButtonDownTimeName, kDuration.InMilliseconds(),
                kPowerButtonDownTimeMin, kPowerButtonDownTimeMax,
@@ -470,10 +470,10 @@ TEST_F(MetricsCollectorTest, GatherDarkResumeMetrics) {
 
   std::vector<policy::Suspender::DarkResumeInfo> wake_durations;
   base::TimeDelta suspend_duration;
-  base::TimeDelta kTimeDelta1 = base::TimeDelta::FromSeconds(2);
-  base::TimeDelta kTimeDelta2 = base::TimeDelta::FromSeconds(6);
-  base::TimeDelta kTimeDelta3 = base::TimeDelta::FromMilliseconds(573);
-  base::TimeDelta kTimeDelta4 = base::TimeDelta::FromSeconds(7);
+  base::TimeDelta kTimeDelta1 = base::Seconds(2);
+  base::TimeDelta kTimeDelta2 = base::Seconds(6);
+  base::TimeDelta kTimeDelta3 = base::Milliseconds(573);
+  base::TimeDelta kTimeDelta4 = base::Seconds(7);
   std::string kWakeReason1 = "WiFi.Pattern";
   std::string kWakeReason2 = "WiFi.Disconnect";
   std::string kWakeReason3 = "WiFi.SSID";
@@ -490,7 +490,7 @@ TEST_F(MetricsCollectorTest, GatherDarkResumeMetrics) {
   wake_durations.push_back(std::make_pair(kWakeReason3, kTimeDelta3));
   wake_durations.push_back(std::make_pair(kWakeReason4, kTimeDelta4));
 
-  suspend_duration = base::TimeDelta::FromHours(2);
+  suspend_duration = base::Hours(2);
 
   ExpectMetric(kDarkResumeWakeupsPerHourName,
                wake_durations.size() / suspend_duration.InHours(),
@@ -523,8 +523,8 @@ TEST_F(MetricsCollectorTest, GatherDarkResumeMetrics) {
   wake_durations.clear();
 
   wake_durations.push_back(
-      std::make_pair(kWakeReason1, base::TimeDelta::FromMilliseconds(359)));
-  suspend_duration = base::TimeDelta::FromMinutes(13);
+      std::make_pair(kWakeReason1, base::Milliseconds(359)));
+  suspend_duration = base::Minutes(13);
 
   IgnoreMetric(kDarkResumeWakeDurationMsName);
   IgnoreMetric(kExpectedHistogram1);
@@ -537,7 +537,7 @@ TEST_F(MetricsCollectorTest, GatherDarkResumeMetrics) {
 TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   const double kEnergyBeforeSuspend = 60;
   const double kEnergyAfterResume = 50;
-  const base::TimeDelta kSuspendDuration = base::TimeDelta::FromHours(1);
+  const base::TimeDelta kSuspendDuration = base::Hours(1);
 
   metrics_to_test_.insert(kBatteryDischargeRateWhileSuspendedName);
   power_status_.line_power_on = false;
@@ -600,8 +600,8 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   IgnoreHandlePowerStatusUpdateMetrics();
   collector_.HandlePowerStatusUpdate(power_status_);
   collector_.PrepareForSuspend();
-  AdvanceTime(base::TimeDelta::FromSeconds(
-      kBatteryDischargeRateWhileSuspendedMinSuspendSec - 1));
+  AdvanceTime(
+      base::Seconds(kBatteryDischargeRateWhileSuspendedMinSuspendSec - 1));
   ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
                kSuspendAttemptsMax, kSuspendAttemptsBuckets);
   collector_.HandleResume(1);
@@ -835,14 +835,14 @@ class S0ixResidencyMetricsTest : public MetricsCollectorTest {
   }
 
   base::FilePath residency_path_;
-  base::TimeDelta residency_before_suspend_ = base::TimeDelta::FromMinutes(50);
-  base::TimeDelta residency_before_resume_ = base::TimeDelta::FromMinutes(100);
-  base::TimeDelta suspend_duration_ = base::TimeDelta::FromHours(1);
+  base::TimeDelta residency_before_suspend_ = base::Minutes(50);
+  base::TimeDelta residency_before_resume_ = base::Minutes(100);
+  base::TimeDelta suspend_duration_ = base::Hours(1);
 };
 
 // Test S0ix UMA metrics are not reported when residency files do not exist.
 TEST_F(S0ixResidencyMetricsTest, S0ixResidencyMetricsNoResidencyFiles) {
-  suspend_duration_ = base::TimeDelta::FromHours(1);
+  suspend_duration_ = base::Hours(1);
   Init(ResidencyFileType::NONE);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
@@ -876,8 +876,7 @@ TEST_F(S0ixResidencyMetricsTest, S0ixResidencyMetricsS0ixNotEnabled) {
 // Test metrics are not reported when device suspends less than
 // |KS0ixOverheadTime|.
 TEST_F(S0ixResidencyMetricsTest, ShortSuspend) {
-  suspend_duration_ =
-      MetricsCollector::KS0ixOverheadTime - base::TimeDelta::FromSeconds(1);
+  suspend_duration_ = MetricsCollector::KS0ixOverheadTime - base::Seconds(1);
   Init(ResidencyFileType::SMALL_CORE);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
@@ -886,8 +885,7 @@ TEST_F(S0ixResidencyMetricsTest, ShortSuspend) {
 
 // Test metrics are not reported when the residency counter overflows.
 TEST_F(S0ixResidencyMetricsTest, ResidencyCounterOverflow) {
-  residency_before_resume_ =
-      residency_before_suspend_ - base::TimeDelta::FromMinutes(1);
+  residency_before_resume_ = residency_before_suspend_ - base::Minutes(1);
   Init(ResidencyFileType::SMALL_CORE);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
@@ -896,8 +894,7 @@ TEST_F(S0ixResidencyMetricsTest, ResidencyCounterOverflow) {
 
 // Test metrics are not reported when suspend time is more than max residency.
 TEST_F(S0ixResidencyMetricsTest, SuspendTimeMoreThanMaxResidency) {
-  suspend_duration_ =
-      base::TimeDelta::FromMicroseconds(100 * (int64_t)UINT32_MAX + 1);
+  suspend_duration_ = base::Microseconds(100 * (int64_t)UINT32_MAX + 1);
   Init(ResidencyFileType::BIG_CORE);
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.

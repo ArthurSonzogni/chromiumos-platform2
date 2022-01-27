@@ -88,7 +88,7 @@ constexpr int kStopAllVmsTimeoutMs = 120000;
 // Long kill time out. Used instead of the default one when chrome feature
 // 'SessionManagerLongKillTimeout' is enabled. Note that this must be less than
 // the 20-second kill timeout granted to session_manager in ui.conf.
-constexpr base::TimeDelta kLongKillTimeout = base::TimeDelta::FromSeconds(12);
+constexpr base::TimeDelta kLongKillTimeout = base::Seconds(12);
 
 // A flag file of whether to dump chrome crashes on dev/test image.
 constexpr char kCollectChromeFile[] =

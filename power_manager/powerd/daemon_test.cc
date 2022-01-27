@@ -433,7 +433,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     std::string suspend_arg = "--suspend_to_idle";
     async_commands_.clear();
     sync_commands_.clear();
-    daemon_->DoSuspend(1, true, base::TimeDelta::FromMilliseconds(0), false);
+    daemon_->DoSuspend(1, true, base::Milliseconds(0), false);
     return sync_commands_[0].find(suspend_arg) != std::string::npos;
   }
 

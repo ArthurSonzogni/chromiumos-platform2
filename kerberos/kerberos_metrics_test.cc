@@ -53,43 +53,43 @@ TEST_F(KerberosMetricsTest, ShouldReportDailyUsageStats) {
   EXPECT_FALSE(metrics_->ShouldReportDailyUsageStats());
 
   // At 0d 23h, it should still return false.
-  clock()->Advance(base::TimeDelta::FromHours(23));
+  clock()->Advance(base::Hours(23));
   EXPECT_FALSE(metrics_->ShouldReportDailyUsageStats());
 
   // At 1d 0h, it should return true again.
-  clock()->Advance(base::TimeDelta::FromHours(1));
+  clock()->Advance(base::Hours(1));
   EXPECT_TRUE(metrics_->ShouldReportDailyUsageStats());
 
   // At 4d 0h, it should return true, then false, even though 3 days have
   // passed since the last call (missed days shouldn't accumulate).
-  clock()->Advance(base::TimeDelta::FromHours(72));
+  clock()->Advance(base::Hours(72));
   EXPECT_TRUE(metrics_->ShouldReportDailyUsageStats());
   EXPECT_FALSE(metrics_->ShouldReportDailyUsageStats());
 
   // At 5d 12h, it should return true (1.5 days passed)
-  clock()->Advance(base::TimeDelta::FromHours(36));
+  clock()->Advance(base::Hours(36));
   EXPECT_TRUE(metrics_->ShouldReportDailyUsageStats());
 
   // At 6d 0h, it should return true (shouldn't enforce 24h between 2 true's).
-  clock()->Advance(base::TimeDelta::FromHours(12));
+  clock()->Advance(base::Hours(12));
   EXPECT_TRUE(metrics_->ShouldReportDailyUsageStats());
 
   // Going backwards in time shouldn't throw it off.
 
   // At 2d 12h, it should return false (going backwards shouldn't trigger).
-  clock()->Advance(base::TimeDelta::FromHours(-84));
+  clock()->Advance(base::Hours(-84));
   EXPECT_FALSE(metrics_->ShouldReportDailyUsageStats());
 
   // At 3d 0h, it should (surprisingly at first) still return false.
-  clock()->Advance(base::TimeDelta::FromHours(12));
+  clock()->Advance(base::Hours(12));
   EXPECT_FALSE(metrics_->ShouldReportDailyUsageStats());
 
   // At 3d 23h, still false.
-  clock()->Advance(base::TimeDelta::FromHours(23));
+  clock()->Advance(base::Hours(23));
   EXPECT_FALSE(metrics_->ShouldReportDailyUsageStats());
 
   // At 4d 0h, true again.
-  clock()->Advance(base::TimeDelta::FromHours(1));
+  clock()->Advance(base::Hours(1));
   EXPECT_TRUE(metrics_->ShouldReportDailyUsageStats());
 
   // A new instance should take over the result from the old instance.

@@ -50,10 +50,8 @@ constexpr int kNumWorkerProcessBuckets = 100;
 constexpr char kCumulativeMetricsBackingDir[] = "/var/lib/ml_service/metrics";
 constexpr char kPeakTotalMemoryCumulativeStatName[] = "peak_total_memory_kb";
 
-constexpr base::TimeDelta kCumulativeMetricsUpdatePeriod =
-    base::TimeDelta::FromMinutes(5);
-constexpr base::TimeDelta kCumulativeMetricsReportPeriod =
-    base::TimeDelta::FromDays(1);
+constexpr base::TimeDelta kCumulativeMetricsUpdatePeriod = base::Minutes(5);
+constexpr base::TimeDelta kCumulativeMetricsReportPeriod = base::Days(1);
 
 void RecordCumulativeMetrics(
     MetricsLibrary* const metrics_library,

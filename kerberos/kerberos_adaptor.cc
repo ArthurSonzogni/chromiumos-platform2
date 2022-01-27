@@ -33,8 +33,7 @@ namespace kerberos {
 
 namespace {
 
-constexpr base::TimeDelta kTicketExpiryCheckDelay =
-    base::TimeDelta::FromSeconds(3);
+constexpr base::TimeDelta kTicketExpiryCheckDelay = base::Seconds(3);
 
 using ByteArray = KerberosAdaptor::ByteArray;
 

@@ -42,8 +42,7 @@ constexpr size_t kMaxKeyFileSize = 1024;
 
 // Timeout when we are launching the keygen process. It will hang indefinitely
 // if the target files exist (we protect against that, but better to be safe).
-constexpr base::TimeDelta kKeyGenProcessTimeout =
-    base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kKeyGenProcessTimeout = base::Seconds(10);
 
 // Returns the file path to where the host private key is stored. To get the
 // public key version, just add the extension kPubKeyExt to this.

@@ -31,8 +31,7 @@ class NetworkManager : public NetworkManagerInterface {
   // `kMaxNumScanRetries` * `kScanRetryMsDelay` seconds.
   static const int kMaxNumScanRetries = 10;
   // The delay in milliseconds before retrying scanning for networks.
-  static constexpr base::TimeDelta kScanRetryMsDelay =
-      base::TimeDelta::FromMilliseconds(500);
+  static constexpr base::TimeDelta kScanRetryMsDelay = base::Milliseconds(500);
 
   explicit NetworkManager(std::unique_ptr<ShillProxyInterface> shill_proxy);
   virtual ~NetworkManager() = default;

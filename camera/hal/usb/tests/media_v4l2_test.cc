@@ -607,7 +607,7 @@ class V4L2Test : public ::testing::Test {
 
   void ExerciseFormat(uint32_t width, uint32_t height, float fps) {
     const int kMaxRetryTimes = 5;
-    const auto duration = base::TimeDelta::FromSeconds(3);
+    const auto duration = base::Seconds(3);
 
     std::vector<V4L2Device::ConstantFramerate> constant_framerates;
     if (g_env->check_constant_framerate_) {

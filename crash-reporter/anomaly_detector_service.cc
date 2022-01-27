@@ -61,14 +61,13 @@ std::unique_ptr<dbus::Signal> MakeOomSignal(const int64_t oom_timestamp_ms) {
 }  // namespace
 
 // Time between calls to Parser::PeriodicUpdate.
-constexpr base::TimeDelta kUpdatePeriod = base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kUpdatePeriod = base::Seconds(10);
 
 const base::FilePath kAuditLogPath("/var/log/audit/audit.log");
 
 const base::FilePath kUpstartLogPath("/var/log/upstart.log");
 
-constexpr base::TimeDelta kTimeBetweenLogReads =
-    base::TimeDelta::FromMilliseconds(500);
+constexpr base::TimeDelta kTimeBetweenLogReads = base::Milliseconds(500);
 
 Service::Service(base::OnceClosure shutdown_callback, bool testonly_send_all)
     : shutdown_callback_(std::move(shutdown_callback)),

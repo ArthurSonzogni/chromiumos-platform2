@@ -1182,7 +1182,7 @@ void Platform::Sync() {
   const base::TimeTicks start = base::TimeTicks::Now();
   sync();
   const base::TimeDelta delta = base::TimeTicks::Now() - start;
-  if (delta > base::TimeDelta::FromSeconds(kLongSyncSec)) {
+  if (delta > base::Seconds(kLongSyncSec)) {
     LOG(WARNING) << "Long sync(): " << delta.InSeconds() << " seconds";
   }
 }

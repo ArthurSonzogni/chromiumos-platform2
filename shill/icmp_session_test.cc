@@ -476,12 +476,12 @@ TEST_F(IcmpSessionTest, AnyRepliesReceived) {
   EXPECT_FALSE(IcmpSession::AnyRepliesReceived(two_sent_none_received));
 
   IcmpSession::IcmpSessionResult one_sent_one_received = {
-      base::TimeDelta::FromSeconds(10),
+      base::Seconds(10),
   };
   EXPECT_TRUE(IcmpSession::AnyRepliesReceived(one_sent_one_received));
 
   IcmpSession::IcmpSessionResult two_sent_one_received = {
-      base::TimeDelta::FromSeconds(20),
+      base::Seconds(20),
       base::TimeDelta(),
   };
   EXPECT_TRUE(IcmpSession::AnyRepliesReceived(two_sent_one_received));
@@ -496,17 +496,17 @@ TEST_F(IcmpSessionTest, IsPacketLossPercentageGreaterThan) {
 
   // If we receive all replies, we experience 0% packet loss.
   IcmpSession::IcmpSessionResult three_sent_three_received = {
-      base::TimeDelta::FromSeconds(10),
-      base::TimeDelta::FromSeconds(10),
-      base::TimeDelta::FromSeconds(10),
+      base::Seconds(10),
+      base::Seconds(10),
+      base::Seconds(10),
   };
   EXPECT_FALSE(IcmpSession::IsPacketLossPercentageGreaterThan(
       three_sent_three_received, 0));
 
   // If we sent 3 requests and received 2 replies, we have ~33% packet loss.
   IcmpSession::IcmpSessionResult three_sent_two_received = {
-      base::TimeDelta::FromSeconds(10),
-      base::TimeDelta::FromSeconds(10),
+      base::Seconds(10),
+      base::Seconds(10),
       base::TimeDelta(),
   };
   EXPECT_FALSE(IcmpSession::IsPacketLossPercentageGreaterThan(

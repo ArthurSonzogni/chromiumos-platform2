@@ -172,7 +172,7 @@ bool CumulativeUseTimeMetric::AccumulatedActiveTime::ReadMetricsFile() {
 
   os_version_hash_ = *os_version_hash;
   start_day_ = *start_day;
-  accumulated_time_ = base::TimeDelta::FromMilliseconds(*elapsed_milliseconds);
+  accumulated_time_ = base::Milliseconds(*elapsed_milliseconds);
   return true;
 }
 
@@ -241,10 +241,10 @@ void CumulativeUseTimeMetric::Start() {
   IncreaseActiveTimeAndSendUmaIfNeeded(base::TimeDelta());
 
   // Timer will be stopped when this goes out of scope, so Unretained is safe.
-  update_stats_timer_.Start(
-      FROM_HERE, base::TimeDelta::FromSeconds(kMetricsUpdateIntervalSeconds),
-      base::Bind(&CumulativeUseTimeMetric::UpdateStats,
-                 base::Unretained(this)));
+  update_stats_timer_.Start(FROM_HERE,
+                            base::Seconds(kMetricsUpdateIntervalSeconds),
+                            base::Bind(&CumulativeUseTimeMetric::UpdateStats,
+                                       base::Unretained(this)));
 }
 
 void CumulativeUseTimeMetric::Stop() {
@@ -257,11 +257,11 @@ void CumulativeUseTimeMetric::Stop() {
 }
 
 base::TimeDelta CumulativeUseTimeMetric::GetMetricsUpdateCycle() const {
-  return base::TimeDelta::FromSeconds(kMetricsUpdateIntervalSeconds);
+  return base::Seconds(kMetricsUpdateIntervalSeconds);
 }
 
 base::TimeDelta CumulativeUseTimeMetric::GetMetricsUploadCycle() const {
-  return base::TimeDelta::FromSeconds(kSecondsInADay);
+  return base::Seconds(kSecondsInADay);
 }
 
 base::FilePath CumulativeUseTimeMetric::GetMetricsFileForTest() const {
@@ -308,7 +308,7 @@ void CumulativeUseTimeMetric::IncreaseActiveTimeAndSendUmaIfNeeded(
   // Keep any data unreported due to rounding time to seconds, and set the time
   // accumulation start day to the new value.
   accumulated_active_time_->Reset(
-      accumulated_time - base::TimeDelta::FromSeconds(seconds_to_send), day);
+      accumulated_time - base::Seconds(seconds_to_send), day);
 }
 
 }  // namespace login_manager

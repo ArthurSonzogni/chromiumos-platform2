@@ -114,8 +114,7 @@ constexpr char kToolsFsType[] = "ext4";
 // While this timeout might be high, it's meant to be a final failure point, not
 // the lower bound of how long it takes.  On a loaded system (like extracting
 // large compressed files), it could take 10 seconds to boot.
-constexpr base::TimeDelta kVmStartupDefaultTimeout =
-    base::TimeDelta::FromSeconds(30);
+constexpr base::TimeDelta kVmStartupDefaultTimeout = base::Seconds(30);
 
 // crosvm log directory name.
 constexpr char kCrosvmLogDir[] = "log";
@@ -176,8 +175,7 @@ constexpr int kMaxVmNameLength = 60;
 constexpr uint64_t kDefaultIoLimit = 1024 * 1024;  // 1 Mib
 
 // How often we should broadcast state of a disk operation (import or export).
-constexpr base::TimeDelta kDiskOpReportInterval =
-    base::TimeDelta::FromSeconds(15);
+constexpr base::TimeDelta kDiskOpReportInterval = base::Seconds(15);
 
 // The minimum kernel version of the host which supports untrusted VMs or a
 // trusted VM with nested VM support.
@@ -1285,8 +1283,8 @@ bool Service::Init() {
     return false;
   }
 
-  balloon_resizing_timer_.Start(FROM_HERE, base::TimeDelta::FromSeconds(1),
-                                this, &Service::RunBalloonPolicy);
+  balloon_resizing_timer_.Start(FROM_HERE, base::Seconds(1), this,
+                                &Service::RunBalloonPolicy);
 
   return true;
 }
@@ -1801,7 +1799,7 @@ std::unique_ptr<dbus::Response> Service::StartVm(
   // ready.
   base::TimeDelta timeout = kVmStartupDefaultTimeout;
   if (request.timeout() != 0) {
-    timeout = base::TimeDelta::FromSeconds(request.timeout());
+    timeout = base::Seconds(request.timeout());
   }
   if (!event.TimedWait(timeout)) {
     LOG(ERROR) << "VM failed to start in " << timeout.InSeconds() << " seconds";

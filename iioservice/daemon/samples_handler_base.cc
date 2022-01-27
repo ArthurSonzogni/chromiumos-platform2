@@ -208,7 +208,7 @@ void SamplesHandlerBase::SetTimeoutTaskOnThread(ClientData* client_data) {
       base::BindOnce(&SamplesHandlerBase::SampleTimeout,
                      weak_factory_.GetWeakPtr(), client_data,
                      clients_map_[client_data].sample_index),
-      base::TimeDelta::FromMilliseconds(client_data->timeout));
+      base::Milliseconds(client_data->timeout));
 }
 
 void SamplesHandlerBase::SampleTimeout(ClientData* client_data,

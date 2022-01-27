@@ -31,11 +31,11 @@ namespace apk_cache {
 constexpr char kCacheCleanerSessionSource[] = "cache_cleaner";
 
 // Maximum age of sessions.
-constexpr base::TimeDelta kSessionMaxAge = base::TimeDelta::FromMinutes(10);
+constexpr base::TimeDelta kSessionMaxAge = base::Minutes(10);
 
 // Maximum age of cached files. If a file expires, the whole package will be
 // removed.
-constexpr base::TimeDelta kValidityPeriod = base::TimeDelta::FromDays(30);
+constexpr base::TimeDelta kValidityPeriod = base::Days(30);
 
 namespace {
 

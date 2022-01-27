@@ -74,7 +74,7 @@ void DisplayPowerSetter::SetDisplaySoftwareDimming(bool dimmed) {
   writer.AppendBool(dimmed);
   dbus_wrapper_->CallMethodSync(
       display_service_proxy_, &method_call,
-      base::TimeDelta::FromMilliseconds(kDisplayServiceDBusTimeoutMs));
+      base::Milliseconds(kDisplayServiceDBusTimeoutMs));
 }
 
 void DisplayPowerSetter::SendStateToDisplayService(
@@ -87,7 +87,7 @@ void DisplayPowerSetter::SendStateToDisplayService(
   writer.AppendInt32(state);
   dbus_wrapper_->CallMethodSync(
       display_service_proxy_, &method_call,
-      base::TimeDelta::FromMilliseconds(kDisplayServiceDBusTimeoutMs));
+      base::Milliseconds(kDisplayServiceDBusTimeoutMs));
 }
 
 }  // namespace system

@@ -49,7 +49,7 @@ constexpr char kLogFileExtension[] = ".log";
 
 constexpr int64_t kInvalidCid = 0;
 // how often to rotate logs in |managed_log_dir_|.
-constexpr base::TimeDelta kLogRotationPeriod = base::TimeDelta::FromDays(1);
+constexpr base::TimeDelta kLogRotationPeriod = base::Days(1);
 // maximum log files to keep per vm in |managed_log_dir_|
 constexpr int kMaxFilesPerLog = 5;
 

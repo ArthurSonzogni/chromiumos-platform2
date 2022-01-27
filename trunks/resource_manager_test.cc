@@ -1024,7 +1024,7 @@ TEST_F(ResourceManagerTest, SuspendBlocksCommands) {
 
   // After Suspend, commands with handles are blocked, commands without
   // handles are let through.
-  resource_manager_.set_max_suspend_duration(base::TimeDelta::FromDays(10));
+  resource_manager_.set_max_suspend_duration(base::Days(10));
   resource_manager_.Suspend();
   EXPECT_CALL(transceiver_, SendCommandAndWait(no_handles.command))
       .WillOnce(Return(no_handles.response));

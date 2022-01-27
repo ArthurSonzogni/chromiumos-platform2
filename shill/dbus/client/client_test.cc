@@ -751,7 +751,7 @@ TEST_F(ClientTest, ManagerPropertyAccessor) {
   props->Set("foo", "bar", base::DoNothing(),
              base::Bind([](brillo::Error*) {}));
 
-  props = client_->ManagerProperties(base::TimeDelta::FromMilliseconds(10));
+  props = client_->ManagerProperties(base::Milliseconds(10));
   props->Set("foo", "bar", nullptr);
   props->Set("foo", "bar", base::DoNothing(),
              base::Bind([](brillo::Error*) {}));

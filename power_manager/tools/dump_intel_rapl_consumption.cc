@@ -136,8 +136,7 @@ int main(int argc, char** argv) {
                                           &energy_before[i]);
     const base::TimeTicks ticks_before = base::TimeTicks::Now();
 
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(FLAGS_interval_ms));
+    base::PlatformThread::Sleep(base::Milliseconds(FLAGS_interval_ms));
 
     for (int i = 0; i < num_domains; ++i)
       power_manager::util::ReadUint64File(power_domains[i].file_path,

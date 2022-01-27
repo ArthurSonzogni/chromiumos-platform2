@@ -138,7 +138,7 @@ class SmbProviderTest : public testing::Test {
 
     metadata_cache_ = std::make_unique<MetadataCache>(
         fake_tick_clock_,
-        base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds),
+        base::Microseconds(kMetadataCacheLifetimeMicroseconds),
         MetadataCache::Mode::kDisabled);
   }
 

@@ -233,7 +233,7 @@ TEST_F(CacheCleanerDBTest, ExpiredOpenSessions) {
   // Let session expire.
   UpdateSessionTimestampForTesting(
       db_path, kTestSessionId,
-      base::Time::Now() - kSessionMaxAge - base::TimeDelta::FromSeconds(1));
+      base::Time::Now() - kSessionMaxAge - base::Seconds(1));
   // Clean.
   EXPECT_TRUE(OpaqueFilesCleaner(temp_path()).Clean());
   // Test session should be removed.
@@ -284,7 +284,7 @@ TEST_F(CacheCleanerDBTest, ExpiredFile) {
   EXPECT_TRUE(CreateValidPackage(db_path, files_path));
   // Update timestamp so that base APK is expired.
   base::Time access_time =
-      base::Time::Now() - kValidityPeriod - base::TimeDelta::FromSeconds(1);
+      base::Time::Now() - kValidityPeriod - base::Seconds(1);
   ASSERT_TRUE(
       UpdateFileAccessTimeForTesting(db_path, kTestBaseApkId, access_time));
   // Clean.

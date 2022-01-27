@@ -16,7 +16,7 @@ class PeakMemorySamplerTest : public ::testing::Test {
  protected:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-  base::TimeDelta sampling_interval_ = base::TimeDelta::FromSeconds(1);
+  base::TimeDelta sampling_interval_ = base::Seconds(1);
 };
 
 TEST_F(PeakMemorySamplerTest, BasicFunctions) {

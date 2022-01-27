@@ -838,9 +838,8 @@ bool ParseHooksList(const base::Value& hooks_list,
 
     base::Optional<int> timeout_seconds = hook_dict.FindIntKey("timeout");
     // timeout is optional.
-    hook.timeout = timeout_seconds.has_value()
-                       ? base::TimeDelta::FromSeconds(*timeout_seconds)
-                       : base::TimeDelta::Max();
+    hook.timeout = timeout_seconds.has_value() ? base::Seconds(*timeout_seconds)
+                                               : base::TimeDelta::Max();
 
     hooks_out->emplace_back(std::move(hook));
   }

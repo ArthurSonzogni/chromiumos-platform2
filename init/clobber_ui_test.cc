@@ -13,9 +13,7 @@
 namespace {
 
 base::TimeDelta BuildTimeDelta(int hours, int minutes, int seconds) {
-  return base::TimeDelta::FromHours(hours) +
-         base::TimeDelta::FromMinutes(minutes) +
-         base::TimeDelta::FromSeconds(seconds);
+  return base::Hours(hours) + base::Minutes(minutes) + base::Seconds(seconds);
 }
 
 }  // namespace
@@ -94,7 +92,7 @@ TEST(CallSequencing, WipeProgress) {
   base::File dev_null(base::FilePath("/dev/null"),
                       base::File::FLAG_OPEN | base::File::FLAG_WRITE);
   ClobberUi ui(std::move(dev_null));
-  base::TimeDelta zero = base::TimeDelta::FromSeconds(0);
+  base::TimeDelta zero = base::Seconds(0);
   ASSERT_TRUE(ui.ShowCountdownTimer(zero));
   ASSERT_TRUE(ui.StartWipeUi(100));
   ASSERT_FALSE(ui.ShowCountdownTimer(zero));

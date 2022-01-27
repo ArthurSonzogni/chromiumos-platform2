@@ -31,7 +31,7 @@ namespace {
 constexpr int16_t kTriggerFwDumpThresholdDbm = -80;
 // Have a large enough time interval to rate limit the number of
 // triggered FW dumps from shill.
-constexpr auto kFwDumpCoolDownPeriod = base::TimeDelta::FromSeconds(360);
+constexpr auto kFwDumpCoolDownPeriod = base::Seconds(360);
 constexpr char kFwDumpIntelSysFs[] =
     "/sys/kernel/debug/ieee80211/phy0/iwlwifi/iwlmvm/fw_dbg_collect";
 

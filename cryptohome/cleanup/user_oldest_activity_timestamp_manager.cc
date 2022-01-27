@@ -32,7 +32,7 @@ base::Time GetTimestampFileData(Platform* platform,
   }
 
   return base::Time::FromDeltaSinceWindowsEpoch(
-      base::TimeDelta::FromSeconds(timestamp.timestamp()));
+      base::Seconds(timestamp.timestamp()));
 }
 
 }  // namespace

@@ -40,16 +40,13 @@ namespace {
 // popular http server implementations (Apache, IIS, Tomcat) set the lower limit
 // to 8000.
 constexpr int kMaxHttpRequestHeadersSize = 8000;
-constexpr base::TimeDelta kCurlConnectTimeout =
-    base::TimeDelta::FromSeconds(30);
-constexpr base::TimeDelta kWaitClientConnectTimeout =
-    base::TimeDelta::FromSeconds(2);
+constexpr base::TimeDelta kCurlConnectTimeout = base::Seconds(30);
+constexpr base::TimeDelta kWaitClientConnectTimeout = base::Seconds(2);
 // Time to wait for proxy authentication credentials to be fetched from the
 // browser. The credentials are retrieved either from the Network Service or, if
 // the Network Service doesn't have them, directly from the user via a login
 // dialogue.
-constexpr base::TimeDelta kCredentialsRequestTimeout =
-    base::TimeDelta::FromMinutes(1);
+constexpr base::TimeDelta kCredentialsRequestTimeout = base::Minutes(1);
 
 constexpr int64_t kHttpCodeProxyAuthRequired = 407;
 

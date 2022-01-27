@@ -147,10 +147,9 @@ TEST_F(TgtRenewalSchedulerTest, ValidTgtTriggersRescheduleAtSpecificDelays) {
          TgtRenewalScheduler::kExpirationHeadsUpTimeSeconds) {
     EXPECT_GT(kHugelyExcessiveNumber, ++count);
 
-    base::TimeDelta expected_delay =
-        base::TimeDelta::FromSeconds(static_cast<int>(
-            tgt_status.validity_seconds *
-            TgtRenewalScheduler::kTgtRenewValidityLifetimeFraction));
+    base::TimeDelta expected_delay = base::Seconds(static_cast<int>(
+        tgt_status.validity_seconds *
+        TgtRenewalScheduler::kTgtRenewValidityLifetimeFraction));
 
     LOG(INFO) << "Expecting delay of " << expected_delay;
 

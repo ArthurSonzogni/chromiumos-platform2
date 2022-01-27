@@ -30,8 +30,8 @@ bool ParseCursor(const std::string& cursor_str, base::Time* output) {
           &time_value))
     return false;
 
-  *output = base::Time::FromDeltaSinceWindowsEpoch(
-      base::TimeDelta::FromMicroseconds(time_value));
+  *output =
+      base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(time_value));
   return true;
 }
 

@@ -354,7 +354,7 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
       VLOG(1) << "Got EOF so sleeping one second";
       // Don't include the time sleeping in total_time_spent_.
       total_time_spent_ += clock->GetMonotonicTime() - time_start;
-      clock->Sleep(TimeDelta::FromSeconds(1));
+      clock->Sleep(base::Seconds(1));
       time_start = clock->GetMonotonicTime();
       seconds_spent_waiting++;
 
@@ -403,7 +403,7 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
         int64_t usec_to_sleep =
             (over_budget / static_cast<double>(max_download_rate_)) *
             Time::kMicrosecondsPerSecond;
-        TimeDelta sleep_duration = TimeDelta::FromMicroseconds(usec_to_sleep);
+        TimeDelta sleep_duration = base::Microseconds(usec_to_sleep);
         clock->Sleep(sleep_duration);
         total_time_spent_ += sleep_duration;
       }

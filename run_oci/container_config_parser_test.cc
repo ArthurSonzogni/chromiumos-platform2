@@ -543,7 +543,7 @@ TEST(OciConfigParserTest, TestBasicConfig) {
   EXPECT_EQ(post_start_hooks->size(), 1);
   EXPECT_EQ((*post_start_hooks)[0].path,
             base::FilePath("/usr/bin/notify-start"));
-  EXPECT_EQ((*post_start_hooks)[0].timeout, base::TimeDelta::FromSeconds(5));
+  EXPECT_EQ((*post_start_hooks)[0].timeout, base::Seconds(5));
 }
 
 TEST(OciConfigParserTest, TestStrippedConfig) {

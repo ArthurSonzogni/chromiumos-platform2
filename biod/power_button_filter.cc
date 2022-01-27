@@ -57,8 +57,7 @@ bool PowerButtonFilter::ShouldFilterFingerprintMatch() {
   if (is_already_filtered_ == true)
     return false;
 
-  if ((tick_clock_->NowTicks() -
-       base::TimeDelta::FromMilliseconds(kAuthIgnoreTimeoutmsecs)) <
+  if ((tick_clock_->NowTicks() - base::Milliseconds(kAuthIgnoreTimeoutmsecs)) <
       last_power_button_event_) {
     is_already_filtered_ = true;
     return true;

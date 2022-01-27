@@ -15,10 +15,10 @@ namespace hermes {
 
 using ResultCallback = base::OnceCallback<void(int)>;
 constexpr char bcd_chars[] = "0123456789\0\0\0\0\0\0";
-constexpr auto kLpaRetryDelay = base::TimeDelta::FromSeconds(2);
+constexpr auto kLpaRetryDelay = base::Seconds(2);
 
 // Duration that Chrome waits for Hermes to return a DBus response
-constexpr auto kHermesTimeout = base::TimeDelta::FromMinutes(4);
+constexpr auto kHermesTimeout = base::Minutes(4);
 
 constexpr int kSuccess = 0;
 // This error will be returned when a received mbim/qmi message cannot be parsed

@@ -134,7 +134,7 @@ TEST_F(BrowserJobTest, AbortAndKillAll) {
   EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
 
   ASSERT_TRUE(job_->RunInBackground());
-  job_->AbortAndKillAll(base::TimeDelta::FromSeconds(3));
+  job_->AbortAndKillAll(base::Seconds(3));
 }
 
 TEST_F(BrowserJobTest, AbortAndKillAll_AlreadyGone) {
@@ -153,7 +153,7 @@ TEST_F(BrowserJobTest, AbortAndKillAll_AlreadyGone) {
   EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
 
   ASSERT_TRUE(job_->RunInBackground());
-  job_->AbortAndKillAll(base::TimeDelta::FromSeconds(3));
+  job_->AbortAndKillAll(base::Seconds(3));
 }
 
 TEST_F(BrowserJobTest, AbortAndKillAll_BrowserGoneChildrenLive) {
@@ -175,7 +175,7 @@ TEST_F(BrowserJobTest, AbortAndKillAll_BrowserGoneChildrenLive) {
   EXPECT_CALL(metrics_, RecordStats(_)).Times(AnyNumber());
 
   ASSERT_TRUE(job_->RunInBackground());
-  job_->AbortAndKillAll(base::TimeDelta::FromSeconds(3));
+  job_->AbortAndKillAll(base::Seconds(3));
 }
 
 TEST_F(BrowserJobTest, UnshareMountNamespaceForGuest) {
@@ -304,7 +304,7 @@ TEST_F(BrowserJobTest, ShouldAddCrashLoopArgBeforeStopping) {
     EXPECT_THAT(
         job_->ExportArgv(),
         Not(Contains(HasSubstr(BrowserJobInterface::kCrashLoopBeforeFlag))));
-    job_->AbortAndKillAll(base::TimeDelta::FromSeconds(0));
+    job_->AbortAndKillAll(base::Seconds(0));
   }
 
   EXPECT_FALSE(job_->ShouldStop());
@@ -315,7 +315,7 @@ TEST_F(BrowserJobTest, ShouldAddCrashLoopArgBeforeStopping) {
       << "Need to change expected value if kRestartWindowSeconds changes";
   ExpectArgsToContainFlag(job_->ExportArgv(),
                           BrowserJobInterface::kCrashLoopBeforeFlag, "121");
-  job_->AbortAndKillAll(base::TimeDelta::FromSeconds(0));
+  job_->AbortAndKillAll(base::Seconds(0));
   EXPECT_TRUE(job_->ShouldStop());
 }
 

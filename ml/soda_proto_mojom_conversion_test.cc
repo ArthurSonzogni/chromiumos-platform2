@@ -56,8 +56,7 @@ TEST(SodaProtoMojomConversionTest, PartialResultsTest) {
   auto expected_timing_mojom =
       chromeos::machine_learning::mojom::TimingInfo::New();
   expected_timing_mojom->audio_start_epoch =
-      base::Time::FromDeltaSinceWindowsEpoch(
-          base::TimeDelta::FromMicroseconds(5));
+      base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(5));
   expected_rec_mojom->timing_event = std::move(expected_timing_mojom);
   auto actual_rec_mojom = internal::PartialResultFromProto(response);
   EXPECT_TRUE(actual_rec_mojom.Equals(expected_rec_mojom));
@@ -130,12 +129,12 @@ TEST(SodaProtoMojomConversionTest, FinalResultsWithHypPartTest) {
   auto part = chromeos::machine_learning::mojom::HypothesisPartInResult::New();
   part->text.push_back("first,");
   part->text.push_back("first");
-  part->alignment = base::TimeDelta::FromMilliseconds(0);
+  part->alignment = base::Milliseconds(0);
   expected_rec_mojom->hypothesis_part->push_back(std::move(part));
   part = chromeos::machine_learning::mojom::HypothesisPartInResult::New();
   part->text.push_back("hypo.");
   part->text.push_back("hypo");
-  part->alignment = base::TimeDelta::FromMilliseconds(50);
+  part->alignment = base::Milliseconds(50);
   expected_rec_mojom->hypothesis_part->push_back(std::move(part));
 
   auto actual_rec_mojom = internal::FinalResultFromProto(response);
@@ -233,11 +232,11 @@ TEST(SodaProtoMojomConversionTest, FilledTimeTest) {
 
   chromeos::machine_learning::mojom::TimingInfoPtr expected_mojom =
       chromeos::machine_learning::mojom::TimingInfo::New();
-  expected_mojom->audio_start_epoch = base::Time::FromDeltaSinceWindowsEpoch(
-      base::TimeDelta::FromMicroseconds(1));
-  expected_mojom->audio_start_time = base::TimeDelta::FromMicroseconds(2);
-  expected_mojom->elapsed_wall_time = base::TimeDelta::FromMicroseconds(3);
-  expected_mojom->event_end_time = base::TimeDelta::FromMicroseconds(4);
+  expected_mojom->audio_start_epoch =
+      base::Time::FromDeltaSinceWindowsEpoch(base::Microseconds(1));
+  expected_mojom->audio_start_time = base::Microseconds(2);
+  expected_mojom->elapsed_wall_time = base::Microseconds(3);
+  expected_mojom->event_end_time = base::Microseconds(4);
 
   auto actual_mojom = internal::TimingInfoFromTimingMetricsProto(metrics);
   EXPECT_TRUE(actual_mojom.Equals(expected_mojom));

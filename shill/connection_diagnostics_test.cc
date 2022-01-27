@@ -66,8 +66,7 @@ const shill::IPAddress kIPv4GatewayAddress("192.168.1.1");
 const shill::IPAddress kIPv6GatewayAddress("fee2::11b2:53f:13be:125e");
 const shill::IPAddress kIPv4ZeroAddress("0.0.0.0");
 const std::vector<base::TimeDelta> kEmptyResult;
-const std::vector<base::TimeDelta> kNonEmptyResult{
-    base::TimeDelta::FromMilliseconds(10)};
+const std::vector<base::TimeDelta> kNonEmptyResult{base::Milliseconds(10)};
 constexpr const uint8_t kMacZeroAddress[] = {0x00, 0x00, 0x00,
                                              0x00, 0x00, 0x00};
 }  // namespace

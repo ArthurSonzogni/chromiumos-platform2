@@ -56,7 +56,7 @@ void ShutdownFromSuspend::Init(
                        suspend_configurator->IsHibernateAvailable() &&
                        !disable_hibernate;
   if (global_enabled_) {
-    shutdown_delay_ = base::TimeDelta::FromSeconds(shutdown_after_sec);
+    shutdown_delay_ = base::Seconds(shutdown_after_sec);
     prefs->GetDouble(kLowBatteryShutdownPercentPref,
                      &low_battery_shutdown_percent_);
     LOG(INFO) << (hibernate_enabled_ ? "Hibernate" : "Shutdown")

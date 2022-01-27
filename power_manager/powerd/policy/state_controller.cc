@@ -39,24 +39,19 @@ namespace {
 
 // Time to wait for display mode change after resuming with lid still closed
 // before triggering idle and lid closed action (crbug.com/786721).
-constexpr base::TimeDelta KWaitForExternalDisplayTimeout =
-    base::TimeDelta::FromSeconds(25);
+constexpr base::TimeDelta KWaitForExternalDisplayTimeout = base::Seconds(25);
 
 // Time to wait for the display mode and policy after Init() is called.
-constexpr base::TimeDelta kInitialStateTimeout =
-    base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kInitialStateTimeout = base::Seconds(10);
 
 // Time to wait for the crash-boot-collect to successfully complete.
-constexpr base::TimeDelta kCrashBootCollectTimeout =
-    base::TimeDelta::FromMinutes(1);
+constexpr base::TimeDelta kCrashBootCollectTimeout = base::Minutes(1);
 
 // Time to wait for responses to D-Bus method calls to update_engine.
-constexpr base::TimeDelta kUpdateEngineDBusTimeout =
-    base::TimeDelta::FromSeconds(3);
+constexpr base::TimeDelta kUpdateEngineDBusTimeout = base::Seconds(3);
 
 // Interval between logging the list of current wake locks.
-constexpr base::TimeDelta kWakeLocksLoggingInterval =
-    base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kWakeLocksLoggingInterval = base::Minutes(5);
 
 // File used by crash_reporter to signal successful collection of per-boot crash
 // logs.
@@ -66,7 +61,7 @@ constexpr char kCrashBootCollectorDoneFile[] =
 // Returns |time_ms|, a time in milliseconds, as a
 // util::TimeDeltaToString()-style string.
 std::string MsToString(int64_t time_ms) {
-  return util::TimeDeltaToString(base::TimeDelta::FromMilliseconds(time_ms));
+  return util::TimeDeltaToString(base::Milliseconds(time_ms));
 }
 
 // Returns the minimum positive value after comparing |a| and |b|.  If one
@@ -146,7 +141,7 @@ bool GetMillisecondPref(PrefsInterface* prefs,
   if (!prefs->GetInt64(name, &int_value))
     return false;
 
-  *out = base::TimeDelta::FromMilliseconds(int_value);
+  *out = base::Milliseconds(int_value);
   return true;
 }
 
@@ -496,8 +491,7 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
 
   if (defer_external_display_timeout_s_ && lid_state_ == LidState::CLOSED)
     wait_for_external_display_timer_.Start(
-        FROM_HERE,
-        base::TimeDelta::FromSeconds(defer_external_display_timeout_s_), this,
+        FROM_HERE, base::Seconds(defer_external_display_timeout_s_), this,
         &StateController::HandleWaitForExternalDisplayTimeout);
 
   UpdateSettingsAndState();
@@ -764,34 +758,29 @@ void StateController::MergeDelaysFromPolicy(
   DCHECK(delays_out);
 
   if (policy_delays.has_idle_ms() && policy_delays.idle_ms() >= 0) {
-    delays_out->idle =
-        base::TimeDelta::FromMilliseconds(policy_delays.idle_ms());
+    delays_out->idle = base::Milliseconds(policy_delays.idle_ms());
   }
   if (policy_delays.has_idle_warning_ms() &&
       policy_delays.idle_warning_ms() >= 0) {
     delays_out->idle_warning =
-        base::TimeDelta::FromMilliseconds(policy_delays.idle_warning_ms());
+        base::Milliseconds(policy_delays.idle_warning_ms());
   }
   if (policy_delays.has_screen_dim_ms() && policy_delays.screen_dim_ms() >= 0) {
-    delays_out->screen_dim =
-        base::TimeDelta::FromMilliseconds(policy_delays.screen_dim_ms());
+    delays_out->screen_dim = base::Milliseconds(policy_delays.screen_dim_ms());
   }
   if (policy_delays.has_quick_dim_ms() && policy_delays.quick_dim_ms() >= 0) {
-    delays_out->quick_dim =
-        base::TimeDelta::FromMilliseconds(policy_delays.quick_dim_ms());
+    delays_out->quick_dim = base::Milliseconds(policy_delays.quick_dim_ms());
   }
   if (policy_delays.has_screen_off_ms() && policy_delays.screen_off_ms() >= 0) {
-    delays_out->screen_off =
-        base::TimeDelta::FromMilliseconds(policy_delays.screen_off_ms());
+    delays_out->screen_off = base::Milliseconds(policy_delays.screen_off_ms());
   }
   if (policy_delays.has_screen_lock_ms() &&
       policy_delays.screen_lock_ms() >= 0) {
     delays_out->screen_lock =
-        base::TimeDelta::FromMilliseconds(policy_delays.screen_lock_ms());
+        base::Milliseconds(policy_delays.screen_lock_ms());
   }
   if (policy_delays.has_quick_lock_ms() && policy_delays.quick_lock_ms() >= 0) {
-    delays_out->quick_lock =
-        base::TimeDelta::FromMilliseconds(policy_delays.quick_lock_ms());
+    delays_out->quick_lock = base::Milliseconds(policy_delays.quick_lock_ms());
   }
 }
 

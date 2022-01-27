@@ -627,7 +627,7 @@ void Camera3DeviceImpl::NotifyOnThread(camera3_notify_msg_t msg) {
       base::checked_cast<int64_t>(msg.message.shutter.timestamp / 1000LL);
   Camera3PerfLog::GetInstance()->UpdateFrameEvent(
       cam_id_, msg.message.shutter.frame_number, FrameEvent::SHUTTER,
-      base::TimeTicks() + base::TimeDelta::FromMicroseconds(timestamp_ns));
+      base::TimeTicks() + base::Microseconds(timestamp_ns));
 
   if (msg.type == CAMERA3_MSG_SHUTTER) {
     sem_post(&shutter_sem_);

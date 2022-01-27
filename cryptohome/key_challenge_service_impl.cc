@@ -25,7 +25,7 @@ namespace {
 // This is currently equal to the timeout used by the Chrome when making
 // MountEx/CheckKeyEx calls to cryptohomed. (These timeouts are not technically
 // required to be equal, but it's good from the UX perspective).
-constexpr base::TimeDelta kDbusCallTimeout = base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kDbusCallTimeout = base::Minutes(2);
 
 // Used for holding OnceCallback when multiple callback function needs it, but
 // only one of them will run. Note: This is not thread safe.

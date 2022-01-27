@@ -21,7 +21,7 @@ namespace data_snapshotd {
 
 namespace {
 
-constexpr base::TimeDelta kTimeout = base::TimeDelta::FromSeconds(20);
+constexpr base::TimeDelta kTimeout = base::Seconds(20);
 
 constexpr char kDisplayBinary[] = "chromeos-boot-alert";
 

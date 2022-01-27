@@ -28,7 +28,7 @@ namespace lorgnette {
 namespace {
 
 const char kIppUsbSocketDir[] = "/run/ippusb";
-const base::TimeDelta kSocketCreationTimeout = base::TimeDelta::FromSeconds(3);
+const base::TimeDelta kSocketCreationTimeout = base::Seconds(3);
 const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
 const uint8_t kIppUsbInterfaceProtocol = 0x04;
 
@@ -46,7 +46,7 @@ bool WaitForSocket(const std::string& sock_name, base::TimeDelta timeout) {
       return false;
     }
 
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
+    base::PlatformThread::Sleep(base::Milliseconds(10));
   }
 
   return true;

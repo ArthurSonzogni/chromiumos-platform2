@@ -142,8 +142,7 @@ TEST_F(ProxyConnectJobTest, SlowlorisTimeout) {
   task_runner->RunUntilIdle();
 
   EXPECT_EQ(1, task_runner->GetPendingTaskCount());
-  constexpr base::TimeDelta kDoubleWaitClientConnectTimeout =
-      base::TimeDelta::FromSeconds(4);
+  constexpr base::TimeDelta kDoubleWaitClientConnectTimeout = base::Seconds(4);
   // Move the time ahead so that the client connection timeout callback is
   // triggered.
   task_runner->FastForwardBy(kDoubleWaitClientConnectTimeout);

@@ -102,26 +102,22 @@ constexpr char kSessionStarted[] = "started";
 // Maximum smbclient tries.
 constexpr int kSmbClientMaxTries = 5;
 // Wait interval between two smbclient tries.
-constexpr base::TimeDelta kSmbClientRetryDelay =
-    base::TimeDelta::FromSeconds(1);
+constexpr base::TimeDelta kSmbClientRetryDelay = base::Seconds(1);
 
 // Check every 120 minutes whether the machine password has to be changed.
-constexpr base::TimeDelta kPasswordChangeCheckRate =
-    base::TimeDelta::FromMinutes(120);
+constexpr base::TimeDelta kPasswordChangeCheckRate = base::Minutes(120);
 
 // Default GPO version cache TTL. Can be overridden with the
 // DeviceGpoCacheLifetime policy. Make sure the value matches the policy
 // description in policy_templates.json!
-constexpr base::TimeDelta kDefaultGpoVersionCacheTTL =
-    base::TimeDelta::FromHours(25);
+constexpr base::TimeDelta kDefaultGpoVersionCacheTTL = base::Hours(25);
 
 // Default auth data cache TTL. Can be overridden with the
 // DeviceAuthDataCacheLifetime policy. Make sure the value matches the policy
 // description in policy_templates.json!
-constexpr base::TimeDelta kDefaultAuthDataCacheTTL =
-    base::TimeDelta::FromHours(73);
+constexpr base::TimeDelta kDefaultAuthDataCacheTTL = base::Hours(73);
 
-constexpr base::TimeDelta kZeroDelta = base::TimeDelta::FromHours(0);
+constexpr base::TimeDelta kZeroDelta = base::Hours(0);
 
 // Keys for interpreting net output.
 constexpr char kKeyJoinAccessDenied[] = "NT_STATUS_ACCESS_DENIED";
@@ -439,7 +435,7 @@ base::TimeDelta GetMachinePasswordChangeRate(
       !device_policy.device_machine_password_change_rate().has_rate_days()) {
     return kDefaultMachinePasswordChangeRate;
   }
-  return base::TimeDelta::FromDays(
+  return base::Days(
       device_policy.device_machine_password_change_rate().rate_days());
 }
 
@@ -451,7 +447,7 @@ base::TimeDelta GetGpoVersionCacheTTL(
       !device_policy.device_gpo_cache_lifetime().has_lifetime_hours()) {
     return kDefaultGpoVersionCacheTTL;
   }
-  return base::TimeDelta::FromHours(
+  return base::Hours(
       device_policy.device_gpo_cache_lifetime().lifetime_hours());
 }
 
@@ -463,7 +459,7 @@ base::TimeDelta GetAuthDataCacheTTL(
       !device_policy.device_auth_data_cache_lifetime().has_lifetime_hours()) {
     return kDefaultAuthDataCacheTTL;
   }
-  return base::TimeDelta::FromHours(
+  return base::Hours(
       device_policy.device_auth_data_cache_lifetime().lifetime_hours());
 }
 
@@ -1107,7 +1103,7 @@ ErrorType SambaInterface::ChangeMachinePasswordForTesting() {
     return ERROR_LOCAL_IO;
 
   auto stored_password_change_rate_ = password_change_rate_;
-  password_change_rate_ = base::TimeDelta::FromMilliseconds(1);
+  password_change_rate_ = base::Milliseconds(1);
   ErrorType error = CheckMachinePasswordChange();
   password_change_rate_ = stored_password_change_rate_;
   if (error != ERROR_NONE)
@@ -2135,7 +2131,7 @@ void SambaInterface::UpdateMachinePasswordAutoChange(
   password_change_rate_ = rate;
 
   // Disable password auto change if the rate is non-positive.
-  if (password_change_rate_ <= base::TimeDelta::FromDays(0)) {
+  if (password_change_rate_ <= base::Days(0)) {
     password_change_timer_.Stop();
     return;
   }

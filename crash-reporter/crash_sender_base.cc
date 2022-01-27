@@ -194,7 +194,7 @@ bool GetSleepTime(const base::FilePath& meta_file,
   const int seconds = (max_spread_time.InSeconds() <= 0
                            ? 0
                            : base::RandInt(0, max_spread_time.InSeconds()));
-  const base::TimeDelta spread_time = base::TimeDelta::FromSeconds(seconds);
+  const base::TimeDelta spread_time = base::Seconds(seconds);
 
   *sleep_time = std::max(spread_time, hold_off_time_remaining);
 
@@ -270,12 +270,12 @@ base::File SenderBase::AcquireLockFileOrDie() {
                << base::File::ErrorToString(lock_file.error_details());
   }
 
-  base::TimeDelta wait_for_lock_file = base::TimeDelta::FromMinutes(5);
+  base::TimeDelta wait_for_lock_file = base::Minutes(5);
 
   if (IsCrashTestInProgress()) {
     // When running crash.SenderLock test, don't wait a full 5 minutes before
     // completing the test.
-    wait_for_lock_file = base::TimeDelta::FromSeconds(1);
+    wait_for_lock_file = base::Seconds(1);
   }
 
   base::Time stop_time = clock_->Now() + wait_for_lock_file;
@@ -289,7 +289,7 @@ base::File SenderBase::AcquireLockFileOrDie() {
       }
       return lock_file;
     }
-    const base::TimeDelta kSleepTime = base::TimeDelta::FromSeconds(1);
+    const base::TimeDelta kSleepTime = base::Seconds(1);
     if (sleep_function_.is_null()) {
       base::PlatformThread::Sleep(kSleepTime);
     } else {

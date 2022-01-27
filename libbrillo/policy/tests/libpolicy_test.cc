@@ -185,16 +185,13 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetDisallowedTimeIntervals(&intervals));
   ASSERT_EQ(2, intervals.size());
   EXPECT_EQ(4, intervals[0].start_day_of_week);
-  EXPECT_EQ(base::TimeDelta::FromMinutes(30) + base::TimeDelta::FromHours(12),
-            intervals[0].start_time);
+  EXPECT_EQ(base::Minutes(30) + base::Hours(12), intervals[0].start_time);
   EXPECT_EQ(6, intervals[0].end_day_of_week);
-  EXPECT_EQ(base::TimeDelta::FromMinutes(15) + base::TimeDelta::FromHours(3),
-            intervals[0].end_time);
+  EXPECT_EQ(base::Minutes(15) + base::Hours(3), intervals[0].end_time);
   EXPECT_EQ(1, intervals[1].start_day_of_week);
-  EXPECT_EQ(base::TimeDelta::FromMinutes(10) + base::TimeDelta::FromHours(20),
-            intervals[1].start_time);
+  EXPECT_EQ(base::Minutes(10) + base::Hours(20), intervals[1].start_time);
   EXPECT_EQ(3, intervals[1].end_day_of_week);
-  EXPECT_EQ(base::TimeDelta::FromMinutes(20), intervals[1].end_time);
+  EXPECT_EQ(base::Minutes(20), intervals[1].end_time);
 
   base::Version device_minimum_version;
   const base::Version expected_minimum_version("13315.60.12");

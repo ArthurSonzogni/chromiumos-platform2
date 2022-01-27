@@ -24,7 +24,7 @@ namespace {
 const std::vector<std::string> kTestNameServers{"8.8.8.8"};
 const std::vector<std::string> kTestDoHProviders{
     "https://dns.google/dns-query"};
-constexpr base::TimeDelta kTimeout = base::TimeDelta::FromSeconds(3);
+constexpr base::TimeDelta kTimeout = base::Seconds(3);
 constexpr int32_t kMaxNumRetries = 1;
 
 class MockDoHCurlClient : public DoHCurlClient {

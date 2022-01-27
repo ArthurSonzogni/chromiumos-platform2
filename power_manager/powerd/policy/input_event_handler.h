@@ -77,7 +77,7 @@ class InputEventHandler : public system::InputObserver {
 
   // Amount of time to wait for Chrome to acknowledge power button presses.
   static constexpr base::TimeDelta kPowerButtonAcknowledgmentTimeout =
-      base::TimeDelta::FromSeconds(2);
+      base::Seconds(2);
 
   InputEventHandler();
   InputEventHandler(const InputEventHandler&) = delete;

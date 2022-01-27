@@ -31,8 +31,7 @@ constexpr char kFailedToStartWorkerError[] = "Failed to start worker process";
 // enter the network namespace of the worker process to configure it and fails
 // if it's soon after the process starts. See https://crbug.com/1095170 for
 // details.
-constexpr base::TimeDelta kConnectNamespaceDelay =
-    base::TimeDelta::FromSeconds(1);
+constexpr base::TimeDelta kConnectNamespaceDelay = base::Seconds(1);
 constexpr int kNetworkNamespaceReconnectAttempts = 3;
 
 // Serializes |proto| to a vector of bytes.

@@ -25,8 +25,7 @@ constexpr int kSetUpChannelTimeoutInMilliseconds = 3000;
 // Set the base latency tolerance to half of 100 ms, according to
 // https://source.android.com/compatibility/android-cdd#7_3_sensors, as the
 // samples may go through a VM and Android sensormanager.
-constexpr base::TimeDelta kMaximumBaseLatencyTolerance =
-    base::TimeDelta::FromMilliseconds(50);
+constexpr base::TimeDelta kMaximumBaseLatencyTolerance = base::Milliseconds(50);
 
 }  // namespace
 
@@ -69,9 +68,9 @@ void SamplesObserver::OnSampleUpdated(
       if (clock_gettime(CLOCK_BOOTTIME, &ts) < 0) {
         PLOG(ERROR) << "clock_gettime(CLOCK_BOOTTIME) failed";
       } else {
-        auto latency = base::TimeDelta::FromNanoseconds(
-            static_cast<int64_t>(ts.tv_sec) * 1000 * 1000 * 1000 + ts.tv_nsec -
-            it->second);
+        auto latency = base::Nanoseconds(static_cast<int64_t>(ts.tv_sec) *
+                                             1000 * 1000 * 1000 +
+                                         ts.tv_nsec - it->second);
         LOGF(INFO) << "Latency: " << latency;
         total_latency_ += latency;
         latencies_.push_back(latency);
@@ -88,8 +87,7 @@ void SamplesObserver::OnSampleUpdated(
   // Calculate the latencies only when timestamp channel is enabled.
   if (!latencies_.empty()) {
     base::TimeDelta latency_tolerance =
-        kMaximumBaseLatencyTolerance +
-        base::TimeDelta::FromSecondsD(1.0 / result_freq_);
+        kMaximumBaseLatencyTolerance + base::Seconds(1.0 / result_freq_);
 
     size_t n = latencies_.size();
     std::nth_element(latencies_.begin(), latencies_.begin(), latencies_.end());
@@ -116,7 +114,7 @@ void SamplesObserver::OnSampleUpdated(
       LOG(INFO) << "Max latency      : " << max_latency;
     }
 
-    if (min_latency < base::TimeDelta::FromSecondsD(0.0)) {
+    if (min_latency < base::Seconds(0.0)) {
       // Don't Change: Used as a check sentence in the tast test.
       LOGF(ERROR)
           << "Min latency less than zero: a timestamp was set in the past.";
@@ -161,7 +159,7 @@ SamplesObserver::SamplesObserver(
       FROM_HERE,
       base::BindOnce(&SamplesObserver::SetUpChannelTimeout,
                      weak_factory_.GetWeakPtr()),
-      base::TimeDelta::FromMilliseconds(kSetUpChannelTimeoutInMilliseconds));
+      base::Milliseconds(kSetUpChannelTimeoutInMilliseconds));
 }
 
 void SamplesObserver::Start() {

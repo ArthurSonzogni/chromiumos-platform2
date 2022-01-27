@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
                            "floating-point-accuracy - diagnostic routine.");
 
   const base::TimeTicks end_time =
-      base::TimeTicks::Now() + base::TimeDelta::FromSeconds(FLAGS_duration);
+      base::TimeTicks::Now() + base::Seconds(FLAGS_duration);
   do {
     if (CheckFloatingPointAccuracy() == false) {
       return EXIT_FAILURE;

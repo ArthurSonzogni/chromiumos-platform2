@@ -231,7 +231,7 @@ pid_t SystemUtilsImpl::Wait(pid_t child_spec,
     if (base::TimeTicks::Now() - start > timeout)
       return 0;
 
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
+    base::PlatformThread::Sleep(base::Milliseconds(10));
   }
 }
 

@@ -29,7 +29,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   loop.SetAsCurrent();
 
   FuzzedDataProvider provider(data, size);
-  AresClient ares_client(base::TimeDelta::FromSeconds(1), 1, 1);
+  AresClient ares_client(base::Seconds(1), 1, 1);
 
   while (provider.remaining_bytes() > 0) {
     size_t n = provider.ConsumeIntegralInRange<size_t>(0, 99);

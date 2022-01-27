@@ -22,14 +22,14 @@ namespace hermes {
 
 constexpr int kMaxRetries = 5;
 constexpr int kMaxApduLen = 260;
-constexpr auto kSimRefreshDelay = base::TimeDelta::FromSeconds(3);
-constexpr auto kInitRetryDelay = base::TimeDelta::FromSeconds(10);
+constexpr auto kSimRefreshDelay = base::Seconds(3);
+constexpr auto kInitRetryDelay = base::Seconds(10);
 constexpr uint8_t kInvalidChannel = 0;
 
 // Schedule an uninhibit 2 seconds after an eSIM operation succeeds. If another
 // eSIM operation makes an inhibit call during these 2 seconds, the scheduled
 // uninhibit is cancelled.
-constexpr auto kUninhibitDelay = base::TimeDelta::FromSeconds(2);
+constexpr auto kUninhibitDelay = base::Seconds(2);
 
 constexpr int kModemSuccess = 0;
 

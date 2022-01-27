@@ -34,8 +34,7 @@ constexpr char kLsbContents[] =
     "CHROMEOS_RELEASE_CHROME_MILESTONE=82\n"
     "CHROMEOS_RELEASE_TRACK=beta-channel\n"
     "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
-const base::Time kFakeOsTime =
-    base::Time::UnixEpoch() + base::TimeDelta::FromDays(1234);
+const base::Time kFakeOsTime = base::Time::UnixEpoch() + base::Days(1234);
 
 }  // namespace
 
@@ -70,8 +69,7 @@ class ArcJavaCollectorTest : public ::testing::Test {
 
     std::unique_ptr<base::SimpleTestClock> test_clock =
         std::make_unique<base::SimpleTestClock>();
-    test_clock->SetNow(base::Time::UnixEpoch() +
-                       base::TimeDelta::FromMilliseconds(kFakeNow));
+    test_clock->SetNow(base::Time::UnixEpoch() + base::Milliseconds(kFakeNow));
     collector_->set_test_clock(std::move(test_clock));
     collector_->set_test_kernel_info(kKernelName, kKernelVersion);
 
@@ -136,8 +134,7 @@ TEST_F(ArcJavaCollectorTest, CreateReportForJavaCrash) {
       "\n" +
       exception_info;
 
-  const base::TimeDelta uptime_value =
-      base::TimeDelta::FromMilliseconds(123456);
+  const base::TimeDelta uptime_value = base::Milliseconds(123456);
   const std::string uptime_formatted = "2min 3s";
 
   bool out_of_capacity = false;
@@ -208,7 +205,7 @@ TEST_F(ArcJavaCollectorTest, AddArcMetaData) {
   const std::string crash_type = "system_app";
 
   const base::TimeDelta uptime_value =
-      base::TimeDelta::FromMilliseconds(123456789);  // 1d 10h 17min 36s
+      base::Milliseconds(123456789);  // 1d 10h 17min 36s
   const std::string uptime_formatted = "1d 10h 17min 36s";
 
   collector_->AddArcMetaData(process_name, crash_type, uptime_value);

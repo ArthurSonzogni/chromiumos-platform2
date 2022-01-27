@@ -96,8 +96,7 @@ class AsyncFileReaderTest : public ::testing::Test {
         base::Bind(&AsyncFileReaderTest::ReadCallback, base::Unretained(this)),
         base::Bind(&AsyncFileReaderTest::ErrorCallback,
                    base::Unretained(this)));
-    return loop_runner_.StartLoop(
-        base::TimeDelta::FromMilliseconds(kMaxFileReadTimeMs));
+    return loop_runner_.StartLoop(base::Milliseconds(kMaxFileReadTimeMs));
   }
 
   // Returns the contents of |path_|.

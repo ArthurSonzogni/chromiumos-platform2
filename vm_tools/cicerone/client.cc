@@ -166,7 +166,7 @@ int CreateLxdContainer(dbus::ObjectProxy* proxy,
     // final result for us.
     LOG(INFO) << "Waiting for D-Bus signal for container creation status";
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-        FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromMinutes(10));
+        FROM_HERE, run_loop.QuitClosure(), base::Minutes(10));
     run_loop.Run();
 
     if (final_status ==
@@ -249,7 +249,7 @@ int StartLxdContainer(dbus::ObjectProxy* proxy,
     // final result for us.
     LOG(INFO) << "Waiting for D-Bus signal for container start status";
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-        FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromMinutes(10));
+        FROM_HERE, run_loop.QuitClosure(), base::Minutes(10));
     run_loop.Run();
 
     if (final_status ==
@@ -708,7 +708,7 @@ int InstallLinuxPackage(dbus::ObjectProxy* proxy,
       // final result for us.
       LOG(INFO) << "Waiting for D-Bus signal for application install status";
       base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-          FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromMinutes(10));
+          FROM_HERE, run_loop.QuitClosure(), base::Minutes(10));
       run_loop.Run();
 
       if (final_status ==
@@ -815,7 +815,7 @@ int UninstallApplication(dbus::ObjectProxy* proxy,
       // final result for us.
       LOG(INFO) << "Waiting for D-Bus signal for application uninstall status";
       base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-          FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromMinutes(10));
+          FROM_HERE, run_loop.QuitClosure(), base::Minutes(10));
       run_loop.Run();
 
       if (final_status ==
@@ -922,7 +922,7 @@ int ApplyAnsiblePlaybook(dbus::ObjectProxy* proxy,
       // final result for us.
       LOG(INFO) << "Waiting for D-Bus signal for playbook application status";
       base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-          FROM_HERE, run_loop.QuitClosure(), base::TimeDelta::FromMinutes(10));
+          FROM_HERE, run_loop.QuitClosure(), base::Minutes(10));
       run_loop.Run();
 
       if (final_status ==

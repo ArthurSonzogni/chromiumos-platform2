@@ -640,8 +640,7 @@ static int VcPopLogEntry(TrunksDBusProxy* proxy, base::CommandLine* cl) {
   logentry.timestamp = base::NetToHost32(logentry.timestamp);
   logentry.data = base::NetToHost16(logentry.data);
 
-  ts =
-      base::Time::Now() - base::TimeDelta::FromMilliseconds(logentry.timestamp);
+  ts = base::Time::Now() - base::Milliseconds(logentry.timestamp);
   ts.LocalExplode(&ts_exploded);
 
   printf("LogEntry %04i%02i%02i-%02i:%02i:%02i.%03i: Type: 0x%x Data: 0x%x\n",

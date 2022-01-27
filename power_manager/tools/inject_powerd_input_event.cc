@@ -22,8 +22,7 @@ constexpr struct input_event kSync = {
 constexpr int kBitsPerInt = sizeof(uint32_t) * 8;
 constexpr int kMaxInputDev = 256;
 // When creating an input device, time delay before send out events to it.
-constexpr base::TimeDelta kUinputDevInjectDelay =
-    base::TimeDelta::FromSeconds(1);
+constexpr base::TimeDelta kUinputDevInjectDelay = base::Seconds(1);
 constexpr char kUinputDev[] = "/dev/uinput";
 const int kMaxBit = std::max(std::max(EV_MAX, KEY_MAX), SW_MAX);
 const int kMaxInt = (kMaxBit - 1) / kBitsPerInt + 1;
@@ -159,7 +158,6 @@ int main(int argc, char* argv[]) {
 
   struct input_event event = CreateEvent(FLAGS_code, FLAGS_value);
 
-  InjectEvent(event, FLAGS_create_dev,
-              base::TimeDelta::FromSeconds(FLAGS_dev_lifetime));
+  InjectEvent(event, FLAGS_create_dev, base::Seconds(FLAGS_dev_lifetime));
   return 0;
 }

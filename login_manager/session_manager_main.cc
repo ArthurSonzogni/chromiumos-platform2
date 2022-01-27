@@ -102,14 +102,12 @@ constexpr char kFlagFileDir[] = "/run/session_manager";
 
 // Hang-detection magic file and constants.
 constexpr char kHangDetectionFlagFile[] = "enable_hang_detection";
-constexpr base::TimeDelta kHangDetectionInterval =
-    base::TimeDelta::FromSeconds(60);
-constexpr base::TimeDelta kHangDetectionIntervalTest =
-    base::TimeDelta::FromSeconds(5);
+constexpr base::TimeDelta kHangDetectionInterval = base::Seconds(60);
+constexpr base::TimeDelta kHangDetectionIntervalTest = base::Seconds(5);
 
 // Time to wait for children to exit gracefully before killing them
 // with a SIGABRT.
-constexpr base::TimeDelta kKillTimeout = base::TimeDelta::FromSeconds(3);
+constexpr base::TimeDelta kKillTimeout = base::Seconds(3);
 
 }  // namespace
 

@@ -114,7 +114,7 @@ HandwritingRecognitionQueryFromProtoForTesting(
         point->x = point_proto.x();
         point->y = point_proto.y();
         if (point_proto.has_t()) {
-          point->t = base::TimeDelta::FromMilliseconds(point_proto.t());
+          point->t = base::Milliseconds(point_proto.t());
         }
 
         stroke->points.push_back(std::move(point));

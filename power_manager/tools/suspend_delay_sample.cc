@@ -106,7 +106,7 @@ class SuspendDelayRegisterer {
         FROM_HERE,
         base::Bind(&SuspendDelayRegisterer::SendSuspendReady,
                    weak_ptr_factory_.GetWeakPtr(), suspend_id),
-        base::TimeDelta::FromMilliseconds(delay_ms_));
+        base::Milliseconds(delay_ms_));
   }
 
   // Handles the completion of a suspend attempt.
@@ -131,8 +131,7 @@ class SuspendDelayRegisterer {
   // Registers a suspend delay and returns the corresponding ID.
   void RegisterSuspendDelay() {
     power_manager::RegisterSuspendDelayRequest request;
-    request.set_timeout(
-        base::TimeDelta::FromMilliseconds(timeout_ms_).ToInternalValue());
+    request.set_timeout(base::Milliseconds(timeout_ms_).ToInternalValue());
     request.set_description(kSuspendDelayDescription);
     std::string method_name =
         dark_suspend_delay_ ? power_manager::kRegisterDarkSuspendDelayMethod

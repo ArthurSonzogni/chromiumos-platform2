@@ -39,7 +39,7 @@ constexpr uint32_t kFailingPercent = 1;
 // error out.
 constexpr uint32_t kErrorPercent = 101;
 
-constexpr base::TimeDelta kFullDuration = base::TimeDelta::FromSeconds(12);
+constexpr base::TimeDelta kFullDuration = base::Seconds(12);
 constexpr base::TimeDelta kHalfDuration = kFullDuration / 2;
 constexpr base::TimeDelta kQuarterDuration = kFullDuration / 4;
 

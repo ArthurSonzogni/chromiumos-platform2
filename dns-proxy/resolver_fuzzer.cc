@@ -24,8 +24,7 @@ class Environment {
 class FakeAresClient : public AresClient {
  public:
   explicit FakeAresClient(FuzzedDataProvider* provider)
-      : AresClient(base::TimeDelta::FromSeconds(1), 1, 1),
-        provider_(provider) {}
+      : AresClient(base::Seconds(1), 1, 1), provider_(provider) {}
   ~FakeAresClient() = default;
 
   bool Resolve(const unsigned char* msg,

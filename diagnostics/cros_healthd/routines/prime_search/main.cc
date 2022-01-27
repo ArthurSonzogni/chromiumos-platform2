@@ -21,8 +21,7 @@ int main(int argc, char** argv) {
                 "Max and default is 1000000");
   brillo::FlagHelper::Init(argc, argv, "prime_search - diagnostic routine.");
 
-  base::TimeTicks end_time =
-      base::TimeTicks::Now() + base::TimeDelta::FromSeconds(FLAGS_time);
+  base::TimeTicks end_time = base::TimeTicks::Now() + base::Seconds(FLAGS_time);
 
   uint64_t max_num = diagnostics::kMaxPrimeNumber;
   if (FLAGS_max_num <= diagnostics::kMaxPrimeNumber && FLAGS_max_num >= 2)

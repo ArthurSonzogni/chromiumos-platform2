@@ -162,7 +162,7 @@ bool ClobberUi::ShowCountdownTimer(const base::TimeDelta& duration) {
         base::StringPrintf("%2d:%02" PRIi64 "\r", remaining.InMinutes(),
                            remaining.InSeconds() % 60);
     terminal_.WriteAtCurrentPos(countdown.c_str(), countdown.size());
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+    base::PlatformThread::Sleep(base::Milliseconds(100));
     elapsed = base::TimeTicks::Now() - start_time;
   }
 
@@ -199,7 +199,7 @@ void ClobberUi::ThreadMain() {
 
     {
       base::AutoUnlock auto_unlock(lock_);
-      base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+      base::PlatformThread::Sleep(base::Milliseconds(100));
     }
   }
 }

@@ -305,8 +305,7 @@ void BrowserJob::AbortAndKillAll(base::TimeDelta timeout) {
                << timeout.InSeconds() << " seconds after sending SIGABRT";
   KillEverything(SIGKILL, message);
 
-  constexpr base::TimeDelta kTimeoutForSecondKill =
-      base::TimeDelta::FromSeconds(1);
+  constexpr base::TimeDelta kTimeoutForSecondKill = base::Seconds(1);
   if (!system_->ProcessGroupIsGone(pid, kTimeoutForSecondKill)) {
     LOG(WARNING) << "Browser process " << pid << "'s group still not gone "
                  << kTimeoutForSecondKill << " after sending SIGKILL signal";

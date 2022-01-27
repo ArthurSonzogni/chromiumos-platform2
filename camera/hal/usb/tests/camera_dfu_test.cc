@@ -41,9 +41,8 @@ class CameraDfuTestEnvironment;
 namespace {
 
 constexpr size_t kDfuFileSuffixSize = 16;
-constexpr base::TimeDelta kModeSwitchTimeout = base::TimeDelta::FromSeconds(1);
-constexpr base::TimeDelta kFirmwareDownloadTimeout =
-    base::TimeDelta::FromSeconds(15);
+constexpr base::TimeDelta kModeSwitchTimeout = base::Seconds(1);
+constexpr base::TimeDelta kFirmwareDownloadTimeout = base::Seconds(15);
 
 CameraDfuTestEnvironment* g_env;
 

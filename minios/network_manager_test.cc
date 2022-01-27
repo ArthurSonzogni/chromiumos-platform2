@@ -156,7 +156,7 @@ TEST_F(NetworkManagerTest,
 
   EXPECT_CALL(*mock_shill_proxy_ptr_,
               ServiceConnect(iter->second.service_path, _, _));
-  clock_.Advance(base::TimeDelta::FromSeconds(1));
+  clock_.Advance(base::Seconds(1));
   loop_.RunOnce(false);
 }
 
@@ -226,8 +226,8 @@ TEST_F(NetworkManagerTest,
 
   EXPECT_CALL(*mock_shill_proxy_ptr_,
               ServiceGetProperties(iter->second.service_path, _, _));
-  clock_.Advance(base::TimeDelta::FromSeconds(
-      NetworkManager::kCheckConnectionRetryMsDelay * 2));
+  clock_.Advance(
+      base::Seconds(NetworkManager::kCheckConnectionRetryMsDelay * 2));
   loop_.RunOnce(false);
 }
 

@@ -32,10 +32,9 @@ namespace {
 
 // Poll interval while waiting for a routine to finish.
 constexpr base::TimeDelta kRoutinePollIntervalTimeDelta =
-    base::TimeDelta::FromMilliseconds(100);
+    base::Milliseconds(100);
 // Maximum time we're willing to wait for a routine to finish.
-constexpr base::TimeDelta kMaximumRoutineExecutionTimeDelta =
-    base::TimeDelta::FromHours(1);
+constexpr base::TimeDelta kMaximumRoutineExecutionTimeDelta = base::Hours(1);
 
 const struct {
   const char* switch_name;
@@ -179,7 +178,7 @@ int diag_main(int argc, char** argv) {
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kUrandom:
         routine_result = actions.ActionRunUrandomRoutine(
-            base::TimeDelta::FromSeconds(FLAGS_urandom_length_seconds));
+            base::Seconds(FLAGS_urandom_length_seconds));
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck:
         routine_result = actions.ActionRunSmartctlCheckRoutine();
@@ -203,7 +202,7 @@ int diag_main(int argc, char** argv) {
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kFloatingPointAccuracy:
         routine_result = actions.ActionRunFloatingPointAccuracyRoutine(
-            base::TimeDelta::FromSeconds(FLAGS_cpu_stress_length_seconds));
+            base::Seconds(FLAGS_cpu_stress_length_seconds));
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel:
         routine_result =
@@ -227,21 +226,20 @@ int diag_main(int argc, char** argv) {
           return EXIT_FAILURE;
         }
         routine_result = actions.ActionRunDiskReadRoutine(
-            type, base::TimeDelta::FromSeconds(FLAGS_length_seconds),
-            FLAGS_file_size_mb);
+            type, base::Seconds(FLAGS_length_seconds), FLAGS_file_size_mb);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kPrimeSearch:
         routine_result = actions.ActionRunPrimeSearchRoutine(
-            base::TimeDelta::FromSeconds(FLAGS_cpu_stress_length_seconds));
+            base::Seconds(FLAGS_cpu_stress_length_seconds));
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kBatteryDischarge:
         routine_result = actions.ActionRunBatteryDischargeRoutine(
-            base::TimeDelta::FromSeconds(FLAGS_length_seconds),
+            base::Seconds(FLAGS_length_seconds),
             FLAGS_maximum_discharge_percent_allowed);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kBatteryCharge:
         routine_result = actions.ActionRunBatteryChargeRoutine(
-            base::TimeDelta::FromSeconds(FLAGS_length_seconds),
+            base::Seconds(FLAGS_length_seconds),
             FLAGS_minimum_charge_percent_required);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kLanConnectivity:

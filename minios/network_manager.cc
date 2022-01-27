@@ -188,7 +188,7 @@ void NetworkManager::ConnectToNetworkError(ConnectMapIter iter,
         FROM_HERE,
         base::BindOnce(&NetworkManager::ServiceConnect,
                        weak_ptr_factory_.GetWeakPtr(), iter),
-        base::TimeDelta::FromMilliseconds(kConnectionRetryMsDelay));
+        base::Milliseconds(kConnectionRetryMsDelay));
   } else if (error_code == shill::kErrorResultAlreadyConnected) {
     LOG(INFO) << "ConnectToNetwork failed, but already connected for SSID="
               << iter->first;
@@ -215,7 +215,7 @@ void NetworkManager::GetServiceCheckConnectionSuccess(
             FROM_HERE,
             base::BindOnce(&NetworkManager::ConnectToNetworkSuccess,
                            weak_ptr_factory_.GetWeakPtr(), iter),
-            base::TimeDelta::FromMilliseconds(kCheckConnectionRetryMsDelay));
+            base::Milliseconds(kCheckConnectionRetryMsDelay));
       } else {
         Return(iter,
                brillo::Error::Create(

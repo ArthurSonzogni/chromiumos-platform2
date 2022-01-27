@@ -27,12 +27,9 @@ namespace rmad {
 
 class UpdateRoFirmwareStateHandler : public BaseStateHandler {
  public:
-  static constexpr base::TimeDelta kPollInterval =
-      base::TimeDelta::FromSeconds(1);
-  static constexpr base::TimeDelta kTaskInterval =
-      base::TimeDelta::FromSeconds(2);
-  static constexpr base::TimeDelta kRebootDelay =
-      base::TimeDelta::FromSeconds(5);
+  static constexpr base::TimeDelta kPollInterval = base::Seconds(1);
+  static constexpr base::TimeDelta kTaskInterval = base::Seconds(2);
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(5);
 
   explicit UpdateRoFirmwareStateHandler(scoped_refptr<JsonStore> json_store);
   // Used to inject mock |cmd_utils_|, |crossystem_utils|, |flashrom_utils|,
@@ -113,8 +110,7 @@ namespace fake {
 // quite different from the normal one, so we write it from scratch.
 class FakeUpdateRoFirmwareStateHandler : public BaseStateHandler {
  public:
-  static constexpr base::TimeDelta kPollInterval =
-      base::TimeDelta::FromSeconds(1);
+  static constexpr base::TimeDelta kPollInterval = base::Seconds(1);
 
   explicit FakeUpdateRoFirmwareStateHandler(
       scoped_refptr<JsonStore> json_store);

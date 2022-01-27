@@ -25,7 +25,7 @@
 
 namespace {
 // Default D-Bus call Timeout
-constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kDefaultTimeout = base::Minutes(2);
 
 constexpr uint32_t kNvramCounterOffset = 0;
 constexpr size_t kNvramCounterBytes = 8;

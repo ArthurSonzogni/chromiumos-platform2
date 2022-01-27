@@ -206,8 +206,8 @@ bool RunDMSetup(const std::vector<std::string>& argv) {
   }
 
   int exit_code;
-  if (!process.WaitForExitWithTimeout(
-          base::TimeDelta::FromSeconds(kDMSetupTimeoutSeconds), &exit_code)) {
+  if (!process.WaitForExitWithTimeout(base::Seconds(kDMSetupTimeoutSeconds),
+                                      &exit_code)) {
     LOG(ERROR) << "Failed to wait for dmsetup process.";
     return false;
   }

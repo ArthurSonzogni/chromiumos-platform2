@@ -104,11 +104,10 @@ TYPED_TEST(MessageLoopTest, PostTaskCancelledTest) {
 
 TYPED_TEST(MessageLoopTest, PostDelayedTaskRunsEventuallyTest) {
   bool called = false;
-  TaskId task_id =
-      this->loop_->PostDelayedTask(FROM_HERE, BindOnce(&SetToTrue, &called),
-                                   TimeDelta::FromMilliseconds(50));
+  TaskId task_id = this->loop_->PostDelayedTask(
+      FROM_HERE, BindOnce(&SetToTrue, &called), base::Milliseconds(50));
   EXPECT_NE(MessageLoop::kTaskIdNull, task_id);
-  MessageLoopRunUntil(this->loop_.get(), TimeDelta::FromSeconds(10),
+  MessageLoopRunUntil(this->loop_.get(), base::Seconds(10),
                       BindRepeating(&ReturnBool, &called));
   // Check that the main loop finished before the 10 seconds timeout, so it
   // finished due to the callback being called and not due to the timeout.

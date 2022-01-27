@@ -45,16 +45,16 @@ TEST_F(FakeMessageLoopTest, PostDelayedTaskRunsInOrder) {
   vector<int> order;
   loop_->PostDelayedTask(
       BindOnce([](vector<int>* order) { order->push_back(1); }, &order),
-      TimeDelta::FromSeconds(1));
+      base::Seconds(1));
   loop_->PostDelayedTask(
       BindOnce([](vector<int>* order) { order->push_back(4); }, &order),
-      TimeDelta::FromSeconds(4));
+      base::Seconds(4));
   loop_->PostDelayedTask(
       BindOnce([](vector<int>* order) { order->push_back(3); }, &order),
-      TimeDelta::FromSeconds(3));
+      base::Seconds(3));
   loop_->PostDelayedTask(
       BindOnce([](vector<int>* order) { order->push_back(2); }, &order),
-      TimeDelta::FromSeconds(2));
+      base::Seconds(2));
   // Run until all the tasks are run.
   loop_->Run();
   EXPECT_EQ((vector<int>{1, 2, 3, 4}), order);
@@ -64,8 +64,8 @@ TEST_F(FakeMessageLoopTest, PostDelayedTaskAdvancesTheTime) {
   Time start = Time::FromInternalValue(1000000);
   clock_.SetNow(start);
   loop_.reset(new FakeMessageLoop(&clock_));
-  loop_->PostDelayedTask(base::DoNothing(), TimeDelta::FromSeconds(1));
-  loop_->PostDelayedTask(base::DoNothing(), TimeDelta::FromSeconds(2));
+  loop_->PostDelayedTask(base::DoNothing(), base::Seconds(1));
+  loop_->PostDelayedTask(base::DoNothing(), base::Seconds(2));
   EXPECT_FALSE(loop_->RunOnce(false));
   // If the callback didn't run, the time shouldn't change.
   EXPECT_EQ(start, clock_.Now());
@@ -73,18 +73,18 @@ TEST_F(FakeMessageLoopTest, PostDelayedTaskAdvancesTheTime) {
   // If we run only one callback, the time should be set to the time that
   // callack ran.
   EXPECT_TRUE(loop_->RunOnce(true));
-  EXPECT_EQ(start + TimeDelta::FromSeconds(1), clock_.Now());
+  EXPECT_EQ(start + base::Seconds(1), clock_.Now());
 
   // If the clock is advanced manually, we should be able to run the
   // callback without blocking, since the firing time is in the past.
-  clock_.SetNow(start + TimeDelta::FromSeconds(3));
+  clock_.SetNow(start + base::Seconds(3));
   EXPECT_TRUE(loop_->RunOnce(false));
   // The time should not change even if the callback is due in the past.
-  EXPECT_EQ(start + TimeDelta::FromSeconds(3), clock_.Now());
+  EXPECT_EQ(start + base::Seconds(3), clock_.Now());
 }
 
 TEST_F(FakeMessageLoopTest, PendingTasksTest) {
-  loop_->PostDelayedTask(base::DoNothing(), TimeDelta::FromSeconds(1));
+  loop_->PostDelayedTask(base::DoNothing(), base::Seconds(1));
   EXPECT_TRUE(loop_->PendingTasks());
   loop_->Run();
 }

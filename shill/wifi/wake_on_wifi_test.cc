@@ -699,14 +699,14 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void StartDHCPLeaseRenewalTimer() {
     wake_on_wifi_->dhcp_lease_renewal_timer_->Start(
-        FROM_HERE, base::TimeDelta::FromSeconds(kTimeToNextLeaseRenewalLong),
+        FROM_HERE, base::Seconds(kTimeToNextLeaseRenewalLong),
         base::Bind(&WakeOnWiFiTest::OnTimerWakeDoNothing,
                    base::Unretained(this)));
   }
 
   void StartWakeToScanTimer() {
     wake_on_wifi_->wake_to_scan_timer_->Start(
-        FROM_HERE, base::TimeDelta::FromSeconds(kTimeToNextLeaseRenewalLong),
+        FROM_HERE, base::Seconds(kTimeToNextLeaseRenewalLong),
         base::Bind(&WakeOnWiFiTest::OnTimerWakeDoNothing,
                    base::Unretained(this)));
   }

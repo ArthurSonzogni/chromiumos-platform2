@@ -106,23 +106,20 @@ const char kSessionStarted[] = "started";
 // After noticing that power management is overridden while suspending, wait up
 // to this long for the lockfile(s) to be removed before reporting a suspend
 // failure. The event loop is blocked during this period.
-constexpr base::TimeDelta kSuspendLockfileTimeout =
-    base::TimeDelta::FromMilliseconds(500);
+constexpr base::TimeDelta kSuspendLockfileTimeout = base::Milliseconds(500);
 
 // Interval between successive polls during kSuspendLockfileTimeout.
 constexpr base::TimeDelta kSuspendLockfilePollInterval =
-    base::TimeDelta::FromMilliseconds(100);
+    base::Milliseconds(100);
 
 // Interval between attempts to retry shutting the system down while power
 // management is overridden, in seconds.
-constexpr base::TimeDelta kShutdownLockfileRetryInterval =
-    base::TimeDelta::FromSeconds(5);
+constexpr base::TimeDelta kShutdownLockfileRetryInterval = base::Seconds(5);
 
 // Maximum amount of time to wait for responses to D-Bus method calls to other
 // processes.
 const int kSessionManagerDBusTimeoutMs = 3000;
-constexpr base::TimeDelta kTpmManagerdDBusTimeout =
-    base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kTpmManagerdDBusTimeout = base::Minutes(2);
 const int kResourceManagerDBusTimeoutMs = 3000;
 
 // Interval between log messages while user, audio, or video activity is
@@ -217,7 +214,7 @@ class Daemon::StateControllerDelegate
                                  login_manager::kSessionManagerLockScreen);
     daemon_->dbus_wrapper_->CallMethodSync(
         daemon_->session_manager_dbus_proxy_, &method_call,
-        base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
+        base::Milliseconds(kSessionManagerDBusTimeoutMs));
   }
 
   void Suspend(policy::StateController::ActionReason reason) override {
@@ -243,7 +240,7 @@ class Daemon::StateControllerDelegate
     writer.AppendString("");
     daemon_->dbus_wrapper_->CallMethodSync(
         daemon_->session_manager_dbus_proxy_, &method_call,
-        base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
+        base::Milliseconds(kSessionManagerDBusTimeoutMs));
   }
 
   void ShutDown() override {
@@ -281,19 +278,19 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       already_ran_path_(run_dir.Append(Daemon::kAlreadyRanFileName)),
       video_activity_logger_(new PeriodicActivityLogger(
           "Video activity",
-          base::TimeDelta::FromSeconds(kLogVideoActivityStoppedDelaySec),
-          base::TimeDelta::FromSeconds(kLogOngoingActivitySec))),
+          base::Seconds(kLogVideoActivityStoppedDelaySec),
+          base::Seconds(kLogOngoingActivitySec))),
       user_activity_logger_(new PeriodicActivityLogger(
           "User activity",
-          base::TimeDelta::FromSeconds(kLogUserActivityStoppedDelaySec),
-          base::TimeDelta::FromSeconds(kLogOngoingActivitySec))),
-      audio_activity_logger_(new StartStopActivityLogger(
-          "Audio activity",
-          base::TimeDelta(),
-          base::TimeDelta::FromSeconds(kLogOngoingActivitySec))),
+          base::Seconds(kLogUserActivityStoppedDelaySec),
+          base::Seconds(kLogOngoingActivitySec))),
+      audio_activity_logger_(
+          new StartStopActivityLogger("Audio activity",
+                                      base::TimeDelta(),
+                                      base::Seconds(kLogOngoingActivitySec))),
       hovering_logger_(new StartStopActivityLogger(
           "Hovering",
-          base::TimeDelta::FromSeconds(kLogHoveringStoppedDelaySec),
+          base::Seconds(kLogHoveringStoppedDelaySec),
           base::TimeDelta())),
       weak_ptr_factory_(this) {}
 
@@ -1031,7 +1028,7 @@ void Daemon::InitDBus() {
 
     int64_t tpm_status_sec = 0;
     prefs_->GetInt64(kTpmStatusIntervalSecPref, &tpm_status_sec);
-    tpm_status_interval_ = base::TimeDelta::FromSeconds(tpm_status_sec);
+    tpm_status_interval_ = base::Seconds(tpm_status_sec);
   }
 
 #if USE_BUFFET
@@ -1075,7 +1072,7 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
       login_manager::kSessionManagerRetrieveSessionState);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
       session_manager_dbus_proxy_, &method_call,
-      base::TimeDelta::FromMilliseconds(kSessionManagerDBusTimeoutMs));
+      base::Milliseconds(kSessionManagerDBusTimeoutMs));
   if (!response)
     return;
 
@@ -1098,7 +1095,7 @@ void Daemon::HandleTpmManagerdAvailable(bool available) {
     return;
 
   RequestTpmStatus();
-  if (tpm_status_interval_ > base::TimeDelta::FromSeconds(0)) {
+  if (tpm_status_interval_ > base::Seconds(0)) {
     tpm_status_timer_.Start(FROM_HERE, tpm_status_interval_, this,
                             &Daemon::RequestTpmStatus);
   }
@@ -1223,7 +1220,7 @@ std::unique_ptr<dbus::Response> Daemon::HandleRequestSuspendMethod(
   // suspend request.
   int32_t wakeup_timeout = 0;
   reader.PopInt32(&wakeup_timeout);
-  base::TimeDelta duration = base::TimeDelta::FromSeconds(wakeup_timeout);
+  base::TimeDelta duration = base::Seconds(wakeup_timeout);
   // Read an optional uint32_t argument specifying the suspend flavor.
   uint32_t suspend_flavor =
       static_cast<uint32_t>(SuspendFlavor::SUSPEND_DEFAULT);
@@ -1244,7 +1241,7 @@ void Daemon::SetFullscreenVideoWithTimeout(bool active, int timeout_seconds) {
 
   dbus_wrapper_->CallMethodSync(
       resource_manager_dbus_proxy_, &method_call,
-      base::TimeDelta::FromMilliseconds(kResourceManagerDBusTimeoutMs));
+      base::Milliseconds(kResourceManagerDBusTimeoutMs));
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(

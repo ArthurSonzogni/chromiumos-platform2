@@ -320,7 +320,7 @@ bool CopySnapshotDirectory(const base::FilePath& from,
   cmd.AppendArg(to.value().c_str());
   int exit_code;
   auto p = base::LaunchProcess(cmd, base::LaunchOptions());
-  if (!p.WaitForExitWithTimeout(base::TimeDelta::FromSeconds(30), &exit_code) ||
+  if (!p.WaitForExitWithTimeout(base::Seconds(30), &exit_code) ||
       exit_code != EXIT_SUCCESS) {
     LOG(ERROR) << "Copy snapshot directory failed: from " << from.value()
                << " to " << to.value();

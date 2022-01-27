@@ -36,7 +36,7 @@ namespace {
 namespace mojo_ipc = ::chromeos::cros_healthd_executor::mojom;
 
 // Amount of time we wait for a process to respond to SIGTERM before killing it.
-constexpr base::TimeDelta kTerminationTimeout = base::TimeDelta::FromSeconds(2);
+constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
 
 // All SECCOMP policies should live in this directory.
 constexpr char kSandboxDirPath[] = "/usr/share/policy/";

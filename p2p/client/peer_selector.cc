@@ -156,8 +156,8 @@ string PeerSelector::GetUrlAndWait(const string& id, size_t minimum_size) {
               << constants::kMaxSimultaneousDownloadsPollTimeSeconds
               << " seconds until retrying.";
 
-    clock_->Sleep(base::TimeDelta::FromSeconds(
-        constants::kMaxSimultaneousDownloadsPollTimeSeconds));
+    clock_->Sleep(
+        base::Seconds(constants::kMaxSimultaneousDownloadsPollTimeSeconds));
 
     // Now that we've slept for a while, the URL may not be valid
     // anymore, so we do the lookup again.

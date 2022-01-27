@@ -602,7 +602,7 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   EXPECT_EQ(50, backlight_.current_level());
 
   // After enough time, the backlight should turn off.
-  AdvanceTime(base::TimeDelta::FromMilliseconds(keep_on_during_video_ms_pref_));
+  AdvanceTime(base::Milliseconds(keep_on_during_video_ms_pref_));
   ASSERT_TRUE(test_api_.TriggerTurnOffTimeout());
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
@@ -616,8 +616,8 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
             backlight_.current_interval().InMilliseconds());
 
   // After the rest of the full timeout, the backlight should turn off slowly.
-  AdvanceTime(base::TimeDelta::FromMilliseconds(keep_on_ms_pref_ -
-                                                keep_on_during_video_ms_pref_));
+  AdvanceTime(
+      base::Milliseconds(keep_on_ms_pref_ - keep_on_during_video_ms_pref_));
   ASSERT_TRUE(test_api_.TriggerTurnOffTimeout());
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
@@ -629,7 +629,7 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   EXPECT_EQ(50, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
-  AdvanceTime(base::TimeDelta::FromMilliseconds(keep_on_ms_pref_));
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
   ASSERT_TRUE(test_api_.TriggerTurnOffTimeout());
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
@@ -706,13 +706,13 @@ TEST_F(KeyboardBacklightControllerTest, EnableForUserActivity) {
             backlight_.current_interval().InMilliseconds());
 
   // Advance the time and report user activity again.
-  AdvanceTime(base::TimeDelta::FromMilliseconds(keep_on_ms_pref_ / 2));
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_ / 2));
   controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(40, backlight_.current_level());
 
   // The backlight should be turned off |keep_on_ms_pref_| after the last report
   // of user activity.
-  AdvanceTime(base::TimeDelta::FromMilliseconds(keep_on_ms_pref_));
+  AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
   ASSERT_TRUE(test_api_.TriggerTurnOffTimeout());
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,

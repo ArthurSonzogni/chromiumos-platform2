@@ -152,10 +152,8 @@ const size_t Service::kTrafficCounterArraySize = 4;
 const uint8_t Service::kStrengthMax = 100;
 const uint8_t Service::kStrengthMin = 0;
 
-const base::TimeDelta Service::kMinAutoConnectCooldownTime =
-    base::TimeDelta::FromSeconds(1);
-const base::TimeDelta Service::kMaxAutoConnectCooldownTime =
-    base::TimeDelta::FromMinutes(1);
+const base::TimeDelta Service::kMinAutoConnectCooldownTime = base::Seconds(1);
+const base::TimeDelta Service::kMaxAutoConnectCooldownTime = base::Minutes(1);
 const uint64_t Service::kAutoConnectCooldownBackoffFactor = 2;
 
 // TODO(b/184036481): convert all of these to base::TimeDelta
@@ -769,7 +767,7 @@ bool Service::Load(const StoreInterface* storage) {
   if (storage->GetUint64(id, kStorageTrafficCounterResetTime,
                          &traffic_counter_reset_time_ms)) {
     traffic_counter_reset_time_ = base::Time::FromDeltaSinceWindowsEpoch(
-        base::TimeDelta::FromMilliseconds(traffic_counter_reset_time_ms));
+        base::Milliseconds(traffic_counter_reset_time_ms));
   }
 
   return true;

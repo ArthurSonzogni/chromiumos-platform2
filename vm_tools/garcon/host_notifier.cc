@@ -51,13 +51,11 @@ constexpr char kMimeTypesFilePath[] = "/usr/share/mime/mime.cache";
 // Filename for the user's MIME types file in their home dir.
 constexpr char kUserMimeTypesFile[] = ".local/share/mime/mime.cache";
 // Duration over which we coalesce changes to the desktop file system.
-constexpr base::TimeDelta kFilesystemChangeCoalesceTime =
-    base::TimeDelta::FromSeconds(3);
+constexpr base::TimeDelta kFilesystemChangeCoalesceTime = base::Seconds(3);
 // Delimiter for the end of a URL scheme.
 constexpr char kUrlSchemeDelimiter[] = "://";
 // Periodic interval for checking free disk space.
-constexpr base::TimeDelta kDiskSpaceCheckInterval =
-    base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kDiskSpaceCheckInterval = base::Minutes(2);
 constexpr int64_t kDiskSpaceCheckThreshold = 1 * 1024 * 1024 * 1024;  // 1GiB
 
 std::string GetHostIp() {

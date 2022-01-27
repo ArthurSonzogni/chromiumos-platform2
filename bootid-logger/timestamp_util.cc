@@ -69,8 +69,7 @@ base::Time GetOldestTimestampFromLogFiles(const base::FilePath& dir_path,
     // prior to the last modifiled time of the file (assumeing the file is
     // rotated daily).
     if (last_modified.is_null())
-      last_modified =
-          e.GetInfo().GetLastModifiedTime() - base::TimeDelta::FromDays(1);
+      last_modified = e.GetInfo().GetLastModifiedTime() - base::Days(1);
 
     if (last_modified.is_null())
       continue;

@@ -32,8 +32,7 @@ TEST_F(MetricsCollectorUtilTest, CalculateLogMetrics) {
     int64_t entry_count = 0;
     int64_t byte_count = 0;
 
-    // base::Time count_after = base::Time::Now() -
-    // base::TimeDelta::FromDays(1);
+    // base::Time count_after = base::Time::Now() - base::Days(1);
     CalculateLogMetrics(log_path, base::Time(),
                         std::make_unique<LogParserAudit>(), &byte_count,
                         &entry_count, &max_throughput);
@@ -49,8 +48,7 @@ TEST_F(MetricsCollectorUtilTest, CalculateLogMetrics) {
     int64_t entry_count = 0;
     int64_t byte_count = 0;
 
-    // base::Time count_after = base::Time::Now() -
-    // base::TimeDelta::FromDays(1);
+    // base::Time count_after = base::Time::Now() - base::Days(1);
     CalculateLogMetrics(log_path, base::Time(),
                         std::make_unique<LogParserSyslog>(), &byte_count,
                         &entry_count, &max_throughput);
@@ -66,8 +64,7 @@ TEST_F(MetricsCollectorUtilTest, CalculateLogMetrics) {
     int64_t entry_count = 0;
     int64_t byte_count = 0;
 
-    // base::Time count_after = base::Time::Now() -
-    // base::TimeDelta::FromDays(1);
+    // base::Time count_after = base::Time::Now() - base::Days(1);
     CalculateLogMetrics(log_path, base::Time(),
                         std::make_unique<LogParserSyslog>(), &byte_count,
                         &entry_count, &max_throughput);

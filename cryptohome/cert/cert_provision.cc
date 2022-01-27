@@ -32,9 +32,8 @@ constexpr int kNoEnrollSteps = kInitSteps + kGetCertSteps + kRegisterSteps;
 constexpr int kEnrollSteps = 4;
 constexpr int kMaxSteps = kNoEnrollSteps + kEnrollSteps;
 
-constexpr base::TimeDelta kGetCertificateTimeout =
-    base::TimeDelta::FromSeconds(80);
-constexpr base::TimeDelta kEnrollTimeout = base::TimeDelta::FromSeconds(50);
+constexpr base::TimeDelta kGetCertificateTimeout = base::Seconds(80);
+constexpr base::TimeDelta kEnrollTimeout = base::Seconds(50);
 
 const char kEndCertificate[] = "-----END CERTIFICATE-----";
 

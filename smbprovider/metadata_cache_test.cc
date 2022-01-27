@@ -24,8 +24,7 @@ bool AreEntriesEqual(const DirectoryEntry& lhs, const DirectoryEntry& rhs) {
 class MetadataCacheTest : public testing::Test {
  public:
   MetadataCacheTest() {
-    cache_lifetime_ =
-        base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds);
+    cache_lifetime_ = base::Microseconds(kMetadataCacheLifetimeMicroseconds);
     tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
     cache_ = std::make_unique<MetadataCache>(tick_clock_.get(), cache_lifetime_,
                                              MetadataCache::Mode::kStandard);
@@ -85,8 +84,7 @@ TEST_F(MetadataCacheTest, AddAndFindEntryOnExpirationBoundary) {
   EXPECT_TRUE(AreEntriesEqual(expected_entry, found_entry));
 
   // Advance the clock to the last tick where it is still valid.
-  tick_clock_->Advance(
-      base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds));
+  tick_clock_->Advance(base::Microseconds(kMetadataCacheLifetimeMicroseconds));
 
   // Verify it can be found again.
   DirectoryEntry found_entry2;
@@ -95,7 +93,7 @@ TEST_F(MetadataCacheTest, AddAndFindEntryOnExpirationBoundary) {
   EXPECT_FALSE(cache_->IsEmpty());
 
   // Advance one more tick to expire it.
-  tick_clock_->Advance(base::TimeDelta::FromMicroseconds(1));
+  tick_clock_->Advance(base::Microseconds(1));
 
   // Verify it is not found any more and removed from cache.
   DirectoryEntry found_entry3;
@@ -120,8 +118,7 @@ TEST_F(MetadataCacheTest, PurgeExpiresEntries) {
   EXPECT_TRUE(AreEntriesEqual(expected_entry, found_entry));
 
   // Advance the clock to the last tick where it is still valid.
-  tick_clock_->Advance(
-      base::TimeDelta::FromMicroseconds(kMetadataCacheLifetimeMicroseconds));
+  tick_clock_->Advance(base::Microseconds(kMetadataCacheLifetimeMicroseconds));
 
   // Purge the cache but it shouldn't expire anything
   cache_->PurgeExpiredEntries();
@@ -134,7 +131,7 @@ TEST_F(MetadataCacheTest, PurgeExpiresEntries) {
   EXPECT_FALSE(cache_->IsEmpty());
 
   // Advance one more tick to expire it.
-  tick_clock_->Advance(base::TimeDelta::FromMicroseconds(1));
+  tick_clock_->Advance(base::Microseconds(1));
 
   // Purging should now remove the entry.
   cache_->PurgeExpiredEntries();

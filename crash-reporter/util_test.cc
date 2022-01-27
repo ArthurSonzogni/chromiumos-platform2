@@ -246,7 +246,7 @@ TEST_F(CrashCommonUtilTest, GetOsTimestamp) {
 
   base::FilePath lsb_file_path = paths::Get("/etc/lsb-release");
   ASSERT_TRUE(test_util::CreateFile(lsb_file_path, "foo=bar"));
-  base::Time old_time = base::Time::Now() - base::TimeDelta::FromDays(366);
+  base::Time old_time = base::Time::Now() - base::Days(366);
   ASSERT_TRUE(base::TouchFile(lsb_file_path, old_time, old_time));
   // ext2/ext3 seem to have a timestamp granularity of 1s.
   EXPECT_EQ(util::GetOsTimestamp().ToTimeVal().tv_sec,
@@ -262,13 +262,13 @@ TEST_F(CrashCommonUtilTest, IsBuildTimestampTooOldForUploads) {
   EXPECT_TRUE(util::IsBuildTimestampTooOldForUploads(0, &clock));
 
   EXPECT_FALSE(util::IsBuildTimestampTooOldForUploads(
-      now_millis - base::TimeDelta::FromDays(179).InMilliseconds(), &clock));
+      now_millis - base::Days(179).InMilliseconds(), &clock));
   EXPECT_TRUE(util::IsBuildTimestampTooOldForUploads(
-      now_millis - base::TimeDelta::FromDays(181).InMilliseconds(), &clock));
+      now_millis - base::Days(181).InMilliseconds(), &clock));
 
   // Crashes with invalid timestamps should upload.
   EXPECT_FALSE(util::IsBuildTimestampTooOldForUploads(
-      now_millis + base::TimeDelta::FromDays(1).InMilliseconds(), &clock));
+      now_millis + base::Days(1).InMilliseconds(), &clock));
   EXPECT_FALSE(util::IsBuildTimestampTooOldForUploads(-1, &clock));
   EXPECT_TRUE(util::IsBuildTimestampTooOldForUploads(
       std::numeric_limits<uint64_t>::min(), &clock));

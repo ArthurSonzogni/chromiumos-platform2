@@ -83,9 +83,9 @@ void DpslThreadContextImpl::PostTask(std::function<void()> task) {
 void DpslThreadContextImpl::PostDelayedTask(std::function<void()> task,
                                             int64_t delay_milliseconds) {
   CHECK_GE(delay_milliseconds, 0) << "Delay must be non-negative";
-  task_runner_->PostDelayedTask(
-      FROM_HERE, MakeCallbackFromStdFunction(std::move(task)),
-      base::TimeDelta::FromMilliseconds(delay_milliseconds));
+  task_runner_->PostDelayedTask(FROM_HERE,
+                                MakeCallbackFromStdFunction(std::move(task)),
+                                base::Milliseconds(delay_milliseconds));
 }
 
 void DpslThreadContextImpl::QuitEventLoop() {

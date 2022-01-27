@@ -1208,8 +1208,7 @@ void SmbFilesystem::AddCachedInodeStat(const struct stat& inode_stat) {
   StatCacheItem item;
 
   item.inode_stat = inode_stat;
-  item.expires_at = base::Time::Now() +
-                    base::TimeDelta::FromSecondsD(kStatCacheTimeoutSeconds);
+  item.expires_at = base::Time::Now() + base::Seconds(kStatCacheTimeoutSeconds);
 
   stat_cache_.Put(inode_stat.st_ino, item);
 }

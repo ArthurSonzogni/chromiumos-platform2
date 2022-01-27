@@ -28,7 +28,7 @@ const int kInvalidFileDescriptor = -1;
 
 // Retry parameters for opening /dev/tpm0.
 // How long do we wait after the first try?
-constexpr base::TimeDelta kInitialRetry = base::TimeDelta::FromSecondsD(0.1);
+constexpr base::TimeDelta kInitialRetry = base::Seconds(0.1);
 // When we retry the next time, how much longer do we wait?
 constexpr double kRetryMultiplier = 2.0;
 // How many times to retry?

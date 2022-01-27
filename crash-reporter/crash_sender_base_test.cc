@@ -220,7 +220,7 @@ TEST_F(CrashSenderBaseTest, RetrieveClientId) {
 
 TEST_F(CrashSenderBaseTest, GetSleepTime) {
   const base::FilePath meta_file = test_dir_.Append("test.meta");
-  base::TimeDelta max_spread_time = base::TimeDelta::FromSeconds(0);
+  base::TimeDelta max_spread_time = base::Seconds(0);
 
   // This should fail since meta_file does not exist.
   base::TimeDelta sleep_time;
@@ -238,18 +238,16 @@ TEST_F(CrashSenderBaseTest, GetSleepTime) {
 
   // Zero hold-off time and zero sleep time should always give zero sleep time.
   EXPECT_TRUE(GetSleepTime(meta_file, max_spread_time,
-                           base::TimeDelta::FromSeconds(0) /*hold_off_time*/,
-                           &sleep_time));
-  EXPECT_EQ(base::TimeDelta::FromSeconds(0), sleep_time);
+                           base::Seconds(0) /*hold_off_time*/, &sleep_time));
+  EXPECT_EQ(base::Seconds(0), sleep_time);
 
   // Even if file is new, a zero hold-off time means we choose a time between
   // 0 and max_spread_time.
   ASSERT_TRUE(test_util::TouchFileHelper(meta_file, base::Time::Now()));
-  EXPECT_TRUE(GetSleepTime(
-      meta_file, base::TimeDelta::FromSeconds(60) /*max_spread_time*/,
-      base::TimeDelta::FromSeconds(0) /*hold_off_time*/, &sleep_time));
-  EXPECT_LE(base::TimeDelta::FromSeconds(0), sleep_time);
-  EXPECT_GE(base::TimeDelta::FromSeconds(60), sleep_time);
+  EXPECT_TRUE(GetSleepTime(meta_file, base::Seconds(60) /*max_spread_time*/,
+                           base::Seconds(0) /*hold_off_time*/, &sleep_time));
+  EXPECT_LE(base::Seconds(0), sleep_time);
+  EXPECT_GE(base::Seconds(60), sleep_time);
 
   // Make the meta file old enough so hold-off time is not necessary.
   const base::Time now = base::Time::Now();
@@ -258,25 +256,25 @@ TEST_F(CrashSenderBaseTest, GetSleepTime) {
   // sleep_time should always be 0, since max_spread_time is set to 0.
   EXPECT_TRUE(
       GetSleepTime(meta_file, max_spread_time, kMaxHoldOffTime, &sleep_time));
-  EXPECT_EQ(base::TimeDelta::FromSeconds(0), sleep_time);
+  EXPECT_EQ(base::Seconds(0), sleep_time);
 
   // sleep_time should be in range [0, 10].
-  max_spread_time = base::TimeDelta::FromSeconds(10);
+  max_spread_time = base::Seconds(10);
   EXPECT_TRUE(
       GetSleepTime(meta_file, max_spread_time, kMaxHoldOffTime, &sleep_time));
-  EXPECT_LE(base::TimeDelta::FromSeconds(0), sleep_time);
-  EXPECT_GE(base::TimeDelta::FromSeconds(10), sleep_time);
+  EXPECT_LE(base::Seconds(0), sleep_time);
+  EXPECT_GE(base::Seconds(10), sleep_time);
 
   // If the meta file is current, the minimum sleep time should be
   // kMaxHoldOffTime but the maximum is still max_spread_time.
-  max_spread_time = base::TimeDelta::FromSeconds(60);
+  max_spread_time = base::Seconds(60);
   ASSERT_TRUE(test_util::TouchFileHelper(meta_file, base::Time::Now()));
   EXPECT_TRUE(
       GetSleepTime(meta_file, max_spread_time, kMaxHoldOffTime, &sleep_time));
   // 0.9 in case we got preempted for 3 seconds between the file touch and the
   // GetSleepTime().
   EXPECT_LE(kMaxHoldOffTime * 0.9, sleep_time);
-  EXPECT_GE(base::TimeDelta::FromSeconds(60), sleep_time);
+  EXPECT_GE(base::Seconds(60), sleep_time);
 }
 
 TEST_F(CrashSenderBaseTest, IsMock) {

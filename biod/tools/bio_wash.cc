@@ -115,8 +115,8 @@ int main(int argc, char* argv[]) {
 
   auto process = base::Process::Open(pid);
   int exit_code;
-  if (!process.WaitForExitWithTimeout(
-          base::TimeDelta::FromSeconds(kTimeoutSeconds), &exit_code)) {
+  if (!process.WaitForExitWithTimeout(base::Seconds(kTimeoutSeconds),
+                                      &exit_code)) {
     LOG(ERROR) << "Bio wash timeout out, exit code: " << exit_code;
     process.Terminate(-1, false);
   }

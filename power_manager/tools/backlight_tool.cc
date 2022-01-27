@@ -77,8 +77,7 @@ namespace {
 
 // Abort if an ambient light sample hasn't been updated after this many
 // milliseconds.
-constexpr base::TimeDelta kUpdateTimeout =
-    base::TimeDelta::FromMilliseconds(5000);
+constexpr base::TimeDelta kUpdateTimeout = base::Milliseconds(5000);
 
 // Prints |message| to stderr with a trailing newline and exits.
 void Abort(const std::string& message) {

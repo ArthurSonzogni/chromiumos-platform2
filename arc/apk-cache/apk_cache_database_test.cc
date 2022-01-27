@@ -92,8 +92,7 @@ TEST_F(ApkCacheDatabaseTest, DatabaseQuery) {
   ASSERT_TRUE(sessions != base::nullopt);
   EXPECT_GT((*sessions)[0].id, 0);
   EXPECT_EQ((*sessions)[0].source, std::string(kTestSessionSource));
-  EXPECT_LT((*sessions)[0].timestamp,
-            base::Time::Now() + base::TimeDelta::FromSeconds(1));
+  EXPECT_LT((*sessions)[0].timestamp, base::Time::Now() + base::Seconds(1));
   EXPECT_EQ((*sessions)[0].status, kSessionStatusClosed);
 
   // Query file entries
@@ -107,7 +106,7 @@ TEST_F(ApkCacheDatabaseTest, DatabaseQuery) {
   EXPECT_EQ((*file_entries)[0].size, kTestPackageSize);
   EXPECT_EQ((*file_entries)[0].hash, std::string(kTestPackageHash));
   EXPECT_LT((*file_entries)[0].access_time,
-            base::Time::Now() + base::TimeDelta::FromSeconds(1));
+            base::Time::Now() + base::Seconds(1));
   EXPECT_EQ((*file_entries)[0].priority, kTestPackagePriority);
   EXPECT_EQ((*file_entries)[0].session_id, (*sessions)[0].id);
 

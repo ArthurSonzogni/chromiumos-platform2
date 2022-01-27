@@ -21,8 +21,7 @@ namespace iioservice {
 
 namespace {
 
-constexpr base::TimeDelta kMetricsHourlyTimeOnlineSamplePeriod =
-    base::TimeDelta::FromHours(1);
+constexpr base::TimeDelta kMetricsHourlyTimeOnlineSamplePeriod = base::Hours(1);
 
 constexpr int kFrequencyThresholds[] = {0, 10, 50, 100};
 

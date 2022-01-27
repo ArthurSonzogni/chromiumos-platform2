@@ -89,8 +89,7 @@ CumulativeMetrics::CumulativeMetrics(const FilePath& backing_dir,
 
 bool CumulativeMetrics::ProcessCycleEnd() {
   base::TimeDelta wall_time = Time::Now() - Time::UnixEpoch();
-  base::TimeDelta cycle_start =
-      base::TimeDelta::FromMicroseconds(cycle_start_->Get());
+  base::TimeDelta cycle_start = base::Microseconds(cycle_start_->Get());
   if (wall_time - cycle_start > accumulation_period_) {
     cycle_start_->Set(wall_time.InMicroseconds());
     return true;

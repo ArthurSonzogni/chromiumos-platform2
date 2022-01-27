@@ -81,7 +81,7 @@ int ByteToMB(int64_t bytes) {
 
 void CalculateSysLogFileSizePerDayWithinDay(const base::FilePath& path,
                                             int64_t* byte_count_out) {
-  base::Time count_after = base::Time::Now() - base::TimeDelta::FromDays(1);
+  base::Time count_after = base::Time::Now() - base::Days(1);
   croslog::CalculateLogMetrics(path, count_after,
                                std::make_unique<croslog::LogParserSyslog>(),
                                byte_count_out, nullptr, nullptr);
@@ -89,14 +89,14 @@ void CalculateSysLogFileSizePerDayWithinDay(const base::FilePath& path,
 
 void CalculateAuditLogFileSizePerDayWithinDay(const base::FilePath& path,
                                               int64_t* byte_count_out) {
-  base::Time count_after = base::Time::Now() - base::TimeDelta::FromDays(1);
+  base::Time count_after = base::Time::Now() - base::Days(1);
   croslog::CalculateLogMetrics(path, count_after,
                                std::make_unique<croslog::LogParserAudit>(),
                                byte_count_out, nullptr, nullptr);
 }
 
 void CalculateSystemChromeLogsByteCountWithinDay(int64_t* byte_count_out) {
-  base::Time count_after = base::Time::Now() - base::TimeDelta::FromDays(1);
+  base::Time count_after = base::Time::Now() - base::Days(1);
   croslog::CalculateChromeLogMetrics(kSystemChromeLogDirectoryPath,
                                      kChromeLogFileNamePattern, count_after,
                                      byte_count_out, nullptr, nullptr);
@@ -177,7 +177,7 @@ class MetricsCollector {
                               false);
       }
 
-      base::Time count_after = base::Time::Now() - base::TimeDelta::FromDays(1);
+      base::Time count_after = base::Time::Now() - base::Days(1);
       croslog::CalculateMultipleLogMetrics(&multiplexer, count_after,
                                            &entry_count, &max_throughput);
 
@@ -275,7 +275,7 @@ class MetricsCollector {
       int64_t entry_count;
       int64_t byte_count_chrome;
 
-      base::Time count_after = base::Time::Now() - base::TimeDelta::FromDays(1);
+      base::Time count_after = base::Time::Now() - base::Days(1);
       croslog::CalculateChromeLogMetrics(
           kUserChromeLogDirectoryPath, kChromeLogFileNamePattern, count_after,
           &byte_count_chrome, &entry_count, &max_throughput);

@@ -54,9 +54,9 @@ base::TimeDelta TransitionToTimeDelta(
     case BacklightController::Transition::INSTANT:
       return base::TimeDelta();
     case BacklightController::Transition::FAST:
-      return base::TimeDelta::FromMilliseconds(kFastBacklightTransitionMs);
+      return base::Milliseconds(kFastBacklightTransitionMs);
     case BacklightController::Transition::SLOW:
-      return base::TimeDelta::FromMilliseconds(kSlowBacklightTransitionMs);
+      return base::Milliseconds(kSlowBacklightTransitionMs);
   }
 }
 
@@ -195,8 +195,7 @@ void InternalBacklightController::Init(
 
   int64_t turn_off_screen_timeout_ms = 0;
   prefs_->GetInt64(kTurnOffScreenTimeoutMsPref, &turn_off_screen_timeout_ms);
-  turn_off_screen_timeout_ =
-      base::TimeDelta::FromMilliseconds(turn_off_screen_timeout_ms);
+  turn_off_screen_timeout_ = base::Milliseconds(turn_off_screen_timeout_ms);
 
   if (max_level_ == min_visible_level_ || kMaxBrightnessSteps == 1) {
     step_percent_ = kMaxPercent;
@@ -664,7 +663,7 @@ void InternalBacklightController::UpdateState(
   // Give up on the ambient light sensor if it's not supplying readings.
   if (use_ambient_light_ && !got_ambient_light_brightness_percent_ &&
       clock_->GetCurrentTime() - init_time_ >=
-          base::TimeDelta::FromSeconds(kAmbientLightSensorTimeoutSec)) {
+          base::Seconds(kAmbientLightSensorTimeoutSec)) {
     LOG(ERROR) << "Giving up on ambient light sensor after getting no reading "
                << "within " << kAmbientLightSensorTimeoutSec << " seconds";
     use_ambient_light_ = false;

@@ -94,8 +94,7 @@ class SuspendFreezerTest : public ::testing::Test {
 // change.
 TEST_F(SuspendFreezerTest, TestFreezeTimeout) {
   mock_sys_utils_->set_write_ = false;
-  suspend_freezer_.clock()->set_time_step_for_testing(
-      base::TimeDelta::FromSeconds(5));
+  suspend_freezer_.clock()->set_time_step_for_testing(base::Seconds(5));
   EXPECT_EQ(FreezeResult::FAILURE, suspend_freezer_.FreezeUserspace(1, true));
 }
 

@@ -148,7 +148,7 @@ TEST_F(ProcessReaperTest, ReapKilledAndForgottenChild) {
   brillo_loop_.PostDelayedTask(
       FROM_HERE,
       base::Bind(&MessageLoop::BreakLoop, base::Unretained(&brillo_loop_)),
-      base::TimeDelta::FromMilliseconds(100));
+      base::Milliseconds(100));
   brillo_loop_.Run();
 }
 

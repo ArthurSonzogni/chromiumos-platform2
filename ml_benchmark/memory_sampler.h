@@ -32,7 +32,7 @@ class PeakMemorySampler : public base::RefCountedThreadSafe<PeakMemorySampler> {
   base::Location from_here_;
   bool running_ = false;
   base::Lock lock_;
-  base::TimeDelta sampling_interval_ = base::TimeDelta::FromSeconds(1);
+  base::TimeDelta sampling_interval_ = base::Seconds(1);
   int64_t max_sample_ = 0;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 

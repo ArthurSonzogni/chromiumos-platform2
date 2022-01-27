@@ -225,7 +225,7 @@ TEST_F(MemoryRoutineTest, Resume) {
 
 // Test that the memory routine can be cancelled.
 TEST_F(MemoryRoutineTest, Cancel) {
-  base::TimeDelta time_delay = base::TimeDelta::FromSeconds(10);
+  base::TimeDelta time_delay = base::Seconds(10);
   SetExecutorResponse(EXIT_FAILURE, base::nullopt /* outfile_name */,
                       time_delay);
 

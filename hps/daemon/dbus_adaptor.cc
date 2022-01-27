@@ -141,7 +141,7 @@ bool DBusAdaptor::CommitUpdates() {
     ShutDown();
   } else if (active_features && !poll_timer_.IsRunning()) {
     poll_timer_.Start(
-        FROM_HERE, base::TimeDelta::FromMilliseconds(poll_time_ms_),
+        FROM_HERE, base::Milliseconds(poll_time_ms_),
         base::BindRepeating(&DBusAdaptor::PollTask, base::Unretained(this)));
   }
   return result;

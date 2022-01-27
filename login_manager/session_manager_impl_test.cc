@@ -419,7 +419,7 @@ class SessionManagerImplTest : public ::testing::Test,
 
     // Start at an arbitrary non-zero time.
     tick_clock_ = new base::SimpleTestTickClock();
-    tick_clock_->SetNowTicks(base::TimeTicks() + base::TimeDelta::FromHours(1));
+    tick_clock_->SetNowTicks(base::TimeTicks() + base::Hours(1));
     impl_->SetTickClockForTesting(base::WrapUnique(tick_clock_));
 
     login_screen_storage_path_ =
@@ -2269,7 +2269,7 @@ TEST_F(SessionManagerImplTest, EndSessionBeforeSuspend) {
   Mock::VerifyAndClearExpectations(&manager_);
 
   // We shouldn't end the session after the specified interval has elapsed.
-  tick_clock_->Advance(base::TimeDelta::FromSeconds(1));
+  tick_clock_->Advance(base::Seconds(1));
   set_expectations(false);
   suspend_imminent_callback_.Run(&imminent_signal);
 }
@@ -2288,7 +2288,7 @@ TEST_F(SessionManagerImplTest, EndSessionDuringAndAfterSuspend) {
   EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
 
   // We should also end it if some time passes...
-  tick_clock_->Advance(base::TimeDelta::FromSeconds(20));
+  tick_clock_->Advance(base::Seconds(20));
   EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
 
   // ... and right after resume finishes...
@@ -2302,7 +2302,7 @@ TEST_F(SessionManagerImplTest, EndSessionDuringAndAfterSuspend) {
   EXPECT_TRUE(impl_->ShouldEndSession(nullptr));
 
   // If we wait long enough, we should go back to restarting Chrome.
-  tick_clock_->Advance(base::TimeDelta::FromSeconds(1));
+  tick_clock_->Advance(base::Seconds(1));
   EXPECT_FALSE(impl_->ShouldEndSession(nullptr));
 }
 

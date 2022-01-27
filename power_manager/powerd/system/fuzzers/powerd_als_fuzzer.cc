@@ -96,7 +96,7 @@ static void InitAndRunAls(
   als_fuzzer->als_->Init(false /* read immediately */);
 
   // Move time ahead enough so that async file reads occur.
-  task_runner->FastForwardBy(base::TimeDelta::FromMilliseconds(4000));
+  task_runner->FastForwardBy(base::Milliseconds(4000));
 }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {

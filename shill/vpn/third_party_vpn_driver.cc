@@ -47,7 +47,7 @@ static std::string ObjectID(const ThirdPartyVpnDriver* v) {
 namespace {
 
 const int32_t kConstantMaxMtu = (1 << 16) - 1;
-constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kConnectTimeout = base::Minutes(5);
 
 std::string IPAddressFingerprint(const IPAddress& address) {
   static const char* const hex_to_bin[] = {

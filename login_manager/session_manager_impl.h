@@ -128,8 +128,7 @@ class SessionManagerImpl
   // TODO(b/205032502): Because upgrading the container from mini to full often
   // takes more than 25 seconds, increasing it to 1 minute for now. Once we have
   // the update metrics, update the timeout to a tighter value.
-  static constexpr base::TimeDelta kArcBootContinueTimeout =
-      base::TimeDelta::FromMinutes(1);
+  static constexpr base::TimeDelta kArcBootContinueTimeout = base::Minutes(1);
 
   // Lock screen state messages.
   static const char kScreenLockedImpulse[];

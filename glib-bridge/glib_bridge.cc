@@ -107,7 +107,7 @@ void GlibBridge::PrepareIteration() {
   if (timeout_ms < 0)
     return;
 
-  base::TimeDelta timeout = base::TimeDelta::FromMilliseconds(timeout_ms);
+  base::TimeDelta timeout = base::Milliseconds(timeout_ms);
   timeout_closure_.Reset(
       base::BindOnce(&GlibBridge::Timeout, weak_ptr_factory_.GetWeakPtr()));
   base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(

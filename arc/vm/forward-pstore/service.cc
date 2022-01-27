@@ -32,7 +32,7 @@ constexpr char kArcVmDir[] = "/run/arcvm";
 constexpr char kPstoreSourceName[] = "arcvm.pstore";
 constexpr char kCryptohomeRoot[] = "/run/daemon-store/crosvm";
 constexpr char kPstoreExtension[] = ".pstore";
-constexpr base::TimeDelta kReadDelay = base::TimeDelta::FromSeconds(5);
+constexpr base::TimeDelta kReadDelay = base::Seconds(5);
 
 base::FilePath GetPstoreDest(const std::string& owner_id) {
   return base::FilePath(kCryptohomeRoot)

@@ -283,7 +283,7 @@ bool Controller::RestartProxy(const ProxyProc& proc) {
       FROM_HERE,
       base::BindOnce(&Controller::RunProxy, weak_factory_.GetWeakPtr(),
                      proc.opts.type, proc.opts.ifname),
-      base::TimeDelta::FromMilliseconds(kSubprocessRestartDelayMs));
+      base::Milliseconds(kSubprocessRestartDelayMs));
   return true;
 }
 

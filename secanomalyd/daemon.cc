@@ -32,11 +32,10 @@ namespace {
 
 constexpr int kSampleFrequency = 100;
 
-constexpr base::TimeDelta kCheckInterval = base::TimeDelta::FromSeconds(30);
+constexpr base::TimeDelta kCheckInterval = base::Seconds(30);
 // Per Platform.DailyUseTime histogram this interval should ensure that enough
 // users run the reporting.
-constexpr base::TimeDelta kReportWXMountCountInterval =
-    base::TimeDelta::FromHours(2);
+constexpr base::TimeDelta kReportWXMountCountInterval = base::Hours(2);
 
 }  // namespace
 

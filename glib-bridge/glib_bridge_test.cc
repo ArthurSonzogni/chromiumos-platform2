@@ -22,7 +22,7 @@ namespace glib_bridge {
 
 namespace {
 
-constexpr base::TimeDelta kTestTimeout = base::TimeDelta::FromSeconds(1);
+constexpr base::TimeDelta kTestTimeout = base::Seconds(1);
 
 // Use instead of g_idle_add, which implicitly uses the global default context.
 void ScheduleIdleCallback(GSourceFunc func, gpointer data) {

@@ -117,14 +117,12 @@ using ChapsOperation = std::function<CK_RV(void)>;
 static CK_RV PerformNonBlocking(ChapsOperation op) {
   CK_RV result;
   base::TimeTicks deadline =
-      base::TimeTicks::Now() +
-      base::TimeDelta::FromMilliseconds(g_retry_timeout_ms);
+      base::TimeTicks::Now() + base::Milliseconds(g_retry_timeout_ms);
   do {
     result = op();
     if (result != CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS)
       break;
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(g_retry_delay_ms));
+    base::PlatformThread::Sleep(base::Milliseconds(g_retry_delay_ms));
   } while (base::TimeTicks::Now() < deadline);
   return result;
 }

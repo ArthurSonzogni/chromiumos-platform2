@@ -31,9 +31,8 @@ bool HasExceptionInfo(const std::string& type) {
 
 base::TimeTicks ToSeconds(const base::TimeTicks& time) {
   return base::TimeTicks::FromInternalValue(
-      base::TimeDelta::FromSeconds(
-          base::TimeDelta::FromInternalValue(time.ToInternalValue())
-              .InSeconds())
+      base::Seconds(base::TimeDelta::FromInternalValue(time.ToInternalValue())
+                        .InSeconds())
           .ToInternalValue());
 }
 

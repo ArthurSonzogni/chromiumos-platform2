@@ -19,12 +19,10 @@ namespace federated {
 
 namespace {
 // TODO(alanlxl): discussion required about the default window.
-constexpr base::TimeDelta kDefaultRetryWindow =
-    base::TimeDelta::FromSeconds(60 * 5);
+constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(60 * 5);
 
 // To avoid spam, retry window should not be shorter than kMinimalRetryWindow.
-constexpr base::TimeDelta kMinimalRetryWindow =
-    base::TimeDelta::FromSeconds(60);
+constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(60);
 
 // TODO(alanlxl): Just dummpy impl.
 void LogCrosEvent(const fcp::client::CrosEvent& cros_event) {
@@ -197,7 +195,7 @@ void FederatedSession::RunPlan(ExampleDatabase::Iterator&& example_iterator) {
   // TODO(alanlxl): maybe log the event to UMA
   if (result.status == CONTRIBUTED || result.status == REJECTED_BY_SERVER) {
     client_config_.retry_token = std::string(result.retry_token);
-    next_retry_delay_ = base::TimeDelta::FromMicroseconds(result.delay_usecs);
+    next_retry_delay_ = base::Microseconds(result.delay_usecs);
 
     // TODO(alanlxl): result.delay_usecs may be 0 when setup is wrong, now I set
     // next_retry_delay_ to kMinimalRetryWindow to avoid spam, consider stopping

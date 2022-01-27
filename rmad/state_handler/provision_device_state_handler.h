@@ -24,8 +24,7 @@ namespace rmad {
 class ProvisionDeviceStateHandler : public BaseStateHandler {
  public:
   // Report status every second.
-  static constexpr base::TimeDelta kReportStatusInterval =
-      base::TimeDelta::FromSeconds(1);
+  static constexpr base::TimeDelta kReportStatusInterval = base::Seconds(1);
 
   explicit ProvisionDeviceStateHandler(scoped_refptr<JsonStore> json_store);
   // Used to inject mock and |vpd_utils_| for testing.

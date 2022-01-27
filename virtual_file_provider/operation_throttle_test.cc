@@ -14,7 +14,7 @@ namespace virtual_file_provider {
 
 namespace {
 
-constexpr base::TimeDelta kTestTimeout = base::TimeDelta::FromMilliseconds(100);
+constexpr base::TimeDelta kTestTimeout = base::Milliseconds(100);
 
 }  // namespace
 

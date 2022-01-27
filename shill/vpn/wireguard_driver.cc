@@ -56,7 +56,7 @@ constexpr char kWireGuardKeyPairSource[] = "WireGuard.KeyPairSource";
 
 // Timeout value for spawning the userspace wireguard process and configuring
 // the interface via wireguard-tools.
-constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kConnectTimeout = base::Seconds(10);
 
 // Key length of Curve25519.
 constexpr int kWgKeyLength = 32;
@@ -120,7 +120,7 @@ std::string GenerateBase64PrivateKey() {
 // wireguard-tools is blocking but with a timeout (kPollTimeout below).
 std::string CalculateBase64PublicKey(const std::string& base64_private_key,
                                      ProcessManager* process_manager) {
-  constexpr auto kPollTimeout = base::TimeDelta::FromMilliseconds(200);
+  constexpr auto kPollTimeout = base::Milliseconds(200);
 
   constexpr uint64_t kCapMask = 0;
   int stdin_fd = -1;

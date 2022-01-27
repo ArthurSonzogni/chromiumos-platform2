@@ -438,7 +438,7 @@ int Transport::MultiTimerCallback(CURLM* /* multi */,
         FROM_HERE,
         base::Bind(&Transport::OnTimer,
                    transport->weak_ptr_factory_for_timer_.GetWeakPtr()),
-        base::TimeDelta::FromMilliseconds(timeout_ms));
+        base::Milliseconds(timeout_ms));
   }
   return 0;
 }

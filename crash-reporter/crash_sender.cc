@@ -95,7 +95,7 @@ int RunChildMain(int argc, char* argv[]) {
     options.max_crash_bytes = std::numeric_limits<int>::max();
   }
   if (flags.ignore_hold_off_time) {
-    options.hold_off_time = base::TimeDelta::FromSeconds(0);
+    options.hold_off_time = base::Seconds(0);
   }
   options.allow_dev_sending = flags.allow_dev_sending;
   options.test_mode = flags.test_mode;

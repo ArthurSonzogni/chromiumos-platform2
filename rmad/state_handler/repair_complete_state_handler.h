@@ -22,11 +22,9 @@ namespace rmad {
 class RepairCompleteStateHandler : public BaseStateHandler {
  public:
   // Wait for 5 seconds before reboot/shutdown/cutoff.
-  static constexpr base::TimeDelta kShutdownDelay =
-      base::TimeDelta::FromSeconds(5);
+  static constexpr base::TimeDelta kShutdownDelay = base::Seconds(5);
   // Report power cable state every second.
-  static constexpr base::TimeDelta kReportPowerCableInterval =
-      base::TimeDelta::FromSeconds(1);
+  static constexpr base::TimeDelta kReportPowerCableInterval = base::Seconds(1);
 
   explicit RepairCompleteStateHandler(scoped_refptr<JsonStore> json_store);
   // Used to inject |working_dir_path_| and mocked |power_manager_client_|,

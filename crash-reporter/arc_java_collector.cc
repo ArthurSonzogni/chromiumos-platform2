@@ -183,10 +183,10 @@ CollectorInfo ArcJavaCollector::GetHandlerInfo(
       .handlers = {{
           // This handles Java app crashes of ARC++ and ARCVM.
           .should_handle = !arc_java_crash.empty(),
-          .cb = base::BindRepeating(
-              &ArcJavaCollector::HandleCrash, arc_java_collector,
-              arc_java_crash, build_property,
-              base::TimeDelta::FromMilliseconds(uptime_millis)),
+          .cb = base::BindRepeating(&ArcJavaCollector::HandleCrash,
+                                    arc_java_collector, arc_java_crash,
+                                    build_property,
+                                    base::Milliseconds(uptime_millis)),
       }},
   };
 }

@@ -1136,9 +1136,9 @@ bool CrashCollector::GetUptime(base::TimeDelta* uptime) {
     return false;
   }
 
-  *uptime = base::TimeDelta::FromSeconds(boot_time.tv_sec) +
-            base::TimeDelta::FromMicroseconds(
-                boot_time.tv_nsec / base::Time::kNanosecondsPerMicrosecond);
+  *uptime = base::Seconds(boot_time.tv_sec) +
+            base::Microseconds(boot_time.tv_nsec /
+                               base::Time::kNanosecondsPerMicrosecond);
   return true;
 }
 
@@ -1157,8 +1157,7 @@ bool CrashCollector::GetUptimeAtProcessStart(pid_t pid,
     return false;
   }
 
-  *uptime = base::TimeDelta::FromSecondsD(static_cast<double>(ticks) /
-                                          sysconf(_SC_CLK_TCK));
+  *uptime = base::Seconds(static_cast<double>(ticks) / sysconf(_SC_CLK_TCK));
 
   return true;
 }

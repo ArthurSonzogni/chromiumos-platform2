@@ -20,8 +20,8 @@
 
 namespace {
 
-constexpr auto kSmdxTimeout = base::TimeDelta::FromMinutes(3);
-constexpr auto kSendNotificationsTimeout = base::TimeDelta::FromSeconds(15);
+constexpr auto kSmdxTimeout = base::Minutes(3);
+constexpr auto kSendNotificationsTimeout = base::Seconds(15);
 constexpr std::string_view kHandleNotification = "handleNotification";
 
 void OnHttpsResponse(hermes::Smdp::LpaCallback cb,

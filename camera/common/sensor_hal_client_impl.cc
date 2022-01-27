@@ -23,8 +23,7 @@ namespace cros {
 namespace {
 
 // The time to wait before HasDevice query times out.
-constexpr base::TimeDelta kDeviceQueryTimeout =
-    base::TimeDelta::FromMilliseconds(1000);
+constexpr base::TimeDelta kDeviceQueryTimeout = base::Milliseconds(1000);
 
 const std::pair<std::string, cros::SensorHalClient::Location>
     kLocationMapping[] = {

@@ -24,7 +24,7 @@
 #include "tpm_manager/common/print_tpm_manager_proto.h"
 
 namespace {
-constexpr base::TimeDelta kDefaultTimeout = base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kDefaultTimeout = base::Minutes(2);
 }  // namespace
 
 namespace tpm_manager {

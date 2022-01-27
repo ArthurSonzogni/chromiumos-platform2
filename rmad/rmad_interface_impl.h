@@ -29,8 +29,7 @@ namespace rmad {
 
 class RmadInterfaceImpl final : public RmadInterface {
  public:
-  static constexpr base::TimeDelta kTestModeMonitorInterval =
-      base::TimeDelta::FromSeconds(2);
+  static constexpr base::TimeDelta kTestModeMonitorInterval = base::Seconds(2);
 
   RmadInterfaceImpl();
   // Used to inject mocked |json_store_|, |state_handler_manager_|,

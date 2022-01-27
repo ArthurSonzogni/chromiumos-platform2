@@ -38,7 +38,7 @@ bool IsUserPresent(SessionState session_state) {
 class TimeOverride {
  public:
   static base::Time Now() {
-    now_time_ += base::TimeDelta::FromMilliseconds(1);
+    now_time_ += base::Milliseconds(1);
     return now_time_;
   }
 

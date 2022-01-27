@@ -138,19 +138,18 @@ class StateController : public PrefsObserver {
   // Delays are lengthened if user activity is observed while the screen is
   // dimmed or within this interval of the screen being turned off.
   static constexpr base::TimeDelta
-      kUserActivityAfterScreenOffIncreaseDelaysInterval =
-          base::TimeDelta::FromSeconds(60);
+      kUserActivityAfterScreenOffIncreaseDelaysInterval = base::Seconds(60);
 
   // Ignore display mode changes within this interval after the screen is turned
   // off. These changes are assumed to be hotplug jitter/spam from poorly
   // implemented display hardware.
   static constexpr base::TimeDelta kIgnoreDisplayModeAfterScreenOffInterval =
-      base::TimeDelta::FromSeconds(30);
+      base::Seconds(30);
 
   // Time before the screen is dimmed when a ScreenDimImminent D-Bus signal
   // should be emitted.
   static constexpr base::TimeDelta kScreenDimImminentInterval =
-      base::TimeDelta::FromSeconds(5);
+      base::Seconds(5);
 
   // Returns a string describing |policy|.
   static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);

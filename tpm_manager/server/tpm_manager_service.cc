@@ -32,11 +32,10 @@ constexpr int kDictionaryAttackResetPeriodInHours = 1;
 
 #if USE_TPM2
 // Timeout waiting for Trunks daemon readiness.
-constexpr base::TimeDelta kTrunksDaemonTimeout =
-    base::TimeDelta::FromSeconds(30);
+constexpr base::TimeDelta kTrunksDaemonTimeout = base::Seconds(30);
 // Delay between subsequent attempts to initialize connection to Trunks daemon.
 constexpr base::TimeDelta kTrunksDaemonInitAttemptDelay =
-    base::TimeDelta::FromMicroseconds(300);
+    base::Microseconds(300);
 #endif
 
 // Clears owner password in |local_data| if all dependencies have been removed
@@ -129,7 +128,7 @@ TpmManagerService::TpmManagerService(
     TpmNvram* tpm_nvram,
     TpmManagerMetrics* tpm_manager_metrics)
     : dictionary_attack_timer_(
-          base::TimeDelta::FromHours(kDictionaryAttackResetPeriodInHours)),
+          base::Hours(kDictionaryAttackResetPeriodInHours)),
       local_data_store_(local_data_store),
       pinweaver_provision_(std::move(pinweaver_provision)),
       tpm_status_(tpm_status),

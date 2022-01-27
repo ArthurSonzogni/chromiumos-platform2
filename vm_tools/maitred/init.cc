@@ -84,17 +84,15 @@ constexpr gid_t kChronosGid = 1000;
 // to be respawned more than kMaxRespawnCount times in the last
 // kRespawnWindowSeconds, then it will stop being respawned.
 constexpr size_t kMaxRespawnCount = 10;
-constexpr base::TimeDelta kRespawnWindowSeconds =
-    base::TimeDelta::FromSeconds(30);
+constexpr base::TimeDelta kRespawnWindowSeconds = base::Seconds(30);
 
 // Number of seconds that we should wait before force-killing processes for
 // shutdown.
-constexpr base::TimeDelta kShutdownTimeout = base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kShutdownTimeout = base::Seconds(10);
 
 // Number of seconds that we should wait for tremplin to attempt to gracefully
 // shut down containers.
-constexpr base::TimeDelta kTremplinShutdownTimeout =
-    base::TimeDelta::FromSeconds(2);
+constexpr base::TimeDelta kTremplinShutdownTimeout = base::Seconds(2);
 
 // Maximum number of bytes to capture from a single spawned process.
 constexpr size_t kMaxOutputCaptureSize = 65536;

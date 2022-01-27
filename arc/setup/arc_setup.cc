@@ -200,7 +200,7 @@ constexpr gid_t kSdcardRwGid = AID_SDCARD_RW + kShiftGid;
 constexpr gid_t kEverybodyGid = AID_EVERYBODY + kShiftGid;
 
 // The maximum time to wait for /data/media setup.
-constexpr base::TimeDelta kInstalldTimeout = base::TimeDelta::FromSeconds(60);
+constexpr base::TimeDelta kInstalldTimeout = base::Seconds(60);
 
 // Property name for fingerprint.
 constexpr char kFingerprintProp[] = "ro.build.fingerprint";
@@ -702,10 +702,8 @@ void ArcSetup::DeleteExecutableFilesInData(
 }
 
 void ArcSetup::WaitForRtLimitsJob() {
-  constexpr base::TimeDelta kWaitForRtLimitsJobTimeOut =
-      base::TimeDelta::FromSeconds(10);
-  constexpr base::TimeDelta kSleepInterval =
-      base::TimeDelta::FromMilliseconds(100);
+  constexpr base::TimeDelta kWaitForRtLimitsJobTimeOut = base::Seconds(10);
+  constexpr base::TimeDelta kSleepInterval = base::Milliseconds(100);
   constexpr char kCgroupFilePath[] =
       "/sys/fs/cgroup/cpu/session_manager_containers/cpu.rt_runtime_us";
 

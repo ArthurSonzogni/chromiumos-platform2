@@ -44,8 +44,7 @@ class TestObserver : public AmbientLightObserver {
 
   // Runs |loop_| until OnAmbientLightUpdated() is called.
   bool RunUntilAmbientLightUpdated() {
-    return loop_runner_.StartLoop(
-        base::TimeDelta::FromMilliseconds(kUpdateTimeoutMs));
+    return loop_runner_.StartLoop(base::Milliseconds(kUpdateTimeoutMs));
   }
 
   // AmbientLightObserver implementation:

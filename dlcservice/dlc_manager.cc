@@ -60,7 +60,7 @@ void DlcManager::Initialize() {
   // Post cleaning up dangling Dlcs for after the user has worked on the device
   // for a bit in case they install one of the dangling DLCs.
   constexpr int kTimeoutMinutes = 30;
-  PostCleanupDanglingDlcs(base::TimeDelta::FromMinutes(kTimeoutMinutes));
+  PostCleanupDanglingDlcs(base::Minutes(kTimeoutMinutes));
 }
 
 void DlcManager::CleanupUnsupportedDlcs() {
@@ -115,7 +115,7 @@ void DlcManager::CleanupDanglingDlcs() {
   // Post another one to happen in a day in case they never shutdown their
   // devices.
   constexpr int kTimeoutDays = 1;
-  PostCleanupDanglingDlcs(base::TimeDelta::FromDays(kTimeoutDays));
+  PostCleanupDanglingDlcs(base::Days(kTimeoutDays));
 }
 
 void DlcManager::PostCleanupDanglingDlcs(const base::TimeDelta& timeout) {

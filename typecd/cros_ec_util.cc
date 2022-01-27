@@ -50,8 +50,7 @@ bool CrosECUtil::ModeEntrySupported() {
       return CheckInventoryForModeEntry(inventory);
 
     LOG(INFO) << "Inventory attempts remaining: " << retries;
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kTypeCControlWaitMs));
+    base::PlatformThread::Sleep(base::Milliseconds(kTypeCControlWaitMs));
   }
 
   LOG(ERROR) << "Failed to call D-Bus GetInventory: " << error->GetMessage();
@@ -69,8 +68,7 @@ bool CrosECUtil::EnterMode(int port, TypeCMode mode) {
       return true;
 
     LOG(INFO) << "Enter mode attempts remaining: " << retries;
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kTypeCControlWaitMs));
+    base::PlatformThread::Sleep(base::Milliseconds(kTypeCControlWaitMs));
   }
 
   LOG(ERROR) << "Failed to call D-Bus TypeCEnterMode: " << error->GetMessage();
@@ -88,8 +86,7 @@ bool CrosECUtil::ExitMode(int port) {
       return true;
 
     LOG(INFO) << "Exit mode attempts remaining: " << retries;
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kTypeCControlWaitMs));
+    base::PlatformThread::Sleep(base::Milliseconds(kTypeCControlWaitMs));
   }
 
   LOG(ERROR) << "Failed to call D-Bus TypeCExitMode: " << error->GetMessage();

@@ -1253,8 +1253,7 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
   collector_.AddCrashMetaData("", "empty_key_val");
   std::unique_ptr<base::SimpleTestClock> test_clock =
       std::make_unique<base::SimpleTestClock>();
-  test_clock->SetNow(base::Time::UnixEpoch() +
-                     base::TimeDelta::FromMilliseconds(kFakeNow));
+  test_clock->SetNow(base::Time::UnixEpoch() + base::Milliseconds(kFakeNow));
   collector_.set_test_clock(std::move(test_clock));
   collector_.set_test_kernel_info(kKernelName, kKernelVersion);
   std::unique_ptr<policy::MockDevicePolicy> test_device_policy =
@@ -1458,18 +1457,16 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "CHROMEOS_RELEASE_TRACK=beta-channel\n"
       "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
   ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
-  base::Time os_time = base::Time::Now() - base::TimeDelta::FromDays(123);
+  base::Time os_time = base::Time::Now() - base::Days(123);
   // ext2/ext3 seem to have a timestamp granularity of 1s so round this time
   // value down to the nearest second.
-  os_time = base::TimeDelta::FromSeconds(
-                (os_time - base::Time::UnixEpoch()).InSeconds()) +
+  os_time = base::Seconds((os_time - base::Time::UnixEpoch()).InSeconds()) +
             base::Time::UnixEpoch();
   ASSERT_TRUE(base::TouchFile(lsb_release, os_time, os_time));
 
   std::unique_ptr<base::SimpleTestClock> test_clock =
       std::make_unique<base::SimpleTestClock>();
-  test_clock->SetNow(base::Time::UnixEpoch() +
-                     base::TimeDelta::FromMilliseconds(kFakeNow));
+  test_clock->SetNow(base::Time::UnixEpoch() + base::Milliseconds(kFakeNow));
   collector_.set_test_clock(std::move(test_clock));
 
   const char kKernelName[] = "Linux";

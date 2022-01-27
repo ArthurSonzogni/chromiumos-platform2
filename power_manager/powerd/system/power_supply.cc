@@ -630,8 +630,7 @@ void PowerSupply::Init(
 
   int64_t shutdown_time_sec = 0;
   if (prefs_->GetInt64(kLowBatteryShutdownTimePref, &shutdown_time_sec)) {
-    low_battery_shutdown_time_ =
-        base::TimeDelta::FromSeconds(shutdown_time_sec);
+    low_battery_shutdown_time_ = base::Seconds(shutdown_time_sec);
   }
 
   if (!GetDisplayStateOfChargeFromEC(nullptr)) {
@@ -788,7 +787,7 @@ base::FilePath PowerSupply::GetPathForId(const std::string& id) const {
 base::TimeDelta PowerSupply::GetMsPref(const std::string& pref_name,
                                        int64_t default_duration_ms) const {
   prefs_->GetInt64(pref_name, &default_duration_ms);
-  return base::TimeDelta::FromMilliseconds(default_duration_ms);
+  return base::Milliseconds(default_duration_ms);
 }
 
 void PowerSupply::DeferBatterySampling(base::TimeDelta stabilized_delay) {
@@ -1315,21 +1314,21 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
   switch (status->battery_state) {
     case PowerSupplyProperties_BatteryState_CHARGING:
       if (signed_current <= kEpsilon) {
-        status->battery_time_to_full = base::TimeDelta::FromSeconds(-1);
+        status->battery_time_to_full = base::Seconds(-1);
       } else {
         const double charge_to_full =
             std::max(0.0, status->battery_charge_full * full_factor_ -
                               status->battery_charge);
-        status->battery_time_to_full = base::TimeDelta::FromSeconds(
-            roundl(3600 * charge_to_full / signed_current));
+        status->battery_time_to_full =
+            base::Seconds(roundl(3600 * charge_to_full / signed_current));
       }
       break;
     case PowerSupplyProperties_BatteryState_DISCHARGING:
       if (signed_current >= -kEpsilon) {
-        status->battery_time_to_empty = base::TimeDelta::FromSeconds(-1);
-        status->battery_time_to_shutdown = base::TimeDelta::FromSeconds(-1);
+        status->battery_time_to_empty = base::Seconds(-1);
+        status->battery_time_to_shutdown = base::Seconds(-1);
       } else {
-        status->battery_time_to_empty = base::TimeDelta::FromSeconds(
+        status->battery_time_to_empty = base::Seconds(
             roundl(3600 * (status->battery_charge * status->nominal_voltage) /
                    (-signed_current * status->battery_voltage)));
 
@@ -1338,7 +1337,7 @@ bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
         const double available_charge =
             std::max(0.0, status->battery_charge - shutdown_charge);
         status->battery_time_to_shutdown =
-            base::TimeDelta::FromSeconds(
+            base::Seconds(
                 roundl(3600 * (available_charge * status->nominal_voltage) /
                        (-signed_current * status->battery_voltage))) -
             low_battery_shutdown_time_;
@@ -1435,7 +1434,7 @@ void PowerSupply::SchedulePoll() {
   // samples then poll every |poll_delay_|.
   if (battery_stabilized_timestamp_ > now) {
     delay = battery_stabilized_timestamp_ - now +
-            base::TimeDelta::FromMilliseconds(kBatteryStabilizedSlackMs);
+            base::Milliseconds(kBatteryStabilizedSlackMs);
   } else if (!has_max_samples_ && num_zero_samples_ < samples) {
     delay = poll_delay_initial_;
   } else {

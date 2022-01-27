@@ -88,7 +88,7 @@ TEST_F(LogManagerTest, LogFileManagement) {
     LogEntry(timestamp);
     LogEntry(timestamp);
     LogEntry(timestamp);
-    timestamp += base::TimeDelta::FromDays(1);
+    timestamp += base::Days(1);
   }
   std::set<std::string> expected_files{
       "2015-02-28.log", "2015-03-01.log", "2015-03-02.log", "2015-03-03.log",
@@ -107,7 +107,7 @@ TEST_F(LogManagerTest, LargeLogs) {
   // Create 2015-02-25.log
   LogEntry(timestamp);
 
-  timestamp += base::TimeDelta::FromDays(1);
+  timestamp += base::Days(1);
   // Write a large 2015-02-26.log but with enough room for one more log line.
   std::string data(1024 * 1024 - (log_line_len * 3 / 2), ' ');
   base::FilePath current_file = temp_dir.GetPath().Append("2015-02-26.log");

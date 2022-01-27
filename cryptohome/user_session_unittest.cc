@@ -411,7 +411,7 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
   // the timer for clearing WebAuthn secret for security is minimized. It will
   // be set to appropriate duration after secret enforcement.
   // The hibernate timer, however, is used.
-  task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(600));
+  task_environment_.FastForwardBy(base::Seconds(600));
 
   // VERIFY
 

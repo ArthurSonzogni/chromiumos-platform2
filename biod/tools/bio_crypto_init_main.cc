@@ -118,8 +118,8 @@ int main(int argc, char* argv[]) {
 
   auto process = base::Process::Open(pid);
   int exit_code = -1;
-  if (!process.WaitForExitWithTimeout(
-          base::TimeDelta::FromSeconds(kTimeoutSeconds), &exit_code)) {
+  if (!process.WaitForExitWithTimeout(base::Seconds(kTimeoutSeconds),
+                                      &exit_code)) {
     LOG(ERROR) << "bio_crypto_init timeout";
     process.Terminate(-1, false);
   }

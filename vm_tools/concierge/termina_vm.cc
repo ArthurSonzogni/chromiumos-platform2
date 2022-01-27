@@ -57,7 +57,7 @@ constexpr int64_t kStartTerminaTimeoutSeconds = 150;
 constexpr int64_t kDefaultTimeoutSeconds = 10;
 
 // How long to wait before timing out on child process exits.
-constexpr base::TimeDelta kChildExitTimeout = base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kChildExitTimeout = base::Seconds(10);
 
 // Offset in a subnet of the gateway/host.
 constexpr size_t kHostAddressOffset = 0;

@@ -28,7 +28,7 @@ using std::vector;
 namespace {
 
 // 5 minutes, since some TPM operations can take a while.
-constexpr base::TimeDelta kDBusTimeout = base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kDBusTimeout = base::Minutes(5);
 
 // TODO(yich): We should remove this after chromeos-dbus-binding support
 // SecureBlob.

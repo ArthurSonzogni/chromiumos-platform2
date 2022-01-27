@@ -39,8 +39,7 @@ const int kCoseECKeyCrvLabel = -1;
 const int kCoseECKeyXLabel = -2;
 const int kCoseECKeyYLabel = -3;
 
-constexpr base::TimeDelta kVerificationTimeout =
-    base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kVerificationTimeout = base::Seconds(10);
 
 // Cr50 Response codes.
 // TODO(louiscollard): Don't duplicate these.

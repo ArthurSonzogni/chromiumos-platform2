@@ -301,14 +301,12 @@ TEST_F(CacheCleanerTest, PatchObbNameMismatch) {
 TEST_F(CacheCleanerTest, Outdated) {
   // Package0 is expired. Should be deleted.
   ASSERT_TRUE(CreateValidPackage(temp_path(), kPackage0));
-  base::Time atime_0 =
-      base::Time::Now() - (kValidityPeriod + base::TimeDelta::FromDays(1));
+  base::Time atime_0 = base::Time::Now() - (kValidityPeriod + base::Days(1));
   WriteAttributes(temp_path().Append(kPackage0), kPackage0, atime_0);
 
   // Package1 is 1 more day before expire. Should not be deleted.
   ASSERT_TRUE(CreateValidPackage(temp_path(), kPackage1));
-  base::Time atime_1 =
-      base::Time::Now() - (kValidityPeriod - base::TimeDelta::FromDays(1));
+  base::Time atime_1 = base::Time::Now() - (kValidityPeriod - base::Days(1));
   WriteAttributes(temp_path().Append(kPackage1), kPackage1, atime_1);
 
   EXPECT_TRUE(Clean(temp_path()));
@@ -355,8 +353,7 @@ TEST_F(CacheCleanerTest, Combined) {
   ASSERT_TRUE(CreateValidPackage(temp_path(), kPackage0));
 
   ASSERT_TRUE(CreateValidPackage(temp_path(), kPackage1));
-  base::Time atime =
-      base::Time::Now() - (kValidityPeriod + base::TimeDelta::FromDays(1));
+  base::Time atime = base::Time::Now() - (kValidityPeriod + base::Days(1));
   WriteAttributes(temp_path().Append(kPackage1), kPackage1, atime);
 
   ASSERT_TRUE(CreateFile(temp_path().Append("odd.file")));

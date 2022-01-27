@@ -214,8 +214,8 @@ class SuspenderTest : public testing::Test {
     prefs_.SetInt64(kRetrySuspendMsPref, pref_retry_delay_ms_);
     prefs_.SetInt64(kRetrySuspendAttemptsPref, pref_num_retries_);
     prefs_.SetBool(kDisableHibernatePref, false);
-    test_api_.clock()->set_current_boot_time_for_testing(
-        base::TimeTicks() + base::TimeDelta::FromHours(1));
+    test_api_.clock()->set_current_boot_time_for_testing(base::TimeTicks() +
+                                                         base::Hours(1));
     delegate_.set_clock(test_api_.clock());
     suspender_.Init(&delegate_, &dbus_wrapper_, &dark_resume_,
                     &display_watcher_, &wakeup_source_identifier_,
@@ -306,7 +306,7 @@ TEST_F(SuspenderTest, SuspendResume) {
   EXPECT_TRUE(delegate_.suspend_announced());
 
   // Simulate suspending for 20 minutes.
-  const base::TimeDelta kDuration = base::TimeDelta::FromMinutes(20);
+  const base::TimeDelta kDuration = base::Minutes(20);
   delegate_.set_suspend_advance_time(kDuration);
 
   // Indicate to suspender that input device triggered the wake.
@@ -1058,7 +1058,7 @@ TEST_F(SuspenderTest, DarkResumeWakeDataNoDarkResume) {
 
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
                             SuspendFlavor::SUSPEND_DEFAULT);
-  const base::TimeDelta kSuspendDuration = base::TimeDelta::FromMinutes(24);
+  const base::TimeDelta kSuspendDuration = base::Minutes(24);
   delegate_.set_suspend_advance_time(kSuspendDuration);
   AnnounceReadyForSuspend(test_api_.suspend_id());
 
@@ -1074,18 +1074,16 @@ TEST_F(SuspenderTest, DarkResumeWakeDataOneDarkResume) {
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
                             SuspendFlavor::SUSPEND_DEFAULT);
   dark_resume_.set_in_dark_resume(true);
-  const base::TimeDelta kInitialSuspendDuration =
-      base::TimeDelta::FromMinutes(7);
+  const base::TimeDelta kInitialSuspendDuration = base::Minutes(7);
   delegate_.set_suspend_advance_time(kInitialSuspendDuration);
   AnnounceReadyForSuspend(test_api_.suspend_id());
 
   // Simulate the system being briefly awake in the dark resume state.
-  const base::TimeDelta kDarkResumeDuration =
-      base::TimeDelta::FromMilliseconds(4566);
+  const base::TimeDelta kDarkResumeDuration = base::Milliseconds(4566);
   test_api_.clock()->advance_current_boot_time_for_testing(kDarkResumeDuration);
 
   dark_resume_.set_in_dark_resume(false);
-  const base::TimeDelta kDarkSuspendDuration = base::TimeDelta::FromMinutes(3);
+  const base::TimeDelta kDarkSuspendDuration = base::Minutes(3);
   delegate_.set_suspend_advance_time(kDarkSuspendDuration);
   AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
 
@@ -1107,13 +1105,12 @@ TEST_F(SuspenderTest, DarkResumeWakeDataFailedResuspend) {
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
                             SuspendFlavor::SUSPEND_DEFAULT);
   dark_resume_.set_in_dark_resume(true);
-  const base::TimeDelta kInitialSuspendDuration =
-      base::TimeDelta::FromMinutes(7);
+  const base::TimeDelta kInitialSuspendDuration = base::Minutes(7);
   delegate_.set_suspend_advance_time(kInitialSuspendDuration);
   AnnounceReadyForSuspend(test_api_.suspend_id());
 
   // Simulate the system being briefly awake in the dark resume state.
-  const base::TimeDelta kDarkResumeDuration = base::TimeDelta::FromSeconds(5);
+  const base::TimeDelta kDarkResumeDuration = base::Seconds(5);
   test_api_.clock()->advance_current_boot_time_for_testing(kDarkResumeDuration);
 
   // Now simulate a failed resuspend.
@@ -1125,12 +1122,11 @@ TEST_F(SuspenderTest, DarkResumeWakeDataFailedResuspend) {
 
   // Finally, resuspend successfully after 10 seconds.
   dark_resume_.set_in_dark_resume(false);
-  const base::TimeDelta kResuspendRetryDuration =
-      base::TimeDelta::FromSeconds(10);
+  const base::TimeDelta kResuspendRetryDuration = base::Seconds(10);
   test_api_.clock()->advance_current_boot_time_for_testing(
       kResuspendRetryDuration);
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::SUCCESS);
-  const base::TimeDelta kResuspendDuration = base::TimeDelta::FromMinutes(3);
+  const base::TimeDelta kResuspendDuration = base::Minutes(3);
   delegate_.set_suspend_advance_time(kResuspendDuration);
   AnnounceReadyForDarkSuspend(test_api_.dark_suspend_id());
 
@@ -1184,7 +1180,7 @@ TEST_F(SuspenderTest, SuspendWakeupTimeout) {
 
   const uint64_t kWakeupCount = 452;
   delegate_.set_wakeup_count(kWakeupCount);
-  const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(5);
+  const base::TimeDelta kDuration = base::Seconds(5);
   suspender_.RequestSuspendWithExternalWakeupCount(
       SuspendImminent_Reason_OTHER, kWakeupCount, kDuration,
       SuspendFlavor::SUSPEND_DEFAULT);
@@ -1219,7 +1215,7 @@ TEST_F(SuspenderTest, SuspendWakeupTimeout) {
 TEST_F(SuspenderTest, SuspendWakeupTimeoutNoWakeupCount) {
   Init();
 
-  const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(5);
+  const base::TimeDelta kDuration = base::Seconds(5);
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, kDuration,
                             SuspendFlavor::SUSPEND_DEFAULT);
   const int suspend_id = test_api_.suspend_id();
@@ -1253,7 +1249,7 @@ TEST_F(SuspenderTest, SuspendWakeupTimoutRetryOnFailure) {
   const uint64_t kWakeupCount = 46;
   delegate_.set_wakeup_count(kWakeupCount);
   delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
-  const base::TimeDelta kDuration = base::TimeDelta::FromSeconds(7);
+  const base::TimeDelta kDuration = base::Seconds(7);
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, kDuration,
                             SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());

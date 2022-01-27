@@ -192,7 +192,7 @@ TEST_F(InputEventHandlerTest, LidEvents) {
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
   dbus_wrapper_.ClearSentSignals();
 
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   input_watcher_.set_lid_state(LidState::CLOSED);
   input_watcher_.NotifyObserversAboutLidState();
   EXPECT_EQ(kLidClosed, delegate_.GetActions());
@@ -200,7 +200,7 @@ TEST_F(InputEventHandlerTest, LidEvents) {
   EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());
   dbus_wrapper_.ClearSentSignals();
 
-  AdvanceTime(base::TimeDelta::FromSeconds(5));
+  AdvanceTime(base::Seconds(5));
   input_watcher_.set_lid_state(LidState::OPEN);
   input_watcher_.NotifyObserversAboutLidState();
   EXPECT_EQ(kLidOpened, delegate_.GetActions());
@@ -214,7 +214,7 @@ TEST_F(InputEventHandlerTest, TabletModeEvents) {
   EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
   dbus_wrapper_.ClearSentSignals();
 
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   input_watcher_.set_tablet_mode(TabletMode::ON);
   input_watcher_.NotifyObserversAboutTabletMode();
   EXPECT_EQ(kTabletOn, delegate_.GetActions());
@@ -222,7 +222,7 @@ TEST_F(InputEventHandlerTest, TabletModeEvents) {
   EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());
   dbus_wrapper_.ClearSentSignals();
 
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   input_watcher_.set_tablet_mode(TabletMode::OFF);
   input_watcher_.NotifyObserversAboutTabletMode();
   EXPECT_EQ(kTabletOff, delegate_.GetActions());
@@ -243,7 +243,7 @@ TEST_F(InputEventHandlerTest, PowerButtonEvents) {
   EXPECT_EQ(Now().ToInternalValue(), GetInputEventSignalTimestamp());
   dbus_wrapper_.ClearSentSignals();
 
-  AdvanceTime(base::TimeDelta::FromMilliseconds(100));
+  AdvanceTime(base::Milliseconds(100));
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
   EXPECT_EQ(kPowerButtonUp, delegate_.GetActions());
   EXPECT_EQ(InputEvent_Type_POWER_BUTTON_UP, GetInputEventSignalType());
@@ -262,8 +262,8 @@ TEST_F(InputEventHandlerTest, IgnorePowerButtonPresses) {
   Init();
   dbus_wrapper_.ClearSentSignals();
 
-  const base::TimeDelta kShortDelay = base::TimeDelta::FromMilliseconds(100);
-  const base::TimeDelta kIgnoreTimeout = base::TimeDelta::FromSeconds(3);
+  const base::TimeDelta kShortDelay = base::Milliseconds(100);
+  const base::TimeDelta kIgnoreTimeout = base::Seconds(3);
 
   // Ignore the power button events.
   CallIgnoreNextPowerButtonPress(kIgnoreTimeout);
@@ -292,7 +292,7 @@ TEST_F(InputEventHandlerTest, IgnorePowerButtonPresses) {
   // Ignore again the power button events.
   CallIgnoreNextPowerButtonPress(kIgnoreTimeout);
   // Expire the timeout.
-  AdvanceTime(kIgnoreTimeout + base::TimeDelta::FromMilliseconds(500));
+  AdvanceTime(kIgnoreTimeout + base::Milliseconds(500));
   // The next press is going through.
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
@@ -328,7 +328,7 @@ TEST_F(InputEventHandlerTest, IgnorePowerButtonPresses) {
 TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   Init();
 
-  const base::TimeDelta kShortDelay = base::TimeDelta::FromMilliseconds(100);
+  const base::TimeDelta kShortDelay = base::Milliseconds(100);
   const base::TimeDelta kTimeout =
       InputEventHandler::kPowerButtonAcknowledgmentTimeout;
 
@@ -346,7 +346,7 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
 
   // Check that releasing the power button before it's been acknowledged also
   // stops the timeout.
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::UP);
@@ -355,7 +355,7 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
   dbus_wrapper_.ClearSentSignals();
 
   // Let the timeout fire and check that the delegate is notified.
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());
   ASSERT_TRUE(handler_.TriggerPowerButtonAcknowledgmentTimeoutForTesting());
@@ -368,7 +368,7 @@ TEST_F(InputEventHandlerTest, AcknowledgePowerButtonPresses) {
 
   // Send an acknowledgment with a stale timestamp and check that it doesn't
   // stop the timeout.
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   dbus_wrapper_.ClearSentSignals();
   input_watcher_.NotifyObserversAboutPowerButtonEvent(ButtonState::DOWN);
   EXPECT_EQ(kPowerButtonDown, delegate_.GetActions());

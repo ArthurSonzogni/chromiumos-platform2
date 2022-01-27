@@ -55,9 +55,7 @@ bool Prefs::TestApi::TriggerWriteTimeout() {
   return true;
 }
 
-Prefs::Prefs()
-    : write_interval_(
-          base::TimeDelta::FromMilliseconds(kDefaultWriteIntervalMs)) {}
+Prefs::Prefs() : write_interval_(base::Milliseconds(kDefaultWriteIntervalMs)) {}
 
 Prefs::~Prefs() {
   if (write_prefs_timer_.IsRunning())

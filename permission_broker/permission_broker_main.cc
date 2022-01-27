@@ -51,8 +51,7 @@ int main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Permission Broker");
   brillo::InitLog(brillo::kLogToSyslog);
 
-  permission_broker::Daemon daemon(
-      FLAGS_udev_run_path,
-      base::TimeDelta::FromMilliseconds(FLAGS_poll_interval));
+  permission_broker::Daemon daemon(FLAGS_udev_run_path,
+                                   base::Milliseconds(FLAGS_poll_interval));
   return daemon.Run();
 }

@@ -41,9 +41,8 @@ class MockAddEntropyCommand
 //   cmd.result is error code from EC (EC_RES_SUCCESS, etc)
 
 TEST(EcCommandAsync, Run_Success) {
-  MockAddEntropyCommand mock_cmd(
-      {.poll_for_result_num_attempts = 2,
-       .poll_interval = base::TimeDelta::FromMilliseconds(1)});
+  MockAddEntropyCommand mock_cmd({.poll_for_result_num_attempts = 2,
+                                  .poll_interval = base::Milliseconds(1)});
   EXPECT_CALL(mock_cmd, ioctl)
       .Times(3)
       // First call to ioctl() to start the command; EC returns success.
@@ -67,9 +66,8 @@ TEST(EcCommandAsync, Run_Success) {
 }
 
 TEST(EcCommandAsync, Run_TimeoutFailure) {
-  MockAddEntropyCommand mock_cmd(
-      {.poll_for_result_num_attempts = 2,
-       .poll_interval = base::TimeDelta::FromMilliseconds(1)});
+  MockAddEntropyCommand mock_cmd({.poll_for_result_num_attempts = 2,
+                                  .poll_interval = base::Milliseconds(1)});
 
   EXPECT_CALL(mock_cmd, ioctl)
       .Times(3)
@@ -96,7 +94,7 @@ TEST(EcCommandAsync, Run_Failure) {
        // not be performed because we got an error on the second
        // ioctl() call.
        .poll_for_result_num_attempts = 2,
-       .poll_interval = base::TimeDelta::FromMilliseconds(1)});
+       .poll_interval = base::Milliseconds(1)});
   EXPECT_CALL(mock_cmd, ioctl)
       .Times(2)
       // First call to ioctl() to start the command; EC returns success.
@@ -122,7 +120,7 @@ TEST(EcCommandAsync, Run_IoctlTimesOut) {
       // call will not be performed because we got an error on
       // the second ioctl() call.
       .poll_for_result_num_attempts = 2,
-      .poll_interval = base::TimeDelta::FromMilliseconds(1),
+      .poll_interval = base::Milliseconds(1),
   });
   EXPECT_CALL(mock, ioctl)
       .Times(2)
@@ -143,10 +141,9 @@ TEST(EcCommandAsync, Run_IoctlTimesOut) {
 }
 
 TEST(EcCommandAsync, Run_IoctlTimesOut_IgnoreFailure) {
-  MockAddEntropyCommand mock(
-      {.poll_for_result_num_attempts = 2,
-       .poll_interval = base::TimeDelta::FromMilliseconds(1),
-       .validate_poll_result = false});
+  MockAddEntropyCommand mock({.poll_for_result_num_attempts = 2,
+                              .poll_interval = base::Milliseconds(1),
+                              .validate_poll_result = false});
   EXPECT_CALL(mock, ioctl)
       .Times(3)
       // First call to ioctl() to start the command; EC returns success.
@@ -184,7 +181,7 @@ TEST(EcCommandAsync, DefaultOptions) {
   MockAddEntropyCommand::Options options;
   EXPECT_EQ(options.validate_poll_result, true);
   EXPECT_EQ(options.poll_for_result_num_attempts, 20);
-  EXPECT_EQ(options.poll_interval, base::TimeDelta::FromMilliseconds(100));
+  EXPECT_EQ(options.poll_interval, base::Milliseconds(100));
 }
 
 }  // namespace

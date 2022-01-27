@@ -128,10 +128,10 @@ bool RefCountBase::ShouldPurgeDlc() const {
   }
 
   base::Time last_accessed = base::Time::FromDeltaSinceWindowsEpoch(
-      base::TimeDelta::FromMicroseconds(last_access_time_us_));
+      base::Microseconds(last_access_time_us_));
   base::TimeDelta delta_time =
       SystemState::Get()->clock()->Now() - last_accessed;
-  return delta_time > base::TimeDelta::FromDays(manifest_->days_to_purge());
+  return delta_time > base::Days(manifest_->days_to_purge());
 }
 
 bool RefCountBase::Persist() {

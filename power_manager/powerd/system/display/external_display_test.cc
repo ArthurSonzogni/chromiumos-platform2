@@ -278,8 +278,8 @@ TEST_F(ExternalDisplayTest, BasicCommunication) {
   // Let enough time pass for the cached brightness to be invalidated.
   // Asking for another adjustment should result in the brightness being
   // re-read.
-  test_api_.AdvanceTime(base::TimeDelta::FromMilliseconds(
-      ExternalDisplay::kCachedBrightnessValidMs + 10));
+  test_api_.AdvanceTime(
+      base::Milliseconds(ExternalDisplay::kCachedBrightnessValidMs + 10));
   display_.AdjustBrightnessByPercent(-10.0);
   EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
 

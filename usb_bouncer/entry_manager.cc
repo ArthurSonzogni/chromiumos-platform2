@@ -24,9 +24,9 @@ namespace usb_bouncer {
 
 namespace {
 
-constexpr TimeDelta kModeSwitchThreshold = TimeDelta::FromMilliseconds(1000);
+constexpr TimeDelta kModeSwitchThreshold = base::Milliseconds(1000);
 
-constexpr TimeDelta kCleanupThreshold = TimeDelta::FromDays(365 / 4);
+constexpr TimeDelta kCleanupThreshold = base::Days(365 / 4);
 
 constexpr char kDevpathRoot[] = "sys/devices";
 

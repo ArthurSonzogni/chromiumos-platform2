@@ -61,8 +61,7 @@ const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 
 const int kCurrentApnCacheVersion = 2;
 
-constexpr base::TimeDelta kAutoConnectFailedTime =
-    base::TimeDelta::FromSeconds(20);
+constexpr base::TimeDelta kAutoConnectFailedTime = base::Seconds(20);
 
 bool GetNonEmptyField(const Stringmap& stringmap,
                       const std::string& fieldname,
@@ -642,7 +641,7 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
 }
 
 base::TimeDelta CellularService::GetMaxAutoConnectCooldownTime() const {
-  return base::TimeDelta::FromMinutes(30);
+  return base::Minutes(30);
 }
 
 bool CellularService::IsDisconnectable(Error* error) const {

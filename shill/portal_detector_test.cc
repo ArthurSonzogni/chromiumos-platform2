@@ -286,7 +286,7 @@ TEST_F(PortalDetectorTest, GetNextAttemptDelay) {
 
 TEST_F(PortalDetectorTest, DelayedAttempt) {
   int64_t delay_ms = 123 * 1000;
-  const auto delay = base::TimeDelta::FromMilliseconds(delay_ms);
+  const auto delay = base::Milliseconds(delay_ms);
   PortalDetector::Properties props =
       PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay_ms)).Times(1);
@@ -301,7 +301,7 @@ TEST_F(PortalDetectorTest, StartRepeated) {
 
   // A second  should cancel the existing trial and set up the new one.
   int64_t delay_ms = 10 * 1000;
-  const auto delay = base::TimeDelta::FromMilliseconds(delay_ms);
+  const auto delay = base::Milliseconds(delay_ms);
   EXPECT_CALL(*http_request(), Stop());
   EXPECT_CALL(*https_request(), Stop());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay_ms)).Times(1);

@@ -25,8 +25,7 @@ namespace wilco {
 
 // The time (in TimeDelta) after which ForceShutdown will be called if graceful
 // shutdown wasn't done within that time.
-constexpr base::TimeDelta kForceShutdownDelayTimeDelta =
-    base::TimeDelta::FromSeconds(2);
+constexpr base::TimeDelta kForceShutdownDelayTimeDelta = base::Seconds(2);
 
 Daemon::Daemon()
     : DBusServiceDaemon(kWilcoDtcSupportdServiceName /* service_name */),

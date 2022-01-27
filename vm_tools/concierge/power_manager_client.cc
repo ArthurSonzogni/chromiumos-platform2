@@ -18,8 +18,7 @@ namespace vm_tools {
 namespace concierge {
 namespace {
 // How long powerd should wait for us to report suspend readiness.
-constexpr base::TimeDelta kSuspendDelayTimeout =
-    base::TimeDelta::FromSeconds(5);
+constexpr base::TimeDelta kSuspendDelayTimeout = base::Seconds(5);
 
 // Used to mark that the device is not currently suspended or about to suspend.
 constexpr int32_t kNoSuspendId = -1;

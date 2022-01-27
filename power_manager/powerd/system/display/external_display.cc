@@ -322,7 +322,7 @@ void ExternalDisplay::UpdateState() {
       // start the timer to prevent another message from being sent too soon.
       if (HaveCachedBrightness()) {
         if (WriteBrightness())
-          StartTimer(base::TimeDelta::FromMilliseconds(kDdcSetDelayMs));
+          StartTimer(base::Milliseconds(kDdcSetDelayMs));
         pending_brightness_adjustment_percent_ = 0.0;
         pending_brightness_percent_ = -1.0;
         return;
@@ -336,7 +336,7 @@ void ExternalDisplay::UpdateState() {
         return;
       }
       state_ = State::WAITING_FOR_REPLY;
-      StartTimer(base::TimeDelta::FromMilliseconds(kDdcGetDelayMs));
+      StartTimer(base::Milliseconds(kDdcGetDelayMs));
       return;
 
     case State::WAITING_FOR_REPLY:
@@ -353,7 +353,7 @@ void ExternalDisplay::UpdateState() {
       // too soon. If the write fails, discard the pending adjustment to prevent
       // a buggy display from resulting in infinite retries.
       if (HavePendingBrightnessAdjustment() && WriteBrightness())
-        StartTimer(base::TimeDelta::FromMilliseconds(kDdcSetDelayMs));
+        StartTimer(base::Milliseconds(kDdcSetDelayMs));
       pending_brightness_adjustment_percent_ = 0.0;
       pending_brightness_percent_ = -1.0;
       return;

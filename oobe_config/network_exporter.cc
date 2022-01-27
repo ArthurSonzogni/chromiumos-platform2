@@ -123,7 +123,7 @@ std::string FetchNetworkConfigs(
         DCHECK(brillo::MessageLoop::current());
         brillo::MessageLoop::current()->BreakLoop();
       }),
-      base::TimeDelta::FromSeconds(90));
+      base::Seconds(90));
 
   // Wait until the configuration was fetched.
   message_loop->Run();

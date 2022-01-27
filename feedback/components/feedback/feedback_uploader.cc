@@ -42,7 +42,7 @@ FeedbackUploader::FeedbackUploader(
     scoped_refptr<base::SingleThreadTaskRunner> task_runner,
     const std::string& url)
     : report_path_(path.Append(kFeedbackReportPath)),
-      retry_delay_(base::TimeDelta::FromMinutes(kRetryDelayMinutes)),
+      retry_delay_(base::Minutes(kRetryDelayMinutes)),
       task_runner_(task_runner),
       url_(url) {
   Init();

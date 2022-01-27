@@ -23,7 +23,7 @@ namespace shill {
 
 namespace {
 
-constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromSeconds(30);
+constexpr base::TimeDelta kConnectTimeout = base::Seconds(30);
 
 std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
     const KeyValueStore& args, const EapCredentials& eap_credentials) {

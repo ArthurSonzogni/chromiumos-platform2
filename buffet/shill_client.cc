@@ -175,7 +175,7 @@ void ShillClient::Connect(const string& ssid,
       FROM_HERE,
       base::Bind(&ShillClient::ConnectToServiceError,
                  weak_factory_.GetWeakPtr(), connecting_service_),
-      base::TimeDelta::FromMinutes(1));
+      base::Minutes(1));
 }
 
 void ShillClient::ConnectToServiceError(

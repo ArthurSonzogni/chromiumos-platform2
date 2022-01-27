@@ -18,10 +18,8 @@ constexpr char kEncryptionKeyStatus[] =
 
 constexpr char kTimeToTakeTpmOwnership[] =
     "Platform.MountEncrypted.TimeToTakeTpmOwnership";
-constexpr base::TimeDelta kTimeToTakeTpmOwnershipMin =
-    base::TimeDelta::FromMilliseconds(1);
-constexpr base::TimeDelta kTimeToTakeTpmOwnershipMax =
-    base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kTimeToTakeTpmOwnershipMin = base::Milliseconds(1);
+constexpr base::TimeDelta kTimeToTakeTpmOwnershipMax = base::Minutes(5);
 constexpr int kTimeToTakeTpmOwnershipNumBuckets = 50;
 
 }  // namespace

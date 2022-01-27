@@ -127,8 +127,7 @@ CollectorInfo ArcvmCxxCollector::GetHandlerInfo(
           .should_handle = arc_native,
           .cb = base::BindRepeating(
               &ArcvmCxxCollector::HandleCrash, arcvm_cxx_collector,
-              build_property, crash_info,
-              base::TimeDelta::FromMilliseconds(uptime_millis)),
+              build_property, crash_info, base::Milliseconds(uptime_millis)),
       }},
   };
 }

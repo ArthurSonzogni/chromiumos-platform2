@@ -48,7 +48,7 @@ namespace {
 // Certain boards can be very slow on mount operations. Extend the timeout in
 // this case to 120s.
 constexpr base::TimeDelta kOutOfProcessHelperMountTimeout =
-    base::TimeDelta::FromSeconds(USE_SLOW_MOUNT ? 120 : 3);
+    base::Seconds(USE_SLOW_MOUNT ? 120 : 3);
 
 // How long to wait for the out-of-process helper to exit and be reaped.
 //
@@ -62,7 +62,7 @@ constexpr base::TimeDelta kOutOfProcessHelperMountTimeout =
 // Certain boards can be very slow on mount operations. Extend the timeout in
 // this case to 120s.
 constexpr base::TimeDelta kOutOfProcessHelperReapTimeout =
-    base::TimeDelta::FromSeconds(USE_SLOW_MOUNT ? 120 : 1);
+    base::Seconds(USE_SLOW_MOUNT ? 120 : 1);
 
 bool WaitForHelper(int read_from_helper, const base::TimeDelta& timeout) {
   struct pollfd poll_fd = {};

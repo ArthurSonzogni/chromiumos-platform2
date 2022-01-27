@@ -30,7 +30,7 @@ class ThreadUnsafeCounter {
       multiplier = multiplier * kMultiplier % kModulo;
       ++updated_times_;
       // Sleep so that race condition will happen with higher probability.
-      base::PlatformThread::Sleep(base::TimeDelta::FromMicroseconds(1));
+      base::PlatformThread::Sleep(base::Microseconds(1));
     }
     value_ = old * multiplier % kModulo;
   }

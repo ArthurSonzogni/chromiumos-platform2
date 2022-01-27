@@ -153,8 +153,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
         if (fw_updater.TryConnectUsb() == UsbConnectStatus::kSuccess) {
           fw_updater.SendSubcommand(UpdateExtraCommand::kImmediateReset);
           fw_updater.CloseUsb();
-          base::PlatformThread::Sleep(
-              base::TimeDelta::FromMilliseconds(kResetTimeMs));
+          base::PlatformThread::Sleep(base::Milliseconds(kResetTimeMs));
         }
         status = HammerUpdater::RunStatus::kNeedJump;
         continue;
@@ -233,16 +232,14 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
         // process from being invoked.
         fw_updater_->SendSubcommand(UpdateExtraCommand::kJumpToRW);
         fw_updater_->CloseUsb();
-        base::PlatformThread::Sleep(
-            base::TimeDelta::FromMilliseconds(kResetTimeMs));
+        base::PlatformThread::Sleep(base::Milliseconds(kResetTimeMs));
         return HammerUpdater::RunStatus::kNeedJump;
 
       case HammerUpdater::RunStatus::kNeedReset:
         LOG(INFO) << "Reset hammer and run again. run_count=" << run_count;
         fw_updater_->SendSubcommand(UpdateExtraCommand::kImmediateReset);
         fw_updater_->CloseUsb();
-        base::PlatformThread::Sleep(
-            base::TimeDelta::FromMilliseconds(kResetTimeMs));
+        base::PlatformThread::Sleep(base::Milliseconds(kResetTimeMs));
         continue;
 
       case HammerUpdater::RunStatus::kNeedLock:
@@ -252,8 +249,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
         fw_updater_->CloseUsb();
         // TODO(kitching): Make RW jumps more robust by polling until
         // the jump completes (or fails).
-        base::PlatformThread::Sleep(
-            base::TimeDelta::FromMilliseconds(kResetTimeMs));
+        base::PlatformThread::Sleep(base::Milliseconds(kResetTimeMs));
         continue;
 
       case HammerUpdater::RunStatus::kNeedJump:
@@ -262,8 +258,7 @@ HammerUpdater::RunStatus HammerUpdater::RunLoop() {
         fw_updater_->CloseUsb();
         // TODO(kitching): Make RW jumps more robust by polling until
         // the jump completes (or fails).
-        base::PlatformThread::Sleep(
-            base::TimeDelta::FromMilliseconds(kResetTimeMs));
+        base::PlatformThread::Sleep(base::Milliseconds(kResetTimeMs));
         continue;
 
       case HammerUpdater::RunStatus::kTouchpadMismatched:
@@ -554,8 +549,7 @@ void HammerUpdater::WaitUsbReady(HammerUpdater::RunStatus status) {
     }
     if (status == HammerUpdater::RunStatus::kNeedReset) {
       LOG(INFO) << "USB device probably in RO, waiting for it to enter RW.";
-      base::PlatformThread::Sleep(
-          base::TimeDelta::FromMilliseconds(kJumpToRWTimeMs));
+      base::PlatformThread::Sleep(base::Milliseconds(kJumpToRWTimeMs));
 
       usb_connection = fw_updater_->TryConnectUsb();
       fw_updater_->CloseUsb();
@@ -567,8 +561,7 @@ void HammerUpdater::WaitUsbReady(HammerUpdater::RunStatus status) {
 
     LOG(INFO) << "Now USB device should be in RW. Wait " << kUdevGuardTimeMs
               << "ms to prevent udev invoking next process.";
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kUdevGuardTimeMs));
+    base::PlatformThread::Sleep(base::Milliseconds(kUdevGuardTimeMs));
     LOG(INFO) << "Finish the infinite loop prevention.";
   }
 }

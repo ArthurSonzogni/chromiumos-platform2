@@ -1412,7 +1412,7 @@ TEST_F(WebPlatformHandwritingRecognizerTest, GetExpectedRecognizedText) {
   ASSERT_EQ(strokes_.size(), 1u);
   ASSERT_EQ(strokes_[0]->points.size(), 23u);
   for (int i = 0; i < 23; ++i) {
-    strokes_[0]->points[i]->t = base::TimeDelta::FromMilliseconds(i * i * 100);
+    strokes_[0]->points[i]->t = base::Milliseconds(i * i * 100);
   }
   ExpectRecognizeResult("a");
 }

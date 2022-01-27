@@ -166,8 +166,7 @@ constexpr char kSkippedFileListFileName[] =
     "root/crypto-migration.files-skipped";
 // TODO(dspaid): Determine performance impact so we can potentially increase
 // frequency.
-constexpr base::TimeDelta kStatusSignalInterval =
-    base::TimeDelta::FromSeconds(1);
+constexpr base::TimeDelta kStatusSignalInterval = base::Seconds(1);
 // {Source,Referrer}URL xattrs are from chrome downloads and are not used on
 // ChromeOS.  They may be very large though, potentially preventing the
 // migration of other attributes.

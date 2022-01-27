@@ -96,8 +96,8 @@ class MetricsDaemonTest : public testing::Test {
 
     daemon_.Init(true, false, &metrics_lib_, kFakeDiskStatsName,
                  kFakeVmStatsName, kFakeScalingMaxFreqPath,
-                 kFakeCpuinfoMaxFreqPath, base::TimeDelta::FromMinutes(30),
-                 kMetricsServer, kMetricsFilePath, "/", backing_dir_path);
+                 kFakeCpuinfoMaxFreqPath, base::Minutes(30), kMetricsServer,
+                 kMetricsFilePath, "/", backing_dir_path);
 
     CHECK(base::CreateNewTempDirectory("", &fake_temperature_dir_));
     daemon_.SetThermalZonePathBaseForTest(fake_temperature_dir_);
@@ -454,7 +454,7 @@ TEST_F(MetricsDaemonTest, SendTemperatureAtResume) {
   info.set_suspend_id(24712939);
   info.set_suspend_duration(
       (MetricsDaemon::kMinSuspendDurationForAmbientTemperature +
-       base::TimeDelta::FromMinutes(1))
+       base::Minutes(1))
           .ToInternalValue());
   writer.AppendProtoAsArrayOfBytes(info);
   daemon_.HandleSuspendDone(&suspend_done);
@@ -473,7 +473,7 @@ TEST_F(MetricsDaemonTest, DoNotSendTemperatureShortResume) {
   info.set_suspend_id(39218752);
   info.set_suspend_duration(
       (MetricsDaemon::kMinSuspendDurationForAmbientTemperature -
-       base::TimeDelta::FromMinutes(23))
+       base::Minutes(23))
           .ToInternalValue());
   writer.AppendProtoAsArrayOfBytes(info);
   daemon_.HandleSuspendDone(&suspend_done);
@@ -706,8 +706,7 @@ TEST_F(MetricsDaemonTest, UpdateUsageStats) {
 
   // Add an arbitrary amount to the test start.
   const int elapsed_seconds = 42;
-  base::TimeTicks end =
-      test_start_ + base::TimeDelta::FromSeconds(elapsed_seconds);
+  base::TimeTicks end = test_start_ + base::Seconds(elapsed_seconds);
   ASSERT_EQ(elapsed_seconds, (end - test_start_).InSeconds());
 
   ExpectActiveUseUpdate(elapsed_seconds);
@@ -721,8 +720,7 @@ TEST_F(MetricsDaemonTest, UpdateUsageStatsTooBig) {
 
   // Add an arbitrary amount to the test start.
   const int elapsed_seconds = 1'000'000'000;
-  base::TimeTicks end =
-      test_start_ + base::TimeDelta::FromSeconds(elapsed_seconds);
+  base::TimeTicks end = test_start_ + base::Seconds(elapsed_seconds);
 
   EXPECT_CALL(metrics_lib_,
               SendToUMA("Platform.UnaggregatedUsageTime", _, _, _, _))

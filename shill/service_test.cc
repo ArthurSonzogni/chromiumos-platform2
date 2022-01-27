@@ -229,7 +229,7 @@ class ServiceTest : public PropertyStoreTest {
         FROM_HERE,
         base::Bind([](base::Closure quit_closure) { quit_closure.Run(); },
                    run_loop.QuitClosure()),
-        base::TimeDelta::FromMilliseconds(1));
+        base::Milliseconds(1));
     run_loop.Run();
     return service_->GetTimeSinceFailed();
   }

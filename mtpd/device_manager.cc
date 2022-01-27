@@ -644,7 +644,7 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
         FROM_HERE,
         base::BindOnce(&DeviceManager::AddDevices,
                        weak_ptr_factory_.GetWeakPtr()),
-        base::TimeDelta::FromSeconds(1));
+        base::Seconds(1));
     return;
   }
   if (kEventAction == "remove") {
@@ -654,7 +654,7 @@ void DeviceManager::HandleDeviceNotification(udev_device* device) {
         FROM_HERE,
         base::BindOnce(&DeviceManager::RemoveDevices,
                        weak_ptr_factory_.GetWeakPtr(), false /* !remove_all */),
-        base::TimeDelta::FromSeconds(1));
+        base::Seconds(1));
     return;
   }
   // udev notes the existence of other actions like "change" and "move", but

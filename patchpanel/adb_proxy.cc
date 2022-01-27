@@ -42,8 +42,7 @@ constexpr char kUnixConnectAddr[] = "/run/arc/adb/adb.sock";
 constexpr int kDbusTimeoutMs = 200;
 // The maximum number of ADB sideloading query failures before stopping.
 constexpr int kAdbSideloadMaxTry = 5;
-constexpr base::TimeDelta kAdbSideloadUpdateDelay =
-    base::TimeDelta::FromMilliseconds(5000);
+constexpr base::TimeDelta kAdbSideloadUpdateDelay = base::Milliseconds(5000);
 
 const std::set<GuestMessage::GuestType> kArcGuestTypes{GuestMessage::ARC,
                                                        GuestMessage::ARC_VM};

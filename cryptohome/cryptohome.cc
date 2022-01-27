@@ -1269,7 +1269,7 @@ int main(int argc, char** argv) {
                  timestamp_path.value().c_str());
         }
         last_activity = base::Time::FromDeltaSinceWindowsEpoch(
-            base::TimeDelta::FromSeconds(timestamp.timestamp()));
+            base::Seconds(timestamp.timestamp()));
       } else {
         printf("Couldn't load timestamp contents: %s.\n",
                timestamp_path.value().c_str());
@@ -1295,7 +1295,7 @@ int main(int argc, char** argv) {
     user_data_auth::UpdateCurrentUserActivityTimestampRequest req;
     user_data_auth::UpdateCurrentUserActivityTimestampReply reply;
     req.set_time_shift_sec(
-        base::TimeDelta::FromDays(kSetCurrentUserOldOffsetInDays).InSeconds());
+        base::Days(kSetCurrentUserOldOffsetInDays).InSeconds());
     brillo::ErrorPtr error;
     if (!misc_proxy.UpdateCurrentUserActivityTimestamp(req, &reply, &error,
                                                        timeout_ms) ||
@@ -1605,10 +1605,10 @@ int main(int argc, char** argv) {
       timeout = timeout_in_switch;
     }
 
-    auto deadline = base::Time::Now() + base::TimeDelta::FromSeconds(timeout);
+    auto deadline = base::Time::Now() + base::Seconds(timeout);
     while (base::Time::Now() < deadline) {
       base::PlatformThread::Sleep(
-          base::TimeDelta::FromMilliseconds(kWaitOwnershipPollIntervalInMs));
+          base::Milliseconds(kWaitOwnershipPollIntervalInMs));
       tpm_manager::GetTpmStatusRequest req;
       tpm_manager::GetTpmStatusReply reply;
       brillo::ErrorPtr error;

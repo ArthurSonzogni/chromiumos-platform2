@@ -28,7 +28,7 @@ namespace brillo {
 namespace {
 
 // Log sync(), fsync(), etc. calls that take this many seconds or longer.
-constexpr const base::TimeDelta kLongSync = base::TimeDelta::FromSeconds(10);
+constexpr const base::TimeDelta kLongSync = base::Seconds(10);
 
 enum {
   kPermissions600 = S_IRUSR | S_IWUSR,

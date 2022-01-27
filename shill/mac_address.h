@@ -23,8 +23,7 @@ class MACAddress {
   // Locally administered bit.
   static constexpr uint8_t kLocallyAdministratedMacBit = 0x02;
   // Default expiration time for RandomizedMACAddress.
-  static constexpr base::TimeDelta kDefaultExpirationTime =
-      base::TimeDelta::FromHours(24);
+  static constexpr base::TimeDelta kDefaultExpirationTime = base::Hours(24);
   // Set expiration time to this constant to disable expiration.
   static constexpr base::Time kNotExpiring = base::Time();
 

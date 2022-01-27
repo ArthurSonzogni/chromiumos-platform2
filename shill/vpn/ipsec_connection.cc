@@ -90,14 +90,14 @@ constexpr char kXFRMInterfaceName[] = "xfrm0";
 
 // The time interval between two checks for if the vici socket is connectable.
 constexpr base::TimeDelta kCheckViciConnectableInterval =
-    base::TimeDelta::FromMilliseconds(300);
+    base::Milliseconds(300);
 
 // The maximum number of attempts to check if the vici socket is connectable
 // before returning a failure.
 constexpr int kCheckViciConnectableMaxAttempts = 10;
 
 // The default timeout value used in `swanctl --initiate`.
-constexpr base::TimeDelta kIPsecTimeout = base::TimeDelta::FromSeconds(30);
+constexpr base::TimeDelta kIPsecTimeout = base::Seconds(30);
 
 // The PIN value does not have any real effects. Use the default value here.
 // See platform2/chaps/README.md

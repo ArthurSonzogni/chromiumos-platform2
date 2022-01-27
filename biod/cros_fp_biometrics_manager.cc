@@ -296,7 +296,7 @@ bool CrosFpBiometricsManager::ResetSensor() {
       reset_complete = true;
       break;
     }
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+    base::PlatformThread::Sleep(base::Milliseconds(100));
   }
 
   if (!reset_complete) {
@@ -363,7 +363,7 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
 // to b/184783529.
 #if 0
   maintenance_timer_->Start(
-      FROM_HERE, base::TimeDelta::FromDays(1),
+      FROM_HERE, base::Days(1),
       base::BindRepeating(&CrosFpBiometricsManager::OnMaintenanceTimerFired,
                  base::Unretained(this)));
 #endif

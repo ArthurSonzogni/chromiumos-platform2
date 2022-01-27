@@ -18,12 +18,10 @@ namespace policy {
 namespace {
 
 // Timeout for RequestSmartDimDecision.
-static constexpr base::TimeDelta kSmartDimDecisionTimeout =
-    base::TimeDelta::FromSeconds(3);
+static constexpr base::TimeDelta kSmartDimDecisionTimeout = base::Seconds(3);
 
 // Timeout for GetResultHpsSense.
-static constexpr base::TimeDelta kGetResultHpsSenseTimeout =
-    base::TimeDelta::FromSeconds(3);
+static constexpr base::TimeDelta kGetResultHpsSenseTimeout = base::Seconds(3);
 
 }  // namespace
 

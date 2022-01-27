@@ -154,8 +154,7 @@ void Server::InitTlsData() {
   // for the long-term. See brbug.com/227
   const int kKeyLengthBits = 1024;
   const int64_t kOneYearInSeconds = 31556952;  // 365.2425 days
-  const base::TimeDelta kCertExpiration =
-      base::TimeDelta::FromSeconds(5 * kOneYearInSeconds);
+  const base::TimeDelta kCertExpiration = base::Seconds(5 * kOneYearInSeconds);
   const char kCommonName[] = "Brillo device";
 
   const base::FilePath certificate_file{kCertificateFile};

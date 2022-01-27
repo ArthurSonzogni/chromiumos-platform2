@@ -23,8 +23,7 @@ namespace rmad {
 class FinalizeStateHandler : public BaseStateHandler {
  public:
   // Report status every second.
-  static constexpr base::TimeDelta kReportStatusInterval =
-      base::TimeDelta::FromSeconds(1);
+  static constexpr base::TimeDelta kReportStatusInterval = base::Seconds(1);
 
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store);
   // Used to inject mock |cr50_utils_| and |flashrom_utils_| for testing.

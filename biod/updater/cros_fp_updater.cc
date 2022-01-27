@@ -36,8 +36,7 @@
 
 namespace {
 
-constexpr base::TimeDelta kBootSplashScreenLaunchTimeout =
-    base::TimeDelta::FromSeconds(10);
+constexpr base::TimeDelta kBootSplashScreenLaunchTimeout = base::Seconds(10);
 
 constexpr char kFlashromPath[] = "/usr/sbin/flashrom";
 constexpr char kRebootFile[] = "/tmp/force_reboot_after_fw_update";

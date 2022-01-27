@@ -71,7 +71,7 @@ const char kL2TPIPsecRequireAuthProperty[] = "L2TPIPsec.RequireAuth";
 const char kL2TPIPsecRequireChapProperty[] = "L2TPIPsec.RequireChap";
 const char kL2TPIPsecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 
-constexpr base::TimeDelta kConnectTimeout = base::TimeDelta::FromMinutes(1);
+constexpr base::TimeDelta kConnectTimeout = base::Minutes(1);
 
 constexpr char kStrokePath[] = "/usr/libexec/ipsec/stroke";
 

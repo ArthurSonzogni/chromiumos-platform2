@@ -78,8 +78,7 @@ namespace patchpanel {
 //   state.
 class NeighborLinkMonitor {
  public:
-  static constexpr base::TimeDelta kActiveProbeInterval =
-      base::TimeDelta::FromSeconds(60);
+  static constexpr base::TimeDelta kActiveProbeInterval = base::Seconds(60);
 
   // Possible neighbor roles in the ipconfig. Represents each individual role by
   // a single bit to make the internal implementation easier.

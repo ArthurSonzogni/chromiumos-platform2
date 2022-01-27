@@ -119,11 +119,11 @@ class UsbguardDeviceManagerHooksImpl : public usbguard::DeviceManagerHooks {
 };
 
 // |fd| is assumed to be non-blocking.
-bool WriteWithTimeout(SafeFD* fd,
-                      const std::string value,
-                      size_t max_tries = kMaxWriteAttempts,
-                      base::TimeDelta delay = base::TimeDelta::FromMicroseconds(
-                          kAttemptDelayMicroseconds)) {
+bool WriteWithTimeout(
+    SafeFD* fd,
+    const std::string value,
+    size_t max_tries = kMaxWriteAttempts,
+    base::TimeDelta delay = base::Microseconds(kAttemptDelayMicroseconds)) {
   size_t tries = 0;
   size_t total = 0;
   int written = 0;

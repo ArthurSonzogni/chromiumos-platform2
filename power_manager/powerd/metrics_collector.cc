@@ -113,8 +113,8 @@ void MetricsCollector::Init(
 
   if (display_backlight_controller_ || keyboard_backlight_controller_) {
     generate_backlight_metrics_timer_.Start(
-        FROM_HERE, base::TimeDelta::FromMilliseconds(kBacklightLevelIntervalMs),
-        this, &MetricsCollector::GenerateBacklightLevelMetrics);
+        FROM_HERE, base::Milliseconds(kBacklightLevelIntervalMs), this,
+        &MetricsCollector::GenerateBacklightLevelMetrics);
   }
 
   bool pref_val = false;
@@ -141,8 +141,7 @@ void MetricsCollector::Init(
     // is 100 * UINT32_MAX.
     if (s0ix_residency_path_ ==
         GetPrefixedFilePath(base::FilePath(kBigCoreS0ixResidencyPath))) {
-      max_s0ix_residency_ =
-          base::TimeDelta::FromMicroseconds(100 * (uint64_t)UINT32_MAX);
+      max_s0ix_residency_ = base::Microseconds(100 * (uint64_t)UINT32_MAX);
     }
   }
 }
@@ -569,7 +568,7 @@ void MetricsCollector::TrackS0ixResidency(bool pre_suspend) {
   if (time_in_suspend <= KS0ixOverheadTime)
     return;
 
-  const base::TimeDelta s0ix_residency_time = base::TimeDelta::FromMicroseconds(
+  const base::TimeDelta s0ix_residency_time = base::Microseconds(
       residency_usecs - s0ix_residency_usecs_before_suspend_);
 
   int s0ix_residency_percent =

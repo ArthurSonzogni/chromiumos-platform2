@@ -17,7 +17,7 @@ namespace {
 // Creates a TimeDelta and returns TimeDeltaToString()'s output.
 std::string RunTimeDeltaToString(int hours, int minutes, int seconds) {
   return TimeDeltaToString(
-      base::TimeDelta::FromSeconds(hours * 3600 + minutes * 60 + seconds));
+      base::Seconds(hours * 3600 + minutes * 60 + seconds));
 }
 
 }  // namespace

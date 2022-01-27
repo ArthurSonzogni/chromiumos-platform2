@@ -125,21 +125,19 @@ constexpr char SessionManagerImpl::kScreenUnlockedImpulse[] = "screen-unlocked";
 // TODO(b:66919195): Optimize Android container shutdown time. It
 // needs as long as 3s on kevin to perform graceful shutdown.
 constexpr base::TimeDelta SessionManagerImpl::kContainerTimeout =
-    base::TimeDelta::FromSeconds(3);
+    base::Seconds(3);
 
-constexpr base::TimeDelta SessionManagerImpl::kKeyGenTimeout =
-    base::TimeDelta::FromSeconds(1);
+constexpr base::TimeDelta SessionManagerImpl::kKeyGenTimeout = base::Seconds(1);
 
 constexpr base::TimeDelta SessionManagerImpl::kCrashBeforeSuspendInterval =
-    base::TimeDelta::FromSeconds(5);
+    base::Seconds(5);
 constexpr base::TimeDelta SessionManagerImpl::kCrashAfterSuspendInterval =
-    base::TimeDelta::FromSeconds(5);
+    base::Seconds(5);
 
 namespace {
 
 // Because the cheets logs are huge, we set the D-Bus timeout to 1 minute.
-const base::TimeDelta kBackupArcBugReportTimeout =
-    base::TimeDelta::FromMinutes(1);
+const base::TimeDelta kBackupArcBugReportTimeout = base::Minutes(1);
 
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
@@ -162,7 +160,7 @@ const unsigned int kCpuSharesBackground = 64;
 
 // The interval used to periodically check if time sync was done by tlsdated.
 constexpr base::TimeDelta kSystemClockLastSyncInfoRetryDelay =
-    base::TimeDelta::FromMilliseconds(1000);
+    base::Milliseconds(1000);
 
 // TPM firmware update modes.
 constexpr char kTPMFirmwareUpdateModeFirstBoot[] = "first_boot";

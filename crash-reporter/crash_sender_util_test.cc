@@ -300,7 +300,7 @@ class CrashSenderUtilTest : public testing::Test {
 
     // Wait for the file to actually be locked. Don't wait forever in case the
     // subprocess fails in some way.
-    base::Time stop_time = base::Time::Now() + base::TimeDelta::FromMinutes(1);
+    base::Time stop_time = base::Time::Now() + base::Minutes(1);
     bool success = false;
     base::Time wait_start_time = base::Time::Now();
     LOG(INFO) << "Took " << wait_start_time - start_time
@@ -322,7 +322,7 @@ class CrashSenderUtilTest : public testing::Test {
       }
 
       if (!success) {
-        base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(5));
+        base::PlatformThread::Sleep(base::Seconds(5));
       }
     }
     LOG(INFO) << "Took " << base::Time::Now() - wait_start_time
@@ -349,7 +349,7 @@ class CrashSenderUtilTest : public testing::Test {
   // Creates test crash files in |crash_directory|. Returns true on success.
   bool CreateTestCrashFiles(const base::FilePath& crash_directory) {
     const base::Time now = test_util::GetDefaultTime();
-    const base::TimeDelta hour = base::TimeDelta::FromHours(1);
+    const base::TimeDelta hour = base::Hours(1);
 
     // Choose timestamps so that the return value of GetMetaFiles() is sorted
     // per timestamps correctly.
@@ -479,12 +479,12 @@ class CrashSenderUtilTest : public testing::Test {
     // This should be removed since the OS timestamp is old.
     old_os_meta_ = crash_directory.Append("old_os.meta");
     if (!CreateFile(old_os_meta_,
-                    base::StringPrintf("payload=good.log\n"
-                                       "os_millis=%" PRId64 "\n"
-                                       "done=1\n",
-                                       ((now - base::Time::UnixEpoch()) -
-                                        base::TimeDelta::FromDays(200))
-                                           .InMilliseconds()),
+                    base::StringPrintf(
+                        "payload=good.log\n"
+                        "os_millis=%" PRId64 "\n"
+                        "done=1\n",
+                        ((now - base::Time::UnixEpoch()) - base::Days(200))
+                            .InMilliseconds()),
                     now)) {
       return false;
     }
@@ -493,16 +493,15 @@ class CrashSenderUtilTest : public testing::Test {
     // new.
     old_os_new_lacros_meta_ = crash_directory.Append("old_os_new_lacros.meta");
     if (!CreateFile(old_os_new_lacros_meta_,
-                    base::StringPrintf("payload=good.log\n"
-                                       "os_millis=%" PRId64 "\n"
-                                       "build_time_millis=%" PRId64 "\n"
-                                       "done=1\n",
-                                       ((now - base::Time::UnixEpoch()) -
-                                        base::TimeDelta::FromDays(200))
-                                           .InMilliseconds(),
-                                       ((now - base::Time::UnixEpoch()) -
-                                        base::TimeDelta::FromDays(20))
-                                           .InMilliseconds()),
+                    base::StringPrintf(
+                        "payload=good.log\n"
+                        "os_millis=%" PRId64 "\n"
+                        "build_time_millis=%" PRId64 "\n"
+                        "done=1\n",
+                        ((now - base::Time::UnixEpoch()) - base::Days(200))
+                            .InMilliseconds(),
+                        ((now - base::Time::UnixEpoch()) - base::Days(20))
+                            .InMilliseconds()),
                     now)) {
       return false;
     }
@@ -510,16 +509,15 @@ class CrashSenderUtilTest : public testing::Test {
     // This should not be removed since the OS timestamp and lacros are old.
     old_os_old_lacros_meta_ = crash_directory.Append("old_os_old_lacros.meta");
     if (!CreateFile(old_os_old_lacros_meta_,
-                    base::StringPrintf("payload=good.log\n"
-                                       "os_millis=%" PRId64 "\n"
-                                       "build_time_millis=%" PRId64 "\n"
-                                       "done=1\n",
-                                       ((now - base::Time::UnixEpoch()) -
-                                        base::TimeDelta::FromDays(200))
-                                           .InMilliseconds(),
-                                       ((now - base::Time::UnixEpoch()) -
-                                        base::TimeDelta::FromDays(200))
-                                           .InMilliseconds()),
+                    base::StringPrintf(
+                        "payload=good.log\n"
+                        "os_millis=%" PRId64 "\n"
+                        "build_time_millis=%" PRId64 "\n"
+                        "done=1\n",
+                        ((now - base::Time::UnixEpoch()) - base::Days(200))
+                            .InMilliseconds(),
+                        ((now - base::Time::UnixEpoch()) - base::Days(200))
+                            .InMilliseconds()),
                     now)) {
       return false;
     }
@@ -632,7 +630,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
       &command_line);
   CommandLineFlags flags;
   ParseCommandLine(std::size(argv), argv, &flags);
-  EXPECT_EQ(base::TimeDelta::FromSeconds(0), flags.max_spread_time);
+  EXPECT_EQ(base::Seconds(0), flags.max_spread_time);
   EXPECT_TRUE(flags.crash_directory.empty());
   EXPECT_FALSE(flags.ignore_rate_limits);
   EXPECT_FALSE(flags.ignore_hold_off_time);
@@ -817,25 +815,20 @@ TEST_F(CrashSenderUtilTest, RemoveOrphanedCrashFiles) {
   // old1_log is old but comes with the meta file thus should not be removed.
   ASSERT_TRUE(test_util::CreateFile(old1_log, ""));
   ASSERT_TRUE(test_util::CreateFile(old1_meta, ""));
-  ASSERT_TRUE(test_util::TouchFileHelper(old1_log,
-                                         now - base::TimeDelta::FromHours(24)));
-  ASSERT_TRUE(test_util::TouchFileHelper(old1_meta,
-                                         now - base::TimeDelta::FromHours(24)));
+  ASSERT_TRUE(test_util::TouchFileHelper(old1_log, now - base::Hours(24)));
+  ASSERT_TRUE(test_util::TouchFileHelper(old1_meta, now - base::Hours(24)));
 
   // old2_log is old without the meta file thus should be removed.
   ASSERT_TRUE(test_util::CreateFile(old2_log, ""));
-  ASSERT_TRUE(test_util::TouchFileHelper(old2_log,
-                                         now - base::TimeDelta::FromHours(24)));
+  ASSERT_TRUE(test_util::TouchFileHelper(old2_log, now - base::Hours(24)));
 
   // old3_log is very old without the meta file thus should be removed.
   ASSERT_TRUE(test_util::CreateFile(old3_log, ""));
-  ASSERT_TRUE(test_util::TouchFileHelper(old3_log,
-                                         now - base::TimeDelta::FromDays(365)));
+  ASSERT_TRUE(test_util::TouchFileHelper(old3_log, now - base::Days(365)));
 
   // old4_log is misnamed, but should be removed since it's old.
   ASSERT_TRUE(test_util::CreateFile(old4_log, ""));
-  ASSERT_TRUE(test_util::TouchFileHelper(old4_log,
-                                         now - base::TimeDelta::FromHours(24)));
+  ASSERT_TRUE(test_util::TouchFileHelper(old4_log, now - base::Hours(24)));
 
   RemoveOrphanedCrashFiles(crash_directory);
 
@@ -1375,16 +1368,11 @@ TEST_F(CrashSenderUtilTest, GetMetaFiles) {
 
   // Change timestamps so that meta_1 is the newest and metal_5 is the oldest.
   base::Time now = base::Time::Now();
-  ASSERT_TRUE(
-      test_util::TouchFileHelper(meta_1, now - base::TimeDelta::FromHours(1)));
-  ASSERT_TRUE(
-      test_util::TouchFileHelper(meta_2, now - base::TimeDelta::FromHours(2)));
-  ASSERT_TRUE(
-      test_util::TouchFileHelper(meta_3, now - base::TimeDelta::FromHours(3)));
-  ASSERT_TRUE(
-      test_util::TouchFileHelper(meta_4, now - base::TimeDelta::FromHours(4)));
-  ASSERT_TRUE(
-      test_util::TouchFileHelper(metal_5, now - base::TimeDelta::FromHours(5)));
+  ASSERT_TRUE(test_util::TouchFileHelper(meta_1, now - base::Hours(1)));
+  ASSERT_TRUE(test_util::TouchFileHelper(meta_2, now - base::Hours(2)));
+  ASSERT_TRUE(test_util::TouchFileHelper(meta_3, now - base::Hours(3)));
+  ASSERT_TRUE(test_util::TouchFileHelper(meta_4, now - base::Hours(4)));
+  ASSERT_TRUE(test_util::TouchFileHelper(metal_5, now - base::Hours(5)));
 
   std::vector<base::FilePath> meta_files = GetMetaFiles(crash_directory);
   ASSERT_EQ(4, meta_files.size());
@@ -1404,8 +1392,7 @@ TEST_F(CrashSenderUtilTest, IsTimestampNewEnough) {
 
   // Make it older than 24 hours.
   const base::Time now = base::Time::Now();
-  ASSERT_TRUE(
-      test_util::TouchFileHelper(file, now - base::TimeDelta::FromHours(25)));
+  ASSERT_TRUE(test_util::TouchFileHelper(file, now - base::Hours(25)));
 
   // Should be no longer new enough.
   ASSERT_FALSE(IsTimestampNewEnough(file));
@@ -1436,8 +1423,7 @@ TEST_F(CrashSenderUtilTest, IsBelowRateReachesMaxRate) {
   const base::Time now = base::Time::Now();
 
   // Make one of them older than 24 hours.
-  ASSERT_TRUE(test_util::TouchFileHelper(files[0],
-                                         now - base::TimeDelta::FromHours(25)));
+  ASSERT_TRUE(test_util::TouchFileHelper(files[0], now - base::Hours(25)));
 
   // It should now pass the rate limit.
   EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
@@ -1471,8 +1457,7 @@ TEST_F(CrashSenderUtilTest, IsBelowRateReachesMaxBytes) {
   std::vector<base::FilePath> files = GetFileNamesIn(timestamp_dir);
   ASSERT_EQ(5, files.size());
   const base::Time now = base::Time::Now();
-  ASSERT_TRUE(test_util::TouchFileHelper(files[0],
-                                         now - base::TimeDelta::FromHours(25)));
+  ASSERT_TRUE(test_util::TouchFileHelper(files[0], now - base::Hours(25)));
   EXPECT_TRUE(IsBelowRate(timestamp_dir, kMaxRate, kMaxBytes));
 }
 
@@ -2119,13 +2104,13 @@ TEST_F(CrashSenderUtilTest, LockFileTriesAgainIfFirstAttemptFails) {
   EXPECT_CALL(*clock, Now())
       .WillOnce(Return(start_time))
       .WillOnce(Return(start_time))
-      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(1)))
-      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(2)))
-      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(3)))
+      .WillOnce(Return(start_time + base::Minutes(1)))
+      .WillOnce(Return(start_time + base::Minutes(2)))
+      .WillOnce(Return(start_time + base::Minutes(3)))
       .WillOnce(Invoke([&lock_process, start_time]() {
         lock_process->Kill(SIGKILL, 10);
         lock_process->Wait();
-        return start_time + base::TimeDelta::FromMinutes(4);
+        return start_time + base::Minutes(4);
       }));
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
@@ -2150,14 +2135,14 @@ TEST_F(CrashSenderUtilTest, LockFileTriesOneLastTimeAfterTimeout) {
   EXPECT_CALL(*clock, Now())
       .WillOnce(Return(start_time))
       .WillOnce(Return(start_time))
-      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(1)))
-      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(2)))
-      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(3)))
-      .WillOnce(Return(start_time + base::TimeDelta::FromMinutes(4)))
+      .WillOnce(Return(start_time + base::Minutes(1)))
+      .WillOnce(Return(start_time + base::Minutes(2)))
+      .WillOnce(Return(start_time + base::Minutes(3)))
+      .WillOnce(Return(start_time + base::Minutes(4)))
       .WillOnce(Invoke([&lock_process, start_time]() {
         lock_process->Kill(SIGKILL, 10);
         lock_process->Wait();
-        return start_time + base::TimeDelta::FromMinutes(6);
+        return start_time + base::Minutes(6);
       }));
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;

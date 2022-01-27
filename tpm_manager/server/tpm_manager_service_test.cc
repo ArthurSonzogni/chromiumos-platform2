@@ -104,7 +104,7 @@ class TpmManagerServiceTestBase : public testing::Test {
 
   void DisablePeriodicDictionaryAttackReset() {
     // Virtually disables the DA reset timer to reduce noises of expectations.
-    PassiveTimer timer(base::TimeDelta::FromHours(5));
+    PassiveTimer timer(base::Hours(5));
     timer.Reset();
     service_->set_dictionary_attack_reset_timer_for_testing(timer);
   }
@@ -335,7 +335,7 @@ TEST_F(TpmManagerServiceTest_Preinit,
 
   // Sets the period to 50 ms.
   service_->set_dictionary_attack_reset_timer_for_testing(
-      PassiveTimer(base::TimeDelta::FromMilliseconds(50)));
+      PassiveTimer(base::Milliseconds(50)));
   base::WaitableEvent first_periodic_event(
       base::WaitableEvent::ResetPolicy::MANUAL,
       base::WaitableEvent::InitialState::NOT_SIGNALED);
@@ -371,7 +371,7 @@ TEST_F(TpmManagerServiceTest_Preinit,
     self->Quit();
   };
   base::TimeTicks start_time = base::TimeTicks::Now();
-  base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(25));
+  base::PlatformThread::Sleep(base::Milliseconds(25));
   first_periodic_event.Wait();
   TakeOwnershipRequest request;
   // The DA reset is triggered for the second time here once the TPM is owned.
@@ -384,12 +384,10 @@ TEST_F(TpmManagerServiceTest_Preinit,
   // is accurate, 20 ms window should be generous enough.
   // 2. In case |TakeOwnership| doesn't even trigger DA reset, the duration
   // would be larger than 100ms and fails the test.
-  EXPECT_THAT(finish_time - start_time,
-              Le(base::TimeDelta::FromMilliseconds(95)));
+  EXPECT_THAT(finish_time - start_time, Le(base::Milliseconds(95)));
   // If the timer doesn't get reset, it could be triggered @ ~50ms and fails the
   // test.
-  EXPECT_THAT(finish_time - start_time,
-              Ge(base::TimeDelta::FromMilliseconds(55)));
+  EXPECT_THAT(finish_time - start_time, Ge(base::Milliseconds(55)));
 }
 
 TEST_F(TpmManagerServiceTest_Preinit, GetTpmStatusSuccess) {

@@ -30,8 +30,7 @@ bool FpFrameCommand::Run(int fd) {
         if (Result() == EC_RES_BUSY && retries < kMaxRetries) {
           retries++;
           LOG(INFO) << "Retrying FP_FRAME, attempt " << retries;
-          base::PlatformThread::Sleep(
-              base::TimeDelta::FromMilliseconds(kRetryDelayMs));
+          base::PlatformThread::Sleep(base::Milliseconds(kRetryDelayMs));
           continue;
         }
       }

@@ -142,7 +142,7 @@ chromeos::machine_learning::mojom::FinalResultPtr FinalResultFromProto(
         part_in_result->text.push_back(part);
       }
       part_in_result->alignment =
-          base::TimeDelta::FromMilliseconds(hypothesis_part.alignment_ms());
+          base::Milliseconds(hypothesis_part.alignment_ms());
       final_result->hypothesis_part->push_back(std::move(part_in_result));
     }
   }
@@ -199,20 +199,19 @@ TimingInfoFromTimingMetricsProto(
   auto timing_info = chromeos::machine_learning::mojom::TimingInfo::New();
   if (timing_metric.has_audio_start_epoch_usec()) {
     timing_info->audio_start_epoch = base::Time::FromDeltaSinceWindowsEpoch(
-        base::TimeDelta::FromMicroseconds(
-            timing_metric.audio_start_epoch_usec()));
+        base::Microseconds(timing_metric.audio_start_epoch_usec()));
   }
   if (timing_metric.has_audio_start_time_usec()) {
-    timing_info->audio_start_time = base::TimeDelta::FromMicroseconds(
-        timing_metric.audio_start_time_usec());
+    timing_info->audio_start_time =
+        base::Microseconds(timing_metric.audio_start_time_usec());
   }
   if (timing_metric.has_elapsed_wall_time_usec()) {
-    timing_info->elapsed_wall_time = base::TimeDelta::FromMicroseconds(
-        timing_metric.elapsed_wall_time_usec());
+    timing_info->elapsed_wall_time =
+        base::Microseconds(timing_metric.elapsed_wall_time_usec());
   }
   if (timing_metric.has_event_end_time_usec()) {
     timing_info->event_end_time =
-        base::TimeDelta::FromMicroseconds(timing_metric.event_end_time_usec());
+        base::Microseconds(timing_metric.event_end_time_usec());
   }
   return timing_info;
 }

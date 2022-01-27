@@ -75,7 +75,7 @@ class PowerManagerTest : public Test {
   static const int kDelayId2 = 5;
 
   PowerManagerTest()
-      : kTimeout(base::TimeDelta::FromSeconds(3)),
+      : kTimeout(base::Seconds(3)),
         power_manager_(&control_),
         power_manager_proxy_(control_.power_manager_proxy()),
         delegate_(control_.delegate()) {

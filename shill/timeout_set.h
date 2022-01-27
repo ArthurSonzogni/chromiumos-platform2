@@ -127,8 +127,7 @@ class TimeoutSet {
     timeout_callback_.Reset(
         base::BindOnce(&TimeoutSet::OnTimeout, base::Unretained(this)));
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-        FROM_HERE, timeout_callback_.callback(),
-        base::TimeDelta::FromMilliseconds(delay));
+        FROM_HERE, timeout_callback_.callback(), base::Milliseconds(delay));
   }
 
   std::vector<TimeElement> elements_;

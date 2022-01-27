@@ -460,20 +460,20 @@ TEST_F(DlcServiceTest, PeriodicInstallCheck) {
             Operation::IDLE);
 
   // Now advance clock and make sure that first time we do get status.
-  clock_.Advance(base::TimeDelta::FromSeconds(11));
+  clock_.Advance(base::Seconds(11));
   loop_.RunOnce(false);
   EXPECT_EQ(SystemState::Get()->update_engine_status().current_operation(),
             Operation::CHECKING_FOR_UPDATE);
 
   // Now advance the clock even more, this time fail the get status. The status
   // should remain same.
-  clock_.Advance(base::TimeDelta::FromSeconds(11));
+  clock_.Advance(base::Seconds(11));
   loop_.RunOnce(false);
   EXPECT_EQ(SystemState::Get()->update_engine_status().current_operation(),
             Operation::CHECKING_FOR_UPDATE);
 
   // Now advance a little bit more to see we got the new status.
-  clock_.Advance(base::TimeDelta::FromSeconds(11));
+  clock_.Advance(base::Seconds(11));
   loop_.RunOnce(false);
   EXPECT_EQ(SystemState::Get()->update_engine_status().current_operation(),
             Operation::DOWNLOADING);
@@ -504,7 +504,7 @@ TEST_F(DlcServiceTest, InstallSchedulesPeriodicInstallCheck) {
 
   // Now advance clock and make sure that periodic install check is scheduled
   // and eventually called.
-  clock_.Advance(base::TimeDelta::FromSeconds(11));
+  clock_.Advance(base::Seconds(11));
   loop_.RunOnce(false);
 
   // Since the update_engine status went back to IDLE, the install is complete

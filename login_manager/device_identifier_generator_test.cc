@@ -164,7 +164,7 @@ TEST_F(DeviceIdentifierGeneratorTest, RequestStateKeysLegacy) {
 
 TEST_F(DeviceIdentifierGeneratorTest, TimedStateKeys) {
   InitMachineInfo();
-  system_utils_.forward_time(base::TimeDelta::FromDays(100).InSeconds());
+  system_utils_.forward_time(base::Days(100).InSeconds());
 
   // The correct number of state keys gets returned.
   RequestStateKeys(true);
@@ -181,7 +181,7 @@ TEST_F(DeviceIdentifierGeneratorTest, TimedStateKeys) {
             state_key_set.size());
 
   // Moving forward just a little yields the same keys.
-  system_utils_.forward_time(base::TimeDelta::FromDays(1).InSeconds());
+  system_utils_.forward_time(base::Days(1).InSeconds());
   RequestStateKeys(true);
   EXPECT_EQ(LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET,
             last_state_key_generation_status_);

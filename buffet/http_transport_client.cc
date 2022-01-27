@@ -54,8 +54,7 @@ class ResponseImpl : public HttpClient::Response {
 
 HttpTransportClient::HttpTransportClient()
     : transport_{brillo::http::Transport::CreateDefault()} {
-  transport_->SetDefaultTimeout(
-      base::TimeDelta::FromSeconds(kRequestTimeoutSeconds));
+  transport_->SetDefaultTimeout(base::Seconds(kRequestTimeoutSeconds));
 }
 
 HttpTransportClient::~HttpTransportClient() {}

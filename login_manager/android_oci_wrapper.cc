@@ -95,7 +95,7 @@ void AndroidOciWrapper::EnsureJobExit(base::TimeDelta timeout) {
     // the process is still there. We killed |pid| just now so we won't need
     // more than 1s to reap it, but I'll give it 5s because this failure is not
     // recoverable until next reboot.
-    if (!system_utils_->ProcessIsGone(pid, base::TimeDelta::FromSeconds(5)))
+    if (!system_utils_->ProcessIsGone(pid, base::Seconds(5)))
       LOG(ERROR) << "Container process " << pid << " is still here";
   }
 
@@ -125,8 +125,7 @@ bool AndroidOciWrapper::StartContainer(const std::vector<std::string>& env,
   LOG(INFO) << "run_oci PID: " << pid;
 
   int status = -1;
-  pid_t result =
-      system_utils_->Wait(pid, base::TimeDelta::FromSeconds(90), &status);
+  pid_t result = system_utils_->Wait(pid, base::Seconds(90), &status);
   if (result != pid) {
     if (result)
       PLOG(ERROR) << "Failed to wait on run_oci exit";

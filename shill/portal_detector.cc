@@ -28,14 +28,11 @@ const brillo::http::HeaderList kHeaders{
 
 // Base time interval between two portal detection attempts. Should be doubled
 // at every new attempt.
-constexpr base::TimeDelta kPortalCheckInterval =
-    base::TimeDelta::FromSeconds(3);
+constexpr base::TimeDelta kPortalCheckInterval = base::Seconds(3);
 // Min time delay between two portal detection attempts.
-constexpr base::TimeDelta kMinPortalCheckDelay =
-    base::TimeDelta::FromSeconds(0);
+constexpr base::TimeDelta kMinPortalCheckDelay = base::Seconds(0);
 // Max time interval between two portal detection attempts.
-constexpr base::TimeDelta kMaxPortalCheckInterval =
-    base::TimeDelta::FromMinutes(5);
+constexpr base::TimeDelta kMaxPortalCheckInterval = base::Minutes(5);
 }  // namespace
 
 namespace shill {

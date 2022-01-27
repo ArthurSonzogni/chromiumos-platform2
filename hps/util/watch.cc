@@ -50,7 +50,7 @@ int Watch(std::unique_ptr<hps::HPS> hps,
                 << (feature_result.valid ? "" : " (Invalid)") << std::endl;
     }
     last_inference_result = feature_result;
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+    base::PlatformThread::Sleep(base::Milliseconds(100));
   }
 }
 

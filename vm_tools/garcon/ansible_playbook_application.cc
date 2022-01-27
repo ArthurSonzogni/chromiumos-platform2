@@ -35,8 +35,7 @@ constexpr char kStdoutCallbackName[] = "garcon";
 constexpr char kDefaultCallbackPluginPath[] =
     "/usr/share/ansible/plugins/callback";
 // How long we should wait for a ansible-playbook process to finish.
-constexpr base::TimeDelta kAnsibleProcessTimeout =
-    base::TimeDelta::FromHours(1);
+constexpr base::TimeDelta kAnsibleProcessTimeout = base::Hours(1);
 
 bool CreatePipe(base::ScopedFD* read_fd,
                 base::ScopedFD* write_fd,

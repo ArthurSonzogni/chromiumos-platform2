@@ -187,8 +187,7 @@ CameraHalClient::CameraHalClient()
       vendor_tag_count_(0) {}
 
 int CameraHalClient::Start(camera_module_callbacks_t* callbacks) {
-  static constexpr ::base::TimeDelta kIpcTimeout =
-      ::base::TimeDelta::FromSeconds(3);
+  static constexpr ::base::TimeDelta kIpcTimeout = ::base::Seconds(3);
 
   VLOGF_ENTER();
   if (!callbacks) {

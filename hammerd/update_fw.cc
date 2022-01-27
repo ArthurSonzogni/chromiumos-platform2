@@ -164,7 +164,7 @@ UsbConnectStatus FirmwareUpdater::TryConnectUsb() {
     if (duration > kTimeoutMs) {
       break;
     }
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(kIntervalMs));
+    base::PlatformThread::Sleep(base::Milliseconds(kIntervalMs));
   }
   LOG(ERROR) << "Failed to connect USB endpoint.";
   return UsbConnectStatus::kUsbPathEmpty;
@@ -559,7 +559,7 @@ bool FirmwareUpdater::SendFirstPdu() {
         static_cast<int>(UpdateCommandResponseStatus::kRwsigBusy))
       break;
     LOG(WARNING) << "EC still calculating RW signature, retrying...";
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(kWaitTimeMs));
+    base::PlatformThread::Sleep(base::Milliseconds(kWaitTimeMs));
   }
   if (return_value) {
     LOG(ERROR) << "Target reporting error " << return_value;

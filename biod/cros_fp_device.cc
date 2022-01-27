@@ -287,7 +287,7 @@ bool CrosFpDevice::WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
         EC_CMD_GET_VERSION);
     if (!cmd.Run(cros_fp_fd.get())) {
       LOG(ERROR) << "Failed to retrieve cros_fp firmware version.";
-      base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(500));
+      base::PlatformThread::Sleep(base::Milliseconds(500));
       continue;
     }
     image = static_cast<ec_image>(cmd.Resp()->current_image);
@@ -296,7 +296,7 @@ bool CrosFpDevice::WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
                 << ".";
       return true;
     }
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
+    base::PlatformThread::Sleep(base::Milliseconds(100));
   }
   LOG(ERROR) << "EC rebooted to incorrect image " << image;
   return false;
@@ -350,7 +350,7 @@ bool CrosFpDevice::EcReboot(ec_image to_image) {
   // EC jumps to RW after 1 second. Wait enough time in case we want to reboot
   // to RW. In case we wanted to remain in RO, wait anyway to ensure that the EC
   // received the instructions.
-  base::PlatformThread::Sleep(base::TimeDelta::FromSeconds(3));
+  base::PlatformThread::Sleep(base::Seconds(3));
 
   if (!WaitOnEcBoot(cros_fd_, to_image)) {
     LOG(ERROR) << "EC did not load the right image.";
@@ -365,7 +365,7 @@ bool CrosFpDevice::AddEntropy(bool reset) {
   EcCommandAsync<struct ec_params_rollback_add_entropy, EmptyParam>
       cmd_add_entropy(EC_CMD_ADD_ENTROPY, ADD_ENTROPY_GET_RESULT,
                       {.poll_for_result_num_attempts = 20,
-                       .poll_interval = base::TimeDelta::FromMilliseconds(100),
+                       .poll_interval = base::Milliseconds(100),
                        // The EC temporarily stops responding to EC commands
                        // when this command is run, so we will keep trying until
                        // we get success (or time out).

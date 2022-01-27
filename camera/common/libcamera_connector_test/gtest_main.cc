@@ -37,7 +37,7 @@ namespace tests {
 
 namespace {
 
-constexpr auto kDefaultTimeout = base::TimeDelta::FromSeconds(5);
+constexpr auto kDefaultTimeout = base::Seconds(5);
 
 // TODO(b/151047930): Test hotplugging with vivid.
 bool IsVividLoaded() {
@@ -350,7 +350,7 @@ TEST_P(CaptureTest, OneFrame) {
 }
 
 TEST_P(CaptureTest, ThreeSeconds) {
-  const auto kDuration = base::TimeDelta::FromSeconds(3);
+  const auto kDuration = base::Seconds(3);
   int num_frames_captured =
       capturer_.SetDuration(kDuration).Run(camera_id_, format_);
   // It's expected to get more than 1 frame in 3s.

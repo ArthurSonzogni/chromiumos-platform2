@@ -79,7 +79,7 @@ class FakeJob : public Scheduler::Job {
             sequenced_task_runner(),
             base::BindOnce(&FakeJob::Finish, weak_ptr_factory_.GetWeakPtr(),
                            finish_status_)),
-        base::TimeDelta::FromSeconds(1));
+        base::Seconds(1));
   }
 
  private:
@@ -142,7 +142,7 @@ TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
           waiter->Signal();
         },
         &waiter));
-    task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(1));
+    task_environment_.FastForwardBy(base::Seconds(1));
     complete_waiter_.Wait();
   }
 
@@ -161,7 +161,7 @@ TEST_F(JobTest, WillStartOnceWithOKStatusAndReportCompletion) {
           waiter->Signal();
         },
         &waiter));
-    task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(1));
+    task_environment_.FastForwardBy(base::Seconds(1));
   }
 
   // Nothing should have changed from before.
@@ -191,7 +191,7 @@ TEST_F(JobTest, CancelsWhenJobFails) {
           waiter->Signal();
         },
         &waiter));
-    task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(1));
+    task_environment_.FastForwardBy(base::Seconds(1));
     complete_waiter_.Wait();
   }
 
@@ -214,7 +214,7 @@ TEST_F(JobTest, WillNotStartWithNonOKStatusAndCancels) {
         waiter->Signal();
       },
       &waiter));
-  task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(1));
+  task_environment_.FastForwardBy(base::Seconds(1));
 }
 
 class TestSchedulerObserver : public Scheduler::SchedulerObserver {
@@ -321,7 +321,7 @@ TEST_F(SchedulerTest, SchedulesAndRunsJobs) {
     }
     complete_waiter.Signal();
     // Jobs are going to run on task limit = 5 threads in parallel.
-    task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(2));
+    task_environment_.FastForwardBy(base::Seconds(2));
   }
   task_environment_.RunUntilIdle();
 

@@ -25,7 +25,7 @@ namespace system {
 namespace {
 
 // Maximum amount of time to wait for a reply from CRAS.
-constexpr base::TimeDelta kCrasDBusTimeout = base::TimeDelta::FromSeconds(3);
+constexpr base::TimeDelta kCrasDBusTimeout = base::Seconds(3);
 
 }  // namespace
 

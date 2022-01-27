@@ -72,8 +72,7 @@ TEST_F(UsbControlTest, PowerCycleSingleDeviceSucceeds) {
   UsbControl usb_control(std::move(manager));
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
   usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
-                                 0x2bd9, 0x0011,
-                                 base::TimeDelta::FromMilliseconds(1));
+                                 0x2bd9, 0x0011, base::Milliseconds(1));
 
   EXPECT_EQ(state.power_off_counter, 1);
   EXPECT_EQ(state.power_on_counter, 0);
@@ -109,8 +108,7 @@ TEST_F(UsbControlTest, PowerCycleMultipleDevicesSucceed) {
   UsbControl usb_control(std::move(manager));
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
   usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
-                                 0x2bd9, 0x0011,
-                                 base::TimeDelta::FromMilliseconds(1));
+                                 0x2bd9, 0x0011, base::Milliseconds(1));
 
   EXPECT_EQ(state1.power_off_counter, 1);
   EXPECT_EQ(state1.power_on_counter, 0);
@@ -137,8 +135,7 @@ TEST_F(UsbControlTest, DeviceNotFound) {
   UsbControl usb_control(std::move(manager));
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
   usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
-                                 0x2bd9, 0x0011,
-                                 base::TimeDelta::FromMilliseconds(1));
+                                 0x2bd9, 0x0011, base::Milliseconds(1));
 
   EXPECT_FALSE(*result);
 }
@@ -160,8 +157,7 @@ TEST_F(UsbControlTest, PowerCycleNotAllowedDevice) {
   UsbControl usb_control(std::move(manager));
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
   usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
-                                 0x1234, 0x5678,
-                                 base::TimeDelta::FromMilliseconds(1));
+                                 0x1234, 0x5678, base::Milliseconds(1));
 
   EXPECT_EQ(state.power_off_counter, 0);
   EXPECT_EQ(state.power_on_counter, 0);
@@ -186,8 +182,7 @@ TEST_F(UsbControlTest, PowerOffFails) {
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
   UsbControl usb_control(std::move(manager));
   usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
-                                 0x2bd9, 0x0011,
-                                 base::TimeDelta::FromMilliseconds(1));
+                                 0x2bd9, 0x0011, base::Milliseconds(1));
 
   EXPECT_EQ(state.power_off_counter, 1);
   EXPECT_EQ(state.power_on_counter, 0);
@@ -217,8 +212,7 @@ TEST_F(UsbControlTest, PowerOnFails) {
   std::shared_ptr<bool> result = std::make_shared<bool>(false);
   UsbControl usb_control(std::move(manager));
   usb_control.PowerCycleUsbPorts(base::BindOnce(&TestResultCallback, result),
-                                 0x2bd9, 0x0011,
-                                 base::TimeDelta::FromMilliseconds(1));
+                                 0x2bd9, 0x0011, base::Milliseconds(1));
 
   EXPECT_EQ(state.power_off_counter, 1);
   EXPECT_EQ(state.power_on_counter, 0);

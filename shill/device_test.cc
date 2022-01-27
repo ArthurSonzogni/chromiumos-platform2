@@ -1588,7 +1588,7 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
-  const auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  const auto attempt_delay = base::Milliseconds(13450);
 
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
@@ -1747,7 +1747,7 @@ TEST_F(DevicePortalDetectionTest, NotDefault) {
   const auto fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
-  const auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  const auto attempt_delay = base::Milliseconds(13450);
 
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
@@ -1773,7 +1773,7 @@ TEST_F(DevicePortalDetectionTest, ScheduleNextDetectionAttempt) {
   const std::string https_probe_url = "https://portalcheck.com";
   const std::vector<std::string> fallback_probe_url = {
       "http://fallbackcheck.com"};
-  const auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  const auto attempt_delay = base::Milliseconds(13450);
   PortalDetector::Properties props = PortalDetector::Properties(
       http_probe_url, https_probe_url, fallback_probe_url);
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
@@ -1799,7 +1799,7 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
   const std::string kPortalCheckHttpsUrl("https://portal");
   const std::vector<std::string> kPortalCheckFallbackHttpUrls(
       {"http://fallback", "http://other"});
-  auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  auto attempt_delay = base::Milliseconds(13450);
   PortalDetector::Properties props = PortalDetector::Properties(
       kPortalCheckHttpUrl, kPortalCheckHttpsUrl, kPortalCheckFallbackHttpUrls);
   EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
@@ -1818,7 +1818,7 @@ TEST_F(DevicePortalDetectionTest, RestartPortalDetection) {
         .WillOnce(Return(true));
     EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
     SetServiceConnectedState(Service::kStateNoConnectivity);
-    attempt_delay += base::TimeDelta::FromMilliseconds(5678);
+    attempt_delay += base::Milliseconds(5678);
   }
   ExpectPortalDetectorSet();
 }
@@ -1849,7 +1849,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
-  const auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  const auto attempt_delay = base::Milliseconds(13450);
 
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
@@ -1890,7 +1890,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
-  const auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  const auto attempt_delay = base::Milliseconds(13450);
 
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
@@ -1931,7 +1931,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
   result.https_status = PortalDetector::Status::kSuccess;
   result.redirect_url_string = http_portal_url;
   result.num_attempts = kPortalAttempts;
-  const auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  const auto attempt_delay = base::Milliseconds(13450);
 
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
@@ -1971,7 +1971,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
-  const auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  const auto attempt_delay = base::Milliseconds(13450);
 
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
@@ -2011,7 +2011,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
-  const auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  const auto attempt_delay = base::Milliseconds(13450);
 
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));
@@ -2051,7 +2051,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
-  const auto attempt_delay = base::TimeDelta::FromMilliseconds(13450);
+  const auto attempt_delay = base::Milliseconds(13450);
 
   EXPECT_CALL(manager_, GetPortalCheckProperties())
       .WillRepeatedly(Return(props));

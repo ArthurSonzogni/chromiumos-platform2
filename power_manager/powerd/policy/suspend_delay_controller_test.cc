@@ -23,8 +23,7 @@ const int kSuspendTimeoutMs = 5000;
 
 class TestObserver : public SuspendDelayObserver {
  public:
-  TestObserver()
-      : timeout_(base::TimeDelta::FromMilliseconds(kSuspendTimeoutMs)) {}
+  TestObserver() : timeout_(base::Milliseconds(kSuspendTimeoutMs)) {}
   TestObserver(const TestObserver&) = delete;
   TestObserver& operator=(const TestObserver&) = delete;
 
@@ -118,7 +117,7 @@ TEST_F(SuspendDelayControllerTest, NoDelays) {
 TEST_F(SuspendDelayControllerTest, SingleDelay) {
   // Register a delay.
   const std::string kClient = "client";
-  int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
+  int delay_id = RegisterSuspendDelay(base::Seconds(8), kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // A SuspendImminent signal should be emitted after suspending is requested.
@@ -156,7 +155,7 @@ TEST_F(SuspendDelayControllerTest, CheckMinTimeout) {
 TEST_F(SuspendDelayControllerTest, UnregisterDelayBeforeRequestingSuspend) {
   // Register a delay, but unregister it immediately.
   const std::string kClient = "client";
-  int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
+  int delay_id = RegisterSuspendDelay(base::Seconds(8), kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
   UnregisterSuspendDelay(delay_id, kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
@@ -172,7 +171,7 @@ TEST_F(SuspendDelayControllerTest, UnregisterDelayBeforeRequestingSuspend) {
 TEST_F(SuspendDelayControllerTest, UnregisterDelayAfterRequestingSuspend) {
   // Register a delay.
   const std::string kClient = "client";
-  int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
+  int delay_id = RegisterSuspendDelay(base::Seconds(8), kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // Request suspending.
@@ -196,7 +195,7 @@ TEST_F(SuspendDelayControllerTest, RegisterDelayAfterRequestingSuspend) {
 
   // Register a delay now.  The controller should still report readiness.
   const std::string kClient = "client";
-  int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
+  int delay_id = RegisterSuspendDelay(base::Seconds(8), kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
   EXPECT_TRUE(observer_.RunUntilReadyForSuspend());
   EXPECT_TRUE(controller_.ReadyForSuspend());
@@ -215,7 +214,7 @@ TEST_F(SuspendDelayControllerTest, RegisterDelayAfterRequestingSuspend) {
 TEST_F(SuspendDelayControllerTest, Timeout) {
   // Register a delay with a short timeout.
   const std::string kClient = "client";
-  RegisterSuspendDelay(base::TimeDelta::FromMilliseconds(8), kClient);
+  RegisterSuspendDelay(base::Milliseconds(8), kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // The controller should report readiness due to the timeout being hit.
@@ -228,7 +227,7 @@ TEST_F(SuspendDelayControllerTest, Timeout) {
 
 TEST_F(SuspendDelayControllerTest, FinishRequest) {
   const std::string kClient = "client";
-  RegisterSuspendDelay(base::TimeDelta::FromMilliseconds(1), kClient);
+  RegisterSuspendDelay(base::Milliseconds(1), kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
   const int kSuspendId = 5;
   controller_.PrepareForSuspend(kSuspendId, false);
@@ -245,7 +244,7 @@ TEST_F(SuspendDelayControllerTest, FinishRequest) {
   EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // The timer should also be stopped.
-  observer_.set_timeout(base::TimeDelta::FromMilliseconds(2));
+  observer_.set_timeout(base::Milliseconds(2));
   EXPECT_FALSE(observer_.RunUntilReadyForSuspend());
   EXPECT_TRUE(controller_.ReadyForSuspend());
 }
@@ -254,7 +253,7 @@ TEST_F(SuspendDelayControllerTest, DisconnectClientBeforeRequestingSuspend) {
   // Register a delay, but immediately tell the controller that the D-Bus client
   // that registered the delay has disconnected.
   const std::string kClient = "client";
-  RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
+  RegisterSuspendDelay(base::Seconds(8), kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
   controller_.HandleDBusClientDisconnected(kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
@@ -269,7 +268,7 @@ TEST_F(SuspendDelayControllerTest, DisconnectClientBeforeRequestingSuspend) {
 
 TEST_F(SuspendDelayControllerTest, DisconnectClientAfterRequestingSuspend) {
   const std::string kClient = "client";
-  RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
+  RegisterSuspendDelay(base::Seconds(8), kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
 
   const int kSuspendId = 5;
@@ -286,7 +285,7 @@ TEST_F(SuspendDelayControllerTest, DisconnectClientAfterRequestingSuspend) {
 
 TEST_F(SuspendDelayControllerTest, MultipleSuspendRequests) {
   const std::string kClient = "client";
-  int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
+  int delay_id = RegisterSuspendDelay(base::Seconds(8), kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // Request suspending.
@@ -314,13 +313,11 @@ TEST_F(SuspendDelayControllerTest, MultipleSuspendRequests) {
 TEST_F(SuspendDelayControllerTest, MultipleDelays) {
   // Register two delays.
   const std::string kClient1 = "client1";
-  int delay_id1 =
-      RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient1);
+  int delay_id1 = RegisterSuspendDelay(base::Seconds(8), kClient1);
   EXPECT_TRUE(controller_.ReadyForSuspend());
 
   const std::string kClient2 = "client2";
-  int delay_id2 =
-      RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient2);
+  int delay_id2 = RegisterSuspendDelay(base::Seconds(8), kClient2);
   EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // After getting a suspend request, the controller shouldn't report readiness
@@ -344,8 +341,7 @@ TEST_F(SuspendDelayControllerTest, DarkResumeNoExternalDelays) {
   EXPECT_TRUE(controller_.ReadyForSuspend());
 
   const int kSuspendId = 5;
-  const base::TimeDelta kDarkResumeMinDelay =
-      base::TimeDelta::FromMilliseconds(5);
+  const base::TimeDelta kDarkResumeMinDelay = base::Milliseconds(5);
   // The minimum delay controller is expected to wait when in dark resume before
   // saying it is ready for suspend.
   controller_.set_dark_resume_min_delay_for_testing(kDarkResumeMinDelay);
@@ -365,12 +361,11 @@ TEST_F(SuspendDelayControllerTest, DarkResumeNoExternalDelays) {
 TEST_F(SuspendDelayControllerTest, DarkResumeSingleDelay) {
   // Register a delay.
   const std::string kClient = "client";
-  int delay_id = RegisterSuspendDelay(base::TimeDelta::FromSeconds(8), kClient);
+  int delay_id = RegisterSuspendDelay(base::Seconds(8), kClient);
   EXPECT_TRUE(controller_.ReadyForSuspend());
 
   // Set dark resume min delay to 5 milliseconds.
-  const base::TimeDelta kDarkResumeMinDelay =
-      base::TimeDelta::FromMilliseconds(5);
+  const base::TimeDelta kDarkResumeMinDelay = base::Milliseconds(5);
   controller_.set_dark_resume_min_delay_for_testing(kDarkResumeMinDelay);
 
   // The controller shouldn't report readiness now; it's waiting on the both

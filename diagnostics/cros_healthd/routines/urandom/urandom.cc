@@ -20,8 +20,7 @@ constexpr char kUrandomExePath[] = "/usr/libexec/diagnostics/urandom";
 
 }  // namespace
 
-const base::TimeDelta kUrandomDefaultLengthSeconds =
-    base::TimeDelta::FromSeconds(10);
+const base::TimeDelta kUrandomDefaultLengthSeconds = base::Seconds(10);
 
 std::unique_ptr<DiagnosticRoutine> CreateUrandomRoutine(
     const base::Optional<base::TimeDelta>& length_seconds) {

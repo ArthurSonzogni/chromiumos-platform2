@@ -315,7 +315,7 @@ int U2fHid::CmdLock(std::string* resp) {
   } else {
     locked_cid_ = transaction_->cid;
     lock_timeout_.Start(
-        FROM_HERE, base::TimeDelta::FromSeconds(duration),
+        FROM_HERE, base::Seconds(duration),
         base::Bind(&U2fHid::LockTimeout, base::Unretained(this)));
   }
   return 0;
@@ -425,7 +425,7 @@ void U2fHid::ProcessReport(const std::string& report) {
     }
 
     transaction_->timeout.Start(
-        FROM_HERE, base::TimeDelta::FromMilliseconds(kU2fHidTimeoutMs),
+        FROM_HERE, base::Milliseconds(kU2fHidTimeoutMs),
         base::Bind(&U2fHid::TransactionTimeout, base::Unretained(this)));
 
     // record transaction parameters
@@ -449,7 +449,7 @@ void U2fHid::ProcessReport(const std::string& report) {
     }
     // reload timeout
     transaction_->timeout.Start(
-        FROM_HERE, base::TimeDelta::FromMilliseconds(kU2fHidTimeoutMs),
+        FROM_HERE, base::Milliseconds(kU2fHidTimeoutMs),
         base::Bind(&U2fHid::TransactionTimeout, base::Unretained(this)));
     // record the payload
     transaction_->payload += report.substr(pkt.PayloadIndex());

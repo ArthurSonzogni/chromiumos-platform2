@@ -92,7 +92,7 @@ class ManagerTest : public testing::Test {
                  std::unique_ptr<SaneClient>(sane_client_)),
         metrics_library_(new MetricsLibraryMock) {
     manager_.metrics_library_.reset(metrics_library_);
-    manager_.SetProgressSignalInterval(base::TimeDelta::FromSeconds(0));
+    manager_.SetProgressSignalInterval(base::Seconds(0));
   }
 
   void SetUp() override {

@@ -214,7 +214,7 @@ int DoHCurlClient::TimerCallback(CURLM* multi, long timeout_ms, void* userp) {
         FROM_HERE,
         base::BindRepeating(&DoHCurlClient::TimeoutCallback,
                             client->GetWeakPtr()),
-        base::TimeDelta::FromMilliseconds(timeout_ms));
+        base::Milliseconds(timeout_ms));
   } else if (timeout_ms == 0) {
     client->TimeoutCallback();
   }

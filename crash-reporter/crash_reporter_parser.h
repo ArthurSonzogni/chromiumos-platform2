@@ -44,13 +44,12 @@ class CrashReporterParser : public Parser {
  public:
   // We hold on to unmatched messages for at least this long before reporting
   // them as unmatched.
-  static constexpr base::TimeDelta kTimeout = base::TimeDelta::FromSeconds(30);
+  static constexpr base::TimeDelta kTimeout = base::Seconds(30);
   // We hold on to records of the # of matched and unmatched messages for this
   // long before discarding this. This is longer than kTimeout because we want
   // to know the number of crashes the crash system was trying to handle all
   // around the missed crash, not just after it,
-  static constexpr base::TimeDelta kTimeoutForRecentUsage =
-      base::TimeDelta::FromSeconds(60);
+  static constexpr base::TimeDelta kTimeoutForRecentUsage = base::Seconds(60);
 
   // Constants around log capture. Exposed here just for unit testing.
   // Number of lines of the various logs captured.

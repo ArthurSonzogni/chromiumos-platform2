@@ -51,7 +51,7 @@ class LivenessCheckerImplTest : public ::testing::Test {
     metrics_.reset(new MockMetrics());
 
     checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
-                                           true, TimeDelta::FromSeconds(10),
+                                           true, base::Seconds(10),
                                            metrics_.get()));
     base::FilePath fake_proc_path(tmpdir_.GetPath());
     checker_->SetProcForTests(std::move(fake_proc_path));
@@ -133,8 +133,7 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   checker_.reset(new LivenessCheckerImpl(manager_.get(), object_proxy_.get(),
                                          false,  // Disable aborting
-                                         TimeDelta::FromSeconds(10),
-                                         metrics_.get()));
+                                         base::Seconds(10), metrics_.get()));
   base::FilePath fake_proc_path(tmpdir_.GetPath());
   checker_->SetProcForTests(std::move(fake_proc_path));
 
@@ -152,7 +151,7 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
                              LoginMetrics::BrowserState::kErrorGettingState))
       .Times(1);
-  checker_->CheckAndSendLivenessPing(TimeDelta::FromSeconds(1));
+  checker_->CheckAndSendLivenessPing(base::Seconds(1));
   fake_loop_.Run();  // Runs until the message loop is empty.
 }
 

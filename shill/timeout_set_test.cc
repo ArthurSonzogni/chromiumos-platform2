@@ -107,8 +107,7 @@ TYPED_TEST_SUITE(TimeoutSetTest, TestTypes);
 TYPED_TEST(TimeoutSetTest, EmptyInsertion) {
   EXPECT_TRUE(this->elements_.IsEmpty());
 
-  this->elements_.Insert(this->data_.data[0],
-                         base::TimeDelta::FromMilliseconds(10));
+  this->elements_.Insert(this->data_.data[0], base::Milliseconds(10));
   EXPECT_FALSE(this->elements_.IsEmpty());
   EXPECT_TRUE(
       std::equal(this->elements_.cbegin(), this->elements_.cend(),
@@ -117,8 +116,7 @@ TYPED_TEST(TimeoutSetTest, EmptyInsertion) {
 }
 
 TYPED_TEST(TimeoutSetTest, SingleTimeout) {
-  this->elements_.Insert(this->data_.data[0],
-                         base::TimeDelta::FromMilliseconds(10));
+  this->elements_.Insert(this->data_.data[0], base::Milliseconds(10));
 
   this->IncrementTime(10);
   EXPECT_TIMEOUT(this->data_.data[0]);
@@ -128,10 +126,8 @@ TYPED_TEST(TimeoutSetTest, SingleTimeout) {
 }
 
 TYPED_TEST(TimeoutSetTest, MultipleSequentialTimeouts) {
-  this->elements_.Insert(this->data_.data[0],
-                         base::TimeDelta::FromMilliseconds(10));
-  this->elements_.Insert(this->data_.data[1],
-                         base::TimeDelta::FromMilliseconds(20));
+  this->elements_.Insert(this->data_.data[0], base::Milliseconds(10));
+  this->elements_.Insert(this->data_.data[1], base::Milliseconds(20));
 
   this->IncrementTime(10);
   EXPECT_TIMEOUT(this->data_.data[0]);
@@ -143,10 +139,8 @@ TYPED_TEST(TimeoutSetTest, MultipleSequentialTimeouts) {
 }
 
 TYPED_TEST(TimeoutSetTest, MultipleSequentialTimeoutsWithInfiniteLifetime) {
-  this->elements_.Insert(this->data_.data[0],
-                         base::TimeDelta::FromMilliseconds(10));
-  this->elements_.Insert(this->data_.data[1],
-                         base::TimeDelta::FromMilliseconds(20));
+  this->elements_.Insert(this->data_.data[0], base::Milliseconds(10));
+  this->elements_.Insert(this->data_.data[1], base::Milliseconds(20));
   this->elements_.Insert(this->data_.data[2], base::TimeDelta::Max());
 
   this->IncrementTime(10);
@@ -166,10 +160,8 @@ TYPED_TEST(TimeoutSetTest, MultipleSequentialTimeoutsWithInfiniteLifetime) {
 
 // Single timeout has multiple elements expiring.
 TYPED_TEST(TimeoutSetTest, MultiTimeout) {
-  this->elements_.Insert(this->data_.data[0],
-                         base::TimeDelta::FromMilliseconds(10));
-  this->elements_.Insert(this->data_.data[1],
-                         base::TimeDelta::FromMilliseconds(10));
+  this->elements_.Insert(this->data_.data[0], base::Milliseconds(10));
+  this->elements_.Insert(this->data_.data[1], base::Milliseconds(10));
 
   this->IncrementTime(10);
   EXPECT_TIMEOUT(this->data_.data[0], this->data_.data[1]);
@@ -178,10 +170,8 @@ TYPED_TEST(TimeoutSetTest, MultiTimeout) {
 
 // Single timeout has multiple elements expiring.
 TYPED_TEST(TimeoutSetTest, MultiTimeoutWithInfiniteLifetime) {
-  this->elements_.Insert(this->data_.data[0],
-                         base::TimeDelta::FromMilliseconds(10));
-  this->elements_.Insert(this->data_.data[1],
-                         base::TimeDelta::FromMilliseconds(10));
+  this->elements_.Insert(this->data_.data[0], base::Milliseconds(10));
+  this->elements_.Insert(this->data_.data[1], base::Milliseconds(10));
   this->elements_.Insert(this->data_.data[2], base::TimeDelta::Max());
   this->elements_.Insert(this->data_.data[3], base::TimeDelta::Max());
 
@@ -197,10 +187,8 @@ TYPED_TEST(TimeoutSetTest, MultiTimeoutWithInfiniteLifetime) {
 }
 
 TYPED_TEST(TimeoutSetTest, InsertResetTimeout) {
-  this->elements_.Insert(this->data_.data[0],
-                         base::TimeDelta::FromMilliseconds(20));
-  this->elements_.Insert(this->data_.data[1],
-                         base::TimeDelta::FromMilliseconds(10));
+  this->elements_.Insert(this->data_.data[0], base::Milliseconds(20));
+  this->elements_.Insert(this->data_.data[1], base::Milliseconds(10));
 
   this->IncrementTime(10);
   EXPECT_TIMEOUT(this->data_.data[1]);

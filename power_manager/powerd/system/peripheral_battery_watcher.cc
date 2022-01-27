@@ -282,8 +282,7 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
 void PeripheralBatteryWatcher::ReadBatteryStatusesTimer() {
   ReadBatteryStatuses();
 
-  poll_timer_.Start(FROM_HERE,
-                    base::TimeDelta::FromMilliseconds(poll_interval_ms_), this,
+  poll_timer_.Start(FROM_HERE, base::Milliseconds(poll_interval_ms_), this,
                     &PeripheralBatteryWatcher::ReadBatteryStatuses);
 }
 

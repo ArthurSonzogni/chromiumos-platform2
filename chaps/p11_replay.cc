@@ -971,7 +971,7 @@ int ReplayCloseAllSessionsLoop(CK_SESSION_HANDLE session,
           << "Signaled by ReplayCloseAllSessionsCheck() that they are done.";
       return 0;
     }
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(300));
+    base::PlatformThread::Sleep(base::Milliseconds(300));
   }
   LOG(ERROR)
       << "Timed out waiting for signal from ReplayCloseAllSessionsCheck().";
@@ -994,7 +994,7 @@ int ReplayCloseAllSessionsCheck(CK_SESSION_HANDLE session,
     }
     if (base::PathExists(path))
       break;
-    base::PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(300));
+    base::PlatformThread::Sleep(base::Milliseconds(300));
   }
 
   base::ScopedClosureRunner ipc_file_cleanup(base::BindOnce(
@@ -1137,7 +1137,7 @@ class DigestTestThread : public base::PlatformThread::Delegate {
       C_DigestUpdate(session, data, data_length);
       C_DigestFinal(session, digest, &digest_length);
       TimeDelta delta = TimeTicks::Now() - start;
-      if (delta > TimeDelta::FromMilliseconds(500)) {
+      if (delta > base::Milliseconds(500)) {
         LOG(WARNING) << "Hash took long: " << delta.InMilliseconds();
       }
     }

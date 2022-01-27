@@ -30,7 +30,7 @@ const char kCrosPipe[] = "pipe:qemud:cros";
 // Character device provided by Android Emulator.
 const char kGoldfishDev[] = "/dev/goldfish_pipe";
 // Timeout to wait auto login script to finish.
-constexpr base::TimeDelta kLoginTimeout = base::TimeDelta::FromSeconds(50);
+constexpr base::TimeDelta kLoginTimeout = base::Seconds(50);
 
 class GoldfishDaemon : public brillo::Daemon {
  public:

@@ -16,9 +16,9 @@ constexpr char kKey[] = "GUID-M";
 constexpr int kVersion1 = 1;
 constexpr int kVersion2 = 2;
 
-constexpr base::TimeDelta kTwoDays = base::TimeDelta::FromDays(2);
-constexpr base::TimeDelta kThreeDays = base::TimeDelta::FromDays(3);
-constexpr base::TimeDelta kMinusOneSecond = base::TimeDelta::FromSeconds(-1);
+constexpr base::TimeDelta kTwoDays = base::Days(2);
+constexpr base::TimeDelta kThreeDays = base::Days(3);
+constexpr base::TimeDelta kMinusOneSecond = base::Seconds(-1);
 }  // namespace
 
 namespace authpolicy {

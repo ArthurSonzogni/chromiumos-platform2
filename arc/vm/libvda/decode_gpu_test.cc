@@ -59,9 +59,8 @@ vda_profile_t GetVideoFileProfile(const base::FilePath& video_file) {
 bool WaitForDecodesDone(arc::test::DecodeEventThread* event_thread,
                         uint32_t* waiting_decodes,
                         uint32_t max_decodes) {
-  constexpr base::TimeDelta wait_interval =
-      base::TimeDelta::FromMilliseconds(5);
-  constexpr base::TimeDelta max_wait_time = base::TimeDelta::FromSeconds(5);
+  constexpr base::TimeDelta wait_interval = base::Milliseconds(5);
+  constexpr base::TimeDelta max_wait_time = base::Seconds(5);
   base::ElapsedTimer wait_timer;
   while (wait_timer.Elapsed() < max_wait_time) {
     *waiting_decodes -=

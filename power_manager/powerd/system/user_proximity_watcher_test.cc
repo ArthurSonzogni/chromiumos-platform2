@@ -177,7 +177,7 @@ class UserProximityWatcherTest : public testing::Test {
     buf[6] = (proximity == UserProximity::NEAR ? 2 : 1);
     if (sizeof(buf) != write(fd, &buf[0], sizeof(buf)))
       ADD_FAILURE() << "full buffer not written";
-    loop_runner_.StartLoop(base::TimeDelta::FromSeconds(30));
+    loop_runner_.StartLoop(base::Seconds(30));
   }
 
   std::unordered_map<std::string, std::pair<int, int>> fds_;

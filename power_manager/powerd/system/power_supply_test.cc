@@ -91,9 +91,7 @@ class TestObserver : public PowerSupplyObserver {
 
   // Runs the event loop until OnPowerStatusUpdate() is invoked or a timeout is
   // hit. Returns true if the method was invoked and false if it wasn't.
-  bool WaitForNotification() {
-    return runner_.StartLoop(base::TimeDelta::FromSeconds(10));
-  }
+  bool WaitForNotification() { return runner_.StartLoop(base::Seconds(10)); }
 
   // PowerSupplyObserver overrides:
   void OnPowerStatusUpdate() override {
@@ -892,14 +890,14 @@ TEST_F(PowerSupplyTest, EnergyDischarging) {
 TEST_F(PowerSupplyTest, PollDelays) {
   WriteDefaultValues(PowerSource::AC);
 
-  const base::TimeDelta kPollDelay = base::TimeDelta::FromSeconds(30);
-  const base::TimeDelta kPollDelayInitial = base::TimeDelta::FromSeconds(1);
-  const base::TimeDelta kStartupDelay = base::TimeDelta::FromSeconds(6);
-  const base::TimeDelta kACDelay = base::TimeDelta::FromSeconds(7);
-  const base::TimeDelta kBatteryDelay = base::TimeDelta::FromSeconds(8);
-  const base::TimeDelta kResumeDelay = base::TimeDelta::FromSeconds(10);
+  const base::TimeDelta kPollDelay = base::Seconds(30);
+  const base::TimeDelta kPollDelayInitial = base::Seconds(1);
+  const base::TimeDelta kStartupDelay = base::Seconds(6);
+  const base::TimeDelta kACDelay = base::Seconds(7);
+  const base::TimeDelta kBatteryDelay = base::Seconds(8);
+  const base::TimeDelta kResumeDelay = base::Seconds(10);
   const base::TimeDelta kSlack =
-      base::TimeDelta::FromMilliseconds(PowerSupply::kBatteryStabilizedSlackMs);
+      base::Milliseconds(PowerSupply::kBatteryStabilizedSlackMs);
 
   prefs_.SetInt64(kBatteryPollIntervalPref, kPollDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryPollIntervalInitialPref,
@@ -965,7 +963,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
 
   // After resuming, the status should be updated immediately and the
   // battery times should be reported as "calculating" again.
-  current_time += base::TimeDelta::FromSeconds(120);
+  current_time += base::Seconds(120);
   test_api_->SetCurrentTime(current_time);
   UpdatePowerSourceAndBatteryStatus(PowerSource::BATTERY, kMainsType,
                                     kDischarging);
@@ -1074,7 +1072,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   EXPECT_EQ(MakeEstimateString(false, 0, 3600), UpdateAndGetEstimateString());
 
   // Let half an hour pass and report that the battery is 75% full.
-  test_api_->AdvanceTime(base::TimeDelta::FromMinutes(30));
+  test_api_->AdvanceTime(base::Minutes(30));
   UpdateChargeAndCurrent(0.75, 0.5);
   EXPECT_EQ(MakeEstimateString(false, 0, 1800), UpdateAndGetEstimateString());
 
@@ -1087,7 +1085,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   // Fifteen minutes later, set the current to 0.25 (giving an average of (1.0 +
   // 0.25) / 2 = 0.625) and report an increased charge. There should be 0.125 /
   // 0.625 * 3600 = 720 seconds until the battery is full.
-  test_api_->AdvanceTime(base::TimeDelta::FromMinutes(15));
+  test_api_->AdvanceTime(base::Minutes(15));
   UpdateChargeAndCurrent(0.875, 0.25);
   EXPECT_EQ(MakeEstimateString(false, 0, 720), UpdateAndGetEstimateString());
 
@@ -1107,7 +1105,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
 
   // Thirty minutes later, decrease the charge and report a significantly
   // higher current.
-  test_api_->AdvanceTime(base::TimeDelta::FromMinutes(30));
+  test_api_->AdvanceTime(base::Minutes(30));
   UpdateChargeAndCurrent(0.25, -1.5);
   EXPECT_EQ(MakeEstimateString(false, 900, 0), UpdateAndGetEstimateString());
 
@@ -1119,7 +1117,7 @@ TEST_F(PowerSupplyTest, UpdateBatteryTimeEstimates) {
   // reported as "calculating".
   power_supply_->SetSuspended(true);
   UpdateChargeAndCurrent(0.25, -2.5);
-  test_api_->AdvanceTime(base::TimeDelta::FromSeconds(8));
+  test_api_->AdvanceTime(base::Seconds(8));
   power_supply_->SetSuspended(false);
   EXPECT_EQ(MakeEstimateString(true, 0, 0), UpdateAndGetEstimateString());
 
@@ -1403,8 +1401,8 @@ TEST_F(PowerSupplyTest, CheckForLowBattery) {
 
   // After just half of the observation period has elapsed, the system should
   // still be up.
-  const base::TimeDelta kObservationTime = base::TimeDelta::FromMilliseconds(
-      PowerSupply::kObservedBatteryChargeRateMinMs);
+  const base::TimeDelta kObservationTime =
+      base::Milliseconds(PowerSupply::kObservedBatteryChargeRateMinMs);
   UpdateChargeAndCurrent((kShutdownPercent - 1.5) / 100.0, kCurrent);
   test_api_->AdvanceTime(kObservationTime / 2);
   ASSERT_TRUE(UpdateStatus(&status));
@@ -1527,8 +1525,8 @@ TEST_F(PowerSupplyTest, ObservedBatteryChargeRate) {
   EXPECT_DOUBLE_EQ(0.0, status.observed_battery_charge_rate);
 
   // Advance the time, but not by enough to estimate the rate.
-  const base::TimeDelta kObservationTime = base::TimeDelta::FromMilliseconds(
-      PowerSupply::kObservedBatteryChargeRateMinMs);
+  const base::TimeDelta kObservationTime =
+      base::Milliseconds(PowerSupply::kObservedBatteryChargeRateMinMs);
   test_api_->AdvanceTime(kObservationTime / 2);
   UpdateChargeAndCurrent(9.0, -1.0);
   ASSERT_TRUE(UpdateStatus(&status));
@@ -1536,12 +1534,12 @@ TEST_F(PowerSupplyTest, ObservedBatteryChargeRate) {
 
   // Advance the time by enough so the next reading will be a full hour from the
   // first one, indicating that the charge is dropping by 1 Ah per hour.
-  test_api_->AdvanceTime(base::TimeDelta::FromHours(1) - kObservationTime / 2);
+  test_api_->AdvanceTime(base::Hours(1) - kObservationTime / 2);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(-1.0, status.observed_battery_charge_rate);
 
   // Decrease the charge by 3 Ah over the next hour.
-  test_api_->AdvanceTime(base::TimeDelta::FromHours(1));
+  test_api_->AdvanceTime(base::Hours(1));
   UpdateChargeAndCurrent(6.0, -1.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(-2.0, status.observed_battery_charge_rate);
@@ -1568,7 +1566,7 @@ TEST_F(PowerSupplyTest, ObservedBatteryChargeRate) {
 
   // Now advance the time to get a reading one hour from the first one and
   // decrease the charge by 2 Ah from the first reading while on AC power.
-  test_api_->AdvanceTime(base::TimeDelta::FromHours(1) - kObservationTime);
+  test_api_->AdvanceTime(base::Hours(1) - kObservationTime);
   UpdateChargeAndCurrent(5.0, 1.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(-2.0, status.observed_battery_charge_rate);
@@ -1576,7 +1574,7 @@ TEST_F(PowerSupplyTest, ObservedBatteryChargeRate) {
   // Send enough identical samples to fill the window and check that the rate is
   // reported as 0.
   for (int i = 0; i < kMaxSamples; ++i) {
-    test_api_->AdvanceTime(base::TimeDelta::FromHours(1));
+    test_api_->AdvanceTime(base::Hours(1));
     ASSERT_TRUE(UpdateStatus(&status));
   }
   EXPECT_DOUBLE_EQ(0.0, status.observed_battery_charge_rate);
@@ -1606,8 +1604,8 @@ TEST_F(PowerSupplyTest, LowBatteryShutdownSafetyPercent) {
 
   // Even after a negative charge rate is observed, the system still shouldn't
   // shut down, since the battery percent is greater than the safety percent.
-  test_api_->AdvanceTime(base::TimeDelta::FromMilliseconds(
-      PowerSupply::kObservedBatteryChargeRateMinMs));
+  test_api_->AdvanceTime(
+      base::Milliseconds(PowerSupply::kObservedBatteryChargeRateMinMs));
   UpdateChargeAndCurrent(0.25, kCurrent);
   ASSERT_GT(25.0, PowerSupply::kLowBatteryShutdownSafetyPercent);
   ASSERT_TRUE(UpdateStatus(&status));
@@ -1620,7 +1618,7 @@ TEST_F(PowerSupplyTest, LowBatteryShutdownSafetyPercent) {
 TEST_F(PowerSupplyTest, NotifyObserver) {
   // Set a long polling delay to ensure that PowerSupply doesn't poll in the
   // background during the test.
-  const base::TimeDelta kDelay = base::TimeDelta::FromSeconds(60);
+  const base::TimeDelta kDelay = base::Seconds(60);
   prefs_.SetInt64(kBatteryPollIntervalPref, kDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryStabilizedAfterStartupMsPref,
                   kDelay.InMilliseconds());
@@ -1846,7 +1844,7 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   status.line_power_on = true;
   status.battery_energy_rate = 3.4;
   status.is_calculating_battery_time = false;
-  status.battery_time_to_full = base::TimeDelta::FromSeconds(900);
+  status.battery_time_to_full = base::Seconds(900);
   status.display_battery_percentage = 75.8;
   status.battery_is_present = true;
   status.external_power = PowerSupplyProperties_ExternalPower_AC;
@@ -1942,8 +1940,8 @@ TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {
   status.ports.clear();
   status.line_power_on = false;
   status.battery_time_to_full = base::TimeDelta();
-  status.battery_time_to_empty = base::TimeDelta::FromSeconds(1800);
-  status.battery_time_to_shutdown = base::TimeDelta::FromSeconds(1500);
+  status.battery_time_to_empty = base::Seconds(1800);
+  status.battery_time_to_shutdown = base::Seconds(1500);
   status.external_power = PowerSupplyProperties_ExternalPower_DISCONNECTED;
   status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
 

@@ -62,25 +62,25 @@ TEST_F(ArcSetupMetricsTest, SendBootContinueCodeInstallationResult) {
 }
 
 TEST_F(ArcSetupMetricsTest, SendCodeVerificationTime) {
-  base::TimeDelta t = base::TimeDelta::FromMilliseconds(1234);
+  base::TimeDelta t = base::Milliseconds(1234);
   EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(_, 1234, _, _, _)).Times(1);
   arc_setup_metrics_.SendCodeVerificationTime(t);
 }
 
 TEST_F(ArcSetupMetricsTest, SendCodeRelocationTime) {
-  base::TimeDelta t = base::TimeDelta::FromMilliseconds(4321);
+  base::TimeDelta t = base::Milliseconds(4321);
   EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(_, 4321, _, _, _)).Times(1);
   arc_setup_metrics_.SendCodeRelocationTime(t);
 }
 
 TEST_F(ArcSetupMetricsTest, SendCodeSigningTime) {
-  base::TimeDelta t = base::TimeDelta::FromMilliseconds(3214);
+  base::TimeDelta t = base::Milliseconds(3214);
   EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(_, 3214, _, _, _)).Times(1);
   arc_setup_metrics_.SendCodeSigningTime(t);
 }
 
 TEST_F(ArcSetupMetricsTest, SendCodeIntegrityCheckingTotalTime) {
-  base::TimeDelta t = base::TimeDelta::FromMilliseconds(3333);
+  base::TimeDelta t = base::Milliseconds(3333);
   EXPECT_CALL(*GetMetricsLibraryMock(), SendToUMA(_, 3333, _, _, _)).Times(1);
   arc_setup_metrics_.SendCodeIntegrityCheckingTotalTime(t);
 }

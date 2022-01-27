@@ -155,9 +155,9 @@ int main(int argc, char* argv[]) {
               << ", delay per retry: " << FLAGS_retry_delay << " ms"
               << std::endl;
     auto baseDevice = std::move(dev);
-    dev = std::make_unique<hps::RetryDev>(
-        std::move(baseDevice), FLAGS_retries,
-        base::TimeDelta::FromMilliseconds(FLAGS_retry_delay));
+    dev =
+        std::make_unique<hps::RetryDev>(std::move(baseDevice), FLAGS_retries,
+                                        base::Milliseconds(FLAGS_retry_delay));
   }
   auto hps = std::make_unique<hps::HPS_impl>(std::move(dev));
 

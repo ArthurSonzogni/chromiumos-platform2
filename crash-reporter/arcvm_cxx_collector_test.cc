@@ -30,7 +30,7 @@ constexpr pid_t kPid = 1234;
 constexpr char kExecName[] = "execname";
 
 constexpr base::TimeDelta kUptimeValue =
-    base::TimeDelta::FromMilliseconds(123456789);  // 1d 10h 17min 36s
+    base::Milliseconds(123456789);  // 1d 10h 17min 36s
 constexpr char kUptimeFormatted[] = "1d 10h 17min 36s";
 
 constexpr char kTestCrashDirectory[] = "test-crash-directory";

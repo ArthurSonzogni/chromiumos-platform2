@@ -122,10 +122,10 @@ const int kInvalidMaxSSIDs = -1;
 
 // Maximum time between two link monitor failures to declare this link (network)
 // as unreliable.
-constexpr auto kLinkUnreliableThreshold = base::TimeDelta::FromMinutes(60);
+constexpr auto kLinkUnreliableThreshold = base::Minutes(60);
 // Mark a unreliable service as reliable if no more link monitor failures in
 // the below timeout after this unreliable service became connected again.
-constexpr auto kLinkUnreliableResetTimeout = base::TimeDelta::FromMinutes(5);
+constexpr auto kLinkUnreliableResetTimeout = base::Minutes(5);
 
 bool IsPrintableAsciiChar(char c) {
   return (c >= ' ' && c <= '~');

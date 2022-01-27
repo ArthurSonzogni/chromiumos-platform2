@@ -73,7 +73,7 @@ constexpr gid_t kChronosAccessGid = 1001;
 constexpr uid_t kDbusAuthUid = 20115;
 
 // How long we should wait for a server process to exit.
-constexpr base::TimeDelta kServerExitTimeout = base::TimeDelta::FromSeconds(2);
+constexpr base::TimeDelta kServerExitTimeout = base::Seconds(2);
 
 // Path to the 9p server.
 constexpr char kServerPath[] = "/usr/bin/9s";

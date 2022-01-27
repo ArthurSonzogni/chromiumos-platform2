@@ -180,16 +180,16 @@ class StateControllerTest : public testing::Test {
         hps_dbus_proxy_(dbus_wrapper_.GetObjectProxy(hps::kHpsServiceName,
                                                      hps::kHpsServicePath)),
         now_(base::TimeTicks::FromInternalValue(1000)),
-        default_ac_suspend_delay_(base::TimeDelta::FromSeconds(120)),
-        default_ac_screen_off_delay_(base::TimeDelta::FromSeconds(100)),
-        default_ac_screen_dim_delay_(base::TimeDelta::FromSeconds(90)),
-        default_ac_quick_dim_delay_(base::TimeDelta::FromSeconds(70)),
-        default_ac_quick_lock_delay_(base::TimeDelta::FromSeconds(80)),
-        default_battery_suspend_delay_(base::TimeDelta::FromSeconds(60)),
-        default_battery_screen_off_delay_(base::TimeDelta::FromSeconds(40)),
-        default_battery_screen_dim_delay_(base::TimeDelta::FromSeconds(30)),
-        default_battery_quick_dim_delay_(base::TimeDelta::FromSeconds(20)),
-        default_battery_quick_lock_delay_(base::TimeDelta::FromSeconds(25)),
+        default_ac_suspend_delay_(base::Seconds(120)),
+        default_ac_screen_off_delay_(base::Seconds(100)),
+        default_ac_screen_dim_delay_(base::Seconds(90)),
+        default_ac_quick_dim_delay_(base::Seconds(70)),
+        default_ac_quick_lock_delay_(base::Seconds(80)),
+        default_battery_suspend_delay_(base::Seconds(60)),
+        default_battery_screen_off_delay_(base::Seconds(40)),
+        default_battery_screen_dim_delay_(base::Seconds(30)),
+        default_battery_quick_dim_delay_(base::Seconds(20)),
+        default_battery_quick_lock_delay_(base::Seconds(25)),
         default_disable_idle_suspend_(0),
         default_factory_mode_(0),
         default_require_usb_input_device_to_suspend_(0),
@@ -398,11 +398,11 @@ class StateControllerTest : public testing::Test {
         PowerManagementPolicy::Delays proto;
         EXPECT_TRUE(dbus_wrapper_.GetSentSignal(i, name, &proto, nullptr));
         signals.push_back(GetInactivityDelaysChangedString(
-            base::TimeDelta::FromMilliseconds(proto.idle_ms()),
-            base::TimeDelta::FromMilliseconds(proto.idle_warning_ms()),
-            base::TimeDelta::FromMilliseconds(proto.screen_off_ms()),
-            base::TimeDelta::FromMilliseconds(proto.screen_dim_ms()),
-            base::TimeDelta::FromMilliseconds(proto.screen_lock_ms())));
+            base::Milliseconds(proto.idle_ms()),
+            base::Milliseconds(proto.idle_warning_ms()),
+            base::Milliseconds(proto.screen_off_ms()),
+            base::Milliseconds(proto.screen_dim_ms()),
+            base::Milliseconds(proto.screen_lock_ms())));
       } else if (name == kScreenIdleStateChangedSignal) {
         ScreenIdleState proto;
         EXPECT_TRUE(dbus_wrapper_.GetSentSignal(i, name, &proto, nullptr));
@@ -601,10 +601,10 @@ TEST_F(StateControllerTest, VideoDefersDimming) {
 TEST_F(StateControllerTest, AudioBlocksSuspend) {
   Init();
 
-  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(300);
-  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(310);
-  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(320);
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(330);
+  const base::TimeDelta kDimDelay = base::Seconds(300);
+  const base::TimeDelta kOffDelay = base::Seconds(310);
+  const base::TimeDelta kLockDelay = base::Seconds(320);
+  const base::TimeDelta kIdleDelay = base::Seconds(330);
 
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
@@ -676,11 +676,11 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   Init();
 
   const double kScreenDimFactor = 3.0;
-  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(300);
-  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(310);
-  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(320);
-  const base::TimeDelta kWarnDelay = base::TimeDelta::FromSeconds(330);
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(340);
+  const base::TimeDelta kDimDelay = base::Seconds(300);
+  const base::TimeDelta kOffDelay = base::Seconds(310);
+  const base::TimeDelta kLockDelay = base::Seconds(320);
+  const base::TimeDelta kWarnDelay = base::Seconds(330);
+  const base::TimeDelta kIdleDelay = base::Seconds(340);
 
   const base::TimeDelta kScaledDimDelay = kDimDelay * kScreenDimFactor;
   const base::TimeDelta kDelayDiff = kScaledDimDelay - kDimDelay;
@@ -714,7 +714,7 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
   AdvanceTime(StateController::kIgnoreDisplayModeAfterScreenOffInterval +
-              base::TimeDelta::FromSeconds(1));
+              base::Seconds(1));
 
   controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
@@ -738,12 +738,12 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
 TEST_F(StateControllerTest, PowerSourceChange) {
   // Start out on battery power.
   initial_power_source_ = PowerSource::BATTERY;
-  default_battery_screen_dim_delay_ = base::TimeDelta::FromSeconds(60);
-  default_battery_screen_off_delay_ = base::TimeDelta::FromSeconds(90);
-  default_battery_suspend_delay_ = base::TimeDelta::FromSeconds(100);
-  default_ac_screen_dim_delay_ = base::TimeDelta::FromSeconds(120);
-  default_ac_screen_off_delay_ = base::TimeDelta::FromSeconds(150);
-  default_ac_suspend_delay_ = base::TimeDelta::FromSeconds(160);
+  default_battery_screen_dim_delay_ = base::Seconds(60);
+  default_battery_screen_off_delay_ = base::Seconds(90);
+  default_battery_suspend_delay_ = base::Seconds(100);
+  default_ac_screen_dim_delay_ = base::Seconds(120);
+  default_ac_screen_off_delay_ = base::Seconds(150);
+  default_ac_suspend_delay_ = base::Seconds(160);
   Init();
 
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_screen_dim_delay_));
@@ -795,7 +795,7 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
   // Set an external policy that disables most delays and instructs the
   // power manager to shut the system down after 10 minutes of inactivity
   // if on AC power or stop the session if on battery power.
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(600);
+  const base::TimeDelta kIdleDelay = base::Seconds(600);
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
   policy.mutable_ac_delays()->set_screen_off_ms(0);
@@ -834,7 +834,7 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
 
   // Wait 120 seconds and then send an updated policy that dims the screen
   // after 60 seconds.  The screen should dim immediately.
-  AdvanceTime(base::TimeDelta::FromSeconds(120));
+  AdvanceTime(base::Seconds(120));
   policy.mutable_ac_delays()->set_screen_dim_ms(60000);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
@@ -846,7 +846,7 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
 
   // Wait for the idle timeout to be reached and check that the battery
   // idle action is performed.
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(base::TimeDelta::FromSeconds(600)));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(base::Seconds(600)));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
   // Update the policy again to shut down if the lid is closed.  Since the
@@ -870,7 +870,7 @@ TEST_F(StateControllerTest, PartiallyFilledPolicy) {
 
   // Set a policy that has a very short dimming delay but leaves all other
   // fields unset.
-  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(1);
+  const base::TimeDelta kDimDelay = base::Seconds(1);
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
@@ -901,10 +901,10 @@ TEST_F(StateControllerTest, PartiallyFilledPolicy) {
 TEST_F(StateControllerTest, PolicyDisablingVideo) {
   Init();
 
-  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(300);
-  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(310);
-  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(320);
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(330);
+  const base::TimeDelta kDimDelay = base::Seconds(300);
+  const base::TimeDelta kOffDelay = base::Seconds(310);
+  const base::TimeDelta kLockDelay = base::Seconds(320);
+  const base::TimeDelta kIdleDelay = base::Seconds(330);
 
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
@@ -1161,19 +1161,19 @@ TEST_F(StateControllerTest, InvalidDelays) {
   // The dim delay should be less than the off delay, which should be less
   // than the idle delay.  All of those constraints are violated here, so
   // all of the other delays should be capped to the idle delay.
-  default_ac_screen_dim_delay_ = base::TimeDelta::FromSeconds(120);
-  default_ac_screen_off_delay_ = base::TimeDelta::FromSeconds(110);
-  default_ac_suspend_delay_ = base::TimeDelta::FromSeconds(100);
+  default_ac_screen_dim_delay_ = base::Seconds(120);
+  default_ac_screen_off_delay_ = base::Seconds(110);
+  default_ac_suspend_delay_ = base::Seconds(100);
   Init();
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspendIdle, nullptr),
             delegate_.GetActions());
 
   // Policy delays should also be cleaned up.
-  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(70);
-  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(50);
-  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(80);
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(60);
+  const base::TimeDelta kDimDelay = base::Seconds(70);
+  const base::TimeDelta kOffDelay = base::Seconds(50);
+  const base::TimeDelta kLockDelay = base::Seconds(80);
+  const base::TimeDelta kIdleDelay = base::Seconds(60);
 
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
@@ -1374,8 +1374,8 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
 TEST_F(StateControllerTest, IdleWarnings) {
   Init();
 
-  const base::TimeDelta kIdleWarningDelay = base::TimeDelta::FromSeconds(50);
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(60);
+  const base::TimeDelta kIdleWarningDelay = base::Seconds(50);
+  const base::TimeDelta kIdleDelay = base::Seconds(60);
   const base::TimeDelta kHalfInterval = (kIdleDelay - kIdleWarningDelay) / 2;
 
   PowerManagementPolicy policy;
@@ -1531,10 +1531,10 @@ TEST_F(StateControllerTest, IdleWarnings) {
 TEST_F(StateControllerTest, WakeLocksWithUserActivity) {
   Init();
 
-  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(60);
-  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(70);
-  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(80);
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(90);
+  const base::TimeDelta kDimDelay = base::Seconds(60);
+  const base::TimeDelta kOffDelay = base::Seconds(70);
+  const base::TimeDelta kLockDelay = base::Seconds(80);
+  const base::TimeDelta kIdleDelay = base::Seconds(90);
 
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
@@ -1687,11 +1687,11 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
 
   // Send a policy where delays are doubled if user activity is observed
   // while the screen is dimmed or soon after it's turned off.
-  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(120);
-  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(200);
-  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(300);
-  const base::TimeDelta kIdleWarningDelay = base::TimeDelta::FromSeconds(320);
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(330);
+  const base::TimeDelta kDimDelay = base::Seconds(120);
+  const base::TimeDelta kOffDelay = base::Seconds(200);
+  const base::TimeDelta kLockDelay = base::Seconds(300);
+  const base::TimeDelta kIdleWarningDelay = base::Seconds(320);
+  const base::TimeDelta kIdleDelay = base::Seconds(330);
   const double kDelayFactor = 2.0;
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
@@ -1756,7 +1756,7 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
   AdvanceTime(
       StateController::kUserActivityAfterScreenOffIncreaseDelaysInterval +
-      base::TimeDelta::FromSeconds(1));
+      base::Seconds(1));
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
             delegate_.GetActions());
@@ -1777,7 +1777,7 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   const base::TimeDelta kShortOffDelay =
       kOffDelay -
       StateController::kUserActivityAfterScreenOffIncreaseDelaysInterval +
-      base::TimeDelta::FromSeconds(1);
+      base::Seconds(1);
   policy.mutable_ac_delays()->set_screen_off_ms(
       kShortOffDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
@@ -1944,10 +1944,9 @@ TEST_F(StateControllerTest, AudioDelay) {
   Init();
 
   // Make "now" advance if GetCurrentTime() is called multiple times.
-  test_api_.clock()->set_time_step_for_testing(
-      base::TimeDelta::FromMilliseconds(1));
+  test_api_.clock()->set_time_step_for_testing(base::Milliseconds(1));
 
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(600);
+  const base::TimeDelta kIdleDelay = base::Seconds(600);
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(0);
   policy.mutable_ac_delays()->set_screen_off_ms(0);
@@ -1966,8 +1965,8 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
   Init();
   controller_.HandleSessionStateChange(SessionState::STARTED);
 
-  const base::TimeDelta kWarningDelay = base::TimeDelta::FromSeconds(585);
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(600);
+  const base::TimeDelta kWarningDelay = base::Seconds(585);
+  const base::TimeDelta kIdleDelay = base::Seconds(600);
 
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(0);
@@ -2054,7 +2053,7 @@ TEST_F(StateControllerTest, WaitForInitialUserActivity) {
 // Tests that idle and lid-closed "shut down" actions are overridden to instead
 // suspend when the TPM dictionary-attack count is high.
 TEST_F(StateControllerTest, SuspendInsteadOfShuttingDownForTpmCounter) {
-  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(300);
+  const base::TimeDelta kIdleDelay = base::Seconds(300);
   initial_policy_.mutable_ac_delays()->set_screen_dim_ms(0);
   initial_policy_.mutable_ac_delays()->set_screen_off_ms(0);
   initial_policy_.mutable_ac_delays()->set_screen_lock_ms(0);
@@ -2109,11 +2108,11 @@ TEST_F(StateControllerTest, ReportInactivityDelays) {
   Init();
   dbus_wrapper_.ClearSentSignals();
 
-  constexpr base::TimeDelta kIdle = base::TimeDelta::FromSeconds(300);
-  constexpr base::TimeDelta kIdleWarn = base::TimeDelta::FromSeconds(270);
-  constexpr base::TimeDelta kScreenOff = base::TimeDelta::FromSeconds(180);
-  constexpr base::TimeDelta kScreenDim = base::TimeDelta::FromSeconds(170);
-  constexpr base::TimeDelta kScreenLock = base::TimeDelta::FromSeconds(190);
+  constexpr base::TimeDelta kIdle = base::Seconds(300);
+  constexpr base::TimeDelta kIdleWarn = base::Seconds(270);
+  constexpr base::TimeDelta kScreenOff = base::Seconds(180);
+  constexpr base::TimeDelta kScreenDim = base::Seconds(170);
+  constexpr base::TimeDelta kScreenLock = base::Seconds(190);
   constexpr double kScreenDimFactor = 3.0;
 
   // Send an initial policy change and check that its delays are announced.
@@ -2176,7 +2175,7 @@ TEST_F(StateControllerTest, ScreenDimTriggered) {
   defer_screen_dimming_ = false;
 
   // Set screen_dim_ms to a fix number.
-  constexpr base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(60);
+  constexpr base::TimeDelta kDimDelay = base::Seconds(60);
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
@@ -2256,7 +2255,7 @@ TEST_F(StateControllerTest, ShouldNotRequestSmartDim) {
   defer_screen_dimming_ = false;
 
   // Set screen_dim_ms to a fix number.
-  constexpr base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(60);
+  constexpr base::TimeDelta kDimDelay = base::Seconds(60);
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
@@ -2265,7 +2264,7 @@ TEST_F(StateControllerTest, ShouldNotRequestSmartDim) {
 
   // Case (1): Powerd shouldn't request a smart dim decision if
   // screen-dim-duration is <  kDimImminentDelay.
-  EXPECT_FALSE(StepTimeAndTriggerTimeout(base::TimeDelta::FromSeconds(5)));
+  EXPECT_FALSE(StepTimeAndTriggerTimeout(base::Seconds(5)));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_FALSE(controller_.ShouldRequestSmartDim(now_));
   base::RunLoop().RunUntilIdle();
@@ -2351,7 +2350,7 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   // kQuickDimDelay after hps_result_ becomes negative if the last activity is
   // earlier.
   // Advance 1 second.
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   EmitHpsSignal(HpsResult::NEGATIVE);
   // Next quick dim will be scheduled after kQuickDimDelay.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
@@ -2366,7 +2365,7 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   // earlier.
   EmitHpsSignal(HpsResult::NEGATIVE);
   // Advance 1 second.
-  AdvanceTime(base::TimeDelta::FromSeconds(1));
+  AdvanceTime(base::Seconds(1));
   controller_.HandleUserActivity();
   // Next quick dim will be scheduled after kQuickDimDelay.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
@@ -2382,12 +2381,12 @@ TEST_F(StateControllerTest, ScheduleForQuickDim) {
   // Turn on the MLDecision Service.
   dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
   // Advance clock.
-  AdvanceTime(kDimImminentDelay - base::TimeDelta::FromSeconds(1));
+  AdvanceTime(kDimImminentDelay - base::Seconds(1));
   // |hps_result_| turned to negative only 1 second before kDimImminentDelay.
   EmitHpsSignal(HpsResult::NEGATIVE);
   // Next action will be scheduled at kDimImminentDelay for MLDecision query,
   // not kDimImminentDelay + kQuickDimDelay for a quick dim.
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(base::TimeDelta::FromSeconds(1)));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(base::Seconds(1)));
 }
 
 TEST_F(StateControllerTest, QuickDimAndUndim) {
@@ -2469,7 +2468,7 @@ TEST_F(StateControllerTest, IgnoreDisplayModeChangesAfterScreenOff) {
 
   // Wait for the ignore timeout to expire
   AdvanceTime(StateController::kIgnoreDisplayModeAfterScreenOffInterval +
-              base::TimeDelta::FromSeconds(1));
+              base::Seconds(1));
 
   controller_.HandleDisplayModeChange(DisplayMode::NORMAL);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, nullptr),
@@ -2495,7 +2494,7 @@ TEST_F(StateControllerTest, LoadPrefShouldSetCorrectQuickDimDelaysBattery) {
 TEST_F(StateControllerTest, HandlePolicyChangeShouldSetCorrectQuickDimDelays) {
   Init();
 
-  const base::TimeDelta quick_dim_delay = base::TimeDelta::FromSeconds(52);
+  const base::TimeDelta quick_dim_delay = base::Seconds(52);
 
   // Next block verifies that delays are set properly from HandlePolicyChange.
   PowerManagementPolicy policy;
@@ -2594,7 +2593,7 @@ TEST_F(StateControllerTest, QuickLockAfterStandardDim) {
 
   const auto delta_quick_dim_to_standard_dim =
       default_battery_screen_dim_delay_ - default_battery_quick_dim_delay_ +
-      base::TimeDelta::FromSeconds(1);
+      base::Seconds(1);
 
   StepTime(delta_quick_dim_to_standard_dim);
   EmitHpsSignal(HpsResult::NEGATIVE);
@@ -2618,8 +2617,7 @@ TEST_F(StateControllerTest, QuickLockAfterScreenOff) {
   Init();
 
   const auto delta = default_battery_screen_dim_delay_ -
-                     default_battery_quick_dim_delay_ +
-                     base::TimeDelta::FromSeconds(6);
+                     default_battery_quick_dim_delay_ + base::Seconds(6);
 
   StepTime(delta);
   EmitHpsSignal(HpsResult::NEGATIVE);

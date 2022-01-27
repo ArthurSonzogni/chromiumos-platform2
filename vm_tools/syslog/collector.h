@@ -44,12 +44,11 @@ class Collector {
   const LogRequest& syslog_request() const { return *syslog_request_; }
 
   // Periodic interval for flushing buffered logs.
-  static constexpr base::TimeDelta kFlushPeriod =
-      base::TimeDelta::FromMilliseconds(5000);
+  static constexpr base::TimeDelta kFlushPeriod = base::Milliseconds(5000);
 
   // Periodic interval for flushing buffered logs during testing.
   static constexpr base::TimeDelta kFlushPeriodForTesting =
-      base::TimeDelta::FromMilliseconds(500);
+      base::Milliseconds(500);
 
  private:
   // File descriptor bound to logging socket.

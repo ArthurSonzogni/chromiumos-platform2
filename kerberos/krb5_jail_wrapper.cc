@@ -21,7 +21,7 @@ namespace {
 constexpr char kerberosd_exec[] = "kerberosd-exec";
 
 // Timeout for child processes.
-constexpr base::TimeDelta kProcessExitTimeout = base::TimeDelta::FromMinutes(3);
+constexpr base::TimeDelta kProcessExitTimeout = base::Minutes(3);
 
 bool g_change_user_disabled_for_testing = false;
 

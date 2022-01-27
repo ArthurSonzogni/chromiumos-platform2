@@ -399,7 +399,7 @@ int main(int argc, char* argv[]) {
   if (sysinfo(&info) == 0) {
     LOG(INFO) << "System uptime: "
               << power_manager::util::TimeDeltaToString(
-                     base::TimeDelta::FromSeconds(info.uptime));
+                     base::Seconds(info.uptime));
   } else {
     PLOG(ERROR) << "sysinfo() failed";
   }

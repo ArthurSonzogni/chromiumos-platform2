@@ -212,7 +212,7 @@ class Daemon final : public brillo::DBusDaemon {
           FROM_HERE,
           base::Bind(&Daemon::CallGetPendingCommands,
                      weak_factory_.GetWeakPtr()),
-          base::TimeDelta::FromMilliseconds(100));
+          base::Milliseconds(100));
     } else {
       fprintf(stderr, "Unknown command: '%s'\n", command.c_str());
       return EX_USAGE;
@@ -222,7 +222,7 @@ class Daemon final : public brillo::DBusDaemon {
     timeout_task_.Reset(
         base::Bind(&Daemon::OnJobTimeout, weak_factory_.GetWeakPtr()));
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-        FROM_HERE, timeout_task_.callback(), base::TimeDelta::FromSeconds(10));
+        FROM_HERE, timeout_task_.callback(), base::Seconds(10));
 
     return EX_OK;
   }
