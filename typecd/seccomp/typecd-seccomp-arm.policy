@@ -60,3 +60,4 @@ getresgid32: 1
 munmap: 1
 flock: 1
 fstatfs: 1
+clock_gettime64: 1
