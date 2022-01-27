@@ -43,6 +43,8 @@ constexpr char kCryptohomeCacheVaultFreedDiskSpaceInMbHistogram[] =
     "Cryptohome.FreedCacheVaultDiskSpaceInMb";
 constexpr char kCryptohomeFreeDiskSpaceTotalTimeHistogram[] =
     "Cryptohome.FreeDiskSpaceTotalTime2";
+constexpr char kCryptohomeLoginDiskCleanupTotalTime[] =
+    "Cryptohome.LoginDiskCleanupTotalTime";
 constexpr char kCryptohomeFreeDiskSpaceTotalFreedInMbHistogram[] =
     "Cryptohome.FreeDiskSpaceTotalFreedInMb";
 constexpr char kCryptohomeTimeBetweenFreeDiskSpaceHistogram[] =
@@ -69,6 +71,10 @@ constexpr char kCryptohomeDiskCleanupProgressHistogram[] =
     "Cryptohome.DiskCleanupProgress";
 constexpr char kCryptohomeDiskCleanupResultHistogram[] =
     "Cryptohome.DiskCleanupResult";
+constexpr char kCryptohomeLoginDiskCleanupProgressHistogram[] =
+    "Cryptohome.LoginDiskCleanupProgress";
+constexpr char kCryptohomeLoginDiskCleanupResultHistogram[] =
+    "Cryptohome.LoginDiskCleanupResult";
 constexpr char kCryptohomeLEResultHistogramPrefix[] = "Cryptohome.LECredential";
 constexpr char kCryptohomeLESyncOutcomeHistogramSuffix[] = ".SyncOutcome";
 constexpr char kCryptohomeLELogReplyEntryCountHistogram[] =
@@ -363,6 +369,14 @@ void ReportTimeBetweenFreeDiskSpace(int s) {
                        kMax, kNumBuckets);
 }
 
+void ReportLoginDiskCleanupTotalTime(int ms) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendToUMA(kCryptohomeLoginDiskCleanupTotalTime, ms, 1, 60 * 1000,
+                       50);
+}
+
 void ReportDircryptoMigrationStartStatus(MigrationType migration_type,
                                          DircryptoMigrationStartStatus status) {
   if (!g_metrics) {
@@ -465,6 +479,24 @@ void ReportDiskCleanupResult(DiskCleanupResult result) {
     return;
   }
   g_metrics->SendEnumToUMA(kCryptohomeDiskCleanupResultHistogram,
+                           static_cast<int>(result),
+                           static_cast<int>(DiskCleanupResult::kNumBuckets));
+}
+
+void ReportLoginDiskCleanupProgress(LoginDiskCleanupProgress progress) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(
+      kCryptohomeLoginDiskCleanupProgressHistogram, static_cast<int>(progress),
+      static_cast<int>(LoginDiskCleanupProgress::kNumBuckets));
+}
+
+void ReportLoginDiskCleanupResult(DiskCleanupResult result) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(kCryptohomeLoginDiskCleanupResultHistogram,
                            static_cast<int>(result),
                            static_cast<int>(DiskCleanupResult::kNumBuckets));
 }

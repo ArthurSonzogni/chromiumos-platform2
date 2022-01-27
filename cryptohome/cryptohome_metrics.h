@@ -247,6 +247,14 @@ enum class DiskCleanupProgress {
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
+enum class LoginDiskCleanupProgress {
+  kWholeUserProfilesCleanedAboveTarget = 1,
+  kWholeUserProfilesCleaned = 2,
+  kNumBuckets
+};
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class DiskCleanupResult {
   kDiskCleanupSuccess = 1,
   kDiskCleanupError = 2,
@@ -560,6 +568,10 @@ void ReportFreedGCacheDiskSpaceInMb(int mb);
 // "Cryptohome.FreedCacheVaultDiskSpaceInMb" histogram.
 void ReportFreedCacheVaultDiskSpaceInMb(int mb);
 
+// Reports total time taken by HomeDirs::FreeDiskSpaceDuringLogin cleanup
+// (milliseconds) to the "Cryptohome.LoginDiskCleanupTotalTime" histogram.
+void ReportLoginDiskCleanupTotalTime(int ms);
+
 // The |status| value is reported to the
 // "Cryptohome.DircryptoMigrationStartStatus" (full migration)
 // or the "Cryptohome.DircryptoMinimalMigrationStartStatus" (minimal migration)
@@ -610,6 +622,14 @@ void ReportDiskCleanupProgress(DiskCleanupProgress progress);
 // Report if the automatic disk cleanup encountered an error to the
 // "Cryptohome.DiskCleanupResult" enum histogram.
 void ReportDiskCleanupResult(DiskCleanupResult result);
+
+// Reports which topmost priority was reached to fulfill a cleanup request
+// to the "Cryptohome.LoginDiskCleanupProgress" enum histogram.
+void ReportLoginDiskCleanupProgress(LoginDiskCleanupProgress progress);
+
+// Report if the automatic disk cleanup encountered an error to the
+// "Cryptohome.LoginDiskCleanupResult" enum histogram.
+void ReportLoginDiskCleanupResult(DiskCleanupResult result);
 
 // The |type| value is reported to the "Cryptohome.HomedirEncryptionType" enum
 // histogram.
