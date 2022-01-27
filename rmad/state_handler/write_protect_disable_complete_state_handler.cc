@@ -75,7 +75,7 @@ WriteProtectDisableCompleteStateHandler::GetNextStateCase(
   }
 
   if (!flashrom_utils_->DisableSoftwareWriteProtection()) {
-    LOG(ERROR) << "Failed to enable software write protect";
+    LOG(ERROR) << "Failed to disable software write protect";
     return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
   }
   return NextStateCaseWrapper(RmadState::StateCase::kUpdateRoFirmware);
