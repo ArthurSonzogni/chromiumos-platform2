@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include <base/check_op.h>
+#include <base/numerics/safe_conversions.h>
 #include <openssl/rand.h>
 
 namespace cryptohome {
