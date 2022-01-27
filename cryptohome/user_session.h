@@ -12,6 +12,7 @@
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 
+#include "cleanup/disk_cleanup.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credential_verifier.h"
@@ -32,6 +33,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   UserSession();
   UserSession(
       HomeDirs* homedirs,
+      DiskCleanup* disk_cleanup,
       KeysetManagement* keyset_management,
       UserOldestActivityTimestampManager* user_activity_timestamp_manager,
       Pkcs11TokenFactory* pkcs11_token_factory,
@@ -135,6 +137,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
   void ClearHibernateSecret();
 
   HomeDirs* homedirs_;
+  DiskCleanup* disk_cleanup_;
   KeysetManagement* keyset_management_;
   UserOldestActivityTimestampManager* user_activity_timestamp_manager_;
   Pkcs11TokenFactory* pkcs11_token_factory_;

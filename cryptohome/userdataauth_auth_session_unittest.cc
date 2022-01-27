@@ -15,6 +15,8 @@
 
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session_manager.h"
+#include "cryptohome/cleanup/mock_disk_cleanup.h"
+#include "cryptohome/cleanup/mock_low_disk_space_handler.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -39,6 +41,7 @@ using ::testing::Eq;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
+using ::testing::StrictMock;
 
 using base::test::TaskEnvironment;
 using brillo::cryptohome::home::kGuestUserName;
@@ -82,6 +85,9 @@ class AuthSessionInterfaceTest : public ::testing::Test {
 
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
+    userdataauth_.set_low_disk_space_handler(&low_disk_space_handler_);
+    ON_CALL(low_disk_space_handler_, disk_cleanup())
+        .WillByDefault(Return(&disk_cleanup_));
     userdataauth_.set_mount_factory(&mount_factory_);
     userdataauth_.set_keyset_management(&keyset_management_);
     userdataauth_.set_auth_factor_manager_for_testing(&auth_factor_manager_);
@@ -108,6 +114,8 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
   NiceMock<MockHomeDirs> homedirs_;
+  NiceMock<MockLowDiskSpaceHandler> low_disk_space_handler_;
+  StrictMock<MockDiskCleanup> disk_cleanup_;
   NiceMock<MockMountFactory> mount_factory_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
@@ -265,6 +273,8 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername3)))
       .WillRepeatedly(Return(true));
   ExpectAuth(kUsername3, brillo::SecureBlob(kPassword3));
+  EXPECT_CALL(disk_cleanup_,
+              FreeDiskSpaceDuringLogin(SanitizeUserName(kUsername3)));
 
   AuthSession* auth_session3 =
       auth_session_manager_->CreateAuthSession(kUsername3, 0);
@@ -299,6 +309,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
   EXPECT_CALL(*mount, MountCryptohome(kUsername, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
+  EXPECT_CALL(disk_cleanup_,
+              FreeDiskSpaceDuringLogin(SanitizeUserName(kUsername)));
 
   ASSERT_THAT(auth_session->Authenticate(CreateAuthorization(kPassword)),
               Eq(MOUNT_ERROR_NONE));
@@ -352,6 +364,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername3)))
       .WillRepeatedly(Return(true));
   ExpectAuth(kUsername3, brillo::SecureBlob(kPassword3));
+  EXPECT_CALL(disk_cleanup_,
+              FreeDiskSpaceDuringLogin(SanitizeUserName(kUsername3)));
 
   AuthSession* auth_session3 =
       auth_session_manager_->CreateAuthSession(kUsername3, 0);

@@ -27,6 +27,7 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
+#include "cryptohome/cleanup/mock_disk_cleanup.h"
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto/secure_blob_util.h"
@@ -182,6 +183,11 @@ class UserDataAuthTestBase : public ::testing::Test {
     ON_CALL(arc_disk_quota_, Initialize()).WillByDefault(Return());
     // Low Disk space handler initialization will do nothing.
     ON_CALL(low_disk_space_handler_, Init(_)).WillByDefault(Return(true));
+    ON_CALL(low_disk_space_handler_, disk_cleanup())
+        .WillByDefault(Return(&disk_cleanup_));
+
+    // Make sure FreeDiskSpaceDuringLogin is not called unexpectedly.
+    EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_)).Times(0);
   }
 
   // This is a utility function for tests to setup a mount for a particular
@@ -190,7 +196,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     brillo::SecureBlob salt;
     AssignSalt(&salt);
     mount_ = new NiceMock<MockMount>();
-    session_ = new UserSession(&homedirs_, &keyset_management_,
+    session_ = new UserSession(&homedirs_, &disk_cleanup_, &keyset_management_,
                                &user_activity_timestamp_manager_,
                                &pkcs11_token_factory_, salt, mount_);
     userdataauth_->set_session_for_user(username, session_.get());
@@ -227,6 +233,11 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   // Mock HomeDirs object, will be passed to UserDataAuth for its internal use.
   NiceMock<MockHomeDirs> homedirs_;
+
+  // Mock DiskCleanup object, will be passed to UserDataAuth for its internal
+  // use. Only FreeDiskSpaceDuringLogin should be called and it should not
+  // be called more than necessary.
+  NiceMock<MockDiskCleanup> disk_cleanup_;
 
   // Mock InstallAttributes object, will be passed to UserDataAuth for its
   // internal use.
@@ -341,6 +352,7 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
 
   void CreatePkcs11TokenInSession(scoped_refptr<NiceMock<MockMount>> mount,
                                   scoped_refptr<UserSession> session) {
+    EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
     EXPECT_CALL(*mount, MountCryptohome(_, _, _))
         .WillOnce(Return(MOUNT_ERROR_NONE));
 
@@ -1015,15 +1027,15 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
 
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session1 = new UserSession(
-      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, salt, mount1);
+      &homedirs_, &disk_cleanup_, &keyset_management_,
+      &user_activity_timestamp_manager_, &pkcs11_token_factory_, salt, mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
   CreatePkcs11TokenInSession(mount1, session1);
 
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session2 = new UserSession(
-      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, salt, mount2);
+      &homedirs_, &disk_cleanup_, &keyset_management_,
+      &user_activity_timestamp_manager_, &pkcs11_token_factory_, salt, mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
   CreatePkcs11TokenInSession(mount2, session2);
 
@@ -2165,6 +2177,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*mount, MountCryptohome(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
@@ -2267,6 +2280,7 @@ TEST_F(UserDataAuthTest,
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*mount, MountCryptohome(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
@@ -2823,6 +2837,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
     auto vk = std::make_unique<VaultKeyset>();
     EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
         .WillOnce(Return(ByMove(std::move(vk))));
+    EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
     EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
         .WillOnce(Return(MOUNT_ERROR_NONE));
     return true;
@@ -2861,6 +2876,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>(vk))));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>(vk))));
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 

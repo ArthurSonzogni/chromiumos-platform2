@@ -43,12 +43,14 @@ UserSession::UserSession() {}
 UserSession::~UserSession() {}
 UserSession::UserSession(
     HomeDirs* homedirs,
+    DiskCleanup* disk_cleanup,
     KeysetManagement* keyset_management,
     UserOldestActivityTimestampManager* user_activity_timestamp_manager,
     Pkcs11TokenFactory* pkcs11_token_factory,
     const brillo::SecureBlob& salt,
     const scoped_refptr<Mount> mount)
     : homedirs_(homedirs),
+      disk_cleanup_(disk_cleanup),
       keyset_management_(keyset_management),
       user_activity_timestamp_manager_(user_activity_timestamp_manager),
       pkcs11_token_factory_(pkcs11_token_factory),
@@ -61,12 +63,16 @@ MountError UserSession::MountVault(
     const CryptohomeVault::Options& vault_options) {
   MountError error = MOUNT_ERROR_NONE;
 
+  obfuscated_username_ = SanitizeUserName(username);
+
+  // Make sure user has enough space to log in.
+  disk_cleanup_->FreeDiskSpaceDuringLogin(obfuscated_username_);
+
   error = mount_->MountCryptohome(username, fs_keyset, vault_options);
   if (error != MOUNT_ERROR_NONE) {
     return error;
   }
 
-  obfuscated_username_ = SanitizeUserName(username);
   user_activity_timestamp_manager_->UpdateTimestamp(obfuscated_username_,
                                                     base::TimeDelta());
   pkcs11_token_ = pkcs11_token_factory_->New(

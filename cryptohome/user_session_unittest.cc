@@ -17,6 +17,7 @@
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
+#include "cryptohome/cleanup/mock_disk_cleanup.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/hmac.h"
@@ -40,6 +41,7 @@ using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
+using ::testing::StrictMock;
 
 namespace cryptohome {
 
@@ -96,7 +98,8 @@ class UserSessionTest : public ::testing::Test {
           return std::make_unique<FakePkcs11Token>();
         }));
 
-    session_ = new UserSession(homedirs_.get(), keyset_management_.get(),
+    session_ = new UserSession(homedirs_.get(), &disk_cleanup_,
+                               keyset_management_.get(),
                                user_activity_timestamp_manager_.get(),
                                &pkcs11_token_factory_, system_salt_, mount_);
   }
@@ -118,6 +121,7 @@ class UserSessionTest : public ::testing::Test {
   // Information about users' homedirs. The order of users is equal to kUsers.
   std::vector<UserInfo> users_;
   NiceMock<MockPlatform> platform_;
+  StrictMock<MockDiskCleanup> disk_cleanup_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   Crypto crypto_;
   brillo::SecureBlob system_salt_;
@@ -188,6 +192,7 @@ TEST_F(UserSessionTest, MountVaultOk) {
   std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
       users_[0].credentials, nullptr /*error*/);
   FileSystemKeyset fs_keyset(*vk.get());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(users_[0].obfuscated));
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -224,6 +229,7 @@ TEST_F(UserSessionTest, MountVaultOk) {
   // Set the credentials with |users_[0].credentials| so that
   // |obfuscated_username_| is explicitly set during the Unmount test.
   session_->SetCredentials(users_[0].credentials);
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(users_[0].obfuscated));
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -345,6 +351,7 @@ TEST_F(UserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
   EXPECT_NE(vk, nullptr);
 
   FileSystemKeyset fs_keyset(*vk.get());
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(users_[0].obfuscated));
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -395,6 +402,7 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
       .force_type = EncryptedContainerType::kEcryptfs,
   };
 
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(users_[0].obfuscated));
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -444,8 +452,8 @@ class UserSessionReAuthTest : public ::testing::Test {
 
 TEST_F(UserSessionReAuthTest, VerifyUser) {
   Credentials credentials("username", SecureBlob("password"));
-  scoped_refptr<UserSession> session =
-      new UserSession(nullptr, nullptr, nullptr, nullptr, salt, nullptr);
+  scoped_refptr<UserSession> session = new UserSession(
+      nullptr, nullptr, nullptr, nullptr, nullptr, salt, nullptr);
   EXPECT_TRUE(session->SetCredentials(credentials));
 
   EXPECT_TRUE(session->VerifyUser(credentials.GetObfuscatedUsername(salt)));
@@ -457,8 +465,8 @@ TEST_F(UserSessionReAuthTest, VerifyCredentials) {
   Credentials credentials_2("username", SecureBlob("password2"));
   Credentials credentials_3("username2", SecureBlob("password2"));
 
-  scoped_refptr<UserSession> session =
-      new UserSession(nullptr, nullptr, nullptr, nullptr, salt, nullptr);
+  scoped_refptr<UserSession> session = new UserSession(
+      nullptr, nullptr, nullptr, nullptr, nullptr, salt, nullptr);
   EXPECT_TRUE(session->SetCredentials(credentials_1));
   EXPECT_TRUE(session->VerifyCredentials(credentials_1));
   EXPECT_FALSE(session->VerifyCredentials(credentials_2));

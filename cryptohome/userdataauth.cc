@@ -1232,9 +1232,10 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
     if (!m) {
       return nullptr;
     }
-    sessions_[username] = new UserSession(
-        homedirs_, keyset_management_, user_activity_timestamp_manager_,
-        pkcs11_token_factory_, system_salt_, m);
+    sessions_[username] =
+        new UserSession(homedirs_, low_disk_space_handler_->disk_cleanup(),
+                        keyset_management_, user_activity_timestamp_manager_,
+                        pkcs11_token_factory_, system_salt_, m);
   }
   return sessions_[username];
 }
