@@ -8,7 +8,11 @@ import("//common-mk/pkg_config.gni")
 import("//common-mk/proto_library.gni")
 
 group("all") {
-  deps = [ ":modemfwd" ]
+  deps = [
+    ":install_dbus_config",
+    ":install_init_config",
+    ":modemfwd",
+  ]
   if (use.test) {
     deps += [ ":modemfw_test" ]
   }
@@ -81,10 +85,21 @@ executable("modemfwd") {
     "main.cc",
   ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [
     ":libmodemfw",
     ":modemfwd_adaptors",
   ]
+}
+
+install_config("install_init_config") {
+  sources = [ "modemfwd.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus/org.chromium.Modemfwd.conf" ]
+  install_path = "/etc/dbus-1/system.d"
 }
 
 if (use.test) {
@@ -101,6 +116,7 @@ if (use.test) {
       ":target_defaults",
       "//common-mk:test",
     ]
+    run_test = true
     pkg_deps = [ "libchrome-test" ]
     deps = [
       ":libmodemfw",
