@@ -785,6 +785,17 @@ class Service : public base::RefCounted<Service> {
   // by WiFiService to keep track of disconnect time.
   ConnectState previous_state() const { return previous_state_; }
 
+  // Compare two services with the same technology. Each technology can override
+  // it with its own implementation to sort services with its own criteria.
+  // It returns true if |service| is different from |this|. When they are,
+  // "decision" is populated with the boolean value of "this > service".
+  virtual bool CompareWithSameTechnology(const ServiceRefPtr& service,
+                                         bool* decision);
+
+  // Utility function that returns true if a is different from b.  When they
+  // are, "decision" is populated with the boolean value of "a > b".
+  static bool DecideBetween(int a, int b, bool* decision);
+
   // Service's user friendly name, mapped to the Service Object kNameProperty.
   // Use |log_name_| for logging to avoid logging PII.
   std::string friendly_name_;
@@ -937,10 +948,6 @@ class Service : public base::RefCounted<Service> {
   // connected if the disconnection did not occur as a clear result of user
   // action.
   void NoteFailureEvent();
-
-  // Utility function that returns true if a is different from b.  When they
-  // are, "decision" is populated with the boolean value of "a > b".
-  static bool DecideBetween(int a, int b, bool* decision);
 
   // Report the result of user-initiated connection attempt to UMA stats.
   // Currently only report stats for wifi service.

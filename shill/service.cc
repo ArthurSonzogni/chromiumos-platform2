@@ -61,6 +61,7 @@ const char kServiceSortProfileOrder[] = "ProfileOrder";
 const char kServiceSortEtc[] = "Etc";
 const char kServiceSortSerialNumber[] = "SerialNumber";
 const char kServiceSortTechnology[] = "Technology";
+const char kServiceSortTechnologySpecific[] = "TechnologySpecific";
 
 std::valarray<uint64_t> CounterToValArray(
     const patchpanel::TrafficCounter& counter) {
@@ -1436,6 +1437,11 @@ void Service::ResetTrafficCounters(Error* /*error*/) {
   SaveToProfile();
 }
 
+bool Service::CompareWithSameTechnology(const ServiceRefPtr& service,
+                                        bool* decision) {
+  return false;
+}
+
 // static
 std::string Service::GetCurrentTrafficCounterKey(
     patchpanel::TrafficCounter::Source source, std::string suffix) {
@@ -1519,6 +1525,10 @@ std::pair<bool, const char*> Service::Compare(
 
   if (DecideBetween(a->has_ever_connected(), b->has_ever_connected(), &ret)) {
     return std::make_pair(ret, kServiceSortHasEverConnected);
+  }
+
+  if (a->CompareWithSameTechnology(b, &ret)) {
+    return std::make_pair(ret, kServiceSortTechnologySpecific);
   }
 
   if (DecideBetween(a->strength(), b->strength(), &ret)) {

@@ -1532,4 +1532,30 @@ void WiFiService::set_parent_credentials(
   parent_credentials_ = credentials;
 }
 
+bool WiFiService::CompareWithSameTechnology(const ServiceRefPtr& service,
+                                            bool* decision) {
+  CHECK(decision);
+
+  // We can do this safely because Service::Compare calls us only when services
+  // have the same technology.
+  CHECK(service->technology() == Technology::kWifi);
+  WiFiService* wifi_service = static_cast<WiFiService*>(service.get());
+
+  // A service without Passpoint credentials should be selected before a
+  // service with Passpoint credentials.
+  if (Service::DecideBetween(parent_credentials_ == nullptr,
+                             wifi_service->parent_credentials() == nullptr,
+                             decision)) {
+    return true;
+  }
+
+  // A lower match priority is better than a higher one.
+  if (Service::DecideBetween(wifi_service->match_priority(), match_priority_,
+                             decision)) {
+    return true;
+  }
+
+  return false;
+}
+
 }  // namespace shill

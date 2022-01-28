@@ -172,6 +172,11 @@ class WiFiServiceTest : public PropertyStoreTest {
     service->Configure(args, &error);
     return error.type();
   }
+  bool SortingOrderIs(const WiFiServiceRefPtr& service0,
+                      const WiFiServiceRefPtr& service1) {
+    bool decision;
+    return service0->CompareWithSameTechnology(service1, &decision) && decision;
+  }
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
   MockManager* mock_manager() { return &mock_manager_; }
   MockWiFiProvider* provider() { return &provider_; }
@@ -2196,6 +2201,33 @@ TEST_F(WiFiServiceTest, RandomizationBlocklist) {
     EXPECT_FALSE(
         service->SetMACPolicy(kWifiRandomMacPolicyNonPersistentRandom, &ret));
   }
+}
+
+TEST_F(WiFiServiceTest, CompareWithSameTechnology) {
+  PasspointCredentialsRefPtr credentials = new PasspointCredentials("an_id");
+
+  WiFiServiceRefPtr a = MakeServiceWithWiFi(kSecurity8021x);
+  WiFiServiceRefPtr b = MakeServiceWithWiFi(kSecurity8021x);
+
+  // a does not have Passpoint credentials while b have some
+  b->set_parent_credentials(credentials);
+  EXPECT_TRUE(SortingOrderIs(a, b));
+  EXPECT_FALSE(SortingOrderIs(b, a));
+
+  // a and be have Passpoint credentials but a different match priority
+  a->set_parent_credentials(credentials);
+  a->set_match_priority(3);
+  b->set_match_priority(0);
+  EXPECT_TRUE(SortingOrderIs(b, a));
+  a->set_match_priority(1);
+  b->set_match_priority(2);
+  EXPECT_TRUE(SortingOrderIs(a, b));
+
+  // Both have the same Passpoint credentials and the same priority, there will
+  // be no order.
+  a->set_match_priority(0);
+  b->set_match_priority(0);
+  EXPECT_FALSE(SortingOrderIs(a, b));
 }
 
 }  // namespace shill

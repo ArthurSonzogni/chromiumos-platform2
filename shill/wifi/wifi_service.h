@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/time/clock.h>
@@ -218,6 +219,7 @@ class WiFiService : public Service {
   }
   void set_parent_credentials(const PasspointCredentialsRefPtr& credentials);
   uint64_t match_priority() const { return match_priority_; }
+  void set_match_priority(uint64_t priority) { match_priority_ = priority; }
 
  protected:
   // Inherited from Service.
@@ -228,6 +230,9 @@ class WiFiService : public Service {
 
   void SetEAPKeyManagement(const std::string& key_management) override;
   std::string GetTethering(Error* error) const override;
+
+  bool CompareWithSameTechnology(const ServiceRefPtr& service,
+                                 bool* decision) override;
 
  private:
   friend class WiFiServiceSecurityTest;
@@ -241,6 +246,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
   FRIEND_TEST(WiFiServiceTest, ComputeCipher8021x);
   FRIEND_TEST(WiFiServiceTest, GetTethering);
+  FRIEND_TEST(WiFiServiceTest, CompareWithSameTechnology);
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseForNonPassphraseService);
