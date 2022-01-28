@@ -137,8 +137,9 @@ See the `/proc/cpuinfo` section of the [proc(5)] man page for more details.
 ## display-debug
 
 Logs collected from the 'display_debug' crosh tool, such as annotated drm_trace
-logs and snapshots of the output of 'modetest'. See http://go/cros-displaydebug
-for more details.
+logs and snapshots of the output of 'modetest'. The drm_trace logs are as
+described below, but with additional categories enabled. See
+http://go/cros-displaydebug for more details.
 
 ## dmesg
 
@@ -148,7 +149,14 @@ for more details.
 
 ## drm_trace
 
+Logs collected from the kernel's drm module. A subset of
+[drm_debug_category messages](https://01.org/linuxgraphics/gfx-docs/drm/gpu/drm-internals.html#c.drm_debug_category)
+are enabled and the tail of their output is collected here.
+
 ## drm_trace_legacy
+
+Same as above, but for older kernel versions using a legacy drm_trace
+implementation.
 
 ## ec_info
 
