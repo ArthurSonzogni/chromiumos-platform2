@@ -7,6 +7,8 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_fingerprint_headers",
+    ":install_libec_headers",
     ":libec",
     ":libec_pc",
     ":libec_static",
@@ -45,11 +47,50 @@ libec_sources = [
 static_library("libec_static") {
   sources = libec_sources
   configs += [ ":target_defaults_pkg_deps" ]
+  install_path = "lib"
 }
 
 shared_library("libec") {
   sources = libec_sources
   configs += [ ":target_defaults_pkg_deps" ]
+  install_path = "lib"
+}
+
+install_config("install_libec_headers") {
+  sources = [
+    "device_event_command.h",
+    "display_soc_command.h",
+    "ec_command.h",
+    "ec_command_async.h",
+    "ec_command_factory.h",
+    "get_protocol_info_command.h",
+    "get_version_command.h",
+    "mkbp_wake_mask_command.h",
+    "mock_ec_command_factory.h",
+    "pd_chip_info_command.h",
+    "reboot_command.h",
+    "rwsig_action_command.h",
+    "smart_discharge_command.h",
+    "versions_command.h",
+  ]
+  install_path = "/usr/include/libec"
+}
+
+install_config("install_fingerprint_headers") {
+  sources = [
+    "fingerprint/fp_context_command.h",
+    "fingerprint/fp_context_command_factory.h",
+    "fingerprint/fp_flashprotect_command.h",
+    "fingerprint/fp_frame_command.h",
+    "fingerprint/fp_info_command.h",
+    "fingerprint/fp_mode.h",
+    "fingerprint/fp_seed_command.h",
+    "fingerprint/fp_sensor_errors.h",
+    "fingerprint/sensor_id.h",
+    "fingerprint/sensor_image.h",
+    "fingerprint/template_info.h",
+  ]
+  install_path = "/usr/include/libec/fingerprint"
 }
 
 if (use.test) {
@@ -79,6 +120,7 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults_pkg_deps",
     ]
+    run_test = true
     deps = [
       ":libec_static",
       "//common-mk/testrunner",
@@ -98,4 +140,5 @@ generate_pkg_config("libec_pc") {
   requires = [ "libchrome" ]
   requires_private = default_pkg_deps
   libs = [ "-lec" ]
+  install = true
 }
