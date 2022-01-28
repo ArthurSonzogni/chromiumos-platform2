@@ -223,6 +223,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   bool SupportsWPA3() const;
 
+  void GetDeviceHardwareIds(int* vendor, int* product, int* subsystem) const;
+
   // Inherited from Device.
   void OnNeighborReachabilityEvent(
       const IPAddress& ip_address,

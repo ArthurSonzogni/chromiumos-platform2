@@ -3246,7 +3246,7 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   // completed->completed from wpa_supplicant.
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
-  EXPECT_CALL(*manager(), device_info()).WillOnce(Return(device_info()));
+  EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
   ReportIPConfigComplete();
   // Similarly, rekeying events after we have an IP don't trigger L3
   // configuration.  However, we treat all transitions to completed as potential
@@ -4646,7 +4646,7 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnConnectedAndReachable) {
   ScopeLogger::GetInstance()->set_verbose_level(3);
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv4 DHCP lease obtained")));
   EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_, _));
-  EXPECT_CALL(*manager(), device_info()).WillOnce(Return(device_info()));
+  EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
   ReportIPConfigComplete();
 
   // We should not call WakeOnWiFi::OnConnectedAndReachable if we are not

@@ -87,6 +87,16 @@ class DeviceInfo {
                                    const IPAddress& peer,
                                    ByteString* mac_address) const;
 
+  // Query IDs that identify the adapter (e.g. PCI IDs). Returns |false| if
+  // there was an error. Even if there was an error (say, when probing the
+  // |subsystem_id|), the method will still set the IDs it managed to detect,
+  // even it could not probe successfully all the IDs. IDs that could not be
+  // probed are left untouched.
+  bool GetWiFiHardwareIds(int interface_index,
+                          int* vendor_id,
+                          int* product_id,
+                          int* subsystem_id) const;
+
   virtual bool GetFlags(int interface_index, unsigned int* flags) const;
   virtual bool GetByteCounts(int interface_index,
                              uint64_t* rx_bytes,

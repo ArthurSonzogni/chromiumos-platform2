@@ -73,7 +73,8 @@ class DeviceInfoTest : public Test {
  public:
   DeviceInfoTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        device_info_(&manager_) {}
+        device_info_(&manager_),
+        test_device_name_(kTestDeviceName) {}
   ~DeviceInfoTest() override = default;
 
   void SetUp() override {
@@ -88,6 +89,7 @@ class DeviceInfoTest : public Test {
         .WillRepeatedly(Return(std::vector<std::string>()));
     patchpanel_client_ = new patchpanel::FakeClient();
     manager_.patchpanel_client_.reset(patchpanel_client_);
+    CreateSysfsRoot();
   }
 
   IPAddress CreateInterfaceAddress() {
@@ -111,6 +113,10 @@ class DeviceInfoTest : public Test {
                                      technology);
   }
 
+  void RegisterDevice(const DeviceRefPtr& device) {
+    device_info_.RegisterDevice(device);
+  }
+
   virtual std::set<int>& GetDelayedDevices() {
     return device_info_.delayed_devices_;
   }
@@ -129,6 +135,25 @@ class DeviceInfoTest : public Test {
 
   void SetManagerRunning(bool running) { manager_.running_ = running; }
 
+  void CreateSysfsRoot() {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    device_info_root_ = temp_dir_.GetPath().Append("sys/class/net");
+    device_info_.device_info_root_ = device_info_root_;
+  }
+
+  void CreateInfoFile(const std::string& name, const std::string& contents) {
+    base::FilePath info_path = GetInfoPath(name);
+    LOG(INFO) << "Path " << info_path;
+    EXPECT_TRUE(base::CreateDirectory(info_path.DirName()));
+    std::string contents_newline(contents + "\n");
+    EXPECT_TRUE(base::WriteFile(info_path, contents_newline.c_str(),
+                                contents_newline.size()));
+  }
+
+  base::FilePath GetInfoPath(const std::string& name) {
+    return device_info_root_.Append(test_device_name_).Append(name);
+  }
+
  protected:
   static const int kTestDeviceIndex;
   static const char kTestDeviceName[];
@@ -145,6 +170,14 @@ class DeviceInfoTest : public Test {
   static const char kTestIPAddress7[];
   static const int kReceiveByteCount;
   static const int kTransmitByteCount;
+  static const char kVendorIdString[];
+  static const char kProductIdString[];
+  static const char kSubsystemIdString[];
+  static const char kInvalidIdString[];
+  static const int kVendorId;
+  static const int kProductId;
+  static const int kSubsystemId;
+  static const int kDefaultTestHardwareId;
 
   std::unique_ptr<RTNLMessage> BuildLinkMessage(RTNLMessage::Mode mode);
   std::unique_ptr<RTNLMessage> BuildLinkMessageWithInterfaceName(
@@ -161,6 +194,8 @@ class DeviceInfoTest : public Test {
       const std::vector<IPAddress>& dns_servers);
   void SendMessageToDeviceInfo(const RTNLMessage& message);
 
+  void CreateWiFiDevice();
+
   MockControl control_interface_;
   MockMetrics metrics_;
   StrictMock<MockManager> manager_;
@@ -174,6 +209,10 @@ class DeviceInfoTest : public Test {
   MockSockets* mock_sockets_;  // Owned by DeviceInfo.
   MockTime time_;
   patchpanel::FakeClient* patchpanel_client_;  // Owned by Manager
+
+  base::ScopedTempDir temp_dir_;
+  base::FilePath device_info_root_;
+  std::string test_device_name_;
 };
 
 const int DeviceInfoTest::kTestDeviceIndex = 123456;
@@ -192,6 +231,14 @@ const char DeviceInfoTest::kTestIPAddress6[] = "192.168.2.2";
 const char DeviceInfoTest::kTestIPAddress7[] = "fe80::1aa9:5ff:abcd:1238";
 const int DeviceInfoTest::kReceiveByteCount = 1234;
 const int DeviceInfoTest::kTransmitByteCount = 5678;
+const char DeviceInfoTest::kVendorIdString[] = "0x0123";
+const char DeviceInfoTest::kProductIdString[] = "0x4567";
+const char DeviceInfoTest::kSubsystemIdString[] = "0x89ab";
+const char DeviceInfoTest::kInvalidIdString[] = "invalid";
+const int DeviceInfoTest::kVendorId = 0x0123;
+const int DeviceInfoTest::kProductId = 0x4567;
+const int DeviceInfoTest::kSubsystemId = 0x89ab;
+const int DeviceInfoTest::kDefaultTestHardwareId = -42;
 
 std::unique_ptr<RTNLMessage> DeviceInfoTest::BuildLinkMessageWithInterfaceName(
     RTNLMessage::Mode mode,
@@ -247,6 +294,19 @@ void DeviceInfoTest::SendMessageToDeviceInfo(const RTNLMessage& message) {
   } else {
     NOTREACHED();
   }
+}
+
+void DeviceInfoTest::CreateWiFiDevice() {
+  // Mock a WiFi adapter.
+  CreateInfoFile("uevent", "DEVTYPE=wlan");
+  auto device = CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                             Technology::kWifi);
+  if (device) {
+    RegisterDevice(device);
+  }
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  SendMessageToDeviceInfo(*message);
 }
 
 MATCHER_P(IsIPAddress, address, "") {
@@ -1395,16 +1455,172 @@ TEST_F(DeviceInfoTest, CreateXFRMInterface) {
   EXPECT_EQ(on_failure_calls_num, 1);
 }
 
+TEST_F(DeviceInfoTest, GetWiFiHardwareIds) {
+  CreateWiFiDevice();
+
+  CreateInfoFile("device/vendor", kVendorIdString);
+  CreateInfoFile("device/device", kProductIdString);
+  CreateInfoFile("device/subsystem_device", kSubsystemIdString);
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  EXPECT_TRUE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                              &product, &subsystem));
+  EXPECT_EQ(vendor, kVendorId);
+  EXPECT_EQ(product, kProductId);
+  EXPECT_EQ(subsystem, kSubsystemId);
+}
+
+TEST_F(DeviceInfoTest, GetWiFiHardwareIdsNoDevice) {
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  EXPECT_FALSE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                               &product, &subsystem));
+  // No device, all IDs left untouched.
+  EXPECT_EQ(vendor, kDefaultTestHardwareId);
+  EXPECT_EQ(product, kDefaultTestHardwareId);
+  EXPECT_EQ(subsystem, kDefaultTestHardwareId);
+}
+
+TEST_F(DeviceInfoTest, GetWiFiHardwareIdsNotWiFi) {
+  // Adapter is NOT a WiFi adapter, expect failure.
+  CreateInfoFile("uevent", "DEVTYPE=NOTwlan");
+
+  auto device = CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
+                             Technology::kWifi);
+  if (device) {
+    RegisterDevice(device);
+  }
+  auto message = BuildLinkMessage(RTNLMessage::kModeAdd);
+  message->set_link_status(RTNLMessage::LinkStatus(0, IFF_LOWER_UP, 0));
+  SendMessageToDeviceInfo(*message);
+
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  EXPECT_FALSE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                               &product, &subsystem));
+  // Not a WiFi device, all IDs left untouched.
+  EXPECT_EQ(vendor, kDefaultTestHardwareId);
+  EXPECT_EQ(product, kDefaultTestHardwareId);
+  EXPECT_EQ(subsystem, kDefaultTestHardwareId);
+}
+
+TEST_F(DeviceInfoTest, GetWiFiHardwareIdsNoVendor) {
+  CreateWiFiDevice();
+
+  // Vendor ID file is missing, expect failure.
+  CreateInfoFile("device/device", kProductIdString);
+  CreateInfoFile("device/subsystem_device", kSubsystemIdString);
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  EXPECT_FALSE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                               &product, &subsystem));
+  // No vendor file, detection exits and will leave all IDs untouched.
+  // This behavior will change once we add support for integrated chipsets.
+  EXPECT_EQ(vendor, kDefaultTestHardwareId);
+  EXPECT_EQ(product, kDefaultTestHardwareId);
+  EXPECT_EQ(subsystem, kDefaultTestHardwareId);
+}
+
+TEST_F(DeviceInfoTest, GetWiFiHardwareIdsInvalidVendor) {
+  CreateWiFiDevice();
+
+  // Content of the vendor ID file is not a hexadecimal number, expect failure.
+  CreateInfoFile("device/vendor", kInvalidIdString);
+  CreateInfoFile("device/device", kProductIdString);
+  CreateInfoFile("device/subsystem_device", kSubsystemIdString);
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  EXPECT_FALSE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                               &product, &subsystem));
+  // Invalid vendor file, vendor ID left untouched.
+  EXPECT_EQ(vendor, kDefaultTestHardwareId);
+  EXPECT_EQ(product, kProductId);
+  EXPECT_EQ(subsystem, kSubsystemId);
+}
+
+TEST_F(DeviceInfoTest, GetWiFiHardwareIdsNoProduct) {
+  CreateWiFiDevice();
+
+  CreateInfoFile("device/vendor", kVendorIdString);
+  // Product ID file is missing, expect failure.
+  CreateInfoFile("device/subsystem_device", kSubsystemIdString);
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  EXPECT_FALSE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                               &product, &subsystem));
+  // No product file, product ID left untouched.
+  EXPECT_EQ(vendor, kVendorId);
+  EXPECT_EQ(product, kDefaultTestHardwareId);
+  EXPECT_EQ(subsystem, kSubsystemId);
+}
+
+TEST_F(DeviceInfoTest, GetWiFiHardwareIdsInvalidProduct) {
+  CreateWiFiDevice();
+
+  CreateInfoFile("device/vendor", kVendorIdString);
+  // Content of the product ID file is not a hexadecimal number, expect failure.
+  CreateInfoFile("device/device", kInvalidIdString);
+  CreateInfoFile("device/subsystem_device", kSubsystemIdString);
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  EXPECT_FALSE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                               &product, &subsystem));
+  // Invalid product file, product ID left untouched.
+  EXPECT_EQ(vendor, kVendorId);
+  EXPECT_EQ(product, kDefaultTestHardwareId);
+  EXPECT_EQ(subsystem, kSubsystemId);
+}
+
+TEST_F(DeviceInfoTest, GetWiFiHardwareIdsNoSubsystem) {
+  CreateWiFiDevice();
+
+  CreateInfoFile("device/vendor", kVendorIdString);
+  CreateInfoFile("device/device", kProductIdString);
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  // Lack of subsystem is expected for SDIO adapters.
+  EXPECT_TRUE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                              &product, &subsystem));
+  EXPECT_EQ(vendor, kVendorId);
+  EXPECT_EQ(product, kProductId);
+  // SDIO adapters return subsystem ID 0.
+  EXPECT_EQ(subsystem, 0);
+}
+
+TEST_F(DeviceInfoTest, GetWiFiHardwareIdsInvalidSubsystem) {
+  CreateWiFiDevice();
+
+  CreateInfoFile("device/vendor", kVendorIdString);
+  CreateInfoFile("device/device", kProductIdString);
+  // Content of the subsystem ID file is not a hexadecimal number,
+  // expect failure.
+  CreateInfoFile("device/subsystem_device", kInvalidIdString);
+  int vendor = kDefaultTestHardwareId;
+  int product = kDefaultTestHardwareId;
+  int subsystem = kDefaultTestHardwareId;
+  EXPECT_FALSE(device_info_.GetWiFiHardwareIds(kTestDeviceIndex, &vendor,
+                                               &product, &subsystem));
+  // Invalid subsystem file, subsystem ID left untouched.
+  EXPECT_EQ(vendor, kVendorId);
+  EXPECT_EQ(product, kProductId);
+  EXPECT_EQ(subsystem, kDefaultTestHardwareId);
+}
+
 class DeviceInfoTechnologyTest : public DeviceInfoTest {
  public:
-  DeviceInfoTechnologyTest()
-      : DeviceInfoTest(), test_device_name_(kTestDeviceName) {}
+  DeviceInfoTechnologyTest() : DeviceInfoTest() {}
   ~DeviceInfoTechnologyTest() override = default;
 
   void SetUp() override {
-    CHECK(temp_dir_.CreateUniqueTempDir());
-    device_info_root_ = temp_dir_.GetPath().Append("sys/class/net");
-    device_info_.device_info_root_ = device_info_root_;
+    CreateSysfsRoot();
     // Most tests require that the uevent file exist.
     CreateInfoFile("uevent", "xxx");
   }
@@ -1415,33 +1631,14 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
   Technology GetDeviceTechnology(const std::string& kind) {
     return device_info_.GetDeviceTechnology(test_device_name_, kind);
   }
-  base::FilePath GetInfoPath(const std::string& name);
-  void CreateInfoFile(const std::string& name, const std::string& contents);
+
   void CreateInfoSymLink(const std::string& name, const std::string& contents);
   void SetDeviceName(const std::string& name) {
     test_device_name_ = name;
     EXPECT_TRUE(temp_dir_.Delete());  // nuke old temp dir
     SetUp();
   }
-
- protected:
-  base::ScopedTempDir temp_dir_;
-  base::FilePath device_info_root_;
-  std::string test_device_name_;
 };
-
-base::FilePath DeviceInfoTechnologyTest::GetInfoPath(const std::string& name) {
-  return device_info_root_.Append(test_device_name_).Append(name);
-}
-
-void DeviceInfoTechnologyTest::CreateInfoFile(const std::string& name,
-                                              const std::string& contents) {
-  base::FilePath info_path = GetInfoPath(name);
-  EXPECT_TRUE(base::CreateDirectory(info_path.DirName()));
-  std::string contents_newline(contents + "\n");
-  EXPECT_TRUE(base::WriteFile(info_path, contents_newline.c_str(),
-                              contents_newline.size()));
-}
 
 void DeviceInfoTechnologyTest::CreateInfoSymLink(const std::string& name,
                                                  const std::string& contents) {

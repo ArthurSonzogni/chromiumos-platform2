@@ -114,6 +114,15 @@ constexpr char kInterfaceDevice[] = "device";
 // Sysfs path to the driver of a device via its interface name.
 constexpr char kInterfaceDriver[] = "device/driver";
 
+// Sysfs path to the vendor ID file via its interface name.
+constexpr char kInterfaceVendorId[] = "device/vendor";
+
+// Sysfs path to the device ID file via its interface name.
+constexpr char kInterfaceDeviceId[] = "device/device";
+
+// Sysfs path to the subsystem ID file via its interface name.
+constexpr char kInterfaceSubsystemId[] = "device/subsystem_device";
+
 // Sysfs path to the file that is used to determine the owner of the interface.
 constexpr char kInterfaceOwner[] = "owner";
 
@@ -1043,6 +1052,64 @@ bool DeviceInfo::GetIPv6DnsServerAddresses(int interface_index,
   }
   *address_list = info->ipv6_dns_server_addresses;
   return true;
+}
+
+bool DeviceInfo::GetWiFiHardwareIds(int interface_index,
+                                    int* vendor_id,
+                                    int* product_id,
+                                    int* subsystem_id) const {
+  SLOG(this, 3) << __func__ << "(" << interface_index << ")";
+  const Info* info = GetInfo(interface_index);
+  if (!info) {
+    LOG(ERROR) << "No DeviceInfo for interface index " << interface_index;
+    return false;
+  }
+  if (info->technology != Technology::kWifi) {
+    LOG(ERROR) << info->name << " adapter reports for technology "
+               << info->technology.GetName() << " not supported.";
+    return false;
+  }
+  SLOG(this, 2) << info->name << " detecting adapter information";
+
+  if (!base::PathIsReadable(
+          GetDeviceInfoPath(info->name, kInterfaceVendorId))) {
+    // TODO(b/203692510): Support integrated chipsets without PCIe/CNVi/SDIO
+    // that do not have a "vendor" file.
+    LOG(ERROR) << "No vendor ID found";
+    return false;
+  }
+  bool ret = true;
+  std::string content;
+  int content_int;
+  if (!GetDeviceInfoContents(info->name, kInterfaceVendorId, &content) ||
+      !base::TrimString(content, "\n", &content) ||
+      !base::HexStringToInt(content, &content_int)) {
+    ret = false;
+  } else {
+    *vendor_id = content_int;
+  }
+  if (!GetDeviceInfoContents(info->name, kInterfaceDeviceId, &content) ||
+      !base::TrimString(content, "\n", &content) ||
+      !base::HexStringToInt(content, &content_int)) {
+    ret = false;
+  } else {
+    *product_id = content_int;
+  }
+  // Devices with SDIO WiFi chipsets may not have a |subsystem_device| file.
+  // Use 0 in that case.
+  if (!base::PathIsReadable(
+          GetDeviceInfoPath(info->name, kInterfaceSubsystemId))) {
+    *subsystem_id = 0;
+    return ret;
+  }
+  if (!GetDeviceInfoContents(info->name, kInterfaceSubsystemId, &content) ||
+      !base::TrimString(content, "\n", &content) ||
+      !base::HexStringToInt(content, &content_int)) {
+    ret = false;
+  } else {
+    *subsystem_id = content_int;
+  }
+  return ret;
 }
 
 bool DeviceInfo::GetFlags(int interface_index, unsigned int* flags) const {

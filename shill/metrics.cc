@@ -527,6 +527,8 @@ const int Metrics::kMetricTimeFromRekeyToFailureSecondsMin = 0;
 const int Metrics::kMetricTimeFromRekeyToFailureSecondsMax = 180;
 const int Metrics::kMetricTimeFromRekeyToFailureSecondsNumBuckets = 30;
 
+const int Metrics::kWiFiStructuredMetricsVersion = 1;
+
 Metrics::Metrics()
     : library_(&metrics_library_),
       last_default_technology_(Technology::kUnknown),
@@ -540,7 +542,8 @@ Metrics::Metrics()
       num_scan_results_expected_in_dark_resume_(0),
       wake_on_wifi_throttled_(false),
       wake_reason_received_(false),
-      dark_resume_scan_retries_(0) {
+      dark_resume_scan_retries_(0),
+      time_(Time::GetInstance()) {
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
 
@@ -1933,6 +1936,26 @@ void Metrics::NotifyWiFiServiceFailureAfterRekey(int seconds) {
             kMetricTimeFromRekeyToFailureSecondsMax,
             kMetricTimeFromRekeyToFailureSecondsNumBuckets);
 }
+
+void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
+                                            int vendor_id,
+                                            int product_id,
+                                            int subsystem_id) {
+  int64_t usecs;
+  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
+    LOG(ERROR) << "Failed to read timestamp";
+    usecs = -1;
+  }
+  metrics::structured::events::wi_fi::WiFiAdapterStateChanged()
+      .SetBootId(GetBootId())
+      .SetSystemTime(usecs)
+      .SetEventVersion(kWiFiStructuredMetricsVersion)
+      .SetAdapterState(enabled)
+      .SetVendorId(vendor_id)
+      .SetProductId(product_id)
+      .SetSubsystemId(subsystem_id);
+}
+
 // static
 int Metrics::GetRegulatoryDomainValue(std::string country_code) {
   // Convert country code to upper case before checking validity.

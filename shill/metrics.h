@@ -1076,6 +1076,8 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricTimeFromRekeyToFailureSecondsMax;
   static const int kMetricTimeFromRekeyToFailureSecondsNumBuckets;
 
+  static const int kWiFiStructuredMetricsVersion;
+
   Metrics();
   Metrics(const Metrics&) = delete;
   Metrics& operator=(const Metrics&) = delete;
@@ -1436,6 +1438,14 @@ class Metrics : public DefaultServiceObserver {
   // connected to.
   void NotifyMBOSupport(bool mbo_support);
 
+  // Emits the |WiFiAdapterStateChanged| structured event that notifies that
+  // the WiFi adapter has been enabled or disabled. Includes the IDs describing
+  // the type of the adapter (e.g. PCI IDs).
+  void NotifyWiFiAdapterStateChanged(bool enabled,
+                                     int vendor_id,
+                                     int product_id,
+                                     int subsystem_id);
+
   // Returns a persistent hash to be used to uniquely identify an APN.
   static int64_t HashApn(const std::string& uuid,
                          const std::string& apn_name,
@@ -1592,6 +1602,7 @@ class Metrics : public DefaultServiceObserver {
   bool wake_on_wifi_throttled_;
   bool wake_reason_received_;
   int dark_resume_scan_retries_;
+  Time* time_;
 };
 
 }  // namespace shill
