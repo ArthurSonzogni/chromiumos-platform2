@@ -60,7 +60,7 @@ int perform_capture(base::StringPiece device,
   pcap_t* pcap = pcap_open_live(device.data(), sizeof(buf), promiscuous,
                                 PACKET_TIMEOUT_MS, errbuf);
   if (pcap == nullptr) {
-    fprintf(stderr, "Could not open capture handle.\n");
+    fprintf(stderr, "Could not open capture handle: %s\n", errbuf);
     return -1;
   }
 
