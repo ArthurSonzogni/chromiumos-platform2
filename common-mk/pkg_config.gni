@@ -58,14 +58,31 @@ template("pkg_config") {
 #   libs: Flags passed to ld to be embedded into "Libs:" E.g. [ "-lpthread" ].
 #   libs_private: Similar to libs, butinto "Libs.private:".
 #   cflags: Compile flag list to be embedded into "Cflags:".
+#   install(optional): Install the generated .pc file to ${libdir}/pkgconfig
+#       if set to true.
 template("generate_pkg_config") {
+  if (defined(invoker.output_name)) {
+    _output_name = invoker.output_name
+  } else if (defined(invoker.name)) {
+    _output_name = invoker.name
+  } else {
+    _output_name = target_name
+  }
+  _pc = "${invoker.target_out_dir}/${_output_name}.pc"
+  _install = defined(invoker.install) && invoker.install
+  if (_install) {
+    _install_config_name = "_${target_name}-install_config"
+    install_config(_install_config_name) {
+      sources = [ _pc ]
+      install_path = "${libdir}/pkgconfig"
+    }
+  }
   action(target_name) {
     forward_variables_from(invoker,
                            [
                              "deps",
                              "testonly",
                              "name",
-                             "output_name",
                              "description",
                              "version",
                              "requires",
@@ -78,10 +95,7 @@ template("generate_pkg_config") {
     if (!defined(name)) {
       name = target_name
     }
-    if (!defined(output_name)) {
-      output_name = name
-    }
-    outputs = [ "${target_out_dir}/${output_name}.pc" ]
+    outputs = [ _pc ]
 
     script = "//common-mk/generate-pc.py"
     args = [ "--output" ] + rebase_path(outputs) + [ "--name=" + name ]
@@ -120,6 +134,9 @@ template("generate_pkg_config") {
       foreach(define, defines) {
         args += [ "--cflags=-D" + define ]
       }
+    }
+    if (_install) {
+      deps = [ ":${_install_config_name}" ]
     }
   }
 }
