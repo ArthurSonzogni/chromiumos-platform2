@@ -521,6 +521,9 @@ void Port::ReportPortMetrics(Metrics* metrics) {
     metrics->ReportWrongCableError(WrongConfigurationMetric::kTBTWrongCable);
   else if (can_enter_dpalt_mode && invalid_dpalt_cable)
     metrics->ReportWrongCableError(WrongConfigurationMetric::kDPAltWrongCable);
+  else if (CableLimitingUSBSpeed())
+    metrics->ReportWrongCableError(
+        WrongConfigurationMetric::kSpeedLimitingCable);
 
   metrics_reported_ = true;
   return;
