@@ -10,8 +10,8 @@
 
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/fake_store.h"
@@ -77,9 +77,10 @@ TEST_F(DefaultProfileTest, GetProperties) {
     EXPECT_EQ(props[kArpGatewayProperty].Get<bool>(), properties_.arp_gateway);
   }
   {
-    Error error(Error::kInvalidProperty, "");
-    EXPECT_FALSE(profile_->mutable_store()->SetBoolProperty(kArpGatewayProperty,
-                                                            true, &error));
+    Error error;
+    profile_->mutable_store()->SetBoolProperty(kArpGatewayProperty, true,
+                                               &error);
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 }
 

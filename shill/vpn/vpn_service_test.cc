@@ -317,9 +317,9 @@ TEST_F(VPNServiceTest, IsAutoConnectable) {
 TEST_F(VPNServiceTest, SetNamePropertyTrivial) {
   Error error;
   // A null change returns false, but with error set to success.
-  EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
-      kNameProperty, brillo::Any(service_->friendly_name()), &error));
-  EXPECT_FALSE(error.IsFailure());
+  service_->mutable_store()->SetAnyProperty(
+      kNameProperty, brillo::Any(service_->friendly_name()), &error);
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(VPNServiceTest, SetNameProperty) {
@@ -332,8 +332,9 @@ TEST_F(VPNServiceTest, SetNameProperty) {
   EXPECT_CALL(*profile, DeleteEntry(kOldId, _));
   EXPECT_CALL(*profile, UpdateService(_));
   service_->set_profile(profile);
-  EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
-      kNameProperty, brillo::Any(kName), &error));
+  service_->mutable_store()->SetAnyProperty(kNameProperty, brillo::Any(kName),
+                                            &error);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_NE(service_->GetStorageIdentifier(), kOldId);
   EXPECT_EQ(kName, service_->friendly_name());
 }

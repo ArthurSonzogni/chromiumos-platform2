@@ -404,8 +404,8 @@ TEST_F(DHCPConfigTest, SetProperty) {
   Error error;
   std::string new_value = "new value";
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(config_->mutable_store()->SetAnyProperty(
-      kAddressProperty, brillo::Any(new_value), &error));
+  config_->mutable_store()->SetAnyProperty(kAddressProperty,
+                                           brillo::Any(new_value), &error);
   EXPECT_TRUE(error.IsFailure());
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 }

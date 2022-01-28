@@ -4,9 +4,9 @@
 
 #include "shill/cellular/cellular.h"
 
-#include <sys/socket.h>
 #include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
 #include <linux/netlink.h>
+#include <sys/socket.h>
 
 #include <memory>
 #include <set>
@@ -111,15 +111,16 @@ TEST_F(CellularPropertyTest, Contains) {
 TEST_F(CellularPropertyTest, SetProperty) {
   {
     Error error;
-    EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
-        kCellularPolicyAllowRoamingProperty, false, &error));
+    device_->mutable_store()->SetAnyProperty(
+        kCellularPolicyAllowRoamingProperty, false, &error);
+    EXPECT_TRUE(error.IsSuccess());
   }
   // Ensure that attempting to write a R/O property returns InvalidArgs error.
   {
     Error error;
-    EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
-        kAddressProperty, PropertyStoreTest::kStringV, &error));
-    ASSERT_TRUE(error.IsFailure());  // name() may be invalid otherwise
+    device_->mutable_store()->SetAnyProperty(
+        kAddressProperty, PropertyStoreTest::kStringV, &error);
+    EXPECT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 }

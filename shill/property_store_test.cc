@@ -12,8 +12,8 @@
 
 #include <base/macros.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -83,7 +83,7 @@ TEST_P(PropertyStoreTest, SetPropertyNonexistent) {
       base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  EXPECT_FALSE(store.SetAnyProperty("", GetParam(), &error));
+  store.SetAnyProperty("", GetParam(), &error);
   EXPECT_EQ(Error::kInvalidProperty, error.type());
 }
 
@@ -104,7 +104,7 @@ INSTANTIATE_TEST_SUITE_P(PropertyStoreTestInstance,
 template <typename T>
 class PropertyStoreTypedTest : public PropertyStoreTest {
  protected:
-  bool SetProperty(PropertyStore* store, const std::string& name, Error* error);
+  void SetProperty(PropertyStore* store, const std::string& name, Error* error);
 };
 
 TYPED_TEST_SUITE(PropertyStoreTypedTest, PropertyStoreTest::PropertyTypes);
@@ -153,99 +153,101 @@ TYPED_TEST(PropertyStoreTypedTest, SetProperty) {
   // generate a change callback. The second SetProperty, however,
   // should not. Hence, we should get exactly one callback.
   EXPECT_CALL(*this, TestCallback(_)).Times(1);
-  EXPECT_TRUE(this->SetProperty(&store, "some property", &error));
-  EXPECT_FALSE(this->SetProperty(&store, "some property", &error));
+  this->SetProperty(&store, "some property", &error);
+  EXPECT_TRUE(error.IsSuccess());
+  this->SetProperty(&store, "some property", &error);
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 template <>
-bool PropertyStoreTypedTest<bool>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<bool>::SetProperty(PropertyStore* store,
                                                const std::string& name,
                                                Error* error) {
   bool new_value = true;
-  return store->SetBoolProperty(name, new_value, error);
+  store->SetBoolProperty(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<int16_t>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<int16_t>::SetProperty(PropertyStore* store,
                                                   const std::string& name,
                                                   Error* error) {
   int16_t new_value = 1;
-  return store->SetInt16Property(name, new_value, error);
+  store->SetInt16Property(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<int32_t>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<int32_t>::SetProperty(PropertyStore* store,
                                                   const std::string& name,
                                                   Error* error) {
   int32_t new_value = 1;
-  return store->SetInt32Property(name, new_value, error);
+  store->SetInt32Property(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<std::string>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<std::string>::SetProperty(PropertyStore* store,
                                                       const std::string& name,
                                                       Error* error) {
   std::string new_value = "new value";
-  return store->SetStringProperty(name, new_value, error);
+  store->SetStringProperty(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<Stringmap>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<Stringmap>::SetProperty(PropertyStore* store,
                                                     const std::string& name,
                                                     Error* error) {
   Stringmap new_value;
   new_value["new key"] = "new value";
-  return store->SetStringmapProperty(name, new_value, error);
+  store->SetStringmapProperty(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<Stringmaps>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<Stringmaps>::SetProperty(PropertyStore* store,
                                                      const std::string& name,
                                                      Error* error) {
   Stringmaps new_value(1);
   new_value[0]["new key"] = "new value";
-  return store->SetStringmapsProperty(name, new_value, error);
+  store->SetStringmapsProperty(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<Strings>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<Strings>::SetProperty(PropertyStore* store,
                                                   const std::string& name,
                                                   Error* error) {
   Strings new_value(1);
   new_value[0] = "new value";
-  return store->SetStringsProperty(name, new_value, error);
+  store->SetStringsProperty(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<uint8_t>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<uint8_t>::SetProperty(PropertyStore* store,
                                                   const std::string& name,
                                                   Error* error) {
   uint8_t new_value = 1;
-  return store->SetUint8Property(name, new_value, error);
+  store->SetUint8Property(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<uint16_t>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<uint16_t>::SetProperty(PropertyStore* store,
                                                    const std::string& name,
                                                    Error* error) {
   uint16_t new_value = 1;
-  return store->SetUint16Property(name, new_value, error);
+  store->SetUint16Property(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<Uint16s>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<Uint16s>::SetProperty(PropertyStore* store,
                                                   const std::string& name,
                                                   Error* error) {
   Uint16s new_value{1};
-  return store->SetUint16sProperty(name, new_value, error);
+  store->SetUint16sProperty(name, new_value, error);
 }
 
 template <>
-bool PropertyStoreTypedTest<uint32_t>::SetProperty(PropertyStore* store,
+void PropertyStoreTypedTest<uint32_t>::SetProperty(PropertyStore* store,
                                                    const std::string& name,
                                                    Error* error) {
   uint32_t new_value = 1;
-  return store->SetUint32Property(name, new_value, error);
+  store->SetUint32Property(name, new_value, error);
 }
 
 TEST_F(PropertyStoreTest, ClearBoolProperty) {
@@ -283,8 +285,7 @@ TEST_F(PropertyStoreTest, SetStringmapsProperty) {
 
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  EXPECT_FALSE(
-      store.SetAnyProperty("", PropertyStoreTest::kStringmapsV, &error));
+  store.SetAnyProperty("", PropertyStoreTest::kStringmapsV, &error);
   EXPECT_EQ(Error::kInternalError, error.type());
 }
 
@@ -295,8 +296,7 @@ TEST_F(PropertyStoreTest, KeyValueStorePropertyNonExistent) {
       base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
-  EXPECT_FALSE(
-      store.SetAnyProperty("", PropertyStoreTest::kKeyValueStoreV, &error));
+  store.SetAnyProperty("", PropertyStoreTest::kKeyValueStoreV, &error);
   EXPECT_EQ(Error::kInvalidProperty, error.type());
 }
 
@@ -314,7 +314,8 @@ TEST_F(PropertyStoreTest, KeyValueStoreProperty) {
   EXPECT_CALL(*this, TestCallback(_));
   EXPECT_CALL(*this, SetKeyValueStoreCallback(_, _)).WillOnce(Return(true));
   Error error;
-  EXPECT_TRUE(store.SetAnyProperty(kKey, kKeyValueStoreV, &error));
+  store.SetAnyProperty(kKey, kKeyValueStoreV, &error);
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(PropertyStoreTest, WriteOnlyProperties) {
@@ -548,7 +549,8 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
 
     // Set property using brillo::Any variant type.
     bool new_value = false;
-    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+    store.SetAnyProperty(key, brillo::Any(new_value), &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(store.GetBoolProperty(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -566,7 +568,8 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
 
     // Set property using brillo::Any variant type.
     int16_t new_value = 128;
-    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+    store.SetAnyProperty(key, brillo::Any(new_value), &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(store.GetInt16Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -584,7 +587,8 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
 
     // Set property using brillo::Any variant type.
     int32_t new_value = 128;
-    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+    store.SetAnyProperty(key, brillo::Any(new_value), &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(store.GetInt32Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -602,7 +606,8 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
 
     // Set property using brillo::Any variant type.
     std::string new_value = "yesss";
-    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+    store.SetAnyProperty(key, brillo::Any(new_value), &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(store.GetStringProperty(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -622,7 +627,8 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     // Set property using brillo::Any variant type.
     Stringmap new_value;
     new_value["yesss"] = "noooo";
-    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+    store.SetAnyProperty(key, brillo::Any(new_value), &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(store.GetStringmapProperty(key, &test_value, &error));
     EXPECT_TRUE(new_value == test_value);
   }
@@ -646,7 +652,8 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
     std::string new_element;
     new_element = "yesss";
     new_value.push_back(new_element);
-    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+    store.SetAnyProperty(key, brillo::Any(new_value), &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(store.GetStringsProperty(key, &test_value, &error));
     EXPECT_TRUE(new_value == test_value);
   }
@@ -664,7 +671,8 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
 
     // Set property using brillo::Any variant type.
     uint8_t new_value = 128;
-    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+    store.SetAnyProperty(key, brillo::Any(new_value), &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(store.GetUint8Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -682,7 +690,8 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
 
     // Set property using brillo::Any variant type.
     uint16_t new_value = 128;
-    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+    store.SetAnyProperty(key, brillo::Any(new_value), &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(store.GetUint16Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -700,7 +709,8 @@ TEST_F(PropertyStoreTest, SetAnyProperty) {
 
     // Set property using brillo::Any variant type.
     uint32_t new_value = 128;
-    EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+    store.SetAnyProperty(key, brillo::Any(new_value), &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(store.GetUint32Property(key, &test_value, &error));
     EXPECT_EQ(new_value, test_value);
   }
@@ -730,7 +740,8 @@ TEST_F(PropertyStoreTest, SetAnyPropertyKeyValueStore) {
   brillo::VariantDictionary new_value;
   new_value["bool_key"] = new_bool_value;
   new_value["string_key"] = new_string_value;
-  EXPECT_TRUE(store.SetAnyProperty(key, brillo::Any(new_value), &error));
+  store.SetAnyProperty(key, brillo::Any(new_value), &error);
+  EXPECT_TRUE(error.IsSuccess());
   test_value.Clear();
   EXPECT_TRUE(store.GetKeyValueStoreProperty(key, &test_value, &error));
   KeyValueStore new_key_value_store =
@@ -766,7 +777,8 @@ TEST_F(PropertyStoreTest, SetAnyPropertyKeyValueStores) {
   new_value["bool_key"] = new_bool_value;
   new_value["string_key"] = new_string_value;
   new_values.push_back(new_value);
-  EXPECT_TRUE(store.SetAnyProperty(key, new_values, &error));
+  store.SetAnyProperty(key, new_values, &error);
+  EXPECT_TRUE(error.IsSuccess());
   test_values.clear();
   EXPECT_TRUE(store.GetKeyValueStoresProperty(key, &test_values, &error));
   EXPECT_EQ(test_values.size(), 1u);
@@ -864,7 +876,8 @@ TEST_F(PropertyStoreTest, SetAndGetProperties) {
   EXPECT_CALL(*this, SetKeyValueStoresCallback(_, _)).WillOnce(Return(true));
 
   Error error;
-  EXPECT_TRUE(store.SetProperties(dict, &error));
+  store.SetProperties(dict, &error);
+  EXPECT_TRUE(error.IsSuccess());
 
   // Retrieve properties.
   EXPECT_CALL(*this, GetKeyValueStoreCallback(_))

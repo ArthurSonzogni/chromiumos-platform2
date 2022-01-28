@@ -349,14 +349,15 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   {
     const std::string kValue = "some-value";
     Error error;
-    EXPECT_TRUE(store.SetStringProperty(kPinProperty, kValue, &error));
+    store.SetStringProperty(kPinProperty, kValue, &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(kValue, GetArgs()->Get<std::string>(kPinProperty));
   }
   {
     const std::vector<std::string> kValue{"some-value"};
     Error error;
-    EXPECT_TRUE(
-        store.SetStringsProperty(kEapCaCertPemProperty, kValue, &error));
+    store.SetStringsProperty(kEapCaCertPemProperty, kValue, &error);
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(kValue, GetArgs()->Get<Strings>(kEapCaCertPemProperty));
   }
 }

@@ -36,10 +36,10 @@ class PropertyStore {
   bool Contains(const std::string& property) const;
 
   // Setting properties using brillo::Any variant type.
-  bool SetAnyProperty(const std::string& name,
+  void SetAnyProperty(const std::string& name,
                       const brillo::Any& value,
                       Error* error);
-  bool SetProperties(const brillo::VariantDictionary& in, Error* error);
+  void SetProperties(const brillo::VariantDictionary& in, Error* error);
 
   // Retrieve all properties and store them in a brillo::VariantDictionary
   // (std::map<std::string, brillo::Any>).
@@ -101,60 +101,60 @@ class PropertyStore {
   // Methods to allow the setting, by name, of properties stored in this object.
   // The property names are declared in chromeos/dbus/service_constants.h,
   // so that they may be shared with libcros.
-  // If the property is successfully changed, these methods return true,
-  // and leave |error| untouched.
+  // If the property is successfully changed, these methods leave |error|
+  // untouched.
   // If the property is unchanged because it already has the desired value,
-  // these methods return false, and leave |error| untouched.
-  // If the property change fails, these methods return false, and update
-  // |error|. However, updating |error| is skipped if |error| is NULL.
-  bool SetBoolProperty(const std::string& name, bool value, Error* error);
+  // these methods leave |error| untouched.
+  // If the property change fails, these methods update |error|. However,
+  // updating |error| is skipped if |error| is NULL.
+  void SetBoolProperty(const std::string& name, bool value, Error* error);
 
-  bool SetInt16Property(const std::string& name, int16_t value, Error* error);
+  void SetInt16Property(const std::string& name, int16_t value, Error* error);
 
-  bool SetInt32Property(const std::string& name, int32_t value, Error* error);
+  void SetInt32Property(const std::string& name, int32_t value, Error* error);
 
-  bool SetKeyValueStoreProperty(const std::string& name,
+  void SetKeyValueStoreProperty(const std::string& name,
                                 const KeyValueStore& value,
                                 Error* error);
 
-  bool SetKeyValueStoresProperty(const std::string& name,
+  void SetKeyValueStoresProperty(const std::string& name,
                                  const KeyValueStores& value,
                                  Error* error);
 
-  bool SetStringProperty(const std::string& name,
+  void SetStringProperty(const std::string& name,
                          const std::string& value,
                          Error* error);
 
-  bool SetStringmapProperty(const std::string& name,
+  void SetStringmapProperty(const std::string& name,
                             const std::map<std::string, std::string>& values,
                             Error* error);
 
-  bool SetStringmapsProperty(
+  void SetStringmapsProperty(
       const std::string& name,
       const std::vector<std::map<std::string, std::string>>& values,
       Error* error);
 
-  bool SetStringsProperty(const std::string& name,
+  void SetStringsProperty(const std::string& name,
                           const std::vector<std::string>& values,
                           Error* error);
 
-  bool SetUint8Property(const std::string& name, uint8_t value, Error* error);
+  void SetUint8Property(const std::string& name, uint8_t value, Error* error);
 
-  bool SetByteArrayProperty(const std::string& name,
+  void SetByteArrayProperty(const std::string& name,
                             const ByteArray& value,
                             Error* error);
 
-  bool SetUint16Property(const std::string& name, uint16_t value, Error* error);
+  void SetUint16Property(const std::string& name, uint16_t value, Error* error);
 
-  bool SetUint16sProperty(const std::string& name,
+  void SetUint16sProperty(const std::string& name,
                           const std::vector<uint16_t>& value,
                           Error* error);
 
-  bool SetUint32Property(const std::string& name, uint32_t value, Error* error);
+  void SetUint32Property(const std::string& name, uint32_t value, Error* error);
 
-  bool SetUint64Property(const std::string& name, uint64_t value, Error* error);
+  void SetUint64Property(const std::string& name, uint64_t value, Error* error);
 
-  bool SetRpcIdentifierProperty(const std::string& name,
+  void SetRpcIdentifierProperty(const std::string& name,
                                 const RpcIdentifier& value,
                                 Error* error);
 

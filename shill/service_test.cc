@@ -249,6 +249,13 @@ class ServiceTest : public PropertyStoreTest {
     return counter;
   }
 
+  bool SetAnyPropertyAndEnsureSuccess(const std::string& name,
+                                      const brillo::Any& value) {
+    Error error;
+    service_->mutable_store()->SetAnyProperty(name, value, &error);
+    return error.IsSuccess();
+  }
+
   NiceMock<MockManager> mock_manager_;
   NiceMock<MockTime> time_;
   scoped_refptr<ServiceUnderTest> service_;
@@ -351,66 +358,68 @@ TEST_F(ServiceTest, GetProperties) {
 
 TEST_F(ServiceTest, SetProperty) {
   {
-    Error error;
-    EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
-        kSaveCredentialsProperty, PropertyStoreTest::kBoolV, &error));
+    EXPECT_TRUE(SetAnyPropertyAndEnsureSuccess(kSaveCredentialsProperty,
+                                               PropertyStoreTest::kBoolV));
   }
   {
-    Error error;
     const int32_t priority = 1;
-    EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
-        kPriorityProperty, brillo::Any(priority), &error));
+    EXPECT_TRUE(SetAnyPropertyAndEnsureSuccess(kPriorityProperty,
+                                               brillo::Any(priority)));
   }
   {
-    Error error;
     const std::string guid("not default");
-    EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
-        kGuidProperty, brillo::Any(guid), &error));
+    EXPECT_TRUE(
+        SetAnyPropertyAndEnsureSuccess(kGuidProperty, brillo::Any(guid)));
   }
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Ensure that EAP properties cannot be set on services with no EAP
   // credentials.  Use service2_ here since we're have some code in
   // ServiceTest::SetUp() that fiddles with service_->eap_.
+  std::string eap("eap eep eip!");
   {
     Error error;
-    std::string eap("eap eep eip!");
-    EXPECT_FALSE(service2_->mutable_store()->SetAnyProperty(
-        kEapMethodProperty, brillo::Any(eap), &error));
+    service2_->mutable_store()->SetAnyProperty(kEapMethodProperty,
+                                               brillo::Any(eap), &error);
     ASSERT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kInvalidProperty, error.type());
+  }
+  {
     // Now plumb in eap credentials, and try again.
+    Error error;
     service2_->SetEapCredentials(new EapCredentials());
-    EXPECT_TRUE(service2_->mutable_store()->SetAnyProperty(
-        kEapMethodProperty, brillo::Any(eap), &error));
+    service2_->mutable_store()->SetAnyProperty(kEapMethodProperty,
+                                               brillo::Any(eap), &error);
+    EXPECT_TRUE(error.IsSuccess());
   }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   {
     Error error;
-    EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
-        kConnectableProperty, PropertyStoreTest::kBoolV, &error));
+    service_->mutable_store()->SetAnyProperty(
+        kConnectableProperty, PropertyStoreTest::kBoolV, &error);
     ASSERT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
   {
     bool auto_connect = true;
     Error error;
-    EXPECT_TRUE(service_->mutable_store()->SetAnyProperty(
-        kAutoConnectProperty, brillo::Any(auto_connect), &error));
+    service_->mutable_store()->SetAnyProperty(
+        kAutoConnectProperty, brillo::Any(auto_connect), &error);
+    EXPECT_TRUE(error.IsSuccess());
   }
   // Ensure that we can perform a trivial set of the Name property (to its
   // current value) but an attempt to set the property to a different value
   // fails.
   {
     Error error;
-    EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
-        kNameProperty, brillo::Any(GetFriendlyName()), &error));
+    service_->mutable_store()->SetAnyProperty(
+        kNameProperty, brillo::Any(GetFriendlyName()), &error);
     EXPECT_FALSE(error.IsFailure());
   }
   {
     Error error;
-    EXPECT_FALSE(service_->mutable_store()->SetAnyProperty(
-        kNameProperty, PropertyStoreTest::kStringV, &error));
+    service_->mutable_store()->SetAnyProperty(
+        kNameProperty, PropertyStoreTest::kStringV, &error);
     ASSERT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
@@ -1517,7 +1526,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     EXPECT_CALL(*mock_connection, ipconfig_rpc_identifier())
         .WillOnce(ReturnRef(nonempty_rpcid));
     EXPECT_EQ(nonempty_rpcid, service_->GetIPConfigRpcIdentifier(&error));
-    EXPECT_EQ(Error::kSuccess, error.type());
+    EXPECT_TRUE(error.IsSuccess());
   }
 
   // Assure orderly destruction of the Connection before DeviceInfo.
@@ -2278,7 +2287,7 @@ TEST_F(ServiceTest, DisconnectSetsDisconnectState) {
   service_->SetState(Service::kStateAssociating);
   error.Reset();
   service_->Disconnect(&error, __func__);
-  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
 }
 
@@ -2289,13 +2298,13 @@ TEST_F(ServiceTest, DelayedDisconnect) {
   // Begin disconnect but do not finish.
   Error error;
   service_->Disconnect(&error, __func__);
-  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
 
   // Trigger connection.
   ASSERT_TRUE(service_->connectable());
   service_->Connect(&error, __func__);
-  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
   EXPECT_TRUE(HasPendingConnect());
 
@@ -2315,13 +2324,13 @@ TEST_F(ServiceTest, DelayedDisconnectWithAdditionalConnect) {
   // Begin disconnect but do not finish.
   Error error;
   service_->Disconnect(&error, __func__);
-  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
 
   // Trigger connection.
   ASSERT_TRUE(service_->connectable());
   service_->Connect(&error, __func__);
-  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(service_->state(), Service::kStateDisconnecting);
   EXPECT_TRUE(HasPendingConnect());
 
@@ -2333,7 +2342,7 @@ TEST_F(ServiceTest, DelayedDisconnectWithAdditionalConnect) {
   // ensure that the pending connect task will be cancelled.
   ASSERT_TRUE(service_->connectable());
   service_->Connect(&error, __func__);
-  EXPECT_EQ(error.type(), Error::kSuccess);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(HasPendingConnect());
 }
 

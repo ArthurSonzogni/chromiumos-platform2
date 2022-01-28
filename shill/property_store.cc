@@ -55,66 +55,61 @@ bool PropertyStore::Contains(const std::string& prop) const {
           base::Contains(rpc_identifiers_properties_, prop));
 }
 
-bool PropertyStore::SetAnyProperty(const std::string& name,
+void PropertyStore::SetAnyProperty(const std::string& name,
                                    const brillo::Any& value,
                                    Error* error) {
-  bool ret = false;
   if (value.IsTypeCompatible<bool>()) {
-    ret = SetBoolProperty(name, value.Get<bool>(), error);
+    SetBoolProperty(name, value.Get<bool>(), error);
   } else if (value.IsTypeCompatible<uint8_t>()) {
-    ret = SetUint8Property(name, value.Get<uint8_t>(), error);
+    SetUint8Property(name, value.Get<uint8_t>(), error);
   } else if (value.IsTypeCompatible<int16_t>()) {
-    ret = SetInt16Property(name, value.Get<int16_t>(), error);
+    SetInt16Property(name, value.Get<int16_t>(), error);
   } else if (value.IsTypeCompatible<int32_t>()) {
-    ret = SetInt32Property(name, value.Get<int32_t>(), error);
+    SetInt32Property(name, value.Get<int32_t>(), error);
   } else if (value.IsTypeCompatible<dbus::ObjectPath>()) {
-    ret = SetRpcIdentifierProperty(name, value.Get<dbus::ObjectPath>(), error);
+    SetRpcIdentifierProperty(name, value.Get<dbus::ObjectPath>(), error);
   } else if (value.IsTypeCompatible<std::string>()) {
-    ret = SetStringProperty(name, value.Get<std::string>(), error);
+    SetStringProperty(name, value.Get<std::string>(), error);
   } else if (value.IsTypeCompatible<Stringmap>()) {
-    ret = SetStringmapProperty(name, value.Get<Stringmap>(), error);
+    SetStringmapProperty(name, value.Get<Stringmap>(), error);
   } else if (value.IsTypeCompatible<Stringmaps>()) {
     SLOG(nullptr, 1) << " can't yet handle setting type "
                      << value.GetUndecoratedTypeName();
     error->Populate(Error::kInternalError);
   } else if (value.IsTypeCompatible<Strings>()) {
-    ret = SetStringsProperty(name, value.Get<Strings>(), error);
+    SetStringsProperty(name, value.Get<Strings>(), error);
   } else if (value.IsTypeCompatible<ByteArray>()) {
-    ret = SetByteArrayProperty(name, value.Get<ByteArray>(), error);
+    SetByteArrayProperty(name, value.Get<ByteArray>(), error);
   } else if (value.IsTypeCompatible<uint16_t>()) {
-    ret = SetUint16Property(name, value.Get<uint16_t>(), error);
+    SetUint16Property(name, value.Get<uint16_t>(), error);
   } else if (value.IsTypeCompatible<Uint16s>()) {
-    ret = SetUint16sProperty(name, value.Get<Uint16s>(), error);
+    SetUint16sProperty(name, value.Get<Uint16s>(), error);
   } else if (value.IsTypeCompatible<uint32_t>()) {
-    ret = SetUint32Property(name, value.Get<uint32_t>(), error);
+    SetUint32Property(name, value.Get<uint32_t>(), error);
   } else if (value.IsTypeCompatible<uint64_t>()) {
-    ret = SetUint64Property(name, value.Get<uint64_t>(), error);
+    SetUint64Property(name, value.Get<uint64_t>(), error);
   } else if (value.IsTypeCompatible<brillo::VariantDictionary>()) {
     KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(
         value.Get<brillo::VariantDictionary>());
-    ret = SetKeyValueStoreProperty(name, store, error);
+    SetKeyValueStoreProperty(name, store, error);
   } else if (value.IsTypeCompatible<std::vector<brillo::VariantDictionary>>()) {
     KeyValueStores dicts;
     for (const auto& d : value.Get<std::vector<brillo::VariantDictionary>>()) {
       KeyValueStore store = KeyValueStore::ConvertFromVariantDictionary(d);
       dicts.push_back(store);
     }
-    ret = SetKeyValueStoresProperty(name, dicts, error);
+    SetKeyValueStoresProperty(name, dicts, error);
   } else {
     NOTREACHED() << " unknown type: " << value.GetUndecoratedTypeName();
     error->Populate(Error::kInternalError);
   }
-  return ret;
 }
 
-bool PropertyStore::SetProperties(const brillo::VariantDictionary& in,
+void PropertyStore::SetProperties(const brillo::VariantDictionary& in,
                                   Error* error) {
   for (const auto& kv : in) {
-    if (!SetAnyProperty(kv.first, kv.second, error)) {
-      return false;
-    }
+    SetAnyProperty(kv.first, kv.second, error);
   }
-  return true;
 }
 
 bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
@@ -340,110 +335,105 @@ bool PropertyStore::GetUint64Property(const std::string& name,
   return GetProperty(name, value, error, uint64_properties_, "a uint64_t");
 }
 
-bool PropertyStore::SetBoolProperty(const std::string& name,
+void PropertyStore::SetBoolProperty(const std::string& name,
                                     bool value,
                                     Error* error) {
-  return SetProperty(name, value, error, &bool_properties_, "a bool");
+  SetProperty(name, value, error, &bool_properties_, "a bool");
 }
 
-bool PropertyStore::SetInt16Property(const std::string& name,
+void PropertyStore::SetInt16Property(const std::string& name,
                                      int16_t value,
                                      Error* error) {
-  return SetProperty(name, value, error, &int16_properties_, "an int16_t");
+  SetProperty(name, value, error, &int16_properties_, "an int16_t");
 }
 
-bool PropertyStore::SetInt32Property(const std::string& name,
+void PropertyStore::SetInt32Property(const std::string& name,
                                      int32_t value,
                                      Error* error) {
-  return SetProperty(name, value, error, &int32_properties_, "an int32_t.");
+  SetProperty(name, value, error, &int32_properties_, "an int32_t.");
 }
 
-bool PropertyStore::SetKeyValueStoreProperty(const std::string& name,
+void PropertyStore::SetKeyValueStoreProperty(const std::string& name,
                                              const KeyValueStore& value,
                                              Error* error) {
-  return SetProperty(name, value, error, &key_value_store_properties_,
-                     "a key value store");
+  SetProperty(name, value, error, &key_value_store_properties_,
+              "a key value store");
 }
 
-bool PropertyStore::SetKeyValueStoresProperty(const std::string& name,
+void PropertyStore::SetKeyValueStoresProperty(const std::string& name,
                                               const KeyValueStores& value,
                                               Error* error) {
-  return SetProperty(name, value, error, &key_value_stores_properties_,
-                     "a key value stores");
+  SetProperty(name, value, error, &key_value_stores_properties_,
+              "a key value stores");
 }
 
-bool PropertyStore::SetStringProperty(const std::string& name,
+void PropertyStore::SetStringProperty(const std::string& name,
                                       const std::string& value,
                                       Error* error) {
-  return SetProperty(name, value, error, &string_properties_, "a string");
+  SetProperty(name, value, error, &string_properties_, "a string");
 }
 
-bool PropertyStore::SetStringmapProperty(
+void PropertyStore::SetStringmapProperty(
     const std::string& name,
     const std::map<std::string, std::string>& values,
     Error* error) {
-  return SetProperty(name, values, error, &stringmap_properties_,
-                     "a string map");
+  SetProperty(name, values, error, &stringmap_properties_, "a string map");
 }
 
-bool PropertyStore::SetStringmapsProperty(
+void PropertyStore::SetStringmapsProperty(
     const std::string& name,
     const std::vector<std::map<std::string, std::string>>& values,
     Error* error) {
-  return SetProperty(name, values, error, &stringmaps_properties_,
-                     "a stringmaps");
+  SetProperty(name, values, error, &stringmaps_properties_, "a stringmaps");
 }
 
-bool PropertyStore::SetStringsProperty(const std::string& name,
+void PropertyStore::SetStringsProperty(const std::string& name,
                                        const std::vector<std::string>& values,
                                        Error* error) {
-  return SetProperty(name, values, error, &strings_properties_,
-                     "a string list");
+  SetProperty(name, values, error, &strings_properties_, "a string list");
 }
 
-bool PropertyStore::SetUint8Property(const std::string& name,
+void PropertyStore::SetUint8Property(const std::string& name,
                                      uint8_t value,
                                      Error* error) {
-  return SetProperty(name, value, error, &uint8_properties_, "a uint8_t");
+  SetProperty(name, value, error, &uint8_properties_, "a uint8_t");
 }
 
-bool PropertyStore::SetByteArrayProperty(const std::string& name,
+void PropertyStore::SetByteArrayProperty(const std::string& name,
                                          const ByteArray& value,
                                          Error* error) {
-  return SetProperty(name, value, error, &bytearray_properties_,
-                     "a byte array");
+  SetProperty(name, value, error, &bytearray_properties_, "a byte array");
 }
 
-bool PropertyStore::SetUint16Property(const std::string& name,
+void PropertyStore::SetUint16Property(const std::string& name,
                                       uint16_t value,
                                       Error* error) {
-  return SetProperty(name, value, error, &uint16_properties_, "a uint16_t");
+  SetProperty(name, value, error, &uint16_properties_, "a uint16_t");
 }
 
-bool PropertyStore::SetUint16sProperty(const std::string& name,
+void PropertyStore::SetUint16sProperty(const std::string& name,
                                        const std::vector<uint16_t>& value,
                                        Error* error) {
-  return SetProperty(name, value, error, &uint16s_properties_,
-                     "a uint16_t list");
+  SetProperty(name, value, error, &uint16s_properties_, "a uint16_t list");
 }
 
-bool PropertyStore::SetUint32Property(const std::string& name,
+void PropertyStore::SetUint32Property(const std::string& name,
                                       uint32_t value,
                                       Error* error) {
-  return SetProperty(name, value, error, &uint32_properties_, "a uint32_t");
+  SetProperty(name, value, error, &uint32_properties_, "a uint32_t");
 }
 
-bool PropertyStore::SetUint64Property(const std::string& name,
+void PropertyStore::SetUint64Property(const std::string& name,
                                       uint64_t value,
                                       Error* error) {
-  return SetProperty(name, value, error, &uint64_properties_, "a uint64_t");
+  SetProperty(name, value, error, &uint64_properties_, "a uint64_t");
 }
 
-bool PropertyStore::SetRpcIdentifierProperty(const std::string& name,
+void PropertyStore::SetRpcIdentifierProperty(const std::string& name,
                                              const RpcIdentifier& value,
                                              Error* error) {
-  return SetProperty(name, value, error, &rpc_identifier_properties_,
-                     "an rpc_identifier");
+  SetProperty(name, value, error, &rpc_identifier_properties_,
+              "an rpc_identifier");
 }
 
 bool PropertyStore::ClearProperty(const std::string& name, Error* error) {

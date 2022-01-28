@@ -1157,7 +1157,7 @@ TEST_F(OpenVPNDriverTest, InitPropertyStore) {
   driver_->InitPropertyStore(&store);
   const std::string kUser = "joe";
   Error error;
-  EXPECT_TRUE(store.SetStringProperty(kOpenVPNUserProperty, kUser, &error));
+  store.SetStringProperty(kOpenVPNUserProperty, kUser, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kUser, GetArgs()->Lookup<std::string>(kOpenVPNUserProperty, ""));
 }

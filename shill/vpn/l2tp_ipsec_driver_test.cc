@@ -669,7 +669,7 @@ TEST_F(L2TPIPsecDriverTest, InitPropertyStore) {
   driver_->InitPropertyStore(&store);
   const std::string kUser = "joe";
   Error error;
-  EXPECT_TRUE(store.SetStringProperty(kL2TPIPsecUserProperty, kUser, &error));
+  store.SetStringProperty(kL2TPIPsecUserProperty, kUser, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kUser, GetArgs()->Lookup<std::string>(kL2TPIPsecUserProperty, ""));
 }

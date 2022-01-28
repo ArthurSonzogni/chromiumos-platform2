@@ -485,36 +485,41 @@ TEST_F(WiFiPropertyTest, Contains) {
 TEST_F(WiFiPropertyTest, SetProperty) {
   {
     Error error;
-    EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
-        kBgscanSignalThresholdProperty, PropertyStoreTest::kInt32V, &error));
+    device_->mutable_store()->SetAnyProperty(
+        kBgscanSignalThresholdProperty, PropertyStoreTest::kInt32V, &error);
+    EXPECT_TRUE(error.IsSuccess());
   }
   {
     Error error;
-    EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
-        kScanIntervalProperty, PropertyStoreTest::kUint16V, &error));
+    device_->mutable_store()->SetAnyProperty(
+        kScanIntervalProperty, PropertyStoreTest::kUint16V, &error);
+    EXPECT_TRUE(error.IsSuccess());
   }
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
   {
     Error error;
-    EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
-        kScanningProperty, PropertyStoreTest::kBoolV, &error));
+    device_->mutable_store()->SetAnyProperty(kScanningProperty,
+                                             PropertyStoreTest::kBoolV, &error);
     ASSERT_TRUE(error.IsFailure());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 
   {
     Error error;
-    EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
+    device_->mutable_store()->SetAnyProperty(
         kBgscanMethodProperty,
         brillo::Any(std::string(WPASupplicant::kNetworkBgscanMethodSimple)),
-        &error));
+        &error);
+    EXPECT_TRUE(error.IsSuccess());
   }
 
   {
     Error error;
-    EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
+    device_->mutable_store()->SetAnyProperty(
         kBgscanMethodProperty,
-        brillo::Any(std::string("not a real scan method")), &error));
+        brillo::Any(std::string("not a real scan method")), &error);
+    ASSERT_TRUE(error.IsFailure());
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 }
 
@@ -531,10 +536,11 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
   EXPECT_EQ(WPASupplicant::kNetworkBgscanMethodSimple, method);
 
   Error error;
-  EXPECT_TRUE(device_->mutable_store()->SetAnyProperty(
+  device_->mutable_store()->SetAnyProperty(
       kBgscanMethodProperty,
       brillo::Any(std::string(WPASupplicant::kNetworkBgscanMethodLearn)),
-      &error));
+      &error);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(WPASupplicant::kNetworkBgscanMethodLearn, device_->bgscan_method_);
   EXPECT_TRUE(device_->store().GetStringProperty(kBgscanMethodProperty, &method,
                                                  &unused_error));
@@ -1063,8 +1069,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   }
   bool SetBgscanMethod(const std::string& method) {
     Error error;
-    return wifi_->mutable_store()->SetAnyProperty(kBgscanMethodProperty,
-                                                  brillo::Any(method), &error);
+    wifi_->mutable_store()->SetAnyProperty(kBgscanMethodProperty,
+                                           brillo::Any(method), &error);
+    return error.IsSuccess();
   }
 
   void AppendBgscan(WiFiService* service, KeyValueStore* service_params) {

@@ -5,8 +5,8 @@
 #include "shill/device.h"
 
 #include <ctype.h>
-#include <sys/socket.h>
 #include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
+#include <sys/socket.h>
 
 #include <algorithm>
 #include <memory>
@@ -250,21 +250,23 @@ TEST_F(DeviceTest, GetProperties) {
 TEST_F(DeviceTest, SetReadOnlyProperty) {
   Error error;
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
-      kAddressProperty, brillo::Any(std::string()), &error));
+  device_->mutable_store()->SetAnyProperty(kAddressProperty,
+                                           brillo::Any(std::string()), &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 TEST_F(DeviceTest, ClearReadOnlyProperty) {
   Error error;
-  EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
-      kAddressProperty, brillo::Any(std::string()), &error));
+  device_->mutable_store()->SetAnyProperty(kAddressProperty,
+                                           brillo::Any(std::string()), &error);
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
   Error error;
-  EXPECT_FALSE(device_->mutable_store()->SetAnyProperty(
-      kIPConfigsProperty, brillo::Any(Strings()), &error));
+  device_->mutable_store()->SetAnyProperty(kIPConfigsProperty,
+                                           brillo::Any(Strings()), &error);
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
 }
 
 TEST_F(DeviceTest, DestroyIPConfig) {

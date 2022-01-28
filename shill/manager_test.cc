@@ -907,7 +907,7 @@ TEST_F(ManagerTest, CreateProfile) {
     std::string path;
     ASSERT_TRUE(base::CreateDirectory(temp_dir.GetPath().Append("user")));
     manager.CreateProfile(kProfile, &path, &error);
-    EXPECT_EQ(Error::kSuccess, error.type());
+    EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ("/profile_rpc", path);
   }
 
@@ -1124,7 +1124,7 @@ TEST_F(ManagerTest, RemoveProfile) {
   {
     Error error;
     manager.RemoveProfile(kProfile0, &error);
-    EXPECT_EQ(Error::kSuccess, error.type());
+    EXPECT_TRUE(error.IsSuccess());
   }
 
   // Profile path should no longer exist.
@@ -1135,7 +1135,7 @@ TEST_F(ManagerTest, RemoveProfile) {
   {
     Error error;
     manager.RemoveProfile(kProfile0, &error);
-    EXPECT_EQ(Error::kSuccess, error.type());
+    EXPECT_TRUE(error.IsSuccess());
   }
 
   // Let's create an error case that will "work".  Create a non-empty
@@ -1436,33 +1436,35 @@ TEST_F(ManagerTest, SetProperty) {
   {
     Error error;
     const bool arp_gateway = false;
-    EXPECT_TRUE(manager()->mutable_store()->SetAnyProperty(
-        kArpGatewayProperty, brillo::Any(arp_gateway), &error));
+    manager()->mutable_store()->SetAnyProperty(
+        kArpGatewayProperty, brillo::Any(arp_gateway), &error);
+    EXPECT_TRUE(error.IsSuccess());
   }
   {
     Error error;
     const std::string portal_list("wifi,cellular");
-    EXPECT_TRUE(manager()->mutable_store()->SetAnyProperty(
-        kCheckPortalListProperty, brillo::Any(portal_list), &error));
+    manager()->mutable_store()->SetAnyProperty(
+        kCheckPortalListProperty, brillo::Any(portal_list), &error);
+    EXPECT_TRUE(error.IsSuccess());
   }
   // Attempt to write with value of wrong type should return InvalidArgs.
   {
     Error error;
-    EXPECT_FALSE(manager()->mutable_store()->SetAnyProperty(
-        kCheckPortalListProperty, PropertyStoreTest::kBoolV, &error));
+    manager()->mutable_store()->SetAnyProperty(
+        kCheckPortalListProperty, PropertyStoreTest::kBoolV, &error);
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
   {
     Error error;
-    EXPECT_FALSE(manager()->mutable_store()->SetAnyProperty(
-        kArpGatewayProperty, PropertyStoreTest::kStringV, &error));
+    manager()->mutable_store()->SetAnyProperty(
+        kArpGatewayProperty, PropertyStoreTest::kStringV, &error);
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
   // Attempt to write R/O property should return InvalidArgs.
   {
     Error error;
-    EXPECT_FALSE(manager()->mutable_store()->SetAnyProperty(
-        kEnabledTechnologiesProperty, PropertyStoreTest::kStringsV, &error));
+    manager()->mutable_store()->SetAnyProperty(
+        kEnabledTechnologiesProperty, PropertyStoreTest::kStringsV, &error);
     EXPECT_EQ(Error::kInvalidArguments, error.type());
   }
 }

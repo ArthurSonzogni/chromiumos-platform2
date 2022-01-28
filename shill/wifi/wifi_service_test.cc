@@ -10,9 +10,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/simple_test_clock.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
@@ -371,18 +371,19 @@ TEST_F(WiFiServiceTest, PassphraseSetPropertyValidation) {
   // test for all types of passwords.
   WiFiServiceRefPtr wifi_service = MakeSimpleService(kSecurityWep);
   Error error;
-  EXPECT_TRUE(wifi_service->mutable_store()->SetStringProperty(
-      kPassphraseProperty, "0:abcde", &error));
-  EXPECT_FALSE(wifi_service->mutable_store()->SetStringProperty(
-      kPassphraseProperty, "invalid", &error));
+  wifi_service->mutable_store()->SetStringProperty(kPassphraseProperty,
+                                                   "0:abcde", &error);
+  EXPECT_TRUE(error.IsSuccess());
+  wifi_service->mutable_store()->SetStringProperty(kPassphraseProperty,
+                                                   "invalid", &error);
   EXPECT_EQ(Error::kInvalidPassphrase, error.type());
 }
 
 TEST_F(WiFiServiceTest, PassphraseSetPropertyOpenNetwork) {
   WiFiServiceRefPtr wifi_service = MakeSimpleService(kSecurityNone);
   Error error;
-  EXPECT_FALSE(wifi_service->mutable_store()->SetStringProperty(
-      kPassphraseProperty, "invalid", &error));
+  wifi_service->mutable_store()->SetStringProperty(kPassphraseProperty,
+                                                   "invalid", &error);
   EXPECT_EQ(Error::kIllegalOperation, error.type());
 }
 
@@ -718,28 +719,26 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     Error error;
     // A changed passphrase should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
-    EXPECT_TRUE(property_store.SetStringProperty(kEapPasswordProperty,
-                                                 kPassword, &error));
-    Mock::VerifyAndClearExpectations(wifi().get());
+    property_store.SetStringProperty(kEapPasswordProperty, kPassword, &error);
     EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(wifi().get());
   }
   {
     Error error;
     // An unchanged passphrase should not trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
-    EXPECT_FALSE(property_store.SetStringProperty(kEapPasswordProperty,
-                                                  kPassword, &error));
-    Mock::VerifyAndClearExpectations(wifi().get());
+    property_store.SetStringProperty(kEapPasswordProperty, kPassword, &error);
     EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(wifi().get());
   }
   {
     Error error;
     // A modified passphrase should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
-    EXPECT_TRUE(property_store.SetStringProperty(kEapPasswordProperty,
-                                                 kPassword + "X", &error));
-    Mock::VerifyAndClearExpectations(wifi().get());
+    property_store.SetStringProperty(kEapPasswordProperty, kPassword + "X",
+                                     &error);
     EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(wifi().get());
   }
 
   // Property with generic accessor.
@@ -748,28 +747,25 @@ TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
     Error error;
     // A changed cert id should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
-    EXPECT_TRUE(
-        property_store.SetStringProperty(kEapCertIdProperty, kCertId, &error));
-    Mock::VerifyAndClearExpectations(wifi().get());
+    property_store.SetStringProperty(kEapCertIdProperty, kCertId, &error);
     EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(wifi().get());
   }
   {
     Error error;
     // An unchanged cert id should not trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
-    EXPECT_FALSE(
-        property_store.SetStringProperty(kEapCertIdProperty, kCertId, &error));
-    Mock::VerifyAndClearExpectations(wifi().get());
+    property_store.SetStringProperty(kEapCertIdProperty, kCertId, &error);
     EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(wifi().get());
   }
   {
     Error error;
     // A modified cert id should trigger cache removal.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
-    EXPECT_TRUE(property_store.SetStringProperty(kEapCertIdProperty,
-                                                 kCertId + "X", &error));
-    Mock::VerifyAndClearExpectations(wifi().get());
+    property_store.SetStringProperty(kEapCertIdProperty, kCertId + "X", &error);
     EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(wifi().get());
   }
 }
 
@@ -1208,8 +1204,9 @@ TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {
 
   Error error;
   const std::string kPassphrase = "0:abcde";
-  EXPECT_TRUE(wifi_service->mutable_store()->SetAnyProperty(
-      kPassphraseProperty, brillo::Any(kPassphrase), &error));
+  wifi_service->mutable_store()->SetAnyProperty(
+      kPassphraseProperty, brillo::Any(kPassphrase), &error);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kPassphrase, wifi_service->passphrase_);
 
   EXPECT_TRUE(wifi_service->mutable_store()->ClearProperty(kPassphraseProperty,

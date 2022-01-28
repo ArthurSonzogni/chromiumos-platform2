@@ -122,7 +122,8 @@ TEST_F(EapCredentialsTest, PropertyStore) {
   eap_.InitPropertyStore(&store);
   const std::string kIdentity("Cross-Eyed Mary");
   Error error;
-  EXPECT_TRUE(store.SetStringProperty(kEapIdentityProperty, kIdentity, &error));
+  store.SetStringProperty(kEapIdentityProperty, kIdentity, &error);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kIdentity, eap_.identity());
 }
 

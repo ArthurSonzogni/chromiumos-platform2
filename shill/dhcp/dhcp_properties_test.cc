@@ -84,8 +84,8 @@ TEST_F(DhcpPropertiesTest, SetMappedStringPropertyOverrideExisting) {
   GetDhcpProperties().Set<std::string>("Hostname", kHostname);
 
   Error error;
-  EXPECT_TRUE(
-      store.SetStringProperty("DHCPProperty.Hostname", kOverrideValue, &error));
+  store.SetStringProperty("DHCPProperty.Hostname", kOverrideValue, &error);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kOverrideValue, GetDhcpProperties().Get<std::string>("Hostname"));
 }
 
@@ -94,8 +94,8 @@ TEST_F(DhcpPropertiesTest, SetMappedStringPropertyNoExistingValue) {
   dhcp_properties_.InitPropertyStore(&store);
 
   Error error;
-  EXPECT_TRUE(
-      store.SetStringProperty("DHCPProperty.Hostname", kHostname, &error));
+  store.SetStringProperty("DHCPProperty.Hostname", kHostname, &error);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kHostname, GetDhcpProperties().Get<std::string>("Hostname"));
 }
 
@@ -105,8 +105,8 @@ TEST_F(DhcpPropertiesTest, SetMappedStringPropertySameAsExistingValue) {
   GetDhcpProperties().Set<std::string>("Hostname", kHostname);
 
   Error error;
-  EXPECT_FALSE(
-      store.SetStringProperty("DHCPProperty.Hostname", kHostname, &error));
+  store.SetStringProperty("DHCPProperty.Hostname", kHostname, &error);
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kHostname, GetDhcpProperties().Get<std::string>("Hostname"));
 }
 

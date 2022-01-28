@@ -40,7 +40,7 @@ TEST_F(DeviceClaimerTest, ClaimAndReleaseDevices) {
   Error error;
   EXPECT_CALL(device_info_, BlockDevice(kTestDevice1Name)).Times(1);
   EXPECT_TRUE(device_claimer_.Claim(kTestDevice1Name, &error));
-  EXPECT_EQ(Error::kSuccess, error.type());
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(device_claimer_.DevicesClaimed());
   Mock::VerifyAndClearExpectations(&device_info_);
 
@@ -48,7 +48,7 @@ TEST_F(DeviceClaimerTest, ClaimAndReleaseDevices) {
   error.Reset();
   EXPECT_CALL(device_info_, BlockDevice(kTestDevice2Name)).Times(1);
   EXPECT_TRUE(device_claimer_.Claim(kTestDevice2Name, &error));
-  EXPECT_EQ(Error::kSuccess, error.type());
+  EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(device_claimer_.DevicesClaimed());
   Mock::VerifyAndClearExpectations(&device_info_);
 
@@ -65,7 +65,7 @@ TEST_F(DeviceClaimerTest, ClaimAndReleaseDevices) {
   error.Reset();
   EXPECT_CALL(device_info_, AllowDevice(kTestDevice1Name)).Times(1);
   EXPECT_TRUE(device_claimer_.Release(kTestDevice1Name, &error));
-  EXPECT_EQ(Error::kSuccess, error.type());
+  EXPECT_TRUE(error.IsSuccess());
   // Should still have one device claimed.
   EXPECT_TRUE(device_claimer_.DevicesClaimed());
   Mock::VerifyAndClearExpectations(&device_info_);
@@ -86,7 +86,7 @@ TEST_F(DeviceClaimerTest, ClaimAndReleaseDevices) {
   error.Reset();
   EXPECT_CALL(device_info_, AllowDevice(kTestDevice2Name)).Times(1);
   EXPECT_TRUE(device_claimer_.Release(kTestDevice2Name, &error));
-  EXPECT_EQ(Error::kSuccess, error.type());
+  EXPECT_TRUE(error.IsSuccess());
   Mock::VerifyAndClearExpectations(&device_info_);
 
   // Should not have any claimed devices.
