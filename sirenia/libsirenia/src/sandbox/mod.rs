@@ -189,26 +189,30 @@ impl Sandbox for VmSandbox {
             return Err(Error::MissingArgument);
         }
 
-        if keep_fds.is_empty() {
-            return Err(Error::MissingArgument);
-        }
-
-        // The 2nd element of the first entry of |keep_fds| corresponds to a
-        // write FD that will be used to pipe stdout and stderr from crosvm. A
-        // dup is required because |Stdio| takes ownership and without it, it
-        // would close the underlying file object in the parent process. Since
-        // the fd is owned by someone else this would result in the fd being
-        // closed twice.
-        let stdout: Stdio = dup(keep_fds[0].1).map_err(Error::Dup)?;
-        let stderr: Stdio = dup(keep_fds[0].1).map_err(Error::Dup)?;
-
         info!("crosvm args: {:?}", args);
 
-        let vm = Command::new(&self.config.crosvm_path)
+        let mut cmd = Command::new(&self.config.crosvm_path);
+
+        for (in_fd, out_fd) in keep_fds {
+            // dup is required because |Stdio| takes ownership and an fd should not be closed twice.
+            let fd: Stdio = dup(*in_fd).map_err(Error::Dup)?;
+            match out_fd {
+                0 => {
+                    cmd.stdin(fd);
+                }
+                1 => {
+                    cmd.stdout(fd);
+                }
+                2 => {
+                    cmd.stderr(fd);
+                }
+                _ => (),
+            };
+        }
+
+        let vm = cmd
             .arg("--disable-sandbox")
             .args(args)
-            .stdout(stdout)
-            .stderr(stderr)
             .spawn()
             .map_err(Error::ForkingProcess)?;
         let pid = vm.id();
