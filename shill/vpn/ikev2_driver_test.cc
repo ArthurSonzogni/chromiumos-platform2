@@ -246,6 +246,8 @@ TEST_F(IKEv2DriverTest, PropertyStoreAndConfig) {
     store_->SetStringProperty(kProviderHostProperty, kHost, &unused_error);
     store_->SetStringProperty(kIKEv2AuthenticationTypeProperty,
                               kIKEv2AuthenticationTypeEAP, &unused_error);
+    store_->SetStringProperty(kEapMethodProperty, kEapMethodMSCHAPV2,
+                              &unused_error);
     store_->SetStringProperty(kEapIdentityProperty, kEAPIdentity,
                               &unused_error);
     store_->SetStringProperty(kEapPasswordProperty, kEAPPassword,

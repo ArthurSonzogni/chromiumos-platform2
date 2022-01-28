@@ -584,6 +584,7 @@ const char kEapMethodPEAP[] = "PEAP";
 const char kEapMethodTLS[] = "TLS";
 const char kEapMethodTTLS[] = "TTLS";
 const char kEapMethodLEAP[] = "LEAP";
+const char kEapMethodMSCHAPV2[] = "MSCHAPV2";
 
 // Flimflam EAP phase 2 auth options.
 const char kEapPhase2AuthPEAPMD5[] = "auth=MD5";

@@ -114,6 +114,13 @@ EapCredentials::~EapCredentials() = default;
 // static
 void EapCredentials::PopulateSupplicantProperties(
     CertificateFile* certificate_file, KeyValueStore* params) const {
+  if (eap_ == kEapMethodMSCHAPV2) {
+    // Plain MSCHAPv2 should only be used by IKEv2 VPN, and this path will not
+    // be called in that case.
+    LOG(ERROR) << "Plain MSCHAPv2 is not supported outside of IKEv2 VPN.";
+    return;
+  }
+
   std::string ca_cert;
   if (!ca_cert_pem_.empty()) {
     base::FilePath certfile =

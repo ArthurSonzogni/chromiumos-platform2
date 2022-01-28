@@ -57,6 +57,11 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
       return nullptr;
     }
   } else if (auth_type == kIKEv2AuthenticationTypeEAP) {
+    if (eap_credentials.method() != kEapMethodMSCHAPV2) {
+      LOG(ERROR) << "Only MSCHAPv2 is supported for EAP in IKEv2 VPN.";
+      return nullptr;
+    }
+
     Error err;
     config->xauth_user = eap_credentials.identity();
     config->xauth_password = eap_credentials.GetEapPassword(&err);
