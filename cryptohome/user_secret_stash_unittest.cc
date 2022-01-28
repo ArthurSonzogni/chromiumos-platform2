@@ -245,6 +245,19 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSViaWrappedKey) {
   EXPECT_EQ(unwrapped_main_key, kMainKey);
 }
 
+// Test the USS experiment state is off by default, but can be toggled in tests.
+TEST_F(UserSecretStashTest, ExperimentState) {
+  // The experiment is off by default.
+  EXPECT_FALSE(IsUserSecretStashExperimentEnabled());
+
+  // Verify the test can toggle the experiment state.
+  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
+  EXPECT_TRUE(IsUserSecretStashExperimentEnabled());
+
+  // Unset the experiment to avoid affecting other test cases.
+  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
+}
+
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using
 // FlatBuffers Object API.
 class UserSecretStashObjectApiTest : public UserSecretStashTest {

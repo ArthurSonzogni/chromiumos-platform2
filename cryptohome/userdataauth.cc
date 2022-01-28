@@ -3835,7 +3835,9 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::CreatePersistentUserImpl(
         CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
   }
 
-  return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
+  // Let the auth session perform any finalization operations for a newly
+  // created user.
+  return auth_session->OnUserCreated();
 }
 
 bool UserDataAuth::AddAuthFactor(

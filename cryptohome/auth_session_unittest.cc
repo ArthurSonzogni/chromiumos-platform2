@@ -459,4 +459,90 @@ TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
               auth_session.UpdateCredential(update_cred_request));
 }
 
+// Test that the UserSecretStash isn't created by default when a new user is
+// created.
+TEST_F(AuthSessionTest, NoUssByDefault) {
+  // Setup.
+  base::test::SingleThreadTaskEnvironment task_environment;
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(),
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+
+  // Test.
+  EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_EQ(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+  auth_session.OnUserCreated();
+
+  // Verify.
+  EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_EQ(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+}
+
+// A variant of the auth session test that has the UserSecretStash experiment
+// enabled.
+class AuthSessionWithUssExperimentTest : public AuthSessionTest {
+ protected:
+  AuthSessionWithUssExperimentTest() {
+    SetUserSecretStashExperimentForTesting(/*enabled=*/true);
+  }
+
+  ~AuthSessionWithUssExperimentTest() {
+    // Reset this global variable to avoid affecting unrelated test cases.
+    SetUserSecretStashExperimentForTesting(/*enabled=*/false);
+  }
+};
+
+// Test that the UserSecretStash is created on the user creation, in case the
+// UserSecretStash experiment is on.
+TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
+  // Setup.
+  base::test::SingleThreadTaskEnvironment task_environment;
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(),
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+
+  // Test.
+  EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_EQ(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+  auth_session.OnUserCreated();
+
+  // Verify.
+  EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+}
+
+// Test that no UserSecretStash is created for an ephemeral user.
+TEST_F(AuthSessionWithUssExperimentTest, NoUssForEphemeral) {
+  // Setup.
+  base::test::SingleThreadTaskEnvironment task_environment;
+  int flags =
+      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(),
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+
+  // Test.
+  auth_session.OnUserCreated();
+
+  // Verify.
+  EXPECT_EQ(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_EQ(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+}
+
 }  // namespace cryptohome

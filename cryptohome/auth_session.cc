@@ -19,6 +19,7 @@
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/mount_utils.h"
+#include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -104,6 +105,25 @@ user_data_auth::CryptohomeErrorCode AuthSession::ExtendTimer(
   // Update start_time_.
   start_time_ = base::TimeTicks::Now();
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
+user_data_auth::CryptohomeErrorCode AuthSession::OnUserCreated() {
+  if (IsUserSecretStashExperimentEnabled() && !is_ephemeral_user_) {
+    // Check invariants.
+    DCHECK(!user_secret_stash_);
+    DCHECK(!user_secret_stash_main_key_.has_value());
+    // The USS experiment is on, hence create the USS for the newly created
+    // non-ephemeral user. Keep the USS in memory: it will be persisted after
+    // the first auth factor gets added.
+    user_secret_stash_ = UserSecretStash::CreateRandom();
+    if (!user_secret_stash_) {
+      LOG(ERROR) << "User secret stash creation failed";
+      return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL;
+    }
+    user_secret_stash_main_key_ = UserSecretStash::CreateRandomMainKey();
+  }
+
+  return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
 }
 
 user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(

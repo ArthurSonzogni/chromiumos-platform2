@@ -28,6 +28,13 @@ namespace cryptohome {
 
 namespace {
 
+// TODO(b/208834396): Fetch the experiment state from server.
+bool& GetUserSecretStashExperimentStateHolder() {
+  // The static variable holding the state. The experiment is off by default.
+  static bool uss_experiment_enabled = false;
+  return uss_experiment_enabled;
+}
+
 // Serializes the UserSecretStashWrappedKeyBlock table into the given flatbuffer
 // builder. Returns the flatbuffer offset, to be used for building the outer
 // table.
@@ -315,6 +322,14 @@ std::optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
 }
 
 }  // namespace
+
+bool IsUserSecretStashExperimentEnabled() {
+  return GetUserSecretStashExperimentStateHolder();
+}
+
+void SetUserSecretStashExperimentForTesting(bool enabled) {
+  GetUserSecretStashExperimentStateHolder() = enabled;
+}
 
 // static
 std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom() {

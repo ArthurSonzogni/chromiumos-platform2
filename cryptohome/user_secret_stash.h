@@ -18,6 +18,12 @@
 
 namespace cryptohome {
 
+// Returns whether the UserSecretStash experiment (using the USS instead of
+// vault keysets) is enabled.
+bool IsUserSecretStashExperimentEnabled();
+// Allows to toggle the experiment state in tests.
+void SetUserSecretStashExperimentForTesting(bool enabled);
+
 // This wraps the UserSecretStash flatbuffer message, and is the only way that
 // the UserSecretStash is accessed. Don't pass the raw flatbuffer around.
 class UserSecretStash {

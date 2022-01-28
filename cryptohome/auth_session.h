@@ -24,6 +24,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
+#include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 
 namespace cryptohome {
@@ -68,6 +69,10 @@ class AuthSession final {
 
   // This function return the current status of this AuthSession.
   AuthStatus GetStatus() const { return status_; }
+
+  // OnUserCreated is called when the user and their homedir are newly created.
+  // Must be called no more than once.
+  user_data_auth::CryptohomeErrorCode OnUserCreated();
 
   // AddCredentials is called when newly created or existing user wants to add
   // new credentials.
@@ -121,6 +126,19 @@ class AuthSession final {
     return key_label_data_;
   }
 
+  // Returns the decrypted USS object, or null if it's not available. Exposed
+  // only for unit tests.
+  const UserSecretStash* user_secret_stash_for_testing() const {
+    return user_secret_stash_.get();
+  }
+
+  // Returns the decrypted USS Main Key, or nullopt if it's not available.
+  // Exposed only for unit tests.
+  const std::optional<brillo::SecureBlob>&
+  user_secret_stash_main_key_for_testing() const {
+    return user_secret_stash_main_key_;
+  }
+
   // Static function which returns a serialized token in a vector format. The
   // token is serialized into two uint64_t values which are stored in string of
   // size 16 bytes. The first 8 bytes represent the high value of the serialized
@@ -166,6 +184,11 @@ class AuthSession final {
   base::OnceCallback<void(const base::UnguessableToken&)> on_timeout_;
 
   std::unique_ptr<AuthFactor> auth_factor_;
+  // The decrypted UserSecretStash. Only populated for users who have it (legacy
+  // users who only have vault keysets will have this field equal to null).
+  std::unique_ptr<UserSecretStash> user_secret_stash_;
+  // The UserSecretStash main key. Only populated iff |user_secret_stash_| is.
+  std::optional<brillo::SecureBlob> user_secret_stash_main_key_;
   // The creator of the AuthSession object is responsible for the life of
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.
