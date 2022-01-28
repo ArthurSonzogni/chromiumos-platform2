@@ -1,4 +1,5 @@
 {
+  "critical-update": true,
   "description": "unittest only description",
   "fs-type": "squashfs",
   "id": "first-dlc",
@@ -9,6 +10,7 @@
   "mount-file-required": true,
   "name": "First Dlc",
   "pre-allocated-size": "8192",
+  "reserved": true,
   "size": "4096",
   "table-sha256-hash": "a963d36ec40e4af33bd4fe374247320123d5daad0fd93b06cd8fd6a4ce617971",
   "used-by": "system",

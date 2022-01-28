@@ -26,10 +26,14 @@ TEST(ManifestTest, ParseManifest) {
   const std::string used_by = R"("foo-user")";
   const std::string days_to_purge = R"("3")";
   const std::string mount_file_required = R"(true)";
+  const std::string reserved = R"(true)";
+  const std::string critical_update = R"(true)";
   const std::string description = R"("foo-description")";
   const std::string manifest_version = R"(1)";
   const std::string manifest_raw = std::string() + R"(
     {
+    "critical-update":)" + critical_update +
+                                   R"(,
     "description":)" + description +
                                    R"(,
     "factory-install":)" + factory_install +
@@ -50,6 +54,7 @@ TEST(ManifestTest, ParseManifest) {
                                    R"(,
     "preload-allowed":)" + preload_allowed +
                                    R"(,
+    "reserved":)" + reserved + R"(,
     "size":)" + size + R"(,
     "table-sha256-hash":)" + table_sha256_hash +
                                    R"(,
@@ -79,6 +84,8 @@ TEST(ManifestTest, ParseManifest) {
   EXPECT_EQ(manifest.days_to_purge(), 3);
   EXPECT_EQ(manifest.mount_file_required(), true);
   EXPECT_EQ(manifest.description(), "foo-description");
+  EXPECT_EQ(manifest.reserved(), true);
+  EXPECT_EQ(manifest.critical_update(), true);
 }
 
 TEST(ManifestTest, ParseManifestNoOptional) {
@@ -117,6 +124,8 @@ TEST(ManifestTest, ParseManifestNoOptional) {
   EXPECT_EQ(manifest.used_by(), "");
   EXPECT_EQ(manifest.days_to_purge(), 0);
   EXPECT_EQ(manifest.description(), "");
+  EXPECT_EQ(manifest.reserved(), false);
+  EXPECT_EQ(manifest.critical_update(), false);
 
   // Sizes should default to 0.
   EXPECT_EQ(manifest.preallocated_size(), 0);

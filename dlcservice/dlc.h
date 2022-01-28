@@ -120,6 +120,8 @@ class DlcBase {
 
  private:
   friend class DBusServiceTest;
+  FRIEND_TEST(DlcBaseTest, InitializationReservedSpace);
+  FRIEND_TEST(DlcBaseTest, InitializationReservedSpaceOmitted);
   FRIEND_TEST(DBusServiceTest, GetInstalled);
   FRIEND_TEST(DlcBaseTest, GetUsedBytesOnDisk);
   FRIEND_TEST(DlcBaseTest, DefaultState);

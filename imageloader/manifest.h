@@ -20,7 +20,7 @@ enum class BRILLO_EXPORT FileSystem { kExt4, kSquashFS };
 // A class to parse and store imageloader.json manifest. See manifest.md.
 class BRILLO_EXPORT Manifest {
  public:
-  Manifest();
+  Manifest() = default;
   virtual ~Manifest() = default;
   Manifest(const Manifest&) = delete;
   Manifest& operator=(const Manifest&) = delete;
@@ -48,6 +48,8 @@ class BRILLO_EXPORT Manifest {
   // Indicator for |dlcservice| to allow factory installed DLC images.
   bool factory_install() const { return factory_install_; }
   bool mount_file_required() const { return mount_file_required_; }
+  bool reserved() const { return reserved_; }
+  bool critical_update() const { return critical_update_; }
   const std::string& used_by() const { return used_by_; }
   int64_t days_to_purge() const { return days_to_purge_; }
   const std::string& description() const { return description_; }
@@ -57,25 +59,27 @@ class BRILLO_EXPORT Manifest {
 
  private:
   // Required manifest fields:
-  int manifest_version_;
+  int manifest_version_ = 0;
   std::vector<uint8_t> image_sha256_;
   std::vector<uint8_t> table_sha256_;
   std::string version_;
 
   // Optional manifest fields:
-  FileSystem fs_type_;
+  FileSystem fs_type_ = FileSystem::kExt4;
   std::string id_;
   std::string package_;
   std::string name_;
   std::string image_type_;
-  int64_t preallocated_size_;
-  int64_t size_;
-  bool is_removable_;
-  bool preload_allowed_;
-  bool factory_install_;
-  bool mount_file_required_;
+  int64_t preallocated_size_ = 0;
+  int64_t size_ = 0;
+  bool is_removable_ = false;
+  bool preload_allowed_ = false;
+  bool factory_install_ = false;
+  bool mount_file_required_ = false;
+  bool reserved_ = false;
+  bool critical_update_ = false;
   std::string used_by_;
-  int64_t days_to_purge_;
+  int64_t days_to_purge_ = 0;
   std::string description_;
   std::map<std::string, std::string> metadata_;
 };

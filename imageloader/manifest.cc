@@ -41,6 +41,8 @@ constexpr char kSize[] = "size";
 constexpr char kPreloadAllowed[] = "preload-allowed";
 constexpr char kFactoryInstall[] = "factory-install";
 constexpr char kMountFileRequired[] = "mount-file-required";
+constexpr char kReserved[] = "reserved";
+constexpr char kCriticalUpdate[] = "critical-update";
 constexpr char kUsedBy[] = "used-by";
 constexpr char kDaysToPurge[] = "days-to-purge";
 constexpr char kDescription[] = "description";
@@ -75,14 +77,6 @@ bool ParseMetadata(const base::Value& metadata_dict,
 }
 
 }  // namespace
-
-Manifest::Manifest()
-    : manifest_version_(0),
-      fs_type_(FileSystem::kExt4),
-      preallocated_size_(0),
-      size_(0),
-      is_removable_(false),
-      days_to_purge_(0) {}
 
 bool Manifest::ParseManifest(const std::string& manifest_raw) {
   // Now deserialize the manifest json and read out the rest of the component.
@@ -178,6 +172,12 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
       manifest_dict.FindBoolKey(kMountFileRequired);
   // If 'mount-file-required' field does not exist, by default it is false.
   mount_file_required_ = mount_file_required.value_or(false);
+
+  // If 'reserved' field does not exist, by default it is false.
+  reserved_ = manifest_dict.FindBoolKey(kReserved).value_or(false);
+
+  // If 'reserved' field does not exist, by default it is false.
+  critical_update_ = manifest_dict.FindBoolKey(kCriticalUpdate).value_or(false);
 
   // All of these fields are optional.
   const std::string* id = manifest_dict.FindStringKey(kId);

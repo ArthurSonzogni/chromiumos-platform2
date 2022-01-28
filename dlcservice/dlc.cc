@@ -95,6 +95,13 @@ bool DlcBase::Initialize() {
     base::DeleteFile(factory_install_image_path_);
   }
 
+  // TODO(kimjae): Efficiently overlap factory images with cache.
+  if (manifest_->reserved()) {
+    ErrorPtr tmp_err;
+    if (!CreateDlc(&tmp_err))
+      LOG(ERROR) << "Failed to reserve space for DLC=" << id_;
+  }
+
   return true;
 }
 

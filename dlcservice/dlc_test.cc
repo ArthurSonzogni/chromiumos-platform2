@@ -73,6 +73,26 @@ TEST_F(DlcBaseTest, InitializationClearsMountFile) {
   EXPECT_FALSE(prefs.Exists(kDlcRootMount));
 }
 
+TEST_F(DlcBaseTest, InitializationReservedSpace) {
+  // First DLC has `reserved` set to true.
+  DlcBase dlc(kFirstDlc);
+  dlc.Initialize();
+  EXPECT_TRUE(base::PathExists(
+      dlc.GetImagePath(SystemState::Get()->active_boot_slot())));
+  EXPECT_TRUE(base::PathExists(
+      dlc.GetImagePath(SystemState::Get()->inactive_boot_slot())));
+}
+
+TEST_F(DlcBaseTest, InitializationReservedSpaceOmitted) {
+  // Second DLC has `reserved` set to false/missing.
+  DlcBase dlc(kSecondDlc);
+  dlc.Initialize();
+  EXPECT_FALSE(base::PathExists(
+      dlc.GetImagePath(SystemState::Get()->active_boot_slot())));
+  EXPECT_FALSE(base::PathExists(
+      dlc.GetImagePath(SystemState::Get()->inactive_boot_slot())));
+}
+
 TEST_F(DlcBaseTest, CreateDlc) {
   DlcBase dlc(kFirstDlc);
   dlc.Initialize();
