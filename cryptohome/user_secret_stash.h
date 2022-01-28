@@ -52,6 +52,10 @@ class UserSecretStash {
       const brillo::SecureBlob& wrapping_key,
       brillo::SecureBlob* main_key);
 
+  // Randomly generates a USS Main Key. This is intended to be used when
+  // creating a fresh USS via |CreateRandom()|.
+  static brillo::SecureBlob CreateRandomMainKey();
+
   virtual ~UserSecretStash() = default;
 
   // Because this class contains raw secrets, it should never be copy-able.

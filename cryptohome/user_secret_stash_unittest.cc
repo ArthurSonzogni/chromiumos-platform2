@@ -57,6 +57,20 @@ TEST_F(UserSecretStashTest, CreateRandomNotConstant) {
   EXPECT_NE(stash_->GetResetSecret(), stash2->GetResetSecret());
 }
 
+// Basic test of the `CreateRandomMainKey()` method.
+TEST_F(UserSecretStashTest, CreateRandomMainKey) {
+  brillo::SecureBlob main_key = UserSecretStash::CreateRandomMainKey();
+  EXPECT_FALSE(main_key.empty());
+}
+
+// Test the secret main keys created by `CreateRandomMainKey()` don't repeat (in
+// practice).
+TEST_F(UserSecretStashTest, CreateRandomMainKeyNotConstant) {
+  brillo::SecureBlob main_key_1 = UserSecretStash::CreateRandomMainKey();
+  brillo::SecureBlob main_key_2 = UserSecretStash::CreateRandomMainKey();
+  EXPECT_NE(main_key_1, main_key_2);
+}
+
 // Verify the getters/setters of the wrapped key fields.
 TEST_F(UserSecretStashTest, MainKeyWrapping) {
   const char kWrappingId1[] = "id1";

@@ -426,6 +426,11 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
   return stash;
 }
 
+// static
+brillo::SecureBlob UserSecretStash::CreateRandomMainKey() {
+  return CreateSecureRandomBlob(kAesGcm256KeySize);
+}
+
 const brillo::SecureBlob& UserSecretStash::GetFileSystemKey() const {
   return file_system_key_;
 }
