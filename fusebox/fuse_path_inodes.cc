@@ -11,6 +11,7 @@
 #include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/strings/string_piece.h>
+#include <base/strings/string_split.h>
 
 namespace {
 
@@ -249,18 +250,12 @@ Node* InodeTable::RemoveNode(Node* node) {
   return node;
 }
 
-Device InodeTable::MakeFromName(std::string name) const {
+Device InodeTable::MakeFromName(const std::string& name) const {
   Device device;
 
-  const auto split_apart = [](std::string name) {
-    char* source = const_cast<char*>(name.c_str());
-    std::vector<std::string> parts;
-    for (char* part; (part = strtok_r(source, " ", &source));)
-      parts.push_back(part);
-    return parts;
-  };
+  std::vector<std::string> parts = base::SplitString(
+      name, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
 
-  const auto parts = split_apart(name);
   if (parts.size() >= 1)
     device.name = parts.at(0);
   if (parts.size() >= 2)

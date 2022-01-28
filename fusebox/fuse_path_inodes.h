@@ -70,7 +70,7 @@ class InodeTable {
 
   // Returns a Device created from |name|, which has fields for Device struct
   // {name, path, mode, ...} members.
-  Device MakeFromName(std::string name) const;
+  Device MakeFromName(const std::string& name) const;
 
   // Attach |device| to the node table as a child of the |parent| node, named
   // |device.name|. Returns the new node or null on failure.
