@@ -70,6 +70,7 @@ const CROSVM_PATH: &str = "/bin/crosvm-direct";
 struct TeeApp {
     sandbox: Box<dyn Sandbox>,
     app_info: AppManifestEntry,
+    args: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -247,13 +248,14 @@ impl TrichechusServerImpl {
 }
 
 impl Trichechus<Error> for TrichechusServerImpl {
-    fn start_session(&mut self, app_info: AppInfo) -> Result<()> {
+    fn start_session(&mut self, app_info: AppInfo, args: Vec<String>) -> Result<()> {
         info!("Received start session message: {:?}", &app_info);
         // The TEE app isn't started until its socket connection is accepted.
         Ok(log_error(start_session(
             self.state.borrow_mut().deref_mut(),
             self.port_to_transport_type(app_info.port_number),
             &app_info.app_id,
+            args,
         ))?)
     }
 
@@ -459,6 +461,7 @@ fn start_session(
     state: &mut TrichechusState,
     key: TransportType,
     app_id: &str,
+    args: Vec<String>,
 ) -> StdResult<(), trichechus::Error> {
     let app_info = lookup_app_info(state, app_id)?.to_owned();
 
@@ -498,7 +501,14 @@ fn start_session(
         }
     }
 
-    state.pending_apps.insert(key, TeeApp { sandbox, app_info });
+    state.pending_apps.insert(
+        key,
+        TeeApp {
+            sandbox,
+            app_info,
+            args,
+        },
+    );
     Ok(())
 }
 
@@ -526,9 +536,10 @@ fn spawn_tee_app(
         .map(|a| a.as_str());
     let pid = match &app.app_info.exec_info {
         ExecutableInfo::Path(path) => {
-            let mut args = Vec::with_capacity(1 + exe_args.len());
+            let mut args = Vec::with_capacity(1 + exe_args.len() + app.args.len());
             args.push(path.as_str());
             args.extend(exe_args);
+            args.extend(app.args.iter().map(AsRef::<str>::as_ref));
             app.sandbox
                 .run(Path::new(&path), args.as_slice(), &keep_fds)
                 .context("failed to start up sandbox")?
@@ -543,9 +554,10 @@ fn spawn_tee_app(
             match state.loaded_apps.borrow().get(digest) {
                 Some(shared_mem) => {
                     let fd_path = fd_to_path(shared_mem.as_raw_fd());
-                    let mut args = Vec::with_capacity(1 + exe_args.len());
+                    let mut args = Vec::with_capacity(1 + exe_args.len() + app.args.len());
                     args.push(fd_path.as_str());
                     args.extend(exe_args);
+                    args.extend(app.args.iter().map(AsRef::<str>::as_ref));
                     app.sandbox
                         .run_raw(shared_mem.as_raw_fd(), args.as_slice(), &keep_fds)
                         .context("failed to start up sandbox")?

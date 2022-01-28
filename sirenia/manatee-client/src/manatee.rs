@@ -105,7 +105,11 @@ impl Passthrough {
         })
     }
 
-    fn start_teeapplication_impl(&self, app_id: &str) -> Result<(i32, OwnedFd, OwnedFd)> {
+    fn start_teeapplication_impl(
+        &self,
+        app_id: &str,
+        args: Vec<&str>,
+    ) -> Result<(i32, OwnedFd, OwnedFd)> {
         info!("Setting up app vsock.");
         let mut app_transport = self
             .uri
@@ -121,7 +125,7 @@ impl Passthrough {
         self.client
             .lock()
             .unwrap()
-            .start_session(app_info)
+            .start_session(app_info, args.iter().map(|s| s.to_string()).collect())
             .context("start_session rpc failed")?;
 
         info!("Starting TEE application: {}", app_id);
@@ -143,8 +147,9 @@ impl OrgChromiumManaTEEInterface for Passthrough {
     fn start_teeapplication(
         &self,
         app_id: &str,
+        args: Vec<&str>,
     ) -> std::result::Result<(i32, OwnedFd, OwnedFd), dbus::Error> {
-        self.start_teeapplication_impl(app_id)
+        self.start_teeapplication_impl(app_id, args)
             .map_err(to_dbus_error)
     }
 
@@ -209,11 +214,12 @@ fn handle_app_fds(mut input: File, mut output: File) -> Result<()> {
 fn start_manatee_app(
     api: &dyn OrgChromiumManaTEEInterface,
     app_id: &str,
+    args: Vec<&str>,
     handler: &dyn Fn(File, File) -> Result<()>,
 ) -> Result<()> {
     info!("Starting TEE application: {}", app_id);
     let (fd_in, fd_out) = match api
-        .start_teeapplication(app_id)
+        .start_teeapplication(app_id, args)
         .context("failed to call start_teeapplication D-Bus method")?
     {
         (0, fd_in, fd_out) => (fd_in, fd_out),
@@ -262,16 +268,21 @@ fn system_event(trichechus_uri: Option<TransportType>, event: &str) -> Result<()
     }
 }
 
-fn dbus_start_manatee_app(app_id: &str, handler: &dyn Fn(File, File) -> Result<()>) -> Result<()> {
+fn dbus_start_manatee_app(
+    app_id: &str,
+    args: Vec<&str>,
+    handler: &dyn Fn(File, File) -> Result<()>,
+) -> Result<()> {
     info!("Connecting to D-Bus.");
     let connection = Connection::new_system().context("failed to get D-Bus connection")?;
     let conn_path = connect_to_dugong(&connection)?;
-    start_manatee_app(&conn_path, app_id, handler)
+    start_manatee_app(&conn_path, app_id, args, handler)
 }
 
 fn direct_start_manatee_app(
     trichechus_uri: TransportType,
     app_id: &str,
+    args: Vec<&str>,
     elf: Option<Vec<u8>>,
     handler: &dyn Fn(File, File) -> Result<()>,
 ) -> Result<()> {
@@ -286,7 +297,7 @@ fn direct_start_manatee_app(
             .load_app(app_id.to_string(), elf)
             .context("load_app rpc failed")?;
     }
-    start_manatee_app(&passthrough, app_id, handler)
+    start_manatee_app(&passthrough, app_id, args, handler)
 }
 
 fn locate_command(name: &str) -> Result<PathBuf> {
@@ -423,8 +434,27 @@ fn run_test_environment() -> Result<()> {
     Ok(())
 }
 
+fn split_args<I: IntoIterator<Item = String>>(into_iter: I) -> (Vec<String>, Vec<String>) {
+    let mut opts = Vec::new();
+    let mut args = Vec::new();
+
+    let mut found_delimiter = false;
+    for value in into_iter {
+        if !found_delimiter {
+            if value != "--" {
+                opts.push(value)
+            } else {
+                found_delimiter = true;
+            }
+        } else {
+            args.push(value);
+        }
+    }
+    (opts, args)
+}
+
 fn get_usage() -> String {
-    format!("[-h] [-r | -a <name> [-X <path>] [-i true|false] | --halt | --poweroff | --reboot]\nversion: {}", BUILD_TIMESTAMP)
+    format!("[-h] [-r | -a <name> [-X <path>] [-i true|false] | --halt | --poweroff | --reboot] [-- ...]\nversion: {}", BUILD_TIMESTAMP)
 }
 
 fn main() -> Result<()> {
@@ -486,8 +516,8 @@ fn main() -> Result<()> {
     );
     let verbosity_opt = VerbosityOption::default(&mut options);
 
-    let args: Vec<String> = env::args().collect();
-    let matches = options.parse(&args[1..]).map_err(|err| {
+    let (opts, args) = split_args(env::args());
+    let matches = options.parse(&opts[1..]).map_err(|err| {
         eprintln!("{}", options.usage(&get_usage()));
         anyhow!("failed parse command line options: {}", err)
     })?;
@@ -599,8 +629,11 @@ fn main() -> Result<()> {
         &handle_app_fds
     };
 
+    let args_ref = args.iter().map(AsRef::<str>::as_ref).collect();
     match trichechus_uri {
-        None => dbus_start_manatee_app(&app_id, handler),
-        Some(trichechus_uri) => direct_start_manatee_app(trichechus_uri, &app_id, elf, handler),
+        None => dbus_start_manatee_app(&app_id, args_ref, handler),
+        Some(trichechus_uri) => {
+            direct_start_manatee_app(trichechus_uri, &app_id, args_ref, elf, handler)
+        }
     }
 }

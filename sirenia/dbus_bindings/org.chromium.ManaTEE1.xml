@@ -14,6 +14,7 @@
   -->
   <method name="StartTEEApplication">
     <arg name="app_id" type="s" direction="in" />
+    <arg name="args" type="as" direction="in" />
     <arg name="error_code" type="i" direction="out"/>
     <arg name="fd_in" type="h" direction="out"/>
     <arg name="fd_out" type="h" direction="out"/>

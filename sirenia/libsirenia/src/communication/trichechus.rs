@@ -69,7 +69,7 @@ impl FromStr for SystemEvent {
 
 #[sirenia_rpc(error = "Error")]
 pub trait Trichechus<E> {
-    fn start_session(&mut self, app_info: AppInfo) -> StdResult<(), E>;
+    fn start_session(&mut self, app_info: AppInfo, args: Vec<String>) -> StdResult<(), E>;
     fn load_app(&mut self, app_id: String, elf: Vec<u8>) -> StdResult<(), E>;
     #[error()]
     fn get_apps(&mut self) -> StdResult<Vec<(String, ExecutableInfo)>, E>;
