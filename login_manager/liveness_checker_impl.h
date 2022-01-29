@@ -10,10 +10,16 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/optional.h>
+#include <base/strings/string_piece_forward.h>
 #include <base/time/time.h>
 
 #include "login_manager/liveness_checker.h"
 #include "login_manager/login_metrics.h"
+
+namespace brillo {
+class SafeFD;
+}  // namespace brillo
 
 namespace dbus {
 class ObjectProxy;
@@ -65,13 +71,25 @@ class LivenessCheckerImpl : public LivenessChecker {
   // iff there is a successful response.
   void HandleAck(dbus::Response* response);
 
+  // Opens a file (like "status" or "wchan") in the browser's /proc directory.
+  // Returns a SafeFD if successful, nothing on error. If there is an error,
+  // the error has already been logged and the caller does not need to log
+  // another error.
+  base::Optional<brillo::SafeFD> OpenBrowserProcFile(
+      base::StringPiece file_name);
+
   // Reads /proc/browser_pid/status and returns the state of the browser at
   // the current moment.
   LoginMetrics::BrowserState GetBrowserState();
 
+  // Reads /proc/browser_pid/wchan and records the result in some format. (Right
+  // now it just logs it; some day will also record in UMA).
+  void RecordWchanState(LoginMetrics::BrowserState state);
+
   // Updates UMA stat recording the state of the browser process (running,
   // sleeping, uninterruptible wait, zombie, traced-or-stopped) at the moment
-  // the liveness check times out.
+  // the liveness check times out. For sleep and wait states, also records what
+  // the process was waiting for.
   void RecordStateForTimeout();
 
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.

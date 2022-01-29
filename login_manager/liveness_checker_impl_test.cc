@@ -100,7 +100,8 @@ class LivenessCheckerImplTest : public ::testing::Test {
 TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
   ExpectUnAckedLivenessPing();
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
-  EXPECT_CALL(*manager_.get(), GetBrowserPid()).WillOnce(Return(base::nullopt));
+  EXPECT_CALL(*manager_.get(), GetBrowserPid())
+      .WillRepeatedly(Return(base::nullopt));
   EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
                              LoginMetrics::BrowserState::kErrorGettingState))
       .Times(1);
@@ -111,7 +112,8 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
   ExpectLivenessPingResponsePing();
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
-  EXPECT_CALL(*manager_.get(), GetBrowserPid()).WillOnce(Return(base::nullopt));
+  EXPECT_CALL(*manager_.get(), GetBrowserPid())
+      .WillRepeatedly(Return(base::nullopt));
   EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
                              LoginMetrics::BrowserState::kErrorGettingState))
       .Times(1);
@@ -130,7 +132,8 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   // Expect _no_ browser abort!
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(0);
   // But we still record the UMA.
-  EXPECT_CALL(*manager_.get(), GetBrowserPid()).WillOnce(Return(base::nullopt));
+  EXPECT_CALL(*manager_.get(), GetBrowserPid())
+      .WillRepeatedly(Return(base::nullopt));
   EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
                              LoginMetrics::BrowserState::kErrorGettingState))
       .Times(1);
@@ -201,7 +204,7 @@ TEST_P(LivenessCheckerImplParamTest, BrowserStatusToUMA) {
 
   ExpectUnAckedLivenessPing();
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
-  EXPECT_CALL(*manager_.get(), GetBrowserPid()).WillOnce(Return(123));
+  EXPECT_CALL(*manager_.get(), GetBrowserPid()).WillRepeatedly(Return(123));
   EXPECT_CALL(*metrics_,
               RecordStateForLivenessTimeout(GetParam().expected_state))
       .Times(1);

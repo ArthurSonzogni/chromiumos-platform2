@@ -18,9 +18,9 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
@@ -143,41 +143,42 @@ void LivenessCheckerImpl::SetProcForTests(base::FilePath&& proc_directory) {
   proc_directory_ = std::move(proc_directory);
 }
 
-void LivenessCheckerImpl::RecordStateForTimeout() {
-  if (metrics_ != nullptr) {
-    metrics_->RecordStateForLivenessTimeout(GetBrowserState());
-  }
-}
-
-LoginMetrics::BrowserState LivenessCheckerImpl::GetBrowserState() {
+base::Optional<brillo::SafeFD> LivenessCheckerImpl::OpenBrowserProcFile(
+    base::StringPiece file_name) {
   base::Optional<pid_t> browser_pid = manager_->GetBrowserPid();
   if (!browser_pid.has_value()) {
-    return LoginMetrics::BrowserState::kErrorGettingState;
+    return base::nullopt;
   }
 
-  base::FilePath status_file_path(proc_directory_);
-  status_file_path =
-      status_file_path.Append(base::NumberToString(browser_pid.value()))
-          .Append("status");
+  base::FilePath file_path(proc_directory_);
+  file_path = file_path.Append(base::NumberToString(browser_pid.value()))
+                  .Append(file_name);
 
   brillo::SafeFD::SafeFDResult result = brillo::SafeFD::Root();
-
   if (brillo::SafeFD::IsError(result.second)) {
     PLOG(WARNING) << "Could not get root directory "
                   << static_cast<int>(result.second) << ": ";
-    return LoginMetrics::BrowserState::kErrorGettingState;
+    return base::nullopt;
   }
 
-  result =
-      result.first.OpenExistingFile(status_file_path, O_RDONLY | O_CLOEXEC);
+  result = result.first.OpenExistingFile(file_path, O_RDONLY | O_CLOEXEC);
   if (brillo::SafeFD::IsError(result.second)) {
     PLOG(WARNING) << "Could not open status file "
                   << static_cast<int>(result.second) << ": ";
+    return base::nullopt;
+  }
+
+  return std::move(result.first);
+}
+
+LoginMetrics::BrowserState LivenessCheckerImpl::GetBrowserState() {
+  base::Optional<brillo::SafeFD> status_fd = OpenBrowserProcFile("status");
+  if (!status_fd.has_value()) {
     return LoginMetrics::BrowserState::kErrorGettingState;
   }
 
   std::pair<std::vector<char>, brillo::SafeFD::Error> read_result =
-      result.first.ReadContents();
+      status_fd.value().ReadContents();
   if (brillo::SafeFD::IsError(read_result.second)) {
     PLOG(WARNING) << "Could not read status file "
                   << static_cast<int>(read_result.second) << ": ";
@@ -190,8 +191,7 @@ LoginMetrics::BrowserState LivenessCheckerImpl::GetBrowserState() {
                   kStateField.begin(), kStateField.end());
 
   if (state_begin == read_result.first.end()) {
-    LOG(WARNING) << "Could not find '\\nState:\\t' in "
-                 << status_file_path.value();
+    LOG(WARNING) << "Could not find '\\nState:\\t' in /proc/pid/status";
     return LoginMetrics::BrowserState::kErrorGettingState;
   }
 
@@ -217,6 +217,50 @@ LoginMetrics::BrowserState LivenessCheckerImpl::GetBrowserState() {
     default:
       LOG(WARNING) << "Unknown browser state " << *state_end;
       return LoginMetrics::BrowserState::kUnknown;
+  }
+}
+
+void LivenessCheckerImpl::RecordWchanState(LoginMetrics::BrowserState state) {
+  base::Optional<brillo::SafeFD> wchan_fd = OpenBrowserProcFile("wchan");
+  if (!wchan_fd.has_value()) {
+    return;
+  }
+
+  std::pair<std::vector<char>, brillo::SafeFD::Error> read_result =
+      wchan_fd.value().ReadContents();
+  if (brillo::SafeFD::IsError(read_result.second)) {
+    PLOG(WARNING) << "Could not read wchan file "
+                  << static_cast<int>(read_result.second) << ": ";
+    return;
+  }
+
+  // TODO(iby): Add a UMA here.
+  // Ideally, we'd like to increment a UMA histogram based on which syscall
+  // Chrome is waiting for. Unfortunately, there are about 400 system calls in
+  // Linux, which is well above our normal histogram limit, and they are not
+  // consistent between kernels and architectures, so making an exhaustive list
+  // and having it consistent for all machines is a lot of code. Instead, for
+  // now, we just dump the contents to the log file. Once we have some logs,
+  // I'll add a histogram with a somewhat adhoc list of entries that are showing
+  // up most frequently.
+
+  // Strings log better than vector<char>.
+  base::StringPiece contents(read_result.first.data(),
+                             read_result.first.size());
+  LOG(WARNING) << "browser wchan for state " << static_cast<int>(state) << ": "
+               << contents;
+}
+
+void LivenessCheckerImpl::RecordStateForTimeout() {
+  LoginMetrics::BrowserState state = GetBrowserState();
+  if (metrics_ != nullptr) {
+    metrics_->RecordStateForLivenessTimeout(state);
+  }
+
+  if (state == LoginMetrics::BrowserState::kSleeping ||
+      state == LoginMetrics::BrowserState::kUninterruptibleWait ||
+      state == LoginMetrics::BrowserState::kTracedOrStopped) {
+    RecordWchanState(state);
   }
 }
 
