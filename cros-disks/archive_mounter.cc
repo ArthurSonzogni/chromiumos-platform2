@@ -161,6 +161,11 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
   sandbox->AddArgument(base::StringPrintf("ro,umask=0222,uid=%d,gid=%d",
                                           kChronosUID, kChronosAccessGID));
 
+  if (std::string encoding; GetParamValue(params, "encoding", &encoding)) {
+    sandbox->AddArgument("-o");
+    sandbox->AddArgument("encoding=" + encoding);
+  }
+
   for (const auto& opt : extra_command_line_options_)
     sandbox->AddArgument(opt);
 

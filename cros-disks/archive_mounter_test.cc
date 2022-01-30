@@ -22,6 +22,7 @@ namespace cros_disks {
 namespace {
 
 using testing::_;
+using testing::Contains;
 using testing::ElementsAre;
 using testing::Return;
 using testing::UnorderedElementsAre;
@@ -191,6 +192,20 @@ TEST_F(ArchiveMounterTest, IgnoredIfNotNeeded) {
   EXPECT_EQ(MOUNT_ERROR_NONE, error);
   ASSERT_TRUE(sandbox);
   EXPECT_EQ("", sandbox->input());
+}
+
+// Tests that the 'encoding' option is passed to the FUSE mounter.
+TEST_F(ArchiveMounterTest, EncodingOption) {
+  const std::string encoding = "MyEncoding";
+
+  auto mounter = CreateMounter({});
+  MountErrorType error = MOUNT_ERROR_UNKNOWN;
+  auto sandbox = PrepareSandbox(
+      *mounter, kSomeSource,
+      {"option1=dummy", "encoding=" + encoding, "option2=dummy2"}, &error);
+  EXPECT_EQ(MOUNT_ERROR_NONE, error);
+  ASSERT_TRUE(sandbox);
+  EXPECT_THAT(sandbox->arguments(), Contains("encoding=" + encoding));
 }
 
 }  // namespace cros_disks
