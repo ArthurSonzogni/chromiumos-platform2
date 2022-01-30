@@ -79,7 +79,7 @@ brillo::SecureBlob GenerateDmcryptKeyDescriptor(
 bool AddLogonKey(const brillo::SecureBlob& key,
                  const brillo::SecureBlob& key_reference) {
   if (add_key(kKeyring, key_reference.char_data(), key.char_data(), key.size(),
-              KEY_SPEC_THREAD_KEYRING) == -1) {
+              KEY_SPEC_SESSION_KEYRING) == -1) {
     PLOG(ERROR) << "add_key failed";
     return false;
   }
@@ -88,7 +88,7 @@ bool AddLogonKey(const brillo::SecureBlob& key,
 }
 
 bool UnlinkLogonKey(const brillo::SecureBlob& key_reference) {
-  key_serial_t key = keyctl_search(KEY_SPEC_THREAD_KEYRING, kKeyring,
+  key_serial_t key = keyctl_search(KEY_SPEC_SESSION_KEYRING, kKeyring,
                                    key_reference.char_data(), 0);
 
   if (key == -1) {
