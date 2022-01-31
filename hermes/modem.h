@@ -138,7 +138,7 @@ class Modem : public EuiccInterface {
       int err);
   // List of responses for the oldest SendApdus call that hasn't been completely
   // processed.
-  std::vector<std::vector<uint8_t>> responses_;
+  std::vector<ResponseApdu> responses_;
   std::deque<TxElement> tx_queue_;
 
   // Used to send notifications about eSIM slot changes.
@@ -181,10 +181,16 @@ void Modem<T>::SendApdus(std::vector<lpa::card::Apdu> apdus,
 template <typename T>
 void Modem<T>::SendApdusResponse(EuiccInterface::ResponseCallback callback,
                                  int err) {
-  callback(responses_, err);
+  std::vector<std::vector<uint8_t>> responses_vec;
+  for (auto& response : responses_) {
+    response.ReleaseStatusBytes();
+    responses_vec.push_back(response.Release());
+  }
+  responses_.clear();
+  callback(responses_vec, err);
   // ResponseCallback interface does not indicate a change in ownership of
   // |responses_|, but all callbacks should transfer ownership.
-  CHECK(responses_.empty());
+  CHECK(responses_vec.empty());
 }
 
 template <typename T>

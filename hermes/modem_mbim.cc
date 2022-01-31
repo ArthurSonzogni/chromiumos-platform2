@@ -614,12 +614,15 @@ void ModemMbim::UiccLowLevelAccessApduResponseParse(MbimDevice* device,
           response, &status, &response_size, &out_response, &error)) {
     LOG(INFO) << "Adding to payload from APDU response (" << response_size
               << " bytes)";
-    VLOG(2) << "Payload: " << base::HexEncode(out_response, response_size);
+    VLOG(2) << "Payload: " << base::HexEncode(out_response, response_size)
+            << ", status: " << status;
 
     payload.AddData(out_response, response_size);
+    payload.AddStatusBytes((status >> 8) & 0xFF, status & 0xFF);
     if (payload.MorePayloadIncoming()) {
       // Make the next transmit operation be a request for more APDU data
-      info->apdu_ = payload.CreateGetMoreCommand(/*is_extended_apdu*/ false);
+      info->apdu_ = payload.CreateGetMoreCommand(/*is_extended_apdu*/ false,
+                                                 info->apdu_.cls_);
       LOG(INFO) << "Requesting more APDUs...";
       modem_mbim->TransmitFromQueue();
       return;
@@ -630,9 +633,7 @@ void ModemMbim::UiccLowLevelAccessApduResponseParse(MbimDevice* device,
       modem_mbim->TransmitFromQueue();
       return;
     }
-    // In case of mbim there are no appended status bytes in the APDU received.
-    // Hence no extra bytes to be removed.
-    modem_mbim->responses_.push_back(payload.ReleaseOnly());
+    modem_mbim->responses_.push_back(std::move(payload));
     std::move(modem_mbim->tx_queue_[0].cb_).Run(lpa::card::EuiccCard::kNoError);
     modem_mbim->tx_queue_.pop_front();
     modem_mbim->TransmitFromQueue();

@@ -26,16 +26,18 @@ constexpr size_t kStandardLengthBytes = 1;
 constexpr size_t kExtendedLengthBytes = 3;
 
 constexpr size_t kHeaderSize = 4;  // CLA + INS + P1 + P2
+constexpr size_t kNumStatusBytes = 2;
 
 }  // namespace
 
 namespace hermes {
 
-CommandApdu::CommandApdu(ApduClass cls,
-                         ApduInstruction instruction,
+CommandApdu::CommandApdu(uint8_t cls,
+                         uint8_t instruction,
                          bool is_extended_length,
                          uint16_t le)
-    : is_extended_length_(is_extended_length),
+    : cls_(cls),
+      is_extended_length_(is_extended_length),
       has_more_fragments_(true),
       current_fragment_(0),
       le_(le),
@@ -62,6 +64,14 @@ CommandApdu::CommandApdu(ApduClass cls,
   data_.push_back(0);                                  // P2
 }
 
+CommandApdu::CommandApdu(const std::vector<uint8_t>& data)
+    : has_more_fragments_(true) {
+  VLOG(2) << __func__ << " data:" << base::HexEncode(data.data(), data.size());
+  data_ = data;
+  cls_ = data[0];
+  is_apdu_ready_ = true;
+}
+
 void CommandApdu::AddData(const std::initializer_list<uint8_t>& data) {
   DCHECK_EQ(current_index_, 0);
   EnsureLcExists();
@@ -74,16 +84,36 @@ void CommandApdu::AddData(const std::vector<uint8_t>& data) {
   data_.insert(data_.end(), data.begin(), data.end());
 }
 
+bool CommandApdu::HasMoreFragments() const {
+  VLOG(2) << __func__ << " has_more_fragments_: " << has_more_fragments_;
+  return has_more_fragments_;
+}
+
 size_t CommandApdu::GetNextFragment(uint8_t** fragment) {
   DCHECK(fragment);
+  VLOG(2) << __func__;
   if (!HasMoreFragments()) {
     return 0;
+  }
+
+  if (is_apdu_ready_) {
+    VLOG(2) << __func__
+            << " data_:" << base::HexEncode(data_.data(), data_.size());
+    // We don't perform any fragmentation/lc logic if data_ already contains the
+    // APDU.
+    *fragment = &data_[0];
+    has_more_fragments_ = false;
+    return data_.size();
   }
 
   size_t header_size = kHeaderSize;
   size_t length_size =
       is_extended_length_ ? kExtendedLengthBytes : kStandardLengthBytes;
   size_t lc_size = 0;
+
+  VLOG(2) << __func__ << " header_size:" << header_size
+          << ", length_size:" << length_size;
+
   // The APDU contains an Lc if it has any data.
   if (data_.size() > kHeaderSize) {
     lc_size += length_size;
@@ -95,8 +125,13 @@ size_t CommandApdu::GetNextFragment(uint8_t** fragment) {
   current_index_ += is_first_fragment ? header_size : 0;
   size_t bytes_left = data_.size() - current_index_;
   size_t current_size = std::min(bytes_left, max_data_size_);
+
+  VLOG(2) << __func__ << " bytes_left:" << bytes_left
+          << ", current_size:" << current_size;
   bool is_last_fragment = (bytes_left == current_size);
   has_more_fragments_ = !is_last_fragment;
+
+  VLOG(2) << __func__ << " has_more_fragments_:" << has_more_fragments_;
 
   // Set up APDU header in-place.
   // If Lc is 0, the generated APDU should be either case 1 or 2.
@@ -152,59 +187,67 @@ void CommandApdu::EnsureLcExists() {
 // ResponseApdu Methods //
 //////////////////////////
 
-void ResponseApdu::AddData(const std::vector<uint8_t>& data) {
-  RemoveStatusBytes();
-  data_.insert(data_.end(), data.begin(), data.end());
+void ResponseApdu::AddStatusBytes(uint8_t sw1, uint8_t sw2) {
+  data_.insert(data_.end(), {sw1, sw2});
 }
 
 void ResponseApdu::AddData(const uint8_t* data, size_t data_len) {
-  RemoveStatusBytes();
+  // If AddData is called over multiple fragments, remove status bytes from the
+  // previous fragment
+  if (data_.size() >= kNumStatusBytes)
+    ReleaseStatusBytes();
   data_.insert(data_.end(), data, data + data_len);
 }
 
+std::vector<uint8_t> ResponseApdu::ReleaseStatusBytes() {
+  VLOG(2) << __func__ << " data_.size:" << data_.size();
+  if (data_.size() < kNumStatusBytes) {
+    LOG(ERROR) << "Cannot release status bytes.";
+    return {};
+  }
+  std::vector<uint8_t> status_bytes(data_.end() - kNumStatusBytes, data_.end());
+  data_.erase(data_.end() - kNumStatusBytes, data_.end());
+  return status_bytes;
+}
+
 std::vector<uint8_t> ResponseApdu::Release() {
-  RemoveStatusBytes();
   return std::move(data_);
 }
 
-std::vector<uint8_t> ResponseApdu::ReleaseOnly() {
-  return std::move(data_);
-}
-
-CommandApdu ResponseApdu::CreateGetMoreCommand(bool use_extended_length) const {
+CommandApdu ResponseApdu::CreateGetMoreCommand(bool use_extended_length,
+                                               uint8_t cls) const {
+  VLOG(2) << __func__;
   uint8_t sw2 = 0;
-  if (2 <= data_.size()) {
+  if (data_.size() >= kNumStatusBytes) {
     sw2 = data_[data_.size() - 1];
   }
-  return CommandApdu(ApduClass::STORE_DATA, ApduInstruction::GET_MORE_RESPONSE,
+  return CommandApdu(cls, ApduInstruction::INS_GET_MORE_RESPONSE,
                      use_extended_length, sw2);
 }
 
 bool ResponseApdu::IsSuccessful() const {
-  if (2 <= data_.size()) {
-    return data_[data_.size() - 2] == STATUS_OK;
+  VLOG(2) << __func__;
+  if (data_.size() >= kNumStatusBytes) {
+    return data_[data_.size() - kNumStatusBytes] == STATUS_OK;
   }
   LOG(WARNING) << "Called IsSuccessful() on an empty ResponseApdu";
   return true;
 }
 
 bool ResponseApdu::WaitingForNextFragment() const {
-  return (data_.empty() || data_.size() == 2) && IsSuccessful();
+  VLOG(2) << __func__;
+  return (data_.empty() || data_.size() == kNumStatusBytes) && IsSuccessful();
 }
 
 bool ResponseApdu::MorePayloadIncoming() const {
-  if (2 <= data_.size()) {
-    return data_[data_.size() - 2] == STATUS_MORE_RESPONSE;
+  VLOG(2) << __func__;
+
+  if (data_.size() >= kNumStatusBytes) {
+    return data_[data_.size() - kNumStatusBytes] == STATUS_MORE_RESPONSE;
   }
+
   LOG(WARNING) << "Called MorePayloadIncoming() on an empty ResponseApdu";
   return false;
-}
-
-void ResponseApdu::RemoveStatusBytes() {
-  if (2 <= data_.size()) {
-    data_.pop_back();
-    data_.pop_back();
-  }
 }
 
 }  // namespace hermes

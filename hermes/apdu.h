@@ -13,13 +13,13 @@
 
 namespace hermes {
 
-enum class ApduClass : uint8_t {
-  STORE_DATA = 0x80,
+enum ApduClass : uint8_t {
+  CLA_STORE_DATA = 0x80,
 };
 
-enum class ApduInstruction : uint8_t {
-  GET_MORE_RESPONSE = 0xC0,
-  STORE_DATA = 0xE2,
+enum ApduInstruction : uint8_t {
+  INS_GET_MORE_RESPONSE = 0xC0,
+  INS_STORE_DATA = 0xE2,
 };
 
 // P1 byte based on the length of the data field P3 in a transport command.
@@ -47,13 +47,14 @@ constexpr uint8_t kApduP1LastBlock = 0x91;
 //                             +--------+----------+------------+----------+
 class CommandApdu {
  public:
-  CommandApdu(ApduClass cls,
-              ApduInstruction instruction,
+  CommandApdu(uint8_t cls,
+              uint8_t instruction,
               bool is_extended_length = false,
               uint16_t le = 0);
 
   CommandApdu(CommandApdu&&) = default;
   CommandApdu(const CommandApdu&) = delete;
+  explicit CommandApdu(const std::vector<uint8_t>& data);
   CommandApdu& operator=(const CommandApdu&) = delete;
 
   CommandApdu& operator=(CommandApdu&&) = default;
@@ -71,13 +72,15 @@ class CommandApdu {
   // |GetNextFragment|.
   size_t GetNextFragment(uint8_t** fragment);
 
-  bool HasMoreFragments() const { return has_more_fragments_; }
+  bool HasMoreFragments() const;
+
+  uint8_t cls_;
 
  private:
   // Create an Lc field if it doesn't already exist.
   void EnsureLcExists();
 
- private:
+  bool is_apdu_ready_ = false;
   bool is_extended_length_;
   bool has_more_fragments_;
   uint8_t current_fragment_;
@@ -103,14 +106,15 @@ class ResponseApdu {
   // updated.
   void AddData(const std::vector<uint8_t>& data);
   void AddData(const uint8_t* data, size_t data_len);
+  void AddStatusBytes(uint8_t sw1, uint8_t sw2);
   // Release ownership of the data buffer. The payload data (without sw1 and
   // sw2) will be returned, and the ResponseApdu will revert to its default
   // state with an empty data buffer.
   std::vector<uint8_t> Release();
-  std::vector<uint8_t> ReleaseOnly();
+  std::vector<uint8_t> ReleaseStatusBytes();
 
   // Create a GetMoreResponse APDU command using the current sw2 value.
-  CommandApdu CreateGetMoreCommand(bool use_extended_length) const;
+  CommandApdu CreateGetMoreCommand(bool use_extended_length, uint8_t cls) const;
 
   bool IsSuccessful() const;
   bool WaitingForNextFragment() const;
@@ -121,9 +125,7 @@ class ResponseApdu {
     STATUS_MORE_RESPONSE = 0x61,
     STATUS_OK = 0x90,
   };
-  void RemoveStatusBytes();
 
- private:
   std::vector<uint8_t> data_;
 };
 

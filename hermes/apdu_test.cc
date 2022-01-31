@@ -65,7 +65,7 @@ std::vector<uint8_t> ToVector(T&& first, Args&&... args) {
 ///////////////
 
 const std::vector<uint8_t> kHeaderStart =
-    ToVector(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA);
+    ToVector(CLA_STORE_DATA, INS_STORE_DATA);
 
 constexpr uint16_t kShortLe = 18;
 constexpr uint16_t kLongLe = 1800;
@@ -75,13 +75,13 @@ constexpr uint16_t kLongLe = 1800;
 //////////////////////////
 
 TEST(CommandCase1, Standard) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, false, 0);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, false, 0);
   EXPECT_FRAGMENT(cmd, kHeaderStart, kApduP1LastBlock, 0);
   EXPECT_FALSE(cmd.HasMoreFragments());
 }
 
 TEST(CommandCase1, Extended) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, true, 0);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, true, 0);
   EXPECT_FRAGMENT(cmd, kHeaderStart, kApduP1LastBlock, 0);
   EXPECT_FALSE(cmd.HasMoreFragments());
 }
@@ -91,24 +91,21 @@ TEST(CommandCase1, Extended) {
 //////////////////////////
 
 TEST(CommandCase2, StandardWithShortLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, false,
-                  kShortLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, false, kShortLe);
   EXPECT_FRAGMENT(cmd, kHeaderStart, kApduP1LastBlock, 0,
                   static_cast<uint8_t>(kShortLe));
   EXPECT_FALSE(cmd.HasMoreFragments());
 }
 
 TEST(CommandCase2, StandardWithLongLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, false,
-                  kLongLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, false, kLongLe);
   // Le field should be set to 0 (Ne=256)
   EXPECT_FRAGMENT(cmd, kHeaderStart, kApduP1LastBlock, 0, 0);
   EXPECT_FALSE(cmd.HasMoreFragments());
 }
 
 TEST(CommandCase2, ExtendedWithShortLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, true,
-                  kShortLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, true, kShortLe);
   EXPECT_FRAGMENT(cmd,
                   // Header
                   kHeaderStart, kApduP1LastBlock, 0,
@@ -118,8 +115,7 @@ TEST(CommandCase2, ExtendedWithShortLe) {
 }
 
 TEST(CommandCase2, ExtendedWithLongLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, true,
-                  kLongLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, true, kLongLe);
   EXPECT_FRAGMENT(cmd,
                   // Header
                   kHeaderStart, kApduP1LastBlock, 0,
@@ -134,7 +130,7 @@ TEST(CommandCase2, ExtendedWithLongLe) {
 //////////////////////////
 
 TEST(CommandCase3, StandardNoFragment) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, false, 0);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, false, 0);
   std::vector<uint8_t> data = ToVector(1, 2, 3);
   cmd.AddData(data);
   EXPECT_FRAGMENT(cmd, kHeaderStart, kApduP1LastBlock, 0, data.size(), data);
@@ -142,7 +138,7 @@ TEST(CommandCase3, StandardNoFragment) {
 }
 
 TEST(CommandCase3, StandardTwoFragments) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, false, 0);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, false, 0);
   std::vector<uint8_t> data;
   for (int i = 0; i < 300; ++i) {
     data.push_back(static_cast<uint8_t>(i));
@@ -157,7 +153,7 @@ TEST(CommandCase3, StandardTwoFragments) {
 }
 
 TEST(CommandCase3, ExtendedNoFragmentShort) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, true, 0);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, true, 0);
   std::vector<uint8_t> data = ToVector(1, 2, 3);
   cmd.AddData(data);
   EXPECT_FRAGMENT(cmd,
@@ -167,7 +163,7 @@ TEST(CommandCase3, ExtendedNoFragmentShort) {
 }
 
 TEST(CommandCase3, ExtendedNoFragmentLong) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, true, 0);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, true, 0);
   size_t data_len = 20000;
   std::vector<uint8_t> data;
   for (size_t i = 0; i < data_len; ++i) {
@@ -182,7 +178,7 @@ TEST(CommandCase3, ExtendedNoFragmentLong) {
 }
 
 TEST(CommandCase3, ExtendedTwoFragments) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, true, 0);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, true, 0);
   size_t data_len = 40000;
   std::vector<uint8_t> data;
   for (size_t i = 0; i < data_len; ++i) {
@@ -209,8 +205,7 @@ TEST(CommandCase3, ExtendedTwoFragments) {
 //////////////////////////
 
 TEST(CommandCase4, StandardNoFragmentShortLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, false,
-                  kShortLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, false, kShortLe);
   std::vector<uint8_t> data = ToVector(1, 2, 3);
   cmd.AddData(data);
   EXPECT_FRAGMENT(cmd, kHeaderStart, kApduP1LastBlock, 0, data.size(), data,
@@ -219,8 +214,7 @@ TEST(CommandCase4, StandardNoFragmentShortLe) {
 }
 
 TEST(CommandCase4, StandardTwoFragmentsShortLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, false,
-                  kShortLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, false, kShortLe);
   std::vector<uint8_t> data;
   for (int i = 0; i < 300; ++i) {
     data.push_back(static_cast<uint8_t>(i));
@@ -237,8 +231,7 @@ TEST(CommandCase4, StandardTwoFragmentsShortLe) {
 }
 
 TEST(CommandCase4, StandardNoFragmentLongLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, false,
-                  kLongLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, false, kLongLe);
   std::vector<uint8_t> data = ToVector(1, 2, 3);
   cmd.AddData(data);
   EXPECT_FRAGMENT(cmd, kHeaderStart, kApduP1LastBlock, 0, data.size(), data,
@@ -247,8 +240,7 @@ TEST(CommandCase4, StandardNoFragmentLongLe) {
 }
 
 TEST(CommandCase4, StandardTwoFragmentsLongLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, false,
-                  kLongLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, false, kLongLe);
   std::vector<uint8_t> data;
   for (int i = 0; i < 300; ++i) {
     data.push_back(static_cast<uint8_t>(i));
@@ -264,8 +256,7 @@ TEST(CommandCase4, StandardTwoFragmentsLongLe) {
 }
 
 TEST(CommandCase4, ExtendedNoFragmentShortLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, true,
-                  kShortLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, true, kShortLe);
   std::vector<uint8_t> data = ToVector(1, 2, 3);
   cmd.AddData(data);
   EXPECT_FRAGMENT(cmd,
@@ -276,8 +267,7 @@ TEST(CommandCase4, ExtendedNoFragmentShortLe) {
 }
 
 TEST(CommandCase4, ExtendedNoFragmentLongLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, true,
-                  kLongLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, true, kLongLe);
   size_t data_len = 20000;
   std::vector<uint8_t> data;
   for (size_t i = 0; i < data_len; ++i) {
@@ -292,8 +282,7 @@ TEST(CommandCase4, ExtendedNoFragmentLongLe) {
 }
 
 TEST(CommandCase4, ExtendedTwoFragmentsShortLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, true,
-                  kShortLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, true, kShortLe);
   size_t data_len = 40000;
   std::vector<uint8_t> data;
   for (size_t i = 0; i < data_len; ++i) {
@@ -316,8 +305,7 @@ TEST(CommandCase4, ExtendedTwoFragmentsShortLe) {
 }
 
 TEST(CommandCase4, ExtendedTwoFragmentsLongLe) {
-  CommandApdu cmd(ApduClass::STORE_DATA, ApduInstruction::STORE_DATA, true,
-                  kLongLe);
+  CommandApdu cmd(CLA_STORE_DATA, INS_STORE_DATA, true, kLongLe);
   size_t data_len = 40000;
   std::vector<uint8_t> data;
   for (size_t i = 0; i < data_len; ++i) {

@@ -48,7 +48,18 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   void RestoreActiveSlot(ResultCallback cb) override;
   void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) override;
 
+  void OpenConnection(
+      const std::vector<uint8_t>& aid,
+      base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
+  void TransmitApdu(const std::vector<uint8_t>& apduCommand,
+                    base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
+
  private:
+  struct OpenChannelTxInfo : public TxInfo {
+    explicit OpenChannelTxInfo(const std::vector<uint8_t>& aid) : aid_(aid) {}
+    std::vector<uint8_t> aid_;
+  };
+
   struct SwitchSlotTxInfo : public TxInfo {
     explicit SwitchSlotTxInfo(const uint32_t physical_slot,
                               const uint8_t logical_slot)
@@ -70,7 +81,8 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
 
   // Helper methods to create TxElements and add them to the queue.
   void SendReset(ResultCallback cb);
-  void SendOpenLogicalChannel(base::OnceCallback<void(int)> cb);
+  void SendOpenLogicalChannel(const std::vector<uint8_t>& aid,
+                              base::OnceCallback<void(int)> cb);
 
   // Top-level method to transmit an element from the tx queue. Dispatches to
   // the proper Transmit*CmdFromQueue method based on the service being
@@ -132,7 +144,13 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
     DisableIntermediateBytes = 1
   };
   void SetProcedureBytes(ProcedureBytesMode procedure_bytes_mode);
-  void AcquireChannel(base::OnceCallback<void(int)> cb);
+  void AcquireChannelToIsdr(base::OnceCallback<void(int)> cb);
+  void AcquireChannel(const std::vector<uint8_t>& aid,
+                      base::OnceCallback<void(int)> cb);
+  void OpenConnectionResponse(base::OnceCallback<void(std::vector<uint8_t>)> cb,
+                              int err);
+  void TransmitApduResponse(base::OnceCallback<void(std::vector<uint8_t>)> cb,
+                            int err);
 
   friend class ModemQrtrTest;
 
@@ -225,6 +243,8 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
 
   // Buffer for storing data from the QRTR socket
   std::vector<uint8_t> buffer_;
+
+  std::vector<uint8_t> open_channel_raw_response_;
 
   std::map<std::pair<QmiCmdInterface::Service, uint16_t>,
            base::Callback<int(const qrtr_packet&)>>
