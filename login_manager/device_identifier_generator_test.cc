@@ -143,6 +143,11 @@ TEST_F(DeviceIdentifierGeneratorTest,
   RequestPsmDeviceActiveSecret(false);
   InitMachineInfo();
   EXPECT_TRUE(psm_device_secret_received_);
+
+  // Sending machine info twice is harmless and doesn't fire callbacks.
+  psm_device_secret_received_ = false;
+  InitMachineInfo();
+  EXPECT_FALSE(psm_device_secret_received_);
 }
 
 TEST_F(DeviceIdentifierGeneratorTest, RequestStateKeysLegacy) {
@@ -205,6 +210,11 @@ TEST_F(DeviceIdentifierGeneratorTest, PendingMachineInfo) {
   EXPECT_TRUE(state_keys_received_);
   EXPECT_EQ(DeviceIdentifierGenerator::kDeviceStateKeyFutureQuanta,
             state_keys_.size());
+
+  // Sending machine info twice is harmless and doesn't fire callbacks.
+  state_keys_received_ = false;
+  InitMachineInfo();
+  EXPECT_FALSE(state_keys_received_);
 }
 
 TEST_F(DeviceIdentifierGeneratorTest, PendingMachineInfoFailure) {

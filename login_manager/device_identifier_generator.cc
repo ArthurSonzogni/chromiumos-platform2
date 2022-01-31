@@ -136,19 +136,17 @@ bool DeviceIdentifierGenerator::InitMachineInfo(
   ComputeKeys(&state_keys);
   std::vector<StateKeyCallback> callbacks;
   callbacks.swap(pending_callbacks_);
-  for (std::vector<StateKeyCallback>::const_iterator callback(
-           callbacks.begin());
-       callback != callbacks.end(); ++callback) {
-    callback->Run(state_keys);
+  for (const auto& callback : callbacks) {
+    callback.Run(state_keys);
   }
 
   // Fire all pending psm device active secret callbacks.
   std::string derived_secret;
   DerivePsmDeviceActiveSecret(&derived_secret);
-  for (std::vector<PsmDeviceActiveSecretCallback>::const_iterator callback(
-           pending_psm_device_secret_callbacks_.begin());
-       callback != pending_psm_device_secret_callbacks_.end(); ++callback) {
-    callback->Run(derived_secret);
+  std::vector<PsmDeviceActiveSecretCallback> psm_device_secret_callbacks;
+  psm_device_secret_callbacks.swap(pending_psm_device_secret_callbacks_);
+  for (const auto& callback : psm_device_secret_callbacks) {
+    callback.Run(derived_secret);
   }
 
   return !stable_device_secret_.empty() ||
