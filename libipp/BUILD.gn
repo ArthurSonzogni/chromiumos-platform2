@@ -5,7 +5,11 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":libipp" ]
+  deps = [
+    ":install_headers",
+    ":install_pkgconfig",
+    ":libipp",
+  ]
   if (use.test) {
     deps += [ ":libipp_test" ]
   }
@@ -37,6 +41,26 @@ shared_library("libipp") {
     "ipp_parser.cc",
     "ipp_parser.h",
   ]
+  install_path = "lib"
+}
+
+install_config("install_pkgconfig") {
+  sources = [ "libipp.pc" ]
+  install_path = "${libdir}/pkgconfig"
+}
+
+install_config("install_headers") {
+  sources = [
+    "ipp.h",
+    "ipp_attribute.h",
+    "ipp_base.h",
+    "ipp_collections.h",
+    "ipp_enums.h",
+    "ipp_export.h",
+    "ipp_operations.h",
+    "ipp_package.h",
+  ]
+  install_path = "/usr/include/chromeos/libipp"
 }
 
 if (use.test) {
@@ -49,6 +73,7 @@ if (use.test) {
       "ipp_test.cc",
     ]
     configs += [ "//common-mk:test" ]
+    run_test = true
     deps = [
       ":libipp",
       "//common-mk/testrunner",
