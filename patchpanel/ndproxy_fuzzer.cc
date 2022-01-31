@@ -5,6 +5,7 @@
 #include "patchpanel/ndproxy.h"
 
 #include <base/logging.h>
+#include <fuzzer/FuzzedDataProvider.h>
 
 namespace patchpanel {
 
@@ -15,6 +16,10 @@ constexpr MacAddress guest_if_mac({0xd2, 0x47, 0xf7, 0xc5, 0x9e, 0x53});
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Turn off logging.
   logging::SetMinLogLevel(logging::LOGGING_FATAL);
+
+  FuzzedDataProvider provider(data, size);
+  size_t nd_hdr_len = provider.ConsumeIntegralInRange<size_t>(0, size);
+  uint8_t opt_type = provider.ConsumeIntegral<uint8_t>();
 
   uint8_t* out_buffer_extended = new uint8_t[size + 4];
   uint8_t* out_buffer = NDProxy::AlignFrameBuffer(out_buffer_extended);
@@ -30,6 +35,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Just to consume GetPrefixInfoOption() output
   if (prefix_info != nullptr)
     icmp_buffer[0] = prefix_info->nd_opt_pi_prefix_len;
+
+  NDProxy::ReplaceMacInIcmpOption(icmp_buffer, size, nd_hdr_len, opt_type,
+                                  guest_if_mac);
 
   delete[] icmp_buffer;
 

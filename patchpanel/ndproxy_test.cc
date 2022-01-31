@@ -254,7 +254,6 @@ TEST(NDProxyTest, GetPrefixInfoOption) {
     memcpy(in_buffer, test_case.input_frame, test_case.input_frame_len);
     size_t offset = ETHER_HDR_LEN + sizeof(ip6_hdr);
     size_t icmp6_len = test_case.input_frame_len - offset;
-    // const icmp6_hdr* icmp6 = reinterpret_cast<icmp6_hdr*>();
     const nd_opt_prefix_info* prefix_info =
         NDProxy::GetPrefixInfoOption(in_buffer + offset, icmp6_len);
 

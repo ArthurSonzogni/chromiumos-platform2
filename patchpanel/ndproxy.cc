@@ -161,17 +161,24 @@ void NDProxy::ReplaceMacInIcmpOption(uint8_t* icmp6,
                                      size_t nd_hdr_len,
                                      uint8_t opt_type,
                                      const MacAddress& target_mac) {
-  nd_opt_hdr* opt;
-  nd_opt_hdr* end = reinterpret_cast<nd_opt_hdr*>(icmp6 + icmp6_len);
-  for (opt = reinterpret_cast<nd_opt_hdr*>(icmp6 + nd_hdr_len);
-       opt < end && opt->nd_opt_len > 0;
-       opt = reinterpret_cast<nd_opt_hdr*>(reinterpret_cast<uint64_t*>(opt) +
-                                           opt->nd_opt_len)) {
-    if (opt->nd_opt_type == opt_type) {
-      uint8_t* mac_in_opt =
-          reinterpret_cast<uint8_t*>(opt) + sizeof(nd_opt_hdr);
-      memcpy(mac_in_opt, target_mac.data(), ETHER_ADDR_LEN);
+  size_t opt_offset = nd_hdr_len;
+  while (opt_offset + sizeof(nd_opt_hdr) <= icmp6_len) {
+    nd_opt_hdr* opt = reinterpret_cast<nd_opt_hdr*>(icmp6 + opt_offset);
+    // nd_opt_len is in 8 bytes unit.
+    size_t opt_len = 8 * (opt->nd_opt_len);
+    if (opt_len == 0 || icmp6_len < opt_offset + opt_len) {
+      // Invalid packet.
+      return;
     }
+    if (opt->nd_opt_type == opt_type) {
+      if (opt_len < sizeof(nd_opt_hdr) + ETHER_ADDR_LEN) {
+        // Option length was inconsistent with the size of a MAC address.
+        return;
+      }
+      memcpy(icmp6 + opt_offset + sizeof(nd_opt_hdr), target_mac.data(),
+             ETHER_ADDR_LEN);
+    }
+    opt_offset += opt_len;
   }
 }
 

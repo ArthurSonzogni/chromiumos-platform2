@@ -72,6 +72,17 @@ class NDProxy {
   static const nd_opt_prefix_info* GetPrefixInfoOption(const uint8_t* icmp6,
                                                        size_t icmp6_len);
 
+  // Given the ICMPv6 segment |icmp6| with header and options (payload) of total
+  // byte length |icmp6_len|, overwrites in option |opt_type| the mac address
+  // with |target_mac|. |icmp6_len| is the total size in bytes of the ICMPv6
+  // segment. |nd_hdr_len| is the length of ICMPv6 header (so the first option
+  // starts after |nd_hdr_len|.)
+  static void ReplaceMacInIcmpOption(uint8_t* icmp6,
+                                     size_t icmp6_len,
+                                     size_t nd_hdr_len,
+                                     uint8_t opt_type,
+                                     const MacAddress& target_mac);
+
   // Given an extended |buffer|, find a proper frame buffer pointer so that
   // pt > buffer, and start of IP header (pt + ETH_H_LEN) is 4-bytes aligned.
   // In the worst case the size of usable buffer will be original size minus 3.
@@ -128,17 +139,6 @@ class NDProxy {
   // be proxied. For example, {1: {2}, 2: {1}} means that packet from interfaces
   // 1 and 2 will be proxied to each other.
   using interface_mapping = std::map<int, std::set<int>>;
-
-  // Given the ICMPv6 segment |icmp6| with header and options (payload) of total
-  // byte length |icmp6_len|, overwrites in option |opt_type| the mac address
-  // with |target_mac|. |icmp6_len| is the total size in bytes of the ICMPv6
-  // segment. |nd_hdr_len| is the length of ICMPv6 header (so the first option
-  // starts after |nd_hdr_len|.)
-  static void ReplaceMacInIcmpOption(uint8_t* icmp6,
-                                     size_t icmp6_len,
-                                     size_t nd_hdr_len,
-                                     uint8_t opt_type,
-                                     const MacAddress& target_mac);
 
   // Get MAC address on a local interface through ioctl().
   // Returns false upon failure.
