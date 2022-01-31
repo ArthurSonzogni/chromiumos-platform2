@@ -8,6 +8,9 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_dbus_config",
+    ":install_init",
+    ":install_system_service",
     ":lorgnette",
     ":lorgnette_cli",
   ]
@@ -79,6 +82,7 @@ static_library("liblorgnette") {
 executable("lorgnette") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [ ":liblorgnette" ]
 }
 
@@ -89,6 +93,21 @@ executable("lorgnette_cli") {
   ]
   configs += [ ":target_defaults" ]
   deps = [ ":lorgnette-proxies" ]
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus_permissions/org.chromium.lorgnette.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_system_service") {
+  sources = [ "dbus_service/org.chromium.lorgnette.service" ]
+  install_path = "/usr/share/dbus-1/system-services"
+}
+
+install_config("install_init") {
+  sources = [ "init/lorgnette.conf" ]
+  install_path = "/etc/init"
 }
 
 if (use.test) {
