@@ -64,10 +64,15 @@ class CrosGtkIMContext : public GtkIMContext {
     CrosGtkIMContext* context_;
   };
 
+  void Activate();
+
   // Ref counted
   GdkWindow* gdk_window_ = nullptr;
   GdkWindow* top_level_gdk_window_ = nullptr;
   GtkWindow* top_level_gtk_window_ = nullptr;
+
+  // Set if FocusIn() is called prior to SetClientWindow().
+  bool pending_activation_ = false;
 
   std::string preedit_;
   int32_t preedit_cursor_pos_ = 0;

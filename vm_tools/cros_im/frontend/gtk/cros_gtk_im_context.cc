@@ -132,6 +132,8 @@ void CrosGtkIMContext::SetClientWindow(GdkWindow* window) {
       g_warning("Top-level GdkWindow was null");
     if (!top_level_gtk_window_)
       g_warning("Top-level GtkWindow was null");
+    if (pending_activation_)
+      Activate();
   } else {
     g_set_object(&gdk_window_, nullptr);
     g_set_object(&top_level_gdk_window_, nullptr);
@@ -162,31 +164,22 @@ gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* event) {
 }
 
 void CrosGtkIMContext::FocusIn() {
-  if (!top_level_gdk_window_) {
-    g_warning("Received focus_in event without active window.");
-    return;
+  if (top_level_gdk_window_) {
+    Activate();
+  } else {
+    // TODO(timloh): Add an automated test for this case. This code path can be
+    // manually tested by opening gedit, clicking "Save", then clicking the find
+    // (magnifying glass) icon.
+    pending_activation_ = true;
   }
-
-  wl_surface* surface =
-      gdk_wayland_window_get_wl_surface(top_level_gdk_window_);
-  if (!surface) {
-    g_warning("GdkWindow doesn't have an associated wl_surface.");
-    return;
-  }
-
-  backend_->Activate(GetSeat(), surface);
-
-  // TODO(timloh): Set content type.
-
-  // TODO(timloh): Work out when else we need to call this.
-  bool result = false;
-  g_signal_emit_by_name(this, "retrieve-surrounding", &result);
-  if (!result)
-    g_warning("Failed to retrieve surrounding text.");
 }
 
 void CrosGtkIMContext::FocusOut() {
-  backend_->Deactivate();
+  if (pending_activation_) {
+    pending_activation_ = false;
+  } else {
+    backend_->Deactivate();
+  }
 }
 
 void CrosGtkIMContext::Reset() {
@@ -312,6 +305,32 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
     g_warning("Failed to send key press event.");
 
   gdk_event_free(raw_event);
+}
+
+void CrosGtkIMContext::Activate() {
+  if (!top_level_gdk_window_) {
+    g_warning("Tried to activate without an active window.");
+    return;
+  }
+
+  wl_surface* surface =
+      gdk_wayland_window_get_wl_surface(top_level_gdk_window_);
+  if (!surface) {
+    g_warning("GdkWindow doesn't have an associated wl_surface.");
+    return;
+  }
+
+  pending_activation_ = false;
+
+  backend_->Activate(GetSeat(), surface);
+
+  // TODO(timloh): Set content type.
+
+  // TODO(timloh): Work out when else we need to call this.
+  bool result = false;
+  g_signal_emit_by_name(this, "retrieve-surrounding", &result);
+  if (!result)
+    g_warning("Failed to retrieve surrounding text.");
 }
 
 }  // namespace gtk
