@@ -752,12 +752,10 @@ int main(int argc, char** argv) {
   fuse_opt_free_args(&args);
 
   if (!mountpoint) {  // Kernel removed the FUSE mountpoint: umount(8).
-    exit_code = ENODEV;
+    exit_code = EX_OK;
   } else {
     fuse_unmount(mountpoint, nullptr);
   }
 
-  errno = exit_code;
-  PLOG_IF(ERROR, exit_code) << "fusebox exiting";
   return exit_code;
 }
