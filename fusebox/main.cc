@@ -17,7 +17,6 @@
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/daemons/dbus_daemon.h>
-#include <brillo/errors/error_codes.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
@@ -584,14 +583,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     request->ReplyOk();
   }
 
-  bool AttachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
-    int error = AttachStorage(name);
-    if (error)
-      brillo::errors::system::AddSystemError(ptr, FROM_HERE, error);
-    return !error;
-  }
-
-  int AttachStorage(const std::string& name) {
+  int32_t AttachStorage(const std::string& name) override {
     VLOG(1) << "attach-storage " << name;
 
     Device device = GetInodeTable().MakeFromName(name);
@@ -609,19 +601,13 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     return 0;
   }
 
-  bool DetachStorage(brillo::ErrorPtr* ptr, const std::string& name) override {
-    int error = DetachStorage(name);
-    if (error)
-      brillo::errors::system::AddSystemError(ptr, FROM_HERE, error);
-    return !error;
-  }
-
-  int DetachStorage(const std::string& name) {
+  int32_t DetachStorage(const std::string& name) override {
     VLOG(1) << "detach-storage " << name;
 
-    auto it = device_dir_entry_.find(name);
+    Device device = GetInodeTable().MakeFromName(name);
+    auto it = device_dir_entry_.find(device.name);
     if (it == device_dir_entry_.end())
-      return errno = ENOENT;
+      return ENOENT;
 
     ino_t device_ino = it->second.ino;
     if (!GetInodeTable().DetachDevice(device_ino))

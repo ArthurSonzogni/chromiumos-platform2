@@ -30,7 +30,12 @@
         Attach storage device.
       </tp:docstring>
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+      <arg name="error" type="i" direction="out">
+      <tp:docstring>
+        Result errno code.
+      </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="DetachStorage">
       <arg name="name" type="s" direction="in">
@@ -38,7 +43,12 @@
         Detach storage device.
       </tp:docstring>
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+      <arg name="error" type="i" direction="out">
+      <tp:docstring>
+        Result errno code.
+      </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
   </interface>
 </node>
