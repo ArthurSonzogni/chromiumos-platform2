@@ -121,9 +121,9 @@ class BiodStorageInterface {
 class BiodStorage : public BiodStorageInterface {
  public:
   // Constructor sets the file path to be
-  // /run/daemon-store/biod/<user_id>/CrosFpBiometricsManager/<record_id>,
+  // /run/daemon-store/biod/<user_id>/<biometrics_manager_name>/<record_id>,
   // which is bound to
-  // /home/root/<user_id>/biod/CrosFpBiometricsManager/<record_id>.
+  // /home/root/<user_id>/biod/<biometrics_manager_name>/<record_id>.
   explicit BiodStorage(const std::string& biometrics_manager_name);
 
   // Set root path to a different path for testing purpose only.
