@@ -18,7 +18,7 @@ This script should be invoked from the build directory, e.g.
 import argparse
 import os
 import subprocess
-import typing
+from typing import List, Optional
 
 TEST_BINARY = './cros_im_tests'
 
@@ -36,7 +36,7 @@ def set_up_immodules_cache() -> None:
             'libim_test_cros_gtk.so'
             ], stdout=f)
 
-def get_test_names(test_filter: typing.Optional[str]) -> typing.List[str]:
+def get_test_names(test_filter: Optional[str]) -> List[str]:
     args = [TEST_BINARY, '--gtest_list_tests']
     if test_filter is not None:
         args.append(f'--gtest_filter={test_filter}')
@@ -57,7 +57,7 @@ def get_test_names(test_filter: typing.Optional[str]) -> typing.List[str]:
 
     return result
 
-def run_gtk3_wayland_tests(test_filter: typing.Optional[str]) -> None:
+def run_gtk3_wayland_tests(test_filter: Optional[str]) -> None:
     env_override = {
         'GTK_IM_MODULE_FILE': 'test_immodules.cache',
         'GTK_IM_MODULE': 'test-cros',
