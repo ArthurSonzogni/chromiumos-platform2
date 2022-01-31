@@ -12,9 +12,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::convert::{TryFrom, TryInto};
 use std::env;
 use std::fmt::{Debug, Formatter};
+use std::fs::File;
 use std::io::{ErrorKind, Read, Write};
 use std::mem;
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use std::path::PathBuf;
 use std::ptr::null_mut;
 use std::rc::Rc;
@@ -30,15 +31,12 @@ use libsirenia::{
     linux::events::{
         AddEventSourceMutator, EventMultiplexer, EventSource, Mutator, RemoveFdMutator,
     },
-    rpc::{ConnectionHandler, TransportServer},
     sys,
-    transport::{
-        Error as TransportError, Transport, TransportType, UnixServerTransport, DEFAULT_MMS_PORT,
-    },
+    transport::{Error as TransportError, Transport, UnixServerTransport},
 };
 use serde::{Deserialize, Serialize};
 use sys_util::{
-    vsock::{SocketAddr as VSocketAddr, VsockCid},
+    net::UnixSeqpacket,
     {error, handle_eintr_errno, info, pagesize, round_up_to_page_size, syslog, warn},
 };
 
@@ -825,30 +823,59 @@ impl AsRawFd for CtrlHandler {
     }
 }
 
-struct CtrlServerHandler {
+struct MmsBridge {
+    bridge: UnixSeqpacket,
     state: Rc<RefCell<MmsState>>,
 }
 
-impl CtrlServerHandler {
-    fn new(state: Rc<RefCell<MmsState>>) -> Self {
-        CtrlServerHandler { state }
+impl MmsBridge {
+    fn new(bridge: UnixSeqpacket, state: Rc<RefCell<MmsState>>) -> Self {
+        MmsBridge { bridge, state }
     }
 }
 
-impl ConnectionHandler for CtrlServerHandler {
-    fn handle_incoming_connection(&mut self, connection: Transport) -> Option<Box<dyn Mutator>> {
+impl EventSource for MmsBridge {
+    fn on_event(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
         let mut state = self.state.borrow_mut();
         if state.cros_ctrl_connected {
-            error!("Duplicate control connection {}", connection.id);
-            return None;
+            return Err("Duplicate control connection".to_string());
         }
         if state.clients.len() != 1 {
-            error!("unknown crosvm clients");
-            return None;
+            return Err("unknown crosvm clients".to_string());
         }
-        let handler = CtrlHandler::new(connection, self.state.clone());
+
+        let ctrl_socket = match self.bridge.recv_as_vec_with_fds() {
+            Ok((_, fd)) => fd[0],
+            Err(err) => {
+                return Err(format!(
+                    "Error receiving ctrl socket from bridge: {:?}",
+                    err
+                ))
+            }
+        };
+        // Safe because we own the fd.
+        let ctrl_file = unsafe { File::from_raw_fd(ctrl_socket) };
+        let ctrl_file2 = ctrl_file
+            .try_clone()
+            .map_err(|e| format!("Clone error {:?}", e))?;
+        let ctrl_connection = Transport::from_files(ctrl_file, ctrl_file2);
+
+        let ctrl_handler = CtrlHandler::new(ctrl_connection, self.state.clone());
+
         state.cros_ctrl_connected = true;
-        Some(Box::new(AddEventSourceMutator::from(handler)))
+        Ok(Some(Box::new(AddEventSourceMutator::from(ctrl_handler))))
+    }
+}
+
+impl AsRawFd for MmsBridge {
+    fn as_raw_fd(&self) -> RawFd {
+        self.bridge.as_raw_fd()
+    }
+}
+
+impl Debug for MmsBridge {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MmsBridge").finish()
     }
 }
 
@@ -860,8 +887,8 @@ fn main() {
     info!("starting ManaTEE memory service: {}", BUILD_TIMESTAMP);
 
     let args: Vec<String> = env::args().collect();
-    if args.len() != 2 {
-        error!("Usage: manatee_memory_service <CrOS guest memory in MiB>");
+    if args.len() != 3 {
+        error!("Usage: manatee_memory_service <CrOS guest memory in MiB> <MMS bridge socket path>");
         return;
     }
     let cros_mem = match args[1].parse::<u64>() {
@@ -874,6 +901,14 @@ fn main() {
         },
         Err(e) => {
             error!("Error parsing cros memory size: {:?}", e);
+            return;
+        }
+    };
+
+    let bridge = match UnixSeqpacket::connect(PathBuf::from(&args[2])) {
+        Ok(bridge) => bridge,
+        Err(e) => {
+            error!("Error connecting to MMS bridge {:?}", e);
             return;
         }
     };
@@ -909,16 +944,10 @@ fn main() {
         starting_vm_state: None,
         next_id: CROS_GUEST_ID + 1,
     }));
-
-    let ctrl_connection = TransportType::VsockConnection(VSocketAddr {
-        cid: VsockCid::Any,
-        port: DEFAULT_MMS_PORT,
-    });
-    let ctrl_server =
-        TransportServer::new(&ctrl_connection, CtrlServerHandler::new(state)).unwrap();
+    let mms_bridge = MmsBridge::new(bridge, state);
 
     let mut ctx = EventMultiplexer::new().unwrap();
-    ctx.add_event(Box::new(ctrl_server)).unwrap();
+    ctx.add_event(Box::new(mms_bridge)).unwrap();
     while !ctx.is_empty() {
         if let Err(e) = ctx.run_once() {
             error!("{}", e);

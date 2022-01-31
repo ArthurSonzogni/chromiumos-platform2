@@ -78,5 +78,7 @@ pub trait Trichechus<E> {
     #[error()]
     fn get_logs(&mut self) -> StdResult<Vec<Vec<u8>>, E>;
 
+    fn prepare_manatee_memory_service_socket(&mut self, port_number: u32) -> StdResult<(), E>;
+
     fn system_event(&mut self, event: SystemEvent) -> StdResult<(), E>;
 }

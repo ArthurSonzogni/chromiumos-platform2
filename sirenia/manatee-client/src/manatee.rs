@@ -166,6 +166,12 @@ impl OrgChromiumManaTEEInterface for Passthrough {
             },
         }
     }
+
+    fn get_manatee_memory_service_socket(&self) -> std::result::Result<OwnedFd, dbus::Error> {
+        Err(to_dbus_error(anyhow!(
+            "GetManateeMemeoryServiceSocket not supported"
+        )))
+    }
 }
 
 fn connect_to_dugong<'a>(c: &'a Connection) -> Result<Proxy<'a, &Connection>> {

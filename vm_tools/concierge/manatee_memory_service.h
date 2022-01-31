@@ -27,7 +27,8 @@ using TaggedMemoryMiBDeltas = std::vector<std::pair<VmMemoryId, int64_t>>;
 // manage the memory allocation between the various VMs.
 class ManateeMemoryService {
  public:
-  static std::unique_ptr<ManateeMemoryService> Create();
+  static std::unique_ptr<ManateeMemoryService> Create(
+      base::ScopedFD mms_socket);
   ~ManateeMemoryService() = default;
 
   // Get balloon stats for the specified ids.

@@ -27,7 +27,6 @@
 #include "vm_tools/concierge/vm_util.h"
 
 namespace {
-constexpr int kMmsPort = 5555;
 constexpr vm_tools::concierge::VmMemoryId kCrosGuestId = 0;
 
 // The amount of memory each sibling is given to use before
@@ -116,24 +115,10 @@ bool check_simple_response(const base::Optional<base::Value>& resp,
 namespace vm_tools {
 namespace concierge {
 
-std::unique_ptr<ManateeMemoryService> ManateeMemoryService::Create() {
-  base::ScopedFD fd(socket(AF_VSOCK, SOCK_STREAM | SOCK_CLOEXEC, 0));
-  if (!fd.is_valid()) {
-    PLOG(ERROR) << "Failed to create socket";
-    return nullptr;
-  }
-
-  struct sockaddr_vm sa = {};
-  sa.svm_family = AF_VSOCK;
-  sa.svm_cid = VMADDR_CID_HOST;
-  sa.svm_port = kMmsPort;
-  if (connect(fd.get(), reinterpret_cast<const struct sockaddr*>(&sa),
-              sizeof(sa)) < 0) {
-    PLOG(ERROR) << "Failed to connect socket";
-    return nullptr;
-  }
-
-  auto result = base::WrapUnique(new ManateeMemoryService(std::move(fd)));
+std::unique_ptr<ManateeMemoryService> ManateeMemoryService::Create(
+    base::ScopedFD mms_socket) {
+  auto result =
+      base::WrapUnique(new ManateeMemoryService(std::move(mms_socket)));
   return result->Init() ? std::move(result) : nullptr;
 }
 

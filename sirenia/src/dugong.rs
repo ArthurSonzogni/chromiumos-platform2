@@ -116,6 +116,10 @@ impl OrgChromiumManaTEEInterface for DugongState {
             },
         }
     }
+
+    fn get_manatee_memory_service_socket(&mut self) -> StdResult<OwnedFd, MethodErr> {
+        get_manatee_memory_service_socket(self).map_err(|err| MethodErr::failed(&err))
+    }
 }
 
 fn load_tee_app(
@@ -144,6 +148,8 @@ fn load_tee_app(
     Ok(())
 }
 
+const RPC_FAILURE_CONTEXT: &str = "start_session rpc failed";
+
 fn request_start_tee_app(
     state: &DugongState,
     app_id: &str,
@@ -160,7 +166,6 @@ fn request_start_tee_app(
     };
     info!("Requesting start {:?}", &app_info);
     let mut trichechus_client = state.trichechus_client().lock().unwrap();
-    const RPC_FAILURE_CONTEXT: &str = "start_session rpc failed";
     if let Err(err) = trichechus_client.start_session(app_info.clone(), args.clone()) {
         match err.downcast() {
             Ok(trichechus::Error::AppNotLoaded) => {
@@ -199,6 +204,22 @@ fn handle_manatee_logs(dugong_state: &DugongState) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn get_manatee_memory_service_socket(state: &DugongState) -> Result<OwnedFd> {
+    let mut transport = state
+        .transport_type()
+        .try_into_client(None)
+        .context("failed to get client for transport")?;
+    let addr = transport.bind().context("failed to bind to socket")?;
+    let mut trichechus_client = state.trichechus_client().lock().unwrap();
+    trichechus_client
+        .prepare_manatee_memory_service_socket(addr.get_port().context("failed to get port")?)
+        .context(RPC_FAILURE_CONTEXT)?;
+    let Transport { r, w: _, id: _ } =
+        transport.connect().context("failed to connect to socket")?;
+    // This is safe because into_raw_fd transfers the ownership to OwnedFd.
+    Ok(unsafe { OwnedFd::new(r.into_raw_fd()) })
 }
 
 fn register_dbus_interface_for_app(

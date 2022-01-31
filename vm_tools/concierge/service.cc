@@ -65,6 +65,7 @@
 #include <crosvm/qcow_utils.h>
 #include <dbus/object_proxy.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <manatee/dbus-proxies.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
@@ -1343,7 +1344,36 @@ bool Service::Init() {
                                 &Service::RunBalloonPolicy);
 
   if (USE_CROSVM_SIBLINGS) {
-    mms_ = ManateeMemoryService::Create();
+    auto dugong_client =
+        std::make_unique<org::chromium::ManaTEEInterfaceProxy>(bus_);
+    if (!dugong_client) {
+      LOG(ERROR) << "Failed to connect to manatee client";
+      return false;
+    }
+
+    base::ScopedFD fd =
+        AsyncNoReject(
+            dbus_thread_.task_runner(),
+            base::BindOnce(
+                [](std::unique_ptr<org::chromium::ManaTEEInterfaceProxy>
+                       client) {
+                  base::ScopedFD fd;
+                  brillo::ErrorPtr err;
+                  if (!client->GetManateeMemoryServiceSocket(&fd, &err)) {
+                    LOG(ERROR) << "Failed to get manatee memory service socket "
+                               << err->GetMessage();
+                    return base::ScopedFD();
+                  }
+                  return fd;
+                },
+                std::move(dugong_client)))
+            .Get()
+            .val;
+    if (!fd.is_valid()) {
+      return false;
+    }
+
+    mms_ = ManateeMemoryService::Create(std::move(fd));
     if (!mms_) {
       LOG(ERROR) << "Failed to connect to manatee memory service";
       return false;

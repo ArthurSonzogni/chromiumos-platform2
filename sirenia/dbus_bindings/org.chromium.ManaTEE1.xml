@@ -25,5 +25,9 @@
     <arg name="error_msg" type="s" direction="out"/>
     <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
   </method>
+  <method name="GetManateeMemoryServiceSocket">
+    <arg name="fd" type="h" direction="out"/>
+    <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+  </method>
 </interface>
 </node>

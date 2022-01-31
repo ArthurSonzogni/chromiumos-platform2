@@ -10,8 +10,8 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap as Map, VecDeque};
 use std::convert::TryFrom;
 use std::env;
-use std::fs::File;
-use std::io::{Seek, SeekFrom, Write};
+use std::fs::{remove_file, File};
+use std::io::{IoSlice, Seek, SeekFrom, Write};
 use std::iter::once;
 use std::mem::{replace, swap};
 use std::ops::{Deref, DerefMut};
@@ -57,8 +57,11 @@ use libsirenia::{
 use sirenia::log_error;
 use sirenia::pstore;
 use sys_util::{
-    self, error, getpid, getsid, info, reap_child, setsid, syslog,
-    vsock::SocketAddr as VSocketAddr, warn, MemfdSeals, Pid, SharedMemory,
+    self, error, getpid, getsid, info,
+    net::{UnixSeqpacket, UnixSeqpacketListener},
+    reap_child, setsid, syslog,
+    vsock::SocketAddr as VSocketAddr,
+    warn, MemfdSeals, Pid, ScmSocket, SharedMemory,
 };
 
 const CRONISTA_URI_SHORT_NAME: &str = "C";
@@ -67,6 +70,7 @@ const SYSLOG_PATH_SHORT_NAME: &str = "L";
 const PSTORE_PATH_LONG_NAME: &str = "pstore-path";
 const SAVE_PSTORE_LONG_NAME: &str = "save-pstore";
 const RESTORE_PSTORE_LONG_NAME: &str = "restore-pstore";
+const MMS_BRIDGE_SHORT_NAME: &str = "M";
 
 const CROSVM_PATH: &str = "/bin/crosvm-direct";
 
@@ -174,6 +178,8 @@ struct TrichechusState {
     secret_manager: RefCell<SecretManager>,
     app_manifest: AppManifest,
     loaded_apps: RefCell<Map<Digest, SharedMemory>>,
+    mms_bridge: Option<UnixSeqpacket>,
+    pending_mms_port: Option<u32>,
 }
 
 impl TrichechusState {
@@ -196,6 +202,8 @@ impl TrichechusState {
             secret_manager: RefCell::new(secret_manager),
             app_manifest,
             loaded_apps: RefCell::new(Map::new()),
+            mms_bridge: None,
+            pending_mms_port: None,
         }
     }
 
@@ -288,6 +296,14 @@ impl Trichechus<Error> for TrichechusServerImpl {
         let mut replacement: VecDeque<Vec<u8>> = VecDeque::new();
         swap(&mut self.state.borrow_mut().log_queue, &mut replacement);
         Ok(replacement.into())
+    }
+
+    fn prepare_manatee_memory_service_socket(&mut self, port_number: u32) -> Result<()> {
+        if self.state.borrow().mms_bridge.is_none() {
+            bail!("No mms_bridge");
+        }
+        self.state.borrow_mut().pending_mms_port = Some(port_number);
+        Ok(())
     }
 
     fn system_event(&mut self, event: SystemEvent) -> Result<()> {
@@ -388,6 +404,22 @@ impl ConnectionHandler for DugongConnectionHandler {
                             .box_clone(),
                         connection,
                     )
+                }
+                Ok(port) if Some(port) == self.state.borrow().pending_mms_port => {
+                    info!("got manatee memory service connection");
+                    self.state.borrow_mut().pending_mms_port.take();
+                    let data = vec![0];
+                    if let Some(bridge) = self.state.borrow().mms_bridge.as_ref() {
+                        if bridge
+                            .send_with_fd(&[IoSlice::new(&data)], connection.as_raw_fd())
+                            .is_err()
+                        {
+                            error!("failed to forward connection over bridge");
+                        }
+                    } else {
+                        error!("pending mms port set without bridge");
+                    }
+                    None
                 }
                 _ => {
                     error!("dropping unexpected connection.");
@@ -635,6 +667,12 @@ fn main() -> Result<()> {
         "connect to trichechus, get and print logs, then exit.",
         SYSLOG_PATH,
     );
+    opts.optopt(
+        MMS_BRIDGE_SHORT_NAME,
+        "mms-bridge",
+        "socket to provide guest client connections to MMS,",
+        "/run/mms-bridge",
+    );
     let cronista_uri_option = TransportTypeOption::new(
         CRONISTA_URI_SHORT_NAME,
         CRONISTA_URI_LONG_NAME,
@@ -716,6 +754,15 @@ fn main() -> Result<()> {
 
     init_logging()?;
     info!("starting trichechus: {}", BUILD_TIMESTAMP);
+
+    if let Some(path) = matches.opt_str(MMS_BRIDGE_SHORT_NAME) {
+        let path = PathBuf::from(path);
+        let bridge_server =
+            UnixSeqpacketListener::bind(path.clone()).context("Failed to bind bridge")?;
+        let conn = bridge_server.accept().context("Failed to accept bridge");
+        let _ = remove_file(path);
+        state.borrow_mut().mms_bridge = Some(conn?);
+    }
 
     if getpid() != getsid(None).unwrap() {
         if let Err(err) = setsid() {
