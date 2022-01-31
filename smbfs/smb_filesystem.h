@@ -16,7 +16,7 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/containers/mru_cache.h>
+#include <base/containers/lru_cache.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
@@ -340,7 +340,7 @@ class SmbFilesystem : public Filesystem {
   std::unique_ptr<SambaInterface> samba_impl_;
 
   // Cache stat information during ReadDir() to speed up subsequent access.
-  base::HashingMRUCache<ino_t, StatCacheItem> stat_cache_;
+  base::HashingLRUCache<ino_t, StatCacheItem> stat_cache_;
 
   // Whether a successful connection to the SMB server has been made. Used to
   // determine whether or not to request auth credentials.
