@@ -16,7 +16,7 @@
 #include <string>
 #include <unordered_map>
 
-#include <base/containers/lru_cache.h>
+#include <base/containers/mru_cache.h>
 
 namespace fusebox {
 
@@ -131,7 +131,7 @@ class InodeTable {
   std::unordered_map<dev_t, struct Device> device_map_;
 
   // Node stat cache.
-  base::HashingLRUCache<ino_t, struct Stat> stat_cache_;
+  base::HashingMRUCache<ino_t, struct Stat> stat_cache_;
 
   // Root node.
   Node* root_node_ = nullptr;
