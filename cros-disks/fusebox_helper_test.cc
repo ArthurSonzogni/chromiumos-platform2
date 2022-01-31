@@ -93,7 +93,27 @@ TEST_F(FuseBoxHelperTest, CreateMounterWithOptions) {
   std::string arguments;
   auto source = kFuseBoxSource.value();
   EXPECT_EQ(MOUNT_ERROR_NONE, ConfigureSandbox(source, options, &arguments));
-  std::string expected = options[0].append(" -o uid=1000,gid=1001");
+  auto expected = options[0].append(" -o uid=1000,gid=1001");
+  EXPECT_EQ(expected, arguments);
+}
+
+TEST_F(FuseBoxHelperTest, CreateMounterWithReadOnlyMountOption) {
+  std::vector<std::string> options = {{"--test"}, {"ro"}};
+
+  std::string arguments;
+  auto source = kFuseBoxSource.value();
+  EXPECT_EQ(MOUNT_ERROR_NONE, ConfigureSandbox(source, options, &arguments));
+  auto expected = options[0].append(" -o ro -o uid=1000,gid=1001");
+  EXPECT_EQ(expected, arguments);
+}
+
+TEST_F(FuseBoxHelperTest, CreateMounterWithReadWriteMountOption) {
+  std::vector<std::string> options = {{"--test"}, {"rw"}};
+
+  std::string arguments;
+  auto source = kFuseBoxSource.value();
+  EXPECT_EQ(MOUNT_ERROR_NONE, ConfigureSandbox(source, options, &arguments));
+  auto expected = options[0].append(" -o rw -o uid=1000,gid=1001");
   EXPECT_EQ(expected, arguments);
 }
 

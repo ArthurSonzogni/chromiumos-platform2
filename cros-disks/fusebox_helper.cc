@@ -87,8 +87,16 @@ MountErrorType FuseBoxHelper::ConfigureSandbox(
     return MOUNT_ERROR_INTERNAL;
   }
 
-  for (const auto& parameter : params)
+  for (const auto& parameter : params) {
+    if (parameter == "rw" || parameter == "ro")
+      sandbox->AddArgument("-o");
     sandbox->AddArgument(parameter);
+  }
+
+  if (logging::ShouldCreateLogMessage(-2)) {
+    sandbox->AddArgument("--debug");
+    sandbox->AddArgument("--v=2");
+  }
 
   std::vector<std::string> options;
   SetParamValue(&options, "uid", base::NumberToString(kChronosUID));
