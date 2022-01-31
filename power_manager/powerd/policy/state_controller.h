@@ -556,7 +556,9 @@ class StateController : public PrefsObserver {
   base::TimeTicks last_defer_screen_dim_time_;
   // Timestamp of the last time hps result changed.
   base::TimeTicks last_hps_result_change_time_;
-  // HpsResult recorded.
+  // HpsResult recorded. Use of this API is restricted by policy. Consult
+  // go/cros-pdd#bookmark=id.7emuxnhxv638 and Chrome OS Privacy before
+  // using.
   hps::HpsResult hps_result_ = hps::HpsResult::UNKNOWN;
 
   // Information about audio activity and full-brightness, screen-on-but-dimmed,
