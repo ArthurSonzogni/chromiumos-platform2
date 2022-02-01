@@ -70,11 +70,11 @@ class MachineLearningServiceImpl
       mojo::PendingReceiver<
           chromeos::machine_learning::mojom::HandwritingRecognizer> receiver,
       LoadHandwritingModelCallback callback) override;
-  void LoadHandwritingModelWithSpec(
+  void REMOVED_4(
       chromeos::machine_learning::mojom::HandwritingRecognizerSpecPtr spec,
       mojo::PendingReceiver<
           chromeos::machine_learning::mojom::HandwritingRecognizer> receiver,
-      LoadHandwritingModelWithSpecCallback callback) override;
+      REMOVED_4Callback callback) override;
   void LoadSpeechRecognizer(
       chromeos::machine_learning::mojom::SodaConfigPtr spec,
       mojo::PendingRemote<chromeos::machine_learning::mojom::SodaClient>

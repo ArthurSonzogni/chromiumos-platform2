@@ -496,48 +496,11 @@ void MachineLearningServiceImpl::LoadHandwritingModel(
   NOTREACHED();
 }
 
-void MachineLearningServiceImpl::LoadHandwritingModelWithSpec(
+void MachineLearningServiceImpl::REMOVED_4(
     HandwritingRecognizerSpecPtr spec,
     mojo::PendingReceiver<HandwritingRecognizer> receiver,
-    LoadHandwritingModelWithSpecCallback callback) {
-  RequestMetrics request_metrics("HandwritingModel", kMetricsRequestName);
-  request_metrics.StartRecordingPerformanceMetrics();
-
-  // Load HandwritingLibrary.
-  auto* const hwr_library = ml::HandwritingLibrary::GetInstance();
-
-  if (hwr_library->GetStatus() ==
-      ml::HandwritingLibrary::Status::kNotSupported) {
-    LOG(ERROR) << "Initialize ml::HandwritingLibrary with error "
-               << static_cast<int>(hwr_library->GetStatus());
-
-    std::move(callback).Run(LoadModelResult::FEATURE_NOT_SUPPORTED_ERROR);
-    request_metrics.RecordRequestEvent(
-        LoadModelResult::FEATURE_NOT_SUPPORTED_ERROR);
-    return;
-  }
-
-  if (hwr_library->GetStatus() != ml::HandwritingLibrary::Status::kOk) {
-    LOG(ERROR) << "Initialize ml::HandwritingLibrary with error "
-               << static_cast<int>(hwr_library->GetStatus());
-
-    std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
-    request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
-    return;
-  }
-
-  // Create HandwritingRecognizer.
-  if (!HandwritingRecognizerImpl::Create(std::move(spec),
-                                         std::move(receiver))) {
-    LOG(ERROR) << "LoadHandwritingRecognizer returned false.";
-    std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
-    request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
-    return;
-  }
-
-  std::move(callback).Run(LoadModelResult::OK);
-  request_metrics.FinishRecordingPerformanceMetrics();
-  request_metrics.RecordRequestEvent(LoadModelResult::OK);
+    REMOVED_4Callback callback) {
+  NOTIMPLEMENTED();
 }
 
 void MachineLearningServiceImpl::LoadSpeechRecognizer(

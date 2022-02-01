@@ -1150,35 +1150,21 @@ class HandwritingRecognizerTest : public testing::Test {
     }
   }
 
-  // recognizer_ should be loaded successfully for this `language`.
-  // Using new API (LoadHandwritingModelWithSpec) if use_load_handwriting_model
-  // is true.
-  void LoadRecognizerWithLanguage(
-      const std::string& langauge,
-      const bool use_load_handwriting_model = false) {
+  // recognizer_ should be loaded successfully for this `language
+  void LoadRecognizerWithLanguage(const std::string& language) {
     bool model_callback_done = false;
-    if (use_load_handwriting_model) {
-      ml_service_->LoadHandwritingModel(
-          HandwritingRecognizerSpec::New(langauge),
-          recognizer_.BindNewPipeAndPassReceiver(),
-          base::BindOnce(
-              [](bool* model_callback_done,
-                 const LoadHandwritingModelResult result) {
-                ASSERT_EQ(result, LoadHandwritingModelResult::OK);
-                *model_callback_done = true;
-              },
-              &model_callback_done));
-    } else {
-      ml_service_->LoadHandwritingModelWithSpec(
-          HandwritingRecognizerSpec::New(langauge),
-          recognizer_.BindNewPipeAndPassReceiver(),
-          base::BindOnce(
-              [](bool* model_callback_done, const LoadModelResult result) {
-                ASSERT_EQ(result, LoadModelResult::OK);
-                *model_callback_done = true;
-              },
-              &model_callback_done));
-    }
+
+    ml_service_->LoadHandwritingModel(
+        HandwritingRecognizerSpec::New(language),
+        recognizer_.BindNewPipeAndPassReceiver(),
+        base::BindOnce(
+            [](bool* model_callback_done,
+               const LoadHandwritingModelResult result) {
+              ASSERT_EQ(result, LoadHandwritingModelResult::OK);
+              *model_callback_done = true;
+            },
+            &model_callback_done));
+
     base::RunLoop().RunUntilIdle();
     ASSERT_TRUE(model_callback_done);
     ASSERT_TRUE(recognizer_.is_bound());
@@ -1246,7 +1232,7 @@ TEST_F(HandwritingRecognizerTest, LoadHandwritingModel) {
       Process::Type::kSingleProcessForTest);
 
   // Load Recognizer successfully.
-  LoadRecognizerWithLanguage("en", true);
+  LoadRecognizerWithLanguage("en");
 
   // Clear the ink inside request.
   request_.clear_ink();
