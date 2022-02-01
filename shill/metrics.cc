@@ -27,6 +27,7 @@
 #include "shill/cellular/cellular_consts.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
+#include "shill/wifi/wifi_endpoint.h"
 
 namespace shill {
 
@@ -1966,6 +1967,82 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
       .SetVendorId(vendor_id)
       .SetProductId(product_id)
       .SetSubsystemId(subsystem_id);
+}
+
+// static
+Metrics::WiFiConnectionAttemptInfo::ApSupportedFeatures
+Metrics::ConvertEndPointFeatures(const WiFiEndpoint* ep) {
+  Metrics::WiFiConnectionAttemptInfo::ApSupportedFeatures ap_features;
+  if (ep) {
+    ap_features.krv_info.neighbor_list_supported =
+        ep->krv_support().neighbor_list_supported;
+    ap_features.krv_info.ota_ft_supported = ep->krv_support().ota_ft_supported;
+    ap_features.krv_info.otds_ft_supported =
+        ep->krv_support().otds_ft_supported;
+    ap_features.krv_info.dms_supported = ep->krv_support().dms_supported;
+    ap_features.krv_info.bss_max_idle_period_supported =
+        ep->krv_support().bss_max_idle_period_supported;
+    ap_features.krv_info.bss_transition_supported =
+        ep->krv_support().bss_transition_supported;
+
+    ap_features.hs20_info.supported = ep->hs20_information().supported;
+    ap_features.hs20_info.version = ep->hs20_information().version;
+
+    ap_features.mbo_supported = ep->mbo_support();
+  }
+  return ap_features;
+}
+
+void Metrics::NotifyWiFiConnectionAttempt(
+    const WiFiConnectionAttemptInfo& info) {
+  int64_t usecs;
+  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
+    LOG(ERROR) << "Failed to read timestamp";
+    usecs = kWiFiStructuredMetricsErrorValue;
+  }
+  metrics::structured::events::wi_fi::WiFiConnectionAttempt()
+      .SetBootId(GetBootId())
+      .SetSystemTime(usecs)
+      .SetEventVersion(kWiFiStructuredMetricsVersion)
+      .SetAttemptType(info.type)
+      .SetAPPhyMode(info.mode)
+      .SetAPSecurityMode(info.security)
+      .SetAPSecurityEAPInnerProtocol(info.eap_inner)
+      .SetAPSecurityEAPOuterProtocol(info.eap_outer)
+      .SetAPChannel(info.channel)
+      .SetRSSI(info.rssi)
+      .SetSSID(info.ssid)
+      .SetSSIDProvisioningMode(info.provisioning_mode)
+      .SetSSIDHidden(info.ssid_hidden)
+      .SetBSSID(info.bssid)
+      .SetAPOUI(info.ap_oui)
+      .SetAP_80211krv_NLSSupport(
+          info.ap_features.krv_info.neighbor_list_supported)
+      .SetAP_80211krv_OTA_FTSupport(info.ap_features.krv_info.ota_ft_supported)
+      .SetAP_80211krv_OTDS_FTSupport(
+          info.ap_features.krv_info.otds_ft_supported)
+      .SetAP_80211krv_DMSSupport(info.ap_features.krv_info.dms_supported)
+      .SetAP_80211krv_BSSMaxIdleSupport(
+          info.ap_features.krv_info.bss_max_idle_period_supported)
+      .SetAP_80211krv_BSSTMSupport(
+          info.ap_features.krv_info.bss_transition_supported)
+      .SetAP_HS20Support(info.ap_features.hs20_info.supported)
+      .SetAP_HS20Version(info.ap_features.hs20_info.version)
+      .SetAP_MBOSupport(info.ap_features.mbo_supported);
+}
+
+void Metrics::NotifyWiFiConnectionAttemptResult(
+    NetworkServiceError result_code) {
+  int64_t usecs;
+  if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
+    LOG(ERROR) << "Failed to read timestamp";
+    usecs = kWiFiStructuredMetricsErrorValue;
+  }
+  metrics::structured::events::wi_fi::WiFiConnectionAttemptResult()
+      .SetBootId(GetBootId())
+      .SetSystemTime(usecs)
+      .SetEventVersion(kWiFiStructuredMetricsVersion)
+      .SetResultCode(result_code);
 }
 
 // static

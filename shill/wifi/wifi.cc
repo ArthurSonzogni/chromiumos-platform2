@@ -666,6 +666,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     SetConnectionDebugging(true);
   }
 
+  service->EmitConnectionAttemptEvent();
   supplicant_interface_proxy_->SelectNetwork(network_rpcid);
   SetPendingService(service);
   CHECK(current_service_.get() != pending_service_.get());
@@ -730,7 +731,12 @@ void WiFi::DisconnectFrom(WiFiService* service) {
     // on this to drive the service state back to idle.  Do that here.
     // Update service state for pending service.
     disconnect_signal_dbm_ = pending_service_->SignalLevel();
-    ServiceDisconnected(pending_service_);
+    // |expecting_disconnect()| implies that it wasn't a failure to connect.
+    // For example we're cancelling pending_service_ before we actually
+    // attempted to connect.
+    bool is_attempt_failure =
+        pending_service_ && !(pending_service_->expecting_disconnect());
+    ServiceDisconnected(pending_service_, is_attempt_failure);
   } else if (service) {
     disconnect_signal_dbm_ = service->SignalLevel();
   }
@@ -1140,6 +1146,27 @@ void WiFi::CurrentAuthModeChanged(const std::string& auth_mode) {
   }
 }
 
+bool WiFi::IsStateTransitionConnectionMaintenance(
+    const WiFiService& service) const {
+  // In some cases we see changes in wpa_supplicant's state that are caused by
+  // a "maintenance" event that does not really necessarily reflect a change
+  // in the high-level user-visible "connected" state. For example, rekeying
+  // will trigger a transition from |kInterfaceStateCompleted| to
+  // |kInterfaceStateGroupHandshake| and back to |kInterfaceStateCompleted|,
+  // but it's not a full connection attempt.
+
+  return service.is_rekey_in_progress() || is_roaming_in_progress_;
+}
+
+// static
+bool WiFi::IsWPAStateConnectionInProgress(const std::string& state) {
+  return state == WPASupplicant::kInterfaceStateAuthenticating ||
+         state == WPASupplicant::kInterfaceStateAssociating ||
+         state == WPASupplicant::kInterfaceStateAssociated ||
+         state == WPASupplicant::kInterfaceState4WayHandshake ||
+         state == WPASupplicant::kInterfaceStateGroupHandshake;
+}
+
 void WiFi::HandleDisconnect() {
   // Identify the affected service. We expect to get a disconnect
   // event when we fall off a Service that we were connected
@@ -1163,8 +1190,33 @@ void WiFi::HandleDisconnect() {
     // set service state to idle.
     affected_service->SetState(Service::kStateIdle);
   } else {
+    // Make the difference between a failure to connect to a service and a
+    // disconnection from a service we were connected to. Checking for
+    // |pending_service_| is not necessarily sufficient, since it could be the
+    // case that we were connected and were disconnected intentionally to
+    // attempt to connect to another service, which would be pending.
+    bool is_attempt_failure =
+        pending_service_.get() && (affected_service != current_service_.get());
+    // In some cases (for example when the 4-way handshake is still ongoing),
+    // |pending_service_| has already been reset to |nullptr| since we had
+    // already gone through Auth+Assoc stages. It is still a failure to
+    // attempt to connect when we fail then, for example during the handshake.
+    // Because of that we also have to check the state of wpa_supplicant to see
+    // if it was in the middle of e.g. the 4-way handshake when it reported a
+    // failure. However, to ensure that we don't incorrectly classify
+    // "maintenance" operations (e.g. rekeying) as connection *attempt* failures
+    // rather than disconnections, we also need to verify that we're not
+    // currently performing a "maintenance" operation that would temporarily
+    // move the state back from "connected" to "handshake".
+    // If all those conditions (state is compatible with in-progress connection
+    // and there is no ongoing "maintenance" operation) then a failure implies
+    // a failed *attempted* connection rather than a disconnection.
+    is_attempt_failure =
+        is_attempt_failure ||
+        (IsWPAStateConnectionInProgress(supplicant_state_) &&
+         !IsStateTransitionConnectionMaintenance(*affected_service));
     // Perform necessary handling for disconnected service.
-    ServiceDisconnected(affected_service);
+    ServiceDisconnected(affected_service, is_attempt_failure);
   }
 
   current_service_ = nullptr;
@@ -1219,7 +1271,8 @@ void WiFi::HandleDisconnect() {
   RestartFastScanAttempts();
 }
 
-void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
+void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service,
+                               bool is_attempt_failure) {
   SLOG(this, 1) << __func__ << " service " << affected_service->log_name();
 
   // Check if service was explicitly disconnected due to failure or
@@ -1282,6 +1335,13 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service) {
     }
     if (!affected_service->ShouldIgnoreFailure()) {
       affected_service->SetFailure(failure);
+    }
+    if (is_attempt_failure) {
+      // We attempted to connect to a service but the attempt failed. Report
+      // a failure to connect (as opposed to a disconnection from a service we
+      // were successfully connected to).
+      metrics()->NotifyWiFiConnectionAttemptResult(
+          Metrics::ConnectFailureToServiceErrorEnum(failure));
     }
     LOG(ERROR) << "Disconnected due to reason: "
                << Service::ConnectFailureToString(failure);
@@ -2226,6 +2286,14 @@ void WiFi::StateChanged(const std::string& new_state) {
   }
 
   if (new_state == WPASupplicant::kInterfaceStateCompleted) {
+    if (!IsStateTransitionConnectionMaintenance(*affected_service)) {
+      // Do not report connection attempts when the transition to
+      // |kInterfaceStateCompleted| was caused by a "maintenance" event
+      // (e.g. rekeying) from a fully connected state rather than a genuine
+      // attempt to connect from a "disconnected" state.
+      metrics()->NotifyWiFiConnectionAttemptResult(
+          Metrics::kNetworkServiceErrorNone);
+    }
     if (affected_service->IsConnected()) {
       StopReconnectTimer();
       if (is_roaming_in_progress_) {
@@ -2265,11 +2333,7 @@ void WiFi::StateChanged(const std::string& new_state) {
       }
     }
     has_already_completed_ = true;
-  } else if (new_state == WPASupplicant::kInterfaceStateAuthenticating ||
-             new_state == WPASupplicant::kInterfaceStateAssociating ||
-             new_state == WPASupplicant::kInterfaceStateAssociated ||
-             new_state == WPASupplicant::kInterfaceState4WayHandshake ||
-             new_state == WPASupplicant::kInterfaceStateGroupHandshake) {
+  } else if (IsWPAStateConnectionInProgress(new_state)) {
     if (new_state == WPASupplicant::kInterfaceStateAssociating) {
       // Ensure auth status is kept up-to-date
       supplicant_auth_status_ = IEEE_80211::kStatusCodeSuccessful;

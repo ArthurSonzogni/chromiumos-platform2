@@ -777,6 +777,44 @@ void WiFiService::OnConnect(Error* error) {
   wifi->ConnectTo(this, error);
 }
 
+Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
+  int ap_oui = 0xFFFFFFFF;
+  auto bssid_bytes = Device::MakeHardwareAddressFromString(bssid());
+  if (bssid_bytes.empty()) {
+    // Log an error but still emit the event (with OUI=0xFFFFFFFF) since the
+    // rest of the data is still useful.
+    LOG(ERROR) << "Invalid AP BSSID";
+  } else {
+    ap_oui = (bssid_bytes[0] << 16) | (bssid_bytes[1] << 8) | (bssid_bytes[2]);
+  }
+
+  Metrics::WiFiConnectionAttemptInfo info;
+  info.type = Metrics::kAttemptTypeUnknown;  // TODO(b/203692510)
+  info.mode = static_cast<Metrics::WiFiNetworkPhyMode>(physical_mode());
+  info.security = Metrics::WiFiSecurityStringToEnum(security());
+  info.eap_inner = Metrics::EapInnerProtocolStringToEnum(eap()->inner_method());
+  info.eap_outer = Metrics::EapOuterProtocolStringToEnum(eap()->method());
+  info.band = Metrics::WiFiChannelToFrequencyRange(
+      Metrics::WiFiFrequencyToChannel(frequency()));
+  info.channel = Metrics::WiFiFrequencyToChannel(frequency());
+  info.rssi = SignalLevel();
+  info.ssid = friendly_name_;
+  info.bssid = bssid();
+  info.provisioning_mode = Metrics::kProvisionUnknown;  // TODO(b/203692510)
+  info.ssid_hidden = hidden_ssid();
+  info.ap_oui = ap_oui;
+  if (current_endpoint_) {
+    info.ap_features =
+        Metrics::ConvertEndPointFeatures(current_endpoint_.get());
+  }
+
+  return info;
+}
+
+void WiFiService::EmitConnectionAttemptEvent() const {
+  metrics()->NotifyWiFiConnectionAttempt(ConnectionAttemptInfo());
+}
+
 WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
   const auto now = clock_->Now();
   bool rotating = false;

@@ -19,6 +19,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
 #include "shill/mac_address.h"
+#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -208,6 +209,8 @@ class WiFiService : public Service {
   // to be updated in WPA Supplicant.
   UpdateMACAddressRet UpdateMACAddress();
 
+  void EmitConnectionAttemptEvent() const;
+
   void set_expecting_disconnect(bool val) { expecting_disconnect_ = val; }
   bool expecting_disconnect() const { return expecting_disconnect_; }
 
@@ -265,6 +268,13 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPolicySwitch);
   FRIEND_TEST(WiFiServiceTest, RandomizationNotSupported);
   FRIEND_TEST(WiFiServiceTest, RandomizationBlocklist);
+  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoSuccess);
+  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoNoBSSID);
+  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoOUI);
+  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoLowBand);
+  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoHighBand);
+  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoUltraHighBand);
+  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoSecurity);
 
   static const char kAnyDeviceAddress[];
   static const int kSuspectedCredentialFailureThreshold;
@@ -378,6 +388,8 @@ class WiFiService : public Service {
   bool SetMACPolicy(const std::string& policy, Error* error);
 
   void SetWiFi(const WiFiRefPtr& new_wifi);
+
+  Metrics::WiFiConnectionAttemptInfo ConnectionAttemptInfo() const;
 
   // Clock for time-related events.
   static std::unique_ptr<base::Clock> clock_;

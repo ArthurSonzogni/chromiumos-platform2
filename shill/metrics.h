@@ -28,6 +28,8 @@
 
 namespace shill {
 
+class WiFiEndPoint;
+
 class Metrics : public DefaultServiceObserver {
  public:
   enum WiFiChannel {
@@ -1456,6 +1458,64 @@ class Metrics : public DefaultServiceObserver {
                                      int vendor_id,
                                      int product_id,
                                      int subsystem_id);
+
+  enum ConnectionAttemptType {
+    kAttemptTypeUnknown = 0,
+    kAttemptTypeUserInitiated = 1,
+    kAttemptTypeAuto = 2
+  };
+
+  enum SSIDProvisioningMode {
+    kProvisionUnknown = 0,
+    kProvisionManual = 1,
+    kProvisionPolicy = 2,
+    kProvisionSync = 3
+  };
+
+  struct WiFiConnectionAttemptInfo {
+    ConnectionAttemptType type;
+    WiFiNetworkPhyMode mode;
+    WiFiSecurity security;
+    EapInnerProtocol eap_inner;
+    EapOuterProtocol eap_outer;
+    WiFiFrequencyRange band;
+    WiFiChannel channel;
+    int rssi;
+    std::string ssid;
+    std::string bssid;
+    SSIDProvisioningMode provisioning_mode;
+    bool ssid_hidden;
+    int ap_oui;
+    struct ApSupportedFeatures {
+      struct Ap80211krv {
+        int neighbor_list_supported = kWiFiStructuredMetricsErrorValue;
+        int ota_ft_supported = kWiFiStructuredMetricsErrorValue;
+        int otds_ft_supported = kWiFiStructuredMetricsErrorValue;
+        int dms_supported = kWiFiStructuredMetricsErrorValue;
+        int bss_max_idle_period_supported = kWiFiStructuredMetricsErrorValue;
+        int bss_transition_supported = kWiFiStructuredMetricsErrorValue;
+      } krv_info;
+      struct ApHS20 {
+        int supported = kWiFiStructuredMetricsErrorValue;
+        int version = kWiFiStructuredMetricsErrorValue;
+      } hs20_info;
+      int mbo_supported = kWiFiStructuredMetricsErrorValue;
+    } ap_features;
+  };
+
+  static WiFiConnectionAttemptInfo::ApSupportedFeatures ConvertEndPointFeatures(
+      const WiFiEndpoint* ep);
+
+  // Emits the |WiFiConnectionAttempt| structured event that notifies that the
+  // device is attempting to connect to an AP. It describes the parameters of
+  // the connection (channel/band, security mode, etc.).
+  virtual void NotifyWiFiConnectionAttempt(
+      const WiFiConnectionAttemptInfo& info);
+
+  // Emits the |WiFiConnectionAttemptResult| structured event that describes
+  // the result of the corresponding |WiFiConnectionAttempt| event.
+  virtual void NotifyWiFiConnectionAttemptResult(
+      NetworkServiceError result_code);
 
   // Returns a persistent hash to be used to uniquely identify an APN.
   static int64_t HashApn(const std::string& uuid,

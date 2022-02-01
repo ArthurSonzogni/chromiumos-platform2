@@ -458,12 +458,22 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // is returned, and |error| is populated.
   RpcIdentifier FindNetworkRpcidForService(const WiFiService* service,
                                            Error* error);
+
+  // When wpa_supplicant move to the "connected" or "disconnected" state, make
+  // the difference between maintenance events such as rekeying that don't
+  // indicate an actual disconnection and other state changes that show
+  // actual connections or disconnections.
+  bool IsStateTransitionConnectionMaintenance(const WiFiService& service) const;
+  // Is the state of wpa_supplicant indicating that it is currently possibly
+  // attempting to connect to a network (e.g. is it associating?).
+  static bool IsWPAStateConnectionInProgress(const std::string& state);
+
   void HandleDisconnect();
   // Update failure and state for disconnected service.
   // Set failure for disconnected service if disconnect is not user-initiated
   // and failure is not already set. Then set the state of the service back
   // to idle, so it can be used for future connections.
-  void ServiceDisconnected(WiFiServiceRefPtr service);
+  void ServiceDisconnected(WiFiServiceRefPtr service, bool is_attempt_failure);
   // Log and send to UMA any auth/assoc status code indicating a failure.
   // Returns inferred type of failure, which is useful in cases where we don't
   // have a disconnect reason from supplicant.

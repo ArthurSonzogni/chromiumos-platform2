@@ -139,6 +139,14 @@ class MockMetrics : public Metrics {
               NotifyPortalDetectionMultiProbeResult,
               (const PortalDetector::Result&),
               (override));
+  MOCK_METHOD(void,
+              NotifyWiFiConnectionAttempt,
+              (const Metrics::WiFiConnectionAttemptInfo&),
+              (override));
+  MOCK_METHOD(void,
+              NotifyWiFiConnectionAttemptResult,
+              (NetworkServiceError),
+              (override));
 };
 
 }  // namespace shill

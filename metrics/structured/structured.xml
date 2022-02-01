@@ -594,6 +594,60 @@
         OUI of the AP. The 24 least significant bits contain the OUI.
       </summary>
     </metric>
+    <metric name="AP_80211krv_NLSSupport" type="int">
+      <summary>
+        Boolean indicating if the AP supports 802.11k/r/v neighbour lists or
+        not. Set to -1 if detection failed.
+      </summary>
+    </metric>
+    <metric name="AP_80211krv_OTA_FTSupport" type="int">
+      <summary>
+        Boolean indicating if the AP supports 802.11k/r/v Fast Transition
+        Over The Air or not. Set to -1 if detection failed.
+      </summary>
+    </metric>
+    <metric name="AP_80211krv_OTDS_FTSupport" type="int">
+      <summary>
+        Boolean indicating if the AP supports 802.11k/r/v Fast Transition
+        Over The DS or not. Set to -1 if detection failed.
+      </summary>
+    </metric>
+    <metric name="AP_80211krv_DMSSupport" type="int">
+      <summary>
+        Boolean indicating if the AP supports 802.11k/r/v DMS or not.
+        Set to -1 if detection failed.
+      </summary>
+    </metric>
+    <metric name="AP_80211krv_BSSMaxIdleSupport" type="int">
+      <summary>
+        Boolean indicating if the AP supports 802.11k/r/v BSS Max Idle period
+        feature or not. Set to -1 if detection failed.
+      </summary>
+    </metric>
+    <metric name="AP_80211krv_BSSTMSupport" type="int">
+      <summary>
+        Boolean indicating if the AP supports 802.11k/r/v BSS Transition
+        Management or not. Set to -1 if detection failed.
+      </summary>
+    </metric>
+    <metric name="AP_HS20Support" type="int">
+      <summary>
+        Boolean indicating if the AP supports Hotspot 2.0 (aka Passpoint) or
+        not. Set to -1 if detection failed.
+      </summary>
+    </metric>
+    <metric name="AP_HS20Version" type="int">
+      <summary>
+        Version of the Hotspot 2.0 (aka Passpoint) support.
+        Set to -1 if detection failed.
+      </summary>
+    </metric>
+    <metric name="AP_MBOSupport" type="int">
+      <summary>
+        Boolean indicating if the AP supports MBO or not.
+        Set to -1 if detection failed.
+      </summary>
+    </metric>
   </event>
 
   <event name="WiFiConnectionAttemptResult">

@@ -2230,4 +2230,92 @@ TEST_F(WiFiServiceTest, CompareWithSameTechnology) {
   EXPECT_FALSE(SortingOrderIs(a, b));
 }
 
+TEST_F(WiFiServiceTest, ConnectionAttemptInfoSuccess) {
+  WiFiEndpointRefPtr ep = MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
+  service->AddEndpoint(ep);
+
+  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  EXPECT_EQ(info.ssid, "a");
+  EXPECT_EQ(info.bssid, "00:00:00:00:00:01");
+  EXPECT_EQ(info.security, Metrics::kWiFiSecurityNone);
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptInfoNoBSSID) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
+  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  EXPECT_EQ(info.ap_oui, 0xFFFFFFFF);
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptInfoOUI) {
+  WiFiEndpointRefPtr ep = MakeOpenEndpoint("a", "01:23:45:67:89:ab", 0, 0);
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
+  service->AddEndpoint(ep);
+
+  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  EXPECT_EQ(info.security, Metrics::kWiFiSecurityNone);
+  EXPECT_EQ(info.ap_oui, 0x00012345);
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptInfoLowBand) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
+  WiFiEndpoint::SecurityFlags flags;
+  WiFiEndpointRefPtr ep =
+      MakeEndpoint("a", "00:00:00:00:00:01", 2412, -57, flags);
+  service->AddEndpoint(ep);
+
+  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  EXPECT_EQ(info.band, Metrics::kWiFiFrequencyRange24);
+  EXPECT_EQ(info.channel, Metrics::kWiFiChannel2412);
+  EXPECT_EQ(info.rssi, -57);
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptInfoHighBand) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
+  WiFiEndpoint::SecurityFlags flags;
+  WiFiEndpointRefPtr ep =
+      MakeEndpoint("a", "00:00:00:00:00:01", 5180, -71, flags);
+  service->AddEndpoint(ep);
+
+  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  EXPECT_EQ(info.band, Metrics::kWiFiFrequencyRange5);
+  EXPECT_EQ(info.channel, Metrics::kWiFiChannel5180);
+  EXPECT_EQ(info.rssi, -71);
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptInfoUltraHighBand) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
+  WiFiEndpoint::SecurityFlags flags;
+  WiFiEndpointRefPtr ep =
+      MakeEndpoint("a", "00:00:00:00:00:01", 6115, -40, flags);
+  service->AddEndpoint(ep);
+
+  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  EXPECT_EQ(info.band, Metrics::kWiFiFrequencyRange6);
+  EXPECT_EQ(info.channel, Metrics::kWiFiChannel6115);
+  EXPECT_EQ(info.rssi, -40);
+}
+
+TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
+  {
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurityPsk);
+    WiFiEndpoint::SecurityFlags flags;
+    flags.rsn_sae = true;
+    WiFiEndpointRefPtr ep = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    service->AddEndpoint(ep);
+
+    Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+    EXPECT_EQ(Metrics::WiFiSecurityStringToEnum(kSecurityWpa3), info.security);
+  }
+  {
+    WiFiServiceRefPtr service = MakeSimpleService(kSecurityPsk);
+    WiFiEndpoint::SecurityFlags flags;
+    flags.rsn_psk = true;
+    WiFiEndpointRefPtr ep = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    service->AddEndpoint(ep);
+    Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+    EXPECT_EQ(Metrics::WiFiSecurityStringToEnum(kSecurityRsn), info.security);
+  }
+}
+
 }  // namespace shill
