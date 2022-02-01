@@ -18,12 +18,13 @@
 #include <dbus/message.h>
 
 #include "chaps/chaps_interface.h"
+#include "pkcs11/cryptoki.h"
 
 namespace chaps {
 
 // ChapsProxyImpl is the default implementation of the chaps proxy interface.
 // All calls are forwarded to a libchrome proxy object.
-class ChapsProxyImpl : public ChapsInterface {
+class EXPORT_SPEC ChapsProxyImpl : public ChapsInterface {
  public:
   // Factory method for creating a new proxy. The proxy requires that an
   // AtExitManager is instantiated. |shadow_at_exit| flag passed to Create()

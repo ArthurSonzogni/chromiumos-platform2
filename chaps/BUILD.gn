@@ -196,7 +196,7 @@ executable("chapsd") {
   ]
   deps = [
     ":chaps-protos",
-    ":libchaps_static",
+    ":libchaps",
   ]
   if (use.tpm2) {
     sources += [ "tpm2_utility_impl.cc" ]
@@ -236,7 +236,7 @@ executable("chaps_client") {
   sources = [ "chaps_client.cc" ]
   install_path = "bin"
   configs += [ ":target_defaults" ]
-  deps = [ ":libchaps_static" ]
+  deps = [ ":libchaps" ]
 }
 
 executable("p11_replay") {

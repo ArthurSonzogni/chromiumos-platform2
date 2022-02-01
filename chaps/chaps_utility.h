@@ -102,7 +102,7 @@ inline void CopyVectorToCharBuffer(const std::vector<uint8_t>& source,
 EXPORT_SPEC const char* CK_RVToString(CK_RV value);
 
 // AttributeToString stringifies a PKCS #11 attribute type.
-std::string AttributeToString(CK_ATTRIBUTE_TYPE attribute);
+EXPORT_SPEC std::string AttributeToString(CK_ATTRIBUTE_TYPE attribute);
 
 // StringToAttribute tries to parse the input string |attribute_string| into an
 // attribute |output|. It'll return true iff the |attribute_string| is parsed
@@ -116,8 +116,8 @@ std::string ValueToString(CK_ATTRIBUTE_TYPE attribute,
 
 // PrintAttributes parses serialized attributes and prints in the form:
 // "{attribute1[=value1], attribute2[=value2]}".
-std::string PrintAttributes(const std::vector<uint8_t>& serialized,
-                            bool is_value_enabled);
+EXPORT_SPEC std::string PrintAttributes(const std::vector<uint8_t>& serialized,
+                                        bool is_value_enabled);
 
 // PrintIntVector prints a vector in array literal form.  E.g. "{0, 1, 2}".
 // ** A static cast to 'int' must be possible for type T.
@@ -266,40 +266,41 @@ class PreservedByteVector {
 };
 
 // Computes and returns a SHA-1 hash of the given input.
-std::string Sha1(const std::string& input);
-brillo::SecureBlob Sha1(const brillo::SecureBlob& input);
+EXPORT_SPEC std::string Sha1(const std::string& input);
+EXPORT_SPEC brillo::SecureBlob Sha1(const brillo::SecureBlob& input);
 
 // Computes and returns a SHA-256 hash of the given input.
-brillo::SecureBlob Sha256(const brillo::SecureBlob& input);
+EXPORT_SPEC brillo::SecureBlob Sha256(const brillo::SecureBlob& input);
 
 // Computes and returns a SHA-512 hash of the given input.
-brillo::SecureBlob Sha512(const brillo::SecureBlob& input);
+EXPORT_SPEC brillo::SecureBlob Sha512(const brillo::SecureBlob& input);
 
 // Initializes the OpenSSL library on construction and terminates the library on
 // destruction.
-class ScopedOpenSSL {
+class EXPORT_SPEC ScopedOpenSSL {
  public:
   ScopedOpenSSL();
   ~ScopedOpenSSL();
 };
 
 // Returns a description of the OpenSSL error stack.
-std::string GetOpenSSLError();
+EXPORT_SPEC std::string GetOpenSSLError();
 
 // Computes a message authentication code using HMAC and SHA-512.
-std::string HmacSha512(const std::string& input, const brillo::SecureBlob& key);
+EXPORT_SPEC std::string HmacSha512(const std::string& input,
+                                   const brillo::SecureBlob& key);
 
 // Performs AES-256 encryption / decryption in CBC mode with PKCS padding. If
 // 'iv' is left empty, a random IV will be generated and appended to the cipher-
 // text on encryption.
-bool RunCipher(bool is_encrypt,
-               const brillo::SecureBlob& key,
-               const std::string& iv,
-               const std::string& input,
-               std::string* output);
+EXPORT_SPEC bool RunCipher(bool is_encrypt,
+                           const brillo::SecureBlob& key,
+                           const std::string& iv,
+                           const std::string& input,
+                           std::string* output);
 
 // Returns true if the given attribute type has an integral value.
-bool IsIntegralAttribute(CK_ATTRIBUTE_TYPE type);
+EXPORT_SPEC bool IsIntegralAttribute(CK_ATTRIBUTE_TYPE type);
 
 // TODO(crbug/916023): Move pure OpenSSL conversion wrappers to a cross daemon
 // library.
@@ -310,25 +311,26 @@ bool IsIntegralAttribute(CK_ATTRIBUTE_TYPE type);
 // Convert OpenSSL BIGNUM |bignum| to string.
 // Padding the result to at least |pad_to_length| bytes long.
 // Return empty string on error.
-std::string ConvertFromBIGNUM(const BIGNUM* bignum, int pad_to_length = 0);
+EXPORT_SPEC std::string ConvertFromBIGNUM(const BIGNUM* bignum,
+                                          int pad_to_length = 0);
 
 // Convert string |big_integer| into pre-allocated OpenSSL BIGNUM.
 // Returns false if big_integer is empty, b is nullptr, or conversion fails.
-bool ConvertToBIGNUM(const std::string& big_integer, BIGNUM* b);
+EXPORT_SPEC bool ConvertToBIGNUM(const std::string& big_integer, BIGNUM* b);
 
 // Convert the public key consisting of |modulus| and |exponent| to an RSA
 // object and return it on success, otherwise, return nullptr.
-crypto::ScopedRSA NumberToScopedRsa(const std::string& modulus,
-                                    const std::string& exponent);
+EXPORT_SPEC crypto::ScopedRSA NumberToScopedRsa(const std::string& modulus,
+                                                const std::string& exponent);
 
 //
 // OpenSSL type <--> DER-encoded string
 //
 
-// Get the ECParamters from |key| and DER-encode to a string.
-std::string GetECParametersAsString(const EC_KEY* key);
+// Get the ECParameters from |key| and DER-encode to a string.
+EXPORT_SPEC std::string GetECParametersAsString(const EC_KEY* key);
 // Get the EC_Point from |key| and DER-encode to a string.
-std::string GetECPointAsString(const EC_KEY* key);
+EXPORT_SPEC std::string GetECPointAsString(const EC_KEY* key);
 
 //
 // OpenSSL type <--> PKCS #11 Attributes
@@ -336,7 +338,8 @@ std::string GetECPointAsString(const EC_KEY* key);
 
 // Create a OpenSSL EC_KEY from a CKA_EC_PARAMS string (which is compatible
 // with DER-encoded OpenSSL ECParameters)
-crypto::ScopedEC_KEY CreateECCKeyFromEC_PARAMS(const std::string& ec_params);
+EXPORT_SPEC crypto::ScopedEC_KEY CreateECCKeyFromEC_PARAMS(
+    const std::string& ec_params);
 
 // In OpenSSL 1.1, i2o_ECPublicKey now takes a const EC_KEY *, which breaks
 // the function signature expectation of ConvertOpenSSLObjectToString, so
@@ -346,17 +349,19 @@ static inline int i2o_ECPublicKey_nc(EC_KEY* key, unsigned char** buf) {
 }
 
 // Get the chaps internal digest algorithm type from PKCS#11 mechanism type.
-chaps::DigestAlgorithm GetDigestAlgorithm(CK_MECHANISM_TYPE mechanism);
+EXPORT_SPEC chaps::DigestAlgorithm GetDigestAlgorithm(
+    CK_MECHANISM_TYPE mechanism);
 
 // Return the OpenSSL Digest associated with the given DigestAlgorithm.
-const EVP_MD* GetOpenSSLDigest(DigestAlgorithm alg);
+EXPORT_SPEC const EVP_MD* GetOpenSSLDigest(DigestAlgorithm alg);
 
 // Return the OpenSSL Digest associated with the given PKCS#11 Mechanism.
-const EVP_MD* GetOpenSSLDigestForMechanism(CK_MECHANISM_TYPE mechanism);
+EXPORT_SPEC const EVP_MD* GetOpenSSLDigestForMechanism(
+    CK_MECHANISM_TYPE mechanism);
 
 // Return the RSA padding scheme for the given |mechanism|.
-RsaPaddingScheme GetSigningSchemeForMechanism(
-    const CK_MECHANISM_TYPE mechanism);
+EXPORT_SPEC RsaPaddingScheme
+GetSigningSchemeForMechanism(const CK_MECHANISM_TYPE mechanism);
 
 // Return the OpenSSL Digest associated with the given PKCS#11 MGF function
 // identifier.
@@ -366,10 +371,11 @@ const EVP_MD* GetOpenSSLDigestForMGF(const CK_RSA_PKCS_MGF_TYPE mgf);
 // |mechanism_parameter| and interpret it as CK_RSA_PKCS_PSS_PARAMS and check
 // its sanity. Return false on error. Otherwise, return true and set the 3
 // output parameters if the check is successful.
-bool ParseRSAPSSParams(const std::string& mechanism_parameter,
-                       const CK_RSA_PKCS_PSS_PARAMS** pss_params_out,
-                       const EVP_MD** mgf1_hash_out,
-                       DigestAlgorithm* digest_algorithm_out);
+EXPORT_SPEC bool ParseRSAPSSParams(
+    const std::string& mechanism_parameter,
+    const CK_RSA_PKCS_PSS_PARAMS** pss_params_out,
+    const EVP_MD** mgf1_hash_out,
+    DigestAlgorithm* digest_algorithm_out);
 
 }  // namespace chaps
 
