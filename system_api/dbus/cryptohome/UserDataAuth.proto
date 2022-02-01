@@ -602,6 +602,24 @@ message ExtendAuthSessionReply {
   CryptohomeErrorCode error = 1;
 }
 
+message UpdateCredentialsRequest {
+  // Serialized form of token that is used to identify Auth Session that will
+  // be used to update credentials.
+  bytes auth_session_id = 1;
+  // Label of the credential that will be updated by this request.
+  // If this is empty, it would be considered a password keyset as those keysets
+  // do not have any label stored for them.
+  string old_credential_label = 2;
+  // Authorization data from the user for the new credential. The label in this
+  // request should match |old_credential_label|.
+  cryptohome.AuthorizationRequest authorization = 3;
+}
+
+message UpdateCredentialsReply {
+  // Error if any to update credential.
+  CryptohomeErrorCode error = 1;
+}
+
 message CreatePersistentUserRequest {
   // Id of the auth session associated with the user we aim to create.
   bytes auth_session_id = 1;

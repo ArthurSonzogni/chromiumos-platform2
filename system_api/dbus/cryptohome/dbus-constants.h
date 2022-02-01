@@ -45,6 +45,7 @@ const char kGetSupportedKeyPolicies[] = "GetSupportedKeyPolicies";
 const char kGetAccountDiskUsage[] = "GetAccountDiskUsage";
 const char kStartAuthSession[] = "StartAuthSession";
 const char kAddCredentials[] = "AddCredentials";
+const char kUpdateCredentials[] = "UpdateCredentials";
 const char kAuthenticateAuthSession[] = "AuthenticateAuthSession";
 const char kInvalidateAuthSession[] = "InvalidateAuthSession";
 const char kExtendAuthSession[] = "ExtendAuthSession";
