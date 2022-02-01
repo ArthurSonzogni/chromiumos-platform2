@@ -39,7 +39,8 @@ void ArcDiskQuota::Initialize() {
 }
 
 bool ArcDiskQuota::IsQuotaSupported() const {
-  if (device_.empty()) {
+  base::FilePath device = GetDevice();
+  if (device.empty()) {
     LOG(ERROR) << "No quota mount is found.";
     return false;
   }
@@ -55,18 +56,19 @@ bool ArcDiskQuota::IsQuotaSupported() const {
 }
 
 int64_t ArcDiskQuota::GetCurrentSpaceForUid(uid_t android_uid) const {
+  base::FilePath device = GetDevice();
   if (android_uid < kAndroidUidStart || android_uid > kAndroidUidEnd) {
     LOG(ERROR) << "Android uid " << android_uid
                << " is outside the allowed query range";
     return -1;
   }
-  if (device_.empty()) {
+  if (device.empty()) {
     LOG(ERROR) << "No quota mount is found";
     return -1;
   }
   uid_t real_uid = android_uid + kArcContainerShiftUid;
   int64_t current_space =
-      platform_->GetQuotaCurrentSpaceForUid(device_, real_uid);
+      platform_->GetQuotaCurrentSpaceForUid(device, real_uid);
   if (current_space == -1) {
     PLOG(ERROR) << "Failed to get disk stats for uid: " << real_uid;
     return -1;
@@ -75,18 +77,19 @@ int64_t ArcDiskQuota::GetCurrentSpaceForUid(uid_t android_uid) const {
 }
 
 int64_t ArcDiskQuota::GetCurrentSpaceForGid(gid_t android_gid) const {
+  base::FilePath device = GetDevice();
   if (android_gid < kAndroidGidStart || android_gid > kAndroidGidEnd) {
     LOG(ERROR) << "Android gid " << android_gid
                << " is outside the allowed query range";
     return -1;
   }
-  if (device_.empty()) {
+  if (device.empty()) {
     LOG(ERROR) << "No quota mount is found";
     return -1;
   }
   gid_t real_gid = android_gid + kArcContainerShiftGid;
   int64_t current_space =
-      platform_->GetQuotaCurrentSpaceForGid(device_, real_gid);
+      platform_->GetQuotaCurrentSpaceForGid(device, real_gid);
   if (current_space == -1) {
     PLOG(ERROR) << "Failed to get disk stats for gid: " << real_gid;
     return -1;
@@ -95,17 +98,18 @@ int64_t ArcDiskQuota::GetCurrentSpaceForGid(gid_t android_gid) const {
 }
 
 int64_t ArcDiskQuota::GetCurrentSpaceForProjectId(int project_id) const {
+  base::FilePath device = GetDevice();
   if (!IsAndroidProjectId(project_id)) {
     LOG(ERROR) << "Project id " << project_id
                << " is outside the allowed query range";
     return -1;
   }
-  if (device_.empty()) {
+  if (device.empty()) {
     LOG(ERROR) << "No quota mount is found";
     return -1;
   }
   int64_t current_space =
-      platform_->GetQuotaCurrentSpaceForProjectId(device_, project_id);
+      platform_->GetQuotaCurrentSpaceForProjectId(device, project_id);
   if (current_space == -1) {
     PLOG(ERROR) << "Failed to get disk stats for project id: " << project_id;
     return -1;
@@ -194,7 +198,7 @@ bool ArcDiskQuota::SetMediaRWDataFileProjectId(int project_id,
   return platform_->SetQuotaProjectIdWithFd(project_id, fd, out_error);
 }
 
-base::FilePath ArcDiskQuota::GetDevice() {
+base::FilePath ArcDiskQuota::GetDevice() const {
   std::string device;
   if (!platform_->FindFilesystemDevice(home_, &device)) {
     LOG(ERROR) << "Home device is not found.";

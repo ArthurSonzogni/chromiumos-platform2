@@ -21,7 +21,7 @@ namespace cryptohome {
 
 // This is the constant that is usually fed to the |home| parameter in
 // ArcDiskQuota's constructor.
-constexpr char kArcDiskHome[] = "/home";
+constexpr char kArcDiskHome[] = "/home/chronos/user";
 
 // Used for constructing the target path for SetProjectId().
 constexpr char kUserDownloadsDir[] = "Downloads";
@@ -144,7 +144,7 @@ class ArcDiskQuota {
 
  private:
   // Helper function to parse dev file that contains Android's /data.
-  base::FilePath GetDevice();
+  base::FilePath GetDevice() const;
 
   HomeDirs* homedirs_;
   Platform* platform_;

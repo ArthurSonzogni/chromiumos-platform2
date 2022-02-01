@@ -437,40 +437,6 @@ TEST_F(StatefulRecoveryTest, FilesystemDetailsFailure) {
   EXPECT_FALSE(recovery_->Recover());
 }
 
-TEST_F(StatefulRecoveryTest, MountsParseOk) {
-  Platform platform;
-  FilePath mount_info;
-  FILE* fp;
-  std::string device_in = "/dev/pan", device_out, mount_info_contents;
-
-  mount_info_contents.append("84 24 0:29 / ");
-  FilePath filesystem = FilePath("/second/star/to/the/right");
-  mount_info_contents.append(filesystem.value());
-  mount_info_contents.append(" rw,nosuid,nodev,noexec,relatime - fairyfs ");
-  mount_info_contents.append(device_in);
-  mount_info_contents.append(" rw,ecryp...");
-
-  fp = base::CreateAndOpenTemporaryStream(&mount_info).release();
-  ASSERT_TRUE(fp != NULL);
-  EXPECT_EQ(
-      fwrite(mount_info_contents.c_str(), mount_info_contents.length(), 1, fp),
-      1);
-  EXPECT_EQ(fclose(fp), 0);
-
-  platform.set_mount_info_path(mount_info);
-
-  /* Fails if item is missing. */
-  EXPECT_FALSE(platform.FindFilesystemDevice(FilePath("monkey"), &device_out));
-
-  /* Works normally. */
-  device_out.clear();
-  EXPECT_TRUE(platform.FindFilesystemDevice(filesystem, &device_out));
-  EXPECT_TRUE(device_out == device_in);
-
-  /* Clean up. */
-  EXPECT_TRUE(base::DeleteFile(mount_info));
-}
-
 TEST_F(StatefulRecoveryTest, UsageReportOk) {
   Platform platform;
 

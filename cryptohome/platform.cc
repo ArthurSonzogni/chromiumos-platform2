@@ -1102,14 +1102,33 @@ bool Platform::FindFilesystemDevice(const FilePath& filesystem_in,
   /* Removing trailing slashes. */
   FilePath filesystem = filesystem_in.StripTrailingSeparators();
 
-  std::vector<DecodedProcMountInfo> proc_mounts = ReadMountInfoFile();
+  char fs_device[PATH_MAX];
+  dev_t dev;
 
-  for (const auto& mount : proc_mounts) {
-    if (mount.mount_point != filesystem.value())
-      continue;
-
-    *device = mount.mount_source;
+  // TODO(sarthakkukreti@): Move to rootdev, create a separate helper to get
+  // the device.
+  struct stat fs_stat;
+  if (stat(filesystem.value().c_str(), &fs_stat)) {
+    LOG(WARNING) << "Failed to stat filesystem path";
+    return false;
   }
+
+  dev = static_cast<dev_t>(fs_stat.st_dev);
+
+  int ret = rootdev_wrapper(fs_device, sizeof(fs_device),
+                            false,  // Do full resolution.
+                            false,  // Remove partition number.
+                            &dev,   // Device.
+                            filesystem.value().c_str(),  // Mount point.
+                            nullptr,   // Use default search path.
+                            nullptr);  // Use default /dev path.
+  if (ret != 0) {
+    LOG(WARNING) << "rootdev failed with error code " << ret;
+    return false;
+  }
+
+  *device = std::string(fs_device);
+
   return (device->length() > 0);
 }
 

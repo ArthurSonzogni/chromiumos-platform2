@@ -57,10 +57,10 @@ class ArcDiskQuotaTest : public ::testing::Test {
 
 TEST_F(ArcDiskQuotaTest, QuotaIsSupported) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   // Exactly 1 Android user.
   EXPECT_CALL(homedirs_, GetUnmountedAndroidDataCount()).WillOnce(Return(0));
@@ -71,7 +71,7 @@ TEST_F(ArcDiskQuotaTest, QuotaIsSupported) {
 
 TEST_F(ArcDiskQuotaTest, QuotaIsNotSupported_NoDevice) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(""), Return(false)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(""), Return(false)));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(false, arc_disk_quota_.IsQuotaSupported());
@@ -79,10 +79,10 @@ TEST_F(ArcDiskQuotaTest, QuotaIsNotSupported_NoDevice) {
 
 TEST_F(ArcDiskQuotaTest, QuotaIsNotSupported_NoQuotaMountedDevice) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(-1));
+      .WillRepeatedly(Return(-1));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(false, arc_disk_quota_.IsQuotaSupported());
@@ -90,10 +90,10 @@ TEST_F(ArcDiskQuotaTest, QuotaIsNotSupported_NoQuotaMountedDevice) {
 
 TEST_F(ArcDiskQuotaTest, QuotaIsNotSupported_MultipleAndroidUser) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   // Multiple Android users.
   EXPECT_CALL(homedirs_, GetUnmountedAndroidDataCount()).WillOnce(Return(2));
@@ -104,15 +104,15 @@ TEST_F(ArcDiskQuotaTest, QuotaIsNotSupported_MultipleAndroidUser) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_Succeeds) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(
                              base::FilePath(kDev),
                              kValidAndroidUid + kArcContainerShiftUid))
-      .WillOnce(Return(5));
+      .WillRepeatedly(Return(5));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(5, arc_disk_quota_.GetCurrentSpaceForUid(kValidAndroidUid));
@@ -120,10 +120,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_Succeeds) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_UidTooSmall) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(-1, arc_disk_quota_.GetCurrentSpaceForUid(kAndroidUidStart - 1));
@@ -131,10 +131,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_UidTooSmall) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_UidTooLarge) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(-1, arc_disk_quota_.GetCurrentSpaceForUid(kAndroidUidEnd + 1));
@@ -142,7 +142,7 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_UidTooLarge) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_NoDevice) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(""), Return(false)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(""), Return(false)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(_, _)).Times(0);
 
@@ -152,10 +152,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_NoDevice) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_NoQuotaMountedDevice) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(-1));
+      .WillRepeatedly(Return(-1));
 
   EXPECT_CALL(platform_,
               GetQuotaCurrentSpaceForUid(Ne(base::FilePath(kDev)), Ne(0)))
@@ -167,10 +167,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_NoQuotaMountedDevice) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_QuotactlFails) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(
                              base::FilePath(kDev),
@@ -183,10 +183,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForUid_QuotactlFails) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_Succeeds) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForGid(
                              base::FilePath(kDev),
@@ -199,10 +199,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_Succeeds) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_GidTooSmall) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(-1, arc_disk_quota_.GetCurrentSpaceForGid(kAndroidGidStart - 1));
@@ -210,10 +210,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_GidTooSmall) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_GidTooLarge) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(-1, arc_disk_quota_.GetCurrentSpaceForGid(kAndroidGidEnd + 1));
@@ -221,7 +221,7 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_GidTooLarge) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_NoDevice) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(""), Return(false)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(""), Return(false)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForGid(_, _)).Times(0);
 
@@ -231,10 +231,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_NoDevice) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_NoQuotaMountedDevice) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(-1));
+      .WillRepeatedly(Return(-1));
 
   EXPECT_CALL(platform_,
               GetQuotaCurrentSpaceForUid(Ne(base::FilePath(kDev)), Ne(0)))
@@ -246,15 +246,15 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_NoQuotaMountedDevice) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_QuotactlFails) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForGid(
                              base::FilePath(kDev),
                              kValidAndroidGid + kArcContainerShiftGid))
-      .WillOnce(Return(-1));
+      .WillRepeatedly(Return(-1));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(-1, arc_disk_quota_.GetCurrentSpaceForGid(kValidAndroidGid));
@@ -262,10 +262,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForGid_QuotactlFails) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_Succeeds) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForProjectId(
                              base::FilePath(kDev), kValidAndroidProjectId))
@@ -278,10 +278,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_Succeeds) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_IdTooSmall) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(-1, arc_disk_quota_.GetCurrentSpaceForProjectId(
@@ -290,10 +290,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_IdTooSmall) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_IdTooLarge) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   arc_disk_quota_.Initialize();
   EXPECT_EQ(-1, arc_disk_quota_.GetCurrentSpaceForProjectId(
@@ -302,7 +302,7 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_IdTooLarge) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_NoDevice) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(""), Return(false)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(""), Return(false)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForProjectId(_, _)).Times(0);
 
@@ -313,10 +313,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_NoDevice) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_NoQuotaMountedDevice) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(-1));
+      .WillRepeatedly(Return(-1));
 
   EXPECT_CALL(platform_,
               GetQuotaCurrentSpaceForUid(Ne(base::FilePath(kDev)), Ne(0)))
@@ -329,10 +329,10 @@ TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_NoQuotaMountedDevice) {
 
 TEST_F(ArcDiskQuotaTest, GetCurrentSpaceForProjectId_QuotactlFails) {
   EXPECT_CALL(platform_, FindFilesystemDevice(base::FilePath(kArcDiskHome), _))
-      .WillOnce(DoAll(SetArgPointee<1>(kDev), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<1>(kDev), Return(true)));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForUid(base::FilePath(kDev), 0))
-      .WillOnce(Return(0));
+      .WillRepeatedly(Return(0));
 
   EXPECT_CALL(platform_, GetQuotaCurrentSpaceForProjectId(
                              base::FilePath(kDev), kValidAndroidProjectId))

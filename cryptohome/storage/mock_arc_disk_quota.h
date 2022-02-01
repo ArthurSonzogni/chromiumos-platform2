@@ -16,7 +16,7 @@ namespace cryptohome {
 class MockArcDiskQuota : public ArcDiskQuota {
  public:
   MockArcDiskQuota()
-      : ArcDiskQuota(nullptr, nullptr, base::FilePath("/home")) {}
+      : ArcDiskQuota(nullptr, nullptr, base::FilePath("/home/chronos/user")) {}
   ~MockArcDiskQuota() override {}
 
   MOCK_METHOD(void, Initialize, (), (override));
