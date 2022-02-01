@@ -128,11 +128,20 @@ cbor::Value::MapValue ConvertRequestMetadataToCborMap(
 
   cbor::Value::MapValue request_meta_data;
   request_meta_data.emplace(kSchemaVersion, kRequestMetaDataSchemaVersion);
-  request_meta_data.emplace(kRequestorAuthClaim, std::move(auth_claim));
-  request_meta_data.emplace(kRequestorUserId, metadata.requestor_user_id);
-  request_meta_data.emplace(kRequestorUserIdType,
+  request_meta_data.emplace(kAuthClaim, std::move(auth_claim));
+  request_meta_data.emplace(kRequestorUser, metadata.requestor_user_id);
+  request_meta_data.emplace(kRequestorUserType,
                             static_cast<int>(metadata.requestor_user_id_type));
   return request_meta_data;
+}
+
+cbor::Value::MapValue ConvertHsmMetadataToCborMap(
+    const HsmMetaData& hsm_meta_data) {
+  cbor::Value::MapValue hsm_meta_data_map;
+
+  hsm_meta_data_map.emplace(kSchemaVersion, kHsmMetaDataSchemaVersion);
+
+  return hsm_meta_data_map;
 }
 
 }  // namespace
@@ -143,12 +152,12 @@ cbor::Value::MapValue ConvertRequestMetadataToCborMap(
 // party will not be able to decrypt the data).
 const char kSchemaVersion[] = "schema_version";
 const char kMediatorShare[] = "mediator_share";
-const char kMediatedPoint[] = "mediated_point";
+const char kMediatedShare[] = "mediated_share";
 const char kKeyAuthValue[] = "key_auth_value";
 const char kDealerPublicKey[] = "dealer_pub_key";
 const char kPublisherPublicKey[] = "publisher_pub_key";
 const char kChannelPublicKey[] = "channel_pub_key";
-const char kRsaPublicKey[] = "epoch_rsa_sig_pkey";
+const char kRsaPublicKey[] = "rsa_pub_key";
 const char kOnboardingMetaData[] = "onboarding_meta_data";
 const char kHsmAead[] = "hsm_aead";
 const char kAeadCipherText[] = "ct";
@@ -162,15 +171,15 @@ const char kEpochPublicKey[] = "epoch_pub_key";
 const char kEphemeralPublicInvKey[] = "ephemeral_pub_inv_key";
 const char kRequestPayloadSalt[] = "request_salt";
 const char kResponseAead[] = "resp_aead";
-const char kResponseMetaData[] = "response_meta_data";
+const char kResponseHsmMetaData[] = "hsm_meta_data";
 const char kResponsePayloadSalt[] = "response_salt";
 const char kResponseErrorCode[] = "error_code";
 const char kResponseErrorString[] = "error_string";
 const char kUserId[] = "user_id";
 const char kUserIdType[] = "user_id_type";
-const char kRequestorAuthClaim[] = "requestor_auth_claim";
-const char kRequestorUserId[] = "requestor_user_id";
-const char kRequestorUserIdType[] = "requestor_user_id_type";
+const char kAuthClaim[] = "auth_claim";
+const char kRequestorUser[] = "requestor_user";
+const char kRequestorUserType[] = "requestor_user_type";
 const char kGaiaAccessToken[] = "gaia_access_token";
 const char kGaiaReauthProofToken[] = "gaia_reauth_proof_token";
 const char kEpochMetaData[] = "epoch_meta_data";
@@ -178,6 +187,7 @@ const char kEpochMetaData[] = "epoch_meta_data";
 const int kHsmAssociatedDataSchemaVersion = 1;
 const int kOnboardingMetaDataSchemaVersion = 1;
 const int kRequestMetaDataSchemaVersion = 1;
+const int kHsmMetaDataSchemaVersion = 1;
 
 bool SerializeRecoveryRequestPayloadToCbor(
     const RequestPayload& request_payload,
@@ -263,7 +273,8 @@ bool SerializeHsmResponseAssociatedDataToCbor(
     brillo::SecureBlob* response_ad_cbor) {
   cbor::Value::MapValue ad_map;
 
-  ad_map.emplace(kResponseMetaData, response_ad.response_meta_data);
+  ad_map.emplace(kResponseHsmMetaData,
+                 ConvertHsmMetadataToCborMap(response_ad.hsm_meta_data));
   ad_map.emplace(kResponsePayloadSalt, response_ad.response_payload_salt);
 
   if (!SerializeCborMap(ad_map, response_ad_cbor)) {
@@ -322,7 +333,7 @@ bool SerializeHsmResponsePlainTextToCbor(const HsmResponsePlainText& plain_text,
   cbor::Value::MapValue pt_map;
 
   pt_map.emplace(kDealerPublicKey, plain_text.dealer_pub_key);
-  pt_map.emplace(kMediatedPoint, plain_text.mediated_point);
+  pt_map.emplace(kMediatedShare, plain_text.mediated_point);
   pt_map.emplace(kKeyAuthValue, plain_text.key_auth_value);
   if (!SerializeCborMap(pt_map, response_cbor)) {
     LOG(ERROR) << "Failed to serialize HSM responce payload to CBOR";
@@ -506,7 +517,7 @@ bool DeserializeHsmResponsePlainTextFromCbor(
     return false;
   }
   brillo::SecureBlob mediated_point;
-  if (!FindBytestringValueInCborMap(response_map, kMediatedPoint,
+  if (!FindBytestringValueInCborMap(response_map, kMediatedShare,
                                     &mediated_point)) {
     LOG(ERROR) << "Failed to get mediated point from the HSM response map.";
     return false;
@@ -548,16 +559,21 @@ bool DeserializeHsmResponseAssociatedDataFromCbor(
                   "associated data map.";
     return false;
   }
-  brillo::SecureBlob response_meta_data;
-  if (!FindBytestringValueInCborMap(response_map, kResponseMetaData,
-                                    &response_meta_data)) {
-    LOG(ERROR) << "Failed to get response metadata from the HSM response "
-                  "associated data map.";
+
+  const auto hsm_meta_data_entry =
+      response_map.find(cbor::Value(kResponseHsmMetaData));
+  if (hsm_meta_data_entry == response_map.end()) {
+    LOG(ERROR) << "No " << kResponseHsmMetaData
+               << " entry in the HSM Response associated data map.";
+    return false;
+  }
+  if (!hsm_meta_data_entry->second.is_map()) {
+    LOG(ERROR) << "Wrongly formatted " << kResponseHsmMetaData
+               << " entry in the HSM Response associated data map.";
     return false;
   }
 
   response_ad->response_payload_salt = std::move(response_payload_salt);
-  response_ad->response_meta_data = std::move(response_meta_data);
   return true;
 }
 

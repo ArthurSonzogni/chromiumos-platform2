@@ -30,8 +30,6 @@ namespace cryptohome {
 namespace cryptorecovery {
 namespace {
 
-const char kFakeHsmMetaData[] = "fake-hsm-metadata";
-
 brillo::SecureBlob GetMediatorShareHkdfInfo() {
   return brillo::SecureBlob(RecoveryCrypto::kMediatorShareHkdfInfoValue);
 }
@@ -373,7 +371,6 @@ bool FakeRecoveryMediatorCrypto::MediateHsmPayload(
       CreateSecureRandomBlob(RecoveryCrypto::kHkdfSaltLength);
   ResponsePayload response_payload;
   HsmResponseAssociatedData response_ad;
-  response_ad.response_meta_data = brillo::SecureBlob(kFakeHsmMetaData);
   response_ad.response_payload_salt = salt;
   if (!SerializeHsmResponseAssociatedDataToCbor(
           response_ad, &response_payload.associated_data)) {

@@ -18,7 +18,7 @@ namespace cryptorecovery {
 // Constants that will be used as keys in the CBOR map.
 extern const char kSchemaVersion[];
 extern const char kMediatorShare[];
-extern const char kMediatedPoint[];
+extern const char kMediatedShare[];
 extern const char kKeyAuthValue[];
 extern const char kDealerPublicKey[];
 extern const char kPublisherPublicKey[];
@@ -37,15 +37,15 @@ extern const char kRequestRsaSignature[];
 extern const char kEpochPublicKey[];
 extern const char kRequestPayloadSalt[];
 extern const char kResponseAead[];
-extern const char kResponseMetaData[];
+extern const char kResponseHsmMetaData[];
 extern const char kResponsePayloadSalt[];
 extern const char kResponseErrorCode[];
 extern const char kResponseErrorString[];
 extern const char kUserId[];
 extern const char kUserIdType[];
-extern const char kRequestorAuthClaim[];
-extern const char kRequestorUserId[];
-extern const char kRequestorUserIdType[];
+extern const char kAuthClaim[];
+extern const char kRequestorUser[];
+extern const char kRequestorUserType[];
 extern const char kGaiaAccessToken[];
 extern const char kGaiaReauthProofToken[];
 extern const char kEpochMetaData[];
@@ -54,6 +54,7 @@ extern const char kEpochMetaData[];
 extern const int kHsmAssociatedDataSchemaVersion;
 extern const int kOnboardingMetaDataSchemaVersion;
 extern const int kRequestMetaDataSchemaVersion;
+extern const int kHsmMetaDataSchemaVersion;
 
 // Constructs cbor-encoded binary blob for the Recovery Request payload.
 bool SerializeRecoveryRequestPayloadToCbor(
