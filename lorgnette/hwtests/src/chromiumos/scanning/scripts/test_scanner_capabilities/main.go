@@ -19,7 +19,7 @@ func main() {
 	identifierFlag := flag.String("identifier", "", "Substring of the identifier printed by lorgnette_cli of the scanner to test.")
 	flag.Parse()
 
-	logFile, err := utils.CreateLogFile()
+	logFile, err := utils.CreateLogFile("test_scanner_capabilities")
 	if err != nil {
 		log.Fatal(err)
 	}

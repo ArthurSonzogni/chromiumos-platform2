@@ -11,10 +11,12 @@ import (
 	"time"
 )
 
-// CreateLogFile creates a log file and its parent directory.
-func CreateLogFile() (*os.File, error) {
+// CreateLogFile creates a log file and its parent directory. TODO(b/191933619):
+// add a parameter so that each tool from a single logical certification run
+// logs to the same directory.
+func CreateLogFile(scriptName string) (*os.File, error) {
 	t := time.Now()
-	fullPath := filepath.Join("/tmp/wwcb_mfp_testing/results", t.Format("20060102-150405"))
+	fullPath := filepath.Join(fmt.Sprintf("/tmp/wwcb_mfp_testing/%s/results", scriptName), t.Format("20060102-150405"))
 	if err := os.MkdirAll(fullPath, 0755); err != nil {
 		return nil, fmt.Errorf("Failed to create log directory %v: %v", fullPath, err)
 	}
