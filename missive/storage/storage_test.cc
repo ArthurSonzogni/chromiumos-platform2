@@ -995,7 +995,8 @@ TEST_P(StorageTest, WriteIntoNewStorageAndUpload) {
   task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(1));
 }
 
-TEST_P(StorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
+// TODO(b/198377119): Investigate flakiness, fix and re-enable.
+TEST_P(StorageTest, DISABLED_WriteIntoNewStorageAndUploadWithKeyUpdate) {
   // Run the test only when encryption is enabled.
   if (!is_encryption_enabled()) {
     return;
