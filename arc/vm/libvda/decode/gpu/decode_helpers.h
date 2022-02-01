@@ -20,6 +20,8 @@ constexpr vda_input_format_t kInputFormats[] = {
     {VP9PROFILE_PROFILE0 /* profile */, 2 /* min_width */, 2 /* min_height */,
      1920 /* max_width */, 1080 /* max_height */},
     {H264PROFILE_MAIN /* profile */, 2 /* min_width */, 2 /* min_height */,
+     1920 /* max_width */, 1080 /* max_height */},
+    {HEVCPROFILE_MAIN /* profile */, 2 /* min_width */, 2 /* min_height */,
      1920 /* max_width */, 1080 /* max_height */}};
 
 // Convert the specified pixel |format| to a HAL pixel format.
