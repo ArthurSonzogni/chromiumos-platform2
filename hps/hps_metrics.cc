@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/bind.h>
+#include <base/numerics/safe_conversions.h>
+#include <base/time/time.h>
+
 #include "hps/hps_metrics.h"
 
 namespace hps {
@@ -12,7 +16,49 @@ constexpr int kHpsBootMaxDurationMilliSeconds =
     kHpsUpdateMcuMaxDurationMilliSeconds +
     kHpsUpdateSpiMaxDurationMilliSeconds + 10 * 60 * 1000;
 
-HpsMetrics::HpsMetrics() : metrics_lib_(std::make_unique<MetricsLibrary>()) {}
+// chromeos_metrics::CumulativeMetrics constants:
+constexpr char kCumulativeMetricsBackingDir[] = "/var/lib/hpsd/metrics";
+constexpr double kMinimumObservedImagesForValidityMetricUpload = 30.;
+
+HpsMetrics::HpsMetrics()
+    : HpsMetrics(base::FilePath(kCumulativeMetricsBackingDir)) {}
+
+HpsMetrics::HpsMetrics(base::FilePath cumulative_metrics_path)
+    : metrics_lib_(std::make_unique<MetricsLibrary>()),
+      cumulative_metrics_(cumulative_metrics_path,
+                          {"invalid", "valid"},
+                          kUpdatePeriod,
+                          base::BindRepeating(&HpsMetrics::UpdateValidityStats,
+                                              base::Unretained(this)),
+                          kAccumulatePeriod,
+                          base::BindRepeating(&HpsMetrics::ReportValidityStats,
+                                              base::Unretained(this))) {}
+
+void HpsMetrics::SendImageValidity(bool valid) {
+  validity_counters_[valid] += 1;
+}
+
+void HpsMetrics::UpdateValidityStats(chromeos_metrics::CumulativeMetrics* cm) {
+  if (validity_counters_[false] || validity_counters_[true]) {
+    cumulative_metrics_.Add("invalid", validity_counters_[false]);
+    validity_counters_[false] = 0;
+    cumulative_metrics_.Add("valid", validity_counters_[true]);
+    validity_counters_[true] = 0;
+  }
+}
+
+void HpsMetrics::ReportValidityStats(chromeos_metrics::CumulativeMetrics* cm) {
+  double valid = base::checked_cast<double>(cumulative_metrics_.Get("valid"));
+  double invalid =
+      base::checked_cast<double>(cumulative_metrics_.Get("invalid"));
+  if (valid + invalid >= kMinimumObservedImagesForValidityMetricUpload) {
+    // ceil the value so that 1 invalid image will push the value above the 0
+    // bucket
+    metrics_lib_->SendToUMA(
+        kHpsImageInvalidity,
+        base::ClampCeil(1000.0 * invalid / (valid + invalid)), 0, 1000, 100);
+  }
+}
 
 bool HpsMetrics::SendHpsTurnOnResult(HpsTurnOnResult result,
                                      base::TimeDelta duration) {

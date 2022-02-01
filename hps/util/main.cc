@@ -159,7 +159,8 @@ int main(int argc, char* argv[]) {
         std::make_unique<hps::RetryDev>(std::move(baseDevice), FLAGS_retries,
                                         base::Milliseconds(FLAGS_retry_delay));
   }
-  auto hps = std::make_unique<hps::HPS_impl>(std::move(dev));
+  auto hps = std::make_unique<hps::HPS_impl>(
+      std::move(dev), std::make_unique<hps::HpsNoMetrics>());
 
   // Show download progress when run interactively.
   if (isatty(STDOUT_FILENO)) {

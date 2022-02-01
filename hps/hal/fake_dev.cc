@@ -119,13 +119,13 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
 
     case HpsReg::kFeature0:
       if (this->feature_on_ & hps::R7::kFeature0Enable) {
-        v = hps::RFeat::kValid | static_cast<uint8_t>(this->f0_result_);
+        v = this->f0_result_;
       }
       break;
 
     case HpsReg::kFeature1:
       if (this->feature_on_ & hps::R7::kFeature1Enable) {
-        v = hps::RFeat::kValid | static_cast<uint8_t>(this->f1_result_);
+        v = this->f1_result_;
       }
       break;
 

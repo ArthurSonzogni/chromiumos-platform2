@@ -58,8 +58,14 @@ class FakeDev : public DevInterface {
   }
   void SetVersion(uint32_t version) { this->firmware_version_ = version; }
   void SetBlockSizeBytes(size_t sz) { this->block_size_b_ = sz; }
-  void SetF0Result(int8_t result) { this->f0_result_ = result; }
-  void SetF1Result(int8_t result) { this->f1_result_ = result; }
+  void SetF0Result(int8_t result, bool valid) {
+    this->f0_result_ =
+        (valid ? hps::RFeat::kValid : 0) | static_cast<uint8_t>(result);
+  }
+  void SetF1Result(int8_t result, bool valid) {
+    this->f1_result_ =
+        (valid ? hps::RFeat::kValid : 0) | static_cast<uint8_t>(result);
+  }
   size_t GetBankLen(hps::HpsBank bank);
   // Return a DevInterface accessing the simulator.
   std::unique_ptr<DevInterface> CreateDevInterface();
@@ -88,8 +94,8 @@ class FakeDev : public DevInterface {
   uint16_t flags_ = 0;                   // Behaviour flags
   uint32_t firmware_version_ = 0;        // Firmware version
   size_t block_size_b_ = 256;            // Write block size.
-  int8_t f0_result_ = 0;                 // Result for feature 0
-  int8_t f1_result_ = 0;                 // Result for feature 1
+  uint16_t f0_result_ = 0;               // Register value for feature 0
+  uint16_t f1_result_ = 0;               // Register value for feature 1
 };
 
 }  // namespace hps

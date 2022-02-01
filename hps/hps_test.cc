@@ -51,6 +51,7 @@ class MockHpsMetrics : public hps::HpsMetricsInterface {
               SendHpsUpdateDuration,
               (HpsBank, base::TimeDelta),
               (override));
+  MOCK_METHOD(void, SendImageValidity, (bool), (override));
 };
 
 // Override sleep to use MOCK_TIME functionality
@@ -197,16 +198,36 @@ TEST_F(HPSTest, FeatureControl) {
   EXPECT_TRUE(hps_->Disable(1));
   // Check that a result is returned if the feature is enabled.
   const int result = -42;
-  fake_->SetF0Result(result);
+  fake_->SetF0Result(result, true);
   feature_result = hps_->Result(0);
   EXPECT_EQ(feature_result.valid, false);
   ASSERT_TRUE(hps_->Enable(0));
+  // SendImageValidity is only sent when the device responds with 'invalid'.
+  // The other 'Result' calls in this test do not query the device because
+  // hps_impl has an internal state of enabled features 'feat_enabled_'.
+  EXPECT_CALL(*metrics_, SendImageValidity(true)).Times(1);
   feature_result = hps_->Result(0);
   EXPECT_EQ(feature_result.valid, true);
   EXPECT_EQ(feature_result.inference_result, result);
   ASSERT_TRUE(hps_->Disable(0));
   feature_result = hps_->Result(0);
   EXPECT_EQ(feature_result.valid, false);
+}
+
+/*
+ * Check that an invalid result sends SendImageValidity(false)
+ */
+TEST_F(HPSTest, FeatureInvalid) {
+  hps::FeatureResult feature_result;
+  const int result = -42;
+  // Set the module to be ready for features.
+  fake_->SkipBoot();
+  fake_->SetF0Result(result, false);
+  ASSERT_TRUE(hps_->Enable(0));
+  EXPECT_CALL(*metrics_, SendImageValidity(false)).Times(1);
+  feature_result = hps_->Result(0);
+  EXPECT_EQ(feature_result.valid, false);
+  EXPECT_EQ(feature_result.inference_result, result);
 }
 
 /*

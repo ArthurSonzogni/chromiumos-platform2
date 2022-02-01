@@ -153,6 +153,7 @@ FeatureResult HPS_impl::Result(int feature) {
   // inference results.
   FeatureResult result;
   result.valid = (hps_result.value() & RFeat::kValid) == RFeat::kValid;
+  hps_metrics_->SendImageValidity(result.valid);
 
   // The lower 8 bits are an int8_t.
   // We are extracting that byte here, not converting the uint16_t.

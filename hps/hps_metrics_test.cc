@@ -2,9 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <vector>
 
 #include <base/macros.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/test/task_environment.h>
+#include <base/test/scoped_chromeos_version_info.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -17,10 +22,21 @@ using ::testing::Le;
 
 namespace hps {
 
+const char kLsbRelease[] =
+    "CHROMEOS_RELEASE_NAME=Chrome OS\n"
+    "CHROMEOS_RELEASE_VERSION=1.2.3.4\n"
+    "CHROMEOS_RELEASE_TRACK=testimage-channel\n";
+
 class HpsMetricsTest : public testing::Test {
  protected:
-  HpsMetricsTest() {
-    hps_metrics_.SetMetricsLibraryForTesting(
+  HpsMetricsTest() {}
+  void SetUp() override {
+    ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+    const base::FilePath cumulative_metric_path =
+        temp_dir.GetPath().Append("cumulative");
+    ASSERT_TRUE(base::CreateDirectory(cumulative_metric_path));
+    hps_metrics_ = std::make_unique<HpsMetrics>(cumulative_metric_path);
+    hps_metrics_->SetMetricsLibraryForTesting(
         std::make_unique<MetricsLibraryMock>());
   }
   HpsMetricsTest(const HpsMetricsTest&) = delete;
@@ -30,10 +46,13 @@ class HpsMetricsTest : public testing::Test {
 
   MetricsLibraryMock* GetMetricsLibraryMock() {
     return static_cast<MetricsLibraryMock*>(
-        hps_metrics_.metrics_library_for_testing());
+        hps_metrics_->metrics_library_for_testing());
   }
-
-  HpsMetrics hps_metrics_;
+  base::test::ScopedChromeOSVersionInfo version{kLsbRelease, base::Time()};
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  base::ScopedTempDir temp_dir;
+  std::unique_ptr<HpsMetrics> hps_metrics_;
 };
 
 TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
@@ -77,8 +96,41 @@ TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
     EXPECT_CALL(*GetMetricsLibraryMock(),
                 SendEnumToUMA(kHpsTurnOnResult, static_cast<int>(result), _))
         .Times(1);
-    hps_metrics_.SendHpsTurnOnResult(result, base::Milliseconds(kDuration));
+    hps_metrics_->SendHpsTurnOnResult(result, base::Milliseconds(kDuration));
   }
+}
+
+// Without a SendImageValidity call, no metric is sent
+TEST_F(HpsMetricsTest, ValidityNopTest) {
+  // An extra cycle is required to fire the Report callback b/218422987
+  task_environment_.FastForwardBy(kAccumulatePeriod + kUpdatePeriod);
+}
+
+// Test with 50% valid images
+TEST_F(HpsMetricsTest, ValidityTest) {
+  for (int i = 0; i < 15; ++i) {
+    hps_metrics_->SendImageValidity(true);
+    hps_metrics_->SendImageValidity(false);
+  }
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(kHpsImageInvalidity, 500, _, _, _))
+      .Times(1);
+  // An extra cycle is required to fire the Report callback b/218422987
+  task_environment_.FastForwardBy(kAccumulatePeriod + kUpdatePeriod);
+}
+
+// Test with 1 invalid image
+// We want the output to be one, not 0.
+TEST_F(HpsMetricsTest, ValidityOneTest) {
+  hps_metrics_->SendImageValidity(false);
+  for (int i = 0; i < 1000; ++i) {
+    hps_metrics_->SendImageValidity(true);
+  }
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(kHpsImageInvalidity, 1, _, _, _))
+      .Times(1);
+  // An extra cycle is required to fire the Report callback b/218422987
+  task_environment_.FastForwardBy(kAccumulatePeriod + kUpdatePeriod);
 }
 
 }  // namespace hps
