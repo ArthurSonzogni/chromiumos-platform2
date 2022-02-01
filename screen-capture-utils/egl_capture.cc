@@ -95,7 +95,7 @@ EGLImageKHR CreateImage(PFNEGLCREATEIMAGEKHRPROC CreateImageKHR,
   int num_planes = 0;
   // CreateImageKHR takes its own references to the dma-bufs, so closing the fds
   // at the end of the function is necessary and won't break the returned image.
-  base::ScopedFD fds[GBM_MAX_PLANES] = {};
+  std::vector<base::ScopedFD> fds = {};
   for (size_t plane = 0; plane < GBM_MAX_PLANES; plane++) {
     // getfb2() doesn't return the number of planes so get handles
     // and count planes until we find a handle that isn't set
@@ -105,13 +105,13 @@ EGLImageKHR CreateImage(PFNEGLCREATEIMAGEKHRPROC CreateImageKHR,
     int fd;
     int ret = drmPrimeHandleToFD(drm_fd, fb->handles[plane], 0, &fd);
     CHECK_EQ(ret, 0) << "drmPrimeHandleToFD failed";
-    fds[plane].reset(fd);
+    fds.emplace_back(fd);
     num_planes++;
   }
 
   CHECK_GT(num_planes, 0);
 
-  EGLint attr_list[6 + GBM_MAX_PLANES * 10 + 1 /* for EGL_NONE */] = {
+  std::vector<EGLint> attr_list = {
       EGL_WIDTH,
       static_cast<EGLint>(fb->width),
       EGL_HEIGHT,
@@ -120,32 +120,30 @@ EGLImageKHR CreateImage(PFNEGLCREATEIMAGEKHRPROC CreateImageKHR,
       static_cast<EGLint>(fb->pixel_format),
   };
 
-  size_t attrs_index = 6;
-
   for (size_t plane = 0; plane < num_planes; plane++) {
-    attr_list[attrs_index++] = EGL_DMA_BUF_PLANE0_FD_EXT + plane * 3;
-    attr_list[attrs_index++] = fds[plane].get();
-    attr_list[attrs_index++] = EGL_DMA_BUF_PLANE0_OFFSET_EXT + plane * 3;
-    attr_list[attrs_index++] = fb->offsets[plane];
-    attr_list[attrs_index++] = EGL_DMA_BUF_PLANE0_PITCH_EXT + plane * 3;
-    attr_list[attrs_index++] = fb->pitches[plane];
+    attr_list.emplace_back(EGL_DMA_BUF_PLANE0_FD_EXT + plane * 3);
+    attr_list.emplace_back(fds[plane].get());
+    attr_list.emplace_back(EGL_DMA_BUF_PLANE0_OFFSET_EXT + plane * 3);
+    attr_list.emplace_back(fb->offsets[plane]);
+    attr_list.emplace_back(EGL_DMA_BUF_PLANE0_PITCH_EXT + plane * 3);
+    attr_list.emplace_back(fb->pitches[plane]);
 
     // If DRM_MODE_FB_MODIFIERS is not set, it means the modifiers are
     // determined implicitly in a driver-specific manner. As such we only
     // set the modifier if we got a framebuffer with explicit modifier and
     // an EGL driver that supports explicit modifiers.
     if (import_modifiers_exist && (fb->flags & DRM_MODE_FB_MODIFIERS)) {
-      attr_list[attrs_index++] = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT + plane * 2;
-      attr_list[attrs_index++] = fb->modifier & 0xfffffffful;
-      attr_list[attrs_index++] = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT + plane * 2;
-      attr_list[attrs_index++] = fb->modifier >> 32;
+      attr_list.emplace_back(EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT + plane * 2);
+      attr_list.emplace_back(fb->modifier & 0xfffffffful);
+      attr_list.emplace_back(EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT + plane * 2);
+      attr_list.emplace_back(fb->modifier >> 32);
     }
   }
 
-  attr_list[attrs_index] = EGL_NONE;
+  attr_list.emplace_back(EGL_NONE);
 
   EGLImageKHR image = CreateImageKHR(display, EGL_NO_CONTEXT,
-                                     EGL_LINUX_DMA_BUF_EXT, 0, attr_list);
+                                     EGL_LINUX_DMA_BUF_EXT, 0, &attr_list[0]);
   CHECK(image != EGL_NO_IMAGE_KHR) << "Failed to create image";
 
   return image;
