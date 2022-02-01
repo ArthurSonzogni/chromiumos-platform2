@@ -23,6 +23,9 @@ class SessionManagerProxy {
  public:
   explicit SessionManagerProxy(scoped_refptr<dbus::Bus> bus);
 
+  SessionManagerProxy(const SessionManagerProxy&) = delete;
+  SessionManagerProxy& operator=(const SessionManagerProxy&) = delete;
+
   ~SessionManagerProxy() = default;
 
   void AddObserver(SessionManagerObserverInterface* observer);
@@ -51,8 +54,6 @@ class SessionManagerProxy {
   org::chromium::SessionManagerInterfaceProxy proxy_;
   base::ObserverList<SessionManagerObserverInterface> observer_list_;
   base::WeakPtrFactory<SessionManagerProxy> weak_ptr_factory_;
-
-  DISALLOW_COPY_AND_ASSIGN(SessionManagerProxy);
 };
 
 }  // namespace typecd
