@@ -106,4 +106,5 @@ getpeername: 1
 newfstatat: 1
 pread64: 1
 flock: 1
-iopl: 1
+sigaltstack: 1
+fchownat: 1

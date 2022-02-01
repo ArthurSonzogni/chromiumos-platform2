@@ -115,3 +115,5 @@ uname: 1
 flock: 1
 iopl: 1
 getpeername: 1
+mknodat: 1
+sigaltstack: 1
