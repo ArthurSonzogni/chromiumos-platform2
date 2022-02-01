@@ -153,6 +153,37 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
+user_data_auth::CryptohomeErrorCode AuthSession::UpdateCredential(
+    const user_data_auth::UpdateCredentialRequest& request) {
+  MountError code;
+  CHECK(request.authorization().key().has_data());
+  auto credentials = GetCredentials(request.authorization(), &code);
+  if (!credentials) {
+    return MountErrorToCryptohomeError(code);
+  }
+
+  // Can't update kiosk key for an existing user.
+  if (credentials->key_data().type() == KeyData::KEY_TYPE_KIOSK) {
+    LOG(ERROR) << "Add Credentials: tried adding kiosk auth for user";
+    return MountErrorToCryptohomeError(MOUNT_ERROR_UNPRIVILEGED_KEY);
+  }
+
+  // To update a key, we need to ensure that the existing label and the new
+  // label match.
+  if (credentials->key_data().label() != request.old_credential_label()) {
+    LOG(ERROR) << "AuthorizationRequest does not have a matching label";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  // At this point we have to have keyset since we have to be authed.
+  if (status_ != AuthStatus::kAuthStatusAuthenticated) {
+    return user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION;
+  }
+
+  return static_cast<user_data_auth::CryptohomeErrorCode>(
+      keyset_management_->UpdateKeyset(*credentials, *vault_keyset_));
+}
+
 user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     const cryptohome::AuthorizationRequest& authorization_request) {
   MountError code = MOUNT_ERROR_NONE;

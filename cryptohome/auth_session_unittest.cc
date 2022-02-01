@@ -4,8 +4,6 @@
 
 // Unit tests for AuthSession.
 
-#include "cryptohome/auth_session.h"
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -18,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_session.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
@@ -378,6 +377,86 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
               auth_session.AddCredentials(add_cred_request));
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
+}
+
+// Test if AuthSession correctly updates existing credentials for a new user.
+TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAUthSession) {
+  // Setup.
+  base::test::SingleThreadTaskEnvironment task_environment;
+  bool called = false;
+  auto on_timeout = base::BindOnce(
+      [](bool& called, const base::UnguessableToken&) { called = true; },
+      std::ref(called));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+  user_data_auth::UpdateCredentialRequest update_cred_request;
+  cryptohome::AuthorizationRequest* authorization_request =
+      update_cred_request.mutable_authorization();
+  authorization_request->mutable_key()->set_secret(kFakePass);
+  authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
+  update_cred_request.set_old_credential_label(kFakeLabel);
+
+  // Test.
+  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION,
+              auth_session.UpdateCredential(update_cred_request));
+}
+
+// Test if AuthSession correctly updates existing credentials for a new user.
+TEST_F(AuthSessionTest, UpdateCredentialuccess) {
+  // Setup.
+  base::test::SingleThreadTaskEnvironment task_environment;
+  bool called = false;
+  auto on_timeout = base::BindOnce(
+      [](bool& called, const base::UnguessableToken&) { called = true; },
+      std::ref(called));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+  auth_session.SetStatus(AuthStatus::kAuthStatusAuthenticated);
+  user_data_auth::UpdateCredentialRequest update_cred_request;
+  cryptohome::AuthorizationRequest* authorization_request =
+      update_cred_request.mutable_authorization();
+  authorization_request->mutable_key()->set_secret(kFakePass);
+  authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
+  update_cred_request.set_old_credential_label(kFakeLabel);
+
+  // Test.
+  EXPECT_CALL(keyset_management_, UpdateKeyset(_, _))
+      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+              auth_session.UpdateCredential(update_cred_request));
+}
+// Test if AuthSession correctly updates existing credentials for a new user.
+TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
+  // Setup.
+  base::test::SingleThreadTaskEnvironment task_environment;
+  bool called = false;
+  auto on_timeout = base::BindOnce(
+      [](bool& called, const base::UnguessableToken&) { called = true; },
+      std::ref(called));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
+  user_data_auth::UpdateCredentialRequest update_cred_request;
+  cryptohome::AuthorizationRequest* authorization_request =
+      update_cred_request.mutable_authorization();
+  authorization_request->mutable_key()->set_secret(kFakePass);
+  authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
+  update_cred_request.set_old_credential_label("wrong-label");
+
+  // Test.
+  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
+              auth_session.UpdateCredential(update_cred_request));
 }
 
 }  // namespace cryptohome

@@ -339,6 +339,26 @@ do.
       </arg>
     </method>
 
+    <!-- This API will be used to call AuthSession to update credential
+         for existing user. The label of the credential to replace should be
+         specified and match the new KeyData in AuthorizationRequest.
+         All arguments are protobufs:
+         request: UpdateCredentialRequest
+         reply: UpdateCredentialReply -->
+    <method name="UpdateCredential">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::UpdateCredentialRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::UpdateCredentialReply" />
+      </arg>
+    </method>
+
+
     <method name="AuthenticateAuthSession">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

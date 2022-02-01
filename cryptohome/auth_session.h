@@ -74,6 +74,11 @@ class AuthSession final {
   user_data_auth::CryptohomeErrorCode AddCredentials(
       const user_data_auth::AddCredentialsRequest& request);
 
+  // UpdateCredential is called when an existing user wants to update
+  // an existing credential.
+  user_data_auth::CryptohomeErrorCode UpdateCredential(
+      const user_data_auth::UpdateCredentialRequest& request);
+
   // AddCredentials is called when newly created or existing user wants to add
   // new credentials.
   user_data_auth::CryptohomeErrorCode AddAuthFactor(
@@ -131,6 +136,9 @@ class AuthSession final {
   // Extends the timer for the AuthSession by kAuthSessionExtensionInMinutes.
   user_data_auth::CryptohomeErrorCode ExtendTimer(
       const base::TimeDelta kAuthSessionExtension);
+
+  // Set status for testing only.
+  void SetStatus(const AuthStatus status) { status_ = status; }
 
  private:
   AuthSession() = delete;

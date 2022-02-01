@@ -68,6 +68,10 @@ class MockKeysetManagement : public KeysetManagement {
               (const Credentials&, const VaultKeyset&, bool),
               (override));
   MOCK_METHOD(CryptohomeErrorCode,
+              UpdateKeyset,
+              (const Credentials&, const VaultKeyset&),
+              (override));
+  MOCK_METHOD(CryptohomeErrorCode,
               RemoveKeyset,
               (const Credentials&, const KeyData&),
               (override));

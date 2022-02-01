@@ -313,6 +313,67 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   VerifyKeysetPresentWithCredsAtIndex(new_credentials, index);
 }
 
+// Successfully updates a keyset.
+TEST_F(KeysetManagementTest, UpdateKeysetSuccess) {
+  // SETUP
+
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials updated_credentials(users_[0].name, new_passkey);
+  updated_credentials.set_key_data(DefaultKeyData());
+
+  // TEST
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->UpdateKeyset(updated_credentials, *vk.get()));
+
+  // VERIFY
+  vk = keyset_management_->GetValidKeyset(updated_credentials,
+                                          nullptr /* error */);
+  ASSERT_NE(vk.get(), nullptr);
+
+  // The keyset should have been overwritten.
+  VerifyKeysetIndicies({kInitialKeysetIndex});
+
+  VerifyKeysetNotPresentWithCreds(users_[0].credentials);
+  VerifyKeysetPresentWithCredsAtIndex(updated_credentials, kInitialKeysetIndex);
+}
+
+// Fails to update a keyset due to mismatching labels.
+TEST_F(KeysetManagementTest, UpdateKeysetFail) {
+  // SETUP
+
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials updated_credentials(users_[0].name, new_passkey);
+  KeyData new_data;
+  new_data.set_label("some_label");
+  updated_credentials.set_key_data(new_data);
+
+  // TEST
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND,
+            keyset_management_->UpdateKeyset(updated_credentials, *vk.get()));
+
+  // VERIFY
+  vk = keyset_management_->GetValidKeyset(updated_credentials,
+                                          nullptr /* error */);
+  ASSERT_EQ(vk.get(), nullptr);
+
+  // The keyset should still exist at the original index.
+  VerifyKeysetIndicies({kInitialKeysetIndex});
+
+  VerifyKeysetNotPresentWithCreds(updated_credentials);
+  VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials,
+                                      kInitialKeysetIndex);
+}
+
 // Overrides existing keyset on label collision when "clobber" flag is present.
 TEST_F(KeysetManagementTest, AddKeysetClobberSuccess) {
   // SETUP

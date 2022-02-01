@@ -187,6 +187,7 @@ static const char* kActions[] = {"mount_ex",
                                  "end_fingerprint_auth_session",
                                  "start_auth_session",
                                  "add_credentials",
+                                 "update_credential",
                                  "authenticate_auth_session",
                                  "invalidate_auth_session",
                                  "extend_auth_session",
@@ -281,6 +282,7 @@ enum ActionEnum {
   ACTION_END_FINGERPRINT_AUTH_SESSION,
   ACTION_START_AUTH_SESSION,
   ACTION_ADD_CREDENTIALS,
+  ACTION_UPDATE_CREDENTIAL,
   ACTION_AUTHENTICATE_AUTH_SESSION,
   ACTION_INVALIDATE_AUTH_SESSION,
   ACTION_EXTEND_AUTH_SESSION,
@@ -2732,6 +2734,48 @@ int main(int argc, char** argv) {
     }
 
     printf("Auth session added credentials successfully.\n");
+  } else if (!strcmp(switches::kActions[switches::ACTION_UPDATE_CREDENTIAL],
+                     action.c_str())) {
+    user_data_auth::UpdateCredentialRequest req;
+    user_data_auth::UpdateCredentialReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    req.set_auth_session_id(auth_session_id);
+
+    if (!BuildAuthorization(
+            cl, &misc_proxy,
+            !cl->HasSwitch(switches::kPublicMount) /* need_credential */,
+            req.mutable_authorization()))
+      return 1;
+
+    if (cl->HasSwitch(switches::kKeyLabelSwitch)) {
+      req.set_old_credential_label(
+          cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
+    } else {
+      printf(
+          "No old credential label specified --key_label=<old credential "
+          "label>");
+      return 1;
+    }
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.UpdateCredential(req, &reply, &error, timeout_ms) ||
+        error) {
+      printf("UpdateCredential call failed: %s.\n",
+             BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+    puts(GetProtoDebugString(reply).c_str());
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printf("Auth session failed to update credentials.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printf("Auth session updated credentials successfully.\n");
   } else if (!strcmp(
                  switches::kActions[switches::ACTION_AUTHENTICATE_AUTH_SESSION],
                  action.c_str())) {

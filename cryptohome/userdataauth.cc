@@ -3404,6 +3404,29 @@ bool UserDataAuth::AddCredentials(
   return true;
 }
 
+void UserDataAuth::UpdateCredential(
+    user_data_auth::UpdateCredentialRequest request,
+    base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+        on_done) {
+  AssertOnMountThread();
+
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
+  user_data_auth::UpdateCredentialReply reply;
+  AuthSession* auth_session =
+      GetAuthenticatedAuthSession(request.auth_session_id(), &error);
+  if (!auth_session) {
+    reply.set_error(error);
+    std::move(on_done).Run(reply);
+    return;
+  }
+  // Update credentials using data in AuthorizationRequest and
+  // auth_session_token.
+  reply.set_error(auth_session->UpdateCredential(request));
+  std::move(on_done).Run(reply);
+  return;
+}
+
 bool UserDataAuth::AuthenticateAuthSession(
     user_data_auth::AuthenticateAuthSessionRequest request,
     base::OnceCallback<

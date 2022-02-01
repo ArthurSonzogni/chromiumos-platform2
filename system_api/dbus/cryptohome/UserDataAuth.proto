@@ -86,6 +86,7 @@ enum CryptohomeErrorCode {
   CRYPTOHOME_TOKEN_SERIALIZATION_FAILED = 48;
   CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN = 49;
   CRYPTOHOME_ADD_CREDENTIALS_FAILED = 50;
+  CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION = 51;
 }
 
 // This is used by MountRequest to store details about the mount to create
@@ -604,7 +605,7 @@ message ExtendAuthSessionReply {
   CryptohomeErrorCode error = 1;
 }
 
-message UpdateCredentialsRequest {
+message UpdateCredentialRequest {
   // Serialized form of token that is used to identify Auth Session that will
   // be used to update credentials.
   bytes auth_session_id = 1;
@@ -617,7 +618,7 @@ message UpdateCredentialsRequest {
   cryptohome.AuthorizationRequest authorization = 3;
 }
 
-message UpdateCredentialsReply {
+message UpdateCredentialReply {
   // Error if any to update credential.
   CryptohomeErrorCode error = 1;
 }

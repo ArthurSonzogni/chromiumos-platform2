@@ -667,6 +667,11 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
           on_done);
 
+  void UpdateCredential(
+      user_data_auth::UpdateCredentialRequest request,
+      base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+          on_done);
+
   bool AuthenticateAuthSession(
       user_data_auth::AuthenticateAuthSessionRequest request,
       base::OnceCallback<

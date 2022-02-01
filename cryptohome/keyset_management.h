@@ -109,6 +109,14 @@ class KeysetManagement {
                                         const VaultKeyset& vault_keyset,
                                         bool clobber);
 
+  // Updates an existing |vault_keyset| with the new credentials. This function
+  // assumes the user is already authenticated and their |vault_keyset| with an
+  // existing credentials is unwrapped. New keyset is updated to have the key
+  // data from |new_credentials|, KeyBlobs from |VaultKeyset| and is wrapped by
+  // the secret in |new_credentials|.
+  virtual CryptohomeErrorCode UpdateKeyset(const Credentials& new_credentials,
+                                           const VaultKeyset& vault_keyset);
+
   // Removes the keyset identified by |key_data|.  The VaultKeyset backing
   // |credentials| may be the same that |key_data| identifies.
   virtual CryptohomeErrorCode RemoveKeyset(const Credentials& credentials,
