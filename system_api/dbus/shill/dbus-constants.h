@@ -27,6 +27,8 @@ const char kClearPropertyFunction[] = "ClearProperty";
 const char kConfigureServiceFunction[] = "ConfigureService";
 const char kConfigureServiceForProfileFunction[] = "ConfigureServiceForProfile";
 const char kConnectToBestServicesFunction[] = "ConnectToBestServices";
+const char kScanAndConnectToBestServicesFunction[] =
+    "ScanAndConnectToBestServices";
 const char kCreateConnectivityReportFunction[] = "CreateConnectivityReport";
 const char kDisableTechnologyFunction[] = "DisableTechnology";
 const char kEnableTechnologyFunction[] = "EnableTechnology";
