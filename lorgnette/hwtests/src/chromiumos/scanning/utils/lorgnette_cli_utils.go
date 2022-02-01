@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -42,6 +43,16 @@ func LorgnetteCLIList() (string, error) {
 // `lorgnette_cli get_json_caps --scanner=`scanner`` and returns its stdout.
 func LorgnetteCLIGetJSONCaps(scanner string) (string, error) {
 	cmd := exec.Command(lorgnetteCLI, "get_json_caps", "--scanner="+scanner)
+	outputBytes, err := cmd.Output()
+	return string(outputBytes), err
+}
+
+// LorgnetteCLIScan runs the command `lorgnette_cli scan` with the specified
+// scanner, source, resolution and color mode. The command's stdout is returned.
+// The scanned image will be the same size as `paperSize`. Scanned images will
+// be output to `output`.
+func LorgnetteCLIScan(scanner string, source string, paperSize PaperSize, resolution int, colorMode string, output string) (string, error) {
+	cmd := exec.Command(lorgnetteCLI, "scan", "--scanner="+scanner, "--top_left_x=0.0", "--top_left_y=0.0", "--bottom_right_x="+fmt.Sprintf("%f", paperSize.BottomRightX()), "--bottom_right_y="+fmt.Sprintf("%f", paperSize.BottomRightY()), "--scan_resolution="+strconv.Itoa(resolution), "--color_mode="+colorMode, "--scan_source="+source, "--output="+output)
 	outputBytes, err := cmd.Output()
 	return string(outputBytes), err
 }
