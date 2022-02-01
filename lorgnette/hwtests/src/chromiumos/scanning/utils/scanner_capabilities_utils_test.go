@@ -519,8 +519,40 @@ func TestParseLorgnetteCapabilitiesBadJSON(t *testing.T) {
 
 }
 
-// TestIsPopulated tests that the IsPopulated function works correctly.
-func TestIsPopulated(t *testing.T) {
+// TestIsPopulatedLorgnetteSource tests that the IsPopulated function works
+// correctly on lorgnette sources.
+func TestIsPopulatedLorgnetteSource(t *testing.T) {
+	tests := []struct {
+		source LorgnetteSource
+		ret    bool
+	}{
+		{
+			source: LorgnetteSource{
+				ColorModes:  []string{"MODE_COLOR", "MODE_GRAYSCALE"},
+				Resolutions: []int{75, 150, 300},
+				ScannableArea: ScannableArea{
+					Height: 355.59998,
+					Width:  215.98466}},
+			ret: true,
+		},
+		{
+			source: LorgnetteSource{},
+			ret:    false,
+		},
+	}
+
+	for _, tc := range tests {
+		got := tc.source.IsPopulated()
+
+		if got != tc.ret {
+			t.Errorf("Expected %t, got %t for source: %v", tc.ret, got, tc.source)
+		}
+	}
+}
+
+// TestIsPopulatedSourceCapabilities tests that the IsPopulated function works
+// correctly on source capabilities.
+func TestIsPopulatedSourceCapabilities(t *testing.T) {
 	tests := []struct {
 		caps SourceCapabilities
 		ret  bool

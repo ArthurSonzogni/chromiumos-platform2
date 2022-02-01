@@ -218,6 +218,11 @@ func ParseLorgnetteCapabilities(rawData string) (caps LorgnetteCapabilities, err
 	return
 }
 
+// IsPopulated returns returns true iff `source` is non-empty.
+func (source LorgnetteSource) IsPopulated() bool {
+	return !cmp.Equal(source, LorgnetteSource{})
+}
+
 // IsPopulated returns returns true iff `caps` is non-empty.
 func (caps SourceCapabilities) IsPopulated() bool {
 	return !cmp.Equal(caps, SourceCapabilities{})
