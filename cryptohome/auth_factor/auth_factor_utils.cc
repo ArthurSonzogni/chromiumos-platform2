@@ -5,8 +5,10 @@
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 
 #include <memory>
+#include <string>
 
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 
@@ -25,18 +27,26 @@ void GetPasswordMetadata(const user_data_auth::AuthFactor& auth_factor,
 // GetAuthFactorMetadata sets the metadata inferred from the proto. This
 // includes the metadata struct and type.
 bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
-                           AuthFactorMetadata& auth_factor_metadata,
-                           AuthFactorType& auth_factor_type) {
+                           AuthFactorMetadata& out_auth_factor_metadata,
+                           AuthFactorType& out_auth_factor_type,
+                           std::string& out_auth_factor_label) {
   switch (auth_factor.type()) {
     case user_data_auth::AUTH_FACTOR_TYPE_PASSWORD:
       DCHECK(auth_factor.has_password_metadata());
-      GetPasswordMetadata(auth_factor, &auth_factor_metadata);
-      auth_factor_type = AuthFactorType::kPassword;
+      GetPasswordMetadata(auth_factor, &out_auth_factor_metadata);
+      out_auth_factor_type = AuthFactorType::kPassword;
       break;
     default:
       LOG(ERROR) << "Unknown auth factor type " << auth_factor.type();
       return false;
   }
+
+  out_auth_factor_label = auth_factor.label();
+  if (!IsValidAuthFactorLabel(out_auth_factor_label)) {
+    LOG(ERROR) << "Invalid auth factor label";
+    return false;
+  }
+
   return true;
 }
 

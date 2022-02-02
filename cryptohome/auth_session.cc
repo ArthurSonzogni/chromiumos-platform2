@@ -261,9 +261,10 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddAuthFactor(
 
   AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
+  std::string auth_factor_label;
 
   GetAuthFactorMetadata(request.auth_factor(), auth_factor_metadata,
-                        auth_factor_type);
+                        auth_factor_type, auth_factor_label);
 
   // TOTO(b/3319388): This is still incomplete, need to add implementation of
   // AddAuthFactor and instantiation of AuthBlock.
