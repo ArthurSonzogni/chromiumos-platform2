@@ -205,10 +205,13 @@ bool ChargeController::ApplyPolicyChange(const PowerManagementPolicy& policy) {
   DCHECK(helper_);
 
   // Try to apply as many changes as possible.
-  return ApplyPeakShiftChange(policy) & ApplyBootOnAcChange(policy) &
-         ApplyUsbPowerShareChange(policy) &
-         ApplyAdvancedBatteryChargeModeChange(policy) &
-         ApplyBatteryChargeModeChange(policy);
+  bool success = ApplyPeakShiftChange(policy);
+  success &= ApplyBootOnAcChange(policy);
+  success &= ApplyUsbPowerShareChange(policy);
+  success &= ApplyAdvancedBatteryChargeModeChange(policy);
+  success &= ApplyBatteryChargeModeChange(policy);
+
+  return success;
 }
 
 bool ChargeController::ApplyPeakShiftChange(
