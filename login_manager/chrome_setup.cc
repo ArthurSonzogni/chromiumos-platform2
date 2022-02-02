@@ -458,6 +458,10 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("diagnostics"))
     builder->AddFeatureEnableOverride("UmaStorageDimensions");
 
+  // TODO(b/187516317): remove when the issue is resolved in FW.
+  if (builder->UseFlagIsSet("broken_24hours_wake"))
+    builder->AddFeatureDisableOverride("SupportsRtcWakeOver24Hours");
+
   // Enable Wilco only features.
   if (builder->UseFlagIsSet("wilco")) {
     builder->AddFeatureEnableOverride("WilcoDtc");
