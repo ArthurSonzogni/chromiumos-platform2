@@ -646,9 +646,10 @@ void OpenVPNDriver::InitOptions(std::vector<std::vector<std::string>>* options,
     const auto contents =
         args()->Lookup<std::string>(kOpenVPNTLSAuthContentsProperty, "");
     if (!contents.empty()) {
-      if (!base::CreateTemporaryFile(&tls_auth_file_) ||
-          base::WriteFile(tls_auth_file_, contents.data(), contents.size()) !=
-              static_cast<int>(contents.size())) {
+      if (!vpn_util_->PrepareConfigDirectory(openvpn_config_directory_) ||
+          !base::CreateTemporaryFileInDir(openvpn_config_directory_,
+                                          &tls_auth_file_) ||
+          !vpn_util_->WriteConfigFile(tls_auth_file_, contents)) {
         Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
                               "Unable to setup tls-auth file.");
         return;
