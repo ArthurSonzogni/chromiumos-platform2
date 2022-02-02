@@ -6,9 +6,10 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":sealed_storage",
+    ":install_headers",
+    ":libsealed_storage",
+    ":libsealed_storage_wrapper",
     ":sealed_storage_tool",
-    ":sealed_storage_wrapper",
   ]
   if (use.test) {
     deps += [ ":sealed_storage_testrunner" ]
@@ -47,7 +48,7 @@ pkg_config("sealed_storage_dependent_config") {
   ]
 }
 
-static_library("sealed_storage") {
+static_library("libsealed_storage") {
   sources = [
     "sealed_storage.cc",
     "wrapper.cc",
@@ -61,6 +62,7 @@ static_library("sealed_storage") {
     "//common-mk:pie",
     "//common-mk:use_thin_archive",
   ]
+  install_path = "lib"
   libs = [
     "trunks",
     "tpm_manager",
@@ -68,8 +70,9 @@ static_library("sealed_storage") {
   all_dependent_configs = [ ":sealed_storage_dependent_config" ]
 }
 
-shared_library("sealed_storage_wrapper") {
-  deps = [ ":sealed_storage" ]
+shared_library("libsealed_storage_wrapper") {
+  install_path = "lib"
+  deps = [ ":libsealed_storage" ]
 }
 
 executable("sealed_storage_tool") {
@@ -78,7 +81,13 @@ executable("sealed_storage_tool") {
     ":cli_defaults",
     ":target_defaults",
   ]
-  deps = [ ":sealed_storage" ]
+  install_path = "sbin"
+  deps = [ ":libsealed_storage" ]
+}
+
+install_config("install_headers") {
+  sources = [ "sealed_storage.h" ]
+  install_path = "/usr/include/chromeos/sealed_storage"
 }
 
 if (use.test) {
@@ -92,9 +101,10 @@ if (use.test) {
       ":target_defaults",
       ":test_defaults",
     ]
+    run_test = true
     libs = [ "trunks_test" ]
     deps = [
-      ":sealed_storage",
+      ":libsealed_storage",
       "//common-mk/testrunner",
     ]
   }
