@@ -152,33 +152,35 @@ void enter_vfs_namespace() {
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  Daemon() : DBusServiceDaemon(debugd::kDebugdServiceName) {}
+  explicit Daemon(const bool perf_logging)
+      : DBusServiceDaemon(debugd::kDebugdServiceName),
+        perf_logging_(perf_logging) {}
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(new debugd::DebugdDBusAdaptor(bus_));
+    adaptor_.reset(new debugd::DebugdDBusAdaptor(bus_, perf_logging_));
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed.", true));
   }
 
  private:
   std::unique_ptr<debugd::DebugdDBusAdaptor> adaptor_;
+  bool perf_logging_;
 };
 
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  brillo::FlagHelper::Init(argc, argv, "CrOS debug daemon");
+  DEFINE_bool(perf_logging, false,
+              "Record and locally log the performance of all LogTool sub-tasks "
+              "within the feedback log collection function.")
+      brillo::FlagHelper::Init(argc, argv, "CrOS debug daemon");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-  if (argc != 1) {
-    LOG(ERROR) << "debugd takes no arguments";
-    return 1;
-  }
 
   enter_vfs_namespace();
-  Daemon().Run();
+  Daemon(FLAGS_perf_logging).Run();
   return 0;
 }

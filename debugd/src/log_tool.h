@@ -16,6 +16,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/memory/ref_counted.h>
+#include <base/values.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
@@ -96,7 +97,7 @@ class LogTool : public debugd::LogProvider {
     bool minijail_disabled_for_test_ = false;
   };
 
-  explicit LogTool(scoped_refptr<dbus::Bus> bus);
+  explicit LogTool(scoped_refptr<dbus::Bus> bus, const bool perf_logging);
 
   ~LogTool() = default;
 
@@ -134,9 +135,14 @@ class LogTool : public debugd::LogProvider {
   std::string GetArcBugReport(const std::string& username, bool* is_backup);
   bool IsUserHashValid(const std::string& userhash);
 
+  void GetArcBugReportInDictionary(const std::string& username,
+                                   base::Value* dictionary);
+
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
       cryptohome_proxy_;
+
+  bool perf_logging_;
 
   std::unique_ptr<LogTool::Log> arc_bug_report_log_;
 

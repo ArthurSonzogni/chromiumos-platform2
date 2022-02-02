@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 
+#include <base/logging.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
@@ -15,24 +16,38 @@ namespace debugd {
 namespace {
 
 // Histogram specifications
-const char kHistogramPrefix[] = "ChromeOS.Debugd.";
+const char kMetricPrefix[] = "ChromeOS.Debugd.";
 const base::TimeDelta kHistogramMin = base::Minutes(0);
 const base::TimeDelta kHistogramMax = base::Minutes(2);
 const int kNumBuckets = 50;
 
 }  // namespace
 
-Stopwatch::Stopwatch(const std::string& histogram_postfix) {
+Stopwatch::Stopwatch(const std::string& metric_postfix,
+                     const bool local_logging,
+                     const bool report_to_uma)
+    : local_logging_(local_logging), report_to_uma_(report_to_uma) {
   start_ = base::TimeTicks::Now();
-  metrics_library_ = std::make_unique<MetricsLibrary>();
-  histogram_name_ = kHistogramPrefix + histogram_postfix;
+  metric_name_ = kMetricPrefix + metric_postfix;
+  if (report_to_uma_)
+    metrics_library_ = std::make_unique<MetricsLibrary>();
+}
+
+void Stopwatch::Lap(const std::string& lap_name) {
+  if (local_logging_) {
+    base::TimeDelta lap_duration = base::TimeTicks::Now() - start_;
+    DLOG(INFO) << metric_name_ << ", " << lap_name << ": " << lap_duration;
+  }
 }
 
 Stopwatch::~Stopwatch() {
   base::TimeDelta duration = base::TimeTicks::Now() - start_;
-  metrics_library_->SendToUMA(histogram_name_, duration.InMilliseconds(),
-                              kHistogramMin.InMilliseconds(),
-                              kHistogramMax.InMilliseconds(), kNumBuckets);
+  if (local_logging_)
+    DLOG(INFO) << metric_name_ << ", total elapsed time: " << duration;
+  if (metrics_library_)
+    metrics_library_->SendToUMA(metric_name_, duration.InMilliseconds(),
+                                kHistogramMin.InMilliseconds(),
+                                kHistogramMax.InMilliseconds(), kNumBuckets);
 }
 
 }  // namespace debugd

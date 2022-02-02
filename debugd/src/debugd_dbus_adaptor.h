@@ -66,7 +66,8 @@ namespace debugd {
 class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                           public org::chromium::debugdInterface {
  public:
-  explicit DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus);
+  explicit DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
+                             const bool perf_logging);
   ~DebugdDBusAdaptor() override;
 
   // Register the D-Bus object and interfaces.

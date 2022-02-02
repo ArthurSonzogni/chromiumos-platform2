@@ -37,7 +37,7 @@ void DebugLogsTool::GetDebugLogs(bool is_compressed, const base::ScopedFD& fd) {
     return;
   }
 
-  LogTool log_tool(bus_);
+  LogTool log_tool(bus_, perf_logging_);
   LogTool::LogMap logs = log_tool.GetAllDebugLogs();
   for (const auto& l : logs) {
     const std::string& name = l.first;

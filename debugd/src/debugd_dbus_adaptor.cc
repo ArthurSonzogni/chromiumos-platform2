@@ -35,7 +35,8 @@ const char kRlzEmbargoEndDateKey[] = "rlz_embargo_end_date";
 
 }  // namespace
 
-DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
+DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
+                                     const bool perf_logging)
     : org::chromium::debugdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kDebugdServicePath)) {
   battery_tool_ = std::make_unique<BatteryTool>();
@@ -53,7 +54,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   icmp_tool_ = std::make_unique<ICMPTool>();
   ipaddrs_tool_ = std::make_unique<IpAddrsTool>();
   kernel_feature_tool_ = std::make_unique<KernelFeatureTool>();
-  log_tool_ = std::make_unique<LogTool>(bus);
+  log_tool_ = std::make_unique<LogTool>(bus, perf_logging);
   memory_tool_ = std::make_unique<MemtesterTool>();
   netif_tool_ = std::make_unique<NetifTool>();
   network_status_tool_ = std::make_unique<NetworkStatusTool>();

@@ -22,6 +22,7 @@ class DebugLogsTool {
 
  private:
   scoped_refptr<dbus::Bus> bus_;
+  bool perf_logging_;
 };
 
 }  // namespace debugd

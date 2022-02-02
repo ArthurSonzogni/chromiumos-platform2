@@ -4,6 +4,7 @@
 
 #include "debugd/src/log_tool.h"
 
+#include <algorithm>
 #include <array>
 #include <glob.h>
 #include <grp.h>
@@ -36,6 +37,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <shill/dbus-proxies.h>
 
+#include "base/bind.h"
 #include "debugd/src/bluetooth_utils.h"
 #include "debugd/src/constants.h"
 #include "debugd/src/metrics.h"
@@ -53,6 +55,7 @@ namespace debugd {
 using std::string;
 
 using Strings = std::vector<string>;
+using FuncMap = std::map<string, base::OnceCallback<void()>>;
 
 namespace {
 
@@ -910,12 +913,14 @@ LogTool::LogTool(
       arc_bug_report_log_(std::move(arc_bug_report_log)),
       daemon_store_base_dir_(daemon_store_base_dir) {}
 
-LogTool::LogTool(scoped_refptr<dbus::Bus> bus)
+LogTool::LogTool(scoped_refptr<dbus::Bus> bus, const bool perf_logging)
     : LogTool(
           bus,
           std::make_unique<org::chromium::CryptohomeMiscInterfaceProxy>(bus),
           std::make_unique<ArcBugReportLog>(),
-          base::FilePath(kDaemonStoreBaseDir)) {}
+          base::FilePath(kDaemonStoreBaseDir)) {
+  perf_logging_ = perf_logging;
+}
 
 bool LogTool::IsUserHashValid(const std::string& userhash) {
   return brillo::cryptohome::home::IsSanitizedUserName(userhash) &&
@@ -946,7 +951,7 @@ std::optional<string> LogTool::GetLog(const string& name) {
 }
 
 LogTool::LogMap LogTool::GetAllLogs() {
-  Stopwatch sw("Perf.GetAllLogs");
+  Stopwatch sw("Perf.GetAllLogs", perf_logging_, /*report_to_uma=*/true);
   CreateConnectivityReport(false);
   LogMap result;
   GetLogsFrom(kCommandLogsShort, &result);
@@ -958,7 +963,7 @@ LogTool::LogMap LogTool::GetAllLogs() {
 }
 
 LogTool::LogMap LogTool::GetAllDebugLogs() {
-  Stopwatch sw("Perf.GetAllDebugLogs");
+  Stopwatch sw("Perf.GetAllDebugLogs", perf_logging_, /*report_to_uma=*/true);
   CreateConnectivityReport(true);
   LogMap result;
   GetLogsFrom(kCommandLogsShort, &result);
@@ -989,24 +994,63 @@ std::vector<std::vector<std::string>> GetAllDebugTitlesForTest() {
 
 void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
                                  const std::string& username) {
-  Stopwatch sw("Perf.GetBigFeedbackLogs");
-  GetBluetoothBqr();
-  CreateConnectivityReport(true);
-  LogMap map;
-  GetPerfData(&map);
+  LogMap results;
   base::Value dictionary(base::Value::Type::DICTIONARY);
-  GetLogsInDictionary(kCommandLogsVerbose, &dictionary);
-  GetLogsInDictionary(kCommandLogs, &dictionary);
-  GetLogsInDictionary(kFeedbackLogs, &dictionary);
-  bool is_backup;
-  std::string arc_bug_report = GetArcBugReport(username, &is_backup);
-  dictionary.SetStringKey(kArcBugReportBackupKey,
-                          (is_backup ? "true" : "false"));
-  dictionary.SetStringKey(arc_bug_report_log_->GetName(), arc_bug_report);
-  GetLsbReleaseInfo(&map);
-  GetOsReleaseInfo(&map);
-  PopulateDictionaryValue(map, &dictionary);
+  // Maps each subtask to a callable, which performs that task when invoked.
+  // Should not contain ordered tasks, as the invocation order is not preserved.
+  FuncMap subtasks;
+  subtasks.emplace(std::make_pair(
+      "GetArcBugReport",
+      base::BindOnce(&LogTool::GetArcBugReportInDictionary,
+                     base::Unretained(this), username, &dictionary)));
+  subtasks.emplace(
+      std::make_pair("CreateConnectivityReport",
+                     base::BindOnce(&LogTool::CreateConnectivityReport,
+                                    base::Unretained(this), true)));
+  subtasks.emplace(std::make_pair("kCommandLogsVerbose",
+                                  base::BindOnce(
+                                      [](base::Value* dictionary) {
+                                        GetLogsInDictionary(kCommandLogsVerbose,
+                                                            dictionary);
+                                      },
+                                      &dictionary)));
+  subtasks.emplace(std::make_pair(
+      "kCommandLogs", base::BindOnce(
+                          [](base::Value* dictionary) {
+                            GetLogsInDictionary(kCommandLogs, dictionary);
+                          },
+                          &dictionary)));
+  subtasks.emplace(std::make_pair(
+      "kFeedbackLogs", base::BindOnce(
+                           [](base::Value* dictionary) {
+                             GetLogsInDictionary(kFeedbackLogs, dictionary);
+                           },
+                           &dictionary)));
+  subtasks.emplace(
+      std::make_pair("GetBluetoothBqr", base::BindOnce(&GetBluetoothBqr)));
+  subtasks.emplace(std::make_pair(
+      "GetLsbReleaseInfo", base::BindOnce(&GetLsbReleaseInfo, &results)));
+  subtasks.emplace(
+      std::make_pair("GetPerfData", base::BindOnce(&GetPerfData, &results)));
+  subtasks.emplace(std::make_pair("GetOsReleaseInfo",
+                                  base::BindOnce(&GetOsReleaseInfo, &results)));
+
+  // Create and start the stopwatch used for measuring performance.
+  Stopwatch sw("Perf.GetBigFeedbackLogs", perf_logging_,
+               /*report_to_uma=*/true);
+
+  // Execute each subtask in the |subtasks| map and lap the time.
+  for (auto& kv : subtasks) {
+    std::move(kv.second).Run();
+    sw.Lap(kv.first);
+  }
+
+  // Polulate the results. This is done outside the |subtasks| because it has to
+  // be done at the end.
+  PopulateDictionaryValue(results, &dictionary);
+  sw.Lap("PopulateDictionaryValue");
   SerializeLogsAsJSON(dictionary, fd);
+  sw.Lap("SerializeLogsAsJSON");
 }
 
 std::string GetSanitizedUsername(
@@ -1039,6 +1083,7 @@ std::string LogTool::GetArcBugReport(const std::string& username,
       GetSanitizedUsername(cryptohome_proxy_.get(), username);
 
   std::string contents;
+  std::string log_name;
   if (userhash.empty() ||
       arc_bug_report_backups_.find(userhash) == arc_bug_report_backups_.end() ||
       !base::ReadFileToString(daemon_store_base_dir_.Append(userhash).Append(
@@ -1056,6 +1101,15 @@ std::string LogTool::GetArcBugReport(const std::string& username,
   }
 
   return contents;
+}
+
+void LogTool::GetArcBugReportInDictionary(const std::string& username,
+                                          base::Value* dictionary) {
+  bool is_backup;
+  std::string arc_bug_report = GetArcBugReport(username, &is_backup);
+  dictionary->SetStringKey(kArcBugReportBackupKey,
+                           (is_backup ? "true" : "false"));
+  dictionary->SetStringKey(arc_bug_report_log_->GetName(), arc_bug_report);
 }
 
 void LogTool::BackupArcBugReport(const std::string& username) {
