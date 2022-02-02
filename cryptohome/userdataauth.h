@@ -24,6 +24,7 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
@@ -1241,6 +1242,14 @@ class UserDataAuth {
   // can be overridden for testing. This is to be accessed from the mount thread
   // only because there's no guarantee on thread safety of the HomeDirs object.
   KeysetManagement* keyset_management_;
+
+  // The object used to instantiate AuthBlocks.
+  std::unique_ptr<AuthBlockUtility> default_auth_block_utility_;
+  // This holds the object that records information about the
+  // auth_block_utility. This is usually set to default_auth_block_utility_, but
+  // can be overridden for testing. This is to be accessed from the mount thread
+  // only because there's no guarantee on thread safety of the HomeDirs object.
+  AuthBlockUtility* auth_block_utility_;
 
   // Manager of auth factor files.
   std::unique_ptr<AuthFactorManager> default_auth_factor_manager_;

@@ -27,6 +27,7 @@
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
@@ -199,6 +200,7 @@ UserDataAuth::UserDataAuth()
       homedirs_(nullptr),
       default_keyset_management_(nullptr),
       keyset_management_(nullptr),
+      auth_block_utility_(nullptr),
       default_auth_session_manager_(nullptr),
       auth_session_manager_(nullptr),
       default_low_disk_space_handler_(nullptr),
@@ -281,6 +283,12 @@ bool UserDataAuth::Initialize() {
     keyset_management_ = default_keyset_management_.get();
   }
 
+  if (!auth_block_utility_) {
+    default_auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
+        keyset_management_, crypto_, platform_);
+    auth_block_utility_ = default_auth_block_utility_.get();
+  }
+
   if (!auth_factor_manager_) {
     default_auth_factor_manager_ =
         std::make_unique<AuthFactorManager>(platform_);
@@ -295,7 +303,8 @@ bool UserDataAuth::Initialize() {
 
   if (!auth_session_manager_) {
     default_auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        keyset_management_, auth_factor_manager_, user_secret_stash_storage_);
+        keyset_management_, auth_block_utility_, auth_factor_manager_,
+        user_secret_stash_storage_);
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 
@@ -3860,9 +3869,9 @@ bool UserDataAuth::AddAuthFactor(
     std::move(on_done).Run(reply);
     return false;
   }
-  auth_session->AddAuthFactor(request);
+  error = auth_session->AddAuthFactor(request);
 
-  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+  reply.set_error(error);
   std::move(on_done).Run(reply);
   return true;
 }

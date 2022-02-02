@@ -14,9 +14,11 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {
@@ -27,6 +29,19 @@ namespace cryptohome {
 // it.
 class AuthFactor {
  public:
+  // Creates a new auth factor instance, populated with freshly generated auth
+  // block state and the given metadata. On success, additionally fills the key
+  // blobs. On failure, returns nullptr.
+  // `auth_block_utility` is not owned and the returned auth factor doesn't
+  // depend on it.
+  static std::unique_ptr<AuthFactor> CreateNew(
+      AuthFactorType type,
+      const std::string& label,
+      const AuthFactorMetadata& metadata,
+      const AuthInput& auth_input,
+      AuthBlockUtility* auth_block_utility,
+      KeyBlobs& out_key_blobs);
+
   AuthFactor(AuthFactorType type,
              const std::string& label,
              const AuthFactorMetadata& metadata,

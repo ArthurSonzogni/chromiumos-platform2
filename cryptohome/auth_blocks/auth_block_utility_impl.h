@@ -13,6 +13,7 @@
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
@@ -61,6 +62,12 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   void AssignAuthBlockStateToVaultKeyset(const AuthBlockState& state,
                                          VaultKeyset& vault_keyset) override;
+
+  CryptoError CreateKeyBlobsWithAuthFactorType(
+      AuthFactorType auth_factor_type,
+      const AuthInput& auth_input,
+      AuthBlockState& out_auth_block_state,
+      KeyBlobs& out_key_blobs) override;
 
  private:
   // This helper function serves as a factory method to return the authblock

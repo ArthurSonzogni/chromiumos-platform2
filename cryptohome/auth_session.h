@@ -17,11 +17,13 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash.h"
@@ -49,13 +51,15 @@ enum class AuthStatus {
 // credentials.
 class AuthSession final {
  public:
-  // Caller needs to ensure that the KeysetManagement*, AuthFactorManager* and
-  // UserSecretStashStorage* outlive the instance of AuthSession.
+  // Caller needs to ensure that the KeysetManagement*, AuthBlockUtility*,
+  // AuthFactorManager* and UserSecretStashStorage* outlive the instance of
+  // AuthSession.
   AuthSession(
       std::string username,
       unsigned int flags,
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
       KeysetManagement* keyset_management,
+      AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
       UserSecretStashStorage* user_secret_stash_storage);
   ~AuthSession() = default;
@@ -182,6 +186,12 @@ class AuthSession final {
       const cryptohome::AuthorizationRequest& authorization_request,
       MountError* error);
 
+  user_data_auth::CryptohomeErrorCode AddAuthFactorViaUserSecretStash(
+      AuthFactorType auth_factor_type,
+      const std::string& auth_factor_label,
+      const AuthFactorMetadata& auth_factor_metadata,
+      const AuthInput& auth_input);
+
   const std::string username_;
   const std::string obfuscated_username_;
   const base::UnguessableToken token_;
@@ -205,6 +215,8 @@ class AuthSession final {
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.
   KeysetManagement* const keyset_management_;
+  // Unowned pointer.
+  AuthBlockUtility* const auth_block_utility_;
   // Unowned pointer.
   AuthFactorManager* const auth_factor_manager_;
   // Unowned pointer.

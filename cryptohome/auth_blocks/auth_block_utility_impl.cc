@@ -28,6 +28,7 @@
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
@@ -385,6 +386,21 @@ void AuthBlockUtilityImpl::AssignAuthBlockStateToVaultKeyset(
     LOG(ERROR) << "Invalid auth block state type";
     return;
   }
+}
+
+CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
+    AuthFactorType auth_factor_type,
+    const AuthInput& auth_input,
+    AuthBlockState& out_auth_block_state,
+    KeyBlobs& out_key_blobs) {
+  if (auth_factor_type != AuthFactorType::kPassword) {
+    LOG(ERROR) << "Unsupported auth factor type";
+    return CryptoError::CE_OTHER_CRYPTO;
+  }
+  // TODO(b/216804305): Stop hardcoding the auth block.
+  TpmBoundToPcrAuthBlock auth_block(crypto_->tpm(),
+                                    crypto_->cryptohome_keys_manager());
+  return auth_block.Create(auth_input, &out_auth_block_state, &out_key_blobs);
 }
 
 }  // namespace cryptohome

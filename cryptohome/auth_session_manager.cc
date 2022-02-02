@@ -13,6 +13,7 @@
 #include <base/check.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/user_secret_stash_storage.h"
@@ -21,13 +22,16 @@ namespace cryptohome {
 
 AuthSessionManager::AuthSessionManager(
     KeysetManagement* keyset_management,
+    AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
     UserSecretStashStorage* user_secret_stash_storage)
     : keyset_management_(keyset_management),
+      auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
       user_secret_stash_storage_(user_secret_stash_storage) {
   // Preconditions
   DCHECK(keyset_management_);
+  DCHECK(auth_block_utility_);
   DCHECK(auth_factor_manager_);
   DCHECK(user_secret_stash_storage_);
 }
@@ -41,7 +45,7 @@ AuthSession* AuthSessionManager::CreateAuthSession(
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   std::unique_ptr<AuthSession> auth_session = std::make_unique<AuthSession>(
       account_id, flags, std::move(on_timeout), keyset_management_,
-      auth_factor_manager_, user_secret_stash_storage_);
+      auth_block_utility_, auth_factor_manager_, user_secret_stash_storage_);
 
   auto token = auth_session->token();
   if (auth_sessions_.count(token) > 0) {

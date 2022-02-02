@@ -12,6 +12,7 @@
 #include <base/unguessable_token.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/keyset_management.h"
@@ -21,10 +22,11 @@ namespace cryptohome {
 
 class AuthSessionManager {
  public:
-  // The `KeysetManagement*`, `AuthFactorManager*`, `UserSecretStashStorage*`
-  // are unowned and must outlive the created object.
+  // The `KeysetManagement*`, `AuthBlockUtility*`, `AuthFactorManager*`,
+  // `UserSecretStashStorage*` are unowned and must outlive the created object.
   explicit AuthSessionManager(
       KeysetManagement* keyset_management,
+      AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
       UserSecretStashStorage* user_secret_stash_storage);
   ~AuthSessionManager() = default;
@@ -50,6 +52,8 @@ class AuthSessionManager {
  private:
   // Unowned; must outlive `this`.
   KeysetManagement* const keyset_management_;
+  // Unowned; must outlive `this`.
+  AuthBlockUtility* const auth_block_utility_;
   // Unowned; must outlive `this`.
   AuthFactorManager* const auth_factor_manager_;
   // Unowned; must outlive `this`.

@@ -15,6 +15,7 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/key_objects.h"
@@ -56,6 +57,13 @@ class MockAuthBlockUtility : public AuthBlockUtility {
   MOCK_METHOD(void,
               AssignAuthBlockStateToVaultKeyset,
               (const AuthBlockState& state, VaultKeyset& vault_keyset),
+              (override));
+  MOCK_METHOD(CryptoError,
+              CreateKeyBlobsWithAuthFactorType,
+              (AuthFactorType auth_factor_type,
+               const AuthInput& auth_input,
+               AuthBlockState& out_auth_block_state,
+               KeyBlobs& out_key_blobs),
               (override));
 };
 

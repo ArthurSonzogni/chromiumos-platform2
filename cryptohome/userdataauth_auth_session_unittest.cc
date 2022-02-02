@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
@@ -74,7 +75,7 @@ class AuthSessionInterfaceTest : public ::testing::Test {
 
   void SetUp() override {
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        &keyset_management_, &auth_factor_manager_,
+        &keyset_management_, &auth_block_utility_, &auth_factor_manager_,
         &user_secret_stash_storage_);
     brillo::SecureBlob system_salt;
     InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
@@ -109,6 +110,7 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   Crypto crypto_;
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockMountFactory> mount_factory_;
+  NiceMock<MockAuthBlockUtility> auth_block_utility_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   NiceMock<MockKeysetManagement> keyset_management_;

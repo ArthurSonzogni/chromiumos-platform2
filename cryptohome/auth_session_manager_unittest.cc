@@ -12,6 +12,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
@@ -51,8 +52,13 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED);
 
   NiceMock<MockKeysetManagement> keyset_management;
+  NiceMock<MockPlatform> platform;
+  AuthFactorManager auth_factor_manager(&platform);
+  UserSecretStashStorage user_secret_stash_storage(&platform);
+  NiceMock<MockAuthBlockUtility> auth_block_utility;
   AuthSessionManager auth_session_manager(
-      &keyset_management, &auth_factor_manager_, &user_secret_stash_storage_);
+      &keyset_management, &auth_block_utility, &auth_factor_manager,
+      &user_secret_stash_storage);
 
   AuthSession* auth_session =
       auth_session_manager.CreateAuthSession("foo@example.com", 0);
@@ -78,8 +84,13 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED);
 
   NiceMock<MockKeysetManagement> keyset_management;
+  NiceMock<MockPlatform> platform;
+  AuthFactorManager auth_factor_manager(&platform);
+  UserSecretStashStorage user_secret_stash_storage(&platform);
+  NiceMock<MockAuthBlockUtility> auth_block_utility;
   AuthSessionManager auth_session_manager(
-      &keyset_management, &auth_factor_manager_, &user_secret_stash_storage_);
+      &keyset_management, &auth_block_utility, &auth_factor_manager,
+      &user_secret_stash_storage);
 
   AuthSession* auth_session =
       auth_session_manager.CreateAuthSession("foo@example.com", 0);

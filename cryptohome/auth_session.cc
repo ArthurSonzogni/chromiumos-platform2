@@ -10,13 +10,16 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/check_op.h>
 #include <base/logging.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
 
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_input_utils.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount_utils.h"
@@ -70,6 +73,7 @@ AuthSession::AuthSession(
     unsigned int flags,
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
     KeysetManagement* keyset_management,
+    AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
     UserSecretStashStorage* user_secret_stash_storage)
     : username_(username),
@@ -80,11 +84,13 @@ AuthSession::AuthSession(
       is_ephemeral_user_(flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
       on_timeout_(std::move(on_timeout)),
       keyset_management_(keyset_management),
+      auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
       user_secret_stash_storage_(user_secret_stash_storage) {
   // Preconditions.
   DCHECK(!serialized_token_.empty());
   DCHECK(keyset_management_);
+  DCHECK(auth_block_utility_);
   DCHECK(auth_factor_manager_);
   DCHECK(user_secret_stash_storage_);
 
@@ -359,19 +365,110 @@ std::unique_ptr<Credentials> AuthSession::GetCredentials(
 
 user_data_auth::CryptohomeErrorCode AuthSession::AddAuthFactor(
     const user_data_auth::AddAuthFactorRequest& request) {
-  user_data_auth::CryptohomeErrorCode error_code =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
+  // Preconditions:
+  DCHECK_EQ(request.auth_session_id(), serialized_token_);
+
+  // TODO(b/216804305): Verify the auth session is authenticated, after
+  // `OnUserCreated()` is changed to mark the session authenticated.
 
   AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
   std::string auth_factor_label;
+  if (!GetAuthFactorMetadata(request.auth_factor(), auth_factor_metadata,
+                             auth_factor_type, auth_factor_label)) {
+    LOG(ERROR) << "Failed to parse new auth factor parameters";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
 
-  GetAuthFactorMetadata(request.auth_factor(), auth_factor_metadata,
-                        auth_factor_type, auth_factor_label);
+  std::optional<AuthInput> auth_input = FromProto(request.auth_input());
+  if (!auth_input.has_value()) {
+    LOG(ERROR) << "Failed to parse auth input for new auth factor";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
 
-  // TOTO(b/3319388): This is still incomplete, need to add implementation of
-  // AddAuthFactor and instantiation of AuthBlock.
-  return error_code;
+  if (user_secret_stash_) {
+    // The user has a UserSecretStash (either because it's a new user and the
+    // experiment is on or it's an existing user who went through this flow), so
+    // proceed with wrapping the USS via the new factor and persisting both.
+    return AddAuthFactorViaUserSecretStash(auth_factor_type, auth_factor_label,
+                                           auth_factor_metadata,
+                                           auth_input.value());
+  }
+
+  // TODO(b/3319388): Implement for the vault keyset case.
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
+}
+
+user_data_auth::CryptohomeErrorCode
+AuthSession::AddAuthFactorViaUserSecretStash(
+    AuthFactorType auth_factor_type,
+    const std::string& auth_factor_label,
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthInput& auth_input) {
+  // Preconditions.
+  DCHECK(user_secret_stash_);
+  DCHECK(user_secret_stash_main_key_.has_value());
+
+  // 1. Create a new auth factor in-memory, by executing auth block's Create().
+  KeyBlobs key_blobs;
+  std::unique_ptr<AuthFactor> auth_factor = AuthFactor::CreateNew(
+      auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
+      auth_block_utility_, key_blobs);
+  if (!auth_factor) {
+    LOG(ERROR) << "Failed to create new auth factor";
+    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  }
+
+  // 2. Derive the credential secret for the USS from the key blobs.
+  std::optional<brillo::SecureBlob> uss_credential_secret =
+      key_blobs.DeriveUssCredentialSecret();
+  if (!uss_credential_secret.has_value()) {
+    LOG(ERROR) << "Failed to derive credential secret for created auth factor";
+    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  }
+
+  // 3. Add the new factor into the USS in-memory.
+  // This wraps the USS Main Key with the credential secret. The wrapping_id
+  // field is defined equal to the factor's label.
+  if (!user_secret_stash_->AddWrappedMainKey(
+          user_secret_stash_main_key_.value(),
+          /*wrapping_id=*/auth_factor_label, uss_credential_secret.value())) {
+    LOG(ERROR) << "Failed to add created auth factor into user secret stash";
+    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  }
+
+  // 4. Encrypt the updated USS.
+  std::optional<brillo::SecureBlob> encrypted_uss_container =
+      user_secret_stash_->GetEncryptedContainer(
+          user_secret_stash_main_key_.value());
+  if (!encrypted_uss_container.has_value()) {
+    LOG(ERROR)
+        << "Failed to encrypt user secret stash after auth factor creation";
+    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  }
+
+  // 5. Persist the factor.
+  // It's important to do this after all steps ##1-4, so that we only start
+  // writing files after all validity checks (like the label duplication check).
+  if (!auth_factor_manager_->SaveAuthFactor(obfuscated_username_,
+                                            *auth_factor)) {
+    LOG(ERROR) << "Failed to persist created auth factor";
+    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  }
+
+  // 6. Persist the USS.
+  // It's important to do this after #5, to minimize the chance of ending in an
+  // inconsistent state on the disk: a created/updated USS and a missing auth
+  // factor (note that we're using file system syncs to have best-effort
+  // ordering guarantee).
+  if (!user_secret_stash_storage_->Persist(encrypted_uss_container.value(),
+                                           obfuscated_username_)) {
+    LOG(ERROR)
+        << "Failed to persist user secret stash after auth factor creation";
+    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  }
+
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
 }  // namespace cryptohome

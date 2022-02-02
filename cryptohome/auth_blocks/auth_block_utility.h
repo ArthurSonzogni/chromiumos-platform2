@@ -5,10 +5,12 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_UTILITY_H_
 #define CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_UTILITY_H_
 
+#include <base/compiler_specific.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/key_objects.h"
@@ -68,6 +70,14 @@ class AuthBlockUtility {
   // returns.
   virtual void AssignAuthBlockStateToVaultKeyset(const AuthBlockState& state,
                                                  VaultKeyset& vault_keyset) = 0;
+
+  // Creates a new auth block state and key blobs using an auth block. On error,
+  // returns the error code.
+  virtual CryptoError CreateKeyBlobsWithAuthFactorType(
+      AuthFactorType auth_factor_type,
+      const AuthInput& auth_input,
+      AuthBlockState& out_auth_block_state,
+      KeyBlobs& out_key_blobs) WARN_UNUSED_RESULT = 0;
 };
 
 }  // namespace cryptohome
