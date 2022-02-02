@@ -153,32 +153,28 @@ Ethernet::Ethernet(Manager* manager,
 
 Ethernet::~Ethernet() {}
 
-void Ethernet::Start(Error* error,
-                     const EnabledStateChangedCallback& /*callback*/) {
+void Ethernet::Start(const EnabledStateChangedCallback& callback) {
   if (IsExternalPciDev(link_name())) {
     if (!DisableOffloadFeatures()) {
       LOG(ERROR) << link_name()
                  << " Interface disabled due to security reasons "
                  << "(failed to disable Offload features)";
-      error->Populate(Error::kPermissionDenied);
-      OnEnabledStateChanged(EnabledStateChangedCallback(), *error);
+      callback.Run(Error(Error::kPermissionDenied));
       return;
     }
   }
 
   rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
-  OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   LOG(INFO) << "Registering " << link_name() << " with manager.";
   if (!service_) {
     service_ = GetProvider()->CreateService(weak_ptr_factory_.GetWeakPtr());
   }
   RegisterService(service_);
-  if (error)
-    error->Reset();  // indicate immediate completion
+
+  callback.Run(Error(Error::kSuccess));
 }
 
-void Ethernet::Stop(Error* error,
-                    const EnabledStateChangedCallback& /*callback*/) {
+void Ethernet::Stop(const EnabledStateChangedCallback& callback) {
   DeregisterService(service_);
   // EthernetProvider::DeregisterService will ResetEthernet() when the Service
   // being deregistered is the only Service remaining (instead of releasing the
@@ -188,9 +184,8 @@ void Ethernet::Stop(Error* error,
     service_ = nullptr;
   }
   StopSupplicant();
-  OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
-  if (error)
-    error->Reset();  // indicate immediate completion
+
+  callback.Run(Error(Error::kSuccess));
 }
 
 void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {

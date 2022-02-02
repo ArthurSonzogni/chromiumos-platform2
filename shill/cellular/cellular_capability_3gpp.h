@@ -79,10 +79,10 @@ class CellularCapability3gpp : public CellularCapability {
   // modem is enabled.  Otherwise, the enable command is buffered until the
   // modem becomes disabled.  ModemManager rejects the enable command if the
   // modem is not disabled, for example, if it is initializing instead.
-  void StartModem(Error* error, const ResultCallback& callback) override;
+  void StartModem(const ResultCallback& callback) override;
   void SetModemToLowPowerModeOnModemStop(bool set_low_power) override;
-  void StopModem(Error* error, const ResultCallback& callback) override;
-  void Reset(Error* error, const ResultCallback& callback) override;
+  void StopModem(const ResultCallback& callback) override;
+  void Reset(const ResultCallback& callback) override;
   bool IsServiceActivationRequired() const override;
   bool IsActivating() const override;
   void CompleteActivation(Error* error) override;
@@ -273,7 +273,7 @@ class CellularCapability3gpp : public CellularCapability {
   void Stop_PowerDown(const ResultCallback& callback,
                       const Error& stop_disable_error);
   void Stop_PowerDownCompleted(const ResultCallback& callback,
-                               const Error* stop_disable_error,
+                               std::unique_ptr<Error> stop_disable_error,
                                const Error& error);
 
   void Register(const ResultCallback& callback);

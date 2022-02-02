@@ -72,7 +72,7 @@ class CellularCapability {
   // operation advances to the next step, until either an error occurs in one of
   // them, or all the steps have been completed, at which point StartModem() is
   // finished.
-  virtual void StartModem(Error* error, const ResultCallback& callback) = 0;
+  virtual void StartModem(const ResultCallback& callback) = 0;
 
   // Sets a flag to be used by |StopModem| to decide if the modem will be set
   // to low power mode as the last step. By default, |StopModem| does set the
@@ -84,10 +84,10 @@ class CellularCapability {
   // `false` value, |StopModem| will not set the modem to low power mode.
   // |callback| is invoked when this completes and the result is passed to the
   // callback.
-  virtual void StopModem(Error* error, const ResultCallback& callback) = 0;
+  virtual void StopModem(const ResultCallback& callback) = 0;
 
   // Resets the modem.
-  virtual void Reset(Error* error, const ResultCallback& callback) = 0;
+  virtual void Reset(const ResultCallback& callback) = 0;
 
   // -------------------------------------------------------------------------
   // Activation

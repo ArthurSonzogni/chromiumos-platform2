@@ -1146,19 +1146,9 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
     if (device->technology() != id)
       continue;
 
-    error.Populate(Error::kOperationInitiated);
     ResultCallback aggregator_callback(
         base::Bind(&ResultAggregator::ReportResult, result_aggregator));
-
-    if (persist) {
-      device->SetEnabledPersistent(enabled_state, &error, aggregator_callback);
-    } else {
-      device->SetEnabledNonPersistent(enabled_state, &error,
-                                      aggregator_callback);
-    }
-
-    if (!error.IsOngoing())
-      result_aggregator->ReportResult(error);
+    device->SetEnabledChecked(enabled_state, persist, aggregator_callback);
   }
 }
 
@@ -1218,10 +1208,9 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
   LoadDeviceFromProfiles(to_manage);
 
   if (IsTechnologyProhibited(to_manage->technology())) {
-    Error unused_error;
     LOG(INFO) << "Technology prohibited, disabling: "
               << to_manage->GetTechnologyName();
-    to_manage->SetEnabledNonPersistent(false, &unused_error, ResultCallback());
+    to_manage->SetEnabledNonPersistent(false, base::DoNothing());
   }
 
   // If |to_manage| is new, it needs to be persisted.

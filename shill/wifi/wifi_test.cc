@@ -687,7 +687,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)
-    wifi_->Stop(nullptr, ResultCallback());
+    wifi_->Stop(base::DoNothing());
     wifi_->network()->set_dhcp_provider_for_testing(nullptr);
     // Reset scope logging, to avoid interfering with other tests.
     ScopeLogger::GetInstance()->EnableScopesByName("-wifi");

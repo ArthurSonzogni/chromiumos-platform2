@@ -17,6 +17,7 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/check.h>
+#include <base/run_loop.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
@@ -82,7 +83,8 @@ class TestDevice : public Device {
              const std::string& address,
              int interface_index,
              Technology technology)
-      : Device(manager, link_name, address, interface_index, technology) {
+      : Device(manager, link_name, address, interface_index, technology),
+        start_stop_error_(Error::kSuccess) {
     ON_CALL(*this, ShouldBringNetworkInterfaceDownAfterDisabled())
         .WillByDefault(Invoke(
             this,
@@ -91,14 +93,12 @@ class TestDevice : public Device {
 
   ~TestDevice() override = default;
 
-  void Start(Error* error,
-             const EnabledStateChangedCallback& callback) override {
-    DCHECK(error);
+  void Start(const EnabledStateChangedCallback& callback) override {
+    callback.Run(start_stop_error_);
   }
 
-  void Stop(Error* error,
-            const EnabledStateChangedCallback& callback) override {
-    DCHECK(error);
+  void Stop(const EnabledStateChangedCallback& callback) override {
+    callback.Run(start_stop_error_);
   }
 
   MOCK_METHOD(bool,
@@ -117,6 +117,8 @@ class TestDevice : public Device {
   void device_set_mac_address(const std::string& mac_address) {
     Device::set_mac_address(mac_address);
   }
+
+  Error start_stop_error_;
 };
 
 class DeviceTest : public testing::Test {
@@ -590,7 +592,7 @@ TEST_F(DeviceTest, SetEnabledNonPersistent) {
   EXPECT_FALSE(device_->enabled_pending_);
   device_->enabled_persistent_ = false;
   Error error;
-  device_->SetEnabledNonPersistent(true, &error, ResultCallback());
+  SetEnabledSync(device_.get(), true, false, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
   EXPECT_TRUE(device_->enabled_pending_);
 
@@ -599,7 +601,7 @@ TEST_F(DeviceTest, SetEnabledNonPersistent) {
   device_->enabled_persistent_ = false;
   device_->enabled_pending_ = true;
   device_->enabled_ = true;
-  device_->SetEnabledNonPersistent(true, &error, ResultCallback());
+  SetEnabledSync(device_.get(), true, false, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
   EXPECT_TRUE(device_->enabled_pending_);
   EXPECT_TRUE(device_->enabled_);
@@ -608,7 +610,7 @@ TEST_F(DeviceTest, SetEnabledNonPersistent) {
   // Enable while enabled but disabling.
   error.Populate(Error::kOperationInitiated);
   device_->enabled_pending_ = false;
-  device_->SetEnabledNonPersistent(true, &error, ResultCallback());
+  SetEnabledSync(device_.get(), true, false, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
   EXPECT_FALSE(device_->enabled_pending_);
   EXPECT_TRUE(device_->enabled_);
@@ -617,7 +619,7 @@ TEST_F(DeviceTest, SetEnabledNonPersistent) {
   // Disable while already disabled.
   error.Populate(Error::kOperationInitiated);
   device_->enabled_ = false;
-  device_->SetEnabledNonPersistent(false, &error, ResultCallback());
+  SetEnabledSync(device_.get(), false, false, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
   EXPECT_FALSE(device_->enabled_pending_);
   EXPECT_FALSE(device_->enabled_);
@@ -626,7 +628,7 @@ TEST_F(DeviceTest, SetEnabledNonPersistent) {
   // Disable while already enabling.
   error.Populate(Error::kOperationInitiated);
   device_->enabled_pending_ = true;
-  device_->SetEnabledNonPersistent(false, &error, ResultCallback());
+  SetEnabledSync(device_.get(), false, false, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
   EXPECT_TRUE(device_->enabled_pending_);
   EXPECT_FALSE(device_->enabled_);
@@ -638,7 +640,7 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   EXPECT_FALSE(device_->enabled_pending_);
   device_->enabled_persistent_ = false;
   Error error;
-  device_->SetEnabledPersistent(true, &error, ResultCallback());
+  SetEnabledSync(device_.get(), true, true, &error);
   EXPECT_TRUE(device_->enabled_persistent_);
   EXPECT_TRUE(device_->enabled_pending_);
 
@@ -647,7 +649,7 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   device_->enabled_persistent_ = false;
   device_->enabled_pending_ = true;
   device_->enabled_ = true;
-  device_->SetEnabledPersistent(true, &error, ResultCallback());
+  SetEnabledSync(device_.get(), true, true, &error);
   EXPECT_TRUE(device_->enabled_persistent_);
   EXPECT_TRUE(device_->enabled_pending_);
   EXPECT_TRUE(device_->enabled_);
@@ -656,7 +658,7 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   // Enable while enabled but disabling.
   error.Populate(Error::kOperationInitiated);
   device_->enabled_pending_ = false;
-  device_->SetEnabledPersistent(true, &error, ResultCallback());
+  SetEnabledSync(device_.get(), true, true, &error);
   EXPECT_TRUE(device_->enabled_persistent_);
   EXPECT_FALSE(device_->enabled_pending_);
   EXPECT_TRUE(device_->enabled_);
@@ -665,7 +667,7 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   // Disable while already disabled (persisted).
   error.Populate(Error::kOperationInitiated);
   device_->enabled_ = false;
-  device_->SetEnabledPersistent(false, &error, ResultCallback());
+  SetEnabledSync(device_.get(), false, true, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
   EXPECT_FALSE(device_->enabled_pending_);
   EXPECT_FALSE(device_->enabled_);
@@ -674,7 +676,7 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   // Disable while already enabling.
   error.Populate(Error::kOperationInitiated);
   device_->enabled_pending_ = true;
-  device_->SetEnabledPersistent(false, &error, ResultCallback());
+  SetEnabledSync(device_.get(), false, true, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
   EXPECT_TRUE(device_->enabled_pending_);
   EXPECT_FALSE(device_->enabled_);
@@ -685,7 +687,7 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   device_->enabled_persistent_ = true;
   device_->enabled_pending_ = false;
   device_->enabled_ = false;
-  device_->SetEnabledPersistent(false, &error, ResultCallback());
+  SetEnabledSync(device_.get(), false, true, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
   EXPECT_FALSE(device_->enabled_pending_);
   EXPECT_FALSE(device_->enabled_);
@@ -697,8 +699,14 @@ TEST_F(DeviceTest, Start) {
   EXPECT_FALSE(device_->enabled_pending_);
   device_->SetEnabled(true);
   EXPECT_TRUE(device_->enabled_pending_);
-  device_->OnEnabledStateChanged(ResultCallback(),
-                                 Error(Error::kOperationFailed));
+  EXPECT_TRUE(device_->enabled_);
+}
+
+TEST_F(DeviceTest, StartFailure) {
+  EXPECT_FALSE(device_->enabled_);
+  EXPECT_FALSE(device_->enabled_pending_);
+  device_->start_stop_error_.Populate(Error::kOperationFailed);
+  device_->SetEnabled(true);
   EXPECT_FALSE(device_->enabled_pending_);
   EXPECT_FALSE(device_->enabled_);
 }
@@ -718,7 +726,6 @@ TEST_F(DeviceTest, Stop) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
   EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   device_->SetEnabled(false);
-  device_->OnEnabledStateChanged(ResultCallback(), Error());
 
   EXPECT_EQ(nullptr, device_->ipconfig());
   EXPECT_EQ(nullptr, device_->selected_service_);
@@ -740,7 +747,6 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
   EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
   device_->SetEnabled(false);
-  device_->OnEnabledStateChanged(ResultCallback(), Error());
 
   EXPECT_EQ(nullptr, device_->ipconfig());
   EXPECT_EQ(nullptr, device_->selected_service_);
@@ -761,9 +767,8 @@ TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
   EXPECT_CALL(*GetDeviceMockAdaptor(),
               EmitBoolChanged(kPoweredProperty, false));
   EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(nullptr)));
-  device_->SetEnabled(false);
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
-  device_->OnEnabledStateChanged(ResultCallback(), Error());
+  device_->SetEnabled(false);
 
   EXPECT_EQ(nullptr, device_->ipconfig());
   EXPECT_EQ(nullptr, device_->selected_service_);
@@ -791,8 +796,12 @@ TEST_F(DeviceTest, StartProhibited) {
 }
 
 TEST_F(DeviceTest, Reset) {
+  base::RunLoop run_loop;
   Error e;
-  device_->Reset(&e, ResultCallback());
+  device_->Reset(
+      base::BindRepeating(&SetErrorAndReturn, run_loop.QuitClosure(), &e));
+  run_loop.Run();
+
   EXPECT_EQ(Error::kNotImplemented, e.type());
 }
 

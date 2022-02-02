@@ -24,48 +24,43 @@ class MockModemProxy : public ModemProxyInterface {
   ~MockModemProxy() override;
 
   // Inherited methods from ModemProxyInterface.
-  MOCK_METHOD(void,
-              Enable,
-              (bool, Error*, const ResultCallback&, int),
-              (override));
+  MOCK_METHOD(void, Enable, (bool, const ResultCallback&, int), (override));
   MOCK_METHOD(void,
               CreateBearer,
-              (const KeyValueStore&, Error*, RpcIdentifierCallback, int),
+              (const KeyValueStore&, RpcIdentifierCallback, int),
               (override));
   MOCK_METHOD(void,
               DeleteBearer,
-              (const RpcIdentifier&, Error*, const ResultCallback&, int),
+              (const RpcIdentifier&, const ResultCallback&, int),
               (override));
-  MOCK_METHOD(void, Reset, (Error*, const ResultCallback&, int), (override));
+  MOCK_METHOD(void, Reset, (const ResultCallback&, int), (override));
   MOCK_METHOD(void,
               FactoryReset,
-              (const std::string&, Error*, const ResultCallback&, int),
+              (const std::string&, const ResultCallback&, int),
               (override));
   MOCK_METHOD(void,
               SetCurrentCapabilities,
-              (uint32_t, Error*, const ResultCallback&, int),
+              (uint32_t, const ResultCallback&, int),
               (override));
   MOCK_METHOD(void,
               SetCurrentModes,
-              (uint32_t, uint32_t, Error*, const ResultCallback&, int),
+              (uint32_t, uint32_t, const ResultCallback&, int),
               (override));
-  MOCK_METHOD(
-      void,
-      SetCurrentBands,
-      (const std::vector<uint32_t>&, Error*, const ResultCallback&, int),
-      (override));
+  MOCK_METHOD(void,
+              SetCurrentBands,
+              (const std::vector<uint32_t>&, const ResultCallback&, int),
+              (override));
   MOCK_METHOD(void,
               SetPrimarySimSlot,
               (uint32_t, const ResultCallback&, int),
               (override));
-  MOCK_METHOD(
-      void,
-      Command,
-      (const std::string&, uint32_t, Error*, const StringCallback&, int),
-      (override));
+  MOCK_METHOD(void,
+              Command,
+              (const std::string&, uint32_t, const StringCallback&, int),
+              (override));
   MOCK_METHOD(void,
               SetPowerState,
-              (uint32_t, Error*, const ResultCallback&, int),
+              (uint32_t, const ResultCallback&, int),
               (override));
   MOCK_METHOD(void,
               set_state_changed_callback,

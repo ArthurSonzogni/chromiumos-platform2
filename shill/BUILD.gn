@@ -717,6 +717,7 @@ if (use.test) {
       "supplicant/supplicant_manager_test.cc",
       "supplicant/wpa_supplicant_test.cc",
       "technology_test.cc",
+      "testing.cc",
       "testrunner.cc",
       "tethering_manager_test.cc",
       "throttler_test.cc",

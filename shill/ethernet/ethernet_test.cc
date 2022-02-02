@@ -17,6 +17,8 @@
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
+#include <base/run_loop.h>
+#include <base/task/single_thread_task_executor.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -149,11 +151,17 @@ class EthernetTest : public testing::Test {
         .WillOnce(Return(mock_service_));
     EXPECT_CALL(ethernet_provider_, RegisterService(Eq(mock_service_)));
     EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(ifindex_, IFF_UP, IFF_UP));
-    ethernet_->Start(nullptr, EnabledStateChangedCallback());
+    base::RunLoop run_loop;
+    ethernet_->Start(base::BindRepeating(&EthernetTest::OnEnabledStateChanged,
+                                         run_loop.QuitClosure()));
+    run_loop.Run();
   }
   void StopEthernet() {
     EXPECT_CALL(ethernet_provider_, DeregisterService(Eq(mock_service_)));
-    ethernet_->Stop(nullptr, EnabledStateChangedCallback());
+    base::RunLoop run_loop;
+    ethernet_->Stop(base::BindRepeating(&EthernetTest::OnEnabledStateChanged,
+                                        run_loop.QuitClosure()));
+    run_loop.Run();
   }
   void SetUsbEthernetMacAddressSource(const std::string& source,
                                       Error* error,
@@ -243,6 +251,12 @@ class EthernetTest : public testing::Test {
   MockRTNLHandler rtnl_handler_;
   scoped_refptr<MockEthernetService> mock_service_;
   MockEthernetProvider ethernet_provider_;
+
+ private:
+  static void OnEnabledStateChanged(const base::RepeatingClosure& quit_closure,
+                                    const Error& error) {
+    quit_closure.Run();
+  }
 };
 
 TEST_F(EthernetTest, Construct) {

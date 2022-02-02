@@ -348,9 +348,7 @@ void Cellular::HelpRegisterConstDerivedString(
                 new CustomAccessor<Cellular, std::string>(this, get, nullptr)));
 }
 
-void Cellular::Start(Error* error,
-                     const EnabledStateChangedCallback& callback) {
-  DCHECK(error);
+void Cellular::Start(const EnabledStateChangedCallback& callback) {
   LOG(INFO) << __func__ << ": " << GetStateString(state_);
 
   if (!capability_) {
@@ -359,23 +357,21 @@ void Cellular::Start(Error* error,
     // to kEnabled here will cause CreateCapability to call StartModem.
     SetState(State::kEnabled);
     LOG(WARNING) << __func__ << ": Skipping Start (no capability).";
-    if (error)
-      error->Reset();
+    callback.Run(Error(Error::kSuccess));
     return;
   }
 
-  StartModem(error, callback);
+  StartModem(callback);
 }
 
-void Cellular::Stop(Error* error, const EnabledStateChangedCallback& callback) {
+void Cellular::Stop(const EnabledStateChangedCallback& callback) {
   LOG(INFO) << __func__ << ": " << GetStateString(state_);
   DCHECK(!stop_step_.has_value()) << "Already stopping. Unexpected Stop call.";
   stop_step_ = StopSteps::kStopModem;
-  StopStep(error, callback, Error());
+  StopStep(callback, Error());
 }
 
-void Cellular::StopStep(Error* error,
-                        const EnabledStateChangedCallback& callback,
+void Cellular::StopStep(const EnabledStateChangedCallback& callback,
                         const Error& error_result) {
   SLOG(this, 1) << __func__ << ": " << GetStateString(state_);
   DCHECK(stop_step_.has_value());
@@ -385,8 +381,8 @@ void Cellular::StopStep(Error* error,
         LOG(INFO) << __func__ << ": Calling StopModem.";
         SetState(State::kModemStopping);
         capability_->StopModem(
-            error, base::Bind(&Cellular::StopModemCallback,
-                              weak_ptr_factory_.GetWeakPtr(), callback));
+            base::BindRepeating(&Cellular::StopModemCallback,
+                                weak_ptr_factory_.GetWeakPtr(), callback));
         return;
       }
       stop_step_ = StopSteps::kModemStopped;
@@ -432,14 +428,12 @@ void Cellular::StopStep(Error* error,
   }
 }
 
-void Cellular::StartModem(Error* error,
-                          const EnabledStateChangedCallback& callback) {
+void Cellular::StartModem(const EnabledStateChangedCallback& callback) {
   DCHECK(capability_);
   LOG(INFO) << __func__;
   SetState(State::kModemStarting);
-  capability_->StartModem(error,
-                          base::Bind(&Cellular::StartModemCallback,
-                                     weak_ptr_factory_.GetWeakPtr(), callback));
+  capability_->StartModem(base::BindRepeating(
+      &Cellular::StartModemCallback, weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
 void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
@@ -455,7 +449,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
       // If the ModemState property later changes to 'disabled', StartModem
       // will be called again.
       LOG(WARNING) << "StartModem failed: " << error;
-      callback.Run(Error());
+      callback.Run(Error(Error::kSuccess));
     } else {
       LOG(ERROR) << "StartModem failed: " << error;
       callback.Run(error);
@@ -471,7 +465,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
 
   metrics()->NotifyDeviceEnableFinished(interface_index());
 
-  callback.Run(Error());
+  callback.Run(Error(Error::kSuccess));
 }
 
 void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
@@ -479,7 +473,7 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
   LOG(INFO) << __func__ << ": " << GetStateString(state_)
             << " Error: " << error_result;
   stop_step_ = StopSteps::kModemStopped;
-  StopStep(/*error=*/nullptr, callback, error_result);
+  StopStep(callback, error_result);
 }
 
 void Cellular::DestroySockets() {
@@ -592,7 +586,7 @@ void Cellular::ChangePin(const std::string& old_pin,
   capability_->ChangePin(old_pin, new_pin, error, callback);
 }
 
-void Cellular::Reset(Error* error, const ResultCallback& callback) {
+void Cellular::Reset(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
 
   // Qualcomm q6v5 modems on trogdor do not support reset using qmi messages.
@@ -610,7 +604,7 @@ void Cellular::Reset(Error* error, const ResultCallback& callback) {
     callback.Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->Reset(error, callback);
+  capability_->Reset(callback);
 }
 
 void Cellular::DropConnection() {
@@ -692,30 +686,15 @@ void Cellular::OnBeforeSuspend(const ResultCallback& callback) {
   StopPPP();
   if (capability_)
     capability_->SetModemToLowPowerModeOnModemStop(true);
-  SetEnabledNonPersistent(false, &error, callback);
-  if (error.IsFailure() && error.type() != Error::kInProgress) {
-    // If we fail to disable the modem right away, proceed instead of wasting
-    // the time to wait for the suspend/termination delay to expire.
-    LOG(WARNING) << "Proceed with suspend/termination even though the modem "
-                 << "is not yet disabled: " << error;
-    callback.Run(error);
-  }
+  SetEnabledNonPersistent(false, callback);
 }
 
 void Cellular::OnAfterResume() {
   SLOG(this, 2) << __func__;
   if (enabled_persistent()) {
     LOG(INFO) << "Restarting modem after resume.";
-
-    Error error;
-    SetEnabledUnchecked(true, &error, base::Bind(LogRestartModemResult));
-    if (error.IsSuccess()) {
-      LOG(INFO) << "Modem restart completed immediately.";
-    } else if (error.IsOngoing()) {
-      LOG(INFO) << "Modem restart in progress.";
-    } else {
-      LOG(WARNING) << "Modem restart failed: " << error;
-    }
+    // TODO(b/216847428): replace this with a real toggle
+    SetEnabledUnchecked(true, base::BindRepeating(LogRestartModemResult));
   }
 
   // Re-enable IPv6 so we can renegotiate an IP address.
@@ -757,25 +736,22 @@ void Cellular::ReAttach() {
 
   capability_->SetModemToLowPowerModeOnModemStop(false);
   Error error;
-  SetEnabledNonPersistent(false, &error,
-                          base::Bind(&Cellular::ReAttachOnDetachComplete,
-                                     weak_ptr_factory_.GetWeakPtr()));
-  if (error.IsFailure() && error.type() != Error::kInProgress) {
-    LOG(WARNING) << __func__ << " Detaching the modem failed: " << error;
-    // Reset the flag to its default value.
-    capability_->SetModemToLowPowerModeOnModemStop(true);
-  }
+  SetEnabledNonPersistent(
+      false, base::BindRepeating(&Cellular::ReAttachOnDetachComplete,
+                                 weak_ptr_factory_.GetWeakPtr()));
 }
 
-void Cellular::ReAttachOnDetachComplete(const Error&) {
-  Error error;
+void Cellular::ReAttachOnDetachComplete(const Error& error) {
   SLOG(this, 2) << __func__;
   // Reset the flag to its default value.
   capability_->SetModemToLowPowerModeOnModemStop(true);
-
-  SetEnabledUnchecked(true, &error, base::Bind(LogRestartModemResult));
-  if (error.IsFailure() && !error.IsOngoing())
-    LOG(WARNING) << "Modem restart completed immediately.";
+  if (error.IsSuccess()) {
+    LOG(INFO) << "Restarting modem for re-attach.";
+    // TODO(b/216847428): replace this with a real toggle
+    SetEnabledUnchecked(true, base::BindRepeating(LogRestartModemResult));
+  } else {
+    LOG(WARNING) << " Detaching the modem failed: " << error;
+  }
 }
 
 void Cellular::CancelPendingConnect() {
@@ -1017,7 +993,7 @@ void Cellular::CreateCapability() {
   if (state_ == State::kModemStopping || state_ == State::kDisabled)
     return;
 
-  StartModem(/*error=*/nullptr, base::DoNothing());
+  StartModem(base::DoNothing());
 
   // Update device state that might have been pending
   // due to the lack of |capability_| during Cellular::Start().
@@ -1469,7 +1445,7 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
       // This may occur after a SIM swap or eSIM profile change. Ensure that
       // the Modem is started.
       if (state_ == State::kEnabled)
-        StartModem(/*error=*/nullptr, base::DoNothing());
+        StartModem(base::DoNothing());
       break;
     case kModemStateDisabling:
     case kModemStateEnabling:

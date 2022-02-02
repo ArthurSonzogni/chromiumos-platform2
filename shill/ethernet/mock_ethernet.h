@@ -27,14 +27,8 @@ class MockEthernet : public Ethernet {
 
   ~MockEthernet() override;
 
-  MOCK_METHOD(void,
-              Start,
-              (Error*, const EnabledStateChangedCallback&),
-              (override));
-  MOCK_METHOD(void,
-              Stop,
-              (Error*, const EnabledStateChangedCallback&),
-              (override));
+  MOCK_METHOD(void, Start, (const EnabledStateChangedCallback&), (override));
+  MOCK_METHOD(void, Stop, (const EnabledStateChangedCallback&), (override));
   MOCK_METHOD(void, ConnectTo, (EthernetService*), (override));
   MOCK_METHOD(void, DisconnectFrom, (EthernetService*), (override));
   MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));

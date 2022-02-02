@@ -24,10 +24,7 @@ class MockVirtualDevice : public VirtualDevice {
 
   ~MockVirtualDevice() override;
 
-  MOCK_METHOD(void,
-              Stop,
-              (Error*, const EnabledStateChangedCallback&),
-              (override));
+  MOCK_METHOD(void, Stop, (const EnabledStateChangedCallback&), (override));
   MOCK_METHOD(void, UpdateIPConfig, (const IPConfig::Properties&), (override));
   MOCK_METHOD(void, DropConnection, (), (override));
   MOCK_METHOD(void, ResetConnection, (), (override));

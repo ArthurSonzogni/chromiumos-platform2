@@ -206,10 +206,12 @@ class DeviceStub : public Device {
   DeviceStub(const DeviceStub&) = delete;
   DeviceStub& operator=(const DeviceStub&) = delete;
 
-  void Start(Error* /*error*/,
-             const EnabledStateChangedCallback& /*callback*/) override {}
-  void Stop(Error* /*error*/,
-            const EnabledStateChangedCallback& /*callback*/) override {}
+  void Start(const EnabledStateChangedCallback& callback) override {
+    callback.Run(Error(Error::kNotSupported));
+  }
+  void Stop(const EnabledStateChangedCallback& callback) override {
+    callback.Run(Error(Error::kNotSupported));
+  }
   void Initialize() override {}
 };
 

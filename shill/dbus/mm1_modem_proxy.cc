@@ -39,7 +39,6 @@ ModemProxy::ModemProxy(const scoped_refptr<dbus::Bus>& bus,
 ModemProxy::~ModemProxy() = default;
 
 void ModemProxy::Enable(bool enable,
-                        Error* error,
                         const ResultCallback& callback,
                         int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << enable;
@@ -53,7 +52,6 @@ void ModemProxy::Enable(bool enable,
 }
 
 void ModemProxy::CreateBearer(const KeyValueStore& properties,
-                              Error* error,
                               RpcIdentifierCallback callback,
                               int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
@@ -71,7 +69,6 @@ void ModemProxy::CreateBearer(const KeyValueStore& properties,
 }
 
 void ModemProxy::DeleteBearer(const RpcIdentifier& bearer,
-                              Error* error,
                               const ResultCallback& callback,
                               int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer.value();
@@ -84,9 +81,7 @@ void ModemProxy::DeleteBearer(const RpcIdentifier& bearer,
       timeout);
 }
 
-void ModemProxy::Reset(Error* error,
-                       const ResultCallback& callback,
-                       int timeout) {
+void ModemProxy::Reset(const ResultCallback& callback, int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->ResetAsync(
       base::BindOnce(&ModemProxy::OnOperationSuccess,
@@ -97,7 +92,6 @@ void ModemProxy::Reset(Error* error,
 }
 
 void ModemProxy::FactoryReset(const std::string& code,
-                              Error* error,
                               const ResultCallback& callback,
                               int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
@@ -111,7 +105,6 @@ void ModemProxy::FactoryReset(const std::string& code,
 }
 
 void ModemProxy::SetCurrentCapabilities(uint32_t capabilities,
-                                        Error* error,
                                         const ResultCallback& callback,
                                         int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << capabilities;
@@ -126,7 +119,6 @@ void ModemProxy::SetCurrentCapabilities(uint32_t capabilities,
 
 void ModemProxy::SetCurrentModes(uint32_t allowed_modes,
                                  uint32_t preferred_mode,
-                                 Error* error,
                                  const ResultCallback& callback,
                                  int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2)
@@ -142,7 +134,6 @@ void ModemProxy::SetCurrentModes(uint32_t allowed_modes,
 }
 
 void ModemProxy::SetCurrentBands(const std::vector<uint32_t>& bands,
-                                 Error* error,
                                  const ResultCallback& callback,
                                  int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
@@ -170,7 +161,6 @@ void ModemProxy::SetPrimarySimSlot(uint32_t slot,
 
 void ModemProxy::Command(const std::string& cmd,
                          uint32_t user_timeout,
-                         Error* error,
                          const StringCallback& callback,
                          int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << cmd;
@@ -183,7 +173,6 @@ void ModemProxy::Command(const std::string& cmd,
 }
 
 void ModemProxy::SetPowerState(uint32_t power_state,
-                               Error* error,
                                const ResultCallback& callback,
                                int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << power_state;

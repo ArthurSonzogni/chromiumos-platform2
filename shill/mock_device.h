@@ -28,22 +28,12 @@ class MockDevice : public Device {
   ~MockDevice() override;
 
   MOCK_METHOD(void, Initialize, (), (override));
-  MOCK_METHOD(void,
-              Start,
-              (Error*, const EnabledStateChangedCallback&),
-              (override));
-  MOCK_METHOD(void,
-              Stop,
-              (Error*, const EnabledStateChangedCallback&),
-              (override));
+  MOCK_METHOD(void, Start, (const EnabledStateChangedCallback&), (override));
+  MOCK_METHOD(void, Stop, (const EnabledStateChangedCallback&), (override));
   MOCK_METHOD(void, SetEnabled, (bool), (override));
   MOCK_METHOD(void,
-              SetEnabledPersistent,
-              (bool, Error*, const ResultCallback&),
-              (override));
-  MOCK_METHOD(void,
-              SetEnabledNonPersistent,
-              (bool, Error*, const ResultCallback&),
+              SetEnabledChecked,
+              (bool, bool, const ResultCallback&),
               (override));
   MOCK_METHOD(void, Scan, (Error*, const std::string&), (override));
   MOCK_METHOD(bool, Load, (const StoreInterface*), (override));

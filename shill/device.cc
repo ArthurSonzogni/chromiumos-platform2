@@ -254,11 +254,13 @@ void Device::ChangePin(const std::string& /*old_pin*/,
       GetTechnologyName() + " device doesn't implement ChangePin");
 }
 
-void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
+void Device::Reset(const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
+  Error error;
   Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotImplemented,
+      FROM_HERE, &error, Error::kNotImplemented,
       GetTechnologyName() + " device doesn't implement Reset");
+  callback.Run(error);
 }
 
 bool Device::IsConnected() const {
@@ -824,43 +826,32 @@ void Device::UpdateEnabledState() {
 
 void Device::SetEnabled(bool enable) {
   SLOG(this, 1) << __func__ << "(" << enable << ")";
-  Error error;
-  SetEnabledChecked(enable, false, &error, ResultCallback());
-
-  // SetEnabledInternal might fail here if there is an unfinished enable or
-  // disable operation. Don't log error in this case, as this method is only
-  // called when the underlying device is already in the target state and the
-  // pending operation should eventually bring the device to the expected
-  // state.
-  LOG_IF(ERROR, error.IsFailure() && !error.IsOngoing() &&
-                    error.type() != Error::kInProgress)
-      << "Enabled failed, but no way to report the failure.";
+  // TODO(b/172215298): replace DoNothing() with something that logs the error
+  // and replace PopulateAndLog in many places with just Populate
+  SetEnabledChecked(enable, false, base::DoNothing());
 }
 
 void Device::SetEnabledNonPersistent(bool enable,
-                                     Error* error,
                                      const ResultCallback& callback) {
   SLOG(this, 1) << __func__ << "(" << enable << ")";
-  SetEnabledChecked(enable, false, error, callback);
+  SetEnabledChecked(enable, false, callback);
 }
 
 void Device::SetEnabledPersistent(bool enable,
-                                  Error* error,
                                   const ResultCallback& callback) {
   SLOG(this, 1) << __func__ << "(" << enable << ")";
-  SetEnabledChecked(enable, true, error, callback);
+  SetEnabledChecked(enable, true, callback);
 }
 
 void Device::SetEnabledChecked(bool enable,
                                bool persist,
-                               Error* error,
                                const ResultCallback& callback) {
-  DCHECK(error);
   SLOG(this, 1) << __func__ << ": Device " << link_name_ << " "
                 << (enable ? "starting" : "stopping");
   if (enable && manager_->IsTechnologyProhibited(technology())) {
-    error->Populate(Error::kPermissionDenied,
-                    "The " + GetTechnologyName() + " technology is prohibited");
+    callback.Run(
+        Error(Error::kPermissionDenied,
+              "The " + GetTechnologyName() + " technology is prohibited"));
     return;
   }
 
@@ -868,26 +859,30 @@ void Device::SetEnabledChecked(bool enable,
     if (enable != enabled_pending_ && persist) {
       // Return an error, as there is an ongoing operation to achieve the
       // opposite.
+      Error err;
       Error::PopulateAndLog(
-          FROM_HERE, error, Error::kOperationFailed,
+          FROM_HERE, &err, Error::kOperationFailed,
           enable ? "Cannot enable while the device is disabling."
                  : "Cannot disable while the device is enabling.");
+      callback.Run(err);
       return;
     }
     SLOG(this, 1) << "Already in desired enable state.";
-    error->Reset();
     // We can already be in the right state, but it may not be persisted.
     // Check and flush that too.
     if (persist && enabled_persistent_ != enable) {
       enabled_persistent_ = enable;
       manager_->UpdateDevice(this);
     }
+    callback.Run(Error(Error::kSuccess));
     return;
   }
 
   if (enabled_pending_ == enable) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInProgress,
+    Error err;
+    Error::PopulateAndLog(FROM_HERE, &err, Error::kInProgress,
                           "Enable operation already in progress");
+    callback.Run(err);
     return;
   }
 
@@ -896,11 +891,10 @@ void Device::SetEnabledChecked(bool enable,
     manager_->UpdateDevice(this);
   }
 
-  SetEnabledUnchecked(enable, error, callback);
+  SetEnabledUnchecked(enable, callback);
 }
 
 void Device::SetEnabledUnchecked(bool enable,
-                                 Error* error,
                                  const ResultCallback& on_enable_complete) {
   SLOG(this, 1) << __func__ << ": link: " << link_name()
                 << " enable: " << enable;
@@ -908,7 +902,7 @@ void Device::SetEnabledUnchecked(bool enable,
   EnabledStateChangedCallback chained_callback = base::Bind(
       &Device::OnEnabledStateChanged, AsWeakPtr(), on_enable_complete);
   if (enable) {
-    Start(error, chained_callback);
+    Start(chained_callback);
   } else {
     network_->Stop();        // breaks a reference cycle
     SelectService(nullptr);  // breaks a reference cycle
@@ -921,7 +915,7 @@ void Device::SetEnabledUnchecked(bool enable,
                   << (ip6config() ? "is set." : "is not set.");
     SLOG(this, 3) << "Device " << link_name_ << " selected_service_ "
                   << (selected_service_ ? "is set." : "is not set.");
-    Stop(error, chained_callback);
+    Stop(chained_callback);
   }
 }
 

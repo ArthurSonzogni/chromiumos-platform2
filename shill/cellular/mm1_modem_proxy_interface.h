@@ -27,35 +27,26 @@ class ModemProxyInterface {
   virtual ~ModemProxyInterface() = default;
 
   virtual void Enable(bool enable,
-                      Error* error,
                       const ResultCallback& callback,
                       int timeout) = 0;
   virtual void CreateBearer(const KeyValueStore& properties,
-                            Error* error,
                             RpcIdentifierCallback callback,
                             int timeout) = 0;
   virtual void DeleteBearer(const RpcIdentifier& bearer,
-                            Error* error,
                             const ResultCallback& callback,
                             int timeout) = 0;
-  virtual void Reset(Error* error,
-                     const ResultCallback& callback,
-                     int timeout) = 0;
+  virtual void Reset(const ResultCallback& callback, int timeout) = 0;
   virtual void FactoryReset(const std::string& code,
-                            Error* error,
                             const ResultCallback& callback,
                             int timeout) = 0;
   virtual void SetCurrentCapabilities(uint32_t capabilities,
-                                      Error* error,
                                       const ResultCallback& callback,
                                       int timeout) = 0;
   virtual void SetCurrentModes(uint32_t allowed_modes,
                                uint32_t preferred_mode,
-                               Error* error,
                                const ResultCallback& callback,
                                int timeout) = 0;
   virtual void SetCurrentBands(const std::vector<uint32_t>& bands,
-                               Error* error,
                                const ResultCallback& callback,
                                int timeout) = 0;
   virtual void SetPrimarySimSlot(uint32_t slot,
@@ -63,11 +54,9 @@ class ModemProxyInterface {
                                  int timeout) = 0;
   virtual void Command(const std::string& cmd,
                        uint32_t user_timeout,
-                       Error* error,
                        const StringCallback& callback,
                        int timeout) = 0;
   virtual void SetPowerState(uint32_t power_state,
-                             Error* error,
                              const ResultCallback& callback,
                              int timeout) = 0;
 

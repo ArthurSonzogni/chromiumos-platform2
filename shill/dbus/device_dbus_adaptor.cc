@@ -147,18 +147,14 @@ bool DeviceDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
 
 void DeviceDBusAdaptor::Enable(DBusMethodResponsePtr<> response) {
   SLOG(this, 2) << __func__;
-  Error e(Error::kOperationInitiated);
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->SetEnabledPersistent(true, &e, callback);
-  ReturnResultOrDefer(callback, e);
+  device_->SetEnabledPersistent(true, callback);
 }
 
 void DeviceDBusAdaptor::Disable(DBusMethodResponsePtr<> response) {
   SLOG(this, 2) << __func__ << ": Device " << device_->UniqueName();
-  Error e(Error::kOperationInitiated);
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->SetEnabledPersistent(false, &e, callback);
-  ReturnResultOrDefer(callback, e);
+  device_->SetEnabledPersistent(false, callback);
 }
 
 void DeviceDBusAdaptor::Register(DBusMethodResponsePtr<> response,
@@ -218,8 +214,7 @@ void DeviceDBusAdaptor::Reset(DBusMethodResponsePtr<> response) {
 
   Error e(Error::kOperationInitiated);
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->Reset(&e, callback);
-  ReturnResultOrDefer(callback, e);
+  device_->Reset(callback);
 }
 
 // TODO(b/172227023): This D-Bus method is only used by some autotest for DHCP.

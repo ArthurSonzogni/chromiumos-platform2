@@ -31,35 +31,26 @@ class ModemProxy : public ModemProxyInterface {
 
   // Inherited methods from ModemProxyInterface.
   void Enable(bool enable,
-              Error* error,
               const ResultCallback& callback,
               int timeout) override;
   void CreateBearer(const KeyValueStore& properties,
-                    Error* error,
                     RpcIdentifierCallback callback,
                     int timeout) override;
   void DeleteBearer(const RpcIdentifier& bearer,
-                    Error* error,
                     const ResultCallback& callback,
                     int timeout) override;
-  void Reset(Error* error,
-             const ResultCallback& callback,
-             int timeout) override;
+  void Reset(const ResultCallback& callback, int timeout) override;
   void FactoryReset(const std::string& code,
-                    Error* error,
                     const ResultCallback& callback,
                     int timeout) override;
   void SetCurrentCapabilities(uint32_t capabilities,
-                              Error* error,
                               const ResultCallback& callback,
                               int timeout) override;
   void SetCurrentModes(uint32_t allowed_modes,
                        uint32_t preferred_mode,
-                       Error* error,
                        const ResultCallback& callback,
                        int timeout) override;
   void SetCurrentBands(const std::vector<uint32_t>& bands,
-                       Error* error,
                        const ResultCallback& callback,
                        int timeout) override;
   void SetPrimarySimSlot(uint32_t slot,
@@ -67,11 +58,9 @@ class ModemProxy : public ModemProxyInterface {
                          int timeout) override;
   void Command(const std::string& cmd,
                uint32_t user_timeout,
-               Error* error,
                const StringCallback& callback,
                int timeout) override;
   void SetPowerState(uint32_t power_state,
-                     Error* error,
                      const ResultCallback& callback,
                      int timeout) override;
 

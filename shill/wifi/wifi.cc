@@ -370,8 +370,7 @@ WiFi::~WiFi() {
   netlink_manager_->RemoveBroadcastHandler(netlink_handler_);
 }
 
-void WiFi::Start(Error* error,
-                 const EnabledStateChangedCallback& /*callback*/) {
+void WiFi::Start(const EnabledStateChangedCallback& callback) {
   SLOG(this, 2) << "WiFi " << link_name() << " starting.";
   if (enabled()) {
     return;
@@ -383,10 +382,7 @@ void WiFi::Start(Error* error,
   GetDeviceHardwareIds(&hw_info.vendor_id, &hw_info.product_id,
                        &hw_info.subsystem_id);
   metrics()->NotifyWiFiAdapterStateChanged(true, hw_info);
-  OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
-  if (error) {
-    error->Reset();  // indicate immediate completion
-  }
+  OnEnabledStateChanged(EnabledStateChangedCallback(), Error(Error::kSuccess));
 
   // Subscribe to multicast events.
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
@@ -405,9 +401,11 @@ void WiFi::Start(Error* error,
   if (wake_on_wifi_) {
     wake_on_wifi_->Start();
   }
+
+  callback.Run(Error(Error::kSuccess));
 }
 
-void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
+void WiFi::Stop(const EnabledStateChangedCallback& callback) {
   SLOG(this, 2) << "WiFi " << link_name() << " stopping.";
   // Unlike other devices, we leave the DBus name watcher in place here, because
   // WiFi callbacks expect notifications even if the device is disabled.
@@ -448,9 +446,6 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
   StopReconnectTimer();
   StopRequestingStationInfo();
 
-  OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
-  if (error)
-    error->Reset();  // indicate immediate completion
   weak_ptr_factory_while_started_.InvalidateWeakPtrs();
 
   SLOG(this, 3) << "WiFi " << link_name() << " supplicant_interface_proxy_ "
@@ -460,6 +455,8 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
                 << (pending_service_.get() ? "is set." : "is not set.");
   SLOG(this, 3) << "WiFi " << link_name() << " has "
                 << endpoint_by_rpcid_.size() << " EndpointMap entries.";
+
+  callback.Run(Error(Error::kSuccess));
 }
 
 void WiFi::Scan(Error* /*error*/, const std::string& reason) {

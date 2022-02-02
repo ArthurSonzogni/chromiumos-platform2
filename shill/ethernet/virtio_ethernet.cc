@@ -34,8 +34,7 @@ VirtioEthernet::~VirtioEthernet() {
   // Nothing to be done beyond what Ethernet dtor does.
 }
 
-void VirtioEthernet::Start(Error* error,
-                           const EnabledStateChangedCallback& callback) {
+void VirtioEthernet::Start(const EnabledStateChangedCallback& callback) {
   // We are sometimes instantiated (by DeviceInfo) before the Linux kernel
   // has completed the setup function for the device (virtio_net:virtnet_probe).
   //
@@ -50,7 +49,7 @@ void VirtioEthernet::Start(Error* error,
   SLOG(this, 2) << "Sleeping to let virtio initialize.";
   sleep(2);
   SLOG(this, 2) << "Starting virtio Ethernet.";
-  Ethernet::Start(error, callback);
+  Ethernet::Start(callback);
 }
 
 }  // namespace shill

@@ -138,9 +138,8 @@ class Cellular : public Device,
   std::string GetStorageIdentifier() const override;
   bool Load(const StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
-  void Start(Error* error,
-             const EnabledStateChangedCallback& callback) override;
-  void Stop(Error* error, const EnabledStateChangedCallback& callback) override;
+  void Start(const EnabledStateChangedCallback& callback) override;
+  void Stop(const EnabledStateChangedCallback& callback) override;
   bool IsUnderlyingDeviceEnabled() const override;
   void LinkEvent(unsigned int flags, unsigned int change) override;
   void Scan(Error* error, const std::string& /*reason*/) override;
@@ -162,7 +161,7 @@ class Cellular : public Device,
                  const std::string& new_pin,
                  Error* error,
                  const ResultCallback& callback) override;
-  void Reset(Error* error, const ResultCallback& callback) override;
+  void Reset(const ResultCallback& callback) override;
   void DropConnection() override;
   void SetServiceState(Service::ConnectState state) override;
   void SetServiceFailure(Service::ConnectFailure failure_state) override;
@@ -469,7 +468,7 @@ class Cellular : public Device,
   void DestroyCapability();
 
   // TODO(b/173635024): Fix order of cellular.h and .cc methods.
-  void StartModem(Error* error, const EnabledStateChangedCallback& callback);
+  void StartModem(const EnabledStateChangedCallback& callback);
   void StartModemCallback(const EnabledStateChangedCallback& callback,
                           const Error& error);
   void StopModemCallback(const EnabledStateChangedCallback& callback,
@@ -582,8 +581,7 @@ class Cellular : public Device,
   bool IsQ6V5Modem();
 
   // Execute the next step to Stop cellular.
-  void StopStep(Error* error,
-                const EnabledStateChangedCallback& callback,
+  void StopStep(const EnabledStateChangedCallback& callback,
                 const Error& error_result);
 
   // Terminate the pppd process associated with this Device, and remove the

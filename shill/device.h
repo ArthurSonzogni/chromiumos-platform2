@@ -72,30 +72,24 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   //
   // TODO(quiche): Replace both of the next two methods with calls to
   // SetEnabledChecked.
-  mockable void SetEnabledNonPersistent(bool enable,
-                                        Error* error,
-                                        const ResultCallback& callback);
+  void SetEnabledNonPersistent(bool enable, const ResultCallback& callback);
   // Enable or disable the device, and save the setting in the profile.
   // The setting is persisted before the enable or disable operation
   // starts, so that even if it fails, the user's intent is still recorded
   // for the next time shill restarts.
-  mockable void SetEnabledPersistent(bool enable,
-                                     Error* error,
-                                     const ResultCallback& callback);
+  void SetEnabledPersistent(bool enable, const ResultCallback& callback);
   // Enable or disable the Device, depending on |enable|.
   // Save the new setting to the profile, if |persist| is true.
   // Report synchronous errors using |error|, and asynchronous completion
   // with |callback|.
-  void SetEnabledChecked(bool enable,
-                         bool persist,
-                         Error* error,
-                         const ResultCallback& callback);
+  mockable void SetEnabledChecked(bool enable,
+                                  bool persist,
+                                  const ResultCallback& callback);
   // Similar to SetEnabledChecked, but without coherence checking, and
   // without saving the new value of |enable| to the profile. If you
   // are rational (i.e. not Cellular), you should use
   // SetEnabledChecked instead.
   void SetEnabledUnchecked(bool enable,
-                           Error* error,
                            const ResultCallback& callback);
 
   // Returns true if the underlying device reports that it is already enabled.
@@ -126,7 +120,7 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
                          const std::string& new_pin,
                          Error* error,
                          const ResultCallback& callback);
-  virtual void Reset(Error* error, const ResultCallback& callback);
+  virtual void Reset(const ResultCallback& callback);
 
   // Returns true if the selected service on the device (if any) is connected.
   // Returns false if there is no selected service, or if the selected service
@@ -348,6 +342,7 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
   FRIEND_TEST(DeviceTest, SetEnabledNonPersistent);
   FRIEND_TEST(DeviceTest, SetEnabledPersistent);
   FRIEND_TEST(DeviceTest, Start);
+  FRIEND_TEST(DeviceTest, StartFailure);
   FRIEND_TEST(DeviceTest, StartIPv6);
   FRIEND_TEST(DeviceTest, StartIPv6Disabled);
   FRIEND_TEST(DeviceTest, StartProhibited);
@@ -366,36 +361,12 @@ class Device : public base::RefCounted<Device>, Network::EventHandler {
 
   // Each device must implement this method to do the work needed to
   // enable the device to operate for establishing network connections.
-  // The |error| argument, if not nullptr,
-  // will refer to an Error that starts out with the value
-  // Error::kOperationInitiated. This reflects the assumption that
-  // enable (and disable) operations will usually be non-blocking,
-  // and their completion will be indicated by means of an asynchronous
-  // reply sometime later. There are two circumstances in which a
-  // device's Start() method may overwrite |error|:
-  //
-  // 1. If an early failure is detected, such that the non-blocking
-  //    part of the operation never takes place, then |error| should
-  //    be set to the appropriate value corresponding to the type
-  //    of failure. This is the "immediate failure" case.
-  // 2. If the device is enabled without performing any non-blocking
-  //    steps, then |error| should be Reset, i.e., its value set
-  //    to Error::kSuccess. This is the "immediate success" case.
-  //
-  // In these two cases, because completion is immediate, |callback|
-  // is not used. If neither of these two conditions holds, then |error|
-  // should not be modified, and |callback| should be passed to the
-  // method that will initiate the non-blocking operation.
-  virtual void Start(Error* error,
-                     const EnabledStateChangedCallback& callback) = 0;
+  virtual void Start(const EnabledStateChangedCallback& callback) = 0;
 
   // Each device must implement this method to do the work needed to
   // disable the device, i.e., clear any running state, and make the
   // device no longer capable of establishing network connections.
-  // The discussion for Start() regarding the use of |error| and
-  // |callback| apply to Stop() as well.
-  virtual void Stop(Error* error,
-                    const EnabledStateChangedCallback& callback) = 0;
+  virtual void Stop(const EnabledStateChangedCallback& callback) = 0;
 
   // Returns true if the associated network interface should be brought down
   // after the device is disabled, or false if that should be done before the

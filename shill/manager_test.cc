@@ -537,12 +537,12 @@ bool ManagerTest::ServiceOrderIs(ServiceRefPtr svc0, ServiceRefPtr svc1) {
           svc1.get() == manager()->services_[1].get());
 }
 
-void SetErrorPermissionDenied(Error* error) {
-  error->Populate(Error::kPermissionDenied);
+void ReturnPermissionDenied(const ResultCallback& callback) {
+  callback.Run(Error(Error::kPermissionDenied));
 }
 
-void SetErrorSuccess(Error* error) {
-  error->Reset();
+void ReturnSuccess(const ResultCallback& callback) {
+  callback.Run(Error(Error::kSuccess));
 }
 
 TEST_F(ManagerTest, Contains) {
@@ -3129,13 +3129,13 @@ TEST_F(ManagerTest, SetEnabledStateForTechnologyPersistentCheck) {
       .WillByDefault(Return(Technology::kEthernet));
   manager()->RegisterDevice(mock_devices_[0]);
 
-  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _))
-      .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+  EXPECT_CALL(*mock_devices_[0], SetEnabledChecked(false, true, _))
+      .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
   manager()->SetEnabledStateForTechnology(kTypeEthernet, false, true,
                                           disable_technology_callback);
 
-  EXPECT_CALL(*mock_devices_[0], SetEnabledNonPersistent(false, _, _))
-      .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+  EXPECT_CALL(*mock_devices_[0], SetEnabledChecked(false, false, _))
+      .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
   manager()->SetEnabledStateForTechnology(kTypeEthernet, false, false,
                                           disable_technology_callback);
 }
@@ -3158,22 +3158,18 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
         for (int i = 0; i < 3; i++) {
           if (mock_devices[i]->technology() == technology) {
             if (persistent) {
-              EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
-                  .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
-              EXPECT_CALL(*mock_devices[i],
-                          SetEnabledNonPersistent(enable, _, _))
+              EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, true, _))
+                  .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
+              EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, false, _))
                   .Times(0);
             } else {
-              EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
+              EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, true, _))
                   .Times(0);
-              EXPECT_CALL(*mock_devices[i],
-                          SetEnabledNonPersistent(enable, _, _))
-                  .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+              EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, false, _))
+                  .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
             }
           } else {
-            EXPECT_CALL(*mock_devices[i], SetEnabledPersistent(enable, _, _))
-                .Times(0);
-            EXPECT_CALL(*mock_devices[i], SetEnabledNonPersistent(enable, _, _))
+            EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, _, _))
                 .Times(0);
           }
         }
@@ -3219,10 +3215,10 @@ TEST_F(ManagerTest, SetEnabledStatePropagatesError) {
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
 
-  EXPECT_CALL(*mock_devices_[0], SetEnabledNonPersistent(true, _, _))
-      .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
-  EXPECT_CALL(*mock_devices_[1], SetEnabledNonPersistent(true, _, _))
-      .WillOnce(WithArg<1>(Invoke(SetErrorPermissionDenied)));
+  EXPECT_CALL(*mock_devices_[0], SetEnabledChecked(true, false, _))
+      .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
+  EXPECT_CALL(*mock_devices_[1], SetEnabledChecked(true, false, _))
+      .WillOnce(WithArg<2>(Invoke(ReturnPermissionDenied)));
 
   EXPECT_CALL(disable_technology_reply_handler, ReportResult(IsFailure()));
   manager()->SetEnabledStateForTechnology(kTypeEthernet, true, false,
@@ -3910,9 +3906,9 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   manager()->RegisterDevice(mock_devices_[2]);
 
   // Registered devices of prohibited technology types should be disabled.
-  EXPECT_CALL(*mock_devices_[0], SetEnabledNonPersistent(false, _, _));
-  EXPECT_CALL(*mock_devices_[1], SetEnabledNonPersistent(false, _, _));
-  EXPECT_CALL(*mock_devices_[2], SetEnabledNonPersistent(false, _, _)).Times(0);
+  EXPECT_CALL(*mock_devices_[0], SetEnabledChecked(false, false, _));
+  EXPECT_CALL(*mock_devices_[1], SetEnabledChecked(false, false, _));
+  EXPECT_CALL(*mock_devices_[2], SetEnabledChecked(false, false, _)).Times(0);
   Error error;
   manager()->SetProhibitedTechnologies("cellular,ethernet", &error);
   EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kEthernet));
@@ -3934,9 +3930,9 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   ON_CALL(*mock_devices_[5], technology())
       .WillByDefault(Return(Technology::kWiFi));
 
-  EXPECT_CALL(*mock_devices_[3], SetEnabledNonPersistent(false, _, _));
-  EXPECT_CALL(*mock_devices_[4], SetEnabledNonPersistent(false, _, _));
-  EXPECT_CALL(*mock_devices_[5], SetEnabledPersistent(false, _, _)).Times(0);
+  EXPECT_CALL(*mock_devices_[3], SetEnabledChecked(false, false, _));
+  EXPECT_CALL(*mock_devices_[4], SetEnabledChecked(false, false, _));
+  EXPECT_CALL(*mock_devices_[5], SetEnabledChecked(false, false, _)).Times(0);
 
   manager()->RegisterDevice(mock_devices_[3]);
   manager()->RegisterDevice(mock_devices_[4]);
@@ -3950,18 +3946,18 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   ResultCallback enable_technology_callback(
       base::Bind(&DisableTechnologyReplyHandler::ReportResult,
                  technology_reply_handler.AsWeakPtr()));
-  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(true, _, _))
-      .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
-  EXPECT_CALL(*mock_devices_[5], SetEnabledPersistent(true, _, _))
-      .WillOnce(WithArg<1>(Invoke(SetErrorSuccess)));
+  EXPECT_CALL(*mock_devices_[2], SetEnabledChecked(true, true, _))
+      .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
+  EXPECT_CALL(*mock_devices_[5], SetEnabledChecked(true, true, _))
+      .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
   EXPECT_CALL(technology_reply_handler, ReportResult(IsSuccess()));
   manager()->SetEnabledStateForTechnology("wifi", true, true,
                                           enable_technology_callback);
   Mock::VerifyAndClearExpectations(&technology_reply_handler);
 
   // Calls to enable a prohibited technology should fail.
-  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(true, _, _)).Times(0);
-  EXPECT_CALL(*mock_devices_[3], SetEnabledPersistent(true, _, _)).Times(0);
+  EXPECT_CALL(*mock_devices_[0], SetEnabledChecked(true, true, _)).Times(0);
+  EXPECT_CALL(*mock_devices_[3], SetEnabledChecked(true, true, _)).Times(0);
   EXPECT_CALL(technology_reply_handler,
               ReportResult(ErrorTypeIs(Error::kPermissionDenied)));
   manager()->SetEnabledStateForTechnology("ethernet", true, true,
