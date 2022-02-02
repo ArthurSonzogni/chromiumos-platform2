@@ -48,6 +48,7 @@ executable("screenshot") {
     "screenshot.cc",
   ]
   configs += [ ":target_defaults" ]
+  install_path = "sbin"
   deps = [ ":libscreen-capture" ]
 }
 
@@ -60,6 +61,7 @@ executable("kmsvnc") {
     ":target_defaults",
     ":libvncserver",
   ]
+  install_path = "sbin"
   deps = [ ":libscreen-capture" ]
   pkg_deps = [ "libmetrics" ]
 }
