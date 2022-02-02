@@ -19,9 +19,17 @@ const char kErrorSimPinMM1[] =
 const char kErrorSimPukMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment.SimPuk";
 
-const char kErrorGprsNotSubscribedMM1[] =
+const char kErrorNotSubscribedMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
-    "GprsServiceOptionNotSubscribed";
+    "ServiceOptionNotSubscribed";
+
+const char kErrorMissingOrUnknownApnMM1[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "MissingOrUnknownApn";
+
+const char kErrorUserAuthenticationFailedMM1[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "UserAuthenticationFailed";
 
 const char kErrorWrongStateMM1[] =
     "org.freedesktop.ModemManager1.Error.Core.WrongState";
@@ -52,13 +60,15 @@ TEST_P(CellularErrorMM1Test, FromDBusError) {
 INSTANTIATE_TEST_SUITE_P(
     CellularErrorMM1Test,
     CellularErrorMM1Test,
-    testing::Values(TestParam(kErrorIncorrectPasswordMM1, Error::kIncorrectPin),
-                    TestParam(kErrorSimPinMM1, Error::kPinRequired),
-                    TestParam(kErrorSimPukMM1, Error::kPinBlocked),
-                    TestParam(kErrorGprsNotSubscribedMM1, Error::kInvalidApn),
-                    TestParam(kErrorWrongStateMM1, Error::kWrongState),
-                    TestParam("Some random error name.",
-                              Error::kOperationFailed)));
+    testing::Values(
+        TestParam(kErrorIncorrectPasswordMM1, Error::kIncorrectPin),
+        TestParam(kErrorSimPinMM1, Error::kPinRequired),
+        TestParam(kErrorSimPukMM1, Error::kPinBlocked),
+        TestParam(kErrorNotSubscribedMM1, Error::kInvalidApn),
+        TestParam(kErrorMissingOrUnknownApnMM1, Error::kInvalidApn),
+        TestParam(kErrorUserAuthenticationFailedMM1, Error::kInvalidApn),
+        TestParam(kErrorWrongStateMM1, Error::kWrongState),
+        TestParam("Some random error name.", Error::kOperationFailed)));
 
 }  // namespace
 }  // namespace shill

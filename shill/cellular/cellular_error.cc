@@ -16,14 +16,16 @@ namespace shill {
 
 namespace {
 
-const char kErrorGprsMissingOrUnknownApn[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".GprsMissingOrUnknownApn";
+// TODO(b/217612447): How can we prevent a change in MM from messing up
+// the hardcoded strings?
+const char kErrorMissingOrUnknownApn[] =
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".MissingOrUnknownApn";
 
-const char kErrorGprsServiceOptionNotSubscribed[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".GprsServiceOptionNotSubscribed";
+const char kErrorServiceOptionNotSubscribed[] =
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".ServiceOptionNotSubscribed";
 
-const char kErrorGprsUserAuthenticationFailed[] =
-    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".GprsUserAuthenticationFailed";
+const char kErrorUserAuthenticationFailed[] =
+    MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".UserAuthenticationFailed";
 
 const char kErrorIncorrectPassword[] =
     MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".IncorrectPassword";
@@ -62,11 +64,11 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
     type = Error::kPinRequired;
   else if (name == kErrorSimPuk)
     type = Error::kPinBlocked;
-  else if (name == kErrorGprsMissingOrUnknownApn)
+  else if (name == kErrorMissingOrUnknownApn)
     type = Error::kInvalidApn;
-  else if (name == kErrorGprsServiceOptionNotSubscribed)
+  else if (name == kErrorServiceOptionNotSubscribed)
     type = Error::kInvalidApn;
-  else if (name == kErrorGprsUserAuthenticationFailed)
+  else if (name == kErrorUserAuthenticationFailed)
     type = Error::kInvalidApn;
   else if (name == kErrorQmiProtocolCallFailed)
     type = Error::kInvalidApn;
