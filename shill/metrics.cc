@@ -13,7 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include "base/strings/string_number_conversions.h"
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -108,8 +108,6 @@ const int Metrics::kMetricNetworkPhyModeMax = Metrics::kWiFiNetworkPhyModeMax;
 const char Metrics::kMetricNetworkSecuritySuffix[] = "Security";
 const int Metrics::kMetricNetworkSecurityMax = Metrics::kWiFiSecurityMax;
 const char Metrics::kMetricNetworkServiceErrorSuffix[] = "ServiceErrors";
-const char Metrics::kMetricNetworkServiceErrors[] =
-    "Network.Shill.ServiceErrors";
 const char Metrics::kMetricNetworkSignalStrengthSuffix[] = "SignalStrength";
 const int Metrics::kMetricNetworkSignalStrengthMax = 200;
 const int Metrics::kMetricNetworkSignalStrengthMin = 1;
@@ -2005,12 +2003,6 @@ void Metrics::SendServiceFailure(const Service& service) {
   // account for all the connection failures happening while connected to
   // a particular interface e.g. wifi, cellular etc.
   library_->SendEnumToUMA(histogram, error, kNetworkServiceErrorMax);
-
-  // This is a generic Network service failure metrics agnostic to the
-  // underlying interface. This metrics will account for all network
-  // failures.
-  library_->SendEnumToUMA(kMetricNetworkServiceErrors, error,
-                          kNetworkServiceErrorMax);
 }
 
 Metrics::DeviceMetrics* Metrics::GetDeviceMetrics(int interface_index) const {

@@ -140,10 +140,6 @@ TEST_F(MetricsTest, ServiceFailure) {
               SendEnumToUMA("Network.Shill.Wifi.ServiceErrors",
                             Metrics::kNetworkServiceErrorBadPassphrase,
                             Metrics::kNetworkServiceErrorMax));
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricNetworkServiceErrors,
-                            Metrics::kNetworkServiceErrorBadPassphrase,
-                            Metrics::kNetworkServiceErrorMax));
   metrics_.NotifyServiceStateChanged(*service_, Service::kStateFailure);
 }
 
