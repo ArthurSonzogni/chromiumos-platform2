@@ -354,7 +354,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
                         router_mac == inbound_local_mac);
     }
     if (unusual_ra_src)
-      irregular_router_ifs.insert(dst_addr.sll_ifindex);
+      irregular_router_ifs_.insert(dst_addr.sll_ifindex);
   }
 
   // b/187918638(cont.): since these cell upstream never send proper NS and NA,
@@ -396,7 +396,8 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     // irregular router address on Fibocom cell modem, as described above.
     in6_addr* new_src_ip_p = nullptr;
     in6_addr new_src_ip;
-    if (unusual_ra_src) {
+    if (irregular_router_ifs_.find(dst_addr.sll_ifindex) !=
+        irregular_router_ifs_.end()) {
       if (!GetLinkLocalAddress(target_if, &new_src_ip)) {
         LOG(WARNING) << "Cannot find a local address for L3 relay, skipping "
                         "proxy RA to interface "
@@ -766,10 +767,19 @@ bool NDProxy::IsGuestToIrregularRouter(int ifindex) {
   if (!IsGuestInterface(ifindex))
     return false;
   for (int target_if : if_map_rs_[ifindex]) {
-    if (irregular_router_ifs.count(target_if) > 0)
+    if (irregular_router_ifs_.count(target_if) > 0)
       return true;
   }
   return false;
+}
+
+void NDProxy::AddIrregularRouterInterface(const std::string& ifname_physical) {
+  int ifindex = if_nametoindex(ifname_physical.c_str());
+  if (ifindex == 0) {
+    PLOG(ERROR) << "Get interface index failed on " << ifname_physical;
+    return;
+  }
+  irregular_router_ifs_.insert(ifindex);
 }
 
 std::vector<std::string> NDProxy::GetGuestInterfaces(
@@ -869,6 +879,9 @@ void NDProxyDaemon::OnDeviceMessage(const DeviceMessage& msg) {
     }
   } else if (msg.has_br_ifname()) {
     proxy_.AddInterfacePair(dev_ifname, msg.br_ifname());
+    if (msg.force_local_next_hop()) {
+      proxy_.AddIrregularRouterInterface(msg.dev_ifname());
+    }
   }
 }
 

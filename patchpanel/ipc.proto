@@ -19,6 +19,7 @@ message DeviceMessage {
   required string dev_ifname = 1;
   optional string br_ifname = 2;
   optional bool teardown = 3;  // value is ignored
+  optional bool force_local_next_hop = 4;
 }
 
 message GuestMessage {

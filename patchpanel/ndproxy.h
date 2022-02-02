@@ -134,6 +134,8 @@ class NDProxy {
   std::vector<std::string> GetGuestInterfaces(
       const std::string& ifname_physical);
 
+  void AddIrregularRouterInterface(const std::string& ifname_physical);
+
  private:
   // Data structure to store interface mapping for a certain kind of packet to
   // be proxied. For example, {1: {2}, 2: {1}} means that packet from interfaces
@@ -179,7 +181,7 @@ class NDProxy {
   interface_mapping if_map_ns_na_;
 
   // b/187918638: list of interfaces that require special workaround
-  std::set<int> irregular_router_ifs;
+  std::set<int> irregular_router_ifs_;
 
   base::RepeatingCallback<void(const std::string&, const std::string&)>
       guest_discovery_handler_;

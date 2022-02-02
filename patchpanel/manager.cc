@@ -1438,6 +1438,15 @@ void Manager::StartForwarding(const std::string& ifname_physical,
 
   ShillClient::Device upstream_shill_device;
   shill_client_->GetDeviceProperties(ifname_physical, &upstream_shill_device);
+
+  // b/187462665, b/187918638: If the physical interface is a cellular
+  // modem, the network connection is expected to work as a point to point
+  // link where neighbor discovery of the remote gateway is not possible.
+  // Therefore force guests are told to see the host as their next hop.
+  if (upstream_shill_device.type == ShillClient::Device::Type::kCellular) {
+    msg->set_force_local_next_hop(true);
+  }
+
   if (fs.ipv6 && IsIPv6NDProxyEnabled(upstream_shill_device.type)) {
     ndproxy_ifnames_[ifname_physical].insert(ifname_virtual);
     LOG(INFO) << "Starting IPv6 forwarding from " << ifname_physical << " to "
