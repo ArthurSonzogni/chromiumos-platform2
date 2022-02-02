@@ -17,7 +17,7 @@ namespace client_id {
 
 namespace {
 
-constexpr char kClientIdPrefix[] = "Reven-";
+constexpr char kClientIdPrefix[] = "CloudReady-";
 constexpr char kClientIdFile[] = "var/lib/client_id/client_id";
 constexpr char kUuidPath[] = "proc/sys/kernel/random/uuid";
 constexpr char kLegacyClientIdFile[] =
@@ -222,7 +222,6 @@ base::Optional<std::string> ClientIdGenerator::GenerateAndSaveClientId() {
   if ((client_id = TryLegacy())) {
     LOG(INFO) << "Using CloudReady legacy client_id: " << client_id.value();
   } else if ((client_id = TrySerial())) {
-    client_id = AddClientIdPrefix(client_id.value());
     LOG(INFO) << "Using DMI serial number for client_id: " << client_id.value();
   } else if ((client_id = TryMac())) {
     client_id = AddClientIdPrefix(client_id.value());

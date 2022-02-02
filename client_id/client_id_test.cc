@@ -175,8 +175,7 @@ TEST_F(ClientIdTest, GenerateAndSaveClientId) {
   DeleteClientId();
   CreateSerial(kGoodSerial);
   EXPECT_TRUE(client_id_generator_->GenerateAndSaveClientId());
-  EXPECT_EQ(client_id_generator_->ReadClientId().value(),
-            client_id_generator_->AddClientIdPrefix(kGoodSerial).value());
+  EXPECT_EQ(client_id_generator_->ReadClientId().value(), kGoodSerial);
 
   // legacy client_id should take priority over a good serial
   DeleteClientId();
