@@ -181,6 +181,7 @@ class CellularCapability3gpp : public CellularCapability {
 
   static const int64_t kEnterPinTimeoutMilliseconds;
   static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
+  static const int64_t kSetNextAttachApnTimeoutMilliseconds;
   static const int kSetPowerStateTimeoutMilliseconds;
 
   static const int kUnknownLockRetriesLeft;
@@ -279,6 +280,7 @@ class CellularCapability3gpp : public CellularCapability {
   void SetRoamingProperties(KeyValueStore* properties);
   bool SetApnProperties(const Stringmap& apn_info, KeyValueStore* properties);
 
+  void SetNextAttachApn();
   void FillInitialEpsBearerPropertyMap(KeyValueStore* properties);
 
   // Returns true if a connect error should be retried.  This function
@@ -403,6 +405,7 @@ class CellularCapability3gpp : public CellularCapability {
 
   // Properties.
   std::deque<Stringmap> apn_try_list_;
+  std::deque<Stringmap> attach_apn_try_list_;
   // For attach APN, we don't really know if the APN is good or not, we only
   // know if ModemManager used the provided attach APN or not.
   Stringmap last_attach_apn_;
@@ -428,6 +431,10 @@ class CellularCapability3gpp : public CellularCapability {
   base::CancelableClosure registration_dropped_update_callback_;
   int64_t registration_dropped_update_timeout_milliseconds_ =
       kRegistrationDroppedUpdateTimeoutMilliseconds;
+
+  // If the service providers DB contains multiple possible attach APNs, shill
+  // needs to try all of them until the UE is registered in the network.
+  base::CancelableOnceClosure try_next_attach_apn_callback_;
 
   base::WeakPtrFactory<CellularCapability3gpp> weak_ptr_factory_;
 };

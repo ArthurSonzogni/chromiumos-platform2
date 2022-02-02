@@ -12,6 +12,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
+#include <base/containers/cxx20_erase.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -22,6 +23,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/cellular_bearer.h"
+#include "shill/cellular/cellular_consts.h"
 #include "shill/cellular/cellular_pco.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mobile_operator_info.h"
@@ -55,6 +57,12 @@ const int64_t CellularCapability3gpp::kEnterPinTimeoutMilliseconds = 20000;
 const int64_t
     CellularCapability3gpp::kRegistrationDroppedUpdateTimeoutMilliseconds =
         15000;
+// The modem sends a new attach request every 10 seconds(See 3gpp T3411).
+// The next value allows for 2 attach requests. If the modem sends 5
+// consecutive requests using the same invalid APN, the UE will be blocked for
+// 12 minutes(See 3gpp T3402).
+const int64_t CellularCapability3gpp::kSetNextAttachApnTimeoutMilliseconds =
+    12500;
 const RpcIdentifier CellularCapability3gpp::kRootPath = RpcIdentifier("/");
 const char CellularCapability3gpp::kStatusProperty[] = "status";
 const char CellularCapability3gpp::kOperatorLongProperty[] = "operator-long";
@@ -429,6 +437,10 @@ void CellularCapability3gpp::StopModem(Error* error,
   if (!registration_dropped_update_callback_.IsCancelled()) {
     registration_dropped_update_callback_.Cancel();
     SLOG(this, 2) << __func__ << " Cancelled delayed deregister.";
+  }
+  if (!try_next_attach_apn_callback_.IsCancelled()) {
+    try_next_attach_apn_callback_.Cancel();
+    SLOG(this, 2) << __func__ << " Cancelled next attach APN retry.";
   }
 
   cellular()->dispatcher()->PostTask(
@@ -850,41 +862,36 @@ bool CellularCapability3gpp::ConnectToNextApn(const ResultCallback& callback) {
 
 void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
     KeyValueStore* properties) {
-  std::deque<Stringmap> apn_list = cellular()->BuildApnTryList();
-  auto apn_info = apn_list.end();
-
-  // keep only 'attach APN'
-  for (apn_info = apn_list.begin(); apn_info != apn_list.end(); apn_info++) {
-    if (base::Contains(*apn_info, kApnAttachProperty))
-      break;
-  }
-
-  if (apn_info == apn_list.end()) {
+  if (attach_apn_try_list_.size() == 0) {
+    last_attach_apn_.clear();
     SLOG(this, 2) << __func__ << ": no Attach APN.";
     return;
   }
-  // Store the last Attach APN we tried.
-  last_attach_apn_ = *apn_info;
 
-  SLOG(this, 2) << __func__ << ": Using APN " << (*apn_info)[kApnProperty];
-  properties->Set<std::string>(kConnectApn, (*apn_info)[kApnProperty]);
-  if (base::Contains(*apn_info, kApnUsernameProperty))
+  const auto& apn_info = attach_apn_try_list_.front();
+  // Store the last Attach APN we tried.
+  last_attach_apn_ = apn_info;
+
+  const std::string& apn = apn_info.at(kApnProperty);
+  SLOG(this, 2) << __func__ << ": Using Attach APN " << apn;
+  properties->Set<std::string>(kConnectApn, apn);
+  if (base::Contains(apn_info, kApnUsernameProperty))
     properties->Set<std::string>(kConnectUser,
-                                 (*apn_info)[kApnUsernameProperty]);
-  if (base::Contains(*apn_info, kApnPasswordProperty)) {
+                                 apn_info.at(kApnUsernameProperty));
+  if (base::Contains(apn_info, kApnPasswordProperty)) {
     properties->Set<std::string>(kConnectPassword,
-                                 (*apn_info)[kApnPasswordProperty]);
+                                 apn_info.at(kApnPasswordProperty));
   }
-  if (base::Contains(*apn_info, kApnAuthenticationProperty)) {
+  if (base::Contains(apn_info, kApnAuthenticationProperty)) {
     MMBearerAllowedAuth allowed_auth = ApnAuthenticationToMMBearerAllowedAuth(
-        (*apn_info)[kApnAuthenticationProperty]);
+        apn_info.at(kApnAuthenticationProperty));
     if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
       properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
   }
-  if (base::Contains(*apn_info, kApnIpTypeProperty)) {
+  if (base::Contains(apn_info, kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
         kConnectIpType,
-        IpTypeToMMBearerIpFamily((*apn_info)[kApnIpTypeProperty]));
+        IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
   }
 }
 
@@ -1801,6 +1808,21 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
     return;
 
   // Set the new parameters for the initial EPS bearer (e.g. LTE Attach APN)
+  attach_apn_try_list_ = cellular()->BuildApnTryList();
+  base::EraseIf(attach_apn_try_list_, [](const Stringmap& apn_info) {
+    return !base::Contains(apn_info, kApnAttachProperty);
+  });
+
+  SetNextAttachApn();
+}
+
+void CellularCapability3gpp::SetNextAttachApn() {
+  SLOG(this, 3) << __func__;
+  if (!modem_3gpp_proxy_) {
+    SLOG(this, 3) << __func__ << " skipping, no 3GPP proxy";
+    return;
+  }
+
   KeyValueStore properties;
   Error error;
   FillInitialEpsBearerPropertyMap(&properties);
@@ -1809,6 +1831,34 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
                  weak_ptr_factory_.GetWeakPtr());
   // If 'properties' is empty, this will clear the 'attach APN' on the modem.
   SetInitialEpsBearer(properties, &error, cb);
+
+  // A finished callback does not qualify as a canceled callback.
+  // We test for a canceled callback to check for outstanding callbacks.
+  // So, explicitly cancel the callback here.
+  // Caution: If adding function arguments, do not use any function arguments
+  // post the call to Cancel(). The Cancel() call invalidates the arguments
+  // that were copied when creating the callback.
+  try_next_attach_apn_callback_.Cancel();
+
+  if (attach_apn_try_list_.size() > 0)
+    attach_apn_try_list_.pop_front();
+
+  if (attach_apn_try_list_.size() > 0) {
+    DCHECK(base::Contains(last_attach_apn_, cellular::kApnSource));
+    if (base::Contains(last_attach_apn_, cellular::kApnSource) &&
+        last_attach_apn_.at(cellular::kApnSource) == cellular::kApnSourceUi) {
+      SLOG(this, 2) << "Using user entered Attach APN, skipping round robin";
+      return;
+    }
+
+    SLOG(this, 2) << "Posted deferred Attach APN retry";
+    try_next_attach_apn_callback_.Reset(
+        base::BindOnce(&CellularCapability3gpp::SetNextAttachApn,
+                       weak_ptr_factory_.GetWeakPtr()));
+    cellular()->dispatcher()->PostDelayedTask(
+        FROM_HERE, try_next_attach_apn_callback_.callback(),
+        kSetNextAttachApnTimeoutMilliseconds);
+  }
 }
 
 void CellularCapability3gpp::On3gppRegistrationChanged(
@@ -1818,6 +1868,12 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
   SLOG(this, 2) << __func__ << ": " << RegistrationStateToString(state);
   SLOG(this, 3) << "opercode=" << operator_code
                 << ", opername=" << operator_name;
+
+  if (IsRegisteredState(state) &&
+      !try_next_attach_apn_callback_.IsCancelled()) {
+    SLOG(this, 2) << "Modem is registered. Cancelling next attach APN try.";
+    try_next_attach_apn_callback_.Cancel();
+  }
 
   // While the modem is connected, if the state changed from a registered state
   // to a non registered state, defer the state change by 15 seconds.
