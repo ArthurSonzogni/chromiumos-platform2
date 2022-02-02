@@ -410,7 +410,8 @@ TEST_F(PregPolicyEncoderTest, TestJsonWithNewlinesInsideStringRoundtrip) {
   EXPECT_TRUE(LoadPRegFileIntoDict(preg_1_path_, kKeyUserDevice, &dict));
   const std::string& roundtripped_json = dict.GetValue("TestJson")->GetString();
   base::Optional<base::Value> json_dict = base::JSONReader::Read(
-      roundtripped_json, base::JSON_ALLOW_TRAILING_COMMAS);
+      roundtripped_json,
+      base::JSON_ALLOW_TRAILING_COMMAS | base::JSON_ALLOW_CONTROL_CHARS);
   ASSERT_TRUE(json_dict.has_value());
   ASSERT_TRUE(json_dict->is_dict());
 

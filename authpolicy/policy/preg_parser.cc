@@ -171,7 +171,7 @@ bool DecodePRegMultiStringValue(const std::vector<uint8_t>& data,
 // Decodes a value from a PReg file given as a uint8_t vector.
 bool DecodePRegValue(uint32_t type,
                      const std::vector<uint8_t>& data,
-                     std::unique_ptr<base::Value>* value) {
+                     base::Value& value) {
   std::string data_utf8;
   switch (type) {
     case REG_SZ:
@@ -179,13 +179,13 @@ bool DecodePRegValue(uint32_t type,
       if (!DecodePRegStringValue(data, &data_utf8)) {
         return false;
       }
-      value->reset(new base::Value(data_utf8));
+      value = base::Value(data_utf8);
       return true;
     case REG_MULTI_SZ:
       if (!DecodePRegMultiStringValue(data, &data_utf8)) {
         return false;
       }
-      value->reset(new base::Value(data_utf8));
+      value = base::Value(data_utf8);
       return true;
     case REG_DWORD_LITTLE_ENDIAN:
     case REG_DWORD_BIG_ENDIAN:
@@ -196,7 +196,7 @@ bool DecodePRegValue(uint32_t type,
         } else {
           val = base::ByteSwapToLE32(val);
         }
-        value->reset(new base::Value(static_cast<int>(val)));
+        value = base::Value(static_cast<int>(val));
         return true;
       } else {
         LOG(ERROR) << "Bad data size " << data.size();
@@ -269,8 +269,8 @@ void HandleRecord(const std::u16string& key_name,
   std::string value_name(base::UTF16ToUTF8(value));
   if (!base::StartsWith(value_name, kActionTriggerPrefix,
                         base::CompareCase::SENSITIVE)) {
-    std::unique_ptr<base::Value> data_value;
-    if (DecodePRegValue(type, data, &data_value))
+    base::Value data_value;
+    if (DecodePRegValue(type, data, data_value))
       dict->SetValue(value_name, std::move(data_value));
     return;
   }

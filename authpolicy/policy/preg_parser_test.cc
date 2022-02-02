@@ -59,11 +59,11 @@ testing::AssertionResult RegistryDictEquals(const RegistryDict& a,
   for (; iter_value_a != a.values().end() && iter_value_b != b.values().end();
        ++iter_value_a, ++iter_value_b) {
     if (iter_value_a->first != iter_value_b->first ||
-        *(iter_value_a->second) != *(iter_value_b->second)) {
+        iter_value_a->second != iter_value_b->second) {
       return testing::AssertionFailure()
              << "Value mismatch " << iter_value_a->first << "="
-             << *iter_value_a->second.get() << " vs. " << iter_value_b->first
-             << "=" << *iter_value_b->second.get();
+             << iter_value_a->second << " vs. " << iter_value_b->first << "="
+             << iter_value_b->second;
     }
   }
 
@@ -80,13 +80,13 @@ testing::AssertionResult RegistryDictEquals(const RegistryDict& a,
 }
 
 void SetInteger(RegistryDict* dict, const std::string& name, int value) {
-  dict->SetValue(name, std::make_unique<base::Value>(value));
+  dict->SetValue(name, base::Value(value));
 }
 
 void SetString(RegistryDict* dict,
                const std::string& name,
                const std::string& value) {
-  dict->SetValue(name, std::make_unique<base::Value>(value));
+  dict->SetValue(name, base::Value(value));
 }
 
 TEST(PRegParserTest, TestParseFile) {

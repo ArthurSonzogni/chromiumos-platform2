@@ -29,7 +29,7 @@ const char* kColorReset = authpolicy::kColorReset;
 base::Value ConvertToValue(const RegistryDict& dict) {
   base::Value value(base::Value::Type::DICTIONARY);
   for (const auto& entry : dict.values())
-    value.SetKey(entry.first, entry.second->Clone());
+    value.SetKey(entry.first, entry.second.Clone());
   for (const auto& entry : dict.keys())
     value.SetKey(entry.first, ConvertToValue(*entry.second));
   return value;
