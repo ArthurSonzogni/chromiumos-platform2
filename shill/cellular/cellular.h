@@ -84,6 +84,13 @@ class Cellular : public Device,
     kModemStateConnected = 11,
   };
 
+  // Enum for SIM types
+  enum SimType {
+    kSimTypeUnknown = 0,
+    kSimTypePsim = 1,
+    kSimTypeEsim = 2,
+  };
+
   // Used in Cellular and CellularCapability3gpp to store and pass properties
   // associated with a SIM Profile.
   struct SimProperties {

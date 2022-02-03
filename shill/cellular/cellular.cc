@@ -1155,9 +1155,19 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   IPConfig::Method ipv4 = IPConfig::Method::kMethodUnknown;
   IPConfig::Method ipv6 = IPConfig::Method::kMethodUnknown;
   uint32_t tech_used = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
+  uint32_t iccid_len = 0;
+  SimType sim_type = kSimTypeUnknown;
+
   std::string roaming_state;
-  if (service_)
+  if (service_) {
     roaming_state = service_->roaming_state();
+    iccid_len = service_->iccid().length();
+    // If EID is not empty, report as eSIM else report as pSIM
+    if (!service_->eid().empty())
+      sim_type = kSimTypeEsim;
+    else
+      sim_type = kSimTypePsim;
+  }
 
   if (capability_) {
     tech_used = capability_->GetActiveAccessTechnologies();
@@ -1166,10 +1176,12 @@ void Cellular::NotifyDetailedCellularConnectionResult(
       ipv6 = capability_->GetActiveBearer()->ipv6_config_method();
     }
   }
+
   metrics()->NotifyDetailedCellularConnectionResult(
       error.type(), home_provider_info_->uuid(), apn_info, ipv4, ipv6,
       home_provider_info_->mccmnc(), serving_operator_info_->mccmnc(),
-      roaming_state, use_attach_apn_, tech_used);
+      roaming_state, use_attach_apn_, tech_used, iccid_len, sim_type,
+      modem_state_);
 }
 
 void Cellular::Connect(CellularService* service, Error* error) {

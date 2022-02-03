@@ -323,6 +323,27 @@
         [1] freedesktop.org/software/ModemManager/api/latest/ModemManager-Flags-and-Enumerations.html#MMModemAccessTechnology
         </summary>
     </metric>
+    <metric name="iccid_length" type="int">
+      <summary>
+        Indicates the length of ICCID used.
+      </summary>
+    </metric>
+    <metric name="sim_type" type="int">
+      <summary>
+        Indicates the type of SIM used. pSIM or eSIM.
+        Options are Unknown == 0 , pSIM == 1 , eSIM == 2.
+      </summary>
+    </metric>
+    <metric name="modem_state" type="int">
+      <summary>
+        Indicates the modem state at the time of connection.
+        Options are: Failed == -1 , Unknown == 0 ,
+        Initializing == 1 , Locked == 2 , Disabled == 3 ,
+        Disabling == 4 , Enabling == 5 , Enabled == 6 ,
+        Searching == 7 , Registered == 8 , Disconnecting == 9 ,
+        Connecting == 10 , Connected == 11.
+      </summary>
+    </metric>
   </event>
 </project>
 
