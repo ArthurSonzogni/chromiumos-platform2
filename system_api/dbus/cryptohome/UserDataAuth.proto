@@ -191,9 +191,12 @@ message MountReply {
 }
 
 // Input parameters to Remove()
+// If an AuthSession ID is provided, then that will be used and validated.
 message RemoveRequest {
   // Identifies the user, whose home directory to remove
   cryptohome.AccountIdentifier identifier = 1;
+  // Token that would be get user id from AuthSession.
+  bytes auth_session_id = 2;
 }
 
 // Output parameters for Remove()
