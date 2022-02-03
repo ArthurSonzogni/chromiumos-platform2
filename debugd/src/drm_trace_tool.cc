@@ -67,9 +67,8 @@ constexpr char kTraceBufferSizeFile[] =
     "sys/kernel/debug/tracing/instances/drm/buffer_size_kb";
 constexpr char kTraceMarkerFile[] =
     "sys/kernel/debug/tracing/instances/drm/trace_marker";
-constexpr char kTraceContentsFile[] =
-    "sys/kernel/debug/tracing/instances/drm/trace";
 constexpr char kSnapshotDirPath[] = "var/log/display_debug";
+constexpr char kDrmTraceLogName[] = "drm_trace";
 
 constexpr char kDRMTraceToolErrorString[] =
     "org.chromium.debugd.error.DRMTrace";
@@ -113,10 +112,12 @@ base::FilePath GenerateSnapshotFilePath() {
 
 }  // namespace
 
-DRMTraceTool::DRMTraceTool() : DRMTraceTool(base::FilePath("/")) {}
+DRMTraceTool::DRMTraceTool(LogProvider* log_provider)
+    : DRMTraceTool(base::FilePath("/"), log_provider) {}
 
-DRMTraceTool::DRMTraceTool(const base::FilePath& root_path)
-    : root_path_(root_path) {
+DRMTraceTool::DRMTraceTool(const base::FilePath& root_path,
+                           LogProvider* log_provider)
+    : root_path_(root_path), log_provider_(log_provider) {
   // Ensure that the DRM trace parameters are initialized to default when debugd
   // starts.
   SetToDefault();
@@ -194,11 +195,28 @@ bool DRMTraceTool::Snapshot(brillo::ErrorPtr* error, uint32_t type_enum) {
 
   // Currently only drm_trace can be snapshotted, thus if ConvertType
   // succeeded above, we know it's DRMSnapshotType_TRACE.
-  const base::FilePath trace_path = root_path_.Append(kTraceContentsFile);
+  std::optional<std::string> drm_trace_contents =
+      log_provider_->GetLog(kDrmTraceLogName);
+  if (!drm_trace_contents.has_value()) {
+    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
+                         "Failed to get named log: : %s", kDrmTraceLogName);
+    return false;
+  }
   const base::FilePath snapshot_path =
       root_path_.Append(GenerateSnapshotFilePath());
 
-  return CopyFile(error, trace_path, snapshot_path);
+  // Create the empty snapshot file to copy the log contents into.
+  brillo::SafeFD::SafeFDResult result = brillo::SafeFD::Root();
+  if (!brillo::SafeFD::IsError(result.second))
+    result = result.first.MakeFile(snapshot_path);
+  if (brillo::SafeFD::IsError(result.second)) {
+    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
+                         "Failed to create snapshot file: : %s",
+                         snapshot_path.value().c_str());
+    return false;
+  }
+
+  return WriteToFile(error, snapshot_path, drm_trace_contents.value());
 }
 
 bool DRMTraceTool::WriteToFile(brillo::ErrorPtr* error,
@@ -248,47 +266,6 @@ void DRMTraceTool::SetToDefault() {
   if (!SetSize(&error, DRMTraceSize_DEFAULT))
     LOG(WARNING) << "Failed to reset trace buffer size; drm_trace may be "
                     "larger than expected.";
-}
-
-bool DRMTraceTool::CopyFile(brillo::ErrorPtr* error,
-                            const base::FilePath& src,
-                            const base::FilePath& dst) {
-  brillo::SafeFD::SafeFDResult result = brillo::SafeFD::Root();
-  brillo::SafeFD root_fd = std::move(result.first);
-  if (brillo::SafeFD::IsError(result.second)) {
-    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
-                         "Failed to open SafeFD::Root(), error: %d",
-                         result.second);
-    return false;
-  }
-
-  result = root_fd.OpenExistingFile(src);
-  brillo::SafeFD src_fd = std::move(result.first);
-  if (brillo::SafeFD::IsError(result.second)) {
-    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
-                         "Failed to open %s, error: %d", src.value().c_str(),
-                         result.second);
-    return false;
-  }
-
-  result = root_fd.MakeFile(dst);
-  brillo::SafeFD dst_fd = std::move(result.first);
-  if (brillo::SafeFD::IsError(result.second)) {
-    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
-                         "Failed to create %s, error: %d", dst.value().c_str(),
-                         result.second);
-    return false;
-  }
-
-  brillo::SafeFD::Error copy_result = src_fd.CopyContentsTo(&dst_fd);
-  if (brillo::SafeFD::IsError(copy_result)) {
-    DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
-                         "Failed to copy %s to %s, error: %d",
-                         src.value().c_str(), dst.value().c_str(), copy_result);
-    return false;
-  }
-
-  return true;
 }
 
 }  // namespace debugd

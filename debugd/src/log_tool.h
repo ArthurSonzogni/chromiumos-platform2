@@ -22,11 +22,12 @@
 #include <dbus/bus.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
+#include "debugd/src/log_provider.h"
 #include "debugd/src/sandboxed_process.h"
 
 namespace debugd {
 
-class LogTool {
+class LogTool : public debugd::LogProvider {
  public:
   // The encoding for a particular log.
   enum class Encoding {
@@ -102,7 +103,8 @@ class LogTool {
 
   using LogMap = std::map<std::string, std::string>;
 
-  std::optional<std::string> GetLog(const std::string& name);
+  // From debugd::LogProvider.
+  virtual std::optional<std::string> GetLog(const std::string& name);
   LogMap GetAllLogs();
   LogMap GetAllDebugLogs();
   void GetBigFeedbackLogs(const base::ScopedFD& fd,

@@ -48,7 +48,6 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
   dev_features_tool_wrapper_ =
       std::make_unique<RestrictedToolWrapper<DevFeaturesTool>>(bus);
   dmesg_tool_ = std::make_unique<DmesgTool>();
-  drm_trace_tool_ = std::make_unique<DRMTraceTool>();
   ec_typec_tool_ = std::make_unique<EcTypeCTool>();
   example_tool_ = std::make_unique<ExampleTool>();
   icmp_tool_ = std::make_unique<ICMPTool>();
@@ -86,11 +85,15 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus)
           base::FilePath(debugd::kDevFeaturesChromeRemoteDebuggingFlagPath))) {
     session_manager_proxy_->EnableChromeRemoteDebugging();
   }
+  drm_trace_tool_ = std::make_unique<DRMTraceTool>(log_tool_.get());
   session_manager_proxy_->AddObserver(drm_trace_tool_.get());
 }
 
 DebugdDBusAdaptor::~DebugdDBusAdaptor() {
   session_manager_proxy_->RemoveObserver(drm_trace_tool_.get());
+  // Destroy drm_trace_tool_ here since it holds a pointer to log_tool_, so
+  // its lifetime should not exceed that of log_tool_.
+  drm_trace_tool_.reset();
 }
 
 void DebugdDBusAdaptor::RegisterAsync(

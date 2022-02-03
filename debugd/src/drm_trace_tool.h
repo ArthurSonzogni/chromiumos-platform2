@@ -12,13 +12,14 @@
 #include <base/files/file_path.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/debugd/dbus-constants.h>
+#include <debugd/src/log_provider.h>
 #include <debugd/src/session_manager_observer_interface.h>
 
 namespace debugd {
 
 class DRMTraceTool : public SessionManagerObserverInterface {
  public:
-  DRMTraceTool();
+  explicit DRMTraceTool(LogProvider* provider);
   DRMTraceTool(const DRMTraceTool&) = delete;
   DRMTraceTool& operator=(const DRMTraceTool&) = delete;
 
@@ -44,10 +45,6 @@ class DRMTraceTool : public SessionManagerObserverInterface {
                           const base::FilePath& path,
                           const std::string& contents);
 
-  static bool CopyFile(brillo::ErrorPtr* error,
-                       const base::FilePath& src,
-                       const base::FilePath& dest);
-
   ~DRMTraceTool() = default;
 
  private:
@@ -63,9 +60,10 @@ class DRMTraceTool : public SessionManagerObserverInterface {
   void SetToDefault();
 
   // For testing only.
-  explicit DRMTraceTool(const base::FilePath& root);
+  DRMTraceTool(const base::FilePath& root, LogProvider* provider);
 
   const base::FilePath root_path_;
+  LogProvider* log_provider_;
 };
 
 }  // namespace debugd
