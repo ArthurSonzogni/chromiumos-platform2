@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_headers",
     ":libsecure_erase_file",
     ":secure_erase_file",
   ]
@@ -21,10 +22,17 @@ pkg_config("target_defaults") {
 shared_library("libsecure_erase_file") {
   sources = [ "secure_erase_file.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "lib"
 }
 
 executable("secure_erase_file") {
   sources = [ "secure_erase_file_main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [ ":libsecure_erase_file" ]
+}
+
+install_config("install_headers") {
+  sources = [ "secure_erase_file.h" ]
+  install_path = "/usr/include/chromeos/secure_erase_file"
 }
