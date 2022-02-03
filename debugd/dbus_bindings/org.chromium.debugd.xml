@@ -1368,7 +1368,7 @@
         https://elixir.bootlin.com/linux/v5.14.12/source/include/drm/drm_print.h#L277
         Currently dbusxx-xml2cpp does not extract flags values, so any changes
         here should be manually flushed to
-        platform/system_api/dbus/service_constants.h.
+        platform2/system_api/dbus/debugd/dbus-constants.h.
       </tp:docstring>
       <tp:flag suffix="CORE"    value="0x001"/>
       <tp:flag suffix="DRIVER"  value="0x002"/>
@@ -1386,7 +1386,7 @@
         Enum values for drm_trace log size.
         Currently dbusxx-xml2cpp does not extract flags values, so any changes
         here should be manually flushed to
-        platform/system_api/dbus/service_constants.h.
+        platform2/system_api/dbus/debugd/dbus-constants.h.
       </tp:docstring>
       <tp:enumvalue suffix="DEFAULT" value='0'>
         <tp:docstring>
@@ -1405,7 +1405,7 @@
         Enum values for different logs to snapshot in the context of DRMTrace.
         Currently dbusxx-xml2cpp does not extract flags values, so any changes
         here should be manually flushed to
-        platform/system_api/dbus/service_constants.h.
+        platform2/system_api/dbus/debugd/dbus-constants.h.
       </tp:docstring>
       <tp:enumvalue suffix="TRACE" value='0'>
         <tp:docstring>
