@@ -5,7 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":bootid-logger" ]
+  deps = [
+    ":bootid-logger",
+    ":install_init_config",
+  ]
   if (use.fuzzer) {
     deps += [ ":bootid_logger_fuzzer" ]
   }
@@ -33,8 +36,8 @@ static_library("bootid_logger_lib") {
 executable("bootid-logger") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":bootid_logger_lib" ]
   install_path = "sbin"
+  deps = [ ":bootid_logger_lib" ]
 }
 
 if (use.fuzzer) {
@@ -46,6 +49,11 @@ if (use.fuzzer) {
     ]
     deps = [ ":bootid_logger_lib" ]
   }
+}
+
+install_config("install_init_config") {
+  sources = [ "log-bootid-on-boot.conf" ]
+  install_path = "/etc/init"
 }
 
 if (use.test) {
