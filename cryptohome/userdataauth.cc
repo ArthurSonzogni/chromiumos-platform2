@@ -2691,12 +2691,22 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::Remove(
     const user_data_auth::RemoveRequest& request) {
   AssertOnMountThread();
 
-  if (!request.has_identifier()) {
-    LOG(ERROR) << "RemoveRequest must have identifier.";
+  if (!request.has_identifier() && request.auth_session_id().empty()) {
+    LOG(ERROR) << "RemoveRequest must have identifier or an AuthSession Id";
     return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
   }
 
-  std::string account_id = GetAccountId(request.identifier());
+  AuthSession* auth_session = nullptr;
+  if (!request.auth_session_id().empty()) {
+    auth_session =
+        auth_session_manager_->FindAuthSession(request.auth_session_id());
+    if (!auth_session) {
+      return user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN;
+    }
+  }
+
+  std::string account_id = auth_session ? auth_session->username()
+                                        : GetAccountId(request.identifier());
   if (account_id.empty()) {
     LOG(ERROR) << "RemoveRequest must have valid account_id.";
     return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
@@ -2706,6 +2716,13 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::Remove(
   if (!homedirs_->Remove(obfuscated)) {
     return user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED;
   }
+
+  // Since the user is now removed, any further operations require a fresh
+  // AuthSession.
+  if (auth_session) {
+    auth_session_manager_->RemoveAuthSession(request.auth_session_id());
+  }
+
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 

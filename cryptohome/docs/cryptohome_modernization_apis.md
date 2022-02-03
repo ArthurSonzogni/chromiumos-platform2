@@ -173,10 +173,10 @@ AuthFactor.
     `user_exists` should return `true` and AuthSession will not start in an
     authenticated state.
 2.  `AuthenticateAuthFactor`
-3.  If this call is a success, then move to the next step.
-4.  `PreparePersistentVault`
-5.  At this point it is safe to fetch any userpolicy.
-6.  `InvalidateAuthSession`
+    - If this call is a success, then move to the next step.
+3.  `PreparePersistentVault`
+    - At this point it is safe to fetch any userpolicy.
+4.  `InvalidateAuthSession`
 
 ### Chrome Adds an AuthFactor for an Existing User
 
@@ -189,6 +189,19 @@ AuthFactor.
     -   This can be called multiple times. If there is a need
         `ExtendAuthSession` should be used.
 4.  `InvalidateAuthSession`
+
+### Chrome Removes a user
+
+This case can happen when a user forgets their password and chooses to start
+as a fresh user.
+
+1.  `StartAuthSession` – Chrome initiates an AuthSession. This time
+    `user_exists` should return `true` and AuthSession will not start in an
+    authenticated state.
+2.  `Remove`
+    -   This call will take AuthSessionId as input. Upon successful completion,
+    it will invalidate AuthSession to ensure a clean removal of user.
+
 
 ### Chrome starts a Guest Session
 There will not be any requirement for AuthSession here as this account is totally temporary.

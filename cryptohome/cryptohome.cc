@@ -1044,6 +1044,14 @@ int main(int argc, char** argv) {
       return 1;
     }
 
+    if (cl->HasSwitch(switches::kAuthSessionId)) {
+      std::string auth_session_id_hex, auth_session_id;
+      if (!GetAuthSessionId(cl, &auth_session_id_hex))
+        return 1;
+      base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+      req.set_auth_session_id(auth_session_id);
+    }
+
     if (!cl->HasSwitch(switches::kForceSwitch) && !ConfirmRemove(account_id)) {
       return 1;
     }

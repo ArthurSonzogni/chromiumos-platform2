@@ -3610,7 +3610,7 @@ TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();
 
-  // No account_id
+  // No account_id and AuthSession ID
   EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 
@@ -3618,6 +3618,54 @@ TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
   remove_homedir_req_->mutable_identifier()->set_account_id("");
   EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthExTest, RemoveInvalidAuthSession) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  PrepareArguments();
+  std::string invalid_token = "invalid_token_16";
+  remove_homedir_req_->set_auth_session_id(invalid_token);
+
+  // Test.
+  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
+            user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+}
+
+TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  PrepareArguments();
+
+  // Setup
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  start_auth_session_req_->mutable_account_id()->set_account_id(kUsername1);
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+  EXPECT_EQ(auth_session_reply.error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test
+  remove_homedir_req_->set_auth_session_id(
+      auth_session_reply.auth_session_id());
+  EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
+      .WillOnce(Return(true));
+  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Verify
+  EXPECT_EQ(userdataauth_->auth_session_manager_->FindAuthSession(
+                auth_session_reply.auth_session_id()),
+            nullptr);
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSession) {

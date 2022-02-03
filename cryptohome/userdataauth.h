@@ -1325,10 +1325,11 @@ class UserDataAuth {
   FRIEND_TEST(UserDataAuthTest, InitializePkcs11Unmounted);
 
   friend class UserDataAuthExTest;
-  FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
-  FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
-  FRIEND_TEST(UserDataAuthExTest, InvalidateAuthSession);
   FRIEND_TEST(UserDataAuthExTest, ExtendAuthSession);
+  FRIEND_TEST(UserDataAuthExTest, InvalidateAuthSession);
+  FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
+  FRIEND_TEST(UserDataAuthExTest, RemoveValidityWithAuthSession);
+  FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
 
   friend class AuthSessionInterfaceTest;
 };
