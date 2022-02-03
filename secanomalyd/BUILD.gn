@@ -5,7 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":secanomalyd" ]
+  deps = [
+    ":install_upstart_config",
+    ":secanomalyd",
+  ]
   if (use.test) {
     deps += [ ":secanomalyd_testrunner" ]
   }
@@ -42,7 +45,13 @@ static_library("libsecanomaly") {
 executable("secanomalyd") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "sbin"
   deps = [ ":libsecanomaly" ]
+}
+
+install_config("install_upstart_config") {
+  sources = [ "secanomalyd.conf" ]
+  install_path = "/etc/init"
 }
 
 if (use.test) {
@@ -62,6 +71,7 @@ if (use.test) {
       ":secanomalyd_testrunner_config",
       ":target_defaults",
     ]
+    run_test = true
     deps = [
       ":libsecanomaly",
       "//common-mk/testrunner",
