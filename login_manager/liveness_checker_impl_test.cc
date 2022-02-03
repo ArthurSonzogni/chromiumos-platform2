@@ -190,8 +190,7 @@ const TestFileAndStatus kTestFilesAndStatuses[] = {
      LoginMetrics::BrowserState::kErrorGettingState,
      "State:\\t at very end of file"},
     {"MissingStatusFile", nullptr,
-     LoginMetrics::BrowserState::kErrorGettingState,
-     "Could not open status file"}};
+     LoginMetrics::BrowserState::kErrorGettingState, "Could not open "}};
 
 class LivenessCheckerImplParamTest
     : public LivenessCheckerImplTest,

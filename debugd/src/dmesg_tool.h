@@ -7,6 +7,8 @@
 #ifndef DEBUGD_SRC_DMESG_TOOL_H_
 #define DEBUGD_SRC_DMESG_TOOL_H_
 
+#include <stdint.h>
+
 #include <string>
 
 #include <brillo/errors/error.h>
@@ -25,6 +27,10 @@ class DmesgTool {
   bool CallDmesg(const brillo::VariantDictionary& options,
                  brillo::ErrorPtr* error,
                  std::string* output);
+
+  // If |output| has more than |lines| lines, trim output to only contain the
+  // last |lines| lines. Basically /usr/bin/tail.
+  static void Tail(uint32_t lines, std::string& output);
 };
 
 }  // namespace debugd

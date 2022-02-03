@@ -15,6 +15,7 @@
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/compiler_specific.h>
+#include <base/files/file_util.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
@@ -165,7 +166,7 @@ base::Optional<brillo::SafeFD> LivenessCheckerImpl::OpenBrowserProcFile(
 
   result = result.first.OpenExistingFile(file_path, O_RDONLY | O_CLOEXEC);
   if (brillo::SafeFD::IsError(result.second)) {
-    PLOG(WARNING) << "Could not open status file "
+    PLOG(WARNING) << "Could not open " << file_path.value() << " error code "
                   << static_cast<int>(result.second) << ": ";
     return base::nullopt;
   }
@@ -253,6 +254,41 @@ void LivenessCheckerImpl::RecordWchanState(LoginMetrics::BrowserState state) {
                << contents;
 }
 
+void LivenessCheckerImpl::RequestKernelTraces() {
+  base::FilePath file_path(proc_directory_);
+  file_path = file_path.Append("sysrq-trigger");
+
+  brillo::SafeFD::SafeFDResult result = brillo::SafeFD::Root();
+  if (brillo::SafeFD::IsError(result.second)) {
+    PLOG(WARNING) << "Could not get root directory "
+                  << static_cast<int>(result.second) << ": ";
+    return;
+  }
+
+  result = result.first.OpenExistingFile(file_path, O_WRONLY | O_CLOEXEC);
+  if (brillo::SafeFD::IsError(result.second)) {
+    PLOG(WARNING) << "Could not open sysrq-trigger file "
+                  << static_cast<int>(result.second) << ": ";
+    return;
+  }
+
+  // Don't use SafeFD::Write here; we don't want to try and truncate the
+  // sysrq-trigger file (which SafeFD::Write does).
+  // Order is important: w is synchronous, l is not, so if we do l first all the
+  // lines get mixed together.
+  const char kShowBlockedTasksRequest[] = "w";
+  if (!base::WriteFileDescriptor(result.first.get(),
+                                 kShowBlockedTasksRequest)) {
+    PLOG(WARNING) << "Failed to write 'w' to sysrq-trigger file: ";
+  }
+
+  const char kShowStackBacktraceRequest[] = "l";
+  if (!base::WriteFileDescriptor(result.first.get(),
+                                 kShowStackBacktraceRequest)) {
+    PLOG(WARNING) << "Failed to write 'l' to sysrq-trigger file: ";
+  }
+}
+
 void LivenessCheckerImpl::RecordStateForTimeout() {
   LoginMetrics::BrowserState state = GetBrowserState();
   if (metrics_ != nullptr) {
@@ -263,6 +299,7 @@ void LivenessCheckerImpl::RecordStateForTimeout() {
       state == LoginMetrics::BrowserState::kUninterruptibleWait ||
       state == LoginMetrics::BrowserState::kTracedOrStopped) {
     RecordWchanState(state);
+    RequestKernelTraces();
   }
 }
 

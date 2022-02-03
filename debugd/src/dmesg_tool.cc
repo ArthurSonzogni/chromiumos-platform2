@@ -6,6 +6,14 @@
 
 #include "debugd/src/dmesg_tool.h"
 
+#include <vector>
+
+#include <base/containers/span.h>
+#include <base/strings/strcat.h>
+#include <base/strings/string_piece.h>
+#include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+
 #include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_output.h"
 #include "debugd/src/variant_utils.h"
@@ -18,6 +26,39 @@ constexpr char kDmesgPath[] = "/bin/dmesg";
 }  // namespace
 
 namespace debugd {
+// static
+void DmesgTool::Tail(uint32_t lines, std::string& output) {
+  if (lines <= 0) {
+    output.clear();
+    return;
+  }
+
+  if (output.empty()) {
+    return;
+  }
+
+  std::vector<base::StringPiece> split = base::SplitStringPiece(
+      output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+
+  // When the last character is \n, we get an extra blank line at the end which
+  // we don't actually want. (We want other blank lines, but not the extra blank
+  // at the end.)
+  bool had_ending_newline = false;
+  if (output.back() == '\n') {
+    split.pop_back();
+    had_ending_newline = true;
+  }
+
+  if (split.size() <= lines) {
+    return;
+  }
+
+  base::span<base::StringPiece> desired_lines(
+      split.begin() + (split.size() - lines), lines);
+
+  output = base::StrCat({base::JoinString(desired_lines, "\n"),
+                         (had_ending_newline ? "\n" : "")});
+}
 
 bool DmesgTool::CallDmesg(const brillo::VariantDictionary& options,
                           brillo::ErrorPtr* error,
@@ -53,6 +94,17 @@ bool DmesgTool::CallDmesg(const brillo::VariantDictionary& options,
   }
 
   process.GetOutput(output);
+
+  uint32_t lines = 0;
+  ParseResult result = GetOption(options, "tail", &lines, error);
+  if (result == ParseResult::PARSE_ERROR) {
+    *output = "<invalid option to tail>";
+    return false;
+  }
+  if (result == ParseResult::PARSED) {
+    Tail(lines, *output);
+  }
+
   return true;
 }
 

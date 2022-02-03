@@ -86,6 +86,11 @@ class LivenessCheckerImpl : public LivenessChecker {
   // now it just logs it; some day will also record in UMA).
   void RecordWchanState(LoginMetrics::BrowserState state);
 
+  // Send requests to the kernel (via /proc/sysrq-trigger) asking that the
+  // kernel dump info about what why processes are stuck. Results are in dmesg
+  // logs, and not read by this process.
+  void RequestKernelTraces();
+
   // Updates UMA stat recording the state of the browser process (running,
   // sleeping, uninterruptible wait, zombie, traced-or-stopped) at the moment
   // the liveness check times out. For sleep and wait states, also records what

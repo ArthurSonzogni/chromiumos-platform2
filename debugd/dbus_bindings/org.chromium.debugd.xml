@@ -1225,6 +1225,7 @@
           userspace (bool): Print userspace messages.
           decode (bool): Decode facility and level (priority) numbers
             to human-readable prefixes.
+          tail (uint32): Only return the last # lines.
         </tp:docstring>
       </arg>
       <arg name="output" type="s" direction="out">

@@ -114,20 +114,56 @@ class ChromeCollector : public CrashCollector {
                               const std::string& dump_basename,
                               base::FilePath* payload_path);
 
-  // Gets the GPU's error state from debugd and writes it to |error_state_path|.
-  // Returns true on success.
-  bool GetDriErrorState(const base::FilePath& error_state_path);
+  // Callback for the call to debugd to get the DriErrorState. Debugd sends us
+  // the data in |dri_error_state_str|, which we then write to
+  // |dri_error_state_path|. On success, the (metadata key name, base file name)
+  // pair is added to |logs|. Regardless of success or failure,
+  // |completion_closure| is called once we are finished.
+  void HandleDriErrorState(base::FilePath dri_error_state_path,
+                           std::map<std::string, base::FilePath>* logs,
+                           base::RepeatingClosure completion_closure,
+                           const std::string& dri_error_state_str);
+  // Helper for HandleDriErrorState. Decodes the information from debugd in
+  // |dri_error_state_str| and writes it to |error_state_path|. Separate
+  // function to make error handling easier. Returns true on success.
+  bool ProcessDriErrorState(const std::string& dri_error_state_str,
+                            const base::FilePath& error_state_path);
+  // Callback if the debugd call to get DriErrorState fails. |error| is nullptr
+  // if the call never returned (normally means it timed out), otherwise it has
+  // the failure reason.
+  static void HandleDriErrorStateError(
+      base::RepeatingClosure completion_closure, brillo::Error* error);
+
+  // Callback for the call to debugd to get dmesg output. Debugd sends us
+  // the dmesg output in |dmesg_out|, which we then write to |dmseg_path|.
+  // On success, the (metadata key name, base file name) pair is added to
+  // |logs|. Regardless of success or failure, |completion_closure| is called
+  // once we are finished.
+  void HandleDmesg(base::FilePath dmseg_path,
+                   std::map<std::string, base::FilePath>* logs,
+                   base::RepeatingClosure completion_closure,
+                   const std::string& dmesg_out);
+  // Helper for HandleDmesg. Strips out any sensitive data in |dmesg_out| and
+  // then writes it to |dmseg_path|. Separate function to make error handling
+  // easier. Returns true on success.
+  bool ProcessDmesgOutput(std::string dmesg_out,
+                          const base::FilePath& dmseg_path);
+  // Callback if the debugd call to get dmesg output. |error| is nullptr
+  // if the call never returned (normally means it timed out), otherwise it has
+  // the failure reason.
+  static void HandleDmesgError(base::RepeatingClosure completion_closure,
+                               brillo::Error* error);
 
   // Writes additional logs for the crash to files based on |basename| within
   // |dir|. |key_for_logs| is the key into crash_reporter_logs.conf file. Crash
-  // report metadata key names and the corresponding file paths are returned.
+  // report metadata key names and the corresponding file names are returned.
   std::map<std::string, base::FilePath> GetAdditionalLogs(
       const base::FilePath& dir,
       const std::string& basename,
       const std::string& key_for_logs,
       CrashType crash_type);
 
-  // Add the (|log_map_key|, |complete_file_name|) pair to |logs| if we are not
+  // Add the (|log_map_key|, base file name) pair to |logs| if we are not
   // over kDefaultMaxUploadBytes. If we are over kDefaultMaxUploadBytes,
   // delete the file |complete_file_name| instead and don't change |logs|.
   // |complete_file_name| must be a file created by

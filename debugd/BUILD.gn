@@ -345,6 +345,7 @@ if (use.test) {
     sources = [
       "src/crash_sender_tool_test.cc",
       "src/dev_mode_no_owner_restriction_test.cc",
+      "src/dmesg_tool_test.cc",
       "src/drm_trace_tool_test.cc",
       "src/helper_utils_test.cc",
       "src/helpers/audit_log_utils.cc",

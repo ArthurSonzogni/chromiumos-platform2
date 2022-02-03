@@ -11,16 +11,19 @@
 #include <map>
 #include <string>
 
+#include <base/barrier_closure.h>
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/data_encoding.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
+#include <brillo/variant_dictionary.h>
 #include <re2/re2.h>
 
 #include "crash-reporter/constants.h"
@@ -36,6 +39,7 @@ constexpr char kDefaultJavaScriptStackName[] = "upload_file_js_stack";
 // Filenames for logs attached to crash reports. Also used as metadata keys.
 constexpr char kChromeLogFilename[] = "chrome.txt";
 constexpr char kGpuStateFilename[] = "i915_error_state.log.xz";
+constexpr char kDmesgOutputFilename[] = "dmesg.txt";
 
 // Filename for the pid of the browser process if it was aborted due to a
 // browser hang. Written by session_manager.
@@ -440,45 +444,91 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
     AddLogIfNotTooBig(kChromeLogFilename, chrome_log_path, &logs);
   }
 
-  // Attach info about the GPU state for executable crashes. For JavaScript
-  // errors, the GPU state is likely too low-level to matter.
+  // For executable crashes, also attach:
+  //   * Info about the GPU state.
+  //   * dmesg output. If Chrome is hanging, session_manager's
+  //     LivenessCheckerImpl::RequestKernelTraces will dump a bunch of info into
+  //     the dmesg output about what, specifically, is stuck. Note: we can't do
+  //     this from crash_reporter_logs.conf because we were spawned from Chrome
+  //     and thus are not root.
+  //
+  // For JavaScript errors, the GPU state is likely too low-level to matter and
+  // the program isn't hung, so neither of these would be helpful.
   if (crash_type == kExecutableCrash) {
     // For unit testing, debugd_proxy_ isn't initialized, so skip attempting to
-    // get the GPU error state from debugd.
+    // get the GPU error state & dmesg output from debugd.
     SetUpDBus();
     if (debugd_proxy_) {
+      // Chrome has a 12 second timeout for crash_reporter to execute when it
+      // invokes it, so use a 5 second timeout here on both our D-Bus calls.
+      constexpr int kDebugdCallTimeoutMsec = 5000;
+
       const FilePath dri_error_state_path =
           GetCrashPath(dir, basename, kGpuStateFilename);
-      if (GetDriErrorState(dri_error_state_path))
-        AddLogIfNotTooBig(kGpuStateFilename, dri_error_state_path, &logs);
+      const FilePath dmesg_out_path =
+          GetCrashPath(dir, basename, kDmesgOutputFilename).AddExtension("gz");
+
+      // Since we may be on a tight timeline, call both debugd RPCs in parallel.
+      // This saves us a little time; not as much time as you might think
+      // because debugd will not run tasks in parallel, but still some. More
+      // importantly, it allows us to use a single timeout for both dbus
+      // calls -- the dmesg and the DriError will both timeout when 5 seconds
+      // pass.
+      base::RunLoop run_loop;
+      constexpr int kNumAsyncDbusCalls = 2;
+      auto one_dbus_complete_closure =
+          base::BarrierClosure(kNumAsyncDbusCalls, run_loop.QuitClosure());
+      // We can base::Unretained() the various pointers since all the callbacks
+      // will happen in the RunLoop::Run before this function exits.
+      debugd_proxy_->GetLogAsync(
+          "i915_error_state",
+          base::BindOnce(&ChromeCollector::HandleDriErrorState,
+                         base::Unretained(this), dri_error_state_path,
+                         base::Unretained(&logs), one_dbus_complete_closure),
+          base::BindOnce(&ChromeCollector::HandleDriErrorStateError,
+                         one_dbus_complete_closure),
+          kDebugdCallTimeoutMsec);
+      // Maximum lines to record from dmesg. sysrq-w regularly produces over
+      // 250 lines of output, so we set this pretty high.
+      constexpr uint32_t kMaxDmesgLines = 500;
+      const brillo::VariantDictionary dmesg_options = {
+          {"tail", kMaxDmesgLines}};
+      debugd_proxy_->CallDmesgAsync(
+          dmesg_options,
+          base::BindOnce(&ChromeCollector::HandleDmesg, base::Unretained(this),
+                         dmesg_out_path, base::Unretained(&logs),
+                         one_dbus_complete_closure),
+          base::BindOnce(&ChromeCollector::HandleDmesgError,
+                         one_dbus_complete_closure),
+          kDebugdCallTimeoutMsec);
+
+      run_loop.Run();
     }
   }
 
   return logs;
 }
 
-bool ChromeCollector::GetDriErrorState(const FilePath& error_state_path) {
-  brillo::ErrorPtr error;
-  std::string error_state_str;
-  // Chrome has a 12 second timeout for crash_reporter to execute when it
-  // invokes it, so use a 5 second timeout here on our D-Bus call.
-  constexpr int kDebugdGetLogTimeoutMsec = 5000;
-  debugd_proxy_->GetLog("i915_error_state", &error_state_str, &error,
-                        kDebugdGetLogTimeoutMsec);
-
-  if (error) {
-    LOG(ERROR) << "Error calling D-Bus proxy call to interface "
-               << "'" << debugd_proxy_->GetObjectPath().value()
-               << "':" << error->GetMessage();
-    return false;
+void ChromeCollector::HandleDriErrorState(
+    base::FilePath dri_error_state_path,
+    std::map<std::string, base::FilePath>* logs,
+    base::RepeatingClosure completion_closure,
+    const std::string& dri_error_state_str) {
+  if (ProcessDriErrorState(dri_error_state_str, dri_error_state_path)) {
+    AddLogIfNotTooBig(kGpuStateFilename, dri_error_state_path, logs);
   }
+  completion_closure.Run();
+}
 
-  if (error_state_str == "<empty>")
+bool ChromeCollector::ProcessDriErrorState(
+    const std::string& dri_error_state_str,
+    const base::FilePath& error_state_path) {
+  if (dri_error_state_str == "<empty>")
     return false;
 
   const char kBase64Header[] = "<base64>: ";
   const size_t kBase64HeaderLength = sizeof(kBase64Header) - 1;
-  if (error_state_str.compare(0, kBase64HeaderLength, kBase64Header)) {
+  if (dri_error_state_str.compare(0, kBase64HeaderLength, kBase64Header)) {
     LOG(ERROR) << "i915_error_state is missing base64 header";
     return false;
   }
@@ -486,7 +536,7 @@ bool ChromeCollector::GetDriErrorState(const FilePath& error_state_path) {
   std::string decoded_error_state;
 
   if (!brillo::data_encoding::Base64Decode(
-          error_state_str.c_str() + kBase64HeaderLength,
+          dri_error_state_str.c_str() + kBase64HeaderLength,
           &decoded_error_state)) {
     LOG(ERROR) << "Could not decode i915_error_state";
     return false;
@@ -506,6 +556,55 @@ bool ChromeCollector::GetDriErrorState(const FilePath& error_state_path) {
   }
 
   return true;
+}
+
+// static
+void ChromeCollector::HandleDriErrorStateError(
+    base::RepeatingClosure completion_closure, brillo::Error* error) {
+  if (error == nullptr) {
+    LOG(ERROR)
+        << "Error retrieving DriErrorState from debugd: Call did not return";
+  } else {
+    LOG(ERROR) << "Error retrieving DriErrorState from debugd: "
+               << error->GetMessage();
+  }
+  completion_closure.Run();
+}
+
+void ChromeCollector::HandleDmesg(base::FilePath dmseg_path,
+                                  std::map<std::string, base::FilePath>* logs,
+                                  base::RepeatingClosure completion_closure,
+                                  const std::string& dmesg_out) {
+  if (ProcessDmesgOutput(dmesg_out, dmseg_path)) {
+    AddLogIfNotTooBig(kDmesgOutputFilename, dmseg_path, logs);
+  }
+  completion_closure.Run();
+}
+
+bool ChromeCollector::ProcessDmesgOutput(std::string dmesg_out,
+                                         const base::FilePath& dmseg_path) {
+  if (dmesg_out.empty()) {
+    return false;
+  }
+  StripSensitiveData(&dmesg_out);
+  if (!WriteNewCompressedFile(dmseg_path, dmesg_out.data(), dmesg_out.size())) {
+    PLOG(ERROR) << "Could not write file " << dmseg_path.value();
+    base::DeleteFile(dmseg_path);
+    return false;
+  }
+
+  return true;
+}
+
+// static
+void ChromeCollector::HandleDmesgError(
+    base::RepeatingClosure completion_closure, brillo::Error* error) {
+  if (error == nullptr) {
+    LOG(ERROR) << "Error retrieving dmesg from debugd: Call did not return";
+  } else {
+    LOG(ERROR) << "Error retrieving dmesg from debugd: " << error->GetMessage();
+  }
+  completion_closure.Run();
 }
 
 // static
