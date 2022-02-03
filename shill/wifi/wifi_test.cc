@@ -778,11 +778,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                                           bssid, mode, 0, 0);
   }
   MockWiFiServiceRefPtr MakeMockServiceWithSSID(std::vector<uint8_t> ssid,
-                                                const std::string& security) {
-    return new NiceMock<MockWiFiService>(&manager_, &wifi_provider_, ssid,
-                                         kModeManaged, security, false);
+                                                const WiFiSecurity& security) {
+    return new NiceMock<MockWiFiService>(
+        &manager_, &wifi_provider_, ssid, kModeManaged,
+        WiFiService::ComputeSecurityClass(security), security, false);
   }
-  MockWiFiServiceRefPtr MakeMockService(const std::string& security) {
+  MockWiFiServiceRefPtr MakeMockService(const WiFiSecurity& security) {
     return MakeMockServiceWithSSID(std::vector<uint8_t>(1, 'a'), security);
   }
   RpcIdentifier MakeNewEndpointAndService(int16_t signal_strength,
@@ -1623,7 +1624,7 @@ TEST_F(WiFiMainTest, RemoveNetwork) {
 TEST_F(WiFiMainTest, StartNetworkUseArpGateway) {
   StartWiFi();
 
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   InitiateConnect(service);
 
   // Selected service that does not have a static IP address.
@@ -1639,7 +1640,7 @@ TEST_F(WiFiMainTest, StartNetworkUseArpGateway) {
 TEST_F(WiFiMainTest, StartNetworkNoArpGateway) {
   StartWiFi();
 
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   InitiateConnect(service);
 
   // Selected service that has a static IP address.
@@ -1684,7 +1685,7 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting) {
 
   ExpectScanStop();
   ExpectConnecting();
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   InitiateConnect(service);
   VerifyScanState(WiFi::kScanConnecting, WiFi::kScanMethodFull);
 
@@ -2895,7 +2896,7 @@ TEST_F(WiFiMainTest, StateChangeWithService) {
   // Forward transition should trigger a Service state change.
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   InitiateConnect(service);
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
   ReportStateChanged(WPASupplicant::kInterfaceStateAssociated);
@@ -2910,7 +2911,7 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   // Supplicant state should still be updated, however.
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
@@ -2931,7 +2932,7 @@ TEST_F(WiFiMainTest, RoamStateChange) {
   // Forward transition should trigger a Service state change.
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   InitiateConnect(service);
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   SetIsRoamingInProgress(true);
@@ -2953,7 +2954,7 @@ TEST_F(WiFiMainTest, RoamStateChange) {
 TEST_F(WiFiMainTest, ConnectToServiceWithoutRecentIssues) {
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   EXPECT_CALL(*service, HasRecentConnectionIssues()).WillOnce(Return(false));
   InitiateConnect(service);
   EXPECT_EQ(wifi()->is_debugging_connection_, false);
@@ -2967,7 +2968,7 @@ TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
   MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   EXPECT_CALL(*process_proxy, GetDebugLevel(_))
       .WillOnce(
           DoAll(SetArgPointee<0>(std::string(WPASupplicant::kDebugLevelInfo)),
@@ -3264,7 +3265,7 @@ TEST_F(WiFiMainTest, AddNetworkArgsNoBgscan) {
 
 TEST_F(WiFiMainTest, AppendBgscan) {
   StartWiFi();
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   {
     // 1 endpoint, default bgscan method -- background scan frequency very
     // reduced.
@@ -3427,7 +3428,7 @@ TEST_F(WiFiMainTest, CallWakeOnWiFi_OnScanDone) {
 
   // If the WiFi device is not Idle, do not call
   // WakeOnWiFi::OnNoAutoConnectableServicesAfterScan.
-  SetCurrentService(MakeMockService(kSecurityWep));
+  SetCurrentService(MakeMockService(WiFiSecurity::kWep));
   EXPECT_FALSE(wifi()->IsIdle());
   EXPECT_CALL(*wifi_provider(), NumAutoConnectableServices())
       .WillOnce(Return(0));
@@ -3561,7 +3562,7 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
   const IPAddress kAnotherIPAddress("1.2.3.4");
 
   // Sets up Service.
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   SetCurrentService(service);
   // Can be used to clear link status (last failure time, etc.), so that the
   // following tests will not be affected by service->unreliable().
@@ -3626,7 +3627,7 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
 }
 
 TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   SelectService(service);
 
   // To make the call lines shorter.
@@ -3687,7 +3688,7 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
 }
 
 TEST_F(WiFiMainTest, LinkStatusResetOnSelectService) {
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   SelectService(service);
   service->set_unreliable(true);
   SetReliableLinkCallback();
@@ -3700,7 +3701,7 @@ TEST_F(WiFiMainTest, LinkStatusResetOnSelectService) {
 }
 
 TEST_F(WiFiMainTest, LinkStatusOnConnected) {
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   SelectService(service);
 
   // Link is reliable, no need to post delayed task to reset link status.
@@ -3716,7 +3717,7 @@ TEST_F(WiFiMainTest, LinkStatusOnConnected) {
 
 TEST_F(WiFiMainTest, ResumeWithUnreliableLink) {
   StartWiFi();
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   SelectService(service);
   service->set_unreliable(true);
   SetReliableLinkCallback();
@@ -3728,13 +3729,13 @@ TEST_F(WiFiMainTest, ResumeWithUnreliableLink) {
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsOpen) {
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   EXPECT_CALL(*service, AddSuspectedCredentialFailure()).Times(0);
   EXPECT_FALSE(SuspectCredentials(service, nullptr));
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsWPA) {
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityClassPsk);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWpa2);
   ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
   EXPECT_CALL(*service, AddSuspectedCredentialFailure())
       .WillOnce(Return(false))
@@ -3748,7 +3749,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWPA) {
 TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
   StartWiFi();
   event_dispatcher_->DispatchPendingEvents();
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityWep);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWep);
   ExpectConnecting();
   InitiateConnect(service);
   SetCurrentService(service);
@@ -3801,7 +3802,8 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsEAPInProgress) {
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityClass8021x);
+  MockWiFiServiceRefPtr service =
+      MakeMockService(WiFiSecurity::kWpa2Enterprise);
   EXPECT_CALL(*eap_state_handler_, is_eap_in_progress())
       .WillOnce(Return(false))
       .WillOnce(Return(true))
@@ -3827,7 +3829,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsEAPInProgress) {
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsYieldFailurePSK) {
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityClassPsk);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWpa2);
   SetPendingService(service);
   ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
 
@@ -3843,7 +3845,8 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailurePSK) {
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureEAP) {
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityClass8021x);
+  MockWiFiServiceRefPtr service =
+      MakeMockService(WiFiSecurity::kWpa2Enterprise);
   SetCurrentService(service);
 
   ScopedMockLog log;
@@ -4239,7 +4242,8 @@ TEST_F(WiFiTimerTest, StartScanTimer_NoFastScansRemaining) {
 TEST_F(WiFiMainTest, EAPCertification) {
   StartWiFi();
 
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityClass8021x);
+  MockWiFiServiceRefPtr service =
+      MakeMockService(WiFiSecurity::kWpa2Enterprise);
   EXPECT_CALL(*service, AddEAPCertification(_, _)).Times(0);
 
   ScopedMockLog log;
@@ -4298,7 +4302,8 @@ TEST_F(WiFiMainTest, EAPEvent) {
   Mock::VerifyAndClearExpectations(&log);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
 
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityClass8021x);
+  MockWiFiServiceRefPtr service =
+      MakeMockService(WiFiSecurity::kWpa2Enterprise);
   EXPECT_CALL(*service, SetFailure(_)).Times(0);
   EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _));
   SetCurrentService(service);
@@ -4652,7 +4657,7 @@ TEST_F(WiFiMainTest, ConnectToWithError) {
   EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_)).Times(0);
   EXPECT_CALL(*metrics(), ReportDeviceScanResultToUma(_)).Times(0);
   EXPECT_CALL(*adaptor_, EmitBoolChanged(kScanningProperty, false));
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   EXPECT_CALL(*service, GetSupplicantConfigurationParameters());
   InitiateConnect(service);
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
@@ -4669,7 +4674,7 @@ TEST_F(WiFiMainTest, ScanStateHandleDisconnect) {
   ReportScanDone();
   ExpectScanStop();
   ExpectConnecting();
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   SetPendingService(service);
   VerifyScanState(WiFi::kScanConnecting, WiFi::kScanMethodFull);
 
@@ -4770,7 +4775,8 @@ TEST_F(WiFiMainTest, OnGetDHCPLease_InvokesOnConnectedAndReachable) {
 
   // If we are actually connected to a service when our IPv6 configuration is
   // updated, we should call WakeOnWiFi::OnConnectedAndReachable.
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityClass8021x);
+  MockWiFiServiceRefPtr service =
+      MakeMockService(WiFiSecurity::kWpa2Enterprise);
   EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(true));
   SetCurrentService(service);
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv6 configuration obtained")));
@@ -4813,8 +4819,10 @@ TEST_F(WiFiMainTest, OnDarkResume_CallsWakeOnWiFi) {
 
 TEST_F(WiFiMainTest, RemoveSupplicantNetworks) {
   StartWiFi();
-  MockWiFiServiceRefPtr service1 = MakeMockService(kSecurityClass8021x);
-  MockWiFiServiceRefPtr service2 = MakeMockService(kSecurityClass8021x);
+  MockWiFiServiceRefPtr service1 =
+      MakeMockService(WiFiSecurity::kWpaEnterprise);
+  MockWiFiServiceRefPtr service2 =
+      MakeMockService(WiFiSecurity::kWpa2Enterprise);
   const RpcIdentifier kNetworkRpcId1("/service/network/rpcid1");
   const RpcIdentifier kNetworkRpcId2("/service/network/rpcid2");
   SetServiceNetworkRpcId(service1, kNetworkRpcId1);
@@ -4838,7 +4846,7 @@ TEST_F(WiFiMainTest, InitiateScan_NotIdle) {
   ScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(1);
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityClassPsk);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWpa2);
   SetPendingService(service);
   EXPECT_FALSE(wifi()->IsIdle());
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
@@ -4867,7 +4875,7 @@ TEST_F(WiFiMainTest, InitiateScanInDarkResume_Idle) {
 TEST_F(WiFiMainTest, InitiateScanInDarkResume_NotIdle) {
   const WiFi::FreqSet freqs;
   ScopedMockLog log;
-  MockWiFiServiceRefPtr service = MakeMockService(kSecurityClassPsk);
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWpa2);
   SetPendingService(service);
   manager()->set_suppress_autoconnect(false);
   EXPECT_FALSE(wifi()->IsIdle());

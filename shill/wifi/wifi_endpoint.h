@@ -19,6 +19,7 @@
 #include "shill/metrics.h"
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
+#include "shill/wifi/wifi_security.h"
 
 namespace shill {
 
@@ -102,7 +103,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   uint16_t frequency() const;
   uint16_t physical_mode() const;
   const std::string& network_mode() const;
-  const std::string& security_mode() const;
+  WiFiSecurity::Mode security_mode() const;
   bool has_rsn_property() const;
   bool has_wpa_property() const;
   bool has_psk_property() const;
@@ -165,8 +166,8 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // The stored data in the |flags| parameter is merged with the provided
   // properties, and the security value returned is the result of the
   // merger.
-  static const char* ParseSecurity(const KeyValueStore& properties,
-                                   SecurityFlags* flags);
+  static WiFiSecurity::Mode ParseSecurity(const KeyValueStore& properties,
+                                          SecurityFlags* flags);
   // Parses an Endpoint's properties' "RSN" or "WPA" sub-dictionary, to
   // identify supported key management methods (802.1x or PSK).
   static void ParseKeyManagementMethods(
@@ -213,7 +214,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   void CheckForTetheringSignature();
 
   // Private setter used in unit tests.
-  void set_security_mode(const std::string& mode) { security_mode_ = mode; }
+  void set_security_mode(WiFiSecurity::Mode mode) { security_mode_ = mode; }
 
   const std::vector<uint8_t> ssid_;
   const std::vector<uint8_t> bssid_;
@@ -226,10 +227,10 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   base::TimeTicks last_seen_;
   uint16_t frequency_;
   uint16_t physical_mode_;
-  // network_mode_ and security_mode_ are represented as flimflam names
+  // network_mode_ is represented as flimflam names
   // (not necessarily the same as wpa_supplicant names)
   std::string network_mode_;
-  std::string security_mode_;
+  WiFiSecurity::Mode security_mode_ = WiFiSecurity::kNone;
   VendorInformation vendor_information_;
   bool has_rsn_property_;
   bool has_wpa_property_;

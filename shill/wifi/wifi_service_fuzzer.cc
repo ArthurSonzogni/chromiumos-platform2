@@ -45,8 +45,9 @@ class WiFiServiceFuzzer {
     MockMetrics metrics;
     MockManager manager(&control, &dispatcher, &metrics);
     MockWiFiProvider provider;
-    WiFiServiceRefPtr service = new WiFiService(
-        &manager, &provider, ssid, kModeManaged, security_class, false);
+    WiFiServiceRefPtr service =
+        new WiFiService(&manager, &provider, ssid, kModeManaged, security_class,
+                        WiFiSecurity(), false);
     Error error;
     service->SetPassphrase(passphrase, &error);
   }

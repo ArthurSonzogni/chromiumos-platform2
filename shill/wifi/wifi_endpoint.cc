@@ -175,7 +175,8 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
     }
   }
 
-  const char* new_security_mode = ParseSecurity(properties, &security_flags_);
+  WiFiSecurity::Mode new_security_mode =
+      ParseSecurity(properties, &security_flags_);
   if (new_security_mode != security_mode()) {
     security_mode_ = new_security_mode;
     SLOG(this, 2) << "WiFiEndpoint " << bssid_string_ << " security is now "
@@ -287,7 +288,7 @@ const std::string& WiFiEndpoint::network_mode() const {
   return network_mode_;
 }
 
-const std::string& WiFiEndpoint::security_mode() const {
+WiFiSecurity::Mode WiFiEndpoint::security_mode() const {
   return security_mode_;
 }
 
@@ -382,8 +383,8 @@ std::string WiFiEndpoint::ParseMode(const std::string& mode_string) {
 }
 
 // static
-const char* WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
-                                        SecurityFlags* flags) {
+WiFiSecurity::Mode WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
+                                               SecurityFlags* flags) {
   if (properties.Contains<KeyValueStore>(WPASupplicant::kPropertyRSN)) {
     KeyValueStore rsn_properties =
         properties.Get<KeyValueStore>(WPASupplicant::kPropertyRSN);
@@ -410,21 +411,21 @@ const char* WiFiEndpoint::ParseSecurity(const KeyValueStore& properties,
   }
 
   if (flags->rsn_8021x_wpa3) {
-    return kSecurityWpa3Enterprise;
+    return WiFiSecurity::kWpa3Enterprise;
   } else if (flags->rsn_8021x) {
-    return kSecurityWpa2Enterprise;
+    return WiFiSecurity::kWpa2Enterprise;
   } else if (flags->wpa_8021x) {
-    return kSecurityWpaEnterprise;
+    return WiFiSecurity::kWpaEnterprise;
   } else if (flags->rsn_sae) {
-    return flags->rsn_psk ? kSecurityWpa2Wpa3 : kSecurityWpa3;
+    return flags->rsn_psk ? WiFiSecurity::kWpa2Wpa3 : WiFiSecurity::kWpa3;
   } else if (flags->rsn_psk) {
-    return flags->wpa_psk ? kSecurityWpaWpa2 : kSecurityWpa2;
+    return flags->wpa_psk ? WiFiSecurity::kWpaWpa2 : WiFiSecurity::kWpa2;
   } else if (flags->wpa_psk) {
-    return kSecurityWpa;
+    return WiFiSecurity::kWpa;
   } else if (flags->privacy) {
-    return kSecurityWep;
+    return WiFiSecurity::kWep;
   } else {
-    return kSecurityNone;
+    return WiFiSecurity::kNone;
   }
 }
 

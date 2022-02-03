@@ -1647,8 +1647,9 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
   AdoptProfile(manager(), profile);  // This is now the active profile.
 
   const std::vector<uint8_t> ssid;
-  scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
-      manager(), wifi_provider_, ssid, "", kSecurityNone, false));
+  scoped_refptr<MockWiFiService> service(
+      new NiceMock<MockWiFiService>(manager(), wifi_provider_, ssid, "",
+                                    kSecurityClassNone, WiFiSecurity(), false));
 
   manager()->RegisterService(service);
   service->set_profile(GetEphemeralProfile(manager()));
@@ -1685,8 +1686,9 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
   AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
 
   const std::vector<uint8_t> ssid;
-  scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
-      manager(), wifi_provider_, ssid, "", kSecurityNone, false));
+  scoped_refptr<MockWiFiService> service(
+      new NiceMock<MockWiFiService>(manager(), wifi_provider_, ssid, "",
+                                    kSecurityClassNone, WiFiSecurity(), false));
 
   manager()->RegisterService(service);
   service->set_profile(profile1);
@@ -1724,8 +1726,9 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
   AdoptProfile(manager(), profile0);  // profile0 is now the ActiveProfile.
 
   const std::vector<uint8_t> ssid;
-  scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
-      manager(), wifi_provider_, ssid, "", kSecurityNone, false));
+  scoped_refptr<MockWiFiService> service(
+      new NiceMock<MockWiFiService>(manager(), wifi_provider_, ssid, "",
+                                    kSecurityClassNone, WiFiSecurity(), false));
 
   manager()->RegisterService(service);
   service->set_profile(profile0);
@@ -1763,8 +1766,9 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
   AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
 
   const std::vector<uint8_t> ssid;
-  scoped_refptr<MockWiFiService> service(new NiceMock<MockWiFiService>(
-      manager(), wifi_provider_, ssid, "", kSecurityNone, false));
+  scoped_refptr<MockWiFiService> service(
+      new NiceMock<MockWiFiService>(manager(), wifi_provider_, ssid, "",
+                                    kSecurityClassNone, WiFiSecurity(), false));
 
   service->set_profile(profile1);
 
@@ -1864,7 +1868,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
 
   scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
       manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
-      kSecurityNone, false));
+      kSecurityClassNone, WiFiSecurity(), false));
   ServiceRefPtr mock_service_generic(mock_service.get());
   mock_service->set_profile(profile0);
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
@@ -1936,7 +1940,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
 
   scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
       manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
-      kSecurityNone, false));
+      kSecurityClassNone, WiFiSecurity(), false));
   mock_service->set_profile(profile);
   ServiceRefPtr mock_service_generic(mock_service.get());
 
@@ -1965,7 +1969,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
 
   scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
       manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
-      kSecurityNone, false));
+      kSecurityClassNone, WiFiSecurity(), false));
   mock_service->set_profile(GetEphemeralProfile(manager()));
   ServiceRefPtr mock_service_generic(mock_service.get());
 
@@ -1996,7 +2000,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
 
   scoped_refptr<MockWiFiService> mock_service(new NiceMock<MockWiFiService>(
       manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
-      kSecurityNone, false));
+      kSecurityClassNone, WiFiSecurity(), false));
   manager()->RegisterService(mock_service);
   mock_service->set_profile(profile0);
   ServiceRefPtr mock_service_generic(mock_service.get());
@@ -2033,9 +2037,9 @@ TEST_F(ManagerTest,
       AddNamedMockProfileToManager(manager(), kProfileName1));
 
   scoped_refptr<MockWiFiService> matching_service(
-      new StrictMock<MockWiFiService>(manager(), wifi_provider_,
-                                      std::vector<uint8_t>(), kModeManaged,
-                                      kSecurityNone, false));
+      new StrictMock<MockWiFiService>(
+          manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
+          kSecurityClassNone, WiFiSecurity(), false));
   matching_service->set_profile(profile1);
 
   // We need to get rid of our reference to this mock service as soon
@@ -2045,7 +2049,7 @@ TEST_F(ManagerTest,
   // unit tests.
   temp_mock_service_ = new NiceMock<MockWiFiService>(
       manager(), wifi_provider_, std::vector<uint8_t>(), kModeManaged,
-      kSecurityNone, false);
+      kSecurityClassNone, WiFiSecurity(), false);
 
   // Only hold a pointer here so we don't affect the refcount.
   MockWiFiService* mock_service_ptr = temp_mock_service_.get();

@@ -72,7 +72,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
     return args;
   }
 
-  const char* ParseSecurity(const KeyValueStore& properties) {
+  WiFiSecurity ParseSecurity(const KeyValueStore& properties) {
     WiFiEndpoint::SecurityFlags security_flags;
     return WiFiEndpoint::ParseSecurity(properties, &security_flags);
   }
@@ -222,44 +222,44 @@ TEST_F(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK) {
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSN802_1x) {
-  EXPECT_STREQ(kSecurityWpa3Enterprise,
-               ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-suite-b")));
-  EXPECT_STREQ(kSecurityWpa3Enterprise,
-               ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-suite-b-192")));
-  EXPECT_STREQ(kSecurityWpa2Enterprise,
-               ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap")));
-  EXPECT_STREQ(kSecurityWpa3Enterprise,
-               ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-sha256")));
-  EXPECT_STREQ(kSecurityWpa2Enterprise,
-               ParseSecurity(MakeSecurityArgs("RSN", "wpa-ft-eap")));
+  EXPECT_EQ(WiFiSecurity::kWpa3Enterprise,
+            ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-suite-b")));
+  EXPECT_EQ(WiFiSecurity::kWpa3Enterprise,
+            ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-suite-b-192")));
+  EXPECT_EQ(WiFiSecurity::kWpa2Enterprise,
+            ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap")));
+  EXPECT_EQ(WiFiSecurity::kWpa3Enterprise,
+            ParseSecurity(MakeSecurityArgs("RSN", "wpa-eap-sha256")));
+  EXPECT_EQ(WiFiSecurity::kWpa2Enterprise,
+            ParseSecurity(MakeSecurityArgs("RSN", "wpa-ft-eap")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWPA802_1x) {
-  EXPECT_STREQ(kSecurityWpaEnterprise,
-               ParseSecurity(MakeSecurityArgs("WPA", "something-eap")));
+  EXPECT_EQ(WiFiSecurity::kWpaEnterprise,
+            ParseSecurity(MakeSecurityArgs("WPA", "something-eap")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSNSAE) {
-  EXPECT_STREQ(kSecurityWpa3, ParseSecurity(MakeSecurityArgs("RSN", "sae")));
+  EXPECT_EQ(WiFiSecurity::kWpa3, ParseSecurity(MakeSecurityArgs("RSN", "sae")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityRSNPSK) {
-  EXPECT_STREQ(kSecurityWpa2,
-               ParseSecurity(MakeSecurityArgs("RSN", "something-psk")));
+  EXPECT_EQ(WiFiSecurity::kWpa2,
+            ParseSecurity(MakeSecurityArgs("RSN", "something-psk")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWPAPSK) {
-  EXPECT_STREQ(kSecurityWpa,
-               ParseSecurity(MakeSecurityArgs("WPA", "something-psk")));
+  EXPECT_EQ(WiFiSecurity::kWpa,
+            ParseSecurity(MakeSecurityArgs("WPA", "something-psk")));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityWEP) {
-  EXPECT_STREQ(kSecurityWep, ParseSecurity(MakePrivacyArgs(true)));
+  EXPECT_EQ(WiFiSecurity::kWep, ParseSecurity(MakePrivacyArgs(true)));
 }
 
 TEST_F(WiFiEndpointTest, ParseSecurityNone) {
   KeyValueStore top_params;
-  EXPECT_STREQ(kSecurityNone, ParseSecurity(top_params));
+  EXPECT_EQ(WiFiSecurity::kNone, ParseSecurity(top_params));
 }
 
 TEST_F(WiFiEndpointTest, SSIDAndBSSIDString) {
@@ -804,12 +804,12 @@ TEST_F(WiFiEndpointTest, PropertiesChangedNone) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
   EXPECT_EQ(kModeManaged, endpoint->network_mode());
-  EXPECT_EQ(kSecurityNone, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kNone, endpoint->security_mode());
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   KeyValueStore no_changed_properties;
   endpoint->PropertiesChanged(no_changed_properties);
   EXPECT_EQ(kModeManaged, endpoint->network_mode());
-  EXPECT_EQ(kSecurityNone, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kNone, endpoint->security_mode());
 }
 
 TEST_F(WiFiEndpointTest, PropertiesChangedStrength) {
@@ -858,58 +858,58 @@ TEST_F(WiFiEndpointTest, PropertiesChangedFrequency) {
 TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
-  EXPECT_EQ(kSecurityNone, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kNone, endpoint->security_mode());
 
   // Upgrade to WEP if privacy flag is added.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(MakePrivacyArgs(true));
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurityWep, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kWep, endpoint->security_mode());
 
   // Make sure we don't downgrade if no interesting arguments arrive.
   KeyValueStore no_changed_properties;
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(no_changed_properties);
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurityWep, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kWep, endpoint->security_mode());
 
   // Another upgrade to 802.1x.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(MakeSecurityArgs("RSN", "something-eap"));
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurityWpa2Enterprise, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kWpa2Enterprise, endpoint->security_mode());
 
   // Add WPA-PSK, however this is trumped by RSN 802.1x above, so we don't
   // change our security nor do we notify anyone.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(MakeSecurityArgs("WPA", "something-psk"));
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurityWpa2Enterprise, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kWpa2Enterprise, endpoint->security_mode());
 
   // If nothing changes, we should stay the same.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
   endpoint->PropertiesChanged(no_changed_properties);
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurityWpa2Enterprise, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kWpa2Enterprise, endpoint->security_mode());
 
   // However, if the BSS updates to no longer support 802.1x, we degrade
   // to WPA.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(MakeSecurityArgs("RSN", ""));
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurityWpa, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kWpa, endpoint->security_mode());
 
   // Losing WPA brings us back to WEP (since the privacy flag hasn't changed).
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(MakeSecurityArgs("WPA", ""));
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurityWep, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kWep, endpoint->security_mode());
 
   // From WEP to open security.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(1);
   endpoint->PropertiesChanged(MakePrivacyArgs(false));
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_EQ(kSecurityNone, endpoint->security_mode());
+  EXPECT_EQ(WiFiSecurity::kNone, endpoint->security_mode());
 }
 
 TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {

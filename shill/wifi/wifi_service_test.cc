@@ -134,11 +134,16 @@ class WiFiServiceTest : public PropertyStoreTest {
                                     const std::string& ssid) {
     const std::vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
     return new WiFiService(manager(), &provider_, ssid_bytes, kModeManaged,
-                           security_class, false);
+                           security_class, WiFiSecurity(), false);
   }
   WiFiServiceRefPtr MakeSimpleService(const std::string& security_class) {
     return new WiFiService(manager(), &provider_, simple_ssid_, kModeManaged,
-                           security_class, false);
+                           security_class, WiFiSecurity(), false);
+  }
+  WiFiServiceRefPtr MakeSimpleService(const WiFiSecurity& security) {
+    return new WiFiService(manager(), &provider_, simple_ssid_, kModeManaged,
+                           WiFiService::ComputeSecurityClass(security),
+                           security, false);
   }
   void SetWiFi(WiFiServiceRefPtr service, WiFiRefPtr wifi) {
     service->SetWiFi(wifi);  // Has side-effects.
@@ -146,8 +151,12 @@ class WiFiServiceTest : public PropertyStoreTest {
   void SetWiFiForService(WiFiServiceRefPtr service, WiFiRefPtr wifi) {
     service->wifi_ = wifi;
   }
-  WiFiServiceRefPtr MakeServiceWithWiFi(const std::string& security_class) {
-    WiFiServiceRefPtr service = MakeSimpleService(security_class);
+  WiFiServiceRefPtr MakeServiceWithWiFi(
+      const std::string& security_class,
+      WiFiSecurity security = WiFiSecurity()) {
+    WiFiServiceRefPtr service = security.IsValid()
+                                    ? MakeSimpleService(security)
+                                    : MakeSimpleService(security_class);
     SetWiFiForService(service, wifi_);
     scoped_refptr<MockProfile> mock_profile(
         new NiceMock<MockProfile>(manager()));
@@ -156,7 +165,8 @@ class WiFiServiceTest : public PropertyStoreTest {
   }
   WiFiServiceRefPtr MakeServiceWithMockManager() {
     return new WiFiService(&mock_manager_, &provider_, simple_ssid_,
-                           kModeManaged, kSecurityClassNone, false);
+                           kModeManaged, kSecurityClassNone, WiFiSecurity(),
+                           false);
   }
   scoped_refptr<MockWiFi> MakeSimpleWiFi(const std::string& link_name) {
     return new NiceMock<MockWiFi>(manager(), link_name, fake_mac, 0,
@@ -214,35 +224,46 @@ const char WiFiServiceTest::fake_mac[] = "AaBBcCDDeeFF";
 void SetWiFiProperties(FakeStore* store,
                        const std::string& id,
                        const std::vector<uint8_t>& ssid,
-                       const std::string& security_class) {
+                       const std::string& security_class,
+                       WiFiSecurity security = {}) {
   auto hex_ssid = base::HexEncode(ssid.data(), ssid.size());
   store->SetString(id, WiFiService::kStorageType, kTypeWifi);
   store->SetString(id, WiFiService::kStorageSSID, hex_ssid);
   store->SetString(id, WiFiService::kStorageSecurityClass, security_class);
+  store->SetString(id, WiFiService::kStorageSecurity, security.ToString());
   store->SetString(id, WiFiService::kStorageMode, kModeManaged);
 }
 
 class WiFiServiceSecurityTest : public WiFiServiceTest {
  public:
   // Create a service with a secured endpoint.
-  WiFiServiceRefPtr SetupSecureService(const std::string& security) {
-    auto security_class = WiFiService::ComputeSecurityClass(security);
+  WiFiServiceRefPtr SetupSecureService(const std::string& sec) {
+    WiFiSecurity security(sec);
+    std::string security_class;
+
+    if (security.IsValid()) {
+      security_class = WiFiService::ComputeSecurityClass(security);
+    } else {
+      EXPECT_TRUE(WiFiService::IsValidSecurityClass(sec))
+          << "Invalid security: " << sec;
+      security_class = sec;
+    }
     WiFiServiceRefPtr service = MakeSimpleService(security_class);
 
     // For security classes, we don't need an endpoint.
-    if (security == security_class)
+    if (sec == security_class)
       return service;
 
     // For others, we need an endpoint to help specialize the Service.
     WiFiEndpoint::SecurityFlags flags;
-    if (security == kSecurityWpa) {
+    if (security == WiFiSecurity::kWpa) {
       flags.wpa_psk = true;
-    } else if (security == kSecurityWpa2) {
+    } else if (security == WiFiSecurity::kWpa2) {
       flags.rsn_psk = true;
-    } else if (security == kSecurityWpa3) {
+    } else if (security == WiFiSecurity::kWpa3) {
       flags.rsn_sae = true;
     } else {
-      EXPECT_TRUE(false) << security;
+      EXPECT_TRUE(false) << sec;
       return nullptr;
     }
     WiFiEndpointRefPtr endpoint =
@@ -273,7 +294,7 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
     FakeStore store;
     const std::string kStorageId = "storage_id";
     SetWiFiProperties(&store, kStorageId, wifi_service->ssid(),
-                      storage_security_class);
+                      storage_security_class, wifi_service->security());
     bool is_loadable = wifi_service->IsLoadableFrom(store);
     EXPECT_EQ(expectation, is_loadable);
     bool is_loaded = wifi_service->Load(&store);
@@ -406,8 +427,9 @@ TEST_F(WiFiServiceTest, PassphraseSetPropertyOpenNetwork) {
 
 TEST_F(WiFiServiceTest, NonUTF8SSID) {
   std::vector<uint8_t> ssid = {0xff};  // not a valid UTF-8 byte-sequence
-  WiFiServiceRefPtr wifi_service = new WiFiService(
-      manager(), provider(), ssid, kModeManaged, kSecurityClassNone, false);
+  WiFiServiceRefPtr wifi_service =
+      new WiFiService(manager(), provider(), ssid, kModeManaged,
+                      kSecurityClassNone, WiFiSecurity(), false);
   brillo::VariantDictionary properties;
   // if service doesn't propertly sanitize SSID, this will generate SIGABRT.
   EXPECT_TRUE(wifi_service->store().GetProperties(&properties, nullptr));
@@ -845,11 +867,12 @@ TEST_F(WiFiServiceSecurityTest, EndpointsDisappear) {
   WiFiEndpointRefPtr endpoint =
       MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
   service->AddEndpoint(endpoint);
-  EXPECT_EQ(kSecurityWpa2, service->security());
+  EXPECT_EQ(WiFiSecurity::kWpa2, service->security());
   EXPECT_EQ(kSecurityClassPsk, service->security_class());
 
   service->RemoveEndpoint(endpoint);
-  EXPECT_EQ(kSecurityClassPsk, service->security());
+  // Security is sticky.
+  EXPECT_EQ(WiFiSecurity::kWpa2, service->security());
   EXPECT_EQ(kSecurityClassPsk, service->security_class());
 }
 
@@ -1049,7 +1072,6 @@ TEST_F(WiFiServiceTest, ConfigureRedundantProperties) {
   KeyValueStore args;
   args.Set<std::string>(kTypeProperty, kTypeWifi);
   args.Set<std::string>(kSSIDProperty, simple_ssid_string());
-  args.Set<std::string>(kSecurityProperty, kSecurityNone);
   args.Set<std::string>(kWifiHexSsid,
                         "This is ignored even if it is invalid hex.");
   const std::string kGUID = "aguid";
@@ -1172,12 +1194,12 @@ TEST_F(WiFiServiceTest, Connectable) {
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(endpoint);
-    EXPECT_EQ(service->security(), kSecurityWpa3);
+    EXPECT_EQ(service->security(), WiFiSecurity::kWpa3);
     // WPA3-only; match device support.
     EXPECT_EQ(wifi()->SupportsWPA3(), service->connectable());
     // Switch to transitional mode - if we only have WPA3 endpoints then we
     // should still match device support for WPA3.
-    service->security_ = kSecurityWpa2Wpa3;
+    service->security_ = WiFiSecurity::kWpa2Wpa3;
     EXPECT_EQ(wifi()->SupportsWPA3(), service->connectable());
   }
 }
@@ -1247,8 +1269,8 @@ TEST_F(WiFiServiceTest, PreferWPA2OverWPA) {
   service0->AddEndpoint(rsn_endpoint);
   service1->AddEndpoint(wpa_endpoint);
 
-  EXPECT_EQ(kSecurityWpa2, service0->security());
-  EXPECT_EQ(kSecurityWpa, service1->security());
+  EXPECT_EQ(WiFiSecurity::kWpa2, service0->security());
+  EXPECT_EQ(WiFiSecurity::kWpa, service1->security());
 
   const auto& ret =
       Service::Compare(service0, service1, false, std::vector<Technology>());
@@ -1600,22 +1622,20 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
 }
 
 TEST_F(WiFiServiceTest, ComputeSecurityClass) {
-  for (auto& security : {kSecurityClassNone, kSecurityClassWep,
-                         kSecurityClassPsk, kSecurityClass8021x}) {
-    EXPECT_EQ(WiFiService::ComputeSecurityClass(security), security);
-  }
-  EXPECT_EQ(WiFiService::ComputeSecurityClass(kSecurityNone),
+  EXPECT_EQ(WiFiService::ComputeSecurityClass(WiFiSecurity::kNone),
             kSecurityClassNone);
-  EXPECT_EQ(WiFiService::ComputeSecurityClass(kSecurityWep), kSecurityClassWep);
-  for (auto& security : {kSecurityWpa, kSecurityWpaWpa2, kSecurityWpaAll,
-                         kSecurityWpa2, kSecurityWpa2Wpa3, kSecurityWpa3}) {
-    EXPECT_EQ(WiFiService::ComputeSecurityClass(security), kSecurityClassPsk);
+  EXPECT_EQ(WiFiService::ComputeSecurityClass(WiFiSecurity::kWep),
+            kSecurityClassWep);
+  for (auto mode :
+       {WiFiSecurity::kWpa, WiFiSecurity::kWpaWpa2, WiFiSecurity::kWpaAll,
+        WiFiSecurity::kWpa2, WiFiSecurity::kWpa2Wpa3, WiFiSecurity::kWpa3}) {
+    EXPECT_EQ(WiFiService::ComputeSecurityClass(mode), kSecurityClassPsk);
   }
-  for (auto& security :
-       {kSecurityWpaEnterprise, kSecurityWpaWpa2Enterprise,
-        kSecurityWpaAllEnterprise, kSecurityWpa2Enterprise,
-        kSecurityWpa2Wpa3Enterprise, kSecurityWpa3Enterprise}) {
-    EXPECT_EQ(WiFiService::ComputeSecurityClass(security), kSecurityClass8021x);
+  for (auto mode :
+       {WiFiSecurity::kWpaEnterprise, WiFiSecurity::kWpaWpa2Enterprise,
+        WiFiSecurity::kWpaAllEnterprise, WiFiSecurity::kWpa2Enterprise,
+        WiFiSecurity::kWpa2Wpa3Enterprise, WiFiSecurity::kWpa3Enterprise}) {
+    EXPECT_EQ(WiFiService::ComputeSecurityClass(mode), kSecurityClass8021x);
   }
 }
 
@@ -1625,17 +1645,18 @@ TEST_F(WiFiServiceTest, Is8021x) {
   service = MakeSimpleService(kSecurityClassWep);
   EXPECT_FALSE(service->Is8021x());
   service = MakeSimpleService(kSecurityClassPsk);
-  for (auto& security : {kSecurityWpa, kSecurityWpaWpa2, kSecurityWpaAll,
-                         kSecurityWpa2, kSecurityWpa2Wpa3, kSecurityWpa3}) {
-    service->security_ = security;
+  for (auto mode :
+       {WiFiSecurity::kWpa, WiFiSecurity::kWpaWpa2, WiFiSecurity::kWpaAll,
+        WiFiSecurity::kWpa2, WiFiSecurity::kWpa2Wpa3, WiFiSecurity::kWpa3}) {
+    service->security_ = mode;
     EXPECT_FALSE(service->Is8021x());
   }
   service = MakeSimpleService(kSecurityClass8021x);
-  for (auto& security :
-       {kSecurityWpaEnterprise, kSecurityWpaWpa2Enterprise,
-        kSecurityWpaAllEnterprise, kSecurityWpa2Enterprise,
-        kSecurityWpa2Wpa3Enterprise, kSecurityWpa3Enterprise}) {
-    service->security_ = security;
+  for (auto mode :
+       {WiFiSecurity::kWpaEnterprise, WiFiSecurity::kWpaWpa2Enterprise,
+        WiFiSecurity::kWpaAllEnterprise, WiFiSecurity::kWpa2Enterprise,
+        WiFiSecurity::kWpa2Wpa3Enterprise, WiFiSecurity::kWpa3Enterprise}) {
+    service->security_ = mode;
     EXPECT_TRUE(service->Is8021x());
   }
 }
@@ -1667,7 +1688,7 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(endpoint);
-    EXPECT_EQ(kSecurityWpa, service->security());
+    EXPECT_EQ(WiFiSecurity::kWpa, service->security());
     EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
@@ -1683,9 +1704,9 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiEndpointRefPtr endpoint2 =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(endpoint2);
+    EXPECT_EQ(WiFiSecurity::kWpaWpa2, service->security());
     // Service in WPA/WPA2 mixed mode with a pure WPA endpoint should stick to
     // RC4 algorithm.
-    service->security_ = kSecurityWpaWpa2;
     EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
@@ -1697,9 +1718,9 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(endpoint);
-    EXPECT_EQ(kSecurityWpa2, service->security());
+    EXPECT_EQ(WiFiSecurity::kWpa2, service->security());
     // Downgrade to mixed mode.
-    service->security_ = kSecurityWpaWpa2;
+    service->security_ = WiFiSecurity::kWpaWpa2;
     // Service in WPA/WPA2 mixed mode but without any pure WPA endpoint should
     // switch to AES algorithm.
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
@@ -1713,7 +1734,7 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(endpoint);
-    EXPECT_EQ(kSecurityWpa2, service->security());
+    EXPECT_EQ(WiFiSecurity::kWpa2, service->security());
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
@@ -1726,7 +1747,7 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(endpoint);
-    EXPECT_EQ(kSecurityWpa2Wpa3, service->security());
+    EXPECT_EQ(WiFiSecurity::kWpa2Wpa3, service->security());
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
@@ -1738,7 +1759,7 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(endpoint);
-    EXPECT_EQ(kSecurityWpa3, service->security());
+    EXPECT_EQ(WiFiSecurity::kWpa3, service->security());
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
     EXPECT_FALSE(service->endpoint_auth());
@@ -2189,7 +2210,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPersistentPolicy) {
   auto clock_ptr = std::make_unique<base::SimpleTestClock>();
   base::SimpleTestClock* clock = clock_ptr.get();
   wifi_service->clock_ = std::move(clock_ptr);
-  wifi_service->security_ = kSecurityClassPsk;
+  wifi_service->security_ = WiFiSecurity::kWpaWpa2;
   wifi_service->was_portal_detected_ = 1;
   Error ret;
 
@@ -2216,7 +2237,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPersistentPolicy) {
   EXPECT_FALSE(mac.mac.empty());
   EXPECT_FALSE(mac.update);
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
-  wifi_service->security_ = kSecurityNone;
+  wifi_service->security_ = WiFiSecurity::kNone;
   clock->Advance(MACAddress::kDefaultExpirationTime + base::Seconds(1));
   mac = wifi_service->UpdateMACAddress();
   EXPECT_FALSE(mac.mac.empty());
@@ -2247,7 +2268,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   auto clock_ptr = std::make_unique<base::SimpleTestClock>();
   base::SimpleTestClock* clock = clock_ptr.get();
   wifi_service->clock_ = std::move(clock_ptr);
-  wifi_service->security_ = kSecurityClassPsk;
+  wifi_service->security_ = WiFiSecurity::kWpaWpa2;
   wifi_service->was_portal_detected_ = 1;
   Error ret;
 

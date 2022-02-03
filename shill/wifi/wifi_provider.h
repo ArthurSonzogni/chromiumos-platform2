@@ -22,6 +22,7 @@ class Manager;
 class Metrics;
 class WiFiEndpoint;
 class WiFiService;
+class WiFiSecurity;
 
 // The WiFi Provider is the holder of all WiFi Services.  It holds both
 // visible (created due to an Endpoint becoming visible) and invisible
@@ -172,14 +173,14 @@ class WiFiProvider : public ProviderInterface {
   WiFiServiceRefPtr AddService(const std::vector<uint8_t>& ssid,
                                const std::string& mode,
                                const std::string& security_class,
+                               const WiFiSecurity& security,
                                bool is_hidden);
 
   // Find a service given its properties.
-  // |security| can be either a security class, or a security (security class
-  // is a subset of security).
   WiFiServiceRefPtr FindService(const std::vector<uint8_t>& ssid,
                                 const std::string& mode,
-                                const std::string& security) const;
+                                const std::string& security_class,
+                                const WiFiSecurity& security) const;
 
   // Returns a WiFiServiceRefPtr for unit tests and for down-casting to a
   // ServiceRefPtr in GetService().

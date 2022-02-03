@@ -21,6 +21,7 @@ class MockWiFiService : public WiFiService {
                   const std::vector<uint8_t>& ssid,
                   const std::string& mode,
                   const std::string& security_class,
+                  const WiFiSecurity& security,
                   bool hidden_ssid);
   MockWiFiService(const MockWiFiService&) = delete;
   MockWiFiService& operator=(const MockWiFiService&) = delete;

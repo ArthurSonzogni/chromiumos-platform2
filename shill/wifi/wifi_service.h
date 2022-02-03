@@ -24,6 +24,7 @@
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
+#include "shill/wifi/wifi_security.h"
 
 namespace shill {
 
@@ -41,6 +42,7 @@ class WiFiService : public Service {
   static const char kStorageHiddenSSID[];
   static const char kStorageMode[];
   static const char kStorageSecurityClass[];
+  static const char kStorageSecurity[];
   static const char kStorageSSID[];
   static const char kStoragePasspointCredentials[];
   static const char kStoragePasspointMatchPriority[];
@@ -73,11 +75,24 @@ class WiFiService : public Service {
     NonPersistentRandom,
   };
 
+  // Constructor of the WiFi service.  Parameters are:
+  // |provider| - service provider,
+  // |ssid| - network name/id,
+  // |mode| - mode of the network (currently no ad-hoc is supported so this
+  //     should be "managed"),
+  // |security_class| - SecurityClass property (see doc/service-api.txt for more
+  //     information),
+  // |security| - non-empty if more finegrained security setting is known at the
+  //     creation time (see doc/service-api.txt for more information), security
+  //     class computed from this argument should agree with |security_class|,
+  // |hidden| - true if the network is hidden (name not announced in the
+  //     beacon).
   WiFiService(Manager* manager,
               WiFiProvider* provider,
               const std::vector<uint8_t>& ssid,
               const std::string& mode,
               const std::string& security_class,
+              const WiFiSecurity& security,
               bool hidden_ssid);
   WiFiService(const WiFiService&) = delete;
   WiFiService& operator=(const WiFiService&) = delete;
@@ -105,9 +120,6 @@ class WiFiService : public Service {
   // Validate |mode| against all valid and supported service modes.
   static bool IsValidMode(const std::string& mode);
 
-  // Validate |method| against all valid and supported security methods.
-  static bool IsValidSecurityMethod(const std::string& method);
-
   // Validate |security_class| against all valid and supported
   // security classes.
   static bool IsValidSecurityClass(const std::string& security_class);
@@ -121,8 +133,8 @@ class WiFiService : public Service {
   }
   uint16_t physical_mode() const { return physical_mode_; }
   uint16_t frequency() const { return frequency_; }
-  const std::string& security() const { return security_; }
-  std::string security_class() const { return ComputeSecurityClass(security_); }
+  const WiFiSecurity& security() const { return security_; }
+  const std::string& security_class() const { return security_class_; }
 
   TetheringState GetTethering() const override;
 
@@ -157,7 +169,8 @@ class WiFiService : public Service {
 
   mockable bool HasEndpoints() const { return !endpoints_.empty(); }
   bool IsVisible() const override;
-  bool IsSecurityMatch(const std::string& security) const;
+  bool IsSecurityMatch(WiFiSecurity::Mode mode) const;
+  bool IsSecurityMatch(const std::string& security_class) const;
 
   // Used by WiFi objects to indicate that the credentials for this network
   // have been called into question.  This method returns true if given this
@@ -203,9 +216,9 @@ class WiFiService : public Service {
   // Called by WiFi to retrieve configuration parameters for wpa_supplicant.
   mockable KeyValueStore GetSupplicantConfigurationParameters() const;
 
-  // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
+  // "wpa", "wpa2" and "wpa3" are equivalent from a configuration perspective.
   // This function maps them all into "psk".
-  static std::string ComputeSecurityClass(const std::string& security);
+  static std::string ComputeSecurityClass(const WiFiSecurity& security);
 
   bool IsAutoConnectable(const char** reason) const override;
 
@@ -354,6 +367,9 @@ class WiFiService : public Service {
 
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
 
+  // Helper function used in constructor mainly to configure key management.
+  void SetSecurityProperties();
+
   // Wrapper for |WiFiService::SignalLevel()| to register it in
   // |Service::store_|.
   int32_t GetSignalLevel(Error* error);
@@ -459,10 +475,12 @@ class WiFiService : public Service {
   // Properties
   std::string passphrase_;
   bool need_passphrase_;
-  // The current security mode. May be updated based on detected BSS.
-  // TODO(b/157935328): consider factoring this out into a class, to hide some
-  // of the overlap (but not identical) nature of Security and SecurityClass.
-  std::string security_;
+  // The security class.
+  const std::string security_class_;
+  // The security mode. This may not always be known at construction (e.g.,
+  // when loaded from Profile storage), as we previously only tracked the
+  // SecurityClass.
+  WiFiSecurity security_;
   // TODO(cmasone): see if the below can be pulled from the endpoint associated
   // with this service instead.
   const std::string mode_;
@@ -494,8 +512,9 @@ class WiFiService : public Service {
   Stringmap vendor_information_;
   // The country code reported by the current endpoint.
   std::string country_code_;
-  // If |security_| == kSecurity8021x, the crypto algorithm being used.
-  // (Otherwise, crypto algorithm is implied by |security_|.)
+  // If |security_class_| == kSecurityClass8021x, the crypto algorithm being
+  // used. (Otherwise, crypto algorithm is implied by
+  // |security_|/|security_class_|.)
   CryptoAlgorithm cipher_8021x_;
 
   // Track the number of consecutive times our current credentials have

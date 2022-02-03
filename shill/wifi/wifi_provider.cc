@@ -17,7 +17,6 @@
 #include <base/check_op.h>
 #include <base/containers/contains.h>
 #include <base/format_macros.h>
-#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -36,6 +35,7 @@
 #include "shill/technology.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
+#include "shill/wifi/wifi_security.h"
 #include "shill/wifi/wifi_service.h"
 
 namespace shill {
@@ -72,6 +72,7 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
                                   std::vector<uint8_t>* ssid_bytes,
                                   std::string* mode,
                                   std::string* security_class,
+                                  WiFiSecurity* security,
                                   bool* hidden_ssid,
                                   Error* error) {
   CHECK_EQ(args.Lookup<std::string>(kTypeProperty, ""), kTypeWifi);
@@ -112,10 +113,16 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
     return false;
   }
 
+  WiFiSecurity security_test;
   if (args.Contains<std::string>(kSecurityProperty)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Unexpected Security property");
-    return false;
+    security_test =
+        WiFiSecurity(args.Lookup<std::string>(kSecurityProperty, ""));
+    if (!security_test.IsValid()) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "Invalid Security property");
+      return false;
+    }
+    // Assignment below, after checking against SecurityClass.
   }
 
   const std::string kDefaultSecurity = kSecurityNone;
@@ -127,11 +134,21 @@ bool GetServiceParametersFromArgs(const KeyValueStore& args,
                             kManagerErrorInvalidSecurityClass);
       return false;
     }
+    if (security_test.IsValid() &&
+        security_test.SecurityClass() != security_class_test) {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "Mismatch between Security and SecurityClass");
+      return false;
+    }
     *security_class = security_class_test;
   } else {
-    *security_class = kDefaultSecurity;
+    *security_class = security_test.IsValid() ? security_test.SecurityClass()
+                                              : kDefaultSecurity;
   }
 
+  if (security_test.IsValid()) {
+    *security = security_test;
+  }
   *ssid_bytes = ssid;
   *mode = mode_test;
 
@@ -150,6 +167,7 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
                                      std::vector<uint8_t>* ssid_bytes,
                                      std::string* mode,
                                      std::string* security_class,
+                                     WiFiSecurity* security,
                                      bool* hidden_ssid,
                                      Error* error) {
   // Verify service type.
@@ -174,6 +192,19 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Network mode not specified");
     return false;
+  }
+
+  std::string store_security;
+  if (storage->GetString(entry_name, WiFiService::kStorageSecurity,
+                         &store_security)) {
+    WiFiSecurity sec(store_security);
+    if (sec.IsValid()) {
+      *security = sec;
+    } else {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                            "Unspecified or invalid security");
+      return false;
+    }
   }
 
   if (!storage->GetString(entry_name, WiFiService::kStorageSecurityClass,
@@ -226,14 +257,15 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
     std::vector<uint8_t> ssid_bytes;
     std::string network_mode;
     std::string security_class;
+    WiFiSecurity security;
     bool is_hidden = false;
     if (!GetServiceParametersFromStorage(storage, group, &ssid_bytes,
                                          &network_mode, &security_class,
-                                         &is_hidden, nullptr)) {
+                                         &security, &is_hidden, nullptr)) {
       continue;
     }
 
-    if (FindService(ssid_bytes, network_mode, security_class)) {
+    if (FindService(ssid_bytes, network_mode, security_class, security)) {
       // If service already exists, we have nothing to do, since the
       // service has already loaded its configuration from storage.
       // This is guaranteed to happen in the single case where
@@ -242,7 +274,13 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
       continue;
     }
 
-    AddService(ssid_bytes, network_mode, security_class, is_hidden);
+    // If we have stored Security then it is "sacrosanct", we can't
+    // change it freely so we freeze it.
+    if (security.IsValid()) {
+      security.Freeze();
+    }
+
+    AddService(ssid_bytes, network_mode, security_class, security, is_hidden);
 
     // By registering the service in AddService, the rest of the configuration
     // will be loaded from the profile into the service via ConfigureService().
@@ -276,14 +314,15 @@ ServiceRefPtr WiFiProvider::FindSimilarService(const KeyValueStore& args,
   std::vector<uint8_t> ssid;
   std::string mode;
   std::string security_class;
+  WiFiSecurity security;
   bool hidden_ssid;
 
   if (!GetServiceParametersFromArgs(args, &ssid, &mode, &security_class,
-                                    &hidden_ssid, error)) {
+                                    &security, &hidden_ssid, error)) {
     return nullptr;
   }
 
-  WiFiServiceRefPtr service(FindService(ssid, mode, security_class));
+  WiFiServiceRefPtr service(FindService(ssid, mode, security_class, security));
   if (!service) {
     error->Populate(Error::kNotFound, Error::kServiceNotFoundMsg, FROM_HERE);
   }
@@ -296,14 +335,15 @@ ServiceRefPtr WiFiProvider::CreateTemporaryService(const KeyValueStore& args,
   std::vector<uint8_t> ssid;
   std::string mode;
   std::string security_class;
+  WiFiSecurity security;
   bool hidden_ssid;
 
   if (!GetServiceParametersFromArgs(args, &ssid, &mode, &security_class,
-                                    &hidden_ssid, error)) {
+                                    &security, &hidden_ssid, error)) {
     return nullptr;
   }
 
-  return new WiFiService(manager_, this, ssid, mode, security_class,
+  return new WiFiService(manager_, this, ssid, mode, security_class, security,
                          hidden_ssid);
 }
 
@@ -312,13 +352,14 @@ ServiceRefPtr WiFiProvider::CreateTemporaryServiceFromProfile(
   std::vector<uint8_t> ssid;
   std::string mode;
   std::string security_class;
+  WiFiSecurity security;
   bool hidden_ssid;
   if (!GetServiceParametersFromStorage(profile->GetConstStorage(), entry_name,
-                                       &ssid, &mode, &security_class,
+                                       &ssid, &mode, &security_class, &security,
                                        &hidden_ssid, error)) {
     return nullptr;
   }
-  return new WiFiService(manager_, this, ssid, mode, security_class,
+  return new WiFiService(manager_, this, ssid, mode, security_class, security,
                          hidden_ssid);
 }
 
@@ -332,16 +373,24 @@ WiFiServiceRefPtr WiFiProvider::GetWiFiService(const KeyValueStore& args,
   std::vector<uint8_t> ssid_bytes;
   std::string mode;
   std::string security_class;
+  WiFiSecurity security;
   bool hidden_ssid;
 
   if (!GetServiceParametersFromArgs(args, &ssid_bytes, &mode, &security_class,
-                                    &hidden_ssid, error)) {
+                                    &security, &hidden_ssid, error)) {
     return nullptr;
   }
 
-  WiFiServiceRefPtr service(FindService(ssid_bytes, mode, security_class));
+  WiFiServiceRefPtr service(
+      FindService(ssid_bytes, mode, security_class, security));
   if (!service) {
-    service = AddService(ssid_bytes, mode, security_class, hidden_ssid);
+    if (security.IsValid()) {
+      // We are called with key/value args obtained via DBus.  For this case
+      // if we get Security property then it is "fixed".
+      security.Freeze();
+    }
+    service =
+        AddService(ssid_bytes, mode, security_class, security, hidden_ssid);
   }
 
   return service;
@@ -361,14 +410,17 @@ bool WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
     return false;
   }
 
-  WiFiServiceRefPtr service = FindService(
-      endpoint->ssid(), endpoint->network_mode(), endpoint->security_mode());
+  auto security_class =
+      WiFiService::ComputeSecurityClass(endpoint->security_mode());
+
+  WiFiServiceRefPtr service =
+      FindService(endpoint->ssid(), endpoint->network_mode(), security_class,
+                  endpoint->security_mode());
   if (!service) {
     const bool hidden_ssid = false;
     service =
-        AddService(endpoint->ssid(), endpoint->network_mode(),
-                   WiFiService::ComputeSecurityClass(endpoint->security_mode()),
-                   hidden_ssid);
+        AddService(endpoint->ssid(), endpoint->network_mode(), security_class,
+                   endpoint->security_mode(), hidden_ssid);
   }
 
   std::string asgn_endpoint_log = base::StringPrintf(
@@ -491,22 +543,34 @@ void WiFiProvider::SortServices() {
 WiFiServiceRefPtr WiFiProvider::AddService(const std::vector<uint8_t>& ssid,
                                            const std::string& mode,
                                            const std::string& security_class,
+                                           const WiFiSecurity& security,
                                            bool is_hidden) {
-  WiFiServiceRefPtr service =
-      new WiFiService(manager_, this, ssid, mode, security_class, is_hidden);
+  WiFiServiceRefPtr service = new WiFiService(
+      manager_, this, ssid, mode, security_class, security, is_hidden);
 
   services_.push_back(service);
   manager_->RegisterService(service);
   return service;
 }
 
-WiFiServiceRefPtr WiFiProvider::FindService(const std::vector<uint8_t>& ssid,
-                                            const std::string& mode,
-                                            const std::string& security) const {
-  for (const auto& service : services_) {
-    if (service->ssid() == ssid && service->mode() == mode &&
-        service->IsSecurityMatch(security)) {
-      return service;
+WiFiServiceRefPtr WiFiProvider::FindService(
+    const std::vector<uint8_t>& ssid,
+    const std::string& mode,
+    const std::string& security_class,
+    const WiFiSecurity& security) const {
+  if (security.IsValid()) {
+    for (const auto& service : services_) {
+      if (service->ssid() == ssid && service->mode() == mode &&
+          service->IsSecurityMatch(security.mode())) {
+        return service;
+      }
+    }
+  } else {
+    for (const auto& service : services_) {
+      if (service->ssid() == ssid && service->mode() == mode &&
+          service->IsSecurityMatch(security_class)) {
+        return service;
+      }
     }
   }
   return nullptr;

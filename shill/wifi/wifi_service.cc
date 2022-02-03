@@ -108,6 +108,7 @@ const char WiFiService::kStorageCredentialPassphrase[] = "WiFi.Passphrase";
 const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";
 const char WiFiService::kStorageMode[] = "WiFi.Mode";
 const char WiFiService::kStorageSecurityClass[] = "WiFi.SecurityClass";
+const char WiFiService::kStorageSecurity[] = "WiFi.Security";
 const char WiFiService::kStorageSSID[] = "SSID";
 const char WiFiService::kStoragePasspointCredentials[] =
     "WiFi.PasspointCredentialsId";
@@ -124,10 +125,12 @@ WiFiService::WiFiService(Manager* manager,
                          const std::vector<uint8_t>& ssid,
                          const std::string& mode,
                          const std::string& security_class,
+                         const WiFiSecurity& security,
                          bool hidden_ssid)
     : Service(manager, Technology::kWiFi),
       need_passphrase_(false),
-      security_(security_class),
+      security_class_(security_class),
+      security_(security),
       mode_(mode),
       hidden_ssid_(hidden_ssid),
       frequency_(0),
@@ -148,11 +151,10 @@ WiFiService::WiFiService(Manager* manager,
                           ssid_.size());
   WiFi::SanitizeSSID(&ssid_string);
 
-  // Must be constructed with a SecurityClass. We only detect (for internal and
-  // informational purposes) the specific mode in use later.
-  CHECK(IsValidSecurityClass(security_)) << base::StringPrintf(
-      "Security \"%s\" is not a SecurityClass", security_.c_str());
-  log_name_ = "wifi_" + security_ + "_" + base::NumberToString(serial_number());
+  CHECK(IsValidSecurityClass(security_class_)) << base::StringPrintf(
+      "Security \"%s\" is not a SecurityClass", security_class_.c_str());
+  log_name_ =
+      "wifi_" + security_class_ + "_" + base::NumberToString(serial_number());
   friendly_name_ = ssid_string;
 
   PropertyStore* store = this->mutable_store();
@@ -195,29 +197,7 @@ WiFiService::WiFiService(Manager* manager,
                                 &WiFiService::GetSignalLevel);
 
   SetEapCredentials(new EapCredentials());
-
-  // TODO(quiche): determine if it is okay to set EAP.KeyManagement for
-  // a service that is not 802.1x.
-  if (Is8021x()) {
-    // Passphrases are not mandatory for 802.1X.
-    need_passphrase_ = false;
-  } else if (security_ == kSecurityClassPsk) {
-#if !defined(DISABLE_WPA3_SAE)
-    // WPA/WPA2-PSK or WPA3-SAE.
-    SetEAPKeyManagement(base::StringPrintf("%s %s",
-                                           WPASupplicant::kKeyManagementWPAPSK,
-                                           WPASupplicant::kKeyManagementSAE));
-#else
-    // WPA/WPA2-PSK.
-    SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAPSK);
-#endif  // DISABLE_WPA3_SAE
-  } else if (security_ == kSecurityWep) {
-    SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
-  } else if (security_ == kSecurityNone) {
-    SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
-  } else {
-    LOG(ERROR) << "Unsupported security method " << security_;
-  }
+  SetSecurityProperties();
 
   // Until we know better (at Profile load time), use the generic name.
   storage_identifier_ = GetDefaultStorageIdentifier();
@@ -316,15 +296,94 @@ std::string WiFiService::GetPasspointID(Error* error) {
 }
 
 void WiFiService::SetEAPKeyManagement(const std::string& key_management) {
+  // TODO(b/226138492): Chrome is setting key management only for dynamic WEP.
+  // Clean this up when support for it is removed.
   Service::SetEAPKeyManagement(key_management);
   UpdateSecurity();
 }
 
+void WiFiService::SetSecurityProperties() {
+  if (!security_.IsValid()) {
+    // If the SecurityClass is a singleton (Wep/None) then we know already the
+    // Security so let's use this.
+    if (security_class() == kSecurityClassNone) {
+      security_ = WiFiSecurity::kNone;
+    } else if (security_class() == kSecurityClassWep) {
+      security_ = WiFiSecurity::kWep;
+    }
+  }
+  // TODO(quiche): determine if it is okay to set EAP.KeyManagement for
+  // a service that is not 802.1x.
+  // TODO(b/226138492): do most of this in
+  // WiFiService::GetSupplicantConfigurationParameters() instead? For the most
+  // part, we don't want KeyMgmt to be user-configurable, and we don't really
+  // want to rely on Storage values.
+  if (security_.IsValid()) {
+    switch (security_.mode()) {
+      case WiFiSecurity::kNone:
+      case WiFiSecurity::kWep:
+        SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
+        break;
+      case WiFiSecurity::kWpa:
+      case WiFiSecurity::kWpaWpa2:
+      case WiFiSecurity::kWpa2:
+        SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAPSK);
+        break;
+      case WiFiSecurity::kWpa2Wpa3:
+      case WiFiSecurity::kWpaAll:
+        SetEAPKeyManagement(
+            base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAPSK,
+                               WPASupplicant::kKeyManagementSAE));
+        break;
+      case WiFiSecurity::kWpa3:
+        SetEAPKeyManagement(WPASupplicant::kKeyManagementSAE);
+        break;
+      case WiFiSecurity::kWpaEnterprise:
+      case WiFiSecurity::kWpaWpa2Enterprise:
+      case WiFiSecurity::kWpa2Enterprise:
+        SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAEAP);
+        break;
+      case WiFiSecurity::kWpa2Wpa3Enterprise:
+      case WiFiSecurity::kWpaAllEnterprise:
+        SetEAPKeyManagement(
+            base::StringPrintf("%s %s", WPASupplicant::kKeyManagementWPAEAP,
+                               WPASupplicant::kKeyManagementWPAEAPSHA256));
+        break;
+      case WiFiSecurity::kWpa3Enterprise:
+        SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAEAPSHA256);
+        break;
+    }
+  } else if (Is8021x()) {
+    // Passphrases are not mandatory for 802.1X.
+    need_passphrase_ = false;
+  } else if (security_class_ == kSecurityClassPsk) {
+#if !defined(DISABLE_WPA3_SAE)
+    // WPA/WPA2-PSK or WPA3-SAE.
+    SetEAPKeyManagement(base::StringPrintf("%s %s",
+                                           WPASupplicant::kKeyManagementWPAPSK,
+                                           WPASupplicant::kKeyManagementSAE));
+#else
+    // WPA/WPA2-PSK.
+    SetEAPKeyManagement(WPASupplicant::kKeyManagementWPAPSK);
+#endif  // DISABLE_WPA3_SAE
+  } else {
+    LOG(ERROR) << "Unsupported security class " << security_class_;
+  }
+}
+
 void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr& endpoint) {
   DCHECK(endpoint->ssid() == ssid());
-  DCHECK(ComputeSecurityClass(endpoint->security_mode()) ==
-         ComputeSecurityClass(security_));
+  DCHECK(IsSecurityMatch(endpoint->security_mode()));
+
   endpoints_.insert(endpoint);
+  // When Security is not set (e.g. we see endpoints for some network that user
+  // has not visited/configured/..., we create Service for it and add endpoints
+  // to it) then we keep Security property flexible and update on every new
+  // endpoint found.  Once user connects it becomes frozen (but this logic is
+  // handled in WiFiSecurity::Combine() function.  Note that we do nothing in
+  // RemoveEndpoint() - that is intentional, until we connect we want to have
+  // the largest possible set of endpoints belonging to given network.
+  security_ = security_.Combine(endpoint->security_mode());
   UpdateFromEndpoints();
 }
 
@@ -347,8 +406,7 @@ void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr& endpoint) {
 void WiFiService::NotifyCurrentEndpoint(
     const WiFiEndpointConstRefPtr& endpoint) {
   DCHECK(!endpoint || (endpoints_.find(endpoint) != endpoints_.end()));
-  DCHECK(!endpoint || (ComputeSecurityClass(endpoint->security_mode()) ==
-                       ComputeSecurityClass(security_)));
+  DCHECK(!endpoint || IsSecurityMatch(endpoint->security_mode()));
   current_endpoint_ = endpoint;
   UpdateFromEndpoints();
 }
@@ -364,9 +422,9 @@ std::string WiFiService::GetStorageIdentifier() const {
 }
 
 bool WiFiService::SetPassphrase(const std::string& passphrase, Error* error) {
-  if (security_ == kSecurityWep) {
+  if (security_class() == kSecurityClassWep) {
     ValidateWEPPassphrase(passphrase, error);
-  } else if (ComputeSecurityClass(security_) == kSecurityClassPsk) {
+  } else if (security_class() == kSecurityClassPsk) {
     ValidateWPAPassphrase(passphrase, error);
   } else {
     error->Populate(Error::kIllegalOperation);
@@ -538,6 +596,17 @@ bool WiFiService::Load(const StoreInterface* storage) {
     }
   }
 
+  std::string security_str;
+  if (storage->GetString(id, kStorageSecurity, &security_str)) {
+    WiFiSecurity security(security_str);
+    if (security_.IsValid() && security_ != security) {
+      SLOG(this, 2) << "Overwriting Security property: " << security_ << " <- "
+                    << security_str;
+    }
+    security_ = security;
+    security_.Freeze();
+  }
+
   expecting_disconnect_ = false;
 
   // Passpoint might not be present.
@@ -600,8 +669,10 @@ bool WiFiService::Save(StoreInterface* storage) {
   // TODO(crbug.com/1084279): Save just the plaintext passphrase after M89.
   storage->SetCryptedString(id, kStorageDeprecatedPassphrase,
                             kStorageCredentialPassphrase, passphrase_);
-  storage->SetString(id, kStorageSecurityClass,
-                     ComputeSecurityClass(security_));
+  storage->SetString(id, kStorageSecurityClass, security_class());
+  if (security_.IsValid() && security_.IsFrozen()) {
+    storage->SetString(id, kStorageSecurity, security_.ToString());
+  }
   storage->SetString(id, kStorageSSID, hex_ssid_);
   if (parent_credentials_) {
     storage->SetString(id, kStoragePasspointCredentials,
@@ -665,8 +736,16 @@ void WiFiService::SetState(ConnectState state) {
   NotifyIfVisibilityChanged();
 }
 
-bool WiFiService::IsSecurityMatch(const std::string& security) const {
-  return ComputeSecurityClass(security) == ComputeSecurityClass(security_);
+bool WiFiService::IsSecurityMatch(WiFiSecurity::Mode mode) const {
+  if (security_.IsValid()) {
+    return security_.Combine(mode).IsValid();
+  }
+
+  return ComputeSecurityClass(mode) == security_class();
+}
+
+bool WiFiService::IsSecurityMatch(const std::string& sec_class) const {
+  return sec_class == security_class();
 }
 
 bool WiFiService::AddSuspectedCredentialFailure() {
@@ -704,8 +783,12 @@ void WiFiService::SendPostReadyStateMetrics(
       static_cast<Metrics::WiFiNetworkPhyMode>(physical_mode_),
       Metrics::kWiFiNetworkPhyModeMax);
 
-  Metrics::WiFiSecurity security_uma =
-      Metrics::WiFiSecurityStringToEnum(security_);
+  Metrics::WiFiSecurity security_uma;
+  if (security_.IsValid()) {
+    security_uma = Metrics::WiFiSecurityStringToEnum(security_.ToString());
+  } else {
+    security_uma = Metrics::WiFiSecurityStringToEnum(security_class_);
+  }
   DCHECK(security_uma != Metrics::kWiFiSecurityUnknown);
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkSecuritySuffix,
@@ -821,6 +904,8 @@ void WiFiService::OnConnect(Error* error) {
     ClearEAPCertification();
   }
 
+  security_.Freeze();
+
   expecting_disconnect_ = false;
   wifi->ConnectTo(this, error);
 }
@@ -839,7 +924,7 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   Metrics::WiFiConnectionAttemptInfo info;
   info.type = Metrics::kAttemptTypeUnknown;  // TODO(b/203692510)
   info.mode = static_cast<Metrics::WiFiNetworkPhyMode>(physical_mode());
-  info.security = Metrics::WiFiSecurityStringToEnum(security());
+  info.security = Metrics::WiFiSecurityStringToEnum(security().ToString());
   info.eap_inner = Metrics::EapInnerProtocolStringToEnum(eap()->inner_method());
   info.eap_outer = Metrics::EapOuterProtocolStringToEnum(eap()->method());
   info.band = Metrics::WiFiChannelToFrequencyRange(
@@ -932,7 +1017,7 @@ WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
     case RandomizationPolicy::PersistentRandom:
       // For persistent policy we can rotate only in open networks and when
       // there was no captive portal detected.
-      rotating = security_ == kSecurityNone && !was_portal_detected_;
+      rotating = security_ == WiFiSecurity::kNone && !was_portal_detected_;
       break;
     case RandomizationPolicy::NonPersistentRandom:
       // For forced non-persistent policy we always rotate.
@@ -974,11 +1059,24 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
 
   if (Is8021x()) {
     eap()->PopulateSupplicantProperties(certificate_file_.get(), &params);
-  } else if (ComputeSecurityClass(security_) == kSecurityClassPsk) {
+  } else if (security_class() == kSecurityClassPsk) {
     // NB: WPA3-SAE uses RSN protocol.
-    const std::string psk_proto =
-        base::StringPrintf("%s %s", WPASupplicant::kSecurityModeWPA,
-                           WPASupplicant::kSecurityModeRSN);
+    std::string psk_proto;
+    if (security().IsValid()) {
+      if (security() == WiFiSecurity::kWpa) {
+        psk_proto = WPASupplicant::kSecurityModeWPA;
+      } else if (security() == WiFiSecurity::kWpaWpa2 ||
+                 security() == WiFiSecurity::kWpaAll) {
+        psk_proto = base::StringPrintf("%s %s", WPASupplicant::kSecurityModeWPA,
+                                       WPASupplicant::kSecurityModeRSN);
+      } else {  // WPA2 and WPA3 use RSN.
+        psk_proto = WPASupplicant::kSecurityModeRSN;
+      }
+    } else {
+      psk_proto = base::StringPrintf("%s %s", WPASupplicant::kSecurityModeWPA,
+                                     WPASupplicant::kSecurityModeRSN);
+    }
+
     params.Set<std::string>(WPASupplicant::kPropertySecurityProtocol,
                             psk_proto);
     std::vector<uint8_t> passphrase_bytes;
@@ -993,7 +1091,7 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
       params.Set<std::string>(WPASupplicant::kPropertyPreSharedKey,
                               passphrase_);
     }
-  } else if (security_ == kSecurityWep) {
+  } else if (security_class() == kSecurityClassWep) {
     params.Set<std::string>(WPASupplicant::kPropertyAuthAlg,
                             WPASupplicant::kSecurityAuthAlg);
     Error unused_error;
@@ -1004,12 +1102,16 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
         WPASupplicant::kPropertyWEPKey + base::NumberToString(key_index),
         password_bytes);
     params.Set<uint32_t>(WPASupplicant::kPropertyWEPTxKeyIndex, key_index);
-  } else if (security_ == kSecurityNone) {
+  } else if (security_class() == kSecurityClassNone) {
     // Nothing special to do here.
   } else {
-    NOTIMPLEMENTED() << "Unsupported security method " << security_;
+    NOTIMPLEMENTED() << "Unsupported security method " << security_class();
   }
 
+  // TODO(b/226138492): This was potentially loaded from (old) storage -- we
+  // usually want to derive this exclusively from Security or SecurityClass, but
+  // in rare cases (only 802.1X-WEP, AFAIK?) we want to allow Chrome to set it
+  // manually.  Take a second look at this when Dynamic WEP gets removed.
   auto key_mgmt = key_management();
   if (manager()->GetFTEnabled(nullptr)) {
     // Append the FT analog for each non-FT key management method.
@@ -1129,12 +1231,13 @@ bool WiFiService::IsWPA3Connectable() const {
 }
 
 bool WiFiService::HasOnlyWPA3Endpoints() const {
-  if (security_ == kSecurityWpa3) {
+  if (security_ == WiFiSecurity::kWpa3) {
     return true;
   }
-  if (security_ == kSecurityWpaAll || security_ == kSecurityWpa2Wpa3) {
+  if (security_ == WiFiSecurity::kWpaAll ||
+      security_ == WiFiSecurity::kWpa2Wpa3) {
     return base::ranges::all_of(endpoints_, [](auto ep) {
-      return ep->security_mode() == kSecurityWpa3;
+      return ep->security_mode() == WiFiSecurity::kWpa3;
     });
   }
   return false;
@@ -1142,14 +1245,14 @@ bool WiFiService::HasOnlyWPA3Endpoints() const {
 
 void WiFiService::UpdateConnectable() {
   bool is_connectable = false;
-  if (security_ == kSecurityNone) {
+  if (security_class() == kSecurityClassNone) {
     DCHECK(passphrase_.empty());
     need_passphrase_ = false;
     is_connectable = true;
   } else if (Is8021x()) {
     is_connectable = Is8021xConnectable();
-  } else if (security_ == kSecurityWep ||
-             ComputeSecurityClass(security_) == kSecurityClassPsk) {
+  } else if (security_class() == kSecurityClassWep ||
+             security_class() == kSecurityClassPsk) {
     need_passphrase_ = passphrase_.empty();
     is_connectable = !need_passphrase_;
     if (is_connectable && HasOnlyWPA3Endpoints()) {
@@ -1209,7 +1312,6 @@ void WiFiService::UpdateFromEndpoints() {
   std::string country_code;
   Stringmap vendor_information;
   uint16_t physical_mode = Metrics::kWiFiNetworkPhyModeUndef;
-  std::string security;
   int16_t prev_raw_signal_strength = raw_signal_strength_;
   // Represent "unknown raw signal strength" as 0.
   raw_signal_strength_ = 0;
@@ -1221,12 +1323,7 @@ void WiFiService::UpdateFromEndpoints() {
     country_code = representative_endpoint->country_code();
     vendor_information = representative_endpoint->GetVendorInformation();
     physical_mode = representative_endpoint->physical_mode();
-    security = representative_endpoint->security_mode();
-  } else {
-    // If all endpoints disappear, reset back to the general Class.
-    security = ComputeSecurityClass(security_);
   }
-  CHECK(!security.empty());
 
   if (frequency_ != frequency) {
     frequency_ = frequency;
@@ -1255,10 +1352,6 @@ void WiFiService::UpdateFromEndpoints() {
     SetStrength(SignalToStrength(signal));
   }
 
-  if (security != security_) {
-    security_ = security;
-  }
-
   // Either cipher_8021x_ or security_ may have changed. Recomputing is
   // harmless.
   UpdateSecurity();
@@ -1270,14 +1363,16 @@ void WiFiService::UpdateFromEndpoints() {
 
 bool WiFiService::IsAESCapable() const {
   // AES can be used if security is WPA2+ or ...
-  if (security_ == kSecurityWpa2 || security_ == kSecurityWpa2Wpa3 ||
-      security_ == kSecurityWpa3) {
+  if (security_ == WiFiSecurity::kWpa2 ||
+      security_ == WiFiSecurity::kWpa2Wpa3 ||
+      security_ == WiFiSecurity::kWpa3) {
     return true;
   }
   // ... security is equal to a mixed mode including WPA and none of the
   // endpoints is in pure WPA mode.
-  if (security_ == kSecurityWpaWpa2 || security_ == kSecurityWpaAll) {
-    return !base::Contains(endpoints_, kSecurityWpa,
+  if (security_ == WiFiSecurity::kWpaWpa2 ||
+      security_ == WiFiSecurity::kWpaAll) {
+    return !base::Contains(endpoints_, WiFiSecurity::kWpa,
                            [](auto ep) { return ep->security_mode(); });
   }
   return false;
@@ -1288,9 +1383,9 @@ void WiFiService::UpdateSecurity() {
   bool key_rotation = false;
   bool endpoint_auth = false;
 
-  if (security_ == kSecurityNone) {
+  if (security_class() == kSecurityClassNone) {
     // initial values apply
-  } else if (security_ == kSecurityWep) {
+  } else if (security_class() == kSecurityClassWep) {
     algorithm = kCryptoRc4;
     key_rotation = Is8021x();
     endpoint_auth = Is8021x();
@@ -1298,11 +1393,11 @@ void WiFiService::UpdateSecurity() {
     algorithm = kCryptoAes;
     key_rotation = true;
     endpoint_auth = false;
-  } else if (ComputeSecurityClass(security_) == kSecurityClassPsk) {
+  } else if (security_class() == kSecurityClassPsk) {
     algorithm = kCryptoRc4;
     key_rotation = true;
     endpoint_auth = false;
-  } else if (ComputeSecurityClass(security_) == kSecurityClass8021x) {
+  } else if (security_class() == kSecurityClass8021x) {
     algorithm = cipher_8021x_;
     key_rotation = true;
     endpoint_auth = true;
@@ -1481,21 +1576,14 @@ bool WiFiService::CheckWEPPrefix(const std::string& passphrase, Error* error) {
 }
 
 // static
-std::string WiFiService::ComputeSecurityClass(const std::string& security) {
-  if (security == kSecurityWpa || security == kSecurityWpaWpa2 ||
-      security == kSecurityWpaAll || security == kSecurityWpa2 ||
-      security == kSecurityWpa2Wpa3 || security == kSecurityWpa3) {
+std::string WiFiService::ComputeSecurityClass(const WiFiSecurity& security) {
+  if (security.IsPsk()) {
     return kSecurityClassPsk;
   }
-  if (security == kSecurityWpaEnterprise ||
-      security == kSecurityWpaWpa2Enterprise ||
-      security == kSecurityWpaAllEnterprise ||
-      security == kSecurityWpa2Enterprise ||
-      security == kSecurityWpa2Wpa3Enterprise ||
-      security == kSecurityWpa3Enterprise) {
+  if (security.IsEnterprise()) {
     return kSecurityClass8021x;
   }
-  return security;
+  return security.ToString();  // "none" or "wep"
 }
 
 int16_t WiFiService::SignalLevel() const {
@@ -1517,24 +1605,11 @@ bool WiFiService::IsValidMode(const std::string& mode) {
 }
 
 // static
-bool WiFiService::IsValidSecurityMethod(const std::string& method) {
-  return method == kSecurityNone || method == kSecurityWep ||
-         method == kSecurityClassPsk || method == kSecurityClass8021x ||
-         method == kSecurityWpa || method == kSecurityWpaWpa2 ||
-         method == kSecurityWpaAll || method == kSecurityWpa2 ||
-         method == kSecurityWpa2Wpa3 || method == kSecurityWpa3 ||
-         method == kSecurityWpaEnterprise ||
-         method == kSecurityWpaWpa2Enterprise ||
-         method == kSecurityWpaAllEnterprise ||
-         method == kSecurityWpa2Enterprise ||
-         method == kSecurityWpa2Wpa3Enterprise ||
-         method == kSecurityWpa3Enterprise;
-}
-
-// static
 bool WiFiService::IsValidSecurityClass(const std::string& security_class) {
-  return IsValidSecurityMethod(security_class) &&
-         ComputeSecurityClass(security_class) == security_class;
+  return security_class == kSecurityClassNone ||
+         security_class == kSecurityClassWep ||
+         security_class == kSecurityClassPsk ||
+         security_class == kSecurityClass8021x;
 }
 
 // static
@@ -1572,19 +1647,18 @@ KeyValueStore WiFiService::GetStorageProperties() const {
   args.Set<std::string>(kStorageType, kTypeWifi);
   args.Set<std::string>(kStorageSSID, hex_ssid_);
   args.Set<std::string>(kStorageMode, mode_);
-  args.Set<std::string>(kStorageSecurityClass, ComputeSecurityClass(security_));
+  args.Set<std::string>(kStorageSecurityClass, security_class());
   return args;
 }
 
 std::string WiFiService::GetDefaultStorageIdentifier() const {
-  std::string security = ComputeSecurityClass(security_);
-  return base::ToLowerASCII(
-      base::StringPrintf("%s_%s_%s_%s_%s", kTypeWifi, kAnyDeviceAddress,
-                         hex_ssid_.c_str(), mode_.c_str(), security.c_str()));
+  return base::ToLowerASCII(base::StringPrintf(
+      "%s_%s_%s_%s_%s", kTypeWifi, kAnyDeviceAddress, hex_ssid_.c_str(),
+      mode_.c_str(), security_class().c_str()));
 }
 
 std::string WiFiService::GetSecurity(Error* /*error*/) {
-  return security();
+  return security_.ToString();
 }
 
 std::string WiFiService::GetSecurityClass(Error* /*error*/) {
@@ -1636,24 +1710,16 @@ void WiFiService::OnPasspointMatch(
 }
 
 bool WiFiService::Is8021x() const {
-  if (security_ == kSecurityClass8021x)
-    return true;
-
-  if (security_ == kSecurityWpaEnterprise ||
-      security_ == kSecurityWpaWpa2Enterprise ||
-      security_ == kSecurityWpaAllEnterprise ||
-      security_ == kSecurityWpa2Enterprise ||
-      security_ == kSecurityWpa2Wpa3Enterprise ||
-      security_ == kSecurityWpa3Enterprise) {
-    return true;
-  }
-
-  // Dynamic WEP + 802.1x.
-  if (security_ == kSecurityWep &&
+  // Special case for Dynamic WEP + 802.1x.
+  if (security_class() == kSecurityClassWep &&
       GetEAPKeyManagement() == WPASupplicant::kKeyManagementIeee8021X) {
     return true;
   }
-  return false;
+  if (security().IsValid()) {
+    return security().IsEnterprise();
+  }
+
+  return security_class() == kSecurityClass8021x;
 }
 
 WiFiRefPtr WiFiService::ChooseDevice() {
