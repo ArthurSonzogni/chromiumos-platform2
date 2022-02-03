@@ -18,11 +18,13 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
+#include "cryptohome/user_secret_stash_storage.h"
 
 namespace cryptohome {
 
@@ -46,13 +48,15 @@ enum class AuthStatus {
 // credentials.
 class AuthSession final {
  public:
-  // Caller needs to ensure that the the KeysetManagement* outlives the instance
-  // of AuthSession.
+  // Caller needs to ensure that the KeysetManagement*, AuthFactorManager* and
+  // UserSecretStashStorage* outlive the instance of AuthSession.
   AuthSession(
       std::string username,
       unsigned int flags,
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
-      KeysetManagement* keyset_management);
+      KeysetManagement* keyset_management,
+      AuthFactorManager* auth_factor_manager,
+      UserSecretStashStorage* user_secret_stash_storage);
   ~AuthSession() = default;
 
   // Returns the full unhashed user name.
@@ -157,7 +161,11 @@ class AuthSession final {
   // The creator of the AuthSession object is responsible for the life of
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.
-  KeysetManagement* keyset_management_;
+  KeysetManagement* const keyset_management_;
+  // Unowned pointer.
+  AuthFactorManager* const auth_factor_manager_;
+  // Unowned pointer.
+  UserSecretStashStorage* const user_secret_stash_storage_;
   // This is used by User Session to verify users credentials at unlock.
   std::unique_ptr<CredentialVerifier> credential_verifier_;
   // Used to decrypt/ encrypt & store credentials.

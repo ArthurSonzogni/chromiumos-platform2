@@ -13,6 +13,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
@@ -26,6 +27,7 @@
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/storage/mock_mount_factory.h"
+#include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -71,8 +73,9 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   AuthSessionInterfaceTest& operator=(const AuthSessionInterfaceTest&) = delete;
 
   void SetUp() override {
-    auth_session_manager_ =
-        std::make_unique<AuthSessionManager>(&keyset_management_);
+    auth_session_manager_ = std::make_unique<AuthSessionManager>(
+        &keyset_management_, &auth_factor_manager_,
+        &user_secret_stash_storage_);
     brillo::SecureBlob system_salt;
     InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
@@ -81,6 +84,9 @@ class AuthSessionInterfaceTest : public ::testing::Test {
     userdataauth_.set_homedirs(&homedirs_);
     userdataauth_.set_mount_factory(&mount_factory_);
     userdataauth_.set_keyset_management(&keyset_management_);
+    userdataauth_.set_auth_factor_manager_for_testing(&auth_factor_manager_);
+    userdataauth_.set_user_secret_stash_storage_for_testing(
+        &user_secret_stash_storage_);
     userdataauth_.set_auth_session_manager(auth_session_manager_.get());
     userdataauth_.set_pkcs11_token_factory(&pkcs11_token_factory_);
     userdataauth_.set_user_activity_timestamp_manager(
@@ -103,6 +109,8 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   Crypto crypto_;
   NiceMock<MockHomeDirs> homedirs_;
   NiceMock<MockMountFactory> mount_factory_;
+  AuthFactorManager auth_factor_manager_{&platform_};
+  UserSecretStashStorage user_secret_stash_storage_{&platform_};
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   NiceMock<MockUserOldestActivityTimestampManager>

@@ -17,8 +17,11 @@
 #include <brillo/cryptohome.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/mock_keyset_management.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/user_secret_stash_storage.h"
 
 using ::testing::_;
 using ::testing::ByMove;
@@ -64,6 +67,9 @@ class AuthSessionTest : public ::testing::Test {
   // Mock KeysetManagent object, will be passed to AuthSession for its internal
   // use.
   NiceMock<MockKeysetManagement> keyset_management_;
+  NiceMock<MockPlatform> platform_;
+  AuthFactorManager auth_factor_manager_{&platform_};
+  UserSecretStashStorage user_secret_stash_storage_{&platform_};
   std::unique_ptr<std::string> brillo_salt_;
 };
 
@@ -75,7 +81,8 @@ TEST_F(AuthSessionTest, TimeoutTest) {
       base::Unretained(&called));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &keyset_management_);
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   ASSERT_TRUE(auth_session.timer_.IsRunning());
@@ -128,7 +135,8 @@ TEST_F(AuthSessionTest, GetCredentialRegularUser) {
       base::Unretained(&called));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &keyset_management_);
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
 
@@ -169,7 +177,8 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
       brillo::BlobFromString(kFakeUsername));
 
   AuthSession auth_session(kFakeUsername, 0, std::move(on_timeout),
-                           &keyset_management_);
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
   EXPECT_CALL(keyset_management_, GetPublicMountPassKey(_))
       .WillOnce(Return(ByMove(fake_pass_blob)));
   EXPECT_EQ(auth_session.GetStatus(),
@@ -211,7 +220,8 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &keyset_management_);
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -299,7 +309,8 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &keyset_management_);
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -344,7 +355,8 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &keyset_management_);
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,

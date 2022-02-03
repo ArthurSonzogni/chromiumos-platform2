@@ -12,7 +12,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/mock_keyset_management.h"
+#include "cryptohome/mock_platform.h"
+#include "cryptohome/user_secret_stash_storage.h"
+
+using testing::NiceMock;
 
 namespace cryptohome {
 
@@ -22,6 +27,11 @@ class AuthSessionManagerTest : public ::testing::Test {
   ~AuthSessionManagerTest() override = default;
   AuthSessionManagerTest(const AuthSessionManagerTest&) = delete;
   AuthSessionManagerTest& operator=(AuthSessionManagerTest&) = delete;
+
+ protected:
+  NiceMock<MockPlatform> platform_;
+  AuthFactorManager auth_factor_manager_{&platform_};
+  UserSecretStashStorage user_secret_stash_storage_{&platform_};
 };
 
 namespace {
@@ -41,7 +51,8 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED);
 
   NiceMock<MockKeysetManagement> keyset_management;
-  AuthSessionManager auth_session_manager(&keyset_management);
+  AuthSessionManager auth_session_manager(
+      &keyset_management, &auth_factor_manager_, &user_secret_stash_storage_);
 
   AuthSession* auth_session =
       auth_session_manager.CreateAuthSession("foo@example.com", 0);
@@ -67,7 +78,8 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED);
 
   NiceMock<MockKeysetManagement> keyset_management;
-  AuthSessionManager auth_session_manager(&keyset_management);
+  AuthSessionManager auth_session_manager(
+      &keyset_management, &auth_factor_manager_, &user_secret_stash_storage_);
 
   AuthSession* auth_session =
       auth_session_manager.CreateAuthSession("foo@example.com", 0);

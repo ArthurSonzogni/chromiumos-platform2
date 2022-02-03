@@ -12,14 +12,21 @@
 #include <base/unguessable_token.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
+#include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/user_secret_stash_storage.h"
 
 namespace cryptohome {
 
 class AuthSessionManager {
  public:
-  explicit AuthSessionManager(KeysetManagement* keyset_management);
+  // The `KeysetManagement*`, `AuthFactorManager*`, `UserSecretStashStorage*`
+  // are unowned and must outlive the created object.
+  explicit AuthSessionManager(
+      KeysetManagement* keyset_management,
+      AuthFactorManager* auth_factor_manager,
+      UserSecretStashStorage* user_secret_stash_storage);
   ~AuthSessionManager() = default;
   AuthSessionManager(AuthSessionManager&) = delete;
   AuthSessionManager& operator=(AuthSessionManager&) = delete;
@@ -41,7 +48,12 @@ class AuthSessionManager {
   AuthSession* FindAuthSession(const std::string& serialized_token) const;
 
  private:
-  KeysetManagement* keyset_management_;
+  // Unowned; must outlive `this`.
+  KeysetManagement* const keyset_management_;
+  // Unowned; must outlive `this`.
+  AuthFactorManager* const auth_factor_manager_;
+  // Unowned; must outlive `this`.
+  UserSecretStashStorage* const user_secret_stash_storage_;
 
   // Callback for session timeout. Currently just disambiguates
   // RemoveAuthSession overload for the callback.

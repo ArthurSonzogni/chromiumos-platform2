@@ -24,6 +24,7 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
+#include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
@@ -43,6 +44,7 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/mount_factory.h"
+#include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session.h"
 
 namespace cryptohome {
@@ -515,6 +517,17 @@ class UserDataAuth {
   // Override |keyset_management_| for testing purpose
   void set_keyset_management(KeysetManagement* value) {
     keyset_management_ = value;
+  }
+
+  // Override |auth_factor_manager_| for testing purpose
+  void set_auth_factor_manager_for_testing(AuthFactorManager* value) {
+    auth_factor_manager_ = value;
+  }
+
+  // Override |user_secret_stash_storage_| for testing purpose
+  void set_user_secret_stash_storage_for_testing(
+      UserSecretStashStorage* value) {
+    user_secret_stash_storage_ = value;
   }
 
   // Override |auth_session_manager_| for testing purpose
@@ -1224,6 +1237,18 @@ class UserDataAuth {
   // can be overridden for testing. This is to be accessed from the mount thread
   // only because there's no guarantee on thread safety of the HomeDirs object.
   KeysetManagement* keyset_management_;
+
+  // Manager of auth factor files.
+  std::unique_ptr<AuthFactorManager> default_auth_factor_manager_;
+  // Usually set to |default_auth_factor_manager_|, but can be overridden for
+  // tests.
+  AuthFactorManager* auth_factor_manager_ = nullptr;
+
+  // User secret stash storage helper.
+  std::unique_ptr<UserSecretStashStorage> default_user_secret_stash_storage_;
+  // Usually set to |default_user_secret_stash_storage_|, but can be overridden
+  // for tests.
+  UserSecretStashStorage* user_secret_stash_storage_ = nullptr;
 
   // Manager for auth session objects.
   std::unique_ptr<AuthSessionManager> default_auth_session_manager_;

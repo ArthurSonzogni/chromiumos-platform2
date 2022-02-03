@@ -15,9 +15,11 @@
 #include <cryptohome/scrypt_verifier.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
+#include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/mount_utils.h"
+#include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/vault_keyset.h"
 
 using brillo::cryptohome::home::SanitizeUserName;
@@ -42,15 +44,24 @@ AuthSession::AuthSession(
     std::string username,
     unsigned int flags,
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
-    KeysetManagement* keyset_management)
+    KeysetManagement* keyset_management,
+    AuthFactorManager* auth_factor_manager,
+    UserSecretStashStorage* user_secret_stash_storage)
     : username_(username),
       token_(base::UnguessableToken::Create()),
       serialized_token_(
           AuthSession::GetSerializedStringFromToken(token_).value_or("")),
       is_ephemeral_user_(flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
       on_timeout_(std::move(on_timeout)),
-      keyset_management_(keyset_management) {
+      keyset_management_(keyset_management),
+      auth_factor_manager_(auth_factor_manager),
+      user_secret_stash_storage_(user_secret_stash_storage) {
+  // Preconditions.
   DCHECK(!serialized_token_.empty());
+  DCHECK(keyset_management_);
+  DCHECK(auth_factor_manager_);
+  DCHECK(user_secret_stash_storage_);
+
   LOG(INFO) << "AuthSession Flags: is_ephemeral_user_  " << is_ephemeral_user_;
   timer_.Start(FROM_HERE, kAuthSessionTimeoutInMinutes,
                base::BindOnce(&AuthSession::AuthSessionTimedOut,

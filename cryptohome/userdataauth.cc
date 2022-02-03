@@ -27,6 +27,7 @@
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/bootlockbox/boot_lockbox_client.h"
@@ -49,6 +50,7 @@
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/tpm.h"
+#include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session.h"
 #include "cryptohome/userdataauth.h"
 
@@ -275,9 +277,21 @@ bool UserDataAuth::Initialize() {
     keyset_management_ = default_keyset_management_.get();
   }
 
+  if (!auth_factor_manager_) {
+    default_auth_factor_manager_ =
+        std::make_unique<AuthFactorManager>(platform_);
+    auth_factor_manager_ = default_auth_factor_manager_.get();
+  }
+
+  if (!user_secret_stash_storage_) {
+    default_user_secret_stash_storage_ =
+        std::make_unique<UserSecretStashStorage>(platform_);
+    user_secret_stash_storage_ = default_user_secret_stash_storage_.get();
+  }
+
   if (!auth_session_manager_) {
-    default_auth_session_manager_ =
-        std::make_unique<AuthSessionManager>(keyset_management_);
+    default_auth_session_manager_ = std::make_unique<AuthSessionManager>(
+        keyset_management_, auth_factor_manager_, user_secret_stash_storage_);
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 
