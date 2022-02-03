@@ -361,9 +361,6 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
   // Auth session not authed.
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
-  ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token()),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
   ASSERT_THAT(auth_session->Authenticate(CreateAuthorization(kPassword)),
               Eq(MOUNT_ERROR_NONE));

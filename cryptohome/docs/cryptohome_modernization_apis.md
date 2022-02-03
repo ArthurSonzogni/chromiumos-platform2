@@ -155,9 +155,9 @@ AuthFactor.
 
 ### Add New User to Chromebook
 
-1.  `StartAuthSession` – Chrome initiates an AuthSession. If the user does not
-    exist already, this will come back in an authenticated state.
-2.  `CreatePersistentUser`
+1.  `StartAuthSession` – Chrome initiates an AuthSession.
+2.  `CreatePersistentUser` – Creates on-disk user representation and put the
+    AuthSession into authenticated state.
 3.  `PreparePersistentVault` - At this point it is safe to fetch any userpolicy.
 4.  `AddAuthFactor`
     -   Upon adding the first AuthFactor, cryptohome will save the USS to disk.

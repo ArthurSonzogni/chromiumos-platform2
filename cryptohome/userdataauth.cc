@@ -3727,12 +3727,11 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::CreatePersistentUserImpl(
     const std::string& auth_session_id) {
   AssertOnMountThread();
 
-  user_data_auth::CryptohomeErrorCode error =
-      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
   AuthSession* auth_session =
-      GetAuthenticatedAuthSession(auth_session_id, &error);
+      auth_session_manager_->FindAuthSession(auth_session_id);
   if (!auth_session) {
-    return error;
+    LOG(ERROR) << "AuthSession not found.";
+    return user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN;
   }
 
   const std::string& obfuscated_username =
