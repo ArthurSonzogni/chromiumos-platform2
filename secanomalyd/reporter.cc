@@ -176,10 +176,11 @@ bool ReportAnomalousSystem(const MountEntryMap& wx_mounts,
                            int weight,
                            bool report_in_dev_mode) {
   MaybeMountEntries maybe_mounts = ReadMounts(MountFilter::kUploadableOnly);
+  MaybeProcEntries maybe_procs =
+      ReadProcesses(ProcessFilter::kInitPidNamespaceOnly);
 
-  // TODO(b/216855846): Include full list of processes.
   MaybeReport anomaly_report =
-      GenerateAnomalousSystemReport(wx_mounts, maybe_mounts, base::nullopt);
+      GenerateAnomalousSystemReport(wx_mounts, maybe_mounts, maybe_procs);
 
   if (!anomaly_report) {
     LOG(ERROR) << "Failed to generate anomalous system report";
