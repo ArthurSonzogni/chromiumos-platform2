@@ -26,6 +26,13 @@ class MockLogProvider : public LogProvider {
   MOCK_METHOD1(GetLog, std::optional<std::string>(const std::string&));
 };
 
+struct SnapshotTestParam {
+  SnapshotTestParam(DRMSnapshotType type, const std::string& name)
+      : snapshot_type(type), log_name(name) {}
+  DRMSnapshotType snapshot_type;
+  std::string log_name;
+};
+
 class DRMTraceToolTest : public testing::Test {
  protected:
   base::ScopedTempDir temp_dir_;
@@ -69,6 +76,10 @@ class DRMTraceToolTest : public testing::Test {
         new DRMTraceTool(temp_dir_.GetPath(), &log_provider_));
   }
 };
+
+class DRMTraceToolSnapshotTest
+    : public DRMTraceToolTest,
+      public testing::WithParamInterface<SnapshotTestParam> {};
 
 TEST_F(DRMTraceToolTest, SetCategories) {
   brillo::ErrorPtr error;
@@ -144,25 +155,26 @@ TEST_F(DRMTraceToolTest, SnapshotInvalid) {
   brillo::ErrorPtr error;
 
   // If new enum values are added this should be updated.
-  const uint32_t kInvalidType = 1;
+  const uint32_t kInvalidType = 2;
   EXPECT_FALSE(drm_trace_tool_->Snapshot(&error, kInvalidType));
   EXPECT_NE(error, nullptr);
 }
 
-TEST_F(DRMTraceToolTest, SnapshotTrace) {
+TEST_P(DRMTraceToolSnapshotTest, SnapshotSuccess) {
   brillo::ErrorPtr error;
 
   std::string trace_contents = "lorem ipsum";
-  EXPECT_CALL(log_provider_, GetLog("drm_trace"))
+  EXPECT_CALL(log_provider_, GetLog(GetParam().log_name))
       .WillOnce(Return(std::make_optional(trace_contents)));
 
-  EXPECT_TRUE(drm_trace_tool_->Snapshot(&error, DRMSnapshotType_TRACE));
+  EXPECT_TRUE(drm_trace_tool_->Snapshot(&error, GetParam().snapshot_type));
   EXPECT_EQ(error, nullptr);
 
   // Expect one file to have been created in /var/log/display_debug
+  std::string glob = GetParam().log_name + ".*";
   base::FileEnumerator enumerator(
       temp_dir_.GetPath().Append("var/log/display_debug"), false,
-      base::FileEnumerator::FileType::FILES, "drm_trace.*");
+      base::FileEnumerator::FileType::FILES, glob);
   base::FilePath snapshot_file_path = enumerator.Next();
   EXPECT_EQ(enumerator.GetError(), base::File::FILE_OK);
   ASSERT_FALSE(snapshot_file_path.empty());
@@ -172,6 +184,12 @@ TEST_F(DRMTraceToolTest, SnapshotTrace) {
   ASSERT_TRUE(base::ReadFileToString(snapshot_file_path, &snapshot_contents));
   EXPECT_EQ(trace_contents, snapshot_contents);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+    SnapshotTypes,
+    DRMTraceToolSnapshotTest,
+    ::testing::Values(SnapshotTestParam(DRMSnapshotType_TRACE, "drm_trace"),
+                      SnapshotTestParam(DRMSnapshotType_MODETEST, "modetest")));
 
 TEST_F(DRMTraceToolTest, WriteToNonExistentFile) {
   brillo::ErrorPtr error;

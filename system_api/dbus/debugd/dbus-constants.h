@@ -119,6 +119,7 @@ enum DRMTraceSizes {
 // org.chromium.debugd.xml
 enum DRMSnapshotType {
   DRMSnapshotType_TRACE = 0,
+  DRMSnapshotType_MODETEST = 1,
 };
 
 // Debug log keys which should be substituted in the system info dialog.

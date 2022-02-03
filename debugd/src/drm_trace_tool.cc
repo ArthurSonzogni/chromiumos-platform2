@@ -69,6 +69,7 @@ constexpr char kTraceMarkerFile[] =
     "sys/kernel/debug/tracing/instances/drm/trace_marker";
 constexpr char kSnapshotDirPath[] = "var/log/display_debug";
 constexpr char kDrmTraceLogName[] = "drm_trace";
+constexpr char kModetestLogName[] = "modetest";
 
 constexpr char kDRMTraceToolErrorString[] =
     "org.chromium.debugd.error.DRMTrace";
@@ -89,15 +90,19 @@ bool ConvertSize(uint32_t size, DRMTraceSizes* out_size) {
 // Convert |type| to the corresponding DRMSnapshotType enum value. Returns
 // false if |type| is not a valid enum value.
 bool ConvertType(uint32_t type, DRMSnapshotType* out_type) {
-  if (type == DRMSnapshotType_TRACE)
-    *out_type = DRMSnapshotType_TRACE;
-  else
-    return false;
-
-  return true;
+  switch (type) {
+    case DRMSnapshotType_TRACE:
+      *out_type = DRMSnapshotType_TRACE;
+      return true;
+    case DRMSnapshotType_MODETEST:
+      *out_type = DRMSnapshotType_MODETEST;
+      return true;
+    default:
+      return false;
+  }
 }
 
-base::FilePath GenerateSnapshotFilePath() {
+base::FilePath GenerateSnapshotFilePath(const char* base_name) {
   base::Time now = base::Time::Now();
   base::Time::Exploded exploded;
   now.LocalExplode(&exploded);
@@ -105,8 +110,8 @@ base::FilePath GenerateSnapshotFilePath() {
   // var/log/blah/trace.YYYYMMDD-HHMMSS
   return base::FilePath(kSnapshotDirPath)
       .Append(base::FilePath(base::StringPrintf(
-          "drm_trace.%04d%02d%02d-%02d%02d%02d", exploded.year, exploded.month,
-          exploded.day_of_month, exploded.hour, exploded.minute,
+          "%s.%04d%02d%02d-%02d%02d%02d", base_name, exploded.year,
+          exploded.month, exploded.day_of_month, exploded.hour, exploded.minute,
           exploded.second)));
 }
 
@@ -193,17 +198,25 @@ bool DRMTraceTool::Snapshot(brillo::ErrorPtr* error, uint32_t type_enum) {
     return false;
   }
 
-  // Currently only drm_trace can be snapshotted, thus if ConvertType
-  // succeeded above, we know it's DRMSnapshotType_TRACE.
-  std::optional<std::string> drm_trace_contents =
-      log_provider_->GetLog(kDrmTraceLogName);
-  if (!drm_trace_contents.has_value()) {
+  std::string log_name;
+  switch (drm_snapshot_type) {
+    case DRMSnapshotType_TRACE:
+      log_name = kDrmTraceLogName;
+      break;
+    case DRMSnapshotType_MODETEST: {
+      log_name = kModetestLogName;
+      break;
+    }
+  }
+
+  std::optional<std::string> log_contents = log_provider_->GetLog(log_name);
+  if (!log_contents.has_value()) {
     DEBUGD_ADD_ERROR_FMT(error, kDRMTraceToolErrorString,
-                         "Failed to get named log: : %s", kDrmTraceLogName);
+                         "Failed to get named log: : %s", log_name.c_str());
     return false;
   }
   const base::FilePath snapshot_path =
-      root_path_.Append(GenerateSnapshotFilePath());
+      root_path_.Append(GenerateSnapshotFilePath(log_name.c_str()));
 
   // Create the empty snapshot file to copy the log contents into.
   brillo::SafeFD::SafeFDResult result = brillo::SafeFD::Root();
@@ -216,7 +229,7 @@ bool DRMTraceTool::Snapshot(brillo::ErrorPtr* error, uint32_t type_enum) {
     return false;
   }
 
-  return WriteToFile(error, snapshot_path, drm_trace_contents.value());
+  return WriteToFile(error, snapshot_path, log_contents.value());
 }
 
 bool DRMTraceTool::WriteToFile(brillo::ErrorPtr* error,

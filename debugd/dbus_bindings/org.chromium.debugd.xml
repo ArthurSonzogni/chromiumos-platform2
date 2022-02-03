@@ -1412,6 +1412,11 @@
           Snapshot /sys/kernel/debug/tracing/instances/drm/trace.
         </tp:docstring>
       </tp:enumvalue>
+      <tp:enumvalue suffix="MODETEST" value='1'>
+        <tp:docstring>
+          Snapshot the output of `modetest`.
+        </tp:docstring>
+      </tp:enumvalue>
     </tp:enum>
     <signal name="PacketCaptureStart">
       <tp:docstring>
