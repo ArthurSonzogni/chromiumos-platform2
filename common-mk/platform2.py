@@ -131,6 +131,7 @@ _IUSE = [
     'user_session_isolation',
     'v4l2_codec',
     'vaapi',
+    'video_cards_msm',
     'vm_borealis',
     'vpn',
     'vtpm_proxy',
