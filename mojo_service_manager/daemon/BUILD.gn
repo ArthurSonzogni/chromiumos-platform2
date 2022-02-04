@@ -4,7 +4,7 @@
 
 import("//common-mk/pkg_config.gni")
 
-group("all") {
+group("daemon") {
   deps = [ ":mojo_service_manager" ]
 }
 
@@ -22,4 +22,6 @@ executable("mojo_service_manager") {
     "main.cc",
   ]
   configs += [ ":target_default" ]
+  install_path = "bin"
+  deps = [ "//mojo_service_manager/lib/mojom" ]
 }

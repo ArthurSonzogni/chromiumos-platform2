@@ -1,0 +1,19 @@
+# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+
+# TODO(b/226016871): Link this target to shared library.
+generate_mojom_bindings("mojom") {
+  sources = [
+    "service_manager.mojom",
+    "time.mojom",
+  ]
+  mojo_root = "${platform2_root}"
+  mojo_extra_args = [
+    "--typemap",
+    rebase_path("type_mappings.json"),
+  ]
+  standalone = true
+}
