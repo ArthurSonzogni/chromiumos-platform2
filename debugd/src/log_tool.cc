@@ -329,7 +329,7 @@ const std::array kCommandLogs {
   // remove serial numbers.
   Log{kCommand, "modetest",
     "(modetest; modetest -M evdi; modetest -M udl) | "
-    "sed -E '/EDID/ Log{:a;n;/value:/!ba;n;"
+    "sed -E '/EDID/ {:a;n;/value:/!ba;n;"
     "s/(00f{12}00)([0-9a-f]{8})([0-9a-f]{8})/\\1\\200000000/}'",
     kRoot, kRoot},
   Log{kFile, "mount-encrypted", "/var/log/mount-encrypted.log"},
