@@ -33,6 +33,7 @@
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_interface.h"
 #include "missive/storage/storage_configuration.h"
+#include "missive/util/file.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
@@ -69,6 +70,19 @@ const char kInvalidDirectoryPath[] = "o:\\some\\inaccessible\\dir";
 #else
 const char kInvalidDirectoryPath[] = "////////////";
 #endif
+
+// Ensure files as specified by the parameters are deleted. Take the same
+// parameters as base::FileEnumerator().
+template <typename... FileEnumeratorParams>
+void EnsureDeletingFiles(FileEnumeratorParams... file_enum_params) {
+  base::FileEnumerator dir_enum(file_enum_params...);
+  ASSERT_TRUE(DeleteFilesWarnIfFailed(dir_enum));
+  // Ensure that the files have been deleted
+  ASSERT_TRUE(base::FileEnumerator(
+                  std::forward<FileEnumeratorParams>(file_enum_params)...)
+                  .Next()
+                  .empty());
+}
 
 class StorageQueueTest
     : public ::testing::TestWithParam<
@@ -779,14 +793,9 @@ TEST_P(StorageQueueTest,
   ResetTestStorageQueue();
 
   // Delete all metadata files.
-  base::FileEnumerator dir_enum(options.directory(),
-                                /*recursive=*/false,
-                                base::FileEnumerator::FILES,
-                                base::StrCat({METADATA_NAME, ".*"}));
-  base::FilePath full_name;
-  while (full_name = dir_enum.Next(), !full_name.empty()) {
-    base::DeleteFile(full_name);
-  }
+  EnsureDeletingFiles(options.directory(),
+                      /*recursive=*/false, base::FileEnumerator::FILES,
+                      base::StrCat({METADATA_NAME, ".*"}));
 
   // Reopen, starting a new generation.
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
@@ -885,17 +894,10 @@ TEST_P(StorageQueueTest,
   // Reopen with the same generation and sequencing information.
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
 
-  // Delete the data file *.generation.0
-  {
-    base::FileEnumerator dir_enum(
-        options.directory(),
-        /*recursive=*/false, base::FileEnumerator::FILES,
-        base::StrCat({options.file_prefix(), ".*.0"}));
-    base::FilePath full_name;
-    while (full_name = dir_enum.Next(), !full_name.empty()) {
-      base::DeleteFile(full_name);
-    }
-  }
+  // Delete the data files *.generation.0
+  EnsureDeletingFiles(options.directory(),
+                      /*recursive=*/false, base::FileEnumerator::FILES,
+                      base::StrCat({options.file_prefix(), ".*.0"}));
 
   // Write more data.
   WriteStringOrDie(kMoreData[0]);

@@ -126,6 +126,7 @@ static_library("storage_test_support") {
     ":storage_queue",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
+    "//missive/util:file",
     "//missive/util:status",
   ]
 }
