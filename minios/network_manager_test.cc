@@ -262,13 +262,28 @@ TEST_F(NetworkManagerTest, GetGlobalPropertiesSuccess_MultipleServices) {
   EXPECT_EQ(iter->service_paths.size(), 1);
 }
 
-TEST_F(NetworkManagerTest, GetGlobalPropertiesSuccess_EmptyServices) {
+TEST_F(NetworkManagerTest,
+       GetGlobalPropertiesSuccess_EmptyServices_DoneRetries) {
   auto iter = network_manager_->get_networks_list_.insert(
       network_manager_->get_networks_list_.begin(),
       NetworkManager::GetNetworksField());
+  network_manager_->num_scan_retries_ = 0;
   EXPECT_CALL(mock_network_manager_observer_,
-              OnGetNetworks(testing::_, IsNull()));
+              OnGetNetworks(testing::_, NotNull()));
   network_manager_->GetGlobalPropertiesSuccess(iter, {});
+}
+
+TEST_F(NetworkManagerTest, GetGlobalPropertiesSuccess_EmptyServices_Retry) {
+  auto iter = network_manager_->get_networks_list_.insert(
+      network_manager_->get_networks_list_.begin(),
+      NetworkManager::GetNetworksField());
+  network_manager_->num_scan_retries_ = 1;
+  EXPECT_CALL(*mock_shill_proxy_ptr_,
+              ManagerRequestScan(shill::kTypeWifi, _, _));
+  network_manager_->GetGlobalPropertiesSuccess(iter, {});
+  clock_.Advance(NetworkManager::kScanRetryMsDelay * 2);
+  loop_.RunOnce(false);
+  EXPECT_EQ(network_manager_->num_scan_retries_, 0);
 }
 
 TEST_F(NetworkManagerTest, IterateOverServicePropertiesSuccess_EmptyServices) {

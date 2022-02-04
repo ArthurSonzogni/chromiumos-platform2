@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <dbus/shill/dbus-constants.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -26,6 +27,12 @@ class NetworkManager : public NetworkManagerInterface {
   static const int kConnectionRetryMsDelay = 500;
   // The delay in milliseconds before checking connection state.
   static const int kCheckConnectionRetryMsDelay = 1000;
+  // The number of times to retry scans. We want to retry up to a max of
+  // `kMaxNumScanRetries` * `kScanRetryMsDelay` seconds.
+  static const int kMaxNumScanRetries = 10;
+  // The delay in milliseconds before retrying scanning for networks.
+  static constexpr base::TimeDelta kScanRetryMsDelay =
+      base::TimeDelta::FromMilliseconds(500);
 
   explicit NetworkManager(std::unique_ptr<ShillProxyInterface> shill_proxy);
   virtual ~NetworkManager() = default;
@@ -62,7 +69,10 @@ class NetworkManager : public NetworkManagerInterface {
               Connect_GetServiceCheckConnectionSuccess_IntermediateState);
   FRIEND_TEST(NetworkManagerTest, GetNetworks);
   FRIEND_TEST(NetworkManagerTest, GetGlobalPropertiesSuccess_MultipleServices);
-  FRIEND_TEST(NetworkManagerTest, GetGlobalPropertiesSuccess_EmptyServices);
+  FRIEND_TEST(NetworkManagerTest,
+              GetGlobalPropertiesSuccess_EmptyServices_DoneRetries);
+  FRIEND_TEST(NetworkManagerTest,
+              GetGlobalPropertiesSuccess_EmptyServices_Retry);
   FRIEND_TEST(NetworkManagerTest,
               IterateOverServicePropertiesSuccess_EmptyServices);
   FRIEND_TEST(NetworkManagerTest,
@@ -131,6 +141,7 @@ class NetworkManager : public NetworkManagerInterface {
 
   // `GetNetworks()` sequence.
   // `ManagerRequestScan()` callbacks.
+  void RequestScan(GetNetworksListIter iter);
   void RequestScanSuccess(GetNetworksListIter iter);
   void RequestScanError(GetNetworksListIter iter, brillo::Error* error);
   // `ManagerGetProperties()` callbacks.
@@ -145,6 +156,7 @@ class NetworkManager : public NetworkManagerInterface {
   // Response helpers for `GetNetworksListIter`.
   void Return(GetNetworksListIter iter, brillo::Error* error = nullptr);
 
+  int num_scan_retries_;
   ConnectMapType connect_map_;
   GetNetworksListType get_networks_list_;
 

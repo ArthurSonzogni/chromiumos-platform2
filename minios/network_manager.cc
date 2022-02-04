@@ -23,7 +23,9 @@ std::string ToString(brillo::Error* error) {
 }  // namespace
 
 NetworkManager::NetworkManager(std::unique_ptr<ShillProxyInterface> shill_proxy)
-    : shill_proxy_(std::move(shill_proxy)), weak_ptr_factory_(this) {}
+    : num_scan_retries_(0),
+      shill_proxy_(std::move(shill_proxy)),
+      weak_ptr_factory_(this) {}
 
 void NetworkManager::Connect(const std::string& ssid,
                              const std::string& passphrase) {
@@ -252,6 +254,12 @@ void NetworkManager::GetNetworks() {
   GetNetworksListIter iter =
       get_networks_list_.insert(get_networks_list_.end(), GetNetworksField());
 
+  // Reset retry counter before starting scan.
+  num_scan_retries_ = kMaxNumScanRetries;
+  RequestScan(iter);
+}
+
+void NetworkManager::RequestScan(GetNetworksListIter iter) {
   shill_proxy_->ManagerRequestScan(
       shill::kTypeWifi,
       base::BindRepeating(static_cast<GetNetworksRequestScanSuccessType>(
@@ -260,6 +268,7 @@ void NetworkManager::GetNetworks() {
       base::BindRepeating(static_cast<GetNetworksRequestScanErrorType>(
                               &NetworkManager::RequestScanError),
                           weak_ptr_factory_.GetWeakPtr(), iter));
+  --num_scan_retries_;
 }
 
 void NetworkManager::RequestScanSuccess(GetNetworksListIter iter) {
@@ -286,7 +295,6 @@ void NetworkManager::GetGlobalPropertiesSuccess(
           brillo::GetVariantValueOrDefault<std::vector<dbus::ObjectPath>>(
               dict, pr.first);
       if (services.empty()) {
-        LOG(ERROR) << "No services found.";
         break;
       }
       // Move the list of services to read from.
@@ -304,7 +312,21 @@ void NetworkManager::GetGlobalPropertiesSuccess(
       return;
     }
   }
-  Return(iter);
+  // No services were found. Retry if we can else error out.
+  if (num_scan_retries_ > 0) {
+    LOG(WARNING) << "No services found - Retrying scan.";
+    brillo::MessageLoop::current()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&NetworkManager::RequestScan,
+                       weak_ptr_factory_.GetWeakPtr(), iter),
+        kScanRetryMsDelay);
+    return;
+  }
+  LOG(ERROR) << "No services found.";
+  Return(iter,
+         brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
+                               DBUS_ERROR_FAILED, "No network devices found.")
+             .get());
 }
 
 void NetworkManager::GetGlobalPropertiesError(GetNetworksListIter iter,
