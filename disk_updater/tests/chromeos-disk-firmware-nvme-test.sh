@@ -31,11 +31,11 @@ declare -i id_idx
 
 disk_nvme_id_info() {
   local rc=${nvme_id_rc[${id_idx}]}
-  if [ ${rc} -eq 0 ]; then
+  if [ "${rc}" -eq 0 ]; then
     cat "tests/${nvme_id_files[${id_idx}]}.nvme"
   fi
   : $(( id_idx += 1))
-  return ${rc}
+  return "${rc}"
 }
 
 prepare_test() {
@@ -52,7 +52,7 @@ check_test() {
   local exp_result=$2_${test_id}
   local test_exp_rc=$3
   local test_rc=$4
-  if [ ${test_exp_rc} -ne ${test_rc} ]; then
+  if [ "${test_exp_rc}" -ne "${test_rc}" ]; then
     echo "Expected ${test_exp_rc}, got ${test_rc}"
     exit 1
   fi

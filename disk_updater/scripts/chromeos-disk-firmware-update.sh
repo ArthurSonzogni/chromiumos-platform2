@@ -175,7 +175,7 @@ disk_mmc_info() {
     return 1
   fi
 
-  if [ -z "${disk_model}" -o -z "${disk_fw_rev}" ]; then
+  if [ -z "${disk_model}" ] || [ -z "${disk_fw_rev}" ]; then
     return 1
   fi
   return 0
@@ -201,8 +201,8 @@ disk_ata_info() {
   disk_fw_rev=""
   disk_hdparm_info "${device}" > "${hdparm_out}"
   rc=$?
-  if [ ${rc} -ne 0 ]; then
-    return ${rc}
+  if [ "${rc}" -ne 0 ]; then
+    return "${rc}"
   fi
   if [ ! -s "${hdparm_out}" ]; then
     log_msg "hdparm did not produced any output"
@@ -214,7 +214,7 @@ disk_ata_info() {
   disk_fw_rev=$(sed -nEe \
       '/^\t+Firmware/s|\t+Firmware Revision: +(.*)|\1|p' "${hdparm_out}" \
     | sed -re 's/ +$//' -e 's/[ -]/_/g')
-  if [ -z "${disk_model}" -o -z "${disk_fw_rev}" ]; then
+  if [ -z "${disk_model}" ] || [ -z "${disk_fw_rev}" ]; then
     return 1
   fi
   return 0
@@ -246,8 +246,8 @@ disk_nvme_info() {
   disk_fw_rev=""
   disk_nvme_id_info "${device}" > "${nvme_out}"
   rc=$?
-  if [ ${rc} -ne 0 ]; then
-    return ${rc}
+  if [ "${rc}" -ne 0 ]; then
+    return "${rc}"
   fi
   if [ ! -s "${nvme_out}" ]; then
     log_msg "nvme did not produced any output"
@@ -257,7 +257,7 @@ disk_nvme_info() {
     | sed -re 's/ +$//' -e 's/[ -]/_/g')
   disk_fw_rev=$(sed -nEe '/^fr +:/s|[^:]*: +(.*)|\1|p' "${nvme_out}" \
     | sed -re 's/ +$//' -e 's/[ -]/_/g')
-  if [ -z "${disk_model}" -o -z "${disk_fw_rev}" ]; then
+  if [ -z "${disk_model}" ] || [ -z "${disk_fw_rev}" ]; then
     return 1
   fi
   return 0
@@ -601,7 +601,7 @@ disk_nvme_upgrade() {
   "${FLAGS_nvme}" fw-activate "/dev/${device}" --slot="${new_slot}" \
     --action="${action}"
   rc=$?
-  if [ "${rc}" -eq 11 -a "${action}" -eq 2 ]; then
+  if [ "${rc}" -eq 11 ] && [ "${action}" -eq 2 ]; then
     disk_nmve_reset "${device}"
   elif [ "${rc}" -ne 0 ]; then
     log_msg "Unable to activate ${fw_file} to ${device}"
@@ -669,14 +669,14 @@ disk_upgrade_devices() {
     while true; do
       disk_info "${device}"  # sets disk_model, disk_fw_rev
       rc=$?
-      if [ ${rc} -ne 0 ]; then
+      if [ "${rc}" -ne 0 ]; then
         log_msg "Can not get info on this device. skip."
         rc=0
         break
       fi
       disk_fw_select "${disk_rules}"  # sets disk_fw_file, disk_exp_fw_rev, disk_fw_opt
       rc=$?
-      if [ ${rc} -ne 0 ]; then
+      if [ "${rc}" -ne 0 ]; then
         # Nothing to do, go to next drive if any.
         : "${success:="No need to upgrade ${device}:${disk_model}"}"
         log_msg "${success}"
@@ -688,7 +688,7 @@ disk_upgrade_devices() {
         fw_file="${FLAGS_tmp_dir}/${disk_fw_file}"
         bzcat "${FLAGS_fw_package_dir}/${disk_fw_file}.bz2" > "${fw_file}" 2> /dev/null
         rc=$?
-        if [ ${rc} -ne 0 ]; then
+        if [ "${rc}" -ne 0 ]; then
           log_msg "${disk_fw_file} in ${FLAGS_fw_package_dir} could not be extracted: ${rc}"
           break
         fi
@@ -705,7 +705,7 @@ disk_upgrade_devices() {
         tries=4
         rc=1
         # Verify that's the firmware upgrade stuck It may take some time.
-        while [ "${tries}" -ne 0 -a "${rc}" -ne 0 ]; do
+        while [ "${tries}" -ne 0 ] && [ "${rc}" -ne 0 ]; do
           : $(( tries -= 1 ))
           # Allow the error handler to block the scsi queue if it is working.
           if [ "${FLAGS_test}" -eq "${FLAGS_FALSE}" ]; then
@@ -739,7 +739,7 @@ disk_upgrade_devices() {
     done
   done
   # Leave a trace of a successful run.
-  if [ "${rc}" -eq 0 -a -n "${FLAGS_status}" ]; then
+  if [ "${rc}" -eq 0 ] && [ -n "${FLAGS_status}" ]; then
     echo "${success}" > "${FLAGS_status}"
   fi
   return "${rc}"
@@ -772,7 +772,7 @@ main() {
     rm -rf "${FLAGS_tmp_dir}"
   fi
   # Append a cksum to prevent multiple calls to this script.
-  if [ "${rc}" -eq 0 -a -n "${FLAGS_status}" ]; then
+  if [ "${rc}" -eq 0 ] && [ -n "${FLAGS_status}" ]; then
     cksum "${disk_rules_raw}" >> "${FLAGS_status}"
   fi
   return "${rc}"
@@ -782,4 +782,3 @@ main() {
 if [ "${FLAGS_test}" -eq "${FLAGS_FALSE}" ]; then
   main "$@"
 fi
-
