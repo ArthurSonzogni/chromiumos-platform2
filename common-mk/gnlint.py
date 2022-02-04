@@ -2,6 +2,7 @@
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Linter for checking GN files used in platform2 projects."""
 
 # This linter utilizes the token tree parser of the gn binary.
@@ -61,13 +62,13 @@
 # The tree structure is expressed by "child" key having list of nodes in it.
 # Every dict in the nested structure represents a single node.
 
-import collections
 import json
 import logging
 import os
 import re
 import subprocess
 import sys
+import typing
 
 # Find chromite!
 chromite_root = os.path.join(
@@ -79,19 +80,51 @@ from chromite.lib import commandline
 from chromite.lib import cros_build_lib
 # pylint: enable=wrong-import-position
 
-# Object holding the result of a lint check.
-LintResult = collections.namedtuple(
-    'LintResult',
-    (
-        # The name of the linter checking.
-        'linter',
-        # The file the issue was found in.
-        'file',
-        # The message for this check.
-        'msg',
-        # The type of result -- logging.ERROR or logging.WARNING.
-        'type',
-    ))
+
+class LintResult(typing.NamedTuple):
+    """Object holding the result of a lint check."""
+    # The name of the linter checking.
+    linter: str
+    # The file the issue was found in.
+    file: str
+    # The location in the file where the issue was found.
+    # None when it's not tied to a specific line (e.g. file not found).
+    location: typing.Dict
+    # The message for this check.
+    msg: str
+    # The type of result -- logging.ERROR or logging.WARNING.
+    type: int
+
+
+class Issue(typing.NamedTuple):
+    """Object holding an issue found by a linter."""
+    # The location in the file where the issue was found.
+    location: typing.Dict
+    # The message for this check.
+    msg: str
+
+
+class LintSettings(typing.NamedTuple):
+    """Object holding linter settings."""
+    # Linters to skip.
+    skip: set
+    # Problems we found in the lint settings themselves.
+    issues: typing.List
+
+
+def FormatLocation(file, location):
+    """Formats the file name and the node location"""
+    return '%s:%d:%d' % (
+        file,
+        location.get('begin_line'),
+        location.get('begin_column'),
+    )
+
+
+def GetNodeValue(node):
+    """Extracts the string value from a node of a GN syntax tree node"""
+    # Literal nodes of a string value contains double quotes.
+    return Unquote(node.get('value'))
 
 
 def FilterFiles(files, extensions):
@@ -133,37 +166,38 @@ def CheckFormat(gnfile):
     """Check if the .gn file is formatted in the standard way by gn format."""
     issues = []
     linter = 'CheckFormat'
+
+    def AppendError(msg):
+        issues.append(
+            LintResult(
+                linter=linter,
+                file=gnfile,
+                location=None,
+                msg=msg,
+                type=logging.ERROR))
+
     try:
         gn_path = os.path.join(chromite_root, 'chroot', 'usr', 'bin', 'gn')
         result = cros_build_lib.run([gn_path, 'format', '--dry-run', gnfile],
                                     check=False,
                                     debug_level=logging.DEBUG)
     except cros_build_lib.RunCommandError as e:
-        issues.append(
-            LintResult(linter, gnfile, 'Failed to run gn format: %s' % e,
-                       logging.ERROR))
+        AppendError('Failed to run gn format: %s' % e)
     else:
         if result.returncode == 0:
             # successful format, matches on disk.
             pass
         elif result.returncode == 1:
-            issues.append(
-                LintResult(
-                    linter, gnfile, 'General failure while running gn format '
-                    '(e.g. parse error)', logging.ERROR))
+            AppendError('General failure while running gn format '
+                        '(e.g. parse error)')
         elif result.returncode == 2:
-            issues.append(
-                LintResult(
-                    linter, gnfile,
-                    'Needs reformatting. Run following command: %s format %s' %
-                    (gn_path, gnfile), logging.ERROR))
+            AppendError(
+                'Needs reformatting. Run following command: %s format %s' %
+                (gn_path, gnfile))
         else:
-            issues.append(
-                LintResult(
-                    linter, gnfile, 'Unknown error with gn format: '
-                    'returncode=%i error=%s output=%s' %
-                    (result.returncode, result.stderr, result.stdout),
-                    logging.ERROR))
+            AppendError('Unknown error with gn format: '
+                        'returncode=%i error=%s output=%s' %
+                        (result.returncode, result.stderr, result.stdout))
     return issues
 
 
@@ -216,7 +250,7 @@ def ExtractLiteralAssignment(node, target_variable_names, operators=None):
             ['=', '+=', '-='].
 
     Returns:
-        List of strings used with the assignment operators to either variable.
+        List of nodes used with the assignment operators to either variable.
     """
     if operators is None:
         operators = ['=', '+=', '-=']
@@ -240,8 +274,7 @@ def ExtractLiteralAssignment(node, target_variable_names, operators=None):
     for element in child[1].get('child'):
         if element.get('type') != 'LITERAL':
             continue
-        # Literal nodes of a string value contains double quotes.
-        literals.append(Unquote(element.get('value')))
+        literals.append(element)
     return literals
 
 
@@ -267,15 +300,18 @@ def GnLintLibFlags(gndata):
         gndata: A dict representing a token tree.
 
     Returns:
-        List of detected LintResult.
+        List of detected Issue.
     """
 
     def CheckNode(node):
-        flags = ExtractLiteralAssignment(node, ['ldflags'])
-        for flag in flags:
+        for n in ExtractLiteralAssignment(node, ['ldflags']):
+            flag = GetNodeValue(n)
             if flag.startswith('-l'):
-                issues.append(('Libraries should be specified by "libs", '
-                               'not -l flags in "ldflags": %s') % flag)
+                issues.append(
+                    Issue(
+                        n.get('location'),
+                        ('Libraries should be specified by "libs", '
+                         'not -l flags in "ldflags": %s') % flag))
 
     issues = []
     WalkGn(CheckNode, gndata)
@@ -289,22 +325,27 @@ def GnLintVisibilityFlags(gndata):
         gndata: A dict representing a token tree.
 
     Returns:
-        List of detected LintResult.
+        List of detected Issue.
     """
 
     def CheckNode(node):
-        flags = ExtractLiteralAssignment(node,
-                                         ['cflags', 'cflags_c', 'cflags_cc'])
-        for flag in flags:
+        for n in ExtractLiteralAssignment(node,
+                                          ['cflags', 'cflags_c', 'cflags_cc']):
+            flag = GetNodeValue(n)
             if flag.startswith('-fvisibility'):
-                issues.append('do not use -fvisibility; to export symbols, use '
-                              'brillo/brillo_export.h instead')
+                issues.append(
+                    Issue(
+                        n.get('location'), 'do not use -fvisibility; to '
+                        'export symbols, use brillo/brillo_export.h instead'))
 
-        configs = ExtractLiteralAssignment(node, ANY_CONFIGS)
-        if '//common-mk:visibility_default' in configs:
-            issues.append(
-                'do not use //common-mk:visibility_default; to export '
-                'symbols, use brillo/brillo_export.h instead')
+        for n in ExtractLiteralAssignment(node, ANY_CONFIGS):
+            name = GetNodeValue(n)
+            if name == '//common-mk:visibility_default':
+                issues.append(
+                    Issue(
+                        n.get('location'), 'do not use '
+                        '//common-mk:visibility_default; to export '
+                        'symbols, use brillo/brillo_export.h instead'))
 
     issues = []
     WalkGn(CheckNode, gndata)
@@ -318,15 +359,18 @@ def GnLintDefineFlags(gndata):
         gndata: A dict representing a token tree.
 
     Returns:
-        List of detected LintResult.
+        List of detected Issue.
     """
 
     def CheckNode(node):
-        flags = ExtractLiteralAssignment(node,
-                                         ['cflags', 'cflags_c', 'cflags_cc'])
-        for flag in flags:
-            if flag.startswith('-D'):
-                issues.append('-D flags should be in "defines": %s' % flag)
+        for n in ExtractLiteralAssignment(node,
+                                          ['cflags', 'cflags_c', 'cflags_cc']):
+            name = GetNodeValue(n)
+            if name.startswith('-D'):
+                issues.append(
+                    Issue(
+                        n.get('location'),
+                        '-D flags should be in "defines": %s' % name))
 
     issues = []
     WalkGn(CheckNode, gndata)
@@ -340,22 +384,28 @@ def GnLintDefines(gndata):
         gndata: A dict representing a token tree.
 
     Returns:
-        List of detected LintResult.
+        List of detected Issue.
     """
 
     def CheckNode(node):
         flags = ExtractLiteralAssignment(node, ['defines'])
-        for flag in flags:
+        for n in flags:
+            flag = GetNodeValue(n)
             # People sometimes typo the name.
             if flag.startswith('-D'):
                 issues.append(
-                    'defines do not use -D prefixes: use "%s" instead of '
-                    '"%s"' % (flag[2:], flag))
+                    Issue(
+                        n.get('location'),
+                        'defines do not use -D prefixes: use "%s" instead of '
+                        '"%s"' % (flag[2:], flag)))
             else:
                 # Make sure the name is valid CPP.
                 name = flag.split('=', 1)[0]
                 if not re.match(r'^[a-zA-Z0-9_]+$', name):
-                    issues.append('invalid define name: %s' % (name,))
+                    issues.append(
+                        Issue(
+                            n.get('location'),
+                            'invalid define name: %s' % (name,)))
 
     issues = []
     WalkGn(CheckNode, gndata)
@@ -369,14 +419,18 @@ def GnLintCommonTesting(gndata):
         gndata: A dict representing a token tree.
 
     Returns:
-        List of detected LintResult.
+        List of detected Issue.
     """
 
     def CheckNode(node):
-        flags = ExtractLiteralAssignment(node, ['libs'])
-        if 'gtest' in flags or 'gmock' in flags:
-            issues.append('use //common-mk:test for tests instead of '
-                          'linking against -lgtest/-lgmock directly')
+        for n in ExtractLiteralAssignment(node, ['libs']):
+            flag = GetNodeValue(n)
+            if flag in ['gmock', 'gtest']:
+                issues.append(
+                    Issue(
+                        n.get('location'),
+                        'use //common-mk:test for tests instead of '
+                        'linking against -lgtest/-lgmock directly'))
 
     issues = []
     WalkGn(CheckNode, gndata)
@@ -407,7 +461,7 @@ def GnLintStaticSharedLibMixing(gndata):
         gndata: A dict representing a token tree of a GN file.
 
     Returns:
-        List of detected issues.
+        List of detected Issue.
     """
     # Record static_libs that build as PIE, and all the deps of shared_libs.
     # Afterwards, we'll sanity check all the shared lib deps.
@@ -448,17 +502,24 @@ def GnLintStaticSharedLibMixing(gndata):
         name = Unquote(name)
         target_type = node.get('value')
         if target_type == 'static_library':
-            configs = FindAllLiteralAssignments(block, ANY_CONFIGS, ['+='])
-            removed_configs = FindAllLiteralAssignments(block, ANY_CONFIGS,
-                                                        ['-='])
+            configs = [
+                GetNodeValue(n)
+                for n in FindAllLiteralAssignments(block, ANY_CONFIGS, ['+='])
+            ]
+            removed_configs = [
+                GetNodeValue(n)
+                for n in FindAllLiteralAssignments(block, ANY_CONFIGS, ['-='])
+            ]
             if ('//common-mk:pie' not in removed_configs or
                     '//common-mk:pic' not in configs):
-                pie_static_libs.append(name)
+                pie_static_libs.append((name, node.get('location')))
         elif target_type == 'shared_library':
             assert name not in shared_lib_deps, 'duplicate target: %s' % name
             deps = ExtractLiteralAssignment(block.get('child')[0], 'deps')
             shared_lib_deps[name] = [
-                t.lstrip(':') for t in deps if t.startswith(':')
+                GetNodeValue(t).lstrip(':')
+                for t in deps
+                if GetNodeValue(t).startswith(':')
             ]
 
     # We build up the full state first rather than check it as we go as gyp
@@ -467,7 +528,7 @@ def GnLintStaticSharedLibMixing(gndata):
 
     # Now with the full state, run the checks.
     ret = []
-    for pie_lib in pie_static_libs:
+    for pie_lib, location in pie_static_libs:
         # Pull out all shared libs that depend on static PIE libs.
         dependency_libs = [
             shared_lib for shared_lib, deps in shared_lib_deps.items()
@@ -475,30 +536,21 @@ def GnLintStaticSharedLibMixing(gndata):
         ]
         if dependency_libs:
             ret.append(
-                ('static library "%(pie)s" must be compiled as PIC, not PIE, '
-                 'because it is linked into the shared libraries %(pic)s; '
-                 'add this to the "%(pie)s" target to fix:\n'
-                 'configs += [\"//common-mk:pic\"]\n'
-                 'configs -= [\"//common-mk:pie\"]') % {
-                     'pie': pie_lib,
-                     'pic': dependency_libs
-                 })
+                Issue(location,
+                      ('static library "%(pie)s" must be compiled as PIC, not '
+                       'PIE, because it is linked into the shared libraries '
+                       '%(pic)s; add this to the "%(pie)s" target to fix:\n'
+                       'configs += [\"//common-mk:pic\"]\n'
+                       'configs -= [\"//common-mk:pie\"]') % {
+                           'pie': pie_lib,
+                           'pic': dependency_libs
+                       }))
     return ret
 
 
 # The regex used to find gnlint options in the file.
 # This matches the regex pylint uses.
 OPTIONS_RE = re.compile(r'^\s*#.*\bgnlint:\s*([^\n;]+)', flags=re.MULTILINE)
-
-# Object holding linter settings.
-LintSettings = collections.namedtuple(
-    'LintSettings',
-    (
-        # Linters to skip.
-        'skip',
-        # Problems we found in the lint settings themselves.
-        'issues',
-    ))
 
 # The regex used to find unit test source files having wrong suffix.
 UNITTEST_SOURCE_RE = re.compile(r'_unittest\.(cc|c|h)$')
@@ -510,12 +562,14 @@ def GnLintSourceFileNames(gndata):
     ret = []
 
     def CheckNode(node):
-        sources = ExtractLiteralAssignment(node, ['sources'])
-        for path in sources:
+        for n in ExtractLiteralAssignment(node, ['sources']):
+            path = GetNodeValue(n)
             # Enforce xxx_test.cc naming.
             if UNITTEST_SOURCE_RE.search(path):
-                ret.append('%s: rename unittest file to "%s"' %
-                           (path, path.replace('_unittest', '_test')))
+                ret.append(
+                    Issue(
+                        n.get('location'), '%s: rename unittest file to "%s"' %
+                        (path, path.replace('_unittest', '_test'))))
 
     WalkGn(CheckNode, gndata)
     return ret
@@ -560,11 +614,16 @@ def GnLintPkgConfigs(gndata):
     def CheckNode(node):
         # detect addition to libraries.
         # ldflags is already detected as errors by GnLintLibFlags.
-        for v in KNOWN_PC_LIBS & set(ExtractLiteralAssignment(node, ['libs'])):
+        for n in ExtractLiteralAssignment(node, ['libs']):
+            lib = GetNodeValue(n)
+            if lib not in KNOWN_PC_LIBS:
+                continue
             ret.append(
-                ('use pkg-config instead: delete "%s" from "libs" and add '
-                 '"%s" to either "pkg_deps", "public_pkg_deps", or '
-                 '"all_dependent_pkg_deps"') % (v, KNOWN_PC_FILES[v]))
+                Issue(
+                    n.get('location'),
+                    ('use pkg-config instead: delete "%s" from "libs" and add '
+                     '"%s" to either "pkg_deps", "public_pkg_deps", or '
+                     '"all_dependent_pkg_deps"') % (lib, KNOWN_PC_FILES[lib])))
 
     WalkGn(CheckNode, gndata)
     return ret
@@ -658,11 +717,14 @@ def GnLintOrderingWithinTarget(gndata):
                 if step == -1:
                     continue
                 if before_step > step:
-                    ret.append(('wrong parameter order in %s(%s): '
-                                'put parameters in the following order: '
-                                'output_name/visibility/testonly, sources, '
-                                'other parameters, public_deps '
-                                'and deps') % (function, name))
+                    ret.append(
+                        Issue(
+                            child.get('location'),
+                            ('wrong parameter order in %s(%s): '
+                             'put parameters in the following order: '
+                             'output_name/visibility/testonly, sources, '
+                             'other parameters, public_deps '
+                             'and deps') % (function, name)))
                     return
                 before_step = step
 
@@ -734,16 +796,24 @@ def ParseOptions(options, name=None):
             skip.update(x.strip() for x in value.split(','))
         else:
             issues.append(
-                LintResult('ParseOptions', name,
-                           'unknown gnlint option: %s' % (key,), logging.ERROR))
+                LintResult(
+                    linter='ParseOptions',
+                    file=name,
+                    location=None,
+                    msg='unknown gnlint option: %s' % (key,),
+                    type=logging.ERROR))
 
     # Validate the options.
     all_linters = FindLinters([])
     bad_linters = skip - set(all_linters.keys())
     if bad_linters:
         issues.append(
-            LintResult('ParseOptions', name,
-                       'unknown linters: %s' % (bad_linters,), logging.ERROR))
+            LintResult(
+                linter='ParseOptions',
+                file=name,
+                location=None,
+                msg='unknown linters: %s' % (bad_linters,),
+                type=logging.ERROR))
 
     return LintSettings(skip, issues)
 
@@ -794,7 +864,13 @@ def RunLinters(name, gndata, settings=None):
 
     for linter_name, linter in FindLinters(settings.skip).items():
         for result in linter(gndata):
-            issues.append(LintResult(linter_name, name, result, logging.ERROR))
+            issues.append(
+                LintResult(
+                    linter=linter_name,
+                    file=name,
+                    location=result[0],
+                    msg=result[1],
+                    type=logging.ERROR))
     return issues
 
 
@@ -842,16 +918,24 @@ def CheckGnFile(gnfile):
             debug_level=logging.DEBUG)
     except cros_build_lib.RunCommandError as e:
         issues.append(
-            LintResult('gn.input.CheckedEval', gnfile,
-                       'Failed to run gn format: %s' % e, logging.ERROR))
+            LintResult(
+                linter='gn.input.CheckedEval',
+                file=gnfile,
+                location=None,
+                msg='Failed to run gn format: %s' % e,
+                type=logging.ERROR))
         return issues
 
     try:
         data = json.loads(command_result.stdout)
     except Exception as e:
         issues.append(
-            LintResult('gn.input.CheckedEval', gnfile, 'invalid format: %s' % e,
-                       logging.ERROR))
+            LintResult(
+                linter='gn.input.CheckedEval',
+                file=gnfile,
+                location=None,
+                msg='invalid format: %s' % e,
+                type=logging.ERROR))
         return issues
     issues += RunLinters(gnfile, data, settings)
     return issues
@@ -873,7 +957,12 @@ def main(argv):
         if issues:
             logging.error('**** %s: found %i issue(s)', gnfile, len(issues))
             for issue in issues:
-                logging.log(issue.type, '%s: %s', issue.linter, issue.msg)
+                if issue.location is not None:
+                    logging.log(issue.type, '%s: %s: %s',
+                                FormatLocation(issue.file, issue.location),
+                                issue.linter, issue.msg)
+                else:
+                    logging.log(issue.type, '%s: %s', issue.linter, issue.msg)
             num_files += 1
     if num_files:
         logging.error('%i file(s) failed linting', num_files)

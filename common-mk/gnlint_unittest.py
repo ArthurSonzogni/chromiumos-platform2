@@ -2,6 +2,7 @@
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Unittests for gnlint."""
 
 import logging
@@ -22,12 +23,26 @@ from chromite.lib import cros_test_lib
 from chromite.lib import osutils
 # pylint: enable=wrong-import-position
 
+# stub error location dict.
+# Used by test data to verify the right node is included in an error.
+STUB_ERROR_LOCATION = {
+    'begin_column': 4,
+    'begin_line': 5,
+    'end_column': 6,
+    'end_line': 7,
+}
+
 
 class LintTestCase(cros_test_lib.TestCase):
     """Helper for running linters."""
 
     def _CheckLinter(self, functor, inputs, is_bad_input=True):
-        """Make sure |functor| rejects or accepts every input in |inputs|."""
+        """Make sure |functor| rejects or accepts every input in |inputs|.
+
+        When is_bad_input is true, the expected error location in the input
+        should be filled with STUB_ERROR_LOCATION and the other nodes should
+        not have it as the location of the node.
+        """
         # First run a sanity check.
         ret = functor(self.STUB_DATA)
         self.assertEqual(ret, [])
@@ -37,6 +52,8 @@ class LintTestCase(cros_test_lib.TestCase):
             ret = functor(x)
             if is_bad_input:
                 self.assertNotEqual(ret, [])
+                for e in ret:
+                    self.assertEqual(e.location, STUB_ERROR_LOCATION)
             else:
                 self.assertEqual(ret, [])
 
@@ -78,7 +95,8 @@ class UtilityTests(cros_test_lib.MockTestCase):
             gnlint,
             'CheckGnFile',
             return_value=[
-                gnlint.LintResult('LintFunc', 'foo.gn', 'msg!', logging.ERROR),
+                gnlint.LintResult('LintFunc', 'foo.gn', None, 'msg!',
+                                  logging.ERROR),
             ])
         gnlint.main(['foo.gn'])
 
@@ -120,7 +138,7 @@ class FilesystemUtilityTests(cros_test_lib.MockTempDirTestCase):
                      'Skipping since gn is not available: crbug.com/1078990.')
     def testCheckFormatDetectError(self):
         """Check CheckGnFile detects non-standard format."""
-        content = 'executable("foo"){\n}\n'    # no space after ')'
+        content = 'executable("foo"){\n}\n'  # no space after ')'
         gnfile = os.path.join(self.tempdir, 'asdf')
         osutils.WriteFile(gnfile, content)
         self.assertExists(gnlint.GetGnPath())
@@ -149,7 +167,11 @@ class FilesystemUtilityTests(cros_test_lib.MockTempDirTestCase):
 
 
 def CreateTestData(flag_name, operator, value):
-    """Creates dictionary for testing simple assignment in a static_library."""
+    """Creates dictionary for testing simple assignment in a static_library.
+
+    The assigned literal is set to be the error location when an error is
+    expected for the input.
+    """
     # static_library("my_static_library") {
     #   <flag_name> <operator> [ <value> ]
     # }
@@ -163,7 +185,11 @@ def CreateTestData(flag_name, operator, value):
         value = [value]
     value_list = []
     for item in value:
-        value_list.append({'type': 'LITERAL', 'value': item})
+        value_list.append({
+            'location': STUB_ERROR_LOCATION,
+            'type': 'LITERAL',
+            'value': item,
+        })
     return {
         'child': [{
             'child': [{
@@ -276,6 +302,7 @@ class GnLintTests(LintTestCase):
                     }],
                     'type': 'BLOCK'
                 }],
+                'location': STUB_ERROR_LOCATION,
                 'type': 'FUNCTION',
                 'value': 'static_library'
             }, {
@@ -436,6 +463,7 @@ class GnLintTests(LintTestCase):
                             'child': ['bar'],
                             'type': 'LIST'
                         }],
+                        'location': STUB_ERROR_LOCATION,
                         'type': 'BINARY',
                         'value': '='
                     }],
