@@ -138,6 +138,7 @@ static_library("libmessaging_layer") {
     "//missive/storage:storage_module",
     "//missive/storage:storage_module_interface",
     "//missive/storage:storage_uploader_interface",
+    "//missive/util:disconnectable_client",
     "//missive/util:status",
   ]
 }
@@ -177,6 +178,7 @@ if (use.test) {
       "storage/storage_queue_stress_test.cc",
       "storage/storage_queue_test.cc",
       "storage/storage_test.cc",
+      "util/disconnectable_client_test.cc",
       "util/file_test.cc",
       "util/shared_queue_test.cc",
       "util/status_macros_test.cc",

@@ -71,3 +71,14 @@ source_set("test_callbacks_support") {
 
   configs += [ ":target_defaults" ]
 }
+
+source_set("disconnectable_client") {
+  sources = [
+    "disconnectable_client.cc",
+    "disconnectable_client.h",
+  ]
+
+  configs += [ ":target_defaults" ]
+
+  deps = [ ":status" ]
+}
