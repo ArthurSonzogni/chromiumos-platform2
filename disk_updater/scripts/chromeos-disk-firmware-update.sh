@@ -237,7 +237,7 @@ disk_nvme_info() {
   nvme_out="${FLAGS_tmp_dir}/${device}"
 
   # Test if we have the tool needed for an upgrade.
-  if ! program_installed "${FLAGS_mmc}"; then
+  if ! program_installed "${FLAGS_nvme}"; then
     return 1
   fi
 
