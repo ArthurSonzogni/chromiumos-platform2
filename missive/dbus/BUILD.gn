@@ -27,6 +27,7 @@ static_library("upload_client") {
   deps = [
     "//missive/proto:libmissiveprotointerface",
     "//missive/proto:libmissiveprotorecord",
+    "//missive/util:disconnectable_client",
     "//missive/util:status",
   ]
 }

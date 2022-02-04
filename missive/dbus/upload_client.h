@@ -18,6 +18,7 @@
 
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
+#include "missive/util/disconnectable_client.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
@@ -59,7 +60,8 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
  private:
   friend base::RefCountedThreadSafe<UploadClient>;
 
-  void MaybeMakeCall(std::unique_ptr<dbus::MethodCall> call,
+  void MaybeMakeCall(std::unique_ptr<std::vector<EncryptedRecord>> records,
+                     const bool need_encryption_keys,
                      HandleUploadResponseCallback response_callback);
 
   void OwnerChanged(const std::string& old_owner, const std::string& new_owner);
@@ -68,7 +70,8 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
 
   scoped_refptr<dbus::Bus> const bus_;
   dbus::ObjectProxy* const chrome_proxy_;
-  bool is_available_{false};
+
+  DisconnectableClient client_;
 
   // Note: This should remain the last member so it'll be destroyed and
   // invalidate its weak pointers before any other members are destroyed.

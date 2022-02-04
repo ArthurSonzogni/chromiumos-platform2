@@ -37,6 +37,7 @@ static_library("missive_client") {
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
     "//missive/storage:missive_storage_module",
+    "//missive/util:disconnectable_client",
     "//missive/util:status",
   ]
 }
