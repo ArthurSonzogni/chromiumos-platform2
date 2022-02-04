@@ -198,7 +198,7 @@ void DebugdDBusAdaptor::SetDebugMode(const std::string& subsystem) {
 }
 
 std::string DebugdDBusAdaptor::GetLog(const std::string& name) {
-  return log_tool_->GetLog(name);
+  return log_tool_->GetLog(name).value_or("");
 }
 
 std::map<std::string, std::string> DebugdDBusAdaptor::GetAllLogs() {

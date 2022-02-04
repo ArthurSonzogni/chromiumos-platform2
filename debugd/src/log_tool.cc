@@ -918,13 +918,15 @@ void LogTool::CreateConnectivityReport(bool wait_for_results) {
     sleep(kConnectionTesterTimeoutSeconds);
 }
 
-string LogTool::GetLog(const string& name) {
+std::optional<string> LogTool::GetLog(const string& name) {
   string result;
-  GetNamedLogFrom(name, kCommandLogs, &result) ||
+  if (GetNamedLogFrom(name, kCommandLogs, &result) ||
       GetNamedLogFrom(name, kCommandLogsShort, &result) ||
       GetNamedLogFrom(name, kExtraLogs, &result) ||
-      GetNamedLogFrom(name, kFeedbackLogs, &result);
-  return result;
+      GetNamedLogFrom(name, kFeedbackLogs, &result)) {
+    return std::make_optional(result);
+  }
+  return std::nullopt;
 }
 
 LogTool::LogMap LogTool::GetAllLogs() {

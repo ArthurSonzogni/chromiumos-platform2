@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -101,7 +102,7 @@ class LogTool {
 
   using LogMap = std::map<std::string, std::string>;
 
-  std::string GetLog(const std::string& name);
+  std::optional<std::string> GetLog(const std::string& name);
   LogMap GetAllLogs();
   LogMap GetAllDebugLogs();
   void GetBigFeedbackLogs(const base::ScopedFD& fd,
