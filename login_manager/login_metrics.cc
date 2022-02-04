@@ -59,6 +59,8 @@ const char kSwitchToFeatureFlagMappingStatus[] =
 const char kLivenessPingResponseTimeMetric[] =
     "ChromeOS.Liveness.PingResponseTime";
 
+const char kLivenessPingResultMetric[] = "ChromeOS.Liveness.PingResult";
+
 const char kLivenessBrowserStateMetric[] =
     "ChromeOS.Liveness.BrowserStateAtTimeout";
 
@@ -204,6 +206,10 @@ void LoginMetrics::SendLivenessPingResponseTime(base::TimeDelta response_time) {
       static_cast<int>(response_time.InMilliseconds()),
       static_cast<int>(base::TimeDelta::FromMilliseconds(1).InMilliseconds()),
       static_cast<int>(base::TimeDelta::FromSeconds(60).InMilliseconds()), 50);
+}
+
+void LoginMetrics::SendLivenessPingResult(bool success) {
+  metrics_lib_.SendBoolToUMA(kLivenessPingResultMetric, success);
 }
 
 void LoginMetrics::RecordStateForLivenessTimeout(

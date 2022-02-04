@@ -99,6 +99,10 @@ class LivenessCheckerImplTest : public ::testing::Test {
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
   ExpectUnAckedLivenessPing();
+
+  // Expects one failure for the un-acked ping.
+  EXPECT_CALL(*metrics_, SendLivenessPingResult(/*succeess=*/false)).Times(1);
+
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
   EXPECT_CALL(*manager_.get(), GetBrowserPid())
       .WillRepeatedly(Return(base::nullopt));
@@ -111,6 +115,11 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
   ExpectLivenessPingResponsePing();
+
+  // Expects one success for acked ping and one failure for the un-acked one.
+  EXPECT_CALL(*metrics_, SendLivenessPingResult(/*succeess=*/true)).Times(1);
+  EXPECT_CALL(*metrics_, SendLivenessPingResult(/*succeess=*/false)).Times(1);
+
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
   EXPECT_CALL(*manager_.get(), GetBrowserPid())
       .WillRepeatedly(Return(base::nullopt));
@@ -128,7 +137,13 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
                                          metrics_.get()));
   base::FilePath fake_proc_path(tmpdir_.GetPath());
   checker_->SetProcForTests(std::move(fake_proc_path));
+
   ExpectPingResponsePingCheckPingAndQuit();
+
+  // Expects one success for acked ping and one failure for the un-acked one.
+  EXPECT_CALL(*metrics_, SendLivenessPingResult(/*succeess=*/true)).Times(1);
+  EXPECT_CALL(*metrics_, SendLivenessPingResult(/*succeess=*/false)).Times(1);
+
   // Expect _no_ browser abort!
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(0);
   // But we still record the UMA.

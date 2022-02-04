@@ -78,6 +78,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   // If there's an un-acked ping, the browser needs to be taken down.
   if (!last_ping_acked_) {
     LOG(WARNING) << "Browser hang detected!";
+    metrics_->SendLivenessPingResult(/*success=*/false);
 
     // TODO(https://crbug.com/883029): Remove.
     std::string top_output;
@@ -136,6 +137,7 @@ void LivenessCheckerImpl::HandleAck(dbus::Response* response) {
   if (response != nullptr) {
     base::TimeDelta ping_response_time = base::TimeTicks::Now() - ping_sent_;
     metrics_->SendLivenessPingResponseTime(ping_response_time);
+    metrics_->SendLivenessPingResult(/*success=*/true);
   }
 }
 

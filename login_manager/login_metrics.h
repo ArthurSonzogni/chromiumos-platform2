@@ -192,6 +192,9 @@ class LoginMetrics {
   // liveness ping was sent.
   virtual void SendLivenessPingResponseTime(base::TimeDelta response_time);
 
+  // Submits to UMA the liveness ping result.
+  virtual void SendLivenessPingResult(bool success);
+
   // Submits to UMA the state of the browser when the liveness check times out
   // (that is, when it sends an abort if enable_aborting_ is true).
   virtual void RecordStateForLivenessTimeout(BrowserState state_at_timeout);
