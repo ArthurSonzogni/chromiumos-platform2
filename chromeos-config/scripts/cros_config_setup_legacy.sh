@@ -38,17 +38,16 @@ brand_code="$(mosys platform brand)"
 sku_id="$(mosys platform sku || true)"
 customization_id="$(mosys platform customization || true)"
 platform_name="$(mosys platform name)"
-psu_type="$(mosys psu type || true)"
 eval "$(grep DEVICETYPE /etc/lsb-release)"
 
 case "${DEVICETYPE}" in
     CHROMEBOOK )
         has_backlight=true
-        : "${psu_type:=battery}"
+        psu_type=battery
         ;;
     * )
         has_backlight=false
-        : "${psu_type:=AC_only}"
+        psu_type=AC_only
 esac
 
 setconfig / brand-code "${brand_code}"

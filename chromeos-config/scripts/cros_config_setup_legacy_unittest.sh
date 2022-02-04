@@ -28,9 +28,6 @@ cd -- "$(dirname -- "$0")"
             "platform name" )
                 echo Some
                 ;;
-            "psu type" )
-                echo AC_only
-                ;;
             * )
                 return 1
                 ;;
