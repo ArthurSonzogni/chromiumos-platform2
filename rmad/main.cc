@@ -70,6 +70,8 @@ void EnterMinijail() {
                            0, nullptr);
   minijail_bind(j.get(), "/mnt/stateful_partition/unencrypted/rma-data",
                 "/mnt/stateful_partition/unencrypted/rma-data", 1);
+  minijail_bind(j.get(), "/mnt/stateful_partition/unencrypted/preserve",
+                "/mnt/stateful_partition/unencrypted/preserve", 0);
 
   rmad::CrosSystemUtilsImpl crossystem_utils;
   int wpsw_cur;

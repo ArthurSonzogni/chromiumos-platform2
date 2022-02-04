@@ -5,12 +5,15 @@
 #include "rmad/state_handler/repair_complete_state_handler.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <brillo/file_utils.h>
 
 #include "rmad/constants.h"
@@ -22,6 +25,22 @@
 #include "rmad/utils/fake_sys_utils.h"
 #include "rmad/utils/sys_utils_impl.h"
 
+namespace {
+
+constexpr char kPowerwashCountPath[] = "powerwash_count";
+
+bool ReadFileToInt(const base::FilePath& path, int* value) {
+  std::string str;
+  if (!base::ReadFileToString(path, &str)) {
+    LOG(ERROR) << "Failed to read from path " << path;
+    return false;
+  }
+  base::TrimWhitespaceASCII(str, base::TRIM_ALL, &str);
+  return base::StringToInt(str, value);
+}
+
+}  // namespace
+
 namespace rmad {
 
 namespace fake {
@@ -30,6 +49,7 @@ FakeRepairCompleteStateHandler::FakeRepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
     : RepairCompleteStateHandler(
           json_store,
+          working_dir_path,
           working_dir_path,
           std::make_unique<FakePowerManagerClient>(working_dir_path),
           std::make_unique<FakeSysUtils>(working_dir_path),
@@ -41,6 +61,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store),
       working_dir_path_(kDefaultWorkingDirPath),
+      unencrypted_preserve_path_(kDefaultUnencryptedPreservePath),
       power_cable_signal_sender_(base::DoNothing()) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
@@ -51,11 +72,13 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
 RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store,
     const base::FilePath& working_dir_path,
+    const base::FilePath& unencrypted_preserve_path,
     std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<SysUtils> sys_utils,
     std::unique_ptr<MetricsUtils> metrics_utils)
     : BaseStateHandler(json_store),
       working_dir_path_(working_dir_path),
+      unencrypted_preserve_path_(unencrypted_preserve_path),
       power_cable_signal_sender_(base::DoNothing()),
       power_manager_client_(std::move(power_manager_client)),
       sys_utils_(std::move(sys_utils)),
@@ -64,6 +87,14 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
 RmadErrorCode RepairCompleteStateHandler::InitializeState() {
   if (!state_.has_repair_complete() && !RetrieveState()) {
     state_.set_allocated_repair_complete(new RepairCompleteState);
+    // Record the current powerwash count during initialization. If the file
+    // doesn't exist, set the value to 0. This file counter is incremented by
+    // one after every powerwash. See platform2/init/clobber_state.cc for more
+    // detail.
+    int powerwash_count = 0;
+    ReadFileToInt(unencrypted_preserve_path_.AppendASCII(kPowerwashCountPath),
+                  &powerwash_count);
+    json_store_->SetValue(kPowerwashCount, powerwash_count);
   }
   power_cable_timer_.Start(
       FROM_HERE, kReportPowerCableInterval, this,
@@ -90,21 +121,35 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
   state_ = state;
   StoreState();
 
-  bool same_owner = false, powerwash_request = false;
-  json_store_->GetValue(kSameOwner, &same_owner);
-  json_store_->GetValue(kPowerwashRequest, &powerwash_request);
-  if (same_owner || powerwash_request ||
-      base::PathExists(
-          working_dir_path_.AppendASCII(kDisablePowerwashFilePath)) ||
-      base::PathExists(working_dir_path_.AppendASCII(kTestDirPath))) {
-    // Clear the state file and shutdown/reboot/cutoff if the device is
-    // returning to the same user, or it's already done a powerwash. We don't
-    // set |kPowerwashRequest| back to false because the state file is getting
-    // removed anyway. |kDisablePowerwashFilePath| is a file for testing
-    // convenience. Manually touch this file if we want to avoid powerwash
-    // during testing. Powerwash is also disabled when the test mode directory
-    // exists.
-    // TODO(chenghan): Check if powerwash is successful.
+  // kWipeDevice should be set by previous states.
+  bool wipe_device;
+  if (!json_store_->GetValue(kWipeDevice, &wipe_device)) {
+    LOG(ERROR) << "Variable " << kWipeDevice << " not found";
+    return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
+  }
+
+  if (wipe_device && !IsPowerwashComplete() &&
+      !base::PathExists(
+          working_dir_path_.AppendASCII(kDisablePowerwashFilePath)) &&
+      !base::PathExists(working_dir_path_.AppendASCII(kTestDirPath))) {
+    // Request a powerwash if we want to wipe the device, and powerwash is not
+    // done yet. The pre-stop script picks up the |kPowerwashRequestFilePath|
+    // file before reboot and requests a rma-mode powerwash.
+    // |kDisablePowerwashFilePath| is a file for testing convenience. Manually
+    // touch this file if we want to avoid powerwash during testing. Powerwash
+    // is also disabled when the test mode directory exists.
+    if (!brillo::TouchFile(
+            working_dir_path_.AppendASCII(kPowerwashRequestFilePath))) {
+      LOG(ERROR) << "Failed to request powerwash";
+      return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
+    }
+    action_timer_.Start(FROM_HERE, kShutdownDelay, this,
+                        &RepairCompleteStateHandler::Reboot);
+    return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
+                                AdditionalActivity::REBOOT);
+  } else {
+    // Clear the state file and shutdown/reboot/cutoff if the device doesn't
+    // need to do a powerwash, or a powerwash is already done.
     if (!metrics_utils_->Record(json_store_, true)) {
       LOG(ERROR) << "RepairCompleteState: Failed to record metrics to the file";
       // TODO(genechang): We should block here if the metrics library is ready.
@@ -140,20 +185,6 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
     NOTREACHED();
     return {.error = RMAD_ERROR_NOT_SET,
             .state_case = RmadState::StateCase::STATE_NOT_SET};
-  } else {
-    // Request a powerwash if the device is returning to a different user, and
-    // powerwash is not done yet. The pre-stop script picks up the file before
-    // reboot and requests a rma-mode powerwash.
-    if (!json_store_->SetValue(kPowerwashRequest, true) ||
-        !brillo::TouchFile(
-            working_dir_path_.AppendASCII(kPowerwashRequestFilePath))) {
-      LOG(ERROR) << "Failed to request powerwash";
-      return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
-    }
-    action_timer_.Start(FROM_HERE, kShutdownDelay, this,
-                        &RepairCompleteStateHandler::Reboot);
-    return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
-                                AdditionalActivity::REBOOT);
   }
 }
 
@@ -188,6 +219,20 @@ void RepairCompleteStateHandler::Cutoff() {
 
 void RepairCompleteStateHandler::SendPowerCableStateSignal() {
   power_cable_signal_sender_.Run(sys_utils_->IsPowerSourcePresent());
+}
+
+bool RepairCompleteStateHandler::IsPowerwashComplete() const {
+  int stored_powerwash_count, current_powerwash_count;
+  if (!json_store_->GetValue(kPowerwashCount, &stored_powerwash_count)) {
+    LOG(ERROR) << "Key " << kPowerwashCount << " should exist in |json_store|";
+    return false;
+  }
+  if (!ReadFileToInt(
+          unencrypted_preserve_path_.AppendASCII(kPowerwashCountPath),
+          &current_powerwash_count)) {
+    return false;
+  }
+  return current_powerwash_count > stored_powerwash_count;
 }
 
 }  // namespace rmad

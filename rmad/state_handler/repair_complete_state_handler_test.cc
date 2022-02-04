@@ -26,6 +26,12 @@ using testing::DoAll;
 using testing::NiceMock;
 using testing::Return;
 
+namespace {
+
+constexpr char kPowerwashCountFilePath[] = "powerwash_count";
+
+}  // namespace
+
 namespace rmad {
 
 class RepairCompleteStateHandlerTest : public StateHandlerTest {
@@ -37,9 +43,9 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
   };
 
   scoped_refptr<RepairCompleteStateHandler> CreateStateHandler(
-      bool* reboot_called,
-      bool* shutdown_called,
-      bool* metrics_called,
+      bool* reboot_called = nullptr,
+      bool* shutdown_called = nullptr,
+      bool* metrics_called = nullptr,
       bool record_metrics_success = true) {
     auto mock_power_manager_client =
         std::make_unique<NiceMock<MockPowerManagerClient>>();
@@ -65,8 +71,9 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
         .WillByDefault(DoAll(Assign(metrics_called, true),
                              Return(record_metrics_success)));
     auto handler = base::MakeRefCounted<RepairCompleteStateHandler>(
-        json_store_, GetTempDirPath(), std::move(mock_power_manager_client),
-        std::move(mock_sys_utils), std::move(mock_metrics_utils));
+        json_store_, GetTempDirPath(), GetTempDirPath(),
+        std::move(mock_power_manager_client), std::move(mock_sys_utils),
+        std::move(mock_metrics_utils));
     auto callback =
         base::BindRepeating(&SignalSender::SendPowerCableStateSignal,
                             base::Unretained(&signal_sender_));
@@ -75,6 +82,10 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
     ON_CALL(signal_sender_, SendPowerCableStateSignal(_))
         .WillByDefault(Return());
     return handler;
+  }
+
+  base::FilePath GetPowerwashCountFilePath() const {
+    return GetTempDirPath().AppendASCII(kPowerwashCountFilePath);
   }
 
   base::FilePath GetPowerwashRequestFilePath() const {
@@ -101,9 +112,14 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
-TEST_F(RepairCompleteStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler(nullptr, nullptr, nullptr);
+TEST_F(RepairCompleteStateHandlerTest, InitializeState_CleanUpState_Success) {
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  int powerwash_count;
+  EXPECT_TRUE(json_store_->GetValue(kPowerwashCount, &powerwash_count));
+  EXPECT_EQ(powerwash_count, 1);
 
   // Override signal sender mock.
   EXPECT_CALL(signal_sender_, SendPowerCableStateSignal(_))
@@ -112,24 +128,35 @@ TEST_F(RepairCompleteStateHandlerTest, InitializeState_Success) {
       });
   task_environment_.FastForwardBy(
       RepairCompleteStateHandler::kReportPowerCableInterval);
+
+  // Should not send signal after cleanup.
+  handler->CleanUpState();
+  task_environment_.FastForwardBy(
+      RepairCompleteStateHandler::kReportPowerCableInterval);
 }
 
-TEST_F(RepairCompleteStateHandlerTest,
-       GetNextStateCase_DifferentOwner_Powerwash) {
-  bool reboot_called = false;
-  auto handler = CreateStateHandler(&reboot_called, nullptr, nullptr);
+TEST_F(RepairCompleteStateHandlerTest, InitializeState_NoPowerwashCountFile) {
+  // powerwash_count not set.
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  // Returning to different owner, and powerwash is not done yet.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, false));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, false));
+  int powerwash_count;
+  EXPECT_TRUE(json_store_->GetValue(kPowerwashCount, &powerwash_count));
+  EXPECT_EQ(powerwash_count, 0);
+}
+
+TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Powerwash) {
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  bool reboot_called = false;
+  auto handler = CreateStateHandler(&reboot_called);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
 
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
@@ -137,9 +164,6 @@ TEST_F(RepairCompleteStateHandlerTest,
   EXPECT_FALSE(reboot_called);
 
   // Check that powerwash is requested.
-  bool powerwash_request;
-  EXPECT_TRUE(json_store_->GetValue(kPowerwashRequest, &powerwash_request));
-  EXPECT_TRUE(powerwash_request);
   EXPECT_TRUE(base::PathExists(GetPowerwashRequestFilePath()));
 
   // Reboot is called after a delay.
@@ -148,27 +172,177 @@ TEST_F(RepairCompleteStateHandlerTest,
 }
 
 TEST_F(RepairCompleteStateHandlerTest,
-       GetNextStateCase_DifferentOwner_PowerwashDisabledManually) {
+       GetNextStateCase_SkipPowerwash_PowerwashNotRequired_Reboot) {
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
       CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
 
-  // Returning to different owner, and powerwash is not done yet.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, false));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, false));
+  // No need to wipe device.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
-  // Powerwash disabled manually.
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  RmadState state;
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+  EXPECT_FALSE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_TRUE(metrics_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+
+  // Check that the state file is cleared.
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+
+  // Reboot is called after a delay.
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
+  EXPECT_TRUE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+}
+
+TEST_F(RepairCompleteStateHandlerTest,
+       GetNextStateCase_SkipPowerwash_PowerwashNotRequired_Shutdown) {
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  bool reboot_called = false, shutdown_called = false, metrics_called = false;
+  auto handler =
+      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+
+  // No need to wipe device.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
+
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  RmadState state;
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
+  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+  EXPECT_FALSE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_TRUE(metrics_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+
+  // Check that the state file is cleared.
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+
+  // Shutdown is called after a delay.
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
+  EXPECT_FALSE(reboot_called);
+  EXPECT_TRUE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+}
+
+TEST_F(RepairCompleteStateHandlerTest,
+       GetNextStateCase_SkipPowerwash_PowerwashNotRequired_Cutoff) {
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  bool reboot_called = false, shutdown_called = false, metrics_called = false;
+  auto handler =
+      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+
+  // No need to wipe device.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
+
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  RmadState state;
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
+  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+  EXPECT_FALSE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_TRUE(metrics_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+
+  // Check that the state file is cleared.
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+
+  // Reboot and cutoff are called after a delay.
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
+  EXPECT_TRUE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_TRUE(base::PathExists(GetCutoffRequestFilePath()));
+}
+
+TEST_F(RepairCompleteStateHandlerTest,
+       GetNextStateCase_SkipPowerwash_PowerwashComplete) {
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  bool reboot_called = false, shutdown_called = false, metrics_called = false;
+  auto handler =
+      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+
+  // Need to wipe device, and powerwash is complete.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
+  base::WriteFile(GetPowerwashCountFilePath(), "2\n");
+
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  RmadState state;
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+  EXPECT_FALSE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_TRUE(metrics_called);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+
+  // Check that the state file is cleared.
+  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+
+  // Reboot is called after a delay.
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
+  EXPECT_TRUE(reboot_called);
+  EXPECT_FALSE(shutdown_called);
+  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+}
+
+TEST_F(RepairCompleteStateHandlerTest,
+       GetNextStateCase_SkipPowerwash_PowerwashDisabledManually) {
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  bool reboot_called = false, shutdown_called = false, metrics_called = false;
+  auto handler =
+      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+
+  // Need to wipe device, and powerwash is not done yet, but disabled manually.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   brillo::TouchFile(GetDisablePowerwashFilePath());
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
   RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
@@ -190,64 +364,25 @@ TEST_F(RepairCompleteStateHandlerTest,
 }
 
 TEST_F(RepairCompleteStateHandlerTest,
-       GetNextStateCase_DifferentOwner_PowerwashDisabledInTestMode) {
+       GetNextStateCase_SkipPowerwash_PowerwashDisabledInTestMode) {
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
       CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
 
-  // Returning to different owner, and powerwash is not done yet.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, false));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, false));
-
-  // Powerwash disabled in test mode.
+  // Need to wipe device, and powerwash is not done yet, but disabled in test
+  // mode.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   brillo::TouchFile(GetTestDirPath());
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
   RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
-
-  // Reboot is called after a delay.
-  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
-  EXPECT_TRUE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-}
-
-TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_DifferentOwner_Reboot) {
-  bool reboot_called = false, shutdown_called = false, metrics_called = false;
-  auto handler =
-      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  // Returning to different owner, and powerwash is done.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, false));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, true));
-
-  // Check that the state file exists now.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
-
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
+  state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
-  RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
@@ -266,201 +401,11 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_DifferentOwner_Reboot) {
   EXPECT_TRUE(reboot_called);
   EXPECT_FALSE(shutdown_called);
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-}
-
-TEST_F(RepairCompleteStateHandlerTest,
-       GetNextStateCase_DifferentOwner_Shutdown) {
-  bool reboot_called = false, shutdown_called = false, metrics_called = false;
-  auto handler =
-      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  // Returning to different owner, and powerwash is done.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, false));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, true));
-
-  // Check that the state file exists now.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
-
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN);
-  RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
-
-  // Shutdown is called after a delay.
-  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_TRUE(shutdown_called);
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-}
-
-TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_SameOwner_Cutoff) {
-  bool reboot_called = false, shutdown_called = false, metrics_called = false;
-  auto handler =
-      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  // Returning to same owner, and powerwash is not done yet.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, true));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, false));
-
-  // Check that the state file exists now.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
-
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
-  RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
-
-  // Cutoff and reboot are called after a delay.
-  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
-  EXPECT_TRUE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(base::PathExists(GetCutoffRequestFilePath()));
-}
-
-TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_SameOwner_Reboot) {
-  bool reboot_called = false, shutdown_called = false, metrics_called = false;
-  auto handler =
-      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  // Returning to same owner, and powerwash is not done yet.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, true));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, false));
-
-  // Check that the state file exists now.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
-
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
-  RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
-
-  // Reboot is called after a delay.
-  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
-  EXPECT_TRUE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-}
-
-TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_SameOwner_Shutdown) {
-  bool reboot_called = false, shutdown_called = false, metrics_called = false;
-  auto handler =
-      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  // Returning to same owner, and powerwash is not done yet.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, true));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, false));
-
-  // Check that the state file exists now.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
-
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN);
-  RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
-
-  // Shutdown is called after a delay.
-  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_TRUE(shutdown_called);
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-}
-
-TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Success_Cutoff) {
-  bool reboot_called = false, shutdown_called = false, metrics_called = false;
-  auto handler =
-      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  // Returning to same owner, and powerwash is not done yet.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, true));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, false));
-
-  // Check that the state file exists now.
-  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
-
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
-  RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
-
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
-
-  // Cutoff and reboot are called after a delay.
-  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
-  EXPECT_TRUE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(base::PathExists(GetCutoffRequestFilePath()));
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(nullptr, nullptr, nullptr);
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No RepairCompleteState.
@@ -478,14 +423,15 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingArgs) {
-  auto handler = CreateStateHandler(nullptr, nullptr, nullptr);
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_UNKNOWN);
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_UNKNOWN);
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
@@ -499,23 +445,21 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingArgs) {
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MetricsFailed) {
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler = CreateStateHandler(&reboot_called, &shutdown_called,
                                     &metrics_called, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  // Returning to same owner, and powerwash is not done yet.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, true));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, false));
+  // No need to wipe device.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
   RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   // Structured metrics recording is expected to fail as current library does
@@ -540,24 +484,23 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MetricsFailed) {
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_JsonFailed) {
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
-  auto handler = CreateStateHandler(&reboot_called, &shutdown_called,
-                                    &metrics_called, true);
+  auto handler =
+      CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  // Returning to same owner, and powerwash is not done yet.
-  EXPECT_TRUE(json_store_->SetValue(kSameOwner, true));
-  EXPECT_TRUE(json_store_->SetValue(kPowerwashRequest, false));
+  // No need to wipe device.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 
-  auto repair_complete = std::make_unique<RepairCompleteState>();
-  repair_complete->set_shutdown(
-      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
   RmadState state;
-  state.set_allocated_repair_complete(repair_complete.release());
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
 
+  // Make |json_store_| read-only.
   base::SetPosixFilePermissions(GetStateFilePath(), 0444);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
@@ -569,12 +512,9 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_JsonFailed) {
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
 
-  // Stop the polling timer.
-  handler->CleanUpState();
-
-  // Check that the power cycle won't be called if the state file cannot be
+  // Check that the shutdown action won't be called if the state file cannot be
   // cleared.
-  task_environment_.FastForwardUntilNoTasksRemain();
+  task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);
   EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));

@@ -15,6 +15,8 @@ namespace rmad {
 inline constexpr char kDefaultWorkingDirPath[] = "/var/lib/rmad/";
 inline constexpr char kDefaultJsonStoreFilePath[] =
     "/mnt/stateful_partition/unencrypted/rma-data/state";
+inline constexpr char kDefaultUnencryptedPreservePath[] =
+    "/mnt/stateful_partition/unencrypted/preserve";
 inline constexpr char kTestDirPath[] = ".test";
 
 // Files for pre-stop script to read.
@@ -39,8 +41,8 @@ inline constexpr char kKeepDeviceOpen[] = "keep_device_open";
 inline constexpr char kMlbRepair[] = "mlb_repair";
 inline constexpr char kFirmwareUpdated[] = "firmware_updated";
 inline constexpr char kCalibrationMap[] = "calibration_map";
-inline constexpr char kPowerwashRequest[] = "powerwash_request";
 inline constexpr char kProvisionFinishedStatus[] = "provision_finished_status";
+inline constexpr char kPowerwashCount[] = "powerwash_count";
 
 // States that requires daemon to quit and restart when entering.
 inline constexpr std::array<RmadState::StateCase, 1> kQuitDaemonStates = {

@@ -27,11 +27,13 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   static constexpr base::TimeDelta kReportPowerCableInterval = base::Seconds(1);
 
   explicit RepairCompleteStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject |working_dir_path_| and mocked |power_manager_client_|,
-  // |sys_utils_| and |metrics_utils_| for testing.
+  // Used to inject |working_dir_path_| and |unencrypted_preserve_path|, and
+  // mocked |power_manager_client_|, |sys_utils_| and |metrics_utils_| for
+  // testing.
   RepairCompleteStateHandler(
       scoped_refptr<JsonStore> json_store,
       const base::FilePath& working_dir_path,
+      const base::FilePath& unencrypted_preserve_path,
       std::unique_ptr<PowerManagerClient> power_manager_client,
       std::unique_ptr<SysUtils> sys_utils,
       std::unique_ptr<MetricsUtils> metrics_utils);
@@ -56,8 +58,10 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   void Shutdown();
   void Cutoff();
   void SendPowerCableStateSignal();
+  bool IsPowerwashComplete() const;
 
   base::FilePath working_dir_path_;
+  base::FilePath unencrypted_preserve_path_;
 
   base::RepeatingTimer power_cable_timer_;
   base::RepeatingCallback<void(bool)> power_cable_signal_sender_;
