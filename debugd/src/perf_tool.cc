@@ -8,6 +8,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <map>
+
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
