@@ -37,7 +37,6 @@ inline constexpr char kWpDisableRequired[] = "wp_disable_required";
 inline constexpr char kCcdBlocked[] = "ccd_blocked";
 inline constexpr char kWipeDevice[] = "wipe_device";
 inline constexpr char kWpDisableSkipped[] = "wp_disable_skipped";
-inline constexpr char kKeepDeviceOpen[] = "keep_device_open";
 inline constexpr char kMlbRepair[] = "mlb_repair";
 inline constexpr char kFirmwareUpdated[] = "firmware_updated";
 inline constexpr char kCalibrationMap[] = "calibration_map";

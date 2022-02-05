@@ -23,13 +23,13 @@ namespace rmad {
 class WriteProtectDisableCompleteStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<WriteProtectDisableCompleteStateHandler> CreateStateHandler(
-      bool keep_device_open, bool wp_disable_skipped) {
+      bool wipe_device, bool wp_disable_skipped) {
     // Mock |FlashromUtils|.
     auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
     ON_CALL(*mock_flashrom_utils, DisableSoftwareWriteProtection())
         .WillByDefault(Return(true));
 
-    EXPECT_TRUE(json_store_->SetValue(kKeepDeviceOpen, keep_device_open));
+    EXPECT_TRUE(json_store_->SetValue(kWipeDevice, wipe_device));
     EXPECT_TRUE(json_store_->SetValue(kWpDisableSkipped, wp_disable_skipped));
     return base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
         json_store_, std::move(mock_flashrom_utils));
@@ -37,8 +37,8 @@ class WriteProtectDisableCompleteStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
-       InitializeState_KeepDeviceOpen_WpDisableNotSkipped) {
-  auto handler = CreateStateHandler(true, false);
+       InitializeState_NoWipeDevice_WpDisableNotSkipped) {
+  auto handler = CreateStateHandler(false, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_complete().action(),
             WriteProtectDisableCompleteState::
@@ -46,8 +46,8 @@ TEST_F(WriteProtectDisableCompleteStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
-       InitializeState_CanCloseDevice_WpDisableSkipped) {
-  auto handler = CreateStateHandler(false, true);
+       InitializeState_WipeDevice_WpDisableSkipped) {
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_complete().action(),
             WriteProtectDisableCompleteState::
@@ -55,8 +55,8 @@ TEST_F(WriteProtectDisableCompleteStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
-       InitializeState_CanCloseDevice_WpDisableNotSkipped) {
-  auto handler = CreateStateHandler(false, false);
+       InitializeState_WipeDevice_WpDisableNotSkipped) {
+  auto handler = CreateStateHandler(true, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_EQ(handler->GetState().wp_disable_complete().action(),
             WriteProtectDisableCompleteState::
@@ -64,7 +64,7 @@ TEST_F(WriteProtectDisableCompleteStateHandlerTest,
 }
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler(false, true);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -77,7 +77,7 @@ TEST_F(WriteProtectDisableCompleteStateHandlerTest, GetNextStateCase_Success) {
 
 TEST_F(WriteProtectDisableCompleteStateHandlerTest,
        GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(false, true);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectDisableCompleteState.

@@ -126,6 +126,13 @@ CheckCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
     return NextStateCaseWrapper(error_code);
   }
 
+  // kWipeDevice should be set by previous states.
+  bool wipe_device;
+  if (!json_store_->GetValue(kWipeDevice, &wipe_device)) {
+    LOG(ERROR) << "Variable " << kWipeDevice << " not found";
+    return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
+  }
+
   state_ = state;
   SetCalibrationMap(json_store_, calibration_map_);
 
@@ -133,12 +140,10 @@ CheckCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
     return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
   }
 
-  if (bool keep_device_open;
-      json_store_->GetValue(kKeepDeviceOpen, &keep_device_open) &&
-      keep_device_open) {
-    return NextStateCaseWrapper(RmadState::StateCase::kWpEnablePhysical);
-  } else {
+  if (wipe_device) {
     return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
+  } else {
+    return NextStateCaseWrapper(RmadState::StateCase::kWpEnablePhysical);
   }
 }
 

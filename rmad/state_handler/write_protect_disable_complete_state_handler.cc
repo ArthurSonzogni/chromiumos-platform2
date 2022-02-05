@@ -45,21 +45,21 @@ RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
       std::make_unique<WriteProtectDisableCompleteState>();
   bool wp_disable_skipped = false;
   json_store_->GetValue(kWpDisableSkipped, &wp_disable_skipped);
-  bool keep_device_open = false;
-  json_store_->GetValue(kKeepDeviceOpen, &keep_device_open);
+  bool wipe_device = false;
+  json_store_->GetValue(kWipeDevice, &wipe_device);
 
   if (wp_disable_skipped) {
     wp_disable_complete->set_action(
         WriteProtectDisableCompleteState::
             RMAD_WP_DISABLE_SKIPPED_ASSEMBLE_DEVICE);
-  } else if (keep_device_open) {
-    wp_disable_complete->set_action(
-        WriteProtectDisableCompleteState::
-            RMAD_WP_DISABLE_COMPLETE_KEEP_DEVICE_OPEN);
-  } else {
+  } else if (wipe_device) {
     wp_disable_complete->set_action(
         WriteProtectDisableCompleteState::
             RMAD_WP_DISABLE_COMPLETE_ASSEMBLE_DEVICE);
+  } else {
+    wp_disable_complete->set_action(
+        WriteProtectDisableCompleteState::
+            RMAD_WP_DISABLE_COMPLETE_KEEP_DEVICE_OPEN);
   }
 
   state_.set_allocated_wp_disable_complete(wp_disable_complete.release());

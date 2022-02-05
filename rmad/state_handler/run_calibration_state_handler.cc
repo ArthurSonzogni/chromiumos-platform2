@@ -122,6 +122,13 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
+  // kWipeDevice should be set by previous states.
+  bool wipe_device;
+  if (!json_store_->GetValue(kWipeDevice, &wipe_device)) {
+    LOG(ERROR) << "Variable " << kWipeDevice << " not found";
+    return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
+  }
+
   // Since the actual calibration has already started in InitializeState,
   // Chrome should wait for the signal to trigger GetNextStateCaseReply. Under
   // normal circumstances, we expect that the calibration has been completed
@@ -132,12 +139,10 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
     LOG(ERROR) << "Rmad: Sensor calibration is failed.";
     return NextStateCaseWrapper(RmadState::StateCase::kCheckCalibration);
   } else if (instruction == RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
-    if (bool keep_device_open;
-        json_store_->GetValue(kKeepDeviceOpen, &keep_device_open) &&
-        keep_device_open) {
-      return NextStateCaseWrapper(RmadState::StateCase::kWpEnablePhysical);
-    } else {
+    if (wipe_device) {
       return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
+    } else {
+      return NextStateCaseWrapper(RmadState::StateCase::kWpEnablePhysical);
     }
   } else if (instruction == running_group_) {
     LOG(INFO) << "Rmad: Sensor calibrations is still running.";

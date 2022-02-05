@@ -230,6 +230,8 @@ TEST_F(RunCalibrationStateHandlerTest, InitializeState_NoCalibrationMap) {
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusCompleteName},
@@ -300,8 +302,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success) {
   handler->CleanUpState();
 }
 
-TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessKeepDeviceOpen) {
-  EXPECT_TRUE(json_store_->SetValue(kKeepDeviceOpen, true));
+TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success_NoWipeDevice) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -375,6 +377,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessKeepDeviceOpen) {
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessNeedAnotherRound) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusWaitingName},
@@ -450,6 +454,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_NeedCheck_SomethingFailed) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusFailedName},
@@ -488,6 +494,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NoNeedCalibration) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusCompleteName},
@@ -527,8 +535,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NoNeedCalibration) {
 }
 
 TEST_F(RunCalibrationStateHandlerTest,
-       GetNextStateCase_NoNeedCalibrationKeepDeviceOpen) {
-  EXPECT_TRUE(json_store_->SetValue(kKeepDeviceOpen, true));
+       GetNextStateCase_NoNeedCalibration_NoWipeDevice) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -569,6 +577,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusWaitingName},
@@ -603,7 +613,44 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRunCalibration);
 }
 
+TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingWipeDeviceVar) {
+  // No kWipeDevice set.
+
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {{kBaseInstructionName,
+                                     {{kBaseAccName, kStatusWaitingName},
+                                      {kBaseGyroName, kStatusWaitingName}}},
+                                    {kLidInstructionName,
+                                     {{kLidAccName, kStatusWaitingName},
+                                      {kLidGyroName, kStatusWaitingName}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
+  auto handler =
+      CreateStateHandler(true, {1.0}, false, {}, true, {1.0}, false, {});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  task_environment_.FastForwardBy(RunCalibrationStateHandler::kPollInterval);
+  EXPECT_EQ(progress_history_.size(), 2);
+  EXPECT_EQ(progress_history_[0].progress(), 1.0);
+  EXPECT_EQ(progress_history_[0].status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
+  EXPECT_EQ(progress_history_[0].component(),
+            RMAD_COMPONENT_BASE_ACCELEROMETER);
+  EXPECT_EQ(progress_history_[1].progress(), 1.0);
+  EXPECT_EQ(progress_history_[1].status(),
+            CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
+  EXPECT_EQ(progress_history_[1].component(), RMAD_COMPONENT_BASE_GYROSCOPE);
+
+  RmadState state = handler->GetState();
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_TRANSITION_FAILED);
+  EXPECT_EQ(state_case, RmadState::StateCase::kRunCalibration);
+}
+
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnexpectedReboot) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusCompleteName},
@@ -641,6 +688,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnexpectedReboot) {
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NotFinished) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusWaitingName},
@@ -688,6 +737,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NotFinished) {
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessUnknownComponent) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
           {kBaseInstructionName,
@@ -730,6 +781,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessInvalidComponent) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
           {kBaseInstructionName,
@@ -771,6 +824,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessUnknownStatus) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusUnknownName},
@@ -812,6 +867,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessUnknownStatus) {
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessCalibrationFailed) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusWaitingName},
@@ -851,6 +908,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessCalibrationFailedNoMoreSensors) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusCompleteName},
@@ -888,6 +947,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 }
 
 TEST_F(RunCalibrationStateHandlerTest, TryGetNextStateCaseAtBoot_Success) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusCompleteName},

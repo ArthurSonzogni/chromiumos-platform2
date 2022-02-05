@@ -149,6 +149,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, Clenaup_Success) {
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Success) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
@@ -267,6 +268,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetStableDeviceSecretFailedBlocking) {
   auto handler = CreateStateHandler(true, true, true, true, false, true);
   json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
@@ -295,6 +297,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SsfcNotRequiredSuccess) {
   auto handler = CreateStateHandler(true, true, false, true, true, true);
   json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
