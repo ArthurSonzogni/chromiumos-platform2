@@ -31,8 +31,7 @@ import "rpc.proto";
 // callers know if specialized errors apply.
 // TODO(b/135984863): Rename this.
 enum CryptohomeErrorCode {
-  // 0 is the default value of BaseReply::error. It
-  // should never be used.
+  // No error: the operation succeeded.
   CRYPTOHOME_ERROR_NOT_SET = 0;
 
   CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND = 1;

@@ -26,8 +26,7 @@ import "key.proto";
 // Prefixes by Request/Reply type should be used to help
 // callers know if specialized errors apply.
 enum CryptohomeErrorCode {
-  // 0 is the default value of BaseReply::error. It
-  // should never be used.
+  // No error: the operation succeeded.
   CRYPTOHOME_ERROR_NOT_SET = 0;
 
   CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND = 1;
