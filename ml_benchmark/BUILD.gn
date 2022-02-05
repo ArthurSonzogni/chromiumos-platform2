@@ -30,6 +30,7 @@ proto_library("ml_benchmark_config_proto") {
 
 shared_library("libmlbenchmark_proto") {
   configs += [ ":target_defaults" ]
+  install_path = "lib"
   public_deps = [ ":ml_benchmark_config_proto" ]
 }
 
@@ -54,6 +55,7 @@ static_library("libmlbenchmark") {
 executable("ml_benchmark") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [ ":libmlbenchmark" ]
   pkg_deps = [ "protobuf" ]
 }
@@ -75,6 +77,7 @@ if (use.test) {
       ":ml_benchmark_test_config",
       ":target_defaults",
     ]
+    run_test = true
     deps = [
       ":libmlbenchmark",
       ":ml_benchmark_config_proto",
