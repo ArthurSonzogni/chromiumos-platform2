@@ -296,7 +296,8 @@ bool KeysetManagement::GetVaultKeysetLabels(
   return (labels->size() > 0);
 }
 
-bool KeysetManagement::AddInitialKeyset(const Credentials& credentials) {
+std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeyset(
+    const Credentials& credentials) {
   const brillo::SecureBlob passkey = credentials.passkey();
   std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
@@ -318,9 +319,9 @@ bool KeysetManagement::AddInitialKeyset(const Credentials& credentials) {
   if (!vk->Encrypt(passkey, obfuscated_username) ||
       !vk->Save(VaultKeysetPath(obfuscated_username, kInitialKeysetIndex))) {
     LOG(ERROR) << "Failed to encrypt and write keyset for the new user.";
-    return false;
+    return nullptr;
   }
-  return true;
+  return vk;
 }
 
 bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {

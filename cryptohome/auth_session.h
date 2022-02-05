@@ -90,10 +90,16 @@ class AuthSession final {
   // credentials during unlock.
   std::unique_ptr<CredentialVerifier> TakeCredentialVerifier();
 
-  // This functions returns if user existed when the AuthSession was started.
+  // This function returns if the user existed when the auth session started.
   bool user_exists() const { return user_exists_; }
 
-  // This functions returns if the AuthSession is being setup for an ephemeral
+  // This function returns if the user has any credential configured. When a
+  // credential is added, this value changes from false to true.
+  bool user_has_configured_credential() const {
+    return user_has_configured_credential_;
+  }
+
+  // This function returns if the AuthSession is being setup for an ephemeral
   // user.
   bool ephemeral_user() const { return is_ephemeral_user_; }
 
@@ -158,15 +164,17 @@ class AuthSession final {
   std::unique_ptr<VaultKeyset> vault_keyset_;
   // Used to store key meta data.
   cryptohome::KeyData key_data_;
-  // Bool that determines some state with AuthSession especially with adding
-  // credentials.
-  bool user_exists_;
+  // Whether the user existed at the time this object was constructed.
+  bool user_exists_ = false;
+  // Whether the user has any credential configured so far.
+  bool user_has_configured_credential_ = false;
   // Map to store the label and public KeyData.
   // TODO(crbug.com/1171024): Change this to AuthFactor
   std::map<std::string, cryptohome::KeyData> key_label_data_;
 
   friend class AuthSessionTest;
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);
+  FRIEND_TEST(AuthSessionTest, AddCredentialNewUserTwice);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewEphemeralUser);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUser);
   FRIEND_TEST(AuthSessionTest, TimeoutTest);

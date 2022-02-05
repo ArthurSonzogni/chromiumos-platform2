@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include <base/callback_helpers.h>
 #include <base/test/task_environment.h>
 #include <base/timer/mock_timer.h>
 #include <brillo/cryptohome.h>
@@ -25,10 +26,12 @@ using ::testing::NiceMock;
 using ::testing::Return;
 
 namespace {
-// Fake label to be in used in this test suite.
+// Fake labels to be in used in this test suite.
 constexpr char kFakeLabel[] = "test_label";
-// Fake password to be in used in this test suite.
+constexpr char kFakeOtherLabel[] = "test_other_label";
+// Fake passwords to be in used in this test suite.
 constexpr char kFakePass[] = "test_pass";
+constexpr char kFakeOtherPass[] = "test_other_pass";
 // Fake username to be used in this test suite.
 constexpr char kFakeUsername[] = "test_username";
 
@@ -222,11 +225,62 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
 
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_)).WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   // Verify.
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               auth_session.AddCredentials(add_cred_request));
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+}
+
+// Test if AuthSession correctly adds new credentials for a new user, even when
+// called twice. The first credential gets added as an initial keyset, and the
+// second as a regular one.
+TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
+  // Setup.
+  base::test::SingleThreadTaskEnvironment task_environment;
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(),
+                           &keyset_management_);
+
+  // Test adding the first credential.
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_FALSE(auth_session.user_exists());
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
+
+  user_data_auth::AddCredentialsRequest add_cred_request;
+  cryptohome::AuthorizationRequest* authorization_request =
+      add_cred_request.mutable_authorization();
+  authorization_request->mutable_key()->set_secret(kFakePass);
+  authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
+
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+
+  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+              auth_session.AddCredentials(add_cred_request));
+  EXPECT_EQ(auth_session.GetStatus(),
+            AuthStatus::kAuthStatusFurtherFactorRequired);
+
+  // Test adding the second credential.
+  user_data_auth::AddCredentialsRequest add_other_cred_request;
+  cryptohome::AuthorizationRequest* other_authorization_request =
+      add_other_cred_request.mutable_authorization();
+  other_authorization_request->mutable_key()->set_secret(kFakeOtherPass);
+  other_authorization_request->mutable_key()->mutable_data()->set_label(
+      kFakeOtherLabel);
+
+  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _))
+      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+
+  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+              auth_session.AddCredentials(add_other_cred_request));
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
 }

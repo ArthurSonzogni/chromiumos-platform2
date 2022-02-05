@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
 #include <base/logging.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
@@ -62,6 +63,7 @@ AuthSession::AuthSession(
   if (user_exists_) {
     keyset_management_->GetVaultKeysetLabelsAndData(SanitizeUserName(username_),
                                                     &key_label_data_);
+    user_has_configured_credential_ = !key_label_data_.empty();
   }
 }
 
@@ -102,7 +104,7 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
     return MountErrorToCryptohomeError(code);
   }
 
-  if (user_exists_) {
+  if (user_has_configured_credential_) {
     // Can't add kiosk key for an existing user.
     if (credentials->key_data().type() == KeyData::KEY_TYPE_KIOSK) {
       LOG(WARNING) << "Add Credentials: tried adding kiosk auth for user";
@@ -110,7 +112,12 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
     }
 
     // At this point we have to have keyset since we have to be authed.
-    DCHECK(vault_keyset_);
+    if (!vault_keyset_) {
+      LOG(ERROR)
+          << "Add Credentials: tried adding credential before authenticating";
+      return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+    }
+
     return static_cast<user_data_auth::CryptohomeErrorCode>(
         keyset_management_->AddKeyset(*credentials, *vault_keyset_,
                                       true /*clobber*/));
@@ -122,13 +129,17 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
     return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
   }
 
-  user_data_auth::CryptohomeErrorCode errorCode =
-      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  DCHECK(!vault_keyset_);
   // An assumption here is that keyset management saves the user keys on disk.
-  if (!keyset_management_->AddInitialKeyset(*credentials)) {
-    errorCode = user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  vault_keyset_ = keyset_management_->AddInitialKeyset(*credentials);
+  if (!vault_keyset_) {
+    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
   }
-  return errorCode;
+
+  // Flip the flag, so that our future invocations go through AddKeyset() and
+  // not AddInitialKeyset().
+  user_has_configured_credential_ = true;
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
 user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(

@@ -2819,10 +2819,11 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   SetupMount(kUser);
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUser)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_)).WillOnce(Return(true));
-  auto vk = std::make_unique<VaultKeyset>();
+  VaultKeyset vk;
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>(vk))));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
-      .WillOnce(Return(ByMove(std::move(vk))));
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>(vk))));
   EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 

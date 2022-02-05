@@ -86,8 +86,10 @@ class KeysetManagement {
   // Checks if the directory containing user keys exists.
   virtual bool UserExists(const std::string& obfuscated_username);
 
-  // Adds initial keyset for the credentials.
-  virtual bool AddInitialKeyset(const Credentials& credentials);
+  // Adds initial keyset for the credentials. Returns the added keyset, or null
+  // on failure.
+  virtual std::unique_ptr<VaultKeyset> AddInitialKeyset(
+      const Credentials& credentials);
 
   // Adds randomly generated reset_seed to the vault keyset if |reset_seed_|
   // doesn't have any value.
