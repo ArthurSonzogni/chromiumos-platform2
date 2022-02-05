@@ -37,5 +37,6 @@ executable("ndproxyd") {
     "main.cc",
   ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   deps = [ ":protos" ]
 }
