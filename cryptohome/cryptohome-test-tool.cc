@@ -71,6 +71,11 @@ bool ReadHexFileToSecureBlobLogged(const FilePath& file_path,
     LOG(ERROR) << "Failed to read from file " << file_path.value() << ".";
     return false;
   }
+  if (contents_string.empty()) {
+    // The content of the file is empty. Return with empty SecureBlob.
+    contents->clear();
+    return true;
+  }
   if (!SecureBlob::HexStringToSecureBlob(contents_string, contents)) {
     LOG(ERROR) << "Failed to convert hex to SecureBlob.";
     return false;
