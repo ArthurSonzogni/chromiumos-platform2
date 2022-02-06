@@ -30,7 +30,7 @@ UploadClient::UploadClient(scoped_refptr<dbus::Bus> bus,
                            dbus::ObjectProxy* chrome_proxy)
     : bus_(bus),
       chrome_proxy_(chrome_proxy),
-      client_(bus_->GetOriginTaskRunner()) {
+      client_(nullptr, base::OnTaskRunnerDeleter(bus_->GetOriginTaskRunner())) {
   chrome_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
       &UploadClient::OwnerChanged, weak_ptr_factory_.GetWeakPtr()));
   chrome_proxy_->WaitForServiceToBeAvailable(base::BindOnce(
@@ -169,7 +169,17 @@ void UploadClient::MaybeMakeCall(
   auto delegate = std::make_unique<UploadEncryptedRecordDelegate>(
       std::move(records), need_encryption_keys, bus_, chrome_proxy_,
       std::move(response_callback));
-  client_.MaybeMakeCall(std::move(delegate));
+  GetDisconnectableClient()->MaybeMakeCall(std::move(delegate));
+}
+
+DisconnectableClient* UploadClient::GetDisconnectableClient() {
+  bus_->AssertOnOriginThread();
+  if (!client_) {
+    client_ = std::unique_ptr<DisconnectableClient, base::OnTaskRunnerDeleter>(
+        new DisconnectableClient(bus_->GetOriginTaskRunner()),
+        base::OnTaskRunnerDeleter(bus_->GetOriginTaskRunner()));
+  }
+  return client_.get();
 }
 
 void UploadClient::SendEncryptedRecords(
@@ -186,19 +196,21 @@ void UploadClient::SendEncryptedRecords(
 void UploadClient::OwnerChanged(const std::string& old_owner,
                                 const std::string& new_owner) {
   bus_->AssertOnOriginThread();
-  client_.SetAvailability(/*is_available=*/!new_owner.empty());
+  GetDisconnectableClient()->SetAvailability(
+      /*is_available=*/!new_owner.empty());
 }
 
 void UploadClient::ServerAvailable(bool service_is_available) {
   bus_->AssertOnOriginThread();
-  client_.SetAvailability(/*is_available=*/service_is_available);
+  GetDisconnectableClient()->SetAvailability(
+      /*is_available=*/service_is_available);
 }
 
 void UploadClient::SetAvailabilityForTest(bool is_available) {
   base::RunLoop run_loop;
   bus_->GetOriginTaskRunner()->PostTask(
-      FROM_HERE, base::BindOnce(&DisconnectableClient::SetAvailability,
-                                base::Unretained(&client_), is_available));
+      FROM_HERE, base::BindOnce(&UploadClient::ServerAvailable,
+                                base::Unretained(this), is_available));
   bus_->GetOriginTaskRunner()->PostTask(FROM_HERE, run_loop.QuitClosure());
   run_loop.Run();
 }

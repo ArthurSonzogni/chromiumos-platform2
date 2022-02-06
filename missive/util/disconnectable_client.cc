@@ -22,12 +22,12 @@ namespace reporting {
 
 DisconnectableClient::DisconnectableClient(
     scoped_refptr<base::SequencedTaskRunner> task_runner)
-    : task_runner_(task_runner) {
-  // Client may be created not on the |task_runner|.
-  DETACH_FROM_SEQUENCE(sequence_checker_);
-}
+    : task_runner_(task_runner) {}
 
-DisconnectableClient::~DisconnectableClient() = default;
+DisconnectableClient::~DisconnectableClient() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  SetAvailability(/*is_available=*/false);
+}
 
 void DisconnectableClient::MaybeMakeCall(std::unique_ptr<Delegate> delegate) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);

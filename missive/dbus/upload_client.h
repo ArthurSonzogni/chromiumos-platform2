@@ -13,6 +13,7 @@
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
@@ -64,6 +65,10 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
                      const bool need_encryption_keys,
                      HandleUploadResponseCallback response_callback);
 
+  // Returns disconnectable client, creating it if not created yet.
+  // Must be called on task runner.
+  DisconnectableClient* GetDisconnectableClient();
+
   void OwnerChanged(const std::string& old_owner, const std::string& new_owner);
 
   void ServerAvailable(bool service_is_available);
@@ -71,7 +76,7 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
   scoped_refptr<dbus::Bus> const bus_;
   dbus::ObjectProxy* const chrome_proxy_;
 
-  DisconnectableClient client_;
+  std::unique_ptr<DisconnectableClient, base::OnTaskRunnerDeleter> client_;
 
   // Note: This should remain the last member so it'll be destroyed and
   // invalidate its weak pointers before any other members are destroyed.
