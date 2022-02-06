@@ -17,6 +17,7 @@
 #include <base/rand_util.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
@@ -660,7 +661,7 @@ TEST_F(SamplesHandlerLightTest, CrosECLight) {
   EXPECT_EQ(observers_.front()->GetSampleIndex(), 1);
 
   auto& sample = observers_.front()->GetLatestSample();
-  EXPECT_EQ(sample.size(), 2);
+  EXPECT_EQ(sample.size(), 3);
 
   auto it = sample.find(0);
   EXPECT_TRUE(it != sample.end());
@@ -669,6 +670,15 @@ TEST_F(SamplesHandlerLightTest, CrosECLight) {
   it = sample.find(1);
   EXPECT_TRUE(it != sample.end());
   EXPECT_EQ(it->second, kFakeLightData);
+
+  it = sample.find(2);
+  EXPECT_TRUE(it != sample.end());
+
+  struct timespec ts = {};
+  EXPECT_EQ(clock_gettime(CLOCK_BOOTTIME, &ts), 0);
+  EXPECT_LE(static_cast<int64_t>(ts.tv_sec) * 1000 * 1000 * 1000 + ts.tv_nsec -
+                it->second,
+            TestTimeouts::tiny_timeout().InNanoseconds());
 }
 
 TEST_F(SamplesHandlerLightTest, AcpiAls) {

@@ -290,6 +290,21 @@ void SamplesHandler::AddActiveClientOnThread(ClientData* client_data) {
     libmems::IioDevice::IioSample sample;
     for (int32_t index : client_data->enabled_chn_indices) {
       auto channel = client_data->device_data->iio_device->GetChannel(index);
+
+      // Read the current time for the timestamp channel.
+      if (base::StringPiece(cros::mojom::kTimestampChannel) ==
+          channel->GetId()) {
+        struct timespec ts = {};
+        if (clock_gettime(CLOCK_BOOTTIME, &ts) < 0) {
+          PLOG(ERROR) << "clock_gettime(CLOCK_BOOTTIME) failed";
+        } else {
+          sample[index] =
+              static_cast<int64_t>(ts.tv_sec) * 1000 * 1000 * 1000 + ts.tv_nsec;
+        }
+
+        continue;
+      }
+
       // Read from the input attribute or the raw attribute.
       auto value_opt = channel->ReadNumberAttribute(kInputAttr);
       if (!value_opt.has_value())
