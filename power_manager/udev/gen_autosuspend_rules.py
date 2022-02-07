@@ -265,6 +265,16 @@ PCI_IDS += [
     '8086:229c',
     # iosf_mbi_pci (kefka)
     '8086:2280',
+    # Host bridge (nami)
+    '8086:5904',
+    '8086:5914',
+    # Graphics (nami)
+    '8086:5906',
+    '8086:5917',
+    # ISA bridge (nami)
+    '8086:9d4e',
+    # wifi 7265 (nami)
+    '8086:095b',
 ]
 
 # Samsung
