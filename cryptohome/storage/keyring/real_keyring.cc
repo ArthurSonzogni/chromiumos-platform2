@@ -22,7 +22,7 @@ bool AddEcryptfsKey(const FileSystemKey& key,
   // that is used to encrypt the file contents when the file is persisted to the
   // lower filesystem by eCryptfs.
   auto key_signature = SecureBlobToHex(key_reference.fek_sig);
-  if (ecryptfs::AddEcryptfsAuthToken(key.fek, key_signature, key.fek_salt)) {
+  if (!ecryptfs::AddEcryptfsAuthToken(key.fek, key_signature, key.fek_salt)) {
     LOG(ERROR) << "Couldn't add eCryptfs file encryption key to keyring.";
     return false;
   }
