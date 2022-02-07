@@ -27,9 +27,6 @@ namespace {
 // Default D-Bus call Timeout
 constexpr base::TimeDelta kDefaultTimeout = base::Minutes(2);
 
-constexpr uint32_t kNvramCounterOffset = 0;
-constexpr size_t kNvramCounterBytes = 8;
-
 // Version tag at the start of serialized sealed blob.
 enum SerializedVer : char {
   kSerializedVer1 = 0x01,
@@ -344,12 +341,6 @@ bool SealedStorage::PrepareSealingKeyObject(
     }
   }
 
-  if (policy_.nvram_counter_index.has_value()) {
-    if (!AddNvramCounterToSession(trial_session.get())) {
-      return false;
-    }
-  }
-
   if (!policy_.secret.empty()) {
     if (!AddSecretToSession(trial_session.get())) {
       return false;
@@ -522,12 +513,6 @@ bool SealedStorage::RestoreEncryptionSeeds(const PubSeeds& pub_seeds,
   if (!policy_.pcr_map.empty()) {
     result = policy_session->PolicyPCR(policy_.pcr_map);
     if (!CheckTpmResult(result, "restrict policy to PCRs")) {
-      return false;
-    }
-  }
-
-  if (policy_.nvram_counter_index.has_value()) {
-    if (!AddNvramCounterToSession(policy_session.get())) {
       return false;
     }
   }
@@ -794,33 +779,6 @@ base::Optional<SecretData> Key::Decrypt(const Data& encrypted_data) const {
   decrypted_data.resize(decrypted_size);
 
   return decrypted_data;
-}
-
-bool SealedStorage::AddNvramCounterToSession(
-    trunks::PolicySession* session) const {
-  DCHECK(policy_.nvram_counter_index.has_value());
-  DCHECK(session);
-
-  // Currently this code path is only used for a counter readable and writable
-  // using empty password authorization.
-  auto authorization_delegate = trunks_factory_->GetPasswordAuthorization("");
-
-  std::string data;
-  trunks::TPM_RC result = trunks_factory_->GetTpmUtility()->ReadNVSpace(
-      *policy_.nvram_counter_index, kNvramCounterOffset, kNvramCounterBytes,
-      /*using_owner_authorization=*/false, &data, authorization_delegate.get());
-  if (!CheckTpmResult(result, "read NV space")) {
-    return false;
-  }
-  trunks::TPM2B_OPERAND operand_b = trunks::Make_TPM2B_DIGEST(data);
-
-  result = session->PolicyNV(*policy_.nvram_counter_index, kNvramCounterOffset,
-                             /*using_owner_authorization=*/false, operand_b,
-                             trunks::TPM_EO_EQ, authorization_delegate.get());
-  if (!CheckTpmResult(result, "calculcate NVRAM policy")) {
-    return false;
-  }
-  return true;
 }
 
 bool SealedStorage::AddSecretToSession(trunks::PolicySession* session) const {

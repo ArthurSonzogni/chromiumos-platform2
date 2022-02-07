@@ -48,10 +48,6 @@ bool operator==(const trunks::TPM2B_ECC_POINT& rh,
                 const trunks::TPM2B_ECC_POINT& lh) {
   return rh.size == lh.size && rh.point == lh.point;
 }
-bool operator==(const trunks::TPM2B_DIGEST& rh,
-                const trunks::TPM2B_DIGEST& lh) {
-  return rh.size == lh.size && memcmp(rh.buffer, lh.buffer, rh.size) == 0;
-}
 
 MATCHER_P(Equals, value, "") {
   return arg == value;

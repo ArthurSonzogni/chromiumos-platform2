@@ -7,7 +7,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/task/single_thread_task_executor.h>
@@ -20,17 +19,10 @@
 
 namespace {
 
-base::Optional<uint32_t> StringToNvramIndex(std::string index) {
-  if (index.empty())
-    return base::nullopt;
-  return strtoul(index.c_str(), nullptr, 0);
-}
-
 sealed_storage::Policy ConstructPolicy(bool verified_boot_mode,
                                        bool dev_mode,
                                        int32_t unchanged_pcr,
-                                       std::string secret,
-                                       std::string nvram_counter) {
+                                       std::string secret) {
   sealed_storage::Policy::PcrMap pcr_map;
 
   auto val_boot_mode = sealed_storage::Policy::BootModePCR(
@@ -61,18 +53,8 @@ sealed_storage::Policy ConstructPolicy(bool verified_boot_mode,
     }
   }
 
-  if (!nvram_counter.empty()) {
-    if (!descr.empty()) {
-      descr += ", counter: " + nvram_counter;
-    } else {
-      descr = "counter: " + nvram_counter;
-    }
-  }
-
   LOG(INFO) << "Policy: {" << descr << "}";
-  return {.pcr_map = pcr_map,
-          .secret = sealed_storage::SecretData(secret),
-          .nvram_counter_index = StringToNvramIndex(nvram_counter)};
+  return {.pcr_map = pcr_map, .secret = sealed_storage::SecretData(secret)};
 }
 
 }  // namespace
@@ -160,7 +142,6 @@ int main(int argc, char** argv) {
   DEFINE_int32(extend_pcr, -1, "PCR to extend");
 
   DEFINE_string(policy_secret, "", "policy: bind to secret");
-  DEFINE_string(policy_nvram_counter, "", "policy: bind to nvram counter");
 
   DEFINE_string(data, "/tmp/_test_data", "plaintext data file");
   DEFINE_string(blob, "/tmp/_sealed_storage_blob", "sealed blob file");
@@ -200,9 +181,8 @@ int main(int argc, char** argv) {
   }
 
   // Create the right object.
-  sealed_storage::Policy policy =
-      ConstructPolicy(FLAGS_verified_boot, FLAGS_dev, FLAGS_policy_pcr,
-                      FLAGS_policy_secret, FLAGS_policy_nvram_counter);
+  sealed_storage::Policy policy = ConstructPolicy(
+      FLAGS_verified_boot, FLAGS_dev, FLAGS_policy_pcr, FLAGS_policy_secret);
   sealed_storage::SealedStorage storage(policy);
 
   if (FLAGS_test) {

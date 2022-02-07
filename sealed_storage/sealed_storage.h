@@ -56,10 +56,6 @@ struct Policy {
 
   // A secret that needs to be known in order unseal data.
   SecretData secret;
-
-  // A TPM NVRAM counter to bind to. Data can only be unsealed if the counter
-  // has the same value as it had during sealing.
-  base::Optional<uint32_t> nvram_counter_index;
 };
 
 // Public seeds: data that will go into the resulting blob to allow later
@@ -191,10 +187,6 @@ class SealedStorage {
   bool DeserializeSealedBlob(const Data& sealed_data,
                              PubSeeds* pub_seeds,
                              Data* encrypted_data) const;
-
-  // Adds the current value of |nvram_counter| defined in |policy_| to the
-  // given |session|.
-  bool AddNvramCounterToSession(trunks::PolicySession* session) const;
 
   // Adds the |secret| defined in |policy_| to the given |session|.
   bool AddSecretToSession(trunks::PolicySession* session) const;
