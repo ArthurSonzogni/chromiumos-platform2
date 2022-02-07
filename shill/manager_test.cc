@@ -541,7 +541,7 @@ TEST_F(ManagerTest, DeviceRegistration) {
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
   ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
 
@@ -550,7 +550,7 @@ TEST_F(ManagerTest, DeviceRegistration) {
   manager()->RegisterDevice(mock_devices_[2]);
 
   EXPECT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
-  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
+  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWiFi));
   EXPECT_TRUE(IsDeviceRegistered(mock_devices_[2], Technology::kCellular));
 }
 
@@ -559,7 +559,7 @@ TEST_F(ManagerTest, DeviceRegistrationTriggersThrottler) {
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
   ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
 
@@ -575,7 +575,7 @@ TEST_F(ManagerTest, ManagerCallsThrottlerCorrectly) {
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
   ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
 
@@ -616,13 +616,13 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
 
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
 
   ASSERT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
-  ASSERT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
+  ASSERT_TRUE(IsDeviceRegistered(mock_devices_[1], Technology::kWiFi));
 
   MockProfile* profile = new MockProfile(manager(), "");
   AdoptProfile(manager(), profile);  // Passes ownership.
@@ -635,7 +635,7 @@ TEST_F(ManagerTest, DeviceDeregistration) {
   EXPECT_CALL(*mock_devices_[1], SetEnabled(false));
   EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[1])));
   manager()->DeregisterDevice(mock_devices_[1]);
-  EXPECT_FALSE(IsDeviceRegistered(mock_devices_[1], Technology::kWifi));
+  EXPECT_FALSE(IsDeviceRegistered(mock_devices_[1], Technology::kWiFi));
 }
 
 TEST_F(ManagerTest, ServiceRegistration) {
@@ -1065,7 +1065,7 @@ TEST_F(ManagerTest, PushPopProfile) {
 
   EXPECT_TRUE(manager.IsTechnologyAutoConnectDisabled(Technology::kCellular));
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kEthernet));
-  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWifi));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWiFi));
 
   // Use InsertUserProfile() instead.  Although a machine profile is valid
   // in this state, it cannot be added via InsertUserProfile.
@@ -1079,14 +1079,14 @@ TEST_F(ManagerTest, PushPopProfile) {
 
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kCellular));
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kEthernet));
-  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWifi));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWiFi));
 
   EXPECT_EQ(Error::kSuccess,
             TestInsertUserProfile(&manager, kProfile1, kUserHash1));
 
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kCellular));
   EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kEthernet));
-  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWifi));
+  EXPECT_FALSE(manager.IsTechnologyAutoConnectDisabled(Technology::kWiFi));
 
   EXPECT_EQ(3, profiles.size());
   EXPECT_EQ(kUserHash0, profiles[1]->GetUserHash());
@@ -1475,7 +1475,7 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RegisterDevice(mock_devices_[0].get());
     manager()->RegisterDevice(mock_devices_[1].get());
     EXPECT_CALL(*mock_devices_[0], technology())
-        .WillRepeatedly(Return(Technology::kWifi));
+        .WillRepeatedly(Return(Technology::kWiFi));
     EXPECT_CALL(*mock_devices_[0], Scan(_, _));
     EXPECT_CALL(*mock_devices_[1], technology())
         .WillRepeatedly(Return(Technology::kUnknown));
@@ -1491,7 +1491,7 @@ TEST_F(ManagerTest, RequestScan) {
 
     manager()->RegisterDevice(mock_devices_[0].get());
     EXPECT_CALL(*mock_devices_[0], technology())
-        .WillRepeatedly(Return(Technology::kWifi));
+        .WillRepeatedly(Return(Technology::kWiFi));
     EXPECT_CALL(*metrics(),
                 NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan))
         .Times(1);
@@ -1869,7 +1869,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
 
   EXPECT_CALL(*mock_service, technology())
       .WillOnce(Return(Technology::kCellular))
-      .WillOnce(Return(Technology::kWifi));
+      .WillOnce(Return(Technology::kWiFi));
 
   EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _)).Times(0);
   EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
@@ -2095,7 +2095,7 @@ TEST_F(ManagerTest, TechnologyOrder) {
   EXPECT_FALSE(IsSortServicesTaskPending());
   EXPECT_THAT(GetTechnologyOrder(),
               ElementsAre(Technology::kVPN, Technology::kEthernet,
-                          Technology::kWifi, Technology::kCellular));
+                          Technology::kWiFi, Technology::kCellular));
 
   SetRunning(true);
   manager()->SetTechnologyOrder(
@@ -2152,14 +2152,14 @@ TEST_F(ManagerTest, DevicePresenceStatusCheck) {
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
   ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kEthernet));
 
   EXPECT_CALL(*metrics(), NotifyDevicePresenceStatus(
                               Technology(Technology::kEthernet), true));
   EXPECT_CALL(*metrics(),
-              NotifyDevicePresenceStatus(Technology(Technology::kWifi), true));
+              NotifyDevicePresenceStatus(Technology(Technology::kWiFi), true));
   EXPECT_CALL(*metrics(), NotifyDevicePresenceStatus(
                               Technology(Technology::kCellular), false));
   manager()->DevicePresenceStatusCheck();
@@ -2452,15 +2452,15 @@ TEST_F(ManagerTest, AvailableTechnologies) {
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
   ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
   ON_CALL(*mock_devices_[3], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
 
   std::set<std::string> expected_technologies;
   expected_technologies.insert(Technology(Technology::kEthernet).GetName());
-  expected_technologies.insert(Technology(Technology::kWifi).GetName());
+  expected_technologies.insert(Technology(Technology::kWiFi).GetName());
   expected_technologies.insert(Technology(Technology::kCellular).GetName());
   Error error;
   std::vector<std::string> technologies =
@@ -2494,11 +2494,11 @@ TEST_F(ManagerTest, ConnectedTechnologies) {
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
   ON_CALL(*mock_devices_[2], technology())
       .WillByDefault(Return(Technology::kCellular));
   ON_CALL(*mock_devices_[3], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
 
   mock_devices_[0]->SelectService(connected_service1);
   mock_devices_[1]->SelectService(disconnected_service1);
@@ -2507,7 +2507,7 @@ TEST_F(ManagerTest, ConnectedTechnologies) {
 
   std::set<std::string> expected_technologies;
   expected_technologies.insert(Technology(Technology::kEthernet).GetName());
-  expected_technologies.insert(Technology(Technology::kWifi).GetName());
+  expected_technologies.insert(Technology(Technology::kWiFi).GetName());
   Error error;
 
   std::vector<std::string> technologies =
@@ -2525,7 +2525,7 @@ TEST_F(ManagerTest, DefaultTechnology) {
   ON_CALL(*connected_service, state())
       .WillByDefault(Return(Service::kStateConnected));
   ON_CALL(*connected_service, technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
 
   // Disconnected. Ethernet.
   ON_CALL(*disconnected_service, technology())
@@ -2539,7 +2539,7 @@ TEST_F(ManagerTest, DefaultTechnology) {
   manager()->RegisterService(connected_service);
   CompleteServiceSort();
   // Connected service should be brought to the front now.
-  std::string expected_technology = Technology(Technology::kWifi).GetName();
+  std::string expected_technology = Technology(Technology::kWiFi).GetName();
   EXPECT_THAT(manager()->DefaultTechnology(&error), StrEq(expected_technology));
 }
 
@@ -3113,7 +3113,7 @@ TEST_F(ManagerTest, StartupPortalList) {
   manager()->props_.check_portal_list = kProfileValue;
 
   EXPECT_EQ(kProfileValue, manager()->GetCheckPortalList(nullptr));
-  EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kWifi));
+  EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kWiFi));
   EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
 
   const std::string kStartupValue("cellular,ethernet");
@@ -3124,7 +3124,7 @@ TEST_F(ManagerTest, StartupPortalList) {
 
   // However we should read back a different list.
   EXPECT_EQ(kStartupValue, manager()->GetCheckPortalList(nullptr));
-  EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kWifi));
+  EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kWiFi));
   EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
 
   const std::string kRuntimeValue("ppp");
@@ -3143,7 +3143,7 @@ TEST_F(ManagerTest, StartupPortalList) {
 TEST_F(ManagerTest, IsTechnologyAutoConnectDisabled) {
   const std::string kNoAutoConnectTechnologies("wifi,cellular");
   manager()->props_.no_auto_connect_technologies = kNoAutoConnectTechnologies;
-  EXPECT_TRUE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWifi));
+  EXPECT_TRUE(manager()->IsTechnologyAutoConnectDisabled(Technology::kWiFi));
   EXPECT_TRUE(
       manager()->IsTechnologyAutoConnectDisabled(Technology::kCellular));
   EXPECT_FALSE(
@@ -3182,7 +3182,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kCellular));
   ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
@@ -3225,7 +3225,7 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   // is a TestWithParam.
   std::vector<bool> bool_vals = {true, false};
   std::vector<Technology::Type> techs = {
-      Technology::kEthernet, Technology::kCellular, Technology::kWifi};
+      Technology::kEthernet, Technology::kCellular, Technology::kWiFi};
   for (Technology::Type type : techs) {
     for (bool enable : bool_vals) {
       for (bool persistent : bool_vals) {
@@ -3384,7 +3384,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   wifi_service0->SetAutoConnect(true);
   wifi_service0->SetSecurity(Service::kCryptoAes, true, true);
   EXPECT_CALL(*wifi_service0, technology())
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*wifi_service0, IsVisible()).WillRepeatedly(Return(false));
   EXPECT_CALL(*wifi_service0, explicitly_disconnected())
       .WillRepeatedly(Return(false));
@@ -3399,7 +3399,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   wifi_service1->SetConnectable(true);
   wifi_service1->SetSecurity(Service::kCryptoRc4, true, true);
   EXPECT_CALL(*wifi_service1, technology())
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*wifi_service1, explicitly_disconnected())
       .WillRepeatedly(Return(false));
 
@@ -3413,7 +3413,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   wifi_service2->SetConnectable(true);
   wifi_service2->SetSecurity(Service::kCryptoNone, false, false);
   EXPECT_CALL(*wifi_service2, technology())
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*wifi_service2, explicitly_disconnected())
       .WillRepeatedly(Return(false));
 
@@ -3796,7 +3796,7 @@ TEST_F(ManagerTest, GeoLocation) {
   // Manager should add WiFi geolocation info.
   EXPECT_CALL(*device, technology())
       .Times(AtLeast(1))
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*device, GetGeolocationObjects())
       .WillOnce(Return(std::vector<GeolocationInfo>()));
   manager()->OnDeviceGeolocationInfoUpdated(device);
@@ -3835,13 +3835,13 @@ TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
 
   // Make both devices WiFi technology and have geolocation info.
   EXPECT_CALL(*device_1, technology())
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*device_1, GetGeolocationObjects())
       .WillOnce(Return(std::vector<GeolocationInfo>{info_1}));
   manager()->OnDeviceGeolocationInfoUpdated(device_1);
 
   EXPECT_CALL(*device_2, technology())
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*device_2, GetGeolocationObjects())
       .WillOnce(Return(std::vector<GeolocationInfo>{info_2}));
   manager()->OnDeviceGeolocationInfoUpdated(device_2);
@@ -3861,7 +3861,7 @@ TEST_F(ManagerTest, GeoLocation_DeregisterDevice) {
                                                            "addr_1", 0);
   manager()->RegisterDevice(device);
 
-  EXPECT_CALL(*device, technology()).WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*device, technology()).WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*device, GetGeolocationObjects())
       .WillOnce(Return(std::vector<GeolocationInfo>()));
   manager()->OnDeviceGeolocationInfoUpdated(device);
@@ -3887,7 +3887,7 @@ TEST_F(ManagerTest, IsWifiIdle) {
   manager()->RegisterService(cell_service);
 
   EXPECT_CALL(*wifi_service, technology())
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*cell_service, technology())
       .WillRepeatedly(Return(Technology::kCellular));
 
@@ -3905,7 +3905,7 @@ TEST_F(ManagerTest, IsWifiIdle) {
   // Attempt wifi connection.
   Mock::VerifyAndClearExpectations(wifi_service.get());
   EXPECT_CALL(*wifi_service, technology())
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*wifi_service, IsConnecting()).WillRepeatedly(Return(true));
   EXPECT_CALL(*wifi_service, IsConnected(nullptr))
       .WillRepeatedly(Return(false));
@@ -3915,7 +3915,7 @@ TEST_F(ManagerTest, IsWifiIdle) {
   // wifi connected.
   Mock::VerifyAndClearExpectations(wifi_service.get());
   EXPECT_CALL(*wifi_service, technology())
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*wifi_service, IsConnecting()).WillRepeatedly(Return(false));
   EXPECT_CALL(*wifi_service, IsConnected(nullptr)).WillRepeatedly(Return(true));
   manager()->UpdateService(wifi_service);
@@ -3978,7 +3978,7 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   ON_CALL(*mock_devices_[1], technology())
       .WillByDefault(Return(Technology::kCellular));
   ON_CALL(*mock_devices_[2], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
 
   manager()->RegisterDevice(mock_devices_[0]);
   manager()->RegisterDevice(mock_devices_[1]);
@@ -3992,7 +3992,7 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   manager()->SetProhibitedTechnologies("cellular,ethernet", &error);
   EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kEthernet));
   EXPECT_TRUE(manager()->IsTechnologyProhibited(Technology::kCellular));
-  EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kWifi));
+  EXPECT_FALSE(manager()->IsTechnologyProhibited(Technology::kWiFi));
   Mock::VerifyAndClearExpectations(mock_devices_[0].get());
   Mock::VerifyAndClearExpectations(mock_devices_[1].get());
   Mock::VerifyAndClearExpectations(mock_devices_[2].get());
@@ -4007,7 +4007,7 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   ON_CALL(*mock_devices_[4], technology())
       .WillByDefault(Return(Technology::kCellular));
   ON_CALL(*mock_devices_[5], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
 
   EXPECT_CALL(*mock_devices_[3], SetEnabledNonPersistent(false, _, _));
   EXPECT_CALL(*mock_devices_[4], SetEnabledNonPersistent(false, _, _));
@@ -4152,10 +4152,10 @@ TEST_F(ManagerTest, ClaimDeviceWithClaimer) {
 TEST_F(ManagerTest, ClaimRegisteredDevice) {
   // Register a device to manager.
   ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kWifi));
+      .WillByDefault(Return(Technology::kWiFi));
   manager()->RegisterDevice(mock_devices_[0]);
   // Verify device is registered.
-  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kWifi));
+  EXPECT_TRUE(IsDeviceRegistered(mock_devices_[0], Technology::kWiFi));
 
   // Claim the registered device.
   Error error;
@@ -4163,7 +4163,7 @@ TEST_F(ManagerTest, ClaimRegisteredDevice) {
   EXPECT_TRUE(error.IsSuccess());
 
   // Expect device to not be registered anymore.
-  EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kWifi));
+  EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kWiFi));
 }
 
 TEST_F(ManagerTest, ReleaseDeviceWithoutClaimer) {
@@ -4238,7 +4238,7 @@ TEST_F(ManagerTest, GetEnabledDeviceWithTechnology) {
   auto cellular_device = mock_devices_[2];
   ON_CALL(*ethernet_device, technology())
       .WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*wifi_device, technology()).WillByDefault(Return(Technology::kWifi));
+  ON_CALL(*wifi_device, technology()).WillByDefault(Return(Technology::kWiFi));
   ON_CALL(*cellular_device, technology())
       .WillByDefault(Return(Technology::kCellular));
   ethernet_device->enabled_ = true;
@@ -4252,7 +4252,7 @@ TEST_F(ManagerTest, GetEnabledDeviceWithTechnology) {
   EXPECT_EQ(ethernet_device,
             manager()->GetEnabledDeviceWithTechnology(Technology::kEthernet));
   EXPECT_EQ(wifi_device,
-            manager()->GetEnabledDeviceWithTechnology(Technology::kWifi));
+            manager()->GetEnabledDeviceWithTechnology(Technology::kWiFi));
   EXPECT_EQ(cellular_device,
             manager()->GetEnabledDeviceWithTechnology(Technology::kCellular));
 }

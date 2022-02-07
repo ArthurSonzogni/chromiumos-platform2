@@ -137,7 +137,7 @@ WiFi::WiFi(Manager* manager,
            const std::string& address,
            int interface_index,
            std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi)
-    : Device(manager, link, address, interface_index, Technology::kWifi),
+    : Device(manager, link, address, interface_index, Technology::kWiFi),
       provider_(manager->wifi_provider()),
       time_(Time::GetInstance()),
       supplicant_connect_attempts_(0),
@@ -2379,7 +2379,7 @@ void WiFi::OnUnreliableLink() {
   SLOG(this, 2) << "Device " << link_name() << ": Link is unreliable.";
   selected_service()->set_unreliable(true);
   reliable_link_callback_.Cancel();
-  metrics()->NotifyUnreliableLinkSignalStrength(Technology::kWifi,
+  metrics()->NotifyUnreliableLinkSignalStrength(Technology::kWiFi,
                                                 selected_service()->strength());
 }
 
@@ -3772,7 +3772,7 @@ void WiFi::OnNeighborReachabilityEvent(
   using EventSignal = patchpanel::NeighborReachabilityEventSignal;
 
   if (event_type == EventSignal::FAILED) {
-    metrics()->NotifyNeighborLinkMonitorFailure(Technology::kWifi,
+    metrics()->NotifyNeighborLinkMonitorFailure(Technology::kWiFi,
                                                 ip_address.family(), role);
   }
 

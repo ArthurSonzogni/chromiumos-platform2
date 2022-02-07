@@ -428,7 +428,7 @@ Technology DeviceInfo::GetDeviceTechnology(
   if (contents.find(kInterfaceUeventWifiSignature) != std::string::npos) {
     SLOG(this, 2) << __func__ << ": device " << iface_name
                   << " has wifi signature in uevent file";
-    return Technology::kWifi;
+    return Technology::kWiFi;
   }
 
   // Similarly, if the uevent file contains "DEVTYPE=bridge\n" then we can
@@ -611,7 +611,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
           new VirtioEthernet(manager_, link_name, address, interface_index);
       device->EnableIPv6Privacy();
       break;
-    case Technology::kWifi:
+    case Technology::kWiFi:
 #if defined(DISABLE_WIFI)
       LOG(WARNING) << "WiFi support is not implemented. Ignore WiFi link "
                    << link_name << " at index " << interface_index << ".";
@@ -780,7 +780,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage& msg) {
       infos_[dev_index].mac_address = msg.GetAttribute(IFLA_ADDRESS);
       address = infos_[dev_index].mac_address.HexEncode();
       SLOG(this, 2) << "link index " << dev_index << " address " << address;
-    } else if (technology == Technology::kWifi ||
+    } else if (technology == Technology::kWiFi ||
                technology == Technology::kEthernet) {
       LOG(ERROR) << "Add link message does not have IFLA_ADDRESS, link: "
                  << link_name << ", Technology: " << technology.GetName();
@@ -1064,7 +1064,7 @@ bool DeviceInfo::GetWiFiHardwareIds(int interface_index,
     LOG(ERROR) << "No DeviceInfo for interface index " << interface_index;
     return false;
   }
-  if (info->technology != Technology::kWifi) {
+  if (info->technology != Technology::kWiFi) {
     LOG(ERROR) << info->name << " adapter reports for technology "
                << info->technology.GetName() << " not supported.";
     return false;

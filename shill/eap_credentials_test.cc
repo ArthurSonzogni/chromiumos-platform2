@@ -349,7 +349,7 @@ TEST_F(EapCredentialsTest, OutputConnectionMetrics) {
   EXPECT_CALL(metrics, SendEnumToUMA("Network.Shill.Wifi.EapInnerProtocol",
                                      Metrics::kEapInnerProtocolPeapMschapv2,
                                      Metrics::kEapInnerProtocolMax));
-  eap_.OutputConnectionMetrics(&metrics, Technology::kWifi);
+  eap_.OutputConnectionMetrics(&metrics, Technology::kWiFi);
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantProperties) {

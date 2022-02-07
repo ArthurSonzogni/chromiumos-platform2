@@ -484,7 +484,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenButConnected) {
   EXPECT_CALL(manager_, RegisterService(_))
       .WillOnce(Invoke(this, &WiFiProviderTest::BindServiceToDefaultProfile));
   EXPECT_CALL(manager_, IsServiceEphemeral(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(manager_, IsTechnologyConnected(Technology(Technology::kWifi)))
+  EXPECT_CALL(manager_, IsTechnologyConnected(Technology(Technology::kWiFi)))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, RequestScan(_, _)).Times(0);
   EXPECT_CALL(metrics_,
@@ -509,7 +509,7 @@ TEST_F(WiFiProviderTest, CreateServicesFromProfileHiddenNotConnected) {
   EXPECT_CALL(manager_, RegisterService(_))
       .WillOnce(Invoke(this, &WiFiProviderTest::BindServiceToDefaultProfile));
   EXPECT_CALL(manager_, IsServiceEphemeral(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(manager_, IsTechnologyConnected(Technology(Technology::kWifi)))
+  EXPECT_CALL(manager_, IsTechnologyConnected(Technology(Technology::kWiFi)))
       .WillOnce(Return(false));
   EXPECT_CALL(manager_, RequestScan(kTypeWifi, _)).Times(1);
   EXPECT_CALL(metrics_,
@@ -603,7 +603,7 @@ TEST_F(WiFiProviderTest, CreateTwoServices) {
       .WillRepeatedly(
           Invoke(this, &WiFiProviderTest::BindServiceToDefaultProfile));
   EXPECT_CALL(manager_, IsServiceEphemeral(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(manager_, IsTechnologyConnected(Technology(Technology::kWifi)))
+  EXPECT_CALL(manager_, IsTechnologyConnected(Technology(Technology::kWiFi)))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, RequestScan(kTypeWifi, _)).Times(0);
   EXPECT_CALL(metrics_,

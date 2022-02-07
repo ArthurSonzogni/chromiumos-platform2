@@ -124,7 +124,7 @@ WiFiService::WiFiService(Manager* manager,
                          const std::string& mode,
                          const std::string& security_class,
                          bool hidden_ssid)
-    : Service(manager, Technology::kWifi),
+    : Service(manager, Technology::kWiFi),
       need_passphrase_(false),
       security_(security_class),
       mode_(mode),
@@ -1458,8 +1458,8 @@ bool WiFiService::Is8021x() const {
 
 WiFiRefPtr WiFiService::ChooseDevice() {
   DeviceRefPtr device =
-      manager()->GetEnabledDeviceWithTechnology(Technology::kWifi);
-  CHECK(!device || device->technology() == Technology::kWifi)
+      manager()->GetEnabledDeviceWithTechnology(Technology::kWiFi);
+  CHECK(!device || device->technology() == Technology::kWiFi)
       << "Unexpected device technology: " << device->technology();
   return static_cast<WiFi*>(device.get());
 }
@@ -1538,7 +1538,7 @@ bool WiFiService::CompareWithSameTechnology(const ServiceRefPtr& service,
 
   // We can do this safely because Service::Compare calls us only when services
   // have the same technology.
-  CHECK(service->technology() == Technology::kWifi);
+  CHECK(service->technology() == Technology::kWiFi);
   WiFiService* wifi_service = static_cast<WiFiService*>(service.get());
 
   // A service without Passpoint credentials should be selected before a

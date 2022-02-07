@@ -300,7 +300,7 @@ void DeviceInfoTest::CreateWiFiDevice() {
   // Mock a WiFi adapter.
   CreateInfoFile("uevent", "DEVTYPE=wlan");
   auto device = CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
-                             Technology::kWifi);
+                             Technology::kWiFi);
   if (device) {
     RegisterDevice(device);
   }
@@ -393,7 +393,7 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
       new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
   device_info_.infos_[kTestDeviceIndex].device = device0;
   auto message = BuildLinkMessage(RTNLMessage::kModeDelete);
-  EXPECT_CALL(*device0, technology()).WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*device0, technology()).WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(manager_, DeregisterDevice(_)).Times(1);
   EXPECT_CALL(metrics_, DeregisterDevice(kTestDeviceIndex)).Times(1);
   SendMessageToDeviceInfo(*message);
@@ -429,9 +429,9 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
   EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
-  device_info_.infos_[2].technology = Technology::kWifi;
+  device_info_.infos_[2].technology = Technology::kWiFi;
   technologies = device_info_.GetUninitializedTechnologies();
-  expected_technologies.insert(Technology(Technology::kWifi).GetName());
+  expected_technologies.insert(Technology(Technology::kWiFi).GetName());
   EXPECT_THAT(std::set<std::string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 
@@ -583,7 +583,7 @@ TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
       netlink_manager_,
       SendNl80211Message(IsGetInterfaceMessage(kTestDeviceIndex), _, _, _));
   EXPECT_FALSE(CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
-                            Technology::kWifi));
+                            Technology::kWiFi));
 }
 #endif  // DISABLE_WIFI
 
@@ -1488,7 +1488,7 @@ TEST_F(DeviceInfoTest, GetWiFiHardwareIdsNotWiFi) {
   CreateInfoFile("uevent", "DEVTYPE=NOTwlan");
 
   auto device = CreateDevice(kTestDeviceName, "address", kTestDeviceIndex,
-                             Technology::kWifi);
+                             Technology::kWiFi);
   if (device) {
     RegisterDevice(device);
   }
@@ -1696,9 +1696,9 @@ TEST_F(DeviceInfoTechnologyTest, Tunnel) {
 
 TEST_F(DeviceInfoTechnologyTest, WiFi) {
   CreateInfoFile("uevent", "DEVTYPE=wlan");
-  EXPECT_EQ(Technology::kWifi, GetDeviceTechnology());
+  EXPECT_EQ(Technology::kWiFi, GetDeviceTechnology());
   CreateInfoFile("uevent", "foo\nDEVTYPE=wlan");
-  EXPECT_EQ(Technology::kWifi, GetDeviceTechnology());
+  EXPECT_EQ(Technology::kWiFi, GetDeviceTechnology());
   CreateInfoFile("type", base::NumberToString(ARPHRD_IEEE80211_RADIOTAP));
   EXPECT_EQ(Technology::kWiFiMonitor, GetDeviceTechnology());
   // mac80211_hwsim creates ARPHRD_IEEE80211_RADIOTAP devices that don't list
@@ -1952,7 +1952,7 @@ TEST_F(DeviceInfoDelayedCreationTest, GuestInterface) {
 }
 
 TEST_F(DeviceInfoDelayedCreationTest, WiFiInterface) {
-  AddDeviceWithNoIFLAAddress(Technology::kWifi);
+  AddDeviceWithNoIFLAAddress(Technology::kWiFi);
   EnsureNoDelayedDevice();
 }
 

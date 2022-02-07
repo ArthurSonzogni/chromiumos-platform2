@@ -135,7 +135,7 @@ TEST_F(MetricsTest, ServiceFailure) {
   EXPECT_CALL(*service_, failure())
       .WillRepeatedly(Return(Service::kFailureBadPassphrase));
   EXPECT_CALL(*service_, technology())
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(library_,
               SendEnumToUMA("Network.Shill.Wifi.ServiceErrors",
                             Metrics::kNetworkServiceErrorBadPassphrase,
@@ -217,7 +217,7 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
   eap_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   eap_wifi_service_->raw_signal_strength_ = kStrength;
   EXPECT_CALL(
-      *eap_, OutputConnectionMetrics(&metrics_, Technology(Technology::kWifi)));
+      *eap_, OutputConnectionMetrics(&metrics_, Technology(Technology::kWiFi)));
   metrics_.NotifyServiceStateChanged(*eap_wifi_service_,
                                      Service::kStateConnected);
 }
@@ -277,7 +277,7 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   metrics_.set_time_to_drop_timer(mock_time_to_drop_timer);
   scoped_refptr<MockService> wifi_service = new MockService(&manager_);
   EXPECT_CALL(*service_, technology()).WillOnce(Return(Technology::kEthernet));
-  EXPECT_CALL(*wifi_service, technology()).WillOnce(Return(Technology::kWifi));
+  EXPECT_CALL(*wifi_service, technology()).WillOnce(Return(Technology::kWiFi));
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Ethernet.TimeOnline", Ge(0),
                                   Metrics::kMetricTimeOnlineSecondsMin,
                                   Metrics::kMetricTimeOnlineSecondsMax,
@@ -307,7 +307,7 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
 
 TEST_F(MetricsTest, Disconnect) {
   EXPECT_CALL(*service_, technology())
-      .WillRepeatedly(Return(Technology::kWifi));
+      .WillRepeatedly(Return(Technology::kWiFi));
   EXPECT_CALL(*service_, explicitly_disconnected()).WillOnce(Return(false));
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.Disconnect", false,
                                   Metrics::kMetricDisconnectMin,
@@ -444,7 +444,7 @@ TEST_F(MetricsTest, TimeToScanAndConnect) {
                         Metrics::kMetricTimeToScanMillisecondsMax,
                         Metrics::kMetricTimeToScanMillisecondsNumBuckets));
   const int kInterfaceIndex = 1;
-  metrics_.RegisterDevice(kInterfaceIndex, Technology::kWifi);
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kWiFi);
   metrics_.NotifyDeviceScanStarted(kInterfaceIndex);
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
 
@@ -467,7 +467,7 @@ TEST_F(MetricsTest, TimeToScanAndConnect) {
 
 TEST_F(MetricsTest, SpontaneousConnect) {
   const int kInterfaceIndex = 1;
-  metrics_.RegisterDevice(kInterfaceIndex, Technology::kWifi);
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kWiFi);
   EXPECT_CALL(library_,
               SendToUMA("Network.Shill.Wifi.TimeToConnect", Ge(0),
                         Metrics::kMetricTimeToConnectMillisecondsMin,
@@ -489,7 +489,7 @@ TEST_F(MetricsTest, SpontaneousConnect) {
 
 TEST_F(MetricsTest, ResetConnectTimer) {
   const int kInterfaceIndex = 1;
-  metrics_.RegisterDevice(kInterfaceIndex, Technology::kWifi);
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kWiFi);
   chromeos_metrics::TimerReporterMock* mock_scan_timer =
       new chromeos_metrics::TimerReporterMock;
   metrics_.set_time_to_scan_timer(kInterfaceIndex, mock_scan_timer);
@@ -1159,40 +1159,40 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
               SendEnumToUMA(histogram, Metrics::kNeighborIPv4GatewayFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWifi, IPAddress::kFamilyIPv4, NeighborSignal::GATEWAY);
+      Technology::kWiFi, IPAddress::kFamilyIPv4, NeighborSignal::GATEWAY);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(histogram, Metrics::kNeighborIPv4DNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWifi, IPAddress::kFamilyIPv4, NeighborSignal::DNS_SERVER);
+      Technology::kWiFi, IPAddress::kFamilyIPv4, NeighborSignal::DNS_SERVER);
 
   EXPECT_CALL(
       library_,
       SendEnumToUMA(histogram, Metrics::kNeighborIPv4GatewayAndDNSServerFailure,
                     Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWifi, IPAddress::kFamilyIPv4,
+      Technology::kWiFi, IPAddress::kFamilyIPv4,
       NeighborSignal::GATEWAY_AND_DNS_SERVER);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(histogram, Metrics::kNeighborIPv6GatewayFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWifi, IPAddress::kFamilyIPv6, NeighborSignal::GATEWAY);
+      Technology::kWiFi, IPAddress::kFamilyIPv6, NeighborSignal::GATEWAY);
 
   EXPECT_CALL(library_,
               SendEnumToUMA(histogram, Metrics::kNeighborIPv6DNSServerFailure,
                             Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWifi, IPAddress::kFamilyIPv6, NeighborSignal::DNS_SERVER);
+      Technology::kWiFi, IPAddress::kFamilyIPv6, NeighborSignal::DNS_SERVER);
 
   EXPECT_CALL(
       library_,
       SendEnumToUMA(histogram, Metrics::kNeighborIPv6GatewayAndDNSServerFailure,
                     Metrics::kNeighborLinkMonitorFailureMax));
   metrics_.NotifyNeighborLinkMonitorFailure(
-      Technology::kWifi, IPAddress::kFamilyIPv6,
+      Technology::kWiFi, IPAddress::kFamilyIPv6,
       NeighborSignal::GATEWAY_AND_DNS_SERVER);
 }
 
