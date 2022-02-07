@@ -245,6 +245,9 @@ void ScreenNetwork::OnGetNetworks(
     LOG(ERROR) << "Could not get networks. ErrorCode=" << error->GetCode()
                << "ErrorMessage=" << error->GetMessage();
     networks_.clear();
+    index_ = 1;
+    button_count_ = 4;
+    state_ = NetworkState::kDropdownClosed;
 
     screen_controller_->OnError(ScreenType::kNetworkError);
     return;

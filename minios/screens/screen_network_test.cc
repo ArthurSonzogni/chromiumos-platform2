@@ -36,6 +36,9 @@ TEST_F(ScreenNetworkTest, GetNetworks) {
   // Reset and show error screen.
   EXPECT_CALL(mock_screen_controller_, OnError(ScreenType::kNetworkError));
   screen_network_.OnGetNetworks({}, error_ptr.get());
+  EXPECT_EQ(screen_network_.GetIndexForTest(), 1);
+  EXPECT_EQ(screen_network_.GetButtonCountForTest(), 4);
+  EXPECT_EQ(screen_network_.GetStateForTest(), NetworkState::kDropdownClosed);
 }
 
 TEST_F(ScreenNetworkTest, GetNetworksWithEthernet) {
@@ -136,6 +139,20 @@ TEST_F(ScreenNetworkTest, OnPasswordError) {
 
   EXPECT_CALL(mock_screen_controller_, OnError(ScreenType::kPasswordError));
   screen_network_.OnConnect(chosen_network, error_ptr.get());
+}
+
+TEST_F(ScreenNetworkTest, GetNetworksRefreshError) {
+  screen_network_.SetStateForTest(NetworkState::kDropdownOpen);
+  // Network error.
+  brillo::ErrorPtr error_ptr =
+      brillo::Error::Create(FROM_HERE, "HTTP", "404", "Not found", nullptr);
+
+  // Reset and show error screen.
+  EXPECT_CALL(mock_screen_controller_, OnError(ScreenType::kNetworkError));
+  screen_network_.OnGetNetworks({}, error_ptr.get());
+  EXPECT_EQ(screen_network_.GetIndexForTest(), 1);
+  EXPECT_EQ(screen_network_.GetButtonCountForTest(), 4);
+  EXPECT_EQ(screen_network_.GetStateForTest(), NetworkState::kDropdownClosed);
 }
 
 }  // namespace minios

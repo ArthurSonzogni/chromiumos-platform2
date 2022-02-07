@@ -123,26 +123,20 @@ void ScreenController::OnBackward(ScreenInterface* screen) {
     case ScreenType::kWelcomeScreen:
     case ScreenType::kNetworkDropDownScreen:
     case ScreenType::kUserPermissionScreen:
+      previous_screen_ = nullptr;
       current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
       break;
     case ScreenType::kPasswordError:
-      // If the previous screen is `ScreenNetwork` return to that or create a
-      // new one.
-      if (previous_screen_ &&
-          previous_screen_->GetType() == ScreenType::kNetworkDropDownScreen) {
-        current_screen_ = std::move(previous_screen_);
-      } else {
-        current_screen_ = CreateScreen(ScreenType::kNetworkDropDownScreen);
-      }
-      break;
     case ScreenType::kNetworkError:
     case ScreenType::kConnectionError:
       // Return to network dropdown screen.
+      previous_screen_ = nullptr;
       current_screen_ = CreateScreen(ScreenType::kNetworkDropDownScreen);
       break;
     case ScreenType::kDownloadError:
     case ScreenType::kGeneralError:
       // Return to beginning of the flow.
+      previous_screen_ = nullptr;
       current_screen_ = CreateScreen(ScreenType::kWelcomeScreen);
       break;
     case ScreenType::kDebugOptionsScreen:
