@@ -846,6 +846,23 @@ properties:
             wallpaper:
               description: Base filename of the default wallpaper to show on this device.
               type: string
+            nnapi:
+              description: Configurable parameters for the NNAPI (Neural Networks API) package.
+              type: object
+              properties:
+                drivers:
+                  description: Set of drivers that can be used with NNAPI.
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      shared-library:
+                        type: string
+                    required:
+                      - name
+                      - shared-library
             demo-mode:
               type: object
               description: Properties related to the ChromeOS Demo Mode, defining the user

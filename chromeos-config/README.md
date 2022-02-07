@@ -428,6 +428,7 @@ In the tables below,
 | keyboard | [keyboard](#keyboard) |  | False |  | False | Contains details about the model's keyboard. |
 | modem | [modem](#modem) |  | False |  | False |  |
 | name | string | ```^[_a-zA-Z0-9]{3,}``` | True |  | False | Google code name for the given model. While it is OK to use this string for human-display purposes (such as in a debug log or help dialog), or for a searchable-key in metrics collection, it is not recommended to use this property for creating model-specific behaviors. In this case, add a property to the schema which describes your behavior and use that instead. |
+| nnapi | [nnapi](#nnapi) |  | False |  | False | Configurable parameters for the NNAPI (Neural Networks API) package. |
 | nnpalm | [nnpalm](#nnpalm) |  | False |  | False |  |
 | oem-id | string | ```[0-9]+``` | False |  | False | Some projects store SKU ID, OEM ID and Board Revision in an EEPROM and only SKU ID can be updated in the factory and RMA flow but others should be pre-flashed in the chip level. In this case, we would like to validate whether oem-id here from the updated SKU ID matches the one in the EEPROM so we can prevent this device from being updated to another OEM's devices.  |
 | power | [power](#power) |  | False |  | False | Defines settings that control power management functions. This mostly defines power_manager preferences, but there are a few other power related settings included. For details about each power_manager preference, see - src/platform2/power_manager/common/power_constants.h/cc For examples on setting these properties (including multiline examples), see the power config example in libcros_config/test.yaml |
@@ -683,6 +684,17 @@ In the tables below,
 | attach-apn-required | boolean |  | False |  | False | Try to explicitly setup an attach APN when registering to the LTE network. |
 | firmware-variant | string |  | False |  | False | Variant of the modem firmware to be used. This value is read by modemfwd to match against the variant field of a firmware entry in a firmware manifest. In most cases, we simply use the model name as the value. |
 | wedge-reboot-delay-ms | string | ```[0-9]+``` | False |  | False | Delay in milliseconds after which we pulse the modem reset GPIO if it hasn't appeared on the USB bus. This value is used by modemfwd and defaults to 5 minutes if not defined. |
+
+### nnapi
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| drivers | array - [drivers](#drivers) |  | False |  | False |  |
+
+### drivers
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| name | string |  | True |  | False |  |
+| shared-library | string |  | True |  | False |  |
 
 ### nnpalm
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
