@@ -8,9 +8,12 @@
 #include <unistd.h>
 #include <utility>
 
+#include <base/callback.h>
 #include <base/check_op.h>
+#include <base/hash/sha1.h>
+#include <base/logging.h>
+#include <crypto/sha2.h>
 
-#if defined(USE_SIMULATOR)
 extern "C" {
 #include <tpm2/_TPM_Init_fp.h>
 #include <tpm2/BaseTypes.h>
@@ -20,12 +23,7 @@ extern "C" {
 #include <tpm2/Manufacture_fp.h>  // NOLINT(build/include_alpha) - needs TpmBuildSwitches.h
 #include <tpm2/Platform.h>
 }  // extern "C"
-#endif  // USE_SIMULATOR
 
-#include <base/callback.h>
-#include <base/hash/sha1.h>
-#include <base/logging.h>
-#include <crypto/sha2.h>
 
 #include "trunks/error_codes.h"
 
@@ -33,7 +31,6 @@ namespace {
 
 const char kSimulatorStateDirectory[] = "/var/lib/trunks";
 
-#if defined(USE_SIMULATOR)
 // Resizes extend_data to size crypto::kSHA256Length and uses the result to
 // extend the indicated PCR.
 void ExtendPcr(unsigned int pcr_index, const std::string& extend_data) {
@@ -59,7 +56,6 @@ void ExtendPcr0BootMode(const char developer_mode,
   const std::string mode({developer_mode, recovery_mode, verified_firmware});
   ExtendPcr(/*pcr_index=*/0, base::SHA1HashString(mode));
 }
-#endif
 
 }  // namespace
 
@@ -79,7 +75,6 @@ bool TpmSimulatorHandle::Init() {
 }
 
 void TpmSimulatorHandle::InitializeSimulator() {
-#if defined(USE_SIMULATOR)
   // Initialize TPM.
   _plat__Signal_PowerOn();
   /*
@@ -117,10 +112,6 @@ void TpmSimulatorHandle::InitializeSimulator() {
                      /*verified_firmware=*/0);
   // Assign an arbitrary value to PCR1.
   ExtendPcr(/*pcr_index=*/1, /*extend_data=*/"PCR1");
-
-#else
-  LOG(FATAL) << "Simulator not configured.";
-#endif
 }
 
 void TpmSimulatorHandle::SendCommand(const std::string& command,
@@ -133,7 +124,6 @@ std::string TpmSimulatorHandle::SendCommandAndWait(const std::string& command) {
     InitializeSimulator();
     init_ = true;
   }
-#if defined(USE_SIMULATOR)
   unsigned int response_size;
   unsigned char* response;
   std::string mutable_command(command);
@@ -141,9 +131,6 @@ std::string TpmSimulatorHandle::SendCommandAndWait(const std::string& command) {
                  reinterpret_cast<unsigned char*>(std::data(mutable_command)),
                  &response_size, &response);
   return std::string(reinterpret_cast<char*>(response), response_size);
-#else
-  return CreateErrorResponse(TCTI_RC_GENERAL_FAILURE);
-#endif
 }
 
 }  // namespace trunks

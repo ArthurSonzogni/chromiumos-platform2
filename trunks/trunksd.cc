@@ -21,7 +21,6 @@
 #include "trunks/power_manager.h"
 #include "trunks/resource_manager.h"
 #include "trunks/tpm_handle.h"
-#include "trunks/tpm_simulator_handle.h"
 #include "trunks/trunks_dbus_service.h"
 #include "trunks/trunks_factory_impl.h"
 #include "trunks/trunks_ftdi_spi.h"
@@ -99,9 +98,6 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch("ftdi")) {
     LOG(INFO) << "Sending commands to FTDI SPI.";
     low_level_transceiver = new trunks::TrunksFtdiSpi();
-  } else if (cl->HasSwitch("simulator")) {
-    LOG(INFO) << "Sending commands to simulator.";
-    low_level_transceiver = new trunks::TpmSimulatorHandle();
   } else {
     low_level_transceiver = new trunks::TpmHandle();
   }

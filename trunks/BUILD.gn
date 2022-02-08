@@ -51,9 +51,6 @@ config("target_defaults") {
     "USE_GENERIC_TPM2=${use.generic_tpm2}",
     "USE_PINWEAVER_CSME=${use.pinweaver_csme}",
   ]
-  if (use.tpm2_simulator) {
-    defines += [ "USE_SIMULATOR=1" ]
-  }
 }
 
 proto_library("interface_proto") {
@@ -186,7 +183,6 @@ static_library("trunksd_lib") {
     "power_manager.cc",
     "resource_manager.cc",
     "tpm_handle.cc",
-    "tpm_simulator_handle.cc",
     "trunks_dbus_service.cc",
     "trunks_metrics.cc",
   ]
@@ -219,9 +215,6 @@ executable("trunksd") {
   if (use.ftdi_tpm) {
     defines = [ "SPI_OVER_FTDI=1" ]
   }
-  if (use.tpm2_simulator) {
-    libs = [ "tpm2" ]
-  }
 }
 
 executable("tpm_tunneld") {
@@ -247,8 +240,10 @@ static_library("trunks_test") {
     "mock_tpm_cache.cc",
     "mock_tpm_state.cc",
     "mock_tpm_utility.cc",
+    "tpm_simulator_handle.cc",
     "trunks_factory_for_test.cc",
   ]
+  libs = [ "tpm2" ]
   configs -= [ "//common-mk:use_thin_archive" ]
   configs += [
     "//common-mk:nouse_thin_archive",
