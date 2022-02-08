@@ -20,10 +20,7 @@ echo "THAWED" > "${CHROME_FREEZER_CGROUP_DIR}/to_be_frozen/freezer.state"
 
 # Terminate any processes with files open on the mount point
 # TODO(wad) parallelize with VFS/PID namespaces.
-kill_with_open_files_on_path_and_mountpoints \
-  '/home/[^.]|/data|/home/.shadow/[a-fA-F0-9]{40}/mount' "cryptohome" \
-  /home/chronos/u-* \
-  /run/daemon-store/*
+process_killer --session --file_holders
 
 # Make sure everything is going down. No exceptions.
 # The loop is so that clever daemons can't evade the kill by
@@ -78,3 +75,9 @@ cryptohome --action=unmount
 # Unmount the user session namespace mount point.
 umount /run/namespaces/mnt_chrome
 bootstat cryptohome-unmounted
+
+# Post unmount, attempt to kill any left over processes from the session
+# that could have leaked user mounts. This is intentionally done post
+# unmount: lazy unmount cleans up mounts from the root namespace and
+# newly launched processes will no be able to clone the mount.
+process_killer --session --mount_holders
