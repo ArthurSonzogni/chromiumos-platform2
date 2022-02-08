@@ -497,10 +497,6 @@ class V4L2Test : public ::testing::Test {
     v4l2_selection selection;
     v4l2_selection selection_min;
     v4l2_selection selection_max;
-    if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_DEFAULT, &selection)) {
-      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_DEFAULT";
-      return false;
-    }
     if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_BOUNDS_MIN, &selection_min)) {
       LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_BOUNDS_MIN";
       return false;
@@ -509,6 +505,14 @@ class V4L2Test : public ::testing::Test {
         selection_min.r.height > kMaxMinRoiHeight) {
       LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN: " << selection_min.r.width
                  << "x" << selection_min.r.height << " is too large.";
+      return false;
+    }
+    // The minimum bounds defines the ROI minimum rectangle size. Only the width
+    // and height are meaningful. The left and top values are all 0s.
+    if (selection_min.r.left != 0 || selection_min.r.top != 0) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MIN(left, top):("
+                 << selection_min.r.left << "," << selection_min.r.top
+                 << ") != (0,0).";
       return false;
     }
     if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_BOUNDS_MAX, &selection_max)) {
@@ -521,6 +525,39 @@ class V4L2Test : public ::testing::Test {
                  << "x" << selection_max.r.height << " is too small.";
       return false;
     }
+    SupportedFormat max_resolution = GetMaximumResolution();
+    if (selection_max.r.width < max_resolution.width ||
+        selection_max.r.height < max_resolution.height) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI_BOUNDS_MAX: " << selection_max.r.width
+                 << "x" << selection_max.r.height
+                 << " is less than: " << max_resolution.width << "x"
+                 << max_resolution.height;
+      return false;
+    }
+    if (!dev_.GetSelection(V4L2_SEL_TGT_ROI_DEFAULT, &selection)) {
+      LOG(ERROR) << "Cannot get select V4L2_SEL_TGT_ROI_DEFAULT";
+      return false;
+    }
+    if (selection.r.width < selection_min.r.width ||
+        selection.r.height < selection_min.r.height) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI_DEFAULT: " << selection.r.width << "x"
+                 << selection.r.height << " is too small.";
+      return false;
+    }
+    if (selection.r.width > selection_max.r.width ||
+        selection.r.height > selection_max.r.height) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI_DEFAULT: " << selection.r.width << "x"
+                 << selection.r.height << " is too large.";
+      return false;
+    }
+    if (selection.r.top < selection_max.r.top ||
+        selection.r.left < selection_max.r.left) {
+      LOG(ERROR) << "V4L2_SEL_TGT_ROI_DEFAULT(left, top):(" << selection.r.left
+                 << "," << selection.r.top << ") is out of range ("
+                 << selection_max.r.left << "," << selection_max.r.top << ").";
+      return false;
+    }
+
     v4l2_rect rect = {
         .left = 10,
         .top = 20,
