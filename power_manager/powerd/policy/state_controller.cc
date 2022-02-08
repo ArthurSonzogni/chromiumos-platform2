@@ -58,6 +58,13 @@ constexpr base::TimeDelta kWakeLocksLoggingInterval = base::Minutes(5);
 constexpr char kCrashBootCollectorDoneFile[] =
     "/run/crash_reporter/boot-collector-done";
 
+// A screen dim will be deferred by hps if `hps_result_` is POSITIVE longer than
+// kHpsPositiveForDimDefer * delays_.screen_dim
+constexpr float kHpsPositiveForDimDefer = 0.5;
+
+// How many times hps is allowed to defer the dimming continuously.
+constexpr int kNTimesForHpsToDeferDimming = 2;
+
 // Returns |time_ms|, a time in milliseconds, as a
 // util::TimeDeltaToString()-style string.
 std::string MsToString(int64_t time_ms) {
@@ -280,6 +287,7 @@ class StateController::ActivityInfo {
 };
 
 constexpr base::TimeDelta StateController::kScreenDimImminentInterval;
+constexpr base::TimeDelta StateController::kDeferDimmingTimeLimit;
 
 // static
 std::string StateController::GetPolicyDebugString(
@@ -637,11 +645,16 @@ void StateController::OnPrefChanged(const std::string& pref_name) {
   }
 }
 
-bool StateController::ShouldRequestSmartDim(base::TimeTicks now) {
+bool StateController::ShouldRequestDimDeferSuggestion(base::TimeTicks now) {
   return !screen_dimmed_ && delays_.screen_dim_imminent > base::TimeDelta() &&
-         now - GetLastActivityTimeForScreenDim(now) >=
-             delays_.screen_dim_imminent &&
-         dim_advisor_.ReadyForSmartDimRequest(now, delays_.screen_dim_imminent);
+         // Only consider defer dimming when it is close to actual dimming.
+         (now - GetLastActivityTimeForScreenDim(now) >=
+          delays_.screen_dim_imminent) &&
+         // No dimming defer after kDeferDimmingTimeLimit - delays_.screen_dim;
+         // this is to make sure dimming always happens within
+         // kDeferDimmingTimeLimit.
+         (now - GetLastActivityTimeForScreenDimWithoutDefer(now) <=
+          kDeferDimmingTimeLimit - delays_.screen_dim);
 }
 
 void StateController::HandleDeferFromSmartDim() {
@@ -867,19 +880,24 @@ base::TimeTicks StateController::GetLastActivityTimeForIdle(
   return last_time;
 }
 
-base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
+base::TimeTicks StateController::GetLastActivityTimeForScreenDimWithoutDefer(
     base::TimeTicks now) const {
   base::TimeTicks last_time =
       WaitingForInitialUserActivity() ? now : last_user_activity_time_;
   if (use_video_activity_)
     last_time = std::max(last_time, last_video_activity_time_);
-  last_time = std::max(last_time, last_defer_screen_dim_time_);
   last_time = std::max(last_time, last_wake_notification_time_);
 
   // Only full-brightness wake locks keep the screen from dimming.
   last_time = std::max(last_time, screen_wake_lock_->GetLastActiveTime(now));
 
   return last_time;
+}
+
+base::TimeTicks StateController::GetLastActivityTimeForScreenDim(
+    base::TimeTicks now) const {
+  return std::max(GetLastActivityTimeForScreenDimWithoutDefer(now),
+                  last_defer_screen_dim_time_);
 }
 
 base::TimeTicks StateController::GetLastActivityTimeForQuickDim(
@@ -912,8 +930,8 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenLock(
 base::TimeTicks StateController::GetLastActivityTimeForQuickLock(
     base::TimeTicks now) const {
   // On-but-dimmed wake locks also keep the screen from locking.
-  return std::max(GetLastActivityTimeForQuickDim(now),
-                  dim_wake_lock_->GetLastActiveTime(now));
+  return std::max(GetLastActivityTimeForScreenLock(now),
+                  last_hps_result_change_time_);
 }
 
 void StateController::UpdateLastUserActivityTime() {
@@ -1201,10 +1219,28 @@ void StateController::UpdateState() {
   base::TimeDelta screen_lock_duration =
       now - GetLastActivityTimeForScreenLock(now);
 
-  // We only want to send a smart dim request if the screen is not dimmed and it
-  // has been a while since the last smart_dim_activity.
-  if (ShouldRequestSmartDim(now)) {
-    dim_advisor_.RequestSmartDimDecision(now);
+  // Only request a dimming defer suggestion at certain condition.
+  if (ShouldRequestDimDeferSuggestion(now)) {
+    // Hps is allowed to defer a dimming only if:
+    // (1) Hps is enabled.
+    // (2) hps_result_ is POSITIVE.
+    // (3) hps_result_ is in POSITIVE state for some time.
+    // (4) dimming is not deferred for more than kNTimesForHpsToDeferDimming
+    // times.
+    if (dim_advisor_.IsHpsSenseEnabled() &&
+        hps_result_ == hps::HpsResult::POSITIVE &&
+        now - last_hps_result_change_time_ >=
+            kHpsPositiveForDimDefer * delays_.screen_dim &&
+        now - GetLastActivityTimeForScreenDimWithoutDefer(now) <=
+            kNTimesForHpsToDeferDimming * delays_.screen_dim) {
+      last_defer_screen_dim_time_ = clock_->GetCurrentTime();
+      LOG(INFO) << "StateController: screen dim is deferred by HPS.";
+    } else if (dim_advisor_.ReadyForSmartDimRequest(
+                   now, delays_.screen_dim_imminent)) {
+      // Ask for a SmartDimDecision which may also decide to defer the screen
+      // dim.
+      dim_advisor_.RequestSmartDimDecision(now);
+    }
   }
 
   const bool screen_was_dimmed = screen_dimmed_;

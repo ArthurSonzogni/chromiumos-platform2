@@ -151,6 +151,12 @@ class StateController : public PrefsObserver {
   static constexpr base::TimeDelta kScreenDimImminentInterval =
       base::Seconds(5);
 
+  // Besides put a limit on how many times we defer the dimming with hps, we
+  // also want to add this time limit so that no defer will happen 15 minutes
+  // after the user activity.
+  static constexpr base::TimeDelta kDeferDimmingTimeLimit =
+      base::TimeDelta::FromMinutes(15);
+
   // Returns a string describing |policy|.
   static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);
 
@@ -211,8 +217,9 @@ class StateController : public PrefsObserver {
   // PrefsInterface::Observer implementation:
   void OnPrefChanged(const std::string& pref_name) override;
 
-  // Whether to request a smart dim decision.
-  bool ShouldRequestSmartDim(base::TimeTicks now);
+  // Whether to request a dim defer suggestion from either MLDecisionService or
+  // HPS.
+  bool ShouldRequestDimDeferSuggestion(base::TimeTicks now);
 
  private:
   // Holds a collection of delays. Unset delays take the zero value.
@@ -320,6 +327,8 @@ class StateController : public PrefsObserver {
   // Returns the last time at which activity occurred that should defer a screen
   // timeout.
   base::TimeTicks GetLastActivityTimeForScreenDim(base::TimeTicks now) const;
+  base::TimeTicks GetLastActivityTimeForScreenDimWithoutDefer(
+      base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForQuickDim(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenOff(base::TimeTicks now) const;
   base::TimeTicks GetLastActivityTimeForScreenLock(base::TimeTicks now) const;

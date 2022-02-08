@@ -1117,7 +1117,7 @@ TEST_F(StateControllerTest, FactoryMode) {
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_EQ("", GetDBusMethodCalls());
-  EXPECT_FALSE(controller_.ShouldRequestSmartDim(now_));
+  EXPECT_FALSE(controller_.ShouldRequestDimDeferSuggestion(now_));
 
   // Closing the lid shouldn't do anything.
   controller_.HandleLidStateChange(LidState::CLOSED);
@@ -2233,8 +2233,9 @@ TEST_F(StateControllerTest, ScreenDimTriggered) {
   // to be called which will eventually calls
   // controller_.HandleDeferFromSmartDim, and thus resets the
   // GetLastActivityTimeForScreenDim(now) to be now. Therefore
-  // screen_dim_duration is 0 now, and ShouldRequestSmartDim should return false
-  EXPECT_FALSE(controller_.ShouldRequestSmartDim(now_));
+  // screen_dim_duration is 0 now, and ShouldRequestDimDeferSuggestion should
+  // return false
+  EXPECT_FALSE(controller_.ShouldRequestDimDeferSuggestion(now_));
 
   // Because the GetLastActivityTimeForScreenDim(now) is reset to now. The
   // Next action was rescheduled to kDimImminentDelay in the controller; so we
@@ -2249,7 +2250,7 @@ TEST_F(StateControllerTest, ScreenDimTriggered) {
   EXPECT_EQ("", delegate_.GetActions());
 }
 
-TEST_F(StateControllerTest, ShouldNotRequestSmartDim) {
+TEST_F(StateControllerTest, ShouldNotRequestDimDeferSuggestion) {
   Init();
   dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
   defer_screen_dimming_ = false;
@@ -2266,7 +2267,7 @@ TEST_F(StateControllerTest, ShouldNotRequestSmartDim) {
   // screen-dim-duration is <  kDimImminentDelay.
   EXPECT_FALSE(StepTimeAndTriggerTimeout(base::Seconds(5)));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  EXPECT_FALSE(controller_.ShouldRequestSmartDim(now_));
+  EXPECT_FALSE(controller_.ShouldRequestDimDeferSuggestion(now_));
   base::RunLoop().RunUntilIdle();
   EXPECT_EQ("", GetDBusMethodCalls());
 
@@ -2285,10 +2286,22 @@ TEST_F(StateControllerTest, ShouldNotRequestSmartDim) {
 
   // Case (3) Powerd shouldn't request a smart dim decision if screen is already
   // dimmed.
-  // Verify that controller_.ShouldRequestSmartDim should return false if the
-  // Screen is just dimmed.
-  EXPECT_FALSE(controller_.ShouldRequestSmartDim(now_));
+  // Verify that controller_.ShouldRequestDimDeferSuggestion should return false
+  // if the Screen is just dimmed.
+  EXPECT_FALSE(controller_.ShouldRequestDimDeferSuggestion(now_));
   EXPECT_EQ("", GetDBusMethodCalls());
+
+  // Turn the screen back on.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+
+  // Case (4) Powerd shouldn't request a smart dim decision if the defer will
+  // cause the screen to be undimmed for more than kDeferDimmingTimeLimit.
+  // Advance timer to be close to kDeferDimmingTimeLimit, so that there should
+  // be no request for a dim defer suggestion.
+  AdvanceTime(StateController::kDeferDimmingTimeLimit -
+              base::TimeDelta::FromSeconds(1));
+  EXPECT_FALSE(controller_.ShouldRequestDimDeferSuggestion(now_));
 }
 
 TEST_F(StateControllerTest, ScheduleForQuickDim) {
@@ -2403,7 +2416,7 @@ TEST_F(StateControllerTest, QuickDimAndUndim) {
   EmitHpsSignal(HpsResult::NEGATIVE);
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_quick_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  // undim by user activity.
+  // Undim by user activity.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
   EmitHpsSignal(HpsResult::POSITIVE);
@@ -2427,7 +2440,7 @@ TEST_F(StateControllerTest, QuickDimAndUndim) {
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(
       StateController::kScreenDimImminentInterval));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  // undim by user activity.
+  // Undim by user activity.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
   EmitHpsSignal(HpsResult::POSITIVE);
@@ -2505,7 +2518,7 @@ TEST_F(StateControllerTest, HandlePolicyChangeShouldSetCorrectQuickDimDelays) {
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(quick_dim_delay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 
-  // undim by user activity.
+  // Undim by user activity.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
   EmitHpsSignal(HpsResult::POSITIVE);
@@ -2570,7 +2583,7 @@ TEST_F(StateControllerTest, QuickLockAfterQuickDim) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_quick_lock_delay_));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
 
-  // undim by user activity.
+  // Undim by user activity.
   controller_.HandleUserActivity();
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
   EmitHpsSignal(HpsResult::POSITIVE);
@@ -2634,6 +2647,144 @@ TEST_F(StateControllerTest, QuickLockAfterScreenOff) {
   ASSERT_TRUE(
       StepTimeAndTriggerTimeout(default_battery_quick_lock_delay_ + delta));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, DimDeferWithHps) {
+  initial_power_source_ = PowerSource::AC;
+  Init();
+  // Turn on the MLDecision Service.
+  dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
+
+  const base::TimeDelta kDimImminentDelay =
+      default_ac_screen_dim_delay_ -
+      StateController::kScreenDimImminentInterval;
+
+  controller_.HandleUserActivity();
+  // Case (1) hps_result is UNKNOWN which will not defer the dim.
+  EmitHpsSignal(HpsResult::UNKNOWN);
+  // Next timeout should be scheduled at kDimImminentDelay for a dim defer
+  // query.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimImminentDelay));
+  EXPECT_EQ("", delegate_.GetActions());
+  // There should be no defer, so dim happens after kScreenDimImminentInterval.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(
+      StateController::kScreenDimImminentInterval));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  // Undim by user activity.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+
+  // Case (2) hps_result is POSITIVE for a little while (less than
+  // kHpsPositiveForDimDefer * delays_.screen_dim) will not defer the dim.
+  // Next timeout should be scheduled at kDimImminentDelay for a dim defer
+  // query.
+
+  // Set hps_result_ to POSITIVE 1 seconds before kDimImminentDelay.
+  const auto delta_of_hps_positive_before_dim_imminent =
+      base::TimeDelta::FromSeconds(1);
+  AdvanceTime(kDimImminentDelay - delta_of_hps_positive_before_dim_imminent);
+  EmitHpsSignal(HpsResult::POSITIVE);
+
+  // A timeout should be triggered at kDimImminentDelay.
+  ASSERT_TRUE(
+      AdvanceTimeAndTriggerTimeout(delta_of_hps_positive_before_dim_imminent));
+  EXPECT_EQ("", delegate_.GetActions());
+
+  // There should be no defer, so dim happens after kScreenDimImminentInterval.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(
+      StateController::kScreenDimImminentInterval));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  // Undim by user activity.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+
+  // Case (3) dim will be deferred twice.
+  // Next timeout should be scheduled at kDimImminentDelay for a dim defer
+  // query. And there should be a defer caused by hps.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimImminentDelay));
+  EXPECT_EQ("", delegate_.GetActions());
+  // Next timeout should be scheduled at kDimImminentDelay for a dim defer
+  // query. And there should be a second defer caused by hps.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimImminentDelay));
+  EXPECT_EQ("", delegate_.GetActions());
+  // Next timeout should be scheduled at kDimImminentDelay for a dim defer
+  // query. And there should be no defer this time.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimImminentDelay));
+  EXPECT_EQ("", delegate_.GetActions());
+  // Dim should happen after kScreenDimImminentInterval.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(
+      StateController::kScreenDimImminentInterval));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // Case (4) dim will be deferred only once if HpsSense becomes Negative after
+  // the first defer.
+
+  // Undim by user activity.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+  // Next timeout should be scheduled at kDimImminentDelay for a dim defer
+  // query. And there should be a defer caused by hps.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimImminentDelay));
+  EXPECT_EQ("", delegate_.GetActions());
+
+  // Advance the timer to the point that is close to the next DimDefer query.
+  const auto delta_before_next_dim_defer_query =
+      base::TimeDelta::FromSeconds(1);
+  AdvanceTime(kDimImminentDelay - delta_before_next_dim_defer_query);
+  // Emit a NEGATIVE Hps signal so that dim will not be deferred any more.
+  EmitHpsSignal(HpsResult::NEGATIVE);
+
+  // Next timeout happens after delta_before_next_dim_defer_query for a dim
+  // defer query. And there should be no defer caused by hps.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(delta_before_next_dim_defer_query));
+  EXPECT_EQ("", delegate_.GetActions());
+
+  // Dim should happen after kScreenDimImminentInterval.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(
+      StateController::kScreenDimImminentInterval));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+}
+
+TEST_F(StateControllerTest, NoDimDeferAfterkDeferDimmingTimeLimit) {
+  initial_power_source_ = PowerSource::AC;
+
+  // Set screen_dim_delay to be 7 minutes, so that dimming defer will only
+  // happen once instead of two.
+  default_ac_screen_dim_delay_ = base::TimeDelta::FromMinutes(7);
+
+  // Disable all other functionalities so that they don't intervene.
+  default_ac_suspend_delay_ = base::TimeDelta::FromMinutes(8);
+  default_ac_screen_off_delay_ = base::TimeDelta::FromMinutes(8);
+  default_ac_quick_dim_delay_ = base::TimeDelta::FromMinutes(8);
+  default_ac_quick_lock_delay_ = base::TimeDelta::FromMinutes(8);
+
+  Init();
+  // Turn on the MLDecision Service.
+  dbus_wrapper_.NotifyServiceAvailable(ml_decision_proxy_, true);
+
+  const base::TimeDelta kDimImminentDelay =
+      default_ac_screen_dim_delay_ -
+      StateController::kScreenDimImminentInterval;
+
+  controller_.HandleUserActivity();
+  EmitHpsSignal(HpsResult::POSITIVE);
+
+  // Next timeout should be scheduled at kDimImminentDelay for a dim defer
+  // query. And there should be a defer caused by hps.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimImminentDelay));
+  EXPECT_EQ("", delegate_.GetActions());
+
+  // Next timeout should be scheduled at kDimImminentDelay for a dim defer
+  // query. But there will be no defer this time even if MLDecision service
+  // says defer.
+  defer_screen_dimming_ = true;
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimImminentDelay));
+  EXPECT_EQ("", delegate_.GetActions());
+
+  // Dim should happen after kScreenDimImminentInterval.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(
+      StateController::kScreenDimImminentInterval));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }
 
 }  // namespace policy
