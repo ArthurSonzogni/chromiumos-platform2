@@ -249,7 +249,9 @@ void WiFi::Start(Error* error,
   if (enabled()) {
     return;
   }
-  int vendor = -1, product = -1, subsystem = -1;
+  int vendor = Metrics::kWiFiStructuredMetricsErrorValue;
+  int product = Metrics::kWiFiStructuredMetricsErrorValue;
+  int subsystem = Metrics::kWiFiStructuredMetricsErrorValue;
   GetDeviceHardwareIds(&vendor, &product, &subsystem);
   metrics()->NotifyWiFiAdapterStateChanged(true, vendor, product, subsystem);
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
@@ -280,7 +282,9 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
   SLOG(this, 2) << "WiFi " << link_name() << " stopping.";
   // Unlike other devices, we leave the DBus name watcher in place here, because
   // WiFi callbacks expect notifications even if the device is disabled.
-  int vendor = -1, product = -1, subsystem = -1;
+  int vendor = Metrics::kWiFiStructuredMetricsErrorValue;
+  int product = Metrics::kWiFiStructuredMetricsErrorValue;
+  int subsystem = Metrics::kWiFiStructuredMetricsErrorValue;
   GetDeviceHardwareIds(&vendor, &product, &subsystem);
   metrics()->NotifyWiFiAdapterStateChanged(false, vendor, product, subsystem);
   DropConnection();

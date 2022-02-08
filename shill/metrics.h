@@ -1076,7 +1076,15 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricTimeFromRekeyToFailureSecondsMax;
   static const int kMetricTimeFromRekeyToFailureSecondsNumBuckets;
 
+  // Version number of the format of WiFi structured metrics. Changed when the
+  // formatting of the metrics changes, so that the server-side code knows
+  // which fields to expect.
   static const int kWiFiStructuredMetricsVersion;
+
+  // When emitting WiFi structured metrics, if we encounter errors and the
+  // numeric values of some of the fields can not be populated, use this as
+  // value for the field.
+  static const int kWiFiStructuredMetricsErrorValue;
 
   Metrics();
   Metrics(const Metrics&) = delete;

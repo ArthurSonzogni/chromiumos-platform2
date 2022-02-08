@@ -527,7 +527,11 @@ const int Metrics::kMetricTimeFromRekeyToFailureSecondsMin = 0;
 const int Metrics::kMetricTimeFromRekeyToFailureSecondsMax = 180;
 const int Metrics::kMetricTimeFromRekeyToFailureSecondsNumBuckets = 30;
 
+// static
 const int Metrics::kWiFiStructuredMetricsVersion = 1;
+
+// static
+const int Metrics::kWiFiStructuredMetricsErrorValue = -1;
 
 Metrics::Metrics()
     : library_(&metrics_library_),
@@ -1944,7 +1948,7 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
   int64_t usecs;
   if (!time_ || !time_->GetMicroSecondsMonotonic(&usecs)) {
     LOG(ERROR) << "Failed to read timestamp";
-    usecs = -1;
+    usecs = kWiFiStructuredMetricsErrorValue;
   }
   metrics::structured::events::wi_fi::WiFiAdapterStateChanged()
       .SetBootId(GetBootId())
