@@ -110,6 +110,11 @@ the display SoC (state of charge) from [CrOS EC] using `EC_CMD_DISPLAY_SOC`.
 If the command isn't available, the display SoC is computed by powerd using
 `low_battery_shutdown_percent` and `full_factor` read from the pref directories.
 
+Note that low_battery_shutdown_percent_ and full_factor reported by [CrOS EC]
+are for reference only: in case powerd may need to know how display_soc is
+computed. Powerd should take action based on display_soc (and may use
+the forementioned params for backward compatibility).
+
 ### Time-to-empty and time-to-full
 
 `PowerSupply::UpdateBatteryTimeEstimates` attempts to estimate the time until
