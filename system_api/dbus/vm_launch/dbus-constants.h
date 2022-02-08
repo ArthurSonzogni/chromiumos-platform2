@@ -27,6 +27,11 @@ const char kVmLaunchServiceStartWaylandServerMethod[] = "StartWaylandServer";
 // Clean-up helper for the above method.
 const char kVmLaunchServiceStopWaylandServerMethod[] = "StopWaylandServer";
 
+// Provide a token that will be used to allow/disallow certain VMs from running.
+//
+// TODO(b/218403711): Remove this method.
+const char kVmLaunchServiceProvideVmTokenMethod[] = "ProvideVmToken";
+
 }  // namespace launch
 }  // namespace vm_tools
 
