@@ -58,6 +58,9 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveFolderAlreadyExistedTest) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath temp_path = temp_dir.GetPath();
 
+  WriteTestFile(PrefixAbsolutePath(temp_path, kOobeCompletedFile));
+  WriteTestFile(PrefixAbsolutePath(temp_path, kMetricsReportingEnabledFile));
+
   // Create file /var/lib/oobe_config_save/already_existing
   const base::FilePath already_existing_file_path =
       PrefixAbsolutePath(temp_path, kSaveTempPath).Append("already_existing");
@@ -66,7 +69,13 @@ TEST(OobeConfigPrepareSaveTest, PrepareSaveFolderAlreadyExistedTest) {
 
   ASSERT_TRUE(PrepareSave(temp_path, /*ignore_permissions_for_testing=*/true));
 
+  // Check that the files are also successfully copied when the pre-existent
+  // data has been removed.
   EXPECT_FALSE(base::PathExists(already_existing_file_path));
+  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
+                     .Append(kOobeCompletedFileName));
+  VerifyTestFile(PrefixAbsolutePath(temp_path, kSaveTempPath)
+                     .Append(kMetricsReportingEnabledFileName));
 }
 
 }  // namespace oobe_config
