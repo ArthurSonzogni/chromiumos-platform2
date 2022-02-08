@@ -110,19 +110,20 @@ bool IsUsbCamera(const base::FilePath& path) {
   return IsCaptureDevice(path) && !GetUsbInfo(path).vid_pid.empty();
 }
 
-std::vector<base::FilePath> GetUsbCameras() {
-  std::vector<base::FilePath> usb_cameras;
+std::vector<base::FilePath> GetDevices(
+    base::RepeatingCallback<bool(const base::FilePath&)> selector) {
+  std::vector<base::FilePath> devices;
   base::FilePath pattern("/dev/video*");
   base::FileEnumerator enumerator(pattern.DirName(), false,
                                   base::FileEnumerator::FILES,
                                   pattern.BaseName().value());
   for (auto path = enumerator.Next(); !path.empty(); path = enumerator.Next()) {
-    if (IsUsbCamera(path)) {
-      usb_cameras.push_back(path);
+    if (selector.Run(path)) {
+      devices.push_back(path);
     }
   }
-  std::sort(usb_cameras.begin(), usb_cameras.end());
-  return usb_cameras;
+  std::sort(devices.begin(), devices.end());
+  return devices;
 }
 
 void AddNegativeGtestFilter(const std::string& pattern) {
@@ -989,6 +990,7 @@ int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
   DEFINE_bool(list_usbcam, false, "List available USB cameras");
+  DEFINE_bool(list_capture_devices, false, "List V4L2 capture devices");
   DEFINE_string(test_list, "default", "Select different test list");
   DEFINE_string(device_path, "/dev/video0", "Path to the video device");
 
@@ -996,9 +998,18 @@ int main(int argc, char** argv) {
   // message from gtest.
   brillo::FlagHelper::Init(argc, argv, "\nTest V4L2 camera functionalities.");
 
-  if (FLAGS_list_usbcam) {
-    std::vector<base::FilePath> usb_cameras = cros::tests::GetUsbCameras();
-    for (const auto& path : usb_cameras) {
+  if (FLAGS_list_usbcam && FLAGS_list_capture_devices) {
+    std::cerr << "|list_usbcam| and |list_capture_devices| cannot be present "
+                 "at the same time";
+    return -1;
+  }
+
+  if (FLAGS_list_usbcam || FLAGS_list_capture_devices) {
+    base::RepeatingCallback<bool(const base::FilePath&)> selector =
+        FLAGS_list_usbcam ? base::BindRepeating(cros::tests::IsUsbCamera)
+                          : base::BindRepeating(cros::tests::IsCaptureDevice);
+    std::vector<base::FilePath> devices = cros::tests::GetDevices(selector);
+    for (const auto& path : devices) {
       std::cout << path.value() << std::endl;
     }
     return 0;
