@@ -39,6 +39,12 @@ MATCHER_P3(CheckDlcStateProto, state, progress, root_path, "") {
          arg.root_path() == root_path;
 };
 
+MATCHER_P(CheckInstallRequest,
+          install_request,
+          "Matches the InstallRequest protobuf") {
+  return arg.SerializeAsString() == install_request.SerializeAsString();
+}
+
 int64_t GetFileSize(const base::FilePath& path);
 
 class BaseTest : public testing::Test {

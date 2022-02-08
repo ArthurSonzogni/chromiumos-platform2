@@ -70,10 +70,8 @@ void DlcService::Initialize() {
   dlc_manager_->Initialize();
 }
 
-bool DlcService::Install(const DlcId& id,
-                         const string& omaha_url,
-                         ErrorPtr* err) {
-  bool result = InstallInternal(id, omaha_url, err);
+bool DlcService::Install(const InstallRequest& install_request, ErrorPtr* err) {
+  bool result = InstallInternal(install_request, err);
   // Only send error metrics in here. Install success metrics is sent in
   // |DlcBase|.
   if (!result) {
@@ -83,8 +81,7 @@ bool DlcService::Install(const DlcId& id,
   return result;
 }
 
-bool DlcService::InstallInternal(const DlcId& id,
-                                 const string& omaha_url,
+bool DlcService::InstallInternal(const InstallRequest& install_request,
                                  ErrorPtr* err) {
   // TODO(ahassani): Currently, we create the DLC images even if later we find
   // out the update_engine is busy and we have to delete the images. It would be
@@ -96,8 +93,8 @@ bool DlcService::InstallInternal(const DlcId& id,
 
   // Try to install and figure out if install through update_engine is needed.
   bool external_install_needed = false;
-  if (!dlc_manager_->Install(id, &external_install_needed, err)) {
-    LOG(ERROR) << "Failed to install DLC=" << id;
+  if (!dlc_manager_->Install(install_request, &external_install_needed, err)) {
+    LOG(ERROR) << "Failed to install DLC=" << install_request.id();
     return false;
   }
 
@@ -105,7 +102,7 @@ bool DlcService::InstallInternal(const DlcId& id,
   if (!external_install_needed)
     return true;
 
-  if (!InstallWithUpdateEngine(id, omaha_url, err)) {
+  if (!InstallWithUpdateEngine(install_request, err)) {
     // dlcservice must cancel the install as update_engine won't be able to
     // install the initialized DLC.
     CancelInstall(*err);
@@ -119,9 +116,9 @@ bool DlcService::InstallInternal(const DlcId& id,
   return true;
 }
 
-bool DlcService::InstallWithUpdateEngine(const DlcId& id,
-                                         const string& omaha_url,
+bool DlcService::InstallWithUpdateEngine(const InstallRequest& install_request,
                                          ErrorPtr* err) {
+  const auto id = install_request.id();
   // Need to set in order for the cancellation of DLC setup.
   installing_dlc_id_ = id;
 
@@ -137,8 +134,8 @@ bool DlcService::InstallWithUpdateEngine(const DlcId& id,
   LOG(INFO) << "Sending request to update_engine to install DLC=" << id;
   // Invokes update_engine to install the DLC.
   ErrorPtr tmp_err;
-  if (!SystemState::Get()->update_engine()->AttemptInstall(omaha_url, {id},
-                                                           &tmp_err)) {
+  if (!SystemState::Get()->update_engine()->AttemptInstall(
+          install_request.omaha_url(), {id}, &tmp_err)) {
     // TODO(kimjae): need update engine to propagate correct error message by
     // passing in |ErrorPtr| and being set within update engine, current default
     // is to indicate that update engine is updating because there is no way an

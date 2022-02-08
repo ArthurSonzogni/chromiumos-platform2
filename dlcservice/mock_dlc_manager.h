@@ -34,7 +34,7 @@ class MockDlcManager : public DlcManager {
               (override));
   MOCK_METHOD(bool,
               Install,
-              (const DlcId& id,
+              (const InstallRequest& install_request,
                bool* external_install_needed,
                brillo::ErrorPtr* err),
               (override));

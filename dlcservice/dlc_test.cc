@@ -828,4 +828,81 @@ TEST_F(DlcBaseTest, UnmountClearsMountPoint) {
   EXPECT_TRUE(dlc->GetRoot().empty());
 }
 
+TEST_F(DlcBaseTest, ReserveInstall) {
+  DlcBase dlc(kFirstDlc);
+  dlc.Initialize();
+  dlc.SetReserve(true);
+
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              SetDlcActiveValue(_, kFirstDlc, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedNoImageFound));
+
+  EXPECT_TRUE(dlc.Install(&err_));
+  EXPECT_EQ(dlc.GetState().state(), DlcState::INSTALLING);
+
+  update_engine::StatusResult ue_status;
+  ue_status.set_last_attempt_error(
+      static_cast<int32_t>(update_engine::ErrorCode::kNoUpdate));
+  SystemState::Get()->set_update_engine_status(ue_status);
+
+  dlc.FinishInstall(/*installed_by_ue=*/true, &err_);
+  EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
+
+  // DLC images should be reserved.
+  EXPECT_TRUE(base::PathExists(
+      dlc.GetImagePath(SystemState::Get()->active_boot_slot())));
+  EXPECT_TRUE(base::PathExists(
+      dlc.GetImagePath(SystemState::Get()->inactive_boot_slot())));
+}
+
+TEST_F(DlcBaseTest, UnReservedInstall) {
+  DlcBase dlc(kFirstDlc);
+  dlc.Initialize();
+  dlc.SetReserve(false);
+
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              SetDlcActiveValue(_, kFirstDlc, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedNoImageFound));
+
+  EXPECT_TRUE(dlc.Install(&err_));
+  EXPECT_EQ(dlc.GetState().state(), DlcState::INSTALLING);
+
+  update_engine::StatusResult ue_status;
+  ue_status.set_last_attempt_error(
+      static_cast<int32_t>(update_engine::ErrorCode::kNoUpdate));
+  SystemState::Get()->set_update_engine_status(ue_status);
+
+  dlc.FinishInstall(/*installed_by_ue=*/true, &err_);
+  EXPECT_EQ(dlc.GetState().state(), DlcState::NOT_INSTALLED);
+
+  // DLC images should not be reserved.
+  EXPECT_FALSE(base::PathExists(
+      dlc.GetImagePath(SystemState::Get()->active_boot_slot())));
+  EXPECT_FALSE(base::PathExists(
+      dlc.GetImagePath(SystemState::Get()->inactive_boot_slot())));
+}
+
+TEST_F(DlcBaseTest, ReserveValueClearsAfterPurge) {
+  DlcBase dlc(kFirstDlc);
+  dlc.Initialize();
+  dlc.SetReserve(true);
+
+  // Purge the DLC.
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_,
+              SetDlcActiveValue(_, kFirstDlc, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
+  EXPECT_CALL(*mock_image_loader_proxy_ptr_, UnloadDlcImage(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
+  EXPECT_TRUE(dlc.Purge(&err_));
+
+  EXPECT_FALSE(dlc.SetReserve(base::nullopt));
+}
+
 }  // namespace dlcservice

@@ -33,8 +33,7 @@ class DlcServiceInterface {
 
   // Initializes the state of dlcservice.
   virtual void Initialize() = 0;
-  virtual bool Install(const DlcId& id,
-                       const std::string& omaha_url,
+  virtual bool Install(const InstallRequest& install_request,
                        brillo::ErrorPtr* err) = 0;
   virtual bool Uninstall(const std::string& id, brillo::ErrorPtr* err) = 0;
   virtual bool Purge(const std::string& id, brillo::ErrorPtr* err) = 0;
@@ -58,8 +57,7 @@ class DlcService : public DlcServiceInterface {
 
   void Initialize() override;
   // Calls |InstallInternal| and sends the metrics for unsuccessful installs.
-  bool Install(const DlcId& id,
-               const std::string& omaha_url,
+  bool Install(const InstallRequest& install_request,
                brillo::ErrorPtr* err) override;
   bool Uninstall(const std::string& id, brillo::ErrorPtr* err) override;
   bool Purge(const std::string& id, brillo::ErrorPtr* err) override;
@@ -94,8 +92,7 @@ class DlcService : public DlcServiceInterface {
 
   // Install the DLC with ID |id| through update_engine by sending a request to
   // it.
-  bool InstallWithUpdateEngine(const DlcId& id,
-                               const std::string& omaha_url,
+  bool InstallWithUpdateEngine(const InstallRequest& install_request,
                                brillo::ErrorPtr* err);
 
   // Finishes the currently running installation. Returns true if the
@@ -123,8 +120,7 @@ class DlcService : public DlcServiceInterface {
   bool GetUpdateEngineStatus();
 
   // Installs a DLC without sending metrics when the install fails.
-  bool InstallInternal(const DlcId& id,
-                       const std::string& omaha_url,
+  bool InstallInternal(const InstallRequest& install_request,
                        brillo::ErrorPtr* err);
 
   // Called on receiving update_engine's |StatusUpdate| signal.

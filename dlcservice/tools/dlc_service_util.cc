@@ -32,6 +32,7 @@
 #include <scoped_minijail.h>
 
 #include "dlcservice/dbus-proxies.h"
+#include "dlcservice/proto_utils.h"
 #include "dlcservice/utils.h"
 
 using base::FilePath;
@@ -80,6 +81,7 @@ class DlcServiceUtil : public brillo::Daemon {
     DEFINE_bool(install, false, "Install a single DLC.");
     DEFINE_string(omaha_url, "",
                   "Overrides the default Omaha URL in the update_engine.");
+    DEFINE_bool(reserve, false, "Reserve the DLC on install success/failure.");
 
     // "--uninstall" related flags.
     DEFINE_bool(uninstall, false, "Uninstall a single DLC.");
@@ -133,6 +135,7 @@ class DlcServiceUtil : public brillo::Daemon {
 
     dlc_id_ = FLAGS_id;
     omaha_url_ = FLAGS_omaha_url;
+    reserve_ = FLAGS_reserve;
 
     // Called with "--install".
     if (FLAGS_install) {
@@ -235,9 +238,10 @@ class DlcServiceUtil : public brillo::Daemon {
     LOG(INFO) << "Attempting to install DLC modules: " << dlc_id_;
     // TODO(b/177932564): Temporary increase in timeout to unblock CQ cases that
     // hit DLC installation while dlcservice is busy.
-    if (!dlc_service_proxy_->InstallWithOmahaUrl(
-            dlc_id_, omaha_url_, &err,
-            /*timeout_ms=*/5 * 60 * 1000)) {
+    auto install_request =
+        dlcservice::CreateInstallRequest(dlc_id_, omaha_url_, reserve_);
+    if (!dlc_service_proxy_->Install(install_request, &err,
+                                     /*timeout_ms=*/5 * 60 * 1000)) {
       LOG(ERROR) << "Failed to install: " << dlc_id_ << ", "
                  << ErrorPtrStr(err);
       return false;
@@ -387,6 +391,8 @@ class DlcServiceUtil : public brillo::Daemon {
   string dlc_id_;
   // Customized Omaha server URL (empty being the default URL).
   string omaha_url_;
+  // Reserve the DLC on install success/failure.
+  bool reserve_ = false;
 
   base::WeakPtrFactory<DlcServiceUtil> weak_ptr_factory_;
 

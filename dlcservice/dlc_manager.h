@@ -29,7 +29,7 @@ class DlcManagerInterface {
   virtual bool InstallCompleted(const DlcIdList& ids,
                                 brillo::ErrorPtr* err) = 0;
   virtual bool UpdateCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) = 0;
-  virtual bool Install(const DlcId& id,
+  virtual bool Install(const InstallRequest& install_request,
                        bool* external_install_needed,
                        brillo::ErrorPtr* err) = 0;
   virtual bool FinishInstall(const DlcId& id, brillo::ErrorPtr* err) = 0;
@@ -78,13 +78,13 @@ class DlcManager : public DlcManagerInterface {
   // During this phase, all necessary setup for update_engine to successfully
   // install DLC(s) and other files that require creation are handled.
   // Args:
-  //   id: The DLC ID that needs to be installed.
+  //   install_request: The DLC install request.
   //   external_install_needed: It is set to true if we need to actually install
   //     the DLC through update_engine.
   //   err: The error that's set when returned false.
   // Return:
   //   True on success, otherwise false.
-  bool Install(const DlcId& id,
+  bool Install(const InstallRequest& install_request,
                bool* external_install_needed,
                brillo::ErrorPtr* err) override;
 

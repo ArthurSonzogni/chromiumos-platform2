@@ -76,6 +76,7 @@ static_library("libdlcservice_utils") {
   sources = [
     "boot/boot_device.cc",
     "boot/boot_slot.cc",
+    "proto_utils.cc",
     "utils.cc",
   ]
   configs += [ ":target_defaults" ]

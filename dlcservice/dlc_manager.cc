@@ -194,14 +194,17 @@ bool DlcManager::UpdateCompleted(const DlcIdList& ids, brillo::ErrorPtr* err) {
   return ret;
 }
 
-bool DlcManager::Install(const DlcId& id,
+bool DlcManager::Install(const InstallRequest& install_request,
                          bool* external_install_needed,
                          ErrorPtr* err) {
   DCHECK(err);
+  const auto id = install_request.id();
   auto* dlc = GetDlc(id, err);
   if (dlc == nullptr) {
     return false;
   }
+
+  dlc->SetReserve(install_request.reserve());
 
   // If the DLC is being installed, nothing can be done anymore.
   if (dlc->IsInstalling()) {

@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/optional.h>
 #include <brillo/errors/error.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
@@ -118,6 +119,10 @@ class DlcBase {
   // greater than the current progress value.
   void ChangeProgress(double progress);
 
+  // Toggle for DLC to be reserved.
+  // Will return the value set, pass `nullptr` to use as getter.
+  bool SetReserve(base::Optional<bool> reserve);
+
  private:
   friend class DBusServiceTest;
   FRIEND_TEST(DlcBaseTest, InitializationReservedSpace);
@@ -137,6 +142,8 @@ class DlcBase {
   FRIEND_TEST(DlcBaseTest, InstallingCorruptPreloadedImageCleansUp);
   FRIEND_TEST(DlcBaseTest, PreloadingSkippedOnAlreadyVerifiedDlc);
   FRIEND_TEST(DlcBaseTest, UnmountClearsMountPoint);
+  FRIEND_TEST(DlcBaseTest, ReserveInstall);
+  FRIEND_TEST(DlcBaseTest, UnReservedInstall);
 
   // Returns the path to the DLC image given the slot number.
   base::FilePath GetImagePath(BootSlot::Slot slot) const;
@@ -194,6 +201,9 @@ class DlcBase {
   base::FilePath mount_point_;
 
   std::shared_ptr<imageloader::Manifest> manifest_;
+
+  // Indicator to keep DLC in cache even if installation fails.
+  bool reserve_ = false;
 
   // The directories on the stateful partition where the DLC image will reside.
   base::FilePath content_id_path_;

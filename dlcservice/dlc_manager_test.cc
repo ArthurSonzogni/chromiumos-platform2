@@ -8,6 +8,7 @@
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 
+#include "dlcservice/proto_utils.h"
 #include "dlcservice/ref_count.h"
 #include "dlcservice/test_utils.h"
 #include "dlcservice/utils.h"
@@ -37,7 +38,8 @@ class DlcManagerTest : public BaseTest {
                 SendInstallResult(InstallResult::kSuccessNewInstall));
 
     bool external_install_needed = false;
-    EXPECT_TRUE(dlc_manager_->Install(id, &external_install_needed, &err_));
+    EXPECT_TRUE(dlc_manager_->Install(CreateInstallRequest(id),
+                                      &external_install_needed, &err_));
     CheckDlcState(id, DlcState::INSTALLING);
 
     InstallWithUpdateEngine({id});
@@ -87,8 +89,8 @@ TEST_F(DlcManagerTest, PreloadAllowedDlcTest) {
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
 
   bool external_install_needed = false;
-  EXPECT_TRUE(
-      dlc_manager_->Install(kThirdDlc, &external_install_needed, &err_));
+  EXPECT_TRUE(dlc_manager_->Install(CreateInstallRequest(kThirdDlc),
+                                    &external_install_needed, &err_));
   EXPECT_THAT(dlc_manager_->GetInstalled(), ElementsAre(kThirdDlc));
   EXPECT_FALSE(
       dlc_manager_->GetDlc(kThirdDlc, &err_)->GetRoot().value().empty());
@@ -115,8 +117,8 @@ TEST_F(DlcManagerTest, PreloadAllowedWithBadPreinstalledDlcTest) {
 
   EXPECT_THAT(dlc_manager_->GetInstalled(), ElementsAre());
   bool external_install_needed = false;
-  EXPECT_TRUE(
-      dlc_manager_->Install(kThirdDlc, &external_install_needed, &err_));
+  EXPECT_TRUE(dlc_manager_->Install(CreateInstallRequest(kThirdDlc),
+                                    &external_install_needed, &err_));
   EXPECT_THAT(dlc_manager_->GetInstalled(), ElementsAre(kThirdDlc));
   EXPECT_FALSE(
       dlc_manager_->GetDlc(kThirdDlc, &err_)->GetRoot().value().empty());

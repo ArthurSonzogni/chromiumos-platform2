@@ -19,6 +19,7 @@
 #include "dlcservice/dlc_service.h"
 #include "dlcservice/mock_dlc_manager.h"
 #include "dlcservice/prefs.h"
+#include "dlcservice/proto_utils.h"
 #include "dlcservice/test_utils.h"
 #include "dlcservice/utils.h"
 
@@ -87,7 +88,7 @@ class DlcServiceTest : public BaseTest {
     EXPECT_CALL(*mock_metrics_,
                 SendInstallResult(InstallResult::kSuccessNewInstall));
 
-    EXPECT_TRUE(dlc_service_->Install(id, kDefaultOmahaUrl, &err_));
+    EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(id), &err_));
 
     CheckDlcState(id, DlcState::INSTALLING);
 
@@ -291,7 +292,7 @@ TEST_F(DlcServiceTest, UninstallInstallingFails) {
   EXPECT_CALL(*mock_metrics_,
               SendUninstallResult(UninstallResult::kFailedUpdateEngineBusy));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   EXPECT_FALSE(dlc_service_->Uninstall(kSecondDlc, &err_));
@@ -303,7 +304,7 @@ TEST_F(DlcServiceTest, PurgeInstallingFails) {
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   EXPECT_FALSE(dlc_service_->Purge(kSecondDlc, &err_));
@@ -320,7 +321,7 @@ TEST_F(DlcServiceTest, UninstallInstallingButInstalledFails) {
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(2);
   EXPECT_CALL(*mock_metrics_, SendUninstallResult(UninstallResult::kSuccess));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // |kFirstDlc| was installed, so there should be no problem uninstalling it
@@ -334,7 +335,7 @@ TEST_F(DlcServiceTest, InstallInvalidDlcTest) {
   const string id = "bad-dlc-id";
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInvalidDlc));
-  EXPECT_FALSE(dlc_service_->Install(id, kDefaultOmahaUrl, &err_));
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(id), &err_));
   EXPECT_EQ(err_->GetCode(), kErrorInvalidDlc);
 }
 
@@ -348,7 +349,7 @@ TEST_F(DlcServiceTest, InstallTest) {
 
   EXPECT_THAT(dlc_service_->GetInstalled(), ElementsAre(kFirstDlc));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // Should remain same as it's not stamped verified.
@@ -371,7 +372,7 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledValid) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
 
-  EXPECT_TRUE(dlc_service_->Install(kFirstDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kFirstDlc), &err_));
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kFirstDlc)));
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
@@ -384,7 +385,7 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledWhileAnotherInstalling) {
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // |kFirstDlc| can quickly be installed again even though another install is
@@ -400,7 +401,7 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledWhileAnotherInstalling) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
 
-  EXPECT_TRUE(dlc_service_->Install(kFirstDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kFirstDlc), &err_));
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
 
@@ -418,7 +419,7 @@ TEST_F(DlcServiceTest, InstallCannotSetDlcActiveValue) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
 
   StatusResult status_result;
@@ -449,7 +450,7 @@ TEST_F(DlcServiceTest, PeriodicInstallCheck) {
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // The first time it should not get the status because enough time hasn't
@@ -495,7 +496,7 @@ TEST_F(DlcServiceTest, InstallSchedulesPeriodicInstallCheck) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedToVerifyImage));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   // The checking for update comes from signal.
@@ -518,7 +519,7 @@ TEST_F(DlcServiceTest, InstallFailureCleansUp) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
 
-  EXPECT_FALSE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   EXPECT_EQ(err_->GetCode(), kErrorBusy);
 
   EXPECT_FALSE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
@@ -531,7 +532,8 @@ TEST_F(DlcServiceTest, InstallUrlTest) {
       .WillOnce(Return(true));
   EXPECT_CALL(mock_state_change_reporter_, DlcStateChanged(_)).Times(1);
 
-  dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_);
+  dlc_service_->Install(CreateInstallRequest(kSecondDlc, kDefaultOmahaUrl),
+                        &err_);
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 }
 
@@ -553,7 +555,7 @@ TEST_F(DlcServiceTest, InstallAlreadyInstalledThatGotUnmountedTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessAlreadyInstalled));
 
-  EXPECT_TRUE(dlc_service_->Install(kFirstDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kFirstDlc), &err_));
   CheckDlcState(kFirstDlc, DlcState::INSTALLED);
 }
 
@@ -566,7 +568,7 @@ TEST_F(DlcServiceTest, InstallFailsToCreateDirectory) {
   // Install will fail because DlcBase::CreateDlc() will fail to create
   // directories inside |content_path_|, since the permissions don't allow
   // writing into |content_path_|.
-  EXPECT_FALSE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   EXPECT_EQ(err_->GetCode(), kErrorInternal);
 
   CheckDlcState(kSecondDlc, DlcState::NOT_INSTALLED, kErrorInternal);
@@ -586,7 +588,7 @@ TEST_F(DlcServiceTest, OnStatusUpdateSignalDlcRootTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -624,7 +626,7 @@ TEST_F(DlcServiceTest, OnStatusUpdateSignalNoRemountTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -649,7 +651,7 @@ TEST_F(DlcServiceTest, OnStatusUpdateSignalTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -674,7 +676,7 @@ TEST_F(DlcServiceTest, MountFailureTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedToMountImage));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -697,7 +699,7 @@ TEST_F(DlcServiceTest, ReportingFailureCleanupTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInstallInUpdateEngine));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -726,7 +728,7 @@ TEST_F(DlcServiceTest, ReportingFailureSignalTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInstallInUpdateEngine));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -754,7 +756,7 @@ TEST_F(DlcServiceTest, ProbableUpdateEngineRestartCleanupTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kFailedInstallInUpdateEngine));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
 
   EXPECT_TRUE(base::PathExists(JoinPaths(content_path_, kSecondDlc)));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
@@ -781,7 +783,7 @@ TEST_F(DlcServiceTest, OnStatusUpdateSignalDownloadProgressTest) {
   EXPECT_CALL(*mock_metrics_,
               SendInstallResult(InstallResult::kSuccessNewInstall));
 
-  EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
   CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
   StatusResult status_result;
@@ -818,7 +820,7 @@ TEST_F(DlcServiceTest,
     EXPECT_CALL(*mock_metrics_,
                 SendInstallResult(InstallResult::kFailedToMountImage));
 
-    EXPECT_TRUE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+    EXPECT_TRUE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
     CheckDlcState(kSecondDlc, DlcState::INSTALLING);
 
     EXPECT_TRUE(dlc_service_->InstallCompleted({kSecondDlc}, &err_));
@@ -863,7 +865,7 @@ TEST_F(DlcServiceTest, UpdatedNeedRebootClearsInstalling) {
   status.set_current_operation(Operation::UPDATED_NEED_REBOOT);
   SystemState::Get()->set_update_engine_status(status);
 
-  EXPECT_FALSE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
 }
 
 TEST_F(DlcServiceTest, UpdateEngineFailureClearsInstalling) {
@@ -885,7 +887,7 @@ TEST_F(DlcServiceTest, UpdateEngineFailureClearsInstalling) {
   status.set_current_operation(Operation::IDLE);
   SystemState::Get()->set_update_engine_status(status);
 
-  EXPECT_FALSE(dlc_service_->Install(kSecondDlc, kDefaultOmahaUrl, &err_));
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
 }
 
 }  // namespace dlcservice

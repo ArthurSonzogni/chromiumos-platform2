@@ -10,6 +10,7 @@
 #include "dlcservice/dbus_adaptors/dbus_adaptor.h"
 #include "dlcservice/dlc_service.h"
 #include "dlcservice/mock_dlc_service.h"
+#include "dlcservice/proto_utils.h"
 #include "dlcservice/test_utils.h"
 
 using base::FilePath;
@@ -39,14 +40,18 @@ class DBusServiceTest : public BaseTest {
 };
 
 TEST_F(DBusServiceTest, InstallDlc) {
-  EXPECT_CALL(*dlc_service_, Install(kFirstDlc, "", &err_))
+  EXPECT_CALL(
+      *dlc_service_,
+      Install(CheckInstallRequest(CreateInstallRequest(kFirstDlc)), &err_))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(dbus_service_->InstallDlc(&err_, kFirstDlc));
 }
 
 TEST_F(DBusServiceTest, InstallWithOmahaUrl) {
-  EXPECT_CALL(*dlc_service_, Install(kFirstDlc, kDefaultOmahaUrl, &err_))
+  EXPECT_CALL(*dlc_service_, Install(CheckInstallRequest(CreateInstallRequest(
+                                         kFirstDlc, kDefaultOmahaUrl)),
+                                     &err_))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(

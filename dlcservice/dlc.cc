@@ -649,6 +649,11 @@ bool DlcBase::DeleteInternal(ErrorPtr* err) {
   // If we're deleting the image, we need to set it as unverified.
   MarkUnverified();
 
+  if (reserve_) {
+    LOG(INFO) << "Skipping delete for reserved DLC=" << id_;
+    return true;
+  }
+
   vector<string> undeleted_paths;
   for (const auto& path : GetPathsToDelete(id_)) {
     if (base::PathExists(path)) {
@@ -673,6 +678,8 @@ bool DlcBase::DeleteInternal(ErrorPtr* err) {
 }
 
 bool DlcBase::Uninstall(ErrorPtr* err) {
+  // Whatever state the DLC was in, disable the reserve.
+  SetReserve(false);
   switch (state_.state()) {
     case DlcState::NOT_INSTALLED:
       // We still have to uninstall the DLC, in case we never mounted in this
@@ -778,6 +785,17 @@ void DlcBase::ChangeProgress(double progress) {
     state_.set_progress(std::min(progress, 1.0));
     SystemState::Get()->state_change_reporter()->DlcStateChanged(state_);
   }
+}
+
+bool DlcBase::SetReserve(base::Optional<bool> reserve) {
+  if (reserve.has_value()) {
+    if ((reserve_ = reserve.value())) {
+      LOG(INFO) << "Enabling DLC=" << id_ << " reserve.";
+    } else {
+      LOG(INFO) << "Disabling DLC=" << id_ << " reserve.";
+    }
+  }
+  return reserve_;
 }
 
 }  // namespace dlcservice

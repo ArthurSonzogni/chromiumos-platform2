@@ -7,6 +7,7 @@
 <node name="/org/chromium/DlcService"
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
 <interface name="org.chromium.DlcServiceInterface">
+  <!-- TODO(b/218396905): DEPRECATE -->
   <method name="InstallDlc">
     <tp:docstring>
       Install a Downloadable Content (DLC).
@@ -17,6 +18,7 @@
       </tp:docstring>
     </arg>
   </method>
+  <!-- TODO(b/218396905): DEPRECATE -->
   <method name="InstallWithOmahaUrl">
     <tp:docstring>
       Install a DLC with a given Omaha URL.
@@ -30,6 +32,20 @@
       <tp:docstring>
         The Omaha URL to install the DLC from.
       </tp:docstring>
+    </arg>
+  </method>
+  <method name="Install">
+    <tp:docstring>
+      Install a Downloadable Content (DLC).
+    </tp:docstring>
+    <arg name="install_request" type="ay" direction="in">
+      <tp:docstring>
+        A serialized protobuf (InstallRequest,
+        platform2/system_api/dbus/dlcservice/dlcservice.proto) of
+        arguments that can toggle how DLC are installed.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                  value="dlcservice::InstallRequest"/>
     </arg>
   </method>
   <method name="Uninstall">
