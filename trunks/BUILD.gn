@@ -195,6 +195,8 @@ static_library("trunksd_lib") {
     ":trunksd_lib_all_dependent_pkg_deps",
     ":trunksd_lib_config",
   ]
+  configs -= [ "//common-mk:use_thin_archive" ]
+  configs += [ "//common-mk:nouse_thin_archive" ]
   deps = [ ":trunks" ]
 }
 
@@ -208,13 +210,13 @@ executable("trunksd") {
     ":target_defaults",
     ":trunksd_pkg_deps",
   ]
+  if (use.ftdi_tpm) {
+    defines = [ "SPI_OVER_FTDI=1" ]
+  }
   deps = [
     ":trunks",
     ":trunksd_lib",
   ]
-  if (use.ftdi_tpm) {
-    defines = [ "SPI_OVER_FTDI=1" ]
-  }
 }
 
 executable("tpm_tunneld") {

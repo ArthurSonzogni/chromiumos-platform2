@@ -93,6 +93,7 @@ install_config("install_headers") {
 if (use.test) {
   executable("sealed_storage_testrunner") {
     sources = [
+      "sealed_storage_simulatortests.cc",
       "sealed_storage_testrunner.cc",
       "sealed_storage_unittests.cc",
     ]
@@ -102,7 +103,11 @@ if (use.test) {
       ":test_defaults",
     ]
     run_test = true
-    libs = [ "trunks_test" ]
+    libs = [
+      "tpm2",
+      "trunks_test",
+      "trunksd_lib",
+    ]
     deps = [
       ":libsealed_storage",
       "//common-mk/testrunner",

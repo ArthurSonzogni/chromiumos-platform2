@@ -24,12 +24,9 @@ extern "C" {
 #include <tpm2/Platform.h>
 }  // extern "C"
 
-
 #include "trunks/error_codes.h"
 
 namespace {
-
-const char kSimulatorStateDirectory[] = "/var/lib/trunks";
 
 // Resizes extend_data to size crypto::kSHA256Length and uses the result to
 // extend the indicated PCR.
@@ -61,12 +58,13 @@ void ExtendPcr0BootMode(const char developer_mode,
 
 namespace trunks {
 
-TpmSimulatorHandle::TpmSimulatorHandle() {}
+TpmSimulatorHandle::TpmSimulatorHandle(std::string simulator_state_directory)
+    : simulator_state_directory_(simulator_state_directory) {}
 
 TpmSimulatorHandle::~TpmSimulatorHandle() {}
 
 bool TpmSimulatorHandle::Init() {
-  CHECK_EQ(chdir(kSimulatorStateDirectory), 0);
+  CHECK_EQ(chdir(simulator_state_directory_.c_str()), 0);
   if (!init_) {
     InitializeSimulator();
     init_ = true;

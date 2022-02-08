@@ -25,7 +25,8 @@ namespace trunks {
 //   std::string response = handle.SendCommandAndWait(command);
 class TpmSimulatorHandle : public CommandTransceiver {
  public:
-  TpmSimulatorHandle();
+  explicit TpmSimulatorHandle(
+      std::string simulator_state_directory = "/var/lib/trunks");
   TpmSimulatorHandle(const TpmSimulatorHandle&) = delete;
   TpmSimulatorHandle& operator=(const TpmSimulatorHandle&) = delete;
 
@@ -42,6 +43,7 @@ class TpmSimulatorHandle : public CommandTransceiver {
   void InitializeSimulator();
 
   bool init_ = false;
+  std::string simulator_state_directory_;
 };
 
 }  // namespace trunks

@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
   //         --> ResourceManager
   //         --> TpmHandle
   //         --> [TPM]
-  trunks::CommandTransceiver* low_level_transceiver;
+  trunks::CommandTransceiver* low_level_transceiver = nullptr;
   if (cl->HasSwitch("ftdi")) {
     LOG(INFO) << "Sending commands to FTDI SPI.";
     low_level_transceiver = new trunks::TrunksFtdiSpi();

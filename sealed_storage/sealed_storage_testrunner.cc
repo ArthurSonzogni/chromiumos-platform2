@@ -12,8 +12,6 @@
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
   brillo::InitLog(brillo::kLogToStderr);
-  // Enable verbose logging while running unit tests.
-  logging::SetMinLogLevel(logging::LOGGING_VERBOSE);
   base::AtExitManager exit_manager;
   ::testing::InitGoogleTest(&argc, argv);
   TestTimeouts::Initialize();

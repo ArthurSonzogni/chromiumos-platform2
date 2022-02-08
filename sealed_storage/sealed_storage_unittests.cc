@@ -34,12 +34,7 @@ using testing::WithArgs;
 constexpr uint8_t kRandomByte = 0x12;
 constexpr uint16_t kExpectedIVSize = 16; /* AES IV size */
 constexpr uint8_t kDftPolicyFill = 0x23;
-constexpr uint8_t kWrongPolicyFill = 0x45;
 constexpr size_t kPolicyDigestSize = 32; /* SHA-256 digest */
-constexpr size_t kPcrValueSize = 32;     /* SHA-256 digest */
-constexpr uint32_t kNvramCounterSize = 8;
-constexpr uint32_t kNvramCounterOffset = 0;
-constexpr uint32_t kNvramIndex = 0x100e;
 
 bool operator==(const trunks::TPM2B_ECC_PARAMETER& rh,
                 const trunks::TPM2B_ECC_PARAMETER& lh) {
@@ -78,10 +73,6 @@ class SealedStorageTest : public ::testing::Test {
     return std::string(kPolicyDigestSize, kDftPolicyFill);
   }
 
-  static std::string WrongPolicyDigest() {
-    return std::string(kPolicyDigestSize, kWrongPolicyFill);
-  }
-
   static trunks::TPM2B_ECC_POINT GetECPointWithFilledXY(uint8_t x_fill,
                                                         uint8_t y_fill) {
     const trunks::TPMS_ECC_POINT point = {
@@ -102,44 +93,6 @@ class SealedStorageTest : public ::testing::Test {
 
   static trunks::TPM2B_ECC_POINT WrongZPoint() {
     return GetECPointWithFilledXY(0x55, 0x66);
-  }
-
-  static Policy ConstructEmptyPolicy() { return {}; }
-
-  static Policy ConstructPcrBoundPolicy() {
-    Policy::PcrMap pcr_map;
-
-    for (uint8_t pcr = 0; pcr < 10; pcr++) {
-      pcr_map.emplace(pcr, ConstructPcrValue(pcr));
-    }
-
-    return {.pcr_map = pcr_map};
-  }
-
-  static std::string ConstructPcrValue(uint8_t pcr) {
-    return std::string(kPcrValueSize, pcr ^ 0xFF);
-  }
-
-  static Policy ConstructSecretBoundPolicy(std::string secret) {
-    return {.secret = SecretData(secret)};
-  }
-
-  static Policy ConstructCounterBoundPolicy(uint32_t index) {
-    return {.nvram_counter_index = index};
-  }
-
-  static Policy ConstructSecretAndPcrBoundPolicy(std::string secret) {
-    Policy pcr_bound_policy = ConstructPcrBoundPolicy();
-    Policy secret_bound_policy = ConstructSecretBoundPolicy(secret);
-    return {.pcr_map = pcr_bound_policy.pcr_map,
-            .secret = secret_bound_policy.secret};
-  }
-
-  static Policy ConstructCounterAndPcrBoundPolicy(uint32_t index) {
-    Policy pcr_bound_policy = ConstructPcrBoundPolicy();
-    Policy counter_bound_policy = ConstructCounterBoundPolicy(index);
-    return {.pcr_map = pcr_bound_policy.pcr_map,
-            .nvram_counter_index = counter_bound_policy.nvram_counter_index};
   }
 
   // Convert the sealed data blob of the default version produced by Seal()
@@ -169,12 +122,8 @@ class SealedStorageTest : public ::testing::Test {
     trunks_factory_.set_tpm(&tpm_);
     trunks_factory_.set_tpm_utility(&tpm_utility_);
     trunks_factory_.set_policy_session(&policy_session_);
-    trunks_factory_.set_trial_session(&trial_policy_session_);
+    trunks_factory_.set_trial_session(&policy_session_);
 
-    SetUpMockCalls();
-  }
-
-  void SetUpMockCalls() {
     ON_CALL(tpm_ownership_, GetTpmStatus)
         .WillByDefault(
             Invoke([this](const tpm_manager::GetTpmStatusRequest& request,
@@ -195,33 +144,10 @@ class SealedStorageTest : public ::testing::Test {
         .WillByDefault(Invoke(this, &SealedStorageTest::ECDH_ZGenSync));
     ON_CALL(tpm_, GetRandomSync)
         .WillByDefault(Invoke(this, &SealedStorageTest::GetRandomSync));
-    ON_CALL(tpm_utility_, ReadNVSpace)
-        .WillByDefault(Invoke(this, &SealedStorageTest::ReadNVSpace));
-    ON_CALL(tpm_utility_, AddPcrValuesToPolicySession)
-        .WillByDefault(
-            Invoke(this, &SealedStorageTest::AddPcrValuesToPolicySession));
-    ON_CALL(policy_session_, PolicyPCR)
-        .WillByDefault(Return(policy_pcr_result_));
-    ON_CALL(policy_session_, GetDelegate)
-        .WillByDefault(Return(&auth_delegate_));
     ON_CALL(policy_session_, GetDigest)
         .WillByDefault(Invoke(this, &SealedStorageTest::GetDigest));
-    ON_CALL(policy_session_, PolicyOR).WillByDefault(Return(policy_or_result_));
-    ON_CALL(policy_session_, PolicyNV).WillByDefault(Return(policy_nv_result_));
-    ON_CALL(policy_session_, StartUnboundSession)
-        .WillByDefault(Return(start_session_result_));
-    ON_CALL(trial_policy_session_, PolicyPCR)
-        .WillByDefault(Return(trial_policy_pcr_result_));
-    ON_CALL(trial_policy_session_, GetDelegate)
+    ON_CALL(policy_session_, GetDelegate)
         .WillByDefault(Return(&auth_delegate_));
-    ON_CALL(trial_policy_session_, GetDigest)
-        .WillByDefault(Invoke(this, &SealedStorageTest::GetDigest));
-    ON_CALL(trial_policy_session_, PolicyOR)
-        .WillByDefault(Return(trial_policy_or_result_));
-    ON_CALL(trial_policy_session_, PolicyNV)
-        .WillByDefault(Return(trial_policy_nv_result_));
-    ON_CALL(trial_policy_session_, StartUnboundSession)
-        .WillByDefault(Return(start_session_result_));
   }
 
   trunks::TPM_RC CreatePrimarySyncShort(
@@ -237,7 +163,7 @@ class SealedStorageTest : public ::testing::Test {
       trunks::AuthorizationDelegate* authorization_delegate) {
     create_primary_public_area_ = in_public;
     *object_handle = sealing_key_handle_;
-    return create_primary_result_;
+    return trunks::TPM_RC_SUCCESS;
   }
 
   trunks::TPM_RC ECDH_KeyGenSync(
@@ -248,7 +174,7 @@ class SealedStorageTest : public ::testing::Test {
       trunks::AuthorizationDelegate* authorization_delegate) {
     *z_point = z_point_;
     *pub_point = pub_point_;
-    return key_gen_result_;
+    return trunks::TPM_RC_SUCCESS;
   }
 
   trunks::TPM_RC ECDH_ZGenSync(
@@ -259,24 +185,7 @@ class SealedStorageTest : public ::testing::Test {
       trunks::AuthorizationDelegate* authorization_delegate) {
     *out_point = z_gen_out_point_;
     z_gen_in_point_ = in_point;
-    return z_gen_result_;
-  }
-
-  trunks::TPM_RC ReadNVSpace(uint32_t index,
-                             uint32_t offset,
-                             size_t num_bytes,
-                             bool using_owner_authorization,
-                             std::string* nvram_data,
-                             trunks::AuthorizationDelegate* delegate) {
-    *nvram_data = counter_space_value_;
-    return read_nv_result_;
-  }
-
-  trunks::TPM_RC AddPcrValuesToPolicySession(
-      const std::map<uint32_t, std::string>& pcr_map,
-      bool use_auth_value,
-      trunks::PolicySession* policy_session) {
-    return policy_session->PolicyPCR(pcr_map);
+    return trunks::TPM_RC_SUCCESS;
   }
 
   trunks::TPM_RC GetRandomSync(
@@ -289,151 +198,34 @@ class SealedStorageTest : public ::testing::Test {
       random_bytes->size = bytes_requested;
       memset(random_bytes->buffer, kRandomByte, bytes_requested);
     }
-    return get_random_result_;
+    return trunks::TPM_RC_SUCCESS;
   }
 
   trunks::TPM_RC GetDigest(std::string* policy_digest) {
     *policy_digest = policy_digest_;
-    return get_policy_digest_result_;
+    return trunks::TPM_RC_SUCCESS;
   }
 
-  void ExpectCommandSequence(bool do_seal = true, bool do_unseal = true) {
+  void ExpectCommandSequence() {
     testing::InSequence s;
 
-    if (do_seal) {
-      /* Seal: Create sealing key */
-      EXPECT_CALL(tpm_ownership_, GetTpmStatus);
+    /* Seal: Create sealing key */
+    EXPECT_CALL(tpm_ownership_, GetTpmStatus);
+    EXPECT_CALL(tpm_, CreatePrimarySyncShort(trunks::TPM_RH_ENDORSEMENT, _, _,
+                                             _, _, _, _, _, _, _));
 
-      bool failure = false;
-      ExpectTrialPolicySequence(&failure);
-      if (failure) {
-        return;
-      }
+    /* Seal: Generate seeds */
+    EXPECT_CALL(tpm_, ECDH_KeyGenSync(sealing_key_handle_, _, _, _, _));
+    EXPECT_CALL(tpm_, GetRandomSync(kExpectedIVSize, _, _));
 
-      if (tpm_manager_result_ != tpm_manager::STATUS_SUCCESS) {
-        /* In case of GetTpmStatus error... */
-        EXPECT_CALL(tpm_, CreatePrimarySyncShort).Times(0);
-        return;
-      }
+    /* Unseal: Create sealing key */
+    EXPECT_CALL(tpm_ownership_, GetTpmStatus);
+    EXPECT_CALL(tpm_, CreatePrimarySyncShort(trunks::TPM_RH_ENDORSEMENT, _, _,
+                                             _, _, _, _, _, _, _));
 
-      EXPECT_CALL(tpm_, CreatePrimarySyncShort(trunks::TPM_RH_ENDORSEMENT, _, _,
-                                               _, _, _, _, _, _, _));
-      if (create_primary_result_ != trunks::TPM_RC_SUCCESS) {
-        /* In case of CreatePrimary error... */
-        EXPECT_CALL(tpm_, ECDH_KeyGenSync).Times(0);
-        return;
-      }
-
-      /* Seal: Generate seeds */
-      EXPECT_CALL(tpm_, ECDH_KeyGenSync(sealing_key_handle_, _, _, _, _));
-      EXPECT_CALL(tpm_, GetRandomSync(kExpectedIVSize, _, _));
-    }
-
-    if (do_unseal) {
-      /* Unseal: Create sealing key */
-      EXPECT_CALL(tpm_ownership_, GetTpmStatus);
-      if (tpm_manager_result_ != tpm_manager::STATUS_SUCCESS) {
-        /* In case of GetTpmStatus error... */
-        EXPECT_CALL(tpm_, CreatePrimarySyncShort).Times(0);
-        return;
-      }
-
-      bool failure = false;
-      ExpectTrialPolicySequence(&failure);
-      if (failure) {
-        return;
-      }
-
-      EXPECT_CALL(tpm_, CreatePrimarySyncShort(trunks::TPM_RH_ENDORSEMENT, _, _,
-                                               _, _, _, _, _, _, _));
-      if (create_primary_result_ != trunks::TPM_RC_SUCCESS) {
-        /* In case of CreatePrimary error... */
-        EXPECT_CALL(tpm_, ECDH_ZGenSync).Times(0);
-        return;
-      }
-
-      /* Unseal: Restore seeds */
-      ExpectPolicySequence(&failure);
-      if (failure) {
-        EXPECT_CALL(tpm_, ECDH_ZGenSync).Times(0);
-        return;
-      }
-
-      EXPECT_CALL(tpm_, ECDH_ZGenSync(sealing_key_handle_, _,
-                                      Equals(pub_point_), _, &auth_delegate_));
-    }
-  }
-
-  void ExpectTrialPolicySequence(bool* failure) {
-    EXPECT_CALL(trial_policy_session_, StartUnboundSession);
-    if (!policy_.pcr_map.empty()) {
-      EXPECT_CALL(tpm_utility_, AddPcrValuesToPolicySession);
-      EXPECT_CALL(trial_policy_session_, PolicyPCR(policy_.pcr_map));
-      if (trial_policy_pcr_result_ != trunks::TPM_RC_SUCCESS) {
-        *failure = true;
-        return;
-      }
-    }
-    if (!policy_.secret.empty()) {
-      EXPECT_CALL(trial_policy_session_, PolicyOR);
-      if (trial_policy_or_result_ != trunks::TPM_RC_SUCCESS) {
-        *failure = true;
-        return;
-      }
-    }
-    if (policy_.nvram_counter_index.has_value()) {
-      EXPECT_CALL(tpm_utility_,
-                  ReadNVSpace(*policy_.nvram_counter_index, kNvramCounterOffset,
-                              kNvramCounterSize, false, _, _));
-      if (read_nv_result_ != trunks::TPM_RC_SUCCESS) {
-        *failure = true;
-        return;
-      }
-      EXPECT_CALL(
-          trial_policy_session_,
-          PolicyNV(*policy_.nvram_counter_index, kNvramCounterOffset, false,
-                   Equals(trunks::Make_TPM2B_DIGEST(counter_space_value_)),
-                   counter_operation_, _));
-      if (trial_policy_nv_result_ != trunks::TPM_RC_SUCCESS) {
-        *failure = true;
-        return;
-      }
-    }
-    return;
-  }
-
-  void ExpectPolicySequence(bool* failure) {
-    EXPECT_CALL(policy_session_, StartUnboundSession);
-    if (!policy_.pcr_map.empty()) {
-      EXPECT_CALL(policy_session_, PolicyPCR(policy_.pcr_map));
-      if (policy_pcr_result_ != trunks::TPM_RC_SUCCESS) {
-        *failure = true;
-        return;
-      }
-    }
-    if (!policy_.secret.empty()) {
-      EXPECT_CALL(policy_session_, PolicyOR);
-    }
-    if (policy_.nvram_counter_index.has_value()) {
-      EXPECT_CALL(tpm_utility_,
-                  ReadNVSpace(*policy_.nvram_counter_index, kNvramCounterOffset,
-                              kNvramCounterSize, false, _, _));
-      if (read_nv_result_ != trunks::TPM_RC_SUCCESS) {
-        *failure = true;
-        return;
-      }
-      EXPECT_CALL(
-          policy_session_,
-          PolicyNV(*policy_.nvram_counter_index, kNvramCounterOffset, false,
-                   Equals(trunks::Make_TPM2B_DIGEST(counter_space_value_)),
-                   counter_operation_, _));
-      if (policy_nv_result_ != trunks::TPM_RC_SUCCESS) {
-        *failure = true;
-        return;
-      }
-    }
-
-    EXPECT_CALL(policy_session_, GetDelegate());
+    /* Unseal: Restore seeds */
+    EXPECT_CALL(tpm_, ECDH_ZGenSync(sealing_key_handle_, _, Equals(pub_point_),
+                                    _, &auth_delegate_));
   }
 
   void ResetMocks() {
@@ -479,105 +271,19 @@ class SealedStorageTest : public ::testing::Test {
       tpm_manager::STATUS_SUCCESS;
   std::string endorsement_password_ = "endorsement_password";
 
-  trunks::TPM_RC create_primary_result_ = trunks::TPM_RC_SUCCESS;
   trunks::TPM_HANDLE sealing_key_handle_ = trunks::TRANSIENT_FIRST;
   trunks::TPM2B_PUBLIC create_primary_public_area_ = {};
 
-  trunks::TPM_RC key_gen_result_ = trunks::TPM_RC_SUCCESS;
   trunks::TPM2B_ECC_POINT z_point_ = DftZPoint();
   trunks::TPM2B_ECC_POINT pub_point_ = DftPubPoint();
 
-  trunks::TPM_RC z_gen_result_ = trunks::TPM_RC_SUCCESS;
   trunks::TPM2B_ECC_POINT z_gen_out_point_ = DftZPoint();
   trunks::TPM2B_ECC_POINT z_gen_in_point_ = {};
 
-  trunks::TPM_RC get_random_result_ = trunks::TPM_RC_SUCCESS;
-  base::Optional<std::string> random_ = {};
-
-  trunks::TPM_RC get_policy_digest_result_ = trunks::TPM_RC_SUCCESS;
   std::string policy_digest_ = DftPolicyDigest();
 
-  std::string counter_space_value_ = "23";
-  trunks::TPM_EO counter_operation_ = trunks::TPM_EO_EQ;
-
-  trunks::TPM_RC trial_policy_pcr_result_ = trunks::TPM_RC_SUCCESS;
-  trunks::TPM_RC trial_policy_or_result_ = trunks::TPM_RC_SUCCESS;
-  trunks::TPM_RC trial_policy_nv_result_ = trunks::TPM_RC_SUCCESS;
-  trunks::TPM_RC policy_pcr_result_ = trunks::TPM_RC_SUCCESS;
-  trunks::TPM_RC policy_or_result_ = trunks::TPM_RC_SUCCESS;
-  trunks::TPM_RC policy_nv_result_ = trunks::TPM_RC_SUCCESS;
-  trunks::TPM_RC read_nv_result_ = trunks::TPM_RC_SUCCESS;
-
-  trunks::TPM_RC start_session_result_ = trunks::TPM_RC_SUCCESS;
+  base::Optional<std::string> random_ = {};
 };
-
-TEST_F(SealedStorageTest, TrivialPolicySuccess) {
-  ExpectCommandSequence();
-  SealUnseal(true, true, DftDataToSeal());
-}
-
-TEST_F(SealedStorageTest, VariousPlaintextSizesSuccess) {
-  for (size_t data_size = 0; data_size <= 65; data_size++) {
-    std::string data(data_size, 'x');
-    ExpectCommandSequence();
-    SealUnseal(true, true, SecretData(data));
-    ResetMocks();
-  }
-}
-
-TEST_F(SealedStorageTest, PcrBoundPolicySuccess) {
-  policy_ = ConstructPcrBoundPolicy();
-  ExpectCommandSequence();
-  SealUnseal(true, true, DftDataToSeal());
-}
-
-TEST_F(SealedStorageTest, SecretBoundPolicySuccess) {
-  policy_ = ConstructSecretBoundPolicy("secret");
-  ExpectCommandSequence();
-  SealUnseal(true, true, DftDataToSeal());
-}
-
-TEST_F(SealedStorageTest, SecretAndPcrBoundPolicySuccess) {
-  policy_ = ConstructSecretAndPcrBoundPolicy("secret");
-  ExpectCommandSequence();
-  SealUnseal(true, true, DftDataToSeal());
-}
-
-TEST_F(SealedStorageTest, CounterBoundPolicySuccess) {
-  policy_ = ConstructCounterBoundPolicy(kNvramIndex);
-  ExpectCommandSequence();
-  SealUnseal(true, true, DftDataToSeal());
-}
-
-TEST_F(SealedStorageTest, CounterAndPcrBoundPolicySuccess) {
-  policy_ = ConstructCounterAndPcrBoundPolicy(kNvramIndex);
-  ExpectCommandSequence();
-  SealUnseal(true, true, DftDataToSeal());
-}
-
-TEST_F(SealedStorageTest, CounterBoundPolicyTrialFailure) {
-  policy_ = ConstructCounterBoundPolicy(kNvramIndex);
-  trial_policy_nv_result_ = trunks::TPM_RC_VALUE;
-  SetUpMockCalls();
-  ExpectCommandSequence();
-  SealUnseal(false, false, DftDataToSeal());
-}
-
-TEST_F(SealedStorageTest, CounterBoundReadNVFailure) {
-  policy_ = ConstructCounterBoundPolicy(kNvramIndex);
-  read_nv_result_ = trunks::TPM_RC_VALUE;
-  SetUpMockCalls();
-  ExpectCommandSequence();
-  SealUnseal(false, false, DftDataToSeal());
-}
-
-TEST_F(SealedStorageTest, CounterBoundPolicyFailure) {
-  policy_ = ConstructCounterBoundPolicy(kNvramIndex);
-  policy_nv_result_ = trunks::TPM_RC_VALUE;
-  SetUpMockCalls();
-  ExpectCommandSequence();
-  SealUnseal(true, false, DftDataToSeal());
-}
 
 TEST_F(SealedStorageTest, WrongRestoredZPointError) {
   z_gen_out_point_ = WrongZPoint();
@@ -585,169 +291,10 @@ TEST_F(SealedStorageTest, WrongRestoredZPointError) {
   SealUnseal(true, false, DftDataToSeal());
 }
 
-TEST_F(SealedStorageTest, WrongDeviceStateError) {
-  policy_ = ConstructPcrBoundPolicy();
-  policy_pcr_result_ = trunks::TPM_RC_VALUE;
-  SetUpMockCalls();
-  ExpectCommandSequence();
-  SealUnseal(true, false, DftDataToSeal());
-}
-
 TEST_F(SealedStorageTest, WrongRestoredZPointGarbage) {
   const auto data_to_seal = SetupWrongZPointWithGarbageData();
-  policy_ = ConstructPcrBoundPolicy();
   ExpectCommandSequence();
   SealUnseal(true, false, data_to_seal);
-}
-
-TEST_F(SealedStorageTest, WrongPolicy) {
-  const auto data_to_seal = SetupWrongZPointWithGarbageData();
-  policy_ = ConstructPcrBoundPolicy();
-  sealed_storage_.reset_policy(policy_);
-
-  // Set up sealed_data with some initial policy digest.
-  policy_digest_ = DftPolicyDigest();
-  ExpectCommandSequence(true, false);
-  auto sealed_data = sealed_storage_.Seal(data_to_seal);
-  EXPECT_TRUE(sealed_data.has_value());
-  ResetMocks();
-
-  // Try unsealing with a different policy, resulting in a different digest.
-  policy_digest_ = WrongPolicyDigest();
-  EXPECT_CALL(tpm_ownership_, GetTpmStatus).Times(AtLeast(0));
-  EXPECT_CALL(tpm_utility_, AddPcrValuesToPolicySession).Times(AtLeast(1));
-  EXPECT_CALL(tpm_, CreatePrimarySyncShort).Times(0);
-  EXPECT_CALL(tpm_, ECDH_ZGenSync).Times(0);
-  auto result = sealed_storage_.Unseal(sealed_data.value());
-  EXPECT_FALSE(result.has_value());
-}
-
-TEST_F(SealedStorageTest, NonEmptySealEmptyUnsealPolicy) {
-  const auto data_to_seal = SetupWrongZPointWithGarbageData();
-  policy_ = ConstructPcrBoundPolicy();
-  sealed_storage_.reset_policy(policy_);
-
-  // Set up sealed_data with some initial non-empty policy digest.
-  policy_digest_ = DftPolicyDigest();
-  ExpectCommandSequence(true, false);
-  auto sealed_data = sealed_storage_.Seal(data_to_seal);
-  EXPECT_TRUE(sealed_data.has_value());
-  ResetMocks();
-
-  // Try unsealing with an empty policy.
-  policy_ = ConstructEmptyPolicy();
-  // Empty policy leads to a wrong policy digest.
-  policy_digest_ = WrongPolicyDigest();
-  sealed_storage_.reset_policy(policy_);
-  EXPECT_CALL(tpm_ownership_, GetTpmStatus).Times(AtLeast(0));
-  EXPECT_CALL(tpm_utility_, AddPcrValuesToPolicySession).Times(0);
-  EXPECT_CALL(tpm_, CreatePrimarySyncShort).Times(0);
-  EXPECT_CALL(tpm_, ECDH_ZGenSync).Times(0);
-  auto result = sealed_storage_.Unseal(sealed_data.value());
-  EXPECT_FALSE(result.has_value());
-}
-
-TEST_F(SealedStorageTest, EmptySealNonEmptyUnsealPolicy) {
-  const auto data_to_seal = SetupWrongZPointWithGarbageData();
-  policy_ = ConstructEmptyPolicy();
-  sealed_storage_.reset_policy(policy_);
-
-  // Set up sealed_data with initial empty policy.
-  ExpectCommandSequence(true, false);
-  auto sealed_data = sealed_storage_.Seal(data_to_seal);
-  EXPECT_TRUE(sealed_data.has_value());
-  ResetMocks();
-
-  // Try unsealing with some non-empty policy.
-  policy_ = ConstructPcrBoundPolicy();
-  // A non-empty policy leads to wrong policy digest.
-  policy_digest_ = WrongPolicyDigest();
-  sealed_storage_.reset_policy(policy_);
-  EXPECT_CALL(tpm_ownership_, GetTpmStatus).Times(AtLeast(0));
-  EXPECT_CALL(tpm_utility_, AddPcrValuesToPolicySession).Times(1);
-  EXPECT_CALL(tpm_, CreatePrimarySyncShort).Times(0);
-  EXPECT_CALL(tpm_, ECDH_ZGenSync).Times(0);
-  auto result = sealed_storage_.Unseal(sealed_data.value());
-  EXPECT_FALSE(result.has_value());
-}
-
-TEST_F(SealedStorageTest, CanUnsealV1) {
-  const auto data_to_seal = DftDataToSeal();
-  policy_ = ConstructPcrBoundPolicy();
-  sealed_storage_.reset_policy(policy_);
-  ExpectCommandSequence();
-
-  auto sealed_data = sealed_storage_.Seal(data_to_seal);
-  ASSERT_TRUE(sealed_data.has_value());
-  ConvertToV1(&sealed_data.value());
-
-  // Now set the correct expected plaintext size and unseal the V1 blob.
-  sealed_storage_.set_plain_size_for_v1(data_to_seal.size());
-  auto result = sealed_storage_.Unseal(sealed_data.value());
-  ASSERT_TRUE(result.has_value());
-  EXPECT_EQ(result.value(), data_to_seal);
-}
-
-TEST_F(SealedStorageTest, WrongSizeForV1) {
-  const auto data_to_seal = DftDataToSeal();
-  policy_ = ConstructPcrBoundPolicy();
-  sealed_storage_.reset_policy(policy_);
-  ExpectCommandSequence();
-
-  auto sealed_data = sealed_storage_.Seal(data_to_seal);
-  ASSERT_TRUE(sealed_data.has_value());
-  ConvertToV1(&sealed_data.value());
-
-  // Now set a wrong expected plaintext size and try unsealing the V1 blob.
-  sealed_storage_.set_plain_size_for_v1(data_to_seal.size() + 10);
-  auto result = sealed_storage_.Unseal(sealed_data.value());
-  ASSERT_FALSE(result.has_value());
-}
-
-TEST_F(SealedStorageTest, WrongPolicySecret) {
-  const auto data_to_seal = SetupWrongZPointWithGarbageData();
-  policy_ = ConstructSecretBoundPolicy("correct secret");
-  sealed_storage_.reset_policy(policy_);
-
-  ExpectCommandSequence(true, false);
-  auto sealed_data = sealed_storage_.Seal(data_to_seal);
-  EXPECT_TRUE(sealed_data.has_value());
-  ResetMocks();
-
-  policy_ = ConstructSecretBoundPolicy("wrong secret");
-  sealed_storage_.reset_policy(policy_);
-  // A different secret leads to a wrong policy digest.
-  policy_digest_ = WrongPolicyDigest();
-  EXPECT_CALL(tpm_ownership_, GetTpmStatus).Times(AtLeast(0));
-  auto result = sealed_storage_.Unseal(sealed_data.value());
-  EXPECT_FALSE(result.has_value());
-}
-
-TEST_F(SealedStorageTest, PcrAndSecretWrongDeviceStateCorrectSecret) {
-  policy_ = ConstructSecretAndPcrBoundPolicy("secret");
-  policy_pcr_result_ = trunks::TPM_RC_VALUE;
-  SetUpMockCalls();
-  ExpectCommandSequence();
-  SealUnseal(true, false, DftDataToSeal());
-}
-
-TEST_F(SealedStorageTest, PcrAndSecretCorrectDeviceStateWrongSecret) {
-  const auto data_to_seal = SetupWrongZPointWithGarbageData();
-  policy_ = ConstructSecretAndPcrBoundPolicy("correct secret");
-  sealed_storage_.reset_policy(policy_);
-
-  ExpectCommandSequence(true, false);
-  auto sealed_data = sealed_storage_.Seal(data_to_seal);
-  EXPECT_TRUE(sealed_data.has_value());
-  ResetMocks();
-
-  policy_ = ConstructSecretBoundPolicy("wrong secret");
-  sealed_storage_.reset_policy(policy_);
-  // A different secret leads to a wrong policy digest.
-  policy_digest_ = WrongPolicyDigest();
-  EXPECT_CALL(tpm_ownership_, GetTpmStatus).Times(AtLeast(0));
-  auto result = sealed_storage_.Unseal(sealed_data.value());
-  EXPECT_FALSE(result.has_value());
 }
 
 }  // namespace sealed_storage
