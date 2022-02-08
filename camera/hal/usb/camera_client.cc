@@ -1083,7 +1083,7 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   V4L2Buffer buffer;
   int ret = device_->GetNextFrameBuffer(kTimeoutInfinite, &buffer);
   if (ret != 0) {
-    LOGFID(ERROR, device_id_)
+    LOGFID_THROTTLED(ERROR, device_id_, 60)
         << "GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
     return ret;
   }
@@ -1099,7 +1099,7 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
         break;
       }
       if (ret != 0) {
-        LOGFID(ERROR, device_id_)
+        LOGFID_THROTTLED(ERROR, device_id_, 60)
             << "GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
         return ret;
       }
@@ -1194,7 +1194,7 @@ int CameraClient::RequestHandler::ResolvedFrameRateFromMetadata(
     }
   }
   if (min_diff > 0) {
-    LOGFID(WARNING, device_id_)
+    LOGFID_THROTTLED(WARNING, device_id_, 60)
         << "Cannot resolve to a valid frame rate within the target range ("
         << target_min_fps << ", " << target_max_fps
         << "). Resolved to:  " << resolved_fps;

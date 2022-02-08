@@ -7,6 +7,7 @@
 #define CAMERA_INCLUDE_CROS_CAMERA_COMMON_H_
 
 #include <fcntl.h>
+#include <time.h>
 
 #include <string>
 
@@ -16,14 +17,32 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread.h>
 
+inline bool IsLogThrottled(timespec* last_ts, int interval_seconds) {
+  timespec ts_current;
+  clock_gettime(CLOCK_MONOTONIC, &ts_current);
+  if (ts_current.tv_sec - last_ts->tv_sec >= interval_seconds) {
+    *last_ts = ts_current;
+    return false;
+  }
+  return true;
+}
+
 #define LOGF(level) LOG(level) << __FUNCTION__ << "(): "
 #define LOGFID(level, id) LOG(level) << __FUNCTION__ << "(): id: " << id << ": "
 #define LOGF_IF(level, res) LOG_IF(level, res) << __FUNCTION__ << "(): "
+#define LOGF_THROTTLED(level, interval_seconds) \
+  static timespec ts_##__FILE__##__LINE__ = {}; \
+  LOGF_IF(level, !IsLogThrottled(&ts_##__FILE__##__LINE__, interval_seconds))
+#define LOGFID_THROTTLED(level, id, interval_seconds) \
+  LOGF_THROTTLED(level, interval_seconds) << "id: " << id << ": "
 
 #define PLOGF(level) PLOG(level) << __FUNCTION__ << "(): "
 #define PLOGFID(level, id) \
   PLOG(level) << __FUNCTION__ << "(): id: " << id << ": "
 #define PLOGF_IF(level, res) PLOG_IF(level, res) << __FUNCTION__ << "(): "
+#define PLOGF_THROTTLED(level, interval_seconds) \
+  static timespec ts_##__FILE__##__LINE__ = {};  \
+  PLOGF_IF(level, !IsLogThrottled(&ts_##__FILE__##__LINE__, interval_seconds))
 
 #define VLOGF(level) VLOG(level) << __FUNCTION__ << "(): "
 #define VLOGFID(level, id) \

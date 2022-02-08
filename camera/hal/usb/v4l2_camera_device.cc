@@ -616,7 +616,7 @@ int V4L2CameraDevice::GetNextFrameBuffer(int timeout_ms,
   buffer.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buffer.memory = V4L2_MEMORY_MMAP;
   if (TEMP_FAILURE_RETRY(ioctl(device_fd_.get(), VIDIOC_DQBUF, &buffer)) < 0) {
-    PLOGF(ERROR) << "DQBUF fails";
+    PLOGF_THROTTLED(ERROR, 60) << "DQBUF fails";
     return -errno;
   }
   VLOGF(1) << "DQBUF returns index " << buffer.index << " length "
