@@ -12,6 +12,7 @@ group("all") {
     ":file_attrs_cleaner_tool",
     ":net_poll_tool",
     ":periodic_scheduler",
+    ":process_killer",
     ":static_node_tool",
     ":usermode-helper",
   ]
@@ -20,6 +21,7 @@ group("all") {
       ":clobber_state_test",
       ":file_attrs_cleaner_test",
       ":periodic_scheduler_test",
+      ":process_killer_test",
       ":usermode-helper_test",
       ":utils_test",
     ]
@@ -41,6 +43,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libcrypto",
     "libmetrics",
+    "re2",
     "vboot_host",
   ]
   libs = [
@@ -65,9 +68,7 @@ static_library("utils") {
 }
 
 static_library("libcrosstartup") {
-  sources = [
-    "startup/chromeos_startup.cc",
-  ]
+  sources = [ "startup/chromeos_startup.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
     ":libclobber",
@@ -113,6 +114,21 @@ executable("file_attrs_cleaner_tool") {
   sources = [ "file_attrs_cleaner_tool.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":file_attrs_cleaner_lib" ]
+}
+
+static_library("process_killer_lib") {
+  sources = [
+    "process_killer/process.cc",
+    "process_killer/process_killer.cc",
+    "process_killer/process_manager.cc",
+  ]
+  configs += [ ":target_defaults" ]
+}
+
+executable("process_killer") {
+  sources = [ "process_killer/main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":process_killer_lib" ]
 }
 
 executable("periodic_scheduler") {
@@ -182,6 +198,23 @@ if (use.test) {
     ]
     deps = [
       ":file_attrs_cleaner_lib",
+      "//common-mk/testrunner",
+    ]
+  }
+
+  executable("process_killer_test") {
+    sources = [
+      "process_killer/process_killer_test.cc",
+      "process_killer/process_manager_test.cc",
+      "process_killer/process_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+      ":test_config",
+    ]
+    deps = [
+      ":process_killer_lib",
       "//common-mk/testrunner",
     ]
   }
