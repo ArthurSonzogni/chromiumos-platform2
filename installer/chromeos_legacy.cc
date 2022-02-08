@@ -223,6 +223,10 @@ bool EfiGrubUpdate(const string& input,
 
   for (vector<string>::iterator line = file_lines.begin();
        line < file_lines.end(); line++) {
+    // Convert all "linuxefi" grub commands to "linux" for the updated
+    // version of grub.
+    base::ReplaceFirstSubstringAfterOffset(&(*line), 0, "linuxefi", "linux");
+
     if (line->find(kernel_pattern) != string::npos) {
       if (ExtractKernelArg(*line, "dm").empty()) {
         // If it's an unverified boot line, just set the root partition to boot.
