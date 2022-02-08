@@ -8,20 +8,20 @@
 namespace diagnostics {
 
 // Status messages reported by the battery charge routine.
-inline constexpr auto kBatteryChargeRoutineSucceededMessage =
+inline constexpr char kBatteryChargeRoutineSucceededMessage[] =
     "Battery charge routine passed.";
-inline constexpr auto kBatteryChargeRoutineNotChargingMessage =
+inline constexpr char kBatteryChargeRoutineNotChargingMessage[] =
     "Battery is not charging.";
-inline constexpr auto kBatteryChargeRoutineFailedInsufficientChargeMessage =
+inline constexpr char kBatteryChargeRoutineFailedInsufficientChargeMessage[] =
     "Battery charge percent less than minimum required charge percent.";
-inline constexpr auto
-    kBatteryChargeRoutineFailedReadingBatteryAttributesMessage =
+inline constexpr char
+    kBatteryChargeRoutineFailedReadingBatteryAttributesMessage[] =
         "Failed to read battery attributes from sysfs.";
-inline constexpr auto kBatteryChargeRoutineInvalidParametersMessage =
+inline constexpr char kBatteryChargeRoutineInvalidParametersMessage[] =
     "Invalid minimum required charge percent requested.";
-inline constexpr auto kBatteryChargeRoutineCancelledMessage =
+inline constexpr char kBatteryChargeRoutineCancelledMessage[] =
     "Battery charge routine cancelled.";
-inline constexpr auto kBatteryChargeRoutineRunningMessage =
+inline constexpr char kBatteryChargeRoutineRunningMessage[] =
     "Battery charge routine running.";
 
 }  // namespace diagnostics

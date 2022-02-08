@@ -9,7 +9,7 @@ namespace diagnostics {
 
 // Used to retrieve the message pipe from the Mojo invitation sent between
 // cros_healthd and the executor.
-inline constexpr auto kExecutorPipeName = "cros_healthd_executor";
+inline constexpr char kExecutorPipeName[] = "cros_healthd_executor";
 
 }  // namespace diagnostics
 

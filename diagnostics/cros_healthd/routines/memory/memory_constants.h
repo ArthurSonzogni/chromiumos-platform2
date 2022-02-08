@@ -26,15 +26,16 @@ enum MemtesterErrorCodes {
 constexpr int kMemoryRoutineReservedSizeMiB = 500;
 
 // Status messages the memory routine can report.
-inline constexpr auto kMemoryRoutineSucceededMessage = "Memory routine passed.";
-inline constexpr auto kMemoryRoutineRunningMessage = "Memory routine running";
-inline constexpr auto kMemoryRoutineCancelledMessage =
+inline constexpr char kMemoryRoutineSucceededMessage[] =
+    "Memory routine passed.";
+inline constexpr char kMemoryRoutineRunningMessage[] = "Memory routine running";
+inline constexpr char kMemoryRoutineCancelledMessage[] =
     "Memory routine cancelled.";
-inline constexpr auto kMemoryRoutineAllocatingLockingInvokingFailureMessage =
+inline constexpr char kMemoryRoutineAllocatingLockingInvokingFailureMessage[] =
     "Error allocating or locking memory, or invoking the memtester binary.\n";
-inline constexpr auto kMemoryRoutineStuckAddressTestFailureMessage =
+inline constexpr char kMemoryRoutineStuckAddressTestFailureMessage[] =
     "Error during the stuck address test.\n";
-inline constexpr auto kMemoryRoutineOtherTestFailureMessage =
+inline constexpr char kMemoryRoutineOtherTestFailureMessage[] =
     "Error during a test other than the stuck address test.\n";
 
 }  // namespace diagnostics

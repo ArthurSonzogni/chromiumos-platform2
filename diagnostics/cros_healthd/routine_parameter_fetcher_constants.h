@@ -8,24 +8,24 @@
 namespace diagnostics {
 
 // Path to each routine's properties in cros_config.
-inline constexpr auto kBatteryCapacityPropertiesPath =
+inline constexpr char kBatteryCapacityPropertiesPath[] =
     "/cros-healthd/routines/battery-capacity";
-inline constexpr auto kBatteryHealthPropertiesPath =
+inline constexpr char kBatteryHealthPropertiesPath[] =
     "/cros-healthd/routines/battery-health";
-inline constexpr auto kPrimeSearchPropertiesPath =
+inline constexpr char kPrimeSearchPropertiesPath[] =
     "/cros-healthd/routines/prime-search";
 
 // Battery capacity properties read from cros_config.
-inline constexpr auto kLowMahProperty = "low-mah";
-inline constexpr auto kHighMahProperty = "high-mah";
+inline constexpr char kLowMahProperty[] = "low-mah";
+inline constexpr char kHighMahProperty[] = "high-mah";
 
 // Battery health properties read from cros_config.
-inline constexpr auto kMaximumCycleCountProperty = "maximum-cycle-count";
-inline constexpr auto kPercentBatteryWearAllowedProperty =
+inline constexpr char kMaximumCycleCountProperty[] = "maximum-cycle-count";
+inline constexpr char kPercentBatteryWearAllowedProperty[] =
     "percent-battery-wear-allowed";
 
 // Prime search property read from cros_config.
-inline constexpr auto kMaxNumProperty = "max-num";
+inline constexpr char kMaxNumProperty[] = "max-num";
 
 }  // namespace diagnostics
 
