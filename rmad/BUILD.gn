@@ -7,7 +7,13 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [ ":rmad" ]
   if (use.test) {
-    deps += [ ":rmad_test" ]
+    deps += [
+      ":install_dbus_activation",
+      ":install_dbus_config",
+      ":install_seccomp_policy",
+      ":install_upstart_config",
+      ":rmad_test",
+    ]
   }
 }
 
@@ -147,7 +153,33 @@ static_library("librmad") {
 executable("rmad") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "sbin"
   deps = [ ":librmad" ]
+}
+
+# Install upstart configs and scripts.
+install_config("install_upstart_config") {
+  sources = [ "init/*.conf" ]
+  install_path = "/etc/init"
+}
+
+# Install D-Bus configuration file.
+install_config("install_dbus_config") {
+  sources = [ "dbus/org.chromium.Rmad.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+# Install D-Bus service activation configuration.
+install_config("install_dbus_activation") {
+  sources = [ "dbus/org.chromium.Rmad.service" ]
+  install_path = "/usr/share/dbus-1/system-services"
+}
+
+# Install seccomp policy file.
+install_config("install_seccomp_policy") {
+  sources = [ "seccomp/rmad-seccomp-" + getenv("ARCH") + ".policy" ]
+  install_path = "/usr/share/policy"
+  outputs = [ "rmad-seccomp.policy" ]
 }
 
 if (use.test) {
@@ -213,6 +245,7 @@ if (use.test) {
       ":target_defaults",
       ":rmad_test_config",
     ]
+    run_test = true
     deps = [
       ":librmad",
       "//common-mk/testrunner",
