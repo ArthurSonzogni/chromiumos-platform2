@@ -128,8 +128,9 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
 
   // Only if |tunnel_group| is not set, we can use the NewL2TPIPsecDriver.
   std::string tunnel_group;
-  if (!storage->GetString(entry_name, kL2TPIPsecTunnelGroupProperty,
-                          &tunnel_group)) {
+  *use_new_l2tp_driver = true;
+  if (storage->GetString(entry_name, kL2TPIPsecTunnelGroupProperty,
+                         &tunnel_group)) {
     *use_new_l2tp_driver = tunnel_group.empty();
   }
 
@@ -153,7 +154,7 @@ ServiceRefPtr VPNProvider::GetService(const KeyValueStore& args, Error* error) {
   std::string type;
   std::string name;
   std::string host;
-  bool use_new_l2tp_driver;
+  bool use_new_l2tp_driver = false;
 
   if (!GetServiceParametersFromArgs(args, &type, &name, &host,
                                     &use_new_l2tp_driver, error)) {
@@ -179,7 +180,7 @@ ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore& args,
   std::string type;
   std::string name;
   std::string host;
-  bool use_new_l2tp_driver;
+  bool use_new_l2tp_driver = false;
 
   if (!GetServiceParametersFromArgs(args, &type, &name, &host,
                                     &use_new_l2tp_driver, error)) {
@@ -211,7 +212,7 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr& profile) {
     std::string type;
     std::string name;
     std::string host;
-    bool use_new_l2tp_driver;
+    bool use_new_l2tp_driver = false;
     if (!GetServiceParametersFromStorage(storage, group, &type, &name, &host,
                                          &use_new_l2tp_driver, nullptr)) {
       continue;
@@ -336,7 +337,7 @@ ServiceRefPtr VPNProvider::CreateTemporaryService(const KeyValueStore& args,
   std::string type;
   std::string name;
   std::string host;
-  bool use_new_l2tp_driver;
+  bool use_new_l2tp_driver = false;
 
   if (!GetServiceParametersFromArgs(args, &type, &name, &host,
                                     &use_new_l2tp_driver, error)) {
@@ -357,7 +358,7 @@ ServiceRefPtr VPNProvider::CreateTemporaryServiceFromProfile(
   std::string type;
   std::string name;
   std::string host;
-  bool use_new_l2tp_driver;
+  bool use_new_l2tp_driver = false;
   if (!GetServiceParametersFromStorage(profile->GetConstStorage(), entry_name,
                                        &type, &name, &host,
                                        &use_new_l2tp_driver, error)) {
