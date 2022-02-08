@@ -786,10 +786,9 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
       PLOG(ERROR) << "Failed to delete " << suspended_state_path.value();
   }
 
-  // Use Bitwise-OR to make sure both ThawUserspace and UndoPrepareForSuspend
-  // are executed.
-  if (!suspend_freezer_->ThawUserspace() |
-      !suspend_configurator_->UndoPrepareForSuspend())
+  bool thaw_userspace_succ = suspend_freezer_->ThawUserspace();
+  bool undo_prep_suspend_succ = suspend_configurator_->UndoPrepareForSuspend();
+  if (!(thaw_userspace_succ && undo_prep_suspend_succ))
     return policy::Suspender::Delegate::SuspendResult::FAILURE;
 
   // These exit codes are defined in powerd/powerd_suspend.
