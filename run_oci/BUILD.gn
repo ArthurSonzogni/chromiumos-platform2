@@ -51,6 +51,7 @@ executable("run_oci") {
     ":run_oci_config",
     ":target_defaults",
   ]
+  install_path = "bin"
   configs -= [ "//common-mk:no_exceptions" ]
 }
 
@@ -70,6 +71,7 @@ if (use.test) {
       ":test_config",
     ]
     configs -= [ "//common-mk:no_exceptions" ]
+    run_test = true
     deps = [ "//common-mk/testrunner" ]
   }
 
@@ -85,6 +87,7 @@ if (use.test) {
       ":test_config",
     ]
     configs -= [ "//common-mk:no_exceptions" ]
+    run_test = true
     deps = [ "//common-mk/testrunner" ]
   }
 }
