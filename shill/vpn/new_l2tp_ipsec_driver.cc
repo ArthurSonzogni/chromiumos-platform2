@@ -135,7 +135,7 @@ std::unique_ptr<L2TPConnection::Config> MakeL2TPConfig(
   config->length_bit = GetBool(args, kL2TPIPsecLengthBitProperty, true);
 
   // Fields for pppd.
-  config->lcp_echo = GetBool(args, kL2TPIPsecLcpEchoDisabledProperty, true);
+  config->lcp_echo = !GetBool(args, kL2TPIPsecLcpEchoDisabledProperty, false);
   config->user = args.Lookup<std::string>(kL2TPIPsecUserProperty, "");
   config->password = args.Lookup<std::string>(kL2TPIPsecPasswordProperty, "");
   config->use_login_password =
