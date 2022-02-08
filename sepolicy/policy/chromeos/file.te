@@ -525,6 +525,7 @@ type sysfs_class_devcoredump, sysfs_type;
 type sysfs_net, sysfs_type;
 type sysfs_tpm, sysfs_type;
 type sysfs_dm, sysfs_type;
+type sysfs_efi_vars, sysfs_type;
 
 type debugfs_gpu, debugfs_type;
 
