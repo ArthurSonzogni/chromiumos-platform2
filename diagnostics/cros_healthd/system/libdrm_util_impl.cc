@@ -51,7 +51,10 @@ bool LibdrmUtilImpl::Initialize() {
     if (!connector || connector->connection == DRM_MODE_DISCONNECTED)
       continue;
 
-    if (connector->connector_type == DRM_MODE_CONNECTOR_eDP) {
+    if (connector->connector_type == DRM_MODE_CONNECTOR_eDP ||
+        connector->connector_type == DRM_MODE_CONNECTOR_VIRTUAL ||
+        connector->connector_type == DRM_MODE_CONNECTOR_LVDS ||
+        connector->connector_type == DRM_MODE_CONNECTOR_DSI) {
       edp_connector_id = resource->connectors[i];
     } else {
       dp_connector_ids.push_back(resource->connectors[i]);
