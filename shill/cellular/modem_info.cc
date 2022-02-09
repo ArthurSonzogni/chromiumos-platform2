@@ -103,6 +103,7 @@ void ModemInfo::Connect() {
 
 void ModemInfo::Disconnect() {
   modems_.clear();
+  weak_ptr_factory_.InvalidateWeakPtrs();
   service_connected_ = false;
 }
 

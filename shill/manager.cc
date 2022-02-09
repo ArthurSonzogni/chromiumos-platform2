@@ -428,7 +428,7 @@ void Manager::Stop() {
     provider_mapping.second->Stop();
   }
 #if !defined(DISABLE_CELLULAR)
-  modem_info_->Stop();
+  modem_info_.reset();
 #endif  // DISABLE_CELLULAR
   device_info_.Stop();
   device_status_check_task_.Cancel();

@@ -35,11 +35,7 @@ class ModemInfo {
   virtual ~ModemInfo();
 
   // Starts watching for and handling the DBus modem manager service.
-  virtual void Start();
-
-  // Stops watching for the DBus modem manager service and destroys any
-  // associated modems.
-  virtual void Stop();
+  void Start();
 
   // Called when a Cellular Device is created.
   virtual void OnDeviceInfoAvailable(const std::string& link_name);
@@ -65,6 +61,10 @@ class ModemInfo {
   FRIEND_TEST(ModemInfoTest, AddRemoveInterfaces);
   FRIEND_TEST(ModemInfoTest, Connect);
   FRIEND_TEST(ModemInfoTest, StartStop);
+
+  // Stops watching for the DBus modem manager service and destroys any
+  // associated modems.
+  void Stop();
 
   void Connect();
   void Disconnect();

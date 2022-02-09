@@ -28,8 +28,6 @@ class MockModemInfo : public ModemInfo {
     return mock_pending_activation_store_;
   }
 
-  MOCK_METHOD(void, Start, (), (override));
-  MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(void, OnDeviceInfoAvailable, (const std::string&), (override));
 
  private:
