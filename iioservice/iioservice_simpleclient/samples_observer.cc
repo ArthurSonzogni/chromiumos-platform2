@@ -65,13 +65,17 @@ void SamplesObserver::OnSampleUpdated(
   if (timestamp_index_.has_value()) {
     auto it = sample.find(timestamp_index_.value());
     if (it != sample.end()) {
-      base::TimeDelta latency =
-          base::TimeTicks::Now() -
-          (base::TimeTicks() + base::TimeDelta::FromNanoseconds(it->second));
-      LOGF(INFO) << "Latency: " << latency;
-
-      total_latency_ += latency;
-      latencies_.push_back(latency);
+      struct timespec ts = {};
+      if (clock_gettime(CLOCK_BOOTTIME, &ts) < 0) {
+        PLOG(ERROR) << "clock_gettime(CLOCK_BOOTTIME) failed";
+      } else {
+        auto latency = base::TimeDelta::FromNanoseconds(
+            static_cast<int64_t>(ts.tv_sec) * 1000 * 1000 * 1000 + ts.tv_nsec -
+            it->second);
+        LOGF(INFO) << "Latency: " << latency;
+        total_latency_ += latency;
+        latencies_.push_back(latency);
+      }
     }
   }
 
