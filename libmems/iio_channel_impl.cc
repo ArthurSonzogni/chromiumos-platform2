@@ -8,6 +8,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_util.h>
 
 #include "libmems/common_types.h"
 #include "libmems/iio_channel_impl.h"
@@ -81,7 +82,9 @@ base::Optional<std::string> IioChannelImpl::ReadStringAttribute(
                  << name << " failed: " << len;
     return base::nullopt;
   }
-  return std::string(data, len);
+  return std::string(base::TrimString(std::string(data, len),
+                                      base::StringPiece("\0\n", 2),
+                                      base::TRIM_TRAILING));
 }
 
 base::Optional<int64_t> IioChannelImpl::ReadNumberAttribute(

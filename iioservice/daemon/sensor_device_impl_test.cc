@@ -27,12 +27,10 @@ namespace iioservice {
 namespace {
 
 constexpr char kDeviceAttrName[] = "FakeDeviceAttr";
-constexpr char kDeviceAttrValue[] = "FakeDeviceAttrValue\0\n\0";
-constexpr char kParsedDeviceAttrValue[] = "FakeDeviceAttrValue";
+constexpr char kDeviceAttrValue[] = "FakeDeviceAttrValue";
 
 constexpr char kChnAttrName[] = "FakeChnAttr";
-constexpr char kChnAttrValue[] = "FakeChnValue\n\0\n";
-constexpr char kParsedChnAttrValue[] = "FakeChnValue";
+constexpr char kChnAttrValue[] = "FakeChnValue";
 
 constexpr char kDummyChnAttrName1[] = "DummyChnAttr1";
 constexpr char kDummyChnAttrName2[] = "DummyChnAttr2";
@@ -170,7 +168,7 @@ TEST_F(SensorDeviceImplTest, GetAttributes) {
             EXPECT_FALSE(values.front().has_value());
             EXPECT_FALSE(values.back().has_value());
             EXPECT_TRUE(values[1].has_value());
-            EXPECT_EQ(values[1].value().compare(kParsedDeviceAttrValue), 0);
+            EXPECT_EQ(values[1].value().compare(kDeviceAttrValue), 0);
             EXPECT_TRUE(values[2].has_value());
             EXPECT_EQ(values[2].value().compare(fakes::kAccelDeviceName), 0);
             EXPECT_TRUE(values[3].has_value());
@@ -291,7 +289,7 @@ TEST_F(SensorDeviceImplTest, GetChannelsAttributes) {
             for (int i = 0; i < values.size(); ++i) {
               if (i % 2 == 0) {
                 EXPECT_TRUE(values[i].has_value());
-                EXPECT_EQ(values[i].value().compare(kParsedChnAttrValue), 0);
+                EXPECT_EQ(values[i].value().compare(kChnAttrValue), 0);
               }
             }
             closure.Run();
