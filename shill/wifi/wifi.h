@@ -353,6 +353,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, Stop);          // weak_ptr_factory_while_started_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
+  // interworking_select_enabled_ and need_interworking_select_
+  FRIEND_TEST(WiFiPropertyTest, PasspointInterworkingProperty);
   FRIEND_TEST(WiFiTimerTest, FastRescan);          // kFastScanIntervalSeconds
   FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod
   // kPostWakeConnectivityReportDelayMilliseconds
@@ -419,6 +421,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   uint16_t GetScanInterval(Error* /* error */) /*const*/ {
     return scan_interval_seconds_;
   }
+  bool GetInterworkingSelectEnabled(Error* /* error */) {
+    return interworking_select_enabled_;
+  }
 
   SupplicantProcessProxyInterface* supplicant_process_proxy() const;
 
@@ -437,6 +442,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   bool GetRandomMacEnabled(Error* error);
   bool SetRandomMacEnabled(const bool& enabled, Error* error);
+
+  bool SetInterworkingSelectEnabled(const bool& enabled, Error* error);
 
   void AssocStatusChanged(const int32_t new_assoc_status);
   void AuthStatusChanged(const int32_t new_auth_status);
@@ -827,6 +834,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Indicates if the last scan skipped the broadcast probe.
   bool broadcast_probe_was_skipped_;
+
+  // Indicates if Passpoint interworking selection is enabled, i.e. if the
+  // device is allowed to start interworking selection when the conditions are
+  // met.
+  bool interworking_select_enabled_;
 
   // Count of Hotspot 2.0/Passpoint compatible endpoints currently known.
   uint32_t hs20_bss_count_;

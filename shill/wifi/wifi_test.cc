@@ -554,6 +554,29 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
   EXPECT_TRUE(device_->bgscan_method_.empty());
 }
 
+TEST_F(WiFiPropertyTest, PasspointInterworkingProperty) {
+  EXPECT_FALSE(device_->interworking_select_enabled_);
+
+  bool enabled;
+  Error unused_error;
+  EXPECT_TRUE(device_->store().GetBoolProperty(
+      kPasspointInterworkingSelectEnabledProperty, &enabled, &unused_error));
+  EXPECT_FALSE(enabled);
+
+  Error error;
+  device_->mutable_store()->SetAnyProperty(
+      kPasspointInterworkingSelectEnabledProperty, brillo::Any(true), &error);
+  EXPECT_TRUE(error.IsSuccess());
+  // We expect the selection to be enabled and a selection to be requested after
+  // next scan.
+  EXPECT_TRUE(device_->interworking_select_enabled_);
+  EXPECT_TRUE(device_->need_interworking_select_);
+
+  EXPECT_TRUE(device_->store().GetBoolProperty(
+      kPasspointInterworkingSelectEnabledProperty, &enabled, &unused_error));
+  EXPECT_TRUE(enabled);
+}
+
 MATCHER_P(EndpointMatch, endpoint, "") {
   return arg->ssid() == endpoint->ssid() &&
          arg->network_mode() == endpoint->network_mode() &&

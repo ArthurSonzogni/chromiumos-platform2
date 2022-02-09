@@ -172,6 +172,7 @@ WiFi::WiFi(Manager* manager,
       scan_state_(kScanIdle),
       scan_method_(kScanMethodNone),
       broadcast_probe_was_skipped_(false),
+      interworking_select_enabled_(false),
       hs20_bss_count_(0),
       need_interworking_select_(false),
       receive_byte_count_at_connect_(0),
@@ -220,6 +221,11 @@ WiFi::WiFi(Manager* manager,
                             &WiFi::GetScanInterval, &WiFi::SetScanInterval);
   HelpRegisterConstDerivedBool(store, kWakeOnWiFiSupportedProperty,
                                &WiFi::GetWakeOnWiFiSupported);
+
+  HelpRegisterDerivedBool(store, kPasspointInterworkingSelectEnabledProperty,
+                          &WiFi::GetInterworkingSelectEnabled,
+                          &WiFi::SetInterworkingSelectEnabled);
+
   if (wake_on_wifi_) {
     wake_on_wifi_->InitPropertyStore(store);
   }
@@ -964,6 +970,21 @@ bool WiFi::SetRandomMacEnabled(const bool& enabled, Error* error) {
 
 void WiFi::ClearBgscanMethod(Error* /*error*/) {
   bgscan_method_.clear();
+}
+
+bool WiFi::SetInterworkingSelectEnabled(const bool& enabled,
+                                        Error* /* error */) {
+  if (interworking_select_enabled_ == enabled) {
+    // No-op
+    return false;
+  }
+  interworking_select_enabled_ = enabled;
+  if (interworking_select_enabled_) {
+    // Interworking selection has just been enabled, we want to try a selection
+    // after next scan.
+    need_interworking_select_ = true;
+  }
+  return true;
 }
 
 void WiFi::AssocStatusChanged(const int32_t new_assoc_status) {
@@ -2007,8 +2028,8 @@ void WiFi::ScanDoneTask() {
   }
   StartScanTimer();
 
-  if (need_interworking_select_ && hs20_bss_count_ != 0 &&
-      provider_->has_passpoint_credentials()) {
+  if (interworking_select_enabled_ && need_interworking_select_ &&
+      hs20_bss_count_ != 0 && provider_->has_passpoint_credentials()) {
     LOG(INFO) << __func__ << " start interworking selection";
     // Interworking match is started only if a compatible access point is
     // around and there's credentials to match because such selection

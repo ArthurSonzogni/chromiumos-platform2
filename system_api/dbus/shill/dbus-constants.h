@@ -447,6 +447,8 @@ const char kMacAddressRandomizationEnabledProperty[] =
 const char kMacAddressRandomizationSupportedProperty[] =
     "MACAddressRandomizationSupported";
 const char kNetDetectScanPeriodSecondsProperty[] = "NetDetectScanPeriodSeconds";
+const char kPasspointInterworkingSelectEnabledProperty[] =
+    "PasspointInterworkingSelectEnabled";
 const char kWakeOnWiFiSupportedProperty[] = "WakeOnWiFiSupported";
 const char kWakeOnWiFiAllowedProperty[] = "WakeOnWiFiAllowed";
 const char kWakeOnWiFiFeaturesEnabledProperty[] = "WakeOnWiFiFeaturesEnabled";
