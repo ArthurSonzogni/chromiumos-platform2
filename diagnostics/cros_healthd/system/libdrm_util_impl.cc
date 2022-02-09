@@ -14,6 +14,12 @@
 
 namespace diagnostics {
 
+namespace {
+
+constexpr uint32_t INVALID_ENCODER_ID = 0;
+
+}  // namespace
+
 LibdrmUtilImpl::LibdrmUtilImpl() {}
 
 LibdrmUtilImpl::~LibdrmUtilImpl() {}
@@ -145,7 +151,10 @@ void LibdrmUtilImpl::GetDrmCrtc(const uint32_t connector_id,
                                 ScopedDrmModeCrtcPtr* crtc) {
   ScopedDrmModeConnectorPtr connector(
       drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
-  if (!connector)
+  // Sometimes there is no crtc info, for example, when the device hibernate,
+  // the screen is black, there is no need to render, so the encoder id is
+  // invalid as 0.
+  if (!connector || connector->encoder_id == INVALID_ENCODER_ID)
     return;
 
   ScopedDrmModeEncoderPtr encoder(
@@ -173,28 +182,51 @@ void LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
                                            uint32_t* vertical) {
   ScopedDrmModeCrtcPtr crtc;
   GetDrmCrtc(connector_id, &crtc);
-  if (!crtc)
-    return;
-
-  *horizontal = crtc->mode.hdisplay;
-  *vertical = crtc->mode.vdisplay;
+  if (crtc) {
+    *horizontal = crtc->mode.hdisplay;
+    *vertical = crtc->mode.vdisplay;
+  } else {
+    // Fall back to use the preferred mode info in connector.
+    ScopedDrmModeConnectorPtr connector(
+        drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+    if (!connector)
+      return;
+    for (int i = 0; i < connector->count_modes; ++i) {
+      if (connector->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
+        *horizontal = connector->modes[i].hdisplay;
+        *vertical = connector->modes[i].vdisplay;
+      }
+    }
+  }
 }
 
 void LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
                                             double* refresh_rate) {
   ScopedDrmModeCrtcPtr crtc;
   GetDrmCrtc(connector_id, &crtc);
-  if (!crtc)
-    return;
-
-  // |crtc->mode.vrefresh| indicates the refresh rate, however, it stores in
-  // |uint32_t| type which loses the accuracy.
-  //
-  // The following calculation refers to the implementation in |modetest|
-  // command line tool. In Chrome side, they also use the same method to
-  // calculate it.
-  *refresh_rate =
-      crtc->mode.clock * 1000.0 / (crtc->mode.htotal * crtc->mode.vtotal);
+  if (crtc && crtc->mode.htotal && crtc->mode.vtotal) {
+    // |crtc->mode.vrefresh| indicates the refresh rate, however, it stores in
+    // |uint32_t| type which loses the accuracy.
+    //
+    // The following calculation refers to the implementation in |modetest|
+    // command line tool. In Chrome side, they also use the same method to
+    // calculate it.
+    *refresh_rate =
+        crtc->mode.clock * 1000.0 / (crtc->mode.htotal * crtc->mode.vtotal);
+  } else {
+    // Fall back to use the preferred mode info in connector.
+    ScopedDrmModeConnectorPtr connector(
+        drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+    if (!connector)
+      return;
+    for (int i = 0; i < connector->count_modes; ++i) {
+      if (connector->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
+        *refresh_rate =
+            connector->modes[i].clock * 1000.0 /
+            (connector->modes[i].htotal * connector->modes[i].vtotal);
+      }
+    }
+  }
 }
 
 }  // namespace diagnostics
