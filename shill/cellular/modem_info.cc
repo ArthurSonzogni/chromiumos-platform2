@@ -45,7 +45,7 @@ ModemInfo::~ModemInfo() {
 }
 
 void ModemInfo::Start() {
-  SLOG(this, 1) << "ModemInfo::Start";
+  SLOG(this, 1) << __func__;
 
   pending_activation_store_.reset(new PendingActivationStore());
   pending_activation_store_->InitStorage(manager_->storage_path());
@@ -55,7 +55,7 @@ void ModemInfo::Start() {
 }
 
 void ModemInfo::Stop() {
-  SLOG(this, 1) << "ModemInfo::Stop";
+  SLOG(this, 1) << __func__;
   pending_activation_store_.reset();
   proxy_.reset();
   Disconnect();
