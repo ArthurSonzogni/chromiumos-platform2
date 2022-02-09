@@ -11,6 +11,7 @@
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/migration_type.h"
 #include "cryptohome/tpm.h"
@@ -18,10 +19,9 @@
 
 namespace cryptohome {
 
-// List of all the possible operation types. Used to construct the correct
-// histogram while logging to UMA.
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
+// List of all the possible operation types. Used to construct the
+// correct histogram while logging to UMA. These values are persisted to logs.
+// Entries should not be renumbered and numeric values should never be reused.
 enum LECredOperationType {
   LE_CRED_OP_RESET_TREE = 0,
   LE_CRED_OP_INSERT = 1,
@@ -419,22 +419,6 @@ enum class AttestationOpsStatus {
   kFailure = 1,
   kInvalidPcr0Value = 2,
   kMaxValue
-};
-
-// List of all the possible auth block types. Used to construct the correct
-// histogram while logging to UMA.
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class AuthBlockType {
-  kPinWeaver = 0,
-  kChallengeCredential = 1,
-  kDoubleWrappedCompat = 2,
-  kTpmBoundToPcr = 3,
-  kTpmNotBoundToPcr = 4,
-  kLibScryptCompat = 5,
-  kCryptohomeRecovery = 6,
-  kTpmEcc = 7,
-  kMaxValue,
 };
 
 // Just to make sure I count correctly.

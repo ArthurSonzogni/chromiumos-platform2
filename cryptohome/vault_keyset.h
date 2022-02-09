@@ -199,13 +199,6 @@ class VaultKeyset {
   // This populates an AuthBlockState proto allocated by the caller.
   bool GetAuthBlockState(AuthBlockState* auth_state) const WARN_UNUSED_RESULT;
 
- private:
-  // Converts the class to a protobuf for serialization to disk.
-  SerializedVaultKeyset ToSerialized() const;
-
-  // Clears all the fields set from the SerializedVaultKeyset.
-  void ResetVaultKeyset();
-
   // This populates each sub type of AuthBlockState into the caller allocated
   // object.
   bool GetTpmBoundToPcrState(AuthBlockState* auth_state) const;
@@ -229,6 +222,13 @@ class VaultKeyset {
   void SetChallengeCredentialState(
       const ChallengeCredentialAuthBlockState& auth_state);
   void SetTpmEccState(const TpmEccAuthBlockState& auth_state);
+
+ private:
+  // Converts the class to a protobuf for serialization to disk.
+  SerializedVaultKeyset ToSerialized() const;
+
+  // Clears all the fields set from the SerializedVaultKeyset.
+  void ResetVaultKeyset();
 
   // This function serves as a factory method to return the authblock used in
   // authentication creation.

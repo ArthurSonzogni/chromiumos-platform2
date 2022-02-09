@@ -333,6 +333,7 @@ if (use.test) {
       "auth_blocks/async_challenge_credential_auth_block_test.cc",
       "auth_blocks/auth_block_state_unittest.cc",
       "auth_blocks/auth_block_unittest.cc",
+      "auth_blocks/auth_block_utility_impl_unittest.cc",
       "auth_blocks/sync_to_async_auth_block_adapter_test.cc",
       "auth_factor/auth_factor_label_unittest.cc",
       "auth_factor/auth_factor_manager_unittest.cc",
