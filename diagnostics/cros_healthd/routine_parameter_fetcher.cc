@@ -60,12 +60,13 @@ void RoutineParameterFetcher::FetchUint64Parameter(
   std::string parameter_str;
   if (cros_config_->GetString(path, parameter_name, &parameter_str)) {
     uint64_t parameter;
-    if (base::StringToUint64(parameter_str, &parameter))
+    if (base::StringToUint64(parameter_str, &parameter)) {
       *parameter_out = parameter;
-  } else {
-    LOG(ERROR) << base::StringPrintf(
-        "Failed to convert cros_config value: %s to uint64_t.",
-        parameter_str.c_str());
+    } else {
+      LOG(ERROR) << base::StringPrintf(
+          "Failed to convert cros_config value: %s to uint64_t.",
+          parameter_str.c_str());
+    }
   }
 }
 
@@ -81,12 +82,13 @@ void RoutineParameterFetcher::FetchUint32Parameter(
   std::string parameter_str;
   if (cros_config_->GetString(path, parameter_name, &parameter_str)) {
     uint32_t parameter;
-    if (base::StringToUint(parameter_str, &parameter))
+    if (base::StringToUint(parameter_str, &parameter)) {
       *parameter_out = parameter;
-  } else {
-    LOG(ERROR) << base::StringPrintf(
-        "Failed to convert cros_config value: %s to uint32_t.",
-        parameter_str.c_str());
+    } else {
+      LOG(ERROR) << base::StringPrintf(
+          "Failed to convert cros_config value: %s to uint32_t.",
+          parameter_str.c_str());
+    }
   }
 }
 
@@ -102,12 +104,13 @@ void RoutineParameterFetcher::FetchUint8Parameter(
   std::string parameter_str;
   if (cros_config_->GetString(path, parameter_name, &parameter_str)) {
     uint32_t parameter;
-    if (base::StringToUint(parameter_str, &parameter))
+    if (base::StringToUint(parameter_str, &parameter)) {
       *parameter_out = static_cast<uint8_t>(parameter);
-  } else {
-    LOG(ERROR) << base::StringPrintf(
-        "Failed to convert cros_config value: %s to uint32_t.",
-        parameter_str.c_str());
+    } else {
+      LOG(ERROR) << base::StringPrintf(
+          "Failed to convert cros_config value: %s to uint32_t.",
+          parameter_str.c_str());
+    }
   }
 }
 
