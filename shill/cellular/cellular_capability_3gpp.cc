@@ -1141,6 +1141,12 @@ void CellularCapability3gpp::OnResetReply(const ResultCallback& callback,
 
 void CellularCapability3gpp::Scan(Error* error,
                                   const ResultStringmapsCallback& callback) {
+  if (!modem_3gpp_proxy_) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
+                          "No 3gpp proxy");
+    return;
+  }
+
   KeyValueStoresCallback cb =
       base::Bind(&CellularCapability3gpp::OnScanReply,
                  weak_ptr_factory_.GetWeakPtr(), callback);
