@@ -99,6 +99,7 @@ int RunChildMain(int argc, char* argv[]) {
   }
   options.allow_dev_sending = flags.allow_dev_sending;
   options.test_mode = flags.test_mode;
+  options.upload_old_reports = flags.upload_old_reports;
   options.force_upload_on_test_images = flags.force_upload_on_test_images;
   util::Sender sender(std::move(metrics_lib), std::move(clock), options);
 
