@@ -1,7 +1,7 @@
-diff --git a/usr/local/google/home/shik/pi-arc-dev/system/media/camera/src/camera_metadata.c b/camera_metadata.c
-index e99abc4f4d9..6bfd02da29c 100644
---- a/usr/local/google/home/shik/pi-arc-dev/system/media/camera/src/camera_metadata.c
-+++ b/camera_metadata.c
+diff --git a/camera/android/libcamera_metadata/src/camera_metadata.c b/camera/android/libcamera_metadata/src/camera_metadata.c
+index f9d524b455..93588824c9 100644
+--- a/camera/android/libcamera_metadata/src/camera_metadata.c
++++ b/camera/android/libcamera_metadata/src/camera_metadata.c
 @@ -16,17 +16,23 @@
  
  #define LOG_TAG "camera_metadata"
@@ -37,7 +37,7 @@ index e99abc4f4d9..6bfd02da29c 100644
          return NULL;
      }
  
-@@ -371,7 +377,7 @@ static int validate_and_calculate_camera_metadata_entry_data_size(size_t *data_s
+@@ -379,7 +385,7 @@ static int validate_and_calculate_camera_metadata_entry_data_size(size_t *data_s
      // Check for overflow
      if (data_count != 0 &&
              camera_metadata_type_size[type] > (SIZE_MAX - DATA_ALIGNMENT + 1) / data_count) {
@@ -46,10 +46,10 @@ index e99abc4f4d9..6bfd02da29c 100644
          return ERROR;
      }
  
-@@ -460,7 +466,7 @@ int validate_camera_metadata_structure(const camera_metadata_t *metadata,
+@@ -483,7 +489,7 @@ int validate_camera_metadata_structure(const camera_metadata_t *metadata,
          ALOGE("%s: Data count (%" PRIu32 ") should be <= data capacity "
                "(%" PRIu32 ")",
-               __FUNCTION__, metadata->data_count, metadata->data_capacity);
+               __FUNCTION__, header->data_count, header->data_capacity);
 -        android_errorWriteLog(SN_EVENT_LOG_ID, "30591838");
 +        // android_errorWriteLog(SN_EVENT_LOG_ID, "30591838");
          return CAMERA_METADATA_VALIDATION_ERROR;
