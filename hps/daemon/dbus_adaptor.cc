@@ -51,13 +51,32 @@ void DBusAdaptor::RegisterAsync(
 
 void DBusAdaptor::PollTask() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  for (uint8_t feature = 0; feature < kFeatures; ++feature) {
-    if (enabled_features_.test(feature)) {
-      FeatureResult result = this->hps_->Result(feature);
-      DCHECK(feature_filters_[feature]);
-      const auto res = feature_filters_[feature]->ProcessResult(
-          result.inference_result, result.valid);
-      VLOG(2) << "Poll: Feature: " << static_cast<int>(feature)
+
+  // If the HPS module is not running even though we haven't shut it down, the
+  // system was probably suspended and resumed, resetting HPS as a side effect.
+  // Reboot the module and restore the enabled features so we can continue
+  // polling.
+  //
+  // Note that it's possible for a system suspend and resume to happen at any
+  // point, including while we're inside the loop below. That means we'll either
+  // report unknown feature results or in the worst case abort with a fault if
+  // HPS is in an unexpected state. This means DBUS clients need to handle hpsd
+  // restarting at arbitrary times.
+  if (!hps_->IsRunning()) {
+    LOG(INFO) << "HPS reset detected";
+    ShutDown();
+    BootIfNeeded();
+  }
+
+  for (uint8_t i = 0; i < kFeatures; ++i) {
+    const auto& feature = features_[i];
+    if (feature.enabled) {
+      FeatureResult result = this->hps_->Result(i);
+      DCHECK(feature.filter);
+      DCHECK(feature.committed);
+      const auto res =
+          feature.filter->ProcessResult(result.inference_result, result.valid);
+      VLOG(2) << "Poll: Feature: " << static_cast<int>(i)
               << " Valid: " << result.valid
               << " Result: " << static_cast<int>(result.inference_result)
               << " Filter: " << static_cast<int>(res);
@@ -72,70 +91,108 @@ void DBusAdaptor::BootIfNeeded() {
   if (!hps_->Boot()) {
     LOG(FATAL) << "Failed to boot";
   }
+  if (!CommitUpdates()) {
+    LOG(FATAL) << "Failed to restore features";
+  }
   hps_booted_ = true;
 }
 
 void DBusAdaptor::ShutDown() {
-  DCHECK(!poll_timer_.IsRunning());
+  poll_timer_.Stop();
   if (!hps_->ShutDown()) {
     LOG(FATAL) << "Failed to shutdown";
   }
   hps_booted_ = false;
+  for (uint8_t i = 0; i < kFeatures; i++) {
+    features_[i].committed = !features_[i].enabled;
+    features_[i].filter.reset();
+  }
+}
+
+bool DBusAdaptor::CommitUpdates() {
+  bool result = true;
+  for (uint8_t i = 0; i < kFeatures; i++) {
+    auto& feature = features_[i];
+    if (feature.committed)
+      continue;
+
+    if (feature.enabled && !feature.filter) {
+      feature.filter = CreateFilter(feature.config, feature.callback);
+    }
+
+    if (feature.enabled && !hps_->Enable(i)) {
+      feature.enabled = false;
+      feature.filter.reset();
+      feature.config = {};
+      feature.callback = StatusCallback{};
+      result = false;
+    } else if (!feature.enabled && !hps_->Disable(i)) {
+      feature.enabled = true;
+      result = false;
+    }
+    feature.committed = true;
+  }
+
+  size_t active_features =
+      std::count_if(features_.begin(), features_.end(),
+                    [](const auto& f) { return f.enabled && f.committed; });
+
+  if (!active_features && hps_booted_) {
+    ShutDown();
+  } else if (active_features && !poll_timer_.IsRunning()) {
+    poll_timer_.Start(
+        FROM_HERE, base::TimeDelta::FromMilliseconds(poll_time_ms_),
+        base::BindRepeating(&DBusAdaptor::PollTask, base::Unretained(this)));
+  }
+  return result;
 }
 
 bool DBusAdaptor::EnableFeature(brillo::ErrorPtr* error,
                                 const hps::FeatureConfig& config,
                                 uint8_t feature,
                                 StatusCallback callback) {
+  CHECK_LT(feature, kFeatures);
   BootIfNeeded();
-  if (!this->hps_->Enable(feature)) {
+  features_[feature].filter.reset();
+  features_[feature].config = config;
+  features_[feature].callback = callback;
+  features_[feature].enabled = true;
+  features_[feature].committed = false;
+  if (!CommitUpdates()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kErrorPath, "hpsd: Unable to enable feature");
-    if (enabled_features_.none()) {
-      ShutDown();
-    }
     return false;
-  } else {
-    auto filter = CreateFilter(config, callback);
-    feature_filters_[feature] = std::move(filter);
-    enabled_features_.set(feature);
-
-    if (enabled_features_.any() && !poll_timer_.IsRunning()) {
-      poll_timer_.Start(
-          FROM_HERE, base::TimeDelta::FromMilliseconds(poll_time_ms_),
-          base::BindRepeating(&DBusAdaptor::PollTask, base::Unretained(this)));
-    }
-    return true;
   }
+  return true;
 }
 
 bool DBusAdaptor::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
-  if (!this->hps_->Disable(feature)) {
+  CHECK_LT(feature, kFeatures);
+  features_[feature].filter.reset();
+  features_[feature].config = {};
+  features_[feature].callback = StatusCallback{};
+  features_[feature].enabled = false;
+  features_[feature].committed = false;
+  if (!CommitUpdates()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kErrorPath, "hpsd: Unable to disable feature");
     return false;
-  } else {
-    feature_filters_[feature].reset();
-    enabled_features_.reset(feature);
-    if (enabled_features_.none()) {
-      poll_timer_.Stop();
-      ShutDown();
-    }
-    return true;
   }
+  return true;
 }
 
 bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
                                    HpsResultProto* result,
                                    uint8_t feature) {
-  if (!enabled_features_.test(feature)) {
+  CHECK_LT(feature, kFeatures);
+  if (!features_[feature].enabled) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kErrorPath, "hpsd: Feature not enabled.");
 
     return false;
   }
-  DCHECK(feature_filters_[feature]);
-  result->set_value(feature_filters_[feature]->GetCurrentResult());
+  DCHECK(features_[feature].filter);
+  result->set_value(features_[feature].filter->GetCurrentResult());
   return true;
 }
 

@@ -50,6 +50,7 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
  private:
   void BootIfNeeded();
   void ShutDown();
+  bool CommitUpdates();
   bool EnableFeature(brillo::ErrorPtr* error,
                      const hps::FeatureConfig& config,
                      uint8_t feature,
@@ -59,13 +60,21 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
                         HpsResultProto* result,
                         uint8_t feature);
 
+  struct FeatureState {
+    bool enabled = false;
+    bool committed = true;
+
+    FeatureConfig config;
+    std::unique_ptr<Filter> filter;
+    StatusCallback callback;
+  };
+
   brillo::dbus_utils::DBusObject dbus_object_;
   std::unique_ptr<HPS> hps_;
   bool hps_booted_ = true;
   const uint32_t poll_time_ms_;
   base::RepeatingTimer poll_timer_;
-  std::bitset<kFeatures> enabled_features_;
-  std::array<std::unique_ptr<Filter>, kFeatures> feature_filters_;
+  std::array<FeatureState, kFeatures> features_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 };

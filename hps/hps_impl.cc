@@ -432,7 +432,26 @@ bool HPS_impl::ShutDown() {
   DCHECK(wake_lock_);
   LOG(INFO) << "Shutting down HPS device";
   wake_lock_.reset();
+  feat_enabled_ = 0;
   Sleep(kPowerOffDelay);
+  return true;
+}
+
+bool HPS_impl::IsRunning() {
+  DCHECK(wake_lock_);
+  // Check the application is enabled and running.
+  std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
+  if (!status || !(status.value() & R2::kAppl)) {
+    LOG(ERROR) << "Fault: application not running";
+    return false;
+  }
+
+  // Check for errors.
+  std::optional<uint16_t> errors = this->device_->ReadReg(HpsReg::kError);
+  if (errors.has_value() && errors.value()) {
+    LOG(FATAL) << base::StringPrintf("Fault: cause 0x%04x", errors.value());
+    return false;
+  }
   return true;
 }
 

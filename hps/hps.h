@@ -37,6 +37,12 @@ class HPS {
   virtual bool ShutDown() = 0;
 
   //
+  // Check if the module is running normally and ready for feature control and
+  // detection.
+  //
+  virtual bool IsRunning() = 0;
+
+  //
   // Enable the selected feature, return false if the
   // request fails e.g if the module is not ready.
   // The feature is represented as a feature index

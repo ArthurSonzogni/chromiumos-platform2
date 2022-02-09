@@ -41,6 +41,7 @@ class HPS_impl : public HPS {
             const base::FilePath& fpga_app_image) override;
   bool Boot() override;
   bool ShutDown() override;
+  bool IsRunning() override;
   bool Enable(uint8_t feature) override;
   bool Disable(uint8_t feature) override;
   FeatureResult Result(int feature) override;
