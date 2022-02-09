@@ -1252,24 +1252,19 @@ bool UserDataAuth::RemoveUserSession(const std::string& username) {
 void UserDataAuth::MountGuest(
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
   AssertOnMountThread();
+  user_data_auth::MountReply reply;
 
   if (sessions_.size() != 0) {
-    LOG(WARNING) << "Guest mount requested with other sessions active.";
-  }
-  // Rather than make it safe to check the size, then clean up, just always
-  // clean up.
-  bool ok = RemoveAllMounts();
-  user_data_auth::MountReply reply;
-  // Provide an authoritative filesystem-sanitized username.
-  reply.set_sanitized_username(
-      SanitizeUserNameWithSalt(guest_user_, system_salt_));
-  if (!ok) {
-    LOG(ERROR) << "Could not unmount cryptohomes for Guest use";
+    LOG(ERROR) << "Guest mount requested with other sessions active.";
     reply.set_error(user_data_auth::CryptohomeErrorCode::
                         CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
     std::move(on_done).Run(reply);
     return;
   }
+
+  // Provide an authoritative filesystem-sanitized username.
+  reply.set_sanitized_username(
+      SanitizeUserNameWithSalt(guest_user_, system_salt_));
   ReportTimerStart(kMountGuestExTimer);
 
   // Create a ref-counted guest mount for async use and then throw it away.
@@ -1285,9 +1280,11 @@ void UserDataAuth::MountGuest(
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
     // We only report the guest mount time for successful cases.
     ReportTimerStop(kMountGuestExTimer);
+  } else {
+    // Remove the session if the mount failed.
+    sessions_.erase(guest_user_);
   }
 
-  // TODO(b/137073669): Cleanup guest_mount if mount failed.
   std::move(on_done).Run(reply);
 }
 
