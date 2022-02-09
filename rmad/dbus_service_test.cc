@@ -145,6 +145,21 @@ class DBusServiceTest : public testing::Test {
   }
 
   template <typename ReplyProtobufType>
+  void ExecuteMethod(const std::string& method_name,
+                     const std::string request,
+                     ReplyProtobufType* reply) {
+    std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(method_name);
+    dbus::MessageWriter writer(call.get());
+    writer.AppendString(request);
+    auto response = brillo::dbus_utils::testing::CallMethod(
+        *dbus_service_->dbus_object_, call.get());
+    if (response.get()) {
+      dbus::MessageReader reader(response.get());
+      EXPECT_TRUE(reader.PopArrayOfBytesAsProto(reply));
+    }
+  }
+
+  template <typename ReplyProtobufType>
   void ExecuteMethod(const std::string& method_name, ReplyProtobufType* reply) {
     std::unique_ptr<dbus::MethodCall> call = CreateMethodCall(method_name);
     auto response = brillo::dbus_utils::testing::CallMethod(
@@ -367,6 +382,40 @@ TEST_F(DBusServiceTest, AbortRma) {
   AbortRmaReply reply;
   ExecuteMethod(kAbortRmaMethod, &reply);
   EXPECT_EQ(RMAD_ERROR_ABORT_FAILED, reply.error());
+}
+
+TEST_F(DBusServiceTest, GetLog) {
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
+  EXPECT_CALL(mock_rmad_service_, GetLog(_))
+      .WillOnce(Invoke([](RmadInterface::GetLogCallback callback) {
+        GetLogReply reply;
+        reply.set_error(RMAD_ERROR_OK);
+        reply.set_log("RMA log");
+        std::move(callback).Run(reply);
+      }));
+
+  GetLogReply reply;
+  ExecuteMethod(kGetLogMethod, &reply);
+  EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+  EXPECT_EQ("RMA log", reply.log());
+}
+
+TEST_F(DBusServiceTest, SaveLog) {
+  SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
+  EXPECT_CALL(mock_rmad_service_, SaveLog(_, _))
+      .WillOnce(Invoke([](const std::string& diagnostics_log_path,
+                          RmadInterface::SaveLogCallback callback) {
+        SaveLogReply reply;
+        reply.set_error(RMAD_ERROR_OK);
+        reply.set_save_path("/save/path");
+        std::move(callback).Run(reply);
+      }));
+
+  std::string request = "/diagnostics/log/path";
+  SaveLogReply reply;
+  ExecuteMethod(kSaveLogMethod, request, &reply);
+  EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+  EXPECT_EQ("/save/path", reply.save_path());
 }
 
 TEST_F(DBusServiceTest, SignalError) {
