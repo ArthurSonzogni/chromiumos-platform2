@@ -803,10 +803,15 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   info.provisioning_mode = Metrics::kProvisionUnknown;  // TODO(b/203692510)
   info.ssid_hidden = hidden_ssid();
   info.ap_oui = ap_oui;
-  if (current_endpoint_) {
-    info.ap_features =
-        Metrics::ConvertEndPointFeatures(current_endpoint_.get());
+  if ((false)) {
+    if (current_endpoint_) {
+      info.ap_features =
+          Metrics::ConvertEndPointFeatures(current_endpoint_.get());
+    }
   }
+  info.ssid = std::string();
+  info.bssid = std::string();
+  info.ap_oui = 0xFFFFFFFF;
 
   return info;
 }
