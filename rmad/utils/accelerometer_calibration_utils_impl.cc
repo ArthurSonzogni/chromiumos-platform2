@@ -22,9 +22,8 @@ namespace {
 constexpr int kSamples = 100;
 
 constexpr double kGravity = 9.80665;
-// The calibbias data is converted to 1/1024G unit,
-// and the sensor reading unit is m/s^2.
-constexpr double kCalibbiasDataScale = kGravity / 1024.0;
+// The calibbias data unit is G/1024, and the sensor reading unit is m/s^2.
+constexpr double kCalibbias2SensorReading = kGravity / 1024.0;
 // Both thresholds are used in m/s^2 units.
 // The offset is indicating the tolerance in m/s^2 for
 // the digital output of sensors under 0 and 1G.
@@ -35,11 +34,10 @@ constexpr double kVarianceThreshold = 5.0;
 constexpr double kProgressComplete = 1.0;
 constexpr double kProgressFailed = -1.0;
 constexpr double kProgressInit = 0.0;
-constexpr double kProgressSensorReset = 0.15;
-constexpr double kProgressSensorDataReceived = 0.6;
-constexpr double kProgressBiasCalculated = 0.65;
-constexpr double kProgressBiasWritten = 0.85;
-constexpr double kProgressBiasSet = kProgressComplete;
+constexpr double kProgressGetOriginalCalibbias = 0.2;
+constexpr double kProgressSensorDataReceived = 0.7;
+constexpr double kProgressBiasCalculated = 0.8;
+constexpr double kProgressBiasWritten = kProgressComplete;
 
 constexpr char kCalibbiasPrefix[] = "in_";
 constexpr char kCalibbiasPostfix[] = "_calibbias";
@@ -68,17 +66,17 @@ AccelerometerCalibrationUtilsImpl::AccelerometerCalibrationUtilsImpl(
 bool AccelerometerCalibrationUtilsImpl::Calibrate() {
   std::vector<double> avg_data;
   std::vector<double> variance_data;
-  std::vector<int> scaled_data;
-  std::map<std::string, int> scaled_calibbias;
+  std::vector<double> original_calibbias;
+  std::map<std::string, int> calibbias;
   SetProgress(kProgressInit);
 
-  // Before starting the calibration, we clear the sensor state by writing 0 to
-  // sysfs.
-  if (!iio_ec_sensor_utils_->SetSysValues(kAccelerometerCalibbias, {0, 0, 0})) {
+  // Before the calibration, we get original calibbias by reading sysfs.
+  if (!iio_ec_sensor_utils_->GetSysValues(kAccelerometerCalibbias,
+                                          &original_calibbias)) {
     SetProgress(kProgressFailed);
     return false;
   }
-  SetProgress(kProgressSensorReset);
+  SetProgress(kProgressGetOriginalCalibbias);
 
   // Due to the uncertainty of the sensor value, we use the average value to
   // calibrate it.
@@ -105,9 +103,9 @@ bool AccelerometerCalibrationUtilsImpl::Calibrate() {
   }
 
   for (int i = 0; i < variance_data.size(); i++) {
-    double var = variance_data[i];
-    if (var > kVarianceThreshold) {
-      LOG(ERROR) << location_ << ":" << name_ << ": Data variance=" << var
+    if (variance_data[i] > kVarianceThreshold) {
+      LOG(ERROR) << location_ << ":" << name_
+                 << ": Data variance=" << variance_data[i]
                  << " too high in channel " << kAccelerometerChannels[i]
                  << ". Expected to be less than " << kVarianceThreshold;
       SetProgress(kProgressFailed);
@@ -115,10 +113,9 @@ bool AccelerometerCalibrationUtilsImpl::Calibrate() {
     }
   }
 
-  // For each axis, we calculate the difference between the ideal values.
-  scaled_data.resize(kAccelerometerIdealValues.size());
   for (int i = 0; i < avg_data.size(); i++) {
-    double offset = kAccelerometerIdealValues[i] - avg_data[i];
+    double offset = kAccelerometerIdealValues[i] - avg_data[i] +
+                    original_calibbias[i] * kCalibbias2SensorReading;
     if (std::fabs(offset) > kOffsetThreshold) {
       LOG(ERROR) << location_ << ":" << name_
                  << ": Data is out of range, the accelerometer may be damaged "
@@ -126,27 +123,19 @@ bool AccelerometerCalibrationUtilsImpl::Calibrate() {
       SetProgress(kProgressFailed);
       return false;
     }
-    scaled_data[i] = offset / kCalibbiasDataScale;
     std::string entry = kCalibbiasPrefix + kAccelerometerChannels[i] + "_" +
                         location_ + kCalibbiasPostfix;
-    scaled_calibbias[entry] = scaled_data[i];
+    calibbias[entry] = round(offset / kCalibbias2SensorReading);
   }
   SetProgress(kProgressBiasCalculated);
 
   // We first write the calibbias data to vpd, and then update the sensor via
   // sysfs accordingly.
-  if (!vpd_utils_impl_thread_safe_->SetCalibbias(scaled_calibbias)) {
+  if (!vpd_utils_impl_thread_safe_->SetCalibbias(calibbias)) {
     SetProgress(kProgressFailed);
     return false;
   }
   SetProgress(kProgressBiasWritten);
-
-  if (!iio_ec_sensor_utils_->SetSysValues(kAccelerometerCalibbias,
-                                          scaled_data)) {
-    SetProgress(kProgressFailed);
-    return false;
-  }
-  SetProgress(kProgressBiasSet);
 
   return true;
 }

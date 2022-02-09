@@ -120,26 +120,28 @@ bool IioEcSensorUtilsImpl::GetAvgData(const std::vector<std::string>& channels,
   return true;
 }
 
-bool IioEcSensorUtilsImpl::SetSysValues(const std::vector<std::string>& entries,
-                                        const std::vector<int>& values) {
-  CHECK(entries.size() == values.size());
-
+bool IioEcSensorUtilsImpl::GetSysValues(const std::vector<std::string>& entries,
+                                        std::vector<double>* values) {
   if (!initialized_) {
     LOG(ERROR) << location_ << ":" << name_ << " is not initialized.";
     return false;
   }
 
+  std::vector<double> buffer_values;
   for (int i = 0; i < entries.size(); i++) {
     auto entry = sysfs_path_.Append(entries[i]);
-    auto bytes = base::NumberToString(values[i]);
-    int byte_size = bytes.size();
-    if (!base::PathExists(entry) ||
-        byte_size != base::WriteFile(entry, bytes.c_str(), byte_size)) {
-      LOG(ERROR) << "Failed to write sys value at " << entry << " to " << bytes;
+    double val = 0.0;
+    if (std::string str_val;
+        !base::PathExists(entry) || !base::ReadFileToString(entry, &str_val) ||
+        !base::StringToDouble(
+            base::TrimWhitespaceASCII(str_val, base::TRIM_ALL), &val)) {
+      LOG(ERROR) << "Failed to read sys value at " << entry;
       return false;
     }
+    buffer_values.push_back(val);
   }
 
+  *values = buffer_values;
   return true;
 }
 

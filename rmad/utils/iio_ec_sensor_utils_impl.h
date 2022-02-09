@@ -23,8 +23,8 @@ class IioEcSensorUtilsImpl : public IioEcSensorUtils {
                   int samples,
                   std::vector<double>* avg_data,
                   std::vector<double>* variance = nullptr) override;
-  bool SetSysValues(const std::vector<std::string>& entries,
-                    const std::vector<int>& values) override;
+  bool GetSysValues(const std::vector<std::string>& entries,
+                    std::vector<double>* values) override;
 
  private:
   // To find out a specific sensor and how to communicate with it, we will check

@@ -109,3 +109,5 @@ rmdir: 1
 sched_yield: 1
 readlink: 1
 clock_nanosleep: 1
+eventfd2: 1
+memfd_create: 1

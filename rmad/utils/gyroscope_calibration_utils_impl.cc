@@ -23,18 +23,16 @@ namespace {
 constexpr int kSamples = 100;
 
 constexpr double kDegree2Radian = M_PI / 180.0;
-// The calibbias data is converted to 1/1024dps unit,
-// and the sensor reading is rad/s.
-constexpr double kCalibbiasDataScale = kDegree2Radian / 1024;
+// The calibbias data unit is 1/1024 dps, and the sensor reading is rad/s.
+constexpr double kCalibbias2SensorReading = kDegree2Radian / 1024;
 
 constexpr double kProgressComplete = 1.0;
 constexpr double kProgressFailed = -1.0;
 constexpr double kProgressInit = 0.0;
-constexpr double kProgressSensorReset = 0.15;
-constexpr double kProgressSensorDataReceived = 0.6;
-constexpr double kProgressBiasCalculated = 0.65;
-constexpr double kProgressBiasWritten = 0.85;
-constexpr double kProgressBiasSet = kProgressComplete;
+constexpr double kProgressGetOriginalCalibbias = 0.2;
+constexpr double kProgressSensorDataReceived = 0.7;
+constexpr double kProgressBiasCalculated = 0.8;
+constexpr double kProgressBiasWritten = kProgressComplete;
 
 constexpr char kCalibbiasPrefix[] = "in_";
 constexpr char kCalibbiasPostfix[] = "_calibbias";
@@ -63,17 +61,17 @@ GyroscopeCalibrationUtilsImpl::GyroscopeCalibrationUtilsImpl(
 
 bool GyroscopeCalibrationUtilsImpl::Calibrate() {
   std::vector<double> avg_data;
-  std::vector<int> scaled_data;
-  std::map<std::string, int> scaled_calibbias;
+  std::vector<double> original_calibbias;
+  std::map<std::string, int> calibbias;
   SetProgress(kProgressInit);
 
-  // Before starting the calibration, we clear the sensor state by writing 0 to
-  // sysfs.
-  if (!iio_ec_sensor_utils_->SetSysValues(kGyroscopeCalibbias, {0, 0, 0})) {
+  // Before the calibration, we get original calibbias by reading sysfs.
+  if (!iio_ec_sensor_utils_->GetSysValues(kGyroscopeCalibbias,
+                                          &original_calibbias)) {
     SetProgress(kProgressFailed);
     return false;
   }
-  SetProgress(kProgressSensorReset);
+  SetProgress(kProgressGetOriginalCalibbias);
 
   // Due to the uncertainty of the sensor value, we use the average value to
   // calibrate it.
@@ -92,31 +90,24 @@ bool GyroscopeCalibrationUtilsImpl::Calibrate() {
     SetProgress(kProgressFailed);
     return false;
   }
-  scaled_data.resize(kGyroscopIdealValues.size());
 
   // For each axis, we calculate the difference between the ideal values.
   for (int i = 0; i < kGyroscopIdealValues.size(); i++) {
-    scaled_data[i] =
-        (kGyroscopIdealValues[i] - avg_data[i]) / kCalibbiasDataScale;
+    double offset = kGyroscopIdealValues[i] - avg_data[i] +
+                    original_calibbias[i] * kCalibbias2SensorReading;
     std::string entry = kCalibbiasPrefix + kGyroscopeChannels[i] + "_" +
                         location_ + kCalibbiasPostfix;
-    scaled_calibbias[entry] = scaled_data[i];
+    calibbias[entry] = round(offset / kCalibbias2SensorReading);
   }
   SetProgress(kProgressBiasCalculated);
 
   // We first write the calibbias data to vpd, and then update the sensor via
   // sysfs accordingly.
-  if (!vpd_utils_impl_thread_safe_->SetCalibbias(scaled_calibbias)) {
+  if (!vpd_utils_impl_thread_safe_->SetCalibbias(calibbias)) {
     SetProgress(kProgressFailed);
     return false;
   }
   SetProgress(kProgressBiasWritten);
-
-  if (!iio_ec_sensor_utils_->SetSysValues(kGyroscopeCalibbias, scaled_data)) {
-    SetProgress(kProgressFailed);
-    return false;
-  }
-  SetProgress(kProgressBiasSet);
 
   return true;
 }

@@ -28,8 +28,8 @@ class MockIioEcSensorUtils : public IioEcSensorUtils {
                std::vector<double>*),
               (override));
   MOCK_METHOD(bool,
-              SetSysValues,
-              (const std::vector<std::string>&, const std::vector<int>&),
+              GetSysValues,
+              (const std::vector<std::string>&, std::vector<int>*),
               (override));
 };
 

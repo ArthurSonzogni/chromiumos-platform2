@@ -31,10 +31,10 @@ class IioEcSensorUtils {
                           std::vector<double>* avg_data,
                           std::vector<double>* variance = nullptr) = 0;
 
-  // Write |values| to |entries| in the sysfs of iioservice.
+  // Read |entries| to |values| in the sysfs of iioservice.
   // Returns true if it succeeds for all entries, otherwise it returns false.
-  virtual bool SetSysValues(const std::vector<std::string>& entries,
-                            const std::vector<int>& values) = 0;
+  virtual bool GetSysValues(const std::vector<std::string>& entries,
+                            std::vector<double>* values) = 0;
 
  protected:
   // For each sensor, we can identify it by its location (base or lid)
