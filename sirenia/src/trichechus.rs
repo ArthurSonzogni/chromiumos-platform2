@@ -10,12 +10,15 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap as Map, VecDeque};
 use std::convert::TryFrom;
 use std::env;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{Seek, SeekFrom, Write};
 use std::iter::once;
 use std::mem::{replace, swap};
 use std::ops::{Deref, DerefMut};
-use std::os::unix::io::{AsRawFd, RawFd};
+use std::os::unix::{
+    fs::OpenOptionsExt,
+    io::{AsRawFd, RawFd},
+};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::result::Result as StdResult;
@@ -57,12 +60,16 @@ use libsirenia::{
 use sirenia::log_error;
 use sys_util::{
     self, error, getpid, getsid, info, reap_child, setsid, syslog,
-    vsock::SocketAddr as VSocketAddr, warn, MemfdSeals, Pid, SharedMemory,
+    vsock::SocketAddr as VSocketAddr, warn, MappedRegion, MemfdSeals, MemoryMapping, Pid,
+    SharedMemory,
 };
 
 const CRONISTA_URI_SHORT_NAME: &str = "C";
 const CRONISTA_URI_LONG_NAME: &str = "cronista";
 const SYSLOG_PATH_SHORT_NAME: &str = "L";
+const PSTORE_PATH_LONG_NAME: &str = "pstore-path";
+const SAVE_PSTORE_LONG_NAME: &str = "save-pstore";
+const RESTORE_PSTORE_LONG_NAME: &str = "restore-pstore";
 
 const CROSVM_PATH: &str = "/bin/crosvm-direct";
 
@@ -610,6 +617,52 @@ fn handle_closed_child_processes(state: &RefCell<TrichechusState>) {
     }
 }
 
+fn map_dev_mem(addr: u64, len: usize, open_flags: i32) -> Result<MemoryMapping> {
+    let devmem = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .custom_flags(open_flags)
+        .open("/dev/mem")
+        .context("Failed to open /dev/mem")?;
+    MemoryMapping::from_fd_offset(&devmem, len, addr).context("Failed to mmap /dev/mem")
+}
+
+fn map_ramoops() -> Result<MemoryMapping> {
+    // TODO(b/218725951): Get ramoops addr and len from the kernel.
+    let ramoops_addr: u64 = 0x76879000;
+    let ramoops_len: usize = 1024 * 1024;
+    map_dev_mem(ramoops_addr, ramoops_len, libc::O_SYNC)
+        .context("map /dev/mem with O_SYNC")
+        .or_else(|e| {
+            eprintln!("Ignoring: {}", e);
+            eprintln!("Retrying with no flags");
+            map_dev_mem(ramoops_addr, ramoops_len, 0)
+        })
+}
+
+fn restore_pstore(pstore_path: &str) -> Result<()> {
+    let outputf = File::create(pstore_path)
+        .with_context(|| format!("Failed to open pstore file: {}", pstore_path))?;
+    let ramoops = map_ramoops()?;
+    ramoops
+        .write_from_memory(0, &outputf, ramoops.size())
+        .context("Failed to copy ramoops memory to pstore file")?;
+    outputf.sync_all().context("sync pstore file")
+}
+
+fn save_pstore(pstore_path: &str) -> Result<()> {
+    let inputf = File::open(pstore_path)
+        .with_context(|| format!("Failed to open pstore file: {}", pstore_path))?;
+    let ramoops = map_ramoops()?;
+    ramoops
+        .read_to_memory(0, &inputf, ramoops.size())
+        .context("Failed to copy pstore file contents to ramoops memory")?;
+    if let Err(e) = ramoops.msync() {
+        eprintln!("Ignoring: msync failure: {}", e);
+    }
+    Ok(())
+}
+
 // TODO: Figure out rate limiting and prevention against DOS attacks
 fn main() -> Result<()> {
     // Handle the arguments first since "-h" shouldn't have any side effects on the system such as
@@ -629,7 +682,40 @@ fn main() -> Result<()> {
         "vsock://3:5554",
         &mut opts,
     );
+    opts.optopt(
+        "",
+        PSTORE_PATH_LONG_NAME,
+        "path to crosvm pstore file.",
+        "/run/crosvm.pstore",
+    );
+    opts.optflag(
+        "",
+        SAVE_PSTORE_LONG_NAME,
+        "copy pstore file contents to ramoops memory, then exit.",
+    );
+    opts.optflag(
+        "",
+        RESTORE_PSTORE_LONG_NAME,
+        "copy ramoops memory to pstore file, then exit.",
+    );
     let (config, matches) = initialize_common_arguments(opts, &args[1..]).unwrap();
+
+    if matches.opt_present(SAVE_PSTORE_LONG_NAME) {
+        if let Some(pstore_path) = matches.opt_str(PSTORE_PATH_LONG_NAME) {
+            return save_pstore(&pstore_path);
+        } else {
+            bail!("{} is required for saving pstore", PSTORE_PATH_LONG_NAME);
+        }
+    }
+
+    if matches.opt_present(RESTORE_PSTORE_LONG_NAME) {
+        if let Some(pstore_path) = matches.opt_str(PSTORE_PATH_LONG_NAME) {
+            return restore_pstore(&pstore_path);
+        } else {
+            bail!("{} is required for restoring pstore", PSTORE_PATH_LONG_NAME);
+        }
+    }
+
     // TODO derive main secret from the platform and GSC.
     let main_secret_version = 0usize;
     let platform_secret = PlatformSecret::new(
