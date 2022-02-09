@@ -6,13 +6,19 @@
 #define CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_UTILITY_H_
 
 #include <base/compiler_specific.h>
+#include <memory>
+#include <string>
+
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
+#include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto_error.h"
+#include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_objects.h"
 
 namespace cryptohome {
@@ -43,6 +49,14 @@ class AuthBlockUtility {
       AuthBlockState& out_state,
       KeyBlobs& out_key_blobs) = 0;
 
+  // Creates KeyBlobs and AuthBlockState for the given credentials and returns
+  // through the asynchronous create_callback.
+  virtual bool CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType auth_block_type,
+      const Credentials& credentials,
+      const std::optional<brillo::SecureBlob>& reset_secret,
+      AuthBlock::CreateCallback create_callback) = 0;
+
   // Derives KeyBlobs with the given type of AuthBlock using the passed
   // credentials and the AuthBlockState. Deriving KeyBlobs means generating the
   // KeyBlobs from entered credentials and the stored metadata for an existing
@@ -54,6 +68,14 @@ class AuthBlockUtility {
       const Credentials& credentials,
       const AuthBlockState& state,
       KeyBlobs& out_key_blobs) = 0;
+
+  // Creates KeyBlobs and AuthBlockState for the given credentials and returns
+  // through the asynchronous derive_callback.
+  virtual bool DeriveKeyBlobsWithAuthBlockAsync(
+      AuthBlockType auth_block_type,
+      const Credentials& credentials,
+      const AuthBlockState& auth_state,
+      AuthBlock::DeriveCallback derive_callback) = 0;
 
   // This function returns the AuthBlock type for
   // AuthBlock::Create() based on the |credentials|, |tpm_| and |crypto_|

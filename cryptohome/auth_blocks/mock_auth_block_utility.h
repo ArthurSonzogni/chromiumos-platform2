@@ -36,12 +36,26 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                AuthBlockState& out_state,
                KeyBlobs& out_key_blobs),
               (override));
+  MOCK_METHOD(bool,
+              CreateKeyBlobsWithAuthBlockAsync,
+              (AuthBlockType auth_block_type,
+               const Credentials& credentials,
+               const std::optional<brillo::SecureBlob>& reset_secret,
+               AuthBlock::CreateCallback create_callback),
+              (override));
   MOCK_METHOD(CryptoError,
               DeriveKeyBlobsWithAuthBlock,
               (AuthBlockType auth_block_type,
                const Credentials& credentials,
                const AuthBlockState& state,
                KeyBlobs& out_key_blobs),
+              (override));
+  MOCK_METHOD(bool,
+              DeriveKeyBlobsWithAuthBlockAsync,
+              (AuthBlockType auth_block_type,
+               const Credentials& credentials,
+               const AuthBlockState& auth_state,
+               AuthBlock::DeriveCallback derive_callback),
               (override));
   MOCK_METHOD(AuthBlockType,
               GetAuthBlockTypeForCreation,

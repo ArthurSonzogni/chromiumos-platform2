@@ -18,6 +18,7 @@
 #include <brillo/cryptohome.h>
 #include <chromeos/constants/cryptohome.h>
 
+#include "cryptohome/auth_blocks/async_challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -25,6 +26,7 @@
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
+#include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
@@ -116,12 +118,33 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(KeysetManagement* keyset_management,
                                            Platform* platform)
     : keyset_management_(keyset_management),
       crypto_(crypto),
-      platform_(platform) {
+      platform_(platform),
+      challenge_credentials_helper_(nullptr),
+      key_challenge_service_(nullptr) {
   DCHECK(keyset_management);
   DCHECK(crypto_);
   DCHECK(platform_);
 }
 
+AuthBlockUtilityImpl::AuthBlockUtilityImpl(
+    KeysetManagement* keyset_management,
+    Crypto* crypto,
+    Platform* platform,
+    ChallengeCredentialsHelper* credentials_helper,
+    std::unique_ptr<KeyChallengeService> key_challenge_service,
+    const std::string& account_id)
+    : keyset_management_(keyset_management),
+      crypto_(crypto),
+      platform_(platform),
+      challenge_credentials_helper_(credentials_helper),
+      key_challenge_service_(std::move(key_challenge_service)),
+      account_id_(account_id) {
+  DCHECK(keyset_management);
+  DCHECK(crypto_);
+  DCHECK(platform_);
+  DCHECK(challenge_credentials_helper_);
+  DCHECK(key_challenge_service_);
+}
 AuthBlockUtilityImpl::~AuthBlockUtilityImpl() = default;
 
 bool AuthBlockUtilityImpl::GetLockedToSingleUser() {
@@ -162,6 +185,44 @@ CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
                                   CryptohomePhase::kCreated);
 
   return error;
+}
+
+bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
+    AuthBlockType auth_block_type,
+    const Credentials& credentials,
+    const std::optional<brillo::SecureBlob>& reset_secret,
+    AuthBlock::CreateCallback create_callback) {
+  std::unique_ptr<AuthBlock> auth_block =
+      GetAsyncAuthBlockWithType(auth_block_type);
+  if (!auth_block) {
+    LOG(ERROR) << "Failed to retrieve auth block.";
+    std::move(create_callback)
+        .Run(CryptoError::CE_OTHER_CRYPTO, nullptr, nullptr);
+    return false;
+  }
+  ReportCreateAuthBlock(auth_block_type);
+
+  // |reset_secret| is not processed in the AuthBlocks, the value is copied to
+  // the |key_blobs| directly. |reset_secret| will be added to the |key_blobs|
+  // in the VaultKeyset, if missing.
+  AuthInput user_input = {
+      credentials.passkey(), std::nullopt, /*locked_to_single_user*=*/
+      brillo::cryptohome::home::SanitizeUserName(credentials.username()),
+      reset_secret};
+
+  if (auth_block_type == AuthBlockType::kChallengeCredential) {
+    user_input.challenge_credential_auth_input = ChallengeCredentialAuthInput{
+        .public_key_spki_der = brillo::BlobFromString("public_key_spki_der"),
+        .challenge_signature_algorithms =
+            {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
+    };
+  }
+  auth_block->Create(user_input, std::move(create_callback));
+
+  ReportWrappingKeyDerivationType(auth_block->derivation_type(),
+                                  CryptohomePhase::kCreated);
+
+  return true;
 }
 
 CryptoError AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
@@ -218,6 +279,33 @@ CryptoError AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
     vk->Save(vk->GetSourceFile());
   }
   return error;
+}
+
+bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
+    AuthBlockType auth_block_type,
+    const Credentials& credentials,
+    const AuthBlockState& auth_state,
+    AuthBlock::DeriveCallback derive_callback) {
+  DCHECK_NE(auth_block_type, AuthBlockType::kMaxValue);
+
+  AuthInput auth_input = {credentials.passkey(),
+                          /*locked_to_single_user=*/std::nullopt};
+
+  auth_input.locked_to_single_user =
+      platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
+
+  std::unique_ptr<AuthBlock> auth_block =
+      GetAsyncAuthBlockWithType(auth_block_type);
+  if (!auth_block) {
+    LOG(ERROR) << "Failed to retrieve auth block.";
+    std::move(derive_callback).Run(CryptoError::CE_OTHER_CRYPTO, nullptr);
+    return false;
+  }
+  ReportCreateAuthBlock(auth_block_type);
+
+  auth_block->Derive(auth_input, auth_state, std::move(derive_callback));
+
+  return true;
 }
 
 AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
@@ -319,6 +407,55 @@ std::unique_ptr<SyncAuthBlock> AuthBlockUtilityImpl::GetAuthBlockWithType(
       return nullptr;
   }
   return nullptr;
+}
+
+std::unique_ptr<AuthBlock> AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
+    const AuthBlockType& auth_block_type) {
+  switch (auth_block_type) {
+    case AuthBlockType::kPinWeaver:
+      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+          std::make_unique<PinWeaverAuthBlock>(
+              crypto_->le_manager(), crypto_->cryptohome_keys_manager()));
+
+    case AuthBlockType::kChallengeCredential:
+      if (key_challenge_service_ && challenge_credentials_helper_ &&
+          account_id_.has_value()) {
+        return std::make_unique<AsyncChallengeCredentialAuthBlock>(
+            crypto_->tpm(), challenge_credentials_helper_,
+            std::move(key_challenge_service_), account_id_.value());
+      } else {
+        LOG(ERROR) << "No valid ChallengeCredentialsHelper, "
+                      "KeyChallengeService, or account id in AuthBlockUtility";
+        return nullptr;
+      }
+
+    case AuthBlockType::kDoubleWrappedCompat:
+      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+          std::make_unique<DoubleWrappedCompatAuthBlock>(
+              crypto_->tpm(), crypto_->cryptohome_keys_manager()));
+
+    case AuthBlockType::kTpmEcc:
+      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+          std::make_unique<TpmEccAuthBlock>(
+              crypto_->tpm(), crypto_->cryptohome_keys_manager()));
+
+    case AuthBlockType::kTpmBoundToPcr:
+      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+          std::make_unique<TpmBoundToPcrAuthBlock>(
+              crypto_->tpm(), crypto_->cryptohome_keys_manager()));
+
+    case AuthBlockType::kTpmNotBoundToPcr:
+      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+          std::make_unique<TpmNotBoundToPcrAuthBlock>(
+              crypto_->tpm(), crypto_->cryptohome_keys_manager()));
+
+    case AuthBlockType::kLibScryptCompat:
+      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+          std::make_unique<LibScryptCompatAuthBlock>());
+
+    default:
+      return nullptr;
+  }
 }
 
 bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(
