@@ -241,6 +241,8 @@ is_arc_vm(`
     remount
     unmount
   };
+  allow cros_cryptohomed arc_files:file relabelfrom;
+
   # Permissions to remove ARCVM files when removing a user
   allow cros_cryptohomed { arc_files unlabeled }:dir { rw_dir_perms rmdir };
   allow cros_cryptohomed { arc_files unlabeled }:file { rw_file_perms unlink };
@@ -263,6 +265,8 @@ is_arc_vm(`
       remount
       unmount
     };
+    allow cros_cryptohomed arc_files:file relabelfrom;
+
     # Permissions to remove ARC Container files when removing a user
     allow cros_cryptohomed arc_files:dir { rw_dir_perms rmdir };
     allow cros_cryptohomed arc_files:file { rw_file_perms unlink };
