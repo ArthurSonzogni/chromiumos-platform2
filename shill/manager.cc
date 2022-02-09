@@ -360,8 +360,6 @@ void Manager::SetAllowedDevices(
 void Manager::Start() {
   LOG(INFO) << "Manager started.";
 
-  user_traffic_uids_ = ComputeUserTrafficUids();
-
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   supplicant_manager_->Start();
 #endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
@@ -3275,6 +3273,13 @@ bool Manager::SetUseSwanctlDriver(const bool& use_swanctl_driver,
                                   Error* error) {
   props_.use_swanctl_driver = use_swanctl_driver;
   return true;
+}
+
+const std::vector<uint32_t>& Manager::GetUserTrafficUids() {
+  if (user_traffic_uids_.empty()) {
+    user_traffic_uids_ = ComputeUserTrafficUids();
+  }
+  return user_traffic_uids_;
 }
 
 }  // namespace shill

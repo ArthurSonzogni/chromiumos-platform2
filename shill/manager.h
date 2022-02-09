@@ -529,9 +529,8 @@ class Manager {
   // Returns whether the swanctl-based driver should be used.
   bool GetUseSwanctlDriver(Error* error);
 
-  const std::vector<uint32_t>& user_traffic_uids() const {
-    return user_traffic_uids_;
-  }
+  // Returns the user traffic uids.
+  const std::vector<uint32_t>& GetUserTrafficUids();
 
   ControlInterface* control_interface() const { return control_interface_; }
   EventDispatcher* dispatcher() const { return dispatcher_; }

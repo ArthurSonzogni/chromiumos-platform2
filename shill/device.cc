@@ -736,7 +736,7 @@ void Device::UpdateBlackholeUserTraffic() {
   if (ipconfig_) {
     bool updated;
     if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
-      updated = ipconfig_->SetBlackholedUids(manager_->user_traffic_uids());
+      updated = ipconfig_->SetBlackholedUids(manager_->GetUserTrafficUids());
     } else {
       updated = ipconfig_->ClearBlackholedUids();
     }
@@ -887,7 +887,7 @@ void Device::OnIPv6ConfigUpdated() {
 void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   CreateConnection();
   if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
-    ipconfig->SetBlackholedUids(manager_->user_traffic_uids());
+    ipconfig->SetBlackholedUids(manager_->GetUserTrafficUids());
   } else {
     ipconfig->ClearBlackholedUids();
   }
