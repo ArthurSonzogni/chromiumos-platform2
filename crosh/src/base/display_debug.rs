@@ -65,7 +65,7 @@ const DIAGNOSE_DISPLAY_RECONNECTED_LOG: &str = "DISPLAY-DEBUG-DISPLAY-RECONNECTE
 const DIAGNOSE_DISPLAY_WORKING_LOG: &str = "DISPLAY-DEBUG-DISPLAY-WORKING";
 const DIAGNOSE_DISPLAY_NOT_WORKING_LOG: &str = "DISPLAY-DEBUG-DISPLAY-NOT-WORKING";
 
-const DIAGNOSE_INTRO: &str = "The 'display_debug disagnose' tool will collect \
+const DIAGNOSE_INTRO: &str = "The 'display_debug diagnose' tool will collect \
     additional logs while walking you through a sequence of diagnostic steps. \
     Upon completion, file feedback using Alt+Shift+i.";
 const DIAGNOSE_BEGIN_PROMPT: &str = "Do you want to begin now?";
