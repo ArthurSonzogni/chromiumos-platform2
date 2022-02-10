@@ -256,7 +256,8 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(),
-                           &keyset_management_);
+                           &keyset_management_, &auth_factor_manager_,
+                           &user_secret_stash_storage_);
 
   // Test adding the first credential.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
