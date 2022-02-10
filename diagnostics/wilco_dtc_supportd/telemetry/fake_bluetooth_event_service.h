@@ -12,6 +12,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 class FakeBluetoothEventService : public BluetoothEventService {
  public:
@@ -31,6 +32,7 @@ class FakeBluetoothEventService : public BluetoothEventService {
   std::vector<BluetoothEventService::AdapterData> last_adapters_data_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_FAKE_BLUETOOTH_EVENT_SERVICE_H_

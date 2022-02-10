@@ -10,6 +10,7 @@
 #include <base/values.h>
 
 namespace diagnostics {
+namespace wilco {
 
 bool IsJsonValid(base::StringPiece json, std::string* json_error_message) {
   DCHECK(json_error_message);
@@ -19,4 +20,5 @@ bool IsJsonValid(base::StringPiece json, std::string* json_error_message) {
   return result.value.has_value();
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

@@ -21,6 +21,7 @@ using testing::StrictMock;
 using testing::Truly;
 
 namespace diagnostics {
+namespace wilco {
 namespace {
 
 class MockCallback {
@@ -92,4 +93,5 @@ TEST_F(DBusServiceTest, BootstrapMojoConnectionEmptyFd) {
 }
 
 }  // namespace
+}  // namespace wilco
 }  // namespace diagnostics

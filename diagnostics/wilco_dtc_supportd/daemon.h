@@ -20,6 +20,7 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_service_factory.h"
 
 namespace diagnostics {
+namespace wilco {
 
 // Daemon class for the wilco_dtc_supportd daemon.
 class Daemon final : public brillo::DBusServiceDaemon {
@@ -52,6 +53,7 @@ class Daemon final : public brillo::DBusServiceDaemon {
   base::OneShotTimer force_shutdown_timer_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DAEMON_H_

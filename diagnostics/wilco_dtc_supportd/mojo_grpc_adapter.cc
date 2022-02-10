@@ -16,6 +16,7 @@
 #include "wilco_dtc.grpc.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
+namespace wilco {
 
 MojoGrpcAdapter::MojoGrpcAdapter(GrpcClientManager* grpc_client_manager)
     : grpc_client_manager_(grpc_client_manager) {}
@@ -94,4 +95,5 @@ void MojoGrpcAdapter::NotifyConfigurationDataChangedToWilcoDtc() {
   }
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

@@ -43,6 +43,7 @@ using MojomWilcoDtcSupportdWebRequestHttpMethod =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdWebRequestHttpMethod;
 
 namespace diagnostics {
+namespace wilco {
 namespace {
 
 // Tests for the MojoService class.
@@ -180,4 +181,5 @@ TEST_F(MojoServiceTest, GetConfigurationData) {
 }
 
 }  // namespace
+}  // namespace wilco
 }  // namespace diagnostics

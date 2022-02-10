@@ -12,6 +12,7 @@
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+namespace wilco {
 
 namespace {
 
@@ -43,4 +44,5 @@ void FakeProbeService::ProbeTelemetryInfo(
   telemetry_callback_.Run(categories, std::move(callback));
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

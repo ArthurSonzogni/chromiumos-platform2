@@ -14,6 +14,7 @@
 #include <base/optional.h>
 
 namespace diagnostics {
+namespace wilco {
 
 class SystemFilesService {
  public:
@@ -102,6 +103,7 @@ class SystemFilesService {
   virtual base::Optional<std::string> GetVpdField(VpdField vpd_field) = 0;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_SYSTEM_FILES_SERVICE_H_

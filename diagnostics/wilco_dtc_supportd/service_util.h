@@ -12,6 +12,7 @@
 #include <base/run_loop.h>
 
 namespace diagnostics {
+namespace wilco {
 
 // Creates a RunLoop with a BarrierClosure and calls the ShutDown method
 // on the passed-in |services|.
@@ -36,6 +37,7 @@ void ShutDownServicesInRunLoop(Services*... services) {
   run_loop.Run();
 }
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_SERVICE_UTIL_H_

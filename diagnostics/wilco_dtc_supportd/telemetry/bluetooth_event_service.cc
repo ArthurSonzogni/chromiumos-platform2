@@ -8,6 +8,7 @@
 #include <base/logging.h>
 
 namespace diagnostics {
+namespace wilco {
 
 BluetoothEventService::AdapterData::AdapterData() = default;
 BluetoothEventService::AdapterData::~AdapterData() = default;
@@ -33,4 +34,5 @@ void BluetoothEventService::RemoveObserver(Observer* observer) {
   observers_.RemoveObserver(observer);
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

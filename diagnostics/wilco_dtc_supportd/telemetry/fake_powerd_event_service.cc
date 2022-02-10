@@ -5,6 +5,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_powerd_event_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 FakePowerdEventService::FakePowerdEventService() = default;
 FakePowerdEventService::~FakePowerdEventService() = default;
@@ -28,4 +29,5 @@ void FakePowerdEventService::EmitPowerEvent(
   }
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

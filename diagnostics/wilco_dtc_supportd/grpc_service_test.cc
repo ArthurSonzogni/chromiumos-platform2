@@ -50,6 +50,7 @@ using testing::UnorderedElementsAre;
 using testing::WithArgs;
 
 namespace diagnostics {
+namespace wilco {
 namespace {
 
 using DelegateWebRequestHttpMethod =
@@ -1766,4 +1767,5 @@ INSTANTIATE_TEST_SUITE_P(
             DelegateDriveSystemDataType::kIdentityAttributes)));
 
 }  // namespace
+}  // namespace wilco
 }  // namespace diagnostics

@@ -17,9 +17,10 @@
 using ::testing::StrictMock;
 
 using PowerEventType =
-    diagnostics::PowerdEventService::Observer::PowerEventType;
+    diagnostics::wilco::PowerdEventService::Observer::PowerEventType;
 
 namespace diagnostics {
+namespace wilco {
 namespace {
 
 class MockPowerdEventServiceObserver : public PowerdEventService::Observer {
@@ -100,4 +101,5 @@ TEST_F(PowerdEventServiceImplTest, OnSuspendDoneSignal) {
 }
 
 }  // namespace
+}  // namespace wilco
 }  // namespace diagnostics

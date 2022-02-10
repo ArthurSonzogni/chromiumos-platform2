@@ -18,6 +18,7 @@
 #include "diagnostics/common/mojo_utils.h"
 
 namespace diagnostics {
+namespace wilco {
 
 using MojomWilcoDtcSupportdService =
     chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
@@ -114,4 +115,5 @@ void FakeBrowser::CallGetServiceMojoMethod(
                    get_service_mojo_method_callback);
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

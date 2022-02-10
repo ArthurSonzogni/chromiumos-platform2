@@ -19,6 +19,7 @@
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 // Helper class that allows testing of the routine service.
 class FakeDiagnosticsService final
@@ -166,6 +167,7 @@ class FakeDiagnosticsService final
   bool is_responsive_ = true;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_DIAGNOSTICS_SERVICE_H_

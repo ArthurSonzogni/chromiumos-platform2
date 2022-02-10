@@ -24,6 +24,7 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_grpc_adapter.h"
 
 namespace diagnostics {
+namespace wilco {
 
 class MojoGrpcAdapter;
 
@@ -101,6 +102,7 @@ class MojoService final
   mojo::Remote<MojomWilcoDtcSupportdClient> client_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_SERVICE_H_

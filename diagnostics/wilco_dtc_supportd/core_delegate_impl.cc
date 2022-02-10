@@ -19,6 +19,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service_impl.h"
 
 namespace diagnostics {
+namespace wilco {
 
 CoreDelegateImpl::CoreDelegateImpl() = default;
 
@@ -66,4 +67,5 @@ std::unique_ptr<ProbeService> CoreDelegateImpl::CreateProbeService(
   return std::make_unique<ProbeServiceImpl>(delegate);
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

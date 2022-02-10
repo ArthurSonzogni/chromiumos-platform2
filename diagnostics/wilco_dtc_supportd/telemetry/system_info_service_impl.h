@@ -10,6 +10,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_info_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 class SystemInfoServiceImpl : public SystemInfoService {
  public:
@@ -24,6 +25,7 @@ class SystemInfoServiceImpl : public SystemInfoService {
   bool GetOsMilestone(int* milestone_out) override;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_SYSTEM_INFO_SERVICE_IMPL_H_

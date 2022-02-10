@@ -5,9 +5,11 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/mock_system_info_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 MockSystemInfoService::MockSystemInfoService() = default;
 
 MockSystemInfoService::~MockSystemInfoService() = default;
 
+}  // namespace wilco
 }  // namespace diagnostics

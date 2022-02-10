@@ -21,6 +21,7 @@
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+namespace wilco {
 
 // The total size of "string" and "bytes" fields in one
 // PerformWebRequestParameter must not exceed 1MB.
@@ -817,4 +818,5 @@ void GrpcService::AddDirectoryDump(
   }
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

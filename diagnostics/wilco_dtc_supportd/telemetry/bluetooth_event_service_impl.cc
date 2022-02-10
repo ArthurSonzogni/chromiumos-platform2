@@ -10,6 +10,7 @@
 #include <base/check.h>
 
 namespace diagnostics {
+namespace wilco {
 
 BluetoothEventServiceImpl::BluetoothEventServiceImpl(
     BluetoothClient* bluetooth_client)
@@ -152,4 +153,5 @@ void BluetoothEventServiceImpl::UpdateAdaptersData() {
   }
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

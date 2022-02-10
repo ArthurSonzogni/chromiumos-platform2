@@ -26,6 +26,7 @@ using ::testing::SaveArg;
 using ::testing::StrictMock;
 
 namespace diagnostics {
+namespace wilco {
 namespace {
 
 using AdapterData = BluetoothEventService::AdapterData;
@@ -443,4 +444,5 @@ TEST_F(BluetoothEventServiceImplTest, RemoveAdapterWithConnectedDevice) {
 }
 
 }  // namespace
+}  // namespace wilco
 }  // namespace diagnostics

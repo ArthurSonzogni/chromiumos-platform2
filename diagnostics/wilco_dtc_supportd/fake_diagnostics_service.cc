@@ -10,6 +10,7 @@
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
+namespace wilco {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 FakeDiagnosticsService::FakeDiagnosticsService() = default;
@@ -266,4 +267,5 @@ void FakeDiagnosticsService::SetRunSomeRoutineResponse(
   run_routine_response_.status = status;
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

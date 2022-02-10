@@ -11,6 +11,7 @@
 #include <base/strings/string_piece_forward.h>
 
 namespace diagnostics {
+namespace wilco {
 
 class GrpcClientManager;
 
@@ -49,6 +50,7 @@ class MojoGrpcAdapter final {
   const GrpcClientManager* const grpc_client_manager_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_GRPC_ADAPTER_H_

@@ -11,6 +11,7 @@
 #include <base/logging.h>
 
 namespace diagnostics {
+namespace wilco {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 ProbeServiceImpl::ProbeServiceImpl(Delegate* delegate) : delegate_(delegate) {
@@ -80,4 +81,5 @@ void ProbeServiceImpl::RunInFlightCallbacks() {
   callbacks_.clear();
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

@@ -8,6 +8,7 @@
 #include <string>
 
 namespace diagnostics {
+namespace wilco {
 
 class SystemInfoService {
  public:
@@ -20,6 +21,7 @@ class SystemInfoService {
   virtual bool GetOsMilestone(int* milestone_out) = 0;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_SYSTEM_INFO_SERVICE_H_

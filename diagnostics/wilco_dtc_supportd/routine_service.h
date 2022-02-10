@@ -20,6 +20,7 @@
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
+namespace wilco {
 
 // The routine service is responsible for creating and managing diagnostic
 // routines.
@@ -138,6 +139,7 @@ class RoutineService final {
   base::WeakPtrFactory<RoutineService> weak_ptr_factory_{this};
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_ROUTINE_SERVICE_H_

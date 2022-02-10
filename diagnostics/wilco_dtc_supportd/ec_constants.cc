@@ -7,6 +7,7 @@
 #include <poll.h>
 
 namespace diagnostics {
+namespace wilco {
 
 // Folder path exposed by sysfs EC driver.
 const char kEcDriverSysfsPath[] = "sys/bus/platform/devices/GOOG000C:00/";
@@ -28,4 +29,5 @@ const char kEcEventFilePath[] = "dev/wilco_event0";
 // this constant holds the specific flag for use with poll().
 const int16_t kEcEventFilePollEvents = POLLIN;
 
+}  // namespace wilco
 }  // namespace diagnostics

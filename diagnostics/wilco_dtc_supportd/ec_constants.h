@@ -8,6 +8,7 @@
 #include <cstdint>
 
 namespace diagnostics {
+namespace wilco {
 
 extern const char kEcDriverSysfsPath[];
 
@@ -21,6 +22,7 @@ extern const char kEcEventFilePath[];
 
 extern const int16_t kEcEventFilePollEvents;
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_EC_CONSTANTS_H_

@@ -17,6 +17,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 class SystemFilesServiceImpl final : public SystemFilesService {
  public:
@@ -59,6 +60,7 @@ class SystemFilesServiceImpl final : public SystemFilesService {
   base::FilePath root_dir_{"/"};
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_SYSTEM_FILES_SERVICE_IMPL_H_

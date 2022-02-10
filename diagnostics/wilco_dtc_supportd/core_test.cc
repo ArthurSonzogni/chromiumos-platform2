@@ -81,6 +81,7 @@ using testing::StrictMock;
 using testing::WithArg;
 
 namespace diagnostics {
+namespace wilco {
 namespace {
 
 // Templates for the gRPC URIs that should be used for testing. "%s" is
@@ -1374,4 +1375,5 @@ INSTANTIATE_TEST_SUITE_P(
                         grpc_api::HandlePowerNotificationRequest::OS_RESUME)));
 
 }  // namespace
+}  // namespace wilco
 }  // namespace diagnostics

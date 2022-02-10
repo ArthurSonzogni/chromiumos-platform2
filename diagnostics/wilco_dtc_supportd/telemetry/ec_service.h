@@ -22,6 +22,7 @@
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 
 namespace diagnostics {
+namespace wilco {
 
 namespace internal {
 class EcEventMonitoringThreadDelegate;
@@ -280,6 +281,7 @@ class EcService {
   base::SequenceCheckerImpl sequence_checker_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_EC_SERVICE_H_

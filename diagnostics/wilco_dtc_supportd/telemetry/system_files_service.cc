@@ -5,6 +5,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 SystemFilesService::FileDump::FileDump() = default;
 
@@ -16,4 +17,5 @@ SystemFilesService::FileDump::FileDump(SystemFilesService::FileDump&& other) =
 SystemFilesService::FileDump& SystemFilesService::FileDump::operator=(
     SystemFilesService::FileDump&& other) = default;
 
+}  // namespace wilco
 }  // namespace diagnostics

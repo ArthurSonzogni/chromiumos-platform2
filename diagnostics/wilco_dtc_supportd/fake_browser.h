@@ -19,6 +19,7 @@
 #include "diagnostics/wilco_dtc_supportd/mock_mojo_client.h"
 
 namespace diagnostics {
+namespace wilco {
 
 // Helper class that allows to test communication between the browser and the
 // tested code of the wilco_dtc_supportd daemon.
@@ -122,6 +123,7 @@ class FakeBrowser final {
   mojo::Remote<MojomWilcoDtcSupportdService> wilco_dtc_supportd_service_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_BROWSER_H_

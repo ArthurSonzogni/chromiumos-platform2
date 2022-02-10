@@ -16,6 +16,7 @@
 #include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
+namespace wilco {
 
 class MockMojoClient
     : public chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdClient {
@@ -70,6 +71,7 @@ class MockMojoClient
               (override));
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOCK_MOJO_CLIENT_H_

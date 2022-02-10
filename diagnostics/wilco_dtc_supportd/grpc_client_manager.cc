@@ -11,6 +11,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 
 namespace diagnostics {
+namespace wilco {
 
 GrpcClientManager::GrpcClientManager() = default;
 GrpcClientManager::~GrpcClientManager() = default;
@@ -57,4 +58,5 @@ GrpcClientManager::GetClients() const {
   return wilco_dtc_grpc_clients_;
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

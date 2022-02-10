@@ -23,6 +23,7 @@ using testing::AnyOf;
 using testing::StrEq;
 
 namespace diagnostics {
+namespace wilco {
 namespace {
 
 std::string FakeFileContents() {
@@ -498,4 +499,5 @@ INSTANTIATE_TEST_SUITE_P(
                                     "run/wilco_dtc/vpd_fields/uuid_id")));
 
 }  // namespace
+}  // namespace wilco
 }  // namespace diagnostics

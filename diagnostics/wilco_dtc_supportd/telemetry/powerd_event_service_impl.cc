@@ -8,9 +8,10 @@
 #include <base/logging.h>
 
 using PowerEventType =
-    diagnostics::PowerdEventService::Observer::PowerEventType;
+    diagnostics::wilco::PowerdEventService::Observer::PowerEventType;
 
 namespace diagnostics {
+namespace wilco {
 
 PowerdEventServiceImpl::PowerdEventServiceImpl(PowerdAdapter* powerd_adapter)
     : powerd_adapter_(powerd_adapter) {
@@ -89,4 +90,5 @@ void PowerdEventServiceImpl::OnAnySuspendImminentSignal(
     observer.OnPowerdEvent(PowerEventType::kOsSuspend);
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

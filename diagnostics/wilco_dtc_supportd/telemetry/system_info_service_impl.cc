@@ -10,6 +10,7 @@
 #include <base/system/sys_info.h>
 
 namespace diagnostics {
+namespace wilco {
 
 SystemInfoServiceImpl::SystemInfoServiceImpl() = default;
 
@@ -47,4 +48,5 @@ bool SystemInfoServiceImpl::GetOsMilestone(int* milestone_out) {
   return true;
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

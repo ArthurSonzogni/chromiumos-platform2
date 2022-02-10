@@ -13,5 +13,5 @@ int main(int argc, char** argv) {
 
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  return diagnostics::Daemon().Run();
+  return diagnostics::wilco::Daemon().Run();
 }

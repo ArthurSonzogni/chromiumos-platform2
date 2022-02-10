@@ -10,6 +10,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 
 namespace diagnostics {
+namespace wilco {
 
 FakeWilcoDtc::FakeWilcoDtc(const std::string& grpc_server_uri,
                            const std::string& wilco_dtc_supportd_grpc_uri)
@@ -181,4 +182,5 @@ void FakeWilcoDtc::HandleBluetoothDataChanged(
   bluetooth_data_changed_request_callback_->Run(*request);
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

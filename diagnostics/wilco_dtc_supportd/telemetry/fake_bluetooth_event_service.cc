@@ -5,6 +5,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_bluetooth_event_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 FakeBluetoothEventService::FakeBluetoothEventService() = default;
 
@@ -24,4 +25,5 @@ void FakeBluetoothEventService::EmitBluetoothAdapterDataChanged(
   }
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

@@ -15,6 +15,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 class MockSystemFilesService : public SystemFilesService {
  public:
@@ -35,6 +36,7 @@ class MockSystemFilesService : public SystemFilesService {
   MOCK_METHOD(base::Optional<std::string>, GetVpdField, (VpdField), (override));
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_MOCK_SYSTEM_FILES_SERVICE_H_

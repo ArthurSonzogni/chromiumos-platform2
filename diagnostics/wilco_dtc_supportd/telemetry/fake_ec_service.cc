@@ -5,6 +5,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/fake_ec_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 FakeEcService::FakeEcService() = default;
 FakeEcService::~FakeEcService() = default;
@@ -15,4 +16,5 @@ void FakeEcService::EmitEcEvent(const EcService::EcEvent& ec_event) const {
   }
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

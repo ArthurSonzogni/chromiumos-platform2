@@ -8,6 +8,7 @@
 #include <base/observer_list_types.h>
 
 namespace diagnostics {
+namespace wilco {
 
 class PowerdEventService {
  public:
@@ -35,6 +36,7 @@ class PowerdEventService {
   virtual void RemoveObserver(Observer* observer) = 0;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_POWERD_EVENT_SERVICE_H_

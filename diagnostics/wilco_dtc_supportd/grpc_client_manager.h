@@ -15,6 +15,7 @@
 #include "wilco_dtc.grpc.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
+namespace wilco {
 
 class GrpcClientManager final {
  public:
@@ -60,6 +61,7 @@ class GrpcClientManager final {
       ui_message_receiver_wilco_dtc_grpc_client_ = nullptr;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_GRPC_CLIENT_MANAGER_H_

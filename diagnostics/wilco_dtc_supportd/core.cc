@@ -25,6 +25,7 @@
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+namespace wilco {
 
 namespace {
 
@@ -584,4 +585,5 @@ void Core::UnsubscribeFromEventServices() {
   ec_service_->RemoveObserver(this);
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

@@ -16,6 +16,7 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_service.h"
 
 namespace diagnostics {
+namespace wilco {
 namespace {
 
 void BindMojoServiceFactory(MojoServiceFactory::MojoReceiver* receiver,
@@ -159,4 +160,5 @@ void MojoServiceFactory::GetService(
   std::move(callback).Run();
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

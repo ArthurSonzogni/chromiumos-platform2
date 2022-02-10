@@ -13,6 +13,7 @@
 #include <base/strings/string_util.h>
 
 namespace diagnostics {
+namespace wilco {
 
 // static
 base::FilePath SystemFilesServiceImpl::GetPathForFile(
@@ -213,4 +214,5 @@ bool SystemFilesServiceImpl::ShouldFollowSymlink(
          link.DirName().DirName();
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

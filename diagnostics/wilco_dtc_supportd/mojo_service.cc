@@ -14,6 +14,7 @@
 #include "diagnostics/wilco_dtc_supportd/json_utils.h"
 
 namespace diagnostics {
+namespace wilco {
 
 using SendUiMessageToWilcoDtcCallback =
     MojoService::SendUiMessageToWilcoDtcCallback;
@@ -202,4 +203,5 @@ void MojoService::GetCrosHealthdProbeService(
   client_->GetCrosHealthdProbeService(std::move(service));
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

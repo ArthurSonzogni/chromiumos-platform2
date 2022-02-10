@@ -16,6 +16,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 // Adapter for communication with bluetooth daemon.
 class BluetoothEventServiceImpl final : public BluetoothEventService,
@@ -69,6 +70,7 @@ class BluetoothEventServiceImpl final : public BluetoothEventService,
   BluetoothClient* bluetooth_client_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_BLUETOOTH_EVENT_SERVICE_IMPL_H_

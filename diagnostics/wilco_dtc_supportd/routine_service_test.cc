@@ -22,6 +22,7 @@
 using testing::ElementsAreArray;
 
 namespace diagnostics {
+namespace wilco {
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -759,4 +760,5 @@ INSTANTIATE_TEST_SUITE_P(
                     MakeDiskRandomReadRoutineRequest()));
 
 }  // namespace
+}  // namespace wilco
 }  // namespace diagnostics

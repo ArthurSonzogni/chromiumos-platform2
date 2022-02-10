@@ -11,6 +11,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 class FakePowerdEventService : public PowerdEventService {
  public:
@@ -32,6 +33,7 @@ class FakePowerdEventService : public PowerdEventService {
   base::ObserverList<Observer> observers_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_FAKE_POWERD_EVENT_SERVICE_H_

@@ -25,6 +25,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 
 namespace diagnostics {
+namespace wilco {
 
 namespace internal {
 
@@ -330,4 +331,5 @@ void EcService::OnShutdown() {
   }
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

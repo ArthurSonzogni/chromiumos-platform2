@@ -10,6 +10,7 @@
 #include "diagnostics/common/mojo_utils.h"
 
 namespace diagnostics {
+namespace wilco {
 
 void MockMojoClient::SendWilcoDtcMessageToUi(
     mojo::ScopedHandle json_message, SendWilcoDtcMessageToUiCallback callback) {
@@ -41,4 +42,5 @@ void MockMojoClient::PerformWebRequest(
                         request_body_content, std::move(callback));
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

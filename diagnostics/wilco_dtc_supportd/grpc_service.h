@@ -23,6 +23,7 @@
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
+namespace wilco {
 
 // The total size of all "string" and "byte" fileds in a single
 // PerformWebRequestParameter message must not exceed this size.
@@ -282,6 +283,7 @@ class GrpcService final {
   base::FilePath root_dir_{"/"};
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_GRPC_SERVICE_H_

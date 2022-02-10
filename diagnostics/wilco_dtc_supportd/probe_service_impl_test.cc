@@ -24,6 +24,7 @@ using testing::Return;
 using testing::StrictMock;
 
 namespace diagnostics {
+namespace wilco {
 namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
@@ -207,4 +208,5 @@ TEST_F(ProbeServiceImplTest, ProbeTelemetryInfo) {
 }
 
 }  // namespace
+}  // namespace wilco
 }  // namespace diagnostics

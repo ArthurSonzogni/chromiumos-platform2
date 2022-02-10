@@ -19,6 +19,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 // Production implementation of Core's delegate.
 class CoreDelegateImpl final : public Core::Delegate {
@@ -45,6 +46,7 @@ class CoreDelegateImpl final : public Core::Delegate {
       ProbeService::Delegate* delegate) override;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_CORE_DELEGATE_IMPL_H_

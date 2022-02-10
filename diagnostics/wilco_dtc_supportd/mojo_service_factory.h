@@ -18,6 +18,7 @@
 #include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 
 namespace diagnostics {
+namespace wilco {
 
 class MojoService;
 class MojoGrpcAdapter;
@@ -104,6 +105,7 @@ class MojoServiceFactory final : public chromeos::wilco_dtc_supportd::mojom::
   bool mojo_service_bind_attempted_ = false;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_SERVICE_FACTORY_H_

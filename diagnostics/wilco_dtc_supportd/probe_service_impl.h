@@ -18,6 +18,7 @@
 #include "diagnostics/wilco_dtc_supportd/probe_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 class ProbeServiceImpl final : public ProbeService {
  public:
@@ -76,6 +77,7 @@ class ProbeServiceImpl final : public ProbeService {
   base::WeakPtrFactory<ProbeServiceImpl> weak_ptr_factory_{this};
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_PROBE_SERVICE_IMPL_H_

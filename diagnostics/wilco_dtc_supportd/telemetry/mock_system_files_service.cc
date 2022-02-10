@@ -7,6 +7,7 @@
 #include <utility>
 
 namespace diagnostics {
+namespace wilco {
 
 // static
 SystemFilesService::FileDump MockSystemFilesService::CopyFileDump(
@@ -36,4 +37,5 @@ MockSystemFilesService::MockSystemFilesService() = default;
 
 MockSystemFilesService::~MockSystemFilesService() = default;
 
+}  // namespace wilco
 }  // namespace diagnostics

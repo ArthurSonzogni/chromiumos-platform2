@@ -14,6 +14,7 @@
 #include <base/macros.h>
 
 namespace diagnostics {
+namespace wilco {
 
 // BluetoothEventService is used for monitoring objects representing Bluetooth
 // Adapters and Devices.
@@ -55,6 +56,7 @@ class BluetoothEventService {
   base::ObserverList<Observer> observers_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_BLUETOOTH_EVENT_SERVICE_H_

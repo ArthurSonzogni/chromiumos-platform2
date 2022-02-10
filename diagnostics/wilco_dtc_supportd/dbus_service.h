@@ -15,6 +15,7 @@
 #include <brillo/errors/error.h>
 
 namespace diagnostics {
+namespace wilco {
 
 class MojoServiceFactory;
 
@@ -51,6 +52,7 @@ class DBusService final {
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_DBUS_SERVICE_H_

@@ -9,10 +9,11 @@
 #include <base/notreached.h>
 
 namespace diagnostics {
+namespace wilco {
 
 namespace {
 
-using EcEvent = diagnostics::EcService::EcEvent;
+using EcEvent = diagnostics::wilco::EcService::EcEvent;
 
 // A meaningless and meaningful EcEvent::Type
 const auto kNonSystemNotifyType = static_cast<EcEvent::Type>(0xabcd);
@@ -110,4 +111,5 @@ EcEvent GetEcEventWithReason(EcEvent::Reason reason) {
   NOTREACHED() << "Invalid EcEvent::Reason: " << static_cast<int>(reason);
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

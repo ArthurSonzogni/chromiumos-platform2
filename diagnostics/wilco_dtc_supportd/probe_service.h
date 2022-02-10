@@ -14,6 +14,7 @@
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+namespace wilco {
 
 // The probe service is responsible for getting telemetry information.
 class ProbeService {
@@ -42,6 +43,7 @@ class ProbeService {
       ProbeTelemetryInfoCallback callback) = 0;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_PROBE_SERVICE_H_

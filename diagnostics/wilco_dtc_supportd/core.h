@@ -37,6 +37,7 @@
 #include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
+namespace wilco {
 
 class GrpcClientManager;
 class MojoServiceFactory;
@@ -232,6 +233,7 @@ class Core final : public GrpcService::Delegate,
   std::unique_ptr<ProbeService> probe_service_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_CORE_H_

@@ -20,6 +20,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 
 namespace diagnostics {
+namespace wilco {
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
@@ -533,4 +534,5 @@ void RoutineService::RunInFlightCallbacks() {
   get_routine_update_callbacks_.clear();
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

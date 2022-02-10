@@ -21,6 +21,7 @@
 #include "diagnostics/wilco_dtc_supportd/service_util.h"
 
 namespace diagnostics {
+namespace wilco {
 
 // The time (in TimeDelta) after which ForceShutdown will be called if graceful
 // shutdown wasn't done within that time.
@@ -92,4 +93,5 @@ void Daemon::ForceShutdown() {
   std::exit(EXIT_FAILURE);
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

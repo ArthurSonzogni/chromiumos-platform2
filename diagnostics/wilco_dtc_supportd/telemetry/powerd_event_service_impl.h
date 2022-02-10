@@ -15,6 +15,7 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 // PowerdEventService interface implementation that obrerves events from
 // PowerdAdapter, parses proto messages and notifes it's observers about power
@@ -57,6 +58,7 @@ class PowerdEventServiceImpl : public PowerdEventService,
       external_power_ac_event_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_POWERD_EVENT_SERVICE_IMPL_H_

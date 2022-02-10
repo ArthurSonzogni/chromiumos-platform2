@@ -13,6 +13,7 @@
 #include "diagnostics/wilco_dtc_supportd/probe_service.h"
 
 namespace diagnostics {
+namespace wilco {
 
 class FakeProbeService : public ProbeService {
  public:
@@ -39,6 +40,7 @@ class FakeProbeService : public ProbeService {
       telemetry_callback_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_PROBE_SERVICE_H_

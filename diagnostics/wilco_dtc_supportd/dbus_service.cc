@@ -18,6 +18,7 @@
 #include "diagnostics/wilco_dtc_supportd/mojo_service_factory.h"
 
 namespace diagnostics {
+namespace wilco {
 
 DBusService::DBusService(MojoServiceFactory* mojo_service_factory)
     : mojo_service_factory_(mojo_service_factory) {
@@ -62,4 +63,5 @@ void DBusService::ShutDown() {
   dbus_object_.reset();
 }
 
+}  // namespace wilco
 }  // namespace diagnostics

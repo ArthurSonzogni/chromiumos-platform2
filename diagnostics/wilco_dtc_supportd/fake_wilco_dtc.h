@@ -20,6 +20,7 @@
 #include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include_directory)
 
 namespace diagnostics {
+namespace wilco {
 
 // Helper class that allows to test gRPC communication between wilco_dtc and
 // support daemon.
@@ -217,6 +218,7 @@ class FakeWilcoDtc final {
       bluetooth_data_changed_request_callback_;
 };
 
+}  // namespace wilco
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_WILCO_DTC_H_
