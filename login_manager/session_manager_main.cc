@@ -102,10 +102,8 @@ constexpr char kFlagFileDir[] = "/run/session_manager";
 
 // Hang-detection magic file and constants.
 constexpr char kHangDetectionFlagFile[] = "enable_hang_detection";
-constexpr base::TimeDelta kHangDetectionIntervalStable =
+constexpr base::TimeDelta kHangDetectionInterval =
     base::TimeDelta::FromSeconds(60);
-constexpr base::TimeDelta kHangDetectionIntervalDev =
-    base::TimeDelta::FromSeconds(15);
 constexpr base::TimeDelta kHangDetectionIntervalTest =
     base::TimeDelta::FromSeconds(5);
 
@@ -182,13 +180,7 @@ int main(int argc, char* argv[]) {
   const bool enable_hang_detection =
       !is_developer_end_user || hang_detection_file_exists;
 
-  base::TimeDelta hang_detection_interval = kHangDetectionIntervalStable;
-  std::string channel_string;
-  if (base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_TRACK",
-                                        &channel_string) &&
-      channel_string != "stable-channel") {
-    hang_detection_interval = kHangDetectionIntervalDev;
-  }
+  base::TimeDelta hang_detection_interval = kHangDetectionInterval;
   if (hang_detection_file_exists)
     hang_detection_interval = kHangDetectionIntervalTest;
 
