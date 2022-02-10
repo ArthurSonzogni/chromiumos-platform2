@@ -805,11 +805,9 @@ class UserDataAuth {
   // Note that system tokens are not affected.
   bool UnloadPkcs11Tokens(const std::vector<base::FilePath>& exclude);
 
-  // Safely empties the MountMap and may request unmounting. If |unmount| is
-  // true, the return value will reflect if all mounts unmounted cleanly or not.
-  // That is, it'll be true if all unmounts are clean and successful.
+  // Safely empties the UserSessionMap and may requests unmounting.
   // Note: This must only be called on mount thread
-  bool RemoveAllMounts(bool unmount);
+  bool RemoveAllMounts();
 
   // Calling this function will try to ensure that |public_mount_salt_| is ready
   // to use. If it's not ready, we'll generate it. Returns true if
@@ -1352,6 +1350,7 @@ class UserDataAuth {
   std::atomic<int> parallel_task_count_ = 0;
 
   friend class UserDataAuthTestTasked;
+  FRIEND_TEST(UserDataAuthTest, Unmount_AllDespiteFailures);
   FRIEND_TEST(UserDataAuthTest, InitializePkcs11Unmounted);
 
   friend class UserDataAuthExTest;

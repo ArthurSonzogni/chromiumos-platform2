@@ -75,6 +75,7 @@ using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
 using ::testing::EndsWith;
 using ::testing::Eq;
+using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::IsNull;
@@ -807,6 +808,35 @@ TEST_F(UserDataAuthTest, IsMounted) {
   // Note: IsMounted will not be called in this case.
   EXPECT_FALSE(userdataauth_->IsMounted("bar@gmail.com", &is_ephemeral));
   EXPECT_FALSE(is_ephemeral);
+}
+
+TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+
+  constexpr char kUsername1[] = "foo@gmail.com";
+  constexpr char kUsername2[] = "bar@gmail.com";
+
+  scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
+  scoped_refptr<UserSession> session1 = new UserSession(
+      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, brillo::SecureBlob(), mount1);
+  userdataauth_->set_session_for_user(kUsername1, session1.get());
+
+  scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
+  scoped_refptr<UserSession> session2 = new UserSession(
+      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, brillo::SecureBlob(), mount2);
+  userdataauth_->set_session_for_user(kUsername2, session2.get());
+
+  InSequence sequence;
+  EXPECT_CALL(*mount2, IsMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount2, IsNonEphemeralMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount2, UnmountCryptohome()).WillOnce(Return(false));
+  EXPECT_CALL(*mount1, IsMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount1, IsNonEphemeralMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount1, UnmountCryptohome()).WillOnce(Return(true));
+
+  EXPECT_FALSE(userdataauth_->RemoveAllMounts());
 }
 
 TEST_F(UserDataAuthTest, Unmount_EphemeralNotEnabled) {

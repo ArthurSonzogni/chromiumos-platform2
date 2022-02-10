@@ -654,14 +654,14 @@ scoped_refptr<UserSession> UserDataAuth::GetUserSession(
   return session;
 }
 
-bool UserDataAuth::RemoveAllMounts(bool unmount) {
+bool UserDataAuth::RemoveAllMounts() {
   AssertOnMountThread();
 
   bool success = true;
   for (auto it = sessions_.begin(); it != sessions_.end();) {
     scoped_refptr<UserSession> session = it->second;
-    if (unmount && session->IsActive()) {
-      success = success && session->Unmount();
+    if (session->IsActive() && !session->Unmount()) {
+      success = false;
     }
     sessions_.erase(it++);
   }
@@ -961,7 +961,7 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
 bool UserDataAuth::Unmount() {
   AssertOnMountThread();
 
-  bool unmount_ok = RemoveAllMounts(true);
+  bool unmount_ok = RemoveAllMounts();
 
   // If there are any unexpected mounts lingering from a crash/restart,
   // clean them up now.
@@ -1248,7 +1248,7 @@ void UserDataAuth::MountGuest(
   }
   // Rather than make it safe to check the size, then clean up, just always
   // clean up.
-  bool ok = RemoveAllMounts(true);
+  bool ok = RemoveAllMounts();
   user_data_auth::MountReply reply;
   // Provide an authoritative filesystem-sanitized username.
   reply.set_sanitized_username(
