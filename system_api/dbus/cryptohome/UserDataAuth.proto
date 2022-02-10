@@ -547,6 +547,9 @@ message StartAuthSessionReply {
   // Map to return label and public key data for the authentication credential
   // to be sent in. This will be empty if user_exists is set to false.
   map<string, cryptohome.KeyData> key_label_data = 4;
+  // List of AuthFactors to return all the AuthFactors available for user
+  // authentication. This will be empty if user_exists is set to false.
+  repeated AuthFactor auth_factors = 5;
 }
 
 message AddCredentialsRequest {
