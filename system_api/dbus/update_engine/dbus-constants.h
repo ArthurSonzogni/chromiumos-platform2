@@ -29,6 +29,7 @@ const char kSetUpdateOverCellularPermission[] =
     "SetUpdateOverCellularPermission";
 const char kSetUpdateOverCellularTarget[] = "SetUpdateOverCellularTarget";
 const char kToggleFeature[] = "ToggleFeature";
+const char kIsFeatureEnabled[] = "IsFeatureEnabled";
 
 // Signals.
 const char kStatusUpdateAdvanced[] = "StatusUpdateAdvanced";
