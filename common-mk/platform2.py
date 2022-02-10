@@ -31,6 +31,7 @@ _IUSE = [
     'amd64',
     'android_vm_rvc',
     'arc_adb_sideloading',
+    'arc_hw_oemcrypto',
     'arcpp',
     'arcvm',
     'arm',
