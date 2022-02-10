@@ -2,12 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/stateful_recovery.h"
+#include "cryptohome/stateful_recovery/stateful_recovery.h"
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <memory>
 
 #include <base/files/file_util.h>
-#include <gtest/gtest.h>
-
-#include <memory>
+#include <brillo/cryptohome.h>
+#include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
+#include <policy/mock_device_policy.h>
+#include <policy/mock_libpolicy.h>
 
 #include "cryptohome/mock_platform.h"
 
@@ -23,20 +28,6 @@ using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 using ::testing::StrEq;
 
-// MockSRHandlers is a class that contains the 3 functions required to create
-// the StatefulRecovery object. This mock object is created to simplify testing.
-class MockSRHandlers {
- public:
-  MOCK_METHOD(bool,
-              Mount,
-              (const std::string& username,
-               const std::string& passkey,
-               base::FilePath* out_home_path),
-              ());
-  MOCK_METHOD(bool, Unmount, (), ());
-  MOCK_METHOD(bool, IsOwner, (const std::string& username), ());
-};
-
 // StatefulRecoveryTest is a test fixture for all Stateful Recovery unit tests.
 class StatefulRecoveryTest : public ::testing::Test {
  public:
@@ -46,29 +37,70 @@ class StatefulRecoveryTest : public ::testing::Test {
 
   void SetUp() override {
     platform_.reset(new MockPlatform());
-    handlers_.reset(new MockSRHandlers());
+    userdataauth_proxy_.reset(new testing::StrictMock<
+                              org::chromium::UserDataAuthInterfaceProxyMock>());
+    policy_provider_.reset(
+        new testing::StrictMock<policy::MockPolicyProvider>());
   }
 
   void Initialize() {
-    auto mount = base::BindRepeating(&MockSRHandlers::Mount,
-                                     base::Unretained(handlers_.get()));
-    auto unmount = base::BindRepeating(&MockSRHandlers::Unmount,
-                                       base::Unretained(handlers_.get()));
-    auto is_owner = base::BindRepeating(&MockSRHandlers::IsOwner,
-                                        base::Unretained(handlers_.get()));
-    recovery_.reset(
-        new StatefulRecovery(platform_.get(), mount, unmount, is_owner));
+    recovery_.reset(new StatefulRecovery(
+        platform_.get(), userdataauth_proxy_.get(), policy_provider_.get()));
   }
 
  protected:
-  // Handlers for Mount, Unmount and IsOwner.
-  std::unique_ptr<MockSRHandlers> handlers_;
-
   // Mock platform object.
   std::unique_ptr<MockPlatform> platform_;
 
+  // Mock UserData Authentication interface.
+  std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyMock>
+      userdataauth_proxy_;
+
+  std::unique_ptr<testing::StrictMock<policy::MockPolicyProvider>>
+      policy_provider_;
+  testing::StrictMock<policy::MockDevicePolicy> device_policy_;
+
   // The Stateful Recovery that we want to test.
   std::unique_ptr<StatefulRecovery> recovery_;
+
+  void PrepareMountRequest(bool success) {
+    // Mount
+    {
+      EXPECT_CALL(*userdataauth_proxy_, Mount)
+          .WillOnce([success](auto in_request, auto out_reply,
+                              brillo::ErrorPtr* error, int timeout_ms) {
+            if (success)
+              out_reply->set_error(user_data_auth::CryptohomeErrorCode::
+                                       CRYPTOHOME_ERROR_NOT_SET);
+            else
+              out_reply->set_error(user_data_auth::CryptohomeErrorCode::
+                                       CRYPTOHOME_ERROR_MOUNT_FATAL);
+
+            return true;
+          });
+    }
+
+    // UnMount
+    if (success) {
+      EXPECT_CALL(*userdataauth_proxy_, Unmount)
+          .WillRepeatedly([](auto in_request, auto out_reply,
+                             brillo::ErrorPtr* error, int timeout_ms) {
+            out_reply->set_error(
+                user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET);
+            return true;
+          });
+    }
+  }
+
+  void ExpectGetOwner(std::string owner) {
+    EXPECT_CALL(*policy_provider_, Reload()).WillOnce(Return(true));
+    EXPECT_CALL(*policy_provider_, device_policy_is_loaded())
+        .WillOnce(Return(true));
+    EXPECT_CALL(*policy_provider_, GetDevicePolicy())
+        .WillOnce(ReturnRef(device_policy_));
+    EXPECT_CALL(device_policy_, GetOwner(_))
+        .WillOnce(DoAll(SetArgPointee<0>(owner), Return(true)));
+  }
 };
 
 TEST_F(StatefulRecoveryTest, ValidRequestV1) {
@@ -126,7 +158,10 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2) {
   std::string user = "user@example.com";
   std::string passkey = "abcd1234";
   std::string flag_content = "2\n" + user + "\n" + passkey;
-  FilePath mount_path("/home/.shadow/hashhashash/mount");
+  std::string obfuscated_user =
+      brillo::cryptohome::home::SanitizeUserName(user);
+  FilePath mount_path =
+      FilePath("/home/.shadow/").Append(obfuscated_user).Append("mount");
   EXPECT_CALL(*platform_,
               ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
@@ -138,14 +173,14 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2) {
       .WillOnce(Return(true));
 
   // CopyUserContents
-  EXPECT_CALL(*handlers_, Mount(StrEq(user), StrEq(passkey), _))
-      .WillOnce(DoAll(SetArgPointee<2>(mount_path), Return(true)));
+  auto mock_mount_response = std::make_unique<user_data_auth::MountReply>();
+
   EXPECT_CALL(*platform_,
               Copy(mount_path, FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
-  EXPECT_CALL(*handlers_, Unmount()).WillOnce(Return(true));
 
-  EXPECT_CALL(*handlers_, IsOwner(_)).WillOnce(Return(true));
+  PrepareMountRequest(true);
+  ExpectGetOwner(user);
   EXPECT_CALL(*platform_, FirmwareWriteProtected()).WillOnce(Return(true));
 
   // CopyPartitionInfo
@@ -176,7 +211,10 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwner) {
   std::string user = "user@example.com";
   std::string passkey = "abcd1234";
   std::string flag_content = "2\n" + user + "\n" + passkey;
-  FilePath mount_path("/home/.shadow/hashhashash/mount");
+  std::string obfuscated_user =
+      brillo::cryptohome::home::SanitizeUserName(user);
+  FilePath mount_path =
+      FilePath("/home/.shadow/").Append(obfuscated_user).Append("mount");
   EXPECT_CALL(*platform_,
               ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
@@ -187,15 +225,11 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwner) {
               CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
 
-  // CopyUserContents
-  EXPECT_CALL(*handlers_, Mount(StrEq(user), StrEq(passkey), _))
-      .WillOnce(DoAll(SetArgPointee<2>(mount_path), Return(true)));
   EXPECT_CALL(*platform_,
               Copy(mount_path, FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
-  EXPECT_CALL(*handlers_, Unmount()).WillOnce(Return(true));
-
-  EXPECT_CALL(*handlers_, IsOwner(_)).WillOnce(Return(false));
+  PrepareMountRequest(true);
+  ExpectGetOwner("notuser");
   EXPECT_CALL(*platform_, FirmwareWriteProtected()).WillOnce(Return(true));
 
   Initialize();
@@ -217,10 +251,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2BadUser) {
               CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
 
-  // CopyUserContents
-  EXPECT_CALL(*handlers_, Mount(StrEq(user), StrEq(passkey), _))
-      .WillOnce(Return(false));
-
+  PrepareMountRequest(false);
   EXPECT_CALL(*platform_, FirmwareWriteProtected()).WillOnce(Return(true));
 
   Initialize();
@@ -232,7 +263,6 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2BadUserNotWriteProtected) {
   std::string user = "user@example.com";
   std::string passkey = "abcd1234";
   std::string flag_content = "2\n" + user + "\n" + passkey;
-  FilePath mount_path("/home/.shadow/hashhashash/mount");
   EXPECT_CALL(*platform_,
               ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
@@ -243,10 +273,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2BadUserNotWriteProtected) {
               CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
 
-  // CopyUserContents
-  EXPECT_CALL(*handlers_, Mount(StrEq(user), StrEq(passkey), _))
-      .WillOnce(Return(false));
-
+  PrepareMountRequest(false);
   EXPECT_CALL(*platform_, FirmwareWriteProtected()).WillOnce(Return(false));
 
   // CopyPartitionInfo
@@ -277,7 +304,10 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwnerNotWriteProtected) {
   std::string user = "user@example.com";
   std::string passkey = "abcd1234";
   std::string flag_content = "2\n" + user + "\n" + passkey;
-  FilePath mount_path("/home/.shadow/hashhashash/mount");
+  std::string obfuscated_user =
+      brillo::cryptohome::home::SanitizeUserName(user);
+  FilePath mount_path =
+      FilePath("/home/.shadow/").Append(obfuscated_user).Append("mount");
   EXPECT_CALL(*platform_,
               ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
@@ -289,14 +319,12 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwnerNotWriteProtected) {
       .WillOnce(Return(true));
 
   // CopyUserContents
-  EXPECT_CALL(*handlers_, Mount(StrEq(user), StrEq(passkey), _))
-      .WillOnce(DoAll(SetArgPointee<2>(mount_path), Return(true)));
+  PrepareMountRequest(true);
   EXPECT_CALL(*platform_,
               Copy(mount_path, FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
-  EXPECT_CALL(*handlers_, Unmount()).WillOnce(Return(true));
 
-  EXPECT_CALL(*handlers_, IsOwner(_)).WillOnce(Return(false));
+  ExpectGetOwner("notowner");
   EXPECT_CALL(*platform_, FirmwareWriteProtected()).WillOnce(Return(false));
 
   // CopyPartitionInfo

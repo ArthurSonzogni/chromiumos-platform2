@@ -1,13 +1,20 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#ifndef CRYPTOHOME_STATEFUL_RECOVERY_H_
-#define CRYPTOHOME_STATEFUL_RECOVERY_H_
+#ifndef CRYPTOHOME_STATEFUL_RECOVERY_STATEFUL_RECOVERY_H_
+#define CRYPTOHOME_STATEFUL_RECOVERY_STATEFUL_RECOVERY_H_
 
 #include <string>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
+
+#include <base/optional.h>
+#include <brillo/dbus/dbus_method_response.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <cryptohome/proto_bindings/rpc.pb.h>
+#include <policy/libpolicy.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 namespace cryptohome {
 
@@ -27,39 +34,16 @@ class Service;
 //
 class StatefulRecovery {
  public:
-  // MountFunction is a function prototype that will mount the cryptohome for
-  // the specified username and passkey. If the mounting is successful, true is
-  // returned and out_home_path is set to the home path for the home directory
-  // for the target user. Otherwise, false is returned and out_home_path is
-  // unchanged. Note that it is the responsibility of the function to log any
-  // detailed error should any arises.
-  typedef base::RepeatingCallback<bool(const std::string& username,
-                                       const std::string& passkey,
-                                       base::FilePath* out_home_path)>
-      MountFunction;
-
-  // UnmountFunction is a function that unmount all cryptohome. It returns true
-  // on success and false on failure. Note that it is the responsibility of the
-  // function to log any detailed error should any arises.
-  typedef base::RepeatingCallback<bool()> UnmountFunction;
-
-  // IsOwnerFunction is a function that returns true if the given user is the
-  // owner, and false otherwise.
-  typedef base::RepeatingCallback<bool(const std::string& username)>
-      IsOwnerFunction;
-
-  explicit StatefulRecovery(Platform* platform,
-                            MountFunction mountfn,
-                            UnmountFunction unmountfn,
-                            IsOwnerFunction isownerfn);
+  explicit StatefulRecovery(
+      Platform* platform,
+      org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy,
+      policy::PolicyProvider* policy_provider);
   virtual ~StatefulRecovery() = default;
 
   // Returns true if recovery was requested by the device user.
   virtual bool Requested();
   // Returns true if it successfully recovered stateful contents.
   virtual bool Recover();
-  // On Chrome hardware, sets the recovery request field and reboots.
-  virtual void PerformReboot();
 
   static const char kRecoverSource[];
   static const char kRecoverDestination[];
@@ -85,11 +69,26 @@ class StatefulRecovery {
   bool RecoverV1();
   bool RecoverV2();
 
+  // Mount mounts the cryptohome for the specified username and passkey.
+  // If the mounting is successful, true is returned and out_home_path is set
+  // to the home path for the home directory for the target user. Otherwise,
+  // false is returned and out_home_path is unchanged.
+  bool Mount(const std::string& username,
+             const std::string& passkey,
+             base::FilePath* out_home_path);
+
+  // Unmount unmounts all cryptohome. It returns true on success and false on
+  // failure.
+  bool Unmount();
+
+  // IsOwnerFunction returns true if the given user is the owner.
+  bool IsOwner(const std::string& username);
+
   bool requested_;
   Platform* platform_;
-  MountFunction mountfn_;
-  UnmountFunction unmountfn_;
-  IsOwnerFunction isownerfn_;
+  org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy_;
+  policy::PolicyProvider* policy_provider_;
+  int timeout_ms_;
   std::string version_;
   std::string user_;
   std::string passkey_;
@@ -97,4 +96,4 @@ class StatefulRecovery {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_STATEFUL_RECOVERY_H_
+#endif  // CRYPTOHOME_STATEFUL_RECOVERY_STATEFUL_RECOVERY_H_

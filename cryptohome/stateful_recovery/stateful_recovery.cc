@@ -4,10 +4,8 @@
 //
 // Provides the implementation of StatefulRecovery.
 
-#include "cryptohome/stateful_recovery.h"
+#include "cryptohome/stateful_recovery/stateful_recovery.h"
 
-#include <linux/reboot.h>
-#include <sys/reboot.h>
 #include <unistd.h>
 
 #include <string>
@@ -17,7 +15,12 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <brillo/syslog_logging.h>
+#include <brillo/cryptohome.h>
+#include <policy/device_policy.h>
+#include <policy/libpolicy.h>
 
+#include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
 
 using base::FilePath;
@@ -34,16 +37,17 @@ const char StatefulRecovery::kRecoverFilesystemDetails[] =
     "/mnt/stateful_partition/decrypted/filesystem-details.txt";
 const char StatefulRecovery::kFlagFile[] =
     "/mnt/stateful_partition/decrypt_stateful";
+const int kDefaultTimeoutMs = 30000;
 
-StatefulRecovery::StatefulRecovery(Platform* platform,
-                                   MountFunction mountfn,
-                                   UnmountFunction unmountfn,
-                                   IsOwnerFunction isownerfn)
+StatefulRecovery::StatefulRecovery(
+    Platform* platform,
+    org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy,
+    policy::PolicyProvider* policy_provider)
     : requested_(false),
       platform_(platform),
-      mountfn_(mountfn),
-      unmountfn_(unmountfn),
-      isownerfn_(isownerfn) {}
+      userdataauth_proxy_(userdataauth_proxy),
+      policy_provider_(policy_provider),
+      timeout_ms_(kDefaultTimeoutMs) {}
 
 bool StatefulRecovery::Requested() {
   requested_ = ParseFlagFile();
@@ -83,14 +87,14 @@ bool StatefulRecovery::CopyUserContents() {
   int rc;
   FilePath path;
 
-  if (!mountfn_.Run(user_, passkey_, &path)) {
+  if (!Mount(user_, passkey_, &path)) {
     // mountfn_ logged the error already.
     return false;
   }
 
   rc = platform_->Copy(path, FilePath(kRecoverDestination));
 
-  unmountfn_.Run();
+  Unmount();
   // If it failed, unmountfn_ would log the error.
 
   if (rc)
@@ -132,7 +136,7 @@ bool StatefulRecovery::RecoverV2() {
   if (CopyUserContents()) {
     wrote_data = true;
     // If user authenticated, check if they are the owner.
-    if (isownerfn_.Run(user_)) {
+    if (IsOwner(user_)) {
       is_authenticated_owner = true;
     }
   }
@@ -175,15 +179,6 @@ bool StatefulRecovery::Recover() {
   }
 }
 
-void StatefulRecovery::PerformReboot() {
-  // TODO(wad) Replace with a mockable helper.
-  if (system("/usr/bin/crossystem recovery_request=1") != 0) {
-    LOG(ERROR) << "Failed to set recovery request!";
-  }
-  platform_->Sync();
-  reboot(LINUX_REBOOT_CMD_RESTART);
-}
-
 bool StatefulRecovery::ParseFlagFile() {
   std::string contents;
   size_t delim, pos;
@@ -224,6 +219,63 @@ bool StatefulRecovery::ParseFlagFile() {
   // TODO(ellyjones): UMA stat?
   LOG(ERROR) << "Bogus stateful recovery request file:" << contents;
   return false;
+}
+
+bool StatefulRecovery::Mount(const std::string& username,
+                             const std::string& passkey,
+                             FilePath* out_home_path) {
+  user_data_auth::MountRequest req;
+  req.mutable_account()->set_account_id(username);
+  req.mutable_authorization()->mutable_key()->set_secret(passkey);
+
+  user_data_auth::MountReply reply;
+  brillo::ErrorPtr error;
+  if (!userdataauth_proxy_->Mount(req, &reply, &error, timeout_ms_) || error) {
+    LOG(ERROR) << "Mount call failed: " << error->GetMessage();
+    return false;
+  }
+  if (reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "Mount during stateful recovery failed: " << reply.error();
+    return false;
+  }
+  LOG(INFO) << "Mount succeeded.";
+  const std::string obfuscated_username =
+      brillo::cryptohome::home::SanitizeUserName(username);
+  *out_home_path = GetUserMountDirectory(obfuscated_username);
+  return true;
+}
+
+bool StatefulRecovery::Unmount() {
+  user_data_auth::UnmountRequest req;
+
+  user_data_auth::UnmountReply reply;
+  brillo::ErrorPtr error;
+  if (!userdataauth_proxy_->Unmount(req, &reply, &error, timeout_ms_) ||
+      error) {
+    LOG(ERROR) << "Unmount call failed: " << error->GetMessage();
+    return false;
+  }
+  if (reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "Unmount failed: " << reply.error();
+    printf("Unmount failed.\n");
+    return false;
+  }
+  LOG(INFO) << "Unmount succeeded.";
+  return true;
+}
+
+bool StatefulRecovery::IsOwner(const std::string& username) {
+  std::string owner;
+  policy_provider_->Reload();
+  if (!policy_provider_->device_policy_is_loaded())
+    return false;
+  policy_provider_->GetDevicePolicy().GetOwner(&owner);
+  if (username.empty() || owner.empty())
+    return false;
+
+  return username == owner;
 }
 
 }  // namespace cryptohome

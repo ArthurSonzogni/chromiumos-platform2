@@ -22,6 +22,8 @@ group("all") {
     ":lockbox-cache",
     ":mount-encrypted",
     ":mount_encrypted_lib",
+    ":stateful-recovery",
+    ":stateful_recovery_lib",
     ":tpm-manager",
   ]
   if (use.cert_provision) {
@@ -39,6 +41,7 @@ group("all") {
       ":error_location_check",
       ":fake_platform_unittest",
       ":mount_encrypted_unittests",
+      ":stateful_recovery_unittests",
     ]
   }
   if (use.fuzzer) {
@@ -256,6 +259,21 @@ executable("homedirs_initializer") {
   ]
 }
 
+static_library("stateful_recovery_lib") {
+  sources = [ "stateful_recovery/stateful_recovery.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ "libs:libcryptohome" ]
+  pkg_deps = [ "libuser_data_auth-client" ]
+}
+
+executable("stateful-recovery") {
+  sources = [ "stateful_recovery/main.cc" ]
+  libs = [ "policy" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":stateful_recovery_lib" ]
+  pkg_deps = [ "dbus-1" ]
+}
+
 if (use.cert_provision) {
   proto_library("cert_provision-proto") {
     proto_in_dir = "./cert"
@@ -400,7 +418,6 @@ if (use.test) {
       "sign_in_hash_tree_unittest.cc",
       "signature_sealing/structures_proto_test.cc",
       "signature_sealing_backend_test_utils.cc",
-      "stateful_recovery_unittest.cc",
       "storage/arc_disk_quota_unittest.cc",
       "storage/cryptohome_vault_test.cc",
       "storage/encrypted_container/dmcrypt_container_test.cc",
@@ -560,6 +577,27 @@ if (use.test) {
       "libs:libcrostpm",
       "libs:libnvram-boot-lockbox",
       "//common-mk/testrunner",
+    ]
+  }
+
+  executable("stateful_recovery_unittests") {
+    sources = [ "stateful_recovery/stateful_recovery_unittest.cc" ]
+    libs = [ "policy" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":fake_platform-static",
+      ":stateful_recovery_lib",
+      "libs:cryptohome-proto",
+      "//common-mk/testrunner",
+    ]
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+      "libuser_data_auth-client",
+      "libuser_data_auth-client-test",
     ]
   }
 }

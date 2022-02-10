@@ -410,7 +410,6 @@ static_library("libcryptohome") {
     "../pkcs11/real_pkcs11_token.cc",
     "../scrypt_verifier.cc",
     "../service_userdataauth.cc",
-    "../stateful_recovery.cc",
     "../storage/arc_disk_quota.cc",
     "../storage/cryptohome_vault.cc",
     "../storage/cryptohome_vault_factory.cc",
