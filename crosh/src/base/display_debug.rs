@@ -53,6 +53,7 @@ enum DRMTraceSize {
 // These enum values must match those in org.chromium.debugd.xml.
 enum DRMTraceSnapshotType {
     Trace = 0,
+    Modetest = 1,
 }
 
 const TRACE_START_LOG: &str = "DISPLAY-DEBUG-START-TRACE";
@@ -313,11 +314,16 @@ fn execute_display_debug_diagnose(
     println!("{}", DIAGNOSE_WAIT_STEADY_STATE);
     thread::sleep(time::Duration::from_secs(5));
 
-    // Annotate the log to annotate that the displays are disconnected.
+    // Annotate the log to annotate that the displays are disconnected and take a snapshot
+    // of modetest.
     if let Err(err) = Debugd::new()
         .and_then(|d| d.drmtrace_annotate_log(String::from(DIAGNOSE_DISPLAYS_DISCONNECTED_LOG)))
+        .and_then(|d| d.drmtrace_snapshot(DRMTraceSnapshotType::Modetest))
     {
-        eprintln!("Error annotating drm_trace log: {}", err)
+        eprintln!(
+            "Error invoking D-Bus method after display disconnection: {}",
+            err
+        )
     }
 
     loop {
@@ -327,11 +333,15 @@ fn execute_display_debug_diagnose(
         println!("{}", DIAGNOSE_WAIT_STEADY_STATE);
         thread::sleep(time::Duration::from_secs(5));
 
-        // Annotate the log that a display has been reconnected.
+        // Annotate the log that a display has been reconnected and take a snapshot of modetest.
         if let Err(err) = Debugd::new()
             .and_then(|d| d.drmtrace_annotate_log(String::from(DIAGNOSE_DISPLAY_RECONNECTED_LOG)))
+            .and_then(|d| d.drmtrace_snapshot(DRMTraceSnapshotType::Modetest))
         {
-            eprintln!("Error annotating drm_trace log: {}", err)
+            eprintln!(
+                "Error invoking D-Bus method after display reconnection: {}",
+                err
+            )
         }
         match prompt_yes_no(DIAGNOSE_HAVE_MORE_DISPLAYS) {
             Ok(Choice::Yes) => (),
