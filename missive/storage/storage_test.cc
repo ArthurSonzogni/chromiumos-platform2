@@ -995,8 +995,7 @@ TEST_P(StorageTest, WriteIntoNewStorageAndUpload) {
   task_environment_.FastForwardBy(base::TimeDelta::FromSeconds(1));
 }
 
-// TODO(b/198377119): Investigate flakiness, fix and re-enable.
-TEST_P(StorageTest, DISABLED_WriteIntoNewStorageAndUploadWithKeyUpdate) {
+TEST_P(StorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
   // Run the test only when encryption is enabled.
   if (!is_encryption_enabled()) {
     return;
@@ -1012,16 +1011,6 @@ TEST_P(StorageTest, DISABLED_WriteIntoNewStorageAndUploadWithKeyUpdate) {
   // Set uploader expectations.
   {
     test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
-        // Called once with empty queue.
-        .WillOnce(Invoke([this](UploaderInterface::UploadReason reason) {
-          return TestUploader::SetEmpty(this).Complete();
-        }))
-        // Can be called later again, reject it.
-        .WillRepeatedly(Invoke([](UploaderInterface::UploadReason reason) {
-          return Status(error::CANCELLED, "Repeated key delivery rejected");
-        }));
     EXPECT_CALL(set_mock_uploader_expectations_,
                 Call(Eq(UploaderInterface::UploadReason::MANUAL)))
         .WillOnce(
@@ -1046,7 +1035,7 @@ TEST_P(StorageTest, DISABLED_WriteIntoNewStorageAndUploadWithKeyUpdate) {
   WriteStringOrDie(MANUAL_BATCH, kMoreData[1]);
   WriteStringOrDie(MANUAL_BATCH, kMoreData[2]);
 
-  // Wait to trigger encryption key request on the next upload
+  // Wait to trigger encryption key request on the next upload.
   task_environment_.FastForwardBy(kKeyRenewalTime +
                                   base::TimeDelta::FromSeconds(1));
 
