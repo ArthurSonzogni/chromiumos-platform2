@@ -541,6 +541,13 @@ proto_library("system_api-privacy_screen-protos") {
 proto_library("system_api-cdm_oemcrypto-protos") {
   proto_in_dir = "dbus/cdm_oemcrypto"
   proto_out_dir = "include/cdm_oemcrypto/proto_bindings"
-  sources = [ "${proto_in_dir}/secure_buffer.proto" ]
+  sources = [
+    "${proto_in_dir}/client_information.proto",
+    "${proto_in_dir}/secure_buffer.proto",
+  ]
   standalone = true
+
+  # system_api-cdm_oemcrypto-protos is used by a shared_library
+  # object, so we need to build it with "-fPIC" instead of "-fPIE".
+  use_pic = true
 }

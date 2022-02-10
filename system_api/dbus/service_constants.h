@@ -457,6 +457,7 @@ const char kBootstrapCdmFactoryDaemonMojoConnection[] =
     "BootstrapCdmFactoryDaemonMojoConnection";
 const char kGetFactoryTransportKeyMaterial[] = "GetFactoryTransportKeyMaterial";
 const char kWrapFactoryKeybox[] = "WrapFactoryKeybox";
+const char kGetClientInformation[] = "GetClientInformation";
 }  // namespace cdm_oemcrypto
 
 namespace midis {
