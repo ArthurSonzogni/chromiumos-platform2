@@ -362,6 +362,11 @@ In other words, how long since the system was booted.
 
 ## usb4 devices
 
+## user_folder_size_dump
+
+Dumps the size of all folders inside the primary user's folder and the size of
+all daemon stores for all mounted users.
+
 ## verified boot
 
 ## vmlog.1.LATEST

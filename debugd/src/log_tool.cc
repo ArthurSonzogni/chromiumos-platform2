@@ -260,7 +260,7 @@ const std::array kCommandLogs {
     "done"},
   Log{kFile, "eventlog", "/var/log/eventlog.txt"},
   Log{kCommand, "folder_size_dump",
-    "/usr/libexec/debugd/helpers/folder_size_dump",
+    "/usr/libexec/debugd/helpers/folder_size_dump --system",
     kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},
   Log{kCommand, "font_info", "/usr/share/userfeedback/scripts/font_info"},
   Log{kGlob, "framebuffer", "/sys/kernel/debug/dri/?/framebuffer",
@@ -458,7 +458,7 @@ const std::array kCommandLogsShort{
 };
 
 // Extra logs are logs such as netstat and logcat which should appear in
-// chrome://system but not in feedback reports.  Open sockets may have privacy
+// chrome://system but not in feedback reports. Open sockets may have privacy
 // implications, and logcat is already incorporated via arc-bugreport.
 // NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
 // * add a row to http://go/cros-feedback-audit and fill it out
@@ -479,6 +479,10 @@ const std::array kExtraLogs {
     "/sbin/ss --all --query inet --numeric --processes", kRoot, kRoot},
   Log{kCommand, "network-devices", "/usr/bin/connectivity show devices"},
   Log{kCommand, "network-services", "/usr/bin/connectivity show services"},
+  // This includes unfiltered user PII, so do not include in feedback reports.
+  Log{kCommand, "user_folder_size_dump",
+    "/usr/libexec/debugd/helpers/folder_size_dump --user",
+    kRoot, kRoot, 1 * 1024 * 1024 /* 1 MiB*/, LogTool::Encoding::kUtf8, true},
   Log{kCommand, "wifi_status_no_anonymize",
     "/usr/bin/network_diag --wifi-internal --no-log"},
 };

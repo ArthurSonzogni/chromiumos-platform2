@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <brillo/flag_helper.h>
 #include <base/logging.h>
 #include <base/files/dir_reader_posix.h>
 #include <base/process/launch.h>
@@ -98,7 +99,43 @@ bool FilterNone(const std::string&) {
   return true;
 }
 
-const DirAdder kDirs[]{
+bool DumpDirectory(const DirAdder& entry) {
+  std::vector<std::string> duArgv{"du", "--human-readable", "--total",
+                                  "--summarize", "--one-file-system"};
+
+  auto argCount = duArgv.size();
+
+  if (!entry.AppendDirEntries(&duArgv)) {
+    LOG(ERROR) << "Failed to generate directory list for: " << entry.GetPath();
+    return false;
+  }
+
+  // Sort directory entries.
+  std::sort(duArgv.begin() + argCount, duArgv.end());
+
+  entry.AppendSelf(&duArgv);
+
+  // Get the output of du.
+  std::string output;
+  if (!base::GetAppOutputAndError(base::CommandLine(duArgv), &output)) {
+    LOG(ERROR) << "Failed to generate directory dump for: " << entry.GetPath();
+    return false;
+  }
+
+  // Filter out 0 sized entries to reduce size.
+  // Matches "0 <dir>" lines in the output and remove them.
+  RE2::GlobalReplace(&output, R"((?m:^0\s+.*$))", "");
+  // Remove extra newlines.
+  RE2::GlobalReplace(&output, R"(^\n+)", "");
+  RE2::GlobalReplace(&output, R"(\n{2,})", "\n");
+
+  std::cout << "--- " << entry.GetPath() << " ---" << std::endl;
+  std::cout << output;
+
+  return true;
+}
+
+const DirAdder kSystemDirs[]{
     {"/home/chronos/", FilterUserDirs, false},
     {"/home/.shadow/", FilterUserDirs, false},
     {"/mnt/stateful_partition/", FilterStateful, false},
@@ -108,45 +145,94 @@ const DirAdder kDirs[]{
     {"/var/", FilterNone, true},
 };
 
-}  // namespace
+bool DumpSystemDirectories() {
+  bool result = true;
+  for (const auto& entry : kSystemDirs) {
+    if (!DumpDirectory(entry)) {
+      result = false;
+    }
+  }
 
-int main() {
-  int exit_code = 0;
-  for (const auto& entry : kDirs) {
-    std::vector<std::string> argv{"du", "--human-readable", "--total",
-                                  "--summarize", "--one-file-system"};
+  return result;
+}
 
-    auto arg_count = argv.size();
+bool DumpDaemonStore() {
+  const std::string kShadowPath = "/home/.shadow/";
+  const std::string kDaemonSubPath = "/mount/root/";
 
-    if (!entry.AppendDirEntries(&argv)) {
-      LOG(ERROR) << "Failed to generate directory list for " << entry.GetPath();
-      exit_code = 1;
+  base::DirReaderPosix dir_reader(kShadowPath.c_str());
+
+  if (!dir_reader.IsValid()) {
+    return false;
+  }
+
+  std::vector<std::string> deamonPaths;
+  while (dir_reader.Next()) {
+    std::string name(dir_reader.name());
+
+    if (name == "." || name == "..") {
       continue;
     }
 
-    // Sort directory entries.
-    std::sort(argv.begin() + arg_count, argv.end());
-
-    entry.AppendSelf(&argv);
-
-    // Get the output of du.
-    int exit_code = 0;
-    std::string output;
-    if (!base::GetAppOutputAndError(base::CommandLine(argv), &output)) {
-      LOG(ERROR) << "Failed to generate directory dump";
-      exit_code = 1;
+    // Skip non user directories.
+    if (!RE2::FullMatch(name, kUserRegex)) {
+      continue;
     }
 
-    // Filter out 0 sized entries to reduce size.
-    // Matches "0 <dir>" lines in the output and remove them.
-    RE2::GlobalReplace(&output, R"((?m:^0\s+.*$))", "");
-    // Remove extra newlines.
-    RE2::GlobalReplace(&output, R"(^\n+)", "");
-    RE2::GlobalReplace(&output, R"(\n{2,})", "\n");
-
-    std::cout << "--- " << entry.GetPath() << " ---" << std::endl;
-    std::cout << output;
+    auto entry = kShadowPath + name + kDaemonSubPath;
+    deamonPaths.push_back(entry);
   }
 
-  return exit_code;
+  bool result = true;
+  if (!dir_reader.IsValid()) {
+    return false;
+  }
+
+  for (const auto& entry : deamonPaths) {
+    // Ignore errors for unmounted users.
+    DumpDirectory(DirAdder(entry.c_str(), FilterNone, true));
+  }
+
+  return result;
+}
+
+const DirAdder kUserDir("/home/chronos/user/", FilterNone, true);
+
+bool DumpUserDirectories() {
+  bool result = true;
+
+  std::cout << "--- Daemon store ---" << std::endl;
+  if (!DumpDaemonStore()) {
+    result = false;
+  }
+
+  std::cout << "--- User directory ---" << std::endl;
+  if (!DumpDirectory(kUserDir)) {
+    result = false;
+  }
+
+  return result;
+}
+
+}  // namespace
+
+int main(int argc, char* argv[]) {
+  DEFINE_bool(user, 0, "Dump user directories' sizes");
+  DEFINE_bool(system, 0, "Dump system directories' sizes");
+  brillo::FlagHelper::Init(argc, argv,
+                           "Dump user and system directories' sizes");
+
+  if (FLAGS_system) {
+    if (!DumpSystemDirectories()) {
+      LOG(ERROR) << "Failed system directory dump";
+    }
+  }
+
+  if (FLAGS_user) {
+    if (!DumpUserDirectories()) {
+      LOG(ERROR) << "Failed user directory dump";
+    }
+  }
+
+  return 0;
 }
