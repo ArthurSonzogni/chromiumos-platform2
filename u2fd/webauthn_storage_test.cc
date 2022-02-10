@@ -142,5 +142,39 @@ TEST_F(WebAuthnStorageTest, LoadManyRecords) {
   EXPECT_TRUE(webauthn_storage_->LoadRecords());
 }
 
+TEST_F(WebAuthnStorageTest, CountAndDeleteRecords) {
+  double timestamp_base = 10000;
+  for (int i = 0; i < 10; i++) {
+    const WebAuthnRecord record{
+        .credential_id = std::string(kCredentialId) + std::to_string(i),
+        .secret = HexArrayToBlob(kCredentialSecret),
+        .rp_id = kRpId,
+        .rp_display_name = kRpDisplayName,
+        .user_id = kUserId,
+        .user_display_name = kUserDisplayName,
+        .timestamp = timestamp_base + i * 100,
+        .is_resident_key = true};
+
+    EXPECT_TRUE(webauthn_storage_->WriteRecord(record));
+  }
+
+  // The time range of min_timestamp~max_timestamp is inclusive.
+  EXPECT_EQ(webauthn_storage_->CountRecordsInTimeRange(10100, 10300), 3);
+  // Test counting all records.
+  EXPECT_EQ(webauthn_storage_->CountRecordsInTimeRange(0, 100000), 10);
+
+  // Delete some records.
+  EXPECT_EQ(webauthn_storage_->DeleteRecordsInTimeRange(10100, 10200), 2);
+  EXPECT_EQ(webauthn_storage_->DeleteRecordsInTimeRange(10400, 10700), 4);
+
+  // See if remaining amount of records is correct.
+  EXPECT_EQ(webauthn_storage_->CountRecordsInTimeRange(10150, 10800), 2);
+  EXPECT_EQ(webauthn_storage_->CountRecordsInTimeRange(0, 100000), 4);
+
+  // Delete all records.
+  EXPECT_EQ(webauthn_storage_->DeleteRecordsInTimeRange(0, 100000), 4);
+  EXPECT_EQ(webauthn_storage_->CountRecordsInTimeRange(0, 100000), 0);
+}
+
 }  // namespace
 }  // namespace u2f

@@ -293,6 +293,14 @@ void U2fDaemon::RegisterDBusObjectsAsync(
                                         base::Unretained(&webauthn_handler_),
                                         &WebAuthnHandler::IsU2fEnabled);
 
+  u2f_interface->AddSimpleMethodHandler(
+      kU2FCountCredentialsInTimeRange, base::Unretained(&webauthn_handler_),
+      &WebAuthnHandler::CountCredentialsInTimeRange);
+
+  u2f_interface->AddSimpleMethodHandler(
+      kU2FDeleteCredentialsInTimeRange, base::Unretained(&webauthn_handler_),
+      &WebAuthnHandler::DeleteCredentialsInTimeRange);
+
   dbus_object_->RegisterAsync(
       sequencer->GetHandler("Failed to register DBus Interface.", true));
 }

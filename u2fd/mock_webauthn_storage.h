@@ -40,6 +40,16 @@ class MockWebAuthnStorage : public WebAuthnStorage {
               GetRecordByCredentialId,
               (const std::string& credential_id),
               (override));
+
+  MOCK_METHOD(int,
+              CountRecordsInTimeRange,
+              (int64_t timestamp_min, int64_t timestamp_max),
+              (override));
+
+  MOCK_METHOD(int,
+              DeleteRecordsInTimeRange,
+              (int64_t timestamp_min, int64_t timestamp_max),
+              (override));
 };
 
 }  // namespace u2f

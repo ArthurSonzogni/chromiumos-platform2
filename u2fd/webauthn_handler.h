@@ -130,6 +130,16 @@ class WebAuthnHandler {
   // Checks whether u2f is enabled (therefore power button mode is supported).
   IsU2fEnabledResponse IsU2fEnabled(const IsU2fEnabledRequest& request);
 
+  // Count how many WebAuthn platform credentials are created within the
+  // specified time range.
+  CountCredentialsInTimeRangeResponse CountCredentialsInTimeRange(
+      const CountCredentialsInTimeRangeRequest& request);
+
+  // Delete all WebAuthn platform credentials created within the specified time
+  // range.
+  DeleteCredentialsInTimeRangeResponse DeleteCredentialsInTimeRange(
+      const DeleteCredentialsInTimeRangeRequest& request);
+
   void SetWebAuthnStorageForTesting(std::unique_ptr<WebAuthnStorage> storage);
 
   void SetCryptohomeInterfaceProxyForTesting(

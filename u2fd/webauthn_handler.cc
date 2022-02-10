@@ -1071,6 +1071,51 @@ void WebAuthnHandler::IsUvpaa(
   method_response->Return(response);
 }
 
+CountCredentialsInTimeRangeResponse
+WebAuthnHandler::CountCredentialsInTimeRange(
+    const CountCredentialsInTimeRangeRequest& request) {
+  CountCredentialsInTimeRangeResponse response;
+
+  if (!Initialized()) {
+    response.set_status(CountCredentialsInTimeRangeResponse::INTERNAL_ERROR);
+    return response;
+  }
+
+  int64_t created_not_before = request.created_not_before_seconds();
+  int64_t created_not_after = request.created_not_after_seconds();
+  if (created_not_before > created_not_after) {
+    response.set_status(CountCredentialsInTimeRangeResponse::INVALID_REQUEST);
+    return response;
+  }
+  response.set_num_credentials(webauthn_storage_->CountRecordsInTimeRange(
+      created_not_before, created_not_after));
+  response.set_status(CountCredentialsInTimeRangeResponse::SUCCESS);
+  return response;
+}
+
+DeleteCredentialsInTimeRangeResponse
+WebAuthnHandler::DeleteCredentialsInTimeRange(
+    const DeleteCredentialsInTimeRangeRequest& request) {
+  DeleteCredentialsInTimeRangeResponse response;
+
+  if (!Initialized()) {
+    response.set_status(DeleteCredentialsInTimeRangeResponse::INTERNAL_ERROR);
+    return response;
+  }
+
+  int64_t created_not_before = request.created_not_before_seconds();
+  int64_t created_not_after = request.created_not_after_seconds();
+  if (created_not_before > created_not_after) {
+    response.set_status(DeleteCredentialsInTimeRangeResponse::INVALID_REQUEST);
+    return response;
+  }
+  response.set_num_credentials_deleted(
+      webauthn_storage_->DeleteRecordsInTimeRange(created_not_before,
+                                                  created_not_after));
+  response.set_status(DeleteCredentialsInTimeRangeResponse::SUCCESS);
+  return response;
+}
+
 bool WebAuthnHandler::HasPin(const std::string& account_id) {
   user_data_auth::GetKeyDataRequest request;
   request.mutable_account_id()->set_account_id(account_id);

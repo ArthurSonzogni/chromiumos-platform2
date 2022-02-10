@@ -281,6 +281,35 @@ base::Optional<WebAuthnRecord> WebAuthnStorage::GetRecordByCredentialId(
   return base::nullopt;
 }
 
+int WebAuthnStorage::CountRecordsInTimeRange(int64_t timestamp_min,
+                                             int64_t timestamp_max) {
+  int num_records = 0;
+  for (const WebAuthnRecord& record : records_) {
+    if (timestamp_min <= record.timestamp &&
+        record.timestamp <= timestamp_max) {
+      num_records++;
+    }
+  }
+  return num_records;
+}
+
+int WebAuthnStorage::DeleteRecordsInTimeRange(int64_t timestamp_min,
+                                              int64_t timestamp_max) {
+  size_t original_size = records_.size();
+  auto remove_begin =
+      std::remove_if(records_.begin(), records_.end(),
+                     [timestamp_min, timestamp_max](const auto& record) {
+                       return timestamp_min <= record.timestamp &&
+                              record.timestamp <= timestamp_max;
+                     });
+  for (auto record = remove_begin; record != records_.end(); record++) {
+    DeleteRecordWithCredentialId(record->credential_id);
+  }
+  records_.erase(remove_begin, records_.end());
+  size_t updated_size = records_.size();
+  return original_size - updated_size;
+}
+
 bool WebAuthnStorage::PersistAuthTimeSecretHash(const brillo::Blob& hash) {
   DCHECK(allow_access_ && !sanitized_user_.empty());
 
@@ -336,6 +365,33 @@ void WebAuthnStorage::Reset() {
 
 void WebAuthnStorage::SetRootPathForTesting(const base::FilePath& root_path) {
   root_path_ = root_path;
+}
+
+bool WebAuthnStorage::DeleteRecordWithCredentialId(
+    const std::string& credential_id) {
+  // Use the hash of credential_id for the filename because the hex encode of
+  // credential_id itself is too long and would cause ENAMETOOLONG.
+  const std::vector<uint8_t> credential_id_hash = util::Sha256(credential_id);
+  std::vector<FilePath> paths = {
+      FilePath(sanitized_user_), FilePath(kWebAuthnDirName),
+      FilePath(kRecordFileNamePrefix +
+               base::HexEncode(credential_id_hash.data(),
+                               credential_id_hash.size()))};
+
+  FilePath record_storage_filename = root_path_;
+  for (const auto& path : paths) {
+    DCHECK(!path.IsAbsolute());
+    record_storage_filename = record_storage_filename.Append(path);
+  }
+
+  if (!base::DeleteFile(record_storage_filename)) {
+    LOG(ERROR) << "Failed to delete file: " << record_storage_filename.value()
+               << ".";
+    return false;
+  }
+  LOG(INFO) << "Successfully deleted file: " << record_storage_filename.value()
+            << ".";
+  return true;
 }
 
 }  // namespace u2f

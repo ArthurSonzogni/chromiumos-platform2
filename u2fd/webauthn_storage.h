@@ -66,6 +66,12 @@ class WebAuthnStorage {
   virtual base::Optional<WebAuthnRecord> GetRecordByCredentialId(
       const std::string& credential_id);
 
+  virtual int CountRecordsInTimeRange(int64_t timestamp_min,
+                                      int64_t timestamp_max);
+
+  virtual int DeleteRecordsInTimeRange(int64_t timestamp_min,
+                                       int64_t timestamp_max);
+
   // Writes auth-time secret hash to disk.
   bool PersistAuthTimeSecretHash(const brillo::Blob& hash);
   // Loads auth-time secret hash from disk.
@@ -82,6 +88,8 @@ class WebAuthnStorage {
   void SetRootPathForTesting(const base::FilePath& root_path);
 
  private:
+  bool DeleteRecordWithCredentialId(const std::string& credential_id);
+
   base::FilePath root_path_;
   // Whether access to storage is allowed.
   bool allow_access_ = false;
