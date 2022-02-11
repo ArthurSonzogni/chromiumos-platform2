@@ -23,6 +23,8 @@ python3 -m cros_config_host.cros_config_schema -c test_data/test_import.yaml \
         -o test_data/test_import.json
 python3 -m cros_config_host.cros_config_schema -o test_data/test_merge.json \
         -m test_data/test_merge_base.yaml test_data/test_merge_overlay.yaml
+python3 -m cros_config_host.cros_config_schema -o test_data/test_build.json \
+        -m test_data/test.yaml
 python3 -m cros_config_host.cros_config_schema --zephyr-ec-configs-only \
         -o test_data/test_zephyr.json -m test_data/test.yaml
 
