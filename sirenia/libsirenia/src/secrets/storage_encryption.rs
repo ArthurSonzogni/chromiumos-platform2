@@ -426,6 +426,7 @@ mod tests {
         let mut manifest = AppManifest::new();
         let prev = manifest.add_app_manifest_entry(AppManifestEntry {
             app_name: "demo_app".to_string(),
+            devmode_only: false,
             exec_info: ExecutableInfo::Path("/usr/bin/demo_app".to_string()),
             exec_args: None,
             sandbox_type: SandboxType::DeveloperEnvironment,

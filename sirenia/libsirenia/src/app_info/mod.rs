@@ -81,6 +81,9 @@ pub struct SecretsParameters {
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub struct AppManifestEntry {
     pub app_name: String,
+    // devmode_only is false by default.
+    #[serde(default)]
+    pub devmode_only: bool,
     pub exec_info: ExecutableInfo,
     pub exec_args: Option<Vec<String>>,
     pub sandbox_type: SandboxType,
@@ -96,6 +99,7 @@ impl AppManifest {
         AppManifest::from(vec![
             AppManifestEntry {
                 app_name: "shell".to_string(),
+                devmode_only: true,
                 exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
                 exec_args: None,
                 sandbox_type: SandboxType::DeveloperEnvironment,
@@ -104,6 +108,7 @@ impl AppManifest {
             },
             AppManifestEntry {
                 app_name: "sandboxed-shell".to_string(),
+                devmode_only: true,
                 exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
                 exec_args: None,
                 sandbox_type: SandboxType::Container,
@@ -223,6 +228,7 @@ pub mod tests {
     fn get_test_manifest_entry() -> AppManifestEntry {
         AppManifestEntry {
             app_name: "demo_app".to_string(),
+            devmode_only: false,
             exec_info: ExecutableInfo::Path("/usr/bin/demo_app".to_string()),
             exec_args: None,
             sandbox_type: SandboxType::DeveloperEnvironment,

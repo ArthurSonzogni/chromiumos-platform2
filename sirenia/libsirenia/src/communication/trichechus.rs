@@ -25,6 +25,8 @@ pub enum Error {
     DigestMismatch,
     #[error("App not loadable")]
     AppNotLoadable,
+    #[error("App requires developer mode")]
+    RequiresDevmode,
     #[error("Sandbox type not implemented")]
     SandboxTypeNotImplemented,
     #[error("App not found at expected path")]

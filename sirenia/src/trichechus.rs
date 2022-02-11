@@ -22,7 +22,7 @@ use std::result::Result as StdResult;
 
 use anyhow::{anyhow, bail, Context, Error, Result};
 use getopts::Options;
-use libchromeos::secure_blob::SecureBlob;
+use libchromeos::{chromeos::is_dev_mode, secure_blob::SecureBlob};
 use libsirenia::{
     app_info::{
         self, AppManifest, AppManifestEntry, Digest, ExecutableInfo, SandboxType, StorageParameters,
@@ -464,6 +464,10 @@ fn start_session(
     args: Vec<String>,
 ) -> StdResult<(), trichechus::Error> {
     let app_info = lookup_app_info(state, app_id)?.to_owned();
+
+    if app_info.devmode_only && !is_dev_mode().unwrap_or(false) {
+        return Err(trichechus::Error::RequiresDevmode);
+    }
 
     let sandbox: Box<dyn Sandbox> = match &app_info.sandbox_type {
         SandboxType::DeveloperEnvironment => {
