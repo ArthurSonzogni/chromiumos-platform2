@@ -39,7 +39,7 @@ void AdaptiveChargingService::RequestAdaptiveChargingDecision(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<bool, std::vector<double>>>
         response,
-    const std::string& serialized_example_proto) {
+    const std::vector<uint8_t>& serialized_example_proto) {
   if (!tf_model_graph_executor_->Ready()) {
     LOG(ERROR) << "TfModelGraphExecutor is not properly initialized.";
     response->Return(false, std::vector<double>());
@@ -47,7 +47,8 @@ void AdaptiveChargingService::RequestAdaptiveChargingDecision(
   }
 
   assist_ranker::RankerExample example;
-  if (!example.ParseFromString(serialized_example_proto)) {
+  if (!example.ParseFromArray(serialized_example_proto.data(),
+                              serialized_example_proto.size())) {
     LOG(ERROR) << "Failed to parse serialized_example_proto";
     response->Return(false, std::vector<double>());
     return;

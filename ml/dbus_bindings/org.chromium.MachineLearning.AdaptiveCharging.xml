@@ -16,7 +16,8 @@
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.MachineLearning.AdaptiveCharging">
     <method name="RequestAdaptiveChargingDecision">
-      <arg name="serialized_example_proto" type="s" direction="in">
+      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+      <arg name="serialized_example_proto" type="ay" direction="in">
       <tp:docstring>
         A serialized RankerExample proto message that contains features.
       </tp:docstring>
@@ -31,7 +32,6 @@
         Result for the requested feature. Valid only when status = true.
       </tp:docstring>
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="async"/>
     </method>
   </interface>
 </node>
