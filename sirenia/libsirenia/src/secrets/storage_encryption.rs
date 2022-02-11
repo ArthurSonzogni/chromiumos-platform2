@@ -161,7 +161,7 @@ impl<'a> StorageEncryption<'a> {
         iv: &[u8],
         associated_data: &[u8],
         text_before: &[u8],
-        mut text_after: &mut [u8],
+        text_after: &mut [u8],
     ) -> Result<(), Error> {
         let mut crypter = Crypter::new(Cipher::aes_256_gcm(), mode.to_mode(), key, Some(iv))
             .map_err(Error::CrypterNew)?;
@@ -172,7 +172,7 @@ impl<'a> StorageEncryption<'a> {
             .aad_update(associated_data)
             .map_err(Error::AadUpdate)?;
         let mut written = crypter
-            .update(text_before, &mut text_after)
+            .update(text_before, text_after)
             .map_err(Error::Update)?;
         written += crypter
             .finalize(&mut text_after[written..])
@@ -180,8 +180,8 @@ impl<'a> StorageEncryption<'a> {
         if written != text_after.len() {
             return Err(Error::LengthMismatch);
         }
-        if let ModeArgs::Encrypt { mut tag } = mode {
-            crypter.get_tag(&mut tag).map_err(Error::GetTag)?;
+        if let ModeArgs::Encrypt { tag } = mode {
+            crypter.get_tag(tag).map_err(Error::GetTag)?;
         }
         Ok(())
     }

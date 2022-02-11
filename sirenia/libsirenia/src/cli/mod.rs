@@ -39,13 +39,13 @@ pub struct TransportTypeOption {
 
 impl TransportTypeOption {
     /// Add the default TransportTypeOption to the specified Options.
-    pub fn default(mut opts: &mut Options) -> Self {
+    pub fn default(opts: &mut Options) -> Self {
         Self::new(
             DEFAULT_TRANSPORT_TYPE_SHORT_NAME,
             DEFAULT_TRANSPORT_TYPE_LONG_NAME,
             DEFAULT_TRANSPORT_TYPE_DESC,
             LOOPBACK_DEFAULT,
-            &mut opts,
+            opts,
         )
     }
 
@@ -85,12 +85,12 @@ pub struct VerbosityOption {
 
 impl VerbosityOption {
     /// Add the default VerbosityOption to the specified Options.
-    pub fn default(mut opts: &mut Options) -> Self {
+    pub fn default(opts: &mut Options) -> Self {
         Self::new(
             DEFAULT_VERBOSITY_SHORT_NAME,
             DEFAULT_VERBOSITY_LONG_NAME,
             DEFAULT_VERBOSITY_DESC,
-            &mut opts,
+            opts,
         )
     }
 
@@ -165,6 +165,8 @@ impl HelpOption {
         args: &[String],
         get_usage: fn() -> String,
     ) -> Matches {
+        // See: https://github.com/rust-lang/rust-clippy/issues/8416
+        #[allow(clippy::redundant_closure)]
         self.parse_and_check_self_impl(opts, args, get_usage, |x| exit(x))
             .unwrap()
     }
@@ -245,8 +247,7 @@ mod tests {
 
         let mut opts = Options::new();
         let help_option = HelpOption::new(&mut opts);
-        let matches =
-            help_option.parse_and_check_self_impl(&opts, &test_args, test_usage, |x| exit_fn(x));
+        let matches = help_option.parse_and_check_self_impl(&opts, &test_args, test_usage, exit_fn);
         assert!(matches.is_some());
         assert_eq!(*counter.borrow(), 1);
     }
@@ -258,8 +259,7 @@ mod tests {
 
         let mut opts = Options::new();
         let help_option = HelpOption::new(&mut opts);
-        let matches =
-            help_option.parse_and_check_self_impl(&opts, &test_args, test_usage, |x| exit_fn(x));
+        let matches = help_option.parse_and_check_self_impl(&opts, &test_args, test_usage, exit_fn);
         assert!(matches.is_none());
         assert_eq!(*counter.borrow(), 1);
     }

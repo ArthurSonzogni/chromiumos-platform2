@@ -301,18 +301,14 @@ fn direct_start_manatee_app(
 }
 
 fn locate_command(name: &str) -> Result<PathBuf> {
-    which::which(name).with_context(|| format!("failed to locate command '{}'", name.to_string()))
+    which::which(name).with_context(|| format!("failed to locate command '{}'", name))
 }
 
-fn read_line<R: Read>(
-    job_name: &str,
-    reader: &mut BufReader<R>,
-    mut line: &mut String,
-) -> Result<()> {
+fn read_line<R: Read>(job_name: &str, reader: &mut BufReader<R>, line: &mut String) -> Result<()> {
     line.clear();
     reader
-        .read_line(&mut line)
-        .with_context(|| format!("failed to read stderr of {}", job_name.to_string()))?;
+        .read_line(line)
+        .with_context(|| format!("failed to read stderr of {}", job_name))?;
     eprint!("{}", &line);
     Ok(())
 }
@@ -370,7 +366,7 @@ fn run_test_environment() -> Result<()> {
             ])
             .stderr(Stdio::piped())
             .spawn()
-            .with_context(|| format!("failed to start command '{}'", CRONISTA_NAME.to_string()))?,
+            .with_context(|| format!("failed to start command '{}'", CRONISTA_NAME))?,
     );
 
     let (cronista_port, cronista_stderr_print) = get_listening_port(
@@ -390,9 +386,7 @@ fn run_test_environment() -> Result<()> {
             ])
             .stderr(Stdio::piped())
             .spawn()
-            .with_context(|| {
-                format!("failed to start command '{}'", TRICHECHUS_NAME.to_string())
-            })?,
+            .with_context(|| format!("failed to start command '{}'", TRICHECHUS_NAME))?,
     );
 
     let conditions = [
@@ -418,7 +412,7 @@ fn run_test_environment() -> Result<()> {
                 &format!("ip://127.0.0.1:{}", trichechus_port),
             ])
             .spawn()
-            .with_context(|| format!("failed to start command '{}'", DUGONG_NAME.to_string()))?,
+            .with_context(|| format!("failed to start command '{}'", DUGONG_NAME))?,
     );
 
     println!("*** Press Ctrl-C to continue. ***");
