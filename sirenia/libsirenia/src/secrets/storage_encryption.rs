@@ -392,7 +392,7 @@ mod tests {
     use sys_util::scoped_path::{get_temp_path, ScopedPath};
 
     use crate::{
-        app_info::{AppManifest, ExecutableInfo, SandboxType, StorageParameters},
+        app_info::{AppManifest, ExecutableInfo, SandboxType, StdErrBehavior, StorageParameters},
         communication::persistence::{MockCronista, Scope},
         secrets::{GscSecret, PlatformSecret, VersionedSecret, MAX_VERSION},
     };
@@ -431,6 +431,7 @@ mod tests {
             exec_args: None,
             sandbox_type: SandboxType::DeveloperEnvironment,
             secrets_parameters: None,
+            stderr_behavior: StdErrBehavior::MergeWithStdout,
             storage_parameters: Some(StorageParameters {
                 scope: Scope::Test,
                 domain: "test".to_string(),

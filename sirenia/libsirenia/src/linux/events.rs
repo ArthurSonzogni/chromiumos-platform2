@@ -18,7 +18,8 @@
 //     a new stream.
 
 use std::boxed::Box;
-use std::collections::BTreeMap;
+use std::cmp::max;
+use std::collections::{BTreeMap, VecDeque};
 use std::fmt::{Debug, Formatter};
 use std::io::Read;
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -317,7 +318,7 @@ impl AsRawFd for CopyFdEventSource {
 
 impl EventSource for CopyFdEventSource {
     fn on_event(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
-        let mut buf = [0u8; 1028];
+        let mut buf = [0u8; 1024];
         loop {
             match eagain_is_ok(self.input.read(&mut buf)) {
                 Ok(Some(0)) | Err(_) => break,
@@ -341,6 +342,75 @@ impl EventSource for CopyFdEventSource {
 
     fn on_hangup(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
         Ok(Some(Box::new(RemoveFdMutator(self.output.as_raw_fd()))))
+    }
+}
+
+#[derive(Debug)]
+/// Tool for logging lines from a source.
+pub struct LogFromFdEventSource {
+    proc_name: String,
+    input: Box<dyn TransportRead>,
+    line_buffer: VecDeque<u8>,
+}
+
+impl LogFromFdEventSource {
+    /// Return a LogFromFdEventSource from the specific input with the specific label.
+    pub fn new(proc_name: String, input: Box<dyn TransportRead>) -> Result<Self> {
+        set_nonblocking(input.as_raw_fd()).map_err(Error::SetNonBlocking)?;
+        Ok(LogFromFdEventSource {
+            proc_name,
+            input,
+            line_buffer: VecDeque::with_capacity(1024),
+        })
+    }
+
+    pub fn flush(&mut self) {
+        let buffer = self.line_buffer.make_contiguous();
+        let mut begin = 0usize;
+        for at in 0..buffer.len() {
+            if buffer[at] == b'\n' {
+                error!(
+                    "{}: {}",
+                    &self.proc_name,
+                    String::from_utf8_lossy(&buffer[begin..at])
+                );
+                begin = at + 1;
+            }
+        }
+        self.line_buffer.drain(..begin);
+    }
+}
+
+impl AsRawFd for LogFromFdEventSource {
+    fn as_raw_fd(&self) -> RawFd {
+        self.input.as_raw_fd()
+    }
+}
+
+impl EventSource for LogFromFdEventSource {
+    fn on_event(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
+        loop {
+            let used = self.line_buffer.len();
+            self.line_buffer
+                .resize(max(used + 1024, self.line_buffer.capacity()), 0u8);
+            let buffer = self.line_buffer.make_contiguous();
+
+            match eagain_is_ok(self.input.read(&mut buffer[used..])) {
+                Ok(Some(0)) | Err(_) => break,
+                Ok(Some(size)) => {
+                    self.line_buffer.resize(used + size, 0u8);
+                    self.flush()
+                }
+                Ok(None) => return Ok(None),
+            }
+        }
+        error!(
+            "{}: {}",
+            &self.proc_name,
+            String::from_utf8_lossy(self.line_buffer.make_contiguous())
+        );
+        self.line_buffer.clear();
+        Ok(Some(Box::new(RemoveFdMutator(self.as_raw_fd()))))
     }
 }
 

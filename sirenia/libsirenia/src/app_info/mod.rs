@@ -14,6 +14,7 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::result::Result as StdResult;
 
+use libchromeos::chromeos::is_dev_mode;
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 
@@ -76,6 +77,24 @@ pub struct SecretsParameters {
     pub encryption_key_version: usize,
 }
 
+/// Defines parameters for use with the secrets API.
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+pub enum StdErrBehavior {
+    MergeWithStdout,
+    Drop,
+    Syslog,
+}
+
+impl Default for StdErrBehavior {
+    fn default() -> Self {
+        if is_dev_mode().unwrap_or(false) {
+            StdErrBehavior::Syslog
+        } else {
+            StdErrBehavior::Drop
+        }
+    }
+}
+
 /// The TEE developer will define all of these fields for their app and the
 /// manifest will be used when starting up the TEE app.
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
@@ -88,6 +107,8 @@ pub struct AppManifestEntry {
     pub exec_args: Option<Vec<String>>,
     pub sandbox_type: SandboxType,
     pub secrets_parameters: Option<SecretsParameters>,
+    #[serde(default)]
+    pub stderr_behavior: StdErrBehavior,
     pub storage_parameters: Option<StorageParameters>,
 }
 
@@ -106,6 +127,7 @@ impl AppManifest {
                 exec_args: None,
                 sandbox_type: SandboxType::DeveloperEnvironment,
                 secrets_parameters: None,
+                stderr_behavior: StdErrBehavior::MergeWithStdout,
                 storage_parameters: None,
             },
             // Does not receive special treatment and is not allocated a pseudo terminal.
@@ -116,6 +138,7 @@ impl AppManifest {
                 exec_args: None,
                 sandbox_type: SandboxType::DeveloperEnvironment,
                 secrets_parameters: None,
+                stderr_behavior: StdErrBehavior::MergeWithStdout,
                 storage_parameters: None,
             },
             AppManifestEntry {
@@ -125,6 +148,7 @@ impl AppManifest {
                 exec_args: None,
                 sandbox_type: SandboxType::Container,
                 secrets_parameters: None,
+                stderr_behavior: StdErrBehavior::MergeWithStdout,
                 storage_parameters: None,
             },
         ])
@@ -230,6 +254,7 @@ pub mod tests {
   },
   "sandbox_type": "DeveloperEnvironment",
   "secrets_parameters": null,
+  "stderr_behavior": "MergeWithStdout",
   "storage_parameters": {
     "scope": "Test",
     "domain": "test",
@@ -245,6 +270,7 @@ pub mod tests {
             exec_args: None,
             sandbox_type: SandboxType::DeveloperEnvironment,
             secrets_parameters: None,
+            stderr_behavior: StdErrBehavior::MergeWithStdout,
             storage_parameters: Some(StorageParameters {
                 scope: Scope::Test,
                 domain: "test".to_string(),

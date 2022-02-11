@@ -1,5 +1,6 @@
 [{
   "app_name": "demo_app",
+  "devmode_only": false,
   "exec_info": {
     "CrosPath": [
       "/usr/bin/demo_app",
@@ -8,6 +9,7 @@
   },
   "sandbox_type": "DeveloperEnvironment",
   "secrets_parameters": null,
+  "stderr_behavior": "Syslog",
   "storage_parameters": {
     "scope": "Test",
     "domain": "test",

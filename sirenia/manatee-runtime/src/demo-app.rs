@@ -10,11 +10,10 @@
 use std::borrow::{Borrow, BorrowMut};
 use std::io;
 
+use log::info;
 // manatee_runtime specific objects that need to be included.
-use manatee_runtime::storage::TrichechusStorage;
-use manatee_runtime::{ExclusiveScopedData, ScopedData};
-// This is only necessary if the TEE needs to log to syslog.
-use sys_util::{info, syslog};
+use manatee_runtime::{storage::TrichechusStorage, ExclusiveScopedData, ScopedData};
+use stderrlog::StdErrLog;
 
 // Any creation of a scoped data requires that a callback is given which will
 // be called if the id is not found in the backing store. In most circumstances,
@@ -27,8 +26,8 @@ fn callback_id_not_found(_s: &str) -> String {
 /// A test demo app that just stores a value that is written to stdin then
 /// rereads it out of storage and prints back out to stdout.
 fn main() {
-    // Syslog must be initialized in order to log to it.
-    if let Err(e) = syslog::init() {
+    // Logger must be initialized in order to log to it.
+    if let Err(e) = StdErrLog::new().verbosity(5).init() {
         eprintln!("failed to initialize syslog: {}", e);
         return;
     }

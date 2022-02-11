@@ -4,6 +4,7 @@
 
 //! A TEE application life-cycle manager.
 
+#![allow(clippy::type_complexity)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::cell::RefCell;
@@ -12,7 +13,6 @@ use std::convert::TryFrom;
 use std::env;
 use std::fs::{remove_file, File};
 use std::io::{IoSlice, Seek, SeekFrom, Write};
-use std::iter::once;
 use std::mem::{replace, swap};
 use std::ops::{Deref, DerefMut};
 use std::os::unix::io::{AsRawFd, RawFd};
@@ -23,6 +23,8 @@ use std::result::Result as StdResult;
 use anyhow::{anyhow, bail, Context, Error, Result};
 use getopts::Options;
 use libchromeos::{chromeos::is_dev_mode, secure_blob::SecureBlob};
+use libsirenia::app_info::StdErrBehavior;
+use libsirenia::linux::events::LogFromFdEventSource;
 use libsirenia::{
     app_info::{
         self, AppManifest, AppManifestEntry, Digest, ExecutableInfo, SandboxType, StorageParameters,
@@ -59,7 +61,7 @@ use sirenia::pstore;
 use sys_util::{
     self, error, getpid, getsid, info,
     net::{UnixSeqpacket, UnixSeqpacketListener},
-    reap_child, setsid, syslog,
+    pipe, reap_child, setsid, syslog,
     vsock::SocketAddr as VSocketAddr,
     warn, MemfdSeals, Pid, ScmSocket, SharedMemory,
 };
@@ -349,10 +351,10 @@ impl DugongConnectionHandler {
         // Only borrow once.
         let mut trichechus_state = self.state.borrow_mut();
 
-        let mut support_threads: Option<[Box<dyn Mutator>; 4]> = None;
+        let mut mutators: Vec<Box<dyn Mutator>> = Vec::new();
         if app.app_info.app_name == "shell" {
             match setup_pty(&mut connection) {
-                Ok(mutators) => support_threads = Some(mutators),
+                Ok(m) => mutators.extend(m),
                 Err(err) => {
                     error!("failed to set up pty: {}", err);
                     return None;
@@ -360,26 +362,33 @@ impl DugongConnectionHandler {
             }
         }
 
-        let add_event: Box<dyn Mutator> = match spawn_tee_app(&trichechus_state, app, connection) {
-            Ok((pid, app, transport)) => {
-                let tee_app = Rc::new(RefCell::new(app));
-                trichechus_state.running_apps.insert(pid, tee_app.clone());
-                let storage_server: Box<dyn TeeApiServer> =
-                    Box::new(TeeAppHandler { state, tee_app });
-                RpcDispatcher::new_as_boxed_mutator(storage_server, transport)?
-            }
-            Err(e) => {
-                error!("failed to start tee app: {}", e);
-                return None;
-            }
-        };
+        let (add_event, log_forwarder): (Box<dyn Mutator>, Option<Box<dyn Mutator>>) =
+            match spawn_tee_app(&trichechus_state, app, connection) {
+                Ok((pid, app, transport, log_forwarder)) => {
+                    let tee_app = Rc::new(RefCell::new(app));
+                    trichechus_state.running_apps.insert(pid, tee_app.clone());
+                    let storage_server: Box<dyn TeeApiServer> =
+                        Box::new(TeeAppHandler { state, tee_app });
+                    (
+                        RpcDispatcher::new_as_boxed_mutator(storage_server, transport)?,
+                        log_forwarder,
+                    )
+                }
+                Err(e) => {
+                    error!("failed to start tee app: {}", e);
+                    return None;
+                }
+            };
 
-        if let Some(a) = support_threads {
-            Some(Box::new(ComboMutator::from(
-                IntoIterator::into_iter(a).chain(once(add_event)),
-            )))
-        } else {
+        if let Some(m) = log_forwarder {
+            mutators.push(m);
+        }
+
+        if mutators.is_empty() {
             Some(add_event)
+        } else {
+            mutators.push(add_event);
+            Some(Box::new(ComboMutator::from(mutators.into_iter())))
         }
     }
 }
@@ -556,16 +565,39 @@ fn spawn_tee_app(
     state: &TrichechusState,
     mut app: TeeApp,
     transport: Transport,
-) -> Result<(Pid, TeeApp, Transport)> {
+) -> Result<(Pid, TeeApp, Transport, Option<Box<dyn Mutator>>)> {
     let (trichechus_transport, tee_transport) =
         create_transport_from_pipes().context("failed create transport")?;
-    let keep_fds: [(RawFd, RawFd); 5] = [
+
+    let mut keep_fds: Vec<(RawFd, RawFd)> = vec![
         (transport.r.as_raw_fd(), CROS_CONNECTION_R_FD),
         (transport.w.as_raw_fd(), CROS_CONNECTION_W_FD),
-        (transport.w.as_raw_fd(), CROS_CONNECTION_ERR_FD),
         (tee_transport.r.as_raw_fd(), DEFAULT_CONNECTION_R_FD),
         (tee_transport.w.as_raw_fd(), DEFAULT_CONNECTION_W_FD),
     ];
+
+    let mut mutator: Option<Box<dyn Mutator>> = None;
+    let mut stderr_w: Option<File> = None;
+    match app.app_info.stderr_behavior {
+        StdErrBehavior::Drop => {
+            // Minijail binds stdio to /dev/null if they aren't specified.
+        }
+        StdErrBehavior::MergeWithStdout => {
+            keep_fds.push((transport.w.as_raw_fd(), CROS_CONNECTION_ERR_FD));
+        }
+        StdErrBehavior::Syslog => {
+            let (r, w) = pipe(true).context("Failed to create stderr pipe.")?;
+            mutator = Some(Box::new(AddEventSourceMutator::from(
+                LogFromFdEventSource::new(app.app_info.app_name.clone(), Box::new(r))?,
+            )));
+            // TODO forward this to syslog instead of trichechus stderr.
+            keep_fds.push((w.as_raw_fd(), CROS_CONNECTION_ERR_FD));
+            // stderr_w tracks the ownership of the write file descriptor and needs to be open long
+            // enough to pass it to the child process. It is explicitly dropped after it is no
+            // longer needed.
+            stderr_w = Some(w);
+        }
+    }
 
     let exe_args = app
         .app_info
@@ -609,8 +641,11 @@ fn spawn_tee_app(
             }
         }
     };
+    // This is explicit since stderr_w is not read from, and dropping stderr_w closes the underlying
+    // file which needs to live until it has been passed to the child process.
+    drop(stderr_w);
 
-    Ok((pid, app, trichechus_transport))
+    Ok((pid, app, trichechus_transport, mutator))
 }
 
 fn system_event(event: SystemEvent) -> StdResult<(), String> {

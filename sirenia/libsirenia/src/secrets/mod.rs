@@ -665,7 +665,7 @@ pub mod tests {
     use super::*;
 
     use crate::{
-        app_info::{ExecutableInfo, SandboxType, StorageParameters},
+        app_info::{ExecutableInfo, SandboxType, StdErrBehavior, StorageParameters},
         communication::persistence::Scope,
     };
 
@@ -700,6 +700,7 @@ pub mod tests {
             exec_args: None,
             sandbox_type: SandboxType::DeveloperEnvironment,
             secrets_parameters: None,
+            stderr_behavior: StdErrBehavior::MergeWithStdout,
             storage_parameters: Some(StorageParameters {
                 scope: Scope::Test,
                 domain: "test".to_string(),
