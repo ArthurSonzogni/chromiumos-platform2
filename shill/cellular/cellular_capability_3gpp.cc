@@ -1809,15 +1809,30 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
 
   // Bail-out early if we don't want to setup the attach APN
   // or the APN parameters are not ready yet.
-  if (!cellular()->use_attach_apn() || !cellular()->service() ||
-      !cellular()->home_provider_info()->IsMobileNetworkOperatorKnown())
+  if (!cellular()->use_attach_apn() || !cellular()->service())
     return;
 
   // Set the new parameters for the initial EPS bearer (e.g. LTE Attach APN)
+  // An empty list will result on clearing the Attach APN by |SetNextAttachApn|
   attach_apn_try_list_ = cellular()->BuildApnTryList();
   base::EraseIf(attach_apn_try_list_, [](const Stringmap& apn_info) {
     return !base::Contains(apn_info, kApnAttachProperty);
   });
+
+  if (!cellular()->home_provider_info()->IsMobileNetworkOperatorKnown()) {
+    // If the carrier is not in shill's db, shill should use the user APN or
+    // at least clear the attach APN, so the modem can clear any previous value
+    // and try to attach on its own.
+    SLOG(this, 2) << "Mobile operator not yet identified. Posted deferred "
+                     "Clear Attach APN";
+    try_next_attach_apn_callback_.Reset(
+        base::BindOnce(&CellularCapability3gpp::SetNextAttachApn,
+                       weak_ptr_factory_.GetWeakPtr()));
+    cellular()->dispatcher()->PostDelayedTask(
+        FROM_HERE, try_next_attach_apn_callback_.callback(),
+        kSetNextAttachApnTimeoutMilliseconds);
+    return;
+  }
 
   SetNextAttachApn();
 }
