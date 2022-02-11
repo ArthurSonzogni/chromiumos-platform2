@@ -17,15 +17,17 @@
 
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/cryptohome_common.h"
+#include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
+#include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/fuzzers/blob_mutator.h"
 #include "cryptohome/user_secret_stash.h"
-#include "cryptohome/user_secret_stash_container_generated.h"
-#include "cryptohome/user_secret_stash_payload_generated.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::SecureBlob;
 using cryptohome::UserSecretStash;
+using cryptohome::UserSecretStashContainer;
+using cryptohome::UserSecretStashPayload;
 
 namespace {
 
@@ -46,21 +48,19 @@ struct ScopedOpensslErrorClearer {
 void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
                              SecureBlob* mutated_uss_container,
                              SecureBlob* mutated_uss_main_key) {
-  flatbuffers::FlatBufferBuilder builder;
-
   // Create USS payload.
-  cryptohome::UserSecretStashPayloadT uss_payload_obj;
-  uss_payload_obj.file_system_key =
-      BlobFromString(fuzzed_data_provider->ConsumeRandomLengthString());
-  uss_payload_obj.reset_secret =
-      BlobFromString(fuzzed_data_provider->ConsumeRandomLengthString());
+  UserSecretStashPayload uss_payload_struct;
+  uss_payload_struct.file_system_key =
+      SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
+  uss_payload_struct.reset_secret =
+      SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
 
   // Serialize the USS payload to flatbuffer and mutate it.
-  builder.Finish(
-      cryptohome::UserSecretStashPayload::Pack(builder, &uss_payload_obj));
-  Blob uss_payload(builder.GetBufferPointer(),
-                   builder.GetBufferPointer() + builder.GetSize());
-  builder.Clear();
+  std::optional<SecureBlob> uss_payload_optional =
+      uss_payload_struct.Serialize();
+  CHECK(uss_payload_optional.has_value());
+  Blob uss_payload(uss_payload_optional.value().begin(),
+                   uss_payload_optional.value().end());
   Blob mutated_uss_payload = MutateBlob(
       uss_payload, /*min_length=*/1, /*max_length=*/1000, fuzzed_data_provider);
 
@@ -77,25 +77,25 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
                                   &iv, &tag, &ciphertext));
 
   // Create USS container from mutated fields.
-  cryptohome::UserSecretStashContainerT uss_container_obj;
-  uss_container_obj.encryption_algorithm =
+  UserSecretStashContainer uss_container_struct;
+  uss_container_struct.encryption_algorithm =
       cryptohome::UserSecretStashEncryptionAlgorithm::AES_GCM_256;
-  uss_container_obj.ciphertext =
+  uss_container_struct.ciphertext = SecureBlob(
       MutateBlob(Blob(ciphertext.begin(), ciphertext.end()),
-                 /*min_length=*/0, /*max_length=*/1000, fuzzed_data_provider);
-  uss_container_obj.iv =
+                 /*min_length=*/0, /*max_length=*/1000, fuzzed_data_provider));
+  uss_container_struct.iv = SecureBlob(
       MutateBlob(Blob(iv.begin(), iv.end()),
-                 /*min_length=*/0, /*max_length=*/1000, fuzzed_data_provider);
-  uss_container_obj.gcm_tag =
-      MutateBlob(Blob(tag.begin(), tag.end()), /*min_length=*/0,
-                 /*max_length=*/1000, fuzzed_data_provider);
+                 /*min_length=*/0, /*max_length=*/1000, fuzzed_data_provider));
+  uss_container_struct.gcm_tag =
+      SecureBlob(MutateBlob(Blob(tag.begin(), tag.end()), /*min_length=*/0,
+                            /*max_length=*/1000, fuzzed_data_provider));
 
   // Serialize the USS container to flatbuffer and mutate it.
-  builder.Finish(
-      cryptohome::UserSecretStashContainer::Pack(builder, &uss_container_obj));
-  Blob uss_container(builder.GetBufferPointer(),
-                     builder.GetBufferPointer() + builder.GetSize());
-  builder.Clear();
+  std::optional<SecureBlob> uss_container_optional =
+      uss_container_struct.Serialize();
+  CHECK(uss_container_optional.has_value());
+  Blob uss_container(uss_container_optional.value().begin(),
+                     uss_container_optional.value().end());
   *mutated_uss_container =
       SecureBlob(MutateBlob(uss_container, /*min_length=*/0,
                             /*max_length=*/1000, fuzzed_data_provider));

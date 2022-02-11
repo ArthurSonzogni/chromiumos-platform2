@@ -66,6 +66,18 @@ flatbuffer("cryptohome-flatbuffers-binding-binary") {
   sources = [ "../flatbuffer_schemas/auth_block_state.fbs" ]
 }
 
+flatbuffer("user-secret-stash-flatbuffers-binding-binary") {
+  flatc_out_dir = "bfbs"
+  flatc_args = [
+    "--binary",
+    "--schema",
+  ]
+  sources = [
+    "../flatbuffer_schemas/user_secret_stash_container.fbs",
+    "../flatbuffer_schemas/user_secret_stash_payload.fbs",
+  ]
+}
+
 # Put the generator in the same folder that the generated flatbuffers
 # reflection python library exist.
 copy("cryptohome-flatbuffers-binding-generator") {
@@ -110,12 +122,60 @@ action("cryptohome-flatbuffers-binding-generate") {
   ]
 }
 
+action("user-secret-stash-flatbuffers-binding-generate") {
+  script = "${root_gen_dir}/python/flatbuffer_cpp_binding_generator.py"
+  inputs = [
+    "../flatbuffer_schemas/user_secret_stash_container.fbs",
+    "../flatbuffer_schemas/user_secret_stash_payload.fbs",
+  ]
+  outputs = [
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash.h",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash_flatbuffer.h",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash_container.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash_payload.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash_test_utils.h",
+  ]
+  args = [
+    "--output_dir=${root_gen_dir}/include/cryptohome/flatbuffer_schemas",
+    "--guard_prefix=CRYPTOHOME_FLATBUFFER_SCHEMAS",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/user_secret_stash_container_generated.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/user_secret_stash_payload_generated.h",
+    "--flatbuffer_header_include_paths",
+    "cryptohome/flatbuffer_schemas/basic_objects.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/user_secret_stash_container.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/user_secret_stash_container_flatbuffer.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_schemas/user_secret_stash_payload_flatbuffer.h",
+    "--impl_include_paths",
+    "cryptohome/flatbuffer_secure_allocator_bridge.h",
+    "--test_utils_header_include_path",
+    "cryptohome/flatbuffer_schemas/user_secret_stash.h",
+    "${root_gen_dir}/bfbs/user_secret_stash_container.bfbs",
+    "${root_gen_dir}/bfbs/user_secret_stash_payload.bfbs",
+  ]
+  deps = [
+    ":cryptohome-flatbuffers-binding-generator",
+    ":user-secret-stash-flatbuffers-binding-binary",
+  ]
+}
+
 source_set("cryptohome-flatbuffers-binding") {
   sources = [
     "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/auth_block_state.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash_container.cc",
+    "${root_gen_dir}/include/cryptohome/flatbuffer_schemas/user_secret_stash_payload.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":cryptohome-flatbuffers-binding-generate" ]
+  deps = [
+    ":cryptohome-flatbuffers-binding-generate",
+    ":user-secret-stash-flatbuffers-binding-generate",
+  ]
 }
 
 flatbuffer("cryptohome-flatbuffers") {

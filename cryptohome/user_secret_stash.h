@@ -13,8 +13,7 @@
 #include <optional>
 #include <string>
 
-#include "cryptohome/flatbuffer_secure_allocator_bridge.h"
-#include "cryptohome/user_secret_stash_container_generated.h"
+#include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 
 namespace cryptohome {
 
