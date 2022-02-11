@@ -618,7 +618,7 @@ In the tables below,
 | coreboot | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | depthcharge | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | ec | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
-| ec_extras | array - string |  | False |  | True | Extra EC build targets to build within chromeos-ec. |
+| ec-extras | array - string |  | False |  | True | Extra EC build targets to build within chromeos-ec. |
 | gsc | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | ish | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |
 | libpayload | string |  | False |  | True | Build target that will be considered dirty when building/testing locally. |

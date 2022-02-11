@@ -614,7 +614,7 @@ properties:
                       description: Build target of the base EC firmware for a detachable device,
                         that will be considered dirty when building/testing
                       type: string
-                    ec_extras:
+                    ec-extras:
                       type: array
                       items:
                         type: string

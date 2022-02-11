@@ -516,8 +516,8 @@ class CrosConfigBaseImpl(object):
         for ec_extra in ('base', ):
           if ec_extra in device_targets:
             build_targets.append(device_targets[ec_extra])
-        if 'ec_extras' in device_targets:
-          for extra_target in device_targets['ec_extras']:
+        if 'ec-extras' in device_targets:
+          for extra_target in device_targets['ec-extras']:
             build_targets.append(extra_target)
     return sorted(set(build_targets))
 

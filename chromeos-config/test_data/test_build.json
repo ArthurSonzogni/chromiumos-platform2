@@ -438,7 +438,7 @@
             "coreboot": "another",
             "depthcharge": "another",
             "ec": "another",
-            "ec_extras": [
+            "ec-extras": [
               "extra1",
               "extra2"
             ],

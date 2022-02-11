@@ -260,6 +260,27 @@ def _HasTemplateVariables(template_vars):
       return True
 
 
+def _TransformDeprecatedConfigs(config):
+  """Rework any deprecated configs prior to schema validation.
+
+  This function allows you to translate configs at the time that the
+  YAML file is read.  The purpose of this is if a config name is
+  changing, and you don't want to go Cq-Depend on all the overlays,
+  you can temporarily add the config translation to this function, and
+  then go adjust all the overlays.  When you're finished up with the
+  overlays, you can go and remove the translation from this function.
+
+  Args:
+    config: A dictionary representing the device config, after any
+      merges and imports have been completed, but before schema
+      validation is performed.  This config will be modified in place.
+  """
+  firmware = config.get('firmware', {})
+  build_targets = firmware.get('build-targets', {})
+  if 'ec_extras' in build_targets and 'ec-extras' not in build_targets:
+    build_targets['ec-extras'] = build_targets.pop('ec_extras')  # b/218973795
+
+
 def TransformConfig(config, model_filter_regex=None):
   """Transforms the source config (YAML) to the target system format (JSON)
 
@@ -301,6 +322,9 @@ def TransformConfig(config, model_filter_regex=None):
     configs = [
         config for config in configs if matcher.match(config['name'])
     ]
+
+  for config in configs:
+    _TransformDeprecatedConfigs(config)
 
   # Drop everything except for configs since they were just used as shared
   # config in the source yaml.
