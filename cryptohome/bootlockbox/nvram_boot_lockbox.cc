@@ -41,6 +41,10 @@ bool NVRamBootLockbox::Store(const std::string& key,
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_WRITE_LOCKED;
     return false;
   }
+  if (nvspace_state_ == NVSpaceState::kNVSpaceNeedPowerwash) {
+    *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NEED_POWERWASH;
+    return false;
+  }
   if (nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED;
     return false;
@@ -74,6 +78,10 @@ bool NVRamBootLockbox::Read(const std::string& key,
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNINITIALIZED;
     return false;
   }
+  if (nvspace_state_ == NVSpaceState::kNVSpaceNeedPowerwash) {
+    *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NEED_POWERWASH;
+    return false;
+  }
   if (nvspace_state_ == NVSpaceState::kNVSpaceError) {
     *error = BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_OTHER;
     return false;
@@ -92,6 +100,9 @@ bool NVRamBootLockbox::Finalize() {
   if (nvspace_state_ == NVSpaceState::kNVSpaceUndefined) {
     return false;
   }
+  if (nvspace_state_ == NVSpaceState::kNVSpaceNeedPowerwash) {
+    return false;
+  }
   if (tpm_nvspace_->LockNVSpace()) {
     nvspace_state_ = NVSpaceState::kNVSpaceWriteLocked;
     return true;
@@ -107,12 +118,12 @@ bool NVRamBootLockbox::DefineSpace() {
     return false;
   }
 
-  if (!tpm_nvspace_->DefineNVSpace()) {
+  nvspace_state_ = tpm_nvspace_->DefineNVSpace();
+  if (nvspace_state_ != NVSpaceState::kNVSpaceUninitialized) {
     return false;
   }
 
   LOG(INFO) << "Space defined successfully.";
-  nvspace_state_ = NVSpaceState::kNVSpaceUninitialized;
 
   return true;
 }

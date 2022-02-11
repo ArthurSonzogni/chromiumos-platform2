@@ -13,10 +13,11 @@ namespace cryptohome {
 
 enum class NVSpaceState {
   kNVSpaceNormal = 0,
-  kNVSpaceError = 1,  // General TPM errors.
-  kNVSpaceUninitialized = 2,
-  kNVSpaceUndefined = 3,  // TPM is not defined, need powerwash to define.
-  kNVSpaceWriteLocked = 4
+  kNVSpaceError = 1,          // General TPM errors.
+  kNVSpaceUninitialized = 2,  // TPM space is uninitialized.
+  kNVSpaceUndefined = 3,      // TPM space is not defined.
+  kNVSpaceWriteLocked = 4,    // TPM space is write locked.
+  kNVSpaceNeedPowerwash = 5,  // TPM space needs powerwash to define.
 };
 
 class TPMNVSpace {
@@ -28,7 +29,7 @@ class TPMNVSpace {
   virtual bool Initialize() = 0;
 
   // This method defines a non-volatile storage area in TPM for bootlocboxd.
-  virtual bool DefineNVSpace() = 0;
+  virtual NVSpaceState DefineNVSpace() = 0;
 
   // This method writes |digest| to nvram space for bootlockboxd
   virtual bool WriteNVSpace(const std::string& digest) = 0;

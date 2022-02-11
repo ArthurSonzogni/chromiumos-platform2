@@ -54,7 +54,7 @@ class TPMNVSpaceImpl : public TPMNVSpace {
 
   // This method defines a non-volatile storage area in TPM for bootlockboxd
   // via tpm_managerd.
-  bool DefineNVSpace() override;
+  NVSpaceState DefineNVSpace() override;
 
   // This method writes |digest| to nvram space for bootlockboxd.
   bool WriteNVSpace(const std::string& digest) override;

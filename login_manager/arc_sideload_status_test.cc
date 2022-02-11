@@ -181,7 +181,7 @@ TEST_F(ArcSideloadStatusTest, QueryAdbSideload_NeedPowerwash) {
   {
     dbus::MessageWriter writer(bootlockbox_response.get());
     cryptohome::ReadBootLockboxReply reply;
-    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED);
+    reply.set_error(cryptohome::BOOTLOCKBOX_ERROR_NEED_POWERWASH);
     EXPECT_TRUE(writer.AppendProtoAsArrayOfBytes(reply));
   }
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_read_method_call_,
@@ -338,7 +338,7 @@ TEST_F(ArcSideloadStatusTest, EnableAdbSideload_RequirePowerwash) {
 
   // Setup
   auto bootlockbox_response = CreateStoreResponseWithBootLockboxError(
-      cryptohome::BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED);
+      cryptohome::BootLockboxErrorCode::BOOTLOCKBOX_ERROR_NEED_POWERWASH);
   EXPECT_DBUS_CALL_THEN_CALLBACK(&bootlockbox_store_method_call_,
                                  bootlockbox_response.get());
 

@@ -88,7 +88,9 @@ TEST_F(TPMNVSpaceImplTest, DefineNVSpaceSuccess) {
             reply->set_status(tpm_manager::STATUS_SUCCESS);
             return true;
           }));
-  EXPECT_TRUE(nvspace_utility_->DefineNVSpace());
+
+  EXPECT_EQ(nvspace_utility_->DefineNVSpace(),
+            NVSpaceState::kNVSpaceUninitialized);
 }
 
 TEST_F(TPMNVSpaceImplTest, DefineNVSpaceFail) {
@@ -110,7 +112,38 @@ TEST_F(TPMNVSpaceImplTest, DefineNVSpaceFail) {
             reply->set_status(tpm_manager::STATUS_SUCCESS);
             return true;
           }));
-  EXPECT_FALSE(nvspace_utility_->DefineNVSpace());
+  EXPECT_EQ(nvspace_utility_->DefineNVSpace(), NVSpaceState::kNVSpaceUndefined);
+}
+
+TEST_F(TPMNVSpaceImplTest, DefineNVSpaceNotOwned) {
+  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(
+          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
+                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
+                    brillo::ErrorPtr*, int) {
+            reply->set_is_enabled(true);
+            reply->set_is_owned(false);
+            reply->set_is_owner_password_present(false);
+            reply->set_status(tpm_manager::STATUS_SUCCESS);
+            return true;
+          }));
+  EXPECT_EQ(nvspace_utility_->DefineNVSpace(), NVSpaceState::kNVSpaceUndefined);
+}
+
+TEST_F(TPMNVSpaceImplTest, DefineNVSpacePowerWash) {
+  EXPECT_CALL(mock_tpm_owner_, GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(
+          Invoke([](const tpm_manager::GetTpmNonsensitiveStatusRequest& request,
+                    tpm_manager::GetTpmNonsensitiveStatusReply* reply,
+                    brillo::ErrorPtr*, int) {
+            reply->set_is_enabled(true);
+            reply->set_is_owned(true);
+            reply->set_is_owner_password_present(false);
+            reply->set_status(tpm_manager::STATUS_SUCCESS);
+            return true;
+          }));
+  EXPECT_EQ(nvspace_utility_->DefineNVSpace(),
+            NVSpaceState::kNVSpaceNeedPowerwash);
 }
 
 TEST_F(TPMNVSpaceImplTest, ReadNVSpaceLengthFail) {

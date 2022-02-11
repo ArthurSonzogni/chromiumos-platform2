@@ -98,16 +98,20 @@ bool TPMNVSpaceImpl::Initialize() {
   return true;
 }
 
-bool TPMNVSpaceImpl::DefineNVSpace() {
+NVSpaceState TPMNVSpaceImpl::DefineNVSpace() {
   bool owned = false;
   bool owner_password_present = false;
   if (!GetTPMStatus(&owned, &owner_password_present)) {
     LOG(INFO) << "Failed to get TPM status.";
-    return false;
+    return NVSpaceState::kNVSpaceUndefined;
+  }
+  if (!owned) {
+    LOG(INFO) << "Try to define nvram before TPM is owned.";
+    return NVSpaceState::kNVSpaceUndefined;
   }
   if (!owner_password_present) {
     LOG(INFO) << "Try to define nvram without owner password present.";
-    return false;
+    return NVSpaceState::kNVSpaceNeedPowerwash;
   }
 
   tpm_manager::DefineSpaceRequest request;
@@ -123,17 +127,18 @@ bool TPMNVSpaceImpl::DefineNVSpace() {
   if (!tpm_nvram_->DefineSpace(request, &reply, &error,
                                kDefaultTimeout.InMilliseconds())) {
     LOG(ERROR) << "Failed to call DefineSpace: " << error->GetMessage();
-    return false;
+    return NVSpaceState::kNVSpaceUndefined;
   }
   if (reply.result() != tpm_manager::NVRAM_RESULT_SUCCESS) {
     LOG(ERROR) << "Failed to define nvram space: "
                << NvramResult2Str(reply.result());
-    return false;
+    return NVSpaceState::kNVSpaceUndefined;
   }
   if (!RemoveNVSpaceOwnerDependency()) {
     LOG(ERROR) << "Failed to remove the owner dependency.";
   }
-  return true;
+
+  return NVSpaceState::kNVSpaceUninitialized;
 }
 
 bool TPMNVSpaceImpl::RemoveNVSpaceOwnerDependency() {

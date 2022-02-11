@@ -17,7 +17,7 @@ class FakeTpmNVSpace : public TPMNVSpace {
 
   bool Initialize() override;
 
-  bool DefineNVSpace() override;
+  NVSpaceState DefineNVSpace() override;
 
   bool WriteNVSpace(const std::string& digest) override;
 

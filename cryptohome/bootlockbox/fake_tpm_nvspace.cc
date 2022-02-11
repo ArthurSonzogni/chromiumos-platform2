@@ -12,8 +12,8 @@ bool FakeTpmNVSpace::Initialize() {
   return true;
 }
 
-bool FakeTpmNVSpace::DefineNVSpace() {
-  return true;
+NVSpaceState FakeTpmNVSpace::DefineNVSpace() {
+  return NVSpaceState::kNVSpaceUninitialized;
 }
 
 bool FakeTpmNVSpace::WriteNVSpace(const std::string& digest) {

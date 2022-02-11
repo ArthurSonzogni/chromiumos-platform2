@@ -146,9 +146,14 @@ ArcSideloadStatusInterface::Status ArcSideloadStatus::ParseResponseFromRead(
       case cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNINITIALIZED:
         return ArcSideloadStatusInterface::Status::DISABLED;
 
-      // When boot lockbox is not yet defined. This can happen to device
-      // launched before boot lockbox was first introduced.
+      // When boot lockbox is not yet defined, which is normal after
+      // powerwash.
       case cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED:
+        return ArcSideloadStatusInterface::Status::DISABLED;
+
+      // When boot lockbox said we need a powerwash. This can happen to device
+      // launched before boot lockbox was first introduced.
+      case cryptohome::BOOTLOCKBOX_ERROR_NEED_POWERWASH:
         return ArcSideloadStatusInterface::Status::NEED_POWERWASH;
 
       default:
@@ -196,7 +201,7 @@ void ArcSideloadStatus::OnEnableAdbSideloadSet(
   }
 
   if (reply.has_error()) {
-    if (reply.error() == cryptohome::BOOTLOCKBOX_ERROR_NVSPACE_UNDEFINED) {
+    if (reply.error() == cryptohome::BOOTLOCKBOX_ERROR_NEED_POWERWASH) {
       std::move(callback).Run(
           ArcSideloadStatusInterface::Status::NEED_POWERWASH, nullptr);
     } else {
