@@ -45,7 +45,10 @@ class MockVaultKeyset : public VaultKeyset {
               (const brillo::SecureBlob&, const std::string&),
               (override));
 
-  MOCK_METHOD(void, CreateRandom, (), (override));
+  MOCK_METHOD(void,
+              CreateFromFileSystemKeyset,
+              (const FileSystemKeyset&),
+              (override));
 
   MOCK_METHOD(const brillo::SecureBlob&, GetFek, (), (const, override));
   MOCK_METHOD(const brillo::SecureBlob&, GetFekSig, (), (const, override));

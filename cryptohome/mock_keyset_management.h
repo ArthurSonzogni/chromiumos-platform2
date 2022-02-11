@@ -17,6 +17,7 @@
 #include <gmock/gmock.h>
 
 #include "cryptohome/credentials.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount.h"
 
 namespace cryptohome {
@@ -58,6 +59,10 @@ class MockKeysetManagement : public KeysetManagement {
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               AddInitialKeyset,
               (const Credentials&),
+              (override));
+  MOCK_METHOD(std::unique_ptr<VaultKeyset>,
+              AddInitialKeyset,
+              (const Credentials&, const FileSystemKeyset&),
               (override));
   MOCK_METHOD(CryptohomeErrorCode,
               AddWrappedResetSeedIfMissing,

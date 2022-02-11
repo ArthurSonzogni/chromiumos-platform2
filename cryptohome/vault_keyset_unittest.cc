@@ -31,6 +31,7 @@
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
+#include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {
 using base::FilePath;
@@ -157,7 +158,7 @@ TEST_F(VaultKeysetTest, AllocateRandom) {
   Crypto crypto(&platform_);
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIZE, vault_keyset.GetFek().size());
   EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE,
@@ -177,7 +178,7 @@ TEST_F(VaultKeysetTest, SerializeTest) {
   Crypto crypto(&platform_);
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob blob;
   EXPECT_TRUE(vault_keyset.ToKeysBlob(&blob));
@@ -197,7 +198,7 @@ TEST_F(VaultKeysetTest, DeserializeTest) {
   Crypto crypto(&platform_);
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob blob;
   EXPECT_TRUE(vault_keyset.ToKeysBlob(&blob));
@@ -246,7 +247,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   VaultKeyset keyset;
   keyset.Initialize(&platform, &crypto);
 
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   SecureBlob bytes;
 
   static const int kFscryptPolicyVersion = 2;
@@ -277,7 +278,7 @@ TEST_F(VaultKeysetTest, WriteError) {
   VaultKeyset keyset;
   keyset.Initialize(&platform, &crypto);
 
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   SecureBlob bytes;
 
   EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
@@ -297,7 +298,7 @@ TEST_F(VaultKeysetTest, AuthLockedDefault) {
 
   static const int kFscryptPolicyVersion = 2;
 
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
   keyset.SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
 
@@ -313,7 +314,7 @@ TEST_F(VaultKeysetTest, GetPcrBoundAuthBlockStateTest) {
   VaultKeyset keyset;
   keyset.Initialize(&platform, &crypto);
 
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                   SerializedVaultKeyset::SCRYPT_DERIVED |
                   SerializedVaultKeyset::PCR_BOUND);
@@ -340,7 +341,7 @@ TEST_F(VaultKeysetTest, GetEccAuthBlockStateTest) {
   VaultKeyset keyset;
   keyset.Initialize(&platform, &crypto);
 
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                   SerializedVaultKeyset::SCRYPT_DERIVED |
                   SerializedVaultKeyset::ECC |
@@ -373,7 +374,7 @@ TEST_F(VaultKeysetTest, GetNotPcrBoundAuthBlockState) {
   VaultKeyset keyset;
   keyset.Initialize(&platform, &crypto);
 
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
   keyset.SetTpmPublicKeyHash(brillo::SecureBlob("yadayada"));
   keyset.SetTPMKey(brillo::SecureBlob("blabla"));
@@ -396,7 +397,7 @@ TEST_F(VaultKeysetTest, GetPinWeaverAuthBlockState) {
   keyset.Initialize(&platform, &crypto);
 
   const uint64_t le_label = 012345;
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
   keyset.SetLELabel(le_label);
 
@@ -416,7 +417,7 @@ TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
   VaultKeyset keyset;
   keyset.Initialize(&platform, &crypto);
 
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
                   SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
 
@@ -434,7 +435,7 @@ TEST_F(VaultKeysetTest, GetLibscryptCompatAuthBlockState) {
   VaultKeyset keyset;
   keyset.Initialize(&platform, &crypto);
 
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED);
   keyset.SetWrappedKeyset(brillo::SecureBlob("foo"));
   keyset.SetWrappedChapsKey(brillo::SecureBlob("bar"));
@@ -457,7 +458,7 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockStateFailure) {
   VaultKeyset keyset;
   keyset.Initialize(&platform, &crypto);
 
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
                   SerializedVaultKeyset::TPM_WRAPPED);
 
@@ -478,7 +479,7 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
   VaultKeyset keyset;
   keyset.Initialize(&platform, &crypto);
 
-  keyset.CreateRandom();
+  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
                   SerializedVaultKeyset::TPM_WRAPPED);
   keyset.SetTPMKey(brillo::SecureBlob("blabla"));
@@ -497,7 +498,7 @@ TEST_F(VaultKeysetTest, EncryptionTest) {
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
@@ -513,7 +514,7 @@ TEST_F(VaultKeysetTest, DecryptionTest) {
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
@@ -585,7 +586,7 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
   static const int kFscryptPolicyVersion = 2;
@@ -633,7 +634,7 @@ TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(kPasswordKey);
   std::string obfuscated_username(kObfuscatedUsername);
@@ -674,7 +675,7 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
 
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   vk.SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
 
   // Test
@@ -803,7 +804,8 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
   EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(Return(LE_CRED_SUCCESS));
 
-  pin_vault_keyset_.CreateRandom();
+  pin_vault_keyset_.CreateFromFileSystemKeyset(
+      FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
   // This used to happen in VaultKeyset::EncryptVaultKeyset, but now happens in
@@ -826,7 +828,8 @@ TEST_F(LeCredentialsManagerTest, EncryptFail) {
   EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(Return(LE_CRED_ERROR_NO_FREE_LABEL));
 
-  pin_vault_keyset_.CreateRandom();
+  pin_vault_keyset_.CreateFromFileSystemKeyset(
+      FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
   // This used to happen in VaultKeyset::EncryptVaultKeyset, but now happens in
@@ -873,7 +876,8 @@ TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
   EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
       .WillOnce(Return(LE_CRED_SUCCESS));
 
-  pin_vault_keyset_.CreateRandom();
+  pin_vault_keyset_.CreateFromFileSystemKeyset(
+      FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
   // This used to happen in VaultKeyset::EncryptVaultKeyset, but now happens in
@@ -897,7 +901,8 @@ TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
 TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
   // Test to have LECredential fail Decrypt because CE_TPM_DEFEND_LOCK
   // Setup
-  pin_vault_keyset_.CreateRandom();
+  pin_vault_keyset_.CreateFromFileSystemKeyset(
+      FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
   SecureBlob bytes;

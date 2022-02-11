@@ -298,6 +298,12 @@ bool KeysetManagement::GetVaultKeysetLabels(
 
 std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeyset(
     const Credentials& credentials) {
+  return AddInitialKeyset(credentials, FileSystemKeyset::CreateRandom());
+}
+
+std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeyset(
+    const Credentials& credentials,
+    const FileSystemKeyset& file_system_keyset) {
   const brillo::SecureBlob passkey = credentials.passkey();
   std::string obfuscated_username =
       credentials.GetObfuscatedUsername(system_salt_);
@@ -305,9 +311,9 @@ std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeyset(
   std::unique_ptr<VaultKeyset> vk(
       vault_keyset_factory_->New(platform_, crypto_));
   vk->Initialize(platform_, crypto_);
-  vk->CreateRandom();
   vk->SetLegacyIndex(kInitialKeysetIndex);
   vk->SetKeyData(credentials.key_data());
+  vk->CreateFromFileSystemKeyset(file_system_keyset);
 
   if (credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
     vk->SetFlags(vk->GetFlags() |

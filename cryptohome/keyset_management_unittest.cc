@@ -37,6 +37,7 @@
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -107,6 +108,7 @@ class KeysetManagementTest : public ::testing::Test {
         &platform_, &crypto_, system_salt_,
         std::unique_ptr<VaultKeysetFactory>(mock_vault_keyset_factory_));
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
+    file_system_keyset_ = FileSystemKeyset::CreateRandom();
 
     AddUser(kUser0, kUserPassword0);
 
@@ -127,6 +129,7 @@ class KeysetManagementTest : public ::testing::Test {
   NiceMock<MockTpm> tpm_;
   Crypto crypto_;
   brillo::SecureBlob system_salt_;
+  FileSystemKeyset file_system_keyset_;
   std::unique_ptr<KeysetManagement> keyset_management_;
   MockVaultKeysetFactory* mock_vault_keyset_factory_;
   std::unique_ptr<KeysetManagement> keyset_management_mock_vk_;
@@ -189,7 +192,7 @@ class KeysetManagementTest : public ::testing::Test {
     for (auto& user : users_) {
       VaultKeyset vk;
       vk.Initialize(&platform_, &crypto_);
-      vk.CreateRandom();
+      vk.CreateFromFileSystemKeyset(file_system_keyset_);
       vk.SetKeyData(key_data);
       user.credentials.set_key_data(key_data);
       ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated));
@@ -202,7 +205,7 @@ class KeysetManagementTest : public ::testing::Test {
     for (auto& user : users_) {
       VaultKeyset vk;
       vk.Initialize(&platform_, &crypto_);
-      vk.CreateRandom();
+      vk.CreateFromFileSystemKeyset(file_system_keyset_);
       ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated));
       ASSERT_TRUE(
           vk.Save(user.homedir_path.Append(kKeyFile).AddExtension("0")));
@@ -1375,7 +1378,7 @@ TEST_F(KeysetManagementTest, AddWrappedResetSeed) {
   // Setup a vault keyset.
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
   vk.SetKeyData(DefaultKeyData());
   users_[0].credentials.set_key_data(DefaultKeyData());
 
@@ -1457,7 +1460,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoFile) {
   // Setup
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   EXPECT_CALL(platform_, OpenFile(_, StrEq("wx")))
       .WillRepeatedly(Return(nullptr));
@@ -1473,7 +1476,7 @@ TEST_F(KeysetManagementTest, AddKeysetNewLabel) {
   // Setup
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   // Test
   EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk, true),
@@ -1487,7 +1490,7 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExists) {
   KeysetSetUpWithKeyData(DefaultKeyData());
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   // Test
   // AddKeyset creates a file at index 1, but deletes the file
@@ -1508,7 +1511,7 @@ TEST_F(KeysetManagementTest, AddKeysetLabelExistsFail) {
   KeysetSetUpWithKeyData(DefaultKeyData());
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   auto mock_vk = new NiceMock<MockVaultKeyset>();
   auto match_vk = new VaultKeyset();
@@ -1543,7 +1546,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFailAuthSessions) {
   // Setup
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   auto mock_vk = new NiceMock<MockVaultKeyset>();
   EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _)).WillOnce(Return(mock_vk));
@@ -1570,7 +1573,7 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFailAuthSessions) {
   // Setup
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   auto mock_vk = new NiceMock<MockVaultKeyset>();
   EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _)).WillOnce(Return(mock_vk));
@@ -1594,7 +1597,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndData) {
 
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
@@ -1629,7 +1632,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileExtension) {
 
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
@@ -1671,7 +1674,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileIndex) {
 
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
@@ -1715,7 +1718,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataDuplicateLabel) {
 
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
 
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
@@ -1755,7 +1758,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataLoadFail) {
   // Setup
   VaultKeyset vk;
   vk.Initialize(&platform_, &crypto_);
-  vk.CreateRandom();
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
   vk.SetKeyData(DefaultKeyData());
 
   EXPECT_EQ(keyset_management_->AddKeyset(users_[0].credentials, vk, true),

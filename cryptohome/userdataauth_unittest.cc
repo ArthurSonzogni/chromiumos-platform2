@@ -51,6 +51,7 @@
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/protobuf_test_utils.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_arc_disk_quota.h"
 #include "cryptohome/storage/mock_homedirs.h"
@@ -362,7 +363,7 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
 
     auto vk = std::make_unique<VaultKeyset>();
     vk->Initialize(&platform_, &crypto_);
-    vk->CreateRandom();
+    vk->CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
     ASSERT_EQ(
         MOUNT_ERROR_NONE,
         session->MountVault(session->username_, FileSystemKeyset(*vk.get()),

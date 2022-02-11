@@ -40,6 +40,7 @@
 #include "cryptohome/libscrypt_compat.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -229,17 +230,18 @@ void VaultKeyset::CreateRandomResetSeed() {
   reset_seed_ = CreateSecureRandomBlob(CRYPTOHOME_RESET_SEED_LENGTH);
 }
 
-void VaultKeyset::CreateRandom() {
+void VaultKeyset::CreateFromFileSystemKeyset(
+    const FileSystemKeyset& file_system_keyset) {
   CHECK(crypto_);
 
-  fek_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  fek_sig_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  fek_salt_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
-  fnek_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIZE);
-  fnek_sig_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SIGNATURE_SIZE);
-  fnek_salt_ = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
+  fek_ = file_system_keyset.Key().fek;
+  fek_salt_ = file_system_keyset.Key().fek_salt;
+  fnek_ = file_system_keyset.Key().fnek;
+  fnek_salt_ = file_system_keyset.Key().fnek_salt;
+  fek_sig_ = file_system_keyset.KeyReference().fek_sig;
+  fnek_sig_ = file_system_keyset.KeyReference().fnek_sig;
 
-  CreateRandomChapsKey();
+  chaps_key_ = file_system_keyset.chaps_key();
   CreateRandomResetSeed();
 }
 

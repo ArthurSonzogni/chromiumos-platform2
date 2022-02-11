@@ -20,11 +20,13 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
 
 class Crypto;
+class FileSystemKeyset;
 class Platform;
 
 // VaultKeyset holds the File Encryption Key (FEK) and File Name Encryption Key
@@ -75,7 +77,8 @@ class VaultKeyset {
   // Convenience methods to initialize a new VaultKeyset with random values.
   virtual void CreateRandomChapsKey();
   virtual void CreateRandomResetSeed();
-  virtual void CreateRandom();
+  virtual void CreateFromFileSystemKeyset(
+      const FileSystemKeyset& file_system_keyset);
 
   // Methods to access runtime class state.
   virtual const base::FilePath& GetSourceFile() const;

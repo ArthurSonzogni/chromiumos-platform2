@@ -31,6 +31,7 @@
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
@@ -225,7 +226,7 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
@@ -297,7 +298,7 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
@@ -362,7 +363,7 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
@@ -393,7 +394,7 @@ TEST_F(CryptoTest, ScryptStepTest) {
 
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform, &crypto);
-  vault_keyset.CreateRandom();
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(20);
   GetSecureRandom(key.data(), key.size());
