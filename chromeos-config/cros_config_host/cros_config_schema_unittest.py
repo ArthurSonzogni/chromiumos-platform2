@@ -103,21 +103,20 @@ class TransformConfigTests(cros_test_lib.TestCase):
     result = cros_config_schema.TransformConfig(BASIC_CONFIG)
     json_dict = json.loads(result)
     self.assertEqual(len(json_dict), 1)
-    json_obj = libcros_schema.GetNamedTuple(json_dict)
-    self.assertEqual(1, len(json_obj.chromeos.configs))
-    model = json_obj.chromeos.configs[0]
-    self.assertEqual('basking', model.name)
-    self.assertEqual('basking', model.audio.main.cras_config_dir)
+    configs = json_dict['chromeos']['configs']
+    self.assertEqual(1, len(configs))
+    model = configs[0]
+    self.assertEqual('basking', model['name'])
+    self.assertEqual('basking', model['audio']['main']['cras-config-dir'])
     # Check multi-level template variable evaluation
     self.assertEqual('/etc/cras/basking/dsp.ini',
-                     model.audio.main.files[0].destination)
+                     model['audio']['main']['files'][0]['destination'])
 
   def testTransformConfig_NoMatch(self):
     result = cros_config_schema.TransformConfig(
         BASIC_CONFIG, model_filter_regex='abc123')
     json_dict = json.loads(result)
-    json_obj = libcros_schema.GetNamedTuple(json_dict)
-    self.assertEqual(0, len(json_obj.chromeos.configs))
+    self.assertEqual(0, len(json_dict['chromeos']['configs']))
 
   def testTransformConfig_FilterMatch(self):
     scoped_config = """
@@ -167,10 +166,10 @@ chromeos:
     result = cros_config_schema.TransformConfig(
         scoped_config, model_filter_regex='bar')
     json_dict = json.loads(result)
-    json_obj = libcros_schema.GetNamedTuple(json_dict)
-    self.assertEqual(1, len(json_obj.chromeos.configs))
-    model = json_obj.chromeos.configs[0]
-    self.assertEqual('bar', model.name)
+    configs = json_dict['chromeos']['configs']
+    self.assertEqual(1, len(configs))
+    model = configs[0]
+    self.assertEqual('bar', model['name'])
 
   def testTemplateVariableScope(self):
     scoped_config = """
@@ -202,12 +201,12 @@ chromeos:
 """
     result = cros_config_schema.TransformConfig(scoped_config)
     json_dict = json.loads(result)
-    json_obj = libcros_schema.GetNamedTuple(json_dict)
-    config = json_obj.chromeos.configs[0]
+    config = json_dict['chromeos']['configs'][0]
+    audio_main = config['audio']['main']
     self.assertEqual(
-        'overridden-by-product-scope', config.audio.main.cras_config_dir)
+        'overridden-by-product-scope', audio_main['cras-config-dir'])
     self.assertEqual(
-        'overridden-by-device-scope', config.audio.main.ucm_suffix)
+        'overridden-by-device-scope', audio_main['ucm-suffix'])
 
 
 class ValidateConfigSchemaTests(cros_test_lib.TestCase):

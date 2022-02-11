@@ -18,29 +18,6 @@ from jsonschema import validate  # pylint: disable=import-error
 import yaml  # pylint: disable=import-error
 
 
-def GetNamedTuple(mapping):
-  """Converts a mapping into Named Tuple recursively.
-
-  Args:
-    mapping: A mapping object to be converted.
-
-  Returns:
-    A named tuple generated from mapping
-  """
-  if not isinstance(mapping, collections.Mapping):
-    return mapping
-  new_mapping = {}
-  for k, v in mapping.items():
-    if isinstance(v, list):
-      new_list = []
-      for val in v:
-        new_list.append(GetNamedTuple(val))
-      new_mapping[k.replace('-', '_').replace('@', '_')] = new_list
-    else:
-      new_mapping[k.replace('-', '_').replace('@', '_')] = GetNamedTuple(v)
-  return collections.namedtuple('Config', list(new_mapping))(**new_mapping)
-
-
 def FormatJson(config):
   """Formats JSON for output or printing.
 
