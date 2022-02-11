@@ -364,9 +364,9 @@ class DaemonDelegateImpl : public DaemonDelegate {
     int return_value = ::system(command.c_str());
     if (return_value == -1) {
       PLOG(ERROR) << "fork() failed";
-    } else if (return_value) {
-      return_value = WEXITSTATUS(return_value);
-      LOG(ERROR) << "Command failed with exit status " << return_value;
+    } else if (WEXITSTATUS(return_value)) {
+      LOG(ERROR) << "Command failed with exit status "
+                 << WEXITSTATUS(return_value);
     }
     return return_value;
   }
