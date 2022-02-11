@@ -88,8 +88,9 @@ message NetworkTelemetry {
   optional string gateway = 6;
   // Network connection type.
   optional NetworkType type = 7;
-  // Access point address.
-  optional string access_point_address = 8;
+
+  reserved 8;
+
   // Transmission bit rate measured in Mbps.
   optional int64 tx_bit_rate_mbps = 9;
   // Receiving bit rate measured in Mbps.
@@ -293,7 +294,7 @@ message TelemetryData {
   // Audio telemetry data.
   optional AudioTelemetry audio_telemetry = 2;
   // Usb telemetry data
-  optional UsbTelemetry usb_telemetry = 3;
+  repeated UsbTelemetry usb_telemetry = 3;
   // Boot Performance telemetry data.
   optional BootPerformanceTelemetry boot_performance_telemetry = 4;
 }
@@ -317,9 +318,11 @@ message UsbTelemetry {
   optional int32 vid = 3;
   // Product ID
   optional int32 pid = 4;
-  // List of names of USB categories the device falls under
+  // For more info on the following three fields, see
   // https://www.usb.org/defined-class-codes
   repeated string categories = 5;
+  optional int32 class_id = 6;
+  optional int32 subclass_id = 7;
 }
 
 // Indicates one of the following conditions occurred on the device, data
