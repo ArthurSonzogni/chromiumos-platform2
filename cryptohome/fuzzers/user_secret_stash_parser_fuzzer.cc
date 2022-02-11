@@ -133,6 +133,7 @@ void AssertStashesEqual(const UserSecretStash& first,
   CHECK(first.GetFileSystemKeyset().chaps_key() ==
         second.GetFileSystemKeyset().chaps_key());
   CHECK(first.GetResetSecret() == second.GetResetSecret());
+  CHECK_EQ(first.GetCreatedOnOsVersion(), second.GetCreatedOnOsVersion());
 }
 
 }  // namespace

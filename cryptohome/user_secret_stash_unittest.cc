@@ -4,6 +4,7 @@
 
 #include "cryptohome/user_secret_stash.h"
 
+#include <base/test/scoped_chromeos_version_info.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
@@ -286,6 +287,80 @@ TEST_F(UserSecretStashTest, ExperimentState) {
 
   // Unset the experiment override to avoid affecting other test cases.
   SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);
+}
+
+// Test that a newly created USS has the current OS version stored.
+TEST_F(UserSecretStashTest, OsVersion) {
+  constexpr char kLsbRelease[] =
+      "CHROMEOS_RELEASE_NAME=Chrome "
+      "OS\nCHROMEOS_RELEASE_VERSION=11012.0.2018_08_28_1422\n";
+  base::test::ScopedChromeOSVersionInfo scoped_version(
+      kLsbRelease, /*lsb_release_time=*/base::Time());
+
+  std::unique_ptr<UserSecretStash> stash1 =
+      UserSecretStash::CreateRandom(kFileSystemKeyset);
+  ASSERT_TRUE(stash1);
+  EXPECT_EQ(stash1->GetCreatedOnOsVersion(), "11012.0.2018_08_28_1422");
+}
+
+// Test that the OS version is stored in the USS and doesn't change even when
+// the OS updates.
+TEST_F(UserSecretStashTest, OsVersionStays) {
+  constexpr char kLsbRelease1[] =
+      "CHROMEOS_RELEASE_NAME=Chrome "
+      "OS\nCHROMEOS_RELEASE_VERSION=11012.0.2018_08_28_1422\n";
+  constexpr char kLsbRelease2[] =
+      "CHROMEOS_RELEASE_NAME=Chrome "
+      "OS\nCHROMEOS_RELEASE_VERSION=22222.0.2028_01_01_9999\n";
+
+  // Create and encrypt the USS on the version 1.
+  std::optional<brillo::SecureBlob> uss_container;
+  {
+    base::test::ScopedChromeOSVersionInfo scoped_version1(
+        kLsbRelease1, /*lsb_release_time=*/base::Time());
+    std::unique_ptr<UserSecretStash> stash1 =
+        UserSecretStash::CreateRandom(kFileSystemKeyset);
+    ASSERT_TRUE(stash1);
+    uss_container = stash1->GetEncryptedContainer(kMainKey);
+    ASSERT_TRUE(uss_container.has_value());
+  }
+
+  // Decrypt the USS on the version 2. Check that the field still mentions
+  // version 1.
+  {
+    base::test::ScopedChromeOSVersionInfo scoped_version2(
+        kLsbRelease2, /*lsb_release_time=*/base::Time());
+    std::unique_ptr<UserSecretStash> stash2 =
+        UserSecretStash::FromEncryptedContainer(uss_container.value(),
+                                                kMainKey);
+    ASSERT_TRUE(stash2);
+    EXPECT_EQ(stash2->GetCreatedOnOsVersion(), "11012.0.2018_08_28_1422");
+  }
+}
+
+// Test that the USS is correctly created and loaded even when reading the OS
+// version fails.
+TEST_F(UserSecretStashTest, MissingOsVersion) {
+  // Note: Normally unit tests don't have access to a CrOS /etc/lsb-release
+  // anyway, but this override guarantees that the test passes regardless of
+  // that.
+  base::test::ScopedChromeOSVersionInfo scoped_version(
+      /*lsb_release=*/"", /*lsb_release_time=*/base::Time());
+
+  // A newly created USS should have an empty OS version.
+  std::unique_ptr<UserSecretStash> stash =
+      UserSecretStash::CreateRandom(kFileSystemKeyset);
+  ASSERT_TRUE(stash);
+  EXPECT_TRUE(stash->GetCreatedOnOsVersion().empty());
+
+  // Do a encrypt-decrypt roundtrip and verify the OS version is still empty.
+  std::optional<brillo::SecureBlob> uss_container =
+      stash_->GetEncryptedContainer(kMainKey);
+  ASSERT_TRUE(uss_container.has_value());
+  std::unique_ptr<UserSecretStash> stash2 =
+      UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
+  ASSERT_TRUE(stash2);
+  EXPECT_TRUE(stash2->GetCreatedOnOsVersion().empty());
 }
 
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using

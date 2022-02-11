@@ -80,6 +80,14 @@ class UserSecretStash {
   const brillo::SecureBlob& GetResetSecret() const;
   void SetResetSecret(const brillo::SecureBlob& secret);
 
+  // The OS version on which this particular user secret stash was originally
+  // created. The format is the one of the CHROMEOS_RELEASE_VERSION field in
+  // /etc/lsb-release, e.g.: "11012.0.2018_08_28_1422". Empty if the version
+  // fetch failed at the creation time.
+  // !!!WARNING!!!: This value is not authenticated nor validated. It must not
+  // be used for security-critical features.
+  const std::string& GetCreatedOnOsVersion() const;
+
   // Returns whether there's a wrapped key block with the given wrapping ID.
   bool HasWrappedMainKey(const std::string& wrapping_id) const;
   // Unwraps (decrypts) the USS main key from the wrapped key block with the
@@ -116,6 +124,7 @@ class UserSecretStash {
       const brillo::SecureBlob& iv,
       const brillo::SecureBlob& gcm_tag,
       const std::map<std::string, WrappedKeyBlock>& wrapped_key_blocks,
+      const std::string& created_on_os_version,
       const brillo::SecureBlob& main_key);
 
   UserSecretStash(const FileSystemKeyset& file_system_keyset,
@@ -131,6 +140,9 @@ class UserSecretStash {
   // ID, which is an opaque string (although upper programmatic layers can add
   // semantics to it, in order to map it to the authentication method).
   std::map<std::string, WrappedKeyBlock> wrapped_key_blocks_;
+  // The OS version on which this particular user secret stash was originally
+  // created.
+  std::string created_on_os_version_;
 };
 
 }  // namespace cryptohome

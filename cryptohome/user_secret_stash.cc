@@ -9,6 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/system/sys_info.h>
 #include <brillo/secure_blob.h>
 #include <stdint.h>
 
@@ -42,6 +43,17 @@ std::optional<bool>& GetUserSecretStashExperimentOverride() {
 
 bool UserSecretStashExperimentFlagFileExists() {
   return base::PathExists(base::FilePath(kUssExperimentFlagPath));
+}
+
+// Loads the current OS version from the CHROMEOS_RELEASE_VERSION field in
+// /etc/lsb-release. Returns an empty string on failure.
+std::string GetCurrentOsVersion() {
+  std::string version;
+  if (!base::SysInfo::GetLsbReleaseValue("CHROMEOS_RELEASE_VERSION",
+                                         &version)) {
+    return std::string();
+  }
+  return version;
 }
 
 // Extracts the file system keyset from the given USS payload. Returns nullopt
@@ -159,14 +171,15 @@ GetKeyBlocksFromSerializableStructs(
 }
 
 // Parses the USS container flatbuffer. On success, populates `ciphertext`,
-// `iv`, `tag` and `wrapped_key_blocks`; on failure, returns false.
+// `iv`, `tag`, `wrapped_key_blocks`, `created_on_os_version`; on failure,
+// returns false.
 bool GetContainerFromFlatbuffer(
     const brillo::SecureBlob& flatbuffer,
     brillo::SecureBlob* ciphertext,
     brillo::SecureBlob* iv,
     brillo::SecureBlob* tag,
-    std::map<std::string, UserSecretStash::WrappedKeyBlock>*
-        wrapped_key_blocks) {
+    std::map<std::string, UserSecretStash::WrappedKeyBlock>* wrapped_key_blocks,
+    std::string* created_on_os_version) {
   std::optional<UserSecretStashContainer> deserialized =
       UserSecretStashContainer::Deserialize(flatbuffer);
   if (!deserialized.has_value()) {
@@ -217,6 +230,8 @@ bool GetContainerFromFlatbuffer(
 
   *wrapped_key_blocks = GetKeyBlocksFromSerializableStructs(
       deserialized.value().wrapped_key_blocks);
+
+  *created_on_os_version = deserialized.value().created_on_os_version;
 
   return true;
 }
@@ -308,9 +323,13 @@ std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom(
     const FileSystemKeyset& file_system_keyset) {
   brillo::SecureBlob reset_secret =
       CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+  std::string current_os_version = GetCurrentOsVersion();
+
   // Note: make_unique() wouldn't work due to the constructor being private.
-  return std::unique_ptr<UserSecretStash>(
+  std::unique_ptr<UserSecretStash> stash(
       new UserSecretStash(file_system_keyset, reset_secret));
+  stash->created_on_os_version_ = std::move(current_os_version);
+  return stash;
 }
 
 // static
@@ -324,14 +343,16 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedContainer(
 
   brillo::SecureBlob ciphertext, iv, gcm_tag;
   std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
+  std::string created_on_os_version;
   if (!GetContainerFromFlatbuffer(flatbuffer, &ciphertext, &iv, &gcm_tag,
-                                  &wrapped_key_blocks)) {
+                                  &wrapped_key_blocks,
+                                  &created_on_os_version)) {
     // Note: the error is already logged.
     return nullptr;
   }
 
   return FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
-                              main_key);
+                              created_on_os_version, main_key);
 }
 
 // static
@@ -340,6 +361,7 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
     const brillo::SecureBlob& iv,
     const brillo::SecureBlob& gcm_tag,
     const std::map<std::string, WrappedKeyBlock>& wrapped_key_blocks,
+    const std::string& created_on_os_version,
     const brillo::SecureBlob& main_key) {
   brillo::SecureBlob serialized_uss_payload;
   if (!AesGcmDecrypt(ciphertext, /*ad=*/std::nullopt, gcm_tag, main_key, iv,
@@ -371,7 +393,7 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
   std::unique_ptr<UserSecretStash> stash(new UserSecretStash(
       file_system_keyset.value(), uss_payload.value().reset_secret));
   stash->wrapped_key_blocks_ = wrapped_key_blocks;
-
+  stash->created_on_os_version_ = created_on_os_version;
   return stash;
 }
 
@@ -384,8 +406,10 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
     brillo::SecureBlob* main_key) {
   brillo::SecureBlob ciphertext, iv, gcm_tag;
   std::map<std::string, WrappedKeyBlock> wrapped_key_blocks;
+  std::string created_on_os_version;
   if (!GetContainerFromFlatbuffer(flatbuffer, &ciphertext, &iv, &gcm_tag,
-                                  &wrapped_key_blocks)) {
+                                  &wrapped_key_blocks,
+                                  &created_on_os_version)) {
     // Note: the error is already logged.
     return nullptr;
   }
@@ -397,8 +421,9 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
     return nullptr;
   }
 
-  std::unique_ptr<UserSecretStash> stash = FromEncryptedPayload(
-      ciphertext, iv, gcm_tag, wrapped_key_blocks, *main_key_optional);
+  std::unique_ptr<UserSecretStash> stash =
+      FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
+                           created_on_os_version, *main_key_optional);
   if (!stash) {
     // Note: the error is already logged.
     return nullptr;
@@ -422,6 +447,10 @@ const brillo::SecureBlob& UserSecretStash::GetResetSecret() const {
 
 void UserSecretStash::SetResetSecret(const brillo::SecureBlob& secret) {
   reset_secret_ = secret;
+}
+
+const std::string& UserSecretStash::GetCreatedOnOsVersion() const {
+  return created_on_os_version_;
 }
 
 bool UserSecretStash::HasWrappedMainKey(const std::string& wrapping_id) const {
@@ -520,6 +549,7 @@ std::optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
       .ciphertext = ciphertext,
       .iv = iv,
       .gcm_tag = tag,
+      .created_on_os_version = created_on_os_version_,
   };
   // Note: It can happen that the USS container is created with empty
   // |wrapped_key_blocks_| - they may be added later, when the user registers
