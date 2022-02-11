@@ -10,9 +10,6 @@ typeDefs:
     type: string
     build-only-element: true
     description: Name of the file located in BCS under the respective bcs-overlay.
-  deprecated_string: &deprecated_string
-    type: string
-    description: A deprecated string property to be removed after migration.
   firmware-build-target: &firmware_build_target
     type: string
     description: Build target that will be considered dirty when building/testing
