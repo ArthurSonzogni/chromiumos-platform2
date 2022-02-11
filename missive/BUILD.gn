@@ -102,6 +102,8 @@ static_library("missiveclientlib") {
     "storage/missive_storage_module_delegate_impl.h",
     "storage/storage_module_interface.cc",
     "storage/storage_module_interface.h",
+    "util/disconnectable_client.cc",
+    "util/disconnectable_client.h",
     "util/shared_queue.h",
     "util/status.cc",
     "util/status.h",
