@@ -656,14 +656,37 @@ class GetValidSchemaProperties(cros_test_lib.TestCase):
     self.assertIn('count', schema_props['/camera'])
 
 
+def _GetSchemaYaml():
+  schema_contents = cros_config_schema.ReadSchema()
+  return libcros_schema.LoadYaml(schema_contents)
+
+
+class SchemaContentsTests(cros_test_lib.TestCase):
+  def testSchemaPropertyNames(self):
+    """Validate that all property names use hyphen-case"""
+
+    def _GetPropertyNames(obj, key_name):
+      if key_name == 'properties':
+        yield from obj.keys()
+
+      if isinstance(obj, dict):
+        for key, value in obj.items():
+          yield from _GetPropertyNames(value, key)
+      elif isinstance(obj, list):
+        for item in obj:
+          yield from _GetPropertyNames(item, None)
+
+    schema = _GetSchemaYaml()
+    property_name_pattern = re.compile(r'^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$')
+    for property_name in _GetPropertyNames(schema, None):
+      self.assertRegex(
+          property_name,
+          property_name_pattern,
+          "All property names must use hyphen-case.",
+      )
+
+
 class MainTests(cros_test_lib.TempDirTestCase):
-
-  def _GetSchemaYaml(self):
-    with open(os.path.join(
-        this_dir, 'cros_config_schema.yaml')) as schema_stream:
-      schema_contents = schema_stream.read()
-      return libcros_schema.LoadYaml(schema_contents)
-
   def assertFileEqual(self, file_expected, file_actual):
     self.assertTrue(os.path.isfile(file_expected),
                     'Expected file does not exist at path: {}'
