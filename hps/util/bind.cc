@@ -18,7 +18,7 @@
 namespace {
 
 /// Path to the sysfs node of the HPS kernel driver.
-constexpr char kHpsI2cSysfsPath[] = "/sys/bus/i2c/drivers/hps";
+constexpr char kHpsI2cSysfsPath[] = "/sys/bus/i2c/drivers/cros-hps";
 
 // The i2c device id for HPS.
 constexpr char kHpsI2cDeviceId[] = "i2c-GOOG0020:00";
