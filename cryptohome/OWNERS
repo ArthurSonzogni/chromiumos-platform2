@@ -10,3 +10,7 @@ per-file platform*=hashimoto@chromium.org
 
 per-file dircrypto_util*=gwendal@chromium.org
 per-file dircrypto_util*=hashimoto@chromium.org
+
+per-file *flatbuffer*=yich@google.com
+
+per-file *auth_session*=hardikgoyal@chromium.org
