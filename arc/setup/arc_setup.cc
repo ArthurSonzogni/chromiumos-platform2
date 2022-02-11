@@ -45,6 +45,7 @@
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <brillo/cryptohome.h>
+#include <brillo/dbus/dbus_connection.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/scoped_mount_namespace.h>
@@ -2481,6 +2482,11 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
   const bool add_native_bridge_64bit_support =
       config_.GetBoolOrDie("ADD_NATIVE_BRIDGE_64BIT_SUPPORT");
   const bool is_arcvm = config_.GetBoolOrDie("IS_ARCVM");
+#if USE_ARC_HW_OEMCRYPTO
+  const bool hw_oemcrypto_support = true;
+#else
+  const bool hw_oemcrypto_support = false;
+#endif  // USE_ARC_HW_OEMCRYPTO
   const bool debuggable = config_.GetBoolOrDie("ANDROID_DEBUGGABLE");
   LOG(INFO) << "Debuggable is " << debuggable;
 
@@ -2491,9 +2497,17 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
                      .Append("combined.prop")
                : base::FilePath(kGeneratedPropertyFilesPath));
 
+  brillo::DBusConnection dbus_connection;
+  scoped_refptr<::dbus::Bus> bus = nullptr;
+  if (hw_oemcrypto_support) {
+    bus = dbus_connection.Connect();
+    CHECK(bus);
+  }
+
   EXIT_IF(!ExpandPropertyFiles(
       property_files_source_dir, property_files_dest_path,
-      /*single_file=*/is_arcvm, add_native_bridge_64bit_support, debuggable));
+      /*single_file=*/is_arcvm, add_native_bridge_64bit_support,
+      hw_oemcrypto_support, debuggable, bus));
 
   if (!is_arcvm)
     return;

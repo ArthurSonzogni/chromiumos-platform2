@@ -5,6 +5,7 @@
 #include "arc/setup/arc_property_util.h"
 
 #include <algorithm>
+#include <memory>
 #include <tuple>
 #include <vector>
 
@@ -16,7 +17,16 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
+#include <brillo/dbus/dbus_method_invoker.h>
+#include <cdm_oemcrypto/proto_bindings/client_information.pb.h>
+#include <chromeos/dbus/service_constants.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <dbus/message.h>
+
+constexpr char kCdmManufacturerProp[] = "ro.product.cdm.manufacturer";
+constexpr char kCdmDeviceProp[] = "ro.product.cdm.device";
+constexpr char kCdmModelProp[] = "ro.product.cdm.model";
 
 namespace arc {
 namespace {
@@ -163,10 +173,12 @@ bool IsComment(const std::string& line) {
 
 bool ExpandPropertyContents(const std::string& content,
                             brillo::CrosConfigInterface* config,
+                            scoped_refptr<::dbus::Bus> bus,
                             std::string* expanded_content,
                             bool filter_non_ro_props,
                             bool add_native_bridge_64bit_support,
                             bool append_dalvik_isa,
+                            bool append_cdm_props,
                             bool debuggable,
                             const std::string& partition_name) {
   const std::vector<std::string> lines = base::SplitString(
@@ -309,6 +321,44 @@ bool ExpandPropertyContents(const std::string& content,
     new_properties += std::string(kDalvikVmIsaArm64) + "\n";
   }
 
+  if (append_cdm_props) {
+    // We need to make a D-Bus call to the cdm-oemcrypto daemon to get these
+    // properties and then append them to the contents on success. The daemon we
+    // are talking to has already had it's D-Bus service advertisement waited on
+    // by Chrome (or a timeout occurred waiting for it). The 10 second timeout
+    // is more than enough to cover the amount of time it would take the daemon
+    // to process this request (it should be very fast). This timeout also
+    // should be shorter than the default D-Bus timeout used by upstart to
+    // launch the script which is 30 seconds. In the event the daemon did not
+    // startup correctly, then the D-Bus call should return immediately.
+    auto proxy = bus->GetObjectProxy(
+        cdm_oemcrypto::kCdmFactoryDaemonServiceName,
+        dbus::ObjectPath(cdm_oemcrypto::kCdmFactoryDaemonServicePath));
+    constexpr int kDbusTimeoutMsec = 10000;
+    brillo::ErrorPtr error;
+    std::unique_ptr<::dbus::Response> response =
+        brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+            kDbusTimeoutMsec, proxy,
+            cdm_oemcrypto::kCdmFactoryDaemonServiceInterface,
+            cdm_oemcrypto::kGetClientInformation, &error);
+    if (response) {
+      dbus::MessageReader reader(response.get());
+      chromeos::cdm::ClientInformation client_info;
+      if (reader.PopArrayOfBytesAsProto(&client_info)) {
+        new_properties += std::string(kCdmManufacturerProp) + "=" +
+                          client_info.manufacturer() + "\n";
+        new_properties +=
+            std::string(kCdmModelProp) + "=" + client_info.model() + "\n";
+        new_properties +=
+            std::string(kCdmDeviceProp) + "=" + client_info.make() + "\n";
+      } else {
+        DLOG(WARNING) << "Failed reading proto response";
+      }
+    } else {
+      LOG(WARNING) << "Failed getting client information from cdm-oemcrypto";
+    }
+  }
+
   *expanded_content = new_properties;
   return true;
 }
@@ -316,9 +366,11 @@ bool ExpandPropertyContents(const std::string& content,
 bool ExpandPropertyFile(const base::FilePath& input,
                         const base::FilePath& output,
                         brillo::CrosConfigInterface* config,
+                        scoped_refptr<::dbus::Bus> bus,
                         bool append,
                         bool add_native_bridge_64bit_support,
                         bool append_dalvik_isa,
+                        bool append_cdm_props,
                         bool debuggable,
                         const std::string& partition_name) {
   std::string content;
@@ -327,10 +379,10 @@ bool ExpandPropertyFile(const base::FilePath& input,
     PLOG(ERROR) << "Failed to read " << input;
     return false;
   }
-  if (!ExpandPropertyContents(content, config, &expanded,
-                              /*filter_non_ro_props=*/append,
-                              add_native_bridge_64bit_support,
-                              append_dalvik_isa, debuggable, partition_name)) {
+  if (!ExpandPropertyContents(
+          content, config, bus, &expanded,
+          /*filter_non_ro_props=*/append, add_native_bridge_64bit_support,
+          append_dalvik_isa, append_cdm_props, debuggable, partition_name)) {
     return false;
   }
   if (append && base::PathExists(output)) {
@@ -353,10 +405,12 @@ bool ExpandPropertyContentsForTesting(const std::string& content,
                                       brillo::CrosConfigInterface* config,
                                       bool debuggable,
                                       std::string* expanded_content) {
-  return ExpandPropertyContents(content, config, expanded_content,
+  return ExpandPropertyContents(content, config, nullptr, expanded_content,
                                 /*filter_non_ro_props=*/true,
                                 /*add_native_bridge_64bit_support=*/false,
-                                false, debuggable, std::string());
+                                /*append_dalvik_isa=*/false,
+                                /*append_cdm_props=*/false, debuggable,
+                                std::string());
 }
 
 bool TruncateAndroidPropertyForTesting(const std::string& line,
@@ -367,8 +421,10 @@ bool TruncateAndroidPropertyForTesting(const std::string& line,
 bool ExpandPropertyFileForTesting(const base::FilePath& input,
                                   const base::FilePath& output,
                                   brillo::CrosConfigInterface* config) {
-  return ExpandPropertyFile(input, output, config, /*append=*/false,
-                            /*add_native_bridge_64bit_support=*/false, false,
+  return ExpandPropertyFile(input, output, config, nullptr, /*append=*/false,
+                            /*add_native_bridge_64bit_support=*/false,
+                            /*append_dalvik_isa=*/false,
+                            /*append_cdm_props=*/false,
                             /*debuggable=*/false, std::string());
 }
 
@@ -376,7 +432,9 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
                          const base::FilePath& dest_path,
                          bool single_file,
                          bool add_native_bridge_64bit_support,
-                         bool debuggable) {
+                         bool hw_oemcrypto_support,
+                         bool debuggable,
+                         scoped_refptr<::dbus::Bus> bus) {
   brillo::CrosConfig config;
   if (single_file)
     base::DeleteFile(dest_path);
@@ -387,18 +445,20 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
        // system/core/init/property_service.cpp.
        // Note: Our vendor image doesn't have /vendor/default.prop although
        // PropertyLoadBootDefaults() tries to open it.
-       {std::tuple<const char*, bool, bool, const char*>{"default.prop", true,
-                                                         false, ""},
-        {"build.prop", false, true, ""},
-        {"system_ext_build.prop", true, false, "system_ext."},
-        {"vendor_build.prop", false, false, "vendor."},
-        {"odm_build.prop", true, false, "odm."},
-        {"product_build.prop", true, false, "product."}}) {
+       {std::tuple<const char*, bool, bool, const char*, bool>{
+            "default.prop", true, false, "", false},
+        {"build.prop", false, true, "", false},
+        {"system_ext_build.prop", true, false, "system_ext.", false},
+        {"vendor_build.prop", false, false, "vendor.", false},
+        {"odm_build.prop", true, false, "odm.", false},
+        {"product_build.prop", true, false, "product.", true}}) {
     const char* file = std::get<0>(tuple);
     const bool is_optional = std::get<1>(tuple);
     // When true, unconditionally add |kDalvikVmIsaArm64| property.
     const bool append_dalvik_isa =
         std::get<2>(tuple) && add_native_bridge_64bit_support;
+    // Add CDM properties for HW DRM.
+    const bool append_cdm_props = std::get<4>(tuple) && hw_oemcrypto_support;
     // Search for ro.<partition_name>product.cpu.abilist* properties.
     const char* partition_name = std::get<3>(tuple);
 
@@ -408,9 +468,9 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
 
     if (!ExpandPropertyFile(
             source_file, single_file ? dest_path : dest_path.Append(file),
-            &config,
+            &config, bus,
             /*append=*/single_file, add_native_bridge_64bit_support,
-            append_dalvik_isa, debuggable, partition_name)) {
+            append_dalvik_isa, append_cdm_props, debuggable, partition_name)) {
       LOG(ERROR) << "Failed to expand " << source_file;
       return false;
     }

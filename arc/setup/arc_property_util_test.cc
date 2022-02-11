@@ -5,15 +5,25 @@
 #include "arc/setup/arc_property_util.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
+#include <cdm_oemcrypto/proto_bindings/client_information.pb.h>
+#include <chromeos/dbus/service_constants.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <chromeos-config/libcros_config/fake_cros_config.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_object_proxy.h>
+#include <gmock/gmock.h>
 #include <testing/gtest/include/gtest/gtest.h>
+
+using ::testing::_;
+using ::testing::ByMove;
+using ::testing::Return;
 
 namespace arc {
 namespace {
@@ -27,12 +37,23 @@ class ArcPropertyUtilTest : public testing::Test {
   ArcPropertyUtilTest(const ArcPropertyUtilTest&) = delete;
   ArcPropertyUtilTest& operator=(const ArcPropertyUtilTest&) = delete;
 
-  void SetUp() override { ASSERT_TRUE(dir_.CreateUniqueTempDir()); }
+  void SetUp() override {
+    ASSERT_TRUE(dir_.CreateUniqueTempDir());
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    bus_ = new dbus::MockBus(options);
+    cdm_factory_daemon_object_proxy_ = new dbus::MockObjectProxy(
+        bus_.get(), cdm_oemcrypto::kCdmFactoryDaemonServiceName,
+        dbus::ObjectPath(cdm_oemcrypto::kCdmFactoryDaemonServicePath));
+  }
 
  protected:
   const base::FilePath& GetTempDir() const { return dir_.GetPath(); }
 
   brillo::FakeCrosConfig* config() { return &config_; }
+
+  scoped_refptr<dbus::MockBus> bus_;
+  scoped_refptr<dbus::MockObjectProxy> cdm_factory_daemon_object_proxy_;
 
  private:
   brillo::FakeCrosConfig config_;
@@ -256,14 +277,16 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
                                    base::FilePath("/nonexistent2"),
                                    /*single_file=*/false,
                                    /*add_native_bridge...=*/false,
-                                   /*debuggable=*/false));
+                                   /*hw_oemcrypto_support=*/false,
+                                   /*debuggable=*/false, nullptr));
 
   // Both source and dest exist, but the source directory is empty.
   base::FilePath source_dir;
   ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &source_dir));
   base::FilePath dest_dir;
   ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &dest_dir));
-  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false));
+  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false,
+                                   false, nullptr));
 
   // Add default.prop to the source, but not build.prop.
   base::FilePath default_prop = source_dir.Append("default.prop");
@@ -271,20 +294,23 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
   // when not in the "append" mode.
   constexpr const char kDefaultProp[] = "dalvik.a=b\nro.foo=bar\n";
   base::WriteFile(default_prop, kDefaultProp, strlen(kDefaultProp));
-  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false));
+  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false,
+                                   false, nullptr));
 
   // Add build.prop too. The call should not succeed still.
   base::FilePath build_prop = source_dir.Append("build.prop");
   constexpr const char kBuildProp[] = "ro.baz=boo\n";
   base::WriteFile(build_prop, kBuildProp, strlen(kBuildProp));
-  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false));
+  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false,
+                                   false, nullptr));
 
   // Add vendor_build.prop too. Then the call should succeed.
   base::FilePath vendor_build_prop = source_dir.Append("vendor_build.prop");
   constexpr const char kVendorBuildProp[] = "ro.a=b\n";
   base::WriteFile(vendor_build_prop, kVendorBuildProp,
                   strlen(kVendorBuildProp));
-  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false,
+                                  false, nullptr));
 
   // Verify all dest files are there.
   EXPECT_TRUE(base::PathExists(dest_dir.Append("default.prop")));
@@ -303,7 +329,8 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
   EXPECT_EQ(std::string(kVendorBuildProp) + "\n", content);
 
   // Expand it again, verify the previous result is cleared.
-  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false,
+                                  false, nullptr));
   EXPECT_TRUE(
       base::ReadFileToString(dest_dir.Append("default.prop"), &content));
   EXPECT_EQ(std::string(kDefaultProp) + "\n", content);
@@ -313,7 +340,8 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
   // destination path.
   base::DeleteFile(dest_dir.Append("default.prop"));
 
-  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false,
+                                  false, nullptr));
 
   EXPECT_TRUE(base::ReadFileToString(dest_dir.Append("build.prop"), &content));
   EXPECT_EQ(std::string(kBuildProp) + "\n", content);
@@ -323,7 +351,7 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
 
   // Finally, test the case where source is valid but the dest is not.
   EXPECT_FALSE(ExpandPropertyFiles(source_dir, base::FilePath("/nonexistent"),
-                                   false, false, false));
+                                   false, false, false, false, nullptr));
 }
 
 // Do the same as the previous test, but with |single_file| == true.
@@ -333,7 +361,8 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
                                    base::FilePath("/nonexistent2"),
                                    /*single_file=*/true,
                                    /*add_native_bridge...=*/false,
-                                   /*debuggable=*/false));
+                                   /*hw_oemcrypto_support=*/false,
+                                   /*debuggable=*/false, nullptr));
 
   // Both source and dest exist, but the source directory is empty.
   base::FilePath source_dir;
@@ -342,8 +371,8 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
   ASSERT_TRUE(
       base::CreateTemporaryDirInDir(GetTempDir(), "test", &dest_prop_file));
   dest_prop_file = dest_prop_file.Append("combined.prop");
-  EXPECT_FALSE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, false, false));
+  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
+                                   false, false, nullptr));
 
   // Add default.prop to the source, but not build.prop.
   const base::FilePath default_prop = source_dir.Append("default.prop");
@@ -353,15 +382,15 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
   constexpr const char kDefaultProp[] = "ro.foo=bar\n";
   base::WriteFile(default_prop,
                   base::StringPrintf("%s%s", kDefaultPropNonRo, kDefaultProp));
-  EXPECT_FALSE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, false, false));
+  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
+                                   false, false, nullptr));
 
   // Add build.prop too. The call should not succeed still.
   const base::FilePath build_prop = source_dir.Append("build.prop");
   constexpr const char kBuildProp[] = "ro.baz=boo\n";
   base::WriteFile(build_prop, kBuildProp, strlen(kBuildProp));
-  EXPECT_FALSE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, false, false));
+  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
+                                   false, false, nullptr));
 
   // Add vendor_build.prop too. Then the call should succeed.
   const base::FilePath vendor_build_prop =
@@ -369,8 +398,8 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
   constexpr const char kVendorBuildProp[] = "ro.a=b\n";
   base::WriteFile(vendor_build_prop, kVendorBuildProp,
                   strlen(kVendorBuildProp));
-  EXPECT_TRUE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
+                                  false, false, nullptr));
 
   // Add other optional files too. Then the call should succeed.
   const base::FilePath system_ext_build_prop =
@@ -378,22 +407,22 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
   constexpr const char kSystemExtBuildProp[] = "ro.c=d\n";
   base::WriteFile(system_ext_build_prop, kSystemExtBuildProp,
                   strlen(kSystemExtBuildProp));
-  EXPECT_TRUE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
+                                  false, false, nullptr));
 
   const base::FilePath odm_build_prop = source_dir.Append("odm_build.prop");
   constexpr const char kOdmBuildProp[] = "ro.e=f\n";
   base::WriteFile(odm_build_prop, kOdmBuildProp, strlen(kOdmBuildProp));
-  EXPECT_TRUE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
+                                  false, false, nullptr));
 
   const base::FilePath product_build_prop =
       source_dir.Append("product_build.prop");
   constexpr const char kProductBuildProp[] = "ro.g=h\n";
   base::WriteFile(product_build_prop, kProductBuildProp,
                   strlen(kProductBuildProp));
-  EXPECT_TRUE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
+                                  false, false, nullptr));
 
   // Verify only one dest file exists.
   EXPECT_FALSE(
@@ -419,8 +448,8 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
             content);
 
   // Expand it again, verify the previous result is cleared.
-  EXPECT_TRUE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
+                                  false, false, nullptr));
   EXPECT_TRUE(base::ReadFileToString(dest_prop_file, &content));
   EXPECT_EQ(base::StringPrintf("%s%s%s%s%s%s", kDefaultProp, kBuildProp,
                                kSystemExtBuildProp, kVendorBuildProp,
@@ -431,8 +460,8 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
   // should still process the other files.
   base::DeleteFile(source_dir.Append("default.prop"));
   base::DeleteFile(source_dir.Append("odm_build.prop"));
-  EXPECT_TRUE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
+                                  false, false, nullptr));
   EXPECT_TRUE(base::ReadFileToString(dest_prop_file, &content));
   EXPECT_EQ(base::StringPrintf("%s%s%s%s", kBuildProp, kSystemExtBuildProp,
                                kVendorBuildProp, kProductBuildProp),
@@ -440,7 +469,7 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
 
   // Finally, test the case where source is valid but the dest is not.
   EXPECT_FALSE(ExpandPropertyFiles(source_dir, base::FilePath("/nonexistent"),
-                                   true, false, false));
+                                   true, false, false, false, nullptr));
 }
 
 // Test that ExpandPropertyFiles handles properties related to native bridge
@@ -473,7 +502,8 @@ TEST_F(ArcPropertyUtilTest, TestNativeBridge64Support) {
 
   // Expand with experiment off, verify properties are untouched.
   std::string content;
-  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_dir, false, false, false,
+                                  false, nullptr));
   EXPECT_TRUE(
       base::ReadFileToString(dest_dir.Append("default.prop"), &content));
   EXPECT_EQ(std::string(kDefaultProp) + "\n", content);
@@ -485,7 +515,8 @@ TEST_F(ArcPropertyUtilTest, TestNativeBridge64Support) {
 
   // Expand with experiment on, verify properties are added / modified in
   // build.prop but not other files.
-  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_dir, false, true, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_dir, false, true, false,
+                                  false, nullptr));
   EXPECT_TRUE(
       base::ReadFileToString(dest_dir.Append("default.prop"), &content));
   EXPECT_EQ(std::string(kDefaultProp) + "\n", content);
@@ -513,8 +544,8 @@ TEST_F(ArcPropertyUtilTest, TestNativeBridge64Support) {
   ASSERT_TRUE(
       base::CreateTemporaryDirInDir(GetTempDir(), "test", &dest_prop_file));
   dest_prop_file = dest_prop_file.Append("combined.prop");
-  EXPECT_TRUE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, true, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, true, false,
+                                  false, nullptr));
 
   // Verify the contents.
   EXPECT_TRUE(base::ReadFileToString(dest_prop_file, &content));
@@ -530,14 +561,16 @@ TEST_F(ArcPropertyUtilTest, TestNativeBridge64Support) {
       "ro.product.cpu.abilist64=x86_64\n";
   base::WriteFile(build_prop, kBuildPropUnexpected,
                   strlen(kBuildPropUnexpected));
-  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_dir, false, true, false));
+  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_dir, false, true, false,
+                                   false, nullptr));
   constexpr const char kBuildPropUnexpected2[] =
       "ro.baz=boo\n"
       "ro.product.cpu.abilist=x86_64,x86,armeabi-v7a,armeabi\n"
       "ro.product.cpu.abilist64=x86_64,unexpected-abi_64\n";
   base::WriteFile(build_prop, kBuildPropUnexpected2,
                   strlen(kBuildPropUnexpected2));
-  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_dir, false, true, false));
+  EXPECT_FALSE(ExpandPropertyFiles(source_dir, dest_dir, false, true, false,
+                                   false, nullptr));
 }
 
 // Verify that comments and non ro. properties are not written.
@@ -562,13 +595,116 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile_NonRo) {
                   strlen(kVendorBuildProp));
 
   const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
-  EXPECT_TRUE(
-      ExpandPropertyFiles(source_dir, dest_prop_file, true, false, false));
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false,
+                                  false, false, nullptr));
 
   // Verify the content.
   std::string content;
   EXPECT_TRUE(base::ReadFileToString(dest_prop_file, &content));
   EXPECT_EQ("ro.foo=bar\nro.baz=boo\nro.a=b\n", content);
+}
+
+// Verify that the CDM properties received from cdm-oemcrypto over D-Bus are
+// written to the properties file.
+TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties) {
+  base::FilePath source_dir;
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &source_dir));
+  base::FilePath dest_dir;
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &dest_dir));
+
+  base::FilePath default_prop = source_dir.Append("default.prop");
+  constexpr const char kDefaultProp[] = "ro.foo=bar\n";
+  base::WriteFile(default_prop, kDefaultProp, strlen(kDefaultProp));
+
+  base::FilePath build_prop = source_dir.Append("build.prop");
+  constexpr const char kBuildProp[] = "ro.baz=boo\n";
+  base::WriteFile(build_prop, kBuildProp, strlen(kBuildProp));
+
+  base::FilePath vendor_build_prop = source_dir.Append("vendor_build.prop");
+  constexpr const char kVendorBuildProp[] = "ro.a=b\n";
+  base::WriteFile(vendor_build_prop, kVendorBuildProp,
+                  strlen(kVendorBuildProp));
+
+  base::FilePath product_build_prop = source_dir.Append("product_build.prop");
+  constexpr const char kProductBuildProp[] = "ro.c=d\n";
+  base::WriteFile(product_build_prop, kProductBuildProp,
+                  strlen(kProductBuildProp));
+
+  EXPECT_CALL(*bus_, GetObjectProxy(_, _))
+      .WillOnce(Return(cdm_factory_daemon_object_proxy_.get()));
+
+  std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+  dbus::MessageWriter writer(response.get());
+  chromeos::cdm::ClientInformation client_info;
+  constexpr char kManufacturer[] = "fake_manufacturer";
+  constexpr char kMake[] = "fake_make";
+  constexpr char kModel[] = "fake_model";
+  client_info.set_manufacturer(kManufacturer);
+  client_info.set_make(kMake);
+  client_info.set_model(kModel);
+  writer.AppendProtoAsArrayOfBytes(client_info);
+  EXPECT_CALL(*cdm_factory_daemon_object_proxy_,
+              CallMethodAndBlockWithErrorDetails(_, _, _))
+      .WillOnce(Return(ByMove(std::move(response))));
+
+  const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false, true,
+                                  false, bus_));
+
+  // Verify the content.
+  std::string content;
+  EXPECT_TRUE(base::ReadFileToString(dest_prop_file, &content));
+  EXPECT_EQ(std::string() + kDefaultProp + kBuildProp + kVendorBuildProp +
+                kProductBuildProp + "ro.product.cdm.manufacturer=" +
+                kManufacturer + "\nro.product.cdm.model=" + kModel +
+                "\nro.product.cdm.device=" + kMake + "\n",
+            content);
+}
+
+// Verify that a failure reading the CDM properties from cdm-oemcrypto over
+// D-Bus is handled properly and doesn't change the properties file.
+TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties_DbusFailure) {
+  base::FilePath source_dir;
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &source_dir));
+  base::FilePath dest_dir;
+  ASSERT_TRUE(base::CreateTemporaryDirInDir(GetTempDir(), "test", &dest_dir));
+
+  base::FilePath default_prop = source_dir.Append("default.prop");
+  constexpr const char kDefaultProp[] = "ro.foo=bar\n";
+  base::WriteFile(default_prop, kDefaultProp, strlen(kDefaultProp));
+
+  base::FilePath build_prop = source_dir.Append("build.prop");
+  constexpr const char kBuildProp[] = "ro.baz=boo\n";
+  base::WriteFile(build_prop, kBuildProp, strlen(kBuildProp));
+
+  base::FilePath vendor_build_prop = source_dir.Append("vendor_build.prop");
+  constexpr const char kVendorBuildProp[] = "ro.a=b\n";
+  base::WriteFile(vendor_build_prop, kVendorBuildProp,
+                  strlen(kVendorBuildProp));
+
+  base::FilePath product_build_prop = source_dir.Append("product_build.prop");
+  constexpr const char kProductBuildProp[] = "ro.c=d\n";
+  base::WriteFile(product_build_prop, kProductBuildProp,
+                  strlen(kProductBuildProp));
+
+  EXPECT_CALL(*bus_, GetObjectProxy(_, _))
+      .WillOnce(Return(cdm_factory_daemon_object_proxy_.get()));
+
+  std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+  EXPECT_CALL(*cdm_factory_daemon_object_proxy_,
+              CallMethodAndBlockWithErrorDetails(_, _, _))
+      .WillOnce(Return(ByMove(std::move(response))));
+
+  const base::FilePath dest_prop_file = dest_dir.Append("combined.prop");
+  EXPECT_TRUE(ExpandPropertyFiles(source_dir, dest_prop_file, true, false, true,
+                                  false, bus_));
+
+  // Verify the content.
+  std::string content;
+  EXPECT_TRUE(base::ReadFileToString(dest_prop_file, &content));
+  EXPECT_EQ(std::string() + kDefaultProp + kBuildProp + kVendorBuildProp +
+                kProductBuildProp,
+            content);
 }
 
 }  // namespace

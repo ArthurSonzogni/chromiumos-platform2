@@ -9,6 +9,7 @@
 
 #include <base/optional.h>
 #include <base/values.h>
+#include <dbus/bus.h>
 
 namespace base {
 class FilePath;
@@ -46,13 +47,18 @@ bool ExpandPropertyFileForTesting(const base::FilePath& input,
 // success. When |single_file| is true, only one file (|dest_path| itself) is
 // written. All expanded properties are included in the single file.
 // When |add_native_bridge_64_bit_support| is true, add / modify some properties
-// related to supported CPU ABIs. |debuggable| is used to populate ro.debuggable
-// property.
+// related to supported CPU ABIs. |hw_oemcrypto_support| uses D-Bus to talk to
+// the cdm-oemcrypto daemon and add specific properties needed by the Android
+// CDM when we are using HW based DRM. |debuggable| is used to populate
+// ro.debuggable property. |bus| is used for D-Bus communication when
+// |hw_oemcrypto_support| is true.
 bool ExpandPropertyFiles(const base::FilePath& source_path,
                          const base::FilePath& dest_path,
                          bool single_file,
                          bool add_native_bridge_64bit_support,
-                         bool debuggable);
+                         bool hw_oemcrypto_support,
+                         bool debuggable,
+                         scoped_refptr<::dbus::Bus> bus);
 
 }  // namespace arc
 

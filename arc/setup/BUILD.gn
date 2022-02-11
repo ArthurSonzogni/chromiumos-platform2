@@ -85,6 +85,7 @@ shared_library("libarc_setup") {
   defines = [
     "COMPONENT_BUILD",
     "IS_LIBARC_SETUP_IMPL",
+    "USE_ARC_HW_OEMCRYPTO=${use.arc_hw_oemcrypto}",
   ]
   configs += [ ":target_defaults" ]
   libs = [ "bootstat" ]
