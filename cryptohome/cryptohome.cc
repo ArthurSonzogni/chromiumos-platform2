@@ -611,6 +611,39 @@ bool BuildAuthorization(base::CommandLine* cl,
   return true;
 }
 
+bool BuildAuthFactor(base::CommandLine* cl,
+                     user_data_auth::AuthFactor* auth_factor) {
+  std::string label = cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
+  if (label.empty()) {
+    printf("No auth factor label specified\n");
+    return false;
+  }
+  auth_factor->set_label(label);
+  // TODO(b/208357699): Support other auth factor types.
+  if (cl->HasSwitch(switches::kPasswordSwitch)) {
+    auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+    // Password metadata has no fields currently.
+    auth_factor->mutable_password_metadata();
+    return true;
+  }
+  printf("No auth factor specified\n");
+  return false;
+}
+
+bool BuildAuthInput(base::CommandLine* cl,
+                    org::chromium::CryptohomeMiscInterfaceProxy* proxy,
+                    user_data_auth::AuthInput* auth_input) {
+  // TODO(b/208357699): Support other auth factor types.
+  std::string password;
+  if (GetPassword(proxy, cl, switches::kPasswordSwitch, "Enter the password",
+                  &password)) {
+    auth_input->mutable_password_input()->set_secret(password);
+    return true;
+  }
+  printf("No auth input specified\n");
+  return false;
+}
+
 std::string GetPCAName(int pca_type) {
   switch (pca_type) {
     case attestation::DEFAULT_ACA:
@@ -3045,7 +3078,11 @@ int main(int argc, char** argv) {
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
-    // TODO(b/3319388): Implement building AuthFactor for request.
+    if (!BuildAuthFactor(cl, req.mutable_auth_factor()) ||
+        !BuildAuthInput(cl, &misc_proxy, req.mutable_auth_input())) {
+      return 1;
+    }
+
     brillo::ErrorPtr error;
     VLOG(1) << "Attempting to add AuthFactor";
     if (!userdataauth_proxy.AddAuthFactor(req, &reply, &error, timeout_ms) ||
@@ -3074,7 +3111,16 @@ int main(int argc, char** argv) {
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
-    // TODO(b/208358041): Implement building AuthFactor for request.
+    if (cl->GetSwitchValueASCII(switches::kKeyLabelSwitch).empty()) {
+      printf("No auth factor label specified.\n");
+      return 1;
+    }
+    req.set_auth_factor_label(
+        cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
+    if (!BuildAuthInput(cl, &misc_proxy, req.mutable_auth_input())) {
+      return 1;
+    }
+
     brillo::ErrorPtr error;
     VLOG(1) << "Attempting to authenticate AuthFactor";
     if (!userdataauth_proxy.AuthenticateAuthFactor(req, &reply, &error,
@@ -3103,7 +3149,18 @@ int main(int argc, char** argv) {
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
-    // TODO(b/208357704): Implement building AuthFactor for request.
+    if (!BuildAuthFactor(cl, req.mutable_auth_factor()) ||
+        !BuildAuthInput(cl, &misc_proxy, req.mutable_auth_input())) {
+      return 1;
+    }
+    // By default, old and new labels are equal; if requested, the new label can
+    // be overridden.
+    req.set_old_auth_factor_label(req.auth_factor().label());
+    if (!cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch).empty()) {
+      req.mutable_auth_factor()->set_label(
+          cl->GetSwitchValueASCII(switches::kNewKeyLabelSwitch));
+    }
+
     brillo::ErrorPtr error;
     VLOG(1) << "Attempting to Update AuthFactor";
     if (!userdataauth_proxy.UpdateAuthFactor(req, &reply, &error, timeout_ms) ||
@@ -3131,7 +3188,13 @@ int main(int argc, char** argv) {
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
-    // TODO(b/208357704): Implement building AuthFactor for request.
+    if (cl->GetSwitchValueASCII(switches::kKeyLabelSwitch).empty()) {
+      printf("No auth factor label specified.\n");
+      return 1;
+    }
+    req.set_auth_factor_label(
+        cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
+
     brillo::ErrorPtr error;
     VLOG(1) << "Attempting to Remove AuthFactor";
     if (!userdataauth_proxy.RemoveAuthFactor(req, &reply, &error, timeout_ms) ||
