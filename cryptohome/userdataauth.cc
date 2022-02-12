@@ -3828,7 +3828,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::CreatePersistentUserImpl(
   // and because that would require going the full sequence of mount and unmount
   // because of ecryptfs possibility).
   if (!homedirs_->Exists(obfuscated_username) &&
-      !homedirs_->Create(obfuscated_username)) {
+      !homedirs_->Create(auth_session->username())) {
     LOG(ERROR) << "Failed to create shadow directory for: "
                << obfuscated_username;
     return user_data_auth::CryptohomeErrorCode::

@@ -398,8 +398,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
-  EXPECT_CALL(homedirs_, Create(SanitizeUserName(kUsername)))
-      .WillOnce(Return(false));
+  EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(false));
   ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token()),
               Eq(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
@@ -408,8 +407,7 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
-  EXPECT_CALL(homedirs_, Create(SanitizeUserName(kUsername)))
-      .WillOnce(Return(true));
+  EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(true));
   ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token()),
               Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 
