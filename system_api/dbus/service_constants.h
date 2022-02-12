@@ -11,7 +11,6 @@
 // Chromium OS and Chromium environment.
 #include "anomaly_detector/dbus-constants.h"
 #include "arc-data-snapshotd/dbus-constants.h"
-#include "arc_vm_status/dbus-constants.h"
 #include "audio/dbus-constants.h"
 #include "authpolicy/dbus-constants.h"
 #include "biod/dbus-constants.h"
