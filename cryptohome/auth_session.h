@@ -96,9 +96,10 @@ class AuthSession final {
       const cryptohome::AuthorizationRequest& authorization_request);
 
   // Return a const reference to FileSystemKeyset.
-  const FileSystemKeyset file_system_keyset() const {
-    return FileSystemKeyset(*vault_keyset_);
-  }
+  // FileSystemKeyset is set when the auth session gets into an authenticated
+  // state. So, the caller must ensure that AuthSession is in authenticated
+  // state before requesting the file system keyset.
+  const FileSystemKeyset& file_system_keyset() const;
 
   // Transfer ownership of password verifier that can be used to verify
   // credentials during unlock.
@@ -203,6 +204,8 @@ class AuthSession final {
   std::unique_ptr<VaultKeyset> vault_keyset_;
   // Used to store key meta data.
   cryptohome::KeyData key_data_;
+  // FileSystemKeyset is needed by cryptohome to mount a user.
+  std::optional<FileSystemKeyset> file_system_keyset_ = std::nullopt;
   // Whether the user existed at the time this object was constructed.
   bool user_exists_ = false;
   // Whether the user has any credential configured so far.

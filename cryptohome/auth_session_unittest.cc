@@ -234,14 +234,16 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
 
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_))
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   // Verify.
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+              auth_session.OnUserCreated());
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               auth_session.AddCredentials(add_cred_request));
-  EXPECT_EQ(auth_session.GetStatus(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
 // Test if AuthSession correctly adds new credentials for a new user, even when
@@ -270,14 +272,15 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
 
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_))
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+              auth_session.OnUserCreated());
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               auth_session.AddCredentials(add_cred_request));
-  EXPECT_EQ(auth_session.GetStatus(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
-
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   // Test adding the second credential.
   user_data_auth::AddCredentialsRequest add_other_cred_request;
   cryptohome::AuthorizationRequest* other_authorization_request =
@@ -291,8 +294,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
 
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               auth_session.AddCredentials(add_other_cred_request));
-  EXPECT_EQ(auth_session.GetStatus(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
 // Test if AuthSession correctly authenticates existing credentials for a
@@ -370,7 +372,7 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
 
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_)).Times(0);
+  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _)).Times(0);
 
   // Verify.
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,

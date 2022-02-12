@@ -18,6 +18,7 @@
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
@@ -108,19 +109,30 @@ user_data_auth::CryptohomeErrorCode AuthSession::ExtendTimer(
 }
 
 user_data_auth::CryptohomeErrorCode AuthSession::OnUserCreated() {
-  if (IsUserSecretStashExperimentEnabled() && !is_ephemeral_user_) {
-    // Check invariants.
-    DCHECK(!user_secret_stash_);
-    DCHECK(!user_secret_stash_main_key_.has_value());
-    // The USS experiment is on, hence create the USS for the newly created
-    // non-ephemeral user. Keep the USS in memory: it will be persisted after
-    // the first auth factor gets added.
-    user_secret_stash_ = UserSecretStash::CreateRandom();
-    if (!user_secret_stash_) {
-      LOG(ERROR) << "User secret stash creation failed";
-      return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL;
+  if (!is_ephemeral_user_) {
+    // Creating file_system_keyset to the prepareVault call next.
+    if (!file_system_keyset_.has_value()) {
+      file_system_keyset_ = FileSystemKeyset::CreateRandom();
     }
-    user_secret_stash_main_key_ = UserSecretStash::CreateRandomMainKey();
+    // Since this function is called for a new user, it is safe to put the
+    // AuthSession in an authenticated state.
+    status_ = AuthStatus::kAuthStatusAuthenticated;
+    user_exists_ = true;
+    if (IsUserSecretStashExperimentEnabled()) {
+      // Check invariants.
+      DCHECK(!user_secret_stash_);
+      DCHECK(!user_secret_stash_main_key_.has_value());
+      // The USS experiment is on, hence create the USS for the newly created
+      // non-ephemeral user. Keep the USS in memory: it will be persisted after
+      // the first auth factor gets added.
+      user_secret_stash_ = UserSecretStash::CreateRandom();
+      if (!user_secret_stash_) {
+        LOG(ERROR) << "User secret stash creation failed";
+        return user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_MOUNT_FATAL;
+      }
+      user_secret_stash_main_key_ = UserSecretStash::CreateRandomMainKey();
+    }
   }
 
   return user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET;
@@ -161,8 +173,16 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddCredentials(
   }
 
   DCHECK(!vault_keyset_);
+  if (!file_system_keyset_.has_value()) {
+    // Creating file_system_keyset to the prepareVault call next.
+    // This is needed to support the old case where authentication happened
+    // before creation of user and will be temporary as it is an intermediate
+    // milestone.
+    file_system_keyset_ = FileSystemKeyset::CreateRandom();
+  }
   // An assumption here is that keyset management saves the user keys on disk.
-  vault_keyset_ = keyset_management_->AddInitialKeyset(*credentials);
+  vault_keyset_ = keyset_management_->AddInitialKeyset(
+      *credentials, file_system_keyset_.value());
   if (!vault_keyset_) {
     return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
   }
@@ -231,6 +251,7 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
       return MountErrorToCryptohomeError(
           error == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : error);
     }
+    file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
     // Add the missing fields in the keyset, if any, and resave.
     keyset_management_->ReSaveKeysetIfNeeded(*credentials, vault_keyset_.get());
   }
@@ -242,6 +263,11 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
   status_ = AuthStatus::kAuthStatusAuthenticated;
 
   return MountErrorToCryptohomeError(code);
+}
+
+const FileSystemKeyset& AuthSession::file_system_keyset() const {
+  DCHECK(file_system_keyset_.has_value());
+  return file_system_keyset_.value();
 }
 
 std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
