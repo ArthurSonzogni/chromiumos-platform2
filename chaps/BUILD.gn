@@ -14,7 +14,6 @@ group("all") {
     ":install_client_headers",
     ":install_pkcs11_header",
     ":libchaps",
-    ":libchaps_static",
     ":p11_replay",
   ]
   if (use.test) {
@@ -23,7 +22,6 @@ group("all") {
       ":chaps_test",
       ":chapsd_test",
       ":isolate_login_client_test",
-      ":libchaps_test",
       ":object_policy_test",
       ":object_pool_test",
       ":object_store_test",
@@ -60,15 +58,17 @@ pkg_config("target_defaults") {
     "USE_FUZZER=${use.fuzzer}",
   ]
 
-  # NOSORT
+  if (use.fuzzer) {
+    defines += [ "NO_METRICS" ]
+  }
+
   pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "openssl",
     "libbrillo",
     "libchrome",
+    "libmetrics",
+    "nss",
+    "openssl",
+    "system_api",
   ]
 
   if (use.fuzzer) {
@@ -104,9 +104,9 @@ proto_library("chaps-protos") {
   use_pic = true
 }
 
-# This is meant only for internal binaries like unittests.  All
-# client programs should be using the shared libchaps library.
-static_library("libchaps_static") {
+# This should only be used directly for internal binaries like unittests.
+# All client programs should use the shared libchaps library.
+source_set("libchaps_source_set") {
   sources = [
     "attributes.cc",
     "chaps.cc",
@@ -116,54 +116,27 @@ static_library("libchaps_static") {
     "proto_conversion.cc",
     "token_manager_client.cc",
   ]
+
+  # Use -fPIC so this code can be linked into a shared library.
+  configs += [ "//common-mk:pic" ]
+
   configs += [ ":target_defaults" ]
-  deps = [ ":chaps-protos" ]
 }
 
 shared_library("libchaps") {
-  sources = [
-    "attributes.cc",
-    "chaps.cc",
-    "chaps_proxy.cc",
-    "chaps_utility.cc",
-    "isolate_chromeos.cc",
-    "proto_conversion.cc",
-    "token_manager_client.cc",
-  ]
+  configs += [ ":target_defaults" ]
   install_path = "lib"
-  defines = [
-    "USE_TPM1=${use.tpm}",
-    "USE_TPM2=${use.tpm2}",
-    "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
-    "USE_FUZZER=${use.fuzzer}",
-  ]
-  libs = [ "system_api" ]
-  pkg_deps = [
-    "libbrillo",
-    "libchrome",
-    "openssl",
-  ]
-  if (use.fuzzer) {
-    pkg_deps += [ "protobuf" ]
-  } else {
-    pkg_deps += [ "protobuf-lite" ]
-  }
-  deps = [ ":chaps-protos" ]
-}
-
-pkg_config("chapsd_config") {
-  pkg_deps = [
-    "libmetrics",
-    "libminijail",
+  deps = [
+    ":chaps-protos",
+    ":libchaps_source_set",
   ]
 }
 
-executable("chapsd") {
+source_set("chaps_common") {
   sources = [
     "chaps_adaptor.cc",
     "chaps_factory_impl.cc",
     "chaps_service.cc",
-    "chapsd.cc",
     "object_impl.cc",
     "object_policy_cert.cc",
     "object_policy_common.cc",
@@ -176,7 +149,6 @@ executable("chapsd") {
     "object_store_impl.cc",
     "opencryptoki_importer.cc",
     "platform_globals_chromeos.cc",
-    "proto_conversion.cc",
     "session_impl.cc",
     "slot_manager_impl.cc",
     "slot_policy_default.cc",
@@ -184,28 +156,40 @@ executable("chapsd") {
     "system_shutdown_blocker.cc",
     "tpm_thread_utility_impl.cc",
   ]
-  install_path = "sbin"
-  configs += [
-    ":chapsd_config",
-    ":target_defaults",
-  ]
+
+  if (use.tpm2) {
+    sources += [ "tpm2_utility_impl.cc" ]
+  }
+
+  if (use.tpm) {
+    sources += [ "tpm_utility_impl.cc" ]
+  }
+
   libs = [
     "dl",
     "leveldb",
     "memenv",
   ]
+
+  configs += [ ":target_defaults" ]
+  deps = [ ":chaps-protos" ]
+}
+
+pkg_config("chapsd_config") {
+  pkg_deps = [ "libminijail" ]
+}
+
+executable("chapsd") {
+  sources = [ "chapsd.cc" ]
+  install_path = "sbin"
+  configs += [
+    ":chapsd_config",
+    ":target_defaults",
+  ]
   deps = [
-    ":chaps-protos",
+    ":chaps_common",
     ":libchaps",
   ]
-  if (use.tpm2) {
-    sources += [ "tpm2_utility_impl.cc" ]
-    libs += [ "trunks" ]
-  }
-  if (use.tpm) {
-    sources += [ "tpm_utility_impl.cc" ]
-    libs += [ "tspi" ]
-  }
 }
 
 install_config("dbus_conf") {
@@ -246,12 +230,16 @@ executable("p11_replay") {
   deps = [ ":libchaps" ]
 }
 
-if (use.test) {
+if (use.test || use.fuzzer) {
   pkg_config("libchaps_test_dependent_config") {
     pkg_deps = [ "libchrome-test" ]
+
+    if (use.tpm2) {
+      libs = [ "trunks_test" ]
+    }
   }
 
-  static_library("libchaps_test") {
+  source_set("libchaps_test") {
     sources = [
       "chaps_factory_mock.cc",
       "object_importer_mock.cc",
@@ -262,146 +250,79 @@ if (use.test) {
       "session_mock.cc",
       "slot_manager_mock.cc",
       "slot_policy_mock.cc",
-      "tpm_thread_utility_impl.cc",
       "tpm_utility_mock.cc",
     ]
     configs += [ ":target_defaults" ]
-    all_dependent_configs = [ ":libchaps_test_dependent_config" ]
+    all_dependent_configs = [
+      ":libchaps_test_dependent_config",
+      "//common-mk:test",
+    ]
     deps = [
-      ":chaps-protos",
-      ":libchaps_static",
+      ":chaps_common",
+      ":libchaps_source_set",
     ]
   }
+}
 
+if (use.test) {
   executable("chaps_test") {
     sources = [ "chaps_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
+      ":libchaps_test",
       "//common-mk/testrunner",
     ]
   }
 
   executable("chaps_service_test") {
-    sources = [
-      "chaps_service.cc",
-      "chaps_service_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
+    sources = [ "chaps_service_test.cc" ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
       ":libchaps_test",
       "//common-mk/testrunner",
     ]
   }
 
   executable("slot_manager_test") {
-    sources = [
-      "slot_manager_impl.cc",
-      "slot_manager_test.cc",
-      "system_shutdown_blocker.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
+    sources = [ "slot_manager_test.cc" ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
       ":libchaps_test",
       "//common-mk/testrunner",
     ]
   }
 
   executable("session_test") {
-    sources = [
-      "chaps_factory_impl.cc",
-      "object_impl.cc",
-      "object_policy_cert.cc",
-      "object_policy_common.cc",
-      "object_policy_data.cc",
-      "object_policy_key.cc",
-      "object_policy_private_key.cc",
-      "object_policy_public_key.cc",
-      "object_policy_secret_key.cc",
-      "object_pool_impl.cc",
-      "object_store_impl.cc",
-      "opencryptoki_importer.cc",
-      "session_impl.cc",
-      "session_test.cc",
-      "slot_policy_default.cc",
-      "slot_policy_shared_slot.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":chapsd_config",
-      ":target_defaults",
-    ]
-    libs = [
-      "dl",
-      "leveldb",
-      "memenv",
-    ]
+    sources = [ "session_test.cc" ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
       ":libchaps_test",
+      "//common-mk/testrunner",
     ]
   }
 
   executable("object_test") {
-    sources = [
-      "object_impl.cc",
-      "object_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
+    sources = [ "object_test.cc" ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
       ":libchaps_test",
       "//common-mk/testrunner",
     ]
   }
 
   executable("object_policy_test") {
-    sources = [
-      "object_policy_cert.cc",
-      "object_policy_common.cc",
-      "object_policy_data.cc",
-      "object_policy_key.cc",
-      "object_policy_private_key.cc",
-      "object_policy_public_key.cc",
-      "object_policy_secret_key.cc",
-      "object_policy_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
+    sources = [ "object_policy_test.cc" ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
       ":libchaps_test",
       "//common-mk/testrunner",
     ]
   }
 
   executable("object_pool_test") {
-    sources = [
-      "object_pool_impl.cc",
-      "object_pool_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
+    sources = [ "object_pool_test.cc" ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
       ":libchaps_test",
       "//common-mk/testrunner",
     ]
@@ -409,55 +330,29 @@ if (use.test) {
 
   executable("slot_policy_test") {
     sources = [
-      "slot_policy_default.cc",
       "slot_policy_default_test.cc",
-      "slot_policy_shared_slot.cc",
       "slot_policy_shared_slot_test.cc",
     ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
       ":libchaps_test",
       "//common-mk/testrunner",
     ]
   }
 
-  pkg_config("object_store_test_config") {
-    pkg_deps = [ "libmetrics" ]
-  }
-
   executable("object_store_test") {
-    sources = [
-      "object_store_impl.cc",
-      "object_store_test.cc",
+    sources = [ "object_store_test.cc" ]
+    configs += [ ":target_defaults" ]
+    deps = [
+      ":libchaps_test",
+      "//common-mk/testrunner",
     ]
-    configs += [
-      "//common-mk:test",
-      ":object_store_test_config",
-      ":target_defaults",
-    ]
-    libs = [
-      "leveldb",
-      "memenv",
-    ]
-    deps = [ ":libchaps_static" ]
   }
 
   executable("opencryptoki_importer_test") {
-    sources = [
-      "opencryptoki_importer.cc",
-      "opencryptoki_importer_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":object_store_test_config",
-      ":target_defaults",
-    ]
+    sources = [ "opencryptoki_importer_test.cc" ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
       ":libchaps_test",
       "//common-mk/testrunner",
     ]
@@ -469,13 +364,8 @@ if (use.test) {
       "isolate_login_client_test.cc",
       "token_file_manager_chromeos.cc",
     ]
-    configs += [
-      "//common-mk:test",
-      ":object_store_test_config",
-      ":target_defaults",
-    ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
       ":libchaps_test",
       "//common-mk/testrunner",
     ]
@@ -487,18 +377,11 @@ if (use.test) {
   # run with autotest. These tests do not need to be run regularly
   # but may be useful in the future and so have been kept around.
   executable("chapsd_test") {
-    sources = [
-      "chapsd_test.cc",
-      "platform_globals_chromeos.cc",
-    ]
+    sources = [ "chapsd_test.cc" ]
     install_path = "sbin"
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    libs = [ "dl" ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
+      ":libchaps_test",
       "//common-mk/testrunner",
     ]
   }
@@ -506,21 +389,11 @@ if (use.test) {
   executable("tpm_utility_test") {
     sources = [ "tpm_utility_test.cc" ]
     install_path = "sbin"
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
+    configs += [ ":target_defaults" ]
     deps = [
-      ":libchaps_static",
       ":libchaps_test",
       "//common-mk/testrunner",
     ]
-    if (use.tpm2) {
-      sources += [ "tpm2_utility_impl.cc" ]
-    }
-    if (use.tpm) {
-      sources += [ "tpm_utility_impl.cc" ]
-    }
   }
 
   # Conditional Unit Tests
@@ -528,20 +401,10 @@ if (use.test) {
   # conditionals in the middle of a target list, we added it at the end.
   if (use.tpm2) {
     executable("tpm2_utility_test") {
-      sources = [
-        "tpm2_utility_impl.cc",
-        "tpm2_utility_test.cc",
-      ]
-      configs += [
-        "//common-mk:test",
-        ":target_defaults",
-      ]
-      libs = [
-        "trunks",
-        "trunks_test",
-      ]
+      sources = [ "tpm2_utility_test.cc" ]
+      install_path = "sbin"
+      configs += [ ":target_defaults" ]
       deps = [
-        ":libchaps_static",
         ":libchaps_test",
         "//common-mk/testrunner",
       ]
@@ -550,53 +413,42 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
-  executable("chaps_attributes_fuzzer") {
-    sources = [ "attributes_fuzzer.cc" ]
-    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+  pkg_config("fuzzer_common_config") {
     pkg_deps = [
+      "absl",
       "libchrome-test",
       "libprotobuf-mutator",
-
-      # nss is needed because we use pkcs11 headers from nss.
-      "nss",
-      "protobuf",
-    ]
-    deps = [
-      ":chaps-protos",
-      ":libchaps_static",
     ]
   }
 
-  executable("chaps_object_store_fuzzer") {
-    sources = [
-      "object_store_fuzzer.cc",
-      "object_store_impl.cc",
+  executable("chaps_attributes_fuzzer") {
+    sources = [ "attributes_fuzzer.cc" ]
+    configs += [
+      ":target_defaults",
+      ":fuzzer_common_config",
+      "//common-mk/common_fuzzer:common_fuzzer",
     ]
-    libs = [
-      "leveldb",
-      "memenv",
-    ]
-    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-    defines = [ "NO_METRICS" ]
-    pkg_deps = [
-      "libchrome-test",
+    deps = [ ":libchaps_test" ]
+  }
 
-      # nss is needed because we use pkcs11 headers from nss.
-      "nss",
+  executable("chaps_object_store_fuzzer") {
+    sources = [ "object_store_fuzzer.cc" ]
+    configs += [
+      ":target_defaults",
+      ":fuzzer_common_config",
+      "//common-mk/common_fuzzer:common_fuzzer",
     ]
-    deps = [ ":libchaps_static" ]
+    deps = [ ":libchaps_test" ]
   }
 
   executable("chaps_utility_fuzzer") {
     sources = [ "chaps_utility_fuzzer.cc" ]
-    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-    pkg_deps = [
-      "libchrome-test",
-
-      # nss is needed because we use pkcs11 headers from nss.
-      "nss",
+    configs += [
+      ":fuzzer_common_config",
+      ":target_defaults",
+      "//common-mk/common_fuzzer:common_fuzzer",
     ]
-    deps = [ ":libchaps_static" ]
+    deps = [ ":libchaps_test" ]
   }
 
   if (use.tpm2) {
@@ -606,76 +458,26 @@ if (use.fuzzer) {
         "fuzzers/fuzzed_object_pool.cc",
         "fuzzers/fuzzed_tpm_manager_utility.cc",
         "fuzzers/slot_manager_fuzzer.cc",
-        "session_mock.cc",
-        "slot_manager_impl.cc",
-        "system_shutdown_blocker.cc",
-        "tpm2_utility_impl.cc",
-        "tpm_thread_utility_impl.cc",
       ]
       configs += [
-        "//common-mk/common_fuzzer:common_fuzzer",
-        "//common-mk:test",
+        ":fuzzer_common_config",
         ":target_defaults",
+        "//common-mk/common_fuzzer:common_fuzzer",
       ]
-      libs = [ "trunks_test" ]
-      pkg_deps = [
-        "absl",
-        "libchrome-test",
-
-        # nss is needed because we use pkcs11 headers from nss.
-        "nss",
-      ]
-      deps = [ ":libchaps_static" ]
+      deps = [ ":libchaps_test" ]
     }
 
     executable("chaps_chaps_service_fuzzer") {
       sources = [
-        "chaps_factory_impl.cc",
-        "chaps_service.cc",
         "fuzzers/chaps_service_fuzzer.cc",
         "fuzzers/fuzzed_tpm_manager_utility.cc",
-        "object_impl.cc",
-        "object_policy_cert.cc",
-        "object_policy_common.cc",
-        "object_policy_data.cc",
-        "object_policy_key.cc",
-        "object_policy_private_key.cc",
-        "object_policy_public_key.cc",
-        "object_policy_secret_key.cc",
-        "object_pool_impl.cc",
-        "object_store_impl.cc",
-        "opencryptoki_importer.cc",
-        "session_impl.cc",
-        "session_mock.cc",
-        "slot_manager_impl.cc",
-        "slot_policy_default.cc",
-        "slot_policy_shared_slot.cc",
-        "system_shutdown_blocker.cc",
-        "tpm2_utility_impl.cc",
-        "tpm_thread_utility_impl.cc",
       ]
-      defines = [ "NO_METRICS" ]
       configs += [
-        "//common-mk/common_fuzzer:common_fuzzer",
-        "//common-mk:test",
+        ":fuzzer_common_config",
         ":target_defaults",
+        "//common-mk/common_fuzzer:common_fuzzer",
       ]
-      libs = [
-        "dl",
-        "leveldb",
-        "memenv",
-        "trunks_test",
-      ]
-      pkg_deps = [
-        "absl",
-        "libchrome-test",
-        "libmetrics",
-
-        # nss is needed because we use pkcs11 headers from nss.
-        "nss",
-      ]
-
-      deps = [ ":libchaps_static" ]
+      deps = [ ":libchaps_test" ]
     }
   }
 }

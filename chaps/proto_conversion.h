@@ -11,18 +11,20 @@
 
 namespace chaps {
 
-bool ProtoToMechanismInfo(const MechanismInfo& proto,
-                          CK_MECHANISM_INFO* out_info);
-MechanismInfo MechanismInfoToProto(const CK_MECHANISM_INFO* info);
+EXPORT_SPEC bool ProtoToMechanismInfo(const MechanismInfo& proto,
+                                      CK_MECHANISM_INFO* out_info);
+EXPORT_SPEC MechanismInfo MechanismInfoToProto(const CK_MECHANISM_INFO* info);
 
-bool ProtoToSessionInfo(const SessionInfo& proto, CK_SESSION_INFO* out_info);
-SessionInfo SessionInfoToProto(const CK_SESSION_INFO* info);
+EXPORT_SPEC bool ProtoToSessionInfo(const SessionInfo& proto,
+                                    CK_SESSION_INFO* out_info);
+EXPORT_SPEC SessionInfo SessionInfoToProto(const CK_SESSION_INFO* info);
 
-bool ProtoToSlotInfo(const SlotInfo& proto, CK_SLOT_INFO* out_info);
-SlotInfo SlotInfoToProto(const CK_SLOT_INFO* info);
+EXPORT_SPEC bool ProtoToSlotInfo(const SlotInfo& proto, CK_SLOT_INFO* out_info);
+EXPORT_SPEC SlotInfo SlotInfoToProto(const CK_SLOT_INFO* info);
 
-bool ProtoToTokenInfo(const TokenInfo& proto, CK_TOKEN_INFO* out_info);
-TokenInfo TokenInfoToProto(const CK_TOKEN_INFO* info);
+EXPORT_SPEC bool ProtoToTokenInfo(const TokenInfo& proto,
+                                  CK_TOKEN_INFO* out_info);
+EXPORT_SPEC TokenInfo TokenInfoToProto(const CK_TOKEN_INFO* info);
 
 }  // namespace chaps
 
