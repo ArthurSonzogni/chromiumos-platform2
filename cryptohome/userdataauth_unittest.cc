@@ -829,15 +829,17 @@ TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
   constexpr char kUsername2[] = "bar@gmail.com";
 
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session1 = new UserSession(
-      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, brillo::SecureBlob(), mount1);
+  scoped_refptr<UserSession> session1 =
+      new UserSession(&homedirs_, &disk_cleanup_, &keyset_management_,
+                      &user_activity_timestamp_manager_, &pkcs11_token_factory_,
+                      brillo::SecureBlob(), mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
 
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session2 = new UserSession(
-      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, brillo::SecureBlob(), mount2);
+  scoped_refptr<UserSession> session2 =
+      new UserSession(&homedirs_, &disk_cleanup_, &keyset_management_,
+                      &user_activity_timestamp_manager_, &pkcs11_token_factory_,
+                      brillo::SecureBlob(), mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
 
   InSequence sequence;
