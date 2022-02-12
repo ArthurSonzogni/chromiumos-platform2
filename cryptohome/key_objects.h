@@ -26,8 +26,9 @@ namespace cryptohome {
 struct CryptohomeRecoveryAuthInput {
   // Public key of the mediator for Cryptohome recovery flow.
   std::optional<brillo::SecureBlob> mediator_pub_key;
-  // Epoch beacon value for Cryptohome recovery flow.
-  std::optional<brillo::SecureBlob> epoch_pub_key;
+  // An epoch response received from Recovery Mediator service containing epoch
+  // beacon value for Cryptohome recovery flow.
+  std::optional<cryptorecovery::CryptoRecoveryEpochResponse> epoch_response;
   // Ephemeral public key for Cryptohome recovery flow.
   std::optional<brillo::SecureBlob> ephemeral_pub_key;
   // A response received from Recovery Mediator service and used by Cryptohome

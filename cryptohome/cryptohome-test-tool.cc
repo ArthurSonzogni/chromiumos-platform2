@@ -77,7 +77,8 @@ bool ReadHexFileToSecureBlobLogged(const FilePath& file_path,
     return true;
   }
   if (!SecureBlob::HexStringToSecureBlob(contents_string, contents)) {
-    LOG(ERROR) << "Failed to convert hex to SecureBlob.";
+    LOG(ERROR) << "Failed to convert hex to SecureBlob from file "
+               << file_path.value() << ".";
     return false;
   }
   return true;
@@ -256,6 +257,7 @@ bool DoRecoveryCryptoMediateAction(
 
 bool DoRecoveryCryptoDecryptAction(
     const FilePath& recovery_response_in_file_path,
+    const FilePath& epoch_response_in_file_path,
     const FilePath& channel_priv_key_in_file_path,
     const FilePath& ephemeral_pub_key_in_file_path,
     const FilePath& destination_share_in_file_path,
@@ -279,8 +281,20 @@ bool DoRecoveryCryptoDecryptAction(
     return false;
   }
 
-  SecureBlob epoch_pub_key;
-  CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
+  CryptoRecoveryEpochResponse epoch_response;
+  if (epoch_response_in_file_path.empty()) {
+    CHECK(FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
+  } else {
+    SecureBlob epoch_response_bytes;
+    if (!ReadHexFileToSecureBlobLogged(epoch_response_in_file_path,
+                                       &epoch_response_bytes)) {
+      return false;
+    }
+    if (!epoch_response.ParseFromString(epoch_response_bytes.to_string())) {
+      LOG(ERROR) << "Failed to parse epoch response.";
+      return false;
+    }
+  }
 
   std::unique_ptr<RecoveryCryptoImpl> recovery_crypto =
       RecoveryCryptoImpl::Create(GetRecoveryCryptoTpmBackend());
@@ -290,7 +304,7 @@ bool DoRecoveryCryptoDecryptAction(
   }
 
   HsmResponsePlainText response_plain_text;
-  if (!recovery_crypto->DecryptResponsePayload(channel_priv_key, epoch_pub_key,
+  if (!recovery_crypto->DecryptResponsePayload(channel_priv_key, epoch_response,
                                                recovery_response_proto,
                                                &response_plain_text)) {
     return false;
@@ -467,6 +481,7 @@ int main(int argc, char* argv[]) {
                            FLAGS_recovery_secret_out_file)) {
       success = DoRecoveryCryptoDecryptAction(
           FilePath(FLAGS_recovery_response_in_file),
+          FilePath(FLAGS_epoch_response_in_file),
           FilePath(FLAGS_channel_priv_key_in_file),
           FilePath(FLAGS_ephemeral_pub_key_in_file),
           FilePath(FLAGS_destination_share_in_file),

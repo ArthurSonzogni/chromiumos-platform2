@@ -183,7 +183,7 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
 
   HsmResponsePlainText response_plain_text;
   EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      channel_priv_key, epoch_pub_key_, response_proto, &response_plain_text));
+      channel_priv_key, epoch_response_, response_proto, &response_plain_text));
 
   SecureBlob mediated_recovery_key;
   EXPECT_TRUE(recovery_->RecoverDestination(
@@ -235,7 +235,7 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
   // `MediateRequestPayload`.
   HsmResponsePlainText response_plain_text;
   EXPECT_FALSE(recovery_->DecryptResponsePayload(
-      channel_priv_key, epoch_pub_key_, response_proto, &response_plain_text));
+      channel_priv_key, epoch_response_, response_proto, &response_plain_text));
 }
 
 TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
@@ -248,7 +248,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
 
   HsmResponsePlainText response_plain_text;
   EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      channel_priv_key, epoch_pub_key_, response_proto, &response_plain_text));
+      channel_priv_key, epoch_response_, response_proto, &response_plain_text));
 
   SecureBlob random_key = GeneratePublicKey();
 
@@ -273,7 +273,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
 
   HsmResponsePlainText response_plain_text;
   EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      channel_priv_key, epoch_pub_key_, response_proto, &response_plain_text));
+      channel_priv_key, epoch_response_, response_proto, &response_plain_text));
 
   SecureBlob random_scalar = GenerateScalar();
 
@@ -298,7 +298,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
 
   HsmResponsePlainText response_plain_text;
   EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      channel_priv_key, epoch_pub_key_, response_proto, &response_plain_text));
+      channel_priv_key, epoch_response_, response_proto, &response_plain_text));
 
   SecureBlob random_key = GeneratePublicKey();
 
@@ -324,7 +324,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
 
   HsmResponsePlainText response_plain_text;
   EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      channel_priv_key, epoch_pub_key_, response_proto, &response_plain_text));
+      channel_priv_key, epoch_response_, response_proto, &response_plain_text));
 
   SecureBlob random_key = GeneratePublicKey();
 
@@ -349,7 +349,7 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
 
   HsmResponsePlainText response_plain_text;
   EXPECT_TRUE(recovery_->DecryptResponsePayload(
-      channel_priv_key, epoch_pub_key_, response_proto, &response_plain_text));
+      channel_priv_key, epoch_response_, response_proto, &response_plain_text));
 
   // `RecoverDestination` fails when `mediated_point` is not a point.
   SecureBlob mediated_recovery_key;

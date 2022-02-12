@@ -686,7 +686,7 @@ bool RecoveryCryptoImpl::RecoverDestination(
 
 bool RecoveryCryptoImpl::DecryptResponsePayload(
     const brillo::SecureBlob& encrypted_channel_priv_key,
-    const brillo::SecureBlob& epoch_pub_key,
+    const CryptoRecoveryEpochResponse& epoch_response,
     const CryptoRecoveryRpcResponse& recovery_response_proto,
     HsmResponsePlainText* response_plain_text) const {
   ScopedBN_CTX context = CreateBigNumContext();
@@ -709,6 +709,11 @@ bool RecoveryCryptoImpl::DecryptResponsePayload(
     return false;
   }
 
+  if (!epoch_response.has_epoch_pub_key()) {
+    LOG(ERROR) << "Epoch response doesn't have epoch public key";
+    return false;
+  }
+  brillo::SecureBlob epoch_pub_key(epoch_response.epoch_pub_key());
   crypto::ScopedEC_POINT epoch_pub_point =
       ec_.SecureBlobToPoint(epoch_pub_key, context.get());
   if (!epoch_pub_point) {

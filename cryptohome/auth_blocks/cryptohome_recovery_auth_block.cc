@@ -130,9 +130,9 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   DCHECK(auth_input.cryptohome_recovery_auth_input.has_value());
   auto cryptohome_recovery_auth_input =
       auth_input.cryptohome_recovery_auth_input.value();
-  DCHECK(cryptohome_recovery_auth_input.epoch_pub_key.has_value());
-  const brillo::SecureBlob& epoch_pub_key =
-      cryptohome_recovery_auth_input.epoch_pub_key.value();
+  DCHECK(cryptohome_recovery_auth_input.epoch_response.has_value());
+  cryptorecovery::CryptoRecoveryEpochResponse epoch_response =
+      cryptohome_recovery_auth_input.epoch_response.value();
   DCHECK(cryptohome_recovery_auth_input.ephemeral_pub_key.has_value());
   const brillo::SecureBlob& ephemeral_pub_key =
       cryptohome_recovery_auth_input.ephemeral_pub_key.value();
@@ -152,7 +152,7 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   }
 
   HsmResponsePlainText response_plain_text;
-  if (!recovery->DecryptResponsePayload(channel_priv_key, epoch_pub_key,
+  if (!recovery->DecryptResponsePayload(channel_priv_key, epoch_response,
                                         response_proto, &response_plain_text)) {
     return CryptoError::CE_OTHER_CRYPTO;
   }

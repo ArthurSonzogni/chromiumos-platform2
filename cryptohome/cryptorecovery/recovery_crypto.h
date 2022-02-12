@@ -199,10 +199,10 @@ class RecoveryCrypto {
   // `response_payload` field of `RecoveryResponse`
   // 3. Decrypt cipher text of response payload, deserialize it from CBOR
   // and store the result in `response_plain_text`. The key for decryption is
-  // HKDF(ECDH(channel_priv_key, epoch_pub_key)).
+  // HKDF(ECDH(channel_priv_key, epoch_response.epoch_pub_key)).
   virtual bool DecryptResponsePayload(
       const brillo::SecureBlob& encrypted_channel_priv_key,
-      const brillo::SecureBlob& epoch_pub_key,
+      const CryptoRecoveryEpochResponse& epoch_response,
       const CryptoRecoveryRpcResponse& recovery_response_proto,
       HsmResponsePlainText* response_plain_text) const = 0;
 };

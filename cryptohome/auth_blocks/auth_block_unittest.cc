@@ -1019,7 +1019,7 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   CryptohomeRecoveryAuthInput derive_cryptohome_recovery_auth_input;
   // Save data required for key derivation in auth_input.
   derive_cryptohome_recovery_auth_input.recovery_response = response_proto;
-  derive_cryptohome_recovery_auth_input.epoch_pub_key = epoch_pub_key;
+  derive_cryptohome_recovery_auth_input.epoch_response = epoch_response;
   derive_cryptohome_recovery_auth_input.ephemeral_pub_key = ephemeral_pub_key;
   auth_input.cryptohome_recovery_auth_input =
       derive_cryptohome_recovery_auth_input;
