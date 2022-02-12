@@ -20,9 +20,15 @@ namespace cryptohome {
 
 // Returns whether the UserSecretStash experiment (using the USS instead of
 // vault keysets) is enabled.
+// The experiment can currently be enabled by creating the
+// /var/lib/cryptohome/uss_enabled file (note: it's a temporary location until
+// the experiment is fully designed and implemented).
+// Unit tests can override this behavior using
+// `SetUserSecretStashExperimentForTesting()`.
 bool IsUserSecretStashExperimentEnabled();
-// Allows to toggle the experiment state in tests.
-void SetUserSecretStashExperimentForTesting(bool enabled);
+// Allows to toggle the experiment state in tests. Passing nullopt reverts to
+// the default behavior.
+void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled);
 
 // This wraps the UserSecretStash flatbuffer message, and is the only way that
 // the UserSecretStash is accessed. Don't pass the raw flatbuffer around.

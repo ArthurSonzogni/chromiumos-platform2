@@ -5,6 +5,8 @@
 #include "cryptohome/user_secret_stash.h"
 
 #include <base/check.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
@@ -28,11 +30,17 @@ namespace cryptohome {
 
 namespace {
 
-// TODO(b/208834396): Fetch the experiment state from server.
-bool& GetUserSecretStashExperimentStateHolder() {
-  // The static variable holding the state. The experiment is off by default.
-  static bool uss_experiment_enabled = false;
+constexpr char kUssExperimentFlagPath[] = "/var/lib/cryptohome/uss_enabled";
+
+std::optional<bool>& GetUserSecretStashExperimentOverride() {
+  // The static variable holding the overridden state. The default state is
+  // nullopt, which .
+  static std::optional<bool> uss_experiment_enabled;
   return uss_experiment_enabled;
+}
+
+bool UserSecretStashExperimentFlagFileExists() {
+  return base::PathExists(base::FilePath(kUssExperimentFlagPath));
 }
 
 // Serializes the UserSecretStashWrappedKeyBlock table into the given flatbuffer
@@ -324,11 +332,16 @@ std::optional<brillo::SecureBlob> UnwrapMainKeyFromBlocks(
 }  // namespace
 
 bool IsUserSecretStashExperimentEnabled() {
-  return GetUserSecretStashExperimentStateHolder();
+  // If the state is overridden by tests, return this value.
+  if (GetUserSecretStashExperimentOverride().has_value())
+    return GetUserSecretStashExperimentOverride().value();
+  // Otherwise, defer to checking the flag file existence.
+  // TODO(b/208834396): Fetch the experiment state from server.
+  return UserSecretStashExperimentFlagFileExists();
 }
 
-void SetUserSecretStashExperimentForTesting(bool enabled) {
-  GetUserSecretStashExperimentStateHolder() = enabled;
+void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled) {
+  GetUserSecretStashExperimentOverride() = enabled;
 }
 
 // static

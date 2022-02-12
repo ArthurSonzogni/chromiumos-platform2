@@ -494,7 +494,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
 
   ~AuthSessionWithUssExperimentTest() {
     // Reset this global variable to avoid affecting unrelated test cases.
-    SetUserSecretStashExperimentForTesting(/*enabled=*/false);
+    SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);
   }
 };
 

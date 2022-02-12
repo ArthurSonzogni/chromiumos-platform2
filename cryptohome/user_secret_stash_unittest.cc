@@ -254,8 +254,8 @@ TEST_F(UserSecretStashTest, ExperimentState) {
   SetUserSecretStashExperimentForTesting(/*enabled=*/true);
   EXPECT_TRUE(IsUserSecretStashExperimentEnabled());
 
-  // Unset the experiment to avoid affecting other test cases.
-  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
+  // Unset the experiment override to avoid affecting other test cases.
+  SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);
 }
 
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using
