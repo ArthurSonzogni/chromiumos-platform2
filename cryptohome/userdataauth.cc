@@ -1471,8 +1471,9 @@ void UserDataAuth::DoMount(
       !force_ecryptfs_ && request.force_dircrypto_if_available();
 
   // Process challenge-response credentials asynchronously.
-  if (request.authorization().key().data().type() ==
-      KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+  if ((request.authorization().key().data().type() ==
+       KeyData::KEY_TYPE_CHALLENGE_RESPONSE) &&
+      !auth_session) {
     DoChallengeResponseMount(request, mount_args, std::move(on_done));
     return;
   }
