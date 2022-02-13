@@ -23,8 +23,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
   FuzzedDataProvider data_provider(data, size);
   chaps::ObjectStoreImpl store;
-  chaps::ChapsMetrics metrics;
-  store.Init(base::FilePath(":memory:"), &metrics);
+  store.Init(base::FilePath(":memory:"));
   std::string encryption_key = data_provider.ConsumeBytesAsString(32);
   if (encryption_key.size() < 32) {
     // We won't have any data to fuzz further, so no reason to even continue.

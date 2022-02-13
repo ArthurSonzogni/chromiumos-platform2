@@ -30,11 +30,6 @@ using std::string;
 
 namespace chaps {
 
-ChapsFactoryImpl::ChapsFactoryImpl(ChapsMetrics* chaps_metrics)
-    : chaps_metrics_(chaps_metrics) {
-  CHECK(chaps_metrics_);
-}
-
 Session* ChapsFactoryImpl::CreateSession(int slot_id,
                                          ObjectPool* token_object_pool,
                                          TPMUtility* tpm_utility,
@@ -61,9 +56,9 @@ ObjectStore* ChapsFactoryImpl::CreateObjectStore(const FilePath& file_name) {
   std::unique_ptr<ObjectStoreImpl> store(new ObjectStoreImpl());
 #if USE_FUZZER
   // Use in-memory object store when fuzzing.
-  if (!store->Init(base::FilePath(":memory:"), chaps_metrics_)) {
+  if (!store->Init(base::FilePath(":memory:"))) {
 #else
-  if (!store->Init(file_name, chaps_metrics_)) {
+  if (!store->Init(file_name)) {
 #endif  // USE_FUZZER
     // The approach here is to limp along without a persistent object store so
     // crypto services do not become unavailable. The side-effect is that all

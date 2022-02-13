@@ -18,8 +18,6 @@
 #include <leveldb/db.h>
 #include <leveldb/env.h>
 
-#include "chaps/chaps_metrics.h"
-
 namespace chaps {
 
 // An ObjectStore implementation based on SQLite.
@@ -34,7 +32,7 @@ class ObjectStoreImpl : public ObjectStore {
   // Initializes the object store with the given database path. The magic file
   // name ":memory:" will cause the store to create a memory-only database which
   // is suitable for testing.
-  bool Init(const base::FilePath& database_path, ChapsMetrics* chaps_metrics);
+  bool Init(const base::FilePath& database_path);
 
   // ObjectStore methods.
   bool GetInternalBlob(int blob_id, std::string* blob) override;

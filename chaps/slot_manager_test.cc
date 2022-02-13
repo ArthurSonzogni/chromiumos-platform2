@@ -15,7 +15,6 @@
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <metrics/metrics_library_mock.h>
 #include <openssl/sha.h>
 
 #include "chaps/chaps_factory_mock.h"
@@ -141,15 +140,8 @@ class TestSlotManager : public ::testing::Test {
     ConfigureTPMUtility(tpm_);
     tpm_thread_utility_ =
         std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
-    chaps_metrics_.set_metrics_library_for_testing(&mock_metrics_library_);
-    EXPECT_CALL(
-        mock_metrics_library_,
-        SendEnumToUMA(kTPMAvailability,
-                      static_cast<int>(TPMAvailabilityStatus::kTPMAvailable),
-                      static_cast<int>(TPMAvailabilityStatus::kMaxValue)))
-        .WillOnce(Return(true));
     slot_manager_.reset(new SlotManagerImpl(
-        &factory_, tpm_thread_utility_.get(), false, nullptr, &chaps_metrics_));
+        &factory_, tpm_thread_utility_.get(), false, nullptr));
     ASSERT_TRUE(slot_manager_->Init());
   }
   void TearDown() {
@@ -172,25 +164,19 @@ class TestSlotManager : public ::testing::Test {
   std::unique_ptr<TPMThreadUtilityImpl> tpm_thread_utility_;
   std::unique_ptr<SlotManagerImpl> slot_manager_;
   SecureBlob ic_;
-  StrictMock<MetricsLibraryMock> mock_metrics_library_;
-  ChapsMetrics chaps_metrics_;
 };
 
 typedef TestSlotManager TestSlotManager_DeathTest;
 TEST(DeathTest, InvalidInit) {
   ChapsFactoryMock factory;
-  StrictMock<MetricsLibraryMock> mock_metrics_library;
-  ChapsMetrics chaps_metrics;
-  chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
-  EXPECT_DEATH_IF_SUPPORTED(
-      new SlotManagerImpl(&factory, NULL, false, nullptr, &chaps_metrics),
-      "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(&factory, NULL, false, nullptr),
+                            "Check failed");
   auto tpm_mock = std::make_unique<TPMUtilityMock>();
   auto tpm_thread_utility =
       std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
-  EXPECT_DEATH_IF_SUPPORTED(new SlotManagerImpl(NULL, tpm_thread_utility.get(),
-                                                false, nullptr, &chaps_metrics),
-                            "Check failed");
+  EXPECT_DEATH_IF_SUPPORTED(
+      new SlotManagerImpl(NULL, tpm_thread_utility.get(), false, nullptr),
+      "Check failed");
 }
 
 TEST_F(TestSlotManager_DeathTest, InvalidArgs) {
@@ -249,9 +235,6 @@ TEST(DeathTest, OutOfMemoryInit) {
       std::make_unique<TPMThreadUtilityImpl>(std::move(tpm_mock));
   ChapsFactoryMock factory;
   ObjectPool* null_pool = NULL;
-  StrictMock<MetricsLibraryMock> mock_metrics_library;
-  ChapsMetrics chaps_metrics;
-  chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
   EXPECT_CALL(factory, CreateObjectPool(_, _, _, _))
       .WillRepeatedly(Return(null_pool));
   ObjectStore* null_store = NULL;
@@ -259,14 +242,7 @@ TEST(DeathTest, OutOfMemoryInit) {
   ObjectImporter* null_importer = NULL;
   EXPECT_CALL(factory, CreateObjectImporter(_, _, _))
       .WillRepeatedly(Return(null_importer));
-  SlotManagerImpl sm(&factory, tpm_thread_utility.get(), false, nullptr,
-                     &chaps_metrics);
-  EXPECT_CALL(
-      mock_metrics_library,
-      SendEnumToUMA(kTPMAvailability,
-                    static_cast<int>(TPMAvailabilityStatus::kTPMAvailable),
-                    static_cast<int>(TPMAvailabilityStatus::kMaxValue)))
-      .WillOnce(Return(true));
+  SlotManagerImpl sm(&factory, tpm_thread_utility.get(), false, nullptr);
   ASSERT_TRUE(sm.Init());
   int slot_id;
   EXPECT_DEATH_IF_SUPPORTED(
@@ -274,7 +250,6 @@ TEST(DeathTest, OutOfMemoryInit) {
                    FilePath("/var/lib/chaps"), MakeBlob(kAuthData), kTokenLabel,
                    &slot_id),
       "Check failed");
-  LOG_CK_RV(CKR_OK);
 }
 
 TEST_F(TestSlotManager, QueryInfo) {
@@ -493,18 +468,9 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
 }
 
 TEST_F(TestSlotManager, SRKNotReady) {
-  StrictMock<MetricsLibraryMock> mock_metrics_library;
-  ChapsMetrics chaps_metrics;
-  chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
   EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(false));
-  EXPECT_CALL(
-      mock_metrics_library,
-      SendEnumToUMA(kTPMAvailability,
-                    static_cast<int>(TPMAvailabilityStatus::kTPMAvailable),
-                    static_cast<int>(TPMAvailabilityStatus::kMaxValue)))
-      .WillOnce(Return(true));
   slot_manager_.reset(new SlotManagerImpl(&factory_, tpm_thread_utility_.get(),
-                                          false, nullptr, &chaps_metrics));
+                                          false, nullptr));
   ASSERT_TRUE(slot_manager_->Init());
 
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 0));
@@ -517,18 +483,9 @@ TEST_F(TestSlotManager, SRKNotReady) {
 }
 
 TEST_F(TestSlotManager, DelayedSRKInit) {
-  StrictMock<MetricsLibraryMock> mock_metrics_library;
-  ChapsMetrics chaps_metrics;
-  chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
   EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(false));
-  EXPECT_CALL(
-      mock_metrics_library,
-      SendEnumToUMA(kTPMAvailability,
-                    static_cast<int>(TPMAvailabilityStatus::kTPMAvailable),
-                    static_cast<int>(TPMAvailabilityStatus::kMaxValue)))
-      .WillOnce(Return(true));
   slot_manager_.reset(new SlotManagerImpl(&factory_, tpm_thread_utility_.get(),
-                                          false, nullptr, &chaps_metrics));
+                                          false, nullptr));
   ASSERT_TRUE(slot_manager_->Init());
 
   EXPECT_CALL(*tpm_, IsSRKReady()).WillRepeatedly(Return(true));
@@ -562,15 +519,8 @@ class SoftwareOnlyTest : public TestSlotManager {
     EXPECT_CALL(*no_tpm_, IsTPMAvailable()).WillRepeatedly(Return(false));
     EXPECT_CALL(*no_tpm_, GetTPMVersion())
         .WillRepeatedly(Return(TPMVersion::TPM1_2));
-    chaps_metrics_.set_metrics_library_for_testing(&mock_metrics_library_);
-    EXPECT_CALL(
-        mock_metrics_library_,
-        SendEnumToUMA(kTPMAvailability,
-                      static_cast<int>(TPMAvailabilityStatus::kTPMUnavailable),
-                      static_cast<int>(TPMAvailabilityStatus::kMaxValue)))
-        .WillOnce(Return(true));
     slot_manager_.reset(new SlotManagerImpl(
-        &factory_, tpm_thread_utility_.get(), false, nullptr, &chaps_metrics_));
+        &factory_, tpm_thread_utility_.get(), false, nullptr));
     ASSERT_TRUE(slot_manager_->Init());
   }
 
@@ -703,13 +653,6 @@ TEST_F(SoftwareOnlyTest, BadAuth) {
   InitializeObjectPoolBlobs();
   // We expect the token to be successfully recreated with the new auth value.
   int slot_id = 0;
-  EXPECT_CALL(
-      mock_metrics_library_,
-      SendEnumToUMA(
-          kReinitializingToken,
-          static_cast<int>(ReinitializingTokenStatus::kBadAuthorizationData),
-          static_cast<int>(ReinitializingTokenStatus::kMaxValue)))
-      .WillOnce(Return(true));
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob("bad"),
                                        kTokenLabel, &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenAccessible(ic_, slot_id));
@@ -722,13 +665,6 @@ TEST_F(SoftwareOnlyTest, CorruptRootKey) {
   pool_blobs_[kEncryptedRootKey] = "bad";
   // We expect the token to be successfully recreated.
   int slot_id = 0;
-  EXPECT_CALL(
-      mock_metrics_library_,
-      SendEnumToUMA(
-          kReinitializingToken,
-          static_cast<int>(ReinitializingTokenStatus::kFailedToDecryptRootKey),
-          static_cast<int>(ReinitializingTokenStatus::kMaxValue)))
-      .WillOnce(Return(true));
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
                                        kTokenLabel, &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenAccessible(ic_, slot_id));

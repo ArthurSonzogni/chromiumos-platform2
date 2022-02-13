@@ -27,7 +27,6 @@
 #include <openssl/sha.h>
 
 #include "chaps/async_tpm_utility.h"
-#include "chaps/chaps_metrics.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
 #include "chaps/object_importer.h"
@@ -209,18 +208,15 @@ void LogTokenReinitializedFromFlagFile() {
 SlotManagerImpl::SlotManagerImpl(ChapsFactory* factory,
                                  AsyncTPMUtility* tpm_utility,
                                  bool auto_load_system_token,
-                                 SystemShutdownBlocker* system_shutdown_blocker,
-                                 ChapsMetrics* chaps_metrics)
+                                 SystemShutdownBlocker* system_shutdown_blocker)
     : factory_(factory),
       last_handle_(0),
       tpm_utility_(tpm_utility),
       auto_load_system_token_(auto_load_system_token),
       is_initialized_(false),
-      system_shutdown_blocker_(system_shutdown_blocker),
-      chaps_metrics_(chaps_metrics) {
+      system_shutdown_blocker_(system_shutdown_blocker) {
   CHECK(factory_);
   CHECK(tpm_utility_);
-  CHECK(chaps_metrics_);
 
   // Populate mechanism info for mechanisms supported by all TPM versions.
   mechanism_info_.insert(std::begin(kDefaultMechanismInfo),
@@ -255,16 +251,8 @@ SlotManagerImpl::~SlotManagerImpl() {
 bool SlotManagerImpl::Init() {
   LogTokenReinitializedFromFlagFile();
   // If the SRK is ready we expect the rest of the init work to succeed.
-  bool tpm_available = tpm_utility_->IsTPMAvailable();
-  bool expect_success = tpm_available && tpm_utility_->IsSRKReady();
-
-  if (tpm_available)
-    chaps_metrics_->ReportTPMAvailabilityStatus(
-        TPMAvailabilityStatus::kTPMAvailable);
-  else
-    chaps_metrics_->ReportTPMAvailabilityStatus(
-        TPMAvailabilityStatus::kTPMUnavailable);
-
+  bool expect_success =
+      tpm_utility_->IsTPMAvailable() && tpm_utility_->IsSRKReady();
   if (!InitStage2() && expect_success)
     return false;
 
@@ -602,8 +590,6 @@ void SlotManagerImpl::LoadTPMToken(base::OnceCallback<void(bool)> callback,
   if (!CheckAuthDataValid(auth_data_hash, saved_auth_data_hash)) {
     LOG(ERROR) << "Failed to check the auth data is valid for token at "
                << path.value() << ", reinitializing token.";
-    chaps_metrics_->ReportReinitializingTokenStatus(
-        ReinitializingTokenStatus::kFailedToValidate);
     CreateTokenReinitializedFlagFile(path);
     if (object_pool->DeleteAll() != ObjectPool::Result::Success)
       LOG(WARNING) << "Failed to delete all existing objects.";
@@ -630,8 +616,6 @@ void SlotManagerImpl::LoadTPMTokenAfterUnseal(
   if (!success) {
     LOG(ERROR) << "Failed to unseal for token at " << path.value()
                << ", reinitializing token.";
-    chaps_metrics_->ReportReinitializingTokenStatus(
-        ReinitializingTokenStatus::kFailedToUnseal);
     CreateTokenReinitializedFlagFile(path);
     if (object_pool->DeleteAll() != ObjectPool::Result::Success)
       LOG(WARNING) << "Failed to delete all existing objects.";
@@ -749,8 +733,6 @@ bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
   }
   if (HmacSha512(kAuthKeyMacInput, auth_key_mac) != saved_mac) {
     LOG(ERROR) << "Bad authorization data, reinitializing token.";
-    chaps_metrics_->ReportReinitializingTokenStatus(
-        ReinitializingTokenStatus::kBadAuthorizationData);
     if (object_pool->DeleteAll() != ObjectPool::Result::Success)
       LOG(WARNING) << "Failed to delete all existing objects.";
     return InitializeSoftwareToken(auth_data, object_pool);
@@ -762,8 +744,6 @@ bool SlotManagerImpl::LoadSoftwareToken(const SecureBlob& auth_data,
                  std::string(),  // Use a random IV.
                  encrypted_root_key, &root_key_str)) {
     LOG(ERROR) << "Failed to decrypt root key, reinitializing token.";
-    chaps_metrics_->ReportReinitializingTokenStatus(
-        ReinitializingTokenStatus::kFailedToDecryptRootKey);
     if (object_pool->DeleteAll() != ObjectPool::Result::Success)
       LOG(WARNING) << "Failed to delete all existing objects.";
     return InitializeSoftwareToken(auth_data, object_pool);
