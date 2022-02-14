@@ -34,6 +34,7 @@ config("target_defaults") {
     "USE_PINWEAVER=${use.pinweaver}",
     "USE_SELINUX=${use.selinux}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
+    "USE_TPM_INSECURE_FALLBACK=${use.tpm_insecure_fallback}",
     "USE_TPM1=${use.tpm}",
     "USE_TPM2=${use.tpm2}",
     "USE_TPM2_SIMULATOR=${use.tpm2_simulator}",

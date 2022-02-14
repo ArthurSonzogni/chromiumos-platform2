@@ -84,6 +84,10 @@ static int has_chromefw(void) {
 }
 
 static bool shall_use_tpm_for_system_key() {
+  if (!USE_TPM_INSECURE_FALLBACK) {
+    return true;
+  }
+
   if (has_chromefw()) {
     return true;
   }

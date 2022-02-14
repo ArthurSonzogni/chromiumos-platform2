@@ -129,6 +129,7 @@ _IUSE = [
     'timers',
     'tpm',
     'tpm_dynamic',
+    'tpm_insecure_fallback',
     'tpm2',
     'tpm2_simulator',
     'ubsan',
