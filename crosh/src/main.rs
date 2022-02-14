@@ -30,10 +30,11 @@ fn usage(error: bool) {
     let usage_msg = r#"Usage: crosh [options] [-- [args]]
 
 Options:
-  --dev         Force dev mode.
-  --removable   Force removable (boot from USB/SD/etc...) mode.
-  --usb         Same as above.
-  --help, -h    Show this help string.
+  --dev(=true|false) Force dev mode commands to be available or not. '--dev' is
+                     the same as '--dev=true'.
+  --removable        Force removable (boot from USB/SD/etc...) mode.
+  --usb              Same as above.
+  --help, -h         Show this help string.
   -- <all args after this are a command to run>
                 Execute a single command and exit.
 "#;
@@ -344,8 +345,11 @@ fn main() -> Result<(), ()> {
                     usage(false);
                     return Ok(());
                 }
-                "--dev" => {
+                "--dev" | "--dev=true" => {
                     util::set_dev_commands_included(true);
+                }
+                "--dev=false" => {
+                    util::set_dev_commands_included(false);
                 }
                 "--removable" | "--usb" => {
                     util::set_usb_commands_included(true);
