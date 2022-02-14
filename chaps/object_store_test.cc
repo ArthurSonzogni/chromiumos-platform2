@@ -11,10 +11,13 @@
 #include <openssl/err.h>
 #include <openssl/rand.h>
 
+#include <metrics/metrics_library_mock.h>
+
 using base::FilePath;
 using brillo::SecureBlob;
 using std::map;
 using std::string;
+using ::testing::StrictMock;
 
 namespace chaps {
 
@@ -118,7 +121,10 @@ TEST_F(TestObjectStoreEncryption, CBCMode) {
 TEST(TestObjectStore, InsertLoad) {
   ObjectStoreImpl store;
   const char database[] = ":memory:";
-  ASSERT_TRUE(store.Init(FilePath(database)));
+  StrictMock<MetricsLibraryMock> mock_metrics_library;
+  ChapsMetrics chaps_metrics;
+  chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+  ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
   string tmp(32, 'A');
   SecureBlob key(tmp.begin(), tmp.end());
   EXPECT_TRUE(store.SetEncryptionKey(key));
@@ -160,7 +166,10 @@ TEST(TestObjectStore, InsertLoad) {
 TEST(TestObjectStore, UpdateDelete) {
   ObjectStoreImpl store;
   const char database[] = ":memory:";
-  ASSERT_TRUE(store.Init(FilePath(database)));
+  StrictMock<MetricsLibraryMock> mock_metrics_library;
+  ChapsMetrics chaps_metrics;
+  chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+  ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
   string tmp(32, 'A');
   SecureBlob key(tmp.begin(), tmp.end());
   EXPECT_TRUE(store.SetEncryptionKey(key));
@@ -186,7 +195,10 @@ TEST(TestObjectStore, UpdateDelete) {
 TEST(TestObjectStore, InternalBlobs) {
   ObjectStoreImpl store;
   const char database[] = ":memory:";
-  ASSERT_TRUE(store.Init(FilePath(database)));
+  StrictMock<MetricsLibraryMock> mock_metrics_library;
+  ChapsMetrics chaps_metrics;
+  chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+  ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
   string blob;
   EXPECT_FALSE(store.GetInternalBlob(1, &blob));
   EXPECT_TRUE(store.SetInternalBlob(1, "blob"));
@@ -197,7 +209,10 @@ TEST(TestObjectStore, InternalBlobs) {
 TEST(TestObjectStore, DeleteAll) {
   ObjectStoreImpl store;
   const char database[] = ":memory:";
-  ASSERT_TRUE(store.Init(FilePath(database)));
+  StrictMock<MetricsLibraryMock> mock_metrics_library;
+  ChapsMetrics chaps_metrics;
+  chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+  ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
   string tmp(32, 'A');
   SecureBlob key(tmp.begin(), tmp.end());
   EXPECT_TRUE(store.SetEncryptionKey(key));

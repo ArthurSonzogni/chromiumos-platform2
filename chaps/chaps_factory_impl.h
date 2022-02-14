@@ -9,11 +9,13 @@
 
 #include <base/macros.h>
 
+#include "chaps/chaps_metrics.h"
+
 namespace chaps {
 
 class ChapsFactoryImpl : public ChapsFactory {
  public:
-  ChapsFactoryImpl() {}
+  explicit ChapsFactoryImpl(ChapsMetrics* chaps_metrics);
   ChapsFactoryImpl(const ChapsFactoryImpl&) = delete;
   ChapsFactoryImpl& operator=(const ChapsFactoryImpl&) = delete;
   ~ChapsFactoryImpl() override {}
@@ -36,6 +38,9 @@ class ChapsFactoryImpl : public ChapsFactory {
   SlotPolicy* CreateSlotPolicy(bool is_shared_slot) override;
 
   static ObjectPolicy* GetObjectPolicyForType(CK_OBJECT_CLASS type);
+
+ private:
+  ChapsMetrics* chaps_metrics_;
 };
 
 }  // namespace chaps

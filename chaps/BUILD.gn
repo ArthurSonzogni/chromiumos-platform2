@@ -136,6 +136,7 @@ source_set("chaps_common") {
   sources = [
     "chaps_adaptor.cc",
     "chaps_factory_impl.cc",
+    "chaps_metrics.cc",
     "chaps_service.cc",
     "object_impl.cc",
     "object_policy_cert.cc",
@@ -266,7 +267,10 @@ if (use.test || use.fuzzer) {
 
 if (use.test) {
   executable("chaps_test") {
-    sources = [ "chaps_test.cc" ]
+    sources = [
+      "chaps_metrics_test.cc",
+      "chaps_test.cc"
+    ]
     configs += [ ":target_defaults" ]
     deps = [
       ":libchaps_test",

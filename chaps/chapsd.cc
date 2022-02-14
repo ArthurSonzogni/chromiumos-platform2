@@ -112,6 +112,10 @@ class Daemon : public brillo::DBusServiceDaemon {
     // Destructor of slot_manager_ will use tpm_
     slot_manager_.reset();
 
+    factory_.reset();
+    // Both slot_manager_ and factory_ contains a pointer to chaps_metrics_
+    chaps_metrics_.reset();
+
     TPM_SELECT_BEGIN;
     TPM2_SECTION({
       // tpm_ will need tpm_background_thread_ to function
@@ -143,12 +147,13 @@ class Daemon : public brillo::DBusServiceDaemon {
     });
     TPM_SELECT_END;
 
-    factory_.reset(new ChapsFactoryImpl);
+    chaps_metrics_.reset(new ChapsMetrics);
+    factory_.reset(new ChapsFactoryImpl(chaps_metrics_.get()));
     system_shutdown_blocker_.reset(
         new SystemShutdownBlocker(base::ThreadTaskRunnerHandle::Get()));
-    slot_manager_.reset(new SlotManagerImpl(factory_.get(), tpm_.get(),
-                                            auto_load_system_token_,
-                                            system_shutdown_blocker_.get()));
+    slot_manager_.reset(new SlotManagerImpl(
+        factory_.get(), tpm_.get(), auto_load_system_token_,
+        system_shutdown_blocker_.get(), chaps_metrics_.get()));
     service_.reset(new ChapsServiceImpl(slot_manager_.get()));
 
     // Initialize the TPM.
@@ -207,6 +212,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   base::Thread tpm_background_thread_;
 
   std::unique_ptr<TPMThreadUtilityImpl> tpm_;
+  std::unique_ptr<ChapsMetrics> chaps_metrics_;
   std::unique_ptr<ChapsFactory> factory_;
   std::unique_ptr<SystemShutdownBlocker> system_shutdown_blocker_;
   std::unique_ptr<SlotManagerImpl> slot_manager_;

@@ -23,10 +23,8 @@
 #ifndef NO_MEMENV
 #include <leveldb/helpers/memenv.h>
 #endif
-#ifndef NO_METRICS
-#include <metrics/metrics_library.h>
-#endif
 
+#include "chaps/chaps_metrics.h"
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
 
@@ -37,25 +35,6 @@ using std::string;
 using std::vector;
 
 namespace {
-
-// Encapsulate UMA event generation.
-class MetricsWrapper {
- public:
-  MetricsWrapper() {}
-
-  bool SendUMAEvent(const std::string& event) {
-#ifndef NO_METRICS
-    return metrics_.SendCrosEventToUMA(event);
-#else
-    return false;
-#endif
-  }
-
- private:
-#ifndef NO_METRICS
-  MetricsLibrary metrics_;
-#endif
-};
 
 // Logs information about |db_dir| before opening the leveldb.
 // TODO(https://crbug.com/844537): Remove or decrease log level when root cause
@@ -133,9 +112,8 @@ ObjectStoreImpl::~ObjectStoreImpl() {
   }
 }
 
-bool ObjectStoreImpl::Init(const FilePath& database_path) {
-  MetricsWrapper metrics;
-
+bool ObjectStoreImpl::Init(const FilePath& database_path,
+                           ChapsMetrics* chaps_metrics) {
   LOG(INFO) << "Opening database in: " << database_path.value();
   leveldb::Options options;
   options.create_if_missing = true;
@@ -161,7 +139,7 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
       leveldb::DB::Open(options, database_name.value(), &db);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to open database: " << status.ToString();
-    metrics.SendUMAEvent("Chaps.DatabaseCorrupted");
+    chaps_metrics->ReportCrosEvent(kDatabaseCorrupted);
     LOG(WARNING) << "Attempting to repair database.";
     status = leveldb::RepairDB(database_name.value(), leveldb::Options());
     if (status.ok())
@@ -170,7 +148,7 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
 
   if (!status.ok()) {
     LOG(ERROR) << "Failed to repair database: " << status.ToString();
-    metrics.SendUMAEvent("Chaps.DatabaseRepairFailure");
+    chaps_metrics->ReportCrosEvent(kDatabaseRepairFailure);
     // We don't want to risk using a database that has been corrupted. Recreate
     // the database from scratch but save the corrupted database for diagnostic
     // purposes.
@@ -187,7 +165,7 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
 
   if (!status.ok()) {
     LOG(ERROR) << "Failed to create new database: " << status.ToString();
-    metrics.SendUMAEvent("Chaps.DatabaseCreateFailure");
+    chaps_metrics->ReportCrosEvent(kDatabaseCreateFailure);
     return false;
   }
 
