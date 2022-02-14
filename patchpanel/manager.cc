@@ -252,24 +252,20 @@ void Manager::InitialSetup() {
   routing_svc_ = std::make_unique<RoutingService>();
   counters_svc_ = std::make_unique<CountersService>(datapath_.get());
 
-  // b/162966185: Allow Jetstream to disable:
-  //  - the IP forwarding setup used for hosting VMs and containers,
-  //  - the iptables rules for fwmark based routing.
-  if (!USE_JETSTREAM_ROUTING) {
-    datapath_->Start();
-    shill_client_->RegisterDefaultLogicalDeviceChangedHandler(
-        base::BindRepeating(&Manager::OnShillDefaultLogicalDeviceChanged,
-                            weak_factory_.GetWeakPtr()));
-    shill_client_->RegisterDefaultPhysicalDeviceChangedHandler(
-        base::BindRepeating(&Manager::OnShillDefaultPhysicalDeviceChanged,
-                            weak_factory_.GetWeakPtr()));
-    shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
-        &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
-    shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
-        &Manager::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
-    shill_client_->RegisterIPv6NetworkChangedHandler(base::BindRepeating(
-        &Manager::OnIPv6NetworkChanged, weak_factory_.GetWeakPtr()));
-  }
+  datapath_->Start();
+
+  shill_client_->RegisterDefaultLogicalDeviceChangedHandler(
+      base::BindRepeating(&Manager::OnShillDefaultLogicalDeviceChanged,
+                          weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterDefaultPhysicalDeviceChangedHandler(
+      base::BindRepeating(&Manager::OnShillDefaultPhysicalDeviceChanged,
+                          weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterDevicesChangedHandler(base::BindRepeating(
+      &Manager::OnShillDevicesChanged, weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
+      &Manager::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
+  shill_client_->RegisterIPv6NetworkChangedHandler(base::BindRepeating(
+      &Manager::OnIPv6NetworkChanged, weak_factory_.GetWeakPtr()));
 
   nd_proxy_->RegisterNDProxyMessageHandler(base::BindRepeating(
       &Manager::OnNDProxyMessage, weak_factory_.GetWeakPtr()));
@@ -308,9 +304,7 @@ void Manager::OnShutdown(int* exit_code) {
   for (const int fdkey : lifeline_fds) {
     OnLifelineFdClosed(fdkey);
   }
-  if (!USE_JETSTREAM_ROUTING) {
-    datapath_->Stop();
-  }
+  datapath_->Stop();
   if (bus_) {
     bus_->ShutdownAndBlock();
   }
