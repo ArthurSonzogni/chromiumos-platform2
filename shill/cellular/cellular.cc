@@ -1618,7 +1618,7 @@ bool Cellular::SetInhibited(const bool& inhibited, Error* error) {
 KeyValueStore Cellular::GetSimLockStatus(Error* error) {
   if (!capability_) {
     // modemmanager might be inhibited or restarting.
-    LOG(ERROR) << __func__ << " called with null capability.";
+    LOG(WARNING) << __func__ << " called with null capability.";
     return KeyValueStore();
   }
   return capability_->SimLockStatusToProperty(error);
