@@ -442,11 +442,10 @@ base::Optional<BalloonStats> GetBalloonStats(std::string socket_path) {
 
   auto root_value = base::JSONReader::Read(crosvm_response);
   if (!root_value) {
-    std::string b64;
-    base::Base64Encode(crosvm_response, &b64);
     LOG(ERROR) << "Failed to parse balloon_stats JSON";
     return base::nullopt;
   }
+
   if (!root_value->is_dict()) {
     LOG(ERROR) << "Output of balloon_stats was not a dict";
     return base::nullopt;
@@ -456,7 +455,13 @@ base::Optional<BalloonStats> GetBalloonStats(std::string socket_path) {
     LOG(ERROR) << "BalloonStats dict not found";
     return base::nullopt;
   }
-  auto additional_stats = balloon_stats->FindDictKey("stats");
+
+  return ParseBalloonStats(*balloon_stats);
+}
+
+base::Optional<BalloonStats> ParseBalloonStats(
+    const base::Value& balloon_stats) {
+  auto additional_stats = balloon_stats.FindDictKey("stats");
   if (!additional_stats || !additional_stats->is_dict()) {
     LOG(ERROR) << "stats dict not found";
     return base::nullopt;
@@ -468,7 +473,7 @@ base::Optional<BalloonStats> GetBalloonStats(std::string socket_path) {
   stats.available_memory = static_cast<int64_t>(
       additional_stats->FindDoubleKey("available_memory").value_or(0));
   stats.balloon_actual = static_cast<int64_t>(
-      balloon_stats->FindDoubleKey("balloon_actual").value_or(0));
+      balloon_stats.FindDoubleKey("balloon_actual").value_or(0));
   stats.disk_caches = static_cast<int64_t>(
       additional_stats->FindDoubleKey("disk_caches").value_or(0));
   stats.free_memory = static_cast<int64_t>(

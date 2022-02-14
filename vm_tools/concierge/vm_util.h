@@ -17,6 +17,7 @@
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>
 #include <base/optional.h>
+#include <base/values.h>
 #include <brillo/process/process.h>
 #include <vm_tools/concierge/usb_control.h>
 #include <vm_tools/concierge/balloon_policy.h>
@@ -116,6 +117,10 @@ void RunCrosvmCommand(std::string command, std::string socket_path);
 
 // Returns balloon stats info retrieved from virtio-balloon device.
 base::Optional<BalloonStats> GetBalloonStats(std::string socket_path);
+
+// Parses balloon stats info from a JSON value.
+base::Optional<BalloonStats> ParseBalloonStats(
+    const base::Value& balloon_stats);
 
 // Attaches an usb device at host |bus|:|addr|, with |vid|, |pid| and an
 // opened |fd|.
