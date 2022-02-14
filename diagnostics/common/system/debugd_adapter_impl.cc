@@ -27,14 +27,14 @@ constexpr char kNvmeStopSelfTestOption[] = "stop_self_test";
 
 auto CreateSuccessCallback(
     const DebugdAdapter::StringResultCallback& callback) {
-  return base::Bind(
+  return base::BindOnce(
       [](const DebugdAdapter::StringResultCallback& callback,
          const std::string& result) { callback.Run(result, nullptr); },
       callback);
 }
 
 auto CreateErrorCallback(const DebugdAdapter::StringResultCallback& callback) {
-  return base::Bind(
+  return base::BindOnce(
       [](const DebugdAdapter::StringResultCallback& callback,
          brillo::Error* error) { callback.Run(std::string(), error); },
       callback);
