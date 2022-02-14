@@ -4556,11 +4556,23 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
   ReportWiFiDebugScopeChanged(true);
   ReportWiFiDebugScopeChanged(false);
+  Mock::VerifyAndClearExpectations(process_proxy);
 
-  // After WiFi is stopped, we shouldn't be calling the proxy.
+  // After WiFi is stopped, we may still call the proxy if it hasn't vanished.
+  // Make sure we don't crash.
+  StopWiFi();
+  ReportWiFiDebugScopeChanged(true);
+  ReportWiFiDebugScopeChanged(false);
+}
+
+TEST_F(WiFiMainTest, LogLevelOnSupplicantVanish) {
+  MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
+  StartWiFi();
+
+  // After supplicant vanishes, we shouldn't be calling the proxy.
   EXPECT_CALL(*process_proxy, GetDebugLevel(_)).Times(0);
   EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
-  StopWiFi();
+  OnSupplicantVanish();
   ReportWiFiDebugScopeChanged(true);
   ReportWiFiDebugScopeChanged(false);
 }

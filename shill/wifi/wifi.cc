@@ -382,7 +382,6 @@ void WiFi::Start(const EnabledStateChangedCallback& callback) {
   GetDeviceHardwareIds(&hw_info.vendor_id, &hw_info.product_id,
                        &hw_info.subsystem_id);
   metrics()->NotifyWiFiAdapterStateChanged(true, hw_info);
-  OnEnabledStateChanged(EnabledStateChangedCallback(), Error(Error::kSuccess));
 
   // Subscribe to multicast events.
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
@@ -483,7 +482,7 @@ bool WiFi::AddCred(const PasspointCredentialsRefPtr& credentials) {
   SLOG(this, 2) << __func__;
   CHECK(credentials);
 
-  if (!supplicant_present_ || !enabled()) {
+  if (!supplicant_present_) {
     // Supplicant is not here yet, the credentials will be pushed later.
     credentials->SetSupplicantId(DBusControl::NullRpcIdentifier());
     return false;
@@ -3252,7 +3251,9 @@ void WiFi::OnSupplicantPresence(bool present) {
       return;
     }
     supplicant_present_ = true;
-    ConnectToSupplicant();
+    if (enabled()) {
+      ConnectToSupplicant();
+    }
     return;
   }
 
@@ -3269,7 +3270,7 @@ void WiFi::OnSupplicantPresence(bool present) {
 
 void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
   SLOG(this, 2) << "WiFi debug scope changed; enable is now " << enabled;
-  if (!Device::enabled() || !supplicant_present_) {
+  if (!supplicant_present_) {
     SLOG(this, 2) << "Supplicant process proxy not connected.";
     return;
   }
@@ -3322,7 +3323,7 @@ void WiFi::ConnectToSupplicant() {
             << " supplicant: " << (supplicant_present_ ? "present" : "absent")
             << " proxy: "
             << (supplicant_interface_proxy_.get() ? "non-null" : "null");
-  if (!enabled() || !supplicant_present_) {
+  if (!supplicant_present_) {
     return;
   }
   OnWiFiDebugScopeChanged(
@@ -3339,6 +3340,7 @@ void WiFi::ConnectToSupplicant() {
       WPASupplicant::kInterfacePropertyConfigFile,
       WPASupplicant::kSupplicantConfPath);
   supplicant_connect_attempts_++;
+
   if (!supplicant_process_proxy()->CreateInterface(
           create_interface_args, &supplicant_interface_path_)) {
     // Interface might've already been created, attempt to retrieve it.

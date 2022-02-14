@@ -168,11 +168,13 @@ class TestDevice : public Device {
   ~TestDevice() override = default;
 
   // Device overrides
-  void Start(Error* error,
-             const EnabledStateChangedCallback& callback) override {}
+  void Start(const EnabledStateChangedCallback& callback) override {
+    callback.Run(Error(Error::kSuccess));
+  }
 
-  void Stop(Error* error,
-            const EnabledStateChangedCallback& callback) override {}
+  void Stop(const EnabledStateChangedCallback& callback) override {
+    callback.Run(Error(Error::kSuccess));
+  }
 
   void StartConnectionDiagnosticsAfterPortalDetection() override {}
 
