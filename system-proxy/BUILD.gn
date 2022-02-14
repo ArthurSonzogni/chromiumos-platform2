@@ -9,6 +9,10 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":dbus_code_generator",
+    ":install_dbus_config",
+    ":install_init",
+    ":install_policy",
+    ":install_services",
     ":libsystemproxy",
     ":system_proxy",
     ":system_proxy_worker",
@@ -96,6 +100,7 @@ static_library("libsystemproxyworker") {
 executable("system_proxy_worker") {
   sources = [ "system_proxy_worker.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "sbin"
   all_dependent_pkg_deps = [ "libcurl" ]
   deps = [
     ":libsystemproxyworker",
@@ -106,7 +111,40 @@ executable("system_proxy_worker") {
 executable("system_proxy") {
   sources = [ "system_proxy.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "sbin"
   deps = [ ":libsystemproxy" ]
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus/org.chromium.SystemProxy.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_services") {
+  sources = [ "dbus/org.chromium.SystemProxy.service" ]
+  install_path = "/usr/share/dbus-1/system-services"
+}
+
+install_config("install_init") {
+  sources = [ "init/system-proxy.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_policy") {
+  _arch = getenv("ARCH")
+
+  # NOSORT
+  sources = [
+    "seccomp/system-proxy-seccomp-${_arch}.policy",
+    "seccomp/system-proxy-worker-seccomp-${_arch}.policy",
+  ]
+  install_path = "/usr/share/policy"
+
+  # NOSORT
+  outputs = [
+    "system-proxy-seccomp.policy",
+    "system-proxy-worker-seccomp.policy",
+  ]
 }
 
 # Unit tests.
@@ -131,6 +169,7 @@ if (use.test) {
       ":system-proxy_test_config",
       ":target_defaults",
     ]
+    run_test = true
     all_dependent_pkg_deps = [ "libcurl" ]
     defines = [ "UNIT_TEST" ]
     deps = [
