@@ -277,7 +277,38 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
   EXPECT_EQ(GetCborMapSize(cbor_output), 4);
 }
 
-// Verifies serialization of HSM payload plain text encrypted payload to CBOR.
+// Verifies serialization of HSM payload plain text encrypted payload to CBOR
+// with key auth value.
+TEST_F(HsmPayloadCborHelperTest, GeneratePlainTextHsmPayloadCborWithKav) {
+  brillo::SecureBlob key_auth_value("key auth value");
+  brillo::SecureBlob mediator_share;
+  brillo::SecureBlob cbor_output;
+
+  crypto::ScopedBIGNUM scalar = BigNumFromValue(123123123u);
+  ASSERT_TRUE(scalar);
+  ASSERT_TRUE(BigNumToSecureBlob(*scalar, 10, &mediator_share));
+
+  // Serialize plain text payload with kav.
+  HsmPlainText hsm_plain_text;
+  hsm_plain_text.mediator_share = mediator_share;
+  hsm_plain_text.dealer_pub_key = dealer_pub_key_;
+  hsm_plain_text.key_auth_value = key_auth_value;
+  ASSERT_TRUE(SerializeHsmPlainTextToCbor(hsm_plain_text, &cbor_output));
+
+  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
+                               kDealerPublicKey, dealer_pub_key_));
+  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
+                               kKeyAuthValue, key_auth_value));
+  brillo::SecureBlob deserialized_mediator_share;
+  EXPECT_TRUE(GetBytestringValueFromCborMapByKeyForTesting(
+      cbor_output, kMediatorShare, &deserialized_mediator_share));
+  EXPECT_EQ(BN_get_word(SecureBlobToBigNum(deserialized_mediator_share).get()),
+            BN_get_word(scalar.get()));
+  EXPECT_EQ(GetCborMapSize(cbor_output), 3);
+}
+
+// Verifies serialization of HSM payload plain text encrypted payload to CBOR
+// without key auth value.
 TEST_F(HsmPayloadCborHelperTest, GeneratePlainTextHsmPayloadCbor) {
   brillo::SecureBlob mediator_share;
   brillo::SecureBlob cbor_output;
@@ -286,23 +317,20 @@ TEST_F(HsmPayloadCborHelperTest, GeneratePlainTextHsmPayloadCbor) {
   ASSERT_TRUE(scalar);
   ASSERT_TRUE(BigNumToSecureBlob(*scalar, 10, &mediator_share));
 
-  // Serialize plain text payload with empty kav.
+  // Serialize plain text payload without kav.
   HsmPlainText hsm_plain_text;
   hsm_plain_text.mediator_share = mediator_share;
   hsm_plain_text.dealer_pub_key = dealer_pub_key_;
-  hsm_plain_text.key_auth_value = brillo::SecureBlob();
   ASSERT_TRUE(SerializeHsmPlainTextToCbor(hsm_plain_text, &cbor_output));
 
   EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
                                kDealerPublicKey, dealer_pub_key_));
-  EXPECT_THAT(cbor_output, SerializedCborMapContainsSecureBlobValue(
-                               kKeyAuthValue, brillo::SecureBlob()));
   brillo::SecureBlob deserialized_mediator_share;
   EXPECT_TRUE(GetBytestringValueFromCborMapByKeyForTesting(
       cbor_output, kMediatorShare, &deserialized_mediator_share));
   EXPECT_EQ(BN_get_word(SecureBlobToBigNum(deserialized_mediator_share).get()),
             BN_get_word(scalar.get()));
-  EXPECT_EQ(GetCborMapSize(cbor_output), 3);
+  EXPECT_EQ(GetCborMapSize(cbor_output), 2);
 }
 
 // Verifies deserialization of HSM associated data from CBOR.

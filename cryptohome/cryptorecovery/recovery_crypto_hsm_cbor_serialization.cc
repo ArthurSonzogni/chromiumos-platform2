@@ -293,7 +293,10 @@ bool SerializeHsmPlainTextToCbor(const HsmPlainText& plain_text,
 
   pt_map.emplace(kDealerPublicKey, plain_text.dealer_pub_key);
   pt_map.emplace(kMediatorShare, plain_text.mediator_share);
-  pt_map.emplace(kKeyAuthValue, plain_text.key_auth_value);
+  // Attach key_auth_value only if it's generated
+  if (!plain_text.key_auth_value.empty()) {
+    pt_map.emplace(kKeyAuthValue, plain_text.key_auth_value);
+  }
   if (!SerializeCborMap(pt_map, plain_text_cbor)) {
     LOG(ERROR) << "Failed to serialize HSM plain text to CBOR";
     return false;
@@ -392,16 +395,19 @@ bool DeserializeHsmPlainTextFromCbor(
     LOG(ERROR) << "Failed to get mediator share from the HSM response map.";
     return false;
   }
-  brillo::SecureBlob key_auth_value;
-  if (!FindBytestringValueInCborMap(response_map, kKeyAuthValue,
-                                    &key_auth_value)) {
-    LOG(ERROR) << "Failed to get key auth value from the HSM response map.";
-    return false;
+  // Parse out key_auth_value if it is attached.
+  if (response_map.contains(cbor::Value(kKeyAuthValue))) {
+    brillo::SecureBlob key_auth_value;
+    if (!FindBytestringValueInCborMap(response_map, kKeyAuthValue,
+                                      &key_auth_value)) {
+      LOG(ERROR) << "Failed to get key auth value from the HSM response map.";
+      return false;
+    }
+    hsm_plain_text->key_auth_value = std::move(key_auth_value);
   }
 
   hsm_plain_text->dealer_pub_key = std::move(dealer_pub_key);
   hsm_plain_text->mediator_share = std::move(mediator_share);
-  hsm_plain_text->key_auth_value = std::move(key_auth_value);
   return true;
 }
 
