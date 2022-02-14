@@ -115,6 +115,7 @@ ObjectStoreImpl::~ObjectStoreImpl() {
 bool ObjectStoreImpl::Init(const FilePath& database_path,
                            ChapsMetrics* chaps_metrics) {
   LOG(INFO) << "Opening database in: " << database_path.value();
+  chaps_metrics->ReportCrosEvent(kDatabaseOpenAttempt);
   leveldb::Options options;
   options.create_if_missing = true;
   options.paranoid_checks = true;
@@ -168,6 +169,8 @@ bool ObjectStoreImpl::Init(const FilePath& database_path,
     chaps_metrics->ReportCrosEvent(kDatabaseCreateFailure);
     return false;
   }
+
+  chaps_metrics->ReportCrosEvent(kDatabaseOpenedSuccessfully);
 
   // TODO(https://crbug.com/844537): Remove or decrease log level when root
   // cause of disappearing system token certificates is found.

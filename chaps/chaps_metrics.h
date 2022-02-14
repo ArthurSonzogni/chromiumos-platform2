@@ -22,6 +22,11 @@ constexpr char kDatabaseRepairFailure[] = "Chaps.DatabaseRepairFailure";
 
 constexpr char kDatabaseCreateFailure[] = "Chaps.DatabaseCreateFailure";
 
+constexpr char kDatabaseOpenedSuccessfully[] =
+    "Chaps.DatabaseOpenedSuccessfully";
+
+constexpr char kDatabaseOpenAttempt[] = "Chaps.DatabaseOpenAttempt";
+
 // List of reasons to initializing token. These entries
 // should not be renumbered and numeric values should never be reused.
 // These values are persisted to logs.

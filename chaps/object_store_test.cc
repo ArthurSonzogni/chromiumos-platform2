@@ -124,6 +124,9 @@ TEST(TestObjectStore, InsertLoad) {
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+  EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseOpenAttempt));
+  EXPECT_CALL(mock_metrics_library,
+              SendCrosEventToUMA(kDatabaseOpenedSuccessfully));
   ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
   string tmp(32, 'A');
   SecureBlob key(tmp.begin(), tmp.end());
@@ -169,6 +172,9 @@ TEST(TestObjectStore, UpdateDelete) {
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+  EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseOpenAttempt));
+  EXPECT_CALL(mock_metrics_library,
+              SendCrosEventToUMA(kDatabaseOpenedSuccessfully));
   ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
   string tmp(32, 'A');
   SecureBlob key(tmp.begin(), tmp.end());
@@ -198,6 +204,9 @@ TEST(TestObjectStore, InternalBlobs) {
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+  EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseOpenAttempt));
+  EXPECT_CALL(mock_metrics_library,
+              SendCrosEventToUMA(kDatabaseOpenedSuccessfully));
   ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
   string blob;
   EXPECT_FALSE(store.GetInternalBlob(1, &blob));
@@ -212,6 +221,9 @@ TEST(TestObjectStore, DeleteAll) {
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
   chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+  EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseOpenAttempt));
+  EXPECT_CALL(mock_metrics_library,
+              SendCrosEventToUMA(kDatabaseOpenedSuccessfully));
   ASSERT_TRUE(store.Init(FilePath(database), &chaps_metrics));
   string tmp(32, 'A');
   SecureBlob key(tmp.begin(), tmp.end());
