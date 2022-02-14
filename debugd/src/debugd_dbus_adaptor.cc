@@ -460,6 +460,22 @@ std::string DebugdDBusAdaptor::SwapSetParameter(
   return swap_tool_->SwapSetParameter(parameter_name, parameter_value);
 }
 
+std::string DebugdDBusAdaptor::SwapZramEnableWriteback(uint32_t size_mb) {
+  return swap_tool_->SwapZramEnableWriteback(size_mb);
+}
+
+std::string DebugdDBusAdaptor::SwapZramMarkIdle(uint32_t age) {
+  return swap_tool_->SwapZramMarkIdle(age);
+}
+
+std::string DebugdDBusAdaptor::SwapZramSetWritebackLimit(uint32_t limit) {
+  return swap_tool_->SwapZramSetWritebackLimit(limit);
+}
+
+std::string DebugdDBusAdaptor::InitiateSwapZramWriteback(uint32_t mode) {
+  return swap_tool_->InitiateSwapZramWriteback(mode);
+}
+
 std::string DebugdDBusAdaptor::SetU2fFlags(const std::string& flags) {
   return u2f_tool_->SetFlags(flags);
 }

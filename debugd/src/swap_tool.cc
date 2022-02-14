@@ -9,6 +9,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/dbus/debugd/dbus-constants.h>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/process_with_output.h"
@@ -22,6 +23,9 @@ const char kSwapHelperScript[] = "/usr/share/cros/init/swap.sh";
 // The path of the kstaled ratio file.
 const char kMGLRUEnabledPath[] = "/sys/kernel/mm/lru_gen/enabled";
 const char kSwapToolErrorString[] = "org.chromium.debugd.error.Swap";
+base::FilePath kZramDevicePath("/sys/block/zram0");
+
+constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
 
 std::string RunSwapHelper(const ProcessWithOutput::ArgList& arguments,
                           int* result) {
@@ -90,6 +94,101 @@ std::string SwapTool::SwapSetParameter(const std::string& parameter_name,
 
   buf = base::StringPrintf("%d", parameter_value);
   return RunSwapHelper({"set_parameter", parameter_name, buf}, &result);
+}
+
+// static
+bool SwapTool::WriteValueToFile(const base::FilePath& file,
+                                const std::string& val,
+                                std::string* msg) {
+  if (!base::WriteFile(file, val)) {
+    if (msg) {
+      *msg =
+          base::StringPrintf("ERROR: Failed to write %s to %s. Error %d (%s)",
+                             val.c_str(), file.MaybeAsASCII().c_str(), errno,
+                             base::safe_strerror(errno).c_str());
+    }
+    return false;
+  }
+
+  if (msg) {
+    *msg = "SUCCESS";
+  }
+  return true;
+}
+
+// Zram writeback configuration.
+std::string SwapTool::SwapZramEnableWriteback(uint32_t size_mb) const {
+  int result;
+  std::string buf;
+
+  // For now throw out values >32gb.
+  constexpr int kMaxSizeMb = 32 << 10;
+  if (size_mb == 0 || size_mb >= kMaxSizeMb) {
+    return "ERROR: Invalid size specified.";
+  }
+
+  std::string res = RunSwapHelper(
+      {"enable_zram_writeback", std::to_string(size_mb)}, &result);
+  if (result && res.empty()) {
+    res = "unknown error";
+  }
+
+  return std::string(result ? "ERROR: " : "SUCCESS: ").append(res);
+}
+
+std::string SwapTool::SwapZramSetWritebackLimit(uint32_t num_pages) const {
+  // Always make sure the writeback limit mode is enabled.
+  base::FilePath enable_file(kZramDevicePath.Append("writeback_limit_enable"));
+  std::string msg;
+  if (!WriteValueToFile(enable_file, "1", &msg)) {
+    return msg;
+  }
+
+  base::FilePath filepath(kZramDevicePath.Append("writeback_limit"));
+  std::string pages_str = std::to_string(num_pages);
+
+  // We ignore the return value of WriteValueToFile because |msg|
+  // contains the free form text response.
+  WriteValueToFile(filepath, pages_str, &msg);
+  return msg;
+}
+
+std::string SwapTool::SwapZramMarkIdle(uint32_t age_seconds) const {
+  const auto age = base::Seconds(age_seconds);
+  if (age > kMaxIdleAge) {
+    // Only allow marking pages as idle between 0sec and 30 days.
+    return base::StringPrintf("ERROR: Invalid age: %d", age_seconds);
+  }
+
+  base::FilePath filepath(kZramDevicePath.Append("idle"));
+  std::string age_str = std::to_string(age.InSeconds());
+  std::string msg;
+
+  // We ignore the return value of WriteValueToFile because |msg|
+  // contains the free form text response.
+  WriteValueToFile(filepath, age_str, &msg);
+  return msg;
+}
+
+std::string SwapTool::InitiateSwapZramWriteback(uint32_t mode) const {
+  base::FilePath filepath(kZramDevicePath.Append("writeback"));
+  std::string mode_str;
+  if (mode == WRITEBACK_IDLE) {
+    mode_str = "idle";
+  } else if (mode == WRITEBACK_HUGE) {
+    mode_str = "huge";
+  } else if (mode == WRITEBACK_HUGE_IDLE) {
+    mode_str = "huge_idle";
+  } else {
+    return "ERROR: Invalid mode";
+  }
+
+  std::string msg;
+
+  // We ignore the return value of WriteValueToFile because |msg|
+  // contains the free form text response.
+  WriteValueToFile(filepath, mode_str, &msg);
+  return msg;
 }
 
 bool SwapTool::KstaledSetRatio(brillo::ErrorPtr* error,

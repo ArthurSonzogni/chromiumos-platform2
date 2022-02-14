@@ -52,6 +52,21 @@ void enter_vfs_namespace() {
   if (minijail_bind(j.get(), kVpdPath, kVpdPath, 1))
     LOG(FATAL) << "minijail_bind(\"" << kVpdPath << "\") failed";
 
+  // debugd needs access to the stateful swap directory.
+  const base::FilePath kSwapWbDir(
+      "/mnt/stateful_partition/unencrypted/userspace_swap.tmp");
+  if (!base::PathExists(kSwapWbDir)) {
+    base::File::Error error;
+    if (!base::CreateDirectoryAndGetError(kSwapWbDir, &error)) {
+      LOG(FATAL) << "Unable to create " << kSwapWbDir << ":"
+                 << base::File::ErrorToString(error);
+    }
+  }
+  if (minijail_bind(j.get(), kSwapWbDir.MaybeAsASCII().c_str(),
+                    kSwapWbDir.MaybeAsASCII().c_str(), 1)) {
+    LOG(FATAL) << "minijail_bind(\"" << kSwapWbDir << "\") failed";
+  }
+
   minijail_remount_mode(j.get(), MS_SLAVE);
 
   if (minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",

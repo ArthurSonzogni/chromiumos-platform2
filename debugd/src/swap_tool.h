@@ -8,6 +8,7 @@
 #include <string>
 
 #include <brillo/errors/error.h>
+#include <base/files/file_path.h>
 
 namespace debugd {
 
@@ -25,8 +26,20 @@ class SwapTool {
   std::string SwapStatus() const;
   std::string SwapSetParameter(const std::string& parameter_name,
                                int32_t parameter_value) const;
+
+  // Zram writeback configuration.
+  std::string SwapZramEnableWriteback(uint32_t size_mb) const;
+  std::string SwapZramSetWritebackLimit(uint32_t num_pages) const;
+  std::string SwapZramMarkIdle(uint32_t age_seconds) const;
+  std::string InitiateSwapZramWriteback(uint32_t mode) const;
+
   // Kstaled swap configuration.
   bool KstaledSetRatio(brillo::ErrorPtr* error, uint8_t kstaled_ratio) const;
+
+ private:
+  static bool WriteValueToFile(const base::FilePath& file,
+                               const std::string& val,
+                               std::string* msg);
 };
 
 }  // namespace debugd

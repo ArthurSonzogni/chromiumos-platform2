@@ -182,6 +182,10 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::string SwapStatus() override;
   std::string SwapSetParameter(const std::string& parameter_name,
                                int32_t parameter_value) override;
+  std::string SwapZramEnableWriteback(uint32_t size_mb) override;
+  std::string SwapZramMarkIdle(uint32_t age) override;
+  std::string SwapZramSetWritebackLimit(uint32_t limit) override;
+  std::string InitiateSwapZramWriteback(uint32_t mode) override;
   std::string SetU2fFlags(const std::string& flags) override;
   std::string GetU2fFlags() override;
   void ContainerStarted() override;
