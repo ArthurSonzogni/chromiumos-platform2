@@ -130,6 +130,17 @@ constexpr auto kLinkUnreliableResetTimeout = base::TimeDelta::FromMinutes(5);
 bool IsPrintableAsciiChar(char c) {
   return (c >= ' ' && c <= '~');
 }
+
+// Is the state of wpa_supplicant indicating that it is currently possibly
+// attempting to connect to a network (e.g. is it associating?).
+bool IsWPAStateConnectionInProgress(const std::string& state) {
+  return state == WPASupplicant::kInterfaceStateAuthenticating ||
+         state == WPASupplicant::kInterfaceStateAssociating ||
+         state == WPASupplicant::kInterfaceStateAssociated ||
+         state == WPASupplicant::kInterfaceState4WayHandshake ||
+         state == WPASupplicant::kInterfaceStateGroupHandshake;
+}
+
 }  // namespace
 
 WiFi::WiFi(Manager* manager,
@@ -1154,17 +1165,7 @@ bool WiFi::IsStateTransitionConnectionMaintenance(
   // will trigger a transition from |kInterfaceStateCompleted| to
   // |kInterfaceStateGroupHandshake| and back to |kInterfaceStateCompleted|,
   // but it's not a full connection attempt.
-
   return service.is_rekey_in_progress() || is_roaming_in_progress_;
-}
-
-// static
-bool WiFi::IsWPAStateConnectionInProgress(const std::string& state) {
-  return state == WPASupplicant::kInterfaceStateAuthenticating ||
-         state == WPASupplicant::kInterfaceStateAssociating ||
-         state == WPASupplicant::kInterfaceStateAssociated ||
-         state == WPASupplicant::kInterfaceState4WayHandshake ||
-         state == WPASupplicant::kInterfaceStateGroupHandshake;
 }
 
 void WiFi::HandleDisconnect() {
@@ -1207,7 +1208,8 @@ void WiFi::HandleDisconnect() {
     // "maintenance" operations (e.g. rekeying) as connection *attempt* failures
     // rather than disconnections, we also need to verify that we're not
     // currently performing a "maintenance" operation that would temporarily
-    // move the state back from "connected" to "handshake".
+    // move the state back from "connected" to "handshake" (rekeying case) or
+    // "associating" (roaming case) or similar.
     // If all those conditions (state is compatible with in-progress connection
     // and there is no ongoing "maintenance" operation) then a failure implies
     // a failed *attempted* connection rather than a disconnection.

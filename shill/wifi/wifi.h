@@ -464,9 +464,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // indicate an actual disconnection and other state changes that show
   // actual connections or disconnections.
   bool IsStateTransitionConnectionMaintenance(const WiFiService& service) const;
-  // Is the state of wpa_supplicant indicating that it is currently possibly
-  // attempting to connect to a network (e.g. is it associating?).
-  static bool IsWPAStateConnectionInProgress(const std::string& state);
 
   void HandleDisconnect();
   // Update failure and state for disconnected service.
