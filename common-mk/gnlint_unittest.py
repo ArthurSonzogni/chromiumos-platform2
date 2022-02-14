@@ -234,6 +234,15 @@ class GnLintTests(LintTestCase):
             CreateTestData('libs', '=', ['"gmock"', '"gtest"'])
         ])
 
+    def testGnLintDefines(self):
+        """Verify GnLintDefines catches bad inputs."""
+        self._CheckLinter(gnlint.GnLintDefines, [
+            CreateTestData('defines', '=', '"-DDEBUG_FLAG"'),
+            CreateTestData('defines', '=', '"DEBUG-FLAG"'),
+            CreateTestData('defines', '=', '"-DTEST_VALUE=1"'),
+            CreateTestData('defines', '=', '"TEST-VALUE=1"'),
+        ])
+
     def testGnLintStaticSharedLibMixing(self):
         """Verify GnLintStaticSharedLibMixing catches bad inputs."""
         # static_library("static_pie") {

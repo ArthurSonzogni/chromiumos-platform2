@@ -2,7 +2,6 @@
 # Copyright 2019 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
-
 """Linter for checking GN files used in platform2 projects."""
 
 # This linter utilizes the token tree parser of the gn binary.
@@ -347,17 +346,16 @@ def GnLintDefines(gndata):
     def CheckNode(node):
         flags = ExtractLiteralAssignment(node, ['defines'])
         for flag in flags:
+            # People sometimes typo the name.
             if flag.startswith('-D'):
-                # People sometimes typo the name.
-                if flag.startswith('-D'):
-                    issues.append(
-                        'defines do not use -D prefixes: use "%s" instead of '
-                        '"%s"' % (flag[2:], flag))
-                else:
-                    # Make sure the name is valid CPP.
-                    name = flag.split('=', 1)[0]
-                    if not re.match(r'^[a-zA-Z0-9_]+$', name):
-                        issues.append('invalid define name: %s' % (name,))
+                issues.append(
+                    'defines do not use -D prefixes: use "%s" instead of '
+                    '"%s"' % (flag[2:], flag))
+            else:
+                # Make sure the name is valid CPP.
+                name = flag.split('=', 1)[0]
+                if not re.match(r'^[a-zA-Z0-9_]+$', name):
+                    issues.append('invalid define name: %s' % (name,))
 
     issues = []
     WalkGn(CheckNode, gndata)
