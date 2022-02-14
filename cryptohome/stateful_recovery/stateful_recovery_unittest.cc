@@ -7,6 +7,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <memory>
+#include <string>
 
 #include <base/files/file_util.h>
 #include <brillo/cryptohome.h>
@@ -44,8 +45,9 @@ class StatefulRecoveryTest : public ::testing::Test {
   }
 
   void Initialize() {
-    recovery_.reset(new StatefulRecovery(
-        platform_.get(), userdataauth_proxy_.get(), policy_provider_.get()));
+    recovery_.reset(new StatefulRecovery(platform_.get(),
+                                         userdataauth_proxy_.get(),
+                                         policy_provider_.get(), flag_file_));
   }
 
  protected:
@@ -62,6 +64,9 @@ class StatefulRecoveryTest : public ::testing::Test {
 
   // The Stateful Recovery that we want to test.
   std::unique_ptr<StatefulRecovery> recovery_;
+
+  // Location of the flag_file
+  const std::string flag_file_ = "mylocalflagfile";
 
   void PrepareMountRequest(bool success) {
     // Mount
@@ -105,8 +110,7 @@ class StatefulRecoveryTest : public ::testing::Test {
 
 TEST_F(StatefulRecoveryTest, ValidRequestV1) {
   std::string flag_content = "1";
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -138,8 +142,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV1) {
 
 TEST_F(StatefulRecoveryTest, ValidRequestV1WriteProtected) {
   std::string flag_content = "1";
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -162,8 +165,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2) {
       brillo::cryptohome::home::SanitizeUserName(user);
   FilePath mount_path =
       FilePath("/home/.shadow/").Append(obfuscated_user).Append("mount");
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -215,8 +217,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwner) {
       brillo::cryptohome::home::SanitizeUserName(user);
   FilePath mount_path =
       FilePath("/home/.shadow/").Append(obfuscated_user).Append("mount");
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -241,8 +242,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2BadUser) {
   std::string user = "user@example.com";
   std::string passkey = "abcd1234";
   std::string flag_content = "2\n" + user + "\n" + passkey;
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -263,8 +263,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2BadUserNotWriteProtected) {
   std::string user = "user@example.com";
   std::string passkey = "abcd1234";
   std::string flag_content = "2\n" + user + "\n" + passkey;
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -308,8 +307,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwnerNotWriteProtected) {
       brillo::cryptohome::home::SanitizeUserName(user);
   FilePath mount_path =
       FilePath("/home/.shadow/").Append(obfuscated_user).Append("mount");
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -353,8 +351,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwnerNotWriteProtected) {
 
 TEST_F(StatefulRecoveryTest, InvalidFlagFileContents) {
   std::string flag_content = "0 hello";
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   Initialize();
   EXPECT_FALSE(recovery_->Requested());
@@ -362,8 +359,7 @@ TEST_F(StatefulRecoveryTest, InvalidFlagFileContents) {
 }
 
 TEST_F(StatefulRecoveryTest, UnreadableFlagFile) {
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(Return(false));
   Initialize();
   EXPECT_FALSE(recovery_->Requested());
@@ -372,8 +368,7 @@ TEST_F(StatefulRecoveryTest, UnreadableFlagFile) {
 
 TEST_F(StatefulRecoveryTest, UncopyableData) {
   std::string flag_content = "1";
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -393,8 +388,7 @@ TEST_F(StatefulRecoveryTest, UncopyableData) {
 
 TEST_F(StatefulRecoveryTest, DirectoryCreationFailure) {
   std::string flag_content = "1";
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -410,8 +404,7 @@ TEST_F(StatefulRecoveryTest, DirectoryCreationFailure) {
 
 TEST_F(StatefulRecoveryTest, StatVFSFailure) {
   std::string flag_content = "1";
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -434,8 +427,7 @@ TEST_F(StatefulRecoveryTest, StatVFSFailure) {
 
 TEST_F(StatefulRecoveryTest, FilesystemDetailsFailure) {
   std::string flag_content = "1";
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))
@@ -481,8 +473,7 @@ TEST_F(StatefulRecoveryTest, UsageReportOk) {
 
 TEST_F(StatefulRecoveryTest, DestinationRecreateFailure) {
   std::string flag_content = "1";
-  EXPECT_CALL(*platform_,
-              ReadFileToString(FilePath(StatefulRecovery::kFlagFile), _))
+  EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
       .WillOnce(DoAll(SetArgPointee<1>(flag_content), Return(true)));
   EXPECT_CALL(*platform_, DeletePathRecursively(
                               FilePath(StatefulRecovery::kRecoverDestination)))

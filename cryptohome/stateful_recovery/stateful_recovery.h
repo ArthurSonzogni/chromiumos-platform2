@@ -37,7 +37,8 @@ class StatefulRecovery {
   explicit StatefulRecovery(
       Platform* platform,
       org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy,
-      policy::PolicyProvider* policy_provider);
+      policy::PolicyProvider* policy_provider,
+      std::string flag_file);
   virtual ~StatefulRecovery() = default;
 
   // Returns true if recovery was requested by the device user.
@@ -88,6 +89,7 @@ class StatefulRecovery {
   Platform* platform_;
   org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy_;
   policy::PolicyProvider* policy_provider_;
+  base::FilePath flag_file_;
   int timeout_ms_;
   std::string version_;
   std::string user_;

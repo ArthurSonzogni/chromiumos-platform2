@@ -42,11 +42,13 @@ const int kDefaultTimeoutMs = 30000;
 StatefulRecovery::StatefulRecovery(
     Platform* platform,
     org::chromium::UserDataAuthInterfaceProxyInterface* userdataauth_proxy,
-    policy::PolicyProvider* policy_provider)
+    policy::PolicyProvider* policy_provider,
+    std::string flag_file)
     : requested_(false),
       platform_(platform),
       userdataauth_proxy_(userdataauth_proxy),
       policy_provider_(policy_provider),
+      flag_file_(FilePath(flag_file)),
       timeout_ms_(kDefaultTimeoutMs) {}
 
 bool StatefulRecovery::Requested() {
@@ -182,7 +184,7 @@ bool StatefulRecovery::Recover() {
 bool StatefulRecovery::ParseFlagFile() {
   std::string contents;
   size_t delim, pos;
-  if (!platform_->ReadFileToString(FilePath(kFlagFile), &contents))
+  if (!platform_->ReadFileToString(flag_file_, &contents))
     return false;
 
   // Make sure there is a trailing newline.

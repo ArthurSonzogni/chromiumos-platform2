@@ -14,11 +14,17 @@
 #include <base/values.h>
 
 #include <brillo/dbus/dbus_connection.h>
+#include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
 #include "cryptohome/platform.h"
 
 int main(int argc, char** argv) {
+  DEFINE_bool(reboot, true, "Reboot at end of recovery");
+  DEFINE_string(flag_file, cryptohome::StatefulRecovery::kFlagFile,
+                "Location of the flag file created by recovery image");
+  brillo::FlagHelper::Init(argc, argv, "Stateful and User recovery");
+
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
   if (getuid() != 0) {
@@ -38,19 +44,21 @@ int main(int argc, char** argv) {
 
   // Do Stateful Recovery if requested.
   cryptohome::StatefulRecovery recovery(&platform, userdataauth_proxy.get(),
-                                        policy_provider.get());
+                                        policy_provider.get(), FLAGS_flag_file);
   if (recovery.Requested()) {
     if (recovery.Recover()) {
       LOG(INFO) << "Stateful recovery was performed successfully.";
     } else {
       LOG(ERROR) << "Stateful recovery failed.";
     }
-    // On Chrome hardware, sets the recovery request field and reboots.
-    if (system("/usr/bin/crossystem recovery_request=1") != 0) {
-      LOG(ERROR) << "Failed to set recovery request!";
+    if (FLAGS_reboot) {
+      // On Chrome hardware, sets the recovery request field and reboots.
+      if (system("/usr/bin/crossystem recovery_request=1") != 0) {
+        LOG(ERROR) << "Failed to set recovery request!";
+      }
+      platform.Sync();
+      reboot(LINUX_REBOOT_CMD_RESTART);
     }
-    platform.Sync();
-    reboot(LINUX_REBOOT_CMD_RESTART);
   }
   return 0;
 }
