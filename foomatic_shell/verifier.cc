@@ -117,29 +117,55 @@ bool Verifier::VerifyCommand(Command* command) {
     return true;
 
   // The "sed" command is allowed <=> it has no parameters with prefixes "-i"
-  // or "--in-place". Moreover, the "--sandbox" parameter is added if not
-  // already present.
+  // or "--in-place". Moreover, the "--sandbox" parameter is added.
   if (cmd == "sed") {
-    bool sandbox = false;
+    bool value_expected = false;
     for (auto& parameter : command->parameters) {
-      const std::string param = Value(parameter);
-      if (param == "--sandbox") {
-        sandbox = true;
+      if (value_expected) {
+        // This string is a value required by the previous parameter.
+        value_expected = false;
         continue;
       }
-      if (HasPrefix(param, "-i") || HasPrefix(param, "--in-place")) {
-        message_ = "sed: disallowed parameter";
-        return false;
+      const std::string param = Value(parameter);
+      // We do not care about command line parameters shorter than two
+      // characters or not started with '-'.
+      if (param.size() < 2 || param[0] != '-') {
+        continue;
+      }
+      // If the parameter begins with '--' there is only one case to check.
+      if (param[1] == '-') {
+        if (HasPrefix(param, "--in-place")) {
+          message_ = "sed: disallowed parameter";
+          return false;
+        }
+        continue;
+      }
+      // The parameter begins with single '-'. It may contain several options
+      // glued together.
+      for (size_t i = 1; i < param.size(); ++i) {
+        if (param[i] == 'i') {
+          message_ = "sed: disallowed parameter";
+          return false;
+        }
+        if (param[i] == 'e' || param[i] == 'f') {
+          // These options require a value. If it is the last character of
+          // the parameter the value is provided in the next parameter.
+          // Otherwise, the remaining part of the parameter is the value.
+          value_expected = (i == param.size() - 1);
+          break;
+        }
       }
     }
-    if (!sandbox) {
-      Token token;
-      token.type = Token::Type::kNativeString;
-      token.value = "--sandbox";
-      token.begin = token.end = command->application.end;
-      const StringAtom string_atom = {{token}};
-      command->parameters.push_back(string_atom);
+    if (value_expected) {
+      message_ = "sed: the last parameter has missing value";
+      return false;
     }
+    Token token;
+    token.type = Token::Type::kNativeString;
+    token.value = "--sandbox";
+    token.begin = token.end = command->application.end;
+    const StringAtom string_atom = {{token}};
+    command->parameters.push_back(string_atom);
     return true;
   }
 
