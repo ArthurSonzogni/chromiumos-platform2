@@ -197,7 +197,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     brillo::SecureBlob salt;
     AssignSalt(&salt);
     mount_ = new NiceMock<MockMount>();
-    session_ = new UserSession(&homedirs_, &disk_cleanup_, &keyset_management_,
+    session_ = new UserSession(&homedirs_, &keyset_management_,
                                &user_activity_timestamp_manager_,
                                &pkcs11_token_factory_, salt, mount_);
     userdataauth_->set_session_for_user(username, session_.get());
@@ -353,7 +353,6 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
 
   void CreatePkcs11TokenInSession(scoped_refptr<NiceMock<MockMount>> mount,
                                   scoped_refptr<UserSession> session) {
-    EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
     EXPECT_CALL(*mount, MountCryptohome(_, _, _))
         .WillOnce(Return(MOUNT_ERROR_NONE));
 
@@ -830,17 +829,15 @@ TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
   constexpr char kUsername2[] = "bar@gmail.com";
 
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session1 =
-      new UserSession(&homedirs_, &disk_cleanup_, &keyset_management_,
-                      &user_activity_timestamp_manager_, &pkcs11_token_factory_,
-                      brillo::SecureBlob(), mount1);
+  scoped_refptr<UserSession> session1 = new UserSession(
+      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, brillo::SecureBlob(), mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
 
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session2 =
-      new UserSession(&homedirs_, &disk_cleanup_, &keyset_management_,
-                      &user_activity_timestamp_manager_, &pkcs11_token_factory_,
-                      brillo::SecureBlob(), mount2);
+  scoped_refptr<UserSession> session2 = new UserSession(
+      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, brillo::SecureBlob(), mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
 
   InSequence sequence;
@@ -1030,15 +1027,15 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
 
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session1 = new UserSession(
-      &homedirs_, &disk_cleanup_, &keyset_management_,
-      &user_activity_timestamp_manager_, &pkcs11_token_factory_, salt, mount1);
+      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, salt, mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
   CreatePkcs11TokenInSession(mount1, session1);
 
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session2 = new UserSession(
-      &homedirs_, &disk_cleanup_, &keyset_management_,
-      &user_activity_timestamp_manager_, &pkcs11_token_factory_, salt, mount2);
+      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_, salt, mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
   CreatePkcs11TokenInSession(mount2, session2);
 
