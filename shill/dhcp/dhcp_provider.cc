@@ -18,9 +18,6 @@
 #include "shill/dhcp/dhcp_properties.h"
 #include "shill/dhcp/dhcpcd_listener_interface.h"
 #include "shill/dhcp/dhcpv4_config.h"
-#ifndef DISABLE_DHCPV6
-#include "shill/dhcp/dhcpv6_config.h"
-#endif
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
@@ -43,9 +40,6 @@ const char kDHCPCDExecutableName[] = "dhcpcd";
 }  // namespace
 
 constexpr char DHCPProvider::kDHCPCDPathFormatLease[];
-#ifndef DISABLE_DHCPV6
-constexpr char DHCPProvider::kDHCPCDPathFormatLease6[];
-#endif  // DISABLE_DHCPV6
 
 DHCPProvider::DHCPProvider()
     : root_("/"), control_interface_(nullptr), dispatcher_(nullptr) {
@@ -90,15 +84,6 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
                           lease_file_suffix, arp_gateway, dhcp_props, metrics_);
 }
 
-#ifndef DISABLE_DHCPV6
-DHCPConfigRefPtr DHCPProvider::CreateIPv6Config(
-    const std::string& device_name, const std::string& lease_file_suffix) {
-  SLOG(this, 2) << __func__ << " device: " << device_name;
-  return new DHCPv6Config(control_interface_, dispatcher_, this, device_name,
-                          lease_file_suffix);
-}
-#endif
-
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
   SLOG(this, 2) << __func__ << " pid: " << pid;
   PIDConfigMap::const_iterator it = configs_.find(pid);
@@ -135,10 +120,6 @@ void DHCPProvider::DestroyLease(const std::string& name) {
   SLOG(this, 2) << __func__ << " name: " << name;
   base::DeleteFile(
       root_.Append(base::StringPrintf(kDHCPCDPathFormatLease, name.c_str())));
-#ifndef DISABLE_DHCPV6
-  base::DeleteFile(
-      root_.Append(base::StringPrintf(kDHCPCDPathFormatLease6, name.c_str())));
-#endif  // DISABLE_DHCPV6
 }
 
 }  // namespace shill

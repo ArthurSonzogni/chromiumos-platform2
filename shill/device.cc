@@ -468,11 +468,6 @@ void Device::DestroyIPConfig() {
     ip6config_ = nullptr;
     ipconfig_changed = true;
   }
-  if (dhcpv6_config_) {
-    dhcpv6_config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect);
-    dhcpv6_config_ = nullptr;
-    ipconfig_changed = true;
-  }
   // Emit updated IP configs if there are any changes.
   if (ipconfig_changed) {
     UpdateIPConfigsProperty();
@@ -634,10 +629,6 @@ void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
     ip6config_ = nullptr;
     UpdateIPConfigsProperty();
   }
-  if (dhcpv6_config_) {
-    SLOG(this, 3) << "Renewing DHCPv6 lease";
-    dhcpv6_config_->RenewIP();
-  }
 }
 
 bool Device::ShouldUseArpGateway() const {
@@ -700,36 +691,8 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
       base::Bind(&Device::OnIPConfigExpired, AsWeakPtr()));
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
-  if (!ipconfig_->RequestIP()) {
-    return false;
-  }
-
-#ifndef DISABLE_DHCPV6
-  // Only start DHCPv6 configuration instance only if DHCPv6 is enabled
-  // for this device.
-  if (manager_->IsDHCPv6EnabledForDevice(link_name_)) {
-    return AcquireIPv6ConfigWithLeaseName(lease_name);
-  }
-#endif  // DISABLE_DHCPV6
-  return true;
+  return ipconfig_->RequestIP();
 }
-
-#ifndef DISABLE_DHCPV6
-bool Device::AcquireIPv6ConfigWithLeaseName(const std::string& lease_name) {
-  auto dhcpv6_config = dhcp_provider_->CreateIPv6Config(link_name_, lease_name);
-  dhcpv6_config_ = dhcpv6_config;
-  dhcpv6_config_->RegisterUpdateCallback(
-      base::Bind(&Device::OnDHCPv6ConfigUpdated, AsWeakPtr()));
-  dhcpv6_config_->RegisterFailureCallback(
-      base::Bind(&Device::OnDHCPv6ConfigFailed, AsWeakPtr()));
-  dhcpv6_config_->RegisterExpireCallback(
-      base::Bind(&Device::OnDHCPv6ConfigExpired, AsWeakPtr()));
-  if (!dhcpv6_config_->RequestIP()) {
-    return false;
-  }
-  return true;
-}
-#endif  // DISABLE_DHCPV6
 
 void Device::UpdateBlackholeUserTraffic() {
   SLOG(this, 2) << __func__;
@@ -1096,24 +1059,6 @@ void Device::OnIPConfigExpired(const IPConfigRefPtr& ipconfig) {
       Metrics::kMetricExpiredLeaseLengthSecondsMin,
       Metrics::kMetricExpiredLeaseLengthSecondsMax,
       Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets);
-}
-
-void Device::OnDHCPv6ConfigUpdated(const IPConfigRefPtr& ipconfig,
-                                   bool /*new_lease_acquired*/) {
-  // Emit configuration update.
-  UpdateIPConfigsProperty();
-}
-
-void Device::OnDHCPv6ConfigFailed(const IPConfigRefPtr& ipconfig) {
-  // Reset configuration data.
-  ipconfig->ResetProperties();
-  UpdateIPConfigsProperty();
-}
-
-void Device::OnDHCPv6ConfigExpired(const IPConfigRefPtr& ipconfig) {
-  // Reset configuration data.
-  ipconfig->ResetProperties();
-  UpdateIPConfigsProperty();
 }
 
 void Device::OnConnected() {}
@@ -1520,9 +1465,6 @@ RpcIdentifiers Device::AvailableIPConfigs(Error* /*error*/) {
   }
   if (ip6config_) {
     identifiers.push_back(ip6config_->GetRpcIdentifier());
-  }
-  if (dhcpv6_config_) {
-    identifiers.push_back(dhcpv6_config_->GetRpcIdentifier());
   }
   return identifiers;
 }

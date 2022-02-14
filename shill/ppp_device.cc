@@ -52,12 +52,6 @@ void PPPDevice::UpdateIPConfigFromPPP(
   UpdateIPConfig(properties);
 }
 
-#ifndef DISABLE_DHCPV6
-bool PPPDevice::AcquireIPv6Config() {
-  return AcquireIPv6ConfigWithLeaseName(std::string());
-}
-#endif
-
 // static
 std::string PPPDevice::GetInterfaceName(
     const std::map<std::string, std::string>& configuration) {

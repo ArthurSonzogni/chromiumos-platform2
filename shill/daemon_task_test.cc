@@ -188,7 +188,6 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   DaemonTask::Settings settings;
   std::vector<std::string> kEmptyStringList;
   EXPECT_CALL(*manager_, SetBlockedDevices(kEmptyStringList));
-  EXPECT_CALL(*manager_, SetDHCPv6EnabledDevices(kEmptyStringList));
   EXPECT_CALL(*manager_, SetTechnologyOrder("", _));
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
   EXPECT_CALL(*manager_, SetStartupPortalList(_)).Times(0);
@@ -202,8 +201,6 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   std::vector<std::string> kBlockedDevices = {"eth0", "eth1"};
   settings.devices_blocked = kBlockedDevices;
   settings.default_technology_order = "wifi,ethernet";
-  std::vector<std::string> kDHCPv6EnabledDevices{"eth2", "eth3"};
-  settings.dhcpv6_enabled_devices = kDHCPv6EnabledDevices;
   settings.ignore_unknown_ethernet = false;
   settings.portal_list = "cellular";
   settings.use_portal_list = true;
@@ -212,7 +209,6 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   settings.minimum_mtu = 256;
   settings.accept_hostname_from = "eth*";
   EXPECT_CALL(*manager_, SetBlockedDevices(kBlockedDevices));
-  EXPECT_CALL(*manager_, SetDHCPv6EnabledDevices(kDHCPv6EnabledDevices));
   EXPECT_CALL(*manager_, SetTechnologyOrder("wifi,ethernet", _));
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
   EXPECT_CALL(*manager_, SetStartupPortalList("cellular"));

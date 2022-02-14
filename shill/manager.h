@@ -482,13 +482,6 @@ class Manager {
   virtual void SetAcceptHostnameFrom(const std::string& hostname_from);
   virtual bool ShouldAcceptHostnameFrom(const std::string& device_name) const;
 
-  // Set DHCPv6 enabled device list.
-  virtual void SetDHCPv6EnabledDevices(
-      const std::vector<std::string>& device_list);
-
-  // Return true if DHCPv6 is enabled for the given device with |device_name|.
-  virtual bool IsDHCPv6EnabledForDevice(const std::string& device_name) const;
-
   // Filter the list of prepended DNS servers, copying only those that match
   // |family| into |dns_servers|.  |dns_servers| is cleared, regardless of
   // whether or not there are any addresses that match |family|.
@@ -950,9 +943,6 @@ class Manager {
 
   // List of allowed devices specified from command line.
   std::vector<std::string> allowed_devices_;
-
-  // List of DHCPv6 enabled devices.
-  std::vector<std::string> dhcpv6_enabled_devices_;
 
   // DhcpProperties stored for the default profile.
   std::unique_ptr<DhcpProperties> dhcp_properties_;

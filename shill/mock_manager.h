@@ -122,16 +122,8 @@ class MockManager : public Manager {
               ShouldAcceptHostnameFrom,
               (const std::string&),
               (const, override));
-  MOCK_METHOD(bool,
-              IsDHCPv6EnabledForDevice,
-              (const std::string&),
-              (const, override));
   MOCK_METHOD(void,
               SetBlockedDevices,
-              (const std::vector<std::string>&),
-              (override));
-  MOCK_METHOD(void,
-              SetDHCPv6EnabledDevices,
               (const std::vector<std::string>&),
               (override));
   MOCK_METHOD(void,

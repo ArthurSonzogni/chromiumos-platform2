@@ -37,10 +37,6 @@ class DHCPProvider {
  public:
   static constexpr char kDHCPCDPathFormatLease[] =
       "var/lib/dhcpcd/dhcpcd-%s.lease";
-#ifndef DISABLE_DHCPV6
-  static constexpr char kDHCPCDPathFormatLease6[] =
-      "var/lib/dhcpcd/dhcpcd-%s.lease6";
-#endif  // DISABLE_DHCPV6
 
   virtual ~DHCPProvider();
 
@@ -71,12 +67,6 @@ class DHCPProvider {
       const std::string& lease_file_suffix,
       bool arp_gateway,
       const DhcpProperties& dhcp_props);
-
-#ifndef DISABLE_DHCPV6
-  // Create a new DHCPv6Config for |device_name|.
-  virtual DHCPConfigRefPtr CreateIPv6Config(
-      const std::string& device_name, const std::string& lease_file_suffix);
-#endif
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
   // nullptr if |pid| is not bound to a configuration.

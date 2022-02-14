@@ -69,7 +69,6 @@ void DaemonTask::ApplySettings() {
     manager_->SetMinimumMTU(settings_.minimum_mtu);
   }
   manager_->SetAcceptHostnameFrom(settings_.accept_hostname_from);
-  manager_->SetDHCPv6EnabledDevices(settings_.dhcpv6_enabled_devices);
 }
 
 bool DaemonTask::Quit(const base::Closure& completion_callback) {

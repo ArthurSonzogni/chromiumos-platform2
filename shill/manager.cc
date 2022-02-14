@@ -1261,15 +1261,6 @@ bool Manager::ShouldAcceptHostnameFrom(const std::string& device_name) const {
   return base::MatchPattern(device_name, accept_hostname_from_);
 }
 
-void Manager::SetDHCPv6EnabledDevices(
-    const std::vector<std::string>& device_list) {
-  dhcpv6_enabled_devices_ = device_list;
-}
-
-bool Manager::IsDHCPv6EnabledForDevice(const std::string& device_name) const {
-  return base::Contains(dhcpv6_enabled_devices_, device_name);
-}
-
 std::vector<std::string> Manager::FilterPrependDNSServersByFamily(
     IPAddress::Family family) const {
   std::vector<std::string> dns_servers;

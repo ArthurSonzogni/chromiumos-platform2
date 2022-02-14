@@ -216,13 +216,6 @@ void PPPoEService::OnPPPConnected(
 
   ppp_device_->SelectService(this);
   ppp_device_->UpdateIPConfigFromPPP(params, false /* blackhole_ipv6 */);
-#ifndef DISABLE_DHCPV6
-  // Acquire DHCPv6 configurations through the PPPoE (virtual) interface
-  // if it is enabled for DHCPv6.
-  if (manager()->IsDHCPv6EnabledForDevice(ppp_device_->link_name())) {
-    ppp_device_->AcquireIPv6Config();
-  }
-#endif
   manager()->OnInnerDevicesChanged();
 }
 

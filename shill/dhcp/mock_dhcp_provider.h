@@ -34,12 +34,6 @@ class MockDHCPProvider : public DHCPProvider {
       CreateIPv4Config,
       (const std::string&, const std::string&, bool, const DhcpProperties&),
       (override));
-#ifndef DISABLE_DHCPV6
-  MOCK_METHOD(DHCPConfigRefPtr,
-              CreateIPv6Config,
-              (const std::string&, const std::string&),
-              (override));
-#endif
   MOCK_METHOD(void, BindPID, (int, const DHCPConfigRefPtr&), (override));
   MOCK_METHOD(void, UnbindPID, (int), (override));
 };

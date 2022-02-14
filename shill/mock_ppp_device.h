@@ -42,9 +42,6 @@ class MockPPPDevice : public PPPDevice {
               UpdateIPConfigFromPPP,
               ((const std::map<std::string, std::string>&), bool),
               (override));
-#ifndef DISABLE_DHCPV6
-  MOCK_METHOD(bool, AcquireIPv6Config, (), (override));
-#endif
 };
 
 }  // namespace shill

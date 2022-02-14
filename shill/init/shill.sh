@@ -53,10 +53,6 @@ if [ -n "${SHILL_MINIMUM_MTU}" ]; then
   set -- "$@" --minimum-mtu="${SHILL_MINIMUM_MTU}"
 fi
 
-if [ -n "${DHCPV6_ENABLED_DEVICES}" ]; then
-  set -- "$@" --dhcpv6-enabled-devices="${DHCPV6_ENABLED_DEVICES}"
-fi
-
 # If OOBE has not completed (i.e. EULA not agreed to), do not run
 # portal checks
 if [ ! -f /home/chronos/.oobe_completed ]; then

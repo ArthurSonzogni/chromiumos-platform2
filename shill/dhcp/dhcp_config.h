@@ -83,9 +83,6 @@ class DHCPConfig : public IPConfig {
 
   // Cleans up remaining state from a running client, if any, including freeing
   // its GPid, exit watch callback, and state files.
-  // The file path for the lease file and pid file is different for IPv4
-  // and IPv6. So make this function virtual to have the derived class delete
-  // the files accordingly.
   virtual void CleanupClientState();
 
   // Return true if we should treat acquisition timeout as failure.
@@ -102,7 +99,6 @@ class DHCPConfig : public IPConfig {
  private:
   friend class DHCPConfigTest;
   friend class DHCPv4ConfigTest;
-  friend class DHCPv6ConfigTest;
   FRIEND_TEST(DHCPConfigCallbackTest, NotifyFailure);
   FRIEND_TEST(DHCPConfigCallbackTest, ProcessAcquisitionTimeout);
   FRIEND_TEST(DHCPConfigCallbackTest, RequestIPTimeout);

@@ -79,10 +79,6 @@ IPConfig::IPConfig(ControlInterface* control_interface,
                                 &properties_.vendor_encapsulated_options);
   store_.RegisterConstString(kWebProxyAutoDiscoveryUrlProperty,
                              &properties_.web_proxy_auto_discovery);
-  store_.RegisterStringmaps(kDhcpv6AddressesProperty,
-                            &properties_.dhcpv6_addresses);
-  store_.RegisterStringmaps(kDhcpv6DelegatedPrefixesProperty,
-                            &properties_.dhcpv6_delegated_prefixes);
   store_.RegisterConstUint32(kLeaseDurationSecondsProperty,
                              &properties_.lease_duration_seconds);
   store_.RegisterConstByteArray(kiSNSOptionDataProperty,

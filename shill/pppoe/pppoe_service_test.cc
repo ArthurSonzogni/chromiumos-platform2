@@ -149,19 +149,6 @@ TEST_F(PPPoEServiceTest, OnPPPConnected) {
 
   EXPECT_CALL(device_info_, GetIndex(StrEq(kLinkName))).WillOnce(Return(0));
   EXPECT_CALL(device_info_, RegisterDevice(_));
-#ifndef DISABLE_DHCPV6
-  // Lead to the creation of a mock rather than real DHCPConfig to avoid trying
-  // to create a dhcpcd process.
-  NiceMock<MockDHCPProvider> dhcp_provider;
-  EXPECT_CALL(dhcp_provider, CreateIPv6Config(_, _))
-      .WillOnce(
-          Return(new NiceMock<MockDHCPConfig>(&control_interface_, kLinkName)));
-  EXPECT_CALL(manager_, IsDHCPv6EnabledForDevice(StrEq(kLinkName)))
-      .WillOnce(WithoutArgs(Invoke([this, &dhcp_provider]() {
-        this->device()->set_dhcp_provider(&dhcp_provider);
-        return true;
-      })));
-#endif  // DISABLE_DHCPV6
   EXPECT_CALL(manager_, OnInnerDevicesChanged());
   service_->OnPPPConnected(params);
   Mock::VerifyAndClearExpectations(&manager_);
@@ -172,9 +159,6 @@ TEST_F(PPPoEServiceTest, OnPPPConnected) {
   EXPECT_EQ(device()->selected_service(), service_);
   ASSERT_NE(device()->ipconfig(), nullptr);
   EXPECT_FALSE(device()->ipconfig()->properties().blackhole_ipv6);
-#ifndef DISABLE_DHCPV6
-  EXPECT_NE(device()->dhcpv6_config(), nullptr);
-#endif  // DISABLE_DHCPV6
 }
 
 TEST_F(PPPoEServiceTest, Connect) {

@@ -119,12 +119,12 @@ Methods		dict GetProperties()
 			more attempt is made to register, after switching back
 			to automatic registration mode.
 
-			Possible Errors: [service].Error.NotImplemented 
+			Possible Errors: [service].Error.NotImplemented
 			   		 [service].Error.IllegalOperation
 
 		void RenewDHCPLease()
 
-			Request the renewal of all DHCPv4 and DHCPv6 leases.
+			Request the renewal of all DHCPv4 leases.
 
 		void Reset()
 

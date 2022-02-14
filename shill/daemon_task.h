@@ -49,7 +49,6 @@ class DaemonTask {
     std::string default_technology_order;
     std::vector<std::string> devices_blocked;
     std::vector<std::string> devices_allowed;
-    std::vector<std::string> dhcpv6_enabled_devices;
     bool ignore_unknown_ethernet;
     int minimum_mtu;
     bool passive_mode;

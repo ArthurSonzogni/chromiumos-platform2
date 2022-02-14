@@ -216,7 +216,6 @@ class Device : public base::RefCounted<Device> {
 
   const IPConfigRefPtr& ipconfig() const { return ipconfig_; }
   const IPConfigRefPtr& ip6config() const { return ip6config_; }
-  const IPConfigRefPtr& dhcpv6_config() const { return dhcpv6_config_; }
   void set_ipconfig(const IPConfigRefPtr& config) { ipconfig_ = config; }
   void set_ip6config(const IPConfigRefPtr& config) { ip6config_ = config; }
 
@@ -359,9 +358,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(DeviceTest, LinkMonitorFailure);
   FRIEND_TEST(DeviceTest, Load);
-  FRIEND_TEST(DeviceTest, OnDHCPv6ConfigExpired);
-  FRIEND_TEST(DeviceTest, OnDHCPv6ConfigFailed);
-  FRIEND_TEST(DeviceTest, OnDHCPv6ConfigUpdated);
   FRIEND_TEST(DeviceTest, OnIPv6AddressChanged);
   FRIEND_TEST(DeviceTest, OnIPv6ConfigurationCompleted);
   FRIEND_TEST(DeviceTest, OnIPv6DnsServerAddressesChanged);
@@ -459,15 +455,6 @@ class Device : public base::RefCounted<Device> {
   // IPConfigUpdatedCallback on IP configuration changes. Returns true if the IP
   // request was successfully sent.
   bool AcquireIPConfigWithLeaseName(const std::string& lease_name);
-
-#ifndef DISABLE_DHCPV6
-  // Creates a new DHCPv6 configuration instances, stores it in
-  // |dhcpv6_config_| and requests a new configuration.  Saves the DHCPv6
-  // lease to a filename based on the passed-in |lease_name|.
-  // The acquired configurations will not be used to setup a connection
-  // for the device.
-  bool AcquireIPv6ConfigWithLeaseName(const std::string& lease_name);
-#endif
 
   // Assigns the IPv4 configuration |properties| to |ipconfig_|.
   void AssignIPConfig(const IPConfig::Properties& properties);
@@ -621,18 +608,6 @@ class Device : public base::RefCounted<Device> {
   // follow.
   void OnIPConfigExpired(const IPConfigRefPtr& ipconfig);
 
-  // Callback invoked on successful DHCPv6 configuration updates.
-  void OnDHCPv6ConfigUpdated(const IPConfigRefPtr& ipconfig,
-                             bool new_lease_acquired);
-
-  // Callback invoked on DHCPv6 configuration failures.
-  void OnDHCPv6ConfigFailed(const IPConfigRefPtr& ipconfig);
-
-  // Callback invoked when an DHCPv6Config restarts due to lease expiry.  This
-  // is advisory, since an "Updated" or "Failed" signal is guaranteed to
-  // follow.
-  void OnDHCPv6ConfigExpired(const IPConfigRefPtr& ipconfig);
-
   // Return true if given IP configuration contain both IP address and DNS
   // servers. Hence, ready to be used for network connection.
   bool IPConfigCompleted(const IPConfigRefPtr& ipconfig);
@@ -768,7 +743,6 @@ class Device : public base::RefCounted<Device> {
   Manager* manager_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;
-  IPConfigRefPtr dhcpv6_config_;
   ConnectionRefPtr connection_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;

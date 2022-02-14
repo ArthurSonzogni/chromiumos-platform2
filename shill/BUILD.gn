@@ -78,10 +78,6 @@ pkg_config("target_defaults") {
     defines += [ "DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS" ]
   }
 
-  if (!use.dhcpv6) {
-    defines += [ "DISABLE_DHCPV6" ]
-  }
-
   if (!use.pppoe) {
     defines += [ "DISABLE_PPPOE" ]
   }
@@ -447,10 +443,6 @@ static_library("libshill") {
       "ethernet/ethernet_eap_service.cc",
     ]
   }
-
-  if (use.dhcpv6) {
-    sources += [ "dhcp/dhcpv6_config.cc" ]
-  }
 }
 
 pkg_config("shill_config") {
@@ -807,10 +799,6 @@ if (use.test) {
         "ppp_daemon_test.cc",
         "ppp_device_test.cc",
       ]
-    }
-
-    if (use.dhcpv6) {
-      sources += [ "dhcp/dhcpv6_config_test.cc" ]
     }
 
     if (use.pppoe) {

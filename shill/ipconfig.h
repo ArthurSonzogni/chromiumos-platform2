@@ -67,14 +67,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
     // Note that presense of this field indicates that this is a p2p interface,
     // and a gateway won't be needed in creating routes on this interface.
     std::string peer_address;
-    // Each map represents a single address or prefix in a DHCPv6 lease.
-    // Multiple addresses can be returned with different lifetimes, for example
-    // when aging out an old prefix and switching to a new one.  The available
-    // keys are all of the form "kDhcpv6*".
-    // IPv6 addresses delegated from a DHCPv6 server.
-    Stringmaps dhcpv6_addresses;
-    // IPv6 prefix delegated from a DHCPv6 server.
-    Stringmaps dhcpv6_delegated_prefixes;
     // Any egress traffic sent to prefixes listed in |included_dsts| will be
     // routed through this connection, even if it is not the default connection.
     std::vector<IPAddress> included_dsts;
