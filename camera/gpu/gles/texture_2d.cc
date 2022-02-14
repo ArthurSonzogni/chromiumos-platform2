@@ -59,8 +59,10 @@ Texture2D::Texture2D(Target target, const EglImage& egl_image)
     Invalidate();
     return;
   }
-  glGetTexLevelParameteriv(target_, 0, GL_TEXTURE_INTERNAL_FORMAT,
-                           reinterpret_cast<GLint*>(&internal_format_));
+  if (target_ == GL_TEXTURE_2D) {
+    glGetTexLevelParameteriv(target_, 0, GL_TEXTURE_INTERNAL_FORMAT,
+                             reinterpret_cast<GLint*>(&internal_format_));
+  }
   Unbind();
 }
 
