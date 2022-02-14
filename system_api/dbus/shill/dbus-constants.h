@@ -343,8 +343,6 @@ const char kWireGuardPeerPersistentKeepalive[] = "PersistentKeepalive";
 const char kAcceptedHostnameProperty[] = "AcceptedHostname";
 // kAddressProperty: Defined below for Device.
 const char kBroadcastProperty[] = "Broadcast";
-const char kDhcpv6AddressesProperty[] = "Dhcpv6Addresses";
-const char kDhcpv6DelegatedPrefixesProperty[] = "Dhcpv6DelegatedPrefixes";
 const char kDomainNameProperty[] = "DomainName";
 const char kExcludedRoutesProperty[] = "ExcludedRoutes";
 const char kGatewayProperty[] = "Gateway";
@@ -359,13 +357,6 @@ const char kSearchDomainsProperty[] = "SearchDomains";
 const char kVendorEncapsulatedOptionsProperty[] = "VendorEncapsulatedOptions";
 const char kWebProxyAutoDiscoveryUrlProperty[] = "WebProxyAutoDiscoveryUrl";
 const char kiSNSOptionDataProperty[] = "iSNSOptionData";  // For RFC 4174.
-
-// DHCPv6 IPConfig property names.
-const char kDhcpv6AddressProperty[] = "Address";
-const char kDhcpv6LengthProperty[] = "Length";
-const char kDhcpv6LeaseDurationSecondsProperty[] = "LeaseDurationSeconds";
-const char kDhcpv6PreferredLeaseDurationSecondsProperty[] =
-    "PreferredLeaseDurationSeconds";
 
 // Passpoint credentials property names.
 // EAP properties are defined above for EAP service.
