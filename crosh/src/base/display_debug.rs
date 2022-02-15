@@ -221,7 +221,13 @@ pub fn register(dispatcher: &mut Dispatcher) {
 }
 
 fn execute_display_debug(cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> {
-    dispatcher::print_help_command_callback(cmd, args)
+    dispatcher::print_help_command_callback(cmd, args)?;
+    // Don't consider the cases where a user calls `display_debug` with no args or as
+    // `display_debug help` as errors.
+    match args.get_args().get(0).map(String::as_str) {
+        Some("help") | None => Ok(()),
+        Some(command) => Err(dispatcher::Error::CommandNotFound(command.to_string())),
+    }
 }
 
 fn execute_display_debug_trace_start(
