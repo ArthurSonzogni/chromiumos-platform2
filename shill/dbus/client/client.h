@@ -215,7 +215,7 @@ class BRILLO_EXPORT Client {
   using DeviceChangedHandler = base::Callback<void(const Device* const)>;
 
   explicit Client(scoped_refptr<dbus::Bus> bus);
-  virtual ~Client();
+  virtual ~Client() = default;
   Client(const Client&) = delete;
   Client& operator=(const Client&) = delete;
 
@@ -404,19 +404,25 @@ class BRILLO_EXPORT Client {
         scoped_refptr<dbus::Bus> bus,
         std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> proxy)
         : bus_(bus), proxy_(std::move(proxy)) {}
-    ~DeviceWrapper() {
-      bus_->RemoveObjectProxy(kFlimflamServiceName, proxy_->GetObjectPath(),
-                              base::DoNothing());
-      if (svc_proxy_)
-        bus_->RemoveObjectProxy(kFlimflamServiceName,
-                                svc_proxy_->GetObjectPath(), base::DoNothing());
-    }
+    ~DeviceWrapper() = default;
     DeviceWrapper(const DeviceWrapper&) = delete;
     DeviceWrapper& operator=(const DeviceWrapper&) = delete;
 
     Device* device() { return &device_; }
     org::chromium::flimflam::DeviceProxyInterface* proxy() {
       return proxy_.get();
+    }
+
+    // Object proxy needs to be released whenever a DeviceWrapper is deleted.
+    // However, it is not possible to do it in its destructor as the method
+    // `RemoveObjectProxy(...)` is asynchronous and might race with the D-Bus
+    // destructor.
+    void release_object_proxy() {
+      bus_->RemoveObjectProxy(kFlimflamServiceName, proxy_->GetObjectPath(),
+                              base::DoNothing());
+      if (svc_proxy_)
+        bus_->RemoveObjectProxy(kFlimflamServiceName,
+                                svc_proxy_->GetObjectPath(), base::DoNothing());
     }
     void set_service_proxy(
         std::unique_ptr<org::chromium::flimflam::ServiceProxyInterface> proxy) {

@@ -112,11 +112,6 @@ Client::Client(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
                  weak_factory_.GetWeakPtr()));
 }
 
-Client::~Client() {
-  bus_->RemoveObjectProxy(kFlimflamServiceName, dbus::ObjectPath("/"),
-                          base::DoNothing());
-}
-
 void Client::NewDefaultServiceProxy(const dbus::ObjectPath& service_path) {
   default_service_proxy_ = std::make_unique<ServiceProxy>(bus_, service_path);
 }
@@ -232,6 +227,9 @@ void Client::RegisterDeviceRemovedHandler(const DeviceChangedHandler& handler) {
 void Client::OnOwnerChange(const std::string& old_owner,
                            const std::string& new_owner) {
   ReleaseDefaultServiceProxy();
+  for (const auto& device : devices_) {
+    device.second->release_object_proxy();
+  }
   devices_.clear();
 
   bool reset = !new_owner.empty();
@@ -328,6 +326,7 @@ void Client::HandleDevicesChanged(const brillo::Any& property_value) {
       for (auto& handler : device_removed_handlers_) {
         handler.Run(it->second->device());
       }
+      it->second->release_object_proxy();
       it = devices_.erase(it);
     } else {
       ++it;
