@@ -1080,13 +1080,21 @@ void CameraClient::RequestHandler::NotifyRequestError(uint32_t frame_number) {
 int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
-  // If there are V4L2 buffers immediately available, all of them can be
-  // outdated since V4L2 driver drops new frames when the queue is full.
-  // Drop them unless we are in the middle of recording video.
+  V4L2Buffer buffer;
+  int ret = device_->GetNextFrameBuffer(kTimeoutInfinite, &buffer);
+  if (ret != 0) {
+    LOGFID(ERROR, device_id_)
+        << "GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
+    return ret;
+  }
+  // |buffer| can be out of date and there are frames queuing in the driver.
+  // Drop them and get the newest frame when:
+  // 1. This is the first frame after stream on;
+  // 2. Not recording video.
   if (current_buffer_timestamp_in_v4l2_ == 0 || !is_video_recording_) {
     while (true) {
-      V4L2Buffer buffer;
-      int ret = device_->GetNextFrameBuffer(0, &buffer);
+      V4L2Buffer next_buffer;
+      ret = device_->GetNextFrameBuffer(0, &next_buffer);
       if (ret == -ETIMEDOUT) {
         break;
       }
@@ -1106,15 +1114,8 @@ int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
             << " for input buffer id: " << buffer.id;
         return ret;
       }
+      buffer = next_buffer;
     }
-  }
-
-  V4L2Buffer buffer;
-  int ret = device_->GetNextFrameBuffer(kTimeoutInfinite, &buffer);
-  if (ret != 0) {
-    LOGFID(ERROR, device_id_)
-        << "GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
-    return ret;
   }
   current_buffer_timestamp_in_user_ = buffer.user_ts;
   current_buffer_timestamp_in_v4l2_ = buffer.v4l2_ts;
