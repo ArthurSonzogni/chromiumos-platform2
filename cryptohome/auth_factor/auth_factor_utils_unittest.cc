@@ -3,18 +3,26 @@
 // found in the LICENSE file.
 
 #include <absl/types/variant.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <gtest/gtest.h>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
+
 namespace cryptohome {
+
+namespace {
+
+constexpr char kLabel[] = "some-label";
+
+}  // namespace
 
 TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheck) {
   // Setup
-  constexpr char kLabel[] = "some-label";
   user_data_auth::AuthFactor auth_factor_proto;
   auth_factor_proto.mutable_password_metadata();
   auth_factor_proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
@@ -32,6 +40,35 @@ TEST(AuthFactorUtilsTest, AuthFactorMetaDataCheck) {
       auth_factor_metadata.metadata));
   EXPECT_EQ(auth_factor_type, AuthFactorType::kPassword);
   EXPECT_EQ(auth_factor_label, kLabel);
+}
+
+// Test `GetAuthFactorProto()` for a password auth factor.
+TEST(AuthFactorUtilsTest, GetProtoPassword) {
+  // Setup
+  AuthFactorMetadata metadata = {.metadata = PasswordAuthFactorMetadata()};
+
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      GetAuthFactorProto(metadata, AuthFactorType::kPassword, kLabel);
+
+  // Verify
+  ASSERT_TRUE(proto.has_value());
+  EXPECT_EQ(proto.value().type(), user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  EXPECT_EQ(proto.value().label(), kLabel);
+  ASSERT_TRUE(proto.value().has_password_metadata());
+}
+
+// Test `GetAuthFactorProto()` fails when the password metadata is missing.
+TEST(AuthFactorUtilsTest, GetProtoPasswordErrorNoMetadata) {
+  // Setup
+  AuthFactorMetadata metadata;
+
+  // Test
+  std::optional<user_data_auth::AuthFactor> proto =
+      GetAuthFactorProto(metadata, AuthFactorType::kPassword, kLabel);
+
+  // Verify
+  EXPECT_FALSE(proto.has_value());
 }
 
 }  // namespace cryptohome

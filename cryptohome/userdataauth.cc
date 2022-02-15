@@ -27,7 +27,9 @@
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/bootlockbox/boot_lockbox_client.h"
@@ -3377,6 +3379,14 @@ bool UserDataAuth::StartAuthSession(
       auth_session->key_label_data().begin(),
       auth_session->key_label_data().end());
   *(reply.mutable_key_label_data()) = proto_key_map;
+  for (const auto& label_and_factor : auth_session->label_to_auth_factor()) {
+    const std::unique_ptr<AuthFactor>& auth_factor = label_and_factor.second;
+    std::optional<user_data_auth::AuthFactor> proto_factor = GetAuthFactorProto(
+        auth_factor->metadata(), auth_factor->type(), auth_factor->label());
+    if (proto_factor.has_value()) {
+      *reply.add_auth_factors() = std::move(proto_factor.value());
+    }
+  }
   std::move(on_done).Run(reply);
 
   return true;

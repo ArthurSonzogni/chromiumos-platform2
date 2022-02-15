@@ -2734,10 +2734,7 @@ int main(int argc, char** argv) {
       return static_cast<int>(reply.error());
     }
 
-    printf("auth_session_id:%s\n",
-           base::HexEncode(reply.auth_session_id().c_str(),
-                           reply.auth_session_id().size())
-               .c_str());
+    puts(GetProtoDebugString(reply).c_str());
     printf("Auth session start succeeded.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_CREDENTIALS],
                      action.c_str())) {

@@ -6,6 +6,7 @@
 #define CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_UTILS_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
@@ -21,6 +22,12 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
                            AuthFactorMetadata& out_auth_factor_metadata,
                            AuthFactorType& out_auth_factor_type,
                            std::string& out_auth_factor_label);
+
+// Returns the D-Bus API proto containing the auth factor description.
+std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthFactorType& auth_factor_type,
+    const std::string& auth_factor_label);
 
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_UTILS_H_

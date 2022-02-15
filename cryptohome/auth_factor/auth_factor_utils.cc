@@ -5,7 +5,9 @@
 #include "cryptohome/auth_factor/auth_factor_utils.h"
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <variant>
 
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
@@ -20,6 +22,20 @@ namespace {
 void GetPasswordMetadata(const user_data_auth::AuthFactor& auth_factor,
                          AuthFactorMetadata* auth_factor_metadata) {
   auth_factor_metadata->metadata = PasswordAuthFactorMetadata();
+}
+
+// Creates a D-Bus proto for a password auth factor.
+std::optional<user_data_auth::AuthFactor> ToPasswordProto(
+    const PasswordAuthFactorMetadata* metadata) {
+  if (!metadata) {
+    LOG(ERROR) << "Missing password auth factor metadata";
+    return std::nullopt;
+  }
+  user_data_auth::AuthFactor proto;
+  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  // There's no metadata for password auth factors currently.
+  proto.mutable_password_metadata();
+  return proto;
 }
 
 }  // namespace
@@ -48,6 +64,25 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
   }
 
   return true;
+}
+
+std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
+    const AuthFactorMetadata& auth_factor_metadata,
+    const AuthFactorType& auth_factor_type,
+    const std::string& auth_factor_label) {
+  std::optional<user_data_auth::AuthFactor> proto;
+  switch (auth_factor_type) {
+    case AuthFactorType::kPassword:
+      proto = ToPasswordProto(std::get_if<PasswordAuthFactorMetadata>(
+          &auth_factor_metadata.metadata));
+      break;
+  }
+  if (!proto.has_value()) {
+    LOG(ERROR) << "Failed to convert auth factor to proto";
+    return std::nullopt;
+  }
+  proto.value().set_label(auth_factor_label);
+  return proto;
 }
 
 }  // namespace cryptohome

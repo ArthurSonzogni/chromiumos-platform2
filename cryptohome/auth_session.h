@@ -131,6 +131,12 @@ class AuthSession final {
     return key_label_data_;
   }
 
+  // Returns the map from the label to the auth factor.
+  const std::map<std::string, std::unique_ptr<AuthFactor>>&
+  label_to_auth_factor() const {
+    return label_to_auth_factor_;
+  }
+
   // Returns the decrypted USS object, or null if it's not available. Exposed
   // only for unit tests.
   const UserSecretStash* user_secret_stash_for_testing() const {
@@ -218,6 +224,8 @@ class AuthSession final {
   // Map to store the label and public KeyData.
   // TODO(crbug.com/1171024): Change this to AuthFactor
   std::map<std::string, cryptohome::KeyData> key_label_data_;
+  // Map containing the auth factors already configured for this user.
+  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor_;
 
   friend class AuthSessionTest;
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);

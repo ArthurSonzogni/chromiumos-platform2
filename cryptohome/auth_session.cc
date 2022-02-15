@@ -41,6 +41,30 @@ constexpr base::TimeDelta kAuthSessionTimeoutInMinutes = base::Minutes(5);
 
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
+namespace {
+
+// Loads all configured auth factors for the given user from the disk. Malformed
+// factors are logged and skipped.
+std::map<std::string, std::unique_ptr<AuthFactor>> LoadAllAuthFactors(
+    const std::string& obfuscated_username,
+    AuthFactorManager* auth_factor_manager) {
+  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor;
+  for (const auto& [label, auth_factor_type] :
+       auth_factor_manager->ListAuthFactors(obfuscated_username)) {
+    std::unique_ptr<AuthFactor> auth_factor =
+        auth_factor_manager->LoadAuthFactor(obfuscated_username,
+                                            auth_factor_type, label);
+    if (!auth_factor) {
+      LOG(WARNING) << "Skipping malformed auth factor " << label;
+      continue;
+    }
+    label_to_auth_factor.emplace(label, std::move(auth_factor));
+  }
+  return label_to_auth_factor;
+}
+
+}  // namespace
+
 AuthSession::AuthSession(
     std::string username,
     unsigned int flags,
@@ -77,6 +101,8 @@ AuthSession::AuthSession(
     keyset_management_->GetVaultKeysetLabelsAndData(obfuscated_username_,
                                                     &key_label_data_);
     user_has_configured_credential_ = !key_label_data_.empty();
+    label_to_auth_factor_ =
+        LoadAllAuthFactors(obfuscated_username_, auth_factor_manager_);
   }
 }
 
