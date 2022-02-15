@@ -17,7 +17,7 @@ namespace client_id {
 
 namespace {
 
-constexpr char kClientIdPrefix[] = "CloudReady-";
+constexpr char kClientIdPrefix[] = "Flex-";
 constexpr char kClientIdFile[] = "var/lib/client_id/client_id";
 constexpr char kUuidPath[] = "proc/sys/kernel/random/uuid";
 constexpr char kLegacyClientIdFile[] =
