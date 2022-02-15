@@ -80,3 +80,11 @@ struct TestMap3 {
 struct TestMap4 {
   map<MapKey, int32>? m;
 };
+
+struct TypeMapping {
+  int32 n;
+};
+
+struct TestTypeMapping {
+  TypeMapping tm;
+};

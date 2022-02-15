@@ -151,6 +151,11 @@ TEST_F(MojoConnectivityTest, DataGenerator) {
   ASSERT_EQ(CountPossibleValues(
                 common::mojom::TestMap4DataGenerator::Create(context())),
             3 + 1 /*map<MapKey, int32>? nullable */);
+  // Test custom type mapping data generator. This kind of generator will be
+  // implemented by users.
+  ASSERT_EQ(CountPossibleValues(
+                common::mojom::TestTypeMappingDataGenerator::Create(context())),
+            42);
 }
 
 template <typename ConsumerType>

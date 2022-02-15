@@ -1,0 +1,10 @@
+{
+  "c++": {
+    "diagnostics.bindings.connectivity.test.common.mojom.TypeMapping": {
+      "generator_typename": "::diagnostics::bindings::connectivity::test::MyTypeMappingGenerator",
+      "generator_headers": [
+        "diagnostics/bindings/connectivity/test/my_type_mapping_traits.h"
+      ]
+    }
+  }
+}

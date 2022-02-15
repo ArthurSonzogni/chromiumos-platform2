@@ -22,11 +22,16 @@ if (use.test) {
       "test_common.mojom",
       "test_server.mojom",
     ]
+    mojo_extra_args = [
+      "--typemap",
+      rebase_path("type_mapping.json"),
+    ]
   }
 
   mojom_connectivity("connectivity_test_mojom_conn") {
     mojo_root = "${platform2_root}"
     deps = [ ":connectivity_test_mojom" ]
+    generator_overrides = [ "generator_override.json" ]
     sources = [
       "test_client.mojom",
       "test_common.mojom",
