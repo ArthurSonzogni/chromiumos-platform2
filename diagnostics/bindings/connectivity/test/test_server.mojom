@@ -26,6 +26,19 @@ union MyUnion {
   MyStruct? my_struct_opt;
 };
 
+enum MyEnum {
+  A,
+  B,
+  C,
+};
+
+[Extensible]
+enum EnumWithDefault {
+  [Default] A,
+  B,
+  C,
+};
+
 interface TestSuccess {
   Foo();
   Bar() => ();
@@ -34,6 +47,8 @@ interface TestSuccess {
   IO(int16 a, string b, string? c) => (int16 a, string b, string? c);
   FunStruct(MyStruct? s) => (MyStruct? s);
   FunUnion(MyUnion? u) => (MyUnion? u);
+  FunEnum(MyEnum e) => (MyEnum e);
+  FunEnumWithDefault(EnumWithDefault e) => (EnumWithDefault e);
   FunCommon(diagnostics.bindings.connectivity.test.common.mojom.CommonStruct s);
   FunCommonNull(
     diagnostics.bindings.connectivity.test.common.mojom.CommonStruct? s);

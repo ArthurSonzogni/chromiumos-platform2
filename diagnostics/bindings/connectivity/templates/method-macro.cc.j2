@@ -36,7 +36,9 @@
 
 {#  Map kind to DataGenerator type. #}
 {%- macro cpp_generator_type(kind) -%}
-{%-   if kind is StructKind or kind is UnionKind -%}
+{%-   if kind is EnumKind -%}
+{{kind | get_name_for_kind(flatten_nested_kind=True)}}DataGenerator
+{%-   elif kind is StructKind or kind is UnionKind -%}
 {%-     call _cpp_nullable_generator_type(kind) -%}
 {{kind | get_name_for_kind}}DataGenerator
 {%-     endcall -%}

@@ -31,16 +31,26 @@ namespace {{namespace}} {
 {%- for interface in module.interfaces %}
 class {{interface.mojom_name}}TestProvider;
 class {{interface.mojom_name}}TestConsumer;
+{%-   for enum in interface.enums %}
+class {{interface.mojom_name}}_{{enum.mojom_name}}DataGenerator;
+{%-   endfor %}
 {%- endfor %}
 
 {%-  for struct in module.structs %}
 class {{struct.mojom_name}}DataGenerator;
 class {{struct.mojom_name}}NullableDataGenerator;
+{%-   for enum in struct.enums %}
+class {{struct.mojom_name}}_{{enum.mojom_name}}DataGenerator;
+{%-   endfor %}
 {%-  endfor %}
 
 {%-  for union in module.unions %}
 class {{union.mojom_name}}DataGenerator;
 class {{union.mojom_name}}NullableDataGenerator;
+{%-  endfor %}
+
+{%-  for enum in module.enums %}
+class {{enum.mojom_name}}DataGenerator;
 {%-  endfor %}
 
 {{namespace_end()}}

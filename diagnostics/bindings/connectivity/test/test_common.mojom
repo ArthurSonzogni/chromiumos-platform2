@@ -5,6 +5,10 @@
 module diagnostics.bindings.connectivity.test.common.mojom;
 
 struct Foo {
+  enum FooEnum {
+    A,
+  };
+  FooEnum e;
   int32 n;
   string s;
   string? opt_s;
@@ -23,4 +27,11 @@ struct CommonStruct {
   int32 num;
   string str;
   string? opt_str;
+};
+
+interface FooInterface {
+  enum FooEnum {
+    A,
+  };
+  Foo(FooEnum a);
 };

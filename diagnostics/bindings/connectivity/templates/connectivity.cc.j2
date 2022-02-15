@@ -33,14 +33,24 @@ namespace {{namespace}} {
 {%- for interface in module.interfaces %}
 {%    include "test-provider.cc.j2" %}
 {%    include "test-consumer.cc.j2" %}
+{%    for enum in interface.enums %}
+{%      include "enum-generator.cc.j2" %}
+{%    endfor %}
 {%- endfor %}
 
 {%- for struct in module.structs %}
 {%    include "struct-generator.cc.j2" %}
+{%    for enum in struct.enums %}
+{%      include "enum-generator.cc.j2" %}
+{%    endfor %}
 {%  endfor %}
 
 {%  for union in module.unions %}
 {%    include "union-generator.cc.j2" %}
+{%  endfor %}
+
+{%  for enum in module.enums %}
+{%    include "enum-generator.cc.j2" %}
 {%  endfor %}
 
 {{namespace_end()}}

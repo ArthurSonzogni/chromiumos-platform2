@@ -49,6 +49,8 @@ _connectivity_template_sources = [
   "$_connectivity_template_root/connectivity-forward.h.j2",
   "$_connectivity_template_root/connectivity.cc.j2",
   "$_connectivity_template_root/connectivity.h.j2",
+  "$_connectivity_template_root/enum-generator.cc.j2",
+  "$_connectivity_template_root/enum-generator.h.j2",
   "$_connectivity_template_root/method-macro.cc.j2",
   "$_connectivity_template_root/struct-generator.cc.j2",
   "$_connectivity_template_root/struct-generator.h.j2",

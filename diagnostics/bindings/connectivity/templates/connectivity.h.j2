@@ -45,14 +45,24 @@ namespace {{namespace}} {
 {%- for interface in module.interfaces %}
 {%    include "test-provider.h.j2" %}
 {%    include "test-consumer.h.j2" %}
+{%    for enum in interface.enums %}
+{%      include "enum-generator.h.j2" %}
+{%    endfor %}
 {%- endfor %}
 
 {%  for struct in module.structs %}
 {%    include "struct-generator.h.j2" %}
+{%    for enum in struct.enums %}
+{%      include "enum-generator.h.j2" %}
+{%    endfor %}
 {%  endfor %}
 
 {%  for union in module.unions %}
 {%    include "union-generator.h.j2" %}
+{%  endfor %}
+
+{%  for enum in module.enums %}
+{%    include "enum-generator.h.j2" %}
 {%  endfor %}
 
 {{namespace_end()}}
