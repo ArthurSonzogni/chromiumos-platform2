@@ -4,6 +4,21 @@
 
 module diagnostics.bindings.connectivity.test.common.mojom;
 
+struct Foo {
+  int32 n;
+  string s;
+  string? opt_s;
+};
+
+struct Bar {
+  int32 n;
+};
+
+union MyUnion {
+  Foo foo;
+  Bar? bar;
+};
+
 struct CommonStruct {
   int32 num;
   string str;

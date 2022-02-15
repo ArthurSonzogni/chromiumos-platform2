@@ -18,6 +18,14 @@ struct MyStruct {
   MySubStruct? s_opt;
 };
 
+union MyUnion {
+  int32 num;
+  string str;
+  string? opt_str;
+  MyStruct my_struct;
+  MyStruct? my_struct_opt;
+};
+
 interface TestSuccess {
   Foo();
   Bar() => ();
@@ -25,6 +33,7 @@ interface TestSuccess {
   Response() => (int16 a, string b, string? c);
   IO(int16 a, string b, string? c) => (int16 a, string b, string? c);
   FunStruct(MyStruct? s) => (MyStruct? s);
+  FunUnion(MyUnion? u) => (MyUnion? u);
   FunCommon(diagnostics.bindings.connectivity.test.common.mojom.CommonStruct s);
   FunCommonNull(
     diagnostics.bindings.connectivity.test.common.mojom.CommonStruct? s);
@@ -61,4 +70,12 @@ struct WrongStruct {
 
 interface TestWrongStruct {
   Foo(WrongStruct s);
+};
+
+union WrongUnion {
+  int32 num;
+};
+
+interface TestWrongUnion {
+  Foo(WrongUnion u);
 };

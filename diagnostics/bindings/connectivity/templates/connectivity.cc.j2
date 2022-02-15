@@ -39,4 +39,8 @@ namespace {{namespace}} {
 {%    include "struct-generator.cc.j2" %}
 {%  endfor %}
 
+{%  for union in module.unions %}
+{%    include "union-generator.cc.j2" %}
+{%  endfor %}
+
 {{namespace_end()}}

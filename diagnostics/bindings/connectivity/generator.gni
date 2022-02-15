@@ -56,6 +56,8 @@ _connectivity_template_sources = [
   "$_connectivity_template_root/test-consumer.h.j2",
   "$_connectivity_template_root/test-provider.cc.j2",
   "$_connectivity_template_root/test-provider.h.j2",
+  "$_connectivity_template_root/union-generator.cc.j2",
+  "$_connectivity_template_root/union-generator.h.j2",
 ]
 
 # Generates C++ mojo bindings source code and headers.

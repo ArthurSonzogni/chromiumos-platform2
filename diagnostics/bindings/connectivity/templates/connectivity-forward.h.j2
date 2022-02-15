@@ -38,6 +38,11 @@ class {{struct.mojom_name}}DataGenerator;
 class {{struct.mojom_name}}NullableDataGenerator;
 {%-  endfor %}
 
+{%-  for union in module.unions %}
+class {{union.mojom_name}}DataGenerator;
+class {{union.mojom_name}}NullableDataGenerator;
+{%-  endfor %}
+
 {{namespace_end()}}
 
 #endif  // {{header_guard}}

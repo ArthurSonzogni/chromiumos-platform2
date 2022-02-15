@@ -51,6 +51,10 @@ namespace {{namespace}} {
 {%    include "struct-generator.h.j2" %}
 {%  endfor %}
 
+{%  for union in module.unions %}
+{%    include "union-generator.h.j2" %}
+{%  endfor %}
+
 {{namespace_end()}}
 
 #endif  // {{header_guard}}
