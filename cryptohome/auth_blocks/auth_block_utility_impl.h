@@ -39,6 +39,8 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   AuthBlockUtilityImpl& operator=(const AuthBlockUtilityImpl&) = delete;
   ~AuthBlockUtilityImpl() override;
 
+  bool GetLockedToSingleUser() override;
+
   CryptoError CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const Credentials& credentials,

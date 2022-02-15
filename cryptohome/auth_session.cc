@@ -380,7 +380,10 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddAuthFactor(
     return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
   }
 
-  std::optional<AuthInput> auth_input = FromProto(request.auth_input());
+  const std::string obfuscated_username = SanitizeUserName(username_);
+  std::optional<AuthInput> auth_input =
+      FromProto(request.auth_input(), obfuscated_username,
+                auth_block_utility_->GetLockedToSingleUser());
   if (!auth_input.has_value()) {
     LOG(ERROR) << "Failed to parse auth input for new auth factor";
     return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;

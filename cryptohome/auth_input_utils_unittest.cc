@@ -16,6 +16,12 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
+namespace {
+
+constexpr char kObfuscatedUsername[] = "fake-user@example.org";
+
+}  // namespace
+
 // Test the conversion from the password AuthInput proto into the cryptohome
 // struct.
 TEST(AuthInputUtils, FromProtoPassword) {
@@ -24,14 +30,36 @@ TEST(AuthInputUtils, FromProtoPassword) {
   user_data_auth::AuthInput proto;
   proto.mutable_password_input()->set_secret(kPassword);
 
-  std::optional<AuthInput> auth_input = FromProto(proto);
+  std::optional<AuthInput> auth_input =
+      FromProto(proto, kObfuscatedUsername, /*locked_to_single_user=*/false);
   ASSERT_TRUE(auth_input.has_value());
   EXPECT_EQ(auth_input.value().user_input, SecureBlob(kPassword));
+  EXPECT_EQ(auth_input.value().obfuscated_username, kObfuscatedUsername);
+  EXPECT_EQ(auth_input.value().locked_to_single_user, false);
+}
+
+// Test the conversion from the password AuthInput proto into the cryptohome
+// struct, with the locked_to_single_user flag set.
+TEST(AuthInputUtils, FromProtoPasswordLocked) {
+  constexpr char kPassword[] = "fake-password";
+
+  user_data_auth::AuthInput proto;
+  proto.mutable_password_input()->set_secret(kPassword);
+
+  std::optional<AuthInput> auth_input =
+      FromProto(proto, kObfuscatedUsername, /*locked_to_single_user=*/true);
+  ASSERT_TRUE(auth_input.has_value());
+  EXPECT_EQ(auth_input.value().user_input, SecureBlob(kPassword));
+  EXPECT_EQ(auth_input.value().obfuscated_username, kObfuscatedUsername);
+  EXPECT_EQ(auth_input.value().locked_to_single_user, true);
 }
 
 // Test the conversion from an empty AuthInput proto fails.
 TEST(AuthInputUtils, FromProtoErrorEmpty) {
-  std::optional<AuthInput> auth_input = FromProto(user_data_auth::AuthInput());
+  user_data_auth::AuthInput proto;
+
+  std::optional<AuthInput> auth_input =
+      FromProto(proto, kObfuscatedUsername, /*locked_to_single_user=*/false);
   EXPECT_FALSE(auth_input.has_value());
 }
 

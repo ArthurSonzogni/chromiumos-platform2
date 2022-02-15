@@ -121,7 +121,12 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(KeysetManagement* keyset_management,
   DCHECK(crypto_);
   DCHECK(platform_);
 }
+
 AuthBlockUtilityImpl::~AuthBlockUtilityImpl() = default;
+
+bool AuthBlockUtilityImpl::GetLockedToSingleUser() {
+  return platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
+}
 
 CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
     AuthBlockType auth_block_type,
@@ -171,8 +176,7 @@ CryptoError AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
   AuthInput auth_input = {credentials.passkey(),
                           /*locked_to_single_user=*/std::nullopt};
 
-  auth_input.locked_to_single_user =
-      platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
+  auth_input.locked_to_single_user = GetLockedToSingleUser();
 
   std::unique_ptr<SyncAuthBlock> auth_block =
       GetAuthBlockWithType(auth_block_type);

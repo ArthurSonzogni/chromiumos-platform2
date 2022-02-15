@@ -5,6 +5,7 @@
 #include "cryptohome/auth_input_utils.h"
 
 #include <optional>
+#include <string>
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
@@ -28,16 +29,28 @@ AuthInput FromPasswordAuthInput(
 }  // namespace
 
 std::optional<AuthInput> FromProto(
-    const user_data_auth::AuthInput& auth_input_proto) {
+    const user_data_auth::AuthInput& auth_input_proto,
+    const std::string& obfuscated_username,
+    bool locked_to_single_user) {
+  std::optional<AuthInput> auth_input;
   switch (auth_input_proto.input_case()) {
     case user_data_auth::AuthInput::kPasswordInput:
-      return FromPasswordAuthInput(auth_input_proto.password_input());
+      auth_input = FromPasswordAuthInput(auth_input_proto.password_input());
+      break;
     case user_data_auth::AuthInput::INPUT_NOT_SET:
-      LOG(ERROR) << "Empty or unknown auth input";
-      return std::nullopt;
+      break;
   }
-  LOG(ERROR) << "Unknown auth input";
-  return std::nullopt;
+
+  if (!auth_input.has_value()) {
+    LOG(ERROR) << "Empty or unknown auth input";
+    return std::nullopt;
+  }
+
+  // Fill out common fields.
+  auth_input.value().obfuscated_username = obfuscated_username;
+  auth_input.value().locked_to_single_user = locked_to_single_user;
+
+  return auth_input;
 }
 
 }  // namespace cryptohome

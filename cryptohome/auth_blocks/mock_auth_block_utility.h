@@ -27,6 +27,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
   MockAuthBlockUtility() = default;
   ~MockAuthBlockUtility() = default;
 
+  MOCK_METHOD(bool, GetLockedToSingleUser, (), (override));
   MOCK_METHOD(CryptoError,
               CreateKeyBlobsWithAuthBlock,
               (AuthBlockType auth_block_type,

@@ -6,6 +6,7 @@
 #define CRYPTOHOME_AUTH_INPUT_UTILS_H_
 
 #include <optional>
+#include <string>
 
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 
@@ -15,7 +16,9 @@ namespace cryptohome {
 
 // Converts the AuthInput D-Bus proto into the cryptohome struct.
 std::optional<AuthInput> FromProto(
-    const user_data_auth::AuthInput& auth_input_proto);
+    const user_data_auth::AuthInput& auth_input_proto,
+    const std::string& obfuscated_username,
+    bool locked_to_single_user);
 
 }  // namespace cryptohome
 

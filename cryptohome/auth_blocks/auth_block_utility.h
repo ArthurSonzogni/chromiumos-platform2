@@ -27,6 +27,10 @@ class AuthBlockUtility {
   AuthBlockUtility& operator=(const AuthBlockUtility&) = delete;
   virtual ~AuthBlockUtility() = default;
 
+  // Returns whether the system is locked to only allow authenticating a single
+  // user.
+  virtual bool GetLockedToSingleUser() = 0;
+
   // Creates KeyBlobs and AuthBlockState with the given type of AuthBlock for
   // the given credentials. Creating KeyBlobs means generating the KeyBlobs from
   // user credentials when the credentials are entered first time. Thus,
