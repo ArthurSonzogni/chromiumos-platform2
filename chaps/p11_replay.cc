@@ -1075,9 +1075,10 @@ void PrintHelp() {
       "  --replay_vpn [--label=<key_label>]"
       " : Replays a L2TP/IPSEC VPN negotiation.\n");
   printf(
-      "  --replay_wifi [--label=<key_label>]"
+      "  --replay_wifi [--label=<key_label> --skip_generate]"
       " : Replays a EAP-TLS Wifi negotiation. This is the default command if"
-      " no command is specified.\n");
+      " no command is specified. Do not generate key pair if --skip_generate"
+      " is set\n");
   printf(
       "  --get_attribute --id=<token id str> --type=<cert, privkey, pubkey> "
       "--attribute=<attribute>: Get the attribute for an object.\n");
@@ -1272,10 +1273,11 @@ int main(int argc, char** argv) {
     PrintTicks(&start_ticks);
   }
   if (vpn || wifi) {
+    bool skip_generate = cl->HasSwitch("skip_generate");
     printf("Replay 1 of 2\n");
     // No need to login again if --generate or --inject flag is passed
     // as it's already logged in for this session
-    if (!generate && !inject) {
+    if (!generate && !inject && !skip_generate) {
       session = Login(slot, vpn, session);
       GenerateKeyPair(session, key_size_bits, label, false);
     }
@@ -1288,7 +1290,7 @@ int main(int argc, char** argv) {
     PrintTicks(&start_ticks);
     C_CloseSession(session2);
     // Delete the temporary key pair to avoid piling up.
-    if (!generate && !inject) {
+    if (!generate && !inject && !skip_generate) {
       DestroyKeyPair(session, label);
     }
   }
