@@ -42,6 +42,8 @@ struct CommonStruct {
   map<MapKey, int32> m2;
   map<MapKey, MyUnion> m3;
   map<MapKey, MyUnion>? m4;
+  handle h;
+  handle? h_opt;
 };
 
 interface FooInterface {

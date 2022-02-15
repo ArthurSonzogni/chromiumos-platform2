@@ -42,6 +42,10 @@
 {%-     call _cpp_nullable_generator_type(kind) -%}
 {{kind | get_name_for_kind}}DataGenerator
 {%-     endcall -%}
+{%-   elif kind is GenericHandleKind -%}
+{%-     call _cpp_nullable_generator_type(kind) -%}
+::diagnostics::bindings::connectivity::HandleDataGenerator
+{%-     endcall -%}
 {%-   elif kind is PendingRemoteKind -%}
 {{kind.kind | get_name_for_kind}}TestProvider
 {%-   elif kind is PendingReceiverKind -%}

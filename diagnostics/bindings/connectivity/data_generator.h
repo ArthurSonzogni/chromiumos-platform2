@@ -12,6 +12,7 @@
 
 #include <absl/types/optional.h>
 #include <base/containers/flat_map.h>
+#include <mojo/public/cpp/system/handle.h>
 
 #include "diagnostics/bindings/connectivity/context.h"
 
@@ -210,6 +211,31 @@ class MapGenerator : public DataGeneratorInterface<
  private:
   std::unique_ptr<KeyGenerator> key_generator_;
   std::unique_ptr<ValueGenerator> value_generator_;
+};
+
+// Generator for handle types.
+class HandleDataGenerator
+    : public DataGeneratorInterface<::mojo::ScopedHandle> {
+ public:
+  HandleDataGenerator(const HandleDataGenerator&) = delete;
+  HandleDataGenerator& operator=(const HandleDataGenerator&) = delete;
+  virtual ~HandleDataGenerator() = default;
+
+  static std::unique_ptr<HandleDataGenerator> Create(Context*) {
+    return std::unique_ptr<HandleDataGenerator>(new HandleDataGenerator());
+  }
+
+ public:
+  // DataGeneratorInterface overrides.
+  ::mojo::ScopedHandle Generate() override;
+
+  bool HasNext() override { return has_next_; }
+
+ protected:
+  HandleDataGenerator() = default;
+
+ private:
+  bool has_next_ = true;
 };
 
 }  // namespace connectivity

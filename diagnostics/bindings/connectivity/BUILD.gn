@@ -13,6 +13,7 @@ source_set("libconnectivity") {
   deps = [ "mojom" ]
   sources = [
     "context.cc",
+    "data_generator.cc",
     "local_state.cc",
     "remote_state.cc",
     "utils.cc",
