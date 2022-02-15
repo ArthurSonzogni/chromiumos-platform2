@@ -46,6 +46,11 @@
 {{kind.kind | get_name_for_kind}}TestProvider
 {%-   elif kind is PendingReceiverKind -%}
 {{kind.kind | get_name_for_kind}}TestConsumer
+{%-   elif kind is ArrayKind -%}
+{%-     call _cpp_optional_generator_type(kind) -%}
+::diagnostics::bindings::connectivity::ArrayGenerator<{{
+    cpp_generator_type(kind.kind)}}>
+{%-     endcall -%}
 {%-   else -%}
 {%-     call _cpp_optional_generator_type(kind) -%}
 ::diagnostics::bindings::connectivity::DataGenerator<{{

@@ -27,6 +27,11 @@ struct CommonStruct {
   int32 num;
   string str;
   string? opt_str;
+  array<int32> arr_int;
+  array<int32>? arr_int_opt;
+  array<MyUnion> foos;
+  array<MyUnion?> foos_opt;
+  array<MyUnion>? foos_opt_arr;
 };
 
 interface FooInterface {
@@ -34,4 +39,16 @@ interface FooInterface {
     A,
   };
   Foo(FooEnum a);
+};
+
+struct TestArr1 {
+  array<MyUnion> arr;
+};
+
+struct TestArr2 {
+  array<MyUnion?> arr;
+};
+
+struct TestArr3 {
+  array<MyUnion>? arr;
 };

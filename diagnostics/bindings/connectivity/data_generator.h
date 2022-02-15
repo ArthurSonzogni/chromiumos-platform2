@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <type_traits>
+#include <vector>
 
 #include <absl/types/optional.h>
 
@@ -135,6 +136,40 @@ class NullableGenerator
  private:
   std::unique_ptr<GeneratorType> generator_;
   bool returned_null_ = false;
+};
+
+// Generator for array types.
+template <typename GeneratorType>
+class ArrayGenerator
+    : public DataGeneratorInterface<std::vector<typename GeneratorType::Type>> {
+ public:
+  ArrayGenerator(const ArrayGenerator&) = delete;
+  ArrayGenerator& operator=(const ArrayGenerator&) = delete;
+  virtual ~ArrayGenerator() = default;
+
+  static std::unique_ptr<ArrayGenerator> Create(Context* context) {
+    return std::unique_ptr<ArrayGenerator>(
+        new ArrayGenerator<GeneratorType>(context));
+  }
+
+ public:
+  std::vector<typename GeneratorType::Type> Generate() override {
+    std::vector<typename GeneratorType::Type> res;
+    while (generator_->HasNext()) {
+      res.push_back(generator_->Generate());
+    }
+    return res;
+  }
+
+  bool HasNext() override { return generator_->HasNext(); }
+
+ protected:
+  explicit ArrayGenerator(Context* context) {
+    generator_ = GeneratorType::Create(context);
+  }
+
+ private:
+  std::unique_ptr<GeneratorType> generator_;
 };
 
 }  // namespace connectivity
