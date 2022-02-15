@@ -145,7 +145,6 @@ LEGACYLIST = {
     'syslog-cat',
     'system_api',
     'system-proxy',
-    'thd',
     'timberslide',
     'touch_firmware_calibration',
     'trim',
