@@ -471,6 +471,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // and failure is not already set. Then set the state of the service back
   // to idle, so it can be used for future connections.
   void ServiceDisconnected(WiFiServiceRefPtr service, bool is_attempt_failure);
+  // Check if disconnect_signal is out of range compared to threshold and
+  // is not the default.
+  bool SignalOutOfRange(const int16_t& disconnect_signal);
   // Log and send to UMA any auth/assoc status code indicating a failure.
   // Returns inferred type of failure, which is useful in cases where we don't
   // have a disconnect reason from supplicant.

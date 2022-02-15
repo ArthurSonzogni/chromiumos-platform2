@@ -1035,8 +1035,8 @@ void WiFi::AuthStatusChanged(const int32_t new_auth_status) {
 }
 
 void WiFi::CurrentBSSChanged(const RpcIdentifier& new_bss) {
-  SLOG(this, 3) << "WiFi " << link_name() << " CurrentBSS "
-                << supplicant_bss_.value() << " -> " << new_bss.value();
+  LOG(INFO) << "WiFi " << link_name() << " CurrentBSS "
+            << supplicant_bss_.value() << " -> " << new_bss.value();
 
   // Store signal strength of BSS when disconnecting.
   if (supplicant_bss_.value() != WPASupplicant::kCurrentBSSNull &&
@@ -1303,8 +1303,7 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service,
         case IEEE_80211::kReasonCodeInactivity:
         case IEEE_80211::kReasonCodeSenderHasLeft:
           SLOG(this, 2) << "Disconnect signal: " << disconnect_signal_dbm_;
-          if (disconnect_signal_dbm_ <= disconnect_threshold_dbm_ &&
-              disconnect_signal_dbm_ != kDefaultDisconnectDbm) {
+          if (SignalOutOfRange(disconnect_signal_dbm_)) {
             failure = Service::kFailureOutOfRange;
           } else {
             failure = Service::kFailureDisconnect;
@@ -1335,6 +1334,14 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service,
     if (failure == Service::kFailureEAPAuthentication &&
         pending_eap_failure_ != Service::kFailureNone) {
       failure = pending_eap_failure_;
+    } else if (failure == Service::kFailureUnknown &&
+               SignalOutOfRange(disconnect_signal_dbm_)) {
+      // We have assumed we have disconnected since the current endpoint no
+      // longer shows up in the scan. If wpa_supplicant did not give us a
+      // reason code, then it will be |kFailureUnknown|. A check here can
+      // verify the difference between a true unknown failure and an out of
+      // range failure.
+      failure = Service::kFailureOutOfRange;
     }
     if (!affected_service->ShouldIgnoreFailure()) {
       affected_service->SetFailure(failure);
@@ -1356,6 +1363,11 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service,
   // Set service state back to idle, so this service can be used for
   // future connections.
   affected_service->SetState(Service::kStateIdle);
+}
+
+bool WiFi::SignalOutOfRange(const int16_t& disconnect_signal) {
+  return disconnect_signal <= disconnect_threshold_dbm_ &&
+         disconnect_signal != kDefaultDisconnectDbm;
 }
 
 Service::ConnectFailure WiFi::ExamineStatusCodes() const {
@@ -2950,8 +2962,7 @@ void WiFi::PendingTimeoutHandler() {
 
   Service::ConnectFailure failure = ExamineStatusCodes();
   if (failure == Service::kFailureUnknown && pending_service_ &&
-      pending_service_->SignalLevel() <= disconnect_threshold_dbm_ &&
-      pending_service_->SignalLevel() != kDefaultDisconnectDbm) {
+      SignalOutOfRange(pending_service_->SignalLevel())) {
     failure = Service::kFailureOutOfRange;
   }
   pending_service_->DisconnectWithFailure(failure, &unused_error, __func__);
