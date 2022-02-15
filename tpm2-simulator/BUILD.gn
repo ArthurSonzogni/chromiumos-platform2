@@ -6,6 +6,8 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_init_scripts",
+    ":install_seccomp_policy",
     ":tpm2-simulator",
     ":tpm2-simulator-init",
     ":tpm2-simulator-stop",
@@ -48,6 +50,7 @@ executable("tpm2-simulator") {
   ]
   libs = []
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   pkg_deps = [ "libminijail" ]
   deps = [ ":tpm_executor_version_library" ]
 
@@ -72,11 +75,25 @@ executable("tpm2-simulator") {
 executable("tpm2-simulator-init") {
   sources = [ "simulator-init.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   pkg_deps = [ "vboot_host" ]
 }
 
 executable("tpm2-simulator-stop") {
   sources = [ "simulator-stop.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "bin"
   pkg_deps = [ "vboot_host" ]
+}
+
+install_config("install_init_scripts") {
+  sources = [ "init/tpm2-simulator.conf" ]
+  install_path = "/etc/init"
+}
+
+# Install seccomp policy for cryptohome-proxy
+install_config("install_seccomp_policy") {
+  sources = [ "seccomp/tpm2-simulator-" + getenv("ARCH") + ".policy" ]
+  install_path = "/usr/share/policy"
+  outputs = [ "tpm2-simulator.policy" ]
 }
