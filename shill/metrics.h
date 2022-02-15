@@ -722,9 +722,13 @@ class Metrics : public DefaultServiceObserver {
 
   // Corresponds to RegulatoryDomain enum values in
   // /chromium/src/tools/metrics/histograms/enums.xml.
+  // kRegDom00, kRegDom99, kRegDom98 and kRegDom97 are special alpha2 codes
   enum RegulatoryDomain {
     kRegDom00 = 1,
     kCountryCodeInvalid = 678,
+    kRegDom99 = 679,
+    kRegDom98 = 680,
+    kRegDom97 = 681,
     kRegDomMaxValue
   };
 

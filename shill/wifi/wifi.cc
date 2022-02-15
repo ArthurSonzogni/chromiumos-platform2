@@ -1786,8 +1786,8 @@ void WiFi::HandleCountryChange(std::string country_code) {
   // Get Regulatory Domain value from received country code.
   int reg_dom_val = Metrics::GetRegulatoryDomainValue(country_code);
   if (reg_dom_val == Metrics::RegulatoryDomain::kCountryCodeInvalid) {
-    LOG(ERROR) << "Unsupported NL80211_ATTR_REG_ALPHA2 attribute: "
-               << country_code;
+    LOG(WARNING) << "Unsupported NL80211_ATTR_REG_ALPHA2 attribute: "
+                 << country_code;
   } else {
     SLOG(this, 3) << base::StringPrintf(
         "Regulatory domain change message received with alpha2 %s (metric val: "

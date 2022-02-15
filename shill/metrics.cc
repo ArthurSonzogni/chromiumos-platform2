@@ -2071,12 +2071,31 @@ int Metrics::GetRegulatoryDomainValue(std::string country_code) {
   // Convert country code to upper case before checking validity.
   country_code = base::ToUpperASCII(country_code);
 
-  // Check if alpha2 attribute is a valid counrty code.
-  // All combinations of 2 uppercase letters + "00" are considered valid.
+  // Check if alpha2 attribute is a valid ISO / IEC 3166 alpha2 country code.
+  // "00", "99", "98" and "97" are special codes defined in
+  // linux/include/net/regulatory.h.
+  // According to https://www.iso.org/glossary-for-iso-3166.html, a subdivision
+  // code is based on the two-letter code element from ISO 3166-1 followed by
+  // a separator and up to three alphanumeric characters. ath10k uses '#' as
+  // the separator, as reported in b/217761687. New separators may be added
+  // if shown in reports. Currently, these country codes are valid:
+  // 1. Special code: 00, 99, 98, 97
+  // 2. Two-letter alpha 2 code, such as "US", "FR"
+  // 3. Subdivision code, two-letter alpha 2 code + '#' + up to three
+  // alphanumeric characters, such as "US#001", "JM#001", while the characters
+  // after '#' are ignored
+
   if (country_code == "00") {
     return kRegDom00;
-  } else if (country_code.length() != 2 || !std::isupper(country_code[0]) ||
-             !std::isupper(country_code[1])) {
+  } else if (country_code == "97") {
+    return kRegDom97;
+  } else if (country_code == "98") {
+    return kRegDom98;
+  } else if (country_code == "99") {
+    return kRegDom99;
+  } else if (country_code.length() < 2 || !std::isupper(country_code[0]) ||
+             !std::isupper(country_code[1]) || country_code.length() > 6 ||
+             (country_code.length() > 2 && country_code[2] != '#')) {
     return kCountryCodeInvalid;
   } else {
     // Calculate corresponding country code value for UMA histogram.
