@@ -13,6 +13,8 @@ const char kFuseBoxServiceName[] = "org.chromium.FuseBoxService";
 const char kFuseBoxServicePath[] = "/org/chromium/FuseBoxService";
 
 // FuseBoxService methods.
+const char kCloseMethod[] = "Close";
+const char kFlushMethod[] = "Flush";
 const char kFuseBoxOperationMethod[] = "FuseBoxOperation";
 const char kOpenMethod[] = "Open";
 const char kReadDirMethod[] = "ReadDir";
