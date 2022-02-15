@@ -502,6 +502,7 @@ TEST_F(MojoProxyTest, Connect) {
   // Create unix domain socket for testing, which is connected by the following
   // Connect() invocation from client side.
   auto server_sock = CreateUnixDomainSocket(socket_path);
+  server()->AddExpectedSocketPathForTesting(socket_path);
 
   // Try to follow the actual initial connection procedure.
   base::RunLoop run_loop;
