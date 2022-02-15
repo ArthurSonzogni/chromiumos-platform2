@@ -1075,7 +1075,7 @@ bool DeviceInfo::GetWiFiHardwareIds(int interface_index,
           GetDeviceInfoPath(info->name, kInterfaceVendorId))) {
     // TODO(b/203692510): Support integrated chipsets without PCIe/CNVi/SDIO
     // that do not have a "vendor" file.
-    LOG(ERROR) << "No vendor ID found";
+    LOG(WARNING) << "No vendor ID found";
     return false;
   }
   bool ret = true;
