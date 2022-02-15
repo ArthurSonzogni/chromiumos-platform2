@@ -51,6 +51,12 @@
 ::diagnostics::bindings::connectivity::ArrayGenerator<{{
     cpp_generator_type(kind.kind)}}>
 {%-     endcall -%}
+{%-   elif kind is MapKind -%}
+{%-     call _cpp_optional_generator_type(kind) -%}
+::diagnostics::bindings::connectivity::MapGenerator<{{
+    cpp_generator_type(kind.key_kind)}}, {{
+    cpp_generator_type(kind.value_kind)}}>
+{%-     endcall -%}
 {%-   else -%}
 {%-     call _cpp_optional_generator_type(kind) -%}
 ::diagnostics::bindings::connectivity::DataGenerator<{{

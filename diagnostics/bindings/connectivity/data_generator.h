@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <absl/types/optional.h>
+#include <base/containers/flat_map.h>
 
 #include "diagnostics/bindings/connectivity/context.h"
 
@@ -170,6 +171,45 @@ class ArrayGenerator
 
  private:
   std::unique_ptr<GeneratorType> generator_;
+};
+
+// Generator for map types.
+template <typename KeyGenerator, typename ValueGenerator>
+class MapGenerator : public DataGeneratorInterface<
+                         base::flat_map<typename KeyGenerator::Type,
+                                        typename ValueGenerator::Type>> {
+ public:
+  MapGenerator(const MapGenerator&) = delete;
+  MapGenerator& operator=(const MapGenerator&) = delete;
+  virtual ~MapGenerator() = default;
+
+  static std::unique_ptr<MapGenerator> Create(Context* context) {
+    return std::unique_ptr<MapGenerator>(
+        new MapGenerator<KeyGenerator, ValueGenerator>(context));
+  }
+
+ public:
+  base::flat_map<typename KeyGenerator::Type, typename ValueGenerator::Type>
+  Generate() override {
+    base::flat_map<typename KeyGenerator::Type, typename ValueGenerator::Type>
+        res;
+    res[key_generator_->Generate()] = value_generator_->Generate();
+    return res;
+  }
+
+  bool HasNext() override {
+    return key_generator_->HasNext() || value_generator_->HasNext();
+  }
+
+ protected:
+  explicit MapGenerator(Context* context) {
+    key_generator_ = KeyGenerator::Create(context);
+    value_generator_ = ValueGenerator::Create(context);
+  }
+
+ private:
+  std::unique_ptr<KeyGenerator> key_generator_;
+  std::unique_ptr<ValueGenerator> value_generator_;
 };
 
 }  // namespace connectivity
