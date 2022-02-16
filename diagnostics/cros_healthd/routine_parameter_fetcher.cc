@@ -108,7 +108,7 @@ void RoutineParameterFetcher::FetchUint8Parameter(
       *parameter_out = static_cast<uint8_t>(parameter);
     } else {
       LOG(ERROR) << base::StringPrintf(
-          "Failed to convert cros_config value: %s to uint32_t.",
+          "Failed to convert cros_config value: %s to uint8_t.",
           parameter_str.c_str());
     }
   }
