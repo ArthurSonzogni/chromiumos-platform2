@@ -1,6 +1,9 @@
 // Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+//
+// Adapted from deleted Chromium's components/timers/alarm_timer_chromeos.cc
 
 #include "brillo/timers/alarm_timer.h"
 
@@ -54,6 +57,16 @@ SimpleAlarmTimer::~SimpleAlarmTimer() {
   Stop();
 }
 
+void SimpleAlarmTimer::Start(const base::Location& location,
+                             base::TimeDelta delay,
+                             base::RepeatingClosure user_task) {
+  user_task_ = std::move(user_task);
+  posted_from_ = location;
+  delay_ = delay;
+
+  Reset();
+}
+
 void SimpleAlarmTimer::Stop() {
   DCHECK(origin_task_runner_->RunsTasksInCurrentSequence());
 
@@ -63,30 +76,27 @@ void SimpleAlarmTimer::Stop() {
   // Cancel any previous callbacks.
   weak_factory_.InvalidateWeakPtrs();
 
-  base::RetainingOneShotTimer::set_is_running(false);
+  is_running_ = false;
   alarm_fd_watcher_.reset();
   pending_task_.reset();
 }
 
 void SimpleAlarmTimer::Reset() {
   DCHECK(origin_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK(!base::RetainingOneShotTimer::user_task().is_null());
+  DCHECK(!user_task_.is_null());
 
   // Cancel any previous callbacks and stop watching |alarm_fd_|.
   weak_factory_.InvalidateWeakPtrs();
   alarm_fd_watcher_.reset();
 
   // Ensure that the delay is not negative.
-  const base::TimeDelta delay = std::max(
-      base::TimeDelta(), base::RetainingOneShotTimer::GetCurrentDelay());
+  const base::TimeDelta delay = std::max(base::TimeDelta(), delay_);
 
   // Set up the pending task.
-  base::RetainingOneShotTimer::set_desired_run_time(
-      delay.is_zero() ? base::TimeTicks() : base::TimeTicks::Now() + delay);
+  base::TimeTicks desired_run_time =
+      delay.is_zero() ? base::TimeTicks() : base::TimeTicks::Now() + delay;
   pending_task_ = std::make_unique<base::PendingTask>(
-      base::RetainingOneShotTimer::posted_from(),
-      base::RetainingOneShotTimer::user_task(), base::TimeTicks::Now(),
-      base::RetainingOneShotTimer::desired_run_time());
+      posted_from_, user_task_, base::TimeTicks::Now(), desired_run_time);
 
   // Set |alarm_fd_| to be signaled when the delay expires. If the delay is
   // zero, |alarm_fd_| will never be signaled. This overrides the previous
@@ -100,7 +110,7 @@ void SimpleAlarmTimer::Reset() {
     PLOG(ERROR) << "Error while setting alarm time.  Timer will not fire";
 
   // The timer is running.
-  base::RetainingOneShotTimer::set_is_running(true);
+  is_running_ = true;
 
   // If the delay is zero, post the task now.
   if (delay.is_zero()) {
@@ -121,7 +131,7 @@ void SimpleAlarmTimer::Reset() {
 
 void SimpleAlarmTimer::OnAlarmFdReadableWithoutBlocking() {
   DCHECK(origin_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK(base::RetainingOneShotTimer::IsRunning());
+  DCHECK(IsRunning());
 
   // Read from |alarm_fd_| to ack the event.
   char val[sizeof(uint64_t)];
@@ -133,7 +143,7 @@ void SimpleAlarmTimer::OnAlarmFdReadableWithoutBlocking() {
 
 void SimpleAlarmTimer::OnTimerFired() {
   DCHECK(origin_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK(base::RetainingOneShotTimer::IsRunning());
+  DCHECK(IsRunning());
   DCHECK(pending_task_.get());
 
   // Take ownership of the PendingTask to prevent it from being deleted if the
@@ -148,6 +158,10 @@ void SimpleAlarmTimer::OnTimerFired() {
   // If the timer wasn't deleted, stopped or reset by the callback, stop it.
   if (weak_ptr)
     Stop();
+}
+
+bool SimpleAlarmTimer::IsRunning() const {
+  return is_running_;
 }
 
 }  // namespace timers

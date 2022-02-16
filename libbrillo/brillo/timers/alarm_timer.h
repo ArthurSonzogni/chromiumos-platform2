@@ -1,9 +1,12 @@
 // Copyright 2014 The Chromium Authors. All rights reserved.
+// Copyright 2022 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+//
+// Adapted from deleted Chromium's components/timers/alarm_timer_chromeos.h
 
-#ifndef BRILLO_TIMERS_ALARM_TIMER_H_
-#define BRILLO_TIMERS_ALARM_TIMER_H_
+#ifndef LIBBRILLO_BRILLO_TIMERS_ALARM_TIMER_H_
+#define LIBBRILLO_BRILLO_TIMERS_ALARM_TIMER_H_
 
 #include <memory>
 
@@ -15,7 +18,6 @@
 #include <base/pending_task.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <base/time/time.h>
-#include <base/timer/timer.h>
 
 #include "brillo/brillo_export.h"
 
@@ -34,17 +36,30 @@ namespace timers {
 // A SimpleAlarmTimer only fires once but remembers the task that it was given
 // even after it has fired.  Useful if you want to run the same task multiple
 // times but not at a regular interval.
-// TODO(fqj): Do not inherit base::RetainingOneShotTimer.
-class BRILLO_EXPORT SimpleAlarmTimer : public base::RetainingOneShotTimer {
+class BRILLO_EXPORT SimpleAlarmTimer {
  public:
   SimpleAlarmTimer(const SimpleAlarmTimer&) = delete;
   void operator=(const SimpleAlarmTimer&) = delete;
 
-  ~SimpleAlarmTimer() override;
+  ~SimpleAlarmTimer();
 
-  // Timer overrides.
-  void Stop() override;
-  void Reset() override;
+  // Starts the timer.
+  void Start(const base::Location& location,
+             base::TimeDelta delay,
+             base::RepeatingClosure user_task);
+
+  // Stops the timer.
+  void Stop();
+
+  // Resets the timer.
+  void Reset();
+
+  // Returns if current timer is running.
+  bool IsRunning() const;
+
+  const base::RepeatingClosure& UserTaskForTesting() const {
+    return user_task_;
+  }
 
   // Creates the SimpleAlarmTimer instance, or returns null on failure, e.g.,
   // on a platform without timerfd_* system calls support, or missing
@@ -82,6 +97,18 @@ class BRILLO_EXPORT SimpleAlarmTimer : public base::RetainingOneShotTimer {
   // time Reset() is called.
   std::unique_ptr<base::PendingTask> pending_task_;
 
+  // Keeps track of user task passed in.
+  base::RepeatingClosure user_task_;
+
+  // Keeps track if the timer is running.
+  bool is_running_ = false;
+
+  // Location in user code.
+  base::Location posted_from_;
+
+  // Delay set by user.
+  base::TimeDelta delay_;
+
   // Used to invalidate pending callbacks.
   base::WeakPtrFactory<SimpleAlarmTimer> weak_factory_{this};
 };
@@ -89,4 +116,4 @@ class BRILLO_EXPORT SimpleAlarmTimer : public base::RetainingOneShotTimer {
 }  // namespace timers
 }  // namespace brillo
 
-#endif  // BRILLO_TIMERS_ALARM_TIMER_H_
+#endif  // LIBBRILLO_BRILLO_TIMERS_ALARM_TIMER_H_
