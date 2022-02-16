@@ -50,11 +50,11 @@ valid for `Services` whose "Type" property is of value "vpn". See
 Android 3rd-party VPNs (implemented using the [Android `VpnService` API] in ARC
 are the VPN type requiring the least amount of functionality within Shill, where
 the majority of the `ArcVpnDriver` functionality is just setting up routing
-properly. arc-networkd creates an ARC bridge, which serves as a host-side (v4
+properly. patchpanel creates an ARC bridge, which serves as a host-side (v4
 NAT-ed) proxy for the arc0 interface on the Android-side. In addition,
-arc-networkd creates a corresponding arc_${IFNAME} interface for each interface
-named ${IFNAME} exposed by the Shill `Manager` (see arc-networkd
-`DeviceManager::OnDevicesChanged` for more detail). This allows traffic from the
+patchpanel creates a corresponding arc_${IFNAME} interface for each interface
+named ${IFNAME} exposed by the Shill `Manager` (see patchpanel
+`Manager::OnShillDevicesChanged` for more detail). This allows traffic from the
 Android-side to have a specific host-side interface that will carry it.
 
 Traffic that needs to pass through the VPN gets sent to the ARC bridge rather
