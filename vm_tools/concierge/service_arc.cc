@@ -19,10 +19,19 @@ namespace concierge {
 namespace {
 
 // Android data directory.
-constexpr const char kAndroidDataDir[] = "/run/arcvm/android-data";
+constexpr char kAndroidDataDir[] = "/run/arcvm/android-data";
 
 // Android stub volume directory for MyFiles and removable media.
-constexpr const char kStubVolumeSharedDir[] = "/run/arcvm/media";
+constexpr char kStubVolumeSharedDir[] = "/run/arcvm/media";
+
+// Path to the VM guest kernel.
+constexpr char kKernelPath[] = "/opt/google/vms/android/vmlinux";
+
+// Path to the VM rootfs image file.
+constexpr char kRootfsPath[] = "/opt/google/vms/android/system.raw.img";
+
+// Path to the VM fstab file.
+constexpr char kFstabPath[] = "/run/arcvm/host_generated/fstab";
 
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
 constexpr char kArcvmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm-vcpus";
@@ -57,34 +66,6 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     return dbus_response;
   }
 
-  const base::FilePath kernel(request.vm().kernel());
-  const base::FilePath rootfs(request.vm().rootfs());
-  const base::FilePath fstab(request.fstab());
-
-  if (!base::PathExists(kernel)) {
-    LOG(ERROR) << "Missing VM kernel path: " << kernel.value();
-
-    response.set_failure_reason("Kernel path does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!base::PathExists(rootfs)) {
-    LOG(ERROR) << "Missing VM rootfs path: " << rootfs.value();
-
-    response.set_failure_reason("Rootfs path does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!base::PathExists(fstab)) {
-    LOG(ERROR) << "Missing VM fstab path: " << fstab.value();
-
-    response.set_failure_reason("Fstab path does not exist");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
   std::vector<Disk> disks;
   // The rootfs can be treated as a disk as well and needs to be added before
   // other disks.
@@ -95,7 +76,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   if (rootfs_block_size) {
     config.block_size = rootfs_block_size;
   }
-  disks.push_back(Disk(std::move(rootfs), config));
+  disks.push_back(Disk(base::FilePath(kRootfsPath), config));
   for (const auto& disk : request.disks()) {
     if (!base::PathExists(base::FilePath(disk.path()))) {
       LOG(ERROR) << "Missing disk path: " << disk.path();
@@ -228,7 +209,7 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
       .AppendKernelParam(base::JoinString(params, " "))
       .AppendCustomParam("--vcpu-cgroup-path",
                          base::FilePath(kArcvmVcpuCpuCgroup).value())
-      .AppendCustomParam("--android-fstab", fstab.value())
+      .AppendCustomParam("--android-fstab", kFstabPath)
       .AppendCustomParam("--pstore",
                          base::StringPrintf("path=%s,size=%d", kArcVmPstorePath,
                                             kArcVmPstoreSize))
@@ -274,9 +255,9 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
   }
 
   auto vm =
-      ArcVm::Create(std::move(kernel), vsock_cid, std::move(network_client),
-                    std::move(server_proxy), std::move(runtime_dir), features,
-                    std::move(vm_builder));
+      ArcVm::Create(base::FilePath(kKernelPath), vsock_cid,
+                    std::move(network_client), std::move(server_proxy),
+                    std::move(runtime_dir), features, std::move(vm_builder));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
