@@ -27,7 +27,7 @@ void FakeLibdrmUtil::FillPrivacyScreenInfo(const uint32_t connector_id,
   *privacy_screen_enabled = false;
 }
 
-void FakeLibdrmUtil::FillDisplaySize(const uint32_t connector_id,
+bool FakeLibdrmUtil::FillDisplaySize(const uint32_t connector_id,
                                      uint32_t* width,
                                      uint32_t* height) {
   if (connector_id == 0) {
@@ -37,9 +37,11 @@ void FakeLibdrmUtil::FillDisplaySize(const uint32_t connector_id,
     *width = 600;
     *height = 340;
   }
+
+  return true;
 }
 
-void FakeLibdrmUtil::FillDisplayResolution(const uint32_t connector_id,
+bool FakeLibdrmUtil::FillDisplayResolution(const uint32_t connector_id,
                                            uint32_t* horizontal,
                                            uint32_t* vertical) {
   if (connector_id == 0) {
@@ -49,15 +51,19 @@ void FakeLibdrmUtil::FillDisplayResolution(const uint32_t connector_id,
     *horizontal = 2560;
     *vertical = 1440;
   }
+
+  return true;
 }
 
-void FakeLibdrmUtil::FillDisplayRefreshRate(const uint32_t connector_id,
+bool FakeLibdrmUtil::FillDisplayRefreshRate(const uint32_t connector_id,
                                             double* refresh_rate) {
   if (connector_id == 0) {
     *refresh_rate = 60.0;
   } else {
     *refresh_rate = 120.0;
   }
+
+  return true;
 }
 
 }  // namespace diagnostics

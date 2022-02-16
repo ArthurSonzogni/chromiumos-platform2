@@ -165,19 +165,20 @@ void LibdrmUtilImpl::GetDrmCrtc(const uint32_t connector_id,
   crtc->reset(drmModeGetCrtc(device_file.GetPlatformFile(), encoder->crtc_id));
 }
 
-void LibdrmUtilImpl::FillDisplaySize(const uint32_t connector_id,
+bool LibdrmUtilImpl::FillDisplaySize(const uint32_t connector_id,
                                      uint32_t* width,
                                      uint32_t* height) {
   ScopedDrmModeConnectorPtr connector(
       drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
   if (!connector)
-    return;
+    return false;
 
   *width = connector->mmWidth;
   *height = connector->mmHeight;
+  return true;
 }
 
-void LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
+bool LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
                                            uint32_t* horizontal,
                                            uint32_t* vertical) {
   ScopedDrmModeCrtcPtr crtc;
@@ -190,7 +191,7 @@ void LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
     ScopedDrmModeConnectorPtr connector(
         drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
     if (!connector)
-      return;
+      return false;
     for (int i = 0; i < connector->count_modes; ++i) {
       if (connector->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
         *horizontal = connector->modes[i].hdisplay;
@@ -198,9 +199,11 @@ void LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
       }
     }
   }
+
+  return true;
 }
 
-void LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
+bool LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
                                             double* refresh_rate) {
   ScopedDrmModeCrtcPtr crtc;
   GetDrmCrtc(connector_id, &crtc);
@@ -218,7 +221,7 @@ void LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
     ScopedDrmModeConnectorPtr connector(
         drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
     if (!connector)
-      return;
+      return false;
     for (int i = 0; i < connector->count_modes; ++i) {
       if (connector->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
         *refresh_rate =
@@ -227,6 +230,8 @@ void LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
       }
     }
   }
+
+  return true;
 }
 
 }  // namespace diagnostics

@@ -52,13 +52,13 @@ class LibdrmUtilImpl : public LibdrmUtil {
   void FillPrivacyScreenInfo(const uint32_t connector_id,
                              bool* privacy_screen_supported,
                              bool* privacy_screen_enabled) override;
-  void FillDisplaySize(const uint32_t connector_id,
+  bool FillDisplaySize(const uint32_t connector_id,
                        uint32_t* width,
                        uint32_t* height) override;
-  void FillDisplayResolution(const uint32_t connector_id,
+  bool FillDisplayResolution(const uint32_t connector_id,
                              uint32_t* horizontal,
                              uint32_t* vertical) override;
-  void FillDisplayRefreshRate(const uint32_t connector_id,
+  bool FillDisplayRefreshRate(const uint32_t connector_id,
                               double* refresh_rate) override;
 
  private:

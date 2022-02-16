@@ -24,7 +24,8 @@ void FillDisplaySize(const std::unique_ptr<LibdrmUtil>& libdrm_util,
                      mojo_ipc::NullableUint32Ptr* out_height) {
   uint32_t width;
   uint32_t height;
-  libdrm_util->FillDisplaySize(connector_id, &width, &height);
+  if (!libdrm_util->FillDisplaySize(connector_id, &width, &height))
+    return;
 
   *out_width = mojo_ipc::NullableUint32::New(width);
   *out_height = mojo_ipc::NullableUint32::New(height);
@@ -36,7 +37,8 @@ void FillDisplayResolution(const std::unique_ptr<LibdrmUtil>& libdrm_util,
                            mojo_ipc::NullableUint32Ptr* out_vertical) {
   uint32_t horizontal;
   uint32_t vertical;
-  libdrm_util->FillDisplayResolution(connector_id, &horizontal, &vertical);
+  if (!libdrm_util->FillDisplayResolution(connector_id, &horizontal, &vertical))
+    return;
 
   *out_horizontal = mojo_ipc::NullableUint32::New(horizontal);
   *out_vertical = mojo_ipc::NullableUint32::New(vertical);
@@ -46,7 +48,8 @@ void FillDisplayRefreshRate(const std::unique_ptr<LibdrmUtil>& libdrm_util,
                             const uint32_t connector_id,
                             mojo_ipc::NullableDoublePtr* out_refresh_rate) {
   double refresh_rate;
-  libdrm_util->FillDisplayRefreshRate(connector_id, &refresh_rate);
+  if (!libdrm_util->FillDisplayRefreshRate(connector_id, &refresh_rate))
+    return;
 
   *out_refresh_rate = mojo_ipc::NullableDouble::New(refresh_rate);
 }
