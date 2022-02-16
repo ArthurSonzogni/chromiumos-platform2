@@ -73,13 +73,10 @@ TEST_F(AuthFactorManagerTest, Save) {
       auth_factor_manager_.LoadAuthFactor(
           kObfuscatedUsername, AuthFactorType::kPassword, kSomeIdpLabel);
   ASSERT_TRUE(loaded_auth_factor);
-  ASSERT_TRUE(loaded_auth_factor->type().has_value());
-  EXPECT_EQ(loaded_auth_factor->type().value(), AuthFactorType::kPassword);
-  ASSERT_TRUE(loaded_auth_factor->label().has_value());
-  EXPECT_EQ(loaded_auth_factor->label().value(), kSomeIdpLabel);
-  ASSERT_TRUE(loaded_auth_factor->metadata().has_value());
+  EXPECT_EQ(loaded_auth_factor->type(), AuthFactorType::kPassword);
+  EXPECT_EQ(loaded_auth_factor->label(), kSomeIdpLabel);
   EXPECT_TRUE(absl::holds_alternative<PasswordAuthFactorMetadata>(
-      loaded_auth_factor->metadata().value().metadata));
+      loaded_auth_factor->metadata().metadata));
   // TODO(b/204441443): Check other fields too. Consider using a GTest matcher.
 }
 
@@ -88,10 +85,10 @@ TEST_F(AuthFactorManagerTest, SaveBadEmptyLabel) {
   // Create an auth factor as a clone of a correct object, but with an empty
   // label.
   std::unique_ptr<AuthFactor> good_auth_factor = CreatePasswordAuthFactor();
-  AuthFactor bad_auth_factor(good_auth_factor->type().value(),
+  AuthFactor bad_auth_factor(good_auth_factor->type(),
                              /*label=*/std::string(),
-                             good_auth_factor->metadata().value(),
-                             good_auth_factor->auth_block_state().value());
+                             good_auth_factor->metadata(),
+                             good_auth_factor->auth_block_state());
 
   // Verify the manager refuses to save this auth factor.
   EXPECT_FALSE(auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername,
@@ -104,10 +101,10 @@ TEST_F(AuthFactorManagerTest, SaveBadMalformedLabel) {
   // Create an auth factor as a clone of a correct object, but with a malformed
   // label.
   std::unique_ptr<AuthFactor> good_auth_factor = CreatePasswordAuthFactor();
-  AuthFactor bad_auth_factor(good_auth_factor->type().value(),
+  AuthFactor bad_auth_factor(good_auth_factor->type(),
                              /*label=*/"foo.' bar'",
-                             good_auth_factor->metadata().value(),
-                             good_auth_factor->auth_block_state().value());
+                             good_auth_factor->metadata(),
+                             good_auth_factor->auth_block_state());
 
   // Verify the manager refuses to save this auth factor.
   EXPECT_FALSE(auth_factor_manager_.SaveAuthFactor(kObfuscatedUsername,

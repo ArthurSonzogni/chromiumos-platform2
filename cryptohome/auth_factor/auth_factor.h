@@ -27,7 +27,6 @@ namespace cryptohome {
 // it.
 class AuthFactor {
  public:
-  // Only for testing currently.
   AuthFactor(AuthFactorType type,
              const std::string& label,
              const AuthFactorMetadata& metadata,
@@ -35,23 +34,18 @@ class AuthFactor {
 
   ~AuthFactor() = default;
 
-  const std::optional<AuthFactorType>& type() const { return type_; }
-  const std::optional<std::string>& label() const { return label_; }
-  const std::optional<AuthFactorMetadata>& metadata() const {
-    return metadata_;
-  }
-  const std::optional<AuthBlockState>& auth_block_state() const {
-    return auth_block_state_;
-  }
+  const AuthFactorType& type() const { return type_; }
+  const std::string& label() const { return label_; }
+  const AuthFactorMetadata& metadata() const { return metadata_; }
+  const AuthBlockState& auth_block_state() const { return auth_block_state_; }
 
  private:
-  // The auth factor public information. TODO(b:208351356): Make these
-  // non-optional by implementing vault keyset conversion into these fields.
-  const std::optional<AuthFactorType> type_;
-  const std::optional<std::string> label_;
-  const std::optional<AuthFactorMetadata> metadata_;
+  // The auth factor public information.
+  const AuthFactorType type_;
+  const std::string label_;
+  const AuthFactorMetadata metadata_;
   // Contains the data that the auth factor needs for deriving the secret.
-  std::optional<AuthBlockState> auth_block_state_;
+  const AuthBlockState auth_block_state_;
 };
 
 }  // namespace cryptohome

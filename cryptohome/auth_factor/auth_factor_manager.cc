@@ -99,8 +99,8 @@ std::optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
   flatbuffers::FlatBufferBuilder builder(kFlatbufferAllocatorInitialSize,
                                          &allocator);
 
-  auto auth_block_state_offset = ToFlatBuffer<AuthBlockState>()(
-      &builder, auth_factor.auth_block_state().value());
+  auto auth_block_state_offset =
+      ToFlatBuffer<AuthBlockState>()(&builder, auth_factor.auth_block_state());
   if (auth_block_state_offset.IsNull()) {
     LOG(ERROR) << "Failed to serialize auth block state";
     return std::nullopt;
@@ -109,7 +109,7 @@ std::optional<Blob> SerializeAuthFactor(const AuthFactor& auth_factor) {
   SerializedAuthFactorMetadata metadata_type =
       SerializedAuthFactorMetadata::NONE;
   flatbuffers::Offset<void> metadata_offset = SerializeMetadataToOffset(
-      auth_factor.metadata().value(), &builder, &metadata_type);
+      auth_factor.metadata(), &builder, &metadata_type);
   if (metadata_offset.IsNull()) {
     LOG(ERROR) << "Failed to serialize metadata";
     return std::nullopt;
@@ -181,24 +181,16 @@ AuthFactorManager::~AuthFactorManager() = default;
 
 bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
                                        const AuthFactor& auth_factor) {
-  // TODO(b:208351356): Remove the DCHECKs after these fields are made
-  // non-optional.
-  DCHECK(auth_factor.type().has_value());
-  DCHECK(auth_factor.label().has_value());
-  DCHECK(auth_factor.metadata().has_value());
-  DCHECK(auth_factor.label().has_value());
-
   // Validate input parameters.
-  const std::string type_string =
-      GetAuthFactorTypeString(auth_factor.type().value());
+  const std::string type_string = GetAuthFactorTypeString(auth_factor.type());
   if (type_string.empty()) {
     LOG(ERROR) << "Failed to convert auth factor type "
-               << static_cast<int>(auth_factor.type().value())
-               << " for factor called " << auth_factor.label().value();
+               << static_cast<int>(auth_factor.type()) << " for factor called "
+               << auth_factor.label();
     return false;
   }
-  if (!IsValidAuthFactorLabel(auth_factor.label().value())) {
-    LOG(ERROR) << "Invalid auth factor label " << auth_factor.label().value()
+  if (!IsValidAuthFactorLabel(auth_factor.label())) {
+    LOG(ERROR) << "Invalid auth factor label " << auth_factor.label()
                << " of type " << type_string;
     return false;
   }
@@ -206,19 +198,18 @@ bool AuthFactorManager::SaveAuthFactor(const std::string& obfuscated_username,
   // Create a flatbuffer to be persisted.
   std::optional<Blob> flatbuffer = SerializeAuthFactor(auth_factor);
   if (!flatbuffer.has_value()) {
-    LOG(ERROR) << "Failed to serialize auth factor "
-               << auth_factor.label().value() << " of type " << type_string;
+    LOG(ERROR) << "Failed to serialize auth factor " << auth_factor.label()
+               << " of type " << type_string;
     return false;
   }
 
   // Write the file.
-  base::FilePath file_path = AuthFactorPath(obfuscated_username, type_string,
-                                            auth_factor.label().value());
+  base::FilePath file_path =
+      AuthFactorPath(obfuscated_username, type_string, auth_factor.label());
   if (!platform_->WriteFileAtomicDurable(file_path, flatbuffer.value(),
                                          kAuthFactorFilePermissions)) {
-    LOG(ERROR) << "Failed to persist auth factor "
-               << auth_factor.label().value() << " of type " << type_string
-               << " for " << obfuscated_username;
+    LOG(ERROR) << "Failed to persist auth factor " << auth_factor.label()
+               << " of type " << type_string << " for " << obfuscated_username;
     return false;
   }
 
