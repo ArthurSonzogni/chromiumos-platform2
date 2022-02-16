@@ -491,6 +491,19 @@ bool DeserializeRecoveryRequestFromCbor(
     return false;
   }
   recovery_request->request_payload = std::move(request_payload);
+
+  // Parse out rsa_signature if it is attached
+  const auto rsa_signature_entry =
+      cbor_map.find(cbor::Value(kRequestRsaSignature));
+  if (rsa_signature_entry != cbor_map.end()) {
+    brillo::SecureBlob rsa_signature;
+    if (!FindBytestringValueInCborMap(cbor_map, kRequestRsaSignature,
+                                      &rsa_signature)) {
+      LOG(ERROR) << "Failed to get RSA signature from the recovery request.";
+      return false;
+    }
+    recovery_request->rsa_signature = std::move(rsa_signature);
+  }
   return true;
 }
 
