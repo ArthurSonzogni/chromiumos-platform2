@@ -14,6 +14,7 @@
 #include <string>
 
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
+#include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {
 
@@ -45,9 +46,10 @@ class UserSecretStash {
     brillo::SecureBlob gcm_tag;
   };
 
-  // Sets up a UserSecretStash with a random file system key, and a random reset
-  // secret.
-  static std::unique_ptr<UserSecretStash> CreateRandom();
+  // Sets up a UserSecretStash with random contents (reset secret, etc.) and the
+  // values from the specified file system keyset.
+  static std::unique_ptr<UserSecretStash> CreateRandom(
+      const FileSystemKeyset& file_system_keyset);
   // This deserializes the |flatbuffer| into a UserSecretStashContainer table.
   // Besides unencrypted data, that table contains a ciphertext, which is
   // decrypted with the |main_key| using AES-GCM-256. It doesn't return the
@@ -73,8 +75,7 @@ class UserSecretStash {
   UserSecretStash(const UserSecretStash&) = delete;
   UserSecretStash& operator=(const UserSecretStash&) = delete;
 
-  const brillo::SecureBlob& GetFileSystemKey() const;
-  void SetFileSystemKey(const brillo::SecureBlob& key);
+  const FileSystemKeyset& GetFileSystemKeyset() const;
 
   const brillo::SecureBlob& GetResetSecret() const;
   void SetResetSecret(const brillo::SecureBlob& secret);
@@ -117,11 +118,12 @@ class UserSecretStash {
       const std::map<std::string, WrappedKeyBlock>& wrapped_key_blocks,
       const brillo::SecureBlob& main_key);
 
-  UserSecretStash(const brillo::SecureBlob& file_system_key,
+  UserSecretStash(const FileSystemKeyset& file_system_keyset,
                   const brillo::SecureBlob& reset_secret);
 
-  // A key registered with the kernel to decrypt files.
-  brillo::SecureBlob file_system_key_;
+  // Keys registered with the kernel to decrypt files and file names, together
+  // with corresponding salts and signatures.
+  const FileSystemKeyset file_system_keyset_;
   // The reset secret used for any PinWeaver backed credentials.
   brillo::SecureBlob reset_secret_;
   // Stores multiple wrapped (encrypted) representations of the main key, each

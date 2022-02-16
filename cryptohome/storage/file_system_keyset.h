@@ -26,8 +26,8 @@ class FileSystemKeyset final {
   ~FileSystemKeyset();
 
   // Getters for the associated key data
-  const FileSystemKey Key() const;
-  const FileSystemKeyReference KeyReference() const;
+  const FileSystemKey& Key() const;
+  const FileSystemKeyReference& KeyReference() const;
   const brillo::SecureBlob& chaps_key() const;
 
   // TODO(dlunev): make vault keyset to use this CreateRandom instead

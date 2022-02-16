@@ -154,10 +154,12 @@ user_data_auth::CryptohomeErrorCode AuthSession::OnUserCreated() {
       // Check invariants.
       DCHECK(!user_secret_stash_);
       DCHECK(!user_secret_stash_main_key_.has_value());
+      DCHECK(file_system_keyset_.has_value());
       // The USS experiment is on, hence create the USS for the newly created
       // non-ephemeral user. Keep the USS in memory: it will be persisted after
       // the first auth factor gets added.
-      user_secret_stash_ = UserSecretStash::CreateRandom();
+      user_secret_stash_ =
+          UserSecretStash::CreateRandom(file_system_keyset_.value());
       if (!user_secret_stash_) {
         LOG(ERROR) << "User secret stash creation failed";
         return user_data_auth::CryptohomeErrorCode::

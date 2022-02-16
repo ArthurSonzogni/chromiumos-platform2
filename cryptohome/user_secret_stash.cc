@@ -24,6 +24,8 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
+#include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/file_system_keyset.h"
 
 namespace cryptohome {
 
@@ -40,6 +42,53 @@ std::optional<bool>& GetUserSecretStashExperimentOverride() {
 
 bool UserSecretStashExperimentFlagFileExists() {
   return base::PathExists(base::FilePath(kUssExperimentFlagPath));
+}
+
+// Extracts the file system keyset from the given USS payload. Returns nullopt
+// on failure.
+std::optional<FileSystemKeyset> GetFileSystemKeyFromPayload(
+    const UserSecretStashPayload& uss_payload) {
+  if (uss_payload.fek.empty()) {
+    LOG(ERROR) << "UserSecretStashPayload has no FEK";
+    return std::nullopt;
+  }
+  if (uss_payload.fnek.empty()) {
+    LOG(ERROR) << "UserSecretStashPayload has no FNEK";
+    return std::nullopt;
+  }
+  if (uss_payload.fek_salt.empty()) {
+    LOG(ERROR) << "UserSecretStashPayload has no FEK salt";
+    return std::nullopt;
+  }
+  if (uss_payload.fnek_salt.empty()) {
+    LOG(ERROR) << "UserSecretStashPayload has no FNEK salt";
+    return std::nullopt;
+  }
+  if (uss_payload.fek_sig.empty()) {
+    LOG(ERROR) << "UserSecretStashPayload has no FEK signature";
+    return std::nullopt;
+  }
+  if (uss_payload.fnek_sig.empty()) {
+    LOG(ERROR) << "UserSecretStashPayload has no FNEK signature";
+    return std::nullopt;
+  }
+  if (uss_payload.chaps_key.empty()) {
+    LOG(ERROR) << "UserSecretStashPayload has no Chaps key";
+    return std::nullopt;
+  }
+  FileSystemKey file_system_key = {
+      .fek = uss_payload.fek,
+      .fnek = uss_payload.fnek,
+      .fek_salt = uss_payload.fek_salt,
+      .fnek_salt = uss_payload.fnek_salt,
+  };
+  FileSystemKeyReference file_system_key_reference = {
+      .fek_sig = uss_payload.fek_sig,
+      .fnek_sig = uss_payload.fnek_sig,
+  };
+  return FileSystemKeyset(std::move(file_system_key),
+                          std::move(file_system_key_reference),
+                          uss_payload.chaps_key);
 }
 
 // Converts the wrapped key block information from serializable structs
@@ -255,14 +304,13 @@ void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled) {
 }
 
 // static
-std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom() {
-  brillo::SecureBlob file_system_key =
-      CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_512_BIT_KEY_SIZE);
+std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom(
+    const FileSystemKeyset& file_system_keyset) {
   brillo::SecureBlob reset_secret =
       CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
   // Note: make_unique() wouldn't work due to the constructor being private.
   return std::unique_ptr<UserSecretStash>(
-      new UserSecretStash(file_system_key, reset_secret));
+      new UserSecretStash(file_system_keyset, reset_secret));
 }
 
 // static
@@ -307,8 +355,11 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
     return nullptr;
   }
 
-  if (uss_payload.value().file_system_key.empty()) {
-    LOG(ERROR) << "UserSecretStashPayload has no file system key";
+  std::optional<FileSystemKeyset> file_system_keyset =
+      GetFileSystemKeyFromPayload(uss_payload.value());
+  if (!file_system_keyset.has_value()) {
+    LOG(ERROR)
+        << "UserSecretStashPayload has invalid file system keyset information";
     return nullptr;
   }
   if (uss_payload.value().reset_secret.empty()) {
@@ -318,7 +369,7 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
 
   // Note: make_unique() wouldn't work due to the constructor being private.
   std::unique_ptr<UserSecretStash> stash(new UserSecretStash(
-      uss_payload.value().file_system_key, uss_payload.value().reset_secret));
+      file_system_keyset.value(), uss_payload.value().reset_secret));
   stash->wrapped_key_blocks_ = wrapped_key_blocks;
 
   return stash;
@@ -361,12 +412,8 @@ brillo::SecureBlob UserSecretStash::CreateRandomMainKey() {
   return CreateSecureRandomBlob(kAesGcm256KeySize);
 }
 
-const brillo::SecureBlob& UserSecretStash::GetFileSystemKey() const {
-  return file_system_key_;
-}
-
-void UserSecretStash::SetFileSystemKey(const brillo::SecureBlob& key) {
-  file_system_key_ = key;
+const FileSystemKeyset& UserSecretStash::GetFileSystemKeyset() const {
+  return file_system_keyset_;
 }
 
 const brillo::SecureBlob& UserSecretStash::GetResetSecret() const {
@@ -446,7 +493,13 @@ bool UserSecretStash::RemoveWrappedMainKey(const std::string& wrapping_id) {
 std::optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
     const brillo::SecureBlob& main_key) {
   UserSecretStashPayload payload = {
-      .file_system_key = file_system_key_,
+      .fek = file_system_keyset_.Key().fek,
+      .fnek = file_system_keyset_.Key().fnek,
+      .fek_salt = file_system_keyset_.Key().fek_salt,
+      .fnek_salt = file_system_keyset_.Key().fnek_salt,
+      .fek_sig = file_system_keyset_.KeyReference().fek_sig,
+      .fnek_sig = file_system_keyset_.KeyReference().fnek_sig,
+      .chaps_key = file_system_keyset_.chaps_key(),
       .reset_secret = reset_secret_,
   };
   std::optional<brillo::SecureBlob> serialized_payload = payload.Serialize();
@@ -491,10 +544,9 @@ std::optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
   return serialized_contaner.value();
 }
 
-UserSecretStash::UserSecretStash(const brillo::SecureBlob& file_system_key,
+UserSecretStash::UserSecretStash(const FileSystemKeyset& file_system_keyset,
                                  const brillo::SecureBlob& reset_secret)
-    : file_system_key_(file_system_key), reset_secret_(reset_secret) {
-  CHECK(!file_system_key_.empty());
+    : file_system_keyset_(file_system_keyset), reset_secret_(reset_secret) {
   CHECK(!reset_secret_.empty());
 }
 

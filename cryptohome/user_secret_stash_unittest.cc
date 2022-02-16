@@ -17,6 +17,9 @@
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
+#include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/storage/file_system_keyset.h"
+#include "cryptohome/storage/file_system_keyset_test_utils.h"
 
 namespace cryptohome {
 
@@ -30,11 +33,33 @@ static bool FindBlobInBlob(const brillo::SecureBlob& haystack,
 
 class UserSecretStashTest : public ::testing::Test {
  protected:
+  // Fake file system keyset data:
+  const brillo::SecureBlob kFek = brillo::SecureBlob("fek");
+  const brillo::SecureBlob kFnek = brillo::SecureBlob("fnek");
+  const brillo::SecureBlob kFekSalt = brillo::SecureBlob("fek-salt");
+  const brillo::SecureBlob kFnekSalt = brillo::SecureBlob("fnek-salt");
+  const brillo::SecureBlob kFekSig = brillo::SecureBlob("fek-sig");
+  const brillo::SecureBlob kFnekSig = brillo::SecureBlob("fnek-sig");
+  const brillo::SecureBlob kChapsKey = brillo::SecureBlob("chaps-key");
+  const FileSystemKeyset kFileSystemKeyset = FileSystemKeyset(
+      FileSystemKey{
+          .fek = kFek,
+          .fnek = kFnek,
+          .fek_salt = kFekSalt,
+          .fnek_salt = kFnekSalt,
+      },
+      FileSystemKeyReference{
+          .fek_sig = kFekSig,
+          .fnek_sig = kFnekSig,
+      },
+      kChapsKey);
+
+  // Fake USS Main Key.
   const brillo::SecureBlob kMainKey =
       brillo::SecureBlob(kAesGcm256KeySize, 0xA);
 
   void SetUp() override {
-    stash_ = UserSecretStash::CreateRandom();
+    stash_ = UserSecretStash::CreateRandom(kFileSystemKeyset);
     ASSERT_TRUE(stash_);
   }
 
@@ -44,18 +69,18 @@ class UserSecretStashTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(UserSecretStashTest, CreateRandom) {
-  EXPECT_FALSE(stash_->GetFileSystemKey().empty());
   EXPECT_FALSE(stash_->GetResetSecret().empty());
   // The secrets should be created randomly and never collide (in practice).
-  EXPECT_NE(stash_->GetFileSystemKey(), stash_->GetResetSecret());
+  EXPECT_THAT(stash_->GetFileSystemKeyset(),
+              FileSystemKeysetEquals(kFileSystemKeyset));
 }
 
 // Verify that the USS secrets created by CreateRandom() don't repeat (in
 // practice).
 TEST_F(UserSecretStashTest, CreateRandomNotConstant) {
-  std::unique_ptr<UserSecretStash> stash2 = UserSecretStash::CreateRandom();
+  std::unique_ptr<UserSecretStash> stash2 =
+      UserSecretStash::CreateRandom(kFileSystemKeyset);
   ASSERT_TRUE(stash2);
-  EXPECT_NE(stash_->GetFileSystemKey(), stash2->GetFileSystemKey());
   EXPECT_NE(stash_->GetResetSecret(), stash2->GetResetSecret());
 }
 
@@ -117,7 +142,8 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
   ASSERT_NE(std::nullopt, uss_container);
 
   // No raw secrets in the encrypted USS, which is written to disk.
-  EXPECT_FALSE(FindBlobInBlob(*uss_container, stash_->GetFileSystemKey()));
+  EXPECT_FALSE(
+      FindBlobInBlob(*uss_container, stash_->GetFileSystemKeyset().Key().fek));
   EXPECT_FALSE(FindBlobInBlob(*uss_container, stash_->GetResetSecret()));
 }
 
@@ -130,7 +156,8 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
       UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
   ASSERT_TRUE(stash2);
 
-  EXPECT_EQ(stash_->GetFileSystemKey(), stash2->GetFileSystemKey());
+  EXPECT_THAT(stash_->GetFileSystemKeyset(),
+              FileSystemKeysetEquals(stash2->GetFileSystemKeyset()));
   EXPECT_EQ(stash_->GetResetSecret(), stash2->GetResetSecret());
 }
 
@@ -242,7 +269,8 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSViaWrappedKey) {
           uss_container.value(), kWrappingId, kWrappingKey,
           &unwrapped_main_key);
   ASSERT_TRUE(stash2);
-  EXPECT_EQ(stash_->GetFileSystemKey(), stash2->GetFileSystemKey());
+  EXPECT_THAT(stash_->GetFileSystemKeyset(),
+              FileSystemKeysetEquals(stash2->GetFileSystemKeyset()));
   EXPECT_EQ(stash_->GetResetSecret(), stash2->GetResetSecret());
   EXPECT_EQ(unwrapped_main_key, kMainKey);
 }
@@ -490,11 +518,71 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorGcmTagBadSize) {
       GetFlatbufferFromUssContainerStruct(), kMainKey));
 }
 
-// Test the decryption fails when the payload's file_system_key field is
-// missing. Normally this never occurs, but we verify to be resilient against
-// accidental or intentional file corruption.
-TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFileSystemKey) {
-  uss_payload_struct_.file_system_key.clear();
+// Test the decryption fails when the payload's FEK field is missing. Normally
+// this never occurs, but we verify to be resilient against accidental or
+// intentional file corruption.
+TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFek) {
+  uss_payload_struct_.fek.clear();
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+}
+
+// Test the decryption fails when the payload's FNEK field is missing. Normally
+// this never occurs, but we verify to be resilient against accidental or
+// intentional file corruption.
+TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFnek) {
+  uss_payload_struct_.fnek.clear();
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+}
+
+// Test the decryption fails when the payload's FEK salt field is missing.
+// Normally this never occurs, but we verify to be resilient against accidental
+// or intentional file corruption.
+TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFekSalt) {
+  uss_payload_struct_.fek_salt.clear();
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+}
+
+// Test the decryption fails when the payload's FNEK salt field is missing.
+// Normally this never occurs, but we verify to be resilient against accidental
+// or intentional file corruption.
+TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFnekSalt) {
+  uss_payload_struct_.fnek_salt.clear();
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+}
+
+// Test the decryption fails when the payload's FEK signature field is missing.
+// Normally this never occurs, but we verify to be resilient against accidental
+// or intentional file corruption.
+TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFekSig) {
+  uss_payload_struct_.fek_sig.clear();
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+}
+
+// Test the decryption fails when the payload's FNEK signature field is missing.
+// Normally this never occurs, but we verify to be resilient against accidental
+// or intentional file corruption.
+TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFnekSig) {
+  uss_payload_struct_.fnek_sig.clear();
+
+  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
+      GetFlatbufferFromUssPayloadStruct(), kMainKey));
+}
+
+// Test the decryption fails when the payload's Chaps key field is missing.
+// Normally this never occurs, but we verify to be resilient against accidental
+// or intentional file corruption.
+TEST_F(UserSecretStashInternalsTest, DecryptErrorNoChapsKey) {
+  uss_payload_struct_.chaps_key.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
       GetFlatbufferFromUssPayloadStruct(), kMainKey));

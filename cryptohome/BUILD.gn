@@ -641,6 +641,9 @@ if (use.fuzzer) {
       "fuzzers/user_secret_stash_parser_fuzzer.cc",
     ]
     configs += [ "//common-mk/common_fuzzer" ]
-    deps = [ "libs:libcrosplatform" ]
+    deps = [
+      "libs:libcrosplatform",
+      "libs:libcryptohome",
+    ]
   }
 }

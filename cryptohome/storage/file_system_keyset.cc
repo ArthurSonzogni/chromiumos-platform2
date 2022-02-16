@@ -53,11 +53,11 @@ FileSystemKeyset::FileSystemKeyset(FileSystemKey key,
                                    brillo::SecureBlob chaps_key)
     : key_(key), key_reference_(key_reference), chaps_key_(chaps_key) {}
 
-const FileSystemKey FileSystemKeyset::Key() const {
+const FileSystemKey& FileSystemKeyset::Key() const {
   return key_;
 }
 
-const FileSystemKeyReference FileSystemKeyset::KeyReference() const {
+const FileSystemKeyReference& FileSystemKeyset::KeyReference() const {
   return key_reference_;
 }
 

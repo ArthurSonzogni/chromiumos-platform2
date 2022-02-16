@@ -50,7 +50,17 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
                              SecureBlob* mutated_uss_main_key) {
   // Create USS payload.
   UserSecretStashPayload uss_payload_struct;
-  uss_payload_struct.file_system_key =
+  uss_payload_struct.fek =
+      SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
+  uss_payload_struct.fnek =
+      SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
+  uss_payload_struct.fek_salt =
+      SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
+  uss_payload_struct.fnek_salt =
+      SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
+  uss_payload_struct.fek_sig =
+      SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
+  uss_payload_struct.fnek_sig =
       SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
   uss_payload_struct.reset_secret =
       SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
@@ -108,7 +118,20 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
 
 void AssertStashesEqual(const UserSecretStash& first,
                         const UserSecretStash& second) {
-  CHECK(first.GetFileSystemKey() == second.GetFileSystemKey());
+  CHECK(first.GetFileSystemKeyset().Key().fek ==
+        second.GetFileSystemKeyset().Key().fek);
+  CHECK(first.GetFileSystemKeyset().Key().fnek ==
+        second.GetFileSystemKeyset().Key().fnek);
+  CHECK(first.GetFileSystemKeyset().Key().fek_salt ==
+        second.GetFileSystemKeyset().Key().fek_salt);
+  CHECK(first.GetFileSystemKeyset().Key().fnek_salt ==
+        second.GetFileSystemKeyset().Key().fnek_salt);
+  CHECK(first.GetFileSystemKeyset().KeyReference().fek_sig ==
+        second.GetFileSystemKeyset().KeyReference().fek_sig);
+  CHECK(first.GetFileSystemKeyset().KeyReference().fnek_sig ==
+        second.GetFileSystemKeyset().KeyReference().fnek_sig);
+  CHECK(first.GetFileSystemKeyset().chaps_key() ==
+        second.GetFileSystemKeyset().chaps_key());
   CHECK(first.GetResetSecret() == second.GetResetSecret());
 }
 
