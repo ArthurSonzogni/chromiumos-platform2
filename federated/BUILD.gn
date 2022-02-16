@@ -85,7 +85,7 @@ executable("federated_service") {
 }
 
 install_config("install_upstart_conf") {
-  sources = [ "init/*.conf" ]
+  sources = [ "init/federated-service.conf" ]
   install_path = "/etc/init"
 }
 
