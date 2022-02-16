@@ -49,6 +49,7 @@ AuthSession::AuthSession(
     AuthFactorManager* auth_factor_manager,
     UserSecretStashStorage* user_secret_stash_storage)
     : username_(username),
+      obfuscated_username_(SanitizeUserName(username_)),
       token_(base::UnguessableToken::Create()),
       serialized_token_(
           AuthSession::GetSerializedStringFromToken(token_).value_or("")),
@@ -71,9 +72,9 @@ AuthSession::AuthSession(
   // TODO(hardikgoyal): make a factory function for AuthSession so the
   // constructor doesn't need to do work
   start_time_ = base::TimeTicks::Now();
-  user_exists_ = keyset_management_->UserExists(SanitizeUserName(username_));
+  user_exists_ = keyset_management_->UserExists(obfuscated_username_);
   if (user_exists_) {
-    keyset_management_->GetVaultKeysetLabelsAndData(SanitizeUserName(username_),
+    keyset_management_->GetVaultKeysetLabelsAndData(obfuscated_username_,
                                                     &key_label_data_);
     user_has_configured_credential_ = !key_label_data_.empty();
   }

@@ -3529,15 +3529,14 @@ std::string UserDataAuth::SanitizedUserNameForSession(
   if (!auth_session) {
     return "";
   }
-  return SanitizeUserName(auth_session->username());
+  return auth_session->obfuscated_username();
 }
 
 scoped_refptr<UserSession> UserDataAuth::GetMountableUserSession(
     AuthSession* auth_session, user_data_auth::CryptohomeErrorCode* error) {
   AssertOnMountThread();
 
-  const std::string& obfuscated_username =
-      SanitizeUserName(auth_session->username());
+  const std::string& obfuscated_username = auth_session->obfuscated_username();
 
   // Check no guest is mounted.
   scoped_refptr<UserSession> guest_session = GetUserSession(guest_user_);
@@ -3733,8 +3732,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareEphemeralVaultImpl(
     return error;
   }
 
-  const std::string& obfuscated_username =
-      SanitizeUserName(auth_session->username());
+  const std::string& obfuscated_username = auth_session->obfuscated_username();
   PreMountHook(obfuscated_username);
   ReportTimerStart(kMountExTimer);
   MountError mount_error = session->MountEphemeral(auth_session->username());
@@ -3756,8 +3754,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::PreparePersistentVaultImpl(
     return error;
   }
 
-  const std::string& obfuscated_username =
-      SanitizeUserName(auth_session->username());
+  const std::string& obfuscated_username = auth_session->obfuscated_username();
   if (!homedirs_->Exists(obfuscated_username)) {
     return user_data_auth::CryptohomeErrorCode::
         CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
@@ -3796,8 +3793,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::CreatePersistentUserImpl(
     return user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN;
   }
 
-  const std::string& obfuscated_username =
-      SanitizeUserName(auth_session->username());
+  const std::string& obfuscated_username = auth_session->obfuscated_username();
   MountError mount_error = MOUNT_ERROR_NONE;
 
   // This checks presence of the actual encrypted vault. We fail if Create is

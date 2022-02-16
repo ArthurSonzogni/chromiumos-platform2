@@ -22,6 +22,7 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/user_secret_stash_storage.h"
 
+using brillo::cryptohome::home::SanitizeUserName;
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::NiceMock;
@@ -63,6 +64,7 @@ class AuthSessionTest : public ::testing::Test {
   }
 
  protected:
+  base::test::SingleThreadTaskEnvironment task_environment_;
   // Mock KeysetManagent object, will be passed to AuthSession for its internal
   // use.
   NiceMock<MockKeysetManagement> keyset_management_;
@@ -72,8 +74,18 @@ class AuthSessionTest : public ::testing::Test {
   std::unique_ptr<std::string> brillo_salt_;
 };
 
+TEST_F(AuthSessionTest, Username) {
+  AuthSession auth_session(
+      kFakeUsername, user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+      /*on_timeout=*/base::DoNothing(), &keyset_management_,
+      &auth_factor_manager_, &user_secret_stash_storage_);
+
+  EXPECT_EQ(auth_session.username(), kFakeUsername);
+  EXPECT_EQ(auth_session.obfuscated_username(),
+            SanitizeUserName(kFakeUsername));
+}
+
 TEST_F(AuthSessionTest, TimeoutTest) {
-  base::test::SingleThreadTaskEnvironment task_environment;
   bool called = false;
   auto on_timeout = base::BindOnce(
       [](bool* called, const base::UnguessableToken&) { *called = true; },
@@ -126,7 +138,6 @@ TEST_F(AuthSessionTest, TokenFromString) {
 // ensures that the fields are set as they should be.
 TEST_F(AuthSessionTest, GetCredentialRegularUser) {
   // SETUP
-  base::test::SingleThreadTaskEnvironment task_environment;
   MountError error;
   bool called = false;
   auto on_timeout = base::BindOnce(
@@ -165,7 +176,6 @@ TEST_F(AuthSessionTest, GetCredentialRegularUser) {
 // ensures that the fields are set as they should be.
 TEST_F(AuthSessionTest, GetCredentialKioskUser) {
   // SETUP
-  base::test::SingleThreadTaskEnvironment task_environment;
   MountError error;
   bool called = false;
   auto on_timeout = base::BindOnce(
@@ -210,7 +220,6 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
 // Test if AuthSession correctly adds new credentials for a new user.
 TEST_F(AuthSessionTest, AddCredentialNewUser) {
   // Setup.
-  base::test::SingleThreadTaskEnvironment task_environment;
   bool called = false;
   auto on_timeout = base::BindOnce(
       [](bool& called, const base::UnguessableToken&) { called = true; },
@@ -251,7 +260,6 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
 // second as a regular one.
 TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   // Setup.
-  base::test::SingleThreadTaskEnvironment task_environment;
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
@@ -301,7 +309,6 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
 // user.
 TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   // Setup.
-  base::test::SingleThreadTaskEnvironment task_environment;
   bool called = false;
   auto on_timeout = base::BindOnce(
       [](bool& called, const base::UnguessableToken&) { called = true; },
@@ -347,7 +354,6 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
 // for an ephemeral user.
 TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
   // Setup.
-  base::test::SingleThreadTaskEnvironment task_environment;
   bool called = false;
   auto on_timeout = base::BindOnce(
       [](bool& called, const base::UnguessableToken&) { called = true; },
@@ -384,7 +390,6 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
 // Test if AuthSession correctly updates existing credentials for a new user.
 TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAUthSession) {
   // Setup.
-  base::test::SingleThreadTaskEnvironment task_environment;
   bool called = false;
   auto on_timeout = base::BindOnce(
       [](bool& called, const base::UnguessableToken&) { called = true; },
@@ -410,7 +415,6 @@ TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAUthSession) {
 // Test if AuthSession correctly updates existing credentials for a new user.
 TEST_F(AuthSessionTest, UpdateCredentialuccess) {
   // Setup.
-  base::test::SingleThreadTaskEnvironment task_environment;
   bool called = false;
   auto on_timeout = base::BindOnce(
       [](bool& called, const base::UnguessableToken&) { called = true; },
@@ -438,7 +442,6 @@ TEST_F(AuthSessionTest, UpdateCredentialuccess) {
 // Test if AuthSession correctly updates existing credentials for a new user.
 TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
   // Setup.
-  base::test::SingleThreadTaskEnvironment task_environment;
   bool called = false;
   auto on_timeout = base::BindOnce(
       [](bool& called, const base::UnguessableToken&) { called = true; },
@@ -465,7 +468,6 @@ TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
 // created.
 TEST_F(AuthSessionTest, NoUssByDefault) {
   // Setup.
-  base::test::SingleThreadTaskEnvironment task_environment;
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
@@ -504,7 +506,6 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
 // UserSecretStash experiment is on.
 TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
   // Setup.
-  base::test::SingleThreadTaskEnvironment task_environment;
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
@@ -528,7 +529,6 @@ TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
 // Test that no UserSecretStash is created for an ephemeral user.
 TEST_F(AuthSessionWithUssExperimentTest, NoUssForEphemeral) {
   // Setup.
-  base::test::SingleThreadTaskEnvironment task_environment;
   int flags =
       user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
   // Setting the expectation that the user does not exist.

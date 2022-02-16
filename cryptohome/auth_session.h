@@ -61,7 +61,11 @@ class AuthSession final {
   ~AuthSession() = default;
 
   // Returns the full unhashed user name.
-  std::string username() const { return username_; }
+  const std::string& username() const { return username_; }
+  // Returns the obfuscated (sanitized) user name.
+  const std::string& obfuscated_username() const {
+    return obfuscated_username_;
+  }
 
   // Returns the token which is used to identify the current AuthSession.
   const base::UnguessableToken& token() const { return token_; }
@@ -173,6 +177,7 @@ class AuthSession final {
       MountError* error);
 
   const std::string username_;
+  const std::string obfuscated_username_;
   const base::UnguessableToken token_;
   const std::string serialized_token_;
 
