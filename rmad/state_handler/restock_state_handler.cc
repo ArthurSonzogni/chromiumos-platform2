@@ -43,6 +43,7 @@ RmadErrorCode RestockStateHandler::InitializeState() {
   if (!state_.has_restock() && !RetrieveState()) {
     state_.set_allocated_restock(new RestockState);
   }
+  shutdown_scheduled_ = false;
   return RMAD_ERROR_OK;
 }
 
@@ -51,6 +52,9 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
   if (!state.has_restock()) {
     LOG(ERROR) << "RmadState missing |restock| state.";
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
+  }
+  if (shutdown_scheduled_) {
+    return NextStateCaseWrapper(RMAD_ERROR_EXPECT_SHUTDOWN);
   }
 
   // For the first bootup after restock and shutdown, the state machine will try
@@ -63,6 +67,7 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
       // Wait for a while before shutting down.
       timer_.Start(FROM_HERE, kShutdownDelay, this,
                    &RestockStateHandler::Shutdown);
+      shutdown_scheduled_ = true;
       return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_SHUTDOWN,
                                   AdditionalActivity::SHUTDOWN);
     case RestockState::RMAD_RESTOCK_CONTINUE_RMA:

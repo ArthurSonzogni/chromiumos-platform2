@@ -55,21 +55,36 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Shutdown) {
   auto handler = CreateStateHandler(&shutdown_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto restock = std::make_unique<RestockState>();
-  restock->set_choice(RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK);
-  RmadState state;
-  state.set_allocated_restock(restock.release());
+  {
+    RmadState state;
+    state.mutable_restock()->set_choice(
+        RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRestock);
-  EXPECT_FALSE(shutdown_called);
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRestock);
+    EXPECT_FALSE(shutdown_called);
+  }
+
+  // A second call to |GetNextStateCase| before shutting down still gets
+  // EXPECT_SHUTDOWN.
+  {
+    RmadState state;
+    state.mutable_restock()->set_choice(
+        RestockState::RMAD_RESTOCK_CONTINUE_RMA);
+
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRestock);
+    EXPECT_FALSE(shutdown_called);
+  }
 
   // Shutdown is called after a delay.
   task_environment_.FastForwardBy(RestockStateHandler::kShutdownDelay);
   EXPECT_TRUE(shutdown_called);
 
-  // Test behavior for next bootup
+  // Test behavior for next bootup.
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   shutdown_called = false;
   // GetNextStateCase is called to automatically transition, we should test the
   // behavior here.
@@ -88,10 +103,8 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Continue) {
   auto handler = CreateStateHandler(&shutdown_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto restock = std::make_unique<RestockState>();
-  restock->set_choice(RestockState::RMAD_RESTOCK_CONTINUE_RMA);
   RmadState state;
-  state.set_allocated_restock(restock.release());
+  state.mutable_restock()->set_choice(RestockState::RMAD_RESTOCK_CONTINUE_RMA);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -108,10 +121,9 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Shutdown_Shutdown) {
   auto handler = CreateStateHandler(&shutdown_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto restock = std::make_unique<RestockState>();
-  restock->set_choice(RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK);
   RmadState state;
-  state.set_allocated_restock(restock.release());
+  state.mutable_restock()->set_choice(
+      RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
@@ -122,7 +134,8 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Shutdown_Shutdown) {
   task_environment_.FastForwardBy(RestockStateHandler::kShutdownDelay);
   EXPECT_TRUE(shutdown_called);
 
-  // Test behavior for next bootup
+  // Test behavior for next bootup.
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   shutdown_called = false;
   // GetNextStateCase is called to automatically transition, we should test the
   // behavior here.
@@ -135,7 +148,7 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Shutdown_Shutdown) {
   task_environment_.FastForwardUntilNoTasksRemain();
   EXPECT_FALSE(shutdown_called);
 
-  // Test behavior for next call
+  // Test behavior for next call.
   shutdown_called = false;
   auto [error_next_call, state_case_next_call] =
       handler->GetNextStateCase(state);
@@ -153,10 +166,9 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Shutdown_Continue) {
   auto handler = CreateStateHandler(&shutdown_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto restock = std::make_unique<RestockState>();
-  restock->set_choice(RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK);
   RmadState state;
-  state.set_allocated_restock(restock.release());
+  state.mutable_restock()->set_choice(
+      RestockState::RMAD_RESTOCK_SHUTDOWN_AND_RESTOCK);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
@@ -167,7 +179,8 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Shutdown_Continue) {
   task_environment_.FastForwardBy(RestockStateHandler::kShutdownDelay);
   EXPECT_TRUE(shutdown_called);
 
-  // Test behavior for next bootup
+  // Test behavior for next bootup.
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   shutdown_called = false;
   // GetNextStateCase is called to automatically transition, we should test the
   // behavior here.
@@ -180,11 +193,9 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_Success_Shutdown_Continue) {
   task_environment_.FastForwardUntilNoTasksRemain();
   EXPECT_FALSE(shutdown_called);
 
-  // Test behavior for next call
+  // Test behavior for next call.
   shutdown_called = false;
-  restock = std::make_unique<RestockState>();
-  restock->set_choice(RestockState::RMAD_RESTOCK_CONTINUE_RMA);
-  state.set_allocated_restock(restock.release());
+  state.mutable_restock()->set_choice(RestockState::RMAD_RESTOCK_CONTINUE_RMA);
 
   auto [error_next_call, state_case_next_call] =
       handler->GetNextStateCase(state);
@@ -213,10 +224,8 @@ TEST_F(RestockStateHandlerTest, GetNextStateCase_MissingArgs) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto restock = std::make_unique<RestockState>();
-  restock->set_choice(RestockState::RMAD_RESTOCK_UNKNOWN);
   RmadState state;
-  state.set_allocated_restock(restock.release());
+  state.mutable_restock()->set_choice(RestockState::RMAD_RESTOCK_UNKNOWN);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_MISSING);

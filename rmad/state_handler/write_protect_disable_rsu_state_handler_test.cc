@@ -126,15 +126,23 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Success_Rsu) {
   auto handler = CreateStateHandler(false, &reboot_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto wp_disable_rsu = std::make_unique<WriteProtectDisableRsuState>();
-  wp_disable_rsu->set_unlock_code(kTestUnlockCode);
   RmadState state;
-  state.set_allocated_wp_disable_rsu(wp_disable_rsu.release());
+  state.mutable_wp_disable_rsu()->set_unlock_code(kTestUnlockCode);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
-  EXPECT_FALSE(reboot_called);
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
+    EXPECT_FALSE(reboot_called);
+  }
+
+  // A second call to |GetNextStateCase| before rebooting is fine.
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
+    EXPECT_FALSE(reboot_called);
+  }
 
   task_environment_.FastForwardBy(
       WriteProtectDisableRsuStateHandler::kRebootDelay);
@@ -158,10 +166,8 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
   auto handler = CreateStateHandler(false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  auto wp_disable_rsu = std::make_unique<WriteProtectDisableRsuState>();
-  wp_disable_rsu->set_unlock_code(kWrongUnlockCode);
   RmadState state;
-  state.set_allocated_wp_disable_rsu(wp_disable_rsu.release());
+  state.mutable_wp_disable_rsu()->set_unlock_code(kWrongUnlockCode);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);

@@ -62,7 +62,8 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     : BaseStateHandler(json_store),
       working_dir_path_(kDefaultWorkingDirPath),
       unencrypted_preserve_path_(kDefaultUnencryptedPreservePath),
-      power_cable_signal_sender_(base::DoNothing()) {
+      power_cable_signal_sender_(base::DoNothing()),
+      locked_error_(RMAD_ERROR_NOT_SET) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   sys_utils_ = std::make_unique<SysUtilsImpl>();
@@ -82,7 +83,8 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
       power_cable_signal_sender_(base::DoNothing()),
       power_manager_client_(std::move(power_manager_client)),
       sys_utils_(std::move(sys_utils)),
-      metrics_utils_(std::move(metrics_utils)) {}
+      metrics_utils_(std::move(metrics_utils)),
+      locked_error_(RMAD_ERROR_NOT_SET) {}
 
 RmadErrorCode RepairCompleteStateHandler::InitializeState() {
   if (!state_.has_repair_complete() && !RetrieveState()) {
@@ -112,10 +114,12 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
     LOG(ERROR) << "RmadState missing |repair_complete| state.";
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
-
   if (state.repair_complete().shutdown() ==
       RepairCompleteState::RMAD_REPAIR_COMPLETE_UNKNOWN) {
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
+  }
+  if (locked_error_ != RMAD_ERROR_NOT_SET) {
+    return NextStateCaseWrapper(locked_error_);
   }
 
   state_ = state;
@@ -165,26 +169,25 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
         // Wait for a while before reboot.
         action_timer_.Start(FROM_HERE, kShutdownDelay, this,
                             &RepairCompleteStateHandler::Reboot);
-        return {.error = RMAD_ERROR_EXPECT_REBOOT,
-                .state_case = GetStateCase()};
+        locked_error_ = RMAD_ERROR_EXPECT_REBOOT;
+        break;
       case RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN:
         // Wait for a while before shutdown.
         action_timer_.Start(FROM_HERE, kShutdownDelay, this,
                             &RepairCompleteStateHandler::Shutdown);
-        return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,
-                .state_case = GetStateCase()};
+        locked_error_ = RMAD_ERROR_EXPECT_SHUTDOWN;
+        break;
       case RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF:
         // Wait for a while before cutoff.
         action_timer_.Start(FROM_HERE, kShutdownDelay, this,
                             &RepairCompleteStateHandler::Cutoff);
-        return {.error = RMAD_ERROR_EXPECT_SHUTDOWN,
-                .state_case = GetStateCase()};
+        locked_error_ = RMAD_ERROR_EXPECT_SHUTDOWN;
+        break;
       default:
         break;
     }
-    NOTREACHED();
-    return {.error = RMAD_ERROR_NOT_SET,
-            .state_case = RmadState::StateCase::STATE_NOT_SET};
+    CHECK(locked_error_ != RMAD_ERROR_NOT_SET);
+    return {.error = locked_error_, .state_case = GetStateCase()};
   }
 }
 

@@ -51,7 +51,7 @@ FakeWriteProtectDisableRsuStateHandler::FakeWriteProtectDisableRsuStateHandler(
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    : BaseStateHandler(json_store), reboot_scheduled_(false) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   power_manager_client_ =
@@ -66,7 +66,8 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     : BaseStateHandler(json_store),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
-      power_manager_client_(std::move(power_manager_client)) {}
+      power_manager_client_(std::move(power_manager_client)),
+      reboot_scheduled_(false) {}
 
 RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
   // No need to store state. The challenge code will be different every time
@@ -112,6 +113,9 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
     LOG(ERROR) << "RmadState missing |RSU| state.";
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
+  if (reboot_scheduled_) {
+    return NextStateCaseWrapper(RMAD_ERROR_EXPECT_REBOOT);
+  }
 
   // If factory mode is already enabled, we can transition to the next state
   // immediately.
@@ -132,6 +136,7 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
   // Schedule a reboot after |kRebootDelay| seconds and return.
   timer_.Start(FROM_HERE, kRebootDelay, this,
                &WriteProtectDisableRsuStateHandler::Reboot);
+  reboot_scheduled_ = true;
   return NextStateCaseWrapper(GetStateCase(), RMAD_ERROR_EXPECT_REBOOT,
                               AdditionalActivity::REBOOT);
 }

@@ -158,13 +158,22 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Powerwash) {
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_TRUE(base::PathExists(GetPowerwashRequestFilePath()));
+  }
 
-  // Check that powerwash is requested.
-  EXPECT_TRUE(base::PathExists(GetPowerwashRequestFilePath()));
+  // A second call to |GetNextStateCase before rebooting is fine.
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_TRUE(base::PathExists(GetPowerwashRequestFilePath()));
+  }
 
   // Reboot is called after a delay.
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
@@ -190,17 +199,30 @@ TEST_F(RepairCompleteStateHandlerTest,
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  }
 
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  // A second call to |GetNextStateCase| before rebooting is fine.
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  }
 
   // Reboot is called after a delay.
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
@@ -228,17 +250,30 @@ TEST_F(RepairCompleteStateHandlerTest,
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  }
 
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  // A second call to |GetNextStateCase| before shutting down is fine.
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  }
 
   // Shutdown is called after a delay.
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
@@ -266,17 +301,30 @@ TEST_F(RepairCompleteStateHandlerTest,
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  }
 
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  // A second call to |GetNextStateCase| before rebooting is fine.
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_SHUTDOWN);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  }
 
   // Reboot and cutoff are called after a delay.
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
@@ -305,17 +353,30 @@ TEST_F(RepairCompleteStateHandlerTest,
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  }
 
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  // A second call to |GetNextStateCase| before rebooting is fine.
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  }
 
   // Reboot is called after a delay.
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
@@ -344,17 +405,30 @@ TEST_F(RepairCompleteStateHandlerTest,
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  }
 
-  // Check that the state file is cleared.
-  EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  // A second call to |GetNextStateCase| before rebooting is fine.
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetStateFilePath()));
+  }
 
   // Reboot is called after a delay.
   task_environment_.FastForwardBy(RepairCompleteStateHandler::kShutdownDelay);
@@ -384,14 +458,28 @@ TEST_F(RepairCompleteStateHandlerTest,
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
-  EXPECT_FALSE(reboot_called);
-  EXPECT_FALSE(shutdown_called);
-  EXPECT_TRUE(metrics_called);
-  EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-  EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+  }
+
+  // A second call to |GetNextStateCase| before rebooting is fine.
+  {
+    auto [error, state_case] = handler->GetNextStateCase(state);
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+    EXPECT_FALSE(reboot_called);
+    EXPECT_FALSE(shutdown_called);
+    EXPECT_TRUE(metrics_called);
+    EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
+    EXPECT_FALSE(base::PathExists(GetCutoffRequestFilePath()));
+  }
 
   // Check that the state file is cleared.
   EXPECT_FALSE(base::PathExists(GetStateFilePath()));

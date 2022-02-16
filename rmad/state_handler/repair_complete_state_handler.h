@@ -69,6 +69,10 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<SysUtils> sys_utils_;
   std::unique_ptr<MetricsUtils> metrics_utils_;
+
+  // If |locked_error_| is set, always return it in |GetNextStateCase|.
+  RmadErrorCode locked_error_;
+
   base::OneShotTimer action_timer_;
 };
 

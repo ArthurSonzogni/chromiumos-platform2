@@ -56,6 +56,8 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
+
+  bool reboot_scheduled_;
   base::OneShotTimer timer_;
 };
 

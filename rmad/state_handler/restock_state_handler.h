@@ -39,6 +39,8 @@ class RestockStateHandler : public BaseStateHandler {
   void Shutdown();
 
   std::unique_ptr<PowerManagerClient> power_manager_client_;
+
+  bool shutdown_scheduled_;
   base::OneShotTimer timer_;
 };
 
