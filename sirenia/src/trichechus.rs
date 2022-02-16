@@ -11,7 +11,7 @@ use std::collections::{BTreeMap as Map, VecDeque};
 use std::convert::TryFrom;
 use std::env;
 use std::fs::{File, OpenOptions};
-use std::io::{Seek, SeekFrom, Write};
+use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
 use std::iter::once;
 use std::mem::{replace, swap};
 use std::ops::{Deref, DerefMut};
@@ -617,6 +617,43 @@ fn handle_closed_child_processes(state: &RefCell<TrichechusState>) {
     }
 }
 
+fn get_goog9999_range(line: &str) -> Result<Option<(u64, usize)>> {
+    // We are looking for a line in the following format (with leading spaces):
+    //   769fa000-76af9fff : GOOG9999:00
+    if let Some((range, name)) = line.split_once(':') {
+        if name.trim() == "GOOG9999:00" {
+            if let Some((begin, end)) = range.trim().split_once('-') {
+                let begin_addr = u64::from_str_radix(begin, 16)
+                    .map_err(|_| anyhow!("Invalid begin address: {}", line))?;
+                let end_addr = u64::from_str_radix(end, 16)
+                    .map_err(|_| anyhow!("Invalid end address: {}", line))?;
+                let len = (end_addr
+                    .checked_sub(begin_addr)
+                    .ok_or_else(|| anyhow!("Invalid range: {}", line))?
+                    + 1) as usize;
+                return Ok(Some((begin_addr, len)));
+            }
+        }
+    }
+    Ok(None)
+}
+
+fn get_ramoops_location() -> Result<(u64, usize)> {
+    // When the ramoops driver is enabled, and is using the GOOG9999 region,
+    // this info is in /sys/module/ramoops/parameters/mem_{address|size}.
+    // However, if the ramoops driver is disabled, or if it has been overridden
+    // with kernel command line parameters (say, because we are in a VM), this
+    // approach fails. Therefore, we parse /proc/iomem for this info.
+    let iomem = File::open("/proc/iomem").context("Failed to open /proc/iomem")?;
+    for line in BufReader::new(iomem).lines() {
+        let l = line.context("Error reading from /proc/iomem")?;
+        if let Some((addr, len)) = get_goog9999_range(&l)? {
+            return Ok((addr, len));
+        }
+    }
+    bail!("Unable to find mapping for GOOG9999 in /proc/iomem");
+}
+
 fn map_dev_mem(addr: u64, len: usize, open_flags: i32) -> Result<MemoryMapping> {
     let devmem = OpenOptions::new()
         .read(true)
@@ -628,11 +665,9 @@ fn map_dev_mem(addr: u64, len: usize, open_flags: i32) -> Result<MemoryMapping> 
 }
 
 fn map_ramoops() -> Result<MemoryMapping> {
-    // TODO(b/218725951): Get ramoops addr and len from the kernel.
-    let ramoops_addr: u64 = 0x76879000;
-    let ramoops_len: usize = 1024 * 1024;
+    let (ramoops_addr, ramoops_len) = get_ramoops_location()?;
     map_dev_mem(ramoops_addr, ramoops_len, libc::O_SYNC)
-        .context("map /dev/mem with O_SYNC")
+        .context("Failed to map /dev/mem with O_SYNC")
         .or_else(|e| {
             eprintln!("Ignoring: {}", e);
             eprintln!("Retrying with no flags");
@@ -823,4 +858,42 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn parse_iomem() {
+        assert_eq!(
+            get_goog9999_range("  769fa000-76af9fff : GOOG9999:00\n").unwrap(),
+            Some((0x769fa000, 1048576))
+        );
+        assert_eq!(
+            get_goog9999_range("769fa000-76af9fff:GOOG9999:00").unwrap(),
+            Some((0x769fa000, 1048576))
+        );
+        assert_eq!(
+            get_goog9999_range("    769fa000-76af9fff  :   GOOG9999:00").unwrap(),
+            Some((0x769fa000, 1048576))
+        );
+        assert_eq!(
+            get_goog9999_range("  769fa000-76af9fff : GOOG9999:00\n").unwrap(),
+            Some((0x769fa000, 1048576))
+        );
+        assert_eq!(
+            get_goog9999_range("fe010000-fe010fff : vfio-pci\n").unwrap(),
+            None
+        );
+        assert_eq!(get_goog9999_range("GOOG9999:00\n").unwrap(), None);
+        assert_eq!(get_goog9999_range(": GOOG9999:00\n").unwrap(), None);
+        assert_eq!(
+            get_goog9999_range("769fa000 : GOOG9999:00\n").unwrap(),
+            None
+        );
+        assert!(get_goog9999_range("769fa000-76af9fffX : GOOG9999:00\n").is_err());
+        assert!(get_goog9999_range("769fa000X-76af9fff : GOOG9999:00\n").is_err());
+        assert!(get_goog9999_range("76af9fff-769fa000 : GOOG9999:00\n").is_err());
+    }
 }
