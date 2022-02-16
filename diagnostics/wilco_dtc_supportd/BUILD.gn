@@ -27,7 +27,6 @@ source_set("libwilco_dtc_supportd") {
     "core.cc",
     "core_delegate_impl.cc",
     "dbus_service.cc",
-    "ec_constants.cc",
     "grpc_client_manager.cc",
     "grpc_service.cc",
     "json_utils.cc",
