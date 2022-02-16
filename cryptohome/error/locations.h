@@ -25,6 +25,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   // Start of generated content. Do NOT modify after this line.
   // End of generated content.
 };
+// The enum value should not exceed 65535, otherwise we need to adjust the way
+// Unified Error Code is allocated in cryptohome/error/cryptohome_tpm_error.h
+// and libhwsec/error/tpm_error.h so that “Cryptohome.Error.LeafErrorWithTPM”
+// UMA will continue to work.
 
 }  // namespace error
 
