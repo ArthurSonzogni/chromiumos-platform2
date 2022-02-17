@@ -59,7 +59,7 @@ void Controller::OnShutdown(int* code) {
 }
 
 void Controller::Setup() {
-  patchpanel_ = patchpanel::Client::New();
+  patchpanel_ = patchpanel::Client::New(bus_);
   if (!patchpanel_) {
     metrics_.RecordProcessEvent(
         Metrics::ProcessType::kController,

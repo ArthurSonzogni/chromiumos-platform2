@@ -166,7 +166,7 @@ void Proxy::Setup() {
       base::BindOnce(&Proxy::OnFeatureEnabled, weak_factory_.GetWeakPtr()));
 
   if (!patchpanel_)
-    patchpanel_ = patchpanel::Client::New();
+    patchpanel_ = patchpanel::Client::New(bus_);
 
   if (!patchpanel_) {
     metrics_.RecordProcessEvent(
