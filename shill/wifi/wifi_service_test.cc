@@ -186,6 +186,11 @@ class WiFiServiceTest : public PropertyStoreTest {
   const std::vector<uint8_t>& simple_ssid() const { return simple_ssid_; }
   const std::string& simple_ssid_string() const { return simple_ssid_string_; }
 
+  const Metrics::WiFiConnectionAttemptInfo GetConnectionAttemptInfo(
+      const WiFiServiceRefPtr& service) const {
+    return service->ConnectionAttemptInfo();
+  }
+
  private:
   MockManager mock_manager_;
   MockNetlinkManager netlink_manager_;
@@ -2228,7 +2233,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSuccess) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
   service->AddEndpoint(ep);
 
-  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
   EXPECT_EQ(info.ssid, "a");
   EXPECT_EQ(info.bssid, "00:00:00:00:00:01");
   EXPECT_EQ(info.security, Metrics::kWiFiSecurityNone);
@@ -2236,7 +2241,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSuccess) {
 
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoNoBSSID) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
-  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
   EXPECT_EQ(info.ap_oui, 0xFFFFFFFF);
 }
 
@@ -2245,7 +2250,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoOUI) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityNone);
   service->AddEndpoint(ep);
 
-  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
   EXPECT_EQ(info.security, Metrics::kWiFiSecurityNone);
   if ((false)) {
     EXPECT_EQ(info.ap_oui, 0x00012345);
@@ -2259,7 +2264,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoLowBand) {
       MakeEndpoint("a", "00:00:00:00:00:01", 2412, -57, flags);
   service->AddEndpoint(ep);
 
-  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
   EXPECT_EQ(info.band, Metrics::kWiFiFrequencyRange24);
   EXPECT_EQ(info.channel, Metrics::kWiFiChannel2412);
   EXPECT_EQ(info.rssi, -57);
@@ -2272,7 +2277,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoHighBand) {
       MakeEndpoint("a", "00:00:00:00:00:01", 5180, -71, flags);
   service->AddEndpoint(ep);
 
-  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
   EXPECT_EQ(info.band, Metrics::kWiFiFrequencyRange5);
   EXPECT_EQ(info.channel, Metrics::kWiFiChannel5180);
   EXPECT_EQ(info.rssi, -71);
@@ -2285,7 +2290,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoUltraHighBand) {
       MakeEndpoint("a", "00:00:00:00:00:01", 6115, -40, flags);
   service->AddEndpoint(ep);
 
-  Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+  Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
   EXPECT_EQ(info.band, Metrics::kWiFiFrequencyRange6);
   EXPECT_EQ(info.channel, Metrics::kWiFiChannel6115);
   EXPECT_EQ(info.rssi, -40);
@@ -2299,7 +2304,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
     WiFiEndpointRefPtr ep = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(ep);
 
-    Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+    Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
     EXPECT_EQ(Metrics::WiFiSecurityStringToEnum(kSecurityWpa3), info.security);
   }
   {
@@ -2308,7 +2313,7 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
     flags.rsn_psk = true;
     WiFiEndpointRefPtr ep = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
     service->AddEndpoint(ep);
-    Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
+    Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
     EXPECT_EQ(Metrics::WiFiSecurityStringToEnum(kSecurityRsn), info.security);
   }
 }

@@ -746,7 +746,7 @@ void WiFi::DisconnectFrom(WiFiService* service) {
     // For example we're cancelling pending_service_ before we actually
     // attempted to connect.
     bool is_attempt_failure =
-        pending_service_ && !(pending_service_->expecting_disconnect());
+        pending_service_ && !pending_service_->expecting_disconnect();
     ServiceDisconnected(pending_service_, is_attempt_failure);
   } else if (service) {
     disconnect_signal_dbm_ = service->SignalLevel();
@@ -1197,7 +1197,7 @@ void WiFi::HandleDisconnect() {
     // case that we were connected and were disconnected intentionally to
     // attempt to connect to another service, which would be pending.
     bool is_attempt_failure =
-        pending_service_.get() && (affected_service != current_service_.get());
+        pending_service_ && (affected_service != current_service_.get());
     // In some cases (for example when the 4-way handshake is still ongoing),
     // |pending_service_| has already been reset to |nullptr| since we had
     // already gone through Auth+Assoc stages. It is still a failure to
@@ -1213,10 +1213,11 @@ void WiFi::HandleDisconnect() {
     // If all those conditions (state is compatible with in-progress connection
     // and there is no ongoing "maintenance" operation) then a failure implies
     // a failed *attempted* connection rather than a disconnection.
-    is_attempt_failure =
-        is_attempt_failure ||
-        (IsWPAStateConnectionInProgress(supplicant_state_) &&
-         !IsStateTransitionConnectionMaintenance(*affected_service));
+    if (!is_attempt_failure) {
+      is_attempt_failure =
+          IsWPAStateConnectionInProgress(supplicant_state_) &&
+          !IsStateTransitionConnectionMaintenance(*affected_service);
+    }
     // Perform necessary handling for disconnected service.
     ServiceDisconnected(affected_service, is_attempt_failure);
   }
@@ -1344,9 +1345,12 @@ void WiFi::ServiceDisconnected(WiFiServiceRefPtr affected_service,
       // were successfully connected to).
       metrics()->NotifyWiFiConnectionAttemptResult(
           Metrics::ConnectFailureToServiceErrorEnum(failure));
+      LOG(ERROR) << "Failed to connect due to reason: "
+                 << Service::ConnectFailureToString(failure);
+    } else {
+      LOG(ERROR) << "Disconnected due to reason: "
+                 << Service::ConnectFailureToString(failure);
     }
-    LOG(ERROR) << "Disconnected due to reason: "
-               << Service::ConnectFailureToString(failure);
   }
 
   // Set service state back to idle, so this service can be used for

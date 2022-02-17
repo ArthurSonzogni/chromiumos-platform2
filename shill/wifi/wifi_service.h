@@ -268,13 +268,6 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, UpdateMACAddressPolicySwitch);
   FRIEND_TEST(WiFiServiceTest, RandomizationNotSupported);
   FRIEND_TEST(WiFiServiceTest, RandomizationBlocklist);
-  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoSuccess);
-  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoNoBSSID);
-  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoOUI);
-  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoLowBand);
-  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoHighBand);
-  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoUltraHighBand);
-  FRIEND_TEST(WiFiServiceTest, ConnectionAttemptInfoSecurity);
 
   static const char kAnyDeviceAddress[];
   static const int kSuspectedCredentialFailureThreshold;
