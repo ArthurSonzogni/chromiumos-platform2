@@ -720,7 +720,7 @@ mod option_util {
             match prefix {
                 0..=31 => {
                     let base_addr = Ipv4Addr::from(addr_u32 & !(0xFFFFFFFFu32 >> prefix));
-                    Ok(format!("{}/{}", base_addr.to_string(), prefix))
+                    Ok(format!("{}/{}", base_addr, prefix))
                 }
                 32 => Ok(s.to_string()),
                 _ => Err(err()),
