@@ -171,9 +171,9 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   if (container_type == EncryptedContainerType::kDmcrypt ||
       container_type == EncryptedContainerType::kEcryptfsToDmcrypt ||
       container_type == EncryptedContainerType::kFscryptToDmcrypt) {
-    cache_container =
-        GenerateEncryptedContainer(container_type, obfuscated_username,
-                                   key_reference, kDmcryptCacheContainerSuffix);
+    cache_container = GenerateEncryptedContainer(
+        container_type, obfuscated_username, key_reference,
+        kDmcryptCacheContainerSuffix, keylocker_enabled);
     if (!cache_container) {
       LOG(ERROR) << "Could not create vault container for cache";
       return nullptr;
