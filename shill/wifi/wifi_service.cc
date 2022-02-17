@@ -806,8 +806,6 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
           Metrics::ConvertEndPointFeatures(current_endpoint_.get());
     }
   }
-  info.ssid = std::string();
-  info.bssid = std::string();
   info.ap_oui = 0xFFFFFFFF;
 
   return info;

@@ -2229,10 +2229,8 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSuccess) {
   service->AddEndpoint(ep);
 
   Metrics::WiFiConnectionAttemptInfo info = service->ConnectionAttemptInfo();
-  if ((false)) {
-    EXPECT_EQ(info.ssid, "a");
-    EXPECT_EQ(info.bssid, "00:00:00:00:00:01");
-  }
+  EXPECT_EQ(info.ssid, "a");
+  EXPECT_EQ(info.bssid, "00:00:00:00:00:01");
   EXPECT_EQ(info.security, Metrics::kWiFiSecurityNone);
 }
 
