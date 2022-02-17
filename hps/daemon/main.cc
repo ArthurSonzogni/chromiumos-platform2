@@ -42,9 +42,6 @@ int main(int argc, char* argv[]) {
   // Always log to syslog and log to stderr if we are connected to a tty.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  base::ThreadPoolInstance::CreateAndStartWithDefaultParams(
-      "hps_daemon_thread_pool");
-
   uint32_t version;
   if (FLAGS_version < 0) {
     if (!hps::ReadVersionFromFile(base::FilePath(FLAGS_mcu_fw_image),
@@ -69,17 +66,15 @@ int main(int argc, char* argv[]) {
   } else {
     dev = hps::I2CDev::Create(FLAGS_bus, addr, FLAGS_hps_dev);
   }
+
   CHECK(dev) << "Hardware device failed to initialise";
-  LOG(INFO) << "Booting HPS device";
-  auto hps = std::make_unique<hps::HPS_impl>(std::move(dev));
-  if (!FLAGS_skipboot) {
-    hps->Init(version, base::FilePath(FLAGS_mcu_fw_image),
-              base::FilePath(FLAGS_fpga_bitstream),
-              base::FilePath(FLAGS_fpga_app_image));
-    // TODO(amcrae): Likely need a better recovery mechanism.
-    CHECK(hps->Boot()) << "Hardware failed to boot";
-  }
-  int exit_code = hps::HpsDaemon(std::move(hps), FLAGS_poll_timer_ms).Run();
+
+  int exit_code =
+      hps::HpsDaemon(std::move(dev), FLAGS_poll_timer_ms, FLAGS_skipboot,
+                     version, base::FilePath(FLAGS_mcu_fw_image),
+                     base::FilePath(FLAGS_fpga_bitstream),
+                     base::FilePath(FLAGS_fpga_app_image))
+          .Run();
   LOG(INFO) << "HPS Service ended with exit_code=" << exit_code;
 
   return exit_code;

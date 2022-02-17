@@ -2,20 +2,34 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "hps/daemon/hps_daemon.h"
 
 #include <utility>
 
 #include <chromeos/dbus/service_constants.h>
 
 #include <hps/daemon/dbus_adaptor.h>
+#include <hps/hps_impl.h>
+
+#include "hps/daemon/hps_daemon.h"
 
 namespace hps {
 
-HpsDaemon::HpsDaemon(std::unique_ptr<HPS> hps, uint32_t poll_time_ms)
+HpsDaemon::HpsDaemon(std::unique_ptr<DevInterface> dev,
+                     uint32_t poll_time_ms,
+                     bool skip_boot,
+                     uint32_t version,
+                     const base::FilePath& mcu_fw_image,
+                     const base::FilePath& fpga_bitstream,
+                     const base::FilePath& fpga_app_image)
     : brillo::DBusServiceDaemon(::hps::kHpsServiceName),
-      hps_(std::move(hps)),
-      poll_time_ms_(poll_time_ms) {}
+      hps_(std::make_unique<HPS_impl>(std::move(dev))),
+      poll_time_ms_(poll_time_ms) {
+  hps_->Init(version, mcu_fw_image, fpga_bitstream, fpga_app_image);
+  if (!skip_boot) {
+    LOG(INFO) << "Booting HPS device";
+    hps_->Boot();
+  }
+}
 
 HpsDaemon::~HpsDaemon() = default;
 
