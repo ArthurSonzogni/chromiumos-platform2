@@ -28,8 +28,12 @@ class HPS_impl : public HPS {
  public:
   friend class HPSTestButUsingAMock;
   explicit HPS_impl(std::unique_ptr<DevInterface> dev)
+      : HPS_impl(std::move(dev), std::make_unique<HpsMetrics>()) {}
+  explicit HPS_impl(std::unique_ptr<DevInterface> dev,
+                    std::unique_ptr<HpsMetricsInterface> metrics)
       : device_(std::move(dev)),
         wake_lock_(device_->CreateWakeLock()),  // Power on by default.
+        hps_metrics_(std::move(metrics)),
         hw_rev_(0),
         stage1_version_(0),
         write_protect_off_(false),
@@ -49,15 +53,6 @@ class HPS_impl : public HPS {
   DevInterface* Device() override { return this->device_.get(); }
   bool Download(hps::HpsBank bank, const base::FilePath& source) override;
   void SetDownloadObserver(DownloadObserver) override;
-
-  void SetMetricsLibraryForTesting(
-      std::unique_ptr<MetricsLibraryInterface> metrics_lib) {
-    hps_metrics_.SetMetricsLibraryForTesting(std::move(metrics_lib));
-  }
-
-  MetricsLibraryInterface* metrics_library_for_testing() {
-    return hps_metrics_.metrics_library_for_testing();
-  }
 
  private:
   enum class BootResult {
@@ -85,7 +80,7 @@ class HPS_impl : public HPS {
   std::unique_ptr<DevInterface> device_;
   base::TimeTicks boot_start_time_;
   std::unique_ptr<WakeLock> wake_lock_;
-  HpsMetrics hps_metrics_;
+  std::unique_ptr<HpsMetricsInterface> hps_metrics_;
   uint16_t hw_rev_;
   uint32_t stage1_version_;
   bool write_protect_off_;

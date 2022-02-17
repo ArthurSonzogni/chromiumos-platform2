@@ -41,16 +41,27 @@ enum class HpsTurnOnResult {
   kMaxValue = kSpiUpdateFailure,
 };
 
-class HpsMetrics {
+class HpsMetricsInterface {
+ public:
+  virtual ~HpsMetricsInterface() {}
+
+  virtual bool SendHpsTurnOnResult(HpsTurnOnResult result,
+                                   base::TimeDelta duration) = 0;
+  virtual bool SendHpsUpdateDuration(HpsBank bank,
+                                     base::TimeDelta duration) = 0;
+};
+
+class HpsMetrics : public HpsMetricsInterface {
  public:
   HpsMetrics();
   HpsMetrics(const HpsMetrics&) = delete;
   HpsMetrics& operator=(const HpsMetrics&) = delete;
 
-  ~HpsMetrics() = default;
+  ~HpsMetrics() override = default;
 
-  bool SendHpsTurnOnResult(HpsTurnOnResult result, base::TimeDelta duration);
-  bool SendHpsUpdateDuration(HpsBank bank, base::TimeDelta duration);
+  bool SendHpsTurnOnResult(HpsTurnOnResult result,
+                           base::TimeDelta duration) override;
+  bool SendHpsUpdateDuration(HpsBank bank, base::TimeDelta duration) override;
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib) {

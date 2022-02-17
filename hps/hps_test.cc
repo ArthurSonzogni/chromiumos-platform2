@@ -41,12 +41,26 @@ class MockHpsDev : public hps::DevInterface {
   }
 };
 
+class MockHpsMetrics : public hps::HpsMetricsInterface {
+ public:
+  MOCK_METHOD(bool,
+              SendHpsTurnOnResult,
+              (HpsTurnOnResult, base::TimeDelta),
+              (override));
+  MOCK_METHOD(bool,
+              SendHpsUpdateDuration,
+              (HpsBank, base::TimeDelta),
+              (override));
+};
+
 // Override sleep to use MOCK_TIME functionality
 class HPS_fake_sleep_for_test : public HPS_impl {
  public:
   HPS_fake_sleep_for_test(std::unique_ptr<DevInterface> dev,
+                          std::unique_ptr<HpsMetricsInterface> metrics,
                           base::test::TaskEnvironment* task_environment)
-      : HPS_impl(std::move(dev)), task_environment_(task_environment) {}
+      : HPS_impl(std::move(dev), std::move(metrics)),
+        task_environment_(task_environment) {}
 
   void Sleep(base::TimeDelta duration) override {
     task_environment_->AdvanceClock(duration);
@@ -65,9 +79,10 @@ class HPSTestButUsingAMock : public testing::Test {
   void SetUp() override {
     auto dev = std::make_unique<MockHpsDev>();
     dev_ = dev.get();
-    hps_ = std::make_unique<hps::HPS_fake_sleep_for_test>(std::move(dev),
-                                                          &task_environment_);
-    hps_->SetMetricsLibraryForTesting(std::make_unique<MetricsLibraryMock>());
+    auto metrics = std::make_unique<MockHpsMetrics>();
+    metrics_ = metrics.get();
+    hps_ = std::make_unique<hps::HPS_fake_sleep_for_test>(
+        std::move(dev), std::move(metrics), &task_environment_);
   }
 
   void CreateBlob(const base::FilePath& file, int len) {
@@ -76,14 +91,10 @@ class HPSTestButUsingAMock : public testing::Test {
     f.SetLength(len);
   }
 
-  MetricsLibraryMock* GetMetricsLibraryMock() {
-    return static_cast<MetricsLibraryMock*>(
-        hps_->metrics_library_for_testing());
-  }
-
   bool CheckMagic() { return hps_->CheckMagic(); }
 
   MockHpsDev* dev_;
+  MockHpsMetrics* metrics_;
   std::unique_ptr<hps::HPS_impl> hps_;
 };
 
@@ -95,9 +106,10 @@ class HPSTest : public testing::Test {
   void SetUp() override {
     auto fake = std::make_unique<hps::FakeDev>();
     fake_ = fake.get();
-    hps_ = std::make_unique<hps::HPS_fake_sleep_for_test>(std::move(fake),
-                                                          &task_environment_);
-    hps_->SetMetricsLibraryForTesting(std::make_unique<MetricsLibraryMock>());
+    auto metrics = std::make_unique<MockHpsMetrics>();
+    metrics_ = metrics.get();
+    hps_ = std::make_unique<hps::HPS_fake_sleep_for_test>(
+        std::move(fake), std::move(metrics), &task_environment_);
   }
 
   void CreateBlob(const base::FilePath& file, int len) {
@@ -106,12 +118,8 @@ class HPSTest : public testing::Test {
     f.SetLength(len);
   }
 
-  MetricsLibraryMock* GetMetricsLibraryMock() {
-    return static_cast<MetricsLibraryMock*>(
-        hps_->metrics_library_for_testing());
-  }
-
   hps::FakeDev* fake_;
+  MockHpsMetrics* metrics_;
   std::unique_ptr<hps::HPS_impl> hps_;
 };
 
@@ -314,13 +322,7 @@ TEST_F(HPSTest, NormalBoot) {
   hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
-      .Times(1);
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
   ASSERT_TRUE(hps_->Boot());
 
@@ -351,13 +353,7 @@ TEST_F(HPSTest, NormalBootTwice) {
   hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
-      .Times(2);
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(2);
   ASSERT_TRUE(hps_->Boot());
   ASSERT_TRUE(hps_->Boot());
@@ -386,21 +382,12 @@ TEST_F(HPSTest, McuUpdate) {
   hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kMcuNotVerified), _))
+  EXPECT_CALL(*metrics_, SendHpsUpdateDuration(hps::HpsBank::kMcuFlash, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+  EXPECT_CALL(*metrics_,
+              SendHpsTurnOnResult(hps::HpsTurnOnResult::kMcuNotVerified, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
-      .Times(1);
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
   ASSERT_TRUE(hps_->Boot());
 
@@ -435,21 +422,12 @@ TEST_F(HPSTest, SpiUpdate) {
   hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSpiNotVerified), _))
+  EXPECT_CALL(*metrics_,
+              SendHpsTurnOnResult(hps::HpsTurnOnResult::kSpiNotVerified, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(hps::kHpsUpdateSpiDuration, _, _, _, _))
+  EXPECT_CALL(*metrics_, SendHpsUpdateDuration(hps::HpsBank::kSpiFlash, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
-      .Times(1);
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
   ASSERT_TRUE(hps_->Boot());
 
@@ -488,29 +466,17 @@ TEST_F(HPSTest, BothUpdate) {
   hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kMcuNotVerified), _))
+  EXPECT_CALL(*metrics_, SendHpsUpdateDuration(hps::HpsBank::kMcuFlash, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+  EXPECT_CALL(*metrics_,
+              SendHpsTurnOnResult(hps::HpsTurnOnResult::kMcuNotVerified, _))
       .Times(1);
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSpiNotVerified), _))
+  EXPECT_CALL(*metrics_,
+              SendHpsTurnOnResult(hps::HpsTurnOnResult::kSpiNotVerified, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(hps::kHpsUpdateSpiDuration, _, _, _, _))
+  EXPECT_CALL(*metrics_, SendHpsUpdateDuration(hps::HpsBank::kSpiFlash, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
-      .Times(1);
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
   ASSERT_TRUE(hps_->Boot());
 
@@ -546,13 +512,7 @@ TEST_F(HPSTest, WpOffNoUpdate) {
   hps_->Init(version, mcu, spi1, spi2);
 
   // Boot the module.
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
-      .Times(1);
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
   ASSERT_TRUE(hps_->Boot());
 
@@ -590,22 +550,12 @@ TEST_F(HPSTest, WpOffUpdate) {
   hps_->Init(version + 1, mcu, spi1, spi2);
 
   // Boot the module.
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kMcuVersionMismatch),
-                    _))
+  EXPECT_CALL(*metrics_,
+              SendHpsTurnOnResult(hps::HpsTurnOnResult::kMcuVersionMismatch, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+  EXPECT_CALL(*metrics_, SendHpsUpdateDuration(hps::HpsBank::kMcuFlash, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
-      .Times(1);
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
   ASSERT_TRUE(hps_->Boot());
 
@@ -642,30 +592,17 @@ TEST_F(HPSTest, VersionUpdate) {
   hps_->Init(version + 1, mcu, spi1, spi2);
 
   // Boot the module.
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kMcuVersionMismatch),
-                    _))
+  EXPECT_CALL(*metrics_, SendHpsUpdateDuration(hps::HpsBank::kMcuFlash, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(hps::kHpsUpdateMcuDuration, _, _, _, _))
+  EXPECT_CALL(*metrics_, SendHpsUpdateDuration(hps::HpsBank::kSpiFlash, _))
       .Times(1);
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSpiNotVerified), _))
+  EXPECT_CALL(*metrics_,
+              SendHpsTurnOnResult(hps::HpsTurnOnResult::kMcuVersionMismatch, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(hps::kHpsUpdateSpiDuration, _, _, _, _))
+  EXPECT_CALL(*metrics_,
+              SendHpsTurnOnResult(hps::HpsTurnOnResult::kSpiNotVerified, _))
       .Times(1);
-  EXPECT_CALL(*GetMetricsLibraryMock(),
-              SendToUMA(kHpsBootSuccessDuration, _, _, _, _))
-      .Times(1);
-  EXPECT_CALL(
-      *GetMetricsLibraryMock(),
-      SendEnumToUMA(hps::kHpsTurnOnResult,
-                    static_cast<int>(hps::HpsTurnOnResult::kSuccess), _))
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
   ASSERT_TRUE(hps_->Boot());
 
