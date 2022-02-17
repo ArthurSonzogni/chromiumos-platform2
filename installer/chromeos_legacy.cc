@@ -175,9 +175,6 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
   if (!UpdateEfiBootloaders(install_config))
     return false;
 
-  if (!UpdateEfiBootEntries(install_config))
-    return false;
-
   // Of the form: PARTUUID=XXX-YYY-ZZZ
   string kernel_config = DumpKernelConfig(install_config.kernel.device());
   string root_uuid = install_config.root.uuid();
@@ -204,6 +201,9 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
     PLOG(ERROR) << "Unable to write boot menu file: " << grub_path;
     return false;
   }
+
+  if (!UpdateEfiBootEntries(install_config))
+    return false;
 
   // We finished.
   return true;
