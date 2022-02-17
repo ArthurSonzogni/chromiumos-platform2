@@ -54,6 +54,8 @@ const char kAndroidCacheInodeAttribute[] = "user.inode_cache";
 const char kAndroidCodeCacheInodeAttribute[] = "user.inode_code_cache";
 const char kTrackedDirectoryNameAttribute[] = "user.TrackedDirectoryName";
 const char kRemovableFileAttribute[] = "user.GCacheRemovable";
+const char kForceKeylockerForTestingFlag[] =
+    "/run/cryptohome/.force_keylocker_for_testing";
 
 bool IsAesKeylockerSupported() {
   std::string proc_crypto_contents;
@@ -110,6 +112,13 @@ bool HomeDirs::KeylockerForStorageEncryptionEnabled() {
 
   if (!keylocker_supported)
     return false;
+
+  // Check if keylocker is force enabled for testing.
+  // TODO(sarthakkukreti@, b/209516710): Remove in M102.
+  if (base::PathExists(base::FilePath(kForceKeylockerForTestingFlag))) {
+    LOG(INFO) << "Forced keylocker enabled for testing";
+    return true;
+  }
 
   LoadDevicePolicy();
 
