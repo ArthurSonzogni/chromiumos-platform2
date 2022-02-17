@@ -121,7 +121,8 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
           drmModeGetFB(file.GetPlatformFile(), crtc->buffer_id));
 
       ScopedDrmModeFB2Ptr fb2(
-          drmModeGetFB2(file.GetPlatformFile(), crtc->buffer_id));
+          drmModeGetFB2(file.GetPlatformFile(), crtc->buffer_id),
+          file.GetPlatformFile());
 
       if (!fb && !fb2) {
         LOG(ERROR) << "getfb failed";
@@ -236,7 +237,8 @@ std::vector<Crtc::PlaneInfo> Crtc::GetConnectedPlanes() const {
       continue;
     }
     ScopedDrmModeFB2Ptr fb_info(
-        drmModeGetFB2(file_.GetPlatformFile(), plane->fb_id));
+        drmModeGetFB2(file_.GetPlatformFile(), plane->fb_id),
+        file_.GetPlatformFile());
     if (!fb_info) {
       LOG(WARNING) << "Failed to query plane fb info, skipping.\n";
       continue;

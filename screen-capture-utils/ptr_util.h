@@ -10,6 +10,9 @@
 #include <xf86drmMode.h>
 
 #include <memory>
+#include <set>
+
+#include <base/files/file.h>
 
 namespace screenshot {
 
@@ -42,10 +45,39 @@ struct DrmModeFBDeleter {
 };
 using ScopedDrmModeFBPtr = std::unique_ptr<drmModeFB, DrmModeFBDeleter>;
 
-struct DrmModeFB2Deleter {
-  void operator()(drmModeFB2* fb2) { drmModeFreeFB2(fb2); }
+struct ScopedDrmModeFB2Ptr {
+ public:
+  // Expectation is that drm_fd owned by Crtc would always outlive this class.
+  ScopedDrmModeFB2Ptr(drmModeFB2* fb2, int drm_fd)
+      : fb2_(fb2), drm_fd_(drm_fd) {}
+
+  ScopedDrmModeFB2Ptr(ScopedDrmModeFB2Ptr&& source)
+      : fb2_(source.fb2_), drm_fd_(source.drm_fd_) {
+    source.fb2_ = nullptr;
+  }
+
+  ~ScopedDrmModeFB2Ptr() {
+    if (fb2_) {
+      std::set<int> close_handles;
+      for (int i = 0; fb2_->handles[i] && i < GBM_MAX_PLANES; ++i) {
+        close_handles.insert(fb2_->handles[i]);
+      }
+      for (int handle : close_handles) {
+        drmCloseBufferHandle(drm_fd_, handle);
+      }
+
+      drmModeFreeFB2(fb2_);
+    }
+  }
+
+  drmModeFB2* get() const { return fb2_; }
+  drmModeFB2* operator->() const { return fb2_; }
+  explicit operator bool() const noexcept { return fb2_; }
+
+ private:
+  drmModeFB2* fb2_;
+  const int drm_fd_;
 };
-using ScopedDrmModeFB2Ptr = std::unique_ptr<drmModeFB2, DrmModeFB2Deleter>;
 
 struct DrmModePlaneResDeleter {
   void operator()(drmModePlaneRes* res) { drmModeFreePlaneResources(res); }

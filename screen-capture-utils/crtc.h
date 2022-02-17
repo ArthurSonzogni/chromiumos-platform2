@@ -61,6 +61,7 @@ class Crtc {
   std::vector<Crtc::PlaneInfo> GetConnectedPlanes() const;
 
  private:
+  // File descriptor for the DRM device.
   base::File file_;
   ScopedDrmModeConnectorPtr connector_;
   ScopedDrmModeEncoderPtr encoder_;
