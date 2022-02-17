@@ -225,6 +225,30 @@ bool IsDeviceAllowedSerial(udev_device* device) {
                                  vendor_id, product_id);
 }
 
+bool IsDeviceAllowedHID(udev_device* device) {
+  const DevicePolicy::UsbDeviceId kAllowedIds[] = {
+      {0x2e73, 0x0001},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0002},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0003},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0004},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0005},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0006},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0007},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0008},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0009},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0010},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0011},  // BackyardBrains Neuron SpikerBox
+      {0x2e73, 0x0012},  // BackyardBrains Neuron SpikerBox
+  };
+  uint32_t vendor_id, product_id;
+  if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
+      !GetUIntSysattr(device, "idProduct", &product_id))
+    return false;
+
+  return UsbDeviceListContainsId(std::begin(kAllowedIds), std::end(kAllowedIds),
+                                 vendor_id, product_id);
+}
+
 Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
   const char* device_syspath = udev_device_get_syspath(device);
   if (!device_syspath) {
@@ -292,7 +316,8 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
       LOG(INFO) << "Found only detachable interface(s), safe to claim.";
 
     if (IsDeviceDetachableByPolicy(device) || IsDeviceAllowedSerial(device) ||
-        found_adb_interface || found_only_safe_interfaces)
+        IsDeviceAllowedHID(device) || found_adb_interface ||
+        found_only_safe_interfaces)
       return ALLOW_WITH_DETACH;
     else
       return found_unclaimed_interface ? ALLOW_WITH_LOCKDOWN : DENY;
