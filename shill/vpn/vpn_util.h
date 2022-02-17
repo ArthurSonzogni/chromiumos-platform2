@@ -14,6 +14,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/version.h>
 
 #include "shill/process_manager.h"
 
@@ -36,6 +37,9 @@ class VPNUtil {
   virtual ~VPNUtil() = default;
 
   static std::unique_ptr<VPNUtil> New();
+
+  // Returns whether the current kernel version >= |minimum_version|.
+  static bool CheckKernelVersion(const base::Version& minimum_version);
 
   // Constructs a MinijailOptions object which contains the common options used
   // by VPN clients:

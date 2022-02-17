@@ -7,6 +7,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/utsname.h>
 
 #include <memory>
 #include <utility>
@@ -14,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 
 #include "shill/process_manager.h"
@@ -123,6 +125,20 @@ std::unique_ptr<VPNUtil> VPNUtil::New() {
   return std::make_unique<VPNUtilImpl>();
 }
 
+// static
+bool VPNUtil::CheckKernelVersion(const base::Version& minimum_version) {
+  struct utsname buf;
+  if (uname(&buf) != 0) {
+    return false;
+  }
+  // Extract the numeric part of release string
+  std::string version = base::SplitString(
+      buf.release, "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)[0];
+  base::Version kernel_version = base::Version(version);
+  return kernel_version.IsValid() && kernel_version >= minimum_version;
+}
+
+// static
 ProcessManager::MinijailOptions VPNUtil::BuildMinijailOptions(
     uint64_t capmask) {
   ProcessManager::MinijailOptions options;

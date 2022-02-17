@@ -11,6 +11,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <base/version.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
 #include "shill/error.h"
@@ -90,6 +91,13 @@ const VPNDriver::Property IKEv2Driver::kProperties[] = {
     {kProviderHostProperty, 0},
     {kProviderTypeProperty, 0},
 };
+
+// static
+bool IKEv2Driver::IsSupported() {
+  // IKEv2 is currently supported on kernel version >= 4.19, due to the
+  // availability of XFRM interface.
+  return VPNUtil::CheckKernelVersion(base::Version("4.19"));
+}
 
 IKEv2Driver::IKEv2Driver(Manager* manager, ProcessManager* process_manager)
     : VPNDriver(manager,

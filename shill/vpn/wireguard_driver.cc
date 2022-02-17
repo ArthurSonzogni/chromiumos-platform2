@@ -5,7 +5,6 @@
 #include "shill/vpn/wireguard_driver.h"
 
 #include <poll.h>
-#include <sys/utsname.h>
 
 #include <iterator>
 #include <set>
@@ -700,15 +699,7 @@ void WireGuardDriver::ReportConnectionMetrics() {
 // static
 bool WireGuardDriver::IsSupported() {
   // WireGuard is current supported on kernel version >= 5.10
-  struct utsname buf;
-  if (uname(&buf) != 0) {
-    return false;
-  }
-  // Extract the numeric part of release string
-  std::string version = base::SplitString(
-      buf.release, "-", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)[0];
-  base::Version kernel_version = base::Version(version);
-  return kernel_version.IsValid() && kernel_version >= base::Version("5.10");
+  return VPNUtil::CheckKernelVersion(base::Version("5.10"));
 }
 
 }  // namespace shill

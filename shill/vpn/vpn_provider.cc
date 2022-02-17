@@ -389,6 +389,9 @@ std::string VPNProvider::GetSupportedType() {
 #ifndef DISABLE_VPN
   std::vector<std::string> list({kProviderL2tpIpsec, kProviderOpenVpn,
                                  kProviderThirdPartyVpn, kProviderArcVpn});
+  if (IKEv2Driver::IsSupported()) {
+    list.push_back(kProviderIKEv2);
+  }
   if (WireGuardDriver::IsSupported()) {
     list.push_back(kProviderWireGuard);
   }
