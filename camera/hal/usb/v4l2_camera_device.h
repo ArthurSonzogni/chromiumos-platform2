@@ -70,18 +70,6 @@ enum ControlType {
 constexpr uint32_t kColorTemperatureAuto = 0;
 constexpr uint32_t kExposureTimeAuto = 0;
 
-// Wrapping information about a dequeued V4L2 buffer.
-struct V4L2Buffer {
-  // V4L2 buffer index.
-  uint32_t id;
-  // V4L2 buffer data size in bytes.
-  uint32_t data_size;
-  // V4L2 buffer timestamp in nanoseconds.
-  uint64_t v4l2_ts;
-  // User-space timestamp in nanoseconds when the buffer is dequeued.
-  uint64_t user_ts;
-};
-
 // The class is thread-safe.
 class V4L2CameraDevice {
  public:
@@ -121,11 +109,17 @@ class V4L2CameraDevice {
   // stream is already stopped.
   int StreamOff();
 
-  // Get next frame buffer from device with timeout |timeout_ms|, immediately if
-  // |timeout_ms| is 0, or indefinitely if |timeout_ms| is negative. Returns 0
-  // and fill in |buffer| with the data, otherwise returns -|errno|. This
-  // function should be called after StreamOn().
-  int GetNextFrameBuffer(int timeout_ms, V4L2Buffer* buffer);
+  // Get next frame buffer from device. Device returns the corresponding buffer
+  // with |buffer_id|, |data_size| bytes and its v4l2 timestamp |v4l2_ts| and
+  // userspace timestamp |user_ts| in nanoseconds.
+  // |data_size| is how many bytes used in the buffer for this frame. Return 0
+  // if device gets the buffer successfully. Otherwise, return -|errno|. Return
+  // -EAGAIN immediately if next frame buffer is not ready. This function should
+  // be called after StreamOn().
+  int GetNextFrameBuffer(uint32_t* buffer_id,
+                         uint32_t* data_size,
+                         uint64_t* v4l2_ts,
+                         uint64_t* user_ts);
 
   // Return |buffer_id| buffer to device. Return 0 if the buffer is returned
   // successfully. Otherwise, return -|errno|. This function should be called

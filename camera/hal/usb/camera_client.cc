@@ -22,7 +22,6 @@
 #include "hal/usb/camera_hal_device_ops.h"
 #include "hal/usb/quirks.h"
 #include "hal/usb/stream_format.h"
-#include "hal/usb/v4l2_camera_device.h"
 
 namespace cros {
 
@@ -34,8 +33,6 @@ const int kBufferFenceReady = -1;
 // ratio.
 // 16:9=1.778, 16:10=1.6, 3:2=1.5, 4:3=1.333
 const float kAspectRatioMargin = 0.04;
-
-constexpr int kTimeoutInfinite = -1;
 
 CameraClient::CameraClient(int id,
                            const DeviceInfo& device_info,
@@ -995,19 +992,17 @@ int CameraClient::RequestHandler::WriteStreamBuffers(
 
 void CameraClient::RequestHandler::SkipFramesAfterStreamOn(int num_frames) {
   for (size_t i = 0; i < num_frames; i++) {
-    V4L2Buffer buffer;
-    int ret = device_->GetNextFrameBuffer(kTimeoutInfinite, &buffer);
-    if (ret != 0) {
-      LOGFID(WARNING, device_id_)
+    uint32_t buffer_id, data_size;
+    uint64_t v4l2_ts, user_ts;
+    int ret =
+        device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts, &user_ts);
+    if (!ret) {
+      current_buffer_timestamp_in_v4l2_ = v4l2_ts;
+      current_buffer_timestamp_in_user_ = user_ts;
+      device_->ReuseFrameBuffer(buffer_id);
+    } else {
+      VLOGFID(1, device_id_)
           << "GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
-      continue;
-    }
-    current_buffer_timestamp_in_v4l2_ = buffer.v4l2_ts;
-    current_buffer_timestamp_in_user_ = buffer.user_ts;
-    ret = device_->ReuseFrameBuffer(buffer.id);
-    if (ret != 0) {
-      LOGFID(WARNING, device_id_)
-          << "ReuseFrameBuffer failed: " << base::safe_strerror(-ret);
     }
   }
 }
@@ -1079,55 +1074,73 @@ void CameraClient::RequestHandler::NotifyRequestError(uint32_t frame_number) {
 
 int CameraClient::RequestHandler::DequeueV4L2Buffer(int32_t pattern_mode) {
   DCHECK(task_runner_->BelongsToCurrentThread());
+  int ret;
+  uint32_t buffer_id = 0, data_size = 0;
+  uint64_t v4l2_ts, user_ts;
+  uint64_t delta_user_ts = 0, delta_v4l2_ts = 0;
+  // If frame duration between user space and v4l2 buffer shifts 20%,
+  // we should return next frame.
+  const uint64_t allowed_shift_frame_duration_ns =
+      (1'000'000'000LL / stream_on_fps_) * 0.2;
+  size_t drop_count = 0;
 
-  V4L2Buffer buffer;
-  int ret = device_->GetNextFrameBuffer(kTimeoutInfinite, &buffer);
-  if (ret != 0) {
-    LOGFID_THROTTLED(ERROR, device_id_, 60)
-        << "GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
-    return ret;
-  }
-  // |buffer| can be out of date and there are frames queuing in the driver.
-  // Drop them and get the newest frame when:
-  // 1. This is the first frame after stream on;
-  // 2. Not recording video.
-  if (current_buffer_timestamp_in_v4l2_ == 0 || !is_video_recording_) {
-    while (true) {
-      V4L2Buffer next_buffer;
-      ret = device_->GetNextFrameBuffer(0, &next_buffer);
-      if (ret == -ETIMEDOUT) {
-        break;
-      }
-      if (ret != 0) {
-        LOGFID_THROTTLED(ERROR, device_id_, 60)
-            << "GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
-        return ret;
-      }
-      VLOGF(1) << "Dropped outdated frame: v4l2_ts diff = "
-               << buffer.v4l2_ts - current_buffer_timestamp_in_v4l2_
-               << ", user_ts diff = "
-               << buffer.user_ts - current_buffer_timestamp_in_user_;
-      ret = device_->ReuseFrameBuffer(buffer.id);
-      if (ret != 0) {
+  // Some requests take a long time and cause several frames are buffered in
+  // V4L2 buffers in UVC driver. It causes user can get several frames during
+  // one frame duration when user send capture requests seamlessly. We should
+  // drop out-of-date frames to pass testResultTimestamps CTS test.
+  // See b/119635561 for detail.
+  // Since UVC HW timestamp may error when UVC driver drops frames, we at most
+  // drop the size of |input_buffers_| frames here to avoid infinite loop.
+  // TODO(henryhsu): Have another thread to fetch frame and report latest one.
+  do {
+    if (delta_user_ts > 0) {
+      VLOGF(1) << "Drop outdated frame: delta_user_ts = " << delta_user_ts
+               << ", delta_v4l2_ts = " << delta_v4l2_ts;
+      device_->ReuseFrameBuffer(buffer_id);
+      drop_count++;
+      if (ret) {
         LOGFID(ERROR, device_id_)
             << "ReuseFrameBuffer failed: " << base::safe_strerror(-ret)
-            << " for input buffer id: " << buffer.id;
+            << " for input buffer id: " << buffer_id;
         return ret;
       }
-      buffer = next_buffer;
     }
-  }
-  current_buffer_timestamp_in_user_ = buffer.user_ts;
-  current_buffer_timestamp_in_v4l2_ = buffer.v4l2_ts;
+    // If device_->GetNextFrameBuffer returns error, the buffer is still in
+    // driver side. Therefore we don't need to enqueue the buffer.
+    ret =
+        device_->GetNextFrameBuffer(&buffer_id, &data_size, &v4l2_ts, &user_ts);
+    if (ret) {
+      LOGFID_THROTTLED(ERROR, device_id_, 60)
+          << "GetNextFrameBuffer failed: " << base::safe_strerror(-ret);
+      return ret;
+    }
+    // If this is the first frame after stream on, just use it.
+    if (current_buffer_timestamp_in_v4l2_ == 0) {
+      break;
+    }
+
+    delta_user_ts = user_ts - current_buffer_timestamp_in_user_;
+    delta_v4l2_ts = v4l2_ts - current_buffer_timestamp_in_v4l2_;
+
+    // Some special conditions:
+    // 1. Do not drop frames for video recording because we don't want to skip
+    //    frames in the video.
+    // 2. Do not drop frames for external camera, because it may not support
+    //    constant frame rate and the hardware timestamp is not stable enough.
+  } while (!is_video_recording_ && !IsExternalCamera() &&
+           allowed_shift_frame_duration_ns + delta_v4l2_ts < delta_user_ts &&
+           drop_count < input_buffers_.size());
+  current_buffer_timestamp_in_user_ = user_ts;
+  current_buffer_timestamp_in_v4l2_ = v4l2_ts;
 
   // after this part, we got a buffer from V4L2 device,
   // so we need to return the buffer back if any error happens.
-  current_v4l2_buffer_id_ = buffer.id;
+  current_v4l2_buffer_id_ = buffer_id;
 
-  ret = input_buffers_[buffer.id]->SetDataSize(buffer.data_size);
+  ret = input_buffers_[buffer_id]->SetDataSize(data_size);
   if (ret) {
     LOGFID(ERROR, device_id_)
-        << "Set data size failed for input buffer id: " << buffer.id;
+        << "Set data size failed for input buffer id: " << buffer_id;
     EnqueueV4L2Buffer();
     return ret;
   }

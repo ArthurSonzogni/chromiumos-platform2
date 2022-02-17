@@ -576,8 +576,10 @@ int V4L2CameraDevice::StreamOff() {
   return 0;
 }
 
-int V4L2CameraDevice::GetNextFrameBuffer(int timeout_ms,
-                                         V4L2Buffer* out_buffer) {
+int V4L2CameraDevice::GetNextFrameBuffer(uint32_t* buffer_id,
+                                         uint32_t* data_size,
+                                         uint64_t* v4l2_ts,
+                                         uint64_t* user_ts) {
   base::AutoLock l(lock_);
   if (!device_fd_.is_valid()) {
     LOGF(ERROR) << "Device is not opened";
@@ -588,23 +590,23 @@ int V4L2CameraDevice::GetNextFrameBuffer(int timeout_ms,
     return -EIO;
   }
 
-  // Set a default timeout for devices that can stuck at DQBUF.
-  if ((device_info_.quirks & kQuirkRestartOnTimeout) && timeout_ms < 0) {
-    timeout_ms = 1000;
-  }
-
-  if (timeout_ms >= 0) {
+  if (device_info_.quirks & kQuirkRestartOnTimeout) {
     pollfd device_pfd = {};
     device_pfd.fd = device_fd_.get();
     device_pfd.events = POLLIN;
-    const int result = TEMP_FAILURE_RETRY(poll(&device_pfd, 1, timeout_ms));
+
+    constexpr int kCaptureTimeoutMs = 1000;
+    const int result =
+        TEMP_FAILURE_RETRY(poll(&device_pfd, 1, kCaptureTimeoutMs));
+
     if (result < 0) {
       PLOGF(ERROR) << "Polling fails";
       return -errno;
-    }
-    if (result == 0) {
+    } else if (result == 0) {
+      LOGF(ERROR) << "Timed out waiting for captured frame";
       return -ETIMEDOUT;
     }
+
     if (!(device_pfd.revents & POLLIN)) {
       LOGF(ERROR) << "Unexpected event occurred while polling";
       return -EIO;
@@ -628,11 +630,11 @@ int V4L2CameraDevice::GetNextFrameBuffer(int timeout_ms,
     return -EINVAL;
   }
 
-  out_buffer->id = buffer.index;
-  out_buffer->data_size = buffer.bytesused;
+  *buffer_id = buffer.index;
+  *data_size = buffer.bytesused;
 
   struct timeval tv = buffer.timestamp;
-  out_buffer->v4l2_ts = tv.tv_sec * 1'000'000'000LL + tv.tv_usec * 1000;
+  *v4l2_ts = tv.tv_sec * 1'000'000'000LL + tv.tv_usec * 1000;
 
   struct timespec ts;
   if (clock_gettime(GetUvcClock(), &ts) < 0) {
@@ -640,7 +642,7 @@ int V4L2CameraDevice::GetNextFrameBuffer(int timeout_ms,
     return -errno;
   }
 
-  out_buffer->user_ts = ts.tv_sec * 1'000'000'000LL + ts.tv_nsec;
+  *user_ts = ts.tv_sec * 1'000'000'000LL + ts.tv_nsec;
 
   buffers_at_client_[buffer.index] = true;
 
