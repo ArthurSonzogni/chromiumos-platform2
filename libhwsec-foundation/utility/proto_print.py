@@ -97,6 +97,22 @@ class Enum(object):
         self.values.append(value_name)
 
 
+class Oneof(object):
+    """Holds information about a protobuf Oneof.
+
+    Attributes:
+        name: The name of the OnoOf.
+    """
+
+    def __init__(self, name):
+        """Initializes a OnoOf instance.
+
+        Args:
+            name: The protobuf OnoOf name.
+        """
+        self.name = name
+
+
 def ParseProto(input_file):
     """Parses a proto file and returns a tuple of parsed information.
 
@@ -116,6 +132,7 @@ def ParseProto(input_file):
     enums = []
     current_message_stack = []
     current_enum = None
+    current_oneof = None
     package_re = re.compile(r'package\s+([.\w]+);')
     import_re = re.compile(r'import\s+"([\w]*/)*(\w+).proto";')
     message_re = re.compile(r'message\s+(\w+)\s*{')
@@ -123,12 +140,14 @@ def ParseProto(input_file):
     field_re3 = re.compile(r'(|repeated\s+)([.\w]+)\s+(\w+)\s*=')
     enum_re = re.compile(r'enum\s+(\w+)\s*{')
     enum_value_re = re.compile(r'(\w+)\s*=')
+    oneof_re = re.compile(r'oneof\s+(\w+)\s*{')
     for line in input_file:
         line = line.strip()
         if not line or line.startswith('//'):
             continue
         msg_match = message_re.search(line)
         enum_match = enum_re.search(line)
+        oneof_match = oneof_re.search(line)
         field_match = field_re.search(line)
         field_match3 = field_re3.search(line)
         package_match = package_re.search(line)
@@ -140,6 +159,11 @@ def ParseProto(input_file):
                 prefix = '::'.join([m.name for m in current_message_stack
                                    ]) + '::'
             current_message_stack.append(Message(prefix + msg_match.group(1)))
+        elif current_message_stack and oneof_match:
+            if current_oneof:
+                raise Exception('Unsupported nested oneof')
+            # TODO(b/220231404): Support the printing of oneof field.
+            current_oneof = Oneof(prefix + oneof_match.group(1))
         # Look for a message field definition.
         elif current_message_stack and field_match:
             current_message_stack[-1].AddField(
@@ -175,8 +199,26 @@ def ParseProto(input_file):
             if current_enum:
                 enums.append(current_enum)
                 current_enum = None
-            if current_message_stack:
+            elif current_oneof:
+                # TODO(b/220231404): Support the printing of oneof field.
+                current_oneof = None
+            elif current_message_stack:
                 messages.append(current_message_stack.pop())
+            else:
+                raise Exception('Closing unknown scope')
+
+    # Make sure we parse the proto file correctly.
+    if current_enum:
+        raise Exception(f'The current_enum "{current_enum.name}" is not empty')
+
+    if current_oneof:
+        raise Exception(
+            f'The current_oneof "{current_oneof.name}" is not empty')
+
+    if current_message_stack:
+        name_stack = [msg.name for msg in current_message_stack]
+        raise Exception(f'The current_message_stack {name_stack} is not empty')
+
     return package, imports, messages, enums
 
 
