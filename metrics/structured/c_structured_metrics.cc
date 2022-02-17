@@ -11,18 +11,23 @@
 
 namespace bluetooth = metrics::structured::events::bluetooth;
 
-extern "C" void BluetoothAdapterStateChanged(int64_t system_time, int state) {
+extern "C" void BluetoothAdapterStateChanged(const char* boot_id,
+                                             int64_t system_time,
+                                             int state) {
   bluetooth::BluetoothAdapterStateChanged()
+      .SetBootId(boot_id)
       .SetSystemTime(system_time)
       .SetAdapterState(state)
       .Record();
 }
 
-extern "C" void BluetoothPairingStateChanged(int64_t system_time,
+extern "C" void BluetoothPairingStateChanged(const char* boot_id,
+                                             int64_t system_time,
                                              const char* device_id,
                                              int device_type,
                                              int state) {
   bluetooth::BluetoothPairingStateChanged()
+      .SetBootId(boot_id)
       .SetSystemTime(system_time)
       .SetDeviceId(device_id)
       .SetDeviceType(device_type)
@@ -30,7 +35,8 @@ extern "C" void BluetoothPairingStateChanged(int64_t system_time,
       .Record();
 }
 
-extern "C" void BluetoothAclConnectionStateChanged(int64_t system_time,
+extern "C" void BluetoothAclConnectionStateChanged(const char* boot_id,
+                                                   int64_t system_time,
                                                    const char* device_id,
                                                    int device_type,
                                                    int connection_direction,
@@ -38,6 +44,7 @@ extern "C" void BluetoothAclConnectionStateChanged(int64_t system_time,
                                                    int state_change_type,
                                                    int state) {
   bluetooth::BluetoothAclConnectionStateChanged()
+      .SetBootId(boot_id)
       .SetSystemTime(system_time)
       .SetDeviceId(device_id)
       .SetDeviceType(device_type)
@@ -48,12 +55,14 @@ extern "C" void BluetoothAclConnectionStateChanged(int64_t system_time,
       .Record();
 }
 
-extern "C" void BluetoothProfileConnectionStateChanged(int64_t system_time,
+extern "C" void BluetoothProfileConnectionStateChanged(const char* boot_id,
+                                                       int64_t system_time,
                                                        const char* device_id,
                                                        int state_change_type,
                                                        int profile,
                                                        int state) {
   bluetooth::BluetoothProfileConnectionStateChanged()
+      .SetBootId(boot_id)
       .SetSystemTime(system_time)
       .SetDeviceId(device_id)
       .SetStateChangeType(state_change_type)
@@ -62,7 +71,8 @@ extern "C" void BluetoothProfileConnectionStateChanged(int64_t system_time,
       .Record();
 }
 
-extern "C" void BluetoothDeviceInfoReport(int64_t system_time,
+extern "C" void BluetoothDeviceInfoReport(const char* boot_id,
+                                          int64_t system_time,
                                           const char* device_id,
                                           int device_type,
                                           int device_class,
@@ -72,6 +82,7 @@ extern "C" void BluetoothDeviceInfoReport(int64_t system_time,
                                           int product_id,
                                           int product_version) {
   bluetooth::BluetoothDeviceInfoReport()
+      .SetBootId(boot_id)
       .SetSystemTime(system_time)
       .SetDeviceId(device_id)
       .SetDeviceType(device_type)

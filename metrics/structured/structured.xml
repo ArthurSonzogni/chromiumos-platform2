@@ -13,9 +13,14 @@
     <summary>
       Records the toggle of the adapter.
     </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
     <metric name="SystemTime" type="int">
       <summary>
-        The system time in nanoseconds.
+        The time elapsed since boot, in microseconds.
       </summary>
     </metric>
     <metric name="AdapterState" type="int">
@@ -29,9 +34,14 @@
     <summary>
       Records the device pairing state change.
     </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
     <metric name="SystemTime" type="int">
       <summary>
-        The system time in nanoseconds.
+        The time elapsed since boot, in microseconds.
       </summary>
     </metric>
     <metric name="DeviceId" type="hmac-string">
@@ -55,9 +65,14 @@
     <summary>
       Records the ACL connection state change.
     </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
     <metric name="SystemTime" type="int">
       <summary>
-        The system time in nanoseconds.
+        The time elapsed since boot, in microseconds.
       </summary>
     </metric>
     <metric name="DeviceId" type="hmac-string">
@@ -96,9 +111,14 @@
     <summary>
       Records the profile connection state change.
     </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
     <metric name="SystemTime" type="int">
       <summary>
-        The system time in nanoseconds.
+        The time elapsed since boot, in microseconds.
       </summary>
     </metric>
     <metric name="DeviceId" type="hmac-string">
@@ -127,9 +147,14 @@
     <summary>
       Records the bluetooth device info.
     </summary>
+    <metric name="BootId" type="hmac-string">
+      <summary>
+        Random ID generated at boot time to detect reboots.
+      </summary>
+    </metric>
     <metric name="SystemTime" type="int">
       <summary>
-        The system time in nanoseconds.
+        The time elapsed since boot, in microseconds.
       </summary>
     </metric>
     <metric name="DeviceId" type="hmac-string">

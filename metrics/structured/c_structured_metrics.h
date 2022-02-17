@@ -15,18 +15,22 @@ extern "C" {
 
 // C wrapper for
 // metrics::structured::events::bluetooth::BluetoothAdapterStateChanged.
-BRILLO_EXPORT void BluetoothAdapterStateChanged(int64_t system_time, int state);
+BRILLO_EXPORT void BluetoothAdapterStateChanged(const char* boot_id,
+                                                int64_t system_time,
+                                                int state);
 
 // C wrapper for
 // metrics::structured::events::bluetooth::BluetoothPairingStateChanged.
-BRILLO_EXPORT void BluetoothPairingStateChanged(int64_t system_time,
+BRILLO_EXPORT void BluetoothPairingStateChanged(const char* boot_id,
+                                                int64_t system_time,
                                                 const char* device_id,
                                                 int device_type,
                                                 int state);
 
 // C wrapper for
 // metrics::structured::events::bluetooth::BluetoothAclConnectionStateChanged.
-BRILLO_EXPORT void BluetoothAclConnectionStateChanged(int64_t system_time,
+BRILLO_EXPORT void BluetoothAclConnectionStateChanged(const char* boot_id,
+                                                      int64_t system_time,
                                                       const char* device_id,
                                                       int device_type,
                                                       int connection_direction,
@@ -37,7 +41,8 @@ BRILLO_EXPORT void BluetoothAclConnectionStateChanged(int64_t system_time,
 // C wrapper for
 // metrics::structured::events::bluetooth::
 // BluetoothProfileConnectionStateChanged.
-BRILLO_EXPORT void BluetoothProfileConnectionStateChanged(int64_t system_time,
+BRILLO_EXPORT void BluetoothProfileConnectionStateChanged(const char* boot_id,
+                                                          int64_t system_time,
                                                           const char* device_id,
                                                           int state_change_type,
                                                           int profile,
@@ -45,7 +50,8 @@ BRILLO_EXPORT void BluetoothProfileConnectionStateChanged(int64_t system_time,
 
 // C wrapper for
 // metrics::structured::events::bluetooth::BluetoothDeviceInfoReport.
-BRILLO_EXPORT void BluetoothDeviceInfoReport(int64_t system_time,
+BRILLO_EXPORT void BluetoothDeviceInfoReport(const char* boot_id,
+                                             int64_t system_time,
                                              const char* device_id,
                                              int device_type,
                                              int device_class,
