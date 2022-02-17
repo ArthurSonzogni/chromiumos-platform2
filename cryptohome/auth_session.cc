@@ -304,6 +304,51 @@ const FileSystemKeyset& AuthSession::file_system_keyset() const {
   return file_system_keyset_.value();
 }
 
+user_data_auth::CryptohomeErrorCode AuthSession::AuthenticateAuthFactor(
+    const user_data_auth::AuthenticateAuthFactorRequest& request) {
+  // 1. Check the factor exists.
+  auto iter = label_to_auth_factor_.find(request.auth_factor_label());
+  if (iter == label_to_auth_factor_.end()) {
+    LOG(ERROR) << "Authentication key not found: "
+               << request.auth_factor_label();
+    return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
+  }
+  AuthFactor& auth_factor = *iter->second;
+
+  // 2. Convert the auth input.
+  std::optional<AuthInput> auth_input =
+      FromProto(request.auth_input(), obfuscated_username_,
+                auth_block_utility_->GetLockedToSingleUser());
+  if (!auth_input.has_value()) {
+    LOG(ERROR) << "Failed to parse auth input for authenticating auth factor";
+    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+  }
+
+  // 3. Perform the auth block key blobs derivation.
+  KeyBlobs key_blobs;
+  user_data_auth::CryptohomeErrorCode error = auth_factor.Authenticate(
+      auth_input.value(), auth_block_utility_, key_blobs);
+  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "Failed to authenticate auth session via factor "
+               << request.auth_factor_label();
+    return error;
+  }
+
+  // 4. If the auth factor is tied with USS, use it to finish the
+  // authentication.
+  error =
+      AuthenticateViaUserSecretStash(request.auth_factor_label(), key_blobs);
+  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "Failed to authenticate auth session via factor "
+               << request.auth_factor_label();
+    return error;
+  }
+
+  // 5. Flip the status on the successful authentication.
+  status_ = AuthStatus::kAuthStatusAuthenticated;
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
 std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
   return std::move(credential_verifier_);
 }
@@ -382,9 +427,8 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddAuthFactor(
     return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
   }
 
-  const std::string obfuscated_username = SanitizeUserName(username_);
   std::optional<AuthInput> auth_input =
-      FromProto(request.auth_input(), obfuscated_username,
+      FromProto(request.auth_input(), obfuscated_username_,
                 auth_block_utility_->GetLockedToSingleUser());
   if (!auth_input.has_value()) {
     LOG(ERROR) << "Failed to parse auth input for new auth factor";
@@ -472,6 +516,45 @@ AuthSession::AddAuthFactorViaUserSecretStash(
         << "Failed to persist user secret stash after auth factor creation";
     return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
   }
+
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
+user_data_auth::CryptohomeErrorCode AuthSession::AuthenticateViaUserSecretStash(
+    const std::string& auth_factor_label, const KeyBlobs& key_blobs) {
+  // 1. Derive the credential secret for the USS from the key blobs.
+  std::optional<brillo::SecureBlob> uss_credential_secret =
+      key_blobs.DeriveUssCredentialSecret();
+  if (!uss_credential_secret.has_value()) {
+    LOG(ERROR)
+        << "Failed to derive credential secret for authenticating auth factor";
+    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  }
+
+  // 2. Load the USS container with the encrypted payload.
+  std::optional<brillo::SecureBlob> encrypted_uss =
+      user_secret_stash_storage_->LoadPersisted(obfuscated_username_);
+  if (!encrypted_uss.has_value()) {
+    LOG(ERROR) << "Failed to load the user secret stash";
+    return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
+  }
+
+  // 3. Decrypt the USS payload.
+  // This unwraps the USS Main Key with the credential secret, and decrypts the
+  // USS payload using the USS Main Key. The wrapping_id field is defined equal
+  // to the factor's label.
+  brillo::SecureBlob decrypted_main_key;
+  user_secret_stash_ = UserSecretStash::FromEncryptedContainerWithWrappingKey(
+      encrypted_uss.value(), /*wrapping_id=*/auth_factor_label,
+      /*wrapping_key=*/uss_credential_secret.value(), &decrypted_main_key);
+  if (!user_secret_stash_) {
+    LOG(ERROR) << "Failed to decrypt the user secret stash";
+    return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
+  }
+  user_secret_stash_main_key_ = decrypted_main_key;
+
+  // 4. Populate data fields from the USS.
+  file_system_keyset_ = user_secret_stash_->GetFileSystemKeyset();
 
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }

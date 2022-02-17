@@ -407,4 +407,23 @@ CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
   return auth_block.Create(auth_input, &out_auth_block_state, &out_key_blobs);
 }
 
+CryptoError AuthBlockUtilityImpl::DeriveKeyBlobs(
+    const AuthInput& auth_input,
+    const AuthBlockState& auth_block_state,
+    KeyBlobs& out_key_blobs) {
+  std::unique_ptr<SyncAuthBlock> auth_block;
+  if (const auto* state =
+          std::get_if<TpmBoundToPcrAuthBlockState>(&auth_block_state.state)) {
+    auth_block = std::make_unique<TpmBoundToPcrAuthBlock>(
+        crypto_->tpm(), crypto_->cryptohome_keys_manager());
+  }
+  // TODO(b/216804305): Support other auth blocks.
+
+  if (!auth_block) {
+    LOG(ERROR) << "Unsupported auth block";
+    return CryptoError::CE_OTHER_CRYPTO;
+  }
+  return auth_block->Derive(auth_input, auth_block_state, &out_key_blobs);
+}
+
 }  // namespace cryptohome

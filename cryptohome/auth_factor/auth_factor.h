@@ -54,6 +54,14 @@ class AuthFactor {
   const AuthFactorMetadata& metadata() const { return metadata_; }
   const AuthBlockState& auth_block_state() const { return auth_block_state_; }
 
+  // Authenticates and derives key blobs.
+  // `auth_block_utility` is not owned and only needs to stay valid throughout
+  // this call.
+  user_data_auth::CryptohomeErrorCode Authenticate(
+      const AuthInput& auth_input,
+      AuthBlockUtility* auth_block_utility,
+      KeyBlobs& out_key_blobs);
+
  private:
   // The auth factor public information.
   const AuthFactorType type_;

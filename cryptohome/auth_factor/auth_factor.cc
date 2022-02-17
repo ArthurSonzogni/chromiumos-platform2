@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
@@ -16,6 +17,24 @@
 #include "cryptohome/scrypt_verifier.h"
 
 namespace cryptohome {
+
+namespace {
+
+user_data_auth::CryptohomeErrorCode CryptoErrorToCryptohomeError(
+    CryptoError crypto_error) {
+  switch (crypto_error) {
+    case CryptoError::CE_TPM_COMM_ERROR:
+      return user_data_auth::CRYPTOHOME_ERROR_TPM_COMM_ERROR;
+    case CryptoError::CE_TPM_DEFEND_LOCK:
+      return user_data_auth::CRYPTOHOME_ERROR_TPM_DEFEND_LOCK;
+    case CryptoError::CE_TPM_REBOOT:
+      return user_data_auth::CRYPTOHOME_ERROR_TPM_NEEDS_REBOOT;
+    default:
+      return user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED;
+  }
+}
+
+}  // namespace
 
 // static
 std::unique_ptr<AuthFactor> AuthFactor::CreateNew(
@@ -43,5 +62,21 @@ AuthFactor::AuthFactor(AuthFactorType type,
       label_(label),
       metadata_(metadata),
       auth_block_state_(auth_block_state) {}
+
+user_data_auth::CryptohomeErrorCode AuthFactor::Authenticate(
+    const AuthInput& auth_input,
+    AuthBlockUtility* auth_block_utility,
+    KeyBlobs& out_key_blobs) {
+  CryptoError crypto_error = auth_block_utility->DeriveKeyBlobs(
+      auth_input, auth_block_state_, out_key_blobs);
+  if (crypto_error != CryptoError::CE_NONE) {
+    user_data_auth::CryptohomeErrorCode error =
+        CryptoErrorToCryptohomeError(crypto_error);
+    LOG(ERROR) << "Auth factor authentication failed: error " << error
+               << ", crypto error " << error;
+    return error;
+  }
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
 
 }  // namespace cryptohome

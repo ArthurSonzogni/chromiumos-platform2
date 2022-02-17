@@ -70,6 +70,9 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const AuthInput& auth_input,
       AuthBlockState& out_auth_block_state,
       KeyBlobs& out_key_blobs) override;
+  CryptoError DeriveKeyBlobs(const AuthInput& auth_input,
+                             const AuthBlockState& auth_block_state,
+                             KeyBlobs& out_key_blobs) override;
 
  private:
   // This helper function serves as a factory method to return the authblock

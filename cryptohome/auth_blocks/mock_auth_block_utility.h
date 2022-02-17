@@ -66,6 +66,12 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                AuthBlockState& out_auth_block_state,
                KeyBlobs& out_key_blobs),
               (override));
+  MOCK_METHOD(CryptoError,
+              DeriveKeyBlobs,
+              (const AuthInput& auth_input,
+               const AuthBlockState& auth_block_state,
+               KeyBlobs& out_key_blobs),
+              (override));
 };
 
 }  // namespace cryptohome

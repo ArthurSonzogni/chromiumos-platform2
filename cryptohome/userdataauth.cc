@@ -3915,9 +3915,18 @@ bool UserDataAuth::AuthenticateAuthFactor(
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
         on_done) {
   AssertOnMountThread();
-  // TODO(b/208358041): Implement AuthenticateAUthFactor.
   user_data_auth::AuthenticateAuthFactorReply reply;
-  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+
+  AuthSession* const auth_session =
+      auth_session_manager_->FindAuthSession(request.auth_session_id());
+  if (!auth_session) {
+    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+    LOG(ERROR) << "Invalid AuthSession token provided.";
+    std::move(on_done).Run(reply);
+    return false;
+  }
+
+  reply.set_error(auth_session->AuthenticateAuthFactor(request));
   std::move(on_done).Run(reply);
   return true;
 }

@@ -82,6 +82,12 @@ class AuthBlockUtility {
       const AuthInput& auth_input,
       AuthBlockState& out_auth_block_state,
       KeyBlobs& out_key_blobs) WARN_UNUSED_RESULT = 0;
+
+  // Derives key blobs using the given auth block state and input.
+  virtual CryptoError DeriveKeyBlobs(const AuthInput& auth_input,
+                                     const AuthBlockState& auth_block_state,
+                                     KeyBlobs& out_key_blobs)
+      WARN_UNUSED_RESULT = 0;
 };
 
 }  // namespace cryptohome

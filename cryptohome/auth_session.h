@@ -94,6 +94,7 @@ class AuthSession final {
 
   // AddCredentials is called when newly created or existing user wants to add
   // new credentials.
+  // Note: only USS users are supported currently.
   user_data_auth::CryptohomeErrorCode AddAuthFactor(
       const user_data_auth::AddAuthFactorRequest& request);
 
@@ -102,6 +103,13 @@ class AuthSession final {
   // steps involved in multi-factor authentication.
   user_data_auth::CryptohomeErrorCode Authenticate(
       const cryptohome::AuthorizationRequest& authorization_request);
+
+  // Authenticate is called when the user wants to authenticate the current
+  // AuthSession via an auth factor. It may be called multiple times depending
+  // on errors or various steps involved in multi-factor authentication.
+  // Note: only USS users are supported currently.
+  user_data_auth::CryptohomeErrorCode AuthenticateAuthFactor(
+      const user_data_auth::AuthenticateAuthFactorRequest& request);
 
   // Return a const reference to FileSystemKeyset.
   // FileSystemKeyset is set when the auth session gets into an authenticated
@@ -191,6 +199,8 @@ class AuthSession final {
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input);
+  user_data_auth::CryptohomeErrorCode AuthenticateViaUserSecretStash(
+      const std::string& auth_factor_label, const KeyBlobs& key_blobs);
 
   const std::string username_;
   const std::string obfuscated_username_;
