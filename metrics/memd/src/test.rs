@@ -66,8 +66,8 @@ fn write_string(string: &str, path: &Path, append: bool) -> Result<()> {
     Ok(())
 }
 
-fn read_nonblocking_pipe(file: &mut File, mut buf: &mut [u8]) -> Result<usize> {
-    let status = file.read(&mut buf);
+fn read_nonblocking_pipe(file: &mut File, buf: &mut [u8]) -> Result<usize> {
+    let status = file.read(buf);
     let read_bytes = match status {
         Ok(n) => n,
         Err(_) if errno() == libc::EAGAIN => 0,
@@ -148,7 +148,7 @@ impl TestEvent {
         }
     }
 
-    fn low_mem_notify(&self, amount: usize, paths: &Paths, mut low_mem_device: &mut File) {
+    fn low_mem_notify(&self, amount: usize, paths: &Paths, low_mem_device: &mut File) {
         write_string(&amount.to_string(), &paths.available, false)
             .expect("available file: write failed");
         if amount == LOW_MEM_LOW_AVAILABLE {
@@ -158,8 +158,7 @@ impl TestEvent {
         } else {
             debug!("clearing low-mem device");
             let mut buf = [0; PAGE_SIZE];
-            read_nonblocking_pipe(&mut low_mem_device, &mut buf)
-                .expect("low-mem-device: clear failed");
+            read_nonblocking_pipe(low_mem_device, &mut buf).expect("low-mem-device: clear failed");
         }
     }
 

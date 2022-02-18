@@ -432,17 +432,17 @@ impl Sample {
 #[derive(Copy, Clone)]
 struct Sysinfo(libc::sysinfo);
 
-impl Sysinfo {
-    // Wrapper for sysinfo syscall.
-    fn sysinfo() -> Result<Sysinfo> {
-        let mut info: Sysinfo = Default::default();
-        // sysinfo() is always safe when passed a valid pointer
-        match unsafe { libc::sysinfo(&mut info.0 as *mut libc::sysinfo) } {
-            0 => Ok(info),
-            _ => Err(format!("sysinfo: {}", strerror(errno())).into()),
-        }
+// Wrapper for sysinfo syscall.
+fn sysinfo() -> Result<Sysinfo> {
+    let mut info: Sysinfo = Default::default();
+    // sysinfo() is always safe when passed a valid pointer
+    match unsafe { libc::sysinfo(&mut info.0 as *mut libc::sysinfo) } {
+        0 => Ok(info),
+        _ => Err(format!("sysinfo: {}", strerror(errno())).into()),
     }
+}
 
+impl Sysinfo {
     // Fakes sysinfo system call, for testing.
     fn fake_sysinfo() -> Result<Sysinfo> {
         let mut info: Sysinfo = Default::default();
@@ -517,7 +517,7 @@ impl SampleQueue {
     // Outputs to file |f| samples from |start_time| to the head.  Uses a start
     // time rather than a start index because when we start a clip we have to
     // do a time-based search anyway.
-    fn output_from_time(&self, mut f: &mut File, start_time: i64) -> Result<()> {
+    fn output_from_time(&self, f: &mut File, start_time: i64) -> Result<()> {
         // For now just do a linear search. ;)
         let mut start_index = modulo(self.ihead() - 1, SAMPLE_QUEUE_LENGTH);
         debug!(
@@ -544,7 +544,7 @@ impl SampleQueue {
         let mut index = modulo(start_index as isize + 1, SAMPLE_QUEUE_LENGTH) as isize;
         while index != self.ihead() {
             debug!("output_from_time: outputting index {}", index);
-            self.sample(index).output(&mut f)?;
+            self.sample(index).output(f)?;
             index = modulo(index + 1, SAMPLE_QUEUE_LENGTH) as isize;
         }
         Ok(())
@@ -956,7 +956,7 @@ impl<'a> Sampler<'a> {
             sample.info = if cfg!(test) {
                 Sysinfo::fake_sysinfo()?
             } else {
-                Sysinfo::sysinfo()?
+                sysinfo()?
             };
             get_vmstats(&self.files.vmstat_file, &mut sample.vmstat_values)?;
         }
@@ -967,7 +967,7 @@ impl<'a> Sampler<'a> {
     // Creates or overwrites a file in the memd log directory containing
     // quantities of interest.
     fn log_static_parameters(&self) -> Result<()> {
-        let mut out = &mut OpenOptions::new()
+        let out = &mut OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
@@ -977,9 +977,9 @@ impl<'a> Sampler<'a> {
         writeln!(out, "margin {}", low_mem_margin)?;
 
         let psv = &self.paths.procsysvm;
-        log_from_procfs(&mut out, psv, "min_filelist_kbytes")?;
-        log_from_procfs(&mut out, psv, "min_free_kbytes")?;
-        log_from_procfs(&mut out, psv, "extra_free_kbytes")?;
+        log_from_procfs(out, psv, "min_filelist_kbytes")?;
+        log_from_procfs(out, psv, "min_free_kbytes")?;
+        log_from_procfs(out, psv, "extra_free_kbytes")?;
 
         let mut zoneinfo = ZoneinfoFile {
             0: File::open(&self.paths.zoneinfo)?,
@@ -1263,7 +1263,7 @@ impl<'a> Sampler<'a> {
     // from the queue.
     fn save_clip(&mut self, start_time: i64) -> Result<()> {
         let path = self.next_clip_path();
-        let mut out = &mut OpenOptions::new()
+        let out = &mut OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
@@ -1275,7 +1275,7 @@ impl<'a> Sampler<'a> {
         fprint_datetime(out)?;
         out.write_all(self.sample_header.as_bytes())?;
         // Output samples from |start_time| to the head.
-        self.sample_queue.output_from_time(&mut out, start_time)?;
+        self.sample_queue.output_from_time(out, start_time)?;
         // The queue is now empty.
         self.sample_queue.reset();
         Ok(())
@@ -1503,6 +1503,7 @@ fn get_paths(root: Option<TempDir>) -> Paths {
 fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
     let test_dir_option = make_testing_dir();
     let paths = get_paths(test_dir_option);
+    debug!("Using root: {}", paths.testing_root.display());
 
     #[cfg(test)]
     {
