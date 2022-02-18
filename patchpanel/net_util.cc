@@ -415,4 +415,11 @@ sa_family_t GetIpFamily(const std::string& ip_address) {
   return AF_UNSPEC;
 }
 
+std::vector<uint8_t> In6AddrToVector(const in6_addr& ipv6_addr) {
+  std::vector<uint8_t> ipaddr;
+  ipaddr.reserve(sizeof(in6_addr));
+  memcpy(ipaddr.data(), ipv6_addr.s6_addr, sizeof(in6_addr));
+  return ipaddr;
+}
+
 }  // namespace patchpanel

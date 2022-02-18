@@ -36,9 +36,17 @@
 
 namespace patchpanel {
 namespace {
-const unsigned char kZeroMacAddress[] = {0, 0, 0, 0, 0, 0};
-const unsigned char kBroadcastMacAddress[] = {0xff, 0xff, 0xff,
-                                              0xff, 0xff, 0xff};
+// The broadcast MAC address.
+constexpr const unsigned char kBroadcastMacAddress[] = {0xff, 0xff, 0xff,
+                                                        0xff, 0xff, 0xff};
+// The IPv6 all-zeroes address.
+constexpr const in6_addr IN6_ADDR_ANY = {
+    .s6_addr = {0},
+};
+
+// The maximum number of neighbor MAC addresses remembered for a guest
+// interface.
+constexpr size_t kMaxNeighborPerGuestInterface = 32;
 
 // These filter instructions assume that the input is an IPv6 packet and check
 // that the packet is an ICMPv6 packet of whose ICMPv6 type is one of: neighbor
@@ -253,14 +261,14 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
   uint8_t* in_packet = reinterpret_cast<uint8_t*>(in_packet_buffer_);
   uint8_t* out_packet = reinterpret_cast<uint8_t*>(out_packet_buffer_);
 
-  sockaddr_ll dst_addr;
+  sockaddr_ll src_sockaddr;
   struct iovec iov_in = {
       .iov_base = in_packet,
       .iov_len = IP_MAXPACKET,
   };
   msghdr hdr = {
-      .msg_name = &dst_addr,
-      .msg_namelen = sizeof(dst_addr),
+      .msg_name = &src_sockaddr,
+      .msg_namelen = sizeof(src_sockaddr),
       .msg_iov = &iov_in,
       .msg_iovlen = 1,
       .msg_control = nullptr,
@@ -284,16 +292,22 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       icmp6->icmp6_type > ND_NEIGHBOR_ADVERT)
     return;
 
+  // Remember this neighbor MAC address if the packet came from a guest
+  // interface.
+  if (IsGuestInterface(src_sockaddr.sll_ifindex)) {
+    SetGuestNeighborMac(src_sockaddr, ip6->ip6_src);
+  }
+
   // Notify DeviceManager on receiving NA from guest, so a /128 route to the
   // guest can be added on the host.
   if (icmp6->icmp6_type == ND_NEIGHBOR_ADVERT &&
-      IsGuestInterface(dst_addr.sll_ifindex) &&
+      IsGuestInterface(src_sockaddr.sll_ifindex) &&
       !guest_discovery_handler_.is_null()) {
     nd_neighbor_advert* na = reinterpret_cast<nd_neighbor_advert*>(icmp6);
     if (((na->nd_na_target.s6_addr[0] & 0xe0) == 0x20)        // Global Unicast
         || ((na->nd_na_target.s6_addr[0] & 0xfe) == 0xfc)) {  // Unique Local
       char ifname[IFNAMSIZ];
-      if_indextoname(dst_addr.sll_ifindex, ifname);
+      if_indextoname(src_sockaddr.sll_ifindex, ifname);
       char ipv6_addr_str[INET6_ADDRSTRLEN];
       inet_ntop(AF_INET6, &(na->nd_na_target.s6_addr), ipv6_addr_str,
                 INET6_ADDRSTRLEN);
@@ -306,14 +320,14 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
   // interface, and sent it to DeviceManager so it can be assigned. This address
   // will be used when directly communicating with guest OS through IPv6.
   if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
-      IsRouterInterface(dst_addr.sll_ifindex) &&
+      IsRouterInterface(src_sockaddr.sll_ifindex) &&
       !router_discovery_handler_.is_null()) {
     const nd_opt_prefix_info* prefix_info = GetPrefixInfoOption(
         reinterpret_cast<uint8_t*>(icmp6), len - sizeof(ip6_hdr));
     if (prefix_info != nullptr && prefix_info->nd_opt_pi_prefix_len <= 64) {
       // Generate an EUI-64 address from virtual interface MAC. A prefix
       // larger that /64 is required.
-      for (int target_if : if_map_ra_[dst_addr.sll_ifindex]) {
+      for (int target_if : if_map_ra_[src_sockaddr.sll_ifindex]) {
         MacAddress local_mac;
         if (!GetLocalMac(target_if, &local_mac))
           continue;
@@ -342,7 +356,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
   // code happens later below.
   bool unusual_ra_src = false;
   if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
-      IsRouterInterface(dst_addr.sll_ifindex)) {
+      IsRouterInterface(src_sockaddr.sll_ifindex)) {
     MacAddress router_mac;
     MacAddress inbound_local_mac;
     if (!GetNeighborMac(ip6->ip6_src, &router_mac)) {
@@ -350,11 +364,12 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       unusual_ra_src = true;
     } else {
       // Detect if the router ip get resolved to a local MAC
-      unusual_ra_src = (GetLocalMac(dst_addr.sll_ifindex, &inbound_local_mac) &&
-                        router_mac == inbound_local_mac);
+      unusual_ra_src =
+          (GetLocalMac(src_sockaddr.sll_ifindex, &inbound_local_mac) &&
+           router_mac == inbound_local_mac);
     }
     if (unusual_ra_src)
-      irregular_router_ifs_.insert(dst_addr.sll_ifindex);
+      irregular_router_ifs_.insert(src_sockaddr.sll_ifindex);
   }
 
   // b/187918638(cont.): since these cell upstream never send proper NS and NA,
@@ -362,7 +377,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
   // we have to monitor DAD NS frames and use it as judgement. Notice that since
   // upstream never reply NA, this DAD never fails.
   if (icmp6->icmp6_type == ND_NEIGHBOR_SOLICIT &&
-      IsGuestToIrregularRouter(dst_addr.sll_ifindex) &&
+      IsGuestToIrregularRouter(src_sockaddr.sll_ifindex) &&
       !guest_discovery_handler_.is_null()) {
     uint8_t zerobuf[sizeof(in6_addr)] = {0};
     nd_neighbor_solicit* ns = reinterpret_cast<nd_neighbor_solicit*>(icmp6);
@@ -372,7 +387,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
         (((ns->nd_ns_target.s6_addr[0] & 0xe0) == 0x20)  // Global Unicast
          || ((ns->nd_ns_target.s6_addr[0] & 0xfe) == 0xfc))) {  // Unique Local
       char ifname[IFNAMSIZ];
-      if_indextoname(dst_addr.sll_ifindex, ifname);
+      if_indextoname(src_sockaddr.sll_ifindex, ifname);
       char ipv6_addr_str[INET6_ADDRSTRLEN];
       inet_ntop(AF_INET6, &(ns->nd_ns_target.s6_addr), ipv6_addr_str,
                 INET6_ADDRSTRLEN);
@@ -382,7 +397,8 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
   }
 
   // Translate the NDP frame and send it through proxy interface
-  auto map_entry = MapForType(icmp6->icmp6_type)->find(dst_addr.sll_ifindex);
+  auto map_entry =
+      MapForType(icmp6->icmp6_type)->find(src_sockaddr.sll_ifindex);
   if (map_entry == MapForType(icmp6->icmp6_type)->end())
     return;
 
@@ -396,7 +412,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     // irregular router address on Fibocom cell modem, as described above.
     in6_addr* new_src_ip_p = nullptr;
     in6_addr new_src_ip;
-    if (irregular_router_ifs_.find(dst_addr.sll_ifindex) !=
+    if (irregular_router_ifs_.find(src_sockaddr.sll_ifindex) !=
         irregular_router_ifs_.end()) {
       if (!GetLinkLocalAddress(target_if, &new_src_ip)) {
         LOG(WARNING) << "Cannot find a local address for L3 relay, skipping "
@@ -440,24 +456,30 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
         .sll_ifindex = target_if,
         .sll_halen = ETHER_ADDR_LEN,
     };
-    memcpy(new_dst_addr.sll_addr, dst_addr.sll_addr, ETHER_ADDR_LEN);
-    if (memcmp(&new_dst_addr.sll_addr, kZeroMacAddress, ETHER_ADDR_LEN) == 0) {
-      memcpy(&new_dst_addr.sll_addr, kBroadcastMacAddress, ETHER_ADDR_LEN);
-    }
+    memcpy(new_dst_addr.sll_addr, src_sockaddr.sll_addr, ETHER_ADDR_LEN);
 
-    // If destination MAC is unicast (Individual/Group bit in MAC address == 0),
-    // it needs to be modified so guest OS L3 stack can see it.
+    // If initial destination MAC is unicast (Individual/Group bit in MAC
+    // address == 0), it needs to be modified so guest OS L3 stack can see it.
     // For proxy cascading case, we also need to recheck if destination MAC is
     // ff:ff:ff:ff:ff:ff (which must have been filled by an upstream proxy).
-    if (!(new_dst_addr.sll_addr[0] & 0x1) ||
-        memcmp(&new_dst_addr.sll_addr, kBroadcastMacAddress, ETHER_ADDR_LEN) ==
+    if (!(src_sockaddr.sll_addr[0] & 0x1) ||
+        memcmp(src_sockaddr.sll_addr, kBroadcastMacAddress, ETHER_ADDR_LEN) ==
             0) {
       MacAddress neighbor_mac;
-      if (GetNeighborMac(ip6->ip6_dst, &neighbor_mac)) {
-        memcpy(&new_dst_addr.sll_addr, neighbor_mac.data(), ETHER_ADDR_LEN);
+      // If available, prefer the cached value of a guest MAC address as it
+      // behaves more consistently than the kernel neighbor table.
+      if (IsGuestInterface(target_if) &&
+          GetGuestNeighborMac(target_if, ip6->ip6_dst, &neighbor_mac)) {
+        memcpy(new_dst_addr.sll_addr, neighbor_mac.data(), ETHER_ADDR_LEN);
+      } else if (GetNeighborMac(ip6->ip6_dst, &neighbor_mac)) {
+        // TODO(b/187918638) Investigate why GetNeighborMac() or the kernel
+        // neighbor table sometimes does not return the correct guest MAC
+        // address.
+        memcpy(new_dst_addr.sll_addr, neighbor_mac.data(), ETHER_ADDR_LEN);
       } else {
-        // If we can't resolve the destination IP into MAC from kernel neighbor
-        // table, fill destination MAC with broadcast MAC instead.
+        // If we can't resolve the destination IP into MAC from
+        // |guest_neighbors_| or from the kernel neighbor table, fill
+        // destination MAC with broadcast MAC instead.
         memcpy(&new_dst_addr.sll_addr, kBroadcastMacAddress, ETHER_ADDR_LEN);
       }
     }
@@ -649,6 +671,36 @@ bool NDProxy::GetNeighborMac(const in6_addr& ipv6_addr, MacAddress* mac_addr) {
   return any_entry_matched;
 }
 
+void NDProxy::SetGuestNeighborMac(const sockaddr_ll& sockaddr,
+                                  const in6_addr& ipv6_addr) {
+  if (memcmp(ipv6_addr.s6_addr, IN6_ADDR_ANY.s6_addr, sizeof(in6_addr)) == 0) {
+    return;
+  }
+  auto& submap = guest_neighbors_[sockaddr.sll_ifindex];
+  if (kMaxNeighborPerGuestInterface <= submap.size()) {
+    return;
+  }
+  const auto ipaddr = In6AddrToVector(ipv6_addr);
+  memcpy(submap[ipaddr].data(), sockaddr.sll_addr, ETHER_ADDR_LEN);
+}
+
+bool NDProxy::GetGuestNeighborMac(int ifindex,
+                                  const in6_addr& ipv6_addr,
+                                  MacAddress* mac_addr) {
+  DCHECK(mac_addr != nullptr);
+  const auto it1 = guest_neighbors_.find(ifindex);
+  if (it1 == guest_neighbors_.end()) {
+    return false;
+  }
+  const auto ipaddr = In6AddrToVector(ipv6_addr);
+  const auto it2 = it1->second.find(ipaddr);
+  if (it2 == it1->second.end()) {
+    return false;
+  }
+  memcpy(mac_addr->data(), it2->second.data(), ETHER_ADDR_LEN);
+  return true;
+}
+
 void NDProxy::RegisterOnGuestIpDiscoveryHandler(
     base::RepeatingCallback<void(const std::string&, const std::string&)>
         handler) {
@@ -733,6 +785,7 @@ bool NDProxy::RemoveInterfacePair(const std::string& ifname_physical,
   if_map_ra_[ifid_physical].erase(ifid_guest);
   if_map_ns_na_.erase(ifid_guest);
   if_map_ns_na_[ifid_physical].erase(ifid_guest);
+  guest_neighbors_.erase(ifid_guest);
   for (int ifid_other_guest : if_map_ra_[ifid_physical]) {
     if_map_ns_na_[ifid_other_guest].erase(ifid_guest);
   }
@@ -749,6 +802,7 @@ bool NDProxy::RemoveInterface(const std::string& ifname) {
   for (int ifid_guest : if_map_ra_[ifindex]) {
     if_map_rs_.erase(ifid_guest);
     if_map_ns_na_.erase(ifid_guest);
+    guest_neighbors_.erase(ifid_guest);
   }
   if_map_ra_.erase(ifindex);
   if_map_ns_na_.erase(ifindex);
