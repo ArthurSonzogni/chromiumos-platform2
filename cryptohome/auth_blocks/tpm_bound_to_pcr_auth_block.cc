@@ -57,6 +57,15 @@ TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(
 CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
                                            AuthBlockState* auth_block_state,
                                            KeyBlobs* key_blobs) {
+  if (!user_input.user_input.has_value()) {
+    LOG(ERROR) << "Missing user_input";
+    return CryptoError::CE_OTHER_CRYPTO;
+  }
+  if (!user_input.obfuscated_username.has_value()) {
+    LOG(ERROR) << "Missing obfuscated_username";
+    return CryptoError::CE_OTHER_CRYPTO;
+  }
+
   const brillo::SecureBlob& vault_key = user_input.user_input.value();
   brillo::SecureBlob salt =
       CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
@@ -161,6 +170,11 @@ CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
 CryptoError TpmBoundToPcrAuthBlock::Derive(const AuthInput& auth_input,
                                            const AuthBlockState& state,
                                            KeyBlobs* key_out_data) {
+  if (!auth_input.user_input.has_value()) {
+    LOG(ERROR) << "Missing user_input";
+    return CryptoError::CE_OTHER_CRYPTO;
+  }
+
   const TpmBoundToPcrAuthBlockState* tpm_state;
   if (!(tpm_state = std::get_if<TpmBoundToPcrAuthBlockState>(&state.state))) {
     LOG(ERROR) << "Invalid AuthBlockState";
