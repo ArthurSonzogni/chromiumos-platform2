@@ -210,11 +210,12 @@ impl Sandbox for VmSandbox {
             };
         }
 
-        let vm = cmd
-            .arg("--disable-sandbox")
-            .args(args)
-            .spawn()
-            .map_err(Error::ForkingProcess)?;
+        // The first arg in `args` is the fd to the kernel. This needs to be the last argument to "crosvm
+        // run". Manipulate `args` to move the kernel fd at the end.
+        if args.len() > 1 {
+            cmd.args(&args[1..]);
+        }
+        let vm = cmd.arg(&args[0]).spawn().map_err(Error::ForkingProcess)?;
         let pid = vm.id();
         self.vm = Some(vm);
         Ok(pid as i32)
