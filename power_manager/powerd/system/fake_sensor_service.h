@@ -42,7 +42,13 @@ class FakeSensorService : public cros::mojom::SensorService {
       mojo::PendingRemote<cros::mojom::SensorServiceNewDevicesObserver>
           observer) override;
 
-  std::map<int32_t, std::unique_ptr<FakeSensorDevice>> sensor_devices_;
+ private:
+  struct DeviceInfo {
+    cros::mojom::DeviceType type;
+    std::unique_ptr<FakeSensorDevice> sensor_device;
+  };
+
+  std::map<int32_t, DeviceInfo> device_infos_;
 
   mojo::ReceiverSet<cros::mojom::SensorService> receiver_set_;
   std::vector<mojo::Remote<cros::mojom::SensorServiceNewDevicesObserver>>

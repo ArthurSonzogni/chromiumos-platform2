@@ -14,7 +14,7 @@
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_observer_stub.h"
-#include "power_manager/powerd/system/fake_sensor_device.h"
+#include "power_manager/powerd/system/fake_light.h"
 #include "power_manager/powerd/system/fake_sensor_service.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
 
@@ -44,9 +44,9 @@ class AmbientLightSensorWatcherMojoTest : public testing::Test {
     watcher_ = std::make_unique<AmbientLightSensorWatcherMojo>(
         &sensor_service_handler_);
 
-    auto sensor_device = std::make_unique<FakeSensorDevice>(
-        false /*is_color_sensor*/, std::nullopt /*name*/,
-        cros::mojom::kLocationLid);
+    auto sensor_device = std::make_unique<FakeLight>(false /*is_color_sensor*/,
+                                                     std::nullopt /*name*/,
+                                                     cros::mojom::kLocationLid);
 
     SetSensor(kBadSyspath);  // id = 0
 
@@ -57,18 +57,18 @@ class AmbientLightSensorWatcherMojoTest : public testing::Test {
   }
 
   void SetSensor(std::string sys_path) {
-    auto sensor_device = std::make_unique<FakeSensorDevice>(
-        false /*is_color_sensor*/, std::nullopt /*name*/,
-        cros::mojom::kLocationLid);
+    auto sensor_device = std::make_unique<FakeLight>(false /*is_color_sensor*/,
+                                                     std::nullopt /*name*/,
+                                                     cros::mojom::kLocationLid);
     sensor_device->SetAttribute(cros::mojom::kSysPath, sys_path);
 
     auto iio_device_id = sensor_num_++;
-    sensor_devices_[iio_device_id] = sensor_device.get();
+    fake_lights_[iio_device_id] = sensor_device.get();
     sensor_service_.SetSensorDevice(iio_device_id, std::move(sensor_device));
   }
 
   FakeSensorService sensor_service_;
-  std::map<int32_t, FakeSensorDevice*> sensor_devices_;
+  std::map<int32_t, FakeLight*> fake_lights_;
 
   SensorServiceHandler sensor_service_handler_;
 
@@ -114,10 +114,10 @@ TEST_F(AmbientLightSensorWatcherMojoTest, SensorDeviceDisconnect) {
   EXPECT_EQ(2, observer.num_als_changes());
   EXPECT_EQ(2, observer.num_als());
 
-  EXPECT_TRUE(sensor_devices_[1]->HasReceivers());
-  EXPECT_TRUE(sensor_devices_[2]->HasReceivers());
+  EXPECT_TRUE(fake_lights_[1]->HasReceivers());
+  EXPECT_TRUE(fake_lights_[2]->HasReceivers());
 
-  sensor_devices_[2]->ClearReceiverWithReason(
+  fake_lights_[2]->ClearReceiverWithReason(
       cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
       "Device was removed");
 
@@ -127,10 +127,10 @@ TEST_F(AmbientLightSensorWatcherMojoTest, SensorDeviceDisconnect) {
   EXPECT_EQ(3, observer.num_als_changes());
   EXPECT_EQ(1, observer.num_als());
 
-  EXPECT_TRUE(sensor_devices_[1]->HasReceivers());
-  EXPECT_FALSE(sensor_devices_[2]->HasReceivers());
+  EXPECT_TRUE(fake_lights_[1]->HasReceivers());
+  EXPECT_FALSE(fake_lights_[2]->HasReceivers());
 
-  sensor_devices_[0]->ClearReceiverWithReason(
+  fake_lights_[0]->ClearReceiverWithReason(
       cros::mojom::SensorDeviceDisconnectReason::IIOSERVICE_CRASHED,
       "iioservice crashed");
 
@@ -140,8 +140,8 @@ TEST_F(AmbientLightSensorWatcherMojoTest, SensorDeviceDisconnect) {
   EXPECT_EQ(4, observer.num_als_changes());
   EXPECT_EQ(0, observer.num_als());
 
-  EXPECT_FALSE(sensor_devices_[1]->HasReceivers());
-  EXPECT_FALSE(sensor_devices_[2]->HasReceivers());
+  EXPECT_FALSE(fake_lights_[1]->HasReceivers());
+  EXPECT_FALSE(fake_lights_[2]->HasReceivers());
 }
 
 }  // namespace system

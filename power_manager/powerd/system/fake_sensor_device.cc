@@ -10,20 +10,10 @@
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
 
 #include <base/check.h>
+#include <base/logging.h>
 
 namespace power_manager {
 namespace system {
-
-FakeSensorDevice::FakeSensorDevice(bool is_color_sensor,
-                                   std::optional<std::string> name,
-                                   std::optional<std::string> location)
-    : is_color_sensor_(is_color_sensor) {
-  if (name.has_value())
-    SetAttribute(cros::mojom::kDeviceName, name.value());
-
-  if (location.has_value())
-    SetAttribute(cros::mojom::kLocation, location.value());
-}
 
 mojo::ReceiverId FakeSensorDevice::AddReceiver(
     mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver) {
@@ -39,21 +29,39 @@ void FakeSensorDevice::ClearReceiverWithReason(
     const std::string& description) {
   uint32_t custom_reason_code = base::checked_cast<uint32_t>(reason);
 
-  for (auto& observer : observers_) {
+  for (auto& observer : samples_observers_) {
     auto remote = mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>(
         std::move(observer.second));
     remote.ResetWithReason(custom_reason_code, description);
   }
-  observers_.clear();
+  samples_observers_.clear();
 
   receiver_set_.ClearWithReason(custom_reason_code, description);
 }
 
-void FakeSensorDevice::ResetObserverRemote(mojo::ReceiverId id) {
-  auto it = observers_.find(id);
-  DCHECK(it != observers_.end());
+void FakeSensorDevice::ResetSamplesObserverRemote(mojo::ReceiverId id) {
+  auto it = samples_observers_.find(id);
+  DCHECK(it != samples_observers_.end());
 
-  observers_.erase(it);
+  samples_observers_.erase(it);
+}
+
+void FakeSensorDevice::ResetEventsObserverRemote(mojo::ReceiverId id) {
+  auto it = events_observers_.find(id);
+  DCHECK(it != events_observers_.end());
+
+  events_observers_.erase(it);
+}
+
+void FakeSensorDevice::OnSampleUpdated(
+    const base::flat_map<int32_t, int64_t>& sample) {
+  for (auto& samples_observer : samples_observers_)
+    samples_observer.second->OnSampleUpdated(std::move(sample));
+}
+
+void FakeSensorDevice::OnEventUpdated(cros::mojom::IioEventPtr event) {
+  for (auto& events_observer : events_observers_)
+    events_observer.second->OnEventUpdated(event.Clone());
 }
 
 void FakeSensorDevice::SetAttribute(std::string attr_name, std::string value) {
@@ -82,31 +90,31 @@ void FakeSensorDevice::SetFrequency(double frequency,
 
 void FakeSensorDevice::StartReadingSamples(
     mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> observer) {
-  observers_.emplace(receiver_set_.current_receiver(), std::move(observer));
+  mojo::ReceiverId id = receiver_set_.current_receiver();
+  auto it = samples_observers_.find(id);
+  if (it != samples_observers_.end()) {
+    LOG(ERROR) << "Failed to start reading samples: Already started";
+    mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>(std::move(observer))
+        ->OnErrorOccurred(cros::mojom::ObserverErrorType::ALREADY_STARTED);
+    return;
+  }
+
+  samples_observers_[id].Bind(std::move(observer));
 }
 
 void FakeSensorDevice::StopReadingSamples() {
-  observers_.erase(receiver_set_.current_receiver());
+  samples_observers_.erase(receiver_set_.current_receiver());
 }
 
 void FakeSensorDevice::GetAllChannelIds(GetAllChannelIdsCallback callback) {
-  std::vector<std::string> channel_ids(1, cros::mojom::kLightChannel);
-  if (is_color_sensor_) {
-    for (const ColorChannelInfo& channel : kColorChannelConfig) {
-      channel_ids.push_back(
-          AmbientLightSensorDelegateMojo::GetChannelIlluminanceColorId(
-              channel.rgb_name));
-    }
-  }
-  channel_ids.push_back(cros::mojom::kTimestampChannel);
-  std::move(callback).Run(std::move(channel_ids));
+  std::move(callback).Run({});
 }
 
 void FakeSensorDevice::SetChannelsEnabled(
     const std::vector<int32_t>& iio_chn_indices,
     bool en,
     SetChannelsEnabledCallback callback) {
-  std::move(callback).Run(std::move(std::vector<int32_t>{}));
+  std::move(callback).Run({});
 }
 
 void FakeSensorDevice::GetChannelsEnabled(
@@ -132,7 +140,7 @@ void FakeSensorDevice::SetEventsEnabled(
     const std::vector<int32_t>& iio_event_indices,
     bool en,
     SetEventsEnabledCallback callback) {
-  std::move(callback).Run(iio_event_indices);
+  std::move(callback).Run({});
 }
 
 void FakeSensorDevice::GetEventsEnabled(
@@ -151,11 +159,20 @@ void FakeSensorDevice::GetEventsAttributes(
 
 void FakeSensorDevice::StartReadingEvents(
     mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer) {
-  // Do nothing.
+  mojo::ReceiverId id = receiver_set_.current_receiver();
+  auto it = events_observers_.find(id);
+  if (it != events_observers_.end()) {
+    LOG(ERROR) << "Failed to start reading events: Already started";
+    mojo::Remote<cros::mojom::SensorDeviceEventsObserver>(std::move(observer))
+        ->OnErrorOccurred(cros::mojom::ObserverErrorType::ALREADY_STARTED);
+    return;
+  }
+
+  events_observers_[id].Bind(std::move(observer));
 }
 
 void FakeSensorDevice::StopReadingEvents() {
-  // Do nothing.
+  events_observers_.erase(receiver_set_.current_receiver());
 }
 
 }  // namespace system

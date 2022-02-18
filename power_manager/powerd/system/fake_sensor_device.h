@@ -18,10 +18,6 @@ namespace system {
 
 class FakeSensorDevice : public cros::mojom::SensorDevice {
  public:
-  FakeSensorDevice(bool is_color_sensor,
-                   std::optional<std::string> name,
-                   std::optional<std::string> location);
-
   mojo::ReceiverId AddReceiver(
       mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver);
   bool HasReceivers() const;
@@ -30,9 +26,15 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
           cros::mojom::SensorDeviceDisconnectReason::IIOSERVICE_CRASHED,
       const std::string& description = "");
 
-  void ResetObserverRemote(mojo::ReceiverId id);
+  void ResetSamplesObserverRemote(mojo::ReceiverId id);
+  void ResetEventsObserverRemote(mojo::ReceiverId id);
 
   void SetAttribute(std::string attr_name, std::string value);
+
+  virtual cros::mojom::DeviceType GetDeviceType() const = 0;
+
+  void OnSampleUpdated(const base::flat_map<int32_t, int64_t>& sample);
+  void OnEventUpdated(cros::mojom::IioEventPtr event);
 
   // Implementation of cros::mojom::SensorDevice.
   void SetTimeout(uint32_t timeout) override {}
@@ -66,12 +68,16 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
       override;
   void StopReadingEvents() override;
 
-  bool is_color_sensor_;
+ protected:
   std::map<std::string, std::string> attributes_;
 
   std::map<mojo::ReceiverId,
-           mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver>>
-      observers_;
+           mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>>
+      samples_observers_;
+
+  std::map<mojo::ReceiverId,
+           mojo::Remote<cros::mojom::SensorDeviceEventsObserver>>
+      events_observers_;
 
   mojo::ReceiverSet<cros::mojom::SensorDevice> receiver_set_;
 };

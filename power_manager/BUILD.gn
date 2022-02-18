@@ -485,6 +485,7 @@ if (use.test) {
       "powerd/system/display/display_watcher_test.cc",
       "powerd/system/display/external_display_test.cc",
       "powerd/system/ec_keyboard_backlight_test.cc",
+      "powerd/system/fake_light.cc",
       "powerd/system/fake_sensor_device.cc",
       "powerd/system/fake_sensor_service.cc",
       "powerd/system/input_watcher_test.cc",

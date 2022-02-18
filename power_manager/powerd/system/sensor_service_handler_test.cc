@@ -13,7 +13,7 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "power_manager/powerd/system/fake_sensor_device.h"
+#include "power_manager/powerd/system/fake_light.h"
 #include "power_manager/powerd/system/fake_sensor_service.h"
 
 namespace power_manager {
@@ -69,7 +69,7 @@ class SensorServiceHandlerTest : public ::testing::Test {
 
   void SetSensor(int32_t iio_device_id) {
     auto sensor_device =
-        std::make_unique<FakeSensorDevice>(false, std::nullopt, std::nullopt);
+        std::make_unique<FakeLight>(false, std::nullopt, std::nullopt);
 
     sensor_service_.SetSensorDevice(iio_device_id, std::move(sensor_device));
   }
