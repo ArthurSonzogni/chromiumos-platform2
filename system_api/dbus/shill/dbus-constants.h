@@ -609,7 +609,11 @@ const char kSecurityNone[] = "none";
 const char kSecurityWep[] = "wep";
 const char kSecurityPsk[] = "psk";
 const char kSecurityWpa[] = "wpa";
+// Deprecated.  Use kSecurityWpa2 instead.
+// TODO(b/226138492) Remove this once references in Chrome and Shill are
+// removed.
 const char kSecurityRsn[] = "rsn";
+const char kSecurityWpa2[] = "wpa2";
 const char kSecurityWpa3[] = "wpa3";
 const char kSecurity8021x[] = "802_1x";
 
