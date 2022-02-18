@@ -329,6 +329,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 # /etc
 /etc(/.*)?                      u:object_r:cros_conf_file:s0
 /etc/group                      u:object_r:cros_passwd_file:s0
+# '/etc/hosts.d' is a bind mount to '/run/crosdns'.
+/etc/hosts.d(/.*)?              u:object_r:cros_run_crosdns:s0
 /etc/passwd                     u:object_r:cros_passwd_file:s0
 /etc/shadow                     u:object_r:cros_shadow_file:s0
 /etc/selinux(/.*)?              u:object_r:cros_selinux_config_file:s0
@@ -355,6 +357,7 @@ has_arc(`
 /run/camera/.*\.sock            u:object_r:camera_socket:s0
 /run/camera_tokens(/.*)?        u:object_r:cros_run_camera_tokens:s0
 /run/cras(/.*)?                 u:object_r:cras_socket:s0
+/run/crosdns(/.*)?              u:object_r:cros_run_crosdns:s0
 /run/cryptohome                 u:object_r:cros_run_cryptohome:s0
 /run/cryptohome/ephemeral_mount u:object_r:cros_ephemeral_mount:s0
 /run/cups(/.*)?                 u:object_r:cros_run_cups:s0
