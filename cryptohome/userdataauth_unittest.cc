@@ -109,6 +109,9 @@ constexpr auto kAuthSessionTimeout = base::Minutes(5);
 constexpr auto kAuthSessionExtension =
     base::Seconds(kAuthSessionExtensionDuration);
 
+// Fake labels to be in used in this test suite.
+constexpr char kFakeLabel[] = "test_label";
+
 }  // namespace
 
 // UserDataAuthTestBase is a test fixture that does not call
@@ -3945,6 +3948,40 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
   auto time_difference =
       (kAuthSessionTimeout + kAuthSessionExtension) - requested_delay;
   EXPECT_LT(time_difference, base::Seconds(1));
+}
+
+TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
+  PrepareArguments();
+  // Setup
+  start_auth_session_req_->mutable_account_id()->set_account_id(
+      "foo@example.com");
+
+  KeyData key_data;
+  key_data.set_label(kFakeLabel);
+  key_data.set_type(KeyData::KEY_TYPE_FINGERPRINT);
+  KeyLabelMap keyLabelData = {{kFakeLabel, key_data}};
+
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(keyLabelData), Return(true)));
+
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  {
+    TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+    userdataauth_->StartAuthSession(
+        *start_auth_session_req_,
+        base::BindOnce(
+            [](user_data_auth::StartAuthSessionReply* auth_reply_ptr,
+               const user_data_auth::StartAuthSessionReply& reply) {
+              *auth_reply_ptr = reply;
+            },
+            base::Unretained(&auth_session_reply)));
+  }
+
+  EXPECT_THAT(auth_session_reply.key_label_data().at(kFakeLabel).label(),
+              kFakeLabel);
+  EXPECT_THAT(auth_session_reply.key_label_data().at(kFakeLabel).type(),
+              KeyData::KEY_TYPE_FINGERPRINT);
 }
 
 class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
