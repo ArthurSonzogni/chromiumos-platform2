@@ -83,6 +83,7 @@ if (use.test) {
       ":test_helper_config",
     ]
     deps = [
+      ":libfeatured",
       ":libfeatures",
       "//common-mk/testrunner:testrunner",
     ]

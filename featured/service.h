@@ -10,6 +10,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include <base/command_line.h>
+#include <base/files/file_util.h>
 #include <base/macros.h>
 #include <base/values.h>
 
@@ -53,6 +54,16 @@ class WriteFileCommand : public FeatureCommand {
  private:
   std::string file_name_;
   std::string value_;
+};
+
+class MkdirCommand : public FeatureCommand {
+ public:
+  explicit MkdirCommand(const std::string& path);
+  MkdirCommand(MkdirCommand&& other) = default;
+  bool Execute() override;
+
+ private:
+  base::FilePath path_;
 };
 
 class FileExistsCommand : public FeatureCommand {

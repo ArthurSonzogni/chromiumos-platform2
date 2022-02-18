@@ -1,12 +1,11 @@
 // Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include "featured/feature_library.h"
-
 #include <memory>
 #include <utility>
 
 #include <base/dcheck_is_on.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/single_thread_task_runner.h>
@@ -18,6 +17,9 @@
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "featured/feature_library.h"
+#include "featured/service.h"
 
 namespace {
 
@@ -289,5 +291,30 @@ TEST_F(FeatureLibraryDeathTest, IsEnabledBlockingDistinctFeatureDefs) {
   EXPECT_DEATH(features_->IsEnabledBlocking(f2), "Feature");
 }
 #endif  // DCHECK_IS_ON()
+
+class FeatureLibraryCmdTest : public testing::Test {
+ public:
+  FeatureLibraryCmdTest() {}
+  ~FeatureLibraryCmdTest() {}
+};
+
+TEST_F(FeatureLibraryCmdTest, MkdirTest) {
+  if (base::PathExists(
+          base::FilePath("/sys/kernel/debug/tracing/instances/"))) {
+    const std::string sys_path = "/sys/kernel/debug/tracing/instances/unittest";
+    EXPECT_FALSE(base::PathExists(base::FilePath(sys_path)));
+    EXPECT_TRUE(featured::MkdirCommand(sys_path).Execute());
+    EXPECT_TRUE(base::PathExists(base::FilePath(sys_path)));
+    EXPECT_TRUE(base::DeleteFile(base::FilePath(sys_path)));
+    EXPECT_FALSE(base::PathExists(base::FilePath(sys_path)));
+  }
+
+  if (base::PathExists(base::FilePath("/mnt"))) {
+    const std::string mnt_path = "/mnt/notallowed";
+    EXPECT_FALSE(base::PathExists(base::FilePath(mnt_path)));
+    EXPECT_FALSE(featured::MkdirCommand(mnt_path).Execute());
+    EXPECT_FALSE(base::PathExists(base::FilePath(mnt_path)));
+  }
+}
 
 }  // namespace feature

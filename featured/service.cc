@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "featured/service.h"
-
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -22,10 +20,28 @@
 #include <build/build_config.h>
 #include <build/buildflag.h>
 
+#include "featured/service.h"
+
 namespace featured {
 
 namespace {
 constexpr char kPlatformFeaturesPath[] = "/etc/init/platform-features.json";
+
+// Allow featured do write operations to path with these prefixes only.
+std::vector<std::string> allowedPrefixes = {"/proc", "/sys"};
+
+bool CheckPathPrefix(const base::FilePath& path) {
+  bool valid = false;
+
+  for (std::string& prefix_str : allowedPrefixes) {
+    if (base::FilePath(prefix_str).IsParent(path)) {
+      valid = true;
+      break;
+    }
+  }
+
+  return valid;
+}
 
 // JSON Helper to retrieve a string value given a string key
 bool GetStringFromKey(const base::Value& obj,
@@ -49,8 +65,38 @@ WriteFileCommand::WriteFileCommand(const std::string& file_name,
 }
 
 bool WriteFileCommand::Execute() {
-  if (!base::WriteFile(base::FilePath(file_name_), value_)) {
+  base::FilePath fpath = base::FilePath(file_name_);
+  if (!CheckPathPrefix(fpath)) {
+    PLOG(ERROR) << "Unable to write to path, prefix check fail: " << file_name_;
+    PLOG(ERROR) << "Make sure to update the prefix list in sources and the "
+                   "selinux config.";
+    return false;
+  }
+
+  if (!base::WriteFile(fpath, value_)) {
     PLOG(ERROR) << "Unable to write to " << file_name_;
+    return false;
+  }
+  return true;
+}
+
+MkdirCommand::MkdirCommand(const std::string& path) : FeatureCommand("Mkdir") {
+  path_ = base::FilePath(path);
+}
+
+bool MkdirCommand::Execute() {
+  if (!CheckPathPrefix(path_)) {
+    PLOG(ERROR) << "Unable to create directory, prefix check fail: " << path_;
+    return false;
+  }
+
+  if (base::PathExists(path_)) {
+    PLOG(ERROR) << "Path already exists, cannot create directory: " << path_;
+    return false;
+  }
+
+  if (!base::CreateDirectory(path_)) {
+    PLOG(ERROR) << "Unable to create directory: " << path_;
     return false;
   }
   return true;
@@ -171,8 +217,8 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
         std::string file_name;
 
         VLOG(1) << "featured: command is FileExists";
-        if (!GetStringFromKey(item, "file", &file_name)) {
-          LOG(ERROR) << "JSON contains invalid command name";
+        if (!GetStringFromKey(item, "path", &file_name)) {
+          LOG(ERROR) << "JSON contains invalid path!";
           return std::nullopt;
         }
 
@@ -210,8 +256,8 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
       std::string file_name, value;
 
       VLOG(1) << "featured: command is WriteFile";
-      if (!GetStringFromKey(item, "file", &file_name)) {
-        LOG(ERROR) << "JSON contains invalid command name!";
+      if (!GetStringFromKey(item, "path", &file_name)) {
+        LOG(ERROR) << "JSON contains invalid path!";
         return std::nullopt;
       }
 
@@ -221,6 +267,16 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
       }
       feature_cmds.push_back(
           std::make_unique<WriteFileCommand>(file_name, value));
+    } else if (cmd_name == "Mkdir") {
+      std::string file_name, value;
+
+      VLOG(1) << "featured: command is Mkdir";
+      if (!GetStringFromKey(item, "path", &file_name)) {
+        LOG(ERROR) << "JSON contains invalid path!";
+        return std::nullopt;
+      }
+
+      feature_cmds.push_back(std::make_unique<MkdirCommand>(file_name));
     } else {
       LOG(ERROR) << "Invalid command name in features config: " << cmd_name;
       return std::nullopt;
