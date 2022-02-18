@@ -1913,27 +1913,18 @@ mno {
       name : "Bell Mobility"
     }
     mccmnc : "302610"
+    mccmnc : "302630"
     mccmnc : "302640"
     mccmnc : "302651"
     mccmnc : "302690"
     mccmnc : "302880"
     mobile_apn {
-      apn : "inet.bell.ca"
+      apn : "pda.bell.ca"
       localized_name {
         name : "Internet"
       }
-    }
-    mobile_apn {
-      apn : "pda.bell.ca"
-      localized_name {
-        name : "Mobile Web"
-      }
-    }
-    mobile_apn {
-      apn : "pda2.bell.ca"
-      localized_name {
-        name : "Mobile Fast Web"
-      }
+      ip_type : IPV4V6
+      is_attach_apn : true
     }
   }
   mvno {
@@ -1992,6 +1983,68 @@ mno {
       }
     }
   }
+  mvno {
+    mvno_filter {
+      type : IMSI
+      range {
+        start: 302610940000000
+        end:   302610949999999
+      }
+    }
+    data {
+      uuid : "aa3c0490-0262-46e4-a6c8-a0b9175ab508"
+      localized_name {
+        name : "Lucky"
+      }
+      prioritizes_name : true
+      mobile_apn {
+        apn : "connect"
+        ip_type : IPV4V6
+        is_attach_apn : true
+      }
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : IMSI
+      range {
+        start: 302610920000000
+        end:   302610929999999
+      }
+    }
+    data {
+      uuid : "4699902a-62ca-4d11-a860-a6fedfd0c8c1"
+      localized_name {
+        name : "PC mobile"
+      }
+      prioritizes_name : true
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : IMSI
+      range {
+        start: 302610910000000
+        end:   302610919999999
+      }
+      range {
+        start: 302610930000000
+        end:   302610939999999
+      }
+      range {
+        start: 302610960000000
+        end:   302610969999999
+      }
+    }
+    data {
+      uuid : "3787d9e3-aa22-4621-918d-a50936f47ea2"
+      localized_name {
+        name : "Virgin plus"
+      }
+      prioritizes_name : true
+    }
+  }
+
 }
 
 mno {
@@ -2219,16 +2272,6 @@ mno {
       localized_name {
         name : "IHVM"
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "55ee24e9-d13e-4f26-87cc-16f4cc716f0e"
-    country : "ca"
-    localized_name {
-      name : "Virgin Mobile"
     }
   }
 }
