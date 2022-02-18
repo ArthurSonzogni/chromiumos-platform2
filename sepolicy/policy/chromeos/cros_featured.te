@@ -6,3 +6,5 @@ log_writer(cros_featured)
 cros_dbus_client(cros_featured)
 
 rw_dir_file(cros_featured, proc_sys_kernel);
+rw_dir_file(cros_featured, debugfs_tracing);
+create_dir_file(cros_featured, debugfs_tracing_instances);
