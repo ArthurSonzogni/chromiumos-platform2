@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <base/location.h>
+#include <base/logging.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
@@ -199,6 +200,8 @@ bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
 bool DBusAdaptor::EnableHpsSense(brillo::ErrorPtr* error,
                                  const hps::FeatureConfig& config) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  LOG(INFO) << "DBusAdaptor::EnableHpsSense with config type "
+            << static_cast<int>(config.filter_config_case());
   return EnableFeature(
       error, config, 0,
       base::BindRepeating(&DBusAdaptor::SendHpsSenseChangedSignal,
@@ -207,6 +210,7 @@ bool DBusAdaptor::EnableHpsSense(brillo::ErrorPtr* error,
 
 bool DBusAdaptor::DisableHpsSense(brillo::ErrorPtr* error) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  LOG(INFO) << "DBusAdaptor::DisableHpsSense";
   if (DisableFeature(error, 0)) {
     DBusAdaptor::SendHpsSenseChangedSignal(
         HpsResultToSerializedBytes(HpsResult::UNKNOWN));
@@ -224,6 +228,8 @@ bool DBusAdaptor::GetResultHpsSense(brillo::ErrorPtr* error,
 bool DBusAdaptor::EnableHpsNotify(brillo::ErrorPtr* error,
                                   const hps::FeatureConfig& config) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  LOG(INFO) << "DBusAdaptor::EnableHpsNotify with config type "
+            << static_cast<int>(config.filter_config_case());
   return EnableFeature(
       error, config, 1,
       base::BindRepeating(&DBusAdaptor::SendHpsNotifyChangedSignal,
@@ -232,6 +238,7 @@ bool DBusAdaptor::EnableHpsNotify(brillo::ErrorPtr* error,
 
 bool DBusAdaptor::DisableHpsNotify(brillo::ErrorPtr* error) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  LOG(INFO) << "DBusAdaptor::DisableHpsNotify";
   if (DisableFeature(error, 1)) {
     DBusAdaptor::SendHpsNotifyChangedSignal(
         HpsResultToSerializedBytes(HpsResult::UNKNOWN));
