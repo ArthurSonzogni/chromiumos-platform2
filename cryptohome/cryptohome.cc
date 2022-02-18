@@ -527,6 +527,10 @@ bool BuildAuthorization(base::CommandLine* cl,
                         org::chromium::CryptohomeMiscInterfaceProxy* proxy,
                         bool need_credential,
                         cryptohome::AuthorizationRequest* auth) {
+  // The default is password. If that changes we set the value again in the
+  // following if block.
+  auth->mutable_key()->mutable_data()->set_type(
+      cryptohome::KeyData::KEY_TYPE_PASSWORD);
   if (need_credential) {
     if (cl->HasSwitch(switches::kChallengeAlgorithm) ||
         cl->HasSwitch(switches::kChallengeSPKI) ||
