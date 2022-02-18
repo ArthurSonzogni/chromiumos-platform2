@@ -38,6 +38,7 @@
 using base::FilePath;
 using base::Value;
 using dlcservice::DlcState;
+using dlcservice::DlcsWithContent;
 using org::chromium::DlcServiceInterfaceProxy;
 using std::string;
 using std::vector;
@@ -95,6 +96,10 @@ class DlcServiceUtil : public brillo::Daemon {
     // "--dlc_state" related flags.
     DEFINE_bool(dlc_state, false, "Get the state of a given DLC.");
 
+    // "--get_existing" related flags.
+    DEFINE_bool(get_existing, false,
+                "Returns a list of DLCs that have content on disk.");
+
     // "--list" related flags.
     DEFINE_bool(list, false, "List installed DLC(s).");
     DEFINE_string(dump, "",
@@ -103,11 +108,12 @@ class DlcServiceUtil : public brillo::Daemon {
     brillo::FlagHelper::Init(argc_, argv_, "dlcservice_util");
 
     // Enforce mutually exclusive flags.
-    vector<bool> exclusive_flags = {FLAGS_install, FLAGS_uninstall, FLAGS_purge,
-                                    FLAGS_list, FLAGS_dlc_state};
+    vector<bool> exclusive_flags = {FLAGS_install,   FLAGS_uninstall,
+                                    FLAGS_purge,     FLAGS_list,
+                                    FLAGS_dlc_state, FLAGS_get_existing};
     if (std::count(exclusive_flags.begin(), exclusive_flags.end(), true) != 1) {
       LOG(ERROR) << "Only one of --install, --uninstall, --purge, --list, "
-                    "--dlc_state must be set.";
+                    "--get_existing, --dlc_state must be set.";
       return EX_SOFTWARE;
     }
 
@@ -123,6 +129,16 @@ class DlcServiceUtil : public brillo::Daemon {
       if (!GetInstalled(&installed_dlcs))
         return EX_SOFTWARE;
       PrintInstalled(FLAGS_dump, installed_dlcs);
+      Quit();
+      return EX_OK;
+    }
+
+    // Called with "--get_existing".
+    if (FLAGS_get_existing) {
+      DlcsWithContent dlcs_with_content;
+      if (!GetExisting(&dlcs_with_content))
+        return EX_SOFTWARE;
+      PrintDlcsWithContent(FLAGS_dump, dlcs_with_content);
       Quit();
       return EX_OK;
     }
@@ -306,6 +322,35 @@ class DlcServiceUtil : public brillo::Daemon {
       DlcState dlc_state;
       if (GetDlcState(id, &dlc_state))
         dlcs->push_back(dlc_state);
+    }
+    return true;
+  }
+
+  // Prints the information for DLCs with content.
+  void PrintDlcsWithContent(const string& dump,
+                            const dlcservice::DlcsWithContent& dlcs) {
+    Value dict(Value::Type::LIST);
+    for (const auto& dlc_info : dlcs.dlc_infos()) {
+      Value info(Value::Type::DICTIONARY);
+      info.SetStringKey("id", dlc_info.id());
+      info.SetStringKey("name", dlc_info.name());
+      info.SetStringKey("description", dlc_info.description());
+      info.SetStringKey("used_bytes_on_disk",
+                        base::NumberToString(dlc_info.used_bytes_on_disk()));
+      info.SetBoolKey("is_removable", dlc_info.is_removable());
+      dict.Append(std::move(info));
+    }
+    PrintToFileOrStdout(dump, dict);
+  }
+
+  // Retrieves a list of all existing DLC modules. Returns true if the list is
+  // retrieved successfully, false otherwise.
+  bool GetExisting(dlcservice::DlcsWithContent* dlcs) {
+    brillo::ErrorPtr err;
+    if (!dlc_service_proxy_->GetExistingDlcs(dlcs, &err)) {
+      LOG(ERROR) << "Failed to get the list of existing DLC modules, "
+                 << ErrorPtrStr(err);
+      return false;
     }
     return true;
   }
