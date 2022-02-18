@@ -3,7 +3,7 @@
 <structured-metrics>
 
 <project name="Bluetooth">
-  <owner>yudiliu@chromium.org</owner>
+  <owner>chromeos-bt-kpi@google.com</owner>
   <id>per-project</id>
   <summary>
     Project for recording bluetooth metrics.
@@ -198,7 +198,56 @@
       </summary>
     </metric>
   </event>
+</project>
 
+<project name="BluetoothDevice">
+  <owner>chromeos-bt-kpi@google.com</owner>
+  <id>none</id>
+  <summary>
+    Project for recording Bluetooth device information separately from the main
+    Bluetooth project to meet privacy constraints.
+  </summary>
+
+  <event name="BluetoothDeviceInfo">
+    <summary>
+      Records the bluetooth device info.
+    </summary>
+    <metric name="DeviceType" type="int">
+      <summary>
+        The bluetooth device type such as LE, BREDR.
+      </summary>
+    </metric>
+    <metric name="DeviceClass" type="int">
+      <summary>
+        The major class of the BR/EDR device.
+      </summary>
+    </metric>
+    <metric name="DeviceCategory" type="int">
+      <summary>
+        The category of the BLE device.
+      </summary>
+    </metric>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the bluetooth device.
+      </summary>
+    </metric>
+    <metric name="VendorIdSource" type="int">
+      <summary>
+        The vendor id source such as SIG and USB.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the bluetooth device.
+      </summary>
+    </metric>
+    <metric name="ProductVersion" type="int">
+      <summary>
+        The product version of the bluetooth device.
+      </summary>
+    </metric>
+  </event>
 </project>
 
 <project name="HardwareVerifier">
