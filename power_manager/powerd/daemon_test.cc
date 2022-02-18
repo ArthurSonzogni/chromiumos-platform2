@@ -408,6 +408,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       policy::BacklightController* backlight_controller,
       system::InputWatcherInterface* input_watcher,
       system::PowerSupplyInterface* power_supply,
+      system::DBusWrapperInterface* dbus_wrapper,
       PrefsInterface* prefs) override {
     EXPECT_EQ(daemon_.get(), delegate);
     // Sometimes the `display_backlight_controller_` in Daemon is NULL for
@@ -416,6 +417,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       EXPECT_EQ(internal_backlight_controller_, backlight_controller);
     EXPECT_EQ(input_watcher_, input_watcher);
     EXPECT_EQ(power_supply_, power_supply);
+    EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     EXPECT_EQ(prefs_, prefs);
     return std::move(passed_adaptive_charging_controller_);
   }

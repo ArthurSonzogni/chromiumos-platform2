@@ -5,6 +5,7 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
+#include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/power_supply_stub.h"
 
@@ -12,6 +13,8 @@
 #include <vector>
 
 #include <base/run_loop.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
 #include <gtest/gtest.h>
 
 namespace power_manager {
@@ -81,7 +84,7 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
   void Init() {
     adaptive_charging_controller_.Init(&delegate_, &backlight_controller_,
                                        &input_watcher_, &power_supply_,
-                                       &prefs_);
+                                       &dbus_wrapper_, &prefs_);
     power_supply_.NotifyObservers();
 
     // Adaptive Charging is not enabled yet.
@@ -103,6 +106,7 @@ class AdaptiveChargingControllerTest : public ::testing::Test {
   policy::BacklightControllerStub backlight_controller_;
   system::InputWatcherStub input_watcher_;
   system::PowerSupplyStub power_supply_;
+  system::DBusWrapperStub dbus_wrapper_;
   FakePrefs prefs_;
   brillo::timers::SimpleAlarmTimer* recheck_alarm_;
   brillo::timers::SimpleAlarmTimer* charge_alarm_;
@@ -271,6 +275,39 @@ TEST_F(AdaptiveChargingControllerTest, TestResultLessThanMinProbability) {
   EXPECT_FALSE(charge_alarm_->IsRunning());
   EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
   EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+}
+
+// Test that calling the ChargeNowForAdaptiveCharging method via dbus
+// successfully stops Adaptive Charging.
+TEST_F(AdaptiveChargingControllerTest, TestChargeNow) {
+  Init();
+
+  // Call the ChargeNow DBus method, then check that Adaptive Charging is
+  // disabled.
+  dbus::MethodCall method_call(kPowerManagerInterface,
+                               kChargeNowForAdaptiveChargingMethod);
+  std::unique_ptr<dbus::Response> response =
+      dbus_wrapper_.CallExportedMethodSync(&method_call);
+  EXPECT_TRUE(response &&
+              response->GetMessageType() != dbus::Message::MESSAGE_ERROR);
+  EXPECT_FALSE(recheck_alarm_->IsRunning());
+  EXPECT_FALSE(charge_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
+  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+
+  // Check that Adaptive Charging successfully starts again after unplugging
+  // then plugging the AC charger.
+  power_status_.external_power =
+      PowerSupplyProperties_ExternalPower_DISCONNECTED;
+  power_supply_.set_status(power_status_);
+  power_supply_.NotifyObservers();
+  power_status_.external_power = PowerSupplyProperties_ExternalPower_AC;
+  power_supply_.set_status(power_status_);
+  power_supply_.NotifyObservers();
+  EXPECT_TRUE(charge_alarm_->IsRunning());
+  EXPECT_TRUE(recheck_alarm_->IsRunning());
+  EXPECT_EQ(delegate_.fake_lower, kDefaultTestPercent);
+  EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
 }
 
 }  // namespace policy

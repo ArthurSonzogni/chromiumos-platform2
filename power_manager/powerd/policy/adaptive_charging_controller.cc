@@ -8,6 +8,8 @@
 
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
 
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
@@ -24,6 +26,9 @@ const double kDefaultMinProbability = 0.2;
 const int kAdaptiveChargingTimeBucketMin = 15;
 }  // namespace
 
+AdaptiveChargingController::AdaptiveChargingController()
+    : weak_ptr_factory_(this) {}
+
 AdaptiveChargingController::~AdaptiveChargingController() {
   if (power_supply_)
     power_supply_->RemoveObserver(this);
@@ -34,11 +39,13 @@ void AdaptiveChargingController::Init(
     BacklightController* backlight_controller,
     system::InputWatcherInterface* input_watcher,
     system::PowerSupplyInterface* power_supply,
+    system::DBusWrapperInterface* dbus_wrapper,
     PrefsInterface* prefs) {
   delegate_ = delegate;
   backlight_controller_ = backlight_controller;
   input_watcher_ = input_watcher;
   power_supply_ = power_supply;
+  dbus_wrapper_ = dbus_wrapper;
   prefs_ = prefs;
   recheck_alarm_interval_ = kDefaultAlarmInterval;
   report_charge_time_ = false;
@@ -51,6 +58,11 @@ void AdaptiveChargingController::Init(
   adaptive_charging_enabled_ = false;
 
   power_supply_->AddObserver(this);
+
+  dbus_wrapper->ExportMethod(
+      kChargeNowForAdaptiveChargingMethod,
+      base::BindRepeating(&AdaptiveChargingController::HandleChargeNow,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   int64_t alarm_seconds;
   if (prefs_->GetInt64(kAdaptiveChargingAlarmSecPref, &alarm_seconds)) {
@@ -287,6 +299,17 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
   if (status.battery_state == PowerSupplyProperties_BatteryState_FULL &&
       charge_finished_time_ == base::TimeTicks() && report_charge_time_)
     charge_finished_time_ = base::TimeTicks::Now();
+}
+
+void AdaptiveChargingController::HandleChargeNow(
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  if (state_ == AdaptiveChargingState::ACTIVE)
+    state_ = AdaptiveChargingState::USER_CANCELED;
+
+  StopAdaptiveCharging();
+  power_supply_->RefreshImmediately();
+  std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
 }
 
 bool AdaptiveChargingController::SetSustain(int64_t lower, int64_t upper) {

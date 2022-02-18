@@ -19,6 +19,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/input_watcher_interface.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
@@ -99,7 +100,7 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
  public:
   static constexpr base::TimeDelta kFinishChargingDelay = base::Hours(2);
 
-  AdaptiveChargingController() = default;
+  AdaptiveChargingController();
   AdaptiveChargingController(const AdaptiveChargingController&) = delete;
   AdaptiveChargingController& operator=(const AdaptiveChargingController&) =
       delete;
@@ -109,6 +110,7 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
             BacklightController* backlight_controller,
             system::InputWatcherInterface* input_watcher,
             system::PowerSupplyInterface* power_supply,
+            system::DBusWrapperInterface* dbus_wrapper,
             PrefsInterface* prefs);
 
   void set_recheck_alarm_for_testing(
@@ -150,6 +152,12 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   void OnPowerStatusUpdate() override;
 
  private:
+  // Stop Adaptive Charging for the current charge session. Charging will not be
+  // delayed at the |adaptive_charging_percent_| charge until the next time the
+  // system is plugged in.
+  void HandleChargeNow(dbus::MethodCall* method_call,
+                       dbus::ExportedObject::ResponseSender response_sender);
+
   // Sets battery sustain via the `Delegate::SetBatterySustain` callback.
   // Returns true on success and false otherwise.
   bool SetSustain(int64_t lower, int64_t upper);
@@ -192,6 +200,8 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   Delegate* delegate_;  // non-owned
 
   system::PowerSupplyInterface* power_supply_;  // non-owned
+
+  system::DBusWrapperInterface* dbus_wrapper_;  // non-owned
 
   system::InputWatcherInterface* input_watcher_;  // non-owned
 
@@ -281,6 +291,8 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // Whether the system supports battery sustainer on the EC. Explicitly checked
   // for during `Init`. Adaptive Charging cannot be enabled unless this is true.
   bool adaptive_charging_supported_;
+
+  base::WeakPtrFactory<AdaptiveChargingController> weak_ptr_factory_;
 };
 
 }  // namespace policy

@@ -462,7 +462,7 @@ void Daemon::Init() {
   if (psu_type == kBattery) {
     adaptive_charging_controller_ = delegate_->CreateAdaptiveChargingController(
         this, display_backlight_controller_.get(), input_watcher_.get(),
-        power_supply_.get(), prefs_.get());
+        power_supply_.get(), dbus_wrapper_.get(), prefs_.get());
   }
 
   dark_resume_ = delegate_->CreateDarkResume(prefs_.get(),

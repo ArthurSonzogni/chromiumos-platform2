@@ -205,6 +205,12 @@
       <arg name="enabled" direction="out" type="b" />
     </method>
 
+    <method name="ChargeNowForAdaptiveCharging">
+      <tp:docstring>
+        Stop delaying charging for Adaptive Charging for this charge session.
+      </tp:docstring>
+    </method>
+
     <!-- Signals -->
     <signal name="ScreenBrightnessChanged">
       <tp:docstring>

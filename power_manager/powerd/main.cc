@@ -326,10 +326,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
       policy::BacklightController* backlight_controller,
       system::InputWatcherInterface* input_watcher,
       system::PowerSupplyInterface* power_supply,
+      system::DBusWrapperInterface* dbus_wrapper,
       PrefsInterface* prefs) override {
     auto adaptive = std::make_unique<policy::AdaptiveChargingController>();
     adaptive->Init(delegate, backlight_controller, input_watcher, power_supply,
-                   prefs);
+                   dbus_wrapper, prefs);
     return adaptive;
   }
 

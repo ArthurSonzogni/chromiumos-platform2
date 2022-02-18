@@ -187,6 +187,7 @@ class DaemonDelegate {
       policy::BacklightController* backlight_controller,
       system::InputWatcherInterface* input_watcher,
       system::PowerSupplyInterface* power_supply,
+      system::DBusWrapperInterface* dbus_wrapper,
       PrefsInterface* prefs) = 0;
 
   virtual std::unique_ptr<
