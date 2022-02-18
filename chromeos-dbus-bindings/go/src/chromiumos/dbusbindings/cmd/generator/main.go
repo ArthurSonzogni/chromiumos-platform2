@@ -8,8 +8,24 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+
+	"chromiumos/dbusbindings/introspect"
 )
 
 func main() {
-	fmt.Printf("this is generate-chromeos-dbus-bindings in go!")
+	for _, path := range os.Args[1:] {
+		b, err := ioutil.ReadFile(path)
+		if err != nil {
+			log.Fatalf("Failed to read file %s: %v\n", path, err)
+		}
+
+		introspection, err := introspect.Parse(b)
+		if err != nil {
+			log.Fatalf("Failed to parse interface file %s: %v\n", path, err)
+		}
+		fmt.Printf("%+v\n", introspection)
+	}
 }
