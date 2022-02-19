@@ -4,9 +4,13 @@
 
 #include "typecd/usb_device.h"
 
+#include <base/logging.h>
+
 namespace typecd {
 
-UsbDevice::UsbDevice(int busnum, int devnum)
-    : busnum_(busnum), devnum_(devnum), typec_port_num_(-1) {}
+UsbDevice::UsbDevice(int busnum, int devnum, std::string hub)
+    : busnum_(busnum), devnum_(devnum), typec_port_num_(-1), hub_(hub) {
+  LOG(INFO) << "USB device " << hub_ << " enumerated.";
+}
 
 }  // namespace typecd

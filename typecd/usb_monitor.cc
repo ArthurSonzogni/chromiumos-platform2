@@ -55,7 +55,8 @@ void UsbMonitor::OnDeviceAddedOrRemoved(const base::FilePath& path,
                   << path;
       return;
     }
-    devices_.emplace(key, std::make_unique<UsbDevice>(busnum_int, devnum_int));
+    devices_.emplace(key,
+                     std::make_unique<UsbDevice>(busnum_int, devnum_int, key));
 
     std::string typec_port_uevent;
     int typec_port_num;

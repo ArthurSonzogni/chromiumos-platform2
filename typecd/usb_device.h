@@ -5,13 +5,15 @@
 #ifndef TYPECD_USB_DEVICE_H_
 #define TYPECD_USB_DEVICE_H_
 
+#include <string>
+
 namespace typecd {
 
 // This class is used to represent a USB device. It maintains Type C port that
 // the USB device is connected to.
 class UsbDevice {
  public:
-  UsbDevice(int busnum, int devnum);
+  UsbDevice(int busnum, int devnum, std::string hub);
 
   void SetTypecPortNum(int typec_port_num) { typec_port_num_ = typec_port_num; }
 
@@ -23,6 +25,10 @@ class UsbDevice {
   int busnum_;
   int devnum_;
   int typec_port_num_;
+
+  // Root hub number and hub port number in accordance with the USB device sysfs
+  // directory name. (e.g. 2-1 if sysfs path is /sys/bus/usb/devices/2-1)
+  std::string hub_;
 };
 
 }  // namespace typecd
