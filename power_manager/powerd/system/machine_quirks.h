@@ -22,8 +22,9 @@ namespace system {
 class MachineQuirksInterface {
  public:
   virtual ~MachineQuirksInterface() {}
+  virtual void Init(PrefsInterface* prefs) = 0;
   // When a machine quirk is found, set the corresponding pref to 1
-  virtual void ApplyQuirksToPrefs(PrefsInterface* prefs) = 0;
+  virtual void ApplyQuirksToPrefs() = 0;
   // Checks if the machine quirk indicates that
   // the suspend should be blocked.
   virtual bool IsSuspendBlocked() = 0;
@@ -47,8 +48,9 @@ class MachineQuirks : public MachineQuirksInterface {
 
   ~MachineQuirks();
 
+  void Init(PrefsInterface* prefs) override;
   // When a machine quirk is found, set the corresponding pref to 1
-  void ApplyQuirksToPrefs(PrefsInterface* prefs) override;
+  void ApplyQuirksToPrefs() override;
 
   // Determine if the machine is blocked from suspending.
   // These workarounds are required due to certain models
@@ -66,12 +68,11 @@ class MachineQuirks : public MachineQuirksInterface {
 
   // Functions used to pass in mock directories for unit tests
   void set_dmi_id_dir_for_test(const base::FilePath& dir) { dmi_id_dir_ = dir; }
-  void set_pm_dir_for_test(const base::FilePath& dir) { pm_dir_ = dir; }
 
  private:
   base::FilePath dmi_id_dir_;
-  // power_manager directory
-  base::FilePath pm_dir_;
+
+  PrefsInterface* prefs_ = nullptr;  // non-owned
 };
 
 }  // namespace system

@@ -24,9 +24,6 @@ const base::FilePath kDefaultDmiIdDir("/sys/class/dmi/id/");
 // Name of product name file for special suspend workarounds.
 const base::FilePath kDefaultProductNameFile("product_name");
 
-// Default power_manager directory
-const base::FilePath kDefaultReadOnlyPrefsDir("/usr/share/power_manager/");
-
 // File containing the product names that require suspend-to-idle.
 const base::FilePath kPowerManagerSuspendToIdleFile("suspend_to_idle_models");
 
@@ -35,41 +32,41 @@ const base::FilePath kPowerManagerSuspendPreventionFile(
     "suspend_prevention_models");
 }  // namespace
 
-MachineQuirks::MachineQuirks()
-    : dmi_id_dir_(kDefaultDmiIdDir), pm_dir_(kDefaultReadOnlyPrefsDir) {}
+MachineQuirks::MachineQuirks() : dmi_id_dir_(kDefaultDmiIdDir) {}
 
 MachineQuirks::~MachineQuirks() {}
 
-void MachineQuirks::ApplyQuirksToPrefs(PrefsInterface* prefs) {
+void MachineQuirks::Init(PrefsInterface* prefs) {
   DCHECK(prefs);
+  prefs_ = prefs;
+}
 
+void MachineQuirks::ApplyQuirksToPrefs() {
+  DCHECK(prefs_) << "MachineQuirks::Init() wasn't called";
   bool machine_quirks_enabled = false;
-  prefs->GetBool(kHasMachineQuirks, &machine_quirks_enabled);
+  prefs_->GetBool(kHasMachineQuirksPref, &machine_quirks_enabled);
   if (!machine_quirks_enabled) {
     return;
   }
 
   if (IsSuspendBlocked()) {
-    prefs->SetInt64(kDisableIdleSuspendPref, 1);
+    prefs_->SetInt64(kDisableIdleSuspendPref, 1);
     LOG(INFO) << "Disable Idle Suspend Pref set to enabled";
   }
 
   if (IsSuspendToIdle()) {
-    prefs->SetInt64(kSuspendToIdlePref, 1);
+    prefs_->SetInt64(kSuspendToIdlePref, 1);
     LOG(INFO) << "Suspend to Idle Pref set to enabled";
   }
 }
 
 bool MachineQuirks::IsSuspendBlocked() {
-  std::string suspend_prevention_list;
+  DCHECK(prefs_) << "MachineQuirks::Init() wasn't called";
 
-  // Read suspend list from a list file.
-  base::FilePath suspend_prevention_file =
-      base::FilePath(pm_dir_.Append(kPowerManagerSuspendPreventionFile));
-  if (!util::ReadStringFile(suspend_prevention_file,
-                            &suspend_prevention_list)) {
+  std::string suspend_prevention_list;
+  // Read suspend prevention list from pref.
+  if (!prefs_->GetString(kSuspendPreventionListPref, &suspend_prevention_list))
     return false;
-  }
 
   std::string product_name;
   // If the product name is unavailable do not block.
@@ -89,13 +86,13 @@ bool MachineQuirks::IsSuspendBlocked() {
 }
 
 bool MachineQuirks::IsSuspendToIdle() {
-  std::string suspend_to_idle_list;
+  CHECK(prefs_) << "MachineQuirks::Init() wasn't called";
 
-  base::FilePath suspend_to_idle_file =
-      base::FilePath(pm_dir_.Append(kPowerManagerSuspendToIdleFile));
-  if (!util::ReadStringFile(suspend_to_idle_file, &suspend_to_idle_list)) {
+  std::string suspend_to_idle_list;
+  // Read suspend prevention list from pref.
+  if (!prefs_->GetString(kSuspendToIdleListPref, &suspend_to_idle_list))
     return false;
-  }
+
   std::string product_name;
   // If the product name is unreadable, assume no.
   base::FilePath product_name_file =

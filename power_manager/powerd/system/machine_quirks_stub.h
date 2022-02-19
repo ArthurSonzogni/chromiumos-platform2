@@ -21,8 +21,9 @@ class MachineQuirksStub : public MachineQuirksInterface {
 
   ~MachineQuirksStub() override = default;
 
+  void Init(PrefsInterface* prefs) override;
   // MachineQuirksInterface implementation:
-  void ApplyQuirksToPrefs(PrefsInterface* prefs) override;
+  void ApplyQuirksToPrefs() override;
   bool IsSuspendToIdle() override;
   bool IsSuspendBlocked() override;
 
@@ -35,6 +36,7 @@ class MachineQuirksStub : public MachineQuirksInterface {
  private:
   bool force_idle_ = false;
   bool block_suspend_ = false;
+  PrefsInterface* prefs_;
 };
 
 }  // namespace system

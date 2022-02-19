@@ -303,9 +303,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return std::make_unique<system::LockfileChecker>(dir, files);
   }
 
-  std::unique_ptr<system::MachineQuirksInterface> CreateMachineQuirks()
-      override {
-    return std::make_unique<system::MachineQuirks>();
+  std::unique_ptr<system::MachineQuirksInterface> CreateMachineQuirks(
+      PrefsInterface* prefs) override {
+    auto machine_quirks = std::make_unique<system::MachineQuirks>();
+    machine_quirks->Init(prefs);
+    return machine_quirks;
   }
 
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {

@@ -402,8 +402,8 @@ void Daemon::Init() {
     }
   }
 
-  machine_quirks_ = delegate_->CreateMachineQuirks();
-  machine_quirks_->ApplyQuirksToPrefs(prefs_.get());
+  machine_quirks_ = delegate_->CreateMachineQuirks(prefs_.get());
+  machine_quirks_->ApplyQuirksToPrefs();
   prefs_->GetBool(kManualEventlogAddPref, &log_suspend_manually_);
   prefs_->GetBool(kSuspendToIdlePref, &suspend_to_idle_);
 

@@ -16,15 +16,18 @@ MachineQuirksStub::MachineQuirksStub() {
   ResetQuirks();
 }
 
-void MachineQuirksStub::ApplyQuirksToPrefs(PrefsInterface* prefs) {
+void MachineQuirksStub::Init(PrefsInterface* prefs) {
   DCHECK(prefs);
+  prefs_ = prefs;
+}
 
+void MachineQuirksStub::ApplyQuirksToPrefs() {
   if (IsSuspendBlocked()) {
-    prefs->SetInt64(kDisableIdleSuspendPref, 1);
+    prefs_->SetInt64(kDisableIdleSuspendPref, 1);
   }
 
   if (IsSuspendToIdle()) {
-    prefs->SetInt64(kSuspendToIdlePref, 1);
+    prefs_->SetInt64(kSuspendToIdlePref, 1);
   }
 }
 

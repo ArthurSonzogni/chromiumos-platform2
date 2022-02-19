@@ -361,8 +361,12 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
       const std::vector<base::FilePath>& files) override {
     return std::move(passed_lockfile_checker_);
   }
-  std::unique_ptr<system::MachineQuirksInterface> CreateMachineQuirks()
-      override {
+  std::unique_ptr<system::MachineQuirksInterface> CreateMachineQuirks(
+      PrefsInterface* prefs) override {
+    EXPECT_EQ(prefs_, prefs);
+    // Init is necessary here as prefs_ will be written to while testing
+    // MachineQuirks.
+    passed_machine_quirks_->Init(prefs);
     return std::move(passed_machine_quirks_);
   }
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {

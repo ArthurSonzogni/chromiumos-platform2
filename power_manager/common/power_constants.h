@@ -236,7 +236,13 @@ extern const char kSuspendToIdlePref[];
 extern const char kSuspendFreezerDepsPrefix[];
 
 // If true, enable machine quirk detection feature.
-extern const char kHasMachineQuirks[];
+extern const char kHasMachineQuirksPref[];
+
+// List of devices with the SuspendToIdle machine quirk.
+extern const char kSuspendToIdleListPref[];
+
+// List of devices with the DisableIdleSuspend machine quirk.
+extern const char kSuspendPreventionListPref[];
 
 // If true, return Far when at least one of the sensors report far.
 extern const char kSetTransmitPowerPreferFarForProximityPref[];
