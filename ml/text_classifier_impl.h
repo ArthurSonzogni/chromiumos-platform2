@@ -54,13 +54,14 @@ class TextClassifierImpl
       AnnotateCallback callback) override;
 
   // chromeos::machine_learning::mojom::TextClassifier:
-  void SuggestSelection(
-      chromeos::machine_learning::mojom::TextSuggestSelectionRequestPtr request,
-      SuggestSelectionCallback callback) override;
-
-  // chromeos::machine_learning::mojom::TextClassifier:
   void FindLanguages(const std::string& text,
                      FindLanguagesCallback callback) override;
+
+  // chromeos::machine_learning::mojom::TextClassifier:
+  void REMOVED_1(
+      chromeos::machine_learning::mojom::REMOVED_TextSuggestSelectionRequestPtr
+          request,
+      REMOVED_1Callback callback) override;
 
   std::unique_ptr<libtextclassifier3::Annotator> annotator_;
 

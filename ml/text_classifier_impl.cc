@@ -22,6 +22,8 @@ namespace ml {
 namespace {
 
 using ::chromeos::machine_learning::mojom::CodepointSpan;
+using ::chromeos::machine_learning::mojom ::
+    REMOVED_TextSuggestSelectionRequestPtr;
 using ::chromeos::machine_learning::mojom::TextAnnotation;
 using ::chromeos::machine_learning::mojom::TextAnnotationPtr;
 using ::chromeos::machine_learning::mojom::TextAnnotationRequestPtr;
@@ -31,7 +33,6 @@ using ::chromeos::machine_learning::mojom::TextEntityData;
 using ::chromeos::machine_learning::mojom::TextEntityPtr;
 using ::chromeos::machine_learning::mojom::TextLanguage;
 using ::chromeos::machine_learning::mojom::TextLanguagePtr;
-using ::chromeos::machine_learning::mojom::TextSuggestSelectionRequestPtr;
 
 constexpr char kTextClassifierModelFilePath[] =
     "/opt/google/chrome/ml_models/"
@@ -158,36 +159,6 @@ void TextClassifierImpl::Annotate(TextAnnotationRequestPtr request,
   request_metrics.FinishRecordingPerformanceMetrics();
 }
 
-void TextClassifierImpl::SuggestSelection(
-    TextSuggestSelectionRequestPtr request, SuggestSelectionCallback callback) {
-  RequestMetrics request_metrics("TextClassifier", "SuggestSelection");
-  request_metrics.StartRecordingPerformanceMetrics();
-
-  libtextclassifier3::SelectionOptions option;
-  if (request->default_locales) {
-    option.locales = request->default_locales.value();
-  }
-  option.detected_text_language_tags =
-      request->detected_text_language_tags.value_or("en");
-  option.annotation_usecase =
-      static_cast<libtextclassifier3::AnnotationUsecase>(
-          request->annotation_usecase);
-
-  libtextclassifier3::CodepointSpan user_selection;
-  user_selection.first = request->user_selection->start_offset;
-  user_selection.second = request->user_selection->end_offset;
-
-  const libtextclassifier3::CodepointSpan suggested_span =
-      annotator_->SuggestSelection(request->text, user_selection, option);
-  auto result_span = CodepointSpan::New();
-  result_span->start_offset = suggested_span.first;
-  result_span->end_offset = suggested_span.second;
-
-  std::move(callback).Run(std::move(result_span));
-
-  request_metrics.FinishRecordingPerformanceMetrics();
-}
-
 void TextClassifierImpl::FindLanguages(const std::string& text,
                                        FindLanguagesCallback callback) {
   RequestMetrics request_metrics("TextClassifier", "FindLanguages");
@@ -205,6 +176,12 @@ void TextClassifierImpl::FindLanguages(const std::string& text,
   std::move(callback).Run(std::move(langid_result));
 
   request_metrics.FinishRecordingPerformanceMetrics();
+}
+
+void TextClassifierImpl::REMOVED_1(
+    REMOVED_TextSuggestSelectionRequestPtr request,
+    REMOVED_1Callback callback) {
+  NOTIMPLEMENTED();
 }
 
 }  // namespace ml
