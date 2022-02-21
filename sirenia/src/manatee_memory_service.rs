@@ -8,7 +8,7 @@
 
 use std::cell::RefCell;
 use std::cmp;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::convert::{TryFrom, TryInto};
 use std::env;
 use std::fmt::{Debug, Formatter};
@@ -28,9 +28,7 @@ use data_model::DataInit;
 use libc::{recvfrom, MSG_PEEK, MSG_TRUNC};
 use libsirenia::{
     build_info::BUILD_TIMESTAMP,
-    linux::events::{
-        AddEventSourceMutator, EventMultiplexer, EventSource, Mutator, RemoveFdMutator,
-    },
+    linux::events::{AddEventSourceMutator, EventMultiplexer, EventSource, Mutator},
     sys,
     transport::{Error as TransportError, Transport, UnixServerTransport},
 };
@@ -193,15 +191,17 @@ fn calculate_extra_bytes(mem_size: u64) -> u64 {
     extra_bytes + (6 * 1024 * 1024)
 }
 
-fn read_obj<T: DataInit>(connection: &mut Transport) -> Result<T> {
+// Returns Ok(None) if EOF is encountered.
+fn read_obj<T: DataInit>(connection: &mut Transport) -> Result<Option<T>> {
     let mut bytes = vec![0; mem::size_of::<T>()];
-    connection
-        .r
-        .read_exact(&mut bytes)
-        .context("failed to read bytes")?;
+    match connection.r.read_exact(&mut bytes) {
+        Ok(_) => {}
+        Err(e) if e.kind() == ErrorKind::UnexpectedEof => return Ok(None),
+        e => e.context("failed to read bytes")?,
+    };
     T::from_slice(&bytes)
         .context("failed to parse bytes")
-        .map(|o| *o)
+        .map(|o| Some(*o))
 }
 
 fn sync_balloon_command(
@@ -378,6 +378,7 @@ impl Debug for StartingVmState {
 
 struct MmsState {
     cros_ctrl_connected: bool,
+    pending_ctrl_connections: VecDeque<File>,
     clients: BTreeMap<u32, CrosVmClient>,
     starting_vm_state: Option<StartingVmState>,
     next_id: u32,
@@ -729,8 +730,12 @@ impl CtrlHandler {
     }
 
     fn handle_message(&mut self) -> Result<()> {
-        let header =
-            read_obj::<MmsMessageHeader>(&mut self.connection).context("failed to read header")?;
+        let header = match read_obj::<MmsMessageHeader>(&mut self.connection)
+            .context("failed to read header")?
+        {
+            Some(header) => header,
+            None => return Ok(()),
+        };
 
         let mut bytes = vec![0; header.len as usize];
         self.connection
@@ -812,8 +817,13 @@ impl EventSource for CtrlHandler {
                 -released_mem, actual_released
             );
         }
+
         state.cros_ctrl_connected = false;
-        Ok(Some(Box::new(RemoveFdMutator(self.connection.as_raw_fd()))))
+        if let Some(ctrl_file) = state.pending_ctrl_connections.pop_front() {
+            process_new_ctrl_connection(&mut state, self.state.clone(), ctrl_file)
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -834,16 +844,29 @@ impl MmsBridge {
     }
 }
 
+fn process_new_ctrl_connection(
+    state: &mut MmsState,
+    state_rc: Rc<RefCell<MmsState>>,
+    ctrl_file: File,
+) -> StdResult<Option<Box<dyn Mutator>>, String> {
+    if state.clients.len() != 1 {
+        return Err("unknown crosvm clients".to_string());
+    }
+
+    let ctrl_file2 = ctrl_file
+        .try_clone()
+        .map_err(|e| format!("Clone error {:?}", e))?;
+    let ctrl_connection = Transport::from_files(ctrl_file, ctrl_file2);
+
+    let ctrl_handler = CtrlHandler::new(ctrl_connection, state_rc);
+
+    state.cros_ctrl_connected = true;
+    Ok(Some(Box::new(AddEventSourceMutator::from(ctrl_handler))))
+}
+
 impl EventSource for MmsBridge {
     fn on_event(&mut self) -> StdResult<Option<Box<dyn Mutator>>, String> {
         let mut state = self.state.borrow_mut();
-        if state.cros_ctrl_connected {
-            return Err("Duplicate control connection".to_string());
-        }
-        if state.clients.len() != 1 {
-            return Err("unknown crosvm clients".to_string());
-        }
-
         let ctrl_socket = match self.bridge.recv_as_vec_with_fds() {
             Ok((_, fd)) => fd[0],
             Err(err) => {
@@ -855,15 +878,22 @@ impl EventSource for MmsBridge {
         };
         // Safe because we own the fd.
         let ctrl_file = unsafe { File::from_raw_fd(ctrl_socket) };
-        let ctrl_file2 = ctrl_file
-            .try_clone()
-            .map_err(|e| format!("Clone error {:?}", e))?;
-        let ctrl_connection = Transport::from_files(ctrl_file, ctrl_file2);
 
-        let ctrl_handler = CtrlHandler::new(ctrl_connection, self.state.clone());
+        // Although the previous connection should generally be torn down before the
+        // the new connection, it's possible that the teardown gets delayed. In particular,
+        // we need to handle the case where the executor processes the hangup and new
+        // connection in a single iteration - when that happens, the new connection is
+        // processed before the hangup.
+        if state.cros_ctrl_connected {
+            state.pending_ctrl_connections.push_back(ctrl_file);
+            warn!(
+                "Duplicate control connection. Pending count is {}",
+                state.pending_ctrl_connections.len()
+            );
+            return Ok(None);
+        }
 
-        state.cros_ctrl_connected = true;
-        Ok(Some(Box::new(AddEventSourceMutator::from(ctrl_handler))))
+        process_new_ctrl_connection(&mut state, self.state.clone(), ctrl_file)
     }
 }
 
@@ -940,6 +970,7 @@ fn main() {
 
     let state = Rc::new(RefCell::new(MmsState {
         cros_ctrl_connected: false,
+        pending_ctrl_connections: VecDeque::new(),
         clients,
         starting_vm_state: None,
         next_id: CROS_GUEST_ID + 1,
