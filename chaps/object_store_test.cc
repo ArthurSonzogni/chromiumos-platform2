@@ -117,6 +117,22 @@ TEST_F(TestObjectStoreEncryption, CBCMode) {
   EXPECT_FALSE(encrypted_block1 == encrypted_block2);
 }
 
+TEST(TestObjectStore, DBInitFail) {
+  // Note that we're unable to test kDatabaseCreateFailure reliably so it's
+  // not tested.
+
+  ObjectStoreImpl store;
+  const char database[] = "/dev/null";
+  StrictMock<MetricsLibraryMock> mock_metrics_library;
+  ChapsMetrics chaps_metrics;
+  chaps_metrics.set_metrics_library_for_testing(&mock_metrics_library);
+
+  EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseOpenAttempt));
+  EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseCorrupted));
+  EXPECT_CALL(mock_metrics_library, SendCrosEventToUMA(kDatabaseRepairFailure));
+  ASSERT_FALSE(store.Init(FilePath(database), &chaps_metrics));
+}
+
 #ifndef NO_MEMENV
 TEST(TestObjectStore, InsertLoad) {
   ObjectStoreImpl store;
