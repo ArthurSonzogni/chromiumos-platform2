@@ -12,20 +12,21 @@
 
 namespace chaps {
 
-constexpr char kReinitializingToken[] = "Platform.Chaps.ReinitializingToken";
+inline constexpr char kReinitializingToken[] =
+    "Platform.Chaps.ReinitializingToken";
 
-constexpr char kTPMAvailability[] = "Platform.Chaps.TPMAvailability";
+inline constexpr char kTPMAvailability[] = "Platform.Chaps.TPMAvailability";
 
-constexpr char kDatabaseCorrupted[] = "Chaps.DatabaseCorrupted";
+inline constexpr char kDatabaseCorrupted[] = "Chaps.DatabaseCorrupted";
 
-constexpr char kDatabaseRepairFailure[] = "Chaps.DatabaseRepairFailure";
+inline constexpr char kDatabaseRepairFailure[] = "Chaps.DatabaseRepairFailure";
 
-constexpr char kDatabaseCreateFailure[] = "Chaps.DatabaseCreateFailure";
+inline constexpr char kDatabaseCreateFailure[] = "Chaps.DatabaseCreateFailure";
 
-constexpr char kDatabaseOpenedSuccessfully[] =
+inline constexpr char kDatabaseOpenedSuccessfully[] =
     "Chaps.DatabaseOpenedSuccessfully";
 
-constexpr char kDatabaseOpenAttempt[] = "Chaps.DatabaseOpenAttempt";
+inline constexpr char kDatabaseOpenAttempt[] = "Chaps.DatabaseOpenAttempt";
 
 // List of reasons to initializing token. These entries
 // should not be renumbered and numeric values should never be reused.
