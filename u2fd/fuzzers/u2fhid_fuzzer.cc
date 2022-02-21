@@ -17,6 +17,9 @@
 #include "u2fd/u2fhid.h"
 
 namespace {
+
+constexpr int kMaxIterations = 100;
+
 class FuzzerLoop : public brillo::Daemon {
  public:
   FuzzerLoop(const uint8_t* data, size_t size) : data_provider_(data, size) {}
@@ -51,10 +54,11 @@ class FuzzerLoop : public brillo::Daemon {
   }
 
   void SendOutputReport() {
-    if (data_provider_.remaining_bytes() == 0) {
+    if (data_provider_.remaining_bytes() == 0 || count_ == kMaxIterations) {
       Quit();
       return;
     }
+    count_++;
 
     // Sending the output report to U2fHid::ProcessReport
     fake_uhid_device_->SendOutputReport(
@@ -68,10 +72,17 @@ class FuzzerLoop : public brillo::Daemon {
   u2f::FakeUHidDevice* fake_uhid_device_;
   std::unique_ptr<u2f::FakeU2fMessageHandler> fake_u2f_msg_handler_;
   std::unique_ptr<u2f::U2fHid> u2fhid_;
+  int count_ = 0;
 };
 }  // namespace
 
+class Environment {
+ public:
+  Environment() { logging::SetMinLogLevel(logging::LOG_FATAL); }
+};
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  static Environment env;
   FuzzerLoop loop(data, size);
   CHECK_EQ(loop.Run(), EX_OK);
   return 0;
