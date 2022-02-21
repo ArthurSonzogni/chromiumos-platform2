@@ -8,7 +8,7 @@
 # operators around the globe, but is now maintained by hand.
 #
 # It is included by shill but the settings herein may be overridden by
-# installing a serviceproviders-override.pbf file alongside the default
+# installing a serviceproviders-exclusive-override.pbf in
 # (currently /usr/share/shill).
 #
 # Keep the operators sorted: Sort by country first. Within a country, sort by

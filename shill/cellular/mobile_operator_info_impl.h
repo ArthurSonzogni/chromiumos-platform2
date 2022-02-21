@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
+#include <google/protobuf/text_format.h>
 
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/event_dispatcher.h"
@@ -79,7 +80,7 @@ class MobileOperatorInfoImpl {
   MobileOperatorInfoImpl(EventDispatcher* dispatcher,
                          const std::string& info_owner,
                          const base::FilePath& default_db_path,
-                         const base::FilePath& override_db_path);
+                         const base::FilePath& exclusive_override_db_path);
   MobileOperatorInfoImpl(const MobileOperatorInfoImpl&) = delete;
   MobileOperatorInfoImpl& operator=(const MobileOperatorInfoImpl&) = delete;
 
@@ -87,7 +88,7 @@ class MobileOperatorInfoImpl {
   // Static variables.
   // Default databases to load.
   static const char kDefaultDatabasePath[];
-  static const char kOverrideDatabasePath[];
+  static const char kExclusiveOverrideDatabasePath[];
   // MCCMNC can be of length 5 or 6. When using this constant, keep in mind that
   // the length of MCCMNC can by |kMCCMNCMinLen| or |kMCCMNCMinLen + 1|.
   static const int kMCCMNCMinLen;

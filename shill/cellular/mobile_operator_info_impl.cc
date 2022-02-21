@@ -35,9 +35,9 @@ static std::string ObjectID(const MobileOperatorInfoImpl* m) {
 // static
 const char MobileOperatorInfoImpl::kDefaultDatabasePath[] =
     "/usr/share/shill/serviceproviders.pbf";
-// Warning: changing this can break overlays!
-const char MobileOperatorInfoImpl::kOverrideDatabasePath[] =
-    "/usr/share/shill/serviceproviders-override.pbf";
+// The exclusive-override db can be used to replace the default modb.
+const char MobileOperatorInfoImpl::kExclusiveOverrideDatabasePath[] =
+    "/usr/share/shill/serviceproviders-exclusive-override.pbf";
 const int MobileOperatorInfoImpl::kMCCMNCMinLen = 5;
 
 namespace {
@@ -91,7 +91,7 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(
     EventDispatcher* dispatcher,
     const std::string& info_owner,
     const base::FilePath& default_db_path,
-    const base::FilePath& override_db_path)
+    const base::FilePath& exclusive_override_db_path)
     : dispatcher_(dispatcher),
       info_owner_(info_owner),
       operator_code_type_(OperatorCodeType::kUnknown),
@@ -101,11 +101,10 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(
       mtu_(IPConfig::kUndefinedMTU),
       user_olp_empty_(true),
       weak_ptr_factory_(this) {
-  // Overrides need to be installed before defaults
-  if (base::PathExists(override_db_path)) {
-    AddDatabasePath(override_db_path);
-  }
-  AddDatabasePath(default_db_path);
+  if (base::PathExists(exclusive_override_db_path))
+    AddDatabasePath(exclusive_override_db_path);
+  else
+    AddDatabasePath(default_db_path);
 }
 
 MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
@@ -114,7 +113,7 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
           dispatcher,
           info_owner,
           base::FilePath(kDefaultDatabasePath),
-          base::FilePath(kOverrideDatabasePath)) {}
+          base::FilePath(kExclusiveOverrideDatabasePath)) {}
 
 MobileOperatorInfoImpl::~MobileOperatorInfoImpl() = default;
 

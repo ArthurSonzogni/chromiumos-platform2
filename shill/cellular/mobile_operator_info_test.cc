@@ -1614,52 +1614,6 @@ TEST_P(MobileOperatorInfoObserverTest, LateObserver) {
   Mock::VerifyAndClearExpectations(&second_observer_);
 }
 
-class MobileOperatorInfoOverrideTest
-    : public ::testing::TestWithParam<
-          std::vector<std::pair<std::string, std::string>>> {
- public:
-  MobileOperatorInfoOverrideTest()
-      : operator_info_impl_(new MobileOperatorInfoImpl(
-            &dispatcher_,
-            "Operator",
-            GetTestProtoPath("init_test_override_db_init_1.pbf"),
-            GetTestProtoPath("init_test_override_db_init_2.pbf"))) {}
-
-  void SetUp() override { EXPECT_TRUE(operator_info_impl_->Init()); }
-
- protected:
-  void VerifyAPNForMCCMNC(const std::string& mccmnc, const std::string& apn) {
-    UpdateMCCMNC(mccmnc);
-    EXPECT_TRUE(operator_info_impl_->IsMobileNetworkOperatorKnown());
-    EXPECT_FALSE(operator_info_impl_->IsMobileVirtualNetworkOperatorKnown());
-    std::map<std::string, const MobileOperatorInfo::MobileAPN*> mobile_apns;
-
-    bool found_apn = false;
-    for (const auto& apn_node : operator_info_impl_->apn_list()) {
-      if (apn_node->apn == apn) {
-        found_apn = true;
-        break;
-      }
-    }
-    ASSERT_TRUE(found_apn);
-  }
-
-  void UpdateMCCMNC(const std::string& mccmnc) {
-    operator_info_impl_->UpdateMCCMNC(mccmnc);
-  }
-
-  EventDispatcherForTest dispatcher_;
-  std::unique_ptr<MobileOperatorInfoImpl> operator_info_impl_;
-};
-
-// Prevent regression of database override behavior introduced in
-// chromium:654149
-TEST_P(MobileOperatorInfoOverrideTest, MultipleDBOverrides) {
-  for (const auto& mcc_apn_pair : GetParam()) {
-    VerifyAPNForMCCMNC(mcc_apn_pair.first, mcc_apn_pair.second);
-  }
-}
-
 INSTANTIATE_TEST_SUITE_P(MobileOperatorInfoMainTestInstance,
                          MobileOperatorInfoMainTest,
                          Values(kEventCheckingPolicyStrict,
@@ -1672,13 +1626,4 @@ INSTANTIATE_TEST_SUITE_P(MobileOperatorInfoDataTestInstance,
 INSTANTIATE_TEST_SUITE_P(MobileOperatorInfoObserverTestInstance,
                          MobileOperatorInfoObserverTest,
                          Values(kEventCheckingPolicyStrict));
-
-std::vector<std::pair<std::string, std::string>> kMccmncApnPairs = {
-    {"00", "zeroes_override"}, {"00", "twosies_override"},
-    {"01", "zeros_default"},   {"01", "onesies_default"},
-    {"02", "zeroes_override"}, {"02", "twosies_override"}};
-
-INSTANTIATE_TEST_SUITE_P(MobileOperatorInfoOverrideTestInstance,
-                         MobileOperatorInfoOverrideTest,
-                         Values(kMccmncApnPairs));
 }  // namespace shill
