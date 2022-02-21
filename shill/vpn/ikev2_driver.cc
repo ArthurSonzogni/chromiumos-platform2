@@ -254,9 +254,23 @@ void IKEv2Driver::OnIPsecStopped() {
   ipsec_connection_ = nullptr;
 }
 
-// TODO(b/210064468): Provide information on if credential fields are empty.
 KeyValueStore IKEv2Driver::GetProvider(Error* error) {
   KeyValueStore props = VPNDriver::GetProvider(error);
+
+  // If the corresponding credential field is empty for an authentication type,
+  // set kPassphraseRequiredProperty field to true.
+  bool passphrase_required = false;
+  const std::string auth_type =
+      const_args()->Lookup<std::string>(kIKEv2AuthenticationTypeProperty, "");
+  if (auth_type == kIKEv2AuthenticationTypePSK) {
+    const std::string psk =
+        const_args()->Lookup<std::string>(kIKEv2PskProperty, "");
+    passphrase_required = psk.empty();
+  } else if (auth_type == kIKEv2AuthenticationTypeEAP) {
+    passphrase_required = !eap_credentials()->IsConnectableUsingPassphrase();
+  }
+  props.Set<bool>(kPassphraseRequiredProperty, passphrase_required);
+
   return props;
 }
 

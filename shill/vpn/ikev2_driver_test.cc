@@ -283,5 +283,64 @@ TEST_F(IKEv2DriverTest, PropertyStoreAndConfig) {
   }
 }
 
+// Verifies whether kPassphraseRequiredProperty is properly set in the Provider
+// property.
+TEST_F(IKEv2DriverTest, GetProvider) {
+  Error unused_error;
+
+  const std::string kPSK = "preshared-key";
+  const std::string kEAPIdentity = "eap-identity";
+  const std::string kEAPPassword = "eap-password";
+
+  store_->SetStringProperty(kIKEv2AuthenticationTypeProperty,
+                            kIKEv2AuthenticationTypePSK, &unused_error);
+  {
+    KeyValueStore props;
+    store_->SetStringProperty(kIKEv2PskProperty, "", &unused_error);
+    EXPECT_TRUE(store_->GetKeyValueStoreProperty(kProviderProperty, &props,
+                                                 &unused_error));
+    EXPECT_TRUE(props.Get<bool>(kPassphraseRequiredProperty));
+  }
+  {
+    KeyValueStore props;
+    store_->SetStringProperty(kIKEv2PskProperty, kPSK, &unused_error);
+    EXPECT_TRUE(store_->GetKeyValueStoreProperty(kProviderProperty, &props,
+                                                 &unused_error));
+    EXPECT_FALSE(props.Get<bool>(kPassphraseRequiredProperty));
+  }
+
+  store_->SetStringProperty(kIKEv2AuthenticationTypeProperty,
+                            kIKEv2AuthenticationTypeEAP, &unused_error);
+  store_->SetStringProperty(kEapMethodProperty, kEapMethodMSCHAPV2,
+                            &unused_error);
+  store_->SetStringProperty(kEapIdentityProperty, kEAPIdentity, &unused_error);
+  {
+    KeyValueStore props;
+    store_->SetStringProperty(kEapPasswordProperty, "", &unused_error);
+    EXPECT_TRUE(store_->GetKeyValueStoreProperty(kProviderProperty, &props,
+                                                 &unused_error));
+    EXPECT_TRUE(props.Get<bool>(kPassphraseRequiredProperty));
+  }
+  {
+    KeyValueStore props;
+    store_->SetStringProperty(kEapPasswordProperty, kEAPPassword,
+                              &unused_error);
+    EXPECT_TRUE(store_->GetKeyValueStoreProperty(kProviderProperty, &props,
+                                                 &unused_error));
+    EXPECT_FALSE(props.Get<bool>(kPassphraseRequiredProperty));
+  }
+
+  // PassphraseRequired should always be false if the authentication type is
+  // cert.
+  store_->SetStringProperty(kIKEv2AuthenticationTypeProperty,
+                            kIKEv2AuthenticationTypeCert, &unused_error);
+  {
+    KeyValueStore props;
+    EXPECT_TRUE(store_->GetKeyValueStoreProperty(kProviderProperty, &props,
+                                                 &unused_error));
+    EXPECT_FALSE(props.Get<bool>(kPassphraseRequiredProperty));
+  }
+}
+
 }  // namespace
 }  // namespace shill
