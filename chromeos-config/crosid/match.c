@@ -148,7 +148,8 @@ static bool table_entry_matches(struct crosid_table_header *table,
 			"customization_id");
 	}
 
-	if (entry->flags & MATCH_WHITELABEL_TAG) {
+	if (data->whitelabel_tag.present ||
+	    entry->flags & MATCH_WHITELABEL_TAG) {
 		mismatches += !check_optional_string_match(
 			&data->whitelabel_tag,
 			strings + entry->whitelabel_tag_match,

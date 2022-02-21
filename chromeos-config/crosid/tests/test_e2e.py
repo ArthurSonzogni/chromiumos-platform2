@@ -226,6 +226,44 @@ def test_both_customization_id_and_whitelabel(tmp_path, executable_path):
     assert result.stdout == ""
 
 
+VILBOZ14_CONFIGS = [
+    make_config("vilboz14", sku_id=0, smbios_name_match="Vilboz"),
+    make_config("vilboz14", sku_id=1, smbios_name_match="Vilboz"),
+    make_config(
+        "vilboz14",
+        sku_id=1,
+        smbios_name_match="Vilboz",
+        whitelabel_tag="vilboz14len",
+    ),
+]
+
+
+@pytest.mark.parametrize("config_idx", list(range(len(VILBOZ14_CONFIGS))))
+def test_vilboz14(tmp_path, executable_path, config_idx):
+    make_fake_sysroot(
+        tmp_path,
+        smbios_name="Vilboz",
+        smbios_sku=1,
+        vpd_values={"whitelabel_tag": "vilboz14len"},
+        configs=VILBOZ14_CONFIGS,
+    )
+
+    result = subprocess.run(
+        [executable_path, "--sysroot", tmp_path, "-v"],
+        check=True,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        encoding="utf-8",
+    )
+
+    assert getvars(result.stdout) == {
+        "SKU": "1",
+        "CONFIG_INDEX": "2",
+        "FIRMWARE_MANIFEST_KEY": "vilboz14",
+    }
+
+
 TROGDOR_CONFIGS = [
     make_config("trogdor", fdt_match="google,trogdor"),
     make_config("lazor", fdt_match="google,lazor", sku_id=0),

@@ -1044,7 +1044,9 @@ corresponding directory then gets mounted (via a bind mount) to
 Identity matching is done by comparing properties which come from
 `/identity` to the corresponding values from firmware.  If properties
 are left unspecified in `/identity`, they will match any value from
-firmware, or even a missing value.
+firmware, or even a missing value.  There is one exception, if there
+is a `whitelabel_tag` in VPD, the `whitelabel-tag` in `/identity`
+should be matched no matter is it a missing value or not.
 
 The first config with a matching identity is selected.
 
