@@ -140,6 +140,31 @@ TEST_F(HPSTestButUsingAMock, MagicNumberTimeout) {
   EXPECT_DEATH(CheckMagic(), "Timeout waiting for boot magic number");
 }
 
+TEST_F(HPSTestButUsingAMock, IsRunningOk) {
+  EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSysStatus))
+      .WillOnce(Return(R2::kAppl));
+  EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kError)).WillOnce(Return(0));
+  EXPECT_TRUE(hps_->IsRunning());
+}
+
+TEST_F(HPSTestButUsingAMock, IsRunningFailure) {
+  EXPECT_DEATH(
+      {
+        testing::InSequence s;
+        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kSysStatus))
+            .WillOnce(Return(R2::kAppl));
+        EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kError))
+            .WillOnce(Return(0x1234));
+        for (int i = 0; i <= static_cast<int>(hps::HpsReg::kLargestRegister);
+             i++) {
+          EXPECT_CALL(*dev_, ReadReg(static_cast<hps::HpsReg>(i)))
+              .WillOnce(Return(i));
+        }
+        hps_->IsRunning();
+      },
+      "Terminating for fatal error");
+}
+
 /*
  * Check that features can be enabled/disabled, and
  * results are returned only when allowed.

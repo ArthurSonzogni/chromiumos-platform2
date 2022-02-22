@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -75,7 +76,8 @@ class HPS_impl : public HPS {
   BootResult CheckStage1();
   BootResult CheckApplication();
   bool Reboot();
-  void OnBootFault();
+  [[noreturn]] void OnBootFault(const base::Location&);
+  [[noreturn]] void OnFatalError(const base::Location&, const std::string& msg);
   bool WaitForBankReady(uint8_t bank);
   BootResult SendStage1Update();
   BootResult SendApplicationUpdate();
