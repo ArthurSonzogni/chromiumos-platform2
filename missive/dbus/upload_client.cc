@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/bind.h>
+#include <base/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include "base/run_loop.h"
@@ -87,6 +88,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
   // Implementation of DisconnectableClient::Delegate
   void DoCall(base::OnceClosure cb) final {
     bus_->AssertOnOriginThread();
+    base::ScopedClosureRunner autorun(std::move(cb));
     dbus::MethodCall method_call(
         chromeos::kChromeReportingServiceInterface,
         chromeos::kChromeReportingServiceUploadEncryptedRecordMethod);
@@ -103,7 +105,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
     chrome_proxy_->CallMethod(
         &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
         base::BindOnce(
-            [](base::OnceClosure cb,
+            [](base::ScopedClosureRunner autorun,
                base::WeakPtr<UploadEncryptedRecordDelegate> self,
                dbus::Response* response) {
               if (!self) {
@@ -116,15 +118,16 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
                 return;
               }
               self->response_ = response;
-              std::move(cb).Run();
             },
-            std::move(cb), weak_ptr_factory_.GetWeakPtr()));
+            std::move(autorun), weak_ptr_factory_.GetWeakPtr()));
   }
 
   // Process dBus response, if status is OK, or error otherwise.
   void Respond(Status status) final {
     bus_->AssertOnOriginThread();
-    DCHECK(response_callback_);
+    if (!response_callback_) {
+      return;
+    }
 
     if (!status.ok()) {
       std::move(response_callback_).Run(status);
