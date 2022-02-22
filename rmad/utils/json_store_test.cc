@@ -304,6 +304,20 @@ TEST_F(JsonStoreTest, SetValue_TemplateNestedMapList) {
   EXPECT_EQ(values["b"][1], 4);
 }
 
+TEST_F(JsonStoreTest, RemoveValue) {
+  base::FilePath input_file =
+      CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(input_file);
+  bool value;
+  EXPECT_TRUE(json_store->GetValue(kExistingKey, &value));
+  EXPECT_EQ(value, kExistingValue);
+  // Remove existing key.
+  EXPECT_TRUE(json_store->RemoveKey(kExistingKey));
+  EXPECT_FALSE(json_store->GetValue(kExistingKey, &value));
+  // Remove non-existing key.
+  EXPECT_FALSE(json_store->RemoveKey(kNewKey));
+}
+
 TEST_F(JsonStoreTest, Clear) {
   base::FilePath input_file =
       CreateInputFile(kTestFileName, kValidJson, std::size(kValidJson) - 1);

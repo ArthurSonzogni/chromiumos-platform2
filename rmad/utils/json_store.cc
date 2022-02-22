@@ -154,6 +154,26 @@ base::Value JsonStore::GetValues() const {
   return data_.Clone();
 }
 
+bool JsonStore::RemoveKey(const std::string& key) {
+  DCHECK(data_.is_dict());
+  if (read_only_) {
+    return false;
+  }
+
+  const base::Value* result = data_.FindKey(key);
+  if (result) {
+    base::Value* result_backup = result->DeepCopy();
+    data_.RemoveKey(key);
+    bool ret = WriteToFile();
+    if (!ret) {
+      data_.SetKey(key, std::move(*result_backup));
+      read_only_ = true;
+    }
+    return ret;
+  }
+  return false;
+}
+
 bool JsonStore::Clear() {
   data_ = base::Value(base::Value::Type::DICTIONARY);
   return WriteToFile(true);

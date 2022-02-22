@@ -76,6 +76,10 @@ class JsonStore : public base::RefCounted<JsonStore> {
   // Get the complete copy of the dictionary.
   base::Value GetValues() const;
 
+  // Remove a key in the dictionary. Return true if the key is removed, return
+  // false otherwise.
+  bool RemoveKey(const std::string& key);
+
   // Clear the dictionary. Return true on success, false if failed to write to
   // the file.
   bool Clear();
