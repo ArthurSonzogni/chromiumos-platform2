@@ -71,27 +71,16 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
 
   void SetUp() override {
     // Setup salt for brillo functions.
-    brillo::SecureBlob fake_salt(CRYPTOHOME_DEFAULT_SALT_LENGTH, 'S');
-    // Lifetime of this pointer is determined by this class.
-    brillo_salt_ = std::make_unique<std::string>(
-        reinterpret_cast<const char*>(fake_salt.data()), fake_salt.size());
-    brillo::cryptohome::home::SetSystemSalt(brillo_salt_.get());
-    system_salt_ = brillo::SecureBlob(*brillo_salt_.get());
     keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_,
-        std::make_unique<VaultKeysetFactory>());
-  }
-
-  void TearDown() override {
-    // tearing down salt set.
-    brillo::cryptohome::home::SetSystemSalt(NULL);
+        &platform_, &crypto_, std::make_unique<VaultKeysetFactory>());
+    system_salt_ =
+        brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt());
   }
 
  protected:
   MockPlatform platform_;
   Crypto crypto_;
   brillo::SecureBlob system_salt_;
-  std::unique_ptr<std::string> brillo_salt_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   NiceMock<MockTpm> tpm_;
   std::unique_ptr<KeysetManagement> keyset_management_;

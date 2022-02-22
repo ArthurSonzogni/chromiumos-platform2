@@ -43,8 +43,6 @@ TEST(CredentialsTest, GetObfuscatedUsernameTest) {
   platform.GetFake()->SetSystemSaltForLibbrillo(fake_salt);
 
   EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
-            credentials.GetObfuscatedUsername(fake_salt));
-  EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
             credentials.GetObfuscatedUsername());
 
   platform.GetFake()->RemoveSystemSaltForLibbrillo();

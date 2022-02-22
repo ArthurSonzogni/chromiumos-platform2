@@ -29,7 +29,6 @@
 
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
-using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 
 namespace cryptohome {
 
@@ -46,13 +45,11 @@ UserSession::UserSession(
     KeysetManagement* keyset_management,
     UserOldestActivityTimestampManager* user_activity_timestamp_manager,
     Pkcs11TokenFactory* pkcs11_token_factory,
-    const brillo::SecureBlob& salt,
     const scoped_refptr<Mount> mount)
     : homedirs_(homedirs),
       keyset_management_(keyset_management),
       user_activity_timestamp_manager_(user_activity_timestamp_manager),
       pkcs11_token_factory_(pkcs11_token_factory),
-      system_salt_(salt),
       mount_(mount) {}
 
 MountError UserSession::MountVault(
@@ -111,7 +108,7 @@ bool UserSession::Unmount() {
 
 base::Value UserSession::GetStatus() const {
   base::Value dv(base::Value::Type::DICTIONARY);
-  std::string user = SanitizeUserNameWithSalt(username_, system_salt_);
+  std::string user = SanitizeUserName(username_);
   base::Value keysets(base::Value::Type::LIST);
   std::vector<int> key_indices;
   if (user.length() &&
@@ -203,7 +200,7 @@ std::unique_ptr<brillo::SecureBlob> UserSession::GetHibernateSecret() {
 }
 
 bool UserSession::SetCredentials(const Credentials& credentials) {
-  obfuscated_username_ = credentials.GetObfuscatedUsername(system_salt_);
+  obfuscated_username_ = credentials.GetObfuscatedUsername();
   username_ = credentials.username();
   key_data_ = credentials.key_data();
 
@@ -231,7 +228,7 @@ bool UserSession::VerifyCredentials(const Credentials& credentials) const {
     LOG(ERROR) << "Attempt to verify credentials with no verifier set";
     return false;
   }
-  if (!VerifyUser(credentials.GetObfuscatedUsername(system_salt_))) {
+  if (!VerifyUser(credentials.GetObfuscatedUsername())) {
     return false;
   }
   // If the incoming credentials have no label, then just

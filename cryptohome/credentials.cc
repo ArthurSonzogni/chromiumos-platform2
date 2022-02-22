@@ -23,11 +23,6 @@ Credentials::~Credentials() = default;
 
 Credentials& Credentials::operator=(const Credentials& rhs) = default;
 
-std::string Credentials::GetObfuscatedUsername(
-    const SecureBlob& system_salt) const {
-  return SanitizeUserNameWithSalt(username_, system_salt);
-}
-
 std::string Credentials::GetObfuscatedUsername() const {
   return SanitizeUserName(username_);
 }

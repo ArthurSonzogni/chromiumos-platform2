@@ -239,6 +239,8 @@ class FakePlatform final : public Platform {
   Platform real_platform_;
   std::unique_ptr<brillo::fake::FakeLoopDeviceManager>
       fake_loop_device_manager_;
+
+  std::string* old_salt_ = nullptr;
 };
 
 }  // namespace cryptohome

@@ -99,24 +99,17 @@ class KeysetManagementTest : public ::testing::Test {
   KeysetManagementTest& operator=(KeysetManagementTest&&) = delete;
 
   void SetUp() override {
-    InitializeFilesystemLayout(&platform_, &system_salt_);
     keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_,
-        std::make_unique<VaultKeysetFactory>());
+        &platform_, &crypto_, std::make_unique<VaultKeysetFactory>());
     mock_vault_keyset_factory_ = new MockVaultKeysetFactory();
     keyset_management_mock_vk_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_,
+        &platform_, &crypto_,
         std::unique_ptr<VaultKeysetFactory>(mock_vault_keyset_factory_));
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
     file_system_keyset_ = FileSystemKeyset::CreateRandom();
 
     AddUser(kUser0, kUserPassword0);
 
     PrepareDirectoryStructure();
-  }
-
-  void TearDown() override {
-    platform_.GetFake()->RemoveSystemSaltForLibbrillo();
   }
 
   // Returns location of on-disk hash tree directory.
@@ -128,7 +121,6 @@ class KeysetManagementTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   NiceMock<MockTpm> tpm_;
   Crypto crypto_;
-  brillo::SecureBlob system_salt_;
   FileSystemKeyset file_system_keyset_;
   std::unique_ptr<KeysetManagement> keyset_management_;
   MockVaultKeysetFactory* mock_vault_keyset_factory_;
@@ -150,10 +142,8 @@ class KeysetManagementTest : public ::testing::Test {
   std::vector<UserInfo> users_;
 
   void AddUser(const char* name, const char* password) {
-    std::string obfuscated =
-        brillo::cryptohome::home::SanitizeUserNameWithSalt(name, system_salt_);
-    brillo::SecureBlob passkey;
-    cryptohome::Crypto::PasswordToPasskey(password, system_salt_, &passkey);
+    std::string obfuscated = brillo::cryptohome::home::SanitizeUserName(name);
+    brillo::SecureBlob passkey(password);
     Credentials credentials(name, passkey);
 
     UserInfo info = {name,
@@ -1638,8 +1628,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileExtension) {
   new_credentials.set_key_data(key_data);
   vk.SetKeyData(new_credentials.key_data());
 
-  std::string obfuscated_username =
-      new_credentials.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
   ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username));
   ASSERT_TRUE(
       vk.Save(users_[0].homedir_path.Append("wrong_ext").AddExtension("1")));
@@ -1680,8 +1669,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataInvalidFileIndex) {
   new_credentials.set_key_data(key_data);
   vk.SetKeyData(new_credentials.key_data());
 
-  std::string obfuscated_username =
-      new_credentials.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
   ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username));
   // GetVaultKeysetLabelsAndData will skip over any file with an exentsion
   // that is not a number (NAN), but in this case we use the string NAN to
@@ -1725,8 +1713,7 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsAndDataDuplicateLabel) {
   new_credentials.set_key_data(key_data);
   vk.SetKeyData(new_credentials.key_data());
 
-  std::string obfuscated_username =
-      new_credentials.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
   ASSERT_TRUE(vk.Encrypt(new_credentials.passkey(), obfuscated_username));
   ASSERT_TRUE(
       vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("1")));

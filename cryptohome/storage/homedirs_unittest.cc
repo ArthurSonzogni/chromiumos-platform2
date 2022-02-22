@@ -101,8 +101,6 @@ class HomeDirsTest
   void SetUp() override {
     PreparePolicy(true, kOwner, false, "");
 
-    brillo::SecureBlob system_salt;
-    InitializeFilesystemLayout(&platform_, &system_salt);
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeKeyring>(),
@@ -118,28 +116,19 @@ class HomeDirsTest
         std::make_unique<CryptohomeVaultFactory>(&platform_,
                                                  std::move(container_factory)));
 
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
-
-    AddUser(kUser0, kUserPassword0, system_salt);
-    AddUser(kUser1, kUserPassword1, system_salt);
-    AddUser(kUser2, kUserPassword2, system_salt);
-    AddUser(kOwner, kOwnerPassword, system_salt);
+    AddUser(kUser0, kUserPassword0);
+    AddUser(kUser1, kUserPassword1);
+    AddUser(kUser2, kUserPassword2);
+    AddUser(kOwner, kOwnerPassword);
 
     ASSERT_EQ(kOwner, users_[kOwnerIndex].name);
 
     PrepareDirectoryStructure();
   }
 
-  void TearDown() override {
-    platform_.GetFake()->RemoveSystemSaltForLibbrillo();
-  }
-
-  void AddUser(const char* name,
-               const char* password,
-               const brillo::SecureBlob& salt) {
+  void AddUser(const char* name, const char* password) {
     std::string obfuscated = brillo::cryptohome::home::SanitizeUserName(name);
-    brillo::SecureBlob passkey;
-    cryptohome::Crypto::PasswordToPasskey(password, salt, &passkey);
+    brillo::SecureBlob passkey(password);
     Credentials credentials(name, passkey);
 
     UserInfo info = {name,
@@ -674,10 +663,8 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
   };
 
   for (const auto& test_case : test_cases) {
-    brillo::SecureBlob system_salt;
     NiceMock<MockPlatform> platform;
     Crypto crypto(&platform);
-    InitializeFilesystemLayout(&platform, &system_salt);
     HomeDirs homedirs(&platform,
                       std::make_unique<policy::PolicyProvider>(
                           std::make_unique<policy::MockDevicePolicy>()),

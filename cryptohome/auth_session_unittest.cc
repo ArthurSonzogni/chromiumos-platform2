@@ -64,20 +64,6 @@ class AuthSessionTest : public ::testing::Test {
   AuthSessionTest& operator=(const AuthSessionTest&) = delete;
   ~AuthSessionTest() override = default;
 
-  void SetUp() override {
-    // Setup salt for brillo functions.
-    brillo::SecureBlob fake_salt(CRYPTOHOME_DEFAULT_SALT_LENGTH, 'S');
-    // Lifetime of this pointer is determined by this class.
-    brillo_salt_ = std::make_unique<std::string>(
-        reinterpret_cast<const char*>(fake_salt.data()), fake_salt.size());
-    brillo::cryptohome::home::SetSystemSalt(brillo_salt_.get());
-  }
-
-  void TearDown() override {
-    // tearing down salt set.
-    brillo::cryptohome::home::SetSystemSalt(NULL);
-  }
-
  protected:
   base::test::SingleThreadTaskEnvironment task_environment_;
   // Mock and fake objects, will be passed to AuthSession for its internal use.
@@ -86,7 +72,6 @@ class AuthSessionTest : public ::testing::Test {
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
-  std::unique_ptr<std::string> brillo_salt_;
 };
 
 TEST_F(AuthSessionTest, Username) {

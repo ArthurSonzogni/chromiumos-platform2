@@ -64,10 +64,8 @@ class UserSessionTest : public ::testing::Test {
   UserSessionTest& operator=(UserSessionTest&&) = delete;
 
   void SetUp() override {
-    InitializeFilesystemLayout(&platform_, &system_salt_);
     keyset_management_ = std::make_unique<KeysetManagement>(
-        &platform_, &crypto_, system_salt_,
-        std::make_unique<VaultKeysetFactory>());
+        &platform_, &crypto_, std::make_unique<VaultKeysetFactory>());
     user_activity_timestamp_manager_ =
         std::make_unique<UserOldestActivityTimestampManager>(&platform_);
     HomeDirs::RemoveCallback remove_callback;
@@ -77,8 +75,6 @@ class UserSessionTest : public ::testing::Test {
         std::make_unique<policy::PolicyProvider>(
             std::unique_ptr<policy::MockDevicePolicy>(mock_device_policy_)),
         remove_callback);
-
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
 
     AddUser(kUser0, kUserPassword0);
 
@@ -98,11 +94,7 @@ class UserSessionTest : public ::testing::Test {
 
     session_ = new UserSession(homedirs_.get(), keyset_management_.get(),
                                user_activity_timestamp_manager_.get(),
-                               &pkcs11_token_factory_, system_salt_, mount_);
-  }
-
-  void TearDown() override {
-    platform_.GetFake()->RemoveSystemSaltForLibbrillo();
+                               &pkcs11_token_factory_, mount_);
   }
 
  protected:
@@ -120,7 +112,6 @@ class UserSessionTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   Crypto crypto_;
-  brillo::SecureBlob system_salt_;
   std::unique_ptr<KeysetManagement> keyset_management_;
   policy::MockDevicePolicy* mock_device_policy_;  // owned by homedirs_
   std::unique_ptr<UserOldestActivityTimestampManager>
@@ -134,10 +125,8 @@ class UserSessionTest : public ::testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   void AddUser(const char* name, const char* password) {
-    std::string obfuscated =
-        brillo::cryptohome::home::SanitizeUserNameWithSalt(name, system_salt_);
-    brillo::SecureBlob passkey;
-    cryptohome::Crypto::PasswordToPasskey(password, system_salt_, &passkey);
+    std::string obfuscated = brillo::cryptohome::home::SanitizeUserName(name);
+    brillo::SecureBlob passkey(password);
     Credentials credentials(name, passkey);
 
     UserInfo info = {name,
@@ -420,7 +409,7 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
 
 class UserSessionReAuthTest : public ::testing::Test {
  public:
-  UserSessionReAuthTest() : salt() {}
+  UserSessionReAuthTest() {}
   virtual ~UserSessionReAuthTest() {}
 
   // Not copyable or movable
@@ -429,22 +418,17 @@ class UserSessionReAuthTest : public ::testing::Test {
   UserSessionReAuthTest(UserSessionReAuthTest&&) = delete;
   UserSessionReAuthTest& operator=(UserSessionReAuthTest&&) = delete;
 
-  void SetUp() {
-    salt.resize(16);
-    GetSecureRandom(salt.data(), salt.size());
-  }
-
- protected:
-  SecureBlob salt;
+  // MockPlatform will provide encironment with system salt.
+  MockPlatform platform_;
 };
 
 TEST_F(UserSessionReAuthTest, VerifyUser) {
   Credentials credentials("username", SecureBlob("password"));
   scoped_refptr<UserSession> session =
-      new UserSession(nullptr, nullptr, nullptr, nullptr, salt, nullptr);
+      new UserSession(nullptr, nullptr, nullptr, nullptr, nullptr);
   EXPECT_TRUE(session->SetCredentials(credentials));
 
-  EXPECT_TRUE(session->VerifyUser(credentials.GetObfuscatedUsername(salt)));
+  EXPECT_TRUE(session->VerifyUser(credentials.GetObfuscatedUsername()));
   EXPECT_FALSE(session->VerifyUser("other"));
 }
 
@@ -454,7 +438,7 @@ TEST_F(UserSessionReAuthTest, VerifyCredentials) {
   Credentials credentials_3("username2", SecureBlob("password2"));
 
   scoped_refptr<UserSession> session =
-      new UserSession(nullptr, nullptr, nullptr, nullptr, salt, nullptr);
+      new UserSession(nullptr, nullptr, nullptr, nullptr, nullptr);
   EXPECT_TRUE(session->SetCredentials(credentials_1));
   EXPECT_TRUE(session->VerifyCredentials(credentials_1));
   EXPECT_FALSE(session->VerifyCredentials(credentials_2));

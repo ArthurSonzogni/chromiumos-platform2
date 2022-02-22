@@ -122,10 +122,6 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   ~UserDataAuthTestBase() override = default;
 
-  void TearDown() override {
-    platform_.GetFake()->RemoveSystemSaltForLibbrillo();
-  }
-
   void SetUp() override {
     SET_DEFAULT_TPM_FOR_TESTING;
     attrs_ = std::make_unique<NiceMock<MockInstallAttributes>>();
@@ -133,9 +129,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
-
-    InitializeFilesystemLayout(&platform_, &system_salt_);
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
 
     if (!userdataauth_) {
       // Note that this branch is usually taken as |userdataauth_| is usually
@@ -195,7 +188,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     mount_ = new NiceMock<MockMount>();
     session_ = new UserSession(&homedirs_, &keyset_management_,
                                &user_activity_timestamp_manager_,
-                               &pkcs11_token_factory_, system_salt_, mount_);
+                               &pkcs11_token_factory_, mount_);
     userdataauth_->set_session_for_user(username, session_.get());
   }
 
@@ -310,8 +303,6 @@ class UserDataAuthTestBase : public ::testing::Test {
   // This is important because otherwise the background thread may call into
   // mocks that have already been destroyed.
   std::unique_ptr<UserDataAuth> userdataauth_;
-
-  brillo::SecureBlob system_salt_;
 };
 
 // Test fixture that implements two task runners, which is similar to the task
@@ -832,13 +823,13 @@ TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session1 = new UserSession(
       &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, brillo::SecureBlob(), mount1);
+      &pkcs11_token_factory_, mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
 
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session2 = new UserSession(
       &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, brillo::SecureBlob(), mount2);
+      &pkcs11_token_factory_, mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
 
   InSequence sequence;
@@ -1026,14 +1017,14 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session1 = new UserSession(
       &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, system_salt_, mount1);
+      &pkcs11_token_factory_, mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
   CreatePkcs11TokenInSession(mount1, session1);
 
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session2 = new UserSession(
       &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, system_salt_, mount2);
+      &pkcs11_token_factory_, mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
   CreatePkcs11TokenInSession(mount2, session2);
 
@@ -1662,7 +1653,8 @@ TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersError) {
 
 TEST_F(UserDataAuthTest, GetSystemSaltSucess) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
-  EXPECT_EQ(system_salt_, userdataauth_->GetSystemSalt());
+  EXPECT_EQ(brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt()),
+            userdataauth_->GetSystemSalt());
 }
 
 TEST_F(UserDataAuthTestNotInitializedDeathTest, GetSystemSaltUninitialized) {

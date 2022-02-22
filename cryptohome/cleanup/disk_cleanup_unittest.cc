@@ -120,7 +120,6 @@ class DiskCleanupTest : public ::testing::Test {
   }
 
   StrictMock<MockPlatform> platform_;
-  brillo::SecureBlob system_salt_;
   StrictMock<MockHomeDirs> homedirs_;
   StrictMock<MockUserOldestActivityTimestampManager> timestamp_manager_;
   StrictMock<MockDiskCleanupRoutines>* cleanup_routines_;

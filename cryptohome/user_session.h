@@ -35,7 +35,6 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
       KeysetManagement* keyset_management,
       UserOldestActivityTimestampManager* user_activity_timestamp_manager,
       Pkcs11TokenFactory* pkcs11_token_factory,
-      const brillo::SecureBlob& salt,
       const scoped_refptr<Mount> mount);
   virtual ~UserSession();
 
@@ -141,7 +140,6 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
 
   std::string obfuscated_username_;
   std::string username_;
-  brillo::SecureBlob system_salt_;
   std::unique_ptr<CredentialVerifier> credential_verifier_;
   KeyData key_data_;
 

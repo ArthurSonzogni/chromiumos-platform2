@@ -23,6 +23,7 @@
 #include "cryptohome/util/get_random_suffix.h"
 
 #include "cryptohome/fake_platform/test_file_path.h"
+#include "cryptohome/filesystem_layout.h"
 
 namespace cryptohome {
 
@@ -144,9 +145,13 @@ FakePlatform::FakePlatform()
     LOG(ERROR) << "Failed to create test dir: " << tmpfs_rootfs_;
   }
   fake_mount_mapper_.reset(new FakeMountMapper(tmpfs_rootfs_));
+  brillo::SecureBlob system_salt;
+  InitializeFilesystemLayout(this, &system_salt);
+  SetSystemSaltForLibbrillo(system_salt);
 }
 
 FakePlatform::~FakePlatform() {
+  RemoveSystemSaltForLibbrillo();
   real_platform_.DeletePathRecursively(tmpfs_rootfs_);
 }
 
@@ -643,8 +648,8 @@ bool FakePlatform::SafeDirChmod(const base::FilePath& path, mode_t mode) {
 
 bool FakePlatform::SafeCreateDirAndSetOwnershipAndPermissions(
     const base::FilePath& path, mode_t mode, uid_t user_id, gid_t gid) {
-  if (DirectoryExists(path) || !CreateDirectory(path) ||
-      !SafeDirChown(path, user_id, gid) || !SafeDirChmod(path, mode)) {
+  if (!CreateDirectory(path) || !SafeDirChown(path, user_id, gid) ||
+      !SafeDirChmod(path, mode)) {
     return false;
   }
   return true;
@@ -653,8 +658,7 @@ bool FakePlatform::SafeCreateDirAndSetOwnershipAndPermissions(
 bool FakePlatform::SafeCreateDirAndSetOwnership(const base::FilePath& path,
                                                 uid_t user_id,
                                                 gid_t gid) {
-  if (DirectoryExists(path) || !CreateDirectory(path) ||
-      !SafeDirChown(path, user_id, gid)) {
+  if (!CreateDirectory(path) || !SafeDirChown(path, user_id, gid)) {
     return false;
   }
   return true;
@@ -738,16 +742,19 @@ std::optional<std::vector<bool>> FakePlatform::AreDirectoriesMounted(
 // Test API
 
 void FakePlatform::SetSystemSaltForLibbrillo(const brillo::SecureBlob& salt) {
+  DCHECK(!old_salt_);
   std::string* brillo_salt = new std::string();
   brillo_salt->resize(salt.size());
   brillo_salt->assign(reinterpret_cast<const char*>(salt.data()), salt.size());
+  old_salt_ = brillo::cryptohome::home::GetSystemSalt();
   brillo::cryptohome::home::SetSystemSalt(brillo_salt);
 }
 
 void FakePlatform::RemoveSystemSaltForLibbrillo() {
   std::string* salt = brillo::cryptohome::home::GetSystemSalt();
-  brillo::cryptohome::home::SetSystemSalt(NULL);
+  brillo::cryptohome::home::SetSystemSalt(old_salt_);
   delete salt;
+  old_salt_ = nullptr;
 }
 
 }  // namespace cryptohome

@@ -405,10 +405,6 @@ class PersistentSystemTest : public ::testing::Test {
 
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
-    brillo::SecureBlob system_salt;
-    InitializeFilesystemLayout(&platform_, &system_salt);
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
-
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<FakeEncryptedContainerFactory>(
             &platform_, std::make_unique<FakeKeyring>());
@@ -422,8 +418,6 @@ class PersistentSystemTest : public ::testing::Test {
         new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,
                   /*bind_mount_downloads=*/true, /*use_local_mounter=*/true);
   }
-
-  void TearDown() { platform_.GetFake()->RemoveSystemSaltForLibbrillo(); }
 
  protected:
   // Protected for trivial access.
@@ -1305,10 +1299,6 @@ class EphemeralSystemTest : public ::testing::Test {
 
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
-    brillo::SecureBlob system_salt;
-    InitializeFilesystemLayout(&platform_, &system_salt);
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
-
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeKeyring>(),
@@ -1325,8 +1315,6 @@ class EphemeralSystemTest : public ::testing::Test {
 
     SetupVFSMock();
   }
-
-  void TearDown() { platform_.GetFake()->RemoveSystemSaltForLibbrillo(); }
 
  protected:
   // Protected for trivial access.

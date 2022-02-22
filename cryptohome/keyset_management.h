@@ -32,7 +32,6 @@ class KeysetManagement {
   KeysetManagement() = default;
   KeysetManagement(Platform* platform,
                    Crypto* crypto,
-                   const brillo::SecureBlob& system_salt,
                    std::unique_ptr<VaultKeysetFactory> vault_keyset_factory);
   virtual ~KeysetManagement() = default;
   KeysetManagement(const KeysetManagement&) = delete;
@@ -186,7 +185,6 @@ class KeysetManagement {
 
   Platform* platform_;
   Crypto* crypto_;
-  brillo::SecureBlob system_salt_;
   std::unique_ptr<VaultKeysetFactory> vault_keyset_factory_;
 
   FRIEND_TEST(KeysetManagementTest, ReSaveOnLoadNoReSave);

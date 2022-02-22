@@ -39,11 +39,9 @@ namespace cryptohome {
 KeysetManagement::KeysetManagement(
     Platform* platform,
     Crypto* crypto,
-    const brillo::SecureBlob& system_salt,
     std::unique_ptr<VaultKeysetFactory> vault_keyset_factory)
     : platform_(platform),
       crypto_(crypto),
-      system_salt_(system_salt),
       vault_keyset_factory_(std::move(vault_keyset_factory)) {}
 
 bool KeysetManagement::AreCredentialsValid(const Credentials& creds) {
@@ -56,7 +54,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetValidKeyset(
   if (error)
     *error = MOUNT_ERROR_NONE;
 
-  std::string obfuscated = creds.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated = creds.GetObfuscatedUsername();
 
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices)) {
@@ -305,8 +303,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeyset(
     const Credentials& credentials,
     const FileSystemKeyset& file_system_keyset) {
   const brillo::SecureBlob passkey = credentials.passkey();
-  std::string obfuscated_username =
-      credentials.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated_username = credentials.GetObfuscatedUsername();
 
   std::unique_ptr<VaultKeyset> vk(
       vault_keyset_factory_->New(platform_, crypto_));
@@ -410,8 +407,7 @@ bool KeysetManagement::ReSaveKeyset(const Credentials& credentials,
   VaultKeyset old_keyset;
   old_keyset = *keyset;
 
-  std::string obfuscated_username =
-      credentials.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated_username = credentials.GetObfuscatedUsername();
 
   // We get the LE Label from keyset before we resave it. Once the keyset
   // is re-saved, a new label is generated making the old label obsolete.
@@ -467,8 +463,7 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
     const Credentials& new_credentials,
     const VaultKeyset& vault_keyset,
     bool clobber) {
-  std::string obfuscated_username =
-      new_credentials.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
 
   // Walk the namespace looking for the first free spot.
   // Note, nothing is stopping simultaneous access to these files
@@ -524,8 +519,7 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
 
 CryptohomeErrorCode KeysetManagement::UpdateKeyset(
     const Credentials& new_credentials, const VaultKeyset& vault_keyset) {
-  std::string obfuscated_username =
-      new_credentials.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
 
   // Check if there is an existing labeled credential.
   std::unique_ptr<VaultKeyset> match =
@@ -555,7 +549,7 @@ CryptohomeErrorCode KeysetManagement::AddWrappedResetSeedIfMissing(
   LOG(INFO) << "Keyset lacks reset_seed; generating one.";
   vault_keyset->CreateRandomResetSeed();
   if (!vault_keyset->Encrypt(credentials.passkey(),
-                             credentials.GetObfuscatedUsername(system_salt_)) ||
+                             credentials.GetObfuscatedUsername()) ||
       !vault_keyset->Save(vault_keyset->GetSourceFile())) {
     LOG(WARNING) << "Failed to re-encrypt the old keyset";
     return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
@@ -570,8 +564,7 @@ CryptohomeErrorCode KeysetManagement::RemoveKeyset(
   if (key_data.label().empty())
     return CRYPTOHOME_ERROR_KEY_NOT_FOUND;
 
-  const std::string obfuscated =
-      credentials.GetObfuscatedUsername(system_salt_);
+  const std::string obfuscated = credentials.GetObfuscatedUsername();
 
   std::unique_ptr<VaultKeyset> remove_vk =
       GetVaultKeyset(obfuscated, key_data.label());
@@ -680,8 +673,7 @@ bool KeysetManagement::Migrate(const VaultKeyset& old_vk,
     LOG(ERROR) << "Attempted migration of key-less mount.";
     return false;
   }
-  std::string obfuscated_username =
-      newcreds.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated_username = newcreds.GetObfuscatedUsername();
   // Overwrite the existing keyset.
   base::FilePath vk_path = old_vk.GetSourceFile();
 
@@ -715,7 +707,7 @@ bool KeysetManagement::Migrate(const VaultKeyset& old_vk,
 }
 
 void KeysetManagement::ResetLECredentials(const Credentials& creds) {
-  std::string obfuscated = creds.GetObfuscatedUsername(system_salt_);
+  std::string obfuscated = creds.GetObfuscatedUsername();
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices)) {
     LOG(WARNING) << "No valid keysets on disk for " << obfuscated;

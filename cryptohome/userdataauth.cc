@@ -61,7 +61,6 @@ using base::FilePath;
 using brillo::Blob;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserName;
-using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
 
@@ -278,8 +277,7 @@ bool UserDataAuth::Initialize() {
 
   if (!keyset_management_) {
     default_keyset_management_ = std::make_unique<KeysetManagement>(
-        platform_, crypto_, system_salt_,
-        std::make_unique<VaultKeysetFactory>());
+        platform_, crypto_, std::make_unique<VaultKeysetFactory>());
     keyset_management_ = default_keyset_management_.get();
   }
 
@@ -1243,9 +1241,9 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
     if (!m) {
       return nullptr;
     }
-    sessions_[username] = new UserSession(
-        homedirs_, keyset_management_, user_activity_timestamp_manager_,
-        pkcs11_token_factory_, system_salt_, m);
+    sessions_[username] = new UserSession(homedirs_, keyset_management_,
+                                          user_activity_timestamp_manager_,
+                                          pkcs11_token_factory_, m);
   }
   return sessions_[username];
 }
@@ -1273,8 +1271,7 @@ void UserDataAuth::MountGuest(
   }
 
   // Provide an authoritative filesystem-sanitized username.
-  reply.set_sanitized_username(
-      SanitizeUserNameWithSalt(guest_user_, system_salt_));
+  reply.set_sanitized_username(SanitizeUserName(guest_user_));
   ReportTimerStart(kMountGuestExTimer);
 
   // Create a ref-counted guest mount for async use and then throw it away.
@@ -1591,8 +1588,7 @@ void UserDataAuth::DoChallengeResponseMount(
   }
 
   const std::string& account_id = GetAccountId(request.account());
-  const std::string obfuscated_username =
-      SanitizeUserNameWithSalt(account_id, system_salt_);
+  const std::string obfuscated_username = SanitizeUserName(account_id);
   const KeyData key_data = request.authorization().key().data();
 
   if (!key_data.challenge_response_key_size()) {
@@ -1774,7 +1770,7 @@ void UserDataAuth::ContinueMountWithCredentials(
   // If the home directory for our user doesn't exist and we aren't instructed
   // to create the home directory, and reply with the error.
   if (!request.has_create() &&
-      !homedirs_->Exists(credentials->GetObfuscatedUsername(system_salt_)) &&
+      !homedirs_->Exists(credentials->GetObfuscatedUsername()) &&
       !token.has_value()) {
     LOG(ERROR) << "Account not found when mounting with credentials.";
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
@@ -1819,8 +1815,7 @@ void UserDataAuth::ContinueMountWithCredentials(
       !only_self_unmounted_attempt) {
     LOG(ERROR) << "Public mount requested with other sessions active.";
     if (!request.auth_session_id().empty()) {
-      std::string obfuscated =
-          SanitizeUserNameWithSalt(account_id, system_salt_);
+      std::string obfuscated = SanitizeUserName(account_id);
       if (!homedirs_->Remove(obfuscated)) {
         LOG(ERROR) << "Failed to remove vault for kiosk user.";
       }
@@ -1915,7 +1910,7 @@ void UserDataAuth::ContinueMountWithCredentials(
 
   if (code == MOUNT_ERROR_VAULT_UNRECOVERABLE) {
     LOG(ERROR) << "Unrecoverable vault, removing.";
-    std::string obfuscated = credentials->GetObfuscatedUsername(system_salt_);
+    std::string obfuscated = credentials->GetObfuscatedUsername();
     if (!homedirs_->Remove(obfuscated)) {
       LOG(ERROR) << "Failed to remove unrecoverable vault.";
       code = MOUNT_ERROR_REMOVE_INVALID_USER_FAILED;
@@ -1977,8 +1972,7 @@ MountError UserDataAuth::AttemptUserMount(
   }
 
   MountError error = MOUNT_ERROR_NONE;
-  const std::string obfuscated_username =
-      credentials.GetObfuscatedUsername(system_salt_);
+  const std::string obfuscated_username = credentials.GetObfuscatedUsername();
   bool created = false;
   if (!homedirs_->CryptohomeExists(obfuscated_username, &error)) {
     if (error != MOUNT_ERROR_NONE) {
@@ -2076,7 +2070,7 @@ CryptohomeErrorCode UserDataAuth::AddVaultKeyset(
     // Differentiate between failure and non-existent.
     if (!existing_credentials.key_data().label().empty()) {
       vk = keyset_management_->GetVaultKeyset(
-          existing_credentials.GetObfuscatedUsername(system_salt_),
+          existing_credentials.GetObfuscatedUsername(),
           existing_credentials.key_data().label());
       if (!vk.get()) {
         LOG(WARNING) << "Key not found for AddKey operation.";
@@ -2142,7 +2136,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::AddKey(
 
   credentials.set_key_data(request.authorization_request().key().data());
 
-  if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
+  if (!homedirs_->Exists(credentials.GetObfuscatedUsername())) {
     return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
   }
 
@@ -2198,7 +2192,7 @@ void UserDataAuth::CheckKey(
       return;
     }
     if (!fingerprint_manager_->HasAuthSessionForUser(
-            SanitizeUserNameWithSalt(account_id, system_salt_))) {
+            SanitizeUserName(account_id))) {
       std::move(on_done).Run(user_data_auth::CryptohomeErrorCode::
                                  CRYPTOHOME_ERROR_FINGERPRINT_DENIED);
       return;
@@ -2224,8 +2218,7 @@ void UserDataAuth::CheckKey(
   Credentials credentials(account_id, SecureBlob(auth_secret));
   credentials.set_key_data(request.authorization_request().key().data());
 
-  const std::string obfuscated_username =
-      credentials.GetObfuscatedUsername(system_salt_);
+  const std::string obfuscated_username = credentials.GetObfuscatedUsername();
 
   bool found_valid_credentials = false;
   for (const auto& session_pair : sessions_) {
@@ -2366,8 +2359,7 @@ void UserDataAuth::TryLightweightChallengeResponseCheckKey(
   DCHECK(challenge_credentials_helper_);
 
   const std::string& account_id = GetAccountId(identifier);
-  const std::string obfuscated_username =
-      SanitizeUserNameWithSalt(account_id, system_salt_);
+  const std::string obfuscated_username = SanitizeUserName(account_id);
 
   std::optional<KeyData> found_session_key_data;
   for (const auto& session_pair : sessions_) {
@@ -2452,8 +2444,7 @@ void UserDataAuth::DoFullChallengeResponseCheckKey(
   DCHECK(challenge_credentials_helper_);
 
   const std::string& account_id = GetAccountId(identifier);
-  const std::string obfuscated_username =
-      SanitizeUserNameWithSalt(account_id, system_salt_);
+  const std::string obfuscated_username = SanitizeUserName(account_id);
 
   // KeyChallengeService is tasked with contacting the challenge response D-Bus
   // service that'll provide the response once we send the challenge.
@@ -2568,7 +2559,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::RemoveKey(
 
   credentials.set_key_data(request.authorization_request().key().data());
 
-  if (!homedirs_->Exists(credentials.GetObfuscatedUsername(system_salt_))) {
+  if (!homedirs_->Exists(credentials.GetObfuscatedUsername())) {
     return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
   }
 
@@ -2613,8 +2604,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::MassRemoveKeys(
 
   credentials.set_key_data(request.authorization_request().key().data());
 
-  const std::string obfuscated_username =
-      credentials.GetObfuscatedUsername(system_salt_);
+  const std::string obfuscated_username = credentials.GetObfuscatedUsername();
   if (!homedirs_->Exists(obfuscated_username)) {
     return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
   }
@@ -2667,8 +2657,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::ListKeys(
     return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
   }
 
-  const std::string obfuscated_username =
-      SanitizeUserNameWithSalt(account_id, system_salt_);
+  const std::string obfuscated_username = SanitizeUserName(account_id);
   if (!homedirs_->Exists(obfuscated_username)) {
     return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
   }
@@ -2703,8 +2692,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::GetKeyData(
     return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
   }
 
-  const std::string obfuscated_username =
-      SanitizeUserNameWithSalt(account_id, system_salt_);
+  const std::string obfuscated_username = SanitizeUserName(account_id);
   if (!homedirs_->Exists(obfuscated_username)) {
     return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
   }
@@ -2780,7 +2768,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::Remove(
     return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
   }
 
-  std::string obfuscated = SanitizeUserNameWithSalt(account_id, system_salt_);
+  std::string obfuscated = SanitizeUserName(account_id);
   if (!homedirs_->Remove(obfuscated)) {
     return user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED;
   }
@@ -2834,7 +2822,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::NeedsDircryptoMigration(
     const cryptohome::AccountIdentifier& account, bool* result) {
   AssertOnMountThread();
   const std::string obfuscated_username =
-      SanitizeUserNameWithSalt(GetAccountId(account), system_salt_);
+      SanitizeUserName(GetAccountId(account));
   if (!homedirs_->Exists(obfuscated_username)) {
     LOG(ERROR) << "Unknown user in NeedsDircryptoMigration.";
     return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
@@ -2886,8 +2874,7 @@ bool UserDataAuth::SetProjectId(
     const cryptohome::AccountIdentifier& account) {
   AssertOnOriginThread();
   const std::string& account_id = GetAccountId(account);
-  const std::string obfuscated_username =
-      SanitizeUserNameWithSalt(account_id, system_salt_);
+  const std::string obfuscated_username = SanitizeUserName(account_id);
   return arc_disk_quota_->SetProjectId(
       project_id, static_cast<SetProjectIdAllowedPathType>(parent_path),
       child_path, obfuscated_username);
@@ -3057,8 +3044,7 @@ void UserDataAuth::StartFingerprintAuthSession(
     return;
   }
 
-  const std::string obfuscated_username =
-      SanitizeUserNameWithSalt(account_id, system_salt_);
+  const std::string obfuscated_username = SanitizeUserName(account_id);
   if (!homedirs_->Exists(obfuscated_username)) {
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     std::move(on_done).Run(reply);
@@ -3252,7 +3238,7 @@ bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   bool success = true;
   for (const auto& session_pair : sessions_) {
     const std::string obfuscated_username =
-        SanitizeUserNameWithSalt(session_pair.first, system_salt_);
+        SanitizeUserName(session_pair.first);
     success &= user_activity_timestamp_manager_->UpdateTimestamp(
         obfuscated_username, base::Seconds(time_shift_sec));
   }
@@ -3276,7 +3262,7 @@ UserDataAuth::LockToSingleUserMountUntilReboot(
     const cryptohome::AccountIdentifier& account_id) {
   AssertOnOriginThread();
   const std::string obfuscated_username =
-      SanitizeUserNameWithSalt(GetAccountId(account_id), system_salt_);
+      SanitizeUserName(GetAccountId(account_id));
 
   homedirs_->SetLockedToSingleUser();
   brillo::Blob pcr_value;

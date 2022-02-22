@@ -259,6 +259,7 @@ static_library("libcrosplatform") {
     "../cryptorecovery/recovery_crypto_impl.cc",
     "../cryptorecovery/recovery_crypto_util.h",
     "../dircrypto_util.cc",
+    "../filesystem_layout.cc",
     "../libscrypt_compat.cc",
     "../platform.cc",
     "../storage/encrypted_container/backing_device_factory.cc",
@@ -274,6 +275,7 @@ static_library("libcrosplatform") {
     "../storage/mount_constants.cc",
     "../user_secret_stash.cc",
     "../user_secret_stash_storage.cc",
+    "../util/get_random_suffix.cc",
   ]
   if (use.lvm_stateful_partition) {
     sources +=
@@ -401,7 +403,6 @@ static_library("libcryptohome") {
     "../credentials.cc",
     "../dircrypto_data_migrator/atomic_flag.cc",
     "../dircrypto_data_migrator/migration_helper.cc",
-    "../filesystem_layout.cc",
     "../fingerprint_manager.cc",
     "../key_challenge_service_factory_impl.cc",
     "../key_challenge_service_impl.cc",

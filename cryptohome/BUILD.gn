@@ -320,8 +320,8 @@ if (use.test) {
       "fake_platform/real_fake_mount_mapping_redirect_factory.cc",
       "fake_platform/test_file_path.cc",
       "mock_platform.cc",
-      "util/get_random_suffix.cc",
     ]
+    deps = [ "libs:libcrosplatform" ]
     pkg_deps = [
       "libbrillo",
       "libchrome",
@@ -414,7 +414,6 @@ if (use.test) {
       "user_session_unittest.cc",
       "userdataauth_auth_session_unittest.cc",
       "userdataauth_unittest.cc",
-      "util/get_random_suffix.cc",
       "vault_keyset_unittest.cc",
     ]
     configs += [

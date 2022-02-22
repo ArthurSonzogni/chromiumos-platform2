@@ -31,10 +31,6 @@ class Credentials final {
   // Returns the obfuscated username, used as the name of the directory
   // containing the user's stateful data (and maybe used for other reasons
   // at some point.)
-  std::string GetObfuscatedUsername(
-      const brillo::SecureBlob& system_salt) const;
-
-  // Overload that directly gets the salt from brillo.
   std::string GetObfuscatedUsername() const;
 
   const brillo::SecureBlob& passkey() const { return passkey_; }

@@ -59,18 +59,12 @@ class OutOfProcessMountHelperTest : public ::testing::Test {
   virtual ~OutOfProcessMountHelperTest() {}
 
   void SetUp() {
-    // Populate the system salt.
-    brillo::SecureBlob system_salt;
-    InitializeFilesystemLayout(&platform_, &system_salt);
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
-
     out_of_process_mounter_.reset(new OutOfProcessMountHelper(
         true /* legacy_mount */, true /* bind_mount_downloads */, &platform_));
   }
 
   void TearDown() {
     out_of_process_mounter_ = nullptr;
-    platform_.GetFake()->RemoveSystemSaltForLibbrillo();
   }
 
   bool CreatePipe(base::ScopedFD* read_end, base::ScopedFD* write_end) {

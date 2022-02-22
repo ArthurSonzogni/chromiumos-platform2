@@ -77,9 +77,6 @@ class AuthSessionInterfaceTest : public ::testing::Test {
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
         &keyset_management_, &auth_block_utility_, &auth_factor_manager_,
         &user_secret_stash_storage_);
-    brillo::SecureBlob system_salt;
-    InitializeFilesystemLayout(&platform_, &system_salt);
-    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
 
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
@@ -97,10 +94,6 @@ class AuthSessionInterfaceTest : public ::testing::Test {
         task_environment.GetMainThreadTaskRunner());
     userdataauth_.set_current_thread_id_for_test(
         UserDataAuth::TestThreadId::kMountThread);
-  }
-
-  void TearDown() override {
-    platform_.GetFake()->RemoveSystemSaltForLibbrillo();
   }
 
  protected:
