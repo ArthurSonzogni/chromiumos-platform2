@@ -160,6 +160,14 @@ base::Optional<std::string> SystemConfig::GetMarketingName() {
   return marketing_name;
 }
 
+base::Optional<std::string> SystemConfig::GetOemName() {
+  std::string oem_name;
+  if (!cros_config_->GetString(kBrandingPath, kOemNameProperty, &oem_name)) {
+    return base::nullopt;
+  }
+  return oem_name;
+}
+
 std::string SystemConfig::GetCodeName() {
   std::string code_name;
   if (!cros_config_->GetString(kRootPath, kCodeNameProperty, &code_name)) {

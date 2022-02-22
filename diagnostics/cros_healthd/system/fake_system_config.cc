@@ -53,6 +53,10 @@ base::Optional<std::string> FakeSystemConfig::GetMarketingName() {
   return marketing_name_;
 }
 
+base::Optional<std::string> FakeSystemConfig::GetOemName() {
+  return oem_name_;
+}
+
 std::string FakeSystemConfig::GetCodeName() {
   return code_name_;
 }
@@ -92,6 +96,10 @@ void FakeSystemConfig::SetIsWilcoDevice(bool value) {
 void FakeSystemConfig::SetMarketingName(
     const base::Optional<std::string>& value) {
   marketing_name_ = value;
+}
+
+void FakeSystemConfig::SetOemName(const base::Optional<std::string>& value) {
+  oem_name_ = value;
 }
 
 void FakeSystemConfig::SetCodeName(const std::string& value) {

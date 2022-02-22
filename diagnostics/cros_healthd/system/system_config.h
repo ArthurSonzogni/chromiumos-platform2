@@ -38,6 +38,7 @@ class SystemConfig final : public SystemConfigInterface {
   bool SmartCtlSupported() override;
   bool IsWilcoDevice() override;
   base::Optional<std::string> GetMarketingName() override;
+  base::Optional<std::string> GetOemName() override;
   std::string GetCodeName() override;
 
  private:

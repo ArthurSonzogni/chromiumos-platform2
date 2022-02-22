@@ -29,6 +29,7 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool SmartCtlSupported() override;
   bool IsWilcoDevice() override;
   base::Optional<std::string> GetMarketingName() override;
+  base::Optional<std::string> GetOemName() override;
   std::string GetCodeName() override;
 
   // Setters for FakeSystemConfig attributes.
@@ -42,6 +43,7 @@ class FakeSystemConfig final : public SystemConfigInterface {
   void SetSmartCtrlSupported(bool value);
   void SetIsWilcoDevice(bool value);
   void SetMarketingName(const base::Optional<std::string>& value);
+  void SetOemName(const base::Optional<std::string>& value);
   void SetCodeName(const std::string& value);
 
  private:
@@ -55,6 +57,7 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool smart_ctrl_supported_ = true;
   bool wilco_device_ = true;
   base::Optional<std::string> marketing_name_;
+  base::Optional<std::string> oem_name_;
   std::string code_name_;
 };
 

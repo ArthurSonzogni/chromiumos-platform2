@@ -39,8 +39,12 @@ inline constexpr char kSmartctlToolPath[] = "usr/sbin/smartctl";
 inline constexpr char kFioToolPath[] = "usr/bin/fio";
 // The path to check a device's master configuration ARC build properties.
 inline constexpr char kArcBuildPropertiesPath[] = "/arc/build-properties";
+// The path to check a device's branding properties.
+inline constexpr char kBrandingPath[] = "/branding";
 // The master configuration property that specifies a device's marketing name.
 inline constexpr char kMarketingNameProperty[] = "marketing-name";
+// The master configuration property that specifies a device's oem name.
+inline constexpr char kOemNameProperty[] = "oem-name";
 // The root path of master configuration.
 inline constexpr char kRootPath[] = "/";
 // The master configuration property that specifies a device's code name.

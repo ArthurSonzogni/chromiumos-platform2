@@ -191,6 +191,7 @@ std::string GetDiffString<mojo_ipc::OsInfo>(const mojo_ipc::OsInfo& a,
   return CompareHelper(a, b)
       .FIELD(code_name)
       .FIELD(marketing_name)
+      .FIELD(oem_name)
       .FIELD(boot_mode)
       .FIELD(os_version)
       .GetResult();

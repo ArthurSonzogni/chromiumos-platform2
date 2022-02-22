@@ -895,6 +895,7 @@ void DisplaySystemInfoV2(const SystemResultV2Ptr& system_result) {
       output.SetKey("os_info", base::Value{base::Value::Type::DICTIONARY});
   SET_DICT(code_name, os_info, out_os_info);
   SET_DICT(marketing_name, os_info, out_os_info);
+  SET_DICT(oem_name, os_info, out_os_info);
   SET_DICT(boot_mode, os_info, out_os_info);
 
   const auto& os_version = os_info->os_version;

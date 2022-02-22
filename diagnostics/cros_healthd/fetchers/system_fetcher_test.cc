@@ -91,6 +91,7 @@ class SystemUtilsTest : public BaseFileTest {
     os_info = mojo_ipc::OsInfo::New();
     os_info->code_name = "CodeName";
     os_info->marketing_name = "Latitude 1234 Chromebook Enterprise";
+    os_info->oem_name = "FooOEM";
     os_info->boot_mode = mojo_ipc::BootMode::kCrosSecure;
     auto& os_version = os_info->os_version;
     os_version = mojo_ipc::OsVersion::New();
@@ -148,6 +149,7 @@ class SystemUtilsTest : public BaseFileTest {
     ASSERT_FALSE(os_info.is_null());
     mock_context_.fake_system_config()->SetMarketingName(
         os_info->marketing_name);
+    mock_context_.fake_system_config()->SetOemName(os_info->oem_name);
     mock_context_.fake_system_config()->SetCodeName(os_info->code_name);
     SetOsVersion(os_info->os_version);
     SetBootModeInProcCmd(os_info->boot_mode);

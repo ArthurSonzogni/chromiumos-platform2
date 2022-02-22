@@ -23,6 +23,8 @@ namespace {
 
 // Fake marketing name used for testing cros config.
 constexpr char kFakeMarketingName[] = "chromebook X 1234";
+// Fake OEM name used for testing cros config.
+constexpr char kFakeOemName[] = "Foo Bar OEM";
 // Fake code name used for testing cros config.
 constexpr char kFakeCodeName[] = "CodeName";
 
@@ -189,6 +191,16 @@ TEST_F(SystemConfigTest, CorrectMarketingName) {
 
 TEST_F(SystemConfigTest, MarketingNameUnset) {
   EXPECT_FALSE(system_config()->GetMarketingName().has_value());
+}
+
+TEST_F(SystemConfigTest, CorrectOemName) {
+  fake_cros_config()->SetString(kBrandingPath, kOemNameProperty, kFakeOemName);
+  EXPECT_TRUE(system_config()->GetOemName().has_value());
+  EXPECT_EQ(system_config()->GetOemName().value(), kFakeOemName);
+}
+
+TEST_F(SystemConfigTest, OemNameUnset) {
+  EXPECT_FALSE(system_config()->GetOemName().has_value());
 }
 
 TEST_F(SystemConfigTest, CorrectCodeName) {

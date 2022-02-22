@@ -232,6 +232,7 @@ bool SystemFetcher::FetchOsInfoWithoutBootMode(
   auto os_info = mojo_ipc::OsInfo::New();
   os_info->code_name = context_->system_config()->GetCodeName();
   os_info->marketing_name = context_->system_config()->GetMarketingName();
+  os_info->oem_name = context_->system_config()->GetOemName();
   if (!FetchOsVersion(&os_info->os_version, out_error))
     return false;
   *out_os_info = std::move(os_info);

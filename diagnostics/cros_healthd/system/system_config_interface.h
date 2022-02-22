@@ -46,6 +46,9 @@ class SystemConfigInterface {
   // Returns the marketing name associated with this device.
   virtual base::Optional<std::string> GetMarketingName() = 0;
 
+  // Returns the oem name associated with this device.
+  virtual base::Optional<std::string> GetOemName() = 0;
+
   // Returns the code name associated with this device.
   virtual std::string GetCodeName() = 0;
 };
