@@ -35,22 +35,33 @@ void UserPolicyEncoder::EncodePolicy(em::CloudPolicySettings* policy) const {
       << authpolicy::kColorPolicy << "User policy ("
       << (level_ == POLICY_LEVEL_RECOMMENDED ? "recommended" : "mandatory")
       << ")" << authpolicy::kColorReset;
-  EncodeList(policy, kBooleanPolicyAccess, &UserPolicyEncoder::EncodeBoolean);
-  EncodeList(policy, kIntegerPolicyAccess, &UserPolicyEncoder::EncodeInteger);
-  EncodeList(policy, kStringPolicyAccess, &UserPolicyEncoder::EncodeString);
-  EncodeList(policy, kStringListPolicyAccess,
-             &UserPolicyEncoder::EncodeStringList);
+
+  for (const BooleanPolicyAccess& access : kBooleanPolicyAccess) {
+    EncodeBoolean(policy, access);
+  }
+
+  for (const IntegerPolicyAccess& access : kIntegerPolicyAccess) {
+    EncodeInteger(policy, access);
+  }
+
+  for (const StringPolicyAccess& access : kStringPolicyAccess) {
+    EncodeString(policy, access);
+  }
+
+  for (const StringListPolicyAccess& access : kStringListPolicyAccess) {
+    EncodeStringList(policy, access);
+  }
 }
 
 void UserPolicyEncoder::EncodeBoolean(em::CloudPolicySettings* policy,
-                                      const BooleanPolicyAccess* access) const {
-  const char* policy_name = access->policy_key;
+                                      const BooleanPolicyAccess& access) const {
+  const char* policy_name = access.policy_key;
 
   base::Optional<bool> bool_value = EncodeBooleanPolicy(
       policy_name, GetValueFromDictCallback(dict_), log_policy_values_);
   if (bool_value) {
     // Create proto and set value.
-    em::BooleanPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
+    em::BooleanPolicyProto* proto = access.mutable_proto_ptr(policy);
     DCHECK(proto);
     proto->set_value(bool_value.value());
     SetPolicyOptions(proto->mutable_policy_options(), level_);
@@ -58,8 +69,8 @@ void UserPolicyEncoder::EncodeBoolean(em::CloudPolicySettings* policy,
 }
 
 void UserPolicyEncoder::EncodeInteger(em::CloudPolicySettings* policy,
-                                      const IntegerPolicyAccess* access) const {
-  const char* policy_name = access->policy_key;
+                                      const IntegerPolicyAccess& access) const {
+  const char* policy_name = access.policy_key;
 
   base::Optional<int> int_value = EncodeIntegerInRangePolicy(
       policy_name, GetValueFromDictCallback(dict_),
@@ -67,7 +78,7 @@ void UserPolicyEncoder::EncodeInteger(em::CloudPolicySettings* policy,
       log_policy_values_);
   if (int_value) {
     // Create proto and set value.
-    em::IntegerPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
+    em::IntegerPolicyProto* proto = access.mutable_proto_ptr(policy);
     DCHECK(proto);
     proto->set_value(int_value.value());
     SetPolicyOptions(proto->mutable_policy_options(), level_);
@@ -75,14 +86,14 @@ void UserPolicyEncoder::EncodeInteger(em::CloudPolicySettings* policy,
 }
 
 void UserPolicyEncoder::EncodeString(em::CloudPolicySettings* policy,
-                                     const StringPolicyAccess* access) const {
-  const char* policy_name = access->policy_key;
+                                     const StringPolicyAccess& access) const {
+  const char* policy_name = access.policy_key;
 
   base::Optional<std::string> string_value = EncodeStringPolicy(
       policy_name, GetValueFromDictCallback(dict_), log_policy_values_);
   if (string_value) {
     // Create proto and set value.
-    em::StringPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
+    em::StringPolicyProto* proto = access.mutable_proto_ptr(policy);
     DCHECK(proto);
     *proto->mutable_value() = string_value.value();
     SetPolicyOptions(proto->mutable_policy_options(), level_);
@@ -91,9 +102,9 @@ void UserPolicyEncoder::EncodeString(em::CloudPolicySettings* policy,
 
 void UserPolicyEncoder::EncodeStringList(
     em::CloudPolicySettings* policy,
-    const StringListPolicyAccess* access) const {
+    const StringListPolicyAccess& access) const {
   // Try to get policy key from dict.
-  const char* policy_name = access->policy_key;
+  const char* policy_name = access.policy_key;
   const RegistryDict* key = dict_->GetKey(policy_name);
   if (!key)
     return;
@@ -103,7 +114,7 @@ void UserPolicyEncoder::EncodeStringList(
                              log_policy_values_);
   if (string_values) {
     // Create proto and set value.
-    em::StringListPolicyProto* proto = (policy->*access->mutable_proto_ptr)();
+    em::StringListPolicyProto* proto = access.mutable_proto_ptr(policy);
     DCHECK(proto);
     em::StringList* proto_list = proto->mutable_value();
     DCHECK(proto_list);
@@ -112,15 +123,6 @@ void UserPolicyEncoder::EncodeStringList(
       *proto_list->add_entries() = value;
     SetPolicyOptions(proto->mutable_policy_options(), level_);
   }
-}
-
-template <typename T_Access>
-void UserPolicyEncoder::EncodeList(em::CloudPolicySettings* policy,
-                                   const T_Access* access,
-                                   Encoder<T_Access> encode) const {
-  // Access lists are NULL-terminated.
-  for (; access->policy_key && access->mutable_proto_ptr; ++access)
-    (this->*encode)(policy, access);
 }
 
 }  // namespace policy

@@ -52,10 +52,9 @@ TEST_F(UserPolicyEncoderTest, TestEncodingBoolean) {
 
   em::CloudPolicySettings policy;
 
-  const BooleanPolicyAccess* access = kBooleanPolicyAccess;
-  for (; access->policy_key && access->mutable_proto_ptr; ++access) {
-    EncodeBoolean(&policy, access->policy_key, kBool);
-    EXPECT_EQ(kBool, (policy.*access->mutable_proto_ptr)()->value());
+  for (const BooleanPolicyAccess& access : kBooleanPolicyAccess) {
+    EncodeBoolean(&policy, access.policy_key, kBool);
+    EXPECT_EQ(kBool, access.mutable_proto_ptr(&policy)->value());
   }
 }
 
@@ -63,10 +62,9 @@ TEST_F(UserPolicyEncoderTest, TestEncodingInteger) {
   const int kInt = 123;
   em::CloudPolicySettings policy;
 
-  const IntegerPolicyAccess* access = kIntegerPolicyAccess;
-  for (; access->policy_key && access->mutable_proto_ptr; ++access) {
-    EncodeInteger(&policy, access->policy_key, kInt);
-    EXPECT_EQ(kInt, (policy.*access->mutable_proto_ptr)()->value());
+  for (const IntegerPolicyAccess& access : kIntegerPolicyAccess) {
+    EncodeInteger(&policy, access.policy_key, kInt);
+    EXPECT_EQ(kInt, access.mutable_proto_ptr(&policy)->value());
   }
 }
 
@@ -74,10 +72,9 @@ TEST_F(UserPolicyEncoderTest, TestEncodingString) {
   const std::string kString = "val1";
   em::CloudPolicySettings policy;
 
-  const StringPolicyAccess* access = kStringPolicyAccess;
-  for (; access->policy_key && access->mutable_proto_ptr; ++access) {
-    EncodeString(&policy, access->policy_key, kString);
-    EXPECT_EQ(kString, (policy.*access->mutable_proto_ptr)()->value());
+  for (const StringPolicyAccess& access : kStringPolicyAccess) {
+    EncodeString(&policy, access.policy_key, kString);
+    EXPECT_EQ(kString, access.mutable_proto_ptr(&policy)->value());
   }
 }
 
@@ -85,12 +82,10 @@ TEST_F(UserPolicyEncoderTest, TestEncodingStringList) {
   const std::vector<std::string> kStringList = {"val1", "val2", "val3"};
   em::CloudPolicySettings policy;
 
-  const StringListPolicyAccess* access = kStringListPolicyAccess;
-  for (; access->policy_key && access->mutable_proto_ptr; ++access) {
-    EncodeStringList(&policy, access->policy_key, kStringList);
-    EXPECT_EQ(
-        kStringList,
-        ToVector((policy.*access->mutable_proto_ptr)()->value().entries()));
+  for (const StringListPolicyAccess& access : kStringListPolicyAccess) {
+    EncodeStringList(&policy, access.policy_key, kStringList);
+    EXPECT_EQ(kStringList,
+              ToVector(access.mutable_proto_ptr(&policy)->value().entries()));
   }
 }
 
