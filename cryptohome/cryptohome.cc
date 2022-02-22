@@ -1717,10 +1717,14 @@ int main(int argc, char** argv) {
     user_data_auth::Pkcs11TerminateRequest req;
     user_data_auth::Pkcs11TerminateReply reply;
 
-    // If no account_id is specified, proceed with the empty string.
-    std::string account_id;
-    GetAccountId(cl, &account_id);
-    req.set_username(account_id);
+    if (cl->HasSwitch(switches::kUserSwitch)) {
+      std::string account_id;
+      if (!GetAccountId(cl, &account_id)) {
+        return 1;
+      }
+      req.set_username(account_id);
+    }
+
     brillo::ErrorPtr error;
     if (!pkcs11_proxy.Pkcs11Terminate(req, &reply, &error, timeout_ms) ||
         error) {
