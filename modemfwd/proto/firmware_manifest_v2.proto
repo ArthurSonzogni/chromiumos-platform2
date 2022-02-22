@@ -41,6 +41,8 @@ message Device {
   repeated MainFirmwareV2 main_firmware = 4;
   repeated CarrierFirmwareV2 carrier_firmware = 5;
   repeated OemFirmwareV2 oem_firmware = 6;
+  // The ID of the DLC containing the firmware files for this variant.
+  string dlc_id = 7;
 }
 
 message FirmwareManifestV2 {
