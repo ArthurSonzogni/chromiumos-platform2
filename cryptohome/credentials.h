@@ -34,6 +34,9 @@ class Credentials final {
   std::string GetObfuscatedUsername(
       const brillo::SecureBlob& system_salt) const;
 
+  // Overload that directly gets the salt from brillo.
+  std::string GetObfuscatedUsername() const;
+
   const brillo::SecureBlob& passkey() const { return passkey_; }
 
   // Getter and setter for the associated KeyData.

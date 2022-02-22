@@ -13,6 +13,8 @@
 #include <gtest/gtest.h>
 #include <string>
 
+#include "cryptohome/mock_platform.h"
+
 using brillo::SecureBlob;
 
 namespace cryptohome {
@@ -33,13 +35,19 @@ TEST(CredentialsTest, UsernameTest) {
 
 TEST(CredentialsTest, GetObfuscatedUsernameTest) {
   Credentials credentials(kFakeUser, SecureBlob(kFakePasskey));
+  MockPlatform platform;
 
   brillo::SecureBlob fake_salt;
   EXPECT_TRUE(
       brillo::SecureBlob::HexStringToSecureBlob(kFakeSystemSalt, &fake_salt));
+  platform.GetFake()->SetSystemSaltForLibbrillo(fake_salt);
 
   EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
             credentials.GetObfuscatedUsername(fake_salt));
+  EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
+            credentials.GetObfuscatedUsername());
+
+  platform.GetFake()->RemoveSystemSaltForLibbrillo();
 }
 
 TEST(CredentialsTest, PasskeyTest) {
