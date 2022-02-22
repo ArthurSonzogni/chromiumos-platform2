@@ -716,7 +716,7 @@ void ReportVaultKeysetMetrics(const VaultKeysetMetrics& keyset_metrics) {
     return;
   }
 
-  constexpr int kMin = 0, kMax = 99, kNumBuckets = 100;
+  constexpr int kMin = 1, kMax = 99, kNumBuckets = 100;
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[0]),
       keyset_metrics.empty_label_count, kMin, kMax, kNumBuckets);
