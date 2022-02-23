@@ -65,7 +65,7 @@ constexpr char kArcBugReportBackupKey[] = "arc-bugreport-backup";
 constexpr char kDaemonStoreBaseDir[] = "/run/daemon-store/debugd/";
 
 // Minimum time in seconds needed to allow shill to test active connections.
-const int kConnectionTesterTimeoutSeconds = 5;
+const int kConnectionTesterTimeoutSeconds = 3;
 
 // Default running perf for 2 seconds.
 constexpr const int kPerfDurationSecs = 2;
