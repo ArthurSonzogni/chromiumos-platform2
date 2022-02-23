@@ -234,6 +234,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     }
 
     LOG(INFO) << __func__ << ": Installing with parameters:"
+              << " interface_name=" << interface_name_
               << " local=" << local.ToString()
               << " broadcast=" << broadcast.ToString()
               << " peer=" << peer.ToString()
