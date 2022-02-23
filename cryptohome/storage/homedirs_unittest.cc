@@ -102,7 +102,7 @@ class HomeDirsTest
     PreparePolicy(true, kOwner, false, "");
 
     brillo::SecureBlob system_salt;
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
+    InitializeFilesystemLayout(&platform_, &system_salt);
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeKeyring>(),
@@ -677,7 +677,7 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
     brillo::SecureBlob system_salt;
     NiceMock<MockPlatform> platform;
     Crypto crypto(&platform);
-    InitializeFilesystemLayout(&platform, &crypto, &system_salt);
+    InitializeFilesystemLayout(&platform, &system_salt);
     HomeDirs homedirs(&platform,
                       std::make_unique<policy::PolicyProvider>(
                           std::make_unique<policy::MockDevicePolicy>()),

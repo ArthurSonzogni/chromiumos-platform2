@@ -13,7 +13,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_factor/auth_factor_label.h"
-#include "cryptohome/crypto.h"
+#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
@@ -21,11 +21,51 @@
 namespace cryptohome {
 
 namespace {
+
 constexpr char kShadowRoot[] = "/home/.shadow";
+
 constexpr char kSystemSaltFile[] = "salt";
+constexpr int64_t kSystemSaltMaxSize = (1 << 20);  // 1 MB
+constexpr mode_t kSaltFilePermissions = 0644;
+
 constexpr char kSkelPath[] = "/etc/skel";
 constexpr char kLogicalVolumePrefix[] = "cryptohome";
 constexpr char kDmcryptVolumePrefix[] = "dmcrypt";
+
+bool GetOrCreateSalt(Platform* platform,
+                     const base::FilePath& salt_file,
+                     brillo::SecureBlob* salt) {
+  int64_t file_len = 0;
+  if (platform->FileExists(salt_file)) {
+    if (!platform->GetFileSize(salt_file, &file_len)) {
+      LOG(ERROR) << "Can't get file len for " << salt_file.value();
+      return false;
+    }
+  }
+  brillo::SecureBlob local_salt;
+  if (file_len == 0 || file_len > kSystemSaltMaxSize) {
+    LOG(ERROR) << "Creating new salt at " << salt_file.value() << " ("
+               << file_len << ")";
+    // If this salt doesn't exist, automatically create it.
+    local_salt = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_SALT_LENGTH);
+    if (!platform->WriteSecureBlobToFileAtomicDurable(salt_file, local_salt,
+                                                      kSaltFilePermissions)) {
+      LOG(ERROR) << "Could not write user salt";
+      return false;
+    }
+  } else {
+    local_salt.resize(file_len);
+    if (!platform->ReadFileToSecureBlob(salt_file, &local_salt)) {
+      LOG(ERROR) << "Could not read salt file of length " << file_len;
+      return false;
+    }
+  }
+  if (salt) {
+    salt->swap(local_salt);
+  }
+  return true;
+}
+
 }  // namespace
 
 base::FilePath ShadowRoot() {
@@ -124,8 +164,15 @@ base::FilePath GetDmcryptCacheVolume(const std::string& obfuscated_username) {
                   .append(kDmcryptCacheContainerSuffix));
 }
 
+bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt) {
+  return GetOrCreateSalt(platform, SystemSaltFile(), salt);
+}
+
+bool GetPublicMountSalt(Platform* platform, brillo::SecureBlob* salt) {
+  return GetOrCreateSalt(platform, PublicMountSaltFile(), salt);
+}
+
 bool InitializeFilesystemLayout(Platform* platform,
-                                Crypto* crypto,
                                 brillo::SecureBlob* salt) {
   const base::FilePath shadow_root = ShadowRoot();
   if (!platform->DirectoryExists(shadow_root)) {
@@ -138,7 +185,7 @@ bool InitializeFilesystemLayout(Platform* platform,
     }
   }
 
-  if (!crypto->GetSystemSalt(salt)) {
+  if (!GetSystemSalt(platform, salt)) {
     LOG(ERROR) << "Failed to create system salt.";
     return false;
   }

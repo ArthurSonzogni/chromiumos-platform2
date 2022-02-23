@@ -271,7 +271,7 @@ bool UserDataAuth::Initialize() {
     return false;
   }
 
-  if (!InitializeFilesystemLayout(platform_, crypto_, &system_salt_)) {
+  if (!InitializeFilesystemLayout(platform_, &system_salt_)) {
     LOG(ERROR) << "Failed to initialize filesystem layout.";
     return false;
   }

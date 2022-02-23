@@ -61,7 +61,7 @@ class OutOfProcessMountHelperTest : public ::testing::Test {
   void SetUp() {
     // Populate the system salt.
     brillo::SecureBlob system_salt;
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
+    InitializeFilesystemLayout(&platform_, &system_salt);
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
 
     out_of_process_mounter_.reset(new OutOfProcessMountHelper(

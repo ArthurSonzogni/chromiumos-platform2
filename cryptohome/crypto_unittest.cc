@@ -148,35 +148,6 @@ class CryptoTest : public ::testing::Test {
   MockPlatform platform_;
 };
 
-TEST_F(CryptoTest, SaltCreateTest) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
-
-  // Case 1: No System salt exists
-  SecureBlob salt;
-  SecureBlob salt_written;
-  SecureBlob* salt_ptr = &salt_written;
-  EXPECT_CALL(platform, FileExists(SystemSaltFile())).WillOnce(Return(false));
-  EXPECT_CALL(platform,
-              WriteSecureBlobToFileAtomicDurable(SystemSaltFile(), _, _))
-      .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
-  EXPECT_TRUE(crypto.GetSystemSalt(&salt));
-
-  ASSERT_EQ(CRYPTOHOME_DEFAULT_SALT_LENGTH, salt.size());
-  EXPECT_EQ(salt.to_string(), std::string(salt_ptr->begin(), salt_ptr->end()));
-
-  // Case 2: No Public Mount salt exists
-  EXPECT_CALL(platform, FileExists(PublicMountSaltFile()))
-      .WillOnce(Return(false));
-  EXPECT_CALL(platform,
-              WriteSecureBlobToFileAtomicDurable(PublicMountSaltFile(), _, _))
-      .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
-  EXPECT_TRUE(crypto.GetPublicMountSalt(&salt));
-
-  ASSERT_EQ(CRYPTOHOME_DEFAULT_SALT_LENGTH, salt.size());
-  EXPECT_EQ(salt.to_string(), std::string(salt_ptr->begin(), salt_ptr->end()));
-}
-
 TEST_F(CryptoTest, BlobToHexTest) {
   // Check that BlobToHexToBuffer works
   SecureBlob blob_in(256);

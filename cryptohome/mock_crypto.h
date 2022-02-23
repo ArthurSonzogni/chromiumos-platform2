@@ -23,12 +23,6 @@ class MockCrypto : public Crypto {
   MockCrypto() : Crypto(NULL) {}
   virtual ~MockCrypto() {}
 
-  MOCK_METHOD(bool, GetSystemSalt, (brillo::SecureBlob*), (const, override));
-  MOCK_METHOD(bool,
-              GetPublicMountSalt,
-              (brillo::SecureBlob*),
-              (const, override));
-
   MOCK_METHOD(CryptoError, EnsureTpm, (bool), (const, override));
 };
 

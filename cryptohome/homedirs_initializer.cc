@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
   cryptohome::Platform platform;
   cryptohome::Crypto crypto(&platform);
 
-  if (!cryptohome::InitializeFilesystemLayout(&platform, &crypto, nullptr)) {
+  if (!cryptohome::InitializeFilesystemLayout(&platform, nullptr)) {
     return 1;
   }
 

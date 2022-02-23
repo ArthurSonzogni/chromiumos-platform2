@@ -46,18 +46,6 @@ class Crypto {
   // Initializes Crypto
   virtual bool Init(Tpm* tpm, CryptohomeKeysManager* cryptohome_keys_manager);
 
-  // Gets existing system salt, or creates one if it doesn't exist
-  //
-  // Parameters
-  //   salt (OUT) - The salt
-  virtual bool GetSystemSalt(brillo::SecureBlob* salt) const;
-
-  // Gets an existing kiosk mount salt, or creates one if it doesn't exist
-  //
-  // Parameters
-  //   salt (OUT) - The salt
-  virtual bool GetPublicMountSalt(brillo::SecureBlob* salt) const;
-
   // Converts a null-terminated password to a passkey (ascii-encoded first half
   // of the salted SHA1 hash of the password).
   //
@@ -144,14 +132,6 @@ class Crypto {
   std::unique_ptr<LECredentialManager> le_manager_;
 
   bool disable_logging_for_tests_;
-
-  // Gets an existing salt, or creates one if it doesn't exist.
-  //
-  // Parameters
-  //   salt_file - File to read salt from.
-  //   salt (OUT) - The salt.
-  virtual bool GetOrCreateSalt(const base::FilePath& salt_file,
-                               brillo::SecureBlob* salt) const;
 };
 
 }  // namespace cryptohome

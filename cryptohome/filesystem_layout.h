@@ -10,7 +10,6 @@
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
 
-#include "cryptohome/crypto.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
@@ -72,8 +71,13 @@ base::FilePath GetDmcryptUserCacheDirectory(
 base::FilePath GetDmcryptDataVolume(const std::string& obfuscated_username);
 base::FilePath GetDmcryptCacheVolume(const std::string& obfuscated_username);
 
+// Gets existing system salt, or creates one if it doesn't exist.
+bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt);
+
+// Gets an existing kiosk mount salt, or creates one if it doesn't exist.
+bool GetPublicMountSalt(Platform* platform, brillo::SecureBlob* salt);
+
 bool InitializeFilesystemLayout(Platform* platform,
-                                Crypto* crypto,
                                 brillo::SecureBlob* salt);
 
 }  // namespace cryptohome

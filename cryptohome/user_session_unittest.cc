@@ -64,7 +64,7 @@ class UserSessionTest : public ::testing::Test {
   UserSessionTest& operator=(UserSessionTest&&) = delete;
 
   void SetUp() override {
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
+    InitializeFilesystemLayout(&platform_, &system_salt_);
     keyset_management_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_, system_salt_,
         std::make_unique<VaultKeysetFactory>());

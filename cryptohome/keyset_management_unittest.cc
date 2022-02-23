@@ -99,7 +99,7 @@ class KeysetManagementTest : public ::testing::Test {
   KeysetManagementTest& operator=(KeysetManagementTest&&) = delete;
 
   void SetUp() override {
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt_);
+    InitializeFilesystemLayout(&platform_, &system_salt_);
     keyset_management_ = std::make_unique<KeysetManagement>(
         &platform_, &crypto_, system_salt_,
         std::make_unique<VaultKeysetFactory>());
@@ -1196,7 +1196,7 @@ TEST_F(KeysetManagementTest, GetPublicMountPassKey) {
   // Fetches or creates a salt from a saltfile. Setting the force
   // parameter to false only creates a new saltfile if one doesn't
   // already exist.
-  crypto_.GetPublicMountSalt(&public_mount_salt);
+  GetPublicMountSalt(&platform_, &public_mount_salt);
 
   brillo::SecureBlob passkey;
   Crypto::PasswordToPasskey(account_id.c_str(), public_mount_salt, &passkey);
@@ -1209,17 +1209,13 @@ TEST_F(KeysetManagementTest, GetPublicMountPassKeyFail) {
   // SETUP
   std::string account_id(kUser0);
 
-  NiceMock<MockCrypto> mock_crypto;
-  std::unique_ptr<KeysetManagement> keyset_management_mock_crypto;
-  keyset_management_mock_crypto = std::make_unique<KeysetManagement>(
-      &platform_, &mock_crypto, system_salt_,
-      std::make_unique<VaultKeysetFactory>());
-
-  EXPECT_CALL(mock_crypto, GetPublicMountSalt).WillOnce(Return(false));
+  EXPECT_CALL(platform_,
+              WriteSecureBlobToFileAtomicDurable(PublicMountSaltFile(), _, _))
+      .WillOnce(Return(false));
 
   // Compare the SecureBlob with an empty and non-empty SecureBlob.
   brillo::SecureBlob public_mount_passkey =
-      keyset_management_mock_crypto->GetPublicMountPassKey(account_id);
+      keyset_management_->GetPublicMountPassKey(account_id);
   EXPECT_TRUE(public_mount_passkey.empty());
 }
 

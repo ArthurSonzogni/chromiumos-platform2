@@ -53,12 +53,6 @@ namespace {
 // state.
 const char kSignInHashTreeDir[] = "/home/.shadow/low_entropy_creds";
 
-// Maximum size of the salt file.
-const int64_t kSystemSaltMaxSize = (1 << 20);  // 1 MB
-
-// File permissions of salt file (modulo umask).
-const mode_t kSaltFilePermissions = 0644;
-
 }  // namespace
 
 Crypto::Crypto(Platform* platform)
@@ -94,47 +88,6 @@ CryptoError Crypto::EnsureTpm(bool reload_key) const {
     }
   }
   return result;
-}
-
-bool Crypto::GetSystemSalt(brillo::SecureBlob* salt) const {
-  return GetOrCreateSalt(SystemSaltFile(), salt);
-}
-
-bool Crypto::GetPublicMountSalt(brillo::SecureBlob* salt) const {
-  return GetOrCreateSalt(PublicMountSaltFile(), salt);
-}
-
-bool Crypto::GetOrCreateSalt(const base::FilePath& salt_file,
-                             SecureBlob* salt) const {
-  int64_t file_len = 0;
-  if (platform_->FileExists(salt_file)) {
-    if (!platform_->GetFileSize(salt_file, &file_len)) {
-      LOG(ERROR) << "Can't get file len for " << salt_file.value();
-      return false;
-    }
-  }
-  SecureBlob local_salt;
-  if (file_len == 0 || file_len > kSystemSaltMaxSize) {
-    LOG(ERROR) << "Creating new salt at " << salt_file.value() << " ("
-               << file_len << ")";
-    // If this salt doesn't exist, automatically create it.
-    local_salt = CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_SALT_LENGTH);
-    if (!platform_->WriteSecureBlobToFileAtomicDurable(salt_file, local_salt,
-                                                       kSaltFilePermissions)) {
-      LOG(ERROR) << "Could not write user salt";
-      return false;
-    }
-  } else {
-    local_salt.resize(file_len);
-    if (!platform_->ReadFileToSecureBlob(salt_file, &local_salt)) {
-      LOG(ERROR) << "Could not read salt file of length " << file_len;
-      return false;
-    }
-  }
-  if (salt) {
-    salt->swap(local_salt);
-  }
-  return true;
 }
 
 void Crypto::PasswordToPasskey(const char* password,

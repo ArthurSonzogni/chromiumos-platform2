@@ -406,7 +406,7 @@ class PersistentSystemTest : public ::testing::Test {
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
     brillo::SecureBlob system_salt;
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
+    InitializeFilesystemLayout(&platform_, &system_salt);
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
@@ -1306,7 +1306,7 @@ class EphemeralSystemTest : public ::testing::Test {
   void SetUp() {
     ASSERT_NO_FATAL_FAILURE(PrepareDirectoryStructure(&platform_));
     brillo::SecureBlob system_salt;
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
+    InitializeFilesystemLayout(&platform_, &system_salt);
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =

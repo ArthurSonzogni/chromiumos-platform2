@@ -78,7 +78,7 @@ class AuthSessionInterfaceTest : public ::testing::Test {
         &keyset_management_, &auth_block_utility_, &auth_factor_manager_,
         &user_secret_stash_storage_);
     brillo::SecureBlob system_salt;
-    InitializeFilesystemLayout(&platform_, &crypto_, &system_salt);
+    InitializeFilesystemLayout(&platform_, &system_salt);
     platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt);
 
     userdataauth_.set_platform(&platform_);

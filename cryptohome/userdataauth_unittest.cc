@@ -62,7 +62,7 @@
 using base::FilePath;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::kGuestUserName;
-using brillo::cryptohome::home::SanitizeUserNameWithSalt;
+using brillo::cryptohome::home::SanitizeUserName;
 
 using ::hwsec::StatusChain;
 using ::hwsec::TPMError;
@@ -97,12 +97,6 @@ namespace cryptohome {
 
 namespace {
 
-bool AssignSalt(SecureBlob* salt) {
-  SecureBlob fake_salt(CRYPTOHOME_DEFAULT_SALT_LENGTH, 'S');
-  salt->swap(fake_salt);
-  return true;
-}
-
 // Set to match the 5 minute timer and a 1 minute extension in AuthSession.
 constexpr int kAuthSessionExtensionDuration = 60;
 constexpr auto kAuthSessionTimeout = base::Minutes(5);
@@ -128,6 +122,10 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   ~UserDataAuthTestBase() override = default;
 
+  void TearDown() override {
+    platform_.GetFake()->RemoveSystemSaltForLibbrillo();
+  }
+
   void SetUp() override {
     SET_DEFAULT_TPM_FOR_TESTING;
     attrs_ = std::make_unique<NiceMock<MockInstallAttributes>>();
@@ -135,6 +133,9 @@ class UserDataAuthTestBase : public ::testing::Test {
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
+
+    InitializeFilesystemLayout(&platform_, &system_salt_);
+    platform_.GetFake()->SetSystemSaltForLibbrillo(system_salt_);
 
     if (!userdataauth_) {
       // Note that this branch is usually taken as |userdataauth_| is usually
@@ -172,12 +173,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     // Skip CleanUpStaleMounts by default.
     ON_CALL(platform_, GetMountsBySourcePrefix(_, _))
         .WillByDefault(Return(false));
-    // Setup fake public mount salt by default.
-    ON_CALL(crypto_, GetPublicMountSalt(_))
-        .WillByDefault(WithArgs<0>(Invoke(AssignSalt)));
-    // Setup fake system salt by default.
-    ON_CALL(crypto_, GetSystemSalt(_))
-        .WillByDefault(WithArgs<0>(Invoke(AssignSalt)));
     // It doesnt matter what key it returns for the purposes of the UserDataAuth
     // test.
     ON_CALL(keyset_management_, GetPublicMountPassKey(_))
@@ -197,21 +192,17 @@ class UserDataAuthTestBase : public ::testing::Test {
   // This is a utility function for tests to setup a mount for a particular
   // user. After calling this function, |mount_| is available for use.
   void SetupMount(const std::string& username) {
-    brillo::SecureBlob salt;
-    AssignSalt(&salt);
     mount_ = new NiceMock<MockMount>();
     session_ = new UserSession(&homedirs_, &keyset_management_,
                                &user_activity_timestamp_manager_,
-                               &pkcs11_token_factory_, salt, mount_);
+                               &pkcs11_token_factory_, system_salt_, mount_);
     userdataauth_->set_session_for_user(username, session_.get());
   }
 
   // This is a helper function that compute the obfuscated username with the
   // fake salt.
   std::string GetObfuscatedUsername(const std::string& username) {
-    brillo::SecureBlob salt;
-    AssignSalt(&salt);
-    return SanitizeUserNameWithSalt(username, salt);
+    return SanitizeUserName(username);
   }
 
   // Helper function for creating a brillo::Error
@@ -319,6 +310,8 @@ class UserDataAuthTestBase : public ::testing::Test {
   // This is important because otherwise the background thread may call into
   // mocks that have already been destroyed.
   std::unique_ptr<UserDataAuth> userdataauth_;
+
+  brillo::SecureBlob system_salt_;
 };
 
 // Test fixture that implements two task runners, which is similar to the task
@@ -1030,20 +1023,17 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   constexpr char kUsername1[] = "foo@gmail.com";
   constexpr char kUsername2[] = "bar@gmail.com";
 
-  brillo::SecureBlob salt;
-  AssignSalt(&salt);
-
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session1 = new UserSession(
       &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, salt, mount1);
+      &pkcs11_token_factory_, system_salt_, mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
   CreatePkcs11TokenInSession(mount1, session1);
 
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
   scoped_refptr<UserSession> session2 = new UserSession(
       &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, salt, mount2);
+      &pkcs11_token_factory_, system_salt_, mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
   CreatePkcs11TokenInSession(mount2, session2);
 
@@ -1672,9 +1662,7 @@ TEST_F(UserDataAuthTest, RemoveFirmwareManagementParametersError) {
 
 TEST_F(UserDataAuthTest, GetSystemSaltSucess) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
-  brillo::SecureBlob salt;
-  AssignSalt(&salt);
-  EXPECT_EQ(salt, userdataauth_->GetSystemSalt());
+  EXPECT_EQ(system_salt_, userdataauth_->GetSystemSalt());
 }
 
 TEST_F(UserDataAuthTestNotInitializedDeathTest, GetSystemSaltUninitialized) {
@@ -2173,7 +2161,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   MockMount* mount = new MockMount();
   EXPECT_CALL(mount_factory, New(_, _, _, _, _)).WillOnce(Return(mount));
   userdataauth_->set_mount_factory(&mount_factory);
-  EXPECT_CALL(platform_, FileExists(_)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FileExists(_)).Times(2).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
       .WillRepeatedly(Return(std::vector<Platform::LoopDevice>()));
@@ -2277,7 +2265,7 @@ TEST_F(UserDataAuthTest,
   MockMount* mount = new MockMount();
   EXPECT_CALL(mount_factory, New(_, _, _, _, _)).WillOnce(Return(mount));
   userdataauth_->set_mount_factory(&mount_factory);
-  EXPECT_CALL(platform_, FileExists(_)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, FileExists(_)).Times(2).WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).Times(0);
   EXPECT_CALL(platform_, GetAttachedLoopDevices()).Times(0);
   EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).Times(0);
@@ -2614,8 +2602,6 @@ class UserDataAuthExTest : public UserDataAuthTest {
 
   static constexpr char kUser[] = "chromeos-user";
   static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
-
-  brillo::SecureBlob salt;
 };
 
 constexpr char UserDataAuthExTest::kUser[];
@@ -4192,6 +4178,11 @@ TEST_F(UserDataAuthTestTasked, UploadAlertsCallback) {
   EXPECT_CALL(tpm_, GetAlertsData(_))
       .WillOnce(
           DoAll(SetArgPointee<0>(alert_data), ReturnError<TPMErrorBase>()));
+
+  // This one is sent from platforms on "Durable" files reads.
+  constexpr char kChecksumStatusHistogram[] = "Cryptohome.ChecksumStatus";
+  EXPECT_CALL(metrics, SendEnumToUMA(kChecksumStatusHistogram, _, _))
+      .WillRepeatedly(Return(true));
 
   // Checks that the metrics are reported.
   constexpr char kDiskCleanupResultsHistogram[] =
