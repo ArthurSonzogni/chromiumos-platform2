@@ -9,6 +9,7 @@
 #include <hardware/gralloc.h>
 #include <libyuv.h>
 
+#include <numeric>
 #include <string>
 #include <utility>
 
@@ -31,14 +32,27 @@ constexpr uint32_t kInputBufferUsage = GRALLOC_USAGE_HW_TEXTURE |
 constexpr char kAutoFramingGraphConfigOverridePath[] =
     "/run/camera/auto_framing_subgraph.pbtxt";
 
+std::pair<uint32_t, uint32_t> GetAspectRatio(const Size& size) {
+  uint32_t g = std::gcd(size.width, size.height);
+  return std::make_pair(size.width / g, size.height / g);
+}
+
 }  // namespace
 
 bool AutoFramingClient::SetUp(const Size& input_size, double frame_rate) {
+  auto [x, y] = GetAspectRatio(input_size);
   AutoFramingCrOS::Options options = {
       .input_format = AutoFramingCrOS::ImageFormat::kGRAY8,
       .input_width = base::checked_cast<int>(input_size.width),
       .input_height = base::checked_cast<int>(input_size.height),
       .frame_rate = frame_rate,
+      // TODO(kamesan): AutoFramingCrOS doesn't handle full frame crop properly
+      // when the target aspect ratio doesn't match the input size.  Before it's
+      // fixed we set it to the input aspect ratio, which is okay since
+      // AutoFramingStreamManipulator will adjust the crop windows to match the
+      // outputs.
+      .target_aspect_ratio_x = base::checked_cast<int>(x),
+      .target_aspect_ratio_y = base::checked_cast<int>(y),
   };
   std::string graph_config;
   std::string* graph_config_ptr = nullptr;
