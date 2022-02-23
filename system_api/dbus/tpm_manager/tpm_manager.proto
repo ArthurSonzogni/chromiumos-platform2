@@ -270,7 +270,7 @@ message GetTpmStatusReply {
   optional TpmManagerStatus status = 1;
   // Whether a TPM is enabled on the system.
   optional bool enabled = 2;
-  // Whether the TPM has been owned.
+  // Whether the TPM has been owned by tpm_manager(ready to use).
   optional bool owned = 3;
   // Local TPM management data (including the owner password if available).
   // TODO(b/168852740): Refine the comments above.
@@ -291,7 +291,7 @@ message GetTpmNonsensitiveStatusReply {
   optional TpmManagerStatus status = 1;
   // Whether a TPM is enabled on the system.
   optional bool is_enabled = 2;
-  // Whether the TPM has been owned by tpm_manager or not.
+  // Whether the TPM has been owned by tpm_manager(ready to use).
   optional bool is_owned = 3;
   // Whether the owner password is still retained.
   optional bool is_owner_password_present = 4;

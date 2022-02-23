@@ -67,25 +67,19 @@ namespace tpm_manager {
 class TpmManagerService : public TpmNvramInterface,
                           public TpmOwnershipInterface {
  public:
-  // If |wait_for_ownership| is set, TPM initialization will be postponed until
-  // an explicit TakeOwnership request is received. If |perform_preinit| is
-  // additionally set, TPM pre-initialization will be performed in case TPM
-  // initialization is postponed.
+  // If |perform_preinit| is additionally set, TPM pre-initialization will be
+  // performed in case TPM initialization is postponed.
   //
   // This instance doesn't take the ownership of |local_data_store|, and it must
   // be initialized and remain valid for the lifetime of this instance.
-  explicit TpmManagerService(bool wait_for_ownership,
-                             bool perform_preinit,
+  explicit TpmManagerService(bool perform_preinit,
                              LocalDataStore* local_data_store);
 
-  // If |wait_for_ownership| is set, TPM initialization will be postponed until
-  // an explicit TakeOwnership request is received. If |perform_preinit| is
-  // additionally set, TPM pre-initialization will be performed in case TPM
-  // initialization is postponed.
-  // Does not take ownership of |local_data_store|, |tpm_status|,
-  // |tpm_initializer|, |tpm_nvram|, or |tpm_manager_metrics|.
-  TpmManagerService(bool wait_for_ownership,
-                    bool perform_preinit,
+  // If |perform_preinit| is additionally set, TPM pre-initialization will be
+  // performed in case TPM initialization is postponed. Does not take ownership
+  // of |local_data_store|, |tpm_status|, |tpm_initializer|, |tpm_nvram|, or
+  // |tpm_manager_metrics|.
+  TpmManagerService(bool perform_preinit,
                     LocalDataStore* local_data_store,
                     std::unique_ptr<PinWeaverProvision> pinweaver_provision,
                     TpmStatus* tpm_status,
@@ -389,9 +383,6 @@ class TpmManagerService : public TpmNvramInterface,
   // Whether to clear the stored owner password automatically upon removing all
   // dependencies.
   bool auto_clear_stored_owner_password_ = false;
-  // Whether to wait for an explicit call to 'TakeOwnership' before initializing
-  // the TPM. Normally tracks the --wait_for_ownership command line option.
-  bool wait_for_ownership_;
   // Whether to perform pre-initialization (where available) if initialization
   // itself needs to wait for 'TakeOwnership' first.
   bool perform_preinit_;

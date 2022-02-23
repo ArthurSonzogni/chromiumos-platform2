@@ -105,11 +105,9 @@ GetTpmStatusRequest ToGetTpmStatusRequest(
 
 }  // namespace
 
-TpmManagerService::TpmManagerService(bool wait_for_ownership,
-                                     bool perform_preinit,
+TpmManagerService::TpmManagerService(bool perform_preinit,
                                      LocalDataStore* local_data_store)
-    : TpmManagerService(wait_for_ownership,
-                        perform_preinit,
+    : TpmManagerService(perform_preinit,
                         local_data_store,
                         nullptr,
                         nullptr,
@@ -120,7 +118,6 @@ TpmManagerService::TpmManagerService(bool wait_for_ownership,
 }
 
 TpmManagerService::TpmManagerService(
-    bool wait_for_ownership,
     bool perform_preinit,
     LocalDataStore* local_data_store,
     std::unique_ptr<PinWeaverProvision> pinweaver_provision,
@@ -138,7 +135,6 @@ TpmManagerService::TpmManagerService(
       tpm_manager_metrics_(tpm_manager_metrics),
       update_tpm_status_pending_(false),
       update_tpm_status_cache_dirty_(true),
-      wait_for_ownership_(wait_for_ownership),
       perform_preinit_(perform_preinit) {}
 
 TpmManagerService::~TpmManagerService() {
@@ -316,7 +312,7 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
 
   // The precondition of DA reset is not satisfied; resets the timer so it
   // doesn't get triggered immediately.
-  if (ownership_status != TpmStatus::kTpmOwned && wait_for_ownership_) {
+  if (ownership_status != TpmStatus::kTpmOwned && !perform_preinit_) {
     dictionary_attack_timer_.Reset();
   }
   worker_thread_->task_runner()->PostTask(
@@ -365,9 +361,8 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
   tpm_initializer_->PruneStoredPasswords();
   tpm_nvram_->PrunePolicies();
 
-  if (!wait_for_ownership_) {
+  if (perform_preinit_) {
     VLOG(1) << "Initializing TPM.";
-
     const base::TimeTicks take_ownerhip_start_time = base::TimeTicks::Now();
     bool already_owned;
     if (!tpm_initializer_->InitializeTpm(&already_owned)) {
@@ -380,11 +375,10 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
       tpm_manager_metrics_->ReportTimeToTakeOwnership(base::TimeTicks::Now() -
                                                       take_ownerhip_start_time);
     }
+    DisableDictionaryAttackMitigationIfNeeded();
     reply->set_owned(true);
-  } else if (perform_preinit_) {
-    VLOG(1) << "Pre-initializing TPM.";
-    tpm_initializer_->PreInitializeTpm();
   }
+
   LocalData local_data;
   if (local_data_store_ && local_data_store_->Read(&local_data)) {
     *(reply->mutable_local_data()) = std::move(local_data);

@@ -24,7 +24,6 @@
 
 namespace {
 
-constexpr char kWaitForOwnershipTriggerSwitch[] = "wait_for_ownership_trigger";
 constexpr char kLogToStderrSwitch[] = "log_to_stderr";
 constexpr char kNoPreinitFlagFile[] = "/run/tpm_manager/no_preinit";
 
@@ -43,9 +42,7 @@ int main(int argc, char* argv[]) {
   bool perform_preinit = !base::PathExists(base::FilePath(kNoPreinitFlagFile));
 
   std::unique_ptr<tpm_manager::TpmManagerService> tpm_manager_service{
-      new tpm_manager::TpmManagerService(
-          cl->HasSwitch(kWaitForOwnershipTriggerSwitch), perform_preinit,
-          &local_data_store)};
+      new tpm_manager::TpmManagerService(perform_preinit, &local_data_store)};
 
   // From now on, the ownership of |tpm_manager_service| is transferred from
   // main function to |ipc_service|.

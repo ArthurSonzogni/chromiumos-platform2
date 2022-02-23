@@ -94,9 +94,9 @@ class TpmManagerServiceFuzzer : public brillo::Daemon {
         testing::NiceMock<tpm_manager::MockPinWeaverProvision>>();
 
     tpm_manager_ = std::make_unique<tpm_manager::TpmManagerService>(
-        fuzzer_data_.wait_for_ownership(), fuzzer_data_.perform_preinit(),
-        &local_data_store_, std::move(mock_pinweaver_provision), nullptr,
-        nullptr, nullptr, &tpm_manager_metrics_);
+        fuzzer_data_.perform_preinit(), &local_data_store_,
+        std::move(mock_pinweaver_provision), nullptr, nullptr, nullptr,
+        &tpm_manager_metrics_);
     fuzzer_utils_->SetupTpm(tpm_manager_.get());
     CHECK(tpm_manager_->Initialize());
   }

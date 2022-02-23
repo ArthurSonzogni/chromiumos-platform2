@@ -55,12 +55,10 @@ namespace tpm_manager {
 
 // A test fixture that takes care of message loop management and configuring a
 // TpmManagerService instance with mock dependencies. Template variables
-// |wait_for_ownership| and |perform_preinit| are passed to the constructor of
+// |perform_preinit| are passed to the constructor of
 // TpmManagerService, and |shall_setup_service| indicates if, during dixture
 // setup, TpmManagerService is also set up as well.
-template <bool wait_for_ownership,
-          bool perform_preinit,
-          bool shall_setup_service>
+template <bool perform_preinit, bool shall_setup_service>
 class TpmManagerServiceTestBase : public testing::Test {
  public:
   ~TpmManagerServiceTestBase() override = default;
@@ -71,7 +69,7 @@ class TpmManagerServiceTestBase : public testing::Test {
         std::make_unique<NiceMock<MockPinWeaverProvision>>();
     mock_pinweaver_provision_ = mock_pinweaver_provision.get();
     service_.reset(new TpmManagerService(
-        wait_for_ownership, perform_preinit, &mock_local_data_store_,
+        perform_preinit, &mock_local_data_store_,
         std::move(mock_pinweaver_provision), &mock_tpm_status_,
         &mock_tpm_initializer_, &mock_tpm_nvram_, &mock_tpm_manager_metrics_));
     service_->set_tpm_allowlist_for_testing(&mock_tpm_allowlist_);
@@ -125,23 +123,20 @@ class TpmManagerServiceTestBase : public testing::Test {
   base::RunLoop run_loop_;
 };
 
-class TpmManagerServiceTest
-    : public TpmManagerServiceTestBase<true, true, true> {};
+class TpmManagerServiceTest : public TpmManagerServiceTestBase<true, true> {};
 // Tests must call SetupService() for the following test fixtures where
 // |shall_setup_service| is set to false.
-class TpmManagerServiceTest_NoWaitForOwnership
-    : public TpmManagerServiceTestBase<false, false, false> {};
 class TpmManagerServiceTest_NoPreinit
-    : public TpmManagerServiceTestBase<true, false, false> {};
+    : public TpmManagerServiceTestBase<false, false> {};
 class TpmManagerServiceTest_Preinit
-    : public TpmManagerServiceTestBase<true, true, false> {};
+    : public TpmManagerServiceTestBase<true, false> {};
 
 class TpmManagerServiceTest_NoSetup : public TpmManagerServiceTest {
  public:
   void SetUp() override {}
 };
 
-TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitialize) {
+TEST_F(TpmManagerServiceTest_Preinit, AutoInitialize) {
   // Called in InitializeTask()
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .Times(1)
@@ -149,14 +144,16 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitialize) {
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
 
   // Make sure InitializeTpm doesn't get multiple calls.
-  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(1);
+  Expectation pw_provision =
+      EXPECT_CALL(*mock_pinweaver_provision_, Provision()).Times(1);
+  EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).After(pw_provision);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
   SetupService();
   RunServiceWorkerAndQuit();
 }
 
-TEST_F(TpmManagerServiceTest_NoWaitForOwnership, InitializeMetrics) {
+TEST_F(TpmManagerServiceTest_Preinit, InitializeMetrics) {
   // Called in InitializeTask()
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .Times(1)
@@ -176,7 +173,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, InitializeMetrics) {
   Run();
 }
 
-TEST_F(TpmManagerServiceTest_NoWaitForOwnership, NoNeedToInitialize) {
+TEST_F(TpmManagerServiceTest_Preinit, NoNeedToInitialize) {
   // Called in InitializeTask()
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .Times(1)
@@ -188,7 +185,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, NoNeedToInitialize) {
   RunServiceWorkerAndQuit();
 }
 
-TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeNoTpm) {
+TEST_F(TpmManagerServiceTest_Preinit, AutoInitializeNoTpm) {
   EXPECT_CALL(mock_tpm_status_, IsTpmEnabled()).WillRepeatedly(Return(false));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
   EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).Times(0);
@@ -196,7 +193,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeNoTpm) {
   RunServiceWorkerAndQuit();
 }
 
-TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeFailure) {
+TEST_F(TpmManagerServiceTest_Preinit, AutoInitializeFailure) {
   // Called in InitializeTask()
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .Times(1)
@@ -209,8 +206,7 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitializeFailure) {
   RunServiceWorkerAndQuit();
 }
 
-TEST_F(TpmManagerServiceTest_NoWaitForOwnership,
-       TakeOwnershipAfterAutoInitialize) {
+TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipAfterAutoInitialize) {
   // Called in InitializeTask()
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
@@ -233,14 +229,11 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership,
   Run();
 }
 
-TEST_F(TpmManagerServiceTest_Preinit, NoAutoInitialize) {
+TEST_F(TpmManagerServiceTest_NoPreinit, NoAutoInitialize) {
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
   EXPECT_CALL(mock_tpm_initializer_, InitializeTpm(_)).Times(0);
-  Expectation pw_provision =
-      EXPECT_CALL(*mock_pinweaver_provision_, Provision()).Times(1);
-  EXPECT_CALL(mock_tpm_initializer_, PreInitializeTpm()).After(pw_provision);
   SetupService();
   RunServiceWorkerAndQuit();
 }
@@ -789,7 +782,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipNoTpm) {
   Run();
 }
 
-TEST_F(TpmManagerServiceTest_Preinit, TakeOwnershipFollowedByDisableDA) {
+TEST_F(TpmManagerServiceTest_NoPreinit, TakeOwnershipFollowedByDisableDA) {
   // Called in `InitializeTask()`.
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
@@ -1217,7 +1210,7 @@ TEST_F(TpmManagerServiceTest_NoSetup, TpmManagerNoCrash) {
   SET_NO_TPM_FOR_TESTING;
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportVersionFingerprint(_))
       .Times(AtMost(1));
-  service_.reset(new TpmManagerService(true, true, &mock_local_data_store_));
+  service_.reset(new TpmManagerService(true, &mock_local_data_store_));
   DisablePeriodicDictionaryAttackReset();
   SetupService();
   service_->GetVersionInfo(GetVersionInfoRequest(), base::DoNothing());
@@ -1272,7 +1265,7 @@ TEST_F(TpmManagerServiceTest_Preinit, TpmManagerTpmNotAllowedNoCrash) {
   RunServiceWorkerAndQuit();
 }
 
-TEST_F(TpmManagerServiceTest_Preinit, UpdateTpmStatusAfterTakeOwnership) {
+TEST_F(TpmManagerServiceTest_NoPreinit, UpdateTpmStatusAfterTakeOwnership) {
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
       .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)))
       .WillOnce(DoAll(SetArgPointee<0>(TpmStatus::kTpmOwned), Return(true)));
