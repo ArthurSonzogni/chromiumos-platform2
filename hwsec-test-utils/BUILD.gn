@@ -8,6 +8,7 @@ group("all") {
   deps = [
     ":attestation-injected-keys",
     ":fake_pca_agentd",
+    ":hwsec-ownership-id",
     ":hwsec-test-va",
   ]
   if (use.test) {
@@ -32,38 +33,56 @@ executable("attestation-injected-keys") {
     "attestation_injected_keys/main.cc",
     "attestation_injected_keys/utility.cc",
   ]
-
-  # NOSORT
-  pkg_deps = [
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
-  ]
-  configs += [ ":target_defaults" ]
   install_path = "bin"
+  configs += [ ":target_defaults" ]
+  pkg_deps = [
+    "protobuf",
+    "system_api",
+  ]
 }
 
 executable("hwsec-test-va") {
   sources = [ "verified_access/main.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "bin"
+
+  pkg_deps = [
+    "openssl",
+    "protobuf",
+    "system_api",
+  ]
+
   deps = [
     ":common_library",
     ":verified_access_library",
   ]
+}
 
-  # NOSORT
+executable("hwsec-ownership-id") {
+  sources = [
+    "ownership_id/main.cc",
+    "ownership_id/ownership_id_factory.cc",
+  ]
+  if (use.tpm) {
+    sources += [ "ownership_id/ownership_id_tpm1.cc" ]
+  }
+  if (use.tpm2) {
+    sources += [ "ownership_id/ownership_id_tpm2.cc" ]
+  }
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+
+  libs = [
+    "hwsec-foundation",
+    "tpm_manager",
+  ]
+
   pkg_deps = [
     "openssl",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
     "protobuf",
+    "system_api",
   ]
+  deps = [ ":common_library" ]
 }
 
 source_set("common_library") {
@@ -84,20 +103,15 @@ executable("fake_pca_agentd") {
   sources = [ "fake_pca_agent/main.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "bin"
+
+  pkg_deps = [
+    "openssl",
+    "protobuf",
+    "system_api",
+  ]
   deps = [
     ":common_library",
     ":fake_pca_agent_library",
-  ]
-
-  # NOSORT
-  pkg_deps = [
-    "openssl",
-
-    # system_api depends on protobuf (or protobuf-lite). It must appear
-    # before protobuf here or the linker flags won't be in the right
-    # order.
-    "system_api",
-    "protobuf",
   ]
 }
 
@@ -141,12 +155,6 @@ if (use.test) {
       "//common-mk:test",
     ]
     run_test = true
-    deps = [
-      ":common_library",
-      ":fake_pca_agent_library",
-      ":verified_access_library",
-      "//common-mk/testrunner",
-    ]
     if (use.tpm2) {
       sources += [
         "fake_pca_agent/pca_certify_v2_test.cc",
@@ -161,15 +169,16 @@ if (use.test) {
       libs = [ "tspi" ]
     }
 
-    # NOSORT
     pkg_deps = [
       "openssl",
-
-      # system_api depends on protobuf (or protobuf-lite). It must appear
-      # before protobuf here or the linker flags won't be in the right
-      # order.
-      "system_api",
       "protobuf",
+      "system_api",
+    ]
+    deps = [
+      ":common_library",
+      ":fake_pca_agent_library",
+      ":verified_access_library",
+      "//common-mk/testrunner",
     ]
   }
 }
