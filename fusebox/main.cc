@@ -77,11 +77,6 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     return *inode_table;
   }
 
-  static dbus::MethodCall GetFuseBoxServerMethod(
-      const char* method = kFuseBoxOperationMethod) {
-    return dbus::MethodCall(kFuseBoxServiceInterface, method);
-  }
-
   template <typename Signature>
   void CallFuseBoxServerMethod(dbus::MethodCall* method_call,
                                base::OnceCallback<Signature> callback) {
@@ -123,10 +118,9 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    dbus::MethodCall method = GetFuseBoxServerMethod();
+    dbus::MethodCall method(kFuseBoxServiceInterface, kStatMethod);
     dbus::MessageWriter writer(&method);
 
-    writer.AppendString("stat");
     auto item = GetInodeTable().GetDevicePath(node);
     writer.AppendString(item);
 
@@ -183,10 +177,9 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    dbus::MethodCall method = GetFuseBoxServerMethod();
+    dbus::MethodCall method(kFuseBoxServiceInterface, kStatMethod);
     dbus::MessageWriter writer(&method);
 
-    writer.AppendString("stat");
     auto item = GetInodeTable().GetDevicePath(parent_node);
     writer.AppendString(item.append("/").append(name));
 
@@ -311,10 +304,9 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    dbus::MethodCall method = GetFuseBoxServerMethod();
+    dbus::MethodCall method(kFuseBoxServiceInterface, kReadDirMethod);
     dbus::MessageWriter writer(&method);
 
-    writer.AppendString("readdir");
     auto item = GetInodeTable().GetDevicePath(node);
     writer.AppendString(item);
     writer.AppendUint64(handle);
@@ -423,10 +415,9 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    dbus::MethodCall method = GetFuseBoxServerMethod();
+    dbus::MethodCall method(kFuseBoxServiceInterface, kOpenMethod);
     dbus::MessageWriter writer(&method);
 
-    writer.AppendString("open");
     auto item = GetInodeTable().GetDevicePath(node);
     writer.AppendString(item);
     VLOG(1) << "open flags " << OpenFlagsToString(request->flags());
@@ -451,6 +442,19 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       request->ReplyError(error);
       return;
     }
+
+    // TODO(crbug.com/1293648): don't ignore the server_handle value. We should
+    // call the kFuseBoxServiceInterface kCloseMethod D-Bus method (with this
+    // server_handle argument) when we're done with the underlying file
+    // descriptor, so the kFuseBoxServiceInterface server can clean up. See
+    // also the https://crrev.com/c/3435630 code review discussion.
+    //
+    // The server_handle variable (a number allocated by the
+    // kFuseBoxServiceInterface server and sent to this program as a D-Bus
+    // request-response) is separate from the handle variable below (allocated
+    // by this program and sent to the kernel as a FUSE request-response).
+    uint64_t server_handle;
+    CHECK(reader.PopUint64(&server_handle));
 
     base::ScopedFD fd;
     reader.PopFileDescriptor(&fd);
@@ -500,10 +504,9 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
       return;
     }
 
-    dbus::MethodCall method = GetFuseBoxServerMethod();
+    dbus::MethodCall method(kFuseBoxServiceInterface, kReadMethod);
     dbus::MessageWriter writer(&method);
 
-    writer.AppendString("read");
     auto item = GetInodeTable().GetDevicePath(node);
     writer.AppendString(item);
     writer.AppendInt64(base::strict_cast<int64_t>(off));
