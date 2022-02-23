@@ -97,8 +97,20 @@ impl AppManifest {
     pub fn new() -> Self {
         // TODO drop vec! after Rust 1.53 which has an IntoIterator implementation for arrays.
         AppManifest::from(vec![
+            // Has a pseudo tty allocated since it is intended for interactive use. The decision is
+            // made based on app name since 'shell' is currently the only use case for a tty.
             AppManifestEntry {
                 app_name: "shell".to_string(),
+                devmode_only: true,
+                exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
+                exec_args: None,
+                sandbox_type: SandboxType::DeveloperEnvironment,
+                secrets_parameters: None,
+                storage_parameters: None,
+            },
+            // Does not receive special treatment and is not allocated a pseudo terminal.
+            AppManifestEntry {
+                app_name: "shell-notty".to_string(),
                 devmode_only: true,
                 exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
                 exec_args: None,
