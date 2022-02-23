@@ -264,6 +264,109 @@ bool VaultKeyset::Load(const FilePath& filename) {
   return loaded_;
 }
 
+std::optional<brillo::SecureBlob> VaultKeyset::GetOrGenerateResetSecret() {
+  if (!reset_secret_.empty()) {
+    return reset_secret_;
+  }
+
+  if (reset_seed_.empty()) {
+    return base::nullopt;
+  }
+
+  if (!reset_salt_.has_value()) {
+    SetResetSalt(CreateSecureRandomBlob(kAesBlockSize));
+  }
+
+  // We don't set reset secret here, but in Encrypt().
+  return HmacSha256(reset_salt_.value(), reset_seed_);
+}
+
+bool VaultKeyset::EncryptEx(const KeyBlobs& key_blobs,
+                            const AuthBlockState& auth_state) {
+  CHECK(crypto_);
+
+  SetAuthBlockState(auth_state);
+  if (IsLECredential()) {
+    if (reset_seed_.empty()) {
+      LOG(ERROR) << "The VaultKeyset doesn't have a reset seed, so we can't"
+                    " set up an LE credential.";
+      return false;
+    }
+
+    if (key_blobs.reset_secret.has_value() &&
+        !key_blobs.reset_secret.value().empty()) {
+      SetResetSecret(key_blobs.reset_secret.value());
+    }
+    auth_locked_ = false;
+  }
+
+  bool is_scrypt_wrapped =
+      std::holds_alternative<LibScryptCompatAuthBlockState>(auth_state.state) ||
+      std::holds_alternative<ChallengeCredentialAuthBlockState>(
+          auth_state.state);
+
+  if (is_scrypt_wrapped) {
+    encrypted_ = WrapScryptVaultKeyset(key_blobs);
+  } else {
+    encrypted_ = WrapVaultKeysetWithAesDeprecated(key_blobs);
+  }
+
+  return encrypted_;
+}
+
+bool VaultKeyset::DecryptEx(const KeyBlobs& key_blobs,
+                            CryptoError* crypto_error) {
+  CHECK(crypto_);
+
+  if (crypto_error)
+    *crypto_error = CryptoError::CE_NONE;
+
+  if (!loaded_) {
+    if (crypto_error) {
+      *crypto_error = CryptoError::CE_OTHER_CRYPTO;
+    }
+    return false;
+  }
+
+  CryptoError local_crypto_error = CryptoError::CE_NONE;
+  bool ok = DecryptVaultKeysetEx(key_blobs, &local_crypto_error);
+  if (!ok && local_crypto_error == CryptoError::CE_TPM_COMM_ERROR) {
+    ok = DecryptVaultKeysetEx(key_blobs, &local_crypto_error);
+  }
+
+  // Make sure the returned error is non-empty, because sometimes
+  // Crypto::DecryptVaultKeyset() doesn't fill it despite returning false. Note
+  // that the value assigned below must *not* say a fatal error, as otherwise
+  // this may result in removal of the cryptohome which is undesired in this
+  // case.
+  if (local_crypto_error == CryptoError::CE_NONE)
+    local_crypto_error = CryptoError::CE_OTHER_CRYPTO;
+
+  if (!ok && crypto_error)
+    *crypto_error = local_crypto_error;
+  return ok;
+}
+
+bool VaultKeyset::DecryptVaultKeysetEx(const KeyBlobs& key_blobs,
+                                       CryptoError* error) {
+  PopulateError(error, CryptoError::CE_NONE);
+
+  if (flags_ & SerializedVaultKeyset::LE_CREDENTIAL) {
+    // This is possible to be empty if an old version of CR50 is running.
+    if (key_blobs.reset_secret.has_value() &&
+        !key_blobs.reset_secret.value().empty()) {
+      SetResetSecret(key_blobs.reset_secret.value());
+    }
+  }
+
+  // Loaded VaultKeyset fields are in encrypted form (e.g. wrapped_reset_seed).
+  // Convert them to a serialized vault keyset and then decrypt. VaultKeyset
+  // object members that carry the plain secrets are set after the decryption
+  // operation (e.g. reset_seed).
+  const SerializedVaultKeyset& serialized = ToSerialized();
+  return UnwrapVaultKeyset(serialized, key_blobs, error);
+}
+
 bool VaultKeyset::Decrypt(const SecureBlob& key,
                           bool locked_to_single_user,
                           CryptoError* crypto_error) {
@@ -274,7 +377,7 @@ bool VaultKeyset::Decrypt(const SecureBlob& key,
 
   if (!loaded_) {
     if (crypto_error)
-      *crypto_error = CryptoError::CE_OTHER_FATAL;
+      *crypto_error = CryptoError::CE_OTHER_CRYPTO;
     return false;
   }
 
@@ -465,7 +568,7 @@ bool VaultKeyset::UnwrapScryptVaultKeyset(
 bool VaultKeyset::WrapVaultKeysetWithAesDeprecated(const KeyBlobs& blobs) {
   if (blobs.vkk_key == std::nullopt || blobs.vkk_iv == std::nullopt ||
       blobs.chaps_iv == std::nullopt) {
-    DLOG(FATAL) << "Fields missing from KeyBlobs.";
+    LOG(ERROR) << "Fields missing from KeyBlobs.";
     return false;
   }
 

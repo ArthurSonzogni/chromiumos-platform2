@@ -45,6 +45,12 @@ class MockVaultKeyset : public VaultKeyset {
               (const brillo::SecureBlob&, const std::string&),
               (override));
 
+  MOCK_METHOD(bool, DecryptEx, (const KeyBlobs&, CryptoError*), (override));
+  MOCK_METHOD(bool,
+              EncryptEx,
+              (const KeyBlobs&, const AuthBlockState&),
+              (override));
+
   MOCK_METHOD(void,
               CreateFromFileSystemKeyset,
               (const FileSystemKeyset&),

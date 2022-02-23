@@ -20,7 +20,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
+#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto/hmac.h"
@@ -128,7 +131,7 @@ std::string HexDecode(const std::string& hex) {
 
 class VaultKeysetTest : public ::testing::Test {
  public:
-  VaultKeysetTest() {}
+  VaultKeysetTest() : crypto_(&platform_) {}
   VaultKeysetTest(const VaultKeysetTest&) = delete;
   VaultKeysetTest& operator=(const VaultKeysetTest&) = delete;
 
@@ -150,14 +153,14 @@ class VaultKeysetTest : public ::testing::Test {
 
  protected:
   MockPlatform platform_;
+  Crypto crypto_;
   NiceMock<MockTpm> tpm_;
 };
 
 TEST_F(VaultKeysetTest, AllocateRandom) {
   // Check that allocating a random VaultKeyset works
-  Crypto crypto(&platform_);
   VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIZE, vault_keyset.GetFek().size());
@@ -175,9 +178,8 @@ TEST_F(VaultKeysetTest, AllocateRandom) {
 
 TEST_F(VaultKeysetTest, SerializeTest) {
   // Check that serialize works
-  Crypto crypto(&platform_);
   VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob blob;
@@ -195,9 +197,8 @@ TEST_F(VaultKeysetTest, SerializeTest) {
 
 TEST_F(VaultKeysetTest, DeserializeTest) {
   // Check that deserialize works
-  Crypto crypto(&platform_);
   VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob blob;
@@ -242,10 +243,8 @@ ACTION_P(CopyFromSecureBlob, b) {
 }
 
 TEST_F(VaultKeysetTest, LoadSaveTest) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   SecureBlob bytes;
@@ -254,9 +253,9 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
 
   keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
 
-  EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
       .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
-  EXPECT_CALL(platform, ReadFile(FilePath(kFilePath), _))
+  EXPECT_CALL(platform_, ReadFile(FilePath(kFilePath), _))
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
   SecureBlob key(kPasswordKey);
@@ -265,7 +264,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   EXPECT_TRUE(keyset.Save(FilePath(kFilePath)));
 
   VaultKeyset new_keyset;
-  new_keyset.Initialize(&platform, &crypto);
+  new_keyset.Initialize(&platform_, &crypto_);
   EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
   EXPECT_TRUE(new_keyset.Decrypt(key, false /* locked_to_single_user */,
                                  nullptr /* crypto_error */));
@@ -273,15 +272,13 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
 }
 
 TEST_F(VaultKeysetTest, WriteError) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   SecureBlob bytes;
 
-  EXPECT_CALL(platform, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
       .WillOnce(Return(false));
 
   SecureBlob key(kPasswordKey);
@@ -291,10 +288,8 @@ TEST_F(VaultKeysetTest, WriteError) {
 }
 
 TEST_F(VaultKeysetTest, AuthLockedDefault) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   static const int kFscryptPolicyVersion = 2;
 
@@ -309,10 +304,8 @@ TEST_F(VaultKeysetTest, AuthLockedDefault) {
 }
 
 TEST_F(VaultKeysetTest, GetPcrBoundAuthBlockStateTest) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
@@ -336,10 +329,8 @@ TEST_F(VaultKeysetTest, GetPcrBoundAuthBlockStateTest) {
 }
 
 TEST_F(VaultKeysetTest, GetEccAuthBlockStateTest) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
@@ -369,10 +360,8 @@ TEST_F(VaultKeysetTest, GetEccAuthBlockStateTest) {
 }
 
 TEST_F(VaultKeysetTest, GetNotPcrBoundAuthBlockState) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
@@ -391,10 +380,8 @@ TEST_F(VaultKeysetTest, GetNotPcrBoundAuthBlockState) {
 }
 
 TEST_F(VaultKeysetTest, GetPinWeaverAuthBlockState) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   const uint64_t le_label = 012345;
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
@@ -412,10 +399,8 @@ TEST_F(VaultKeysetTest, GetPinWeaverAuthBlockState) {
 }
 
 TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
@@ -430,10 +415,8 @@ TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
 }
 
 TEST_F(VaultKeysetTest, GetLibscryptCompatAuthBlockState) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED);
@@ -453,10 +436,8 @@ TEST_F(VaultKeysetTest, GetLibscryptCompatAuthBlockState) {
 }
 
 TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockStateFailure) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
@@ -474,10 +455,8 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockStateFailure) {
 }
 
 TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
   VaultKeyset keyset;
-  keyset.Initialize(&platform, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   keyset.SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED |
@@ -493,11 +472,11 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
 }
 
 TEST_F(VaultKeysetTest, EncryptionTest) {
-  // Check that EncryptVaultKeyset returns something other than the bytes passed
-  Crypto crypto(&platform_);
+  // Check that EncryptVaultKeyset returns something other than the bytes
+  // passed.
 
   VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(20);
@@ -508,12 +487,10 @@ TEST_F(VaultKeysetTest, EncryptionTest) {
 }
 
 TEST_F(VaultKeysetTest, DecryptionTest) {
-  // Check that DecryptVaultKeyset returns the original keyset
-  MockPlatform platform;
-  Crypto crypto(&platform);
+  // Check that DecryptVaultKeyset returns the original keyset.
 
   VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(20);
@@ -541,20 +518,16 @@ TEST_F(VaultKeysetTest, DecryptionTest) {
 }
 
 TEST_F(VaultKeysetTest, GetLegacyLabelTest) {
-  Crypto crypto(&platform_);
-
   VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.SetLegacyIndex(kLegacyIndex);
 
   ASSERT_EQ(vault_keyset.GetLabel(), kLegacyLabel);
 }
 
 TEST_F(VaultKeysetTest, GetLabelTest) {
-  Crypto crypto(&platform_);
-
   VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.Initialize(&platform_, &crypto_);
   KeyData key_data;
   key_data.set_label(kTempLabel);
   vault_keyset.SetLegacyIndex(kLegacyIndex);
@@ -564,10 +537,8 @@ TEST_F(VaultKeysetTest, GetLabelTest) {
 }
 
 TEST_F(VaultKeysetTest, GetEmptyLabelTest) {
-  Crypto crypto(&platform_);
-
   VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.Initialize(&platform_, &crypto_);
   KeyData key_data;
 
   // Setting empty label.
@@ -581,11 +552,10 @@ TEST_F(VaultKeysetTest, GetEmptyLabelTest) {
 
 TEST_F(VaultKeysetTest, InitializeToAdd) {
   // Check if InitializeToAdd correctly copies keys
-  // from parameter vault keyset to underlying data structure
-  Crypto crypto(&platform_);
+  // from parameter vault keyset to underlying data structure.
 
   VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
@@ -629,11 +599,9 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
 }
 
 TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
-  // Check to decrypt a VaultKeyset that hasn't been loaded yet
-  Crypto crypto(&platform_);
-
+  // Check to decrypt a VaultKeyset that hasn't been loaded yet.
   VaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto);
+  vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(kPasswordKey);
@@ -645,11 +613,11 @@ TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
   // uses normal tpm_key when false with a TpmBoundToPcrAuthBlock
   ASSERT_FALSE(vault_keyset.Decrypt(key, false /*locked_to_single_user*/,
                                     &crypto_error));
-  ASSERT_EQ(crypto_error, CryptoError::CE_OTHER_FATAL);
+  ASSERT_EQ(crypto_error, CryptoError::CE_OTHER_CRYPTO);
 }
 
 TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
-  // Test to have Decrypt() fail because of CE_TPM_COMM_ERROR
+  // Test to have Decrypt() fail because of CE_TPM_COMM_ERROR.
   // Setup
   auto mock_loader = std::make_unique<MockCryptohomeKeyLoader>();
   MockCryptohomeKeyLoader* mock_loader_ptr = mock_loader.get();
@@ -661,8 +629,7 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
   auto cryptohome_keys_manager =
       std::make_unique<CryptohomeKeysManager>(std::move(mock_loaders));
 
-  Crypto crypto(&platform_);
-  crypto.Init(&tpm_, cryptohome_keys_manager.get());
+  crypto_.Init(&tpm_, cryptohome_keys_manager.get());
 
   EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
@@ -674,7 +641,7 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
   VaultKeyset vk;
-  vk.Initialize(&platform_, &crypto);
+  vk.Initialize(&platform_, &crypto_);
   vk.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
   vk.SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
 
@@ -685,7 +652,7 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
   ASSERT_TRUE(vk.Save(FilePath(kFilePath)));
 
   VaultKeyset new_keyset;
-  new_keyset.Initialize(&platform_, &crypto);
+  new_keyset.Initialize(&platform_, &crypto_);
   EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
 
   EXPECT_CALL(*mock_loader_ptr, HasCryptohomeKey())
@@ -701,10 +668,8 @@ TEST_F(VaultKeysetTest, DecryptTPMCommErr) {
 }
 
 TEST_F(VaultKeysetTest, LibScryptBackwardCompatibility) {
-  Crypto crypto(&platform_);
-
   VaultKeyset vk;
-  vk.Initialize(&platform_, &crypto);
+  vk.Initialize(&platform_, &crypto_);
 
   SerializedVaultKeyset serialized;
   serialized.ParseFromString(
@@ -736,7 +701,6 @@ TEST_F(VaultKeysetTest, GetTpmWritePasswordRounds) {
   // Test to ensure that for GetTpmNotBoundtoPcrState
   // correctly copies the password_rounds field from
   // the VaultKeyset to the auth_state parameter.
-  Crypto crypto(&platform_);
 
   VaultKeyset keyset;
   SerializedVaultKeyset serialized_vk;
@@ -744,7 +708,7 @@ TEST_F(VaultKeysetTest, GetTpmWritePasswordRounds) {
   serialized_vk.set_password_rounds(kPasswordRounds);
 
   keyset.InitializeFromSerialized(serialized_vk);
-  keyset.Initialize(&platform_, &crypto);
+  keyset.Initialize(&platform_, &crypto_);
 
   keyset.SetTPMKey(brillo::SecureBlob(kFakePasswordKey));
 
@@ -756,6 +720,71 @@ TEST_F(VaultKeysetTest, GetTpmWritePasswordRounds) {
   ASSERT_EQ(keyset.GetPasswordRounds(), test_state->password_rounds.value());
 }
 
+TEST_F(VaultKeysetTest, DecryptionTestWithKeyBlobs) {
+  // Check that Decrypt returns the original keyset.
+  // Setup
+
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto_);
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
+
+  SecureBlob bytes;
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
+      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
+
+  EXPECT_CALL(platform_, ReadFile(FilePath(kFilePath), _))
+      .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
+
+  KeyBlobs key_blobs = {.vkk_key = brillo::SecureBlob(32, 'A'),
+                        .vkk_iv = brillo::SecureBlob(16, 'B'),
+                        .chaps_iv = brillo::SecureBlob(16, 'C')};
+
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
+  AuthBlockState auth_state = {.state = pcr_state};
+  ASSERT_TRUE(vault_keyset.EncryptEx(key_blobs, auth_state));
+  EXPECT_TRUE(vault_keyset.Save(FilePath(kFilePath)));
+
+  SecureBlob original_data;
+  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
+
+  // Test
+  VaultKeyset new_keyset;
+  new_keyset.Initialize(&platform_, &crypto_);
+  EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
+  CryptoError crypto_error = CryptoError::CE_NONE;
+  ASSERT_TRUE(new_keyset.DecryptEx(key_blobs, &crypto_error));
+  ASSERT_EQ(crypto_error, CryptoError::CE_NONE);
+
+  // Verify
+  SecureBlob new_data;
+  ASSERT_TRUE(new_keyset.ToKeysBlob(&new_data));
+
+  EXPECT_EQ(new_data.size(), original_data.size());
+  ASSERT_TRUE(VaultKeysetTest::FindBlobInBlob(new_data, original_data));
+}
+
+TEST_F(VaultKeysetTest, DecryptWithAuthBlockFailNotLoaded) {
+  // Check to decrypt a VaultKeyset that hasn't been loaded yet.
+
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto_);
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
+
+  KeyBlobs key_blobs = {.vkk_key = brillo::SecureBlob(32, 'A'),
+                        .vkk_iv = brillo::SecureBlob(16, 'B'),
+                        .chaps_iv = brillo::SecureBlob(16, 'C')};
+
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
+  AuthBlockState auth_state = {.state = pcr_state};
+
+  EXPECT_TRUE(vault_keyset.EncryptEx(key_blobs, auth_state));
+
+  CryptoError crypto_error = CryptoError::CE_NONE;
+  // Load() needs to be called before decrypting the keyset.
+  ASSERT_FALSE(vault_keyset.DecryptEx(key_blobs, &crypto_error));
+  ASSERT_EQ(crypto_error, CryptoError::CE_OTHER_CRYPTO);
+}
+
 class LeCredentialsManagerTest : public ::testing::Test {
  public:
   LeCredentialsManagerTest() : crypto_(&platform_) {
@@ -765,7 +794,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
     EXPECT_CALL(tpm_, IsEnabled()).WillRepeatedly(Return(true));
     EXPECT_CALL(tpm_, IsOwned()).WillRepeatedly(Return(true));
 
-    // Raw pointer as crypto expects unique_ptr, which we will wrap this
+    // Raw pointer as crypto_ expects unique_ptr, which we will wrap this
     // allocation into.
     le_cred_manager_ = new MockLECredentialManager();
     EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
@@ -933,6 +962,85 @@ TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
   ASSERT_FALSE(new_keyset.Decrypt(key, false, &crypto_error));
   ASSERT_EQ(crypto_error, CryptoError::CE_TPM_DEFEND_LOCK);
   ASSERT_TRUE(new_keyset.GetAuthLocked());
+}
+
+TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(Return(LE_CRED_SUCCESS));
+
+  pin_vault_keyset_.CreateFromFileSystemKeyset(
+      FileSystemKeyset::CreateRandom());
+  pin_vault_keyset_.SetLowEntropyCredential(true);
+
+  std::optional<brillo::SecureBlob> reset_secret =
+      pin_vault_keyset_.GetOrGenerateResetSecret();
+  EXPECT_TRUE(reset_secret.has_value());
+
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
+      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+
+  AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)), false,
+                          "unused", reset_secret.value()};
+  KeyBlobs key_blobs;
+  AuthBlockState auth_state;
+  auth_block->Create(auth_input, &auth_state, &key_blobs);
+
+  EXPECT_TRUE(
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
+  EXPECT_TRUE(pin_vault_keyset_.EncryptEx(key_blobs, auth_state));
+}
+
+TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
+  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(Return(LE_CRED_ERROR_NO_FREE_LABEL));
+
+  pin_vault_keyset_.CreateFromFileSystemKeyset(
+      FileSystemKeyset::CreateRandom());
+  pin_vault_keyset_.SetLowEntropyCredential(true);
+
+  brillo::SecureBlob reset_secret =
+      pin_vault_keyset_.GetOrGenerateResetSecret().value();
+
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
+      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+
+  AuthInput auth_input = {brillo::SecureBlob(44, 'A'), false, "unused",
+                          reset_secret};
+  KeyBlobs key_blobs;
+  AuthBlockState auth_state;
+  auth_block->Create(auth_input, &auth_state, &key_blobs);
+
+  EXPECT_FALSE(
+      std::holds_alternative<PinWeaverAuthBlockState>(auth_state.state));
+}
+
+TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+
+  SerializedVaultKeyset serialized;
+  serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+  serialized.set_le_fek_iv(HexDecode(kHexFekIv));
+  serialized.set_le_chaps_iv(HexDecode(kHexChapsIv));
+  serialized.set_wrapped_keyset(HexDecode(kHexWrappedKeyset));
+  serialized.set_wrapped_chaps_key(HexDecode(kHexWrappedChapsKey));
+  serialized.set_salt(HexDecode(kHexSalt));
+  serialized.set_le_label(0644);
+
+  vk.InitializeFromSerialized(serialized);
+
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
+      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+
+  AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)), false};
+  KeyBlobs key_blobs;
+  AuthBlockState auth_state;
+  EXPECT_TRUE(vk.GetPinWeaverState(&auth_state));
+  auth_block->Derive(auth_input, auth_state, &key_blobs);
+
+  CryptoError crypto_error = CryptoError::CE_NONE;
+  EXPECT_TRUE(vk.DecryptVaultKeysetEx(key_blobs, &crypto_error));
+  EXPECT_EQ(CryptoError::CE_NONE, crypto_error);
 }
 
 }  // namespace cryptohome

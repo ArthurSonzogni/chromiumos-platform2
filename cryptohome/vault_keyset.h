@@ -67,12 +67,26 @@ class VaultKeyset {
   virtual bool Save(const base::FilePath& filename);
 
   // Load must be called first. |crypto_error| may be null.
+  // Decrypts the encrypted fields of the VaultKeyset from serialized with the
+  // KeyBlobs derived from the provided |key|.
   virtual bool Decrypt(const brillo::SecureBlob& key,
                        bool is_pcr_extended,
                        CryptoError* crypto_error);
 
+  // Load must be called first. |crypto_error| may be null.
+  // Decrypts the encrypted fields of the VaultKeyset from serialized with the
+  // provided |key_blobs|.
+  virtual bool DecryptEx(const KeyBlobs& key_blobs, CryptoError* crypto_error);
+
+  // Encrypts the VaultKeyset fields with the KeyBlobs derived from the provided
+  // |key| for the |obfuscated_username|.
   virtual bool Encrypt(const brillo::SecureBlob& key,
                        const std::string& obfuscated_username);
+
+  // Encrypts the VaultKeyset fields with the provided |key_blobs| based on the
+  // encryption mechanisms provided by the |auth_state|.
+  virtual bool EncryptEx(const KeyBlobs& key_blobs,
+                         const AuthBlockState& auth_state);
 
   // Convenience methods to initialize a new VaultKeyset with random values.
   virtual void CreateRandomChapsKey();
@@ -226,6 +240,9 @@ class VaultKeyset {
       const ChallengeCredentialAuthBlockState& auth_state);
   void SetTpmEccState(const TpmEccAuthBlockState& auth_state);
 
+  // Generates a random blob to be used as reset secret for LE Credentials.
+  std::optional<brillo::SecureBlob> GetOrGenerateResetSecret();
+
  private:
   // Converts the class to a protobuf for serialization to disk.
   SerializedVaultKeyset ToSerialized() const;
@@ -286,6 +303,14 @@ class VaultKeyset {
   bool UnwrapVaultKeyset(const SerializedVaultKeyset& serialized,
                          const KeyBlobs& vkk_data,
                          CryptoError* error);
+
+  // Decrypts an encrypted vault keyset which is obtained from the unwrapped
+  // secrets returned from UnwrapVaultKeyset() using the key_blobs.
+  //
+  // Parameters
+  //   key_blobs - KeyBlobs to decrypt serialized VaultKeyset.
+  //   error(OUT) - The specific error code on failure.
+  bool DecryptVaultKeysetEx(const KeyBlobs& key_blobs, CryptoError* error);
 
   // Decrypts an encrypted vault keyset which is obtained from the unwrapped
   // secrets returned from UnwrapVaultKeyset().
@@ -410,6 +435,8 @@ class VaultKeyset {
   FRIEND_TEST_ALL_PREFIXES(CryptoTest, ScryptStepTest);
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, Decrypt);
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, Encrypt);
+  FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, DecryptWithKeyBlobs);
+  FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, EncryptWithKeyBlobs);
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, EncryptFail);
   FRIEND_TEST_ALL_PREFIXES(LeCredentialsManagerTest, EncryptTestReset);
   FRIEND_TEST_ALL_PREFIXES(VaultKeysetTest, GetEccAuthBlockStateTest);
