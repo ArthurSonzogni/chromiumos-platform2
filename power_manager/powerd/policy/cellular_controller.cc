@@ -111,6 +111,8 @@ void CellularController::Init(Delegate* delegate,
                  &use_multi_power_level_dynamic_sar_);
   prefs->GetBool(kUseRegulatoryDomainForDynamicSARPref,
                  &use_regulatory_domain_for_dynamic_sar_);
+  prefs->GetBool(kSetDefaultProximityStateHighPref,
+                 &set_default_proximity_state_far_);
   std::string levels_string;
   if (prefs->GetString(kSetCellularTransmitPowerLevelMappingPref,
                        &levels_string)) {
@@ -245,7 +247,8 @@ void CellularController::ProximitySensorDetected(UserProximity value) {
     } else {
       LOG(INFO) << "Cellular power will be handled by proximity sensor";
     }
-    HandleProximityChange(value);
+    HandleProximityChange(set_default_proximity_state_far_ ? UserProximity::FAR
+                                                           : value);
   }
 }
 

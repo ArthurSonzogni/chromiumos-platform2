@@ -117,6 +117,8 @@ const char kSetCellularTransmitPowerLevelMappingPref[] =
     "set_cellular_transmit_power_level_mapping";
 const char kSetCellularRegulatoryDomainMappingPref[] =
     "set_cellular_regulatory_domain_mapping";
+const char kSetDefaultProximityStateHighPref[] =
+    "set_default_proximity_state_high";
 const char kUseRegulatoryDomainForDynamicSARPref[] =
     "use_regulatory_domain_for_dynamic_sar";
 const char kEnableConsoleDuringSuspendPref[] = "enable_console_during_suspend";

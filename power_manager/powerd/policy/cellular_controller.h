@@ -149,6 +149,7 @@ class CellularController : public UserProximityHandler::Delegate {
   // response to tablet mode or proximity changes.
   bool set_transmit_power_for_tablet_mode_ = false;
   bool set_transmit_power_for_proximity_ = false;
+  bool set_default_proximity_state_far_ = false;
   bool use_modemmanager_for_dynamic_sar_ = false;
   bool use_multi_power_level_dynamic_sar_ = false;
   bool use_regulatory_domain_for_dynamic_sar_ = false;

@@ -275,6 +275,9 @@ extern const char kSetCellularTransmitPowerForActivityProximityPref[];
 // RadioTransmitPower enum (e.g. "LOW", "MEDIUM", "HIGH".).
 extern const char kSetCellularTransmitPowerLevelMappingPref[];
 
+// If true, start with Proximity sensor default value as Far.
+extern const char kSetDefaultProximityStateHighPref[];
+
 // If true, use the offset from kSetCellularRegulatoryDomainMappingPref
 extern const char kUseRegulatoryDomainForDynamicSARPref[];
 
