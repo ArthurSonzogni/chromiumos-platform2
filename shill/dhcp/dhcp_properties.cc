@@ -18,7 +18,7 @@
 #include "shill/manager.h"
 #include "shill/property_accessor.h"
 #include "shill/property_store.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 
 namespace shill {
 

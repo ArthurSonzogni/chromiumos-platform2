@@ -7,6 +7,7 @@
 #include "crypto/random.h"
 #include "shill/device.h"
 #include "shill/mac_address.h"
+#include "shill/store/store_interface.h"
 
 namespace shill {
 

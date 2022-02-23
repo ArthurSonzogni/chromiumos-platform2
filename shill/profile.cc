@@ -21,14 +21,13 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus/dbus_control.h"
-#include "shill/key_file_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/property_accessor.h"
 #include "shill/service.h"
-#include "shill/store_interface.h"
-#include "shill/stub_storage.h"
+#include "shill/store/key_file_store.h"
+#include "shill/store/stub_storage.h"
 
 #if !defined(DISABLE_WIFI)
 #include "shill/wifi/passpoint_credentials.h"

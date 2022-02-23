@@ -52,7 +52,7 @@
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"
 #include "shill/service.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 #include "shill/technology.h"
 #include "shill/tethering.h"
 

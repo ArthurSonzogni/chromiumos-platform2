@@ -24,7 +24,6 @@
 #include "shill/error.h"
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
-#include "shill/fake_store.h"
 #include "shill/ipconfig.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
@@ -41,6 +40,7 @@
 #include "shill/property_store_test.h"
 #include "shill/service_property_change_test.h"
 #include "shill/service_under_test.h"
+#include "shill/store/fake_store.h"
 #include "shill/testing.h"
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)

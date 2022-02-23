@@ -9,13 +9,13 @@
 
 #include "shill/ethernet/mock_ethernet.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
-#include "shill/fake_store.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/property_store_test.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
+#include "shill/store/fake_store.h"
 
 using ::testing::_;
 using ::testing::NiceMock;

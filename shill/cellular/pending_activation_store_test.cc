@@ -9,8 +9,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-#include "shill/fake_store.h"
-#include "shill/store_interface.h"
+#include "shill/store/fake_store.h"
 
 namespace {
 const int kInvalid = -1;

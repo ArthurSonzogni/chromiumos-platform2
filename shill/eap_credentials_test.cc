@@ -18,11 +18,11 @@
 #include <libpasswordprovider/password_provider.h>
 #include <libpasswordprovider/password_provider_test_utils.h>
 
-#include "shill/fake_store.h"
 #include "shill/key_value_store.h"
 #include "shill/mock_certificate_file.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
+#include "shill/store/fake_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 

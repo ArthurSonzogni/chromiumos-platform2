@@ -33,7 +33,7 @@
 #include "shill/metrics.h"
 #include "shill/net/ieee80211.h"
 #include "shill/property_accessor.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi.h"

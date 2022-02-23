@@ -19,7 +19,7 @@
 #include "shill/key_value_store.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {

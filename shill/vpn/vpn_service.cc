@@ -22,7 +22,7 @@
 #include "shill/ppp_device.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 #include "shill/technology.h"
 #include "shill/vpn/vpn_driver.h"
 #include "shill/vpn/vpn_provider.h"

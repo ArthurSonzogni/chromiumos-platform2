@@ -12,7 +12,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/fake_store.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -20,6 +19,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_service.h"
 #include "shill/property_store.h"
+#include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;

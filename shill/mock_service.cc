@@ -11,7 +11,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/refptr_types.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 #include "shill/technology.h"
 
 using testing::_;

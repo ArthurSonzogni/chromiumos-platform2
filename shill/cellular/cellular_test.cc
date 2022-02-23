@@ -49,7 +49,6 @@ extern "C" {
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
-#include "shill/fake_store.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -63,6 +62,7 @@ extern "C" {
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/property_store_test.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
+#include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 

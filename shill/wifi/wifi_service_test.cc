@@ -19,7 +19,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/fake_store.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/mock_adaptors.h"
@@ -34,6 +33,7 @@
 #include "shill/property_store_test.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
+#include "shill/store/fake_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/tethering.h"

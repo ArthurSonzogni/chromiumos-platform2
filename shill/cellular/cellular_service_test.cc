@@ -12,13 +12,13 @@
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/fake_store.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/service_property_change_test.h"
+#include "shill/store/fake_store.h"
 
 using testing::_;
 using testing::AnyNumber;

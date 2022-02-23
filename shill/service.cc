@@ -36,7 +36,7 @@
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 #include "shill/eap_credentials.h"

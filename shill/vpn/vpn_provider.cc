@@ -20,7 +20,7 @@
 #include "shill/process_manager.h"
 #include "shill/profile.h"
 #include "shill/routing_policy_entry.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 #include "shill/vpn/arc_vpn_driver.h"
 #include "shill/vpn/ikev2_driver.h"
 #include "shill/vpn/l2tp_ipsec_driver.h"

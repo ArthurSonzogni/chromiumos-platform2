@@ -11,7 +11,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
-#include "shill/fake_store.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
@@ -22,6 +21,7 @@
 #include "shill/mock_service.h"
 #include "shill/mock_virtual_device.h"
 #include "shill/service_property_change_test.h"
+#include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"

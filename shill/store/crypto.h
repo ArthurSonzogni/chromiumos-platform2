@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CRYPTO_H_
-#define SHILL_CRYPTO_H_
+#ifndef SHILL_STORE_CRYPTO_H_
+#define SHILL_STORE_CRYPTO_H_
 
 #include <string>
 
@@ -29,4 +29,4 @@ base::Optional<std::string> Decrypt(const std::string& ciphertext);
 
 }  // namespace shill
 
-#endif  // SHILL_CRYPTO_H_
+#endif  // SHILL_STORE_CRYPTO_H_

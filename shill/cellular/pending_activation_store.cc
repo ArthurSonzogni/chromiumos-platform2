@@ -9,9 +9,8 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 
-#include "shill/key_file_store.h"
 #include "shill/logging.h"
-#include "shill/store_interface.h"
+#include "shill/store/key_file_store.h"
 
 namespace shill {
 

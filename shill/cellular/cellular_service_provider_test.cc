@@ -14,12 +14,12 @@
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/fake_properties_proxy.h"
-#include "shill/fake_store.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
+#include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::NiceMock;

@@ -8,11 +8,11 @@
 #include <string>
 #include <base/time/time.h>
 
-#include "shill/store_interface.h"
-
 #include "linux/if_ether.h"
 
 namespace shill {
+
+class StoreInterface;
 
 // MACAddress class encapsulates MAC address, providing means for
 // keeping it, accessing, setting and randomizing.

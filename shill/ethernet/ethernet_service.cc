@@ -20,7 +20,7 @@
 #include "shill/ethernet/ethernet_provider.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 
 namespace shill {
 

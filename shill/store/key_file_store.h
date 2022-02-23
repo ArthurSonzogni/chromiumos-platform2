@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_KEY_FILE_STORE_H_
-#define SHILL_KEY_FILE_STORE_H_
+#ifndef SHILL_STORE_KEY_FILE_STORE_H_
+#define SHILL_STORE_KEY_FILE_STORE_H_
 
 #include <memory>
 #include <set>
@@ -13,9 +13,9 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/crypto.h"
-#include "shill/pkcs11_data_store.h"
-#include "shill/store_interface.h"
+#include "shill/store/crypto.h"
+#include "shill/store/pkcs11_data_store.h"
+#include "shill/store/store_interface.h"
 
 namespace shill {
 
@@ -129,4 +129,4 @@ std::unique_ptr<StoreInterface> CreateStore(const base::FilePath& path,
 
 }  // namespace shill
 
-#endif  // SHILL_KEY_FILE_STORE_H_
+#endif  // SHILL_STORE_KEY_FILE_STORE_H_

@@ -9,8 +9,8 @@
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "shill/fake_store.h"
 #include "shill/service.h"
+#include "shill/store/fake_store.h"
 
 namespace shill {
 

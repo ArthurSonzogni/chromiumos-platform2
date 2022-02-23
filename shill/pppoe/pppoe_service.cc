@@ -23,7 +23,7 @@
 #include "shill/ppp_device.h"
 #include "shill/ppp_device_factory.h"
 #include "shill/process_manager.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 
 namespace shill {
 

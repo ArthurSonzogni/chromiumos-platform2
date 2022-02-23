@@ -32,7 +32,7 @@
 #include "shill/net/byte_string.h"
 #include "shill/net/ieee80211.h"
 #include "shill/profile.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 #include "shill/technology.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"

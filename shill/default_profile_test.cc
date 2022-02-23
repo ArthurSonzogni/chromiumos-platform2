@@ -14,7 +14,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/dhcp/mock_dhcp_properties.h"
-#include "shill/fake_store.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -22,6 +21,7 @@
 #include "shill/portal_detector.h"
 #include "shill/property_store_test.h"
 #include "shill/resolver.h"
+#include "shill/store/fake_store.h"
 
 using ::testing::_;
 using ::testing::DoAll;

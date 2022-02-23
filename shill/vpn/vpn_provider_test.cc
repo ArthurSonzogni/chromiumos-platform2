@@ -13,7 +13,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
-#include "shill/fake_store.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
@@ -22,6 +21,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/routing_policy_entry.h"
+#include "shill/store/fake_store.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_service.h"
 

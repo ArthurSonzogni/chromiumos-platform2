@@ -9,11 +9,11 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "shill/fake_store.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_control.h"
 #include "shill/mock_ipconfig.h"
 #include "shill/property_store.h"
+#include "shill/store/fake_store.h"
 
 using testing::_;
 using testing::DoAll;

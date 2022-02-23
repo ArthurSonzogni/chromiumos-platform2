@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/pkcs11_data_store.h"
+#include "shill/store/pkcs11_data_store.h"
 
 #include <map>
 #include <string>

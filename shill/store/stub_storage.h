@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_STUB_STORAGE_H_
-#define SHILL_STUB_STORAGE_H_
+#ifndef SHILL_STORE_STUB_STORAGE_H_
+#define SHILL_STORE_STUB_STORAGE_H_
 
 #include <set>
 #include <string>
 #include <vector>
 
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 
 namespace shill {
 
@@ -125,4 +125,4 @@ class StubStorage : public StoreInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_STUB_STORAGE_H_
+#endif  // SHILL_STORE_STUB_STORAGE_H_

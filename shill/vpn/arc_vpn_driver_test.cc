@@ -10,12 +10,12 @@
 #include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 
-#include "shill/fake_store.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_virtual_device.h"
+#include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"

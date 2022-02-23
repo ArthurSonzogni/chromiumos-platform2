@@ -14,7 +14,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "shill/fake_store.h"
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
@@ -22,6 +21,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
 #include "shill/property_store.h"
+#include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/fake_vpn_util.h"
 #include "shill/vpn/mock_vpn_driver.h"

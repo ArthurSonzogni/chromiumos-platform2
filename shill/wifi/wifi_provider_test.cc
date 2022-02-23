@@ -15,12 +15,12 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "shill/fake_store.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/net/ieee80211.h"
+#include "shill/store/fake_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"

@@ -4,8 +4,8 @@
 
 // A PKCS #11 backed KeyStore implementation.
 
-#ifndef SHILL_PKCS11_DATA_STORE_H_
-#define SHILL_PKCS11_DATA_STORE_H_
+#ifndef SHILL_STORE_PKCS11_DATA_STORE_H_
+#define SHILL_STORE_PKCS11_DATA_STORE_H_
 
 #include <memory>
 #include <string>
@@ -88,4 +88,4 @@ class Pkcs11DataStore {
 
 }  // namespace shill
 
-#endif  // SHILL_PKCS11_DATA_STORE_H_
+#endif  // SHILL_STORE_PKCS11_DATA_STORE_H_

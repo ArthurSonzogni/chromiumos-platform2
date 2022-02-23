@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_FAKE_STORE_H_
-#define SHILL_FAKE_STORE_H_
+#ifndef SHILL_STORE_FAKE_STORE_H_
+#define SHILL_STORE_FAKE_STORE_H_
 
 #include <map>
 #include <set>
@@ -13,7 +13,7 @@
 #include <brillo/variant_dictionary.h>
 
 #include "shill/key_value_store.h"
-#include "shill/store_interface.h"
+#include "shill/store/store_interface.h"
 
 namespace shill {
 
@@ -112,4 +112,4 @@ class FakeStore : public StoreInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_FAKE_STORE_H_
+#endif  // SHILL_STORE_FAKE_STORE_H_
