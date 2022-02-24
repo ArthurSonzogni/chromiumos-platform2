@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include "shill/key_value_store.h"
+#include "shill/store/key_value_store.h"
 
 namespace shill {
 

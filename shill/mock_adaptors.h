@@ -12,7 +12,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/error.h"
-#include "shill/key_value_store.h"
+#include "shill/store/key_value_store.h"
 
 namespace shill {
 

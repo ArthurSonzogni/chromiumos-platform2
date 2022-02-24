@@ -8,8 +8,8 @@
 #include <string>
 #include <vector>
 
-#include "shill/key_value_store.h"
 #include "shill/service.h"
+#include "shill/store/key_value_store.h"
 
 namespace shill {
 

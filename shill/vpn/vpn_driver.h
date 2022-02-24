@@ -16,9 +16,9 @@
 
 #include "shill/callbacks.h"
 #include "shill/eap_credentials.h"
-#include "shill/key_value_store.h"
 #include "shill/mockable.h"
 #include "shill/service.h"
+#include "shill/store/key_value_store.h"
 
 namespace shill {
 

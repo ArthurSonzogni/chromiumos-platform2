@@ -19,7 +19,7 @@
 #include "shill/refptr_types.h"
 
 #if !defined(DISABLE_WIRED_8021X)
-#include "shill/key_value_store.h"
+#include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #endif  // DISABLE_WIRED_8021X

@@ -14,9 +14,9 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
-#include "shill/key_value_store.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
+#include "shill/store/key_value_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {

@@ -31,7 +31,6 @@
 #include "shill/error.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/geolocation_info.h"
-#include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
@@ -51,6 +50,7 @@
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/key_file_store.h"
+#include "shill/store/key_value_store.h"
 #include "shill/testing.h"
 #include "shill/upstart/mock_upstart.h"
 

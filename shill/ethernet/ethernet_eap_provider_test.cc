@@ -9,10 +9,10 @@
 #include <gtest/gtest.h>
 
 #include "shill/ethernet/mock_ethernet.h"
-#include "shill/key_value_store.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/store/key_value_store.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;

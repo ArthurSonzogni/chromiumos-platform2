@@ -10,8 +10,8 @@
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 
-#include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
+#include "shill/store/key_value_store.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_endpoint.h"

@@ -16,9 +16,9 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/event_dispatcher.h"
-#include "shill/key_value_store.h"
 #include "shill/metrics.h"
 #include "shill/refptr_types.h"
+#include "shill/store/key_value_store.h"
 
 namespace shill {
 

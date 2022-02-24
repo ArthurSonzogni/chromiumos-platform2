@@ -31,7 +31,7 @@
 #include "shill/cellular/mm1_sim_proxy_interface.h"
 #include "shill/cellular/subscription_state.h"
 #include "shill/data_types.h"
-#include "shill/key_value_store.h"
+#include "shill/store/key_value_store.h"
 
 namespace shill {
 

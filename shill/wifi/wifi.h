@@ -88,13 +88,13 @@
 
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
-#include "shill/key_value_store.h"
 #include "shill/mockable.h"
 #include "shill/net/ieee80211.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/shill_time.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
+#include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/supplicant/supplicant_manager.h"
 

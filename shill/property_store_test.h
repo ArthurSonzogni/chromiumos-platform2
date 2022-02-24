@@ -14,11 +14,11 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
-#include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_metrics.h"
 #include "shill/property_store.h"
+#include "shill/store/key_value_store.h"
 #include "shill/test_event_dispatcher.h"
 
 namespace shill {

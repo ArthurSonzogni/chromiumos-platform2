@@ -21,7 +21,7 @@
 #include <gtest/gtest.h>
 #include <inttypes.h>
 
-#include "shill/key_value_store.h"
+#include "shill/store/key_value_store.h"
 
 using testing::Test;
 

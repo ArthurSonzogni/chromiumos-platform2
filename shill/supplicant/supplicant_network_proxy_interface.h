@@ -5,7 +5,7 @@
 #ifndef SHILL_SUPPLICANT_SUPPLICANT_NETWORK_PROXY_INTERFACE_H_
 #define SHILL_SUPPLICANT_SUPPLICANT_NETWORK_PROXY_INTERFACE_H_
 
-#include "shill/key_value_store.h"
+#include "shill/store/key_value_store.h"
 
 namespace shill {
 

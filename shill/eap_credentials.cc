@@ -23,12 +23,12 @@
 
 #include "shill/certificate_file.h"
 #include "shill/error.h"
-#include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/property_accessor.h"
 #include "shill/property_store.h"
 #include "shill/service.h"
+#include "shill/store/key_value_store.h"
 #include "shill/store/store_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
 

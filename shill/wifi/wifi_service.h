@@ -17,12 +17,12 @@
 #include <base/time/default_clock.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/key_value_store.h"
 #include "shill/mac_address.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
+#include "shill/store/key_value_store.h"
 #include "shill/supplicant/wpa_supplicant.h"
 
 namespace shill {

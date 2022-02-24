@@ -9,7 +9,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
-#include "shill/key_value_store.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
@@ -17,6 +16,7 @@
 #include "shill/mock_process_manager.h"
 #include "shill/net/mock_io_handler_factory.h"
 #include "shill/net/mock_sockets.h"
+#include "shill/store/key_value_store.h"
 #include "shill/vpn/mock_openvpn_driver.h"
 
 using testing::_;

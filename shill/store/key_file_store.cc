@@ -30,8 +30,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "shill/key_value_store.h"
 #include "shill/logging.h"
+#include "shill/store/key_value_store.h"
 
 namespace shill {
 
