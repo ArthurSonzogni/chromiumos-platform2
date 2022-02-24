@@ -31,6 +31,7 @@ PKG="chromiumos/camera/config_file_ui"
 OUT_DIR="${GO_SRCROOT}/${PKG}/out"
 STATIC_DIRS="css js templates setting_files"
 APP_OUTPUT="${GO_SRCROOT}/${PKG}/app.sh"
+TAST_GOPATH="${CROS_WORKON_SRCROOT}/src/platform/tast"
 
 cleanup() {
   cleanup_remote_access
@@ -44,7 +45,8 @@ build_gopkg() {
   rm -rf "${OUT_DIR}"
   mkdir -p "${OUT_DIR}"
   # TODO(jcliang): select the cross compiler based on the remote board.
-  x86_64-cros-linux-gnu-go build -o "${OUT_DIR}" "${PKG}"
+  GO111MODULE=off GOPATH="${GO_SRCROOT}/..:${TAST_GOPATH}" \
+    x86_64-cros-linux-gnu-go build -o "${OUT_DIR}" "${PKG}"
 
   for d in ${STATIC_DIRS}; do
     cp -r "${GO_SRCROOT}/${PKG}/${d}" "${OUT_DIR}"
