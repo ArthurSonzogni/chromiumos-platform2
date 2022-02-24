@@ -178,8 +178,12 @@ const char kResponseHsmMetaData[] = "hsm_meta_data";
 const char kResponsePayloadSalt[] = "response_salt";
 const char kResponseErrorCode[] = "error_code";
 const char kResponseErrorString[] = "error_string";
-const char kUserId[] = "user_id";
-const char kUserIdType[] = "user_id_type";
+const char kCryptohomeUser[] = "cryptohome_user";
+const char kCryptohomeUserType[] = "cryptohome_user_type";
+const char kDeviceUserId[] = "device_user_id";
+const char kBoardName[] = "board_name";
+const char kModelName[] = "model_name";
+const char kRecoveryId[] = "recovery_id";
 const char kAuthClaim[] = "auth_claim";
 const char kRequestorUser[] = "requestor_user";
 const char kRequestorUserType[] = "requestor_user_type";
@@ -238,9 +242,19 @@ bool SerializeHsmAssociatedDataToCbor(const HsmAssociatedData& args,
   cbor::Value::MapValue onboarding_meta_data_map;
   onboarding_meta_data_map.emplace(kSchemaVersion,
                                    kOnboardingMetaDataSchemaVersion);
-  onboarding_meta_data_map.emplace(kUserId, args.onboarding_meta_data.user_id);
+  onboarding_meta_data_map.emplace(kCryptohomeUser,
+                                   args.onboarding_meta_data.cryptohome_user);
   onboarding_meta_data_map.emplace(
-      kUserIdType, static_cast<int>(args.onboarding_meta_data.user_id_type));
+      kCryptohomeUserType,
+      static_cast<int>(args.onboarding_meta_data.cryptohome_user_type));
+  onboarding_meta_data_map.emplace(kDeviceUserId,
+                                   args.onboarding_meta_data.device_user_id);
+  onboarding_meta_data_map.emplace(kBoardName,
+                                   args.onboarding_meta_data.board_name);
+  onboarding_meta_data_map.emplace(kModelName,
+                                   args.onboarding_meta_data.model_name);
+  onboarding_meta_data_map.emplace(kRecoveryId,
+                                   args.onboarding_meta_data.recovery_id);
   ad_map.emplace(kOnboardingMetaData, std::move(onboarding_meta_data_map));
 
   if (!SerializeCborMap(ad_map, ad_cbor)) {

@@ -85,15 +85,19 @@ SecureBlob GenerateScalar() {
 class RecoveryCryptoTest : public testing::Test {
  public:
   RecoveryCryptoTest() {
-    onboarding_metadata_.user_id_type = UserIdType::kGaiaId;
-    onboarding_metadata_.user_id = "fake user id";
+    onboarding_metadata_.cryptohome_user_type = UserType::kGaiaId;
+    onboarding_metadata_.cryptohome_user = "fake user id";
+    onboarding_metadata_.device_user_id = "Device User ID";
+    onboarding_metadata_.board_name = "Board Name";
+    onboarding_metadata_.model_name = "Model Name";
+    onboarding_metadata_.recovery_id = "Recovery ID";
 
     AuthClaim auth_claim;
     auth_claim.gaia_access_token = kFakeGaiaAccessToken;
     auth_claim.gaia_reauth_proof_token = kFakeRapt;
     request_metadata_.auth_claim = std::move(auth_claim);
     request_metadata_.requestor_user_id = kFakeUserId;
-    request_metadata_.requestor_user_id_type = UserIdType::kGaiaId;
+    request_metadata_.requestor_user_id_type = UserType::kGaiaId;
   }
   ~RecoveryCryptoTest() = default;
 

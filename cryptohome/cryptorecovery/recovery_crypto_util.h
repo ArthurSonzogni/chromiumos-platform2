@@ -43,8 +43,8 @@ using ResponsePayload = AeadPayload;
 // !!! DO NOT MODIFY !!!
 // The enum values below are exchanged with the server and must be synced with
 // the server/HSM implementation (or the other party will not be able to decrypt
-// the data). Type of the `user_id` field sent in `OnboardingMetadata`.
-enum class UserIdType {
+// the data). Type of the `cryptohome_user` field sent in `OnboardingMetadata`.
+enum class UserType {
   kUnknown = 0,
   kGaiaId = 1,
 };
@@ -53,9 +53,16 @@ enum class UserIdType {
 // available during the Recovery workflow. This information is used by the
 // Recovery Service and may be recorded in the Ledger.
 struct OnboardingMetadata {
-  UserIdType user_id_type = UserIdType::kUnknown;
-  // Format of `user_id` is determined by `user_id_type` enum.
-  std::string user_id;
+  UserType cryptohome_user_type = UserType::kUnknown;
+  // Format of `cryptohome_user` is determined by `cryptohome_user_type` enum.
+  std::string cryptohome_user;
+  // Unique ID tied to the user's cryptohome on the device
+  std::string device_user_id;
+  std::string board_name;
+  std::string model_name;
+  // Generated anew after each successful recovery, hex-encoded sha-256 hash
+  // string.
+  std::string recovery_id;
 };
 
 // `associated_data` for the HSM payload.
@@ -105,7 +112,7 @@ struct AuthClaim {
 // schema_version to distinguish them.
 struct RequestMetadata {
   AuthClaim auth_claim;
-  UserIdType requestor_user_id_type = UserIdType::kUnknown;
+  UserType requestor_user_id_type = UserType::kUnknown;
   // Format of `requestor_user_id` is determined by `requestor_user_id_type`
   // enum.
   std::string requestor_user_id;

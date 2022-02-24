@@ -129,8 +129,12 @@ class HsmPayloadCborHelperTest : public testing::Test {
     ASSERT_TRUE(ec_->GenerateKeysAsSecureBlobs(
         &dealer_pub_key_, &dealer_priv_key_, context_.get()));
 
-    onboarding_meta_data_.user_id_type = UserIdType::kGaiaId;
-    onboarding_meta_data_.user_id = "User ID";
+    onboarding_meta_data_.cryptohome_user_type = UserType::kGaiaId;
+    onboarding_meta_data_.cryptohome_user = "User ID";
+    onboarding_meta_data_.device_user_id = "Device User ID";
+    onboarding_meta_data_.board_name = "Board Name";
+    onboarding_meta_data_.model_name = "Model Name";
+    onboarding_meta_data_.recovery_id = "Recovery ID";
   }
 
  protected:
@@ -193,7 +197,7 @@ class RecoveryRequestCborHelperTest : public testing::Test {
  public:
   RecoveryRequestCborHelperTest() {
     request_meta_data_.requestor_user_id = kFakeUserId;
-    request_meta_data_.requestor_user_id_type = UserIdType::kGaiaId;
+    request_meta_data_.requestor_user_id_type = UserType::kGaiaId;
     AuthClaim auth_claim;
     auth_claim.gaia_access_token = kFakeAccessToken;
     auth_claim.gaia_reauth_proof_token = kFakeRapt;
@@ -261,17 +265,30 @@ TEST_F(HsmPayloadCborHelperTest, GenerateAdCborWithEmptyRsaPublicKey) {
   EXPECT_TRUE(GetValueFromCborMapByKeyForTesting(
       cbor_output, kOnboardingMetaData, &deserialized_onboarding_metadata));
   ASSERT_TRUE(deserialized_onboarding_metadata.is_map());
+  EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
+              CborMapContainsStringValue(
+                  kCryptohomeUser, onboarding_meta_data_.cryptohome_user));
+  EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
+              CborMapContainsStringValue(kDeviceUserId,
+                                         onboarding_meta_data_.device_user_id));
   EXPECT_THAT(
       deserialized_onboarding_metadata.GetMap(),
-      CborMapContainsStringValue(kUserId, onboarding_meta_data_.user_id));
+      CborMapContainsStringValue(kBoardName, onboarding_meta_data_.board_name));
+  EXPECT_THAT(
+      deserialized_onboarding_metadata.GetMap(),
+      CborMapContainsStringValue(kModelName, onboarding_meta_data_.model_name));
+  EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
+              CborMapContainsStringValue(kRecoveryId,
+                                         onboarding_meta_data_.recovery_id));
   EXPECT_THAT(
       deserialized_onboarding_metadata.GetMap(),
       CborMapContainsIntegerValue(
-          kUserIdType, static_cast<int>(onboarding_meta_data_.user_id_type)));
+          kCryptohomeUserType,
+          static_cast<int>(onboarding_meta_data_.cryptohome_user_type)));
   EXPECT_THAT(deserialized_onboarding_metadata.GetMap(),
               CborMapContainsIntegerValue(kSchemaVersion,
                                           kOnboardingMetaDataSchemaVersion));
-  EXPECT_EQ(deserialized_onboarding_metadata.GetMap().size(), 3);
+  EXPECT_EQ(deserialized_onboarding_metadata.GetMap().size(), 7);
 
   // 3 fields + schema version:
   EXPECT_EQ(GetCborMapSize(cbor_output), 4);
