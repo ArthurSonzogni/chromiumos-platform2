@@ -8,6 +8,7 @@ mod arc;
 mod ccd_pass;
 mod display_debug;
 mod dmesg;
+mod insert_coin;
 mod packet_capture;
 mod set_time;
 mod verify_ro;
@@ -21,6 +22,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     ccd_pass::register(dispatcher);
     display_debug::register(dispatcher);
     dmesg::register(dispatcher);
+    insert_coin::register(dispatcher);
     packet_capture::register(dispatcher);
     set_time::register(dispatcher);
     verify_ro::register(dispatcher);

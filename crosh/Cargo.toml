@@ -28,6 +28,7 @@ rustyline = "7.0.0"
 shell-words = "1.0.0"
 sys_util = { path = "../../platform/crosvm/common/sys_util" } # provided by ebuild
 system_api = { path = "../system_api" } # provided by ebuild
+textwrap = "0.11.0"
 tlsdate_dbus = { path = "../../third_party/tlsdate" } # provided by ebuild
 
 [dev-dependencies]

@@ -14,6 +14,7 @@ use remain::sorted;
 
 const INDENT: &str = "  ";
 
+#[derive(Debug)]
 #[sorted]
 pub enum Error {
     CommandInvalidArguments(String),
