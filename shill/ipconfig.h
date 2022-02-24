@@ -225,8 +225,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   friend class IPConfigTest;
   friend class ConnectionTest;
 
-  FRIEND_TEST(DeviceTest, AcquireIPConfigWithoutSelectedService);
-  FRIEND_TEST(DeviceTest, AcquireIPConfigWithSelectedService);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(DeviceTest, OnIPConfigExpired);

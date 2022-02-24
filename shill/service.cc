@@ -27,7 +27,6 @@
 
 #include "shill/connection.h"
 #include "shill/dbus/dbus_control.h"
-#include "shill/dhcp/dhcp_properties.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -187,7 +186,6 @@ Service::Service(Manager* manager, Technology technology)
       portal_detection_failure_status_code_(0),
       strength_(0),
       save_credentials_(true),
-      dhcp_properties_(new DhcpProperties(/*manager=*/nullptr)),
       technology_(technology),
       has_ever_connected_(false),
       disconnects_(kMaxDisconnectEventHistory),
@@ -300,8 +298,6 @@ Service::Service(Manager* manager, Technology technology)
 
   IgnoreParameterForConfigure(kTypeProperty);
   IgnoreParameterForConfigure(kProfileProperty);
-
-  dhcp_properties_->InitPropertyStore(&store_);
 
   SLOG(this, 1) << technology << " Service " << serial_number_
                 << " constructed.";
@@ -743,8 +739,6 @@ bool Service::Load(const StoreInterface* storage) {
   // now that the credentials have been loaded.
   storage->GetBool(id, kStorageHasEverConnected, &has_ever_connected_);
 
-  dhcp_properties_->Load(storage, id);
-
   for (patchpanel::TrafficCounter::Source source =
            patchpanel::TrafficCounter::Source_MIN;
        source <= patchpanel::TrafficCounter::Source_MAX;
@@ -880,7 +874,6 @@ bool Service::Save(StoreInterface* storage) {
     eap()->Save(storage, id, save_credentials_);
   }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  dhcp_properties_->Save(storage, id);
 
   for (patchpanel::TrafficCounter::Source source =
            patchpanel::TrafficCounter::Source_MIN;

@@ -346,7 +346,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DevicePortalDetectionTest, RequestStartConnectivityTest);
   FRIEND_TEST(DevicePortalDetectionTest, RestartPortalDetection);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithoutSelectedService);
-  FRIEND_TEST(DeviceTest, AcquireIPConfigWithSelectedService);
+  FRIEND_TEST(DeviceTest, AcquireIPConfigWithDHCPProperties);
   FRIEND_TEST(DeviceTest, AvailableIPConfigs);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);

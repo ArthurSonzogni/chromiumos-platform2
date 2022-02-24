@@ -9,6 +9,7 @@
 #include <linux/sockios.h>
 
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -18,6 +19,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/dhcp/dhcp_properties.h"
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
@@ -55,6 +57,7 @@ using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
 using testing::SaveArg;
 using testing::SetArgPointee;
 using testing::StrictMock;
@@ -84,8 +87,8 @@ class EthernetTest : public testing::Test {
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         device_info_(&manager_),
         ethernet_(new TestEthernet(
-            &manager_, kDeviceName, kDeviceAddress, kInterfaceIndex)),
-        dhcp_config_(new MockDHCPConfig(&control_interface_, kDeviceName)),
+            &manager_, ifname_, hwaddr_, ifindex_)),
+        dhcp_config_(new MockDHCPConfig(&control_interface_, ifname_)),
 #if !defined(DISABLE_WIRED_8021X)
         eap_listener_(new MockEapListener()),
         mock_eap_service_(new MockService(&manager_)),
@@ -136,10 +139,11 @@ class EthernetTest : public testing::Test {
   MOCK_METHOD(void, ErrorCallback, (const Error& error));
 
  protected:
-  static const char kDeviceName[];
-  static const char kDeviceAddress[];
-  static const RpcIdentifier kInterfacePath;
-  static const int kInterfaceIndex;
+  int ifindex_ = 123;
+  std::string ifname_ = "eth0";
+  std::string hwaddr_ = "000102030405";
+  RpcIdentifier dbus_path_ = RpcIdentifier("/interface/path");
+  DhcpProperties dhcp_properties_ = DhcpProperties(/*manager=*/nullptr);
 
   bool GetLinkUp() { return ethernet_->link_up_; }
   void SetLinkUp(bool link_up) { ethernet_->link_up_ = link_up; }
@@ -152,11 +156,13 @@ class EthernetTest : public testing::Test {
   }
   const PropertyStore& GetStore() { return ethernet_->store(); }
   void StartEthernet() {
+    ON_CALL(manager_, dhcp_properties())
+        .WillByDefault(ReturnRef(dhcp_properties_));
     EXPECT_CALL(ethernet_provider_, CreateService(_))
         .WillOnce(Return(mock_service_));
     EXPECT_CALL(ethernet_provider_, RegisterService(Eq(mock_service_)));
     EXPECT_CALL(rtnl_handler_,
-                SetInterfaceFlags(kInterfaceIndex, IFF_UP, IFF_UP));
+                SetInterfaceFlags(ifindex_, IFF_UP, IFF_UP));
     ethernet_->Start(nullptr, EnabledStateChangedCallback());
   }
   void StopEthernet() {
@@ -210,10 +216,10 @@ class EthernetTest : public testing::Test {
     MockSupplicantInterfaceProxy* interface_proxy =
         ExpectCreateSupplicantInterfaceProxy();
     EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
-        .WillOnce(DoAll(SetArgPointee<1>(kInterfacePath), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<1>(dbus_path_), Return(true)));
     EXPECT_TRUE(InvokeStartSupplicant());
     EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
-    EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
+    EXPECT_EQ(dbus_path_, GetSupplicantInterfacePath());
   }
   void TriggerOnEapDetected() { ethernet_->OnEapDetected(); }
   void TriggerCertification(const std::string& subject, uint32_t depth) {
@@ -224,7 +230,7 @@ class EthernetTest : public testing::Test {
   MockSupplicantInterfaceProxy* ExpectCreateSupplicantInterfaceProxy() {
     MockSupplicantInterfaceProxy* proxy = supplicant_interface_proxy_.get();
     EXPECT_CALL(control_interface_,
-                CreateSupplicantInterfaceProxy(_, kInterfacePath))
+                CreateSupplicantInterfaceProxy(_, dbus_path_))
         .WillOnce(Return(ByMove(std::move(supplicant_interface_proxy_))));
     return proxy;
   }
@@ -257,12 +263,6 @@ class EthernetTest : public testing::Test {
   scoped_refptr<MockEthernetService> mock_service_;
   MockEthernetProvider ethernet_provider_;
 };
-
-// static
-const char EthernetTest::kDeviceName[] = "eth0";
-const char EthernetTest::kDeviceAddress[] = "000102030405";
-const RpcIdentifier EthernetTest::kInterfacePath("/interface/path");
-const int EthernetTest::kInterfaceIndex = 123;
 
 TEST_F(EthernetTest, Construct) {
   EXPECT_FALSE(GetLinkUp());
@@ -466,7 +466,7 @@ TEST_F(EthernetTest, StartSupplicant) {
   // Also, the mock pointers should remain; if the MockProxyFactory was
   // invoked again, they would be nullptr.
   EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
-  EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
+  EXPECT_EQ(dbus_path_, GetSupplicantInterfacePath());
 }
 
 TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
@@ -474,17 +474,17 @@ TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
   MockSupplicantInterfaceProxy* interface_proxy =
       ExpectCreateSupplicantInterfaceProxy();
   EXPECT_CALL(*process_proxy, CreateInterface(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*process_proxy, GetInterface(kDeviceName, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kInterfacePath), Return(true)));
+  EXPECT_CALL(*process_proxy, GetInterface(ifname_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(dbus_path_), Return(true)));
   EXPECT_TRUE(InvokeStartSupplicant());
   EXPECT_EQ(interface_proxy, GetSupplicantInterfaceProxy());
-  EXPECT_EQ(kInterfacePath, GetSupplicantInterfacePath());
+  EXPECT_EQ(dbus_path_, GetSupplicantInterfacePath());
 }
 
 TEST_F(EthernetTest, StartSupplicantWithUnknownException) {
   MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
   EXPECT_CALL(*process_proxy, CreateInterface(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*process_proxy, GetInterface(kDeviceName, _))
+  EXPECT_CALL(*process_proxy, GetInterface(ifname_, _))
       .WillOnce(Return(false));
   EXPECT_FALSE(InvokeStartSupplicant());
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
@@ -553,7 +553,7 @@ TEST_F(EthernetTest, StopSupplicant) {
   SetIsEapAuthenticated(true);
   SetSupplicantNetworkPath(RpcIdentifier("/network/1"));
   EXPECT_CALL(*interface_proxy, EAPLogoff()).WillOnce(Return(true));
-  EXPECT_CALL(*process_proxy, RemoveInterface(Eq(kInterfacePath)))
+  EXPECT_CALL(*process_proxy, RemoveInterface(Eq(dbus_path_)))
       .WillOnce(Return(true));
   InvokeStopSupplicant();
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
@@ -679,7 +679,7 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
       kUsbEthernetMacAddressSourceBuiltinAdapterMac, &error,
       base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
 
-  EXPECT_EQ(kDeviceAddress, ethernet_->mac_address());
+  EXPECT_EQ(hwaddr_, ethernet_->mac_address());
 }
 
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {

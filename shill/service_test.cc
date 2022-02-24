@@ -20,7 +20,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/dbus/dbus_control.h"
-#include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/error.h"
 #include "shill/ethernet/ethernet_service.h"
 #include "shill/event_dispatcher.h"
@@ -498,9 +497,6 @@ TEST_F(ServiceTest, Load) {
   storage.SetString(storage_id_, Service::kStorageProxyConfig, kProxyConfig);
   storage.SetString(storage_id_, Service::kStorageUIData, kUIData);
 
-  auto* dhcp_props = new DhcpProperties(&mock_manager_);
-  service_->dhcp_properties_.reset(dhcp_props);
-
   EXPECT_TRUE(service_->Load(&storage));
   EXPECT_EQ(kCheckPortal, service_->check_portal_);
   EXPECT_EQ(kGUID, service_->guid_);
@@ -671,22 +667,6 @@ TEST_F(ServiceTest, SaveEap) {
   EXPECT_EQ(identity, kIdentity);
 }
 #endif
-
-TEST_F(ServiceTest, SaveDhcpProperties) {
-  FakeStore storage;
-
-  const char kHostname[] = "hostname";
-  service_->dhcp_properties_for_testing()
-      ->properties_for_testing()
-      ->Set<std::string>(DhcpProperties::kHostnameProperty, kHostname);
-  EXPECT_TRUE(service_->Save(&storage));
-
-  std::string key = std::string(DhcpProperties::kPropertyPrefix) +
-                    DhcpProperties::kHostnameProperty;
-  std::string hostname;
-  EXPECT_TRUE(storage.GetString(storage_id_, key, &hostname));
-  EXPECT_EQ(hostname, kHostname);
-}
 
 TEST_F(ServiceTest, RetainAutoConnect) {
   FakeStore storage;

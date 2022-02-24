@@ -426,7 +426,9 @@ class Manager {
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();
 
-  const DhcpProperties& dhcp_properties() const { return *dhcp_properties_; }
+  virtual const DhcpProperties& dhcp_properties() const {
+    return *dhcp_properties_;
+  }
 
   // Writes the Service |to_update| to persistent storage. If the Service is
   // ephemeral, it is moved to the current Profile.
@@ -582,8 +584,6 @@ class Manager {
   FRIEND_TEST(DefaultProfileTest, LoadManagerProperties);
   FRIEND_TEST(DefaultProfileTest, Save);
   FRIEND_TEST(DeviceInfoTest, CreateDeviceEthernet);
-  FRIEND_TEST(DeviceTest, AcquireIPConfigWithoutSelectedService);
-  FRIEND_TEST(DeviceTest, AcquireIPConfigWithSelectedService);
   FRIEND_TEST(DeviceTest, StartProhibited);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ClaimBlockedDevice);

@@ -41,13 +41,6 @@ class DhcpProperties {
   // Saves DHCP properties to |storage| in group |id|.
   virtual void Save(StoreInterface* store, const std::string& id) const;
 
-  // Combines two DHCP property objects and returns a DhcpProperties instance
-  // that is the union of the key-value pairs in |base| and |to_merge|.
-  // For keys which exist in both |base| and |to_merge|, the value is taken from
-  // |to_merge|.
-  static DhcpProperties Combine(const DhcpProperties& base,
-                                const DhcpProperties& to_merge);
-
   // Retrieves the value for a property with |name| in |value| if it is set.
   // Returns true if the property was found.
   bool GetValueForProperty(const std::string& name, std::string* value) const;

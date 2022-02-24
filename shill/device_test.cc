@@ -287,10 +287,10 @@ TEST_F(DeviceTest, DestroyIPConfigNULL) {
 }
 
 MATCHER_P(MatchesDhcpProperties, dhcp_props, "") {
-  return dhcp_props == arg.properties();
+  return dhcp_props.properties() == arg.properties();
 }
 
-TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
+TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
   device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
@@ -304,34 +304,27 @@ TEST_F(DeviceTest, AcquireIPConfigWithSelectedService) {
                     "name of host");
 
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
-  auto service_dhcp_properties =
-      std::make_unique<DhcpProperties>(/*manager=*/nullptr);
-  service_dhcp_properties->Load(&storage, service_storage_id);
-  service->dhcp_properties_ = std::move(service_dhcp_properties);
   SelectService(service);
 
   const std::string default_profile_storage_id = "default_profile_storage_id";
   FakeStore default_profile_storage;
   default_profile_storage.SetString(default_profile_storage_id,
                                     "DHCPProperty.VendorClass", "vendorclass");
+  default_profile_storage.SetString(default_profile_storage_id,
+                                    "DHCPProperty.Hostname", "name of host");
 
-  auto manager_dhcp_properties =
-      std::make_unique<DhcpProperties>(/*manager=*/nullptr);
-  manager_dhcp_properties->Load(&default_profile_storage,
-                                default_profile_storage_id);
-  DhcpProperties combined_props = DhcpProperties::Combine(
-      *manager_dhcp_properties, service->dhcp_properties());
+  DhcpProperties dhcp_properties(/*manager=*/nullptr);
+  dhcp_properties.Load(&default_profile_storage, default_profile_storage_id);
 
-  manager()->dhcp_properties_ = std::move(manager_dhcp_properties);
+  EXPECT_CALL(*manager(), dhcp_properties())
+      .WillOnce(ReturnRef(dhcp_properties));
   EXPECT_CALL(*dhcp_provider,
-              CreateIPv4Config(
-                  _, _, _, MatchesDhcpProperties(combined_props.properties())))
+              CreateIPv4Config(_, _, _, MatchesDhcpProperties(dhcp_properties)))
       .WillOnce(Return(dhcp_config));
   EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(true));
   EXPECT_TRUE(device_->AcquireIPConfig());
   ASSERT_NE(nullptr, device_->ipconfig_);
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
-  EXPECT_FALSE(device_->ipconfig_->update_callback_.is_null());
   device_->dhcp_provider_ = nullptr;
 }
 
@@ -341,26 +334,26 @@ TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
   device_->dhcp_provider_ = dhcp_provider.get();
   scoped_refptr<MockDHCPConfig> dhcp_config(
       new MockDHCPConfig(control_interface(), kDeviceName));
-  auto manager_dhcp_properties = std::make_unique<DhcpProperties>(manager());
-  manager()->dhcp_properties_ = std::move(manager_dhcp_properties);
+  DhcpProperties dhcp_properties(manager());
 
+  EXPECT_CALL(*manager(), dhcp_properties())
+      .WillOnce(ReturnRef(dhcp_properties));
   EXPECT_CALL(*dhcp_provider,
-              CreateIPv4Config(_, _, _,
-                               MatchesDhcpProperties(
-                                   manager()->dhcp_properties().properties())))
+              CreateIPv4Config(_, _, _, MatchesDhcpProperties(dhcp_properties)))
       .WillOnce(Return(dhcp_config));
   EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(true));
   EXPECT_TRUE(device_->AcquireIPConfig());
   ASSERT_NE(nullptr, device_->ipconfig_);
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
-  EXPECT_FALSE(device_->ipconfig_->update_callback_.is_null());
   device_->dhcp_provider_ = nullptr;
 }
 
 TEST_F(DeviceTest, ConfigWithMinimumMTU) {
   const int minimum_mtu = 1500;
-
+  const DhcpProperties dhcp_properties(/*manager=*/nullptr);
   EXPECT_CALL(*manager(), GetMinimumMTU()).WillOnce(Return(minimum_mtu));
+  EXPECT_CALL(*manager(), dhcp_properties())
+      .WillOnce(ReturnRef(dhcp_properties));
 
   device_->ipconfig_ = new IPConfig(control_interface(), "anothername");
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();

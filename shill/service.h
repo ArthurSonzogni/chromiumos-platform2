@@ -35,7 +35,6 @@
 namespace shill {
 
 class ControlInterface;
-class DhcpProperties;
 class Error;
 class EventDispatcher;
 class KeyValueStore;
@@ -592,11 +591,6 @@ class Service : public base::RefCounted<Service> {
   EapCredentials* mutable_eap() { return eap_.get(); }
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
 
-  const DhcpProperties& dhcp_properties() const { return *dhcp_properties_; }
-  DhcpProperties* dhcp_properties_for_testing() {
-    return dhcp_properties_.get();
-  }
-
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
   StaticIPParameters* mutable_static_ip_parameters() {
@@ -1025,8 +1019,6 @@ class Service : public base::RefCounted<Service> {
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<EapCredentials> eap_;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X
-  // Per-service DHCPProperties are supported for go/jetstream.
-  std::unique_ptr<DhcpProperties> dhcp_properties_;
   Technology technology_;
   // The time of the most recent failure. Value is null if the service is not
   // currently failed.

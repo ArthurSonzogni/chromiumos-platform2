@@ -163,6 +163,7 @@ class MockManager : public Manager {
               (const ServiceRefPtr&),
               (override));
   MOCK_METHOD(void, ConnectToBestServices, (Error*), (override));
+  MOCK_METHOD((const DhcpProperties&), dhcp_properties, (), (const, override));
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

@@ -219,43 +219,6 @@ TEST_F(DhcpPropertiesTest, SavePropertyNotSetShouldBeDeleted) {
   EXPECT_TRUE(hostname.empty());
 }
 
-TEST_F(DhcpPropertiesTest, CombineIntoEmpty) {
-  DhcpProperties to_merge(/*manager=*/nullptr);
-  SetDhcpProperty(&to_merge, "VendorClass", kVendorClass);
-  SetDhcpProperty(&to_merge, "Hostname", kHostname);
-
-  // dhcp_properties_ remain empty.
-
-  DhcpProperties merged_props =
-      DhcpProperties::Combine(dhcp_properties_, to_merge);
-  EXPECT_TRUE(DhcpPropertiesMatch(merged_props, to_merge));
-}
-
-TEST_F(DhcpPropertiesTest, CombineEmptyIntoExisting) {
-  DhcpProperties to_merge(/*manager=*/nullptr);
-  // to_merge properties remain empty.
-
-  GetDhcpProperties().Set<std::string>("VendorClass", kVendorClass);
-  GetDhcpProperties().Set<std::string>("Hostname", kHostname);
-
-  DhcpProperties merged_props =
-      DhcpProperties::Combine(dhcp_properties_, to_merge);
-  EXPECT_TRUE(DhcpPropertiesMatch(merged_props, dhcp_properties_));
-}
-
-TEST_F(DhcpPropertiesTest, CombineConflicting) {
-  DhcpProperties to_merge(/*manager=*/nullptr);
-  SetDhcpProperty(&to_merge, "VendorClass", kOverrideValue);
-  SetDhcpProperty(&to_merge, "Hostname", kHostname);
-
-  // Set conflicting VendorClass.
-  GetDhcpProperties().Set<std::string>("VendorClass", kVendorClass);
-
-  DhcpProperties merged_props =
-      DhcpProperties::Combine(dhcp_properties_, to_merge);
-  EXPECT_TRUE(DhcpPropertiesMatch(merged_props, to_merge));
-}
-
 TEST_F(DhcpPropertiesTest, GetValueForProperty) {
   std::string value;
   EXPECT_FALSE(dhcp_properties_.GetValueForProperty("VendorClass", &value));
