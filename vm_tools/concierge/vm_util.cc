@@ -211,6 +211,18 @@ base::StringPairs Disk::GetCrosvmArgs() const {
   return result;
 }
 
+base::StringPairs Disk::GetVvuArgs() const {
+  std::string first = "--file";
+  std::string read_only_arg = "";
+  if (!writable_)
+    read_only_arg = ":read-only";
+
+  std::string second = base::StrCat({path_.value(), read_only_arg});
+
+  base::StringPairs result = {{std::move(first), std::move(second)}};
+  return result;
+}
+
 Disk::~Disk() = default;
 
 int64_t GetVmMemoryMiB() {

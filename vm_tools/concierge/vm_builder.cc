@@ -19,6 +19,52 @@ namespace {
 // Path to the default wayland socket.
 constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
 constexpr char kVirglRenderServerPath[] = "/usr/libexec/virgl_render_server";
+
+constexpr int32_t kVvuProxyMinIndex = 1;
+// TODO(b/215472603): Support discovering VVU PCI devices and their sockets at
+// runtime.
+constexpr char kVvuProxyPciAddrFormat[] = "0000:02:%02d.0";
+constexpr char kVvuProxySocketPathFormat[] = "/run/crosvm-vvu%02d.sock";
+
+// Returns the common part of the command line for invoking different type of
+// VVU devices. This will be like "crosvm device --vfio <pci address>".
+base::StringPairs BuildVvuBaseCmd(std::string device, int32_t pci_index) {
+  base::StringPairs cmd = {{kCrosvmBin, "device"}};
+  cmd.emplace_back(device, "");
+  std::string pci_addr = base::StringPrintf(kVvuProxyPciAddrFormat, pci_index);
+  cmd.emplace_back("--vfio", std::move(pci_addr));
+  return cmd;
+}
+
+// Returns the command line for spawning the net VVU device backend.
+base::StringPairs BuildVvuNetCmd(uint32_t pci_index, int32_t tap_fd) {
+  base::StringPairs cmd = {{kCrosvmBin, "device"}};
+  cmd.emplace_back("net", "");
+  std::string arg = base::StringPrintf(kVvuProxyPciAddrFormat, pci_index);
+  arg += "," + std::to_string(tap_fd);
+  cmd.emplace_back("--vvu-tap-fd", std::move(arg));
+  return cmd;
+}
+
+// Returns the command line for spawning a sibling VM.
+std::vector<std::string> BuildBaseSiblingArgs() {
+  std::vector<std::string> args = {
+      "run",
+      // TODO(b/196186396): Eventually enable sandbox for sibling VMs.
+      "--disable-sandbox",
+      "-p",
+      "console=hvc0",
+      "-p",
+      "root=/dev/vda",
+  };
+  return args;
+}
+
+// Returns the socket path associated with the proxy of a VVU device.
+inline std::string BuildVvuSocketPath(int32_t index) {
+  return base::StringPrintf(kVvuProxySocketPathFormat, index);
+}
+
 }  // namespace
 
 VmBuilder::VmBuilder() = default;
@@ -382,6 +428,72 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
     args.emplace_back(kernel_.value(), "");
 
   return args;
+}
+
+// Returns the command line arguments to start a sibling VM as well as the VVU
+// devices associated with it.
+VmBuilder::SiblingStartCommands VmBuilder::BuildSiblingCmds() const {
+  VmBuilder::SiblingStartCommands cmds;
+  cmds.sibling_cmd_args = BuildBaseSiblingArgs();
+
+  int32_t index = kVvuProxyMinIndex;
+  // Console VVU device.
+  for (size_t i = 0; i < serial_devices_.size(); ++i) {
+    base::StringPairs cmd = BuildVvuBaseCmd("console", index);
+    // TODO(b/215472603): Specify input-file and output-file.
+    cmds.vvu_cmds.emplace_back(cmd);
+    cmds.sibling_cmd_args.insert(
+        cmds.sibling_cmd_args.end(),
+        {"--vhost-user-console", BuildVvuSocketPath(index++)});
+  }
+
+  // Rootfs Block VVU device.
+  if (rootfs_.has_value()) {
+    base::StringPairs cmd = BuildVvuBaseCmd("block", index);
+    const auto& rootfs = rootfs_.value();
+    if (rootfs.writable) {
+      cmd.emplace_back("--file", rootfs.path.value());
+    } else {
+      cmd.emplace_back("--file", rootfs.path.value() + ":read-only");
+    }
+    cmds.vvu_cmds.emplace_back(cmd);
+    cmds.sibling_cmd_args.insert(
+        cmds.sibling_cmd_args.end(),
+        {"--vhost-user-blk", BuildVvuSocketPath(index++)});
+  }
+
+  // Tools and Stateful Block VVU device.
+  for (const auto& d : disks_) {
+    base::StringPairs cmd = BuildVvuBaseCmd("block", index);
+    auto disk_args = d.GetVvuArgs();
+    cmd.insert(std::end(cmd), std::begin(disk_args), std::end(disk_args));
+    cmds.vvu_cmds.emplace_back(cmd);
+    cmds.sibling_cmd_args.insert(
+        cmds.sibling_cmd_args.end(),
+        {"--vhost-user-blk", BuildVvuSocketPath(index++)});
+  }
+
+  // Vsock VVU device.
+  if (vsock_cid_.has_value()) {
+    base::StringPairs cmd = BuildVvuBaseCmd("vsock", index);
+    cmd.emplace_back("--cid", std::to_string(vsock_cid_.value()));
+    cmds.vvu_cmds.emplace_back(cmd);
+    cmds.sibling_cmd_args.insert(
+        cmds.sibling_cmd_args.end(),
+        {"--vhost-user-vsock", BuildVvuSocketPath(index++)});
+  }
+
+  // Net VVU device.
+  for (const auto& tap_fd : tap_fds_) {
+    base::StringPairs cmd = BuildVvuNetCmd(index, tap_fd.get());
+    cmds.vvu_cmds.emplace_back(cmd);
+    cmds.sibling_cmd_args.insert(
+        cmds.sibling_cmd_args.end(),
+        {"--vhost-user-net", BuildVvuSocketPath(index++)});
+  }
+
+  // TODO(b/215472603): Handle other parameters.
+  return cmds;
 }
 
 }  // namespace concierge

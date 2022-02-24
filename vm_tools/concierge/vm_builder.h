@@ -35,6 +35,16 @@ class VmBuilder {
     kVirtio,
   };
 
+  // Encapsulates the arguments to start VVU devices for sibling VMs and the
+  // arguments to start the sibling VM itself.
+  struct SiblingStartCommands {
+    // Arguments to be passed into VVU devices.
+    std::vector<base::StringPairs> vvu_cmds;
+
+    // Arguments to be passed into sibling VMs.
+    std::vector<std::string> sibling_cmd_args;
+  };
+
   VmBuilder();
   VmBuilder(VmBuilder&&);
   VmBuilder& operator=(VmBuilder&& other);
@@ -97,6 +107,9 @@ class VmBuilder {
 
   // Builds the command line required to start a VM.
   base::StringPairs BuildVmArgs() const;
+
+  // Build the command lines to start a sibling VM.
+  SiblingStartCommands BuildSiblingCmds() const;
 
  private:
   base::FilePath kernel_;

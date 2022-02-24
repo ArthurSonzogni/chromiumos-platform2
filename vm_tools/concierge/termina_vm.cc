@@ -30,6 +30,7 @@
 #include <grpcpp/grpcpp.h>
 #include <chromeos/constants/vm_tools.h>
 
+#include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
@@ -104,7 +105,8 @@ TerminaVm::TerminaVm(
     dbus::ObjectProxy* vm_permission_service_proxy,
     scoped_refptr<dbus::Bus> bus,
     VmId id,
-    VmInfo::VmType classification)
+    VmInfo::VmType classification,
+    base::Thread* dbus_thread)
     : VmBaseImpl(std::move(network_client),
                  vsock_cid,
                  std::move(seneschal_server_proxy),
@@ -120,7 +122,10 @@ TerminaVm::TerminaVm(
       id_(id),
       bus_(bus),
       vm_permission_service_proxy_(vm_permission_service_proxy),
-      classification_(classification) {}
+      classification_(classification),
+      manatee_client_(
+          std::make_unique<org::chromium::ManaTEEInterfaceProxy>(bus_)),
+      dbus_thread_(dbus_thread) {}
 
 // For testing.
 TerminaVm::TerminaVm(
@@ -133,7 +138,8 @@ TerminaVm::TerminaVm(
     uint64_t stateful_size,
     int64_t mem_mib,
     VmFeatures features,
-    VmInfo::VmType classification)
+    VmInfo::VmType classification,
+    base::Thread* dbus_thread)
     : VmBaseImpl(nullptr /* network_client */,
                  vsock_cid,
                  std::move(seneschal_server_proxy),
@@ -148,7 +154,8 @@ TerminaVm::TerminaVm(
       mem_mib_(mem_mib),
       log_path_(std::move(log_path)),
       id_(VmId("foo", "bar")),
-      classification_(classification) {
+      classification_(classification),
+      dbus_thread_(dbus_thread) {
   CHECK(subnet_);
 }
 
@@ -171,13 +178,14 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     scoped_refptr<dbus::Bus> bus,
     VmId id,
     VmInfo::VmType classification,
-    VmBuilder vm_builder) {
+    VmBuilder vm_builder,
+    base::Thread* dbus_thread) {
   auto vm = base::WrapUnique(new TerminaVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
       std::move(runtime_dir), vm_memory_id, std::move(log_path),
       std::move(stateful_device), std::move(stateful_size), mem_mib, features,
       vm_permission_service_proxy, std::move(bus), std::move(id),
-      classification));
+      classification, dbus_thread));
 
   if (!vm->Start(std::move(vm_builder)))
     vm.reset();
@@ -293,8 +301,23 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   process_.SetPreExecCallback(base::BindOnce(
       &SetUpCrosvmProcess, base::FilePath(kTerminaCpuCgroup).Append("tasks")));
 
-  if (!StartProcess(vm_builder.BuildVmArgs()))
-    return false;
+  if (USE_CROSVM_SIBLINGS) {
+    VmBuilder::SiblingStartCommands cmds = vm_builder.BuildSiblingCmds();
+    if (!StartSiblingVvuDevices(cmds.vvu_cmds)) {
+      LOG(ERROR) << "Failed to start VVU devices";
+      return false;
+    }
+
+    // TODO(b/196186396): There needs to be a way of knowing when the devices
+    // have booted up before we start the sibling VM.
+    if (!StartSiblingVm(cmds.sibling_cmd_args)) {
+      LOG(ERROR) << "Failed to start termina as a sibling";
+      return false;
+    }
+  } else {
+    if (!StartProcess(vm_builder.BuildVmArgs()))
+      return false;
+  }
 
   // Create a stub for talking to the maitre'd instance inside the VM.
   stub_ = std::make_unique<vm_tools::Maitred::Stub>(grpc::CreateChannel(
@@ -302,6 +325,63 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       grpc::InsecureChannelCredentials()));
 
   return true;
+}
+
+bool TerminaVm::StartSiblingVvuDevices(std::vector<base::StringPairs> cmds) {
+  for (base::StringPairs cmd : cmds) {
+    auto process = std::make_unique<brillo::ProcessImpl>();
+    std::string command_line_for_log{};
+
+    for (std::pair<std::string, std::string>& arg : cmd) {
+      command_line_for_log += arg.first;
+      command_line_for_log += " ";
+
+      process->AddArg(std::move(arg.first));
+      if (!arg.second.empty()) {
+        command_line_for_log += arg.second;
+        command_line_for_log += " ";
+        process->AddArg(std::move(arg.second));
+      }
+    }
+    LOG(INFO) << "Invoking VVU device: " << command_line_for_log;
+    if (!process->Start()) {
+      PLOG(ERROR) << "Failed to start VVU device";
+      return false;
+    }
+    vvu_device_processes_.push_back(std::move(process));
+  }
+
+  return true;
+}
+
+bool TerminaVm::StartSiblingVm(std::vector<std::string> args) {
+  std::string sibling_args{};
+  for (std::string arg : args) {
+    sibling_args += " " + arg;
+  }
+  LOG(INFO) << "Send command to start sibling VM: " << sibling_args;
+
+  int32_t error_code;
+  base::ScopedFD fd_in;
+  base::ScopedFD fd_out;
+  brillo::ErrorPtr error;
+  bool vm_started =
+      AsyncNoReject(
+          dbus_thread_->task_runner(),
+          base::BindOnce(
+              [](org::chromium::ManaTEEInterfaceProxy* manatee_client,
+                 const std::vector<std::string>& args, int32_t* error_code,
+                 base::ScopedFD* fd_in, base::ScopedFD* fd_out,
+                 brillo::ErrorPtr* error) {
+                return manatee_client->StartTEEApplication(
+                    "termina", args, error_code, fd_in, fd_out, error);
+              },
+              manatee_client_.get(), args, &error_code, &fd_in, &fd_out,
+              &error))
+          .Get()
+          .val;
+  LOG(INFO) << "Sibling Vm Started: " << vm_started;
+  return vm_started;
 }
 
 bool TerminaVm::Shutdown() {
@@ -1006,7 +1086,8 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
     std::string kernel_version,
     std::unique_ptr<vm_tools::Maitred::Stub> stub,
     VmInfo::VmType classification,
-    VmBuilder vm_builder) {
+    VmBuilder vm_builder,
+    base::Thread* dbus_thread) {
   VmFeatures features{
       .gpu = false,
       .software_tpm = false,
@@ -1015,7 +1096,7 @@ std::unique_ptr<TerminaVm> TerminaVm::CreateForTesting(
   auto vm = base::WrapUnique(new TerminaVm(
       std::move(subnet), vsock_cid, nullptr, std::move(runtime_dir),
       std::move(log_path), std::move(stateful_device), std::move(stateful_size),
-      mem_mib, features, classification));
+      mem_mib, features, classification, dbus_thread));
   vm->set_kernel_version_for_testing(kernel_version);
   vm->set_stub_for_testing(std::move(stub));
 

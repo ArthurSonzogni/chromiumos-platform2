@@ -16,9 +16,11 @@
 #include <base/files/file_path.h>
 #include <base/notreached.h>
 #include <base/time/time.h>
+#include <base/threading/thread.h>
 #include <brillo/process/process.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
 #include <chromeos/patchpanel/subnet.h>
+#include <manatee/dbus-proxies.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
@@ -85,7 +87,8 @@ class TerminaVm final : public VmBaseImpl {
       scoped_refptr<dbus::Bus> bus,
       VmId id,
       VmInfo::VmType classification,
-      VmBuilder vm_builder);
+      VmBuilder vm_builder,
+      base::Thread* dbus_thread);
   ~TerminaVm() override;
 
   // Configures the network interfaces inside the VM.  Returns true iff
@@ -215,7 +218,8 @@ class TerminaVm final : public VmBaseImpl {
       std::string kernel_version,
       std::unique_ptr<vm_tools::Maitred::Stub> stub,
       VmInfo::VmType classification,
-      VmBuilder vm_builder);
+      VmBuilder vm_builder,
+      base::Thread* dbus_thread);
 
  private:
   TerminaVm(uint32_t vsock_cid,
@@ -231,7 +235,8 @@ class TerminaVm final : public VmBaseImpl {
             dbus::ObjectProxy* vm_permission_service_proxy,
             scoped_refptr<dbus::Bus> bus,
             VmId id,
-            VmInfo::VmType classification);
+            VmInfo::VmType classification,
+            base::Thread* dbus_thread);
 
   // Constructor for testing only.
   TerminaVm(std::unique_ptr<patchpanel::Subnet> subnet,
@@ -243,7 +248,8 @@ class TerminaVm final : public VmBaseImpl {
             uint64_t stateful_size,
             int64_t mem_mib,
             VmFeatures features,
-            VmInfo::VmType classification);
+            VmInfo::VmType classification,
+            base::Thread* dbus_thread);
   TerminaVm(const TerminaVm&) = delete;
   TerminaVm& operator=(const TerminaVm&) = delete;
 
@@ -270,6 +276,11 @@ class TerminaVm final : public VmBaseImpl {
 
   bool ResizeDiskImage(uint64_t new_size);
   bool ResizeFilesystem(uint64_t new_size);
+
+  // Starts virtio-vhost-user backends for ManaTEE.
+  bool StartSiblingVvuDevices(std::vector<base::StringPairs> cmds);
+  // Starts Termina as a sibling VM on ManaTEE.
+  bool StartSiblingVm(std::vector<std::string> args);
 
   void set_kernel_version_for_testing(std::string kernel_version);
   void set_stub_for_testing(std::unique_ptr<vm_tools::Maitred::Stub> stub);
@@ -335,6 +346,16 @@ class TerminaVm final : public VmBaseImpl {
   // Record's this VM's "type" in the classification sense (e.g. termina,
   // borealis, other...).
   const VmInfo::VmType classification_;
+
+  // The manatee-client D-Bus client to talk to dugong that will eventually
+  // talk to the hypervisor.
+  std::unique_ptr<org::chromium::ManaTEEInterfaceProxy> manatee_client_;
+
+  // The thread to run D-Bus APIs on.
+  base::Thread* dbus_thread_;
+
+  // Processes for virtio-vhost-user device backend processes.
+  std::vector<std::unique_ptr<brillo::ProcessImpl>> vvu_device_processes_;
 };
 
 }  // namespace concierge

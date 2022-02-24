@@ -1897,7 +1897,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       std::move(runtime_dir), vm_memory_id, std::move(log_path),
       std::move(stateful_device), std::move(stateful_size),
       GetVmMemoryMiB(request), features, vm_permission_service_proxy_, bus_,
-      vm_id, classification, std::move(vm_builder));
+      vm_id, classification, std::move(vm_builder), &dbus_thread_);
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

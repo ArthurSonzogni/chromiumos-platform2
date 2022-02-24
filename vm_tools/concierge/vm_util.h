@@ -53,6 +53,8 @@ class Disk {
   // corresponding to this disk.
   base::StringPairs GetCrosvmArgs() const;
 
+  base::StringPairs GetVvuArgs() const;
+
   void EnableODirect(bool enable);
   void SetBlockSize(size_t block_size);
 
