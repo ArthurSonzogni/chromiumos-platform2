@@ -19,6 +19,7 @@
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/modemfwd_switches.h>
+#include <dbus/modemfwd/dbus-constants.h>
 #include <ModemManager/ModemManager.h>
 
 #include "modemfwd/logging.h"

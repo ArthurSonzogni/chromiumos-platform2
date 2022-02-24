@@ -13,11 +13,12 @@
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <chromeos/switches/modemfwd_switches.h>
+#include <dbus/modemfwd/dbus-constants.h>
 
 #include "modemfwd/firmware_file.h"
 #include "modemfwd/logging.h"
 #include "modemfwd/modem.h"
-
+#include "modemfwd/notification_manager.h"
 
 namespace modemfwd {
 
@@ -42,9 +43,11 @@ class InhibitMode {
 
 ModemFlasher::ModemFlasher(
     std::unique_ptr<FirmwareDirectory> firmware_directory,
-    std::unique_ptr<Journal> journal)
+    std::unique_ptr<Journal> journal,
+    NotificationManager* notification_mgr)
     : firmware_directory_(std::move(firmware_directory)),
-      journal_(std::move(journal)) {}
+      journal_(std::move(journal)),
+      notification_mgr_(notification_mgr) {}
 
 base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,
                                                    const std::string& variant) {
@@ -58,6 +61,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   if (!flash_state->ShouldFlash()) {
     LOG(ERROR) << "Modem with equipment ID \"" << equipment_id
                << "\" failed to flash too many times; not flashing";
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
+        kErrorResultFlashFailure);
     return base::OnceClosure();
   }
 
@@ -174,7 +179,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem) {
   // Flash if we have new firmwares
   if (flash_cfg.empty()) {
     // This message is used by tests to track the end of flashing.
-    LOG(INFO) << " The modem already has the correct firmware installed";
+    LOG(INFO) << "The modem already has the correct firmware installed";
+    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess();
     return base::OnceClosure();
   }
   std::vector<std::string> fw_types;

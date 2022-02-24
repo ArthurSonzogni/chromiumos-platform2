@@ -18,8 +18,8 @@
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
-#include <chromeos/dbus/service_constants.h>
 #include <cros_config/cros_config.h>
+#include <dbus/modemfwd/dbus-constants.h>
 
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/logging.h"
@@ -27,6 +27,7 @@
 #include "modemfwd/modem_flasher.h"
 #include "modemfwd/modem_helper_directory.h"
 #include "modemfwd/modem_tracker.h"
+#include "modemfwd/notification_manager.h"
 
 namespace {
 
@@ -131,15 +132,21 @@ int Daemon::OnInit() {
     return exit_code;
   DCHECK(!helper_dir_path_.empty());
 
+  notification_mgr_ =
+      std::make_unique<NotificationManager>(dbus_adaptor_.get());
   if (!base::DirectoryExists(helper_dir_path_)) {
     LOG(ERROR) << "Supplied modem-specific helper directory "
                << helper_dir_path_.value() << " does not exist";
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
+        kErrorResultInitFailure);
     return EX_UNAVAILABLE;
   }
 
   helper_directory_ = CreateModemHelperDirectory(helper_dir_path_);
   if (!helper_directory_) {
     LOG(ERROR) << "No suitable helpers found in " << helper_dir_path_.value();
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
+        kErrorResultInitFailure);
     return EX_UNAVAILABLE;
   }
 
@@ -151,6 +158,8 @@ int Daemon::OnInit() {
   if (!base::DirectoryExists(firmware_dir_path_)) {
     LOG(ERROR) << "Supplied firmware directory " << firmware_dir_path_.value()
                << " does not exist";
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
+        kErrorResultInitFailure);
     return EX_UNAVAILABLE;
   }
 
@@ -163,6 +172,8 @@ int Daemon::CompleteInitialization() {
   auto firmware_directory = CreateFirmwareDirectory(firmware_dir_path_);
   if (!firmware_directory) {
     LOG(ERROR) << "Could not load firmware directory (bad manifest?)";
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
+        kErrorResultInitManifestFailure);
     return EX_UNAVAILABLE;
   }
 
@@ -170,11 +181,14 @@ int Daemon::CompleteInitialization() {
                              helper_directory_.get());
   if (!journal) {
     LOG(ERROR) << "Could not open journal file";
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
+        kErrorResultInitJournalFailure);
     return EX_UNAVAILABLE;
   }
 
   modem_flasher_ = std::make_unique<modemfwd::ModemFlasher>(
-      std::move(firmware_directory), std::move(journal));
+      std::move(firmware_directory), std::move(journal),
+      notification_mgr_.get());
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,

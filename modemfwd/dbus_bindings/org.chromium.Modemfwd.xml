@@ -29,5 +29,14 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <signal name="UpdateFirmwareCompleted">
+      <tp:docstring>
+          Triggered when a flashing sequence is completed. Return error on
+          failure. This signal could also be triggered as a failure during the
+          daemon init sequence.
+      </tp:docstring>
+      <arg type="b" name="success" />
+      <arg type="s" name="error" />
+    </signal>
   </interface>
 </node>

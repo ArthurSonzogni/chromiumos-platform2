@@ -35,6 +35,7 @@
 #include "login_manager/dbus-constants.h"
 #include "lorgnette/dbus-constants.h"
 #include "missive/dbus-constants.h"
+#include "modemfwd/dbus-constants.h"
 #include "ocr/dbus-constants.h"
 #include "oobe_config/dbus-constants.h"
 #include "os_install_service/dbus-constants.h"
@@ -629,16 +630,6 @@ constexpr char kArcCameraServiceInterface[] = "org.chromium.ArcCamera";
 // Method names.
 constexpr char kStartServiceMethod[] = "StartService";
 }  // namespace arc_camera
-
-namespace modemfwd {
-const char kModemfwdInterface[] = "org.chromium.Modemfwd";
-const char kModemfwdServicePath[] = "/org/chromium/Modemfwd";
-const char kModemfwdServiceName[] = "org.chromium.Modemfwd";
-
-// Methods.
-const char kSetDebugMode[] = "SetDebugMode";
-
-}  // namespace modemfwd
 
 namespace lock_to_single_user {
 const char kLockToSingleUserInterface[] = "org.chromium.LockToSingleUser";

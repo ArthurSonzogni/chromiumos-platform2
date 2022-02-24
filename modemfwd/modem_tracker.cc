@@ -13,7 +13,7 @@
 #include <base/bind.h>
 #include <base/logging.h>
 #include <brillo/variant_dictionary.h>
-#include <chromeos/dbus/service_constants.h>
+#include <dbus/shill/dbus-constants.h>
 
 namespace modemfwd {
 

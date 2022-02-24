@@ -15,6 +15,7 @@
 #include "modemfwd/firmware_directory_stub.h"
 #include "modemfwd/mock_journal.h"
 #include "modemfwd/mock_modem.h"
+#include "modemfwd/mock_notification_manager.h"
 
 using ::testing::_;
 using ::testing::AtLeast;
@@ -68,8 +69,11 @@ class ModemFlasherTest : public ::testing::Test {
     auto journal = std::make_unique<MockJournal>();
     journal_ = journal.get();
 
+    notification_mgr_ = std::make_unique<MockNotificationManager>();
+
     modem_flasher_ = std::make_unique<ModemFlasher>(
-        std::move(firmware_directory), std::move(journal));
+        std::move(firmware_directory), std::move(journal),
+        notification_mgr_.get());
 
     only_main_ = {kFwMain};
     only_carrier_ = {kFwCarrier};
@@ -144,6 +148,7 @@ class ModemFlasherTest : public ::testing::Test {
 
   MockJournal* journal_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
+  std::unique_ptr<MockNotificationManager> notification_mgr_;
   // helpers for the mock_journal calls
   std::vector<std::string> only_main_;
   std::vector<std::string> only_carrier_;

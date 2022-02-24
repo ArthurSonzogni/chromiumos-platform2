@@ -21,6 +21,7 @@
 #include "modemfwd/modem_flasher.h"
 #include "modemfwd/modem_helper.h"
 #include "modemfwd/modem_tracker.h"
+#include "modemfwd/notification_manager.h"
 
 namespace modemfwd {
 
@@ -103,6 +104,7 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
+  std::unique_ptr<NotificationManager> notification_mgr_;
 
   std::map<std::string, base::OnceClosure> modem_reappear_callbacks_;
   std::set<std::string> device_ids_seen_;

@@ -16,6 +16,7 @@
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/journal.h"
 #include "modemfwd/modem.h"
+#include "modemfwd/notification_manager.h"
 
 namespace modemfwd {
 
@@ -24,7 +25,8 @@ namespace modemfwd {
 class ModemFlasher {
  public:
   ModemFlasher(std::unique_ptr<FirmwareDirectory> firmware_directory,
-               std::unique_ptr<Journal> journal);
+               std::unique_ptr<Journal> journal,
+               NotificationManager* notification_mgr);
   ModemFlasher(const ModemFlasher&) = delete;
   ModemFlasher& operator=(const ModemFlasher&) = delete;
 
@@ -99,6 +101,9 @@ class ModemFlasher {
   std::unique_ptr<Journal> journal_;
 
   std::map<std::string, FlashState> modem_info_;
+
+  // Owned by Daemon
+  NotificationManager* notification_mgr_;
 };
 
 }  // namespace modemfwd
