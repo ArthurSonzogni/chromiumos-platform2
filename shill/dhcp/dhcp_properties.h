@@ -23,7 +23,6 @@ class DhcpProperties {
  public:
   static const char kPropertyPrefix[];
   static const char kHostnameProperty[];
-  static const char kVendorClassProperty[];
 
   explicit DhcpProperties(Manager* manager);
   virtual ~DhcpProperties() = default;

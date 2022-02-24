@@ -426,8 +426,12 @@ class Manager {
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();
 
-  virtual const DhcpProperties& dhcp_properties() const {
+  const DhcpProperties& dhcp_properties() const {
     return *dhcp_properties_;
+  }
+
+  virtual const std::string& dhcp_hostname() const {
+    return dhcp_hostname_;
   }
 
   // Writes the Service |to_update| to persistent storage. If the Service is
@@ -946,6 +950,10 @@ class Manager {
 
   // DhcpProperties stored for the default profile.
   std::unique_ptr<DhcpProperties> dhcp_properties_;
+
+  // Hostname to be used in DHCP request.
+  // TODO(b/221171651): Migrate to Manager.Properties
+  std::string dhcp_hostname_;
 
   // List of supported vpn types;
   std::string supported_vpn_;

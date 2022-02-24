@@ -9,7 +9,6 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/dhcp/dhcp_config.h"
-#include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 
@@ -49,10 +48,8 @@ class DHCPProviderTest : public Test {
 };
 
 TEST_F(DHCPProviderTest, CreateIPv4Config) {
-  DhcpProperties dhcp_props(/*manager=*/nullptr);
-
   DHCPConfigRefPtr config = provider_->CreateIPv4Config(
-      kDeviceName, kStorageIdentifier, kArpGateway, dhcp_props);
+      kDeviceName, kStorageIdentifier, kArpGateway, kDeviceName);
   EXPECT_NE(nullptr, config);
   EXPECT_EQ(kDeviceName, config->device_name());
   EXPECT_TRUE(provider_->configs_.empty());
@@ -76,10 +73,9 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   int kPid = 999;
   EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
-  DhcpProperties dhcp_props(/*manager=*/nullptr);
 
   DHCPConfigRefPtr config = provider_->CreateIPv4Config(
-      kDeviceName, kStorageIdentifier, kArpGateway, dhcp_props);
+      kDeviceName, kStorageIdentifier, kArpGateway, kDeviceName);
   provider_->BindPID(kPid, config);
   EXPECT_NE(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));

@@ -31,8 +31,7 @@ static std::string ObjectID(const DhcpProperties* d) {
 
 namespace {
 
-const char* const kPropertyNames[] = {DhcpProperties::kHostnameProperty,
-                                      DhcpProperties::kVendorClassProperty};
+const char* const kPropertyNames[] = {DhcpProperties::kHostnameProperty};
 
 std::string GetFullPropertyName(const std::string& property_name) {
   return DhcpProperties::kPropertyPrefix + property_name;
@@ -43,7 +42,6 @@ std::string GetFullPropertyName(const std::string& property_name) {
 // Prefix used for DhcpProperties in the PropertyStore and D-Bus interface.
 const char DhcpProperties::kPropertyPrefix[] = "DHCPProperty.";
 const char DhcpProperties::kHostnameProperty[] = "Hostname";
-const char DhcpProperties::kVendorClassProperty[] = "VendorClass";
 
 DhcpProperties::DhcpProperties(Manager* manager) : manager_(manager) {}
 

@@ -86,7 +86,7 @@ DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
                            const std::string& device_name,
                            const std::string& lease_file_suffix,
                            bool arp_gateway,
-                           const DhcpProperties& dhcp_props,
+                           const std::string& hostname,
                            Metrics* metrics)
     : DHCPConfig(control_interface,
                  dispatcher,
@@ -96,10 +96,8 @@ DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
                  lease_file_suffix),
       arp_gateway_(arp_gateway),
       is_gateway_arp_active_(false),
+      hostname_(hostname),
       metrics_(metrics) {
-  dhcp_props.GetValueForProperty(DhcpProperties::kHostnameProperty, &hostname_);
-  dhcp_props.GetValueForProperty(DhcpProperties::kVendorClassProperty,
-                                 &vendor_class_);
   SLOG(this, 2) << __func__ << ": " << device_name;
 }
 
@@ -227,13 +225,9 @@ std::vector<std::string> DHCPv4Config::GetFlags() {
     flags.push_back("-h");  // Request hostname from server
     flags.push_back(hostname_);
   }
-  if (!vendor_class_.empty()) {
-    flags.push_back("-i");
-    flags.push_back(vendor_class_);
-  }
 
   if (arp_gateway_) {
-    flags.push_back("-R");  // ARP for default gateway.
+    flags.push_back("-R");         // ARP for default gateway.
     flags.push_back("--unicast");  // Enable unicast ARP on renew.
   }
   return flags;

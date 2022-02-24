@@ -11,18 +11,15 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/dhcp/dhcp_config.h"
-#include "shill/dhcp/dhcp_properties.h"
 
 namespace shill {
 
 class Metrics;
 
 // DHCPv4 client instance.
-// |dhcp_props| may contain values for the request hostname and vendor class.
-// If these properties have non-empty values, they will be used in the DHCP
-// request.  If the Hostname property in dhcp_props is non-empty, it asks the
-// DHCP server to register this hostname on our behalf, for purposes of
-// administration or creating a dynamic DNS entry.
+// If |hostname| is not empty, it will be used in the DHCP request as DHCP
+// option 12. This asks the DHCP server to register this hostname on our
+// behalf, for purposes of administration or creating a dynamic DNS entry.
 class DHCPv4Config : public DHCPConfig {
  public:
   DHCPv4Config(ControlInterface* control_interface,
@@ -31,7 +28,7 @@ class DHCPv4Config : public DHCPConfig {
                const std::string& device_name,
                const std::string& lease_file_suffix,
                bool arp_gateway,
-               const DhcpProperties& dhcp_props,
+               const std::string& hostname,
                Metrics* metrics);
   DHCPv4Config(const DHCPv4Config&) = delete;
   DHCPv4Config& operator=(const DHCPv4Config&) = delete;
@@ -140,13 +137,8 @@ class DHCPv4Config : public DHCPConfig {
   // Whether it is valid to retain the lease acquired via gateway ARP.
   bool is_gateway_arp_active_;
 
-  // Hostname to be used in DHCP request.  Set from DhcpProperties in
-  // constructor when present.
+  // Hostname to be used in DHCP request.
   std::string hostname_;
-
-  // Vendor Class to be used in DHCP request.  Set from DhcpProperties in
-  // constructor when present.
-  std::string vendor_class_;
 
   Metrics* metrics_;
 };

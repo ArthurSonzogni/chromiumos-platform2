@@ -24,7 +24,6 @@ using testing::Test;
 namespace shill {
 
 namespace {
-const char kVendorClass[] = "Chromebook";
 const char kHostname[] = "TestHost";
 const char kStorageID[] = "dhcp_service_id";
 const char kOverrideValue[] = "override";
@@ -64,11 +63,6 @@ TEST_F(DhcpPropertiesTest, InitPropertyStore) {
   std::string value_in_prop_store;
   // DHCPProperty.Hostname is a valid option.
   EXPECT_FALSE(store.GetStringProperty("DHCPProperty.Hostname",
-                                       &value_in_prop_store, &error));
-  EXPECT_EQ(Error::kNotFound, error.type());
-
-  // DHCPProperty.VendorClass is a valid option.
-  EXPECT_FALSE(store.GetStringProperty("DHCPProperty.VendorClass",
                                        &value_in_prop_store, &error));
   EXPECT_EQ(Error::kNotFound, error.type());
 
@@ -172,34 +166,24 @@ TEST_F(DhcpPropertiesTest, LoadEmpty) {
 
 TEST_F(DhcpPropertiesTest, Load) {
   FakeStore storage;
-  storage.SetString(kStorageID, "DHCPProperty.VendorClass", kVendorClass);
   storage.SetString(kStorageID, "DHCPProperty.Hostname", kHostname);
   dhcp_properties_.Load(&storage, kStorageID);
-  EXPECT_EQ(kVendorClass, GetDhcpProperties().Get<std::string>("VendorClass"));
   EXPECT_EQ(kHostname, GetDhcpProperties().Get<std::string>("Hostname"));
 }
 
 TEST_F(DhcpPropertiesTest, LoadWithValuesSetAndClearRequired) {
   FakeStore storage;
   GetDhcpProperties().Set<std::string>("Hostname", kHostname);
-
-  storage.SetString(kStorageID, "DHCPProperty.VendorClass",
-                    std::string(kVendorClass));
   dhcp_properties_.Load(&storage, kStorageID);
-  EXPECT_EQ(kVendorClass, GetDhcpProperties().Get<std::string>("VendorClass"));
   EXPECT_FALSE(GetDhcpProperties().ContainsVariant("Hostname"));
 }
 
 TEST_F(DhcpPropertiesTest, SaveWithValuesSet) {
   FakeStore storage;
-  GetDhcpProperties().Set<std::string>("VendorClass", kVendorClass);
   GetDhcpProperties().Set<std::string>("Hostname", "hostname");
 
   dhcp_properties_.Save(&storage, kStorageID);
-  std::string vendorclass, hostname;
-  EXPECT_TRUE(
-      storage.GetString(kStorageID, "DHCPProperty.VendorClass", &vendorclass));
-  EXPECT_EQ(vendorclass, kVendorClass);
+  std::string hostname;
   EXPECT_TRUE(
       storage.GetString(kStorageID, "DHCPProperty.Hostname", &hostname));
   EXPECT_EQ(hostname, "hostname");
@@ -207,13 +191,9 @@ TEST_F(DhcpPropertiesTest, SaveWithValuesSet) {
 
 TEST_F(DhcpPropertiesTest, SavePropertyNotSetShouldBeDeleted) {
   FakeStore storage;
-  GetDhcpProperties().Set<std::string>("VendorClass", kVendorClass);
 
   dhcp_properties_.Save(&storage, kStorageID);
-  std::string vendorclass, hostname;
-  EXPECT_TRUE(
-      storage.GetString(kStorageID, "DHCPProperty.VendorClass", &vendorclass));
-  EXPECT_EQ(vendorclass, kVendorClass);
+  std::string hostname;
   EXPECT_FALSE(
       storage.GetString(kStorageID, "DHCPProperty.Hostname", &hostname));
   EXPECT_TRUE(hostname.empty());
@@ -221,17 +201,8 @@ TEST_F(DhcpPropertiesTest, SavePropertyNotSetShouldBeDeleted) {
 
 TEST_F(DhcpPropertiesTest, GetValueForProperty) {
   std::string value;
-  EXPECT_FALSE(dhcp_properties_.GetValueForProperty("VendorClass", &value));
   EXPECT_FALSE(dhcp_properties_.GetValueForProperty("Hostname", &value));
-
-  GetDhcpProperties().Set<std::string>("VendorClass", kVendorClass);
-  EXPECT_TRUE(dhcp_properties_.GetValueForProperty("VendorClass", &value));
-  EXPECT_EQ(kVendorClass, value);
-  EXPECT_FALSE(dhcp_properties_.GetValueForProperty("Hostname", &value));
-
   GetDhcpProperties().Set<std::string>("Hostname", kHostname);
-  EXPECT_TRUE(dhcp_properties_.GetValueForProperty("VendorClass", &value));
-  EXPECT_EQ(kVendorClass, value);
   EXPECT_TRUE(dhcp_properties_.GetValueForProperty("Hostname", &value));
   EXPECT_EQ(kHostname, value);
 }

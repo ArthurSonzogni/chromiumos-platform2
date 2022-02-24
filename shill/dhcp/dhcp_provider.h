@@ -14,7 +14,6 @@
 #include <base/lazy_instance.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/dhcp/dhcp_properties.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -66,7 +65,7 @@ class DHCPProvider {
       const std::string& device_name,
       const std::string& lease_file_suffix,
       bool arp_gateway,
-      const DhcpProperties& dhcp_props);
+      const std::string& hostname);
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
   // nullptr if |pid| is not bound to a configuration.

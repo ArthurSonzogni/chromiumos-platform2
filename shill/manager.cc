@@ -1610,6 +1610,8 @@ void Manager::PersistService(const ServiceRefPtr& to_update) {
 void Manager::LoadProperties(const scoped_refptr<DefaultProfile>& profile) {
   SLOG(this, 2) << __func__;
   profile->LoadManagerProperties(&props_, dhcp_properties_.get());
+  dhcp_properties_->GetValueForProperty(DhcpProperties::kHostnameProperty,
+                                        &dhcp_hostname_);
   SetIgnoredDNSSearchPaths(props_.ignored_dns_search_paths, nullptr);
 }
 

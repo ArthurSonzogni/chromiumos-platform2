@@ -15,7 +15,6 @@
 #include <base/strings/stringprintf.h>
 
 #include "shill/control_interface.h"
-#include "shill/dhcp/dhcp_properties.h"
 #include "shill/dhcp/dhcpcd_listener_interface.h"
 #include "shill/dhcp/dhcpv4_config.h"
 #include "shill/event_dispatcher.h"
@@ -78,10 +77,10 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
     const std::string& device_name,
     const std::string& lease_file_suffix,
     bool arp_gateway,
-    const DhcpProperties& dhcp_props) {
+    const std::string& hostname) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
   return new DHCPv4Config(control_interface_, dispatcher_, this, device_name,
-                          lease_file_suffix, arp_gateway, dhcp_props, metrics_);
+                          lease_file_suffix, arp_gateway, hostname, metrics_);
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {

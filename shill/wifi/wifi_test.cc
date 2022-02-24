@@ -27,7 +27,6 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/dbus/dbus_control.h"
-#include "shill/dhcp/dhcp_properties.h"
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
@@ -598,7 +597,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         bss_counter_(0),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_bss_proxy_(new NiceMock<MockSupplicantBSSProxy>()),
-        dhcp_properties_(/*manager=*/nullptr),
+        dhcp_hostname_("chromeos"),
         dhcp_config_(new MockDHCPConfig(&control_interface_, kDeviceName)),
         adaptor_(new DeviceMockAdaptor()),
         eap_state_handler_(new NiceMock<MockSupplicantEAPStateHandler>()),
@@ -627,8 +626,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     ON_CALL(*supplicant_network_proxy_, SetEnabled(_))
         .WillByDefault(Return(true));
 
-    ON_CALL(manager_, dhcp_properties())
-        .WillByDefault(ReturnRef(dhcp_properties_));
+    ON_CALL(manager_, dhcp_hostname()).WillByDefault(ReturnRef(dhcp_hostname_));
     ON_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _))
         .WillByDefault(Return(dhcp_config_));
     ON_CALL(*dhcp_config_, RequestIP()).WillByDefault(Return(true));
@@ -1331,7 +1329,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   MockSupplicantProcessProxy* supplicant_process_proxy_;
   std::unique_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
   MockDHCPProvider dhcp_provider_;
-  DhcpProperties dhcp_properties_;
+  std::string dhcp_hostname_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
 
   // These pointers track mock objects owned by the WiFi device instance

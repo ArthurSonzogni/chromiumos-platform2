@@ -19,7 +19,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/dhcp/dhcp_properties.h"
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
@@ -143,7 +142,7 @@ class EthernetTest : public testing::Test {
   std::string ifname_ = "eth0";
   std::string hwaddr_ = "000102030405";
   RpcIdentifier dbus_path_ = RpcIdentifier("/interface/path");
-  DhcpProperties dhcp_properties_ = DhcpProperties(/*manager=*/nullptr);
+  std::string dhcp_hostname_ = "chromeos";
 
   bool GetLinkUp() { return ethernet_->link_up_; }
   void SetLinkUp(bool link_up) { ethernet_->link_up_ = link_up; }
@@ -156,8 +155,8 @@ class EthernetTest : public testing::Test {
   }
   const PropertyStore& GetStore() { return ethernet_->store(); }
   void StartEthernet() {
-    ON_CALL(manager_, dhcp_properties())
-        .WillByDefault(ReturnRef(dhcp_properties_));
+    ON_CALL(manager_, dhcp_hostname())
+        .WillByDefault(ReturnRef(dhcp_hostname_));
     EXPECT_CALL(ethernet_provider_, CreateService(_))
         .WillOnce(Return(mock_service_));
     EXPECT_CALL(ethernet_provider_, RegisterService(Eq(mock_service_)));

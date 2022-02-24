@@ -46,7 +46,6 @@ extern "C" {
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/fake_properties_proxy.h"
-#include "shill/dhcp/dhcp_properties.h"
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
@@ -139,7 +138,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
         manager_(&control_interface_, &dispatcher_, &metrics_),
         modem_info_(&control_interface_, &manager_),
         device_info_(&manager_),
-        dhcp_properties_(/*manager=*/nullptr),
+        dhcp_hostname_("chromeos"),
         dhcp_config_(new MockDHCPConfig(&control_interface_, kTestDeviceName)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr),
@@ -162,8 +161,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     device_->process_manager_ = &process_manager_;
 
     EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
-    ON_CALL(manager_, dhcp_properties())
-        .WillByDefault(ReturnRef(dhcp_properties_));
+    ON_CALL(manager_, dhcp_hostname()).WillByDefault(ReturnRef(dhcp_hostname_));
     EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
                 GetActivationState(_, _))
         .WillRepeatedly(Return(PendingActivationStore::kStateActivated));
@@ -572,7 +570,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   NiceMock<MockRTNLHandler> rtnl_handler_;
 
   MockDHCPProvider dhcp_provider_;
-  DhcpProperties dhcp_properties_;
+  std::string dhcp_hostname_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
 
   bool create_gsm_card_proxy_from_factory_;
