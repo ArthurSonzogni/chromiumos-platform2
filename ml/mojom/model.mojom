@@ -70,7 +70,7 @@ struct GraphExecutorOptions {
   [MinVersion=1] bool use_gpu = false;
 
   // Graphics API to use with GPU delegate.
-  [MinVersion=1] GpuDelegateApi gpu_delegate_api = OPENGL;
+  [MinVersion=2] GpuDelegateApi gpu_delegate_api = OPENGL;
 };
 
 // These values are persisted to logs. Entries should not be renumbered and
