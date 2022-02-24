@@ -429,7 +429,6 @@ static_library("libshill") {
       "dbus/supplicant_network_proxy.cc",
       "dbus/supplicant_process_proxy.cc",
       "eap_credentials.cc",
-      "eap_listener.cc",
       "supplicant/supplicant_eap_state_handler.cc",
       "supplicant/supplicant_manager.cc",
       "supplicant/wpa_supplicant.cc",
@@ -439,6 +438,7 @@ static_library("libshill") {
 
   if (use.wired_8021x) {
     sources += [
+      "ethernet/eap_listener.cc",
       "ethernet/ethernet_eap_provider.cc",
       "ethernet/ethernet_eap_service.cc",
     ]
@@ -851,9 +851,7 @@ if (use.test) {
     if (use.wifi || use.wired_8021x) {
       sources += [
         "eap_credentials_test.cc",
-        "eap_listener_test.cc",
         "mock_eap_credentials.cc",
-        "mock_eap_listener.cc",
         "supplicant/mock_supplicant_eap_state_handler.cc",
         "supplicant/mock_supplicant_interface_proxy.cc",
         "supplicant/mock_supplicant_network_proxy.cc",
@@ -866,8 +864,10 @@ if (use.test) {
 
     if (use.wired_8021x) {
       sources += [
+        "ethernet/eap_listener_test.cc",
         "ethernet/ethernet_eap_provider_test.cc",
         "ethernet/ethernet_eap_service_test.cc",
+        "ethernet/mock_eap_listener.cc",
         "ethernet/mock_ethernet_eap_provider.cc",
       ]
     }

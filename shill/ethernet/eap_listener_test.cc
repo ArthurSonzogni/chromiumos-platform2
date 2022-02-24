@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/eap_listener.h"
+#include "shill/ethernet/eap_listener.h"
 
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -14,7 +14,7 @@
 #include <base/bind.h>
 #include <gtest/gtest.h>
 
-#include "shill/eap_protocol.h"
+#include "shill/ethernet/eap_protocol.h"
 #include "shill/mock_log.h"
 #include "shill/net/byte_string.h"
 #include "shill/net/mock_io_handler_factory.h"
@@ -40,8 +40,8 @@ class EapListenerTest : public testing::Test {
     sockets_ = new StrictMock<MockSockets>();
     // Passes ownership.
     listener_.sockets_.reset(sockets_);
-    listener_.set_request_received_callback(
-        base::Bind(&EapListenerTest::ReceiveCallback, base::Unretained(this)));
+    listener_.set_request_received_callback(base::BindRepeating(
+        &EapListenerTest::ReceiveCallback, base::Unretained(this)));
   }
 
   void TearDown() override {

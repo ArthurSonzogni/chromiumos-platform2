@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_EAP_LISTENER_H_
-#define SHILL_EAP_LISTENER_H_
+#ifndef SHILL_ETHERNET_EAP_LISTENER_H_
+#define SHILL_ETHERNET_EAP_LISTENER_H_
 
 #include <memory>
 
@@ -21,7 +21,7 @@ class Sockets;
 // callback when a request frame arrives.
 class EapListener {
  public:
-  using EapRequestReceivedCallback = base::Callback<void()>;
+  using EapRequestReceivedCallback = base::RepeatingCallback<void()>;
 
   explicit EapListener(int interface_index);
   EapListener(const EapListener&) = delete;
@@ -79,4 +79,4 @@ class EapListener {
 
 }  // namespace shill
 
-#endif  // SHILL_EAP_LISTENER_H_
+#endif  // SHILL_ETHERNET_EAP_LISTENER_H_

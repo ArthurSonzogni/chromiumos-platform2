@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_EAP_LISTENER_H_
-#define SHILL_MOCK_EAP_LISTENER_H_
+#ifndef SHILL_ETHERNET_MOCK_EAP_LISTENER_H_
+#define SHILL_ETHERNET_MOCK_EAP_LISTENER_H_
 
-#include "shill/eap_listener.h"
+#include "shill/ethernet/eap_listener.h"
 
 #include <gmock/gmock.h>
 
@@ -29,4 +29,4 @@ class MockEapListener : public EapListener {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_EAP_LISTENER_H_
+#endif  // SHILL_ETHERNET_MOCK_EAP_LISTENER_H_

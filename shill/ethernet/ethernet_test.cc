@@ -35,9 +35,9 @@
 #include "shill/testing.h"
 
 #if !defined(DISABLE_WIRED_8021X)
+#include "shill/ethernet/mock_eap_listener.h"
 #include "shill/ethernet/mock_ethernet_eap_provider.h"
 #include "shill/mock_eap_credentials.h"
-#include "shill/mock_eap_listener.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/supplicant_manager.h"

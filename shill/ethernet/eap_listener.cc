@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/eap_listener.h"
+#include "shill/ethernet/eap_listener.h"
 
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -12,7 +12,7 @@
 #include <base/compiler_specific.h>
 #include <base/logging.h>
 
-#include "shill/eap_protocol.h"
+#include "shill/ethernet/eap_protocol.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/net/io_handler_factory.h"
@@ -40,7 +40,8 @@ bool EapListener::Start() {
 
   receive_request_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
       socket_, IOHandler::kModeInput,
-      base::Bind(&EapListener::ReceiveRequest, base::Unretained(this))));
+      base::BindRepeating(&EapListener::ReceiveRequest,
+                          base::Unretained(this))));
 
   return true;
 }

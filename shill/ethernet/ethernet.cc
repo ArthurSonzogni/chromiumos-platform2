@@ -48,7 +48,7 @@
 
 #if !defined(DISABLE_WIRED_8021X)
 #include "shill/eap_credentials.h"
-#include "shill/eap_listener.h"
+#include "shill/ethernet/eap_listener.h"
 #include "shill/ethernet/ethernet_eap_provider.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_manager.h"
