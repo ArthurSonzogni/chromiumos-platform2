@@ -341,9 +341,11 @@ void RTNLHandler::ParseRTNL(InputData* data) {
             if (base::Contains(GetAndClearErrorMask(hdr->nlmsg_seq),
                                error_number) ||
                 (error_number == EEXIST && mode == RTNLMessage::kModeAdd) ||
-                (error_number == ENOENT && mode == RTNLMessage::kModeDelete)) {
-              // EEXIST for create requests and ENOENT for delete requests
-              // do not really indicate an error condition.
+                (mode == RTNLMessage::kModeDelete &&
+                 (error_number == ENOENT || error_number == ESRCH ||
+                  error_number == EADDRNOTAVAIL))) {
+              // EEXIST for create requests and ENOENT, ESRCH, EADDRNOTAVAIL
+              // for delete requests do not really indicate an error condition.
               SLOG(this, 3) << error_msg;
             } else {
               LOG(ERROR) << error_msg;
