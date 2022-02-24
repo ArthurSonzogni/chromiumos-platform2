@@ -403,6 +403,7 @@ CrashCollector::CrashCollector(
       device_policy_(std::make_unique<policy::DevicePolicyImpl>()),
       crash_directory_selection_method_(crash_directory_selection_method),
       crash_sending_mode_(crash_sending_mode),
+      force_daemon_store_(base::nullopt),
       is_finished_(false),
       bytes_written_(0),
       tag_(tag) {
@@ -917,6 +918,12 @@ base::Optional<FilePath> CrashCollector::GetUserCrashDirectoryNew() {
 }
 
 bool CrashCollector::UseDaemonStore() {
+  if (force_daemon_store_.has_value()) {
+    LOG(WARNING) << "force_daemon_store_ is " << force_daemon_store_.value()
+                 << ". Returning that.";
+    return force_daemon_store_.value();
+  }
+
   if (early_) {
     // When early in boot, daemon-store isn't available, so don't try it.
     return false;

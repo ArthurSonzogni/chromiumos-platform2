@@ -144,6 +144,12 @@ class CrashCollector {
     device_policy_ = std::move(device_policy);
   }
 
+  // For testing, force UseDaemonStore to return true or false, instead of
+  // using a random number.
+  void force_daemon_store_for_testing(bool use_daemon_store) {
+    force_daemon_store_.emplace(use_daemon_store);
+  }
+
   // For testing, return the in-memory files generated when in
   // kCrashLoopSendingMode. Since in_memory_files_ is a move-only type, this
   // clears the in_memory_files_ member variable.
@@ -509,6 +515,9 @@ class CrashCollector {
                                   bool use_daemon_store);
   base::FilePath GetUserCrashDirectoryOld(bool use_daemon_store);
   base::Optional<base::FilePath> GetUserCrashDirectoryNew();
+
+  // If set, UseDaemonStore will always return the contained value.
+  base::Optional<bool> force_daemon_store_;
 
   // True when FinishCrash has been called. Once true, no new files should be
   // created.
