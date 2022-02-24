@@ -17,9 +17,9 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/net/ip_address.h"
-#include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/routing_policy_entry.h"
+#include "shill/store/property_store.h"
 
 namespace shill {
 class ControlInterface;

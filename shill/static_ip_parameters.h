@@ -12,8 +12,8 @@
 #include <base/logging.h>
 
 #include "shill/ipconfig.h"
-#include "shill/property_store.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/property_store.h"
 
 namespace shill {
 class StoreInterface;

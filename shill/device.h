@@ -26,9 +26,9 @@
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
 #include "shill/portal_detector.h"
-#include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
+#include "shill/store/property_store.h"
 #include "shill/technology.h"
 
 namespace shill {

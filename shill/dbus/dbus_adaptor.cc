@@ -13,7 +13,7 @@
 
 #include "shill/error.h"
 #include "shill/logging.h"
-#include "shill/property_store.h"
+#include "shill/store/property_store.h"
 
 using brillo::dbus_utils::DBusObject;
 

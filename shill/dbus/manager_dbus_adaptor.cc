@@ -18,8 +18,8 @@
 #include "shill/geolocation_info.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/property_store.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/property_store.h"
 
 namespace shill {
 

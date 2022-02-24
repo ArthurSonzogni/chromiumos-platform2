@@ -12,8 +12,8 @@
 #include "shill/ipconfig.h"
 #include "shill/mock_control.h"
 #include "shill/mock_ipconfig.h"
-#include "shill/property_store.h"
 #include "shill/store/fake_store.h"
+#include "shill/store/property_store.h"
 
 using testing::_;
 using testing::DoAll;

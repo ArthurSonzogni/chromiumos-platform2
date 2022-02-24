@@ -34,8 +34,8 @@
 #include "shill/metrics.h"
 #include "shill/net/event_history.h"
 #include "shill/profile.h"
-#include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
+#include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)

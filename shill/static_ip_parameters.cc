@@ -18,8 +18,8 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/net/ip_address.h"
-#include "shill/property_accessor.h"
-#include "shill/property_store.h"
+#include "shill/store/property_accessor.h"
+#include "shill/store/property_store.h"
 #include "shill/store/store_interface.h"
 
 namespace shill {

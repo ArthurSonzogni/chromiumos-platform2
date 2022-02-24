@@ -12,8 +12,8 @@
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
-#include "shill/property_store.h"
 #include "shill/refptr_types.h"
+#include "shill/store/property_store.h"
 
 namespace shill {
 

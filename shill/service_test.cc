@@ -37,10 +37,10 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/net/mock_time.h"
-#include "shill/property_store_test.h"
 #include "shill/service_property_change_test.h"
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"
+#include "shill/store/property_store_test.h"
 #include "shill/testing.h"
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)

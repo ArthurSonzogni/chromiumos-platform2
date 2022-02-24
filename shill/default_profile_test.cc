@@ -19,9 +19,9 @@
 #include "shill/mock_device.h"
 #include "shill/mock_service.h"
 #include "shill/portal_detector.h"
-#include "shill/property_store_test.h"
 #include "shill/resolver.h"
 #include "shill/store/fake_store.h"
+#include "shill/store/property_store_test.h"
 
 using ::testing::_;
 using ::testing::DoAll;

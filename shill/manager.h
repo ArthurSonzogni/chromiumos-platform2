@@ -34,9 +34,9 @@
 #include "shill/net/ip_address.h"
 #include "shill/power_manager.h"
 #include "shill/profile.h"
-#include "shill/property_store.h"
 #include "shill/provider_interface.h"
 #include "shill/service.h"
+#include "shill/store/property_store.h"
 #include "shill/upstart/upstart.h"
 
 namespace shill {

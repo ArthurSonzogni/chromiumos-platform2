@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROPERTY_ITERATOR_H_
-#define SHILL_PROPERTY_ITERATOR_H_
+#ifndef SHILL_STORE_PROPERTY_ITERATOR_H_
+#define SHILL_STORE_PROPERTY_ITERATOR_H_
 
 #include <map>
 #include <memory>
 #include <string>
 
-#include "shill/accessor_interface.h"
 #include "shill/error.h"
+#include "shill/store/accessor_interface.h"
 
 namespace shill {
 
@@ -61,4 +61,4 @@ class ReadablePropertyConstIterator {
 
 }  // namespace shill
 
-#endif  // SHILL_PROPERTY_ITERATOR_H_
+#endif  // SHILL_STORE_PROPERTY_ITERATOR_H_

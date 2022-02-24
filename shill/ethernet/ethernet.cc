@@ -38,8 +38,8 @@
 #include "shill/manager.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/profile.h"
-#include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
+#include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 
 #if !defined(DISABLE_PPPOE)

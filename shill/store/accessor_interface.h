@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ACCESSOR_INTERFACE_H_
-#define SHILL_ACCESSOR_INTERFACE_H_
+#ifndef SHILL_STORE_ACCESSOR_INTERFACE_H_
+#define SHILL_STORE_ACCESSOR_INTERFACE_H_
 
 #include <map>
 #include <memory>
@@ -72,4 +72,4 @@ using AccessorMap =
 
 }  // namespace shill
 
-#endif  // SHILL_ACCESSOR_INTERFACE_H_
+#endif  // SHILL_STORE_ACCESSOR_INTERFACE_H_

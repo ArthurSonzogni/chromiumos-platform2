@@ -7,7 +7,7 @@
 #include <string>
 
 #include "shill/mock_adaptors.h"
-#include "shill/property_accessor.h"
+#include "shill/store/property_accessor.h"
 
 namespace shill {
 

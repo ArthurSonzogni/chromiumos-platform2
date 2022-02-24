@@ -27,9 +27,9 @@
 #include "shill/mockable.h"
 #include "shill/net/event_history.h"
 #include "shill/net/shill_time.h"
-#include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/static_ip_parameters.h"
+#include "shill/store/property_store.h"
 #include "shill/technology.h"
 
 namespace shill {

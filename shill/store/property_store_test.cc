@@ -2,9 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/property_store.h"
-
-#include "shill/property_store_test.h"
+#include "shill/store/property_store_test.h"
 
 #include <string>
 #include <utility>
@@ -19,7 +17,8 @@
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
-#include "shill/property_accessor.h"
+#include "shill/store/property_accessor.h"
+#include "shill/store/property_store.h"
 
 using ::testing::_;
 using ::testing::Return;
@@ -79,8 +78,8 @@ void PropertyStoreTest::SetUp() {
 TEST_P(PropertyStoreTest, SetPropertyNonexistent) {
   // Ensure that an attempt to write unknown properties returns
   // InvalidProperty, and does not yield a PropertyChange callback.
-  PropertyStore store(
-      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
+  PropertyStore store(base::BindRepeating(&PropertyStoreTest::TestCallback,
+                                          base::Unretained(this)));
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   store.SetAnyProperty("", GetParam(), &error);
@@ -110,8 +109,8 @@ class PropertyStoreTypedTest : public PropertyStoreTest {
 TYPED_TEST_SUITE(PropertyStoreTypedTest, PropertyStoreTest::PropertyTypes);
 
 TYPED_TEST(PropertyStoreTypedTest, RegisterProperty) {
-  PropertyStore store(
-      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
+  PropertyStore store(base::BindRepeating(&PropertyStoreTest::TestCallback,
+                                          base::Unretained(this)));
   Error error;
   TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
@@ -119,8 +118,8 @@ TYPED_TEST(PropertyStoreTypedTest, RegisterProperty) {
 }
 
 TYPED_TEST(PropertyStoreTypedTest, GetProperty) {
-  PropertyStore store(
-      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
+  PropertyStore store(base::BindRepeating(&PropertyStoreTest::TestCallback,
+                                          base::Unretained(this)));
   Error error;
   TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
@@ -133,8 +132,8 @@ TYPED_TEST(PropertyStoreTypedTest, GetProperty) {
 }
 
 TYPED_TEST(PropertyStoreTypedTest, ClearProperty) {
-  PropertyStore store(
-      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
+  PropertyStore store(base::BindRepeating(&PropertyStoreTest::TestCallback,
+                                          base::Unretained(this)));
   Error error;
   TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
@@ -143,8 +142,8 @@ TYPED_TEST(PropertyStoreTypedTest, ClearProperty) {
 }
 
 TYPED_TEST(PropertyStoreTypedTest, SetProperty) {
-  PropertyStore store(
-      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
+  PropertyStore store(base::BindRepeating(&PropertyStoreTest::TestCallback,
+                                          base::Unretained(this)));
   Error error;
   TypeParam property{};  // value-initialize primitives
   PropertyStoreTest::RegisterProperty(&store, "some property", &property);
@@ -268,8 +267,8 @@ TEST_F(PropertyStoreTest, ClearBoolProperty) {
 }
 
 TEST_F(PropertyStoreTest, ClearPropertyNonexistent) {
-  PropertyStore store(
-      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
+  PropertyStore store(base::BindRepeating(&PropertyStoreTest::TestCallback,
+                                          base::Unretained(this)));
   Error error;
 
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
@@ -280,8 +279,8 @@ TEST_F(PropertyStoreTest, ClearPropertyNonexistent) {
 // Separate from SetPropertyNonexistent, because
 // SetAnyProperty doesn't support Stringmaps.
 TEST_F(PropertyStoreTest, SetStringmapsProperty) {
-  PropertyStore store(
-      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
+  PropertyStore store(base::BindRepeating(&PropertyStoreTest::TestCallback,
+                                          base::Unretained(this)));
 
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
@@ -292,8 +291,8 @@ TEST_F(PropertyStoreTest, SetStringmapsProperty) {
 // KeyValueStoreProperty is only defined for derived types so handle
 // this case manually here.
 TEST_F(PropertyStoreTest, KeyValueStorePropertyNonExistent) {
-  PropertyStore store(
-      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
+  PropertyStore store(base::BindRepeating(&PropertyStoreTest::TestCallback,
+                                          base::Unretained(this)));
   Error error;
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   store.SetAnyProperty("", PropertyStoreTest::kKeyValueStoreV, &error);
@@ -301,8 +300,8 @@ TEST_F(PropertyStoreTest, KeyValueStorePropertyNonExistent) {
 }
 
 TEST_F(PropertyStoreTest, KeyValueStoreProperty) {
-  PropertyStore store(
-      base::Bind(&PropertyStoreTest::TestCallback, base::Unretained(this)));
+  PropertyStore store(base::BindRepeating(&PropertyStoreTest::TestCallback,
+                                          base::Unretained(this)));
   const char kKey[] = "key";
   EXPECT_CALL(*this, GetKeyValueStoreCallback(_))
       .WillOnce(Return(KeyValueStore()));

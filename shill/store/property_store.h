@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROPERTY_STORE_H_
-#define SHILL_PROPERTY_STORE_H_
+#ifndef SHILL_STORE_PROPERTY_STORE_H_
+#define SHILL_STORE_PROPERTY_STORE_H_
 
 #include <map>
 #include <memory>
@@ -15,9 +15,9 @@
 #include <brillo/any.h>
 #include <brillo/variant_dictionary.h>
 
-#include "shill/accessor_interface.h"
-#include "shill/property_iterator.h"
+#include "shill/store/accessor_interface.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/property_iterator.h"
 
 namespace shill {
 
@@ -25,7 +25,8 @@ class Error;
 
 class PropertyStore {
  public:
-  using PropertyChangeCallback = base::Callback<void(const std::string&)>;
+  using PropertyChangeCallback =
+      base::RepeatingCallback<void(const std::string&)>;
   PropertyStore();
   explicit PropertyStore(PropertyChangeCallback property_change_callback);
   PropertyStore(const PropertyStore&) = delete;
@@ -315,4 +316,4 @@ class PropertyStore {
 
 }  // namespace shill
 
-#endif  // SHILL_PROPERTY_STORE_H_
+#endif  // SHILL_STORE_PROPERTY_STORE_H_

@@ -12,8 +12,9 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/property_store.h"
 #include "shill/refptr_types.h"
+#include "shill/store/property_store.h"
+#include "shill/store/store_interface.h"
 
 namespace shill {
 

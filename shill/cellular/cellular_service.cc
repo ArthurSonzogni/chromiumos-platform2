@@ -21,7 +21,7 @@
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/manager.h"
-#include "shill/property_accessor.h"
+#include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 
 namespace shill {

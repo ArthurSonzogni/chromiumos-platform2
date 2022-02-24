@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROPERTY_STORE_TEST_H_
-#define SHILL_PROPERTY_STORE_TEST_H_
+#ifndef SHILL_STORE_PROPERTY_STORE_TEST_H_
+#define SHILL_STORE_PROPERTY_STORE_TEST_H_
 
 #include <string>
 #include <vector>
@@ -17,8 +17,8 @@
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_metrics.h"
-#include "shill/property_store.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/property_store.h"
 #include "shill/test_event_dispatcher.h"
 
 namespace shill {
@@ -247,4 +247,4 @@ class PropertyStoreTest : public testing::TestWithParam<brillo::Any> {
 
 }  // namespace shill
 
-#endif  // SHILL_PROPERTY_STORE_TEST_H_
+#endif  // SHILL_STORE_PROPERTY_STORE_TEST_H_

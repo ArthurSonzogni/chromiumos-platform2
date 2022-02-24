@@ -28,7 +28,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/io_handler_factory.h"
-#include "shill/property_accessor.h"
+#include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/virtual_device.h"
 #include "shill/vpn/vpn_service.h"

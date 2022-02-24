@@ -32,7 +32,7 @@
 #include "shill/net/event_history.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/property_accessor.h"
+#include "shill/store/property_accessor.h"
 #include "shill/wifi/wifi.h"
 
 namespace shill {

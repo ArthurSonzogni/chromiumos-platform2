@@ -56,7 +56,7 @@
 #include "shill/ppp_device_factory.h"
 #include "shill/process_manager.h"
 #include "shill/profile.h"
-#include "shill/property_accessor.h"
+#include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/technology.h"
 

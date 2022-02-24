@@ -12,7 +12,7 @@
 
 #include "shill/error.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/property_store.h"
+#include "shill/store/property_store.h"
 #include "shill/wifi/wake_on_wifi_interface.h"
 
 namespace shill {

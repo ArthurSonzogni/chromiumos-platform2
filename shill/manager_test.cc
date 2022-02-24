@@ -45,12 +45,12 @@
 #include "shill/mock_service.h"
 #include "shill/mock_throttler.h"
 #include "shill/portal_detector.h"
-#include "shill/property_store_test.h"
 #include "shill/resolver.h"
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/key_file_store.h"
 #include "shill/store/key_value_store.h"
+#include "shill/store/property_store_test.h"
 #include "shill/testing.h"
 #include "shill/upstart/mock_upstart.h"
 
