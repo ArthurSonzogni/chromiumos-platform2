@@ -46,7 +46,7 @@
 #include "cryptohome/storage/mount.h"
 #include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/user_secret_stash_storage.h"
-#include "cryptohome/user_session.h"
+#include "cryptohome/user_session/user_session.h"
 
 namespace cryptohome {
 

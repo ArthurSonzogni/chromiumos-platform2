@@ -54,7 +54,7 @@
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/user_secret_stash_storage.h"
-#include "cryptohome/user_session.h"
+#include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/userdataauth.h"
 
 using base::FilePath;
@@ -1241,9 +1241,9 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
     if (!m) {
       return nullptr;
     }
-    sessions_[username] = new UserSession(homedirs_, keyset_management_,
-                                          user_activity_timestamp_manager_,
-                                          pkcs11_token_factory_, m);
+    sessions_[username] = base::MakeRefCounted<RealUserSession>(
+        homedirs_, keyset_management_, user_activity_timestamp_manager_,
+        pkcs11_token_factory_, m);
   }
   return sessions_[username];
 }

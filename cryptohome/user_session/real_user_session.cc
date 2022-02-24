@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/user_session.h"
+#include "cryptohome/user_session/real_user_session.h"
 
 #include <memory>
 #include <string>
@@ -38,9 +38,9 @@ constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
 // Message to use when generating a secret for hibernate.
 constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
-UserSession::UserSession() {}
-UserSession::~UserSession() {}
-UserSession::UserSession(
+RealUserSession::RealUserSession() {}
+RealUserSession::~RealUserSession() {}
+RealUserSession::RealUserSession(
     HomeDirs* homedirs,
     KeysetManagement* keyset_management,
     UserOldestActivityTimestampManager* user_activity_timestamp_manager,
@@ -52,7 +52,7 @@ UserSession::UserSession(
       pkcs11_token_factory_(pkcs11_token_factory),
       mount_(mount) {}
 
-MountError UserSession::MountVault(
+MountError RealUserSession::MountVault(
     const std::string username,
     const FileSystemKeyset& fs_keyset,
     const CryptohomeVault::Options& vault_options) {
@@ -75,7 +75,7 @@ MountError UserSession::MountVault(
   return MOUNT_ERROR_NONE;
 }
 
-MountError UserSession::MountEphemeral(const std::string username) {
+MountError RealUserSession::MountEphemeral(const std::string username) {
   if (homedirs_->IsOrWillBeOwner(username)) {
     return MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER;
   }
@@ -90,11 +90,11 @@ MountError UserSession::MountEphemeral(const std::string username) {
   return error;
 }
 
-MountError UserSession::MountGuest() {
+MountError RealUserSession::MountGuest() {
   return mount_->MountEphemeralCryptohome(kGuestUserName);
 }
 
-bool UserSession::Unmount() {
+bool RealUserSession::Unmount() {
   if (pkcs11_token_) {
     pkcs11_token_->Remove();
     pkcs11_token_.reset();
@@ -106,7 +106,7 @@ bool UserSession::Unmount() {
   return mount_->UnmountCryptohome();
 }
 
-base::Value UserSession::GetStatus() const {
+base::Value RealUserSession::GetStatus() const {
   base::Value dv(base::Value::Type::DICTIONARY);
   std::string user = SanitizeUserName(username_);
   base::Value keysets(base::Value::Type::LIST);
@@ -146,8 +146,8 @@ base::Value UserSession::GetStatus() const {
   return dv;
 }
 
-void UserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
-                                        const brillo::SecureBlob& fnek) {
+void RealUserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
+                                            const brillo::SecureBlob& fnek) {
   // This WebAuthn secret can be rederived upon in-session user auth success
   // since they will unlock the vault keyset.
   const std::string message(kWebAuthnSecretHmacMessage);
@@ -159,24 +159,24 @@ void UserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
 
   clear_webauthn_secret_timer_.Start(
       FROM_HERE, base::Seconds(10),
-      base::BindOnce(&UserSession::ClearWebAuthnSecret,
+      base::BindOnce(&RealUserSession::ClearWebAuthnSecret,
                      base::Unretained(this)));
 }
 
-void UserSession::ClearWebAuthnSecret() {
+void RealUserSession::ClearWebAuthnSecret() {
   webauthn_secret_.reset();
 }
 
-std::unique_ptr<brillo::SecureBlob> UserSession::GetWebAuthnSecret() {
+std::unique_ptr<brillo::SecureBlob> RealUserSession::GetWebAuthnSecret() {
   return std::move(webauthn_secret_);
 }
 
-const brillo::SecureBlob& UserSession::GetWebAuthnSecretHash() const {
+const brillo::SecureBlob& RealUserSession::GetWebAuthnSecretHash() const {
   return webauthn_secret_hash_;
 }
 
-void UserSession::PrepareHibernateSecret(const brillo::SecureBlob& fek,
-                                         const brillo::SecureBlob& fnek) {
+void RealUserSession::PrepareHibernateSecret(const brillo::SecureBlob& fek,
+                                             const brillo::SecureBlob& fnek) {
   // This hibernate secret can be rederived upon in-session user auth success
   // since they will unlock the vault keyset.
   const std::string message(kHibernateSecretHmacMessage);
@@ -187,19 +187,19 @@ void UserSession::PrepareHibernateSecret(const brillo::SecureBlob& fek,
 
   clear_hibernate_secret_timer_.Start(
       FROM_HERE, base::Seconds(600),
-      base::BindOnce(&UserSession::ClearHibernateSecret,
+      base::BindOnce(&RealUserSession::ClearHibernateSecret,
                      base::Unretained(this)));
 }
 
-void UserSession::ClearHibernateSecret() {
+void RealUserSession::ClearHibernateSecret() {
   hibernate_secret_.reset();
 }
 
-std::unique_ptr<brillo::SecureBlob> UserSession::GetHibernateSecret() {
+std::unique_ptr<brillo::SecureBlob> RealUserSession::GetHibernateSecret() {
   return std::move(hibernate_secret_);
 }
 
-bool UserSession::SetCredentials(const Credentials& credentials) {
+bool RealUserSession::SetCredentials(const Credentials& credentials) {
   obfuscated_username_ = credentials.GetObfuscatedUsername();
   username_ = credentials.username();
   key_data_ = credentials.key_data();
@@ -208,20 +208,20 @@ bool UserSession::SetCredentials(const Credentials& credentials) {
   return credential_verifier_->Set(credentials.passkey());
 }
 
-void UserSession::SetCredentials(AuthSession* auth_session) {
+void RealUserSession::SetCredentials(AuthSession* auth_session) {
   username_ = auth_session->username();
   obfuscated_username_ = SanitizeUserName(username_);
   key_data_ = auth_session->current_key_data();
   credential_verifier_ = auth_session->TakeCredentialVerifier();
 }
 
-bool UserSession::VerifyUser(const std::string& obfuscated_username) const {
+bool RealUserSession::VerifyUser(const std::string& obfuscated_username) const {
   return obfuscated_username_ == obfuscated_username;
 }
 
 // TODO(betuls): Move credential verification to AuthBlocks once AuthBlock
 // refactor is completed.
-bool UserSession::VerifyCredentials(const Credentials& credentials) const {
+bool RealUserSession::VerifyCredentials(const Credentials& credentials) const {
   ReportTimerStart(kSessionUnlockTimer);
 
   if (!credential_verifier_) {

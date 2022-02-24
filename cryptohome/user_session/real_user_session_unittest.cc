@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Unit tests for UserSession.
+// Unit tests for RealUserSession.
 
-#include "cryptohome/user_session.h"
+#include "cryptohome/user_session/real_user_session.h"
 
 #include <string>
 #include <vector>
@@ -52,16 +52,16 @@ constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
 }  // namespace
 
-class UserSessionTest : public ::testing::Test {
+class RealUserSessionTest : public ::testing::Test {
  public:
-  UserSessionTest() : crypto_(&platform_) {}
-  ~UserSessionTest() override {}
+  RealUserSessionTest() : crypto_(&platform_) {}
+  ~RealUserSessionTest() override {}
 
   // Not copyable or movable
-  UserSessionTest(const UserSessionTest&) = delete;
-  UserSessionTest& operator=(const UserSessionTest&) = delete;
-  UserSessionTest(UserSessionTest&&) = delete;
-  UserSessionTest& operator=(UserSessionTest&&) = delete;
+  RealUserSessionTest(const RealUserSessionTest&) = delete;
+  RealUserSessionTest& operator=(const RealUserSessionTest&) = delete;
+  RealUserSessionTest(RealUserSessionTest&&) = delete;
+  RealUserSessionTest& operator=(RealUserSessionTest&&) = delete;
 
   void SetUp() override {
     keyset_management_ = std::make_unique<KeysetManagement>(
@@ -92,9 +92,9 @@ class UserSessionTest : public ::testing::Test {
           return std::make_unique<FakePkcs11Token>();
         }));
 
-    session_ = new UserSession(homedirs_.get(), keyset_management_.get(),
-                               user_activity_timestamp_manager_.get(),
-                               &pkcs11_token_factory_, mount_);
+    session_ = base::MakeRefCounted<RealUserSession>(
+        homedirs_.get(), keyset_management_.get(),
+        user_activity_timestamp_manager_.get(), &pkcs11_token_factory_, mount_);
   }
 
  protected:
@@ -117,7 +117,7 @@ class UserSessionTest : public ::testing::Test {
   std::unique_ptr<UserOldestActivityTimestampManager>
       user_activity_timestamp_manager_;
   std::unique_ptr<HomeDirs> homedirs_;
-  scoped_refptr<UserSession> session_;
+  scoped_refptr<RealUserSession> session_;
   // TODO(dlunev): Replace with real mount when FakePlatform is mature enough
   // to support it mock-less.
   scoped_refptr<MockMount> mount_;
@@ -159,7 +159,7 @@ MATCHER_P(VaultOptionsEqual, options, "") {
 
 // Mount twice: first time with create, and the second time for the existing
 // one.
-TEST_F(UserSessionTest, MountVaultOk) {
+TEST_F(RealUserSessionTest, MountVaultOk) {
   // SETUP
 
   const base::Time kTs1 = base::Time::FromInternalValue(42);
@@ -255,7 +255,7 @@ TEST_F(UserSessionTest, MountVaultOk) {
   EXPECT_EQ(session_->GetPkcs11Token(), nullptr);
 }
 
-TEST_F(UserSessionTest, EphemeralMountPolicyTest) {
+TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
   EXPECT_CALL(*mount_, MountEphemeralCryptohome(_))
       .WillRepeatedly(Return(MOUNT_ERROR_NONE));
 
@@ -321,7 +321,7 @@ TEST_F(UserSessionTest, EphemeralMountPolicyTest) {
 }
 
 // WebAuthn secret and hibernate secrets are cleared after being read once.
-TEST_F(UserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
+TEST_F(RealUserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
   // SETUP
   // Test with ecryptfs since it has a simpler existence check.
   CryptohomeVault::Options options = {
@@ -376,7 +376,7 @@ TEST_F(UserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
 }
 
 // WebAuthn secret is cleared after timeout.
-TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
+TEST_F(RealUserSessionTest, WebAuthnSecretTimeout) {
   // SETUP
 
   // Test with ecryptfs since it has a simpler existence check.
@@ -407,38 +407,41 @@ TEST_F(UserSessionTest, WebAuthnSecretTimeout) {
   EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
 }
 
-class UserSessionReAuthTest : public ::testing::Test {
+class RealUserSessionReAuthTest : public ::testing::Test {
  public:
-  UserSessionReAuthTest() {}
-  virtual ~UserSessionReAuthTest() {}
+  RealUserSessionReAuthTest() {}
+  virtual ~RealUserSessionReAuthTest() {}
 
   // Not copyable or movable
-  UserSessionReAuthTest(const UserSessionReAuthTest&) = delete;
-  UserSessionReAuthTest& operator=(const UserSessionReAuthTest&) = delete;
-  UserSessionReAuthTest(UserSessionReAuthTest&&) = delete;
-  UserSessionReAuthTest& operator=(UserSessionReAuthTest&&) = delete;
+  RealUserSessionReAuthTest(const RealUserSessionReAuthTest&) = delete;
+  RealUserSessionReAuthTest& operator=(const RealUserSessionReAuthTest&) =
+      delete;
+  RealUserSessionReAuthTest(RealUserSessionReAuthTest&&) = delete;
+  RealUserSessionReAuthTest& operator=(RealUserSessionReAuthTest&&) = delete;
 
   // MockPlatform will provide encironment with system salt.
   MockPlatform platform_;
 };
 
-TEST_F(UserSessionReAuthTest, VerifyUser) {
+TEST_F(RealUserSessionReAuthTest, VerifyUser) {
   Credentials credentials("username", SecureBlob("password"));
-  scoped_refptr<UserSession> session =
-      new UserSession(nullptr, nullptr, nullptr, nullptr, nullptr);
+  scoped_refptr<RealUserSession> session =
+      base::MakeRefCounted<RealUserSession>(nullptr, nullptr, nullptr, nullptr,
+                                            nullptr);
   EXPECT_TRUE(session->SetCredentials(credentials));
 
   EXPECT_TRUE(session->VerifyUser(credentials.GetObfuscatedUsername()));
   EXPECT_FALSE(session->VerifyUser("other"));
 }
 
-TEST_F(UserSessionReAuthTest, VerifyCredentials) {
+TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
   Credentials credentials_1("username", SecureBlob("password"));
   Credentials credentials_2("username", SecureBlob("password2"));
   Credentials credentials_3("username2", SecureBlob("password2"));
 
-  scoped_refptr<UserSession> session =
-      new UserSession(nullptr, nullptr, nullptr, nullptr, nullptr);
+  scoped_refptr<RealUserSession> session =
+      base::MakeRefCounted<RealUserSession>(nullptr, nullptr, nullptr, nullptr,
+                                            nullptr);
   EXPECT_TRUE(session->SetCredentials(credentials_1));
   EXPECT_TRUE(session->VerifyCredentials(credentials_1));
   EXPECT_FALSE(session->VerifyCredentials(credentials_2));

@@ -58,6 +58,7 @@
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/tpm.h"
+#include "cryptohome/user_session/real_user_session.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
@@ -186,9 +187,9 @@ class UserDataAuthTestBase : public ::testing::Test {
   // user. After calling this function, |mount_| is available for use.
   void SetupMount(const std::string& username) {
     mount_ = new NiceMock<MockMount>();
-    session_ = new UserSession(&homedirs_, &keyset_management_,
-                               &user_activity_timestamp_manager_,
-                               &pkcs11_token_factory_, mount_);
+    session_ = base::MakeRefCounted<RealUserSession>(
+        &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
+        &pkcs11_token_factory_, mount_);
     userdataauth_->set_session_for_user(username, session_.get());
   }
 
@@ -352,7 +353,7 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
     vk->CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
     ASSERT_EQ(
         MOUNT_ERROR_NONE,
-        session->MountVault(session->username_, FileSystemKeyset(*vk.get()),
+        session->MountVault(session->GetUsername(), FileSystemKeyset(*vk.get()),
                             CryptohomeVault::Options()));
   }
 
@@ -821,13 +822,13 @@ TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
   constexpr char kUsername2[] = "bar@gmail.com";
 
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session1 = new UserSession(
+  scoped_refptr<UserSession> session1 = base::MakeRefCounted<RealUserSession>(
       &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
       &pkcs11_token_factory_, mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
 
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session2 = new UserSession(
+  scoped_refptr<UserSession> session2 = base::MakeRefCounted<RealUserSession>(
       &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
       &pkcs11_token_factory_, mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());
@@ -1015,14 +1016,14 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   constexpr char kUsername2[] = "bar@gmail.com";
 
   scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session1 = new UserSession(
+  scoped_refptr<UserSession> session1 = base::MakeRefCounted<RealUserSession>(
       &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
       &pkcs11_token_factory_, mount1);
   userdataauth_->set_session_for_user(kUsername1, session1.get());
   CreatePkcs11TokenInSession(mount1, session1);
 
   scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session2 = new UserSession(
+  scoped_refptr<UserSession> session2 = base::MakeRefCounted<RealUserSession>(
       &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
       &pkcs11_token_factory_, mount2);
   userdataauth_->set_session_for_user(kUsername2, session2.get());

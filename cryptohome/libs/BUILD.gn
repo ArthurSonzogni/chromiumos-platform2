@@ -424,7 +424,7 @@ static_library("libcryptohome") {
     "../storage/mount_stack.cc",
     "../storage/mount_utils.cc",
     "../storage/out_of_process_mount_helper.cc",
-    "../user_session.cc",
+    "../user_session/real_user_session.cc",
     "../userdataauth.cc",
     "../vault_keyset_factory.cc",
   ]
