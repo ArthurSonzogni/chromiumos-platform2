@@ -19,7 +19,6 @@ e.g. when making changes to code in `shill/net` it is important to use
 
 There are also additional support / utility packages:
 
-*   `shill-cli`
 *   `shill-client`
 *   `shill-dbus-client`
 *   `shill-test-scripts`
