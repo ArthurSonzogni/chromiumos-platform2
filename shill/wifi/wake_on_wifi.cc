@@ -26,7 +26,6 @@
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/ip_address_store.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/event_history.h"

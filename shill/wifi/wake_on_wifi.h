@@ -23,7 +23,6 @@
 #include <brillo/timers/alarm_timer.h>
 
 #include "shill/callbacks.h"
-#include "shill/ip_address_store.h"
 #include "shill/net/event_history.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/netlink_manager.h"

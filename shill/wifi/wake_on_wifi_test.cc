@@ -21,7 +21,6 @@
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/ip_address_store.h"
 #include "shill/logging.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"

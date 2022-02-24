@@ -32,7 +32,6 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
-#include "shill/ip_address_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
