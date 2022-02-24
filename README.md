@@ -123,6 +123,7 @@ copies.
 | [print_tools](./print_tools/) | Various tools related to the native printing system |
 | [regions](./regions/) ||
 | [resourced](./resourced/) | Resource Management Daemon |
+| [rgbkbd](./rgbkbd/) | Chrome OS RGB Keyboard Daemon |
 | [rmad](./rmad/) | Chrome OS RMA Daemon |
 | [run_oci](./run_oci/) | Minimalistic container runtime |
 | [runtime_probe](./runtime_probe/) | Runtime probe tool for ChromeOS |

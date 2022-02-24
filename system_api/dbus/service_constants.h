@@ -44,6 +44,7 @@
 #include "power_manager/dbus-constants.h"
 #include "privacy_screen/dbus-constants.h"
 #include "resource_manager/dbus-constants.h"
+#include "rgbkbd/dbus-constants.h"
 #include "rmad/dbus-constants.h"
 #include "runtime_probe/dbus-constants.h"
 #include "seneschal/dbus-constants.h"
