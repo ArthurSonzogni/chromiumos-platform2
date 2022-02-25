@@ -46,6 +46,10 @@ const char DefaultProfile::kStorageProhibitedTechnologies[] =
     "ProhibitedTechnologies";
 // static
 const char DefaultProfile::kStorageUseSwanctlDriver[] = "UseSwanctlDriver";
+// b/221171651: This string must stay consistent with the storage id used
+// previously by DhcpProperties.
+// static
+const char DefaultProfile::kStorageDhcpHostname[] = "Hostname";
 #if !defined(DISABLE_WIFI)
 // static
 const char DefaultProfile::kStorageWifiGlobalFTEnabled[] =
@@ -98,8 +102,7 @@ bool DefaultProfile::GetFTEnabled(Error* error) {
 }
 #endif  // DISABLE_WIFI
 
-void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
-                                           DhcpProperties* dhcp_properties) {
+void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props) {
   storage()->GetBool(kStorageId, kStorageArpGateway,
                      &manager_props->arp_gateway);
   if (!storage()->GetString(kStorageId, kStorageCheckPortalList,
@@ -127,6 +130,11 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
     manager_props->prohibited_technologies = "";
   }
 
+  if (!storage()->GetString(kStorageId, kStorageDhcpHostname,
+                            &manager_props->dhcp_hostname)) {
+    manager_props->dhcp_hostname = "";
+  }
+
   bool use_swanctl_driver;
   if (storage()->GetBool(kStorageId, kStorageUseSwanctlDriver,
                          &use_swanctl_driver)) {
@@ -139,8 +147,6 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props,
     manager_props->ft_enabled = ft_enabled;
   }
 #endif  // DISABLE_WIFI
-
-  dhcp_properties->Load(storage(), kStorageId);
 }
 
 bool DefaultProfile::ConfigureService(const ServiceRefPtr& service) {
@@ -178,13 +184,16 @@ bool DefaultProfile::Save() {
     storage()->SetBool(kStorageId, kStorageUseSwanctlDriver,
                        props_.use_swanctl_driver.value());
   }
+  if (!props_.dhcp_hostname.empty()) {
+    storage()->SetString(kStorageId, kStorageDhcpHostname,
+                         props_.dhcp_hostname);
+  }
 #if !defined(DISABLE_WIFI)
   if (props_.ft_enabled.has_value()) {
     storage()->SetBool(kStorageId, kStorageWifiGlobalFTEnabled,
                        props_.ft_enabled.value());
   }
 #endif  // DISABLE_WIFI
-  manager()->dhcp_properties().Save(storage(), kStorageId);
   return Profile::Save();
 }
 

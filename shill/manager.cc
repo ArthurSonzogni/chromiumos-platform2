@@ -231,7 +231,6 @@ Manager::Manager(ControlInterface* control_interface,
       suppress_autoconnect_(false),
       is_connected_state_(false),
       has_user_session_(false),
-      dhcp_properties_(new DhcpProperties(this)),
       network_throttling_enabled_(false),
       download_rate_kbits_(0),
       upload_rate_kbits_(0),
@@ -299,12 +298,11 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedBool(DefaultProfile::kUseSwanctlDriver,
                           &Manager::GetUseSwanctlDriver,
                           &Manager::SetUseSwanctlDriver);
+  store_.RegisterString(kDhcpPropertyHostnameProperty, &props_.dhcp_hostname);
 
   UpdateProviderMapping();
 
   supported_vpn_ = vpn_provider_->GetSupportedType();
-
-  dhcp_properties_->InitPropertyStore(&store_);
 
   SLOG(this, 2) << "Manager initialized.";
 }
@@ -1609,9 +1607,7 @@ void Manager::PersistService(const ServiceRefPtr& to_update) {
 
 void Manager::LoadProperties(const scoped_refptr<DefaultProfile>& profile) {
   SLOG(this, 2) << __func__;
-  profile->LoadManagerProperties(&props_, dhcp_properties_.get());
-  dhcp_properties_->GetValueForProperty(DhcpProperties::kHostnameProperty,
-                                        &dhcp_hostname_);
+  profile->LoadManagerProperties(&props_);
   SetIgnoredDNSSearchPaths(props_.ignored_dns_search_paths, nullptr);
 }
 

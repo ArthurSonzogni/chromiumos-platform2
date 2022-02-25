@@ -13,7 +13,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -88,13 +87,8 @@ TEST_F(DefaultProfileTest, Save) {
   auto owned_storage = std::make_unique<FakeStore>();
   FakeStore* storage = owned_storage.get();
 
-  EXPECT_CALL(*device_, Save(storage)).Times(0);
   profile_->SetStorageForTest(std::move(owned_storage));
-  auto dhcp_props = std::make_unique<MockDhcpProperties>();
-  EXPECT_CALL(*dhcp_props, Save(_, _));
-  manager()->dhcp_properties_ = std::move(dhcp_props);
 
-  manager()->RegisterDevice(device_);
   ASSERT_TRUE(profile_->Save());
 
   bool gateway;
@@ -105,20 +99,14 @@ TEST_F(DefaultProfileTest, Save) {
   EXPECT_TRUE(storage->GetString(DefaultProfile::kStorageId,
                                  DefaultProfile::kStorageName, &name));
   EXPECT_EQ(name, DefaultProfile::kDefaultId);
-
-  manager()->DeregisterDevice(device_);
 }
 
 TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   auto owned_storage = std::make_unique<FakeStore>();
   Manager::Properties manager_props;
-  auto dhcp_props = std::make_unique<MockDhcpProperties>();
-  EXPECT_CALL(*dhcp_props, Load(_, DefaultProfile::kStorageId));
-  manager()->dhcp_properties_ = std::move(dhcp_props);
   profile_->SetStorageForTest(std::move(owned_storage));
 
-  profile_->LoadManagerProperties(&manager_props,
-                                  manager()->dhcp_properties_.get());
+  profile_->LoadManagerProperties(&manager_props);
   EXPECT_TRUE(manager_props.arp_gateway);
   EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
             manager_props.check_portal_list);
@@ -131,6 +119,7 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
             manager_props.portal_fallback_http_urls);
   EXPECT_EQ("", manager_props.prohibited_technologies);
   EXPECT_FALSE(manager_props.use_swanctl_driver.has_value());
+  EXPECT_EQ("", manager_props.dhcp_hostname);
 #if !defined(DISABLE_WIFI)
   EXPECT_FALSE(manager_props.ft_enabled.has_value());
 #endif  // DISABLE_WIFI
@@ -158,18 +147,17 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                      prohibited_technologies);
   storage->SetBool(DefaultProfile::kStorageId,
                    DefaultProfile::kStorageUseSwanctlDriver, true);
+  const std::string hostname = "chromeos";
+  storage->SetString(DefaultProfile::kStorageId,
+                     DefaultProfile::kStorageDhcpHostname, hostname);
 #if !defined(DISABLE_WIFI)
   storage->SetBool(DefaultProfile::kStorageId,
                    DefaultProfile::kStorageWifiGlobalFTEnabled, true);
 #endif  // DISABLE_WIFI
   profile_->SetStorageForTest(std::move(owned_storage));
   Manager::Properties manager_props;
-  auto dhcp_props = std::make_unique<MockDhcpProperties>();
-  EXPECT_CALL(*dhcp_props, Load(_, DefaultProfile::kStorageId));
-  manager()->dhcp_properties_ = std::move(dhcp_props);
 
-  profile_->LoadManagerProperties(&manager_props,
-                                  manager()->dhcp_properties_.get());
+  profile_->LoadManagerProperties(&manager_props);
   EXPECT_FALSE(manager_props.arp_gateway);
   EXPECT_EQ(portal_list, manager_props.check_portal_list);
   EXPECT_EQ(ignored_paths, manager_props.ignored_dns_search_paths);
@@ -178,6 +166,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
   EXPECT_EQ(prohibited_technologies, manager_props.prohibited_technologies);
   EXPECT_TRUE(manager_props.use_swanctl_driver.has_value());
   EXPECT_TRUE(manager_props.use_swanctl_driver.value());
+  EXPECT_EQ(hostname, manager_props.dhcp_hostname);
 #if !defined(DISABLE_WIFI)
   EXPECT_TRUE(manager_props.ft_enabled.has_value());
   EXPECT_TRUE(manager_props.ft_enabled.value());

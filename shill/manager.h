@@ -25,7 +25,6 @@
 #include "shill/default_service_observer.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
-#include "shill/dhcp/dhcp_properties.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
@@ -106,6 +105,8 @@ class Manager {
     // used instead of the legacy one based on ipsec script and stroke. This
     // property will be deprecated and removed when the migration is done.
     std::optional<bool> use_swanctl_driver;
+    // Hostname to be used in DHCP request.
+    std::string dhcp_hostname;
 
 #if !defined(DISABLE_WIFI)
     base::Optional<bool> ft_enabled;
@@ -426,12 +427,8 @@ class Manager {
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();
 
-  const DhcpProperties& dhcp_properties() const {
-    return *dhcp_properties_;
-  }
-
   virtual const std::string& dhcp_hostname() const {
-    return dhcp_hostname_;
+    return props_.dhcp_hostname;
   }
 
   // Writes the Service |to_update| to persistent storage. If the Service is
@@ -947,13 +944,6 @@ class Manager {
 
   // List of allowed devices specified from command line.
   std::vector<std::string> allowed_devices_;
-
-  // DhcpProperties stored for the default profile.
-  std::unique_ptr<DhcpProperties> dhcp_properties_;
-
-  // Hostname to be used in DHCP request.
-  // TODO(b/221171651): Migrate to Manager.Properties
-  std::string dhcp_hostname_;
 
   // List of supported vpn types;
   std::string supported_vpn_;

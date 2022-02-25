@@ -38,8 +38,7 @@ class DefaultProfile : public Profile {
 
   // Loads global configuration into manager properties.  This should
   // only be called by the Manager.
-  virtual void LoadManagerProperties(Manager::Properties* manager_props,
-                                     DhcpProperties* dhcp_properties);
+  virtual void LoadManagerProperties(Manager::Properties* manager_props);
 
   // Override the Profile superclass implementation to accept all Ethernet
   // services, since these should have an affinity for the default profile.
@@ -76,6 +75,7 @@ class DefaultProfile : public Profile {
   static const char kStorageNoAutoConnectTechnologies[];
   static const char kStorageProhibitedTechnologies[];
   static const char kStorageUseSwanctlDriver[];
+  static const char kStorageDhcpHostname[];
 #if !defined(DISABLE_WIFI)
   static const char kStorageWifiGlobalFTEnabled[];
 #endif  // DISABLE_WIFI
