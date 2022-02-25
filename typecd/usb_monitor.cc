@@ -13,6 +13,8 @@
 #include <re2/re2.h>
 
 namespace {
+constexpr char kInterfaceFilePathRegex[] =
+    R"((\d+)-(\d+)(\.(\d+))*:(\d+)\.(\d+))";
 constexpr char kTypecPortUeventRegex[] = R"(TYPEC_PORT=port(\d+))";
 }
 
@@ -21,6 +23,9 @@ namespace typecd {
 void UsbMonitor::OnDeviceAddedOrRemoved(const base::FilePath& path,
                                         bool added) {
   auto key = path.BaseName().value();
+  if (RE2::FullMatch(key, kInterfaceFilePathRegex))
+    return;
+
   auto it = devices_.find(key);
   if (added) {
     if (it != devices_.end()) {
