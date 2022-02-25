@@ -35,7 +35,6 @@
 #include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcp_config.h"
-#include "shill/dhcp/dhcp_properties.h"
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"

@@ -26,7 +26,6 @@
 
 #include "shill/dhcp/dhcp_provider.h"
 #include "shill/dhcp/mock_dhcp_config.h"
-#include "shill/dhcp/mock_dhcp_properties.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
