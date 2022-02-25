@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
@@ -59,8 +60,8 @@ void DlcManager::Initialize() {
 
   // Post cleaning up dangling Dlcs for after the user has worked on the device
   // for a bit in case they install one of the dangling DLCs.
-  constexpr int kTimeoutMinutes = 30;
-  PostCleanupDanglingDlcs(base::Minutes(kTimeoutMinutes));
+  constexpr base::TimeDelta kTimeout = base::Minutes(30);
+  PostCleanupDanglingDlcs(kTimeout);
 }
 
 void DlcManager::CleanupUnsupportedDlcs() {
@@ -114,8 +115,8 @@ void DlcManager::CleanupDanglingDlcs() {
 
   // Post another one to happen in a day in case they never shutdown their
   // devices.
-  constexpr int kTimeoutDays = 1;
-  PostCleanupDanglingDlcs(base::Days(kTimeoutDays));
+  constexpr base::TimeDelta kTimeout = base::Days(1);
+  PostCleanupDanglingDlcs(kTimeout);
 }
 
 void DlcManager::PostCleanupDanglingDlcs(const base::TimeDelta& timeout) {

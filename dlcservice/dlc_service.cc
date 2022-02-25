@@ -222,11 +222,10 @@ void DlcService::PeriodicInstallCheck() {
   if (!installing_dlc_id_)
     return;
 
-  const int kNotSeenStatusDelay = 10;
+  constexpr base::TimeDelta kNotSeenStatusDelay = base::Seconds(10);
   auto* system_state = SystemState::Get();
   if ((system_state->clock()->Now() -
-       system_state->update_engine_status_timestamp()) >
-      base::Seconds(kNotSeenStatusDelay)) {
+       system_state->update_engine_status_timestamp()) > kNotSeenStatusDelay) {
     if (GetUpdateEngineStatus()) {
       ErrorPtr tmp_error;
       if (!HandleStatusResult(&tmp_error)) {
@@ -248,7 +247,7 @@ void DlcService::SchedulePeriodicInstallCheck() {
       FROM_HERE,
       base::BindOnce(&DlcService::PeriodicInstallCheck,
                      weak_ptr_factory_.GetWeakPtr()),
-      base::Seconds(kUECheckTimeout));
+      kUECheckTimeout);
 }
 
 bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {

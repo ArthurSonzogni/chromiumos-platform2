@@ -50,7 +50,7 @@ class DlcServiceInterface {
 // API for the rest of the system to install/uninstall DLCs.
 class DlcService : public DlcServiceInterface {
  public:
-  static const size_t kUECheckTimeout = 5;
+  static constexpr base::TimeDelta kUECheckTimeout = base::Seconds(5);
 
   DlcService();
   ~DlcService() override;
