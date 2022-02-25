@@ -27,13 +27,13 @@ class PeriodicScheduler {
   }
 
   void set_check_freq_for_test(const base::TimeDelta& check_freq) {
-    check_frequency_seconds_ = check_freq;
+    check_frequency_ = check_freq;
   }
 
  private:
   base::TimeDelta period_seconds_;
   base::TimeDelta timeout_seconds_;
-  base::TimeDelta check_frequency_seconds_;
+  base::TimeDelta check_frequency_;
   std::string task_name_;
   base::FilePath spool_dir_;
   std::vector<std::string> process_args_;

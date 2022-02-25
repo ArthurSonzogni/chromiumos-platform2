@@ -17,8 +17,8 @@
 #include <brillo/syslog_logging.h>
 
 namespace {
-constexpr time_t kCheckDelay = 300;
-constexpr time_t kKillDelay = 10;
+constexpr base::TimeDelta kCheckDelay = base::Minutes(5);
+constexpr base::TimeDelta kKillDelay = base::Seconds(10);
 constexpr char kSpoolDir[] = "/var/spool";
 constexpr char kSpoolCronLiteDir[] = "cron-lite";
 
@@ -82,7 +82,7 @@ static void SigtermHandler(int signal) {
     // process to exit.
     base::Process p(child_pid);
     p.Terminate(-1, false /* wait */);
-    p.WaitForExitWithTimeout(base::Seconds(kKillDelay), nullptr);
+    p.WaitForExitWithTimeout(kKillDelay, nullptr);
   }
   exit(0);
 }
@@ -106,7 +106,7 @@ PeriodicScheduler::PeriodicScheduler(
     const std::vector<std::string>& task_command)
     : period_seconds_(period),
       timeout_seconds_(timeout),
-      check_frequency_seconds_(base::Seconds(kCheckDelay + kKillDelay)),
+      check_frequency_(kCheckDelay + kKillDelay),
       task_name_(task_name),
       spool_dir_(base::FilePath(kSpoolDir)),
       process_args_(task_command) {}
@@ -129,7 +129,7 @@ bool PeriodicScheduler::Run(bool start_immediately) {
         auto now = base::Time::Now();
         base::TouchFile(spool_file, now, now);
       }
-      base::PlatformThread::Sleep(check_frequency_seconds_);
+      base::PlatformThread::Sleep(check_frequency_);
     }
 
     auto file_last_mtime = GetPathMtime(spool_file);

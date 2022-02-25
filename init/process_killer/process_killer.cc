@@ -15,6 +15,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 #include <init/process_killer/process.h>
 #include <init/process_killer/process_manager.h>
 
@@ -45,7 +46,7 @@ constexpr char const* kSystemDeviceRegexes[] = {
 };
 
 constexpr int kKillerIterations = 10;
-constexpr int kSleepIntervalMs = 100;
+constexpr base::TimeDelta kSleepInterval = base::Milliseconds(100);
 
 re2::RE2 ConstructMountRegex(bool session, bool shutdown) {
   std::vector<std::string> mounts;
@@ -103,8 +104,7 @@ void ProcessKiller::KillProcesses(bool files, bool devices) {
     for (ActiveProcess& p : process_list_) {
       pm_->SendSignalToProcess(p, SIGTERM);
     }
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kSleepIntervalMs));
+    base::PlatformThread::Sleep(kSleepInterval);
   }
 
   // If processes are still running, send SIGKILL.
@@ -115,8 +115,7 @@ void ProcessKiller::KillProcesses(bool files, bool devices) {
     for (ActiveProcess& p : process_list_) {
       pm_->SendSignalToProcess(p, SIGKILL);
     }
-    base::PlatformThread::Sleep(
-        base::TimeDelta::FromMilliseconds(kSleepIntervalMs));
+    base::PlatformThread::Sleep(kSleepInterval);
   }
 
   // Check processes still active and log.
