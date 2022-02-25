@@ -53,8 +53,8 @@ static brillo::SecureBlob* g_user_isolate = NULL;
 std::unordered_multimap<CK_SESSION_HANDLE, CK_SLOT_ID> g_open_sessions;
 
 // Timeout and retry delay used for repeating non-blocking calls.
-static uint32_t g_retry_timeout_ms = 5 * 60 * 1000;
-static uint32_t g_retry_delay_ms = 100;
+static base::TimeDelta g_retry_timeout = base::Minutes(5);
+static base::TimeDelta g_retry_delay = base::Milliseconds(100);
 
 // Tear down helper.
 static void TearDown() {
@@ -116,13 +116,12 @@ static CK_RV HandlePKCS11Output(CK_RV result,
 using ChapsOperation = std::function<CK_RV(void)>;
 static CK_RV PerformNonBlocking(ChapsOperation op) {
   CK_RV result;
-  base::TimeTicks deadline =
-      base::TimeTicks::Now() + base::Milliseconds(g_retry_timeout_ms);
+  base::TimeTicks deadline = base::TimeTicks::Now() + g_retry_timeout;
   do {
     result = op();
     if (result != CKR_WOULD_BLOCK_FOR_PRIVATE_OBJECTS)
       break;
-    base::PlatformThread::Sleep(base::Milliseconds(g_retry_delay_ms));
+    base::PlatformThread::Sleep(g_retry_delay);
   } while (base::TimeTicks::Now() < deadline);
   return result;
 }
@@ -150,8 +149,8 @@ EXPORT_SPEC void DisableMockProxy() {
 
 EXPORT_SPEC void SetRetryTimeParameters(uint32_t timeout_ms,
                                         uint32_t delay_ms) {
-  g_retry_timeout_ms = timeout_ms;
-  g_retry_delay_ms = delay_ms;
+  g_retry_timeout = base::Milliseconds(timeout_ms);
+  g_retry_delay = base::Milliseconds(delay_ms);
 }
 
 }  // namespace chaps
