@@ -24,6 +24,7 @@
 #include <base/posix/safe_strerror.h>
 #include <base/strings/pattern.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <camera/camera_metadata.h>
 #include <re2/re2.h>
@@ -1382,12 +1383,12 @@ bool V4L2CameraDevice::IsRegionOfInterestSupported(std::string device_path,
 // static
 int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
                                       int flags) {
-  const int64_t kDeviceOpenTimeOutInMilliseconds = 2000;
-  const int64_t kSleepTimeInMilliseconds = 100;
+  constexpr base::TimeDelta kDeviceOpenTimeOut = base::Milliseconds(2000);
+  constexpr base::TimeDelta kSleepTime = base::Milliseconds(100);
   int fd;
   base::ElapsedTimer timer;
-  int64_t elapsed_time = timer.Elapsed().InMillisecondsRoundedUp();
-  while (elapsed_time < kDeviceOpenTimeOutInMilliseconds) {
+  base::TimeDelta elapsed_time = timer.Elapsed();
+  while (elapsed_time < kDeviceOpenTimeOut) {
     fd = TEMP_FAILURE_RETRY(open(device_path.c_str(), flags));
     if (fd != -1) {
       // Make sure ioctl is ok. Once ioctl failed, we have to re-open the
@@ -1404,7 +1405,7 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
         }
       } else {
         // Only return fd when ioctl is ready.
-        if (elapsed_time >= kSleepTimeInMilliseconds) {
+        if (elapsed_time >= kSleepTime) {
           LOGF(INFO) << "Opened the camera device after waiting for "
                      << elapsed_time << " ms";
         }
@@ -1413,8 +1414,8 @@ int V4L2CameraDevice::RetryDeviceOpen(const std::string& device_path,
     } else if (errno != EACCES && errno != EBUSY && errno != ENOENT) {
       break;
     }
-    base::PlatformThread::Sleep(base::Milliseconds(kSleepTimeInMilliseconds));
-    elapsed_time = timer.Elapsed().InMillisecondsRoundedUp();
+    base::PlatformThread::Sleep(kSleepTime);
+    elapsed_time = timer.Elapsed();
   }
   PLOGF(ERROR) << "Failed to open " << device_path;
   return -1;

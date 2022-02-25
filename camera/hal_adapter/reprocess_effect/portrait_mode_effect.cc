@@ -26,6 +26,7 @@
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
+#include <base/time/time.h>
 #include <base/values.h>
 #include <libyuv.h>
 #include <libyuv/convert_argb.h>
@@ -102,7 +103,7 @@ int32_t PortraitModeEffect::ReprocessRequest(
     ScopedYUVBufferHandle* output_buffer) {
   VLOGF_ENTER();
 
-  const uint32_t kPortraitProcessorTimeoutSecs = 15;
+  constexpr base::TimeDelta kPortraitProcessorTimeout = base::Seconds(15);
   if (!input_buffer || !*input_buffer || !output_buffer || !*output_buffer) {
     return -EINVAL;
   }
@@ -211,7 +212,7 @@ int32_t PortraitModeEffect::ReprocessRequest(
         base::BindOnce(&PortraitModeEffect::ReturnCallback,
                        base::AsWeakPtr(this)));
     base::AutoLock auto_lock(lock_);
-    condvar_.TimedWait(base::Seconds(kPortraitProcessorTimeoutSecs));
+    condvar_.TimedWait(kPortraitProcessorTimeout);
     result = return_status_;
 
     LOGF(INFO) << "Portrait processing finished, result: " << result;
