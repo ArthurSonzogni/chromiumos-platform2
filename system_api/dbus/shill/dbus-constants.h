@@ -87,6 +87,7 @@ const char kConnectionStateProperty[] = "ConnectionState";
 const char kDefaultServiceProperty[] = "DefaultService";
 const char kDefaultTechnologyProperty[] = "DefaultTechnology";
 const char kDevicesProperty[] = "Devices";
+const char kDhcpPropertyHostnameProperty[] = "DHCPProperty.Hostname";
 const char kDisableWiFiVHTProperty[] = "DisableWiFiVHT";
 const char kDNSProxyDOHProvidersProperty[] = "DNSProxyDOHProviders";
 const char kEnabledTechnologiesProperty[] = "EnabledTechnologies";
@@ -111,10 +112,6 @@ const char kCheckPortalListProperty[] = "CheckPortalList";
 const char kIgnoredDNSSearchPathsProperty[] = "IgnoredDNSSearchPaths";
 const char kNoAutoConnectTechnologiesProperty[] = "NoAutoConnectTechnologies";
 const char kProhibitedTechnologiesProperty[] = "ProhibitedTechnologies";
-
-// DHCP property names for both Manager and Service.
-const char kDhcpPropertyHostnameProperty[] = "DHCPProperty.Hostname";
-const char kDhcpPropertyVendorClassProperty[] = "DHCPProperty.VendorClass";
 
 // Base Service property names.
 const char kAutoConnectProperty[] = "AutoConnect";
