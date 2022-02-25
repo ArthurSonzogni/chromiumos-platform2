@@ -55,6 +55,7 @@
 #include "cryptohome/tpm.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/real_user_session.h"
+#include "cryptohome/user_session/real_user_session_factory.h"
 #include "cryptohome/userdataauth.h"
 
 using base::FilePath;
@@ -210,8 +211,8 @@ UserDataAuth::UserDataAuth()
       disk_cleanup_critical_threshold_(
           kFreeSpaceThresholdToTriggerCriticalCleanup),
       disk_cleanup_target_free_space_(kTargetFreeSpaceAfterCleanup),
-      default_mount_factory_(new cryptohome::MountFactory()),
-      mount_factory_(default_mount_factory_.get()),
+      default_user_session_factory_(nullptr),
+      user_session_factory_(nullptr),
       public_mount_salt_(),
       guest_user_(brillo::cryptohome::home::kGuestUserName),
       force_ecryptfs_(true),
@@ -334,6 +335,14 @@ bool UserDataAuth::Initialize() {
     user_activity_timestamp_manager_->LoadTimestampWithLegacy(dir.obfuscated,
                                                               legacy_timestamp);
     keyset_management_->CleanupPerIndexTimestampFiles(dir.obfuscated);
+  }
+
+  if (!user_session_factory_) {
+    default_user_session_factory_ = std::make_unique<RealUserSessionFactory>(
+        std::make_unique<MountFactory>(), platform_, homedirs_,
+        keyset_management_, user_activity_timestamp_manager_,
+        pkcs11_token_factory_);
+    user_session_factory_ = default_user_session_factory_.get();
   }
 
   if (!low_disk_space_handler_) {
@@ -1235,15 +1244,8 @@ scoped_refptr<UserSession> UserDataAuth::GetOrCreateUserSession(
   if (sessions_.count(username) == 0U) {
     // We don't have a mount associated with |username|, let's create one.
     EnsureBootLockboxFinalized();
-    scoped_refptr<cryptohome::Mount> m = mount_factory_->New(
-        platform_, homedirs_, legacy_mount_, bind_mount_downloads_,
-        /*local_mounter=*/false);
-    if (!m) {
-      return nullptr;
-    }
-    sessions_[username] = base::MakeRefCounted<RealUserSession>(
-        homedirs_, keyset_management_, user_activity_timestamp_manager_,
-        pkcs11_token_factory_, m);
+    sessions_[username] =
+        user_session_factory_->New(legacy_mount_, bind_mount_downloads_);
   }
   return sessions_[username];
 }

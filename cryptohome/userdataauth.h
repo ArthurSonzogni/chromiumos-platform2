@@ -44,9 +44,9 @@
 #include "cryptohome/storage/arc_disk_quota.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount.h"
-#include "cryptohome/storage/mount_factory.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session.h"
+#include "cryptohome/user_session/user_session_factory.h"
 
 namespace cryptohome {
 
@@ -596,8 +596,8 @@ class UserDataAuth {
   }
 
   // Override |mount_factory_| for testing purpose
-  void set_mount_factory(MountFactory* mount_factory) {
-    mount_factory_ = mount_factory;
+  void set_user_session_factory(UserSessionFactory* user_session_factory) {
+    user_session_factory_ = user_session_factory;
   }
 
   // Override |challenge_credentials_helper_| for testing purpose
@@ -1304,13 +1304,12 @@ class UserDataAuth {
   uint64_t disk_cleanup_critical_threshold_;
   uint64_t disk_cleanup_target_free_space_;
 
-  // The default mount factory instance that is used for creating Mount objects.
-  std::unique_ptr<cryptohome::MountFactory> default_mount_factory_;
+  // The default user session factory instance that can be used by this class to
+  // create UserSession object.
+  std::unique_ptr<UserSessionFactory> default_user_session_factory_;
 
-  // The mount factory instance that is actually used by this class to create
-  // Mount object. This is usually |default_mount_factory_|, but can be
-  // overridden for testing.
-  cryptohome::MountFactory* mount_factory_;
+  // The user session factory instance that can be overridden for tests.
+  UserSessionFactory* user_session_factory_;
 
   // This holds the salt that is used to derive the passkey for public mounts.
   brillo::SecureBlob public_mount_salt_;

@@ -59,6 +59,7 @@
 #include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/user_session/real_user_session.h"
+#include "cryptohome/user_session/real_user_session_factory.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
@@ -131,6 +132,13 @@ class UserDataAuthTestBase : public ::testing::Test {
     bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
 
+    // ownership over mount_factory_ is taken by the real_user_session_factory_.
+    mount_factory_ = new NiceMock<MockMountFactory>();
+    real_user_session_factory_ = std::make_unique<RealUserSessionFactory>(
+        std::unique_ptr<MountFactory>(mount_factory_), &platform_, &homedirs_,
+        &keyset_management_, &user_activity_timestamp_manager_,
+        &pkcs11_token_factory_);
+
     if (!userdataauth_) {
       // Note that this branch is usually taken as |userdataauth_| is usually
       // NULL. The reason for this branch is because some derived-class of this
@@ -155,7 +163,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_arc_disk_quota(&arc_disk_quota_);
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
     userdataauth_->set_pkcs11_token_factory(&pkcs11_token_factory_);
-    userdataauth_->set_mount_factory(&mount_factory_);
+    userdataauth_->set_user_session_factory(real_user_session_factory_.get());
     userdataauth_->set_challenge_credentials_helper(
         &challenge_credentials_helper_);
     userdataauth_->set_key_challenge_service_factory(
@@ -280,7 +288,11 @@ class UserDataAuthTestBase : public ::testing::Test {
 
   // Mock Mount Factory object, will be passed to UserDataAuth for its internal
   // use.
-  NiceMock<MockMountFactory> mount_factory_;
+  NiceMock<MockMountFactory>* mount_factory_;
+
+  // User Session Factory object. It is real for transitional period, but will
+  // be replaced with a mock one eventually.
+  std::unique_ptr<RealUserSessionFactory> real_user_session_factory_;
 
   // Mock Low Disk Space handler object, will be passed to UserDataAuth for its
   // internal use.
@@ -2149,11 +2161,15 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
-  // ownership handed off to the Service MountMap
-  MockMountFactory mount_factory;
+  // ownership over mount_factory is taken by the real_user_session_factory_.
+  auto* mount_factory = new NiceMock<MockMountFactory>();
+  auto real_user_session_factory = std::make_unique<RealUserSessionFactory>(
+      std::unique_ptr<MountFactory>(mount_factory), &platform_, &homedirs_,
+      &keyset_management_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_);
   MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory, New(_, _, _, _, _)).WillOnce(Return(mount));
-  userdataauth_->set_mount_factory(&mount_factory);
+  EXPECT_CALL(*mount_factory, New(_, _, _, _, _)).WillOnce(Return(mount));
+  userdataauth_->set_user_session_factory(real_user_session_factory.get());
   EXPECT_CALL(platform_, FileExists(_)).Times(2).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
@@ -2253,11 +2269,15 @@ TEST_F(UserDataAuthTest,
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
-  // ownership handed off to the Service MountMap
-  MockMountFactory mount_factory;
+  // ownership over mount_factory is taken by the real_user_session_factory_.
+  auto* mount_factory = new NiceMock<MockMountFactory>();
+  auto real_user_session_factory = std::make_unique<RealUserSessionFactory>(
+      std::unique_ptr<MountFactory>(mount_factory), &platform_, &homedirs_,
+      &keyset_management_, &user_activity_timestamp_manager_,
+      &pkcs11_token_factory_);
   MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory, New(_, _, _, _, _)).WillOnce(Return(mount));
-  userdataauth_->set_mount_factory(&mount_factory);
+  EXPECT_CALL(*mount_factory, New(_, _, _, _, _)).WillOnce(Return(mount));
+  userdataauth_->set_user_session_factory(real_user_session_factory.get());
   EXPECT_CALL(platform_, FileExists(_)).Times(2).WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).Times(0);
   EXPECT_CALL(platform_, GetAttachedLoopDevices()).Times(0);
@@ -2605,7 +2625,7 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
 
   mount_req_->set_guest_mount(true);
 
-  EXPECT_CALL(mount_factory_, New(_, _, _, _, _))
+  EXPECT_CALL(*mount_factory_, New(_, _, _, _, _))
       .WillOnce(Invoke([this](Platform*, HomeDirs*, bool, bool, bool) {
         SetupMount(kUser);
         NiceMock<MockMount>* res = new NiceMock<MockMount>();
@@ -2639,7 +2659,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
   mount_req_->set_guest_mount(true);
 
   SetupMount(kUser);
-  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(*mount_factory_, New(_, _, _, _, _)).Times(0);
 
   bool called = false;
   {
@@ -2664,7 +2684,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
 
   mount_req_->set_guest_mount(true);
 
-  EXPECT_CALL(mount_factory_, New(_, _, _, _, _))
+  EXPECT_CALL(*mount_factory_, New(_, _, _, _, _))
       .WillOnce(Invoke([](Platform*, HomeDirs*, bool, bool, bool) {
         NiceMock<MockMount>* res = new NiceMock<MockMount>();
         EXPECT_CALL(*res, MountEphemeralCryptohome(kGuestUserName))

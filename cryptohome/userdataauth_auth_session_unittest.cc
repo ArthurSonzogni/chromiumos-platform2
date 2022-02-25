@@ -26,9 +26,9 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/mock_homedirs.h"
-#include "cryptohome/storage/mock_mount.h"
-#include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/user_session/mock_user_session.h"
+#include "cryptohome/user_session/mock_user_session_factory.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -80,7 +80,7 @@ class AuthSessionInterfaceTest : public ::testing::Test {
 
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);
-    userdataauth_.set_mount_factory(&mount_factory_);
+    userdataauth_.set_user_session_factory(&user_session_factory_);
     userdataauth_.set_keyset_management(&keyset_management_);
     userdataauth_.set_auth_factor_manager_for_testing(&auth_factor_manager_);
     userdataauth_.set_user_secret_stash_storage_for_testing(
@@ -102,7 +102,7 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
   NiceMock<MockHomeDirs> homedirs_;
-  NiceMock<MockMountFactory> mount_factory_;
+  NiceMock<MockUserSessionFactory> user_session_factory_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
@@ -158,12 +158,11 @@ class AuthSessionInterfaceTest : public ::testing::Test {
 namespace {
 
 TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
-  // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
-  MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount));
-  EXPECT_CALL(*mount, IsMounted()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*mount, MountEphemeralCryptohome(kGuestUserName))
-      .WillOnce(Return(MOUNT_ERROR_NONE));
+  scoped_refptr<MockUserSession> user_session =
+      base::MakeRefCounted<MockUserSession>();
+  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session));
+  EXPECT_CALL(*user_session, IsActive()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*user_session, MountGuest()).WillOnce(Return(MOUNT_ERROR_NONE));
 
   // Expect auth and existing cryptohome-dir only for non-ephemeral
   ExpectAuth(kUsername2, brillo::SecureBlob(kPassword2));
@@ -209,13 +208,13 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 
   // User authed and exists.
-  // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
-  MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount));
-  EXPECT_CALL(*mount, IsMounted())
+  scoped_refptr<MockUserSession> user_session =
+      base::MakeRefCounted<MockUserSession>();
+  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session));
+  EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mount, MountEphemeralCryptohome(kUsername))
+  EXPECT_CALL(*user_session, MountEphemeral(kUsername))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   ASSERT_THAT(auth_session->Authenticate(CreateAuthorization(kPassword)),
@@ -232,13 +231,13 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL));
 
   // But ephemeral succeeds ...
-  // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
-  MockMount* mount2 = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount2));
-  EXPECT_CALL(*mount2, IsMounted())
+  scoped_refptr<MockUserSession> user_session2 =
+      base::MakeRefCounted<MockUserSession>();
+  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session2));
+  EXPECT_CALL(*user_session2, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mount2, MountEphemeralCryptohome(kUsername2))
+  EXPECT_CALL(*user_session2, MountEphemeral(kUsername2))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
@@ -249,13 +248,13 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 
   // ... and so regular.
-  // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
-  MockMount* mount3 = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount3));
-  EXPECT_CALL(*mount3, IsMounted())
+  scoped_refptr<MockUserSession> user_session3 =
+      base::MakeRefCounted<MockUserSession>();
+  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session3));
+  EXPECT_CALL(*user_session3, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mount3, MountCryptohome(kUsername3, _, _))
+  EXPECT_CALL(*user_session3, MountVault(kUsername3, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername3)))
       .WillRepeatedly(Return(true));
@@ -285,14 +284,16 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 
   // Auth and prepare.
-  // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
-  MockMount* mount = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount));
-  EXPECT_CALL(*mount, IsMounted())
+  scoped_refptr<MockUserSession> user_session =
+      base::MakeRefCounted<MockUserSession>();
+  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session));
+  EXPECT_CALL(*user_session, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mount, MountCryptohome(kUsername, _, _))
+  EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
+      .WillRepeatedly(Return(true));
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
 
   ASSERT_THAT(auth_session->Authenticate(CreateAuthorization(kPassword)),
@@ -319,13 +320,13 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL));
 
   // But ephemeral succeeds ...
-  // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
-  MockMount* mount2 = new MockMount();
-  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount2));
-  EXPECT_CALL(*mount2, IsMounted())
+  scoped_refptr<MockUserSession> user_session2 =
+      base::MakeRefCounted<MockUserSession>();
+  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session2));
+  EXPECT_CALL(*user_session2, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mount2, MountEphemeralCryptohome(kUsername2))
+  EXPECT_CALL(*user_session2, MountEphemeral(kUsername2))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
@@ -336,13 +337,13 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 
   // ... and so regular.
-  MockMount* mount3 = new MockMount();
-  // Mount factory returns a raw pointer, which caller wraps into unique_ptr.
-  EXPECT_CALL(mount_factory_, New(_, _, _, _, _)).WillOnce(Return(mount3));
-  EXPECT_CALL(*mount3, IsMounted())
+  scoped_refptr<MockUserSession> user_session3 =
+      base::MakeRefCounted<MockUserSession>();
+  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session3));
+  EXPECT_CALL(*user_session3, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mount3, MountCryptohome(kUsername3, _, _))
+  EXPECT_CALL(*user_session3, MountVault(kUsername3, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername3)))
       .WillRepeatedly(Return(true));
