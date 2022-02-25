@@ -16,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -705,11 +706,11 @@ TEST_F(MetricsDaemonTest, UpdateUsageStats) {
   EXPECT_CALL(metrics_lib_, SendToUMA(_, _, _, _, _)).Times(AnyNumber());
 
   // Add an arbitrary amount to the test start.
-  const int elapsed_seconds = 42;
-  base::TimeTicks end = test_start_ + base::Seconds(elapsed_seconds);
-  ASSERT_EQ(elapsed_seconds, (end - test_start_).InSeconds());
+  constexpr base::TimeDelta elapsed_time = base::Seconds(42);
+  base::TimeTicks end = test_start_ + elapsed_time;
+  ASSERT_EQ(elapsed_time, (end - test_start_));
 
-  ExpectActiveUseUpdate(elapsed_seconds);
+  ExpectActiveUseUpdate(elapsed_time.InSeconds());
 
   daemon_.UpdateStats(end, base::Time::Now());
 }

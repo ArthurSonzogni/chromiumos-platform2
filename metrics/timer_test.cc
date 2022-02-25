@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -20,17 +21,17 @@ using ::testing::Return;
 namespace chromeos_metrics {
 
 namespace {
-const int64_t kStime1MSec = 1400;
-const int64_t kEtime1MSec = 3000;
-const int64_t kDelta1MSec = 1600;
+constexpr base::TimeDelta kStime1 = base::Milliseconds(1400);
+constexpr base::TimeDelta kEtime1 = base::Milliseconds(3000);
+constexpr base::TimeDelta kDelta1 = base::Milliseconds(1600);
 
-const int64_t kStime2MSec = 4200;
-const int64_t kEtime2MSec = 5000;
-const int64_t kDelta2MSec = 800;
+constexpr base::TimeDelta kStime2 = base::Milliseconds(4200);
+constexpr base::TimeDelta kEtime2 = base::Milliseconds(5000);
+constexpr base::TimeDelta kDelta2 = base::Milliseconds(800);
 
-const int64_t kStime3MSec = 6600;
-const int64_t kEtime3MSec = 6800;
-const int64_t kDelta3MSec = 200;
+constexpr base::TimeDelta kStime3 = base::Milliseconds(6600);
+constexpr base::TimeDelta kEtime3 = base::Milliseconds(6800);
+constexpr base::TimeDelta kDelta3 = base::Milliseconds(200);
 }  // namespace
 
 class TimerTest : public testing::Test {
@@ -40,12 +41,12 @@ class TimerTest : public testing::Test {
  protected:
   virtual void SetUp() {
     EXPECT_EQ(Timer::kTimerStopped, timer_.timer_state_);
-    stime += base::Milliseconds(kStime1MSec);
-    etime += base::Milliseconds(kEtime1MSec);
-    stime2 += base::Milliseconds(kStime2MSec);
-    etime2 += base::Milliseconds(kEtime2MSec);
-    stime3 += base::Milliseconds(kStime3MSec);
-    etime3 += base::Milliseconds(kEtime3MSec);
+    stime += kStime1;
+    etime += kEtime1;
+    stime2 += kStime2;
+    etime2 += kEtime2;
+    stime3 += kStime3;
+    etime3 += kEtime3;
   }
 
   virtual void TearDown() {}
@@ -64,12 +65,11 @@ TEST_F(TimerTest, StartStop) {
   ASSERT_TRUE(timer_.start_time_ == stime);
   ASSERT_TRUE(timer_.HasStarted());
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1);
 
   base::TimeDelta elapsed_time;
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 
   ASSERT_FALSE(timer_.HasStarted());
 }
@@ -102,11 +102,11 @@ TEST_F(TimerTest, SeparatedTimers) {
   timer_.clock_wrapper_ = std::move(clock_wrapper_mock_);
   ASSERT_TRUE(timer_.Start());
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1);
   ASSERT_TRUE(timer_.Start());
   ASSERT_TRUE(timer_.start_time_ == stime2);
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta2MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta2);
   ASSERT_FALSE(timer_.HasStarted());
 
   base::TimeDelta elapsed_time;
@@ -151,17 +151,16 @@ TEST_F(TimerTest, PauseStartStopResume) {
   ASSERT_TRUE(timer_.HasStarted());
 
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta2MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta2);
   ASSERT_FALSE(timer_.HasStarted());
   base::TimeDelta elapsed_time;
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 
   ASSERT_TRUE(timer_.Resume());
   ASSERT_TRUE(timer_.HasStarted());
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(kDelta3MSec, elapsed_time.InMilliseconds());
+  ASSERT_EQ(kDelta3, elapsed_time);
 }
 
 TEST_F(TimerTest, ResumeStartStopPause) {
@@ -180,12 +179,11 @@ TEST_F(TimerTest, ResumeStartStopPause) {
   ASSERT_TRUE(timer_.HasStarted());
 
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta2MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta2);
   ASSERT_FALSE(timer_.HasStarted());
   base::TimeDelta elapsed_time;
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 
   ASSERT_TRUE(timer_.Pause());
   ASSERT_TRUE(timer_.HasStarted());
@@ -207,7 +205,7 @@ TEST_F(TimerTest, StartResumeStop) {
   ASSERT_TRUE(timer_.HasStarted());
 
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1);
   ASSERT_FALSE(timer_.HasStarted());
   base::TimeDelta elapsed_time;
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
@@ -226,18 +224,16 @@ TEST_F(TimerTest, StartPauseStop) {
 
   ASSERT_TRUE(timer_.Pause());
   ASSERT_TRUE(timer_.HasStarted());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1);
   base::TimeDelta elapsed_time;
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1);
   ASSERT_FALSE(timer_.HasStarted());
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 }
 
 TEST_F(TimerTest, StartPauseResumeStop) {
@@ -253,21 +249,19 @@ TEST_F(TimerTest, StartPauseResumeStop) {
 
   ASSERT_TRUE(timer_.Pause());
   ASSERT_TRUE(timer_.HasStarted());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1);
   base::TimeDelta elapsed_time;
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 
   ASSERT_TRUE(timer_.Resume());
   ASSERT_TRUE(timer_.HasStarted());
 
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec + kDelta2MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1 + kDelta2);
   ASSERT_FALSE(timer_.HasStarted());
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 }
 
 TEST_F(TimerTest, PauseStop) {
@@ -283,8 +277,7 @@ TEST_F(TimerTest, PauseStop) {
   ASSERT_FALSE(timer_.HasStarted());
   base::TimeDelta elapsed_time;
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 }
 
 TEST_F(TimerTest, PauseResumeStop) {
@@ -301,12 +294,11 @@ TEST_F(TimerTest, PauseResumeStop) {
   ASSERT_TRUE(timer_.HasStarted());
 
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta2MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta2);
   ASSERT_FALSE(timer_.HasStarted());
   base::TimeDelta elapsed_time;
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 }
 
 TEST_F(TimerTest, StartPauseResumePauseStop) {
@@ -323,34 +315,28 @@ TEST_F(TimerTest, StartPauseResumePauseStop) {
 
   ASSERT_TRUE(timer_.Pause());
   ASSERT_TRUE(timer_.HasStarted());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1);
   base::TimeDelta elapsed_time;
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 
   ASSERT_TRUE(timer_.Resume());
   ASSERT_TRUE(timer_.HasStarted());
   // Make sure GetElapsedTime works while we're running.
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(kDelta1MSec + kStime3MSec - kStime2MSec,
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(kDelta1 + kStime3 - kStime2, elapsed_time);
 
   ASSERT_TRUE(timer_.Pause());
   ASSERT_TRUE(timer_.HasStarted());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            kDelta1MSec + kEtime3MSec - kStime2MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1 + kEtime3 - kStime2);
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            kDelta1MSec + kEtime3MSec - kStime2MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1 + kEtime3 - kStime2);
   ASSERT_FALSE(timer_.HasStarted());
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 }
 
 TEST_F(TimerTest, StartPauseResumePauseResumeStop) {
@@ -368,32 +354,28 @@ TEST_F(TimerTest, StartPauseResumePauseResumeStop) {
 
   ASSERT_TRUE(timer_.Pause());
   ASSERT_TRUE(timer_.HasStarted());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1);
   base::TimeDelta elapsed_time;
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 
   ASSERT_TRUE(timer_.Resume());
   ASSERT_TRUE(timer_.HasStarted());
 
   ASSERT_TRUE(timer_.Pause());
   ASSERT_TRUE(timer_.HasStarted());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(), kDelta1MSec + kDelta2MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1 + kDelta2);
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 
   ASSERT_TRUE(timer_.Resume());
   ASSERT_TRUE(timer_.HasStarted());
 
   ASSERT_TRUE(timer_.Stop());
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            kDelta1MSec + kDelta2MSec + kDelta3MSec);
+  ASSERT_EQ(timer_.elapsed_time_, kDelta1 + kDelta2 + kDelta3);
   ASSERT_FALSE(timer_.HasStarted());
   ASSERT_TRUE(timer_.GetElapsedTime(&elapsed_time));
-  ASSERT_EQ(timer_.elapsed_time_.InMilliseconds(),
-            elapsed_time.InMilliseconds());
+  ASSERT_EQ(timer_.elapsed_time_, elapsed_time);
 }
 
 namespace {
@@ -416,8 +398,8 @@ class TimerReporterTest : public testing::Test {
     EXPECT_EQ(timer_reporter_.min_, kMinSample);
     EXPECT_EQ(timer_reporter_.max_, kMaxSample);
     EXPECT_EQ(timer_reporter_.num_buckets_, kNumBuckets);
-    stime += base::Milliseconds(kStime1MSec);
-    etime += base::Milliseconds(kEtime1MSec);
+    stime += kStime1;
+    etime += kEtime1;
   }
 
   virtual void TearDown() { timer_reporter_.set_metrics_lib(nullptr); }
@@ -433,8 +415,8 @@ TEST_F(TimerReporterTest, StartStopReport) {
       .WillOnce(Return(stime))
       .WillOnce(Return(etime));
   timer_reporter_.clock_wrapper_ = std::move(clock_wrapper_mock_);
-  EXPECT_CALL(lib_, SendToUMA(kMetricName, kDelta1MSec, kMinSample, kMaxSample,
-                              kNumBuckets))
+  EXPECT_CALL(lib_, SendToUMA(kMetricName, kDelta1.InMilliseconds(), kMinSample,
+                              kMaxSample, kNumBuckets))
       .WillOnce(Return(true));
   ASSERT_TRUE(timer_reporter_.Start());
   ASSERT_TRUE(timer_reporter_.Stop());
