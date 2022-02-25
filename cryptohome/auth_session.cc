@@ -40,7 +40,7 @@ constexpr int kHighTokenOffset = 0;
 // Offset where the low value is used in Serialized string.
 constexpr int kLowTokenOffset = kSizeOfSerializedValueInToken;
 // AuthSession will time out if it is active after this time interval.
-constexpr base::TimeDelta kAuthSessionTimeoutInMinutes = base::Minutes(5);
+constexpr base::TimeDelta kAuthSessionTimeout = base::Minutes(5);
 
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
@@ -95,7 +95,7 @@ AuthSession::AuthSession(
   DCHECK(user_secret_stash_storage_);
 
   LOG(INFO) << "AuthSession Flags: is_ephemeral_user_  " << is_ephemeral_user_;
-  timer_.Start(FROM_HERE, kAuthSessionTimeoutInMinutes,
+  timer_.Start(FROM_HERE, kAuthSessionTimeout,
                base::BindOnce(&AuthSession::AuthSessionTimedOut,
                               base::Unretained(this)));
 

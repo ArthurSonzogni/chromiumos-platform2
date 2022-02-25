@@ -24,9 +24,9 @@ class KeysetManagement;
 class Platform;
 class UserOldestActivityTimestampManager;
 
-inline constexpr int kAutoCleanupPeriodMS = 1000 * 60 * 60;         // 1 hour
-inline constexpr int kUpdateUserActivityPeriodHours = 24;           // daily
-inline constexpr int kLowDiskNotificationPeriodMS = 1000 * 60 * 1;  // 1 minute
+inline constexpr base::TimeDelta kAutoCleanupPeriod = base::Hours(1);
+inline constexpr base::TimeDelta kUpdateUserActivityPeriod = base::Days(1);
+inline constexpr base::TimeDelta kLowDiskNotificationPeriod = base::Minutes(1);
 
 class LowDiskSpaceHandler {
  public:

@@ -28,6 +28,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_object.h>
@@ -64,18 +65,18 @@ using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 using user_data_auth::GetProtoDebugString;
 
 namespace {
-// Number of days that the set_current_user_old action uses when updating the
-// home directory timestamp.  ~3 months should be old enough for test purposes.
-const int kSetCurrentUserOldOffsetInDays = 92;
+// Duration that the set_current_user_old action uses when updating the home
+// directory timestamp.  ~3 months should be old enough for test purposes.
+constexpr base::TimeDelta kSetCurrentUserOldOffset = base::Days(92);
 
 // Five minutes is enough to wait for any TPM operations, sync() calls, etc.
 const int kDefaultTimeoutMs = 300000;
 
 // We've 100 seconds to wait for TakeOwnership(), should be rather generous.
-constexpr int kWaitOwnershipTimeoutInSeconds = 100;
+constexpr base::TimeDelta kWaitOwnershipTimeout = base::Seconds(100);
 
 // Poll once every 0.2s.
-constexpr int kWaitOwnershipPollIntervalInMs = 200;
+constexpr base::TimeDelta kWaitOwnershipPollInterval = base::Milliseconds(200);
 
 // Converts a brillo::Error* to string for printing.
 std::string BrilloErrorToString(brillo::Error* err) {
@@ -1331,8 +1332,7 @@ int main(int argc, char** argv) {
                      action.c_str())) {
     user_data_auth::UpdateCurrentUserActivityTimestampRequest req;
     user_data_auth::UpdateCurrentUserActivityTimestampReply reply;
-    req.set_time_shift_sec(
-        base::Days(kSetCurrentUserOldOffsetInDays).InSeconds());
+    req.set_time_shift_sec(kSetCurrentUserOldOffset.InSeconds());
     brillo::ErrorPtr error;
     if (!misc_proxy.UpdateCurrentUserActivityTimestamp(req, &reply, &error,
                                                        timeout_ms) ||
@@ -1633,19 +1633,18 @@ int main(int argc, char** argv) {
     // once the refactor to distributed mode is over. It'll be replaced with an
     // implementation that does one synchronous call to tpm_manager's
     // TakeOwnership(), then check if it's owned.
-    int timeout = kWaitOwnershipTimeoutInSeconds;
+    base::TimeDelta timeout = kWaitOwnershipTimeout;
     int timeout_in_switch;
     if (cl->HasSwitch(switches::kWaitOwnershipTimeoutSwitch) &&
         base::StringToInt(
             cl->GetSwitchValueASCII(switches::kWaitOwnershipTimeoutSwitch),
             &timeout_in_switch)) {
-      timeout = timeout_in_switch;
+      timeout = base::Seconds(timeout_in_switch);
     }
 
-    auto deadline = base::Time::Now() + base::Seconds(timeout);
+    auto deadline = base::Time::Now() + timeout;
     while (base::Time::Now() < deadline) {
-      base::PlatformThread::Sleep(
-          base::Milliseconds(kWaitOwnershipPollIntervalInMs));
+      base::PlatformThread::Sleep(kWaitOwnershipPollInterval);
       tpm_manager::GetTpmStatusRequest req;
       tpm_manager::GetTpmStatusReply reply;
       brillo::ErrorPtr error;

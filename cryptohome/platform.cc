@@ -90,7 +90,7 @@ using base::StringPrintf;
 namespace {
 
 // Log sync(), fsync(), etc. calls that take this many seconds or longer.
-const int kLongSyncSec = 10;
+const base::TimeDelta kLongSync = base::Seconds(10);
 
 class ScopedPath {
  public:
@@ -1182,7 +1182,7 @@ void Platform::Sync() {
   const base::TimeTicks start = base::TimeTicks::Now();
   sync();
   const base::TimeDelta delta = base::TimeTicks::Now() - start;
-  if (delta > base::Seconds(kLongSyncSec)) {
+  if (delta > kLongSync) {
     LOG(WARNING) << "Long sync(): " << delta.InSeconds() << " seconds";
   }
 }

@@ -23,10 +23,8 @@ LowDiskSpaceHandler::LowDiskSpaceHandler(
     : platform_(platform),
       default_cleanup_(new DiskCleanup(platform, homedirs, timestamp_manager)),
       cleanup_(default_cleanup_.get()),
-      low_disk_notification_period_(
-          base::Milliseconds(kLowDiskNotificationPeriodMS)),
-      update_user_activity_timestamp_period_(
-          base::Hours(kUpdateUserActivityPeriodHours)) {}
+      low_disk_notification_period_(kLowDiskNotificationPeriod),
+      update_user_activity_timestamp_period_(kUpdateUserActivityPeriod) {}
 
 LowDiskSpaceHandler::~LowDiskSpaceHandler() {
   DCHECK(stopped_);
@@ -105,8 +103,8 @@ void LowDiskSpaceHandler::LowDiskSpaceCheck() {
 
   const base::Time current_time = platform_->GetCurrentTime();
 
-  const bool time_for_auto_cleanup = current_time - last_auto_cleanup_time_ >
-                                     base::Milliseconds(kAutoCleanupPeriodMS);
+  const bool time_for_auto_cleanup =
+      current_time - last_auto_cleanup_time_ > kAutoCleanupPeriod;
 
   // We shouldn't repeat cleanups on every minute if the disk space
   // stays below the threshold. Trigger it only if there was no notification

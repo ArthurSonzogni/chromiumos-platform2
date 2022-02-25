@@ -145,7 +145,7 @@ TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanup) {
   task_runner_->FastForwardBy(handler_.low_disk_notification_period());
   task_runner_->RunUntilIdle();
 
-  auto delta = base::Milliseconds(kAutoCleanupPeriodMS + 1);
+  auto delta = kAutoCleanupPeriod + base::Milliseconds(1);
 
   for (int i = 0; i < 50; i++) {
     EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
