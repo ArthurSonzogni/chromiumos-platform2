@@ -11,6 +11,7 @@
 #include "base/files/file_util.h"
 #include "base/run_loop.h"
 #include "base/strings/stringprintf.h"
+#include "base/time/time.h"
 #include "gtest/gtest.h"
 
 #include "croslog/file_map_reader.h"
@@ -67,10 +68,10 @@ class LogLineReaderTest : public ::testing::Test,
   bool WaitForChangeEvent(int previous_value) {
     base::RunLoop().RunUntilIdle();
 
-    const int kTinyTimeoutMs = 100;
+    constexpr base::TimeDelta kTinyTimeout = base::Milliseconds(100);
     int max_try = 50;
     while (previous_value == changed_event_receieved_) {
-      base::PlatformThread::Sleep(base::Milliseconds(kTinyTimeoutMs));
+      base::PlatformThread::Sleep(kTinyTimeout);
       base::RunLoop().RunUntilIdle();
       max_try--;
       EXPECT_NE(0u, max_try);
