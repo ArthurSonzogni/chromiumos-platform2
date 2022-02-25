@@ -9,6 +9,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <brillo/daemons/dbus_daemon.h>
 
 #include "lorgnette/manager.h"
@@ -27,10 +28,10 @@ class Daemon : public brillo::DBusServiceDaemon {
   ~Daemon() = default;
 
   // Daemon will automatically shutdown after this length of idle time.
-  static const int kNormalShutdownTimeoutMilliseconds;
+  static constexpr base::TimeDelta kNormalShutdownTimeout = base::Seconds(2);
 
   // A longer shutdown timeout that can be requested during slow operations.
-  static const int kExtendedShutdownTimeoutMilliseconds;
+  static constexpr base::TimeDelta kExtendedShutdownTimeout = base::Minutes(5);
 
  protected:
   int OnInit() override;
@@ -42,7 +43,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   friend class DaemonTest;
 
   // Restarts a timer for the termination of the daemon process.
-  void PostponeShutdown(size_t ms);
+  void PostponeShutdown(base::TimeDelta delay);
 
   std::unique_ptr<Manager> manager_;
   base::OnceClosure startup_callback_;

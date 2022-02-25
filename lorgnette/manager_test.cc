@@ -88,7 +88,7 @@ class ManagerTest : public testing::Test {
  protected:
   ManagerTest()
       : sane_client_(new SaneClientFake()),
-        manager_(base::RepeatingCallback<void(size_t)>(),
+        manager_(base::RepeatingCallback<void(base::TimeDelta)>(),
                  std::unique_ptr<SaneClient>(sane_client_)),
         metrics_library_(new MetricsLibraryMock) {
     manager_.metrics_library_.reset(metrics_library_);
