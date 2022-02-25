@@ -31,8 +31,9 @@ static const uint8_t kReadEndpoint = 0x83;   // device to host
 
 static const int kTimeout = 1000;      // Timeout in milliseconds.
 static const int kRetries = 50;        // Max retries.
-static const int kDelay = 10;          // Milliseconds delay between retries.
 
+static constexpr base::TimeDelta kDelay =
+    base::Milliseconds(10);  // Delay between retries.
 static constexpr base::TimeDelta kReadSleep = base::Milliseconds(1);
 static constexpr base::TimeDelta kReadTimeout = base::Milliseconds(10);
 
@@ -288,7 +289,7 @@ bool Mcp::WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) {
     if (this->in_[8] == 0) {  // bus is idle.
       return true;
     }
-    base::PlatformThread::Sleep(base::Milliseconds(kDelay));
+    base::PlatformThread::Sleep(kDelay);
   }
   LOG(ERROR) << "Write (retries exceeded) failed";
   return false;
@@ -325,7 +326,7 @@ bool Mcp::PrepareBus() {
     if (this->in_[3] == 0x20) {  // Set speed succeeded.
       return true;
     }
-    base::PlatformThread::Sleep(base::Milliseconds(kDelay));
+    base::PlatformThread::Sleep(kDelay);
   }
   LOG(ERROR) << "PrepareBus retries exceeded";
   return false;

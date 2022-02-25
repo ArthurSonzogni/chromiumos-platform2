@@ -25,8 +25,8 @@ constexpr char kHpsUpdateMcuDuration[] = "ChromeOS.HPS.Update.Mcu.Duration";
 constexpr char kHpsUpdateSpiDuration[] = "ChromeOS.HPS.Update.Spi.Duration";
 constexpr char kHpsImageInvalidity[] = "ChromeOS.HPS.Image.Invalidity";
 
-constexpr base::TimeDelta kUpdatePeriod = base::TimeDelta::FromMinutes(1);
-constexpr base::TimeDelta kAccumulatePeriod = base::TimeDelta::FromMinutes(10);
+constexpr base::TimeDelta kUpdatePeriod = base::Minutes(1);
+constexpr base::TimeDelta kAccumulatePeriod = base::Minutes(10);
 
 // These values are logged to UMA. Entries should not be renumbered and
 // numeric values should never be reused. Please keep in sync with
