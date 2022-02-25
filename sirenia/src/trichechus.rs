@@ -10,15 +10,12 @@ use std::cell::RefCell;
 use std::collections::{BTreeMap as Map, VecDeque};
 use std::convert::TryFrom;
 use std::env;
-use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Seek, SeekFrom, Write};
+use std::fs::File;
+use std::io::{Seek, SeekFrom, Write};
 use std::iter::once;
 use std::mem::{replace, swap};
 use std::ops::{Deref, DerefMut};
-use std::os::unix::{
-    fs::OpenOptionsExt,
-    io::{AsRawFd, RawFd},
-};
+use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::result::Result as StdResult;
@@ -58,10 +55,10 @@ use libsirenia::{
     },
 };
 use sirenia::log_error;
+use sirenia::pstore;
 use sys_util::{
     self, error, getpid, getsid, info, reap_child, setsid, syslog,
-    vsock::SocketAddr as VSocketAddr, warn, MappedRegion, MemfdSeals, MemoryMapping, Pid,
-    SharedMemory,
+    vsock::SocketAddr as VSocketAddr, warn, MemfdSeals, Pid, SharedMemory,
 };
 
 const CRONISTA_URI_SHORT_NAME: &str = "C";
@@ -617,85 +614,13 @@ fn handle_closed_child_processes(state: &RefCell<TrichechusState>) {
     }
 }
 
-fn get_goog9999_range(line: &str) -> Result<Option<(u64, usize)>> {
-    // We are looking for a line in the following format (with leading spaces):
-    //   769fa000-76af9fff : GOOG9999:00
-    if let Some((range, name)) = line.split_once(':') {
-        if name.trim() == "GOOG9999:00" {
-            if let Some((begin, end)) = range.trim().split_once('-') {
-                let begin_addr = u64::from_str_radix(begin, 16)
-                    .map_err(|_| anyhow!("Invalid begin address: {}", line))?;
-                let end_addr = u64::from_str_radix(end, 16)
-                    .map_err(|_| anyhow!("Invalid end address: {}", line))?;
-                let len = (end_addr
-                    .checked_sub(begin_addr)
-                    .ok_or_else(|| anyhow!("Invalid range: {}", line))?
-                    + 1) as usize;
-                return Ok(Some((begin_addr, len)));
-            }
-        }
-    }
-    Ok(None)
-}
-
-fn get_ramoops_location() -> Result<(u64, usize)> {
-    // When the ramoops driver is enabled, and is using the GOOG9999 region,
-    // this info is in /sys/module/ramoops/parameters/mem_{address|size}.
-    // However, if the ramoops driver is disabled, or if it has been overridden
-    // with kernel command line parameters (say, because we are in a VM), this
-    // approach fails. Therefore, we parse /proc/iomem for this info.
-    let iomem = File::open("/proc/iomem").context("Failed to open /proc/iomem")?;
-    for line in BufReader::new(iomem).lines() {
-        let l = line.context("Error reading from /proc/iomem")?;
-        if let Some((addr, len)) = get_goog9999_range(&l)? {
-            return Ok((addr, len));
-        }
-    }
-    bail!("Unable to find mapping for GOOG9999 in /proc/iomem");
-}
-
-fn map_dev_mem(addr: u64, len: usize, open_flags: i32) -> Result<MemoryMapping> {
-    let devmem = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .custom_flags(open_flags)
-        .open("/dev/mem")
-        .context("Failed to open /dev/mem")?;
-    MemoryMapping::from_fd_offset(&devmem, len, addr).context("Failed to mmap /dev/mem")
-}
-
-fn map_ramoops() -> Result<MemoryMapping> {
-    let (ramoops_addr, ramoops_len) = get_ramoops_location()?;
-    map_dev_mem(ramoops_addr, ramoops_len, libc::O_SYNC)
-        .context("Failed to map /dev/mem with O_SYNC")
-        .or_else(|e| {
-            eprintln!("Ignoring: {}", e);
-            eprintln!("Retrying with no flags");
-            map_dev_mem(ramoops_addr, ramoops_len, 0)
-        })
-}
-
-fn restore_pstore(pstore_path: &str) -> Result<()> {
-    let outputf = File::create(pstore_path)
-        .with_context(|| format!("Failed to open pstore file: {}", pstore_path))?;
-    let ramoops = map_ramoops()?;
-    ramoops
-        .write_from_memory(0, &outputf, ramoops.size())
-        .context("Failed to copy ramoops memory to pstore file")?;
-    outputf.sync_all().context("sync pstore file")
-}
-
-fn save_pstore(pstore_path: &str) -> Result<()> {
-    let inputf = File::open(pstore_path)
-        .with_context(|| format!("Failed to open pstore file: {}", pstore_path))?;
-    let ramoops = map_ramoops()?;
-    ramoops
-        .read_to_memory(0, &inputf, ramoops.size())
-        .context("Failed to copy pstore file contents to ramoops memory")?;
-    if let Err(e) = ramoops.msync() {
-        eprintln!("Ignoring: msync failure: {}", e);
-    }
-    Ok(())
+// Before logging is initialized eprintln(...) and println(...) should be used.
+// Afterward, info!(...), and error!(...) should be used instead.
+fn init_logging() -> Result<()> {
+    syslog::init().or_else(|e| {
+        eprintln!("Failed to initialize syslog: {}", e);
+        bail!("failed to initialize the syslog: {}", e);
+    })
 }
 
 // TODO: Figure out rate limiting and prevention against DOS attacks
@@ -736,16 +661,18 @@ fn main() -> Result<()> {
     let (config, matches) = initialize_common_arguments(opts, &args[1..]).unwrap();
 
     if matches.opt_present(SAVE_PSTORE_LONG_NAME) {
+        init_logging()?;
         if let Some(pstore_path) = matches.opt_str(PSTORE_PATH_LONG_NAME) {
-            return save_pstore(&pstore_path);
+            return pstore::save_pstore(&pstore_path);
         } else {
             bail!("{} is required for saving pstore", PSTORE_PATH_LONG_NAME);
         }
     }
 
     if matches.opt_present(RESTORE_PSTORE_LONG_NAME) {
+        init_logging()?;
         if let Some(pstore_path) = matches.opt_str(PSTORE_PATH_LONG_NAME) {
-            return restore_pstore(&pstore_path);
+            return pstore::restore_pstore(&pstore_path);
         } else {
             bail!("{} is required for restoring pstore", PSTORE_PATH_LONG_NAME);
         }
@@ -787,12 +714,7 @@ fn main() -> Result<()> {
         None
     };
 
-    // Before logging is initialized eprintln(...) and println(...) should be used. Afterward,
-    // info!(...), and error!(...) should be used instead.
-    if let Err(e) = syslog::init() {
-        eprintln!("Failed to initialize syslog: {}", e);
-        bail!("failed to initialize the syslog: {}", e);
-    }
+    init_logging()?;
     info!("starting trichechus: {}", BUILD_TIMESTAMP);
 
     if getpid() != getsid(None).unwrap() {
@@ -858,42 +780,4 @@ fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn parse_iomem() {
-        assert_eq!(
-            get_goog9999_range("  769fa000-76af9fff : GOOG9999:00\n").unwrap(),
-            Some((0x769fa000, 1048576))
-        );
-        assert_eq!(
-            get_goog9999_range("769fa000-76af9fff:GOOG9999:00").unwrap(),
-            Some((0x769fa000, 1048576))
-        );
-        assert_eq!(
-            get_goog9999_range("    769fa000-76af9fff  :   GOOG9999:00").unwrap(),
-            Some((0x769fa000, 1048576))
-        );
-        assert_eq!(
-            get_goog9999_range("  769fa000-76af9fff : GOOG9999:00\n").unwrap(),
-            Some((0x769fa000, 1048576))
-        );
-        assert_eq!(
-            get_goog9999_range("fe010000-fe010fff : vfio-pci\n").unwrap(),
-            None
-        );
-        assert_eq!(get_goog9999_range("GOOG9999:00\n").unwrap(), None);
-        assert_eq!(get_goog9999_range(": GOOG9999:00\n").unwrap(), None);
-        assert_eq!(
-            get_goog9999_range("769fa000 : GOOG9999:00\n").unwrap(),
-            None
-        );
-        assert!(get_goog9999_range("769fa000-76af9fffX : GOOG9999:00\n").is_err());
-        assert!(get_goog9999_range("769fa000X-76af9fff : GOOG9999:00\n").is_err());
-        assert!(get_goog9999_range("76af9fff-769fa000 : GOOG9999:00\n").is_err());
-    }
 }

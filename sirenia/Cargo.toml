@@ -61,4 +61,5 @@ serde = { version = "1.0.114", features = ["derive"] }
 serde_json = "1.0.64"
 stderrlog = "0.5.0"
 sys_util = { path = "../../platform/crosvm/common/sys_util" } # provided by ebuild
+data_model = { path = "../../platform/crosvm/common/data_model" } # provided by ebuild
 thiserror = "1.0.20"

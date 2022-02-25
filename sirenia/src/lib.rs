@@ -9,6 +9,8 @@
 
 include!("bindings/include_modules.rs");
 
+pub mod pstore;
+
 use sys_util::error;
 
 pub fn log_error<T, E: std::fmt::Debug>(ret: Result<T, E>) -> Result<T, E> {
