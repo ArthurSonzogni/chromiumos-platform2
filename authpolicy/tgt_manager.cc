@@ -16,6 +16,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 
 #include "authpolicy/anonymizer.h"
 #include "authpolicy/authpolicy_flags.h"
@@ -89,7 +90,7 @@ const char kKrb5TraceEnvKey[] = "KRB5_TRACE";
 // Maximum kinit tries.
 const int kKinitMaxTries = 60;
 // Wait interval between two kinit tries.
-const int kKinitRetryWaitSeconds = 1;
+constexpr base::TimeDelta kKinitRetryWait = base::Seconds(1);
 
 // Keys for interpreting kinit, klist and kpasswd output.
 const char kKeyBadPrincipal[] =
@@ -581,7 +582,7 @@ ErrorType TgtManager::RunKinit(ProcessExecutor* kinit_cmd,
   for (tries = 1; tries <= max_tries; ++tries) {
     // Sleep between subsequent tries (probably a propagation issue).
     if (tries > 1 && !kinit_retry_sleep_disabled_for_testing_) {
-      base::PlatformThread::Sleep(base::Seconds(kKinitRetryWaitSeconds));
+      base::PlatformThread::Sleep(kKinitRetryWait);
     }
     SetupKrb5Trace(kinit_cmd);
 
