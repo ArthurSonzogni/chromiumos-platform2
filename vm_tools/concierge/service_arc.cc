@@ -203,6 +203,16 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
     params.emplace_back("androidboot.non_rtcpus=" + topology.NonRTCPUMask());
   }
 
+  params.emplace_back("ramoops.record_size=" +
+                      std::to_string(kArcVmRamoopsRecordSize));
+  params.emplace_back("ramoops.console_size=" +
+                      std::to_string(kArcVmRamoopsConsoleSize));
+  params.emplace_back("ramoops.ftrace_size=" +
+                      std::to_string(kArcVmRamoopsFtraceSize));
+  params.emplace_back("ramoops.pmsg_size=" +
+                      std::to_string(kArcVmRamoopsPmsgSize));
+  params.emplace_back("ramoops.dump_oops=1");
+
   VmBuilder vm_builder;
   vm_builder.AppendDisks(std::move(disks))
       .SetCpus(topology.NumCPUs())
@@ -210,9 +220,9 @@ std::unique_ptr<dbus::Response> Service::StartArcVm(
       .AppendCustomParam("--vcpu-cgroup-path",
                          base::FilePath(kArcvmVcpuCpuCgroup).value())
       .AppendCustomParam("--android-fstab", kFstabPath)
-      .AppendCustomParam("--pstore",
-                         base::StringPrintf("path=%s,size=%d", kArcVmPstorePath,
-                                            kArcVmPstoreSize))
+      .AppendCustomParam(
+          "--pstore", base::StringPrintf("path=%s,size=%" PRId64,
+                                         kArcVmPstorePath, kArcVmRamoopsSize))
       .AppendSharedDir(shared_data)
       .AppendSharedDir(shared_data_media)
       .AppendSharedDir(shared_stub)
