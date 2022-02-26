@@ -1238,6 +1238,7 @@ impl Methods {
     ) -> Result<(), Box<dyn Error>> {
         let mut request = StartVmRequest::new();
         if let Some(dlc_id) = self.get_dlc_id_or_none(features.dlc, start_termina)? {
+            self.install_dlc(&dlc_id)?;
             request.mut_vm().dlc_id = dlc_id;
         }
         if let Some(tools_dlc_id) = features.tools_dlc_id {
