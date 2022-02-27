@@ -16,6 +16,8 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
+#include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/crypto/elliptic_curve_error.h"
@@ -170,7 +172,7 @@ TEST_F(AsyncLibScryptCompatAuthBlockTest, DeriveTest) {
   VaultKeyset vk;
   vk.InitializeFromSerialized(serialized);
   AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   brillo::SecureBlob derived_key = {
       0x58, 0x2A, 0x41, 0x1F, 0xC0, 0x27, 0x2D, 0xC7, 0xF8, 0xEC, 0xA3,

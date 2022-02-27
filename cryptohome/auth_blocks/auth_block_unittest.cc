@@ -16,6 +16,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
@@ -431,7 +432,7 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
   VaultKeyset vk;
   vk.InitializeFromSerialized(serialized);
   AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   KeyBlobs key_blobs;
   AuthInput auth_input = {vault_key};
@@ -478,7 +479,7 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   VaultKeyset vk;
   vk.InitializeFromSerialized(serialized);
   AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   KeyBlobs key_blobs;
   AuthInput auth_input = {vault_key};
@@ -526,7 +527,7 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   VaultKeyset vk;
   vk.InitializeFromSerialized(serialized);
   AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   KeyBlobs key_blobs;
   AuthInput auth_input = {vault_key};
@@ -658,7 +659,7 @@ TEST(TpmAuthBlockTest, DeriveTest) {
   VaultKeyset vk;
   vk.InitializeFromSerialized(serialized);
   AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   EXPECT_EQ(CryptoError::CE_NONE,
             auth_block.Derive(auth_input, auth_state, &key_out_data));
@@ -841,7 +842,7 @@ TEST(DoubleWrappedCompatAuthBlockTest, DeriveTest) {
   VaultKeyset vk;
   vk.InitializeFromSerialized(serialized);
   AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
@@ -956,7 +957,7 @@ TEST(LibScryptCompatAuthBlockTest, DeriveTest) {
   VaultKeyset vk;
   vk.InitializeFromSerialized(serialized);
   AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   LibScryptCompatAuthBlock auth_block;
   EXPECT_EQ(CryptoError::CE_NONE,

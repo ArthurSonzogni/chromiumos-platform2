@@ -8,7 +8,6 @@
 
 #include <memory>
 #include <optional>
-#include <unordered_map>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -22,6 +21,7 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
@@ -41,77 +41,6 @@
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
-
-namespace {
-
-struct AuthBlockFlags {
-  int32_t require_flags;
-  int32_t refuse_flags;
-  AuthBlockType auth_block_type;
-};
-
-constexpr AuthBlockFlags kPinWeaverFlags = {
-    .require_flags = SerializedVaultKeyset::LE_CREDENTIAL,
-    .refuse_flags = 0,
-    .auth_block_type = AuthBlockType::kPinWeaver,
-};
-
-constexpr AuthBlockFlags kChallengeCredentialFlags = {
-    .require_flags = SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED,
-    .refuse_flags = 0,
-    .auth_block_type = AuthBlockType::kChallengeCredential,
-};
-
-constexpr AuthBlockFlags kDoubleWrappedCompatFlags = {
-    .require_flags = SerializedVaultKeyset::SCRYPT_WRAPPED |
-                     SerializedVaultKeyset::TPM_WRAPPED,
-    .refuse_flags = 0,
-    .auth_block_type = AuthBlockType::kDoubleWrappedCompat,
-};
-
-constexpr AuthBlockFlags kLibScryptCompatFlags = {
-    .require_flags = SerializedVaultKeyset::SCRYPT_WRAPPED,
-    .refuse_flags = SerializedVaultKeyset::TPM_WRAPPED,
-    .auth_block_type = AuthBlockType::kLibScryptCompat,
-};
-
-constexpr AuthBlockFlags kTpmNotBoundToPcrFlags = {
-    .require_flags = SerializedVaultKeyset::TPM_WRAPPED,
-    .refuse_flags = SerializedVaultKeyset::SCRYPT_WRAPPED |
-                    SerializedVaultKeyset::PCR_BOUND |
-                    SerializedVaultKeyset::ECC,
-    .auth_block_type = AuthBlockType::kTpmNotBoundToPcr,
-};
-
-constexpr AuthBlockFlags kTpmBoundToPcrFlags = {
-    .require_flags =
-        SerializedVaultKeyset::TPM_WRAPPED | SerializedVaultKeyset::PCR_BOUND,
-    .refuse_flags =
-        SerializedVaultKeyset::SCRYPT_WRAPPED | SerializedVaultKeyset::ECC,
-    .auth_block_type = AuthBlockType::kTpmBoundToPcr,
-};
-
-constexpr AuthBlockFlags kTpmEccFlags = {
-    .require_flags = SerializedVaultKeyset::TPM_WRAPPED |
-                     SerializedVaultKeyset::SCRYPT_DERIVED |
-                     SerializedVaultKeyset::PCR_BOUND |
-                     SerializedVaultKeyset::ECC,
-    .refuse_flags = SerializedVaultKeyset::SCRYPT_WRAPPED,
-    .auth_block_type = AuthBlockType::kTpmEcc,
-};
-
-constexpr AuthBlockFlags auth_block_flags[] = {
-    kPinWeaverFlags,       kChallengeCredentialFlags, kDoubleWrappedCompatFlags,
-    kLibScryptCompatFlags, kTpmNotBoundToPcrFlags,    kTpmBoundToPcrFlags,
-    kTpmEccFlags};
-
-bool MatchFlags(AuthBlockFlags AuthBlockFlags, int32_t flags) {
-  return (flags & AuthBlockFlags.require_flags) ==
-             AuthBlockFlags.require_flags &&
-         (flags & AuthBlockFlags.refuse_flags) == 0;
-}
-
-}  // namespace
 
 AuthBlockUtilityImpl::AuthBlockUtilityImpl(KeysetManagement* keyset_management,
                                            Crypto* crypto,
@@ -359,12 +288,11 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerivation(
   }
 
   int32_t vk_flags = vk->GetFlags();
-  for (auto auth_block_flag : auth_block_flags) {
-    if (MatchFlags(auth_block_flag, vk_flags)) {
-      return auth_block_flag.auth_block_type;
-    }
+  AuthBlockType auth_block_type = AuthBlockType::kMaxValue;
+  if (!FlagsToAuthBlockType(vk_flags, auth_block_type)) {
+    LOG(WARNING) << "Failed to get the AuthBlock type for key derivation";
   }
-  return AuthBlockType::kMaxValue;
+  return auth_block_type;
 }
 
 std::unique_ptr<SyncAuthBlock> AuthBlockUtilityImpl::GetAuthBlockWithType(
@@ -423,11 +351,10 @@ std::unique_ptr<AuthBlock> AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
         return std::make_unique<AsyncChallengeCredentialAuthBlock>(
             crypto_->tpm(), challenge_credentials_helper_,
             std::move(key_challenge_service_), account_id_.value());
-      } else {
-        LOG(ERROR) << "No valid ChallengeCredentialsHelper, "
-                      "KeyChallengeService, or account id in AuthBlockUtility";
-        return nullptr;
       }
+      LOG(ERROR) << "No valid ChallengeCredentialsHelper, "
+                    "KeyChallengeService, or account id in AuthBlockUtility";
+      return nullptr;
 
     case AuthBlockType::kDoubleWrappedCompat:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
@@ -453,13 +380,20 @@ std::unique_ptr<AuthBlock> AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
           std::make_unique<LibScryptCompatAuthBlock>());
 
-    default:
+    case AuthBlockType::kCryptohomeRecovery:
+      LOG(ERROR)
+          << "CryptohomeRecovery is not a supported AuthBlockType for now.";
+      return nullptr;
+
+    case AuthBlockType::kMaxValue:
+      LOG(ERROR) << "Unsupported AuthBlockType.";
       return nullptr;
   }
+  return nullptr;
 }
 
 bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(
-    const Credentials& credentials, AuthBlockState& auth_state) {
+    const Credentials& credentials, AuthBlockState& out_state) {
   std::unique_ptr<VaultKeyset> vault_keyset =
       keyset_management_->GetVaultKeyset(
           brillo::cryptohome::home::SanitizeUserName(credentials.username()),
@@ -473,34 +407,7 @@ bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(
     return false;
   }
 
-  int32_t vk_flags = vault_keyset->GetFlags();
-
-  // First case, handle a group of users with keysets that were incorrectly
-  // flagged as being both TPM and scrypt wrapped.
-  if (MatchFlags(kDoubleWrappedCompatFlags, vk_flags)) {
-    return vault_keyset->GetDoubleWrappedCompatState(&auth_state);
-  }
-
-  if (MatchFlags(kTpmEccFlags, vk_flags)) {
-    return vault_keyset->GetTpmEccState(&auth_state);
-  }
-  if (MatchFlags(kTpmBoundToPcrFlags, vk_flags)) {
-    return vault_keyset->GetTpmBoundToPcrState(&auth_state);
-  }
-  if (MatchFlags(kTpmNotBoundToPcrFlags, vk_flags)) {
-    return vault_keyset->GetTpmNotBoundToPcrState(&auth_state);
-  }
-  if (MatchFlags(kPinWeaverFlags, vk_flags)) {
-    return vault_keyset->GetPinWeaverState(&auth_state);
-  }
-  if (MatchFlags(kChallengeCredentialFlags, vk_flags)) {
-    return vault_keyset->GetSignatureChallengeState(&auth_state);
-  }
-  if (MatchFlags(kLibScryptCompatFlags, vk_flags)) {
-    return vault_keyset->GetLibScryptCompatState(&auth_state);
-  }
-  LOG(ERROR) << "Invalid auth block state type";
-  return false;
+  return GetAuthBlockState(*vault_keyset, out_state);
 }
 
 void AuthBlockUtilityImpl::AssignAuthBlockStateToVaultKeyset(

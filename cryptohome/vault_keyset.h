@@ -213,9 +213,6 @@ class VaultKeyset {
   virtual void SetResetSecret(const brillo::SecureBlob& reset_secret);
   virtual const brillo::SecureBlob& GetResetSecret() const;
 
-  // This populates an AuthBlockState proto allocated by the caller.
-  bool GetAuthBlockState(AuthBlockState* auth_state) const WARN_UNUSED_RESULT;
-
   // This populates each sub type of AuthBlockState into the caller allocated
   // object.
   bool GetTpmBoundToPcrState(AuthBlockState* auth_state) const;

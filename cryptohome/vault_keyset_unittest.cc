@@ -22,6 +22,7 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/crypto.h"
@@ -316,7 +317,7 @@ TEST_F(VaultKeysetTest, GetPcrBoundAuthBlockStateTest) {
   keyset.SetExtendedTPMKey(brillo::SecureBlob("foobaz"));
 
   AuthBlockState auth_state;
-  EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
 
   const TpmBoundToPcrAuthBlockState* tpm_state =
       std::get_if<TpmBoundToPcrAuthBlockState>(&auth_state.state);
@@ -345,7 +346,7 @@ TEST_F(VaultKeysetTest, GetEccAuthBlockStateTest) {
   keyset.auth_salt_ = brillo::SecureBlob("salt");
 
   AuthBlockState auth_state;
-  EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
 
   const TpmEccAuthBlockState* tpm_state =
       std::get_if<TpmEccAuthBlockState>(&auth_state.state);
@@ -369,7 +370,7 @@ TEST_F(VaultKeysetTest, GetNotPcrBoundAuthBlockState) {
   keyset.SetTPMKey(brillo::SecureBlob("blabla"));
 
   AuthBlockState auth_state;
-  EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
 
   const TpmNotBoundToPcrAuthBlockState* tpm_state =
       std::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state);
@@ -389,7 +390,7 @@ TEST_F(VaultKeysetTest, GetPinWeaverAuthBlockState) {
   keyset.SetLELabel(le_label);
 
   AuthBlockState auth_state;
-  EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
 
   const PinWeaverAuthBlockState* pin_auth_state =
       std::get_if<PinWeaverAuthBlockState>(&auth_state.state);
@@ -407,7 +408,7 @@ TEST_F(VaultKeysetTest, GetChallengeCredentialAuthBlockState) {
                   SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
 
   AuthBlockState auth_state;
-  EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
 
   const ChallengeCredentialAuthBlockState* cc_state =
       std::get_if<ChallengeCredentialAuthBlockState>(&auth_state.state);
@@ -425,7 +426,7 @@ TEST_F(VaultKeysetTest, GetLibscryptCompatAuthBlockState) {
   keyset.SetWrappedResetSeed(brillo::SecureBlob("baz"));
 
   AuthBlockState auth_state;
-  EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
 
   const LibScryptCompatAuthBlockState* scrypt_state =
       std::get_if<LibScryptCompatAuthBlockState>(&auth_state.state);
@@ -447,7 +448,7 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockStateFailure) {
 
   // A required tpm_key is not set in keyset, failure in creating
   // sub-state TpmNotBoundToPcrAuthBlockState.
-  EXPECT_FALSE(keyset.GetAuthBlockState(&auth_state));
+  EXPECT_FALSE(GetAuthBlockState(keyset, auth_state));
 
   const DoubleWrappedCompatAuthBlockState* double_wrapped_state =
       std::get_if<DoubleWrappedCompatAuthBlockState>(&auth_state.state);
@@ -464,7 +465,7 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
   keyset.SetTPMKey(brillo::SecureBlob("blabla"));
 
   AuthBlockState auth_state;
-  EXPECT_TRUE(keyset.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(keyset, auth_state));
 
   const DoubleWrappedCompatAuthBlockState* double_wrapped_state =
       std::get_if<DoubleWrappedCompatAuthBlockState>(&auth_state.state);
@@ -681,7 +682,7 @@ TEST_F(VaultKeysetTest, LibScryptBackwardCompatibility) {
   EXPECT_EQ(SecureBlobToHex(vk.auth_salt_), kHexLibScryptExampleSalt);
 
   AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   CryptoError crypto_error = CryptoError::CE_NONE;
   EXPECT_TRUE(vk.DecryptVaultKeyset(
@@ -713,7 +714,7 @@ TEST_F(VaultKeysetTest, GetTpmWritePasswordRounds) {
   keyset.SetTPMKey(brillo::SecureBlob(kFakePasswordKey));
 
   AuthBlockState tpm_state;
-  EXPECT_TRUE(keyset.GetAuthBlockState(&tpm_state));
+  EXPECT_TRUE(GetAuthBlockState(keyset, tpm_state));
   auto test_state =
       std::get_if<TpmNotBoundToPcrAuthBlockState>(&tpm_state.state);
   // test_state is of type TpmNotBoundToPcrAuthBlockState
@@ -891,7 +892,7 @@ TEST_F(LeCredentialsManagerTest, Decrypt) {
 
   vk.InitializeFromSerialized(serialized);
   AuthBlockState auth_state;
-  EXPECT_TRUE(vk.GetAuthBlockState(&auth_state));
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
 
   CryptoError crypto_error = CryptoError::CE_NONE;
   EXPECT_TRUE(vk.DecryptVaultKeyset(brillo::SecureBlob(HexDecode(kHexVaultKey)),
