@@ -340,6 +340,7 @@ if (use.test) {
       "auth_factor/auth_factor_metadata_unittest.cc",
       "auth_factor/auth_factor_unittest.cc",
       "auth_factor/auth_factor_utils_unittest.cc",
+      "auth_factor_vault_keyset_converter_unittest.cc",
       "auth_input_utils_unittest.cc",
       "auth_session_manager_unittest.cc",
       "auth_session_unittest.cc",
