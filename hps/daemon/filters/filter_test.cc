@@ -108,33 +108,6 @@ TEST(HpsFilterTest, ConsecutiveResultsFilterTest) {
   EXPECT_EQ(filter.ProcessResult(negative_score, false), HpsResult::UNKNOWN);
 }
 
-TEST(HpsFilterTest, ConsecutiveResultsFilterCompatibleTest) {
-  FeatureConfig::ConsecutiveResultsFilterConfig config;
-
-  config.set_threshold(10);
-  config.set_count(2);
-
-  ConsecutiveResultsFilter filter(config);
-
-  const int positive_score = 10;
-  const int negative_score = 9;
-
-  // One positive value will not change the state.
-  EXPECT_EQ(filter.ProcessResult(positive_score, true), HpsResult::UNKNOWN);
-  // Two positive value will change the state.
-  EXPECT_EQ(filter.ProcessResult(positive_score, true), HpsResult::POSITIVE);
-
-  // One negative value will not change the state.
-  EXPECT_EQ(filter.ProcessResult(negative_score, true), HpsResult::POSITIVE);
-  // Two negative values will change the state.
-  EXPECT_EQ(filter.ProcessResult(negative_score, true), HpsResult::NEGATIVE);
-
-  // One uncertain value will not change the state.
-  EXPECT_EQ(filter.ProcessResult(negative_score, false), HpsResult::NEGATIVE);
-  // Two uncertain values will change the state.
-  EXPECT_EQ(filter.ProcessResult(negative_score, false), HpsResult::UNKNOWN);
-}
-
 TEST(HpsFilterTest, AverageFilter) {
   FeatureConfig::AverageFilterConfig config;
   config.set_average_window_size(3);

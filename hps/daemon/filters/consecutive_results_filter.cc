@@ -8,17 +8,7 @@ namespace hps {
 
 ConsecutiveResultsFilter::ConsecutiveResultsFilter(
     const FeatureConfig::ConsecutiveResultsFilterConfig& config)
-    : config_(config) {
-  if (config.count() > 0) {
-    config_.set_positive_count_threshold(config.count());
-    config_.set_negative_count_threshold(config.count());
-    config_.set_uncertain_count_threshold(config.count());
-  }
-  if (config.threshold() != 0) {
-    config_.set_positive_score_threshold(config.threshold());
-    config_.set_negative_score_threshold(config.threshold());
-  }
-}
+    : config_(config) {}
 
 HpsResult ConsecutiveResultsFilter::ProcessResultImpl(int result, bool valid) {
   HpsResult inference_result = HpsResult::UNKNOWN;
