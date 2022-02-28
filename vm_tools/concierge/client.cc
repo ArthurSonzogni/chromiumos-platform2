@@ -1639,6 +1639,63 @@ int MakeRtVcpu(dbus::ObjectProxy* proxy, string vm_name, string owner_id) {
   return 0;
 }
 
+int ListVms(dbus::ObjectProxy* proxy, string owner_id) {
+  if (owner_id.empty()) {
+    LOG(ERROR) << "--cryptohome_id is required";
+    return -1;
+  }
+
+  LOG(INFO) << "List VMs.";
+  dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
+                               vm_tools::concierge::kListVmsMethod);
+  dbus::MessageWriter writer(&method_call);
+
+  vm_tools::concierge::ListVmsRequest request;
+  request.set_owner_id(owner_id);
+
+  if (!writer.AppendProtoAsArrayOfBytes(request)) {
+    LOG(ERROR) << "Failed to encode ListVmsRequest protobuf";
+    return -1;
+  }
+
+  std::unique_ptr<dbus::Response> dbus_response =
+      proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
+  if (!dbus_response) {
+    LOG(ERROR) << "Failed to send dbus message to concierge service";
+    return -1;
+  }
+
+  dbus::MessageReader reader(dbus_response.get());
+  vm_tools::concierge::ListVmsResponse response;
+  if (!reader.PopArrayOfBytesAsProto(&response)) {
+    LOG(ERROR) << "Failed to parse response protobuf";
+    return -1;
+  }
+
+  for (const auto& vm : response.vms()) {
+    const auto& vm_info = vm.vm_info();
+    string address;
+    IPv4AddressToString(vm_info.ipv4_address(), &address);
+
+    std::cout << std::endl
+              << "VM:                        " << vm.name() << std::endl
+              << "  owner_id:                " << vm.owner_id() << std::endl
+              << "  IPv4 address:            " << address << std::endl
+              << "  pid:                     " << vm_info.pid() << std::endl
+              << "  vsock cid:               " << vm_info.cid() << std::endl
+              << "  seneschal server handle: "
+              << vm_info.seneschal_server_handle() << std::endl
+              << "  permission_token:        " << vm_info.permission_token()
+              << std::endl
+              << "  type:                    "
+              << vm_tools::concierge::VmInfo_VmType_Name(vm_info.vm_type())
+              << std::endl
+              << "  status:                  "
+              << vm_tools::concierge::VmStatus_Name(vm.status()) << std::endl;
+  }
+  return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -1675,6 +1732,7 @@ int main(int argc, char** argv) {
   DEFINE_bool(set_vm_cpu_restriction, false, "Set VM CPU restriction");
   DEFINE_bool(reclaim_vm_memory, false, "Reclaim VM memory");
   DEFINE_bool(make_rt_vcpu, false, "Make RT vCPU");
+  DEFINE_bool(list_vms, false, "List VMs");
 
   // Parameters.
   DEFINE_string(kernel, "", "Path to the VM kernel");
@@ -1748,7 +1806,7 @@ int main(int argc, char** argv) {
       FLAGS_list_usb_devices + FLAGS_start_plugin_vm + FLAGS_start_arc_vm +
       FLAGS_get_vm_enterprise_reporting_info +
       FLAGS_set_vm_cpu_restriction + FLAGS_reclaim_vm_memory +
-      FLAGS_make_rt_vcpu != 1) {
+      FLAGS_make_rt_vcpu + FLAGS_list_vms != 1) {
     // clang-format on
     LOG(ERROR)
         << "Exactly one of --start, --stop, --stop_all, --suspend, --resume, "
@@ -1758,7 +1816,8 @@ int main(int argc, char** argv) {
         << "--attach_usb, --detach_usb, "
         << "--list_usb_devices, --start_plugin_vm, --start_arc_vm, "
         << "--get_vm_enterprise_reporting_info, --set_vm_cpu_restriction, "
-        << "--reclaim_vm_memory, or --make_rt_vcpu must be provided";
+        << "--reclaim_vm_memory, --make_rt_vcpu, or --list_vms "
+        << "must be provided";
     return -1;
   }
 
@@ -1853,6 +1912,8 @@ int main(int argc, char** argv) {
   } else if (FLAGS_make_rt_vcpu) {
     return MakeRtVcpu(proxy, std::move(FLAGS_name),
                       std::move(FLAGS_cryptohome_id));
+  } else if (FLAGS_list_vms) {
+    return ListVms(proxy, std::move(FLAGS_cryptohome_id));
   }
 
   // Unreachable.

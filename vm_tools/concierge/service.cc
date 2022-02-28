@@ -1142,6 +1142,7 @@ bool Service::Init() {
       {kGetDnsSettingsMethod, &Service::GetDnsSettings},
       {kSetVmCpuRestrictionMethod, &Service::SetVmCpuRestriction},
       {kSetVmIdMethod, &Service::SetVmId},
+      {kListVmsMethod, &Service::ListVms},
   };
 
   using AsyncServiceMethod = void (Service::*)(
@@ -3652,6 +3653,70 @@ std::unique_ptr<dbus::Response> Service::SetVmId(
   return dbus_response;
 }
 
+std::unique_ptr<dbus::Response> Service::ListVms(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received ListVms request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  ListVmsRequest request;
+  ListVmsResponse response;
+
+  response.set_success(false);
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    LOG(ERROR) << "Unable to parse ListVmsRequest from message";
+    response.set_failure_reason("Unable to parse ListVmsRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  for (const auto& vm_entry : vms_) {
+    const auto& id = vm_entry.first;
+    const auto& vm = vm_entry.second;
+
+    if (id.owner_id() != request.owner_id()) {
+      continue;
+    }
+
+    VmInterface::Info info = vm->GetInfo();
+    ExtendedVmInfo* proto = response.add_vms();
+    VmInfo* proto_info = proto->mutable_vm_info();
+    proto->set_name(id.name());
+    proto->set_owner_id(id.owner_id());
+    proto_info->set_ipv4_address(info.ipv4_address);
+    proto_info->set_pid(info.pid);
+    proto_info->set_cid(info.cid);
+    proto_info->set_seneschal_server_handle(info.seneschal_server_handle);
+    proto_info->set_vm_type(info.type);
+    // The vms_ member only contains VMs with running crosvm instances. So the
+    // STOPPED case below should not be possible.
+    switch (info.status) {
+      case VmInterface::Status::STARTING: {
+        proto->set_status(VM_STATUS_STARTING);
+        break;
+      }
+      case VmInterface::Status::RUNNING: {
+        proto->set_status(VM_STATUS_RUNNING);
+        break;
+      }
+      case VmInterface::Status::STOPPED: {
+        NOTREACHED();
+        proto->set_status(VM_STATUS_STOPPED);
+        break;
+      }
+    }
+  }
+  response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
 void Service::ReclaimVmMemory(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
@@ -3766,7 +3831,7 @@ void Service::SendVmStartedSignal(const VmId& vm_id,
                                   const vm_tools::concierge::VmInfo& vm_info,
                                   vm_tools::concierge::VmStatus status) {
   dbus::Signal signal(kVmConciergeInterface, kVmStartedSignal);
-  vm_tools::concierge::VmStartedSignal proto;
+  vm_tools::concierge::ExtendedVmInfo proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.mutable_vm_info()->CopyFrom(vm_info);
@@ -3778,7 +3843,7 @@ void Service::SendVmStartedSignal(const VmId& vm_id,
 void Service::SendVmStartingUpSignal(
     const VmId& vm_id, const vm_tools::concierge::VmInfo& vm_info) {
   dbus::Signal signal(kVmConciergeInterface, kVmStartingUpSignal);
-  vm_tools::concierge::VmStartedSignal proto;
+  vm_tools::concierge::ExtendedVmInfo proto;
   proto.set_owner_id(vm_id.owner_id());
   proto.set_name(vm_id.name());
   proto.mutable_vm_info()->CopyFrom(vm_info);

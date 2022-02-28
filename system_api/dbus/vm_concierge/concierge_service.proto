@@ -347,6 +347,9 @@ enum VmStatus {
 
   // The VM can't start because its disk/image is being manipulated.
   VM_STATUS_DISK_OP_IN_PROGRESS = 4;
+
+  // The VM is stopped.
+  VM_STATUS_STOPPED = 5;
 }
 
 // Information sent back by vm_concierge in response to a StartVm dbus message.
@@ -1191,4 +1194,39 @@ message ReclaimVmMemoryResponse {
 
   // If the attempt to reclaim memory failed, the reason for failure.
   string failure_reason = 2;
+}
+
+// Request a list of all VMs owned by an id. Returns all VMs in Concierge's
+// VmMap that match the owner_id, which includes starting and running VMs, but
+// not stopped.
+message ListVmsRequest {
+  // The cryptohome id to get the list of VMs for.
+  string owner_id = 1;
+}
+
+// Message used for listing VMs.
+message ExtendedVmInfo {
+  // The name of the VM which has started.
+  string name = 1;
+
+  // The owner of the vm.
+  string owner_id = 2;
+
+  // Information about the VM that was started, if successful.
+  VmInfo vm_info = 3;
+
+  // Status of the VM.
+  VmStatus status = 4;
+}
+
+// Response to a ListVmsRequest.
+message ListVmsResponse {
+  // If true, vms is valid.
+  bool success = 1;
+
+  // If getting a list of VMs failed, the reason for the failure.
+  string failure_reason = 2;
+
+  // The list of VMs that concierge is managing.
+  repeated ExtendedVmInfo vms = 3;
 }
