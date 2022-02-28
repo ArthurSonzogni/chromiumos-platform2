@@ -73,7 +73,7 @@ class MockUserSession : public UserSession {
               (const brillo::SecureBlob&, const brillo::SecureBlob&),
               (override));
 
- private:
+ protected:
   ~MockUserSession() override = default;
 };
 

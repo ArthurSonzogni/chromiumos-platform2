@@ -18,6 +18,7 @@
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/credentials_test_util.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_install_attributes.h"
@@ -53,16 +54,6 @@ constexpr char kUsername2[] = "foo2@example.com";
 constexpr char kPassword2[] = "password2";
 constexpr char kUsername3[] = "foo3@example.com";
 constexpr char kPassword3[] = "password3";
-
-MATCHER_P(CredentialsMatcher, creds, "") {
-  if (creds.username() != arg.username()) {
-    return false;
-  }
-  if (creds.passkey() != arg.passkey()) {
-    return false;
-  }
-  return true;
-}
 
 }  // namespace
 

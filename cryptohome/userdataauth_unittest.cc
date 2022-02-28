@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <set>
 #include <vector>
 
 #include <base/check.h>
@@ -30,6 +31,7 @@
 #include "cryptohome/cleanup/mock_disk_cleanup.h"
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
+#include "cryptohome/credentials_test_util.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
@@ -55,11 +57,9 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_arc_disk_quota.h"
 #include "cryptohome/storage/mock_homedirs.h"
-#include "cryptohome/storage/mock_mount.h"
-#include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/tpm.h"
-#include "cryptohome/user_session/real_user_session.h"
-#include "cryptohome/user_session/real_user_session_factory.h"
+#include "cryptohome/user_session/mock_user_session.h"
+#include "cryptohome/user_session/mock_user_session_factory.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
@@ -132,13 +132,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
     mount_bus_ = base::MakeRefCounted<NiceMock<dbus::MockBus>>(options);
 
-    // ownership over mount_factory_ is taken by the real_user_session_factory_.
-    mount_factory_ = new NiceMock<MockMountFactory>();
-    real_user_session_factory_ = std::make_unique<RealUserSessionFactory>(
-        std::unique_ptr<MountFactory>(mount_factory_), &platform_, &homedirs_,
-        &keyset_management_, &user_activity_timestamp_manager_,
-        &pkcs11_token_factory_);
-
     if (!userdataauth_) {
       // Note that this branch is usually taken as |userdataauth_| is usually
       // NULL. The reason for this branch is because some derived-class of this
@@ -163,7 +156,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_arc_disk_quota(&arc_disk_quota_);
     userdataauth_->set_pkcs11_init(&pkcs11_init_);
     userdataauth_->set_pkcs11_token_factory(&pkcs11_token_factory_);
-    userdataauth_->set_user_session_factory(real_user_session_factory_.get());
+    userdataauth_->set_user_session_factory(&user_session_factory_);
     userdataauth_->set_challenge_credentials_helper(
         &challenge_credentials_helper_);
     userdataauth_->set_key_challenge_service_factory(
@@ -192,12 +185,9 @@ class UserDataAuthTestBase : public ::testing::Test {
   }
 
   // This is a utility function for tests to setup a mount for a particular
-  // user. After calling this function, |mount_| is available for use.
+  // user. After calling this function, |session_| is available for use.
   void SetupMount(const std::string& username) {
-    mount_ = new NiceMock<MockMount>();
-    session_ = base::MakeRefCounted<RealUserSession>(
-        &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-        &pkcs11_token_factory_, mount_);
+    session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
     userdataauth_->set_session_for_user(username, session_.get());
   }
 
@@ -286,13 +276,8 @@ class UserDataAuthTestBase : public ::testing::Test {
   // its internal use.
   NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
 
-  // Mock Mount Factory object, will be passed to UserDataAuth for its internal
-  // use.
-  NiceMock<MockMountFactory>* mount_factory_;
-
-  // User Session Factory object. It is real for transitional period, but will
-  // be replaced with a mock one eventually.
-  std::unique_ptr<RealUserSessionFactory> real_user_session_factory_;
+  // Mock User Session Factory object.
+  NiceMock<MockUserSessionFactory> user_session_factory_;
 
   // Mock Low Disk Space handler object, will be passed to UserDataAuth for its
   // internal use.
@@ -306,11 +291,7 @@ class UserDataAuthTestBase : public ::testing::Test {
   scoped_refptr<NiceMock<dbus::MockBus>> mount_bus_;
 
   // Session object
-  scoped_refptr<UserSession> session_;
-
-  // This is used to hold the mount object when we create a mock mount with
-  // SetupMount().
-  scoped_refptr<NiceMock<MockMount>> mount_;
+  scoped_refptr<NiceMock<MockUserSession>> session_;
 
   // Declare |userdataauth_| last so it gets destroyed before all the mocks.
   // This is important because otherwise the background thread may call into
@@ -351,28 +332,17 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
     }));
   }
 
-  void CreatePkcs11TokenInSession(scoped_refptr<NiceMock<MockMount>> mount,
-                                  scoped_refptr<UserSession> session) {
-    EXPECT_CALL(*mount, MountCryptohome(_, _, _))
-        .WillOnce(Return(MOUNT_ERROR_NONE));
-
+  void CreatePkcs11TokenInSession(
+      scoped_refptr<NiceMock<MockUserSession>> session) {
     auto token = std::make_unique<FakePkcs11Token>();
-    EXPECT_CALL(pkcs11_token_factory_, New(_, _, _))
-        .WillOnce(Return(ByMove(std::move(token))));
-
-    auto vk = std::make_unique<VaultKeyset>();
-    vk->Initialize(&platform_, &crypto_);
-    vk->CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
-    ASSERT_EQ(
-        MOUNT_ERROR_NONE,
-        session->MountVault(session->GetUsername(), FileSystemKeyset(*vk.get()),
-                            CryptohomeVault::Options()));
+    ON_CALL(*session, GetPkcs11Token()).WillByDefault(Return(token.get()));
+    tokens_.insert(std::move(token));
   }
 
-  void InitializePkcs11TokenInSession(scoped_refptr<NiceMock<MockMount>> mount,
-                                      scoped_refptr<UserSession> session) {
+  void InitializePkcs11TokenInSession(
+      scoped_refptr<NiceMock<MockUserSession>> session) {
     // PKCS#11 will initialization works only when it's mounted.
-    ON_CALL(*mount, IsMounted()).WillByDefault(Return(true));
+    ON_CALL(*session, IsActive()).WillByDefault(Return(true));
 
     userdataauth_->InitializePkcs11(session.get());
   }
@@ -472,6 +442,9 @@ class UserDataAuthTestTasked : public UserDataAuthTestBase {
     UserDataAuth::TestThreadId old_thread_id_;
     UserDataAuth::TestThreadId new_thread_id_;
   };
+
+  // Holder for tokens to preserve life time.
+  std::set<std::unique_ptr<FakePkcs11Token>> tokens_;
 
   // MockTimeTaskRunner for origin and mount thread.
   scoped_refptr<base::TestMockTimeTaskRunner> origin_task_runner_{
@@ -804,21 +777,21 @@ TEST_F(UserDataAuthTest, IsMounted) {
 
   // Test the code path that doesn't specify a user, and when there's a mount
   // that's unmounted.
-  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(false));
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(false));
   EXPECT_FALSE(userdataauth_->IsMounted());
 
   // Test to see if is_ephemeral works and test the code path that doesn't
   // specify a user.
   bool is_ephemeral = true;
-  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount_, IsEphemeral()).WillOnce(Return(false));
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(false));
   EXPECT_TRUE(userdataauth_->IsMounted("", &is_ephemeral));
   EXPECT_FALSE(is_ephemeral);
 
   // Test to see if is_ephemeral works, and test the code path that specify the
   // user.
-  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount_, IsEphemeral()).WillOnce(Return(true));
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(true));
   EXPECT_TRUE(userdataauth_->IsMounted("foo@gmail.com", &is_ephemeral));
   EXPECT_TRUE(is_ephemeral);
 
@@ -833,26 +806,19 @@ TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
   constexpr char kUsername1[] = "foo@gmail.com";
   constexpr char kUsername2[] = "bar@gmail.com";
 
-  scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session1 = base::MakeRefCounted<RealUserSession>(
-      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, mount1);
+  scoped_refptr<NiceMock<MockUserSession>> session1 =
+      base::MakeRefCounted<NiceMock<MockUserSession>>();
   userdataauth_->set_session_for_user(kUsername1, session1.get());
 
-  scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session2 = base::MakeRefCounted<RealUserSession>(
-      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, mount2);
+  scoped_refptr<NiceMock<MockUserSession>> session2 =
+      base::MakeRefCounted<NiceMock<MockUserSession>>();
   userdataauth_->set_session_for_user(kUsername2, session2.get());
 
   InSequence sequence;
-  EXPECT_CALL(*mount2, IsMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount2, IsNonEphemeralMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount2, UnmountCryptohome()).WillOnce(Return(false));
-  EXPECT_CALL(*mount1, IsMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount1, IsNonEphemeralMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount1, UnmountCryptohome()).WillOnce(Return(true));
-
+  EXPECT_CALL(*session2, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(*session2, Unmount()).WillOnce(Return(false));
+  EXPECT_CALL(*session1, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(*session1, Unmount()).WillOnce(Return(true));
   EXPECT_FALSE(userdataauth_->RemoveAllMounts());
 }
 
@@ -866,9 +832,9 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralNotEnabled) {
   SetupMount("foo@gmail.com");
 
   // Unmount will be successful.
-  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
+  EXPECT_CALL(*session_, Unmount()).WillOnce(Return(true));
   // If anyone asks, this mount is still mounted.
-  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
 
   // Test that non-owner's vaults are not touched.
   EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(false));
@@ -884,9 +850,9 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralNotEnabled) {
   SetupMount("bar@gmail.com");
 
   // Unmount will be unsuccessful.
-  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(false));
+  EXPECT_CALL(*session_, Unmount()).WillOnce(Return(false));
   // If anyone asks, this mount is still mounted.
-  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
 
   // Test that non-owner's vaults are not touched.
   EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(false));
@@ -909,9 +875,9 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralEnabled) {
   SetupMount("foo@gmail.com");
 
   // Unmount will be successful.
-  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
+  EXPECT_CALL(*session_, Unmount()).WillOnce(Return(true));
   // If anyone asks, this mount is still mounted.
-  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
 
   // Test that non-owner's vaults are cleaned up.
   EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(true));
@@ -927,9 +893,9 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralEnabled) {
   SetupMount("bar@gmail.com");
 
   // Unmount will be unsuccessful.
-  EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(false));
+  EXPECT_CALL(*session_, Unmount()).WillOnce(Return(false));
   // If anyone asks, this mount is still mounted.
-  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
 
   // Test that non-owner's vaults are cleaned up anyway.
   EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(true));
@@ -951,12 +917,12 @@ TEST_F(UserDataAuthTest, InitializePkcs11Success) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
-  CreatePkcs11TokenInSession(mount_, session_);
+  CreatePkcs11TokenInSession(session_);
 
   // At first the token is not ready
   EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 
-  InitializePkcs11TokenInSession(mount_, session_);
+  InitializePkcs11TokenInSession(session_);
 
   EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 }
@@ -968,7 +934,7 @@ TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
-  CreatePkcs11TokenInSession(mount_, session_);
+  CreatePkcs11TokenInSession(session_);
 
   // At first the token is not ready
   EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
@@ -977,13 +943,13 @@ TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
   ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(false));
 
-  InitializePkcs11TokenInSession(mount_, session_);
+  InitializePkcs11TokenInSession(session_);
 
   // Still not ready because TPM is not owned.
   EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 
   // We'll need to call Pkcs11Token::Insert() and IsEnabled() later in the test.
-  Mock::VerifyAndClearExpectations(mount_.get());
+  Mock::VerifyAndClearExpectations(session_.get());
   Mock::VerifyAndClearExpectations(&tpm_);
 
   // Next check when the TPM is now owned.
@@ -992,7 +958,7 @@ TEST_F(UserDataAuthTest, InitializePkcs11TpmNotOwned) {
   ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
   EXPECT_CALL(tpm_, IsOwned()).Times(AtLeast(1)).WillRepeatedly(Return(true));
 
-  InitializePkcs11TokenInSession(mount_, session_);
+  InitializePkcs11TokenInSession(session_);
 
   EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 }
@@ -1002,14 +968,14 @@ TEST_F(UserDataAuthTest, InitializePkcs11Unmounted) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
-  CreatePkcs11TokenInSession(mount_, session_);
+  CreatePkcs11TokenInSession(session_);
 
   // At first the token is not ready
   EXPECT_FALSE(session_->GetPkcs11Token()->IsReady());
 
-  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(false));
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(false));
   // The initialization code should at least check, right?
-  EXPECT_CALL(*mount_, IsMounted())
+  EXPECT_CALL(*session_, IsActive())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(false));
 
@@ -1027,29 +993,25 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   constexpr char kUsername1[] = "foo@gmail.com";
   constexpr char kUsername2[] = "bar@gmail.com";
 
-  scoped_refptr<NiceMock<MockMount>> mount1 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session1 = base::MakeRefCounted<RealUserSession>(
-      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, mount1);
+  scoped_refptr<NiceMock<MockUserSession>> session1 =
+      base::MakeRefCounted<NiceMock<MockUserSession>>();
   userdataauth_->set_session_for_user(kUsername1, session1.get());
-  CreatePkcs11TokenInSession(mount1, session1);
+  CreatePkcs11TokenInSession(session1);
 
-  scoped_refptr<NiceMock<MockMount>> mount2 = new NiceMock<MockMount>();
-  scoped_refptr<UserSession> session2 = base::MakeRefCounted<RealUserSession>(
-      &homedirs_, &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_, mount2);
+  scoped_refptr<NiceMock<MockUserSession>> session2 =
+      base::MakeRefCounted<NiceMock<MockUserSession>>();
   userdataauth_->set_session_for_user(kUsername2, session2.get());
-  CreatePkcs11TokenInSession(mount2, session2);
+  CreatePkcs11TokenInSession(session2);
 
   // Both are uninitialized.
   EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   // Only one is initialized.
-  InitializePkcs11TokenInSession(mount2, session2);
+  InitializePkcs11TokenInSession(session2);
   EXPECT_FALSE(userdataauth_->Pkcs11IsTpmTokenReady());
 
   // Both is initialized.
-  InitializePkcs11TokenInSession(mount1, session1);
+  InitializePkcs11TokenInSession(session1);
   EXPECT_TRUE(userdataauth_->Pkcs11IsTpmTokenReady());
 }
 
@@ -1103,8 +1065,8 @@ TEST_F(UserDataAuthTest, Pkcs11Terminate) {
   // Check that we'll indeed get the Mount object to remove the PKCS#11 token.
   constexpr char kUsername1[] = "foo@gmail.com";
   SetupMount(kUsername1);
-  CreatePkcs11TokenInSession(mount_, session_);
-  InitializePkcs11TokenInSession(mount_, session_);
+  CreatePkcs11TokenInSession(session_);
+  InitializePkcs11TokenInSession(session_);
 
   EXPECT_TRUE(session_->GetPkcs11Token()->IsReady());
 
@@ -1120,12 +1082,12 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokens) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
-  CreatePkcs11TokenInSession(mount_, session_);
+  CreatePkcs11TokenInSession(session_);
 
   // PKCS#11 will initialization works only when it's mounted.
-  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
   // The initialization code should at least check, right?
-  EXPECT_CALL(*mount_, IsMounted())
+  EXPECT_CALL(*session_, IsActive())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
 
@@ -1143,10 +1105,10 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensTpmNotOwned) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
-  CreatePkcs11TokenInSession(mount_, session_);
+  CreatePkcs11TokenInSession(session_);
 
   // It shouldn't call any thing.
-  EXPECT_CALL(*mount_, IsMounted()).Times(0);
+  EXPECT_CALL(*session_, IsActive()).Times(0);
 
   // TPM is enabled but not owned.
   ON_CALL(tpm_, IsEnabled()).WillByDefault(Return(true));
@@ -1167,12 +1129,12 @@ TEST_F(UserDataAuthTest, Pkcs11RestoreTpmTokensWaitingOnTPM) {
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
 
-  CreatePkcs11TokenInSession(mount_, session_);
+  CreatePkcs11TokenInSession(session_);
 
   // PKCS#11 will initialization works only when it's mounted.
-  ON_CALL(*mount_, IsMounted()).WillByDefault(Return(true));
+  ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
   // The initialization code should at least check, right?
-  EXPECT_CALL(*mount_, IsMounted())
+  EXPECT_CALL(*session_, IsActive())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
 
@@ -1730,8 +1692,8 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   // Test case for single mount
   SetupMount("foo@gmail.com");
 
-  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount_, IsEphemeral()).WillOnce(Return(false));
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(false));
   EXPECT_CALL(user_activity_timestamp_manager_,
               UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .WillOnce(Return(true));
@@ -1739,17 +1701,17 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   EXPECT_TRUE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
 
   // Test case for multiple mounts
-  scoped_refptr<MockMount> prev_mount = mount_;
+  scoped_refptr<NiceMock<MockUserSession>> prev_session = session_;
   SetupMount("bar@gmail.com");
 
-  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount_, IsEphemeral()).WillOnce(Return(false));
-  EXPECT_CALL(*prev_mount, IsMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*prev_mount, IsEphemeral()).WillOnce(Return(false));
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(false));
+  EXPECT_CALL(*prev_session, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(*prev_session, IsEphemeral()).WillOnce(Return(false));
   EXPECT_CALL(user_activity_timestamp_manager_,
               UpdateTimestamp(_, base::Seconds(kTimeshift)))
-      .WillOnce(Return(true))
-      .WillOnce(Return(true));
+      .Times(2)
+      .WillRepeatedly(Return(true));
 
   EXPECT_TRUE(userdataauth_->UpdateCurrentUserActivityTimestamp(kTimeshift));
 }
@@ -1761,8 +1723,8 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
   // Test case for single mount
   SetupMount("foo@gmail.com");
 
-  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
-  EXPECT_CALL(*mount_, IsEphemeral()).WillOnce(Return(false));
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(false));
   EXPECT_CALL(user_activity_timestamp_manager_,
               UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .WillOnce(Return(false));
@@ -2166,15 +2128,6 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
-  // ownership over mount_factory is taken by the real_user_session_factory_.
-  auto* mount_factory = new NiceMock<MockMountFactory>();
-  auto real_user_session_factory = std::make_unique<RealUserSessionFactory>(
-      std::unique_ptr<MountFactory>(mount_factory), &platform_, &homedirs_,
-      &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_);
-  MockMount* mount = new MockMount();
-  EXPECT_CALL(*mount_factory, New(_, _, _, _, _)).WillOnce(Return(mount));
-  userdataauth_->set_user_session_factory(real_user_session_factory.get());
   EXPECT_CALL(platform_, FileExists(_)).Times(2).WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
@@ -2183,12 +2136,14 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
   InitializeUserDataAuth();
 
+  session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
+  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
-  EXPECT_CALL(*mount, MountCryptohome(_, _, _))
+  EXPECT_CALL(*session_, MountVault(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
@@ -2233,10 +2188,10 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
       .Times(5)
       .WillRepeatedly(Return(ExpireMountResult::kMarked));
 
-  EXPECT_CALL(*mount, OwnsMountPoint(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*mount, OwnsMountPoint(FilePath("/home/user/1")))
+  EXPECT_CALL(*session_, OwnsMountPoint(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*session_, OwnsMountPoint(FilePath("/home/user/1")))
       .WillOnce(Return(true));
-  EXPECT_CALL(*mount, OwnsMountPoint(FilePath("/home/root/1")))
+  EXPECT_CALL(*session_, OwnsMountPoint(FilePath("/home/root/1")))
       .WillOnce(Return(true));
 
   EXPECT_CALL(platform_,
@@ -2274,15 +2229,6 @@ TEST_F(UserDataAuthTest,
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
-  // ownership over mount_factory is taken by the real_user_session_factory_.
-  auto* mount_factory = new NiceMock<MockMountFactory>();
-  auto real_user_session_factory = std::make_unique<RealUserSessionFactory>(
-      std::unique_ptr<MountFactory>(mount_factory), &platform_, &homedirs_,
-      &keyset_management_, &user_activity_timestamp_manager_,
-      &pkcs11_token_factory_);
-  MockMount* mount = new MockMount();
-  EXPECT_CALL(*mount_factory, New(_, _, _, _, _)).WillOnce(Return(mount));
-  userdataauth_->set_user_session_factory(real_user_session_factory.get());
   EXPECT_CALL(platform_, FileExists(_)).Times(2).WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).Times(0);
   EXPECT_CALL(platform_, GetAttachedLoopDevices()).Times(0);
@@ -2290,12 +2236,14 @@ TEST_F(UserDataAuthTest,
 
   InitializeUserDataAuth();
 
+  session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
+  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
   auto vk = std::make_unique<VaultKeyset>();
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
-  EXPECT_CALL(*mount, MountCryptohome(_, _, _))
+  EXPECT_CALL(*session_, MountVault(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _)).WillOnce(Return(false));
   EXPECT_CALL(platform_, GetAttachedLoopDevices())
@@ -2338,10 +2286,10 @@ TEST_F(UserDataAuthTest,
   // directories are excluded.
   EXPECT_CALL(platform_, ExpireMount(_)).Times(5);
 
-  EXPECT_CALL(*mount, OwnsMountPoint(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(*mount, OwnsMountPoint(FilePath("/home/user/1")))
+  EXPECT_CALL(*session_, OwnsMountPoint(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*session_, OwnsMountPoint(FilePath("/home/user/1")))
       .WillOnce(Return(true));
-  EXPECT_CALL(*mount, OwnsMountPoint(FilePath("/home/root/1")))
+  EXPECT_CALL(*session_, OwnsMountPoint(FilePath("/home/root/1")))
       .WillOnce(Return(true));
 
   EXPECT_CALL(platform_,
@@ -2383,7 +2331,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoValidity) {
 
   SetupMount(kUsername1);
 
-  EXPECT_CALL(*mount_, MigrateEncryption(_, MigrationType::FULL))
+  EXPECT_CALL(*session_, MigrateVault(_, MigrationType::FULL))
       .WillOnce(Return(true));
 
   int success_cnt = 0;
@@ -2430,7 +2378,7 @@ TEST_F(UserDataAuthTest, StartMigrateToDircryptoFailure) {
   // Test MigrateToDircrypto failed
   SetupMount(kUsername1);
 
-  EXPECT_CALL(*mount_, MigrateEncryption(_, MigrationType::FULL))
+  EXPECT_CALL(*session_, MigrateVault(_, MigrationType::FULL))
       .WillOnce(Return(false));
 
   call_cnt = 0;
@@ -2630,13 +2578,11 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
 
   mount_req_->set_guest_mount(true);
 
-  EXPECT_CALL(*mount_factory_, New(_, _, _, _, _))
-      .WillOnce(Invoke([this](Platform*, HomeDirs*, bool, bool, bool) {
-        SetupMount(kUser);
-        NiceMock<MockMount>* res = new NiceMock<MockMount>();
-        EXPECT_CALL(*res, MountEphemeralCryptohome(kGuestUserName))
-            .WillOnce(Return(MOUNT_ERROR_NONE));
-        return reinterpret_cast<Mount*>(res);
+  EXPECT_CALL(user_session_factory_, New(_, _))
+      .WillOnce(Invoke([this](bool, bool) {
+        SetupMount(kGuestUserName);
+        EXPECT_CALL(*session_, MountGuest()).WillOnce(Return(MOUNT_ERROR_NONE));
+        return session_;
       }));
 
   bool called = false;
@@ -2664,7 +2610,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
   mount_req_->set_guest_mount(true);
 
   SetupMount(kUser);
-  EXPECT_CALL(*mount_factory_, New(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(user_session_factory_, New(_, _)).Times(0);
 
   bool called = false;
   {
@@ -2689,12 +2635,12 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
 
   mount_req_->set_guest_mount(true);
 
-  EXPECT_CALL(*mount_factory_, New(_, _, _, _, _))
-      .WillOnce(Invoke([](Platform*, HomeDirs*, bool, bool, bool) {
-        NiceMock<MockMount>* res = new NiceMock<MockMount>();
-        EXPECT_CALL(*res, MountEphemeralCryptohome(kGuestUserName))
+  EXPECT_CALL(user_session_factory_, New(_, _))
+      .WillOnce(Invoke([this](bool, bool) {
+        SetupMount(kGuestUserName);
+        EXPECT_CALL(*session_, MountGuest())
             .WillOnce(Return(MOUNT_ERROR_FATAL));
-        return reinterpret_cast<Mount*>(res);
+        return session_;
       }));
 
   bool called = false;
@@ -2811,6 +2757,9 @@ TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
   mount_req_->mutable_account()->set_account_id(kUser);
   mount_req_->set_public_mount(true);
 
+  session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
+  EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
+
   bool called = false;
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   {
@@ -2842,7 +2791,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
     EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
         .WillOnce(Return(ByMove(std::move(vk))));
     EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
-    EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
+    EXPECT_CALL(*session_, MountVault(_, _, _))
         .WillOnce(Return(MOUNT_ERROR_NONE));
     return true;
   }));
@@ -2881,7 +2830,7 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>(vk))));
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
-  EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
+  EXPECT_CALL(*session_, MountVault(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   bool called = false;
@@ -3105,7 +3054,8 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
 
   Credentials credentials(kUser, brillo::SecureBlob(kKey));
-  session_->SetCredentials(credentials);
+  EXPECT_CALL(*session_, VerifyCredentials(CredentialsMatcher(credentials)))
+      .WillOnce(Return(true));
 
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
@@ -3118,12 +3068,10 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckFail) {
   check_req_->mutable_account_id()->set_account_id(kUser);
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
 
-  Credentials credentials(kUser, brillo::SecureBlob("wrong"));
-  session_->SetCredentials(credentials);
-
+  Credentials credentials(kUser, brillo::SecureBlob(kKey));
+  EXPECT_CALL(*session_, VerifyCredentials(CredentialsMatcher(credentials)))
+      .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
-      .WillOnce(Return(ByMove(std::unique_ptr<VaultKeyset>())));
 
   CallCheckKeyAndVerify(user_data_auth::CryptohomeErrorCode::
                             CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
@@ -4065,9 +4013,9 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
             Invoke(this, &UserDataAuthExTest::GetNiceMockVaultKeyset));
 
     SetupMount(kUser);
-    Credentials credentials(kUser, brillo::SecureBlob(kKey));
-    credentials.set_key_data(key_data_);
-    session_->SetCredentials(credentials);
+    ON_CALL(*session_, VerifyUser(GetObfuscatedUsername(kUser)))
+        .WillByDefault(Return(true));
+    ON_CALL(*session_, key_data()).WillByDefault(ReturnRef(key_data_));
   }
 
  protected:
