@@ -243,7 +243,7 @@ CellularRefPtr Modem::GetExistingCellularDevice(int interface_index) const {
   DeviceRefPtr device = device_info_->GetDevice(interface_index);
   if (!device)
     return nullptr;
-  DCHECK_EQ(device->technology(), Technology::kCellular);
+  CHECK_EQ(device->technology(), Technology::kCellular);
   return static_cast<Cellular*>(device.get());
 }
 
