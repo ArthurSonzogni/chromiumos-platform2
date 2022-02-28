@@ -13,11 +13,12 @@ epoll_wait: 1
 eventfd2: 1
 exit: 1
 exit_group: 1
-faccessat: 1
 faccessat2: 1
+faccessat: 1
 flock: 1
 fstat: 1
 fstatfs: 1
+futex: 1
 getpid: 1
 getrandom: 1
 gettid: 1
@@ -33,5 +34,6 @@ rt_sigtimedwait: 1
 sendto: 1
 socket: arg0 == AF_UNIX
 statx: 1
+sysinfo: 1
 uname: 1
 write: 1
