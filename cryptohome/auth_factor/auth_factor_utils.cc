@@ -76,6 +76,9 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
       proto = ToPasswordProto(std::get_if<PasswordAuthFactorMetadata>(
           &auth_factor_metadata.metadata));
       break;
+    case AuthFactorType::kUnspecified:
+      LOG(ERROR) << "Cannot convert unspecified AuthFactor to proto";
+      return std::nullopt;
   }
   if (!proto.has_value()) {
     LOG(ERROR) << "Failed to convert auth factor to proto";
