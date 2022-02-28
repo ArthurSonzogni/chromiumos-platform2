@@ -84,6 +84,7 @@ _IUSE = [
     'hw_details',
     'hwid_override',
     'iioservice',
+    'inference_accuracy_eval',
     'intel_oemcrypto',
     'ipu6',
     'ipu6ep',
