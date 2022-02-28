@@ -616,8 +616,10 @@ void Cellular::Scan(Error* error, const std::string& /*reason*/) {
 void Cellular::RegisterOnNetwork(const std::string& network_id,
                                  Error* error,
                                  const ResultCallback& callback) {
-  if (!capability_)
+  if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
+    return;
+  }
   capability_->RegisterOnNetwork(network_id, error, callback);
 }
 
@@ -626,8 +628,10 @@ void Cellular::RequirePin(const std::string& pin,
                           Error* error,
                           const ResultCallback& callback) {
   SLOG(this, 2) << __func__ << "(" << require << ")";
-  if (!capability_)
+  if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
+    return;
+  }
   capability_->RequirePin(pin, require, error, callback);
 }
 
@@ -635,8 +639,10 @@ void Cellular::EnterPin(const std::string& pin,
                         Error* error,
                         const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
-  if (!capability_)
+  if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
+    return;
+  }
   capability_->EnterPin(pin, error, callback);
 }
 
@@ -645,8 +651,10 @@ void Cellular::UnblockPin(const std::string& unblock_code,
                           Error* error,
                           const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
-  if (!capability_)
+  if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
+    return;
+  }
   capability_->UnblockPin(unblock_code, pin, error, callback);
 }
 
@@ -655,8 +663,10 @@ void Cellular::ChangePin(const std::string& old_pin,
                          Error* error,
                          const ResultCallback& callback) {
   SLOG(this, 2) << __func__;
-  if (!capability_)
+  if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
+    return;
+  }
   capability_->ChangePin(old_pin, new_pin, error, callback);
 }
 
@@ -674,8 +684,10 @@ void Cellular::Reset(Error* error, const ResultCallback& callback) {
     return;
   }
 
-  if (!capability_)
+  if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
+    return;
+  }
   capability_->Reset(error, callback);
 }
 
