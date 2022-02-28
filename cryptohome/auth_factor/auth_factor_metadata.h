@@ -13,10 +13,16 @@ struct PasswordAuthFactorMetadata {
   PasswordAuthFactorMetadata() = default;
 };
 
+struct PinAuthFactorMetadata {
+  PinAuthFactorMetadata() = default;
+};
+
 struct AuthFactorMetadata {
   // Use `std::monostate` as the first alternative, in order to make the
   // default constructor create an empty metadata.
-  std::variant<std::monostate, PasswordAuthFactorMetadata> metadata;
+  std::
+      variant<std::monostate, PasswordAuthFactorMetadata, PinAuthFactorMetadata>
+          metadata;
 };
 
 }  // namespace cryptohome

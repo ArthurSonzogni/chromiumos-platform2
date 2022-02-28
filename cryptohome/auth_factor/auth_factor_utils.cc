@@ -20,21 +20,33 @@ namespace {
 // Set password metadata here, which happens to be empty. For other types of
 // factors, there will be more computations involved.
 void GetPasswordMetadata(const user_data_auth::AuthFactor& auth_factor,
-                         AuthFactorMetadata* auth_factor_metadata) {
-  auth_factor_metadata->metadata = PasswordAuthFactorMetadata();
+                         AuthFactorMetadata& out_auth_factor_metadata) {
+  out_auth_factor_metadata.metadata = PasswordAuthFactorMetadata();
+}
+
+// Set pin metadata here, which happens to be empty.
+void GetPinMetadata(const user_data_auth::AuthFactor& auth_factor,
+                    AuthFactorMetadata& out_auth_factor_metadata) {
+  out_auth_factor_metadata.metadata = PinAuthFactorMetadata();
 }
 
 // Creates a D-Bus proto for a password auth factor.
 std::optional<user_data_auth::AuthFactor> ToPasswordProto(
-    const PasswordAuthFactorMetadata* metadata) {
-  if (!metadata) {
-    LOG(ERROR) << "Missing password auth factor metadata";
-    return std::nullopt;
-  }
+    const PasswordAuthFactorMetadata& metadata) {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
   // There's no metadata for password auth factors currently.
   proto.mutable_password_metadata();
+  return proto;
+}
+
+// Creates a D-Bus proto for a pin auth factor.
+std::optional<user_data_auth::AuthFactor> ToPinProto(
+    const PinAuthFactorMetadata& metadata) {
+  user_data_auth::AuthFactor proto;
+  proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  // There's no metadata for pin auth factors currently.
+  proto.mutable_pin_metadata();
   return proto;
 }
 
@@ -49,8 +61,13 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
   switch (auth_factor.type()) {
     case user_data_auth::AUTH_FACTOR_TYPE_PASSWORD:
       DCHECK(auth_factor.has_password_metadata());
-      GetPasswordMetadata(auth_factor, &out_auth_factor_metadata);
+      GetPasswordMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kPassword;
+      break;
+    case user_data_auth::AUTH_FACTOR_TYPE_PIN:
+      DCHECK(auth_factor.has_password_metadata());
+      GetPinMetadata(auth_factor, out_auth_factor_metadata);
+      out_auth_factor_type = AuthFactorType::kPin;
       break;
     default:
       LOG(ERROR) << "Unknown auth factor type " << auth_factor.type();
@@ -72,13 +89,23 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
     const std::string& auth_factor_label) {
   std::optional<user_data_auth::AuthFactor> proto;
   switch (auth_factor_type) {
-    case AuthFactorType::kPassword:
-      proto = ToPasswordProto(std::get_if<PasswordAuthFactorMetadata>(
-          &auth_factor_metadata.metadata));
+    case AuthFactorType::kPassword: {
+      auto* password_metadata = std::get_if<PasswordAuthFactorMetadata>(
+          &auth_factor_metadata.metadata);
+      proto = password_metadata ? ToPasswordProto(*password_metadata)
+                                : std::nullopt;
       break;
-    case AuthFactorType::kUnspecified:
+    }
+    case AuthFactorType::kPin: {
+      auto* pin_metadata =
+          std::get_if<PinAuthFactorMetadata>(&auth_factor_metadata.metadata);
+      proto = pin_metadata ? ToPinProto(*pin_metadata) : std::nullopt;
+      break;
+    }
+    case AuthFactorType::kUnspecified: {
       LOG(ERROR) << "Cannot convert unspecified AuthFactor to proto";
       return std::nullopt;
+    }
   }
   if (!proto.has_value()) {
     LOG(ERROR) << "Failed to convert auth factor to proto";

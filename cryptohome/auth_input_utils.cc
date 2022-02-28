@@ -26,6 +26,12 @@ AuthInput FromPasswordAuthInput(
   };
 }
 
+AuthInput FromPinAuthInput(const user_data_auth::PinAuthInput& proto) {
+  return AuthInput{
+      .user_input = SecureBlob(proto.secret()),
+  };
+}
+
 }  // namespace
 
 std::optional<AuthInput> FromProto(
@@ -36,6 +42,9 @@ std::optional<AuthInput> FromProto(
   switch (auth_input_proto.input_case()) {
     case user_data_auth::AuthInput::kPasswordInput:
       auth_input = FromPasswordAuthInput(auth_input_proto.password_input());
+      break;
+    case user_data_auth::AuthInput::kPinInput:
+      auth_input = FromPinAuthInput(auth_input_proto.pin_input());
       break;
     case user_data_auth::AuthInput::INPUT_NOT_SET:
       break;

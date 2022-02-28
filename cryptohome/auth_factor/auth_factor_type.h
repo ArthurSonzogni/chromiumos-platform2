@@ -9,6 +9,7 @@ namespace cryptohome {
 
 enum class AuthFactorType {
   kPassword,
+  kPin,
   // TODO(b:208351356): Add other factor types.
   kUnspecified,
 };
