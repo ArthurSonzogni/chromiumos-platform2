@@ -181,6 +181,15 @@ WiFiService::WiFiService(Manager* manager,
   hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
   store->RegisterConstString(kWifiHexSsid, &hex_ssid_);
 
+  HelpRegisterConstDerivedString(kPasspointFQDNProperty,
+                                 &WiFiService::GetPasspointFQDN);
+  HelpRegisterConstDerivedString(kPasspointProvisioningSourceProperty,
+                                 &WiFiService::GetPasspointOrigin);
+  HelpRegisterConstDerivedString(kPasspointIDProperty,
+                                 &WiFiService::GetPasspointID);
+  HelpRegisterConstDerivedString(kPasspointMatchTypeProperty,
+                                 &WiFiService::GetPasspointMatchType);
+
   SetEapCredentials(new EapCredentials());
 
   // TODO(quiche): determine if it is okay to set EAP.KeyManagement for
@@ -265,6 +274,41 @@ std::string WiFiService::GetWiFiPassphrase(Error* error) {
   }
 
   return passphrase_;
+}
+
+std::string WiFiService::GetPasspointMatchType(Error* error) {
+  if (!parent_credentials_)
+    return std::string();
+
+  switch (match_priority_) {
+    case WiFiProvider::MatchPriority::kHome:
+      return kPasspointMatchTypeHome;
+    case WiFiProvider::MatchPriority::kRoaming:
+      return kPasspointMatchTypeRoaming;
+    default:
+      return kPasspointMatchTypeUnknown;
+  }
+}
+
+std::string WiFiService::GetPasspointFQDN(Error* error) {
+  if (!parent_credentials_)
+    return std::string();
+
+  return parent_credentials_->GetFQDN();
+}
+
+std::string WiFiService::GetPasspointOrigin(Error* error) {
+  if (!parent_credentials_)
+    return std::string();
+
+  return parent_credentials_->GetOrigin();
+}
+
+std::string WiFiService::GetPasspointID(Error* error) {
+  if (!parent_credentials_)
+    return std::string();
+
+  return parent_credentials_->id();
 }
 
 void WiFiService::SetEAPKeyManagement(const std::string& key_management) {
@@ -507,7 +551,6 @@ bool WiFiService::Load(const StoreInterface* storage) {
   }
   storage->GetUint64(id, WiFiService::kStoragePasspointMatchPriority,
                      &match_priority_);
-
   return true;
 }
 

@@ -296,6 +296,17 @@ PasspointCredentialsRefPtr PasspointCredentials::CreatePasspointCredentials(
   return creds;
 }
 
+std::string PasspointCredentials::GetFQDN() {
+  if (domains_.empty())
+    return std::string();
+
+  return domains_[0];
+}
+
+std::string PasspointCredentials::GetOrigin() {
+  return android_package_name_;
+}
+
 // static
 std::string PasspointCredentials::EncodeOI(uint64_t oi) {
   static const char kHexChars[] = "0123456789ABCDEF";

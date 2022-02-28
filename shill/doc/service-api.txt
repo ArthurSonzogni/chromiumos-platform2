@@ -665,6 +665,44 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			refer to:
 			https://w1.fi/cgit/hostap/plain/wpa_supplicant/wpa_supplicant.conf
 
+		string Passpoint.FQDN [readonly]
+
+			(WiFi only) A Fully Qualified Domain Name (FQDN) is
+			the matching domain representing the service provider
+			of the Passpoint Wi-Fi service. This property is only
+			non-empty if the Service was provisioned through
+			Passpoint.
+
+		string Passpoint.ProvisioningSource [readonly]
+
+			(WiFi only) The source for the creation of the
+			Passpoint service. For ARC created service this is
+			filled with the package name that added the
+			credentials. This property is only non-empty if the
+			Service was provisioned through Passpoint.
+
+		string Passpoint.MatchType [readonly]
+
+			(WiFi only) The match type between the Passpoint
+			credentials and the BSS. This property is only
+			non-empty if the Service was provisioned through
+			Passpoint. Passpoint.MatchType can be one of:
+
+			"home"		The network belongs to the service
+					provider.
+
+			"roaming"	The network belong to a partner of the
+					service provider.
+
+			"unknown"	The network match type is unknown.
+
+		string Passpoint.ID [readonly]
+
+			(WiFi only) An ID used by shill for the Passpoint
+			credentials. This is mostly used for debugging
+			purposes. This property is only non-empty if the
+			Service was provisioned through Passpoint.
+
 		string Error [readonly]
 
 			The service error status details.

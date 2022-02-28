@@ -62,6 +62,14 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   static PasspointCredentialsRefPtr CreatePasspointCredentials(
       const KeyValueStore& args, Error* error);
 
+  // Get the first fully qualified domain name (FQDN) from the FQDNs stored in
+  // |domains_|.
+  std::string GetFQDN();
+
+  // Get the provisioning source for the credentials. For ARC provisioned
+  // credentials, this function returns the App package name inside ARC.
+  std::string GetOrigin();
+
   const std::string& id() const { return id_; }
   const std::vector<std::string>& domains() const { return domains_; }
   const std::string& realm() const { return realm_; }

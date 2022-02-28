@@ -195,6 +195,11 @@ const char kEapUseProactiveKeyCachingProperty[] = "EAP.UseProactiveKeyCaching";
 const char kEapUseSystemCasProperty[] = "EAP.UseSystemCAs";
 const char kEapSubjectAlternativeNameMatchTypeProperty[] = "Type";
 const char kEapSubjectAlternativeNameMatchValueProperty[] = "Value";
+const char kPasspointFQDNProperty[] = "Passpoint.FQDN";
+const char kPasspointProvisioningSourceProperty[] =
+    "Passpoint.ProvisioningSource";
+const char kPasspointMatchTypeProperty[] = "Passpoint.MatchType";
+const char kPasspointIDProperty[] = "Passpoint.ID";
 
 // WiFi Service property names.
 const char kCountryProperty[] = "Country";
@@ -469,6 +474,11 @@ const char kRoamStateIdle[] = "idle";
 const char kRoamStateAssociation[] = "association";
 const char kRoamStateConfiguration[] = "configuration";
 const char kRoamStateReady[] = "ready";
+
+// Shill Passpoint match type options.
+const char kPasspointMatchTypeHome[] = "home";
+const char kPasspointMatchTypeRoaming[] = "roaming";
+const char kPasspointMatchTypeUnknown[] = "unknown";
 
 // Flimflam portal phase and status.
 const char kPortalDetectionPhaseConnection[] = "Connection";

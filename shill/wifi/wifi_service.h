@@ -195,6 +195,22 @@ class WiFiService : public Service {
 
   std::string GetWiFiPassphrase(Error* error) override;
 
+  // Get the Passpoint match type of "home", "roaming" or "unknown". This
+  // returns empty if the service is not provisioned through Passpoint.
+  std::string GetPasspointMatchType(Error* error);
+
+  // Get current Passpoint's credentials FQDN, empty if the service is not
+  // provisioned through Passpoint.
+  std::string GetPasspointFQDN(Error* error);
+
+  // Get current Passpoint's provisioning source, empty if the service is not
+  // provisioned through Passpoint.
+  std::string GetPasspointOrigin(Error* error);
+
+  // Get current Passpoint's ID, empty if the service is not provisioned through
+  // Passpoint.
+  std::string GetPasspointID(Error* error);
+
   // Signal level in dBm.  If no current endpoint, returns
   // std::numeric_limits<int>::min().
   mockable int16_t SignalLevel() const;
