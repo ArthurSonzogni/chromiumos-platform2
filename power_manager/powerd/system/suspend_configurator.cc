@@ -135,6 +135,7 @@ void SuspendConfigurator::ConfigureConsoleForSuspend() {
   bool enable_console = true;
 
 // Limit disabling console for S0iX to x86 (b/175428322).
+// TODO(b/219973337): Limit this work around to Intel only. Not needed for AMD.
 #if defined(__x86_64__)
   if (IsSerialConsoleEnabled()) {
     // If S0iX is enabled, default to disabling console (b/63737106).
@@ -198,7 +199,9 @@ bool SuspendConfigurator::IsSerialConsoleEnabled() {
   bool rc = false;
 
   for (const std::string& con : consoles) {
-    if (base::StartsWith(con, "tty", base::CompareCase::SENSITIVE)) {
+    if (base::StartsWith(con, "ttynull", base::CompareCase::SENSITIVE)) {
+      continue;
+    } else if (base::StartsWith(con, "tty", base::CompareCase::SENSITIVE)) {
       rc = true;
       break;
     }
