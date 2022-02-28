@@ -1730,7 +1730,8 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   // Test case for single mount
   SetupMount("foo@gmail.com");
 
-  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, IsEphemeral()).WillOnce(Return(false));
   EXPECT_CALL(user_activity_timestamp_manager_,
               UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .WillOnce(Return(true));
@@ -1741,7 +1742,10 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampSuccess) {
   scoped_refptr<MockMount> prev_mount = mount_;
   SetupMount("bar@gmail.com");
 
-  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, IsEphemeral()).WillOnce(Return(false));
+  EXPECT_CALL(*prev_mount, IsMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*prev_mount, IsEphemeral()).WillOnce(Return(false));
   EXPECT_CALL(user_activity_timestamp_manager_,
               UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .WillOnce(Return(true))
@@ -1757,7 +1761,8 @@ TEST_F(UserDataAuthTest, UpdateCurrentUserActivityTimestampFailure) {
   // Test case for single mount
   SetupMount("foo@gmail.com");
 
-  EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*mount_, IsMounted()).WillOnce(Return(true));
+  EXPECT_CALL(*mount_, IsEphemeral()).WillOnce(Return(false));
   EXPECT_CALL(user_activity_timestamp_manager_,
               UpdateTimestamp(_, base::Seconds(kTimeshift)))
       .WillOnce(Return(false));

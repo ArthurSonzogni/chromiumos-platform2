@@ -3239,8 +3239,15 @@ bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
 
   bool success = true;
   for (const auto& session_pair : sessions_) {
+    scoped_refptr<UserSession> session = session_pair.second;
     const std::string obfuscated_username =
         SanitizeUserName(session_pair.first);
+    // Inactive session is not current and ephemerals should not have ts since
+    // they do not affect disk space use and do not participate in disk
+    // cleaning.
+    if (!session->IsActive() || session->IsEphemeral()) {
+      continue;
+    }
     success &= user_activity_timestamp_manager_->UpdateTimestamp(
         obfuscated_username, base::Seconds(time_shift_sec));
   }
