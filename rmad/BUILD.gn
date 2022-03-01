@@ -5,15 +5,15 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":rmad" ]
+  deps = [
+    ":install_dbus_activation",
+    ":install_dbus_config",
+    ":install_seccomp_policy",
+    ":install_upstart_config",
+    ":rmad",
+  ]
   if (use.test) {
-    deps += [
-      ":install_dbus_activation",
-      ":install_dbus_config",
-      ":install_seccomp_policy",
-      ":install_upstart_config",
-      ":rmad_test",
-    ]
+    deps += [ ":rmad_test" ]
   }
 }
 
@@ -159,7 +159,7 @@ executable("rmad") {
 
 # Install upstart configs and scripts.
 install_config("install_upstart_config") {
-  sources = [ "init/*.conf" ]
+  sources = [ "init/rmad.conf" ]
   install_path = "/etc/init"
 }
 
