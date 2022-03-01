@@ -183,7 +183,7 @@ TEST_F(SystemConfigTest, WilcoDeviceFalse) {
 }
 
 TEST_F(SystemConfigTest, CorrectMarketingName) {
-  fake_cros_config()->SetString(kArcBuildPropertiesPath, kMarketingNameProperty,
+  fake_cros_config()->SetString(kBrandingPath, kMarketingNameProperty,
                                 kFakeMarketingName);
   EXPECT_TRUE(system_config()->GetMarketingName().has_value());
   EXPECT_EQ(system_config()->GetMarketingName().value(), kFakeMarketingName);

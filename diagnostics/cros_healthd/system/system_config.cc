@@ -153,7 +153,7 @@ bool SystemConfig::IsWilcoDevice() {
 
 base::Optional<std::string> SystemConfig::GetMarketingName() {
   std::string marketing_name;
-  if (!cros_config_->GetString(kArcBuildPropertiesPath, kMarketingNameProperty,
+  if (!cros_config_->GetString(kBrandingPath, kMarketingNameProperty,
                                &marketing_name)) {
     return base::nullopt;
   }
