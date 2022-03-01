@@ -31,8 +31,7 @@ class WifiController : public system::UdevSubsystemObserver,
 
     // Updates the wifi transmit power to |power|.
     virtual void SetWifiTransmitPower(RadioTransmitPower power,
-                                      WifiRegDomain domain,
-                                      TriggerSource source) = 0;
+                                      WifiRegDomain domain) = 0;
   };
 
   // Net subsystem and wlan devtype for udev events.
@@ -87,11 +86,11 @@ class WifiController : public system::UdevSubsystemObserver,
 
   // Updates transmit power via |delegate_|. Ends up invoking either one of
   // UpdateTransmitPowerFor*() depending on |update_power_input_source_|.
-  void UpdateTransmitPower(TriggerSource source);
+  void UpdateTransmitPower();
 
-  void UpdateTransmitPowerForStaticMode(TriggerSource source);
-  void UpdateTransmitPowerForTabletMode(TriggerSource source);
-  void UpdateTransmitPowerForProximity(TriggerSource source);
+  void UpdateTransmitPowerForStaticMode();
+  void UpdateTransmitPowerForTabletMode();
+  void UpdateTransmitPowerForProximity();
 
   UpdatePowerInputSource update_power_input_source_ =
       UpdatePowerInputSource::NONE;

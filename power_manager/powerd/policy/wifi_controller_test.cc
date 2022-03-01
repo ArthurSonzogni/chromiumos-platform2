@@ -31,25 +31,21 @@ class TestWifiControllerDelegate : public WifiController::Delegate {
     return last_transmit_power_;
   }
   WifiRegDomain last_reg_domain() const { return last_reg_domain_; }
-  TriggerSource last_trigger_source() const { return last_trigger_source_; }
 
   // Resets stat members.
   void ResetStats() {
     num_set_calls_ = 0;
     last_transmit_power_ = RadioTransmitPower::UNSPECIFIED;
     last_reg_domain_ = WifiRegDomain::NONE;
-    last_trigger_source_ = TriggerSource::UNKNOWN;
   }
 
   // WifiController::Delegate:
   void SetWifiTransmitPower(RadioTransmitPower power,
-                            WifiRegDomain domain,
-                            TriggerSource source) override {
+                            WifiRegDomain domain) override {
     CHECK_NE(power, RadioTransmitPower::UNSPECIFIED);
     num_set_calls_++;
     last_transmit_power_ = power;
     last_reg_domain_ = domain;
-    last_trigger_source_ = source;
   }
 
  private:
@@ -60,8 +56,6 @@ class TestWifiControllerDelegate : public WifiController::Delegate {
   RadioTransmitPower last_transmit_power_ = RadioTransmitPower::UNSPECIFIED;
 
   WifiRegDomain last_reg_domain_ = WifiRegDomain::NONE;
-
-  TriggerSource last_trigger_source_ = TriggerSource::UNKNOWN;
 };
 
 }  // namespace

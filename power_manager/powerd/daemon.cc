@@ -858,8 +858,7 @@ void Daemon::ShutDownFromSuspend() {
 }
 
 void Daemon::SetWifiTransmitPower(RadioTransmitPower power,
-                                  WifiRegDomain domain,
-                                  TriggerSource source) {
+                                  WifiRegDomain domain) {
   const std::string power_arg = (power == RadioTransmitPower::LOW)
                                     ? "--wifi_transmit_power_tablet"
                                     : "--nowifi_transmit_power_tablet";
@@ -877,30 +876,8 @@ void Daemon::SetWifiTransmitPower(RadioTransmitPower power,
     default:
       break;
   }
-
-  std::string source_arg = "--wifi_transmit_power_source=unknown";
-  switch (source) {
-    case TriggerSource::INIT:
-      source_arg = "--wifi_transmit_power_source=init";
-      break;
-    case TriggerSource::TABLET_MODE:
-      source_arg = "--wifi_transmit_power_source=tablet_mode";
-      break;
-    case TriggerSource::REG_DOMAIN:
-      source_arg = "--wifi_transmit_power_source=reg_domain";
-      break;
-    case TriggerSource::UDEV_EVENT:
-      source_arg = "--wifi_transmit_power_source=udev_event";
-      break;
-    case TriggerSource::PROXIMITY:
-      source_arg = "--wifi_transmit_power_source=proximity";
-      break;
-    default:
-      break;
-  }
-
-  const std::string args = base::StringPrintf(
-      "%s %s %s", power_arg.c_str(), domain_arg.c_str(), source_arg.c_str());
+  const std::string args =
+      base::StringPrintf("%s %s", power_arg.c_str(), domain_arg.c_str());
   LOG(INFO) << ((power == RadioTransmitPower::LOW) ? "Enabling" : "Disabling")
             << " tablet mode wifi transmit power";
   RunSetuidHelper("set_wifi_transmit_power", args, false);

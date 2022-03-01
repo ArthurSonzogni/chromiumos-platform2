@@ -407,15 +407,6 @@ enum class ModemState {
   UNKNOWN,
 };
 
-enum class TriggerSource {
-  INIT,
-  TABLET_MODE,
-  REG_DOMAIN,
-  PROXIMITY,
-  UDEV_EVENT,
-  UNKNOWN,
-};
-
 enum class CellularRegulatoryDomain {
   FCC,
   ISED,
@@ -502,7 +493,6 @@ std::string DisplayModeToString(DisplayMode mode);
 std::string ButtonStateToString(ButtonState state);
 std::string ShutdownReasonToString(ShutdownReason reason);
 std::string WifiRegDomainToString(WifiRegDomain domain);
-std::string TriggerSourceToString(TriggerSource source);
 
 }  // namespace power_manager
 

@@ -549,8 +549,7 @@ class PowerSetter {
 
   bool SendModeSwitch(const std::string& dev_name,
                       bool tablet,
-                      power_manager::WifiRegDomain domain,
-                      power_manager::TriggerSource tr_source) {
+                      power_manager::WifiRegDomain domain) {
     const uint32_t index = if_nametoindex(dev_name.c_str());
     if (!index) {
       LOG(ERROR) << "Failed to find wireless device index for " << dev_name;
@@ -577,14 +576,6 @@ class PowerSetter {
     else
       genlmsg_put(msg, NL_AUTO_PID, NL_AUTO_SEQ, nl_family_id_, 0, 0,
                   NL80211_CMD_VENDOR, 0);
-
-    // Marvell does not support Tx power change based on reg domain change.
-    if (driver == WirelessDriver::MWIFIEX &&
-        tr_source == power_manager::TriggerSource::REG_DOMAIN) {
-      LOG(WARNING) << "Marvell WiFi does not support Tx power change based on "
-                      "reg domain change.";
-      return false;
-    }
 
     // Set actual message.
     CHECK(!nla_put_u32(msg, NL80211_ATTR_IFINDEX, index))
@@ -624,9 +615,7 @@ class PowerSetter {
 
   // Sets power mode according to tablet mode state. Returns true on success and
   // false on failure.
-  bool SetPowerMode(bool tablet,
-                    power_manager::WifiRegDomain domain,
-                    power_manager::TriggerSource tr_source) {
+  bool SetPowerMode(bool tablet, power_manager::WifiRegDomain domain) {
     CHECK(!genl_connect(nl_sock_)) << "Failed to connect to netlink";
 
     nl_family_id_ = genl_ctrl_resolve(nl_sock_, "nl80211");
@@ -640,7 +629,7 @@ class PowerSetter {
 
     bool ret = true;
     for (const auto& name : device_names)
-      if (!SendModeSwitch(name, tablet, domain, tr_source))
+      if (!SendModeSwitch(name, tablet, domain))
         ret = false;
     return ret;
   }
@@ -659,16 +648,10 @@ int main(int argc, char* argv[]) {
   DEFINE_string(domain, "none",
                 "Regulatory domain for wifi transmit power"
                 "Options: fcc, eu, rest-of-world, none");
-  DEFINE_string(source, "unknown",
-                "Trigger source for wifi transmit power"
-                "Options: init, tablet_mode, reg_domain,"
-                " proximity, udev_event, unknown");
   brillo::FlagHelper::Init(argc, argv, "Set wifi transmit power mode");
 
   base::AtExitManager at_exit_manager;
   power_manager::WifiRegDomain domain = power_manager::WifiRegDomain::NONE;
-  power_manager::TriggerSource tr_source =
-      power_manager::TriggerSource::UNKNOWN;
   if (FLAGS_domain == "fcc") {
     domain = power_manager::WifiRegDomain::FCC;
   } else if (FLAGS_domain == "eu") {
@@ -681,24 +664,5 @@ int main(int argc, char* argv[]) {
                   "accepted value. Options: fcc, eu, rest-of-world, none";
     return 1;
   }
-
-  if (FLAGS_source == "init") {
-    tr_source = power_manager::TriggerSource::INIT;
-  } else if (FLAGS_source == "tablet_mode") {
-    tr_source = power_manager::TriggerSource::TABLET_MODE;
-  } else if (FLAGS_source == "reg_domain") {
-    tr_source = power_manager::TriggerSource::REG_DOMAIN;
-  } else if (FLAGS_source == "proximity") {
-    tr_source = power_manager::TriggerSource::PROXIMITY;
-  } else if (FLAGS_source == "udev_event") {
-    tr_source = power_manager::TriggerSource::UDEV_EVENT;
-  } else if (FLAGS_source != "unknown") {
-    LOG(ERROR) << "Trigger source argument \"" << FLAGS_domain
-               << "\" is not an "
-                  "accepted value. Options: init, tablet_mode,"
-                  " reg_domain, proximity, udev_event, unknown";
-    return 1;
-  }
-
-  return PowerSetter().SetPowerMode(FLAGS_tablet, domain, tr_source) ? 0 : 1;
+  return PowerSetter().SetPowerMode(FLAGS_tablet, domain) ? 0 : 1;
 }
