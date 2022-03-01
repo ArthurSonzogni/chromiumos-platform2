@@ -54,9 +54,9 @@ base::TimeDelta TransitionToTimeDelta(
     case BacklightController::Transition::INSTANT:
       return base::TimeDelta();
     case BacklightController::Transition::FAST:
-      return base::Milliseconds(kFastBacklightTransitionMs);
+      return kFastBacklightTransition;
     case BacklightController::Transition::SLOW:
-      return base::Milliseconds(kSlowBacklightTransitionMs);
+      return kSlowBacklightTransition;
   }
 }
 
@@ -131,7 +131,6 @@ const double InternalBacklightController::kMinVisiblePercent =
 const double InternalBacklightController::kMinLevelsForNonLinearMapping = 100;
 const double InternalBacklightController::kDefaultMinVisibleBrightnessFraction =
     0.0065;
-const int InternalBacklightController::kAmbientLightSensorTimeoutSec = 10;
 
 InternalBacklightController::InternalBacklightController()
     : clock_(new Clock),
@@ -662,10 +661,10 @@ void InternalBacklightController::UpdateState(
     BacklightBrightnessChange_Cause cause, Transition adjust_transition) {
   // Give up on the ambient light sensor if it's not supplying readings.
   if (use_ambient_light_ && !got_ambient_light_brightness_percent_ &&
-      clock_->GetCurrentTime() - init_time_ >=
-          base::Seconds(kAmbientLightSensorTimeoutSec)) {
+      clock_->GetCurrentTime() - init_time_ >= kAmbientLightSensorTimeout) {
     LOG(ERROR) << "Giving up on ambient light sensor after getting no reading "
-               << "within " << kAmbientLightSensorTimeoutSec << " seconds";
+               << "within " << kAmbientLightSensorTimeout.InSeconds()
+               << " seconds";
     use_ambient_light_ = false;
   }
 

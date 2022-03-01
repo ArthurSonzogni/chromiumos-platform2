@@ -23,7 +23,7 @@
 #include "power_manager/powerd/system/thermal/thermal_device_factory.h"
 
 namespace {
-constexpr int kPollIntervalMs = 10;
+constexpr base::TimeDelta kPollInterval = base::Milliseconds(10);
 }  // namespace
 
 namespace power_manager {
@@ -85,7 +85,7 @@ class ThermalDeviceFuzzer {
     cooling_device.reset(static_cast<CoolingDevice*>(cooling_devices[0].get()));
     cooling_devices[0].release();
 
-    cooling_device->set_poll_interval_ms_for_testing(kPollIntervalMs);
+    cooling_device->set_poll_interval_for_testing(kPollInterval);
     cooling_device->Init(false /* read_immedieatly */);
   }
 
@@ -134,7 +134,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   for (int i = 0; i < 100; i++) {
     thermal_device_fuzzer->WriteNewThermalData(fuzzed_data_provider.get());
-    task_runner->FastForwardBy(base::Milliseconds(kPollIntervalMs));
+    task_runner->FastForwardBy(kPollInterval);
   }
 
   return 0;

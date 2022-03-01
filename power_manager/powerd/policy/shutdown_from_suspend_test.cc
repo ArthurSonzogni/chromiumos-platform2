@@ -18,6 +18,8 @@ namespace policy {
 
 namespace {
 constexpr auto kRunLoopDelay = base::Milliseconds(200);
+constexpr int kShutdownAfterSecs = 1;
+constexpr auto kShutdownAfter = base::Seconds(kShutdownAfterSecs);
 }
 
 class ShutdownFromSuspendTest : public ::testing::Test {
@@ -106,14 +108,12 @@ TEST_F(ShutdownFromSuspendTest, TestHibernateNotAvailable) {
 // 3. Device has spent |kLowerPowerFromSuspendSecPref| in suspend
 // 4. Device is not on line power when dark resumed.
 TEST_F(ShutdownFromSuspendTest, TestShutdownPath) {
-  int kShutdownAfterSecs = 1;
   Init(true, false, kShutdownAfterSecs);
   // First |PrepareForSuspendAttempt| after boot should always return
   // Action::SUSPEND
   EXPECT_EQ(shutdown_from_suspend_.PrepareForSuspendAttempt(),
             ShutdownFromSuspend::Action::SUSPEND);
-  base::TimeDelta run_loop_for =
-      base::Seconds(kShutdownAfterSecs) + kRunLoopDelay;
+  base::TimeDelta run_loop_for = kShutdownAfter + kRunLoopDelay;
   runner_.StartLoop(run_loop_for);
   // Fake a dark resume.
   shutdown_from_suspend_.HandleDarkResume();
@@ -126,14 +126,12 @@ TEST_F(ShutdownFromSuspendTest, TestShutdownPath) {
 // 2. Hibernate is enabled
 // 3. Device has spent |kLowerPowerFromSuspendSecPref| in suspend
 TEST_F(ShutdownFromSuspendTest, TestHibernatePath) {
-  int kShutdownAfterSecs = 1;
   Init(true, true, kShutdownAfterSecs);
   // First |PrepareForSuspendAttempt| after boot should always return
   // Action::SUSPEND
   EXPECT_EQ(shutdown_from_suspend_.PrepareForSuspendAttempt(),
             ShutdownFromSuspend::Action::SUSPEND);
-  base::TimeDelta run_loop_for =
-      base::Seconds(kShutdownAfterSecs) + kRunLoopDelay;
+  base::TimeDelta run_loop_for = kShutdownAfter + kRunLoopDelay;
   runner_.StartLoop(run_loop_for);
   // Fake a dark resume.
   shutdown_from_suspend_.HandleDarkResume();
@@ -144,11 +142,9 @@ TEST_F(ShutdownFromSuspendTest, TestHibernatePath) {
 // Test that ShutdownFromSuspend asks the system to suspend if the device is on
 // line power and hibernate is disabled.
 TEST_F(ShutdownFromSuspendTest, TestOnLinePower) {
-  int kShutdownAfterSecs = 1;
   Init(true, false, kShutdownAfterSecs);
   shutdown_from_suspend_.PrepareForSuspendAttempt();
-  base::TimeDelta run_loop_for =
-      base::Seconds(kShutdownAfterSecs) + kRunLoopDelay;
+  base::TimeDelta run_loop_for = kShutdownAfter + kRunLoopDelay;
   runner_.StartLoop(run_loop_for);
   // Fake a dark resume.
   shutdown_from_suspend_.HandleDarkResume();
@@ -168,11 +164,9 @@ TEST_F(ShutdownFromSuspendTest, TestOnLinePower) {
 // Test that ShutdownFromSuspend asks the policy to suspend when in full
 // resume.
 TEST_F(ShutdownFromSuspendTest, TestFullResume) {
-  int kShutdownAfterSecs = 1;
   Init(true, true, kShutdownAfterSecs);
   shutdown_from_suspend_.PrepareForSuspendAttempt();
-  base::TimeDelta run_loop_for =
-      base::Seconds(kShutdownAfterSecs) + kRunLoopDelay;
+  base::TimeDelta run_loop_for = kShutdownAfter + kRunLoopDelay;
   runner_.StartLoop(run_loop_for);
   // Fake a full resume.
   shutdown_from_suspend_.HandleFullResume();

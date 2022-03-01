@@ -22,7 +22,7 @@ namespace system {
 namespace {
 
 // Default interval for polling the thermal device.
-const int kDefaultPollIntervalMs = 5000;
+constexpr base::TimeDelta kDefaultPollInterval = base::Seconds(5);
 const int kNumErrorBeforeGivingUp = 5;
 
 }  // namespace
@@ -34,7 +34,7 @@ ThermalDevice::ThermalDevice(base::FilePath device_path)
       num_init_attempts_(0),
       num_read_errors_(0),
       type_(ThermalDeviceType::kUnknown),
-      poll_interval_ms_(kDefaultPollIntervalMs),
+      poll_interval_(kDefaultPollInterval),
       current_state_(DeviceThermalState::kUnknown) {}
 
 ThermalDevice::~ThermalDevice() {}
@@ -61,7 +61,7 @@ void ThermalDevice::Init(bool read_immediately) {
 }
 
 void ThermalDevice::StartTimer() {
-  poll_timer_.Start(FROM_HERE, base::Milliseconds(poll_interval_ms_), this,
+  poll_timer_.Start(FROM_HERE, poll_interval_, this,
                     &ThermalDevice::ReadDeviceState);
 }
 

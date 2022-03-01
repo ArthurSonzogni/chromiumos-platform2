@@ -11,6 +11,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <cros_config/fake_cros_config.h>
 #include <gtest/gtest.h>
 
@@ -29,9 +30,9 @@ const char kGarbageString[] = "This is garbage";
 const char kIntTestFileName[] = "intfile";
 const char kDoubleTestFileName[] = "doublefile";
 
-// The test crashes after this many milliseconds if an expected preference
+// The test crashes after this period of time if an expected preference
 // change notification is never received.
-const int kPrefChangeTimeoutMs = 60 * 1000;
+constexpr base::TimeDelta kPrefChangeTimeout = base::Minutes(1);
 
 }  // namespace
 
@@ -52,7 +53,7 @@ class TestPrefsObserver : public PrefsObserver {
   // Runs |loop_| until OnPrefChanged() is called, then quits the loop
   // and returns a string containing the name of the pref that was changed.
   std::string RunUntilPrefChanged() {
-    CHECK(loop_runner_.StartLoop(base::Milliseconds(kPrefChangeTimeoutMs)))
+    CHECK(loop_runner_.StartLoop(kPrefChangeTimeout))
         << "Pref change not received";
     return pref_name_;
   }

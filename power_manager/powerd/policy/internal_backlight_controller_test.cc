@@ -178,8 +178,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
             display_power_setter_.state());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            display_power_setter_.delay().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, display_power_setter_.delay());
 
   // One increase request should raise the brightness to the minimum
   // visible level, while a second one should increase it above that.
@@ -417,8 +416,7 @@ TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
   // the adjustment count.
   light_sensor_.NotifyObservers();
   EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 
   // Pass a bunch of higher readings and check that we slowly increase the
@@ -427,8 +425,7 @@ TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
   for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
     light_sensor_.NotifyObservers();
   EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(1, controller_->GetNumAmbientLightSensorAdjustments());
 
   // Check that the adjustment count is reset when a new session starts.
@@ -506,8 +503,7 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
   int64_t dimmed_level = backlight_.current_level();
   EXPECT_LT(dimmed_level, bottom_als_level);
   EXPECT_GT(dimmed_level, 0);
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // A second dim request shouldn't change the level.
   controller_->SetDimmedForInactivity(true);
@@ -597,8 +593,7 @@ TEST_F(InternalBacklightControllerTest, DeferInitialAdjustment) {
   // slowly transition to the ALS-derived level.
   light_sensor_.NotifyObservers();
   EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 }
 
 TEST_F(InternalBacklightControllerTest, NoAmbientLightSensor) {
@@ -799,8 +794,7 @@ TEST_F(InternalBacklightControllerTest, GiveUpOnBrokenAmbientLightSensor) {
   // After the timeout has elapsed, state changes (like dimming due to
   // inactivity) should be honored.
   const base::TimeTicks kUpdateTime =
-      init_time_ +
-      base::Seconds(InternalBacklightController::kAmbientLightSensorTimeoutSec);
+      init_time_ + InternalBacklightController::kAmbientLightSensorTimeout;
   controller_->clock()->set_current_time_for_testing(kUpdateTime);
   controller_->SetDimmedForInactivity(true);
   EXPECT_LT(backlight_.current_level(), initial_backlight_level_);
@@ -850,8 +844,7 @@ TEST_F(InternalBacklightControllerTest, BrightnessPolicy) {
   policy.set_ac_brightness_percent(75.0);
   controller_->HandlePolicyChange(policy);
   EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
   ASSERT_EQ(static_cast<size_t>(1), observer.changes().size());
   EXPECT_EQ(BacklightBrightnessChange_Cause_OTHER, observer.changes()[0].cause);
   EXPECT_EQ(controller_.get(), observer.changes()[0].source);
@@ -992,8 +985,7 @@ TEST_F(InternalBacklightControllerTest, PreemptTransitionForShutdown) {
       dbus_wrapper_.get(), 0, SetBacklightBrightnessRequest_Transition_FAST,
       SetBacklightBrightnessRequest_Cause_USER_REQUEST);
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // Shut the system down and check that the transition is interrupted in favor
   // of setting the backlight to 0 immediately.
@@ -1098,8 +1090,7 @@ TEST_F(InternalBacklightControllerTest, SetAndGetBrightness) {
   double percent = 0.0;
   ASSERT_TRUE(controller_->GetBrightnessPercent(&percent));
   ASSERT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // A signal should've been emitted with the appropriate cause.
   test::CheckBrightnessChangedSignal(

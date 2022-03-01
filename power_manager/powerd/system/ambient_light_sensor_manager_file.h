@@ -8,6 +8,8 @@
 #include <memory>
 #include <vector>
 
+#include <base/time/time.h>
+
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_file.h"
@@ -30,7 +32,7 @@ class AmbientLightSensorManagerFile
   ~AmbientLightSensorManagerFile() override;
 
   void set_device_list_path_for_testing(const base::FilePath& path);
-  void set_poll_interval_ms_for_testing(int interval_ms);
+  void set_poll_interval_for_testing(base::TimeDelta interval);
 
   void Run(bool read_immediately);
 

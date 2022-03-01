@@ -16,6 +16,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
 #include <cros_config/cros_config.h>
 
 #include "power_manager/common/cros_config_prefs_source.h"
@@ -38,7 +39,7 @@ constexpr char kBoardSpecificPrefsSubdir[] = "board_specific";
 
 // Minimum time between batches of prefs being written to disk, in
 // milliseconds.
-const int kDefaultWriteIntervalMs = 1000;
+constexpr base::TimeDelta kDefaultWriteInterval = base::Seconds(1);
 
 }  // namespace
 
@@ -55,7 +56,7 @@ bool Prefs::TestApi::TriggerWriteTimeout() {
   return true;
 }
 
-Prefs::Prefs() : write_interval_(base::Milliseconds(kDefaultWriteIntervalMs)) {}
+Prefs::Prefs() : write_interval_(kDefaultWriteInterval) {}
 
 Prefs::~Prefs() {
   if (write_prefs_timer_.IsRunning())

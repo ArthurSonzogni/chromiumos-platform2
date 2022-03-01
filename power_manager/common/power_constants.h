@@ -375,10 +375,10 @@ extern const char kBusNameOwnerChangedSignal[];
 extern const double kEpsilon;
 
 // Total time that should be used to gradually animate the backlight level
-// to a new brightness, in milliseconds.  Note that some
-// BacklightController implementations may not use animated transitions.
-extern const int64_t kFastBacklightTransitionMs;
-extern const int64_t kSlowBacklightTransitionMs;
+// to a new brightness. Note that some BacklightController implementations may
+// not use animated transitions.
+extern const base::TimeDelta kFastBacklightTransition;
+extern const base::TimeDelta kSlowBacklightTransition;
 // udev subsystem to watch for input device related events.
 extern const char kInputUdevSubsystem[];
 

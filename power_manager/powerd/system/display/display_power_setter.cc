@@ -10,6 +10,7 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 #include <dbus/message.h>
 
 #include "power_manager/common/util.h"
@@ -21,7 +22,7 @@ namespace system {
 namespace {
 
 // Timeout for D-Bus method calls to Chrome.
-const int kDisplayServiceDBusTimeoutMs = 5000;
+constexpr base::TimeDelta kDisplayServiceDBusTimeout = base::Seconds(5);
 
 std::string DisplayPowerStateToString(chromeos::DisplayPowerState state) {
   switch (state) {
@@ -72,9 +73,8 @@ void DisplayPowerSetter::SetDisplaySoftwareDimming(bool dimmed) {
       chromeos::kDisplayServiceSetSoftwareDimmingMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(dimmed);
-  dbus_wrapper_->CallMethodSync(
-      display_service_proxy_, &method_call,
-      base::Milliseconds(kDisplayServiceDBusTimeoutMs));
+  dbus_wrapper_->CallMethodSync(display_service_proxy_, &method_call,
+                                kDisplayServiceDBusTimeout);
 }
 
 void DisplayPowerSetter::SendStateToDisplayService(
@@ -85,9 +85,8 @@ void DisplayPowerSetter::SendStateToDisplayService(
                                chromeos::kDisplayServiceSetPowerMethod);
   dbus::MessageWriter writer(&method_call);
   writer.AppendInt32(state);
-  dbus_wrapper_->CallMethodSync(
-      display_service_proxy_, &method_call,
-      base::Milliseconds(kDisplayServiceDBusTimeoutMs));
+  dbus_wrapper_->CallMethodSync(display_service_proxy_, &method_call,
+                                kDisplayServiceDBusTimeout);
 }
 
 }  // namespace system

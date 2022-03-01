@@ -19,11 +19,11 @@ namespace policy {
 namespace {
 
 // Maximum amount of time to wait for OnReadyForSuspend() to be called.
-const int kSuspendTimeoutMs = 5000;
+constexpr base::TimeDelta kSuspendTimeout = base::Seconds(5);
 
 class TestObserver : public SuspendDelayObserver {
  public:
-  TestObserver() : timeout_(base::Milliseconds(kSuspendTimeoutMs)) {}
+  TestObserver() : timeout_(kSuspendTimeout) {}
   TestObserver(const TestObserver&) = delete;
   TestObserver& operator=(const TestObserver&) = delete;
 

@@ -896,8 +896,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   const base::TimeDelta kACDelay = base::Seconds(7);
   const base::TimeDelta kBatteryDelay = base::Seconds(8);
   const base::TimeDelta kResumeDelay = base::Seconds(10);
-  const base::TimeDelta kSlack =
-      base::Milliseconds(PowerSupply::kBatteryStabilizedSlackMs);
+  const base::TimeDelta kSlack = PowerSupply::kBatteryStabilizedSlack;
 
   prefs_.SetInt64(kBatteryPollIntervalPref, kPollDelay.InMilliseconds());
   prefs_.SetInt64(kBatteryPollIntervalInitialPref,
@@ -1402,7 +1401,7 @@ TEST_F(PowerSupplyTest, CheckForLowBattery) {
   // After just half of the observation period has elapsed, the system should
   // still be up.
   const base::TimeDelta kObservationTime =
-      base::Milliseconds(PowerSupply::kObservedBatteryChargeRateMinMs);
+      PowerSupply::kObservedBatteryChargeRateMin;
   UpdateChargeAndCurrent((kShutdownPercent - 1.5) / 100.0, kCurrent);
   test_api_->AdvanceTime(kObservationTime / 2);
   ASSERT_TRUE(UpdateStatus(&status));
@@ -1526,7 +1525,7 @@ TEST_F(PowerSupplyTest, ObservedBatteryChargeRate) {
 
   // Advance the time, but not by enough to estimate the rate.
   const base::TimeDelta kObservationTime =
-      base::Milliseconds(PowerSupply::kObservedBatteryChargeRateMinMs);
+      PowerSupply::kObservedBatteryChargeRateMin;
   test_api_->AdvanceTime(kObservationTime / 2);
   UpdateChargeAndCurrent(9.0, -1.0);
   ASSERT_TRUE(UpdateStatus(&status));
@@ -1604,8 +1603,7 @@ TEST_F(PowerSupplyTest, LowBatteryShutdownSafetyPercent) {
 
   // Even after a negative charge rate is observed, the system still shouldn't
   // shut down, since the battery percent is greater than the safety percent.
-  test_api_->AdvanceTime(
-      base::Milliseconds(PowerSupply::kObservedBatteryChargeRateMinMs));
+  test_api_->AdvanceTime(PowerSupply::kObservedBatteryChargeRateMin);
   UpdateChargeAndCurrent(0.25, kCurrent);
   ASSERT_GT(25.0, PowerSupply::kLowBatteryShutdownSafetyPercent);
   ASSERT_TRUE(UpdateStatus(&status));

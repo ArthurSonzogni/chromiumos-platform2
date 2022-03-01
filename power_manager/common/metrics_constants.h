@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_
 #define POWER_MANAGER_COMMON_METRICS_CONSTANTS_H_
 
+#include <base/time/time.h>
+
 namespace power_manager {
 namespace metrics {
 
@@ -34,7 +36,7 @@ extern const int kShutdownReasonMax;
 
 extern const char kBacklightLevelName[];
 extern const char kKeyboardBacklightLevelName[];
-extern const int kBacklightLevelIntervalMs;
+extern const base::TimeDelta kBacklightLevelInterval;
 
 extern const char kIdleAfterScreenOffName[];
 extern const int kIdleAfterScreenOffMin;
@@ -54,12 +56,12 @@ extern const int kBatteryChargeHealthMax;
 extern const char kBatteryDischargeRateName[];
 extern const int kBatteryDischargeRateMin;
 extern const int kBatteryDischargeRateMax;
-extern const int kBatteryDischargeRateIntervalSec;
+extern const base::TimeDelta kBatteryDischargeRateInterval;
 
 extern const char kBatteryDischargeRateWhileSuspendedName[];
 extern const int kBatteryDischargeRateWhileSuspendedMin;
 extern const int kBatteryDischargeRateWhileSuspendedMax;
-extern const int kBatteryDischargeRateWhileSuspendedMinSuspendSec;
+extern const base::TimeDelta kBatteryDischargeRateWhileSuspendedMinSuspend;
 
 extern const char kBatteryRemainingWhenChargeStartsName[];
 extern const char kBatteryRemainingAtEndOfSessionName[];

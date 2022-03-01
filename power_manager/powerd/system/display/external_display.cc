@@ -20,6 +20,7 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/time/time.h>
 
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
@@ -51,9 +52,6 @@ const uint8_t ExternalDisplay::kDdcGetCommand = 0x01;
 const uint8_t ExternalDisplay::kDdcGetReplyCommand = 0x02;
 const uint8_t ExternalDisplay::kDdcSetCommand = 0x03;
 const uint8_t ExternalDisplay::kDdcBrightnessIndex = 0x10;
-const int ExternalDisplay::kDdcSetDelayMs = 50;
-const int ExternalDisplay::kDdcGetDelayMs = 40;
-const int ExternalDisplay::kCachedBrightnessValidMs = 3000;
 
 ExternalDisplay::RealDelegate::RealDelegate() : fd_(-1) {}
 
@@ -174,8 +172,8 @@ uint16_t ExternalDisplay::BrightnessPercentToLevel(double percent) const {
 
 bool ExternalDisplay::HaveCachedBrightness() {
   return max_brightness_level_ > 0 && !last_brightness_update_time_.is_null() &&
-         (clock_.GetCurrentTime() - last_brightness_update_time_)
-                 .InMilliseconds() <= kCachedBrightnessValidMs;
+         (clock_.GetCurrentTime() - last_brightness_update_time_) <=
+             kCachedBrightnessValid;
 }
 
 bool ExternalDisplay::HavePendingBrightnessAdjustment() const {
@@ -322,7 +320,7 @@ void ExternalDisplay::UpdateState() {
       // start the timer to prevent another message from being sent too soon.
       if (HaveCachedBrightness()) {
         if (WriteBrightness())
-          StartTimer(base::Milliseconds(kDdcSetDelayMs));
+          StartTimer(kDdcSetDelay);
         pending_brightness_adjustment_percent_ = 0.0;
         pending_brightness_percent_ = -1.0;
         return;
@@ -336,7 +334,7 @@ void ExternalDisplay::UpdateState() {
         return;
       }
       state_ = State::WAITING_FOR_REPLY;
-      StartTimer(base::Milliseconds(kDdcGetDelayMs));
+      StartTimer(kDdcGetDelay);
       return;
 
     case State::WAITING_FOR_REPLY:
@@ -353,7 +351,7 @@ void ExternalDisplay::UpdateState() {
       // too soon. If the write fails, discard the pending adjustment to prevent
       // a buggy display from resulting in infinite retries.
       if (HavePendingBrightnessAdjustment() && WriteBrightness())
-        StartTimer(base::Milliseconds(kDdcSetDelayMs));
+        StartTimer(kDdcSetDelay);
       pending_brightness_adjustment_percent_ = 0.0;
       pending_brightness_percent_ = -1.0;
       return;

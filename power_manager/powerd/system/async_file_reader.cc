@@ -12,6 +12,7 @@
 
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 
 #include "power_manager/common/util.h"
 
@@ -25,7 +26,7 @@ namespace {
 const size_t kInitialFileReadSize = 4096;
 
 // How often to poll for the AIO status.
-const int kPollMs = 100;
+constexpr base::TimeDelta kPoll = base::Milliseconds(100);
 
 }  // namespace
 
@@ -164,7 +165,7 @@ bool AsyncFileReader::AsyncRead(int size, int offset) {
     return false;
   }
 
-  update_state_timer_.Start(FROM_HERE, base::Milliseconds(kPollMs), this,
+  update_state_timer_.Start(FROM_HERE, kPoll, this,
                             &AsyncFileReader::UpdateState);
   return true;
 }

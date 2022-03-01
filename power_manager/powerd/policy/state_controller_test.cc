@@ -2332,8 +2332,7 @@ TEST_F(StateControllerTest, ShouldNotRequestDimDeferSuggestion) {
   // cause the screen to be undimmed for more than kDeferDimmingTimeLimit.
   // Advance timer to be close to kDeferDimmingTimeLimit, so that there should
   // be no request for a dim defer suggestion.
-  AdvanceTime(StateController::kDeferDimmingTimeLimit -
-              base::TimeDelta::FromSeconds(1));
+  AdvanceTime(StateController::kDeferDimmingTimeLimit - base::Seconds(1));
   EXPECT_FALSE(controller_.ShouldRequestDimDeferSuggestion(now_));
 }
 
@@ -2496,7 +2495,7 @@ TEST_F(StateControllerTest, QuickDimAndUndim) {
 TEST_F(StateControllerTest, QuickDimAndUndimMetrics) {
   Init();
 
-  const base::TimeDelta kTimeForward = base::TimeDelta::FromSeconds(6);
+  const base::TimeDelta kTimeForward = base::Seconds(6);
 
   delegate_.set_record_dim_event_metrics(true);
   // Send Hps positive signal to enable HpsSense.
@@ -2801,8 +2800,7 @@ TEST_F(StateControllerTest, DimDeferWithHps) {
   // query.
 
   // Set hps_result_ to POSITIVE 1 seconds before kDimImminentDelay.
-  const auto delta_of_hps_positive_before_dim_imminent =
-      base::TimeDelta::FromSeconds(1);
+  constexpr auto delta_of_hps_positive_before_dim_imminent = base::Seconds(1);
   AdvanceTime(kDimImminentDelay - delta_of_hps_positive_before_dim_imminent);
   EmitHpsSignal(HpsResult::POSITIVE);
 
@@ -2849,8 +2847,7 @@ TEST_F(StateControllerTest, DimDeferWithHps) {
   EXPECT_EQ("", delegate_.GetActions());
 
   // Advance the timer to the point that is close to the next DimDefer query.
-  const auto delta_before_next_dim_defer_query =
-      base::TimeDelta::FromSeconds(1);
+  constexpr auto delta_before_next_dim_defer_query = base::Seconds(1);
   AdvanceTime(kDimImminentDelay - delta_before_next_dim_defer_query);
   // Emit a NEGATIVE Hps signal so that dim will not be deferred any more.
   EmitHpsSignal(HpsResult::NEGATIVE);
@@ -2871,13 +2868,13 @@ TEST_F(StateControllerTest, NoDimDeferAfterkDeferDimmingTimeLimit) {
 
   // Set screen_dim_delay to be 7 minutes, so that dimming defer will only
   // happen once instead of two.
-  default_ac_screen_dim_delay_ = base::TimeDelta::FromMinutes(7);
+  default_ac_screen_dim_delay_ = base::Minutes(7);
 
   // Disable all other functionalities so that they don't intervene.
-  default_ac_suspend_delay_ = base::TimeDelta::FromMinutes(8);
-  default_ac_screen_off_delay_ = base::TimeDelta::FromMinutes(8);
-  default_ac_quick_dim_delay_ = base::TimeDelta::FromMinutes(8);
-  default_ac_quick_lock_delay_ = base::TimeDelta::FromMinutes(8);
+  default_ac_suspend_delay_ = base::Minutes(8);
+  default_ac_screen_off_delay_ = base::Minutes(8);
+  default_ac_quick_dim_delay_ = base::Minutes(8);
+  default_ac_quick_lock_delay_ = base::Minutes(8);
 
   Init();
   // Turn on the MLDecision Service.

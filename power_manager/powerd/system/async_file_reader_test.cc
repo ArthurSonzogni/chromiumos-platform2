@@ -13,6 +13,7 @@
 #include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/time/time.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/test_main_loop_runner.h"
@@ -62,8 +63,8 @@ int GetMultipleReadFactor(int num_multiple_reads) {
   return (1 << num_multiple_reads) - 1;
 }
 
-// Maximum time allowed for file read in milliseconds.
-const int kMaxFileReadTimeMs = 60000;
+// Maximum time allowed for file read.
+constexpr base::TimeDelta kMaxFileReadTime = base::Minutes(1);
 
 }  // namespace
 
@@ -96,7 +97,7 @@ class AsyncFileReaderTest : public ::testing::Test {
         base::Bind(&AsyncFileReaderTest::ReadCallback, base::Unretained(this)),
         base::Bind(&AsyncFileReaderTest::ErrorCallback,
                    base::Unretained(this)));
-    return loop_runner_.StartLoop(base::Milliseconds(kMaxFileReadTimeMs));
+    return loop_runner_.StartLoop(kMaxFileReadTime);
   }
 
   // Returns the contents of |path_|.

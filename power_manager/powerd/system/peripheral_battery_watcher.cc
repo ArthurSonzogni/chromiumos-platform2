@@ -18,6 +18,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <re2/re2.h>
 
@@ -34,7 +35,7 @@ namespace {
 const char kDefaultPeripheralBatteryPath[] = "/sys/class/power_supply/";
 
 // Default interval for polling the device battery info.
-const int kDefaultPollIntervalMs = 600000;
+constexpr base::TimeDelta kDefaultPollInterval = base::Minutes(10);
 
 constexpr char kBluetoothAddressRegex[] =
     "^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$";
@@ -101,7 +102,7 @@ const char PeripheralBatteryWatcher::kUdevSubsystem[] = "power_supply";
 PeripheralBatteryWatcher::PeripheralBatteryWatcher()
     : dbus_wrapper_(nullptr),
       peripheral_battery_path_(kDefaultPeripheralBatteryPath),
-      poll_interval_ms_(kDefaultPollIntervalMs),
+      poll_interval_(kDefaultPollInterval),
       bluez_battery_provider_(std::make_unique<BluezBatteryProvider>()),
       weak_ptr_factory_(this) {}
 
@@ -282,7 +283,7 @@ void PeripheralBatteryWatcher::ReadBatteryStatuses() {
 void PeripheralBatteryWatcher::ReadBatteryStatusesTimer() {
   ReadBatteryStatuses();
 
-  poll_timer_.Start(FROM_HERE, base::Milliseconds(poll_interval_ms_), this,
+  poll_timer_.Start(FROM_HERE, poll_interval_, this,
                     &PeripheralBatteryWatcher::ReadBatteryStatuses);
 }
 

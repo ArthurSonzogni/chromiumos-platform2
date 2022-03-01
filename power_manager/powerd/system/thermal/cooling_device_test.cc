@@ -27,12 +27,11 @@ namespace system {
 
 namespace {
 
-// Abort if expected thermal event hasn't been received after this many
-// milliseconds.
-const int kUpdateTimeoutMs = 5000;
+// Abort if expected thermal event hasn't been received after this much time.
+constexpr base::TimeDelta kUpdateTimeout = base::Seconds(5);
 
 // Frequency with which the cooling device is polled.
-const int kPollIntervalMs = 100;
+constexpr base::TimeDelta kPollInterval = base::Milliseconds(100);
 
 // Simple ThermalDeviceObserver implementation that runs the event loop until
 // it receives a thermal state change.
@@ -46,7 +45,7 @@ class TestObserver : public ThermalDeviceObserver {
 
   // Runs |loop_| until OnThermalChanged() is called.
   bool RunUntilThermalChanged() {
-    return loop_runner_.StartLoop(base::Milliseconds(kUpdateTimeoutMs));
+    return loop_runner_.StartLoop(kUpdateTimeout);
   }
 
   void OnThermalChanged(ThermalDeviceInterface* sensor) override {
@@ -81,7 +80,7 @@ class CoolingDeviceTest : public ::testing::Test {
     WriteType("Processor");
 
     cooling_device_.reset(new CoolingDevice(device_dir_));
-    cooling_device_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+    cooling_device_->set_poll_interval_for_testing(kPollInterval);
     cooling_device_->AddObserver(&observer_);
   }
 

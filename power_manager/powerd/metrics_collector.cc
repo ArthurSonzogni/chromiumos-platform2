@@ -113,7 +113,7 @@ void MetricsCollector::Init(
 
   if (display_backlight_controller_ || keyboard_backlight_controller_) {
     generate_backlight_metrics_timer_.Start(
-        FROM_HERE, base::Milliseconds(kBacklightLevelIntervalMs), this,
+        FROM_HERE, kBacklightLevelInterval, this,
         &MetricsCollector::GenerateBacklightLevelMetrics);
   }
 
@@ -465,8 +465,9 @@ void MetricsCollector::GenerateBatteryDischargeRateMetric() {
 
   // Ensures that the metric is not generated too frequently.
   if (!last_battery_discharge_rate_metric_timestamp_.is_null() &&
-      (clock_.GetCurrentTime() - last_battery_discharge_rate_metric_timestamp_)
-              .InSeconds() < kBatteryDischargeRateIntervalSec) {
+      (clock_.GetCurrentTime() -
+       last_battery_discharge_rate_metric_timestamp_) <
+          kBatteryDischargeRateInterval) {
     return;
   }
 
@@ -487,8 +488,7 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
 
   base::TimeDelta elapsed_time =
       clock_.GetCurrentBootTime() - time_before_suspend_;
-  if (elapsed_time.InSeconds() <
-      kBatteryDischargeRateWhileSuspendedMinSuspendSec)
+  if (elapsed_time < kBatteryDischargeRateWhileSuspendedMinSuspend)
     return;
 
   double discharged_watt_hours =

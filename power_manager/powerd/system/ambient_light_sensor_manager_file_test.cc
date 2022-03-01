@@ -25,11 +25,11 @@ namespace system {
 namespace {
 
 // Abort if it an expected brightness change hasn't been received after this
-// many milliseconds.
-const int kUpdateTimeoutMs = 5000;
+// much time.
+constexpr base::TimeDelta kUpdateTimeout = base::Seconds(5);
 
 // Frequency with which the ambient light sensor file is polled.
-const int kPollIntervalMs = 100;
+constexpr base::TimeDelta kPollInterval = base::Milliseconds(100);
 
 // Simple AmbientLightObserver implementation that runs the event loop
 // until it receives notification that the ambient light level has changed.
@@ -43,7 +43,7 @@ class TestObserver : public AmbientLightObserver {
 
   // Runs |loop_| until OnAmbientLightUpdated() is called.
   bool RunUntilAmbientLightUpdated() {
-    return loop_runner_.StartLoop(base::Milliseconds(kUpdateTimeoutMs));
+    return loop_runner_.StartLoop(kUpdateTimeout);
   }
 
   // AmbientLightObserver implementation:
@@ -130,7 +130,7 @@ TEST_F(AmbientLightSensorManagerFileTest, OneSensor) {
 
   manager_ = std::make_unique<AmbientLightSensorManagerFile>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
-  manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+  manager_->set_poll_interval_for_testing(kPollInterval);
   manager_->Run(false /* read_immediately */);
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
@@ -157,7 +157,7 @@ TEST_F(AmbientLightSensorManagerFileTest, TwoSensors) {
 
   manager_ = std::make_unique<AmbientLightSensorManagerFile>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
-  manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+  manager_->set_poll_interval_for_testing(kPollInterval);
   manager_->Run(false /* read_immediately */);
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();
@@ -185,7 +185,7 @@ TEST_F(AmbientLightSensorManagerFileTest, HasColorSensor) {
 
   manager_ = std::make_unique<AmbientLightSensorManagerFile>(&prefs_);
   manager_->set_device_list_path_for_testing(temp_dir_.GetPath());
-  manager_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+  manager_->set_poll_interval_for_testing(kPollInterval);
   manager_->Run(false /* read_immediately */);
 
   auto internal_backlight_sensor = manager_->GetSensorForInternalBacklight();

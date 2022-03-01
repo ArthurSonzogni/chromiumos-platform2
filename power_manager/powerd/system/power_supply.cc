@@ -19,11 +19,13 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <libec/display_soc_command.h>
@@ -47,18 +49,22 @@ namespace {
 // up by 10^6.  This factor scales them back down accordingly.
 const double kDoubleScaleFactor = 0.000001;
 
-// Default time interval between polls, in milliseconds.
-const int kDefaultPollMs = 30000;
+// Default time interval between polls.
+constexpr base::TimeDelta kDefaultPoll = base::Seconds(30);
 
 // Default time interval between polls when the number of samples is less than
-// |kMaxCurrentSamplesPref|, in milliseconds.
-const int kDefaultPollInitialMs = 1000;
+// |kMaxCurrentSamplesPref|.
+constexpr base::TimeDelta kDefaultPollInitial = base::Seconds(1);
 
-// Default values for |battery_stabilized_after_*_delay_|, in milliseconds.
-const int kDefaultBatteryStabilizedAfterStartupDelayMs = 5000;
-const int kDefaultBatteryStabilizedAfterLinePowerConnectedDelayMs = 5000;
-const int kDefaultBatteryStabilizedAfterLinePowerDisconnectedDelayMs = 5000;
-const int kDefaultBatteryStabilizedAfterResumeDelayMs = 5000;
+// Default values for |battery_stabilized_after_*_delay_|.
+constexpr base::TimeDelta kDefaultBatteryStabilizedAfterStartupDelay =
+    base::Seconds(5);
+constexpr base::TimeDelta
+    kDefaultBatteryStabilizedAfterLinePowerConnectedDelay = base::Seconds(5);
+constexpr base::TimeDelta
+    kDefaultBatteryStabilizedAfterLinePowerDisconnectedDelay = base::Seconds(5);
+constexpr base::TimeDelta kDefaultBatteryStabilizedAfterResumeDelay =
+    base::Seconds(5);
 
 // Reads the contents of |filename| within |directory| into |out|, trimming
 // trailing whitespace.  Returns true on success.
@@ -568,8 +574,6 @@ const char PowerSupply::kBatteryStatusNotCharging[] = "Not charging";
 const char PowerSupply::kBatteryStatusFull[] = "Full";
 const char PowerSupply::kLinePowerStatusCharging[] = "Charging";
 
-const int PowerSupply::kObservedBatteryChargeRateMinMs = kDefaultPollMs;
-const int PowerSupply::kBatteryStabilizedSlackMs = 50;
 const double PowerSupply::kLowBatteryShutdownSafetyPercent = 5.0;
 
 PowerSupply::PowerSupply()
@@ -610,21 +614,21 @@ void PowerSupply::Init(
 
   prefs_->GetBool(kMultipleBatteriesPref, &allow_multiple_batteries_);
 
-  poll_delay_ = GetMsPref(kBatteryPollIntervalPref, kDefaultPollMs);
+  poll_delay_ = GetMsPref(kBatteryPollIntervalPref).value_or(kDefaultPoll);
   poll_delay_initial_ =
-      GetMsPref(kBatteryPollIntervalInitialPref, kDefaultPollInitialMs);
+      GetMsPref(kBatteryPollIntervalInitialPref).value_or(kDefaultPollInitial);
   battery_stabilized_after_startup_delay_ =
-      GetMsPref(kBatteryStabilizedAfterStartupMsPref,
-                kDefaultBatteryStabilizedAfterStartupDelayMs);
+      GetMsPref(kBatteryStabilizedAfterStartupMsPref)
+          .value_or(kDefaultBatteryStabilizedAfterStartupDelay);
   battery_stabilized_after_line_power_connected_delay_ =
-      GetMsPref(kBatteryStabilizedAfterLinePowerConnectedMsPref,
-                kDefaultBatteryStabilizedAfterLinePowerConnectedDelayMs);
+      GetMsPref(kBatteryStabilizedAfterLinePowerConnectedMsPref)
+          .value_or(kDefaultBatteryStabilizedAfterLinePowerConnectedDelay);
   battery_stabilized_after_line_power_disconnected_delay_ =
-      GetMsPref(kBatteryStabilizedAfterLinePowerDisconnectedMsPref,
-                kDefaultBatteryStabilizedAfterLinePowerDisconnectedDelayMs);
+      GetMsPref(kBatteryStabilizedAfterLinePowerDisconnectedMsPref)
+          .value_or(kDefaultBatteryStabilizedAfterLinePowerDisconnectedDelay);
   battery_stabilized_after_resume_delay_ =
-      GetMsPref(kBatteryStabilizedAfterResumeMsPref,
-                kDefaultBatteryStabilizedAfterResumeDelayMs);
+      GetMsPref(kBatteryStabilizedAfterResumeMsPref)
+          .value_or(kDefaultBatteryStabilizedAfterResumeDelay);
 
   prefs_->GetDouble(kUsbMinAcWattsPref, &usb_min_ac_watts_);
 
@@ -784,10 +788,12 @@ base::FilePath PowerSupply::GetPathForId(const std::string& id) const {
   return path;
 }
 
-base::TimeDelta PowerSupply::GetMsPref(const std::string& pref_name,
-                                       int64_t default_duration_ms) const {
-  prefs_->GetInt64(pref_name, &default_duration_ms);
-  return base::Milliseconds(default_duration_ms);
+base::Optional<base::TimeDelta> PowerSupply::GetMsPref(
+    const std::string& pref_name) const {
+  int64_t duration_ms;
+  if (prefs_->GetInt64(pref_name, &duration_ms))
+    return base::Milliseconds(duration_ms);
+  return base::nullopt;
 }
 
 void PowerSupply::DeferBatterySampling(base::TimeDelta stabilized_delay) {
@@ -1359,7 +1365,7 @@ void PowerSupply::UpdateObservedBatteryChargeRate(PowerStatus* status) const {
   DCHECK(status);
   const base::TimeDelta time_delta = charge_samples_->GetTimeDelta();
   status->observed_battery_charge_rate =
-      (time_delta.InMilliseconds() < kObservedBatteryChargeRateMinMs)
+      (time_delta < kObservedBatteryChargeRateMin)
           ? 0.0
           : charge_samples_->GetValueDelta() / (time_delta.InSecondsF() / 3600);
 }
@@ -1428,13 +1434,12 @@ void PowerSupply::SchedulePoll() {
   int64_t samples = 0;
   CHECK(prefs_->GetInt64(kMaxCurrentSamplesPref, &samples));
 
-  // Wait |kBatteryStabilizedSlackMs| after |battery_stabilized_timestamp_| to
+  // Wait |kBatteryStabilizedSlack| after |battery_stabilized_timestamp_| to
   // start polling for the current and charge to stabilized.
   // Poll every |poll_delay_initial_| ms until having |kMaxCurrentSamplesPref|
   // samples then poll every |poll_delay_|.
   if (battery_stabilized_timestamp_ > now) {
-    delay = battery_stabilized_timestamp_ - now +
-            base::Milliseconds(kBatteryStabilizedSlackMs);
+    delay = battery_stabilized_timestamp_ - now + kBatteryStabilizedSlack;
   } else if (!has_max_samples_ && num_zero_samples_ < samples) {
     delay = poll_delay_initial_;
   } else {

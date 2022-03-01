@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
 #include <linux/fb.h>
 
 #include "power_manager/common/clock.h"
@@ -24,9 +25,9 @@ namespace system {
 
 namespace {
 
-// When animating a brightness level transition, amount of time in milliseconds
-// to wait between each update.
-const int kTransitionIntervalMs = 20;
+// When animating a brightness level transition, amount of time to wait between
+// each update.
+constexpr base::TimeDelta kTransitionInterval = base::Milliseconds(20);
 
 }  // namespace
 
@@ -140,7 +141,7 @@ bool InternalBacklight::SetBrightnessLevel(int64_t level,
     return true;
   }
 
-  if (interval.InMilliseconds() <= kTransitionIntervalMs) {
+  if (interval <= kTransitionInterval) {
     CancelTransition();
     return WriteBrightness(level);
   }
@@ -150,8 +151,7 @@ bool InternalBacklight::SetBrightnessLevel(int64_t level,
   transition_start_level_ = current_brightness_level_;
   transition_end_level_ = level;
   if (!transition_timer_.IsRunning()) {
-    transition_timer_.Start(FROM_HERE,
-                            base::Milliseconds(kTransitionIntervalMs), this,
+    transition_timer_.Start(FROM_HERE, kTransitionInterval, this,
                             &InternalBacklight::HandleTransitionTimeout);
     transition_timer_start_time_ = transition_start_time_;
   }

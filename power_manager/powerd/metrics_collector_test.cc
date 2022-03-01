@@ -237,8 +237,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRate) {
 
   // This much time must elapse before the discharge rate will be reported
   // again.
-  const base::TimeDelta interval =
-      base::Seconds(kBatteryDischargeRateIntervalSec);
+  const base::TimeDelta interval = kBatteryDischargeRateInterval;
 
   power_status_.battery_energy_rate = 5.0;
   ExpectBatteryDischargeRateMetric(5000);
@@ -600,8 +599,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   IgnoreHandlePowerStatusUpdateMetrics();
   collector_.HandlePowerStatusUpdate(power_status_);
   collector_.PrepareForSuspend();
-  AdvanceTime(
-      base::Seconds(kBatteryDischargeRateWhileSuspendedMinSuspendSec - 1));
+  AdvanceTime(kBatteryDischargeRateWhileSuspendedMinSuspend - base::Seconds(1));
   ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
                kSuspendAttemptsMax, kSuspendAttemptsBuckets);
   collector_.HandleResume(1);
@@ -784,8 +782,7 @@ TEST_F(MetricsCollectorTest, GenerateDimEventDurationMetrics) {
   Init();
   ExpectMetric(kQuickDimDurationBeforeRevertedByHpsSec, 13, 1, 3600, 50);
   collector_.GenerateDimEventDurationMetrics(
-      kQuickDimDurationBeforeRevertedByHpsSec,
-      base::TimeDelta::FromSeconds(13));
+      kQuickDimDurationBeforeRevertedByHpsSec, base::Seconds(13));
 }
 
 // Base class for S0ix residency rate related tests.

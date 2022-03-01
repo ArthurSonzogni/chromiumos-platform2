@@ -304,12 +304,14 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // Minimum duration of samples that need to be present in |charge_samples_|
   // for the observed battery charge rate to be calculated.
-  static const int kObservedBatteryChargeRateMinMs;
+  static constexpr base::TimeDelta kObservedBatteryChargeRateMin =
+      base::Seconds(30);
 
   // Additional time beyond |battery_stabilized_after_*_delay_| to wait before
   // updating the status, in milliseconds. This just ensures that the timer
   // doesn't fire before it's safe to calculate the battery time.
-  static const int kBatteryStabilizedSlackMs;
+  static constexpr base::TimeDelta kBatteryStabilizedSlack =
+      base::Milliseconds(50);
 
   // To reduce the risk of shutting down prematurely due to a bad battery
   // time-to-empty estimate, avoid shutting down when
@@ -378,10 +380,8 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   base::FilePath GetPathForId(const std::string& id) const;
 
   // Returns the value of |pref_name|, an int64_t pref containing a
-  // millisecond-based duration. |default_duration_ms| is returned if the pref
-  // is unset.
-  base::TimeDelta GetMsPref(const std::string& pref_name,
-                            int64_t default_duration_ms) const;
+  // millisecond-based duration. base::nullopt is returned if the pref is unset.
+  base::Optional<base::TimeDelta> GetMsPref(const std::string& pref_name) const;
 
   // Sets |battery_stabilized_timestamp_| so that the current and charge won't
   // be sampled again until at least |stabilized_delay| in the future.

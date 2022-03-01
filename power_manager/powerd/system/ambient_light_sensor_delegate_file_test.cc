@@ -25,11 +25,11 @@ namespace system {
 namespace {
 
 // Abort if it an expected brightness change hasn't been received after this
-// many milliseconds.
-const int kUpdateTimeoutMs = 5000;
+// much time.
+constexpr base::TimeDelta kUpdateTimeout = base::Seconds(5);
 
 // Frequency with which the ambient light sensor file is polled.
-const int kPollIntervalMs = 100;
+constexpr base::TimeDelta kPollInterval = base::Milliseconds(100);
 
 constexpr char kDeviceName[] = "device0";
 
@@ -44,7 +44,7 @@ class TestObserver : public AmbientLightObserver {
 
   // Runs |loop_| until OnAmbientLightUpdated() is called.
   bool RunUntilAmbientLightUpdated() {
-    return loop_runner_.StartLoop(base::Milliseconds(kUpdateTimeoutMs));
+    return loop_runner_.StartLoop(kUpdateTimeout);
   }
 
   // AmbientLightObserver implementation:
@@ -86,7 +86,7 @@ class AmbientLightSensorDelegateFileTest : public ::testing::Test {
     als_ = als.get();
     sensor_->SetDelegate(std::move(als));
     als_->set_device_list_path_for_testing(temp_dir_.GetPath());
-    als_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+    als_->set_poll_interval_for_testing(kPollInterval);
     als_->Init(false /* read_immediately */);
   }
 
@@ -96,7 +96,7 @@ class AmbientLightSensorDelegateFileTest : public ::testing::Test {
     als_ = als.get();
     sensor_->SetDelegate(std::move(als));
     als_->set_device_list_path_for_testing(temp_dir_.GetPath());
-    als_->set_poll_interval_ms_for_testing(kPollIntervalMs);
+    als_->set_poll_interval_for_testing(kPollInterval);
     als_->Init(false /* read_immediately */);
   }
 

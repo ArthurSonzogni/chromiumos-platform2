@@ -23,6 +23,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/threading/platform_thread.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/ec/ec_commands.h>
 #include <dbus/bus.h>
@@ -117,9 +118,9 @@ constexpr base::TimeDelta kShutdownLockfileRetryInterval = base::Seconds(5);
 
 // Maximum amount of time to wait for responses to D-Bus method calls to other
 // processes.
-const int kSessionManagerDBusTimeoutMs = 3000;
+constexpr base::TimeDelta kSessionManagerDBusTimeout = base::Seconds(3);
 constexpr base::TimeDelta kTpmManagerdDBusTimeout = base::Minutes(2);
-const int kResourceManagerDBusTimeoutMs = 3000;
+constexpr base::TimeDelta kResourceManagerDBusTimeout = base::Seconds(3);
 
 // Interval between log messages while user, audio, or video activity is
 // ongoing, in seconds.
@@ -211,9 +212,9 @@ class Daemon::StateControllerDelegate
   void LockScreen() override {
     dbus::MethodCall method_call(login_manager::kSessionManagerInterface,
                                  login_manager::kSessionManagerLockScreen);
-    daemon_->dbus_wrapper_->CallMethodSync(
-        daemon_->session_manager_dbus_proxy_, &method_call,
-        base::Milliseconds(kSessionManagerDBusTimeoutMs));
+    daemon_->dbus_wrapper_->CallMethodSync(daemon_->session_manager_dbus_proxy_,
+                                           &method_call,
+                                           kSessionManagerDBusTimeout);
   }
 
   void Suspend(policy::StateController::ActionReason reason) override {
@@ -237,9 +238,9 @@ class Daemon::StateControllerDelegate
                                  login_manager::kSessionManagerStopSession);
     dbus::MessageWriter writer(&method_call);
     writer.AppendString("");
-    daemon_->dbus_wrapper_->CallMethodSync(
-        daemon_->session_manager_dbus_proxy_, &method_call,
-        base::Milliseconds(kSessionManagerDBusTimeoutMs));
+    daemon_->dbus_wrapper_->CallMethodSync(daemon_->session_manager_dbus_proxy_,
+                                           &method_call,
+                                           kSessionManagerDBusTimeout);
   }
 
   void ShutDown() override {
@@ -1061,8 +1062,7 @@ void Daemon::HandleSessionManagerAvailableOrRestarted(bool available) {
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerRetrieveSessionState);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      session_manager_dbus_proxy_, &method_call,
-      base::Milliseconds(kSessionManagerDBusTimeoutMs));
+      session_manager_dbus_proxy_, &method_call, kSessionManagerDBusTimeout);
   if (!response)
     return;
 
@@ -1229,9 +1229,8 @@ void Daemon::SetFullscreenVideoWithTimeout(bool active, int timeout_seconds) {
   writer.AppendByte(static_cast<char>(active));
   writer.AppendUint32(timeout_seconds);
 
-  dbus_wrapper_->CallMethodSync(
-      resource_manager_dbus_proxy_, &method_call,
-      base::Milliseconds(kResourceManagerDBusTimeoutMs));
+  dbus_wrapper_->CallMethodSync(resource_manager_dbus_proxy_, &method_call,
+                                kResourceManagerDBusTimeout);
 }
 
 std::unique_ptr<dbus::Response> Daemon::HandleVideoActivityMethod(

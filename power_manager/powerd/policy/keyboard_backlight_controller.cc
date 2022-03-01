@@ -38,7 +38,7 @@ namespace {
 // until reverting to the not playing state. If another message is received in
 // this interval the timeout is reset. The browser should be sending these
 // messages ~5 seconds when video is playing.
-const int64_t kVideoTimeoutIntervalMs = 7000;
+constexpr base::TimeDelta kVideoTimeoutInterval = base::Seconds(7);
 
 // Maximum valid value for scaled percentages.
 const double kMaxPercent = 100.0;
@@ -56,9 +56,9 @@ base::TimeDelta GetTransitionDuration(
     case BacklightController::Transition::INSTANT:
       return base::TimeDelta();
     case BacklightController::Transition::FAST:
-      return base::Milliseconds(kFastBacklightTransitionMs);
+      return kFastBacklightTransition;
     case BacklightController::Transition::SLOW:
-      return base::Milliseconds(kSlowBacklightTransitionMs);
+      return kSlowBacklightTransition;
   }
   NOTREACHED() << "Unhandled transition style " << static_cast<int>(transition);
   return base::TimeDelta();
@@ -271,8 +271,8 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
 
   video_timer_.Stop();
   if (is_fullscreen) {
-    video_timer_.Start(FROM_HERE, base::Milliseconds(kVideoTimeoutIntervalMs),
-                       this, &KeyboardBacklightController::HandleVideoTimeout);
+    video_timer_.Start(FROM_HERE, kVideoTimeoutInterval, this,
+                       &KeyboardBacklightController::HandleVideoTimeout);
   }
 }
 

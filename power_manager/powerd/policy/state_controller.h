@@ -162,8 +162,7 @@ class StateController : public PrefsObserver {
   // Besides put a limit on how many times we defer the dimming with hps, we
   // also want to add this time limit so that no defer will happen 15 minutes
   // after the user activity.
-  static constexpr base::TimeDelta kDeferDimmingTimeLimit =
-      base::TimeDelta::FromMinutes(15);
+  static constexpr base::TimeDelta kDeferDimmingTimeLimit = base::Minutes(15);
 
   // Returns a string describing |policy|.
   static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);

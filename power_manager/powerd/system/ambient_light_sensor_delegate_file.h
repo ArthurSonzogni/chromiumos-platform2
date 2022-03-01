@@ -43,8 +43,8 @@ class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
   void set_device_list_path_for_testing(const base::FilePath& path) {
     device_list_path_ = path;
   }
-  void set_poll_interval_ms_for_testing(int interval_ms) {
-    poll_interval_ms_ = interval_ms;
+  void set_poll_interval_for_testing(base::TimeDelta interval) {
+    poll_interval_ = interval;
   }
 
   // Starts polling. If |read_immediately| is true, ReadAls() will also
@@ -98,8 +98,8 @@ class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
   // Runs ReadAls().
   base::RepeatingTimer poll_timer_;
 
-  // Time between polls of the sensor file, in milliseconds.
-  int poll_interval_ms_;
+  // Time between polls of the sensor file.
+  base::TimeDelta poll_interval_;
 
   // Boolean to indicate if color support should be enabled on this ambient
   // light sensor. Color support should only be enabled if sensor is properly

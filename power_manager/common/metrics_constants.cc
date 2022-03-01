@@ -4,6 +4,8 @@
 
 #include "power_manager/common/metrics_constants.h"
 
+#include <base/time/time.h>
+
 namespace power_manager {
 namespace metrics {
 
@@ -28,7 +30,7 @@ const int kShutdownReasonMax = 10;
 
 const char kBacklightLevelName[] = "Power.BacklightLevel";
 const char kKeyboardBacklightLevelName[] = "Power.KeyboardBacklightLevel";
-const int kBacklightLevelIntervalMs = 30000;
+const base::TimeDelta kBacklightLevelInterval = base::Seconds(30);
 
 const char kIdleAfterScreenOffName[] = "Power.IdleTimeAfterScreenOff";
 const int kIdleAfterScreenOffMin = 100;
@@ -49,13 +51,14 @@ const int kBatteryChargeHealthMax = 111;
 const char kBatteryDischargeRateName[] = "Power.BatteryDischargeRate";  // mW
 const int kBatteryDischargeRateMin = 1;
 const int kBatteryDischargeRateMax = 20000;
-const int kBatteryDischargeRateIntervalSec = 30;
+const base::TimeDelta kBatteryDischargeRateInterval = base::Seconds(30);
 
 const char kBatteryDischargeRateWhileSuspendedName[] =
     "Power.BatteryDischargeRateWhileSuspended";  // mW
 const int kBatteryDischargeRateWhileSuspendedMin = 1;
 const int kBatteryDischargeRateWhileSuspendedMax = 5000;
-const int kBatteryDischargeRateWhileSuspendedMinSuspendSec = 600;
+const base::TimeDelta kBatteryDischargeRateWhileSuspendedMinSuspend =
+    base::Minutes(10);
 
 const char kBatteryRemainingWhenChargeStartsName[] =
     "Power.BatteryRemainingWhenChargeStarts";  // %

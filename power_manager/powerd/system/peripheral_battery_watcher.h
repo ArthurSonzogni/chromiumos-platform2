@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/observer_list.h>
+#include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
@@ -160,8 +161,8 @@ class PeripheralBatteryWatcher : public UdevSubsystemObserver {
   // Calls ReadBatteryStatuses().
   base::OneShotTimer poll_timer_;
 
-  // Time between polls of the peripheral battery reading, in milliseconds.
-  int poll_interval_ms_;
+  // Time between polls of the peripheral battery reading.
+  base::TimeDelta poll_interval_;
 
   // AsyncFileReaders for different peripheral batteries.
   std::vector<std::unique_ptr<AsyncFileReader>> battery_readers_;

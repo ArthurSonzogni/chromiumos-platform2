@@ -79,15 +79,15 @@ class ExternalDisplay {
 
   // Minimum amount of time to wait after sending a "Set VCP Feature" message
   // before sending the next message (per DDC/CI v1.1 4.4).
-  static const int kDdcSetDelayMs;
+  static constexpr base::TimeDelta kDdcSetDelay = base::Milliseconds(50);
 
   // Amount of time to wait after sending a "Get VCP Feature" message before
   // reading the reply message (per DDC/CI v1.1 4.3).
-  static const int kDdcGetDelayMs;
+  static constexpr base::TimeDelta kDdcGetDelay = base::Milliseconds(40);
 
   // Amount of time that the brightness value last read from or written to the
   // display should be honored before a new brightness value is read.
-  static const int kCachedBrightnessValidMs;
+  static constexpr base::TimeDelta kCachedBrightnessValid = base::Seconds(3);
 
   // Possible outcomes when sending a message to the display. These values are
   // reported as a histogram and cannot be renumbered.

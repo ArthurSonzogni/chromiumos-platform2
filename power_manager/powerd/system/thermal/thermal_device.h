@@ -11,6 +11,7 @@
 #include <base/macros.h>
 #include <base/observer_list.h>
 #include <base/timer/timer.h>
+#include <base/time/time.h>
 
 #include "power_manager/powerd/system/async_file_reader.h"
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
@@ -55,8 +56,8 @@ class ThermalDevice : public ThermalDeviceInterface {
 
   ~ThermalDevice() override;
 
-  void set_poll_interval_ms_for_testing(int interval_ms) {
-    poll_interval_ms_ = interval_ms;
+  void set_poll_interval_for_testing(base::TimeDelta interval) {
+    poll_interval_ = interval;
   }
 
   base::FilePath get_device_path_for_testing() { return device_path_; }
@@ -117,7 +118,7 @@ class ThermalDevice : public ThermalDeviceInterface {
   base::RepeatingTimer poll_timer_;
 
   // Time between polls of the sensor file, in milliseconds.
-  int poll_interval_ms_;
+  base::TimeDelta poll_interval_;
 
   // List of observers that are currently interested in updates from this.
   base::ObserverList<ThermalDeviceObserver> observers_;

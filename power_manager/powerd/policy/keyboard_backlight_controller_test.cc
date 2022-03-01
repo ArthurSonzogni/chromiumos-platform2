@@ -206,27 +206,23 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffForFullscreenVideo) {
   // Fullscreen video should turn it off.
   controller_.HandleVideoActivity(true);
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // If the video switches to non-fullscreen, the backlight should be turned on.
   controller_.HandleVideoActivity(false);
   EXPECT_EQ(20, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // Let fullscreen video turn it off again.
   controller_.HandleVideoActivity(true);
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // If the timeout fires to indicate that video has stopped, the backlight
   // should be turned on.
   ASSERT_TRUE(test_api_.TriggerVideoTimeout());
   EXPECT_EQ(20, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // Fullscreen video should be ignored when the user isn't logged in.
   controller_.HandleSessionStateChange(SessionState::STOPPED);
@@ -273,8 +269,7 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   // controller should skip over the middle step and use the top step.
   light_sensor_.NotifyObservers();
   EXPECT_EQ(75, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(1, controller_.GetNumAmbientLightSensorAdjustments());
 
   // First decrease; hysteresis not overcome.
@@ -286,8 +281,7 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
   // to the middle step.
   light_sensor_.NotifyObservers();
   EXPECT_EQ(50, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(2, controller_.GetNumAmbientLightSensorAdjustments());
 
   // The count should be reset after a new session starts.
@@ -308,45 +302,36 @@ TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
   // should changes to turn it back on and undim.
   controller_.SetDimmedForInactivity(true);
   EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   controller_.SetOffForInactivity(true);
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   controller_.SetOffForInactivity(false);
   EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   controller_.SetDimmedForInactivity(false);
   EXPECT_EQ(50, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // Send an increase request to switch to user control.
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // Go through the same sequence of state changes and check that the
   // user-control dimming level is used.
   controller_.SetDimmedForInactivity(true);
   EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   controller_.SetOffForInactivity(true);
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   controller_.SetOffForInactivity(false);
   EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   controller_.SetDimmedForInactivity(false);
   EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 }
 
 TEST_F(KeyboardBacklightControllerTest, DontBrightenToDim) {
@@ -384,8 +369,7 @@ TEST_F(KeyboardBacklightControllerTest, DeferChangesWhileDimmed) {
   // The new ALS level should be used immediately after undimming, though.
   controller_.SetDimmedForInactivity(false);
   EXPECT_EQ(80, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 }
 
 TEST_F(KeyboardBacklightControllerTest, InitialUserLevelDownFirst) {
@@ -401,8 +385,7 @@ TEST_F(KeyboardBacklightControllerTest, InitialUserLevelDownFirst) {
   // initial level (15) and then increase to the next step (40).
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(40, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 }
 
 TEST_F(KeyboardBacklightControllerTest, InitialUserLevelUpFirst) {
@@ -418,8 +401,7 @@ TEST_F(KeyboardBacklightControllerTest, InitialUserLevelUpFirst) {
   // initial level (30) and then increase to the next step (60).
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(60, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 }
 
 TEST_F(KeyboardBacklightControllerTest, InitialAlsLevel) {
@@ -435,8 +417,7 @@ TEST_F(KeyboardBacklightControllerTest, InitialAlsLevel) {
   // transition to the 60% level.
   light_sensor_.NotifyObservers();
   EXPECT_EQ(60, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 }
 
 TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
@@ -448,8 +429,7 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
 
   CallIncreaseKeyboardBrightness();
   EXPECT_EQ(10, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
 
   CallIncreaseKeyboardBrightness();
@@ -482,8 +462,7 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseBrightness) {
 
   CallDecreaseKeyboardBrightness();
   EXPECT_EQ(60, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
 
   CallDecreaseKeyboardBrightness();
@@ -555,14 +534,12 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
   display_backlight_controller_.NotifyObservers(
       0.0, BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   display_backlight_controller_.NotifyObservers(
       20.0, BacklightBrightnessChange_Cause_USER_REQUEST);
   EXPECT_EQ(50, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // After switching to user control of the brightness, the keyboard
   // backlight shouldn't be turned off automatically.
@@ -589,8 +566,7 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   // If hovering is detected, the backlight should be turned on quickly.
   controller_.HandleHoverStateChange(true);
   EXPECT_EQ(50, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // It should remain on despite fullscreen video if hovering continues.
   controller_.HandleVideoActivity(true);
@@ -605,35 +581,30 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   AdvanceTime(base::Milliseconds(keep_on_during_video_ms_pref_));
   ASSERT_TRUE(test_api_.TriggerTurnOffTimeout());
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // Stop the video. Since the user was hovering recently, the backlight should
   // turn back on.
   ASSERT_TRUE(test_api_.TriggerVideoTimeout());
   EXPECT_EQ(50, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // After the rest of the full timeout, the backlight should turn off slowly.
   AdvanceTime(
       base::Milliseconds(keep_on_ms_pref_ - keep_on_during_video_ms_pref_));
   ASSERT_TRUE(test_api_.TriggerTurnOffTimeout());
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // User activity should also turn the keyboard backlight on for the full
   // delay.
   controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(50, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
   AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
   ASSERT_TRUE(test_api_.TriggerTurnOffTimeout());
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // Increase the brightness to 100, dim for inactivity, and check that hover
   // restores the user-requested level.
@@ -643,8 +614,7 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   EXPECT_EQ(GetDimmedLevel(), backlight_.current_level());
   controller_.HandleHoverStateChange(true);
   EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // The backlight should stay on while hovering even if it's requested to turn
   // off for inactivity.
@@ -654,12 +624,10 @@ TEST_F(KeyboardBacklightControllerTest, Hover) {
   // Stop hovering and check that starting again turns the backlight on again.
   controller_.HandleHoverStateChange(false);
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
   controller_.HandleHoverStateChange(true);
   EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // A notification that the system is shutting down should take precedence.
   controller_.SetShuttingDown(true);
@@ -675,8 +643,7 @@ TEST_F(KeyboardBacklightControllerTest, NoAmbientLightSensor) {
 
   // The brightness should immediately transition to the level from the pref.
   EXPECT_EQ(40, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // Subsequent adjustments should move between the user steps.
   CallIncreaseKeyboardBrightness();
@@ -696,14 +663,12 @@ TEST_F(KeyboardBacklightControllerTest, EnableForUserActivity) {
 
   // The backlight should turn off initially.
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // User activity should result in the backlight being turned on quickly.
   controller_.HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(40, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // Advance the time and report user activity again.
   AdvanceTime(base::Milliseconds(keep_on_ms_pref_ / 2));
@@ -715,8 +680,7 @@ TEST_F(KeyboardBacklightControllerTest, EnableForUserActivity) {
   AdvanceTime(base::Milliseconds(keep_on_ms_pref_));
   ASSERT_TRUE(test_api_.TriggerTurnOffTimeout());
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 }
 
 TEST_F(KeyboardBacklightControllerTest, PreemptTransitionForShutdown) {
@@ -728,8 +692,7 @@ TEST_F(KeyboardBacklightControllerTest, PreemptTransitionForShutdown) {
   display_backlight_controller_.NotifyObservers(
       0.0, BacklightBrightnessChange_Cause_OTHER);
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // Now notify the keyboard controller that the system is shutting down and
   // check that the previous transition is preempted in favor of turning off the
@@ -749,20 +712,17 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenInTabletMode) {
   initial_tablet_mode_ = TabletMode::ON;
   Init();
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kSlowBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kSlowBacklightTransition, backlight_.current_interval());
 
   // It should quickly turn on when the device leaves tablet mode.
   controller_.HandleTabletModeChange(TabletMode::OFF);
   EXPECT_EQ(100, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // Going back to tablet mode should turn the backlight off again.
   controller_.HandleTabletModeChange(TabletMode::ON);
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
+  EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 }
 
 TEST_F(KeyboardBacklightControllerTest, ForcedOff) {

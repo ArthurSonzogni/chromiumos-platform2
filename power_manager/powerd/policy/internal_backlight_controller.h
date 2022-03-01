@@ -67,7 +67,8 @@ class InternalBacklightController : public BacklightController,
   // If an ambient light reading hasn't been seen after this many seconds,
   // give up on waiting for the sensor to be initialized and just set
   // |use_ambient_light_| to false.
-  static const int kAmbientLightSensorTimeoutSec;
+  static constexpr base::TimeDelta kAmbientLightSensorTimeout =
+      base::Seconds(10);
 
   InternalBacklightController();
   InternalBacklightController(const InternalBacklightController&) = delete;

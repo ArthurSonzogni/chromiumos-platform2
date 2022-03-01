@@ -12,6 +12,7 @@
 #include "power_manager/common/util.h"
 
 #include <base/check.h>
+#include <base/time/time.h>
 
 namespace power_manager {
 namespace system {
@@ -47,10 +48,10 @@ void AmbientLightSensorManagerFile::set_device_list_path_for_testing(
     als->set_device_list_path_for_testing(path);
 }
 
-void AmbientLightSensorManagerFile::set_poll_interval_ms_for_testing(
-    int interval_ms) {
+void AmbientLightSensorManagerFile::set_poll_interval_for_testing(
+    base::TimeDelta interval) {
   for (auto als : als_list_)
-    als->set_poll_interval_ms_for_testing(interval_ms);
+    als->set_poll_interval_for_testing(interval);
 }
 
 void AmbientLightSensorManagerFile::Run(bool read_immediately) {

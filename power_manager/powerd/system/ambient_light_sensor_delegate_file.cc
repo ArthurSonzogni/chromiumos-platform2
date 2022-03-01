@@ -35,7 +35,7 @@ namespace {
 const char kDefaultDeviceListPath[] = "/sys/bus/iio/devices";
 
 // Default interval for polling the ambient light sensor.
-const int kDefaultPollIntervalMs = 1000;
+constexpr base::TimeDelta kDefaultPollInterval = base::Seconds(1);
 
 SensorLocation StringToSensorLocation(const std::string& location) {
   if (location == "base")
@@ -77,7 +77,7 @@ const int AmbientLightSensorDelegateFile::kNumInitAttemptsBeforeGivingUp = 20;
 AmbientLightSensorDelegateFile::AmbientLightSensorDelegateFile(
     SensorLocation expected_sensor_location, bool enable_color_support)
     : device_list_path_(kDefaultDeviceListPath),
-      poll_interval_ms_(kDefaultPollIntervalMs),
+      poll_interval_(kDefaultPollInterval),
       enable_color_support_(enable_color_support),
       num_init_attempts_(0),
       expected_sensor_location_(expected_sensor_location) {}
@@ -86,7 +86,7 @@ AmbientLightSensorDelegateFile::AmbientLightSensorDelegateFile(
     const std::string& device, bool enable_color_support)
     : device_list_path_(kDefaultDeviceListPath),
       device_(device),
-      poll_interval_ms_(kDefaultPollIntervalMs),
+      poll_interval_(kDefaultPollInterval),
       enable_color_support_(enable_color_support),
       num_init_attempts_(0),
       expected_sensor_location_(SensorLocation::UNKNOWN) {}
@@ -118,7 +118,7 @@ base::FilePath AmbientLightSensorDelegateFile::GetIlluminancePath() const {
 }
 
 void AmbientLightSensorDelegateFile::StartTimer() {
-  poll_timer_.Start(FROM_HERE, base::Milliseconds(poll_interval_ms_), this,
+  poll_timer_.Start(FROM_HERE, poll_interval_, this,
                     &AmbientLightSensorDelegateFile::ReadAls);
 }
 
