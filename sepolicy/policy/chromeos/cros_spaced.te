@@ -34,8 +34,25 @@ allow cros_spaced cros_system_bus_socket:sock_file write;
 
 allow cros_spaced tmpfs:file { getattr open read write };
 
-allow cros_spaced usb_device:chr_file getattr;
-allow cros_spaced usb_device:dir { getattr open read search };
+# Spaced/LVM iterates through /dev and requires permissions to enumerate the following devices.
+allow cros_spaced {
+  audio_device
+  cros_hps_device
+  devpts
+  iio_device
+  input_device
+  mei_device
+  tpm_device
+  usb_device
+}:chr_file getattr;
+
+allow cros_spaced {
+  audio_device
+  cros_shm
+  input_device
+  sysfs_zram
+  usb_device
+}:dir { getattr open read search };
 
 # Remove the arc_cts_fails_release macro for ARCVM devices so that
 # cros_spaced is not converted into a permissive domain after being
