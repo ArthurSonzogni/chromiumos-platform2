@@ -11,8 +11,9 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/strings/string_util.h>
 #include <base/process/process_handle.h>
+#include <base/strings/string_util.h>
+#include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/diag_process_adapter_impl.h"
 
@@ -82,30 +83,30 @@ std::string GetStatusMessageFromSubprocRoutineStatus(
 }
 
 SubprocRoutine::SubprocRoutine(const base::CommandLine& command_line,
-                               uint32_t predicted_duration_in_seconds)
+                               base::TimeDelta predicted_duration)
     : SubprocRoutine(std::make_unique<DiagProcessAdapterImpl>(),
                      std::make_unique<base::DefaultTickClock>(),
                      std::list<base::CommandLine>{command_line},
-                     predicted_duration_in_seconds) {}
+                     predicted_duration) {}
 
 SubprocRoutine::SubprocRoutine(
     const std::list<base::CommandLine>& command_lines,
-    uint32_t total_predicted_duration_in_seconds)
+    base::TimeDelta total_predicted_duration)
     : SubprocRoutine(std::make_unique<DiagProcessAdapterImpl>(),
                      std::make_unique<base::DefaultTickClock>(),
                      command_lines,
-                     total_predicted_duration_in_seconds) {}
+                     total_predicted_duration) {}
 
 SubprocRoutine::SubprocRoutine(
     std::unique_ptr<DiagProcessAdapter> process_adapter,
     std::unique_ptr<base::TickClock> tick_clock,
     const std::list<base::CommandLine>& command_lines,
-    uint32_t predicted_duration_in_seconds)
+    base::TimeDelta predicted_duration)
     : subproc_status_(kSubprocStatusReady),
       process_adapter_(std::move(process_adapter)),
       tick_clock_(std::move(tick_clock)),
       command_lines_(std::move(command_lines)),
-      predicted_duration_in_seconds_(predicted_duration_in_seconds) {}
+      predicted_duration_(predicted_duration) {}
 
 SubprocRoutine::~SubprocRoutine() {
   // If the routine is still running, make sure to stop it so we aren't left
@@ -293,7 +294,7 @@ uint32_t SubprocRoutine::CalculateProgressPercent() {
       last_reported_progress_percent_ = 100;
       break;
     case kSubprocStatusRunning:
-      if (predicted_duration_in_seconds_ == 0) {
+      if (predicted_duration_.is_zero()) {
         /* when we don't know the progress, we fake at a low percentage */
         last_reported_progress_percent_ =
             kSubprocRoutineFakeProgressPercentUnknown;
@@ -302,7 +303,7 @@ uint32_t SubprocRoutine::CalculateProgressPercent() {
             100, std::max<uint32_t>(
                      0, static_cast<uint32_t>(
                             100 * (tick_clock_->NowTicks() - start_ticks_) /
-                            base::Seconds(predicted_duration_in_seconds_))));
+                            predicted_duration_)));
       }
       break;
     case kSubprocStatusCancelled:

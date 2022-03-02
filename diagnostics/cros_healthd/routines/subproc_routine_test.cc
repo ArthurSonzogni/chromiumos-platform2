@@ -11,6 +11,7 @@
 
 #include <base/command_line.h>
 #include <base/test/simple_test_tick_clock.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -29,6 +30,8 @@ using ::testing::Return;
 using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 using ::testing::Test;
+
+constexpr base::TimeDelta kPredictedDuration = base::Seconds(10);
 
 void CheckRoutineUpdate(uint32_t progress_percent,
                         std::string status_message,
@@ -71,7 +74,7 @@ class SubprocRoutineTest : public Test {
   StrictMock<MockDiagProcessAdapter>* mock_adapter() { return mock_adapter_; }
   base::SimpleTestTickClock* tick_clock() { return tick_clock_; }
 
-  void CreateRoutine(uint32_t predicted_duration_in_seconds = 10) {
+  void CreateRoutine(base::TimeDelta predicted_duration = kPredictedDuration) {
     auto mock_adapter_ptr =
         std::make_unique<StrictMock<MockDiagProcessAdapter>>();
     mock_adapter_ = mock_adapter_ptr.get();
@@ -85,12 +88,11 @@ class SubprocRoutineTest : public Test {
 
     routine_ = std::make_unique<SubprocRoutine>(
         std::move(mock_adapter_ptr), std::move(tick_clock_ptr),
-        std::list<base::CommandLine>{command_line},
-        predicted_duration_in_seconds);
+        std::list<base::CommandLine>{command_line}, predicted_duration);
   }
 
   void CreateRoutineWithMultipleCmds(
-      uint32_t predicted_duration_in_seconds = 10) {
+      base::TimeDelta predicted_duration = kPredictedDuration) {
     auto mock_adapter_ptr =
         std::make_unique<StrictMock<MockDiagProcessAdapter>>();
     mock_adapter_ = mock_adapter_ptr.get();
@@ -106,7 +108,7 @@ class SubprocRoutineTest : public Test {
     routine_ = std::make_unique<SubprocRoutine>(
         std::move(mock_adapter_ptr), std::move(tick_clock_ptr),
         std::list<base::CommandLine>{command_line, command_line1},
-        predicted_duration_in_seconds);
+        predicted_duration);
   }
 
   void RegisterPreStartCallback(base::OnceCallback<bool()> callback) {
@@ -436,7 +438,7 @@ TEST_F(SubprocRoutineTest, KillProcessDuringDestruction) {
 // Test that we report the correct progress percent when we don't know the
 // routine's predicted duration.
 TEST_F(SubprocRoutineTest, NoPredictedDuration) {
-  CreateRoutine(/*predicted_duration_in_seconds=*/0);
+  CreateRoutine(/*predicted_duration=*/base::TimeDelta());
   RunRoutineWithTerminationStatus(base::TERMINATION_STATUS_STILL_RUNNING);
   EXPECT_EQ(update()->progress_percent,
             kSubprocRoutineFakeProgressPercentUnknown);
@@ -455,8 +457,9 @@ TEST_F(SubprocRoutineTest, Resume) {
 // Test that we can create a SubprocRoutine with the production constructor.
 TEST(SubprocRoutineTestNoFixture, ProductionConstructor) {
   std::unique_ptr<SubprocRoutine> prod_routine =
-      std::make_unique<SubprocRoutine>(base::CommandLine({"/dev/null"}),
-                                       /*predicted_duration_in_seconds=*/0);
+      std::make_unique<SubprocRoutine>(
+          base::CommandLine({"/dev/null"}),
+          /*predicted_duration=*/base::TimeDelta());
   mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
                                  mojo_ipc::RoutineUpdateUnion::New()};
   prod_routine->PopulateStatusUpdate(&update, false);

@@ -16,6 +16,7 @@
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/system/sys_info.h>
+#include <base/time/time.h>
 
 namespace {
 
@@ -58,8 +59,8 @@ std::unique_ptr<DiagnosticRoutine> CreateDiskReadRoutine(
   auto subproc_routine_ptr = std::make_unique<SubprocRoutine>(
       std::list<base::CommandLine>{base::CommandLine(prepare_cmd),
                                    base::CommandLine(run_cmd)},
-      exec_duration.InSeconds() +
-          static_cast<int>(kFileCreationTimePerMB * file_size_mb));
+      exec_duration + base::Seconds(static_cast<int>(kFileCreationTimePerMB *
+                                                     file_size_mb)));
 
   // Ensure DUT has sufficient storage space and prevent storage space state
   // from falling into 'low' state during test.

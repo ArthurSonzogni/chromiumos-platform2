@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include <base/time/time.h>
+
 #include "diagnostics/cros_healthd/routines/shared_defaults.h"
 #include "diagnostics/cros_healthd/routines/subproc_routine.h"
 
@@ -20,19 +22,17 @@ constexpr char kCpuRoutineExePath[] = "/usr/bin/stressapptest";
 
 std::unique_ptr<DiagnosticRoutine> CreateCpuCacheRoutine(
     const base::Optional<base::TimeDelta>& exec_duration) {
-  uint32_t duration_in_seconds =
-      exec_duration.value_or(kDefaultCpuStressRuntime).InSeconds();
+  base::TimeDelta duration = exec_duration.value_or(kDefaultCpuStressRuntime);
   std::vector<std::string> cmd{kCpuRoutineExePath, "--cc_test", "-s",
-                               std::to_string(duration_in_seconds)};
-  if (duration_in_seconds == 0) {
+                               std::to_string(duration.InSeconds())};
+  if (duration.is_zero()) {
     // Since the execution duration should not be zero, we should let the
     // routine always failed by adding the flag '--force_error' to the
     // stressapptest.
     cmd.push_back("--force_error");
   }
 
-  return std::make_unique<SubprocRoutine>(base::CommandLine(cmd),
-                                          duration_in_seconds);
+  return std::make_unique<SubprocRoutine>(base::CommandLine(cmd), duration);
 }
 
 }  // namespace diagnostics

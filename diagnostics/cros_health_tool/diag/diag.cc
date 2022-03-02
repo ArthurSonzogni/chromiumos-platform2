@@ -90,8 +90,7 @@ int diag_main(int argc, char** argv) {
                 "progress exceeds the flag's value.\nValid range: [0, 100]");
 
   // Flags for the urandom routine:
-  DEFINE_uint32(urandom_length_seconds,
-                kUrandomDefaultLengthSeconds.InSeconds(),
+  DEFINE_uint32(urandom_length_seconds, kUrandomDefaultLength.InSeconds(),
                 "Number of seconds to run the urandom routine for.");
 
   // Flag shared by the CPU stress, CPU cache, floating point accuracy and prime

@@ -17,7 +17,7 @@ namespace diagnostics {
 // Fleet-wide default value for the urandom routine's parameter.
 // TODO(crbug/1131609): get a better default value with some rationale behind
 // it.
-extern const base::TimeDelta kUrandomDefaultLengthSeconds;
+extern const base::TimeDelta kUrandomDefaultLength;
 
 std::unique_ptr<DiagnosticRoutine> CreateUrandomRoutine(
     const base::Optional<base::TimeDelta>& length_seconds);

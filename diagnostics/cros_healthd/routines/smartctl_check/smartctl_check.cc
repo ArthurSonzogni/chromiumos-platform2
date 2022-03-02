@@ -6,9 +6,10 @@
 
 #include <utility>
 
+#include <base/command_line.h>
 #include <base/logging.h>
 #include <base/process/process_handle.h>
-#include <base/command_line.h>
+#include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/diag_process_adapter_impl.h"
 #include "diagnostics/cros_healthd/routines/subproc_routine.h"
@@ -24,7 +25,7 @@ constexpr char kSmartctlCheckExecutableInstallLocation[] =
 std::unique_ptr<DiagnosticRoutine> CreateSmartctlCheckRoutine() {
   return std::make_unique<SubprocRoutine>(
       base::CommandLine({kSmartctlCheckExecutableInstallLocation}),
-      0 /*predicted_duration_in_seconds*/);
+      base::TimeDelta() /*predicted_duration*/);
 }
 
 }  // namespace diagnostics

@@ -13,6 +13,7 @@
 #include <base/command_line.h>
 #include <base/process/process.h>
 #include <base/time/default_tick_clock.h>
+#include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/diag_process_adapter.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
@@ -55,15 +56,15 @@ class SubprocRoutine final : public DiagnosticRoutine {
 
   // Constructor to run a single executable.
   SubprocRoutine(const base::CommandLine& command_line,
-                 uint32_t predicted_duration_in_seconds);
+                 base::TimeDelta predicted_duration);
   // Constructor to run multiple executables.
   SubprocRoutine(const std::list<base::CommandLine>& command_lines,
-                 uint32_t total_predicted_duration_in_seconds);
+                 base::TimeDelta predicted_duration);
   // Constructor only for facilitating the unit test.
   SubprocRoutine(std::unique_ptr<DiagProcessAdapter> process_adapter,
                  std::unique_ptr<base::TickClock> tick_clock,
                  const std::list<base::CommandLine>& command_lines,
-                 uint32_t predicted_duration_in_seconds);
+                 base::TimeDelta predicted_duration);
   SubprocRoutine(const SubprocRoutine&) = delete;
   SubprocRoutine& operator=(const SubprocRoutine&) = delete;
   ~SubprocRoutine() override;
@@ -120,9 +121,9 @@ class SubprocRoutine final : public DiagnosticRoutine {
   // in question.
   std::list<base::CommandLine> command_lines_;
 
-  // |predicted_duration_in_seconds_| is used to calculate progress percentage
-  // when it is non-zero.
-  uint32_t predicted_duration_in_seconds_ = 0;
+  // |predicted_duration_| is used to calculate progress percentage when it is
+  // non-zero.
+  base::TimeDelta predicted_duration_{};
 
   // |last_reported_progress_percent_| is used to save the last reported
   // progress percentage for handling progress reported across status changes.
@@ -132,7 +133,7 @@ class SubprocRoutine final : public DiagnosticRoutine {
   base::ProcessHandle handle_ = base::kNullProcessHandle;
 
   // |start_ticks_| records the time when the routine began. This is used with
-  // |predicted_duration_in_seconds_| to report on progress percentate.
+  // |predicted_duration_| to report on progress percentate.
   base::TimeTicks start_ticks_;
 };
 
