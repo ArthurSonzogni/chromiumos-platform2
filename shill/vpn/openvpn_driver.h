@@ -112,6 +112,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   FRIEND_TEST(OpenVPNDriverTest, InitExtraCertOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitLoggingOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
+  FRIEND_TEST(OpenVPNDriverTest, InitOptionsAdvanced);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsHostWithExtraHosts);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsHostWithPort);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);

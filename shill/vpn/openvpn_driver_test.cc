@@ -739,6 +739,33 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithExtraHosts) {
   ExpectInFlags(options, {"remote", "v.com", "8000"});
 }
 
+TEST_F(OpenVPNDriverTest, InitOptionsAdvanced) {
+  SetArg(kProviderHostProperty, "example.com");
+  SetArg(kOpenVPNAuthProperty, "MD5");
+  SetArg(kOpenVPNCipherProperty, "AES-192-CBC");
+  SetArg(kOpenVPNCompressProperty, "lzo");
+  SetArg(kOpenVPNKeyDirectionProperty, "1");
+  SetArg(kOpenVPNTLSAuthContentsProperty, "SOME-RANDOM-CONTENTS\n");
+
+  driver_->rpc_task_.reset(new RpcTask(&control_, this));
+  driver_->interface_name_ = kInterfaceName;
+  EXPECT_CALL(*management_server_, Start(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsConnected()).WillOnce(Return(false));
+
+  Error error;
+  std::vector<std::vector<std::string>> options;
+  driver_->InitOptions(&options, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  ExpectInFlags(options, {"auth", "MD5"});
+  ExpectInFlags(options, {"cipher", "AES-192-CBC"});
+  ExpectInFlags(options, {"compress", "lzo"});
+  ExpectInFlags(options, {"key-direction", "1"});
+  ExpectInFlags(options, {"tls-auth", driver_->tls_auth_file_.value()});
+  std::string contents;
+  EXPECT_TRUE(base::ReadFileToString(driver_->tls_auth_file_, &contents));
+  EXPECT_EQ("SOME-RANDOM-CONTENTS\n", contents);
+}
+
 TEST_F(OpenVPNDriverTest, InitCAOptions) {
   Error error;
   std::vector<std::vector<std::string>> options;
