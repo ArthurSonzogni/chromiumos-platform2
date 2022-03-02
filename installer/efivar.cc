@@ -16,6 +16,11 @@ extern "C" {
 }
 
 namespace {
+bool IsEfiGlobalGUID(const efi_guid_t* guid) {
+  const efi_guid_t global = EFI_GLOBAL_GUID;
+  return memcmp(guid, &global, sizeof(global)) == 0;
+}
+
 // Wrapper around the libefivar error logging interface.
 // libefivar stores a list of errors that it encounters, and lets you access
 // them by index. The list is cleared when certain calls succeed, but successive
@@ -127,20 +132,24 @@ bool EfiVarImpl::EfiVariablesSupported() {
 }
 
 base::Optional<std::string> EfiVarImpl::GetNextVariableName() {
-  efi_guid_t* ignored_guid = nullptr;
+  efi_guid_t* guid = nullptr;
   char* name = nullptr;
+  int rc = 0;
 
   // efi_get_next_variable_name repeatedly returns the same static char[].
-  if (efi_get_next_variable_name(&ignored_guid, &name) < 0) {
+  // efi_get_next_variable_name returns 1 if an entry is found.
+  while ((rc = efi_get_next_variable_name(&guid, &name)) > 0) {
+    // NULL is not expected but guard against it.
+    if (!name || !guid)
+      return base::nullopt;
+    if (!IsEfiGlobalGUID(guid))
+      continue;
+    return std::string(name);
+  }
+
+  if (rc < 0)
     LogEfiErrors();
-    return base::nullopt;
-  }
-
-  if (!name) {
-    return base::nullopt;
-  }
-
-  return std::string(name);
+  return base::nullopt;
 }
 
 bool EfiVarImpl::GetVariable(const std::string& name,

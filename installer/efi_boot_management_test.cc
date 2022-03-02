@@ -614,3 +614,11 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_ExcessCrosEntries) {
                   Pair(testing::_,
                        VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
 }
+
+TEST(EfiVarTest, IsEfiGlobalGUID) {
+  efi_guid_t guid = EFI_GLOBAL_GUID;
+  EXPECT_TRUE(IsEfiGlobalGUID(&guid));
+
+  guid.e[4] = 0;
+  EXPECT_FALSE(IsEfiGlobalGUID(&guid));
+}
