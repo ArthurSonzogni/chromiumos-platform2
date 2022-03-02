@@ -6,6 +6,9 @@ import("//common-mk/pkg_config.gni")
 
 group("daemon") {
   deps = [ ":mojo_service_manager" ]
+  if (use.test) {
+    deps += [ ":mojo_service_manager_test" ]
+  }
 }
 
 pkg_config("target_default") {
@@ -24,4 +27,24 @@ executable("mojo_service_manager") {
   configs += [ ":target_default" ]
   install_path = "bin"
   deps = [ "//mojo_service_manager/lib/mojom" ]
+}
+
+if (use.test) {
+  pkg_config("target_test") {
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+      "libmojo",
+    ]
+  }
+
+  executable("mojo_service_manager_test") {
+    sources = [ "mojo_test_runner.cc" ]
+    configs += [
+      ":target_test",
+      "//common-mk:test",
+    ]
+    run_test = true
+    deps = [ "//common-mk/testrunner:testrunner" ]
+  }
 }
