@@ -37,3 +37,10 @@ allow cros_installer proc_filesystems:file r_file_perms;
 allow cros_installer tmpfs:dir mounton;
 allow cros_installer vfat:file create;
 allow cros_installer vfat:filesystem { mount unmount };
+
+# Special handling for permissions that conflict with CTS neverallow
+# rules. CTS neverallow rules are only tested on the ARC Container
+# and these permissions are only needed for the no_arc board reven.
+no_arc(`
+  rw_dir_file(cros_installer sysfs_efi_vars);
+')
