@@ -1143,9 +1143,8 @@ bool CrashCollector::GetUptime(base::TimeDelta* uptime) {
     return false;
   }
 
-  *uptime = base::Seconds(boot_time.tv_sec) +
-            base::Microseconds(boot_time.tv_nsec /
-                               base::Time::kNanosecondsPerMicrosecond);
+  *uptime =
+      base::Seconds(boot_time.tv_sec) + base::Nanoseconds(boot_time.tv_nsec);
   return true;
 }
 
