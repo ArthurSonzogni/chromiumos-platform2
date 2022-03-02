@@ -34,6 +34,7 @@ pkg_config("target_defaults") {
 generate_dbus_adaptors("fusebox-adaptors") {
   dbus_service_config = "dbus_bindings/dbus-service-config.json"
   dbus_adaptors_out_dir = "include/fusebox/dbus_adaptors"
+  # TODO(crbug.com/1302191): rename Client to ReverseService.
   sources = [ "dbus_bindings/org.chromium.FuseBoxClient.xml" ]
 }
 

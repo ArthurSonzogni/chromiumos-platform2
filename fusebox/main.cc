@@ -33,13 +33,14 @@
 
 namespace fusebox {
 
-class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
-                      public org::chromium::FuseBoxClientAdaptor,
+class FuseBoxClient : public org::chromium::FuseBoxReverseServiceInterface,
+                      public org::chromium::FuseBoxReverseServiceAdaptor,
                       public FileSystem {
  public:
   FuseBoxClient(scoped_refptr<dbus::Bus> bus, FuseMount* fuse)
-      : org::chromium::FuseBoxClientAdaptor(this),
-        dbus_object_(nullptr, bus, dbus::ObjectPath(kFuseBoxClientPath)),
+      : org::chromium::FuseBoxReverseServiceAdaptor(this),
+        dbus_object_(
+            nullptr, bus, dbus::ObjectPath(kFuseBoxReverseServicePath)),
         bus_(bus),
         fuse_(fuse) {}
   FuseBoxClient(const FuseBoxClient&) = delete;
@@ -342,11 +343,11 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     }
   }
 
-  void ReadDirResponse(uint64_t handle,
-                       int32_t file_error,
-                       const std::vector<uint8_t>& list,
-                       bool has_more) override {
-    VLOG(1) << "readdir-resp fh " << handle;
+  void ReplyToReadDir(uint64_t handle,
+                      int32_t file_error,
+                      const std::vector<uint8_t>& list,
+                      bool has_more) override {
+    VLOG(1) << "reply-to-readdir fh " << handle;
 
     auto it = readdir_.find(handle);
     if (it == readdir_.end())
@@ -355,14 +356,14 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
     DirEntryResponse* response = it->second.get();
     if (file_error) {
       errno = response->Append(FileErrorToErrno(file_error));
-      PLOG(ERROR) << "readdir-resp [" << file_error << "]";
+      PLOG(ERROR) << "reply-to-readdir [" << file_error << "]";
       return;
     }
 
     const ino_t parent = response->parent();
     if (!GetInodeTable().Lookup(parent)) {
       response->Append(errno);
-      PLOG(ERROR) << "readdir-resp parent " << parent;
+      PLOG(ERROR) << "reply-to-readdir parent " << parent;
       return;
     }
 
@@ -646,7 +647,7 @@ class FuseBoxClient : public org::chromium::FuseBoxClientInterface,
 class FuseBoxDaemon : public brillo::DBusServiceDaemon {
  public:
   explicit FuseBoxDaemon(FuseMount* fuse)
-      : DBusServiceDaemon(kFuseBoxClientName), fuse_(fuse) {}
+      : DBusServiceDaemon(kFuseBoxReverseServiceName), fuse_(fuse) {}
   FuseBoxDaemon(const FuseBoxDaemon&) = delete;
   FuseBoxDaemon& operator=(const FuseBoxDaemon&) = delete;
   ~FuseBoxDaemon() = default;

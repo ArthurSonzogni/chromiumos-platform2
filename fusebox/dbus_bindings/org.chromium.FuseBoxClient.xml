@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
-  <interface name="org.chromium.FuseBoxClient">
-    <method name="ReadDirResponse">
+  <interface name="org.chromium.FuseBoxReverseService">
+    <method name="ReplyToReadDir">
       <arg name="handle" type="t" direction="in">
       <tp:docstring>
         uint64_t handle (opendir(2) file handle).
