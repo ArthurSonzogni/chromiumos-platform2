@@ -2610,7 +2610,8 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
   mount_req_->set_guest_mount(true);
 
   SetupMount(kUser);
-  EXPECT_CALL(user_session_factory_, New(_, _)).Times(0);
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  EXPECT_CALL(*session_, Unmount()).WillOnce(Return(false));
 
   bool called = false;
   {
