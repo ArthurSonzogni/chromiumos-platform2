@@ -427,6 +427,13 @@ void AeStateMachine::OnOptionsUpdated(const base::Value& json_values) {
              << " initial_tet=" << tuning_parameters_.initial_tet
              << " hdr_ratio_step=" << tuning_parameters_.hdr_ratio_step;
   }
+
+  if (!current_ae_parameters_.IsValid()) {
+    // Initialize |next_| with the initial TET and HDR ratio, so that the first
+    // few frames that fill up the pipeline are not totally black.
+    next_.tet = tuning_parameters_.initial_tet;
+    next_.hdr_ratio = tuning_parameters_.initial_hdr_ratio;
+  }
 }
 
 float AeStateMachine::GetCaptureTet() {
