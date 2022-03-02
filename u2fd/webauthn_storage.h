@@ -79,11 +79,6 @@ class WebAuthnStorage {
   virtual int DeleteRecordsInTimeRange(int64_t timestamp_min,
                                        int64_t timestamp_max);
 
-  // Writes auth-time secret hash to disk.
-  bool PersistAuthTimeSecretHash(const brillo::Blob& hash);
-  // Loads auth-time secret hash from disk.
-  std::unique_ptr<brillo::Blob> LoadAuthTimeSecretHash();
-
   // Sets the |allow_access_| which determines whether the backing storage
   // location can be accessed or not.
   void set_allow_access(bool allow_access) { allow_access_ = allow_access; }

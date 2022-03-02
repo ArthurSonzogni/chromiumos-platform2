@@ -206,9 +206,6 @@ void WebAuthnHandler::OnGetWebAuthnSecretHashCallFailed(brillo::Error* error) {
 
 void WebAuthnHandler::OnGetWebAuthnSecretHashResp(
     const user_data_auth::GetWebAuthnSecretHashReply& reply) {
-  // In case there's any error, read the backup hash first.
-  auth_time_secret_hash_ = webauthn_storage_->LoadAuthTimeSecretHash();
-
   if (reply.error() !=
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(ERROR) << "GetWebAuthnSecretHash reply has error " << reply.error();
@@ -222,8 +219,6 @@ void WebAuthnHandler::OnGetWebAuthnSecretHashResp(
     return;
   }
 
-  // Persist to daemon-store in case we crash during a user session.
-  webauthn_storage_->PersistAuthTimeSecretHash(secret_hash);
   auth_time_secret_hash_ =
       std::make_unique<brillo::Blob>(std::move(secret_hash));
 }

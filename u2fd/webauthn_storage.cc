@@ -31,7 +31,6 @@ namespace {
 constexpr const char kDaemonStorePath[] = "/run/daemon-store/u2f";
 constexpr const char kWebAuthnDirName[] = "webauthn";
 constexpr const char kRecordFileNamePrefix[] = "Record_";
-constexpr const char kAuthTimeSecretHashFileName[] = "AuthTimeSecretHash";
 
 // Members of the JSON file
 constexpr const char kCredentialIdKey[] = "credential_id";
@@ -346,53 +345,6 @@ int WebAuthnStorage::DeleteRecordsInTimeRange(int64_t timestamp_min,
   records_.erase(remove_begin, records_.end());
   size_t updated_size = records_.size();
   return original_size - updated_size;
-}
-
-bool WebAuthnStorage::PersistAuthTimeSecretHash(const brillo::Blob& hash) {
-  DCHECK(allow_access_ && !sanitized_user_.empty());
-
-  FilePath path = FilePath(kDaemonStorePath)
-                      .Append(sanitized_user_)
-                      .Append(kWebAuthnDirName)
-                      .Append(kAuthTimeSecretHashFileName);
-
-  {
-    brillo::ScopedUmask owner_only_umask(~(0700));
-    if (!base::CreateDirectory(path.DirName())) {
-      LOG(ERROR) << "Cannot create directory: " << path.DirName().value()
-                 << ".";
-      return false;
-    }
-  }
-
-  {
-    brillo::ScopedUmask owner_only_umask(~(0600));
-    if (!base::ImportantFileWriter::WriteFileAtomically(
-            path, base::Base64Encode(hash))) {
-      LOG(ERROR) << "Failed to persist auth time secret hash to disk.";
-      return false;
-    }
-  }
-
-  return true;
-}
-
-std::unique_ptr<brillo::Blob> WebAuthnStorage::LoadAuthTimeSecretHash() {
-  DCHECK(allow_access_ && !sanitized_user_.empty());
-
-  FilePath path = FilePath(kDaemonStorePath)
-                      .Append(sanitized_user_)
-                      .Append(kWebAuthnDirName)
-                      .Append(kAuthTimeSecretHashFileName);
-  std::string hash_str_base64;
-  std::string hash_str;
-  if (!base::ReadFileToString(path, &hash_str_base64) ||
-      !base::Base64Decode(hash_str_base64, &hash_str)) {
-    LOG(ERROR) << "Failed to read auth time secret hash from disk.";
-    return nullptr;
-  }
-
-  return std::make_unique<brillo::Blob>(hash_str.begin(), hash_str.end());
 }
 
 void WebAuthnStorage::Reset() {
