@@ -37,9 +37,11 @@ namespace cros {
 // |stream|.
 inline std::string GetDebugString(const camera3_stream_t* stream) {
   return base::StringPrintf(
-      "stream=%p, type=%d, size=%ux%u, format=%d, usage=%u, max_buffers=%u",
+      "stream=%p, type=%d, size=%ux%u, format=%d, usage=%u, max_buffers=%u, "
+      "rotation=%d, crop_rotate_scale_degrees=%d",
       stream, stream->stream_type, stream->width, stream->height,
-      stream->format, stream->usage, stream->max_buffers);
+      stream->format, stream->usage, stream->max_buffers, stream->rotation,
+      stream->crop_rotate_scale_degrees);
 }
 
 inline bool HaveSameAspectRatio(const camera3_stream_t* s1,
@@ -127,6 +129,9 @@ class CROS_CAMERA_EXPORT Camera3StreamConfiguration {
 
   // Appends |stream| to the stream configuration.
   bool AppendStream(camera3_stream_t* stream);
+
+  // Removes |stream| from the stream configuration.
+  bool RemoveStream(const camera3_stream_t* stream);
 
   // Locks the internal data and get the camera3_stream_configuration_t that can
   // be consumed by the Android HAL3 API.

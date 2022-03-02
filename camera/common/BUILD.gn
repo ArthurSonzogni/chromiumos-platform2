@@ -321,6 +321,7 @@ shared_library("libcros_camera") {
     ":stream_manipulator",
     ":v4l2_device",
     "//camera/features",
+    "//camera/features/rotate_and_crop",
     "//camera/features/zsl",
   ]
   if (use.camera_feature_portrait_mode) {
@@ -489,6 +490,7 @@ if (use.fuzzer) {
       ":libcros_camera_device_config",
       ":stream_manipulator",
       "//camera/features",
+      "//camera/features/rotate_and_crop",
       "//camera/features/zsl",
     ]
   }

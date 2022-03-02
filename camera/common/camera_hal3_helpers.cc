@@ -135,6 +135,20 @@ bool Camera3StreamConfiguration::AppendStream(camera3_stream_t* stream) {
   return true;
 }
 
+bool Camera3StreamConfiguration::RemoveStream(const camera3_stream_t* stream) {
+  if (IsLocked()) {
+    LOGF(ERROR) << "Cannot remove streams when locked";
+    return false;
+  }
+  auto it = std::find(streams_.begin(), streams_.end(), stream);
+  if (it == streams_.end()) {
+    LOGF(ERROR) << "Cannot find the stream to remove";
+    return false;
+  }
+  streams_.erase(it);
+  return true;
+}
+
 camera3_stream_configuration_t* Camera3StreamConfiguration::Lock() {
   CHECK(!IsLocked());
   raw_configuration_ = camera3_stream_configuration_t{

@@ -23,6 +23,7 @@
 #include "cros-camera/jpeg_compressor.h"
 #include "cros-camera/tracing.h"
 #include "features/feature_profile.h"
+#include "features/rotate_and_crop/rotate_and_crop_stream_manipulator.h"
 #include "features/zsl/zsl_stream_manipulator.h"
 #include "gpu/gpu_resources.h"
 
@@ -153,6 +154,13 @@ StreamManipulatorManager::StreamManipulatorManager(
       std::make_unique<FrameAnnotatorLoaderStreamManipulator>());
   LOGF(INFO) << "FrameAnnotatorLoaderStreamManipulator enabled";
 #endif
+
+  stream_manipulators_.emplace_back(
+      std::make_unique<RotateAndCropStreamManipulator>(
+          std::make_unique<StillCaptureProcessorImpl>(
+              JpegCompressor::GetInstance(
+                  CameraMojoChannelManager::GetInstance()))));
+  LOGF(INFO) << "RotateAndCropStreamManipulator enabled";
 
   MaybeEnableAutoFramingStreamManipulator(feature_profile, runtime_options,
                                           gpu_resources, &stream_manipulators_);

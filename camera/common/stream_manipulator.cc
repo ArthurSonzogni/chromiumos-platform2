@@ -16,6 +16,7 @@
 #include "cros-camera/camera_mojo_channel_manager.h"
 #include "cros-camera/jpeg_compressor.h"
 #include "features/feature_profile.h"
+#include "features/rotate_and_crop/rotate_and_crop_stream_manipulator.h"
 #include "features/zsl/zsl_stream_manipulator.h"
 #include "gpu/gpu_resources.h"
 
@@ -136,7 +137,8 @@ StreamManipulator::RuntimeOptions::sw_privacy_switch_state() {
 
 // static
 bool StreamManipulator::UpdateVendorTags(VendorTagManager& vendor_tag_manager) {
-  if (!ZslStreamManipulator::UpdateVendorTags(vendor_tag_manager)) {
+  if (!ZslStreamManipulator::UpdateVendorTags(vendor_tag_manager) ||
+      !RotateAndCropStreamManipulator::UpdateVendorTags(vendor_tag_manager)) {
     return false;
   }
   return true;
@@ -145,7 +147,8 @@ bool StreamManipulator::UpdateVendorTags(VendorTagManager& vendor_tag_manager) {
 // static
 bool StreamManipulator::UpdateStaticMetadata(
     android::CameraMetadata* static_info) {
-  if (!ZslStreamManipulator::UpdateStaticMetadata(static_info)) {
+  if (!ZslStreamManipulator::UpdateStaticMetadata(static_info) ||
+      !RotateAndCropStreamManipulator::UpdateStaticMetadata(static_info)) {
     return false;
   }
   return true;
