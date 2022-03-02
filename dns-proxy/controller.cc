@@ -16,13 +16,14 @@
 #include <base/notreached.h>
 #include <base/process/launch.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 #include <chromeos/scoped_minijail.h>
 #include <shill/dbus-constants.h>
 
 namespace dns_proxy {
 namespace {
 
-constexpr int kSubprocessRestartDelayMs = 900;
+constexpr base::TimeDelta kSubprocessRestartDelay = base::Milliseconds(900);
 constexpr char kSeccompPolicyPath[] =
     "/usr/share/policy/dns-proxy-seccomp.policy";
 
@@ -283,7 +284,7 @@ bool Controller::RestartProxy(const ProxyProc& proc) {
       FROM_HERE,
       base::BindOnce(&Controller::RunProxy, weak_factory_.GetWeakPtr(),
                      proc.opts.type, proc.opts.ifname),
-      base::Milliseconds(kSubprocessRestartDelayMs));
+      kSubprocessRestartDelay);
   return true;
 }
 
