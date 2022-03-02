@@ -33,6 +33,7 @@
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability.h"
 #include "shill/cellular/cellular_consts.h"
+#include "shill/cellular/cellular_helpers.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mobile_operator_info.h"
@@ -141,16 +142,6 @@ class ApnList {
   Stringmaps apn_dict_list_;
   std::map<ApnIndexKey, Stringmap*> apn_index_;
 };
-
-// Gets a printable value from a Stringmap without adding a value when it
-// doesn't exist.
-std::string GetStringmapValue(const Stringmap& string_map,
-                              const std::string& key) {
-  if (!base::Contains(string_map, key))
-    return "";
-
-  return string_map.at(key);
-}
 
 bool IsEnabledModemState(Cellular::ModemState state) {
   switch (state) {
