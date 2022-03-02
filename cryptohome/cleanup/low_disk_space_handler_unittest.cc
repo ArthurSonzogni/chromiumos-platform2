@@ -131,6 +131,40 @@ TEST_F(LowDiskSpaceHandlerTest, CallPeriodicCallback) {
   }
 }
 
+TEST_F(LowDiskSpaceHandlerTest, CallLowDiskSpaceCallbackSkip) {
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillRepeatedly(Return(true));
+  EXPECT_CALL(disk_cleanup_, GetFreeDiskSpaceState(_))
+      .WillRepeatedly(Return(DiskCleanup::FreeSpaceState::kAboveTarget));
+  EXPECT_CALL(disk_cleanup_, AmountOfFreeDiskSpace())
+      .WillRepeatedly(Return(2LL * 1024 * 1024 * 1024));
+
+  bool callback_called = false;
+  handler_.SetLowDiskSpaceCallback(base::BindLambdaForTesting(
+      [&](uint64_t val) { callback_called = true; }));
+
+  task_runner_->FastForwardBy(handler_.low_disk_notification_period());
+  task_runner_->RunUntilIdle();
+
+  EXPECT_FALSE(callback_called);
+}
+
+TEST_F(LowDiskSpaceHandlerTest, CallLowDiskSpaceCallbackOnLowSpace) {
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillRepeatedly(Return(true));
+  EXPECT_CALL(disk_cleanup_, GetFreeDiskSpaceState(_))
+      .WillRepeatedly(
+          Return(DiskCleanup::FreeSpaceState::kNeedCriticalCleanup));
+  EXPECT_CALL(disk_cleanup_, AmountOfFreeDiskSpace()).WillRepeatedly(Return(0));
+
+  bool callback_called = false;
+  handler_.SetLowDiskSpaceCallback(base::BindLambdaForTesting(
+      [&](uint64_t val) { callback_called = true; }));
+
+  task_runner_->FastForwardBy(handler_.low_disk_notification_period());
+  task_runner_->RunUntilIdle();
+
+  EXPECT_TRUE(callback_called);
+}
+
 TEST_F(LowDiskSpaceHandlerTest, RunPeriodicCleanup) {
   EXPECT_CALL(disk_cleanup_, FreeDiskSpace()).WillOnce(Return(true));
   task_runner_->RunUntilIdle();

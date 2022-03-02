@@ -64,6 +64,9 @@ class DiskCleanup {
   //                      free_disk_space =>
   //                      aggresive_cleanup_threshold_
   //   kNeedAggressiveCleanup: aggresive_cleanup_threshold_ >
+  //                      free_disk_space >=
+  //                      critical_cleanup_threshold_
+  //   kNeedAggressiveCleanup: critical_cleanup_threshold_ >
   //                      free_disk_space
   virtual FreeSpaceState GetFreeDiskSpaceState(std::optional<int64_t>) const;
 

@@ -16,6 +16,23 @@
 
 namespace cryptohome {
 
+namespace {
+
+bool IsDiskSpaceLow(DiskCleanup::FreeSpaceState state) {
+  switch (state) {
+    case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
+      return true;
+    case DiskCleanup::FreeSpaceState::kError:
+    case DiskCleanup::FreeSpaceState::kAboveTarget:
+    case DiskCleanup::FreeSpaceState::kAboveThreshold:
+      return false;
+  }
+}
+
+}  // namespace
+
 LowDiskSpaceHandler::LowDiskSpaceHandler(
     HomeDirs* homedirs,
     Platform* platform,
@@ -91,9 +108,7 @@ void LowDiskSpaceHandler::LowDiskSpaceCheck() {
             << static_cast<std::underlying_type_t<DiskCleanup::FreeSpaceState>>(
                    free_space_state);
 
-    if (free_space_state == DiskCleanup::FreeSpaceState::kNeedNormalCleanup ||
-        free_space_state ==
-            DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup) {
+    if (IsDiskSpaceLow(free_space_state)) {
       LOG(INFO) << "Available disk space: |" << free_disk_space.value()
                 << "| bytes.  Emitting low disk space signal.";
       low_disk_space_callback_.Run(free_disk_space.value());
