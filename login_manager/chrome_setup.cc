@@ -153,8 +153,7 @@ void SetUpHasHpsFlag(ChromiumCommandBuilder* builder,
     return;
   }
 
-  builder->AddFeatureEnableOverride("SnoopingProtection");
-  builder->AddFeatureEnableOverride("QuickDim");
+  builder->AddArg("--has-hps");
 }
 
 // Enables the "HandwritingRecognitionWebPlatformApi" Blink feature flag if
