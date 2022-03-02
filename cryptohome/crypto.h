@@ -72,6 +72,14 @@ class Crypto {
   // Returns true on success, false otherwise.
   bool RemoveLECredential(uint64_t label) const;
 
+  // Resets an LE Credential specified by |le_label|.
+  // Returns true on success.
+  // On failure, false is returned and |error| is set with the appropriate
+  // error.
+  bool ResetLeCredentialEx(const uint64_t le_label,
+                           const brillo::SecureBlob& reset_secret,
+                           CryptoError& out_error) const;
+
   // Returns whether the provided label needs valid PCR criteria attached.
   bool NeedsPcrBinding(const uint64_t& label) const;
 

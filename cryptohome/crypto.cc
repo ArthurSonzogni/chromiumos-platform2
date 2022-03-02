@@ -149,11 +149,17 @@ bool Crypto::ResetLECredential(const VaultKeyset& vk_reset,
   }
 
   SecureBlob reset_secret = HmacSha256(reset_salt, local_reset_seed);
-  int ret = le_manager_->ResetCredential(vk_reset.GetLELabel(), reset_secret);
+  return ResetLeCredentialEx(vk_reset.GetLELabel(), reset_secret, *error);
+}
+
+bool Crypto::ResetLeCredentialEx(const uint64_t le_label,
+                                 const SecureBlob& reset_secret,
+                                 CryptoError& out_error) const {
+  int ret = le_manager_->ResetCredential(le_label, reset_secret);
   if (ret != LE_CRED_SUCCESS) {
-    PopulateError(error, ret == LE_CRED_ERROR_INVALID_RESET_SECRET
-                             ? CryptoError::CE_LE_INVALID_SECRET
-                             : CryptoError::CE_OTHER_FATAL);
+    PopulateError(&out_error, ret == LE_CRED_ERROR_INVALID_RESET_SECRET
+                                  ? CryptoError::CE_LE_INVALID_SECRET
+                                  : CryptoError::CE_OTHER_FATAL);
     return false;
   }
   return true;
