@@ -170,6 +170,33 @@ SafeFD::Error GetFileSize(int fd, size_t* file_size) {
   return SafeFD::Error::kNoError;
 }
 
+SafeFD::Error SeekToBeginning(int fd) {
+  errno = 0;
+  if (lseek(fd, 0, SEEK_SET) == -1) {
+    PLOG(ERROR) << "Failed to seek file to beginning";
+    return SafeFD::Error::kIOError;
+  }
+  return SafeFD::Error::kNoError;
+}
+
+SafeFD::Error AppendImpl(int fd, const char* data, size_t size) {
+  errno = 0;
+  if (!base::WriteFileDescriptor(fd, base::StringPiece(data, size))) {
+    PLOG(ERROR) << "Failed to write to file";
+    return SafeFD::Error::kIOError;
+  }
+  return SafeFD::Error::kNoError;
+}
+
+SafeFD::Error TruncateImpl(int fd, size_t size) {
+  errno = 0;
+  if (HANDLE_EINTR(ftruncate(fd, size)) != 0) {
+    PLOG(ERROR) << "Failed to truncate file";
+    return SafeFD::Error::kIOError;
+  }
+  return SafeFD::Error::kNoError;
+}
+
 // Cover the case that sendfile is not supported for |source|.
 SafeFD::Error CopyContentsToFallback(SafeFD* source,
                                      SafeFD* destination,
@@ -181,14 +208,15 @@ SafeFD::Error CopyContentsToFallback(SafeFD* source,
     ssize_t read_count =
         HANDLE_EINTR(read(source->get(), buffer.data(), buffer.size()));
     if (read_count == 0) {
-      return SafeFD::Error::kNoError;
+      return TruncateImpl(destination->get(), total_copied);
     }
     if (read_count < 0) {
       PLOG(ERROR) << "Failed to copy file; read";
       return SafeFD::Error::kIOError;
     }
 
-    SafeFD::Error err = destination->Write(buffer.data(), read_count);
+    SafeFD::Error err =
+        AppendImpl(destination->get(), buffer.data(), read_count);
     if (err != SafeFD::Error::kNoError) {
       return err;
     }
@@ -243,17 +271,18 @@ SafeFD::Error SafeFD::Write(const char* data, size_t size) {
   if (!fd_.is_valid()) {
     return SafeFD::Error::kNotInitialized;
   }
-  errno = 0;
-  if (!base::WriteFileDescriptor(fd_.get(), base::StringPiece(data, size))) {
-    PLOG(ERROR) << "Failed to write to file";
-    return SafeFD::Error::kIOError;
+
+  SafeFD::Error error = SeekToBeginning(fd_.get());
+  if (IsError(error)) {
+    return error;
   }
 
-  if (HANDLE_EINTR(ftruncate(fd_.get(), size)) != 0) {
-    PLOG(ERROR) << "Failed to truncate file";
-    return SafeFD::Error::kIOError;
+  error = AppendImpl(fd_.get(), data, size);
+  if (IsError(error)) {
+    return error;
   }
-  return SafeFD::Error::kNoError;
+
+  return TruncateImpl(fd_.get(), size);
 }
 
 std::pair<std::vector<char>, SafeFD::Error> SafeFD::ReadContents(
