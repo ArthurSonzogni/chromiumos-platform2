@@ -13343,10 +13343,6 @@ mno {
     }
   }
   mvno {
-    mvno_filter {
-      type : OPERATOR_NAME
-      regex : "firstnet"
-    }
     data {
       uuid : "81cd6912-a9de-4a0a-b39c-5a3d965c79cc"
       country : "us"
