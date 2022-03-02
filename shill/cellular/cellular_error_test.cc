@@ -49,12 +49,19 @@ class CellularErrorMM1Test : public testing::TestWithParam<TestParam> {};
 TEST_P(CellularErrorMM1Test, FromDBusError) {
   TestParam param = GetParam();
 
+  brillo::ErrorPtr detailed_dbus_error;
+
   brillo::ErrorPtr dbus_error =
       brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,
                             param.dbus_error, kErrorMessage);
   Error shill_error;
   CellularError::FromMM1ChromeosDBusError(dbus_error.get(), &shill_error);
+
   EXPECT_EQ(param.error_type, shill_error.type());
+
+  shill_error.ToDetailedError(&detailed_dbus_error);
+
+  EXPECT_EQ(param.dbus_error, detailed_dbus_error->GetCode());
 }
 
 INSTANTIATE_TEST_SUITE_P(

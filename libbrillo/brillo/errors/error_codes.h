@@ -18,6 +18,10 @@ namespace dbus {
 BRILLO_EXPORT extern const char kDomain[];
 }  // namespace dbus
 
+namespace shill {
+BRILLO_EXPORT extern const char kDomain[];
+}  // namespace shill
+
 namespace json {
 BRILLO_EXPORT extern const char kDomain[];
 BRILLO_EXPORT extern const char kParseError[];

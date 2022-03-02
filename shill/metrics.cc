@@ -1521,6 +1521,7 @@ int64_t Metrics::HashApn(const std::string& uuid,
 
 void Metrics::NotifyDetailedCellularConnectionResult(
     Error::Type error,
+    const std::string& detailed_error,
     const std::string& uuid,
     const shill::Stringmap& apn_info,
     IPConfig::Method ipv4_config_method,
@@ -1532,8 +1533,9 @@ void Metrics::NotifyDetailedCellularConnectionResult(
     uint32_t tech_used,
     uint32_t iccid_length,
     uint32_t sim_type,
-    uint32_t modem_state) {
-  int64_t home, serving;
+    uint32_t modem_state,
+    int interface_index) {
+  int64_t home, serving, detailed_error_hash;
   CellularApnSource apn_source = kCellularApnSourceUi;
   std::string apn_name;
   std::string username;
@@ -1542,9 +1544,13 @@ void Metrics::NotifyDetailedCellularConnectionResult(
       CellularRoamingState::kCellularRoamingStateUnknown;
   CellularConnectResult connect_result =
       ConvertErrorToCellularConnectResult(error);
+  uint32_t connect_time = 0;
+  uint32_t scan_connect_time = 0;
+  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
 
   base::StringToInt64(home_mccmnc, &home);
   base::StringToInt64(serving_mccmnc, &serving);
+  crypto::SHA256HashString(detailed_error, &detailed_error_hash, 8);
 
   if (roaming_state == kRoamingStateHome)
     roaming = kCellularRoamingStateHome;
@@ -1570,6 +1576,14 @@ void Metrics::NotifyDetailedCellularConnectionResult(
     }
   }
 
+  if (device_metrics != nullptr) {
+    base::TimeDelta elapsed_time;
+    device_metrics->connect_timer->GetElapsedTime(&elapsed_time);
+    connect_time = elapsed_time.InMilliseconds();
+    device_metrics->scan_connect_timer->GetElapsedTime(&elapsed_time);
+    scan_connect_time = elapsed_time.InMilliseconds();
+  }
+
   SLOG(this, 3) << __func__ << ": error:" << error << " uuid:" << uuid
                 << " apn:" << apn_name << " apn_source:" << apn_source
                 << " ipv4:" << ipv4_config_method
@@ -1579,7 +1593,10 @@ void Metrics::NotifyDetailedCellularConnectionResult(
                 << " roaming_state:" << roaming_state
                 << " tech_used:" << tech_used
                 << " iccid_length:" << iccid_length << " sim_type:" << sim_type
-                << " modem_state:" << modem_state;
+                << " modem_state:" << modem_state
+                << " connect_time:" << connect_time
+                << " scan_connect_time:" << scan_connect_time
+                << " detailed_error:" << detailed_error;
 
   metrics::structured::events::cellular::CellularConnectionAttempt()
       .Setconnect_result(static_cast<int64_t>(connect_result))
@@ -1595,6 +1612,9 @@ void Metrics::NotifyDetailedCellularConnectionResult(
       .Seticcid_length(iccid_length)
       .Setsim_type(sim_type)
       .Setmodem_state(modem_state)
+      .Setconnect_time(connect_time)
+      .Setscan_connect_time(scan_connect_time)
+      .Setdetailed_error(detailed_error_hash)
       .Record();
 }
 

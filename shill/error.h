@@ -56,6 +56,9 @@ class Error {
   Error();                    // Success by default.
   explicit Error(Type type);  // Uses the default message for |type|.
   Error(Type type, const std::string& message);
+  Error(Type type,
+        const std::string& message,
+        const std::string& detailed_error_type);
   Error(Type type, const std::string& message, const base::Location& location);
   Error(const Error&) = delete;
   Error& operator=(const Error&) = delete;
@@ -64,6 +67,9 @@ class Error {
 
   void Populate(Type type);  // Uses the default message for |type|.
   void Populate(Type type, const std::string& message);
+  void Populate(Type type,
+                const std::string& message,
+                const std::string& detailed_error_type);
   void Populate(Type type,
                 const std::string& message,
                 const base::Location& location);
@@ -78,6 +84,9 @@ class Error {
   // Leaves error unchanged, and returns false otherwise.
   bool ToChromeosError(brillo::ErrorPtr* error) const;
   bool ToChromeosErrorNoLog(brillo::ErrorPtr* error) const;
+
+  bool ToDetailedError(brillo::ErrorPtr* error) const;
+  bool ToDetailedErrorNoLog(brillo::ErrorPtr* error) const;
 
   Type type() const { return type_; }
   const std::string& message() const { return message_; }
@@ -107,6 +116,12 @@ class Error {
  private:
   Type type_;
   std::string message_;
+  // For frontend we need a user friendly error message, but for effective
+  // diagnostics we also need the actual error reported by the underlying
+  // connectivity module which could be reported through UMA or
+  // structured metrics.
+  std::string detailed_error_type_;
+  std::string detailed_message_;
   base::Location location_;
 };
 

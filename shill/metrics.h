@@ -1341,6 +1341,7 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object of the resulting status of a cellular connection
   virtual void NotifyDetailedCellularConnectionResult(
       Error::Type error,
+      const std::string& detailed_error,
       const std::string& uuid,
       const shill::Stringmap& apn_info,
       IPConfig::Method ipv4_config_method,
@@ -1352,7 +1353,8 @@ class Metrics : public DefaultServiceObserver {
       uint32_t tech_used,
       uint32_t iccid_len,
       uint32_t sim_type,
-      uint32_t modem_state);
+      uint32_t modem_state,
+      int interface_index);
 
   // Notifies this object about 3GPP registration drop events.
   virtual void Notify3GPPRegistrationDelayedDropPosted();

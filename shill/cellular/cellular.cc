@@ -1160,6 +1160,8 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   uint32_t tech_used = MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN;
   uint32_t iccid_len = 0;
   SimType sim_type = kSimTypeUnknown;
+  brillo::ErrorPtr detailed_error;
+  std::string cellular_error;
 
   std::string roaming_state;
   if (service_) {
@@ -1180,11 +1182,17 @@ void Cellular::NotifyDetailedCellularConnectionResult(
     }
   }
 
+  error.ToDetailedError(&detailed_error);
+  if (detailed_error != nullptr)
+    cellular_error = detailed_error->GetCode();
+
+  SLOG(this, 3) << "Cellular Error:" << cellular_error;
+
   metrics()->NotifyDetailedCellularConnectionResult(
-      error.type(), home_provider_info_->uuid(), apn_info, ipv4, ipv6,
-      home_provider_info_->mccmnc(), serving_operator_info_->mccmnc(),
+      error.type(), cellular_error, home_provider_info_->uuid(), apn_info, ipv4,
+      ipv6, home_provider_info_->mccmnc(), serving_operator_info_->mccmnc(),
       roaming_state, use_attach_apn_, tech_used, iccid_len, sim_type,
-      modem_state_);
+      modem_state_, interface_index());
 }
 
 void Cellular::Connect(CellularService* service, Error* error) {

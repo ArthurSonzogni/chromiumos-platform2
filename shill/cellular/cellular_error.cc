@@ -78,9 +78,9 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
     type = Error::kOperationFailed;
 
   if (!msg.empty())
-    return error->Populate(type, msg);
+    return error->Populate(type, msg, name);
   else
-    return error->Populate(type);
+    return error->Populate(type, "", name);
 }
 
 }  // namespace shill

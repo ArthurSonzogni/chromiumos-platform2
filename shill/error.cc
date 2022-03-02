@@ -72,6 +72,12 @@ Error::Error(Type type, const std::string& message) {
 
 Error::Error(Type type,
              const std::string& message,
+             const std::string& detailed_error_type) {
+  Populate(type, message, detailed_error_type);
+}
+
+Error::Error(Type type,
+             const std::string& message,
              const base::Location& location) {
   Populate(type, message, location);
 }
@@ -86,6 +92,15 @@ void Error::Populate(Type type, const std::string& message) {
   CHECK(type < kNumErrors) << "Error type out of range: " << type;
   type_ = type;
   message_ = message;
+}
+
+void Error::Populate(Type type,
+                     const std::string& message,
+                     const std::string& detailed_error_type) {
+  CHECK(type < kNumErrors) << "Error type out of range: " << type;
+  type_ = type;
+  message_ = message;
+  detailed_error_type_ = detailed_error_type;
 }
 
 void Error::Populate(Type type,
@@ -124,6 +139,27 @@ bool Error::ToChromeosErrorNoLog(brillo::ErrorPtr* error) const {
       *error = brillo::Error::CreateNoLog(
           location_, brillo::errors::dbus::kDomain, kInfos[type_].dbus_result,
           message_, std::move(*error));
+    }
+    return true;
+  }
+  return false;
+}
+
+bool Error::ToDetailedError(brillo::ErrorPtr* error) const {
+  if (IsFailure()) {
+    brillo::Error::AddTo(error, location_, brillo::errors::shill::kDomain,
+                         detailed_error_type_, detailed_message_);
+    return true;
+  }
+  return false;
+}
+
+bool Error::ToDetailedErrorNoLog(brillo::ErrorPtr* error) const {
+  if (IsFailure()) {
+    if (error) {
+      *error = brillo::Error::CreateNoLog(
+          location_, brillo::errors::shill::kDomain, detailed_error_type_,
+          detailed_message_, std::move(*error));
     }
     return true;
   }

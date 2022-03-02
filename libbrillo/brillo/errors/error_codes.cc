@@ -13,6 +13,10 @@ namespace dbus {
 const char kDomain[] = "dbus";
 }  // namespace dbus
 
+namespace shill {
+const char kDomain[] = "shill";
+}  // namespace shill
+
 namespace json {
 const char kDomain[] = "json_parser";
 const char kParseError[] = "json_parse_error";

@@ -418,6 +418,24 @@
         Connecting == 10 , Connected == 11.
       </summary>
     </metric>
+    <metric name="connect_time" type="int">
+      <summary>
+        Indicates the time in milliseconds, it took to connect to
+        the cellular network.
+      </summary>
+    </metric>
+    <metric name="scan_connect_time" type="int">
+      <summary>
+        Indicates the time in milliseconds, it took to scan and
+        connect to the cellular network.
+      </summary>
+    </metric>
+    <metric name="detailed_error" type="int">
+      <summary>
+        Indicates more granular and precise error, reported by
+        modem manager, libmbim, libqmi etc.
+      </summary>
+    </metric>
   </event>
 </project>
 

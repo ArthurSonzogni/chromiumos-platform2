@@ -39,6 +39,7 @@ class MockMetrics : public Metrics {
               NotifyDetailedCellularConnectionResult,
               (Error::Type,
                const std::string&,
+               const std::string&,
                const shill::Stringmap&,
                IPConfig::Method,
                IPConfig::Method,
@@ -49,7 +50,8 @@ class MockMetrics : public Metrics {
                uint32_t tech_used,
                uint32_t iccid_len,
                uint32_t sim_type,
-               uint32_t modem_state),
+               uint32_t modem_state,
+               int interface_index),
               (override));
 
   MOCK_METHOD(void,
