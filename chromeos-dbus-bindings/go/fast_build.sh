@@ -105,7 +105,10 @@ fmt.Sprint,fmt.Sprintf,sort.Reverse "${@}"
 # Tests one or more packages.
 run_test() {
   local args=("${@}" "${EXTRAARGS[@]}")
-  go test "${verbose_flag}" -pkgdir "${PKGDIR}" \
+  # Do not double quote ${verbose_flag} to avoid it being treated as empty path
+  # to a package
+  # shellcheck disable=SC2086
+  go test ${verbose_flag} -pkgdir "${PKGDIR}" \
     ${test_regex:+"-run=${test_regex}"} "${args[@]}"
 }
 
