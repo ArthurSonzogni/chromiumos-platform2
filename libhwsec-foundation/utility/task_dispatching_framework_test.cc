@@ -13,11 +13,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "libhwsec/task_dispatching_framework.h"
+#include "libhwsec-foundation/utility/task_dispatching_framework.h"
 
 using ResponseSender = ::dbus::ExportedObject::ResponseSender;
 using DBusMethodResponse = brillo::dbus_utils::DBusMethodResponse<>;
-using ThreadSafeDBusMethodResponse = hwsec::ThreadSafeDBusMethodResponse<>;
+using ThreadSafeDBusMethodResponse =
+    hwsec_foundation::utility::ThreadSafeDBusMethodResponse<>;
 using DBusMethodResponseCallback = std::unique_ptr<DBusMethodResponse>;
 
 constexpr base::TimeDelta kTestTimeout = base::Minutes(1);

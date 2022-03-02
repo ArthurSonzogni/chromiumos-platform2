@@ -78,6 +78,7 @@ if (use.test) {
       "tpm_error/tpm_error_uma_reporter_test.cc",
       "utility/crypto_test.cc",
       "utility/synchronized_test.cc",
+      "utility/task_dispatching_framework_test.cc",
     ]
     sources += [
       "tpm_error/tpm_error_data.cc",

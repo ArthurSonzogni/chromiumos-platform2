@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBHWSEC_TASK_DISPATCHING_FRAMEWORK_H_
-#define LIBHWSEC_TASK_DISPATCHING_FRAMEWORK_H_
+#ifndef LIBHWSEC_FOUNDATION_UTILITY_TASK_DISPATCHING_FRAMEWORK_H_
+#define LIBHWSEC_FOUNDATION_UTILITY_TASK_DISPATCHING_FRAMEWORK_H_
 
 #include <memory>
 #include <string>
@@ -15,7 +15,8 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/dbus_method_response.h>
 
-namespace hwsec {
+namespace hwsec_foundation {
+namespace utility {
 
 // This class allows DBusMethodResponse to Return(), ReplyWithError() or
 // destruct from any thread. However, it should be noted that the creation of
@@ -132,6 +133,7 @@ class ThreadSafeDBusMethodResponse
   std::unique_ptr<BaseClass> original_callback_;
 };
 
-}  // namespace hwsec
+}  // namespace utility
+}  // namespace hwsec_foundation
 
-#endif  // LIBHWSEC_TASK_DISPATCHING_FRAMEWORK_H_
+#endif  // LIBHWSEC_FOUNDATION_UTILITY_TASK_DISPATCHING_FRAMEWORK_H_

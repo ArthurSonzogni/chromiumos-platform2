@@ -11,14 +11,14 @@
 #include <base/files/file_path.h>
 #include <brillo/cryptohome.h>
 #include <chromeos/constants/cryptohome.h>
-#include <chromeos/libhwsec/task_dispatching_framework.h>
+#include <libhwsec-foundation/utility/task_dispatching_framework.h>
 
 #include "cryptohome/service_userdataauth.h"
 #include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
 
-using ::hwsec::ThreadSafeDBusMethodResponse;
+using ::hwsec_foundation::utility::ThreadSafeDBusMethodResponse;
 
 void UserDataAuthAdaptor::IsMounted(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<

@@ -112,10 +112,7 @@ shared_library("libhwsec") {
 }
 
 install_config("install_headers") {
-  sources = [
-    "hwsec_export.h",
-    "task_dispatching_framework.h",
-  ]
+  sources = [ "hwsec_export.h" ]
   install_path = "/usr/include/chromeos/libhwsec"
 }
 
@@ -138,10 +135,7 @@ if (use.test) {
   }
 
   executable("hwsec_testrunner") {
-    sources = [
-      "error/tpm_error_test.cc",
-      "task_dispatching_framework_test.cc",
-    ]
+    sources = [ "error/tpm_error_test.cc" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",

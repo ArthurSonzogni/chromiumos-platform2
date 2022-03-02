@@ -1,4 +1,4 @@
-# Shared library for userspace TPM daemons
+# Shared library for userspace hardware security daemons
 
-Provides OpenSSL wrappers and utility functions which used in all TPM related userspace daemons
-such as cryptohome, attestation, chaps, u2f, ...etc.
+Provides abstraction components which used in all hardware security related
+userspace daemons such as cryptohome, attestation, chaps, u2f, ...etc.
