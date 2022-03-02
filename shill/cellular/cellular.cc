@@ -54,7 +54,6 @@
 #include "shill/net/sockets.h"
 #include "shill/ppp_daemon.h"
 #include "shill/ppp_device.h"
-#include "shill/ppp_device_factory.h"
 #include "shill/process_manager.h"
 #include "shill/profile.h"
 #include "shill/store/property_accessor.h"
@@ -253,7 +252,6 @@ Cellular::Cellular(Manager* manager,
       dbus_path_(path),
       dbus_path_str_(path.value()),
       type_(type),
-      ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       process_manager_(ProcessManager::GetInstance()) {
   RegisterProperties();
 
@@ -1840,8 +1838,8 @@ void Cellular::OnPPPConnected(
       // See https://crbug.com/1032030 for details.
       ppp_device_ = nullptr;
     }
-    ppp_device_ = ppp_device_factory_->CreatePPPDevice(
-        manager(), interface_name, interface_index);
+    ppp_device_ = device_info->CreatePPPDevice(manager(), interface_name,
+                                               interface_index);
     device_info->RegisterDevice(ppp_device_);
   }
 

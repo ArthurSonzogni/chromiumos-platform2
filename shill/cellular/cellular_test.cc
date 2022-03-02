@@ -8,8 +8,10 @@
 #include <linux/netlink.h>
 #include <sys/socket.h>
 
+#include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -49,18 +51,19 @@ extern "C" {
 #include "shill/dhcp/mock_dhcp_config.h"
 #include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
+#include "shill/manager.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_external_task.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_ppp_device.h"
-#include "shill/mock_ppp_device_factory.h"
 #include "shill/mock_process_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/net/mock_rtnl_handler.h"
+#include "shill/ppp_device.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
+#include "shill/service.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store_test.h"
 #include "shill/test_event_dispatcher.h"
@@ -77,6 +80,7 @@ using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
 using testing::SetArgPointee;
+using testing::StrEq;
 
 namespace shill {
 
@@ -85,6 +89,29 @@ RpcIdentifier kTestBearerPath("/org/freedesktop/ModemManager1/Bearer/0");
 constexpr char kUid[] = "uid";
 constexpr char kIccid[] = "1234567890000";
 }  // namespace
+
+class MockPPPDevice : public PPPDevice {
+ public:
+  MockPPPDevice(Manager* manager, const std::string& ifname, int ifindex)
+      : PPPDevice(manager, ifname, ifindex) {}
+  MockPPPDevice(const MockPPPDevice&) = delete;
+  MockPPPDevice& operator=(const MockPPPDevice&) = delete;
+  ~MockPPPDevice() = default;
+
+  MOCK_METHOD(void, DropConnection, (), (override));
+  MOCK_METHOD(void, SelectService, (const ServiceRefPtr&), (override));
+  MOCK_METHOD(void, SetServiceState, (Service::ConnectState), (override));
+  MOCK_METHOD(void, SetServiceFailure, (Service::ConnectFailure), (override));
+  MOCK_METHOD(void,
+              SetServiceFailureSilent,
+              (Service::ConnectFailure),
+              (override));
+  MOCK_METHOD(void, SetEnabled, (bool), (override));
+  MOCK_METHOD(void,
+              UpdateIPConfigFromPPP,
+              ((const std::map<std::string, std::string>&), bool),
+              (override));
+};
 
 class CellularPropertyTest : public PropertyStoreTest {
  public:
@@ -313,10 +340,10 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   }
 
   void FakeUpConnectedPPP() {
-    const char kInterfaceName[] = "fake-ppp-device";
-    const int kInterfaceIndex = -1;
-    auto mock_ppp_device = base::MakeRefCounted<MockPPPDevice>(
-        &manager_, kInterfaceName, kInterfaceIndex);
+    const char ifname[] = "fake-ppp-device";
+    const int ifindex = 1;
+    auto mock_ppp_device =
+        base::MakeRefCounted<MockPPPDevice>(&manager_, ifname, ifindex);
     device_->ppp_device_ = mock_ppp_device;
     device_->set_state_for_testing(Cellular::State::kConnected);
   }
@@ -1564,10 +1591,7 @@ TEST_P(CellularTest, GetLogin) {
 
 TEST_P(CellularTest, Notify) {
   // Common setup.
-  MockPPPDeviceFactory* ppp_device_factory =
-      MockPPPDeviceFactory::GetInstance();
   const int kPID = 91;
-  device_->ppp_device_factory_ = ppp_device_factory;
   SetMockService();
   StartPPP(kPID);
 
@@ -1578,63 +1602,62 @@ TEST_P(CellularTest, Notify) {
   EXPECT_FALSE(device_->is_ppp_authenticating_);
 
   // Normal connect.
-  const std::string kInterfaceName("fake-device");
-  const int kInterfaceIndex = 1;
-  scoped_refptr<MockPPPDevice> ppp_device;
+  const std::string ifname1 = "fake-device";
+  const int ifindex1 = 1;
+  auto ppp_device1 = new MockPPPDevice(&manager_, ifname1, ifindex1);
   std::map<std::string, std::string> ppp_config;
-  ppp_device = new MockPPPDevice(&manager_, kInterfaceName, kInterfaceIndex);
-  ppp_config[kPPPInterfaceName] = kInterfaceName;
-  EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
-      .WillOnce(Return(kInterfaceIndex));
-  EXPECT_CALL(device_info_, RegisterDevice(_));
-  EXPECT_CALL(*ppp_device_factory,
-              CreatePPPDevice(_, kInterfaceName, kInterfaceIndex))
-      .WillOnce(Return(ppp_device.get()));
-  EXPECT_CALL(*ppp_device, SetEnabled(true));
-  EXPECT_CALL(*ppp_device, SelectService(_));
-  EXPECT_CALL(*ppp_device,
+  ppp_config[kPPPInterfaceName] = ifname1;
+  EXPECT_CALL(device_info_, GetIndex(ifname1)).WillOnce(Return(ifindex1));
+  EXPECT_CALL(device_info_, CreatePPPDevice(_, StrEq(ifname1), ifindex1))
+      .WillOnce(Return(ppp_device1));
+  EXPECT_CALL(device_info_,
+              RegisterDevice(static_cast<DeviceRefPtr>(ppp_device1)));
+  EXPECT_CALL(*ppp_device1, SetEnabled(true));
+  EXPECT_CALL(*ppp_device1,
+              SelectService(static_cast<ServiceRefPtr>(device_->service_)));
+  EXPECT_CALL(*ppp_device1,
               UpdateIPConfigFromPPP(ppp_config, false /* blackhole_ipv6 */));
   device_->Notify(kPPPReasonConnect, ppp_config);
   Mock::VerifyAndClearExpectations(&device_info_);
-  Mock::VerifyAndClearExpectations(ppp_device.get());
+  Mock::VerifyAndClearExpectations(ppp_device1);
 
   // Re-connect on same network device: if pppd sends us multiple connect
   // events, we behave rationally.
-  EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
-      .WillOnce(Return(kInterfaceIndex));
-  EXPECT_CALL(*ppp_device, SetEnabled(true));
-  EXPECT_CALL(*ppp_device, SelectService(_));
-  EXPECT_CALL(*ppp_device,
+  EXPECT_CALL(device_info_, GetIndex(ifname1)).WillOnce(Return(ifindex1));
+  EXPECT_CALL(device_info_, CreatePPPDevice(_, _, _)).Times(0);
+  EXPECT_CALL(device_info_, RegisterDevice(_)).Times(0);
+  EXPECT_CALL(*ppp_device1, SetEnabled(true));
+  EXPECT_CALL(*ppp_device1,
+              SelectService(static_cast<ServiceRefPtr>(device_->service_)));
+  EXPECT_CALL(*ppp_device1,
               UpdateIPConfigFromPPP(ppp_config, false /* blackhole_ipv6 */));
   device_->Notify(kPPPReasonConnect, ppp_config);
   Mock::VerifyAndClearExpectations(&device_info_);
-  Mock::VerifyAndClearExpectations(ppp_device.get());
+  Mock::VerifyAndClearExpectations(ppp_device1);
 
   // Re-connect on new network device: if we still have the PPPDevice
   // from a prior connect, this new connect should DTRT. This is
   // probably an unlikely case.
-  const std::string kInterfaceName2("fake-device2");
-  const int kInterfaceIndex2 = 2;
-  scoped_refptr<MockPPPDevice> ppp_device2;
+  const std::string ifname2 = "fake-device2";
+  const int ifindex2 = 2;
+  auto ppp_device2 = new MockPPPDevice(&manager_, ifname2, ifindex2);
   std::map<std::string, std::string> ppp_config2;
-  ppp_device2 = new MockPPPDevice(&manager_, kInterfaceName2, kInterfaceIndex2);
-  ppp_config2[kPPPInterfaceName] = kInterfaceName2;
-  EXPECT_CALL(device_info_, GetIndex(kInterfaceName2))
-      .WillOnce(Return(kInterfaceIndex2));
+  ppp_config2[kPPPInterfaceName] = ifname2;
+  EXPECT_CALL(device_info_, GetIndex(ifname2)).WillOnce(Return(ifindex2));
+  EXPECT_CALL(device_info_, CreatePPPDevice(_, StrEq(ifname2), ifindex2))
+      .WillOnce(Return(ppp_device2));
   EXPECT_CALL(device_info_,
               RegisterDevice(static_cast<DeviceRefPtr>(ppp_device2)));
-  EXPECT_CALL(*ppp_device_factory,
-              CreatePPPDevice(_, kInterfaceName2, kInterfaceIndex2))
-      .WillOnce(Return(ppp_device2.get()));
-  EXPECT_CALL(*ppp_device, SelectService(ServiceRefPtr(nullptr)));
+  EXPECT_CALL(*ppp_device1, SelectService(ServiceRefPtr(nullptr)));
   EXPECT_CALL(*ppp_device2, SetEnabled(true));
-  EXPECT_CALL(*ppp_device2, SelectService(_));
+  EXPECT_CALL(*ppp_device2,
+              SelectService(static_cast<ServiceRefPtr>(device_->service_)));
   EXPECT_CALL(*ppp_device2,
               UpdateIPConfigFromPPP(ppp_config2, false /* blackhole_ipv6 */));
   device_->Notify(kPPPReasonConnect, ppp_config2);
   Mock::VerifyAndClearExpectations(&device_info_);
-  Mock::VerifyAndClearExpectations(ppp_device.get());
-  Mock::VerifyAndClearExpectations(ppp_device2.get());
+  Mock::VerifyAndClearExpectations(ppp_device1);
+  Mock::VerifyAndClearExpectations(ppp_device2);
 
   // Disconnect should report no failure, since we had a
   // Notify(kPPPReasonAuthenticated, ...) and got no error from pppd.
@@ -1738,11 +1761,25 @@ TEST_P(CellularTest, PPPConnectionFailedAfterConnect) {
   MockCellularService* service = SetMockService();
   StartPPP(kPID);
 
-  EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
+  const std::string ifname = "ppp0";
+  const int ifindex = 1;
+  auto ppp_device = new MockPPPDevice(&manager_, ifname, ifindex);
+  std::map<std::string, std::string> ppp_config;
+  ppp_config[kPPPInterfaceName] = ifname;
+  EXPECT_CALL(device_info_, GetIndex("ppp0")).WillOnce(Return(ifindex));
+  EXPECT_CALL(device_info_, CreatePPPDevice(_, StrEq(ifname), ifindex))
+      .WillOnce(Return(ppp_device));
+  EXPECT_CALL(device_info_,
+              RegisterDevice(static_cast<DeviceRefPtr>(ppp_device)));
+  EXPECT_CALL(*ppp_device, SetEnabled(true));
+  EXPECT_CALL(*ppp_device, SelectService(static_cast<ServiceRefPtr>(service)));
+  EXPECT_CALL(*ppp_device,
+              UpdateIPConfigFromPPP(_, false /* blackhole_ipv6 */));
+  EXPECT_CALL(*ppp_device, SetServiceFailure(Service::kFailureUnknown));
   ExpectDisconnectCapability3gpp();
-  device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
-  device_->Notify(kPPPReasonAuthenticated, kEmptyArgs);
-  device_->Notify(kPPPReasonConnect, kEmptyArgs);
+  device_->Notify(kPPPReasonAuthenticating, ppp_config);
+  device_->Notify(kPPPReasonAuthenticated, ppp_config);
+  device_->Notify(kPPPReasonConnect, ppp_config);
   device_->OnPPPDied(kPID, EXIT_FATAL_ERROR);
   EXPECT_EQ(nullptr, device_->ppp_task_);
   VerifyDisconnect();
@@ -1793,7 +1830,7 @@ TEST_P(CellularTest, DropConnection) {
 
 TEST_P(CellularTest, DropConnectionPPP) {
   scoped_refptr<MockPPPDevice> ppp_device(
-      new MockPPPDevice(&manager_, "fake_ppp0", -1));
+      new MockPPPDevice(&manager_, "ppp0", 123));
   // Calling device_->DropConnection() explicitly will trigger
   // DestroyCapability() which also triggers a (redundant and harmless)
   // ppp_device->DropConnection() call.
@@ -1820,7 +1857,7 @@ TEST_P(CellularTest, ChangeServiceState) {
 TEST_P(CellularTest, ChangeServiceStatePPP) {
   MockCellularService* service(SetMockService());
   scoped_refptr<MockPPPDevice> ppp_device(
-      new MockPPPDevice(&manager_, "fake_ppp0", -1));
+      new MockPPPDevice(&manager_, "ppp0", 123));
   EXPECT_CALL(*ppp_device, SetServiceState(_));
   EXPECT_CALL(*ppp_device, SetServiceFailure(_));
   EXPECT_CALL(*ppp_device, SetServiceFailureSilent(_));

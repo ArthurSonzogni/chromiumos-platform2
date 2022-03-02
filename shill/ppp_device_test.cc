@@ -13,7 +13,6 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_ppp_device.h"
 
 namespace shill {
 

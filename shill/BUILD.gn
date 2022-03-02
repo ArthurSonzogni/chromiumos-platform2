@@ -380,7 +380,6 @@ static_library("libshill") {
     sources += [
       "ppp_daemon.cc",
       "ppp_device.cc",
-      "ppp_device_factory.cc",
     ]
   }
 
@@ -783,8 +782,6 @@ if (use.test) {
 
     if (use.cellular || use.vpn) {
       sources += [
-        "mock_ppp_device.cc",
-        "mock_ppp_device_factory.cc",
         "ppp_daemon_test.cc",
         "ppp_device_test.cc",
       ]

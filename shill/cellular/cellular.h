@@ -33,7 +33,6 @@ class CellularCapability;
 class Error;
 class ExternalTask;
 class NetlinkSockDiag;
-class PPPDeviceFactory;
 class ProcessManager;
 
 class Cellular : public Device,
@@ -685,8 +684,6 @@ class Cellular : public Device,
   Type type_;
   std::unique_ptr<CellularCapability> capability_;
   base::Optional<InterfaceToProperties> initial_properties_;
-
-  PPPDeviceFactory* ppp_device_factory_;
 
   ProcessManager* process_manager_;
 

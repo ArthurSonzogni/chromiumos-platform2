@@ -24,6 +24,7 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/shill_time.h"
 #include "shill/net/sockets.h"
+#include "shill/ppp_device.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
 
@@ -148,6 +149,10 @@ class DeviceInfo {
                                    int xfrm_if_id,
                                    LinkReadyCallback link_ready_callback,
                                    base::OnceClosure failure_callback);
+
+  virtual PPPDevice* CreatePPPDevice(Manager* manager,
+                                     const std::string& ifname,
+                                     int ifindex);
 
   virtual bool DeleteInterface(int interface_index) const;
   virtual void AddVirtualInterfaceReadyCallback(

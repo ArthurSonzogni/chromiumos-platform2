@@ -13,6 +13,7 @@
 
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/ppp_device.h"
 
 namespace shill {
 
@@ -65,6 +66,10 @@ class MockDeviceInfo : public DeviceInfo {
       CreateXFRMInterface,
       (const std::string&, int, int, LinkReadyCallback, base::OnceClosure),
       (override));
+  MOCK_METHOD(PPPDevice*,
+              CreatePPPDevice,
+              (Manager*, const std::string&, int),
+              (override));
   MOCK_METHOD(void,
               AddVirtualInterfaceReadyCallback,
               (const std::string&, LinkReadyCallback),
