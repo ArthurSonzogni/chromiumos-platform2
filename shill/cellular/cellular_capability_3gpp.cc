@@ -24,6 +24,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_consts.h"
+#include "shill/cellular/cellular_helpers.h"
 #include "shill/cellular/cellular_pco.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mobile_operator_info.h"
@@ -872,9 +873,10 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
   // Store the last Attach APN we tried.
   last_attach_apn_ = apn_info;
 
-  const std::string& apn = apn_info.at(kApnProperty);
-  SLOG(this, 2) << __func__ << ": Using Attach APN " << apn;
-  properties->Set<std::string>(kConnectApn, apn);
+  SLOG(this, 2) << __func__ << ": Using Attach APN '"
+                << GetStringmapValue(apn_info, kApnProperty) << "'";
+  if (base::Contains(apn_info, kApnProperty))
+    properties->Set<std::string>(kConnectApn, apn_info.at(kApnProperty));
   if (base::Contains(apn_info, kApnUsernameProperty))
     properties->Set<std::string>(kConnectUser,
                                  apn_info.at(kApnUsernameProperty));
@@ -1818,6 +1820,16 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   base::EraseIf(attach_apn_try_list_, [](const Stringmap& apn_info) {
     return !base::Contains(apn_info, kApnAttachProperty);
   });
+  // If the attach APN in shill's database is not the correct one, the device
+  // will never register. We can let the modem try to register with its own
+  // database by adding an empty APN to the list.
+  if (attach_apn_try_list_.size() != 0) {
+    attach_apn_try_list_.emplace_back();
+    // When multiple Attach APNs are present(including the empty Attach added
+    // above), shill should fall back to the default one(first in the list) if
+    // all of them fail to register.
+    attach_apn_try_list_.emplace_back(attach_apn_try_list_.front());
+  }
 
   if (!cellular()->home_provider_info()->IsMobileNetworkOperatorKnown()) {
     // If the carrier is not in shill's db, shill should use the user APN or
