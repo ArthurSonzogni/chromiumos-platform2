@@ -19,7 +19,6 @@
 #include <sys/un.h>
 
 #include <string>
-#include <vector>
 
 #include <base/strings/stringprintf.h>
 #include <brillo/brillo_export.h>
@@ -154,10 +153,6 @@ BRILLO_EXPORT bool IsMulticastInterface(const std::string& ifname);
 // Returns the IP family from the string |ip_address|. If |ip_address| is
 // invalid, returns AF_UNSPEC (0).
 BRILLO_EXPORT sa_family_t GetIpFamily(const std::string& ip_address);
-
-// Helper for turning an IPv6 in6_addr address into a movable object that can
-// be used as a map key.
-BRILLO_EXPORT std::vector<uint8_t> In6AddrToVector(const in6_addr& ipv6_addr);
 
 }  // namespace patchpanel
 

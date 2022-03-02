@@ -8,7 +8,6 @@
 #include <stdint.h>
 
 #include <linux/if_ether.h>
-#include <linux/if_packet.h>
 #include <net/ethernet.h>
 #include <netinet/icmp6.h>
 #include <netinet/ip.h>
@@ -143,18 +142,6 @@ class NDProxy {
   // 1 and 2 will be proxied to each other.
   using interface_mapping = std::map<int, std::set<int>>;
 
-  // If not seen yet, remember the MAC address |sockaddr.sll_addr| for a
-  // neighbor with IPv6 address |ipv6_addr| seen on the guest interface with
-  // index |sockaddr.sll_ifindex|.
-  void SetGuestNeighborMac(const sockaddr_ll& sockaddr,
-                           const in6_addr& ipv6_addr);
-
-  // Copy into |mac_addr| the MAC address of a neighbor with IPv6 address
-  // |ipv6_addr| previously seen on the guest interface with index |ifindex|.
-  bool GetGuestNeighborMac(int ifindex,
-                           const in6_addr& ipv6_addr,
-                           MacAddress* mac_addr);
-
   // Get MAC address on a local interface through ioctl().
   // Returns false upon failure.
   virtual bool GetLocalMac(int if_id, MacAddress* mac_addr);
@@ -195,19 +182,6 @@ class NDProxy {
 
   // b/187918638: list of interfaces that require special workaround
   std::set<int> irregular_router_ifs_;
-
-  // Map of all neighbor MAC addresses seen on guest interfaces monitored by
-  // NDProxy. This map allows NDProxy to consistently find the hardware address
-  // of a guest neighbor without relying on rtnetlink. Using the kernel neighbor
-  // table for guest neighbors sometimes give inconsistent results or no result.
-  // The map is organized as 2 nested std::map together. The outer map is keyed
-  // by interface index, and the inner map is keyed by IPv6 address represented
-  // as byte vectors. This structure allows simple and efficient cleanup in
-  // RemoveInterface(), and allows bounding the maximum number of neighbor
-  // remembered per guest interface. Since guests are invalidated exactly when
-  // their interfaces are removed, it is not necessary to track the lifetime of
-  // these neighbor entries.
-  std::map<int, std::map<std::vector<uint8_t>, MacAddress>> guest_neighbors_;
 
   base::RepeatingCallback<void(const std::string&, const std::string&)>
       guest_discovery_handler_;
