@@ -375,7 +375,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(ManagerTest, GetEnabledDeviceWithTechnology);
   FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
-  FRIEND_TEST(PPPoEServiceTest, OnPPPConnected);
   FRIEND_TEST(WiFiMainTest, UseArpGateway);
 
   virtual ~Device();

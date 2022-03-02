@@ -1530,7 +1530,7 @@ TEST_F(ManagerTest, GetServiceNoType) {
 TEST_F(ManagerTest, GetServiceUnknownType) {
   KeyValueStore args;
   Error e;
-  args.Set<std::string>(kTypeProperty, kTypePPPoE);
+  args.Set<std::string>(kTypeProperty, "NotANetworkTechnology");
   manager()->GetService(args, &e);
   EXPECT_EQ(Error::kTechnologyNotAvailable, e.type());
 }

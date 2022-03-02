@@ -54,10 +54,6 @@ class PPPDaemon {
     // over D-Bus to the RpcTaskDelegate provided during PPPDaemon::Start.
     bool use_shim_plugin;
 
-    // If set, enables the rp-pppoe plugin which allows pppd to be used over
-    // ethernet devices.
-    bool use_pppoe_plugin;
-
     // The number of seconds between sending LCP echo requests.
     uint32_t lcp_echo_interval;
 

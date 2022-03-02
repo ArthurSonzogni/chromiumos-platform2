@@ -8,12 +8,8 @@ representing a virtual interface) may not exist when a Connect is
 requested. Therefore the standard means of a `Service` passing Connect requests
 over to its corresponding `Device` does not work. Also since the `VirtualDevice`
 type is not unique to a particular VPN solution (`PPPDevices`, for example, are
-used for cellular dongles, PPPoE, and L2TP/IPsec VPNs), the VPN-specific logic
-cannot be contained within the `VirtualDevice` instance. Note that PPPoE is in a
-similar position but solves this by piggybacking off of the `Ethernet` instance
-that will carry the PPPoE traffic, moving the complexity of PPPoE configuration
-into `Ethernet` code, which creates a `PPPoEService` rather than
-`EthernetService` when PPPoE is used.
+used for cellular dongles, and L2TP/IPsec VPNs), the VPN-specific logic cannot
+be contained within the `VirtualDevice` instance.
 
 For VPN, this is solved through the use of `VPNDrivers`. A `VPNDriver` takes
 care of attaining a proper `VirtualDevice`, communicating with processes outside

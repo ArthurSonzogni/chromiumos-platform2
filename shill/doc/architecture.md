@@ -113,7 +113,7 @@ network interface.
 
 *   `Device` instances are managed by [DeviceInfo](#DeviceInfo).
     *   Exception: `VirtualDevice` instances corresponding to virtual interfaces
-        (for use-cases like PPPoE, VPN, and cellular dongles).
+        (for use-cases like VPN, and cellular dongles).
 
 
 ## ServiceProvider
@@ -163,7 +163,6 @@ network configuration and a connection through an associated
     *   [CellularService](cellular.md#CellularService)
     *   [EthernetService class](../ethernet/ethernet_service.h)
     *   [EthernetEapService class](../ethernet/ethernet_eap_service.h)
-    *   [PPPoEService class](../pppoe/pppoe_service.h)
     *   [VPNService class](../vpn/vpn_service.h)
         *   See also [vpn.md](vpn.md)
     *   [WiFiService class](../wifi/wifi_service.h)

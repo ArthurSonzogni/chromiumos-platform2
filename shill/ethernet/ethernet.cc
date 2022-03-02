@@ -42,10 +42,6 @@
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 
-#if !defined(DISABLE_PPPOE)
-#include "shill/pppoe/pppoe_service.h"
-#endif  // DISABLE_PPPOE
-
 #if !defined(DISABLE_WIRED_8021X)
 #include "shill/eap_credentials.h"
 #include "shill/ethernet/eap_listener.h"
@@ -145,11 +141,6 @@ Ethernet::Ethernet(Manager* manager,
 #endif  // DISABLE_WIRED_8021X
   store->RegisterConstBool(kLinkUpProperty, &link_up_);
   store->RegisterConstString(kDeviceBusTypeProperty, &bus_type_);
-  store->RegisterDerivedBool(
-      kPPPoEProperty,
-      BoolAccessor(new CustomAccessor<Ethernet, bool>(
-          this, &Ethernet::GetPPPoEMode, &Ethernet::ConfigurePPPoEMode,
-          &Ethernet::ClearPPPoEMode)));
   store->RegisterDerivedString(
       kUsbEthernetMacAddressSourceProperty,
       StringAccessor(new CustomAccessor<Ethernet, std::string>(
@@ -188,7 +179,7 @@ void Ethernet::Start(Error* error,
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   LOG(INFO) << "Registering " << link_name() << " with manager.";
   if (!service_) {
-    service_ = CreateEthernetService();
+    service_ = GetProvider()->CreateService(weak_ptr_factory_.GetWeakPtr());
   }
   RegisterService(service_);
   if (error)
@@ -255,22 +246,10 @@ bool Ethernet::Load(const StoreInterface* storage) {
     SLOG(this, 2) << "Device is not available in the persistent store: " << id;
     return false;
   }
-
-  bool pppoe = false;
-  storage->GetBool(id, kPPPoEProperty, &pppoe);
-
-  Error error;
-  ConfigurePPPoEMode(pppoe, &error);
-  if (!error.IsSuccess()) {
-    LOG(WARNING) << "Error configuring PPPoE mode.  Ignoring!";
-  }
-
   return Device::Load(storage);
 }
 
 bool Ethernet::Save(StoreInterface* storage) {
-  const std::string id = GetStorageIdentifier();
-  storage->SetBool(id, kPPPoEProperty, GetPPPoEMode(nullptr));
   return Device::Save(storage);
 }
 
@@ -278,7 +257,6 @@ void Ethernet::ConnectTo(EthernetService* service) {
   CHECK(service_) << "Service should not be null";
   CHECK(service == service_.get()) << "Ethernet was asked to connect the "
                                    << "wrong service?";
-  CHECK(!GetPPPoEMode(nullptr)) << "We should never connect in PPPoE mode!";
   if (!link_up_) {
     return;
   }
@@ -728,115 +706,22 @@ bool Ethernet::DisableOffloadFeatures() {
   return ret;
 }
 
-bool Ethernet::ConfigurePPPoEMode(const bool& enable, Error* error) {
-#if defined(DISABLE_PPPOE)
-  if (enable) {
-    LOG(WARNING) << "PPPoE support is not implemented.  Ignoring attempt "
-                 << "to configure " << link_name();
-    error->Populate(Error::kNotSupported);
-  }
-  return false;
-#else
-  if (!service_) {
-    // If |service_| is null, we haven't started this Device yet.
-    if (enable) {
-      // Create a PPPoEService but let Start() register it.
-      service_ = CreatePPPoEService();
-    } else {
-      // Reset |service_| and let Start() create and register a standard
-      // EthernetService.
-      service_ = nullptr;
-    }
-    return true;
-  }
-
-  EthernetServiceRefPtr service = nullptr;
-  if (enable && service_->technology() != Technology::kPPPoE) {
-    service = CreatePPPoEService();
-    if (!manager()->HasService(service_)) {
-      // |service_| is unregistered, which means the Device is not started.
-      // Create a PPPoEService, but let Start() register it.
-      service_ = service;
-      return true;
-    }
-  } else if (!enable && service_->technology() == Technology::kPPPoE) {
-    if (!manager()->HasService(service_)) {
-      // |service_| is unregistered, which means ths Device is not started. Let
-      // Start() create and register a standard EthernetService.
-      service_ = nullptr;
-      return true;
-    }
-    service = CreateEthernetService();
-  } else {
-    return false;
-  }
-
-  CHECK(service);
-  // If |service_| has not begun to connect (i.e. this method is called prior to
-  // Manager::SortServicesTask being executed and triggering an autoconnect),
-  // Disconnect would return an error. We can get away with ignoring any error
-  // here because DisconnectFrom does not have any failure scenarios.
-  //
-  // TODO(crbug.com/1003958) If/when PPPoE is redesigned, this hack will be
-  // unnecessary to begin with.
-  Error unused_error;
-  service_->Disconnect(&unused_error, __func__);
-  DeregisterService(service_);
-  service_ = service;
-  RegisterService(service_);
-
-  return true;
-#endif  // DISABLE_PPPOE
-}
-
-bool Ethernet::GetPPPoEMode(Error* error) {
-  if (service_ == nullptr) {
-    return false;
-  }
-  return service_->technology() == Technology::kPPPoE;
-}
-
-void Ethernet::ClearPPPoEMode(Error* error) {
-  ConfigurePPPoEMode(false, error);
-}
-
 std::string Ethernet::GetUsbEthernetMacAddressSource(Error* error) {
   return usb_ethernet_mac_address_source_;
-}
-
-EthernetServiceRefPtr Ethernet::CreateEthernetService() {
-  return GetProvider()->CreateService(weak_ptr_factory_.GetWeakPtr());
-}
-
-EthernetServiceRefPtr Ethernet::CreatePPPoEService() {
-#if defined(DISABLE_PPPOE)
-  NOTREACHED() << __func__ << " should not be called when PPPoE is disabled";
-  return nullptr;
-#else
-  return new PPPoEService(manager(), weak_ptr_factory_.GetWeakPtr());
-#endif  // DISABLE_PPPOE
 }
 
 void Ethernet::RegisterService(EthernetServiceRefPtr service) {
   if (!service) {
     return;
   }
-  if (service->technology() == Technology::kPPPoE) {
-    manager()->RegisterService(service);
-  } else {
-    GetProvider()->RegisterService(service);
-  }
+  GetProvider()->RegisterService(service);
 }
 
 void Ethernet::DeregisterService(EthernetServiceRefPtr service) {
   if (!service) {
     return;
   }
-  if (service->technology() == Technology::kPPPoE) {
-    manager()->DeregisterService(service);
-  } else {
-    GetProvider()->DeregisterService(service);
-  }
+  GetProvider()->DeregisterService(service);
 }
 
 void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,

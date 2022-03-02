@@ -38,7 +38,6 @@ TEST(TechnologyTest, GetName) {
   EXPECT_EQ("loopback", Technology(Technology::kLoopback).GetName());
   EXPECT_EQ("vpn", Technology(Technology::kVPN).GetName());
   EXPECT_EQ("ppp", Technology(Technology::kPPP).GetName());
-  EXPECT_EQ("pppoe", Technology(Technology::kPPPoE).GetName());
   EXPECT_EQ("guest_interface",
             Technology(Technology::kGuestInterface).GetName());
   EXPECT_EQ("unknown", Technology(Technology::kUnknown).GetName());

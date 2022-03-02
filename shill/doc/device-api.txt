@@ -504,13 +504,6 @@ Properties	string Address [readonly]
 			(Ethernet only) Indicates whether the underlying
 			device has detected the presence of a physical link.
 
-		bool Ethernet.PPPoE
-
-			(Ethernet only) Configures an Ethernet device to be
-			the carrier for a PPPoE connection.  Changing this
-			property can tear down the Ethernet/PPPoE service
-			associated with the Ethernet device.
-
 		string Ethernet.DeviceBusType [readonly]
 
 			(Ethernet only) Device bus type. Possible values are

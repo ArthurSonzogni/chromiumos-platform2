@@ -1407,6 +1407,7 @@ RpcIdentifiers Manager::EnumerateDevices(Error* /*error*/) {
     device_rpc_ids.push_back(device->GetRpcIdentifier());
   }
   // Enumerate devices that are internal to the services, such as PPPoE devices.
+  // FIXME: can we remove GetInnerDeviceRpcIdentifier ???
   for (const auto& service : services_) {
     if (!service->GetInnerDeviceRpcIdentifier().value().empty()) {
       device_rpc_ids.push_back(service->GetInnerDeviceRpcIdentifier());

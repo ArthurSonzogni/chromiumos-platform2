@@ -574,52 +574,6 @@ TEST_F(EthernetTest, Certification) {
 }
 #endif  // DISABLE_WIRED_8021X
 
-#if !defined(DISABLE_PPPOE)
-
-MATCHER_P(TechnologyEq, technology, "") {
-  return arg->technology() == technology;
-}
-
-TEST_F(EthernetTest, TogglePPPoE) {
-  SetService(mock_service_);
-
-  EXPECT_CALL(*mock_service_, technology())
-      .WillRepeatedly(Return(Technology::kEthernet));
-  EXPECT_CALL(ethernet_provider_, CreateService(_))
-      .WillRepeatedly(Return(mock_service_));
-  EXPECT_CALL(*mock_service_, Disconnect(_, _));
-  EXPECT_CALL(manager_, HasService(_)).WillRepeatedly(Return(true));
-
-  InSequence sequence;
-  EXPECT_CALL(ethernet_provider_, DeregisterService(Eq(mock_service_)));
-  EXPECT_CALL(manager_, RegisterService(TechnologyEq(Technology::kPPPoE)));
-  EXPECT_CALL(manager_, DeregisterService(TechnologyEq(Technology::kPPPoE)));
-  EXPECT_CALL(ethernet_provider_, RegisterService(_));
-
-  const std::vector<std::pair<bool, Technology>> transitions = {
-      {false, Technology::kEthernet},
-      {true, Technology::kPPPoE},
-      {false, Technology::kEthernet},
-  };
-  for (const auto& transition : transitions) {
-    Error error;
-    ethernet_->mutable_store()->SetBoolProperty(kPPPoEProperty,
-                                                transition.first, &error);
-    EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(GetService()->technology(), transition.second);
-  }
-}
-
-#else
-
-TEST_F(EthernetTest, PPPoEDisabled) {
-  Error error;
-  ethernet_->mutable_store()->SetBoolProperty(kPPPoEProperty, true, &error);
-  EXPECT_FALSE(error.IsSuccess());
-}
-
-#endif  // DISABLE_PPPOE
-
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceInvalidArguments) {
   SetBusType(kDeviceBusTypeUsb);
   Error error(Error::kOperationInitiated);

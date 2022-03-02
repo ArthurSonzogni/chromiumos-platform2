@@ -31,7 +31,6 @@ Client::Device::Type ParseDeviceType(const std::string& type_str) {
       {shill::kTypeGuestInterface, Client::Device::Type::kGuestInterface},
       {shill::kTypeLoopback, Client::Device::Type::kLoopback},
       {shill::kTypePPP, Client::Device::Type::kPPP},
-      {shill::kTypePPPoE, Client::Device::Type::kPPPoE},
       {shill::kTypeTunnel, Client::Device::Type::kTunnel},
       {shill::kTypeWifi, Client::Device::Type::kWifi},
       {shill::kTypeVPN, Client::Device::Type::kVPN},

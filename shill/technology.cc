@@ -70,8 +70,6 @@ Technology Technology::CreateFromName(const std::string& name) {
     return kCellular;
   } else if (name == kTypeVPN) {
     return kVPN;
-  } else if (name == kTypePPPoE) {
-    return kPPPoE;
   } else if (name == kTypeTunnel) {
     return kTunnel;
   } else if (name == kTypeLoopback) {
@@ -112,8 +110,6 @@ std::string Technology::GetName() const {
     return kTypeLoopback;
   } else if (type_ == kPPP) {
     return kTypePPP;
-  } else if (type_ == kPPPoE) {
-    return kTypePPPoE;
   } else if (type_ == kGuestInterface) {
     return kTypeGuestInterface;
   } else {
@@ -122,8 +118,7 @@ std::string Technology::GetName() const {
 }
 
 bool Technology::IsPrimaryConnectivityTechnology() const {
-  return (type_ == kCellular || type_ == kEthernet || type_ == kWiFi ||
-          type_ == kPPPoE);
+  return (type_ == kCellular || type_ == kEthernet || type_ == kWiFi);
 }
 
 std::ostream& operator<<(std::ostream& os, const Technology& technology) {

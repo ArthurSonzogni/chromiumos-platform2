@@ -25,7 +25,6 @@ namespace shill {
 namespace {
 
 const char kDaemonPath[] = "/usr/sbin/pppd";
-const char kPPPoEPluginPath[] = "pppoe.so";
 const uint32_t kUnspecifiedValue = UINT32_MAX;
 
 }  // namespace
@@ -36,7 +35,6 @@ PPPDaemon::Options::Options()
       no_default_route(false),
       use_peer_dns(false),
       use_shim_plugin(true),
-      use_pppoe_plugin(false),
       lcp_echo_interval(kUnspecifiedValue),
       lcp_echo_failure(kUnspecifiedValue),
       max_fail(kUnspecifiedValue),
@@ -74,10 +72,6 @@ std::unique_ptr<ExternalTask> PPPDaemon::Start(
   if (options.use_shim_plugin) {
     arguments.push_back("plugin");
     arguments.push_back(kShimPluginPath);
-  }
-  if (options.use_pppoe_plugin) {
-    arguments.push_back("plugin");
-    arguments.push_back(kPPPoEPluginPath);
   }
   if (options.lcp_echo_interval != kUnspecifiedValue) {
     arguments.push_back("lcp-echo-interval");

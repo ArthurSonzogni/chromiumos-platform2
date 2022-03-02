@@ -81,7 +81,6 @@ class BRILLO_EXPORT Client {
       kGuestInterface,
       kLoopback,
       kPPP,
-      kPPPoE,
       kTunnel,
       kVPN,
       kWifi,

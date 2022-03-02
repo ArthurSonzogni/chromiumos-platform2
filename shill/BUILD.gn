@@ -22,7 +22,7 @@ group("all") {
   if (use.cellular) {
     deps += [ ":set-apn-helper" ]
   }
-  if (use.cellular || use.vpn || use.pppoe) {
+  if (use.cellular || use.vpn) {
     deps += [ ":shill-pppd-plugin" ]
   }
   if (use.fuzzer) {
@@ -76,10 +76,6 @@ pkg_config("target_defaults") {
     # CellularCapabilityClassic until they are ported to use
     # CellularCapability3gpp.
     defines += [ "DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS" ]
-  }
-
-  if (!use.pppoe) {
-    defines += [ "DISABLE_PPPOE" ]
   }
 
   if (use.test || use.fuzzer) {
@@ -380,16 +376,12 @@ static_library("libshill") {
     deps += [ ":generate_cellular_proxies" ]
   }
 
-  if (use.cellular || use.vpn || use.pppoe) {
+  if (use.cellular || use.vpn) {
     sources += [
       "ppp_daemon.cc",
       "ppp_device.cc",
       "ppp_device_factory.cc",
     ]
-  }
-
-  if (use.pppoe) {
-    sources += [ "pppoe/pppoe_service.cc" ]
   }
 
   if (use.vpn) {
@@ -487,7 +479,7 @@ if (use.cellular) {
   }
 }
 
-if (use.cellular || use.vpn || use.pppoe) {
+if (use.cellular || use.vpn) {
   shared_library("shill-pppd-plugin") {
     sources = [
       "shims/c_ppp.cc",
@@ -789,17 +781,13 @@ if (use.test) {
       ]
     }
 
-    if (use.cellular || use.vpn || use.pppoe) {
+    if (use.cellular || use.vpn) {
       sources += [
         "mock_ppp_device.cc",
         "mock_ppp_device_factory.cc",
         "ppp_daemon_test.cc",
         "ppp_device_test.cc",
       ]
-    }
-
-    if (use.pppoe) {
-      sources += [ "pppoe/pppoe_service_test.cc" ]
     }
 
     if (use.vpn) {

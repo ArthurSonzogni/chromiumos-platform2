@@ -78,7 +78,6 @@ class ShillClient {
       kGuestInterface,
       kLoopback,
       kPPP,
-      kPPPoE,
       kTunnel,
       kVPN,
       kWifi,

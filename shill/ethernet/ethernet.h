@@ -100,7 +100,6 @@ class Ethernet
  private:
   friend class EthernetTest;
   friend class EthernetServiceTest;  // For weak_ptr_factory_.
-  friend class PPPoEServiceTest;     // For weak_ptr_factory_.
 
   FRIEND_TEST(EthernetProviderTest, MultipleServices);
 
@@ -139,17 +138,8 @@ class Ethernet
   SupplicantProcessProxyInterface* supplicant_process_proxy() const;
 #endif  // DISABLE_WIRED_8021X
 
-  // Accessors for the PPoE property.
-  bool GetPPPoEMode(Error* error);
-  bool ConfigurePPPoEMode(const bool& mode, Error* error);
-  void ClearPPPoEMode(Error* error);
-
   // Accessors for the UsbEthernetMacAddressSource property.
   std::string GetUsbEthernetMacAddressSource(Error* error);
-
-  // Helpers for creating services with |this| as their device.
-  EthernetServiceRefPtr CreateEthernetService();
-  EthernetServiceRefPtr CreatePPPoEService();
 
   void RegisterService(EthernetServiceRefPtr service);
   void DeregisterService(EthernetServiceRefPtr service);

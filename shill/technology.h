@@ -39,7 +39,6 @@ class Technology {
     kVirtioEthernet,   // Only for internal use in DeviceInfo.
     kNoDeviceSymlink,  // Only for internal use in DeviceInfo.
     kPPP,
-    kPPPoE,
     kArcBridge,
     // Virtual tap devices used by guest OS and clients getting Internet via
     // Chrome OS host kernel.
@@ -68,7 +67,7 @@ class Technology {
   std::string GetName() const;
 
   // Return true if |technology| is a primary connectivity technology, i.e.
-  // Ethernet, Cellular, WiFi, or PPPoE.
+  // Ethernet, Cellular, WiFi.
   bool IsPrimaryConnectivityTechnology() const;
 
  private:

@@ -530,8 +530,7 @@ Properties	object ActiveProfile [readonly]
 		array{object} Devices [readonly]
 
 			List of physical Device object paths. No virtual Devices are
-			contained in this list *except* for any PPPDevices being used by
-			active PPPoEServices. Order carries no meaning and is not guaranteed
+			contained in this list. Order carries no meaning and is not guaranteed
 			to be consistent.
 
 		string DHCPProperty.Hostname [readwrite]
