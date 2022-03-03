@@ -93,6 +93,16 @@ TEST_F(DlcBaseTest, InitializationReservedSpaceOmitted) {
       dlc.GetImagePath(SystemState::Get()->inactive_boot_slot())));
 }
 
+TEST_F(DlcBaseTestRemovable, InitializationReservedSpaceOnRemovableDevice) {
+  // First DLC has `reserved` set to true.
+  DlcBase dlc(kFirstDlc);
+  dlc.Initialize();
+  EXPECT_FALSE(base::PathExists(
+      dlc.GetImagePath(SystemState::Get()->active_boot_slot())));
+  EXPECT_FALSE(base::PathExists(
+      dlc.GetImagePath(SystemState::Get()->inactive_boot_slot())));
+}
+
 TEST_F(DlcBaseTest, CreateDlc) {
   DlcBase dlc(kFirstDlc);
   dlc.Initialize();

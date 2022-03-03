@@ -97,9 +97,15 @@ bool DlcBase::Initialize() {
 
   // TODO(kimjae): Efficiently overlap factory images with cache.
   if (manifest_->reserved()) {
-    ErrorPtr tmp_err;
-    if (!CreateDlc(&tmp_err))
-      LOG(ERROR) << "Failed to reserve space for DLC=" << id_;
+    if (SystemState::Get()->IsDeviceRemovable()) {
+      LOG(WARNING)
+          << "Booted from removable device, skipping reserve space for DLC="
+          << id_;
+    } else {
+      ErrorPtr tmp_err;
+      if (!CreateDlc(&tmp_err))
+        LOG(ERROR) << "Failed to reserve space for DLC=" << id_;
+    }
   }
 
   return true;
