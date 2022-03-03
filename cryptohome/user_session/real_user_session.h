@@ -125,6 +125,11 @@ class RealUserSession : public UserSession {
  private:
   ~RealUserSession() override;
 
+  // Computes a public derivative from |fek| and |fnek|, and store its hash for
+  // u2fd to fetch.
+  void PrepareWebAuthnSecretHash(const brillo::SecureBlob& fek,
+                                 const brillo::SecureBlob& fnek);
+
   // Clears the WebAuthn secret if it's not read yet.
   void ClearWebAuthnSecret();
 
