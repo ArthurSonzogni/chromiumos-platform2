@@ -34,9 +34,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#if USE_BUFFET
-#include "power_manager/powerd/buffet/command_handlers.h"
-#endif
 #include "power_manager/powerd/daemon_delegate.h"
 #include "power_manager/powerd/metrics_collector.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
@@ -1018,11 +1015,6 @@ void Daemon::InitDBus() {
     tpm_status_interval_ = base::Seconds(tpm_status_sec);
   }
 
-#if USE_BUFFET
-  buffet::InitCommandHandlers(
-      bus, base::Bind(&Daemon::ShutDown, weak_ptr_factory_.GetWeakPtr(),
-                      ShutdownMode::REBOOT, ShutdownReason::USER_REQUEST));
-#endif  // USE_BUFFET
 #if USE_IIOSERVICE
   SetBus(bus.get());
   BootstrapMojoConnection();

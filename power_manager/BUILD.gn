@@ -29,9 +29,6 @@ group("all") {
     ":set_wifi_transmit_power",
     ":suspend_delay_sample",
   ]
-  if (use.buffet) {
-    deps += [ ":buffet_command_handlers" ]
-  }
   if (use.cellular) {
     deps += [ ":generate_modemmanager_proxies" ]
   }
@@ -89,7 +86,6 @@ if (use.cellular) {
 
 pkg_config("target_defaults") {
   defines = [
-    "USE_BUFFET=${use.buffet}",
     "USE_CELLULAR=${use.cellular}",
     "USE_IIOSERVICE=${use.iioservice}",
     "USE_QRTR=${use.qrtr}",
@@ -321,10 +317,6 @@ static_library("libpowerd") {
     ":libsystem",
     ":libutil",
   ]
-
-  if (use.buffet) {
-    deps += [ ":buffet_command_handlers" ]
-  }
 }
 
 executable("powerd") {
@@ -431,19 +423,6 @@ executable("set_power_policy") {
 executable("suspend_delay_sample") {
   sources = [ "tools/suspend_delay_sample.cc" ]
   configs += [ ":target_defaults" ]
-}
-
-if (use.buffet) {
-  generate_dbus_proxies("generate_buffet_proxies") {
-    dbus_service_config = "../buffet/dbus_bindings/dbus-service-config.json"
-    proxy_output_file = "include/buffet/dbus-proxies.h"
-    sources = [ "../buffet/dbus_bindings/org.chromium.Buffet.Command.xml" ]
-  }
-  static_library("buffet_command_handlers") {
-    sources = [ "powerd/buffet/command_handlers.cc" ]
-    configs += [ ":target_defaults" ]
-    deps = [ ":generate_buffet_proxies" ]
-  }
 }
 
 if (use.fuzzer || use.test) {
