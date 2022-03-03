@@ -21,7 +21,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
 
-#include "fusebox/dbus_adaptors/org.chromium.FuseBoxClient.h"
+#include "fusebox/dbus_adaptors/org.chromium.FuseBoxReverseService.h"
 #include "fusebox/file_system.h"
 #include "fusebox/file_system_fake.h"
 #include "fusebox/fuse_file_handles.h"
