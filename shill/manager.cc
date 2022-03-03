@@ -100,7 +100,8 @@ constexpr char kErrorTypeRequired[] = "must specify service type";
 // Time to wait for termination actions to complete, which should be less than
 // the upstart job timeout, or otherwise stats for termination actions might be
 // lost.
-constexpr int kTerminationActionsTimeoutMilliseconds = 19500;
+constexpr base::TimeDelta kTerminationActionsTimeout =
+    base::Milliseconds(19500);
 
 // Interval for probing various device status, and report them to UMA stats.
 constexpr base::TimeDelta kDeviceStatusCheckInterval = base::Minutes(3);
@@ -361,7 +362,7 @@ void Manager::Start() {
 
   power_manager_.reset(new PowerManager(control_interface_));
   power_manager_->Start(
-      base::Milliseconds(kTerminationActionsTimeoutMilliseconds),
+      kTerminationActionsTimeout,
       base::Bind(&Manager::OnSuspendImminent, weak_factory_.GetWeakPtr()),
       base::Bind(&Manager::OnSuspendDone, weak_factory_.GetWeakPtr()),
       base::Bind(&Manager::OnDarkSuspendImminent, weak_factory_.GetWeakPtr()));
@@ -1622,8 +1623,7 @@ void Manager::RemoveTerminationAction(const std::string& name) {
 
 void Manager::RunTerminationActions(const ResultCallback& done_callback) {
   LOG(INFO) << "Running termination actions.";
-  termination_actions_.Run(kTerminationActionsTimeoutMilliseconds,
-                           done_callback);
+  termination_actions_.Run(kTerminationActionsTimeout, done_callback);
 }
 
 bool Manager::RunTerminationActionsAndNotifyMetrics(
@@ -1714,7 +1714,7 @@ void Manager::OnSuspendImminent() {
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
       base::Bind(&Manager::OnSuspendActionsComplete,
                  weak_factory_.GetWeakPtr()),
-      dispatcher_, kTerminationActionsTimeoutMilliseconds));
+      dispatcher_, kTerminationActionsTimeout));
   for (const auto& service : services_) {
     ResultCallback aggregator_callback(
         base::Bind(&ResultAggregator::ReportResult, result_aggregator));
@@ -1752,7 +1752,7 @@ void Manager::OnDarkSuspendImminent() {
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
       base::Bind(&Manager::OnDarkResumeActionsComplete,
                  weak_factory_.GetWeakPtr()),
-      dispatcher_, kTerminationActionsTimeoutMilliseconds));
+      dispatcher_, kTerminationActionsTimeout));
   for (const auto& device : devices_) {
     ResultCallback aggregator_callback(
         base::Bind(&ResultAggregator::ReportResult, result_aggregator));

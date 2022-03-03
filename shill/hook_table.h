@@ -35,6 +35,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/macros.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>
 
 #include "shill/callbacks.h"
@@ -67,7 +68,7 @@ class HookTable {
   // starts a timer for completion in |timeout_ms|.  If all actions complete
   // successfully within the timeout period, |done| is called with a value of
   // Error::kSuccess.  Otherwise, it is called with Error::kOperationTimeout.
-  void Run(int timeout_ms, const ResultCallback& done);
+  void Run(base::TimeDelta timeout, const ResultCallback& done);
 
   bool IsEmpty() const { return hook_table_.empty(); }
 

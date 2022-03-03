@@ -11,6 +11,7 @@
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -65,7 +66,7 @@ void HookTable::ActionComplete(const std::string& name) {
   }
 }
 
-void HookTable::Run(int timeout_ms, const ResultCallback& done) {
+void HookTable::Run(base::TimeDelta timeout, const ResultCallback& done) {
   SLOG(this, 2) << __func__;
   if (hook_table_.empty()) {
     done.Run(Error(Error::kSuccess));
@@ -75,7 +76,7 @@ void HookTable::Run(int timeout_ms, const ResultCallback& done) {
   timeout_callback_.Reset(
       base::Bind(&HookTable::ActionsTimedOut, base::Unretained(this)));
   event_dispatcher_->PostDelayedTask(FROM_HERE, timeout_callback_.callback(),
-                                     base::Milliseconds(timeout_ms));
+                                     timeout);
 
   // Mark all actions as having started before we execute any actions.
   // Otherwise, if the first action completes inline, its call to

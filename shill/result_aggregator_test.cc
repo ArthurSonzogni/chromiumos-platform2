@@ -50,7 +50,7 @@ class ResultAggregatorTestWithDispatcher : public ResultAggregatorTest {
   void InitializeResultAggregatorWithTimeout() {
     aggregator_ = new ResultAggregator(
         base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
-        &dispatcher_, kTimeout.InMilliseconds());
+        &dispatcher_, kTimeout);
   }
 
  protected:
@@ -124,7 +124,7 @@ TEST_F(ResultAggregatorTestWithMockDispatcher,
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kTimeout));
   auto result_aggregator = base::MakeRefCounted<ResultAggregator>(
       base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
-      &dispatcher_, kTimeout.InMilliseconds());
+      &dispatcher_, kTimeout);
 }
 
 TEST_F(ResultAggregatorTestWithDispatcher,
@@ -151,7 +151,7 @@ TEST_F(ResultAggregatorTestWithDispatcher,
   {
     auto result_aggregator = base::MakeRefCounted<ResultAggregator>(
         base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
-        &dispatcher_, kTimeout.InMilliseconds());
+        &dispatcher_, kTimeout);
     // The result aggregator receives the one callback it expects, and goes
     // out of scope. At this point, it should invoke the ReportResult callback
     // with the error type kPermissionDenied that it copied.

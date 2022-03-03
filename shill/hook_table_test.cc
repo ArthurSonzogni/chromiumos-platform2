@@ -49,7 +49,7 @@ TEST_F(HookTableTest, ActionCompletes) {
   ResultCallback done_callback =
       base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
-  hook_table_.Run(0, done_callback);
+  hook_table_.Run(base::TimeDelta(), done_callback);
   hook_table_.ActionComplete(kName);
 
   // Ensure that the timeout callback got cancelled.  If it did not get
@@ -80,7 +80,7 @@ TEST_F(HookTableTest, ActionCompletesAndRemovesActionInDoneCallback) {
       base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
   hook_table_.Add(kName2, start2_callback);
-  hook_table_.Run(0, done_callback);
+  hook_table_.Run(base::TimeDelta(), done_callback);
 
   // Ensure that the timeout callback got cancelled.  If it did not get
   // cancelled, done_callback will be run twice and make this test fail.
@@ -97,7 +97,7 @@ TEST_F(HookTableTest, ActionCompletesInline) {
   ResultCallback done_callback =
       base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
-  hook_table_.Run(0, done_callback);
+  hook_table_.Run(base::TimeDelta(), done_callback);
 
   // Ensure that the timeout callback got cancelled.  If it did not get
   // cancelled, done_callback will be run twice and make this test fail.
@@ -105,7 +105,7 @@ TEST_F(HookTableTest, ActionCompletesInline) {
 }
 
 TEST_F(HookTableTest, ActionTimesOut) {
-  const int kTimeoutMs = 1;
+  constexpr base::TimeDelta kTimeout = base::Milliseconds(1);
   EXPECT_CALL(*this, StartAction());
   EXPECT_CALL(*this, DoneAction(IsFailure()));
 
@@ -115,23 +115,23 @@ TEST_F(HookTableTest, ActionTimesOut) {
       base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
 
   hook_table_.Add(kName, start_callback);
-  hook_table_.Run(kTimeoutMs, done_callback);
+  hook_table_.Run(kTimeout, done_callback);
 
-  // Cause the event dispatcher to exit after kTimeoutMs + 1 ms.
+  // Cause the event dispatcher to exit after kTimeout + 1 ms.
   event_dispatcher_.PostDelayedTask(
       FROM_HERE,
       base::BindOnce(
           &EventDispatcherForTest::QuitDispatchForever,
           // event_dispatcher_ will not be deleted before RunLoop quits.
           base::Unretained(&event_dispatcher_)),
-      base::Milliseconds(kTimeoutMs + 1));
+      kTimeout + base::Milliseconds(1));
   event_dispatcher_.DispatchForever();
   EXPECT_TRUE(GetDoneCallback()->is_null());
 }
 
 TEST_F(HookTableTest, MultipleActionsAllSucceed) {
   base::Closure pending_callback;
-  const int kTimeoutMs = 10;
+  constexpr base::TimeDelta kTimeout = base::Milliseconds(10);
   EXPECT_CALL(*this, StartAction()).Times(2);
 
   // StartAction2 completes immediately before HookTable::Run() returns.
@@ -149,14 +149,14 @@ TEST_F(HookTableTest, MultipleActionsAllSucceed) {
   hook_table_.Add(kName1, start2_callback);
   hook_table_.Add(kName2, start_callback);
   hook_table_.Add(kName3, start_callback);
-  hook_table_.Run(kTimeoutMs, done_callback);
+  hook_table_.Run(kTimeout, done_callback);
   hook_table_.ActionComplete(kName2);
   hook_table_.ActionComplete(kName3);
 }
 
 TEST_F(HookTableTest, MultipleActionsAndOneTimesOut) {
   base::Closure pending_callback;
-  const int kTimeoutMs = 1;
+  constexpr base::TimeDelta kTimeout = base::Milliseconds(1);
   EXPECT_CALL(*this, StartAction()).Times(3);
   EXPECT_CALL(*this, DoneAction(IsFailure()));
 
@@ -168,17 +168,17 @@ TEST_F(HookTableTest, MultipleActionsAndOneTimesOut) {
   hook_table_.Add(kName1, start_callback);
   hook_table_.Add(kName2, start_callback);
   hook_table_.Add(kName3, start_callback);
-  hook_table_.Run(kTimeoutMs, done_callback);
+  hook_table_.Run(kTimeout, done_callback);
   hook_table_.ActionComplete(kName1);
   hook_table_.ActionComplete(kName3);
-  // Cause the event dispatcher to exit after kTimeoutMs + 1 ms.
+  // Cause the event dispatcher to exit after kTimeout + 1 ms.
   event_dispatcher_.PostDelayedTask(
       FROM_HERE,
       base::BindOnce(
           &EventDispatcherForTest::QuitDispatchForever,
           // event_dispatcher_ will not be deleted before RunLoop quits.
           base::Unretained(&event_dispatcher_)),
-      base::Milliseconds(kTimeoutMs + 1));
+      kTimeout + base::Milliseconds(1));
   event_dispatcher_.DispatchForever();
 }
 
@@ -197,7 +197,7 @@ TEST_F(HookTableTest, AddActionsWithSameName) {
   // Adding an action with the same name kName.  New callbacks should replace
   // old ones.
   hook_table_.Add(kName, start2_callback);
-  hook_table_.Run(0, done_callback);
+  hook_table_.Run(base::TimeDelta(), done_callback);
   hook_table_.ActionComplete(kName);
 
   // Ensure that the timeout callback got cancelled.  If it did not get
@@ -214,7 +214,7 @@ TEST_F(HookTableTest, RemoveAction) {
       base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
   hook_table_.Remove(kName);
-  hook_table_.Run(0, done_callback);
+  hook_table_.Run(base::TimeDelta(), done_callback);
 }
 
 TEST_F(HookTableTest, ActionCompleteFollowedByRemove) {
@@ -266,7 +266,7 @@ TEST_F(HookTableTest, ActionAddedBeforePreviousActionCompletes) {
   ResultCallback done_callback =
       base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
   hook_table_.Add(kName, start_callback);
-  hook_table_.Run(0, done_callback);
+  hook_table_.Run(base::TimeDelta(), done_callback);
 
   // An action with the same name is added before the previous actions complete.
   // It should not be run.

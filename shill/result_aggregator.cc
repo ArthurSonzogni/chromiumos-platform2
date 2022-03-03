@@ -9,15 +9,16 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 
 namespace shill {
 
 ResultAggregator::ResultAggregator(const ResultCallback& callback)
-    : ResultAggregator(callback, nullptr, -1) {}
+    : ResultAggregator(callback, nullptr, base::TimeDelta()) {}
 
 ResultAggregator::ResultAggregator(const ResultCallback& callback,
                                    EventDispatcher* dispatcher,
-                                   int timeout_milliseconds)
+                                   base::TimeDelta timeout)
     : weak_ptr_factory_(this),
       callback_(callback),
       timeout_callback_(base::Bind(&ResultAggregator::Timeout,
@@ -25,9 +26,9 @@ ResultAggregator::ResultAggregator(const ResultCallback& callback,
       got_result_(false),
       timed_out_(false) {
   CHECK(!callback.is_null());
-  if (dispatcher && timeout_milliseconds >= 0) {
+  if (dispatcher) {
     dispatcher->PostDelayedTask(FROM_HERE, timeout_callback_.callback(),
-                                base::Milliseconds(timeout_milliseconds));
+                                timeout);
   }
 }
 

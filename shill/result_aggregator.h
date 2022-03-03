@@ -10,6 +10,7 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/time/time.h>
 
 #include "shill/callbacks.h"
 #include "shill/error.h"
@@ -84,7 +85,7 @@ class ResultAggregator : public base::RefCounted<ResultAggregator> {
   explicit ResultAggregator(const ResultCallback& callback);
   ResultAggregator(const ResultCallback& callback,
                    EventDispatcher* dispatcher,
-                   int timeout_milliseconds);
+                   base::TimeDelta timeout);
   ResultAggregator(const ResultAggregator&) = delete;
   ResultAggregator& operator=(const ResultAggregator&) = delete;
 
