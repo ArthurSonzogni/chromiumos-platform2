@@ -377,12 +377,10 @@ const char kIPv6DisabledProperty[] = "IPv6Disabled";
 const char kInterfaceProperty[] = "Interface";  // Network interface name.
 // kNameProperty: Defined above for Service. DEPRECATED (crbug.com/1011136).
 const char kPoweredProperty[] = "Powered";
-const char kReceiveByteCountProperty[] = "ReceiveByteCount";
 const char kScanIntervalProperty[] =
     "ScanInterval";                           // For both Cellular and WiFi.
 const char kScanningProperty[] = "Scanning";  // For both Cellular and WiFi.
 const char kSelectedServiceProperty[] = "SelectedService";
-const char kTransmitByteCountProperty[] = "TransmitByteCount";
 
 // Property names common to Cellular Device and Cellular Service.
 const char kEidProperty[] = "Cellular.EID";

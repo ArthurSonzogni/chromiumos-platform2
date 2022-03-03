@@ -46,7 +46,6 @@
 		<method name="Reset">
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
-		<method name="ResetByteCounters"/>
 		<method name="RequestRoam">
 			<arg type="s" direction="in"/>
 		</method>

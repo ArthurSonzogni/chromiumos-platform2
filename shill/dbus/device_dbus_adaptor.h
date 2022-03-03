@@ -81,7 +81,6 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::DeviceAdaptor,
                  const std::string& new_pin) override;
   bool RenewDHCPLease(brillo::ErrorPtr* error) override;
   void Reset(DBusMethodResponsePtr<> response) override;
-  bool ResetByteCounters(brillo::ErrorPtr* error) override;
   bool RequestRoam(brillo::ErrorPtr* error, const std::string& addr) override;
 
   void SetUsbEthernetMacAddressSource(DBusMethodResponsePtr<> response,

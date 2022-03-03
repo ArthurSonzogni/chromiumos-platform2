@@ -139,10 +139,6 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.Failure
 					 [service].Error.NotImplemented
 
-		void ResetByteCounters()
-
-			Reset the device's persisted counters of transmitted
-
 		void SetUsbEthernetMacAddressSource(string source)
 
 			(Ethernet only) Set MAC address source for USB Ethernet
@@ -667,14 +663,6 @@ Properties	string Address [readonly]
 			example would be modifications via the "ifconfig"
 			command line utility.
 
-		uint64 ReceiveByteCount [readonly]
-
-			The number of bytes received on this interface.
-			This value is persisted and accumulated across
-			connection manager restarts.  Shill retrieves
-			these counters from all interfaces every 60 seconds
-			so this value returned might be slightly old.
-
 		uint16 ScanInterval [readwrite]
 
 			(Defined in WiFi and Cellular)
@@ -696,14 +684,6 @@ Properties	string Address [readonly]
 
 			Indicates that a device is currently performing a
 			network scan.
-
-		uint64 TransmitByteCount [readonly]
-
-			The number of bytes transmitted on this interface.
-			This value is persisted and accumulated across
-			connection manager restarts.  Shill retrieves
-			these counters from all interfaces every 60 seconds
-			so this value returned might be slightly old.
 
 		string Type [readonly]
 

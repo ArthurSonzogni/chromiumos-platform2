@@ -728,6 +728,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Respond to a LinkMonitor failure. Called in OnNeighborReachabilityEvent().
   void OnLinkMonitorFailure(IPAddress::Family family);
 
+  // Get total received byte counters for the underlying network interface.
+  uint64_t GetReceiveByteCount();
+
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider* provider_;
 

@@ -52,8 +52,6 @@ class MockDevice : public Device {
   MOCK_METHOD(void, SetIsMultiHomed, (bool), (override));
   MOCK_METHOD(bool, RestartPortalDetection, (), (override));
   MOCK_METHOD(bool, RequestPortalDetection, (), (override));
-  MOCK_METHOD(uint64_t, GetReceiveByteCount, (), (override));
-  MOCK_METHOD(uint64_t, GetTransmitByteCount, (), (override));
   MOCK_METHOD(bool,
               IsConnectedToService,
               (const ServiceRefPtr&),

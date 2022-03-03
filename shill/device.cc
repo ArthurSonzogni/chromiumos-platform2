@@ -86,8 +86,6 @@ const char Device::kIPFlagDisableIPv6[] = "disable_ipv6";
 const char Device::kIPFlagAcceptRouterAdvertisements[] = "accept_ra";
 const char Device::kIPFlagAcceptDuplicateAddressDetection[] = "accept_dad";
 const char Device::kStoragePowered[] = "Powered";
-const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
-const char Device::kStorageTransmitByteCount[] = "TransmitByteCount";
 
 Device::Device(Manager* manager,
                const std::string& link_name,
@@ -103,8 +101,6 @@ Device::Device(Manager* manager,
       manager_(manager),
       adaptor_(manager->control_interface()->CreateDeviceAdaptor(this)),
       technology_(technology),
-      receive_byte_offset_(0),
-      transmit_byte_offset_(0),
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
@@ -153,15 +149,6 @@ Device::Device(Manager* manager,
   // kScanningProperty: Registered in WiFi, Cellular
   // kScanIntervalProperty: Registered in WiFi, Cellular
   // kWakeOnWiFiFeaturesEnabledProperty: Registered in WiFi
-
-  if (manager_ && manager_->device_info()) {  // Unit tests may not have these.
-    manager_->device_info()->GetByteCounts(
-        interface_index_, &receive_byte_offset_, &transmit_byte_offset_);
-    HelpRegisterConstDerivedUint64(kReceiveByteCountProperty,
-                                   &Device::GetReceiveByteCountProperty);
-    HelpRegisterConstDerivedUint64(kTransmitByteCountProperty,
-                                   &Device::GetTransmitByteCountProperty);
-  }
 
   SLOG(this, 1) << "Device(): " << link_name_ << " index: " << interface_index_;
 }
@@ -389,31 +376,12 @@ bool Device::Load(const StoreInterface* storage) {
   }
   enabled_persistent_ = true;
   storage->GetBool(id, kStoragePowered, &enabled_persistent_);
-  uint64_t rx_byte_count = 0, tx_byte_count = 0;
-
-  manager_->device_info()->GetByteCounts(interface_index_, &rx_byte_count,
-                                         &tx_byte_count);
-  // If there is a byte-count present in the profile, the return value
-  // of Device::Get*ByteCount() should be the this stored value plus
-  // whatever additional bytes we receive since time-of-load.  We
-  // accomplish this by the subtractions below, which can validly
-  // roll over "negative" in the subtractions below and in Get*ByteCount.
-  uint64_t profile_byte_count;
-  if (storage->GetUint64(id, kStorageReceiveByteCount, &profile_byte_count)) {
-    receive_byte_offset_ = rx_byte_count - profile_byte_count;
-  }
-  if (storage->GetUint64(id, kStorageTransmitByteCount, &profile_byte_count)) {
-    transmit_byte_offset_ = tx_byte_count - profile_byte_count;
-  }
-
   return true;
 }
 
 bool Device::Save(StoreInterface* storage) {
   const auto id = GetStorageIdentifier();
   storage->SetBool(id, kStoragePowered, enabled_persistent_);
-  storage->SetUint64(id, kStorageReceiveByteCount, GetReceiveByteCount());
-  storage->SetUint64(id, kStorageTransmitByteCount, GetTransmitByteCount());
   return true;
 }
 
@@ -1192,12 +1160,6 @@ bool Device::SetIPFlag(IPAddress::Family family,
   return true;
 }
 
-void Device::ResetByteCounters() {
-  manager_->device_info()->GetByteCounts(
-      interface_index_, &receive_byte_offset_, &transmit_byte_offset_);
-  manager_->UpdateDevice(this);
-}
-
 bool Device::RestartPortalDetection() {
   StopPortalDetection();
   return StartPortalDetection();
@@ -1460,28 +1422,6 @@ RpcIdentifiers Device::AvailableIPConfigs(Error* /*error*/) {
     identifiers.push_back(ip6config_->GetRpcIdentifier());
   }
   return identifiers;
-}
-
-uint64_t Device::GetReceiveByteCount() {
-  uint64_t rx_byte_count = 0, tx_byte_count = 0;
-  manager_->device_info()->GetByteCounts(interface_index_, &rx_byte_count,
-                                         &tx_byte_count);
-  return rx_byte_count - receive_byte_offset_;
-}
-
-uint64_t Device::GetTransmitByteCount() {
-  uint64_t rx_byte_count = 0, tx_byte_count = 0;
-  manager_->device_info()->GetByteCounts(interface_index_, &rx_byte_count,
-                                         &tx_byte_count);
-  return tx_byte_count - transmit_byte_offset_;
-}
-
-uint64_t Device::GetReceiveByteCountProperty(Error* /*error*/) {
-  return GetReceiveByteCount();
-}
-
-uint64_t Device::GetTransmitByteCountProperty(Error* /*error*/) {
-  return GetTransmitByteCount();
 }
 
 bool Device::IsUnderlyingDeviceEnabled() const {

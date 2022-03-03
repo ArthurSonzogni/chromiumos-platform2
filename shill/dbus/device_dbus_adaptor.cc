@@ -229,11 +229,6 @@ bool DeviceDBusAdaptor::RenewDHCPLease(brillo::ErrorPtr* error) {
   return !e.ToChromeosError(error);
 }
 
-bool DeviceDBusAdaptor::ResetByteCounters(brillo::ErrorPtr* error) {
-  device_->ResetByteCounters();
-  return true;
-}
-
 bool DeviceDBusAdaptor::RequestRoam(brillo::ErrorPtr* error,
                                     const std::string& addr) {
   SLOG(this, 2) << __func__ << ": " << addr;

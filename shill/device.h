@@ -173,13 +173,6 @@ class Device : public base::RefCounted<Device> {
   // log connection state triggered by a user feedback log request.
   mockable bool StartConnectivityTest();
 
-  // Get receive and transmit byte counters.
-  mockable uint64_t GetReceiveByteCount();
-  mockable uint64_t GetTransmitByteCount();
-
-  // Reset the persisted byte counters associated with the device.
-  void ResetByteCounters();
-
   // Requests that portal detection be done, if this device has the default
   // connection.  Returns true if portal detection was started.
   mockable bool RequestPortalDetection();
@@ -549,8 +542,6 @@ class Device : public base::RefCounted<Device> {
   static const char kIPFlagAcceptRouterAdvertisements[];
   static const char kIPFlagAcceptDuplicateAddressDetection[];
   static const char kStoragePowered[];
-  static const char kStorageReceiveByteCount[];
-  static const char kStorageTransmitByteCount[];
 
   // Brings the associated network interface down unless |fixed_ip_params_| is
   // true, which indicates that the interface state shouldn't be changed.
@@ -579,12 +570,6 @@ class Device : public base::RefCounted<Device> {
 
   RpcIdentifier GetSelectedServiceRpcIdentifier(Error* error);
   RpcIdentifiers AvailableIPConfigs(Error* error);
-
-  // Get receive and transmit byte counters. These methods simply wrap
-  // GetReceiveByteCount and GetTransmitByteCount in order to be used by
-  // HelpRegisterConstDerivedUint64.
-  uint64_t GetReceiveByteCountProperty(Error* error);
-  uint64_t GetTransmitByteCountProperty(Error* error);
 
   // Emit a property change signal for the "IPConfigs" property of this device.
   void UpdateIPConfigsProperty();
@@ -752,11 +737,6 @@ class Device : public base::RefCounted<Device> {
   // that are not working.
   std::vector<std::string> config_dns_servers_;
   Technology technology_;
-
-  // Keep track of the offset between the interface-reported byte counters
-  // and our persisted value.
-  uint64_t receive_byte_offset_;
-  uint64_t transmit_byte_offset_;
 
   // Maintain a reference to the connected / connecting service
   ServiceRefPtr selected_service_;

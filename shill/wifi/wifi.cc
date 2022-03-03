@@ -3909,4 +3909,11 @@ void WiFi::OnNeighborReachabilityEvent(
   }
 }
 
+uint64_t WiFi::GetReceiveByteCount() {
+  uint64_t rx_byte_count = 0, tx_byte_count = 0;
+  manager()->device_info()->GetByteCounts(interface_index(), &rx_byte_count,
+                                          &tx_byte_count);
+  return rx_byte_count;
+}
+
 }  // namespace shill
