@@ -50,7 +50,7 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
  private:
   void BootIfNeeded();
   void ShutDown();
-  bool CommitUpdates();
+  bool CommitState();
   bool EnableFeature(brillo::ErrorPtr* error,
                      const hps::FeatureConfig& config,
                      uint8_t feature,
@@ -60,13 +60,28 @@ class DBusAdaptor : public org::chromium::HpsAdaptor,
                         HpsResultProto* result,
                         uint8_t feature);
 
-  struct FeatureState {
-    bool enabled = false;
-    bool committed = true;
+  class FeatureState {
+   public:
+    void Enable(const FeatureConfig&, StatusCallback);
+    void Disable();
+    void DidCommit();
+    void DidShutDown();
 
-    FeatureConfig config;
-    std::unique_ptr<Filter> filter;
-    StatusCallback callback;
+    bool enabled() const { return enabled_; }
+    bool enabled_in_hps() const { return enabled_in_hps_; }
+    bool needs_commit() const { return enabled_ != enabled_in_hps_; }
+    Filter* filter() const {
+      DCHECK(enabled_);
+      return filter_.get();
+    }
+
+   private:
+    bool enabled_ = false;  // Whether the user wants the feature on or off.
+    bool enabled_in_hps_ = false;  // Whether the feature is on or off in HPS.
+
+    FeatureConfig config_;
+    std::unique_ptr<Filter> filter_;
+    StatusCallback callback_;
   };
 
   brillo::dbus_utils::DBusObject dbus_object_;

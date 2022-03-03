@@ -33,6 +33,40 @@ std::vector<uint8_t> HpsResultToSerializedBytes(HpsResult result) {
 
 }  // namespace
 
+void DBusAdaptor::FeatureState::Enable(const FeatureConfig& config,
+                                       StatusCallback callback) {
+  DCHECK(!enabled_);
+  DCHECK(!enabled_in_hps_);
+  DCHECK(!callback.is_null());
+  enabled_ = true;
+  config_ = config;
+  callback_ = std::move(callback);
+}
+
+void DBusAdaptor::FeatureState::Disable() {
+  DCHECK(enabled_);
+  DCHECK(enabled_in_hps_);
+  enabled_ = false;
+  config_ = {};
+  callback_ = StatusCallback{};
+}
+
+void DBusAdaptor::FeatureState::DidCommit() {
+  enabled_in_hps_ = enabled_;
+  if (enabled_) {
+    DCHECK(!callback_.is_null());
+    filter_ = CreateFilter(config_, callback_);
+  } else {
+    DCHECK(callback_.is_null());
+    filter_.reset();
+  }
+}
+
+void DBusAdaptor::FeatureState::DidShutDown() {
+  enabled_in_hps_ = false;
+  filter_.reset();
+}
+
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
                          std::unique_ptr<HPS> hps,
                          uint32_t poll_time_ms)
@@ -53,30 +87,18 @@ void DBusAdaptor::RegisterAsync(
 void DBusAdaptor::PollTask() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  // If the HPS module is not running even though we haven't shut it down, the
-  // system was probably suspended and resumed, resetting HPS as a side effect.
-  // Reboot the module and restore the enabled features so we can continue
-  // polling.
-  //
-  // Note that it's possible for a system suspend and resume to happen at any
-  // point, including while we're inside the loop below. That means we'll either
-  // report unknown feature results or in the worst case abort with a fault if
-  // HPS is in an unexpected state. This means DBUS clients need to handle hpsd
-  // restarting at arbitrary times.
-  if (!hps_->IsRunning()) {
-    LOG(INFO) << "HPS reset detected";
-    ShutDown();
-    BootIfNeeded();
-  }
+  // Make sure the HPS module is powered on again if we are resuming from a
+  // system suspend state.
+  CommitState();
 
   for (uint8_t i = 0; i < kFeatures; ++i) {
     const auto& feature = features_[i];
-    if (feature.enabled) {
+    if (feature.enabled()) {
       FeatureResult result = this->hps_->Result(i);
-      DCHECK(feature.filter);
-      DCHECK(feature.committed);
-      const auto res =
-          feature.filter->ProcessResult(result.inference_result, result.valid);
+      DCHECK(feature.filter());
+      DCHECK(!feature.needs_commit());
+      const auto res = feature.filter()->ProcessResult(result.inference_result,
+                                                       result.valid);
       VLOG(2) << "Poll: Feature: " << static_cast<int>(i)
               << " Valid: " << result.valid
               << " Result: " << static_cast<int>(result.inference_result)
@@ -86,57 +108,80 @@ void DBusAdaptor::PollTask() {
 }
 
 void DBusAdaptor::BootIfNeeded() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (hps_booted_) {
     return;
   }
-  if (!hps_->Boot()) {
-    LOG(FATAL) << "Failed to boot";
-  }
-  if (!CommitUpdates()) {
-    LOG(FATAL) << "Failed to restore features";
-  }
+  CHECK(hps_->Boot()) << "Failed to boot";
   hps_booted_ = true;
 }
 
 void DBusAdaptor::ShutDown() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   poll_timer_.Stop();
   if (!hps_->ShutDown()) {
     LOG(FATAL) << "Failed to shutdown";
   }
   hps_booted_ = false;
-  for (uint8_t i = 0; i < kFeatures; i++) {
-    features_[i].committed = !features_[i].enabled;
-    features_[i].filter.reset();
+  for (auto& feature : features_) {
+    feature.DidShutDown();
   }
 }
 
-bool DBusAdaptor::CommitUpdates() {
+// Synchronizes the desired feature enable/disable state with the HPS module. If
+// no features are enabled, HPS is also powered off. If HPS has been reset
+// because of a system suspend, this method will also restore any enabled
+// feature settings.
+bool DBusAdaptor::CommitState() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bool result = true;
+  if (hps_booted_ && !hps_->IsRunning()) {
+    // If the HPS module is not running even though we haven't shut it down, the
+    // system was probably suspended and resumed, resetting HPS as a side
+    // effect. Reboot the module and restore the enabled features so we can
+    // continue polling.
+    //
+    // Note that it's possible for a system suspend and resume to happen at any
+    // point, including while we're polling for features. That means we'll
+    // either report unknown feature results or in the worst case abort with a
+    // fault if HPS is in an unexpected state. This means DBUS clients need to
+    // handle hpsd restarting at arbitrary times.
+    LOG(INFO) << "HPS reset detected";
+    ShutDown();
+
+    // Post condition: all features are disabled in HPS after shutting down.
+    for (const auto& feature : features_) {
+      DCHECK(!feature.enabled_in_hps());
+    }
+  }
+
   for (uint8_t i = 0; i < kFeatures; i++) {
     auto& feature = features_[i];
-    if (feature.committed)
+    if (!feature.needs_commit())
       continue;
 
-    if (feature.enabled && !feature.filter) {
-      feature.filter = CreateFilter(feature.config, feature.callback);
+    if (feature.enabled()) {
+      // If we want to enable any features, HPS needs to be running.
+      BootIfNeeded();
+      LOG_IF(FATAL, !hps_->Enable(i)) << "Failed to enable feature " << i;
+    } else {
+      // If any features need to be disabled, HPS must be running. If HPS is not
+      // running, all features are already disabled and we won't end up in this
+      // branch.
+      DCHECK(hps_booted_);
+      LOG_IF(FATAL, !hps_->Disable(i)) << "Failed to disable feature " << i;
     }
+    feature.DidCommit();
+  }
 
-    if (feature.enabled && !hps_->Enable(i)) {
-      feature.enabled = false;
-      feature.filter.reset();
-      feature.config = {};
-      feature.callback = StatusCallback{};
-      result = false;
-    } else if (!feature.enabled && !hps_->Disable(i)) {
-      feature.enabled = true;
-      result = false;
-    }
-    feature.committed = true;
+  // Post condition: all feature states have been committed to HPS.
+  for (const auto& feature : features_) {
+    DCHECK(!feature.needs_commit());
   }
 
   size_t active_features =
       std::count_if(features_.begin(), features_.end(),
-                    [](const auto& f) { return f.enabled && f.committed; });
+                    [](const auto& f) { return f.enabled_in_hps(); });
 
   if (!active_features && hps_booted_) {
     ShutDown();
@@ -153,32 +198,27 @@ bool DBusAdaptor::EnableFeature(brillo::ErrorPtr* error,
                                 uint8_t feature,
                                 StatusCallback callback) {
   CHECK_LT(feature, kFeatures);
-  BootIfNeeded();
-  features_[feature].filter.reset();
-  features_[feature].config = config;
-  features_[feature].callback = callback;
-  features_[feature].enabled = true;
-  features_[feature].committed = false;
-  if (!CommitUpdates()) {
+  if (features_[feature].enabled()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         kErrorPath, "hpsd: Unable to enable feature");
+                         kErrorPath, "hpsd: Feature already enabled.");
+
     return false;
   }
+  features_[feature].Enable(config, std::move(callback));
+  CommitState();
   return true;
 }
 
 bool DBusAdaptor::DisableFeature(brillo::ErrorPtr* error, uint8_t feature) {
   CHECK_LT(feature, kFeatures);
-  features_[feature].filter.reset();
-  features_[feature].config = {};
-  features_[feature].callback = StatusCallback{};
-  features_[feature].enabled = false;
-  features_[feature].committed = false;
-  if (!CommitUpdates()) {
+  if (!features_[feature].enabled()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                         kErrorPath, "hpsd: Unable to disable feature");
+                         kErrorPath, "hpsd: Feature not enabled.");
+
     return false;
   }
+  features_[feature].Disable();
+  CommitState();
   return true;
 }
 
@@ -186,14 +226,14 @@ bool DBusAdaptor::GetFeatureResult(brillo::ErrorPtr* error,
                                    HpsResultProto* result,
                                    uint8_t feature) {
   CHECK_LT(feature, kFeatures);
-  if (!features_[feature].enabled) {
+  if (!features_[feature].enabled()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kErrorPath, "hpsd: Feature not enabled.");
 
     return false;
   }
-  DCHECK(features_[feature].filter);
-  result->set_value(features_[feature].filter->GetCurrentResult());
+  DCHECK(features_[feature].filter());
+  result->set_value(features_[feature].filter()->GetCurrentResult());
   return true;
 }
 
