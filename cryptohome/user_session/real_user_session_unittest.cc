@@ -194,7 +194,9 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
   EXPECT_THAT(user_activity_timestamp_manager_->GetLastUserActivityTimestamp(
                   users_[0].obfuscated),
               Eq(kTs1));
-  EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
+
+  // The WebAuthn secret isn't stored when mounting.
+  EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
   EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
   EXPECT_NE(session_->GetHibernateSecret(), nullptr);
 
@@ -356,6 +358,9 @@ TEST_F(RealUserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
           brillo::Blob(hibernate_message.cbegin(), hibernate_message.cend())));
   EXPECT_NE(expected_hibernate_secret, nullptr);
 
+  // Call PrepareWebAuthnSecret because it isn't prepared when mounting.
+  session_->PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
+
   // TEST
 
   std::unique_ptr<brillo::SecureBlob> actual_webauthn_secret =
@@ -377,8 +382,9 @@ TEST_F(RealUserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
   EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
 }
 
-// WebAuthn secret is cleared after timeout.
-TEST_F(RealUserSessionTest, WebAuthnSecretTimeout) {
+// Check whether Hibernate secret, WebAuthn secret and its hash exist at correct
+// timing.
+TEST_F(RealUserSessionTest, SecretsTimeout) {
   // SETUP
 
   // Test with ecryptfs since it has a simpler existence check.
@@ -392,15 +398,17 @@ TEST_F(RealUserSessionTest, WebAuthnSecretTimeout) {
 
   std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
       users_[0].credentials, nullptr /*error*/);
+  FileSystemKeyset fs_keyset(*vk.get());
   EXPECT_EQ(MOUNT_ERROR_NONE,
-            session_->MountVault(users_[0].name, FileSystemKeyset(*vk.get()),
-                                 options));
+            session_->MountVault(users_[0].name, fs_keyset, options));
 
-  // TEST
+  // The WebAuthn secret isn't stored when mounting.
+  EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
+
+  session_->PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
+  EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
 
   task_environment_.FastForwardBy(base::Seconds(600));
-
-  // VERIFY
 
   EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
   EXPECT_EQ(session_->GetHibernateSecret(), nullptr);

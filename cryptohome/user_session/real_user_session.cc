@@ -69,7 +69,9 @@ MountError RealUserSession::MountVault(
   pkcs11_token_ = pkcs11_token_factory_->New(
       username, homedirs_->GetChapsTokenDir(username), fs_keyset.chaps_key());
 
-  PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
+  // u2fd only needs to fetch the secret hash and not the secret itself when
+  // mounting.
+  PrepareWebAuthnSecretHash(fs_keyset.Key().fek, fs_keyset.Key().fnek);
   PrepareHibernateSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
 
   return MOUNT_ERROR_NONE;
@@ -161,6 +163,19 @@ void RealUserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
       FROM_HERE, base::Seconds(10),
       base::BindOnce(&RealUserSession::ClearWebAuthnSecret,
                      base::Unretained(this)));
+}
+
+void RealUserSession::PrepareWebAuthnSecretHash(
+    const brillo::SecureBlob& fek, const brillo::SecureBlob& fnek) {
+  // This WebAuthn secret can be rederived upon in-session user auth success
+  // since they will unlock the vault keyset.
+  const std::string message(kWebAuthnSecretHmacMessage);
+
+  // Only need to store the hash in this method, don't need the secret itself.
+  auto webauthn_secret = std::make_unique<brillo::SecureBlob>(
+      HmacSha256(brillo::SecureBlob::Combine(fnek, fek),
+                 brillo::Blob(message.cbegin(), message.cend())));
+  webauthn_secret_hash_ = Sha256(*webauthn_secret);
 }
 
 void RealUserSession::ClearWebAuthnSecret() {

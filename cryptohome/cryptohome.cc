@@ -334,6 +334,7 @@ static const char kChallengeSPKI[] = "challenge_spki";
 static const char kKeyDelegateName[] = "key_delegate_name";
 static const char kKeyDelegatePath[] = "key_delegate_path";
 static const char kExtensionDuration[] = "extension_duration";
+static const char kUnlockWebAuthnSecret[] = "unlock_webauthn_secret";
 }  // namespace switches
 
 brillo::SecureBlob GetSystemSalt(
@@ -938,6 +939,9 @@ int main(int argc, char** argv) {
     } else if (!BuildAuthorization(cl, &misc_proxy, true /* need_credential */,
                                    req.mutable_authorization_request())) {
       return 1;
+    }
+    if (cl->HasSwitch(switches::kUnlockWebAuthnSecret)) {
+      req.set_unlock_webauthn_secret(true);
     }
 
     // TODO(wad) Add a privileges cl interface
