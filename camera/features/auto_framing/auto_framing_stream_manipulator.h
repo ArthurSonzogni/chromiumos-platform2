@@ -90,7 +90,8 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   bool ProcessCaptureRequestOnThread(Camera3CaptureDescriptor* request);
   bool ProcessCaptureResultOnThread(Camera3CaptureDescriptor* result);
 
-  bool SetUpPipelineOnThread();
+  bool SetUpPipelineOnThread(uint32_t target_aspect_ratio_x,
+                             uint32_t target_aspect_ratio_y);
   void UpdateFaceRectangleMetadataOnThread(Camera3CaptureDescriptor* result);
   void HandleFramingErrorOnThread(Camera3CaptureDescriptor* result);
   void ResetOnThread();

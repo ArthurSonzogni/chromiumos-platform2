@@ -32,27 +32,33 @@ constexpr uint32_t kInputBufferUsage = GRALLOC_USAGE_HW_TEXTURE |
 constexpr char kAutoFramingGraphConfigOverridePath[] =
     "/run/camera/auto_framing_subgraph.pbtxt";
 
-std::pair<uint32_t, uint32_t> GetAspectRatio(const Size& size) {
-  uint32_t g = std::gcd(size.width, size.height);
-  return std::make_pair(size.width / g, size.height / g);
+Rect<uint32_t> GetCenteringFullCrop(Size size,
+                                    uint32_t aspect_ratio_x,
+                                    uint32_t aspect_ratio_y) {
+  uint32_t crop_width = size.width;
+  uint32_t crop_height = size.height;
+  if (size.width * aspect_ratio_y >= size.height * aspect_ratio_x) {
+    crop_width = size.height * aspect_ratio_x / aspect_ratio_y;
+  } else {
+    crop_height = size.width * aspect_ratio_y / aspect_ratio_x;
+  }
+  uint32_t dx = (size.width - crop_width) / 2;
+  uint32_t dy = (size.height - crop_height) / 2;
+  return Rect<uint32_t>(dx, dy, crop_width, crop_height);
 }
 
 }  // namespace
 
-bool AutoFramingClient::SetUp(const Size& input_size, double frame_rate) {
-  auto [x, y] = GetAspectRatio(input_size);
-  AutoFramingCrOS::Options options = {
+bool AutoFramingClient::SetUp(const Options& options) {
+  AutoFramingCrOS::Options auto_framing_options = {
       .input_format = AutoFramingCrOS::ImageFormat::kGRAY8,
-      .input_width = base::checked_cast<int>(input_size.width),
-      .input_height = base::checked_cast<int>(input_size.height),
-      .frame_rate = frame_rate,
-      // TODO(kamesan): AutoFramingCrOS doesn't handle full frame crop properly
-      // when the target aspect ratio doesn't match the input size.  Before it's
-      // fixed we set it to the input aspect ratio, which is okay since
-      // AutoFramingStreamManipulator will adjust the crop windows to match the
-      // outputs.
-      .target_aspect_ratio_x = base::checked_cast<int>(x),
-      .target_aspect_ratio_y = base::checked_cast<int>(y),
+      .input_width = base::checked_cast<int>(options.input_size.width),
+      .input_height = base::checked_cast<int>(options.input_size.height),
+      .frame_rate = options.frame_rate,
+      .target_aspect_ratio_x =
+          base::checked_cast<int>(options.target_aspect_ratio_x),
+      .target_aspect_ratio_y =
+          base::checked_cast<int>(options.target_aspect_ratio_y),
   };
   std::string graph_config;
   std::string* graph_config_ptr = nullptr;
@@ -61,8 +67,8 @@ bool AutoFramingClient::SetUp(const Size& input_size, double frame_rate) {
     graph_config_ptr = &graph_config;
   }
   auto_framing_ = AutoFramingCrOS::Create();
-  if (!auto_framing_ ||
-      !auto_framing_->Initialize(options, this, graph_config_ptr)) {
+  if (!auto_framing_ || !auto_framing_->Initialize(auto_framing_options, this,
+                                                   graph_config_ptr)) {
     LOGF(ERROR) << "Failed to initialize auto-framing engine";
     auto_framing_ = nullptr;
     return false;
@@ -71,8 +77,8 @@ bool AutoFramingClient::SetUp(const Size& input_size, double frame_rate) {
   // Allocate buffers for auto-framing engine inputs.
   // TODO(kamesan): Use a smaller size if detection works well.
   CameraBufferPool::Options buffer_pool_options = {
-      .width = input_size.width,
-      .height = input_size.height,
+      .width = options.input_size.width,
+      .height = options.input_size.height,
       .format = HAL_PIXEL_FORMAT_Y8,
       .usage = kInputBufferUsage,
       .max_num_buffers = kInputBufferCount,
@@ -81,7 +87,9 @@ bool AutoFramingClient::SetUp(const Size& input_size, double frame_rate) {
 
   base::AutoLock lock(lock_);
   region_of_interest_ = base::nullopt;
-  crop_window_ = Rect<uint32_t>(0, 0, input_size.width, input_size.height);
+  crop_window_ =
+      GetCenteringFullCrop(options.input_size, options.target_aspect_ratio_x,
+                           options.target_aspect_ratio_y);
 
   return true;
 }

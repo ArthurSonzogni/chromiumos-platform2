@@ -24,8 +24,15 @@ namespace cros {
 // http://google3/chromeos/camera/lib/auto_framing/auto_framing_cros.h
 class AutoFramingClient : public AutoFramingCrOS::Client {
  public:
+  struct Options {
+    Size input_size;
+    double frame_rate = 0.0;
+    uint32_t target_aspect_ratio_x = 0;
+    uint32_t target_aspect_ratio_y = 0;
+  };
+
   // Set up the pipeline.
-  bool SetUp(const Size& input_size, double frame_rate);
+  bool SetUp(const Options& options);
 
   // Process one frame.  |buffer| is only used during this function call.
   bool ProcessFrame(int64_t timestamp, buffer_handle_t buffer);

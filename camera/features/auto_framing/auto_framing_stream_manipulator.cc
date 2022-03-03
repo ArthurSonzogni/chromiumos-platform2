@@ -9,6 +9,7 @@
 #include <sync/sync.h>
 
 #include <algorithm>
+#include <numeric>
 #include <string>
 #include <utility>
 
@@ -179,6 +180,11 @@ Rect<uint32_t> AdjustCropRectForScalingToTarget(const Size& size,
   return Rect<uint32_t>(x, y, w, h);
 }
 
+std::pair<uint32_t, uint32_t> GetAspectRatio(const Size& size) {
+  uint32_t g = std::gcd(size.width, size.height);
+  return std::make_pair(size.width / g, size.height / g);
+}
+
 }  // namespace
 
 //
@@ -326,11 +332,29 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
   // Filter client streams into |hal_streams| that will be requested to the HAL.
   client_streams_ = CopyToVector(stream_config->GetStreams());
   std::vector<camera3_stream_t*> hal_streams;
+  const camera3_stream_t* target_output_stream = nullptr;
   for (auto* s : client_streams_) {
     if (IsStreamBypassed(s)) {
       hal_streams.push_back(s);
+      continue;
+    }
+    // Choose the output stream of the largest resolution for matching the crop
+    // window aspect ratio. Prefer taller size since extending crop windows
+    // horizontally (for other outputs) looks better.
+    if (!target_output_stream || s->height > target_output_stream->height ||
+        (s->height == target_output_stream->height &&
+         s->width > target_output_stream->width)) {
+      target_output_stream = s;
     }
   }
+  if (!target_output_stream) {
+    LOGF(ERROR) << "No valid output stream found in stream config";
+    return false;
+  }
+  VLOGF(1) << "Target output stream: " << GetDebugString(target_output_stream);
+  auto [target_aspect_ratio_x, target_aspect_ratio_y] = GetAspectRatio(
+      Size(target_output_stream->width, target_output_stream->height));
+
   // Create a stream to run auto-framing on.
   full_frame_stream_ = camera3_stream_t{
       .stream_type = CAMERA3_STREAM_OUTPUT,
@@ -347,7 +371,7 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
     return false;
   }
 
-  if (!SetUpPipelineOnThread()) {
+  if (!SetUpPipelineOnThread(target_aspect_ratio_x, target_aspect_ratio_y)) {
     return false;
   }
 
@@ -627,7 +651,8 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   return true;
 }
 
-bool AutoFramingStreamManipulator::SetUpPipelineOnThread() {
+bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
+    uint32_t target_aspect_ratio_x, uint32_t target_aspect_ratio_y) {
   DCHECK(thread_.IsCurrentThread());
 
   // We only load |options_.{detector,motion_model}| once here. Later functions
@@ -646,8 +671,12 @@ bool AutoFramingStreamManipulator::SetUpPipelineOnThread() {
       break;
     }
     case Detector::kFacePersonPose: {
-      if (!auto_framing_client_.SetUp(
-              full_frame_size_, static_cast<double>(kRequiredFrameRate))) {
+      if (!auto_framing_client_.SetUp(AutoFramingClient::Options{
+              .input_size = full_frame_size_,
+              .frame_rate = static_cast<double>(kRequiredFrameRate),
+              .target_aspect_ratio_x = target_aspect_ratio_x,
+              .target_aspect_ratio_y = target_aspect_ratio_y,
+          })) {
         return false;
       }
       break;
