@@ -12,6 +12,7 @@
 #include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/sys_byteorder.h>
+#include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <openssl/bn.h>
 #include <openssl/ecdsa.h>
@@ -31,7 +32,7 @@ constexpr size_t kContReportPayloadSize = 59;
 
 constexpr uint8_t kInterfaceVersion = 2;
 
-constexpr int kU2fHidTimeoutMs = 500;
+constexpr base::TimeDelta kU2fHidTimeout = base::Milliseconds(500);
 
 // Maximum duration one can keep the channel lock as specified by the U2FHID
 // specification
@@ -425,7 +426,7 @@ void U2fHid::ProcessReport(const std::string& report) {
     }
 
     transaction_->timeout.Start(
-        FROM_HERE, base::Milliseconds(kU2fHidTimeoutMs),
+        FROM_HERE, kU2fHidTimeout,
         base::Bind(&U2fHid::TransactionTimeout, base::Unretained(this)));
 
     // record transaction parameters
@@ -449,7 +450,7 @@ void U2fHid::ProcessReport(const std::string& report) {
     }
     // reload timeout
     transaction_->timeout.Start(
-        FROM_HERE, base::Milliseconds(kU2fHidTimeoutMs),
+        FROM_HERE, kU2fHidTimeout,
         base::Bind(&U2fHid::TransactionTimeout, base::Unretained(this)));
     // record the payload
     transaction_->payload += report.substr(pkt.PayloadIndex());

@@ -35,7 +35,7 @@ const int kAuthSaltSize = 16;
 const int kHashToSignSize = 32;
 
 // Use a big timeout for cryptohome. See b/172945202.
-constexpr base::TimeDelta kCryptohomeTimeout = base::TimeDelta::FromMinutes(2);
+constexpr base::TimeDelta kCryptohomeTimeout = base::Minutes(2);
 
 struct credential_id_v1 {
   int version;
