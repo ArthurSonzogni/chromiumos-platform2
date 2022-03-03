@@ -4669,14 +4669,14 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnConnectedAndReachable) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(3);
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv4 DHCP lease obtained")));
-  EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_, _));
+  EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_));
   EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
   ReportIPConfigComplete();
 
   // We should not call WakeOnWiFi::OnConnectedAndReachable if we are not
   // actually connected to a service.
   SetCurrentService(nullptr);
-  EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_, _)).Times(0);
+  EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_)).Times(0);
   ReportIPv6ConfigComplete();
 
   // If we are actually connected to a service when our IPv6 configuration is
@@ -4685,13 +4685,13 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnConnectedAndReachable) {
   EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(true));
   SetCurrentService(service);
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv6 configuration obtained")));
-  EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_, _));
+  EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_));
   ReportIPv6ConfigComplete();
 
   // Do not call WakeOnWiFi::OnConnectedAndReachable if the IP config update was
   // triggered by a gateway ARP.
   EXPECT_CALL(log, Log(_, _, HasSubstr("Gateway ARP received")));
-  EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_, _)).Times(0);
+  EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_)).Times(0);
   ReportIPConfigCompleteGatewayArpReceived();
 
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
@@ -4701,13 +4701,13 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnConnectedAndReachable) {
 TEST_F(WiFiMainTest, OnBeforeSuspend_CallsWakeOnWiFi) {
   SetWiFiEnabled(true);
   EXPECT_CALL(*wake_on_wifi_,
-              OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _, _));
+              OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _));
   EXPECT_CALL(*this, SuspendCallback(_)).Times(0);
   OnBeforeSuspend();
 
   SetWiFiEnabled(false);
   EXPECT_CALL(*wake_on_wifi_,
-              OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _, _))
+              OnBeforeSuspend(IsConnectedToCurrentService(), _, _, _, _, _))
       .Times(0);
   EXPECT_CALL(*this, SuspendCallback(ErrorTypeIs(Error::kSuccess)));
   OnBeforeSuspend();

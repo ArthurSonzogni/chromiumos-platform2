@@ -39,8 +39,6 @@ static std::string ObjectID(const HttpRequest* r) {
 }
 }  // namespace Logging
 
-const int HttpRequest::kRequestTimeoutSeconds = 10;
-
 HttpRequest::HttpRequest(EventDispatcher* dispatcher,
                          const std::string& interface_name,
                          const IPAddress& src_address,
@@ -103,7 +101,7 @@ HttpRequest::Result HttpRequest::Start(
   server_hostname_ = url.host();
   server_port_ = url.port();
   server_path_ = url.path();
-  transport_->SetDefaultTimeout(base::Seconds(kRequestTimeoutSeconds));
+  transport_->SetDefaultTimeout(kRequestTimeout);
 
   IPAddress addr(ip_family_);
 

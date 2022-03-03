@@ -81,7 +81,7 @@ class HttpRequest {
   friend class HttpRequestTest;
 
   // Time to wait for HTTP request.
-  static const int kRequestTimeoutSeconds;
+  static constexpr base::TimeDelta kRequestTimeout = base::Seconds(10);
 
   void GetDNSResult(const Error& error, const IPAddress& address);
   void StartRequest();

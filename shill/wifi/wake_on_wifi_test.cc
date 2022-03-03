@@ -8,6 +8,7 @@
 
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -70,8 +71,8 @@ const uint8_t kWakeReasonSSIDNlMsg[] = {
     0x3c, 0x14, 0x00, 0x00, 0x08, 0x00, 0x04, 0x00, 0x78, 0x14, 0x00, 0x00,
     0x08, 0x00, 0x05, 0x00, 0x71, 0x16, 0x00, 0x00, 0x08, 0x00, 0x06, 0x00,
     0xad, 0x16, 0x00, 0x00, 0x08, 0x00, 0x07, 0x00, 0xc1, 0x16, 0x00, 0x00};
-const uint32_t kTimeToNextLeaseRenewalShort = 1;
-const uint32_t kTimeToNextLeaseRenewalLong = 1000;
+constexpr base::TimeDelta kTimeToNextLeaseRenewalShort = base::Seconds(1);
+constexpr base::TimeDelta kTimeToNextLeaseRenewalLong = base::Seconds(1000);
 const uint32_t kNetDetectScanIntervalSeconds = 120;
 // These blobs represent NL80211 messages from the kernel reporting the NIC's
 // wake on WiFi settings, sent in response to NL80211_CMD_GET_WOWLAN requests.
@@ -595,10 +596,10 @@ class WakeOnWiFiTest : public ::testing::Test {
     wake_on_wifi_->num_set_wake_on_wifi_retries_ = retries;
   }
 
-  void OnBeforeSuspend(bool is_connected,
-                       const std::vector<ByteString>& allowed_ssids,
-                       bool have_dhcp_lease,
-                       uint32_t time_to_next_lease_renewal) {
+  void OnBeforeSuspend(
+      bool is_connected,
+      const std::vector<ByteString>& allowed_ssids,
+      std::optional<base::TimeDelta> time_to_next_lease_renewal) {
     ResultCallback done_callback(
         base::Bind(&WakeOnWiFiTest::DoneCallback, base::Unretained(this)));
     base::Closure renew_dhcp_lease_callback(base::Bind(
@@ -606,10 +607,9 @@ class WakeOnWiFiTest : public ::testing::Test {
     base::Closure remove_supplicant_networks_callback(
         base::Bind(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
                    base::Unretained(this)));
-    wake_on_wifi_->OnBeforeSuspend(is_connected, allowed_ssids, done_callback,
-                                   renew_dhcp_lease_callback,
-                                   remove_supplicant_networks_callback,
-                                   have_dhcp_lease, time_to_next_lease_renewal);
+    wake_on_wifi_->OnBeforeSuspend(
+        is_connected, allowed_ssids, done_callback, renew_dhcp_lease_callback,
+        remove_supplicant_networks_callback, time_to_next_lease_renewal);
   }
 
   void OnDarkResume(bool is_connected,
@@ -630,9 +630,9 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void OnAfterResume() { wake_on_wifi_->OnAfterResume(); }
 
-  void BeforeSuspendActions(bool is_connected,
-                            bool start_lease_renewal_timer,
-                            uint32_t time_to_next_lease_renewal) {
+  void BeforeSuspendActions(
+      bool is_connected,
+      std::optional<base::TimeDelta> time_to_next_lease_renewal) {
     SetDarkResumeActionsTimeOutCallback();
     EXPECT_FALSE(DarkResumeActionsTimeOutCallbackIsCancelled());
     EXPECT_CALL(metrics_,
@@ -640,16 +640,15 @@ class WakeOnWiFiTest : public ::testing::Test {
     base::Closure remove_supplicant_networks_callback(
         base::Bind(&WakeOnWiFiTest::RemoveSupplicantNetworksCallback,
                    base::Unretained(this)));
-    wake_on_wifi_->BeforeSuspendActions(is_connected, start_lease_renewal_timer,
+    wake_on_wifi_->BeforeSuspendActions(is_connected,
                                         time_to_next_lease_renewal,
                                         remove_supplicant_networks_callback);
     EXPECT_TRUE(DarkResumeActionsTimeOutCallbackIsCancelled());
   }
 
-  void OnConnectedAndReachable(bool start_lease_renewal_timer,
-                               uint32_t time_to_next_lease_renewal) {
-    wake_on_wifi_->OnConnectedAndReachable(start_lease_renewal_timer,
-                                           time_to_next_lease_renewal);
+  void OnConnectedAndReachable(
+      std::optional<base::TimeDelta> time_to_next_lease_renewal) {
+    wake_on_wifi_->OnConnectedAndReachable(time_to_next_lease_renewal);
   }
 
   void SetInDarkResume(bool val) { wake_on_wifi_->in_dark_resume_ = val; }
@@ -699,14 +698,14 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void StartDHCPLeaseRenewalTimer() {
     wake_on_wifi_->dhcp_lease_renewal_timer_->Start(
-        FROM_HERE, base::Seconds(kTimeToNextLeaseRenewalLong),
+        FROM_HERE, kTimeToNextLeaseRenewalLong,
         base::Bind(&WakeOnWiFiTest::OnTimerWakeDoNothing,
                    base::Unretained(this)));
   }
 
   void StartWakeToScanTimer() {
     wake_on_wifi_->wake_to_scan_timer_->Start(
-        FROM_HERE, base::Seconds(kTimeToNextLeaseRenewalLong),
+        FROM_HERE, kTimeToNextLeaseRenewalLong,
         base::Bind(&WakeOnWiFiTest::OnTimerWakeDoNothing,
                    base::Unretained(this)));
   }
@@ -1286,7 +1285,6 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
        BeforeSuspendActions_ReportDoneImmediately) {
   ScopedMockLog log;
   const bool is_connected = true;
-  const bool start_lease_renewal_timer = true;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), GetWakeOnAllowedSSIDs());
   // If no triggers are supported, no triggers will be programmed into the NIC.
   ClearWakeOnWiFiTriggersSupported();
@@ -1297,8 +1295,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   // Do not report done immediately in dark resume, since we need to program it
   // to disable wake on WiFi.
   EXPECT_CALL(*this, DoneCallback(_)).Times(0);
-  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
-                       kTimeToNextLeaseRenewalLong);
+  BeforeSuspendActions(is_connected,
+                       std::make_optional(kTimeToNextLeaseRenewalLong));
   EXPECT_FALSE(GetInDarkResume());
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
   EXPECT_TRUE(GetLastSSIDMatchFreqs().empty());
@@ -1317,8 +1315,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
       Log(_, _,
           HasSubstr(
               "No need to disable wake on WiFi on NIC in regular suspend")));
-  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
-                       kTimeToNextLeaseRenewalLong);
+  BeforeSuspendActions(is_connected,
+                       std::make_optional(kTimeToNextLeaseRenewalLong));
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
   EXPECT_TRUE(GetLastSSIDMatchFreqs().empty());
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
@@ -1328,7 +1326,6 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        BeforeSuspendActions_FeaturesDisabledOrTriggersUnsupported) {
   const bool is_connected = true;
-  const bool start_lease_renewal_timer = true;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), GetWakeOnAllowedSSIDs());
   SetInDarkResume(false);
   SetSuspendActionsDoneCallback();
@@ -1338,8 +1335,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   AddResultToLastSSIDResults();
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
   EXPECT_CALL(*this, DoneCallback(_));
-  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
-                       kTimeToNextLeaseRenewalLong);
+  BeforeSuspendActions(is_connected,
+                       std::make_optional(kTimeToNextLeaseRenewalLong));
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
   EXPECT_TRUE(GetLastSSIDMatchFreqs().empty());
@@ -1352,8 +1349,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   AddResultToLastSSIDResults();
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
   EXPECT_CALL(*this, DoneCallback(_));
-  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
-                       kTimeToNextLeaseRenewalLong);
+  BeforeSuspendActions(is_connected,
+                       std::make_optional(kTimeToNextLeaseRenewalLong));
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
   EXPECT_TRUE(GetLastSSIDMatchFreqs().empty());
@@ -1367,8 +1364,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerDisconnect);
   AddResultToLastSSIDResults();
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
-  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
-                       kTimeToNextLeaseRenewalLong);
+  BeforeSuspendActions(is_connected,
+                       std::make_optional(kTimeToNextLeaseRenewalLong));
   EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 1);
   EXPECT_TRUE(
       GetWakeOnWiFiTriggers()->find(WakeOnWiFi::kWakeTriggerDisconnect) !=
@@ -1380,7 +1377,6 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        BeforeSuspendActions_ConnectedBeforeSuspend) {
   const bool is_connected = true;
-  const bool start_lease_renewal_timer = true;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), GetWakeOnAllowedSSIDs());
   SetSuspendActionsDoneCallback();
   EnableWakeOnWiFiFeaturesDarkConnect();
@@ -1395,8 +1391,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_TRUE(WakeToScanTimerIsRunning());
   EXPECT_FALSE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_CALL(*this, DoneCallback(_)).Times(0);
-  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
-                       kTimeToNextLeaseRenewalLong);
+  BeforeSuspendActions(is_connected,
+                       std::make_optional(kTimeToNextLeaseRenewalLong));
   EXPECT_FALSE(GetInDarkResume());
   EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 1);
   EXPECT_TRUE(
@@ -1411,7 +1407,6 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
 TEST_F(WakeOnWiFiTestWithMockDispatcher,
        BeforeSuspendActions_DisconnectedBeforeSuspend) {
   const bool is_connected = false;
-  const bool start_lease_renewal_timer = true;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), GetWakeOnAllowedSSIDs());
   AllowSSID(kSSIDBytes2, sizeof(kSSIDBytes2), GetWakeOnAllowedSSIDs());
   SetSuspendActionsDoneCallback();
@@ -1430,8 +1425,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_CALL(*this, DoneCallback(_)).Times(0);
-  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
-                       kTimeToNextLeaseRenewalLong);
+  BeforeSuspendActions(is_connected,
+                       std::make_optional(kTimeToNextLeaseRenewalLong));
   EXPECT_EQ(2, GetWakeOnAllowedSSIDs()->size());
   EXPECT_FALSE(GetInDarkResume());
   EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 1);
@@ -1456,8 +1451,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_CALL(*this, DoneCallback(_)).Times(0);
-  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
-                       kTimeToNextLeaseRenewalLong);
+  BeforeSuspendActions(is_connected,
+                       std::make_optional(kTimeToNextLeaseRenewalLong));
   EXPECT_EQ(1, GetWakeOnAllowedSSIDs()->size());
   EXPECT_FALSE(GetInDarkResume());
   EXPECT_EQ(GetWakeOnWiFiTriggers()->size(), 1);
@@ -1481,8 +1476,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher,
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_CALL(*this, DoneCallback(_)).Times(0);
-  BeforeSuspendActions(is_connected, start_lease_renewal_timer,
-                       kTimeToNextLeaseRenewalLong);
+  BeforeSuspendActions(is_connected,
+                       std::make_optional(kTimeToNextLeaseRenewalLong));
   EXPECT_TRUE(GetWakeOnAllowedSSIDs()->empty());
   EXPECT_FALSE(GetInDarkResume());
   EXPECT_TRUE(GetWakeOnWiFiTriggers()->empty());
@@ -1578,7 +1573,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_SetsWakeOnAllowedSSIDs) {
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
   EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(GetWakeOnAllowedSSIDs()->empty());
-  OnBeforeSuspend(true, allowed, true, 0);
+  OnBeforeSuspend(true, allowed, std::make_optional(base::TimeDelta()));
   EXPECT_FALSE(GetWakeOnAllowedSSIDs()->empty());
   EXPECT_EQ(1, GetWakeOnAllowedSSIDs()->size());
 }
@@ -1587,13 +1582,12 @@ TEST_F(WakeOnWiFiTestWithDispatcher, OnBeforeSuspend_SetsDoneCallback) {
   std::vector<ByteString> allowed;
   EnableWakeOnWiFiFeaturesDarkConnect();
   EXPECT_TRUE(SuspendActionsCallbackIsNull());
-  OnBeforeSuspend(true, allowed, true, 0);
+  OnBeforeSuspend(true, allowed, std::make_optional(base::TimeDelta()));
   EXPECT_FALSE(SuspendActionsCallbackIsNull());
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
   bool is_connected;
-  bool have_dhcp_lease;
   std::vector<ByteString> allowed;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
 
@@ -1602,10 +1596,9 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
 
   // When no feature enabled, we'll not renew DHCP.
   is_connected = true;
-  have_dhcp_lease = true;
   EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
-  OnBeforeSuspend(is_connected, allowed, have_dhcp_lease,
-                  kTimeToNextLeaseRenewalShort);
+  OnBeforeSuspend(is_connected, allowed,
+                  std::make_optional(kTimeToNextLeaseRenewalShort));
   Mock::VerifyAndClearExpectations(this);
 
   // Enable a feature for the following tests.
@@ -1614,41 +1607,36 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
   // If we are connected the time to next lease renewal is short enough, we will
   // initiate DHCP lease renewal immediately.
   is_connected = true;
-  have_dhcp_lease = true;
   EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(1);
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
       .Times(1);
-  OnBeforeSuspend(is_connected, allowed, have_dhcp_lease,
-                  kTimeToNextLeaseRenewalShort);
+  OnBeforeSuspend(is_connected, allowed,
+                  std::make_optional(kTimeToNextLeaseRenewalShort));
 
   // No immediate DHCP lease renewal because we are not connected.
   is_connected = false;
-  have_dhcp_lease = true;
   EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
       .Times(1);
-  OnBeforeSuspend(is_connected, allowed, have_dhcp_lease,
-                  kTimeToNextLeaseRenewalShort);
+  OnBeforeSuspend(is_connected, allowed,
+                  std::make_optional(kTimeToNextLeaseRenewalShort));
 
   // No immediate DHCP lease renewal because the time to the next lease renewal
   // is longer than the threshold.
   is_connected = true;
-  have_dhcp_lease = true;
   EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
       .Times(1);
-  OnBeforeSuspend(is_connected, allowed, have_dhcp_lease,
-                  kTimeToNextLeaseRenewalLong);
+  OnBeforeSuspend(is_connected, allowed,
+                  std::make_optional(kTimeToNextLeaseRenewalLong));
 
   // No immediate DHCP lease renewal because we do not have a DHCP lease that
   // needs to be renewed.
   is_connected = true;
-  have_dhcp_lease = false;
   EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
   EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
       .Times(1);
-  OnBeforeSuspend(is_connected, allowed, have_dhcp_lease,
-                  kTimeToNextLeaseRenewalLong);
+  OnBeforeSuspend(is_connected, allowed, std::nullopt);
 }
 
 TEST_F(WakeOnWiFiTestWithDispatcher, OnDarkResume_ResetsDarkResumeScanRetries) {
@@ -1729,8 +1717,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // unsupported wake trigger while connected, then connect and obtain a DHCP
   // lease before suspending again.
   const bool is_connected = true;
-  const bool have_dhcp_lease = true;
-  const uint32_t time_to_next_lease_renewal = 10;
+  constexpr base::TimeDelta time_to_next_lease_renewal = base::Seconds(10);
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerUnsupported);
   std::vector<ByteString> allowed;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
@@ -1747,7 +1734,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   StopDHCPLeaseRenewalTimer();
   StartWakeToScanTimer();
   SetExpectationsConnectedBeforeSuspend();
-  OnConnectedAndReachable(have_dhcp_lease, time_to_next_lease_renewal);
+  OnConnectedAndReachable(std::make_optional(time_to_next_lease_renewal));
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   VerifyStateConnectedBeforeSuspend();
@@ -1815,8 +1802,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // unsupported wake trigger while connected, then connect and obtain a DHCP
   // lease before suspending again.
   const bool is_connected = false;
-  const bool have_dhcp_lease = true;
-  const uint32_t time_to_next_lease_renewal = 10;
+  constexpr base::TimeDelta time_to_next_lease_renewal = base::Seconds(10);
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerUnsupported);
   std::vector<ByteString> allowed;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
@@ -1835,7 +1821,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   StopDHCPLeaseRenewalTimer();
   StartWakeToScanTimer();
   SetExpectationsConnectedBeforeSuspend();
-  OnConnectedAndReachable(have_dhcp_lease, time_to_next_lease_renewal);
+  OnConnectedAndReachable(std::make_optional(time_to_next_lease_renewal));
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_FALSE(WakeToScanTimerIsRunning());
   VerifyStateConnectedBeforeSuspend();
@@ -1903,8 +1889,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // system woke on a disconnect, then connect and obtain a DHCP lease before
   // suspending again.
   const bool is_connected = false;
-  const bool have_dhcp_lease = true;
-  const uint32_t time_to_next_lease_renewal = 10;
+  constexpr base::TimeDelta time_to_next_lease_renewal = base::Seconds(10);
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerDisconnect);
   std::vector<ByteString> allowed;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
@@ -1922,7 +1907,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   StopDHCPLeaseRenewalTimer();
   StartWakeToScanTimer();
   SetExpectationsConnectedBeforeSuspend();
-  OnConnectedAndReachable(have_dhcp_lease, time_to_next_lease_renewal);
+  OnConnectedAndReachable(std::make_optional(time_to_next_lease_renewal));
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_FALSE(WakeToScanTimerIsRunning());
@@ -1990,8 +1975,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // system woke on SSID, then connect and obtain a DHCP lease before suspending
   // again.
   const bool is_connected = false;
-  const bool have_dhcp_lease = true;
-  const uint32_t time_to_next_lease_renewal = 10;
+  constexpr base::TimeDelta time_to_next_lease_renewal = base::Seconds(10);
   SetLastWakeReason(WakeOnWiFi::kWakeTriggerSSID);
   std::vector<ByteString> allowed;
   AllowSSID(kSSIDBytes1, sizeof(kSSIDBytes1), &allowed);
@@ -2009,7 +1993,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   StopDHCPLeaseRenewalTimer();
   StartWakeToScanTimer();
   SetExpectationsConnectedBeforeSuspend();
-  OnConnectedAndReachable(have_dhcp_lease, time_to_next_lease_renewal);
+  OnConnectedAndReachable(std::make_optional(time_to_next_lease_renewal));
   EXPECT_EQ(WakeOnWiFi::kWakeTriggerUnsupported, GetLastWakeReason());
   EXPECT_TRUE(DHCPLeaseRenewalTimerIsRunning());
   EXPECT_FALSE(WakeToScanTimerIsRunning());
@@ -2048,7 +2032,7 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // This test assumes that throttling takes place when 3 dark resumes have
   // been triggered in the last 1 minute.
   EXPECT_EQ(3, WakeOnWiFi::kMaxDarkResumesPerPeriodShort);
-  EXPECT_EQ(1, WakeOnWiFi::kDarkResumeFrequencySamplingPeriodShortMinutes);
+  EXPECT_EQ(1, WakeOnWiFi::kDarkResumeFrequencySamplingPeriodShort.InMinutes());
 
   // Wake on SSID dark resumes should be recorded in the dark resume history.
   const bool is_connected = false;
@@ -2104,9 +2088,9 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
   // triggered in the last 1 minute, or when 10 dark resumes have been triggered
   // in the last 10 minutes.
   EXPECT_EQ(3, WakeOnWiFi::kMaxDarkResumesPerPeriodShort);
-  EXPECT_EQ(1, WakeOnWiFi::kDarkResumeFrequencySamplingPeriodShortMinutes);
+  EXPECT_EQ(1, WakeOnWiFi::kDarkResumeFrequencySamplingPeriodShort.InMinutes());
   EXPECT_EQ(10, WakeOnWiFi::kMaxDarkResumesPerPeriodLong);
-  EXPECT_EQ(10, WakeOnWiFi::kDarkResumeFrequencySamplingPeriodLongMinutes);
+  EXPECT_EQ(10, WakeOnWiFi::kDarkResumeFrequencySamplingPeriodLong.InMinutes());
 
   // Wake on SSID dark resumes should be recorded in the dark resume history.
   const bool is_connected = false;
@@ -2148,7 +2132,6 @@ TEST_F(WakeOnWiFiTestWithDispatcher,
 }
 
 TEST_F(WakeOnWiFiTestWithMockDispatcher, OnConnectedAndReachable) {
-  const bool start_lease_renewal_timer = true;
   ScopedMockLog log;
 
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
@@ -2158,13 +2141,11 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnConnectedAndReachable) {
   ScopeLogger::GetInstance()->set_verbose_level(3);
   EXPECT_CALL(log, Log(_, _, HasSubstr("BeforeSuspendActions")))
       .Times(AtLeast(1));
-  OnConnectedAndReachable(start_lease_renewal_timer,
-                          kTimeToNextLeaseRenewalLong);
+  OnConnectedAndReachable(std::make_optional(kTimeToNextLeaseRenewalLong));
 
   SetInDarkResume(false);
   EXPECT_CALL(log, Log(_, _, HasSubstr("Not in dark resume")));
-  OnConnectedAndReachable(start_lease_renewal_timer,
-                          kTimeToNextLeaseRenewalLong);
+  OnConnectedAndReachable(std::make_optional(kTimeToNextLeaseRenewalLong));
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }

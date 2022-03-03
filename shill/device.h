@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -495,10 +496,10 @@ class Device : public base::RefCounted<Device> {
   Manager* manager() const { return manager_; }
   bool fixed_ip_params() const { return fixed_ip_params_; }
 
-  // Calculates the time (in seconds) till a DHCP lease is due for renewal,
-  // and stores this value in |result|. Returns false is there is no upcoming
-  // DHCP lease renewal, true otherwise.
-  bool TimeToNextDHCPLeaseRenewal(uint32_t* result);
+  // Calculates the duration till a DHCP lease is due for renewal, and stores
+  // this value in |result|. Returns std::nullopt if there is no upcoming DHCP
+  // lease renewal, base::TimeDelta wrapped in std::optional otherwise.
+  std::optional<base::TimeDelta> TimeToNextDHCPLeaseRenewal();
 
   virtual void set_mac_address(const std::string& mac_address);
 

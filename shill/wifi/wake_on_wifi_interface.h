@@ -5,8 +5,11 @@
 #ifndef SHILL_WIFI_WAKE_ON_WIFI_INTERFACE_H_
 #define SHILL_WIFI_WAKE_ON_WIFI_INTERFACE_H_
 
+#include <optional>
 #include <string>
 #include <vector>
+
+#include <base/time/time.h>
 
 #include "shill/callbacks.h"
 #include "shill/wifi/wifi.h"
@@ -51,8 +54,7 @@ class WakeOnWiFiInterface {
       const ResultCallback& done_callback,
       base::OnceClosure renew_dhcp_lease_callback,
       base::OnceClosure remove_supplicant_networks_callback,
-      bool have_dhcp_lease,
-      uint32_t time_to_next_lease_renewal) = 0;
+      std::optional<base::TimeDelta> time_to_next_lease_renewal) = 0;
   virtual void OnAfterResume() = 0;
   virtual void OnDarkResume(
       bool is_connected,
@@ -61,8 +63,8 @@ class WakeOnWiFiInterface {
       base::OnceClosure renew_dhcp_lease_callback,
       InitiateScanCallback initiate_scan_callback,
       const base::Closure& remove_supplicant_networks_callback) = 0;
-  virtual void OnConnectedAndReachable(bool start_lease_renewal_timer,
-                                       uint32_t time_to_next_lease_renewal) = 0;
+  virtual void OnConnectedAndReachable(
+      std::optional<base::TimeDelta> time_to_next_lease_renewal) = 0;
   virtual void ReportConnectedToServiceAfterWake(bool is_connected,
                                                  int seconds_in_suspend) = 0;
   virtual void OnNoAutoConnectableServicesAfterScan(

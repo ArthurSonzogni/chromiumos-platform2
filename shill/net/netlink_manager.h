@@ -66,6 +66,7 @@
 #include <base/cancelable_callback.h>
 #include <base/lazy_instance.h>
 #include <base/macros.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/net/generic_netlink_message.h"
@@ -322,8 +323,9 @@ class SHILL_EXPORT NetlinkManager {
   static const long kMaximumNewFamilyWaitMicroSeconds;  // NOLINT
   static const long kResponseTimeoutSeconds;            // NOLINT
   static const long kResponseTimeoutMicroSeconds;       // NOLINT
-  static const long kPendingDumpTimeoutMilliseconds;    // NOLINT
-  static const long kNlMessageRetryDelayMilliseconds;   // NOLINT
+  static constexpr base::TimeDelta kPendingDumpTimeout = base::Seconds(1);
+  static constexpr base::TimeDelta kNlMessageRetryDelay =
+      base::Milliseconds(300);
   static const int kMaxNlMessageRetries;                // NOLINT
 
   // Returns the file descriptor of socket used to read wifi data.
@@ -357,8 +359,7 @@ class SHILL_EXPORT NetlinkManager {
   void OnReadError(const std::string& error_msg);
 
   // Utility function that posts a task to the message loop to call
-  // NetlinkManager::ResendPendingDumpMessage kNlMessageRetryDelayMilliseconds
-  // from now.
+  // NetlinkManager::ResendPendingDumpMessage kNlMessageRetryDelay from now.
   void ResendPendingDumpMessageAfterDelay();
 
   // Just for tests, this method turns off WiFi and clears the subscribed

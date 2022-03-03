@@ -149,9 +149,8 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
 
   static const char kDefaultOpenVPNConfigurationDirectory[];
 
-  static constexpr base::TimeDelta kConnectTimeout = base::Seconds(2 * 60);
-  static constexpr base::TimeDelta kReconnectOfflineTimeout =
-      base::Seconds(2 * 60);
+  static constexpr base::TimeDelta kConnectTimeout = base::Minutes(2);
+  static constexpr base::TimeDelta kReconnectOfflineTimeout = base::Minutes(2);
   static constexpr base::TimeDelta kReconnectTLSErrorTimeout =
       base::Seconds(20);
 

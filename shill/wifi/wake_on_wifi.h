@@ -11,6 +11,7 @@
 #include <netinet/ip6.h>
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -194,16 +195,15 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   //    renewal.
   //  - |remove_supplicant_networks_callback|: callback to invoke
   //    to remove all networks from WPA supplicant.
-  //  - |have_dhcp_lease|: whether or not there is a DHCP lease to renew.
-  //  - |time_to_next_lease_renewal|: number of seconds until next DHCP lease
-  //    renewal is due.
-  void OnBeforeSuspend(bool is_connected,
-                       const std::vector<ByteString>& allowed_ssids,
-                       const ResultCallback& done_callback,
-                       base::OnceClosure renew_dhcp_lease_callback,
-                       base::OnceClosure remove_supplicant_networks_callback,
-                       bool have_dhcp_lease,
-                       uint32_t time_to_next_lease_renewal) override;
+  //  - |time_to_next_lease_renewal|: duration until next DHCP lease renewal is
+  //    due, if there is a DHCP lease to renew; std::nullopt otherwise.
+  void OnBeforeSuspend(
+      bool is_connected,
+      const std::vector<ByteString>& allowed_ssids,
+      const ResultCallback& done_callback,
+      base::OnceClosure renew_dhcp_lease_callback,
+      base::OnceClosure remove_supplicant_networks_callback,
+      std::optional<base::TimeDelta> time_to_next_lease_renewal) override;
   // Performs post-resume actions relevant to wake on wireless functionality.
   void OnAfterResume() override;
   // Performs and post actions to be performed in dark resume.
@@ -229,8 +229,8 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // Called when we the current service is connected, and we have IP
   // reachability. Calls WakeOnWiFi::BeforeSuspendActions if we are in dark
   // resume to end the current dark resume. Otherwise, does nothing.
-  void OnConnectedAndReachable(bool start_lease_renewal_timer,
-                               uint32_t time_to_next_lease_renewal) override;
+  void OnConnectedAndReachable(
+      std::optional<base::TimeDelta> time_to_next_lease_renewal) override;
   // Callback invoked to report whether this WiFi device is connected to
   // a service after waking from suspend.
   void ReportConnectedToServiceAfterWake(bool is_connected,
@@ -270,13 +270,13 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
               OnWakeupReasonReceived_Disconnect);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher, OnWakeupReasonReceived_SSID);
   // kMaxDarkResumesPerPeriodShort
-  // kDarkResumeFrequencySamplingPeriodShortMinutes,
+  // kDarkResumeFrequencySamplingPeriodShort,
   // kMaxDarkResumesPerPeriodShort
   FRIEND_TEST(WakeOnWiFiTestWithDispatcher,
               OnDarkResume_NotConnected_MaxDarkResumes_ShortPeriod);
-  // kDarkResumeFrequencySamplingPeriodLongMinutes,
+  // kDarkResumeFrequencySamplingPeriodLong,
   // kMaxDarkResumesPerPeriodLong,
-  // kDarkResumeFrequencySamplingPeriodShortMinutes,
+  // kDarkResumeFrequencySamplingPeriodShort,
   // kMaxDarkResumesPerPeriodShort
   FRIEND_TEST(WakeOnWiFiTestWithDispatcher,
               OnDarkResume_NotConnected_MaxDarkResumes_LongPeriod);
@@ -291,9 +291,12 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
       base::Minutes(10);
   static const uint32_t kDefaultWakeToScanPeriodSeconds;
   static const uint32_t kDefaultNetDetectScanPeriodSeconds;
-  static const uint32_t kImmediateDHCPLeaseRenewalThresholdSeconds;
-  static const int kDarkResumeFrequencySamplingPeriodShortMinutes;
-  static const int kDarkResumeFrequencySamplingPeriodLongMinutes;
+  static constexpr base::TimeDelta kImmediateDHCPLeaseRenewalThreshold =
+      base::Minutes(1);
+  static constexpr base::TimeDelta kDarkResumeFrequencySamplingPeriodShort =
+      base::Minutes(1);
+  static constexpr base::TimeDelta kDarkResumeFrequencySamplingPeriodLong =
+      base::Minutes(10);
   static const int kMaxDarkResumesPerPeriodShort;
   static const int kMaxDarkResumesPerPeriodLong;
   static base::TimeDelta DarkResumeActionsTimeout;  // non-const for testing
@@ -394,16 +397,13 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   //
   // Arguments:
   //  - |is_connected|: whether the WiFi device is connected.
-  //  - |start_lease_renewal_timer|: whether or not to start the DHCP lease
-  //    renewal timer.
-  //  - |time_to_next_lease_renewal|: number of seconds until next DHCP lease
-  //    renewal is due.
+  //  - |time_to_next_lease_renewal|: duration until next DHCP lease renewal is
+  //    due if start the DHCP lease renewal timer; std::nullopt if not.
   //  - |remove_supplicant_networks_callback|: callback to invoke
   //    to remove all networks from WPA supplicant.
   void BeforeSuspendActions(
       bool is_connected,
-      bool start_lease_renewal_timer,
-      uint32_t time_to_next_lease_renewal,
+      std::optional<base::TimeDelta> time_to_next_lease_renewal,
       base::OnceClosure remove_supplicant_networks_callback);
 
   // Needed for |dhcp_lease_renewal_timer_| and |wake_to_scan_timer_| since

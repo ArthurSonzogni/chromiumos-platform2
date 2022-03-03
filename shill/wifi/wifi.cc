@@ -2611,9 +2611,6 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
     callback.Run(Error(Error::kSuccess));
     return;
   }
-  uint32_t time_to_next_lease_renewal;
-  bool have_dhcp_lease =
-      TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
   wake_on_wifi_->OnBeforeSuspend(
       IsConnectedToCurrentService(),
       provider_->GetSsidsConfiguredForAutoConnect(), callback,
@@ -2621,7 +2618,7 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
                  weak_ptr_factory_while_started_.GetWeakPtr(), false, nullptr),
       base::Bind(&WiFi::RemoveSupplicantNetworks,
                  weak_ptr_factory_while_started_.GetWeakPtr()),
-      have_dhcp_lease, time_to_next_lease_renewal);
+      TimeToNextDHCPLeaseRenewal());
 }
 
 void WiFi::OnDarkResume(const ResultCallback& callback) {
@@ -3766,11 +3763,7 @@ void WiFi::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
   if (new_lease_acquired) {
     SLOG(this, 3) << __func__ << ": "
                   << "IPv4 DHCP lease obtained";
-    uint32_t time_to_next_lease_renewal;
-    bool have_dhcp_lease =
-        TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
-    wake_on_wifi_->OnConnectedAndReachable(have_dhcp_lease,
-                                           time_to_next_lease_renewal);
+    wake_on_wifi_->OnConnectedAndReachable(TimeToNextDHCPLeaseRenewal());
   } else {
     SLOG(this, 3) << __func__ << ": "
                   << "Gateway ARP received";
@@ -3790,11 +3783,7 @@ void WiFi::OnIPv6ConfigUpdated() {
   }
   SLOG(this, 3) << __func__ << ": "
                 << "IPv6 configuration obtained";
-  uint32_t time_to_next_lease_renewal;
-  bool have_dhcp_lease =
-      TimeToNextDHCPLeaseRenewal(&time_to_next_lease_renewal);
-  wake_on_wifi_->OnConnectedAndReachable(have_dhcp_lease,
-                                         time_to_next_lease_renewal);
+  wake_on_wifi_->OnConnectedAndReachable(TimeToNextDHCPLeaseRenewal());
 }
 
 bool WiFi::IsConnectedToCurrentService() {

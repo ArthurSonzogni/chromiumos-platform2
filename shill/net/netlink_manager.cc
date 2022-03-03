@@ -12,6 +12,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <base/time/time.h>
 
 #include "shill/logging.h"
 #include "shill/net/attribute_list.h"
@@ -42,11 +43,6 @@ const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;        // NOLINT
 const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;   // NOLINT
 const long NetlinkManager::kResponseTimeoutSeconds = 5;             // NOLINT
 const long NetlinkManager::kResponseTimeoutMicroSeconds = 0;        // NOLINT
-// TODO(dankit): Further enhancement, -kPendingDumpTimeoutMilliseconds timer
-// should be able to tune using the experiment config, if more number of
-// stations connected to AP. (Ref bug - b/186899140)
-const long NetlinkManager::kPendingDumpTimeoutMilliseconds = 1000;  // NOLINT
-const long NetlinkManager::kNlMessageRetryDelayMilliseconds = 300;  // NOLINT
 const int NetlinkManager::kMaxNlMessageRetries = 1;                 // NOLINT
 
 NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
@@ -560,7 +556,7 @@ bool NetlinkManager::SendMessageInternal(
         &NetlinkManager::OnPendingDumpTimeout, weak_ptr_factory_.GetWeakPtr()));
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
         FROM_HERE, pending_dump_timeout_callback_.callback(),
-        base::Milliseconds(kPendingDumpTimeoutMilliseconds));
+        kPendingDumpTimeout);
   }
   return true;
 }
@@ -826,13 +822,13 @@ void NetlinkManager::OnReadError(const std::string& error_msg) {
 
 void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
   SLOG(this, 3) << "Resending NL dump message " << PendingDumpSequenceNumber()
-                << " after " << kNlMessageRetryDelayMilliseconds << " ms";
+                << " after " << kNlMessageRetryDelay.InMilliseconds() << " ms";
   resend_dump_message_callback_.Reset(
       base::Bind(&NetlinkManager::ResendPendingDumpMessage,
                  weak_ptr_factory_.GetWeakPtr()));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, resend_dump_message_callback_.callback(),
-      base::Milliseconds(kNlMessageRetryDelayMilliseconds));
+      kNlMessageRetryDelay);
 }
 
 }  // namespace shill.

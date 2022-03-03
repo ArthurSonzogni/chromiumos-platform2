@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -1254,9 +1255,9 @@ void Device::set_mac_address(const std::string& mac_address) {
   EmitMACAddress();
 }
 
-bool Device::TimeToNextDHCPLeaseRenewal(uint32_t* result) {
+std::optional<base::TimeDelta> Device::TimeToNextDHCPLeaseRenewal() {
   if (!ipconfig() && !ip6config()) {
-    return false;
+    return std::nullopt;
   }
   uint32_t time_to_ipv4_lease_expiry = UINT32_MAX;
   uint32_t time_to_ipv6_lease_expiry = UINT32_MAX;
@@ -1266,8 +1267,8 @@ bool Device::TimeToNextDHCPLeaseRenewal(uint32_t* result) {
   if (ip6config()) {
     ip6config()->TimeToLeaseExpiry(&time_to_ipv6_lease_expiry);
   }
-  *result = std::min(time_to_ipv4_lease_expiry, time_to_ipv6_lease_expiry);
-  return true;
+  return base::Seconds(
+      std::min(time_to_ipv4_lease_expiry, time_to_ipv6_lease_expiry));
 }
 
 void Device::SetServiceConnectedState(Service::ConnectState state) {

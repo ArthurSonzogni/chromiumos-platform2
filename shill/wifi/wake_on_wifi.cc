@@ -10,6 +10,7 @@
 #include <sys/timerfd.h>
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -46,13 +47,10 @@ static std::string ObjectID(const WakeOnWiFi* w) {
 
 const char WakeOnWiFi::kWakeOnWiFiNotAllowed[] = "Wake on WiFi not allowed";
 const int WakeOnWiFi::kMaxSetWakeOnWiFiRetries = 2;
-const uint32_t WakeOnWiFi::kDefaultWakeToScanPeriodSeconds = 900;
-const uint32_t WakeOnWiFi::kDefaultNetDetectScanPeriodSeconds = 120;
-const uint32_t WakeOnWiFi::kImmediateDHCPLeaseRenewalThresholdSeconds = 60;
+const uint32_t WakeOnWiFi::kDefaultWakeToScanPeriodSeconds = 15 * 60;
+const uint32_t WakeOnWiFi::kDefaultNetDetectScanPeriodSeconds = 2 * 60;
 // We tolerate no more than 3 dark resumes per minute and 10 dark resumes per
 // 10 minutes  before we disable wake on WiFi on the NIC.
-const int WakeOnWiFi::kDarkResumeFrequencySamplingPeriodShortMinutes = 1;
-const int WakeOnWiFi::kDarkResumeFrequencySamplingPeriodLongMinutes = 10;
 const int WakeOnWiFi::kMaxDarkResumesPerPeriodShort = 3;
 const int WakeOnWiFi::kMaxDarkResumesPerPeriodLong = 10;
 // If a connection is not established during dark resume, give up and prepare
@@ -842,8 +840,7 @@ void WakeOnWiFi::OnBeforeSuspend(
     const ResultCallback& done_callback,
     base::OnceClosure renew_dhcp_lease_callback,
     base::OnceClosure remove_supplicant_networks_callback,
-    bool have_dhcp_lease,
-    uint32_t time_to_next_lease_renewal) {
+    std::optional<base::TimeDelta> time_to_next_lease_renewal) {
   connected_before_suspend_ = is_connected;
   if (WakeOnWiFiDisabled()) {
     // Wake on WiFi not supported or not enabled, so immediately report success.
@@ -855,22 +852,22 @@ void WakeOnWiFi::OnBeforeSuspend(
   suspend_actions_done_callback_ = done_callback;
   wake_on_allowed_ssids_ = allowed_ssids;
   dark_resume_history_.Clear();
-  if (have_dhcp_lease && is_connected &&
-      time_to_next_lease_renewal < kImmediateDHCPLeaseRenewalThresholdSeconds) {
+  if (time_to_next_lease_renewal && is_connected &&
+      *time_to_next_lease_renewal < kImmediateDHCPLeaseRenewalThreshold) {
     // Renew DHCP lease immediately if we have one that is expiring soon.
     std::move(renew_dhcp_lease_callback).Run();
     dispatcher_->PostTask(
         FROM_HERE,
         base::BindOnce(&WakeOnWiFi::BeforeSuspendActions,
-                       weak_ptr_factory_.GetWeakPtr(), is_connected, false,
-                       time_to_next_lease_renewal,
+                       weak_ptr_factory_.GetWeakPtr(), is_connected,
+                       std::nullopt,
                        std::move(remove_supplicant_networks_callback)));
   } else {
     dispatcher_->PostTask(
         FROM_HERE,
         base::BindOnce(&WakeOnWiFi::BeforeSuspendActions,
                        weak_ptr_factory_.GetWeakPtr(), is_connected,
-                       have_dhcp_lease, time_to_next_lease_renewal,
+                       time_to_next_lease_renewal,
                        std::move(remove_supplicant_networks_callback)));
   }
 }
@@ -927,10 +924,10 @@ void WakeOnWiFi::OnDarkResume(
     dark_resume_history_.RecordEvent();
   }
   if (dark_resume_history_.CountEventsWithinInterval(
-          kDarkResumeFrequencySamplingPeriodShortMinutes * 60,
+          kDarkResumeFrequencySamplingPeriodShort.InSeconds(),
           EventHistory::kClockTypeBoottime) >= kMaxDarkResumesPerPeriodShort ||
       dark_resume_history_.CountEventsWithinInterval(
-          kDarkResumeFrequencySamplingPeriodLongMinutes * 60,
+          kDarkResumeFrequencySamplingPeriodLong.InSeconds(),
           EventHistory::kClockTypeBoottime) >= kMaxDarkResumesPerPeriodLong) {
     LOG(ERROR) << __func__ << ": "
                << "Too many dark resumes; disabling wake on WiFi temporarily";
@@ -981,7 +978,7 @@ void WakeOnWiFi::OnDarkResume(
   // need to start a DHCP lease renewal timer.
   dark_resume_actions_timeout_callback_.Reset(base::Bind(
       &WakeOnWiFi::BeforeSuspendActions, weak_ptr_factory_.GetWeakPtr(), false,
-      false, 0, remove_supplicant_networks_callback));
+      std::nullopt, remove_supplicant_networks_callback));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                dark_resume_actions_timeout_callback_.callback(),
                                DarkResumeActionsTimeout);
@@ -989,8 +986,7 @@ void WakeOnWiFi::OnDarkResume(
 
 void WakeOnWiFi::BeforeSuspendActions(
     bool is_connected,
-    bool start_lease_renewal_timer,
-    uint32_t time_to_next_lease_renewal,
+    std::optional<base::TimeDelta> time_to_next_lease_renewal,
     base::OnceClosure remove_supplicant_networks_callback) {
   LOG(INFO) << __func__ << ": "
             << (is_connected ? "connected" : "not connected");
@@ -1009,11 +1005,11 @@ void WakeOnWiFi::BeforeSuspendActions(
       wake_on_wifi_triggers_.insert(kWakeTriggerDisconnect);
       wake_on_wifi_triggers_.erase(kWakeTriggerSSID);
       wake_to_scan_timer_->Stop();
-      if (start_lease_renewal_timer) {
+      if (time_to_next_lease_renewal) {
         // Timer callback is NO-OP since dark resume logic (the
         // kWakeTriggerUnsupported case) will initiate DHCP lease renewal.
         dhcp_lease_renewal_timer_->Start(
-            FROM_HERE, base::Seconds(time_to_next_lease_renewal),
+            FROM_HERE, *time_to_next_lease_renewal,
             base::Bind(&WakeOnWiFi::OnTimerWakeDoNothing,
                        base::Unretained(this)));
       }
@@ -1136,8 +1132,8 @@ void WakeOnWiFi::InitiateScanInDarkResume(
   std::move(initiate_scan_callback).Run(freqs);
 }
 
-void WakeOnWiFi::OnConnectedAndReachable(bool start_lease_renewal_timer,
-                                         uint32_t time_to_next_lease_renewal) {
+void WakeOnWiFi::OnConnectedAndReachable(
+    std::optional<base::TimeDelta> time_to_next_lease_renewal) {
   SLOG(this, 3) << __func__;
   if (WakeOnWiFiDisabled()) {
     SLOG(this, 3) << "Wake on WiFi not enabled";
@@ -1146,8 +1142,7 @@ void WakeOnWiFi::OnConnectedAndReachable(bool start_lease_renewal_timer,
     SLOG(this, 3) << "Not in dark resume";
     return;
   }
-  BeforeSuspendActions(true, start_lease_renewal_timer,
-                       time_to_next_lease_renewal, base::Closure());
+  BeforeSuspendActions(true, time_to_next_lease_renewal, base::Closure());
 }
 
 void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected,
@@ -1202,7 +1197,7 @@ void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
     wake_on_allowed_ssids_ = allowed_ssids;
     // Assume that if there are no services available for auto-connect, then we
     // cannot be connected. Therefore, no need for lease renewal parameters.
-    BeforeSuspendActions(false, false, 0,
+    BeforeSuspendActions(false, std::nullopt,
                          std::move(remove_supplicant_networks_callback));
   }
 }
