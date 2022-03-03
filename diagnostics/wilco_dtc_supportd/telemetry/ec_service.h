@@ -218,7 +218,7 @@ class EcService {
   bool Start();
 
   // Shuts down service.
-  void ShutDown(base::Closure on_shutdown_callback);
+  void ShutDown(base::OnceClosure on_shutdown_callback);
 
   // Reads the telemetry information.
   GetEcTelemetryResponse GetEcTelemetry(const std::string& request_payload);
@@ -258,7 +258,7 @@ class EcService {
   const scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
   // This callback will be invoked after current service shutdown.
-  base::Closure on_shutdown_callback_;
+  base::OnceClosure on_shutdown_callback_;
 
   // The file system root directory. Can be overridden in tests.
   base::FilePath root_dir_{"/"};

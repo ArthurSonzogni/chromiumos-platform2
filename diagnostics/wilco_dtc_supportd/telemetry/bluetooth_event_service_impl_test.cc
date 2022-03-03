@@ -47,7 +47,7 @@ void PropertyChanged(const std::string& property_name) {}
 std::unique_ptr<BluetoothClient::AdapterProperties> CreateAdapterProperties(
     const std::string& name, const std::string& address, bool powered) {
   auto properties = std::make_unique<BluetoothClient::AdapterProperties>(
-      nullptr, base::Bind(&PropertyChanged));
+      nullptr, base::BindRepeating(&PropertyChanged));
   properties->name.ReplaceValue(name);
   properties->address.ReplaceValue(address);
   properties->powered.ReplaceValue(powered);
@@ -57,7 +57,7 @@ std::unique_ptr<BluetoothClient::AdapterProperties> CreateAdapterProperties(
 std::unique_ptr<BluetoothClient::DeviceProperties> CreateDeviceProperties(
     bool connected, const dbus::ObjectPath& adapter_path) {
   auto properties = std::make_unique<BluetoothClient::DeviceProperties>(
-      nullptr, base::Bind(&PropertyChanged));
+      nullptr, base::BindRepeating(&PropertyChanged));
   properties->name.ReplaceValue("keyboard");
   properties->address.ReplaceValue("70:88:6B:92:34:70");
   properties->connected.ReplaceValue(connected);

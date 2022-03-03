@@ -213,17 +213,17 @@ bool EcService::Start() {
   return true;
 }
 
-void EcService::ShutDown(base::Closure on_shutdown_callback) {
+void EcService::ShutDown(base::OnceClosure on_shutdown_callback) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   DCHECK(on_shutdown_callback_.is_null());
   DCHECK(!on_shutdown_callback.is_null());
 
   if (!monitoring_thread_) {
-    on_shutdown_callback.Run();
+    std::move(on_shutdown_callback).Run();
     return;
   }
 
-  on_shutdown_callback_ = on_shutdown_callback;
+  on_shutdown_callback_ = std::move(on_shutdown_callback);
 
   ShutDownMonitoringThread();
 }
@@ -326,8 +326,7 @@ void EcService::OnShutdown() {
   monitoring_thread_delegate_.reset();
 
   if (!on_shutdown_callback_.is_null()) {
-    on_shutdown_callback_.Run();
-    on_shutdown_callback_.Reset();
+    std::move(on_shutdown_callback_).Run();
   }
 }
 
