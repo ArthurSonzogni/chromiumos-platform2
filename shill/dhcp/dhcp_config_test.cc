@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/dhcp/mock_dhcp_provider.h"
@@ -320,7 +321,7 @@ TEST_F(DHCPConfigCallbackTest, RequestIPTimeout) {
       .WillOnce(Return(true));
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
-  config_->lease_acquisition_timeout_seconds_ = 0;
+  config_->lease_acquisition_timeout_ = base::TimeDelta();
   config_->pid_ = 567;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
   config_->proxy_ = std::move(proxy_);
@@ -362,7 +363,7 @@ TEST_F(DHCPConfigCallbackTest, StartTimeout) {
       .WillOnce(Return(true));
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
-  config_->lease_acquisition_timeout_seconds_ = 0;
+  config_->lease_acquisition_timeout_ = base::TimeDelta();
   config_->proxy_ = std::move(proxy_);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(0));

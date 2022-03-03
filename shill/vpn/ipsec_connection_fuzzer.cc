@@ -52,7 +52,7 @@ class EventDispatcherForFuzzer : public EventDispatcher {
 
   void PostDelayedTask(const base::Location& location,
                        base::OnceClosure task,
-                       int64_t delay_ms) override {}
+                       base::TimeDelta delay) override {}
 };
 
 class FakeProcessManager : public ProcessManager {

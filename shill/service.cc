@@ -607,7 +607,7 @@ void Service::ThrottleFutureAutoConnects() {
         &Service::ReEnableAutoConnectTask, weak_ptr_factory_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE,
                                   reenable_auto_connect_task_.callback(),
-                                  auto_connect_cooldown_.InMilliseconds());
+                                  auto_connect_cooldown_);
   }
   auto min_cooldown_time =
       std::max(kMinAutoConnectCooldownTime,

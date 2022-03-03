@@ -7,6 +7,7 @@
 #include <memory>
 
 #include <base/bind.h>
+#include <base/time/time.h>
 
 #include "shill/error.h"
 #include "shill/test_event_dispatcher.h"
@@ -104,7 +105,7 @@ TEST_F(HookTableTest, ActionCompletesInline) {
 }
 
 TEST_F(HookTableTest, ActionTimesOut) {
-  const int kTimeout = 1;
+  const int kTimeoutMs = 1;
   EXPECT_CALL(*this, StartAction());
   EXPECT_CALL(*this, DoneAction(IsFailure()));
 
@@ -114,23 +115,23 @@ TEST_F(HookTableTest, ActionTimesOut) {
       base::Bind(&HookTableTest::DoneAction, base::Unretained(this));
 
   hook_table_.Add(kName, start_callback);
-  hook_table_.Run(kTimeout, done_callback);
+  hook_table_.Run(kTimeoutMs, done_callback);
 
-  // Cause the event dispatcher to exit after kTimeout + 1 ms.
+  // Cause the event dispatcher to exit after kTimeoutMs + 1 ms.
   event_dispatcher_.PostDelayedTask(
       FROM_HERE,
       base::BindOnce(
           &EventDispatcherForTest::QuitDispatchForever,
           // event_dispatcher_ will not be deleted before RunLoop quits.
           base::Unretained(&event_dispatcher_)),
-      kTimeout + 1);
+      base::Milliseconds(kTimeoutMs + 1));
   event_dispatcher_.DispatchForever();
   EXPECT_TRUE(GetDoneCallback()->is_null());
 }
 
 TEST_F(HookTableTest, MultipleActionsAllSucceed) {
   base::Closure pending_callback;
-  const int kTimeout = 10;
+  const int kTimeoutMs = 10;
   EXPECT_CALL(*this, StartAction()).Times(2);
 
   // StartAction2 completes immediately before HookTable::Run() returns.
@@ -148,14 +149,14 @@ TEST_F(HookTableTest, MultipleActionsAllSucceed) {
   hook_table_.Add(kName1, start2_callback);
   hook_table_.Add(kName2, start_callback);
   hook_table_.Add(kName3, start_callback);
-  hook_table_.Run(kTimeout, done_callback);
+  hook_table_.Run(kTimeoutMs, done_callback);
   hook_table_.ActionComplete(kName2);
   hook_table_.ActionComplete(kName3);
 }
 
 TEST_F(HookTableTest, MultipleActionsAndOneTimesOut) {
   base::Closure pending_callback;
-  const int kTimeout = 1;
+  const int kTimeoutMs = 1;
   EXPECT_CALL(*this, StartAction()).Times(3);
   EXPECT_CALL(*this, DoneAction(IsFailure()));
 
@@ -167,17 +168,17 @@ TEST_F(HookTableTest, MultipleActionsAndOneTimesOut) {
   hook_table_.Add(kName1, start_callback);
   hook_table_.Add(kName2, start_callback);
   hook_table_.Add(kName3, start_callback);
-  hook_table_.Run(kTimeout, done_callback);
+  hook_table_.Run(kTimeoutMs, done_callback);
   hook_table_.ActionComplete(kName1);
   hook_table_.ActionComplete(kName3);
-  // Cause the event dispatcher to exit after kTimeout + 1 ms.
+  // Cause the event dispatcher to exit after kTimeoutMs + 1 ms.
   event_dispatcher_.PostDelayedTask(
       FROM_HERE,
       base::BindOnce(
           &EventDispatcherForTest::QuitDispatchForever,
           // event_dispatcher_ will not be deleted before RunLoop quits.
           base::Unretained(&event_dispatcher_)),
-      kTimeout + 1);
+      base::Milliseconds(kTimeoutMs + 1));
   event_dispatcher_.DispatchForever();
 }
 

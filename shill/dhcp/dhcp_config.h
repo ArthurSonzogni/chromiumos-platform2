@@ -12,6 +12,7 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
@@ -179,8 +180,8 @@ class DHCPConfig : public IPConfig {
   base::CancelableClosure lease_acquisition_timeout_callback_;
 
   // Time to wait for a DHCP lease. Represented as field so that it
-  // can be overriden in tests.
-  unsigned int lease_acquisition_timeout_seconds_;
+  // can be overridden in tests.
+  base::TimeDelta lease_acquisition_timeout_;
 
   // Called if a DHCP lease expires.
   base::CancelableClosure lease_expiration_callback_;

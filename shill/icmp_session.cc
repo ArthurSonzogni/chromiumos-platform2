@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/time/default_tick_clock.h>
+#include <base/time/time.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -34,12 +35,6 @@ static std::string ObjectID(const IcmpSession* i) {
 }  // namespace Logging
 
 uint16_t IcmpSession::kNextUniqueEchoId = 0;
-const int IcmpSession::kTotalNumEchoRequests = 3;
-const int IcmpSession::kEchoRequestIntervalSeconds = 1;  // default for ping
-// We should not need more than 1 second after the last request is sent to
-// receive the final reply.
-const size_t IcmpSession::kTimeoutSeconds =
-    kEchoRequestIntervalSeconds * kTotalNumEchoRequests + 1;
 
 IcmpSession::IcmpSession(EventDispatcher* dispatcher)
     : weak_ptr_factory_(this),
@@ -80,7 +75,7 @@ bool IcmpSession::Start(const IPAddress& destination,
   timeout_callback_.Reset(Bind(&IcmpSession::ReportResultAndStopSession,
                                weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, timeout_callback_.callback(),
-                               kTimeoutSeconds * 1000);
+                               kTimeout);
   seq_num_to_sent_recv_time_.clear();
   received_echo_reply_seq_numbers_.clear();
   dispatcher_->PostTask(FROM_HERE, Bind(&IcmpSession::TransmitEchoRequestTask,
@@ -154,7 +149,7 @@ void IcmpSession::TransmitEchoRequestTask() {
     dispatcher_->PostDelayedTask(FROM_HERE,
                                  Bind(&IcmpSession::TransmitEchoRequestTask,
                                       weak_ptr_factory_.GetWeakPtr()),
-                                 kEchoRequestIntervalSeconds * 1000);
+                                 kEchoRequestInterval);
   }
 }
 

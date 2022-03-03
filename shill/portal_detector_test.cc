@@ -182,7 +182,7 @@ class PortalDetectorTest : public Test {
   }
 
   void StartAttempt() {
-    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+    EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
     ManagerProperties props = MakePortalProperties();
     EXPECT_TRUE(StartPortalRequest(props));
     StartTrialTask();
@@ -222,7 +222,7 @@ TEST_F(PortalDetectorTest, Constructor) {
 
 TEST_F(PortalDetectorTest, InvalidURL) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta())).Times(0);
   ManagerProperties props = MakePortalProperties();
   props.portal_http_url = kBadURL;
   EXPECT_FALSE(StartPortalRequest(props));
@@ -236,7 +236,7 @@ TEST_F(PortalDetectorTest, IsInProgress) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
 
   // Once the trial is started, IsInProgress should return true.
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
   ManagerProperties props = MakePortalProperties();
   EXPECT_TRUE(StartPortalRequest(props));
 
@@ -256,7 +256,7 @@ TEST_F(PortalDetectorTest, IsInProgress) {
 }
 
 TEST_F(PortalDetectorTest, StartAttemptFailed) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
   ManagerProperties props = MakePortalProperties();
   EXPECT_TRUE(StartPortalRequest(props));
 
@@ -264,7 +264,7 @@ TEST_F(PortalDetectorTest, StartAttemptFailed) {
   EXPECT_CALL(*http_request(), Start(_, _, _, _, _))
       .WillOnce(Return(HttpRequest::kResultDNSFailure));
 
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta())).Times(0);
   EXPECT_CALL(*http_request(), Stop()).Times(1);
   EXPECT_CALL(*https_request(), Stop()).Times(1);
 
@@ -284,31 +284,29 @@ TEST_F(PortalDetectorTest, GetNextAttemptDelay) {
   EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
 
   ManagerProperties props = MakePortalProperties();
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
   EXPECT_TRUE(StartPortalRequest(props));
 
   EXPECT_TRUE(base::TimeDelta() < portal_detector()->GetNextAttemptDelay());
 }
 
 TEST_F(PortalDetectorTest, DelayedAttempt) {
-  int64_t delay_ms = 123 * 1000;
-  const auto delay = base::Milliseconds(delay_ms);
+  const auto delay = base::Seconds(123);
   ManagerProperties props = MakePortalProperties();
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay_ms)).Times(1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay)).Times(1);
   EXPECT_TRUE(StartPortalRequest(props, delay));
 }
 
 TEST_F(PortalDetectorTest, StartRepeated) {
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta())).Times(1);
   ManagerProperties props = MakePortalProperties();
   EXPECT_TRUE(StartPortalRequest(props));
 
   // A second  should cancel the existing trial and set up the new one.
-  int64_t delay_ms = 10 * 1000;
-  const auto delay = base::Milliseconds(delay_ms);
+  const auto delay = base::Seconds(10);
   EXPECT_CALL(*http_request(), Stop());
   EXPECT_CALL(*https_request(), Stop());
-  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay_ms)).Times(1);
+  EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay)).Times(1);
   EXPECT_TRUE(StartPortalRequest(props, delay));
 }
 

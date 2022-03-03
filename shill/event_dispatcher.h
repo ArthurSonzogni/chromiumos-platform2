@@ -10,6 +10,7 @@
 #include <base/callback.h>
 #include <base/location.h>
 #include <base/macros.h>
+#include <base/time/time.h>
 
 namespace shill {
 
@@ -34,7 +35,7 @@ class EventDispatcher {
   void PostTask(const base::Location& location, base::OnceClosure task);
   virtual void PostDelayedTask(const base::Location& location,
                                base::OnceClosure task,
-                               int64_t delay_ms);
+                               base::TimeDelta delay);
 
   virtual void QuitDispatchForever();
 

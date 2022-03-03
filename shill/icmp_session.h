@@ -20,6 +20,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/default_tick_clock.h>
 #include <base/time/tick_clock.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/icmp.h"
@@ -56,9 +57,9 @@ class IcmpSession {
   virtual ~IcmpSession();
 
   // Starts an ICMP session, sending |kNumEchoRequestsToSend| echo requests to
-  // |destination|, |kEchoRequestIntervalSeconds| apart. |result_callback| will
+  // |destination|, |kEchoRequestInterval| apart. |result_callback| will
   // be called a) after all echo requests are sent and all echo replies are
-  // received, or b) after |kTimeoutSeconds| have passed. |result_callback| will
+  // received, or b) after |kTimeout| have passed. |result_callback| will
   // only be invoked once on the first occurrence of either of these events.
   // |interface_index| is the IPv6 scope ID, which can be 0 for a global
   // |destination| but must be a positive integer if |destination| is a
@@ -95,12 +96,16 @@ class IcmpSession {
   FRIEND_TEST(IcmpSessionTest, Constructor);  // for |echo_id_|
 
   static uint16_t kNextUniqueEchoId;  // unique across IcmpSession objects
-  static const int kTotalNumEchoRequests;
-  static const int kEchoRequestIntervalSeconds;
-  static const size_t kTimeoutSeconds;
+  static constexpr int kTotalNumEchoRequests = 3;
+  // default for ping
+  static constexpr base::TimeDelta kEchoRequestInterval = base::Seconds(1);
+  // We should not need more than 1 second after the last request is sent to
+  // receive the final reply.
+  static constexpr base::TimeDelta kTimeout =
+      kEchoRequestInterval * kTotalNumEchoRequests + base::Seconds(1);
 
   // Sends a single echo request to the destination. This function will call
-  // itself repeatedly via the event loop every |kEchoRequestIntervalSeconds|
+  // itself repeatedly via the event loop every |kEchoRequestInterval|
   // until |kNumEchoRequestToSend| echo requests are sent or the timeout is
   // reached.
   void TransmitEchoRequestTask();

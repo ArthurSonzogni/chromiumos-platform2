@@ -62,8 +62,6 @@ const int64_t
 // The next value allows for 2 attach requests. If the modem sends 5
 // consecutive requests using the same invalid APN, the UE will be blocked for
 // 12 minutes(See 3gpp T3402).
-const int64_t CellularCapability3gpp::kSetNextAttachApnTimeoutMilliseconds =
-    12500;
 const RpcIdentifier CellularCapability3gpp::kRootPath = RpcIdentifier("/");
 const char CellularCapability3gpp::kStatusProperty[] = "status";
 const char CellularCapability3gpp::kOperatorLongProperty[] = "operator-long";
@@ -1863,7 +1861,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
                        weak_ptr_factory_.GetWeakPtr()));
     cellular()->dispatcher()->PostDelayedTask(
         FROM_HERE, try_next_attach_apn_callback_.callback(),
-        kSetNextAttachApnTimeoutMilliseconds);
+        kSetNextAttachApnTimeout);
     return;
   }
 
@@ -1904,7 +1902,7 @@ void CellularCapability3gpp::SetNextAttachApn() {
                        weak_ptr_factory_.GetWeakPtr()));
     cellular()->dispatcher()->PostDelayedTask(
         FROM_HERE, try_next_attach_apn_callback_.callback(),
-        kSetNextAttachApnTimeoutMilliseconds);
+        kSetNextAttachApnTimeout);
   }
 }
 
@@ -1941,7 +1939,7 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
         weak_ptr_factory_.GetWeakPtr(), state, operator_code, operator_name));
     cellular()->dispatcher()->PostDelayedTask(
         FROM_HERE, registration_dropped_update_callback_.callback(),
-        registration_dropped_update_timeout_milliseconds_);
+        base::Milliseconds(registration_dropped_update_timeout_milliseconds_));
   } else {
     if (!registration_dropped_update_callback_.IsCancelled()) {
       SLOG(this, 2) << "Cancelled a deferred registration state update";

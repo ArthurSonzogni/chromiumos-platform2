@@ -89,15 +89,7 @@ const int WiFi::kSingleEndpointBgscanIntervalSeconds = 86400;
 const time_t WiFi::kMaxBSSResumeAgeSeconds = 10;
 const char WiFi::kInterfaceStateUnknown[] = "shill-unknown";
 const int WiFi::kNumFastScanAttempts = 3;
-const int WiFi::kFastScanIntervalSeconds = 10;
-const int WiFi::kReconnectTimeoutSeconds = 10;
-const int WiFi::kRequestStationInfoPeriodSeconds = 20;
-// 1 second is less than the time it takes to scan and establish a new
-// connection after waking, but should be enough time for supplicant to update
-// its state.
-const int WiFi::kPostWakeConnectivityReportDelayMilliseconds = 1000;
 const uint32_t WiFi::kDefaultWiphyIndex = UINT32_MAX;
-const int WiFi::kPostScanFailedDelayMilliseconds = 10000;
 
 // The default random MAC mask is FF:FF:FF:00:00:00. Bits which are a 1 in
 // the mask stay the same during randomization, and bits which are 0 are
@@ -113,9 +105,9 @@ const uint16_t kSingleEndpointBgscanShortIntervalSeconds = 360;
 const int32_t kDefaultBgscanSignalThresholdDbm = -72;
 // Delay between scans when supplicant finds "No suitable network".
 const time_t kRescanIntervalSeconds = 1;
-const int kPendingTimeoutSeconds = 15;
+const base::TimeDelta kPendingTimeout = base::Seconds(15);
 const int kMaxRetryCreateInterfaceAttempts = 6;
-const int kRetryCreateInterfaceIntervalSeconds = 10;
+const base::TimeDelta kRetryCreateInterfaceInterval = base::Seconds(10);
 const int16_t kDefaultDisconnectDbm = 0;
 const int16_t kDefaultDisconnectThresholdDbm = -75;
 const int kInvalidMaxSSIDs = -1;
@@ -514,7 +506,7 @@ void WiFi::ScanDone(const bool& success) {
     scan_failed_callback_.Reset(base::Bind(
         &WiFi::ScanFailedTask, weak_ptr_factory_while_started_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE, scan_failed_callback_.callback(),
-                                  kPostScanFailedDelayMilliseconds);
+                                  kPostScanFailedDelay);
   }
 }
 
@@ -2669,7 +2661,7 @@ void WiFi::OnAfterResume() {
       FROM_HERE,
       base::BindOnce(&WiFi::ReportConnectedToServiceAfterWake,
                      weak_ptr_factory_while_started_.GetWeakPtr()),
-      kPostWakeConnectivityReportDelayMilliseconds);
+      kPostWakeConnectivityReportDelay);
   if (wake_on_wifi_) {
     wake_on_wifi_->OnAfterResume();
   }
@@ -2808,7 +2800,7 @@ void WiFi::OnConnected() {
     reliable_link_callback_.Reset(
         base::Bind(&WiFi::OnReliableLink, base::Unretained(this)));
     dispatcher()->PostDelayedTask(FROM_HERE, reliable_link_callback_.callback(),
-                                  kLinkUnreliableResetTimeout.InMilliseconds());
+                                  kLinkUnreliableResetTimeout);
   }
 }
 
@@ -2862,12 +2854,13 @@ void WiFi::StartScanTimer() {
       &WiFi::ScanTimerHandler, weak_ptr_factory_while_started_.GetWeakPtr()));
   // Repeat the first few scans after disconnect relatively quickly so we
   // have reasonable trust that no APs we are looking for are present.
-  size_t wait_time_milliseconds = fast_scans_remaining_ > 0
-                                      ? kFastScanIntervalSeconds * 1000
-                                      : scan_interval_seconds_ * 1000;
+  base::TimeDelta wait_time = fast_scans_remaining_ > 0
+                                  ? kFastScanInterval
+                                  : base::Seconds(scan_interval_seconds_);
   dispatcher()->PostDelayedTask(FROM_HERE, scan_timer_callback_.callback(),
-                                wait_time_milliseconds);
-  SLOG(this, 5) << "Next scan scheduled for " << wait_time_milliseconds << "ms";
+                                wait_time);
+  SLOG(this, 5) << "Next scan scheduled for " << wait_time.InMilliseconds()
+                << "ms";
 }
 
 void WiFi::StopScanTimer() {
@@ -2907,7 +2900,7 @@ void WiFi::StartPendingTimer() {
       base::Bind(&WiFi::PendingTimeoutHandler,
                  weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, pending_timeout_callback_.callback(),
-                                kPendingTimeoutSeconds * 1000);
+                                kPendingTimeout);
 }
 
 void WiFi::StopPendingTimer() {
@@ -2993,9 +2986,8 @@ void WiFi::StartReconnectTimer() {
   reconnect_timeout_callback_.Reset(
       base::Bind(&WiFi::ReconnectTimeoutHandler,
                  weak_ptr_factory_while_started_.GetWeakPtr()));
-  dispatcher()->PostDelayedTask(FROM_HERE,
-                                reconnect_timeout_callback_.callback(),
-                                kReconnectTimeoutSeconds * 1000);
+  dispatcher()->PostDelayedTask(
+      FROM_HERE, reconnect_timeout_callback_.callback(), kReconnectTimeout);
 }
 
 void WiFi::StopReconnectTimer() {
@@ -3135,7 +3127,7 @@ void WiFi::ConnectToSupplicant() {
             FROM_HERE,
             base::BindOnce(&WiFi::ConnectToSupplicant,
                            weak_ptr_factory_.GetWeakPtr()),
-            kRetryCreateInterfaceIntervalSeconds * 1000);
+            kRetryCreateInterfaceInterval);
       }
       return;
     }
@@ -3588,7 +3580,7 @@ void WiFi::RequestStationInfo() {
       &WiFi::RequestStationInfo, weak_ptr_factory_while_started_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE,
                                 request_station_info_callback_.callback(),
-                                kRequestStationInfoPeriodSeconds * 1000);
+                                kRequestStationInfoPeriod);
 }
 
 // static

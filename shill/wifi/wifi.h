@@ -84,6 +84,7 @@
 #include <base/callback_forward.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
@@ -305,7 +306,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   };
 
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
-  friend class WiFiTimerTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
+  friend class WiFiTimerTest;   // kNumFastScanAttempts, kFastScanInterval
   friend class WiFiMainTest;   // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, BackgroundScan);  // ScanMethod, ScanState
@@ -355,16 +356,16 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   // interworking_select_enabled_ and need_interworking_select_
   FRIEND_TEST(WiFiPropertyTest, PasspointInterworkingProperty);
-  FRIEND_TEST(WiFiTimerTest, FastRescan);          // kFastScanIntervalSeconds
+  FRIEND_TEST(WiFiTimerTest, FastRescan);          // kFastScanInterval
   FRIEND_TEST(WiFiTimerTest, RequestStationInfo);  // kRequestStationInfoPeriod
-  // kPostWakeConnectivityReportDelayMilliseconds
+  // kPostWakeConnectivityReportDelay
   FRIEND_TEST(WiFiTimerTest, ResumeDispatchesConnectivityReportTask);
-  // kFastScanIntervalSeconds
+  // kFastScanInterval
   FRIEND_TEST(WiFiTimerTest, StartScanTimer_HaveFastScansRemaining);
   FRIEND_TEST(WiFiMainTest, ParseWiphyIndex_Success);  // kDefaultWiphyIndex
   // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ResetScanStateWhenScanFailed);
-  // kPostScanFailedDelayMilliseconds
+  // kPostScanFailedDelay
   FRIEND_TEST(WiFiTimerTest, ScanDoneDispatchesTasks);
   // kMaxPassiveScanRetries, kMaxFreqsForPassiveScanRetries
   FRIEND_TEST(WiFiMainTest, InitiateScanInDarkResume_Idle);
@@ -385,19 +386,24 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const char kInterfaceStateUnknown[];
   // Number of times to quickly attempt a scan after startup / disconnect.
   static const int kNumFastScanAttempts;
-  static const int kFastScanIntervalSeconds;
-  static const int kReconnectTimeoutSeconds;
-  static const int kRequestStationInfoPeriodSeconds;
-  // Number of milliseconds to wait after waking from suspend to report the
-  // connection status to metrics.
-  static const int kPostWakeConnectivityReportDelayMilliseconds;
+  static constexpr base::TimeDelta kFastScanInterval = base::Seconds(10);
+  static constexpr base::TimeDelta kReconnectTimeout = base::Seconds(10);
+  static constexpr base::TimeDelta kRequestStationInfoPeriod =
+      base::Seconds(20);
+  // Time to wait after waking from suspend to report the connection status to
+  // metrics.
+  // 1 second is less than the time it takes to scan and establish a new
+  // connection after waking, but should be enough time for supplicant to update
+  // its state.
+  static constexpr base::TimeDelta kPostWakeConnectivityReportDelay =
+      base::Seconds(1);
   // Used to instantiate |wiphy_index_| in WiFi. Assigned a large value so that
   // any attempts to match the default value of |wiphy_index_| against an actual
   // wiphy index reported in an NL80211 message will fail.
   static const uint32_t kDefaultWiphyIndex;
-  // Number of milliseconds to wait after failing to launch a scan before
-  // resetting the scan state to idle.
-  static const int kPostScanFailedDelayMilliseconds;
+  // Time to wait after failing to launch a scan before resetting the scan state
+  // to idle.
+  static constexpr base::TimeDelta kPostScanFailedDelay = base::Seconds(10);
   // Used when enabling MAC randomization to request that the OUI remain
   // constant and the last three octets are randomized.
   static const std::vector<unsigned char> kRandomMacMask;

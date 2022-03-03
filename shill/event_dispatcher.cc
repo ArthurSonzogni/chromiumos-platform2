@@ -28,14 +28,14 @@ void EventDispatcher::DispatchPendingEvents() {
 
 void EventDispatcher::PostTask(const base::Location& location,
                                base::OnceClosure task) {
-  PostDelayedTask(FROM_HERE, std::move(task), 0);
+  PostDelayedTask(FROM_HERE, std::move(task), base::TimeDelta());
 }
 
 void EventDispatcher::PostDelayedTask(const base::Location& location,
                                       base::OnceClosure task,
-                                      int64_t delay_ms) {
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-      location, std::move(task), base::Milliseconds(delay_ms));
+                                      base::TimeDelta delay) {
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(location,
+                                                       std::move(task), delay);
 }
 
 void EventDispatcher::QuitDispatchForever() {

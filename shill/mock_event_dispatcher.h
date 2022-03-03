@@ -7,6 +7,7 @@
 
 #include <base/location.h>
 #include <base/macros.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 
 #include "shill/event_dispatcher.h"
@@ -25,7 +26,7 @@ class MockEventDispatcher : public EventDispatcher {
   MOCK_METHOD(void, DispatchPendingEvents, (), (override));
   MOCK_METHOD(void,
               PostDelayedTask,
-              (const base::Location&, base::OnceClosure, int64_t),
+              (const base::Location&, base::OnceClosure, base::TimeDelta),
               (override));
 };
 

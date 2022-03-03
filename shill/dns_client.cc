@@ -372,8 +372,9 @@ bool DnsClient::RefreshHandles() {
         ares_->Timeout(resolver_state_->channel, &max, &ret_tv);
     timeout_closure_.Reset(
         base::Bind(&DnsClient::HandleTimeout, weak_ptr_factory_.GetWeakPtr()));
-    dispatcher_->PostDelayedTask(FROM_HERE, timeout_closure_.callback(),
-                                 tv->tv_sec * 1000 + tv->tv_usec / 1000);
+    dispatcher_->PostDelayedTask(
+        FROM_HERE, timeout_closure_.callback(),
+        base::Seconds(tv->tv_sec) + base::Microseconds(tv->tv_usec));
   }
 
   return true;

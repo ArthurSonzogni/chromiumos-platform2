@@ -11,6 +11,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
@@ -36,7 +37,7 @@ static std::string ObjectID(const DHCPConfig* d) {
 
 namespace {
 
-constexpr int kAcquisitionTimeoutSeconds = 30;
+constexpr base::TimeDelta kAcquisitionTimeout = base::Seconds(30);
 constexpr char kDHCPCDPath[] = "/sbin/dhcpcd";
 constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
@@ -55,7 +56,7 @@ DHCPConfig::DHCPConfig(ControlInterface* control_interface,
       lease_file_suffix_(lease_file_suffix),
       pid_(0),
       is_lease_active_(false),
-      lease_acquisition_timeout_seconds_(kAcquisitionTimeoutSeconds),
+      lease_acquisition_timeout_(kAcquisitionTimeout),
       minimum_mtu_(kMinIPv4MTU),
       root_("/"),
       weak_ptr_factory_(this),
@@ -257,7 +258,7 @@ void DHCPConfig::StartAcquisitionTimeout() {
       &DHCPConfig::ProcessAcquisitionTimeout, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                lease_acquisition_timeout_callback_.callback(),
-                               lease_acquisition_timeout_seconds_ * 1000);
+                               lease_acquisition_timeout_);
 }
 
 void DHCPConfig::StopAcquisitionTimeout() {
@@ -266,7 +267,8 @@ void DHCPConfig::StopAcquisitionTimeout() {
 
 void DHCPConfig::ProcessAcquisitionTimeout() {
   LOG(ERROR) << "Timed out waiting for DHCP lease on " << device_name() << " "
-             << "(after " << lease_acquisition_timeout_seconds_ << " seconds).";
+             << "(after " << lease_acquisition_timeout_.InSeconds()
+             << " seconds).";
   if (!ShouldFailOnAcquisitionTimeout()) {
     LOG(INFO) << "Continuing to use our previous lease, due to gateway-ARP.";
   } else {
@@ -281,7 +283,7 @@ void DHCPConfig::StartExpirationTimeout(uint32_t lease_duration_seconds) {
   lease_expiration_callback_.Reset(Bind(&DHCPConfig::ProcessExpirationTimeout,
                                         weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, lease_expiration_callback_.callback(),
-                               lease_duration_seconds * 1000);
+                               base::Seconds(lease_duration_seconds));
 }
 
 void DHCPConfig::StopExpirationTimeout() {

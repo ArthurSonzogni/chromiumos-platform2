@@ -29,6 +29,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
@@ -102,8 +103,7 @@ constexpr char kErrorTypeRequired[] = "must specify service type";
 constexpr int kTerminationActionsTimeoutMilliseconds = 19500;
 
 // Interval for probing various device status, and report them to UMA stats.
-constexpr int kDeviceStatusCheckIntervalMilliseconds =
-    180000;  // every 3 minutes
+constexpr base::TimeDelta kDeviceStatusCheckInterval = base::Minutes(3);
 
 // Interval for attempting to initialize patchpanel connection.
 constexpr base::TimeDelta kInitPatchpanelClientInterval = base::Minutes(1);
@@ -389,7 +389,7 @@ void Manager::Start() {
 
   // Start task for checking connection status.
   dispatcher_->PostDelayedTask(FROM_HERE, device_status_check_task_.callback(),
-                               kDeviceStatusCheckIntervalMilliseconds);
+                               kDeviceStatusCheckInterval);
 }
 
 void Manager::Stop() {
@@ -1990,8 +1990,7 @@ void Manager::ApplyAlwaysOnVpn(const ServiceRefPtr& physical_service) {
   always_on_vpn_connect_task_.Reset(
       base::Bind(&Manager::ConnectAlwaysOnVpn, base::Unretained(this)));
   dispatcher_->PostDelayedTask(FROM_HERE,
-                               always_on_vpn_connect_task_.callback(),
-                               delay.InMilliseconds());
+                               always_on_vpn_connect_task_.callback(), delay);
 
   LOG(INFO) << "Delayed " << always_on_vpn_service_->friendly_name()
             << " connection in " << delay << " (attempt #"
@@ -2069,7 +2068,7 @@ void Manager::DeviceStatusCheckTask() {
   DevicePresenceStatusCheck();
 
   dispatcher_->PostDelayedTask(FROM_HERE, device_status_check_task_.callback(),
-                               kDeviceStatusCheckIntervalMilliseconds);
+                               kDeviceStatusCheckInterval);
 }
 
 void Manager::ConnectionStatusCheck() {
@@ -2956,9 +2955,9 @@ void Manager::InitializePatchpanelClient() {
     LOG(ERROR) << "Failed to connect to patchpanel client";
     init_patchpanel_client_task_.Reset(base::Bind(
         &Manager::InitializePatchpanelClient, weak_factory_.GetWeakPtr()));
-    dispatcher_->PostDelayedTask(
-        FROM_HERE, init_patchpanel_client_task_.callback(),
-        kInitPatchpanelClientInterval.InMilliseconds());
+    dispatcher_->PostDelayedTask(FROM_HERE,
+                                 init_patchpanel_client_task_.callback(),
+                                 kInitPatchpanelClientInterval);
     return;
   }
 
@@ -2970,7 +2969,7 @@ void Manager::InitializePatchpanelClient() {
       &Manager::RefreshAllTrafficCountersTask, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                refresh_traffic_counter_task_.callback(),
-                               kTrafficCounterRefreshInterval.InMilliseconds());
+                               kTrafficCounterRefreshInterval);
 
   // Ensure that VPN lockdown starts if needed.
   std::string always_on_vpn_mode = always_on_vpn_mode_;
@@ -3000,7 +2999,7 @@ void Manager::RefreshAllTrafficCountersTask() {
       &Manager::RefreshAllTrafficCountersTask, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                refresh_traffic_counter_task_.callback(),
-                               kTrafficCounterRefreshInterval.InMilliseconds());
+                               kTrafficCounterRefreshInterval);
 
   if (pending_traffic_counter_request_) {
     return;

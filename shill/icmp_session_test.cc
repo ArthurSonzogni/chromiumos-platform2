@@ -90,8 +90,8 @@ class IcmpSessionTest : public Test {
     icmp_->destination_ = destination;
     EXPECT_CALL(io_handler_factory_,
                 CreateIOInputHandler(icmp_->socket(), _, _));
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetTimeoutSeconds() * 1000));
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0));
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetTimeout()));
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     EXPECT_TRUE(Start(destination, interface_index));
     EXPECT_TRUE(GetSeqNumToSentRecvTime()->empty());
     EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
@@ -158,9 +158,9 @@ class IcmpSessionTest : public Test {
   void SetCurrentSequenceNumber(uint16_t val) {
     icmp_session_.current_sequence_number_ = val;
   }
-  size_t GetTimeoutSeconds() const { return IcmpSession::kTimeoutSeconds; }
-  int GetEchoRequestIntervalSeconds() const {
-    return IcmpSession::kEchoRequestIntervalSeconds;
+  base::TimeDelta GetTimeout() const { return IcmpSession::kTimeout; }
+  base::TimeDelta GetEchoRequestInterval() const {
+    return IcmpSession::kEchoRequestInterval;
   }
 
   MockIcmp* icmp_;
@@ -198,7 +198,7 @@ TEST_F(IcmpSessionTest, StartWhileAlreadyStarted) {
       .Times(0);
   EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0)).Times(0);
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);
   EXPECT_FALSE(Start(ipv4_destination, kInterfaceIndex));
 }
 
@@ -240,8 +240,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   testing_clock_.Advance(kSentTime1 - now);
   now = testing_clock_.NowTicks();
   SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
   TransmitEchoRequestTask(true);
   EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
   EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
@@ -266,8 +265,7 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   // Send the second echo request.
   testing_clock_.Advance(kSentTime2 - now);
   now = testing_clock_.NowTicks();
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
   TransmitEchoRequestTask(true);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_EQ(2, GetSeqNumToSentRecvTime()->size());
@@ -346,8 +344,7 @@ TEST_F(IcmpSessionTest, ICMPv6) {
 
   // Send an echo request.
   SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
   TransmitEchoRequestTask(true);
   EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
   EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
@@ -395,8 +392,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   testing_clock_.Advance(kSentTime1 - now);
   now = testing_clock_.NowTicks();
   SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
   TransmitEchoRequestTask(true);
   EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
   EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
@@ -407,8 +403,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   // Send the second echo request unsuccessfully.
   testing_clock_.Advance(kSentTime2 - now);
   now = testing_clock_.NowTicks();
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
   TransmitEchoRequestTask(false);
   EXPECT_TRUE(GetReceivedEchoReplySeqNumbers()->empty());
   EXPECT_EQ(1, GetSeqNumToSentRecvTime()->size());
@@ -434,8 +429,7 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   // Resend second echo request successfully.
   testing_clock_.Advance(kResendTime1 - now);
   now = testing_clock_.NowTicks();
-  EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _, GetEchoRequestIntervalSeconds() * 1000));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, GetEchoRequestInterval()));
   TransmitEchoRequestTask(true);
   EXPECT_EQ(1, GetReceivedEchoReplySeqNumbers()->size());
   EXPECT_EQ(2, GetSeqNumToSentRecvTime()->size());

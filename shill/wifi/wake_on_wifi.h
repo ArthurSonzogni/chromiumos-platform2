@@ -20,6 +20,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <brillo/timers/alarm_timer.h>
 
 #include "shill/callbacks.h"
@@ -261,7 +262,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
               RetrySetWakeOnWiFiConnections_MaxAttemptsWithCallbackSet);
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               RetrySetWakeOnWiFiConnections_MaxAttemptsCallbackUnset);
-  // kDarkResumeActionsTimeoutMilliseconds
+  // kDarkResumeActionsTimeout
   FRIEND_TEST(WakeOnWiFiTestWithMockDispatcher,
               OnBeforeSuspend_DHCPLeaseRenewal);
   // Dark resume wake reason strings (e.g. kWakeReasonStringDisconnect)
@@ -283,9 +284,11 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   FRIEND_TEST(WakeOnWiFiTestWithDispatcher, InitiateScanInDarkResume);
 
   static const char kWakeOnWiFiNotAllowed[];
-  static const int kVerifyWakeOnWiFiSettingsDelayMilliseconds;
+  static constexpr base::TimeDelta kVerifyWakeOnWiFiSettingsDelay =
+      base::Milliseconds(300);
   static const int kMaxSetWakeOnWiFiRetries;
-  static const int kMetricsReportingFrequencySeconds;
+  static constexpr base::TimeDelta kMetricsReportingFrequency =
+      base::Minutes(10);
   static const uint32_t kDefaultWakeToScanPeriodSeconds;
   static const uint32_t kDefaultNetDetectScanPeriodSeconds;
   static const uint32_t kImmediateDHCPLeaseRenewalThresholdSeconds;
@@ -293,7 +296,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   static const int kDarkResumeFrequencySamplingPeriodLongMinutes;
   static const int kMaxDarkResumesPerPeriodShort;
   static const int kMaxDarkResumesPerPeriodLong;
-  static int64_t DarkResumeActionsTimeoutMilliseconds;  // non-const for testing
+  static base::TimeDelta DarkResumeActionsTimeout;  // non-const for testing
   static const int kMaxFreqsForDarkResumeScanRetries;
   static const int kMaxDarkResumeScanRetries;
 

@@ -16,6 +16,7 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -361,7 +362,7 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).Times(0);
   EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0)).Times(0);
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);
   EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
   ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(nullptr, GetSelectedService());
@@ -376,7 +377,8 @@ TEST_F(EthernetTest, ConnectToFailure) {
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(false));
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _, 0));  // Posts ConfigureStaticIPTask.
+              PostDelayedTask(
+                  _, _, base::TimeDelta()));  // Posts ConfigureStaticIPTask.
   EXPECT_CALL(*mock_service_, SetState(Service::kStateFailure));
   ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(mock_service_, GetSelectedService());
@@ -391,7 +393,8 @@ TEST_F(EthernetTest, ConnectToSuccess) {
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _, 0));  // Posts ConfigureStaticIPTask.
+              PostDelayedTask(
+                  _, _, base::TimeDelta()));  // Posts ConfigureStaticIPTask.
   EXPECT_CALL(*mock_service_, SetState(Service::kStateConfiguring));
   ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(GetService(), GetSelectedService());
@@ -410,7 +413,8 @@ TEST_F(EthernetTest, OnEapDetected) {
   EXPECT_CALL(ethernet_eap_provider_,
               SetCredentialChangeCallback(ethernet_.get(), _));
   EXPECT_CALL(dispatcher_,
-              PostDelayedTask(_, _, 0));  // Posts TryEapAuthenticationTask.
+              PostDelayedTask(
+                  _, _, base::TimeDelta()));  // Posts TryEapAuthenticationTask.
   TriggerOnEapDetected();
   EXPECT_TRUE(GetIsEapDetected());
 }

@@ -117,8 +117,7 @@ bool PortalDetector::Start(const ManagerProperties& props,
   }
   trial_.Reset(base::Bind(&PortalDetector::StartTrialTask,
                           weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(),
-                               delay.InMilliseconds());
+  dispatcher_->PostDelayedTask(FROM_HERE, trial_.callback(), delay);
   // |last_attempt_start_time_| is calculated based on the current time and
   // |delay|.  This is used to determine when to schedule the next portal
   // detection attempt after this one.

@@ -916,7 +916,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   void SetSupplicantBSS(const RpcIdentifier& bss) {
     wifi_->supplicant_bss_ = bss;
   }
-  int GetReconnectTimeoutSeconds() { return WiFi::kReconnectTimeoutSeconds; }
+  base::TimeDelta GetReconnectTimeout() { return WiFi::kReconnectTimeout; }
   const base::CancelableClosure& GetScanTimer() {
     return wifi_->scan_timer_callback_;
   }
@@ -3801,7 +3801,8 @@ void WiFiTimerTest::ExpectInitialScanSequence() {
 
   // Each time we call FireScanTimer() below, WiFi will post a task to actually
   // run Scan() on the wpa_supplicant proxy.
-  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(kScanTimes);
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(kScanTimes);
   {
     InSequence seq;
     // The scans immediately after the initial scan should happen at the short
@@ -3809,12 +3810,12 @@ void WiFiTimerTest::ExpectInitialScanSequence() {
     // the ones in the expectation below, we get WiFi::kNumFastScanAttempts at
     // the fast scan interval.
     EXPECT_CALL(*mock_dispatcher_,
-                PostDelayedTask(_, _, WiFi::kFastScanIntervalSeconds * 1000))
+                PostDelayedTask(_, _, WiFi::kFastScanInterval))
         .Times(WiFi::kNumFastScanAttempts - 1);
 
     // After this, the WiFi device should use the normal scan interval.
     EXPECT_CALL(*mock_dispatcher_,
-                PostDelayedTask(_, _, GetScanInterval() * 1000))
+                PostDelayedTask(_, _, base::Seconds(GetScanInterval())))
         .Times(kScanTimes - WiFi::kNumFastScanAttempts + 1);
 
     for (int i = 0; i < kScanTimes; i++) {
@@ -3828,56 +3829,54 @@ TEST_F(WiFiTimerTest, FastRescan) {
   EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, _)).Times(AnyNumber());
   // This PostTask is a result of the call to Scan(nullptr), and is meant to
   // post a task to call Scan() on the wpa_supplicant proxy immediately.
-  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, 0));
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
   EXPECT_CALL(*mock_dispatcher_,
-              PostDelayedTask(_, _, WiFi::kFastScanIntervalSeconds * 1000));
+              PostDelayedTask(_, _, WiFi::kFastScanInterval));
   StartWiFi();
 
   ExpectInitialScanSequence();
 
   // If we end up disconnecting, the sequence should repeat.
   EXPECT_CALL(*mock_dispatcher_,
-              PostDelayedTask(_, _, WiFi::kFastScanIntervalSeconds * 1000));
+              PostDelayedTask(_, _, WiFi::kFastScanInterval));
   RestartFastScanAttempts();
 
   ExpectInitialScanSequence();
 }
 
 TEST_F(WiFiTimerTest, ReconnectTimer) {
-  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(AnyNumber());
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(AnyNumber());
   EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, _)).Times(AnyNumber());
   StartWiFi();
   SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
   Mock::VerifyAndClearExpectations(&*mock_dispatcher_);
 
-  EXPECT_CALL(*mock_dispatcher_,
-              PostDelayedTask(_, _, GetReconnectTimeoutSeconds() * 1000))
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, GetReconnectTimeout()))
       .Times(1);
   StartReconnectTimer();
   Mock::VerifyAndClearExpectations(&*mock_dispatcher_);
   StopReconnectTimer();
 
-  EXPECT_CALL(*mock_dispatcher_,
-              PostDelayedTask(_, _, GetReconnectTimeoutSeconds() * 1000))
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, GetReconnectTimeout()))
       .Times(1);
   StartReconnectTimer();
   Mock::VerifyAndClearExpectations(&*mock_dispatcher_);
   GetReconnectTimeoutCallback().callback().Run();
 
-  EXPECT_CALL(*mock_dispatcher_,
-              PostDelayedTask(_, _, GetReconnectTimeoutSeconds() * 1000))
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, GetReconnectTimeout()))
       .Times(1);
   StartReconnectTimer();
   Mock::VerifyAndClearExpectations(&*mock_dispatcher_);
 
-  EXPECT_CALL(*mock_dispatcher_,
-              PostDelayedTask(_, _, GetReconnectTimeoutSeconds() * 1000))
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, GetReconnectTimeout()))
       .Times(0);
   StartReconnectTimer();
 }
 
 TEST_F(WiFiTimerTest, RequestStationInfo) {
-  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(AnyNumber());
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(AnyNumber());
   EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, _)).Times(AnyNumber());
 
   // Setup a connected service here while we have the expectations above set.
@@ -3919,9 +3918,8 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
               SendNl80211Message(
                   IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_STATION),
                   _, _, _));
-  EXPECT_CALL(
-      *mock_dispatcher_,
-      PostDelayedTask(_, _, WiFi::kRequestStationInfoPeriodSeconds * 1000));
+  EXPECT_CALL(*mock_dispatcher_,
+              PostDelayedTask(_, _, WiFi::kRequestStationInfoPeriod));
   SetSupplicantBSS(connected_bss);
   RequestStationInfo();
 
@@ -4107,13 +4105,13 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
 }
 
 TEST_F(WiFiTimerTest, ResumeDispatchesConnectivityReportTask) {
-  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(AnyNumber());
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(AnyNumber());
   EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, _)).Times(AnyNumber());
   StartWiFi();
   SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
   EXPECT_CALL(*mock_dispatcher_,
-              PostDelayedTask(
-                  _, _, WiFi::kPostWakeConnectivityReportDelayMilliseconds));
+              PostDelayedTask(_, _, WiFi::kPostWakeConnectivityReportDelay));
   OnAfterResume();
 }
 
@@ -4131,7 +4129,7 @@ TEST_F(WiFiTimerTest, StartScanTimer_HaveFastScansRemaining) {
   SetScanInterval(scan_interval, &e);
   SetFastScansRemaining(1);
   EXPECT_CALL(*mock_dispatcher_,
-              PostDelayedTask(_, _, WiFi::kFastScanIntervalSeconds * 1000));
+              PostDelayedTask(_, _, WiFi::kFastScanInterval));
   StartScanTimer();
 }
 
@@ -4140,7 +4138,8 @@ TEST_F(WiFiTimerTest, StartScanTimer_NoFastScansRemaining) {
   const int scan_interval = 10;
   SetScanInterval(scan_interval, &e);
   SetFastScansRemaining(0);
-  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, scan_interval * 1000));
+  EXPECT_CALL(*mock_dispatcher_,
+              PostDelayedTask(_, _, base::Seconds(scan_interval)));
   StartScanTimer();
 }
 
@@ -4183,13 +4182,13 @@ TEST_F(WiFiTimerTest, ScanDoneDispatchesTasks) {
   // Dispatch WiFi::ScanFailedTask if scan failed.
   EXPECT_TRUE(ScanFailedCallbackIsCancelled());
   EXPECT_CALL(*mock_dispatcher_,
-              PostDelayedTask(_, _, WiFi::kPostScanFailedDelayMilliseconds));
+              PostDelayedTask(_, _, WiFi::kPostScanFailedDelay));
   ScanDone(false);
   EXPECT_FALSE(ScanFailedCallbackIsCancelled());
 
   // Dispatch WiFi::ScanDoneTask if scan succeeded, and cancel the scan failed
   // callback if has been dispatched.
-  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, 0));
+  EXPECT_CALL(*mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
   ScanDone(true);
   EXPECT_TRUE(ScanFailedCallbackIsCancelled());
 }

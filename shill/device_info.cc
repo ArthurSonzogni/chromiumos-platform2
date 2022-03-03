@@ -37,6 +37,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/constants/vm_tools.h>
 
@@ -169,10 +170,10 @@ const char* const kModemDrivers[] = {"cdc_mbim", "qmi_wwan"};
 constexpr char kTunDeviceName[] = "/dev/net/tun";
 
 // Time to wait before registering devices which need extra time to detect.
-constexpr int kDelayedDeviceCreationSeconds = 5;
+constexpr base::TimeDelta kDelayedDeviceCreation = base::Seconds(5);
 
 // Time interval for polling for link statistics.
-constexpr int kRequestLinkStatisticsIntervalMilliseconds = 20000;
+constexpr base::TimeDelta kRequestLinkStatisticsInterval = base::Seconds(20);
 
 // IFLA_XFRM_LINK and IFLA_XFRM_IF_ID are defined in
 // /usr/include/linux/if_link.h on 4.19+ kernels.
@@ -243,7 +244,7 @@ void DeviceInfo::Start() {
       &DeviceInfo::RequestLinkStatistics, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                request_link_statistics_callback_.callback(),
-                               kRequestLinkStatisticsIntervalMilliseconds);
+                               kRequestLinkStatisticsInterval);
 }
 
 void DeviceInfo::Stop() {
@@ -1382,7 +1383,7 @@ void DeviceInfo::DelayDeviceCreation(int interface_index) {
   delayed_devices_callback_.Reset(base::Bind(
       &DeviceInfo::DelayedDeviceCreationTask, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, delayed_devices_callback_.callback(),
-                               kDelayedDeviceCreationSeconds * 1000);
+                               kDelayedDeviceCreation);
 }
 
 // Re-evaluate the technology type for each delayed device.
@@ -1464,7 +1465,7 @@ void DeviceInfo::RequestLinkStatistics() {
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
   dispatcher_->PostDelayedTask(FROM_HERE,
                                request_link_statistics_callback_.callback(),
-                               kRequestLinkStatisticsIntervalMilliseconds);
+                               kRequestLinkStatisticsInterval);
 }
 
 #if !defined(DISABLE_WIFI)

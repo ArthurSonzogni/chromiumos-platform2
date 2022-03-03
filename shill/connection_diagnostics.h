@@ -13,6 +13,7 @@
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 
 #include "shill/net/ip_address.h"
 #include "shill/portal_detector.h"
@@ -219,9 +220,10 @@ class ConnectionDiagnostics {
   friend class ConnectionDiagnosticsTest;
 
   static const int kMaxDNSRetries;
-  static const int kRouteQueryTimeoutSeconds;
-  static const int kArpReplyTimeoutSeconds;
-  static const int kNeighborTableRequestTimeoutSeconds;
+  static constexpr base::TimeDelta kRouteQueryTimeout = base::Seconds(1);
+  static constexpr base::TimeDelta kArpReplyTimeout = base::Seconds(1);
+  static constexpr base::TimeDelta kNeighborTableRequestTimeout =
+      base::Seconds(1);
 
   // Create a new Event with |type|, |phase|, |result|, and an empty message,
   // and add it to the end of |diagnostic_events_|.
@@ -294,7 +296,7 @@ class ConnectionDiagnostics {
 
   // Called if no replies to the ARP request sent in
   // ConnectionDiagnostics::CheckIpCollision are received within
-  // |kArpReplyTimeoutSeconds| seconds.
+  // |kArpReplyTimeout|.
   void OnArpRequestTimeout();
 
   // Called when replies are received to the neighbor table dump request issued
@@ -303,7 +305,7 @@ class ConnectionDiagnostics {
                              const RTNLMessage& msg);
 
   // Called if no neighbor table entry for |address_queried| is received within
-  // |kNeighborTableRequestTimeoutSeconds| of issuing a dump request in
+  // |kNeighborTableRequestTimeout| of issuing a dump request in
   // ConnectionDiagnostics::FindNeighborTableEntry.
   void OnNeighborTableRequestTimeout(const IPAddress& address_queried);
 
@@ -314,7 +316,7 @@ class ConnectionDiagnostics {
 
   // Called if no replies to the routing table query issued in
   // ConnectionDiagnostics::FindRoute are received within
-  // |kRouteQueryTimeoutSeconds|.
+  // |kRouteQueryTimeout|.
   void OnRouteQueryTimeout();
 
   // Utility function that returns true iff the event in |diagnostic_events_|

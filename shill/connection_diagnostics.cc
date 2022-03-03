@@ -117,9 +117,6 @@ const char ConnectionDiagnostics::kIssueServerNeighborEntryNotConnected[] =
     "Either the web server does not exist on the local network, or there are "
     "link layer issues.";
 const int ConnectionDiagnostics::kMaxDNSRetries = 2;
-const int ConnectionDiagnostics::kRouteQueryTimeoutSeconds = 1;
-const int ConnectionDiagnostics::kArpReplyTimeoutSeconds = 1;
-const int ConnectionDiagnostics::kNeighborTableRequestTimeoutSeconds = 1;
 
 ConnectionDiagnostics::ConnectionDiagnostics(
     std::string iface_name,
@@ -442,9 +439,8 @@ void ConnectionDiagnostics::FindRouteToHost(const IPAddress& address) {
   route_query_timeout_callback_.Reset(
       base::Bind(&ConnectionDiagnostics::OnRouteQueryTimeout,
                  weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-                               route_query_timeout_callback_.callback(),
-                               kRouteQueryTimeoutSeconds * 1000);
+  dispatcher_->PostDelayedTask(
+      FROM_HERE, route_query_timeout_callback_.callback(), kRouteQueryTimeout);
   AddEventWithMessage(kTypeFindRoute, kPhaseStart, kResultSuccess,
                       "Requesting route to " + address.ToString());
 }
@@ -506,7 +502,7 @@ void ConnectionDiagnostics::FindNeighborTableEntry(const IPAddress& address) {
                  weak_ptr_factory_.GetWeakPtr(), address));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                neighbor_request_timeout_callback_.callback(),
-                               kNeighborTableRequestTimeoutSeconds * 1000);
+                               kNeighborTableRequestTimeout);
   AddEventWithMessage(kTypeNeighborTableLookup, kPhaseStart, kResultSuccess,
                       "Finding neighbor table entry for " + address.ToString());
 }
@@ -552,9 +548,8 @@ void ConnectionDiagnostics::CheckIpCollision() {
   arp_reply_timeout_callback_.Reset(
       base::Bind(&ConnectionDiagnostics::OnArpRequestTimeout,
                  weak_ptr_factory_.GetWeakPtr()));
-  dispatcher_->PostDelayedTask(FROM_HERE,
-                               arp_reply_timeout_callback_.callback(),
-                               kArpReplyTimeoutSeconds * 1000);
+  dispatcher_->PostDelayedTask(
+      FROM_HERE, arp_reply_timeout_callback_.callback(), kArpReplyTimeout);
   AddEvent(kTypeIPCollisionCheck, kPhaseStart, kResultSuccess);
 }
 

@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/time/time.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -37,7 +38,7 @@ namespace {
 base::LazyInstance<ProcessManager>::DestructorAtExit g_process_manager =
     LAZY_INSTANCE_INITIALIZER;
 
-static const int kTerminationTimeoutSeconds = 2;
+static constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
 static const int kWaitpidPollTimesForSIGTERM = 10;
 static const int kWaitpidPollTimesForSIGKILL = 8;
 static const unsigned int kWaitpidPollIntervalUpperBoundMilliseconds = 2000;
@@ -482,7 +483,7 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
       base::Bind(&ProcessManager::ProcessTerminationTimeoutHandler,
                  weak_factory_.GetWeakPtr(), pid, kill_signal));
   dispatcher_->PostDelayedTask(FROM_HERE, termination_callback->callback(),
-                               kTerminationTimeoutSeconds * 1000);
+                               kTerminationTimeout);
   pending_termination_processes_[pid] = std::move(termination_callback);
   return true;
 }

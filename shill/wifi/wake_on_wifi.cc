@@ -21,6 +21,7 @@
 #include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/time/time.h>
 
 #include <chromeos/dbus/service_constants.h>
 
@@ -44,9 +45,7 @@ static std::string ObjectID(const WakeOnWiFi* w) {
 }  // namespace Logging
 
 const char WakeOnWiFi::kWakeOnWiFiNotAllowed[] = "Wake on WiFi not allowed";
-const int WakeOnWiFi::kVerifyWakeOnWiFiSettingsDelayMilliseconds = 300;
 const int WakeOnWiFi::kMaxSetWakeOnWiFiRetries = 2;
-const int WakeOnWiFi::kMetricsReportingFrequencySeconds = 600;
 const uint32_t WakeOnWiFi::kDefaultWakeToScanPeriodSeconds = 900;
 const uint32_t WakeOnWiFi::kDefaultNetDetectScanPeriodSeconds = 120;
 const uint32_t WakeOnWiFi::kImmediateDHCPLeaseRenewalThresholdSeconds = 60;
@@ -61,7 +60,8 @@ const int WakeOnWiFi::kMaxDarkResumesPerPeriodLong = 10;
 // TODO(samueltan): link this to
 // Manager::kTerminationActionsTimeoutMilliseconds rather than hard-coding
 // this value.
-int64_t WakeOnWiFi::DarkResumeActionsTimeoutMilliseconds = 18500;
+base::TimeDelta WakeOnWiFi::DarkResumeActionsTimeout =
+    base::Milliseconds(18500);
 // Scanning 1 frequency takes ~100ms, so retrying 5 times on 8 frequencies will
 // take about 4 seconds, which is how long a full scan typically takes.
 const int WakeOnWiFi::kMaxFreqsForDarkResumeScanRetries = 8;
@@ -129,7 +129,7 @@ void WakeOnWiFi::InitPropertyStore(PropertyStore* store) {
 
 void WakeOnWiFi::StartMetricsTimer() {
   dispatcher_->PostDelayedTask(FROM_HERE, report_metrics_callback_.callback(),
-                               kMetricsReportingFrequencySeconds * 1000);
+                               kMetricsReportingFrequency);
 }
 
 void WakeOnWiFi::Start() {
@@ -660,7 +660,7 @@ void WakeOnWiFi::ApplyWakeOnWiFiSettings() {
       &WakeOnWiFi::RequestWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       FROM_HERE, verify_wake_on_wifi_settings_callback_.callback(),
-      kVerifyWakeOnWiFiSettingsDelayMilliseconds);
+      kVerifyWakeOnWiFiSettingsDelay);
 }
 
 void WakeOnWiFi::DisableWakeOnWiFi() {
@@ -691,7 +691,7 @@ void WakeOnWiFi::DisableWakeOnWiFi() {
       &WakeOnWiFi::RequestWakeOnWiFiSettings, weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(
       FROM_HERE, verify_wake_on_wifi_settings_callback_.callback(),
-      kVerifyWakeOnWiFiSettingsDelayMilliseconds);
+      kVerifyWakeOnWiFiSettingsDelay);
 }
 
 void WakeOnWiFi::RetrySetWakeOnWiFiConnections() {
@@ -984,7 +984,7 @@ void WakeOnWiFi::OnDarkResume(
       false, 0, remove_supplicant_networks_callback));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                dark_resume_actions_timeout_callback_.callback(),
-                               DarkResumeActionsTimeoutMilliseconds);
+                               DarkResumeActionsTimeout);
 }
 
 void WakeOnWiFi::BeforeSuspendActions(

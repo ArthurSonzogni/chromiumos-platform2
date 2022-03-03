@@ -11,6 +11,7 @@
 #include <base/check.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <ModemManager/ModemManager.h>
@@ -543,7 +544,8 @@ TEST_F(CellularCapabilityCdmaDispatcherTest, UpdatePendingActivationState) {
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(_, _))
       .Times(0);
-  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(0);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(0);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(dispatcher_);
@@ -555,7 +557,8 @@ TEST_F(CellularCapabilityCdmaDispatcherTest, UpdatePendingActivationState) {
               GetActivationState(_, _))
       .Times(2)
       .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
-  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(0);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(0);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(dispatcher_);
@@ -567,7 +570,8 @@ TEST_F(CellularCapabilityCdmaDispatcherTest, UpdatePendingActivationState) {
               GetActivationState(_, _))
       .Times(2)
       .WillRepeatedly(Return(PendingActivationStore::kStatePending));
-  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(0);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(0);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(dispatcher_);
@@ -578,7 +582,8 @@ TEST_F(CellularCapabilityCdmaDispatcherTest, UpdatePendingActivationState) {
               GetActivationState(_, _))
       .Times(2)
       .WillRepeatedly(Return(PendingActivationStore::kStateFailureRetry));
-  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(1);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(1);
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
   Mock::VerifyAndClearExpectations(dispatcher_);
@@ -592,7 +597,8 @@ TEST_F(CellularCapabilityCdmaDispatcherTest, UpdatePendingActivationState) {
       .WillOnce(Return(PendingActivationStore::kStateActivated))
       .WillOnce(Return(PendingActivationStore::kStateUnknown))
       .WillOnce(Return(PendingActivationStore::kStateUnknown));
-  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(0);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(0);
   capability_->UpdatePendingActivationState();
   capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());

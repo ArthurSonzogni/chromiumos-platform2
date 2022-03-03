@@ -15,6 +15,7 @@
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/optional.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
@@ -456,10 +457,10 @@ class Cellular : public Device,
   static const char kQ6V5DriverName[];
 
   // Time between stop and start of modem device
-  static const int64_t kModemResetTimeoutMilliseconds;
+  static constexpr base::TimeDelta kModemResetTimeout = base::Seconds(1);
 
   // Time between asynchronous calls to ModemManager1's GetLocation()
-  static const int64_t kPollLocationIntervalMilliseconds;
+  static constexpr base::TimeDelta kPollLocationInterval = base::Minutes(5);
 
   enum class StopSteps {
     // Initial state.

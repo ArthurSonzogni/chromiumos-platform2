@@ -14,6 +14,7 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
@@ -574,7 +575,7 @@ class Device : public base::RefCounted<Device> {
   void UpdateIPConfigsProperty();
 
   // Timer function for monitoring IPv6 DNS server's lifetime.
-  void StartIPv6DNSServerTimer(uint32_t lifetime_seconds);
+  void StartIPv6DNSServerTimer(base::TimeDelta lifetime);
   void StopIPv6DNSServerTimer();
 
   // Called when the lifetime for IPv6 DNS server expires.

@@ -17,6 +17,7 @@
 #include <base/containers/flat_map.h>
 #include <base/containers/flat_set.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular/cellular.h"
@@ -181,7 +182,8 @@ class CellularCapability3gpp : public CellularCapability {
 
   static const int64_t kEnterPinTimeoutMilliseconds;
   static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
-  static const int64_t kSetNextAttachApnTimeoutMilliseconds;
+  static constexpr base::TimeDelta kSetNextAttachApnTimeout =
+      base::Milliseconds(12500);
   static const int kSetPowerStateTimeoutMilliseconds;
 
   static const int kUnknownLockRetriesLeft;

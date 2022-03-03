@@ -73,7 +73,7 @@ namespace {
 
 // Maximum time to wait for Modem registration before canceling a pending
 // connect attempt.
-const int64_t kPendingConnectCancelMilliseconds = 60 * 1000;
+constexpr base::TimeDelta kPendingConnectCancel = base::Minutes(1);
 
 class ApnList {
  public:
@@ -173,8 +173,6 @@ const char Cellular::kQ6V5ModemManufacturerName[] = "QUALCOMM INCORPORATED";
 const char Cellular::kQ6V5DriverName[] = "qcom-q6v5-mss";
 const char Cellular::kQ6V5SysfsBasePath[] = "/sys/class/remoteproc";
 const char Cellular::kQ6V5RemoteprocPattern[] = "remoteproc*";
-const int64_t Cellular::kModemResetTimeoutMilliseconds = 1 * 1000;
-const int64_t Cellular::kPollLocationIntervalMilliseconds = 5 * 60 * 1000;
 // static
 std::string Cellular::GetStateString(State state) {
   switch (state) {
@@ -893,7 +891,7 @@ void Cellular::PollLocationTask() {
   PollLocation();
 
   dispatcher()->PostDelayedTask(FROM_HERE, poll_location_task_.callback(),
-                                kPollLocationIntervalMilliseconds);
+                                kPollLocationInterval);
 }
 
 void Cellular::PollLocation() {
@@ -1690,7 +1688,7 @@ bool Cellular::ResetQ6V5Modem() {
     PLOG(ERROR) << "Failed to stop modem";
     return false;
   }
-  usleep(kModemResetTimeoutMilliseconds * 1000);
+  usleep(kModemResetTimeout.InMicroseconds());
   if (!base::WriteFileDescriptor(scoped_fd.get(), "start")) {
     PLOG(ERROR) << "Failed to start modem";
     return false;
@@ -1896,7 +1894,7 @@ void Cellular::SetPendingConnect(const std::string& iccid) {
   connect_cancel_callback_.Reset(base::Bind(&Cellular::ConnectToPendingCancel,
                                             weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, connect_cancel_callback_.callback(),
-                                kPendingConnectCancelMilliseconds);
+                                kPendingConnectCancel);
 }
 
 void Cellular::ConnectToPending() {
@@ -1943,7 +1941,7 @@ void Cellular::ConnectToPending() {
   connect_pending_callback_.Reset(base::Bind(
       &Cellular::ConnectToPendingAfterDelay, weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, connect_pending_callback_.callback(),
-                                kPendingConnectDelay.InMilliseconds());
+                                kPendingConnectDelay);
 }
 
 void Cellular::ConnectToPendingAfterDelay() {
@@ -2460,9 +2458,8 @@ void Cellular::SetScanning(bool scanning) {
     SLOG(this, 2) << __func__ << ": Delaying clear";
     scanning_clear_callback_.Reset(base::Bind(
         &Cellular::SetScanningProperty, weak_ptr_factory_.GetWeakPtr(), false));
-    dispatcher()->PostDelayedTask(FROM_HERE,
-                                  scanning_clear_callback_.callback(),
-                                  kModemResetTimeoutMilliseconds);
+    dispatcher()->PostDelayedTask(
+        FROM_HERE, scanning_clear_callback_.callback(), kModemResetTimeout);
   }
 }
 

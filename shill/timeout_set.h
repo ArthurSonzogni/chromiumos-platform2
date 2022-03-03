@@ -121,13 +121,12 @@ class TimeoutSet {
       return;
     }
 
-    int64_t shortest_lifetime =
-        (elements_[0].deathtime - TimeNow()).InMilliseconds();
-    int64_t delay = std::max(shortest_lifetime, static_cast<int64_t>(0));
+    base::TimeDelta shortest_lifetime = elements_[0].deathtime - TimeNow();
+    base::TimeDelta delay = std::max(shortest_lifetime, base::TimeDelta());
     timeout_callback_.Reset(
         base::BindOnce(&TimeoutSet::OnTimeout, base::Unretained(this)));
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-        FROM_HERE, timeout_callback_.callback(), base::Milliseconds(delay));
+        FROM_HERE, timeout_callback_.callback(), delay);
   }
 
   std::vector<TimeElement> elements_;

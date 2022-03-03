@@ -15,6 +15,7 @@
 #include <base/check_op.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -724,14 +725,14 @@ class WakeOnWiFiTest : public ::testing::Test {
     return wake_on_wifi_->wake_to_scan_timer_->IsRunning();
   }
 
-  void SetDarkResumeActionsTimeoutMilliseconds(int64_t timeout) {
-    wake_on_wifi_->DarkResumeActionsTimeoutMilliseconds = timeout;
+  void SetDarkResumeActionsTimeout(base::TimeDelta timeout) {
+    wake_on_wifi_->DarkResumeActionsTimeout = timeout;
   }
 
   void InitStateForDarkResume() {
     SetInDarkResume(true);
     EnableWakeOnWiFiFeaturesDarkConnect();
-    SetDarkResumeActionsTimeoutMilliseconds(0);
+    SetDarkResumeActionsTimeout(base::TimeDelta());
   }
 
   void SetExpectationsDisconnectedBeforeSuspend() {
@@ -1615,7 +1616,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
   is_connected = true;
   have_dhcp_lease = true;
   EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(1);
-  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(1);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(1);
   OnBeforeSuspend(is_connected, allowed, have_dhcp_lease,
                   kTimeToNextLeaseRenewalShort);
 
@@ -1623,7 +1625,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
   is_connected = false;
   have_dhcp_lease = true;
   EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
-  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(1);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(1);
   OnBeforeSuspend(is_connected, allowed, have_dhcp_lease,
                   kTimeToNextLeaseRenewalShort);
 
@@ -1632,7 +1635,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
   is_connected = true;
   have_dhcp_lease = true;
   EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
-  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(1);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(1);
   OnBeforeSuspend(is_connected, allowed, have_dhcp_lease,
                   kTimeToNextLeaseRenewalLong);
 
@@ -1641,7 +1645,8 @@ TEST_F(WakeOnWiFiTestWithMockDispatcher, OnBeforeSuspend_DHCPLeaseRenewal) {
   is_connected = true;
   have_dhcp_lease = false;
   EXPECT_CALL(*this, RenewDHCPLeaseCallback()).Times(0);
-  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, 0)).Times(1);
+  EXPECT_CALL(mock_dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+      .Times(1);
   OnBeforeSuspend(is_connected, allowed, have_dhcp_lease,
                   kTimeToNextLeaseRenewalLong);
 }

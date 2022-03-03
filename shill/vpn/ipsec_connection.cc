@@ -838,7 +838,7 @@ void IPsecConnection::OnViciSocketPathEvent(int remaining_attempts,
         base::BindOnce(&IPsecConnection::OnViciSocketPathEvent,
                        weak_factory_.GetWeakPtr(), remaining_attempts - 1,
                        vici_socket_path_, false),
-        kCheckViciConnectableInterval.InMilliseconds());
+        kCheckViciConnectableInterval);
     return;
   }
 

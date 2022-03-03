@@ -382,9 +382,8 @@ void VPNService::StartDriverConnectTimeout(base::TimeDelta timeout) {
             << " seconds.";
   driver_connect_timeout_callback_.Reset(
       Bind(&VPNService::OnDriverConnectTimeout, weak_factory_.GetWeakPtr()));
-  dispatcher()->PostDelayedTask(FROM_HERE,
-                                driver_connect_timeout_callback_.callback(),
-                                timeout.InMilliseconds());
+  dispatcher()->PostDelayedTask(
+      FROM_HERE, driver_connect_timeout_callback_.callback(), timeout);
 }
 
 void VPNService::StopDriverConnectTimeout() {

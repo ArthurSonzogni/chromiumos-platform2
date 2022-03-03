@@ -13,6 +13,7 @@
 #include <base/process/process.h>
 #include <base/process/process_iterator.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 
 #include "shill/control_interface.h"
 #include "shill/dhcp/dhcpcd_listener_interface.h"
@@ -32,7 +33,7 @@ static std::string ObjectID(const DHCPProvider* d) {
 namespace {
 base::LazyInstance<DHCPProvider>::DestructorAtExit g_dhcp_provider =
     LAZY_INSTANCE_INITIALIZER;
-static const int kUnbindDelayMilliseconds = 2000;
+static constexpr base::TimeDelta kUnbindDelay = base::Seconds(2);
 
 const char kDHCPCDExecutableName[] = "dhcpcd";
 
@@ -104,7 +105,7 @@ void DHCPProvider::UnbindPID(int pid) {
   dispatcher_->PostDelayedTask(FROM_HERE,
                                base::BindOnce(&DHCPProvider::RetireUnboundPID,
                                               base::Unretained(this), pid),
-                               kUnbindDelayMilliseconds);
+                               kUnbindDelay);
 }
 
 void DHCPProvider::RetireUnboundPID(int pid) {

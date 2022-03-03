@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/memory/ref_counted.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -20,7 +21,7 @@ using testing::StrictMock;
 
 namespace {
 
-const int kTimeoutMilliseconds = 0;
+constexpr base::TimeDelta kTimeout = base::TimeDelta();
 
 }  // namespace
 
@@ -49,7 +50,7 @@ class ResultAggregatorTestWithDispatcher : public ResultAggregatorTest {
   void InitializeResultAggregatorWithTimeout() {
     aggregator_ = new ResultAggregator(
         base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
-        &dispatcher_, kTimeoutMilliseconds);
+        &dispatcher_, kTimeout.InMilliseconds());
   }
 
  protected:
@@ -120,10 +121,10 @@ TEST_F(ResultAggregatorTestWithMockDispatcher, BothFail) {
 
 TEST_F(ResultAggregatorTestWithMockDispatcher,
        TimeoutCallbackPostedOnConstruction) {
-  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kTimeoutMilliseconds));
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kTimeout));
   auto result_aggregator = base::MakeRefCounted<ResultAggregator>(
       base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
-      &dispatcher_, kTimeoutMilliseconds);
+      &dispatcher_, kTimeout.InMilliseconds());
 }
 
 TEST_F(ResultAggregatorTestWithDispatcher,
@@ -150,7 +151,7 @@ TEST_F(ResultAggregatorTestWithDispatcher,
   {
     auto result_aggregator = base::MakeRefCounted<ResultAggregator>(
         base::Bind(&ResultAggregatorTest::ReportResult, base::Unretained(this)),
-        &dispatcher_, kTimeoutMilliseconds);
+        &dispatcher_, kTimeout.InMilliseconds());
     // The result aggregator receives the one callback it expects, and goes
     // out of scope. At this point, it should invoke the ReportResult callback
     // with the error type kPermissionDenied that it copied.

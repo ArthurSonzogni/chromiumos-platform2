@@ -378,7 +378,7 @@ class ConnectionDiagnosticsTest : public Test {
     // Post task to find DNS server route only after all (i.e. 2) pings are
     // done.
     connection_diagnostics_.OnPingDNSServerComplete(0, kEmptyResult);
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0));
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     connection_diagnostics_.OnPingDNSServerComplete(1, kEmptyResult);
   }
 
@@ -456,7 +456,7 @@ class ConnectionDiagnosticsTest : public Test {
     // Next action is either to find a route to the target web server, find an
     // ARP entry for the IPv4 gateway, or find a neighbor table entry for the
     // IPv6 gateway.
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0));
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     connection_diagnostics_.OnPingHostComplete(ping_event_type, address,
                                                kEmptyResult);
   }
@@ -471,8 +471,7 @@ class ConnectionDiagnosticsTest : public Test {
         .WillOnce(Return(true));
     EXPECT_CALL(
         dispatcher_,
-        PostDelayedTask(
-            _, _, ConnectionDiagnostics::kRouteQueryTimeoutSeconds * 1000));
+        PostDelayedTask(_, _, ConnectionDiagnostics::kRouteQueryTimeout));
     connection_diagnostics_.FindRouteToHost(address);
     EXPECT_FALSE(
         connection_diagnostics_.route_query_timeout_callback_.IsCancelled());
@@ -496,7 +495,7 @@ class ConnectionDiagnosticsTest : public Test {
     // Next action is either to ping the gateway, find an ARP table entry for
     // the local IPv4 web server, or find a neighbor table entry for the local
     // IPv6 web server.
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0));
+    EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     auto entry =
         RoutingTableEntry::Create(address_queried,
                                   IPAddress(address_queried.family()), gateway)
@@ -530,11 +529,9 @@ class ConnectionDiagnosticsTest : public Test {
                      ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
     EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestNeighbor));
-    EXPECT_CALL(
-        dispatcher_,
-        PostDelayedTask(
-            _, _,
-            ConnectionDiagnostics::kNeighborTableRequestTimeoutSeconds * 1000));
+    EXPECT_CALL(dispatcher_,
+                PostDelayedTask(
+                    _, _, ConnectionDiagnostics::kNeighborTableRequestTimeout));
     connection_diagnostics_.FindNeighborTableEntry(address);
   }
 
@@ -580,10 +577,8 @@ class ConnectionDiagnosticsTest : public Test {
                     kIPv4ZeroAddress, ip_address_, local_mac_address_,
                     ByteString(kMacZeroAddress, sizeof(kMacZeroAddress)))))
         .WillOnce(Return(true));
-    EXPECT_CALL(
-        dispatcher_,
-        PostDelayedTask(_, _,
-                        ConnectionDiagnostics::kArpReplyTimeoutSeconds * 1000));
+    EXPECT_CALL(dispatcher_,
+                PostDelayedTask(_, _, ConnectionDiagnostics::kArpReplyTimeout));
     connection_diagnostics_.CheckIpCollision();
   }
 
@@ -643,7 +638,7 @@ class ConnectionDiagnosticsTest : public Test {
     } else {
       // Otherwise, we end in DNS phase with a timeout, or a HTTP phase failure.
       // Either of these cases warrant further diagnostic actions.
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0));
+      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     }
     PortalDetector::Result result;
     result.http_phase = trial_phase;
@@ -717,10 +712,10 @@ class ConnectionDiagnosticsTest : public Test {
     Error error;
     if (result == ConnectionDiagnostics::kResultSuccess) {
       error.Populate(Error::kSuccess);
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0));
+      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     } else if (result == ConnectionDiagnostics::kResultTimeout) {
       error.Populate(Error::kOperationTimeout);
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0));
+      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     } else {
       error.Populate(Error::kOperationFailed);
       EXPECT_CALL(metrics_,
@@ -748,11 +743,12 @@ class ConnectionDiagnosticsTest : public Test {
     // Post retry task or report done only after all (i.e. 2) pings are done.
     connection_diagnostics_.OnPingDNSServerComplete(0, kNonEmptyResult);
     if (retries_left) {
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0));
+      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
       EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(_)).Times(0);
       EXPECT_CALL(callback_target(), ResultCallback(_, _)).Times(0);
     } else {
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0)).Times(0);
+      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()))
+          .Times(0);
       EXPECT_CALL(metrics_,
                   NotifyConnectionDiagnosticsIssue(
                       ConnectionDiagnostics::kIssueDNSServerNoResponse));
@@ -786,7 +782,7 @@ class ConnectionDiagnosticsTest : public Test {
                   ResultCallback(issue, IsEventList(expected_events_)));
     } else {
       // Checking for IP collision.
-      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, 0));
+      EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta()));
     }
     connection_diagnostics_.FindArpTableEntry(address);
   }

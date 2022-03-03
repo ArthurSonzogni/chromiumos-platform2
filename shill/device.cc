@@ -30,6 +30,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/connection.h"
@@ -525,7 +526,8 @@ void Device::OnIPv6DnsServerAddressesChanged() {
 
   if (lifetime != ND_OPT_LIFETIME_INFINITY) {
     // Setup timer to monitor DNS server lifetime if not infinite lifetime.
-    StartIPv6DNSServerTimer(lifetime);
+    base::TimeDelta delay = base::Seconds(lifetime);
+    StartIPv6DNSServerTimer(delay);
   }
 
   PrependDNSServers(IPAddress::kFamilyIPv6, &addresses_str);
@@ -542,8 +544,7 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   OnIPv6ConfigUpdated();
 }
 
-void Device::StartIPv6DNSServerTimer(uint32_t lifetime_seconds) {
-  int64_t delay = static_cast<int64_t>(lifetime_seconds) * 1000;
+void Device::StartIPv6DNSServerTimer(base::TimeDelta delay) {
   ipv6_dns_server_expired_callback_.Reset(base::Bind(
       &Device::IPv6DNSServerExpired, weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(
