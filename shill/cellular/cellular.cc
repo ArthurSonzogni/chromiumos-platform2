@@ -2367,23 +2367,31 @@ void Cellular::SetScanning(bool scanning) {
             << " Modem State: " << GetModemStateString(modem_state_);
   if (scanning) {
     // Set Scanning=true immediately.
-    scanning_clear_callback_.Cancel();
     SetScanningProperty(true);
-  } else {
-    // Delay Scanning=false to delay operations while the Modem is starting.
-    // TODO(b/177588333): Make Modem and/or the MM dbus API more robust.
-    if (!scanning_clear_callback_.IsCancelled())
-      return;
-    SLOG(this, 2) << __func__ << ": Delaying clear";
-    scanning_clear_callback_.Reset(base::Bind(
-        &Cellular::SetScanningProperty, weak_ptr_factory_.GetWeakPtr(), false));
-    dispatcher()->PostDelayedTask(
-        FROM_HERE, scanning_clear_callback_.callback(), kModemResetTimeout);
+    return;
   }
+  // If the modem is disabled, set Scanning=false immediately.
+  // A delayed clear in this case might hit after the service is destroyed.
+  if (state_ == State::kDisabled) {
+    SetScanningProperty(false);
+    return;
+  }
+  // Delay Scanning=false to delay operations while the Modem is starting.
+  // TODO(b/177588333): Make Modem and/or the MM dbus API more robust.
+  if (!scanning_clear_callback_.IsCancelled())
+    return;
+
+  SLOG(this, 2) << __func__ << ": Delaying clear";
+  scanning_clear_callback_.Reset(base::Bind(
+      &Cellular::SetScanningProperty, weak_ptr_factory_.GetWeakPtr(), false));
+  dispatcher()->PostDelayedTask(FROM_HERE, scanning_clear_callback_.callback(),
+                                kModemResetTimeout);
 }
 
 void Cellular::SetScanningProperty(bool scanning) {
   SLOG(this, 2) << __func__ << ": " << scanning;
+  if (!scanning_clear_callback_.IsCancelled())
+    scanning_clear_callback_.Cancel();
   scanning_ = scanning;
   adaptor()->EmitBoolChanged(kScanningProperty, scanning_);
 
