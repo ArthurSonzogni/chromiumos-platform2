@@ -393,6 +393,8 @@ message CheckKeyRequest {
   cryptohome.AccountIdentifier account_id = 1;
   // The authentication credentials to check against the keys
   cryptohome.AuthorizationRequest authorization_request = 2;
+  // Whether the webauthn secret should be unlocked.
+  bool unlock_webauthn_secret = 3;
 }
 
 // Output parameters for CheckKey()
