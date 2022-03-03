@@ -79,9 +79,14 @@ base::FilePath FscryptContainer::GetBackingLocation() const {
 }
 
 bool FscryptContainer::UseV2() {
-  return (platform_->GetDirectoryPolicyVersion(backing_dir_) ==
-          FSCRYPT_POLICY_V2) ||
-         (allow_v2_ && platform_->CheckFscryptKeyIoctlSupport());
+  auto existing_policy = platform_->GetDirectoryPolicyVersion(backing_dir_);
+  if (existing_policy == FSCRYPT_POLICY_V1) {
+    return false;
+  }
+  if (existing_policy == FSCRYPT_POLICY_V2) {
+    return true;
+  }
+  return (allow_v2_ && platform_->CheckFscryptKeyIoctlSupport());
 }
 
 }  // namespace cryptohome
