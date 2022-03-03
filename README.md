@@ -32,7 +32,6 @@ copies.
 | [biod](./biod/) | Biometrics daemon |
 | [bootid-logger](./bootid-logger/) | Simple command to record the current boot id to the log. |
 | [bootstat](./bootstat/) | Tools for tracking points in the overall boot process (for metrics) |
-| [buffet](./buffet/) | Daemon for reacting to cloud messages |
 | [camera](./camera/) | Chrome OS Camera daemon |
 | [cfm-dfu-notification](./cfm-dfu-notification/) | CFM specific library for DFU notifications |
 | [chaps](./chaps/) | PKCS #11 implementation for TPM 1 devices |

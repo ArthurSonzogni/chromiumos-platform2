@@ -108,7 +108,6 @@ def CheckSubdirs():
     LEGACYLIST = (
         'attestation',
         'avtest_label_detect',
-        'buffet',
         'cros-disks',
         'fitpicker',
         'image-burner',

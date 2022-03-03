@@ -38,7 +38,6 @@ _IUSE = [
     'asan',
     'attestation',
     'bluetooth_suspend_management',
-    'buffet',
     'camera_feature_auto_framing',
     'camera_feature_face_detection',
     'camera_feature_hdrnet',

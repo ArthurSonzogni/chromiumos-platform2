@@ -49,7 +49,6 @@ LEGACYLIST = {
     'avtest_label_detect',
     'bootid-logger',
     'bootstat',
-    'buffet',
     'camera',
     'cfm-dfu-notification',
     'chromeos-common-script',
