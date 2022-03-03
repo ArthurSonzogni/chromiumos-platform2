@@ -37,6 +37,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Print("INFO: Testing scanner: ", scannerInfo.ToLorgnetteScannerName())
+
 	caps, err := utils.GetScannerCapabilities(scannerInfo)
 	if err != nil {
 		log.Fatal(err)
