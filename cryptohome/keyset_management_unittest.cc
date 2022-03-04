@@ -21,12 +21,14 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto/hmac.h"
 #include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_cryptohome_key_loader.h"
@@ -74,8 +76,15 @@ constexpr char kAltPasswordLabel[] = "alt_password";
 
 constexpr char kWrongPasskey[] = "wrong pass";
 constexpr char kNewPasskey[] = "new pass";
+constexpr char kNewLabel[] = "new_label";
+constexpr char kSalt[] = "salt";
 
 constexpr int kWrongAuthAttempts = 6;
+
+const brillo::SecureBlob kInitialBlob32(32, 'A');
+const brillo::SecureBlob kAdditionalBlob32(32, 'B');
+const brillo::SecureBlob kInitialBlob16(16, 'C');
+const brillo::SecureBlob kAdditionalBlob16(16, 'D');
 
 void GetKeysetBlob(const brillo::SecureBlob& wrapped_keyset,
                    brillo::SecureBlob* blob) {
@@ -106,7 +115,7 @@ class KeysetManagementTest : public ::testing::Test {
         &platform_, &crypto_,
         std::unique_ptr<VaultKeysetFactory>(mock_vault_keyset_factory_));
     file_system_keyset_ = FileSystemKeyset::CreateRandom();
-
+    auth_state_ = std::make_unique<AuthBlockState>();
     AddUser(kUser0, kUserPassword0);
 
     PrepareDirectoryStructure();
@@ -126,6 +135,8 @@ class KeysetManagementTest : public ::testing::Test {
   MockVaultKeysetFactory* mock_vault_keyset_factory_;
   std::unique_ptr<KeysetManagement> keyset_management_mock_vk_;
   base::ScopedTempDir temp_dir_;
+  KeyBlobs key_blobs_;
+  std::unique_ptr<AuthBlockState> auth_state_;
   struct UserInfo {
     std::string name;
     std::string obfuscated;
@@ -202,6 +213,45 @@ class KeysetManagementTest : public ::testing::Test {
     }
   }
 
+  void KeysetSetUpWithKeyDataAndKeyBlobs(const KeyData& key_data) {
+    for (auto& user : users_) {
+      VaultKeyset vk;
+      vk.Initialize(&platform_, &crypto_);
+      vk.CreateFromFileSystemKeyset(file_system_keyset_);
+      vk.SetKeyData(key_data);
+      key_blobs_.vkk_key = kInitialBlob32;
+      key_blobs_.vkk_iv = kInitialBlob16;
+      key_blobs_.chaps_iv = kInitialBlob16;
+
+      TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                                   brillo::SecureBlob(kSalt)};
+      auth_state_->state = pcr_state;
+
+      ASSERT_TRUE(vk.EncryptEx(key_blobs_, *auth_state_));
+      ASSERT_TRUE(
+          vk.Save(user.homedir_path.Append(kKeyFile).AddExtension("0")));
+    }
+  }
+
+  void KeysetSetUpWithoutKeyDataAndKeyBlobs() {
+    for (auto& user : users_) {
+      VaultKeyset vk;
+      vk.Initialize(&platform_, &crypto_);
+      vk.CreateFromFileSystemKeyset(file_system_keyset_);
+      key_blobs_.vkk_key = kInitialBlob32;
+      key_blobs_.vkk_iv = kInitialBlob16;
+      key_blobs_.chaps_iv = kInitialBlob16;
+
+      TpmBoundToPcrAuthBlockState pcr_state = {.salt =
+                                                   brillo::SecureBlob(kSalt)};
+      auth_state_->state = pcr_state;
+
+      ASSERT_TRUE(vk.EncryptEx(key_blobs_, *auth_state_));
+      ASSERT_TRUE(
+          vk.Save(user.homedir_path.Append(kKeyFile).AddExtension("0")));
+    }
+  }
+
   // TESTers
 
   void VerifyKeysetIndicies(const std::vector<int>& expected) {
@@ -235,6 +285,42 @@ class KeysetManagementTest : public ::testing::Test {
     ASSERT_NE(vk.get(), nullptr);
     EXPECT_EQ(vk->GetLegacyIndex(), index);
     EXPECT_EQ(vk->GetKeyData().revision(), revision);
+    EXPECT_TRUE(vk->HasWrappedChapsKey());
+    EXPECT_TRUE(vk->HasWrappedResetSeed());
+  }
+
+  void VerifyWrappedKeysetNotPresent(const std::string& obfuscated_username,
+                                     const brillo::SecureBlob& vkk_key,
+                                     const brillo::SecureBlob& vkk_iv,
+                                     const brillo::SecureBlob& chaps_iv,
+                                     const std::string& label) {
+    KeyBlobs key_blobs;
+    key_blobs.vkk_key = vkk_key;
+    key_blobs.vkk_iv = vkk_iv;
+    key_blobs.chaps_iv = chaps_iv;
+    std::unique_ptr<VaultKeyset> vk =
+        keyset_management_->GetValidKeysetWithKeyBlobs(
+            obfuscated_username, std::move(key_blobs), label,
+            nullptr /*error*/);
+    ASSERT_EQ(vk.get(), nullptr);
+  }
+
+  void VerifyWrappedKeysetPresentAtIndex(const std::string& obfuscated_username,
+                                         const brillo::SecureBlob& vkk_key,
+                                         const brillo::SecureBlob& vkk_iv,
+                                         const brillo::SecureBlob& chaps_iv,
+                                         const std::string& label,
+                                         int index) {
+    KeyBlobs key_blobs;
+    key_blobs.vkk_key = vkk_key;
+    key_blobs.vkk_iv = vkk_iv;
+    key_blobs.chaps_iv = chaps_iv;
+    std::unique_ptr<VaultKeyset> vk =
+        keyset_management_->GetValidKeysetWithKeyBlobs(
+            obfuscated_username, std::move(key_blobs), label,
+            nullptr /*error*/);
+    ASSERT_NE(vk.get(), nullptr);
+    EXPECT_EQ(vk->GetLegacyIndex(), index);
     EXPECT_TRUE(vk->HasWrappedChapsKey());
     EXPECT_TRUE(vk->HasWrappedResetSeed());
   }
@@ -772,19 +858,23 @@ TEST_F(KeysetManagementTest, GetVaultKeysetLabelsOneLegacyLabeled) {
 TEST_F(KeysetManagementTest, ForceRemoveKeysetSuccess) {
   // SETUP
 
+  constexpr char kFirstLabel[] = "first label";
+  constexpr char kNewPass2[] = "new pass2";
+  constexpr char kSecondLabel[] = "second label";
+
   KeysetSetUpWithKeyData(DefaultKeyData());
 
   brillo::SecureBlob new_passkey(kNewPasskey);
   Credentials new_credentials(users_[0].name, new_passkey);
   KeyData new_data;
-  new_data.set_label("first label");
+  new_data.set_label(kFirstLabel);
   new_credentials.set_key_data(new_data);
 
-  brillo::SecureBlob new_passkey2("new pass2");
+  brillo::SecureBlob new_passkey2(kNewPass2);
   Credentials new_credentials2(users_[0].name, new_passkey2);
   KeyData new_data2;
-  new_data2.set_label("second_label");
-  new_credentials.set_key_data(new_data2);
+  new_data2.set_label(kSecondLabel);
+  new_credentials2.set_key_data(new_data2);
 
   std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
       users_[0].credentials, /* error */ nullptr);
@@ -804,8 +894,8 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetSuccess) {
       keyset_management_->ForceRemoveKeyset(users_[0].obfuscated, index));
 
   // VERIFY
-  // We added two new keysets and force removed them. Only initial and the
-  // second added shall remain.
+  // We added two new keysets and force removed the first added keyset. Only
+  // initial and the second added shall remain.
   vk =
       keyset_management_->GetValidKeyset(new_credentials2, nullptr /* error */);
   int index2 = vk->GetLegacyIndex();
@@ -1788,6 +1878,255 @@ TEST_F(KeysetManagementTest, CleanupPerIndexTimestampFiles) {
         UserActivityPerIndexTimestampPath(users_[0].obfuscated, i);
     ASSERT_FALSE(platform_.FileExists(ts_file));
   }
+}
+
+// Successfully adds new keyset with KeyBlobs
+TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsSuccess) {
+  // SETUP
+  KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
+
+  KeyData new_data;
+  new_data.set_label(kNewLabel);
+
+  KeyBlobs new_key_blobs;
+  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_iv = kAdditionalBlob16;
+  new_key_blobs.chaps_iv = kAdditionalBlob16;
+
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
+  auto auth_state = std::make_unique<AuthBlockState>();
+  auth_state->state = pcr_state;
+
+  // TEST
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          users_[0].obfuscated, std::move(key_blobs_), kPasswordLabel,
+          nullptr /*error*/);
+  ASSERT_NE(vk.get(), nullptr);
+
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->AddKeysetWithKeyBlobs(
+                users_[0].obfuscated, new_data, *vk.get(),
+                std::move(new_key_blobs), std::move(auth_state), false));
+
+  // VERIFY
+  // After we add an additional keyset, we can list and read both of them.
+  vk = keyset_management_->GetVaultKeyset(users_[0].obfuscated, kNewLabel);
+  ASSERT_NE(vk, nullptr);
+  int index = vk->GetLegacyIndex();
+  VerifyKeysetIndicies({kInitialKeysetIndex, index});
+
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+                                    kInitialBlob16, kInitialBlob16,
+                                    kPasswordLabel, kInitialKeysetIndex);
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kAdditionalBlob32,
+                                    kAdditionalBlob16, kAdditionalBlob16,
+                                    kNewLabel, index);
+}
+
+// Overrides existing keyset on label collision when "clobber" flag is present.
+TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsClobberSuccess) {
+  // SETUP
+
+  KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
+
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          users_[0].obfuscated, std::move(key_blobs_), kPasswordLabel,
+          nullptr /*error*/);
+  ASSERT_NE(vk.get(), nullptr);
+
+  // Re-use key data from existing credentials to cause label collision.
+  KeyData new_key_data = DefaultKeyData();
+
+  KeyBlobs new_key_blobs;
+  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_iv = kAdditionalBlob16;
+  new_key_blobs.chaps_iv = kAdditionalBlob16;
+
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
+  auto auth_state = std::make_unique<AuthBlockState>();
+  auth_state->state = pcr_state;
+  // TEST
+
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_NOT_SET,
+      keyset_management_->AddKeysetWithKeyBlobs(
+          users_[0].obfuscated, new_key_data, *vk.get(),
+          std::move(new_key_blobs), std::move(auth_state), true /*clobber*/));
+
+  // VERIFY
+  // After we add an additional keyset, we can list and read both of them.
+
+  VerifyKeysetIndicies({kInitialKeysetIndex});
+
+  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kInitialBlob32,
+                                kInitialBlob16, kInitialBlob16, kPasswordLabel);
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kAdditionalBlob32,
+                                    kAdditionalBlob16, kAdditionalBlob16,
+                                    kPasswordLabel, kInitialKeysetIndex);
+}
+
+// Return error on label collision when no "clobber".
+TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsNoClobber) {
+  // SETUP
+
+  KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
+
+  // Re-use key data from existing credentials to cause label collision.
+  KeyData new_key_data = DefaultKeyData();
+
+  KeyBlobs new_key_blobs;
+  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_iv = kAdditionalBlob16;
+  new_key_blobs.chaps_iv = kAdditionalBlob16;
+
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
+  auto auth_state = std::make_unique<AuthBlockState>();
+  auth_state->state = pcr_state;
+  // TEST
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          users_[0].obfuscated, std::move(key_blobs_), kPasswordLabel,
+          nullptr /*error*/);
+  ASSERT_NE(vk.get(), nullptr);
+
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_KEY_LABEL_EXISTS,
+      keyset_management_->AddKeysetWithKeyBlobs(
+          users_[0].obfuscated, new_key_data, *vk.get(),
+          std::move(new_key_blobs), std::move(auth_state), false /*clobber*/));
+
+  // VERIFY
+  // After we add an additional keyset, we can list and read both of them.
+  VerifyKeysetIndicies({kInitialKeysetIndex});
+
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+                                    kInitialBlob16, kInitialBlob16,
+                                    kPasswordLabel, kInitialKeysetIndex);
+  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kAdditionalBlob32,
+                                kAdditionalBlob16, kAdditionalBlob16,
+                                kPasswordLabel);
+}
+
+// Fail to get keyset due to invalid label.
+TEST_F(KeysetManagementTest, GetValidKeysetWithKeyBlobsNonExistentLabel) {
+  // SETUP
+  KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
+
+  // TEST
+
+  MountError error;
+  ASSERT_EQ(nullptr, keyset_management_->GetValidKeysetWithKeyBlobs(
+                         users_[0].obfuscated, std::move(key_blobs_),
+                         kNewLabel /*label*/, &error));
+  EXPECT_EQ(error, MountError::MOUNT_ERROR_KEY_FAILURE);
+}
+
+// Fail to get keyset due to invalid key blobs.
+TEST_F(KeysetManagementTest, GetValidKeysetWithKeyBlobsInvalidKeyBlobs) {
+  // SETUP
+
+  KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
+
+  KeyBlobs wrong_key_blobs;
+  wrong_key_blobs.vkk_key = kAdditionalBlob32;
+  wrong_key_blobs.vkk_iv = kAdditionalBlob16;
+  wrong_key_blobs.chaps_iv = kAdditionalBlob16;
+
+  // TEST
+
+  MountError error;
+  ASSERT_EQ(nullptr, keyset_management_->GetValidKeysetWithKeyBlobs(
+                         users_[0].obfuscated, std::move(wrong_key_blobs),
+                         kPasswordLabel, &error));
+  EXPECT_EQ(error, MountError::MOUNT_ERROR_KEY_FAILURE);
+}
+
+// Fail to add new keyset due to file name index pool exhaustion.
+TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsNoFreeIndices) {
+  // SETUP
+
+  KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
+
+  KeyData new_data;
+  new_data.set_label(kNewLabel);
+  KeyBlobs new_key_blobs;
+  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_iv = kAdditionalBlob16;
+  new_key_blobs.chaps_iv = kAdditionalBlob16;
+
+  // Use mock not to literally create a hundread files.
+  EXPECT_CALL(platform_,
+              OpenFile(Property(&base::FilePath::value,
+                                MatchesRegex(".*/master\\..*$")),  // nocheck
+                       StrEq("wx")))
+      .WillRepeatedly(Return(nullptr));
+
+  // TEST
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          users_[0].obfuscated, std::move(key_blobs_), kPasswordLabel, nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED,
+      keyset_management_->AddKeysetWithKeyBlobs(
+          users_[0].obfuscated, new_data, *vk.get(), std::move(new_key_blobs),
+          std::move(auth_state_), false /*clobber*/));
+
+  // VERIFY
+  // Nothing should change if we were not able to add keyset due to a lack of
+  // free slots. Since we mocked the "slot" check, we should still have only
+  // initial keyset index, adn the keyset is readable with the old credentials.
+
+  VerifyKeysetIndicies({kInitialKeysetIndex});
+
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+                                    kInitialBlob16, kInitialBlob16,
+                                    kPasswordLabel, kInitialKeysetIndex);
+  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kAdditionalBlob32,
+                                kAdditionalBlob16, kAdditionalBlob16,
+                                new_data.label());
+}
+
+// Fail to add new keyset due to failed encryption.
+TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsEncryptFail) {
+  // SETUP
+
+  KeysetSetUpWithoutKeyDataAndKeyBlobs();
+
+  KeyData new_data;
+  new_data.set_label(kNewLabel);
+
+  // To fail Encrypt() vkk_iv is missing in the key blobs.
+  KeyBlobs new_key_blobs;
+  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.chaps_iv = kAdditionalBlob16;
+
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          users_[0].obfuscated, std::move(key_blobs_), "" /*label*/, nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+
+  // TEST
+  ASSERT_EQ(
+      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+      keyset_management_->AddKeysetWithKeyBlobs(
+          users_[0].obfuscated, new_data, *vk.get(), std::move(new_key_blobs),
+          std::move(auth_state_), false /*clobber*/));
+
+  // VERIFY
+  // If we failed to save the added keyset due to disk failure, the old
+  // keyset should still exist and be readable with the old key_blobs.
+
+  VerifyKeysetIndicies({kInitialKeysetIndex});
+
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+                                    kInitialBlob16, kInitialBlob16,
+                                    "" /*label*/, kInitialKeysetIndex);
+  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kAdditionalBlob32,
+                                kAdditionalBlob16, kAdditionalBlob16,
+                                new_data.label());
 }
 
 }  // namespace cryptohome

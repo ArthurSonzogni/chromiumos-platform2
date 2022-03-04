@@ -11,6 +11,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -22,10 +24,12 @@
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/timestamp.pb.h"
@@ -35,6 +39,42 @@
 using base::FilePath;
 
 namespace cryptohome {
+
+namespace {
+// Wraps VaultKeyset::DecryptEx to bind to DecryptVkCallback without object
+// reference.
+bool DecryptExWrapper(const KeyBlobs& key_blobs,
+                      VaultKeyset* vk,
+                      CryptoError* error) {
+  return vk->DecryptEx(key_blobs, error);
+}
+
+// Wraps VaultKeyset::Decrypt to bind to DecryptVkCallback without object
+// reference.
+bool DecryptWrapper(const brillo::SecureBlob& key,
+                    bool locked_to_single_user,
+                    VaultKeyset* vk,
+                    CryptoError* error) {
+  return vk->Decrypt(key, locked_to_single_user, error);
+}
+
+// Wraps VaultKeyset::ExncryptEx to bind to EncryptVkCallback without object
+// reference.
+bool EncryptExWrapper(const KeyBlobs& key_blobs,
+                      std::unique_ptr<AuthBlockState> auth_state,
+                      VaultKeyset* vk) {
+  return vk->EncryptEx(key_blobs, *auth_state);
+}
+
+// Wraps VaultKeyset::Exncryptto bind to EncryptVkCallback without object
+// reference.
+bool EncryptWrapper(const brillo::SecureBlob& key,
+                    const std::string& obfuscated_username,
+                    VaultKeyset* vk) {
+  return vk->Encrypt(key, obfuscated_username);
+}
+
+}  // namespace
 
 KeysetManagement::KeysetManagement(
     Platform* platform,
@@ -49,12 +89,39 @@ bool KeysetManagement::AreCredentialsValid(const Credentials& creds) {
   return vk.get() != nullptr;
 }
 
-std::unique_ptr<VaultKeyset> KeysetManagement::GetValidKeyset(
-    const Credentials& creds, MountError* error) {
-  if (error)
-    *error = MOUNT_ERROR_NONE;
+std::unique_ptr<VaultKeyset> KeysetManagement::GetValidKeysetWithKeyBlobs(
+    const std::string& obfuscated_username,
+    KeyBlobs key_blobs,
+    const std::optional<std::string>& label,
+    MountError* error) {
+  return GetValidKeysetImpl(
+      obfuscated_username, label,
+      base::BindRepeating(&DecryptExWrapper,
+                          base::Passed(std::move(key_blobs))),
+      error);
+}
 
-  std::string obfuscated = creds.GetObfuscatedUsername();
+std::unique_ptr<VaultKeyset> KeysetManagement::GetValidKeyset(
+    const Credentials& credentials, MountError* error) {
+  std::string obfuscated_username = credentials.GetObfuscatedUsername();
+  bool locked_to_single_user =
+      platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
+
+  return GetValidKeysetImpl(
+      obfuscated_username, credentials.key_data().label(),
+      base::BindRepeating(&DecryptWrapper, credentials.passkey(),
+                          locked_to_single_user),
+      error);
+}
+
+std::unique_ptr<VaultKeyset> KeysetManagement::GetValidKeysetImpl(
+    const std::string& obfuscated,
+    const std::optional<std::string>& label,
+    DecryptVkCallback decrypt_vk_callback,
+    MountError* error) {
+  if (error) {
+    *error = MOUNT_ERROR_NONE;
+  }
 
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices)) {
@@ -74,19 +141,18 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetValidKeyset(
     any_keyset_exists = true;
     // Skip decrypt attempts if the label doesn't match.
     // Treat an empty creds label as a wildcard.
-    if (!creds.key_data().label().empty() &&
-        creds.key_data().label() != vk->GetLabel())
+    if (label.has_value() && !label.value().empty() &&
+        label != vk->GetLabel()) {
       continue;
+    }
     // Skip LE Credentials if not explicitly identified by a label, since we
     // don't want unnecessary wrong attempts.
-    if (creds.key_data().label().empty() &&
+    if ((!label.has_value() || label.value().empty()) &&
         (vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL)) {
       continue;
     }
-    bool locked_to_single_user =
-        platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
-    if (vk->Decrypt(creds.passkey(), locked_to_single_user,
-                    &last_crypto_error)) {
+
+    if (std::move(decrypt_vk_callback).Run(vk.get(), &last_crypto_error)) {
       return vk;
     }
   }
@@ -101,7 +167,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetValidKeyset(
     // error.  Just treat it like an invalid key.  This allows for
     // multiple per-label requests then a wildcard, worst case, before
     // the Cryptohome is removed.
-    if (!creds.key_data().label().empty()) {
+    if (label.has_value() && !label.value().empty()) {
       LOG(ERROR) << "Failed to find the specified keyset for " << obfuscated;
       local_error = MOUNT_ERROR_KEY_FAILURE;
     } else {
@@ -464,14 +530,40 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
     const VaultKeyset& vault_keyset,
     bool clobber) {
   std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
+  return AddKeysetImpl(
+      obfuscated_username, new_credentials.key_data(), vault_keyset,
+      base::BindOnce(&EncryptWrapper, new_credentials.passkey(),
+                     obfuscated_username),
+      clobber);
+}
 
+CryptohomeErrorCode KeysetManagement::AddKeysetWithKeyBlobs(
+    const std::string& obfuscated_username_new,
+    const KeyData& key_data_new,
+    const VaultKeyset& vault_keyset_old,
+    KeyBlobs key_blobs_new,
+    std::unique_ptr<AuthBlockState> auth_state_new,
+    bool clobber) {
+  return AddKeysetImpl(
+      obfuscated_username_new, key_data_new, vault_keyset_old,
+      base::BindOnce(&EncryptExWrapper, std::move(key_blobs_new),
+                     std::move(auth_state_new)),
+      clobber);
+}
+
+CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
+    const std::string& obfuscated_username_new,
+    const KeyData& key_data_new,
+    const VaultKeyset& vault_keyset_old,
+    EncryptVkCallback encrypt_vk_callback,
+    bool clobber) {
   // Walk the namespace looking for the first free spot.
   // Note, nothing is stopping simultaneous access to these files
   // or enforcing mandatory locking.
   base::FilePath vk_path;
   bool file_found = false;
   for (int new_index = 0; new_index < kKeyFileMax; ++new_index) {
-    vk_path = VaultKeysetPath(obfuscated_username, new_index);
+    vk_path = VaultKeysetPath(obfuscated_username_new, new_index);
     // Rely on fopen()'s O_EXCL|O_CREAT behavior to fail
     // repeatedly until there is an opening.
     base::ScopedFILE vk_file(platform_->OpenFile(vk_path, "wx"));
@@ -488,7 +580,8 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
 
   // Before persisting, check if there is an existing labeled credential.
   std::unique_ptr<VaultKeyset> match =
-      GetVaultKeyset(obfuscated_username, new_credentials.key_data().label());
+      GetVaultKeyset(obfuscated_username_new, key_data_new.label());
+
   if (match.get()) {
     LOG(INFO) << "Label already exists.";
     platform_->DeleteFile(vk_path);
@@ -500,12 +593,12 @@ CryptohomeErrorCode KeysetManagement::AddKeyset(
 
   std::unique_ptr<VaultKeyset> keyset_to_add(
       vault_keyset_factory_->New(platform_, crypto_));
-  keyset_to_add->InitializeToAdd(vault_keyset);
-  keyset_to_add->SetKeyData(new_credentials.key_data());
+  keyset_to_add->InitializeToAdd(vault_keyset_old);
+  keyset_to_add->SetKeyData(key_data_new);
 
   // Repersist the VK with the new creds.
   CryptohomeErrorCode ret_code = CRYPTOHOME_ERROR_NOT_SET;
-  if (!keyset_to_add->Encrypt(new_credentials.passkey(), obfuscated_username) ||
+  if (!std::move(encrypt_vk_callback).Run(keyset_to_add.get()) ||
       !keyset_to_add->Save(vk_path)) {
     LOG(WARNING) << "Failed to encrypt or write the new keyset";
     ret_code = CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;

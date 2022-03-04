@@ -15,10 +15,12 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/vault_keyset.h"
@@ -29,6 +31,10 @@ namespace cryptohome {
 
 class KeysetManagement {
  public:
+  using DecryptVkCallback =
+      base::RepeatingCallback<bool(VaultKeyset*, CryptoError*)>;
+  using EncryptVkCallback = base::OnceCallback<bool(VaultKeyset* vk)>;
+
   KeysetManagement() = default;
   KeysetManagement(Platform* platform,
                    Crypto* crypto,
@@ -74,7 +80,7 @@ class KeysetManagement {
   // with the provided |creds| found and |error| will be populated with the
   // partucular failure reason.
   // NOTE: The LE Credential Keysets are only considered when the key label
-  // provided via |creds| is non-empty.
+  // provided via |creds| is non-empty (b/202907485).
   virtual std::unique_ptr<VaultKeyset> GetValidKeyset(const Credentials& creds,
                                                       MountError* error);
 
@@ -167,7 +173,55 @@ class KeysetManagement {
   virtual bool ReSaveKeysetIfNeeded(const Credentials& credentials,
                                     VaultKeyset* keyset) const;
 
+  // ========== KeysetManagement methods with KeyBlobs ===============
+
+  // Returns decrypted with |key_blobs| keyset, or nullptr if none decryptable
+  // with the provided |key_blobs|, |obfuscated_username| and |label| found.
+  // |error| will be populated with the partucular failure reason. NOTE: The LE
+  // Credential Keysets are only considered when the |label| provided is
+  // non-empty (b/202907485).
+  virtual std::unique_ptr<VaultKeyset> GetValidKeysetWithKeyBlobs(
+      const std::string& obfuscated_username,
+      KeyBlobs key_blobs,
+      const std::optional<std::string>& label,
+      MountError* error);
+
+  // Adds a new keyset to the given |vault_keyset| and persist to
+  // disk. This function assumes the user is already authenticated and their
+  // old vault keyset, |old_vault_keyset| is unwrapped to initialize a new vault
+  // keyset. Thus, GetValidKeyset() should be called prior to this function to
+  // authenticate with the existing credentials. New keyset is generated and the
+  // key data from |key_data_new| is added. New keyset is persisted to disk
+  // after wrapped by |key_blobs_new| as directed by |auth_state_new|. If
+  // |clobber| is true and there are no matching, labeled keys, then it does
+  // nothing; if there is an identically labeled key, it will overwrite it.
+  virtual CryptohomeErrorCode AddKeysetWithKeyBlobs(
+      const std::string& obfuscated_username_new,
+      const KeyData& key_data_new,
+      const VaultKeyset& vault_keyset_old,
+      KeyBlobs key_blobs_new,
+      std::unique_ptr<AuthBlockState> auth_state_new,
+      bool clobber);
+
  private:
+  // Returns decrypted VaultKeyset for the obfuscated_username and label or
+  // nullptr if none decryptable.
+  std::unique_ptr<VaultKeyset> GetValidKeysetImpl(
+      const std::string& obfuscated_username,
+      const std::optional<std::string>& label,
+      DecryptVkCallback decrypt_vk_callback,
+      MountError* error);
+
+  // Generates a new keyset for |obfuscated_username_new| with |key_data_new|
+  // and the filesystem key from |vault_keyset_old| and persist to disk.  If
+  // |clobber| is true and there are no matching, labeled keys, then it does
+  // nothing; if there is an identically labeled key, it will overwrite it.
+  CryptohomeErrorCode AddKeysetImpl(const std::string& obfuscated_username_new,
+                                    const KeyData& key_data_new,
+                                    const VaultKeyset& vault_keyset_old,
+                                    EncryptVkCallback encrypt_vk_callback,
+                                    bool clobber);
+
   // Check if the vault keyset needs re-encryption.
   bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
 

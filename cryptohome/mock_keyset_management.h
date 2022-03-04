@@ -16,7 +16,9 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <gmock/gmock.h>
 
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount.h"
 
@@ -100,6 +102,22 @@ class MockKeysetManagement : public KeysetManagement {
               ReSaveKeysetIfNeeded,
               (const Credentials& credentials, VaultKeyset* keyset),
               (const, override));
+  MOCK_METHOD(std::unique_ptr<VaultKeyset>,
+              GetValidKeysetWithKeyBlobs,
+              (const std::string&,
+               KeyBlobs,
+               const base::Optional<std::string>&,
+               MountError*),
+              (override));
+  MOCK_METHOD(CryptohomeErrorCode,
+              AddKeysetWithKeyBlobs,
+              (const std::string&,
+               const KeyData&,
+               const VaultKeyset&,
+               KeyBlobs,
+               std::unique_ptr<AuthBlockState>,
+               bool clobber),
+              (override));
 };
 
 }  // namespace cryptohome
