@@ -16,7 +16,7 @@
 #include <mojo/public/cpp/platform/platform_channel.h>
 
 #include "diagnostics/cros_healthd/cros_healthd.h"
-#include "diagnostics/cros_healthd/executor/executor.h"
+#include "diagnostics/cros_healthd/executor/executor_daemon.h"
 #include "diagnostics/cros_healthd/minijail/minijail_configuration.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
     diagnostics::NewMountNamespace();
 
     // Run the root-level executor.
-    return diagnostics::Executor(channel.TakeLocalEndpoint()).Run();
+    return diagnostics::ExecutorDaemon(channel.TakeLocalEndpoint()).Run();
   } else {
     auto udev = brillo::Udev::Create();
     if (!udev) {

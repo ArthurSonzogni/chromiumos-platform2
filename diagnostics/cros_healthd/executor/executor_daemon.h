@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_H_
-#define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_DAEMON_H_
+#define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_DAEMON_H_
 
 #include <memory>
 
@@ -18,12 +18,12 @@
 namespace diagnostics {
 
 // Daemon class for cros_healthd's root-level executor.
-class Executor final : public brillo::Daemon {
+class ExecutorDaemon final : public brillo::Daemon {
  public:
-  explicit Executor(mojo::PlatformChannelEndpoint endpoint);
-  Executor(const Executor&) = delete;
-  Executor& operator=(const Executor&) = delete;
-  ~Executor() override;
+  explicit ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint);
+  ExecutorDaemon(const ExecutorDaemon&) = delete;
+  ExecutorDaemon& operator=(const ExecutorDaemon&) = delete;
+  ~ExecutorDaemon() override;
 
  private:
   // Used as the task runner for all Mojo IPCs.
@@ -36,4 +36,4 @@ class Executor final : public brillo::Daemon {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_DAEMON_H_

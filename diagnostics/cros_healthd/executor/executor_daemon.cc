@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/executor/executor.h"
+#include "diagnostics/cros_healthd/executor/executor_daemon.h"
 
 #include <memory>
 #include <utility>
@@ -24,7 +24,7 @@ namespace executor_ipc = ::chromeos::cros_healthd_executor::mojom;
 
 }  // namespace
 
-Executor::Executor(mojo::PlatformChannelEndpoint endpoint)
+ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint)
     : mojo_task_runner_(base::ThreadTaskRunnerHandle::Get()) {
   DCHECK(endpoint.is_valid());
 
@@ -47,6 +47,6 @@ Executor::Executor(mojo::PlatformChannelEndpoint endpoint)
       mojo_task_runner_, executor_ipc::ExecutorRequest(std::move(pipe)));
 }
 
-Executor::~Executor() = default;
+ExecutorDaemon::~ExecutorDaemon() = default;
 
 }  // namespace diagnostics
