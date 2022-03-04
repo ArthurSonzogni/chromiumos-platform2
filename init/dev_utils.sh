@@ -77,11 +77,9 @@ dev_update_stateful_partition() {
   # target location.
   local var_target="${STATEFUL_PARTITION}/var"
   local var_new="${var_target}_new"
-  local var_old="${var_target}_old"
   local var_target="${var_target}_overlay"
   local developer_target="${STATEFUL_PARTITION}/dev_image"
   local developer_new="${developer_target}_new"
-  local developer_old="${developer_target}_old"
   local stateful_update_args
 
   stateful_update_args="$(cat "${stateful_update_file}")"
@@ -90,11 +88,12 @@ dev_update_stateful_partition() {
   # are available.
   if [ -d "${developer_new}" ] && [ -d "${var_new}" ]; then
     clobber-log -- "Updating from ${developer_new} && ${var_new}."
-    rm -rf "${developer_old}" "${var_old}"
-    mv "${var_target}" "${var_old}" || true
-    mv "${developer_target}" "${developer_old}" || true
-    mv "${var_new}" "${var_target}"
-    mv "${developer_new}" "${developer_target}"
+    find "${developer_target}" "${var_target}" -mindepth 1 -maxdepth 1 \
+        -exec rm -rf {} +
+    find "${var_new}" -mindepth 1 -maxdepth 1 -exec mv {} "${var_target}" \;
+    find "${developer_new}" -mindepth 1 -maxdepth 1 -exec mv {} \
+        "${developer_target}" \;
+    rmdir "${developer_new}" "${var_new}"
   else
     clobber-log -- "Stateful update did not find ${developer_new} & ${var_new}."
     clobber-log -- "Keeping old development tools."
@@ -124,8 +123,7 @@ dev_update_stateful_partition() {
     sync
   fi
 
-  # Backgrounded to take off boot path.
-  rm -rf "${stateful_update_file}" "${developer_old}" "${var_old}" &
+  rm -rf "${stateful_update_file}"
 }
 
 # Gather logs.
@@ -186,6 +184,9 @@ dev_mount_packages() {
     mount -n "${device}" "${STATEFUL_PARTITION}/dev_image" \
         -o "nodev,noexec,nosuid,noatime,discard"
   fi
+
+  # Checks and updates stateful partition.
+  dev_update_stateful_partition
 
   # Mount and then remount to enable exec/suid.
   mount_or_fail --bind "${STATEFUL_PARTITION}/dev_image" /usr/local

@@ -195,7 +195,6 @@ CROS_DEBUG="$((! $?))"
 # Developer mode functions (defined in dev_utils.sh and will be loaded
 # only when CROS_DEBUG=1).
 dev_check_block_dev_mode() { true; }
-dev_update_stateful_partition() { true; }
 dev_gather_logs() { true; }
 dev_mount_packages() { true; }
 dev_is_debug_build() { false; }
@@ -536,9 +535,6 @@ force_clean_file_attrs() {
 }
 
 force_clean_file_attrs /mnt/stateful_partition/unencrypted
-
-# Checks and updates stateful partition.
-dev_update_stateful_partition
 
 # Apply /mnt/stateful_partition specific tmpfiles.d configurations.
 /bin/systemd-tmpfiles --create --remove --boot \
