@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/executor/executor_mojo_service.h"
+#include "diagnostics/cros_healthd/executor/executor.h"
 
 #include <inttypes.h>
 
@@ -106,7 +106,7 @@ bool IsMsrAccessAllowed(uint32_t msr) {
 
 }  // namespace
 
-ExecutorMojoService::ExecutorMojoService(
+Executor::Executor(
     const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
     mojo::PendingReceiver<mojo_ipc::Executor> receiver)
     : mojo_task_runner_(mojo_task_runner),
@@ -115,7 +115,7 @@ ExecutorMojoService::ExecutorMojoService(
       base::BindOnce([]() { std::exit(EXIT_SUCCESS); }));
 }
 
-void ExecutorMojoService::GetFanSpeed(GetFanSpeedCallback callback) {
+void Executor::GetFanSpeed(GetFanSpeedCallback callback) {
   mojo_ipc::ProcessResult result;
 
   const auto seccomp_policy_path =
@@ -133,14 +133,14 @@ void ExecutorMojoService::GetFanSpeed(GetFanSpeedCallback callback) {
   base::FilePath binary_path = base::FilePath(kEctoolBinary);
 
   base::OnceClosure closure = base::BindOnce(
-      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
       seccomp_policy_path, sandboxing_args, kEctoolUserAndGroup, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
 }
 
-void ExecutorMojoService::GetInterfaces(GetInterfacesCallback callback) {
+void Executor::GetInterfaces(GetInterfacesCallback callback) {
   mojo_ipc::ProcessResult result;
 
   const auto seccomp_policy_path =
@@ -158,15 +158,15 @@ void ExecutorMojoService::GetInterfaces(GetInterfacesCallback callback) {
   // Since no user:group is specified, this will run with the default
   // cros_healthd:cros_healthd user and group.
   base::OnceClosure closure = base::BindOnce(
-      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
       seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
 }
 
-void ExecutorMojoService::GetLink(const std::string& interface_name,
-                                  GetLinkCallback callback) {
+void Executor::GetLink(const std::string& interface_name,
+                       GetLinkCallback callback) {
   mojo_ipc::ProcessResult result;
   // Sanitize against interface_name.
   if (!IsValidWirelessInterfaceName(interface_name)) {
@@ -194,15 +194,15 @@ void ExecutorMojoService::GetLink(const std::string& interface_name,
   // Since no user:group is specified, this will run with the default
   // cros_healthd:cros_healthd user and group.
   base::OnceClosure closure = base::BindOnce(
-      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
       seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
 }
 
-void ExecutorMojoService::GetInfo(const std::string& interface_name,
-                                  GetInfoCallback callback) {
+void Executor::GetInfo(const std::string& interface_name,
+                       GetInfoCallback callback) {
   mojo_ipc::ProcessResult result;
   // Sanitize against interface_name.
   if (!IsValidWirelessInterfaceName(interface_name)) {
@@ -230,15 +230,15 @@ void ExecutorMojoService::GetInfo(const std::string& interface_name,
   // Since no user:group is specified, this will run with the default
   // cros_healthd:cros_healthd user and group.
   base::OnceClosure closure = base::BindOnce(
-      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
       seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
 }
 
-void ExecutorMojoService::GetScanDump(const std::string& interface_name,
-                                      GetScanDumpCallback callback) {
+void Executor::GetScanDump(const std::string& interface_name,
+                           GetScanDumpCallback callback) {
   mojo_ipc::ProcessResult result;
   // Sanitize against interface_name.
   if (!IsValidWirelessInterfaceName(interface_name)) {
@@ -267,14 +267,14 @@ void ExecutorMojoService::GetScanDump(const std::string& interface_name,
   // Since no user:group is specified, this will run with the default
   // cros_healthd:cros_healthd user and group.
   base::OnceClosure closure = base::BindOnce(
-      &ExecutorMojoService::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
+      &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
       seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
 }
 
-void ExecutorMojoService::RunMemtester(RunMemtesterCallback callback) {
+void Executor::RunMemtester(RunMemtesterCallback callback) {
   mojo_ipc::ProcessResult result;
 
   // TODO(b/193211343): Design a mechanism for multiple resource intensive task.
@@ -321,14 +321,13 @@ void ExecutorMojoService::RunMemtester(RunMemtesterCallback callback) {
   // cros_healthd:cros_healthd user and group.
   base::ThreadPool::PostTask(
       FROM_HERE, {base::MayBlock()},
-      base::BindOnce(&ExecutorMojoService::RunTrackedBinary,
-                     weak_factory_.GetWeakPtr(), kSeccompPolicyPath,
-                     sandboxing_args, base::nullopt,
+      base::BindOnce(&Executor::RunTrackedBinary, weak_factory_.GetWeakPtr(),
+                     kSeccompPolicyPath, sandboxing_args, base::nullopt,
                      base::FilePath(kMemtesterBinary), memtester_args,
                      std::move(result), std::move(callback)));
 }
 
-void ExecutorMojoService::KillMemtester() {
+void Executor::KillMemtester() {
   base::AutoLock auto_lock(lock_);
   auto itr = processes_.find(kMemtesterBinary);
   if (itr == processes_.end())
@@ -344,8 +343,8 @@ void ExecutorMojoService::KillMemtester() {
     process->Kill(SIGKILL, kTerminationTimeout.InSeconds());
 }
 
-void ExecutorMojoService::GetProcessIOContents(
-    const uint32_t pid, GetProcessIOContentsCallback callback) {
+void Executor::GetProcessIOContents(const uint32_t pid,
+                                    GetProcessIOContentsCallback callback) {
   std::string result;
 
   ReadAndTrimString(base::FilePath("/proc/")
@@ -356,8 +355,7 @@ void ExecutorMojoService::GetProcessIOContents(
   std::move(callback).Run(result);
 }
 
-void ExecutorMojoService::ReadMsr(const uint32_t msr_reg,
-                                  ReadMsrCallback callback) {
+void Executor::ReadMsr(const uint32_t msr_reg, ReadMsrCallback callback) {
   mojo_ipc::ProcessResult status;
   uint64_t val = 0;
   if (!IsMsrAccessAllowed(msr_reg)) {
@@ -387,7 +385,7 @@ void ExecutorMojoService::ReadMsr(const uint32_t msr_reg,
   std::move(callback).Run(status.Clone(), val);
 }
 
-void ExecutorMojoService::GetUEFISecureBootContent(
+void Executor::GetUEFISecureBootContent(
     GetUEFISecureBootContentCallback callback) {
   std::string content;
 
@@ -401,7 +399,7 @@ void ExecutorMojoService::GetUEFISecureBootContent(
   std::move(callback).Run(content);
 }
 
-void ExecutorMojoService::RunUntrackedBinary(
+void Executor::RunUntrackedBinary(
     const base::FilePath& seccomp_policy_path,
     const std::vector<std::string>& sandboxing_args,
     const base::Optional<std::string>& user,
@@ -418,7 +416,7 @@ void ExecutorMojoService::RunUntrackedBinary(
                                 std::move(result), std::move(callback)));
 }
 
-void ExecutorMojoService::RunTrackedBinary(
+void Executor::RunTrackedBinary(
     const base::FilePath& seccomp_policy_path,
     const std::vector<std::string>& sandboxing_args,
     const base::Optional<std::string>& user,
@@ -449,14 +447,13 @@ void ExecutorMojoService::RunTrackedBinary(
                                 std::move(result), std::move(callback)));
 }
 
-int ExecutorMojoService::RunBinaryInternal(
-    const base::FilePath& seccomp_policy_path,
-    const std::vector<std::string>& sandboxing_args,
-    const base::Optional<std::string>& user,
-    const base::FilePath& binary_path,
-    const std::vector<std::string>& binary_args,
-    mojo_ipc::ProcessResult* result,
-    ProcessWithOutput* process) {
+int Executor::RunBinaryInternal(const base::FilePath& seccomp_policy_path,
+                                const std::vector<std::string>& sandboxing_args,
+                                const base::Optional<std::string>& user,
+                                const base::FilePath& binary_path,
+                                const std::vector<std::string>& binary_args,
+                                mojo_ipc::ProcessResult* result,
+                                ProcessWithOutput* process) {
   DCHECK(result);
   DCHECK(process);
 

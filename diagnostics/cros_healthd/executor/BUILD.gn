@@ -21,9 +21,9 @@ source_set("libcros_healthd_executor") {
     "//diagnostics/mojom/private:cros_healthd_executor_mojo_bindings",
   ]
   sources = [
+    "executor.cc",
     "executor_adapter_impl.cc",
     "executor_daemon.cc",
-    "executor_mojo_service.cc",
   ]
 }
 

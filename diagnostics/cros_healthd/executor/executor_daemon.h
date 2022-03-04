@@ -13,7 +13,7 @@
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
-#include "diagnostics/cros_healthd/executor/executor_mojo_service.h"
+#include "diagnostics/cros_healthd/executor/executor.h"
 
 namespace diagnostics {
 
@@ -31,7 +31,7 @@ class ExecutorDaemon final : public brillo::Daemon {
   // Necessary to establish Mojo communication with cros_healthd.
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
   // Implements the executor's Mojo methods.
-  std::unique_ptr<ExecutorMojoService> mojo_service_;
+  std::unique_ptr<Executor> mojo_service_;
 };
 
 }  // namespace diagnostics

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_MOJO_SERVICE_H_
-#define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_MOJO_SERVICE_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_H_
+#define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_H_
 
 #include <map>
 #include <memory>
@@ -26,15 +26,14 @@ namespace diagnostics {
 
 // Production implementation of the
 // chromeos::cros_healthd_executor::mojom::Executor Mojo interface.
-class ExecutorMojoService final
-    : public chromeos::cros_healthd_executor::mojom::Executor {
+class Executor final : public chromeos::cros_healthd_executor::mojom::Executor {
  public:
-  ExecutorMojoService(
+  Executor(
       const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
       mojo::PendingReceiver<chromeos::cros_healthd_executor::mojom::Executor>
           receiver);
-  ExecutorMojoService(const ExecutorMojoService&) = delete;
-  ExecutorMojoService& operator=(const ExecutorMojoService&) = delete;
+  Executor(const Executor&) = delete;
+  Executor& operator=(const Executor&) = delete;
 
   // chromeos::cros_healthd_executor::mojom::Executor overrides:
   void GetFanSpeed(GetFanSpeedCallback callback) override;
@@ -105,9 +104,9 @@ class ExecutorMojoService final
   std::map<std::string, std::unique_ptr<ProcessWithOutput>> processes_;
 
   // Must be the last member of the class.
-  base::WeakPtrFactory<ExecutorMojoService> weak_factory_{this};
+  base::WeakPtrFactory<Executor> weak_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_MOJO_SERVICE_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_EXECUTOR_H_

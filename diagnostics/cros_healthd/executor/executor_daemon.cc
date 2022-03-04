@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
@@ -43,8 +44,9 @@ ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint)
   mojo::ScopedMessagePipeHandle pipe =
       invitation.ExtractMessagePipe(kExecutorPipeName);
 
-  mojo_service_ = std::make_unique<ExecutorMojoService>(
-      mojo_task_runner_, executor_ipc::ExecutorRequest(std::move(pipe)));
+  mojo_service_ = std::make_unique<Executor>(
+      mojo_task_runner_,
+      mojo::PendingReceiver<executor_ipc::Executor>(std::move(pipe)));
 }
 
 ExecutorDaemon::~ExecutorDaemon() = default;
