@@ -74,18 +74,6 @@ void ModemTracker::OnManagerPropertyChanged(const std::string& property_name,
 void ModemTracker::OnDevicePropertyChanged(dbus::ObjectPath device_path,
                                            const std::string& property_name,
                                            const brillo::Any& property_value) {
-  // Listen for the SIMPresentProperty
-  if (property_name == shill::kSIMPresentProperty) {
-    bool sim_present = property_value.TryGet<bool>();
-    if (sim_present)
-      return;
-
-    // Trigger the firmware update
-    auto device = std::make_unique<org::chromium::flimflam::DeviceProxy>(
-        bus_, device_path);
-    on_modem_carrier_id_ready_callback_.Run(std::move(device));
-  }
-
   // Listen for the HomeProvider change triggered by a SIM change
   if (property_name != shill::kHomeProviderProperty)
     return;
