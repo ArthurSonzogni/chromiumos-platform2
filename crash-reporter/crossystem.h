@@ -5,18 +5,19 @@
 #ifndef CRASH_REPORTER_CROSSYSTEM_H_
 #define CRASH_REPORTER_CROSSYSTEM_H_
 
-#include <brillo/crossystem/crossystem.h>
+#include <libcrossystem/crossystem.h>
 
 namespace crossystem {
 
-// Gets the singleton instance of brillo::Crossystem that provides
+// Gets the singleton instance of crossystem::Crossystem that provides
 // functionalities to access and modify the system properties.
-brillo::Crossystem* GetInstance();
+crossystem::Crossystem* GetInstance();
 
-// Replaces the singleton instance of brillo::Crossystem for testing.
+// Replaces the singleton instance of crossystem::Crossystem for testing.
 // It returns the old instance before replacing so that the caller can
 // replace it back easily.
-brillo::Crossystem* ReplaceInstanceForTest(brillo::Crossystem* instance);
+crossystem::Crossystem* ReplaceInstanceForTest(
+    crossystem::Crossystem* instance);
 
 }  // namespace crossystem
 

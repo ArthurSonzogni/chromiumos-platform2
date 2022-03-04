@@ -2,12 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/crossystem/crossystem.h>
+#include <libcrossystem/crossystem.h>
 
 #include <base/optional.h>
 #include <vboot/crossystem.h>
 
-namespace brillo {
+namespace crossystem {
 
 base::Optional<int> CrossystemImpl::VbGetSystemPropertyInt(
     const std::string& name) const {
@@ -36,4 +36,4 @@ bool CrossystemImpl::VbSetSystemPropertyString(const std::string& name,
   return 0 == ::VbSetSystemPropertyString(name.c_str(), value.c_str());
 }
 
-}  // namespace brillo
+}  // namespace crossystem

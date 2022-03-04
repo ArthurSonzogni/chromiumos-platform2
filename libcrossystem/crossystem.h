@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBBRILLO_BRILLO_CROSSYSTEM_CROSSYSTEM_H_
-#define LIBBRILLO_BRILLO_CROSSYSTEM_CROSSYSTEM_H_
+#ifndef LIBCROSSYSTEM_CROSSYSTEM_H_
+#define LIBCROSSYSTEM_CROSSYSTEM_H_
 
 #include <cstddef>
 
@@ -12,7 +12,7 @@
 #include <base/optional.h>
 #include <brillo/brillo_export.h>
 
-namespace brillo {
+namespace crossystem {
 
 // C++ interface to access crossystem system properties.
 class BRILLO_EXPORT Crossystem {
@@ -65,6 +65,6 @@ class BRILLO_EXPORT CrossystemImpl : public Crossystem {
                                  const std::string& value) override;
 };
 
-}  // namespace brillo
+}  // namespace crossystem
 
-#endif  // LIBBRILLO_BRILLO_CROSSYSTEM_CROSSYSTEM_H_
+#endif  // LIBCROSSYSTEM_CROSSYSTEM_H_

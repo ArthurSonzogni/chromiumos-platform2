@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <brillo/crossystem/crossystem_fake.h>
+#include <libcrossystem/crossystem_fake.h>
 
 #include <base/optional.h>
 
-namespace brillo {
+namespace crossystem {
 
 namespace fake {
 
@@ -58,4 +58,4 @@ void CrossystemFake::SetSystemPropertyReadOnlyStatus(const std::string& name,
 
 }  // namespace fake
 
-}  // namespace brillo
+}  // namespace crossystem

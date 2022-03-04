@@ -2,17 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef LIBBRILLO_BRILLO_CROSSYSTEM_CROSSYSTEM_FAKE_H_
-#define LIBBRILLO_BRILLO_CROSSYSTEM_CROSSYSTEM_FAKE_H_
+#ifndef LIBCROSSYSTEM_CROSSYSTEM_FAKE_H_
+#define LIBCROSSYSTEM_CROSSYSTEM_FAKE_H_
 
 #include <map>
 #include <set>
 #include <string>
 
 #include <brillo/brillo_export.h>
-#include <brillo/crossystem/crossystem.h>
+#include <libcrossystem/crossystem.h>
 
-namespace brillo {
+namespace crossystem {
 
 namespace fake {
 
@@ -60,6 +60,6 @@ class BRILLO_EXPORT CrossystemFake : public Crossystem {
 
 }  // namespace fake
 
-}  // namespace brillo
+}  // namespace crossystem
 
-#endif  // LIBBRILLO_BRILLO_CROSSYSTEM_CROSSYSTEM_FAKE_H_
+#endif  // LIBCROSSYSTEM_CROSSYSTEM_FAKE_H_

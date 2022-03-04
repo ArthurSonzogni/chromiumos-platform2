@@ -216,13 +216,6 @@ libbrillo_sublibs = [
       "brillo/grpc/time_util.cc",
     ]
   },
-
-  {
-    library_name = "brillo-crossystem"
-    deps = [ ":libbrillo-core" ]
-    sources = [ "brillo/crossystem/crossystem.cc" ]
-    pkg_deps = [ "vboot_host" ]
-  },
 ]
 
 if (use.udev) {
@@ -345,7 +338,6 @@ generate_pkg_config("libbrillo-test_pc") {
 static_library("libbrillo-test") {
   sources = [
     "brillo/blkdev_utils/loop_device_fake.cc",
-    "brillo/crossystem/crossystem_fake.cc",
     "brillo/http/http_connection_fake.cc",
     "brillo/http/http_transport_fake.cc",
     "brillo/message_loops/fake_message_loop.cc",

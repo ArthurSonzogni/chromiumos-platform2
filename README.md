@@ -83,6 +83,7 @@ copies.
 | [libchromeos-rs](./libchromeos-rs/) | Common platform utility library for Rust |
 | [libchromeos-ui](./libchromeos-ui/) ||
 | [libcontainer](./libcontainer/) ||
+| [libcrossystem](./libcrossystem/) | Library for getting Chrome OS system properties |
 | [libec](./libec/) | Library for interacting with [EC](https://chromium.googlesource.com/chromiumos/platform/ec/) |
 | [libhwsec](./libhwsec/) | Library for the utility functions of all TPM related daemons except for trunks and trousers |
 | [libhwsec-foundation](./libhwsec-foundation/) | Library for the utility functions of all TPM related daemons and libraries |

@@ -19,7 +19,7 @@
 #include <base/rand_util.h>
 #include <base/test/simple_test_clock.h>
 #include <base/time/time.h>
-#include <brillo/crossystem/crossystem_fake.h>
+#include <libcrossystem/crossystem_fake.h>
 #include <brillo/process/process.h>
 #include <brillo/streams/memory_stream.h>
 #include <gtest/gtest.h>
@@ -275,8 +275,8 @@ TEST_F(CrashCommonUtilTest, IsBuildTimestampTooOldForUploads) {
 }
 
 TEST_F(CrashCommonUtilTest, GetHardwareClass) {
-  std::unique_ptr<brillo::fake::CrossystemFake> stub_crossystem =
-      std::make_unique<brillo::fake::CrossystemFake>();
+  std::unique_ptr<crossystem::fake::CrossystemFake> stub_crossystem =
+      std::make_unique<crossystem::fake::CrossystemFake>();
   auto old_instance = crossystem::ReplaceInstanceForTest(stub_crossystem.get());
 
   // HWID file not found and failed to get the "hwid" system property.
@@ -296,8 +296,8 @@ TEST_F(CrashCommonUtilTest, GetHardwareClass) {
 }
 
 TEST_F(CrashCommonUtilTest, GetBootModeString) {
-  std::unique_ptr<brillo::fake::CrossystemFake> stub_crossystem =
-      std::make_unique<brillo::fake::CrossystemFake>();
+  std::unique_ptr<crossystem::fake::CrossystemFake> stub_crossystem =
+      std::make_unique<crossystem::fake::CrossystemFake>();
   auto old_instance = crossystem::ReplaceInstanceForTest(stub_crossystem.get());
 
   EXPECT_EQ("missing-crossystem", GetBootModeString());

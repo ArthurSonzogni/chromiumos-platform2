@@ -49,6 +49,7 @@ group("all") {
 pkg_config("libcrash_config") {
   pkg_deps = [
     "libchrome",
+    "libcrossystem",
     "libsession_manager-client",
     "re2",
     "vboot_host",
@@ -311,6 +312,7 @@ if (use.test || use.fuzzer) {
     pkg_deps = [
       "libbrillo-test",
       "libchrome-test",
+      "libcrossystem-test",
       "libdebugd-client-test",
       "libmetrics",
       "libsession_manager-client-test",

@@ -5,28 +5,29 @@
 #include "crash-reporter/crossystem.h"
 
 #include <base/no_destructor.h>
-#include <brillo/crossystem/crossystem.h>
+#include <libcrossystem/crossystem.h>
 
 namespace {
 
-brillo::Crossystem* GetDefaultInstance() {
-  static base::NoDestructor<brillo::CrossystemImpl> instance;
+crossystem::Crossystem* GetDefaultInstance() {
+  static base::NoDestructor<crossystem::CrossystemImpl> instance;
   return instance.get();
 }
 
-brillo::Crossystem* shared_instance = nullptr;
+crossystem::Crossystem* shared_instance = nullptr;
 
 }  // namespace
 
 namespace crossystem {
 
-brillo::Crossystem* GetInstance() {
+crossystem::Crossystem* GetInstance() {
   if (shared_instance == nullptr)
     shared_instance = GetDefaultInstance();
   return shared_instance;
 }
 
-brillo::Crossystem* ReplaceInstanceForTest(brillo::Crossystem* instance) {
+crossystem::Crossystem* ReplaceInstanceForTest(
+    crossystem::Crossystem* instance) {
   auto original_instance =
       shared_instance == nullptr ? GetDefaultInstance() : shared_instance;
   shared_instance = instance;
