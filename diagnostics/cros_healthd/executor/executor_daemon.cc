@@ -14,7 +14,6 @@
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
-#include "diagnostics/cros_healthd/executor/executor_constants.h"
 #include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 
 namespace diagnostics {
@@ -39,10 +38,13 @@ ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint)
       mojo_task_runner_, mojo::core::ScopedIPCSupport::ShutdownPolicy::
                              CLEAN /* blocking shutdown */);
 
+  // This accepts invitation from cros_healthd. Must be the incoming invitation
+  // because cros_healthd is the process which connects to the mojo broker. This
+  // must be run after the mojo ipc thread is initialized.
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(std::move(endpoint));
-  mojo::ScopedMessagePipeHandle pipe =
-      invitation.ExtractMessagePipe(kExecutorPipeName);
+  // Always use 0 as the default pipe name.
+  mojo::ScopedMessagePipeHandle pipe = invitation.ExtractMessagePipe(0);
 
   mojo_service_ = std::make_unique<Executor>(
       mojo_task_runner_,

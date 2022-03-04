@@ -91,7 +91,7 @@ class MemoryRoutineTest : public testing::Test {
 
   mojo_ipc::RoutineUpdate* update() { return &update_; }
 
-  MockExecutorAdapter* mock_executor() { return mock_context_.mock_executor(); }
+  MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   void FastForwardBy(base::TimeDelta time) {
     task_environment_.FastForwardBy(time);

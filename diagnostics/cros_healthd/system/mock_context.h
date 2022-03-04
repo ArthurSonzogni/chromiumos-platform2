@@ -18,7 +18,7 @@
 #include "diagnostics/common/system/fake_bluetooth_client.h"
 #include "diagnostics/common/system/fake_powerd_adapter.h"
 #include "diagnostics/common/system/mock_debugd_adapter.h"
-#include "diagnostics/cros_healthd/executor/mock_executor_adapter.h"
+#include "diagnostics/cros_healthd/executor/mock_executor.h"
 #include "diagnostics/cros_healthd/network/fake_network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -53,6 +53,8 @@ class MockContext final : public Context {
   std::unique_ptr<LibdrmUtil> CreateLibdrmUtil() override;
   std::unique_ptr<PciUtil> CreatePciUtil() override;
 
+  chromeos::cros_healthd_executor::mojom::Executor* executor() override;
+
   // Accessors to the fake and mock objects held by MockContext:
   org::chromium::AttestationProxyMock* mock_attestation_proxy() const;
   FakeBluetoothClient* fake_bluetooth_client() const;
@@ -68,7 +70,7 @@ class MockContext final : public Context {
   FakePowerdAdapter* fake_powerd_adapter() const;
   FakeSystemConfig* fake_system_config() const;
   FakeSystemUtilities* fake_system_utils() const;
-  MockExecutorAdapter* mock_executor() const;
+  MockExecutor* mock_executor();
   base::SimpleTestTickClock* mock_tick_clock() const;
   org::chromium::TpmManagerProxyMock* mock_tpm_manager_proxy() const;
   brillo::MockUdev* mock_udev() const;
@@ -83,6 +85,8 @@ class MockContext final : public Context {
   FakeLibdrmUtil fake_libdrm_util_;
   // Used to create a fake pci util.
   FakePciUtil fake_pci_util_;
+  // Mock executor.
+  MockExecutor mock_executor_;
 };
 
 }  // namespace diagnostics

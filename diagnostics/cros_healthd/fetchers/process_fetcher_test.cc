@@ -183,7 +183,7 @@ class ProcessFetcherTest : public testing::Test {
         kFakeProcPidCmdlineContents));
   }
 
-  MockExecutorAdapter* mock_executor() { return mock_context_.mock_executor(); }
+  MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   mojo_ipc::ProcessResultPtr FetchProcessInfo() {
     mojo_ipc::ProcessResultPtr result;

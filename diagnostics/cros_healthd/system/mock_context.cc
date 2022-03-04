@@ -35,7 +35,6 @@ MockContext::MockContext() {
   powerd_adapter_ = std::make_unique<FakePowerdAdapter>();
   system_config_ = std::make_unique<FakeSystemConfig>();
   system_utils_ = std::make_unique<FakeSystemUtilities>();
-  executor_ = std::make_unique<MockExecutorAdapter>();
   tick_clock_ = std::make_unique<base::SimpleTestTickClock>();
   tpm_manager_proxy_ = std::make_unique<
       testing::StrictMock<org::chromium::TpmManagerProxyMock>>();
@@ -58,6 +57,10 @@ org::chromium::AttestationProxyMock* MockContext::mock_attestation_proxy()
     const {
   return static_cast<testing::StrictMock<org::chromium::AttestationProxyMock>*>(
       attestation_proxy_.get());
+}
+
+chromeos::cros_healthd_executor::mojom::Executor* MockContext::executor() {
+  return &mock_executor_;
 }
 
 FakeBluetoothClient* MockContext::fake_bluetooth_client() const {
@@ -114,8 +117,8 @@ FakeSystemUtilities* MockContext::fake_system_utils() const {
   return static_cast<FakeSystemUtilities*>(system_utils_.get());
 }
 
-MockExecutorAdapter* MockContext::mock_executor() const {
-  return static_cast<MockExecutorAdapter*>(executor_.get());
+MockExecutor* MockContext::mock_executor() {
+  return &mock_executor_;
 }
 
 base::SimpleTestTickClock* MockContext::mock_tick_clock() const {

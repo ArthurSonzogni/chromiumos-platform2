@@ -19,7 +19,6 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
-#include "diagnostics/cros_healthd/executor/mock_executor_adapter.h"
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
@@ -91,7 +90,7 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
 
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
-  MockExecutorAdapter* mock_executor() { return mock_context_.mock_executor(); }
+  MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   mojo_ipc::NetworkInterfaceResultPtr FetchNetworkInterfaceInfo() {
     base::RunLoop run_loop;

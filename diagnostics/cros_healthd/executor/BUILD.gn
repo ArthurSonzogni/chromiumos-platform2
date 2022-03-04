@@ -22,14 +22,6 @@ source_set("libcros_healthd_executor") {
   ]
   sources = [
     "executor.cc",
-    "executor_adapter_impl.cc",
     "executor_daemon.cc",
   ]
-}
-
-if (use.test || use.fuzzer) {
-  source_set("libcros_healthd_executor_test_utils") {
-    deps = [ "//diagnostics/mojom/private:cros_healthd_executor_mojo_bindings" ]
-    sources = [ "mock_executor_adapter.cc" ]
-  }
 }

@@ -19,7 +19,6 @@
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/mojo_type_utils.h"
-#include "diagnostics/cros_healthd/executor/mock_executor_adapter.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -245,7 +244,7 @@ class SystemUtilsTest : public BaseFileTest {
 
  protected:
   mojo_ipc::SystemInfoV2Ptr expected_system_info_;
-  MockExecutorAdapter* mock_executor() { return mock_context_.mock_executor(); }
+  MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
   mojo_ipc::SystemResultPtr FetchSystemInfo() {
     base::RunLoop run_loop;
     mojo_ipc::SystemResultPtr result;

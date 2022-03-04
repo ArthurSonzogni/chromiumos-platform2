@@ -16,13 +16,13 @@
 #include <chromeos/dbus/service_constants.h>
 #include <cras/dbus-proxies.h>
 #include <debugd/dbus-proxies.h>
+#include <mojo/public/cpp/system/invitation.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "diagnostics/common/system/bluetooth_client_impl.h"
 #include "diagnostics/common/system/debugd_adapter_impl.h"
 #include "diagnostics/common/system/powerd_adapter_impl.h"
-#include "diagnostics/cros_healthd/executor/executor_adapter_impl.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
 #include "diagnostics/cros_healthd/system/libdrm_util_impl.h"
@@ -32,13 +32,30 @@
 #include "diagnostics/cros_healthd/utils/mojo_relay_impl.h"
 
 namespace diagnostics {
+namespace {
+namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
+
+mojo::PendingRemote<executor_ipc::Executor> SendInvitationAndConnectToExecutor(
+    mojo::PlatformChannelEndpoint endpoint) {
+  // This sends invitation to the executor process. Must be the outgoing
+  // invitation because cros_healthd is the process which connects to the mojo
+  // broker. This must be run after the mojo ipc thread is initialized.
+  mojo::OutgoingInvitation invitation;
+  // Always use 0 as the default pipe name.
+  mojo::ScopedMessagePipeHandle pipe = invitation.AttachMessagePipe(0);
+  mojo::OutgoingInvitation::Send(std::move(invitation),
+                                 base::kNullProcessHandle, std::move(endpoint));
+  return mojo::PendingRemote<executor_ipc::Executor>(std::move(pipe),
+                                                     /*version=*/0);
+}
+}  // namespace
 
 Context::Context() = default;
 
 Context::~Context() = default;
 
 std::unique_ptr<Context> Context::Create(
-    mojo::PlatformChannelEndpoint endpoint,
+    mojo::PlatformChannelEndpoint executor_endpoint,
     std::unique_ptr<brillo::UdevMonitor>&& udev_monitor) {
   std::unique_ptr<Context> context(new Context());
 
@@ -46,9 +63,9 @@ std::unique_ptr<Context> Context::Create(
   context->root_dir_ = base::FilePath("/");
   context->udev_monitor_ = std::move(udev_monitor);
 
-  // Create and connect the adapter for the root-level executor.
-  context->executor_ = std::make_unique<ExecutorAdapterImpl>();
-  context->executor_->Connect(std::move(endpoint));
+  // Connect to the root-level executor.
+  context->executor_.Bind(
+      SendInvitationAndConnectToExecutor(std::move(executor_endpoint)));
 
   // Initialize the D-Bus connection.
   auto dbus_bus = context->connection_.Connect();
@@ -159,7 +176,7 @@ SystemConfigInterface* Context::system_config() const {
   return system_config_.get();
 }
 
-ExecutorAdapter* Context::executor() const {
+chromeos::cros_healthd_executor::mojom::Executor* Context::executor() {
   return executor_.get();
 }
 
