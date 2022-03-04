@@ -50,7 +50,7 @@ class ExecutorAdapter {
 
   // Retrieves the contents of a process-specific I/O file.
   virtual void GetProcessIOContents(
-      const pid_t pid, Executor::GetProcessIOContentsCallback callback) = 0;
+      uint32_t pid, Executor::GetProcessIOContentsCallback callback) = 0;
 
   // Read MSR register.
   virtual void ReadMsr(const uint32_t msr_reg,

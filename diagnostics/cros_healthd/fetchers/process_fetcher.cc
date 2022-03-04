@@ -273,7 +273,7 @@ void ProcessFetcher::FetchProcessInfo(
                             &process_info.command);
 
   context_->executor()->GetProcessIOContents(
-      process_id_,
+      base::checked_cast<uint32_t>(process_id_),
       base::BindOnce(&FinishFetchingProcessInfo, std::move(callback),
                      std::move(process_info)));
 }

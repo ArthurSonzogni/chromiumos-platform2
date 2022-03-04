@@ -45,7 +45,7 @@ class MockExecutorAdapter final : public ExecutorAdapter {
   MOCK_METHOD(void, KillMemtester, (), (override));
   MOCK_METHOD(void,
               GetProcessIOContents,
-              (const pid_t pid, Executor::GetProcessIOContentsCallback),
+              (uint32_t pid, Executor::GetProcessIOContentsCallback),
               (override));
   MOCK_METHOD(void,
               ReadMsr,

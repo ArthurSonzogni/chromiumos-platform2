@@ -33,8 +33,7 @@ class ExecutorAdapterImpl final : public ExecutorAdapter {
   void RunMemtester(Executor::RunMemtesterCallback callback) override;
   void KillMemtester() override;
   void GetProcessIOContents(
-      const pid_t pid,
-      Executor::GetProcessIOContentsCallback callback) override;
+      uint32_t pid, Executor::GetProcessIOContentsCallback callback) override;
   void ReadMsr(const uint32_t msr_reg,
                Executor::ReadMsrCallback callback) override;
   void GetUEFISecureBootContent(

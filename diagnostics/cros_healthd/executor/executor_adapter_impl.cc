@@ -89,7 +89,7 @@ void ExecutorAdapterImpl::KillMemtester() {
 }
 
 void ExecutorAdapterImpl::GetProcessIOContents(
-    const pid_t pid, Executor::GetProcessIOContentsCallback callback) {
+    uint32_t pid, Executor::GetProcessIOContentsCallback callback) {
   DCHECK(executor_.is_bound());
 
   executor_->GetProcessIOContents(base::checked_cast<uint32_t>(pid),
