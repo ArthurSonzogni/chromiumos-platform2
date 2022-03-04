@@ -115,7 +115,6 @@ _IUSE = [
     'pinweaver_csme',
     'postinstall_config_efi_and_legacy',
     'power_management',
-    'pppoe',
     'prjquota',
     'profiling',
     'qrtr',
