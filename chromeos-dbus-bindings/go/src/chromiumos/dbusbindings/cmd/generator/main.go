@@ -12,12 +12,14 @@ import (
 	"log"
 	"os"
 
+	"chromiumos/dbusbindings/generate/adaptor"
 	"chromiumos/dbusbindings/generate/methodnames"
 	"chromiumos/dbusbindings/introspect"
 )
 
 func main() {
 	methodNamesFilePath := flag.String("method-names", "", "the output header file with string constants for each method name")
+	adaptorFilePath := flag.String("adaptor", "", "the output header file name containing the DBus adaptor class")
 	flag.Parse()
 
 	var introspections []introspect.Introspection
@@ -48,6 +50,22 @@ func main() {
 
 		if err := methodnames.Generate(introspections, f); err != nil {
 			log.Fatalf("Failed to generate methodnames: %v\n", err)
+		}
+	}
+
+	if *adaptorFilePath != "" {
+		f, err := os.Create(*adaptorFilePath)
+		if err != nil {
+			log.Fatalf("Failed to create file %s: %v\n", *adaptorFilePath, err)
+		}
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Fatalf("Failed to close file %s: %v\n", *adaptorFilePath, err)
+			}
+		}()
+
+		if err := adaptor.Generate(introspections, f, *adaptorFilePath); err != nil {
+			log.Fatalf("Failed to generate adaptor: %v\n", err)
 		}
 	}
 }

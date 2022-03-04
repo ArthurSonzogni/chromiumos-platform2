@@ -10,17 +10,13 @@ import (
 	"strings"
 	"text/template"
 
+	"chromiumos/dbusbindings/generate/genutil"
 	"chromiumos/dbusbindings/introspect"
 )
 
 var funcMap = template.FuncMap{
-	"reverse": func(s []string) []string {
-		for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
-			s[i], s[j] = s[j], s[i]
-		}
-		return s
-	},
-	"split": strings.Split,
+	"reverse": genutil.Reverse,
+	"split":   strings.Split,
 }
 
 const templateText = `
