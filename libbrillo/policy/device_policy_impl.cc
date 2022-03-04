@@ -907,6 +907,17 @@ bool DevicePolicyImpl::GetDeviceKeylockerForStorageEncryptionEnabled(
   return true;
 }
 
+std::optional<bool> DevicePolicyImpl::GetReportDeviceSecurityStatus() const {
+  if (!device_policy_.has_device_reporting())
+    return {};
+
+  const em::DeviceReportingProto& proto = device_policy_.device_reporting();
+  if (!proto.has_report_security_status())
+    return {};
+
+  return proto.report_security_status();
+}
+
 bool DevicePolicyImpl::VerifyPolicyFile(const base::FilePath& policy_path) {
   if (!verify_root_ownership_) {
     return true;

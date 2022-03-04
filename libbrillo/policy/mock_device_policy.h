@@ -142,6 +142,10 @@ class MockDevicePolicy : public DevicePolicy {
               GetDeviceKeylockerForStorageEncryptionEnabled,
               (bool*),
               (const, override));
+  MOCK_METHOD(std::optional<bool>,
+              GetReportDeviceSecurityStatus,
+              (),
+              (const, override));
 };
 }  // namespace policy
 

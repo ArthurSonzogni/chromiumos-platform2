@@ -103,6 +103,7 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetDeviceDebugPacketCaptureAllowed(bool* allowed) const override;
   bool GetDeviceKeylockerForStorageEncryptionEnabled(
       bool* keylocker_enabled) const override;
+  std::optional<bool> GetReportDeviceSecurityStatus() const override;
 
   // Methods that can be used only for testing.
   void set_policy_data_for_testing(

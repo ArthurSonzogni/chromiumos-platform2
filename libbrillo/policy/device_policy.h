@@ -301,6 +301,10 @@ class DevicePolicy {
   // returns true.
   virtual bool GetDeviceDebugPacketCaptureAllowed(bool* allowed) const = 0;
 
+  // Returns the value of the ReportDeviceSecurityStatus policy. On
+  // error or if the policy is not set, returns an empty value.
+  virtual std::optional<bool> GetReportDeviceSecurityStatus() const = 0;
+
  private:
   // Verifies that the policy signature is correct.
   virtual bool VerifyPolicySignature() = 0;
