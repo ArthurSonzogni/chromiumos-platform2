@@ -7,16 +7,21 @@
 package main
 
 import (
-	"fmt"
+	"flag"
 	"io/ioutil"
 	"log"
 	"os"
 
+	"chromiumos/dbusbindings/generate/methodnames"
 	"chromiumos/dbusbindings/introspect"
 )
 
 func main() {
-	for _, path := range os.Args[1:] {
+	methodNamesFilePath := flag.String("method-names", "", "the output header file with string constants for each method name")
+	flag.Parse()
+
+	var introspections []introspect.Introspection
+	for _, path := range flag.Args() {
 		b, err := ioutil.ReadFile(path)
 		if err != nil {
 			log.Fatalf("Failed to read file %s: %v\n", path, err)
@@ -26,6 +31,23 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to parse interface file %s: %v\n", path, err)
 		}
-		fmt.Printf("%+v\n", introspection)
+
+		introspections = append(introspections, introspection)
+	}
+
+	if *methodNamesFilePath != "" {
+		f, err := os.Create(*methodNamesFilePath)
+		if err != nil {
+			log.Fatalf("Failed to create file %s: %v\n", *methodNamesFilePath, err)
+		}
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Fatalf("Failed to close file %s: %v\n", *methodNamesFilePath, err)
+			}
+		}()
+
+		if err := methodnames.Generate(introspections, f); err != nil {
+			log.Fatalf("Failed to generate methodnames: %v\n", err)
+		}
 	}
 }
