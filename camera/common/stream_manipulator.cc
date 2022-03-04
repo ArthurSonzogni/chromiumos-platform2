@@ -216,10 +216,8 @@ StreamManipulator::GetEnabledStreamManipulators(
 #endif
 
   // TODO(jcliang): See if we want to move ZSL to feature profile.
-  if (options.enable_cros_zsl) {
-    stream_manipulators.emplace_back(std::make_unique<ZslStreamManipulator>());
-    LOGF(INFO) << "ZslStreamManipulator enabled";
-  }
+  stream_manipulators.emplace_back(std::make_unique<ZslStreamManipulator>());
+  LOGF(INFO) << "ZslStreamManipulator enabled";
 
   stream_manipulators.emplace_back(
       std::make_unique<SWPrivacySwitchStreamManipulator>(runtime_options,

@@ -38,10 +38,6 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     // Used to identify the camera device that the stream manipulators will be
     // created for (e.g. USB v.s. vendor camera HAL).
     std::string camera_module_name;
-
-    // Whether we should attempt to enable ZSL. We might have vendor-specific
-    // ZSL solution, and in which case we should not try to enable our ZSL.
-    bool enable_cros_zsl;
   };
 
   class RuntimeOptions {
@@ -107,6 +103,11 @@ class CROS_CAMERA_EXPORT StreamManipulator {
       CameraMojoChannelManagerToken* mojo_manager_token);
 
   virtual ~StreamManipulator() = default;
+
+  // A hook to camera_module::get_camera_info() that is called by
+  // CameraHalAdapter with the static metadata that will be returned by the
+  // camera HAL implementation.
+  virtual bool UpdateStaticMetadata(android::CameraMetadata* static_info) = 0;
 
   // The followings are hooks to the camera3_device_ops APIs and will be called
   // by CameraDeviceAdapter on the CameraDeviceOpsThread.

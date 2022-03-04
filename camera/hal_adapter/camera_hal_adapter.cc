@@ -45,14 +45,6 @@
 
 namespace cros {
 
-// Defined in features/zsl/zsl_helper.cc. We use forward declaration instead
-// including the header file to avoid having direct dependency on files under
-// features/zsl/.
-//
-// TODO(jcliang): See if we can have a hook in StreamManipulator for the static
-// metadata configuration.
-bool TryAddEnableZslKey(android::CameraMetadata* metadata);
-
 namespace {
 
 // A special id used in ResetModuleDelegateOnThread and
@@ -258,17 +250,11 @@ int32_t CameraHalAdapter::OpenDevice(
   base::OnceCallback<void()> close_callback = base::BindOnce(
       &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
       base::ThreadTaskRunnerHandle::Get(), camera_id, camera_client_type);
-  StreamManipulator::Options options = {
-      .camera_module_name = camera_module->common.name,
-      .enable_cros_zsl = base::Contains(can_attempt_zsl_camera_ids_, camera_id),
-  };
   device_adapters_[camera_id] = std::make_unique<CameraDeviceAdapter>(
       camera_device, info.device_version, metadata,
       std::move(get_internal_camera_id_callback),
       std::move(get_public_camera_id_callback), std::move(close_callback),
-      StreamManipulator::GetEnabledStreamManipulators(
-          std::move(options), &stream_manipulator_runtime_options_,
-          gpu_resources_, mojo_manager_token_));
+      TakeStreamManipulators(camera_id));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
       has_reprocess_effect_vendor_tag_callback = base::BindRepeating(
@@ -494,20 +480,22 @@ const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
   TRACE_HAL_ADAPTER(kCameraTraceKeyClientType, camera_client_type,
                     kCameraTraceKeyCameraId, camera_id);
 
-  auto& metadata_scoped =
+  auto& metadata =
       static_metadata_map_[std::make_pair(camera_id, camera_client_type)];
-  if (metadata_scoped) {
-    return metadata_scoped.get()->getAndLock();
+  if (metadata) {
+    return metadata->getAndLock();
   }
 
-  metadata_scoped = std::make_unique<android::CameraMetadata>();
-  auto* metadata = metadata_scoped.get();
+  metadata = std::make_unique<android::CameraMetadata>();
   metadata->acquire(clone_camera_metadata(static_metadata));
-  reprocess_effect_manager_.UpdateStaticMetadata(metadata);
-  if (TryAddEnableZslKey(metadata)) {
-    LOGF(INFO) << "Will attempt to enable ZSL by private reprocessing";
-    can_attempt_zsl_camera_ids_.insert(camera_id);
+
+  reprocess_effect_manager_.UpdateStaticMetadata(metadata.get());
+
+  const auto& stream_manipulators = GetStreamManipulators(camera_id);
+  for (size_t i = stream_manipulators.size(); i > 0; --i) {
+    stream_manipulators[i - 1]->UpdateStaticMetadata(metadata.get());
   }
+
   if (metadata->exists(ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS)) {
     auto it = physical_camera_id_map_.find(camera_id);
     if (it == physical_camera_id_map_.end()) {
@@ -1002,4 +990,31 @@ int32_t CameraHalAdapter::SetCallbacks(
 
   return 0;
 }
+
+const std::vector<std::unique_ptr<StreamManipulator>>&
+CameraHalAdapter::GetStreamManipulators(int camera_id) {
+  if (!base::Contains(stream_manipulators_, camera_id)) {
+    auto [camera_module, internal_camera_id] =
+        GetInternalModuleAndId(camera_id);
+    stream_manipulators_.insert(std::make_pair(
+        camera_id, StreamManipulator::GetEnabledStreamManipulators(
+                       StreamManipulator::Options{
+                           .camera_module_name = camera_module->common.name,
+                       },
+                       &stream_manipulator_runtime_options_, gpu_resources_,
+                       mojo_manager_token_)));
+  }
+  return stream_manipulators_.at(camera_id);
+}
+
+std::vector<std::unique_ptr<StreamManipulator>>
+CameraHalAdapter::TakeStreamManipulators(int camera_id) {
+  GetStreamManipulators(camera_id);
+  auto it = stream_manipulators_.find(camera_id);
+  DCHECK(it != stream_manipulators_.end());
+  std::vector<std::unique_ptr<StreamManipulator>> ret = std::move(it->second);
+  stream_manipulators_.erase(it);
+  return ret;
+}
+
 }  // namespace cros

@@ -17,8 +17,19 @@ ZslStreamManipulator::ZslStreamManipulator() {}
 
 ZslStreamManipulator::~ZslStreamManipulator() {}
 
+bool ZslStreamManipulator::UpdateStaticMetadata(
+    android::CameraMetadata* static_info) {
+  can_attempt_zsl_ = TryAddEnableZslKey(static_info);
+  LOGF(INFO) << "Can attempt to enable ZSL by private reprocessing: "
+             << can_attempt_zsl_;
+  return true;
+}
+
 bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
                                       CaptureResultCallback result_callback) {
+  if (!can_attempt_zsl_) {
+    return true;
+  }
   std::optional<int32_t> partial_result_count =
       GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
   partial_result_count_ = partial_result_count.value_or(1);
@@ -28,6 +39,9 @@ bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
 
 bool ZslStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
+  if (!can_attempt_zsl_) {
+    return true;
+  }
   zsl_enabled_ = false;
   zsl_stream_attached_ = zsl_helper_->AttachZslStream(stream_config);
   if (zsl_stream_attached_) {
@@ -38,6 +52,9 @@ bool ZslStreamManipulator::ConfigureStreams(
 
 bool ZslStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
+  if (!can_attempt_zsl_) {
+    return true;
+  }
   if (zsl_stream_attached_) {
     if (zsl_helper_->Initialize(stream_config)) {
       zsl_enabled_ = true;
@@ -52,6 +69,9 @@ bool ZslStreamManipulator::OnConfiguredStreams(
 
 bool ZslStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
+  if (!can_attempt_zsl_) {
+    return true;
+  }
   // Enabling ZSL by default will fail some AE compensation CTS tests. Currently
   // ZSL is only used by Chrome VCD. Enabling ZSL for Android by default is
   // still a TODO.
@@ -67,6 +87,9 @@ bool ZslStreamManipulator::ConstructDefaultRequestSettings(
 
 bool ZslStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
+  if (!can_attempt_zsl_) {
+    return true;
+  }
   if (zsl_enabled_) {
     zsl_helper_->ProcessZslCaptureRequest(
         request, ZslHelper::SelectionStrategy::CLOSEST_3A);
@@ -81,6 +104,9 @@ bool ZslStreamManipulator::ProcessCaptureRequest(
 
 bool ZslStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor* result) {
+  if (!can_attempt_zsl_) {
+    return true;
+  }
   bool is_input_transformed = false;
   if (zsl_enabled_) {
     zsl_helper_->ProcessZslCaptureResult(result, &is_input_transformed);
@@ -97,6 +123,9 @@ bool ZslStreamManipulator::ProcessCaptureResult(
 }
 
 bool ZslStreamManipulator::Notify(camera3_notify_msg_t* msg) {
+  if (!can_attempt_zsl_) {
+    return true;
+  }
   if (msg->type == CAMERA3_MSG_ERROR) {
     zsl_helper_->OnNotifyError(msg->message.error);
   }

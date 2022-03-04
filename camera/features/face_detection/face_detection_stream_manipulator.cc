@@ -59,6 +59,11 @@ FaceDetectionStreamManipulator::FaceDetectionStreamManipulator(
                           base::Unretained(this)));
 }
 
+bool FaceDetectionStreamManipulator::UpdateStaticMetadata(
+    android::CameraMetadata* static_info) {
+  return true;
+}
+
 bool FaceDetectionStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {

@@ -231,6 +231,11 @@ HdrNetStreamManipulator::~HdrNetStreamManipulator() {
                                 base::Unretained(this)));
 }
 
+bool HdrNetStreamManipulator::UpdateStaticMetadata(
+    android::CameraMetadata* static_info) {
+  return true;
+}
+
 bool HdrNetStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     CaptureResultCallback result_callback) {

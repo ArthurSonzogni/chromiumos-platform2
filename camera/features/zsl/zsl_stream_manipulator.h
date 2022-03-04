@@ -26,6 +26,7 @@ class ZslStreamManipulator : public StreamManipulator {
   ~ZslStreamManipulator() override;
 
   // Implementations of StreamManipulator.
+  bool UpdateStaticMetadata(android::CameraMetadata* static_info) override;
   bool Initialize(const camera_metadata_t* static_info,
                   CaptureResultCallback result_callback) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
@@ -38,6 +39,8 @@ class ZslStreamManipulator : public StreamManipulator {
   bool Flush() override;
 
  private:
+  bool can_attempt_zsl_ = false;
+
   int partial_result_count_ = 0;
 
   // A helper class that includes various functions for the mechanisms of ZSL.

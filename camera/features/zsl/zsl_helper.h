@@ -270,7 +270,7 @@ class ZslHelper {
 
 // Updates the static metadata of the camera device if we can attempt to
 // enable our in-house ZSL solution for it.
-bool CROS_CAMERA_EXPORT TryAddEnableZslKey(android::CameraMetadata* metadata);
+bool TryAddEnableZslKey(android::CameraMetadata* metadata);
 
 }  // namespace cros
 
