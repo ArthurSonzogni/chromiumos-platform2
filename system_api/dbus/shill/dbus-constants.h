@@ -196,13 +196,6 @@ const char kEapUseSystemCasProperty[] = "EAP.UseSystemCAs";
 const char kEapSubjectAlternativeNameMatchTypeProperty[] = "Type";
 const char kEapSubjectAlternativeNameMatchValueProperty[] = "Value";
 
-// PPPoE Service property names.
-const char kPPPoELCPEchoFailureProperty[] = "PPPoE.LCPEchoFailure";
-const char kPPPoELCPEchoIntervalProperty[] = "PPPoE.LCPEchoInterval";
-const char kPPPoEMaxAuthFailureProperty[] = "PPPoE.MaxAuthFailure";
-const char kPPPoEPasswordProperty[] = "PPPoE.Password";
-const char kPPPoEUsernameProperty[] = "PPPoE.Username";
-
 // WiFi Service property names.
 const char kCountryProperty[] = "Country";
 const char kModeProperty[] = "Mode";
@@ -417,7 +410,6 @@ const char kEapAuthenticationCompletedProperty[] = "EapAuthenticationCompleted";
 const char kEapAuthenticatorDetectedProperty[] = "EapAuthenticatorDetected";
 const char kDeviceBusTypeProperty[] = "Ethernet.DeviceBusType";
 const char kLinkUpProperty[] = "Ethernet.LinkUp";
-const char kPPPoEProperty[] = "Ethernet.PPPoE";
 const char kUsbEthernetMacAddressSourceProperty[] =
     "Ethernet.UsbEthernetMacAddressSource";
 
@@ -611,7 +603,6 @@ const char kTypeEthernet[] = "ethernet";
 const char kTypeWifi[] = "wifi";
 const char kTypeCellular[] = "cellular";
 const char kTypeVPN[] = "vpn";
-const char kTypePPPoE[] = "pppoe";
 
 // Flimflam mode options.
 const char kModeManaged[] = "managed";
