@@ -11,6 +11,11 @@ import (
 // Parse converts introspection from the XML to a structure.
 func Parse(content []byte) (Introspection, error) {
 	var i Introspection
-	err := xml.Unmarshal(content, &i)
-	return i, err
+	if err := xml.Unmarshal(content, &i); err != nil {
+		return Introspection{}, err
+	}
+	if err := verifyIntrospection(&i); err != nil {
+		return Introspection{}, err
+	}
+	return i, nil
 }
