@@ -224,6 +224,7 @@ class FakePlatform final : public Platform {
   mutable std::unordered_map<base::FilePath, std::pair<uid_t, gid_t>>
       file_owners_;
   mutable std::unordered_map<base::FilePath, mode_t> file_mode_;
+  mutable std::unordered_map<base::FilePath, int> file_flags_;
 
   base::FilePath tmpfs_rootfs_;
   std::unique_ptr<FakeMountMapper> fake_mount_mapper_;

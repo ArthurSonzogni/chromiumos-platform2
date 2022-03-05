@@ -10,6 +10,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <linux/fs.h>
 #include <vector>
 
 #include <base/check.h>
@@ -177,6 +178,7 @@ void FakePlatform::RemoveFakeEntries(const base::FilePath& path) {
   xattrs_.erase(path);
   file_owners_.erase(path);
   file_mode_.erase(path);
+  file_flags_.erase(path);
 }
 
 void FakePlatform::RemoveFakeEntriesRecursive(const base::FilePath& path) {
@@ -184,6 +186,7 @@ void FakePlatform::RemoveFakeEntriesRecursive(const base::FilePath& path) {
   RemoveFakeEntriesRecursiveImpl(path, &xattrs_);
   RemoveFakeEntriesRecursiveImpl(path, &file_owners_);
   RemoveFakeEntriesRecursiveImpl(path, &file_mode_);
+  RemoveFakeEntriesRecursiveImpl(path, &file_flags_);
 }
 
 // Platform API
@@ -559,15 +562,32 @@ bool FakePlatform::RemoveExtendedFileAttribute(const base::FilePath& path,
 
 bool FakePlatform::GetExtFileAttributes(const base::FilePath& path,
                                         int* flags) {
-  return real_platform_.GetExtFileAttributes(TestFilePath(path), flags);
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
+    return false;
+  }
+  auto it = file_flags_.find(real_path);
+  if (it == file_flags_.end()) {
+    *flags = 0;
+    return true;
+  }
+  *flags = it->second;
+  return true;
 }
 
 bool FakePlatform::SetExtFileAttributes(const base::FilePath& path, int flags) {
-  return real_platform_.SetExtFileAttributes(TestFilePath(path), flags);
+  const base::FilePath real_path = TestFilePath(path);
+  if (!IsLink(path) && !FileExists(path)) {
+    return false;
+  }
+  file_flags_[real_path] = flags;
+  return true;
 }
 
 bool FakePlatform::HasNoDumpFileAttribute(const base::FilePath& path) {
-  return real_platform_.HasNoDumpFileAttribute(TestFilePath(path));
+  int flags;
+  return GetExtFileAttributes(path, &flags) &&
+         (flags & FS_NODUMP_FL) == FS_NODUMP_FL;
 }
 
 bool FakePlatform::GetOwnership(const base::FilePath& path,
