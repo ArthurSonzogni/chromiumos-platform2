@@ -432,7 +432,7 @@ In the tables below,
 | nnapi | [nnapi](#nnapi) |  | False |  | False | Configurable parameters for the NNAPI (Neural Networks API) package. |
 | nnpalm | [nnpalm](#nnpalm) |  | False |  | False |  |
 | oem-id | string | ```[0-9]+``` | False |  | False | Some projects store SKU ID, OEM ID and Board Revision in an EEPROM and only SKU ID can be updated in the factory and RMA flow but others should be pre-flashed in the chip level. In this case, we would like to validate whether oem-id here from the updated SKU ID matches the one in the EEPROM so we can prevent this device from being updated to another OEM's devices.  |
-| power | [power](#power) |  | False |  | False | Defines settings that control power management functions. This mostly defines power_manager preferences, but there are a few other power related settings included. For details about each power_manager preference, see - src/platform2/power_manager/common/power_constants.h/cc For examples on setting these properties (including multiline examples), see the power config example in libcros_config/test.yaml |
+| power | [power](#power) |  | False |  | False | Defines settings that control power management functions. This mostly defines power_manager preferences, but there are a few other power related settings included. For details about each power_manager preference, see - src/platform2/power_manager/common/power_constants.h/cc For examples on setting these properties (including multiline examples), see the power config example in test_data/test.yaml |
 | proximity-sensor | [proximity-sensor](#proximity_sensor) |  | False |  | False | Defines the proximity sensor settings for devices such as /dev/proximity-wifi and /dev/proximity-wifi-lte typically used for SAR. |
 | regulatory-label | string |  | False |  | False | Base name of the directory containing the regulatory label files to show on this device. |
 | scheduler-tune | [scheduler-tune](#scheduler_tune) |  | False |  | False | ChromeOS scheduler's tunable values. |
@@ -1111,11 +1111,16 @@ To introduce a new property, first add its definition to the schema:
 chromeos-config/cros_config_host/cros_config_schema.yaml
 ```
 
-Then update the `README.md` automatically via (unit tests will check this):
+Then update generated files and the `README.md` automatically via (unit tests
+will check this):
 
 ```bash
-(chroot) $ python -m cros_config_host.generate_schema_doc -o README.md
+src/platform2/chromeos-config/regen.sh
 ```
+
+You'll want to run `./regen.sh` when adding or changing the schema, power
+management preferences, or anything which modifies the outputs of
+`cros_config_schema`.
 
 To install the updated schema, run:
 

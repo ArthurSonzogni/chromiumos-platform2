@@ -789,7 +789,7 @@ properties:
                 For details about each power_manager preference, see -
                 src/platform2/power_manager/common/power_constants.h/cc
                 For examples on setting these properties (including multiline examples), see
-                the power config example in libcros_config/test.yaml
+                the power config example in test_data/test.yaml
               type: object
               properties:
                 <<: *powerd_prefs
