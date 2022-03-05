@@ -17,7 +17,10 @@
 #include "dlcservice/dbus-proxy-mocks.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include "modemfwd/mock_metrics.h"
 
+using modemfwd::metrics::DlcInstallResult;
+using modemfwd::metrics::DlcUninstallResult;
 using testing::_;
 using testing::DoAll;
 using testing::InSequence;
@@ -57,10 +60,11 @@ namespace modemfwd {
 class DlcManagerHelper : public DlcManager {
  public:
   explicit DlcManagerHelper(
+      Metrics* metrics,
       std::map<std::string, std::string> dlc_per_variant,
       std::string variant,
       std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface> proxy)
-      : DlcManager(dlc_per_variant, variant, std::move(proxy)) {}
+      : DlcManager(metrics, dlc_per_variant, variant, std::move(proxy)) {}
 };
 
 class DlcManagerTest : public ::testing::Test {
@@ -69,6 +73,7 @@ class DlcManagerTest : public ::testing::Test {
     mock_dlcservice_proxy_ = std::make_unique<
         StrictMock<org::chromium::DlcServiceInterfaceProxyMock>>();
     mock_dlcservice_proxy_ptr_ = mock_dlcservice_proxy_.get();
+    mock_metrics_ = std::make_unique<testing::StrictMock<MockMetrics>>();
   }
 
   void AddWaitForServiceExpects() {
@@ -193,6 +198,7 @@ class DlcManagerTest : public ::testing::Test {
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::unique_ptr<DlcManagerHelper> dlc_manager_;
+  std::unique_ptr<MockMetrics> mock_metrics_;
 
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyMock>
       mock_dlcservice_proxy_;
@@ -232,7 +238,8 @@ class DlcManagerTest : public ::testing::Test {
         {kOtherVariant2, kOtherDlc2}};
 
     dlc_manager_ = std::make_unique<DlcManagerHelper>(
-        dlc_per_variant, kDeviceVariant, std::move(mock_dlcservice_proxy_));
+        mock_metrics_.get(), dlc_per_variant, kDeviceVariant,
+        std::move(mock_dlcservice_proxy_));
 
     default_install_request_.set_id(kDeviceDlc);
     default_install_request_.set_reserve(true);
@@ -257,6 +264,7 @@ TEST_F(DlcManagerTest, InstallModemDlcSuccess) {
       .WillOnce(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
 
   EXPECT_CALL(install_cb, Run(kDeviceDlcMountPath, nullptr));
+  EXPECT_CALL(*mock_metrics_, SendDlcInstallResult(DlcInstallResult::kSuccess));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
 
@@ -270,6 +278,9 @@ TEST_F(DlcManagerTest, InstallModemDlcServiceNotAvailable) {
   InstallModemDlcOnceCallbackMock install_cb;
   AddWaitForServiceExpects();
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
+  EXPECT_CALL(*mock_metrics_,
+              SendDlcInstallResult(
+                  DlcInstallResult::kFailedTimeoutWaitingForDlcService));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   task_environment_.FastForwardBy(dlcmanager::kInstallTimeout +
@@ -285,6 +296,9 @@ TEST_F(DlcManagerTest, InstallModemDlcInstallAsyncTimeout) {
       .WillOnce(Invoke(this, &DlcManagerTest::StoreInstallAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
+  EXPECT_CALL(*mock_metrics_,
+              SendDlcInstallResult(
+                  DlcInstallResult::kFailedTimeoutWaitingForDlcInstall));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   task_environment_.FastForwardBy(dlcmanager::kInstallTimeout -
@@ -311,6 +325,9 @@ TEST_F(DlcManagerTest, InstallModemDlcWaitingForInstalledStateFailed) {
           Invoke(this, &DlcManagerTest::InvokeGetDlcStateSuccessInstalling));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
+  EXPECT_CALL(*mock_metrics_,
+              SendDlcInstallResult(
+                  DlcInstallResult::kFailedTimeoutWaitingForInstalledState));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
@@ -341,6 +358,7 @@ TEST_F(DlcManagerTest, InstallModemDlcWaitingForInstalledStateSucceed) {
       .WillOnce(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
 
   EXPECT_CALL(install_cb, Run(kDeviceDlcMountPath, nullptr));
+  EXPECT_CALL(*mock_metrics_, SendDlcInstallResult(DlcInstallResult::kSuccess));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
@@ -360,6 +378,9 @@ TEST_F(DlcManagerTest, InstallModemDlcInstallAsyncError) {
       .WillOnce(Invoke(this, &DlcManagerTest::StoreInstallAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
+  EXPECT_CALL(
+      *mock_metrics_,
+      SendDlcInstallResult(DlcInstallResult::kDlcServiceReturnedNoImageFound));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
@@ -379,6 +400,9 @@ TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncError) {
       .WillOnce(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
+  EXPECT_CALL(
+      *mock_metrics_,
+      SendDlcInstallResult(DlcInstallResult::kDlcServiceReturnedNeedReboot));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
@@ -400,6 +424,9 @@ TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncErrorOnSecondCall) {
       .WillRepeatedly(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
+  EXPECT_CALL(
+      *mock_metrics_,
+      SendDlcInstallResult(DlcInstallResult::kDlcServiceReturnedAllocation));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
@@ -422,6 +449,8 @@ TEST_F(DlcManagerTest, InstallModemDlcGetDlcStateAsyncUnexpectedState) {
       .WillOnce(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
+  EXPECT_CALL(*mock_metrics_, SendDlcInstallResult(
+                                  DlcInstallResult::kFailedUnexpectedDlcState));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
@@ -439,6 +468,9 @@ TEST_F(DlcManagerTest, InstallModemDlcRetryInstallOnFailure) {
       .WillOnce(Invoke(this, &DlcManagerTest::StoreInstallAsync));
 
   EXPECT_CALL(install_cb, Run("", NotNull()));  // error returned
+  EXPECT_CALL(
+      *mock_metrics_,
+      SendDlcInstallResult(DlcInstallResult::kDlcServiceReturnedNoImageFound));
 
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
               InstallAsync(EqualsProto(default_install_request_), _, _, _))
@@ -447,6 +479,8 @@ TEST_F(DlcManagerTest, InstallModemDlcRetryInstallOnFailure) {
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_,
               GetDlcStateAsync(kDeviceDlc, _, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StoreGetDlcStateAsync));
+
+  EXPECT_CALL(*mock_metrics_, SendDlcInstallResult(DlcInstallResult::kSuccess));
 
   dlc_manager_->InstallModemDlc(install_cb.Get());
   InvokeServiceAvailableFromStored();
@@ -466,6 +500,10 @@ TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsFullSuccess) {
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_, PurgeAsync(kOtherDlc2, _, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StorePurgeAsync));
 
+  EXPECT_CALL(*mock_metrics_,
+              SendDlcUninstallResult(DlcUninstallResult::kSuccess))
+      .Times(2);
+
   dlc_manager_->RemoveUnecessaryModemDlcs();
   InvokeGetExistingDlcsFromStored({kOtherDlc1, kOtherDlc2});
   InvokePurgeSuccessFromStored();
@@ -479,6 +517,9 @@ TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsPartialSuccess) {
 
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_, PurgeAsync(kOtherDlc2, _, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StorePurgeAsync));
+
+  EXPECT_CALL(*mock_metrics_,
+              SendDlcUninstallResult(DlcUninstallResult::kSuccess));
 
   dlc_manager_->RemoveUnecessaryModemDlcs();
   InvokeGetExistingDlcsFromStored({kOtherDlc2});
@@ -501,7 +542,11 @@ TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsNoDeviceVariant) {
       {kOtherVariant2, kOtherDlc2}};
 
   dlc_manager_ = std::make_unique<DlcManagerHelper>(
-      dlc_per_variant, "" /* no variant*/, std::move(mock_dlcservice_proxy_));
+      mock_metrics_.get(), dlc_per_variant, "" /* no variant*/,
+      std::move(mock_dlcservice_proxy_));
+
+  EXPECT_CALL(*mock_metrics_, SendDlcUninstallResult(
+                                  DlcUninstallResult::kUnexpectedEmptyVariant));
 
   dlc_manager_->RemoveUnecessaryModemDlcs();
 }
@@ -510,6 +555,11 @@ TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsGetExistingDlcsError) {
   SetUpDefaultDlcManagerHelper();
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_, GetExistingDlcsAsync(_, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StoreGetExistingDlcsAsync));
+
+  EXPECT_CALL(
+      *mock_metrics_,
+      SendDlcUninstallResult(
+          DlcUninstallResult::kDlcServiceReturnedErrorOnGetExistingDlcs));
 
   dlc_manager_->RemoveUnecessaryModemDlcs();
   // Use unknown dbus error to check kDlcServiceReturnedErrorOnGetExistingDlcs
@@ -524,9 +574,14 @@ TEST_F(DlcManagerTest, RemoveUnecessaryModemDlcsFirstPurgeError) {
 
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_, PurgeAsync(kOtherDlc1, _, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StorePurgeAsync));
+  EXPECT_CALL(*mock_metrics_,
+              SendDlcUninstallResult(
+                  DlcUninstallResult::kDlcServiceReturnedAllocation));
 
   EXPECT_CALL(*mock_dlcservice_proxy_ptr_, PurgeAsync(kOtherDlc2, _, _, _))
       .WillOnce(Invoke(this, &DlcManagerTest::StorePurgeAsync));
+  EXPECT_CALL(*mock_metrics_,
+              SendDlcUninstallResult(DlcUninstallResult::kSuccess));
 
   dlc_manager_->RemoveUnecessaryModemDlcs();
   InvokeGetExistingDlcsFromStored({kOtherDlc1, kOtherDlc2});

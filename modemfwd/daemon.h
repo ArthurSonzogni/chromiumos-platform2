@@ -18,6 +18,7 @@
 #include "modemfwd/dbus_adaptors/org.chromium.Modemfwd.h"
 #include "modemfwd/dlc_manager.h"
 #include "modemfwd/journal.h"
+#include "modemfwd/metrics.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
 #include "modemfwd/modem_helper.h"
@@ -109,6 +110,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<FirmwareDirectory> fw_manifest_directory_;
   std::unique_ptr<FirmwareIndex> fw_index_;
   std::unique_ptr<ModemHelperDirectory> helper_directory_;
+  std::unique_ptr<Metrics> metrics_;
 
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;

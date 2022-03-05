@@ -18,6 +18,8 @@
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <dlcservice/dbus-proxies.h>
 
+#include "modemfwd/metrics.h"
+
 namespace dbus {
 class Bus;
 }  // namespace dbus
@@ -42,6 +44,7 @@ using InstallModemDlcOnceCallback =
 class DlcManager {
  public:
   explicit DlcManager(scoped_refptr<dbus::Bus> bus,
+                      Metrics* metrics,
                       std::map<std::string, std::string> dlc_per_variant,
                       std::string variant);
 
@@ -64,6 +67,7 @@ class DlcManager {
   // For testing
   DlcManager() = default;
   explicit DlcManager(
+      Metrics* metrics,
       std::map<std::string, std::string> dlc_per_variant,
       std::string variant,
       std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface> proxy);
@@ -91,6 +95,7 @@ class DlcManager {
   enum class InstallStep { WAITING_FOR_SERVICE, INSTALLING, GET_DLC_STATE };
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
       dlc_service_proxy_;
+  Metrics* metrics_;
   std::set<std::string> dlcs_to_remove_;
   std::string dlc_id_;
   std::string variant_;

@@ -25,6 +25,7 @@
 #include "modemfwd/error.h"
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/logging.h"
+#include "modemfwd/metrics.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
 #include "modemfwd/modem_helper_directory.h"
@@ -154,6 +155,11 @@ int Daemon::OnInit() {
     return exit_code;
   DCHECK(!helper_dir_path_.empty());
 
+  std::unique_ptr<MetricsLibraryInterface> metrics_library =
+      std::make_unique<MetricsLibrary>();
+  metrics_ = std::make_unique<Metrics>(std::move(metrics_library));
+  metrics_->Init();
+
   notification_mgr_ =
       std::make_unique<NotificationManager>(dbus_adaptor_.get());
   if (!base::DirectoryExists(helper_dir_path_)) {
@@ -205,9 +211,12 @@ int Daemon::SetupFirmwareDirectory() {
   if (!dlc_per_variant.empty()) {
     LOG(INFO) << "Creating DLC manager";
     dlc_manager_ = std::make_unique<modemfwd::DlcManager>(
-        bus_, std::move(dlc_per_variant), variant_);
+        bus_, metrics_.get(), std::move(dlc_per_variant), variant_);
     if (dlc_manager_->DlcId().empty()) {
       LOG(ERROR) << "Unexpected empty DlcId value";
+      auto err = Error::Create(FROM_HERE, error::kUnexpectedEmptyDlcId,
+                               "Unexpected empty DlcId value");
+      metrics_->SendDlcInstallResultFailure(err.get());
     } else {
       InstallModemDlcOnceCallback cb = base::BindOnce(
           &Daemon::InstallDlcCompleted, weak_ptr_factory_.GetWeakPtr());
@@ -218,6 +227,7 @@ int Daemon::SetupFirmwareDirectory() {
       return EX_OK;
     }
   }
+  metrics_->SendFwUpdateLocation(metrics::FwUpdateLocation::kRootFS);
   CompleteInitialization();
   return EX_OK;
 }
@@ -226,9 +236,12 @@ void Daemon::InstallDlcCompleted(const std::string& mount_path,
                                  const brillo::Error* error) {
   if (error || mount_path.empty()) {
     LOG(INFO) << "Failed to install DLC. Falling back to rootfs";
+    metrics_->SendFwUpdateLocation(
+        metrics::FwUpdateLocation::kFallbackToRootFS);
   } else {
     fw_manifest_directory_ = CreateFirmwareDirectory(
         std::move(fw_index_), base::FilePath(mount_path), std::move(variant_));
+    metrics_->SendFwUpdateLocation(metrics::FwUpdateLocation::kDlc);
   }
   CompleteInitialization();
 }

@@ -27,9 +27,11 @@ const base::TimeDelta kInstallRetryMaxPeriod = base::Hours(2);
 }  // namespace dlcmanager
 
 DlcManager::DlcManager(scoped_refptr<dbus::Bus> bus,
+                       Metrics* metrics,
                        std::map<std::string, std::string> dlc_per_variant,
                        std::string variant)
-    : variant_(variant),
+    : metrics_(metrics),
+      variant_(variant),
       install_retry_period_(base::Minutes(5)),
       weak_ptr_factory_(this) {
   DCHECK(!variant_.empty());
@@ -40,10 +42,12 @@ DlcManager::DlcManager(scoped_refptr<dbus::Bus> bus,
 
 // Constructor for testing
 DlcManager::DlcManager(
+    Metrics* metrics,
     std::map<std::string, std::string> dlc_per_variant,
     std::string variant,
     std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface> proxy)
-    : variant_(variant),
+    : metrics_(metrics),
+      variant_(variant),
       install_retry_period_(dlcmanager::kInitialInstallRetryPeriod),
       weak_ptr_factory_(this) {
   Init(dlc_per_variant);
@@ -66,6 +70,7 @@ void DlcManager::RemoveUnecessaryModemDlcs() {
                << "variant";
     auto err = Error::Create(FROM_HERE, error::kUnexpectedEmptyVariant,
                              "Empty variant value");
+    metrics_->SendDlcUninstallResultFailure(err.get());
     return;
   }
   dlc_service_proxy_->GetExistingDlcsAsync(
@@ -91,6 +96,7 @@ void DlcManager::OnGetExistingDlcsError(brillo::Error* dbus_error) {
   brillo::Error::AddTo(&err, FROM_HERE, kModemfwdErrorDomain,
                        error::kDlcServiceReturnedErrorOnGetExistingDlcs,
                        "Failed to get existing DLCs.");
+  metrics_->SendDlcUninstallResultFailure(err.get());
   // Nothing else to do without the list of existing DLCs.
 }
 
@@ -111,6 +117,7 @@ void DlcManager::RemoveNextDlc() {
 }
 
 void DlcManager::OnPurgeSuccess() {
+  metrics_->SendDlcUninstallResultSuccess();
   RemoveNextDlc();
 }
 
@@ -120,6 +127,7 @@ void DlcManager::OnPurgeError(brillo::Error* dbus_error) {
   brillo::Error::AddTo(&err, FROM_HERE, kModemfwdErrorDomain,
                        error::kDlcServiceReturnedErrorOnPurge,
                        "Failed to purge DLC.");
+  metrics_->SendDlcUninstallResultFailure(err.get());
   RemoveNextDlc();
 }
 
@@ -205,6 +213,8 @@ void DlcManager::InstallDlcTimedout() {
 
   if (!install_callback_.is_null())
     std::move(install_callback_).Run("", err.get());
+
+  metrics_->SendDlcInstallResultFailure(err.get());
 }
 
 void DlcManager::OnInstallSuccess() {
@@ -261,6 +271,7 @@ void DlcManager::OnInstallGetDlcStateSuccess(
   install_timeout_callback_.Cancel();
   if (!install_callback_.is_null())
     std::move(install_callback_).Run(state.root_path(), nullptr);
+  metrics_->SendDlcInstallResultSuccess();
 }
 
 void DlcManager::OnInstallGetDlcStateError(brillo::Error* dbus_error) {
@@ -279,6 +290,7 @@ void DlcManager::ProcessInstallError(brillo::ErrorPtr err) {
   if (!install_callback_.is_null())
     std::move(install_callback_).Run("", err.get());
 
+  metrics_->SendDlcInstallResultFailure(err.get());
   PostRetryInstallTask();
 }
 

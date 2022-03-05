@@ -28,6 +28,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libcros_config",
     "libdlcservice-client",
+    "libmetrics",
     "libshill-client",
     "liblzma",
     "ModemManager",
@@ -64,6 +65,7 @@ static_library("libmodemfw") {
     "firmware_manifest_v2.cc",
     "journal.cc",
     "logging.cc",
+    "metrics.cc",
     "modem.cc",
     "modem_flasher.cc",
     "modem_helper.cc",
@@ -112,6 +114,7 @@ if (use.test) {
       "firmware_directory_test.cc",
       "firmware_file_test.cc",
       "journal_test.cc",
+      "metrics_test.cc",
       "modem_flasher_test.cc",
     ]
     configs += [
