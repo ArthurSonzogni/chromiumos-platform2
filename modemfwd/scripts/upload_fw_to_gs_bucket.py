@@ -4,9 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Create tarballs with modem FW, and upload them to Chromium OS Archive
-Mirrors.
-"""
+"""Create tarballs with modem FW, and upload them to OS Archive Mirrors."""
 
 import argparse
 import logging
@@ -14,6 +12,7 @@ from distutils.dir_util import copy_tree
 from enum import Enum
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 
@@ -28,7 +27,7 @@ class PackageType(Enum):
     FM101_MAIN_FW = 'fm101-main-fw'
 
     def __str__(self):
-        return self.value
+        return str(self.value)
 
 
 MIRROR_PATH = 'gs://chromeos-localmirror/distfiles/'
@@ -63,18 +62,19 @@ class FwUploader(object):
             return os.EX_OSFILE
 
         os.chdir(tempdir)
-        tarball_name = '{0}.tar.xz'.format(self.tarball_dir_name)
-        os.system('tar -Ipixz -cf {0} {1}/'.format(tarball_name,
-                                                   self.tarball_dir_name))
+        tarball_name = f'{self.tarball_dir_name}.tar.xz'
+        subprocess.run(['tar', '-Ipixz', '-cf', f'{tarball_name}',
+                        f'{self.tarball_dir_name}/'],
+                       stderr=subprocess.DEVNULL, check=False)
         tarball_path = os.path.join(tempdir, tarball_name)
         logging.info('Tarball created: %s', tarball_path)
         if self.upload:
             gs_bucket_path = os.path.join(MIRROR_PATH, tarball_name)
             logging.info('Uploading file %s to %s', tarball_path,
                          gs_bucket_path)
-            os.system('gsutil cp -n -a public-read {0} {1}'.format(
-                tarball_path, gs_bucket_path))
-
+            subprocess.run(['gsutil', 'cp', '-n', '-a', 'public-read',
+                            f'{tarball_path}', f'{gs_bucket_path}'],
+                           stderr=subprocess.DEVNULL, check=False)
         if not keep_tmp_files:
             logging.info('Removing temporary files')
             shutil.rmtree(tempdir)
@@ -110,8 +110,10 @@ class L850OemFw(FwUploader):
 
     def __init__(self, path, upload):
         super().__init__(path, upload, None)
-        self.tarball_dir_name = '{0}{1}'.format(
-            L850_TARBALL_PREFIX, self.basename.replace(OEM_FW_POSTFIX, ''))
+        self.tarball_dir_name = (
+            f'{L850_TARBALL_PREFIX}' +
+            f'[{self.basename.replace(OEM_FW_POSTFIX, "")}]'
+            )
 
 
     def validate(self):
@@ -134,8 +136,9 @@ class L850OemDir(FwUploader):
 
     def __init__(self, path, upload, revision, board):
         super().__init__(path, upload, None)
-        self.tarball_dir_name = '{0}{1}-carriers_OEM_{2}-{3}'.format(
-            L850_TARBALL_PREFIX, board, self.basename, revision)
+        self.tarball_dir_name = (
+            f'{L850_TARBALL_PREFIX}{board}' +
+            f'-carriers_OEM_{self.basename}-{revision}')
         self.revision = revision
 
     def validate(self):
