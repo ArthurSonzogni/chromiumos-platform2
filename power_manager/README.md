@@ -17,6 +17,8 @@ The [`docs/`](docs/) subdirectory contains additional documentation. Along with
 answers to [frequently-asked questions](docs/faq.md), the following information
 is available:
 
+-   [Adaptive Charging](docs/adaptive_charging.md) describes how charging is
+    delayed for maintaining battery health.
 -   [Battery Notifications](docs/battery_notifications.md) describes when
     low-battery notifications are shown by the UI.
 -   [Inactivity Delays](docs/inactivity_delays.md) describes powerd's logic for

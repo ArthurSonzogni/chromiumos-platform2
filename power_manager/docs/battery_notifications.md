@@ -67,7 +67,16 @@ between updates) when the power load is also changing dramatically. This
 behavior can be reduced by increasing the values in the above prefs, but doing
 so makes the estimates slower to adjust when the load has actually changed.
 
+When [Adaptive Charging] is enabled, the way that time-to-full estimates are
+computed may change. Adaptive Charging may delay charging to full after reaching
+a `display_battery_percentage` of 80%. At this point, the time-to-full estimate
+will change to the current planned delay in charging plus 2 hours. The time at
+which charging will resume may be made earlier, but it will not be pushed out.
+The `adaptive_delaying_charge` field within PowerSupplyProperties indicates if
+Adaptive Charging is actively delaying charging.
+
 [PowerSupplyProperties]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/power_supply_properties.proto
 [PowerSupply]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/powerd/system/power_supply.h
 [Power Supplies]: power_supplies.md
+[Adaptive Charging]: adaptive_charging.md
 [ash::TrayPower]: https://chromium.googlesource.com/chromium/src/+/HEAD/ash/system/power/tray_power.cc
