@@ -841,8 +841,8 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
   }
 
   SLOG(this, 2) << "Connected bearer " << bearer.value();
-  callback.Run(error);
   UpdatePendingActivationState();
+  callback.Run(error);
 }
 
 bool CellularCapability3gpp::ConnectToNextApn(const ResultCallback& callback) {
