@@ -16,6 +16,7 @@
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
+#include <base/notreached.h>
 #include <base/strings/string_split.h>
 #include <jpeglib.h>
 #include <libyuv.h>
@@ -1540,7 +1541,9 @@ TEST_P(Camera3FrameContentTest, DetectGreenLine) {
 class Camera3PortraitRotationTest
     : public Camera3FrameFixture,
       public ::testing::WithParamInterface<
-          std::tuple<std::tuple<int32_t, int32_t, int32_t, int32_t>, int32_t>> {
+          std::tuple<std::tuple<int32_t, int32_t, int32_t, int32_t>,
+                     int32_t,
+                     bool>> {
  public:
   const double kPortraitTestSsimThreshold = 0.75;
 
@@ -1550,6 +1553,7 @@ class Camera3PortraitRotationTest
         width_(std::get<2>(std::get<0>(GetParam()))),
         height_(std::get<3>(std::get<0>(GetParam()))),
         rotation_degrees_(std::get<1>(GetParam())),
+        use_rotate_and_crop_api_(std::get<2>(GetParam())),
         save_images_(base::CommandLine::ForCurrentProcess()->HasSwitch(
             "save_portrait_test_images")) {}
 
@@ -1569,6 +1573,8 @@ class Camera3PortraitRotationTest
   int32_t height_;
 
   int32_t rotation_degrees_;
+
+  bool use_rotate_and_crop_api_;
 
   bool save_images_;
 
@@ -1611,6 +1617,8 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
     VLOGF(1) << "Format 0x" << std::hex << format_;
     VLOGF(1) << "Resolution " << width_ << "x" << height_;
     VLOGF(1) << "Rotation " << rotation_degrees_;
+    VLOGF(1) << "Use ANDROID_SCALER_ROTATE_AND_CROP: "
+             << use_rotate_and_crop_api_;
 
     cam_device_.AddOutputStream(format_, width_, height_,
                                 CAMERA3_STREAM_ROTATION_0);
@@ -1646,20 +1654,37 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
     // Re-configure streams with rotation
     camera3_stream_rotation_t crop_rotate_scale_degrees =
         CAMERA3_STREAM_ROTATION_0;
-    switch (rotation_degrees_) {
-      case 90:
-        crop_rotate_scale_degrees = CAMERA3_STREAM_ROTATION_90;
-        break;
-      case 270:
-        crop_rotate_scale_degrees = CAMERA3_STREAM_ROTATION_270;
-        break;
-      default:
-        FAIL() << "Invalid rotation degree: " << rotation_degrees_;
+    if (!use_rotate_and_crop_api_) {
+      switch (rotation_degrees_) {
+        case 90:
+          crop_rotate_scale_degrees = CAMERA3_STREAM_ROTATION_90;
+          break;
+        case 270:
+          crop_rotate_scale_degrees = CAMERA3_STREAM_ROTATION_270;
+          break;
+        default:
+          FAIL() << "Invalid rotation degree: " << rotation_degrees_;
+      }
     }
     cam_device_.AddOutputStream(format_, width_, height_,
                                 crop_rotate_scale_degrees);
     ASSERT_EQ(0, cam_device_.ConfigureStreams(nullptr))
         << "Configuring stream fails";
+
+    if (use_rotate_and_crop_api_) {
+      uint8_t rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_NONE;
+      switch (rotation_degrees_) {
+        case 90:
+          rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_90;
+          break;
+        case 270:
+          rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_270;
+          break;
+        default:
+          NOTREACHED();
+      }
+      UpdateMetadata(ANDROID_SCALER_ROTATE_AND_CROP, &rc_mode, 1, &metadata);
+    }
     ASSERT_EQ(0, CreateCaptureRequestByMetadata(metadata, nullptr))
         << "Creating capture request fails";
 
@@ -2093,7 +2118,8 @@ INSTANTIATE_TEST_SUITE_P(
     Camera3FrameTest,
     Camera3PortraitRotationTest,
     ::testing::Combine(::testing::ValuesIn(IterateCameraIdFormatResolution()),
-                       ::testing::Values(90, 270)));
+                       ::testing::Values(90, 270),
+                       ::testing::Values(false, true)));
 
 INSTANTIATE_TEST_SUITE_P(
     Camera3FrameTest,
