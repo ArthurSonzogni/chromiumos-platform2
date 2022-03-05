@@ -2156,6 +2156,26 @@ void CellularCapability3gpp::OnGetSimProperties(
   if (properties.Contains<std::string>(MM_SIM_PROPERTY_IMSI)) {
     sim_properties.imsi = properties.Get<std::string>(MM_SIM_PROPERTY_IMSI);
   }
+
+  MMSimType sim_type = MM_SIM_TYPE_UNKNOWN;
+  if (properties.Contains<uint32_t>(MM_SIM_PROPERTY_SIMTYPE)) {
+    sim_type = static_cast<MMSimType>(
+        properties.Get<uint32_t>(MM_SIM_PROPERTY_SIMTYPE));
+    VLOG(2) << __func__ << ": SimType: " << sim_type;
+  }
+  // SIM objects from MM have an empty iccid on MBIM modems if the SIM is on the
+  // inactive slot.
+  // If an eSIM has an empty iccid, Chrome will create stub services based on
+  // Hermes. Shill can skip creating services for an eSIM on the inactive slot.
+  // If a pSIM has an empty iccid, a service won't be created and
+  // thus UI won't display the SIM.
+  // pSIM's on the inactive slot need an iccid for a service to be created.
+  if (sim_properties.iccid.empty() && sim_properties.eid.empty() &&
+      sim_type != MM_SIM_TYPE_ESIM) {
+    sim_properties.iccid = kUnknownIccid;
+    LOG(INFO) << "Defaulting to unknown iccid on slot: " << slot;
+  }
+
   sim_properties_[sim_path] = sim_properties;
   pending_sim_requests_.erase(sim_path);
   if (pending_sim_requests_.empty())

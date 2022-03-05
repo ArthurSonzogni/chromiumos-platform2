@@ -265,7 +265,9 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 		string Cellular.ICCID [readonly]
 
 			(Cellular only) The Integrated Circuit Card Identifier
-			of the SIM card associated with the service.
+			of the SIM card associated with the service. If a pSIM
+			card exists on the inactive slot but the ICCID cannot
+			be read, this property will be set to "unknown-iccid".
 
 		string Cellular.IMSI [readonly]
 

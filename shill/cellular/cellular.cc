@@ -1947,8 +1947,17 @@ void Cellular::ConnectToPending() {
 void Cellular::ConnectToPendingAfterDelay() {
   SLOG(this, 1) << __func__ << ": " << connect_pending_iccid_;
 
+  std::string pending_iccid;
+  if (connect_pending_iccid_ == kUnknownIccid) {
+    // Connect to the current iccid if we want to connect to an unknown
+    // iccid. This usually occurs when the inactive slot's iccid is unknown, but
+    // we want to connect to it after a slot switch.
+    pending_iccid = iccid_;
+  } else {
+    pending_iccid = connect_pending_iccid_;
+  }
+
   // Clear pending connect request regardless of whether a service is found.
-  std::string pending_iccid = connect_pending_iccid_;
   connect_pending_iccid_.clear();
 
   CellularServiceRefPtr service =

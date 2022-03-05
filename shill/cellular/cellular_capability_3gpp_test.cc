@@ -2218,4 +2218,29 @@ TEST_F(CellularCapability3gppTest, EmptySimSlot) {
   VerifyAndSetActivationExpectations();
 }
 
+// Check that a pSIM with an empty iccid is reported to Cellular as a SIM with
+// an "unknown-iccid".
+TEST_F(CellularCapability3gppTest, UnknownIccid) {
+  InitProxies();
+
+  const char kIccid1[] = "";
+  KeyValueStore sim_properties1;
+  sim_properties1.Set<std::string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid1);
+  SetSimProperties(kSimPath1, sim_properties1);
+  UpdateSims(kSimPath1);
+
+  KeyValueStore sim_properties2;
+  sim_properties2.Set<uint32_t>(MM_SIM_PROPERTY_SIMTYPE,
+                                MMSimType::MM_SIM_TYPE_ESIM);
+  SetSimProperties(CellularCapability3gpp::kRootPath, sim_properties2);
+  UpdateSims(kSimPath2);
+
+  const KeyValueStores& sim_slot_info = cellular_->sim_slot_info_for_testing();
+  ASSERT_EQ(2u, sim_slot_info.size());
+  EXPECT_EQ(sim_slot_info[0].Get<std::string>(kSIMSlotInfoICCID),
+            kUnknownIccid);
+  EXPECT_TRUE(sim_slot_info[1].Get<std::string>(kSIMSlotInfoICCID).empty());
+  VerifyAndSetActivationExpectations();
+}
+
 }  // namespace shill

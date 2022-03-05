@@ -368,6 +368,9 @@ const char kEidProperty[] = "Cellular.EID";
 const char kIccidProperty[] = "Cellular.ICCID";
 const char kImsiProperty[] = "Cellular.IMSI";
 
+// kIccidProperty value when SIM card exists but ICCID is not available.
+const char kUnknownIccid[] = "unknown-iccid";
+
 // Cellular Device property names.
 const char kCellularApnListProperty[] = "Cellular.APNList";
 const char kCellularPolicyAllowRoamingProperty[] =
