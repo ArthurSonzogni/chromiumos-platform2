@@ -63,6 +63,10 @@ Only includes audit events of type=SYSCALL and type=AVC (SELinux denials).
 
 Frame timings from apps running in the Borealis VM. 16 KiB.
 
+## borealis_proton_crash_reports
+
+Contains the most recent, if any, Proton crash dump containing debug info. ~11 KiB.
+
 ## borealis_xwindump
 
 If the Borealis VM is running, displays a list of all Borealis windows and

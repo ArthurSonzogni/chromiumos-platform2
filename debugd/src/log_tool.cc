@@ -497,6 +497,9 @@ const std::array kFeedbackLogs {
   Log{kFile, "auth_failure", "/var/log/tcsd/auth_failure.permanent"},
   Log{kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
     "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
+  Log{kCommand, "borealis_proton_crash_reports", "timeout -s KILL 5s "
+    "/usr/bin/borealis-sh -- /usr/bin/get_proton_crash_reports.sh",
+    kRoot, kRoot},
   Log{kCommand, "borealis_xwindump", "timeout -s KILL 5s /usr/bin/borealis-sh "
     "-- /usr/bin/xwindump.py", kRoot, kRoot},
   Log{kGlob, "iwlwifi_firmware_version",
