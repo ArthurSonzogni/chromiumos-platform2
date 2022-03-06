@@ -44,7 +44,6 @@
 
 #include "shill/connection.h"
 #include "shill/device.h"
-#include "shill/device_stub.h"
 #include "shill/ethernet/ethernet.h"
 #include "shill/ethernet/virtio_ethernet.h"
 #include "shill/logging.h"
@@ -180,6 +179,29 @@ constexpr base::TimeDelta kRequestLinkStatisticsInterval = base::Seconds(20);
 // /usr/include/linux/if_link.h on 4.19+ kernels.
 constexpr int kIflaXfrmLink = 1;
 constexpr int kIflaXfrmIfId = 2;
+
+// Non-functional Device subclass used for non-operable or blocked devices
+class DeviceStub : public Device {
+ public:
+  DeviceStub(Manager* manager,
+             const std::string& link_name,
+             const std::string& address,
+             int interface_index,
+             Technology technology)
+      : Device(manager, link_name, address, interface_index, technology) {}
+  DeviceStub(const DeviceStub&) = delete;
+  DeviceStub& operator=(const DeviceStub&) = delete;
+
+  void Start(Error* /*error*/,
+             const EnabledStateChangedCallback& /*callback*/) override {}
+  void Stop(Error* /*error*/,
+            const EnabledStateChangedCallback& /*callback*/) override {}
+  void Initialize() override {}
+
+  void OnIPConfigUpdated(const IPConfigRefPtr& /*ipconfig*/,
+                         bool /*new_lease_acquired*/) override {}
+  void OnIPv6ConfigUpdated() override {}
+};
 
 }  // namespace
 
