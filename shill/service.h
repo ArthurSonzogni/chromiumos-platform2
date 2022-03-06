@@ -454,13 +454,6 @@ class Service : public base::RefCounted<Service> {
     return explicitly_disconnected_;
   }
 
-  // Return RPC identifier for device that's internal to this service, which is
-  // not registered with the manager.
-  virtual const RpcIdentifier& GetInnerDeviceRpcIdentifier() const {
-    static RpcIdentifier null_identifier;
-    return null_identifier;
-  }
-
   bool retain_auto_connect() const { return retain_auto_connect_; }
   // Setter is deliberately omitted; use EnableAndRetainAutoConnect.
 

@@ -2723,23 +2723,6 @@ TEST_F(ManagerTest, EnumerateProfiles) {
   }
 }
 
-TEST_F(ManagerTest, EnumerateServiceInnerDevices) {
-  MockServiceRefPtr service1(new NiceMock<MockService>(manager()));
-  MockServiceRefPtr service2(new NiceMock<MockService>(manager()));
-  const RpcIdentifier kDeviceRpcId("/rpc/");
-  const RpcIdentifier kNullRpcId;
-  manager()->RegisterService(service1);
-  manager()->RegisterService(service2);
-  EXPECT_CALL(*service1, GetInnerDeviceRpcIdentifier())
-      .WillRepeatedly(ReturnRef(kDeviceRpcId));
-  EXPECT_CALL(*service2, GetInnerDeviceRpcIdentifier())
-      .WillRepeatedly(ReturnRef(kNullRpcId));
-  Error error;
-  EXPECT_EQ(std::vector<RpcIdentifier>{kDeviceRpcId},
-            manager()->EnumerateDevices(&error));
-  EXPECT_TRUE(error.IsSuccess());
-}
-
 TEST_F(ManagerTest, AutoConnectOnRegister) {
   MockServiceRefPtr service = MakeAutoConnectableService();
   EXPECT_CALL(*service, AutoConnect());

@@ -26,8 +26,6 @@ MockService::MockService(Manager* manager)
   EXPECT_CALL(*this, GetRpcIdentifier()).WillRepeatedly(ReturnRef(id_));
   EXPECT_CALL(*this, GetStorageIdentifier())
       .WillRepeatedly(Return(id_.value()));
-  ON_CALL(*this, GetInnerDeviceRpcIdentifier())
-      .WillByDefault(ReturnRef(null_id_));
   ON_CALL(*this, IsVisible()).WillByDefault(Return(true));
   ON_CALL(*this, state()).WillByDefault(Return(kStateUnknown));
   ON_CALL(*this, failure()).WillByDefault(Return(kFailureUnknown));
