@@ -13344,6 +13344,10 @@ mno {
     }
   }
   mvno {
+    mvno_filter {
+      type : MCCMNC
+      regex : "312670|313100|313110|313120|313130|313140"
+    }
     data {
       uuid : "81cd6912-a9de-4a0a-b39c-5a3d965c79cc"
       country : "us"
