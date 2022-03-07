@@ -319,215 +319,82 @@ TEST_F(PropertyStoreTest, KeyValueStoreProperty) {
 
 TEST_F(PropertyStoreTest, WriteOnlyProperties) {
   // Test that properties registered as write-only are not returned
-  // when using Get*PropertiesIter().
+  // when using GetProperties().
   PropertyStore store;
-  {
-    const std::string keys[] = {"boolp1", "boolp2"};
-    bool values[] = {true, true};
-    store.RegisterWriteOnlyBool(keys[0], &values[0]);
-    store.RegisterBool(keys[1], &values[1]);
 
-    ReadablePropertyConstIterator<bool> it = store.GetBoolPropertiesIter();
-    EXPECT_FALSE(it.AtEnd());
-    EXPECT_EQ(keys[1], it.Key());
-    EXPECT_TRUE(values[1] == it.value());
-    it.Advance();
-    EXPECT_TRUE(it.AtEnd());
+  bool bool_wo = true;
+  int16_t int16_wo = 1;
+  int32_t int32_wo = 2;
+  uint8_t uint8_wo = 3;
+  uint16_t uint16_wo = 4;
+  std::string string_wo = "foobar";
+  std::vector<std::string> strings_wo = {"foo", "bar"};
+  std::map<std::string, std::string> stringmap_wo = {{"k1", "x1"},
+                                                     {"k2", "x2"}};
+  std::vector<std::map<std::string, std::string>> stringmaps_wo = {
+      {{"k11", "x1"}, {"k12", "x2"}}, {{"k21", "x3"}, {"k22", "x4"}}};
+  store.RegisterWriteOnlyBool("bool_wo", &bool_wo);
+  store.RegisterWriteOnlyInt16("int16_wo", &int16_wo);
+  store.RegisterWriteOnlyInt32("int32_wo", &int32_wo);
+  store.RegisterWriteOnlyUint8("uint8_wo", &uint8_wo);
+  store.RegisterWriteOnlyUint16("uint16_wo", &uint16_wo);
+  store.RegisterWriteOnlyString("string_wo", &string_wo);
+  store.RegisterWriteOnlyStrings("strings_wo", &strings_wo);
+  store.RegisterWriteOnlyStringmap("stringmap_wo", &stringmap_wo);
+  store.RegisterWriteOnlyStringmaps("stringmaps_wo", &stringmaps_wo);
 
-    Error errors[2];
-    EXPECT_FALSE(store.GetBoolProperty(keys[0], nullptr, &errors[0]));
-    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    bool test_value;
-    EXPECT_TRUE(store.GetBoolProperty(keys[1], &test_value, &errors[1]));
-    EXPECT_TRUE(errors[1].IsSuccess());
-    EXPECT_EQ(values[1], test_value);
-  }
-  {
-    const std::string keys[] = {"int16p1", "int16p2"};
-    int16_t values[] = {127, 128};
-    store.RegisterWriteOnlyInt16(keys[0], &values[0]);
-    store.RegisterInt16(keys[1], &values[1]);
+  bool bool_v = false;
+  int16_t int16_v = 101;
+  int32_t int32_v = 102;
+  uint8_t uint8_v = 103;
+  uint16_t uint16_v = 104;
+  std::string string_v = "barfoo";
+  std::vector<std::string> strings_v = {"bar", "foo"};
+  std::map<std::string, std::string> stringmap_v = {{"q1", "y1"}, {"q2", "y2"}};
+  std::vector<std::map<std::string, std::string>> stringmaps_v = {
+      {{"q11", "y1"}, {"q12", "y2"}}, {{"q21", "y3"}, {"q22", "y4"}}};
+  store.RegisterBool("bool", &bool_v);
+  store.RegisterInt16("int16", &int16_v);
+  store.RegisterInt32("int32", &int32_v);
+  store.RegisterUint8("uint8", &uint8_v);
+  store.RegisterUint16("uint16", &uint16_v);
+  store.RegisterString("string", &string_v);
+  store.RegisterStrings("strings", &strings_v);
+  store.RegisterStringmap("stringmap", &stringmap_v);
+  store.RegisterStringmaps("stringmaps", &stringmaps_v);
 
-    ReadablePropertyConstIterator<int16_t> it = store.GetInt16PropertiesIter();
-    EXPECT_FALSE(it.AtEnd());
-    EXPECT_EQ(keys[1], it.Key());
-    EXPECT_EQ(values[1], it.value());
-    it.Advance();
-    EXPECT_TRUE(it.AtEnd());
+  brillo::VariantDictionary properties;
+  store.GetProperties(&properties, nullptr);
 
-    Error errors[2];
-    EXPECT_FALSE(store.GetInt16Property(keys[0], nullptr, &errors[0]));
-    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    int16_t test_value;
-    EXPECT_TRUE(store.GetInt16Property(keys[1], &test_value, &errors[1]));
-    EXPECT_TRUE(errors[1].IsSuccess());
-    EXPECT_EQ(values[1], test_value);
-  }
-  {
-    const std::string keys[] = {"int32p1", "int32p2"};
-    int32_t values[] = {127, 128};
-    store.RegisterWriteOnlyInt32(keys[0], &values[0]);
-    store.RegisterInt32(keys[1], &values[1]);
+  ASSERT_EQ(properties.find("bool_wo"), properties.end());
+  ASSERT_EQ(properties.find("int16_wo"), properties.end());
+  ASSERT_EQ(properties.find("int32_wo"), properties.end());
+  ASSERT_EQ(properties.find("uint8_wo"), properties.end());
+  ASSERT_EQ(properties.find("uint16_wo"), properties.end());
+  ASSERT_EQ(properties.find("string_wo"), properties.end());
+  ASSERT_EQ(properties.find("strings_wo"), properties.end());
+  ASSERT_EQ(properties.find("stringmap_wo"), properties.end());
+  ASSERT_EQ(properties.find("stringmaps_wo"), properties.end());
 
-    ReadablePropertyConstIterator<int32_t> it = store.GetInt32PropertiesIter();
-    EXPECT_FALSE(it.AtEnd());
-    EXPECT_EQ(keys[1], it.Key());
-    EXPECT_EQ(values[1], it.value());
-    it.Advance();
-    EXPECT_TRUE(it.AtEnd());
+  ASSERT_NE(properties.find("bool"), properties.end());
+  ASSERT_NE(properties.find("int16"), properties.end());
+  ASSERT_NE(properties.find("int32"), properties.end());
+  ASSERT_NE(properties.find("uint8"), properties.end());
+  ASSERT_NE(properties.find("uint16"), properties.end());
+  ASSERT_NE(properties.find("string"), properties.end());
+  ASSERT_NE(properties.find("strings"), properties.end());
+  ASSERT_NE(properties.find("stringmap"), properties.end());
+  ASSERT_NE(properties.find("stringmaps"), properties.end());
 
-    Error errors[2];
-    EXPECT_FALSE(store.GetInt32Property(keys[0], nullptr, &errors[0]));
-    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    int32_t test_value;
-    EXPECT_TRUE(store.GetInt32Property(keys[1], &test_value, &errors[1]));
-    EXPECT_TRUE(errors[1].IsSuccess());
-    EXPECT_EQ(values[1], test_value);
-  }
-  {
-    const std::string keys[] = {"stringp1", "stringp2"};
-    std::string values[] = {"noooo", "yesss"};
-    store.RegisterWriteOnlyString(keys[0], &values[0]);
-    store.RegisterString(keys[1], &values[1]);
-
-    ReadablePropertyConstIterator<std::string> it =
-        store.GetStringPropertiesIter();
-    EXPECT_FALSE(it.AtEnd());
-    EXPECT_EQ(keys[1], it.Key());
-    EXPECT_EQ(values[1], it.value());
-    it.Advance();
-    EXPECT_TRUE(it.AtEnd());
-
-    Error errors[2];
-    EXPECT_FALSE(store.GetStringProperty(keys[0], nullptr, &errors[0]));
-    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    std::string test_value;
-    EXPECT_TRUE(store.GetStringProperty(keys[1], &test_value, &errors[1]));
-    EXPECT_TRUE(errors[1].IsSuccess());
-    EXPECT_EQ(values[1], test_value);
-  }
-  {
-    const std::string keys[] = {"stringmapp1", "stringmapp2"};
-    Stringmap values[2];
-    values[0]["noooo"] = "yesss";
-    values[1]["yesss"] = "noooo";
-    store.RegisterWriteOnlyStringmap(keys[0], &values[0]);
-    store.RegisterStringmap(keys[1], &values[1]);
-
-    ReadablePropertyConstIterator<Stringmap> it =
-        store.GetStringmapPropertiesIter();
-    EXPECT_FALSE(it.AtEnd());
-    EXPECT_EQ(keys[1], it.Key());
-    EXPECT_TRUE(values[1] == it.value());
-    it.Advance();
-    EXPECT_TRUE(it.AtEnd());
-
-    Error errors[2];
-    EXPECT_FALSE(store.GetStringmapProperty(keys[0], nullptr, &errors[0]));
-    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    Stringmap test_value;
-    EXPECT_TRUE(store.GetStringmapProperty(keys[1], &test_value, &errors[1]));
-    EXPECT_TRUE(errors[1].IsSuccess());
-    EXPECT_TRUE(values[1] == test_value);
-  }
-  {
-    const std::string keys[] = {"stringmapsp1", "stringmapsp2"};
-    Stringmaps values[2];
-    Stringmap element;
-    element["noooo"] = "yesss";
-    values[0].push_back(element);
-    element["yesss"] = "noooo";
-    values[1].push_back(element);
-
-    store.RegisterWriteOnlyStringmaps(keys[0], &values[0]);
-    store.RegisterStringmaps(keys[1], &values[1]);
-
-    ReadablePropertyConstIterator<Stringmaps> it =
-        store.GetStringmapsPropertiesIter();
-    EXPECT_FALSE(it.AtEnd());
-    EXPECT_EQ(keys[1], it.Key());
-    EXPECT_TRUE(values[1] == it.value());
-    it.Advance();
-    EXPECT_TRUE(it.AtEnd());
-
-    Error errors[2];
-    EXPECT_FALSE(store.GetStringmapsProperty(keys[0], nullptr, &errors[0]));
-    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    Stringmaps test_value;
-    EXPECT_TRUE(store.GetStringmapsProperty(keys[1], &test_value, &errors[1]));
-    EXPECT_TRUE(errors[1].IsSuccess());
-    EXPECT_TRUE(values[1] == test_value);
-  }
-  {
-    const std::string keys[] = {"stringsp1", "stringsp2"};
-    Strings values[2];
-    std::string element;
-    element = "noooo";
-    values[0].push_back(element);
-    element = "yesss";
-    values[1].push_back(element);
-    store.RegisterWriteOnlyStrings(keys[0], &values[0]);
-    store.RegisterStrings(keys[1], &values[1]);
-
-    ReadablePropertyConstIterator<Strings> it =
-        store.GetStringsPropertiesIter();
-    EXPECT_FALSE(it.AtEnd());
-    EXPECT_EQ(keys[1], it.Key());
-    EXPECT_TRUE(values[1] == it.value());
-    it.Advance();
-    EXPECT_TRUE(it.AtEnd());
-
-    Error errors[2];
-    EXPECT_FALSE(store.GetStringsProperty(keys[0], nullptr, &errors[0]));
-    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    Strings test_value;
-    EXPECT_TRUE(store.GetStringsProperty(keys[1], &test_value, &errors[1]));
-    EXPECT_TRUE(errors[1].IsSuccess());
-    EXPECT_TRUE(values[1] == test_value);
-  }
-  {
-    const std::string keys[] = {"uint8p1", "uint8p2"};
-    uint8_t values[] = {127, 128};
-    store.RegisterWriteOnlyUint8(keys[0], &values[0]);
-    store.RegisterUint8(keys[1], &values[1]);
-
-    ReadablePropertyConstIterator<uint8_t> it = store.GetUint8PropertiesIter();
-    EXPECT_FALSE(it.AtEnd());
-    EXPECT_EQ(keys[1], it.Key());
-    EXPECT_EQ(values[1], it.value());
-    it.Advance();
-    EXPECT_TRUE(it.AtEnd());
-
-    Error errors[2];
-    EXPECT_FALSE(store.GetUint8Property(keys[0], nullptr, &errors[0]));
-    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    uint8_t test_value;
-    EXPECT_TRUE(store.GetUint8Property(keys[1], &test_value, &errors[1]));
-    EXPECT_TRUE(errors[1].IsSuccess());
-    EXPECT_EQ(values[1], test_value);
-  }
-  {
-    const std::string keys[] = {"uint16p", "uint16p1"};
-    uint16_t values[] = {127, 128};
-    store.RegisterWriteOnlyUint16(keys[0], &values[0]);
-    store.RegisterUint16(keys[1], &values[1]);
-
-    ReadablePropertyConstIterator<uint16_t> it =
-        store.GetUint16PropertiesIter();
-    EXPECT_FALSE(it.AtEnd());
-    EXPECT_EQ(keys[1], it.Key());
-    EXPECT_EQ(values[1], it.value());
-    it.Advance();
-    EXPECT_TRUE(it.AtEnd());
-
-    Error errors[2];
-    EXPECT_FALSE(store.GetUint16Property(keys[0], nullptr, &errors[0]));
-    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
-    uint16_t test_value;
-    EXPECT_TRUE(store.GetUint16Property(keys[1], &test_value, &errors[1]));
-    EXPECT_TRUE(errors[1].IsSuccess());
-    EXPECT_EQ(values[1], test_value);
-  }
+  ASSERT_EQ(properties["bool"].Get<bool>(), bool_v);
+  ASSERT_EQ(properties["int16"].Get<int16_t>(), int16_v);
+  ASSERT_EQ(properties["int32"].Get<int32_t>(), int32_v);
+  ASSERT_EQ(properties["uint8"].Get<uint8_t>(), uint8_v);
+  ASSERT_EQ(properties["uint16"].Get<uint16_t>(), uint16_v);
+  ASSERT_EQ(properties["string"].Get<std::string>(), string_v);
+  ASSERT_EQ(properties["strings"].Get<Strings>(), strings_v);
+  ASSERT_EQ(properties["stringmap"].Get<Stringmap>(), stringmap_v);
+  ASSERT_EQ(properties["stringmaps"].Get<Stringmaps>(), stringmaps_v);
 }
 
 TEST_F(PropertyStoreTest, SetAnyProperty) {

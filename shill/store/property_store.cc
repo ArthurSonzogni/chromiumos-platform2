@@ -28,6 +28,24 @@ static std::string ObjectID(const PropertyStore* p) {
 }
 }  // namespace Logging
 
+namespace {
+// Helper function encapsulating the property access pattern used for
+// implementing PropertyStore::GetProperties()
+template <class V>
+void CopyReadableProperties(
+    brillo::VariantDictionary* out,
+    const std::map<std::string, std::unique_ptr<AccessorInterface<V>>>&
+        properties) {
+  for (const auto& [key, value] : properties) {
+    Error error;
+    V v = value.get()->Get(&error);
+    if (error.IsSuccess()) {
+      (*out)[key] = brillo::Any(v);
+    }
+  }
+}
+}  // namespace
+
 PropertyStore::PropertyStore() = default;
 
 PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed)
@@ -113,123 +131,41 @@ void PropertyStore::SetProperties(const brillo::VariantDictionary& in,
 }
 
 bool PropertyStore::GetProperties(brillo::VariantDictionary* out,
-                                  Error* error) const {
-  {
-    ReadablePropertyConstIterator<bool> it = GetBoolPropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
+                                  Error* ignored) const {
+  CopyReadableProperties(out, bool_properties_);
+  CopyReadableProperties(out, int16_properties_);
+  CopyReadableProperties(out, int32_properties_);
+  CopyReadableProperties(out, rpc_identifier_properties_);
+  CopyReadableProperties(out, rpc_identifiers_properties_);
+  CopyReadableProperties(out, string_properties_);
+  CopyReadableProperties(out, strings_properties_);
+  CopyReadableProperties(out, stringmap_properties_);
+  CopyReadableProperties(out, stringmaps_properties_);
+  CopyReadableProperties(out, uint8_properties_);
+  CopyReadableProperties(out, bytearray_properties_);
+  CopyReadableProperties(out, uint16_properties_);
+  CopyReadableProperties(out, uint16s_properties_);
+  CopyReadableProperties(out, uint32_properties_);
+  CopyReadableProperties(out, uint64_properties_);
+  for (const auto& [key, value] : key_value_store_properties_) {
+    Error error;
+    auto v =
+        KeyValueStore::ConvertToVariantDictionary(value.get()->Get(&error));
+    if (error.IsSuccess()) {
+      (*out)[key] = brillo::Any(v);
     }
   }
-  {
-    ReadablePropertyConstIterator<int16_t> it = GetInt16PropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<int32_t> it = GetInt32PropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<RpcIdentifier> it =
-        GetRpcIdentifierPropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<RpcIdentifiers> it =
-        GetRpcIdentifiersPropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<std::string> it = GetStringPropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<Stringmap> it = GetStringmapPropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<Stringmaps> it =
-        GetStringmapsPropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<Strings> it = GetStringsPropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<uint8_t> it = GetUint8PropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<ByteArray> it = GetByteArrayPropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<uint16_t> it = GetUint16PropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<Uint16s> it = GetUint16sPropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<uint32_t> it = GetUint32PropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<uint64_t> it = GetUint64PropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      (*out)[it.Key()] = brillo::Any(it.value());
-    }
-  }
-  {
-    ReadablePropertyConstIterator<KeyValueStore> it =
-        GetKeyValueStorePropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      brillo::VariantDictionary dict =
-          KeyValueStore::ConvertToVariantDictionary(it.value());
-      (*out)[it.Key()] = dict;
-    }
-  }
-  {
-    ReadablePropertyConstIterator<KeyValueStores> it =
-        GetKeyValueStoresPropertiesIter();
-    for (; !it.AtEnd(); it.Advance()) {
-      std::vector<brillo::VariantDictionary> dicts;
-      for (const auto& d : it.value()) {
-        brillo::VariantDictionary dict =
-            KeyValueStore::ConvertToVariantDictionary(d);
-        dicts.push_back(dict);
+  for (const auto& [key, value] : key_value_stores_properties_) {
+    Error error;
+    std::vector<brillo::VariantDictionary> dicts;
+    auto stores = value.get()->Get(&error);
+    if (error.IsSuccess()) {
+      for (const auto& store : stores) {
+        dicts.push_back(KeyValueStore::ConvertToVariantDictionary(store));
       }
-      (*out)[it.Key()] = dicts;
+      (*out)[key] = dicts;
     }
   }
-
   return true;
 }
 
@@ -481,95 +417,6 @@ bool PropertyStore::ClearProperty(const std::string& name, Error* error) {
     }
   }
   return error->IsSuccess();
-}
-
-ReadablePropertyConstIterator<bool> PropertyStore::GetBoolPropertiesIter()
-    const {
-  return ReadablePropertyConstIterator<bool>(bool_properties_);
-}
-
-ReadablePropertyConstIterator<int16_t> PropertyStore::GetInt16PropertiesIter()
-    const {
-  return ReadablePropertyConstIterator<int16_t>(int16_properties_);
-}
-
-ReadablePropertyConstIterator<int32_t> PropertyStore::GetInt32PropertiesIter()
-    const {
-  return ReadablePropertyConstIterator<int32_t>(int32_properties_);
-}
-
-ReadablePropertyConstIterator<KeyValueStore>
-PropertyStore::GetKeyValueStorePropertiesIter() const {
-  return ReadablePropertyConstIterator<KeyValueStore>(
-      key_value_store_properties_);
-}
-
-ReadablePropertyConstIterator<KeyValueStores>
-PropertyStore::GetKeyValueStoresPropertiesIter() const {
-  return ReadablePropertyConstIterator<KeyValueStores>(
-      key_value_stores_properties_);
-}
-
-ReadablePropertyConstIterator<RpcIdentifier>
-PropertyStore::GetRpcIdentifierPropertiesIter() const {
-  return ReadablePropertyConstIterator<RpcIdentifier>(
-      rpc_identifier_properties_);
-}
-
-ReadablePropertyConstIterator<RpcIdentifiers>
-PropertyStore::GetRpcIdentifiersPropertiesIter() const {
-  return ReadablePropertyConstIterator<RpcIdentifiers>(
-      rpc_identifiers_properties_);
-}
-
-ReadablePropertyConstIterator<std::string>
-PropertyStore::GetStringPropertiesIter() const {
-  return ReadablePropertyConstIterator<std::string>(string_properties_);
-}
-
-ReadablePropertyConstIterator<Stringmap>
-PropertyStore::GetStringmapPropertiesIter() const {
-  return ReadablePropertyConstIterator<Stringmap>(stringmap_properties_);
-}
-
-ReadablePropertyConstIterator<Stringmaps>
-PropertyStore::GetStringmapsPropertiesIter() const {
-  return ReadablePropertyConstIterator<Stringmaps>(stringmaps_properties_);
-}
-
-ReadablePropertyConstIterator<Strings> PropertyStore::GetStringsPropertiesIter()
-    const {
-  return ReadablePropertyConstIterator<Strings>(strings_properties_);
-}
-
-ReadablePropertyConstIterator<uint8_t> PropertyStore::GetUint8PropertiesIter()
-    const {
-  return ReadablePropertyConstIterator<uint8_t>(uint8_properties_);
-}
-
-ReadablePropertyConstIterator<ByteArray>
-PropertyStore::GetByteArrayPropertiesIter() const {
-  return ReadablePropertyConstIterator<ByteArray>(bytearray_properties_);
-}
-
-ReadablePropertyConstIterator<uint16_t> PropertyStore::GetUint16PropertiesIter()
-    const {
-  return ReadablePropertyConstIterator<uint16_t>(uint16_properties_);
-}
-
-ReadablePropertyConstIterator<Uint16s> PropertyStore::GetUint16sPropertiesIter()
-    const {
-  return ReadablePropertyConstIterator<Uint16s>(uint16s_properties_);
-}
-
-ReadablePropertyConstIterator<uint32_t> PropertyStore::GetUint32PropertiesIter()
-    const {
-  return ReadablePropertyConstIterator<uint32_t>(uint32_properties_);
-}
-
-ReadablePropertyConstIterator<uint64_t> PropertyStore::GetUint64PropertiesIter()
-    const {
-  return ReadablePropertyConstIterator<uint64_t>(uint64_properties_);
 }
 
 void PropertyStore::RegisterBool(const std::string& name, bool* prop) {

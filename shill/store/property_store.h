@@ -17,7 +17,6 @@
 
 #include "shill/store/accessor_interface.h"
 #include "shill/store/key_value_store.h"
-#include "shill/store/property_iterator.h"
 
 namespace shill {
 
@@ -172,30 +171,6 @@ class PropertyStore {
   // cannot be cleared, |error| is set, and the method returns false.
   // Otherwise, |error| is unchanged, and the method returns true.
   bool ClearProperty(const std::string& name, Error* error);
-
-  // Accessors for iterators over property maps. Useful for dumping all
-  // properties.
-  ReadablePropertyConstIterator<bool> GetBoolPropertiesIter() const;
-  ReadablePropertyConstIterator<int16_t> GetInt16PropertiesIter() const;
-  ReadablePropertyConstIterator<int32_t> GetInt32PropertiesIter() const;
-  ReadablePropertyConstIterator<KeyValueStore> GetKeyValueStorePropertiesIter()
-      const;
-  ReadablePropertyConstIterator<KeyValueStores>
-  GetKeyValueStoresPropertiesIter() const;
-  ReadablePropertyConstIterator<RpcIdentifier> GetRpcIdentifierPropertiesIter()
-      const;
-  ReadablePropertyConstIterator<RpcIdentifiers>
-  GetRpcIdentifiersPropertiesIter() const;
-  ReadablePropertyConstIterator<std::string> GetStringPropertiesIter() const;
-  ReadablePropertyConstIterator<Stringmap> GetStringmapPropertiesIter() const;
-  ReadablePropertyConstIterator<Stringmaps> GetStringmapsPropertiesIter() const;
-  ReadablePropertyConstIterator<Strings> GetStringsPropertiesIter() const;
-  ReadablePropertyConstIterator<uint8_t> GetUint8PropertiesIter() const;
-  ReadablePropertyConstIterator<ByteArray> GetByteArrayPropertiesIter() const;
-  ReadablePropertyConstIterator<uint16_t> GetUint16PropertiesIter() const;
-  ReadablePropertyConstIterator<Uint16s> GetUint16sPropertiesIter() const;
-  ReadablePropertyConstIterator<uint32_t> GetUint32PropertiesIter() const;
-  ReadablePropertyConstIterator<uint64_t> GetUint64PropertiesIter() const;
 
   // Methods for registering a property.
   //

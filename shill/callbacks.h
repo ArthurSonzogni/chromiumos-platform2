@@ -13,6 +13,7 @@
 #include <brillo/any.h>
 
 #include "shill/data_types.h"
+#include "shill/error.h"
 #include "shill/store/key_value_store.h"
 
 namespace shill {

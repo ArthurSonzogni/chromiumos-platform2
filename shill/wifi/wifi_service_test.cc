@@ -368,10 +368,9 @@ TEST_F(WiFiServiceTest, LogName) {
 // by reading and comparing all string properties returned on the store.
 TEST_F(WiFiServiceTest, PassphraseWriteOnly) {
   WiFiServiceRefPtr wifi_service = MakeSimpleService(kSecurityPsk);
-  ReadablePropertyConstIterator<std::string> it =
-      (wifi_service->store()).GetStringPropertiesIter();
-  for (; !it.AtEnd(); it.Advance())
-    EXPECT_NE(it.Key(), kPassphraseProperty);
+  brillo::VariantDictionary properties;
+  wifi_service->store().GetProperties(&properties, nullptr);
+  ASSERT_EQ(properties.find(kPassphraseProperty), properties.end());
 }
 
 // Make sure setting the passphrase via D-Bus Service.SetProperty validates

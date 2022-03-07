@@ -8,6 +8,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/service.h"
 #include "shill/vpn/third_party_vpn_driver.h"
