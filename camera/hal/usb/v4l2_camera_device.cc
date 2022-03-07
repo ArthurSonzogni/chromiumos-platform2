@@ -406,9 +406,6 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
     }
   }
 
-  privacy_switch_monitor_->TrySubscribe(device_info_.camera_id,
-                                        device_info_.device_path);
-
   // Initialize the capabilities.
   if (device_info_.quirks & kQuirkDisableFrameRateSetting) {
     can_update_frame_rate_ = false;
@@ -540,6 +537,8 @@ int V4L2CameraDevice::StreamOn(uint32_t width,
     fds->push_back(std::move(temp_fds[i]));
   }
 
+  privacy_switch_monitor_->TrySubscribe(device_info_.camera_id,
+                                        device_info_.device_path);
   stream_on_ = true;
   return 0;
 }
