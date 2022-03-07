@@ -94,7 +94,7 @@ void StateHandlerManager::RegisterFakeStateHandlers() {
                                                                 test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeComponentsRepairStateHandler>(
-          json_store_));
+          json_store_, test_dir_path));
   RegisterStateHandler(
       base::MakeRefCounted<fake::FakeDeviceDestinationStateHandler>(
           json_store_, test_dir_path));

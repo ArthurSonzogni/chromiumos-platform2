@@ -11,13 +11,18 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
+#include <base/logging.h>
+
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/system/cryptohome_client_impl.h"
+#include "rmad/system/fake_cryptohome_client.h"
 #include "rmad/system/fake_runtime_probe_client.h"
 #include "rmad/system/runtime_probe_client_impl.h"
+#include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
-
-#include <base/logging.h>
+#include "rmad/utils/fake_cr50_utils.h"
 
 // Used as an unique identifier for supported components.
 using ComponentKey = std::pair<rmad::RmadComponent, std::string>;
@@ -122,25 +127,34 @@ RmadState ConvertDictionaryToState(
 namespace fake {
 
 FakeComponentsRepairStateHandler::FakeComponentsRepairStateHandler(
-    scoped_refptr<JsonStore> json_store)
+    scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
     : ComponentsRepairStateHandler(
-          json_store, std::make_unique<FakeRuntimeProbeClient>()) {}
+          json_store,
+          std::make_unique<FakeCryptohomeClient>(working_dir_path),
+          std::make_unique<FakeRuntimeProbeClient>(),
+          std::make_unique<FakeCr50Utils>(working_dir_path)) {}
 
 }  // namespace fake
 
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store), active_(false) {
+  cryptohome_client_ = std::make_unique<CryptohomeClientImpl>(GetSystemBus());
   runtime_probe_client_ =
       std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
+  cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
 }
 
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store,
-    std::unique_ptr<RuntimeProbeClient> runtime_probe_client)
+    std::unique_ptr<CryptohomeClient> cryptohome_client,
+    std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
+    std::unique_ptr<Cr50Utils> cr50_utils)
     : BaseStateHandler(json_store),
       active_(false),
-      runtime_probe_client_(std::move(runtime_probe_client)) {}
+      cryptohome_client_(std::move(cryptohome_client)),
+      runtime_probe_client_(std::move(runtime_probe_client)),
+      cr50_utils_(std::move(cr50_utils)) {}
 
 RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
   // Probing takes a lot of time. Early return to avoid probing again if we are
@@ -224,6 +238,38 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
   StoreState();
   StoreVars();
 
+  // In the case of MLB repair, the device always goes to a different owner so
+  // we skip DeviceDestination state.
+  // 1. Different owner + CCD blocked:
+  //    Mandatory RSU. Go straight to RSU state.
+  // 2. Different owner + CCD not blocked:
+  //    Must wipe the device. Also skip WipeSelection state and go to
+  //    WpDisableMethod state.
+  if (state_.components_repair().mainboard_rework()) {
+    json_store_->SetValue(kSameOwner, false);
+    json_store_->SetValue(kWpDisableRequired, true);
+    json_store_->SetValue(kWipeDevice, true);
+    if (cryptohome_client_->IsCcdBlocked()) {
+      // Case 1.
+      json_store_->SetValue(kCcdBlocked, true);
+      return NextStateCaseWrapper(RmadState::StateCase::kWpDisableRsu);
+    } else {
+      // Case 2.
+      // If factory mode is already enabled, go directly to WpDisableComplete
+      // state.
+      json_store_->SetValue(kCcdBlocked, false);
+      if (cr50_utils_->IsFactoryModeEnabled()) {
+        json_store_->SetValue(kWpDisableSkipped, true);
+        json_store_->SetValue(
+            kWriteProtectDisableMethod,
+            static_cast<int>(WriteProtectDisableMethod::SKIPPED));
+        return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
+      }
+      return NextStateCaseWrapper(RmadState::StateCase::kWpDisableMethod);
+    }
+  }
+
+  // If it's not MLB repair, proceed to select the device destination.
   return NextStateCaseWrapper(RmadState::StateCase::kDeviceDestination);
 }
 
