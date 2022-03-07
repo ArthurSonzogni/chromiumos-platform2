@@ -199,16 +199,14 @@ TEST_F(CellularServiceProviderTest, LoadMultipleServicesFromProfile) {
   EXPECT_EQ("imsi1a", service->imsi());
   EXPECT_EQ("iccid1a", service->iccid());
 
-  // Both cellular_1a and cellular_1b services should be created.
+  // Only cellular_1a should be created even though cellualr_1b is present on
+  // the same EID.
   const std::vector<CellularServiceRefPtr>& provider_services =
       GetProviderServices();
-  ASSERT_EQ(2u, provider_services.size());
+  ASSERT_EQ(1u, provider_services.size());
   CellularServiceRefPtr service1a = provider_services[0];
   EXPECT_EQ("iccid1a", service1a->iccid());
   EXPECT_TRUE(service1a->connectable());
-  CellularServiceRefPtr service1b = provider_services[1];
-  EXPECT_EQ("iccid1b", service1b->iccid());
-  EXPECT_FALSE(service1b->connectable());
 }
 
 // When a SIM is switched (e.g. after a hotswap), LoadServicesForDevice will be
@@ -329,25 +327,20 @@ TEST_F(CellularServiceProviderTest, RemoveObsoleteServiceFromProfile) {
   EXPECT_EQ(1u, GetProviderServices().size());
 }
 
-TEST_F(CellularServiceProviderTest, OnServiceUnloaded) {
-  CellularRefPtr device = CreateDeviceWithEid("imsi1", "iccid1", kEid1);
-  std::string identifier = device->GetStorageIdentifier();
-
-  SetupCellularStore(identifier, "imsi1", "iccid1", kEid1);
-  SetupCellularStore(identifier, "imsi2", "iccid2", kEid1);
-
-  provider()->LoadServicesForSecondarySim(kEid1, "iccid1", "imsi1",
-                                          device.get());
-  const std::vector<CellularServiceRefPtr>& services = GetProviderServices();
-  EXPECT_EQ(2u, services.size());
-
-  for (const auto& service : services) {
-    if (service->iccid() == "iccid2") {
-      service->Unload();
-      break;
-    }
-  }
+TEST_F(CellularServiceProviderTest, LoadServicesForSecondarySim) {
+  CellularRefPtr device = CreateDevice("imsi1", "iccid1");
+  provider()->LoadServicesForDevice(device.get());
   EXPECT_EQ(1u, GetProviderServices().size());
+
+  // Setup eSIM profiles on the secondary SIM, with iccid2 being the enabled
+  // profile. iccid3 should not be loaded.
+  std::string identifier = device->GetStorageIdentifier();
+  SetupCellularStore(identifier, "imsi2", "iccid2", kEid1);
+  SetupCellularStore(identifier, "imsi3", "iccid3", kEid1);
+  provider()->LoadServicesForSecondarySim(kEid1, "iccid2", "imsi2",
+                                          device.get());
+  // Only the active ICCIDs (iccid1 and iccid2) should be loaded.
+  EXPECT_EQ(2u, GetProviderServices().size());
 }
 
 TEST_F(CellularServiceProviderTest, CreateTemporaryService) {

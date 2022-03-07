@@ -207,7 +207,7 @@ void CellularServiceProvider::RemoveNonDeviceServices(Cellular* device) {
   SLOG(this, 2) << __func__ << " Device ICCID: " << device->iccid();
   std::vector<CellularServiceRefPtr> services_to_remove;
   for (CellularServiceRefPtr& service : services_) {
-    if (!device->HasSimCardId(service->GetSimCardId()))
+    if (!device->HasIccid(service->iccid()))
       services_to_remove.push_back(service);
   }
   for (CellularServiceRefPtr& service : services_to_remove)
@@ -226,18 +226,17 @@ CellularServiceRefPtr CellularServiceProvider::LoadMatchingServicesFromProfile(
   DCHECK(storage);
   KeyValueStore args;
   args.Set<std::string>(kTypeProperty, kTypeCellular);
-  std::string sim_card_id = eid.empty() ? iccid : eid;
-  args.Set<std::string>(CellularService::kStorageSimCardId, sim_card_id);
+  args.Set<std::string>(CellularService::kStorageIccid, iccid);
   std::set<std::string> groups = storage->GetGroupsWithProperties(args);
 
-  LOG(INFO) << __func__ << ": " << sim_card_id << ": Groups: " << groups.size();
+  LOG(INFO) << __func__ << ": " << iccid << ": Groups: " << groups.size();
   CellularServiceRefPtr active_service = nullptr;
   for (const std::string& group : groups) {
     std::string service_imsi, service_iccid, service_eid;
     if (!GetServiceParametersFromStorage(storage, group, &service_imsi,
                                          &service_iccid, &service_eid,
                                          /*error=*/nullptr)) {
-      LOG(ERROR) << "Unable to load service properties for: " << sim_card_id
+      LOG(ERROR) << "Unable to load service properties for: " << iccid
                  << ", removing old or invalid profile entry.";
       storage->DeleteGroup(group);
       continue;
@@ -321,20 +320,6 @@ CellularServiceRefPtr CellularServiceProvider::FindService(
   if (iter != services_.end())
     return *iter;
   return nullptr;
-}
-
-bool CellularServiceProvider::OnServiceUnloaded(
-    const CellularServiceRefPtr& service) {
-  SLOG(this, 1) << __func__ << ": " << service->iccid();
-  const CellularRefPtr device = service->cellular();
-  if (device && device->iccid() == service->iccid()) {
-    LOG(WARNING) << "Service with active ICCID unloaded, Service not removed.";
-    return false;
-  }
-  auto iter = std::find(services_.begin(), services_.end(), service);
-  if (iter != services_.end())
-    services_.erase(iter);
-  return true;
 }
 
 void CellularServiceProvider::AddService(CellularServiceRefPtr service) {

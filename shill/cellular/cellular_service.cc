@@ -349,11 +349,6 @@ bool CellularService::Load(const StoreInterface* storage) {
   return true;
 }
 
-bool CellularService::Unload() {
-  Service::Unload();
-  return manager()->cellular_service_provider()->OnServiceUnloaded(this);
-}
-
 bool CellularService::Save(StoreInterface* storage) {
   SLOG(this, 2) << __func__;
   // Save properties common to all Services.

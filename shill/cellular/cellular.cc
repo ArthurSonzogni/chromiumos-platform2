@@ -2030,12 +2030,11 @@ const std::string& Cellular::GetSimCardId() const {
   return iccid_;
 }
 
-bool Cellular::HasSimCardId(const std::string& sim_card_id) const {
-  if (sim_card_id == eid_ || sim_card_id == iccid_)
+bool Cellular::HasIccid(const std::string& iccid) const {
+  if (iccid == iccid_)
     return true;
   for (const SimProperties& sim_properties : sim_slot_properties_) {
-    if (sim_properties.iccid == sim_card_id ||
-        sim_properties.eid == sim_card_id) {
+    if (sim_properties.iccid == iccid) {
       return true;
     }
   }

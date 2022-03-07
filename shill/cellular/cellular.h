@@ -248,7 +248,7 @@ class Cellular : public Device,
   const std::string& GetSimCardId() const;
 
   // Returns true if |sim_card_id| matches any available SIM cards.
-  bool HasSimCardId(const std::string& sim_card_id) const;
+  bool HasIccid(const std::string& iccid) const;
 
   // Sets the SIM properties and the primary SIM, and updates services and
   // state accordingly.
