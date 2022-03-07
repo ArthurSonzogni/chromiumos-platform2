@@ -576,6 +576,12 @@ class Manager {
                                const KeyValueStore& properties,
                                Error* error);
 
+  // Removes all Passpoint credentials that matches all property of |properties|
+  // in the profile referenced by |profile_id|.
+  bool RemovePasspointCredentials(const std::string& profile_rpcid,
+                                  const KeyValueStore& properties,
+                                  Error* error);
+
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;

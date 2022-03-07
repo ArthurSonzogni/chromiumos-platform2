@@ -127,6 +127,10 @@
 			<arg name="profile" type="o" direction="in"/>
 			<arg name="properties" type="a{sv}" direction="in"/>
 		</method>
+		<method name="RemovePasspointCredentials">
+			<arg name="profile" type="o" direction="in"/>
+			<arg name="properties" type="a{sv}" direction="in"/>
+		</method>
 	</interface>
 	<node name="device"/>
 	<node name="profile"/>

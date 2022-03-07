@@ -39,6 +39,7 @@ const char kRequestScanFunction[] = "RequestScan";
 const char kSetNetworkThrottlingFunction[] = "SetNetworkThrottlingStatus";
 const char kSetDNSProxyDOHProvidersFunction[] = "SetDNSProxyDOHProviders";
 const char kAddPasspointCredentialsFunction[] = "AddPasspointCredentials";
+const char kRemovePasspointCredentialsFunction[] = "RemovePasspointCredentials";
 
 // Service function names.
 const char kClearPropertiesFunction[] = "ClearProperties";
@@ -355,6 +356,7 @@ const char kiSNSOptionDataProperty[] = "iSNSOptionData";  // For RFC 4174.
 
 // Passpoint credentials property names.
 // EAP properties are defined above for EAP service.
+const char kPasspointCredentialsFQDNProperty[] = "FQDN";
 const char kPasspointCredentialsDomainsProperty[] = "Domains";
 const char kPasspointCredentialsRealmProperty[] = "Realm";
 const char kPasspointCredentialsHomeOIsProperty[] = "HomeOIs";

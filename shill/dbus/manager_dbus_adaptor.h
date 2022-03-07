@@ -137,6 +137,10 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   bool AddPasspointCredentials(brillo::ErrorPtr* error,
                                const dbus::ObjectPath& profile_rpcid,
                                const brillo::VariantDictionary& args) override;
+  bool RemovePasspointCredentials(
+      brillo::ErrorPtr* error,
+      const dbus::ObjectPath& profile_rpcid,
+      const brillo::VariantDictionary& args) override;
 
  private:
   friend class ManagerDBusAdaptorTest;

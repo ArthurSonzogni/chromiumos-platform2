@@ -676,18 +676,18 @@ void WiFiProvider::AddCredentials(
   }
 }
 
-void WiFiProvider::ForgetCredentials(
+bool WiFiProvider::ForgetCredentials(
     const PasspointCredentialsRefPtr& credentials) {
   if (!credentials ||
       credentials_by_id_.find(credentials->id()) == credentials_by_id_.end()) {
     // Credentials have been removed, nothing to do.
-    return;
+    return true;
   }
 
   // TODO(b/162106001) handle CA and client cert removal if necessary.
 
   // Remove the credentials from our credentials set and from the WiFi device.
-  RemoveCredentials(credentials);
+  bool success = RemoveCredentials(credentials);
   // Find all the services linked to the set.
   std::vector<WiFiServiceRefPtr> to_delete;
   for (auto& service : services_) {
@@ -708,16 +708,41 @@ void WiFiProvider::ForgetCredentials(
   // Delete the credentials set from profile storage.
   StoreInterface* storage = credentials->profile()->GetStorage();
   storage->DeleteGroup(credentials->id());
+  return success;
 }
 
-void WiFiProvider::RemoveCredentials(
+bool WiFiProvider::ForgetCredentials(const KeyValueStore& properties) {
+  const auto fqdn = properties.Lookup<std::string>(
+      kPasspointCredentialsFQDNProperty, std::string());
+  const auto package_name = properties.Lookup<std::string>(
+      kPasspointCredentialsAndroidPackageNameProperty, std::string());
+
+  bool success = true;
+  std::vector<const PasspointCredentialsRefPtr> removed_credentials;
+  for (const auto& credentials : credentials_by_id_) {
+    if (!fqdn.empty() && credentials.second->GetFQDN() != fqdn) {
+      continue;
+    }
+    if (!package_name.empty() &&
+        credentials.second->android_package_name() != package_name) {
+      continue;
+    }
+    removed_credentials.push_back(credentials.second);
+  }
+  for (const auto& credentials : removed_credentials) {
+    success &= ForgetCredentials(credentials);
+  }
+  return success;
+}
+
+bool WiFiProvider::RemoveCredentials(
     const PasspointCredentialsRefPtr& credentials) {
   credentials_by_id_.erase(credentials->id());
 
   DeviceRefPtr device =
       manager_->GetEnabledDeviceWithTechnology(Technology::kWiFi);
   if (!device) {
-    return;
+    return false;
   }
   // We can safely do this because GetEnabledDeviceWithTechnology ensures
   // the type of the device is WiFi.
@@ -725,7 +750,9 @@ void WiFiProvider::RemoveCredentials(
   if (!wifi->RemoveCred(credentials)) {
     SLOG(this, 1) << "Failed to remove credentials " << credentials->id()
                   << " from the device.";
+    return false;
   }
+  return true;
 }
 
 std::vector<PasspointCredentialsRefPtr> WiFiProvider::GetCredentials() {

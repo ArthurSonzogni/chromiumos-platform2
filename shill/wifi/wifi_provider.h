@@ -139,7 +139,12 @@ class WiFiProvider : public ProviderInterface {
   // Removes the set of credentials referenced by |credentials| from the
   // provider, the WiFi device and invalidates all the services populated with
   // the set of credentials.
-  virtual void ForgetCredentials(const PasspointCredentialsRefPtr& credentials);
+  virtual bool ForgetCredentials(const PasspointCredentialsRefPtr& credentials);
+
+  // Removes all credentials that match with |properties| from the provider,
+  // the WiFi device and invalidates all the services populated with the set
+  // of credentials.
+  virtual bool ForgetCredentials(const KeyValueStore& properties);
 
   // Get the list of Passpoint credentials known by the provider.
   virtual std::vector<PasspointCredentialsRefPtr> GetCredentials();
@@ -186,7 +191,7 @@ class WiFiProvider : public ProviderInterface {
 
   // Removes the set of credentials referenced by |credentials| from both the
   // provider and the WiFi device.
-  void RemoveCredentials(const PasspointCredentialsRefPtr& credentials);
+  bool RemoveCredentials(const PasspointCredentialsRefPtr& credentials);
 
   void ReportRememberedNetworkCount();
   void ReportServiceSourceMetrics();

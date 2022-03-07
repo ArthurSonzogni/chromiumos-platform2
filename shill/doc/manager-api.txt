@@ -454,6 +454,16 @@ Methods		dict GetProperties()
 					 [service].Error.NotFound
 					 [service].Error.OperationFailed
 
+		void RemovePasspointCredentials(object profile,
+	                                        dict properties)
+
+			Remove Passpoint credentials that matches the all
+			property of |properties|. This removes all services
+			associated with the removed credentials.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotFound
+					 [service].Error.OperationFailed
 
 Signals		PropertyChanged(string name, variant value)
 
