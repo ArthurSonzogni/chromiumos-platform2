@@ -193,7 +193,7 @@ bool SerializationUtils::ReadAndTruncateMetricsFromFile(
     const std::string& filename,
     std::vector<MetricSample>* metrics,
     size_t sample_batch_max_length) {
-  struct stat stat_buf;
+  struct stat stat_buf = {};
   int result;
   off_t total_length = 0;
 
