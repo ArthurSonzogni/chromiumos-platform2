@@ -12,6 +12,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <base/values.h>
 #include <libec/pd_chip_info_command.h>
 
@@ -52,10 +54,11 @@ TcpcFunction::DataType TcpcFunction::EvalImpl() const {
       break;
 
     base::Value val{base::Value::Type::DICTIONARY};
-    val.SetIntKey("port", port);
-    val.SetIntKey("vendor_id", cmd->VendorId());
-    val.SetIntKey("product_id", cmd->ProductId());
-    val.SetIntKey("device_id", cmd->DeviceId());
+    val.SetStringKey("port", base::NumberToString(port));
+    val.SetStringKey("vendor_id", base::StringPrintf("0x%x", cmd->VendorId()));
+    val.SetStringKey("product_id",
+                     base::StringPrintf("0x%x", cmd->ProductId()));
+    val.SetStringKey("device_id", base::StringPrintf("0x%x", cmd->DeviceId()));
     result.push_back(std::move(val));
   }
 
