@@ -141,15 +141,13 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
         ScopedDrmPlaneResPtr plane_res(
             drmModeGetPlaneResources(file.GetPlatformFile()));
         CHECK(plane_res) << " Failed to get plane resources";
+        res_crtc = std::make_unique<Crtc>(std::move(file), std::move(connector),
+                                          std::move(encoder), std::move(crtc),
+                                          std::move(fb), std::move(fb2),
+                                          std::move(plane_res));
+      } else {
         res_crtc = std::make_unique<Crtc>(
-            file.Duplicate(), std::move(connector), std::move(encoder),
-            std::move(crtc), std::move(fb), std::move(fb2),
-            std::move(plane_res));
-      }
-
-      if (!res_crtc) {
-        res_crtc = std::make_unique<Crtc>(
-            file.Duplicate(), std::move(connector), std::move(encoder),
+            std::move(file), std::move(connector), std::move(encoder),
             std::move(crtc), std::move(fb), std::move(fb2), nullptr);
       }
 
