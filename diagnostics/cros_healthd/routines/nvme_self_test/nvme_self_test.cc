@@ -125,9 +125,7 @@ void NvmeSelfTestRoutine::Cancel() {
 
 void NvmeSelfTestRoutine::PopulateStatusUpdate(
     mojo_ipc::RoutineUpdate* response, bool include_output) {
-  // Request progress info if routine is running with the percentage below 100.
-  if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kRunning &&
-      percent_ < 100) {
+  if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kRunning) {
     auto result_callback =
         base::Bind(&NvmeSelfTestRoutine::OnDebugdResultCallback,
                    weak_ptr_routine_.GetWeakPtr());

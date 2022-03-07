@@ -96,6 +96,9 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
 
   chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
       chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
+  // On certain devices, routine will still be running even if percent_ reaches
+  // 100. Hence, we cannot rely on percent_ to determine whether the routine is
+  // completed. Use status_ instead.
   uint32_t percent_ = 0;
   base::Value output_dict_{base::Value::Type::DICTIONARY};
   std::string status_message_;
