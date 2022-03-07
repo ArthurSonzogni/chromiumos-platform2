@@ -6934,6 +6934,10 @@ mno {
     mccmnc : "22207"
   }
   mvno {
+    mvno_filter {
+      type : MCCMNC
+      regex : ".*" # Sole carrier in MVNO
+    }
     data {
       uuid : "887c3c7f-fe67-46de-b611-072e3ec76737"
       country : "it"
@@ -6986,6 +6990,10 @@ mno {
     mccmnc : "22233"
   }
   mvno {
+    mvno_filter {
+      type : MCCMNC
+      regex : ".*" # Sole carrier in MVNO
+    }
     data {
       uuid : "2d0f0f12-1431-45a6-9cd7-e5ea16582917"
       country : "it"
@@ -7007,6 +7015,10 @@ mno {
     mccmnc : "22234"
   }
   mvno {
+    mvno_filter {
+      type : MCCMNC
+      regex : ".*" # Sole carrier in MVNO
+    }
     data {
       uuid : "07aae86a-c09f-4bde-8532-d457fd8dbc75"
       country : "it"

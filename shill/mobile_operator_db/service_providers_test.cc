@@ -88,12 +88,13 @@ TEST_F(ServiceProvidersTest, CheckUniqueUUIDs) {
   }
 }
 
-TEST_F(ServiceProvidersTest, CheckRootLevelMvnosWithoutFilters) {
-  // If a MVNO is at the root level(not under an MNO), and there is no filter
-  // in it, the MVNO will always be selected.
-  for (const auto& mvno : database_->mvno()) {
-    EXPECT_TRUE(mvno.mvno_filter_size() > 0)
-        << "MVNO with uuid: " << mvno.data().uuid()
+TEST_F(ServiceProvidersTest, CheckMvnosWithoutFilters) {
+  // If a MVNO doesn't have a filter, it will always be selected, and it will
+  // override anything above its level.
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    EXPECT_TRUE(mvno->mvno_filter_size() > 0)
+        << "MVNO with uuid: " << mvno->data().uuid()
         << " does not have a filter.";
   }
 }
