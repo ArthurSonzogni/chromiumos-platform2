@@ -1940,6 +1940,10 @@ void UserDataAuth::ContinueMountWithCredentials(
   std::move(on_done).Run(reply);
 
   InitializePkcs11(user_session.get());
+
+  // Step to record metrics for a user's existing VaultKeysets.
+  std::string obfuscated = SanitizeUserName(account_id);
+  keyset_management_->RecordAllVaultKeysetMetrics(obfuscated);
 }
 
 std::unique_ptr<VaultKeyset> UserDataAuth::LoadVaultKeyset(

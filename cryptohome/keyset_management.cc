@@ -267,9 +267,6 @@ bool KeysetManagement::GetVaultKeysetLabelsAndData(
   CHECK(key_label_data);
   base::FilePath user_dir = UserPath(obfuscated_username);
 
-  // Struct to records various metrics for UMA.
-  VaultKeysetMetrics keyset_metrics;
-
   std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
       user_dir, false /* Not recursive. */, base::FileEnumerator::FILES));
   base::FilePath next_path;
@@ -296,9 +293,6 @@ bool KeysetManagement::GetVaultKeysetLabelsAndData(
     if (!vk) {
       continue;
     }
-    if (!RecordVaultKeysetMetrics(*vk.get(), keyset_metrics)) {
-      LOG(ERROR) << "Metrics not recorded for " << vk->GetLabel();
-    }
     if (key_label_data->find(vk->GetLabel()) != key_label_data->end()) {
       // This is a confirmation check, we do not expect to hit this.
       LOG(INFO) << "Found a duplicate label, skipping it: " << vk->GetLabel();
@@ -306,9 +300,6 @@ bool KeysetManagement::GetVaultKeysetLabelsAndData(
     }
     key_label_data->insert({vk->GetLabel(), vk->GetKeyData()});
   }
-
-  // Report VaultKeyset metrics through UMA.
-  ReportVaultKeysetMetrics(keyset_metrics);
 
   return (key_label_data->size() > 0);
 }
@@ -318,9 +309,6 @@ bool KeysetManagement::GetVaultKeysetLabels(
     std::vector<std::string>* labels) const {
   CHECK(labels);
   base::FilePath user_dir = UserPath(obfuscated_username);
-
-  // Struct to records various metrics for UMA.
-  VaultKeysetMetrics keyset_metrics;
 
   std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
       user_dir, false /* Not recursive. */, base::FileEnumerator::FILES));
@@ -347,15 +335,9 @@ bool KeysetManagement::GetVaultKeysetLabels(
     if (!vk) {
       continue;
     }
-    if (!RecordVaultKeysetMetrics(*vk.get(), keyset_metrics)) {
-      LOG(ERROR) << "Metrics not recorded for " << vk->GetLabel();
-    }
 
     labels->push_back(vk->GetLabel());
   }
-
-  // Report VaultKeyset metrics through UMA.
-  ReportVaultKeysetMetrics(keyset_metrics);
 
   return (labels->size() > 0);
 }
@@ -968,6 +950,24 @@ base::Time KeysetManagement::GetKeysetBoundTimestamp(
   }
 
   return timestamp;
+}
+
+void KeysetManagement::RecordAllVaultKeysetMetrics(
+    const std::string& obfuscated) const {
+  VaultKeysetMetrics keyset_metrics;
+  std::vector<int> key_indices;
+  GetVaultKeysets(obfuscated, &key_indices);
+  for (int index : key_indices) {
+    std::unique_ptr<VaultKeyset> vk = LoadVaultKeysetForUser(obfuscated, index);
+    if (!vk) {
+      continue;
+    } else {
+      if (!RecordVaultKeysetMetrics(*vk.get(), keyset_metrics)) {
+        LOG(ERROR) << "Metrics not recorded for " << vk->GetLabel();
+      }
+    }
+  }
+  ReportVaultKeysetMetrics(keyset_metrics);
 }
 
 bool KeysetManagement::RecordVaultKeysetMetrics(

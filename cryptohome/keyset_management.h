@@ -173,6 +173,10 @@ class KeysetManagement {
   virtual bool ReSaveKeysetIfNeeded(const Credentials& credentials,
                                     VaultKeyset* keyset) const;
 
+  // Record various metrics about all the VaultKeyset for a given user
+  // obfuscated
+  virtual void RecordAllVaultKeysetMetrics(const std::string& obfuscated) const;
+
   // ========== KeysetManagement methods with KeyBlobs ===============
 
   // Adds initial keyset for obfuscated username with |file_system_keyset|. Adds
