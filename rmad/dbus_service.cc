@@ -424,8 +424,7 @@ bool DBusService::SetUpInterface() {
 
 void DBusService::SetUpInterfaceCallbacks() {
   rmad_interface_->RegisterRequestQuitDaemonCallback(
-      std::make_unique<base::RepeatingCallback<void()>>(base::BindRepeating(
-          &DBusService::RequestQuit, base::Unretained(this))));
+      base::BindRepeating(&DBusService::RequestQuit, base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kWpDisablePhysical,
       std::make_unique<base::RepeatingCallback<bool(bool)>>(base::BindRepeating(

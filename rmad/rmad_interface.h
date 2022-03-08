@@ -25,7 +25,7 @@ class RmadInterface {
 
   // Register a callback for requesting to quit the daemon.
   virtual void RegisterRequestQuitDaemonCallback(
-      std::unique_ptr<base::RepeatingCallback<void()>> callback) = 0;
+      base::RepeatingCallback<void()> callback) = 0;
 
   // Register a signal sender for specific states. Virtual functions cannot be
   // declared as template so we need to declare them one by one.

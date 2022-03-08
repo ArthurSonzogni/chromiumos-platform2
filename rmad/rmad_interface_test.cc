@@ -55,7 +55,7 @@ constexpr char kInvalidJson[] = R"(alfkjklsfsgdkjnbknd^^)";
 
 class RmadInterfaceImplTest : public testing::Test {
  public:
-  RmadInterfaceImplTest() {
+  RmadInterfaceImplTest() : quit_daemon_requested_(false) {
     welcome_proto_.set_allocated_welcome(new WelcomeState());
     components_repair_proto_.set_allocated_components_repair(
         new ComponentsRepairState());
@@ -208,6 +208,8 @@ class RmadInterfaceImplTest : public testing::Test {
     return mock_metrics_utils;
   }
 
+  void RequestQuitDaemon() { quit_daemon_requested_ = true; }
+
  protected:
   void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
 
@@ -215,6 +217,8 @@ class RmadInterfaceImplTest : public testing::Test {
   RmadState components_repair_proto_;
   RmadState device_destination_proto_;
   base::ScopedTempDir temp_dir_;
+
+  bool quit_daemon_requested_;
 };
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_Set_HasCellular) {
@@ -284,7 +288,12 @@ TEST_F(RmadInterfaceImplTest,
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
     EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
   };
+  rmad_interface.RegisterRequestQuitDaemonCallback(base::BindRepeating(
+      &RmadInterfaceImplTest::RequestQuitDaemon, base::Unretained(this)));
   rmad_interface.GetCurrentState(base::BindOnce(callback));
+
+  // Check that we request to quit the daemon.
+  EXPECT_TRUE(quit_daemon_requested_);
 }
 
 TEST_F(RmadInterfaceImplTest, GetCurrentState_NotInRma_RoVerificationPass) {
@@ -665,10 +674,15 @@ TEST_F(RmadInterfaceImplTest, AbortRma) {
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
   };
+  rmad_interface.RegisterRequestQuitDaemonCallback(base::BindRepeating(
+      &RmadInterfaceImplTest::RequestQuitDaemon, base::Unretained(this)));
   rmad_interface.AbortRma(base::BindOnce(callback));
 
   // Check the the state file is cleared.
   EXPECT_FALSE(base::PathExists(json_store_file_path));
+
+  // Check that we request to quit the daemon.
+  EXPECT_TRUE(quit_daemon_requested_);
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
@@ -689,10 +703,15 @@ TEST_F(RmadInterfaceImplTest, AbortRma_NoHistory) {
   auto callback = [](const AbortRmaReply& reply) {
     EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
   };
+  rmad_interface.RegisterRequestQuitDaemonCallback(base::BindRepeating(
+      &RmadInterfaceImplTest::RequestQuitDaemon, base::Unretained(this)));
   rmad_interface.AbortRma(base::BindOnce(callback));
 
   // Check the the state file is cleared.
   EXPECT_FALSE(base::PathExists(json_store_file_path));
+
+  // Check that we request to quit the daemon.
+  EXPECT_TRUE(quit_daemon_requested_);
 }
 
 TEST_F(RmadInterfaceImplTest, AbortRma_Failed) {

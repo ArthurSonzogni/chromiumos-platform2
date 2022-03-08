@@ -333,6 +333,13 @@ void RmadInterfaceImpl::TryTransitionNextStateFromCurrentState() {
 
 void RmadInterfaceImpl::GetCurrentState(GetStateCallback callback) {
   GetStateReply reply = GetCurrentStateInternal();
+
+  // Quit the daemon if we are no longer in RMA.
+  if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED) {
+    CHECK(!request_quit_daemon_callback_.is_null());
+    request_quit_daemon_callback_.Run();
+  }
+
   std::move(callback).Run(reply);
 }
 
@@ -360,6 +367,16 @@ GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
 void RmadInterfaceImpl::TransitionNextState(
     const TransitionNextStateRequest& request, GetStateCallback callback) {
   GetStateReply reply = TransitionNextStateInternal(request, false);
+
+  // Quit the daemon if we are no longer in RMA, or the state after the
+  // transition requires to restart the daemon.
+  if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED ||
+      std::find(kQuitDaemonStates.begin(), kQuitDaemonStates.end(),
+                current_state_case_) != kQuitDaemonStates.end()) {
+    CHECK(!request_quit_daemon_callback_.is_null());
+    request_quit_daemon_callback_.Run();
+  }
+
   std::move(callback).Run(reply);
 }
 
@@ -428,8 +445,8 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   // daemon here.
   if (std::find(kQuitDaemonStates.begin(), kQuitDaemonStates.end(),
                 current_state_case_) != kQuitDaemonStates.end()) {
-    CHECK(request_quit_daemon_callback_);
-    request_quit_daemon_callback_->Run();
+    CHECK(!request_quit_daemon_callback_.is_null());
+    request_quit_daemon_callback_.Run();
   }
 
   reply.set_error(RMAD_ERROR_OK);
@@ -440,11 +457,22 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
 }
 
 void RmadInterfaceImpl::TransitionPreviousState(GetStateCallback callback) {
+  GetStateReply reply = TransitionPreviousStateInternal();
+
+  // Quit the daemon if we are no longer in RMA.
+  if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED) {
+    CHECK(!request_quit_daemon_callback_.is_null());
+    request_quit_daemon_callback_.Run();
+  }
+
+  std::move(callback).Run(reply);
+}
+
+GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
   GetStateReply reply;
   if (current_state_case_ == RmadState::STATE_NOT_SET) {
     reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
-    std::move(callback).Run(reply);
-    return;
+    return reply;
   }
 
   scoped_refptr<BaseStateHandler> current_state_handler, prev_state_handler;
@@ -453,8 +481,7 @@ void RmadInterfaceImpl::TransitionPreviousState(GetStateCallback callback) {
       error != RMAD_ERROR_OK) {
     DLOG(FATAL) << "Current state initialization failed";
     reply.set_error(error);
-    std::move(callback).Run(reply);
-    return;
+    return reply;
   }
 
   // Initialize the default reply.
@@ -466,8 +493,7 @@ void RmadInterfaceImpl::TransitionPreviousState(GetStateCallback callback) {
   if (!CanGoBack()) {
     LOG(INFO) << "Cannot go back to previous state";
     reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
-    std::move(callback).Run(reply);
-    return;
+    return reply;
   }
 
   RmadState::StateCase prev_state_case = *std::prev(state_history_.end(), 2);
@@ -475,8 +501,7 @@ void RmadInterfaceImpl::TransitionPreviousState(GetStateCallback callback) {
           GetInitializedStateHandler(prev_state_case, &prev_state_handler);
       error != RMAD_ERROR_OK) {
     reply.set_error(error);
-    std::move(callback).Run(reply);
-    return;
+    return reply;
   }
 
   // Transition to previous state.
@@ -495,7 +520,7 @@ void RmadInterfaceImpl::TransitionPreviousState(GetStateCallback callback) {
   reply.set_allocated_state(new RmadState(prev_state_handler->GetState(true)));
   reply.set_can_go_back(CanGoBack());
   reply.set_can_abort(CanAbort());
-  std::move(callback).Run(reply);
+  return reply;
 }
 
 void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
@@ -517,6 +542,12 @@ void RmadInterfaceImpl::AbortRma(AbortRmaCallback callback) {
   } else {
     VLOG(1) << "AbortRma: Failed to abort.";
     reply.set_error(RMAD_ERROR_ABORT_FAILED);
+  }
+
+  // Quit the daemon if we are no longer in RMA.
+  if (reply.error() == RMAD_ERROR_RMA_NOT_REQUIRED) {
+    CHECK(!request_quit_daemon_callback_.is_null());
+    request_quit_daemon_callback_.Run();
   }
 
   std::move(callback).Run(reply);

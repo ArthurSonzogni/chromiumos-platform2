@@ -142,7 +142,8 @@ class DBusService : public brillo::DBusServiceDaemon {
     }
   }
 
-  // Request to quit the daemon. This is used as a callback by state handlers.
+  // Request to quit the daemon. This is used as a callback by the RMA
+  // interface.
   void RequestQuit() { quit_requested_ = true; }
 
   // Schedule an asynchronous D-Bus shutdown and exit the daemon.

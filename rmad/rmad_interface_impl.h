@@ -51,7 +51,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   bool SetUp() override;
 
   void RegisterRequestQuitDaemonCallback(
-      std::unique_ptr<base::RepeatingCallback<void()>> callback) override {
+      base::RepeatingCallback<void()> callback) override {
     request_quit_daemon_callback_ = std::move(callback);
   }
 
@@ -114,6 +114,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   GetStateReply GetCurrentStateInternal();
   GetStateReply TransitionNextStateInternal(
       const TransitionNextStateRequest& request, bool try_at_boot);
+  GetStateReply TransitionPreviousStateInternal();
 
   // Store the state history to |json_store_|.
   bool StoreStateHistory();
@@ -142,8 +143,7 @@ class RmadInterfaceImpl final : public RmadInterface {
   bool can_abort_;
 
   // Callback for request quit the daemon.
-  std::unique_ptr<base::RepeatingCallback<void()>>
-      request_quit_daemon_callback_;
+  base::RepeatingCallback<void()> request_quit_daemon_callback_;
 
   // Test mode. Use fake state handlers.
   bool test_mode_;
