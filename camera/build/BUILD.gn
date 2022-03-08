@@ -15,7 +15,14 @@ config("cros_camera_common") {
 
   # For camera libraries which are mounted at runtime.
   lib_dirs = [ "${sysroot}/build/share/cros_camera" ]
-  ldflags = [ "-Wl,-rpath=/usr/share/cros-camera/libfs/" ]
+  ldflags = [
+    # The path where libraries will be mount at runtime on the device.
+    "-Wl,-rpath=/usr/share/cros-camera/libfs/",
+
+    # The path where libraries are temporarily installed on the host. It is
+    # mainly for tests (e.g. fuzzer/unit tests) running on the host device.
+    "-Wl,-rpath=/build/share/cros_camera/",
+  ]
 
   # Feature USE flags as declared in chromeos-base/cros-camera-libs.
   defines += [
