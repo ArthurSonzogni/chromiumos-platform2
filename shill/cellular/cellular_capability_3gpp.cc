@@ -1820,15 +1820,25 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   base::EraseIf(attach_apn_try_list_, [](const Stringmap& apn_info) {
     return !base::Contains(apn_info, kApnAttachProperty);
   });
-  // If the attach APN in shill's database is not the correct one, the device
-  // will never register. We can let the modem try to register with its own
-  // database by adding an empty APN to the list.
-  if (attach_apn_try_list_.size() != 0) {
-    attach_apn_try_list_.emplace_back();
-    // When multiple Attach APNs are present(including the empty Attach added
-    // above), shill should fall back to the default one(first in the list) if
-    // all of them fail to register.
-    attach_apn_try_list_.emplace_back(attach_apn_try_list_.front());
+
+  if (attach_apn_try_list_.size() > 0) {
+    if (base::Contains(attach_apn_try_list_.front(), cellular::kApnSource) &&
+        attach_apn_try_list_.front().at(cellular::kApnSource) ==
+            cellular::kApnSourceUi) {
+      SLOG(this, 2) << "Using user entered Attach APN, skipping round robin";
+      // Only keep the user entered Attach APN.
+      while (attach_apn_try_list_.size() > 1)
+        attach_apn_try_list_.pop_back();
+    } else {
+      // If the attach APN in shill's database is not the correct one, the
+      // device will never register. We can let the modem try to register with
+      // its own database by adding an empty APN to the list.
+      attach_apn_try_list_.emplace_back();
+      // When multiple Attach APNs are present(including the empty Attach added
+      // above), shill should fall back to the default one(first in the list) if
+      // all of them fail to register.
+      attach_apn_try_list_.emplace_back(attach_apn_try_list_.front());
+    }
   }
 
   if (!cellular()->home_provider_info()->IsMobileNetworkOperatorKnown()) {
@@ -1877,13 +1887,6 @@ void CellularCapability3gpp::SetNextAttachApn() {
     attach_apn_try_list_.pop_front();
 
   if (attach_apn_try_list_.size() > 0) {
-    DCHECK(base::Contains(last_attach_apn_, cellular::kApnSource));
-    if (base::Contains(last_attach_apn_, cellular::kApnSource) &&
-        last_attach_apn_.at(cellular::kApnSource) == cellular::kApnSourceUi) {
-      SLOG(this, 2) << "Using user entered Attach APN, skipping round robin";
-      return;
-    }
-
     SLOG(this, 2) << "Posted deferred Attach APN retry";
     try_next_attach_apn_callback_.Reset(
         base::BindOnce(&CellularCapability3gpp::SetNextAttachApn,
