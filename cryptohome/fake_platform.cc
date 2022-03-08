@@ -562,6 +562,7 @@ bool FakePlatform::RemoveExtendedFileAttribute(const base::FilePath& path,
 
 bool FakePlatform::GetExtFileAttributes(const base::FilePath& path,
                                         int* flags) {
+  base::AutoLock lock(mappings_lock_);
   const base::FilePath real_path = TestFilePath(path);
   if (!IsLink(path) && !FileExists(path)) {
     return false;
@@ -576,6 +577,7 @@ bool FakePlatform::GetExtFileAttributes(const base::FilePath& path,
 }
 
 bool FakePlatform::SetExtFileAttributes(const base::FilePath& path, int flags) {
+  base::AutoLock lock(mappings_lock_);
   const base::FilePath real_path = TestFilePath(path);
   if (!IsLink(path) && !FileExists(path)) {
     return false;
