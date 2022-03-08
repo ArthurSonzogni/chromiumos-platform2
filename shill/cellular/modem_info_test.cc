@@ -197,4 +197,24 @@ TEST_F(ModemInfoTest, AddRemoveInterfaces) {
   EXPECT_EQ(0, modem_info_.modems_.size());
 }
 
+TEST_F(ModemInfoTest, RestartModemManager) {
+  Connect(GetModemWithProperties());
+  EXPECT_EQ(1, modem_info_.modems_.size());
+
+  // Simulate ModemManager crashing and coming back/stopping and restarting/etc.
+  control_interface_.StopService();
+  EXPECT_FALSE(modem_info_.service_connected_);
+
+  MockDBusObjectManagerProxy* proxy = control_interface_.GetMockProxy();
+  ManagedObjectsCallback get_managed_objects_callback;
+  EXPECT_CALL(*proxy, GetManagedObjects(_, _, _))
+      .WillOnce(SaveArg<1>(&get_managed_objects_callback));
+
+  control_interface_.StartService();
+  get_managed_objects_callback.Run(GetModemWithProperties(), Error());
+
+  EXPECT_TRUE(modem_info_.service_connected_);
+  EXPECT_EQ(1, modem_info_.modems_.size());
+}
+
 }  // namespace shill
