@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
@@ -115,8 +116,10 @@ TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   EXPECT_EQ("", manager_props.no_auto_connect_technologies);
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, manager_props.portal_http_url);
   EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager_props.portal_https_url);
-  EXPECT_EQ(PortalDetector::kDefaultFallbackHttpUrls,
-            manager_props.portal_fallback_http_urls);
+  EXPECT_EQ(
+      std::vector<std::string>(PortalDetector::kDefaultFallbackHttpUrls.begin(),
+                               PortalDetector::kDefaultFallbackHttpUrls.end()),
+      manager_props.portal_fallback_http_urls);
   EXPECT_EQ("", manager_props.prohibited_technologies);
   EXPECT_FALSE(manager_props.use_swanctl_driver.has_value());
   EXPECT_EQ("", manager_props.dhcp_hostname);

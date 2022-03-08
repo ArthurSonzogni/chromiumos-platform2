@@ -8,6 +8,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include <string>
+#include <vector>
+
 #include "shill/adaptor_interfaces.h"
 #include "shill/manager.h"
 #include "shill/portal_detector.h"
@@ -123,7 +126,8 @@ void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props) {
   manager_props->portal_http_url = PortalDetector::kDefaultHttpUrl;
   manager_props->portal_https_url = PortalDetector::kDefaultHttpsUrl;
   manager_props->portal_fallback_http_urls =
-      PortalDetector::kDefaultFallbackHttpUrls;
+      std::vector<std::string>(PortalDetector::kDefaultFallbackHttpUrls.begin(),
+                               PortalDetector::kDefaultFallbackHttpUrls.end());
 
   if (!storage()->GetString(kStorageId, kStorageProhibitedTechnologies,
                             &manager_props->prohibited_technologies)) {

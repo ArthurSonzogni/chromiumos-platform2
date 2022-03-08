@@ -73,9 +73,17 @@ class Manager {
   struct Properties {
    public:
     Properties() : arp_gateway(true), minimum_mtu(IPConfig::kUndefinedMTU) {}
+    // Comma separated list of technologies for which portal detection is
+    // enabled.
     std::string check_portal_list;
+    // URL used for the first HTTP probe sent by PortalDetector on a new network
+    // connection.
     std::string portal_http_url;
+    // URL used for the first HTTPS probe sent by PortalDetector on a new
+    // network connection.
     std::string portal_https_url;
+    // Set of fallback URLs used for retrying the HTTP probe when portal
+    // detection is not conclusive.
     std::vector<std::string> portal_fallback_http_urls;
     // Whether to ARP for the default gateway in the DHCP client after
     // acquiring a lease.

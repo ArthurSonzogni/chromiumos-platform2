@@ -3662,8 +3662,10 @@ TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
             manager->props_.ignored_dns_search_paths);
   EXPECT_EQ(PortalDetector::kDefaultHttpUrl, manager->props_.portal_http_url);
   EXPECT_EQ(PortalDetector::kDefaultHttpsUrl, manager->props_.portal_https_url);
-  EXPECT_EQ(PortalDetector::kDefaultFallbackHttpUrls,
-            manager->props_.portal_fallback_http_urls);
+  EXPECT_EQ(
+      std::vector<std::string>(PortalDetector::kDefaultFallbackHttpUrls.begin(),
+                               PortalDetector::kDefaultFallbackHttpUrls.end()),
+      manager->props_.portal_fallback_http_urls);
 
   // Change one of the settings.
   static const std::string kCustomCheckPortalList = "fiber0";

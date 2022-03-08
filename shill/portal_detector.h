@@ -5,6 +5,7 @@
 #ifndef SHILL_PORTAL_DETECTOR_H_
 #define SHILL_PORTAL_DETECTOR_H_
 
+#include <array>
 #include <memory>
 #include <ostream>
 #include <set>
@@ -66,6 +67,25 @@ class Metrics;
 //   |kPortalCheckInterval| parameter.
 class PortalDetector {
  public:
+  // Default URL used for the first HTTP probe sent by PortalDetector on a new
+  // network connection.
+  static constexpr char kDefaultHttpUrl[] =
+      "http://www.gstatic.com/generate_204";
+  // Default URL used for the first HTTPS probe sent by PortalDetector on a new
+  // network connection.
+  static constexpr char kDefaultHttpsUrl[] =
+      "https://www.google.com/generate_204";
+  // Set of fallback URLs used for retrying the HTTP probe when portal detection
+  // is not conclusive.
+  static constexpr std::array<const char*, 3> kDefaultFallbackHttpUrls = {
+      "http://www.google.com/gen_204",
+      "http://play.googleapis.com/generate_204",
+      "http://connectivitycheck.gstatic.com/generate_204",
+  };
+  // Default comma separated list of technologies for which portal detection is
+  // enabled.
+  static constexpr char kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
+
   // The Phase enum indicates the phase at which the probe fails.
   enum class Phase {
     kUnknown,
@@ -81,7 +101,8 @@ class PortalDetector {
     Properties()
         : http_url_string(kDefaultHttpUrl),
           https_url_string(kDefaultHttpsUrl),
-          fallback_http_url_strings(kDefaultFallbackHttpUrls) {}
+          fallback_http_url_strings(kDefaultFallbackHttpUrls.begin(),
+                                    kDefaultFallbackHttpUrls.end()) {}
     Properties(const std::string& http_url_string,
                const std::string& https_url_string,
                const std::vector<std::string>& fallback_http_url_strings)
@@ -137,11 +158,6 @@ class PortalDetector {
     // portal detection result.
     Service::ConnectState GetConnectionState() const;
   };
-
-  static const char kDefaultHttpUrl[];
-  static const char kDefaultHttpsUrl[];
-  static const std::vector<std::string> kDefaultFallbackHttpUrls;
-  static const char kDefaultCheckPortalList[];
 
   PortalDetector(EventDispatcher* dispatcher,
                  Metrics* metrics,

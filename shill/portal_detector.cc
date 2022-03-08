@@ -19,7 +19,7 @@
 #include "shill/metrics.h"
 
 namespace {
-const char kLinuxUserAgent[] =
+constexpr char kLinuxUserAgent[] =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/89.0.4389.114 Safari/537.36";
 const brillo::http::HeaderList kHeaders{
@@ -43,18 +43,6 @@ static std::string ObjectID(const PortalDetector* pd) {
   return pd->LoggingTag();
 }
 }  // namespace Logging
-
-const char PortalDetector::kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
-
-const char PortalDetector::kDefaultHttpUrl[] =
-    "http://www.gstatic.com/generate_204";
-const char PortalDetector::kDefaultHttpsUrl[] =
-    "https://www.google.com/generate_204";
-const std::vector<std::string> PortalDetector::kDefaultFallbackHttpUrls{
-    "http://www.google.com/gen_204",
-    "http://play.googleapis.com/generate_204",
-    "http://connectivitycheck.gstatic.com/generate_204",
-};
 
 PortalDetector::PortalDetector(EventDispatcher* dispatcher,
                                Metrics* metrics,

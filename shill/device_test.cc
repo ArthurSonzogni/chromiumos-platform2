@@ -1455,7 +1455,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
   const std::string kInterfaceName("int0");
   const IPAddress ip_addr = IPAddress("1.2.3.4");
   const std::string http_portal_url, https_portal_url;
-  const std::vector<std::string> fallback_urls;
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   const std::vector<std::string> kDNSServers;
@@ -1480,7 +1482,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
   const std::string http_portal_url(PortalDetector::kDefaultHttpUrl);
   const std::string https_portal_url(PortalDetector::kDefaultHttpsUrl);
   const std::vector<std::string> fallback_urls(
-      PortalDetector::kDefaultFallbackHttpUrls);
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   const std::vector<std::string> kDNSServers;
@@ -1509,7 +1512,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
   const std::string http_portal_url(PortalDetector::kDefaultHttpUrl);
   const std::string https_portal_url(PortalDetector::kDefaultHttpsUrl);
   const std::vector<std::string> fallback_urls(
-      PortalDetector::kDefaultFallbackHttpUrls);
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   const std::vector<std::string> kDNSServers;
@@ -1546,7 +1550,9 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
   const auto http_portal_url(PortalDetector::kDefaultHttpUrl);
   const auto https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const auto fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   PortalDetector::Result result;
@@ -1653,7 +1659,8 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetectionStarts) {
   const std::string http_portal_url(PortalDetector::kDefaultHttpUrl);
   const std::string https_portal_url(PortalDetector::kDefaultHttpsUrl);
   const std::vector<std::string> fallback_urls(
-      PortalDetector::kDefaultFallbackHttpUrls);
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
@@ -1712,7 +1719,9 @@ TEST_F(DevicePortalDetectionTest, NotDefault) {
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
   const auto http_portal_url(PortalDetector::kDefaultHttpUrl);
   const auto https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const auto fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   const auto attempt_delay = base::Milliseconds(13450);
@@ -1807,7 +1816,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
   const auto http_portal_url(PortalDetector::kDefaultHttpUrl);
   const auto https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const auto fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   PortalDetector::Result result;
@@ -1848,7 +1859,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
   const auto http_portal_url(PortalDetector::kDefaultHttpUrl);
   const auto https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const auto fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   PortalDetector::Result result;
@@ -1888,7 +1901,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
   const auto http_portal_url(PortalDetector::kDefaultHttpUrl);
   const auto https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const auto fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   PortalDetector::Result result;
@@ -1929,7 +1944,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
   const auto http_portal_url(PortalDetector::kDefaultHttpUrl);
   const auto https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const auto fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   PortalDetector::Result result;
@@ -1969,7 +1986,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
   const auto http_portal_url(PortalDetector::kDefaultHttpUrl);
   const auto https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const auto fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   PortalDetector::Result result;
@@ -2009,7 +2028,9 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
   const auto http_portal_url(PortalDetector::kDefaultHttpUrl);
   const auto https_portal_url(PortalDetector::kDefaultHttpsUrl);
-  const auto fallback_urls(PortalDetector::kDefaultFallbackHttpUrls);
+  const std::vector<std::string> fallback_urls(
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   PortalDetector::Result result;
@@ -2056,7 +2077,8 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
   const std::string http_portal_url(PortalDetector::kDefaultHttpUrl);
   const std::string https_portal_url(PortalDetector::kDefaultHttpsUrl);
   const std::vector<std::string> fallback_urls(
-      PortalDetector::kDefaultFallbackHttpUrls);
+      PortalDetector::kDefaultFallbackHttpUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpUrls.end());
   const PortalDetector::Properties props(http_portal_url, https_portal_url,
                                          fallback_urls);
   const std::string kInterfaceName("int0");
