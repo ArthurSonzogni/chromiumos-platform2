@@ -8,7 +8,6 @@
 #include <array>
 #include <memory>
 #include <ostream>
-#include <set>
 #include <string>
 #include <vector>
 
@@ -30,6 +29,7 @@ namespace shill {
 
 class EventDispatcher;
 class Metrics;
+struct ManagerProperties;
 
 // The PortalDetector class implements the portal detection facility in shill,
 // which is responsible for checking to see if a connection has "general
@@ -97,32 +97,6 @@ class PortalDetector {
 
   enum class Status { kFailure, kSuccess, kTimeout, kRedirect };
 
-  struct Properties {
-    Properties()
-        : http_url_string(kDefaultHttpUrl),
-          https_url_string(kDefaultHttpsUrl),
-          fallback_http_url_strings(kDefaultFallbackHttpUrls.begin(),
-                                    kDefaultFallbackHttpUrls.end()) {}
-    Properties(const std::string& http_url_string,
-               const std::string& https_url_string,
-               const std::vector<std::string>& fallback_http_url_strings)
-        : http_url_string(http_url_string),
-          https_url_string(https_url_string),
-          fallback_http_url_strings(fallback_http_url_strings) {}
-    bool operator==(const Properties& b) const {
-      return http_url_string == b.http_url_string &&
-             https_url_string == b.https_url_string &&
-             std::set<std::string>(fallback_http_url_strings.begin(),
-                                   fallback_http_url_strings.end()) ==
-                 std::set<std::string>(b.fallback_http_url_strings.begin(),
-                                       b.fallback_http_url_strings.end());
-    }
-
-    std::string http_url_string;
-    std::string https_url_string;
-    std::vector<std::string> fallback_http_url_strings;
-  };
-
   // Represents the result of a complete portal detection attempt (DNS
   // resolution, HTTP probe, HTTPS probe).
   struct Result {
@@ -186,13 +160,13 @@ class PortalDetector {
   // this method returns Status::kFailure.
   static Status GetPortalStatusForRequestResult(HttpRequest::Result result);
 
-  // Start a portal detection test.  Returns true if |props.http_url_string| and
-  // |props.https_url_string| correctly parse as URLs.  Returns false (and does
-  // not start) if they fail to parse.
+  // Start a portal detection test.  Returns true if url strings selected in
+  // |props| correctly parse as URLs.  Returns false (and does not start) if
+  // they fail to parse.
   //
   // As each attempt completes the callback handed to the constructor will
   // be called.
-  virtual bool Start(const Properties& props,
+  virtual bool Start(const ManagerProperties& props,
                      const std::string& ifname,
                      const IPAddress& src_address,
                      const std::vector<std::string>& dns_list,
@@ -224,10 +198,12 @@ class PortalDetector {
 
   static constexpr base::TimeDelta kZeroTimeDelta = base::TimeDelta();
 
-  // Picks the HTTP probe URL based on |attempt_count_|. Returns kDefaultHttpUrl
-  // if this is the first attempt. Otherwise, randomly returns an element of
-  // kDefaultFallbackHttpUrls.
-  const std::string PickHttpProbeUrl(const Properties& props);
+  // Picks the next probe URL based on |attempt_count_|. Returns |default_url|
+  // if this is the first attempt. Otherwise, randomly returns with equal
+  // probability |default_url| or an element of |fallback_urls|.
+  const std::string& PickProbeUrl(
+      const std::string& default_url,
+      const std::vector<std::string>& fallback_urls) const;
 
   // Internal method used to start the actual connectivity trial, called after
   // the start delay completes.

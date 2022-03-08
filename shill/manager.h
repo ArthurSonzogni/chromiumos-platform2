@@ -70,6 +70,8 @@ class SupplicantManager;
 
 // Helper class for storing in memory the set of shill Manager DBUS R or RW
 // DBus properties.
+// TODO(hugobenichi): simplify access patterns to the Manager properties and
+// remove virtual mockable getter functions in Manager.
 struct ManagerProperties {
   // Comma separated list of technologies for which portal detection is
   // enabled.
@@ -382,17 +384,6 @@ class Manager {
   // changed.
   void RefreshConnectionState();
 
-  const std::string& GetPortalCheckHttpUrl() const {
-    return props_.portal_http_url;
-  }
-  const std::string& GetPortalCheckHttpsUrl() const {
-    return props_.portal_https_url;
-  }
-  const std::vector<std::string>& GetPortalCheckFallbackHttpUrls() const {
-    return props_.portal_fallback_http_urls;
-  }
-  virtual PortalDetector::Properties GetPortalCheckProperties() const;
-
   virtual DeviceInfo* device_info() { return &device_info_; }
 #if !defined(DISABLE_CELLULAR)
   virtual ModemInfo* modem_info() { return modem_info_.get(); }
@@ -427,10 +418,21 @@ class Manager {
     return power_manager_->suspend_duration_us();
   }
 
-  bool GetArpGateway() const { return props_.arp_gateway; }
+  virtual const ManagerProperties& GetProperties() const {
+    return props_;
+  }
 
-  virtual int GetMinimumMTU() const { return props_.minimum_mtu; }
-  virtual void SetMinimumMTU(const int mtu) { props_.minimum_mtu = mtu; }
+  bool GetArpGateway() const {
+    return props_.arp_gateway;
+  }
+
+  virtual int GetMinimumMTU() const {
+    return props_.minimum_mtu;
+  }
+
+  virtual void SetMinimumMTU(const int mtu) {
+    props_.minimum_mtu = mtu;
+  }
 
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();

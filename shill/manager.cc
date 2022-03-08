@@ -2476,12 +2476,6 @@ bool Manager::SetPortalFallbackUrlsString(const std::string& urls,
   return true;
 }
 
-PortalDetector::Properties Manager::GetPortalCheckProperties() const {
-  return PortalDetector::Properties(GetPortalCheckHttpUrl(),
-                                    GetPortalCheckHttpsUrl(),
-                                    GetPortalCheckFallbackHttpUrls());
-}
-
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::GetService(const KeyValueStore& args, Error* error) {
   ServiceRefPtr service = GetServiceInner(args, error);

@@ -18,6 +18,7 @@
 #include "shill/http_url.h"
 #include "shill/icmp_session.h"
 #include "shill/logging.h"
+#include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/arp_client.h"
 #include "shill/net/arp_packet.h"
@@ -166,8 +167,8 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
   Stop();
 }
 
-bool ConnectionDiagnostics::Start(const PortalDetector::Properties& props) {
-  SLOG(this, 3) << __func__ << "(" << props.http_url_string << ")";
+bool ConnectionDiagnostics::Start(const ManagerProperties& props) {
+  SLOG(this, 3) << __func__ << "(" << props.portal_http_url << ")";
 
   if (running()) {
     LOG(ERROR) << "Connection diagnostics already started";
@@ -175,8 +176,8 @@ bool ConnectionDiagnostics::Start(const PortalDetector::Properties& props) {
   }
 
   target_url_.reset(new HttpUrl());
-  if (!target_url_->ParseFromString(props.http_url_string)) {
-    LOG(ERROR) << "Failed to parse URL string: " << props.http_url_string;
+  if (!target_url_->ParseFromString(props.portal_http_url)) {
+    LOG(ERROR) << "Failed to parse URL string: " << props.portal_http_url;
     Stop();
     return false;
   }

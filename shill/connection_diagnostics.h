@@ -36,6 +36,7 @@ struct RoutingTableEntry;
 class RTNLHandler;
 class RTNLListener;
 class RTNLMessage;
+struct ManagerProperties;
 
 // The ConnectionDiagnostics class implements facilities to diagnose problems
 // that a connection encounters reaching a specific URL.
@@ -199,7 +200,7 @@ class ConnectionDiagnostics {
   ~ConnectionDiagnostics();
 
   // Starts diagnosing problems encountered when reaching |url_string|.
-  bool Start(const PortalDetector::Properties& props);
+  bool Start(const ManagerProperties& props);
 
   // Skips the portal detection initiated in ConnectionDiagnostics::Start and
   // performs further diagnostics based on the |result| from a completed portal

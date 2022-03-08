@@ -5,6 +5,7 @@
 #include "shill/portal_detector.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/manager.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_metrics.h"
 
@@ -135,7 +137,15 @@ class PortalDetectorTest : public Test {
         https_request_);  // Passes ownership.
   }
 
-  bool StartPortalRequest(const PortalDetector::Properties& props,
+  static ManagerProperties MakePortalProperties() {
+    ManagerProperties props;
+    props.portal_http_url = kHttpUrl;
+    props.portal_https_url = kHttpsUrl;
+    props.portal_fallback_http_urls = kFallbackHttpUrls;
+    return props;
+  }
+
+  bool StartPortalRequest(const ManagerProperties& props,
                           base::TimeDelta delay = base::TimeDelta()) {
     bool ret = portal_detector_->Start(props, kInterfaceName, kIpAddress,
                                        {kDNSServer0, kDNSServer1}, delay);
@@ -173,8 +183,7 @@ class PortalDetectorTest : public Test {
 
   void StartAttempt() {
     EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-    PortalDetector::Properties props =
-        PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
+    ManagerProperties props = MakePortalProperties();
     EXPECT_TRUE(StartPortalRequest(props));
     StartTrialTask();
   }
@@ -214,8 +223,8 @@ TEST_F(PortalDetectorTest, Constructor) {
 TEST_F(PortalDetectorTest, InvalidURL) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(0);
-  PortalDetector::Properties props =
-      PortalDetector::Properties(kBadURL, kHttpsUrl, kFallbackHttpUrls);
+  ManagerProperties props = MakePortalProperties();
+  props.portal_http_url = kBadURL;
   EXPECT_FALSE(StartPortalRequest(props));
   ExpectReset();
 
@@ -228,8 +237,7 @@ TEST_F(PortalDetectorTest, IsInProgress) {
 
   // Once the trial is started, IsInProgress should return true.
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
+  ManagerProperties props = MakePortalProperties();
   EXPECT_TRUE(StartPortalRequest(props));
 
   StartTrialTask();
@@ -249,8 +257,7 @@ TEST_F(PortalDetectorTest, IsInProgress) {
 
 TEST_F(PortalDetectorTest, StartAttemptFailed) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
-  PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
+  ManagerProperties props = MakePortalProperties();
   EXPECT_TRUE(StartPortalRequest(props));
 
   // Expect that the request will be started -- return failure.
@@ -276,8 +283,7 @@ TEST_F(PortalDetectorTest, StartAttemptFailed) {
 TEST_F(PortalDetectorTest, GetNextAttemptDelay) {
   EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
 
-  PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
+  ManagerProperties props = MakePortalProperties();
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0));
   EXPECT_TRUE(StartPortalRequest(props));
 
@@ -287,16 +293,14 @@ TEST_F(PortalDetectorTest, GetNextAttemptDelay) {
 TEST_F(PortalDetectorTest, DelayedAttempt) {
   int64_t delay_ms = 123 * 1000;
   const auto delay = base::Milliseconds(delay_ms);
-  PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
+  ManagerProperties props = MakePortalProperties();
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay_ms)).Times(1);
   EXPECT_TRUE(StartPortalRequest(props, delay));
 }
 
 TEST_F(PortalDetectorTest, StartRepeated) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, 0)).Times(1);
-  PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
+  ManagerProperties props = MakePortalProperties();
   EXPECT_TRUE(StartPortalRequest(props));
 
   // A second  should cancel the existing trial and set up the new one.
@@ -312,10 +316,9 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   // Expect the PortalDetector to immediately post a task for the each attempt.
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(4);
-  PortalDetector::Properties props =
-      PortalDetector::Properties(kHttpUrl, kHttpsUrl, kFallbackHttpUrls);
+  ManagerProperties props = MakePortalProperties();
   EXPECT_TRUE(StartPortalRequest(props));
-  EXPECT_EQ(portal_detector()->http_url_string_, kHttpUrl);
+  EXPECT_EQ(portal_detector()->http_url_string_, props.portal_http_url);
 
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kDNS,
@@ -330,6 +333,11 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   EXPECT_CALL(*http_request(), Stop()).Times(7);
   EXPECT_CALL(*https_request(), Stop()).Times(7);
 
+  std::set<std::string> expected_retry_urls(
+      props.portal_fallback_http_urls.begin(),
+      props.portal_fallback_http_urls.end());
+  expected_retry_urls.insert(props.portal_http_url);
+
   auto last_delay = base::TimeDelta();
   for (int i = 0; i < 3; i++) {
     const auto delay = portal_detector()->GetNextAttemptDelay();
@@ -337,7 +345,8 @@ TEST_F(PortalDetectorTest, AttemptCount) {
     last_delay = delay;
     portal_detector()->Start(props, kInterfaceName, kIpAddress,
                              {kDNSServer0, kDNSServer1});
-    EXPECT_NE(portal_detector()->http_url_string_, kHttpUrl);
+    EXPECT_NE(expected_retry_urls.find(portal_detector()->http_url_string_),
+              expected_retry_urls.end());
     portal_detector()->CompleteTrial(result);
   }
   portal_detector()->Stop();

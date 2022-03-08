@@ -108,10 +108,6 @@ class MockManager : public Manager {
               (Technology),
               (const, override));
   MOCK_METHOD(void, RequestScan, (const std::string&, Error*), (override));
-  MOCK_METHOD(PortalDetector::Properties,
-              GetPortalCheckProperties,
-              (),
-              (const, override));
   MOCK_METHOD(bool, IsSuspending, (), (override));
   MOCK_METHOD(DeviceRefPtr,
               GetEnabledDeviceWithTechnology,
@@ -164,6 +160,7 @@ class MockManager : public Manager {
               (override));
   MOCK_METHOD(void, ConnectToBestServices, (Error*), (override));
   MOCK_METHOD((const std::string&), dhcp_hostname, (), (const, override));
+  MOCK_METHOD(const ManagerProperties&, GetProperties, (), (const, override));
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

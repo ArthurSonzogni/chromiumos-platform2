@@ -1235,10 +1235,9 @@ bool Device::StartPortalDetection() {
   portal_detector_.reset(new PortalDetector(
       dispatcher(), metrics(),
       base::Bind(&Device::PortalDetectorCallback, AsWeakPtr())));
-  PortalDetector::Properties props = manager_->GetPortalCheckProperties();
-  if (!portal_detector_->Start(props, connection_->interface_name(),
-                               connection_->local(),
-                               connection_->dns_servers())) {
+  if (!portal_detector_->Start(
+          manager_->GetProperties(), connection_->interface_name(),
+          connection_->local(), connection_->dns_servers())) {
     LOG(ERROR) << link_name() << ": Portal detection failed to start";
     SetServiceConnectedState(Service::kStateOnline);
     return false;
@@ -1262,7 +1261,7 @@ bool Device::StartConnectionDiagnosticsAfterPortalDetection(
       dispatcher(), metrics(), manager_->device_info(),
       base::Bind(&Device::ConnectionDiagnosticsCallback, AsWeakPtr())));
   if (!connection_diagnostics_->StartAfterPortalDetection(
-          manager_->GetPortalCheckHttpUrl(), result)) {
+          manager_->GetProperties().portal_http_url, result)) {
     LOG(ERROR) << link_name() << ": Connection diagnostics failed to start.";
     connection_diagnostics_.reset();
     return false;
@@ -1283,7 +1282,7 @@ bool Device::StartConnectivityTest() {
   connection_tester_.reset(new PortalDetector(
       dispatcher(), metrics(),
       base::Bind(&Device::ConnectionTesterCallback, AsWeakPtr())));
-  connection_tester_->Start(PortalDetector::Properties(),
+  connection_tester_->Start(manager_->GetProperties(),
                             connection_->interface_name(), connection_->local(),
                             connection_->dns_servers());
   return true;
@@ -1349,11 +1348,10 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
 
   if (Service::IsPortalledState(state)) {
     CHECK(portal_detector_.get());
-    PortalDetector::Properties props = manager_->GetPortalCheckProperties();
     const auto next_delay = portal_detector_->GetNextAttemptDelay();
-    if (!portal_detector_->Start(props, connection_->interface_name(),
-                                 connection_->local(),
-                                 connection_->dns_servers(), next_delay)) {
+    if (!portal_detector_->Start(
+            manager_->GetProperties(), connection_->interface_name(),
+            connection_->local(), connection_->dns_servers(), next_delay)) {
       LOG(ERROR) << link_name() << ": Portal detection failed to restart";
       SetServiceState(Service::kStateOnline);
       StopPortalDetection();

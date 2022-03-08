@@ -4,6 +4,10 @@
 
 #include "shill/portal_detector.h"
 
+#include <ostream>
+#include <string>
+#include <vector>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
@@ -16,6 +20,7 @@
 #include "shill/dns_client.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/manager.h"
 #include "shill/metrics.h"
 
 namespace {
@@ -59,15 +64,17 @@ PortalDetector::~PortalDetector() {
   Stop();
 }
 
-const std::string PortalDetector::PickHttpProbeUrl(const Properties& props) {
-  if (attempt_count_ == 0 || props.fallback_http_url_strings.empty()) {
-    return props.http_url_string;
+const std::string& PortalDetector::PickProbeUrl(
+    const std::string& default_url,
+    const std::vector<std::string>& fallback_urls) const {
+  if (attempt_count_ == 0 || fallback_urls.empty()) {
+    return default_url;
   }
-  return props.fallback_http_url_strings[base::RandInt(
-      0, props.fallback_http_url_strings.size() - 1)];
+  uint32_t index = base::RandInt(0, fallback_urls.size());
+  return index < fallback_urls.size() ? fallback_urls[index] : default_url;
 }
 
-bool PortalDetector::Start(const PortalDetector::Properties& props,
+bool PortalDetector::Start(const ManagerProperties& props,
                            const std::string& ifname,
                            const IPAddress& src_address,
                            const std::vector<std::string>& dns_list,
@@ -80,17 +87,18 @@ bool PortalDetector::Start(const PortalDetector::Properties& props,
   // This step is rerun on each attempt, but trying it here will allow
   // Start() to abort on any obviously malformed URL strings.
   HttpUrl http_url, https_url;
-  http_url_string_ = PickHttpProbeUrl(props);
-  https_url_string_ = props.https_url_string;
+  http_url_string_ =
+      PickProbeUrl(props.portal_http_url, props.portal_fallback_http_urls);
+  https_url_string_ = props.portal_https_url;
   if (!http_url.ParseFromString(http_url_string_)) {
     LOG(ERROR) << LoggingTag() << ": Failed to parse HTTP probe URL string: "
-               << props.http_url_string;
+               << http_url_string_;
     return false;
   }
 
   if (!https_url.ParseFromString(https_url_string_)) {
     LOG(ERROR) << "Failed to parse HTTPS probe URL string: "
-               << props.https_url_string;
+               << https_url_string_;
     return false;
   }
 
