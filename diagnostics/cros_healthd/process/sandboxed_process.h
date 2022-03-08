@@ -14,6 +14,7 @@
 #include <brillo/process/process.h>
 
 namespace diagnostics {
+namespace deprecated {
 
 class SandboxedProcess : public brillo::ProcessImpl {
  public:
@@ -60,6 +61,7 @@ class SandboxedProcess : public brillo::ProcessImpl {
   uint64_t capabilities_mask_;
 };
 
+}  // namespace deprecated
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_PROCESS_SANDBOXED_PROCESS_H_

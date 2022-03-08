@@ -1,0 +1,32 @@
+# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+# Library that provides utilities used by cros_healthd's root-level executor.
+pkg_config("pkg_deps") {
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+}
+
+source_set("utils") {
+  sources = [ "sandboxed_process.cc" ]
+  configs += [ ":pkg_deps" ]
+}
+
+if (use.test) {
+  pkg_config("test_pkg_deps") {
+    pkg_deps = [ "libchrome-test" ]
+  }
+
+  source_set("test") {
+    sources = [ "sandboxed_process_test.cc" ]
+    configs += [
+      ":pkg_deps",
+      ":test_pkg_deps",
+    ]
+  }
+}

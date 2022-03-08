@@ -21,7 +21,7 @@ namespace diagnostics {
 // The process must be Run() to completion before its output can be collected.
 // By default both stdout and stderr are included in the output.
 // TODO(crbug.com/1093433): Create unit tests
-class ProcessWithOutput : public SandboxedProcess {
+class ProcessWithOutput : public deprecated::SandboxedProcess {
  public:
   using ArgList = std::vector<std::string>;
 

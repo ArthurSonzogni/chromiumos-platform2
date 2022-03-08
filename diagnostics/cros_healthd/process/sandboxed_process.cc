@@ -21,6 +21,7 @@
 #include <base/strings/stringprintf.h>
 
 namespace diagnostics {
+namespace deprecated {
 
 namespace {
 
@@ -210,4 +211,5 @@ bool SandboxedProcess::KillProcessGroup() {
   return true;
 }
 
+}  // namespace deprecated
 }  // namespace diagnostics
