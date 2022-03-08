@@ -67,6 +67,10 @@ Frame timings from apps running in the Borealis VM. 16 KiB.
 
 Contains the most recent, if any, Proton crash dump containing debug info. ~11 KiB.
 
+## borealis_steam_compat_logs
+
+Contains the versions of Steam compatibility tools used per game session in the last 5 min.
+
 ## borealis_xwindump
 
 If the Borealis VM is running, displays a list of all Borealis windows and

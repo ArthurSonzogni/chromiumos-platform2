@@ -500,6 +500,9 @@ const std::array kFeedbackLogs {
   Log{kCommand, "borealis_proton_crash_reports", "timeout -s KILL 5s "
     "/usr/bin/borealis-sh -- /usr/bin/get_proton_crash_reports.sh",
     kRoot, kRoot},
+  Log{kCommand, "borealis_steam_compat_logs", "timeout -s KILL 5s "
+    "/usr/bin/borealis-sh -- /usr/bin/get_compat_tool_versions.py",
+    kRoot, kRoot},
   Log{kCommand, "borealis_xwindump", "timeout -s KILL 5s /usr/bin/borealis-sh "
     "-- /usr/bin/xwindump.py", kRoot, kRoot},
   Log{kGlob, "iwlwifi_firmware_version",
