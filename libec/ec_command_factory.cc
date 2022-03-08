@@ -6,9 +6,9 @@
 #include <vector>
 
 #include "libec/ec_command_factory.h"
-#include "libec/fingerprint/fp_flashprotect_command.h"
 #include "libec/fingerprint/fp_info_command.h"
 #include "libec/fingerprint/fp_template_command.h"
+#include "libec/flash_protect_command.h"
 
 namespace ec {
 
@@ -17,9 +17,9 @@ std::unique_ptr<EcCommandInterface> EcCommandFactory::FpContextCommand(
   return FpContextCommandFactory::Create(cros_fp, user_id);
 }
 
-std::unique_ptr<FpFlashProtectCommand> EcCommandFactory::FpFlashProtectCommand(
+std::unique_ptr<FlashProtectCommand> EcCommandFactory::FlashProtectCommand(
     const uint32_t flags, const uint32_t mask) {
-  return FpFlashProtectCommand::Create(flags, mask);
+  return FlashProtectCommand::Create(flags, mask);
 }
 
 std::unique_ptr<FpInfoCommand> EcCommandFactory::FpInfoCommand() {

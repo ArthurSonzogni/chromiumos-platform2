@@ -9,18 +9,18 @@
 #include <chromeos/ec/ec_commands.h>
 
 #include "libec/ec_command.h"
-#include "libec/fingerprint/fp_flashprotect_command.h"
+#include "libec/flash_protect_command.h"
 
 namespace ec {
 
-std::unique_ptr<FpFlashProtectCommand> FpFlashProtectCommand::Create(
+std::unique_ptr<FlashProtectCommand> FlashProtectCommand::Create(
     const uint32_t flags, const uint32_t mask) {
   struct ec_params_flash_protect fp_req;
   fp_req.flags = flags;
   fp_req.mask = mask;
 
   // Using new to access non-public constructor. See https://abseil.io/tips/134.
-  auto cmd = base::WrapUnique(new FpFlashProtectCommand());
+  auto cmd = base::WrapUnique(new FlashProtectCommand());
   cmd->SetReq(fp_req);
   return cmd;
 }
@@ -28,7 +28,7 @@ std::unique_ptr<FpFlashProtectCommand> FpFlashProtectCommand::Create(
 /**
  * @return string names of set flags
  */
-std::string FpFlashProtectCommand::ParseFlags(uint32_t flags) {
+std::string FlashProtectCommand::ParseFlags(uint32_t flags) {
   std::string output;
   if (flags & EC_FLASH_PROTECT_RO_AT_BOOT) {
     output += "RO_AT_BOOT  ";

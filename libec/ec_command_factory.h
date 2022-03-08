@@ -11,11 +11,11 @@
 
 #include "libec/fingerprint/cros_fp_device_interface.h"
 #include "libec/fingerprint/fp_context_command_factory.h"
-#include "libec/fingerprint/fp_flashprotect_command.h"
 #include "libec/fingerprint/fp_frame_command.h"
 #include "libec/fingerprint/fp_info_command.h"
 #include "libec/fingerprint/fp_seed_command.h"
 #include "libec/fingerprint/fp_template_command.h"
+#include "libec/flash_protect_command.h"
 
 namespace ec {
 
@@ -26,10 +26,10 @@ class EcCommandFactoryInterface {
   virtual std::unique_ptr<EcCommandInterface> FpContextCommand(
       CrosFpDeviceInterface* cros_fp, const std::string& user_id) = 0;
 
-  virtual std::unique_ptr<FpFlashProtectCommand> FpFlashProtectCommand(
+  virtual std::unique_ptr<FlashProtectCommand> FlashProtectCommand(
       const uint32_t flags, const uint32_t mask) = 0;
   static_assert(
-      std::is_base_of<EcCommandInterface, ec::FpFlashProtectCommand>::value,
+      std::is_base_of<EcCommandInterface, ec::FlashProtectCommand>::value,
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
@@ -72,7 +72,7 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
   std::unique_ptr<EcCommandInterface> FpContextCommand(
       CrosFpDeviceInterface* cros_fp, const std::string& user_id) override;
 
-  std::unique_ptr<ec::FpFlashProtectCommand> FpFlashProtectCommand(
+  std::unique_ptr<ec::FlashProtectCommand> FlashProtectCommand(
       const uint32_t flags, const uint32_t mask) override;
 
   std::unique_ptr<ec::FpInfoCommand> FpInfoCommand() override;
