@@ -33,25 +33,25 @@ The machine quirk lists can be modified by creating files in `/var/lib/power_man
 
 ### Test suspend_to_idle_models
 ```
-cat /sys/class/dmi/id/product_name > /var/lib/suspend_to_idle_models
+cat /sys/class/dmi/id/product_name > /var/lib/power_manager/suspend_to_idle_models
 restart powerd
 ```
 Refer to logs in `/var/log/power_manager/powerd.LATEST` and look at arguments passed into `powerd_setuid_helper` to confirm if the `--suspend-to-idle` flag was passed.
 
 ```
 # after test, clear settings again
-rm /var/lib/suspend_to_idle_models
+rm /var/lib/power_manager/suspend_to_idle_models
 restart powerd
 ```
 ### Test suspend_prevention_models
 ```
-cat /sys/class/dmi/id/product_name > /var/lib/suspend_prevention_models
+cat /sys/class/dmi/id/product_name > /var/lib/power_manager/suspend_prevention_models
 restart powerd
 ```
 When suspend prevention is enabled, after suspend the power button remains on, and the screen immediately turns on upon user interaction on the keyboard.
 ```
 # after test, clear settings again
-rm /var/lib/suspend_prevention_models
+rm /var/lib/power_manager/suspend_prevention_models
 restart powerd
 ```
 
