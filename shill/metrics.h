@@ -440,6 +440,7 @@ class Metrics : public DefaultServiceObserver {
     kVpnDriverArc = 3,
     // 4 is occupied by PPTP in chrome.
     kVpnDriverWireGuard = 5,
+    kVpnDriverIKEv2 = 6,
     kVpnDriverMax
   };
 
@@ -462,6 +463,14 @@ class Metrics : public DefaultServiceObserver {
     kVpnUserAuthenticationTypeL2tpIpsecCertificate = 5,
     kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword = 6,
     kVpnUserAuthenticationTypeMax
+  };
+
+  enum VpnIpsecAuthenticationType {
+    kVpnIpsecAuthenticationTypeUnknown = 0,
+    kVpnIpsecAuthenticationTypePsk = 1,
+    kVpnIpsecAuthenticationTypeEap = 2,
+    kVpnIpsecAuthenticationTypeCertificate = 3,
+    kVpnIpsecAuthenticationTypeMax
   };
 
   enum VpnL2tpIpsecTunnelGroupUsage {
@@ -945,6 +954,31 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricVpnRemoteAuthenticationTypeMax;
   static const char kMetricVpnUserAuthenticationType[];
   static const int kMetricVpnUserAuthenticationTypeMax;
+
+  // IKEv2 connection statistics.
+  static constexpr char kMetricVpnIkev2AuthenticationType[] =
+      "Network.Shill.Vpn.Ikev2.AuthenticationType";
+  static constexpr int kMetricVpnIkev2AuthenticationMax =
+      kVpnIpsecAuthenticationTypeMax;
+  static constexpr char kMetricVpnIkev2IkeEncryptionAlgorithm[] =
+      "Network.Shill.Vpn.Ikev2.IkeEncryptionAlgorithm";
+  static constexpr int kMetricVpnIkev2IkeEncryptionAlgorithmMax =
+      kVpnIpsecEncryptionAlgorithmMax;
+  static constexpr char kMetricVpnIkev2IkeIntegrityAlgorithm[] =
+      "Network.Shill.Vpn.Ikev2.IkeIntegrityAlgorithm";
+  static constexpr int kMetricVpnIkev2IkeIntegrityAlgorithmMax =
+      kVpnIpsecIntegrityAlgorithmMax;
+  static constexpr char kMetricVpnIkev2IkeDHGroup[] =
+      "Network.Shill.Vpn.Ikev2.IkeDHGroup";
+  static constexpr int kMetricVpnIkev2IkeDHGroupMax = kVpnIpsecDHGroupMax;
+  static constexpr char kMetricVpnIkev2EspEncryptionAlgorithm[] =
+      "Network.Shill.Vpn.Ikev2.EspEncryptionAlgorithm";
+  static constexpr int kMetricVpnIkev2EspEncryptionAlgorithmMax =
+      kVpnIpsecEncryptionAlgorithmMax;
+  static constexpr char kMetricVpnIkev2EspIntegrityAlgorithm[] =
+      "Network.Shill.Vpn.Ikev2.EspIntegrityAlgorithm";
+  static constexpr int kMetricVpnIkev2EspIntegrityAlgorithmMax =
+      kVpnIpsecIntegrityAlgorithmMax;
 
   // L2TP/IPsec connection statistics.
   static const char kMetricVpnL2tpIpsecTunnelGroupUsage[];

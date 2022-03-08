@@ -17,6 +17,7 @@
 #include "shill/error.h"
 #include "shill/ipconfig.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/vpn_service.h"
 
@@ -259,7 +260,53 @@ KeyValueStore IKEv2Driver::GetProvider(Error* error) {
   return props;
 }
 
-// TODO(b/210064468): Implement metrics.
-void IKEv2Driver::ReportConnectionMetrics() {}
+void IKEv2Driver::ReportConnectionMetrics() {
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver, Metrics::kVpnDriverIKEv2,
+                           Metrics::kMetricVpnDriverMax);
+
+  Metrics::VpnIpsecAuthenticationType auth_type_metrics =
+      Metrics::kVpnIpsecAuthenticationTypeUnknown;
+  const std::string auth_type_str =
+      const_args()->Lookup<std::string>(kIKEv2AuthenticationTypeProperty, "");
+  if (auth_type_str == kIKEv2AuthenticationTypePSK) {
+    auth_type_metrics = Metrics::kVpnIpsecAuthenticationTypePsk;
+  } else if (auth_type_str == kIKEv2AuthenticationTypeEAP) {
+    auth_type_metrics = Metrics::kVpnIpsecAuthenticationTypeEap;
+  } else if (auth_type_str == kIKEv2AuthenticationTypeCert) {
+    auth_type_metrics = Metrics::kVpnIpsecAuthenticationTypeCertificate;
+  } else {
+    // We have checked the auth type before connection, but it is still possible
+    // to reach here if the properties are changed right before the connection
+    // is established. Still reports this case to keep the numbers consistent.
+    LOG(ERROR) << "Unexpected auth type: " << auth_type_str;
+  }
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2AuthenticationType,
+                           auth_type_metrics,
+                           Metrics::kMetricVpnIkev2AuthenticationMax);
+
+  // To access the methods only defined in the inherited class. The cast will
+  // only fail in unit tests.
+  const auto* conn = dynamic_cast<IPsecConnection*>(ipsec_connection_.get());
+  if (conn) {
+    // Cipher suite for IKE.
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeEncryptionAlgorithm,
+                             conn->ike_encryption_algo(),
+                             Metrics::kMetricVpnIkev2IkeEncryptionAlgorithmMax);
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeIntegrityAlgorithm,
+                             conn->ike_encryption_algo(),
+                             Metrics::kMetricVpnIkev2IkeIntegrityAlgorithmMax);
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeDHGroup,
+                             conn->ike_dh_group(),
+                             Metrics::kMetricVpnIkev2IkeDHGroupMax);
+
+    // Cipher suite for ESP.
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2EspEncryptionAlgorithm,
+                             conn->esp_encryption_algo(),
+                             Metrics::kMetricVpnIkev2EspEncryptionAlgorithmMax);
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2EspIntegrityAlgorithm,
+                             conn->esp_integrity_algo(),
+                             Metrics::kMetricVpnIkev2EspIntegrityAlgorithmMax);
+  }
+}
 
 }  // namespace shill
