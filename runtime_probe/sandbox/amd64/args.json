@@ -77,7 +77,9 @@
     "-b",
     "/sys/bus/i2c/",
     "-b",
-    "/sys/devices/pci0000:00/"
+    "/sys/devices/pci0000:00/",
+    "-b",
+    "/sys/devices/platform/"
   ],
   "memory": [
     "-k",
