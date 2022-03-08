@@ -206,9 +206,11 @@ int HandleDiskArgs(std::vector<std::string> args) {
     // rather than an error.
     if (response.error() == 4) {
       response.set_error(0);
-      response.set_available_space(base::SysInfo::AmountOfFreeDiskSpace(
-          base::FilePath("/mnt/stateful")));
-      response.set_expandable_space(0);
+      int free_space =
+          base::SysInfo::AmountOfFreeDiskSpace(base::FilePath("/mnt/stateful"));
+      response.set_available_space(free_space);
+      // TODO(b/223308797): Potentially revert this to being empty.
+      response.set_expandable_space(free_space);
     }
     google::protobuf::util::MessageToJsonString(response, &output, options);
     std::cout << output << std::endl;
