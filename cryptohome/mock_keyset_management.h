@@ -60,10 +60,6 @@ class MockKeysetManagement : public KeysetManagement {
               (const, override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               AddInitialKeyset,
-              (const Credentials&),
-              (override));
-  MOCK_METHOD(std::unique_ptr<VaultKeyset>,
-              AddInitialKeyset,
               (const Credentials&, const FileSystemKeyset&),
               (override));
   MOCK_METHOD(CryptohomeErrorCode,

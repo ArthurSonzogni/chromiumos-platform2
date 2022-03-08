@@ -95,11 +95,6 @@ class KeysetManagement {
   // Adds initial keyset for the credentials and wraps the file system keyset
   // provided. Returns the added keyset, or null on failure.
   virtual std::unique_ptr<VaultKeyset> AddInitialKeyset(
-      const Credentials& credentials);
-
-  // Adds initial keyset for the credentials and wraps the file system keyset
-  // provided. Returns the added keyset, or null on failure.
-  virtual std::unique_ptr<VaultKeyset> AddInitialKeyset(
       const Credentials& credentials,
       const FileSystemKeyset& file_system_keyset);
 

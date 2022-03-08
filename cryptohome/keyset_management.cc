@@ -361,11 +361,6 @@ bool KeysetManagement::GetVaultKeysetLabels(
 }
 
 std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeyset(
-    const Credentials& credentials) {
-  return AddInitialKeyset(credentials, FileSystemKeyset::CreateRandom());
-}
-
-std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeyset(
     const Credentials& credentials,
     const FileSystemKeyset& file_system_keyset) {
   const brillo::SecureBlob passkey = credentials.passkey();

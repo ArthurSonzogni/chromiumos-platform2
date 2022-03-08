@@ -51,6 +51,7 @@
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/stateful_recovery.h"
 #include "cryptohome/storage/cryptohome_vault.h"
+#include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/user_secret_stash_storage.h"
@@ -1945,7 +1946,8 @@ std::unique_ptr<VaultKeyset> UserDataAuth::LoadVaultKeyset(
   PopulateError(error, MountError::MOUNT_ERROR_NONE);
 
   if (is_new_user) {
-    if (!keyset_management_->AddInitialKeyset(credentials)) {
+    if (!keyset_management_->AddInitialKeyset(
+            credentials, FileSystemKeyset::CreateRandom())) {
       LOG(ERROR) << "Error adding initial keyset.";
       PopulateError(error, MountError::MOUNT_ERROR_KEY_FAILURE);
       return nullptr;

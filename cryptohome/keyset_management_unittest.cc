@@ -346,7 +346,8 @@ TEST_F(KeysetManagementTest, AddInitialKeyset) {
 
   // TEST
 
-  EXPECT_TRUE(keyset_management_->AddInitialKeyset(users_[0].credentials));
+  EXPECT_TRUE(keyset_management_->AddInitialKeyset(users_[0].credentials,
+                                                   file_system_keyset_));
 
   // VERIFY
   // Initial keyset is added, readable, has "new-er" fields correctly
