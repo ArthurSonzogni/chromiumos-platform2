@@ -9,8 +9,10 @@
 #include <algorithm>
 #include <iomanip>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
@@ -25,13 +27,18 @@
 #include "rmad/constants.h"
 #include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
+#include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/fake_cbi_utils.h"
 #include "rmad/utils/fake_cros_config_utils.h"
+#include "rmad/utils/fake_crossystem_utils.h"
+#include "rmad/utils/fake_iio_sensor_probe_utils.h"
 #include "rmad/utils/fake_ssfc_utils.h"
 #include "rmad/utils/fake_vpd_utils.h"
+#include "rmad/utils/iio_sensor_probe_utils_impl.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/ssfc_utils_impl.h"
 #include "rmad/utils/vpd_utils_impl.h"
@@ -52,6 +59,9 @@ constexpr double kProgressWriteSSFC = 0.8;
 constexpr double kProgressUpdateStableDeviceSecret = 0.9;
 constexpr double kProgressFlushOutVpdCache = kProgressComplete;
 
+// crossystem HWWP property name.
+constexpr char kHwwpProperty[] = "wpsw_cur";
+
 }  // namespace
 
 namespace rmad {
@@ -65,6 +75,8 @@ FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
           std::make_unique<fake::FakePowerManagerClient>(working_dir_path),
           std::make_unique<fake::FakeCbiUtils>(working_dir_path),
           std::make_unique<fake::FakeCrosConfigUtils>(),
+          std::make_unique<fake::FakeCrosSystemUtils>(working_dir_path),
+          std::make_unique<fake::FakeIioSensorProbeUtils>(),
           std::make_unique<fake::FakeSsfcUtils>(),
           std::make_unique<fake::FakeVpdUtils>(working_dir_path)) {}
 
@@ -73,11 +85,14 @@ FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store),
-      provision_signal_sender_(base::DoNothing()) {
+      provision_signal_sender_(base::DoNothing()),
+      should_calibrate_(false) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
+  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  iio_sensor_probe_utils_ = std::make_unique<IioSensorProbeUtilsImpl>();
   ssfc_utils_ = std::make_unique<SsfcUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
@@ -90,6 +105,8 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
+    std::unique_ptr<CrosSystemUtils> crossystem_utils,
+    std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils,
     std::unique_ptr<SsfcUtils> ssfc_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store),
@@ -97,8 +114,11 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       power_manager_client_(std::move(power_manager_client)),
       cbi_utils_(std::move(cbi_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
+      crossystem_utils_(std::move(crossystem_utils)),
+      iio_sensor_probe_utils_(std::move(iio_sensor_probe_utils)),
       ssfc_utils_(std::move(ssfc_utils)),
-      vpd_utils_(std::move(vpd_utils)) {
+      vpd_utils_(std::move(vpd_utils)),
+      should_calibrate_(false) {
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   status_.set_progress(kProgressInit);
   status_.set_error(ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
@@ -120,8 +140,12 @@ RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
   if (std::string status_name;
       json_store_->GetValue(kProvisionFinishedStatus, &status_name) &&
       ProvisionStatus::Status_Parse(status_name, &provision_status)) {
-    UpdateStatus(provision_status, kProgressInit,
-                 ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
+    UpdateStatus(provision_status, kProgressInit);
+    if (provision_status == ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE ||
+        provision_status ==
+            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING) {
+      InitializeCalibrationTask();
+    }
   }
 
   if (provision_status == ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN) {
@@ -191,12 +215,126 @@ ProvisionDeviceStateHandler::TryGetNextStateCaseAtBoot() {
     case ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE:
       FALLTHROUGH;
     case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING:
-      return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
+      if (should_calibrate_) {
+        return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
+      } else if (bool wipe_device;
+                 json_store_->GetValue(kWipeDevice, &wipe_device) &&
+                 !wipe_device) {
+        return NextStateCaseWrapper(RmadState::StateCase::kWpEnablePhysical);
+      } else {
+        return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
+      }
     default:
       break;
   }
 
   return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
+}
+
+void ProvisionDeviceStateHandler::InitializeCalibrationTask() {
+  // There are several situations:
+  // 1. replaced & probed -> calibrate
+  // 2. probed only -> skip
+  // 3. replaced only w/ mlb repair-> ignore
+  // 4. replaced only w/o mlb repair -> error
+
+  InstructionCalibrationStatusMap calibration_map;
+
+  std::set<RmadComponent> replaced_components_need_calibration;
+  if (std::vector<std::string> replaced_component_names; json_store_->GetValue(
+          kReplacedComponentNames, &replaced_component_names)) {
+    for (const std::string& component_name : replaced_component_names) {
+      RmadComponent component;
+      DCHECK(RmadComponent_Parse(component_name, &component));
+      if (std::find(kComponentsNeedManualCalibration.begin(),
+                    kComponentsNeedManualCalibration.end(),
+                    component) != kComponentsNeedManualCalibration.end()) {
+        replaced_components_need_calibration.insert(component);
+      }
+    }
+  }
+
+  // This is the part where we probe sensors through the iioservice provided by
+  // the sensor team, which is different from the runtime probe service.
+  std::set<RmadComponent> probed_components = iio_sensor_probe_utils_->Probe();
+
+  if (ProvisionStatus::Error error; !CheckSensorStatusIntegrity(
+          replaced_components_need_calibration, probed_components, &error)) {
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking, error);
+    return;
+  }
+
+  // Update probeable components using runtime_probe results.
+  for (RmadComponent component : probed_components) {
+    // Ignore the components that cannot be calibrated.
+    if (std::find(kComponentsNeedManualCalibration.begin(),
+                  kComponentsNeedManualCalibration.end(),
+                  component) == kComponentsNeedManualCalibration.end()) {
+      continue;
+    }
+
+    // 1. replaced & probed -> calibrate
+    // 2. probed only -> skip
+    if (replaced_components_need_calibration.count(component)) {
+      calibration_map[GetCalibrationSetupInstruction(component)][component] =
+          CalibrationComponentStatus::RMAD_CALIBRATION_WAITING;
+      should_calibrate_ = true;
+    } else {
+      calibration_map[GetCalibrationSetupInstruction(component)][component] =
+          CalibrationComponentStatus::RMAD_CALIBRATION_SKIP;
+    }
+  }
+}
+
+bool ProvisionDeviceStateHandler::CheckSensorStatusIntegrity(
+    const std::set<RmadComponent>& replaced_components_need_calibration,
+    const std::set<RmadComponent>& probed_components,
+    ProvisionStatus::Error* error) {
+  // There are several situations:
+  // 1. replaced & probed -> calibrate
+  // 2. probed only -> skip
+  // 3. replaced only w/ mlb repair-> ignore
+  // 4. replaced only w/o mlb repair -> error
+
+  *error = ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN;
+
+  // Since if it's a mainboard repair, all components are marked as replaced
+  // and all situations are valid (cases 1, 2, and 3). In this case, we don't
+  // care about those sensors that were marked as replaced but not probed.
+  if (bool mlb_repair;
+      json_store_->GetValue(kMlbRepair, &mlb_repair) && mlb_repair) {
+    return true;
+  }
+
+  // Handle sensors marked as replaced but not probed (case 4).
+  for (RmadComponent component : replaced_components_need_calibration) {
+    if (probed_components.count(component)) {
+      continue;
+    }
+    // 4. replaced only w/o mlb repair -> error
+    switch (component) {
+      case RMAD_COMPONENT_BASE_ACCELEROMETER:
+        *error =
+            ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_BASE_ACCELEROMETER;
+        break;
+      case RMAD_COMPONENT_LID_ACCELEROMETER:
+        *error =
+            ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_LID_ACCELEROMETER;
+        break;
+      case RMAD_COMPONENT_BASE_GYROSCOPE:
+        *error = ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_BASE_GYROSCOPE;
+        break;
+      case RMAD_COMPONENT_LID_GYROSCOPE:
+        *error = ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_LID_GYROSCOPE;
+        break;
+      default:
+        NOTREACHED();
+        break;
+    }
+    return false;
+  }
+  return true;
 }
 
 void ProvisionDeviceStateHandler::SendStatusSignal() {
@@ -268,22 +406,34 @@ void ProvisionDeviceStateHandler::RunProvision() {
                kProgressGetSSFC, ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 
   if (need_to_update_ssfc && !cbi_utils_->SetSSFC(ssfc)) {
-    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                 kProgressFailedBlocking,
-                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+    if (IsHwwpDisabled()) {
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+    } else {
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_WP_ENABLED);
+    }
     return;
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
-               kProgressWriteSSFC,
-               ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
+               kProgressWriteSSFC);
 
   if (!same_owner) {
     std::string stable_device_secret;
-    if (!GenerateStableDeviceSecret(&stable_device_secret) ||
-        !vpd_utils_->SetStableDeviceSecret(stable_device_secret)) {
+    if (!GenerateStableDeviceSecret(&stable_device_secret)) {
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                    kProgressFailedBlocking,
                    ProvisionStatus::RMAD_PROVISION_ERROR_GENERATE_SECRET);
+      return;
+    }
+
+    // Writing a string to the vpd cache should always succeed.
+    if (!vpd_utils_->SetStableDeviceSecret(stable_device_secret)) {
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
       return;
     }
     UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
@@ -292,10 +442,17 @@ void ProvisionDeviceStateHandler::RunProvision() {
     // TODO(genechang): Reset fingerprint sensor here."
   }
 
+  // VPD is locked by SWWP only and should not be enabled throughout the RMA.
   if (!vpd_utils_->FlushOutRoVpdCache()) {
-    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                 kProgressFailedBlocking,
-                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+    if (IsHwwpDisabled()) {
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+    } else {
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_WP_ENABLED);
+    }
     return;
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
@@ -335,6 +492,12 @@ void ProvisionDeviceStateHandler::Reboot() {
   if (!power_manager_client_->Restart()) {
     LOG(ERROR) << "Failed to reboot";
   }
+}
+
+bool ProvisionDeviceStateHandler::IsHwwpDisabled() const {
+  int hwwp_status;
+  return (crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status) &&
+          hwwp_status == 0);
 }
 
 }  // namespace rmad

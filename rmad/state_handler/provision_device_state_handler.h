@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <set>
 
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
@@ -19,6 +20,8 @@
 #include "rmad/system/power_manager_client.h"
 #include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cros_config_utils.h"
+#include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/iio_sensor_probe_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/ssfc_utils.h"
 #include "rmad/utils/vpd_utils.h"
@@ -41,6 +44,8 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
       std::unique_ptr<PowerManagerClient> power_manager_client,
       std::unique_ptr<CbiUtils> cbi_utils,
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
+      std::unique_ptr<CrosSystemUtils> crossystem_utils,
+      std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils,
       std::unique_ptr<SsfcUtils> ssfc_utils,
       std::unique_ptr<VpdUtils> vpd_utils);
 
@@ -64,6 +69,12 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   ~ProvisionDeviceStateHandler() override = default;
 
  private:
+  void InitializeCalibrationTask();
+  bool CheckSensorStatusIntegrity(
+      const std::set<RmadComponent>& replaced_components_need_calibration,
+      const std::set<RmadComponent>& probed_components,
+      ProvisionStatus::Error* error);
+
   void SendStatusSignal();
   void StartStatusTimer();
   void StopStatusTimer();
@@ -72,23 +83,28 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   void RunProvision();
   void UpdateStatus(ProvisionStatus::Status status,
                     double progress,
-                    ProvisionStatus::Error error);
+                    ProvisionStatus::Error error =
+                        ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
   ProvisionStatus GetProgress() const;
 
   bool GenerateStableDeviceSecret(std::string* stable_device_secret);
   void Reboot();
+  bool IsHwwpDisabled() const;
 
   ProvisionStatus status_;
   ProvisionSignalCallback provision_signal_sender_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<CbiUtils> cbi_utils_;
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils_;
   std::unique_ptr<SsfcUtils> ssfc_utils_;
   std::unique_ptr<VpdUtils> vpd_utils_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   base::RepeatingTimer status_timer_;
   base::OneShotTimer reboot_timer_;
   mutable base::Lock lock_;
+  bool should_calibrate_;
 };
 
 namespace fake {
