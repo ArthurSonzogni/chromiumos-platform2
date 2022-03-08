@@ -16,6 +16,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "policy/libpolicy.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class MetricsLibraryInterface {
  public:
@@ -75,6 +76,9 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Returns whether or not metrics collection is enabled.
   bool AreMetricsEnabled() override;
+
+  // Same, but potentially checks the per-user consent state as well.
+  bool AreMetricsEnabledWithPerUser(bool per_user);
 
   // Chrome normally manages Enable/Disable state. These functions are
   // intended ONLY for use by devices which don't run Chrome (e.g. Onhub)
@@ -208,7 +212,19 @@ class MetricsLibrary : public MetricsLibraryInterface {
                          int num_samples) override;
 #endif
 
+  // Determine whether to use per-user metrics consent.
+  // TODO(b/214111113): Enable by default when all CLs are ready to go.
+  bool UsePerUserMetricsConsent();
+
   void SetConsentFileForTest(const base::FilePath& consent_file);
+
+  void SetDaemonStoreForTest(const base::FilePath& daemon_store) {
+    daemon_store_dir_ = daemon_store;
+  }
+
+  void SetPerUserConsentForTest(const base::FilePath& per_user_consent_file) {
+    per_user_consent_file_ = per_user_consent_file;
+  }
 
  private:
   friend class CMetricsLibraryTest;
@@ -216,6 +232,18 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // This function is used by tests only to mock the device policies.
   void SetPolicyProvider(policy::PolicyProvider* provider);
+
+  // Check the per-user metrics consent, returning true if *all* of the
+  // logged-in users enabled consent and false if *any* disabled it.
+  // Return nullopt if we're unable to check per-user consent, if no users
+  // have overridden device policy, or if no users are logged in.
+  // We check all files because determining *which* consent file to use is
+  // tricky.
+  // We can't necessarily make a dbus call to session-manager (what if
+  // session-manager is not up, or session-manager calls AreMetricsEnabled?) and
+  // anyway it's not totally clear which user a metric or crash is from if
+  // multiple users are signed in simultaneously.
+  absl::optional<bool> ArePerUserMetricsEnabled();
 
   // Time at which we last checked if metrics were enabled.
   static time_t cached_enabled_time_;
@@ -225,6 +253,8 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   base::FilePath uma_events_file_;
   base::FilePath consent_file_;
+  base::FilePath daemon_store_dir_;
+  base::FilePath per_user_consent_file_;
 
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
 };

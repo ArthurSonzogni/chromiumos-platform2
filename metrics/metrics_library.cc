@@ -5,12 +5,14 @@
 #include "metrics/metrics_library.h"
 
 #include <base/check.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/guid.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/safe_fd.h>
 #include <errno.h>
 #include <session_manager/dbus-proxies.h>
 #include <sys/file.h>
@@ -25,6 +27,7 @@
 
 #include "policy/device_policy.h"
 
+using brillo::SafeFD;
 using org::chromium::SessionManagerInterfaceProxy;
 
 namespace {
@@ -33,6 +36,9 @@ const char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
 // If you change this path make sure to also change the corresponding rollback
 // constant: src/platform2/oobe_config/rollback_constants.cc
 const char kConsentFile[] = "/home/chronos/Consent To Send Stats";
+const char kDaemonStoreConsentDir[] = "/run/daemon-store/uma-consent";
+const char kDaemonStoreConsentFile[] = "consent-enabled";
+const char kUsePerUserConsentFile[] = "/run/metrics/use-per-user-consent";
 const char kCrosEventHistogramName[] = "Platform.CrOSEvent";
 const int kCrosEventHistogramMax = 100;
 
@@ -97,7 +103,9 @@ bool MetricsLibrary::cached_enabled_ = false;
 
 MetricsLibrary::MetricsLibrary()
     : uma_events_file_(base::FilePath(kUMAEventsPath)),
-      consent_file_(base::FilePath(kConsentFile)) {}
+      consent_file_(base::FilePath(kConsentFile)),
+      daemon_store_dir_(kDaemonStoreConsentDir),
+      per_user_consent_file_(kUsePerUserConsentFile) {}
 
 MetricsLibrary::~MetricsLibrary() {}
 
@@ -165,10 +173,71 @@ bool MetricsLibrary::ConsentId(std::string* id) {
   return true;
 }
 
+absl::optional<bool> MetricsLibrary::ArePerUserMetricsEnabled() {
+  base::FileEnumerator consent_files(
+      daemon_store_dir_,
+      /*recursive=*/true, base::FileEnumerator::FILES, kDaemonStoreConsentFile,
+      base::FileEnumerator::FolderSearchPolicy::ALL);
+  SafeFD::SafeFDResult root_err = SafeFD::Root();
+  if (SafeFD::IsError(root_err.second)) {
+    LOG(ERROR) << "Failed to open root directory: "
+               << static_cast<int>(root_err.second);
+    return std::nullopt;
+  }
+  bool checked_any = false;
+  for (base::FilePath name = consent_files.Next(); !name.empty();
+       name = consent_files.Next()) {
+    SafeFD::SafeFDResult file_err =
+        root_err.first.OpenExistingFile(name, O_RDONLY | O_CLOEXEC);
+    if (SafeFD::IsError(file_err.second)) {
+      LOG(ERROR) << "Failed to open file: " << name.value() << ": "
+                 << static_cast<int>(file_err.second);
+      continue;
+    }
+    auto read_result = file_err.first.ReadContents();
+    if (SafeFD::IsError(read_result.second)) {
+      LOG(ERROR) << "Failed to read file: " << name.value() << ": "
+                 << static_cast<int>(read_result.second);
+      continue;
+    }
+    checked_any = true;
+    std::string consent(read_result.first.begin(), read_result.first.end());
+    if (consent != "1") {
+      return false;
+    }
+  }
+
+  if (checked_any) {
+    // If we got here and didn't bail, all active users consented.
+    return true;
+  }
+  return std::nullopt;
+}
+
+bool MetricsLibrary::UsePerUserMetricsConsent() {
+  return base::PathExists(per_user_consent_file_);
+}
+
 bool MetricsLibrary::AreMetricsEnabled() {
+  return AreMetricsEnabledWithPerUser(UsePerUserMetricsConsent());
+}
+
+bool MetricsLibrary::AreMetricsEnabledWithPerUser(bool per_user) {
   time_t this_check_time = time(nullptr);
   if (this_check_time != cached_enabled_time_) {
     cached_enabled_time_ = this_check_time;
+
+    if (per_user) {
+      absl::optional<bool> user_consent = ArePerUserMetricsEnabled();
+      if (user_consent.has_value() && !user_consent.value()) {
+        // If the user consented, also make sure device owner opted in.
+        // (Theoretically, if device policy is off, the user shouldn't be *able*
+        // to opt in based on the current-as-of-2022-03 design, but add this as
+        // a secondary layer of defense.)
+        // If the user opted out, we opt out.
+        return false;
+      }
+    }
 
     if (!policy_provider_.get())
       policy_provider_.reset(new policy::PolicyProvider());

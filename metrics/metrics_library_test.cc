@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
@@ -38,6 +39,12 @@ ACTION_P(SetMetricsPolicy, enabled) {
 class MetricsLibraryTest : public testing::Test {
  protected:
   void SetUp() override {
+    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+    test_dir_ = temp_dir_.GetPath();
+
+    lib_.SetDaemonStoreForTest(test_dir_);
+    EXPECT_TRUE(base::CreateDirectory(test_dir_.Append("hash")));
+
     lib_.SetConsentFileForTest(kTestConsentIdFile);
     EXPECT_FALSE(lib_.uma_events_file_.empty());
     lib_.Init();
@@ -54,7 +61,7 @@ class MetricsLibraryTest : public testing::Test {
     lib_.SetPolicyProvider(new policy::PolicyProvider(
         std::unique_ptr<policy::MockDevicePolicy>(device_policy_)));
     // Defeat metrics enabled caching between tests.
-    lib_.cached_enabled_time_ = 0;
+    ClearCachedEnabledTime();
   }
 
   void TearDown() override {
@@ -66,8 +73,23 @@ class MetricsLibraryTest : public testing::Test {
   void VerifyEnabledCacheHit(bool to_value);
   void VerifyEnabledCacheEviction(bool to_value);
 
+  void ClearCachedEnabledTime() {
+    // Defeat metrics enabled caching.
+    lib_.cached_enabled_time_ = 0;
+  }
+
+  void SetPerUserConsent(bool value) {
+    if (value) {
+      EXPECT_EQ(1, WriteFile(test_dir_.Append("hash/consent-enabled"), "1", 1));
+    } else {
+      EXPECT_EQ(1, WriteFile(test_dir_.Append("hash/consent-enabled"), "0", 1));
+    }
+  }
+
   MetricsLibrary lib_;
   policy::MockDevicePolicy* device_policy_;  // Not owned.
+  base::ScopedTempDir temp_dir_;
+  base::FilePath test_dir_;
 };
 
 // Reject symlinks even if they're to normal files.
@@ -144,29 +166,104 @@ TEST_F(MetricsLibraryTest, ConsentIdValidContentNewline) {
 // MetricsEnabled policy not present, enterprise managed
 // -> AreMetricsEnabled returns true.
 TEST_F(MetricsLibraryTest, AreMetricsEnabledTrueNoPolicyManaged) {
-  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_)).WillOnce(Return(false));
-  EXPECT_CALL(*device_policy_, IsEnterpriseManaged()).WillOnce(Return(true));
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*device_policy_, IsEnterpriseManaged())
+      .WillRepeatedly(Return(true));
   EXPECT_TRUE(lib_.AreMetricsEnabled());
+
+  // Per-user shouldn't affect that -- we haven't set per-user consent at all.
+  ClearCachedEnabledTime();
+  EXPECT_TRUE(lib_.AreMetricsEnabledWithPerUser(true));
+
+  // if per-user is enabled, should still be true.
+  SetPerUserConsent(true);
+  ClearCachedEnabledTime();
+  EXPECT_TRUE(lib_.AreMetricsEnabledWithPerUser(true));
+  // But not if it's disabled.
+  SetPerUserConsent(false);
+  ClearCachedEnabledTime();
+  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+}
+
+// Shouldn't check device policy if per-user consent is off.
+TEST_F(MetricsLibraryTest, AreMetricsEnabledFalseNoPolicyNoPerUser) {
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_)).Times(0);
+  EXPECT_CALL(*device_policy_, IsEnterpriseManaged()).Times(0);
+
+  SetPerUserConsent(false);
+  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
 }
 
 // MetricsEnabled policy not present, not enterprise managed
 // -> AreMetricsEnabled returns false.
 TEST_F(MetricsLibraryTest, AreMetricsEnabledFalseNoPolicyUnmanaged) {
-  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_)).WillOnce(Return(false));
-  EXPECT_CALL(*device_policy_, IsEnterpriseManaged()).WillOnce(Return(false));
+  EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*device_policy_, IsEnterpriseManaged())
+      .WillRepeatedly(Return(false));
   EXPECT_FALSE(lib_.AreMetricsEnabled());
+
+  // Per-user shouldn't affect that -- we haven't set per-user consent at all.
+  ClearCachedEnabledTime();
+  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+
+  // Even if per-user is enabled, if device policy is not enabled we shouldn't
+  // enable consent.
+  SetPerUserConsent(true);
+  ClearCachedEnabledTime();
+  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+
+  // Same if it's disabled.
+  SetPerUserConsent(false);
+  ClearCachedEnabledTime();
+  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
 }
 
 // MetricsEnabled policy set to false -> AreMetricsEnabled returns false.
 TEST_F(MetricsLibraryTest, AreMetricsEnabledFalse) {
   EXPECT_CALL(*device_policy_, GetMetricsEnabled(_))
-      .WillOnce(SetMetricsPolicy(false));
+      .WillRepeatedly(SetMetricsPolicy(false));
   EXPECT_FALSE(lib_.AreMetricsEnabled());
+
+  // Per-user shouldn't affect that -- we haven't set per-user consent at all.
+  ClearCachedEnabledTime();
+  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+  // Even if per-user is enabled, if device policy is not false we shouldn't
+  // enable consent.
+  SetPerUserConsent(true);
+  ClearCachedEnabledTime();
+  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+  // Same if it's disabled.
+  SetPerUserConsent(false);
+  ClearCachedEnabledTime();
+  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
 }
 
 // MetricsEnabled policy set to true -> AreMetricsEnabled returns true.
 TEST_F(MetricsLibraryTest, AreMetricsEnabledTrue) {
   EXPECT_TRUE(lib_.AreMetricsEnabled());
+  // Per-user shouldn't affect that -- we haven't set per-user consent at all.
+  ClearCachedEnabledTime();
+  EXPECT_TRUE(lib_.AreMetricsEnabledWithPerUser(true));
+}
+
+// MetricsEnabled policy set to true and user disabled
+// -> AreMetricsEnabled returns false.
+TEST_F(MetricsLibraryTest, AreMetricsEnabledPerUserFalse) {
+  SetPerUserConsent(false);
+  EXPECT_FALSE(lib_.AreMetricsEnabledWithPerUser(true));
+}
+
+TEST_F(MetricsLibraryTest, UsePerUserMetrics) {
+  base::FilePath per_user_consent = test_dir_.Append("per_user_consent");
+  lib_.SetPerUserConsentForTest(per_user_consent);
+  EXPECT_FALSE(base::PathExists(per_user_consent));
+  EXPECT_FALSE(lib_.UsePerUserMetricsConsent());
+
+  EXPECT_EQ(0, WriteFile(per_user_consent, "", 0));
+  EXPECT_TRUE(base::PathExists(per_user_consent));
+  EXPECT_TRUE(lib_.UsePerUserMetricsConsent());
 }
 
 // Template SendEnumToUMA(name, T) correctly sets exclusive_max to kMaxValue+1.
