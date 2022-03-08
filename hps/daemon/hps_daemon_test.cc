@@ -72,9 +72,7 @@ class HpsDaemonTest : public testing::Test {
     auto hps = std::make_unique<StrictMock<MockHps>>();
     mock_hps_ = hps.get();
     EXPECT_CALL(*mock_hps_, ShutDown()).WillOnce(Return(true));
-    hps_daemon_.reset(
-        new DBusAdaptor(mock_bus_, std::move(hps),
-                        static_cast<uint32_t>(kPollTime.InMilliseconds())));
+    hps_daemon_.reset(new DBusAdaptor(mock_bus_, std::move(hps), kPollTimeMs));
 
     feature_config_.set_allocated_basic_filter_config(
         new FeatureConfig_BasicFilterConfig());
@@ -94,7 +92,7 @@ class HpsDaemonTest : public testing::Test {
   StrictMock<MockHps>* mock_hps_;
   std::unique_ptr<DBusAdaptor> hps_daemon_;
   FeatureConfig feature_config_;
-  static constexpr base::TimeDelta kPollTime = base::Milliseconds(500);
+  static constexpr uint32_t kPollTimeMs = 500;
 };
 
 // Failing to enable or disable a feature at the hardware level should trigger a
@@ -221,14 +219,14 @@ TEST_F(HpsDaemonTest, TestPollTimer) {
   EXPECT_TRUE(result);
 
   // Advance timer far enough so that the poll timer should fire twice.
-  task_environment_.FastForwardBy(kPollTime * 2);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs * 2));
 
   // Disable the feature, time should no longer fire.
   result = hps_daemon_->DisableHpsSense(&error);
   EXPECT_TRUE(result);
 
   // Poll task should no longer fire if we advance the timer.
-  task_environment_.FastForwardBy(kPollTime * 2);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs * 2));
   EXPECT_EQ(task_environment_.GetPendingMainThreadTaskCount(), 0u);
 }
 
@@ -263,21 +261,21 @@ TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
   EXPECT_TRUE(result);
 
   // Advance timer far enough so that the poll timer should fire.
-  task_environment_.FastForwardBy(kPollTime);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs));
 
   // Disable the feature, timer should no longer fire for feature 0.
   result = hps_daemon_->DisableHpsSense(&error);
   EXPECT_TRUE(result);
 
   // Advance timer far enough so that the poll timer should fire.
-  task_environment_.FastForwardBy(kPollTime);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs));
 
   // Disable the feature, timer should no longer fire for feature 1.
   result = hps_daemon_->DisableHpsNotify(&error);
   EXPECT_TRUE(result);
 
   // Advance time to ensure no more features are firing.
-  task_environment_.FastForwardBy(kPollTime);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs));
   EXPECT_EQ(task_environment_.GetPendingMainThreadTaskCount(), 0u);
 }
 
@@ -311,10 +309,10 @@ TEST_F(HpsDaemonTest, DISABLED_TestSignals) {
   EXPECT_TRUE(result);
 
   // Advance timer far enough so that the poll timer should fire.
-  task_environment_.FastForwardBy(kPollTime);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs));
 
   // Advance timer far enough so that the poll timer should fire again.
-  task_environment_.FastForwardBy(kPollTime);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs));
 
   // Disable the feature, timer should no longer fire for feature 0.
   result = hps_daemon_->DisableHpsSense(&error);
@@ -325,7 +323,7 @@ TEST_F(HpsDaemonTest, DISABLED_TestSignals) {
   EXPECT_TRUE(result);
 
   // Advance time to ensure no more features are firing.
-  task_environment_.FastForwardBy(kPollTime);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs));
 }
 
 TEST_F(HpsDaemonTest, TestSuspendAndResume) {
@@ -353,14 +351,14 @@ TEST_F(HpsDaemonTest, TestSuspendAndResume) {
   // Advance timer far enough so that the poll timer should fire twice. On the
   // second invocation, HPS pretends that it has rebooted (IsRunning() ==
   // false), so we reinitialize the enabled features before resuming polling.
-  task_environment_.FastForwardBy(kPollTime * 2);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs * 2));
 
   // Disable the feature, time should no longer fire.
   result = hps_daemon_->DisableHpsSense(&error);
   EXPECT_TRUE(result);
 
   // Poll task should no longer fire if we advance the timer.
-  task_environment_.FastForwardBy(kPollTime * 2);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs * 2));
   EXPECT_EQ(task_environment_.GetPendingMainThreadTaskCount(), 0u);
 }
 
@@ -388,7 +386,7 @@ TEST_F(HpsDaemonTest, TestFailedResume) {
         // the second invocation, HPS pretends that it has rebooted (IsRunning()
         // == false), so we reinitialize the enabled features before resuming
         // polling.
-        task_environment_.FastForwardBy(kPollTime * 2);
+        task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs * 2));
       },
       ".*Failed to boot.*");
 }
@@ -436,7 +434,7 @@ TEST_F(HpsDaemonTest, AverageFilter) {
   EXPECT_TRUE(result);
 
   // Advance timer far enough so that the poll timer should fire twice.
-  task_environment_.FastForwardBy(kPollTime * 2);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs * 2));
 
   HpsResultProto value;
   result = hps_daemon_->GetResultHpsSense(&error, &value);
@@ -471,7 +469,7 @@ TEST_F(HpsDaemonTest, ResetFilterOnResume) {
   // Advance timer far enough so that the poll timer should fire twice. Since
   // HPS resets before the second measurement, the filter also gets reset and
   // the overall result is negative.
-  task_environment_.FastForwardBy(kPollTime * 2);
+  task_environment_.FastForwardBy(base::Milliseconds(kPollTimeMs * 2));
 
   HpsResultProto value;
   result = hps_daemon_->GetResultHpsSense(&error, &value);
