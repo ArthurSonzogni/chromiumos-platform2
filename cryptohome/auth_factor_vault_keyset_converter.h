@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_AUTH_FACTOR_VAULT_KEYSET_CONVERTER_H_
 #define CRYPTOHOME_AUTH_FACTOR_VAULT_KEYSET_CONVERTER_H_
 
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -34,11 +36,12 @@ class AuthFactorVaultKeysetConverter {
       const AuthFactorVaultKeysetConverter&) = delete;
   ~AuthFactorVaultKeysetConverter();
 
-  // Returns all the existing VaultKeyset data on disk by converting them into
-  // an AuthFactor format.
+  // Returns all the existing VaultKeyset data on disk mapped to their labels
+  // and converted into AuthFactor format.
   user_data_auth::CryptohomeErrorCode VaultKeysetsToAuthFactors(
       const std::string& username,
-      std::vector<AuthFactor>& out_auth_factor_list);
+      std::map<std::string, std::unique_ptr<AuthFactor>>&
+          out_label_to_auth_factor);
 
   // Takes a label, which was sent from an AuthFactor API, find the VaultKeyset
   // identified with that label and returns its KeyData.

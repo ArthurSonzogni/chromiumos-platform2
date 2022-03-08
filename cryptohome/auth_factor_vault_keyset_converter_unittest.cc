@@ -142,25 +142,25 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
 // no VaultKeyset on the disk.
 TEST_F(AuthFactorVaultKeysetConverterTest,
        ConvertToAuthFactorFailWhenListEmpty) {
-  std::vector<AuthFactor> out_auth_factor_list;
+  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor;
   EXPECT_EQ(
       user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND,
-      converter_->VaultKeysetsToAuthFactors(kUsername, out_auth_factor_list));
-  EXPECT_TRUE(out_auth_factor_list.empty());
+      converter_->VaultKeysetsToAuthFactors(kUsername, label_to_auth_factor));
+  EXPECT_TRUE(label_to_auth_factor.empty());
 }
 
 // Test that VaultKeysetsToAuthFactors lists the existing VaultKeyset on
 // the disk.
 TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToAuthFactorListSuccess) {
   KeysetSetUpWithKeyData(SetKeyData(kLabel), kFirstIndice);
-  std::vector<AuthFactor> out_auth_factor_list;
+  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor;
 
   EXPECT_EQ(
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-      converter_->VaultKeysetsToAuthFactors(kUsername, out_auth_factor_list));
-  EXPECT_FALSE(out_auth_factor_list.empty());
-  EXPECT_EQ(kLabel, out_auth_factor_list[0].label());
-  EXPECT_EQ(AuthFactorType::kPassword, out_auth_factor_list[0].type());
+      converter_->VaultKeysetsToAuthFactors(kUsername, label_to_auth_factor));
+  EXPECT_FALSE(label_to_auth_factor.empty());
+  EXPECT_EQ(kLabel, label_to_auth_factor[kLabel]->label());
+  EXPECT_EQ(AuthFactorType::kPassword, label_to_auth_factor[kLabel]->type());
 }
 
 // Test that VaultKeysetsToAuthFactors lists all the VaultKeysets in the
@@ -171,21 +171,21 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
   KeysetSetUpWithKeyData(SetKeyData(kLabel1), kSecondIndice);
   KeysetSetUpWithKeyData(SetKeyData(kLabel2), kThirdIndice);
 
-  std::vector<AuthFactor> out_auth_factor_list;
+  std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor;
 
   EXPECT_EQ(
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-      converter_->VaultKeysetsToAuthFactors(kUsername, out_auth_factor_list));
-  EXPECT_EQ(3, out_auth_factor_list.size());
+      converter_->VaultKeysetsToAuthFactors(kUsername, label_to_auth_factor));
+  EXPECT_EQ(3, label_to_auth_factor.size());
 
-  EXPECT_EQ(kLabel, out_auth_factor_list[0].label());
-  EXPECT_EQ(AuthFactorType::kPassword, out_auth_factor_list[0].type());
+  EXPECT_EQ(kLabel, label_to_auth_factor[kLabel]->label());
+  EXPECT_EQ(AuthFactorType::kPassword, label_to_auth_factor[kLabel]->type());
 
-  EXPECT_EQ(kLabel1, out_auth_factor_list[1].label());
-  EXPECT_EQ(AuthFactorType::kPassword, out_auth_factor_list[0].type());
+  EXPECT_EQ(kLabel1, label_to_auth_factor[kLabel1]->label());
+  EXPECT_EQ(AuthFactorType::kPassword, label_to_auth_factor[kLabel1]->type());
 
-  EXPECT_EQ(kLabel2, out_auth_factor_list[2].label());
-  EXPECT_EQ(AuthFactorType::kPassword, out_auth_factor_list[0].type());
+  EXPECT_EQ(kLabel2, label_to_auth_factor[kLabel2]->label());
+  EXPECT_EQ(AuthFactorType::kPassword, label_to_auth_factor[kLabel2]->type());
 }
 
 // Test that PopulateKeyDataForVK returns correct KeyData for the given

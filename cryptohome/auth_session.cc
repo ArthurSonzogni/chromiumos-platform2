@@ -19,6 +19,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -102,13 +103,29 @@ AuthSession::AuthSession(
   // TODO(hardikgoyal): make a factory function for AuthSession so the
   // constructor doesn't need to do work
   start_time_ = base::TimeTicks::Now();
+
+  converter_ =
+      std::make_unique<AuthFactorVaultKeysetConverter>(keyset_management);
+
+  // Decide on USS vs VaultKeyset based on USS experiment file
+  // and existence of VaultKeysets. If the experiment is enabled and there is no
+  // VK on the disk follow USS path. If at least one VK exists, don't take USS
+  // path even if the experiment is enabled.
+  // TODO(b/223916443): We assume user has either VaultKeyset or USS until the
+  // USS migration is started. If for some reason both exists on the disk,
+  // unused one will be ignored.
   user_exists_ = keyset_management_->UserExists(obfuscated_username_);
   if (user_exists_) {
     keyset_management_->GetVaultKeysetLabelsAndData(obfuscated_username_,
                                                     &key_label_data_);
     user_has_configured_credential_ = !key_label_data_.empty();
+  }
+  if (IsUserSecretStashExperimentEnabled() &&
+      !user_has_configured_credential_) {
     label_to_auth_factor_ =
         LoadAllAuthFactors(obfuscated_username_, auth_factor_manager_);
+  } else {
+    converter_->VaultKeysetsToAuthFactors(username_, label_to_auth_factor_);
   }
 }
 

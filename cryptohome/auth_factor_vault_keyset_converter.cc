@@ -13,6 +13,7 @@
 
 #include <map>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
@@ -60,31 +61,32 @@ AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags) {
 }
 
 // Returns the AuthFactor object converted from the input VaultKeyset.
-std::optional<AuthFactor> ConvertToAuthFactor(const VaultKeyset& vk) {
+std::unique_ptr<AuthFactor> ConvertToAuthFactor(const VaultKeyset& vk) {
   AuthBlockState auth_block_state;
   if (!GetAuthBlockState(vk, auth_block_state /*out*/)) {
-    return std::nullopt;
+    return nullptr;
   }
 
   // If the VaultKeyset label is empty an artificial label legacy<index> is
   // returned.
   std::string label = vk.GetLabel();
   if (!IsValidAuthFactorLabel(label)) {
-    return std::nullopt;
+    return nullptr;
   }
 
   AuthFactorType auth_factor_type =
       VaultKeysetTypeToAuthFactorType(vk.GetFlags());
   if (auth_factor_type == AuthFactorType::kUnspecified) {
-    return std::nullopt;
+    return nullptr;
   }
 
   AuthFactorMetadata metadata;
   if (!GetAuthFactorMetadataWithType(auth_factor_type, metadata)) {
-    return std::nullopt;
+    return nullptr;
   }
 
-  return AuthFactor(auth_factor_type, label, metadata, auth_block_state);
+  return std::make_unique<AuthFactor>(auth_factor_type, label, metadata,
+                                      auth_block_state);
 }
 
 }  // namespace
@@ -99,8 +101,9 @@ AuthFactorVaultKeysetConverter::~AuthFactorVaultKeysetConverter() = default;
 user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactors(
     const std::string& username,
-    std::vector<AuthFactor>& out_auth_factor_list) {
-  out_auth_factor_list.clear();
+    std::map<std::string, std::unique_ptr<AuthFactor>>&
+        out_label_to_auth_factor) {
+  out_label_to_auth_factor.clear();
 
   std::string obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(username);
@@ -117,15 +120,15 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactors(
     if (!vk) {
       continue;
     }
-    std::optional<AuthFactor> auth_factor = ConvertToAuthFactor(*vk.get());
-    if (auth_factor.has_value()) {
-      out_auth_factor_list.push_back(auth_factor.value());
+    std::unique_ptr<AuthFactor> auth_factor = ConvertToAuthFactor(*vk.get());
+    if (auth_factor) {
+      out_label_to_auth_factor.emplace(vk->GetLabel(), std::move(auth_factor));
     }
   }
 
   // Differentiate between no vault keyset case and vault keysets on the disk
   // but unable to be loaded case.
-  if (out_auth_factor_list.empty()) {
+  if (out_label_to_auth_factor.empty()) {
     return user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
   }
 

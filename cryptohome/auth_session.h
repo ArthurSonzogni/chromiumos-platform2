@@ -21,6 +21,7 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_utils.h"
+#include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/key_objects.h"
@@ -235,6 +236,9 @@ class AuthSession final {
   std::unique_ptr<CredentialVerifier> credential_verifier_;
   // Used to decrypt/ encrypt & store credentials.
   std::unique_ptr<VaultKeyset> vault_keyset_;
+  // A stateless object to convert AuthFactor API to VaultKeyset KeyData and
+  // VaultKeysets to AuthFactor API.
+  std::unique_ptr<AuthFactorVaultKeysetConverter> converter_;
   // Used to store key meta data.
   cryptohome::KeyData key_data_;
   // FileSystemKeyset is needed by cryptohome to mount a user.
