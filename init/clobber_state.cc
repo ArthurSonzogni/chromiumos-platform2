@@ -1176,8 +1176,16 @@ int ClobberState::Run() {
   // Try to mount encrypted stateful to save some files from there.
   bool encrypted_stateful_mounted = false;
 
+  // Update Engine and OOBE config utilities require preservation of files in
+  // /var across powerwash. Attempt to mount the encrypted stateful partition
+  // if:
+  // 1. The encrypted stateful partition is enabled on the device.
+  // 2. clobber-state is not running in factory mode: mount-encrypted is not
+  //    accessible within the factory environment.
+  // Failure to mount the encrypted stateful partition prevents the preservation
+  // of these files across powerwash, but functionally does not affect clobber.
   encrypted_stateful_mounted =
-      USE_ENCRYPTED_STATEFUL && MountEncryptedStateful();
+      USE_ENCRYPTED_STATEFUL && !args_.factory_wipe && MountEncryptedStateful();
 
   if (args_.safe_wipe) {
     IncrementFileCounter(stateful_.Append(kPowerWashCountPath));
@@ -1375,8 +1383,8 @@ int ClobberState::Run() {
   }
 
   // Attempt to collect crashes into the reboot vault crash directory. Do not
-  // collect crashes if this is a user triggered powerwash.
-  if (preserve_sensitive_files) {
+  // collect crashes if this is a user triggered or a factory powerwash.
+  if (preserve_sensitive_files && !args_.factory_wipe) {
     if (utils::CreateEncryptedRebootVault())
       CollectClobberCrashReports();
   }
