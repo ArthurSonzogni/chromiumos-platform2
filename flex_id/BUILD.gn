@@ -6,11 +6,11 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":client_id",
-    ":libclient_id",
+    ":flex_id_tool",
+    ":libflex_id",
   ]
   if (use.test) {
-    deps += [ ":client_id_test" ]
+    deps += [ ":flex_id_test" ]
   }
 }
 
@@ -21,31 +21,31 @@ pkg_config("target_defaults") {
   ]
 }
 
-static_library("libclient_id") {
-  sources = [ "client_id.cc" ]
+static_library("libflex_id") {
+  sources = [ "flex_id.cc" ]
   configs += [ ":target_defaults" ]
 }
 
-executable("client_id") {
-  sources = [ "main.cc" ]
+executable("flex_id_tool") {
+  sources = [ "flex_id_tool.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":libclient_id" ]
+  deps = [ ":libflex_id" ]
 }
 
 if (use.test) {
-  pkg_config("client_id_test_config") {
+  pkg_config("flex_id_test_config") {
     pkg_deps = [ "libchrome-test" ]
   }
 
-  executable("client_id_test") {
-    sources = [ "client_id_test.cc" ]
+  executable("flex_id_test") {
+    sources = [ "flex_id_test.cc" ]
     configs += [
       "//common-mk:test",
-      ":client_id_test_config",
+      ":flex_id_test_config",
       ":target_defaults",
     ]
     deps = [
-      ":libclient_id",
+      ":libflex_id",
       "//common-mk/testrunner",
     ]
   }

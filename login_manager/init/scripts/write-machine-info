@@ -49,6 +49,7 @@ serial_number() {
   fi
 }
 
+# shellcheck disable=SC2154
 touch "${MACHINE_INFO}"
 chmod 0644 "${MACHINE_INFO}"
 (
@@ -60,7 +61,7 @@ chmod 0644 "${MACHINE_INFO}"
   echo "wpsw_cur=\"$(crossystem wpsw_cur)\""
 ) >> "${MACHINE_INFO}"
 
-# Add the client_id if this is a Reven device
+# Add the flex_id if this is a Reven device
 if crossystem "hwid?REVEN-ANAE A6A-A7I"; then
-  (echo "client_id=\"$(client_id)\"") >> "${MACHINE_INFO}"
+  (echo "flex_id=\"$(flex_id_tool)\"") >> "${MACHINE_INFO}"
 fi

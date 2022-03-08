@@ -2,16 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "client_id/client_id.h"
+#include "flex_id/flex_id.h"
 
 #include <base/files/scoped_temp_dir.h>
 #include <base/optional.h>
 #include <gtest/gtest.h>
 
-namespace client_id {
+namespace flex_id {
 
 namespace {
 
+constexpr char kClientId[] = "reven-client_id";
 constexpr char kLegacyClientId[] = "CloudReady-aa:aa:aa:11:22:33";
 constexpr char kUuid[] = "fc71ace7-5fbb-4108-a2f5-b48a98635aeb";
 constexpr char kGoodSerial[] = "good_example_serial";
@@ -29,12 +30,12 @@ constexpr char kUsbModAlias[] = "usb:0000";
 
 }  // namespace
 
-class ClientIdTest : public ::testing::Test {
+class FlexIdTest : public ::testing::Test {
  protected:
   void SetUp() override {
     CHECK(test_dir_.CreateUniqueTempDir());
     test_path_ = test_dir_.GetPath();
-    client_id_generator_ = client_id::ClientIdGenerator(test_path_);
+    flex_id_generator_ = flex_id::FlexIdGenerator(test_path_);
   }
 
   void CreateSerial(const std::string& serial) {
@@ -55,6 +56,12 @@ class ClientIdTest : public ::testing::Test {
                           modalias));
   }
 
+  void CreateClientId() {
+    base::FilePath client_id_path = test_path_.Append("var/lib/client_id");
+    CHECK(base::CreateDirectory(client_id_path));
+    CHECK(base::WriteFile(client_id_path.Append("client_id"), kClientId));
+  }
+
   void CreateLegacy() {
     base::FilePath legacy_path =
         test_path_.Append("mnt/stateful_partition/cloudready");
@@ -68,120 +75,132 @@ class ClientIdTest : public ::testing::Test {
     CHECK(base::WriteFile(uuid_path.Append("uuid"), kUuid));
   }
 
-  void DeleteClientId() {
-    base::FilePath client_id_path =
-        test_path_.Append("var/lib/client_id/client_id");
-    CHECK(base::DeleteFile(client_id_path));
+  void DeleteFlexId() {
+    base::FilePath flex_id_path = test_path_.Append("var/lib/flex_id/flex_id");
+    CHECK(base::DeleteFile(flex_id_path));
   }
 
-  base::Optional<client_id::ClientIdGenerator> client_id_generator_;
+  base::Optional<flex_id::FlexIdGenerator> flex_id_generator_;
   base::ScopedTempDir test_dir_;
   base::FilePath test_path_;
 };
 
-TEST_F(ClientIdTest, LegacyClientId) {
-  EXPECT_FALSE(client_id_generator_->TryLegacy());
+TEST_F(FlexIdTest, ClientId) {
+  EXPECT_FALSE(flex_id_generator_->TryClientId());
 
-  CreateLegacy();
-  EXPECT_EQ(client_id_generator_->TryLegacy(), kLegacyClientId);
+  CreateClientId();
+  EXPECT_EQ(flex_id_generator_->TryClientId(), kClientId);
 }
 
-TEST_F(ClientIdTest, SerialNumber) {
-  EXPECT_FALSE(client_id_generator_->TrySerial());
+TEST_F(FlexIdTest, LegacyClientId) {
+  EXPECT_FALSE(flex_id_generator_->TryLegacy());
+
+  CreateLegacy();
+  EXPECT_EQ(flex_id_generator_->TryLegacy(), kLegacyClientId);
+}
+
+TEST_F(FlexIdTest, SerialNumber) {
+  EXPECT_FALSE(flex_id_generator_->TrySerial());
 
   // a too short serial should not be used
   CreateSerial(kShortSerial);
-  EXPECT_FALSE(client_id_generator_->TrySerial());
+  EXPECT_FALSE(flex_id_generator_->TrySerial());
 
   // a known bad serial should not be used
   CreateSerial(kBadSerial);
-  EXPECT_FALSE(client_id_generator_->TrySerial());
+  EXPECT_FALSE(flex_id_generator_->TrySerial());
 
   // a serial of only one repeated character should not be used
   CreateSerial(kRepeatedSerial);
-  EXPECT_FALSE(client_id_generator_->TrySerial());
+  EXPECT_FALSE(flex_id_generator_->TrySerial());
 
   // a good serial should be used
   CreateSerial(kGoodSerial);
-  EXPECT_EQ(client_id_generator_->TrySerial(), kGoodSerial);
+  EXPECT_EQ(flex_id_generator_->TrySerial(), kGoodSerial);
 }
 
-TEST_F(ClientIdTest, MacAddress) {
-  EXPECT_FALSE(client_id_generator_->TryMac());
+TEST_F(FlexIdTest, MacAddress) {
+  EXPECT_FALSE(flex_id_generator_->TryMac());
 
   // 00:00:00:00:00:00 mac should not be used
   CreateInterface(kPriorityInterfaceName, kBadMacAddress, kPciModAlias);
-  EXPECT_FALSE(client_id_generator_->TryMac());
+  EXPECT_FALSE(flex_id_generator_->TryMac());
 
   // a non priority usb device should not be  used
   CreateInterface(kGoodInterfaceName, kGoodMacAddress, kUsbModAlias);
-  EXPECT_FALSE(client_id_generator_->TryMac());
+  EXPECT_FALSE(flex_id_generator_->TryMac());
 
   // a blocked interface should not be used
   CreateInterface(kBadInterfaceName, kGoodMacAddress, kPciModAlias);
-  EXPECT_FALSE(client_id_generator_->TryMac());
+  EXPECT_FALSE(flex_id_generator_->TryMac());
 
   // eth0 should be used
   CreateInterface(kPriorityInterfaceName, kGoodMacAddress, kPciModAlias);
-  EXPECT_EQ(client_id_generator_->TryMac(), kGoodMacAddress);
+  EXPECT_EQ(flex_id_generator_->TryMac(), kGoodMacAddress);
 }
 
-TEST_F(ClientIdTest, Uuid) {
-  EXPECT_FALSE(client_id_generator_->TryUuid());
+TEST_F(FlexIdTest, Uuid) {
+  EXPECT_FALSE(flex_id_generator_->TryUuid());
 
   CreateUuid();
-  EXPECT_EQ(client_id_generator_->TryUuid(), kUuid);
+  EXPECT_EQ(flex_id_generator_->TryUuid(), kUuid);
 }
 
-TEST_F(ClientIdTest, GenerateAndSaveClientId) {
-  // no client id should be generated if there are no sources
-  EXPECT_FALSE(client_id_generator_->GenerateAndSaveClientId());
+TEST_F(FlexIdTest, GenerateAndSaveFlexId) {
+  // no flex_id should be generated if there are no sources
+  EXPECT_FALSE(flex_id_generator_->GenerateAndSaveFlexId());
 
-  // uuid should be used for the client id
+  // uuid should be used for the flex_id
   CreateUuid();
-  EXPECT_TRUE(client_id_generator_->GenerateAndSaveClientId());
-  EXPECT_EQ(client_id_generator_->ReadClientId().value(),
-            client_id_generator_->AddClientIdPrefix(kUuid).value());
+  EXPECT_TRUE(flex_id_generator_->GenerateAndSaveFlexId());
+  EXPECT_EQ(flex_id_generator_->ReadFlexId().value(),
+            flex_id_generator_->AddFlexIdPrefix(kUuid).value());
 
   // a bad interface should not be used
-  DeleteClientId();
+  DeleteFlexId();
   CreateInterface(kGoodInterfaceName, kGoodMacAddress, kUsbModAlias);
-  EXPECT_TRUE(client_id_generator_->GenerateAndSaveClientId());
-  EXPECT_EQ(client_id_generator_->ReadClientId().value(),
-            client_id_generator_->AddClientIdPrefix(kUuid).value());
+  EXPECT_TRUE(flex_id_generator_->GenerateAndSaveFlexId());
+  EXPECT_EQ(flex_id_generator_->ReadFlexId().value(),
+            flex_id_generator_->AddFlexIdPrefix(kUuid).value());
 
   // a good interface should take priority over uuid
-  DeleteClientId();
+  DeleteFlexId();
   CreateInterface(kGoodInterfaceName, kGoodMacAddress, kPciModAlias);
-  EXPECT_TRUE(client_id_generator_->GenerateAndSaveClientId());
-  EXPECT_EQ(client_id_generator_->ReadClientId().value(),
-            client_id_generator_->AddClientIdPrefix(kGoodMacAddress).value());
+  EXPECT_TRUE(flex_id_generator_->GenerateAndSaveFlexId());
+  EXPECT_EQ(flex_id_generator_->ReadFlexId().value(),
+            flex_id_generator_->AddFlexIdPrefix(kGoodMacAddress).value());
 
   // a priority interface should take priority over a good interface
-  DeleteClientId();
+  DeleteFlexId();
   CreateInterface(kPriorityInterfaceName, kGoodMacAddress2, kPciModAlias);
-  EXPECT_TRUE(client_id_generator_->GenerateAndSaveClientId());
-  EXPECT_EQ(client_id_generator_->ReadClientId().value(),
-            client_id_generator_->AddClientIdPrefix(kGoodMacAddress2).value());
+  EXPECT_TRUE(flex_id_generator_->GenerateAndSaveFlexId());
+  EXPECT_EQ(flex_id_generator_->ReadFlexId().value(),
+            flex_id_generator_->AddFlexIdPrefix(kGoodMacAddress2).value());
 
   // a bad serial should not be used
-  DeleteClientId();
+  DeleteFlexId();
   CreateSerial(kBadSerial);
-  EXPECT_TRUE(client_id_generator_->GenerateAndSaveClientId());
-  EXPECT_EQ(client_id_generator_->ReadClientId().value(),
-            client_id_generator_->AddClientIdPrefix(kGoodMacAddress2).value());
+  EXPECT_TRUE(flex_id_generator_->GenerateAndSaveFlexId());
+  EXPECT_EQ(flex_id_generator_->ReadFlexId().value(),
+            flex_id_generator_->AddFlexIdPrefix(kGoodMacAddress2).value());
 
   // a good serial should take priority over mac address
-  DeleteClientId();
+  DeleteFlexId();
   CreateSerial(kGoodSerial);
-  EXPECT_TRUE(client_id_generator_->GenerateAndSaveClientId());
-  EXPECT_EQ(client_id_generator_->ReadClientId().value(), kGoodSerial);
+  EXPECT_TRUE(flex_id_generator_->GenerateAndSaveFlexId());
+  EXPECT_EQ(flex_id_generator_->ReadFlexId().value(), kGoodSerial);
 
   // legacy client_id should take priority over a good serial
-  DeleteClientId();
+  DeleteFlexId();
   CreateLegacy();
-  EXPECT_TRUE(client_id_generator_->GenerateAndSaveClientId());
-  EXPECT_EQ(client_id_generator_->ReadClientId().value(), kLegacyClientId);
+  EXPECT_TRUE(flex_id_generator_->GenerateAndSaveFlexId());
+  EXPECT_EQ(flex_id_generator_->ReadFlexId().value(), kLegacyClientId);
+
+  // client_id should take priority over a legacy client_id
+  DeleteFlexId();
+  CreateClientId();
+  EXPECT_TRUE(flex_id_generator_->GenerateAndSaveFlexId());
+  EXPECT_EQ(flex_id_generator_->ReadFlexId().value(), kClientId);
 }
 
-}  // namespace client_id
+}  // namespace flex_id

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "client_id/client_id.h"
+#include "flex_id/flex_id.h"
 
 #include <iostream>
 #include <map>
@@ -13,11 +13,12 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
-namespace client_id {
+namespace flex_id {
 
 namespace {
 
-constexpr char kClientIdPrefix[] = "Flex-";
+constexpr char kFlexIdPrefix[] = "Flex-";
+constexpr char kFlexIdFile[] = "var/lib/flex_id/flex_id";
 constexpr char kClientIdFile[] = "var/lib/client_id/client_id";
 constexpr char kUuidPath[] = "proc/sys/kernel/random/uuid";
 constexpr char kLegacyClientIdFile[] =
@@ -96,22 +97,34 @@ bool InterfaceIsUsb(const base::FilePath& modalias_path) {
 
 }  // namespace
 
-ClientIdGenerator::ClientIdGenerator(const base::FilePath& base_path) {
+FlexIdGenerator::FlexIdGenerator(const base::FilePath& base_path) {
   base_path_ = base_path;
 }
 
-base::Optional<std::string> ClientIdGenerator::AddClientIdPrefix(
-    const std::string& client_id) {
-  return kClientIdPrefix + client_id;
+base::Optional<std::string> FlexIdGenerator::AddFlexIdPrefix(
+    const std::string& flex_id) {
+  return kFlexIdPrefix + flex_id;
 }
 
-base::Optional<std::string> ClientIdGenerator::ReadClientId() {
+base::Optional<std::string> FlexIdGenerator::ReadFlexId() {
+  const base::FilePath flex_id_path = base_path_.Append(kFlexIdFile);
+
+  return ReadAndTrimFile(flex_id_path);
+}
+
+base::Optional<std::string> FlexIdGenerator::TryClientId() {
+  base::Optional<std::string> client_id;
   const base::FilePath client_id_path = base_path_.Append(kClientIdFile);
 
-  return ReadAndTrimFile(client_id_path);
+  if (!(client_id = ReadAndTrimFile(client_id_path)))
+    return base::nullopt;
+  if (client_id.value().empty())
+    return base::nullopt;
+
+  return client_id;
 }
 
-base::Optional<std::string> ClientIdGenerator::TryLegacy() {
+base::Optional<std::string> FlexIdGenerator::TryLegacy() {
   base::Optional<std::string> legacy;
   const base::FilePath legacy_path = base_path_.Append(kLegacyClientIdFile);
 
@@ -123,7 +136,7 @@ base::Optional<std::string> ClientIdGenerator::TryLegacy() {
   return legacy;
 }
 
-base::Optional<std::string> ClientIdGenerator::TrySerial() {
+base::Optional<std::string> FlexIdGenerator::TrySerial() {
   base::Optional<std::string> serial;
   const base::FilePath serial_path = base_path_.Append(kDmiSerialPath);
 
@@ -147,7 +160,7 @@ base::Optional<std::string> ClientIdGenerator::TrySerial() {
   return serial;
 }
 
-base::Optional<std::string> ClientIdGenerator::TryMac() {
+base::Optional<std::string> FlexIdGenerator::TryMac() {
   std::map<std::string, std::string> interfaces;
 
   const base::FilePath interfaces_path =
@@ -196,51 +209,53 @@ base::Optional<std::string> ClientIdGenerator::TryMac() {
   return base::nullopt;
 }
 
-base::Optional<std::string> ClientIdGenerator::TryUuid() {
+base::Optional<std::string> FlexIdGenerator::TryUuid() {
   const base::FilePath uuid_path = base_path_.Append(kUuidPath);
 
   return ReadAndTrimFile(uuid_path);
 }
 
-bool ClientIdGenerator::WriteClientId(const std::string& client_id) {
-  const base::FilePath client_id_file_path = base_path_.Append(kClientIdFile);
-  if (base::CreateDirectory(client_id_file_path.DirName())) {
-    return base::WriteFile(client_id_file_path, client_id + "\n");
+bool FlexIdGenerator::WriteFlexId(const std::string& flex_id) {
+  const base::FilePath flex_id_file_path = base_path_.Append(kFlexIdFile);
+  if (base::CreateDirectory(flex_id_file_path.DirName())) {
+    return base::WriteFile(flex_id_file_path, flex_id + "\n");
   }
   return false;
 }
 
-base::Optional<std::string> ClientIdGenerator::GenerateAndSaveClientId() {
-  base::Optional<std::string> client_id;
+base::Optional<std::string> FlexIdGenerator::GenerateAndSaveFlexId() {
+  base::Optional<std::string> flex_id;
 
-  // Check for existing client_id and exit early.
-  if ((client_id = ReadClientId())) {
-    LOG(INFO) << "Found existing client_id: " << client_id.value();
-    return client_id;
+  // Check for existing flex_id and exit early.
+  if ((flex_id = ReadFlexId())) {
+    LOG(INFO) << "Found existing flex_id: " << flex_id.value();
+    return flex_id;
   }
 
-  if ((client_id = TryLegacy())) {
-    LOG(INFO) << "Using CloudReady legacy client_id: " << client_id.value();
-  } else if ((client_id = TrySerial())) {
-    LOG(INFO) << "Using DMI serial number for client_id: " << client_id.value();
-  } else if ((client_id = TryMac())) {
-    client_id = AddClientIdPrefix(client_id.value());
-    LOG(INFO) << "Using MAC address for client_id: " << client_id.value();
-  } else if ((client_id = TryUuid())) {
-    client_id = AddClientIdPrefix(client_id.value());
-    LOG(INFO) << "Using random UUID for client_id: " << client_id.value();
+  if ((flex_id = TryClientId())) {
+    LOG(INFO) << "Using client_id for flex_id: " << flex_id.value();
+  } else if ((flex_id = TryLegacy())) {
+    LOG(INFO) << "Using CloudReady legacy for flex_id: " << flex_id.value();
+  } else if ((flex_id = TrySerial())) {
+    LOG(INFO) << "Using DMI serial number for flex_id: " << flex_id.value();
+  } else if ((flex_id = TryMac())) {
+    flex_id = AddFlexIdPrefix(flex_id.value());
+    LOG(INFO) << "Using MAC address for flex_id: " << flex_id.value();
+  } else if ((flex_id = TryUuid())) {
+    flex_id = AddFlexIdPrefix(flex_id.value());
+    LOG(INFO) << "Using random UUID for flex_id: " << flex_id.value();
   } else {
-    LOG(ERROR) << "No valid client_id source was found";
+    LOG(ERROR) << "No valid flex_id source was found";
     return base::nullopt;
   }
 
   // save result
-  if (WriteClientId(client_id.value())) {
-    LOG(INFO) << "Successfully wrote client_id: " << client_id.value();
-    return client_id;
+  if (WriteFlexId(flex_id.value())) {
+    LOG(INFO) << "Successfully wrote flex_id: " << flex_id.value();
+    return flex_id;
   }
 
   return base::nullopt;
 }
 
-}  // namespace client_id
+}  // namespace flex_id

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "client_id/client_id.h"
+#include "flex_id/flex_id.h"
 
 #include <iostream>
 
@@ -13,13 +13,13 @@
 int main() {
   brillo::InitLog(brillo::kLogToSyslog);
 
-  client_id::ClientIdGenerator client_id_generator(base::FilePath("/"));
-  auto client_id = client_id_generator.GenerateAndSaveClientId();
-  if (!client_id) {
-    LOG(ERROR) << "Couldn't save client_id. Exiting.";
+  flex_id::FlexIdGenerator flex_id_generator(base::FilePath("/"));
+  auto flex_id = flex_id_generator.GenerateAndSaveFlexId();
+  if (!flex_id) {
+    LOG(ERROR) << "Couldn't save flex_id. Exiting.";
     return 1;
   }
-  std::cout << client_id.value() << std::endl;
-  LOG(INFO) << "client_id ran successfully. Exiting.";
+  std::cout << flex_id.value() << std::endl;
+  LOG(INFO) << "flex_id_tool ran successfully. Exiting.";
   return 0;
 }
