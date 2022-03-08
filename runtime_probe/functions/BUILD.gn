@@ -47,6 +47,7 @@ if (use.test) {
       "edid_test.cc",
       "sequence_test.cc",
       "sysfs_test.cc",
+      "tcpc_test.cc",
     ]
     configs += [
       ":target_defaults",

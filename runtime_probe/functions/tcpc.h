@@ -6,6 +6,7 @@
 #define RUNTIME_PROBE_FUNCTIONS_TCPC_H_
 
 #include <memory>
+#include <base/files/scoped_file.h>
 
 #include "runtime_probe/probe_function.h"
 
@@ -16,7 +17,7 @@ class PdChipInfoCommandV0;
 namespace runtime_probe {
 
 // Probe tcpc info from libec.
-class TcpcFunction final : public PrivilegedProbeFunction {
+class TcpcFunction : public PrivilegedProbeFunction {
   using PrivilegedProbeFunction::PrivilegedProbeFunction;
 
  public:
@@ -28,6 +29,8 @@ class TcpcFunction final : public PrivilegedProbeFunction {
   // For mocking.
   virtual std::unique_ptr<ec::PdChipInfoCommandV0> GetPdChipInfoCommandV0(
       uint8_t port) const;
+
+  virtual base::ScopedFD GetEcDevice() const;
 };
 
 }  // namespace runtime_probe

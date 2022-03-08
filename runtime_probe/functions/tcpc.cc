@@ -10,7 +10,6 @@
 #include <utility>
 
 #include <base/files/file_util.h>
-#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -44,9 +43,13 @@ std::unique_ptr<ec::PdChipInfoCommandV0> TcpcFunction::GetPdChipInfoCommandV0(
   return std::make_unique<ec::PdChipInfoCommandV0>(port, /*live=*/1);
 }
 
+base::ScopedFD TcpcFunction::GetEcDevice() const {
+  return base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+}
+
 TcpcFunction::DataType TcpcFunction::EvalImpl() const {
   DataType result{};
-  base::ScopedFD ec_dev(open(ec::kCrosEcPath, O_RDWR));
+  base::ScopedFD ec_dev = GetEcDevice();
 
   for (uint8_t port = 0; port < kMaxPortCount; ++port) {
     auto cmd = GetPdChipInfoCommandV0(port);
