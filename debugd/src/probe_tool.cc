@@ -42,6 +42,7 @@ constexpr char kSandboxArgs[] = "/etc/runtime_probe/sandbox/args.json";
 constexpr std::array<const char*, 3> kBinaryAndArgs{"/usr/bin/runtime_probe",
                                                     "--helper", "--"};
 constexpr char kRunAs[] = "runtime_probe";
+constexpr char kMinijailBindFlag[] = "-b";
 
 bool CreateNonblockingPipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd) {
   int pipe_fd[2];
@@ -53,6 +54,11 @@ bool CreateNonblockingPipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd) {
   read_fd->reset(pipe_fd[0]);
   write_fd->reset(pipe_fd[1]);
   return true;
+}
+
+bool DirectoryOrSymlinkExists(const base::FilePath& path) {
+  auto abs_path = base::MakeAbsoluteFilePath(path);
+  return base::DirectoryExists(abs_path);
 }
 
 bool GetFunctionNameFromProbeStatement(brillo::ErrorPtr* error,
@@ -129,7 +135,7 @@ bool ProbeTool::LoadMinijailArguments(brillo::ErrorPtr* error) {
   if (!base::ReadFileToString(base::FilePath(kSandboxArgs),
                               &minijail_args_str)) {
     DEBUGD_ADD_ERROR_FMT(error, kErrorPath,
-                         "Failed to read minijail arguments from: %s",
+                         "Failed to read Minijail arguments from: %s",
                          kSandboxArgs);
     return false;
   }
@@ -158,12 +164,14 @@ bool ProbeTool::GetValidMinijailArguments(brillo::ErrorPtr* error,
   const auto* minijail_args = minijail_args_dict_.FindListKey(function_name);
   if (!minijail_args) {
     DEBUGD_ADD_ERROR_FMT(error, kErrorPath,
-                         "Arguments of \"%s\" is not found in minijail "
+                         "Arguments of \"%s\" is not found in Minijail "
                          "arguments file: %s",
                          function_name.c_str(), kSandboxArgs);
     return false;
   }
   DVLOG(1) << "Minijail arguments: " << (*minijail_args);
+  std::string prev_arg;
+  bool is_bind_arg = false;
   for (const auto& arg : minijail_args->GetList()) {
     if (!arg.is_string()) {
       std::string arg_str;
@@ -172,12 +180,38 @@ bool ProbeTool::GetValidMinijailArguments(brillo::ErrorPtr* error,
       serializer.Serialize(arg);
       DEBUGD_ADD_ERROR_FMT(
           error, kErrorPath,
-          "Failed to parse minijail arguments. Expected string but got: %s",
+          "Failed to parse Minijail arguments. Expected string but got: %s",
           arg_str.c_str());
       args_out->clear();
       return false;
     }
-    args_out->push_back(arg.GetString());
+    const auto& curr_arg = arg.GetString();
+    if (is_bind_arg) {
+      // Check existence of bind paths.
+      auto bind_args = base::SplitString(curr_arg, ",", base::TRIM_WHITESPACE,
+                                         base::SPLIT_WANT_ALL);
+      if (bind_args.size() < 1) {
+        DEBUGD_ADD_ERROR_FMT(error, kErrorPath,
+                             "Failed to parse Minijail bind arguments. Got: %s",
+                             curr_arg.c_str());
+        args_out->clear();
+        return false;
+      }
+      if (DirectoryOrSymlinkExists(base::FilePath(bind_args[0]))) {
+        args_out->push_back(kMinijailBindFlag);
+        args_out->push_back(curr_arg);
+      }
+      is_bind_arg = false;
+    } else {
+      if (curr_arg == kMinijailBindFlag) {
+        is_bind_arg = true;
+      } else {
+        args_out->push_back(curr_arg);
+      }
+    }
+  }
+  if (!prev_arg.empty()) {
+    args_out->push_back(prev_arg);
   }
   return true;
 }
@@ -191,7 +225,7 @@ std::unique_ptr<brillo::Process> ProbeTool::CreateSandboxedProcess(
   }
 
   auto sandboxed_process = std::make_unique<SandboxedProcess>();
-  // The following is the general minijail set up for runtime_probe in debugd
+  // The following is the general Minijail set up for runtime_probe in debugd
   // /dev/log needs to be bind mounted before any possible tmpfs mount on run
   // See:
   //   minijail0 manpage (`man 1 minijail0` in cros\_sdk)
