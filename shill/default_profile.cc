@@ -128,6 +128,9 @@ void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
   manager_props->portal_fallback_http_urls =
       std::vector<std::string>(PortalDetector::kDefaultFallbackHttpUrls.begin(),
                                PortalDetector::kDefaultFallbackHttpUrls.end());
+  manager_props->portal_fallback_https_urls = std::vector<std::string>(
+      PortalDetector::kDefaultFallbackHttpsUrls.begin(),
+      PortalDetector::kDefaultFallbackHttpsUrls.end());
 
   if (!storage()->GetString(kStorageId, kStorageProhibitedTechnologies,
                             &manager_props->prohibited_technologies)) {

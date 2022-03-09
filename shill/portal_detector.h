@@ -82,6 +82,13 @@ class PortalDetector {
       "http://play.googleapis.com/generate_204",
       "http://connectivitycheck.gstatic.com/generate_204",
   };
+  // Set of fallback URLs used for retrying the HTTPS probe when portal
+  // detection is not conclusive.
+  static constexpr std::array<const char*, 3> kDefaultFallbackHttpsUrls = {
+      "https://www.gstatic.com/generate_204",
+      "https://accounts.google.com/generate_204",
+      "https://www.googleapis.com/generate_204",
+  };
   // Default comma separated list of technologies for which portal detection is
   // enabled.
   static constexpr char kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
@@ -195,6 +202,7 @@ class PortalDetector {
   FRIEND_TEST(PortalDetectorTest, RequestSuccess);
   FRIEND_TEST(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess);
   FRIEND_TEST(PortalDetectorTest, IsInProgress);
+  FRIEND_TEST(PortalDetectorTest, PickProbeUrlTest);
 
   static constexpr base::TimeDelta kZeroTimeDelta = base::TimeDelta();
 

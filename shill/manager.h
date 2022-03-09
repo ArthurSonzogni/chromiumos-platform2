@@ -85,6 +85,9 @@ struct ManagerProperties {
   // Set of fallback URLs used for retrying the HTTP probe when portal
   // detection is not conclusive.
   std::vector<std::string> portal_fallback_http_urls;
+  // Set of fallback URLs used for retrying the HTTPS probe when portal
+  // detection is not conclusive.
+  std::vector<std::string> portal_fallback_https_urls;
   // Whether to ARP for the default gateway in the DHCP client after
   // acquiring a lease.
   bool arp_gateway = true;

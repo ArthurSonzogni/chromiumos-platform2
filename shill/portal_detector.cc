@@ -89,7 +89,8 @@ bool PortalDetector::Start(const ManagerProperties& props,
   HttpUrl http_url, https_url;
   http_url_string_ =
       PickProbeUrl(props.portal_http_url, props.portal_fallback_http_urls);
-  https_url_string_ = props.portal_https_url;
+  https_url_string_ =
+      PickProbeUrl(props.portal_https_url, props.portal_fallback_https_urls);
   if (!http_url.ParseFromString(http_url_string_)) {
     LOG(ERROR) << LoggingTag() << ": Failed to parse HTTP probe URL string: "
                << http_url_string_;

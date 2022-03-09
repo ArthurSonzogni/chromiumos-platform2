@@ -200,7 +200,7 @@ class PortalDetectorTest : public Test {
       portal_detector_->HttpsRequestSuccessCallback(response);
   }
 
- private:
+ protected:
   StrictMock<MockEventDispatcher> dispatcher_;
   std::shared_ptr<brillo::http::MockTransport> transport_;
   NiceMock<MockMetrics> metrics_;
@@ -333,10 +333,15 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   EXPECT_CALL(*http_request(), Stop()).Times(7);
   EXPECT_CALL(*https_request(), Stop()).Times(7);
 
-  std::set<std::string> expected_retry_urls(
+  std::set<std::string> expected_retry_http_urls(
       props.portal_fallback_http_urls.begin(),
       props.portal_fallback_http_urls.end());
-  expected_retry_urls.insert(props.portal_http_url);
+  expected_retry_http_urls.insert(props.portal_http_url);
+
+  std::set<std::string> expected_retry_https_urls(
+      props.portal_fallback_https_urls.begin(),
+      props.portal_fallback_https_urls.end());
+  expected_retry_https_urls.insert(props.portal_https_url);
 
   auto last_delay = base::TimeDelta();
   for (int i = 0; i < 3; i++) {
@@ -345,8 +350,14 @@ TEST_F(PortalDetectorTest, AttemptCount) {
     last_delay = delay;
     portal_detector()->Start(props, kInterfaceName, kIpAddress,
                              {kDNSServer0, kDNSServer1});
-    EXPECT_NE(expected_retry_urls.find(portal_detector()->http_url_string_),
-              expected_retry_urls.end());
+
+    EXPECT_NE(
+        expected_retry_http_urls.find(portal_detector()->http_url_string_),
+        expected_retry_http_urls.end());
+    EXPECT_NE(
+        expected_retry_https_urls.find(portal_detector()->https_url_string_),
+        expected_retry_https_urls.end());
+
     portal_detector()->CompleteTrial(result);
   }
   portal_detector()->Stop();
@@ -474,6 +485,30 @@ TEST_F(PortalDetectorTest, StatusToString) {
   for (const auto& t : test_cases) {
     EXPECT_EQ(t.expected_name, PortalDetector::StatusToString(t.status));
   }
+}
+
+TEST_F(PortalDetectorTest, PickProbeUrlTest) {
+  const std::string url1 = "http://www.url1.com";
+  const std::string url2 = "http://www.url2.com";
+  const std::string url3 = "http://www.url3.com";
+  const std::set<std::string> all_urls = {url1, url2, url3};
+  std::set<std::string> all_found_urls;
+
+  EXPECT_EQ(url1, portal_detector_->PickProbeUrl(url1, {}));
+  EXPECT_EQ(url1, portal_detector_->PickProbeUrl(url1, {url2, url3}));
+
+  // The loop index starts at 1 to force a non-zero |attempt_count_| and to
+  // force using the fallback list.
+  for (int i = 1; i < 100; i++) {
+    portal_detector_->attempt_count_ = i;
+    EXPECT_EQ(portal_detector_->PickProbeUrl(url1, {}), url1);
+
+    const auto found = portal_detector_->PickProbeUrl(url1, {url2, url3});
+    all_found_urls.insert(found);
+    EXPECT_NE(all_urls.find(found), all_urls.end());
+  }
+  // Probability this assert fails = 3 * 1/3 ^ 99 + 3 * 2/3 ^ 99
+  EXPECT_EQ(all_urls, all_found_urls);
 }
 
 }  // namespace shill
