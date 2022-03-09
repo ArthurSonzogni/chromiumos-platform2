@@ -777,12 +777,18 @@ bool CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
     properties->Set<std::string>(kConnectPassword,
                                  apn_info.at(kApnPasswordProperty));
   }
+  MMBearerAllowedAuth allowed_auth = MM_BEARER_ALLOWED_AUTH_UNKNOWN;
   if (base::Contains(apn_info, kApnAuthenticationProperty)) {
-    MMBearerAllowedAuth allowed_auth = ApnAuthenticationToMMBearerAllowedAuth(
+    allowed_auth = ApnAuthenticationToMMBearerAllowedAuth(
         apn_info.at(kApnAuthenticationProperty));
-    if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
-      properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
+  } else if (base::Contains(apn_info, kApnUsernameProperty) ||
+             base::Contains(apn_info, kApnPasswordProperty)) {
+    // Always fallback to CHAP if there is no authentication set.
+    allowed_auth = MM_BEARER_ALLOWED_AUTH_CHAP;
   }
+  if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
+    properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
+
   if (base::Contains(apn_info, kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
         kConnectIpType,
@@ -884,12 +890,17 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
     properties->Set<std::string>(kConnectPassword,
                                  apn_info.at(kApnPasswordProperty));
   }
+  MMBearerAllowedAuth allowed_auth = MM_BEARER_ALLOWED_AUTH_UNKNOWN;
   if (base::Contains(apn_info, kApnAuthenticationProperty)) {
-    MMBearerAllowedAuth allowed_auth = ApnAuthenticationToMMBearerAllowedAuth(
+    allowed_auth = ApnAuthenticationToMMBearerAllowedAuth(
         apn_info.at(kApnAuthenticationProperty));
-    if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
-      properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
+  } else if (base::Contains(apn_info, kApnUsernameProperty) ||
+             base::Contains(apn_info, kApnPasswordProperty)) {
+    // Always fallback to CHAP if there is no authentication set.
+    allowed_auth = MM_BEARER_ALLOWED_AUTH_CHAP;
   }
+  if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
+    properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
   if (base::Contains(apn_info, kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
         kConnectIpType,

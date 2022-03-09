@@ -54,6 +54,8 @@ message MobileAPN {
     PAP = 1;
     CHAP = 2;
   }
+  // Shill will default to CHAP when an username or password is used, and no
+  // authentication is provided.
   optional Authentication authentication = 8;
   optional bool is_attach_apn = 9 [default = false];
 
@@ -63,7 +65,7 @@ message MobileAPN {
     IPV6 = 2;
     IPV4V6 = 3;
   }
-  optional IpType ip_type = 10;
+  optional IpType ip_type = 10 [default = IPV4];
 }
 
 message OnlinePortal {
