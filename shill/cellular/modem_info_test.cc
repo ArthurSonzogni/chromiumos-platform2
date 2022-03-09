@@ -23,6 +23,7 @@
 #include <base/containers/contains.h>
 
 using testing::_;
+using testing::Invoke;
 using testing::SaveArg;
 using testing::Test;
 
@@ -33,18 +34,47 @@ const RpcIdentifier kModemPath =
     RpcIdentifier("/org/freedesktop/ModemManager1/Modem/0");
 }
 
+class ControlForTest : public MockControl {
+ public:
+  ControlForTest() : MockControl() {
+    mock_proxy_ = std::make_unique<MockDBusObjectManagerProxy>();
+    mock_proxy_->IgnoreSetCallbacks();
+
+    weak_mock_proxy_ = mock_proxy_.get();
+
+    ON_CALL(*this, CreateDBusObjectManagerProxy(_, _, _, _))
+        .WillByDefault(Invoke(this, &ControlForTest::CreateProxyDelegate));
+  }
+
+  std::unique_ptr<DBusObjectManagerProxyInterface> CreateProxyDelegate(
+      const RpcIdentifier& path,
+      const std::string& service,
+      const base::Closure& service_appeared_callback,
+      const base::Closure& service_vanished_callback) {
+    service_appeared_callback_ = service_appeared_callback;
+    service_vanished_callback_ = service_vanished_callback;
+    DCHECK(mock_proxy_);
+    return std::move(mock_proxy_);
+  }
+
+  void StartService() { service_appeared_callback_.Run(); }
+
+  void StopService() { service_vanished_callback_.Run(); }
+
+  MockDBusObjectManagerProxy* GetMockProxy() { return weak_mock_proxy_; }
+
+ private:
+  std::unique_ptr<MockDBusObjectManagerProxy> mock_proxy_;
+  MockDBusObjectManagerProxy* weak_mock_proxy_;
+
+  base::Closure service_appeared_callback_;
+  base::Closure service_vanished_callback_;
+};
+
 class ModemInfoForTest : public ModemInfo {
  public:
   ModemInfoForTest(ControlInterface* control, Manager* manager)
-      : ModemInfo(control, manager) {
-    // See note for |mock_proxy_|.
-    mock_proxy_ = std::make_unique<MockDBusObjectManagerProxy>();
-    mock_proxy_->IgnoreSetCallbacks();
-  }
-
-  std::unique_ptr<DBusObjectManagerProxyInterface> CreateProxy() override {
-    return std::move(mock_proxy_);
-  }
+      : ModemInfo(control, manager) {}
 
   std::unique_ptr<Modem> CreateModem(
       const RpcIdentifier& path,
@@ -52,15 +82,6 @@ class ModemInfoForTest : public ModemInfo {
     return std::make_unique<Modem>(modemmanager::kModemManager1ServiceName,
                                    path, manager()->device_info());
   }
-
-  MockDBusObjectManagerProxy* GetMockProxy() {
-    CHECK(mock_proxy_);
-    return mock_proxy_.get();
-  }
-
- private:
-  // Note: Ownership will be relenquished when CreateProxy() is called.
-  std::unique_ptr<MockDBusObjectManagerProxy> mock_proxy_;
 };
 
 class ModemInfoTest : public Test {
@@ -72,7 +93,7 @@ class ModemInfoTest : public Test {
  protected:
   void Connect(const ObjectsWithProperties& expected_objects) {
     ManagedObjectsCallback get_managed_objects_callback;
-    EXPECT_CALL(*modem_info_.GetMockProxy(), GetManagedObjects(_, _, _))
+    EXPECT_CALL(*control_interface_.GetMockProxy(), GetManagedObjects(_, _, _))
         .WillOnce(SaveArg<1>(&get_managed_objects_callback));
 
     modem_info_.Start();
@@ -92,7 +113,7 @@ class ModemInfoTest : public Test {
     return objects_with_properties;
   }
 
-  MockControl control_interface_;
+  ControlForTest control_interface_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
   MockManager manager_;
