@@ -80,6 +80,8 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
 
   base::Optional<std::vector<uint8_t>> GetG2fCert() override;
 
+  CoseAlgorithmIdentifier GetAlgorithm() override;
+
  private:
   friend class U2fCommandProcessorGscTest;
 

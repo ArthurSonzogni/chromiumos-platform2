@@ -1117,6 +1117,19 @@ WebAuthnHandler::DeleteCredentialsInTimeRange(
   return response;
 }
 
+GetAlgorithmsResponse WebAuthnHandler::GetAlgorithms(
+    const GetAlgorithmsRequest&) {
+  GetAlgorithmsResponse response;
+  if (!Initialized()) {
+    response.set_status(GetAlgorithmsResponse::INTERNAL_ERROR);
+    return response;
+  }
+  response.set_status(GetAlgorithmsResponse::SUCCESS);
+  response.add_algorithm(
+      static_cast<int32_t>(u2f_command_processor_->GetAlgorithm()));
+  return response;
+}
+
 bool WebAuthnHandler::HasPin(const std::string& account_id) {
   user_data_auth::GetKeyDataRequest request;
   request.mutable_account_id()->set_account_id(account_id);

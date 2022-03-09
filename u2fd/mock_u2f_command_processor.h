@@ -61,6 +61,8 @@ class MockU2fCommandProcessor : public U2fCommandProcessor {
               (override));
 
   MOCK_METHOD(base::Optional<std::vector<uint8_t>>, GetG2fCert, (), (override));
+
+  MOCK_METHOD(CoseAlgorithmIdentifier, GetAlgorithm, (), (override));
 };
 
 }  // namespace u2f

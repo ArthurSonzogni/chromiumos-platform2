@@ -931,6 +931,18 @@ TEST_F(WebAuthnHandlerTestBase,
                       "2A172A17"));  // kSignatureCounter in network byte order
 }
 
+TEST_F(WebAuthnHandlerTestBase, GetAlgorithms) {
+  GetAlgorithmsRequest request;
+  EXPECT_CALL(*mock_processor_, GetAlgorithm())
+      .WillOnce(Return(CoseAlgorithmIdentifier::kEs256));
+
+  auto resp = handler_->GetAlgorithms(request);
+  ASSERT_EQ(resp.algorithm_size(), 1);
+  EXPECT_EQ(resp.algorithm(0),
+            static_cast<int32_t>(CoseAlgorithmIdentifier::kEs256));
+  EXPECT_EQ(resp.status(), GetAlgorithmsResponse::SUCCESS);
+}
+
 }  // namespace
 
 // This test fixture tests the behavior when u2f is enabled on the device.

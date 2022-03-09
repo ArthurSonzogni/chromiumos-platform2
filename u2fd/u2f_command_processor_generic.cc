@@ -252,6 +252,10 @@ U2fCommandProcessorGeneric::U2fSignCheckOnly(
   return HasCredentialsResponse::SUCCESS;
 }
 
+CoseAlgorithmIdentifier U2fCommandProcessorGeneric::GetAlgorithm() {
+  return CoseAlgorithmIdentifier::kRs256;
+}
+
 base::Optional<brillo::SecureBlob>
 U2fCommandProcessorGeneric::GetWebAuthnSecret() {
   base::Optional<std::string> account_id = user_state_->GetUser();

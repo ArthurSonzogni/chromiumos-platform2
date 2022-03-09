@@ -69,6 +69,13 @@ enum class PresenceRequirement {
   kAuthorizationSecret,  // Requires the correct authorization secret.
 };
 
+// COSE algorithm ID
+// https://www.iana.org/assignments/cose/cose.xhtml#algorithms
+enum class CoseAlgorithmIdentifier : int32_t {
+  kEs256 = -7,
+  kRs256 = -257,
+};
+
 // Implementation of the WebAuthn DBus API.
 // More detailed documentation is available in u2f_interface.proto
 class WebAuthnHandler {
@@ -134,6 +141,11 @@ class WebAuthnHandler {
   // range.
   DeleteCredentialsInTimeRangeResponse DeleteCredentialsInTimeRange(
       const DeleteCredentialsInTimeRangeRequest& request);
+
+  // Get the supported algorithms of the platform authenticator. Currently we
+  // have no plan to support multiple algorithms on one platform so the response
+  // will only contain one entry.
+  GetAlgorithmsResponse GetAlgorithms(const GetAlgorithmsRequest& request);
 
   void SetWebAuthnStorageForTesting(std::unique_ptr<WebAuthnStorage> storage);
 

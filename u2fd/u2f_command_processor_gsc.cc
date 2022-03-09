@@ -324,6 +324,10 @@ base::Optional<std::vector<uint8_t>> U2fCommandProcessorGsc::GetG2fCert() {
   return cert;
 }
 
+CoseAlgorithmIdentifier U2fCommandProcessorGsc::GetAlgorithm() {
+  return CoseAlgorithmIdentifier::kEs256;
+}
+
 // This is needed for backward compatibility. Credential id's that were already
 // generated have inserted hash, so we continue to insert/remove them.
 void U2fCommandProcessorGsc::InsertAuthTimeSecretHashToCredentialId(

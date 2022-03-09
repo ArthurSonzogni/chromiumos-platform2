@@ -61,6 +61,9 @@ class U2fCommandProcessor {
       std::vector<uint8_t>* signature_out) = 0;
 
   virtual base::Optional<std::vector<uint8_t>> GetG2fCert() = 0;
+
+  // Return the algorithm type of the key pair U2fGenerate generates.
+  virtual CoseAlgorithmIdentifier GetAlgorithm() = 0;
 };
 
 }  // namespace u2f

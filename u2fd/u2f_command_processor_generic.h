@@ -72,6 +72,8 @@ class U2fCommandProcessorGeneric : public U2fCommandProcessor {
     return base::nullopt;
   }
 
+  CoseAlgorithmIdentifier GetAlgorithm() override;
+
  private:
   U2fCommandProcessorGeneric(
       UserState* user_state,
