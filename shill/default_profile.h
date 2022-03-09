@@ -30,7 +30,7 @@ class DefaultProfile : public Profile {
   DefaultProfile(Manager* manager,
                  const base::FilePath& storage_directory,
                  const std::string& profile_id,
-                 const Manager::Properties& manager_props);
+                 const ManagerProperties& manager_props);
   DefaultProfile(const DefaultProfile&) = delete;
   DefaultProfile& operator=(const DefaultProfile&) = delete;
 
@@ -38,7 +38,7 @@ class DefaultProfile : public Profile {
 
   // Loads global configuration into manager properties.  This should
   // only be called by the Manager.
-  virtual void LoadManagerProperties(Manager::Properties* manager_props);
+  virtual void LoadManagerProperties(ManagerProperties* manager_props);
 
   // Override the Profile superclass implementation to accept all Ethernet
   // services, since these should have an affinity for the default profile.
@@ -84,7 +84,7 @@ class DefaultProfile : public Profile {
                                     bool (DefaultProfile::*get)(Error* error));
 
   const std::string profile_id_;
-  const Manager::Properties& props_;
+  const ManagerProperties& props_;
 };
 
 }  // namespace shill

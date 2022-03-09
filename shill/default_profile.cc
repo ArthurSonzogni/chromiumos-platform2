@@ -62,7 +62,7 @@ const char DefaultProfile::kStorageWifiGlobalFTEnabled[] =
 DefaultProfile::DefaultProfile(Manager* manager,
                                const base::FilePath& storage_directory,
                                const std::string& profile_id,
-                               const Manager::Properties& manager_props)
+                               const ManagerProperties& manager_props)
     : Profile(manager, Identifier(profile_id), storage_directory, true),
       profile_id_(profile_id),
       props_(manager_props) {
@@ -105,7 +105,7 @@ bool DefaultProfile::GetFTEnabled(Error* error) {
 }
 #endif  // DISABLE_WIFI
 
-void DefaultProfile::LoadManagerProperties(Manager::Properties* manager_props) {
+void DefaultProfile::LoadManagerProperties(ManagerProperties* manager_props) {
   storage()->GetBool(kStorageId, kStorageArpGateway,
                      &manager_props->arp_gateway);
   if (!storage()->GetString(kStorageId, kStorageCheckPortalList,

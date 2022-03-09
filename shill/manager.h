@@ -68,60 +68,60 @@ class EthernetEapProvider;
 class SupplicantManager;
 #endif  // !DISABLE_WIFI || !DISABLE_WIRED_8021X
 
-class Manager {
- public:
-  struct Properties {
-   public:
-    Properties() : arp_gateway(true), minimum_mtu(IPConfig::kUndefinedMTU) {}
-    // Comma separated list of technologies for which portal detection is
-    // enabled.
-    std::string check_portal_list;
-    // URL used for the first HTTP probe sent by PortalDetector on a new network
-    // connection.
-    std::string portal_http_url;
-    // URL used for the first HTTPS probe sent by PortalDetector on a new
-    // network connection.
-    std::string portal_https_url;
-    // Set of fallback URLs used for retrying the HTTP probe when portal
-    // detection is not conclusive.
-    std::vector<std::string> portal_fallback_http_urls;
-    // Whether to ARP for the default gateway in the DHCP client after
-    // acquiring a lease.
-    bool arp_gateway;
-    // Comma-separated list of technologies for which auto-connect is disabled.
-    std::string no_auto_connect_technologies;
-    // Comma-separated list of technologies that should never be enabled.
-    std::string prohibited_technologies;
-    // Comma-separated list of DNS search paths to be ignored.
-    std::string ignored_dns_search_paths;
-    // Comma-separated list of DNS servers to prepend to resolver list.
-    std::string prepend_dns_servers;
-    // The minimum MTU value that will be respected in DHCP responses.
-    int minimum_mtu;
-    // Name of Android VPN package that should be enforced for user traffic.
-    // Empty string if the lockdown feature is not enabled.
-    std::string always_on_vpn_package;
-    // The IPv4 and IPv6 addresses of the DNS Proxy, if applicable. When these
-    // values are set, resolv.conf should use these addresses as the name
-    // servers.
-    std::vector<std::string> dns_proxy_addresses;
-    // Maps DNS-over-HTTPS service providers to a list of standard DNS name
-    // servers. This member stores the value set via the DBus
-    // |DNSProxyDOHProviders| property.
-    KeyValueStore dns_proxy_doh_providers;
-    // b/204261554: Controls if the new swanctl-based L2TPIPsecDriver should be
-    // used instead of the legacy one based on ipsec script and stroke. This
-    // property will be deprecated and removed when the migration is done.
-    std::optional<bool> use_swanctl_driver;
+// Helper class for storing in memory the set of shill Manager DBUS R or RW
+// DBus properties.
+struct ManagerProperties {
+  // Comma separated list of technologies for which portal detection is
+  // enabled.
+  std::string check_portal_list;
+  // URL used for the first HTTP probe sent by PortalDetector on a new network
+  // connection.
+  std::string portal_http_url;
+  // URL used for the first HTTPS probe sent by PortalDetector on a new
+  // network connection.
+  std::string portal_https_url;
+  // Set of fallback URLs used for retrying the HTTP probe when portal
+  // detection is not conclusive.
+  std::vector<std::string> portal_fallback_http_urls;
+  // Whether to ARP for the default gateway in the DHCP client after
+  // acquiring a lease.
+  bool arp_gateway = true;
+  // Comma-separated list of technologies for which auto-connect is disabled.
+  std::string no_auto_connect_technologies;
+  // Comma-separated list of technologies that should never be enabled.
+  std::string prohibited_technologies;
+  // Comma-separated list of DNS search paths to be ignored.
+  std::string ignored_dns_search_paths;
+  // Comma-separated list of DNS servers to prepend to resolver list.
+  std::string prepend_dns_servers;
+  // The minimum MTU value that will be respected in DHCP responses.
+  int minimum_mtu = IPConfig::kUndefinedMTU;
+  // Name of Android VPN package that should be enforced for user traffic.
+  // Empty string if the lockdown feature is not enabled.
+  std::string always_on_vpn_package;
+  // The IPv4 and IPv6 addresses of the DNS Proxy, if applicable. When these
+  // values are set, resolv.conf should use these addresses as the name
+  // servers.
+  std::vector<std::string> dns_proxy_addresses;
+  // Maps DNS-over-HTTPS service providers to a list of standard DNS name
+  // servers. This member stores the value set via the DBus
+  // |DNSProxyDOHProviders| property.
+  KeyValueStore dns_proxy_doh_providers;
+  // b/204261554: Controls if the new swanctl-based L2TPIPsecDriver should be
+  // used instead of the legacy one based on ipsec script and stroke. This
+  // property will be deprecated and removed when the migration is done.
+  std::optional<bool> use_swanctl_driver;
     // Hostname to be used in DHCP request.
     std::string dhcp_hostname;
 
 #if !defined(DISABLE_WIFI)
-    base::Optional<bool> ft_enabled;
-    bool scan_allow_roam = true;
+  base::Optional<bool> ft_enabled;
+  bool scan_allow_roam = true;
 #endif  // !DISABLE_WIFI
-  };
+};
 
+class Manager {
+ public:
   Manager(ControlInterface* control_interface,
           EventDispatcher* dispatcher,
           Metrics* metrics,
@@ -889,7 +889,7 @@ class Manager {
   bool use_startup_portal_list_;
 
   // Properties to be get/set via PropertyStore calls.
-  Properties props_;
+  ManagerProperties props_;
   PropertyStore store_;
 
   // Accept hostname supplied by the DHCP server from the specified devices.

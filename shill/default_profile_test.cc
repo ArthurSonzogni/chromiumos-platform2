@@ -46,7 +46,7 @@ class DefaultProfileTest : public PropertyStoreTest {
 
   scoped_refptr<DefaultProfile> profile_;
   scoped_refptr<MockDevice> device_;
-  Manager::Properties properties_;
+  ManagerProperties properties_;
 };
 
 const char DefaultProfileTest::kTestStoragePath[] = "/no/where";
@@ -104,7 +104,7 @@ TEST_F(DefaultProfileTest, Save) {
 
 TEST_F(DefaultProfileTest, LoadManagerDefaultProperties) {
   auto owned_storage = std::make_unique<FakeStore>();
-  Manager::Properties manager_props;
+  ManagerProperties manager_props;
   profile_->SetStorageForTest(std::move(owned_storage));
 
   profile_->LoadManagerProperties(&manager_props);
@@ -158,7 +158,7 @@ TEST_F(DefaultProfileTest, LoadManagerProperties) {
                    DefaultProfile::kStorageWifiGlobalFTEnabled, true);
 #endif  // DISABLE_WIFI
   profile_->SetStorageForTest(std::move(owned_storage));
-  Manager::Properties manager_props;
+  ManagerProperties manager_props;
 
   profile_->LoadManagerProperties(&manager_props);
   EXPECT_FALSE(manager_props.arp_gateway);
