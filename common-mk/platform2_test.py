@@ -80,6 +80,8 @@ def _ReapUntilProcessExits(monitored_pid):
   return pid_status
 
 
+SAN_OPTIONS = re.compile(r'[A-Z]{1,3}SAN_OPTIONS$')
+
 # Compiled regular expressions for determining what environment variables to
 # let through to the test env when we do sudo. If any character at the
 # beginning of an environment variable matches one of the regular expression
@@ -87,7 +89,7 @@ def _ReapUntilProcessExits(monitored_pid):
 # through.
 ENV_PASSTHRU_REGEX_LIST = list(re.compile(x) for x in (
     # Used by various sanitizers.
-    r'[A-Z]{1,3}SAN_OPTIONS$',
+    SAN_OPTIONS,
     # Used by QEMU.
     r'QEMU_',
     # Used to select profiling output location for gcov.
@@ -100,6 +102,8 @@ ENV_PASSTHRU_REGEX_LIST = list(re.compile(x) for x in (
     r'^SRC$',
     # Used by unit tests to access data files outside of the source tree.
     r'^T$',
+    # Used by unit tests to increase test reproducibility.
+    r'^MALLOC_PERTURB_$',
 ))
 
 
@@ -408,6 +412,15 @@ class Platform2Test(object):
       for var in ('OUT', 'SRC', 'T'):
         if var in os.environ:
           os.environ[var] = self.removeSysrootPrefix(os.environ[var])
+
+      # Remove sysroot from path on sanitazion options environment variables.
+      for key, value in os.environ.items():
+        if SAN_OPTIONS.match(key):
+          san_options = dict(x.split('=', 1) for x in value.split())
+          for opt in ('log_path', 'suppressions'):
+            if opt in san_options:
+              san_options[opt] = self.removeSysrootPrefix(san_options[opt])
+          os.environ[key] = ' '.join('='.join(x) for x in san_options.items())
 
       # The TERM the user is leveraging might not exist in the sysroot.
       # Force a sane default that supports standard color sequences.

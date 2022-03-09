@@ -37,12 +37,6 @@ def main(argv):
     sysroot = os.environ['SYSROOT']
     real_argv += ['--sysroot', sysroot]
 
-    # MALLOC_PERTURB_ is used by meson to increase test reproducibility.
-    if 'MALLOC_PERTURB_' in os.environ:
-        real_argv += [
-            '--env', f'MALLOC_PERTURB_={os.environ["MALLOC_PERTURB_"]}',
-        ]
-
     # Several meson packages pass the path to the build or source
     # directory into their tests using an environment variable so they
     # can read data files or execute other test programs. These paths
