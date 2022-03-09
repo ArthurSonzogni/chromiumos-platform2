@@ -2130,4 +2130,29 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsEncryptFail) {
                                 new_data.label());
 }
 
+// Successfully adds initial keyset
+TEST_F(KeysetManagementTest, AddInitialKeysetWithKeyBlobs) {
+  // SETUP
+  key_blobs_ = {.vkk_key = kInitialBlob32,
+                .vkk_iv = kInitialBlob16,
+                .chaps_iv = kInitialBlob16};
+
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob(kSalt)};
+  auth_state_ = std::make_unique<AuthBlockState>();
+  auth_state_->state = pcr_state;
+  users_[0].credentials.set_key_data(DefaultKeyData());
+
+  // TEST
+  EXPECT_TRUE(keyset_management_->AddInitialKeysetWithKeyBlobs(
+      users_[0].obfuscated, users_[0].credentials.key_data(),
+      users_[0].credentials.challenge_credentials_keyset_info(),
+      file_system_keyset_, std::move(key_blobs_), std::move(auth_state_)));
+
+  // VERIFY
+
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+                                    kInitialBlob16, kInitialBlob16,
+                                    "" /*label*/, kInitialKeysetIndex);
+}
+
 }  // namespace cryptohome

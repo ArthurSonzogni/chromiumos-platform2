@@ -170,6 +170,19 @@ class KeysetManagement {
 
   // ========== KeysetManagement methods with KeyBlobs ===============
 
+  // Adds initial keyset for obfuscated username with |file_system_keyset|. Adds
+  // the key data given by |key_data| and challenge credentials info given by
+  // |challenge_credentials_keyset_info| to the created keyset. Wraps the keyset
+  // with |key_blobs| and persists to the disk.
+  virtual std::unique_ptr<VaultKeyset> AddInitialKeysetWithKeyBlobs(
+      const std::string& obfuscated_username,
+      const KeyData& key_data,
+      const SerializedVaultKeyset_SignatureChallengeInfo&
+          challenge_credentials_keyset_info,
+      const FileSystemKeyset& file_system_keyset,
+      KeyBlobs key_blobs,
+      std::unique_ptr<AuthBlockState> auth_state);
+
   // Returns decrypted with |key_blobs| keyset, or nullptr if none decryptable
   // with the provided |key_blobs|, |obfuscated_username| and |label| found.
   // |error| will be populated with the partucular failure reason. NOTE: The LE
@@ -199,6 +212,18 @@ class KeysetManagement {
       bool clobber);
 
  private:
+  // Adds initial keyset for obfuscated username with |file_system_keyset|. Adds
+  // the key data given by |key_data| and challenge credentials info given by
+  // |challenge_credentials_keyset_info| to the created keyset. Wraps keyset
+  // with |encrypt_vk_callback| and persists to disk.
+  std::unique_ptr<VaultKeyset> AddInitialKeysetImpl(
+      const std::string& obfuscated_username,
+      const KeyData& key_data,
+      const SerializedVaultKeyset_SignatureChallengeInfo&
+          challenge_credentials_keyset_info,
+      const FileSystemKeyset& file_system_keyset,
+      EncryptVkCallback encrypt_vk_callback);
+
   // Returns decrypted VaultKeyset for the obfuscated_username and label or
   // nullptr if none decryptable.
   std::unique_ptr<VaultKeyset> GetValidKeysetImpl(

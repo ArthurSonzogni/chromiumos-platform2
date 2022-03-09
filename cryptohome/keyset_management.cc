@@ -360,27 +360,57 @@ bool KeysetManagement::GetVaultKeysetLabels(
   return (labels->size() > 0);
 }
 
+std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeysetWithKeyBlobs(
+    const std::string& obfuscated_username,
+    const KeyData& key_data,
+    const SerializedVaultKeyset_SignatureChallengeInfo&
+        challenge_credentials_keyset_info,
+    const FileSystemKeyset& file_system_keyset,
+    KeyBlobs key_blobs,
+    std::unique_ptr<AuthBlockState> auth_state) {
+  return AddInitialKeysetImpl(
+      obfuscated_username, key_data, challenge_credentials_keyset_info,
+      file_system_keyset,
+      base::BindOnce(&EncryptExWrapper, std::move(key_blobs),
+                     std::move(auth_state)));
+}
+
 std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeyset(
     const Credentials& credentials,
     const FileSystemKeyset& file_system_keyset) {
-  const brillo::SecureBlob passkey = credentials.passkey();
   std::string obfuscated_username = credentials.GetObfuscatedUsername();
+  SerializedVaultKeyset_SignatureChallengeInfo
+      challenge_credentials_keyset_info =
+          credentials.challenge_credentials_keyset_info();
+  return AddInitialKeysetImpl(
+      obfuscated_username, credentials.key_data(),
+      challenge_credentials_keyset_info, file_system_keyset,
+      base::BindOnce(&EncryptWrapper, credentials.passkey(),
+                     obfuscated_username));
+}
 
+std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeysetImpl(
+    const std::string& obfuscated_username,
+    const KeyData& key_data,
+    const SerializedVaultKeyset_SignatureChallengeInfo&
+        challenge_credentials_keyset_info,
+    const FileSystemKeyset& file_system_keyset,
+    EncryptVkCallback encrypt_vk_callback) {
   std::unique_ptr<VaultKeyset> vk(
       vault_keyset_factory_->New(platform_, crypto_));
   vk->Initialize(platform_, crypto_);
   vk->SetLegacyIndex(kInitialKeysetIndex);
-  vk->SetKeyData(credentials.key_data());
+  vk->SetKeyData(key_data);
   vk->CreateFromFileSystemKeyset(file_system_keyset);
 
-  if (credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+  if (key_data.type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
     vk->SetFlags(vk->GetFlags() |
                  SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
-    vk->SetSignatureChallengeInfo(
-        credentials.challenge_credentials_keyset_info());
+    vk->SetSignatureChallengeInfo(challenge_credentials_keyset_info);
   }
 
-  if (!vk->Encrypt(passkey, obfuscated_username) ||
+  bool callback_result = std::move(encrypt_vk_callback).Run(vk.get());
+  if (!callback_result ||
       !vk->Save(VaultKeysetPath(obfuscated_username, kInitialKeysetIndex))) {
     LOG(ERROR) << "Failed to encrypt and write keyset for the new user.";
     return nullptr;
