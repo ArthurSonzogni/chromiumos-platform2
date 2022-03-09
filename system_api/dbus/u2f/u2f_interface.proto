@@ -235,3 +235,17 @@ message DeleteCredentialsInTimeRangeResponse {
   // Number of platform credentials deleted in the specified time range.
   uint64 num_credentials_deleted = 2;
 }
+
+// Check what public key algorithms are supported in the platform authenticator.
+message GetAlgorithmsRequest {}
+
+message GetAlgorithmsResponse {
+  enum GetAlgorithmsStatus {
+    UNKNOWN = 0;
+    SUCCESS = 1;
+    INTERNAL_ERROR = 2;
+  }
+
+  GetAlgorithmsStatus status = 1;
+  repeated int32 algorithm = 2;
+}
