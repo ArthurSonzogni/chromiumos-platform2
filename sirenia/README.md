@@ -92,7 +92,7 @@ Sirenia includes a few modules of library code specific to [`dugong`] and/or
 
 **secrets:** Secret derivation logic.
 
-[creating a new TEE app]: ./manatee-runime/README.md#Creating-a-new-TEE-app
+[creating a new TEE app]: ./manatee-runtime/README.md#Creating-a-new-TEE-app
 [D-Bus access policy]: ./dbus/org.chromium.ManaTEE.conf
 [demo-app.json]: ./manatee-runtime/src/demo-app.json
 [DLC]: ../dlcservice/README.md
