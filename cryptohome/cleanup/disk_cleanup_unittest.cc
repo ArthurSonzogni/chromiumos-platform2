@@ -674,8 +674,7 @@ TEST_F(DiskCleanupTest, RepeatNormalCleanup) {
 
 TEST_F(DiskCleanupTest, RepeatAggressiveCleanup) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
-      .WillRepeatedly(
-          Return(kFreeSpaceThresholdToTriggerAggressiveCleanup - 1));
+      .WillRepeatedly(Return(0));
 
   EXPECT_CALL(homedirs_, GetHomeDirs())
       .WillRepeatedly(Return(unmounted_homedirs()));

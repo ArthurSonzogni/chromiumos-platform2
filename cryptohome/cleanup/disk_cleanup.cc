@@ -104,9 +104,6 @@ bool DiskCleanup::FreeDiskSpace() {
     case DiskCleanup::FreeSpaceState::kError:
       LOG(ERROR) << "Failed to get the amount of free disk space";
       return false;
-    default:
-      LOG(ERROR) << "Unhandled free disk state";
-      return false;
   }
 
   auto now = platform_->GetCurrentTime();
@@ -184,9 +181,6 @@ bool DiskCleanup::FreeDiskSpaceDuringLogin(const std::string& obfuscated) {
 
     case DiskCleanup::FreeSpaceState::kError:
       LOG(ERROR) << "Failed to get the amount of free disk space";
-      return false;
-    default:
-      LOG(ERROR) << "Unhandled free disk state";
       return false;
   }
 
@@ -359,9 +353,6 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     case DiskCleanup::FreeSpaceState::kError:
       LOG(ERROR) << "Failed to get the amount of free space";
       return false;
-    default:
-      LOG(ERROR) << "Unhandled free disk state";
-      return false;
   }
 
   auto aggressive_cleanup_homedirs = unmounted_homedirs;
@@ -403,9 +394,6 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       break;
     case DiskCleanup::FreeSpaceState::kError:
       LOG(ERROR) << "Failed to get the amount of free space";
-      return false;
-    default:
-      LOG(ERROR) << "Unhandled free disk state";
       return false;
   }
 
