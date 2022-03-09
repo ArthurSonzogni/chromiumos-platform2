@@ -46,6 +46,8 @@ const QuirksMap& GetQuirksMap() {
       {{"13d3", "5521"}, kQuirkPreferLargePreviewResolution},
       // FO50AF-810H-1 (b/196305314)
       {{"05c8", "0609"}, kQuirkPreferLargePreviewResolution},
+      // Chicony Integrated IR Camera (b/223587315)
+      {{"04f2", "b615"}, kQuirkInfrared},
   });
   return *kQuirksMap;
 }

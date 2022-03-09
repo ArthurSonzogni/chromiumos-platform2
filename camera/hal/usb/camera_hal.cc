@@ -660,6 +660,11 @@ void CameraHal::OnDeviceAdded(ScopedUdevDevicePtr dev) {
     info.quirks |= GetQuirks(vid, pid);
   }
 
+  if (info.quirks & kQuirkInfrared) {
+    LOGF(INFO) << "Ignoring infrared camera";
+    return;
+  }
+
   // Mark the camera as v1 if it is a built-in camera and the CrOS device is
   // marked as a v1 device.
   if (info_ptr != nullptr && cros_device_config_.has_value() &&
