@@ -312,7 +312,7 @@ fn main() -> Result<(), ()> {
     let mut args = std::env::args();
 
     if let Err(e) = syslog::init() {
-        eprintln!("failed to initiailize syslog: {}", e);
+        eprintln!("failed to initialize syslog: {}", e);
         return Err(());
     }
 
