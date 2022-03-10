@@ -489,8 +489,8 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
                          one_dbus_complete_closure),
           kDebugdCallTimeoutMsec);
       // Maximum lines to record from dmesg. sysrq-w regularly produces over
-      // 250 lines of output, so we set this pretty high.
-      constexpr uint32_t kMaxDmesgLines = 500;
+      // 500 lines of output, so we set this pretty high.
+      constexpr uint32_t kMaxDmesgLines = 1500;
       const brillo::VariantDictionary dmesg_options = {
           {"tail", kMaxDmesgLines}};
       debugd_proxy_->CallDmesgAsync(
