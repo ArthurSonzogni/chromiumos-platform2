@@ -39,6 +39,9 @@ FLASH_PROTECT_ALL = (EC_FLASH_PROTECT_RO_AT_BOOT | EC_FLASH_PROTECT_RO_NOW |
                      EC_FLASH_PROTECT_ALL_AT_BOOT |EC_FLASH_PROTECT_ALL_NOW |
                      EC_FLASH_PROTECT_GPIO_ASSERTED)
 
+# list of pre-defined exit codes
+ERROR_GET_FIRST_PDU = 3
+
 def DetachableBaseConfig(key):
   cmd = ['cros_config', '/detachable-base', key]
   return subprocess.check_output(cmd, encoding='utf-8')
@@ -106,7 +109,8 @@ def main():
     ec_image = f.read()
   updater.LoadEcImage(ec_image)
   updater.TryConnectUsb()
-  updater.SendFirstPdu()
+  if not updater.SendFirstPdu():
+    sys.exit(ERROR_GET_FIRST_PDU)
   updater.SendDone()
 
   pdu_resp = updater.GetFirstResponsePdu().contents
