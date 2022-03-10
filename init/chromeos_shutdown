@@ -19,11 +19,13 @@ mount -n -o remount,ro /
 
 # TODO: swapoff as necessary.
 
+PROCESS_KILLER_LOG=/run/process_killer.log
+
 # Kill any that may prevent us from unmounting the stateful partition
 # or the crypto-home and then unmount. These should be all that we need
 # to unmount for a clean shutdown.
 process_killer --shutdown --log_to_stderr --file_holders \
-  --mount_holders >/run/processes_killer.log 2>&1
+  --mount_holders >"${PROCESS_KILLER_LOG}" 2>&1
 
 # CROS_DEBUG equals one if we've booted in developer mode or we've booted a
 # developer image.
@@ -72,7 +74,7 @@ collect_shutdown_umount_failure_logs() {
     # end of the log.
     echo "Processes with files open:"
     lsof -n /mnt/stateful_partition /var /home/chronos
-    cat "/run/process_killer.log"
+    cat "${PROCESS_KILLER_LOG}"
   ) >/run/shutdown_umount_failure.log 2>&1
 }
 
