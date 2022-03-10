@@ -24,8 +24,8 @@ namespace {
 int Boot(std::unique_ptr<hps::HPS> hps,
          const base::CommandLine::StringVector& args) {
   std::string mcu = "/usr/lib/firmware/hps/mcu_stage1.bin";
-  std::string fpga_bitstream = "/usr/lib/firmware/hps/hps_platform.bit";
-  std::string fpga_app_image = "/usr/lib/firmware/hps/bios.bin";
+  std::string fpga_bitstream = "/usr/lib/firmware/hps/fpga_bitstream.bin";
+  std::string fpga_app_image = "/usr/lib/firmware/hps/fpga_application.bin";
   if (args.size() > 1) {
     mcu = args[1];
   }
