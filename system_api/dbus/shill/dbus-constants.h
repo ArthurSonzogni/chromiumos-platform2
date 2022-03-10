@@ -244,22 +244,6 @@ const char kIKEv2AuthenticationTypePSK[] = "PSK";
 const char kIKEv2AuthenticationTypeEAP[] = "EAP";
 const char kIKEv2AuthenticationTypeCert[] = "Cert";
 
-// Deprecated. Use the next group of constants instead.
-// TODO(jiejiang): Remove this group after the references in chrome are removed.
-const char kL2tpIpsecCaCertPemProperty[] = "L2TPIPsec.CACertPEM";
-const char kL2tpIpsecClientCertIdProperty[] = "L2TPIPsec.ClientCertID";
-const char kL2tpIpsecClientCertSlotProperty[] = "L2TPIPsec.ClientCertSlot";
-const char kL2tpIpsecLcpEchoDisabledProperty[] = "L2TPIPsec.LCPEchoDisabled";
-const char kL2tpIpsecPasswordProperty[] = "L2TPIPsec.Password";
-const char kL2tpIpsecPinProperty[] = "L2TPIPsec.PIN";
-const char kL2tpIpsecPskProperty[] = "L2TPIPsec.PSK";
-const char kL2tpIpsecPskRequiredProperty[] = "L2TPIPsec.PSKRequired";
-const char kL2tpIpsecTunnelGroupProperty[] = "L2TPIPsec.TunnelGroup";
-const char kL2tpIpsecUseLoginPasswordProperty[] = "L2TPIPsec.UseLoginPassword";
-const char kL2tpIpsecUserProperty[] = "L2TPIPsec.User";
-const char kL2tpIpsecXauthPasswordProperty[] = "L2TPIPsec.XauthPassword";
-const char kL2tpIpsecXauthUserProperty[] = "L2TPIPsec.XauthUser";
-
 // L2TPIPsec Service property names.
 const char kL2TPIPsecCaCertPemProperty[] = "L2TPIPsec.CACertPEM";
 const char kL2TPIPsecClientCertIdProperty[] = "L2TPIPsec.ClientCertID";
