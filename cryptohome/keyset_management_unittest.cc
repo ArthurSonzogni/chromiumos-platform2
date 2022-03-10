@@ -81,6 +81,7 @@ constexpr char kSalt[] = "salt";
 
 constexpr int kWrongAuthAttempts = 6;
 
+const brillo::SecureBlob kInitialBlob64(64, 'A');
 const brillo::SecureBlob kInitialBlob32(32, 'A');
 const brillo::SecureBlob kAdditionalBlob32(32, 'B');
 const brillo::SecureBlob kInitialBlob16(16, 'C');
@@ -2153,6 +2154,57 @@ TEST_F(KeysetManagementTest, AddInitialKeysetWithKeyBlobs) {
   VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
                                     kInitialBlob16, kInitialBlob16,
                                     "" /*label*/, kInitialKeysetIndex);
+}
+
+// Tests whether AddResetSeedIfMissing() adds a reset seed to the input
+// vault keyset when missing.
+TEST_F(KeysetManagementTest, AddResetSeed) {
+  // Setup a vault keyset.
+  //
+  // Non-scrypt encryption would fail on missing reset seed, so use scrypt.
+  VaultKeyset vk;
+  vk.Initialize(&platform_, &crypto_);
+  vk.CreateFromFileSystemKeyset(file_system_keyset_);
+  vk.SetKeyData(DefaultKeyData());
+
+  key_blobs_.scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
+      kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
+  key_blobs_.chaps_scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
+      kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
+  key_blobs_.scrypt_wrapped_reset_seed_key =
+      std::make_unique<LibScryptCompatKeyObjects>(
+          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/);
+  LibScryptCompatAuthBlockState scrypt_state = {.salt = kInitialBlob32};
+  auth_state_->state = scrypt_state;
+
+  // Explicitly set |reset_seed_| to be empty.
+  vk.reset_seed_.clear();
+  ASSERT_TRUE(vk.EncryptEx(key_blobs_, *auth_state_));
+  ASSERT_TRUE(
+      vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
+
+  std::unique_ptr<VaultKeyset> init_vk =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          users_[0].obfuscated, std::move(key_blobs_), kPasswordLabel, nullptr);
+  EXPECT_FALSE(init_vk->HasWrappedResetSeed());
+  // Generate reset seed and add it to the VaultKeyset object. Need to generate
+  // the Keyblobs again since it is not available any more.
+  KeyBlobs key_blobs = {
+      .scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
+          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
+      .chaps_scrypt_key = std::make_unique<LibScryptCompatKeyObjects>(
+          kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/),
+      .scrypt_wrapped_reset_seed_key =
+          std::make_unique<LibScryptCompatKeyObjects>(
+              kInitialBlob64 /*derived_key*/, kInitialBlob32 /*salt*/)};
+  // Test
+  EXPECT_TRUE(keyset_management_->AddResetSeedIfMissing(*init_vk));
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->SaveKeysetWithKeyBlobs(*init_vk, key_blobs,
+                                                       *auth_state_));
+
+  // Verify
+  EXPECT_TRUE(init_vk->HasWrappedResetSeed());
 }
 
 }  // namespace cryptohome

@@ -98,6 +98,11 @@ class KeysetManagement {
       const Credentials& credentials,
       const FileSystemKeyset& file_system_keyset);
 
+  // This function should be called after successful authentication.
+  // Populate a value to |vault_keyset|'s reset seed if it is missing, but
+  // doesn't save.
+  virtual bool AddResetSeedIfMissing(VaultKeyset& vault_keyset);
+
   // Adds randomly generated reset_seed to the vault keyset if |reset_seed_|
   // doesn't have any value.
   virtual CryptohomeErrorCode AddWrappedResetSeedIfMissing(
@@ -210,6 +215,12 @@ class KeysetManagement {
       KeyBlobs key_blobs_new,
       std::unique_ptr<AuthBlockState> auth_state_new,
       bool clobber);
+
+  // Encrypts and saves a keyset with the given |key_blobs|.
+  virtual CryptohomeErrorCode SaveKeysetWithKeyBlobs(
+      VaultKeyset& vault_keyset,
+      const KeyBlobs& key_blobs,
+      const AuthBlockState& auth_state);
 
  private:
   // Adds initial keyset for obfuscated username with |file_system_keyset|. Adds

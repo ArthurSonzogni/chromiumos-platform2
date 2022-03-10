@@ -654,18 +654,10 @@ CryptohomeErrorCode KeysetManagement::UpdateKeyset(
 
 CryptohomeErrorCode KeysetManagement::AddWrappedResetSeedIfMissing(
     VaultKeyset* vault_keyset, const Credentials& credentials) {
-  bool has_reset_seed = vault_keyset->HasWrappedResetSeed();
-
-  ReportUsageOfLegacyCodePath(
-      LegacyCodePathLocation::kGenerateResetSeedDuringAddKey, has_reset_seed);
-
-  if (has_reset_seed) {
-    // No need to update the vault keyset.
+  if (!AddResetSeedIfMissing(*vault_keyset)) {
     return CRYPTOHOME_ERROR_NOT_SET;
   }
 
-  LOG(INFO) << "Keyset lacks reset_seed; generating one.";
-  vault_keyset->CreateRandomResetSeed();
   if (!vault_keyset->Encrypt(credentials.passkey(),
                              credentials.GetObfuscatedUsername()) ||
       !vault_keyset->Save(vault_keyset->GetSourceFile())) {
@@ -1012,6 +1004,36 @@ void KeysetManagement::CleanupPerIndexTimestampFiles(
     ignore_result(platform_->DeleteFileDurable(
         UserActivityPerIndexTimestampPath(obfuscated, i)));
   }
+}
+
+bool KeysetManagement::AddResetSeedIfMissing(VaultKeyset& vault_keyset) {
+  bool has_reset_seed = vault_keyset.HasWrappedResetSeed();
+
+  if (has_reset_seed) {
+    // No need to update the vault keyset.
+    return false;
+  }
+
+  ReportUsageOfLegacyCodePath(
+      LegacyCodePathLocation::kGenerateResetSeedDuringAddKey, has_reset_seed);
+
+  LOG(INFO) << "Keyset lacks reset_seed; generating one.";
+  vault_keyset.CreateRandomResetSeed();
+
+  return true;
+}
+
+CryptohomeErrorCode KeysetManagement::SaveKeysetWithKeyBlobs(
+    VaultKeyset& vault_keyset,
+    const KeyBlobs& key_blobs,
+    const AuthBlockState& auth_state) {
+  if (!vault_keyset.EncryptEx(key_blobs, auth_state) ||
+      !vault_keyset.Save(vault_keyset.GetSourceFile())) {
+    LOG(WARNING) << "Failed to encrypt the keyset";
+    return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
+  }
+
+  return CRYPTOHOME_ERROR_NOT_SET;
 }
 
 }  // namespace cryptohome
