@@ -44,6 +44,7 @@ pkg_config("target_defaults") {
     "vboot_host",
     "xkbcommon",
   ]
+  defines = [ "ARCH_" + getenv("ARCH") ]
 }
 
 static_library("libminios") {

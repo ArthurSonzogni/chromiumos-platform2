@@ -19,8 +19,15 @@ bool RecoveryInstaller::RepartitionDisk() {
   }
 
   if (!process_manager_->RunCommand(
-          {"/bin/chromeos-install", "--skip_rootfs", "--skip_dst_removable",
-           "--yes", "--pmbr_code=/usr/share/syslinux/gptmbr.bin"},
+          {
+            "/bin/chromeos-install", "--skip_rootfs", "--skip_dst_removable",
+                "--yes",
+#if defined(ARCH_x86) || defined(ARCH_amd64)
+                "--pmbr_code=/usr/share/syslinux/gptmbr.bin"
+#else
+                "--pmbr_code=/dev/zero"
+#endif
+          },
           ProcessManager::IORedirection{
               .input = minios::kDebugConsole,
               .output = minios::kDebugConsole,
