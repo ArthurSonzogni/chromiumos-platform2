@@ -249,6 +249,19 @@ bool IsDeviceAllowedHID(udev_device* device) {
                                  vendor_id, product_id);
 }
 
+bool IsInternallyConnectedUsbDevice(udev_device* device) {
+  const DevicePolicy::UsbDeviceId kAllowedIds[] = {
+      {0x0c27, 0x3bfa},  // USB card reader
+  };
+  uint32_t vendor_id, product_id;
+  if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
+      !GetUIntSysattr(device, "idProduct", &product_id))
+    return false;
+
+  return UsbDeviceListContainsId(std::begin(kAllowedIds), std::end(kAllowedIds),
+                                 vendor_id, product_id);
+}
+
 Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
   const char* device_syspath = udev_device_get_syspath(device);
   if (!device_syspath) {
@@ -306,8 +319,10 @@ Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {
   }
 
   if (found_claimed_interface) {
-    // Don't allow detaching the driver from fixed (internal) USB devices.
-    if (GetRemovableSysattr(device) == RemovableAttr::kFixed) {
+    // Don't allow detaching the driver from fixed (internal) USB devices
+    // unless it is in the allow list.
+    if (GetRemovableSysattr(device) == RemovableAttr::kFixed &&
+        !IsInternallyConnectedUsbDevice(device)) {
       LOG(INFO) << "Denying fixed USB device with driver.";
       return DENY;
     }
