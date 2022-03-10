@@ -307,7 +307,7 @@ void IKEv2Driver::ReportConnectionMetrics() {
                              conn->ike_encryption_algo(),
                              Metrics::kMetricVpnIkev2IkeEncryptionAlgorithmMax);
     metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeIntegrityAlgorithm,
-                             conn->ike_encryption_algo(),
+                             conn->ike_integrity_algo(),
                              Metrics::kMetricVpnIkev2IkeIntegrityAlgorithmMax);
     metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeDHGroup,
                              conn->ike_dh_group(),

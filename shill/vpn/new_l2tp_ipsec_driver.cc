@@ -443,7 +443,7 @@ void NewL2TPIPsecDriver::ReportConnectionMetrics() {
         Metrics::kMetricVpnL2tpIpsecIkeEncryptionAlgorithmMax);
     metrics()->SendEnumToUMA(
         Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithm,
-        conn->ike_encryption_algo(),
+        conn->ike_integrity_algo(),
         Metrics::kMetricVpnL2tpIpsecIkeIntegrityAlgorithmMax);
     metrics()->SendEnumToUMA(Metrics::kMetricVpnL2tpIpsecIkeDHGroup,
                              conn->ike_dh_group(),
