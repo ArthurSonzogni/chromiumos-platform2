@@ -34,8 +34,18 @@ class MockFpModeCommand : public MockEcCommand<struct ec_params_fp_mode,
 };
 
 // ioctl behavior for EC commands:
-//   returns sizeof(EC response) (>=0) on success, -1 on failure
-//   cmd.result is error code from EC (EC_RES_SUCCESS, etc)
+//   returns sizeof(EC response) (>=0) when the command goes to the EC, -1 if
+//   there's a failure to communicate with the EC or other kernel failure.
+//
+//   In the case where the command went to the EC, cmd.result is error code from
+//   returned from the EC (EC_RES_SUCCESS, EC_RES_BUSY, EC_RES_UNAVAILABLE,
+//   etc.)
+//
+//   In the case where an error code (i.e., not EC_RES_SUCCESS) is returned
+//   by code in the EC, the EC logic will set the "response_size" to 0. In
+//   this case, the ioctl returns 0 since it is returning the size of the
+//   response. See
+//   https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform/ec/common/host_command.c;l=202-205;drc=d64d5ca86d1fd6274011146e33597ef01bf551b1
 
 TEST(EcCommand, Run_Success) {
   MockFpModeCommand mock;

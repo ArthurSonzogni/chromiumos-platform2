@@ -134,6 +134,17 @@ class EcCommand : public EcCommandInterface {
   }
 };
 
+/**
+ * @tparam Params request structure
+ * @tparam Response response structure
+ * @param ec_fd  File descriptor for opened EC device
+ * @return true if command is successful in which case cmd.Result() is
+ * EC_RES_SUCCESS. false if either the ioctl fails or the command fails on
+ * the EC (returns something other than EC_RES_SUCCESS). If the ioctl fails,
+ * cmd.Result() will be kEcCommandUninitializedResult. If the command fails
+ * on the EC, cmd.Result() will be set to the error returned by the EC (e.g.,
+ * EC_RES_BUSY, EC_RES_UNAVAILABLE, etc.) See ec_command_test.cc for details.
+ */
 template <typename Params, typename Response>
 bool EcCommand<Params, Response>::Run(int ec_fd) {
   data_.cmd.result = kEcCommandUninitializedResult;
