@@ -65,6 +65,14 @@ pub fn get_game_mode() -> Result<GameMode> {
     }
 }
 
+pub struct GtSysfsPaths {
+    base: String,
+    card: String,
+    boost: String,
+    min: String,
+    max: String,
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum RTCAudioActive {
     // RTC is not active.
@@ -154,8 +162,8 @@ pub fn set_rtc_audio_active(mode: RTCAudioActive) -> Result<()> {
             } else {
                 "balance_performance" // Default EPP
             };
-
             set_epp("/", epp_value).context("Failed to set EPP sysfs value!")?;
+            set_gt_boost_freq_mhz(mode)?;
         }
         Err(_) => bail!("Failed to set RTC audio activity"),
     }
@@ -186,4 +194,47 @@ pub fn get_fullscreen_video() -> Result<FullscreenVideo> {
         Ok(data) => Ok(*data),
         Err(_) => bail!("Failed to get full screen video activity"),
     }
+}
+
+pub fn read_gt_sysfs(gt_base_path: &str, gt_sysfs_file: &str) -> Result<String> {
+    let gt_freq_src = format!("{}/{}", gt_base_path, gt_sysfs_file);
+    std::fs::read_to_string(&gt_freq_src).context("Failed to read min_freq_src")
+}
+
+pub fn set_gt_boost_freq_mhz(mode: RTCAudioActive) -> Result<(), std::io::Error> {
+    let mut gt_sysfs_paths = GtSysfsPaths {
+        base: String::from("/sys/class/drm"),
+        card: String::from("/"),
+        boost: String::from("gt_boost_freq_mhz"),
+        min: String::from("gt_min_freq_mhz"),
+        max: String::from("gt_max_freq_mhz"),
+    };
+
+    let drm_card_glob = format!(
+        "{}/{}/{}",
+        &gt_sysfs_paths.base, "card*", &gt_sysfs_paths.boost
+    );
+    for entry in glob::glob(&drm_card_glob).unwrap() {
+        match entry {
+            Ok(path) => gt_sysfs_paths.card = format!("{}", path.parent().unwrap().display()),
+            Err(e) => println!("{:?}", e),
+        }
+    }
+
+    let gt_min_freq_mhz = read_gt_sysfs(&gt_sysfs_paths.card, &gt_sysfs_paths.min);
+    let gt_max_freq_mhz = read_gt_sysfs(&gt_sysfs_paths.card, &gt_sysfs_paths.max);
+    let gt_boost_freq_mhz = if mode == RTCAudioActive::Active {
+        match &gt_min_freq_mhz {
+            Ok(gt_boost_freq_mhz) => gt_boost_freq_mhz,
+            Err(_) => "gt boost fail to read sysfs min freq",
+        }
+    } else {
+        match &gt_max_freq_mhz {
+            Ok(gt_boost_freq_mhz) => gt_boost_freq_mhz,
+            Err(_) => "gt boost fail to read sysfs max freq",
+        }
+    };
+
+    let full_gt_boost_path = format!("{}/{}", &gt_sysfs_paths.card, &gt_sysfs_paths.boost);
+    std::fs::write(&full_gt_boost_path, &gt_boost_freq_mhz.as_bytes())
 }
