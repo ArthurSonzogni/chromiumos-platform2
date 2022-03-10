@@ -979,6 +979,9 @@ class Metrics : public DefaultServiceObserver {
       "Network.Shill.Vpn.Ikev2.EspIntegrityAlgorithm";
   static constexpr int kMetricVpnIkev2EspIntegrityAlgorithmMax =
       kVpnIpsecIntegrityAlgorithmMax;
+  static constexpr char kMetricVpnIkev2EndReason[] =
+      "Network.Shill.Vpn.Ikev2.EndReason";
+  static constexpr int kMetricVpnIkev2EndReasonMax = kNetworkServiceErrorMax;
 
   // L2TP/IPsec connection statistics.
   static const char kMetricVpnL2tpIpsecTunnelGroupUsage[];

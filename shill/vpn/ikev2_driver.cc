@@ -79,6 +79,13 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
   return config;
 }
 
+void ReportConnectionEndReason(Metrics* metrics,
+                               Service::ConnectFailure failure) {
+  metrics->SendEnumToUMA(Metrics::kMetricVpnIkev2EndReason,
+                         Metrics::ConnectFailureToServiceErrorEnum(failure),
+                         Metrics::kMetricVpnIkev2EndReasonMax);
+}
+
 }  // namespace
 
 const VPNDriver::Property IKEv2Driver::kProperties[] = {
@@ -158,6 +165,7 @@ std::unique_ptr<VPNConnection> IKEv2Driver::CreateIPsecConnection(
 
 void IKEv2Driver::Disconnect() {
   event_handler_ = nullptr;
+  ReportConnectionEndReason(metrics(), Service::kFailureDisconnect);
   if (!ipsec_connection_) {
     LOG(ERROR) << "Disconnect() called but IPsecConnection is not running";
     return;
@@ -229,6 +237,9 @@ void IKEv2Driver::NotifyServiceOfFailure(Service::ConnectFailure failure) {
   LOG(ERROR) << "Driver failure due to "
              << Service::ConnectFailureToString(failure);
   if (event_handler_) {
+    // Only reports metrics when |event_handler_| exists to ensure reporting
+    // only once for each connection.
+    ReportConnectionEndReason(metrics(), failure);
     event_handler_->OnDriverFailure(failure, Service::kErrorDetailsNone);
     event_handler_ = nullptr;
   }

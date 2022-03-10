@@ -87,6 +87,14 @@ class IKEv2DriverTest : public testing::Test {
     EXPECT_NE(driver_->ipsec_config(), nullptr);
   }
 
+  void ExpectEndReasonMetricsReported(Service::ConnectFailure failure) {
+    EXPECT_CALL(
+        metrics_,
+        SendEnumToUMA(Metrics::kMetricVpnIkev2EndReason,
+                      Metrics::ConnectFailureToServiceErrorEnum(failure),
+                      Metrics::kMetricVpnIkev2EndReasonMax));
+  }
+
   // Dependencies used by |driver_|.
   MockControl control_;
   EventDispatcherForTest dispatcher_;
@@ -123,6 +131,7 @@ TEST_F(IKEv2DriverTest, ConnectAndDisconnect) {
   dispatcher_.DispatchPendingEvents();
 
   // Triggers disconnect.
+  ExpectEndReasonMetricsReported(Service::kFailureDisconnect);
   driver_->Disconnect();
   EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect());
   dispatcher_.DispatchPendingEvents();
@@ -137,6 +146,7 @@ TEST_F(IKEv2DriverTest, ConnectTimeout) {
   InvokeAndVerifyConnectAsync();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
+  ExpectEndReasonMetricsReported(Service::kFailureConnect);
   EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect());
   driver_->OnConnectTimeout();
   dispatcher_.DispatchPendingEvents();
@@ -150,6 +160,7 @@ TEST_F(IKEv2DriverTest, ConnectingFailure) {
   InvokeAndVerifyConnectAsync();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
+  ExpectEndReasonMetricsReported(Service::kFailureInternal);
   driver_->ipsec_connection()->TriggerFailure(Service::kFailureInternal, "");
   dispatcher_.DispatchPendingEvents();
 
@@ -166,6 +177,7 @@ TEST_F(IKEv2DriverTest, ConnectedFailure) {
   dispatcher_.DispatchPendingEvents();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
+  ExpectEndReasonMetricsReported(Service::kFailureInternal);
   driver_->ipsec_connection()->TriggerFailure(Service::kFailureInternal, "");
   dispatcher_.DispatchPendingEvents();
 
