@@ -10,6 +10,7 @@
 
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/command_line.h>
@@ -71,6 +72,9 @@ bool UpdateImage(const biod::CrosFpDeviceUpdate& ec_dev,
 }  // namespace
 
 namespace biod {
+
+std::vector<std::string> kNeedResetBoards{kFpBoardDartmonkey, kFpBoardNami,
+                                          kFpBoardNocturne};
 
 std::string CrosFpDeviceUpdate::EcCurrentImageToString(enum ec_image image) {
   switch (image) {
@@ -209,7 +213,8 @@ namespace updater {
 UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
                       const CrosFpBootUpdateCtrl& boot_ctrl,
                       const CrosFpFirmware& fw,
-                      const BiodSystem& system) {
+                      const BiodSystem& system,
+                      brillo::CrosConfigInterface* cros_config) {
   bool attempted = false;
   UpdateResult result = {UpdateStatus::kUpdateNotNecessary,
                          UpdateReason::kNone};
@@ -251,13 +256,6 @@ UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
     }
   } else {
     LOG(INFO) << "FPMCU RO firmware is protected: no update.";
-
-    // TODO(b/119131962): Remove when flashrom is fixed.
-    if (!system.HardwareWriteProtectIsEnabled()) {
-      LOG(ERROR) << "FPMCU software write protect enabled while system hardware"
-                    " write is protect disabled. Updating will fail due to "
-                    "http://go/flashrom-fpmcu-wp-bug.";
-    }
   }
 
   // The firmware should be updated if RO is active (i.e. RW is corrupted) or if
@@ -276,6 +274,19 @@ UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
         << "FPMCU RW firmware mismatch or failed RW boot detected, updating.";
     if (!UpdateImage(ec_dev, boot_ctrl, fw, EC_IMAGE_RW)) {
       result.status = UpdateStatus::kUpdateFailedRW;
+      return result;
+    }
+
+    // Dartmonkey FPMCU board won't boot after update when HW WP is off but
+    // SW WP is on until power reset. See http://go/flashrom-fpmcu-wp-bug
+    // for details.
+    std::string board_name = biod::FingerprintBoard(cros_config).value_or("");
+    bool board_need_reset =
+        std::find(kNeedResetBoards.begin(), kNeedResetBoards.end(),
+                  board_name) != kNeedResetBoards.end();
+    if (board_need_reset && flashprotect_enabled &&
+        !system.HardwareWriteProtectIsEnabled()) {
+      result.status = UpdateStatus::kUpdateSucceededNeedPowerReset;
       return result;
     }
   } else {

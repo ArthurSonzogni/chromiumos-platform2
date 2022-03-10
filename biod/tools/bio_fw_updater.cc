@@ -180,7 +180,8 @@ int main(int argc, char* argv[]) {
   }
   LogFPMCUVersion(*ecver);
 
-  auto result = biod::updater::DoUpdate(ec_device, boot_ctrl, fw, system);
+  auto result =
+      biod::updater::DoUpdate(ec_device, boot_ctrl, fw, system, &cros_config);
   metrics.SetUpdateReason(result.reason);
   switch (result.status) {
     case UpdateStatus::kUpdateFailedGetVersion:
@@ -200,13 +201,23 @@ int main(int argc, char* argv[]) {
       metrics.Finished(FwUpdaterStatus::kFailureUpdateRW);
       return EXIT_FAILURE;
     case UpdateStatus::kUpdateSucceeded:
-      ecver = ec_device.GetVersion();
-      if (!ecver) {
-        LOG(ERROR) << "Failed to fetch final EC version, update failed.";
-        metrics.Finished(FwUpdaterStatus::kFailurePostUpdateVersionCheck);
-        return EXIT_FAILURE;
+    case UpdateStatus::kUpdateSucceededNeedPowerReset:
+      if (result.status == UpdateStatus::kUpdateSucceededNeedPowerReset) {
+        LOG(WARNING) << "FPMCU software write protect enabled while system"
+                        " hardware write protect is disabled. FPMCU won't"
+                        " respond after flashing until DUT reboot due to"
+                        " http://go/flashrom-fpmcu-wp-bug. Skip version"
+                        " check.";
+      } else {
+        ecver = ec_device.GetVersion();
+        if (!ecver) {
+          LOG(ERROR) << "Failed to fetch final EC version, update failed.";
+          metrics.Finished(FwUpdaterStatus::kFailurePostUpdateVersionCheck);
+          return EXIT_FAILURE;
+        }
+        LogFPMCUVersion(*ecver);
       }
-      LogFPMCUVersion(*ecver);
+
       LOG(INFO) << "The update was successful.";
       metrics.Finished(FwUpdaterStatus::kSuccessful);
       return EXIT_SUCCESS;

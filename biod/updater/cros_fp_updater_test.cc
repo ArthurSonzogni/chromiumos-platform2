@@ -4,6 +4,7 @@
 
 #include "biod/updater/cros_fp_updater.h"
 
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -18,6 +19,7 @@
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/fake_cros_config.h>
 
+#include "biod/biod_config.h"
 #include "biod/cros_fp_firmware.h"
 #include "biod/mock_biod_system.h"
 #include "biod/updater/update_reason.h"
@@ -122,7 +124,7 @@ class CrosFpUpdaterTest : public ::testing::Test {
   }
 
   UpdateResult RunUpdater() {
-    return DoUpdate(dev_update_, boot_ctrl_, fw_, system_);
+    return DoUpdate(dev_update_, boot_ctrl_, fw_, system_, &cros_config_);
   }
 
   CrosFpUpdaterTest() = default;
@@ -135,6 +137,7 @@ class CrosFpUpdaterTest : public ::testing::Test {
   MockCrosFpBootUpdateCtrl boot_ctrl_;
   MockCrosFpFirmware fw_;
   MockBiodSystem system_;
+  brillo::FakeCrosConfig cros_config_;
 };
 
 // EcCurrentImageToString Tests
@@ -311,6 +314,58 @@ TEST_F(CrosFpUpdaterTest, CurrentROImage_RORWMatch_UpdateRW) {
   EXPECT_EQ(result.reason, UpdateReason::kActiveImageRO);
 }
 
+TEST_F(CrosFpUpdaterTest, CurrentROImage_RORWMatch_UpdateRW_ResetNeeded) {
+  // Given an environment where
+  SetupEnvironment(true, false, false,
+                   // the current boot is stuck in RO,
+                   EC_IMAGE_RO);
+
+  // hardware write protect is disabled,
+  EXPECT_CALL(system_, HardwareWriteProtectIsEnabled())
+      .WillRepeatedly(Return(false));
+
+  // board is dartmonkey
+  cros_config_.SetString(kCrosConfigFPPath, kCrosConfigFPBoard,
+                         kFpBoardDartmonkey);
+
+  // expect both boot controls to be triggered,
+  EXPECT_CALL(boot_ctrl_, TriggerBootUpdateSplash());
+  EXPECT_CALL(boot_ctrl_, ScheduleReboot());
+  // an attempted RW flash,
+  EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RW));
+  // and the updater to report a success (but reset is needed) with an
+  // RO active image update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateSucceededNeedPowerReset);
+  EXPECT_EQ(result.reason, UpdateReason::kActiveImageRO);
+}
+
+TEST_F(CrosFpUpdaterTest, CurrentROImage_RORWMatch_UpdateRW_ResetNotNeeded) {
+  // Given an environment where
+  SetupEnvironment(true, false, false,
+                   // the current boot is stuck in RO,
+                   EC_IMAGE_RO);
+
+  // hardware write protect is disabled,
+  EXPECT_CALL(system_, HardwareWriteProtectIsEnabled())
+      .WillRepeatedly(Return(false));
+
+  // board is bloonchipper
+  cros_config_.SetString(kCrosConfigFPPath, kCrosConfigFPBoard,
+                         kFpBoardBloonchipper);
+
+  // expect both boot controls to be triggered,
+  EXPECT_CALL(boot_ctrl_, TriggerBootUpdateSplash());
+  EXPECT_CALL(boot_ctrl_, ScheduleReboot());
+  // an attempted RW flash,
+  EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RW));
+  // and the updater to report a success with an
+  // RO active image update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateSucceeded);
+  EXPECT_EQ(result.reason, UpdateReason::kActiveImageRO);
+}
+
 // Normal code paths
 
 TEST_F(CrosFpUpdaterTest, FPDisabled_RORWMatch_NoUpdate) {
@@ -374,6 +429,58 @@ TEST_F(CrosFpUpdaterTest, RWMismatch_UpdateRW) {
   SetupEnvironment(true, false,
                    // RW needs to be updated,
                    true);
+
+  // expect both boot control functions to be triggered,
+  EXPECT_CALL(boot_ctrl_, TriggerBootUpdateSplash());
+  EXPECT_CALL(boot_ctrl_, ScheduleReboot());
+  // RW to be flashed,
+  EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RW));
+  // and the updater to report a success with an
+  // RW version mismatch update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateSucceeded);
+  EXPECT_EQ(result.reason, UpdateReason::kMismatchRWVersion);
+}
+
+TEST_F(CrosFpUpdaterTest, RWMismatch_UpdateRW_ResetNeeded) {
+  // Given an environment where
+  SetupEnvironment(true, false,
+                   // RW needs to be updated,
+                   true);
+
+  // hardware write protect is disabled,
+  EXPECT_CALL(system_, HardwareWriteProtectIsEnabled())
+      .WillRepeatedly(Return(false));
+
+  // board is dartmonkey
+  cros_config_.SetString(kCrosConfigFPPath, kCrosConfigFPBoard,
+                         kFpBoardDartmonkey);
+
+  // expect both boot control functions to be triggered,
+  EXPECT_CALL(boot_ctrl_, TriggerBootUpdateSplash());
+  EXPECT_CALL(boot_ctrl_, ScheduleReboot());
+  // RW to be flashed,
+  EXPECT_CALL(dev_update_, Flash(Ref(fw_), EC_IMAGE_RW));
+  // and the updater to report a success (but reset is needed) with an
+  // RW version mismatch update reason.
+  auto result = RunUpdater();
+  EXPECT_EQ(result.status, UpdateStatus::kUpdateSucceededNeedPowerReset);
+  EXPECT_EQ(result.reason, UpdateReason::kMismatchRWVersion);
+}
+
+TEST_F(CrosFpUpdaterTest, RWMismatch_UpdateRW_ResetNotNeeded) {
+  // Given an environment where
+  SetupEnvironment(true, false,
+                   // RW needs to be updated,
+                   true);
+
+  // hardware write protect is disabled,
+  EXPECT_CALL(system_, HardwareWriteProtectIsEnabled())
+      .WillRepeatedly(Return(false));
+
+  // board is bloonchipper
+  cros_config_.SetString(kCrosConfigFPPath, kCrosConfigFPBoard,
+                         kFpBoardBloonchipper);
 
   // expect both boot control functions to be triggered,
   EXPECT_CALL(boot_ctrl_, TriggerBootUpdateSplash());

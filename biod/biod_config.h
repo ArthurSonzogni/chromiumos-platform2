@@ -16,6 +16,11 @@ extern const char kCrosConfigFPPath[];
 extern const char kCrosConfigFPBoard[];
 extern const char kCrosConfigFPLocation[];
 
+constexpr char kFpBoardDartmonkey[] = "dartmonkey";
+constexpr char kFpBoardNami[] = "nami_fp";
+constexpr char kFpBoardNocturne[] = "nocturne_fp";
+constexpr char kFpBoardBloonchipper[] = "bloonchipper";
+
 /**
  * @brief Deduce if fingerprint is explicitly not supported.
  *

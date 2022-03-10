@@ -51,7 +51,8 @@ struct UpdateResult {
 UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
                       const CrosFpBootUpdateCtrl& boot_ctrl,
                       const CrosFpFirmware& fw,
-                      const BiodSystem& system);
+                      const BiodSystem& system,
+                      brillo::CrosConfigInterface* cros_config);
 
 }  // namespace updater
 }  // namespace biod

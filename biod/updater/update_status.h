@@ -15,6 +15,7 @@ enum class UpdateStatus {
   kUpdateFailedFlashProtect,
   kUpdateFailedRO,
   kUpdateFailedRW,
+  kUpdateSucceededNeedPowerReset,
 };
 
 }  // namespace updater
