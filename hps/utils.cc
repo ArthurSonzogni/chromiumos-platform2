@@ -6,8 +6,10 @@
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/sys_byteorder.h>
 
@@ -18,26 +20,18 @@ namespace hps {
 
 #define ENUM_BIT(e) BIT(static_cast<int>(e))
 
-bool ReadVersionFromFile(const base::FilePath& mcu, uint32_t* version) {
-  uint32_t version_tmp;
-  base::File file(mcu,
-                  base::File::Flags::FLAG_OPEN | base::File::Flags::FLAG_READ);
-  if (!file.IsValid()) {
-    LOG(ERROR) << "ReadVersionFromFile: \"" << mcu
-               << "\": " << base::File::ErrorToString(file.error_details());
+bool ReadVersionFromFile(const base::FilePath& path, uint32_t* version) {
+  std::string file_contents;
+  if (!base::ReadFileToString(path, &file_contents)) {
+    PLOG(ERROR) << "ReadVersionFromFile: \"" << path << "\"";
     return false;
   }
-  int read = file.Read(kVersionOffset, reinterpret_cast<char*>(&version_tmp),
-                       sizeof(version_tmp));
-  if (read < 0) {
-    PLOG(ERROR) << "ReadVersionFromFile: \"" << mcu << "\": ";
+  base::TrimWhitespaceASCII(file_contents, base::TRIM_ALL, &file_contents);
+  if (!base::StringToUint(file_contents, version)) {
+    LOG(ERROR) << "ReadVersionFromFile: \"" << path
+               << "\": file does not contain a valid integer version";
     return false;
   }
-  if (sizeof(version_tmp) != read) {
-    LOG(ERROR) << "ReadVersionFromFile: \"" << mcu << "\": short read";
-    return false;
-  }
-  *version = base::NetToHost32(version_tmp);
   return true;
 }
 

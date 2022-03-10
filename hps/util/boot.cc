@@ -26,6 +26,7 @@ int Boot(std::unique_ptr<hps::HPS> hps,
   std::string mcu = "/usr/lib/firmware/hps/mcu_stage1.bin";
   std::string fpga_bitstream = "/usr/lib/firmware/hps/fpga_bitstream.bin";
   std::string fpga_app_image = "/usr/lib/firmware/hps/fpga_application.bin";
+  std::string version_file = "/usr/lib/firmware/hps/mcu_stage1.version.txt";
   if (args.size() > 1) {
     mcu = args[1];
   }
@@ -35,20 +36,13 @@ int Boot(std::unique_ptr<hps::HPS> hps,
   if (args.size() > 3) {
     fpga_app_image = args[3];
   }
+  if (args.size() > 4) {
+    version_file = args[4];
+  }
 
   uint32_t version;
-  if (args.size() > 4) {
-    // there is no StringToUint32
-    uint64_t version64;
-    if (!base::StringToUint64(args[4], &version64)) {
-      std::cerr << "Arg error: version: " << args[4] << std::endl;
-      return 1;
-    }
-    version = base::checked_cast<uint32_t>(version64);
-  } else {
-    if (!hps::ReadVersionFromFile(base::FilePath(mcu), &version)) {
-      return 1;
-    }
+  if (!hps::ReadVersionFromFile(base::FilePath(version_file), &version)) {
+    return 1;
   }
 
   hps->Init(version, base::FilePath(mcu), base::FilePath(fpga_bitstream),

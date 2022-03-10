@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/files/file.h>
@@ -633,36 +634,32 @@ TEST_F(HPSTest, VersionUpdate) {
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), len + 2);
 }
 
-// Check ReadVersionFromFile reads the right endianness from the right index
+// Check ReadVersionFromFile reads the version correctly
 TEST(ReadVersionFromFile, CorrectVersion) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.GetPath().Append("blob");
+  base::FilePath path = temp_dir.GetPath().Append("version.txt");
   base::File file(path,
                   base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
   ASSERT_TRUE(file.IsValid());
 
-  char data[hps::kVersionOffset] = {};
-  ASSERT_EQ(hps::kVersionOffset,
-            file.WriteAtCurrentPos(data, hps::kVersionOffset));
-  // use a big version that tests the endianness
-  const uint32_t actual_version = 0x01020304U;
-  const uint32_t actual_version_be = base::HostToNet32(actual_version);
+  const uint32_t expected_version = 0xFFFFFFFFU;
+  const std::string file_contents = "4294967295\n";
   ASSERT_EQ(
-      sizeof(actual_version_be),
-      file.WriteAtCurrentPos(reinterpret_cast<const char*>(&actual_version_be),
-                             sizeof(actual_version_be)));
+      file_contents.size(),
+      file.WriteAtCurrentPos(file_contents.data(),
+                             base::checked_cast<int>(file_contents.size())));
 
   uint32_t version;
   ASSERT_TRUE(hps::ReadVersionFromFile(path, &version));
-  EXPECT_EQ(version, actual_version);
+  EXPECT_EQ(version, expected_version);
 }
 
 // Test ReadVersionFromFile behaviour when File is invalid
 TEST(ReadVersionFromFile, BadFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  base::FilePath path = temp_dir.GetPath().Append("blob");
+  base::FilePath path = temp_dir.GetPath().Append("version.txt");
 
   // nonexistent file
   uint32_t version;

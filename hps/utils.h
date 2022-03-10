@@ -17,9 +17,9 @@ namespace hps {
 
 constexpr int kVersionOffset = 20;
 
-// Read the version number from the mcu firmware file.
+// Read the version number from the MCU firmware version file.
 // Returns false on failure.
-bool ReadVersionFromFile(const base::FilePath& mcu, uint32_t* version);
+bool ReadVersionFromFile(const base::FilePath& path, uint32_t* version);
 
 // Convert the register to the name of the register
 const char* HpsRegToString(const HpsReg reg);

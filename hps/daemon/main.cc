@@ -31,7 +31,8 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(mcp, false, "Use MCP2221A connection");
   DEFINE_bool(test, false, "Use internal test fake");
   DEFINE_bool(skipboot, false, "Skip boot sequence");
-  DEFINE_int64(version, -1, "Override MCU firmware file version");
+  DEFINE_int64(version, -1, "Override MCU firmware version");
+  DEFINE_string(version_file, "", "MCU firmware version file");
   DEFINE_string(mcu_fw_image, "", "MCU firmware file");
   DEFINE_string(fpga_bitstream, "", "FPGA bitstream file");
   DEFINE_string(fpga_app_image, "", "FPGA application file");
@@ -44,7 +45,7 @@ int main(int argc, char* argv[]) {
 
   uint32_t version;
   if (FLAGS_version < 0) {
-    if (!hps::ReadVersionFromFile(base::FilePath(FLAGS_mcu_fw_image),
+    if (!hps::ReadVersionFromFile(base::FilePath(FLAGS_version_file),
                                   &version)) {
       return 1;
     }
