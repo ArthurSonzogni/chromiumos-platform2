@@ -212,6 +212,15 @@ void DeviceConfig::AddV4L2Sensors() {
       continue;
     }
 
+    media_device_info info = {};
+    if (ioctl(fd, MEDIA_IOC_DEVICE_INFO, &info) != 0) {
+      PLOG(ERROR) << "Failed to get media device info on " << name;
+      continue;
+    }
+    if (strcmp(info.driver, "uvcvideo") == 0) {
+      continue;
+    }
+
     LOG(INFO) << "Probing media device '" << name.value() << "'";
     ProbeMediaController(fd);
     close(fd);
