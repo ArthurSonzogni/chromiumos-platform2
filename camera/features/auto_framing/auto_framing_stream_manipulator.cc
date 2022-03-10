@@ -302,7 +302,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
 
   full_frame_size_ =
       GetFullFrameResolution(static_info, active_array_dimension_);
-  if (full_frame_size_.is_valid()) {
+  if (!full_frame_size_.is_valid()) {
     LOGF(ERROR) << "Cannot find a resolution to run auto-framing on";
     return false;
   }

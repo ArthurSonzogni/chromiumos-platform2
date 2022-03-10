@@ -61,7 +61,7 @@ struct Size {
   bool operator==(const Size& rhs) const {
     return width == rhs.width && height == rhs.height;
   }
-  bool is_valid() const { return width == 0 || height == 0; }
+  bool is_valid() const { return width > 0 && height > 0; }
   std::string ToString() const {
     return base::StringPrintf("%ux%u", width, height);
   }
