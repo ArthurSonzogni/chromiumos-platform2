@@ -455,6 +455,80 @@ TEST_F(KeysetManagementTest, UpdateKeysetFail) {
                                       kInitialKeysetIndex);
 }
 
+// Successfully updates a keyset.
+TEST_F(KeysetManagementTest, UpdateKeysetWithKeyBlobsSuccess) {
+  // SETUP
+
+  KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
+  KeyData new_data;
+  // setup the same label for successful update.
+  new_data.set_label(kPasswordLabel);
+
+  KeyBlobs new_key_blobs;
+  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_iv = kAdditionalBlob16;
+  new_key_blobs.chaps_iv = kAdditionalBlob16;
+
+  // TEST
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          users_[0].obfuscated, std::move(key_blobs_), kPasswordLabel,
+          nullptr /*error*/);
+  ASSERT_NE(vk.get(), nullptr);
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->UpdateKeysetWithKeyBlobs(
+                users_[0].obfuscated, new_data, *vk.get(),
+                std::move(new_key_blobs), std::move(auth_state_)));
+
+  // VERIFY
+  VerifyKeysetIndicies({kInitialKeysetIndex});
+
+  // Verify that the existing keyset is updated and now wrapped with the new
+  // keyset.
+  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kInitialBlob32,
+                                kInitialBlob16, kInitialBlob16, kPasswordLabel);
+  VerifyWrappedKeysetPresentAtIndex(
+      users_[0].obfuscated, kAdditionalBlob32, kAdditionalBlob16,
+      kAdditionalBlob16, kPasswordLabel /*label*/, kInitialKeysetIndex);
+}
+
+// Fails to update a keyset due to mismatching labels.
+TEST_F(KeysetManagementTest, UpdateKeysetWithKeyBlobsFail) {
+  // SETUP
+
+  KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
+  KeyData new_data;
+  // Setup a different label to fail the update.
+  new_data.set_label(kNewLabel);
+
+  KeyBlobs new_key_blobs;
+  new_key_blobs.vkk_key = kAdditionalBlob32;
+  new_key_blobs.vkk_iv = kAdditionalBlob16;
+  new_key_blobs.chaps_iv = kAdditionalBlob16;
+
+  // TEST
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          users_[0].obfuscated, std::move(key_blobs_), kPasswordLabel,
+          nullptr /*error*/);
+  ASSERT_NE(vk.get(), nullptr);
+  EXPECT_EQ(CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND,
+            keyset_management_->UpdateKeysetWithKeyBlobs(
+                users_[0].obfuscated, new_data, *vk.get(),
+                std::move(new_key_blobs), std::move(auth_state_)));
+
+  // VERIFY
+  VerifyKeysetIndicies({kInitialKeysetIndex});
+
+  // Verify that the existing keyset is not updated.
+  VerifyWrappedKeysetNotPresent(users_[0].obfuscated, kAdditionalBlob32,
+                                kAdditionalBlob16, kAdditionalBlob16,
+                                kNewLabel);
+  VerifyWrappedKeysetPresentAtIndex(users_[0].obfuscated, kInitialBlob32,
+                                    kInitialBlob16, kInitialBlob16,
+                                    kPasswordLabel, kInitialKeysetIndex);
+}
+
 // Overrides existing keyset on label collision when "clobber" flag is present.
 TEST_F(KeysetManagementTest, AddKeysetClobberSuccess) {
   // SETUP

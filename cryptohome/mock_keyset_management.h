@@ -133,6 +133,14 @@ class MockKeysetManagement : public KeysetManagement {
                const KeyBlobs& key_blobs,
                const AuthBlockState& auth_state),
               (override));
+  MOCK_METHOD(CryptohomeErrorCode,
+              UpdateKeysetWithKeyBlobs,
+              (const std::string&,
+               const KeyData&,
+               const VaultKeyset&,
+               KeyBlobs,
+               std::unique_ptr<AuthBlockState>),
+              (override));
 };
 
 }  // namespace cryptohome

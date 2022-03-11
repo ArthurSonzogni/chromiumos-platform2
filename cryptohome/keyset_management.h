@@ -222,6 +222,18 @@ class KeysetManagement {
       const KeyBlobs& key_blobs,
       const AuthBlockState& auth_state);
 
+  // Updates an existing |vault_keyset| with the |key_data_new| from new user
+  // credentials. This function assumes the user is already authenticated and
+  // their |vault_keyset| with an existing credentials is unwrapped. New keyset
+  // is wrapped by the |key_blobs| passed, which should be derived from the new
+  // credentials.
+  virtual CryptohomeErrorCode UpdateKeysetWithKeyBlobs(
+      const std::string& obfuscated_username_new,
+      const KeyData& key_data_new,
+      const VaultKeyset& vault_keyset,
+      KeyBlobs key_blobs,
+      std::unique_ptr<AuthBlockState> auth_state);
+
  private:
   // Adds initial keyset for obfuscated username with |file_system_keyset|. Adds
   // the key data given by |key_data| and challenge credentials info given by

@@ -639,17 +639,37 @@ CryptohomeErrorCode KeysetManagement::UpdateKeyset(
     const Credentials& new_credentials, const VaultKeyset& vault_keyset) {
   std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
 
-  // Check if there is an existing labeled credential.
+  // Check if there is an existing labeled keyset.
   std::unique_ptr<VaultKeyset> match =
       GetVaultKeyset(obfuscated_username, new_credentials.key_data().label());
   if (!match.get()) {
-    LOG(INFO) << "Label does not exists.";
+    LOG(ERROR) << "Label does not exist.";
     return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
   }
 
   // We set clobber to be true as we are sure that there is an existing keyset.
   return AddKeyset(new_credentials, vault_keyset,
                    true /* we are updating existing keyset */);
+}
+
+CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
+    const std::string& obfuscated_username_new,
+    const KeyData& key_data_new,
+    const VaultKeyset& vault_keyset,
+    KeyBlobs key_blobs,
+    std::unique_ptr<AuthBlockState> auth_state) {
+  // Check if there is an existing labeled keyset.
+  std::unique_ptr<VaultKeyset> match =
+      GetVaultKeyset(obfuscated_username_new, key_data_new.label());
+  if (!match.get()) {
+    LOG(ERROR) << "Label does not exist.";
+    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
+  }
+
+  // We set clobber to be true as we are sure that there is an existing keyset.
+  return AddKeysetWithKeyBlobs(
+      obfuscated_username_new, key_data_new, vault_keyset, std::move(key_blobs),
+      std::move(auth_state), true /* we are updating existing keyset */);
 }
 
 CryptohomeErrorCode KeysetManagement::AddWrappedResetSeedIfMissing(
