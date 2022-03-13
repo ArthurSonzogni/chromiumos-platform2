@@ -34,6 +34,7 @@ static const char* kNoDownloadsBindMount = "no_downloads_bind_mount";
 static const char* kDirEncryption = "direncryption";
 static const char* kFscryptV2 = "fscrypt_v2";
 static const char* kApplicationContainers = "application_containers";
+static const char* kNegateFscryptV2ForTest = "negate_fscrypt_v2_for_test";
 static const char* kNoDaemonize = "nodaemonize";
 static const char* kCleanupThreshold = "cleanup_threshold";
 static const char* kAggressiveThreshold = "aggressive_cleanup_threshold";
@@ -85,7 +86,8 @@ int main(int argc, char** argv) {
   bool nolegacymount = cl->HasSwitch(switches::kNoLegacyMount);
   bool nodownloadsbind = cl->HasSwitch(switches::kNoDownloadsBindMount);
   bool direncryption = cl->HasSwitch(switches::kDirEncryption);
-  bool fscryptv2 = cl->HasSwitch(switches::kFscryptV2);
+  bool fscryptv2 = cl->HasSwitch(switches::kFscryptV2) &&
+                   !cl->HasSwitch(switches::kNegateFscryptV2ForTest);
   bool application_containers = cl->HasSwitch(switches::kApplicationContainers);
   bool daemonize = !cl->HasSwitch(switches::kNoDaemonize);
   uint64_t cleanup_threshold =
