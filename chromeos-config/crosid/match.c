@@ -148,8 +148,16 @@ static bool table_entry_matches(struct crosid_table_header *table,
 			"customization_id");
 	}
 
-	if (data->whitelabel_tag.present ||
-	    entry->flags & MATCH_WHITELABEL_TAG) {
+	if (data->whitelabel_tag.present &&
+	    strlen(data->whitelabel_tag.value) > 0 &&
+	    !(entry->flags & MATCH_WHITELABEL_TAG)) {
+		/* If the device has a non-zero length whitelabel tag, but this
+		 * config does not have a whitelabel tag, it should not match */
+		crosid_log(LOG_DBG,
+			   "mismatch, as the config has no whitelabel-tag"
+			   ", but this device does\n");
+		mismatches++;
+	} else if (entry->flags & MATCH_WHITELABEL_TAG) {
 		mismatches += !check_optional_string_match(
 			&data->whitelabel_tag,
 			strings + entry->whitelabel_tag_match,
