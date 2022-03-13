@@ -108,9 +108,8 @@ class SafeFD {
   // instance is opening one from SafeFD::Root().
   BRILLO_EXPORT void UnsafeReset(int fd);
 
-  // Writes |size| bytes from |data| replacing the contents of a file and
-  // returns kNoError on success. Note the file will be truncated to the
-  // size of the content.
+  // Writes |size| bytes from |data| into a file and returns kNoError on
+  // success. Note the file will be truncated to the size of the content.
   //
   // Parameters
   //  data - The buffer to write to the file.
