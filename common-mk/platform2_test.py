@@ -485,8 +485,12 @@ class Platform2Test(object):
 
     if leaked_children:
       for p in leaked_children:
+        try:
+          name = p.name()
+        except psutil.NoSuchProcess:
+          name = '<unknown>'
         print('Error: the test leaked process %s with pid %s (it was forcefully'
-              ' killed)' % (p.name(), p.pid), file=sys.stderr)
+              ' killed)' % (name, p.pid), file=sys.stderr)
       # TODO(vapier): Make this an error.  We need to track down some scenarios
       # where processes do leak though before we can make this fatal :(.
       # sys.exit(100)
