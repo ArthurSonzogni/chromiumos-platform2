@@ -33,6 +33,13 @@ class MockFpModeCommand : public MockEcCommand<struct ec_params_fp_mode,
   MockFpModeCommand() : MockEcCommand(EC_CMD_FP_MODE, 0, {.mode = 1}) {}
 };
 
+class MockEmptyResponseCommand
+    : public MockEcCommand<struct ec_params_fp_seed, EmptyParam> {
+ public:
+  MockEmptyResponseCommand()
+      : MockEcCommand(EC_CMD_FP_SEED, 0, {.seed = "foo"}) {}
+};
+
 // ioctl behavior for EC commands:
 //   returns sizeof(EC response) (>=0) when the command goes to the EC, -1 if
 //   there's a failure to communicate with the EC or other kernel failure.
@@ -49,7 +56,11 @@ class MockFpModeCommand : public MockEcCommand<struct ec_params_fp_mode,
 
 TEST(EcCommand, Run_Success) {
   MockFpModeCommand mock;
-  EXPECT_CALL(mock, ioctl).WillOnce(Return(mock.RespSize()));
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockFpModeCommand::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        return data->cmd.insize;
+      });
   EXPECT_TRUE(mock.Run(kDummyFd));
 }
 
@@ -73,6 +84,21 @@ TEST(EcCommand, Run_CommandFailure) {
   EXPECT_FALSE(mock.Run(kDummyFd));
 }
 
+TEST(EcCommand, Run_CommandWithEmptyResponse_Failure) {
+  MockEmptyResponseCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockEmptyResponseCommand::Data* data) {
+        // In the case where code in the EC sets a return value of something
+        // other than EC_RES_SUCCESS, the code that sends the response from the
+        // EC sets the size to 0, so the ioctl will always return 0 in that
+        // case. See
+        // https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform/ec/common/host_command.c;l=202-205;drc=d64d5ca86d1fd6274011146e33597ef01bf551b1
+        data->cmd.result = EC_RES_INVALID_PARAM;
+        return 0;
+      });
+  EXPECT_FALSE(mock.Run(kDummyFd));
+}
+
 TEST(EcCommand, ConstReq) {
   const MockFpModeCommand mock;
   EXPECT_TRUE(mock.Req());
@@ -84,15 +110,14 @@ TEST(EcCommand, ConstResp) {
 }
 
 TEST(EcCommand, Run_CheckResult_Success) {
-  constexpr int kExpectedResult = 42;
   MockFpModeCommand mock;
   EXPECT_CALL(mock, ioctl)
       .WillOnce([](int, uint32_t, MockFpModeCommand::Data* data) {
-        data->cmd.result = kExpectedResult;
+        data->cmd.result = EC_RES_SUCCESS;
         return data->cmd.insize;
       });
   EXPECT_TRUE(mock.Run(kDummyFd));
-  EXPECT_EQ(mock.Result(), kExpectedResult);
+  EXPECT_EQ(mock.Result(), EC_RES_SUCCESS);
 }
 
 TEST(EcCommand, Run_CheckResult_Failure) {
@@ -109,6 +134,22 @@ TEST(EcCommand, Run_CheckResult_Failure) {
   EXPECT_EQ(mock.Result(), kEcCommandUninitializedResult);
 }
 
+TEST(EcCommand, Run_CheckResult_CommandWithEmptyResponse_Failure) {
+  MockEmptyResponseCommand mock;
+  EXPECT_CALL(mock, ioctl)
+      .WillOnce([](int, uint32_t, MockEmptyResponseCommand::Data* data) {
+        // In the case where code in the EC sets a return value of something
+        // other than EC_RES_SUCCESS, the code that sends the response from the
+        // EC sets the size to 0, so the ioctl will always return 0 in that
+        // case. See
+        // https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform/ec/common/host_command.c;l=202-205;drc=d64d5ca86d1fd6274011146e33597ef01bf551b1
+        data->cmd.result = EC_RES_ACCESS_DENIED;
+        return 0;
+      });
+  EXPECT_FALSE(mock.Run(kDummyFd));
+  EXPECT_EQ(mock.Result(), EC_RES_ACCESS_DENIED);
+}
+
 TEST(EcCommand, RunWithMultipleAttempts_Success) {
   constexpr int kNumAttempts = 2;
   MockFpModeCommand mock;
@@ -120,7 +161,10 @@ TEST(EcCommand, RunWithMultipleAttempts_Success) {
         return kIoctlFailureRetVal;
       }))
       // Second ioctl() succeeds
-      .WillOnce(Return(mock.RespSize()));
+      .WillOnce([](int, uint32_t, MockFpModeCommand::Data* data) {
+        data->cmd.result = EC_RES_SUCCESS;
+        return data->cmd.insize;
+      });
   EXPECT_TRUE(mock.RunWithMultipleAttempts(kDummyFd, kNumAttempts));
 }
 

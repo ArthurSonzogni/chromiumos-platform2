@@ -161,7 +161,8 @@ bool EcCommand<Params, Response>::Run(int ec_fd) {
     return false;
   }
 
-  return (static_cast<uint32_t>(ret) == data_.cmd.insize);
+  return (static_cast<uint32_t>(ret) == data_.cmd.insize) &&
+         data_.cmd.result == EC_RES_SUCCESS;
 }
 
 template <typename Params, typename Response>
