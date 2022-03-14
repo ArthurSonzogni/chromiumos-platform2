@@ -207,18 +207,20 @@ bool CryptohomeVault::Teardown() {
 
 bool CryptohomeVault::Purge() {
   bool ret = true;
-  if (!container_->Purge()) {
+  if (container_->Exists() && !container_->Purge()) {
     LOG(ERROR) << "Failed to purge container";
     ret = false;
   }
 
-  if (migrating_container_ && !migrating_container_->Purge()) {
+  if (migrating_container_ && migrating_container_->Exists() &&
+      !migrating_container_->Purge()) {
     LOG(ERROR) << "Failed to purge migrating container";
     ret = false;
   }
 
-  if (cache_container_ && !cache_container_->Purge()) {
-    LOG(ERROR) << "Failed to teardown cache container";
+  if (cache_container_ && cache_container_->Exists() &&
+      !cache_container_->Purge()) {
+    LOG(ERROR) << "Failed to purge cache container";
     ret = false;
   }
 
@@ -229,7 +231,7 @@ bool CryptohomeVault::PurgeCacheContainer() {
   if (!cache_container_)
     return false;
 
-  if (!cache_container_->Purge())
+  if (cache_container_->Exists() && !cache_container_->Purge())
     return false;
 
   return true;
