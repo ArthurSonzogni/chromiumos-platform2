@@ -18,7 +18,7 @@ SUBSYSTEM=="chromeos|misc", KERNEL=="cros_ec" OWNER="root", GROUP="cros_ec-acces
 
 # Allow powerd to change proximity sensor attributes
 ACTION=="add", SUBSYSTEM=="iio", \
-  ATTR{name}=="sx9310|sx9311|sx932x|sx9360|cros-ec-mkbp-proximity", \
+  ATTR{name}=="sx9310|sx9311|sx9324|sx932x|sx9360|cros-ec-mkbp-proximity", \
   RUN+="/bin/chown -R power:power $sys/$devpath/events"
 ACTION=="add", SUBSYSTEM=="iio", \
   ATTR{name}=="sx9310|sx9311", \
@@ -26,6 +26,13 @@ ACTION=="add", SUBSYSTEM=="iio", \
                                $sys/$devpath/in_proximity1_hardwaregain \
                                $sys/$devpath/in_proximity2_hardwaregain \
                                $sys/$devpath/in_proximity3_comb_hardwaregain \
+                               $sys/$devpath/sampling_frequency"
+ACTION=="add", SUBSYSTEM=="iio", \
+  ATTR{name}=="sx9324", \
+  RUN+="/bin/chown power:power $sys/$devpath/in_proximity0_hardwaregain \
+                               $sys/$devpath/in_proximity1_hardwaregain \
+                               $sys/$devpath/in_proximity2_hardwaregain \
+                               $sys/$devpath/in_proximity3_hardwaregain \
                                $sys/$devpath/sampling_frequency"
 ACTION=="add", SUBSYSTEM=="iio", \
   ATTR{name}=="sx9360", \
