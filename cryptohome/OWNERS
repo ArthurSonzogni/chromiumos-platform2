@@ -14,3 +14,5 @@ per-file dircrypto_util*=hashimoto@chromium.org
 per-file *flatbuffer*=yich@google.com
 
 per-file *auth_session*=hardikgoyal@chromium.org
+
+per-file *auth_factor*=betuls@google.com
