@@ -244,7 +244,7 @@ def test_vilboz14(tmp_path, executable_path, config_idx):
         tmp_path,
         smbios_name="Vilboz",
         smbios_sku=1,
-        vpd_values={"whitelabel_tag": "vilboz14len"},
+        vpd_values={"custom_label_tag": "vilboz14len"},
         configs=VILBOZ14_CONFIGS,
     )
 

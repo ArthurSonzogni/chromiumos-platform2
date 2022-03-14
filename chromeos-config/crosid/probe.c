@@ -36,6 +36,21 @@ static int read_optional_string(const char *dir, const char *name,
 	return 0;
 }
 
+static int read_whitelabel_tag(struct crosid_probed_device_data *out)
+{
+	int rv;
+
+	/* Newer devices may use custom_label_tag VPD entry */
+	rv = read_optional_string(SYSFS_VPD_RO_PATH, "custom_label_tag",
+				  &out->whitelabel_tag);
+	if (rv >= 0)
+		return rv;
+
+	/* If that's not specified, then try whitelabel_tag */
+	return read_optional_string(SYSFS_VPD_RO_PATH, "whitelabel_tag",
+				    &out->whitelabel_tag);
+}
+
 int crosid_probe(struct crosid_probed_device_data *out)
 {
 	const char *sku_src;
@@ -75,8 +90,7 @@ int crosid_probe(struct crosid_probed_device_data *out)
 			   "expected on models released in 2018 and later)\n");
 	}
 
-	if (read_optional_string(SYSFS_VPD_RO_PATH, "whitelabel_tag",
-				 &out->whitelabel_tag) >= 0) {
+	if (read_whitelabel_tag(out) >= 0) {
 		crosid_log(LOG_DBG, "Read whitelabel_tag=\"%s\" (from VPD)\n",
 			   out->whitelabel_tag.value);
 	} else {
