@@ -90,7 +90,8 @@ void MaybeEnableHdrNetStreamManipulator(
 }
 
 void MaybeEnableAutoFramingStreamManipulator(
-    std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
+    std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators,
+    StreamManipulator::RuntimeOptions* runtime_options) {
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
   if (base::PathExists(
           base::FilePath(constants::kForceDisableAutoFramingPath))) {
@@ -101,7 +102,7 @@ void MaybeEnableAutoFramingStreamManipulator(
           base::FilePath(constants::kForceEnableAutoFramingPath))) {
     // Auto-framing is forcibly enabled.
     out_stream_manipulators->emplace_back(
-        std::make_unique<AutoFramingStreamManipulator>());
+        std::make_unique<AutoFramingStreamManipulator>(runtime_options));
     LOGF(INFO) << "AutoFramingStreamManipulator enabled";
   }
 #endif
@@ -111,11 +112,13 @@ void MaybeEnableAutoFramingStreamManipulator(
 
 // static
 std::vector<std::unique_ptr<StreamManipulator>>
-StreamManipulator::GetEnabledStreamManipulators(Options options) {
+StreamManipulator::GetEnabledStreamManipulators(
+    Options options, RuntimeOptions* runtime_options) {
   std::vector<std::unique_ptr<StreamManipulator>> stream_manipulators;
   FeatureProfile feature_profile;
 
-  MaybeEnableAutoFramingStreamManipulator(&stream_manipulators);
+  MaybeEnableAutoFramingStreamManipulator(&stream_manipulators,
+                                          runtime_options);
 
 #if USE_CAMERA_FEATURE_FACE_DETECTION
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kFaceDetection)) {

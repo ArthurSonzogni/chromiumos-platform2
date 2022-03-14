@@ -38,7 +38,10 @@ source_set("hdrnet") {
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
   public_deps = [ "//camera/gpu" ]
-  deps = [ "//camera/gpu:image_processor" ]
+  deps = [
+    "//camera/common:libcros_camera_mojom",
+    "//camera/gpu:image_processor",
+  ]
 
   if (use.ipu6 || use.ipu6ep) {
     sources += [

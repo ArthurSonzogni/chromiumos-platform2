@@ -19,6 +19,8 @@ source_set("zsl") {
 
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
+
+  deps = [ "//camera/common:libcros_camera_mojom" ]
 }
 
 if (use.test) {

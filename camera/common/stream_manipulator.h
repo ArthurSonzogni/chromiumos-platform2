@@ -13,10 +13,13 @@
 #include <string>
 #include <vector>
 
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/camera_hal3_helpers.h"
 #include "cros-camera/export.h"
 
 namespace cros {
+
+class CameraDeviceAdapter;
 
 // Interface class that can be used by feature implementations to add hooks into
 // the standard camera HAL3 capture pipeline.
@@ -30,6 +33,12 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     // Whether we should attempt to enable ZSL. We might have vendor-specific
     // ZSL solution, and in which case we should not try to enable our ZSL.
     bool enable_cros_zsl;
+  };
+
+  struct RuntimeOptions {
+    // The state of auto framing. Can be either off, single person mode or
+    // multi people mode.
+    mojom::CameraAutoFramingState auto_framing_state;
   };
 
   // Callback for the StreamManipulator to return capture results to the client
@@ -52,7 +61,8 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   // regardless of the return value of each hook call. The return value of the
   // hook is mainly used to log the status for each StreamManipulator.
   static std::vector<std::unique_ptr<StreamManipulator>>
-  GetEnabledStreamManipulators(Options options);
+  GetEnabledStreamManipulators(Options options,
+                               RuntimeOptions* runtime_options);
 
   virtual ~StreamManipulator() = default;
 

@@ -28,6 +28,7 @@
 #include "camera/mojo/camera3.mojom.h"
 #include "camera/mojo/camera_common.mojom.h"
 #include "camera/mojo/cros_camera_service.mojom.h"
+#include "common/stream_manipulator.h"
 #include "common/utils/common_types.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_metrics.h"
@@ -110,6 +111,8 @@ class CameraHalAdapter {
   // b/169324225 for context.
   int32_t SetCallbacks(
       mojo::PendingAssociatedRemote<mojom::CameraModuleCallbacks> callbacks);
+
+  void SetAutoFramingState(mojom::CameraAutoFramingState enabled);
 
  protected:
   // Convert the unified public |camera_id| into the corresponding camera
@@ -283,6 +286,9 @@ class CameraHalAdapter {
   CameraMojoChannelManagerToken* mojo_manager_token_;
 
   CameraActivityCallback activity_callback_;
+
+  // TODO(pihsun): Should this be per CameraDeviceAdapter?
+  StreamManipulator::RuntimeOptions stream_manipulator_runtime_options_;
 };
 
 }  // namespace cros

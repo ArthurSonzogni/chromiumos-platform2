@@ -62,7 +62,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     FilterMode output_filter_mode = FilterMode::kBicubic;
 
     // Whether the CrOS Auto Framing is enabled.
-    bool enable = true;
+    absl::optional<bool> enable;
 
     // Whether to enable debug mode. In debug mode the frame is not cropped.
     // Instead the ROIs and active crop area is piggybacked in the
@@ -71,7 +71,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     bool debug = false;
   };
 
-  AutoFramingStreamManipulator();
+  explicit AutoFramingStreamManipulator(RuntimeOptions* runtime_options);
   ~AutoFramingStreamManipulator() override;
 
   // Implementations of StreamManipulator.
@@ -115,12 +115,16 @@ class AutoFramingStreamManipulator : public StreamManipulator {
                                     base::ScopedFD output_fence,
                                     const Rect<float>& crop_region);
 
+  bool GetEnabled() const;
+
   ReloadableConfigFile config_;
 
   Options options_;
 
   std::unique_ptr<EglContext> egl_context_;
   std::unique_ptr<GpuImageProcessor> image_processor_;
+
+  RuntimeOptions* runtime_options_;
 
   // Determined by static camera metadata and fixed after Initialize().
   Size active_array_dimension_;

@@ -33,4 +33,5 @@ source_set("gcam_ae") {
   if (use.ipu6 || use.ipu6ep) {
     sources += [ "//camera/features/gcam_ae/gcam_ae_device_adapter_ipu6.cc" ]
   }
+  deps = [ "//camera/common:libcros_camera_mojom" ]
 }

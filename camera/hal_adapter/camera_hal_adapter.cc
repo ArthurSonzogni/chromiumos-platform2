@@ -235,7 +235,8 @@ int32_t CameraHalAdapter::OpenDevice(
       camera_device, info.device_version, metadata,
       std::move(get_internal_camera_id_callback),
       std::move(get_public_camera_id_callback), std::move(close_callback),
-      StreamManipulator::GetEnabledStreamManipulators(std::move(options)));
+      StreamManipulator::GetEnabledStreamManipulators(
+          std::move(options), &stream_manipulator_runtime_options_));
 
   CameraDeviceAdapter::HasReprocessEffectVendorTagCallback
       has_reprocess_effect_vendor_tag_callback = base::BindRepeating(
@@ -258,6 +259,11 @@ int32_t CameraHalAdapter::OpenDevice(
       session_timer_map_[camera_id].Elapsed());
 
   return 0;
+}
+
+void CameraHalAdapter::SetAutoFramingState(
+    mojom::CameraAutoFramingState state) {
+  stream_manipulator_runtime_options_.auto_framing_state = state;
 }
 
 int32_t CameraHalAdapter::GetNumberOfCameras() {

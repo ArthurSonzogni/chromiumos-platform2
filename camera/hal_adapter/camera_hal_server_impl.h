@@ -70,6 +70,8 @@ class CameraHalServerImpl final {
 
     void SetTracingEnabled(bool enabled) final;
 
+    void SetAutoFramingState(mojom::CameraAutoFramingState state);
+
     void NotifyCameraActivityChange(int32_t camera_id,
                                     bool opened,
                                     mojom::CameraClientType type);

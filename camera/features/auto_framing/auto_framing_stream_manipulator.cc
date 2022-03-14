@@ -19,6 +19,7 @@
 #include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/task/bind_post_task.h>
+#include <base/strings/string_number_conversions.h>
 
 #include "cros-camera/camera_metadata_utils.h"
 #include "gpu/egl/egl_fence.h"
@@ -213,11 +214,14 @@ struct AutoFramingStreamManipulator::CaptureContext {
   std::optional<int64_t> timestamp;
 };
 
-AutoFramingStreamManipulator::AutoFramingStreamManipulator()
+AutoFramingStreamManipulator::AutoFramingStreamManipulator(
+    RuntimeOptions* runtime_options)
     : config_(base::FilePath(kDefaultAutoFramingConfigFile),
               base::FilePath(kOverrideAutoFramingConfigFile)),
+      runtime_options_(runtime_options),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}),
       thread_("AutoFramingThread") {
+  DCHECK_NE(runtime_options_, nullptr);
   CHECK(thread_.Start());
 
   config_.SetCallback(base::BindRepeating(
@@ -448,6 +452,15 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
   return true;
 }
 
+bool AutoFramingStreamManipulator::GetEnabled() const {
+  // Use option in config file first.
+  // TODO(pihsun): Handle multi people mode.
+  // TODO(pihsun): ReloadableConfigFile merges new config to old config, so
+  // this won't be "unset" after set, which will be confusing for developers.
+  return options_.enable.value_or(runtime_options_->auto_framing_state !=
+                                  mojom::CameraAutoFramingState::OFF);
+}
+
 bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     Camera3CaptureDescriptor* request) {
   DCHECK(thread_.IsCurrentThread());
@@ -465,7 +478,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     return false;
   }
 
-  ctx->enable = options_.enable;
+  ctx->enable = GetEnabled();
   if (!ctx->enable) {
     return true;
   }
@@ -842,15 +855,17 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   if (LoadIfExist(json_values, kOutputFilterModeKey, &filter_mode)) {
     options_.output_filter_mode = static_cast<FilterMode>(filter_mode);
   }
-  LoadIfExist(json_values, kEnableKey, &options_.enable);
+  options_.enable = json_values.FindBoolKey(kEnableKey);
   LoadIfExist(json_values, kDebugKey, &options_.debug);
 
   VLOGF(1) << "AutoFramingStreamManipulator options:"
            << " detector=" << static_cast<int>(options_.detector)
            << " motion_model=" << static_cast<int>(options_.motion_model)
            << " output_filter_mode="
-           << static_cast<int>(options_.output_filter_mode)
-           << " enable=" << options_.enable << " debug=" << options_.debug;
+           << static_cast<int>(options_.output_filter_mode) << " enable="
+           << (options_.enable ? base::NumberToString(*options_.enable)
+                               : "(not set)")
+           << " debug=" << options_.debug;
 
   if (face_tracker_) {
     face_tracker_->OnOptionsUpdated(json_values);

@@ -143,6 +143,16 @@ void CameraHalServerImpl::IPCBridge::SetTracingEnabled(bool enabled) {
   // removed.
 }
 
+void CameraHalServerImpl::IPCBridge::SetAutoFramingState(
+    mojom::CameraAutoFramingState state) {
+  if (state == mojom::CameraAutoFramingState::ON_MULTI) {
+    LOG(WARNING) << "auto framing multi people mode is not implemented yet, "
+                 << "fallback to single person mode.";
+    state = mojom::CameraAutoFramingState::ON_SINGLE;
+  }
+  camera_hal_adapter_->SetAutoFramingState(state);
+}
+
 void CameraHalServerImpl::IPCBridge::NotifyCameraActivityChange(
     int32_t camera_id, bool opened, mojom::CameraClientType type) {
   VLOGF_ENTER();

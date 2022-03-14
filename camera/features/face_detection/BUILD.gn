@@ -19,4 +19,5 @@ source_set("face_detection") {
 
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
+  deps = [ "//camera/common:libcros_camera_mojom" ]
 }

@@ -27,5 +27,8 @@ source_set("auto_framing") {
   # -fPIC needed by the libcros_camera.so shared library.
   configs += [ "//common-mk:pic" ]
   public_deps = [ "//camera/gpu" ]
-  deps = [ "//camera/gpu:image_processor" ]
+  deps = [
+    "//camera/common:libcros_camera_mojom",
+    "//camera/gpu:image_processor",
+  ]
 }
