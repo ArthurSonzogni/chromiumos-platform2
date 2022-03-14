@@ -58,7 +58,7 @@ const CRONISTA_USER: &str = "cronista";
 const DUGONG_USER: &str = "dugong";
 
 fn to_dbus_error(err: Error) -> dbus::Error {
-    dbus::Error::new_custom("", &format!("{}", err))
+    dbus::Error::new_failed(&format!("{}", err))
 }
 
 /// Implementation of the D-Bus interface over a direct Vsock connection.
@@ -157,12 +157,12 @@ impl OrgChromiumManaTEEInterface for Passthrough {
         match self.client.lock().unwrap().system_event(
             event
                 .parse()
-                .map_err(|err: String| dbus::Error::new_custom("", &err))?,
+                .map_err(|err: String| dbus::Error::new_failed(&err))?,
         ) {
             Ok(()) => Ok(String::new()),
             Err(err) => match err.downcast::<trichechus::Error>() {
                 Ok(err) => Ok(err.to_string()),
-                Err(err) => Err(dbus::Error::new_custom("", &err.to_string())),
+                Err(err) => Err(dbus::Error::new_failed(&err.to_string())),
             },
         }
     }
