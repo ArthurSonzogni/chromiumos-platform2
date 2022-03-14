@@ -313,6 +313,7 @@
           "is-lid-convertible": false
         },
         "identity": {
+          "custom-label-tag": "whitelabel1",
           "platform-name": "Some",
           "sku-id": 8,
           "smbios-name-match": "Some",
@@ -371,6 +372,7 @@
           "is-lid-convertible": false
         },
         "identity": {
+          "custom-label-tag": "whitelabel1",
           "platform-name": "Some",
           "sku-id": 9,
           "smbios-name-match": "Some",
@@ -429,6 +431,7 @@
           "is-lid-convertible": false
         },
         "identity": {
+          "custom-label-tag": "whitelabel2",
           "platform-name": "Some",
           "sku-id": 8,
           "smbios-name-match": "Some",
@@ -487,6 +490,7 @@
           "is-lid-convertible": false
         },
         "identity": {
+          "custom-label-tag": "whitelabel2",
           "platform-name": "Some",
           "sku-id": 9,
           "smbios-name-match": "Some",

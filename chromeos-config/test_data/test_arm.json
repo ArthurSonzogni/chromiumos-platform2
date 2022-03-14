@@ -19,6 +19,7 @@
           "image-name": "whitelabel_signed"
         },
         "identity": {
+          "custom-label-tag": "whitelabel1",
           "device-tree-compatible-match": "google,whitelabel",
           "whitelabel-tag": "whitelabel1"
         },
@@ -33,6 +34,7 @@
           "image-name": "whitelabel_signed"
         },
         "identity": {
+          "custom-label-tag": "whitelabel2",
           "device-tree-compatible-match": "google,whitelabel",
           "whitelabel-tag": "whitelabel2"
         },
@@ -47,8 +49,8 @@
           "image-name": "whitelabel_signed"
         },
         "identity": {
-          "device-tree-compatible-match": "google,whitelabel",
-          "whitelabel-tag": ""
+          "custom-label-tag": "",
+          "device-tree-compatible-match": "google,whitelabel"
         },
         "name": "whitelabel",
         "ui": {

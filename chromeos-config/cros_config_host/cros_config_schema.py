@@ -280,6 +280,10 @@ def _TransformDeprecatedConfigs(config):
   if 'ec_extras' in build_targets and 'ec-extras' not in build_targets:
     build_targets['ec-extras'] = build_targets.pop('ec_extras')  # b/218973795
 
+  identity = config.get('identity', {})
+  if 'whitelabel-tag' in identity and 'custom-label-tag' not in identity:
+    identity['custom-label-tag'] = identity.pop('whitelabel-tag')
+
 
 def TransformConfig(config, model_filter_regex=None):
   """Transforms the source config (YAML) to the target system format (JSON)
@@ -398,12 +402,20 @@ def _GenerateInferredElements(json_config):
   configs = []
   for config in json_config[CHROMEOS][CONFIGS]:
     ui_elements = config.get('ui', {})
+
+    identity = config.get('identity', {})
+    custom_label_tag = identity.get('custom-label-tag')
+
+    # Old name for custom-label-tag was whitelabel-tag.  Allow this
+    # name as an alternative until we validate no clients use it.
+    if custom_label_tag:
+      identity['whitelabel-tag'] = custom_label_tag
+
     if 'help-content-id' not in ui_elements:
-      customization_id = config.get('identity', {}).get('customization-id')
-      whitelabel_tag = config.get('identity', {}).get('whitelabel-tag')
+      customization_id = identity.get('customization-id')
       model_name = config.get('name')
       ui_elements['help-content-id'] = (
-          customization_id or whitelabel_tag or model_name)
+          customization_id or custom_label_tag or model_name)
     config['ui'] = ui_elements
     config = _GenerateInferredAshSwitches(config)
     configs.append(config)
@@ -576,14 +588,14 @@ def _ValidateWhitelabelBrandChangesOnly(json_config):
   """
   whitelabels = {}
   for config in json_config['chromeos']['configs']:
-    if 'whitelabel-tag' in config.get('identity', {}):
+    if 'custom-label-tag' in config.get('identity', {}):
       if 'bobba' in config['name']: # Remove after crbug.com/1036381 resolved
         continue
       name = '%s - %s' % (config['name'], config['identity'].get('sku-id', 0))
       config_list = whitelabels.get(name, [])
 
       wl_minus_brand = copy.deepcopy(config)
-      wl_minus_brand['identity']['whitelabel-tag'] = ''
+      wl_minus_brand['identity']['custom-label-tag'] = ''
 
       for brand_element in BRAND_ELEMENTS:
         wl_minus_brand[brand_element] = ''

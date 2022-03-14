@@ -99,8 +99,11 @@ typeDefs:
     type: integer
     minimum: -1
     maximum: 0x7FFFFFFF
-  whitelabel-tag: &whitelabel_tag
-    description: "'whitelabel_tag' value set in the VPD, to add Whitelabel branding over an unbranded base model."
+  custom-label-tag: &custom_label_tag
+    description: |
+      `custom_label_tag` value set in the VPD, to add branding over an
+      unbranded base model.  Note that `whitelabel_tag` is the
+      historical name for this VPD value, and is accepted as well.
     type: string
   customization-id: &customization_id
     description: "'customization_id' value set in the VPD for non-unibuild Zergs and Whitelabels. Deprecated for use in new products since 2017/07/26."
@@ -754,7 +757,7 @@ properties:
                     sku-id: *sku_id
                     platform-name: *platform_name
                     customization-id: *customization_id
-                    whitelabel-tag: *whitelabel_tag
+                    custom-label-tag: *custom_label_tag
                   additionalProperties: false
                 - properties:
                     device-tree-compatible-match:
@@ -764,7 +767,7 @@ properties:
                     sku-id: *sku_id
                     platform-name: *platform_name
                     customization-id: *customization_id
-                    whitelabel-tag: *whitelabel_tag
+                    custom-label-tag: *custom_label_tag
                   additionalProperties: false
             keyboard:
               type: object

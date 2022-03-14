@@ -572,10 +572,10 @@
           "is-lid-convertible": false
         },
         "identity": {
+          "custom-label-tag": "whitelabel1",
           "platform-name": "Some",
           "sku-id": 8,
-          "smbios-name-match": "Some",
-          "whitelabel-tag": "whitelabel1"
+          "smbios-name-match": "Some"
         },
         "name": "whitelabel",
         "oem-id": "1",
@@ -668,10 +668,10 @@
           "is-lid-convertible": false
         },
         "identity": {
+          "custom-label-tag": "whitelabel1",
           "platform-name": "Some",
           "sku-id": 9,
-          "smbios-name-match": "Some",
-          "whitelabel-tag": "whitelabel1"
+          "smbios-name-match": "Some"
         },
         "name": "whitelabel",
         "oem-id": "1",
@@ -764,10 +764,10 @@
           "is-lid-convertible": false
         },
         "identity": {
+          "custom-label-tag": "whitelabel2",
           "platform-name": "Some",
           "sku-id": 8,
-          "smbios-name-match": "Some",
-          "whitelabel-tag": "whitelabel2"
+          "smbios-name-match": "Some"
         },
         "name": "whitelabel",
         "oem-id": "1",
@@ -860,10 +860,10 @@
           "is-lid-convertible": false
         },
         "identity": {
+          "custom-label-tag": "whitelabel2",
           "platform-name": "Some",
           "sku-id": 9,
-          "smbios-name-match": "Some",
-          "whitelabel-tag": "whitelabel2"
+          "smbios-name-match": "Some"
         },
         "name": "whitelabel",
         "oem-id": "1",

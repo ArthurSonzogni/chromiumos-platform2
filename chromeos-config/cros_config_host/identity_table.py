@@ -91,9 +91,9 @@ def WriteIdentityStruct(config, output_file):
     if 'customization-id' in identity_info:
       flags |= EntryFlags.HAS_CUSTOMIZATION_ID.value
       whitelabel_match = identity_info['customization-id']
-    elif 'whitelabel-tag' in identity_info:
+    elif 'custom-label-tag' in identity_info:
       flags |= EntryFlags.HAS_WHITELABEL.value
-      whitelabel_match = identity_info['whitelabel-tag']
+      whitelabel_match = identity_info['custom-label-tag']
 
     output_file.write(
         struct.pack(ENTRY_FORMAT,

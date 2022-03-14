@@ -38,7 +38,7 @@ def make_config(
     if customization_id is not None:
         identity["customization-id"] = customization_id
     if whitelabel_tag is not None:
-        identity["whitelabel-tag"] = whitelabel_tag
+        identity["custom-label-tag"] = whitelabel_tag
     return {
         "name": model_name,
         "identity": identity,
@@ -285,7 +285,7 @@ def test_trogdor(tmp_path, executable_path, config_idx):
     identity = cfg["identity"]
 
     vpd = {}
-    whitelabel_tag = identity.get("whitelabel-tag")
+    whitelabel_tag = identity.get("custom-label-tag")
     if whitelabel_tag:
         vpd["whitelabel_tag"] = whitelabel_tag
 
