@@ -3177,6 +3177,7 @@ bool Manager::RemovePasspointCredentials(const std::string& profile_rpcid,
   if (error)
     error->Reset();
 
+#if !defined(DISABLE_WIFI)
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kNotFound,
@@ -3195,6 +3196,11 @@ bool Manager::RemovePasspointCredentials(const std::string& profile_rpcid,
     return false;
   }
   return true;
+#else
+  Error::PopulateAndLog(FROM_HERE, error, Error::kNotImplemented,
+                        "Passpoint requires Wi-Fi support");
+  return false;
+#endif  // !DISABLE_WIFI
 }
 
 bool Manager::SetNetworkThrottlingStatus(const ResultCallback& callback,
