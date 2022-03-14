@@ -372,6 +372,7 @@ if (use.test) {
       "cryptorecovery/recovery_crypto_hsm_cbor_serialization_unittest.cc",
       "cryptorecovery/recovery_crypto_unittest.cc",
       "dircrypto_data_migrator/migration_helper_unittest.cc",
+      "error/cryptohome_error_test.cc",
       "fake_le_credential_backend.cc",
       "fido/make_credential_response_test.cc",
       "fingerprint_manager_unittest.cc",
