@@ -192,6 +192,7 @@ std::pair<uint32_t, uint32_t> GetAspectRatio(const Size& size) {
 //
 
 struct AutoFramingStreamManipulator::CaptureContext {
+  bool enable;
   std::vector<camera3_stream_buffer_t> client_buffers;
   base::Optional<CameraBufferPool::Buffer> full_frame_buffer;
   base::Optional<int64_t> timestamp;
@@ -292,6 +293,10 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
     CaptureResultCallback result_callback) {
   DCHECK(thread_.IsCurrentThread());
 
+  base::Optional<int32_t> partial_result_count =
+      GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
+  partial_result_count_ = partial_result_count.value_or(1);
+
   base::span<const int32_t> active_array_size = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE);
   DCHECK_EQ(active_array_size.size(), 4);
@@ -316,10 +321,6 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(thread_.IsCurrentThread());
 
-  if (!options_.enable) {
-    return true;
-  }
-
   ResetOnThread();
 
   if (VLOG_IS_ON(1)) {
@@ -334,8 +335,8 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
   std::vector<camera3_stream_t*> hal_streams;
   const camera3_stream_t* target_output_stream = nullptr;
   for (auto* s : client_streams_) {
+    hal_streams.push_back(s);
     if (IsStreamBypassed(s)) {
-      hal_streams.push_back(s);
       continue;
     }
     // Choose the output stream of the largest resolution for matching the crop
@@ -390,10 +391,6 @@ bool AutoFramingStreamManipulator::OnConfiguredStreamsOnThread(
     Camera3StreamConfiguration* stream_config) {
   DCHECK(thread_.IsCurrentThread());
 
-  if (!options_.enable) {
-    return true;
-  }
-
   if (VLOG_IS_ON(1)) {
     VLOGF(1) << "Configured streams from HAL:";
     for (auto* s : stream_config->GetStreams()) {
@@ -436,10 +433,6 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
     Camera3CaptureDescriptor* request) {
   DCHECK(thread_.IsCurrentThread());
 
-  if (!options_.enable) {
-    return true;
-  }
-
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number())
         << " Request stream buffers from client:";
@@ -451,6 +444,11 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
   CaptureContext* ctx = CreateCaptureContext(request->frame_number());
   if (!ctx) {
     return false;
+  }
+
+  ctx->enable = options_.enable;
+  if (!ctx->enable) {
+    return true;
   }
 
   // Separate buffers into |hal_buffers| that will be requested to the HAL, and
@@ -496,10 +494,6 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     Camera3CaptureDescriptor* result) {
   DCHECK(thread_.IsCurrentThread());
 
-  if (!options_.enable) {
-    return true;
-  }
-
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, result->frame_number()) << " Result stream buffers from HAL:";
     for (auto& b : result->GetOutputBuffers()) {
@@ -510,6 +504,12 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   CaptureContext* ctx = GetCaptureContext(result->frame_number());
   if (!ctx) {
     return false;
+  }
+  if (!ctx->enable) {
+    if (result->partial_result() == partial_result_count_) {
+      capture_contexts_.erase(result->frame_number());
+    }
+    return true;
   }
 
   if (!ctx->timestamp.has_value()) {

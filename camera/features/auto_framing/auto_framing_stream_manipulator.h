@@ -110,6 +110,8 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   Size active_array_dimension_;
   Size full_frame_size_;
 
+  int partial_result_count_ = 0;
+
   // Per-stream-config contexts.
   std::vector<camera3_stream_t*> client_streams_;
   camera3_stream_t full_frame_stream_ = {};
