@@ -814,7 +814,7 @@ void AutoFramingStreamManipulator::OnOptionsUpdated(
   thread_.PostTaskAsync(
       FROM_HERE,
       base::BindOnce(&AutoFramingStreamManipulator::UpdateOptionsOnThread,
-                     base::Unretained(this), std::cref(json_values)));
+                     base::Unretained(this), json_values.Clone()));
 }
 
 AutoFramingStreamManipulator::CaptureContext*
