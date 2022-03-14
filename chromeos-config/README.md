@@ -1052,7 +1052,7 @@ Identity matching is done by comparing properties which come from
 `/identity` to the corresponding values from firmware.  If properties
 are left unspecified in `/identity`, they will match any value from
 firmware, or even a missing value.  There is one exception, if there
-is a `whitelabel_tag` in VPD, the `whitelabel-tag` in `/identity`
+is a `custom_label_tag` in VPD, the `custom-label-tag` in `/identity`
 should be matched no matter is it a missing value or not.
 
 The first config with a matching identity is selected.
@@ -1067,7 +1067,11 @@ used to compare the values from firmware.  Strings are compared
 | `device-tree-compatible-match` | N/A                                     | `/proc/device-tree/compatible`               |
 | `sku-id`                       | `/sys/class/dmi/id/product_sku`         | `/proc/device-tree/firmware/coreboot/sku-id` |
 | `customization-id`             | `/sys/firmware/vpd/ro/customization_id` | `/sys/firmware/vpd/ro/customization_id`      |
-| `whitelabel-tag`               | `/sys/firmware/vpd/ro/whitelabel_tag`   | `/sys/firmware/vpd/ro/whitelabel_tag`        |
+| `custom-label-tag`             | `/sys/firmware/vpd/ro/custom_label_tag` | `/sys/firmware/vpd/ro/custom_label_tag`      |
+
+Note: Prior to 2022, the VPD key for `custom-label-tag` was called
+`whitelabel_tag`.  If `/sys/firmware/vpd/ro/custom_label_tag` does not
+exist, `/sys/firmware/vpd/ro/whitelabel_tag` is checked instead.
 
 #### File Parsing Notes
 
