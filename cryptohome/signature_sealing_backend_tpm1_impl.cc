@@ -17,8 +17,10 @@
 #include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
-#include <libhwsec/error/tpm1_error.h>
 #include <cryptohome/proto_bindings/key.pb.h>
+#include <libhwsec/error/tpm1_error.h>
+#include <libhwsec-foundation/crypto/rsa.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -27,8 +29,6 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
-#include "cryptohome/crypto/rsa.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/tpm1_static_utils.h"
 #include "cryptohome/tpm_impl.h"
@@ -43,6 +43,11 @@ using hwsec::TPM1Error;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
+using hwsec_foundation::FillRsaPrivateKeyFromSecretPrime;
+using hwsec_foundation::kWellKnownExponent;
+using hwsec_foundation::RsaOaepDecrypt;
+using hwsec_foundation::RsaOaepEncrypt;
+using hwsec_foundation::Sha1;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
 using trousers::ScopedTssContext;

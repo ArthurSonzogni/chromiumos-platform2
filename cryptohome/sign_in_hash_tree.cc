@@ -15,10 +15,13 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/hash_tree_leaf_data.pb.h"
+
+using ::hwsec_foundation::GetSecureRandom;
+using ::hwsec_foundation::Sha256;
 
 namespace cryptohome {
 

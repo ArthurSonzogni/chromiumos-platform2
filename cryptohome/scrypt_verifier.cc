@@ -6,9 +6,11 @@
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/scrypt.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "cryptohome/crypto/scrypt.h"
-#include "cryptohome/crypto/secure_blob_util.h"
+using ::hwsec_foundation::CreateSecureRandomBlob;
+using ::hwsec_foundation::Scrypt;
 
 namespace cryptohome {
 

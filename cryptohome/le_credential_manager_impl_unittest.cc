@@ -12,11 +12,13 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest_prod.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/tpm.h"
+
+using ::hwsec_foundation::GetSecureRandom;
 
 namespace {
 

@@ -4,7 +4,7 @@
 
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 
-#include "cryptohome/crypto/scrypt.h"
+#include <libhwsec-foundation/crypto/scrypt.h>
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.h"
@@ -18,13 +18,20 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/hmac.h"
-#include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/vault_keyset.pb.h"
+
+using ::hwsec_foundation::CreateSecureRandomBlob;
+using ::hwsec_foundation::DeriveSecretsScrypt;
+using ::hwsec_foundation::HmacSha256;
+using ::hwsec_foundation::kAesBlockSize;
+using ::hwsec_foundation::kDefaultAesKeySize;
+using ::hwsec_foundation::Sha256;
 
 namespace cryptohome {
 

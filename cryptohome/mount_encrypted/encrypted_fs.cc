@@ -23,9 +23,9 @@
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 #include "cryptohome/storage/encrypted_container/backing_device.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
@@ -219,8 +219,8 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
   std::string dmcrypt_name = std::string(kCryptDevName);
   if (rootdir != base::FilePath("/")) {
     brillo::SecureBlob digest =
-        cryptohome::Sha256(brillo::SecureBlob(rootdir.value()));
-    std::string hex = cryptohome::SecureBlobToHex(digest);
+        hwsec_foundation::Sha256(brillo::SecureBlob(rootdir.value()));
+    std::string hex = hwsec_foundation::SecureBlobToHex(digest);
     dmcrypt_name += "_" + hex.substr(0, 16);
   }
 

@@ -24,15 +24,17 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/platform.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
 using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
+using hwsec_foundation::SecureBlobToHex;
+using hwsec_foundation::Sha256;
 
 namespace cryptohome {
 namespace {

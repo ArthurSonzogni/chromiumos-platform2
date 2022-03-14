@@ -30,6 +30,18 @@ pkg_config("target_defaults") {
 
 shared_library("libhwsec-foundation") {
   sources = [
+    "crypto/aes.cc",
+    "crypto/big_num_util.cc",
+    "crypto/ecdh_hkdf.cc",
+    "crypto/elliptic_curve.cc",
+    "crypto/error_util.cc",
+    "crypto/hkdf.cc",
+    "crypto/hmac.cc",
+    "crypto/libscrypt_compat.cc",
+    "crypto/rsa.cc",
+    "crypto/scrypt.cc",
+    "crypto/secure_blob_util.cc",
+    "crypto/sha.cc",
     "da_reset/da_resetter.cc",
     "syscaller/syscaller_impl.cc",
     "tpm/tpm_version.cc",
@@ -70,6 +82,14 @@ if (use.test) {
 
   executable("hwsec-foundation_testrunner") {
     sources = [
+      "crypto/aes_test.cc",
+      "crypto/big_num_util_test.cc",
+      "crypto/ecdh_hkdf_test.cc",
+      "crypto/elliptic_curve_test.cc",
+      "crypto/error_util_test.cc",
+      "crypto/hkdf_test.cc",
+      "crypto/rsa_test.cc",
+      "crypto/scrypt_test.cc",
       "da_reset/da_resetter_test.cc",
       "status/impl/error_linkage.cc",
       "status/status_chain_test.cc",

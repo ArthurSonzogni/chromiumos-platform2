@@ -16,8 +16,8 @@
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
@@ -85,7 +85,7 @@ bool ReadHexFileToSecureBlobLogged(const FilePath& file_path,
 }
 
 bool WriteHexFileLogged(const FilePath& file_path, const SecureBlob& contents) {
-  if (base::WriteFile(file_path, cryptohome::SecureBlobToHex(contents)))
+  if (base::WriteFile(file_path, hwsec_foundation::SecureBlobToHex(contents)))
     return true;
   LOG(ERROR) << "Failed to write to file " << file_path.value() << ".";
   return false;

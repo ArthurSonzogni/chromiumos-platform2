@@ -8,8 +8,8 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 
@@ -17,6 +17,7 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
+using ::hwsec_foundation::Sha256;
 
 namespace cryptohome {
 

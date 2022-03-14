@@ -18,13 +18,13 @@
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"

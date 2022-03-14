@@ -25,6 +25,11 @@
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec/error/tpm2_error.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
+#include <libhwsec-foundation/crypto/rsa.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -41,12 +46,7 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
 
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/big_num_util.h"
-#include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/crypto/elliptic_curve_error.h"
-#include "cryptohome/crypto/rsa.h"
-#include "cryptohome/crypto/sha.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
@@ -57,6 +57,14 @@ using hwsec::TPM2Error;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
+using hwsec_foundation::CreateBigNumContext;
+using hwsec_foundation::EllipticCurve;
+using hwsec_foundation::ObscureRsaMessage;
+using hwsec_foundation::PasskeyToAesKey;
+using hwsec_foundation::ScopedBN_CTX;
+using hwsec_foundation::SecureBlobToBigNum;
+using hwsec_foundation::Sha256;
+using hwsec_foundation::UnobscureRsaMessage;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
 using trunks::GetErrorString;

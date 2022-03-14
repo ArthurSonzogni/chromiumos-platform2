@@ -12,13 +12,13 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/scrypt.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/hmac.h"
-#include "cryptohome/crypto/scrypt.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -28,6 +28,14 @@
 using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
+using hwsec_foundation::CreateSecureRandomBlob;
+using hwsec_foundation::DeriveSecretsScrypt;
+using hwsec_foundation::HmacSha256;
+using hwsec_foundation::kAesBlockSize;
+using hwsec_foundation::kDefaultAesKeySize;
+using hwsec_foundation::kDefaultLegacyPasswordRounds;
+using hwsec_foundation::kTpmDecryptMaxRetries;
+using hwsec_foundation::PasskeyToAesKey;
 
 namespace cryptohome {
 

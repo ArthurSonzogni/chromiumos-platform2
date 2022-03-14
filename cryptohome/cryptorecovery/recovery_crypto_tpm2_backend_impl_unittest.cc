@@ -9,6 +9,9 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <openssl/ec.h>
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <trunks/mock_authorization_delegate.h>
@@ -20,13 +23,13 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_for_test.h>
 
-#include "cryptohome/crypto/big_num_util.h"
-#include "cryptohome/crypto/elliptic_curve.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_tpm2_backend_impl.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/tpm2_impl.h"
 
+using hwsec_foundation::CreateBigNumContext;
+using hwsec_foundation::EllipticCurve;
+using hwsec_foundation::ScopedBN_CTX;
 using testing::_;
 using testing::DoAll;
 using testing::Exactly;

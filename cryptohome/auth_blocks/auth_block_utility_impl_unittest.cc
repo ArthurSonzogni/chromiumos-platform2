@@ -17,6 +17,7 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
@@ -32,7 +33,6 @@
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/fake_le_credential_backend.h"
 #include "cryptohome/filesystem_layout.h"
@@ -48,6 +48,7 @@
 #include "cryptohome/vault_keyset.h"
 
 using ::hwsec::TPMErrorBase;
+using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::ByMove;

@@ -15,6 +15,7 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
@@ -23,7 +24,6 @@
 #include <trousers/trousers.h>
 #include <trousers/tss.h>
 
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/fuzzers/blob_mutator.h"
 #include "cryptohome/signature_sealing_backend_tpm1_impl.h"
 
@@ -32,6 +32,7 @@ using brillo::BlobFromString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using crypto::ScopedRSA;
+using hwsec_foundation::Sha1;
 
 namespace {
 
@@ -209,7 +210,7 @@ Blob FuzzedOaepMgf1Encode(const Blob& message,
   const Blob zeroes_padding(encoded_message_length - message_length -
                             2 * SHA_DIGEST_LENGTH - 1);
   // Step #4. Generate "pHash".
-  const Blob oaep_label_digest = cryptohome::Sha1(oaep_label);
+  const Blob oaep_label_digest = Sha1(oaep_label);
   // Step #5. Generate "DB".
   const Blob padded_message =
       CombineBlobs({oaep_label_digest, zeroes_padding, Blob(1, 1),
@@ -269,7 +270,7 @@ void PrepareMutatedArguments(const RSA& cmk_rsa,
   *cmk_pubkey = BuildRsaTpmPubkeyBlob(cmk_rsa);
 
   // Build the |cmk_pubkey_digest| parameter.
-  const Blob cmk_pubkey_digest = cryptohome::Sha1(*cmk_pubkey);
+  const Blob cmk_pubkey_digest = Sha1(*cmk_pubkey);
   *fuzzed_cmk_pubkey_digest = MutateBlob(
       cmk_pubkey_digest, /*min_length=*/0,
       /*max_length=*/cmk_pubkey_digest.size() + kFuzzingExtraSizeDelta,

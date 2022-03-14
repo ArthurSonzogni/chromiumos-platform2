@@ -10,11 +10,15 @@
 
 #include <base/logging.h>
 #include <base/stl_util.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/ecdh_hkdf.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
 
-#include "cryptohome/crypto/big_num_util.h"
-#include "cryptohome/crypto/ecdh_hkdf.h"
-#include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+
+using ::hwsec_foundation::EllipticCurve;
+using ::hwsec_foundation::Hkdf;
+using ::hwsec_foundation::HkdfHash;
 
 namespace cryptohome {
 namespace cryptorecovery {

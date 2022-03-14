@@ -20,6 +20,8 @@
 #include <brillo/cryptohome.h>
 #include <chaps/token_manager_client_mock.h>
 #include <dbus/mock_bus.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <metrics/metrics_library_mock.h>
@@ -32,8 +34,6 @@
 #include "cryptohome/cleanup/mock_low_disk_space_handler.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials_test_util.h"
-#include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
@@ -70,6 +70,8 @@ using ::hwsec::StatusChain;
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec::TPMRetryAction;
+using ::hwsec_foundation::CreateSecureRandomBlob;
+using ::hwsec_foundation::Sha1;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::AtLeast;

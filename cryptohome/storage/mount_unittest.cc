@@ -33,10 +33,10 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <policy/libpolicy.h>
 
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
@@ -60,6 +60,8 @@ namespace cryptohome {
 
 using base::FilePath;
 using brillo::SecureBlob;
+using hwsec_foundation::SecureBlobToHex;
+
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Eq;

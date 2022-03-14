@@ -19,6 +19,11 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <crypto/sha2.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/libscrypt_compat.h>
+#include <libhwsec-foundation/crypto/scrypt.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/rand.h>
@@ -26,17 +31,12 @@
 #include <openssl/sha.h>
 
 #include "cryptohome/attestation.pb.h"
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/hmac.h"
-#include "cryptohome/crypto/scrypt.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
-#include "cryptohome/libscrypt_compat.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -44,6 +44,9 @@ using base::FilePath;
 using brillo::SecureBlob;
 using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
+using hwsec_foundation::HmacSha256;
+using hwsec_foundation::SecureBlobToHex;
+using hwsec_foundation::SecureBlobToHexToBuffer;
 
 namespace cryptohome {
 

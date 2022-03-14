@@ -9,10 +9,10 @@
 
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 
-#include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 
 namespace cryptohome {
@@ -36,7 +36,7 @@ class RecoveryCryptoFakeTpmBackendImpl final : public RecoveryCryptoTpmBackend {
   // not be used as it's to seal the private key on TPM1 modules when ECC
   // operations are not supported.
   bool EncryptEccPrivateKey(
-      const EllipticCurve& ec,
+      const hwsec_foundation::EllipticCurve& ec,
       const crypto::ScopedEC_KEY& own_key_pair,
       const std::optional<brillo::SecureBlob>& /*auth_value*/,
       brillo::SecureBlob* encrypted_own_priv_key) override;
@@ -44,7 +44,7 @@ class RecoveryCryptoFakeTpmBackendImpl final : public RecoveryCryptoTpmBackend {
   // supplied point in software. auth_value will not be used as it's to seal
   // the private key on TPM1 modules when ECC operations are not supported.
   crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
-      const EllipticCurve& ec,
+      const hwsec_foundation::EllipticCurve& ec,
       const brillo::SecureBlob& encrypted_own_priv_key,
       const std::optional<brillo::SecureBlob>& /*auth_value*/,
       const EC_POINT& others_pub_point) override;

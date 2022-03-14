@@ -6,10 +6,11 @@
 
 #include <brillo/cryptohome.h>
 
-#include "cryptohome/crypto/secure_blob_util.h"
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include "cryptohome/cryptohome_common.h"
 
 using brillo::SecureBlob;
+using hwsec_foundation::CreateSecureRandomBlob;
 
 namespace cryptohome {
 

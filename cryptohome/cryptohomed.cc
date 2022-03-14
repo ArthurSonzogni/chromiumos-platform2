@@ -16,10 +16,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec-foundation/crypto/scrypt.h>
 #include <openssl/evp.h>
 
 #include "cryptohome/cleanup/disk_cleanup.h"
-#include "cryptohome/crypto/scrypt.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/userdataauth.h"
@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
   cryptohome::InitializeMetrics();
 
   // Make sure scrypt parameters are correct.
-  cryptohome::AssertProductionScryptParams();
+  hwsec_foundation::AssertProductionScryptParams();
 
   // Note that there's an AtExitManager in the constructor of
   // UserDataAuthDaemon

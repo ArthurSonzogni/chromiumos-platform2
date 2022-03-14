@@ -8,11 +8,11 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <inttypes.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
 #include <string>
 
-#include "cryptohome/crypto/sha.h"
 
 #if USE_TPM2
 #include "cryptohome/tpm2_impl.h"
@@ -23,6 +23,8 @@
 #endif
 
 #include "cryptohome/stub_tpm.h"
+
+using ::hwsec_foundation::Sha256;
 
 namespace cryptohome {
 

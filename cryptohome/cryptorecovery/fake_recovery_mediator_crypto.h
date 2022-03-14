@@ -8,8 +8,8 @@
 #include <memory>
 
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
 
-#include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
@@ -71,7 +71,7 @@ class FakeRecoveryMediatorCrypto {
 
  private:
   // Constructor is private. Use Create method to instantiate.
-  explicit FakeRecoveryMediatorCrypto(EllipticCurve ec);
+  explicit FakeRecoveryMediatorCrypto(hwsec_foundation::EllipticCurve ec);
 
   // Receives `hsm_payload`, performs mediation and generates response payload.
   // This function consist of the following steps:
@@ -112,7 +112,7 @@ class FakeRecoveryMediatorCrypto {
   bool DecryptRequestPayloadPlainText(const brillo::SecureBlob& epoch_priv_key,
                                       const RequestPayload& request_payload,
                                       brillo::SecureBlob* plain_text) const;
-  EllipticCurve ec_;
+  hwsec_foundation::EllipticCurve ec_;
 };
 
 }  // namespace cryptorecovery

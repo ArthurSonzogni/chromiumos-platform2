@@ -15,16 +15,27 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/ecdh_hkdf.h>
+#include <libhwsec-foundation/crypto/error_util.h>
+#include <libhwsec-foundation/crypto/rsa.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <openssl/ec.h>
 
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/big_num_util.h"
-#include "cryptohome/crypto/ecdh_hkdf.h"
-#include "cryptohome/crypto/error_util.h"
-#include "cryptohome/crypto/rsa.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
+
+using ::hwsec_foundation::AesGcmDecrypt;
+using ::hwsec_foundation::AesGcmEncrypt;
+using ::hwsec_foundation::BigNumToSecureBlob;
+using ::hwsec_foundation::CreateBigNum;
+using ::hwsec_foundation::CreateBigNumContext;
+using ::hwsec_foundation::CreateSecureRandomBlob;
+using ::hwsec_foundation::EllipticCurve;
+using ::hwsec_foundation::HkdfHash;
+using ::hwsec_foundation::kAesGcm256KeySize;
+using ::hwsec_foundation::ScopedBN_CTX;
 
 namespace cryptohome {
 namespace cryptorecovery {

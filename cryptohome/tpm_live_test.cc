@@ -22,6 +22,8 @@
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 #include <libhwsec/error/error.h>
+#include <libhwsec-foundation/crypto/rsa.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
@@ -29,8 +31,6 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "cryptohome/crypto/rsa.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/signature_sealing_backend.h"
 
 #if USE_TPM1
@@ -47,6 +47,8 @@ using brillo::BlobToString;
 using brillo::SecureBlob;
 using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
+using hwsec_foundation::CreateRsaKey;
+using hwsec_foundation::Sha256;
 
 namespace cryptohome {
 

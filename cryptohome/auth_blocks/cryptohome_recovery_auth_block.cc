@@ -11,12 +11,12 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/hkdf.h>
+#include <libhwsec-foundation/crypto/scrypt.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/hkdf.h"
-#include "cryptohome/crypto/scrypt.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
@@ -28,6 +28,10 @@ using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
 using cryptohome::cryptorecovery::OnboardingMetadata;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
+using hwsec_foundation::CreateSecureRandomBlob;
+using hwsec_foundation::DeriveSecretsScrypt;
+using hwsec_foundation::kAesBlockSize;
+using hwsec_foundation::kDefaultAesKeySize;
 
 namespace cryptohome {
 namespace {

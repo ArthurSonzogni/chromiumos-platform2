@@ -12,8 +12,9 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/fido.pb.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/crypto/sha.h"
+using ::hwsec_foundation::Sha256ToSecureBlob;
 
 namespace cryptohome {
 

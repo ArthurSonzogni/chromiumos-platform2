@@ -11,22 +11,29 @@
 #include <base/notreached.h>
 #include <base/system/sys_info.h>
 #include <brillo/secure_blob.h>
-#include <stdint.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include <map>
 #include <memory>
 #include <optional>
+#include <stdint.h>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/file_system_keyset.h"
+
+using ::hwsec_foundation::AesGcmDecrypt;
+using ::hwsec_foundation::AesGcmEncrypt;
+using ::hwsec_foundation::CreateSecureRandomBlob;
+using ::hwsec_foundation::kAesGcm256KeySize;
+using ::hwsec_foundation::kAesGcmIVSize;
+using ::hwsec_foundation::kAesGcmTagSize;
 
 namespace cryptohome {
 

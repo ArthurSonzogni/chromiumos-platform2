@@ -19,6 +19,7 @@
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/aes.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
@@ -26,7 +27,6 @@
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
-#include "cryptohome/crypto/aes.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/key_objects.h"

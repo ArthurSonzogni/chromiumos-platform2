@@ -5,9 +5,11 @@
 #include <optional>
 #include <utility>
 
-#include "cryptohome/crypto/big_num_util.h"
-#include "cryptohome/crypto/elliptic_curve.h"
-#include "cryptohome/crypto/secure_blob_util.h"
+#include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
@@ -15,9 +17,11 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
-#include <gtest/gtest.h>
-
 using brillo::SecureBlob;
+using hwsec_foundation::BigNumToSecureBlob;
+using hwsec_foundation::CreateBigNumContext;
+using hwsec_foundation::EllipticCurve;
+using hwsec_foundation::ScopedBN_CTX;
 
 namespace cryptohome {
 namespace cryptorecovery {

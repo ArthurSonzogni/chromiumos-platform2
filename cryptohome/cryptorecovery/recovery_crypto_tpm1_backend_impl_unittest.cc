@@ -9,16 +9,20 @@
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/ec.h>
 
-#include "cryptohome/crypto/big_num_util.h"
-#include "cryptohome/crypto/elliptic_curve.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_tpm1_backend_impl.h"
 #include "cryptohome/mock_tpm.h"
 #include "cryptohome/tpm_impl.h"
 
+using hwsec_foundation::BigNumToSecureBlob;
+using hwsec_foundation::CreateBigNumContext;
+using hwsec_foundation::EllipticCurve;
+using hwsec_foundation::ScopedBN_CTX;
 using hwsec_foundation::error::testing::ReturnError;
 using testing::_;
 using testing::DoAll;

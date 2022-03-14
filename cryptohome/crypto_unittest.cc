@@ -17,14 +17,14 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <vector>
 
 #include "cryptohome/attestation.pb.h"
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/hmac.h"
-#include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -34,13 +34,17 @@
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/vault_keyset.h"
 
-using base::FilePath;
-using brillo::Blob;
-using brillo::SecureBlob;
+using ::base::FilePath;
+using ::brillo::Blob;
+using ::brillo::SecureBlob;
 using ::hwsec::StatusChain;
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec::TPMRetryAction;
+using ::hwsec_foundation::GetSecureRandom;
+using ::hwsec_foundation::SecureBlobToHexToBuffer;
+using ::hwsec_foundation::Sha1;
+using ::hwsec_foundation::Sha256;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::AtLeast;
@@ -415,33 +419,6 @@ TEST_F(CryptoTest, GetSha256FipsTest) {
     std::string expected = vectors.output(i)->to_string();
     EXPECT_EQ(expected, computed);
   }
-}
-
-TEST_F(CryptoTest, ComputeEncryptedDataHmac) {
-  MockPlatform platform;
-  Crypto crypto(&platform);
-  EncryptedData pb;
-  std::string data = "iamsoawesome";
-  std::string iv = "123456";
-  pb.set_encrypted_data(data.data(), data.size());
-  pb.set_iv(iv.data(), iv.size());
-
-  // Create hash key.
-  SecureBlob hmac_key(32);
-  GetSecureRandom(hmac_key.data(), hmac_key.size());
-
-  // Perturb iv and data slightly. Verify hashes are all different.
-  std::string hmac1 = ComputeEncryptedDataHmac(pb, hmac_key);
-  data = "iamsoawesomf";
-  pb.set_encrypted_data(data.data(), data.size());
-  std::string hmac2 = ComputeEncryptedDataHmac(pb, hmac_key);
-  iv = "123457";
-  pb.set_iv(iv.data(), iv.size());
-  std::string hmac3 = ComputeEncryptedDataHmac(pb, hmac_key);
-
-  EXPECT_NE(hmac1, hmac2);
-  EXPECT_NE(hmac2, hmac3);
-  EXPECT_NE(hmac1, hmac3);
 }
 
 }  // namespace cryptohome

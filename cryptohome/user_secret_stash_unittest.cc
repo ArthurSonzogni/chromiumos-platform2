@@ -7,6 +7,7 @@
 #include <base/test/scoped_chromeos_version_info.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/aes.h>
 
 #include <algorithm>
 #include <limits>
@@ -15,12 +16,15 @@
 #include <type_traits>
 #include <utility>
 
-#include "cryptohome/crypto/aes.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/file_system_keyset_test_utils.h"
+
+using ::hwsec_foundation::AesGcmDecrypt;
+using ::hwsec_foundation::AesGcmEncrypt;
+using ::hwsec_foundation::kAesGcm256KeySize;
 
 namespace cryptohome {
 

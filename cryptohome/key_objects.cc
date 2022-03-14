@@ -10,8 +10,10 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/hkdf.h>
 
-#include "cryptohome/crypto/hkdf.h"
+using ::hwsec_foundation::Hkdf;
+using ::hwsec_foundation::HkdfHash;
 
 namespace cryptohome {
 

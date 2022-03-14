@@ -11,12 +11,14 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_factor/auth_factor_label.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
+
+using ::hwsec_foundation::CreateSecureRandomBlob;
 
 namespace cryptohome {
 

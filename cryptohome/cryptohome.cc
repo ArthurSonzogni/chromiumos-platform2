@@ -41,13 +41,13 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "cryptohome/attestation.pb.h"
 #include "cryptohome/common/print_UserDataAuth_proto.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/pkcs11_init.h"
 #include "cryptohome/platform.h"
@@ -62,6 +62,8 @@ using base::FilePath;
 using base::StringPrintf;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserNameWithSalt;
+using hwsec_foundation::BlobToHex;
+using hwsec_foundation::SecureBlobToHex;
 using user_data_auth::GetProtoDebugString;
 
 namespace {
@@ -1252,32 +1254,32 @@ int main(int argc, char** argv) {
     SecureBlob blob(serialized.salt().length());
     serialized.salt().copy(blob.char_data(), serialized.salt().length(), 0);
     printf("  Salt:\n");
-    printf("    %s\n", cryptohome::SecureBlobToHex(blob).c_str());
+    printf("    %s\n", SecureBlobToHex(blob).c_str());
     blob.resize(serialized.wrapped_keyset().length());
     serialized.wrapped_keyset().copy(blob.char_data(),
                                      serialized.wrapped_keyset().length(), 0);
     printf("  Wrapped (Encrypted) Keyset:\n");
-    printf("    %s\n", cryptohome::SecureBlobToHex(blob).c_str());
+    printf("    %s\n", SecureBlobToHex(blob).c_str());
     if (serialized.has_tpm_key()) {
       blob.resize(serialized.tpm_key().length());
       serialized.tpm_key().copy(blob.char_data(), serialized.tpm_key().length(),
                                 0);
       printf("  TPM-Bound (Encrypted) Vault Encryption Key:\n");
-      printf("    %s\n", cryptohome::SecureBlobToHex(blob).c_str());
+      printf("    %s\n", SecureBlobToHex(blob).c_str());
     }
     if (serialized.has_extended_tpm_key()) {
       blob.resize(serialized.extended_tpm_key().length());
       serialized.extended_tpm_key().copy(
           blob.char_data(), serialized.extended_tpm_key().length(), 0);
       printf("  TPM-Bound (Encrypted) Vault Encryption Key, PCR extended:\n");
-      printf("    %s\n", cryptohome::SecureBlobToHex(blob).c_str());
+      printf("    %s\n", SecureBlobToHex(blob).c_str());
     }
     if (serialized.has_tpm_public_key_hash()) {
       blob.resize(serialized.tpm_public_key_hash().length());
       serialized.tpm_public_key_hash().copy(blob.char_data(),
                                             serialized.tpm_key().length(), 0);
       printf("  TPM Public Key Hash:\n");
-      printf("    %s\n", cryptohome::SecureBlobToHex(blob).c_str());
+      printf("    %s\n", SecureBlobToHex(blob).c_str());
     }
     if (serialized.has_password_rounds()) {
       printf("  Password rounds:\n");
@@ -2440,7 +2442,7 @@ int main(int argc, char** argv) {
     printf("flags=0x%08x\n", reply.fwmp().flags());
     brillo::Blob hash =
         brillo::BlobFromString(reply.fwmp().developer_key_hash());
-    printf("hash=%s\n", cryptohome::BlobToHex(hash).c_str());
+    printf("hash=%s\n", BlobToHex(hash).c_str());
     printf("GetFirmwareManagementParameters success.\n");
   } else if (!strcmp(switches::kActions
                          [switches::ACTION_SET_FIRMWARE_MANAGEMENT_PARAMETERS],

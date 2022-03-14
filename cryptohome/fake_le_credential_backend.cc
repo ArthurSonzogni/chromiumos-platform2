@@ -8,9 +8,12 @@
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/fake_le_credential_metadata.pb.h"
+
+using ::hwsec_foundation::Sha256;
+using ::hwsec_foundation::Sha256ToSecureBlob;
 
 namespace cryptohome {
 

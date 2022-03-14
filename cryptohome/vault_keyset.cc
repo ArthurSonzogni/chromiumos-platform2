@@ -19,6 +19,11 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/libscrypt_compat.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
@@ -29,16 +34,11 @@
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/hmac.h"
-#include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager.h"
-#include "cryptohome/libscrypt_compat.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -47,6 +47,14 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
+using hwsec_foundation::AesDecryptDeprecated;
+using hwsec_foundation::AesEncryptDeprecated;
+using hwsec_foundation::CreateSecureRandomBlob;
+using hwsec_foundation::HmacSha256;
+using hwsec_foundation::kAesBlockSize;
+using hwsec_foundation::kDefaultScryptParams;
+using hwsec_foundation::LibScryptCompat;
+using hwsec_foundation::Sha1;
 
 namespace {
 const mode_t kVaultFilePermissions = 0600;

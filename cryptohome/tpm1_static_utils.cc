@@ -10,13 +10,13 @@
 #include <base/memory/free_deleter.h>
 #include <base/strings/stringprintf.h>
 #include <crypto/libcrypto-compat.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <trousers/trousers.h>
 
-#include "cryptohome/crypto/rsa.h"
-
 using brillo::Blob;
+using hwsec_foundation::kWellKnownExponent;
 
 using ScopedByteArray = std::unique_ptr<BYTE, base::FreeDeleter>;
 

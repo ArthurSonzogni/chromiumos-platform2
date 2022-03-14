@@ -30,8 +30,8 @@
 #include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/dircrypto_data_migrator/migration_helper.h"
@@ -54,6 +54,7 @@ using brillo::cryptohome::home::IsSanitizedUserName;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::dircrypto_data_migrator::MigrationHelper;
+using hwsec_foundation::SecureBlobToHex;
 
 namespace {
 constexpr bool __attribute__((unused)) MountUserSessionOOP() {

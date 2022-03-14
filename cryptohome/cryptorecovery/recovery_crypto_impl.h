@@ -8,8 +8,8 @@
 #include <memory>
 
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
 
-#include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
@@ -60,7 +60,8 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
       HsmResponsePlainText* response_plain_text) const override;
 
  private:
-  RecoveryCryptoImpl(EllipticCurve ec, RecoveryCryptoTpmBackend* tpm_backend);
+  RecoveryCryptoImpl(hwsec_foundation::EllipticCurve ec,
+                     RecoveryCryptoTpmBackend* tpm_backend);
   // Encrypts mediator share and stores as `encrypted_ms` with
   // embedded ephemeral public key, AES-GCM tag and iv. Returns false if error
   // occurred.
@@ -81,7 +82,7 @@ class RecoveryCryptoImpl : public RecoveryCrypto {
                                  brillo::SecureBlob* publisher_priv_key,
                                  brillo::SecureBlob* publisher_pub_key) const;
 
-  EllipticCurve ec_;
+  hwsec_foundation::EllipticCurve ec_;
   RecoveryCryptoTpmBackend* const tpm_backend_;
 };
 

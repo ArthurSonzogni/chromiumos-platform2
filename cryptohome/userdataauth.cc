@@ -26,6 +26,8 @@
 #include <chaps/token_manager_client.h>
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -38,8 +40,6 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
-#include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptohome_rsa_key_loader.h"
@@ -65,6 +65,7 @@ using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserName;
 using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
+using hwsec_foundation::Sha1;
 
 namespace cryptohome {
 

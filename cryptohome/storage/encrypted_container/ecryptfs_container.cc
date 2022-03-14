@@ -6,8 +6,8 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/keyring/keyring.h"

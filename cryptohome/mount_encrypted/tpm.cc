@@ -17,12 +17,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
-
+#include <libhwsec-foundation/crypto/rsa.h>
+#include <openssl/rand.h>
 #include <vboot/tlcl.h>
 
-#include <openssl/rand.h>
-
-#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/mount_encrypted/mount_encrypted.h"
 
 namespace mount_encrypted {
@@ -523,7 +521,8 @@ result_code Tpm::TakeOwnership() {
   // Encrypt the well-known owner secret under the EK.
   brillo::SecureBlob owner_auth(kOwnerSecret, kOwnerSecret + kOwnerSecretSize);
   brillo::SecureBlob enc_auth;
-  if (!cryptohome::TpmCompatibleOAEPEncrypt(rsa.get(), owner_auth, &enc_auth)) {
+  if (!hwsec_foundation::TpmCompatibleOAEPEncrypt(rsa.get(), owner_auth,
+                                                  &enc_auth)) {
     LOG(ERROR) << "Failed to encrypt owner secret.";
     return RESULT_FAIL_FATAL;
   }

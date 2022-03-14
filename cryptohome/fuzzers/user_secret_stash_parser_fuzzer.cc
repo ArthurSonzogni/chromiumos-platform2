@@ -13,9 +13,9 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <libhwsec-foundation/crypto/aes.h>
 #include <openssl/err.h>
 
-#include "cryptohome/crypto/aes.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
@@ -28,6 +28,8 @@ using brillo::SecureBlob;
 using cryptohome::UserSecretStash;
 using cryptohome::UserSecretStashContainer;
 using cryptohome::UserSecretStashPayload;
+using hwsec_foundation::AesGcmEncrypt;
+using hwsec_foundation::kAesGcm256KeySize;
 
 namespace {
 
@@ -77,14 +79,14 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
   // Pick up a "random" AES-GCM USS main key. Note that `AesGcmEncrypt()`
   // requires the key to be of exact size.
   Blob uss_main_key = fuzzed_data_provider->ConsumeBytes<uint8_t>(
-      cryptohome::kAesGcm256KeySize);
-  uss_main_key.resize(cryptohome::kAesGcm256KeySize);
+      hwsec_foundation::kAesGcm256KeySize);
+  uss_main_key.resize(hwsec_foundation::kAesGcm256KeySize);
 
   // Encrypt the mutated USS payload flatbuffer.
   SecureBlob iv, tag, ciphertext;
-  CHECK(cryptohome::AesGcmEncrypt(SecureBlob(mutated_uss_payload),
-                                  /*ad=*/std::nullopt, SecureBlob(uss_main_key),
-                                  &iv, &tag, &ciphertext));
+  CHECK(hwsec_foundation::AesGcmEncrypt(
+      SecureBlob(mutated_uss_payload),
+      /*ad=*/std::nullopt, SecureBlob(uss_main_key), &iv, &tag, &ciphertext));
 
   // Create USS container from mutated fields.
   UserSecretStashContainer uss_container_struct;
@@ -111,9 +113,10 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
                             /*max_length=*/1000, fuzzed_data_provider));
 
   // Mutate the USS main key.
-  *mutated_uss_main_key = SecureBlob(MutateBlob(
-      uss_main_key, /*min_length=*/0,
-      /*max_length=*/cryptohome::kAesGcm256KeySize, fuzzed_data_provider));
+  *mutated_uss_main_key =
+      SecureBlob(MutateBlob(uss_main_key, /*min_length=*/0,
+                            /*max_length=*/hwsec_foundation::kAesGcm256KeySize,
+                            fuzzed_data_provider));
 }
 
 void AssertStashesEqual(const UserSecretStash& first,

@@ -31,9 +31,13 @@
 #include <base/values.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
-#include <libhwsec/overalls/overalls_api.h>
 #include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec/error/tpm1_error.h>
+#include <libhwsec/overalls/overalls_api.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/rsa.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -43,10 +47,6 @@
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/rsa.h"
-#include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/tpm1_static_utils.h"
 #include "cryptohome/tpm_metrics.h"
@@ -65,6 +65,14 @@ using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec::overalls::GetOveralls;
+using hwsec_foundation::CreateSecureRandomBlob;
+using hwsec_foundation::ObscureRsaMessage;
+using hwsec_foundation::PasskeyToAesKey;
+using hwsec_foundation::Sha1;
+using hwsec_foundation::Sha1ToSecureBlob;
+using hwsec_foundation::Sha256;
+using hwsec_foundation::TestRocaVulnerable;
+using hwsec_foundation::UnobscureRsaMessage;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
 using trousers::ScopedTssContext;

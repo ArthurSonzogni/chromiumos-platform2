@@ -4,9 +4,10 @@
 
 #include "cryptohome/cryptohome_rsa_key_loader.h"
 
-#include "cryptohome/crypto/rsa.h"
-
 #include <base/logging.h>
+#include <libhwsec-foundation/crypto/rsa.h>
+
+using ::hwsec_foundation::CreateRsaKey;
 
 namespace cryptohome {
 

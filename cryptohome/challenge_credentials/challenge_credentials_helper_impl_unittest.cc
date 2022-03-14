@@ -14,14 +14,14 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <brillo/secure_blob.h>
-#include <libhwsec-foundation/error/testing_helper.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper_impl.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_test_utils.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_signature_sealing_backend.h"
 #include "cryptohome/mock_tpm.h"
@@ -33,11 +33,12 @@ using brillo::Blob;
 using brillo::BlobToString;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
-using ::hwsec::StatusChain;
-using ::hwsec::TPMError;
-using ::hwsec::TPMErrorBase;
-using ::hwsec::TPMRetryAction;
-using ::hwsec_foundation::error::testing::ReturnError;
+using hwsec::StatusChain;
+using hwsec::TPMError;
+using hwsec::TPMErrorBase;
+using hwsec::TPMRetryAction;
+using hwsec_foundation::Sha256;
+using hwsec_foundation::error::testing::ReturnError;
 using testing::_;
 using testing::AnyNumber;
 using testing::DoAll;

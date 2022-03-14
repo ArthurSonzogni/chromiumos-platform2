@@ -29,6 +29,7 @@
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
@@ -48,7 +49,6 @@
 #include <trunks/trunks_factory_for_test.h>
 
 #include "cryptohome/crypto/elliptic_curve_error.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/protobuf_test_utils.h"
 
 using brillo::Blob;
@@ -58,6 +58,8 @@ using brillo::SecureBlob;
 using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
+using hwsec_foundation::Sha256;
+using hwsec_foundation::Sha256ToSecureBlob;
 using testing::_;
 using testing::DoAll;
 using testing::ElementsAreArray;

@@ -9,10 +9,15 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec-foundation/crypto/big_num_util.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 
-#include "cryptohome/crypto/big_num_util.h"
+using ::hwsec_foundation::BigNumToSecureBlob;
+using ::hwsec_foundation::CreateBigNumContext;
+using ::hwsec_foundation::EllipticCurve;
+using ::hwsec_foundation::ScopedBN_CTX;
+using ::hwsec_foundation::SecureBlobToBigNum;
 
 namespace cryptohome {
 namespace cryptorecovery {

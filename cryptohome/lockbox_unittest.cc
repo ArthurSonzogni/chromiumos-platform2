@@ -12,20 +12,22 @@
 #include <brillo/process/process_mock.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/crypto/secure_blob_util.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/mock_lockbox.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 
 namespace cryptohome {
-using brillo::SecureBlob;
+using ::brillo::SecureBlob;
 using ::hwsec::StatusChain;
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec::TPMRetryAction;
+using ::hwsec_foundation::SecureBlobToHex;
+using ::hwsec_foundation::Sha256;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::testing::_;
 using ::testing::DoAll;

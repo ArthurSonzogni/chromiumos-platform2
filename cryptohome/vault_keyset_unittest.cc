@@ -19,6 +19,9 @@
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_state.h"
@@ -26,9 +29,6 @@
 #include "cryptohome/auth_blocks/libscrypt_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto/aes.h"
-#include "cryptohome/crypto/hmac.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -40,6 +40,11 @@
 namespace cryptohome {
 using base::FilePath;
 using brillo::SecureBlob;
+using hwsec_foundation::CreateSecureRandomBlob;
+using hwsec_foundation::GetSecureRandom;
+using hwsec_foundation::HmacSha256;
+using hwsec_foundation::kAesBlockSize;
+using hwsec_foundation::SecureBlobToHex;
 
 using ::testing::_;
 using ::testing::DoAll;

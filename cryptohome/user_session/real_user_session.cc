@@ -12,14 +12,13 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/values.h>
-
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
+#include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/sha.h>
 
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
-#include "cryptohome/crypto/hmac.h"
-#include "cryptohome/crypto/sha.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
@@ -29,6 +28,8 @@
 
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
+using hwsec_foundation::HmacSha256;
+using hwsec_foundation::Sha256;
 
 namespace cryptohome {
 

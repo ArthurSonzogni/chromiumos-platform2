@@ -9,15 +9,16 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
 #include <trousers/tss.h>
 #include <trousers/trousers.h>  // NOLINT(build/include_alpha) - needs tss.h
 
-#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/tpm1_static_utils.h"
 
 using brillo::Blob;
+using hwsec_foundation::kWellKnownExponent;
 
 namespace cryptohome {
 

@@ -356,14 +356,6 @@ if (use.test) {
       "crc32_unittest.cc",
       "credential_verifier_unittest.cc",
       "credentials_unittest.cc",
-      "crypto/aes_unittest.cc",
-      "crypto/big_num_util_unittest.cc",
-      "crypto/ecdh_hkdf_unittest.cc",
-      "crypto/elliptic_curve_unittest.cc",
-      "crypto/error_util_unittest.cc",
-      "crypto/hkdf_unittest.cc",
-      "crypto/rsa_unittest.cc",
-      "crypto/scrypt_unittest.cc",
       "crypto_unittest.cc",
       "cryptohome_ecc_key_loader_unittest.cc",
       "cryptohome_keys_manager_unittest.cc",
@@ -599,6 +591,7 @@ if (use.fuzzer) {
       "fuzzers/blob_mutator.cc",
       "fuzzers/cryptolib_rsa_oaep_decrypt_fuzzer.cc",
     ]
+    libs = [ "hwsec-foundation" ]
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [ "libs:libcrosplatform" ]
     pkg_deps = [ "libchrome-test" ]
@@ -609,7 +602,10 @@ if (use.fuzzer) {
       "fuzzers/blob_mutator.cc",
       "fuzzers/tpm1_cmk_migration_parser_fuzzer.cc",
     ]
-    libs = [ "hwsec" ]
+    libs = [
+      "hwsec",
+      "hwsec-foundation",
+    ]
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [
       "libs:libcrosplatform",
@@ -633,6 +629,7 @@ if (use.fuzzer) {
 
   executable("cryptohome_cryptolib_blob_to_hex_fuzzer") {
     sources = [ "fuzzers/cryptolib_blob_to_hex_fuzzer.cc" ]
+    libs = [ "hwsec-foundation" ]
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [ "libs:libcrosplatform" ]
   }
@@ -642,6 +639,7 @@ if (use.fuzzer) {
       "fuzzers/blob_mutator.cc",
       "fuzzers/user_secret_stash_parser_fuzzer.cc",
     ]
+    libs = [ "hwsec-foundation" ]
     configs += [ "//common-mk/common_fuzzer" ]
     deps = [
       "libs:libcrosplatform",

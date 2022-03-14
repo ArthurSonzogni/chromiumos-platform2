@@ -15,13 +15,19 @@
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 
-#include "cryptohome/crypto/big_num_util.h"
+#include <libhwsec-foundation/crypto/big_num_util.h>
 #include "cryptohome/tpm2_impl.h"
 #include "trunks/error_codes.h"
 #include "trunks/openssl_utility.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_factory.h"
+
+using ::hwsec_foundation::BigNumToSecureBlob;
+using ::hwsec_foundation::CreateBigNum;
+using ::hwsec_foundation::CreateBigNumContext;
+using ::hwsec_foundation::EllipticCurve;
+using ::hwsec_foundation::ScopedBN_CTX;
 
 namespace cryptohome {
 namespace cryptorecovery {

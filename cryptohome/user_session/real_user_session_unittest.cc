@@ -14,13 +14,13 @@
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto/hmac.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/mock_keyset_management.h"
@@ -32,6 +32,7 @@
 #include "cryptohome/storage/mock_mount.h"
 
 using brillo::SecureBlob;
+using hwsec_foundation::HmacSha256;
 
 using ::testing::_;
 using ::testing::ByRef;

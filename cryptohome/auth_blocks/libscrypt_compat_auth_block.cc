@@ -9,13 +9,20 @@
 #include <variant>
 
 #include <base/logging.h>
+#include <libhwsec-foundation/crypto/libscrypt_compat.h>
+#include <libhwsec-foundation/crypto/scrypt.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
-#include "cryptohome/crypto/scrypt.h"
-#include "cryptohome/crypto/secure_blob_util.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/key_objects.h"
-#include "cryptohome/libscrypt_compat.h"
+
+using ::hwsec_foundation::CreateSecureRandomBlob;
+using ::hwsec_foundation::kDefaultScryptParams;
+using ::hwsec_foundation::kLibScryptDerivedKeySize;
+using ::hwsec_foundation::kLibScryptSaltSize;
+using ::hwsec_foundation::LibScryptCompat;
+using ::hwsec_foundation::Scrypt;
 
 namespace cryptohome {
 
@@ -42,7 +49,7 @@ CryptoError CreateScryptHelper(const brillo::SecureBlob& input_key,
 CryptoError ParseHeaderAndDerive(const brillo::SecureBlob& wrapped_blob,
                                  const brillo::SecureBlob& input_key,
                                  brillo::SecureBlob* derived_key) {
-  ScryptParameters params;
+  hwsec_foundation::ScryptParameters params;
   brillo::SecureBlob salt;
   if (!LibScryptCompat::ParseHeader(wrapped_blob, &params, &salt)) {
     LOG(ERROR) << "Failed to parse header.";

@@ -12,9 +12,9 @@
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
+#include <libhwsec-foundation/crypto/ecdh_hkdf.h>
+#include <libhwsec-foundation/crypto/elliptic_curve.h>
 
-#include "cryptohome/crypto/ecdh_hkdf.h"
-#include "cryptohome/crypto/elliptic_curve.h"
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 
@@ -36,7 +36,7 @@ class RecoveryCryptoTpmBackend {
   // As TPM1.2 does not support ECC, instead of encrypting the ECC private key,
   // it will seal the private key with the provided auth_value.
   virtual bool EncryptEccPrivateKey(
-      const EllipticCurve& ec,
+      const hwsec_foundation::EllipticCurve& ec,
       const crypto::ScopedEC_KEY& own_key_pair,
       const std::optional<brillo::SecureBlob>& auth_value,
       brillo::SecureBlob* encrypted_own_priv_key) = 0;
@@ -48,7 +48,7 @@ class RecoveryCryptoTpmBackend {
   // unsealed with the provided auth_value and the shared secret will be
   // computed via openssl lib.
   virtual crypto::ScopedEC_POINT GenerateDiffieHellmanSharedSecret(
-      const EllipticCurve& ec,
+      const hwsec_foundation::EllipticCurve& ec,
       const brillo::SecureBlob& encrypted_own_priv_key,
       const std::optional<brillo::SecureBlob>& auth_value,
       const EC_POINT& others_pub_point) = 0;
@@ -110,10 +110,10 @@ class RecoveryCrypto {
   static const char kResponsePayloadPlainTextHkdfInfoValue[];
 
   // Elliptic Curve type used by the protocol.
-  static const EllipticCurve::CurveType kCurve;
+  static const hwsec_foundation::EllipticCurve::CurveType kCurve;
 
   // Hash used by HKDF for encrypting mediator share.
-  static const HkdfHash kHkdfHash;
+  static const hwsec_foundation::HkdfHash kHkdfHash;
 
   // Length of the salt (in bytes) used by HKDF for encrypting mediator share.
   static const unsigned int kHkdfSaltLength;

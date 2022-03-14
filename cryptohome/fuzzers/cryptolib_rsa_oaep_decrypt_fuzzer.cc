@@ -13,19 +13,20 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <fuzzer/FuzzedDataProvider.h>
+#include <libhwsec-foundation/crypto/rsa.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "cryptohome/crypto/rsa.h"
 #include "cryptohome/fuzzers/blob_mutator.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::SecureBlob;
 using crypto::ScopedRSA;
+using hwsec_foundation::RsaOaepDecrypt;
 
 namespace {
 
@@ -135,9 +136,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Run the fuzzed function.
   SecureBlob decrypted_data;
-  if (cryptohome::RsaOaepDecrypt(SecureBlob(fuzzed_ciphertext),
-                                 SecureBlob(fuzzed_oaep_label), decryption_rsa,
-                                 &decrypted_data)) {
+  if (hwsec_foundation::RsaOaepDecrypt(SecureBlob(fuzzed_ciphertext),
+                                       SecureBlob(fuzzed_oaep_label),
+                                       decryption_rsa, &decrypted_data)) {
     // Assert that the decryption result must be equal to the plaintext that was
     // encrypted above - it's unrealistic for the fuzzer to find a blob that is
     // a valid ciphertext of some different blob.
