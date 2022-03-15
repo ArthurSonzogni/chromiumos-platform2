@@ -49,6 +49,7 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
   void TearDown();
 
   // Implementations of AutoFramingCrOS::Client.
+  void OnFrameProcessed(int64_t timestamp) override;
   void OnNewRegionOfInterest(
       int64_t timestamp, int x_min, int y_min, int x_max, int y_max) override;
   void OnNewCropWindow(
@@ -58,11 +59,11 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
                            int stride) override;
 
  private:
-  std::unique_ptr<AutoFramingCrOS> auto_framing_;
-  std::unique_ptr<CameraBufferPool> buffer_pool_;
-  std::map<int64_t, CameraBufferPool::Buffer> inflight_buffers_;
-
   base::Lock lock_;
+  std::unique_ptr<AutoFramingCrOS> auto_framing_ GUARDED_BY(lock_);
+  std::unique_ptr<CameraBufferPool> buffer_pool_ GUARDED_BY(lock_);
+  std::map<int64_t, CameraBufferPool::Buffer> inflight_buffers_
+      GUARDED_BY(lock_);
   std::optional<Rect<uint32_t>> region_of_interest_ GUARDED_BY(lock_);
   Rect<uint32_t> crop_window_ GUARDED_BY(lock_);
 };

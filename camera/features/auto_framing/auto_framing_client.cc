@@ -51,6 +51,8 @@ Rect<uint32_t> GetCenteringFullCrop(Size size,
 }  // namespace
 
 bool AutoFramingClient::SetUp(const Options& options) {
+  base::AutoLock lock(lock_);
+
   AutoFramingCrOS::Options auto_framing_options = {
       .input_format = AutoFramingCrOS::ImageFormat::kGRAY8,
       .input_width = base::checked_cast<int>(options.input_size.width),
@@ -86,7 +88,6 @@ bool AutoFramingClient::SetUp(const Options& options) {
   };
   buffer_pool_ = std::make_unique<CameraBufferPool>(buffer_pool_options);
 
-  base::AutoLock lock(lock_);
   region_of_interest_ = std::nullopt;
   crop_window_ =
       GetCenteringFullCrop(options.input_size, options.target_aspect_ratio_x,
@@ -97,14 +98,11 @@ bool AutoFramingClient::SetUp(const Options& options) {
 
 bool AutoFramingClient::ProcessFrame(int64_t timestamp,
                                      buffer_handle_t src_buffer) {
+  base::AutoLock lock(lock_);
+
   if (!auto_framing_) {
     LOGF(ERROR) << "AutoFramingClient is not initialized";
     return false;
-  }
-
-  // Release old buffers that should not be in use.
-  while (inflight_buffers_.size() >= kInputBufferCount) {
-    inflight_buffers_.erase(inflight_buffers_.begin());
   }
 
   DCHECK_NE(buffer_pool_, nullptr);
@@ -112,9 +110,9 @@ bool AutoFramingClient::ProcessFrame(int64_t timestamp,
       buffer_pool_->RequestBuffer();
   if (!dst_buffer) {
     LOGF(ERROR) << "Failed to allocate buffer for detection @" << timestamp;
-    inflight_buffers_.erase(timestamp);
     return false;
   }
+
   // TODO(kamesan): Use GPU to copy/scale the buffers.
   ScopedMapping src_mapping(src_buffer);
   const ScopedMapping& dst_mapping = dst_buffer->Map();
@@ -131,12 +129,8 @@ bool AutoFramingClient::ProcessFrame(int64_t timestamp,
     return false;
   }
 
-  auto [it, is_inserted] = inflight_buffers_.insert(
-      std::make_pair(timestamp, *std::move(dst_buffer)));
-  if (!is_inserted) {
-    LOGF(ERROR) << "Found duplicated timestamp: " << timestamp;
-    return false;
-  }
+  DCHECK_EQ(inflight_buffers_.count(timestamp), 0);
+  inflight_buffers_.insert(std::make_pair(timestamp, *std::move(dst_buffer)));
 
   return true;
 }
@@ -157,6 +151,13 @@ void AutoFramingClient::TearDown() {
   auto_framing_.reset();
   inflight_buffers_.clear();
   buffer_pool_.reset();
+}
+
+void AutoFramingClient::OnFrameProcessed(int64_t timestamp) {
+  VLOGF(2) << "Release frame @" << timestamp;
+
+  base::AutoLock lock(lock_);
+  inflight_buffers_.erase(timestamp);
 }
 
 void AutoFramingClient::OnNewRegionOfInterest(
