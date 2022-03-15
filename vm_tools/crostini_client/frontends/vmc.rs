@@ -41,7 +41,6 @@ enum VmcError {
     UnexpectedSizeWithPluginVm,
     InvalidEmail,
     InvalidPath(std::ffi::OsString),
-    InvalidVmType,
     MissingActiveSession,
     ExpectedPrivilegedFlagValue,
     UnknownSubcommand(String),
@@ -143,7 +142,6 @@ impl fmt::Display for VmcError {
             UnexpectedSizeWithPluginVm => write!(f, "unexpected --size parameter; -p doesn't support --size"),
             InvalidEmail => write!(f, "the active session has an invalid email address"),
             InvalidPath(path) => write!(f, "invalid path: {:?}", path),
-            InvalidVmType => write!(f, "valid VM type not provided"),
             MissingActiveSession => write!(
                 f,
                 "missing active session corresponding to $CROS_USER_ID_HASH"
@@ -351,59 +349,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn launch(&mut self) -> VmcResult {
-        if self.args.len() != 1 {
+        if self.args.len() < 1 {
             return Err(ExpectedName.into());
         }
-        match self.args[0] {
-            "borealis" => Command {
-                methods: self.methods,
-                args: &[
-                    "--enable-gpu",
-                    "--no-start-lxd",
-                    "--enable-vulkan",
-                    "--dlc-id=borealis-dlc",
-                    "borealis",
-                ],
-                environ: self.environ,
-            }
-            .start(),
-            "crostini" => {
-                Command {
-                    methods: self.methods,
-                    args: &["--no-shell", "--enable-gpu", "termina"],
-                    environ: self.environ,
-                }
-                .start()?;
-                Command {
-                    methods: self.methods,
-                    args: &["termina", "penguin"],
-                    environ: self.environ,
-                }
-                .container()
-            }
-            "pluginvm" => {
-                if self
-                    .methods
-                    .is_plugin_vm("PvmDefault", &get_user_hash(self.environ)?)?
-                {
-                    Command {
-                        methods: self.methods,
-                        args: &["PvmDefault"],
-                        environ: self.environ,
-                    }
-                    .start()
-                } else {
-                    Err(ExpectedPluginVm.into())
-                }
-            }
-            "termina" => Command {
-                methods: self.methods,
-                args: &["--enable-gpu", "termina"],
-                environ: self.environ,
-            }
-            .start(),
-            _ => Err(InvalidVmType.into()),
-        }
+        let user_id_hash = get_user_hash(self.environ)?;
+        try_command!(self.methods.vm_launch(&user_id_hash, self.args));
+        Ok(())
     }
 
     fn create(&mut self) -> VmcResult {
@@ -1169,10 +1120,8 @@ mod tests {
             &["vmc", "start", "--tools-dlc", "my-dlc", "termina"],
             &["vmc", "start", "--tools-dlc=my-dlc", "termina"],
             &["vmc", "stop", "termina"],
-            &["vmc", "launch", "borealis"],
-            &["vmc", "launch", "crostini"],
-            &["vmc", "launch", "pluginvm"],
-            &["vmc", "launch", "termina"],
+            &["vmc", "launch", "foo"],
+            &["vmc", "launch", "a", "b", "c", "d", "e", "f"],
             &["vmc", "create", "termina"],
             &["vmc", "create", "-p", "termina"],
             &["vmc", "create", "--pluginvm", "termina"],
@@ -1284,8 +1233,7 @@ mod tests {
             &["vmc", "start", "termina", "--timeout", "xyz"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
-            &["vmc", "launch", "borealis", "--enable-gpu"],
-            &["vmc", "launch", "notarealvm"],
+            &["vmc", "launch"],
             &["vmc", "create"],
             &["vmc", "create", "-p"],
             &[

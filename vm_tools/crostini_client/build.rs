@@ -139,6 +139,7 @@ const APIS: &[SystemApiDbus] = &[
     SystemApiDbus::new("dbus/dlcservice", "dlcservice.proto"),
     SystemApiDbus::new("dbus/seneschal", "seneschal_service.proto"),
     SystemApiDbus::new("dbus/vm_plugin_dispatcher", "vm_plugin_dispatcher.proto"),
+    SystemApiDbus::new("dbus/vm_launch", "launch.proto"),
 ];
 
 fn main() {

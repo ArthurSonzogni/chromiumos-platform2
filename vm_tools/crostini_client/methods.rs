@@ -26,6 +26,7 @@ use crate::lsb_release::{LsbRelease, ReleaseChannel};
 use crate::proto::system_api::cicerone_service::*;
 use crate::proto::system_api::concierge_service::*;
 use crate::proto::system_api::dlcservice::*;
+use crate::proto::system_api::launch::*;
 use crate::proto::system_api::seneschal_service::*;
 use crate::proto::system_api::vm_plugin_dispatcher;
 use crate::proto::system_api::vm_plugin_dispatcher::VmErrorCode;
@@ -2047,6 +2048,48 @@ impl Methods {
     pub fn vm_stop(&mut self, name: &str, user_id_hash: &str) -> Result<(), Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         self.stop_vm(name, user_id_hash)
+    }
+
+    pub fn vm_launch(
+        &mut self,
+        user_id_hash: &str,
+        descriptors: &[&str],
+    ) -> Result<(), Box<dyn Error>> {
+        let mut request = EnsureVmLaunchedRequest::new();
+        request.owner_id = user_id_hash.to_owned();
+        // The below validation is intentionally conservative, no more that 5x 32-character
+        // descriptors matching [a-zA-Z0-9_-]*.
+        request.launch_descriptors = protobuf::RepeatedField::from_vec(
+            descriptors
+                .iter()
+                .map(|d| {
+                    d.chars()
+                        .filter(|c| match c {
+                            '_' => true,
+                            '-' => true,
+                            other => other.is_ascii_alphanumeric(),
+                        })
+                        .take(32)
+                        .collect::<String>()
+                })
+                .take(5)
+                .collect(),
+        );
+
+        let response: EnsureVmLaunchedResponse = self.sync_protobus(
+            Message::new_method_call(
+                VM_LAUNCH_SERVICE_NAME,
+                VM_LAUNCH_SERVICE_PATH,
+                VM_LAUNCH_SERVICE_INTERFACE,
+                VM_LAUNCH_SERVICE_ENSURE_VM_LAUNCHED_METHOD,
+            )?,
+            &request,
+        )?;
+
+        match response.container_name.as_str() {
+            "" => self.vsh_exec(&response.vm_name, user_id_hash),
+            container => self.vsh_exec_container(&response.vm_name, user_id_hash, container),
+        }
     }
 
     pub fn vm_export(
