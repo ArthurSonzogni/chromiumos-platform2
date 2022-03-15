@@ -36,19 +36,19 @@ static int read_optional_string(const char *dir, const char *name,
 	return 0;
 }
 
-static int read_whitelabel_tag(struct crosid_probed_device_data *out)
+static int read_custom_label_tag(struct crosid_probed_device_data *out)
 {
 	int rv;
 
 	/* Newer devices may use custom_label_tag VPD entry */
 	rv = read_optional_string(SYSFS_VPD_RO_PATH, "custom_label_tag",
-				  &out->whitelabel_tag);
+				  &out->custom_label_tag);
 	if (rv >= 0)
 		return rv;
 
 	/* If that's not specified, then try whitelabel_tag */
 	return read_optional_string(SYSFS_VPD_RO_PATH, "whitelabel_tag",
-				    &out->whitelabel_tag);
+				    &out->custom_label_tag);
 }
 
 int crosid_probe(struct crosid_probed_device_data *out)
@@ -90,18 +90,18 @@ int crosid_probe(struct crosid_probed_device_data *out)
 			   "expected on models released in 2018 and later)\n");
 	}
 
-	if (read_whitelabel_tag(out) >= 0) {
-		crosid_log(LOG_DBG, "Read whitelabel_tag=\"%s\" (from VPD)\n",
-			   out->whitelabel_tag.value);
+	if (read_custom_label_tag(out) >= 0) {
+		crosid_log(LOG_DBG, "Read custom_label_tag=\"%s\" (from VPD)\n",
+			   out->custom_label_tag.value);
 	} else {
 		crosid_log(LOG_DBG,
-			   "Device has no whitelabel_tag (this is to be "
-			   "expected, except of whitelabel devices)\n");
+			   "Device has no custom_label_tag (this is to be "
+			   "expected, except of custom label devices)\n");
 	}
 
-	if (out->customization_id.present && out->whitelabel_tag.present) {
+	if (out->customization_id.present && out->custom_label_tag.present) {
 		crosid_log(LOG_ERR, "Device has both a customization_id and a "
-				    "whitelabel_tag. VPD invalid?\n");
+				    "custom_label_tag. VPD invalid?\n");
 		crosid_probe_free(out);
 		memset(out, 0, sizeof(*out));
 		return -1;
@@ -134,7 +134,7 @@ void crosid_probe_free(struct crosid_probed_device_data *data)
 {
 	free(data->smbios_name.value);
 	free(data->fdt_compatible.value);
-	free(data->whitelabel_tag.value);
+	free(data->custom_label_tag.value);
 	free(data->customization_id.value);
 	free(data->firmware_manifest_key);
 }

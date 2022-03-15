@@ -26,7 +26,7 @@ def make_config(
     sku_id=None,
     fdt_match=None,
     customization_id=None,
-    whitelabel_tag=None,
+    custom_label_tag=None,
 ):
     identity = {}
     if smbios_name_match is not None:
@@ -37,8 +37,8 @@ def make_config(
         identity["device-tree-compatible-match"] = fdt_match
     if customization_id is not None:
         identity["customization-id"] = customization_id
-    if whitelabel_tag is not None:
-        identity["custom-label-tag"] = whitelabel_tag
+    if custom_label_tag is not None:
+        identity["custom-label-tag"] = custom_label_tag
     return {
         "name": model_name,
         "identity": identity,
@@ -202,7 +202,7 @@ def test_no_match(tmp_path, executable_path):
 
 
 def test_both_customization_id_and_whitelabel(tmp_path, executable_path):
-    # Having both a customization_id and whitelabel_tag indicates the
+    # Having both a customization_id and custom_label_tag indicates the
     # RO VPD was tampered/corrupted, and should result in errors.
     make_fake_sysroot(
         tmp_path,
@@ -233,7 +233,7 @@ VILBOZ14_CONFIGS = [
         "vilboz14",
         sku_id=1,
         smbios_name_match="Vilboz",
-        whitelabel_tag="vilboz14len",
+        custom_label_tag="vilboz14len",
     ),
 ]
 
@@ -270,11 +270,11 @@ TROGDOR_CONFIGS = [
     make_config("lazor", fdt_match="google,lazor", sku_id=1),
     make_config("lazor", fdt_match="google,lazor", sku_id=2),
     make_config("lazor", fdt_match="google,lazor", sku_id=3),
-    make_config("limozeen", fdt_match="google,lazor", sku_id=5, whitelabel_tag=""),
+    make_config("limozeen", fdt_match="google,lazor", sku_id=5, custom_label_tag=""),
     make_config(
-        "limozeen", fdt_match="google,lazor", sku_id=6, whitelabel_tag="lazorwl"
+        "limozeen", fdt_match="google,lazor", sku_id=6, custom_label_tag="lazorwl"
     ),
-    make_config("limozeen", fdt_match="google,lazor", sku_id=6, whitelabel_tag=""),
+    make_config("limozeen", fdt_match="google,lazor", sku_id=6, custom_label_tag=""),
     make_config("lazor", fdt_match="google,lazor"),
 ]
 
@@ -285,9 +285,9 @@ def test_trogdor(tmp_path, executable_path, config_idx):
     identity = cfg["identity"]
 
     vpd = {}
-    whitelabel_tag = identity.get("custom-label-tag")
-    if whitelabel_tag:
-        vpd["whitelabel_tag"] = whitelabel_tag
+    custom_label_tag = identity.get("custom-label-tag")
+    if custom_label_tag:
+        vpd["whitelabel_tag"] = custom_label_tag
 
     make_fake_sysroot(
         tmp_path,
