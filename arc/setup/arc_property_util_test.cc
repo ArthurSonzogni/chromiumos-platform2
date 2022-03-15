@@ -5,6 +5,7 @@
 #include "arc/setup/arc_property_util.h"
 
 #include <memory>
+#include <tuple>
 #include <utility>
 
 #include <base/command_line.h>
@@ -24,6 +25,7 @@
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::Return;
+using ::testing::StartsWith;
 
 namespace arc {
 namespace {
@@ -705,6 +707,90 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties_DbusFailure) {
   EXPECT_EQ(std::string() + kDefaultProp + kBuildProp + kVendorBuildProp +
                 kProductBuildProp,
             content);
+}
+
+TEST_F(ArcPropertyUtilTest, AppendIntelSocProperties) {
+  int case_no = 0;
+
+  for (auto& testcase :
+       {std::tuple<const char*, const char*>{
+            "nomatch\nmodel name\t: Intel(R) Core(TM) i5-10510U CPU @ 999GHz\n",
+            "ro.soc.manufacturer=Intel\nro.soc.model=i5-10510U\n"},
+        {"xyz\nmodel name\t\t: Intel(R) Core(TM) i7-920 CPU @ 2.67GHz\nabc\n",
+         "ro.soc.manufacturer=Intel\nro.soc.model=i7-920\n"},
+        {"nomatch\nnomatch\nnomatch\n", ""},
+
+        // For an Octopus board.
+        {"model name: Intel(R) Celeron(R) N4000 CPU @ 1.10GHz\n",
+         "ro.soc.manufacturer=Intel\nro.soc.model=N4000\n"}}) {
+    base::StringPiece cpuinfo = std::get<0>(testcase);
+    base::StringPiece expected = std::get<1>(testcase);
+    auto cpuinfo_path =
+        GetTempDir().Append(base::StringPrintf("cpuinfo%d", case_no++));
+
+    ASSERT_TRUE(base::WriteFile(cpuinfo_path, cpuinfo));
+
+    // Make sure the file is opened read-only by turning off the writable perms.
+    ASSERT_EQ(chmod(cpuinfo_path.value().c_str(), 0444), 0);
+
+    std::string actual;
+    AppendIntelSocProperties(cpuinfo_path, &actual);
+
+    EXPECT_EQ(expected, actual);
+  }
+}
+
+TEST_F(ArcPropertyUtilTest, AppendIntelSocPropertiesDoesNotOverwrite) {
+  auto cpuinfo_path = GetTempDir().Append("cpuinfo");
+
+  ASSERT_TRUE(base::WriteFile(cpuinfo_path,
+                              "model name : Intel(R) Core(TM) i7-5200U CPU\n"));
+
+  std::string dest = "xyz=123\n";
+  AppendIntelSocProperties(cpuinfo_path, &dest);
+  EXPECT_THAT(dest, StartsWith("xyz=123\nro.soc."));
+}
+
+TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesNoMatch) {
+  auto machine_path = GetTempDir().Append("machine");
+
+  ASSERT_TRUE(base::WriteFile(machine_path, "unknown486\n"));
+
+  std::string dest = "4=2+2\n";
+  AppendArmSocProperties(machine_path, &dest);
+  EXPECT_EQ(dest, "4=2+2\n");
+}
+
+TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMatch) {
+  auto machine_path = GetTempDir().Append("machine");
+
+  ASSERT_TRUE(base::WriteFile(machine_path, "SC7180\n"));
+
+  // Make sure the file is opened read-only by turning off the writable perms.
+  ASSERT_EQ(chmod(machine_path.value().c_str(), 0444), 0);
+
+  std::string dest = "jkl=aoe\n";
+  AppendArmSocProperties(machine_path, &dest);
+  EXPECT_EQ(dest,
+            "jkl=aoe\n"
+            "ro.soc.manufacturer=Qualcomm\n"
+            "ro.soc.model=SC7180\n");
+}
+
+TEST_F(ArcPropertyUtilTest, AppendIntelSocPropertiesCannotOpenCpuinfo) {
+  auto cpuinfo_path = GetTempDir().Append("cpuinfo.nothere");
+
+  std::string dest;
+  AppendIntelSocProperties(cpuinfo_path, &dest);
+  EXPECT_EQ(dest, "");
+}
+
+TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesCannotOpenMachineFile) {
+  auto machine_path = GetTempDir().Append("machine.nothere");
+
+  std::string dest;
+  AppendArmSocProperties(machine_path, &dest);
+  EXPECT_EQ(dest, "");
 }
 
 }  // namespace

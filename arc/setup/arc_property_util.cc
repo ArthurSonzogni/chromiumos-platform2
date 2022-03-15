@@ -14,15 +14,18 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/files/safe_fd.h>
 #include <cdm_oemcrypto/proto_bindings/client_information.pb.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <dbus/message.h>
+#include <re2/re2.h>
 
 constexpr char kCdmManufacturerProp[] = "ro.product.cdm.manufacturer";
 constexpr char kCdmDeviceProp[] = "ro.product.cdm.device";
@@ -39,6 +42,9 @@ enum class ExtraProps {
 
   // Unconditionally add |kDalvikVmIsaArm64| property.
   kDalvikIsa,
+
+  // ro.soc.manufacturer and .model, parsed from /proc/cpuinfo.
+  kSoc,
 };
 
 // The path in the chromeos-config database where Android properties will be
@@ -334,7 +340,7 @@ bool ExpandPropertyContents(const std::string& content,
       new_properties += std::string(kDalvikVmIsaArm64) + "\n";
       break;
 
-    case ExtraProps::kCdm:
+    case ExtraProps::kCdm: {
       // We need to make a D-Bus call to the cdm-oemcrypto daemon to get these
       // properties and then append them to the contents on success. The daemon
       // we are talking to has already had it's D-Bus service advertisement
@@ -371,6 +377,17 @@ bool ExpandPropertyContents(const std::string& content,
       } else {
         LOG(WARNING) << "Failed getting client information from cdm-oemcrypto";
       }
+      break;
+    }
+
+    case ExtraProps::kSoc:
+#if defined(ARCH_CPU_ARM_FAMILY)
+      AppendArmSocProperties(base::FilePath("/sys/devices/soc0/machine"),
+                             &new_properties);
+#else
+      AppendIntelSocProperties(base::FilePath("/proc/cpuinfo"),
+                               &new_properties);
+#endif
       break;
   }
 
@@ -413,7 +430,78 @@ bool ExpandPropertyFile(const base::FilePath& input,
   return true;
 }
 
+// Reads the contents of a file with SafeFD and returns the results, or an empty
+// string if an error occurs.
+template <class StringPieceType>
+StringPieceType SafelyReadFile(const base::FilePath& path,
+                               std::vector<char>* buffer) {
+  auto [fd, err] =
+      brillo::SafeFD::Root().first.OpenExistingFile(path, O_RDONLY);
+  if (brillo::SafeFD::IsError(err)) {
+    LOG(ERROR) << "Cannot open file for reading: " << path << ": "
+               << static_cast<int>(err);
+    return "";
+  }
+
+  std::tie(*buffer, err) = fd.ReadContents();
+  if (brillo::SafeFD::IsError(err)) {
+    LOG(ERROR) << "Error reading contents of: " << path << ": "
+               << static_cast<int>(err);
+    return "";
+  }
+
+  return {&buffer->front(), buffer->size()};
+}
+
 }  // namespace
+
+void AppendArmSocProperties(const base::FilePath& sysfs_machine_path,
+                            std::string* dest) {
+  std::vector<char> buffer;
+  auto machine = SafelyReadFile<base::StringPiece>(sysfs_machine_path, &buffer);
+
+  // Rather than read the manufacturer ID from /proc/cpuinfo, we deduce it from
+  // the SOC model name.
+  // TODO(b/175610620): Also support Mediatek-ARM devices.
+  std::string manufacturer;
+  if (machine == "SC7180\n") {
+    // For a Trogdor board.
+    manufacturer = "Qualcomm";
+  } else {
+    LOG(ERROR) << "Unknown SoC model: " << machine;
+    return;
+  }
+
+  *dest += "ro.soc.manufacturer=" + manufacturer + "\n";
+
+  // machine already has a trailing newline.
+  *dest += base::StrCat({"ro.soc.model=", machine});
+}
+
+void AppendIntelSocProperties(const base::FilePath& cpuinfo_path,
+                              std::string* dest) {
+  // TODO(b/175610620): Also support AMD and Intel Pentium devices.
+  std::vector<char> buffer;
+  auto cpuinfo = SafelyReadFile<re2::StringPiece>(cpuinfo_path, &buffer);
+
+  std::string model_field;
+  re2::RE2 model_field_re("model name[ \t]*:(.*)\n");
+  if (!re2::RE2::PartialMatch(cpuinfo, model_field_re, &model_field)) {
+    LOG(ERROR) << "cannot find model name in cpuinfo: "
+               << cpuinfo.substr(0, 2048);
+    return;
+  }
+
+  std::string model;
+  re2::RE2 model_re(R"(Intel\(R\) (?:Celeron\(R\)|Core\(TM\)) ([^ ]+) CPU)");
+  if (!re2::RE2::PartialMatch(cpuinfo, model_re, &model)) {
+    LOG(ERROR) << "Unknown CPU in '" << model_field << "'; won't set ro.soc.*";
+    return;
+  }
+
+  *dest += "ro.soc.manufacturer=Intel\n";
+  *dest += "ro.soc.model=" + model + "\n";
+}
 
 bool ExpandPropertyContentsForTesting(const std::string& content,
                                       brillo::CrosConfigInterface* config,
@@ -462,7 +550,7 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
          add_native_bridge_64bit_support ? ExtraProps::kDalvikIsa
                                          : ExtraProps::kNone},
         {"system_ext_build.prop", true, "system_ext.", ExtraProps::kNone},
-        {"vendor_build.prop", false, "vendor.", ExtraProps::kNone},
+        {"vendor_build.prop", false, "vendor.", ExtraProps::kSoc},
         {"odm_build.prop", true, "odm.", ExtraProps::kNone},
         {"product_build.prop", true, "product.",
          hw_oemcrypto_support ? ExtraProps::kCdm : ExtraProps::kNone}}) {

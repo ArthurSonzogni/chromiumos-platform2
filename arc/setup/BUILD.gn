@@ -40,6 +40,7 @@ pkg_config("target_defaults_pkg_deps") {
     "libselinux",
     "libuser_data_auth-client",
     "libxml-2.0",
+    "re2",
 
     # system_api depends on protobuf (or protobuf-lite). It must appear
     # before protobuf here or the linker flags won"t be in the right

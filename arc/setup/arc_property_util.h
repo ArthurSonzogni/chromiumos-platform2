@@ -21,6 +21,18 @@ class CrosConfigInterface;
 
 namespace arc {
 
+// Parses SOC manufacturer and model from /proc/cpuinfo and appends the results
+// to |dest|. Used for x86/64 architectures. The path of /proc/cpuinfo can be
+// overridden for testing purposes.
+void AppendIntelSocProperties(const base::FilePath& cpuinfo_path,
+                              std::string* dest);
+
+// Detects the SOC manufacturer and model from the given file which should have
+// contents equivalent to /sys/devices/soc0/machine. Appends results to |dest|.
+// Used for ARM architectures. The path is overridable for testing.
+void AppendArmSocProperties(const base::FilePath& sysfs_machine_path,
+                            std::string* dest);
+
 // Expands the contents of a template Android property file.  Strings like
 // {property} will be looked up in |config| and replaced with their values.
 // Returns true if all {} strings were successfully expanded, or false if any
