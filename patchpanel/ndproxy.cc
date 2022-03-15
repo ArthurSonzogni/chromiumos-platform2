@@ -330,34 +330,7 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
     }
   }
 
-  // b/187918638: with Fibocom cellular modem we are observing irregular RAs
-  // coming from a src IP that either cannot map to a hardware address in
-  // neighbor table, or is mapped to the local MAC address on the cellular
-  // interface. Directly proxying these RAs will cause guest OS to set up a
-  // default route to a next hop that's not reachable.
-  // A workaround is taken to overwrite that router IP with the host link local
-  // IP, so that the guest OS set up the default route with the host as next hop
-  // instead.
-  // This piece of code detect this irregular case and the actual translation
-  // code happens later below.
-  bool unusual_ra_src = false;
-  if (icmp6->icmp6_type == ND_ROUTER_ADVERT &&
-      IsRouterInterface(dst_addr.sll_ifindex)) {
-    MacAddress router_mac;
-    MacAddress inbound_local_mac;
-    if (!GetNeighborMac(ip6->ip6_src, &router_mac)) {
-      // The router ip is not in neighbor table
-      unusual_ra_src = true;
-    } else {
-      // Detect if the router ip get resolved to a local MAC
-      unusual_ra_src = (GetLocalMac(dst_addr.sll_ifindex, &inbound_local_mac) &&
-                        router_mac == inbound_local_mac);
-    }
-    if (unusual_ra_src)
-      irregular_router_ifs_.insert(dst_addr.sll_ifindex);
-  }
-
-  // b/187918638(cont.): since these cell upstream never send proper NS and NA,
+  // b/187918638: some cellular modems never send proper NS and NA,
   // there is no chance that we get the guest IP as normally from NA. Instead,
   // we have to monitor DAD NS frames and use it as judgement. Notice that since
   // upstream never reply NA, this DAD never fails.

@@ -180,7 +180,14 @@ class NDProxy {
   interface_mapping if_map_ra_;
   interface_mapping if_map_ns_na_;
 
-  // b/187918638: list of interfaces that require special workaround
+  // b/187918638: with cellular modems we are observing irregular RAs coming
+  // from a src IP that either cannot map to a hardware address in the neighbor
+  // table, or is mapped to the local MAC address on the cellular interface.
+  // Directly proxying these RAs will cause the guest OS to set up a default
+  // route to a next hop that is not reachable for them.
+  // For any interface in |irregular_router_ifs_|, a workaround is taken to
+  // overwrite the router IP with the host link local IP, so that the guest OS
+  // set up the default route with the host as next hop instead.
   std::set<int> irregular_router_ifs_;
 
   base::RepeatingCallback<void(const std::string&, const std::string&)>
