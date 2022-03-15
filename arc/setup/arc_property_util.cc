@@ -31,6 +31,16 @@ constexpr char kCdmModelProp[] = "ro.product.cdm.model";
 namespace arc {
 namespace {
 
+enum class ExtraProps {
+  kNone,
+
+  // Add CDM properties for HW DRM.
+  kCdm,
+
+  // Unconditionally add |kDalvikVmIsaArm64| property.
+  kDalvikIsa,
+};
+
 // The path in the chromeos-config database where Android properties will be
 // looked up.
 constexpr char kCrosConfigPropertiesPath[] = "/arc/build-properties";
@@ -177,8 +187,7 @@ bool ExpandPropertyContents(const std::string& content,
                             std::string* expanded_content,
                             bool filter_non_ro_props,
                             bool add_native_bridge_64bit_support,
-                            bool append_dalvik_isa,
-                            bool append_cdm_props,
+                            ExtraProps extra_props,
                             bool debuggable,
                             const std::string& partition_name) {
   const std::vector<std::string> lines = base::SplitString(
@@ -316,47 +325,53 @@ bool ExpandPropertyContents(const std::string& content,
     }
   }
 
-  if (append_dalvik_isa) {
-    // Special-case to add ro.dalvik.vm.isa.arm64.
-    new_properties += std::string(kDalvikVmIsaArm64) + "\n";
-  }
+  switch (extra_props) {
+    case ExtraProps::kNone:
+      break;
 
-  if (append_cdm_props) {
-    // We need to make a D-Bus call to the cdm-oemcrypto daemon to get these
-    // properties and then append them to the contents on success. The daemon we
-    // are talking to has already had it's D-Bus service advertisement waited on
-    // by Chrome (or a timeout occurred waiting for it). The 10 second timeout
-    // is more than enough to cover the amount of time it would take the daemon
-    // to process this request (it should be very fast). This timeout also
-    // should be shorter than the default D-Bus timeout used by upstart to
-    // launch the script which is 30 seconds. In the event the daemon did not
-    // startup correctly, then the D-Bus call should return immediately.
-    auto proxy = bus->GetObjectProxy(
-        cdm_oemcrypto::kCdmFactoryDaemonServiceName,
-        dbus::ObjectPath(cdm_oemcrypto::kCdmFactoryDaemonServicePath));
-    constexpr int kDbusTimeoutMsec = 10000;
-    brillo::ErrorPtr error;
-    std::unique_ptr<::dbus::Response> response =
-        brillo::dbus_utils::CallMethodAndBlockWithTimeout(
-            kDbusTimeoutMsec, proxy,
-            cdm_oemcrypto::kCdmFactoryDaemonServiceInterface,
-            cdm_oemcrypto::kGetClientInformation, &error);
-    if (response) {
-      dbus::MessageReader reader(response.get());
-      chromeos::cdm::ClientInformation client_info;
-      if (reader.PopArrayOfBytesAsProto(&client_info)) {
-        new_properties += std::string(kCdmManufacturerProp) + "=" +
-                          client_info.manufacturer() + "\n";
-        new_properties +=
-            std::string(kCdmModelProp) + "=" + client_info.model() + "\n";
-        new_properties +=
-            std::string(kCdmDeviceProp) + "=" + client_info.make() + "\n";
+    case ExtraProps::kDalvikIsa:
+      // Special-case to add ro.dalvik.vm.isa.arm64.
+      new_properties += std::string(kDalvikVmIsaArm64) + "\n";
+      break;
+
+    case ExtraProps::kCdm:
+      // We need to make a D-Bus call to the cdm-oemcrypto daemon to get these
+      // properties and then append them to the contents on success. The daemon
+      // we are talking to has already had it's D-Bus service advertisement
+      // waited on by Chrome (or a timeout occurred waiting for it). The 10
+      // second timeout is more than enough to cover the amount of time it
+      // would take the daemon to process this request (it should be very
+      // fast). This timeout also should be shorter than the default D-Bus
+      // timeout used by upstart to launch the script which is 30 seconds. In
+      // the event the daemon did not startup correctly, then the D-Bus call
+      // should return immediately.
+      auto proxy = bus->GetObjectProxy(
+          cdm_oemcrypto::kCdmFactoryDaemonServiceName,
+          dbus::ObjectPath(cdm_oemcrypto::kCdmFactoryDaemonServicePath));
+      constexpr int kDbusTimeoutMsec = 10000;
+      brillo::ErrorPtr error;
+      std::unique_ptr<::dbus::Response> response =
+          brillo::dbus_utils::CallMethodAndBlockWithTimeout(
+              kDbusTimeoutMsec, proxy,
+              cdm_oemcrypto::kCdmFactoryDaemonServiceInterface,
+              cdm_oemcrypto::kGetClientInformation, &error);
+      if (response) {
+        dbus::MessageReader reader(response.get());
+        chromeos::cdm::ClientInformation client_info;
+        if (reader.PopArrayOfBytesAsProto(&client_info)) {
+          new_properties += std::string(kCdmManufacturerProp) + "=" +
+                            client_info.manufacturer() + "\n";
+          new_properties +=
+              std::string(kCdmModelProp) + "=" + client_info.model() + "\n";
+          new_properties +=
+              std::string(kCdmDeviceProp) + "=" + client_info.make() + "\n";
+        } else {
+          DLOG(WARNING) << "Failed reading proto response";
+        }
       } else {
-        DLOG(WARNING) << "Failed reading proto response";
+        LOG(WARNING) << "Failed getting client information from cdm-oemcrypto";
       }
-    } else {
-      LOG(WARNING) << "Failed getting client information from cdm-oemcrypto";
-    }
+      break;
   }
 
   *expanded_content = new_properties;
@@ -369,8 +384,7 @@ bool ExpandPropertyFile(const base::FilePath& input,
                         scoped_refptr<::dbus::Bus> bus,
                         bool append,
                         bool add_native_bridge_64bit_support,
-                        bool append_dalvik_isa,
-                        bool append_cdm_props,
+                        ExtraProps extra_props,
                         bool debuggable,
                         const std::string& partition_name) {
   std::string content;
@@ -379,10 +393,10 @@ bool ExpandPropertyFile(const base::FilePath& input,
     PLOG(ERROR) << "Failed to read " << input;
     return false;
   }
-  if (!ExpandPropertyContents(
-          content, config, bus, &expanded,
-          /*filter_non_ro_props=*/append, add_native_bridge_64bit_support,
-          append_dalvik_isa, append_cdm_props, debuggable, partition_name)) {
+  if (!ExpandPropertyContents(content, config, bus, &expanded,
+                              /*filter_non_ro_props=*/append,
+                              add_native_bridge_64bit_support, extra_props,
+                              debuggable, partition_name)) {
     return false;
   }
   if (append && base::PathExists(output)) {
@@ -408,9 +422,7 @@ bool ExpandPropertyContentsForTesting(const std::string& content,
   return ExpandPropertyContents(content, config, nullptr, expanded_content,
                                 /*filter_non_ro_props=*/true,
                                 /*add_native_bridge_64bit_support=*/false,
-                                /*append_dalvik_isa=*/false,
-                                /*append_cdm_props=*/false, debuggable,
-                                std::string());
+                                ExtraProps::kNone, debuggable, std::string());
 }
 
 bool TruncateAndroidPropertyForTesting(const std::string& line,
@@ -423,8 +435,7 @@ bool ExpandPropertyFileForTesting(const base::FilePath& input,
                                   brillo::CrosConfigInterface* config) {
   return ExpandPropertyFile(input, output, config, nullptr, /*append=*/false,
                             /*add_native_bridge_64bit_support=*/false,
-                            /*append_dalvik_isa=*/false,
-                            /*append_cdm_props=*/false,
+                            ExtraProps::kNone,
                             /*debuggable=*/false, std::string());
 }
 
@@ -445,22 +456,21 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
        // system/core/init/property_service.cpp.
        // Note: Our vendor image doesn't have /vendor/default.prop although
        // PropertyLoadBootDefaults() tries to open it.
-       {std::tuple<const char*, bool, bool, const char*, bool>{
-            "default.prop", true, false, "", false},
-        {"build.prop", false, true, "", false},
-        {"system_ext_build.prop", true, false, "system_ext.", false},
-        {"vendor_build.prop", false, false, "vendor.", false},
-        {"odm_build.prop", true, false, "odm.", false},
-        {"product_build.prop", true, false, "product.", true}}) {
+       {std::tuple<const char*, bool, const char*, ExtraProps>{
+            "default.prop", true, "", ExtraProps::kNone},
+        {"build.prop", false, "",
+         add_native_bridge_64bit_support ? ExtraProps::kDalvikIsa
+                                         : ExtraProps::kNone},
+        {"system_ext_build.prop", true, "system_ext.", ExtraProps::kNone},
+        {"vendor_build.prop", false, "vendor.", ExtraProps::kNone},
+        {"odm_build.prop", true, "odm.", ExtraProps::kNone},
+        {"product_build.prop", true, "product.",
+         hw_oemcrypto_support ? ExtraProps::kCdm : ExtraProps::kNone}}) {
     const char* file = std::get<0>(tuple);
     const bool is_optional = std::get<1>(tuple);
-    // When true, unconditionally add |kDalvikVmIsaArm64| property.
-    const bool append_dalvik_isa =
-        std::get<2>(tuple) && add_native_bridge_64bit_support;
-    // Add CDM properties for HW DRM.
-    const bool append_cdm_props = std::get<4>(tuple) && hw_oemcrypto_support;
     // Search for ro.<partition_name>product.cpu.abilist* properties.
-    const char* partition_name = std::get<3>(tuple);
+    const char* partition_name = std::get<2>(tuple);
+    const ExtraProps extra_props = std::get<3>(tuple);
 
     const base::FilePath source_file = source_path.Append(file);
     if (is_optional && !base::PathExists(source_file))
@@ -470,7 +480,7 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
             source_file, single_file ? dest_path : dest_path.Append(file),
             &config, bus,
             /*append=*/single_file, add_native_bridge_64bit_support,
-            append_dalvik_isa, append_cdm_props, debuggable, partition_name)) {
+            extra_props, debuggable, partition_name)) {
       LOG(ERROR) << "Failed to expand " << source_file;
       return false;
     }
