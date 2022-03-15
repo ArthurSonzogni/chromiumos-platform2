@@ -228,7 +228,7 @@ MobileOperatorInfoImpl::operator_name_list() const {
   return operator_name_list_;
 }
 
-const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
+const std::vector<MobileOperatorInfo::MobileAPN>&
 MobileOperatorInfoImpl::apn_list() const {
   return apn_list_;
 }
@@ -877,23 +877,23 @@ void MobileOperatorInfoImpl::ReloadData(
   if (data.mobile_apn_size() > 0) {
     apn_list_.clear();
     for (const auto& apn_data : data.mobile_apn()) {
-      auto apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
-      apn->apn = apn_data.apn();
-      apn->username = apn_data.username();
-      apn->password = apn_data.password();
+      MobileOperatorInfo::MobileAPN apn;
+      apn.apn = apn_data.apn();
+      apn.username = apn_data.username();
+      apn.password = apn_data.password();
       for (const auto& localized_name : apn_data.localized_name()) {
-        apn->operator_name_list.push_back(
+        apn.operator_name_list.push_back(
             {localized_name.name(), localized_name.language()});
       }
-      apn->authentication = GetApnAuthentication(apn_data);
-      apn->is_attach_apn =
+      apn.authentication = GetApnAuthentication(apn_data);
+      apn.is_attach_apn =
           apn_data.has_is_attach_apn() ? apn_data.is_attach_apn() : false;
       base::Optional<std::string> ip_type = GetIpType(apn_data);
       if (!ip_type.has_value()) {
         LOG(INFO) << "Unknown IP type for APN \"" << apn_data.apn() << "\"";
         continue;
       }
-      apn->ip_type = ip_type.value();
+      apn.ip_type = ip_type.value();
 
       apn_list_.push_back(std::move(apn));
     }

@@ -1354,7 +1354,7 @@ CellularBearer* CellularCapability3gpp::GetActiveBearer() const {
   return active_bearer_.get();
 }
 
-const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
+const std::vector<MobileOperatorInfo::MobileAPN>&
 CellularCapability3gpp::GetProfiles() const {
   return profiles_;
 }
@@ -1801,14 +1801,14 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   SLOG(this, 3) << __func__;
   profiles_.clear();
   for (const auto& profile : profiles) {
-    auto apn_info = std::make_unique<MobileOperatorInfo::MobileAPN>();
-    apn_info->apn =
+    MobileOperatorInfo::MobileAPN apn_info;
+    apn_info.apn =
         brillo::GetVariantValueOrDefault<std::string>(profile, kProfileApn);
-    apn_info->username = brillo::GetVariantValueOrDefault<std::string>(
+    apn_info.username = brillo::GetVariantValueOrDefault<std::string>(
         profile, kProfileUsername);
-    apn_info->password = brillo::GetVariantValueOrDefault<std::string>(
+    apn_info.password = brillo::GetVariantValueOrDefault<std::string>(
         profile, kProfilePassword);
-    apn_info->authentication =
+    apn_info.authentication =
         MMBearerAllowedAuthToApnAuthentication(static_cast<MMBearerAllowedAuth>(
             brillo::GetVariantValueOrDefault<uint32_t>(profile,
                                                        kProfileAuthType)));

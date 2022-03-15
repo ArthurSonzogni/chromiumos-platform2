@@ -1130,16 +1130,16 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     EXPECT_EQ(apn_list_.size(), operator_info_->apn_list().size());
     std::map<std::string, const MobileOperatorInfo::MobileAPN*> mobile_apns;
     for (const auto& apn_node : operator_info_->apn_list()) {
-      mobile_apns[apn_node->apn] = apn_node.get();
+      mobile_apns[apn_node.apn] = &apn_node;
     }
     for (const auto& apn_lhs : apn_list_) {
-      ASSERT_TRUE(mobile_apns.find(apn_lhs->apn) != mobile_apns.end());
-      const auto& apn_rhs = mobile_apns[apn_lhs->apn];
+      ASSERT_TRUE(mobile_apns.find(apn_lhs.apn) != mobile_apns.end());
+      const auto& apn_rhs = mobile_apns[apn_lhs.apn];
       // Only comparing apn, name, username, password.
-      EXPECT_EQ(apn_lhs->apn, apn_rhs->apn);
-      EXPECT_EQ(apn_lhs->username, apn_rhs->username);
-      EXPECT_EQ(apn_lhs->password, apn_rhs->password);
-      VerifyNameListsMatch(apn_lhs->operator_name_list,
+      EXPECT_EQ(apn_lhs.apn, apn_rhs->apn);
+      EXPECT_EQ(apn_lhs.username, apn_rhs->username);
+      EXPECT_EQ(apn_lhs.password, apn_rhs->password);
+      VerifyNameListsMatch(apn_lhs.operator_name_list,
                            apn_rhs->operator_name_list);
     }
 
@@ -1202,11 +1202,11 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     operator_name_list_ = {{"name200001", "en"}, {"name200002", ""}};
 
     apn_list_.clear();
-    auto apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
-    apn->apn = "test@test.com";
-    apn->username = "testuser";
-    apn->password = "is_public_boohoohoo";
-    apn->operator_name_list = {{"name200003", "hi"}};
+    MobileOperatorInfo::MobileAPN apn;
+    apn.apn = "test@test.com";
+    apn.username = "testuser";
+    apn.password = "is_public_boohoohoo";
+    apn.operator_name_list = {{"name200003", "hi"}};
     apn_list_.push_back(std::move(apn));
 
     olp_list_ = {{"some@random.com", "POST", "random_data"}};
@@ -1224,10 +1224,10 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     operator_name_list_ = {{"name200101", "en"}, {"name200102", ""}};
 
     apn_list_.clear();
-    auto apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
-    apn->apn = "test2@test.com";
-    apn->username = "testuser2";
-    apn->password = "is_public_boohoohoo_too";
+    MobileOperatorInfo::MobileAPN apn;
+    apn.apn = "test2@test.com";
+    apn.username = "testuser2";
+    apn.password = "is_public_boohoohoo_too";
     apn_list_.push_back(std::move(apn));
 
     olp_list_ = {{"someother@random.com", "GET", ""}};
@@ -1241,7 +1241,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   std::string activation_code_;
   std::vector<std::string> mccmnc_list_;
   std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
-  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list_;
+  std::vector<MobileOperatorInfo::MobileAPN> apn_list_;
   std::vector<MobileOperatorInfo::OnlinePortal> olp_list_;
   std::vector<std::string> sid_list_;
 

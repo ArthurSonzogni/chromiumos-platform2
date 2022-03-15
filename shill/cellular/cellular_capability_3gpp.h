@@ -100,8 +100,8 @@ class CellularCapability3gpp : public CellularCapability {
   void Connect(const ResultCallback& callback) override;
   void Disconnect(const ResultCallback& callback) override;
   CellularBearer* GetActiveBearer() const override;
-  const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
-  GetProfiles() const override;
+  const std::vector<MobileOperatorInfo::MobileAPN>& GetProfiles()
+      const override;
   void RequirePin(const std::string& pin,
                   bool require,
                   Error* error,
@@ -417,7 +417,7 @@ class CellularCapability3gpp : public CellularCapability {
   std::unique_ptr<CellularBearer> active_bearer_;
   RpcIdentifiers bearer_paths_;
   bool reset_done_ = false;
-  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> profiles_;
+  std::vector<MobileOperatorInfo::MobileAPN> profiles_;
   bool set_modem_to_low_power_mode_on_stop_ = true;
 
   // SIM properties

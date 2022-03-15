@@ -2381,19 +2381,17 @@ TEST_P(CellularTest, GetGeolocationObjects) {
 // Helper class because gmock doesn't play nicely with unique_ptr
 class FakeMobileOperatorInfo : public NiceMock<MockMobileOperatorInfo> {
  public:
-  FakeMobileOperatorInfo(
-      EventDispatcher* dispatcher,
-      std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list)
+  FakeMobileOperatorInfo(EventDispatcher* dispatcher,
+                         std::vector<MobileOperatorInfo::MobileAPN> apn_list)
       : NiceMock<MockMobileOperatorInfo>(dispatcher, "Fake"),
         apn_list_(std::move(apn_list)) {}
 
-  const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>& apn_list()
-      const override {
+  const std::vector<MobileOperatorInfo::MobileAPN>& apn_list() const override {
     return apn_list_;
   }
 
  private:
-  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list_;
+  std::vector<MobileOperatorInfo::MobileAPN> apn_list_;
 };
 
 TEST_P(CellularTest, SimpleApnList) {
@@ -2401,11 +2399,11 @@ TEST_P(CellularTest, SimpleApnList) {
   constexpr char kUsername[] = "foo";
   constexpr char kPassword[] = "bar";
 
-  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list;
-  auto mobile_apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
-  mobile_apn->apn = kApn;
-  mobile_apn->username = kUsername;
-  mobile_apn->password = kPassword;
+  std::vector<MobileOperatorInfo::MobileAPN> apn_list;
+  MobileOperatorInfo::MobileAPN mobile_apn;
+  mobile_apn.apn = kApn;
+  mobile_apn.username = kUsername;
+  mobile_apn.password = kPassword;
   apn_list.emplace_back(std::move(mobile_apn));
   FakeMobileOperatorInfo info(&dispatcher_, std::move(apn_list));
 
@@ -2428,9 +2426,9 @@ TEST_P(CellularTest, ProfilesApnList) {
   Capability3gppCallOnProfilesChanged({profile});
 
   constexpr char kApn2[] = "normal.apn";
-  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list;
-  auto mobile_apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
-  mobile_apn->apn = kApn2;
+  std::vector<MobileOperatorInfo::MobileAPN> apn_list;
+  MobileOperatorInfo::MobileAPN mobile_apn;
+  mobile_apn.apn = kApn2;
   apn_list.emplace_back(std::move(mobile_apn));
   FakeMobileOperatorInfo info(&dispatcher_, std::move(apn_list));
 
@@ -2454,10 +2452,10 @@ TEST_P(CellularTest, MergeProfileAndOperatorApn) {
   profile["apn"] = std::string(kApn);
   Capability3gppCallOnProfilesChanged({profile});
 
-  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list;
-  auto mobile_apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
-  mobile_apn->apn = kApn;
-  mobile_apn->operator_name_list.push_back({kApnName, ""});
+  std::vector<MobileOperatorInfo::MobileAPN> apn_list;
+  MobileOperatorInfo::MobileAPN mobile_apn;
+  mobile_apn.apn = kApn;
+  mobile_apn.operator_name_list.push_back({kApnName, ""});
   apn_list.emplace_back(std::move(mobile_apn));
   FakeMobileOperatorInfo info(&dispatcher_, std::move(apn_list));
 
@@ -2481,10 +2479,10 @@ TEST_P(CellularTest, DontMergeProfileAndOperatorApn) {
   Capability3gppCallOnProfilesChanged({profile});
 
   constexpr char kUsernameFromOperator[] = "user2";
-  std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>> apn_list;
-  auto mobile_apn = std::make_unique<MobileOperatorInfo::MobileAPN>();
-  mobile_apn->apn = kApn;
-  mobile_apn->username = kUsernameFromOperator;
+  std::vector<MobileOperatorInfo::MobileAPN> apn_list;
+  MobileOperatorInfo::MobileAPN mobile_apn;
+  mobile_apn.apn = kApn;
+  mobile_apn.username = kUsernameFromOperator;
   apn_list.emplace_back(std::move(mobile_apn));
   FakeMobileOperatorInfo info(&dispatcher_, std::move(apn_list));
 

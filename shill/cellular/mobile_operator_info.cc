@@ -153,17 +153,17 @@ MobileOperatorInfo::operator_name_list() const {
   return result;
 }
 
-const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>&
-MobileOperatorInfo::apn_list() const {
+const std::vector<MobileOperatorInfo::MobileAPN>& MobileOperatorInfo::apn_list()
+    const {
   const auto& result = impl_->apn_list();
   if (SLOG_IS_ON(Cellular, 3)) {
     std::stringstream pp_result;
     for (const auto& mobile_apn : result) {
-      pp_result << "(apn: " << mobile_apn->apn
-                << ", username: " << mobile_apn->username
-                << ", password: " << mobile_apn->password;
+      pp_result << "(apn: " << mobile_apn.apn
+                << ", username: " << mobile_apn.username
+                << ", password: " << mobile_apn.password;
       pp_result << ", operator_name_list: '";
-      for (const auto& operator_name : mobile_apn->operator_name_list) {
+      for (const auto& operator_name : mobile_apn.operator_name_list) {
         pp_result << "(" << operator_name.name << ", " << operator_name.language
                   << ") ";
       }

@@ -79,9 +79,8 @@ class ApnList {
  public:
   enum class ApnSource { kModb, kModem };
 
-  void AddApns(
-      const std::vector<std::unique_ptr<MobileOperatorInfo::MobileAPN>>& apns,
-      ApnSource source) {
+  void AddApns(const std::vector<MobileOperatorInfo::MobileAPN>& apns,
+               ApnSource source) {
     for (const auto& mobile_apn : apns)
       AddApn(mobile_apn, source);
   }
@@ -92,13 +91,12 @@ class ApnList {
   using ApnIndexKey =
       std::tuple<std::string, std::string, std::string, std::string>;
 
-  ApnIndexKey GetKey(
-      const std::unique_ptr<MobileOperatorInfo::MobileAPN>& mobile_apn) {
-    return std::make_tuple(mobile_apn->apn, mobile_apn->username,
-                           mobile_apn->password, mobile_apn->authentication);
+  ApnIndexKey GetKey(const MobileOperatorInfo::MobileAPN& mobile_apn) {
+    return std::make_tuple(mobile_apn.apn, mobile_apn.username,
+                           mobile_apn.password, mobile_apn.authentication);
   }
 
-  void AddApn(const std::unique_ptr<MobileOperatorInfo::MobileAPN>& mobile_apn,
+  void AddApn(const MobileOperatorInfo::MobileAPN& mobile_apn,
               ApnSource source) {
     ApnIndexKey index = GetKey(mobile_apn);
     if (!base::Contains(apn_index_, index)) {
@@ -107,22 +105,22 @@ class ApnList {
     }
 
     Stringmap& props = apn_dict_list_.at(apn_index_[index]);
-    if (!mobile_apn->apn.empty())
-      props[kApnProperty] = mobile_apn->apn;
-    if (!mobile_apn->username.empty())
-      props[kApnUsernameProperty] = mobile_apn->username;
-    if (!mobile_apn->password.empty())
-      props[kApnPasswordProperty] = mobile_apn->password;
-    if (!mobile_apn->authentication.empty())
-      props[kApnAuthenticationProperty] = mobile_apn->authentication;
-    if (mobile_apn->is_attach_apn)
+    if (!mobile_apn.apn.empty())
+      props[kApnProperty] = mobile_apn.apn;
+    if (!mobile_apn.username.empty())
+      props[kApnUsernameProperty] = mobile_apn.username;
+    if (!mobile_apn.password.empty())
+      props[kApnPasswordProperty] = mobile_apn.password;
+    if (!mobile_apn.authentication.empty())
+      props[kApnAuthenticationProperty] = mobile_apn.authentication;
+    if (mobile_apn.is_attach_apn)
       props[kApnAttachProperty] = kApnAttachProperty;
-    if (!mobile_apn->ip_type.empty())
-      props[kApnIpTypeProperty] = mobile_apn->ip_type;
+    if (!mobile_apn.ip_type.empty())
+      props[kApnIpTypeProperty] = mobile_apn.ip_type;
 
     // Find the first localized and non-localized name, if any.
-    if (!mobile_apn->operator_name_list.empty())
-      props[kApnNameProperty] = mobile_apn->operator_name_list[0].name;
+    if (!mobile_apn.operator_name_list.empty())
+      props[kApnNameProperty] = mobile_apn.operator_name_list[0].name;
 
     switch (source) {
       case ApnSource::kModb:
@@ -132,7 +130,7 @@ class ApnList {
         props[cellular::kApnSource] = cellular::kApnSourceModem;
         break;
     }
-    for (const auto& lname : mobile_apn->operator_name_list) {
+    for (const auto& lname : mobile_apn.operator_name_list) {
       if (!lname.language.empty())
         props[kApnLocalizedNameProperty] = lname.name;
     }
