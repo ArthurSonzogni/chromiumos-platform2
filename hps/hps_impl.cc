@@ -221,7 +221,7 @@ bool HPS_impl::CheckMagic() {
         Sleep(kMagicSleep);
         continue;
       } else {
-        OnFatalError(FROM_HERE, "Timeout waiting for boot magic number");
+        return false;
       }
     } else if (magic == kHpsMagic) {
       VLOG(1) << "Good magic number after " << timer.Elapsed().InMilliseconds()
@@ -250,7 +250,7 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
     hps_metrics_->SendHpsTurnOnResult(
         HpsTurnOnResult::kNoResponse,
         base::TimeTicks::Now() - this->boot_start_time_);
-    return BootResult::kFail;
+    OnFatalError(FROM_HERE, "Timeout waiting for stage0 magic number");
   }
 
   std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);
@@ -321,7 +321,7 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
     hps_metrics_->SendHpsTurnOnResult(
         HpsTurnOnResult::kStage1NotStarted,
         base::TimeTicks::Now() - this->boot_start_time_);
-    return BootResult::kFail;
+    OnFatalError(FROM_HERE, "Timeout waiting for stage1 magic number");
   }
 
   std::optional<uint16_t> status = this->device_->ReadReg(HpsReg::kSysStatus);

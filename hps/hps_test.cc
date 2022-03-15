@@ -146,7 +146,7 @@ TEST_F(HPSTestButUsingAMock, MagicNumber) {
 TEST_F(HPSTestButUsingAMock, MagicNumberTimeout) {
   EXPECT_CALL(*dev_, ReadReg(hps::HpsReg::kMagic))
       .WillRepeatedly(Return(std::nullopt));
-  EXPECT_DEATH(CheckMagic(), "Timeout waiting for boot magic number");
+  EXPECT_FALSE(CheckMagic());
 }
 
 TEST_F(HPSTestButUsingAMock, IsRunningOk) {
