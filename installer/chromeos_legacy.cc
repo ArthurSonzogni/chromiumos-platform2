@@ -35,8 +35,8 @@ bool UpdateLegacyKernel(const InstallConfig& install_config) {
   return base::CopyFile(kernel_from, kernel_to);
 }
 
-string ExplandVerityArguments(const string& kernel_config,
-                              const string& root_uuid) {
+string ExpandVerityArguments(const string& kernel_config,
+                             const string& root_uuid) {
   string kernel_config_dm = ExtractKernelArg(kernel_config, "dm");
 
   // The verity config from the kernel contains short hand symbols for
@@ -99,7 +99,7 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
     return false;
 
   string kernel_config_dm =
-      ExplandVerityArguments(kernel_config, install_config.root.uuid());
+      ExpandVerityArguments(kernel_config, install_config.root.uuid());
 
   if (kernel_config_dm.empty()) {
     LOG(ERROR) << "Failed to extract Verity arguments.";
@@ -178,7 +178,7 @@ bool RunEfiPostInstall(const InstallConfig& install_config) {
   // Of the form: PARTUUID=XXX-YYY-ZZZ
   string kernel_config = DumpKernelConfig(install_config.kernel.device());
   string root_uuid = install_config.root.uuid();
-  string kernel_config_dm = ExplandVerityArguments(kernel_config, root_uuid);
+  string kernel_config_dm = ExpandVerityArguments(kernel_config, root_uuid);
 
   base::FilePath grub_path =
       base::FilePath(install_config.boot.mount()).Append("efi/boot/grub.cfg");
