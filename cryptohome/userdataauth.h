@@ -1088,7 +1088,7 @@ class UserDataAuth {
 
   // =============== WebAuthn Related Helpers ===============
 
-  bool PrepareWebAuthnSecret(const std::string& account_id,
+  void PrepareWebAuthnSecret(const std::string& account_id,
                              const VaultKeyset& vk);
 
   // =============== Threading Related Variables ===============

@@ -2239,23 +2239,19 @@ void UserDataAuth::CheckKey(
     // Entered the right creds, so reset LE credentials.
     keyset_management_->ResetLECredentials(credentials);
 
-    if (request.unlock_webauthn_secret()) {
-      std::unique_ptr<VaultKeyset> vk =
-          keyset_management_->GetValidKeyset(credentials, nullptr /* error */);
-      if (!vk) {
-        std::move(on_done).Run(
-            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
-        return;
-      }
-      if (!PrepareWebAuthnSecret(account_id, *vk)) {
-        // Failed to prepare WebAuthn secret means there's no active user
-        // session for the account id.
-        std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-        return;
-      }
-    }
-
+    // Run the completion callback before deriving webauthn secret to speed up
+    // the check key process.
     std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+    // Both check key and GetWebAuthnSecret is processed on the mount thread, so
+    // there won't be race condition of PrepareWebAuthnSecret and
+    // GetWebAuthnSecret even if we derive the secret after running the
+    // completion callback.
+    std::unique_ptr<VaultKeyset> vk =
+        keyset_management_->GetValidKeyset(credentials, nullptr /* error */);
+    if (vk) {
+      PrepareWebAuthnSecret(account_id, *vk);
+    }
     return;
   }
 
@@ -2277,28 +2273,26 @@ void UserDataAuth::CheckKey(
 
   keyset_management_->ResetLECredentials(credentials);
 
-  if (request.unlock_webauthn_secret()) {
-    if (!PrepareWebAuthnSecret(account_id, *vk)) {
-      // Failed to prepare WebAuthn secret means there's no active user
-      // session for the account id.
-      std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-      return;
-    }
-  }
+  // Run the completion callback before deriving webauthn secret to speed up
+  // the check key process.
   std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
+  // Both check key and GetWebAuthnSecret is processed on the mount thread, so
+  // there won't be race condition of PrepareWebAuthnSecret and
+  // GetWebAuthnSecret even if we derive the secret after running the
+  // completion callback.
+  PrepareWebAuthnSecret(account_id, *vk);
   return;
 }
 
-bool UserDataAuth::PrepareWebAuthnSecret(const std::string& account_id,
+void UserDataAuth::PrepareWebAuthnSecret(const std::string& account_id,
                                          const VaultKeyset& vk) {
   scoped_refptr<UserSession> session = GetUserSession(account_id);
   if (!session) {
-    return false;
+    return;
   }
   FileSystemKeyset fs_keyset(vk);
   session->PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
-  return true;
 }
 
 void UserDataAuth::CompleteFingerprintCheckKey(

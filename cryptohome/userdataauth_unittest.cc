@@ -3024,32 +3024,6 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
-  // The `unlock_webauthn_secret` is false by default, WebAuthn secret shouldn't
-  // be prepared.
-  EXPECT_CALL(*session_, PrepareWebAuthnSecret(_, _)).Times(0);
-
-  CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-}
-
-TEST_F(UserDataAuthExTest, CheckKeyHomedirsUnlockWebAuthnSecretSuccess) {
-  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
-  PrepareArguments();
-  SetupMount(kUser);
-
-  check_req_->mutable_account_id()->set_account_id(kUser);
-  check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
-  check_req_->set_unlock_webauthn_secret(true);
-
-  Credentials credentials("another", brillo::SecureBlob(kKey));
-  session_->SetCredentials(credentials);
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
-
-  // The `unlock_webauthn_secret` is set to true, so WebAuthn secret should be
-  // prepared.
-  EXPECT_CALL(*session_, PrepareWebAuthnSecret(_, _));
-
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
@@ -3060,7 +3034,6 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
 
   check_req_->mutable_account_id()->set_account_id(kUser);
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
-  check_req_->set_unlock_webauthn_secret(true);
 
   // Ensure failure
   Credentials credentials("another", brillo::SecureBlob(kKey));
@@ -3068,10 +3041,6 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
       .WillOnce(Return(ByMove(std::unique_ptr<VaultKeyset>())));
-
-  // CheckKey failed, so the WebAuthn secret shouldn't be prepared even if
-  // `unlock_webauthn_secret` is true.
-  EXPECT_CALL(*session_, PrepareWebAuthnSecret(_, _)).Times(0);
 
   CallCheckKeyAndVerify(
       user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
@@ -3089,10 +3058,6 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
   EXPECT_CALL(*session_, VerifyCredentials(CredentialsMatcher(credentials)))
       .WillOnce(Return(true));
 
-  // The `unlock_webauthn_secret` is false by default, WebAuthn secret shouldn't
-  // be prepared.
-  EXPECT_CALL(*session_, PrepareWebAuthnSecret(_, _)).Times(0);
-
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
@@ -3103,16 +3068,11 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckFail) {
 
   check_req_->mutable_account_id()->set_account_id(kUser);
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
-  check_req_->set_unlock_webauthn_secret(true);
 
   Credentials credentials(kUser, brillo::SecureBlob(kKey));
   EXPECT_CALL(*session_, VerifyCredentials(CredentialsMatcher(credentials)))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
-
-  // CheckKey failed, so the WebAuthn secret shouldn't be prepared even if
-  // `unlock_webauthn_secret` is true.
-  EXPECT_CALL(*session_, PrepareWebAuthnSecret(_, _)).Times(0);
 
   CallCheckKeyAndVerify(user_data_auth::CryptohomeErrorCode::
                             CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
