@@ -6,6 +6,7 @@ type cros_cryptohomed, chromeos_domain, domain, mlstrustedsubject;
 
 domain_auto_trans(cros_init_scripts, cros_cryptohomed_exec, cros_cryptohomed);
 domain_auto_trans(cros_cryptohomed, cros_unconfined_exec, chromeos);
+domain_auto_trans(cros_cryptohomed, cros_spaced_cli_exec, cros_spaced_cli);
 
 allow domain cros_cryptohomed:key                                     search;
 
@@ -131,6 +132,9 @@ allow cros_cryptohomed {
 allow cros_cryptohomed cros_system_bus_socket:sock_file write;
 
 create_dir_file( cros_cryptohomed cros_var_lib_devicesettings );
+
+# When running spaced_cli, this allows access to the child's /proc/<PID> dir.
+r_dir_file(cros_cryptohomed, cros_spaced_cli);
 
 has_arc(`
   create_dir_file(cros_cryptohomed media_rw_data_file);
