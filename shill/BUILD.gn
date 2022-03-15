@@ -346,6 +346,7 @@ static_library("libshill") {
 
   if (use.cellular) {
     sources += [
+      "cellular/apn_list.cc",
       "cellular/cellular.cc",
       "cellular/cellular_bearer.cc",
       "cellular/cellular_capability.cc",
@@ -753,6 +754,7 @@ if (use.test) {
 
     if (use.cellular) {
       sources += [
+        "cellular/apn_list_test.cc",
         "cellular/cellular_bearer_test.cc",
         "cellular/cellular_capability_3gpp_test.cc",
         "cellular/cellular_capability_cdma_test.cc",
