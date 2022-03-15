@@ -10,14 +10,14 @@ STRUCT_VERSION = 2
 # version, entry_count
 HEADER_FORMAT = '<LL'
 # flags, smbios name match, fdt compatible match, sku match,
-# whitelabel match, firmware manifest name
+# custom label match, firmware manifest name
 ENTRY_FORMAT = '<LLLLLL'
 
 
 class EntryFlags(enum.Enum):
   """The flags used at the beginning of each entry."""
   HAS_SKU_ID = 1 << 0
-  HAS_WHITELABEL = 1 << 1
+  HAS_CUSTOM_LABEL_TAG = 1 << 1
 
   # This device uses a customization ID from VPD to match instead of a
   # whitelabel tag. This is deprecated for new devices since 2017, so
@@ -80,7 +80,7 @@ def WriteIdentityStruct(config, output_file):
 
     smbios_name_match = None
     fdt_compatible_match = None
-    whitelabel_match = None
+    custom_label_match = None
     if 'smbios-name-match' in identity_info:
       flags |= EntryFlags.HAS_SMBIOS_NAME.value
       smbios_name_match = identity_info['smbios-name-match']
@@ -90,10 +90,10 @@ def WriteIdentityStruct(config, output_file):
 
     if 'customization-id' in identity_info:
       flags |= EntryFlags.HAS_CUSTOMIZATION_ID.value
-      whitelabel_match = identity_info['customization-id']
+      custom_label_match = identity_info['customization-id']
     elif 'custom-label-tag' in identity_info:
-      flags |= EntryFlags.HAS_WHITELABEL.value
-      whitelabel_match = identity_info['custom-label-tag']
+      flags |= EntryFlags.HAS_CUSTOM_LABEL_TAG.value
+      custom_label_match = identity_info['custom-label-tag']
 
     output_file.write(
         struct.pack(ENTRY_FORMAT,
@@ -101,7 +101,7 @@ def WriteIdentityStruct(config, output_file):
                     _StringTableIndex(smbios_name_match),
                     _StringTableIndex(fdt_compatible_match),
                     sku_id,
-                    _StringTableIndex(whitelabel_match),
+                    _StringTableIndex(custom_label_match),
                     _StringTableIndex(firmware_manifest_key)))
 
   for entry in string_table:

@@ -36,7 +36,7 @@ SKUS = 'skus'
 CONFIG = 'config'
 BRAND_ELEMENTS = ['brand-code', 'firmware-signing', 'wallpaper',
                   'regulatory-label', 'branding']
-# External stylus is allowed for whitelabels
+# External stylus is allowed for custom labels
 EXTERNAL_STYLUS = 'external'
 TEMPLATE_PATTERN = re.compile('{{([^}]*)}}')
 
@@ -580,53 +580,53 @@ def _ValidateUniqueIdentities(json_config):
                                                     config_b['identity']))
 
 
-def _ValidateWhitelabelBrandChangesOnly(json_config):
-  """Verifies that whitelabel changes are contained to branding information.
+def _ValidateCustomLabelBrandChangesOnly(json_config):
+  """Verifies that custom label changes are contained to branding information.
 
   Args:
     json_config: JSON config dictionary
   """
-  whitelabels = {}
+  custom_labels = {}
   for config in json_config['chromeos']['configs']:
     if 'custom-label-tag' in config.get('identity', {}):
       if 'bobba' in config['name']: # Remove after crbug.com/1036381 resolved
         continue
       name = '%s - %s' % (config['name'], config['identity'].get('sku-id', 0))
-      config_list = whitelabels.get(name, [])
+      config_list = custom_labels.get(name, [])
 
-      wl_minus_brand = copy.deepcopy(config)
-      wl_minus_brand['identity']['custom-label-tag'] = ''
+      config_minus_brand = copy.deepcopy(config)
+      config_minus_brand['identity']['custom-label-tag'] = ''
 
       for brand_element in BRAND_ELEMENTS:
-        wl_minus_brand[brand_element] = ''
+        config_minus_brand[brand_element] = ''
 
-      hw_props = wl_minus_brand.get('hardware-properties', None)
+      hw_props = config_minus_brand.get('hardware-properties', None)
       if hw_props:
         stylus = hw_props.get('stylus-category', 'none')
         if stylus == 'none' or stylus == EXTERNAL_STYLUS:
           hw_props.pop('stylus-category', None)
 
       # Remove /ui:help-content-id
-      if 'ui' not in wl_minus_brand:
-        wl_minus_brand['ui'] = {}
-      wl_minus_brand['ui']['help-content-id'] = ''
+      if 'ui' not in config_minus_brand:
+        config_minus_brand['ui'] = {}
+      config_minus_brand['ui']['help-content-id'] = ''
 
-      wl_minus_brand.get('arc', {}). get('build-properties', {}).pop(
+      config_minus_brand.get('arc', {}). get('build-properties', {}).pop(
           'marketing-name', None)
-      wl_minus_brand.get('arc', {}). get('build-properties', {}).pop(
+      config_minus_brand.get('arc', {}). get('build-properties', {}).pop(
           'oem', None)
 
-      config_list.append(wl_minus_brand)
-      whitelabels[name] = config_list
+      config_list.append(config_minus_brand)
+      custom_labels[name] = config_list
 
-  # whitelabels now contains a map by device name with all whitelabel
+  # custom_labels now contains a map by device name with all custom label
   # configs that have had their branding data stripped.
-  for device_name, configs in whitelabels.items():
+  for device_name, configs in custom_labels.items():
     base_config = configs[0]
     for compare_config in configs[1:]:
       if base_config != compare_config:
         raise ValidationError(
-            'Whitelabel configs can only change branding attributes '
+            'Custom label configs can only change branding attributes '
             'or use an external stylus for (%s).\n'
             'However, the device %s differs by other attributes.\n'
             'Example 1: %s\n'
@@ -718,7 +718,7 @@ def ValidateConfig(config):
   """
   json_config = json.loads(config)
   _ValidateUniqueIdentities(json_config)
-  _ValidateWhitelabelBrandChangesOnly(json_config)
+  _ValidateCustomLabelBrandChangesOnly(json_config)
   _ValidateHardwarePropertiesAreValidType(json_config)
   _ValidateSingleMosysPlatform(json_config)
   _ValidateConsistentFingerprintFirmwareROVersion(json_config)

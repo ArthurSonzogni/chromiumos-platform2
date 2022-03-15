@@ -374,41 +374,41 @@ class ValidateCameraSchema(cros_test_lib.TestCase):
       self.assertIn('%r does not match' % invalid_usb_id, str(ctx.exception))
 
 
-WHITELABEL_CONFIG = """
+CUSTOM_LABEL_CONFIG = """
 chromeos:
   devices:
-    - $name: 'whitelabel'
+    - $name: 'customlabel'
       products:
         - $key-id: 'DEFAULT'
           $wallpaper: 'DEFAULT_WALLPAPER'
           $regulatory-label: 'DEFAULT_LABEL'
-          $whitelabel-tag: ''
+          $custom-label-tag: ''
           $brand-code: 'DEFAULT_BRAND_CODE'
           $stylus-category: 'none'
           $test-label: 'DEFAULT_TEST_LABEL'
-        - $key-id: 'WL1'
-          $wallpaper: 'WL1_WALLPAPER'
-          $regulatory-label: 'WL1_LABEL'
-          $whitelabel-tag: 'WL1_TAG'
-          $brand-code: 'WL1_BRAND_CODE'
-          $oem-name: 'WL1_OEM_NAME'
+        - $key-id: 'CUSTOM1'
+          $wallpaper: 'CUSTOM1_WALLPAPER'
+          $regulatory-label: 'CUSTOM1_LABEL'
+          $custom-label-tag: 'CUSTOM1_TAG'
+          $brand-code: 'CUSTOM1_BRAND_CODE'
+          $oem-name: 'CUSTOM1_OEM_NAME'
           $stylus-category: 'none'
-          $test-label: 'WL1_TEST_LABEL'
+          $test-label: 'CUSTOM1_TEST_LABEL'
           $marketing-name: 'BRAND1_MARKETING_NAME1'
-        - $key-id: 'WL2'
-          $wallpaper: 'WL2_WALLPAPER'
-          $regulatory-label: 'WL2_LABEL'
-          $whitelabel-tag: 'WL2_TAG'
-          $brand-code: 'WL2_BRAND_CODE'
-          $oem-name: 'WL2_OEM_NAME'
+        - $key-id: 'CUSTOM2'
+          $wallpaper: 'CUSTOM2_WALLPAPER'
+          $regulatory-label: 'CUSTOM2_LABEL'
+          $custom-label-tag: 'CUSTOM2_TAG'
+          $brand-code: 'CUSTOM2_BRAND_CODE'
+          $oem-name: 'CUSTOM2_OEM_NAME'
           $stylus-category: 'external'
-          $test-label: 'WL2_TEST_LABEL'
+          $test-label: 'CUSTOM2_TEST_LABEL'
           $marketing-name: 'BRAND2_MARKETING_NAME2'
       skus:
         - config:
             identity:
               sku-id: 0
-              whitelabel-tag: '{{$whitelabel-tag}}'
+              custom-label-tag: '{{$custom-label-tag}}'
             name: '{{$name}}'
             brand-code: '{{$brand-code}}'
             wallpaper: '{{$wallpaper}}'
@@ -425,7 +425,7 @@ chromeos:
               marketing-name: '{{$marketing-name}}'
 """
 
-INVALID_WHITELABEL_CONFIG = """
+INVALID_CUSTOM_LABEL_CONFIG = """
             # THIS WILL CAUSE THE FAILURE
             test-label: '{{$test-label}}'
 """
@@ -486,17 +486,17 @@ chromeos:
           cros_config_schema.TransformConfig(config))
     self.assertIn('Identities are not unique', str(ctx.exception))
 
-  def testWhitelabelWithExternalStylus(self):
-    config = WHITELABEL_CONFIG
+  def testCustomLabelWithExternalStylus(self):
+    config = CUSTOM_LABEL_CONFIG
     cros_config_schema.ValidateConfig(
         cros_config_schema.TransformConfig(config))
 
-  def testWhitelabelWithOtherThanBrandChanges(self):
-    config = WHITELABEL_CONFIG + INVALID_WHITELABEL_CONFIG
+  def testCustomLabelWithOtherThanBrandChanges(self):
+    config = CUSTOM_LABEL_CONFIG + INVALID_CUSTOM_LABEL_CONFIG
     with self.assertRaises(cros_config_schema.ValidationError) as ctx:
       cros_config_schema.ValidateConfig(
           cros_config_schema.TransformConfig(config))
-    self.assertIn('Whitelabel configs can only', str(ctx.exception))
+    self.assertIn('Custom label configs can only', str(ctx.exception))
 
   def testHardwarePropertiesInvalid(self):
     config = """
