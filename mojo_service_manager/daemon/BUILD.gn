@@ -19,6 +19,15 @@ pkg_config("target_default") {
   ]
 }
 
+source_set("libmojo_service_manager_daemon") {
+  sources = [
+    "service_policy.cc",
+    "service_policy_loader.cc",
+  ]
+  configs += [ ":target_default" ]
+  deps = [ "//mojo_service_manager/lib/mojom" ]
+}
+
 executable("mojo_service_manager") {
   sources = [
     "daemon.cc",
@@ -26,7 +35,10 @@ executable("mojo_service_manager") {
   ]
   configs += [ ":target_default" ]
   install_path = "bin"
-  deps = [ "//mojo_service_manager/lib/mojom" ]
+  deps = [
+    ":libmojo_service_manager_daemon",
+    "//mojo_service_manager/lib/mojom",
+  ]
 }
 
 if (use.test) {
@@ -39,12 +51,20 @@ if (use.test) {
   }
 
   executable("mojo_service_manager_test") {
-    sources = [ "mojo_test_runner.cc" ]
+    sources = [
+      "mojo_test_runner.cc",
+      "service_policy_loader_test.cc",
+      "service_policy_test.cc",
+      "service_policy_test_util.cc",
+    ]
     configs += [
       ":target_test",
       "//common-mk:test",
     ]
     run_test = true
-    deps = [ "//common-mk/testrunner:testrunner" ]
+    deps = [
+      ":libmojo_service_manager_daemon",
+      "//common-mk/testrunner:testrunner",
+    ]
   }
 }
