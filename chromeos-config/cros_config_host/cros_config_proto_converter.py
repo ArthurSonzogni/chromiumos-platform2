@@ -8,8 +8,11 @@
 # pylint: disable=too-many-lines
 
 import argparse
+import collections.abc
 import glob
+import itertools
 import json
+import pathlib
 import pprint
 import os
 import sys
@@ -20,8 +23,10 @@ from typing import List
 from collections import namedtuple
 
 from google.protobuf import json_format
+from google.protobuf import wrappers_pb2
 from lxml import etree
 
+from chromiumos.config.api import component_pb2
 from chromiumos.config.api import device_brand_pb2
 from chromiumos.config.api import topology_pb2
 from chromiumos.config.payload import config_bundle_pb2
@@ -97,7 +102,7 @@ def _build_arc(config, config_files):
   build_properties = {
       # TODO(chromium:1126527) - Push this into the overlay itself.
       # This isn't/can't be device specific and shouldn't be configured as such.
-      'device': "%s_cheets" % config.program.name.lower(),
+      'device': '%s_cheets' % config.program.name.lower(),
       'first-api-level': '28',
       'marketing-name': config.device_brand.brand_name,
       'metrics-tag': config.hw_design.name.lower(),
@@ -116,6 +121,94 @@ def _build_arc(config, config_files):
   # Only set for high resolution displays
   if ppi and ppi > 250:
     result['scale'] = ppi
+
+  return result
+
+
+def _check_percentage_value(value: float, description: str):
+  if not 0 <= value <= 100:
+    raise Exception('Value %.1f out of range [0, 100] for %s' %
+                    (value, description))
+
+
+def _check_increasing_sequence(values: [float], description: str):
+  for lhs, rhs in zip(values, values[1:]):
+    if lhs >= rhs:
+      raise Exception(
+          'Value %s is not strictly larger than previous value %s for %s' %
+          (rhs, lhs, description))
+
+
+def _check_als_steps(steps: [component_pb2.Component.AlsStep],
+                     description: str):
+  for idx, step in enumerate(steps):
+    _check_percentage_value(step.ac_backlight_percent,
+                            '%s[%d].ac_backlight_percent' % (description, idx))
+    _check_percentage_value(
+        step.battery_backlight_percent,
+        '%s[%d].battery_backlight_percent' % (description, idx))
+
+  _check_increasing_sequence([step.ac_backlight_percent for step in steps],
+                             '%s.ac_backlight_percent' % description)
+  _check_increasing_sequence([step.battery_backlight_percent for step in steps],
+                             '%s.battery_backlight_percent' % description)
+  _check_increasing_sequence(
+      [step.lux_increase_threshold for step in steps[:-1]],
+      '%s.lux_increase_threshold' % description)
+  _check_increasing_sequence(
+      [step.lux_decrease_threshold for step in steps[1:]],
+      '%s.lux_decrease_threshold' % description)
+
+  if steps[0].lux_decrease_threshold != -1:
+    raise Exception('%s[0].lux_decrease_threshold should be unset, not %d' %
+                    (description, steps[0].lux_decrease_threshold))
+  if steps[-1].lux_increase_threshold != -1:
+    raise Exception('%s[0].lux_decrease_threshold should be unset, not %d' %
+                    (description, steps[-1].lux_increase_threshold))
+
+
+def _format_als_step(als_step: component_pb2.Component.AlsStep) -> str:
+  battery_percent = ''
+  if als_step.battery_backlight_percent != als_step.ac_backlight_percent:
+    battery_percent = ' %s' % _format_power_pref_value(
+        als_step.battery_backlight_percent)
+  return '%s%s %s %s' % (
+      _format_power_pref_value(als_step.ac_backlight_percent),
+      battery_percent,
+      _format_power_pref_value(als_step.lux_decrease_threshold),
+      _format_power_pref_value(als_step.lux_increase_threshold),
+  )
+
+
+def _format_power_pref_value(value) -> str:
+  if isinstance(value, str):
+    return value
+  if isinstance(value, collections.abc.Sequence):
+    return '\n'.join(_format_power_pref_value(x) for x in value)
+  if isinstance(value, bool):
+    return str(int(value))
+  if isinstance(
+      value,
+      (wrappers_pb2.DoubleValue, wrappers_pb2.FloatValue,
+       wrappers_pb2.UInt32Value, wrappers_pb2.UInt64Value,
+       wrappers_pb2.Int32Value, wrappers_pb2.Int64Value, wrappers_pb2.BoolValue,
+       wrappers_pb2.StringValue, wrappers_pb2.BytesValue)):
+    return _format_power_pref_value(value.value)
+  if isinstance(value, component_pb2.Component.AlsStep):
+    return _format_als_step(value)
+  return str(value)
+
+
+def _build_derived_platform_power_prefs(capabilities) -> dict:
+  result = {}
+
+  # Falsy values are filtered out, deferring to the equivalent powerd default
+  # pref values. Dark resume is inverted; wrap it so False values are forwarded.
+  if capabilities.dark_resume:
+    result['disable-dark-resume'] = wrappers_pb2.BoolValue(
+        value=not capabilities.dark_resume)
+  result['suspend-to-idle'] = capabilities.suspend_to_idle
+  result['wake-on-dp'] = capabilities.wake_on_dp
 
   return result
 
@@ -144,10 +237,50 @@ def _build_derived_power_prefs(config: Config) -> dict:
 
   result['has-keyboard-backlight'] = hw_features.keyboard.backlight == present
 
-  def _format_power_pref_value(value):
-    if isinstance(value, bool):
-      return str(int(value))
-    return str(value)
+  if hw_features.keyboard.backlight_user_steps:
+    _check_increasing_sequence(hw_features.keyboard.backlight_user_steps,
+                               'keyboard.backlight_user_steps')
+    if hw_features.keyboard.backlight_user_steps[0] != 0:
+      raise Exception(
+          'keyboard.backlight_user_steps starts at %.1f instead of 0.0' %
+          hw_features.keyboard.backlight_user_steps[0])
+
+    result['keyboard-backlight-user-steps'] = (
+        hw_features.keyboard.backlight_user_steps)
+
+  if hw_features.screen.panel_properties.min_visible_backlight_level:
+    result['min-visible-backlight-level'] = (
+        hw_features.screen.panel_properties.min_visible_backlight_level)
+
+  if hw_features.screen.panel_properties.HasField('turn_off_screen_timeout_ms'):
+    result['turn-off-screen-timeout-ms'] = (
+        hw_features.screen.panel_properties.turn_off_screen_timeout_ms)
+
+  if light_sensor.lid_lightsensor == present:
+    if hw_features.screen.panel_properties.als_steps:
+      _check_als_steps(hw_features.screen.panel_properties.als_steps,
+                       'hw_features.screen.panel_properties.als_steps')
+      result['internal-backlight-als-steps'] = (
+          hw_features.screen.panel_properties.als_steps)
+  else:
+    if hw_features.screen.panel_properties.no_als_battery_brightness:
+      _check_percentage_value(
+          hw_features.screen.panel_properties.no_als_battery_brightness,
+          'screen.panel_properties.no_als_battery_brightness')
+      result['internal-backlight-no-als-battery-brightness'] = (
+          hw_features.screen.panel_properties.no_als_battery_brightness)
+
+    if hw_features.screen.panel_properties.no_als_ac_brightness:
+      _check_percentage_value(
+          hw_features.screen.panel_properties.no_als_ac_brightness,
+          'screen.panel_properties.no_als_ac_brightness')
+      result['internal-backlight-no-als-ac-brightness'] = (
+          hw_features.screen.panel_properties.no_als_ac_brightness)
+
+  result.update(
+      _build_derived_platform_power_prefs(config.program.platform.capabilities))
+
+  result['usb-min-ac-watts'] = hw_features.power_supply.usb_min_ac_watts
 
   return dict((k, _format_power_pref_value(v)) for k, v in result.items() if v)
 
@@ -209,7 +342,7 @@ def _build_ash_flags(config: Config) -> List[str]:
     _add_flag('regulatory-label-dir', regulatory_label)
 
   _add_flag('arc-build-properties', {
-      'device': "%s_cheets" % config.program.name.lower(),
+      'device': '%s_cheets' % config.program.name.lower(),
       'firstApiLevel': '28',
   })
 
@@ -242,9 +375,10 @@ def _build_ash_flags(config: Config) -> List[str]:
 
   form_factor = hw_features.form_factor.form_factor
   lid_accel = hw_features.accelerometer.lid_accelerometer
-  if (form_factor == topology_pb2.HardwareFeatures.FormFactor.CHROMEBASE and
-      lid_accel == topology_pb2.HardwareFeatures.PRESENT):
-    _add_flag('supports-clamshell-auto-rotation')
+  if form_factor == topology_pb2.HardwareFeatures.FormFactor.CHROMEBASE:
+    _add_flag('touchscreen-usable-while-screen-off')
+    if lid_accel == topology_pb2.HardwareFeatures.PRESENT:
+      _add_flag('supports-clamshell-auto-rotation')
 
   if config.sw_config.ui_config.extra_web_apps_dir:
     _add_flag('extra-web-apps-dir',
@@ -258,6 +392,16 @@ def _build_ash_flags(config: Config) -> List[str]:
       form_factor == topology_pb2.HardwareFeatures.FormFactor.CHROMEBASE):
     _add_flag('oobe-large-screen-special-scaling')
     _add_flag('enable-virtual-keyboard')
+
+  # This affects a large number of projects, so stage the rollout behind each
+  # program updating to configure platform capabilities.
+  # TODO(b/218220022, b/195298103): Remove this condition once all programs
+  # have opted-in or generated configs are not checked-in.
+  if config.program.platform.HasField('capabilities'):
+    if form_factor in (topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE,
+                       topology_pb2.HardwareFeatures.FormFactor.DETACHABLE,
+                       topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE):
+      _add_flag('enable-touchview')
 
   return sorted([f'--{k}={v}' if v else f'--{k}' for k, v in flags.items()])
 
@@ -369,6 +513,52 @@ def _build_intel_config(config, config_files):
   return config_files.wifi_sar_map.get(design_name)
 
 
+def _build_mtk_config(mtk_config):
+  """Builds the wifi configuration for the mtk driver.
+
+  Args:
+    mtk_config: MtkConfig config.
+
+  Returns:
+    wifi configuration for the mtk driver.
+  """
+  result = {}
+
+  def power_chain(power):
+    return {
+        'limit-2g': power.limit_2g,
+        'limit-5g-1': power.limit_5g_1,
+        'limit-5g-2': power.limit_5g_2,
+        'limit-5g-3': power.limit_5g_3,
+        'limit-5g-4': power.limit_5g_4,
+    }
+
+  if mtk_config.HasField('tablet_mode_power_table'):
+    result['tablet-mode-power-table-mtk'] = power_chain(
+        mtk_config.tablet_mode_power_table)
+  if mtk_config.HasField('non_tablet_mode_power_table'):
+    result['non-tablet-mode-power-table-mtk'] = power_chain(
+        mtk_config.non_tablet_mode_power_table)
+
+  def geo_power_chain(power):
+    return {
+        'limit-2g': power.limit_2g,
+        'limit-5g': power.limit_5g,
+        'offset-2g': power.offset_2g,
+        'offset-5g': power.offset_5g,
+    }
+
+  if mtk_config.HasField('fcc_power_table'):
+    result['fcc-power-table-mtk'] = geo_power_chain(mtk_config.fcc_power_table)
+  if mtk_config.HasField('eu_power_table'):
+    result['eu-power-table-mtk'] = geo_power_chain(mtk_config.eu_power_table)
+  if mtk_config.HasField('other_power_table'):
+    result['rest-of-world-power-table-mtk'] = geo_power_chain(
+        mtk_config.other_power_table)
+
+  return result
+
+
 def _build_wifi(config, config_files):
   """Builds the wifi configuration.
 
@@ -386,7 +576,65 @@ def _build_wifi(config, config_files):
     return _build_rtw88_config(config.sw_config.wifi_config.rtw88_config)
   if config_field == 'intel_config':
     return _build_intel_config(config, config_files)
+  if config_field == 'mtk_config':
+    return _build_mtk_config(config.sw_config.wifi_config.mtk_config)
   return {}
+
+
+def _build_health_cached_vpd(health_config):
+  if not health_config.HasField('cached_vpd'):
+    return None
+
+  cached_vpd = health_config.cached_vpd
+  result = {}
+  _upsert(cached_vpd.has_sku_number, result, 'has-sku-number')
+  return result
+
+
+def _build_health_battery(health_config):
+  if not health_config.HasField('battery'):
+    return None
+
+  battery = health_config.battery
+  result = {}
+  _upsert(battery.has_smart_battery_info, result, 'has-smart-battery-info')
+  return result
+
+
+def _build_health(config: Config):
+  """Builds the health configuration.
+
+  Args:
+    config: Config namedtuple
+
+  Returns:
+    health configuration.
+  """
+  if not config.sw_config.health_config:
+    return None
+
+  health_config = config.sw_config.health_config
+  result = {}
+  _upsert(_build_health_cached_vpd(health_config), result, 'cached-vpd')
+  _upsert(_build_health_battery(health_config), result, 'battery')
+  return result
+
+
+def _build_branding(config: Config):
+  """Builds the branding configuration.
+
+  Args:
+    config: Config namedtuple
+
+  Returns:
+    branding configuration.
+  """
+  result = {}
+  if config.device_brand.export_oem_info and config.oem:
+    _upsert(config.oem.name, result, 'oem-name')
+  if config.device_brand:
+    _upsert(config.device_brand.brand_name, result, 'marketing-name')
+  return result
 
 
 def _build_fingerprint(hw_topology):
@@ -406,6 +654,30 @@ def _build_fingerprint(hw_topology):
   return result
 
 
+def _build_hps(hw_topology):
+  if not hw_topology.HasField('hps'):
+    return None
+
+  hps = hw_topology.hps.hardware_feature.hps
+  result = {}
+  if hps.present == topology_pb2.HardwareFeatures.PRESENT:
+    result['has-hps'] = True
+
+  return result
+
+
+def _build_poe(hw_topology):
+  if not hw_topology.HasField('poe'):
+    return None
+
+  poe = hw_topology.poe.hardware_feature.poe
+  result = {}
+  if poe.present == topology_pb2.HardwareFeatures.PRESENT:
+    result['has-poe-peripheral-support'] = True
+
+  return result
+
+
 def _build_hardware_properties(hw_topology):
   if not hw_topology.HasField('form_factor'):
     return None
@@ -417,9 +689,9 @@ def _build_hardware_properties(hw_topology):
       topology_pb2.HardwareFeatures.FormFactor.CHROMEBASE,
       topology_pb2.HardwareFeatures.FormFactor.CHROMEBOX
   ]:
-    result['psu-type'] = "AC_only"
+    result['psu-type'] = 'AC_only'
   else:
-    result['psu-type'] = "battery"
+    result['psu-type'] = 'battery'
 
   result['has-backlight'] = form_factor not in [
       topology_pb2.HardwareFeatures.FormFactor.CHROMEBIT,
@@ -427,13 +699,13 @@ def _build_hardware_properties(hw_topology):
   ]
 
   form_factor_names = {
-      topology_pb2.HardwareFeatures.FormFactor.CLAMSHELL: "CHROMEBOOK",
-      topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE: "CHROMEBOOK",
-      topology_pb2.HardwareFeatures.FormFactor.DETACHABLE: "CHROMEBOOK",
-      topology_pb2.HardwareFeatures.FormFactor.CHROMEBASE: "CHROMEBASE",
-      topology_pb2.HardwareFeatures.FormFactor.CHROMEBOX: "CHROMEBOX",
-      topology_pb2.HardwareFeatures.FormFactor.CHROMEBIT: "CHROMEBIT",
-      topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE: "CHROMEBOOK",
+      topology_pb2.HardwareFeatures.FormFactor.CLAMSHELL: 'CHROMEBOOK',
+      topology_pb2.HardwareFeatures.FormFactor.CONVERTIBLE: 'CHROMEBOOK',
+      topology_pb2.HardwareFeatures.FormFactor.DETACHABLE: 'CHROMEBOOK',
+      topology_pb2.HardwareFeatures.FormFactor.CHROMEBASE: 'CHROMEBASE',
+      topology_pb2.HardwareFeatures.FormFactor.CHROMEBOX: 'CHROMEBOX',
+      topology_pb2.HardwareFeatures.FormFactor.CHROMEBIT: 'CHROMEBIT',
+      topology_pb2.HardwareFeatures.FormFactor.CHROMESLATE: 'CHROMEBOOK',
   }
   if form_factor in form_factor_names:
     result['form-factor'] = form_factor_names[form_factor]
@@ -522,16 +794,201 @@ def _build_fw_signing(config, whitelabel):
 
 
 def _file(source, destination):
-  return {'destination': destination, 'source': source}
+  return {'destination': str(destination), 'source': str(source)}
 
 
 def _file_v2(build_path, system_path):
   return {'build-path': build_path, 'system-path': system_path}
 
 
+class _AudioConfigBuilder:
+  _ALSA_PATH = pathlib.PurePath('/usr/share/alsa/ucm')
+  _CRAS_PATH = pathlib.PurePath('/etc/cras')
+  _SOUND_CARD_INIT_PATH = pathlib.PurePath('/etc/sound_card_init')
+  _MODULE_PATH = pathlib.PurePath('/etc/modprobe.d')
+  _AUDIO_CONFIG_PATH = 'audio'
+  AudioConfigStructure = (
+      topology_pb2.HardwareFeatures.Audio.AudioConfigStructure)
+  Camera = topology_pb2.HardwareFeatures.Camera
+
+  def __init__(self, config):
+    self._config = config
+
+    self._files = []
+    self._ucm_suffixes = set()
+    self._sound_card_init_confs = set()
+
+  @property
+  def _program_audio(self):
+    return self._config.program.audio_config
+
+  @property
+  def _audio(self):
+    return self._hw_features.audio
+
+  def _design_name(self):
+    return self._config.hw_design.name.lower()
+
+  @property
+  def _hw_features(self):
+    return self._config.hw_design_config.hardware_features
+
+  def _build_source_path(self, config_structure, config_path):
+    if config_structure == self.AudioConfigStructure.COMMON:
+      return pathlib.PurePath('common').joinpath(self._AUDIO_CONFIG_PATH,
+                                                 config_path)
+    if config_structure == self.AudioConfigStructure.DESIGN:
+      return pathlib.PurePath(self._design_name).joinpath(
+          self._AUDIO_CONFIG_PATH, config_path)
+    return None
+
+  def _count_mics(self, facing):
+    return sum(device.microphone_count.value
+               for device in self._hw_features.camera.devices
+               if device.facing == facing)
+
+  def _build_ucm_suffix(self, card_config):
+    ucm_suffix_format = self._program_audio.default_ucm_suffix
+    if card_config.HasField('ucm_suffix'):
+      ucm_suffix_format = card_config.ucm_suffix.value
+
+    design_for_ucm = self._design_name
+    if card_config.ucm_config == self.AudioConfigStructure.COMMON:
+      design_for_ucm = ''
+    uf_mics = self._count_mics(self.Camera.FACING_FRONT)
+    wf_mics = self._count_mics(self.Camera.FACING_BACK)
+    mic_details = [(uf_mics, 'uf'), (wf_mics, 'wf')]
+    ucm_suffix = ucm_suffix_format.format(
+        headset_codec=(topology_pb2.HardwareFeatures.Audio.AudioCodec.Name(
+            self._audio.headphone_codec)).lower()
+        if self._audio.headphone_codec else '',
+        speaker_amp=(topology_pb2.HardwareFeatures.Audio.Amplifier.Name(
+            self._audio.speaker_amp)).lower()
+        if self._audio.speaker_amp else '',
+        design=design_for_ucm,
+        camera_count=len(self._hw_features.camera.devices),
+        mic_description=''.join('{}{}'.format(*position) if position[0] else ''
+                                for position in mic_details),
+        total_mic_count=uf_mics + wf_mics,
+        user_facing_mic_count=uf_mics,
+        world_facing_mic_count=wf_mics,
+    )
+    return '.'.join(
+        [component for component in ucm_suffix.split('.') if component])
+
+  def _build_audio_card(self, card_config):
+    ucm_suffix = self._build_ucm_suffix(card_config)
+    card_with_suffix = '.'.join([card_config.card_name, ucm_suffix]).strip('.')
+    card, _, card_suffix = card_config.card_name.partition('.')
+    ucm_suffix = '.'.join([card_suffix, ucm_suffix]).strip('.')
+    self._ucm_suffixes.add(ucm_suffix)
+
+    ucm_config_source_directory = self._build_source_path(
+        card_config.ucm_config, 'ucm-config')
+    self._files.append(
+        _file(
+            ucm_config_source_directory.joinpath(card_with_suffix, 'HiFi.conf'),
+            self._ALSA_PATH.joinpath(card_with_suffix, 'HiFi.conf')))
+    self._files.append(
+        _file(
+            ucm_config_source_directory.joinpath(card_with_suffix,
+                                                 f'{card_with_suffix}.conf'),
+            self._ALSA_PATH.joinpath(card_with_suffix,
+                                     f'{card_with_suffix}.conf')))
+
+    cras_config_source_path = self._build_source_path(card_config.cras_config,
+                                                      'cras-config')
+    if cras_config_source_path:
+      self._files.append(
+          _file(
+              cras_config_source_path.joinpath(card).with_suffix(
+                  '.card_settings'),
+              self._CRAS_PATH.joinpath(self._design_name, card)))
+
+    card_init_config_source_path = self._build_source_path(
+        card_config.sound_card_init_config, 'sound_card_init')
+
+    if card_init_config_source_path:
+      speaker_amp = (
+          topology_pb2.HardwareFeatures.Audio.Amplifier.Name(
+              self._audio.speaker_amp))
+      sound_card_init_conf = f'{self._design_name}.{speaker_amp}.yaml'
+      self._files.append(
+          _file(
+              card_init_config_source_path.joinpath(sound_card_init_conf),
+              self._SOUND_CARD_INIT_PATH.joinpath(sound_card_init_conf)))
+      self._sound_card_init_confs.add(sound_card_init_conf)
+    else:
+      self._sound_card_init_confs.add(None)
+
+  @staticmethod
+  def _select_from_set(values, description):
+    if not values:
+      return None
+    if len(values) == 1:
+      return next(iter(values))
+    values -= set([None, ''])
+    if len(values) == 1:
+      return next(iter(values))
+    raise Exception(f'Inconsistent values for "{description}": {values}')
+
+  def build(self):
+    """Builds the audio configuration."""
+    if not self._hw_features.audio or not self._hw_features.audio.card_configs:
+      return {}
+
+    program_name = self._config.program.name.lower()
+
+    for card_config in itertools.chain(self._audio.card_configs,
+                                       self._program_audio.card_configs):
+      self._build_audio_card(card_config)
+
+    cras_config_source_path = self._build_source_path(self._audio.cras_config,
+                                                      'cras-config')
+    if cras_config_source_path:
+      for filename in ['dsp.ini', 'board.ini']:
+        self._files.append(
+            _file(
+                cras_config_source_path.joinpath(filename),
+                self._CRAS_PATH.joinpath(self._design_name, filename)))
+
+    if self._program_audio.has_module_file:
+      module_name = f'alsa-{program_name}.conf'
+      self._files.append(
+          _file(
+              self._build_source_path(
+                  self.AudioConfigStructure.COMMON,
+                  'alsa-module-config').joinpath(module_name),
+              self._MODULE_PATH.joinpath(module_name)))
+
+    result = {
+        'main': {
+            'cras-config-dir': self._design_name,
+            'files': self._files,
+        }
+    }
+
+    ucm_suffix = self._select_from_set(self._ucm_suffixes, 'ucm-suffix')
+    if ucm_suffix:
+      result['main']['ucm-suffix'] = ucm_suffix
+
+    sound_card_init_conf = self._select_from_set(self._sound_card_init_confs,
+                                                 'sound-card-init-conf')
+    if sound_card_init_conf:
+      result['main']['sound-card-init-conf'] = sound_card_init_conf
+      result['main']['speaker-amp'] = (
+          topology_pb2.HardwareFeatures.Audio.Amplifier.Name(
+              self._audio.speaker_amp))
+
+    return result
+
+
 def _build_audio(config):
+  # pylint: disable=too-many-locals
   if not config.sw_config.audio_configs:
-    return {}
+    builder = _AudioConfigBuilder(config)
+    return builder.build()
+
   alsa_path = '/usr/share/alsa/ucm'
   cras_path = '/etc/cras'
   sound_card_init_path = '/etc/sound_card_init'
@@ -540,6 +997,8 @@ def _build_audio(config):
   files = []
   ucm_suffix = None
   sound_card_init_conf = None
+  audio_pb = topology_pb2.HardwareFeatures.Audio
+  hw_feature = config.hw_design_config.hardware_features
 
   for audio in config.sw_config.audio_configs:
     card = audio.card_name
@@ -572,7 +1031,7 @@ def _build_audio(config):
       files.append(
           _file(audio.board_file, '%s/%s/board.ini' % (cras_path, design_name)))
     if audio.sound_card_init_file:
-      sound_card_init_conf = design_name + ".yaml"
+      sound_card_init_conf = design_name + '.yaml'
       files.append(
           _file(audio.sound_card_init_file,
                 '%s/%s.yaml' % (sound_card_init_path, design_name)))
@@ -588,6 +1047,8 @@ def _build_audio(config):
     result['main']['ucm-suffix'] = ucm_suffix
   if sound_card_init_conf:
     result['main']['sound-card-init-conf'] = sound_card_init_conf
+    result['main']['speaker-amp'] = audio_pb.Amplifier.Name(
+        hw_feature.audio.speaker_amp)
 
   return result
 
@@ -680,13 +1141,13 @@ def _build_touch_file_config(config, project_name):
     if touch.product_id:
       vendor = _lookup(comp.manufacturer_id, partners)
       if not vendor:
-        raise Exception("Manufacturer must be set for touch device %s" %
+        raise Exception('Manufacturer must be set for touch device %s' %
                         comp.id.value)
 
       product_id = touch.product_id
       fw_version = touch.fw_version
 
-      file_name = "%s_%s.bin" % (product_id, fw_version)
+      file_name = '%s_%s.bin' % (product_id, fw_version)
       fw_file_path = os.path.join(TOUCH_PATH, vendor.name, file_name)
 
       if not os.path.exists(fw_file_path):
@@ -701,7 +1162,7 @@ def _build_touch_file_config(config, project_name):
           fw_version=fw_version,
           product_series=touch.product_series)
 
-      dest = "%s_%s" % (vendor.name, file_name)
+      dest = '%s_%s' % (vendor.name, file_name)
       if touch_vendor.destination_file_format:
         dest = touch_vendor.destination_file_format.format(
             vendor_name=vendor.name,
@@ -711,9 +1172,9 @@ def _build_touch_file_config(config, project_name):
             product_series=touch.product_series)
 
       files.append({
-          "destination": os.path.join("/opt/google/touch/firmware", dest),
-          "source": os.path.join(project_name, fw_file_path),
-          "symlink": os.path.join("/lib/firmware", sym_link),
+          'destination': os.path.join('/opt/google/touch/firmware', dest),
+          'source': os.path.join(project_name, fw_file_path),
+          'symlink': os.path.join('/lib/firmware', sym_link),
       })
 
   result = {}
@@ -724,13 +1185,17 @@ def _build_touch_file_config(config, project_name):
 def _build_modem(config):
   """Returns the cellular modem configuration, or None if absent."""
   hw_features = config.hw_design_config.hardware_features
-  lte_support = _any_present([hw_features.lte.present])
-  if not lte_support:
+  cellular_support = _any_present([hw_features.cellular.present])
+  if not cellular_support:
     return None
-  firmware_variant = config.hw_design.name.lower()
-  if hw_features.lte.model:
-    firmware_variant += '_' + hw_features.lte.model.lower()
-  return {'firmware-variant': firmware_variant}
+  if hw_features.cellular.model:
+    firmware_variant = hw_features.cellular.model.lower()
+  else:
+    firmware_variant = config.hw_design.name.lower()
+  result = {'firmware-variant': firmware_variant}
+  if hw_features.cellular.attach_apn_required:
+    result['attach-apn-required'] = True
+  return result
 
 
 def _sw_config(sw_configs, design_config_id):
@@ -860,6 +1325,8 @@ def _transform_build_config(config, config_files, whitelabel):
   _upsert(_build_audio(config), result, 'audio')
   _upsert(_build_bluetooth(config), result, 'bluetooth')
   _upsert(_build_wifi(config, config_files), result, 'wifi')
+  _upsert(_build_health(config), result, 'cros-healthd')
+  _upsert(_build_branding(config), result, 'branding')
   _upsert(config.brand_config.wallpaper, result, 'wallpaper')
   _upsert(config.brand_config.regulatory_label, result, 'regulatory-label')
   _upsert(config.device_brand.brand_code, result, 'brand-code')
@@ -900,6 +1367,10 @@ def _transform_build_config(config, config_files, whitelabel):
   _upsert(
       _build_keyboard(config.hw_design_config.hardware_topology), result,
       'keyboard')
+  _upsert(_build_hps(config.hw_design_config.hardware_topology), result, 'hps')
+  _upsert(
+      _build_poe(config.hw_design_config.hardware_topology), result,
+      'hardware-properties')
 
   return result
 
@@ -950,6 +1421,7 @@ def _write_file(output_dir, file_name, file_content):
 
 def _get_arc_camera_features(camera):
   """Gets camera related features for ARC hardware_features.xml from camera
+
   topology. Check
   https://developer.android.com/reference/android/content/pm/PackageManager#FEATURE_CAMERA
   and CTS android.app.cts.SystemFeaturesTest#testCameraFeatures for the correct
@@ -957,6 +1429,7 @@ def _get_arc_camera_features(camera):
 
   Args:
     camera: A HardwareFeatures.Camera proto message.
+
   Returns:
     list of camera related ARC features as XML elements.
   """
@@ -993,6 +1466,7 @@ def _generate_arc_hardware_features(hw_features):
 
   Args:
     hw_features: HardwareFeatures proto message.
+
   Returns:
     bytes of the hardware_features.xml content.
   """
@@ -1034,6 +1508,7 @@ def _generate_arc_media_profiles(hw_features, sw_config):
   Args:
     hw_features: HardwareFeatures proto message.
     sw_config: SoftwareConfig proto message.
+
   Returns:
     bytes of the media_profiles.xml content, or None if |sw_config| disables the
     generation or there's no camera.
@@ -1186,6 +1661,7 @@ def _write_files_by_design_config(configs, output_dir, build_dir, system_dir,
       format()-style replacement field for the config id, e.g. 'config_{}.xml'.
     generate_file_content: Function to generate config file content from
       HardwareFeatures and SoftwareConfig proto.
+
   Returns:
     dict that maps the formatted config id to the correct file.
   """
@@ -1374,18 +1850,17 @@ def _wifi_sar_map(configs, project_name, output_dir, build_root_dir):
           with open(output_path, 'wb') as f:
             f.write(sar_file_content)
         system_path = '/firmware/cbfs-rw-raw/{}/{}'.format(
-            project_name, filename)
+            design_name, filename)
         result[design_name] = {'sar-file': _file_v2(build_path, system_path)}
   return result
 
 
 def _extract_fw_config_value(hw_design_config, topology):
-  """Extracts the firmware config value for the given topology.
+  """Extracts the firwmare config value for the given topology.
 
   Args:
     hw_design_config: Design extracting value from.
     topology: Topology proto to extract the firmware config value for.
-
   Returns: the extracted value or raises a ValueError if no firmware
     configuration segment with `name` is found.
   """
@@ -1517,11 +1992,11 @@ def wrds_ewrd_encode(sar_table_config):
   elif sar_table_config.sar_table_version == 0xff:
     return bytearray(0)
   else:
-    raise Exception("ERROR: Invalid power table revision " %
+    raise Exception('ERROR: Invalid power table revision ' %
                     sar_table_config.sar_table_version)
 
   if is_zero_filled(sar_table):
-    raise Exception("ERROR: SAR entries are not initialized.")
+    raise Exception('ERROR: SAR entries are not initialized.')
 
   if is_zero_filled(dsar_table):
     dsar_set_count = 0
@@ -1660,7 +2135,8 @@ def dsm_encode(dsm_config):
   """Creates and returns device specific method return values.
 
   args:
-    dsm_config: contains device specific method return values configured in config.star
+    dsm_config: contains device specific method return values configured in
+    config.star
 
   returns:
     Encoded device specific method return values as bytearray
@@ -1756,7 +2232,7 @@ def _create_intel_sar_file_content(intel_config):
     return header, payload, offset
 
   sar_configs = 5
-  marker = "$SAR".encode()
+  marker = '$SAR'.encode()
   header = bytearray(0)
   header += hex_8bit(1)  # hex file version
 
@@ -1789,6 +2265,7 @@ def Main(project_configs, program_config, output):  # pylint: disable=invalid-na
     program_config: Program config for the given set of projects.
     output: Output file that will be generated by the transform.
   """
+  # pylint: disable=too-many-locals
   configs = _merge_configs([_read_config(program_config)] +
                            [_read_config(config) for config in project_configs])
   touch_fw = {}
