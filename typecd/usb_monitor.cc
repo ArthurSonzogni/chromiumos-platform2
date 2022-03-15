@@ -16,7 +16,29 @@ namespace {
 constexpr char kInterfaceFilePathRegex[] =
     R"((\d+)-(\d+)(\.(\d+))*:(\d+)\.(\d+))";
 constexpr char kTypecPortUeventRegex[] = R"(TYPEC_PORT=port(\d+))";
+
+// Convert version string parsed from USB device sysfs to UsbVersion enum to
+// store in UsbDevice.
+typecd::UsbVersion ConvertToUsbVersion(std::string version) {
+  if (version == "1.00")
+    return typecd::UsbVersion::k1_0;
+  else if (version == "1.10")
+    return typecd::UsbVersion::k1_1;
+  else if (version == "2.00")
+    return typecd::UsbVersion::k2_0;
+  else if (version == "2.10")
+    return typecd::UsbVersion::k2_1;
+  else if (version == "3.00")
+    return typecd::UsbVersion::k3_0;
+  else if (version == "3.10")
+    return typecd::UsbVersion::k3_1;
+  else if (version == "3.20")
+    return typecd::UsbVersion::k3_2;
+  else
+    return typecd::UsbVersion::kOther;
 }
+
+}  // namespace
 
 namespace typecd {
 
@@ -95,6 +117,12 @@ void UsbMonitor::OnDeviceAddedOrRemoved(const base::FilePath& path,
                                 &device_class);
       if (base::HexStringToInt(device_class, &device_class_int))
         GetDevice(key)->SetDeviceClass(device_class_int);
+    }
+
+    std::string version;
+    if (base::ReadFileToString(path.Append("version"), &version)) {
+      base::TrimWhitespaceASCII(version, base::TRIM_ALL, &version);
+      GetDevice(key)->SetVersion(ConvertToUsbVersion(version));
     }
 
   } else {

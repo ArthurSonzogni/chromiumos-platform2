@@ -9,6 +9,18 @@
 
 namespace typecd {
 
+// Version exposed in USB device sysfs, derived from bcdUSB.
+enum class UsbVersion {
+  kOther = 0,
+  k1_0,  // 1.00
+  k1_1,  // 1.10
+  k2_0,  // 2.00
+  k2_1,  // 2.10
+  k3_0,  // 3.00
+  k3_1,  // 3.10
+  k3_2,  // 3.20
+};
+
 // This class is used to represent a USB device. It maintains Type C port that
 // the USB device is connected to.
 class UsbDevice {
@@ -21,6 +33,7 @@ class UsbDevice {
   void SetInterfaceClass(int interface_class) {
     interface_class_ = interface_class;
   }
+  void SetVersion(UsbVersion version) { version_ = version; }
 
   int GetBusnum() { return busnum_; }
   int GetDevnum() { return devnum_; }
@@ -28,16 +41,15 @@ class UsbDevice {
   int GetSpeed() { return speed_; }
   int GetDeviceClass() { return device_class_; }
   int GetInterfaceClass() { return interface_class_; }
+  UsbVersion GetVersion() { return version_; }
 
  private:
   int busnum_;
   int devnum_;
   int typec_port_num_;
-
   // Root hub number and hub port number in accordance with the USB device sysfs
   // directory name. (e.g. 2-1 if sysfs path is /sys/bus/usb/devices/2-1)
   std::string hub_;
-
   // Determines USB standard that the device is using.
   // ===============================
   // Standard        | Speed (Mbps)
@@ -48,11 +60,11 @@ class UsbDevice {
   // USB 3.2 Gen 2   | 10000
   // USB 3.2 Gen 2x2 | 20000
   int speed_;
-
   // Identifies type of device.
   // https://www.usb.org/defined-class-codes
   int device_class_;
   int interface_class_;
+  UsbVersion version_;
 };
 
 }  // namespace typecd
