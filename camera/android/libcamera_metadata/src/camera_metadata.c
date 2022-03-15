@@ -313,7 +313,7 @@ size_t calculate_camera_metadata_size(size_t entry_count,
     memory_needed += sizeof(camera_metadata_buffer_entry_t[entry_count]);
     // Start buffer list at aligned boundary
     memory_needed = ALIGN_TO(memory_needed, DATA_ALIGNMENT);
-    memory_needed += sizeof(uint8_t[data_count]);
+    memory_needed += data_count; // uint8_t data
     // Make sure camera metadata can be stacked in continuous memory
     memory_needed = ALIGN_TO(memory_needed, METADATA_PACKET_ALIGNMENT);
     return memory_needed;
@@ -369,8 +369,7 @@ camera_metadata_t* copy_camera_metadata(void *dst, size_t dst_size,
 
     memcpy(get_entries(metadata), get_entries(src),
             sizeof(camera_metadata_buffer_entry_t[metadata->entry_count]));
-    memcpy(get_data(metadata), get_data(src),
-            sizeof(uint8_t[metadata->data_count]));
+    memcpy(get_data(metadata), get_data(src), metadata->data_count);
 
     assert(validate_camera_metadata_structure(metadata, NULL) == OK);
     return metadata;
@@ -627,8 +626,7 @@ int append_camera_metadata(camera_metadata_t *dst,
 
     memcpy(get_entries(dst) + dst->entry_count, get_entries(src),
             sizeof(camera_metadata_buffer_entry_t[src->entry_count]));
-    memcpy(get_data(dst) + dst->data_count, get_data(src),
-            sizeof(uint8_t[src->data_count]));
+    memcpy(get_data(dst) + dst->data_count, get_data(src), src->data_count);
     if (dst->data_count != 0) {
         camera_metadata_buffer_entry_t *entry = get_entries(dst) + dst->entry_count;
         for (size_t i = 0; i < src->entry_count; i++, entry++) {
