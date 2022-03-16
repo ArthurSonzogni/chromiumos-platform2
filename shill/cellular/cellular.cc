@@ -108,33 +108,33 @@ class ApnList {
 
     Stringmap& props = apn_dict_list_.at(apn_index_[index]);
     if (!mobile_apn->apn.empty())
-      props.emplace(kApnProperty, mobile_apn->apn);
+      props[kApnProperty] = mobile_apn->apn;
     if (!mobile_apn->username.empty())
-      props.emplace(kApnUsernameProperty, mobile_apn->username);
+      props[kApnUsernameProperty] = mobile_apn->username;
     if (!mobile_apn->password.empty())
-      props.emplace(kApnPasswordProperty, mobile_apn->password);
+      props[kApnPasswordProperty] = mobile_apn->password;
     if (!mobile_apn->authentication.empty())
-      props.emplace(kApnAuthenticationProperty, mobile_apn->authentication);
+      props[kApnAuthenticationProperty] = mobile_apn->authentication;
     if (mobile_apn->is_attach_apn)
-      props.emplace(kApnAttachProperty, kApnAttachProperty);
+      props[kApnAttachProperty] = kApnAttachProperty;
     if (!mobile_apn->ip_type.empty())
-      props.emplace(kApnIpTypeProperty, mobile_apn->ip_type);
+      props[kApnIpTypeProperty] = mobile_apn->ip_type;
 
     // Find the first localized and non-localized name, if any.
     if (!mobile_apn->operator_name_list.empty())
-      props.emplace(kApnNameProperty, mobile_apn->operator_name_list[0].name);
+      props[kApnNameProperty] = mobile_apn->operator_name_list[0].name;
 
     switch (source) {
       case ApnSource::kModb:
-        props.emplace(cellular::kApnSource, cellular::kApnSourceMoDb);
+        props[cellular::kApnSource] = cellular::kApnSourceMoDb;
         break;
       case ApnSource::kModem:
-        props.emplace(cellular::kApnSource, cellular::kApnSourceModem);
+        props[cellular::kApnSource] = cellular::kApnSourceModem;
         break;
     }
     for (const auto& lname : mobile_apn->operator_name_list) {
       if (!lname.language.empty())
-        props.emplace(kApnLocalizedNameProperty, lname.name);
+        props[kApnLocalizedNameProperty] = lname.name;
     }
   }
 
