@@ -213,7 +213,8 @@ void Service::ProcessVmKernelLog(dbus::MethodCall* method_call,
   }
 
   for (const auto& message : request.records()) {
-    termina_parser_->ParseLogEntry(request.cid(), message.content());
+    termina_parser_->ParseLogEntryForBtrfs(request.cid(), message.content());
+    termina_parser_->ParseLogEntryForOom(request.cid(), message.content());
   }
 
   std::move(sender).Run(std::move(response));

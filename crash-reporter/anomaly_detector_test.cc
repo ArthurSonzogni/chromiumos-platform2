@@ -6,6 +6,7 @@
 
 #include <base/files/file_path.h>
 #include <base/optional.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
@@ -528,7 +529,7 @@ TEST(AnomalyDetectorTest, BTRFSExtentCorruption) {
 
   TerminaParser parser(bus);
 
-  parser.ParseLogEntry(
+  parser.ParseLogEntryForBtrfs(
       3,
       "BTRFS warning (device vdb): csum failed root 5 ino 257 off 409600 csum "
       "0x76ad9387 expected csum 0xd8d34542 mirror 1");
@@ -553,9 +554,37 @@ TEST(AnomalyDetectorTest, BTRFSTreeCorruption) {
 
   TerminaParser parser(bus);
 
-  parser.ParseLogEntry(3,
-                       "BTRFS warning (device vdb): vdb checksum verify failed "
-                       "on 122798080 wanted 4E5B4C99 found 5F261FEB level 0");
+  parser.ParseLogEntryForBtrfs(
+      3,
+      "BTRFS warning (device vdb): vdb checksum verify failed "
+      "on 122798080 wanted 4E5B4C99 found 5F261FEB level 0");
+}
+
+TEST(AnomalyDetectorTest, OomEvent) {
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::MockBus> bus = new dbus::MockBus(options);
+
+  auto obj_path = dbus::ObjectPath(anomaly_detector::kAnomalyEventServicePath);
+  scoped_refptr<dbus::MockExportedObject> exported_object =
+      new dbus::MockExportedObject(bus.get(), obj_path);
+
+  EXPECT_CALL(*bus, GetExportedObject(Eq(obj_path)))
+      .WillOnce(Return(exported_object.get()));
+  EXPECT_CALL(
+      *exported_object,
+      SendSignal(SignalEq(anomaly_detector::kAnomalyEventServiceInterface,
+                          anomaly_detector::kAnomalyGuestOomEventSignalName)))
+      .Times(1);
+
+  TerminaParser parser(bus);
+
+  parser.ParseLogEntryForOom(
+      3,
+      "Out of memory: Killed process 293 (python 3.6) total-vm:15633956kB, "
+      "anon-rss:14596640kB, file-rss:4kB, shmem-rss:0kB, UID:0 "
+      "pgtables:28628kB "
+      "oom_score_adj:0");
 }
 
 TEST(AnomalyDetectorTest, CryptohomeMountFailure) {

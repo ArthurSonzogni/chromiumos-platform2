@@ -467,8 +467,8 @@ constexpr LazyRE2 btrfs_tree_node_corruption = {
     R"([[:digit:]]+ wanted (0x)?[[:xdigit:]]+ found (0x)?[[:xdigit:]]+ level )"
     R"([[:digit:]]+)"};
 
-MaybeCrashReport TerminaParser::ParseLogEntry(int cid,
-                                              const std::string& line) {
+MaybeCrashReport TerminaParser::ParseLogEntryForBtrfs(int cid,
+                                                      const std::string& line) {
   if (!RE2::PartialMatch(line, *btrfs_extent_corruption) &&
       !RE2::PartialMatch(line, *btrfs_tree_node_corruption)) {
     return base::nullopt;
@@ -488,6 +488,35 @@ MaybeCrashReport TerminaParser::ParseLogEntry(int cid,
 
   // Don't send a crash report here, because the gap between when the
   // corruption occurs and when we detect it can be arbitrarily large.
+  return base::nullopt;
+}
+
+constexpr LazyRE2 oom_event = {
+    R"(Out of memory: Killed process ([[:digit:]]+) \(.*\) total-vm:)"
+    R"([[:digit:]]+kB, anon-rss:[[:digit:]]+kB, file-rss:[[:digit:]]+kB, )"
+    R"(shmem-rss:[[:digit:]]+kB, UID:[[:digit:]]+ pgtables:[[:digit:]]+kB )"
+    R"(oom_score_adj:[[:digit:]]+)"};
+
+MaybeCrashReport TerminaParser::ParseLogEntryForOom(int cid,
+                                                    const std::string& line) {
+  if (!RE2::PartialMatch(line, *oom_event)) {
+    return base::nullopt;
+  }
+
+  anomaly_detector::GuestOomEventSignal message;
+  message.set_vsock_cid(cid);
+  dbus::Signal signal(anomaly_detector::kAnomalyEventServiceInterface,
+                      anomaly_detector::kAnomalyGuestOomEventSignalName);
+
+  dbus::MessageWriter writer(&signal);
+  writer.AppendProtoAsArrayOfBytes(message);
+
+  dbus::ExportedObject* exported_object = dbus_->GetExportedObject(
+      dbus::ObjectPath(anomaly_detector::kAnomalyEventServicePath));
+  exported_object->SendSignal(&signal);
+
+  // TODO(crbug/1193485): we would like to submit a crash report here, impl
+  // is pending resolution of privacy concerns.
   return base::nullopt;
 }
 
