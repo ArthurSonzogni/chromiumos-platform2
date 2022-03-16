@@ -101,45 +101,45 @@ class ApnList {
   void AddApn(const std::unique_ptr<MobileOperatorInfo::MobileAPN>& mobile_apn,
               ApnSource source) {
     ApnIndexKey index = GetKey(mobile_apn);
-    if (apn_index_[index] == nullptr) {
+    if (!base::Contains(apn_index_, index)) {
       apn_dict_list_.emplace_back();
-      apn_index_[index] = &apn_dict_list_.back();
+      apn_index_[index] = apn_dict_list_.size() - 1;
     }
 
-    Stringmap* props = apn_index_[index];
+    Stringmap& props = apn_dict_list_.at(apn_index_[index]);
     if (!mobile_apn->apn.empty())
-      props->emplace(kApnProperty, mobile_apn->apn);
+      props.emplace(kApnProperty, mobile_apn->apn);
     if (!mobile_apn->username.empty())
-      props->emplace(kApnUsernameProperty, mobile_apn->username);
+      props.emplace(kApnUsernameProperty, mobile_apn->username);
     if (!mobile_apn->password.empty())
-      props->emplace(kApnPasswordProperty, mobile_apn->password);
+      props.emplace(kApnPasswordProperty, mobile_apn->password);
     if (!mobile_apn->authentication.empty())
-      props->emplace(kApnAuthenticationProperty, mobile_apn->authentication);
+      props.emplace(kApnAuthenticationProperty, mobile_apn->authentication);
     if (mobile_apn->is_attach_apn)
-      props->emplace(kApnAttachProperty, kApnAttachProperty);
+      props.emplace(kApnAttachProperty, kApnAttachProperty);
     if (!mobile_apn->ip_type.empty())
-      props->emplace(kApnIpTypeProperty, mobile_apn->ip_type);
+      props.emplace(kApnIpTypeProperty, mobile_apn->ip_type);
 
     // Find the first localized and non-localized name, if any.
     if (!mobile_apn->operator_name_list.empty())
-      props->emplace(kApnNameProperty, mobile_apn->operator_name_list[0].name);
+      props.emplace(kApnNameProperty, mobile_apn->operator_name_list[0].name);
 
     switch (source) {
       case ApnSource::kModb:
-        props->emplace(cellular::kApnSource, cellular::kApnSourceMoDb);
+        props.emplace(cellular::kApnSource, cellular::kApnSourceMoDb);
         break;
       case ApnSource::kModem:
-        props->emplace(cellular::kApnSource, cellular::kApnSourceModem);
+        props.emplace(cellular::kApnSource, cellular::kApnSourceModem);
         break;
     }
     for (const auto& lname : mobile_apn->operator_name_list) {
       if (!lname.language.empty())
-        props->emplace(kApnLocalizedNameProperty, lname.name);
+        props.emplace(kApnLocalizedNameProperty, lname.name);
     }
   }
 
   Stringmaps apn_dict_list_;
-  std::map<ApnIndexKey, Stringmap*> apn_index_;
+  std::map<ApnIndexKey, int> apn_index_;
 };
 
 bool IsEnabledModemState(Cellular::ModemState state) {
