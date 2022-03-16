@@ -579,9 +579,6 @@ bool WiFiService::Save(StoreInterface* storage) {
   }
 
   // Save properties specific to WiFi services.
-  // IMPORTANT: Changes must be backwards compatible with the four previous
-  // versions. New keys may be added, but existing keys must be preserved.
-  // See crbug.com/1120161 and go/rollback-data-restore for details.
   const std::string id = GetStorageIdentifier();
   storage->SetBool(id, kStorageHiddenSSID, hidden_ssid_);
   storage->SetString(id, kStorageMode, mode_);

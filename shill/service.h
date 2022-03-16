@@ -345,11 +345,6 @@ class Service : public base::RefCounted<Service> {
   // Invoked after Load for migrating storage properties. Ensures migration for
   // services loaded from a Profile. Services not loaded will not get migrated,
   // thus it is best to maintain migration for several releases.
-  //
-  // NOTE: In order to support rollbacks (go/rollback-data-restore) profiles
-  // also need to maintain backwards compatibility for four release cycles
-  // before important deprecated properties should be deleted (see notes in
-  // WiFiService::Save).
   virtual void MigrateDeprecatedStorage(StoreInterface* storage);
 
   // Indicate to service that it is no longer persisted to storage.  It

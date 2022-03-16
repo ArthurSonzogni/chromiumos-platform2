@@ -81,9 +81,6 @@ void HandleVpdUpdateCompletion(bool ignore_error,
 
 }  // namespace
 
-// Note: Rollback (go/rollback-data-restore) saves and restores device policy
-// files. Any change in format or location of those files that is not backwards
-// compatible might break rollback.
 // static
 const char DevicePolicyService::kPolicyDir[] = "/var/lib/devicesettings";
 // static
