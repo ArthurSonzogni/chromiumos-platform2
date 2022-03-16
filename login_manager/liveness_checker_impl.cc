@@ -274,8 +274,13 @@ void LivenessCheckerImpl::RequestKernelTraces() {
 
   // Don't use SafeFD::Write here; we don't want to try and truncate the
   // sysrq-trigger file (which SafeFD::Write does).
-  // Order is important: w is synchronous, l is not, so if we do l first all the
-  // lines get mixed together.
+  // Order is important: w and m are synchronous, l is not, so if we do l before
+  // one of the others, all the lines get mixed together.
+  const char kShowMemoryRequest[] = "m";
+  if (!base::WriteFileDescriptor(result.first.get(), kShowMemoryRequest)) {
+    PLOG(WARNING) << "Failed to write 'm' to sysrq-trigger file: ";
+  }
+
   const char kShowBlockedTasksRequest[] = "w";
   if (!base::WriteFileDescriptor(result.first.get(),
                                  kShowBlockedTasksRequest)) {
