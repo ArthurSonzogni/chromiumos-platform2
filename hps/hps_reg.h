@@ -82,6 +82,10 @@ enum RFeat : uint16_t {
 };
 
 enum RError : uint16_t {
+  kFpgaTime = BIT(14),
+  kFpgaComm = BIT(13),
+  kSelftest = BIT(12),
+  kTflite = BIT(11),
   kSpiNotVer = BIT(10),
   kBufORun = BIT(9),
   kBufNAvail = BIT(8),

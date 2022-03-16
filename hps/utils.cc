@@ -196,6 +196,22 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
         ret.push_back("kSpiNotVerified");
         val ^= RError::kSpiNotVer;
       }
+      if (val & RError::kTflite) {
+        ret.push_back("kTflite");
+        val ^= RError::kTflite;
+      }
+      if (val & RError::kSelftest) {
+        ret.push_back("kSelftest");
+        val ^= RError::kSelftest;
+      }
+      if (val & RError::kFpgaComm) {
+        ret.push_back("kFpgaComm");
+        val ^= RError::kFpgaComm;
+      }
+      if (val & RError::kFpgaTime) {
+        ret.push_back("kFpgaTime");
+        val ^= RError::kFpgaTime;
+      }
       if (val) {
         ret.push_back(base::StringPrintf("0x%x", val));
       }
