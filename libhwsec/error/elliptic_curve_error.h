@@ -2,15 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_CRYPTO_ELLIPTIC_CURVE_ERROR_H_
-#define CRYPTOHOME_CRYPTO_ELLIPTIC_CURVE_ERROR_H_
+#ifndef LIBHWSEC_ERROR_ELLIPTIC_CURVE_ERROR_H_
+#define LIBHWSEC_ERROR_ELLIPTIC_CURVE_ERROR_H_
 
 #include <memory>
 #include <string>
 
-#include <libhwsec/error/tpm_error.h>
+#include "libhwsec/error/tpm_error.h"
+#include "libhwsec/hwsec_export.h"
 
-namespace cryptohome {
+namespace hwsec {
 
 // The collection of elliptic curve error code
 enum class EllipticCurveErrorCode {
@@ -18,7 +19,7 @@ enum class EllipticCurveErrorCode {
 };
 
 // An EllipticCurve error.
-class EllipticCurveError : public hwsec::TPMErrorBase {
+class HWSEC_EXPORT EllipticCurveError : public hwsec::TPMErrorBase {
  public:
   using MakeStatusTrait = hwsec::DefaultMakeStatus<EllipticCurveError>;
 
@@ -31,6 +32,6 @@ class EllipticCurveError : public hwsec::TPMErrorBase {
   const EllipticCurveErrorCode error_code_;
 };
 
-}  // namespace cryptohome
+}  // namespace hwsec
 
-#endif  // CRYPTOHOME_CRYPTO_ELLIPTIC_CURVE_ERROR_H_
+#endif  // LIBHWSEC_ERROR_ELLIPTIC_CURVE_ERROR_H_

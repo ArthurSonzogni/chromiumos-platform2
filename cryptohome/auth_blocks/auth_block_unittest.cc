@@ -13,6 +13,7 @@
 
 #include <base/files/file_path.h>
 #include <gtest/gtest.h>
+#include <libhwsec/error/elliptic_curve_error.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -27,7 +28,6 @@
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto/elliptic_curve_error.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
@@ -42,6 +42,8 @@
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
 
+using ::hwsec::EllipticCurveError;
+using ::hwsec::EllipticCurveErrorCode;
 using ::hwsec::StatusChain;
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;

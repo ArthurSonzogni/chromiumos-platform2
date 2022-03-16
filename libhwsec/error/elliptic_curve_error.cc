@@ -7,12 +7,9 @@
 
 #include <base/notreached.h>
 
-#include "cryptohome/crypto/elliptic_curve_error.h"
+#include "libhwsec/error/elliptic_curve_error.h"
 
-using hwsec::TPMErrorBase;
-using hwsec::TPMRetryAction;
-
-namespace cryptohome {
+namespace hwsec {
 
 namespace {
 
@@ -40,4 +37,4 @@ TPMRetryAction EllipticCurveError::ToTPMRetryAction() const {
   return TPMRetryAction::kNoRetry;
 }
 
-}  // namespace cryptohome
+}  // namespace hwsec

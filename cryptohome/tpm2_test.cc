@@ -29,6 +29,7 @@
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/error/elliptic_curve_error.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
@@ -48,13 +49,14 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_for_test.h>
 
-#include "cryptohome/crypto/elliptic_curve_error.h"
 #include "cryptohome/protobuf_test_utils.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
+using hwsec::EllipticCurveError;
+using hwsec::EllipticCurveErrorCode;
 using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;

@@ -23,6 +23,7 @@
 #include <base/strings/stringprintf.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec/error/elliptic_curve_error.h>
 #include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec/error/tpm2_error.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -46,12 +47,13 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
 
-#include "cryptohome/crypto/elliptic_curve_error.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
+using hwsec::EllipticCurveError;
+using hwsec::EllipticCurveErrorCode;
 using hwsec::StatusChain;
 using hwsec::TPM2Error;
 using hwsec::TPMError;

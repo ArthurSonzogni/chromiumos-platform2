@@ -240,7 +240,6 @@ static_library("libcrosplatform") {
   sources = [
     "../auth_factor/auth_factor_label.cc",
     "../auth_factor/auth_factor_manager.cc",
-    "../crypto/elliptic_curve_error.cc",
     "../cryptohome_metrics.cc",
     "../cryptorecovery/recovery_crypto.cc",
     "../cryptorecovery/recovery_crypto_fake_tpm_backend_impl.cc",

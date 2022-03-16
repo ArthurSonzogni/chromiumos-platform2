@@ -15,6 +15,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/error/elliptic_curve_error.h>
 #include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
@@ -23,13 +24,14 @@
 
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/crypto/elliptic_curve_error.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
+using hwsec::EllipticCurveError;
+using hwsec::EllipticCurveErrorCode;
 using hwsec::StatusChain;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
