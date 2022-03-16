@@ -4157,10 +4157,7 @@ bool UserDataAuth::AuthenticateAuthFactor(
     std::move(on_done).Run(reply);
     return false;
   }
-
-  reply.set_error(auth_session->AuthenticateAuthFactor(request));
-  std::move(on_done).Run(reply);
-  return true;
+  return auth_session->AuthenticateAuthFactor(request, std::move(on_done));
 }
 
 bool UserDataAuth::UpdateAuthFactor(

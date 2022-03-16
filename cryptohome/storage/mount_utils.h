@@ -35,10 +35,15 @@ bool WriteProtobuf(int fd, const google::protobuf::MessageLite& message);
 // normally.
 void ForkAndCrash(const std::string& message);
 
-// Convert a CryptoError returned from AuthBlocks or VaultKeysets to MountError.
-MountError CryptoErrorToMountError(CryptoError crypto_error);
+// Converts CryptoError to CryptohomeErrorCode defined in the protos.
+user_data_auth::CryptohomeErrorCode CryptoErrorToCryptohomeError(
+    const CryptoError code);
 
-// Convert MountError used by mount.cc to CryptohomeErrorCode defined in the
+// Converts a CryptoError returned from AuthBlocks or VaultKeysets to
+// MountError.
+MountError CryptoErrorToMountError(const CryptoError crypto_error);
+
+// Converts MountError used by mount.cc to CryptohomeErrorCode defined in the
 // protos.
 user_data_auth::CryptohomeErrorCode MountErrorToCryptohomeError(
     const MountError code);

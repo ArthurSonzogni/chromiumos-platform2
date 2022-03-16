@@ -99,6 +99,11 @@ void ForkAndCrash(const std::string& message) {
   }
 }
 
+user_data_auth::CryptohomeErrorCode CryptoErrorToCryptohomeError(
+    const CryptoError code) {
+  return MountErrorToCryptohomeError(CryptoErrorToMountError(code));
+}
+
 MountError CryptoErrorToMountError(CryptoError crypto_error) {
   MountError local_error = MOUNT_ERROR_NONE;
   switch (crypto_error) {

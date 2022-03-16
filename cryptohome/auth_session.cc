@@ -524,6 +524,8 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
     vault_keyset_ = keyset_management_->GetValidKeyset(*credentials, &error);
     if (!vault_keyset_) {
       return MountErrorToCryptohomeError(
+          // MountError from GetValidKeyset is MOUNT_ERROR_NONE only if
+          // CryptoError::CE_TPM_FATAL is received from VaultKeyset::Decrypt().
           error == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : error);
     }
     file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
@@ -545,53 +547,162 @@ const FileSystemKeyset& AuthSession::file_system_keyset() const {
   return file_system_keyset_.value();
 }
 
-user_data_auth::CryptohomeErrorCode AuthSession::AuthenticateAuthFactor(
-    const user_data_auth::AuthenticateAuthFactorRequest& request) {
-  // 1. Check the factor exists.
-  auto iter = label_to_auth_factor_.find(request.auth_factor_label());
-  if (iter == label_to_auth_factor_.end()) {
+bool AuthSession::AuthenticateAuthFactor(
+    const user_data_auth::AuthenticateAuthFactorRequest& request,
+    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
+        on_done) {
+  user_data_auth::AuthenticateAuthFactorReply reply;
+
+  // Check the factor exists either with USS or VaultKeyset.
+  auto label_to_auth_factor_iter =
+      label_to_auth_factor_.find(request.auth_factor_label());
+  if (label_to_auth_factor_iter == label_to_auth_factor_.end()) {
     LOG(ERROR) << "Authentication key not found: "
                << request.auth_factor_label();
-    return user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND;
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+    std::move(on_done).Run(reply);
+    return false;
   }
-  AuthFactor& auth_factor = *iter->second;
 
-  // 2. Convert the auth input.
+  // Fill up the auth input.
   std::optional<AuthInput> auth_input =
       FromProto(request.auth_input(), obfuscated_username_,
                 auth_block_utility_->GetLockedToSingleUser());
   if (!auth_input.has_value()) {
     LOG(ERROR) << "Failed to parse auth input for authenticating auth factor";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(reply);
+    return false;
   }
 
-  // 3. Perform the auth block key blobs derivation.
-  KeyBlobs key_blobs;
-  user_data_auth::CryptohomeErrorCode error = auth_factor.Authenticate(
-      auth_input.value(), auth_block_utility_, key_blobs);
-  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-    LOG(ERROR) << "Failed to authenticate auth session via factor "
-               << request.auth_factor_label();
-    return error;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  // If the USS experiment is enabled and there is no VaultKeyset for the
+  // user continue authentication with USS.
+  if (IsUserSecretStashExperimentEnabled() &&
+      !user_has_configured_credential_) {
+    AuthFactor auth_factor = *label_to_auth_factor_iter->second;
+
+    error = AuthenticateViaUserSecretStash(request.auth_factor_label(),
+                                           auth_input.value(), auth_factor);
+    if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+      LOG(ERROR) << "Failed to authenticate auth session via factor "
+                 << request.auth_factor_label();
+      reply.set_error(error);
+      std::move(on_done).Run(reply);
+      return false;
+    }
+
+    // Reset LE Credential counter if the current AutFactor is not an
+    // LECredential.
+    ResetLECredentials();
+
+    // Flip the status on the successful authentication.
+    status_ = AuthStatus::kAuthStatusAuthenticated;
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+    std::move(on_done).Run(reply);
+    return true;
   }
 
-  // 4. If the auth factor is tied with USS, use it to finish the
+  // If USS experiment is not enabled or user has VaultKeysets continue
+  // authentication with Vaultkeyset. Status is flipped on the successful
   // authentication.
-  error =
-      AuthenticateViaUserSecretStash(request.auth_factor_label(), key_blobs);
+  error = converter_->PopulateKeyDataForVK(
+      username_, request.auth_factor_label(), key_data_);
   if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-    LOG(ERROR) << "Failed to authenticate auth session via factor "
+    LOG(ERROR) << "Failed to authenticate auth session via vk-factor "
                << request.auth_factor_label();
-    return error;
+    reply.set_error(error);
+    std::move(on_done).Run(reply);
+    return false;
+  }
+  return AuthenticateViaVaultKeyset(auth_input.value(), std::move(on_done));
+}
+
+bool AuthSession::AuthenticateViaVaultKeyset(
+    const AuthInput& auth_input,
+    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
+        on_done) {
+  user_data_auth::AuthenticateAuthFactorReply reply;
+
+  AuthBlockType auth_block_type =
+      auth_block_utility_->GetAuthBlockTypeForDerivation(key_data_.label(),
+                                                         obfuscated_username_);
+
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    LOG(ERROR) << "Error in obtaining AuthBlock type for key derivation.";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+    std::move(on_done).Run(reply);
+    return false;
   }
 
-  // 5. Reset LE Credential counter if the current AutFactor is not an
-  // LECredential.
-  ResetLECredentials();
+  AuthBlockState auth_state;
+  if (!auth_block_utility_->GetAuthBlockStateFromVaultKeyset(
+          key_data_.label(), obfuscated_username_, auth_state)) {
+    LOG(ERROR) << "Error in obtaining AuthBlock state for key derivation.";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+    std::move(on_done).Run(reply);
+    return false;
+  }
 
-  // 6. Flip the status on the successful authentication.
+  // Authenticate and derive KeyBlobs.
+  return auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
+      auth_block_type, auth_input, auth_state,
+      base::BindOnce(&AuthSession::LoadVaultKeysetAndFsKeys,
+                     base::Unretained(this), std::move(on_done)));
+}
+
+void AuthSession::LoadVaultKeysetAndFsKeys(
+    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
+        on_done,
+    CryptoError error,
+    std::unique_ptr<KeyBlobs> key_blobs) {
+  user_data_auth::AuthenticateAuthFactorReply reply;
+
+  // The error should be evaluated the same way as it is done in
+  // AuthSession::Authenticate(), which directly returns the GetValidKeyset()
+  // error. So we are doing a similar error handling here as in
+  // KeysetManagement::GetValidKeyset() to preserve the behavior. Empty label
+  // case is dropped in here since it is not a valid case anymore.
+  if (!key_blobs) {
+    LOG(ERROR) << "Failed to load VaultKeyset since key blobs has not been "
+                  "derived.";
+    if (error == CryptoError::CE_NONE) {
+      // Maps to the default value of MountError which is
+      // MOUNT_ERROR_KEY_FAILURE
+      error = CryptoError::CE_OTHER_CRYPTO;
+    }
+    reply.set_error(CryptoErrorToCryptohomeError(error));
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  MountError mount_error;
+  vault_keyset_ = keyset_management_->GetValidKeysetWithKeyBlobs(
+      obfuscated_username_, std::move(*key_blobs.get()), key_data_.label(),
+      &mount_error);
+  if (!vault_keyset_) {
+    user_data_auth::CryptohomeErrorCode crypto_error =
+        MountErrorToCryptohomeError(
+            mount_error == MOUNT_ERROR_NONE ? MOUNT_ERROR_FATAL : mount_error);
+    LOG(ERROR) << "Failed to load VaultKeyset and file system keyset.";
+    reply.set_error(crypto_error);
+    std::move(on_done).Run(reply);
+  }
+
+  // Authentication is successfully completed. Reset LE Credential counter if
+  // the current AutFactor is not an LECredential.
+  if (!vault_keyset_->IsLECredential()) {
+    keyset_management_->ResetLECredentials(std::nullopt, *vault_keyset_,
+                                           obfuscated_username_);
+  }
+
+  file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
+
+  // Flip the status on the successful authentication.
   status_ = AuthStatus::kAuthStatusAuthenticated;
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  std::move(on_done).Run(reply);
 }
 
 std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
@@ -777,6 +888,32 @@ AuthSession::AddAuthFactorViaUserSecretStash(
 }
 
 user_data_auth::CryptohomeErrorCode AuthSession::AuthenticateViaUserSecretStash(
+    const std::string& auth_factor_label,
+    const AuthInput auth_input,
+    AuthFactor& auth_factor) {
+  // TODO(b/223207622): This step is the same for both USS and
+  // VaultKeyset other than how the AuthBlock state is obtained. Make the
+  // derivation for USS asynchronous and merge these two.
+  KeyBlobs key_blobs;
+  user_data_auth::CryptohomeErrorCode error =
+      auth_factor.Authenticate(auth_input, auth_block_utility_, key_blobs);
+  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "Failed to authenticate auth session via factor "
+               << auth_factor_label;
+    return error;
+  }
+
+  // Use USS to finish the authentication.
+  error = LoadUSSMainKeyAndFsKeyset(auth_factor_label, key_blobs);
+  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "Failed to authenticate auth session via factor "
+               << auth_factor_label;
+    return error;
+  }
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
+user_data_auth::CryptohomeErrorCode AuthSession::LoadUSSMainKeyAndFsKeyset(
     const std::string& auth_factor_label, const KeyBlobs& key_blobs) {
   // 1. Derive the credential secret for the USS from the key blobs.
   std::optional<brillo::SecureBlob> uss_credential_secret =

@@ -115,8 +115,10 @@ class AuthSession final {
   // AuthSession via an auth factor. It may be called multiple times depending
   // on errors or various steps involved in multi-factor authentication.
   // Note: only USS users are supported currently.
-  user_data_auth::CryptohomeErrorCode AuthenticateAuthFactor(
-      const user_data_auth::AuthenticateAuthFactorRequest& request);
+  bool AuthenticateAuthFactor(
+      const user_data_auth::AuthenticateAuthFactorRequest& request,
+      base::OnceCallback<
+          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
 
   // Return a const reference to FileSystemKeyset.
   // FileSystemKeyset is set when the auth session gets into an authenticated
@@ -245,17 +247,42 @@ class AuthSession final {
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_state);
 
+  // Creates a new per-credential secret, adds the key block for the new secret
+  // to the USS and persist to the disk.
   user_data_auth::CryptohomeErrorCode AddAuthFactorViaUserSecretStash(
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label,
       const AuthFactorMetadata& auth_factor_metadata,
       const AuthInput& auth_input);
-  user_data_auth::CryptohomeErrorCode AuthenticateViaUserSecretStash(
+
+  // Loads and decrypts the USS payload with |auth_factor_label| using the given
+  // KeyBlobs.
+  user_data_auth::CryptohomeErrorCode LoadUSSMainKeyAndFsKeyset(
       const std::string& auth_factor_label, const KeyBlobs& key_blobs);
 
   // This function is used to reset the attempt count for a low entropy
   // credential.
   void ResetLECredentials();
+
+  // Authenticates the user using USS with the |auth_factor_label|, |auth_input|
+  // and the |auth_factor|.
+  user_data_auth::CryptohomeErrorCode AuthenticateViaUserSecretStash(
+      const std::string& auth_factor_label,
+      const AuthInput auth_input,
+      AuthFactor& auth_factor);
+
+  // Authenticates the user using VaultKeysets with the given |auth_input|.
+  bool AuthenticateViaVaultKeyset(
+      const AuthInput& auth_input,
+      base::OnceCallback<
+          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
+
+  // Loads and decrypts VaultKeyset with the given |key_blobs|.
+  void LoadVaultKeysetAndFsKeys(
+      base::OnceCallback<
+          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done,
+      CryptoError error,
+      std::unique_ptr<KeyBlobs> key_blobs);
 
   const std::string username_;
   const std::string obfuscated_username_;

@@ -824,8 +824,18 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakeLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
-  EXPECT_EQ(auth_session.AuthenticateAuthFactor(request),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
+      request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AuthenticateAuthFactorReply& reply) {
+            called = true;
+            error = reply.error();
+          },
+          std::ref(called), std::ref(error))));
 
   // Verify.
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
@@ -889,8 +899,18 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakePinLabel);
   request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
-  EXPECT_EQ(auth_session.AuthenticateAuthFactor(request),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
+      request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AuthenticateAuthFactorReply& reply) {
+            called = true;
+            error = reply.error();
+          },
+          std::ref(called), std::ref(error))));
 
   // Verify.
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
