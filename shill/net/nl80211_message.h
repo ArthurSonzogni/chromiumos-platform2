@@ -514,6 +514,19 @@ class SHILL_EXPORT NewPeerCandidateMessage : public Nl80211Message {
   NewPeerCandidateMessage& operator=(const NewPeerCandidateMessage&) = delete;
 };
 
+class SHILL_EXPORT ControlPortFrameTxStatusMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  ControlPortFrameTxStatusMessage()
+      : Nl80211Message(kCommand, kCommandString) {}
+  ControlPortFrameTxStatusMessage(const ControlPortFrameTxStatusMessage&) =
+      delete;
+  ControlPortFrameTxStatusMessage& operator=(
+      const ControlPortFrameTxStatusMessage&) = delete;
+};
+
 }  // namespace shill
 
 #endif  // SHILL_NET_NL80211_MESSAGE_H_

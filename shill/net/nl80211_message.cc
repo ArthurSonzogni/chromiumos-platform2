@@ -455,6 +455,11 @@ const uint8_t NewPeerCandidateMessage::kCommand =
 const char NewPeerCandidateMessage::kCommandString[] =
     "NL80211_CMD_NEW_PEER_CANDIDATE";
 
+const uint8_t ControlPortFrameTxStatusMessage::kCommand =
+    NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS;
+const char ControlPortFrameTxStatusMessage::kCommandString[] =
+    "NL80211_CMD_CONTROL_PORT_FRAME_TX_STATUS";
+
 // static
 std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
     const NetlinkPacket& packet) {
@@ -545,6 +550,8 @@ std::unique_ptr<NetlinkMessage> Nl80211Message::CreateMessage(
       return std::make_unique<GetMeshProxyPathMessage>();
     case NewPeerCandidateMessage::kCommand:
       return std::make_unique<NewPeerCandidateMessage>();
+    case ControlPortFrameTxStatusMessage::kCommand:
+      return std::make_unique<ControlPortFrameTxStatusMessage>();
     default:
       LOG(WARNING) << base::StringPrintf(
           "Unknown/unhandled netlink nl80211 message 0x%02x", header.cmd);
