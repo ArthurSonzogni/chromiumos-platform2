@@ -368,15 +368,15 @@ pub fn set_memory_margins_bps(critical: u32, moderate: u32) -> Result<()> {
     }
 }
 
-struct ComponentMarginsKb {
-    chrome_critical: u64,
-    chrome_moderate: u64,
-    arcvm_foreground: u64,
-    arcvm_perceptible: u64,
-    arcvm_cached: u64,
+pub struct ComponentMarginsKb {
+    pub chrome_critical: u64,
+    pub chrome_moderate: u64,
+    pub arcvm_foreground: u64,
+    pub arcvm_perceptible: u64,
+    pub arcvm_cached: u64,
 }
 
-fn get_component_margins_kb() -> ComponentMarginsKb {
+pub fn get_component_margins_kb() -> ComponentMarginsKb {
     let (critical, moderate) = get_memory_margins_kb();
     ComponentMarginsKb {
         chrome_critical: critical,

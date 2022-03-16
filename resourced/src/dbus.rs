@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt;
 use std::os::raw::c_uint;
@@ -73,6 +74,19 @@ fn get_foreground_available_memory_kb(m: &MethodInfo) -> MethodResult {
 fn get_memory_margins_kb(m: &MethodInfo) -> MethodResult {
     let margins = memory::get_memory_margins_kb();
     Ok(vec![m.msg.method_return().append2(margins.0, margins.1)])
+}
+
+fn get_component_memory_margins_kb(m: &MethodInfo) -> MethodResult {
+    let margins = memory::get_component_margins_kb();
+    let mut result = HashMap::new();
+
+    result.insert("ChromeCritical", margins.chrome_critical);
+    result.insert("ChromeModerate", margins.chrome_moderate);
+    result.insert("ArcvmForeground", margins.arcvm_foreground);
+    result.insert("ArcvmPerceptible", margins.arcvm_perceptible);
+    result.insert("ArcvmCached", margins.arcvm_cached);
+
+    Ok(vec![m.msg.method_return().append1(result)])
 }
 
 fn set_memory_margins_bps(m: &MethodInfo) -> MethodResult {
@@ -224,6 +238,14 @@ pub fn service_main() -> Result<()> {
                 .add_m(
                     f.method("GetMemoryMarginsKB", (), get_memory_margins_kb)
                         .outarg::<u64, _>("reply"),
+                )
+                .add_m(
+                    f.method(
+                        "GetComponentMemoryMarginsKB",
+                        (),
+                        get_component_memory_margins_kb,
+                    )
+                    .outarg::<dbus::arg::Dict<&str, u64, ()>, _>("reply"),
                 )
                 .add_m(
                     f.method("SetMemoryMarginsBps", (), set_memory_margins_bps)
