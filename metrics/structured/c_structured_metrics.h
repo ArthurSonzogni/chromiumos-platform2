@@ -64,6 +64,17 @@ BRILLO_EXPORT void BluetoothDeviceInfoReport(const char* boot_id,
                                              int product_version);
 
 // C wrapper for
+// metrics::structured::events::bluetooth::BluetoothAudioQualityReport.
+BRILLO_EXPORT void BluetoothAudioQualityReport(const char* boot_id,
+                                               int64_t system_time,
+                                               const char* device_id,
+                                               int profile,
+                                               int quality_type,
+                                               int64_t average,
+                                               int64_t std_dev,
+                                               int64_t percentile95);
+
+// C wrapper for
 // metrics::structured::events::bluetooth_device::BluetoothDeviceInfo.
 BRILLO_EXPORT void BluetoothDeviceInfo(int device_type,
                                        int device_class,

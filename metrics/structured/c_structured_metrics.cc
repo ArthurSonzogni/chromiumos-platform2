@@ -101,6 +101,26 @@ extern "C" void BluetoothDeviceInfoReport(const char* boot_id,
       .Record();
 }
 
+extern "C" void BluetoothAudioQualityReport(const char* boot_id,
+                                            int64_t system_time,
+                                            const char* device_id,
+                                            int profile,
+                                            int quality_type,
+                                            int64_t average,
+                                            int64_t std_dev,
+                                            int64_t percentile95) {
+  bluetooth::BluetoothAudioQualityReport()
+      .SetBootId(boot_id)
+      .SetSystemTime(system_time)
+      .SetDeviceId(device_id)
+      .SetProfile(profile)
+      .SetQualityType(quality_type)
+      .SetAverage(average)
+      .SetStdDev(std_dev)
+      .SetPercentile95(percentile95)
+      .Record();
+}
+
 extern "C" void BluetoothDeviceInfo(int device_type,
                                     int device_class,
                                     int device_category,
