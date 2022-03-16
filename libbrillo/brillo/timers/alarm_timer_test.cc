@@ -31,6 +31,7 @@ namespace timers {
 namespace {
 
 constexpr base::TimeDelta kTenMilliseconds = base::Milliseconds(10);
+constexpr base::TimeDelta kTenSeconds = base::Seconds(10);
 
 class AlarmTimerTester {
  public:
@@ -212,8 +213,11 @@ TEST(AlarmTimerTest, MessageLoopShutdown) {
     base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
     base::FileDescriptorWatcher watcher(task_executor.task_runner());
 
-    AlarmTimerTester a(&did_run, kTenMilliseconds, base::OnceClosure());
-    AlarmTimerTester b(&did_run, kTenMilliseconds, base::OnceClosure());
+    // Use longer timer time in case of high load. FYI: b/224785014.
+    // Chromium OS runs unittest at higher parallelization, and may be under an
+    // emulator.
+    AlarmTimerTester a(&did_run, kTenSeconds, base::OnceClosure());
+    AlarmTimerTester b(&did_run, kTenSeconds, base::OnceClosure());
     AlarmTimerTester c(&did_run, kTenMilliseconds, base::OnceClosure());
     AlarmTimerTester d(&did_run, kTenMilliseconds, base::OnceClosure());
 
