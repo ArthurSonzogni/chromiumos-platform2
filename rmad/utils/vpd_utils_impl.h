@@ -40,6 +40,7 @@ class VpdUtilsImpl : public VpdUtils {
   bool SetRegistrationCode(const std::string& ubind,
                            const std::string& gbind) override;
   bool SetStableDeviceSecret(const std::string& stable_device_secret) override;
+  bool RemoveWhitelabelTag() override;
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
   void ClearRoVpdCache() override;
@@ -48,8 +49,10 @@ class VpdUtilsImpl : public VpdUtils {
  protected:
   bool SetRoVpd(const std::map<std::string, std::string>& key_value_map);
   bool GetRoVpd(const std::string& key, std::string* value) const;
+  bool DelRoVpd(const std::string& key);
   bool SetRwVpd(const std::map<std::string, std::string>& key_value_map);
   bool GetRwVpd(const std::string& key, std::string* value) const;
+  bool DelRwVpd(const std::string& key);
 
  private:
   // RO VPD

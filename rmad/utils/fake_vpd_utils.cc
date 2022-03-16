@@ -122,6 +122,10 @@ bool FakeVpdUtils::SetStableDeviceSecret(
   return json_store_->SetValue(kVpdKeyStableDeviceSecret, stable_device_secret);
 }
 
+bool FakeVpdUtils::RemoveWhitelabelTag() {
+  return json_store_->SetValue(kVpdKeyWhitelabelTag, "");
+}
+
 bool FakeVpdUtils::FlushOutRoVpdCache() {
   return true;
 }

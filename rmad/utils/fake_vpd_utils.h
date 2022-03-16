@@ -39,6 +39,7 @@ class FakeVpdUtils : public VpdUtils {
   bool SetRegistrationCode(const std::string& ubind,
                            const std::string& gbind) override;
   bool SetStableDeviceSecret(const std::string& stable_device_secret) override;
+  bool RemoveWhitelabelTag() override;
   bool FlushOutRoVpdCache() override;
   bool FlushOutRwVpdCache() override;
   void ClearRoVpdCache() override;

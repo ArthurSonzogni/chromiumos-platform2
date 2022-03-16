@@ -97,6 +97,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   std::string serial_number;
   std::string region;
   uint64_t sku_id;
+  bool is_whitelabel_exist;
   std::string whitelabel_tag;
   std::string dram_part_number;
 
@@ -121,9 +122,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   if (!cbi_utils_->GetSku(&sku_id)) {
     LOG(WARNING) << "Failed to get original sku from cbi.";
   }
-  if (!vpd_utils_->GetWhitelabelTag(&whitelabel_tag)) {
-    LOG(WARNING) << "Failed to get original whitelabel from vpd.";
-  }
+  is_whitelabel_exist = vpd_utils_->GetWhitelabelTag(&whitelabel_tag);
   if (!cbi_utils_->GetDramPartNum(&dram_part_number)) {
     LOG(WARNING) << "Failed to get original dram part number from cbi.";
   }
@@ -153,10 +152,16 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
                   "to initialize the handler.";
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
-  if (auto it = std::find(whitelabel_tag_list.begin(),
-                          whitelabel_tag_list.end(), whitelabel_tag);
-      it != whitelabel_tag_list.end()) {
-    whitelabel_index = std::distance(whitelabel_tag_list.begin(), it);
+  if (is_whitelabel_exist) {
+    if (auto it = std::find(whitelabel_tag_list.begin(),
+                            whitelabel_tag_list.end(), whitelabel_tag);
+        it != whitelabel_tag_list.end()) {
+      whitelabel_index = std::distance(whitelabel_tag_list.begin(), it);
+    }
+    if (whitelabel_index == -1) {
+      LOG(WARNING) << "We found an unmatched whitelabel in vpd.";
+      vpd_utils_->RemoveWhitelabelTag();
+    }
   }
 
   if (!json_store_->GetValue(kMlbRepair, &mlb_repair)) {
@@ -325,7 +330,8 @@ bool UpdateDeviceInfoStateHandler::WriteDeviceInfo(
   if (device_info.whitelabel_index() >= 0) {
     whitelabel = device_info.whitelabel_list(device_info.whitelabel_index());
   }
-  if (!vpd_utils_->SetWhitelabelTag(whitelabel)) {
+  if (!device_info.whitelabel_list().empty() &&
+      !vpd_utils_->SetWhitelabelTag(whitelabel)) {
     LOG(ERROR) << "Failed to save whitelabel to vpd cache.";
     return false;
   }

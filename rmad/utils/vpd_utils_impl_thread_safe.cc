@@ -93,6 +93,12 @@ bool VpdUtilsImplThreadSafe::SetStableDeviceSecret(
   return VpdUtilsImpl::SetStableDeviceSecret(stable_device_secret);
 }
 
+bool VpdUtilsImplThreadSafe::RemoveWhitelabelTag() {
+  base::AutoLock scoped_lock(lock_);
+
+  return VpdUtilsImpl::RemoveWhitelabelTag();
+}
+
 bool VpdUtilsImplThreadSafe::FlushOutRoVpdCache() {
   base::AutoLock scoped_lock(lock_);
 

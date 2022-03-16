@@ -66,6 +66,10 @@ class VpdUtils {
   virtual bool SetStableDeviceSecret(
       const std::string& stable_device_secret) = 0;
 
+  // Remove whitelabel tag from the cache and the vpd.
+  // Return true if it succeeds, otherwise return false.
+  virtual bool RemoveWhitelabelTag() = 0;
+
   // Since setting the value to vpd requires a lot of overhead, we cache all
   // (key, value) pairs and then flush it all at once.
   virtual bool FlushOutRoVpdCache() = 0;

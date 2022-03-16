@@ -76,7 +76,7 @@ TEST_F(VpdUtilsTest, GetWhitelabelTag_Empty) {
   auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
 
   std::string wl_tag;
-  EXPECT_TRUE(vpd_utils->GetWhitelabelTag(&wl_tag));
+  EXPECT_FALSE(vpd_utils->GetWhitelabelTag(&wl_tag));
   EXPECT_EQ(wl_tag, "");
 }
 
@@ -343,6 +343,40 @@ TEST_F(VpdUtilsTest, SetStableDeviceSecret_Success) {
   EXPECT_TRUE(vpd_utils->SetStableDeviceSecret("abc"));
   EXPECT_TRUE(vpd_utils->GetStableDeviceSecret(&stable_dev_secret));
   EXPECT_EQ(stable_dev_secret, "abc");
+}
+
+TEST_F(VpdUtilsTest, RemoveWhitelabelTag_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  // Expect this to be called when flushing the cached values in destructor.
+  // The command can be in either order.
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
+        const std::vector<std::string> expect = {
+            "/usr/sbin/vpd", "-i", "RO_VPD", "-d", "whitelabel_tag"};
+        EXPECT_EQ(argv, expect);
+        return true;
+      });
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  std::string stable_dev_secret;
+  EXPECT_TRUE(vpd_utils->RemoveWhitelabelTag());
+}
+
+TEST_F(VpdUtilsTest, RemoveWhitelabelTag_Failed) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  // Expect this to be called when flushing the cached values in destructor.
+  // The command can be in either order.
+  EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
+      .WillOnce([](const std::vector<std::string>& argv, std::string* output) {
+        const std::vector<std::string> expect = {
+            "/usr/sbin/vpd", "-i", "RO_VPD", "-d", "whitelabel_tag"};
+        EXPECT_EQ(argv, expect);
+        return false;
+      });
+  auto vpd_utils = std::make_unique<VpdUtilsImpl>(std::move(mock_cmd_utils));
+
+  std::string stable_dev_secret;
+  EXPECT_FALSE(vpd_utils->RemoveWhitelabelTag());
 }
 
 TEST_F(VpdUtilsTest, FlushRoSuccess) {

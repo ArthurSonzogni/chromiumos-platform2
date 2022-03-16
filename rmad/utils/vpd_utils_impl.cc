@@ -53,12 +53,7 @@ bool VpdUtilsImpl::GetSerialNumber(std::string* serial_number) const {
 bool VpdUtilsImpl::GetWhitelabelTag(std::string* whitelabel_tag) const {
   CHECK(whitelabel_tag);
 
-  // We can allow whitelabel-tag to be empty.
-  if (!GetRoVpd(kVpdKeyWhitelabelTag, whitelabel_tag)) {
-    *whitelabel_tag = "";
-  }
-
-  return true;
+  return GetRoVpd(kVpdKeyWhitelabelTag, whitelabel_tag);
 }
 
 bool VpdUtilsImpl::GetRegion(std::string* region) const {
@@ -145,6 +140,11 @@ bool VpdUtilsImpl::SetStableDeviceSecret(
   return true;
 }
 
+bool VpdUtilsImpl::RemoveWhitelabelTag() {
+  cache_ro_.erase(kVpdKeyWhitelabelTag);
+  return DelRoVpd(kVpdKeyWhitelabelTag);
+}
+
 bool VpdUtilsImpl::FlushOutRoVpdCache() {
   if (cache_ro_.size() && !SetRoVpd(cache_ro_)) {
     return false;
@@ -193,6 +193,12 @@ bool VpdUtilsImpl::GetRoVpd(const std::string& key, std::string* value) const {
   return cmd_utils_->GetOutput(argv, value);
 }
 
+bool VpdUtilsImpl::DelRoVpd(const std::string& key) {
+  std::vector<std::string> argv{kVpdCmdPath, "-i", "RO_VPD", "-d", key};
+  std::string unused;
+  return cmd_utils_->GetOutput(argv, &unused);
+}
+
 bool VpdUtilsImpl::SetRwVpd(
     const std::map<std::string, std::string>& key_value_map) {
   std::string log_msg;
@@ -221,6 +227,12 @@ bool VpdUtilsImpl::GetRwVpd(const std::string& key, std::string* value) const {
 
   std::vector<std::string> argv{kVpdCmdPath, "-i", "RW_VPD", "-g", key};
   return cmd_utils_->GetOutput(argv, value);
+}
+
+bool VpdUtilsImpl::DelRwVpd(const std::string& key) {
+  std::vector<std::string> argv{kVpdCmdPath, "-i", "RW_VPD", "-d", key};
+  std::string unused;
+  return cmd_utils_->GetOutput(argv, &unused);
 }
 
 void VpdUtilsImpl::ClearRoVpdCache() {
