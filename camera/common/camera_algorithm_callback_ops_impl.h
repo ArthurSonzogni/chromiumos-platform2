@@ -9,7 +9,7 @@
 
 #include <vector>
 
-#include <base/single_thread_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "camera/mojo/algorithm/camera_algorithm.mojom.h"

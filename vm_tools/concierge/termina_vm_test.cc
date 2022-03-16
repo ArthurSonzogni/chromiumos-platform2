@@ -25,20 +25,20 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/run_loop.h>
-#include <base/single_thread_task_runner.h>
 #include <base/strings/stringprintf.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/threading/thread.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <chromeos/patchpanel/address_manager.h>
+#include <chromeos/patchpanel/guest_type.h>
+#include <chromeos/patchpanel/mac_address_generator.h>
+#include <chromeos/patchpanel/subnet.h>
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
-#include <chromeos/patchpanel/address_manager.h>
-#include <chromeos/patchpanel/guest_type.h>
-#include <chromeos/patchpanel/mac_address_generator.h>
-#include <chromeos/patchpanel/subnet.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 #include "vm_tools/concierge/vsock_cid_pool.h"

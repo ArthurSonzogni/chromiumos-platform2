@@ -14,7 +14,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/sequence_checker_impl.h>
-#include <base/single_thread_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/grpc/async_grpc_client.h>
 
 #include "diagnostics/dpsl/public/dpsl_requester.h"

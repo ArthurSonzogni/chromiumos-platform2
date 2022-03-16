@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <base/optional.h>
-#include <base/sequenced_task_runner.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "iioservice/daemon/sensor_device_fusion.h"
 #include "iioservice/mojo/sensor.mojom.h"

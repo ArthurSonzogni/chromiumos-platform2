@@ -14,10 +14,10 @@
 #include <utility>
 
 #include <base/bind.h>
-#include <base/bind_post_task.h>
 #include <base/callback_helpers.h>
 #include <base/containers/contains.h>
 #include <base/files/file_path.h>
+#include <base/task/bind_post_task.h>
 
 #include "cros-camera/camera_metadata_utils.h"
 

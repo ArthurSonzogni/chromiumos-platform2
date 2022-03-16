@@ -12,8 +12,8 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
-#include <base/sequenced_task_runner.h>
-#include <base/single_thread_task_runner.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <libmems/iio_device.h>
 
 #include "iioservice/daemon/common_types.h"

@@ -11,10 +11,10 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/single_thread_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
+#include <mojo/public/cpp/bindings/remote.h>
 
 #include "media_perception/chrome_audio_service_client.h"
 #include "media_perception/device_management.pb.h"

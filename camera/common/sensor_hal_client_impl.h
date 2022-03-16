@@ -13,8 +13,8 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <base/single_thread_task_runner.h>
 #include <base/synchronization/lock.h>
+#include <base/task/single_thread_task_runner.h>
 #include <iioservice/mojo/cros_sensor_service.mojom.h>
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>

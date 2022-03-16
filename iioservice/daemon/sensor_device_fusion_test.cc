@@ -12,7 +12,7 @@
 #include <base/notreached.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>
-#include <base/sequenced_task_runner.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
 #include <libmems/common_types.h>
 #include <libmems/test_fakes.h>

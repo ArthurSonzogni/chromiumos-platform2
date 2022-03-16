@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/sequence_checker.h>
-#include <base/sequenced_task_runner.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "missive/util/status.h"
 

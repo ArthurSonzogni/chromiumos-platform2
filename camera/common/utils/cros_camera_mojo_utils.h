@@ -17,8 +17,8 @@
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
-#include <base/single_thread_task_runner.h>
 #include <base/synchronization/lock.h>
+#include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/associated_remote.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>

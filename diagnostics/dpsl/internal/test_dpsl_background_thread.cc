@@ -8,9 +8,9 @@
 #include <base/check.h>
 #include <base/location.h>
 #include <base/logging.h>
-#include "base/memory/scoped_refptr.h"
+#include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
-#include <base/task_runner.h>
+#include <base/task/task_runner.h>
 #include <base/threading/thread_task_runner_handle.h>
 
 #include "diagnostics/dpsl/public/dpsl_global_context.h"

@@ -9,8 +9,9 @@
 
 #include <memory>
 
-#include <base/single_thread_task_runner.h>
 #include <system/camera_metadata.h>
+
+#include <base/task/single_thread_task_runner.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "common/metadata_logger.h"

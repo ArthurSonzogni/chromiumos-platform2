@@ -12,7 +12,7 @@
 
 #include <base/containers/flat_map.h>
 #include <base/memory/weak_ptr.h>
-#include <base/sequenced_task_runner.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "iioservice/daemon/common_types.h"
 #include "iioservice/daemon/samples_handler_base.h"

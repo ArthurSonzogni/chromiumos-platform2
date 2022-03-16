@@ -8,7 +8,7 @@
 #include <memory>
 
 #include <base/memory/scoped_refptr.h>
-#include <base/single_thread_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>

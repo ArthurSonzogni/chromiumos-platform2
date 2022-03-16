@@ -11,7 +11,7 @@
 
 #include <base/callback.h>
 #include <base/sequence_checker.h>
-#include <base/single_thread_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include <libmems/iio_device.h>

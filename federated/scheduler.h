@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include <base/sequenced_task_runner.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 

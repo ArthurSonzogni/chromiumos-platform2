@@ -5,8 +5,9 @@
 #include "media_perception/video_capture_service_client_impl.h"
 
 #include <utility>
+
 #include <base/logging.h>
-#include <base/single_thread_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "media_perception/device_management.pb.h"
 #include "media_perception/proto_mojom_conversion.h"

@@ -17,7 +17,7 @@
 #include <hardware/camera3.h>
 
 #include <base/containers/flat_set.h>
-#include <base/single_thread_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
 #include <base/timer/elapsed_timer.h>
 #include <mojo/public/cpp/bindings/pending_associated_remote.h>

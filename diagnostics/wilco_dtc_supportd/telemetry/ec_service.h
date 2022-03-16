@@ -16,7 +16,7 @@
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
 #include <base/sequence_checker_impl.h>
-#include <base/single_thread_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/simple_thread.h>
 
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"

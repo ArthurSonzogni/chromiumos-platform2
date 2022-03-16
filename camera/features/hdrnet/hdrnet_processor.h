@@ -12,7 +12,7 @@
 
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
-#include <base/single_thread_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <system/camera_metadata.h>
 
 #include "common/camera_hal3_helpers.h"

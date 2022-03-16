@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/single_thread_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/values.h>
 
 #include "cros-camera/common_types.h"

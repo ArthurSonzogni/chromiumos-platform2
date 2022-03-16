@@ -16,7 +16,7 @@
 #include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/synchronization/condition_variable.h>
-#include <base/task_runner.h>
+#include <base/task/task_runner.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
 #include "vm_tools/concierge/apply_impl.h"

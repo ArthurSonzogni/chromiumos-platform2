@@ -6,10 +6,10 @@
 #include <utility>
 
 #include <base/bind.h>
-#include <base/bind_post_task.h>
 #include <base/check_op.h>
-#include <base/run_loop.h>
 #include <base/memory/weak_ptr.h>
+#include <base/run_loop.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>

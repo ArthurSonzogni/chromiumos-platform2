@@ -41,7 +41,7 @@ const int kSyslogCritical = LOG_CRIT;
 #include <base/synchronization/waitable_event.h>
 #include <base/system/sys_info.h>
 #include <base/task/single_thread_task_executor.h>
-#include <base/task_runner.h>
+#include <base/task/task_runner.h>
 #include <base/threading/thread.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <chromeos/constants/vm_tools.h>

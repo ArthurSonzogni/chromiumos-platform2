@@ -18,9 +18,9 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/notreached.h>
-#include <base/single_thread_task_runner.h>
 #include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>

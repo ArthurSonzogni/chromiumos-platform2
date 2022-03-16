@@ -7,8 +7,8 @@
 #include <vector>
 
 #include <base/callback_helpers.h>
-#include <base/sequenced_task_runner.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>

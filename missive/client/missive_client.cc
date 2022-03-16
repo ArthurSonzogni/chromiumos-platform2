@@ -14,7 +14,7 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
-#include <base/sequenced_task_runner.h>
+#include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
