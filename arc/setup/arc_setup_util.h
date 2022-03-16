@@ -55,6 +55,9 @@ class ArcMounter {
                          const base::FilePath& target,
                          unsigned long mount_flags) = 0;  // NOLINT(runtime/int)
 
+  virtual bool BindMountWithNoPathResolution(
+      const base::FilePath& old_path, const base::FilePath& new_path) = 0;
+
   virtual bool BindMount(const base::FilePath& old_path,
                          const base::FilePath& new_path) = 0;
 

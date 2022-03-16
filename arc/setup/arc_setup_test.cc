@@ -52,6 +52,12 @@ class MockArcMounter : public ArcMounter {
     return true;
   }
 
+  bool BindMountWithNoPathResolution(const base::FilePath& old_path,
+                                     const base::FilePath& new_path) override {
+    mount_points_.insert(new_path.value());
+    return true;
+  }
+
   bool BindMount(const base::FilePath& old_path,
                  const base::FilePath& new_path) override {
     mount_points_.insert(new_path.value());

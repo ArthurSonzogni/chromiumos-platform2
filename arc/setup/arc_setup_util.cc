@@ -250,6 +250,16 @@ class ArcMounterImpl : public ArcMounter {
     return false;
   }
 
+  bool BindMountWithNoPathResolution(const base::FilePath& old_path,
+                                     const base::FilePath& new_path) override {
+    if (mount(old_path.value().c_str(), new_path.value().c_str(), nullptr,
+              MS_BIND, nullptr) != 0) {
+      PLOG(ERROR) << "Failed to mount " << old_path << " to " << new_path;
+      return false;
+    }
+    return true;
+  }
+
   bool BindMount(const base::FilePath& old_path,
                  const base::FilePath& new_path) override {
     return Mount(old_path.value(), new_path, nullptr, MS_BIND, nullptr);

@@ -829,8 +829,13 @@ void ArcSetup::SetUpAndroidData(const base::FilePath& bind_target) {
   // To make our bind-mount business easier, we first bind-mount the real
   // android-data directory to bind_target (usually $ANDROID_MUTABLE_SOURCE).
   // Then we do not need to pass the android-data path to other processes.
-  EXIT_IF(!arc_mounter_->BindMount(arc_paths_->android_data_directory,
-                                   bind_target));
+  // Check that bind_target is a fixed point of Realpath() in order to make sure
+  // that it is not a symlink and it does not contain components like /../. Then
+  // pass it directly to mount(2) without path resolution so that Chromium OS
+  // LSM can detect cases where it is replaced with a symlink after the check.
+  EXIT_IF(Realpath(bind_target) != bind_target);
+  EXIT_IF(!arc_mounter_->BindMountWithNoPathResolution(
+      arc_paths_->android_data_directory, bind_target));
 }
 
 void ArcSetup::UnmountSdcard() {
