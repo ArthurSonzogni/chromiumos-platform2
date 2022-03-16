@@ -118,8 +118,7 @@ CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
 
 bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
     AuthBlockType auth_block_type,
-    const Credentials& credentials,
-    const std::optional<brillo::SecureBlob>& reset_secret,
+    const AuthInput& auth_input,
     AuthBlock::CreateCallback create_callback) {
   std::unique_ptr<AuthBlock> auth_block =
       GetAsyncAuthBlockWithType(auth_block_type);
@@ -131,26 +130,12 @@ bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
   }
   ReportCreateAuthBlock(auth_block_type);
 
-  // |reset_secret| is not processed in the AuthBlocks, the value is copied to
-  // the |key_blobs| directly. |reset_secret| will be added to the |key_blobs|
-  // in the VaultKeyset, if missing.
-  AuthInput user_input = {
-      credentials.passkey(), std::nullopt, /*locked_to_single_user*=*/
-      brillo::cryptohome::home::SanitizeUserName(credentials.username()),
-      reset_secret};
+  auth_block->Create(auth_input, std::move(create_callback));
 
-  if (auth_block_type == AuthBlockType::kChallengeCredential) {
-    user_input.challenge_credential_auth_input = ChallengeCredentialAuthInput{
-        .public_key_spki_der = brillo::BlobFromString("public_key_spki_der"),
-        .challenge_signature_algorithms =
-            {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
-    };
-  }
-  auth_block->Create(user_input, std::move(create_callback));
-
+  // TODO(b/225001347): Move this report to the caller. Here this is always
+  // reported independent of the error status.
   ReportWrappingKeyDerivationType(auth_block->derivation_type(),
                                   CryptohomePhase::kCreated);
-
   return true;
 }
 
@@ -212,16 +197,10 @@ CryptoError AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
 
 bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
     AuthBlockType auth_block_type,
-    const Credentials& credentials,
+    const AuthInput& auth_input,
     const AuthBlockState& auth_state,
     AuthBlock::DeriveCallback derive_callback) {
   DCHECK_NE(auth_block_type, AuthBlockType::kMaxValue);
-
-  AuthInput auth_input = {credentials.passkey(),
-                          /*locked_to_single_user=*/std::nullopt};
-
-  auth_input.locked_to_single_user =
-      platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
 
   std::unique_ptr<AuthBlock> auth_block =
       GetAsyncAuthBlockWithType(auth_block_type);
@@ -269,10 +248,9 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
 }
 
 AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerivation(
-    const Credentials& credentials) const {
-  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
-      brillo::cryptohome::home::SanitizeUserName(credentials.username()),
-      credentials.key_data().label());
+    const std::string& label, const std::string& obfuscated_username) const {
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetVaultKeyset(obfuscated_username, label);
   // If there is no keyset on the disk for the given user and label (or for the
   // empty label as a wildcard), key derivation type cannot be obtained.
   if (vk == nullptr) {
@@ -388,11 +366,11 @@ std::unique_ptr<AuthBlock> AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
 }
 
 bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(
-    const Credentials& credentials, AuthBlockState& out_state) {
+    const std::string& label,
+    const std::string& obfuscated_username,
+    AuthBlockState& out_state) {
   std::unique_ptr<VaultKeyset> vault_keyset =
-      keyset_management_->GetVaultKeyset(
-          brillo::cryptohome::home::SanitizeUserName(credentials.username()),
-          credentials.key_data().label());
+      keyset_management_->GetVaultKeyset(obfuscated_username, label);
   // If there is no keyset on the disk for the given user and label (or for the
   // empty label as a wildcard), AuthBlock state cannot be obtained.
   if (vault_keyset == nullptr) {

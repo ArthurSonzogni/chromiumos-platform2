@@ -63,8 +63,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // through the asynchronous create_callback.
   bool CreateKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
-      const Credentials& credentials,
-      const std::optional<brillo::SecureBlob>& reset_secret,
+      const AuthInput& auth_input,
       AuthBlock::CreateCallback create_callback) override;
 
   CryptoError DeriveKeyBlobsWithAuthBlock(AuthBlockType auth_block_type,
@@ -76,7 +75,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // through the asynchronous derive_callback.
   bool DeriveKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
-      const Credentials& credentials,
+      const AuthInput& auth_input,
       const AuthBlockState& auth_state,
       AuthBlock::DeriveCallback derive_callback) override;
 
@@ -90,9 +89,11 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const AuthBlockState& state) const override;
 
   AuthBlockType GetAuthBlockTypeForDerivation(
-      const Credentials& credentials) const override;
+      const std::string& label,
+      const std::string& obfuscated_username) const override;
 
-  bool GetAuthBlockStateFromVaultKeyset(const Credentials& credentials,
+  bool GetAuthBlockStateFromVaultKeyset(const std::string& label,
+                                        const std::string& obfuscated_username,
                                         AuthBlockState& out_state) override;
 
   void AssignAuthBlockStateToVaultKeyset(const AuthBlockState& state,

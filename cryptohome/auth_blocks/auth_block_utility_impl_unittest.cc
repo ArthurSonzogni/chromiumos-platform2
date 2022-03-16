@@ -755,9 +755,13 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
         EXPECT_TRUE(tpm_state.salt.has_value());
       });
 
+  AuthInput auth_input = {
+      credentials.passkey(), std::nullopt, /*locked_to_single_user*=*/
+      credentials.GetObfuscatedUsername(), /*reset_secret*/ std::nullopt};
+
   // Test.
   EXPECT_EQ(true, auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
-                      AuthBlockType::kTpmBoundToPcr, credentials, std::nullopt,
+                      AuthBlockType::kTpmBoundToPcr, auth_input,
                       std::move(create_callback)));
 }
 
@@ -782,6 +786,8 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
                                            .tpm_key = tpm_key,
                                            .extended_tpm_key = tpm_key};
   AuthBlockState auth_state = {.state = tpm_state};
+  AuthInput auth_input = {credentials.passkey(),
+                          /*locked_to_single_user=*/std::nullopt};
 
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
@@ -797,7 +803,7 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
       });
 
   EXPECT_EQ(true, auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
-                      AuthBlockType::kTpmBoundToPcr, credentials, auth_state,
+                      AuthBlockType::kTpmBoundToPcr, auth_input, auth_state,
                       std::move(derive_callback)));
 }
 
@@ -874,11 +880,19 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
             auth_input.challenge_credential_auth_input.value()
                 .challenge_signature_algorithms[0]);
       });
+  AuthInput auth_input;
+  auth_input.obfuscated_username = credentials.GetObfuscatedUsername();
+  auth_input.locked_to_single_user = false;
+  auth_input.challenge_credential_auth_input = ChallengeCredentialAuthInput{
+      .public_key_spki_der = brillo::BlobFromString("public_key_spki_der"),
+      .challenge_signature_algorithms =
+          {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
+  };
 
   // Test.
   EXPECT_EQ(true, auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
-                      AuthBlockType::kChallengeCredential, credentials,
-                      std::nullopt, std::move(create_callback)));
+                      AuthBlockType::kChallengeCredential, auth_input,
+                      std::move(create_callback)));
 }
 
 // The AsyncChallengeCredentialAuthBlock::Derive should work correctly.
@@ -1039,8 +1053,10 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
                   blobs->scrypt_wrapped_reset_seed_key->derived_key());
       });
 
+  AuthInput auth_input = {credentials.passkey(),
+                          /*locked_to_single_user=*/std::nullopt};
   auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
-      AuthBlockType::kChallengeCredential, credentials, auth_state,
+      AuthBlockType::kChallengeCredential, auth_input, auth_state,
       std::move(derive_callback));
 }
 
@@ -1058,6 +1074,10 @@ TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockAsyncFails) {
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       keyset_management_.get(), &crypto_, &platform_);
 
+  AuthInput auth_input = {
+      credentials.passkey(), std::nullopt /*locked_to_single_user*=*/,
+      credentials.GetObfuscatedUsername(), std::nullopt /*reset_secret*/};
+
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
       [&](CryptoError error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
@@ -1069,7 +1089,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockAsyncFails) {
 
   // Test.
   EXPECT_EQ(false, auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
-                       AuthBlockType::kMaxValue, credentials, std::nullopt,
+                       AuthBlockType::kMaxValue, auth_input,
                        std::move(create_callback)));
 }
 
@@ -1123,8 +1143,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   AuthBlockState out_state;
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk))));
-  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(credentials,
-                                                             out_state);
+  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(
+      credentials.key_data().label(), credentials.GetObfuscatedUsername(),
+      out_state);
   EXPECT_TRUE(std::holds_alternative<PinWeaverAuthBlockState>(out_state.state));
 
   // ChallengeCredentialAuthBlockState
@@ -1138,8 +1159,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   // Test
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk1))));
-  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(credentials,
-                                                             out_state);
+  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(
+      credentials.key_data().label(), credentials.GetObfuscatedUsername(),
+      out_state);
   EXPECT_TRUE(std::holds_alternative<ChallengeCredentialAuthBlockState>(
       out_state.state));
 
@@ -1160,8 +1182,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   // Test
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk2))));
-  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(credentials,
-                                                             out_state);
+  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(
+      credentials.key_data().label(), credentials.GetObfuscatedUsername(),
+      out_state);
   EXPECT_TRUE(
       std::holds_alternative<LibScryptCompatAuthBlockState>(out_state.state));
   const LibScryptCompatAuthBlockState* scrypt_state =
@@ -1184,8 +1207,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   // sub-state TpmNotBoundToPcrAuthBlockState.
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk3))));
-  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(credentials,
-                                                             out_state);
+  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(
+      credentials.key_data().label(), credentials.GetObfuscatedUsername(),
+      out_state);
   EXPECT_FALSE(std::holds_alternative<DoubleWrappedCompatAuthBlockState>(
       out_state.state));
 
@@ -1199,8 +1223,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   // Test
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk4))));
-  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(credentials,
-                                                             out_state);
+  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(
+      credentials.key_data().label(), credentials.GetObfuscatedUsername(),
+      out_state);
   EXPECT_TRUE(std::holds_alternative<DoubleWrappedCompatAuthBlockState>(
       out_state.state));
 
@@ -1223,8 +1248,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   // Test
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk5))));
-  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(credentials,
-                                                             out_state);
+  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(
+      credentials.key_data().label(), credentials.GetObfuscatedUsername(),
+      out_state);
   EXPECT_TRUE(
       std::holds_alternative<TpmBoundToPcrAuthBlockState>(out_state.state));
 
@@ -1246,8 +1272,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   // Test
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk6))));
-  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(credentials,
-                                                             out_state);
+  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(
+      credentials.key_data().label(), credentials.GetObfuscatedUsername(),
+      out_state);
   EXPECT_TRUE(
       std::holds_alternative<TpmNotBoundToPcrAuthBlockState>(out_state.state));
   const TpmNotBoundToPcrAuthBlockState* tpm_state2 =
@@ -1275,8 +1302,9 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   // Test
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))
       .WillOnce(Return(ByMove(std::move(vk7))));
-  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(credentials,
-                                                             out_state);
+  auth_block_utility_impl_->GetAuthBlockStateFromVaultKeyset(
+      credentials.key_data().label(), credentials.GetObfuscatedUsername(),
+      out_state);
   EXPECT_TRUE(std::holds_alternative<TpmEccAuthBlockState>(out_state.state));
 
   const TpmEccAuthBlockState* tpm_ecc_state =
@@ -1303,6 +1331,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
       AuthBlockType::kLibScryptCompat,
       auth_block_utility_impl_->GetAuthBlockTypeForCreation(
           /*is_le_credential =*/false, /*is_challenge_credential =*/false));
+
   // Test for kPinWeaver
   KeyData key_data;
   key_data.mutable_policy()->set_low_entropy_credential(true);
@@ -1311,6 +1340,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
       AuthBlockType::kPinWeaver,
       auth_block_utility_impl_->GetAuthBlockTypeForCreation(
           /*is_le_credential =*/true, /*is_challenge_credential =*/false));
+
   // Test for kChallengeResponse
   KeyData key_data2;
   key_data2.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
@@ -1319,6 +1349,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
       AuthBlockType::kChallengeCredential,
       auth_block_utility_impl_->GetAuthBlockTypeForCreation(
           /*is_le_credential =*/false, /*is_challenge_credential =*/true));
+
   // Test for Tpm backed AuthBlock types.
   ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
   // credentials.key_data type shouldn't be challenge credential any more.
@@ -1367,7 +1398,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_EQ(
       AuthBlockType::kLibScryptCompat,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
   serialized.set_flags(SerializedVaultKeyset::SCRYPT_WRAPPED |
                        SerializedVaultKeyset::TPM_WRAPPED);
   vk = std::make_unique<VaultKeyset>();
@@ -1376,7 +1408,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_NE(
       AuthBlockType::kLibScryptCompat,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
 
   // Test for DoubleWrappedCompat
   serialized.set_flags(SerializedVaultKeyset::SCRYPT_WRAPPED |
@@ -1387,7 +1420,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_EQ(
       AuthBlockType::kDoubleWrappedCompat,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
 
   // Test for kPinWeaver
   serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
@@ -1397,7 +1431,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_EQ(
       AuthBlockType::kPinWeaver,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
 
   // Test for kChallengeResponse
   serialized.set_flags(SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
@@ -1407,7 +1442,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_EQ(
       AuthBlockType::kChallengeCredential,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
 
   // Test for kTpmNotBoundToPcrFlags
   serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED);
@@ -1417,7 +1453,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_EQ(
       AuthBlockType::kTpmNotBoundToPcr,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
   serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
                        SerializedVaultKeyset::SCRYPT_WRAPPED);
   vk = std::make_unique<VaultKeyset>();
@@ -1426,7 +1463,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_NE(
       AuthBlockType::kTpmNotBoundToPcr,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
   serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
                        SerializedVaultKeyset::PCR_BOUND);
   vk = std::make_unique<VaultKeyset>();
@@ -1435,7 +1473,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_NE(
       AuthBlockType::kTpmNotBoundToPcr,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
   serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
                        SerializedVaultKeyset::ECC);
   vk = std::make_unique<VaultKeyset>();
@@ -1444,7 +1483,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_NE(
       AuthBlockType::kTpmNotBoundToPcr,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
 
   // Test for kTpmEcc
   serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
@@ -1457,7 +1497,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_EQ(
       AuthBlockType::kTpmEcc,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
   serialized.set_flags(
       SerializedVaultKeyset::TPM_WRAPPED |
       SerializedVaultKeyset::SCRYPT_DERIVED | SerializedVaultKeyset::PCR_BOUND |
@@ -1468,7 +1509,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_NE(
       AuthBlockType::kTpmEcc,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
 
   // Test for kTpmBoundToPcr
   serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
@@ -1479,7 +1521,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_EQ(
       AuthBlockType::kTpmBoundToPcr,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
   serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
                        SerializedVaultKeyset::PCR_BOUND |
                        SerializedVaultKeyset::ECC);
@@ -1489,7 +1532,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_NE(
       AuthBlockType::kTpmBoundToPcr,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
   serialized.set_flags(SerializedVaultKeyset::TPM_WRAPPED |
                        SerializedVaultKeyset::PCR_BOUND |
                        SerializedVaultKeyset::SCRYPT_WRAPPED);
@@ -1499,7 +1543,8 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
       .WillOnce(Return(ByMove(std::move(vk))));
   EXPECT_NE(
       AuthBlockType::kTpmBoundToPcr,
-      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(credentials));
+      auth_block_utility_impl_->GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername()));
 }
 
 TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {

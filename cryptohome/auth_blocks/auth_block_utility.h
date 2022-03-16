@@ -54,8 +54,7 @@ class AuthBlockUtility {
   // through the asynchronous create_callback.
   virtual bool CreateKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
-      const Credentials& credentials,
-      const std::optional<brillo::SecureBlob>& reset_secret,
+      const AuthInput& auth_input,
       AuthBlock::CreateCallback create_callback) = 0;
 
   // Derives KeyBlobs with the given type of AuthBlock using the passed
@@ -74,7 +73,7 @@ class AuthBlockUtility {
   // through the asynchronous derive_callback.
   virtual bool DeriveKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
-      const Credentials& credentials,
+      const AuthInput& auth_input,
       const AuthBlockState& auth_state,
       AuthBlock::DeriveCallback derive_callback) = 0;
 
@@ -93,11 +92,14 @@ class AuthBlockUtility {
   // This function returns the AuthBlock type for AuthBlock::Derive()
   // based on the vault keyset flags value.
   virtual AuthBlockType GetAuthBlockTypeForDerivation(
-      const Credentials& credentials) const = 0;
+      const std::string& label,
+      const std::string& obfuscated_username) const = 0;
 
   // This populates an AuthBlockState allocated by the caller.
-  virtual bool GetAuthBlockStateFromVaultKeyset(const Credentials& credentials,
-                                                AuthBlockState& out_state) = 0;
+  virtual bool GetAuthBlockStateFromVaultKeyset(
+      const std::string& label,
+      const std::string& obfuscated_username,
+      AuthBlockState& out_state) = 0;
 
   // Reads an auth block state and update the given VaultKeyset with what it
   // returns.
