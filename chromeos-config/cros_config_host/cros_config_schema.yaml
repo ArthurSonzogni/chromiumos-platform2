@@ -559,6 +559,18 @@ properties:
                 non-ChromeOS firmware, where we don't have the ability
                 to set the HWID in GBB.
               pattern: "[A-Z0-9]+(-[A-Z]{4})?( [0-9A-F]+(-[0-9A-F]+)*)? ([A-Z2-7]{4}(-[A-Z2-7]{4})*|[A-Z2-7][2-9][A-Z2-7](-[A-Z2-7][2-9][A-Z2-7])*)"
+            efi:
+              type: object
+              description: Contains settings related to EFI firmware.
+              properties:
+                bootvar-name-override:
+                  type: string
+                  description: |
+                    Override the label/description of EFI boot entries managed
+                    by postinstall. The default is hard-coded in postinstall.
+                    This should be used by devices with  non-ChromeOS firmware,
+                    in conjunction with the `manage_efi_boot_entries` USE flag.
+                  pattern: "[a-zA-Z0-9 ]+"
             fingerprint:
               type: object
               description: Contains details about the model's fingerprint implementation.

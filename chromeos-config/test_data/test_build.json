@@ -200,6 +200,9 @@
           "highlights-extension-id": "iggildboghmjpbjcpmobahnkmoefkike",
           "screensaver-extension-id": "gdobaoeekhiklaljmhladjfdfkigampc"
         },
+        "efi": {
+          "bootvar-name-override": "Some OS"
+        },
         "fingerprint": {
           "board": "bloonchipper",
           "ro-version": "VERSION1"

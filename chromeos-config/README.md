@@ -419,6 +419,7 @@ In the tables below,
 | cross-device | [cross-device](#cross_device) |  | False |  | False | Contains properties to configure cross-device features between ChromeOS devices and other devices, such as Instant Tethering and Smart Lock. |
 | demo-mode | [demo-mode](#demo_mode) |  | False |  | False | Properties related to the ChromeOS Demo Mode, defining the user experience when the device is used in retail. |
 | detachable-base | [detachable-base](#detachable_base) |  | False |  | False | Contains the configuration for the hammerd which is used to update the detachable base firmware. |
+| efi | [efi](#efi) |  | False |  | False | Contains settings related to EFI firmware. |
 | fingerprint | [fingerprint](#fingerprint) |  | False |  | False | Contains details about the model's fingerprint implementation. |
 | firmware | [firmware](#firmware) |  | False |  | False |  |
 | firmware-signing | [firmware-signing](#firmware_signing) |  | False |  | True |  |
@@ -594,6 +595,11 @@ In the tables below,
 | destination | string |  | False |  | True | Installation path for the file on the system image. |
 | source | string |  | False |  | True | Source of the file relative to the build system ${FILESDIR} |
 | symlink | string |  | False |  | True | Symlink file that will be installed pointing to the destination. |
+
+### efi
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| bootvar-name-override | string | ```[a-zA-Z0-9 ]+``` | False |  | False | Override the label/description of EFI boot entries managed by postinstall. The default is hard-coded in postinstall. This should be used by devices with  non-ChromeOS firmware, in conjunction with the `manage_efi_boot_entries` USE flag.  |
 
 ### fingerprint
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1150,12 +1156,12 @@ At this point the updated config is located at:
 To query your new item run the test command in the chroot:
 
 ```bash
-(chroot) $  cros_config_host -c /build/${BOARD}/usr/share/chromeos-config/yaml/config.yaml -m <MODEL> get </path/to/property> <property name>
+(chroot) $ cros_config_host -c /build/${BOARD}/usr/share/chromeos-config/yaml/config.yaml -m <MODEL> get </path/to/property> <property name>
 ```
 
 For instance:
 
 ```bash
-(chroot) $ cros_config_host -c /build/coral/usr/share/chromeos-config/yaml /config.yaml -m robo360 get /firmware key-id
-(chroot) $ cros_config_host -c /build/coral/usr/share/chromeos-config/yaml /config.yaml list-models
+(chroot) $ cros_config_host -c /build/coral/usr/share/chromeos-config/yaml/config.yaml -m robo360 get /firmware key-id
+(chroot) $ cros_config_host -c /build/coral/usr/share/chromeos-config/yaml/config.yaml list-models
 ```
