@@ -7,7 +7,12 @@
 #ifndef LIBBRILLO_BRILLO_UNITTEST_UTILS_H_
 #define LIBBRILLO_BRILLO_UNITTEST_UTILS_H_
 
+#include <base/files/file_path.h>
+
 namespace brillo {
+
+// Returns a path to the file descriptor through /proc/<pid>/fd/<fd>
+base::FilePath GetFdPath(int fd);
 
 // Helper class to create and close a unidirectional pipe. The file descriptors
 // will be closed on destruction, unless set to -1.

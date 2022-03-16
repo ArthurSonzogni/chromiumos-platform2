@@ -10,7 +10,37 @@
 #include <base/files/file_util.h>
 #include <brillo/files/file_util_test.h>
 #include <brillo/syslog_logging.h>
+#include <brillo/unittest_utils.h>
 #include <gtest/gtest.h>
+
+namespace {
+// This needs to be long enough for multiple write and read system calls, so
+// here is the contents of a sample /proc/self/maps:
+const char kTestData[] = R"(
+00200000-00207000 r-xp 00000000 fe:03 17486358                           /bin/cat
+00207000-00209000 r--p 00006000 fe:03 17486358                           /bin/cat
+00209000-0020a000 rw-p 00007000 fe:03 17486358                           /bin/cat
+01aeb000-01b0c000 rw-p 00000000 00:00 0                                  [heap]
+7fa2d4322000-7fa2d4344000 rw-p 00000000 00:00 0
+7fa2d4344000-7fa2d47ee000 r--p 00000000 fe:03 16932977                   /usr/lib64/locale/locale-archive
+7fa2d47ee000-7fa2d47f0000 rw-p 00000000 00:00 0
+7fa2d47f0000-7fa2d4812000 r--p 00000000 fe:03 18095521                   /lib64/libc-2.33.so
+7fa2d4812000-7fa2d4960000 r-xp 00022000 fe:03 18095521                   /lib64/libc-2.33.so
+7fa2d4960000-7fa2d49a6000 r--p 00170000 fe:03 18095521                   /lib64/libc-2.33.so
+7fa2d49a6000-7fa2d49a7000 ---p 001b6000 fe:03 18095521                   /lib64/libc-2.33.so
+7fa2d49a7000-7fa2d49aa000 r--p 001b6000 fe:03 18095521                   /lib64/libc-2.33.so
+7fa2d49aa000-7fa2d49ad000 rw-p 001b9000 fe:03 18095521                   /lib64/libc-2.33.so
+7fa2d49ad000-7fa2d49b2000 rw-p 00000000 00:00 0
+7fa2d49bf000-7fa2d49c0000 r--p 00000000 fe:03 18095442                   /lib64/ld-2.33.so
+7fa2d49c0000-7fa2d49e5000 r-xp 00001000 fe:03 18095442                   /lib64/ld-2.33.so
+7fa2d49e5000-7fa2d49ee000 r--p 00026000 fe:03 18095442                   /lib64/ld-2.33.so
+7fa2d49ee000-7fa2d49f0000 r--p 0002e000 fe:03 18095442                   /lib64/ld-2.33.so
+7fa2d49f0000-7fa2d49f2000 rw-p 00030000 fe:03 18095442                   /lib64/ld-2.33.so
+7ffe9c467000-7ffe9c48a000 rw-p 00000000 00:00 0                          [stack]
+7ffe9c56b000-7ffe9c56f000 r--p 00000000 00:00 0                          [vvar]
+7ffe9c56f000-7ffe9c571000 r-xp 00000000 00:00 0                          [vdso]
+)";
+}  // namespace
 
 namespace brillo {
 
@@ -300,33 +330,32 @@ TEST_F(SafeFDTest, CopyContentsTo_PseudoFsLargeSuccess) {
 
 TEST_F(SafeFDTest, CopyContentsTo_PseudoFsLargeFallbackSuccess) {
   // This tests CopyContentsToFallback relying on the fact sendfile does not
-  // work for /proc/.../maps.
-  SafeFD::SafeFDResult file = root_.OpenExistingFile(
-      base::FilePath("/proc/" + std::to_string(getpid()) + "/maps"), O_RDONLY);
-  ASSERT_TRUE(file.first.is_valid());
-
+  // work for pipes.
   SafeFD::SafeFDResult destination = root_.MakeFile(file_path_);
   EXPECT_EQ(destination.second, SafeFD::Error::kNoError);
   ASSERT_TRUE(destination.first.is_valid());
 
-  ASSERT_EQ(file.first.CopyContentsTo(&destination.first),
-            SafeFD::Error::kNoError);
+  SafeFD file;
+  {
+    brillo::ScopedPipe pipes;
+    file.fd_.reset(pipes.reader);
+    pipes.reader = -1;
+    ASSERT_TRUE(file.is_valid());
 
-  // Rewind source and destination back to the beginning and check their
-  // contents.
-  ASSERT_EQ(lseek(file.first.get(), 0, SEEK_SET), 0);
-  auto from_result = file.first.ReadContents();
-  EXPECT_EQ(from_result.second, SafeFD::Error::kNoError);
-  EXPECT_FALSE(from_result.first.empty());
+    // Write test data to the pipe.
+    EXPECT_TRUE(
+        base::WriteFile(GetFdPath(pipes.writer), kTestData, sizeof(kTestData)));
+  }
 
+  ASSERT_EQ(file.CopyContentsTo(&destination.first), SafeFD::Error::kNoError);
+
+  // Rewind destination back to the beginning and check its contents.
   ASSERT_EQ(lseek(destination.first.get(), 0, SEEK_SET), 0);
   auto to_result = destination.first.ReadContents();
   EXPECT_EQ(to_result.second, SafeFD::Error::kNoError);
 
-  ASSERT_EQ(from_result.first.size(), to_result.first.size());
-  EXPECT_EQ(memcmp(from_result.first.data(), to_result.first.data(),
-                   from_result.first.size()),
-            0);
+  ASSERT_EQ(to_result.first.size(), sizeof(kTestData));
+  EXPECT_EQ(memcmp(to_result.first.data(), kTestData, sizeof(kTestData)), 0);
 }
 
 TEST_F(SafeFDTest, CopyContentsTo_NotInitialized) {
