@@ -428,7 +428,9 @@ bool HPS_impl::IsRunning() {
   // Check for errors.
   std::optional<uint16_t> errors = this->device_->ReadReg(HpsReg::kError);
   if (errors.has_value() && errors.value()) {
-    OnFatalError(FROM_HERE, base::StringPrintf("Error 0x%04x", errors.value()));
+    std::string msg =
+        "Error " + HpsRegValToString(HpsReg::kError, errors.value());
+    OnFatalError(FROM_HERE, msg);
   }
   return true;
 }
