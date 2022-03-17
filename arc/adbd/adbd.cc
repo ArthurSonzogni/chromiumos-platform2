@@ -219,15 +219,6 @@ bool GetConfiguration(AdbdConfiguration* config) {
   return true;
 }
 
-std::string GetStrippedReleaseBoard() {
-  std::string board = base::SysInfo::GetLsbReleaseBoard();
-  const size_t index = board.find("-signed-");
-  if (index != std::string::npos)
-    board.resize(index);
-
-  return base::ToLowerASCII(board);
-}
-
 std::string GetUDCDriver() {
   base::FileEnumerator udc_enum(
       base::FilePath("/sys/class/udc/"), false /* recursive */,

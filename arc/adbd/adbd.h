@@ -53,9 +53,6 @@ bool CreatePipe(const base::FilePath& path);
 // device does not support ADB over USB.
 bool GetConfiguration(AdbdConfiguration* config);
 
-// TODO(hidehiko): Remove once libchrome rolls and provides this method.
-std::string GetStrippedReleaseBoard();
-
 // Returns the name of the UDC driver that is available in the system, or an
 // empty string if none are available.
 std::string GetUDCDriver();
