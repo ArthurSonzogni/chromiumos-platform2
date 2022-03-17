@@ -36,6 +36,133 @@ constexpr char kFstabPath[] = "/run/arcvm/host_generated/fstab";
 // The CPU cgroup where all the ARCVM's crosvm processes should belong to.
 constexpr char kArcvmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm-vcpus";
 
+// Returns true if the path is a valid demo image path.
+bool IsValidDemoImagePath(const base::FilePath& path) {
+  // A valid demo image path looks like:
+  //   /run/imageloader/demo-mode-resources/<version>/android_demo_apps.squash
+  std::vector<std::string> components;
+  path.GetComponents(&components);
+  // TODO(hashimoto): Replace components[4] != ".." with a more strict check.
+  // b/219677829
+  return components.size() == 6 && components[0] == "/" &&
+         components[1] == "run" && components[2] == "imageloader" &&
+         components[3] == "demo-mode-resources" && components[4] != ".." &&
+         components[5] == "android_demo_apps.squash";
+}
+
+// Returns true if the path is a valid data image path.
+bool IsValidDataImagePath(const base::FilePath& path) {
+  // A valid data image path looks like: /home/root/<hash>/crosvm/YXJjdm0=.img.
+  std::vector<std::string> components;
+  path.GetComponents(&components);
+  return components.size() == 6 && components[0] == "/" &&
+         components[1] == "home" && components[2] == "root" &&
+         base::ContainsOnlyChars(components[3], "0123456789abcdef") &&
+         components[4] == "crosvm" && components[5] == "YXJjdm0=.img";
+}
+
+// TODO(hashimoto): Move VM configuration logic from chrome to concierge and
+// remove this function. b/219677829
+// Returns true if the StartArcVmRequest contains valid ARCVM config values.
+bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
+  // List of allowed kernel parameters.
+  const std::set<std::string> kAllowedKernelParams = {
+      "androidboot.arc_generate_pai=1",
+      "androidboot.arcvm_mount_debugfs=1",
+      "androidboot.container=1",
+      "androidboot.disable_download_provider=1",
+      "androidboot.disable_media_store_maintenance=1",
+      "androidboot.hardware=bertha",
+      "androidboot.vshd_service_override=vshd_for_test",
+      "init=/init",
+      "root=/dev/vda",
+      "rw",
+  };
+  // List of allowed kernel parameter prefixes.
+  const std::vector<std::string> kAllowedKernelParamPrefixes = {
+      "androidboot.arc_custom_tabs=",
+      "androidboot.arc_dalvik_memory_profile=",
+      "androidboot.arc_file_picker=",
+      "androidboot.arcvm.logd.size=",
+      "androidboot.arcvm_metrics_mem_psi_period=",
+      "androidboot.arcvm_ureadahead_mode=",
+      "androidboot.arcvm_virtio_blk_data=",
+      "androidboot.chromeos_channel=",
+      "androidboot.dev_mode=",
+      "androidboot.disable_runas=",
+      "androidboot.disable_system_default_app=",
+      "androidboot.enable_notifications_refresh=",
+      "androidboot.host_is_in_vm=",
+      "androidboot.iioservice_present=",
+      "androidboot.keyboard_shortcut_helper_integration=",
+      "androidboot.lcd_density=",
+      "androidboot.native_bridge=",
+      "androidboot.play_store_auto_update=",
+      "androidboot.usap_profile=",
+      "androidboot.zram_size=",
+      // TODO(hashimoto): This param was removed in R98. Remove this.
+      "androidboot.image_copy_paste_compat=",
+  };
+  // Filter kernel params.
+  const std::vector<std::string> params(request->params().begin(),
+                                        request->params().end());
+  request->clear_params();
+  for (const auto& param : params) {
+    if (kAllowedKernelParams.count(param) != 0) {
+      request->add_params(param);
+      continue;
+    }
+
+    auto it = std::find_if(kAllowedKernelParamPrefixes.begin(),
+                           kAllowedKernelParamPrefixes.end(),
+                           [&param](const std::string& prefix) {
+                             return base::StartsWith(param, prefix);
+                           });
+    if (it != kAllowedKernelParamPrefixes.end()) {
+      request->add_params(param);
+      continue;
+    }
+
+    LOG(WARNING) << param << " was removed because it doesn't match with any "
+                 << "allowed param or prefix";
+  }
+
+  // Validate disks.
+  constexpr char kEmptyDiskPath[] = "/dev/null";
+  if (request->disks().size() < 1 || request->disks().size() > 4) {
+    LOG(ERROR) << "Invalid number of disks: " << request->disks().size();
+    return false;
+  }
+  // Disk #0 must be /opt/google/vms/android/vendor.raw.img.
+  if (request->disks()[0].path() != "/opt/google/vms/android/vendor.raw.img") {
+    LOG(ERROR) << "Disk #0 has invalid path: " << request->disks()[0].path();
+    return false;
+  }
+  // Disk #1 must be a valid demo image path or /dev/null.
+  if (request->disks().size() >= 2 &&
+      !IsValidDemoImagePath(base::FilePath(request->disks()[1].path())) &&
+      request->disks()[1].path() != kEmptyDiskPath) {
+    LOG(ERROR) << "Disk #1 has invalid path: " << request->disks()[1].path();
+    return false;
+  }
+  // Disk #2 must be /opt/google/vms/android/apex/payload.img or /dev/null.
+  if (request->disks().size() >= 3 &&
+      request->disks()[2].path() !=
+          "/opt/google/vms/android/apex/payload.img" &&
+      request->disks()[2].path() != kEmptyDiskPath) {
+    LOG(ERROR) << "Disk #2 has invalid path: " << request->disks()[2].path();
+    return false;
+  }
+  // Disk #3 must be a valid data image path or /dev/null.
+  if (request->disks().size() >= 4 &&
+      !IsValidDataImagePath(base::FilePath(request->disks()[3].path())) &&
+      request->disks()[3].path() != kEmptyDiskPath) {
+    LOG(ERROR) << "Disk #3 has invalid path: " << request->disks()[3].path();
+    return false;
+  }
+  return true;
+}
+
 }  // namespace
 
 StartVmResponse Service::StartArcVm(StartArcVmRequest request,
@@ -54,6 +181,14 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
 
     response.set_failure_reason("Too many extra disks");
     return response;
+  }
+
+  // TODO(hashimoto): Move VM configuration logic from chrome to concierge and
+  // remove this check. b/219677829
+  if (!ValidateStartArcVmRequest(&request)) {
+    response.set_failure_reason("Invalid request");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
   }
 
   std::vector<Disk> disks;
