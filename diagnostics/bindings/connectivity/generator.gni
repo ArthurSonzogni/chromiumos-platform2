@@ -101,7 +101,6 @@ template("mojom_connectivity_gen") {
 
     response_file_contents = filelist
 
-    print("Generating mojo connectivity bindings")
     script = _mojom_connectivity_generator
     args = [
       "--mojo-root",

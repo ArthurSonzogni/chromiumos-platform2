@@ -30,3 +30,14 @@ interface State {
   // this side.
   FulfillLastCallCallback();
 };
+
+// Provides methods to bootstrap the test objects between two processes.
+interface ConnectivityTestProvider {
+  // Binds bidirectional state connections to the context object.
+  BindContext(
+    pending_remote<State> remote, pending_receiver<State> receiver);
+
+  // Binds a test provider to be tested. The |interface_name| is used to
+  // identify what interface the caller want to test.
+  BindTestProvider(string interface_name, handle<message_pipe> receiver);
+};
