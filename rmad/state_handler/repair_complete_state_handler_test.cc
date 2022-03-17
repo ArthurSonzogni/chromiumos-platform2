@@ -592,7 +592,7 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_JsonFailed) {
   base::SetPosixFilePermissions(GetStateFilePath(), 0444);
 
   auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_TRANSITION_FAILED);
+  EXPECT_EQ(error, RMAD_ERROR_CANNOT_WRITE);
   EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
   EXPECT_FALSE(reboot_called);
   EXPECT_FALSE(shutdown_called);

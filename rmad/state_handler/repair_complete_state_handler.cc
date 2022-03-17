@@ -161,7 +161,7 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
 
     if (!json_store_->ClearAndDeleteFile()) {
       LOG(ERROR) << "RepairCompleteState: Failed to clear RMA state file";
-      return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
+      return NextStateCaseWrapper(RMAD_ERROR_CANNOT_WRITE);
     }
 
     switch (state.repair_complete().shutdown()) {
