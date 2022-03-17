@@ -39,7 +39,9 @@ FakeRepairCompleteStateHandler::FakeRepairCompleteStateHandler(
 
 RepairCompleteStateHandler::RepairCompleteStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store), working_dir_path_(kDefaultWorkingDirPath) {
+    : BaseStateHandler(json_store),
+      working_dir_path_(kDefaultWorkingDirPath),
+      power_cable_signal_sender_(base::DoNothing()) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   sys_utils_ = std::make_unique<SysUtilsImpl>();
@@ -54,6 +56,7 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
     std::unique_ptr<MetricsUtils> metrics_utils)
     : BaseStateHandler(json_store),
       working_dir_path_(working_dir_path),
+      power_cable_signal_sender_(base::DoNothing()),
       power_manager_client_(std::move(power_manager_client)),
       sys_utils_(std::move(sys_utils)),
       metrics_utils_(std::move(metrics_utils)) {}
@@ -184,9 +187,7 @@ void RepairCompleteStateHandler::Cutoff() {
 }
 
 void RepairCompleteStateHandler::SendPowerCableStateSignal() {
-  // TODO(chenghan): This is currently fake.
-  CHECK(power_cable_signal_sender_);
-  power_cable_signal_sender_->Run(sys_utils_->IsPowerSourcePresent());
+  power_cable_signal_sender_.Run(sys_utils_->IsPowerSourcePresent());
 }
 
 }  // namespace rmad

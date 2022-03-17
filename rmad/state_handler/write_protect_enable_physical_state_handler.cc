@@ -37,7 +37,8 @@ FakeWriteProtectEnablePhysicalStateHandler::
 
 WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    : BaseStateHandler(json_store),
+      write_protect_signal_sender_(base::DoNothing()) {
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
 }
 
@@ -45,15 +46,13 @@ WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store,
     std::unique_ptr<CrosSystemUtils> crossystem_utils)
     : BaseStateHandler(json_store),
+      write_protect_signal_sender_(base::DoNothing()),
       crossystem_utils_(std::move(crossystem_utils)) {}
 
 RmadErrorCode WriteProtectEnablePhysicalStateHandler::InitializeState() {
   if (!state_.has_wp_enable_physical()) {
     state_.set_allocated_wp_enable_physical(
         new WriteProtectEnablePhysicalState);
-  }
-  if (!write_protect_signal_sender_) {
-    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
   PollUntilWriteProtectOn();
@@ -94,8 +93,7 @@ void WriteProtectEnablePhysicalStateHandler::PollUntilWriteProtectOn() {
 }
 
 void WriteProtectEnablePhysicalStateHandler::CheckWriteProtectOnTask() {
-  DCHECK(write_protect_signal_sender_);
-  LOG(INFO) << "Check write protection";
+  VLOG(1) << "Check write protection";
 
   int hwwp_status;
   if (!crossystem_utils_->GetInt(kWriteProtectProperty, &hwwp_status)) {
@@ -103,7 +101,7 @@ void WriteProtectEnablePhysicalStateHandler::CheckWriteProtectOnTask() {
     return;
   }
   if (hwwp_status == 1) {
-    write_protect_signal_sender_->Run(true);
+    write_protect_signal_sender_.Run(true);
     timer_.Stop();
   }
 }

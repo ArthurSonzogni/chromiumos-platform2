@@ -33,7 +33,9 @@ FakeRunCalibrationStateHandler::FakeRunCalibrationStateHandler(
 
 RunCalibrationStateHandler::RunCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    : BaseStateHandler(json_store),
+      calibration_overall_signal_sender_(base::DoNothing()),
+      calibration_component_signal_sender_(base::DoNothing()) {
   vpd_utils_thread_safe_ = base::MakeRefCounted<VpdUtilsImplThreadSafe>();
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::make_unique<AccelerometerCalibrationUtilsImpl>(
@@ -55,7 +57,9 @@ RunCalibrationStateHandler::RunCalibrationStateHandler(
     std::unique_ptr<SensorCalibrationUtils> lid_acc_utils,
     std::unique_ptr<SensorCalibrationUtils> base_gyro_utils,
     std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils)
-    : BaseStateHandler(json_store) {
+    : BaseStateHandler(json_store),
+      calibration_overall_signal_sender_(base::DoNothing()),
+      calibration_component_signal_sender_(base::DoNothing()) {
   sensor_calibration_utils_map_[RMAD_COMPONENT_BASE_ACCELEROMETER] =
       std::move(base_acc_utils);
   sensor_calibration_utils_map_[RMAD_COMPONENT_LID_ACCELEROMETER] =
@@ -154,7 +158,7 @@ RunCalibrationStateHandler::TryGetNextStateCaseAtBoot() {
 
 bool RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
   if (!GetCalibrationMap(json_store_, &calibration_map_)) {
-    calibration_overall_signal_sender_->Run(
+    calibration_overall_signal_sender_.Run(
         RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
     LOG(ERROR) << "Failed to read calibration variables";
     return false;
@@ -178,7 +182,7 @@ bool RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
   running_group_ = GetCurrentSetupInstruction(calibration_map_);
   // It failed in the beginning, this shouldn't happen.
   if (running_group_ == RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK) {
-    calibration_overall_signal_sender_->Run(
+    calibration_overall_signal_sender_.Run(
         RMAD_CALIBRATION_OVERALL_INITIALIZATION_FAILED);
     LOG(WARNING) << "Calibration process failed at the beginning, this "
                     "shouldn't happen.";
@@ -187,7 +191,7 @@ bool RunCalibrationStateHandler::RetrieveVarsAndCalibrate() {
 
   // It was done at the beginning, this shouldn't happen.
   if (running_group_ == RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
-    calibration_overall_signal_sender_->Run(RMAD_CALIBRATION_OVERALL_COMPLETE);
+    calibration_overall_signal_sender_.Run(RMAD_CALIBRATION_OVERALL_COMPLETE);
     LOG(WARNING) << "Calibration process complete at the beginning, this "
                     "shouldn't happen.";
     return true;
@@ -271,15 +275,15 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
       failed |= (vpd_utils_thread_safe_.get() &&
                  !vpd_utils_thread_safe_->FlushOutRoVpdCache());
       if (failed) {
-        calibration_overall_signal_sender_->Run(
+        calibration_overall_signal_sender_.Run(
             CalibrationOverallStatus::
                 RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED);
       } else if (GetCurrentSetupInstruction(calibration_map_) ==
                  RMAD_CALIBRATION_INSTRUCTION_NO_NEED_CALIBRATION) {
-        calibration_overall_signal_sender_->Run(
+        calibration_overall_signal_sender_.Run(
             CalibrationOverallStatus::RMAD_CALIBRATION_OVERALL_COMPLETE);
       } else {
-        calibration_overall_signal_sender_->Run(
+        calibration_overall_signal_sender_.Run(
             CalibrationOverallStatus::
                 RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
       }
@@ -290,7 +294,7 @@ void RunCalibrationStateHandler::SaveAndSend(RmadComponent component,
   component_status.set_component(component);
   component_status.set_status(status);
   component_status.set_progress(progress);
-  calibration_component_signal_sender_->Run(std::move(component_status));
+  calibration_component_signal_sender_.Run(std::move(component_status));
 
   if (status != CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS) {
     progress_timer_map_[component]->Stop();

@@ -5,8 +5,6 @@
 #ifndef RMAD_STATE_HANDLER_BASE_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_BASE_STATE_HANDLER_H_
 
-#include <memory>
-
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
@@ -50,37 +48,35 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
 
   // Register a signal sender.
   virtual void RegisterSignalSender(
-      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) {}
+      base::RepeatingCallback<void(bool)> callback) {}
 
   using HardwareVerificationResultSignalCallback =
-      base::RepeatingCallback<bool(const HardwareVerificationResult&)>;
+      base::RepeatingCallback<void(const HardwareVerificationResult&)>;
   virtual void RegisterSignalSender(
-      std::unique_ptr<HardwareVerificationResultSignalCallback> callback) {}
+      HardwareVerificationResultSignalCallback callback) {}
 
   using UpdateRoFirmwareStatusSignalCallback =
-      base::RepeatingCallback<bool(UpdateRoFirmwareStatus)>;
+      base::RepeatingCallback<void(UpdateRoFirmwareStatus)>;
   virtual void RegisterSignalSender(
-      std::unique_ptr<UpdateRoFirmwareStatusSignalCallback> callback) {}
+      UpdateRoFirmwareStatusSignalCallback callback) {}
 
   using CalibrationOverallSignalCallback =
-      base::RepeatingCallback<bool(CalibrationOverallStatus)>;
-  virtual void RegisterSignalSender(
-      std::unique_ptr<CalibrationOverallSignalCallback> callback) {}
+      base::RepeatingCallback<void(CalibrationOverallStatus)>;
+  virtual void RegisterSignalSender(CalibrationOverallSignalCallback callback) {
+  }
 
   using CalibrationComponentSignalCallback =
-      base::RepeatingCallback<bool(CalibrationComponentStatus)>;
+      base::RepeatingCallback<void(CalibrationComponentStatus)>;
   virtual void RegisterSignalSender(
-      std::unique_ptr<CalibrationComponentSignalCallback> callback) {}
+      CalibrationComponentSignalCallback callback) {}
 
   using ProvisionSignalCallback =
-      base::RepeatingCallback<bool(const ProvisionStatus&)>;
-  virtual void RegisterSignalSender(
-      std::unique_ptr<ProvisionSignalCallback> callback) {}
+      base::RepeatingCallback<void(const ProvisionStatus&)>;
+  virtual void RegisterSignalSender(ProvisionSignalCallback callback) {}
 
   using FinalizeSignalCallback =
-      base::RepeatingCallback<bool(const FinalizeStatus&)>;
-  virtual void RegisterSignalSender(
-      std::unique_ptr<FinalizeSignalCallback> callback) {}
+      base::RepeatingCallback<void(const FinalizeStatus&)>;
+  virtual void RegisterSignalSender(FinalizeSignalCallback callback) {}
 
   // Return the next RmadState::StateCase in the RMA flow depending on device
   // status and user input (e.g. |json_store_| content). If the transition

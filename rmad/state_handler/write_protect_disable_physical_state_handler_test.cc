@@ -37,7 +37,7 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
   // Helper class to mock the callback function to send signal.
   class SignalSender {
    public:
-    MOCK_METHOD(bool, SendHardwareWriteProtectSignal, (bool), (const));
+    MOCK_METHOD(void, SendHardwareWriteProtectSignal, (bool), (const));
   };
 
   scoped_refptr<WriteProtectDisablePhysicalStateHandler> CreateStateHandler(
@@ -86,10 +86,10 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
             std::move(mock_crossystem_utils),
             std::move(mock_power_manager_client),
             std::move(mock_cryptohome_client));
-    auto callback = std::make_unique<base::RepeatingCallback<bool(bool)>>(
+    auto callback =
         base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,
-                            base::Unretained(&signal_sender_)));
-    handler->RegisterSignalSender(std::move(callback));
+                            base::Unretained(&signal_sender_));
+    handler->RegisterSignalSender(callback);
     return handler;
   }
 
@@ -108,7 +108,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Success) {
 
   bool signal_sent = false;
   EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
+      .WillOnce(Assign(&signal_sent, true));
 
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
@@ -147,7 +147,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 
   bool signal_sent = false;
   EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
+      .WillOnce(Assign(&signal_sent, true));
 
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
@@ -169,7 +169,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
 
   bool signal_sent = false;
   EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsFalse()))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
+      .WillOnce(Assign(&signal_sent, true));
 
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);

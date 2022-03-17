@@ -47,9 +47,8 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kProvisionDevice);
   SET_REPEATABLE;
 
-  void RegisterSignalSender(
-      std::unique_ptr<ProvisionSignalCallback> callback) override {
-    provision_signal_sender_ = std::move(callback);
+  void RegisterSignalSender(ProvisionSignalCallback callback) override {
+    provision_signal_sender_ = callback;
   }
 
   RmadErrorCode InitializeState() override;
@@ -78,8 +77,8 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   void Reboot();
 
   ProvisionStatus status_;
+  ProvisionSignalCallback provision_signal_sender_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
-  std::unique_ptr<ProvisionSignalCallback> provision_signal_sender_;
   std::unique_ptr<CbiUtils> cbi_utils_;
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;
   std::unique_ptr<SsfcUtils> ssfc_utils_;

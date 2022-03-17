@@ -265,64 +265,62 @@ RmadErrorCode RmadInterfaceImpl::GetInitializedStateHandler(
 
 void RmadInterfaceImpl::RegisterSignalSender(
     RmadState::StateCase state_case,
-    std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) {
+    base::RepeatingCallback<void(bool)> callback) {
   auto state_handler = state_handler_manager_->GetStateHandler(state_case);
   if (state_handler) {
-    state_handler->RegisterSignalSender(std::move(callback));
+    state_handler->RegisterSignalSender(callback);
   }
 }
 
 void RmadInterfaceImpl::RegisterSignalSender(
     RmadState::StateCase state_case,
-    std::unique_ptr<HardwareVerificationResultSignalCallback> callback) {
+    HardwareVerificationResultSignalCallback callback) {
   auto state_handler = state_handler_manager_->GetStateHandler(state_case);
   if (state_handler) {
-    state_handler->RegisterSignalSender(std::move(callback));
+    state_handler->RegisterSignalSender(callback);
   }
 }
 
 void RmadInterfaceImpl::RegisterSignalSender(
     RmadState::StateCase state_case,
-    std::unique_ptr<UpdateRoFirmwareStatusSignalCallback> callback) {
+    UpdateRoFirmwareStatusSignalCallback callback) {
   auto state_handler = state_handler_manager_->GetStateHandler(state_case);
   if (state_handler) {
-    state_handler->RegisterSignalSender(std::move(callback));
+    state_handler->RegisterSignalSender(callback);
   }
 }
 
 void RmadInterfaceImpl::RegisterSignalSender(
     RmadState::StateCase state_case,
-    std::unique_ptr<CalibrationOverallSignalCallback> callback) {
+    CalibrationOverallSignalCallback callback) {
   auto state_handler = state_handler_manager_->GetStateHandler(state_case);
   if (state_handler) {
-    state_handler->RegisterSignalSender(std::move(callback));
+    state_handler->RegisterSignalSender(callback);
   }
 }
 
 void RmadInterfaceImpl::RegisterSignalSender(
     RmadState::StateCase state_case,
-    std::unique_ptr<CalibrationComponentSignalCallback> callback) {
+    CalibrationComponentSignalCallback callback) {
   auto state_handler = state_handler_manager_->GetStateHandler(state_case);
   if (state_handler) {
-    state_handler->RegisterSignalSender(std::move(callback));
+    state_handler->RegisterSignalSender(callback);
   }
 }
 
-void RmadInterfaceImpl::RegisterSignalSender(
-    RmadState::StateCase state_case,
-    std::unique_ptr<ProvisionSignalCallback> callback) {
+void RmadInterfaceImpl::RegisterSignalSender(RmadState::StateCase state_case,
+                                             ProvisionSignalCallback callback) {
   auto state_handler = state_handler_manager_->GetStateHandler(state_case);
   if (state_handler) {
-    state_handler->RegisterSignalSender(std::move(callback));
+    state_handler->RegisterSignalSender(callback);
   }
 }
 
-void RmadInterfaceImpl::RegisterSignalSender(
-    RmadState::StateCase state_case,
-    std::unique_ptr<FinalizeSignalCallback> callback) {
+void RmadInterfaceImpl::RegisterSignalSender(RmadState::StateCase state_case,
+                                             FinalizeSignalCallback callback) {
   auto state_handler = state_handler_manager_->GetStateHandler(state_case);
   if (state_handler) {
-    state_handler->RegisterSignalSender(std::move(callback));
+    state_handler->RegisterSignalSender(callback);
   }
 }
 

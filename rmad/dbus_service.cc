@@ -427,51 +427,40 @@ void DBusService::SetUpInterfaceCallbacks() {
       base::BindRepeating(&DBusService::RequestQuit, base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kWpDisablePhysical,
-      std::make_unique<base::RepeatingCallback<bool(bool)>>(base::BindRepeating(
-          &DBusService::SendHardwareWriteProtectionStateSignal,
-          base::Unretained(this))));
+      base::BindRepeating(&DBusService::SendHardwareWriteProtectionStateSignal,
+                          base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kWpEnablePhysical,
-      std::make_unique<base::RepeatingCallback<bool(bool)>>(base::BindRepeating(
-          &DBusService::SendHardwareWriteProtectionStateSignal,
-          base::Unretained(this))));
+      base::BindRepeating(&DBusService::SendHardwareWriteProtectionStateSignal,
+                          base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kWelcome,
-      std::make_unique<
-          base::RepeatingCallback<bool(const HardwareVerificationResult&)>>(
-          base::BindRepeating(
-              &DBusService::SendHardwareVerificationResultSignal,
-              base::Unretained(this))));
+      base::BindRepeating(&DBusService::SendHardwareVerificationResultSignal,
+                          base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kUpdateRoFirmware,
-      std::make_unique<base::RepeatingCallback<bool(UpdateRoFirmwareStatus)>>(
-          base::BindRepeating(&DBusService::SendUpdateRoFirmwareStatusSignal,
-                              base::Unretained(this))));
+      base::BindRepeating(&DBusService::SendUpdateRoFirmwareStatusSignal,
+                          base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kRunCalibration,
-      std::make_unique<base::RepeatingCallback<bool(CalibrationOverallStatus)>>(
-          base::BindRepeating(&DBusService::SendCalibrationOverallSignal,
-                              base::Unretained(this))));
+      base::BindRepeating(&DBusService::SendCalibrationOverallSignal,
+                          base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kRunCalibration,
-      std::make_unique<
-          base::RepeatingCallback<bool(CalibrationComponentStatus)>>(
-          base::BindRepeating(&DBusService::SendCalibrationProgressSignal,
-                              base::Unretained(this))));
+      base::BindRepeating(&DBusService::SendCalibrationProgressSignal,
+                          base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kProvisionDevice,
-      std::make_unique<base::RepeatingCallback<bool(const ProvisionStatus&)>>(
-          base::BindRepeating(&DBusService::SendProvisionProgressSignal,
-                              base::Unretained(this))));
+      base::BindRepeating(&DBusService::SendProvisionProgressSignal,
+                          base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kFinalize,
-      std::make_unique<base::RepeatingCallback<bool(const FinalizeStatus&)>>(
-          base::BindRepeating(&DBusService::SendFinalizeProgressSignal,
-                              base::Unretained(this))));
+      base::BindRepeating(&DBusService::SendFinalizeProgressSignal,
+                          base::Unretained(this)));
   rmad_interface_->RegisterSignalSender(
       RmadState::StateCase::kRepairComplete,
-      std::make_unique<base::RepeatingCallback<bool(bool)>>(base::BindRepeating(
-          &DBusService::SendPowerCableStateSignal, base::Unretained(this))));
+      base::BindRepeating(&DBusService::SendPowerCableStateSignal,
+                          base::Unretained(this)));
 }
 
 void DBusService::HandleIsRmaRequiredMethod(
@@ -479,53 +468,71 @@ void DBusService::HandleIsRmaRequiredMethod(
   SendReply(std::move(response), is_rma_required_);
 }
 
-bool DBusService::SendErrorSignal(RmadErrorCode error) {
+void DBusService::SendErrorSignal(RmadErrorCode error) {
   auto signal = error_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(error);
+  if (signal) {
+    signal->Send(error);
+  }
 }
 
-bool DBusService::SendHardwareVerificationResultSignal(
+void DBusService::SendHardwareVerificationResultSignal(
     const HardwareVerificationResult& result) {
   auto signal = hardware_verification_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(result);
+  if (signal) {
+    signal->Send(result);
+  }
 }
 
-bool DBusService::SendUpdateRoFirmwareStatusSignal(
+void DBusService::SendUpdateRoFirmwareStatusSignal(
     UpdateRoFirmwareStatus status) {
   auto signal = update_ro_firmware_status_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(status);
+  if (signal) {
+    signal->Send(status);
+  }
 }
 
-bool DBusService::SendCalibrationOverallSignal(
+void DBusService::SendCalibrationOverallSignal(
     CalibrationOverallStatus status) {
   auto signal = calibration_overall_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(status);
+  if (signal) {
+    signal->Send(status);
+  }
 }
 
-bool DBusService::SendCalibrationProgressSignal(
+void DBusService::SendCalibrationProgressSignal(
     CalibrationComponentStatus status) {
   auto signal = calibration_component_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(status);
+  if (signal) {
+    signal->Send(status);
+  }
 }
 
-bool DBusService::SendProvisionProgressSignal(const ProvisionStatus& status) {
+void DBusService::SendProvisionProgressSignal(const ProvisionStatus& status) {
   auto signal = provision_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(status);
+  if (signal) {
+    signal->Send(status);
+  }
 }
 
-bool DBusService::SendFinalizeProgressSignal(const FinalizeStatus& status) {
+void DBusService::SendFinalizeProgressSignal(const FinalizeStatus& status) {
   auto signal = finalize_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(status);
+  if (signal) {
+    signal->Send(status);
+  }
 }
 
-bool DBusService::SendHardwareWriteProtectionStateSignal(bool enabled) {
+void DBusService::SendHardwareWriteProtectionStateSignal(bool enabled) {
   auto signal = hwwp_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(enabled);
+  if (signal) {
+    signal->Send(enabled);
+  }
 }
 
-bool DBusService::SendPowerCableStateSignal(bool plugged_in) {
+void DBusService::SendPowerCableStateSignal(bool plugged_in) {
   auto signal = power_cable_signal_.lock();
-  return (signal.get() == nullptr) ? false : signal->Send(plugged_in);
+  if (signal) {
+    signal->Send(plugged_in);
+  }
 }
 
 void DBusService::PostQuitTask() {

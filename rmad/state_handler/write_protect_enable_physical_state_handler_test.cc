@@ -32,7 +32,7 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
   // Helper class to mock the callback function to send signal.
   class SignalSender {
    public:
-    MOCK_METHOD(bool, SendHardwareWriteProtectSignal, (bool), (const));
+    MOCK_METHOD(void, SendHardwareWriteProtectSignal, (bool), (const));
   };
 
   scoped_refptr<WriteProtectEnablePhysicalStateHandler> CreateStateHandler(
@@ -50,10 +50,10 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
 
     auto handler = base::MakeRefCounted<WriteProtectEnablePhysicalStateHandler>(
         json_store_, std::move(mock_crossystem_utils));
-    auto callback = std::make_unique<base::RepeatingCallback<bool(bool)>>(
+    auto callback =
         base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,
-                            base::Unretained(&signal_sender_)));
-    handler->RegisterSignalSender(std::move(callback));
+                            base::Unretained(&signal_sender_));
+    handler->RegisterSignalSender(callback);
     return handler;
   }
 
@@ -109,7 +109,7 @@ TEST_F(WriteProtectEnablePhysicalStateHandlerTest, GetNextStateCase_Wait) {
 
   bool signal_sent = false;
   EXPECT_CALL(signal_sender_, SendHardwareWriteProtectSignal(IsTrue()))
-      .WillOnce(DoAll(Assign(&signal_sent, true), Return(true)));
+      .WillOnce(Assign(&signal_sent, true));
 
   // Second call to |mock_crossystem_utils_| during polling, get 0.
   task_environment_.FastForwardBy(

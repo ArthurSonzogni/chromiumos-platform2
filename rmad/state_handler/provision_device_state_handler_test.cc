@@ -47,7 +47,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
   // Helper class to mock the callback function to send signal.
   class SignalSender {
    public:
-    MOCK_METHOD(bool,
+    MOCK_METHOD(void,
                 SendProvisionProgressSignal,
                 (const ProvisionStatus&),
                 (const));
@@ -66,10 +66,8 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
       bool flush_vpd = true) {
     // Expect signal is always sent.
     ON_CALL(signal_sender_, SendProvisionProgressSignal(_))
-        .WillByDefault(
-            DoAll(WithArg<0>(Invoke(
-                      this, &ProvisionDeviceStateHandlerTest::QueueStatus)),
-                  Return(true)));
+        .WillByDefault(WithArg<0>(
+            Invoke(this, &ProvisionDeviceStateHandlerTest::QueueStatus)));
 
     auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
     if (get_model_name) {
@@ -111,10 +109,9 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         std::move(cros_config_utils), std::move(ssfc_utils),
         std::move(vpd_utils));
     auto callback =
-        std::make_unique<base::RepeatingCallback<bool(const ProvisionStatus&)>>(
-            base::BindRepeating(&SignalSender::SendProvisionProgressSignal,
-                                base::Unretained(&signal_sender_)));
-    handler->RegisterSignalSender(std::move(callback));
+        base::BindRepeating(&SignalSender::SendProvisionProgressSignal,
+                            base::Unretained(&signal_sender_));
+    handler->RegisterSignalSender(callback);
     return handler;
   }
 
@@ -146,14 +143,6 @@ TEST_F(ProvisionDeviceStateHandlerTest, Clenaup_Success) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->CleanUpState();
-  RunHandlerTaskRunner(handler);
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest, InitializeState_NoSignalSenderFailed) {
-  auto handler = CreateStateHandler();
-  handler->RegisterSignalSender(nullptr);
-  EXPECT_EQ(handler->InitializeState(),
-            RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
   RunHandlerTaskRunner(handler);
 }
 

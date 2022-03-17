@@ -49,15 +49,6 @@ namespace rmad {
 
 class SetupCalibrationStateHandlerTest : public StateHandlerTest {
  public:
-  // Helper class to mock the callback function to send signal.
-  class SignalSender {
-   public:
-    MOCK_METHOD(bool,
-                SendCalibrationSetupSignal,
-                (CalibrationSetupInstruction),
-                (const));
-  };
-
   scoped_refptr<SetupCalibrationStateHandler> CreateStateHandler(
       const std::set<RmadComponent>& probed_components) {
     auto mock_runtime_probe_client =

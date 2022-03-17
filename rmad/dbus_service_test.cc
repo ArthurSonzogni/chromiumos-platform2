@@ -52,44 +52,37 @@ class DBusServiceTest : public testing::Test {
         .WillRepeatedly(Return());
     EXPECT_CALL(
         mock_rmad_service_,
-        RegisterSignalSender(
-            _, A<std::unique_ptr<base::RepeatingCallback<bool(bool)>>>()))
+        RegisterSignalSender(_, A<base::RepeatingCallback<void(bool)>>()))
         .WillRepeatedly(Return());
     EXPECT_CALL(
         mock_rmad_service_,
-        RegisterSignalSender(_, A<std::unique_ptr<base::RepeatingCallback<bool(
-                                    const HardwareVerificationResult&)>>>()))
-        .WillRepeatedly(Return());
-    EXPECT_CALL(
-        mock_rmad_service_,
-        RegisterSignalSender(
-            _, A<std::unique_ptr<
-                   base::RepeatingCallback<bool(UpdateRoFirmwareStatus)>>>()))
+        RegisterSignalSender(_, A<base::RepeatingCallback<void(
+                                    const HardwareVerificationResult&)>>()))
         .WillRepeatedly(Return());
     EXPECT_CALL(
         mock_rmad_service_,
         RegisterSignalSender(
-            _, A<std::unique_ptr<
-                   base::RepeatingCallback<bool(CalibrationOverallStatus)>>>()))
+            _, A<base::RepeatingCallback<void(UpdateRoFirmwareStatus)>>()))
         .WillRepeatedly(Return());
     EXPECT_CALL(
         mock_rmad_service_,
         RegisterSignalSender(
-            _,
-            A<std::unique_ptr<
-                base::RepeatingCallback<bool(CalibrationComponentStatus)>>>()))
+            _, A<base::RepeatingCallback<void(CalibrationOverallStatus)>>()))
         .WillRepeatedly(Return());
     EXPECT_CALL(
         mock_rmad_service_,
         RegisterSignalSender(
-            _, A<std::unique_ptr<
-                   base::RepeatingCallback<bool(const ProvisionStatus&)>>>()))
+            _, A<base::RepeatingCallback<void(CalibrationComponentStatus)>>()))
         .WillRepeatedly(Return());
     EXPECT_CALL(
         mock_rmad_service_,
         RegisterSignalSender(
-            _, A<std::unique_ptr<
-                   base::RepeatingCallback<bool(const FinalizeStatus&)>>>()))
+            _, A<base::RepeatingCallback<void(const ProvisionStatus&)>>()))
+        .WillRepeatedly(Return());
+    EXPECT_CALL(
+        mock_rmad_service_,
+        RegisterSignalSender(
+            _, A<base::RepeatingCallback<void(const FinalizeStatus&)>>()))
         .WillRepeatedly(Return());
   }
   ~DBusServiceTest() override = default;
@@ -189,40 +182,40 @@ class DBusServiceTest : public testing::Test {
     }
   }
 
-  bool SignalError(RmadErrorCode error) {
-    return dbus_service_->SendErrorSignal(error);
+  void SignalError(RmadErrorCode error) {
+    dbus_service_->SendErrorSignal(error);
   }
 
-  bool SignalHardwareVerification(const HardwareVerificationResult& result) {
-    return dbus_service_->SendHardwareVerificationResultSignal(result);
+  void SignalHardwareVerification(const HardwareVerificationResult& result) {
+    dbus_service_->SendHardwareVerificationResultSignal(result);
   }
 
-  bool SignalUpdateRoFirmwareStatus(const UpdateRoFirmwareStatus status) {
-    return dbus_service_->SendUpdateRoFirmwareStatusSignal(status);
+  void SignalUpdateRoFirmwareStatus(const UpdateRoFirmwareStatus status) {
+    dbus_service_->SendUpdateRoFirmwareStatusSignal(status);
   }
 
-  bool SignalCalibrationOverall(CalibrationOverallStatus overall_status) {
-    return dbus_service_->SendCalibrationOverallSignal(overall_status);
+  void SignalCalibrationOverall(CalibrationOverallStatus overall_status) {
+    dbus_service_->SendCalibrationOverallSignal(overall_status);
   }
 
-  bool SignalCalibrationComponent(CalibrationComponentStatus component_status) {
-    return dbus_service_->SendCalibrationProgressSignal(component_status);
+  void SignalCalibrationComponent(CalibrationComponentStatus component_status) {
+    dbus_service_->SendCalibrationProgressSignal(component_status);
   }
 
-  bool SignalProvision(const ProvisionStatus& status) {
-    return dbus_service_->SendProvisionProgressSignal(status);
+  void SignalProvision(const ProvisionStatus& status) {
+    dbus_service_->SendProvisionProgressSignal(status);
   }
 
-  bool SignalFinalize(const FinalizeStatus& status) {
-    return dbus_service_->SendFinalizeProgressSignal(status);
+  void SignalFinalize(const FinalizeStatus& status) {
+    dbus_service_->SendFinalizeProgressSignal(status);
   }
 
-  bool SignalHardwareWriteProtection(bool enabled) {
-    return dbus_service_->SendHardwareWriteProtectionStateSignal(enabled);
+  void SignalHardwareWriteProtection(bool enabled) {
+    dbus_service_->SendHardwareWriteProtectionStateSignal(enabled);
   }
 
-  bool SignalPowerCableState(bool plugged_in) {
-    return dbus_service_->SendPowerCableStateSignal(plugged_in);
+  void SignalPowerCableState(bool plugged_in) {
+    dbus_service_->SendPowerCableStateSignal(plugged_in);
   }
 
   dbus::MockExportedObject* GetMockExportedObject() {
@@ -428,7 +421,7 @@ TEST_F(DBusServiceTest, SignalError) {
         EXPECT_TRUE(reader.PopInt32(&error));
         EXPECT_EQ(error, RMAD_ERROR_RMA_NOT_REQUIRED);
       }));
-  EXPECT_TRUE(SignalError(RMAD_ERROR_RMA_NOT_REQUIRED));
+  SignalError(RMAD_ERROR_RMA_NOT_REQUIRED);
 }
 
 TEST_F(DBusServiceTest, SignalHardwareVerification) {
@@ -446,7 +439,7 @@ TEST_F(DBusServiceTest, SignalHardwareVerification) {
   HardwareVerificationResult result;
   result.set_is_compliant(true);
   result.set_error_str("test_error_string");
-  EXPECT_TRUE(SignalHardwareVerification(result));
+  SignalHardwareVerification(result);
 }
 
 TEST_F(DBusServiceTest, SignalUpdateRoFirmwareStatus) {
@@ -460,7 +453,7 @@ TEST_F(DBusServiceTest, SignalUpdateRoFirmwareStatus) {
         EXPECT_TRUE(reader.PopInt32(&error));
         EXPECT_EQ(error, RMAD_UPDATE_RO_FIRMWARE_WAIT_USB);
       }));
-  EXPECT_TRUE(SignalUpdateRoFirmwareStatus(RMAD_UPDATE_RO_FIRMWARE_WAIT_USB));
+  SignalUpdateRoFirmwareStatus(RMAD_UPDATE_RO_FIRMWARE_WAIT_USB);
 }
 
 TEST_F(DBusServiceTest, SignalCalibrationOverall) {
@@ -475,8 +468,7 @@ TEST_F(DBusServiceTest, SignalCalibrationOverall) {
         EXPECT_EQ(overall_status,
                   RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
       }));
-  EXPECT_TRUE(SignalCalibrationOverall(
-      RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE));
+  SignalCalibrationOverall(RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
 }
 
 TEST_F(DBusServiceTest, SignalCalibrationComponent) {
@@ -500,7 +492,7 @@ TEST_F(DBusServiceTest, SignalCalibrationComponent) {
   component_status.set_status(
       CalibrationComponentStatus::RMAD_CALIBRATION_IN_PROGRESS);
   component_status.set_progress(0.3);
-  EXPECT_TRUE(SignalCalibrationComponent(component_status));
+  SignalCalibrationComponent(component_status);
 }
 
 TEST_F(DBusServiceTest, SignalProvision) {
@@ -519,7 +511,7 @@ TEST_F(DBusServiceTest, SignalProvision) {
   ProvisionStatus status;
   status.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
   status.set_progress(0.5);
-  EXPECT_TRUE(SignalProvision(status));
+  SignalProvision(status);
 }
 
 TEST_F(DBusServiceTest, SignalFinalize) {
@@ -538,7 +530,7 @@ TEST_F(DBusServiceTest, SignalFinalize) {
   FinalizeStatus status;
   status.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
   status.set_progress(0.5);
-  EXPECT_TRUE(SignalFinalize(status));
+  SignalFinalize(status);
 }
 
 TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
@@ -552,7 +544,7 @@ TEST_F(DBusServiceTest, SignalHardwareWriteProtection) {
         EXPECT_TRUE(reader.PopBool(&enabled));
         EXPECT_TRUE(enabled);
       }));
-  EXPECT_TRUE(SignalHardwareWriteProtection(true));
+  SignalHardwareWriteProtection(true);
 }
 
 TEST_F(DBusServiceTest, SignalPowerCableState) {
@@ -566,7 +558,7 @@ TEST_F(DBusServiceTest, SignalPowerCableState) {
         EXPECT_TRUE(reader.PopBool(&plugged_in));
         EXPECT_TRUE(plugged_in);
       }));
-  EXPECT_TRUE(SignalPowerCableState(true));
+  SignalPowerCableState(true);
 }
 
 }  // namespace rmad

@@ -33,7 +33,7 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
   // Helper class to mock the callback function to send signal.
   class SignalSender {
    public:
-    MOCK_METHOD(bool, SendPowerCableStateSignal, (bool), (const));
+    MOCK_METHOD(void, SendPowerCableStateSignal, (bool), (const));
   };
 
   scoped_refptr<RepairCompleteStateHandler> CreateStateHandler(
@@ -67,13 +67,13 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
     auto handler = base::MakeRefCounted<RepairCompleteStateHandler>(
         json_store_, GetTempDirPath(), std::move(mock_power_manager_client),
         std::move(mock_sys_utils), std::move(mock_metrics_utils));
-    auto callback = std::make_unique<base::RepeatingCallback<bool(bool)>>(
+    auto callback =
         base::BindRepeating(&SignalSender::SendPowerCableStateSignal,
-                            base::Unretained(&signal_sender_)));
+                            base::Unretained(&signal_sender_));
     handler->RegisterSignalSender(std::move(callback));
 
     ON_CALL(signal_sender_, SendPowerCableStateSignal(_))
-        .WillByDefault(Return(true));
+        .WillByDefault(Return());
     return handler;
   }
 
@@ -109,7 +109,6 @@ TEST_F(RepairCompleteStateHandlerTest, InitializeState_Success) {
   EXPECT_CALL(signal_sender_, SendPowerCableStateSignal(_))
       .WillOnce([](bool is_connected) {
         EXPECT_TRUE(is_connected);
-        return true;
       });
   task_environment_.FastForwardBy(
       RepairCompleteStateHandler::kReportPowerCableInterval);

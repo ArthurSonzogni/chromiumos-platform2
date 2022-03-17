@@ -47,7 +47,8 @@ FakeWriteProtectDisablePhysicalStateHandler::
 
 WriteProtectDisablePhysicalStateHandler::
     WriteProtectDisablePhysicalStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    : BaseStateHandler(json_store),
+      write_protect_signal_sender_(base::DoNothing()) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   power_manager_client_ =
@@ -63,6 +64,7 @@ WriteProtectDisablePhysicalStateHandler::
         std::unique_ptr<PowerManagerClient> power_manager_client,
         std::unique_ptr<CryptohomeClient> cryptohome_client)
     : BaseStateHandler(json_store),
+      write_protect_signal_sender_(base::DoNothing()),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       power_manager_client_(std::move(power_manager_client)),
@@ -76,9 +78,6 @@ RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
     wp_disable_physical->set_keep_device_open(
         cryptohome_client_->IsCcdBlocked());
     state_.set_allocated_wp_disable_physical(wp_disable_physical.release());
-  }
-  if (!write_protect_signal_sender_) {
-    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
   PollUntilWriteProtectOff();
@@ -151,13 +150,12 @@ void WriteProtectDisablePhysicalStateHandler::PollUntilWriteProtectOff() {
 }
 
 void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
-  DCHECK(write_protect_signal_sender_);
   VLOG(1) << "Check write protection";
 
   if (IsHwwpDisabled()) {
     timer_.Stop();
     if (IsFactoryModeTried()) {
-      write_protect_signal_sender_->Run(false);
+      write_protect_signal_sender_.Run(false);
     } else {
       // Enable cr50 factory mode if it's not blocked.
       if (!state_.wp_disable_physical().keep_device_open()) {

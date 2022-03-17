@@ -107,21 +107,17 @@ TEST_F(BaseStateHandlerTest, CleanUpState_Success) {
 
 TEST_F(BaseStateHandlerTest, RegisterSignalSender_Success) {
   auto handler = CreateStateHandler();
+  handler->RegisterSignalSender(base::RepeatingCallback<void(bool)>());
   handler->RegisterSignalSender(
-      std::make_unique<base::RepeatingCallback<bool(bool)>>());
+      rmad::BaseStateHandler::HardwareVerificationResultSignalCallback());
   handler->RegisterSignalSender(
-      std::make_unique<
-          rmad::BaseStateHandler::HardwareVerificationResultSignalCallback>());
+      rmad::BaseStateHandler::CalibrationOverallSignalCallback());
   handler->RegisterSignalSender(
-      std::make_unique<
-          rmad::BaseStateHandler::CalibrationOverallSignalCallback>());
+      rmad::BaseStateHandler::CalibrationComponentSignalCallback());
   handler->RegisterSignalSender(
-      std::make_unique<
-          rmad::BaseStateHandler::CalibrationComponentSignalCallback>());
+      rmad::BaseStateHandler::ProvisionSignalCallback());
   handler->RegisterSignalSender(
-      std::make_unique<rmad::BaseStateHandler::ProvisionSignalCallback>());
-  handler->RegisterSignalSender(
-      std::make_unique<rmad::BaseStateHandler::FinalizeSignalCallback>());
+      rmad::BaseStateHandler::FinalizeSignalCallback());
 }
 
 TEST_F(BaseStateHandlerTest, IsRepeatable_RepeatableSuccess) {

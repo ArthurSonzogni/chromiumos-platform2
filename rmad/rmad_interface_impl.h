@@ -57,32 +57,28 @@ class RmadInterfaceImpl final : public RmadInterface {
 
   void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override;
+      base::RepeatingCallback<void(bool)> callback) override;
 
   void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<HardwareVerificationResultSignalCallback> callback)
-      override;
+      HardwareVerificationResultSignalCallback callback) override;
 
   void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<UpdateRoFirmwareStatusSignalCallback> callback) override;
+      UpdateRoFirmwareStatusSignalCallback callback) override;
+
+  void RegisterSignalSender(RmadState::StateCase state_case,
+                            CalibrationOverallSignalCallback callback) override;
 
   void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<CalibrationOverallSignalCallback> callback) override;
+      CalibrationComponentSignalCallback callback) override;
 
-  void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      std::unique_ptr<CalibrationComponentSignalCallback> callback) override;
+  void RegisterSignalSender(RmadState::StateCase state_case,
+                            ProvisionSignalCallback callback) override;
 
-  void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      std::unique_ptr<ProvisionSignalCallback> callback) override;
-
-  void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      std::unique_ptr<FinalizeSignalCallback> callback) override;
+  void RegisterSignalSender(RmadState::StateCase state_case,
+                            FinalizeSignalCallback callback) override;
 
   RmadState::StateCase GetCurrentStateCase() override {
     return current_state_case_;

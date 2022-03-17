@@ -30,8 +30,8 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
       std::unique_ptr<CrosSystemUtils> crossystem_utils);
 
   void RegisterSignalSender(
-      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override {
-    write_protect_signal_sender_ = std::move(callback);
+      base::RepeatingCallback<void(bool)> callback) override {
+    write_protect_signal_sender_ = callback;
   }
 
   ASSIGN_STATE(RmadState::StateCase::kWpEnablePhysical);
@@ -48,10 +48,10 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
   void PollUntilWriteProtectOn();
   void CheckWriteProtectOnTask();
 
-  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
-  std::unique_ptr<base::RepeatingCallback<bool(bool)>>
-      write_protect_signal_sender_;
   base::RepeatingTimer timer_;
+  base::RepeatingCallback<void(bool)> write_protect_signal_sender_;
+
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
 };
 
 namespace fake {

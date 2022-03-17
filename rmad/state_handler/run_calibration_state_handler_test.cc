@@ -55,12 +55,12 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
   // Helper classto mock the callback function to send signal.
   class SignalSender {
    public:
-    MOCK_METHOD(bool,
+    MOCK_METHOD(void,
                 SendCalibrationOverallSignal,
                 (CalibrationOverallStatus),
                 (const));
 
-    MOCK_METHOD(bool,
+    MOCK_METHOD(void,
                 SendCalibrationProgressSignal,
                 (CalibrationComponentStatus),
                 (const));
@@ -135,19 +135,15 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
         json_store_, std::move(base_acc_utils), std::move(lid_acc_utils),
         std::move(base_gyro_utils), std::move(lid_gyro_utils));
 
-    auto callback_overall = std::make_unique<
-        base::RepeatingCallback<bool(CalibrationOverallStatus)>>(
-        base::BindRepeating(
-            &SignalSender::SendCalibrationOverallSignal,
-            base::Unretained(&signal_calibration_overall_sender_)));
-    handler->RegisterSignalSender(std::move(callback_overall));
+    auto callback_overall = base::BindRepeating(
+        &SignalSender::SendCalibrationOverallSignal,
+        base::Unretained(&signal_calibration_overall_sender_));
+    handler->RegisterSignalSender(callback_overall);
 
-    auto callback_component = std::make_unique<
-        base::RepeatingCallback<bool(CalibrationComponentStatus)>>(
-        base::BindRepeating(
-            &SignalSender::SendCalibrationProgressSignal,
-            base::Unretained(&signal_calibration_component_sender_)));
-    handler->RegisterSignalSender(std::move(callback_component));
+    auto callback_component = base::BindRepeating(
+        &SignalSender::SendCalibrationProgressSignal,
+        base::Unretained(&signal_calibration_component_sender_));
+    handler->RegisterSignalSender(callback_component);
 
     return handler;
   }
@@ -173,17 +169,13 @@ class RunCalibrationStateHandlerTest : public StateHandlerTest {
     StateHandlerTest::SetUp();
     EXPECT_CALL(signal_calibration_overall_sender_,
                 SendCalibrationOverallSignal(_))
-        .WillRepeatedly(DoAll(
-            WithArg<0>(Invoke(
-                this, &RunCalibrationStateHandlerTest::QueueOverallStatus)),
-            Return(true)));
+        .WillRepeatedly(WithArg<0>(
+            Invoke(this, &RunCalibrationStateHandlerTest::QueueOverallStatus)));
 
     EXPECT_CALL(signal_calibration_component_sender_,
                 SendCalibrationProgressSignal(_))
-        .WillRepeatedly(
-            DoAll(WithArg<0>(Invoke(
-                      this, &RunCalibrationStateHandlerTest::QueueProgress)),
-                  Return(true)));
+        .WillRepeatedly(WithArg<0>(
+            Invoke(this, &RunCalibrationStateHandlerTest::QueueProgress)));
   }
 
   std::vector<CalibrationComponentStatus> progress_history_;

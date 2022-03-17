@@ -40,8 +40,8 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   SET_UNREPEATABLE;
 
   void RegisterSignalSender(
-      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override {
-    power_cable_signal_sender_ = std::move(callback);
+      base::RepeatingCallback<void(bool)> callback) override {
+    power_cable_signal_sender_ = callback;
   }
 
   RmadErrorCode InitializeState() override;
@@ -58,13 +58,14 @@ class RepairCompleteStateHandler : public BaseStateHandler {
   void SendPowerCableStateSignal();
 
   base::FilePath working_dir_path_;
+
+  base::RepeatingTimer power_cable_timer_;
+  base::RepeatingCallback<void(bool)> power_cable_signal_sender_;
+
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<SysUtils> sys_utils_;
   std::unique_ptr<MetricsUtils> metrics_utils_;
-  std::unique_ptr<base::RepeatingCallback<bool(bool)>>
-      power_cable_signal_sender_;
   base::OneShotTimer action_timer_;
-  base::RepeatingTimer power_cable_timer_;
 };
 
 namespace fake {

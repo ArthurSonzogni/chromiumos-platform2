@@ -58,17 +58,16 @@ class DBusService : public brillo::DBusServiceDaemon {
 
   ~DBusService() override = default;
 
-  bool SendErrorSignal(RmadErrorCode error);
-  bool SendHardwareVerificationResultSignal(
+  void SendErrorSignal(RmadErrorCode error);
+  void SendHardwareVerificationResultSignal(
       const HardwareVerificationResult& result);
-  bool SendUpdateRoFirmwareStatusSignal(UpdateRoFirmwareStatus status);
-  bool SendCalibrationSetupSignal(CalibrationSetupInstruction instruction);
-  bool SendCalibrationOverallSignal(CalibrationOverallStatus status);
-  bool SendCalibrationProgressSignal(CalibrationComponentStatus status);
-  bool SendProvisionProgressSignal(const ProvisionStatus& status);
-  bool SendFinalizeProgressSignal(const FinalizeStatus& status);
-  bool SendHardwareWriteProtectionStateSignal(bool enabled);
-  bool SendPowerCableStateSignal(bool plugged_in);
+  void SendUpdateRoFirmwareStatusSignal(UpdateRoFirmwareStatus status);
+  void SendCalibrationOverallSignal(CalibrationOverallStatus status);
+  void SendCalibrationProgressSignal(CalibrationComponentStatus status);
+  void SendProvisionProgressSignal(const ProvisionStatus& status);
+  void SendFinalizeProgressSignal(const FinalizeStatus& status);
+  void SendHardwareWriteProtectionStateSignal(bool enabled);
+  void SendPowerCableStateSignal(bool plugged_in);
 
   void SetTestMode() { test_mode_ = true; }
 

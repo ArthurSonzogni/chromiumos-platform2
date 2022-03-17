@@ -33,7 +33,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
   // Helper class to mock the callback function to send signal.
   class SignalSender {
    public:
-    MOCK_METHOD(bool,
+    MOCK_METHOD(void,
                 SendFinalizeProgressSignal,
                 (const FinalizeStatus&),
                 (const));
@@ -54,10 +54,9 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
         json_store_, std::move(mock_cr50_utils),
         std::move(mock_flashrom_utils));
     auto callback =
-        std::make_unique<base::RepeatingCallback<bool(const FinalizeStatus&)>>(
-            base::BindRepeating(&SignalSender::SendFinalizeProgressSignal,
-                                base::Unretained(&signal_sender_)));
-    handler->RegisterSignalSender(std::move(callback));
+        base::BindRepeating(&SignalSender::SendFinalizeProgressSignal,
+                            base::Unretained(&signal_sender_));
+    handler->RegisterSignalSender(callback);
     return handler;
   }
 
@@ -78,7 +77,6 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_Success) {
       .WillOnce(Invoke([](const FinalizeStatus& status) {
         EXPECT_EQ(status.status(),
                   FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
-        return true;
       }));
   task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
 }
@@ -91,7 +89,6 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
       .WillOnce(Invoke([](const FinalizeStatus& status) {
         EXPECT_EQ(status.status(),
                   FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
-        return true;
       }));
   task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
 }

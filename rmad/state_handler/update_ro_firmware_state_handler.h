@@ -46,8 +46,8 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   SET_REPEATABLE;
 
   void RegisterSignalSender(
-      std::unique_ptr<UpdateRoFirmwareStatusSignalCallback> callback) override {
-    update_ro_firmware_status_signal_sender_ = std::move(callback);
+      UpdateRoFirmwareStatusSignalCallback callback) override {
+    update_ro_firmware_status_signal_sender_ = callback;
   }
 
   RmadErrorCode InitializeState() override;
@@ -78,20 +78,21 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   // True if the class is not initialized with default constructor.
   bool is_mocked_;
 
-  std::unique_ptr<CmdUtils> cmd_utils_;
-  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
-  std::unique_ptr<FlashromUtils> flashrom_utils_;
-  std::unique_ptr<CrosDisksClient> cros_disks_client_;
-  std::unique_ptr<PowerManagerClient> power_manager_client_;
-  std::unique_ptr<UpdateRoFirmwareStatusSignalCallback>
-      update_ro_firmware_status_signal_sender_;
-
   // All accesses to |active_|, |status_| and |poll_usb_| should be on the
   // same sequence.
   SEQUENCE_CHECKER(sequence_checker_);
   bool active_;
   UpdateRoFirmwareStatus status_;
   bool poll_usb_;
+
+  // Signal sender for |status_|.
+  UpdateRoFirmwareStatusSignalCallback update_ro_firmware_status_signal_sender_;
+
+  std::unique_ptr<CmdUtils> cmd_utils_;
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<FlashromUtils> flashrom_utils_;
+  std::unique_ptr<CrosDisksClient> cros_disks_client_;
+  std::unique_ptr<PowerManagerClient> power_manager_client_;
 
   // Timer for sending status signals.
   base::RepeatingTimer status_signal_timer_;
@@ -119,8 +120,8 @@ class FakeUpdateRoFirmwareStateHandler : public BaseStateHandler {
   SET_REPEATABLE;
 
   void RegisterSignalSender(
-      std::unique_ptr<UpdateRoFirmwareStatusSignalCallback> callback) override {
-    update_ro_firmware_status_signal_sender_ = std::move(callback);
+      UpdateRoFirmwareStatusSignalCallback callback) override {
+    update_ro_firmware_status_signal_sender_ = callback;
   }
 
   RmadErrorCode InitializeState() override;
@@ -133,10 +134,9 @@ class FakeUpdateRoFirmwareStateHandler : public BaseStateHandler {
  private:
   void SendFirmwareUpdateStatusSignal();
 
-  std::unique_ptr<UpdateRoFirmwareStatusSignalCallback>
-      update_ro_firmware_status_signal_sender_;
   // Timer for sending status signals.
   base::RepeatingTimer status_signal_timer_;
+  UpdateRoFirmwareStatusSignalCallback update_ro_firmware_status_signal_sender_;
 };
 
 }  // namespace fake

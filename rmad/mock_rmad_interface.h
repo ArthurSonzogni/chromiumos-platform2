@@ -7,7 +7,6 @@
 
 #include "rmad/rmad_interface.h"
 
-#include <memory>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -26,36 +25,31 @@ class MockRmadInterface : public RmadInterface {
               (override));
   MOCK_METHOD(void,
               RegisterSignalSender,
-              (RmadState::StateCase,
-               std::unique_ptr<base::RepeatingCallback<bool(bool)>>),
+              (RmadState::StateCase, base::RepeatingCallback<void(bool)>),
               (override));
   MOCK_METHOD(void,
               RegisterSignalSender,
-              (RmadState::StateCase,
-               std::unique_ptr<HardwareVerificationResultSignalCallback>),
+              (RmadState::StateCase, HardwareVerificationResultSignalCallback),
               (override));
   MOCK_METHOD(void,
               RegisterSignalSender,
-              (RmadState::StateCase,
-               std::unique_ptr<UpdateRoFirmwareStatusSignalCallback>),
+              (RmadState::StateCase, UpdateRoFirmwareStatusSignalCallback),
               (override));
   MOCK_METHOD(void,
               RegisterSignalSender,
-              (RmadState::StateCase,
-               std::unique_ptr<CalibrationOverallSignalCallback>),
+              (RmadState::StateCase, CalibrationOverallSignalCallback),
               (override));
   MOCK_METHOD(void,
               RegisterSignalSender,
-              (RmadState::StateCase,
-               std::unique_ptr<CalibrationComponentSignalCallback>),
+              (RmadState::StateCase, CalibrationComponentSignalCallback),
               (override));
   MOCK_METHOD(void,
               RegisterSignalSender,
-              (RmadState::StateCase, std::unique_ptr<ProvisionSignalCallback>),
+              (RmadState::StateCase, ProvisionSignalCallback),
               (override));
   MOCK_METHOD(void,
               RegisterSignalSender,
-              (RmadState::StateCase, std::unique_ptr<FinalizeSignalCallback>),
+              (RmadState::StateCase, FinalizeSignalCallback),
               (override));
 
   MOCK_METHOD(RmadState::StateCase, GetCurrentStateCase, (), (override));

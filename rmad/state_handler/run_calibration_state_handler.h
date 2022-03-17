@@ -39,13 +39,13 @@ class RunCalibrationStateHandler : public BaseStateHandler {
       std::unique_ptr<SensorCalibrationUtils> lid_gyro_utils);
 
   void RegisterSignalSender(
-      std::unique_ptr<CalibrationOverallSignalCallback> callback) override {
-    calibration_overall_signal_sender_ = std::move(callback);
+      CalibrationOverallSignalCallback callback) override {
+    calibration_overall_signal_sender_ = callback;
   }
 
   void RegisterSignalSender(
-      std::unique_ptr<CalibrationComponentSignalCallback> callback) override {
-    calibration_component_signal_sender_ = std::move(callback);
+      CalibrationComponentSignalCallback callback) override {
+    calibration_component_signal_sender_ = callback;
   }
 
   ASSIGN_STATE(RmadState::StateCase::kRunCalibration);
@@ -73,10 +73,8 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   // sensors that have the same setup instruction as it.
   InstructionCalibrationStatusMap calibration_map_;
   CalibrationSetupInstruction running_group_;
-  std::unique_ptr<CalibrationOverallSignalCallback>
-      calibration_overall_signal_sender_;
-  std::unique_ptr<CalibrationComponentSignalCallback>
-      calibration_component_signal_sender_;
+  CalibrationOverallSignalCallback calibration_overall_signal_sender_;
+  CalibrationComponentSignalCallback calibration_component_signal_sender_;
 
   // For each sensor, we should have its own utils to run calibration and poll
   // progress.

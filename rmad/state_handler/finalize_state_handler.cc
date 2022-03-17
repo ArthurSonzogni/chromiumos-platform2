@@ -32,7 +32,7 @@ FakeFinalizeStateHandler::FakeFinalizeStateHandler(
 }  // namespace fake
 
 FinalizeStateHandler::FinalizeStateHandler(scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    : BaseStateHandler(json_store), finalize_signal_sender_(base::DoNothing()) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
 }
@@ -42,6 +42,7 @@ FinalizeStateHandler::FinalizeStateHandler(
     std::unique_ptr<Cr50Utils> cr50_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils)
     : BaseStateHandler(json_store),
+      finalize_signal_sender_(base::DoNothing()),
       cr50_utils_(std::move(cr50_utils)),
       flashrom_utils_(std::move(flashrom_utils)) {}
 
@@ -49,9 +50,6 @@ RmadErrorCode FinalizeStateHandler::InitializeState() {
   if (!state_.has_finalize()) {
     state_.set_allocated_finalize(new FinalizeState);
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_UNKNOWN);
-  }
-  if (!finalize_signal_sender_) {
-    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
   if (!task_runner_) {
     task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
@@ -110,7 +108,7 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
 }
 
 void FinalizeStateHandler::SendStatusSignal() {
-  finalize_signal_sender_->Run(status_);
+  finalize_signal_sender_.Run(status_);
 }
 
 void FinalizeStateHandler::StartStatusTimer() {

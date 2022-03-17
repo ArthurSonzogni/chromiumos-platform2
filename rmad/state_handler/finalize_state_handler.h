@@ -34,9 +34,8 @@ class FinalizeStateHandler : public BaseStateHandler {
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
   SET_UNREPEATABLE;
 
-  void RegisterSignalSender(
-      std::unique_ptr<FinalizeSignalCallback> callback) override {
-    finalize_signal_sender_ = std::move(callback);
+  void RegisterSignalSender(FinalizeSignalCallback callback) override {
+    finalize_signal_sender_ = callback;
   }
 
   RmadErrorCode InitializeState() override;
@@ -56,10 +55,10 @@ class FinalizeStateHandler : public BaseStateHandler {
   void StartFinalize();
   void FinalizeTask();
 
+  FinalizeStatus status_;
+  FinalizeSignalCallback finalize_signal_sender_;
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<FlashromUtils> flashrom_utils_;
-  FinalizeStatus status_;
-  std::unique_ptr<FinalizeSignalCallback> finalize_signal_sender_;
   base::RepeatingTimer status_timer_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
 };

@@ -31,7 +31,7 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
   // Helper class to mock the callback function to send signal.
   class SignalSender {
    public:
-    MOCK_METHOD(bool,
+    MOCK_METHOD(void,
                 SendHardwareVerificationResultSignal,
                 (const HardwareVerificationResult&),
                 (const));
@@ -59,11 +59,10 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
             });
     auto handler = base::MakeRefCounted<WelcomeScreenStateHandler>(
         json_store_, std::move(mock_hardware_verifier_client));
-    auto callback = std::make_unique<
-        base::RepeatingCallback<bool(const HardwareVerificationResult&)>>(
+    auto callback =
         base::BindRepeating(&SignalSender::SendHardwareVerificationResultSignal,
-                            base::Unretained(&signal_sender_)));
-    handler->RegisterSignalSender(std::move(callback));
+                            base::Unretained(&signal_sender_));
+    handler->RegisterSignalSender(callback);
     return handler;
   }
 
@@ -83,7 +82,6 @@ TEST_F(WelcomeScreenStateHandlerTest,
       .WillOnce(Invoke([](const HardwareVerificationResult& result) {
         EXPECT_EQ(result.is_compliant(), true);
         EXPECT_EQ(result.error_str(), "mock_hardware_verifier_error_string");
-        return true;
       }));
   RmadState state = handler->GetState(true);
   task_environment_.RunUntilIdle();

@@ -5,7 +5,6 @@
 #ifndef RMAD_RMAD_INTERFACE_H_
 #define RMAD_RMAD_INTERFACE_H_
 
-#include <memory>
 #include <string>
 
 #include <base/callback.h>
@@ -31,43 +30,41 @@ class RmadInterface {
   // declared as template so we need to declare them one by one.
   virtual void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) = 0;
+      base::RepeatingCallback<void(bool)> callback) = 0;
 
   using HardwareVerificationResultSignalCallback =
-      base::RepeatingCallback<bool(const HardwareVerificationResult&)>;
+      base::RepeatingCallback<void(const HardwareVerificationResult&)>;
   virtual void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<HardwareVerificationResultSignalCallback> callback) = 0;
+      HardwareVerificationResultSignalCallback callback) = 0;
 
   using UpdateRoFirmwareStatusSignalCallback =
-      base::RepeatingCallback<bool(UpdateRoFirmwareStatus)>;
+      base::RepeatingCallback<void(UpdateRoFirmwareStatus)>;
   virtual void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<UpdateRoFirmwareStatusSignalCallback> callback) = 0;
+      UpdateRoFirmwareStatusSignalCallback callback) = 0;
 
   using CalibrationOverallSignalCallback =
-      base::RepeatingCallback<bool(CalibrationOverallStatus)>;
+      base::RepeatingCallback<void(CalibrationOverallStatus)>;
   virtual void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<CalibrationOverallSignalCallback> callback) = 0;
+      CalibrationOverallSignalCallback callback) = 0;
 
   using CalibrationComponentSignalCallback =
-      base::RepeatingCallback<bool(CalibrationComponentStatus)>;
+      base::RepeatingCallback<void(CalibrationComponentStatus)>;
   virtual void RegisterSignalSender(
       RmadState::StateCase state_case,
-      std::unique_ptr<CalibrationComponentSignalCallback> callback) = 0;
+      CalibrationComponentSignalCallback callback) = 0;
 
   using ProvisionSignalCallback =
-      base::RepeatingCallback<bool(const ProvisionStatus&)>;
-  virtual void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      std::unique_ptr<ProvisionSignalCallback> callback) = 0;
+      base::RepeatingCallback<void(const ProvisionStatus&)>;
+  virtual void RegisterSignalSender(RmadState::StateCase state_case,
+                                    ProvisionSignalCallback callback) = 0;
 
   using FinalizeSignalCallback =
-      base::RepeatingCallback<bool(const FinalizeStatus&)>;
-  virtual void RegisterSignalSender(
-      RmadState::StateCase state_case,
-      std::unique_ptr<FinalizeSignalCallback> callback) = 0;
+      base::RepeatingCallback<void(const FinalizeStatus&)>;
+  virtual void RegisterSignalSender(RmadState::StateCase state_case,
+                                    FinalizeSignalCallback callback) = 0;
 
   // Get the current state_case.
   virtual RmadState::StateCase GetCurrentStateCase() = 0;

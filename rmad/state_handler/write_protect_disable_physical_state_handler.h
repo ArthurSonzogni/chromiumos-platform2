@@ -42,8 +42,8 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   SET_REPEATABLE;
 
   void RegisterSignalSender(
-      std::unique_ptr<base::RepeatingCallback<bool(bool)>> callback) override {
-    write_protect_signal_sender_ = std::move(callback);
+      base::RepeatingCallback<void(bool)> callback) override {
+    write_protect_signal_sender_ = callback;
   }
 
   RmadErrorCode InitializeState() override;
@@ -59,13 +59,13 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   void PollUntilWriteProtectOff();
   void CheckWriteProtectOffTask();
 
+  base::RepeatingTimer timer_;
+  base::RepeatingCallback<void(bool)> write_protect_signal_sender_;
+
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<CryptohomeClient> cryptohome_client_;
-  std::unique_ptr<base::RepeatingCallback<bool(bool)>>
-      write_protect_signal_sender_;
-  base::RepeatingTimer timer_;
 };
 
 namespace fake {

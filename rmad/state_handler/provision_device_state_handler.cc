@@ -71,7 +71,8 @@ FakeProvisionDeviceStateHandler::FakeProvisionDeviceStateHandler(
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
+    : BaseStateHandler(json_store),
+      provision_signal_sender_(base::DoNothing()) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
@@ -90,6 +91,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<SsfcUtils> ssfc_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store),
+      provision_signal_sender_(base::DoNothing()),
       power_manager_client_(std::move(power_manager_client)),
       cbi_utils_(std::move(cbi_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
@@ -107,10 +109,6 @@ RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
   if (!task_runner_) {
     task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
-  }
-
-  if (!provision_signal_sender_) {
-    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
   // If status_name is set in |json_store_|, it means it has been provisioned.
@@ -199,7 +197,7 @@ ProvisionDeviceStateHandler::TryGetNextStateCaseAtBoot() {
 
 void ProvisionDeviceStateHandler::SendStatusSignal() {
   const ProvisionStatus& status = GetProgress();
-  provision_signal_sender_->Run(status);
+  provision_signal_sender_.Run(status);
   if (status.status() != ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS) {
     StopStatusTimer();
   }
