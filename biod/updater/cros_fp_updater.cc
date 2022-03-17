@@ -208,7 +208,8 @@ namespace updater {
 
 UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
                       const CrosFpBootUpdateCtrl& boot_ctrl,
-                      const CrosFpFirmware& fw) {
+                      const CrosFpFirmware& fw,
+                      const BiodSystem& system) {
   bool attempted = false;
   UpdateResult result = {UpdateStatus::kUpdateNotNecessary,
                          UpdateReason::kNone};
@@ -223,7 +224,6 @@ UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
     return result;
   }
 
-  BiodSystem system;
   LOG(INFO) << "Hardware write protect: "
             << (system.HardwareWriteProtectIsEnabled() ? "enabled"
                                                        : "disabled");

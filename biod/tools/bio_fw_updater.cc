@@ -170,6 +170,7 @@ int main(int argc, char* argv[]) {
 
   biod::CrosFpDeviceUpdate ec_device;
   biod::CrosFpBootUpdateCtrl boot_ctrl;
+  biod::BiodSystem system;
 
   auto ecver = ec_device.GetVersion();
   if (!ecver) {
@@ -179,7 +180,7 @@ int main(int argc, char* argv[]) {
   }
   LogFPMCUVersion(*ecver);
 
-  auto result = biod::updater::DoUpdate(ec_device, boot_ctrl, fw);
+  auto result = biod::updater::DoUpdate(ec_device, boot_ctrl, fw, system);
   metrics.SetUpdateReason(result.reason);
   switch (result.status) {
     case UpdateStatus::kUpdateFailedGetVersion:

@@ -13,6 +13,7 @@
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/cros_config_interface.h>
 
+#include "biod/biod_system.h"
 #include "biod/cros_fp_device.h"
 #include "biod/cros_fp_firmware.h"
 #include "biod/updater/update_reason.h"
@@ -49,7 +50,8 @@ struct UpdateResult {
 
 UpdateResult DoUpdate(const CrosFpDeviceUpdate& ec_dev,
                       const CrosFpBootUpdateCtrl& boot_ctrl,
-                      const CrosFpFirmware& fw);
+                      const CrosFpFirmware& fw,
+                      const BiodSystem& system);
 
 }  // namespace updater
 }  // namespace biod

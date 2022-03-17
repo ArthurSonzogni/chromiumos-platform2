@@ -19,6 +19,7 @@
 #include <cros_config/fake_cros_config.h>
 
 #include "biod/cros_fp_firmware.h"
+#include "biod/mock_biod_system.h"
 #include "biod/updater/update_reason.h"
 #include "biod/updater/update_status.h"
 #include "biod/utils.h"
@@ -116,9 +117,13 @@ class CrosFpUpdaterTest : public ::testing::Test {
         }));
     EXPECT_CALL(dev_update_, IsFlashProtectEnabled(NotNull()))
         .WillOnce(DoAll(SetArgPointee<0>(flash_protect), Return(true)));
+    EXPECT_CALL(system_, HardwareWriteProtectIsEnabled())
+        .WillRepeatedly(Return(flash_protect));
   }
 
-  UpdateResult RunUpdater() { return DoUpdate(dev_update_, boot_ctrl_, fw_); }
+  UpdateResult RunUpdater() {
+    return DoUpdate(dev_update_, boot_ctrl_, fw_, system_);
+  }
 
   CrosFpUpdaterTest() = default;
   CrosFpUpdaterTest(const CrosFpUpdaterTest&) = delete;
@@ -129,6 +134,7 @@ class CrosFpUpdaterTest : public ::testing::Test {
   MockCrosFpDeviceUpdate dev_update_;
   MockCrosFpBootUpdateCtrl boot_ctrl_;
   MockCrosFpFirmware fw_;
+  MockBiodSystem system_;
 };
 
 // EcCurrentImageToString Tests
