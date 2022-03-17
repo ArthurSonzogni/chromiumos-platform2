@@ -259,8 +259,12 @@ CryptoError PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
   // IVs are pre-generated in the VaultKeyset for PinWeaver credentials is an
   // implementation detail. The AuthBlocks are designed to hide those
   // implementation details, so this goes here.
-  key_blobs->chaps_iv = auth_state->chaps_iv.value();
-  key_blobs->vkk_iv = auth_state->fek_iv.value();
+  if (auth_state->chaps_iv.has_value()) {
+    key_blobs->chaps_iv = auth_state->chaps_iv.value();
+  }
+  if (auth_state->fek_iv.has_value()) {
+    key_blobs->vkk_iv = auth_state->fek_iv.value();
+  }
 
   // Try to obtain the High Entropy Secret from the LECredentialManager.
   brillo::SecureBlob he_secret;

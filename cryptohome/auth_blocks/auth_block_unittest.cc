@@ -453,6 +453,50 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
   EXPECT_NE(key_blobs.chaps_iv.value(), key_blobs.vkk_iv.value());
 }
 
+// Test that derive function works as intended when fek_iv and le_chaps_iv is
+// not set.
+TEST(PinWeaverAuthBlockTest, DeriveOptionalValuesTest) {
+  brillo::SecureBlob vault_key(20, 'C');
+  brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
+
+  brillo::SecureBlob le_secret(kDefaultAesKeySize);
+  ASSERT_TRUE(DeriveSecretsScrypt(vault_key, salt, {&le_secret}));
+
+  NiceMock<MockLECredentialManager> le_cred_manager;
+
+  ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
+      .WillByDefault(Return(LE_CRED_SUCCESS));
+  EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
+      .Times(Exactly(1));
+
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
+  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+
+  // Construct the vault keyset.
+  // Notice that it does not set fek_iv and le_chaps_iv;
+  SerializedVaultKeyset serialized;
+  serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+  serialized.set_salt(salt.data(), salt.size());
+  serialized.set_le_label(0);
+
+  VaultKeyset vk;
+  vk.InitializeFromSerialized(serialized);
+  AuthBlockState auth_state;
+  EXPECT_TRUE(GetAuthBlockState(vk, auth_state));
+
+  KeyBlobs key_blobs;
+  AuthInput auth_input = {vault_key};
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Derive(auth_input, auth_state, &key_blobs));
+
+  // Set expectations of the key blobs.
+  EXPECT_NE(key_blobs.reset_secret, std::nullopt);
+  // We expect this to be null because it was not set earlier.
+  EXPECT_EQ(key_blobs.chaps_iv, std::nullopt);
+  EXPECT_EQ(key_blobs.vkk_iv, std::nullopt);
+}
+
 TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   brillo::SecureBlob vault_key(20, 'C');
   brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
