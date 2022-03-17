@@ -18,11 +18,9 @@ using brillo::dbus_utils::AsyncEventSequencer;
 namespace oobe_config {
 
 OobeConfigRestoreService::OobeConfigRestoreService(
-    std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-    bool allow_unencrypted)
+    std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object)
     : org::chromium::OobeConfigRestoreAdaptor(this),
-      dbus_object_(std::move(dbus_object)),
-      allow_unencrypted_(allow_unencrypted) {}
+      dbus_object_(std::move(dbus_object)) {}
 
 OobeConfigRestoreService::~OobeConfigRestoreService() = default;
 
@@ -40,8 +38,7 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
   LOG(INFO) << "Chrome requested OOBE config.";
 
   OobeConfig oobe_config;
-  LoadOobeConfigRollback load_oobe_config_rollback(&oobe_config,
-                                                   allow_unencrypted_);
+  LoadOobeConfigRollback load_oobe_config_rollback(&oobe_config);
   std::string chrome_config_json, unused_enrollment_domain;
 
   // There is rollback data so attempt to parse it.

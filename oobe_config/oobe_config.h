@@ -24,14 +24,8 @@ class OobeConfig {
 
   ~OobeConfig();
 
-  // Saves the rollback data into an unencrypted file. Only use for testing.
-  bool UnencryptedRollbackSave() const;
-
   // Saves the rollback data into an encrypted file.
   bool EncryptedRollbackSave() const;
-
-  // Restores the rollback data from an unencrypted file. Only use for testing.
-  bool UnencryptedRollbackRestore() const;
 
   // Restores the rollback data from an encrypted file.
   bool EncryptedRollbackRestore() const;

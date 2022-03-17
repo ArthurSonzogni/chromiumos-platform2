@@ -22,8 +22,7 @@ class OobeConfigRestoreService
       public org::chromium::OobeConfigRestoreInterface {
  public:
   explicit OobeConfigRestoreService(
-      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
-      bool allow_unencrypted);
+      std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object);
   OobeConfigRestoreService(const OobeConfigRestoreService&) = delete;
   OobeConfigRestoreService& operator=(const OobeConfigRestoreService&) = delete;
 
@@ -41,7 +40,6 @@ class OobeConfigRestoreService
 
  private:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-  bool allow_unencrypted_;
 };
 
 }  // namespace oobe_config

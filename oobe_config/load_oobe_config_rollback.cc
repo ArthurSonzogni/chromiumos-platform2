@@ -20,9 +20,8 @@ using std::unique_ptr;
 
 namespace oobe_config {
 
-LoadOobeConfigRollback::LoadOobeConfigRollback(OobeConfig* oobe_config,
-                                               bool allow_unencrypted)
-    : oobe_config_(oobe_config), allow_unencrypted_(allow_unencrypted) {}
+LoadOobeConfigRollback::LoadOobeConfigRollback(OobeConfig* oobe_config)
+    : oobe_config_(oobe_config) {}
 
 bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
                                                string* enrollment_domain) {
@@ -41,12 +40,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
     LOG(INFO) << "Starting rollback restore.";
 
     // Decrypt the proto from kUnencryptedRollbackDataPath.
-    bool restore_result;
-    if (allow_unencrypted_) {
-      restore_result = oobe_config_->UnencryptedRollbackRestore();
-    } else {
-      restore_result = oobe_config_->EncryptedRollbackRestore();
-    }
+    bool restore_result = oobe_config_->EncryptedRollbackRestore();
 
     if (!restore_result) {
       LOG(ERROR) << "Failed to restore rollback data";

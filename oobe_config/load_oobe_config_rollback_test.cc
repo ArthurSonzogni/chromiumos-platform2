@@ -25,8 +25,7 @@ class LoadOobeConfigRollbackTest : public ::testing::Test {
     oobe_config_ = std::make_unique<OobeConfig>();
     ASSERT_TRUE(fake_root_dir_.CreateUniqueTempDir());
     oobe_config_->set_prefix_path_for_testing(fake_root_dir_.GetPath());
-    load_config_ = std::make_unique<LoadOobeConfigRollback>(
-        oobe_config_.get(), /*allow_unencrypted=*/true);
+    load_config_ = std::make_unique<LoadOobeConfigRollback>(oobe_config_.get());
   }
 
   base::ScopedTempDir fake_root_dir_;

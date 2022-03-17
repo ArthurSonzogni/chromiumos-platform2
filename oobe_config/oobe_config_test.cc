@@ -39,74 +39,48 @@ class OobeConfigTest : public ::testing::Test {
     oobe_config_->set_network_config_for_testing(kNetworkConfig);
   }
 
-  void CheckSaveAndRestore(bool encrypted) {
-    oobe_config_->WriteFile(kSaveTempPath.Append(kOobeCompletedFileName), "");
-
-    // Saving rollback data.
-    LOG(INFO) << "Saving rollback data...";
-    if (encrypted) {
-      ASSERT_TRUE(oobe_config_->EncryptedRollbackSave());
-    } else {
-      ASSERT_TRUE(oobe_config_->UnencryptedRollbackSave());
-    }
-    ASSERT_TRUE(oobe_config_->FileExists(kDataSavedFile));
-
-    std::string rollback_data_str;
-    ASSERT_TRUE(oobe_config_->ReadFile(kUnencryptedStatefulRollbackDataPath,
-                                       &rollback_data_str));
-
-    std::string pstore_data;
-    EXPECT_FALSE(rollback_data_str.empty());
-    if (!encrypted) {
-      oobe_config::RollbackData rollback_data;
-      ASSERT_TRUE(rollback_data.ParseFromString(rollback_data_str));
-      ASSERT_TRUE(rollback_data.eula_auto_accept());
-      ASSERT_FALSE(rollback_data.eula_send_statistics());
-    } else {
-      ASSERT_TRUE(
-          oobe_config_->ReadFile(kRollbackDataForPmsgFile, &pstore_data));
-    }
-
-    // Simulate powerwash and only preserve rollback_data by creating new temp
-    // dir.
-    base::ScopedTempDir tempdir_after;
-    ASSERT_TRUE(tempdir_after.CreateUniqueTempDir());
-    oobe_config_->set_prefix_path_for_testing(tempdir_after.GetPath());
-
-    // Verify that we don't have any remaining files.
-    std::string tmp_data = "x";
-    ASSERT_FALSE(oobe_config_->ReadFile(kUnencryptedStatefulRollbackDataPath,
-                                        &tmp_data));
-    EXPECT_TRUE(tmp_data.empty());
-
-    // Rewrite the rollback data to simulate the preservation that happens
-    // during a rollback powerwash.
-    ASSERT_TRUE(oobe_config_->WriteFile(kUnencryptedStatefulRollbackDataPath,
-                                        rollback_data_str));
-    if (encrypted) {
-      oobe_config_->WriteFile(kPstorePath.Append("pmsg-ramoops-0"),
-                              pstore_data);
-    }
-
-    // Restore data.
-    LOG(INFO) << "Restoring rollback data...";
-    if (encrypted) {
-      EXPECT_TRUE(oobe_config_->EncryptedRollbackRestore());
-    } else {
-      EXPECT_TRUE(oobe_config_->UnencryptedRollbackRestore());
-    }
-  }
-
   base::ScopedTempDir fake_root_dir_;
   std::unique_ptr<OobeConfig> oobe_config_;
 };
 
-TEST_F(OobeConfigTest, UnencryptedSaveAndRestoreTest) {
-  CheckSaveAndRestore(false /* encrypted */);
-}
-
 TEST_F(OobeConfigTest, EncryptedSaveAndRestoreTest) {
-  CheckSaveAndRestore(true /* encrypted */);
+  oobe_config_->WriteFile(kSaveTempPath.Append(kOobeCompletedFileName), "");
+
+  // Saving rollback data.
+  LOG(INFO) << "Saving rollback data...";
+  ASSERT_TRUE(oobe_config_->EncryptedRollbackSave());
+
+  ASSERT_TRUE(oobe_config_->FileExists(kDataSavedFile));
+
+  std::string rollback_data_str;
+  ASSERT_TRUE(oobe_config_->ReadFile(kUnencryptedStatefulRollbackDataPath,
+                                     &rollback_data_str));
+  EXPECT_FALSE(rollback_data_str.empty());
+
+  std::string pstore_data;
+  ASSERT_TRUE(oobe_config_->ReadFile(kRollbackDataForPmsgFile, &pstore_data));
+
+  // Simulate powerwash and only preserve rollback_data by creating new temp
+  // dir.
+  base::ScopedTempDir tempdir_after;
+  ASSERT_TRUE(tempdir_after.CreateUniqueTempDir());
+  oobe_config_->set_prefix_path_for_testing(tempdir_after.GetPath());
+
+  // Verify that we don't have any remaining files.
+  std::string tmp_data = "x";
+  ASSERT_FALSE(
+      oobe_config_->ReadFile(kUnencryptedStatefulRollbackDataPath, &tmp_data));
+  EXPECT_TRUE(tmp_data.empty());
+
+  // Rewrite the rollback data to simulate the preservation that happens
+  // during a rollback powerwash.
+  ASSERT_TRUE(oobe_config_->WriteFile(kUnencryptedStatefulRollbackDataPath,
+                                      rollback_data_str));
+  oobe_config_->WriteFile(kPstorePath.Append("pmsg-ramoops-0"), pstore_data);
+
+  // Restore data.
+  LOG(INFO) << "Restoring rollback data...";
+  EXPECT_TRUE(oobe_config_->EncryptedRollbackRestore());
 }
 
 TEST_F(OobeConfigTest, ReadNonexistentFile) {

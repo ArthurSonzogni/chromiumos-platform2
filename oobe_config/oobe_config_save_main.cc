@@ -25,8 +25,6 @@ void InitLog() {
 
 }  // namespace oobe_config
 
-const char kTestUnencrypted[] = "test-unencrypted";
-
 int main(int argc, char* argv[]) {
   oobe_config::InitLog();
 
@@ -34,13 +32,7 @@ int main(int argc, char* argv[]) {
 
   base::CommandLine::Init(argc, argv);
   LOG(INFO) << "Starting oobe_config_save";
-  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  bool save_result;
-  if (cl->HasSwitch(kTestUnencrypted)) {
-    save_result = oobe_config::OobeConfig().UnencryptedRollbackSave();
-  } else {
-    save_result = oobe_config::OobeConfig().EncryptedRollbackSave();
-  }
+  bool save_result = oobe_config::OobeConfig().EncryptedRollbackSave();
 
   if (!save_result) {
     LOG(ERROR) << "Failed to save rollback data";

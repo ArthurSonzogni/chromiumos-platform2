@@ -32,9 +32,8 @@ void InitLog() {
 
 class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
  public:
-  explicit OobeConfigRestoreDaemon(bool allow_unencrypted)
-      : DBusServiceDaemon(kOobeConfigRestoreServiceName),
-        allow_unencrypted_(allow_unencrypted) {}
+  OobeConfigRestoreDaemon()
+      : DBusServiceDaemon(kOobeConfigRestoreServiceName) {}
   OobeConfigRestoreDaemon(const OobeConfigRestoreDaemon&) = delete;
   OobeConfigRestoreDaemon& operator=(const OobeConfigRestoreDaemon&) = delete;
 
@@ -44,8 +43,8 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
         nullptr, bus_,
         org::chromium::OobeConfigRestoreAdaptor::GetObjectPath());
 
-    service_ = std::make_unique<OobeConfigRestoreService>(
-        std::move(dbus_object), allow_unencrypted_);
+    service_ =
+        std::make_unique<OobeConfigRestoreService>(std::move(dbus_object));
     service_->RegisterAsync(sequencer->GetHandler(
         "OobeConfigRestoreService.RegisterAsync() failed.", true));
   }
@@ -57,22 +56,17 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
 
  private:
   std::unique_ptr<OobeConfigRestoreService> service_;
-  bool allow_unencrypted_;
 };
 
 // Runs OobeConfigRestoreDaemon.
-int RunDaemon(bool allow_unencrypted, bool force_start) {
+int RunDaemon(bool force_start) {
   if (!force_start && base::PathExists(kOobeCompletedFile)) {
     LOG(INFO) << "OOBE is already complete.";
     return 0;
   }
 
-  if (allow_unencrypted) {
-    LOG(WARNING) << "OOBE config is starting in unencrypted mode";
-  }
-
   LOG(INFO) << "Starting oobe_config_restore daemon";
-  OobeConfigRestoreDaemon daemon(allow_unencrypted);
+  OobeConfigRestoreDaemon daemon;
   int res = daemon.Run();
 
   LOG(INFO) << "oobe_config_restore stopping with exit code " << res;
@@ -83,11 +77,7 @@ int RunDaemon(bool allow_unencrypted, bool force_start) {
 
 // Execute the first stage of the restore process itself immediately (without
 // waiting for Chrome to initiate it). Use only for testing.
-constexpr char kTestUnencrypted[] = "test-unencrypted";
 constexpr char kTestEncrypted[] = "test-encrypted";
-
-// Starts the service using unencrypted rollback data. Use only for testing.
-constexpr char kAllowUnencrypted[] = "allow-unencrypted";
 
 // Starts the service even if OOBE is already complete. Use only for testing.
 constexpr char kForceStart[] = "force-start";
@@ -97,12 +87,9 @@ int main(int argc, char* argv[]) {
 
   base::CommandLine::Init(argc, argv);
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  if (cl->HasSwitch(kTestUnencrypted)) {
-    return oobe_config::OobeConfig().UnencryptedRollbackRestore();
-  } else if (cl->HasSwitch(kTestEncrypted)) {
+  if (cl->HasSwitch(kTestEncrypted)) {
     return oobe_config::OobeConfig().EncryptedRollbackRestore();
   } else {
-    return oobe_config::RunDaemon(cl->HasSwitch(kAllowUnencrypted),
-                                  cl->HasSwitch(kForceStart));
+    return oobe_config::RunDaemon(cl->HasSwitch(kForceStart));
   }
 }

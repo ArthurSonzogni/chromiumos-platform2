@@ -115,26 +115,6 @@ bool OobeConfig::GetSerializedRollbackData(
   return true;
 }
 
-bool OobeConfig::UnencryptedRollbackSave() const {
-  std::string serialized_rollback_data;
-  if (!GetSerializedRollbackData(&serialized_rollback_data)) {
-    return false;
-  }
-
-  if (!WriteFile(kUnencryptedStatefulRollbackDataPath,
-                 serialized_rollback_data)) {
-    LOG(ERROR) << "Failed to write unencrypted rollback data file.";
-    return false;
-  }
-
-  if (!WriteFile(kDataSavedFile, std::string())) {
-    LOG(ERROR) << "Failed to write data saved flag.";
-    return false;
-  }
-
-  return true;
-}
-
 bool OobeConfig::EncryptedRollbackSave() const {
   std::string serialized_rollback_data;
   if (!GetSerializedRollbackData(&serialized_rollback_data)) {
@@ -169,27 +149,6 @@ bool OobeConfig::EncryptedRollbackSave() const {
     LOG(ERROR) << "Failed to write data saved flag.";
     return false;
   }
-
-  return true;
-}
-
-bool OobeConfig::UnencryptedRollbackRestore() const {
-  std::string rollback_data_str;
-  if (!ReadFile(kUnencryptedStatefulRollbackDataPath, &rollback_data_str)) {
-    return false;
-  }
-  // Write the unencrypted data immediately to
-  // kEncryptedStatefulRollbackDataPath.
-  if (!WriteFile(kEncryptedStatefulRollbackDataPath, rollback_data_str)) {
-    return false;
-  }
-
-  RollbackData rollback_data;
-  if (!rollback_data.ParseFromString(rollback_data_str)) {
-    LOG(ERROR) << "Couldn't parse proto.";
-    return false;
-  }
-  LOG(INFO) << "Parsed " << kUnencryptedStatefulRollbackDataPath.value();
 
   return true;
 }

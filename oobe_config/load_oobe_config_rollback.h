@@ -23,7 +23,7 @@ class RollbackData;
 // file after rollback.
 class LoadOobeConfigRollback : public LoadOobeConfigInterface {
  public:
-  LoadOobeConfigRollback(OobeConfig* oobe_config, bool allow_unencrypted);
+  explicit LoadOobeConfigRollback(OobeConfig* oobe_config);
   LoadOobeConfigRollback(const LoadOobeConfigRollback&) = delete;
   LoadOobeConfigRollback& operator=(const LoadOobeConfigRollback&) = delete;
 
@@ -40,7 +40,6 @@ class LoadOobeConfigRollback : public LoadOobeConfigInterface {
   bool AssembleConfig(const RollbackData& rollback_data, std::string* config);
 
   OobeConfig* oobe_config_;
-  bool allow_unencrypted_ = false;
   Metrics metrics_;  // For UMA metrics logging.
 };
 
