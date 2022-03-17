@@ -9,8 +9,8 @@
 
 #include <mojo/public/cpp/bindings/receiver.h>
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 
 class LocalStateImpl : public LocalState, public mojom::State {
@@ -58,5 +58,5 @@ std::unique_ptr<LocalState> LocalState::Create(
 }
 
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos

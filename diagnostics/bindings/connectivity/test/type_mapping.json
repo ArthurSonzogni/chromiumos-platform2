@@ -1,8 +1,8 @@
 {
   "c++": {
-    "diagnostics.bindings.connectivity.test.common.mojom.TypeMapping": {
+    "chromeos.cros_healthd.connectivity.test.common.mojom.TypeMapping": {
       "hashable": false,
-      "typename": "::diagnostics::bindings::connectivity::test::MyTypeMapping",
+      "typename": "::chromeos::cros_healthd::connectivity::test::MyTypeMapping",
       "forward_declaration": null,
       "traits_headers": [
         "diagnostics/bindings/connectivity/test/my_type_mapping_traits.h"

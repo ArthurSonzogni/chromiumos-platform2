@@ -3,12 +3,12 @@
 {%- set class_name = union.name ~ "DataGenerator" -%}
 
 std::unique_ptr<{{class_name}}> {{class_name}}::Create(
-    ::diagnostics::bindings::connectivity::Context* context) {
+    ::chromeos::cros_healthd::connectivity::Context* context) {
   return std::unique_ptr<{{class_name}}>(new {{class_name}}(context, false));
 }
 
 {{class_name}}::{{class_name}}(
-    ::diagnostics::bindings::connectivity::Context* context, bool nullable)
+    ::chromeos::cros_healthd::connectivity::Context* context, bool nullable)
   : nullable_(nullable) {
   {{method_macro.define_data_generator("", "context", union.fields)}}
 }

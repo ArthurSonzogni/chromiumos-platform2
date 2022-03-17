@@ -8,8 +8,8 @@
 
 #include <mojo/public/cpp/system/platform_handle.h>
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 
 constexpr char kDevNull[] = "/dev/null";
@@ -21,5 +21,5 @@ constexpr char kDevNull[] = "/dev/null";
 }
 
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos

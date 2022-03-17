@@ -11,8 +11,8 @@
 
 #include "diagnostics/bindings/connectivity/mojom/state.mojom.h"
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 
 // LocalState provides interface to set the local internal state of
@@ -42,7 +42,7 @@ class LocalState {
 };
 
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos
 
 #endif  // DIAGNOSTICS_BINDINGS_CONNECTIVITY_LOCAL_STATE_H_

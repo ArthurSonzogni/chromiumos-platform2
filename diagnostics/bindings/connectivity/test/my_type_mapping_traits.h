@@ -13,20 +13,21 @@
 #include "diagnostics/bindings/connectivity/test/my_type_mapping.h"
 #include "diagnostics/bindings/connectivity/test/test_common.mojom.h"
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 namespace test {
 
 class MyTypeMappingGenerator
-    : public bindings::connectivity::DataGeneratorInterface<MyTypeMapping> {
+    : public ::chromeos::cros_healthd::connectivity::DataGeneratorInterface<
+          MyTypeMapping> {
  public:
   MyTypeMappingGenerator(const MyTypeMappingGenerator&) = delete;
   MyTypeMappingGenerator& operator=(const MyTypeMappingGenerator&) = delete;
   virtual ~MyTypeMappingGenerator() = default;
 
   static std::unique_ptr<MyTypeMappingGenerator> Create(
-      bindings::connectivity::Context*) {
+      ::chromeos::cros_healthd::connectivity::Context*) {
     return std::unique_ptr<MyTypeMappingGenerator>(
         new MyTypeMappingGenerator());
   }
@@ -49,25 +50,25 @@ class MyTypeMappingGenerator
 
 }  // namespace test
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos
 
 namespace mojo {
 
 template <>
 struct StructTraits<
-    ::diagnostics::bindings::connectivity::test::common::mojom::
+    ::chromeos::cros_healthd::connectivity::test::common::mojom::
         TypeMappingDataView,
-    ::diagnostics::bindings::connectivity::test::MyTypeMapping> {
+    ::chromeos::cros_healthd::connectivity::test::MyTypeMapping> {
   static int32_t n(
-      const ::diagnostics::bindings::connectivity::test::MyTypeMapping&
+      const ::chromeos::cros_healthd::connectivity::test::MyTypeMapping&
           my_type_mapping) {
     return 42;
   }
 
-  static bool Read(::diagnostics::bindings::connectivity::test::common::mojom::
+  static bool Read(::chromeos::cros_healthd::connectivity::test::common::mojom::
                        TypeMappingDataView data,
-                   ::diagnostics::bindings::connectivity::test::MyTypeMapping*
+                   ::chromeos::cros_healthd::connectivity::test::MyTypeMapping*
                        my_type_mapping) {
     return true;
   }

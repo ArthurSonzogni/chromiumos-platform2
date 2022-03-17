@@ -23,8 +23,8 @@
 #include "diagnostics/bindings/connectivity/test/test_common.mojom-connectivity.h"
 #include "diagnostics/bindings/connectivity/test/test_server.mojom-connectivity.h"
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 namespace test {
 namespace {
@@ -209,5 +209,5 @@ FAILED_TEST(TestFailSubInterfaceBackward);
 }  // namespace
 }  // namespace test
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos

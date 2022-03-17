@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-module diagnostics.bindings.connectivity.test.server.mojom;
+module chromeos.cros_healthd.connectivity.test.server.mojom;
 
 import "diagnostics/bindings/connectivity/test/test_common.mojom";
 
@@ -65,9 +65,10 @@ interface TestSuccess {
   FunPutTwoLayerInterfaceR(pending_remote<BarInterface> on_response) => ();
   FunGetTwoLayerInterface(pending_receiver<BarInterface> on_response);
   FunGetTwoLayerInterfaceR(pending_receiver<BarInterface> on_response) => ();
-  FunCommon(diagnostics.bindings.connectivity.test.common.mojom.CommonStruct s);
+  FunCommon(
+    chromeos.cros_healthd.connectivity.test.common.mojom.CommonStruct s);
   FunCommonNull(
-    diagnostics.bindings.connectivity.test.common.mojom.CommonStruct? s);
+    chromeos.cros_healthd.connectivity.test.common.mojom.CommonStruct? s);
 };
 
 interface TestMissFunction {

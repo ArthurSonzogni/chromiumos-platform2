@@ -7,8 +7,8 @@
 
 #include <base/callback.h>
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 
 // Runs or returns. Gets the result of the callback of |get_result|. If the
@@ -38,7 +38,7 @@ void RunSuccessOrFailed(
     base::OnceClosure on_failed);
 
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos
 
 #endif  // DIAGNOSTICS_BINDINGS_CONNECTIVITY_UTILS_H_

@@ -5,8 +5,8 @@
 #ifndef DIAGNOSTICS_BINDINGS_CONNECTIVITY_TEST_MY_TYPE_MAPPING_H_
 #define DIAGNOSTICS_BINDINGS_CONNECTIVITY_TEST_MY_TYPE_MAPPING_H_
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 namespace test {
 
@@ -14,7 +14,7 @@ class MyTypeMapping {};
 
 }  // namespace test
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos
 
 #endif  // DIAGNOSTICS_BINDINGS_CONNECTIVITY_TEST_MY_TYPE_MAPPING_H_

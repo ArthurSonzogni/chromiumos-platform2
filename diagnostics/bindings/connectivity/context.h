@@ -8,8 +8,8 @@
 #include <memory>
 #include <string>
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 
 class LocalState;
@@ -37,7 +37,7 @@ class Context {
 };
 
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos
 
 #endif  // DIAGNOSTICS_BINDINGS_CONNECTIVITY_CONTEXT_H_

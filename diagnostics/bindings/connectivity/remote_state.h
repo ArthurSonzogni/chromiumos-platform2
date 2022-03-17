@@ -12,8 +12,8 @@
 
 #include "diagnostics/bindings/connectivity/mojom/state.mojom.h"
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 
 // RemoteState provides interface to get the remote internal state of
@@ -50,7 +50,7 @@ class RemoteState {
 };
 
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos
 
 #endif  // DIAGNOSTICS_BINDINGS_CONNECTIVITY_REMOTE_STATE_H_

@@ -22,7 +22,7 @@
 
 namespace diagnostics {
 namespace {
-namespace connectivity = bindings::connectivity;
+namespace connectivity = ::chromeos::cros_healthd::connectivity;
 namespace mojom = ::chromeos::cros_healthd::mojom;
 
 class CrosHealthdConnectivityTest : public ::testing::Test {

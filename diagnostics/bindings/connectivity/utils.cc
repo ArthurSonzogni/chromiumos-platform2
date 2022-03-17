@@ -8,8 +8,8 @@
 
 #include <base/bind.h>
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 namespace {
 
@@ -56,5 +56,5 @@ void RunSuccessOrFailed(
 }
 
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos

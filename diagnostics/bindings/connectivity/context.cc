@@ -9,8 +9,8 @@
 #include "diagnostics/bindings/connectivity/local_state.h"
 #include "diagnostics/bindings/connectivity/remote_state.h"
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 
 class ContextImpl : public Context {
@@ -40,5 +40,5 @@ std::unique_ptr<Context> Context::Create(
 }
 
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos

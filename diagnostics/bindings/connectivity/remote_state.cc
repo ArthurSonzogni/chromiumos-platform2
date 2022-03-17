@@ -10,8 +10,8 @@
 #include <base/memory/weak_ptr.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 
 class RemoteStateImpl : public RemoteState {
@@ -59,5 +59,5 @@ std::unique_ptr<RemoteState> RemoteState::Create(
 }
 
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos

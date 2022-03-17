@@ -14,14 +14,15 @@
 namespace diagnostics {
 
 class BaseTimeGenerator
-    : public bindings::connectivity::DataGeneratorInterface<base::Time> {
+    : public ::chromeos::cros_healthd::connectivity::DataGeneratorInterface<
+          base::Time> {
  public:
   BaseTimeGenerator(const BaseTimeGenerator&) = delete;
   BaseTimeGenerator& operator=(const BaseTimeGenerator&) = delete;
   virtual ~BaseTimeGenerator() = default;
 
   static std::unique_ptr<BaseTimeGenerator> Create(
-      bindings::connectivity::Context*) {
+      ::chromeos::cros_healthd::connectivity::Context*) {
     return std::unique_ptr<BaseTimeGenerator>(new BaseTimeGenerator());
   }
 
@@ -38,14 +39,15 @@ class BaseTimeGenerator
 };
 
 class BaseTimeDeltaGenerator
-    : public bindings::connectivity::DataGeneratorInterface<base::TimeDelta> {
+    : public ::chromeos::cros_healthd::connectivity::DataGeneratorInterface<
+          base::TimeDelta> {
  public:
   BaseTimeDeltaGenerator(const BaseTimeDeltaGenerator&) = delete;
   BaseTimeDeltaGenerator& operator=(const BaseTimeDeltaGenerator&) = delete;
   virtual ~BaseTimeDeltaGenerator() = default;
 
   static std::unique_ptr<BaseTimeDeltaGenerator> Create(
-      bindings::connectivity::Context*) {
+      ::chromeos::cros_healthd::connectivity::Context*) {
     return std::unique_ptr<BaseTimeDeltaGenerator>(
         new BaseTimeDeltaGenerator());
   }

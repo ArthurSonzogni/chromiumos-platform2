@@ -16,8 +16,8 @@
 
 #include "diagnostics/bindings/connectivity/context.h"
 
-namespace diagnostics {
-namespace bindings {
+namespace chromeos {
+namespace cros_healthd {
 namespace connectivity {
 
 template <typename T>
@@ -239,7 +239,7 @@ class HandleDataGenerator
 };
 
 }  // namespace connectivity
-}  // namespace bindings
-}  // namespace diagnostics
+}  // namespace cros_healthd
+}  // namespace chromeos
 
 #endif  // DIAGNOSTICS_BINDINGS_CONNECTIVITY_DATA_GENERATOR_H_

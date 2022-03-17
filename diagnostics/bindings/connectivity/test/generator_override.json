@@ -1,7 +1,7 @@
 {
   "c++": {
-    "diagnostics.bindings.connectivity.test.common.mojom.TypeMapping": {
-      "generator_typename": "::diagnostics::bindings::connectivity::test::MyTypeMappingGenerator",
+    "chromeos.cros_healthd.connectivity.test.common.mojom.TypeMapping": {
+      "generator_typename": "::chromeos::cros_healthd::connectivity::test::MyTypeMappingGenerator",
       "generator_headers": [
         "diagnostics/bindings/connectivity/test/my_type_mapping_traits.h"
       ]
