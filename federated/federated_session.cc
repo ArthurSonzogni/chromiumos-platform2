@@ -18,54 +18,61 @@
 namespace federated {
 
 namespace {
+#if USE_LOCAL_FEDERATED_SERVER
+constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(30);
+constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(10);
+#else
 // TODO(alanlxl): discussion required about the default window.
 constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(60 * 5);
 
 // To avoid spam, retry window should not be shorter than kMinimalRetryWindow.
 constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(60);
+#endif
 
 // TODO(alanlxl): Just dummpy impl.
 void LogCrosEvent(const fcp::client::CrosEvent& cros_event) {
   LOG(INFO) << "In LogCrosEvent, model_id is " << cros_event.model_id();
 
-  if (cros_event.has_eligibility_eval_checkin())
+  if (cros_event.has_eligibility_eval_checkin()) {
     LOG(INFO) << "cros_event has_eligibility_eval_checkin";
-  else if (cros_event.has_eligibility_eval_plan_received())
+  } else if (cros_event.has_eligibility_eval_plan_received()) {
     LOG(INFO) << "cros_event has_eligibility_eval_plan_received";
-  else if (cros_event.has_eligibility_eval_not_configured())
+  } else if (cros_event.has_eligibility_eval_not_configured()) {
     LOG(INFO) << "cros_event.has_eligibility_eval_not_configured";
-  else if (cros_event.has_eligibility_eval_rejected())
+  } else if (cros_event.has_eligibility_eval_rejected()) {
     LOG(INFO) << "cros_event.has_eligibility_eval_rejected";
-  else if (cros_event.has_checkin())
+  } else if (cros_event.has_checkin()) {
     LOG(INFO) << "cros_event.has_checkin";
-  else if (cros_event.has_checkin_finished())
+  } else if (cros_event.has_checkin_finished()) {
     LOG(INFO) << "cros_event.has_checkin_finished";
-  else if (cros_event.has_rejected())
+  } else if (cros_event.has_rejected()) {
     LOG(INFO) << "cros_event.has_rejected";
-  else if (cros_event.has_report_started())
+  } else if (cros_event.has_report_started()) {
     LOG(INFO) << "cros_event.has_report_started";
-  else if (cros_event.has_report_finished())
+  } else if (cros_event.has_report_finished()) {
     LOG(INFO) << "cros_event.has_report_finished";
-  else if (cros_event.has_plan_execution_started())
+  } else if (cros_event.has_plan_execution_started()) {
     LOG(INFO) << "cros_event.has_plan_execution_started";
-  else if (cros_event.has_epoch_started())
+  } else if (cros_event.has_epoch_started()) {
     LOG(INFO) << "cros_event.has_epoch_started";
-  else if (cros_event.has_tensorflow_error())
-    LOG(INFO) << "cros_even.has_tensorflow_error";
-  else if (cros_event.has_io_error())
+  } else if (cros_event.has_tensorflow_error()) {
+    LOG(INFO) << "cros_event.has_tensorflow_error";
+    DVLOG(1) << cros_event.DebugString();
+  } else if (cros_event.has_io_error()) {
     LOG(INFO) << "cros_event.has_io_error";
-  else if (cros_event.has_example_selector_error())
+  } else if (cros_event.has_example_selector_error()) {
     LOG(INFO) << "cros_event.has_example_selector_error";
-  else if (cros_event.has_interruption())
+  } else if (cros_event.has_interruption()) {
     LOG(INFO) << "cros_event.has_interruption";
-  else if (cros_event.has_epoch_completed())
+  } else if (cros_event.has_epoch_completed()) {
     LOG(INFO) << "cros_event.has_epoch_completed";
-  else if (cros_event.has_stats())
+  } else if (cros_event.has_stats()) {
     LOG(INFO) << "cros_event.has_stats";
-  else if (cros_event.has_plan_completed())
+  } else if (cros_event.has_plan_completed()) {
     LOG(INFO) << "cros_event.has_plan_completed";
-  else
+  } else {
     LOG(INFO) << "cros_event doesn't have any event log";
+  }
 }
 
 // TODO(alanlxl): Just dummpy impl.
@@ -194,6 +201,9 @@ void FederatedSession::RunPlan(ExampleDatabase::Iterator&& example_iterator) {
 
   // TODO(alanlxl): maybe log the event to UMA
   if (result.status == CONTRIBUTED || result.status == REJECTED_BY_SERVER) {
+    DVLOG(1) << "result.status = " << result.status;
+    DVLOG(1) << "result.retry_token = " << result.retry_token;
+    DVLOG(1) << "result.delay_usecs = " << result.delay_usecs;
     client_config_.retry_token = std::string(result.retry_token);
     next_retry_delay_ = base::Microseconds(result.delay_usecs);
 

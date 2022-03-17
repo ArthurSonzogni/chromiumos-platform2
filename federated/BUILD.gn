@@ -27,6 +27,8 @@ pkg_config("federated_common_pkg_deps") {
     "libdlcservice-client",
     "libmojo",
     "libsession_manager-client",
+    "libshill-client",
+    "libshill-dbus-client",
     "sqlite3",
     "system_api",
   ]
@@ -64,11 +66,14 @@ static_library("federated_common") {
     "federated_metadata.cc",
     "federated_service_impl.cc",
     "federated_session.cc",
+    "network_status_training_condition.cc",
+    "power_supply_training_condition.cc",
     "scheduler.cc",
     "session_manager_proxy.cc",
     "storage_manager.cc",
     "utils.cc",
   ]
+  defines = [ "USE_LOCAL_FEDERATED_SERVER=${use.local_federated_server}" ]
   all_dependent_configs = [ ":federated_common_pkg_deps" ]
   pkg_deps = [ "protobuf" ]
   deps = [
@@ -119,6 +124,8 @@ if (use.test) {
       "example_database_test.cc",
       "federated_service_impl_test.cc",
       "mock_example_database.cc",
+      "network_status_training_condition_test.cc",
+      "power_supply_training_condition_test.cc",
       "session_manager_proxy_test.cc",
       "storage_manager_test.cc",
       "test_utils.cc",

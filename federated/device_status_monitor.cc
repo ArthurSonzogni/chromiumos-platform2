@@ -1,80 +1,42 @@
 // Copyright 2021 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include <string>
 
-#include <base/bind.h>
 #include <base/logging.h>
-#include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
+#include <memory>
+#include <utility>
 
 #include "federated/device_status_monitor.h"
-#include "power_manager/proto_bindings/power_supply_properties.pb.h"
+#include "federated/network_status_training_condition.h"
+#include "federated/power_supply_training_condition.h"
 
 namespace federated {
-namespace {
 
-// TODO(alanlxl): use 90% for now.
-constexpr double kMinimumAdequateBatteryLevel = 90.0;
-
-void OnSignalConnected(const std::string& interface_name,
-                       const std::string& signal_name,
-                       bool success) {
-  if (!success)
-    LOG(ERROR) << "Failed to connect to signal " << interface_name << ":"
-               << signal_name << ".";
+DeviceStatusMonitor::DeviceStatusMonitor(
+    std::vector<std::unique_ptr<TrainingCondition>> training_conditions)
+    : training_conditions_(std::move(training_conditions)) {
+  DVLOG(1) << "Creating DeviceStatusMonitor";
 }
 
-}  // namespace
+std::unique_ptr<DeviceStatusMonitor> DeviceStatusMonitor::CreateFromDBus(
+    dbus::Bus* bus) {
+  std::vector<std::unique_ptr<TrainingCondition>> training_conditions(2);
+  training_conditions[0] = std::make_unique<PowerSupplyTrainingCondition>(bus);
+  training_conditions[1] = std::make_unique<NetworkStatusTrainingCondition>(
+      std::make_unique<shill::Client>(bus));
 
-DeviceStatusMonitor::DeviceStatusMonitor(dbus::Bus* bus)
-    : powerd_dbus_proxy_(bus->GetObjectProxy(
-          power_manager::kPowerManagerServiceName,
-          dbus::ObjectPath(power_manager::kPowerManagerServicePath))),
-      enough_battery_(false),
-      weak_ptr_factory_(this) {
-  DCHECK_NE(powerd_dbus_proxy_, nullptr);
-  // Updates the battery status when receiving the kPowerSupplyPollSignal.
-  powerd_dbus_proxy_->ConnectToSignal(
-      power_manager::kPowerManagerInterface,
-      power_manager::kPowerSupplyPollSignal,
-      base::BindRepeating(&DeviceStatusMonitor::OnPowerSupplyReceived,
-                          weak_ptr_factory_.GetWeakPtr()),
-      base::BindOnce(&OnSignalConnected));
+  return std::make_unique<DeviceStatusMonitor>(std::move(training_conditions));
 }
-
-DeviceStatusMonitor::~DeviceStatusMonitor() = default;
 
 bool DeviceStatusMonitor::TrainingConditionsSatisfied() const {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return enough_battery_;
-}
-
-void DeviceStatusMonitor::OnPowerSupplyReceived(dbus::Signal* const signal) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (signal == nullptr) {
-    DVLOG(1) << "Received a null signal in OnPowerSupplyReceived.";
-    enough_battery_ = false;
-    return;
-  }
-
-  dbus::MessageReader reader(signal);
-  power_manager::PowerSupplyProperties power_supply_proto;
-  if (!reader.PopArrayOfBytesAsProto(&power_supply_proto)) {
-    DVLOG(1) << "Failed to read PowerSupplyProperties proto from dbus message.";
-    enough_battery_ = false;
-    return;
-  }
-
-  // When battery is enough, or the device is plugged-in.
-  enough_battery_ =
-      (power_supply_proto.has_battery_percent() &&
-       power_supply_proto.battery_percent() > kMinimumAdequateBatteryLevel) ||
-      (power_supply_proto.has_battery_state() &&
-       power_supply_proto.battery_state() !=
-           power_manager::PowerSupplyProperties::DISCHARGING);
+  DVLOG(1) << "DeviceStatusMonitor::TrainingConditionsSatisfied()";
+  return std::all_of(training_conditions_.begin(), training_conditions_.end(),
+                     [](auto const& condition) {
+                       return condition->IsTrainingConditionSatisfied();
+                     });
 }
 
 }  // namespace federated

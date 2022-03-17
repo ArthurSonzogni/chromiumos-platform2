@@ -17,7 +17,45 @@
 #include "federated/session_manager_proxy.h"
 #include "federated/utils.h"
 
+#if USE_LOCAL_FEDERATED_SERVER
+#include <vector>
+#include "federated/mojom/example.mojom.h"
+#endif
+
 namespace federated {
+#if USE_LOCAL_FEDERATED_SERVER
+// When we are testing against a local federated server, we want to populate
+// the test server with generic test data
+namespace {
+using ::chromeos::federated::mojom::Example;
+using ::chromeos::federated::mojom::ExamplePtr;
+using ::chromeos::federated::mojom::Features;
+using ::chromeos::federated::mojom::FloatList;
+using ::chromeos::federated::mojom::Int64List;
+using ::chromeos::federated::mojom::StringList;
+using ::chromeos::federated::mojom::ValueList;
+using ::chromeos::federated::mojom::ValueListPtr;
+
+ValueListPtr CreateInt64List(const std::vector<int64_t>& values) {
+  ValueListPtr value_list = ValueList::New();
+  value_list->set_int64_list(Int64List::New());
+  value_list->get_int64_list()->value = std::vector<int64_t>();
+  value_list->get_int64_list()->value = values;
+  return value_list;
+}
+
+ExamplePtr CreateExamplePtr() {
+  ExamplePtr example = Example::New();
+  example->features = Features::New();
+  auto& feature_map = example->features->feature;
+  feature_map["int_feature1"] = CreateInt64List({1, 2, 3, 4, 5});
+  feature_map["int_feature2"] = CreateInt64List({10, 20, 30, 40, 50});
+
+  return example;
+}
+
+}  // namespace
+#endif
 
 StorageManager::StorageManager() = default;
 StorageManager::~StorageManager() = default;
@@ -98,7 +136,7 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
 
   sanitized_username_ = new_sanitized_username;
   const auto db_path = GetDatabasePath(sanitized_username_);
-  example_database_.reset(new ExampleDatabase(db_path));
+  example_database_ = std::make_unique<ExampleDatabase>(db_path);
 
   if (!example_database_->Init(GetClientNames())) {
     LOG(ERROR) << "Failed to connect to database for user "
@@ -111,6 +149,15 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
       LOG(ERROR) << "Failed to delete corrupted db file " << db_path.value();
     }
     example_database_.reset();
+  } else {
+#if USE_LOCAL_FEDERATED_SERVER
+    DVLOG(1) << "Successfully connect to database, inserts examples for test.";
+    for (size_t i = 0; i < 10; i++) {
+      OnExampleReceived("analytics_test_population",
+                        ConvertToTensorFlowExampleProto(CreateExamplePtr())
+                            .SerializeAsString());
+    }
+#endif
   }
 }
 

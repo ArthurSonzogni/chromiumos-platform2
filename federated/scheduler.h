@@ -13,25 +13,25 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
+// NOLINTNEXTLINE(build/include_alpha) "dbus-proxies.h" needs "dlcservice.pb.h"
+#include <dlcservice/dbus-proxies.h>
 
-#include "federated/device_status_monitor.h"
 #include "federated/federated_session.h"
-
-namespace org {
-namespace chromium {
-class DlcServiceInterfaceProxyInterface;
-}  // namespace chromium
-}  // namespace org
 
 namespace federated {
 class StorageManager;
+class DeviceStatusMonitor;
 
 class Scheduler {
  public:
-  Scheduler(StorageManager* storage_manager, dbus::Bus* bus);
+  Scheduler(StorageManager* storage_manager,
+            std::unique_ptr<DeviceStatusMonitor> device_status_monitor,
+            dbus::Bus* bus);
   Scheduler(const Scheduler&) = delete;
   Scheduler& operator=(const Scheduler&) = delete;
-  ~Scheduler();
+  // TODO(alanlxl): create a destructor or finalize method that deletes examples
+  //                from the database.
+  ~Scheduler() = default;
 
   // Tries to schedule tasks if the library dlc is already installed, otherwise
   // triggers dlc install and schedules tasks when it receives a DlcStateChanged
@@ -62,7 +62,7 @@ class Scheduler {
 
   // Device status monitor that answers whether training conditions are
   // satisfied.
-  DeviceStatusMonitor device_status_monitor_;
+  std::unique_ptr<DeviceStatusMonitor> device_status_monitor_;
 
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
       dlcservice_client_;

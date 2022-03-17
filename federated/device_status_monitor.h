@@ -5,12 +5,13 @@
 #ifndef FEDERATED_DEVICE_STATUS_MONITOR_H_
 #define FEDERATED_DEVICE_STATUS_MONITOR_H_
 
-#include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
+#include <memory>
+#include <vector>
+
+#include "federated/training_condition.h"
 
 namespace dbus {
-class ObjectProxy;
-class Signal;
 class Bus;
 }  // namespace dbus
 
@@ -18,33 +19,23 @@ namespace federated {
 
 // Monitors the device status and answers whether a federated computation task
 // should start or early stop.
-// Currently this class only monitors power supply, other info (e.g. memory) can
-// be added in the future.
 class DeviceStatusMonitor {
  public:
-  explicit DeviceStatusMonitor(dbus::Bus* bus);
+  explicit DeviceStatusMonitor(
+      std::vector<std::unique_ptr<TrainingCondition>> training_conditions);
   DeviceStatusMonitor(const DeviceStatusMonitor&) = delete;
   DeviceStatusMonitor& operator=(const DeviceStatusMonitor&) = delete;
-  ~DeviceStatusMonitor();
+  ~DeviceStatusMonitor() = default;
+
+  // A builder functions that construct DeviceStatusMonitor from dbus
+  static std::unique_ptr<DeviceStatusMonitor> CreateFromDBus(dbus::Bus* bus);
 
   // Called before training to see if the device is in a good condition, and
-  // during the training to see if it should be aborted.
+  // during the training to see if the training should be aborted.
   bool TrainingConditionsSatisfied() const;
 
  private:
-  // Invoked by powerd dbus signals to update the power info.
-  void OnPowerSupplyReceived(dbus::Signal* signal);
-
-  // Obtained from dbus, should never delete it.
-  dbus::ObjectProxy* const powerd_dbus_proxy_;
-
-  // Whether the device has enough battery for a federated computation task.
-  // Updated in `OnPowerSupplyReceived` and used in
-  // `TrainingConditionsSatisfied`.
-  bool enough_battery_;
-
-  const base::WeakPtrFactory<DeviceStatusMonitor> weak_ptr_factory_;
-
+  const std::vector<std::unique_ptr<TrainingCondition>> training_conditions_;
   SEQUENCE_CHECKER(sequence_checker_);
 };
 

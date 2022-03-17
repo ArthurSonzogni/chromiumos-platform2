@@ -10,9 +10,9 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <bits/stdint-intn.h>
 #include <sqlite3.h>
 
@@ -264,6 +264,7 @@ bool ExampleDatabase::InsertExample(const std::string& client_name,
   if (!ok) {
     LOG(ERROR) << "Failed to insert example: " << sqlite3_errmsg(db_.get());
   }
+  DVLOG(1) << "Insert example for client " << client_name;
   return ok;
 }
 

@@ -15,6 +15,7 @@
 #include <dbus/scoped_dbus_error.h>
 #include <dlcservice/dbus-proxies.h>
 
+#include "federated/device_status_monitor.h"
 #include "federated/federated_library.h"
 #include "federated/federated_metadata.h"
 #include "federated/storage_manager.h"
@@ -38,17 +39,15 @@ void OnDBusSignalConnected(const std::string& interface,
 
 }  // namespace
 
-Scheduler::Scheduler(StorageManager* storage_manager, dbus::Bus* bus)
+Scheduler::Scheduler(StorageManager* storage_manager,
+                     std::unique_ptr<DeviceStatusMonitor> device_status_monitor,
+                     dbus::Bus* bus)
     : storage_manager_(storage_manager),
-      device_status_monitor_(bus),
+      device_status_monitor_(std::move(device_status_monitor)),
       dlcservice_client_(
           std::make_unique<org::chromium::DlcServiceInterfaceProxy>(bus)),
       task_runner_(base::SequencedTaskRunnerHandle::Get()),
       weak_ptr_factory_(this) {}
-
-// TODO(alanlxl): create a destructor or finalize method that deletes examples
-//                from the database.
-Scheduler::~Scheduler() = default;
 
 void Scheduler::Schedule() {
   dlcservice::DlcState dlc_state;
@@ -67,8 +66,11 @@ void Scheduler::Schedule() {
   // If installed, calls `Schedule()` instantly, otherwise triggers dlc install
   // and waits for DlcStateChanged signals.
   if (dlc_state.state() == dlcservice::DlcState::INSTALLED) {
+    DVLOG(1) << "dlc fcp is already installed, root path is "
+             << dlc_state.root_path();
     ScheduleInternal(dlc_state.root_path());
   } else {
+    DVLOG(1) << "dlc fcp isn't installed, call dlc service to install it";
     dlcservice_client_->RegisterDlcStateChangedSignalHandler(
         base::BindRepeating(&Scheduler::OnDlcStateChanged,
                             weak_ptr_factory_.GetWeakPtr()),
@@ -88,11 +90,12 @@ void Scheduler::Schedule() {
 
 void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
   DCHECK(!dlc_root_path.empty()) << "dlc_root_path is empty.";
-  DCHECK(sessions_.empty()) << "Sessions are already schduled.";
+  DCHECK(sessions_.empty()) << "Sessions are already scheduled.";
 
   const std::string lib_path = base::StringPrintf(
       "%s/%s", dlc_root_path.c_str(), kFederatedComputationLibraryName);
 
+  DVLOG(1) << "lib_path is " << lib_path;
   auto* const federated_library = FederatedLibrary::GetInstance(lib_path);
   if (!federated_library->GetStatus().ok()) {
     LOG(ERROR) << "FederatedLibrary failed to initialized with error "
@@ -108,19 +111,21 @@ void Scheduler::ScheduleInternal(const std::string& dlc_root_path) {
   sessions_.reserve(client_configs.size());
 
   for (const auto& kv : client_configs) {
-    // TODO(alanlxl): it uses a copy constructor for now, needs to investigate
-    // how to avoid copy.
     sessions_.push_back(federated_library->CreateSession(
-        kServiceUri, kApiKey, kv.second, &device_status_monitor_));
+        kServiceUri, kApiKey, kv.second, device_status_monitor_.get()));
     KeepSchedulingJobForSession(&sessions_.back());
   }
 }
 
 void Scheduler::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
+  DVLOG(1) << "OnDlcStateChanged, dlc_state.id = " << dlc_state.id()
+           << ", state = " << dlc_state.state();
   if (!sessions_.empty() || dlc_state.id() != kDlcId ||
       dlc_state.state() != dlcservice::DlcState::INSTALLED)
     return;
 
+  DVLOG(1) << "dlc fcp is now installed, root path is "
+           << dlc_state.root_path();
   ScheduleInternal(dlc_state.root_path());
 }
 
@@ -135,8 +140,10 @@ void Scheduler::KeepSchedulingJobForSession(
 
 void Scheduler::TryToStartJobForSession(
     FederatedSession* const federated_session) {
+  DVLOG(1) << "In TryToStartJobForSession, session name is "
+           << federated_session->GetSessionName();
   federated_session->ResetRetryDelay();
-  if (!device_status_monitor_.TrainingConditionsSatisfied()) {
+  if (!device_status_monitor_->TrainingConditionsSatisfied()) {
     DVLOG(1) << "Device is not in a good condition for training now.";
     KeepSchedulingJobForSession(federated_session);
     return;

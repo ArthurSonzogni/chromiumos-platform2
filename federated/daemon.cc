@@ -18,6 +18,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/invitation.h>
 
+#include "federated/device_status_monitor.h"
 #include "federated/federated_service_impl.h"
 #include "federated/storage_manager.h"
 
@@ -34,10 +35,13 @@ int Daemon::OnInit() {
 
   // Initializes storage_manager_.
   StorageManager::GetInstance()->InitializeSessionManagerProxy(bus_.get());
+  // Create DeviceStatusMonitor
+  auto device_status_monitor = DeviceStatusMonitor::CreateFromDBus(bus_.get());
 
   // Creates the scheduler and schedules the tasks.
   scheduler_ =
-      std::make_unique<Scheduler>(StorageManager::GetInstance(), bus_.get());
+      std::make_unique<Scheduler>(StorageManager::GetInstance(),
+                                  std::move(device_status_monitor), bus_.get());
   scheduler_->Schedule();
 
   mojo::core::Init();

@@ -93,6 +93,7 @@ _IUSE = [
     'kvm_guest',
     'kvm_host',
     'libglvnd',
+    'local_federated_server',
     'lvm_stateful_partition',
     'crosvm_siblings',
     'manage_efi_boot_entries',
