@@ -20,7 +20,11 @@ int main(int argc, char* argv[]) {
                       std::string(argv[0]) + " [flags] <path> <key>\n\n" +
                       "Set CROS_CONFIG_DEBUG=1 in your environment to emit " +
                       "debug logging messages.\n";
-  brillo::FlagHelper::Init(argc, argv, usage);
+  std::string help =
+      "\nExamples:\n  " + std::string(argv[0]) + " / name \n  " +
+      std::string(argv[0]) + " /arc/build-properties metrics-tag \n\n" +
+      "Note: All properties can be found in /run/chromeos-config/v1/\n";
+  brillo::FlagHelper::Init(argc, argv, usage + help);
 
   logging::LoggingSettings settings;
   settings.logging_dest = logging::LOG_TO_FILE;
