@@ -14998,7 +14998,19 @@ mno {
       ip_type: IPV4
       is_attach_apn: true
     }
-   }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "XLB TEST CARD"
+    }
+    data {
+      uuid : "78c9e001-6628-444e-b5e0-09d1f4bbf2ee"
+      mobile_apn {
+        apn : "internet"
+      }
+    }
+  }
 }
 
 # ##############################################################################
