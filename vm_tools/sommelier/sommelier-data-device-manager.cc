@@ -489,10 +489,13 @@ static void sl_data_device_selection(void* data,
                                      struct wl_data_offer* data_offer) {
   struct sl_host_data_device* host = static_cast<sl_host_data_device*>(
       wl_data_device_get_user_data(data_device));
-  struct sl_host_data_offer* host_data_offer =
-      static_cast<sl_host_data_offer*>(wl_data_offer_get_user_data(data_offer));
+  struct wl_resource* data_offer_resource =
+      data_offer ? static_cast<sl_host_data_offer*>(
+                       wl_data_offer_get_user_data(data_offer))
+                       ->resource
+                 : nullptr;
 
-  wl_data_device_send_selection(host->resource, host_data_offer->resource);
+  wl_data_device_send_selection(host->resource, data_offer_resource);
 }
 
 static const struct wl_data_device_listener sl_data_device_listener = {
