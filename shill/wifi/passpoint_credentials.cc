@@ -135,6 +135,25 @@ bool PasspointCredentials::ToSupplicantProperties(
   // Supplicant requires the EAP method for interworking selection.
   properties->Set<std::string>(WPASupplicant::kNetworkPropertyEapEap,
                                eap_.method());
+  // Supplicant requires the credentials to perform matches using the realm
+  // (see b/225170348).
+  if (eap_.method() == kEapMethodTLS) {
+    properties->Set<std::string>(WPASupplicant::kNetworkPropertyEapCertId,
+                                 eap_.cert_id());
+    properties->Set<std::string>(WPASupplicant::kNetworkPropertyEapKeyId,
+                                 eap_.key_id());
+  } else if (eap_.method() == kEapMethodTTLS) {
+    properties->Set<std::string>(WPASupplicant::kCredentialsPropertyUsername,
+                                 eap_.identity());
+    properties->Set<std::string>(WPASupplicant::kCredentialsPropertyPassword,
+                                 eap_.password());
+  } else {
+    LOG(ERROR) << "Passpoint credentials does not support EAP method '"
+               << eap_.method() << "'";
+    properties->Clear();
+    return false;
+  }
+
   return true;
 }
 

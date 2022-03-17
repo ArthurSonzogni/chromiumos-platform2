@@ -118,9 +118,12 @@ class EapCredentials {
   std::string GetEapPassword(Error* error) const;
 
   // Getters and setters.
+  virtual const std::string& cert_id() const { return cert_id_; }
   virtual const std::string& identity() const { return identity_; }
   void set_identity(const std::string& identity) { identity_ = identity; }
+  virtual const std::string& key_id() const { return key_id_; }
   virtual const std::string& key_management() const { return key_management_; }
+  virtual const std::string& password() const { return password_; }
   virtual void set_password(const std::string& password) {
     password_ = password;
   }

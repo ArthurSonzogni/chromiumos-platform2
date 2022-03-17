@@ -154,10 +154,12 @@ class WPASupplicant {
   static const char kSecurityModeWPA[];
 
   static const char kCredentialsPropertyDomain[];
+  static const char kCredentialsPropertyPassword[];
   static const char kCredentialsPropertyRealm[];
   static const char kCredentialsPropertyRoamingConsortium[];
   static const char kCredentialsPropertyRequiredRoamingConsortium[];
   static const char kCredentialsPropertyRoamingConsortiums[];
+  static const char kCredentialsPropertyUsername[];
   static const char kCredentialsMatchType[];
   static const char kCredentialsMatchTypeHome[];
   static const char kCredentialsMatchTypeRoaming[];

@@ -384,6 +384,13 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
       "an_id", domains, realm, home_ois, single_home_oi, roaming_consortia,
       /*metered_override=*/false, "app_package_name");
 
+  // Add the minimal set of EAP properties
+  KeyValueStore eap_store;
+  eap_store.Set<std::string>(kEapMethodProperty, kEapMethodTTLS);
+  eap_store.Set<std::string>(kEapIdentityProperty, "test-user");
+  eap_store.Set<std::string>(kEapPasswordProperty, "test-password");
+  creds->eap_.Load(eap_store);
+
   KeyValueStore properties;
   EXPECT_TRUE(creds->ToSupplicantProperties(&properties));
 
@@ -407,6 +414,17 @@ TEST_F(PasspointCredentialsTest, ToSupplicantProperties) {
   creds = new PasspointCredentials(
       "an_id", domains, realm, home_ois, std::vector<uint64_t>(),
       roaming_consortia, /*metered_override=*/false, "app_package_name");
+
+  // EAP method and authentication is missing, it will be rejected.
+  properties.Clear();
+  EXPECT_FALSE(creds->ToSupplicantProperties(&properties));
+
+  // Now the required EAP fields (method and credentials) are available.
+  eap_store.Clear();
+  eap_store.Set<std::string>(kEapMethodProperty, kEapMethodTLS);
+  eap_store.Set<std::string>(kEapCertIdProperty, "0:a_cert_id");
+  eap_store.Set<std::string>(kEapKeyIdProperty, "0:a_key_id");
+  creds->eap_.Load(eap_store);
 
   properties.Clear();
   EXPECT_TRUE(creds->ToSupplicantProperties(&properties));
