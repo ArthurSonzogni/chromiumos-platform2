@@ -22,9 +22,7 @@
 #define CKK_INVALID_KEY_TYPE (CKK_VENDOR_DEFINED + 0)
 #endif
 
-// chaps is currently coded to PKCS#11 v2.20.
-#define CRYPTOKI_VERSION_MAJOR 2
-#define CRYPTOKI_VERSION_MINOR 20
+// chaps is currently coded to PKCS#11 v3.0.
 
 // CKM for ECDSA+SHA2 is only available on Cryptoki V3 or above,
 // so we temporarily define them here.

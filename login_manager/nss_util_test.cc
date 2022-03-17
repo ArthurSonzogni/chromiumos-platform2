@@ -16,7 +16,6 @@
 #include <crypto/scoped_nss_types.h>
 #include <gtest/gtest.h>
 
-using crypto::RSAPrivateKey;
 using crypto::ScopedPK11Slot;
 
 namespace login_manager {
@@ -46,7 +45,7 @@ const char NssUtilTest::kUsername[] = "someone@nowhere.com";
 
 TEST_F(NssUtilTest, FindFromPublicKey) {
   // Create a keypair, which will put the keys in the user's NSSDB.
-  std::unique_ptr<RSAPrivateKey> pair(
+  std::unique_ptr<crypto::RSAPrivateKey> pair(
       util_->GenerateKeyPairForUser(desc_.get()));
   ASSERT_NE(pair, nullptr);
 
@@ -55,7 +54,7 @@ TEST_F(NssUtilTest, FindFromPublicKey) {
 
   EXPECT_TRUE(util_->CheckPublicKeyBlob(public_key));
 
-  std::unique_ptr<RSAPrivateKey> private_key(
+  std::unique_ptr<crypto::RSAPrivateKey> private_key(
       util_->GetPrivateKeyForUser(public_key, desc_.get()));
   EXPECT_NE(private_key, nullptr);
 }

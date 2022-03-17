@@ -32,7 +32,6 @@
 
 using brillo::ScopedMountNamespace;
 
-using crypto::RSAPrivateKey;
 using crypto::ScopedPK11Slot;
 using crypto::ScopedSECItem;
 using crypto::ScopedSECKEYPrivateKey;
@@ -77,11 +76,11 @@ class NssUtilImpl : public NssUtil {
       const base::FilePath& user_homedir,
       const OptionalFilePath& ns_mnt_path) override;
 
-  std::unique_ptr<RSAPrivateKey> GetPrivateKeyForUser(
+  std::unique_ptr<crypto::RSAPrivateKey> GetPrivateKeyForUser(
       const std::vector<uint8_t>& public_key_der,
       PK11SlotDescriptor* user_slot) override;
 
-  std::unique_ptr<RSAPrivateKey> GenerateKeyPairForUser(
+  std::unique_ptr<crypto::RSAPrivateKey> GenerateKeyPairForUser(
       PK11SlotDescriptor* user_slot) override;
 
   base::FilePath GetOwnerKeyFilePath() override;
@@ -95,7 +94,7 @@ class NssUtilImpl : public NssUtil {
               const std::vector<uint8_t>& public_key) override;
 
   bool Sign(const std::vector<uint8_t>& data,
-            RSAPrivateKey* key,
+            crypto::RSAPrivateKey* key,
             std::vector<uint8_t>* out_signature) override;
 
  private:
@@ -162,7 +161,7 @@ ScopedPK11SlotDescriptor NssUtilImpl::OpenUserDB(
   return res;
 }
 
-std::unique_ptr<RSAPrivateKey> NssUtilImpl::GetPrivateKeyForUser(
+std::unique_ptr<crypto::RSAPrivateKey> NssUtilImpl::GetPrivateKeyForUser(
     const std::vector<uint8_t>& public_key_der, PK11SlotDescriptor* desc) {
   if (public_key_der.size() == 0) {
     LOG(ERROR) << "Not checking key because size is 0";
@@ -213,10 +212,10 @@ std::unique_ptr<RSAPrivateKey> NssUtilImpl::GetPrivateKeyForUser(
     return nullptr;
   }
 
-  return base::WrapUnique(RSAPrivateKey::CreateFromKey(key.get()));
+  return base::WrapUnique(crypto::RSAPrivateKey::CreateFromKey(key.get()));
 }
 
-std::unique_ptr<RSAPrivateKey> NssUtilImpl::GenerateKeyPairForUser(
+std::unique_ptr<crypto::RSAPrivateKey> NssUtilImpl::GenerateKeyPairForUser(
     PK11SlotDescriptor* desc) {
   PK11RSAGenParams param;
   param.keySizeInBits = kKeySizeInBits;
@@ -236,7 +235,7 @@ std::unique_ptr<RSAPrivateKey> NssUtilImpl::GenerateKeyPairForUser(
   if (!key)
     return nullptr;
 
-  return base::WrapUnique(RSAPrivateKey::CreateFromKey(key.get()));
+  return base::WrapUnique(crypto::RSAPrivateKey::CreateFromKey(key.get()));
 }
 
 base::FilePath NssUtilImpl::GetOwnerKeyFilePath() {
@@ -282,7 +281,7 @@ bool NssUtilImpl::Verify(const std::vector<uint8_t>& signature,
 // This is pretty much just a blind passthrough, so I won't test it
 // in the NssUtil unit tests.  I'll test it from a class that uses this API.
 bool NssUtilImpl::Sign(const std::vector<uint8_t>& data,
-                       RSAPrivateKey* key,
+                       crypto::RSAPrivateKey* key,
                        std::vector<uint8_t>* out_signature) {
   std::unique_ptr<crypto::SignatureCreator> signer(
       crypto::SignatureCreator::Create(key, crypto::SignatureCreator::SHA1));

@@ -70,12 +70,6 @@ namespace chaps {
 #define CKA_NSS_EXPIRES (CKA_NSS + 7)
 #define CKA_NSS_KRL (CKA_NSS + 8)
 
-// This value is defined in the latest PKCS#11 header, but we are on an older
-// version, thus we leave it here temporarily.
-// TODO(crbug/922334): Remove this once we upgrade to the latest version of
-// PKCS#11 header.
-#define CKA_PUBLIC_KEY_INFO 0x00000129
-
 const char* CK_RVToString(CK_RV value) {
   switch (value) {
     case CKR_OK:
