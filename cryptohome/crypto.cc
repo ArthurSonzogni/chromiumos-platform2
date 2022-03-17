@@ -158,6 +158,20 @@ bool Crypto::ResetLECredential(const VaultKeyset& vk_reset,
 bool Crypto::ResetLeCredentialEx(const uint64_t le_label,
                                  const SecureBlob& reset_secret,
                                  CryptoError& out_error) const {
+  if (!tpm_) {
+    LOG(ERROR) << "TPM not found while ResetLeCredentials.";
+    PopulateError(&out_error, CryptoError::CE_OTHER_FATAL);
+    return false;
+  }
+
+  // Bail immediately if we don't have a valid LECredentialManager.
+  if (!le_manager_) {
+    LOG(ERROR) << "Attempting to Reset LECredential on a platform that doesn't "
+                  "support LECredential";
+    PopulateError(&out_error, CryptoError::CE_LE_NOT_SUPPORTED);
+    return false;
+  }
+
   int ret = le_manager_->ResetCredential(le_label, reset_secret);
   if (ret != LE_CRED_SUCCESS) {
     PopulateError(&out_error, ret == LE_CRED_ERROR_INVALID_RESET_SECRET
