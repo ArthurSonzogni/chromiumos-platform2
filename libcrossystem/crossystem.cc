@@ -4,16 +4,17 @@
 
 #include <libcrossystem/crossystem.h>
 
-#include <base/optional.h>
+#include <optional>
+
 #include <vboot/crossystem.h>
 
 namespace crossystem {
 
-base::Optional<int> CrossystemImpl::VbGetSystemPropertyInt(
+std::optional<int> CrossystemImpl::VbGetSystemPropertyInt(
     const std::string& name) const {
   int value = ::VbGetSystemPropertyInt(name.c_str());
   if (value == -1)
-    return base::nullopt;
+    return std::nullopt;
   return value;
 }
 
@@ -22,12 +23,12 @@ bool CrossystemImpl::VbSetSystemPropertyInt(const std::string& name,
   return 0 == ::VbSetSystemPropertyInt(name.c_str(), value);
 }
 
-base::Optional<std::string> CrossystemImpl::VbGetSystemPropertyString(
+std::optional<std::string> CrossystemImpl::VbGetSystemPropertyString(
     const std::string& name) const {
   char value_buffer[VB_MAX_STRING_PROPERTY];
   if (NULL == ::VbGetSystemPropertyString(name.c_str(), value_buffer,
                                           sizeof(value_buffer)))
-    return base::nullopt;
+    return std::nullopt;
   return value_buffer;
 }
 

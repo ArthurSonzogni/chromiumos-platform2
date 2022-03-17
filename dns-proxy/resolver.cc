@@ -4,12 +4,12 @@
 
 #include "dns-proxy/resolver.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <base/optional.h>
 #include <base/rand_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/patchpanel/dns/dns_protocol.h>
@@ -432,7 +432,7 @@ void Resolver::Resolve(SocketFd* sock_fd, bool fallback) {
 patchpanel::DnsResponse Resolver::ConstructServFailResponse(const char* msg,
                                                             int len) {
   // Construct a DNS query from the message buffer.
-  base::Optional<patchpanel::DnsQuery> query;
+  std::optional<patchpanel::DnsQuery> query;
   if (len > 0 && len <= dns_proxy::kDNSBufSize) {
     scoped_refptr<patchpanel::IOBufferWithSize> query_buf =
         base::MakeRefCounted<patchpanel::IOBufferWithSize>(len);

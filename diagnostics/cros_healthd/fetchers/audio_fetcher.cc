@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,7 +37,7 @@ mojo_ipc::AudioResultPtr AudioFetcher::FetchAudioInfo() {
   return mojo_ipc::AudioResult::NewAudioInfo(info.Clone());
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateMuteInfo(
+std::optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateMuteInfo(
     mojo_ipc::AudioInfo* info) {
   int32_t unused_output_volume;
   bool output_mute = false;  // Mute by other system daemons.
@@ -54,10 +55,10 @@ base::Optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateMuteInfo(
   info->output_mute = output_mute | output_user_mute;
   info->input_mute = input_mute;
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateActiveNodeInfo(
+std::optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateActiveNodeInfo(
     mojo_ipc::AudioInfo* info) {
   std::vector<brillo::VariantDictionary> nodes;
   brillo::ErrorPtr error;
@@ -105,7 +106,7 @@ base::Optional<mojo_ipc::ProbeErrorPtr> AudioFetcher::PopulateActiveNodeInfo(
     }
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace diagnostics

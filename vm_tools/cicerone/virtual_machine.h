@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/macros.h>
-#include <base/optional.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>

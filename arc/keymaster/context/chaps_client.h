@@ -6,9 +6,9 @@
 #define ARC_KEYMASTER_CONTEXT_CHAPS_CLIENT_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
 #include <chaps/pkcs11/cryptoki.h>
@@ -37,12 +37,12 @@ class ChapsClient {
   ~ChapsClient();
 
   // Returns a handle to the chaps object with given |label| and |id|.
-  base::Optional<CK_OBJECT_HANDLE> FindObject(CK_OBJECT_CLASS object_class,
-                                              const std::string& label,
-                                              const brillo::Blob& id);
+  std::optional<CK_OBJECT_HANDLE> FindObject(CK_OBJECT_CLASS object_class,
+                                             const std::string& label,
+                                             const brillo::Blob& id);
 
   // Returns the SPKI of a certificate identified by the given |label| and |id|.
-  base::Optional<brillo::Blob> ExportSubjectPublicKeyInfo(
+  std::optional<brillo::Blob> ExportSubjectPublicKeyInfo(
       const std::string& label, const brillo::Blob& id);
 
   // Initializes a new signature operation.
@@ -57,22 +57,22 @@ class ChapsClient {
   bool UpdateSignature(const brillo::Blob& input);
 
   // Finishes an ongoing signature operation, returning the final signature.
-  base::Optional<brillo::Blob> FinalizeSignature();
+  std::optional<brillo::Blob> FinalizeSignature();
 
   // Returns the ARC Keymaster AES-256 encryption key material. If the key does
-  // not exist yet it will be generated. Returns base::nullopt if there's an
+  // not exist yet it will be generated. Returns std::nullopt if there's an
   // error in the PKCS #11 operation.
-  base::Optional<brillo::SecureBlob> ExportOrGenerateEncryptionKey();
+  std::optional<brillo::SecureBlob> ExportOrGenerateEncryptionKey();
 
   // Retrieves an identifier for this client's session. Used to identify
-  // simultaneously existing clients and operations. Returns base::nullopt if
+  // simultaneously existing clients and operations. Returns std::nullopt if
   // there's an error in the PKCS #11 operation opening the session.
-  base::Optional<CK_SESSION_HANDLE> session_handle();
+  std::optional<CK_SESSION_HANDLE> session_handle();
 
  private:
-  // Returns a handle to the key with the given |label|. Returns base::nullopt
+  // Returns a handle to the key with the given |label|. Returns std::nullopt
   // if there's an error in the PKCS #11 operation.
-  base::Optional<CK_OBJECT_HANDLE> FindKey(const std::string& label);
+  std::optional<CK_OBJECT_HANDLE> FindKey(const std::string& label);
 
   // Exports the secret material of a key, given its PKCS #11 |key_handle|. For
   // this to work the key needs to have been created with CKA_EXTRACTABLE true
@@ -89,9 +89,9 @@ class ChapsClient {
                   brillo::SecureBlob* exported_key);
 
   // Generates the ARC Keymaster AES-256 encryption key material and returns its
-  // handle. Returns base::nullopt if there's an error in the PKCS #11
+  // handle. Returns std::nullopt if there's an error in the PKCS #11
   // operation.
-  base::Optional<CK_OBJECT_HANDLE> GenerateEncryptionKey();
+  std::optional<CK_OBJECT_HANDLE> GenerateEncryptionKey();
 
   // Retrieves the PKCS #11 byte array CKA_VALUE corresponding to
   // |attribute_type| of |object_handle|.

@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -76,8 +77,8 @@ class Init final {
              bool use_console,
              bool wait_for_exit,
              ProcessLaunchInfo* launch_info,
-             base::Optional<base::OnceCallback<void(ProcessStatus, int)>>
-                 exit_cb = base::nullopt);
+             std::optional<base::OnceCallback<void(ProcessStatus, int)>>
+                 exit_cb = std::nullopt);
 
   // Shuts down the system, killing all child processes first with SIGTERM and
   // finally with SIGKILL.

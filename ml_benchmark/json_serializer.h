@@ -5,16 +5,17 @@
 #ifndef ML_BENCHMARK_JSON_SERIALIZER_H_
 #define ML_BENCHMARK_JSON_SERIALIZER_H_
 
+#include <optional>
+
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <base/values.h>
 
 #include "proto/benchmark_config.pb.h"
 
 namespace ml_benchmark {
 
-// In case of failure reports error to LOG(ERROR) and returns base::nullopt.
-base::Optional<base::Value> BenchmarkResultsToJson(
+// In case of failure reports error to LOG(ERROR) and returns std::nullopt.
+std::optional<base::Value> BenchmarkResultsToJson(
     const chrome::ml_benchmark::BenchmarkResults& results);
 
 void WriteResultsToPath(const chrome::ml_benchmark::BenchmarkResults& results,

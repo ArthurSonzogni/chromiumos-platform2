@@ -6,6 +6,8 @@
 
 #include <openssl/x509.h>
 
+#include <optional>
+
 #include <base/logging.h>
 
 #include "hwsec-test-utils/common/openssl_utility.h"
@@ -105,7 +107,7 @@ crypto::ScopedX509 IssueTestCertificate(const crypto::ScopedEVP_PKEY& subject) {
   return x509;
 }
 
-base::Optional<std::string> IssueTestCertificateDer(
+std::optional<std::string> IssueTestCertificateDer(
     const crypto::ScopedEVP_PKEY& subject) {
   crypto::ScopedX509 x509 = IssueTestCertificate(subject);
   if (!x509) {

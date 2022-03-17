@@ -11,6 +11,7 @@
 #include <base/values.h>
 #include <brillo/flag_helper.h>
 
+#include <optional>
 #include <string>
 
 #include "ml_benchmark/json_serializer.h"
@@ -59,7 +60,7 @@ void BenchmarkAndReportResults(
     const std::string& driver_name,
     const base::FilePath& driver_file_path,
     const CrOSBenchmarkConfig& config,
-    const base::Optional<base::FilePath>& output_path) {
+    const std::optional<base::FilePath>& output_path) {
   auto functions =
       std::make_unique<SharedLibraryBenchmarkFunctions>(driver_file_path);
   if (functions == nullptr || !functions->valid()) {
@@ -145,11 +146,11 @@ int main(int argc, char* argv[]) {
                                benchmark_config.mutable_driver_config()))
       << "Could not read the benchmark config file: " << workspace_config_path;
 
-  base::Optional<base::FilePath> output_file_path;
+  std::optional<base::FilePath> output_file_path;
   if (!FLAGS_output_path.empty()) {
-    output_file_path = base::Optional<base::FilePath>(FLAGS_output_path);
+    output_file_path = std::optional<base::FilePath>(FLAGS_output_path);
     if (!output_file_path->IsAbsolute()) {
-      output_file_path = base::Optional<base::FilePath>(FLAGS_workspace_path)
+      output_file_path = std::optional<base::FilePath>(FLAGS_workspace_path)
                              ->Append(FLAGS_output_path);
     }
   }

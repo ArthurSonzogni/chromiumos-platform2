@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_MEMORY_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_MEMORY_FETCHER_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -26,7 +27,7 @@ class MemoryFetcher final : public BaseFetcher {
 
  private:
   using OptionalProbeErrorPtr =
-      base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
+      std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
   void FetchMemoryEncryptionInfo();
   void FetchMktmeInfo();
   void FetchTmeInfo();

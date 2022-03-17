@@ -4,12 +4,12 @@
 
 #include "diagnostics/common/system/powerd_adapter_impl.h"
 
+#include <optional>
 #include <string>
 
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/memory/ptr_util.h>
 #include <dbus/object_proxy.h>
 #include <dbus/message.h>
@@ -102,7 +102,7 @@ void PowerdAdapterImpl::RemoveLidObserver(LidObserver* observer) {
   lid_observers_.RemoveObserver(observer);
 }
 
-base::Optional<power_manager::PowerSupplyProperties>
+std::optional<power_manager::PowerSupplyProperties>
 PowerdAdapterImpl::GetPowerSupplyProperties() {
   dbus::MethodCall method_call(power_manager::kPowerManagerInterface,
                                power_manager::kGetPowerSupplyPropertiesMethod);
@@ -112,14 +112,14 @@ PowerdAdapterImpl::GetPowerSupplyProperties() {
   if (!response) {
     LOG(ERROR) << "Failed to call powerd D-Bus method: "
                << power_manager::kGetPowerSupplyPropertiesMethod;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   dbus::MessageReader reader(response.get());
   power_manager::PowerSupplyProperties power_supply_proto;
   if (!reader.PopArrayOfBytesAsProto(&power_supply_proto)) {
     LOG(ERROR) << "Could not successfully read PowerSupplyProperties protobuf";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return power_supply_proto;

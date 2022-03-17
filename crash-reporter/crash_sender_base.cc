@@ -5,6 +5,7 @@
 #include "crash-reporter/crash_sender_base.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -595,7 +596,7 @@ FullCrash SenderBase::ReadMetaFile(const CrashDetails& details) {
   return crash;
 }
 
-base::Optional<std::string> SenderBase::GetOsReleaseValue(
+std::optional<std::string> SenderBase::GetOsReleaseValue(
     const std::vector<std::string>& keys) {
   if (!os_release_reader_) {
     os_release_reader_ = std::make_unique<brillo::OsReleaseReader>();
@@ -604,9 +605,9 @@ base::Optional<std::string> SenderBase::GetOsReleaseValue(
   std::string value;
   for (const auto& key : keys) {
     if (os_release_reader_->GetString(key, &value))
-      return base::Optional<std::string>(value);
+      return std::optional<std::string>(value);
   }
-  return base::Optional<std::string>();
+  return std::optional<std::string>();
 }
 
 }  // namespace util

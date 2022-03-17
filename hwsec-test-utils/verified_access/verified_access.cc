@@ -4,12 +4,12 @@
 
 #include "hwsec-test-utils/verified_access/verified_access.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 
 #include "hwsec-test-utils/common/attestation_crypto.h"
@@ -23,11 +23,11 @@ namespace {
 
 constexpr int kNonceSize = 20;
 
-base::Optional<std::string> GenerateNonce() {
+std::optional<std::string> GenerateNonce() {
   return GetRandom(kNonceSize);
 }
 
-base::Optional<attestation::KeyInfo> DecryptKeyInfo(
+std::optional<attestation::KeyInfo> DecryptKeyInfo(
     const attestation::EncryptedData& encrypted_key_info) {
   crypto::ScopedEVP_PKEY key = well_known_key_pairs::GetVaEncryptionkey();
 
@@ -106,12 +106,12 @@ VerifiedAccessChallenge::VerifiedAccessChallenge() {
   InitializeOpenSSL();
 }
 
-base::Optional<attestation::SignedData>
+std::optional<attestation::SignedData>
 VerifiedAccessChallenge::GenerateChallenge(const std::string& prefix) {
   // Generate the data to sign, including the prefix and a nonce.
   attestation::Challenge challenge;
   challenge.set_prefix(prefix);
-  base::Optional<std::string> nonce = GenerateNonce();
+  std::optional<std::string> nonce = GenerateNonce();
   if (!nonce) {
     LOG(WARNING) << __func__ << ": Failed to generate nonce.";
     return {};
@@ -131,7 +131,7 @@ VerifiedAccessChallenge::GenerateChallenge(const std::string& prefix) {
     LOG(ERROR) << __func__ << ": Failed get the va signing key.";
     return {};
   }
-  base::Optional<std::string> signature =
+  std::optional<std::string> signature =
       EVPDigestSign(key, EVP_sha256(), serialized_challenge);
   if (!signature) {
     LOG(ERROR) << __func__ << ": Failed to sign the generated challenge.";
@@ -179,7 +179,7 @@ bool VerifiedAccessChallenge::VerifyChallengeResponse(
 
   // Note that by design there is no verification against key_id since in the
   // testing we don't care.
-  base::Optional<attestation::KeyInfo> key_info =
+  std::optional<attestation::KeyInfo> key_info =
       DecryptKeyInfo(challenge_response.encrypted_key_info());
   if (!key_info) {
     LOG(ERROR) << __func__ << ": Failed to decrypt |KeyInfo|.";

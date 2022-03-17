@@ -6,8 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_GRAPHICS_FETCHER_H_
 
 #include <memory>
-
-#include <base/optional.h>
+#include <optional>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/graphics_header.h"
@@ -46,7 +45,7 @@ class GraphicsFetcher final : public BaseFetcher {
 
  private:
   using OptionalProbeErrorPtr =
-      base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
+      std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
 
   OptionalProbeErrorPtr FetchGraphicsInfo(
       std::unique_ptr<EglManager> egl_manager,

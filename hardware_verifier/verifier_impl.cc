@@ -7,13 +7,13 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
@@ -151,7 +151,7 @@ VerifierImpl::VerifierImpl() {
   }
 }
 
-base::Optional<HwVerificationReport> VerifierImpl::Verify(
+std::optional<HwVerificationReport> VerifierImpl::Verify(
     const runtime_probe::ProbeResult& probe_result,
     const HwVerificationSpec& hw_verification_spec) const {
   // A dictionary of 'expected_component_category => seen'.
@@ -175,7 +175,7 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
     if (!insert_result.second) {
       LOG(ERROR)
           << "The verification spec contains duplicated component infos.";
-      return base::nullopt;
+      return std::nullopt;
     }
 
     // We expect to see this component in probe result.
@@ -196,7 +196,7 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
       LOG(ERROR) << "Duplicated allowlist tables for category (num="
                  << spec_info.component_category() << ") are detected in the "
                  << "verification spec.";
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
@@ -255,7 +255,7 @@ base::Optional<HwVerificationReport> VerifierImpl::Verify(
         LOG(ERROR) << "The probe result contains unregonizable components "
                    << "(category=" << comp_category_info.enum_name
                    << ", uuid=" << comp_name << ").";
-        return base::nullopt;
+        return std::nullopt;
       }
       // TODO(b147654337): How about components that are "missing", that is:
       //   - It is expected on the system (according to SKU or MODEL).

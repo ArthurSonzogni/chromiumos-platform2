@@ -6,6 +6,7 @@
 #define LIBBRILLO_BRILLO_HTTP_HTTP_TRANSPORT_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -14,7 +15,6 @@
 #include <base/files/file_path.h>
 #include <base/location.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <brillo/brillo_export.h>
 #include <brillo/errors/error.h>
@@ -130,10 +130,10 @@ class BRILLO_EXPORT Transport : public std::enable_shared_from_this<Transport> {
                                const std::string& ip_address) {}
 
   // Sets the receive buffer size.
-  virtual void SetBufferSize(base::Optional<int> buffer_size) {}
+  virtual void SetBufferSize(std::optional<int> buffer_size) {}
 
   // Sets the send buffer size.
-  virtual void SetUploadBufferSize(base::Optional<int> buffer_size) {}
+  virtual void SetUploadBufferSize(std::optional<int> buffer_size) {}
 
   // Creates a default http::Transport (currently, using http::curl::Transport).
   static std::shared_ptr<Transport> CreateDefault();

@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <optional>
 
 #include <base/bind.h>
 #include <base/files/file_path.h>
@@ -16,7 +17,6 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/optional.h>
 #include <base/strings/string_util.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/dbus/service_constants.h>
@@ -114,8 +114,8 @@ class SessionManagerProcessTest : public ::testing::Test {
   }
 
   void InitManager(std::unique_ptr<BrowserJobInterface> job) {
-    manager_ = new SessionManagerService(std::move(job), getuid(),
-                                         base::nullopt, base::Seconds(3), false,
+    manager_ = new SessionManagerService(std::move(job), getuid(), std::nullopt,
+                                         base::Seconds(3), false,
                                          base::TimeDelta(), &metrics_, &utils_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_session_manager(session_manager_impl_);

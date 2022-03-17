@@ -5,6 +5,7 @@
 #ifndef LOGIN_MANAGER_MOCK_MITIGATOR_H_
 #define LOGIN_MANAGER_MOCK_MITIGATOR_H_
 
+#include <optional>
 #include <string>
 
 #include <base/macros.h>
@@ -25,7 +26,7 @@ class MockMitigator : public OwnerKeyLossMitigator {
 
   MOCK_METHOD(bool,
               Mitigate,
-              (const std::string&, const base::Optional<base::FilePath>&),
+              (const std::string&, const std::optional<base::FilePath>&),
               (override));
   MOCK_METHOD(bool, Mitigating, (), (override));
 };

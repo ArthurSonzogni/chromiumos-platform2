@@ -5,9 +5,8 @@
 #ifndef HWSEC_TEST_UTILS_FAKE_PCA_AGENT_KDF_H_
 #define HWSEC_TEST_UTILS_FAKE_PCA_AGENT_KDF_H_
 
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 namespace hwsec_test_utils {
 namespace fake_pca_agent {
@@ -22,11 +21,11 @@ std::string KDFe(const std::string& z,
 // TPM2.0 spec part 1, 11.4.10.2. The bit length of 128 and 256 are supported
 // and the digest algorithm is hardcoded to SHA-256 considering the limited
 // use-cases in practice.
-base::Optional<std::string> KDFa(const std::string& key,
-                                 const std::string& label,
-                                 const std::string& context_u,
-                                 const std::string& context_v,
-                                 int bits);
+std::optional<std::string> KDFa(const std::string& key,
+                                const std::string& label,
+                                const std::string& context_u,
+                                const std::string& context_v,
+                                int bits);
 
 }  // namespace fake_pca_agent
 }  // namespace hwsec_test_utils

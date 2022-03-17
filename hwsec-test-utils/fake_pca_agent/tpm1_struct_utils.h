@@ -9,9 +9,9 @@
 #error "This file is used for TPM1.2 only"
 #endif
 
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 #include <trousers/tss.h>
 
@@ -36,7 +36,7 @@ std::string Serialize(TPM_SYM_CA_ATTESTATION* contents);
 
 // Parse |serialized| into |TPM_CERTIFY_INFO| and get the public key digest
 // stored in it.
-base::Optional<std::string> ParseDigestFromTpmCertifyInfo(
+std::optional<std::string> ParseDigestFromTpmCertifyInfo(
     const std::string& serialized);
 
 }  // namespace fake_pca_agent

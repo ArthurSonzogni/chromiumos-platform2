@@ -7,6 +7,8 @@
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
 
+#include <optional>
+
 #include "hwsec-test-utils/common/openssl_utility.h"
 
 #include <base/check.h>
@@ -27,11 +29,11 @@ std::string KDFe(const std::string& z,
   return crypto::SHA256HashString(counter + z + other_info);
 }
 
-base::Optional<std::string> KDFa(const std::string& key,
-                                 const std::string& label,
-                                 const std::string& context_u,
-                                 const std::string& context_v,
-                                 int bits) {
+std::optional<std::string> KDFa(const std::string& key,
+                                const std::string& label,
+                                const std::string& context_u,
+                                const std::string& context_v,
+                                int bits) {
   CHECK(bits == 128 || bits == 256);
   const std::string counter{'\x00', '\x00', '\x00', '\x01'};
   const std::string null_terminated{'\x00'};
@@ -50,7 +52,7 @@ base::Optional<std::string> KDFa(const std::string& key,
                << GetOpenSSLError();
     return {};
   }
-  base::Optional<std::string> hmac =
+  std::optional<std::string> hmac =
       EVPDigestSign(hmac_key, EVP_sha256(),
                     counter + label + null_terminated + context + length);
   if (!hmac) {

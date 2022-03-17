@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <optional>
 
 #include <vector>
 
@@ -72,14 +73,14 @@ void DelegateImpl::LoadVpdIfNeeded() {
   vpd_loaded_ = LoadVpdFromString(vpd_data, &vpd_cache_);
 }
 
-base::Optional<std::string> DelegateImpl::ReadVpdValue(const std::string& key) {
+std::optional<std::string> DelegateImpl::ReadVpdValue(const std::string& key) {
   LoadVpdIfNeeded();
 
   auto k = vpd_cache_.find(key);
   if (k != vpd_cache_.end())
     return k->second;
   else
-    return base::nullopt;
+    return std::nullopt;
 }
 
 bool DelegateImpl::ProbeKernelModule(const std::string& module) {
@@ -135,7 +136,7 @@ std::vector<base::FilePath> DelegateImpl::EnumerateAllFiles(
   return files;
 }
 
-base::Optional<gid_t> DelegateImpl::FindGroupId(const char* group) {
+std::optional<gid_t> DelegateImpl::FindGroupId(const char* group) {
   size_t len = 1024;
   const auto max_len = sysconf(_SC_GETGR_R_SIZE_MAX);
   if (max_len != -1)
@@ -147,7 +148,7 @@ base::Optional<gid_t> DelegateImpl::FindGroupId(const char* group) {
 
   getgrnam_r(group, &result, buf.data(), len, &resultp);
   if (!resultp)
-    return base::nullopt;
+    return std::nullopt;
 
   return resultp->gr_gid;
 }

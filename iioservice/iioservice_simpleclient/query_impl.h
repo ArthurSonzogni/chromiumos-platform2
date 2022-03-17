@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -50,7 +51,7 @@ class QueryImpl final : public SensorClient {
   void GetAttributesCallback(
       int32_t iio_device_id,
       std::vector<cros::mojom::DeviceType> types,
-      const std::vector<base::Optional<std::string>>& values);
+      const std::vector<std::optional<std::string>>& values);
 
   cros::mojom::DeviceType device_type_;
   std::vector<std::string> attributes_;

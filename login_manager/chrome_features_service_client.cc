@@ -4,6 +4,7 @@
 
 #include "login_manager/chrome_features_service_client.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -31,7 +32,7 @@ void ChromeFeaturesServiceClient::OnWaitForServiceForIsFeatureEnabled(
     IsFeatureEnabledCallback callback,
     bool available) {
   if (!available) {
-    std::move(callback).Run(base::nullopt);
+    std::move(callback).Run(std::nullopt);
     return;
   }
 
@@ -54,14 +55,14 @@ void ChromeFeaturesServiceClient::CallIsFeatureEnabled(
 void ChromeFeaturesServiceClient::HandlelIsFeatureEnabledResponse(
     IsFeatureEnabledCallback callback, dbus::Response* response) {
   if (!response) {
-    std::move(callback).Run(base::nullopt);
+    std::move(callback).Run(std::nullopt);
     return;
   }
 
   dbus::MessageReader reader(response);
   bool feature_enabled = false;
   if (!reader.PopBool(&feature_enabled)) {
-    std::move(callback).Run(base::nullopt);
+    std::move(callback).Run(std::nullopt);
     return;
   }
 

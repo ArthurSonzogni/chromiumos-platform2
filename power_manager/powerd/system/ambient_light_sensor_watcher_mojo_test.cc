@@ -6,10 +6,10 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <gtest/gtest.h>
 
@@ -45,7 +45,7 @@ class AmbientLightSensorWatcherMojoTest : public testing::Test {
         &sensor_service_handler_);
 
     auto sensor_device = std::make_unique<FakeSensorDevice>(
-        false /*is_color_sensor*/, base::nullopt /*name*/,
+        false /*is_color_sensor*/, std::nullopt /*name*/,
         cros::mojom::kLocationLid);
 
     SetSensor(kBadSyspath);  // id = 0
@@ -58,7 +58,7 @@ class AmbientLightSensorWatcherMojoTest : public testing::Test {
 
   void SetSensor(std::string sys_path) {
     auto sensor_device = std::make_unique<FakeSensorDevice>(
-        false /*is_color_sensor*/, base::nullopt /*name*/,
+        false /*is_color_sensor*/, std::nullopt /*name*/,
         cros::mojom::kLocationLid);
     sensor_device->SetAttribute(cros::mojom::kSysPath, sys_path);
 

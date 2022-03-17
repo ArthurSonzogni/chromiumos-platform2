@@ -5,10 +5,10 @@
 #ifndef CROSLOG_CONFIG_H_
 #define CROSLOG_CONFIG_H_
 
+#include <optional>
 #include <string>
 
 #include <base/command_line.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 
 #include "croslog/severity.h"
@@ -28,7 +28,7 @@ struct Config {
   // Number to limit the lines of logs shown
   int lines = -1;
   // Boot ID to show messages only from the specific boot.
-  base::Optional<std::string> boot;
+  std::optional<std::string> boot;
   // String to show message for the specified syslog identifier
   // (SYSLOG_IDENTIFIER).
   std::string identifier;

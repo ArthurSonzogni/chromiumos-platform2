@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -58,7 +59,7 @@ void Euicc::UpdateSlotInfo(EuiccSlotInfo slot_info) {
   dbus_adaptor_->SetIsActive(slot_info_.IsActive());
 }
 
-void Euicc::UpdateLogicalSlot(base::Optional<uint8_t> logical_slot) {
+void Euicc::UpdateLogicalSlot(std::optional<uint8_t> logical_slot) {
   slot_info_.SetLogicalSlot(std::move(logical_slot));
   dbus_adaptor_->SetIsActive(slot_info_.IsActive());
 }

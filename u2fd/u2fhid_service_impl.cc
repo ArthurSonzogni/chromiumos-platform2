@@ -6,12 +6,12 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <attestation-client/attestation/dbus-constants.h>
 #include <attestation/proto_bindings/interface.pb.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <metrics/metrics_library.h>
 #include <trunks/cr50_headers/virtual_nvmem.h>
 
@@ -76,12 +76,12 @@ bool U2fHidServiceImpl::CreateU2fHid(
   return u2fhid_->Init();
 }
 
-base::Optional<attestation::GetCertifiedNvIndexReply>
+std::optional<attestation::GetCertifiedNvIndexReply>
 U2fHidServiceImpl::GetCertifiedG2fCert(int g2f_cert_size) {
   if (g2f_cert_size < 1 || g2f_cert_size > VIRTUAL_NV_INDEX_G2F_CERT_SIZE) {
     LOG(ERROR)
         << "Invalid G2F cert size specified for whitelisting data request";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   attestation::GetCertifiedNvIndexRequest request;
@@ -99,7 +99,7 @@ U2fHidServiceImpl::GetCertifiedG2fCert(int g2f_cert_size) {
 
   if (!dbus_response) {
     LOG(ERROR) << "Failed to retrieve certified G2F cert from attestationd";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   attestation::GetCertifiedNvIndexReply reply;
@@ -107,13 +107,13 @@ U2fHidServiceImpl::GetCertifiedG2fCert(int g2f_cert_size) {
   dbus::MessageReader reader(dbus_response.get());
   if (!reader.PopArrayOfBytesAsProto(&reply)) {
     LOG(ERROR) << "Failed to parse GetCertifiedNvIndexReply";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (reply.status() != attestation::AttestationStatus::STATUS_SUCCESS) {
     LOG(ERROR) << "Call get GetCertifiedNvIndex failed, status: "
                << reply.status();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return reply;

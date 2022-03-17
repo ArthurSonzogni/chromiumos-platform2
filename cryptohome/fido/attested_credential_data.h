@@ -16,7 +16,6 @@
 #include "base/component_export.h"
 #include "base/containers/span.h"
 #include "base/macros.h"
-#include "base/optional.h"
 #include "cryptohome/fido/fido_constants.h"
 
 namespace cryptohome {

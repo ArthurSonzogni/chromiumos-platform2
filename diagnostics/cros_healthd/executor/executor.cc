@@ -9,6 +9,7 @@
 #include <csignal>
 #include <cstdint>
 #include <cstdlib>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -159,7 +160,7 @@ void Executor::GetInterfaces(GetInterfacesCallback callback) {
   // cros_healthd:cros_healthd user and group.
   base::OnceClosure closure = base::BindOnce(
       &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
+      seccomp_policy_path, sandboxing_args, std::nullopt, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
@@ -195,7 +196,7 @@ void Executor::GetLink(const std::string& interface_name,
   // cros_healthd:cros_healthd user and group.
   base::OnceClosure closure = base::BindOnce(
       &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
+      seccomp_policy_path, sandboxing_args, std::nullopt, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
@@ -231,7 +232,7 @@ void Executor::GetInfo(const std::string& interface_name,
   // cros_healthd:cros_healthd user and group.
   base::OnceClosure closure = base::BindOnce(
       &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
+      seccomp_policy_path, sandboxing_args, std::nullopt, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
@@ -268,7 +269,7 @@ void Executor::GetScanDump(const std::string& interface_name,
   // cros_healthd:cros_healthd user and group.
   base::OnceClosure closure = base::BindOnce(
       &Executor::RunUntrackedBinary, weak_factory_.GetWeakPtr(),
-      seccomp_policy_path, sandboxing_args, base::nullopt, binary_path,
+      seccomp_policy_path, sandboxing_args, std::nullopt, binary_path,
       binary_args, std::move(result), std::move(callback));
 
   base::ThreadPool::PostTask(FROM_HERE, {base::MayBlock()}, std::move(closure));
@@ -322,7 +323,7 @@ void Executor::RunMemtester(RunMemtesterCallback callback) {
   base::ThreadPool::PostTask(
       FROM_HERE, {base::MayBlock()},
       base::BindOnce(&Executor::RunTrackedBinary, weak_factory_.GetWeakPtr(),
-                     kSeccompPolicyPath, sandboxing_args, base::nullopt,
+                     kSeccompPolicyPath, sandboxing_args, std::nullopt,
                      base::FilePath(kMemtesterBinary), memtester_args,
                      std::move(result), std::move(callback)));
 }
@@ -402,7 +403,7 @@ void Executor::GetUEFISecureBootContent(
 void Executor::RunUntrackedBinary(
     const base::FilePath& seccomp_policy_path,
     const std::vector<std::string>& sandboxing_args,
-    const base::Optional<std::string>& user,
+    const std::optional<std::string>& user,
     const base::FilePath& binary_path,
     const std::vector<std::string>& binary_args,
     mojo_ipc::ProcessResult result,
@@ -419,7 +420,7 @@ void Executor::RunUntrackedBinary(
 void Executor::RunTrackedBinary(
     const base::FilePath& seccomp_policy_path,
     const std::vector<std::string>& sandboxing_args,
-    const base::Optional<std::string>& user,
+    const std::optional<std::string>& user,
     const base::FilePath& binary_path,
     const std::vector<std::string>& binary_args,
     mojo_ipc::ProcessResult result,
@@ -449,7 +450,7 @@ void Executor::RunTrackedBinary(
 
 int Executor::RunBinaryInternal(const base::FilePath& seccomp_policy_path,
                                 const std::vector<std::string>& sandboxing_args,
-                                const base::Optional<std::string>& user,
+                                const std::optional<std::string>& user,
                                 const base::FilePath& binary_path,
                                 const std::vector<std::string>& binary_args,
                                 mojo_ipc::ProcessResult* result,

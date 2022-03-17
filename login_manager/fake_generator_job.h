@@ -11,6 +11,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/time/time.h>
@@ -31,7 +32,7 @@ class FakeGeneratorJob : public GeneratorJobInterface {
     std::unique_ptr<GeneratorJobInterface> Create(
         const std::string& filename,
         const base::FilePath& user_path,
-        const base::Optional<base::FilePath> ns_path,
+        const std::optional<base::FilePath> ns_path,
         uid_t desired_uid,
         SystemUtils* utils) override;
 

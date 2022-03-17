@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -184,7 +185,7 @@ TEST_F(BiodStorageBaseTest, ReadSingleRecord) {
         biod_storage_->WriteRecord(record.metadata, base::Value(record.data)));
   }
 
-  // Check if ReadSingleRecord returns empty base::Optional on RecordId,
+  // Check if ReadSingleRecord returns empty std::optional on RecordId,
   // UserId mismatch.
   EXPECT_FALSE(biod_storage_->ReadSingleRecord(kUserId1, kRecordId2));
   EXPECT_FALSE(biod_storage_->ReadSingleRecord(kUserId2, kRecordId1));

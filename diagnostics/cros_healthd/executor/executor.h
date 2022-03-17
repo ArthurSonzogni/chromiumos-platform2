@@ -7,13 +7,13 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/synchronization/lock.h>
 #include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
@@ -62,7 +62,7 @@ class Executor final : public chromeos::cros_healthd_executor::mojom::Executor {
   void RunUntrackedBinary(
       const base::FilePath& seccomp_policy_path,
       const std::vector<std::string>& sandboxing_args,
-      const base::Optional<std::string>& user,
+      const std::optional<std::string>& user,
       const base::FilePath& binary_path,
       const std::vector<std::string>& binary_args,
       chromeos::cros_healthd_executor::mojom::ProcessResult result,
@@ -73,7 +73,7 @@ class Executor final : public chromeos::cros_healthd_executor::mojom::Executor {
   void RunTrackedBinary(
       const base::FilePath& seccomp_policy_path,
       const std::vector<std::string>& sandboxing_args,
-      const base::Optional<std::string>& user,
+      const std::optional<std::string>& user,
       const base::FilePath& binary_path,
       const std::vector<std::string>& binary_args,
       chromeos::cros_healthd_executor::mojom::ProcessResult result,
@@ -83,7 +83,7 @@ class Executor final : public chromeos::cros_healthd_executor::mojom::Executor {
   int RunBinaryInternal(
       const base::FilePath& seccomp_policy_path,
       const std::vector<std::string>& sandboxing_args,
-      const base::Optional<std::string>& user,
+      const std::optional<std::string>& user,
       const base::FilePath& binary_path,
       const std::vector<std::string>& binary_args,
       chromeos::cros_healthd_executor::mojom::ProcessResult* result,

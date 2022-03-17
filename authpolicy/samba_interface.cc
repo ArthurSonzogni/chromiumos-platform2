@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -1122,7 +1123,7 @@ ErrorType SambaInterface::ChangeMachinePasswordForTesting() {
 ErrorType SambaInterface::UpdateKdcIpAndServerTime(AccountData* account) const {
   // Look up KDC IP from cache.
   if (account->kdc_ip.empty()) {
-    base::Optional<std::string> kdc_ip =
+    std::optional<std::string> kdc_ip =
         auth_data_cache_.GetKdcIp(account->realm);
     if (kdc_ip) {
       account->kdc_ip = std::move(*kdc_ip);
@@ -1191,7 +1192,7 @@ ErrorType SambaInterface::UpdateKdcIpAndServerTime(AccountData* account) const {
 ErrorType SambaInterface::UpdateDcName(AccountData* account) const {
   // Look up DC name from cache.
   if (account->dc_name.empty()) {
-    base::Optional<std::string> dc_name =
+    std::optional<std::string> dc_name =
         auth_data_cache_.GetDcName(account->realm);
     if (dc_name) {
       account->dc_name = std::move(*dc_name);
@@ -1307,7 +1308,7 @@ ActiveDirectoryUserStatus::PasswordStatus SambaInterface::GetUserPasswordStatus(
 ErrorType SambaInterface::UpdateWorkgroup(AccountData* account) const {
   // Look up workgroup from cache.
   if (account->workgroup.empty()) {
-    base::Optional<std::string> workgroup =
+    std::optional<std::string> workgroup =
         auth_data_cache_.GetWorkgroup(account->realm);
     if (workgroup) {
       account->workgroup = std::move(*workgroup);
@@ -1446,7 +1447,7 @@ ErrorType SambaInterface::PingServer(AccountData* account) {
 
 bool SambaInterface::IsUserAffiliated() {
   // Check cache first.
-  base::Optional<bool> cached_is_affiliated =
+  std::optional<bool> cached_is_affiliated =
       auth_data_cache_.GetIsAffiliated(user_account_.realm);
   if (cached_is_affiliated) {
     // Right now, only affiliated realms should be cached (but we'll keep it

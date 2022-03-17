@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/no_destructor.h>
-#include <base/optional.h>
 #include <base/scoped_native_library.h>
 #include <chromeos/libhandwriting/handwriting_interface.h>
 

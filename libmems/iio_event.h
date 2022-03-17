@@ -9,9 +9,8 @@
 
 #include <linux/iio/events.h>
 #include <linux/iio/types.h>
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 #include "libmems/export.h"
 
@@ -45,20 +44,20 @@ class LIBMEMS_EXPORT IioEvent {
   int GetChannelNumber() const;
 
   // Reads the |name| attribute of this event and returns the value
-  // as a string. It will return base::nullopt if the attribute cannot
+  // as a string. It will return std::nullopt if the attribute cannot
   // be read.
-  virtual base::Optional<std::string> ReadStringAttribute(
+  virtual std::optional<std::string> ReadStringAttribute(
       const std::string& name) const = 0;
 
   // Reads the |name| attribute of this event and returns the value
-  // as a signed number. It will return base::nullopt if the attribute
+  // as a signed number. It will return std::nullopt if the attribute
   // cannot be read or is not a valid number.
-  base::Optional<int64_t> ReadNumberAttribute(const std::string& name) const;
+  std::optional<int64_t> ReadNumberAttribute(const std::string& name) const;
 
   // Reads the |name| attribute of this device and returns the value
-  // as a double precision floating point. It will return base::nullopt
+  // as a double precision floating point. It will return std::nullopt
   // if the attribute cannot be read or is not a valid number.
-  base::Optional<double> ReadDoubleAttribute(const std::string& name) const;
+  std::optional<double> ReadDoubleAttribute(const std::string& name) const;
 
   // Writes the string |value| to the attribute |name| of this event. Returns
   // false if an error occurs.

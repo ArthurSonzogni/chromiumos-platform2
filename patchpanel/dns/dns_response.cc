@@ -8,6 +8,7 @@
 #include <limits>
 #include <numeric>
 #include <openssl/sha.h>
+#include <optional>
 #include <utility>
 
 #include "base/big_endian.h"
@@ -300,7 +301,7 @@ DnsResponse::DnsResponse(
     const std::vector<DnsResourceRecord>& answers,
     const std::vector<DnsResourceRecord>& authority_records,
     const std::vector<DnsResourceRecord>& additional_records,
-    const base::Optional<DnsQuery>& query,
+    const std::optional<DnsQuery>& query,
     uint8_t rcode) {
   bool has_query = query.has_value();
   dns_protocol::Header header;
@@ -461,9 +462,9 @@ bool DnsResponse::InitParseWithoutQuery(size_t nbytes) {
   return true;
 }
 
-base::Optional<uint16_t> DnsResponse::id() const {
+std::optional<uint16_t> DnsResponse::id() const {
   if (!id_available_)
-    return base::nullopt;
+    return std::nullopt;
 
   return base::NetToHost16(header()->id);
 }
@@ -572,7 +573,7 @@ bool DnsResponse::WriteRecord(base::BigEndianWriter* writer,
 
 bool DnsResponse::WriteAnswer(base::BigEndianWriter* writer,
                               const DnsResourceRecord& answer,
-                              const base::Optional<DnsQuery>& query) {
+                              const std::optional<DnsQuery>& query) {
   // Generally assumed to be a mistake if we write answers that don't match the
   // query type, except CNAME answers which can always be added.
   if (query.has_value() && answer.type != query.value().qtype() &&

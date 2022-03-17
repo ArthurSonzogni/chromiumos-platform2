@@ -7,6 +7,7 @@
 // "machine_learning_service_impl_test.cc" here after the interface is made
 // of multiprocess.
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -150,7 +151,7 @@ TEST(WebPlatformHandwritingModel, LoadModelAndRecognize) {
   recognizer->GetPrediction(
       std::move(strokes), std::move(hints),
       base::BindLambdaForTesting(
-          [&](base::Optional<
+          [&](std::optional<
               std::vector<chromeos::machine_learning::web_platform::mojom::
                               HandwritingPredictionPtr>> predictions) {
             // Check that the inference succeeded and gives

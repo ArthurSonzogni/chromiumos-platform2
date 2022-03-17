@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -12,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_writer.h>
-#include <base/optional.h>
 #include <base/task/post_task.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
@@ -115,8 +115,8 @@ class MemoryRoutineTest : public testing::Test {
   }
 
   void SetExecutorResponse(int32_t exit_code,
-                           const base::Optional<std::string>& outfile_name,
-                           const base::Optional<base::TimeDelta>& delay) {
+                           const std::optional<std::string>& outfile_name,
+                           const std::optional<base::TimeDelta>& delay) {
     EXPECT_CALL(*mock_executor(), RunMemtester(_))
         .WillOnce(WithArg<0>(
             Invoke([=](executor_ipc::Executor::RunMemtesterCallback callback) {
@@ -164,7 +164,7 @@ TEST_F(MemoryRoutineTest, DefaultTickClock) {
 // Test that the memory routine can run successfully.
 TEST_F(MemoryRoutineTest, RoutineSuccess) {
   SetExecutorResponse(EXIT_SUCCESS, "good_memtester_output",
-                      base::nullopt /* delay */);
+                      std::nullopt /* delay */);
 
   RunRoutineAndWaitForExit();
 
@@ -181,8 +181,8 @@ TEST_F(MemoryRoutineTest, RoutineSuccess) {
 
 // Test that the memory routine handles the memtester binary failing to run.
 TEST_F(MemoryRoutineTest, MemtesterBinaryFailsToRun) {
-  SetExecutorResponse(EXIT_FAILURE, base::nullopt /* outfile_name */,
-                      base::nullopt /* delay */);
+  SetExecutorResponse(EXIT_FAILURE, std::nullopt /* outfile_name */,
+                      std::nullopt /* delay */);
 
   RunRoutineAndWaitForExit();
 
@@ -195,8 +195,8 @@ TEST_F(MemoryRoutineTest, MemtesterBinaryFailsToRun) {
 // Test that the memory routine handles a stuck address failure.
 TEST_F(MemoryRoutineTest, StuckAddressFailure) {
   SetExecutorResponse(MemtesterErrorCodes::kStuckAddressTestError,
-                      base::nullopt /* outfile_name */,
-                      base::nullopt /* delay */);
+                      std::nullopt /* outfile_name */,
+                      std::nullopt /* delay */);
 
   RunRoutineAndWaitForExit();
 
@@ -208,8 +208,8 @@ TEST_F(MemoryRoutineTest, StuckAddressFailure) {
 // Test that the memory routine handles a test failure other than stuck address.
 TEST_F(MemoryRoutineTest, OtherTestFailure) {
   SetExecutorResponse(MemtesterErrorCodes::kOtherTestError,
-                      base::nullopt /* outfile_name */,
-                      base::nullopt /* delay */);
+                      std::nullopt /* outfile_name */,
+                      std::nullopt /* delay */);
 
   RunRoutineAndWaitForExit();
 
@@ -226,7 +226,7 @@ TEST_F(MemoryRoutineTest, Resume) {
 // Test that the memory routine can be cancelled.
 TEST_F(MemoryRoutineTest, Cancel) {
   base::TimeDelta time_delay = base::Seconds(10);
-  SetExecutorResponse(EXIT_FAILURE, base::nullopt /* outfile_name */,
+  SetExecutorResponse(EXIT_FAILURE, std::nullopt /* outfile_name */,
                       time_delay);
 
   routine()->Start();

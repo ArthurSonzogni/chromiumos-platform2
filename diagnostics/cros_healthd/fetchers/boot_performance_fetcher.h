@@ -5,10 +5,10 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BOOT_PERFORMANCE_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BOOT_PERFORMANCE_FETCHER_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -36,7 +36,7 @@ class BootPerformanceFetcher final : public BaseFetcher {
 
  private:
   using OptionalProbeErrorPtr =
-      base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
+      std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
 
   OptionalProbeErrorPtr PopulateBootUpInfo(
       chromeos::cros_healthd::mojom::BootPerformanceInfo* info);

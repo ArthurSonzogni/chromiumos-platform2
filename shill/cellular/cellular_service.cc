@@ -4,6 +4,8 @@
 
 #include "shill/cellular/cellular_service.h"
 
+#include <optional>
+
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
@@ -626,7 +628,7 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
     return false;
   }
   if (failure() == kFailureConnect) {
-    base::Optional<base::TimeDelta> failed_time = GetTimeSinceFailed();
+    std::optional<base::TimeDelta> failed_time = GetTimeSinceFailed();
     if (failed_time && *failed_time < kAutoConnectFailedTime) {
       // For Cellular, do not immediately auto connect after a failure.
       *reason = kAutoConnConnectFailed;

@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/vm_builder.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -235,7 +236,7 @@ VmBuilder& VmBuilder::SetBlockSize(size_t block_size) {
 }
 
 VmBuilder& VmBuilder::SetVmMemoryId(VmMemoryId vm_memory_id) {
-  vm_memory_id_ = base::make_optional(vm_memory_id);
+  vm_memory_id_ = std::make_optional(vm_memory_id);
   return *this;
 }
 

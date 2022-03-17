@@ -7,6 +7,7 @@
 
 #include <base/compiler_specific.h>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <brillo/secure_blob.h>

@@ -6,6 +6,7 @@
 #define RUNTIME_PROBE_UTILS_FILE_UTILS_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,7 +25,7 @@ namespace runtime_probe {
 // |keys| represents the set of must have, if any |keys| is missed in the
 // |dir_path|, an empty dictionary will be returned.
 template <typename KeyType>
-base::Optional<base::Value> MapFilesToDict(
+std::optional<base::Value> MapFilesToDict(
     const base::FilePath& dir_path,
     const std::vector<KeyType>& keys,
     const std::vector<KeyType>& optional_keys);

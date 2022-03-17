@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -642,9 +643,9 @@ void Service::SetFailureSilent(ConnectFailure failure) {
   UpdateErrorProperty();
 }
 
-base::Optional<base::TimeDelta> Service::GetTimeSinceFailed() const {
+std::optional<base::TimeDelta> Service::GetTimeSinceFailed() const {
   if (failed_time_.is_null())
-    return base::nullopt;
+    return std::nullopt;
   return base::Time::Now() - failed_time_;
 }
 
@@ -2052,7 +2053,7 @@ bool Service::SetMeteredProperty(const bool& metered, Error* /*error*/) {
 
 void Service::ClearMeteredProperty(Error* /*error*/) {
   bool was_metered = IsMetered();
-  metered_override_ = base::nullopt;
+  metered_override_ = std::nullopt;
 
   bool is_metered = IsMetered();
   if (was_metered != is_metered)

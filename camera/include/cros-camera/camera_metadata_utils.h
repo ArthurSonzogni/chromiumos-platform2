@@ -9,7 +9,7 @@
 
 #include <base/containers/span.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/optional.h>
+#include <optional>
 #include <system/camera_metadata.h>
 
 // Utility template functions for accessing and modifying the contents of a
@@ -30,13 +30,13 @@ struct Rational : public camera_metadata_rational_t {
 };
 
 // Gets the address of a single data element for |tag| in |metadata|.  Returns
-// base::nullopt if |metadata| does not store any data for |tag|.
+// std::nullopt if |metadata| does not store any data for |tag|.
 template <typename T>
-base::Optional<T*> GetMetadata(camera_metadata_t* metadata, uint32_t tag) {
+std::optional<T*> GetMetadata(camera_metadata_t* metadata, uint32_t tag) {
   camera_metadata_entry_t entry;
   int ret = find_camera_metadata_entry(metadata, tag, &entry);
   if (ret != 0 || entry.count == 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
   CHECK_EQ(camera_metadata_type_size[entry.type], sizeof(T));
   return reinterpret_cast<T*>(entry.data.u8);
@@ -55,15 +55,15 @@ base::span<T> GetMetadataAsSpan(camera_metadata_t* metadata, uint32_t tag) {
   return {reinterpret_cast<T*>(entry.data.u8), entry.count};
 }
 
-// Gets the value of |tag| data in |metadata|.  Returns base::nullopt if
+// Gets the value of |tag| data in |metadata|.  Returns std::nullopt if
 // |metadata| does not store any data for |tag|.
 template <typename T>
-base::Optional<T> GetRoMetadata(const camera_metadata_t* metadata,
-                                uint32_t tag) {
+std::optional<T> GetRoMetadata(const camera_metadata_t* metadata,
+                               uint32_t tag) {
   camera_metadata_ro_entry_t ro_entry;
   int ret = find_camera_metadata_ro_entry(metadata, tag, &ro_entry);
   if (ret != 0 || ro_entry.count == 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
   CHECK_EQ(camera_metadata_type_size[ro_entry.type], sizeof(T));
   return *(reinterpret_cast<const T*>(ro_entry.data.u8));

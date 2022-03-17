@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
+
 #include <brillo/http/http_transport_curl.h>
 
 #include <base/at_exit.h>
@@ -370,7 +372,7 @@ TEST_F(HttpCurlTransportTest, RequestGetBufferSize) {
 }
 
 TEST_F(HttpCurlTransportTest, RequestGetBufferSizeDefault) {
-  transport_->SetBufferSize(base::nullopt);
+  transport_->SetBufferSize(std::nullopt);
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
       .WillOnce(Return(CURLE_OK));
@@ -408,7 +410,7 @@ TEST_F(HttpCurlTransportTest, RequestGetUploadBufferSize) {
 }
 
 TEST_F(HttpCurlTransportTest, RequestGetUploadBufferSizeDefault) {
-  transport_->SetUploadBufferSize(base::nullopt);
+  transport_->SetUploadBufferSize(std::nullopt);
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
       .WillOnce(Return(CURLE_OK));

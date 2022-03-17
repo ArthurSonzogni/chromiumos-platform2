@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <base/values.h>
 #include <metrics/bootstat.h>
 

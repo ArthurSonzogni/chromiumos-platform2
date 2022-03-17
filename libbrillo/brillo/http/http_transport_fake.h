@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <string>
 #include <type_traits>
@@ -15,7 +16,6 @@
 
 #include <base/callback.h>
 #include <base/location.h>
-#include <base/optional.h>
 #include <base/values.h>
 #include <brillo/brillo_export.h>
 #include <brillo/http/http_transport.h>
@@ -116,8 +116,8 @@ class BRILLO_EXPORT Transport : public http::Transport {
                        uint16_t port,
                        const std::string& ip_address) override {}
 
-  void SetBufferSize(base::Optional<int> buffer_size) override{};
-  void SetUploadBufferSize(base::Optional<int> buffer_size) override{};
+  void SetBufferSize(std::optional<int> buffer_size) override{};
+  void SetUploadBufferSize(std::optional<int> buffer_size) override{};
 
  protected:
   void ClearHost() override {}
@@ -151,7 +151,7 @@ class ServerRequestResponseBase {
   void SetData(StreamPtr stream);
   const std::vector<uint8_t>& GetData() const { return data_; }
   std::string GetDataAsString() const;
-  base::Optional<base::Value> GetDataAsJson() const;
+  std::optional<base::Value> GetDataAsJson() const;
   // Parses the data into a JSON object and writes it back to JSON to normalize
   // its string representation (no pretty print, extra spaces, etc).
   std::string GetDataAsNormalizedJsonString() const;

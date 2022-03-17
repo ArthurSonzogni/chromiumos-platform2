@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/files/scoped_file.h>
-#include <base/optional.h>
 #include <base/unguessable_token.h>
 #include <mojo/public/c/system/types.h>
 #include <mojo/public/cpp/system/message_pipe.h>

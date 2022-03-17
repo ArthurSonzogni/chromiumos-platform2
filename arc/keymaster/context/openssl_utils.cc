@@ -8,6 +8,7 @@
 #include <base/stl_util.h>
 #include <openssl/aes.h>
 #include <openssl/rand.h>
+#include <optional>
 
 namespace arc {
 namespace keymaster {
@@ -19,8 +20,8 @@ constexpr size_t kKeySize = 32;
 constexpr size_t kAes256GcmPadding = 16;
 
 // Encrypts a given |input| using AES-GCM-256 with |key|, |auth_data|, and |iv|.
-// Returns base::nullopt if there's an error in the OpenSSL operation.
-base::Optional<brillo::Blob> DoAes256GcmEncrypt(
+// Returns std::nullopt if there's an error in the OpenSSL operation.
+std::optional<brillo::Blob> DoAes256GcmEncrypt(
     const brillo::SecureBlob& key,
     const brillo::Blob& auth_data,
     const brillo::Blob& iv,
@@ -32,14 +33,14 @@ base::Optional<brillo::Blob> DoAes256GcmEncrypt(
   if (1 != EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(),
                               /* engine */ nullptr,
                               /* key */ key.data(), /* iv */ iv.data())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Update operation with |auth_data|, out pointer must be null.
   int auth_update_len;
   if (1 != EVP_EncryptUpdate(ctx.get(), /* out */ nullptr, &auth_update_len,
                              auth_data.data(), auth_data.size())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Update operation with |input|.
@@ -47,14 +48,14 @@ base::Optional<brillo::Blob> DoAes256GcmEncrypt(
   brillo::Blob output(input.size() + kAes256GcmPadding);
   if (1 != EVP_EncryptUpdate(ctx.get(), output.data(), &update_len,
                              input.data(), input.size())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Finish operation, accumulate results in |output|.
   int finish_len;
   if (1 !=
       EVP_EncryptFinal_ex(ctx.get(), output.data() + update_len, &finish_len)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   CHECK_GE(output.size(), update_len + finish_len);
   output.resize(update_len + finish_len);
@@ -63,7 +64,7 @@ base::Optional<brillo::Blob> DoAes256GcmEncrypt(
   brillo::Blob tag(kTagSize);
   if (1 != EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, tag.size(),
                                tag.data())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Append tag to |output| and return the encrypted blob.
@@ -72,8 +73,8 @@ base::Optional<brillo::Blob> DoAes256GcmEncrypt(
 }
 
 // Decrypts a given |input| using AES-GCM-256 with |key|, |auth_data|, and |iv|.
-// Returns base::nullopt if there's an error in the OpenSSL operation.
-base::Optional<brillo::SecureBlob> DoAes256GcmDecrypt(
+// Returns std::nullopt if there's an error in the OpenSSL operation.
+std::optional<brillo::SecureBlob> DoAes256GcmDecrypt(
     const brillo::SecureBlob& key,
     const brillo::Blob& auth_data,
     const brillo::Blob& iv,
@@ -83,13 +84,13 @@ base::Optional<brillo::SecureBlob> DoAes256GcmDecrypt(
 
   // Input must have a tag appended to it.
   if (input.size() < kTagSize)
-    return base::nullopt;
+    return std::nullopt;
 
   // Initialize cipher.
   crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
   if (1 != EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(),
                               /* engine */ nullptr, key.data(), iv.data())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Set expected tag.
@@ -97,14 +98,14 @@ base::Optional<brillo::SecureBlob> DoAes256GcmDecrypt(
   size_t input_len = input.size() - tag.size();
   if (1 != EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, tag.size(),
                                tag.data())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Update operation with |auth_data|, out pointer must be null.
   int auth_update_len;
   if (1 != EVP_DecryptUpdate(ctx.get(), /* out */ nullptr, &auth_update_len,
                              auth_data.data(), auth_data.size())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Update operation with |input|.
@@ -112,14 +113,14 @@ base::Optional<brillo::SecureBlob> DoAes256GcmDecrypt(
   brillo::SecureBlob output(input_len + kAes256GcmPadding);
   if (1 != EVP_DecryptUpdate(ctx.get(), output.data(), &update_len,
                              input.data(), input_len)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Finish operation, accumulate results in |output|.
   int finish_len;
   if (1 !=
       EVP_CipherFinal_ex(ctx.get(), output.data() + update_len, &finish_len)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   CHECK_GE(output.size(), update_len + finish_len);
   output.resize(update_len + finish_len);
@@ -130,32 +131,32 @@ base::Optional<brillo::SecureBlob> DoAes256GcmDecrypt(
 
 }  // anonymous namespace
 
-base::Optional<brillo::Blob> Aes256GcmEncrypt(const brillo::SecureBlob& key,
-                                              const brillo::Blob& auth_data,
-                                              const brillo::SecureBlob& input) {
+std::optional<brillo::Blob> Aes256GcmEncrypt(const brillo::SecureBlob& key,
+                                             const brillo::Blob& auth_data,
+                                             const brillo::SecureBlob& input) {
   // Compute a random IV.
   brillo::Blob iv(kIvSize);
   if (1 != RAND_bytes(iv.data(), iv.size()))
-    return base::nullopt;
+    return std::nullopt;
 
   // Encrypt the input.
-  base::Optional<brillo::Blob> encrypted =
+  std::optional<brillo::Blob> encrypted =
       DoAes256GcmEncrypt(key, auth_data, iv, input);
   if (!encrypted.has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   // Append the random IV used for encryption to the output.
   encrypted->insert(encrypted->end(), iv.begin(), iv.end());
   return encrypted;
 }
 
-base::Optional<brillo::SecureBlob> Aes256GcmDecrypt(
+std::optional<brillo::SecureBlob> Aes256GcmDecrypt(
     const brillo::SecureBlob& key,
     const brillo::Blob& auth_data,
     const brillo::Blob& input) {
   // Input must have an IV appended to it.
   if (input.size() < kIvSize)
-    return base::nullopt;
+    return std::nullopt;
 
   // Split the input between the encrypted portion and the IV.
   brillo::Blob encrypted(input.begin(), input.end() - kIvSize);

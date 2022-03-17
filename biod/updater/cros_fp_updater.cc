@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -18,7 +19,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/optional.h>
 #include <base/process/launch.h>
 #include <base/strings/string_split.h>
 #include <base/time/time.h>
@@ -90,18 +90,18 @@ std::string CrosFpDeviceUpdate::EcCurrentImageToString(enum ec_image image) {
   NOTREACHED();
 }
 
-base::Optional<CrosFpDeviceInterface::EcVersion>
-CrosFpDeviceUpdate::GetVersion() const {
+std::optional<CrosFpDeviceInterface::EcVersion> CrosFpDeviceUpdate::GetVersion()
+    const {
   auto fd = base::ScopedFD(open(CrosFpDevice::kCrosFpPath, O_RDWR | O_CLOEXEC));
   if (!fd.is_valid()) {
     LOG(ERROR) << "Failed to open fingerprint device, while fetching version.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   auto version = biod::CrosFpDevice::GetVersion(fd);
   if (!version) {
     LOG(ERROR) << "Failed to read fingerprint version.";
-    return base::nullopt;
+    return std::nullopt;
   }
   return version;
 }

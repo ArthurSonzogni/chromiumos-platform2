@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <base/notreached.h>
-#include <base/optional.h>
 #include <brillo/udev/udev.h>
 
 #include "diagnostics/common/status_macros.h"

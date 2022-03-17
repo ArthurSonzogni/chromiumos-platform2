@@ -3,12 +3,12 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/optional.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
@@ -36,7 +36,7 @@ class AcPowerRoutineTest : public testing::Test {
   DiagnosticRoutine* routine() { return routine_.get(); }
 
   void CreateRoutine(mojo_ipc::AcPowerStatusEnum expected_status,
-                     const base::Optional<std::string>& expected_power_type) {
+                     const std::optional<std::string>& expected_power_type) {
     routine_ = std::make_unique<AcPowerRoutine>(
         expected_status, expected_power_type, temp_dir_.GetPath());
   }
@@ -165,7 +165,7 @@ TEST_F(AcPowerRoutineTest, MismatchedPowerTypes) {
 
 // Test that the routine deals with no valid directories found.
 TEST_F(AcPowerRoutineTest, NoValidDirectories) {
-  CreateRoutine(mojo_ipc::AcPowerStatusEnum::kConnected, base::nullopt);
+  CreateRoutine(mojo_ipc::AcPowerStatusEnum::kConnected, std::nullopt);
   WriteOnlineFileContents("0");
   WriteTypeFileContents("Battery");
 
@@ -211,7 +211,7 @@ TEST_F(AcPowerRoutineTest, MissingTypeFile) {
 
 // Test that we can cancel the routine in its waiting state.
 TEST_F(AcPowerRoutineTest, CancelWhenWaiting) {
-  CreateRoutine(mojo_ipc::AcPowerStatusEnum::kConnected, base::nullopt);
+  CreateRoutine(mojo_ipc::AcPowerStatusEnum::kConnected, std::nullopt);
 
   routine()->Start();
 

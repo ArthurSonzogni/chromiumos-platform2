@@ -5,6 +5,7 @@
 #include "runtime_probe/probe_function.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -77,11 +78,10 @@ bool PrivilegedProbeFunction::InvokeHelper(std::string* result) const {
       /*probe_function=*/this, probe_statement_str, result);
 }
 
-base::Optional<base::Value> PrivilegedProbeFunction::InvokeHelperToJSON()
-    const {
+std::optional<base::Value> PrivilegedProbeFunction::InvokeHelperToJSON() const {
   std::string raw_output;
   if (!InvokeHelper(&raw_output)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   VLOG(3) << "InvokeHelper raw output:\n" << raw_output;
   return base::JSONReader::Read(raw_output);

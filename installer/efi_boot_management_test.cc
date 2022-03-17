@@ -4,6 +4,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <optional>
 
 #include "installer/efi_boot_management.cc"
 #include "installer/efivar.cc"
@@ -84,12 +85,12 @@ class EfiVarFake : public EfiVarInterface {
  public:
   bool EfiVariablesSupported() override { return true; }
 
-  base::Optional<std::string> GetNextVariableName() override {
+  std::optional<std::string> GetNextVariableName() override {
     if (variable_names_.size() == 0) {
-      return base::nullopt;
+      return std::nullopt;
     }
 
-    base::Optional<std::string> result(variable_names_.back());
+    std::optional<std::string> result(variable_names_.back());
     variable_names_.pop_back();
     return result;
   }
@@ -362,7 +363,7 @@ TEST_F(EfiBootManagerTest, EntryRoundTrip) {
 }
 
 TEST_F(EfiBootManagerTest, NextAvailableBootNum) {
-  base::Optional<EfiBootNumber> boot_num;
+  std::optional<EfiBootNumber> boot_num;
   // Test an empty list.
   efi_boot_manager_.SetEntries({});
   boot_num = efi_boot_manager_.NextAvailableBootNum();
@@ -396,7 +397,7 @@ TEST_F(EfiBootManagerTest, FindContentsInBootOrder) {
   const EfiBootEntryContents desired(
       kCrosEfiDescription,
       VecU8From(kExamplePathCros, sizeof(kExamplePathCros)));
-  base::Optional<EfiBootNumber> entry;
+  std::optional<EfiBootNumber> entry;
 
   // Desired not present in entries
   efi_boot_manager_.SetBootOrder(
@@ -446,7 +447,7 @@ TEST_F(EfiBootManagerTest, FindContents) {
   const EfiBootEntryContents desired(
       kCrosEfiDescription,
       VecU8From(kExamplePathCros, sizeof(kExamplePathCros)));
-  base::Optional<EfiBootNumber> entry;
+  std::optional<EfiBootNumber> entry;
 
   // Desired not present in entries
   efi_boot_manager_.SetEntries({

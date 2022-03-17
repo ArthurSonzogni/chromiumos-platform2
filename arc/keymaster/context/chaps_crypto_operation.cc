@@ -6,6 +6,8 @@
 
 #include <chaps/pkcs11/cryptoki.h>
 
+#include <optional>
+
 #include <base/logging.h>
 
 #include "arc/keymaster/context/chaps_client.h"
@@ -57,20 +59,20 @@ bool ChapsCryptoOperation::IsSupportedMechanism(
          kCkmSha512RsaPkcsSign == description;
 }
 
-base::Optional<uint64_t> ChapsCryptoOperation::Begin(
+std::optional<uint64_t> ChapsCryptoOperation::Begin(
     MechanismDescription mechanism_description) {
   if (!IsSupportedMechanism(mechanism_description)) {
     LOG(ERROR) << "Mechanism not implemented for chaps keys: "
                << mechanism_description;
-    return base::nullopt;
+    return std::nullopt;
   }
   set_description(mechanism_description);
 
   chaps_ = std::make_unique<ChapsClient>(context_adaptor_, slot_);
-  base::Optional<CK_OBJECT_HANDLE> handle =
+  std::optional<CK_OBJECT_HANDLE> handle =
       chaps_->FindObject(CKO_PRIVATE_KEY, label_, id_);
   if (!handle.has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   CK_OBJECT_HANDLE key_handle = handle.value();
 
@@ -92,30 +94,30 @@ base::Optional<uint64_t> ChapsCryptoOperation::Begin(
     LOG(ERROR) << "Unsupported operation " << description();
   }
 
-  return success ? chaps_->session_handle() : base::nullopt;
+  return success ? chaps_->session_handle() : std::nullopt;
 }
 
-base::Optional<brillo::Blob> ChapsCryptoOperation::Update(
+std::optional<brillo::Blob> ChapsCryptoOperation::Update(
     const brillo::Blob& input) {
   switch (description().type) {
     case OperationType::kSign:
       return chaps_->UpdateSignature(input)
-                 ? base::Optional<brillo::Blob>(brillo::Blob())
-                 : base::nullopt;
+                 ? std::optional<brillo::Blob>(brillo::Blob())
+                 : std::nullopt;
     case OperationType::kUnsupported:
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 
-base::Optional<brillo::Blob> ChapsCryptoOperation::Finish() {
-  base::Optional<brillo::Blob> result;
+std::optional<brillo::Blob> ChapsCryptoOperation::Finish() {
+  std::optional<brillo::Blob> result;
 
   switch (description().type) {
     case OperationType::kSign:
       result = chaps_->FinalizeSignature();
       break;
     case OperationType::kUnsupported:
-      result = base::nullopt;
+      result = std::nullopt;
       break;
   }
 

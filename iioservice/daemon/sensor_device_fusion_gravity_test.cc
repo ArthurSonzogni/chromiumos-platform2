@@ -5,11 +5,11 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include <base/bind.h>
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
 #include <libmems/common_types.h>
@@ -123,7 +123,7 @@ TEST_F(SensorDeviceFusionGravityTest, GetAttributes) {
        cros::mojom::kDeviceName},
       base::BindOnce(
           [](base::RepeatingClosure closure,
-             const std::vector<base::Optional<std::string>>& values) {
+             const std::vector<std::optional<std::string>>& values) {
             EXPECT_EQ(values.size(), 3u);
             EXPECT_TRUE(values[0].has_value());
             EXPECT_EQ(values[0].value().compare(kParsedDeviceAttrValue), 0);
@@ -152,7 +152,7 @@ TEST_F(SensorDeviceFusionGravityTest, GetChannelsAttributes) {
       indices, {cros::mojom::kScale},
       base::BindOnce(
           [](base::RepeatingClosure closure, size_t size,
-             const std::vector<base::Optional<std::string>>& values) {
+             const std::vector<std::optional<std::string>>& values) {
             EXPECT_EQ(values.size(), size);
             // Gravity device channels' attributes are not provided for now.
             for (size_t i = 0; i < size; ++i)

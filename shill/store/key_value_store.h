@@ -6,6 +6,7 @@
 #define SHILL_STORE_KEY_VALUE_STORE_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 

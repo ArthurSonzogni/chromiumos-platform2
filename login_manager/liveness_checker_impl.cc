@@ -7,6 +7,7 @@
 #include <signal.h>
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -146,11 +147,11 @@ void LivenessCheckerImpl::SetProcForTests(base::FilePath&& proc_directory) {
   proc_directory_ = std::move(proc_directory);
 }
 
-base::Optional<brillo::SafeFD> LivenessCheckerImpl::OpenBrowserProcFile(
+std::optional<brillo::SafeFD> LivenessCheckerImpl::OpenBrowserProcFile(
     base::StringPiece file_name) {
-  base::Optional<pid_t> browser_pid = manager_->GetBrowserPid();
+  std::optional<pid_t> browser_pid = manager_->GetBrowserPid();
   if (!browser_pid.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   base::FilePath file_path(proc_directory_);
@@ -161,21 +162,21 @@ base::Optional<brillo::SafeFD> LivenessCheckerImpl::OpenBrowserProcFile(
   if (brillo::SafeFD::IsError(result.second)) {
     PLOG(WARNING) << "Could not get root directory "
                   << static_cast<int>(result.second) << ": ";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   result = result.first.OpenExistingFile(file_path, O_RDONLY | O_CLOEXEC);
   if (brillo::SafeFD::IsError(result.second)) {
     PLOG(WARNING) << "Could not open " << file_path.value() << " error code "
                   << static_cast<int>(result.second) << ": ";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return std::move(result.first);
 }
 
 LoginMetrics::BrowserState LivenessCheckerImpl::GetBrowserState() {
-  base::Optional<brillo::SafeFD> status_fd = OpenBrowserProcFile("status");
+  std::optional<brillo::SafeFD> status_fd = OpenBrowserProcFile("status");
   if (!status_fd.has_value()) {
     return LoginMetrics::BrowserState::kErrorGettingState;
   }
@@ -224,7 +225,7 @@ LoginMetrics::BrowserState LivenessCheckerImpl::GetBrowserState() {
 }
 
 void LivenessCheckerImpl::RecordWchanState(LoginMetrics::BrowserState state) {
-  base::Optional<brillo::SafeFD> wchan_fd = OpenBrowserProcFile("wchan");
+  std::optional<brillo::SafeFD> wchan_fd = OpenBrowserProcFile("wchan");
   if (!wchan_fd.has_value()) {
     return;
   }

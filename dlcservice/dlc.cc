@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cinttypes>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -793,7 +794,7 @@ void DlcBase::ChangeProgress(double progress) {
   }
 }
 
-bool DlcBase::SetReserve(base::Optional<bool> reserve) {
+bool DlcBase::SetReserve(std::optional<bool> reserve) {
   if (reserve.has_value()) {
     if ((reserve_ = reserve.value())) {
       LOG(INFO) << "Enabling DLC=" << id_ << " reserve.";

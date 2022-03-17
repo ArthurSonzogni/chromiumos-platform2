@@ -6,10 +6,10 @@
 #define ARC_KEYMASTER_CONTEXT_CRYPTO_OPERATION_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/check.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 
 namespace arc {
@@ -105,21 +105,21 @@ class CryptoOperation {
   //
   // Returns a handle to identify this operation, and |nullopt| when this
   // operation is not supported or there's an error during execution.
-  virtual base::Optional<uint64_t> Begin(MechanismDescription description) = 0;
+  virtual std::optional<uint64_t> Begin(MechanismDescription description) = 0;
 
   // Updates this operation with some |input|.
   //
   // Returns an output blob, or |nullopt| in case of error. The returned blob
   // may be empty if there's no output to be produced, e.g. in a signature
   // operation.
-  virtual base::Optional<brillo::Blob> Update(const brillo::Blob& input) = 0;
+  virtual std::optional<brillo::Blob> Update(const brillo::Blob& input) = 0;
 
   // Finishes this operation.
   //
   // Returns the final output blob, or |nullopt| in case of error. The returned
   // blob may be empty if no output was produced, e.g. in an encrypt operation
   // where all output has already been produced through |Update|.
-  virtual base::Optional<brillo::Blob> Finish() = 0;
+  virtual std::optional<brillo::Blob> Finish() = 0;
 
   // Aborts this operation.
   //
@@ -144,7 +144,7 @@ class CryptoOperation {
   CryptoOperation();
 
  private:
-  base::Optional<MechanismDescription> description_;
+  std::optional<MechanismDescription> description_;
 };
 
 std::ostream& operator<<(std::ostream& os,

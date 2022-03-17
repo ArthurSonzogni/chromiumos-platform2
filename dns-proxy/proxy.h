@@ -123,7 +123,7 @@ class Proxy : public brillo::DBusDaemon {
 
   // Triggered by the Chrome features client in response to checking the status
   // of the DNSProxyEnabled feature value.
-  void OnFeatureEnabled(base::Optional<bool> enabled);
+  void OnFeatureEnabled(std::optional<bool> enabled);
   void Enable();
   void Disable();
 

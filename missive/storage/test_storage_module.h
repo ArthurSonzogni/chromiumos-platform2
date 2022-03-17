@@ -5,6 +5,7 @@
 #ifndef MISSIVE_STORAGE_TEST_STORAGE_MODULE_H_
 #define MISSIVE_STORAGE_TEST_STORAGE_MODULE_H_
 
+#include <optional>
 #include <utility>
 
 #include <base/callback.h>
@@ -14,7 +15,6 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 namespace test {
@@ -58,8 +58,8 @@ class TestStorageModuleStrict : public StorageModuleInterface {
                              Record record,
                              base::OnceCallback<void(Status)> callback);
 
-  absl::optional<Record> record_;
-  absl::optional<Priority> priority_;
+  std::optional<Record> record_;
+  std::optional<Priority> priority_;
 };
 
 // Most of the time no need to log uninterested calls to |AddRecord|.

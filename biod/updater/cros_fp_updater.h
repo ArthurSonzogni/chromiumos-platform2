@@ -5,10 +5,10 @@
 #ifndef BIOD_UPDATER_CROS_FP_UPDATER_H_
 #define BIOD_UPDATER_CROS_FP_UPDATER_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <brillo/enum_flags.h>
 #include <chromeos/ec/ec_commands.h>
 #include <cros_config/cros_config_interface.h>
@@ -26,7 +26,7 @@ namespace biod {
 class CrosFpDeviceUpdate {
  public:
   virtual ~CrosFpDeviceUpdate() = default;
-  virtual base::Optional<CrosFpDeviceInterface::EcVersion> GetVersion() const;
+  virtual std::optional<CrosFpDeviceInterface::EcVersion> GetVersion() const;
   virtual bool IsFlashProtectEnabled(bool* status) const;
   virtual bool Flash(const CrosFpFirmware& fw, enum ec_image image) const;
   static std::string EcCurrentImageToString(enum ec_image image);

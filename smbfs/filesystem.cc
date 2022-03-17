@@ -6,6 +6,8 @@
 
 #include <errno.h>
 
+#include <optional>
+
 namespace smbfs {
 
 Filesystem::Filesystem() = default;
@@ -32,7 +34,7 @@ void Filesystem::GetAttr(std::unique_ptr<AttrRequest> request,
 
 void Filesystem::SetAttr(std::unique_ptr<AttrRequest> request,
                          fuse_ino_t inode,
-                         base::Optional<uint64_t> file_handle,
+                         std::optional<uint64_t> file_handle,
                          const struct stat& attr,
                          int to_set) {
   request->ReplyError(ENOSYS);

@@ -4,9 +4,9 @@
 
 #include "oobe_config/rollback_openssl_encryption.h"
 
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <base/strings/strcat.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rand.h>
@@ -21,31 +21,31 @@ constexpr int kIvSize = 12;
 constexpr int kKeySize = 32;
 constexpr int kTagSize = 16;
 
-base::Optional<brillo::SecureBlob> GenerateRandomKey() {
+std::optional<brillo::SecureBlob> GenerateRandomKey() {
   brillo::SecureBlob key(kKeySize);
   if (!RAND_bytes(key.data(), kKeySize)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return key;
 }
 
 // Generates a random initialization vector.
-base::Optional<brillo::Blob> GenerateRandomIV() {
+std::optional<brillo::Blob> GenerateRandomIV() {
   brillo::Blob iv(kIvSize);
   if (!RAND_bytes(iv.data(), kIvSize)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return iv;
 }
 
 }  // namespace
 
-base::Optional<EncryptedData> Encrypt(const brillo::SecureBlob& data) {
-  base::Optional<brillo::SecureBlob> key = GenerateRandomKey();
-  base::Optional<brillo::Blob> iv = GenerateRandomIV();
+std::optional<EncryptedData> Encrypt(const brillo::SecureBlob& data) {
+  std::optional<brillo::SecureBlob> key = GenerateRandomKey();
+  std::optional<brillo::Blob> iv = GenerateRandomIV();
 
   if (!iv.has_value() || !key.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   DCHECK_EQ(iv->size(), kIvSize);
@@ -54,20 +54,20 @@ base::Optional<EncryptedData> Encrypt(const brillo::SecureBlob& data) {
   crypto::ScopedEVP_CIPHER_CTX context(EVP_CIPHER_CTX_new());
   if (!EVP_EncryptInit_ex(context.get(), EVP_aes_256_gcm(), nullptr,
                           key->data(), iv->data())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   brillo::Blob encrypted(data.size());
   int encrypted_length = 0;
   if (!EVP_EncryptUpdate(context.get(), encrypted.data(), &encrypted_length,
                          data.data(), data.size())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   DCHECK_EQ(encrypted_length, data.size());
 
   if (!EVP_EncryptFinal_ex(context.get(), nullptr, &encrypted_length)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   DCHECK_EQ(encrypted_length, 0);
@@ -75,7 +75,7 @@ base::Optional<EncryptedData> Encrypt(const brillo::SecureBlob& data) {
   brillo::Blob tag(kTagSize);
   if (!EVP_CIPHER_CTX_ctrl(context.get(), EVP_CTRL_GCM_GET_TAG, kTagSize,
                            tag.data())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   encrypted.insert(encrypted.end(), tag.begin(), tag.end());
@@ -83,8 +83,7 @@ base::Optional<EncryptedData> Encrypt(const brillo::SecureBlob& data) {
   return {{encrypted, *key}};
 }
 
-base::Optional<brillo::SecureBlob> Decrypt(
-    const EncryptedData& encrypted_data) {
+std::optional<brillo::SecureBlob> Decrypt(const EncryptedData& encrypted_data) {
   const brillo::Blob& input = encrypted_data.data;
 
   CHECK_GE(input.size(), kTagSize + kIvSize);
@@ -98,25 +97,25 @@ base::Optional<brillo::SecureBlob> Decrypt(
 
   if (!EVP_DecryptInit_ex(context.get(), EVP_aes_256_gcm(), nullptr,
                           encrypted_data.key.data(), iv.data())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   brillo::SecureBlob output(encrypted.size());
   int output_length;
   if (!EVP_DecryptUpdate(context.get(), output.data(), &output_length,
                          encrypted.data(), encrypted.size())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   DCHECK_EQ(output_length, output.size());
 
   if (!EVP_CIPHER_CTX_ctrl(context.get(), EVP_CTRL_GCM_SET_TAG, tag.size(),
                            tag.data())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!EVP_DecryptFinal_ex(context.get(), nullptr, &output_length)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   DCHECK_EQ(output_length, 0);

@@ -5,9 +5,8 @@
 #ifndef SECANOMALYD_REPORTER_H_
 #define SECANOMALYD_REPORTER_H_
 
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 #include "secanomalyd/mount_entry.h"
 #include "secanomalyd/mounts.h"
@@ -15,7 +14,7 @@
 
 namespace secanomalyd {
 
-using MaybeReport = base::Optional<std::string>;
+using MaybeReport = std::optional<std::string>;
 
 bool ShouldReport(bool report_in_dev_mode);
 

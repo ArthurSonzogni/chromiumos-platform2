@@ -7,6 +7,7 @@
 #include "common/still_capture_processor_impl.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <libyuv/scale.h>
@@ -279,12 +280,12 @@ void StillCaptureProcessorImpl::QueuePendingOutputBuffer(
     req.thumbnail_size = {static_cast<uint32_t>(thumbnail_size[0]),
                           static_cast<uint32_t>(thumbnail_size[1])};
   }
-  base::Optional<uint8_t> thumbnail_quality =
+  std::optional<uint8_t> thumbnail_quality =
       GetRoMetadata<uint8_t>(request_settings, ANDROID_JPEG_THUMBNAIL_QUALITY);
   if (thumbnail_quality) {
     req.thumbnail_quality = *thumbnail_quality;
   }
-  base::Optional<uint8_t> jpeg_quality =
+  std::optional<uint8_t> jpeg_quality =
       GetRoMetadata<uint8_t>(request_settings, ANDROID_JPEG_QUALITY);
   if (jpeg_quality) {
     req.jpeg_quality = *jpeg_quality;

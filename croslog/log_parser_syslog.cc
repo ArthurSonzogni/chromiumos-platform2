@@ -5,6 +5,7 @@
 #include "croslog/log_parser_syslog.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -57,26 +58,26 @@ LogParserSyslog::LogParserSyslog() = default;
 MaybeLogEntry LogParserSyslog::ParseInternal(std::string&& entire_line) {
   if (entire_line.empty()) {
     // Returns an invalid value if the line is invalid or empty.
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (entire_line.size() < kTimeStringLengthUTC) {
     // Parse failed. Maybe this line doesn't contains a header.
-    return base::nullopt;
+    return std::nullopt;
   }
 
   base::Time time;
   int message_start_pos = ParseTime(entire_line, &time);
   if (message_start_pos < 0) {
     // Parse failed. Maybe this line doesn't contains a header.
-    return base::nullopt;
+    return std::nullopt;
   }
   DCHECK_LE(message_start_pos, entire_line.length());
 
   int pos = message_start_pos;
   if (entire_line[pos] != ' ') {
     // Parse failed. Maybe this line doesn't contains a header.
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string severity_str;
@@ -131,7 +132,7 @@ MaybeLogEntry LogParserSyslog::ParseInternal(std::string&& entire_line) {
       // Parse failed. Maybe this line doesn't contains a header.
       // Note that the '[' character can happen when there's incomplete closing
       // brace for PID that's parsed above.
-      return base::nullopt;
+      return std::nullopt;
     }
 
     message = entire_line.substr(pos, entire_line.size() - pos);

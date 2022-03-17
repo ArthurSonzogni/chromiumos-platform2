@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <optional>
 #include <vector>
 
 #include <base/files/file.h>

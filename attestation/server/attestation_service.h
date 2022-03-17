@@ -12,6 +12,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -21,7 +22,6 @@
 #include <base/check.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
@@ -472,11 +472,11 @@ class AttestationService : public AttestationInterface {
 
   // Get endorsement public key. Get it from proto database if exists, otherwise
   // get it from tpm_utility.
-  base::Optional<std::string> GetEndorsementPublicKey() const;
+  std::optional<std::string> GetEndorsementPublicKey() const;
 
   // Get endorsement certificate. Get it from proto database if exists,
   // otherwise get it from tpm_utility.
-  base::Optional<std::string> GetEndorsementCertificate() const;
+  std::optional<std::string> GetEndorsementCertificate() const;
 
   // Prepares the attestation system for enrollment with an ACA.
   void PrepareForEnrollment(InitializeCompleteCallback callback);

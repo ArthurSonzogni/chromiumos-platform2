@@ -10,10 +10,10 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <base/containers/span.h>
-#include <base/optional.h>
 
 struct libusb_context;
 struct libusb_device;
@@ -87,10 +87,10 @@ class UsbDfuDevice {
   bool Reset() const;
 
   // Send DFU_GETSTATUS request to device.
-  base::Optional<DfuStatus> GetStatus() const;
+  std::optional<DfuStatus> GetStatus() const;
 
   // Send DFU_GETSTATE request to device.
-  base::Optional<uint8_t> GetState() const;
+  std::optional<uint8_t> GetState() const;
 
   // In dfuDNLOAD-SYNC state (after a DFU_DNLOAD request is sent), send
   // DFU_GETSTATUS requests repeatedly until device enters dfuDNLOAD-IDLE state.

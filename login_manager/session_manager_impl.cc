@@ -13,6 +13,7 @@
 #include <iterator>
 #include <locale>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -415,7 +416,7 @@ SessionManagerImpl::SessionManagerImpl(
     ProcessManagerServiceInterface* manager,
     LoginMetrics* metrics,
     NssUtil* nss,
-    base::Optional<base::FilePath> ns_path,
+    std::optional<base::FilePath> ns_path,
     SystemUtils* utils,
     Crossystem* crossystem,
     VpdProcess* vpd_process,
@@ -703,7 +704,7 @@ bool SessionManagerImpl::StartSession(brillo::ErrorPtr* error,
   const bool is_incognito = IsIncognitoAccountId(actual_account_id);
   const OptionalFilePath ns_mnt_path = is_incognito || IsolateUserSession()
                                            ? chrome_mount_ns_path_
-                                           : base::nullopt;
+                                           : std::nullopt;
   auto user_session =
       CreateUserSession(actual_account_id, ns_mnt_path, is_incognito, error);
   if (!user_session) {

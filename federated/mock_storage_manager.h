@@ -7,6 +7,7 @@
 
 #include "federated/storage_manager.h"
 
+#include <optional>
 #include <string>
 
 #include <base/macros.h>
@@ -27,7 +28,7 @@ class MockStorageManager : public StorageManager {
               OnExampleReceived,
               (const std::string&, const std::string&),
               (override));
-  MOCK_METHOD(base::Optional<ExampleDatabase::Iterator>,
+  MOCK_METHOD(std::optional<ExampleDatabase::Iterator>,
               GetExampleIterator,
               (const std::string&),
               (const, override));

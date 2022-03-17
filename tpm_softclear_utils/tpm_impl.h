@@ -7,10 +7,10 @@
 
 #include "tpm_softclear_utils/tpm.h"
 
+#include <optional>
 #include <string>
 
 #include <base/macros.h>
-#include <base/optional.h>
 
 namespace tpm_softclear_utils {
 
@@ -28,7 +28,7 @@ class TpmImpl : public Tpm {
 
   // Gets the owner password from an on-disk file and returns it. In case of an
   // error, returns an empty Optional object.
-  base::Optional<std::string> GetAuthForOwnerReset() override;
+  std::optional<std::string> GetAuthForOwnerReset() override;
 
   // This function does a bunch of things:
   //   1. changing the owner password from |auth_for_owner_reset| to the default

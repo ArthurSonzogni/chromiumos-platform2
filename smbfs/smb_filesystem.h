@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 #include <unordered_map>
@@ -109,7 +110,7 @@ class SmbFilesystem : public Filesystem {
   void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t inode) override;
   void SetAttr(std::unique_ptr<AttrRequest> request,
                fuse_ino_t inode,
-               base::Optional<uint64_t> file_handle,
+               std::optional<uint64_t> file_handle,
                const struct stat& attr,
                int to_set) override;
   void Open(std::unique_ptr<OpenRequest> request,
@@ -201,11 +202,11 @@ class SmbFilesystem : public Filesystem {
   void GetAttrInternal(std::unique_ptr<AttrRequest> request, fuse_ino_t inode);
   void SetAttrInternal(std::unique_ptr<AttrRequest> request,
                        fuse_ino_t inode,
-                       base::Optional<uint64_t> file_handle,
+                       std::optional<uint64_t> file_handle,
                        const struct stat& attr,
                        int to_set);
   int SetFileSizeInternal(const std::string& share_file_path,
-                          base::Optional<uint64_t> file_handle,
+                          std::optional<uint64_t> file_handle,
                           off_t size,
                           const struct stat& current_stat,
                           struct stat* reply_stat);

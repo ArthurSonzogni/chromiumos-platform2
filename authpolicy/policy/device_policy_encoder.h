@@ -6,6 +6,7 @@
 #define AUTHPOLICY_POLICY_DEVICE_POLICY_ENCODER_H_
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -59,21 +60,21 @@ class DevicePolicyEncoder {
       enterprise_management::ChromeDeviceSettingsProto* policy) const;
 
   // Boolean policies.
-  base::Optional<bool> EncodeBoolean(const char* policy_name) const;
+  std::optional<bool> EncodeBoolean(const char* policy_name) const;
 
   // Integer policies.
-  base::Optional<int> EncodeInteger(const char* policy_name) const;
+  std::optional<int> EncodeInteger(const char* policy_name) const;
   // Integer in range policies.
-  base::Optional<int> EncodeIntegerInRange(const char* policy_name,
-                                           int range_min,
-                                           int range_max) const;
+  std::optional<int> EncodeIntegerInRange(const char* policy_name,
+                                          int range_min,
+                                          int range_max) const;
   // String policies.
-  base::Optional<std::string> EncodeString(const char* policy_name) const;
+  std::optional<std::string> EncodeString(const char* policy_name) const;
 
   // String list policies are a little different. Unlike the basic types they
   // are not stored as registry value, but as registry key with values 1, 2, ...
   // for the entries.
-  base::Optional<std::vector<std::string>> EncodeStringList(
+  std::optional<std::vector<std::string>> EncodeStringList(
       const char* policy_name) const;
 
   // Prints out an error message if the |policy_name| is contained in the

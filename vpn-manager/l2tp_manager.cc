@@ -11,6 +11,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include <optional>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -174,7 +176,7 @@ bool L2tpManager::CreatePppLogFifo() {
   return false;
 }
 
-base::Optional<std::string> L2tpManager::FormatL2tpdConfiguration(
+std::optional<std::string> L2tpManager::FormatL2tpdConfiguration(
     const std::string& ppp_config_path) {
   std::string l2tpd_config;
   bool success = true;
@@ -196,7 +198,7 @@ base::Optional<std::string> L2tpManager::FormatL2tpdConfiguration(
   success &= AddString(&l2tpd_config, "max redials", kMaxRedialsParameter);
 
   if (!success) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return l2tpd_config;
 }

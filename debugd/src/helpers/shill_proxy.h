@@ -6,6 +6,7 @@
 #define DEBUGD_SRC_HELPERS_SHILL_PROXY_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/macros.h>
@@ -29,8 +30,8 @@ class ShillProxy : public SystemServiceProxy {
   // Gets the properties associated with the interface named |interface_name|
   // of a D-Bus object identified by |object_path| through the GetProperties()
   // D-Bus method exposed by shill. The properties are expected to be a
-  // dictionary. Returns base::nullopt on error.
-  base::Optional<base::Value> GetProperties(
+  // dictionary. Returns std::nullopt on error.
+  std::optional<base::Value> GetProperties(
       const std::string& interface_name,
       const dbus::ObjectPath& object_path) override;
 

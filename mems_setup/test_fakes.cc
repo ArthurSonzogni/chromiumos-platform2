@@ -4,16 +4,17 @@
 
 #include "mems_setup/test_fakes.h"
 
+#include <optional>
+
 #include <base/logging.h>
 
 namespace mems_setup {
 namespace fakes {
 
-base::Optional<std::string> FakeDelegate::ReadVpdValue(
-    const std::string& name) {
+std::optional<std::string> FakeDelegate::ReadVpdValue(const std::string& name) {
   auto k = vpd_.find(name);
   if (k == vpd_.end())
-    return base::nullopt;
+    return std::nullopt;
   return k->second;
 }
 
@@ -53,10 +54,10 @@ void FakeDelegate::CreateFile(const base::FilePath& fp) {
   existing_files_.emplace(fp);
 }
 
-base::Optional<gid_t> FakeDelegate::FindGroupId(const char* group) {
+std::optional<gid_t> FakeDelegate::FindGroupId(const char* group) {
   auto k = groups_.find(group);
   if (k == groups_.end())
-    return base::nullopt;
+    return std::nullopt;
   return k->second;
 }
 

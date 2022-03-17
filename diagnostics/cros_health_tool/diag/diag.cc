@@ -11,6 +11,7 @@
 #include <iterator>
 #include <limits>
 #include <map>
+#include <optional>
 #include <string>
 
 #include <base/at_exit.h>
@@ -188,8 +189,8 @@ int diag_main(int argc, char** argv) {
                 ? mojo_ipc::AcPowerStatusEnum::kConnected
                 : mojo_ipc::AcPowerStatusEnum::kDisconnected,
             (FLAGS_expected_power_type == "")
-                ? base::nullopt
-                : base::Optional<std::string>{FLAGS_expected_power_type});
+                ? std::nullopt
+                : std::optional<std::string>{FLAGS_expected_power_type});
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kCpuCache:
         routine_result = actions.ActionRunCpuCacheRoutine(
@@ -280,8 +281,8 @@ int diag_main(int argc, char** argv) {
       case mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing:
         routine_result = actions.ActionRunVideoConferencingRoutine(
             (FLAGS_stun_server_hostname == "")
-                ? base::nullopt
-                : base::Optional<std::string>{FLAGS_stun_server_hostname});
+                ? std::nullopt
+                : std::optional<std::string>{FLAGS_stun_server_hostname});
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kArcHttp:
         routine_result = actions.ActionRunArcHttpRoutine();

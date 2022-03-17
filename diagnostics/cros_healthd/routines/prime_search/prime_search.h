@@ -7,8 +7,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 
-#include <base/optional.h>
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
@@ -20,8 +20,8 @@ namespace diagnostics {
 extern const uint64_t kPrimeSearchDefaultMaxNum;
 
 std::unique_ptr<DiagnosticRoutine> CreatePrimeSearchRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration,
-    const base::Optional<uint64_t>& max_num);
+    const std::optional<base::TimeDelta>& exec_duration,
+    const std::optional<uint64_t>& max_num);
 
 }  // namespace diagnostics
 

@@ -5,6 +5,7 @@
 #include "hwsec-test-utils/fake_pca_agent/tpm1_struct_utils.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <arpa/inet.h>
@@ -12,7 +13,6 @@
 #include <base/hash/sha1.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/optional.h>
 #include <base/sys_byteorder.h>
 #include <crypto/scoped_openssl_types.h>
 #include <trousers/trousers.h>
@@ -168,7 +168,7 @@ std::string Serialize(TPM_SYM_CA_ATTESTATION* contents) {
   return std::string(blob.get(), blob.get() + offset);
 }
 
-base::Optional<std::string> ParseDigestFromTpmCertifyInfo(
+std::optional<std::string> ParseDigestFromTpmCertifyInfo(
     const std::string& serialized) {
   TPM_CERTIFY_INFO parsed{};
   uint64_t offset = 0;

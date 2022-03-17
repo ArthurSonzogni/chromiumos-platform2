@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -124,15 +125,15 @@ std::vector<base::FilePath> GlobInternal(
 namespace runtime_probe {
 
 template <typename KeyType>
-base::Optional<Value> MapFilesToDict(const FilePath& dir_path,
-                                     const vector<KeyType>& keys,
-                                     const vector<KeyType>& optional_keys) {
+std::optional<Value> MapFilesToDict(const FilePath& dir_path,
+                                    const vector<KeyType>& keys,
+                                    const vector<KeyType>& optional_keys) {
   Value result(Value::Type::DICTIONARY);
 
   for (const auto& key : keys) {
     if (!ReadFileToDict(dir_path, key, &result)) {
       LOG(ERROR) << "file: \"" << GetFileName(key) << "\" is required.";
-      return base::nullopt;
+      return std::nullopt;
     }
   }
   for (const auto& key : optional_keys) {
@@ -142,13 +143,13 @@ base::Optional<Value> MapFilesToDict(const FilePath& dir_path,
 }
 
 // Explicit template instantiation
-template base::Optional<Value> MapFilesToDict<string>(
+template std::optional<Value> MapFilesToDict<string>(
     const FilePath& dir_path,
     const vector<string>& keys,
     const vector<string>& optional_keys);
 
 // Explicit template instantiation
-template base::Optional<Value> MapFilesToDict<pair<string, string>>(
+template std::optional<Value> MapFilesToDict<pair<string, string>>(
     const FilePath& dir_path,
     const vector<pair<string, string>>& keys,
     const vector<pair<string, string>>& optional_keys);

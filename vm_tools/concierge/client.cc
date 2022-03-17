@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -26,7 +27,6 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_pump_type.h>
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
@@ -390,7 +390,7 @@ int StopAllVms(dbus::ObjectProxy* proxy) {
   return 0;
 }
 
-base::Optional<vm_tools::concierge::VmInfo> GetVmInfoInternal(
+std::optional<vm_tools::concierge::VmInfo> GetVmInfoInternal(
     dbus::ObjectProxy* proxy, string owner_id, string name) {
   dbus::MethodCall method_call(vm_tools::concierge::kVmConciergeInterface,
                                vm_tools::concierge::kGetVmInfoMethod);
@@ -402,29 +402,29 @@ base::Optional<vm_tools::concierge::VmInfo> GetVmInfoInternal(
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
     LOG(ERROR) << "Failed to encode GetVmInfo protobuf";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::unique_ptr<dbus::Response> dbus_response =
       proxy->CallMethodAndBlock(&method_call, kDefaultTimeoutMs);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to send dbus message to concierge service";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   dbus::MessageReader reader(dbus_response.get());
   vm_tools::concierge::GetVmInfoResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
     LOG(ERROR) << "Failed to parse response protobuf";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!response.success()) {
     LOG(ERROR) << "Failed to get VM info";
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  return base::make_optional(response.vm_info());
+  return std::make_optional(response.vm_info());
 }
 
 int SuspendVm(dbus::ObjectProxy* proxy, string owner_id, string name) {

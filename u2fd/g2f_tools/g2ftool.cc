@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/command_line.h>
@@ -122,7 +123,7 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "P1 value should be 0-255, or -1 for default" << std::endl;
       return EX_USAGE;
     }
-    base::Optional<uint8_t> p1;
+    std::optional<uint8_t> p1;
     if (FLAGS_p1 > -1) {
       p1 = FLAGS_p1;
     }
@@ -160,7 +161,7 @@ int main(int argc, char* argv[]) {
       LOG(ERROR) << "P1 value should be 0-255, or -1 for default" << std::endl;
       return EX_USAGE;
     }
-    base::Optional<uint8_t> p1;
+    std::optional<uint8_t> p1;
     if (FLAGS_p1 > -1) {
       p1 = FLAGS_p1;
     }

@@ -21,6 +21,7 @@
 
 #include <limits>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -29,7 +30,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -62,7 +62,7 @@ bool IsBootNum(const std::string& name) {
 
 // Get the size of the current EFI platform.
 // Returns nullopt if the size could not be determined.
-base::Optional<int> GetEfiPlatformSize() {
+std::optional<int> GetEfiPlatformSize() {
   const base::FilePath size_file("/sys/firmware/efi/fw_platform_size");
 
   // Read the EFI platform size to determine which loader to configure. It must
@@ -71,17 +71,17 @@ base::Optional<int> GetEfiPlatformSize() {
   if (!base::ReadFileToString(size_file, &size_string)) {
     // The proper target cannot be determined.
     // EFI services are likely not available.
-    return base::nullopt;
+    return std::nullopt;
   }
 
   int size;
   base::TrimWhitespaceASCII(size_string, base::TRIM_ALL, &size_string);
   if (!base::StringToInt(size_string, &size)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   // Sanity check the size. It should only be one of these.
   if (size != 64 && size != 32) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return size;
@@ -103,9 +103,9 @@ class EfiBootNumber {
     boot_name_ = base::StringPrintf("Boot%04X", boot_num_);
   }
 
-  static base::Optional<EfiBootNumber> FromName(const std::string& name) {
+  static std::optional<EfiBootNumber> FromName(const std::string& name) {
     if (!IsBootNum(name)) {
-      return base::nullopt;
+      return std::nullopt;
     }
 
     const std::string hex_part = name.substr(4, 4);
@@ -120,7 +120,7 @@ class EfiBootNumber {
       return boot_num;
     }
 
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string Name() const { return boot_name_; }
@@ -268,26 +268,26 @@ class EfiBootManager {
 
   // Wrapper around libefivar's variable iteration to filter only Boot* entries.
   // Returns each Boot entry name in turn until all are read, nullopt after.
-  base::Optional<EfiBootNumber> GetNextBootNum() {
-    base::Optional<std::string> name;
+  std::optional<EfiBootNumber> GetNextBootNum() {
+    std::optional<std::string> name;
     while ((name = efivar_->GetNextVariableName())) {
-      base::Optional<EfiBootNumber> entry_number =
+      std::optional<EfiBootNumber> entry_number =
           EfiBootNumber::FromName(name.value());
       if (entry_number) {
         return entry_number;
       }
     }
 
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Load all the Boot* entries into our map.
   // Returns false if any boot number doesn't meet our expectations or if any
   // entry fails to load, returning true when all entries are stored.
   bool LoadBootEntries() {
-    base::Optional<EfiBootNumber> entry_number;
+    std::optional<EfiBootNumber> entry_number;
     while ((entry_number = GetNextBootNum())) {
-      base::Optional<EfiBootEntryContents> entry_contents =
+      std::optional<EfiBootEntryContents> entry_contents =
           LoadEntry(entry_number.value());
       if (!entry_contents) {
         // LoadEntry logs errors for us.
@@ -302,20 +302,20 @@ class EfiBootManager {
 
   // Loads the data for a single boot entry, returning it if correctly loaded.
   // Returns nullopt on error.
-  base::Optional<EfiBootEntryContents> LoadEntry(const EfiBootNumber& number) {
+  std::optional<EfiBootEntryContents> LoadEntry(const EfiBootNumber& number) {
     EfiVarInterface::Bytes data;
     size_t data_size;
     if (!efivar_->GetVariable(number.Name(), data, &data_size)) {
       // GetVariable logs errors for us.
-      return base::nullopt;
+      return std::nullopt;
     }
 
     std::string description = efivar_->LoadoptDesc(data.get(), data_size);
     std::vector<uint8_t> device_path =
         efivar_->LoadoptPath(data.get(), data_size);
 
-    return base::Optional<EfiBootEntryContents>(std::in_place, description,
-                                                device_path);
+    return std::optional<EfiBootEntryContents>(std::in_place, description,
+                                               device_path);
   }
 
   // Writes the boot entry contents to a boot number.
@@ -364,7 +364,7 @@ class EfiBootManager {
   // * partition
   // * 32/64-bit EFI
   // Returns nullopt for any failure to collect this info.
-  base::Optional<EfiBootEntryContents> BuildDesiredEntry(
+  std::optional<EfiBootEntryContents> BuildDesiredEntry(
       const Partition& boot_dev, int efi_size) {
     // Select the target boot file based on the platform.
     std::string boot_file = "/efi/boot/bootx64.efi";
@@ -378,7 +378,7 @@ class EfiBootManager {
             boot_dev.base_device(), boot_dev.number(), boot_file, efidp)) {
       LOG(ERROR)
           << "Can't decide on desired entry: couldn't determine device path";
-      return base::nullopt;
+      return std::nullopt;
     }
 
     return EfiBootEntryContents(kCrosEfiDescription, efidp);
@@ -386,7 +386,7 @@ class EfiBootManager {
 
   // Returns an entry with desired contents that also appears in the boot order,
   // if one can be found. nullopt otherwise.
-  base::Optional<EfiBootNumber> FindContentsInBootOrder(
+  std::optional<EfiBootNumber> FindContentsInBootOrder(
       const EfiBootEntryContents& desired_contents) {
     for (const auto num : boot_order_.Data()) {
       const EfiBootNumber entry(num);
@@ -397,12 +397,12 @@ class EfiBootManager {
       }
     }
 
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Returns an entry with desired contents, if one can be found.
   // nullopt otherwise.
-  base::Optional<EfiBootNumber> FindContents(
+  std::optional<EfiBootNumber> FindContents(
       const EfiBootEntryContents& desired_contents) {
     for (auto const& [key, value] : entries_) {
       if (value == desired_contents) {
@@ -410,7 +410,7 @@ class EfiBootManager {
       }
     }
 
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Best-effort removal from disk and boot order for all entries with
@@ -438,7 +438,7 @@ class EfiBootManager {
   // Finds the lowest available boot number, returning it if found and an empty
   // optional if all 65536 boot numbers are taken (which shouldn't happen on
   // any hardware I'm aware of).
-  base::Optional<EfiBootNumber> NextAvailableBootNum() {
+  std::optional<EfiBootNumber> NextAvailableBootNum() {
     // Four hex chars fit perfectly in a `uint16_t`.
     uint16_t free_num = 0;
     uint16_t max = std::numeric_limits<decltype(free_num)>::max();
@@ -449,7 +449,7 @@ class EfiBootManager {
         return entry;
       }
     }
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // This is the high level logic of how we maintain our boot entries:
@@ -472,7 +472,7 @@ class EfiBootManager {
     boot_order_.Load(*efivar_);
 
     // Figure out what a "correct" boot entry would look like.
-    const base::Optional<EfiBootEntryContents> desired_contents =
+    const std::optional<EfiBootEntryContents> desired_contents =
         BuildDesiredEntry(install_config.boot, efi_size);
     if (!desired_contents) {
       LOG(ERROR) << kCantEnsureBoot
@@ -482,7 +482,7 @@ class EfiBootManager {
     LOG(INFO) << "Looking for an entry matching: "
               << desired_contents->ToString();
 
-    base::Optional<EfiBootNumber> found_entry =
+    std::optional<EfiBootNumber> found_entry =
         FindContentsInBootOrder(desired_contents.value());
 
     if (!found_entry) {
@@ -510,7 +510,7 @@ class EfiBootManager {
     if (!found_entry) {
       LOG(INFO) << "Creating EFI boot entry.";
       // Try to pick a number.
-      const base::Optional<EfiBootNumber> desired_num = NextAvailableBootNum();
+      const std::optional<EfiBootNumber> desired_num = NextAvailableBootNum();
 
       // If we didn't get a number, we've got to bail.
       if (!desired_num) {
@@ -570,7 +570,7 @@ bool UpdateEfiBootEntries(const InstallConfig& install_config) {
   }
 
   // Select the target boot file based on the platform.
-  base::Optional<int> efi_size = GetEfiPlatformSize();
+  std::optional<int> efi_size = GetEfiPlatformSize();
   if (!efi_size.has_value()) {
     LOG(ERROR)
         << "Can't determine EFI platform size, so can't make a boot entry.";

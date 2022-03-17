@@ -4,6 +4,7 @@
 
 #include "libhwsec-foundation/crypto/aes.h"
 
+#include <optional>
 #include <string>
 
 #include <base/strings/string_number_conversions.h>

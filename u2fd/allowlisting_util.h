@@ -7,11 +7,11 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
-#include <base/optional.h>
 #include <policy/libpolicy.h>
 
 namespace u2f {
@@ -22,7 +22,7 @@ class AllowlistingUtil {
   // Creates a new utility, which will make use of the specified function to
   // retrieve a certified copy of the G2F certificate.
   AllowlistingUtil(
-      std::function<base::Optional<attestation::GetCertifiedNvIndexReply>(int)>
+      std::function<std::optional<attestation::GetCertifiedNvIndexReply>(int)>
           get_certified_g2f_cert);
 
   virtual ~AllowlistingUtil() = default;
@@ -44,9 +44,9 @@ class AllowlistingUtil {
                                    std::vector<uint8_t>* signature);
 
   // Returns the device 'Directory API ID', or nullopt on failure.
-  base::Optional<std::string> GetDeviceId();
+  std::optional<std::string> GetDeviceId();
 
-  std::function<base::Optional<attestation::GetCertifiedNvIndexReply>(int)>
+  std::function<std::optional<attestation::GetCertifiedNvIndexReply>(int)>
       get_certified_g2f_cert_;
 
   std::unique_ptr<policy::PolicyProvider> policy_provider_;

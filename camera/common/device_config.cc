@@ -9,6 +9,7 @@
 #include <sys/ioctl.h>
 
 #include <algorithm>
+#include <optional>
 
 #include <base/containers/span.h>
 #include <base/files/file_util.h>
@@ -87,7 +88,7 @@ bool ValidateCameraModuleInfo(base::span<const uint8_t> section) {
          info->version == 1u;
 }
 
-base::Optional<EepromIdBlock> FindCameraEepromIdBlock(const std::string& mem) {
+std::optional<EepromIdBlock> FindCameraEepromIdBlock(const std::string& mem) {
   static_assert(sizeof(EepromIdBlock) <= kEepromIdBlockAlignment);
   const size_t alignment = kEepromIdBlockAlignment;
   const uint8_t* data_end =
@@ -100,43 +101,43 @@ base::Optional<EepromIdBlock> FindCameraEepromIdBlock(const std::string& mem) {
       return *reinterpret_cast<const EepromIdBlock*>(section.data());
     }
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace
 
-base::Optional<DeviceConfig> DeviceConfig::Create() {
+std::optional<DeviceConfig> DeviceConfig::Create() {
   DeviceConfig res = {};
 
   if (!PopulateCrosConfigCameraInfo(&res)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   PopulatePlatformCameraInfo(&res);
 
-  return base::make_optional<DeviceConfig>(res);
+  return std::make_optional<DeviceConfig>(res);
 }
 
-base::Optional<int> DeviceConfig::GetCameraCount(Interface interface) const {
+std::optional<int> DeviceConfig::GetCameraCount(Interface interface) const {
   if (!count_.has_value())
-    return base::nullopt;
+    return std::nullopt;
   // |count_| includes both MIPI and USB cameras. If |count_| is not 0, we need
   // the |cros_config_camera_devices_| information to determine the numbers.
   if (*count_ == 0)
     return 0;
   if (cros_config_cameras_.empty())
-    return base::nullopt;
+    return std::nullopt;
   return std::count_if(
       cros_config_cameras_.begin(), cros_config_cameras_.end(),
       [=](const CrosConfigCameraInfo& d) { return d.interface == interface; });
 }
 
-base::Optional<int> DeviceConfig::GetOrientationFromFacing(
+std::optional<int> DeviceConfig::GetOrientationFromFacing(
     LensFacing facing) const {
   auto iter = std::find_if(
       cros_config_cameras_.begin(), cros_config_cameras_.end(),
       [=](const CrosConfigCameraInfo& d) { return d.facing == facing; });
   if (iter == cros_config_cameras_.end())
-    return base::nullopt;
+    return std::nullopt;
   return iter->orientation;
 }
 
@@ -229,15 +230,15 @@ void DeviceConfig::AddV4L2Sensors() {
 
 void DeviceConfig::AddCameraEeproms() {
   auto read_eeprom =
-      [&](base::FilePath from_path) -> base::Optional<EepromIdBlock> {
+      [&](base::FilePath from_path) -> std::optional<EepromIdBlock> {
     std::string content;
     if (!base::ReadFileToString(from_path, &content)) {
-      return base::nullopt;
+      return std::nullopt;
     }
-    base::Optional<EepromIdBlock> id_block = FindCameraEepromIdBlock(content);
+    std::optional<EepromIdBlock> id_block = FindCameraEepromIdBlock(content);
     if (!id_block.has_value()) {
       // Not a camera EEPROM. Ignore the device.
-      return base::nullopt;
+      return std::nullopt;
     }
     LOG(INFO) << "Read camera eeprom from " << from_path;
     return id_block;
@@ -246,7 +247,7 @@ void DeviceConfig::AddCameraEeproms() {
   // Try finding the EEPROM file corresponding to the given |nvmem_path| by
   // matching the devname.
   auto locate_eeprom_file =
-      [](base::FilePath nvmem_path) -> base::Optional<base::FilePath> {
+      [](base::FilePath nvmem_path) -> std::optional<base::FilePath> {
     // sysfs device name is of the form "<major devname>:<minor devname>". We
     // only want to match the major devname because the minor devname can be
     // different on the nvmem and i2c buses.
@@ -266,7 +267,7 @@ void DeviceConfig::AddCameraEeproms() {
         }
       }
     }
-    return base::nullopt;
+    return std::nullopt;
   };
 
   base::FileEnumerator dev_enum(base::FilePath(kSysfsNvmemDevicesRoot), false,
@@ -286,12 +287,12 @@ void DeviceConfig::AddCameraEeproms() {
       LOG(ERROR) << "Failed to resolve absolute nvmem path from " << dev_path;
       continue;
     }
-    base::Optional<EepromIdBlock> id_block = read_eeprom(nvmem_path);
+    std::optional<EepromIdBlock> id_block = read_eeprom(nvmem_path);
     if (!id_block.has_value()) {
       // User 'arc-camera' does not have the permission to read the EEPROM file
       // on the nvmem bus (/sys/bus/nvmem/devices/*/nvmem). Fallback to reading
       // the EEPROM file on the i2c bus (/sys/bus/i2c/devices/*/eeprom).
-      base::Optional<base::FilePath> eeprom_path = locate_eeprom_file(dev_path);
+      std::optional<base::FilePath> eeprom_path = locate_eeprom_file(dev_path);
       if (eeprom_path.has_value()) {
         id_block = read_eeprom(eeprom_path.value());
       }

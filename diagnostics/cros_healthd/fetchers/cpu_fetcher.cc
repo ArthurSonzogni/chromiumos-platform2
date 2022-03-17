@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -19,7 +20,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -144,8 +144,8 @@ std::vector<mojo_ipc::CpuTemperatureChannelPtr> GetCpuTemperatures(
 }
 
 // Gets the time spent in each C-state for the logical processor whose ID is
-// |logical_id|. Returns base::nullopt if a required sysfs node was not found.
-base::Optional<std::vector<mojo_ipc::CpuCStateInfoPtr>> GetCStates(
+// |logical_id|. Returns std::nullopt if a required sysfs node was not found.
+std::optional<std::vector<mojo_ipc::CpuCStateInfoPtr>> GetCStates(
     const base::FilePath& root_dir, const std::string logical_id) {
   std::vector<mojo_ipc::CpuCStateInfoPtr> c_states;
   // Find all directories matching /sys/devices/system/cpu/cpuN/cpudidle/stateX.
@@ -160,7 +160,7 @@ base::Optional<std::vector<mojo_ipc::CpuCStateInfoPtr>> GetCStates(
     if (!ReadAndTrimString(c_state_dir, kCStateNameFile, &c_state.name) ||
         !ReadInteger(c_state_dir, kCStateTimeFile, &base::StringToUint64,
                      &c_state.time_in_state_since_last_boot_us)) {
-      return base::nullopt;
+      return std::nullopt;
     }
     c_states.push_back(c_state.Clone());
   }
@@ -169,9 +169,9 @@ base::Optional<std::vector<mojo_ipc::CpuCStateInfoPtr>> GetCStates(
 }
 
 // Reads and parses the total number of threads available on the device. Returns
-// an error if encountered, otherwise returns base::nullopt and populates
+// an error if encountered, otherwise returns std::nullopt and populates
 // |num_total_threads|.
-base::Optional<mojo_ipc::ProbeErrorPtr> GetNumTotalThreads(
+std::optional<mojo_ipc::ProbeErrorPtr> GetNumTotalThreads(
     const base::FilePath& root_dir, uint32_t* num_total_threads) {
   DCHECK(num_total_threads);
 
@@ -201,13 +201,13 @@ base::Optional<mojo_ipc::ProbeErrorPtr> GetNumTotalThreads(
 
   DCHECK_GT(high_thread_int, low_thread_int);
   *num_total_threads = high_thread_int - low_thread_int + 1;
-  return base::nullopt;
+  return std::nullopt;
 }
 
 // Parses the contents of /proc/stat into a map of logical IDs to
-// ParsedStatContents. Returns base::nullopt if an error was encountered while
+// ParsedStatContents. Returns std::nullopt if an error was encountered while
 // parsing.
-base::Optional<std::map<std::string, ParsedStatContents>> ParseStatContents(
+std::optional<std::map<std::string, ParsedStatContents>> ParseStatContents(
     const std::string& stat_contents) {
   std::stringstream stat_sstream(stat_contents);
 
@@ -230,7 +230,7 @@ base::Optional<std::map<std::string, ParsedStatContents>> ParseStatContents(
     if (!base::StringToUint64(user_time_str, &contents.user_time_user_hz) ||
         !base::StringToUint64(system_time_str, &contents.system_time_user_hz) ||
         !base::StringToUint64(idle_time_str, &contents.idle_time_user_hz)) {
-      return base::nullopt;
+      return std::nullopt;
     }
     DCHECK_EQ(parsed_contents.count(logical_cpu_id), 0);
     parsed_contents[logical_cpu_id] = std::move(contents);
@@ -352,7 +352,7 @@ void GetArmSoCModelName(const base::FilePath& root_dir,
 }
 
 // Fetch Keylocker information.
-base::Optional<mojo_ipc::ProbeErrorPtr> FetchKeylockerInfo(
+std::optional<mojo_ipc::ProbeErrorPtr> FetchKeylockerInfo(
     const base::FilePath& root_dir,
     mojo_ipc::KeylockerInfoPtr* keylocker_info) {
   std::string file_contents;
@@ -369,13 +369,13 @@ base::Optional<mojo_ipc::ProbeErrorPtr> FetchKeylockerInfo(
   std::size_t found = file_contents.find(kKeylockerAeskl);
   if (found == std::string::npos) {
     *keylocker_info = nullptr;
-    return base::nullopt;
+    return std::nullopt;
   }
   auto info = mojo_ipc::KeylockerInfo::New();
   info->keylocker_configured = true;
   *keylocker_info = std::move(info);
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 // Aggregates data from |processor_info| and |logical_ids_to_stat_contents| to
@@ -433,7 +433,7 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
     logical_cpu.idle_time_user_hz = parsed_stat_itr->second.idle_time_user_hz;
 
     auto c_states = GetCStates(root_dir, processor_id);
-    if (c_states == base::nullopt) {
+    if (c_states == std::nullopt) {
       return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
           mojo_ipc::ErrorType::kFileReadError, "Unable to read C States."));
     }
@@ -471,7 +471,7 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
   // Populate the final CpuInfo struct.
   mojo_ipc::CpuInfo cpu_info;
   auto thread_error = GetNumTotalThreads(root_dir, &cpu_info.num_total_threads);
-  if (thread_error != base::nullopt) {
+  if (thread_error != std::nullopt) {
     return mojo_ipc::CpuResult::NewError(std::move(thread_error.value()));
   }
 

@@ -6,6 +6,7 @@
 #include "hardware_verifier/probe_result_getter_impl.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -46,7 +47,7 @@ ProbeResultGetterImpl::ProbeResultGetterImpl(
     std::unique_ptr<RuntimeProbeProxy> runtime_probe_proxy)
     : runtime_probe_proxy_(std::move(runtime_probe_proxy)) {}
 
-base::Optional<runtime_probe::ProbeResult>
+std::optional<runtime_probe::ProbeResult>
 ProbeResultGetterImpl::GetFromRuntimeProbe() const {
   VLOG(1) << "Try to get the probe result by calling |runtime_probe|.";
 
@@ -56,15 +57,15 @@ ProbeResultGetterImpl::GetFromRuntimeProbe() const {
 
   runtime_probe::ProbeResult probe_result;
   if (!runtime_probe_proxy_->ProbeCategories(probe_request, &probe_result)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   if (!LogProbeResultAndCheckHasError(probe_result)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return probe_result;
 }
 
-base::Optional<runtime_probe::ProbeResult> ProbeResultGetterImpl::GetFromFile(
+std::optional<runtime_probe::ProbeResult> ProbeResultGetterImpl::GetFromFile(
     const base::FilePath& file_path) const {
   VLOG(1) << "Try to load the probe result from file (" << file_path.value()
           << ").";
@@ -72,22 +73,22 @@ base::Optional<runtime_probe::ProbeResult> ProbeResultGetterImpl::GetFromFile(
   if (file_path.Extension() != kTextFmtExt) {
     LOG(ERROR) << "The extension (" << file_path.Extension()
                << ") is unrecognizable.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string content;
   if (!base::ReadFileToString(file_path, &content)) {
     LOG(ERROR) << "Failed to read the probe result file.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   runtime_probe::ProbeResult probe_result;
   if (!google::protobuf::TextFormat::ParseFromString(content, &probe_result)) {
     LOG(ERROR) << "Failed to parse the probe result in text format.";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (!LogProbeResultAndCheckHasError(probe_result)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return probe_result;
 }

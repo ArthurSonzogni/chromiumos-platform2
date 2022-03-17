@@ -10,6 +10,7 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include <optional>
 #include <set>
 
 #include <base/bind.h>
@@ -381,7 +382,7 @@ void Proxy::OnSessionStateChanged(bool login) {
   Disable();
 }
 
-void Proxy::OnFeatureEnabled(base::Optional<bool> enabled) {
+void Proxy::OnFeatureEnabled(std::optional<bool> enabled) {
   if (!enabled.has_value()) {
     LOG(ERROR) << "Failed to read feature flag - service will be disabled.";
     Disable();

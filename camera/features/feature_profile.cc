@@ -7,6 +7,7 @@
 #include "camera/features/feature_profile.h"
 
 #include <iomanip>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -16,7 +17,7 @@ namespace cros {
 
 namespace {
 
-base::Optional<FeatureProfile::FeatureType> GetFeatureType(
+std::optional<FeatureProfile::FeatureType> GetFeatureType(
     const std::string& feature_key) {
   if (feature_key == "face_detection") {
     return FeatureProfile::FeatureType::kFaceDetection;
@@ -25,13 +26,13 @@ base::Optional<FeatureProfile::FeatureType> GetFeatureType(
   } else if (feature_key == "hdrnet") {
     return FeatureProfile::FeatureType::kHdrnet;
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace
 
-FeatureProfile::FeatureProfile(base::Optional<base::Value> feature_config,
-                               base::Optional<DeviceConfig> device_config)
+FeatureProfile::FeatureProfile(std::optional<base::Value> feature_config,
+                               std::optional<DeviceConfig> device_config)
     : config_file_(base::FilePath(kFeatureProfileFilePath)),
       device_config_(device_config ? std::move(device_config).value()
                                    : DeviceConfig::Create()) {
@@ -118,7 +119,7 @@ void FeatureProfile::OnOptionsUpdated(const base::Value& json_values) {
                   << std::quoted(kKeyType);
       continue;
     }
-    base::Optional<FeatureType> type = GetFeatureType(*type_str);
+    std::optional<FeatureType> type = GetFeatureType(*type_str);
     if (!type.has_value()) {
       LOGF(ERROR) << "Unknown feature " << std::quoted(*type_str);
       continue;

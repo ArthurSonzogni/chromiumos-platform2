@@ -5,12 +5,12 @@
 #ifndef LOGIN_MANAGER_CHROME_FEATURES_SERVICE_CLIENT_H_
 #define LOGIN_MANAGER_CHROME_FEATURES_SERVICE_CLIENT_H_
 
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 
 namespace dbus {
 class ObjectProxy;
@@ -30,10 +30,10 @@ class ChromeFeaturesServiceClient {
   ~ChromeFeaturesServiceClient();
 
   // Async call to check whether given feature is enabled. |enabled| is
-  // base::nullopt if there is error calling the service. Otherwise,
+  // std::nullopt if there is error calling the service. Otherwise,
   // |enable.value()| indicates whether the feature is enabled or not.
   using IsFeatureEnabledCallback =
-      base::OnceCallback<void(base::Optional<bool> enabled)>;
+      base::OnceCallback<void(std::optional<bool> enabled)>;
   void IsFeatureEnabled(const std::string& feature_name,
                         IsFeatureEnabledCallback callback);
 

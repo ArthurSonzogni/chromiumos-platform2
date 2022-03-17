@@ -4,6 +4,7 @@
  * found in the LICENSE file.
  */
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -55,7 +56,7 @@ struct Options {
   Size input_size{1920, 1080};
   Size output_size{1920, 1080};
   bool dump_buffer = false;
-  base::Optional<base::FilePath> input_nv12_file;
+  std::optional<base::FilePath> input_nv12_file;
   Rect<double> crop_region = {static_cast<double>(1920) / 2,
                               static_cast<double>(1080) / 2, 640.0, 360.0};
 };

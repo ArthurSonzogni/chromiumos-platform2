@@ -6,11 +6,13 @@
 #include <poll.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <tuple>
@@ -1157,7 +1159,7 @@ TEST_F(BootstrappedCoreTest, HandleBluetoothDataChanged) {
 class EcServiceBootstrappedCoreTest
     : public BootstrappedCoreTest,
       public testing::WithParamInterface<
-          std::tuple<EcEventReason, base::Optional<MojoEvent>>> {
+          std::tuple<EcEventReason, std::optional<MojoEvent>>> {
  protected:
   // Holds EC event type and payload of |grpc_api::HandleEcNotificationResponse|
   using GrpcEvent = std::pair<uint16_t, std::string>;
@@ -1195,7 +1197,7 @@ class EcServiceBootstrappedCoreTest
 
   EcEventReason ec_event_reason() const { return std::get<0>(GetParam()); }
 
-  base::Optional<MojoEvent> expected_mojo_event() const {
+  std::optional<MojoEvent> expected_mojo_event() const {
     return std::get<1>(GetParam());
   }
 
@@ -1279,26 +1281,24 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         std::make_tuple(
             EcEventReason::kNonWilcoCharger,
-            base::make_optional<MojoEvent>(MojoEvent::kNonWilcoCharger)),
+            std::make_optional<MojoEvent>(MojoEvent::kNonWilcoCharger)),
         std::make_tuple(
             EcEventReason::kLowPowerCharger,
-            base::make_optional<MojoEvent>(MojoEvent::kLowPowerCharger)),
-        std::make_tuple(
-            EcEventReason::kBatteryAuth,
-            base::make_optional<MojoEvent>(MojoEvent::kBatteryAuth)),
-        std::make_tuple(
-            EcEventReason::kDockDisplay,
-            base::make_optional<MojoEvent>(MojoEvent::kDockDisplay)),
+            std::make_optional<MojoEvent>(MojoEvent::kLowPowerCharger)),
+        std::make_tuple(EcEventReason::kBatteryAuth,
+                        std::make_optional<MojoEvent>(MojoEvent::kBatteryAuth)),
+        std::make_tuple(EcEventReason::kDockDisplay,
+                        std::make_optional<MojoEvent>(MojoEvent::kDockDisplay)),
         std::make_tuple(
             EcEventReason::kDockThunderbolt,
-            base::make_optional<MojoEvent>(MojoEvent::kDockThunderbolt)),
+            std::make_optional<MojoEvent>(MojoEvent::kDockThunderbolt)),
         std::make_tuple(
             EcEventReason::kIncompatibleDock,
-            base::make_optional<MojoEvent>(MojoEvent::kIncompatibleDock)),
+            std::make_optional<MojoEvent>(MojoEvent::kIncompatibleDock)),
         std::make_tuple(EcEventReason::kDockError,
-                        base::make_optional<MojoEvent>(MojoEvent::kDockError)),
-        std::make_tuple(EcEventReason::kNonSysNotification, base::nullopt),
-        std::make_tuple(EcEventReason::kSysNotification, base::nullopt)));
+                        std::make_optional<MojoEvent>(MojoEvent::kDockError)),
+        std::make_tuple(EcEventReason::kNonSysNotification, std::nullopt),
+        std::make_tuple(EcEventReason::kSysNotification, std::nullopt)));
 
 // Tests for powerd event service.
 //

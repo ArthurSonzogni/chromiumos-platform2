@@ -5,13 +5,13 @@
 #ifndef CRASH_REPORTER_ARC_UTIL_H_
 #define CRASH_REPORTER_ARC_UTIL_H_
 
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
 #include <session_manager/dbus-proxies.h>
@@ -62,7 +62,7 @@ struct BuildProperty {
 };
 
 // Returns the Android version (eg: 7.1.1) from the fingerprint.
-base::Optional<std::string> GetVersionFromFingerprint(
+std::optional<std::string> GetVersionFromFingerprint(
     const std::string& fingerprint);
 
 bool ParseCrashLog(const std::string& type,

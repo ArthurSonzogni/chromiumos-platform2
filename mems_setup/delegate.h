@@ -7,12 +7,12 @@
 
 #include <unistd.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/optional.h>
 
 namespace mems_setup {
 
@@ -20,7 +20,7 @@ class Delegate {
  public:
   virtual ~Delegate() = default;
 
-  virtual base::Optional<std::string> ReadVpdValue(const std::string& key) = 0;
+  virtual std::optional<std::string> ReadVpdValue(const std::string& key) = 0;
   virtual bool ProbeKernelModule(const std::string& module) = 0;
 
   virtual bool CreateDirectory(const base::FilePath&) = 0;
@@ -28,7 +28,7 @@ class Delegate {
   virtual std::vector<base::FilePath> EnumerateAllFiles(
       base::FilePath file_path) = 0;
 
-  virtual base::Optional<gid_t> FindGroupId(const char* group) = 0;
+  virtual std::optional<gid_t> FindGroupId(const char* group) = 0;
 
   virtual int GetPermissions(const base::FilePath& path) = 0;
   virtual bool SetPermissions(const base::FilePath& path, int mode) = 0;

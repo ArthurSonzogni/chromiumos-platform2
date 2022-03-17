@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,7 +21,6 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/values.h>
 #include <chromeos/scoped_minijail.h>
 #include <dbus/object_proxy.h>
@@ -185,36 +185,36 @@ bool ExecutePvmHelper(const std::string& owner_id,
   }
 }
 
-static base::Optional<base::Value> GetVmInfo(const VmId& vm_id) {
+static std::optional<base::Value> GetVmInfo(const VmId& vm_id) {
   std::string output;
   if (!ExecutePvmHelper(vm_id.owner_id(),
                         {"list", "--info", "--json", vm_id.name()}, &output)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   auto result = base::JSONReader::Read(output);
   if (!result) {
     LOG(ERROR) << "GetVmInfo(" << vm_id << "): Failed to parse VM info";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!result->is_list()) {
     LOG(ERROR) << "GetVmInfo(" << vm_id
                << "): Expected to find a list at top level";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (result->GetList().size() != 1) {
     LOG(ERROR) << "GetVmInfo(" << vm_id << "): Unexpected list size of "
                << result->GetList().size() << ", expect 1";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   base::Value& vm_info = result->GetList()[0];
   if (!vm_info.is_dict()) {
     LOG(ERROR) << "GetVmInfo(" << vm_id
                << "): Failed to fetch VM info dictionary";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return std::move(vm_info);

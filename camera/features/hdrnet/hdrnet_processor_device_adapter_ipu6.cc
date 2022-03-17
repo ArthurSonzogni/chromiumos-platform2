@@ -6,6 +6,7 @@
 
 #include "features/hdrnet/hdrnet_processor_device_adapter_ipu6.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -38,7 +39,7 @@ HdrNetProcessorDeviceAdapterIpu6::HdrNetProcessorDeviceAdapterIpu6(
     const camera_metadata_t* static_info,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
     : task_runner_(task_runner) {
-  base::Optional<int32_t> max_curve_points =
+  std::optional<int32_t> max_curve_points =
       GetRoMetadata<int32_t>(static_info, ANDROID_TONEMAP_MAX_CURVE_POINTS);
   CHECK(max_curve_points) << ": ANDROID_TONEMAP_MAX_CURVE_POINTS not set";
   num_curve_points_ = *max_curve_points;

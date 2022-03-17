@@ -5,7 +5,6 @@
 #include "crash-reporter/anomaly_detector.h"
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>

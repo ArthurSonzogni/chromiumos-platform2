@@ -8,6 +8,7 @@
 #include "brillo/blkdev_utils/lvm_device.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -28,39 +29,39 @@ class BRILLO_EXPORT LogicalVolumeManager {
   virtual ~LogicalVolumeManager() = default;
 
   // Returns the physical volume on device, if it exists.
-  virtual base::Optional<PhysicalVolume> GetPhysicalVolume(
+  virtual std::optional<PhysicalVolume> GetPhysicalVolume(
       const base::FilePath& device_path);
 
   // Returns the volume group on the physical volume, if it exists.
-  virtual base::Optional<VolumeGroup> GetVolumeGroup(const PhysicalVolume& pv);
+  virtual std::optional<VolumeGroup> GetVolumeGroup(const PhysicalVolume& pv);
 
   // Returns a thinpool named |thinpool_name| on volume group |vg|, if it
   // exists.
-  virtual base::Optional<Thinpool> GetThinpool(
-      const VolumeGroup& vg, const std::string& thinpool_name);
+  virtual std::optional<Thinpool> GetThinpool(const VolumeGroup& vg,
+                                              const std::string& thinpool_name);
 
   // Lists all logical volumes on the volume group.
   virtual std::vector<LogicalVolume> ListLogicalVolumes(const VolumeGroup& vg);
 
   // Returns a logical volume named |lv_name|, if it exists on volume group |vg|
-  virtual base::Optional<LogicalVolume> GetLogicalVolume(
+  virtual std::optional<LogicalVolume> GetLogicalVolume(
       const VolumeGroup& vg, const std::string& lv_name);
 
   // Creates a physical volume on |device_path|.
-  virtual base::Optional<PhysicalVolume> CreatePhysicalVolume(
+  virtual std::optional<PhysicalVolume> CreatePhysicalVolume(
       const base::FilePath& device_path);
 
   // Creates a volume group |vg_name| on physical volume |pv|.
-  virtual base::Optional<VolumeGroup> CreateVolumeGroup(
+  virtual std::optional<VolumeGroup> CreateVolumeGroup(
       const PhysicalVolume& pv, const std::string& vg_name);
 
   // Creates a thinpool with configuration |config| on volume group |vg|.
-  virtual base::Optional<Thinpool> CreateThinpool(const VolumeGroup& vg,
-                                                  const base::Value& config);
+  virtual std::optional<Thinpool> CreateThinpool(const VolumeGroup& vg,
+                                                 const base::Value& config);
 
   // Creates a thin logical volume with configuration |config| on volume group
   // |vg|.
-  virtual base::Optional<LogicalVolume> CreateLogicalVolume(
+  virtual std::optional<LogicalVolume> CreateLogicalVolume(
       const VolumeGroup& vg,
       const Thinpool& thinpool,
       const base::Value& config);

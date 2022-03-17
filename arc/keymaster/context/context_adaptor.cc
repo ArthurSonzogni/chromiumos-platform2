@@ -5,10 +5,10 @@
 #include "arc/keymaster/context/context_adaptor.h"
 
 #include <memory>
+#include <optional>
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_proxy.h>
@@ -41,7 +41,7 @@ scoped_refptr<::dbus::Bus> ContextAdaptor::GetBus() {
   return bus_;
 }
 
-base::Optional<std::string> ContextAdaptor::FetchPrimaryUserEmail() {
+std::optional<std::string> ContextAdaptor::FetchPrimaryUserEmail() {
   // Short circuit if the results is already cached.
   if (cached_email_.has_value())
     return cached_email_.value();
@@ -57,7 +57,7 @@ base::Optional<std::string> ContextAdaptor::FetchPrimaryUserEmail() {
           &user_email, &sanitized_username, &error)) {
     std::string error_message = error ? error->GetMessage() : "Unknown error.";
     LOG(INFO) << "Failed to get primary session: " << error_message;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Cache and return result.
@@ -65,7 +65,7 @@ base::Optional<std::string> ContextAdaptor::FetchPrimaryUserEmail() {
   return user_email;
 }
 
-base::Optional<CK_SLOT_ID> ContextAdaptor::FetchSlotId(Slot slot) {
+std::optional<CK_SLOT_ID> ContextAdaptor::FetchSlotId(Slot slot) {
   switch (slot) {
     case Slot::kUser:
       return FetchPrimaryUserSlotId();
@@ -73,36 +73,36 @@ base::Optional<CK_SLOT_ID> ContextAdaptor::FetchSlotId(Slot slot) {
       return FetchSystemSlotId();
     default:
       LOG(ERROR) << "Unknown chaps slot=" << static_cast<int>(slot);
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 
-base::Optional<CK_SLOT_ID> ContextAdaptor::FetchPrimaryUserSlotId() {
+std::optional<CK_SLOT_ID> ContextAdaptor::FetchPrimaryUserSlotId() {
   // Short circuit if the result is already cached.
   if (cached_user_slot_.has_value())
     return cached_user_slot_;
 
   // Fetch email of the primary signed in user.
-  base::Optional<std::string> user_email = FetchPrimaryUserEmail();
+  std::optional<std::string> user_email = FetchPrimaryUserEmail();
   if (!user_email.has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   // Cache and return result.
   cached_user_slot_ = FetchSlotIdFromTpmTokenInfo(user_email);
   return cached_user_slot_;
 }
 
-base::Optional<CK_SLOT_ID> ContextAdaptor::FetchSystemSlotId() {
+std::optional<CK_SLOT_ID> ContextAdaptor::FetchSystemSlotId() {
   // Initialize |cached_system_slot_| if result is not already cached.
   if (!cached_system_slot_.has_value()) {
     cached_system_slot_ =
-        FetchSlotIdFromTpmTokenInfo(/*user_email=*/base::nullopt);
+        FetchSlotIdFromTpmTokenInfo(/*user_email=*/std::nullopt);
   }
   return cached_system_slot_;
 }
 
-base::Optional<CK_SLOT_ID> ContextAdaptor::FetchSlotIdFromTpmTokenInfo(
-    base::Optional<std::string> user_email) {
+std::optional<CK_SLOT_ID> ContextAdaptor::FetchSlotIdFromTpmTokenInfo(
+    std::optional<std::string> user_email) {
   // Create the dbus proxy if it's not created.
   if (!pkcs11_proxy_) {
     pkcs11_proxy_.reset(
@@ -121,7 +121,7 @@ base::Optional<CK_SLOT_ID> ContextAdaptor::FetchSlotIdFromTpmTokenInfo(
   if (!success || error) {
     // Error is logged when it is created, so we don't need to log it again.
     LOG(ERROR) << "Could not fetch slot information from cryptohome.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Return resulting slot.

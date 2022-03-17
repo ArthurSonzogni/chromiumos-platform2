@@ -5,6 +5,7 @@
 #include "oobe_config/oobe_config.h"
 
 #include <map>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -89,7 +90,7 @@ void OobeConfig::GetRollbackData(RollbackData* rollback_data) const {
   }
 
   if (network_config_for_testing_.empty()) {
-    base::Optional<std::string> network_config =
+    std::optional<std::string> network_config =
         oobe_config::ExportNetworkConfig();
     if (network_config.has_value()) {
       rollback_data->set_network_config(*network_config);
@@ -143,7 +144,7 @@ bool OobeConfig::EncryptedRollbackSave() const {
   // Encrypt data with software and store the key in pstore.
   // TODO(crbug/1212958) add TPM based encryption.
 
-  base::Optional<EncryptedData> encrypted_rollback_data =
+  std::optional<EncryptedData> encrypted_rollback_data =
       Encrypt(brillo::SecureBlob(serialized_rollback_data));
 
   if (!encrypted_rollback_data) {
@@ -195,7 +196,7 @@ bool OobeConfig::UnencryptedRollbackRestore() const {
 
 bool OobeConfig::EncryptedRollbackRestore() const {
   LOG(INFO) << "Fetching key from pstore.";
-  base::Optional<std::string> key = LoadFromPstore(prefix_path_for_testing_);
+  std::optional<std::string> key = LoadFromPstore(prefix_path_for_testing_);
   if (!key.has_value()) {
     LOG(ERROR) << "Failed to load key from pstore.";
     return false;
@@ -205,7 +206,7 @@ bool OobeConfig::EncryptedRollbackRestore() const {
   if (!ReadFile(kUnencryptedStatefulRollbackDataPath, &encrypted_data)) {
     return false;
   }
-  base::Optional<brillo::SecureBlob> decrypted_data = Decrypt(
+  std::optional<brillo::SecureBlob> decrypted_data = Decrypt(
       {brillo::BlobFromString(encrypted_data), brillo::SecureBlob(*key)});
   if (!decrypted_data.has_value()) {
     LOG(ERROR) << "Could not decrypt rollback data.";

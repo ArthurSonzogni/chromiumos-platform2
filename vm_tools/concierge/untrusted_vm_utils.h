@@ -8,7 +8,6 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <dbus/object_proxy.h>
 
 namespace vm_tools {

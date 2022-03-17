@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/check.h>
@@ -72,7 +73,7 @@ bool IioChannelImpl::SetScanElementsEnabled(bool en) {
   return true;
 }
 
-base::Optional<std::string> IioChannelImpl::ReadStringAttribute(
+std::optional<std::string> IioChannelImpl::ReadStringAttribute(
     const std::string& name) const {
   char data[kReadAttrBufferSize] = {0};
   ssize_t len =
@@ -80,33 +81,33 @@ base::Optional<std::string> IioChannelImpl::ReadStringAttribute(
   if (len < 0) {
     LOG(WARNING) << log_prefix_ << "Attempting to read string attribute "
                  << name << " failed: " << len;
-    return base::nullopt;
+    return std::nullopt;
   }
   return std::string(base::TrimString(std::string(data, len),
                                       base::StringPiece("\0\n", 2),
                                       base::TRIM_TRAILING));
 }
 
-base::Optional<int64_t> IioChannelImpl::ReadNumberAttribute(
+std::optional<int64_t> IioChannelImpl::ReadNumberAttribute(
     const std::string& name) const {
   long long val = 0;  // NOLINT(runtime/int)
   int error = iio_channel_attr_read_longlong(channel_, name.c_str(), &val);
   if (error) {
     LOG(WARNING) << log_prefix_ << "Attempting to read number attribute "
                  << name << " failed: " << error;
-    return base::nullopt;
+    return std::nullopt;
   }
   return val;
 }
 
-base::Optional<double> IioChannelImpl::ReadDoubleAttribute(
+std::optional<double> IioChannelImpl::ReadDoubleAttribute(
     const std::string& name) const {
   double val = 0;
   int error = iio_channel_attr_read_double(channel_, name.c_str(), &val);
   if (error) {
     LOG(WARNING) << log_prefix_ << "Attempting to read double attribute "
                  << name << " failed: " << error;
-    return base::nullopt;
+    return std::nullopt;
   }
   return val;
 }
@@ -146,11 +147,11 @@ bool IioChannelImpl::WriteDoubleAttribute(const std::string& name,
   return true;
 }
 
-base::Optional<int64_t> IioChannelImpl::Convert(const uint8_t* src) const {
+std::optional<int64_t> IioChannelImpl::Convert(const uint8_t* src) const {
   const iio_data_format* format = iio_channel_get_data_format(channel_);
   if (!format) {
     LOG(WARNING) << log_prefix_ << "Cannot find format.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   size_t len = format->length;
@@ -172,11 +173,11 @@ base::Optional<int64_t> IioChannelImpl::Convert(const uint8_t* src) const {
   return value;
 }
 
-base::Optional<uint64_t> IioChannelImpl::Length() const {
+std::optional<uint64_t> IioChannelImpl::Length() const {
   const iio_data_format* format = iio_channel_get_data_format(channel_);
   if (!format) {
     LOG(WARNING) << log_prefix_ << "Cannot find format.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return format->length;

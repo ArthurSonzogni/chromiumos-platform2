@@ -5,9 +5,8 @@
 #ifndef SHILL_STORE_CRYPTO_H_
 #define SHILL_STORE_CRYPTO_H_
 
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 namespace shill {
 
@@ -22,8 +21,8 @@ std::string Encrypt(const std::string& plaintext);
 
 // Returns |ciphertext| decrypted by the highest priority available crypto
 // module capable of performing the operation. If no module succeeds, returns
-// base::nullopt.
-base::Optional<std::string> Decrypt(const std::string& ciphertext);
+// std::nullopt.
+std::optional<std::string> Decrypt(const std::string& ciphertext);
 
 }  // namespace Crypto
 

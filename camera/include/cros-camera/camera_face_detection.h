@@ -8,6 +8,7 @@
 #define CAMERA_INCLUDE_CROS_CAMERA_CAMERA_FACE_DETECTION_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -61,7 +62,7 @@ class CROS_CAMERA_EXPORT FaceDetector {
   FaceDetectResult Detect(
       buffer_handle_t buffer,
       std::vector<human_sensing::CrosFace>* faces,
-      base::Optional<Size> active_sensor_array_size = base::nullopt);
+      std::optional<Size> active_sensor_array_size = std::nullopt);
 
   // For a given size |src| that's downscaled and/or cropped from |dst|, get the
   // transformation parameters that converts a coordinate (x, y) in
@@ -71,7 +72,7 @@ class CROS_CAMERA_EXPORT FaceDetector {
   //   y_dst = S * y_src + offset_y
   //
   // Returns a float tuple (S, offset_x, offset_y).
-  static base::Optional<std::tuple<float, float, float>> GetCoordinateTransform(
+  static std::optional<std::tuple<float, float, float>> GetCoordinateTransform(
       const Size src, const Size dst);
 
  private:

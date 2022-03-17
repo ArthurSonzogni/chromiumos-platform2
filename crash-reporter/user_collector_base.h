@@ -8,11 +8,11 @@
 #ifndef CRASH_REPORTER_USER_COLLECTOR_BASE_H_
 #define CRASH_REPORTER_USER_COLLECTOR_BASE_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 
 #include "crash-reporter/crash_collector.h"
@@ -45,7 +45,7 @@ class UserCollectorBase : public CrashCollector {
   // For example, an input string 123456:11:1000:2000:foobar is pid
   // 123456, signal 11, uid 1000, gid 2000, and exec name "foobar".
   // See man 5 core for details on the format.
-  static base::Optional<CrashAttributes> ParseCrashAttributes(
+  static std::optional<CrashAttributes> ParseCrashAttributes(
       const std::string& crash_attributes);
 
  protected:
@@ -59,7 +59,7 @@ class UserCollectorBase : public CrashCollector {
     kIdMax
   };
 
-  bool ShouldDump(base::Optional<pid_t> pid, std::string* reason) const;
+  bool ShouldDump(std::optional<pid_t> pid, std::string* reason) const;
 
   bool ShouldDump(std::string* reason) const;
 

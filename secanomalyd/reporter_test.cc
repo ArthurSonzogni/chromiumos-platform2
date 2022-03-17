@@ -11,10 +11,10 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <tuple>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/files/scoped_file.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_split.h>
@@ -157,7 +157,7 @@ TEST(ReporterTest, SimplestReport) {
   wx_mounts.emplace(kUsrLocal, kWxMountUsrLocal);
 
   MaybeReport report =
-      GenerateAnomalousSystemReport(wx_mounts, base::nullopt, base::nullopt);
+      GenerateAnomalousSystemReport(wx_mounts, std::nullopt, std::nullopt);
 
   ASSERT_TRUE(report.has_value());
 

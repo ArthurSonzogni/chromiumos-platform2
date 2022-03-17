@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 
 #include <base/at_exit.h>
 #include <base/bind.h>
@@ -11,7 +12,6 @@
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/message_loop/message_pump_type.h>
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/threading/thread_task_runner_handle.h>
@@ -170,7 +170,7 @@ class SuspendDelayRegisterer {
   int delay_ms_;
   int timeout_ms_;
   // Id assigned by powerd to a suspend delay client.
-  base::Optional<int> delay_id_;
+  std::optional<int> delay_id_;
   // Whether to register dark/full suspend delay.
   bool dark_suspend_delay_ = false;
   scoped_refptr<dbus::Bus> bus_;

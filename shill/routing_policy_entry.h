@@ -8,9 +8,8 @@
 // Add for fib_rule_uid_range definition.
 #include <linux/fib_rules.h>
 
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 #include "shill/net/ip_address.h"
 
@@ -60,10 +59,10 @@ struct RoutingPolicyEntry {
   IPAddress dst;
   IPAddress src;
 
-  base::Optional<FwMark> fw_mark;
-  base::Optional<fib_rule_uid_range> uid_range;
-  base::Optional<std::string> iif_name;
-  base::Optional<std::string> oif_name;
+  std::optional<FwMark> fw_mark;
+  std::optional<fib_rule_uid_range> uid_range;
+  std::optional<std::string> iif_name;
+  std::optional<std::string> oif_name;
 
   bool invert_rule;
 };

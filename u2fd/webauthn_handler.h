@@ -7,11 +7,11 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
@@ -190,7 +190,7 @@ class WebAuthnHandler {
 
   // Creates and returns authenticator data. |include_attested_credential_data|
   // should be set to true for MakeCredential, false for GetAssertion.
-  base::Optional<std::vector<uint8_t>> MakeAuthenticatorData(
+  std::optional<std::vector<uint8_t>> MakeAuthenticatorData(
       const std::vector<uint8_t>& rp_id_hash,
       const std::vector<uint8_t>& credential_id,
       const std::vector<uint8_t>& credential_public_key,
@@ -203,7 +203,7 @@ class WebAuthnHandler {
 
   // Creates and returns an U2F attestation statement for |data_to_sign|, or
   // nullopt if attestation fails.
-  base::Optional<std::vector<uint8_t>> MakeFidoU2fAttestationStatement(
+  std::optional<std::vector<uint8_t>> MakeFidoU2fAttestationStatement(
       const std::vector<uint8_t>& data_to_sign,
       const MakeCredentialRequest::AttestationConveyancePreference
           attestation_conveyance_preference);
@@ -240,11 +240,11 @@ class WebAuthnHandler {
 
   // The MakeCredential session that's waiting on UI. There can only be one
   // such session. UP sessions should not use this since there can be multiple.
-  base::Optional<MakeCredentialSession> pending_uv_make_credential_session_;
+  std::optional<MakeCredentialSession> pending_uv_make_credential_session_;
 
   // The GetAssertion session that's waiting on UI. There can only be one
   // such session. UP sessions should not use this since there can be multiple.
-  base::Optional<GetAssertionSession> pending_uv_get_assertion_session_;
+  std::optional<GetAssertionSession> pending_uv_get_assertion_session_;
 
   // Hash of the per-user auth-time secret for WebAuthn.
   std::unique_ptr<brillo::Blob> auth_time_secret_hash_;

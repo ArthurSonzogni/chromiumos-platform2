@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -340,7 +341,7 @@ int DeviceInfo::GetDeviceArpType(const std::string& iface_name) const {
 
 Technology DeviceInfo::GetDeviceTechnology(
     const std::string& iface_name,
-    const base::Optional<std::string>& kind) const {
+    const std::optional<std::string>& kind) const {
   int arp_type = GetDeviceArpType(iface_name);
 
   if (kind.has_value()) {
@@ -1397,7 +1398,7 @@ void DeviceInfo::DelayedDeviceCreationTask() {
     DCHECK(!GetDevice(dev_index));
 
     const std::string& link_name = infos_[dev_index].name;
-    Technology technology = GetDeviceTechnology(link_name, base::nullopt);
+    Technology technology = GetDeviceTechnology(link_name, std::nullopt);
 
     if (technology == Technology::kCDCEthernet) {
       LOG(INFO) << "In " << __func__ << ": device " << link_name

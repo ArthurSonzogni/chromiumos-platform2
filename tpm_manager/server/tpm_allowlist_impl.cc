@@ -5,13 +5,13 @@
 #include "tpm_manager/server/tpm_allowlist_impl.h"
 
 #include <cstring>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
@@ -143,7 +143,7 @@ bool GetProductFamily(std::string* product_family) {
   return true;
 }
 
-base::Optional<bool> IsForceAllow() {
+std::optional<bool> IsForceAllow() {
   base::FilePath file_path(kTpmForceAllowTpmFile);
   std::string file_content;
 
@@ -179,7 +179,7 @@ bool TpmAllowlistImpl::IsAllowed() {
   return true;
 #else
 
-  base::Optional<bool> force_allow = IsForceAllow();
+  std::optional<bool> force_allow = IsForceAllow();
   if (force_allow.has_value()) {
     return force_allow.value();
   }

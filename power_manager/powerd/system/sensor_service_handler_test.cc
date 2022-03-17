@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/sensor_service_handler.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <gtest/gtest.h>
@@ -34,7 +35,7 @@ class FakeObserver : public SensorServiceHandlerObserver {
   void SensorServiceDisconnected() override { connected_ = false; }
 
   std::vector<int32_t> device_ids_;
-  base::Optional<bool> connected_;
+  std::optional<bool> connected_;
 };
 
 }  // namespace
@@ -67,7 +68,7 @@ class SensorServiceHandlerTest : public ::testing::Test {
 
   void SetSensor(int32_t iio_device_id) {
     auto sensor_device =
-        std::make_unique<FakeSensorDevice>(false, base::nullopt, base::nullopt);
+        std::make_unique<FakeSensorDevice>(false, std::nullopt, std::nullopt);
 
     sensor_service_.SetSensorDevice(iio_device_id, std::move(sensor_device));
   }

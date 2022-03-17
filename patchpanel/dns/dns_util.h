@@ -5,9 +5,9 @@
 #ifndef PATCHPANEL_DNS_DNS_UTIL_H_
 #define PATCHPANEL_DNS_DNS_UTIL_H_
 
+#include <optional>
 #include <string>
 
-#include "base/optional.h"
 #include "base/strings/string_piece.h"
 #include "brillo/brillo_export.h"
 
@@ -40,7 +40,7 @@ BRILLO_EXPORT bool IsValidHostLabelCharacter(char c, bool is_first_char);
 // Converts a domain in DNS format to a dotted string. Excludes the dot at the
 // end. Assumes the standard terminating zero-length label at the end if not
 // included in the input. Returns nullopt on malformed input.
-BRILLO_EXPORT base::Optional<std::string> DnsDomainToString(
+BRILLO_EXPORT std::optional<std::string> DnsDomainToString(
     base::StringPiece dns_name);
 
 }  // namespace patchpanel

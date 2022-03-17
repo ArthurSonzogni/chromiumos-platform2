@@ -9,12 +9,12 @@
 #include <sys/utsname.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/errors/error.h>
 #include <brillo/process/process_reaper.h>
@@ -74,7 +74,7 @@ class PerfTool {
   // strobbing.
   void EtmStrobbingSettings();
 
-  base::Optional<uint64_t> profiler_session_id_;
+  std::optional<uint64_t> profiler_session_id_;
   std::unique_ptr<SandboxedProcess> quipper_process_;
   base::ScopedFD quipper_process_output_fd_;
   brillo::AsynchronousSignalHandler signal_handler_;

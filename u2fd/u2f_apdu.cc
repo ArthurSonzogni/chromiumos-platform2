@@ -4,6 +4,7 @@
 
 #include <array>
 #include <map>
+#include <optional>
 #include <utility>
 
 #include <base/logging.h>
@@ -47,13 +48,13 @@ class U2fCommandApdu::Parser {
   explicit Parser(const std::string& apdu_raw)
       : apdu_raw_(apdu_raw), pos_(apdu_raw.cbegin()) {}
 
-  base::Optional<U2fCommandApdu> Parse(uint16_t* u2f_status) {
+  std::optional<U2fCommandApdu> Parse(uint16_t* u2f_status) {
     if (ParseHeader(u2f_status) && ParseLc() && ParseBody() && ParseLe()) {
       return apdu_;
     } else {
       VLOG(2) << "Failed to parse APDU: "
               << base::HexEncode(apdu_raw_.data(), apdu_raw_.size());
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
@@ -144,7 +145,7 @@ class U2fCommandApdu::Parser {
   U2fCommandApdu apdu_;
 };
 
-base::Optional<U2fCommandApdu> U2fCommandApdu::ParseFromString(
+std::optional<U2fCommandApdu> U2fCommandApdu::ParseFromString(
     const std::string& apdu_raw, uint16_t* u2f_status) {
   *u2f_status = 0;
   return U2fCommandApdu::Parser(apdu_raw).Parse(u2f_status);
@@ -235,7 +236,7 @@ bool ParseApduBody(
 //
 //////////////////////////////////////////////////////////////////////
 
-base::Optional<U2fRegisterRequestApdu> U2fRegisterRequestApdu::FromCommandApdu(
+std::optional<U2fRegisterRequestApdu> U2fRegisterRequestApdu::FromCommandApdu(
     const U2fCommandApdu& apdu, uint16_t* u2f_status) {
   // Request body for U2F_REGISTER APDUs are in the following format:
   //
@@ -254,7 +255,7 @@ base::Optional<U2fRegisterRequestApdu> U2fRegisterRequestApdu::FromCommandApdu(
     if (u2f_status) {
       *u2f_status = U2F_SW_WRONG_LENGTH;
     }
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // We require that P1 be set to 0x03 (though may optionally have the
@@ -263,7 +264,7 @@ base::Optional<U2fRegisterRequestApdu> U2fRegisterRequestApdu::FromCommandApdu(
   if ((apdu.P1() & ~G2F_ATTEST) != U2F_AUTH_ENFORCE) {
     LOG(INFO) << "Received register APDU with invalid P1 value: " << std::hex
               << apdu.P1();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   reg_apdu.g2f_attestation_ = apdu.P1() & G2F_ATTEST;
@@ -283,7 +284,7 @@ bool U2fRegisterRequestApdu::IsChromeDummyWinkRequest() const {
 //
 //////////////////////////////////////////////////////////////////////
 
-base::Optional<U2fAuthenticateRequestApdu>
+std::optional<U2fAuthenticateRequestApdu>
 U2fAuthenticateRequestApdu::FromCommandApdu(const U2fCommandApdu& apdu,
                                             uint16_t* u2f_status) {
   *u2f_status = 0;
@@ -296,7 +297,7 @@ U2fAuthenticateRequestApdu::FromCommandApdu(const U2fCommandApdu& apdu,
   if (apdu.P1() != U2F_AUTH_ENFORCE && apdu.P1() != U2F_AUTH_CHECK_ONLY) {
     LOG(INFO) << "Received authenticate APDU with invalid P1 value: "
               << std::hex << apdu.P1();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Request body for U2F_AUTHENTICATE APDUs are in the following format:
@@ -323,7 +324,7 @@ U2fAuthenticateRequestApdu::FromCommandApdu(const U2fCommandApdu& apdu,
     if (u2f_status) {
       *u2f_status = U2F_SW_WRONG_LENGTH;
     }
-    return base::nullopt;
+    return std::nullopt;
   }
 
   auth_apdu.auth_check_only_ = apdu.P1() == U2F_AUTH_CHECK_ONLY;

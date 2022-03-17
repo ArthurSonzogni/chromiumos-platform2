@@ -4,6 +4,7 @@
 
 #include "crash-reporter/anomaly_detector.h"
 
+#include <optional>
 #include <unordered_set>
 #include <utility>
 
@@ -73,7 +74,7 @@ bool Parser::WasAlreadySeen(uint32_t hash) {
 }
 
 MaybeCrashReport Parser::PeriodicUpdate() {
-  return base::nullopt;
+  return std::nullopt;
 }
 
 constexpr LazyRE2 service_failure = {
@@ -86,25 +87,25 @@ MaybeCrashReport ServiceParser::ParseLogEntry(const std::string& line) {
   std::string service_name;
   std::string exit_status;
   if (!RE2::FullMatch(line, *service_failure, &service_name, &exit_status))
-    return base::nullopt;
+    return std::nullopt;
 
   if (service_name == "cros-camera") {
     // cros-camera uses non-zero exit status to indicate transient failures and
     // to request that the service be re-started. This is 'nominal' and should
     // not be reported. (It's also flooding our servers.)
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // We only want to report a limited number of service failures due to noise.
   if (!testonly_send_all_ &&
       base::RandGenerator(util::GetServiceFailureWeight()) != 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   uint32_t hash = StringHash(service_name.c_str());
 
   if (WasAlreadySeen(hash))
-    return base::nullopt;
+    return std::nullopt;
 
   std::string text = base::StringPrintf(
       "%08x-exit%s-%s\n", hash, exit_status.c_str(), service_name.c_str());
@@ -147,19 +148,19 @@ MaybeCrashReport SELinuxParser::ParseLogEntry(const std::string& line) {
   // real impact. The noise from them would crowd out other crashes that have
   // a more significant impact.
   if (line.find("permissive=1") != std::string::npos) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // We only want to report 0.1% of selinux violations due to noise.
   if (!testonly_send_all_ &&
       base::RandGenerator(util::GetSelinuxWeight()) != 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string only_alpha = OnlyAsciiAlpha(line);
   uint32_t hash = StringHash(only_alpha.c_str());
   if (WasAlreadySeen(hash))
-    return base::nullopt;
+    return std::nullopt;
 
   std::string signature;
 
@@ -183,7 +184,7 @@ MaybeCrashReport SELinuxParser::ParseLogEntry(const std::string& line) {
       // anomaly_detector saw the line and ignored it.
       LOG(INFO) << "Skipping non-CrOS selinux violation: " << line;
     }
-    return base::nullopt;
+    return std::nullopt;
   }
 
   signature += base::JoinString({scontext, tcontext, permission,
@@ -266,7 +267,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       uint32_t hash = StringHash(info.c_str());
       if (WasAlreadySeen(hash)) {
         last_line_ = LineType::None;
-        return base::nullopt;
+        return std::nullopt;
       }
       flag_ = DetermineFlag(info);
 
@@ -294,7 +295,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       // server. (See http://b/185156234.)
       const int kWeight = util::GetKernelWarningWeight(flag_);
       if (!testonly_send_all_ && base::RandGenerator(kWeight) != 0) {
-        return base::nullopt;
+        return std::nullopt;
       }
       return CrashReport(
           std::move(text_tmp),
@@ -323,7 +324,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       const std::string kFlag = "--kernel_ath10k_error";
       const int kWeight = util::GetKernelWarningWeight(kFlag);
       if (!testonly_send_all_ && base::RandGenerator(kWeight) != 0) {
-        return base::nullopt;
+        return std::nullopt;
       }
 
       return CrashReport(
@@ -353,7 +354,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       const std::string kFlag = "--kernel_iwlwifi_error";
       const int kWeight = util::GetKernelWarningWeight(kFlag);
       if (!testonly_send_all_ && base::RandGenerator(kWeight) != 0) {
-        return base::nullopt;
+        return std::nullopt;
       }
 
       return CrashReport(
@@ -375,7 +376,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
       const std::string kFlag = "--kernel_iwlwifi_error";
       const int kWeight = util::GetKernelWarningWeight(kFlag);
       if (!testonly_send_all_ && base::RandGenerator(kWeight) != 0) {
-        return base::nullopt;
+        return std::nullopt;
       }
 
       return CrashReport(
@@ -401,7 +402,7 @@ MaybeCrashReport KernelParser::ParseLogEntry(const std::string& line) {
     }
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 constexpr char begin_suspend_error_stats[] =
@@ -419,7 +420,7 @@ MaybeCrashReport SuspendParser::ParseLogEntry(const std::string& line) {
   // We only want to report a fraction of suspend failures due to noise.
   if (!testonly_send_all_ &&
       base::RandGenerator(util::GetSuspendFailureWeight()) != 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (last_line_ == LineType::None &&
@@ -428,11 +429,11 @@ MaybeCrashReport SuspendParser::ParseLogEntry(const std::string& line) {
     dev_str_ = "none";
     errno_str_ = "unknown";
     step_str_ = "unknown";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (last_line_ != LineType::Start && last_line_ != LineType::Body) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (line.find(end_suspend_error_stats) != 0) {
@@ -446,7 +447,7 @@ MaybeCrashReport SuspendParser::ParseLogEntry(const std::string& line) {
     }
 
     last_line_ = LineType::Body;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   uint32_t hash = StringHash((dev_str_ + errno_str_ + step_str_).c_str());
@@ -471,7 +472,7 @@ MaybeCrashReport TerminaParser::ParseLogEntryForBtrfs(int cid,
                                                       const std::string& line) {
   if (!RE2::PartialMatch(line, *btrfs_extent_corruption) &&
       !RE2::PartialMatch(line, *btrfs_tree_node_corruption)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   anomaly_detector::GuestFileCorruptionSignal message;
@@ -488,7 +489,7 @@ MaybeCrashReport TerminaParser::ParseLogEntryForBtrfs(int cid,
 
   // Don't send a crash report here, because the gap between when the
   // corruption occurs and when we detect it can be arbitrarily large.
-  return base::nullopt;
+  return std::nullopt;
 }
 
 constexpr LazyRE2 oom_event = {
@@ -500,7 +501,7 @@ constexpr LazyRE2 oom_event = {
 MaybeCrashReport TerminaParser::ParseLogEntryForOom(int cid,
                                                     const std::string& line) {
   if (!RE2::PartialMatch(line, *oom_event)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   anomaly_detector::GuestOomEventSignal message;
@@ -517,7 +518,7 @@ MaybeCrashReport TerminaParser::ParseLogEntryForOom(int cid,
 
   // TODO(crbug/1193485): we would like to submit a crash report here, impl
   // is pending resolution of privacy concerns.
-  return base::nullopt;
+  return std::nullopt;
 }
 
 constexpr LazyRE2 cryptohome_mount_failure = {
@@ -526,14 +527,14 @@ constexpr LazyRE2 cryptohome_mount_failure = {
 MaybeCrashReport CryptohomeParser::ParseLogEntry(const std::string& line) {
   uint64_t error_code;
   if (!RE2::PartialMatch(line, *cryptohome_mount_failure, &error_code)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Avoid creating crash reports if the user doesn't exist or if cryptohome
   // can't authenticate the user's password.
   if (error_code == cryptohome::MOUNT_ERROR_USER_DOES_NOT_EXIST ||
       error_code == cryptohome::MOUNT_ERROR_KEY_FAILURE)
-    return base::nullopt;
+    return std::nullopt;
 
   return CrashReport("", {std::move("--mount_failure"),
                           std::move("--mount_device=cryptohome")});
@@ -549,11 +550,11 @@ const std::unordered_set<uint32_t> auth_failure_blocklist = {
 MaybeCrashReport TcsdParser::ParseLogEntry(const std::string& line) {
   uint32_t hash;
   if (!RE2::PartialMatch(line, *auth_failure, RE2::Hex(&hash))) {
-    return base::nullopt;
+    return std::nullopt;
   }
   if (auth_failure_blocklist.count(hash)) {
     LOG(INFO) << "Ignoring auth_failure 0x" << std::hex << hash;
-    return base::nullopt;
+    return std::nullopt;
   }
   std::string text = base::StringPrintf("%08x-auth failure\n", hash);
 

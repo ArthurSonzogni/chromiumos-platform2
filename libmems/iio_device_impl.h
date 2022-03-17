@@ -9,10 +9,9 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
-
-#include <base/optional.h>
 
 #include "libmems/export.h"
 #include "libmems/iio_device.h"
@@ -25,7 +24,7 @@ class IioContextImpl;
 
 class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
  public:
-  static base::Optional<int> GetIdFromString(const char* id_str);
+  static std::optional<int> GetIdFromString(const char* id_str);
   static std::string GetStringFromId(int id);
 
   // iio_device objects are kept alive by the IioContextImpl.
@@ -42,11 +41,11 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
 
   base::FilePath GetPath() const override;
 
-  base::Optional<std::string> ReadStringAttribute(
+  std::optional<std::string> ReadStringAttribute(
       const std::string& name) const override;
-  base::Optional<int64_t> ReadNumberAttribute(
+  std::optional<int64_t> ReadNumberAttribute(
       const std::string& name) const override;
-  base::Optional<double> ReadDoubleAttribute(
+  std::optional<double> ReadDoubleAttribute(
       const std::string& name) const override;
 
   bool WriteStringAttribute(const std::string& name,
@@ -62,19 +61,19 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
   IioDevice* GetTrigger() override;
   IioDevice* GetHrtimer() override;
 
-  base::Optional<size_t> GetSampleSize() const override;
+  std::optional<size_t> GetSampleSize() const override;
 
   bool EnableBuffer(size_t num) override;
   bool DisableBuffer() override;
   bool IsBufferEnabled(size_t* num = nullptr) const override;
 
   bool CreateBuffer() override;
-  base::Optional<int32_t> GetBufferFd() override;
-  base::Optional<IioSample> ReadSample() override;
+  std::optional<int32_t> GetBufferFd() override;
+  std::optional<IioSample> ReadSample() override;
   void FreeBuffer() override;
 
-  base::Optional<int32_t> GetEventFd() override;
-  base::Optional<iio_event_data> ReadEvent() override;
+  std::optional<int32_t> GetEventFd() override;
+  std::optional<iio_event_data> ReadEvent() override;
 
  private:
   static void IioBufferDeleter(iio_buffer* buffer);
@@ -88,7 +87,7 @@ class LIBMEMS_EXPORT IioDeviceImpl : public IioDevice {
 
   using ScopedBuffer = std::unique_ptr<iio_buffer, decltype(&IioBufferDeleter)>;
   ScopedBuffer buffer_;
-  base::Optional<int32_t> event_fd_;
+  std::optional<int32_t> event_fd_;
 
   std::string log_prefix_;
 };

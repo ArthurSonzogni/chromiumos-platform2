@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/routines/battery_health/battery_health.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -108,7 +109,7 @@ void RunBatteryHealthRoutine(Context* const context,
 
   base::Value result_dict(base::Value::Type::DICTIONARY);
 
-  base::Optional<power_manager::PowerSupplyProperties> response =
+  std::optional<power_manager::PowerSupplyProperties> response =
       context->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
     *status_message = kPowerdPowerSupplyPropertiesFailedMessage;
@@ -166,8 +167,8 @@ const uint8_t kBatteryHealthDefaultPercentBatteryWearAllowed = 50;
 
 std::unique_ptr<DiagnosticRoutine> CreateBatteryHealthRoutine(
     Context* const context,
-    const base::Optional<uint32_t>& maximum_cycle_count,
-    const base::Optional<uint8_t>& percent_battery_wear_allowed) {
+    const std::optional<uint32_t>& maximum_cycle_count,
+    const std::optional<uint8_t>& percent_battery_wear_allowed) {
   return std::make_unique<SimpleRoutine>(base::BindOnce(
       &RunBatteryHealthRoutine, context,
       maximum_cycle_count.value_or(kBatteryHealthDefaultMaximumCycleCount),

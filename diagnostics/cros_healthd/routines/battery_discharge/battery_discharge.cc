@@ -7,6 +7,7 @@
 #include <inttypes.h>
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -14,7 +15,6 @@
 #include <base/check_op.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/threading/thread_task_runner_handle.h>
 
 #include "diagnostics/common/mojo_utils.h"
@@ -131,7 +131,7 @@ BatteryDischargeRoutine::RunBatteryDischargeRoutine() {
     return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
   }
 
-  base::Optional<power_manager::PowerSupplyProperties> response =
+  std::optional<power_manager::PowerSupplyProperties> response =
       context_->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
     status_message_ = kPowerdPowerSupplyPropertiesFailedMessage;
@@ -161,7 +161,7 @@ BatteryDischargeRoutine::RunBatteryDischargeRoutine() {
 
 void BatteryDischargeRoutine::DetermineRoutineResult(
     double beginning_charge_percent) {
-  base::Optional<power_manager::PowerSupplyProperties> response =
+  std::optional<power_manager::PowerSupplyProperties> response =
       context_->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
     status_message_ = kPowerdPowerSupplyPropertiesFailedMessage;

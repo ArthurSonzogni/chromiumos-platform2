@@ -4,6 +4,8 @@
 
 #include "libmems/iio_event.h"
 
+#include <optional>
+
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -50,31 +52,31 @@ int IioEvent::GetChannelNumber() const {
   return channel_;
 }
 
-base::Optional<int64_t> IioEvent::ReadNumberAttribute(
+std::optional<int64_t> IioEvent::ReadNumberAttribute(
     const std::string& name) const {
-  base::Optional<std::string> value = ReadStringAttribute(name);
+  std::optional<std::string> value = ReadStringAttribute(name);
   if (!value.has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   int64_t number;
   if (!base::StringToInt64(value.value(), &number)) {
     LOG(ERROR) << "Cannot convert string to int64: " << value.value();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return number;
 }
 
-base::Optional<double> IioEvent::ReadDoubleAttribute(
+std::optional<double> IioEvent::ReadDoubleAttribute(
     const std::string& name) const {
-  base::Optional<std::string> value = ReadStringAttribute(name);
+  std::optional<std::string> value = ReadStringAttribute(name);
   if (!value.has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   double number;
   if (!base::StringToDouble(value.value(), &number)) {
     LOG(ERROR) << "Cannot convert string to double: " << value.value();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return number;

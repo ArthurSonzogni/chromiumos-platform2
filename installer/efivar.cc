@@ -5,6 +5,7 @@
 #include "installer/efivar.h"
 
 #include <cstring>
+#include <optional>
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -131,7 +132,7 @@ bool EfiVarImpl::EfiVariablesSupported() {
   return efi_variables_supported();
 }
 
-base::Optional<std::string> EfiVarImpl::GetNextVariableName() {
+std::optional<std::string> EfiVarImpl::GetNextVariableName() {
   efi_guid_t* guid = nullptr;
   char* name = nullptr;
   int rc = 0;
@@ -141,7 +142,7 @@ base::Optional<std::string> EfiVarImpl::GetNextVariableName() {
   while ((rc = efi_get_next_variable_name(&guid, &name)) > 0) {
     // NULL is not expected but guard against it.
     if (!name || !guid)
-      return base::nullopt;
+      return std::nullopt;
     if (!IsEfiGlobalGUID(guid))
       continue;
     return std::string(name);
@@ -149,7 +150,7 @@ base::Optional<std::string> EfiVarImpl::GetNextVariableName() {
 
   if (rc < 0)
     LogEfiErrors();
-  return base::nullopt;
+  return std::nullopt;
 }
 
 bool EfiVarImpl::GetVariable(const std::string& name,

@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,7 +21,6 @@
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
 #include <brillo/process/process.h>
@@ -57,7 +57,7 @@ class Service final {
   // |unix_socket_path_for_testing| a value.
   static std::unique_ptr<Service> Create(
       base::OnceClosure quit_closure,
-      const base::Optional<base::FilePath>& unix_socket_path_for_testing,
+      const std::optional<base::FilePath>& unix_socket_path_for_testing,
       scoped_refptr<dbus::Bus> bus);
 
   ~Service();
@@ -557,7 +557,7 @@ class Service final {
   // its name, and starting our gRPC servers. If |unix_socket_path_for_testing|
   // has a value, the services are bound only to an AF_UNIX socket in that
   // directory instead of the normal VSOCK and AF_UNIX socket.
-  bool Init(const base::Optional<base::FilePath>& unix_socket_path_for_testing);
+  bool Init(const std::optional<base::FilePath>& unix_socket_path_for_testing);
 
   // Handles the termination of a child process.
   void HandleChildExit();

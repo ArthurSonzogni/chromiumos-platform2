@@ -5,6 +5,7 @@
 #include "u2fd/webauthn_storage.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -242,7 +243,7 @@ bool WebAuthnStorage::LoadRecords() {
       continue;
     }
 
-    const base::Optional<double> timestamp =
+    const std::optional<double> timestamp =
         record_dictionary.FindDoubleKey(kCreatedTimestampKey);
     if (!timestamp) {
       LOG(ERROR) << "Cannot read timestamp from " << record_path.value() << ".";
@@ -250,7 +251,7 @@ bool WebAuthnStorage::LoadRecords() {
       continue;
     }
 
-    const base::Optional<bool> is_resident_key =
+    const std::optional<bool> is_resident_key =
         record_dictionary.FindBoolKey(kIsResidentKeyKey);
     if (!is_resident_key.has_value()) {
       LOG(ERROR) << "Cannot read is_resident_key from " << record_path.value()
@@ -280,14 +281,14 @@ bool WebAuthnStorage::SendRecordCountToUMA(MetricsLibraryInterface* metrics) {
                             kRecordCountBuckets);
 }
 
-base::Optional<brillo::Blob> WebAuthnStorage::GetSecretByCredentialId(
+std::optional<brillo::Blob> WebAuthnStorage::GetSecretByCredentialId(
     const std::string& credential_id) {
   for (const WebAuthnRecord& record : records_) {
     if (record.credential_id == credential_id) {
       return record.secret;
     }
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 
 bool WebAuthnStorage::GetSecretAndKeyBlobByCredentialId(
@@ -308,14 +309,14 @@ bool WebAuthnStorage::GetSecretAndKeyBlobByCredentialId(
   return false;
 }
 
-base::Optional<WebAuthnRecord> WebAuthnStorage::GetRecordByCredentialId(
+std::optional<WebAuthnRecord> WebAuthnStorage::GetRecordByCredentialId(
     const std::string& credential_id) {
   for (const WebAuthnRecord& record : records_) {
     if (record.credential_id == credential_id) {
       return record;
     }
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 
 int WebAuthnStorage::CountRecordsInTimeRange(int64_t timestamp_min,

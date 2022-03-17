@@ -8,6 +8,8 @@
 
 #include "hps/dev.h"
 
+#include <optional>
+
 #include "base/logging.h"
 #include <base/strings/stringprintf.h>
 #include "hps/hps_reg.h"

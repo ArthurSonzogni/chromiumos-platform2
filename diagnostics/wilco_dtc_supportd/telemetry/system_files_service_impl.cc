@@ -4,6 +4,7 @@
 
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service_impl.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_enumerator.h>
@@ -95,20 +96,20 @@ SystemFilesServiceImpl::SystemFilesServiceImpl() = default;
 
 SystemFilesServiceImpl::~SystemFilesServiceImpl() = default;
 
-base::Optional<SystemFilesService::FileDump>
-SystemFilesServiceImpl::GetFileDump(File location) {
+std::optional<SystemFilesService::FileDump> SystemFilesServiceImpl::GetFileDump(
+    File location) {
   FileDump dump;
   if (!MakeFileDump(root_dir_.Append(GetPathForFile(location)), &dump)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return std::move(dump);
 }
 
-base::Optional<SystemFilesService::FileDumps>
+std::optional<SystemFilesService::FileDumps>
 SystemFilesServiceImpl::GetDirectoryDump(Directory location) {
   base::FilePath path = root_dir_.Append(GetPathForDirectory(location));
   if (!base::DirectoryExists(path))
-    return base::nullopt;
+    return std::nullopt;
 
   FileDumps dumps;
   std::set<std::string> visited_paths;
@@ -117,18 +118,18 @@ SystemFilesServiceImpl::GetDirectoryDump(Directory location) {
   return std::move(dumps);
 }
 
-base::Optional<std::string> SystemFilesServiceImpl::GetVpdField(
+std::optional<std::string> SystemFilesServiceImpl::GetVpdField(
     VpdField vpd_field) {
   FileDump dump;
   if (!MakeFileDump(root_dir_.Append(GetPathForVpdField(vpd_field)), &dump)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   base::TrimString(dump.contents, base::kWhitespaceASCII, &dump.contents);
   if (dump.contents.empty() || !base::IsStringASCII(dump.contents)) {
     VLOG(2) << "VPD field from " << GetPathForVpdField(vpd_field).BaseName()
             << " is not non-empty ASCII string";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return std::move(dump.contents);

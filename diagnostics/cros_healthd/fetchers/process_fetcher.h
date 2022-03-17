@@ -8,10 +8,10 @@
 #include <sys/types.h>
 
 #include <cstdint>
+#include <optional>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -37,35 +37,35 @@ class ProcessFetcher final : public BaseFetcher {
 
  private:
   // Parses relevant fields from /proc/|process_id_|/stat. Returns the first
-  // error encountered or base::nullopt if no errors occurred. |priority|,
-  // |nice| and |start_time_ticks| are only valid if base::nullopt was returned.
-  base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> ParseProcPidStat(
+  // error encountered or std::nullopt if no errors occurred. |priority|,
+  // |nice| and |start_time_ticks| are only valid if std::nullopt was returned.
+  std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> ParseProcPidStat(
       chromeos::cros_healthd::mojom::ProcessState* state,
       int8_t* priority,
       int8_t* nice,
       uint64_t* start_time_ticks);
 
   // Parses relevant fields from /proc/|process_id_|/statm. Returns the first
-  // error encountered or base::nullopt if no errors occurred.
+  // error encountered or std::nullopt if no errors occurred.
   // |total_memory_kib|, |resident_memory_kib| and |free_memory_kib| are only
-  // valid if base::nullopt was returned.
-  base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>
-  ParseProcPidStatm(uint32_t* total_memory_kib,
-                    uint32_t* resident_memory_kib,
-                    uint32_t* free_memory_kib);
+  // valid if std::nullopt was returned.
+  std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> ParseProcPidStatm(
+      uint32_t* total_memory_kib,
+      uint32_t* resident_memory_kib,
+      uint32_t* free_memory_kib);
 
   // Calculates the uptime of the process in clock ticks using
-  // |start_time_ticks|. Returns the first error encountered or base::nullopt if
-  // no errors occurred. |process_uptime_ticks| is only valid if base::nullopt
+  // |start_time_ticks|. Returns the first error encountered or std::nullopt if
+  // no errors occurred. |process_uptime_ticks| is only valid if std::nullopt
   // was returned.
-  base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>
+  std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>
   CalculateProcessUptime(uint64_t start_time_ticks,
                          uint64_t* process_uptime_ticks);
 
   // Fetches the real user ID of the process. Returns the first error
-  // encountered or base::nullopt if no errors occurred. |user_id| is only
-  // valid if base::nullopt was returned.
-  base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> GetProcessUid(
+  // encountered or std::nullopt if no errors occurred. |user_id| is only
+  // valid if std::nullopt was returned.
+  std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> GetProcessUid(
       uid_t* user_id);
 
   // File paths read will be relative to |root_dir_|. In production, this should

@@ -6,12 +6,12 @@
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_WILCO_DTC_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include <base/callback.h>
 #include <base/macros.h>
-#include <base/optional.h>
 
 #include <brillo/grpc/async_grpc_client.h>
 #include <brillo/grpc/async_grpc_server.h>
@@ -142,8 +142,8 @@ class FakeWilcoDtc final {
     handle_power_event_request_callback_ = handle_powerd_event_request_callback;
   }
 
-  const base::Optional<std::string>&
-  handle_message_from_ui_actual_json_message() const {
+  const std::optional<std::string>& handle_message_from_ui_actual_json_message()
+      const {
     return handle_message_from_ui_actual_json_message_;
   }
 
@@ -203,19 +203,19 @@ class FakeWilcoDtc final {
   AsyncGrpcWilcoDtcServer grpc_server_;
   AsyncGrpcWilcoDtcSupportdClient wilco_dtc_supportd_grp_client_;
 
-  base::Optional<base::Closure> handle_message_from_ui_callback_;
-  base::Optional<std::string> handle_message_from_ui_actual_json_message_;
-  base::Optional<std::string> handle_message_from_ui_json_message_response_;
+  std::optional<base::Closure> handle_message_from_ui_callback_;
+  std::optional<std::string> handle_message_from_ui_actual_json_message_;
+  std::optional<std::string> handle_message_from_ui_json_message_response_;
 
-  base::Optional<HandleEcNotificationRequestCallback>
+  std::optional<HandleEcNotificationRequestCallback>
       handle_ec_event_request_callback_;
 
-  base::Optional<HandlePowerNotificationRequestCallback>
+  std::optional<HandlePowerNotificationRequestCallback>
       handle_power_event_request_callback_;
 
-  base::Optional<base::RepeatingClosure> configuration_data_changed_callback_;
+  std::optional<base::RepeatingClosure> configuration_data_changed_callback_;
 
-  base::Optional<HandleBluetoothDataChangedRequestCallback>
+  std::optional<HandleBluetoothDataChangedRequestCallback>
       bluetooth_data_changed_request_callback_;
 };
 

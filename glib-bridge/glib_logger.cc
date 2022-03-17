@@ -6,9 +6,10 @@
 
 #include <glib.h>
 
+#include <optional>
+
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 
 namespace glib_bridge {
@@ -44,22 +45,22 @@ logging::LogSeverity GetLogSeverity(int priority) {
   }
 }
 
-base::Optional<int> ParseIntField(const char* value) {
+std::optional<int> ParseIntField(const char* value) {
   int parsed;
   if (base::StringToInt(value, &parsed))
     return parsed;
-  return base::nullopt;
+  return std::nullopt;
 }
 
 GLogWriterOutput LogHandler(GLogLevelFlags log_level,
                             const GLogField* fields,
                             gsize n_fields,
                             gpointer user_data) {
-  base::Optional<std::string> message;
-  base::Optional<int> priority;
-  base::Optional<std::string> code_file;
-  base::Optional<int> code_line;
-  base::Optional<int> log_errno;
+  std::optional<std::string> message;
+  std::optional<int> priority;
+  std::optional<std::string> code_file;
+  std::optional<int> code_line;
+  std::optional<int> log_errno;
 
   for (int i = 0; i < n_fields; i++) {
     const char* key = fields[i].key;

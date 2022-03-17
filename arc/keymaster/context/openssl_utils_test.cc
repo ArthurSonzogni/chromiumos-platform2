@@ -4,6 +4,8 @@
 
 #include "arc/keymaster/context/openssl_utils.h"
 
+#include <optional>
+
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
@@ -25,12 +27,12 @@ const brillo::SecureBlob kBlob(145, 42);
 
 TEST(OpenSslUtils, EncryptThenDecrypt) {
   // Encrypt.
-  base::Optional<brillo::Blob> encrypted =
+  std::optional<brillo::Blob> encrypted =
       Aes256GcmEncrypt(kEncryptionKey1, kAuthData1, kBlob);
   ASSERT_TRUE(encrypted.has_value());
 
   // Decrypt.
-  base::Optional<brillo::SecureBlob> decrypted =
+  std::optional<brillo::SecureBlob> decrypted =
       Aes256GcmDecrypt(kEncryptionKey1, kAuthData1, encrypted.value());
   ASSERT_TRUE(decrypted.has_value());
 
@@ -40,7 +42,7 @@ TEST(OpenSslUtils, EncryptThenDecrypt) {
 
 TEST(OpenSslUtils, EncryptedBlobSize) {
   // Encrypt.
-  base::Optional<brillo::Blob> encrypted =
+  std::optional<brillo::Blob> encrypted =
       Aes256GcmEncrypt(kEncryptionKey1, kAuthData1, kBlob);
   ASSERT_TRUE(encrypted.has_value());
 
@@ -50,13 +52,13 @@ TEST(OpenSslUtils, EncryptedBlobSize) {
 
 TEST(OpenSslUtils, DecryptWithDifferentEncryptionKeyError) {
   // Encrypt with some encryption key.
-  base::Optional<brillo::Blob> encrypted =
+  std::optional<brillo::Blob> encrypted =
       Aes256GcmEncrypt(kEncryptionKey1, kAuthData1, kBlob);
   ASSERT_TRUE(encrypted.has_value());
 
   // Try to decrypt with another encryption key.
   ASSERT_NE(kEncryptionKey1, kEncryptionKey2);
-  base::Optional<brillo::SecureBlob> decrypted =
+  std::optional<brillo::SecureBlob> decrypted =
       Aes256GcmDecrypt(kEncryptionKey2, kAuthData1, encrypted.value());
 
   // Verify decryption fails.
@@ -65,13 +67,13 @@ TEST(OpenSslUtils, DecryptWithDifferentEncryptionKeyError) {
 
 TEST(OpenSslUtils, DecryptWithDifferentAuthDataError) {
   // Encrypt with some auth data.
-  base::Optional<brillo::Blob> encrypted =
+  std::optional<brillo::Blob> encrypted =
       Aes256GcmEncrypt(kEncryptionKey1, kAuthData1, kBlob);
   ASSERT_TRUE(encrypted.has_value());
 
   // Try to decrypt with different auth data.
   ASSERT_NE(kAuthData1, kAuthData2);
-  base::Optional<brillo::SecureBlob> decrypted =
+  std::optional<brillo::SecureBlob> decrypted =
       Aes256GcmDecrypt(kEncryptionKey1, kAuthData2, encrypted.value());
 
   // Verify decryption fails.

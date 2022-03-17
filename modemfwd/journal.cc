@@ -4,6 +4,7 @@
 
 #include "modemfwd/journal.h"
 
+#include <optional>
 #include <utility>
 #include <vector>
 

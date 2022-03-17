@@ -5,6 +5,7 @@
 #define CRASH_REPORTER_CRASH_SENDER_BASE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -269,7 +270,7 @@ class SenderBase {
   // Looks through |keys| in the os-release data using brillo::OsReleaseReader.
   // Keys are searched in order until a value is found. Returns the value in
   // the Optional if found, otherwise the Optional is empty.
-  base::Optional<std::string> GetOsReleaseValue(
+  std::optional<std::string> GetOsReleaseValue(
       const std::vector<std::string>& keys);
 
   std::unique_ptr<base::Clock> clock_;

@@ -20,7 +20,6 @@
 #include <base/logging.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/optional.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/rsa.h>
@@ -94,7 +93,7 @@ trunks::TPM_ALG_ID DigestAlgorithmToTrunksAlgId(
 
 // Check the |input| is <digest_info><digest> form. If so, return the matched
 // trunks algorithm ID and the digest.
-base::Optional<ParsedDigestInfo> ParseDigestInfo(const std::string& input) {
+std::optional<ParsedDigestInfo> ParseDigestInfo(const std::string& input) {
   for (const auto& algorithm_info : kSupportedDigestAlgorithms) {
     const std::string& digest_info =
         GetDigestAlgorithmEncoding(algorithm_info.alg);
@@ -105,7 +104,7 @@ base::Optional<ParsedDigestInfo> ParseDigestInfo(const std::string& input) {
                             input.substr(digest_info.size()));
     }
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 
 uint32_t GetIntegerExponent(const std::string& public_exponent) {
@@ -865,8 +864,8 @@ bool TPM2UtilityImpl::Sign(int key_handle,
           //      can be recognized as TPM supported algorithm, strip off the
           //      prepended DigestInfo and consider it as 2-3. If not, keep
           //      pass the raw input.
-          base::Optional<ParsedDigestInfo> parsed = ParseDigestInfo(input);
-          if (parsed != base::nullopt) {
+          std::optional<ParsedDigestInfo> parsed = ParseDigestInfo(input);
+          if (parsed != std::nullopt) {
             digest_alg_id = parsed.value().first;
             data_to_sign = parsed.value().second;
           } else {

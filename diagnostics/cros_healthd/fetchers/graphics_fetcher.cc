@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -114,7 +115,7 @@ mojo_ipc::EGLInfoPtr EglManager::FetchEGLInfo() {
   return egl_info;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr> GraphicsFetcher::FetchGraphicsInfo(
+std::optional<mojo_ipc::ProbeErrorPtr> GraphicsFetcher::FetchGraphicsInfo(
     std::unique_ptr<EglManager> egl_manager,
     mojo_ipc::GLESInfoPtr* out_gles_info,
     mojo_ipc::EGLInfoPtr* out_egl_info) {
@@ -132,7 +133,7 @@ base::Optional<mojo_ipc::ProbeErrorPtr> GraphicsFetcher::FetchGraphicsInfo(
   auto egl_info = egl_manager->FetchEGLInfo();
   *out_egl_info = std::move(egl_info);
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace diagnostics

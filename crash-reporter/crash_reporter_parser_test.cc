@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -367,7 +368,7 @@ TEST_F(CrashReporterParserTest, PendingAndRecentMissCount) {
   // enough that the new pending miss won't be handled in the last
   // PeriodicUpdate, but not so much that the previous miss will be handled.
   for (int i = 0; i < CrashReporterParser::kTimeout.InSeconds() / 2; ++i) {
-    EXPECT_EQ(parser->PeriodicUpdate(), base::nullopt);
+    EXPECT_EQ(parser->PeriodicUpdate(), std::nullopt);
   }
 
   // Add in one more called-for-kernel so that we have another pending miss.
@@ -375,7 +376,7 @@ TEST_F(CrashReporterParserTest, PendingAndRecentMissCount) {
                 "[user] Received crash notification for chrome[777] sig 10, "
                 "user 1000 group 1000 (ignoring call by kernel - chrome crash; "
                 "waiting for chrome to call us directly)"),
-            base::nullopt);
+            std::nullopt);
   // Run PeriodicUpdate until the report for the miss in the INTERLEAVED file
   // comes out. That should be PID 1570.
   expected_flags_ = {
@@ -424,7 +425,7 @@ TEST_F(CrashReporterParserTest, PendingAndRecentMissCount) {
                 "[user] Received crash notification for chrome[772] sig 10, "
                 "user 1000 group 1000 (ignoring call by kernel - chrome crash; "
                 "waiting for chrome to call us directly)"),
-            base::nullopt);
+            std::nullopt);
 
   // We should get a CrashReport for the called-by-kernel line we just added
   // with a direct call to ParseLogEntry, but all those others (PID 777 and the

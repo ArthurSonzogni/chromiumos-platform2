@@ -10,6 +10,7 @@
 #include <libyuv.h>
 
 #include <numeric>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -86,7 +87,7 @@ bool AutoFramingClient::SetUp(const Options& options) {
   buffer_pool_ = std::make_unique<CameraBufferPool>(buffer_pool_options);
 
   base::AutoLock lock(lock_);
-  region_of_interest_ = base::nullopt;
+  region_of_interest_ = std::nullopt;
   crop_window_ =
       GetCenteringFullCrop(options.input_size, options.target_aspect_ratio_x,
                            options.target_aspect_ratio_y);
@@ -107,7 +108,7 @@ bool AutoFramingClient::ProcessFrame(int64_t timestamp,
   }
 
   DCHECK_NE(buffer_pool_, nullptr);
-  base::Optional<CameraBufferPool::Buffer> dst_buffer =
+  std::optional<CameraBufferPool::Buffer> dst_buffer =
       buffer_pool_->RequestBuffer();
   if (!dst_buffer) {
     LOGF(ERROR) << "Failed to allocate buffer for detection @" << timestamp;
@@ -140,9 +141,9 @@ bool AutoFramingClient::ProcessFrame(int64_t timestamp,
   return true;
 }
 
-base::Optional<Rect<uint32_t>> AutoFramingClient::TakeNewRegionOfInterest() {
+std::optional<Rect<uint32_t>> AutoFramingClient::TakeNewRegionOfInterest() {
   base::AutoLock lock(lock_);
-  base::Optional<Rect<uint32_t>> roi;
+  std::optional<Rect<uint32_t>> roi;
   roi.swap(region_of_interest_);
   return roi;
 }

@@ -6,11 +6,11 @@
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_MOJO_SERVICE_FACTORY_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
-#include <base/optional.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -50,12 +50,12 @@ class MojoServiceFactory final : public chromeos::wilco_dtc_supportd::mojom::
 
   // Implements D-Bus call BootstrapMojoConnection().
   // Returns an error message in case an error occurred.
-  base::Optional<std::string> BootstrapMojoConnection(
+  std::optional<std::string> BootstrapMojoConnection(
       const base::ScopedFD& mojo_fd);
 
  private:
   // Initializes the service factory.
-  base::Optional<std::string> Start(base::ScopedFD mojo_pipe_fd);
+  std::optional<std::string> Start(base::ScopedFD mojo_pipe_fd);
 
   // Creates the |BindFactoryCallback| to be used in production:
   //

@@ -6,10 +6,10 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>
@@ -97,7 +97,7 @@ U2fCommandProcessorGeneric::U2fGenerate(
     return MakeCredentialResponse::INVALID_REQUEST;
   }
 
-  base::Optional<brillo::SecureBlob> webauthn_secret = GetWebAuthnSecret();
+  std::optional<brillo::SecureBlob> webauthn_secret = GetWebAuthnSecret();
   if (!webauthn_secret.has_value()) {
     LOG(ERROR) << "No webauthn secret.";
     return MakeCredentialResponse::INTERNAL_ERROR;
@@ -186,7 +186,7 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGeneric::U2fSign(
     return GetAssertionResponse::INVALID_REQUEST;
   }
 
-  base::Optional<brillo::SecureBlob> webauthn_secret = GetWebAuthnSecret();
+  std::optional<brillo::SecureBlob> webauthn_secret = GetWebAuthnSecret();
   if (!webauthn_secret.has_value()) {
     LOG(ERROR) << "No webauthn secret.";
     return GetAssertionResponse::INTERNAL_ERROR;
@@ -256,12 +256,12 @@ CoseAlgorithmIdentifier U2fCommandProcessorGeneric::GetAlgorithm() {
   return CoseAlgorithmIdentifier::kRs256;
 }
 
-base::Optional<brillo::SecureBlob>
+std::optional<brillo::SecureBlob>
 U2fCommandProcessorGeneric::GetWebAuthnSecret() {
-  base::Optional<std::string> account_id = user_state_->GetUser();
+  std::optional<std::string> account_id = user_state_->GetUser();
   if (!account_id) {
     LOG(ERROR) << "Trying to get WebAuthnSecret when no present user.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   user_data_auth::GetWebAuthnSecretRequest request;
@@ -270,20 +270,20 @@ U2fCommandProcessorGeneric::GetWebAuthnSecret() {
   bool result = cryptohome_proxy_->GetWebAuthnSecret(
       request, &reply, /*error=*/nullptr, kCryptohomeTimeout.InMilliseconds());
   if (!result) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (reply.error() !=
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(ERROR) << "GetWebAuthnSecret reply has error " << reply.error();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   brillo::SecureBlob secret(reply.webauthn_secret());
 
   if (secret.size() != SHA256_DIGEST_LENGTH) {
     LOG(ERROR) << "WebAuthn auth time secret size is wrong.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return secret;

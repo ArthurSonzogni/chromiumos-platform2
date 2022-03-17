@@ -6,6 +6,7 @@
 
 #include <sys/statvfs.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -30,8 +31,7 @@ constexpr const char kSampleReport[] =
 
 class DiskUsageUtilMock : public DiskUsageUtilImpl {
  public:
-  DiskUsageUtilMock(struct statvfs st,
-                    base::Optional<brillo::Thinpool> thinpool)
+  DiskUsageUtilMock(struct statvfs st, std::optional<brillo::Thinpool> thinpool)
       : st_(st) {
     if (thinpool)
       set_thinpool_for_test(*thinpool);
@@ -50,7 +50,7 @@ class DiskUsageUtilMock : public DiskUsageUtilImpl {
 TEST(DiskUsageUtilTest, FailedVfsCall) {
   struct statvfs st = {};
 
-  DiskUsageUtilMock disk_usage_mock(st, base::nullopt);
+  DiskUsageUtilMock disk_usage_mock(st, std::nullopt);
   base::FilePath path("/foo/bar");
 
   EXPECT_EQ(disk_usage_mock.GetFreeDiskSpace(path), -1);
@@ -64,7 +64,7 @@ TEST(DiskUsageUtilTest, FilesystemData) {
   st.f_blocks = 2048;
   st.f_frsize = 4096;
 
-  DiskUsageUtilMock disk_usage_mock(st, base::nullopt);
+  DiskUsageUtilMock disk_usage_mock(st, std::nullopt);
   base::FilePath path("/foo/bar");
 
   EXPECT_EQ(disk_usage_mock.GetFreeDiskSpace(path), 4194304);
@@ -161,7 +161,7 @@ class DiskUsageRootdevMock : public DiskUsageUtilImpl {
       : rootdev_size_(size), rootdev_path_(path) {}
 
  protected:
-  base::Optional<base::FilePath> GetRootDevice() override {
+  std::optional<base::FilePath> GetRootDevice() override {
     return rootdev_path_;
   }
 

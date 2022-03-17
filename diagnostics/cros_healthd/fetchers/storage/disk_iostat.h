@@ -6,9 +6,9 @@
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_STORAGE_DISK_IOSTAT_H_
 
 #include <cstdint>
+#include <optional>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 
 #include "diagnostics/common/statusor.h"
@@ -29,7 +29,7 @@ class DiskIoStat {
   uint64_t GetReadSectors() const;
   uint64_t GetWrittenSectors() const;
   base::TimeDelta GetIoTime() const;
-  base::Optional<base::TimeDelta> GetDiscardTime() const;
+  std::optional<base::TimeDelta> GetDiscardTime() const;
 
   // Retrieves current I/O statistics for the device.
   // Must be called before using getters of the class.

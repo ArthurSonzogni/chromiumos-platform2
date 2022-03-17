@@ -7,6 +7,7 @@
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -82,28 +83,28 @@ bool DecodeConnectionType(const std::string& value,
 
 // Parses the |json| string to a dictionary type base::Value. Returns nullopt on
 // error and sets the |error| string.
-base::Optional<base::Value> JsonToDictionary(const std::string& json,
-                                             std::string* error) {
+std::optional<base::Value> JsonToDictionary(const std::string& json,
+                                            std::string* error) {
   DCHECK(error);
   auto root = base::JSONReader::ReadAndReturnValueWithError(
       json, base::JSON_ALLOW_TRAILING_COMMAS);
   if (!root.value) {
     *error = root.error_message;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!root.value->is_dict()) {
     *error = "JSON is not a dictionary: '" + json + "'";
-    return base::nullopt;
+    return std::nullopt;
   }
   return std::move(root.value);
 }
 
 #define CONVERT_DAY_OF_WEEK(day_of_week) \
   if (str == #day_of_week)               \
-    return base::make_optional(em::WeeklyTimeProto::day_of_week);
+    return std::make_optional(em::WeeklyTimeProto::day_of_week);
 
-base::Optional<em::WeeklyTimeProto::DayOfWeek> StringToDayOfWeek(
+std::optional<em::WeeklyTimeProto::DayOfWeek> StringToDayOfWeek(
     const std::string& str) {
   CONVERT_DAY_OF_WEEK(MONDAY);
   CONVERT_DAY_OF_WEEK(TUESDAY);
@@ -112,7 +113,7 @@ base::Optional<em::WeeklyTimeProto::DayOfWeek> StringToDayOfWeek(
   CONVERT_DAY_OF_WEEK(FRIDAY);
   CONVERT_DAY_OF_WEEK(SATURDAY);
   CONVERT_DAY_OF_WEEK(SUNDAY);
-  return base::nullopt;
+  return std::nullopt;
 }
 
 #undef CONVERT_WEEKDAY
@@ -164,8 +165,8 @@ void CopyStringListPolicy(const std::vector<std::string>& list,
 // Copies either `new_list` (preferred) or `old_list` to the specified
 // proto_list. At least one of new_list or old_list must have a value.
 void CopyStringListPolicyWithFallback(
-    const base::Optional<std::vector<std::string>>& new_list,
-    const base::Optional<std::vector<std::string>>& old_list,
+    const std::optional<std::vector<std::string>>& new_list,
+    const std::optional<std::vector<std::string>>& old_list,
     RepeatedPtrField<std::string>* proto_list) {
   if (new_list) {
     CopyStringListPolicy(new_list.value(), proto_list);
@@ -202,21 +203,21 @@ void DevicePolicyEncoder::EncodePolicy(
 
 void DevicePolicyEncoder::EncodeLoginPolicies(
     em::ChromeDeviceSettingsProto* policy) const {
-  if (base::Optional<bool> value = EncodeBoolean(key::kDeviceGuestModeEnabled))
+  if (std::optional<bool> value = EncodeBoolean(key::kDeviceGuestModeEnabled))
     policy->mutable_guest_mode_enabled()->set_guest_mode_enabled(value.value());
-  if (base::Optional<bool> value = EncodeBoolean(key::kDeviceRebootOnShutdown))
+  if (std::optional<bool> value = EncodeBoolean(key::kDeviceRebootOnShutdown))
     policy->mutable_reboot_on_shutdown()->set_reboot_on_shutdown(value.value());
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceShowUserNamesOnSignin))
     policy->mutable_show_user_names()->set_show_user_names(value.value());
-  if (base::Optional<bool> value = EncodeBoolean(key::kDeviceAllowNewUsers))
+  if (std::optional<bool> value = EncodeBoolean(key::kDeviceAllowNewUsers))
     policy->mutable_allow_new_users()->set_allow_new_users(value.value());
   // The original policy has been replaced by an inclusively named version. For
   // backwards compatibility, copy the original policy to the newly named proto
   // if no value exists for the newly named proto.
-  base::Optional<std::vector<std::string>> user_allowlist_values =
+  std::optional<std::vector<std::string>> user_allowlist_values =
       EncodeStringList(key::kDeviceUserAllowlist);
-  base::Optional<std::vector<std::string>> deprecated_user_allowlist_values =
+  std::optional<std::vector<std::string>> deprecated_user_allowlist_values =
       EncodeStringList(key::kDeviceUserWhitelist);  // nocheck
   if (user_allowlist_values || deprecated_user_allowlist_values) {
     CopyStringListPolicyWithFallback(
@@ -228,99 +229,98 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
         deprecated_user_allowlist_values.value(),
         policy->mutable_user_whitelist()->mutable_user_whitelist());  // nocheck
   }
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceEphemeralUsersEnabled))
     policy->mutable_ephemeral_users_enabled()->set_ephemeral_users_enabled(
         value.value());
-  if (base::Optional<bool> value = EncodeBoolean(key::kDeviceAllowBluetooth))
+  if (std::optional<bool> value = EncodeBoolean(key::kDeviceAllowBluetooth))
     policy->mutable_allow_bluetooth()->set_allow_bluetooth(value.value());
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kDeviceLoginScreenExtensions)) {
     *policy->mutable_device_login_screen_extensions()
          ->mutable_device_login_screen_extensions() = {values.value().begin(),
                                                        values.value().end()};
   }
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceLoginScreenDomainAutoComplete)) {
     policy->mutable_login_screen_domain_auto_complete()
         ->set_login_screen_domain_auto_complete(value.value());
   }
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kDeviceLoginScreenLocales)) {
     *policy->mutable_login_screen_locales()->mutable_login_screen_locales() = {
         values.value().begin(), values.value().end()};
   }
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kDeviceLoginScreenInputMethods)) {
     *policy->mutable_login_screen_input_methods()
          ->mutable_login_screen_input_methods() = {values.value().begin(),
                                                    values.value().end()};
   }
-  if (base::Optional<std::vector<std::string>> values = EncodeStringList(
+  if (std::optional<std::vector<std::string>> values = EncodeStringList(
           key::kDeviceLoginScreenAutoSelectCertificateForUrls)) {
     *policy->mutable_device_login_screen_auto_select_certificate_for_urls()
          ->mutable_login_screen_auto_select_certificate_rules() = {
         values.value().begin(), values.value().end()};
   }
 
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceRebootOnUserSignout)) {
     policy->mutable_device_reboot_on_user_signout()->set_reboot_on_signout_mode(
         static_cast<em::DeviceRebootOnUserSignoutProto_RebootOnSignoutMode>(
             value.value()));
   }
 
-  if (base::Optional<bool> value =
-          EncodeBoolean(key::kDevicePowerwashAllowed)) {
+  if (std::optional<bool> value = EncodeBoolean(key::kDevicePowerwashAllowed)) {
     policy->mutable_device_powerwash_allowed()->set_device_powerwash_allowed(
         value.value());
   }
 
-  if (base::Optional<int> value = EncodeIntegerInRange(
+  if (std::optional<int> value = EncodeIntegerInRange(
           key::kDeviceChromeVariations, kChromeVariationsRangeMin,
           kChromeVariationsRangeMax)) {
     policy->mutable_device_chrome_variations_type()->set_value(value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenPrivacyScreenEnabled)) {
     policy->mutable_device_login_screen_privacy_screen_enabled()->set_enabled(
         value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceShowNumericKeyboardForPassword)) {
     policy->mutable_device_show_numeric_keyboard_for_password()->set_value(
         value.value());
   }
 
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kDeviceWebBasedAttestationAllowedUrls)) {
     *policy->mutable_device_web_based_attestation_allowed_urls()
          ->mutable_value()
          ->mutable_entries() = {values.value().begin(), values.value().end()};
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceMinimumVersion))
     policy->mutable_device_minimum_version()->set_value(value.value());
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceMinimumVersionAueMessage)) {
     policy->mutable_device_minimum_version_aue_message()->set_value(
         value.value());
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kRequiredClientCertificateForDevice)) {
     policy->mutable_required_client_certificate_for_device()
         ->set_required_client_certificate_for_device(value.value());
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kSystemProxySettings)) {
     std::string error;
-    base::Optional<base::Value> dict_value =
+    std::optional<base::Value> dict_value =
         JsonToDictionary(value.value(), &error);
     if (!dict_value) {
       LOG(ERROR) << "Failed to parse string as dictionary: '"
@@ -332,24 +332,24 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
     }
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kManagedGuestSessionPrivacyWarningsEnabled)) {
     policy->mutable_managed_guest_session_privacy_warnings()->set_enabled(
         value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceRestrictedManagedGuestSessionEnabled)) {
     policy->mutable_device_restricted_managed_guest_session_enabled()
         ->set_enabled(value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenWebUILazyLoading)) {
     policy->mutable_login_web_ui_lazy_loading()->set_enabled(value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceRunAutomaticCleanupOnLogin)) {
     policy->mutable_device_run_automatic_cleanup_on_login()->set_value(
         value.value());
@@ -358,44 +358,44 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
 
 void DevicePolicyEncoder::EncodeNetworkPolicies(
     em::ChromeDeviceSettingsProto* policy) const {
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceDataRoamingEnabled)) {
     policy->mutable_data_roaming_enabled()->set_data_roaming_enabled(
         value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceWiFiFastTransitionEnabled)) {
     policy->mutable_device_wifi_fast_transition_enabled()
         ->set_device_wifi_fast_transition_enabled(value.value());
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceOpenNetworkConfiguration)) {
     policy->mutable_open_network_configuration()
         ->set_open_network_configuration(value.value());
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceHostnameTemplate)) {
     policy->mutable_network_hostname()->set_device_hostname_template(
         value.value());
   }
 
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceKerberosEncryptionTypes)) {
     policy->mutable_device_kerberos_encryption_types()->set_types(
         static_cast<em::DeviceKerberosEncryptionTypesProto_Types>(
             value.value()));
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceDebugPacketCaptureAllowed)) {
     policy->mutable_device_debug_packet_capture_allowed()->set_allowed(
         value.value());
   }
 
-  if (base::Optional<bool> value = EncodeBoolean(
+  if (std::optional<bool> value = EncodeBoolean(
           key::kDeviceLoginScreenPromptOnMultipleMatchingCertificates)) {
     policy->mutable_login_screen_prompt_on_multiple_matching_certificates()
         ->set_value(value.value());
@@ -404,34 +404,33 @@ void DevicePolicyEncoder::EncodeNetworkPolicies(
 
 void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
     em::ChromeDeviceSettingsProto* policy) const {
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kChromeOsReleaseChannel))
     policy->mutable_release_channel()->set_release_channel(value.value());
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kChromeOsReleaseChannelDelegated)) {
     policy->mutable_release_channel()->set_release_channel_delegated(
         value.value());
   }
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceReleaseLtsTag)) {
     policy->mutable_release_channel()->set_release_lts_tag(value.value());
   }
 
-  if (base::Optional<bool> value =
-          EncodeBoolean(key::kDeviceAutoUpdateDisabled))
+  if (std::optional<bool> value = EncodeBoolean(key::kDeviceAutoUpdateDisabled))
     policy->mutable_auto_update_settings()->set_update_disabled(value.value());
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceTargetVersionPrefix)) {
     policy->mutable_auto_update_settings()->set_target_version_prefix(
         value.value());
   }
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceRollbackToTargetVersion)) {
     policy->mutable_auto_update_settings()->set_rollback_to_target_version(
         static_cast<em::AutoUpdateSettingsProto_RollbackToTargetVersion>(
             value.value()));
   }
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceRollbackAllowedMilestones)) {
     policy->mutable_auto_update_settings()->set_rollback_allowed_milestones(
         value.value());
@@ -440,12 +439,12 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
   // target_version_display_name is not actually a policy, but a display
   // string for target_version_prefix, so we ignore it. It seems to be
   // unreferenced as well.
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceUpdateScatterFactor)) {
     policy->mutable_auto_update_settings()->set_scatter_factor_in_seconds(
         value.value());
   }
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kDeviceUpdateAllowedConnectionTypes)) {
     auto list = policy->mutable_auto_update_settings();
     list->clear_allowed_connection_types();
@@ -455,37 +454,37 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
         list->add_allowed_connection_types(type);
     }
   }
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceUpdateHttpDownloadsEnabled)) {
     policy->mutable_auto_update_settings()->set_http_downloads_enabled(
         value.value());
   }
-  if (base::Optional<bool> value = EncodeBoolean(key::kRebootAfterUpdate)) {
+  if (std::optional<bool> value = EncodeBoolean(key::kRebootAfterUpdate)) {
     policy->mutable_auto_update_settings()->set_reboot_after_update(
         value.value());
   }
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceAutoUpdateP2PEnabled))
     policy->mutable_auto_update_settings()->set_p2p_enabled(value.value());
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceAutoUpdateTimeRestrictions)) {
     policy->mutable_auto_update_settings()->set_disallowed_time_intervals(
         value.value());
   }
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceUpdateStagingSchedule))
     policy->mutable_auto_update_settings()->set_staging_schedule(value.value());
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceQuickFixBuildToken)) {
     policy->mutable_auto_update_settings()->set_device_quick_fix_build_token(
         value.value());
   }
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceLoginScreenWebUsbAllowDevicesForUrls)) {
     policy->mutable_device_login_screen_webusb_allow_devices_for_urls()
         ->set_device_login_screen_webusb_allow_devices_for_urls(value.value());
   }
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceChannelDowngradeBehavior)) {
     if (em::AutoUpdateSettingsProto::ChannelDowngradeBehavior_IsValid(
             value.value())) {
@@ -498,7 +497,7 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
     }
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceTargetVersionSelector)) {
     policy->mutable_auto_update_settings()->set_target_version_selector(
         value.value());
@@ -507,29 +506,29 @@ void DevicePolicyEncoder::EncodeAutoUpdatePolicies(
 
 void DevicePolicyEncoder::EncodeAccessibilityPolicies(
     em::ChromeDeviceSettingsProto* policy) const {
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenDefaultLargeCursorEnabled)) {
     policy->mutable_accessibility_settings()
         ->set_login_screen_default_large_cursor_enabled(value.value());
   }
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenDefaultSpokenFeedbackEnabled)) {
     policy->mutable_accessibility_settings()
         ->set_login_screen_default_spoken_feedback_enabled(value.value());
   }
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenDefaultHighContrastEnabled)) {
     policy->mutable_accessibility_settings()
         ->set_login_screen_default_high_contrast_enabled(value.value());
   }
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceLoginScreenDefaultScreenMagnifierType)) {
     policy->mutable_accessibility_settings()
         ->set_login_screen_default_screen_magnifier_type(
             static_cast<em::AccessibilitySettingsProto_ScreenMagnifierType>(
                 value.value()));
   }
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenDefaultVirtualKeyboardEnabled)) {
     policy->mutable_accessibility_settings()
         ->set_login_screen_default_virtual_keyboard_enabled(value.value());
@@ -538,7 +537,7 @@ void DevicePolicyEncoder::EncodeAccessibilityPolicies(
 
 void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
     em::ChromeDeviceSettingsProto* policy) const {
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenLargeCursorEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -549,7 +548,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
                      level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenAutoclickEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -559,7 +558,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
                      level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenCaretHighlightEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -571,7 +570,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
         level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenCursorHighlightEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -583,7 +582,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
         level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenDictationEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -593,7 +592,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
                      level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenHighContrastEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -604,7 +603,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
                      level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenMonoAudioEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -614,7 +613,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
                      level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenSelectToSpeakEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -626,7 +625,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
         level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenSpokenFeedbackEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -638,7 +637,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
         level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenStickyKeysEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -648,7 +647,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
                      level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenVirtualKeyboardEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -660,7 +659,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
         level_);
   }
 
-  if (base::Optional<int> value = EncodeIntegerInRange(
+  if (std::optional<int> value = EncodeIntegerInRange(
           key::kDeviceLoginScreenScreenMagnifierType,
           kScreenMagnifierTypeRangeMin, kScreenMagnifierTypeRangeMax)) {
     em::AccessibilitySettingsProto* accessibility_settings =
@@ -672,7 +671,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
                      level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenAccessibilityShortcutsEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -682,7 +681,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
                      level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenKeyboardFocusHighlightEnabled)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -694,7 +693,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
         level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenShowOptionsInSystemTrayMenu)) {
     em::AccessibilitySettingsProto* accessibility_settings =
         policy->mutable_accessibility_settings();
@@ -707,7 +706,7 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
         level_);
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceLoginScreenPrimaryMouseButtonSwitch)) {
     policy->mutable_login_screen_primary_mouse_button_switch()->set_value(
         value.value());
@@ -719,49 +718,48 @@ void DevicePolicyEncoder::EncodePoliciesWithPolicyOptions(
 
 void DevicePolicyEncoder::EncodeGenericPolicies(
     em::ChromeDeviceSettingsProto* policy) const {
-  if (base::Optional<int> value =
-          EncodeInteger(key::kDevicePolicyRefreshRate)) {
+  if (std::optional<int> value = EncodeInteger(key::kDevicePolicyRefreshRate)) {
     policy->mutable_device_policy_refresh_rate()
         ->set_device_policy_refresh_rate(value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceMetricsReportingEnabled))
     policy->mutable_metrics_enabled()->set_metrics_enabled(value.value());
 
-  if (base::Optional<std::string> value = EncodeString(key::kSystemTimezone))
+  if (std::optional<std::string> value = EncodeString(key::kSystemTimezone))
     policy->mutable_system_timezone()->set_timezone(value.value());
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kSystemTimezoneAutomaticDetection)) {
     policy->mutable_system_timezone()->set_timezone_detection_type(
         static_cast<em::SystemTimezoneProto_AutomaticTimezoneDetectionType>(
             value.value()));
   }
-  if (base::Optional<bool> value = EncodeBoolean(key::kSystemUse24HourClock))
+  if (std::optional<bool> value = EncodeBoolean(key::kSystemUse24HourClock))
     policy->mutable_use_24hour_clock()->set_use_24hour_clock(value.value());
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceAllowRedeemChromeOsRegistrationOffers)) {
     policy->mutable_allow_redeem_offers()->set_allow_redeem_offers(
         value.value());
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceVariationsRestrictParameter))
     policy->mutable_variations_parameter()->set_parameter(value.value());
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceLoginScreenPowerManagement)) {
     policy->mutable_login_screen_power_management()
         ->set_login_screen_power_management(value.value());
   }
 
-  if (base::Optional<int> value = EncodeInteger(key::kDisplayRotationDefault)) {
+  if (std::optional<int> value = EncodeInteger(key::kDisplayRotationDefault)) {
     policy->mutable_display_rotation_default()->set_display_rotation_default(
         static_cast<em::DisplayRotationDefaultProto_Rotation>(value.value()));
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceDisplayResolution)) {
     policy->mutable_device_display_resolution()->set_device_display_resolution(
         value.value());
@@ -770,9 +768,9 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   // The original policy has been replaced by an inclusively named version. For
   // backwards compatibility, copy the original policy to the newly named proto
   // if no value exists for the newly named proto.
-  base::Optional<std::vector<std::string>> usb_detachable_allowlist_values =
+  std::optional<std::vector<std::string>> usb_detachable_allowlist_values =
       EncodeStringList(key::kUsbDetachableAllowlist);
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kUsbDetachableWhitelist)) {  // nocheck
     auto deprecated_allowlist =
         policy->mutable_usb_detachable_whitelist();  // nocheck
@@ -783,7 +781,7 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     }
     for (const std::string& value : values.value()) {
       std::string error;
-      base::Optional<base::Value> dict_value = JsonToDictionary(value, &error);
+      std::optional<base::Value> dict_value = JsonToDictionary(value, &error);
       if (!dict_value) {
         LOG(ERROR) << "Failed to parse string as dictionary: '"
                    << (!error.empty() ? error : value) << "' for policy '"
@@ -792,8 +790,8 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         continue;
       }
 
-      base::Optional<int> vid = dict_value->FindIntKey("vendor_id");
-      base::Optional<int> pid = dict_value->FindIntKey("product_id");
+      std::optional<int> vid = dict_value->FindIntKey("vendor_id");
+      std::optional<int> pid = dict_value->FindIntKey("product_id");
       if (!vid.has_value() || !pid.has_value()) {
         LOG(ERROR) << "Invalid JSON string '"
                    << (!error.empty() ? error : value) << "' for policy '"
@@ -821,15 +819,15 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     DCHECK(!list->id_size());
     for (const std::string& value : usb_detachable_allowlist_values.value()) {
       std::string error;
-      base::Optional<base::Value> dict_value = JsonToDictionary(value, &error);
+      std::optional<base::Value> dict_value = JsonToDictionary(value, &error);
       if (!dict_value) {
         LOG(ERROR) << "Failed to parse string as dictionary: '"
                    << (!error.empty() ? error : value) << "' for policy '"
                    << key::kUsbDetachableAllowlist << "', ignoring.";
         continue;
       }
-      base::Optional<int> vid = dict_value->FindIntKey("vendor_id");
-      base::Optional<int> pid = dict_value->FindIntKey("product_id");
+      std::optional<int> vid = dict_value->FindIntKey("vendor_id");
+      std::optional<int> pid = dict_value->FindIntKey("product_id");
       if (!vid.has_value() || !pid.has_value()) {
         LOG(ERROR) << "Invalid JSON string '"
                    << (!error.empty() ? error : value) << "' for policy '"
@@ -844,21 +842,21 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     }
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceQuirksDownloadEnabled)) {
     policy->mutable_quirks_download_enabled()->set_quirks_download_enabled(
         value.value());
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceWallpaperImage)) {
     policy->mutable_device_wallpaper_image()->set_device_wallpaper_image(
         value.value());
   }
 
-  if (base::Optional<std::string> value = EncodeString(key::kDeviceOffHours)) {
+  if (std::optional<std::string> value = EncodeString(key::kDeviceOffHours)) {
     std::string error;
-    base::Optional<base::Value> dict_value =
+    std::optional<base::Value> dict_value =
         JsonToDictionary(value.value(), &error);
     bool is_error = !dict_value;
     auto proto = std::make_unique<em::DeviceOffHoursProto>();
@@ -898,15 +896,15 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     }
   }
 
-  if (base::Optional<std::string> value = EncodeString(key::kCastReceiverName))
+  if (std::optional<std::string> value = EncodeString(key::kCastReceiverName))
     policy->mutable_cast_receiver_name()->set_name(value.value());
 
   // The original policy has been replaced by an inclusively named version. For
   // backwards compatibility, copy the original policy to the newly named proto
   // if no value exists for the newly named proto.
-  base::Optional<std::string> device_printers_value =
+  std::optional<std::string> device_printers_value =
       EncodeString(key::kDevicePrinters);
-  base::Optional<std::string> deprecated_device_printers_value =
+  std::optional<std::string> deprecated_device_printers_value =
       EncodeString(key::kDeviceNativePrinters);  // nocheck
   if (device_printers_value || deprecated_device_printers_value) {
     policy->mutable_device_printers()->set_external_policy(
@@ -921,9 +919,9 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   // The original policy has been replaced by an inclusively named version. For
   // backwards compatibility, copy the original policy to the newly named proto
   // if no value exists for the newly named proto.
-  base::Optional<int> device_printers_access_mode_value =
+  std::optional<int> device_printers_access_mode_value =
       EncodeInteger(key::kDevicePrintersAccessMode);
-  base::Optional<int> deprecated_device_printers_access_mode_value =
+  std::optional<int> deprecated_device_printers_access_mode_value =
       EncodeInteger(key::kDeviceNativePrintersAccessMode);  // nocheck
   if (device_printers_access_mode_value ||
       deprecated_device_printers_access_mode_value) {
@@ -945,9 +943,9 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   // The original policy has been replaced by an inclusively named version. For
   // backwards compatibility, copy the original policy to the newly named proto
   // if no value exists for the newly named proto.
-  base::Optional<std::vector<std::string>> device_printers_blocklist_value =
+  std::optional<std::vector<std::string>> device_printers_blocklist_value =
       EncodeStringList(key::kDevicePrintersBlocklist);
-  base::Optional<std::vector<std::string>>
+  std::optional<std::vector<std::string>>
       deprecated_device_printers_blocklist_value =
           EncodeStringList(key::kDeviceNativePrintersBlacklist);  // nocheck
   if (device_printers_blocklist_value ||
@@ -968,9 +966,9 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   // The original policy has been replaced by an inclusively named version. For
   // backwards compatibility, copy the original policy to the newly named proto
   // if no value exists for the newly named proto.
-  base::Optional<std::vector<std::string>> device_printers_allowlist_value =
+  std::optional<std::vector<std::string>> device_printers_allowlist_value =
       EncodeStringList(key::kDevicePrintersAllowlist);
-  base::Optional<std::vector<std::string>>
+  std::optional<std::vector<std::string>>
       deprecated_device_printers_allowlist_value =
           EncodeStringList(key::kDeviceNativePrintersWhitelist);  // nocheck
   if (device_printers_allowlist_value ||
@@ -988,21 +986,21 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
             ->mutable_whitelist());                       // nocheck
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceExternalPrintServers)) {
     policy->mutable_external_print_servers()->set_external_policy(
         value.value());
   }
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kDeviceExternalPrintServersAllowlist)) {
     *policy->mutable_external_print_servers_allowlist()->mutable_allowlist() = {
         values.value().begin(), values.value().end()};
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kTPMFirmwareUpdateSettings)) {
     std::string error;
-    base::Optional<base::Value> dict_value =
+    std::optional<base::Value> dict_value =
         JsonToDictionary(value.value(), &error);
     if (!dict_value) {
       LOG(ERROR) << "Failed to parse string as dictionary: '"
@@ -1027,127 +1025,124 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     }
   }
 
-  if (base::Optional<bool> value =
-          EncodeBoolean(key::kUnaffiliatedArcAllowed)) {
+  if (std::optional<bool> value = EncodeBoolean(key::kUnaffiliatedArcAllowed)) {
     policy->mutable_unaffiliated_arc_allowed()->set_unaffiliated_arc_allowed(
         value.value());
   }
 
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceUserPolicyLoopbackProcessingMode)) {
     policy->mutable_device_user_policy_loopback_processing_mode()->set_mode(
         static_cast<em::DeviceUserPolicyLoopbackProcessingModeProto::Mode>(
             value.value()));
   }
 
-  if (base::Optional<bool> value =
-          EncodeBoolean(key::kVirtualMachinesAllowed)) {
+  if (std::optional<bool> value = EncodeBoolean(key::kVirtualMachinesAllowed)) {
     policy->mutable_virtual_machines_allowed()->set_virtual_machines_allowed(
         value.value());
   }
 
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceMachinePasswordChangeRate)) {
     policy->mutable_device_machine_password_change_rate()->set_rate_days(
         value.value());
   }
 
-  if (base::Optional<int> value = EncodeInteger(key::kDeviceGpoCacheLifetime)) {
+  if (std::optional<int> value = EncodeInteger(key::kDeviceGpoCacheLifetime)) {
     policy->mutable_device_gpo_cache_lifetime()->set_lifetime_hours(
         value.value());
   }
 
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceAuthDataCacheLifetime)) {
     policy->mutable_device_auth_data_cache_lifetime()->set_lifetime_hours(
         value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceUnaffiliatedCrostiniAllowed)) {
     policy->mutable_device_unaffiliated_crostini_allowed()
         ->set_device_unaffiliated_crostini_allowed(value.value());
   }
 
-  if (base::Optional<bool> value = EncodeBoolean(key::kPluginVmAllowed))
+  if (std::optional<bool> value = EncodeBoolean(key::kPluginVmAllowed))
     policy->mutable_plugin_vm_allowed()->set_plugin_vm_allowed(value.value());
 
-  if (base::Optional<bool> value = EncodeBoolean(key::kDeviceWilcoDtcAllowed)) {
+  if (std::optional<bool> value = EncodeBoolean(key::kDeviceWilcoDtcAllowed)) {
     policy->mutable_device_wilco_dtc_allowed()->set_device_wilco_dtc_allowed(
         value.value());
   }
 
-  if (base::Optional<bool> value = EncodeBoolean(key::kDeviceBootOnAcEnabled))
+  if (std::optional<bool> value = EncodeBoolean(key::kDeviceBootOnAcEnabled))
     policy->mutable_device_boot_on_ac()->set_enabled(value.value());
 
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDevicePowerPeakShiftBatteryThreshold)) {
     policy->mutable_device_power_peak_shift()->set_battery_threshold(
         value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDevicePowerPeakShiftEnabled))
     policy->mutable_device_power_peak_shift()->set_enabled(value.value());
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDevicePowerPeakShiftDayConfig))
     policy->mutable_device_power_peak_shift()->set_day_configs(value.value());
 
-  if (base::Optional<bool> value = EncodeBoolean(key::kDeviceWiFiAllowed)) {
+  if (std::optional<bool> value = EncodeBoolean(key::kDeviceWiFiAllowed)) {
     policy->mutable_device_wifi_allowed()->set_device_wifi_allowed(
         value.value());
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceWilcoDtcConfiguration)) {
     policy->mutable_device_wilco_dtc_configuration()
         ->set_device_wilco_dtc_configuration(value.value());
   }
 
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceDockMacAddressSource)) {
     policy->mutable_device_dock_mac_address_source()->set_source(
         static_cast<em::DeviceDockMacAddressSourceProto::Source>(
             value.value()));
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceAdvancedBatteryChargeModeEnabled)) {
     policy->mutable_device_advanced_battery_charge_mode()->set_enabled(
         value.value());
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceAdvancedBatteryChargeModeDayConfig)) {
     policy->mutable_device_advanced_battery_charge_mode()->set_day_configs(
         value.value());
   }
 
-  if (base::Optional<int> value =
-          EncodeInteger(key::kDeviceBatteryChargeMode)) {
+  if (std::optional<int> value = EncodeInteger(key::kDeviceBatteryChargeMode)) {
     policy->mutable_device_battery_charge_mode()->set_battery_charge_mode(
         static_cast<em::DeviceBatteryChargeModeProto_BatteryChargeMode>(
             value.value()));
   }
 
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceBatteryChargeCustomStartCharging)) {
     policy->mutable_device_battery_charge_mode()->set_custom_charge_start(
         value.value());
   }
 
-  if (base::Optional<int> value =
+  if (std::optional<int> value =
           EncodeInteger(key::kDeviceBatteryChargeCustomStopCharging)) {
     policy->mutable_device_battery_charge_mode()->set_custom_charge_stop(
         value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceUsbPowerShareEnabled))
     policy->mutable_device_usb_power_share()->set_enabled(value.value());
 
-  if (base::Optional<int> value = EncodeIntegerInRange(
+  if (std::optional<int> value = EncodeIntegerInRange(
           key::kDeviceCrostiniArcAdbSideloadingAllowed,
           kDeviceCrostiniArcAdbSideloadingAllowedRangeMin,
           kDeviceCrostiniArcAdbSideloadingAllowedRangeMax)) {
@@ -1157,21 +1152,21 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
             value.value()));
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceShowLowDiskSpaceNotification))
     policy->mutable_device_show_low_disk_space_notification()
         ->set_device_show_low_disk_space_notification(value.value());
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceFamilyLinkAccountsAllowed)) {
     policy->mutable_family_link_accounts_allowed()
         ->set_family_link_accounts_allowed(value.value());
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceArcDataSnapshotHours)) {
     std::string error;
-    base::Optional<base::Value> dict_value =
+    std::optional<base::Value> dict_value =
         JsonToDictionary(value.value(), &error);
     if (!dict_value) {
       LOG(ERROR) << "Failed to parse string as dictionary: '"
@@ -1183,10 +1178,10 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     }
   }
 
-  if (base::Optional<std::string> value =
+  if (std::optional<std::string> value =
           EncodeString(key::kDeviceScheduledReboot)) {
     std::string error;
-    base::Optional<base::Value> dict_value =
+    std::optional<base::Value> dict_value =
         JsonToDictionary(value.value(), &error);
     if (!dict_value) {
       LOG(ERROR) << "Failed to parse string as dictionary: '"
@@ -1198,85 +1193,85 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     }
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceHostnameUserConfigurable)) {
     policy->mutable_hostname_user_configurable()
         ->set_device_hostname_user_configurable(value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDevicePciPeripheralDataAccessEnabled)) {
     policy->mutable_device_pci_peripheral_data_access_enabled_v2()->set_enabled(
         value.value());
   }
 
-  if (base::Optional<bool> value = EncodeBoolean(key::kDeviceBorealisAllowed))
+  if (std::optional<bool> value = EncodeBoolean(key::kDeviceBorealisAllowed))
     policy->mutable_device_borealis_allowed()->set_allowed(value.value());
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceSystemWideTracingEnabled)) {
     policy->mutable_device_system_wide_tracing_enabled()->set_enabled(
         value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceAllowMGSToStoreDisplayProperties)) {
     policy->mutable_device_allow_mgs_to_store_display_properties()->set_value(
         value.value());
   }
 
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kDeviceAllowedBluetoothServices)) {
     *policy->mutable_device_allowed_bluetooth_services()
          ->mutable_allowlist() = {values.value().begin(), values.value().end()};
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceI18nShortcutsEnabled))
     policy->mutable_device_i18n_shortcuts_enabled()->set_enabled(value.value());
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kChromadToCloudMigrationEnabled)) {
     policy->mutable_chromad_to_cloud_migration_enabled()->set_value(
         value.value());
   }
 
-  if (base::Optional<bool> value =
+  if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceKeylockerForStorageEncryptionEnabled))
     policy->mutable_keylocker_for_storage_encryption_enabled()->set_enabled(
         value.value());
 }
 
-base::Optional<bool> DevicePolicyEncoder::EncodeBoolean(
+std::optional<bool> DevicePolicyEncoder::EncodeBoolean(
     const char* policy_name) const {
   return EncodeBooleanPolicy(policy_name, GetValueFromDictCallback(dict_),
                              log_policy_values_);
 }
 
-base::Optional<int> DevicePolicyEncoder::EncodeInteger(
+std::optional<int> DevicePolicyEncoder::EncodeInteger(
     const char* policy_name) const {
   return EncodeIntegerInRange(policy_name, std::numeric_limits<int>::min(),
                               std::numeric_limits<int>::max());
 }
 
-base::Optional<int> DevicePolicyEncoder::EncodeIntegerInRange(
+std::optional<int> DevicePolicyEncoder::EncodeIntegerInRange(
     const char* policy_name, int range_min, int range_max) const {
   return EncodeIntegerInRangePolicy(policy_name,
                                     GetValueFromDictCallback(dict_), range_min,
                                     range_max, log_policy_values_);
 }
 
-base::Optional<std::string> DevicePolicyEncoder::EncodeString(
+std::optional<std::string> DevicePolicyEncoder::EncodeString(
     const char* policy_name) const {
   return EncodeStringPolicy(policy_name, GetValueFromDictCallback(dict_),
                             log_policy_values_);
 }
 
-base::Optional<std::vector<std::string>> DevicePolicyEncoder::EncodeStringList(
+std::optional<std::vector<std::string>> DevicePolicyEncoder::EncodeStringList(
     const char* policy_name) const {
   const RegistryDict* key = dict_->GetKey(policy_name);
   if (!key)
-    return base::nullopt;
+    return std::nullopt;
 
   return EncodeStringListPolicy(policy_name, GetValueFromDictCallback(key),
                                 log_policy_values_);

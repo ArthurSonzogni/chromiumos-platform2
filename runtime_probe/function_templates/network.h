@@ -5,9 +5,8 @@
 #ifndef RUNTIME_PROBE_FUNCTION_TEMPLATES_NETWORK_H_
 #define RUNTIME_PROBE_FUNCTION_TEMPLATES_NETWORK_H_
 
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 #include "runtime_probe/probe_function.h"
 
@@ -17,7 +16,7 @@ class NetworkFunction : public PrivilegedProbeFunction {
   using PrivilegedProbeFunction::PrivilegedProbeFunction;
 
  protected:
-  virtual base::Optional<std::string> GetNetworkType() const = 0;
+  virtual std::optional<std::string> GetNetworkType() const = 0;
 
  private:
   DataType EvalImpl() const final;

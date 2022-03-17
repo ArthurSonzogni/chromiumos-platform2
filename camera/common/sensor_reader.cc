@@ -7,6 +7,7 @@
 #include "common/sensor_reader.h"
 
 #include <iterator>
+#include <optional>
 #include <utility>
 
 #include <base/notreached.h>
@@ -256,7 +257,7 @@ void SensorReader::SetChannelsEnabledCallback(
       SamplesObserver::ErrorType::INVALID_ARGUMENT);
 
   for (int32_t index : failed_indices) {
-    base::Optional<std::string> channel = base::nullopt;
+    std::optional<std::string> channel = std::nullopt;
     if (index == *timestamp_index_) {
       channel = mojom::kTimestampChannel;
     } else {

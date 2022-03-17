@@ -13,7 +13,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/optional.h>
 #include <brillo/vcsid.h>
 #include <cros_config/cros_config_interface.h>
 
@@ -82,7 +81,7 @@ FindFirmwareFileStatus FindFirmwareFile(
     const base::FilePath& directory,
     brillo::CrosConfigInterface* cros_config,
     base::FilePath* file) {
-  base::Optional<std::string> board_name = biod::FingerprintBoard(cros_config);
+  std::optional<std::string> board_name = biod::FingerprintBoard(cros_config);
   if (board_name) {
     LOG(INFO) << "Identified fingerprint board name as '" << *board_name
               << "'.";

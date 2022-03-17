@@ -4,6 +4,7 @@
 
 #include "shill/store/crypto.h"
 
+#include <optional>
 #include <string_view>
 #include <utility>
 
@@ -45,10 +46,10 @@ std::string Encrypt(const std::string& plaintext) {
   return std::string(kRot47Id) + Rot47(plaintext);
 }
 
-base::Optional<std::string> Decrypt(const std::string& ciphertext) {
+std::optional<std::string> Decrypt(const std::string& ciphertext) {
   if (!base::StartsWith(ciphertext, kRot47Id, base::CompareCase::SENSITIVE)) {
     LOG(ERROR) << "Cannot decrypt non-ROT47 ciphertext";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string_view to_decrypt = ciphertext;

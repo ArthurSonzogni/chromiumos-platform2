@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -10,7 +11,6 @@
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <mojo/public/cpp/bindings/interface_request.h>
 
@@ -53,7 +53,7 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
 
   // Runs the urandom routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunUrandomRoutine(
-      const base::Optional<base::TimeDelta>& length_seconds) override;
+      const std::optional<base::TimeDelta>& length_seconds) override;
 
   // Runs the battery capacity routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr
@@ -70,20 +70,20 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
   // Runs the AC power routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunAcPowerRoutine(
       chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-      const base::Optional<std::string>& expected_power_type) override;
+      const std::optional<std::string>& expected_power_type) override;
 
   // Runs the CPU cache routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunCpuCacheRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration) override;
+      const std::optional<base::TimeDelta>& exec_duration) override;
 
   // Runs the CPU stress routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunCpuStressRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration) override;
+      const std::optional<base::TimeDelta>& exec_duration) override;
 
   // Runs the floating-point-accuracy routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr
   RunFloatingPointAccuracyRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration) override;
+      const std::optional<base::TimeDelta>& exec_duration) override;
 
   // Runs the NvmeWearLevel routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunNvmeWearLevelRoutine(
@@ -102,7 +102,7 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
 
   // Runs the prime search routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunPrimeSearchRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration) override;
+      const std::optional<base::TimeDelta>& exec_duration) override;
 
   // Runs the battery discharge routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr
@@ -166,7 +166,7 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
   // Runs the video conferencing routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr
   RunVideoConferencingRoutine(
-      const base::Optional<std::string>& stun_server_hostname) override;
+      const std::optional<std::string>& stun_server_hostname) override;
 
   // Runs the ARC HTTP routine.
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr RunArcHttpRoutine()
@@ -181,7 +181,7 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
   RunArcDnsResolutionRoutine() override;
 
   // Returns which routines are available on the platform.
-  base::Optional<
+  std::optional<
       std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>>
   GetAvailableRoutines() override;
 
@@ -340,7 +340,7 @@ CrosHealthdMojoAdapterImpl::GetProcessInfo(pid_t pid) {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunUrandomRoutine(
-    const base::Optional<base::TimeDelta>& length_seconds) {
+    const std::optional<base::TimeDelta>& length_seconds) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return nullptr;
 
@@ -413,7 +413,7 @@ CrosHealthdMojoAdapterImpl::RunSmartctlCheckRoutine() {
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunAcPowerRoutine(
     chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-    const base::Optional<std::string>& expected_power_type) {
+    const std::optional<std::string>& expected_power_type) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return nullptr;
 
@@ -431,7 +431,7 @@ CrosHealthdMojoAdapterImpl::RunAcPowerRoutine(
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunCpuCacheRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return nullptr;
 
@@ -455,7 +455,7 @@ CrosHealthdMojoAdapterImpl::RunCpuCacheRoutine(
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunCpuStressRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return nullptr;
 
@@ -479,7 +479,7 @@ CrosHealthdMojoAdapterImpl::RunCpuStressRoutine(
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunFloatingPointAccuracyRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return nullptr;
 
@@ -559,7 +559,7 @@ CrosHealthdMojoAdapterImpl::RunDiskReadRoutine(
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunPrimeSearchRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return nullptr;
 
@@ -811,7 +811,7 @@ CrosHealthdMojoAdapterImpl::RunHttpsLatencyRoutine() {
 
 chromeos::cros_healthd::mojom::RunRoutineResponsePtr
 CrosHealthdMojoAdapterImpl::RunVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname) {
+    const std::optional<std::string>& stun_server_hostname) {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
     return nullptr;
 
@@ -875,11 +875,10 @@ CrosHealthdMojoAdapterImpl::RunArcDnsResolutionRoutine() {
   return response;
 }
 
-base::Optional<
-    std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>>
+std::optional<std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>>
 CrosHealthdMojoAdapterImpl::GetAvailableRoutines() {
   if (!cros_healthd_service_factory_.is_bound() && !Connect())
-    return base::nullopt;
+    return std::nullopt;
 
   std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum> response;
   base::RunLoop run_loop;

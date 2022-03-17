@@ -6,10 +6,10 @@
 #include "hardware_verifier/hw_verification_report_getter_impl.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
@@ -33,11 +33,11 @@ using ReportGetterErrorCode = HwVerificationReportGetter::ErrorCode;
 
 class MockProbeResultGetter : public ProbeResultGetter {
  public:
-  MOCK_METHOD(base::Optional<runtime_probe::ProbeResult>,
+  MOCK_METHOD(std::optional<runtime_probe::ProbeResult>,
               GetFromRuntimeProbe,
               (),
               (const, override));
-  MOCK_METHOD(base::Optional<runtime_probe::ProbeResult>,
+  MOCK_METHOD(std::optional<runtime_probe::ProbeResult>,
               GetFromFile,
               (const base::FilePath& file_path),
               (const, override));
@@ -45,11 +45,11 @@ class MockProbeResultGetter : public ProbeResultGetter {
 
 class MockHwVerificationSpecGetter : public HwVerificationSpecGetter {
  public:
-  MOCK_METHOD(base::Optional<HwVerificationSpec>,
+  MOCK_METHOD(std::optional<HwVerificationSpec>,
               GetDefault,
               (),
               (const, override));
-  MOCK_METHOD(base::Optional<HwVerificationSpec>,
+  MOCK_METHOD(std::optional<HwVerificationSpec>,
               GetFromFile,
               (const base::FilePath& file_path),
               (const, override));
@@ -57,7 +57,7 @@ class MockHwVerificationSpecGetter : public HwVerificationSpecGetter {
 
 class MockVerifier : public Verifier {
  public:
-  MOCK_METHOD(base::Optional<HwVerificationReport>,
+  MOCK_METHOD(std::optional<HwVerificationReport>,
               Verify,
               (const runtime_probe::ProbeResult& probe_result,
                const HwVerificationSpec& hw_verification_spec),
@@ -139,7 +139,7 @@ TEST_F(HwVerificationReportGetterImplTest, TestHandleWaysToGetProbeResults) {
   ReportGetterErrorCode error_code;
 
   ON_CALL(*mock_pr_getter_, GetFromRuntimeProbe())
-      .WillByDefault(Return(base::nullopt));
+      .WillByDefault(Return(std::nullopt));
   EXPECT_CALL(*mock_metrics_, SendToUMA(_, _, _, _, _)).Times(1);
   EXPECT_FALSE(vr_getter_->Get("", "", &error_code));
   EXPECT_EQ(error_code, ReportGetterErrorCode::kErrorCodeProbeFail);
@@ -150,8 +150,7 @@ TEST_F(HwVerificationReportGetterImplTest, TestHandleWaysToGetProbeResults) {
   EXPECT_TRUE(vr_getter_->Get("path", "", &error_code));
   EXPECT_EQ(error_code, ReportGetterErrorCode::kErrorCodeNoError);
 
-  ON_CALL(*mock_pr_getter_, GetFromFile(_))
-      .WillByDefault(Return(base::nullopt));
+  ON_CALL(*mock_pr_getter_, GetFromFile(_)).WillByDefault(Return(std::nullopt));
   EXPECT_CALL(*mock_metrics_, SendToUMA(_, _, _, _, _)).Times(0);
   EXPECT_FALSE(vr_getter_->Get("path2", "", &error_code));
   EXPECT_EQ(error_code,
@@ -162,7 +161,7 @@ TEST_F(HwVerificationReportGetterImplTest,
        TestHandleWaysToGetHwVerificationSpec) {
   ReportGetterErrorCode error_code;
 
-  ON_CALL(*mock_vs_getter_, GetDefault()).WillByDefault(Return(base::nullopt));
+  ON_CALL(*mock_vs_getter_, GetDefault()).WillByDefault(Return(std::nullopt));
   EXPECT_FALSE(vr_getter_->Get("", "", &error_code));
   EXPECT_EQ(
       error_code,
@@ -173,8 +172,7 @@ TEST_F(HwVerificationReportGetterImplTest,
   EXPECT_TRUE(vr_getter_->Get("", "path", &error_code));
   EXPECT_EQ(error_code, ReportGetterErrorCode::kErrorCodeNoError);
 
-  ON_CALL(*mock_vs_getter_, GetFromFile(_))
-      .WillByDefault(Return(base::nullopt));
+  ON_CALL(*mock_vs_getter_, GetFromFile(_)).WillByDefault(Return(std::nullopt));
   EXPECT_FALSE(vr_getter_->Get("", "path2", &error_code));
   EXPECT_EQ(error_code,
             ReportGetterErrorCode::kErrorCodeInvalidHwVerificationSpecFile);
@@ -183,7 +181,7 @@ TEST_F(HwVerificationReportGetterImplTest,
 TEST_F(HwVerificationReportGetterImplTest, TestVerifyFail) {
   ReportGetterErrorCode error_code;
 
-  ON_CALL(*mock_verifier_, Verify(_, _)).WillByDefault(Return(base::nullopt));
+  ON_CALL(*mock_verifier_, Verify(_, _)).WillByDefault(Return(std::nullopt));
   EXPECT_FALSE(vr_getter_->Get("", "", &error_code));
   EXPECT_EQ(error_code,
             ReportGetterErrorCode::

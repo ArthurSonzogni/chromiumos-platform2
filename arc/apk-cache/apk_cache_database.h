@@ -8,11 +8,11 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <sqlite3.h>
 
@@ -58,9 +58,9 @@ struct FileEntry {
   std::string package_name;
   int64_t version_code;
   std::string type;
-  base::Optional<std::string> attributes;
+  std::optional<std::string> attributes;
   int64_t size;
-  base::Optional<std::string> hash;
+  std::optional<std::string> hash;
   base::Time access_time;
   int32_t priority;
   int64_t session_id;
@@ -97,9 +97,9 @@ class ApkCacheDatabase {
   // Inserts session into database. Returns |id|. Returns 0 if error occurred.
   int64_t InsertSession(const Session& session) const;
   // Gets all sessions. Returns nullopt if any error occurs.
-  base::Optional<std::vector<Session>> GetSessions() const;
+  std::optional<std::vector<Session>> GetSessions() const;
   // Gets all file entries. Returns nullopt if any error occurs.
-  base::Optional<std::vector<FileEntry>> GetFileEntries() const;
+  std::optional<std::vector<FileEntry>> GetFileEntries() const;
   // Deletes |session| from database. Any file entries referencing this session
   // will also be removed. Returns true if no error occurred.
   bool DeleteSession(int64_t session_id) const;

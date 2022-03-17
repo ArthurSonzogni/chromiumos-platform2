@@ -6,10 +6,10 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_AC_POWER_AC_POWER_H_
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -34,7 +34,7 @@ class AcPowerRoutine final : public DiagnosticRoutine {
   // Override |root_dir| for testing only.
   AcPowerRoutine(
       chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-      const base::Optional<std::string>& expected_power_type,
+      const std::optional<std::string>& expected_power_type,
       const base::FilePath& root_dir = base::FilePath("/"));
   AcPowerRoutine(const AcPowerRoutine&) = delete;
   AcPowerRoutine& operator=(const AcPowerRoutine&) = delete;
@@ -63,7 +63,7 @@ class AcPowerRoutine final : public DiagnosticRoutine {
   // Expected status of the power supply.
   chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_power_status_;
   // Expected type of the power supply.
-  base::Optional<std::string> expected_power_type_;
+  std::optional<std::string> expected_power_type_;
   // Details of the routine's status, reported in noninteractive status updates.
   std::string status_message_;
   // Root directory appended to relative paths used by the routine.

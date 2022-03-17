@@ -4,25 +4,25 @@
 
 #include <libcrossystem/crossystem_fake.h>
 
-#include <base/optional.h>
+#include <optional>
 
 namespace crossystem {
 
 namespace fake {
 
-base::Optional<int> CrossystemFake::VbGetSystemPropertyInt(
+std::optional<int> CrossystemFake::VbGetSystemPropertyInt(
     const std::string& name) const {
   const auto it = system_int_properties_.find(name);
   if (it == system_int_properties_.end())
-    return base::nullopt;
+    return std::nullopt;
   return it->second;
 }
 
-base::Optional<std::string> CrossystemFake::VbGetSystemPropertyString(
+std::optional<std::string> CrossystemFake::VbGetSystemPropertyString(
     const std::string& name) const {
   const auto it = system_str_properties_.find(name);
   if (it == system_str_properties_.end())
-    return base::nullopt;
+    return std::nullopt;
   return it->second;
 }
 

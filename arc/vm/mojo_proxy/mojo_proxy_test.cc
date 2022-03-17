@@ -11,6 +11,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -20,7 +21,6 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <base/posix/unix_domain_socket.h>
 #include <base/run_loop.h>
 #include <base/task/thread_pool.h>
@@ -93,7 +93,7 @@ class TestDelegate : public MojoProxy::Delegate {
   // boundaries.
   bool virtwl_mode_ = false;
 
-  base::Optional<arc_proxy::MojoMessage> virtwl_tmp_message_;
+  std::optional<arc_proxy::MojoMessage> virtwl_tmp_message_;
 };
 
 class MojoProxyTest : public testing::Test {
@@ -506,12 +506,12 @@ TEST_F(MojoProxyTest, Connect) {
 
   // Try to follow the actual initial connection procedure.
   base::RunLoop run_loop;
-  base::Optional<int> error_code;
-  base::Optional<int64_t> handle;
+  std::optional<int> error_code;
+  std::optional<int64_t> handle;
   client()->Connect(socket_path, base::BindOnce(
                                      [](base::RunLoop* run_loop,
-                                        base::Optional<int>* error_code_out,
-                                        base::Optional<int64_t>* handle_out,
+                                        std::optional<int>* error_code_out,
+                                        std::optional<int64_t>* handle_out,
                                         int error_code, int64_t handle) {
                                        *error_code_out = error_code;
                                        *handle_out = handle;

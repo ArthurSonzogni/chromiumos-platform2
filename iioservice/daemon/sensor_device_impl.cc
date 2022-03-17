@@ -4,6 +4,7 @@
 
 #include "iioservice/daemon/sensor_device_impl.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -148,17 +149,17 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
   auto it = clients_.find(id);
   if (it == clients_.end()) {
     LOGF(ERROR) << "Failed to find clients with id: " << id;
-    std::move(callback).Run(std::vector<base::Optional<std::string>>(
-        attr_names.size(), base::nullopt));
+    std::move(callback).Run(std::vector<std::optional<std::string>>(
+        attr_names.size(), std::nullopt));
     return;
   }
 
   ClientData& client = it->second;
 
-  std::vector<base::Optional<std::string>> values;
+  std::vector<std::optional<std::string>> values;
   values.reserve(attr_names.size());
   for (const auto& attr_name : attr_names) {
-    base::Optional<std::string> value_opt;
+    std::optional<std::string> value_opt;
     if (attr_name == cros::mojom::kSysPath) {
       auto path_opt = GetAbsoluteSysPath(client.device_data->iio_device);
       if (path_opt.has_value())
@@ -186,7 +187,7 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
 
     if (!value_opt.has_value()) {
       if (attr_name == cros::mojom::kLocation) {
-        base::Optional<cros::mojom::DeviceType> type;
+        std::optional<cros::mojom::DeviceType> type;
         for (auto& t : kMotionSensors) {
           if (base::Contains(client.device_data->types, t)) {
             type = t;
@@ -195,14 +196,14 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
         }
 
         if (type.has_value()) {
-          base::Optional<int32_t> only_device_id;
+          std::optional<int32_t> only_device_id;
           for (auto& device : devices_) {
             if (base::Contains(device.second.types, type.value()) &&
                 device.second.on_dut) {
               if (!only_device_id.has_value()) {
                 only_device_id = device.first;
               } else {
-                only_device_id = base::nullopt;
+                only_device_id = std::nullopt;
                 break;
               }
             }
@@ -388,26 +389,26 @@ void SensorDeviceImpl::GetChannelsAttributes(
   auto it = clients_.find(id);
   if (it == clients_.end()) {
     LOGF(ERROR) << "Failed to find clients with id: " << id;
-    std::move(callback).Run(std::vector<base::Optional<std::string>>(
-        iio_chn_indices.size(), base::nullopt));
+    std::move(callback).Run(std::vector<std::optional<std::string>>(
+        iio_chn_indices.size(), std::nullopt));
     return;
   }
 
   ClientData& client = it->second;
   auto iio_device = client.device_data->iio_device;
 
-  std::vector<base::Optional<std::string>> values;
+  std::vector<std::optional<std::string>> values;
 
   for (int32_t chn_index : iio_chn_indices) {
     auto chn = iio_device->GetChannel(chn_index);
 
     if (!chn) {
       LOGF(ERROR) << "Cannot find chn with index: " << chn_index;
-      values.push_back(base::nullopt);
+      values.push_back(std::nullopt);
       continue;
     }
 
-    base::Optional<std::string> value_opt = chn->ReadStringAttribute(attr_name);
+    std::optional<std::string> value_opt = chn->ReadStringAttribute(attr_name);
 
     values.push_back(value_opt);
   }
@@ -518,26 +519,26 @@ void SensorDeviceImpl::GetEventsAttributes(
   auto it = clients_.find(id);
   if (it == clients_.end()) {
     LOGF(ERROR) << "Failed to find clients with id: " << id;
-    std::move(callback).Run(std::vector<base::Optional<std::string>>(
-        iio_event_indices.size(), base::nullopt));
+    std::move(callback).Run(std::vector<std::optional<std::string>>(
+        iio_event_indices.size(), std::nullopt));
     return;
   }
 
   ClientData& client = it->second;
   auto iio_device = client.device_data->iio_device;
 
-  std::vector<base::Optional<std::string>> values;
+  std::vector<std::optional<std::string>> values;
 
   for (int32_t event_index : iio_event_indices) {
     auto event = iio_device->GetChannel(event_index);
 
     if (!event) {
       LOGF(ERROR) << "Cannot find event with index: " << event_index;
-      values.push_back(base::nullopt);
+      values.push_back(std::nullopt);
       continue;
     }
 
-    base::Optional<std::string> value_opt =
+    std::optional<std::string> value_opt =
         event->ReadStringAttribute(attr_name);
     if (value_opt.has_value()) {
       value_opt = std::string(base::TrimString(value_opt.value(),

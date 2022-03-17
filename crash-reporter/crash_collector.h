@@ -13,6 +13,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -21,7 +22,6 @@
 #include <base/callback_forward.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <brillo/dbus/file_descriptor.h>
@@ -324,7 +324,7 @@ class CrashCollector {
 
   // This is going away once the experiment is done.
   // TODO(b/186659673): Validate daemon-store usage and remove this
-  base::Optional<base::FilePath> GetCrashDirectoryInfoOld(
+  std::optional<base::FilePath> GetCrashDirectoryInfoOld(
       uid_t process_euid,
       uid_t default_user_id,
       mode_t* mode,
@@ -333,7 +333,7 @@ class CrashCollector {
   // Once the daemon-store experiment is done, rename to just
   // GetCrashDirectoryInfo
   // TODO(b/186659673): Validate daemon-store usage and rename this.
-  base::Optional<base::FilePath> GetCrashDirectoryInfoNew(
+  std::optional<base::FilePath> GetCrashDirectoryInfoNew(
       uid_t process_euid,
       uid_t default_user_id,
       mode_t* mode,
@@ -448,7 +448,7 @@ class CrashCollector {
   std::string GetKernelVersion() const;
 
   // Returns the enrollment status written to the metadata file.
-  base::Optional<bool> IsEnterpriseEnrolled();
+  std::optional<bool> IsEnterpriseEnrolled();
 
   // Called after all files have been written and we want to send out this
   // crash. Write a file of metadata about crash and, if in crash-loop mode,
@@ -514,10 +514,10 @@ class CrashCollector {
   bool GetUserCrashDirectoriesOld(std::vector<base::FilePath>* directories,
                                   bool use_daemon_store);
   base::FilePath GetUserCrashDirectoryOld(bool use_daemon_store);
-  base::Optional<base::FilePath> GetUserCrashDirectoryNew();
+  std::optional<base::FilePath> GetUserCrashDirectoryNew();
 
   // If set, UseDaemonStore will always return the contained value.
-  base::Optional<bool> force_daemon_store_;
+  std::optional<bool> force_daemon_store_;
 
   // True when FinishCrash has been called. Once true, no new files should be
   // created.

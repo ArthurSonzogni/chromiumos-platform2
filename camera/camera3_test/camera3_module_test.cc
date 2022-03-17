@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <tuple>
 
@@ -570,11 +571,11 @@ TEST_F(Camera3ModuleFixture, NumberOfCameras) {
   base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
   base::FilePath camera_hal_path =
       cmd_line->GetSwitchValuePath("camera_hal_path");
-  base::Optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
+  std::optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
   if (config.has_value()) {
-    base::Optional<int> usb_count =
+    std::optional<int> usb_count =
         config->GetCameraCount(cros::Interface::kUsb);
-    base::Optional<int> mipi_count =
+    std::optional<int> mipi_count =
         config->GetCameraCount(cros::Interface::kMipi);
     if (camera_hal_path.empty()) {
       if (usb_count.has_value() && mipi_count.has_value()) {
@@ -1393,7 +1394,7 @@ bool InitializeTest(int* argc,
       "jelboz360",
   };
   std::string board = base::SysInfo::GetLsbReleaseBoard();
-  base::Optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
+  std::optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
   std::string model = config.has_value() ? config->GetModelName() : "";
   if (base::Contains(kIgnoreSensorOrientationTestBoards, board) ||
       base::Contains(kIgnoreSensorOrientationTestModels, model)) {

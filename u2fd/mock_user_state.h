@@ -7,10 +7,10 @@
 
 #include "u2fd/user_state.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
@@ -18,12 +18,9 @@ namespace u2f {
 
 class MockUserState : public UserState {
  public:
-  MOCK_METHOD(base::Optional<brillo::SecureBlob>,
-              GetUserSecret,
-              (),
-              (override));
-  MOCK_METHOD(base::Optional<std::string>, GetUser, (), (override));
-  MOCK_METHOD(base::Optional<std::vector<uint8_t>>, GetCounter, (), (override));
+  MOCK_METHOD(std::optional<brillo::SecureBlob>, GetUserSecret, (), (override));
+  MOCK_METHOD(std::optional<std::string>, GetUser, (), (override));
+  MOCK_METHOD(std::optional<std::vector<uint8_t>>, GetCounter, (), (override));
   MOCK_METHOD(bool, IncrementCounter, (), (override));
 };
 

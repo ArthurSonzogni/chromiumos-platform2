@@ -4,11 +4,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include <base/check.h>
-#include <base/optional.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gtest/gtest.h>
@@ -233,7 +233,7 @@ TEST_F(BatteryDischargeRoutineTest, EndingChargeHigherThanStartingCharge) {
 
 // Test that the routine handles an error from powerd.
 TEST_F(BatteryDischargeRoutineTest, PowerdError) {
-  fake_powerd_adapter()->SetPowerSupplyProperties(base::nullopt);
+  fake_powerd_adapter()->SetPowerSupplyProperties(std::nullopt);
 
   CreateRoutine(kPassingPercent);
   StartRoutineAndVerifyInteractiveResponse();
@@ -264,7 +264,7 @@ TEST_F(BatteryDischargeRoutineTest, DelayedTaskPowerdError) {
                              kBatteryDischargeRoutineRunningMessage);
   EXPECT_EQ(update->progress_percent, 50);
 
-  fake_powerd_adapter()->SetPowerSupplyProperties(base::nullopt);
+  fake_powerd_adapter()->SetPowerSupplyProperties(std::nullopt);
 
   FastForwardBy(kHalfDuration);
   update = GetUpdate();
@@ -336,7 +336,7 @@ TEST_F(BatteryDischargeRoutineTest, CancelWhileRunning) {
 
 // Test that cancelling a routine in an error state doesn't overwrite the state.
 TEST_F(BatteryDischargeRoutineTest, CancelWhileInErrorState) {
-  fake_powerd_adapter()->SetPowerSupplyProperties(base::nullopt);
+  fake_powerd_adapter()->SetPowerSupplyProperties(std::nullopt);
   CreateRoutine(kPassingPercent);
 
   StartRoutineAndVerifyInteractiveResponse();

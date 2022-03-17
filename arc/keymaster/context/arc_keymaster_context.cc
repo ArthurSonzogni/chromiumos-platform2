@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,7 +16,6 @@
 #include <base/base64.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <keymaster/android_keymaster_utils.h>
 #include <keymaster/key_blob_utils/integrity_assured_key_blob.h>
 #include <keymaster/key_blob_utils/software_keyblobs.h>
@@ -116,7 +116,7 @@ KeyData PackToArcKeyData(const ::keymaster::KeymasterKeyBlob& key_material,
   return key_data;
 }
 
-base::Optional<KeyData> PackToChromeOsKeyData(
+std::optional<KeyData> PackToChromeOsKeyData(
     const mojom::KeyDataPtr& mojo_key_data,
     const ::keymaster::AuthorizationSet& hw_enforced,
     const ::keymaster::AuthorizationSet& sw_enforced) {
@@ -131,7 +131,7 @@ base::Optional<KeyData> PackToChromeOsKeyData(
     key_data.mutable_chaps_key()->set_slot(
         (ChapsKeyData::Slot)mojo_key_data->get_chaps_key_data()->slot);
   } else {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Serialize hardware enforced authorization set.
@@ -167,37 +167,37 @@ bool UnpackFromKeyData(const KeyData& key_data,
   return DeserializeAuthorizationSet(key_data.sw_enforced_tags(), sw_enforced);
 }
 
-base::Optional<keymaster_algorithm_t> FindAlgorithmTag(
+std::optional<keymaster_algorithm_t> FindAlgorithmTag(
     const ::keymaster::AuthorizationSet& hw_enforced,
     const ::keymaster::AuthorizationSet& sw_enforced) {
   keymaster_algorithm_t algorithm;
   if (!hw_enforced.GetTagValue(::keymaster::TAG_ALGORITHM, &algorithm) &&
       !sw_enforced.GetTagValue(::keymaster::TAG_ALGORITHM, &algorithm))
-    return base::nullopt;
+    return std::nullopt;
   return algorithm;
 }
 
-base::Optional<std::string> ExtractBase64Spki(
+std::optional<std::string> ExtractBase64Spki(
     const ::keymaster::KeymasterKeyBlob& key_material) {
   // Parse key material.
   const uint8_t* material = key_material.key_material;
   EVP_PKEY* pkey = d2i_PrivateKey(EVP_PKEY_RSA, /*pkey=*/nullptr, &material,
                                   key_material.key_material_size);
   if (!pkey)
-    return base::nullopt;
+    return std::nullopt;
   std::unique_ptr<EVP_PKEY, decltype(&::EVP_PKEY_free)> pkey_deleter(
       pkey, EVP_PKEY_free);
 
   // Retrieve DER subject public key info.
   int der_spki_length = i2d_PUBKEY(pkey, /*outp=*/nullptr);
   if (der_spki_length <= 0)
-    return base::nullopt;
+    return std::nullopt;
 
   brillo::Blob der_spki(der_spki_length);
   uint8_t* der_spki_buffer = std::data(der_spki);
   int written_bytes = i2d_PUBKEY(pkey, &der_spki_buffer);
   if (written_bytes != der_spki_length)
-    return base::nullopt;
+    return std::nullopt;
 
   // Encode subject public key info to base 64.
   std::string der_spki_string(der_spki.begin(), der_spki.end());
@@ -221,14 +221,14 @@ void ArcKeymasterContext::DeletePlaceholderKey(
     placeholder_keys_.erase(position);
 }
 
-base::Optional<mojom::ChromeOsKeyPtr> ArcKeymasterContext::FindPlaceholderKey(
+std::optional<mojom::ChromeOsKeyPtr> ArcKeymasterContext::FindPlaceholderKey(
     const ::keymaster::KeymasterKeyBlob& key_material) const {
   if (placeholder_keys_.empty())
-    return base::nullopt;
+    return std::nullopt;
 
-  base::Optional<std::string> base64_spki = ExtractBase64Spki(key_material);
+  std::optional<std::string> base64_spki = ExtractBase64Spki(key_material);
   if (!base64_spki.has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   for (const auto& cros_key : placeholder_keys_) {
     if (base64_spki.value() == cros_key->base64_subject_public_key_info) {
@@ -237,19 +237,19 @@ base::Optional<mojom::ChromeOsKeyPtr> ArcKeymasterContext::FindPlaceholderKey(
     }
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<KeyData> ArcKeymasterContext::PackToKeyData(
+std::optional<KeyData> ArcKeymasterContext::PackToKeyData(
     const ::keymaster::KeymasterKeyBlob& key_material,
     const ::keymaster::AuthorizationSet& hw_enforced,
     const ::keymaster::AuthorizationSet& sw_enforced) const {
-  base::Optional<mojom::ChromeOsKeyPtr> cros_key =
+  std::optional<mojom::ChromeOsKeyPtr> cros_key =
       FindPlaceholderKey(key_material);
   if (!cros_key.has_value())
     return PackToArcKeyData(key_material, hw_enforced, sw_enforced);
 
-  base::Optional<KeyData> key_data = PackToChromeOsKeyData(
+  std::optional<KeyData> key_data = PackToChromeOsKeyData(
       cros_key.value()->key_data->Clone(), hw_enforced, sw_enforced);
 
   // Ensure the placeholder of a Chrome OS key is only used once.
@@ -307,7 +307,7 @@ keymaster_error_t ArcKeymasterContext::ParseKeyBlob(
   if (*key)
     return KM_ERROR_OK;
 
-  base::Optional<keymaster_algorithm_t> algorithm =
+  std::optional<keymaster_algorithm_t> algorithm =
       FindAlgorithmTag(hw_enforced, sw_enforced);
   if (!algorithm.has_value())
     return KM_ERROR_INVALID_ARGUMENT;
@@ -384,7 +384,7 @@ keymaster_error_t ArcKeymasterContext::SerializeKeyDataBlob(
   if (!key_blob)
     return KM_ERROR_OUTPUT_PARAMETER_NULL;
 
-  base::Optional<KeyData> key_data =
+  std::optional<KeyData> key_data =
       PackToKeyData(key_material, hw_enforced, sw_enforced);
   if (!key_data.has_value()) {
     LOG(ERROR) << "Failed to package KeyData.";
@@ -411,7 +411,7 @@ keymaster_error_t ArcKeymasterContext::DeserializeKeyDataBlob(
     return KM_ERROR_OUTPUT_PARAMETER_NULL;
 
   // Deserialize a KeyData object from the given |key_blob|.
-  base::Optional<KeyData> key_data = DeserializeKeyData(key_blob, hidden);
+  std::optional<KeyData> key_data = DeserializeKeyData(key_blob, hidden);
   if (!key_data.has_value() || key_data->data_case() == KeyData::DATA_NOT_SET) {
     LOG(ERROR) << "Failed to parse a KeyData from key blob.";
     return KM_ERROR_INVALID_KEY_BLOB;
@@ -439,7 +439,7 @@ keymaster_error_t ArcKeymasterContext::LoadKey(
     ::keymaster::AuthorizationSet&& hw_enforced,
     ::keymaster::AuthorizationSet&& sw_enforced,
     ::keymaster::UniquePtr<::keymaster::Key>* key) const {
-  base::Optional<keymaster_algorithm_t> algorithm =
+  std::optional<keymaster_algorithm_t> algorithm =
       FindAlgorithmTag(hw_enforced, sw_enforced);
   if (!algorithm.has_value())
     return KM_ERROR_INVALID_ARGUMENT;
@@ -462,7 +462,7 @@ bool ArcKeymasterContext::SerializeKeyData(
     ::keymaster::KeymasterKeyBlob* key_blob) const {
   // Fetch key.
   ChapsClient chaps(context_adaptor_.GetWeakPtr(), ContextAdaptor::Slot::kUser);
-  base::Optional<brillo::SecureBlob> encryption_key =
+  std::optional<brillo::SecureBlob> encryption_key =
       chaps.ExportOrGenerateEncryptionKey();
   if (!encryption_key.has_value())
     return false;
@@ -475,7 +475,7 @@ bool ArcKeymasterContext::SerializeKeyData(
   // Encrypt the KeyData blob. As of Android R KeyStore's client ID and data
   // used in |auth_data| is empty. We still bind to it to comply with VTS tests.
   brillo::Blob auth_data = SerializeAuthorizationSetToBlob(hidden);
-  base::Optional<brillo::Blob> encrypted =
+  std::optional<brillo::Blob> encrypted =
       Aes256GcmEncrypt(encryption_key.value(), auth_data, data);
   if (!encrypted.has_value())
     return false;
@@ -487,28 +487,28 @@ bool ArcKeymasterContext::SerializeKeyData(
   return true;
 }
 
-base::Optional<KeyData> ArcKeymasterContext::DeserializeKeyData(
+std::optional<KeyData> ArcKeymasterContext::DeserializeKeyData(
     const ::keymaster::KeymasterKeyBlob& key_blob,
     const ::keymaster::AuthorizationSet& hidden) const {
   // Fetch key.
   ChapsClient chaps(context_adaptor_.GetWeakPtr(), ContextAdaptor::Slot::kUser);
-  base::Optional<brillo::SecureBlob> encryption_key =
+  std::optional<brillo::SecureBlob> encryption_key =
       chaps.ExportOrGenerateEncryptionKey();
   if (!encryption_key.has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   // Decrypt the KeyData blob.
   brillo::Blob encrypted(key_blob.begin(), key_blob.end());
   brillo::Blob auth_data = SerializeAuthorizationSetToBlob(hidden);
-  base::Optional<brillo::SecureBlob> unencrypted =
+  std::optional<brillo::SecureBlob> unencrypted =
       Aes256GcmDecrypt(encryption_key.value(), auth_data, encrypted);
   if (!unencrypted.has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   // Parse the |unencrypted| blob into a KeyData object and return it.
   KeyData key_data;
   if (!key_data.ParseFromArray(unencrypted->data(), unencrypted->size()))
-    return base::nullopt;
+    return std::nullopt;
 
   return key_data;
 }

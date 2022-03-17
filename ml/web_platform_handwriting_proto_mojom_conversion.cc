@@ -6,6 +6,7 @@
 
 #include <base/numerics/checked_math.h>
 #include <base/time/time.h>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -57,7 +58,7 @@ WebPlatformHandwritingStrokesAndHintsToProto(
   return request;
 }
 
-base::Optional<std::vector<
+std::optional<std::vector<
     chromeos::machine_learning::web_platform::mojom::HandwritingPredictionPtr>>
 WebPlatformHandwritingPredictionsFromProto(
     const std::vector<HandwritingStrokePtr>& strokes,
@@ -88,20 +89,20 @@ WebPlatformHandwritingPredictionsFromProto(
           grapheme_begin_index += segment_proto.sublabel().length();
           if (!grapheme_begin_index.IsValid()) {
             // If `grapheme_begin_index` overflows, we return empty result.
-            return base::nullopt;
+            return std::nullopt;
           }
           segment->end_index = grapheme_begin_index.ValueOrDie();
           // For ink range.
           for (const auto& ink_range_proto : segment_proto.ink_ranges()) {
             // Mainly to avoid overflow when plus 1 to it in the below.
             if (ink_range_proto.end_point() > kMaxInkRangeEndPoint) {
-              return base::nullopt;
+              return std::nullopt;
             }
             // `ink_range->end_stroke` has to be smaller than `strokes.size()`.
             // This check is important because otherwise, the code
             // `strokes[stroke_idx]` below may crash.
             if (ink_range_proto.end_stroke() >= strokes.size()) {
-              return base::nullopt;
+              return std::nullopt;
             }
             for (unsigned int stroke_idx = ink_range_proto.start_stroke();
                  stroke_idx <= ink_range_proto.end_stroke(); ++stroke_idx) {

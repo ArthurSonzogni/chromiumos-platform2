@@ -5,10 +5,10 @@
 #ifndef FLEX_ID_FLEX_ID_H_
 #define FLEX_ID_FLEX_ID_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_util.h>
-#include <base/optional.h>
 
 namespace flex_id {
 
@@ -19,34 +19,34 @@ class FlexIdGenerator {
   explicit FlexIdGenerator(const base::FilePath& base_path);
 
   // Can be used to add a prefix to the flex_id.
-  base::Optional<std::string> AddFlexIdPrefix(const std::string& flex_id);
+  std::optional<std::string> AddFlexIdPrefix(const std::string& flex_id);
 
   // Reads the contents of var/lib/flex_id/flex_id which is
   // the flex_id.
-  base::Optional<std::string> ReadFlexId();
+  std::optional<std::string> ReadFlexId();
 
   // Reads the contents of var/lib/client_id/client_id which is
   // what flex_id was originally called.
-  base::Optional<std::string> TryClientId();
+  std::optional<std::string> TryClientId();
 
   // Reads the contents of mnt/stateful_partition/cloudready/client_id
   // which is the legacy CloudReady client_id
-  base::Optional<std::string> TryLegacy();
+  std::optional<std::string> TryLegacy();
 
   // Reads the contents of sys/devices/virtual/dmi/id/product_serial
   // The serial is compared against known bad values and other criteria
   // If successful, the prefix is added and the result is returned
-  base::Optional<std::string> TrySerial();
+  std::optional<std::string> TrySerial();
 
   // Tries to find a hardware mac address from sys/class/net
   // The interfaces are compared against known good/bad names, addresses,
   // and what bus the device is on. If successful, the prefix is added
   // and the result is returned.
-  base::Optional<std::string> TryMac();
+  std::optional<std::string> TryMac();
 
   // Reads the contents of proc/sys/kernel/random/uuid. This is a random id.
   // If successful, the prefix is added and the result is returned
-  base::Optional<std::string> TryUuid();
+  std::optional<std::string> TryUuid();
 
   // Writes the flex_id to var/lib/flex_id/flex_id
   // with a newline.
@@ -59,7 +59,7 @@ class FlexIdGenerator {
   // 4. Hardware MAC Address
   // 5. Random UUID
   // The result is saved to var/lib/flex_id/flex_id
-  base::Optional<std::string> GenerateAndSaveFlexId();
+  std::optional<std::string> GenerateAndSaveFlexId();
 
  private:
   base::FilePath base_path_;

@@ -4,14 +4,14 @@
 
 #include "tpm_softclear_utils/tpm_impl.h"
 
+#include <optional>
 #include <string>
 
 #include <base/logging.h>
-#include <base/optional.h>
 
 namespace tpm_softclear_utils {
 
-base::Optional<std::string> TpmImpl::GetAuthForOwnerReset() {
+std::optional<std::string> TpmImpl::GetAuthForOwnerReset() {
   // TODO(b/134989278): add implementation.
   return std::string();
 }

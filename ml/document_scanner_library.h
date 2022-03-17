@@ -10,7 +10,6 @@
 
 #include <base/files/file_path.h>
 #include <base/no_destructor.h>
-#include <base/optional.h>
 #include <base/scoped_native_library.h>
 #include <chromeos/libdocumentscanner/document_scanner.h>
 

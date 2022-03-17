@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -69,7 +70,7 @@ class FakeSensorServiceNewDevicesObserver
  private:
   mojo::Receiver<cros::mojom::SensorServiceNewDevicesObserver> receiver_;
 
-  base::Optional<int32_t> iio_device_id_;
+  std::optional<int32_t> iio_device_id_;
   std::vector<cros::mojom::DeviceType> types_;
 };
 

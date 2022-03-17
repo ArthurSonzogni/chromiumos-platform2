@@ -6,10 +6,10 @@
 #define U2FD_U2F_APDU_H_
 
 #include <stdint.h>
+
+#include <optional>
 #include <string>
 #include <vector>
-
-#include <base/optional.h>
 
 #include "u2fd/util.h"
 
@@ -40,10 +40,10 @@ class U2fCommandApdu {
   };
 
   // Attempts to parse the specified string as an APDU, and returns a valid
-  // U2fCommandApdu if successful, or base::nullopt otherwise. If unsuccessful,
+  // U2fCommandApdu if successful, or std::nullopt otherwise. If unsuccessful,
   // and u2f_status is not null, populates it with a U2F status code indicating
   // the type of failure, if an appropriate code is available, or 0 otherwise.
-  static base::Optional<U2fCommandApdu> ParseFromString(
+  static std::optional<U2fCommandApdu> ParseFromString(
       const std::string& apdu_raw, uint16_t* u2f_status);
 
   // Creates an 'empty' APDU for the command with the specified INS command
@@ -78,11 +78,11 @@ class U2fCommandApdu {
 class U2fRegisterRequestApdu {
  public:
   // Attempt to parse the body of the specified APDU as a U2F_REGISTER request.
-  // Returns a valid U2fRegisterRequestApdu if successful, or base::nullopt
+  // Returns a valid U2fRegisterRequestApdu if successful, or std::nullopt
   // otherwise. If unsuccessful, and u2f_status is not null, populates it with
   // a U2F status code indicating the type of failure, if an appropriate code
   // is available, or 0 otherwise.
-  static base::Optional<U2fRegisterRequestApdu> FromCommandApdu(
+  static std::optional<U2fRegisterRequestApdu> FromCommandApdu(
       const U2fCommandApdu& apdu, uint16_t* u2f_status);
 
   // Whether the request response should use the G2F attestation certificate (if
@@ -107,10 +107,10 @@ class U2fAuthenticateRequestApdu {
  public:
   // Attempt to parse the body of the specified APDU as a U2F_AUTHENTICATE
   // request. Returns a valid U2fRegisterRequestApdu if successful, or
-  // base::nullopt otherwise. If unsuccessful, and u2f_status is not null,
+  // std::nullopt otherwise. If unsuccessful, and u2f_status is not null,
   // populates it with a U2F status code indicating the type of failure,
   // if an appropriate code is available, or 0 otherwise.
-  static base::Optional<U2fAuthenticateRequestApdu> FromCommandApdu(
+  static std::optional<U2fAuthenticateRequestApdu> FromCommandApdu(
       const U2fCommandApdu& apdu, uint16_t* u2f_status);
 
   // Returns true if the APDU is for a U2F_AUTHENTICATE check-only

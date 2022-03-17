@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 
+#include <optional>
 #include <utility>
 
 #include <base/json/json_reader.h>
@@ -25,7 +26,6 @@
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using ::testing::_;
 using ::testing::Eq;
@@ -121,7 +121,7 @@ TEST_F(ReportQueueImplTest, SuccessfulBaseValueRecord) {
 
   EXPECT_EQ(test_storage_module()->priority(), priority_);
 
-  absl::optional<base::Value> value_result =
+  std::optional<base::Value> value_result =
       base::JSONReader::Read(test_storage_module()->record().data());
   ASSERT_TRUE(value_result);
   EXPECT_EQ(value_result.value(), test_dict);

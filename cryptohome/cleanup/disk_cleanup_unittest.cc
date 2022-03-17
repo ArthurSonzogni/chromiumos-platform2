@@ -5,6 +5,7 @@
 #include "cryptohome/cleanup/disk_cleanup.h"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <vector>
 

@@ -6,11 +6,11 @@
 #define SHILL_CELLULAR_MODEM_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/optional.h>
 #include <base/files/file_util.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -46,7 +46,7 @@ class Modem {
   const std::string& service() const { return service_; }
   const RpcIdentifier& path() const { return path_; }
 
-  base::Optional<int> interface_index_for_testing() const {
+  std::optional<int> interface_index_for_testing() const {
     return interface_index_;
   }
   bool has_pending_device_info_for_testing() const {
@@ -78,7 +78,7 @@ class Modem {
   // Finds the interface index and MAC address for the kernel network device
   // with name |link_name_|. If no interface index exists, returns nullopt.
   // Otherwise sets |mac_address| if available and returns the interface index.
-  base::Optional<int> GetDeviceParams(std::string* mac_address);
+  std::optional<int> GetDeviceParams(std::string* mac_address);
 
   CellularRefPtr GetOrCreateCellularDevice(int interface_index,
                                            const std::string& mac_address);
@@ -90,7 +90,7 @@ class Modem {
   const RpcIdentifier path_;
 
   DeviceInfo* device_info_;
-  base::Optional<int> interface_index_;
+  std::optional<int> interface_index_;
   std::string link_name_;
   Cellular::Type type_;
   bool has_pending_device_info_ = false;

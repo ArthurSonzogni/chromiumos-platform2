@@ -8,6 +8,7 @@
 #include <gmock/gmock.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -43,7 +44,7 @@ class MockBiodStorage : public BiodStorageInterface {
               ReadRecordsForSingleUser,
               (const std::string& user_id),
               (override));
-  MOCK_METHOD(base::Optional<Record>,
+  MOCK_METHOD(std::optional<Record>,
               ReadSingleRecord,
               (const std::string& user_id, const std::string& record_id),
               (override));

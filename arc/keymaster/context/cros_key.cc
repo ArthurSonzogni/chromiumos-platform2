@@ -5,11 +5,11 @@
 #include "arc/keymaster/context/cros_key.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/optional.h>
 #include <keymaster/authorization_set.h>
 #include <keymaster/keymaster_tags.h>
 
@@ -259,7 +259,7 @@ keymaster_error_t ChapsKey::formatted_key_material(
     return KM_ERROR_OUTPUT_PARAMETER_NULL;
 
   ChapsClient chaps_client(cros_key_factory()->context_adaptor(), slot());
-  base::Optional<brillo::Blob> spki =
+  std::optional<brillo::Blob> spki =
       chaps_client.ExportSubjectPublicKeyInfo(label(), id());
   if (!spki.has_value())
     return KM_ERROR_UNKNOWN_ERROR;
@@ -315,7 +315,7 @@ keymaster_error_t CrosOperation::Begin(
     ::keymaster::AuthorizationSet* /* output_params */) {
   MechanismDescription d = CreateOperationDescription(*this, input_params);
 
-  base::Optional<uint64_t> handle = operation_->Begin(d);
+  std::optional<uint64_t> handle = operation_->Begin(d);
 
   if (!handle.has_value())
     return KM_ERROR_UNKNOWN_ERROR;
@@ -331,7 +331,7 @@ keymaster_error_t CrosOperation::Update(
     ::keymaster::Buffer* /* output */,
     size_t* input_consumed) {
   brillo::Blob input_blob(input.begin(), input.end());
-  base::Optional<brillo::Blob> output = operation_->Update(input_blob);
+  std::optional<brillo::Blob> output = operation_->Update(input_blob);
 
   if (!output.has_value()) {
     *input_consumed = 0;
@@ -351,13 +351,13 @@ keymaster_error_t CrosOperation::Finish(
   // Run an update with the last piece of input, if any.
   if (input.available_read() > 0) {
     brillo::Blob input_blob(input.begin(), input.end());
-    base::Optional<brillo::Blob> updateResult = operation_->Update(input_blob);
+    std::optional<brillo::Blob> updateResult = operation_->Update(input_blob);
 
     if (!updateResult.has_value())
       return KM_ERROR_UNKNOWN_ERROR;
   }
 
-  base::Optional<brillo::Blob> finish_result = operation_->Finish();
+  std::optional<brillo::Blob> finish_result = operation_->Finish();
   if (!finish_result.has_value())
     return KM_ERROR_UNKNOWN_ERROR;
 

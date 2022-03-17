@@ -4,11 +4,11 @@
 
 #include "lorgnette/image_readers/jpeg_reader.h"
 
-#include <base/optional.h>
 #include <brillo/errors/error.h>
 #include <dbus/lorgnette/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <optional>
 
 #include "lorgnette/constants.h"
 #include "lorgnette/sane_client.h"
@@ -44,7 +44,7 @@ TEST(JpegReaderTest, CreateWithInvalidRgbBitDepth) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(JpegReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(JpegReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -58,7 +58,7 @@ TEST(JpegReaderTest, CreateWithUnknownLength) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(JpegReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(JpegReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -72,7 +72,7 @@ TEST(JpegReaderTest, CreateWithNoLines) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(JpegReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(JpegReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -86,7 +86,7 @@ TEST(JpegReaderTest, CreateWithInvalidHeight) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(JpegReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(JpegReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -100,7 +100,7 @@ TEST(JpegReaderTest, CreateWithNegativeWidth) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(JpegReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(JpegReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -114,7 +114,7 @@ TEST(JpegReaderTest, CreateWithInvalidWidth) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(JpegReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(JpegReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -130,7 +130,7 @@ TEST(JpegReaderTest, CreateWithInvalidBytesPerLine) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(JpegReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(JpegReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -145,7 +145,7 @@ TEST(JpegReaderTest, CreateWithInvalidImageSize) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(JpegReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(JpegReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -160,7 +160,7 @@ TEST(JpegReaderTest, CreateWithInvalidBitDepth) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(JpegReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(JpegReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);

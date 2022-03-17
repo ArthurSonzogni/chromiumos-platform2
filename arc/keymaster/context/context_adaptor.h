@@ -6,11 +6,11 @@
 #define ARC_KEYMASTER_CONTEXT_CONTEXT_ADAPTOR_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -46,14 +46,14 @@ class ContextAdaptor {
   }
 
   // Returns the slot id of the security token for the given |slot|, or
-  // base::nullopt if there's an error in the DBus call.
-  base::Optional<CK_SLOT_ID> FetchSlotId(Slot slot);
+  // std::nullopt if there's an error in the DBus call.
+  std::optional<CK_SLOT_ID> FetchSlotId(Slot slot);
 
-  const base::Optional<brillo::SecureBlob>& encryption_key() {
+  const std::optional<brillo::SecureBlob>& encryption_key() {
     return cached_encryption_key_;
   }
 
-  void set_encryption_key(const base::Optional<brillo::SecureBlob>& key) {
+  void set_encryption_key(const std::optional<brillo::SecureBlob>& key) {
     cached_encryption_key_ = key;
   }
 
@@ -65,29 +65,29 @@ class ContextAdaptor {
 
  private:
   // Returns the slot id of the security token for the primary user, or
-  // base::nullopt if there's an error in the DBus call.
-  base::Optional<CK_SLOT_ID> FetchPrimaryUserSlotId();
+  // std::nullopt if there's an error in the DBus call.
+  std::optional<CK_SLOT_ID> FetchPrimaryUserSlotId();
 
-  // Returns the slot id of the system security token, or base::nullopt if
+  // Returns the slot id of the system security token, or std::nullopt if
   // there's an error in the DBus call.
-  base::Optional<CK_SLOT_ID> FetchSystemSlotId();
+  std::optional<CK_SLOT_ID> FetchSystemSlotId();
 
-  // Returns the email of the primary signed in user, or base::nullopt if
+  // Returns the email of the primary signed in user, or std::nullopt if
   // there's an error in the DBus call
-  base::Optional<std::string> FetchPrimaryUserEmail();
+  std::optional<std::string> FetchPrimaryUserEmail();
 
-  base::Optional<CK_SLOT_ID> FetchSlotIdFromTpmTokenInfo(
-      base::Optional<std::string> user_email);
+  std::optional<CK_SLOT_ID> FetchSlotIdFromTpmTokenInfo(
+      std::optional<std::string> user_email);
 
   scoped_refptr<::dbus::Bus> GetBus();
 
   scoped_refptr<::dbus::Bus> bus_;
   // Initially nullopt, then populated in the corresponding fetch operation.
-  base::Optional<CK_SLOT_ID> cached_user_slot_;
-  base::Optional<CK_SLOT_ID> cached_system_slot_;
-  base::Optional<std::string> cached_email_;
+  std::optional<CK_SLOT_ID> cached_user_slot_;
+  std::optional<CK_SLOT_ID> cached_system_slot_;
+  std::optional<std::string> cached_email_;
   // Initially nullopt, then populated in the corresponding setter.
-  base::Optional<brillo::SecureBlob> cached_encryption_key_;
+  std::optional<brillo::SecureBlob> cached_encryption_key_;
 
   // DBus proxy for contacting cryptohome.
   std::unique_ptr<org::chromium::CryptohomePkcs11InterfaceProxyInterface>

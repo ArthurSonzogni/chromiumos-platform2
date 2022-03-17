@@ -7,13 +7,12 @@
 
 #include "croslog/log_entry.h"
 
+#include <optional>
 #include <string>
-
-#include "base/optional.h"
 
 namespace croslog {
 
-using MaybeLogEntry = base::Optional<LogEntry>;
+using MaybeLogEntry = std::optional<LogEntry>;
 
 class LogParser {
  public:

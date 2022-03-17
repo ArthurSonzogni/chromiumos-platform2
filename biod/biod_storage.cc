@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include <algorithm>
+#include <optional>
 #include <sstream>
 #include <utility>
 
@@ -178,11 +179,11 @@ std::vector<BiodStorageInterface::Record> BiodStorage::ReadRecordsForSingleUser(
   return ret;
 }
 
-base::Optional<BiodStorageInterface::Record> BiodStorage::ReadSingleRecord(
+std::optional<BiodStorageInterface::Record> BiodStorage::ReadSingleRecord(
     const std::string& user_id, const std::string& record_id) {
   if (!allow_access_) {
     LOG(ERROR) << "Access to the storage mounts not yet allowed.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   base::FilePath record_path = root_path_.Append(kBiod)
@@ -198,7 +199,7 @@ base::Optional<BiodStorageInterface::Record> BiodStorage::ReadSingleRecord(
   return record;
 }
 
-base::Optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
+std::optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
     const base::FilePath& record_path) {
   std::string json_string;
 
@@ -206,7 +207,7 @@ base::Optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
     LOG(ERROR) << "Failed to read the string from " << record_path.value()
                << ".";
     // Biod can't find this file.
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // File was found. Return Record (valid or invalid) to indicate that it
@@ -259,7 +260,7 @@ base::Optional<BiodStorageInterface::Record> BiodStorage::ReadRecordFromPath(
   }
   record.metadata.label = *label;
 
-  base::Optional<int> record_format_version =
+  std::optional<int> record_format_version =
       record_dictionary.FindIntKey(kVersionMember);
   if (!record_format_version.has_value()) {
     LOG(ERROR) << "Cannot read record format version from "

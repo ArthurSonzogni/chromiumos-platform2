@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_SYSTEM_CONFIG_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_SYSTEM_CONFIG_H_
 
+#include <optional>
 #include <string>
 
 #include <chromeos/chromeos-config/libcros_config/cros_config_interface.h>
@@ -37,8 +38,8 @@ class SystemConfig final : public SystemConfigInterface {
   bool NvmeSelfTestSupported() override;
   bool SmartCtlSupported() override;
   bool IsWilcoDevice() override;
-  base::Optional<std::string> GetMarketingName() override;
-  base::Optional<std::string> GetOemName() override;
+  std::optional<std::string> GetMarketingName() override;
+  std::optional<std::string> GetOemName() override;
   std::string GetCodeName() override;
 
  private:

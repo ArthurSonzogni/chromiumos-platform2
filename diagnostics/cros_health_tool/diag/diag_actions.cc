@@ -8,6 +8,7 @@
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -152,7 +153,7 @@ bool DiagActions::ActionGetRoutines() {
 
 bool DiagActions::ActionRunAcPowerRoutine(
     mojo_ipc::AcPowerStatusEnum expected_status,
-    const base::Optional<std::string>& expected_power_type) {
+    const std::optional<std::string>& expected_power_type) {
   auto response =
       adapter_->RunAcPowerRoutine(expected_status, expected_power_type);
   return ProcessRoutineResponse(response);
@@ -188,13 +189,13 @@ bool DiagActions::ActionRunCaptivePortalRoutine() {
 }
 
 bool DiagActions::ActionRunCpuCacheRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   auto response = adapter_->RunCpuCacheRoutine(exec_duration);
   return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunCpuStressRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   auto response = adapter_->RunCpuStressRoutine(exec_duration);
   return ProcessRoutineResponse(response);
 }
@@ -224,7 +225,7 @@ bool DiagActions::ActionRunDnsResolverPresentRoutine() {
 }
 
 bool DiagActions::ActionRunFloatingPointAccuracyRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   auto response = adapter_->RunFloatingPointAccuracyRoutine(exec_duration);
   return ProcessRoutineResponse(response);
 }
@@ -276,7 +277,7 @@ bool DiagActions::ActionRunNvmeWearLevelRoutine(uint32_t wear_level_threshold) {
 }
 
 bool DiagActions::ActionRunPrimeSearchRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   auto response = adapter_->RunPrimeSearchRoutine(exec_duration);
   return ProcessRoutineResponse(response);
 }
@@ -292,13 +293,13 @@ bool DiagActions::ActionRunSmartctlCheckRoutine() {
 }
 
 bool DiagActions::ActionRunUrandomRoutine(
-    const base::Optional<base::TimeDelta>& length_seconds) {
+    const std::optional<base::TimeDelta>& length_seconds) {
   auto response = adapter_->RunUrandomRoutine(length_seconds);
   return ProcessRoutineResponse(response);
 }
 
 bool DiagActions::ActionRunVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname) {
+    const std::optional<std::string>& stun_server_hostname) {
   auto response = adapter_->RunVideoConferencingRoutine(stun_server_hostname);
   return ProcessRoutineResponse(response);
 }

@@ -5,6 +5,7 @@
 #include "arc/vm/boot_notification_server/util.h"
 
 #include <atomic>
+#include <optional>
 #include <string.h>
 
 #include <sys/types.h>
@@ -100,7 +101,7 @@ TEST_F(BootNotificationServerTest, ReadFD) {
   }
 
   // Read from read_fd and check that strings are identical.
-  base::Optional<std::string> result = ReadFD(read_fd.get());
+  std::optional<std::string> result = ReadFD(read_fd.get());
   ASSERT_TRUE(result);
   EXPECT_EQ(result, original);
 }
@@ -115,18 +116,18 @@ TEST_F(BootNotificationServerTest, ExtractCidValue) {
 
   std::string result_props;
   unsigned int result_cid;
-  base::Optional<std::pair<unsigned int, std::string>> result1 =
+  std::optional<std::pair<unsigned int, std::string>> result1 =
       ExtractCidValue(props_with_cid);
   ASSERT_TRUE(result1);
   std::tie(result_cid, result_props) = *result1;
   EXPECT_EQ(result_cid, 123);
   EXPECT_EQ(result_props, props);
 
-  base::Optional<std::pair<unsigned int, std::string>> result2 =
+  std::optional<std::pair<unsigned int, std::string>> result2 =
       ExtractCidValue(props);
   EXPECT_FALSE(result2);
 
-  base::Optional<std::pair<unsigned int, std::string>> result3 =
+  std::optional<std::pair<unsigned int, std::string>> result3 =
       ExtractCidValue(props_wrong_cid);
   EXPECT_FALSE(result3);
 }

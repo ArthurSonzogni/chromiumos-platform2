@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -120,8 +121,8 @@ struct ManagerProperties {
   std::string dhcp_hostname;
 
 #if !defined(DISABLE_WIFI)
-  base::Optional<bool> ft_enabled;
-  bool scan_allow_roam = true;
+    std::optional<bool> ft_enabled;
+    bool scan_allow_roam = true;
 #endif  // !DISABLE_WIFI
 };
 

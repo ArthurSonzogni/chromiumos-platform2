@@ -5,6 +5,7 @@
 #include "federated/storage_manager.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/strings/stringprintf.h>
@@ -75,8 +76,8 @@ TEST_F(StorageManagerTest, ExampleStreaming) {
       .WillOnce(Return(ByMove(std::move(std::get<1>(db_and_it)))));
 
   // Fail due to !example_database_->IsOpen.
-  EXPECT_EQ(storage_manager_->GetExampleIterator("fake_client"), base::nullopt);
-  base::Optional<ExampleDatabase::Iterator> it =
+  EXPECT_EQ(storage_manager_->GetExampleIterator("fake_client"), std::nullopt);
+  std::optional<ExampleDatabase::Iterator> it =
       storage_manager_->GetExampleIterator("fake_client");
   ASSERT_TRUE(it.has_value());
 
@@ -107,7 +108,7 @@ TEST_F(StorageManagerTest, ExampleStreamingMinimum) {
   EXPECT_CALL(*example_database_, ExampleCount("fake_client"))
       .WillOnce(Return(kMinExampleCount - 1));
 
-  EXPECT_EQ(storage_manager_->GetExampleIterator("fake_client"), base::nullopt);
+  EXPECT_EQ(storage_manager_->GetExampleIterator("fake_client"), std::nullopt);
 }
 
 }  // namespace federated

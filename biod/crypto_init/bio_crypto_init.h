@@ -6,6 +6,7 @@
 #define BIOD_CRYPTO_INIT_BIO_CRYPTO_INIT_H_
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -31,7 +32,7 @@ class BioCryptoInit {
 
  protected:
   virtual bool InitCrosFp();
-  virtual base::Optional<uint32_t> GetFirmwareTemplateVersion();
+  virtual std::optional<uint32_t> GetFirmwareTemplateVersion();
   virtual bool WriteSeedToCrosFp(const brillo::SecureVector& seed);
   virtual base::ScopedFD OpenCrosFpDevice();
   virtual bool WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,

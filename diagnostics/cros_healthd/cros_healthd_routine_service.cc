@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/cros_healthd_routine_service.h"
 
 #include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -106,7 +107,7 @@ void CrosHealthdRoutineService::GetRoutineUpdate(
 
 void CrosHealthdRoutineService::RunAcPowerRoutine(
     mojo_ipc::AcPowerStatusEnum expected_status,
-    const base::Optional<std::string>& expected_power_type,
+    const std::optional<std::string>& expected_power_type,
     RunAcPowerRoutineCallback callback) {
   RunRoutine(routine_factory_->MakeAcPowerRoutine(expected_status,
                                                   expected_power_type),
@@ -157,7 +158,7 @@ void CrosHealthdRoutineService::RunCaptivePortalRoutine(
 void CrosHealthdRoutineService::RunCpuCacheRoutine(
     chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
     RunCpuCacheRoutineCallback callback) {
-  base::Optional<base::TimeDelta> exec_duration;
+  std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
     exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakeCpuCacheRoutine(exec_duration),
@@ -167,7 +168,7 @@ void CrosHealthdRoutineService::RunCpuCacheRoutine(
 void CrosHealthdRoutineService::RunCpuStressRoutine(
     chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
     RunCpuStressRoutineCallback callback) {
-  base::Optional<base::TimeDelta> exec_duration;
+  std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
     exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakeCpuStressRoutine(exec_duration),
@@ -207,7 +208,7 @@ void CrosHealthdRoutineService::RunDnsResolverPresentRoutine(
 void CrosHealthdRoutineService::RunFloatingPointAccuracyRoutine(
     chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
     RunFloatingPointAccuracyRoutineCallback callback) {
-  base::Optional<base::TimeDelta> exec_duration;
+  std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
     exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakeFloatingPointAccuracyRoutine(exec_duration),
@@ -283,7 +284,7 @@ void CrosHealthdRoutineService::RunNvmeWearLevelRoutine(
 void CrosHealthdRoutineService::RunPrimeSearchRoutine(
     chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
     RunPrimeSearchRoutineCallback callback) {
-  base::Optional<base::TimeDelta> exec_duration;
+  std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
     exec_duration = base::Seconds(length_seconds->value);
   RunRoutine(routine_factory_->MakePrimeSearchRoutine(exec_duration),
@@ -313,7 +314,7 @@ void CrosHealthdRoutineService::RunUrandomRoutine(
 }
 
 void CrosHealthdRoutineService::RunVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname,
+    const std::optional<std::string>& stun_server_hostname,
     RunVideoConferencingRoutineCallback callback) {
   RunRoutine(
       routine_factory_->MakeVideoConferencingRoutine(stun_server_hostname),

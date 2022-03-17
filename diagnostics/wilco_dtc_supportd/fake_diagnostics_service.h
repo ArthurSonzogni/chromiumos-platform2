@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_FAKE_DIAGNOSTICS_SERVICE_H_
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -56,7 +57,7 @@ class FakeDiagnosticsService final
       RunSmartctlCheckRoutineCallback callback) override;
   void RunAcPowerRoutine(
       chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-      const base::Optional<std::string>& expected_power_type,
+      const std::optional<std::string>& expected_power_type,
       RunAcPowerRoutineCallback callback) override;
   void RunCpuCacheRoutine(
       chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
@@ -105,7 +106,7 @@ class FakeDiagnosticsService final
   void RunHttpsFirewallRoutine(RunHttpsFirewallRoutineCallback) override;
   void RunHttpsLatencyRoutine(RunHttpsLatencyRoutineCallback) override;
   void RunVideoConferencingRoutine(
-      const base::Optional<std::string>& stun_server_hostname,
+      const std::optional<std::string>& stun_server_hostname,
       RunVideoConferencingRoutineCallback) override;
   void RunArcHttpRoutine(RunArcHttpRoutineCallback) override;
   void RunArcPingRoutine(RunArcPingRoutineCallback) override;

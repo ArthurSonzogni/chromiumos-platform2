@@ -5,6 +5,7 @@
 #include "arc/keymaster/context/chaps_client.h"
 
 #include <iterator>
+#include <optional>
 
 #include <base/logging.h>
 #include <chaps/pkcs11/cryptoki.h>
@@ -76,9 +77,9 @@ class ScopedSession {
   ScopedSession(const ScopedSession&) = delete;
   ScopedSession& operator=(const ScopedSession&) = delete;
 
-  base::Optional<CK_SESSION_HANDLE> handle() const {
+  std::optional<CK_SESSION_HANDLE> handle() const {
     if (CK_INVALID_HANDLE == handle_)
-      return base::nullopt;
+      return std::nullopt;
     return handle_;
   }
 
@@ -94,13 +95,12 @@ ChapsClient::ChapsClient(base::WeakPtr<ContextAdaptor> context_adaptor,
 
 ChapsClient::~ChapsClient() = default;
 
-base::Optional<brillo::SecureBlob>
-ChapsClient::ExportOrGenerateEncryptionKey() {
+std::optional<brillo::SecureBlob> ChapsClient::ExportOrGenerateEncryptionKey() {
   if (!context_adaptor_)
-    return base::nullopt;
+    return std::nullopt;
   if (!context_adaptor_->encryption_key().has_value()) {
     for (size_t attempts = 0; attempts < kMaxAttemps; ++attempts) {
-      base::Optional<CK_OBJECT_HANDLE> handle = FindKey(kEncryptKeyLabel);
+      std::optional<CK_OBJECT_HANDLE> handle = FindKey(kEncryptKeyLabel);
       if (!handle.has_value())
         handle = GenerateEncryptionKey();
       if (handle.has_value()) {
@@ -131,14 +131,14 @@ ChapsClient::ExportOrGenerateEncryptionKey() {
   return context_adaptor_->encryption_key();
 }
 
-base::Optional<CK_SESSION_HANDLE> ChapsClient::session_handle() {
+std::optional<CK_SESSION_HANDLE> ChapsClient::session_handle() {
   if (!session_ && context_adaptor_) {
-    base::Optional<CK_SLOT_ID> slot_id = context_adaptor_->FetchSlotId(slot_);
+    std::optional<CK_SLOT_ID> slot_id = context_adaptor_->FetchSlotId(slot_);
     if (slot_id.has_value())
       session_ = std::make_unique<internal::ScopedSession>(slot_id.value());
   }
 
-  return session_ ? session_->handle() : base::nullopt;
+  return session_ ? session_->handle() : std::nullopt;
 }
 
 bool ChapsClient::InitializeSignature(CK_MECHANISM_TYPE mechanism_type,
@@ -176,9 +176,9 @@ bool ChapsClient::UpdateSignature(const brillo::Blob& input) {
   return true;
 }
 
-base::Optional<brillo::Blob> ChapsClient::FinalizeSignature() {
+std::optional<brillo::Blob> ChapsClient::FinalizeSignature() {
   if (!session_handle().has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   brillo::Blob output(kMaxSignatureSize);
   CK_ULONG output_len = output.size();
@@ -186,17 +186,16 @@ base::Optional<brillo::Blob> ChapsClient::FinalizeSignature() {
   CK_RV rv = C_SignFinal(*session_handle(), output.data(), &output_len);
   if (CKR_OK != rv) {
     LOG(ERROR) << "Failed to finalize signature: " << rv;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   output.resize(output_len);
   return output;
 }
 
-base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindKey(
-    const std::string& label) {
+std::optional<CK_OBJECT_HANDLE> ChapsClient::FindKey(const std::string& label) {
   if (!session_handle().has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   std::string mutable_application_id(kApplicationID);
   std::string mutable_label(label);
@@ -225,7 +224,7 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindKey(
     }
     if (CKR_OK != rv) {
       LOG(ERROR) << "Key search init failed for label=" << label;
-      return base::nullopt;
+      return std::nullopt;
     }
 
     count = 0;
@@ -236,7 +235,7 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindKey(
     }
     if (CKR_OK != rv) {
       LOG(ERROR) << "Key search failed for label=" << label;
-      return base::nullopt;
+      return std::nullopt;
     }
 
     rv = C_FindObjectsFinal(*session_handle());
@@ -252,7 +251,7 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindKey(
 
   if (count == 0) {
     LOG(INFO) << "No objects found with label=" << label;
-    return base::nullopt;
+    return std::nullopt;
   } else if (count > 1) {
     LOG(WARNING) << count << " objects found with label=" << label
                  << ", returning the first one.";
@@ -274,12 +273,12 @@ CK_RV ChapsClient::ExportKey(CK_OBJECT_HANDLE key_handle,
   return CKR_OK;
 }
 
-base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindObject(
+std::optional<CK_OBJECT_HANDLE> ChapsClient::FindObject(
     CK_OBJECT_CLASS object_class,
     const std::string& label,
     const brillo::Blob& id) {
   if (!session_handle().has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   // Assemble a search template.
   std::string mutable_label(label);
@@ -301,7 +300,7 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindObject(
     }
     if (CKR_OK != rv) {
       LOG(ERROR) << "Failed to initialize find object call: " << rv;
-      return base::nullopt;
+      return std::nullopt;
     }
 
     count = 0;
@@ -312,7 +311,7 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindObject(
     }
     if (CKR_OK != rv) {
       LOG(ERROR) << "Find objects call failed: " << rv;
-      return base::nullopt;
+      return std::nullopt;
     }
 
     break;
@@ -320,7 +319,7 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindObject(
 
   if (count == 0) {
     LOG(INFO) << "No objects found for label=" << label;
-    return base::nullopt;
+    return std::nullopt;
   } else if (count > 1) {
     LOG(WARNING) << count << " objects found with label=" << label
                  << ", returning the first one.";
@@ -329,15 +328,15 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::FindObject(
   return handles[0];
 }
 
-base::Optional<brillo::Blob> ChapsClient::ExportSubjectPublicKeyInfo(
+std::optional<brillo::Blob> ChapsClient::ExportSubjectPublicKeyInfo(
     const std::string& label, const brillo::Blob& id) {
   brillo::SecureBlob cert_x509_der_encoded;
   for (size_t attempts = 0; attempts < kMaxAttemps; ++attempts) {
     // Get a handle to the certificate object.
-    base::Optional<CK_OBJECT_HANDLE> cert_handle =
+    std::optional<CK_OBJECT_HANDLE> cert_handle =
         FindObject(CKO_CERTIFICATE, label, id);
     if (!cert_handle.has_value())
-      return base::nullopt;
+      return std::nullopt;
 
     // Fetch the DER encoded certificate in x509 format.
     CK_RV rv = GetBytesAttribute(cert_handle.value(), CKA_VALUE,
@@ -348,7 +347,7 @@ base::Optional<brillo::Blob> ChapsClient::ExportSubjectPublicKeyInfo(
     }
     if (CKR_OK != rv) {
       LOG(ERROR) << "Failed to export certificate x509 from chaps: " << rv;
-      return base::nullopt;
+      return std::nullopt;
     }
 
     break;
@@ -360,7 +359,7 @@ base::Optional<brillo::Blob> ChapsClient::ExportSubjectPublicKeyInfo(
       d2i_X509(/*px=*/nullptr, &cert_der, cert_x509_der_encoded.size()));
   if (!cert_x509) {
     LOG(ERROR) << "Failed to parse certificate x509.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Export the SubjectPublicKeyInfo from the x509.
@@ -368,16 +367,16 @@ base::Optional<brillo::Blob> ChapsClient::ExportSubjectPublicKeyInfo(
   int length = i2d_X509_PUBKEY(X509_get_X509_PUBKEY(cert_x509.get()), &spki);
   if (length < 0) {
     LOG(ERROR) << "Failed to parse SubjectPublicKeyInfo from x509.";
-    return base::nullopt;
+    return std::nullopt;
   }
   crypto::ScopedOpenSSLBytes scoped_pubkey_buffer(spki);
 
   return brillo::Blob(spki, spki + length);
 }
 
-base::Optional<CK_OBJECT_HANDLE> ChapsClient::GenerateEncryptionKey() {
+std::optional<CK_OBJECT_HANDLE> ChapsClient::GenerateEncryptionKey() {
   if (!session_handle().has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   std::string mutable_application_id(kApplicationID);
   std::string mutable_label(kEncryptKeyLabel);
@@ -411,7 +410,7 @@ base::Optional<CK_OBJECT_HANDLE> ChapsClient::GenerateEncryptionKey() {
     }
     if (CKR_OK != rv) {
       LOG(ERROR) << "Failed to generate encryption key.";
-      return base::nullopt;
+      return std::nullopt;
     }
 
     break;

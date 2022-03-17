@@ -5,12 +5,12 @@
 #ifndef ML_SODA_H_
 #define ML_SODA_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/no_destructor.h>
-#include <base/optional.h>
 #include <base/scoped_native_library.h>
 #include <chromeos/libsoda/soda_async_impl.h>
 
@@ -73,7 +73,7 @@ class SodaLibrary {
   SodaLibrary(const SodaLibrary&) = delete;
   SodaLibrary& operator=(const SodaLibrary&) = delete;
 
-  base::Optional<base::ScopedNativeLibrary> library_;
+  std::optional<base::ScopedNativeLibrary> library_;
   Status status_;
 
   // These pointers are used to store the "extended" interface function

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include "missive/compression/compression_module.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -17,7 +18,6 @@
 
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_interface.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -39,12 +39,12 @@ scoped_refptr<CompressionModule> CompressionModule::Create(
 
 void CompressionModule::CompressRecord(
     std::string record,
-    base::OnceCallback<void(std::string,
-                            absl::optional<CompressionInformation>)> cb) const {
+    base::OnceCallback<void(std::string, std::optional<CompressionInformation>)>
+        cb) const {
   if (!is_enabled()) {
     // Compression disabled, don't compress and don't return compression
     // information.
-    std::move(cb).Run(std::move(record), absl::nullopt);
+    std::move(cb).Run(std::move(record), std::nullopt);
     return;
   }
   // Compress if record is larger than the compression threshold and compression
@@ -100,8 +100,8 @@ CompressionModule::~CompressionModule() = default;
 
 void CompressionModule::CompressRecordSnappy(
     std::string record,
-    base::OnceCallback<void(std::string,
-                            absl::optional<CompressionInformation>)> cb) const {
+    base::OnceCallback<void(std::string, std::optional<CompressionInformation>)>
+        cb) const {
   // Compression is enabled and crosses the threshold,
   std::string output;
   snappy::Compress(record.data(), record.size(), &output);

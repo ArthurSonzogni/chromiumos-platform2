@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/routines/prime_search/prime_search.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,8 +25,8 @@ constexpr char kPrimeSearchExePath[] = "/usr/libexec/diagnostics/prime-search";
 const uint64_t kPrimeSearchDefaultMaxNum = 1000000;
 
 std::unique_ptr<DiagnosticRoutine> CreatePrimeSearchRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration,
-    const base::Optional<uint64_t>& max_num) {
+    const std::optional<base::TimeDelta>& exec_duration,
+    const std::optional<uint64_t>& max_num) {
   base::TimeDelta duration = exec_duration.value_or(kDefaultCpuStressRuntime);
   return std::make_unique<SubprocRoutine>(
       base::CommandLine(std::vector<std::string>{

@@ -6,11 +6,11 @@
 #define LIBBRILLO_BRILLO_HTTP_MOCK_TRANSPORT_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/location.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <brillo/http/http_transport.h>
 #include <gmock/gmock.h>
 
@@ -50,8 +50,8 @@ class MockTransport : public Transport {
               (const std::string&, uint16_t, const std::string&),
               (override));
 
-  MOCK_METHOD(void, SetBufferSize, (base::Optional<int>), (override));
-  MOCK_METHOD(void, SetUploadBufferSize, (base::Optional<int>), (override));
+  MOCK_METHOD(void, SetBufferSize, (std::optional<int>), (override));
+  MOCK_METHOD(void, SetUploadBufferSize, (std::optional<int>), (override));
 
  protected:
   MOCK_METHOD(void, ClearHost, (), (override));

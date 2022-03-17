@@ -6,6 +6,7 @@
 #define MEMS_SETUP_CONFIGURATION_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -61,7 +62,7 @@ class Configuration {
   libmems::IioDevice* sensor_;    // non-owned
   libmems::IioContext* context_;  // non-owned
 
-  base::Optional<gid_t> iioservice_gid_ = base::nullopt;
+  std::optional<gid_t> iioservice_gid_ = std::nullopt;
 };
 
 }  // namespace mems_setup

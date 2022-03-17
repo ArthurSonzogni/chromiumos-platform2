@@ -6,9 +6,9 @@
 #define U2FD_U2FHID_SERVICE_H_
 
 #include <functional>
+#include <optional>
 
 #include <attestation/proto_bindings/interface.pb.h>
-#include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <metrics/metrics_library.h>
 
@@ -33,9 +33,9 @@ class U2fHidService {
                             MetricsLibraryInterface* metrics) = 0;
 
   // Returns a certified copy of the G2F certificate from attestationd, or
-  // base::nullopt on error. The size of the G2F certificate is variable, and
+  // std::nullopt on error. The size of the G2F certificate is variable, and
   // must be specified in |g2f_cert_size|.
-  virtual base::Optional<attestation::GetCertifiedNvIndexReply>
+  virtual std::optional<attestation::GetCertifiedNvIndexReply>
   GetCertifiedG2fCert(int g2f_cert_size) = 0;
 
   virtual TpmVendorCommandProxy* tpm_proxy() = 0;

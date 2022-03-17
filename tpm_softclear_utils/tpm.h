@@ -5,10 +5,10 @@
 #ifndef TPM_SOFTCLEAR_UTILS_TPM_H_
 #define TPM_SOFTCLEAR_UTILS_TPM_H_
 
+#include <optional>
 #include <string>
 
 #include <base/macros.h>
-#include <base/optional.h>
 
 namespace tpm_softclear_utils {
 
@@ -37,7 +37,7 @@ class Tpm {
   //
   // This function doesn't check if the password, either default or from a file,
   // works. Callers need to figure it out by themselves.
-  virtual base::Optional<std::string> GetAuthForOwnerReset() = 0;
+  virtual std::optional<std::string> GetAuthForOwnerReset() = 0;
 
   // Resets TPM's owner hierarchy (and endorsement hierarchy for 2.0) using the
   // given auth value |auth_for_owner_reset| and returns if the TPM is

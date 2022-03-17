@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 
 #include "hermes/context.h"
 #include "hermes/dbus_bindings/org.chromium.Hermes.Manager.h"
@@ -25,7 +26,7 @@ class Manager final : public EuiccManagerInterface {
   void OnEuiccUpdated(uint8_t physical_slot, EuiccSlotInfo slot_info) override;
   void OnEuiccRemoved(uint8_t physical_slot) override;
   void OnLogicalSlotUpdated(uint8_t physical_slot,
-                            base::Optional<uint8_t> logical_slot) override;
+                            std::optional<uint8_t> logical_slot) override;
 
  private:
   void UpdateAvailableEuiccsProperty();

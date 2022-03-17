@@ -4,6 +4,8 @@
 
 #include "vm_tools/concierge/vm_base_impl.h"
 
+#include <optional>
+
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -44,7 +46,7 @@ VmBaseImpl::VmBaseImpl(
   CHECK(runtime_dir_.Set(runtime_dir));
 }
 
-base::Optional<BalloonStats> VmBaseImpl::GetBalloonStats() {
+std::optional<BalloonStats> VmBaseImpl::GetBalloonStats() {
   return vm_tools::concierge::GetBalloonStats(GetVmSocketPath());
 }
 

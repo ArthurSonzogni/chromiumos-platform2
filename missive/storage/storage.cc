@@ -5,6 +5,7 @@
 #include "missive/storage/storage.h"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -470,7 +471,7 @@ class Storage::KeyInStorage {
   // Enumerates found key files and locates one with the highest index and
   // valid key. Returns pair of file name and loaded signed key proto.
   // Called once, during initialization.
-  absl::optional<std::pair<base::FilePath, SignedEncryptionInfo>>
+  std::optional<std::pair<base::FilePath, SignedEncryptionInfo>>
   LocateValidKeyAndParse(
       const base::flat_map<uint64_t, base::FilePath>& found_key_files) {
     // Try to unserialize the key from each found file (latest first).
@@ -521,7 +522,7 @@ class Storage::KeyInStorage {
     }
 
     // Not found, return error.
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   // Index of the file to serialize the signed key to.
@@ -725,7 +726,7 @@ void Storage::Write(Priority priority,
 }
 
 void Storage::Confirm(Priority priority,
-                      absl::optional<int64_t> seq_number,
+                      std::optional<int64_t> seq_number,
                       bool force,
                       base::OnceCallback<void(Status)> completion_cb) {
   // Note: queues_ never change after initialization is finished, so there is

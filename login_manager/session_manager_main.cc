@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -23,7 +24,6 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop/message_pump_type.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -184,7 +184,7 @@ int main(int argc, char* argv[]) {
 
   // Job configuration.
   BrowserJob::Config config;
-  base::Optional<base::FilePath> ns_path;
+  std::optional<base::FilePath> ns_path;
   // TODO(crbug.com/188605, crbug.com/216789): Extend user session isolation and
   // make it stricter.
   // Back when the above bugs were filed, the interaction between

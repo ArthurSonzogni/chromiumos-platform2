@@ -13,6 +13,7 @@
 // Needs to be included after sys/socket.h
 #include <linux/vm_sockets.h>
 
+#include <optional>
 #include <tuple>
 #include <utility>
 
@@ -445,7 +446,7 @@ bool ArcVm::DetachUsbDevice(uint8_t port, UsbControlResponse* response) {
 
 namespace {
 
-base::Optional<ZoneInfoStats> ArcVmZoneStats(uint32_t cid, bool log_on_error) {
+std::optional<ZoneInfoStats> ArcVmZoneStats(uint32_t cid, bool log_on_error) {
   brillo::ProcessImpl vsh;
   vsh.AddArg("/usr/bin/vsh");
   vsh.AddArg(base::StringPrintf("--cid=%u", cid));
@@ -460,7 +461,7 @@ base::Optional<ZoneInfoStats> ArcVmZoneStats(uint32_t cid, bool log_on_error) {
     if (log_on_error) {
       LOG(ERROR) << "Failed to run vsh: " << vsh.GetOutputString(STDERR_FILENO);
     }
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string zoneinfo = vsh.GetOutputString(STDOUT_FILENO);

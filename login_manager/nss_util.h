@@ -8,12 +8,12 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <crypto/scoped_nss_types.h>
 
 namespace crypto {
@@ -26,10 +26,10 @@ typedef struct PK11SlotInfoStr PK11SlotInfo;
 
 struct PK11SlotDescriptor {
   crypto::ScopedPK11Slot slot;
-  base::Optional<base::FilePath> ns_mnt_path;
+  std::optional<base::FilePath> ns_mnt_path;
 };
 
-using OptionalFilePath = base::Optional<base::FilePath>;
+using OptionalFilePath = std::optional<base::FilePath>;
 
 using ScopedPK11SlotDescriptor = std::unique_ptr<PK11SlotDescriptor>;
 

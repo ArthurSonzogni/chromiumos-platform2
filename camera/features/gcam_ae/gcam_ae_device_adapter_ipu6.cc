@@ -6,6 +6,7 @@
 
 #include "features/gcam_ae/gcam_ae_device_adapter_ipu6.h"
 
+#include <optional>
 #include <utility>
 
 #include <sync/sync.h>
@@ -107,7 +108,7 @@ bool GcamAeDeviceAdapterIpu6::ExtractAeStats(Camera3CaptureDescriptor* result,
 
   // We should create the entry only when there's valid AE stats, so that when
   // HasAeStats() returns true there's indeed valid AE stats.
-  base::Optional<AeStatsEntry*> entry =
+  std::optional<AeStatsEntry*> entry =
       GetAeStatsEntry(result->frame_number(), /*create_entry=*/true);
 
   (*entry)->ae_stats.white_level = kIpu6WhiteLevel;
@@ -188,7 +189,7 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
 
   AeResult ae_result;
   if (frame_info.ae_stats_input_mode == AeStatsInputMode::kFromVendorAeStats) {
-    base::Optional<AeStatsEntry*> entry = GetAeStatsEntry(frame_number);
+    std::optional<AeStatsEntry*> entry = GetAeStatsEntry(frame_number);
     if (!entry) {
       LOGF(ERROR) << "Cannot find AE stats entry for frame " << frame_number;
       return ae_parameters;
@@ -260,13 +261,13 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
   return ae_parameters;
 }
 
-base::Optional<GcamAeDeviceAdapterIpu6::AeStatsEntry*>
+std::optional<GcamAeDeviceAdapterIpu6::AeStatsEntry*>
 GcamAeDeviceAdapterIpu6::GetAeStatsEntry(int frame_number, bool create_entry) {
   int index = frame_number % ae_stats_.size();
   AeStatsEntry& entry = ae_stats_[index];
   if (entry.frame_number != frame_number) {
     if (!create_entry) {
-      return base::nullopt;
+      return std::nullopt;
     }
     // Clear the outdated AE stats.
     entry.frame_number = frame_number;

@@ -5,6 +5,7 @@
 #include "cryptohome/storage/encrypted_container/loopback_device.h"
 
 #include <memory>
+#include <optional>
 
 #include <base/files/file_path.h>
 #include <base/values.h>

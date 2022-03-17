@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <fstream>
 #include <list>
+#include <optional>
 #include <set>
 #include <utility>
 
@@ -883,7 +884,7 @@ bool GetOciContainerState(const base::FilePath& path,
   }
 
   // Get the container PID and the rootfs path.
-  base::Optional<int> pid = container_state.value->FindIntKey("pid");
+  std::optional<int> pid = container_state.value->FindIntKey("pid");
   if (!pid) {
     LOG(ERROR) << "Failed to get PID from container state";
     return false;
@@ -1160,14 +1161,14 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
   return WriteToFile(fstab_path, 0644, firstStageFstabTemplate);
 }
 
-base::Optional<std::string> FilterMediaProfile(
+std::optional<std::string> FilterMediaProfile(
     const base::FilePath& media_profile_xml,
     const base::FilePath& camera_test_config) {
   std::string content;
   if (!base::ReadFileToString(media_profile_xml, &content)) {
     LOG(ERROR) << "Failed to read media profile from "
                << media_profile_xml.value();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!base::PathExists(camera_test_config)) {
@@ -1201,11 +1202,11 @@ base::Optional<std::string> FilterMediaProfile(
   xmlDocPtr doc;
 
   auto result = [&doc, &content, enable_front_camera,
-                 enable_back_camera]() -> base::Optional<std::string> {
+                 enable_back_camera]() -> std::optional<std::string> {
     doc = xmlReadMemory(content.c_str(), content.size(), NULL, NULL, 0);
     if (doc == NULL) {
       LOG(ERROR) << "Failed to parse media profile content:\n" << content;
-      return base::nullopt;
+      return std::nullopt;
     }
     // For keeping indent.
     xmlKeepBlanksDefault(0);
@@ -1214,13 +1215,13 @@ base::Optional<std::string> FilterMediaProfile(
     if (settings == NULL) {
       LOG(ERROR) << "No root element node found in media profile content:\n"
                  << content;
-      return base::nullopt;
+      return std::nullopt;
     }
     if (std::string(reinterpret_cast<const char*>(settings->name)) !=
         "MediaSettings") {
       LOG(ERROR) << "Failed to find media settings in media profile content:\n"
                  << content;
-      return base::nullopt;
+      return std::nullopt;
     }
 
     std::vector<xmlNodePtr> camera_profiles;
@@ -1237,7 +1238,7 @@ base::Optional<std::string> FilterMediaProfile(
       case 0:
         LOG(ERROR) << "No camera profile found in media profile content:\n"
                    << content;
-        return base::nullopt;
+        return std::nullopt;
       case 1:
         // The original content of media profile may already be filtered by test
         // code[1]. Here we ensure there's always have at least one camera to be
@@ -1250,7 +1251,7 @@ base::Optional<std::string> FilterMediaProfile(
         break;
       default:
         NOTREACHED() << "Found more than 2 camera profiles";
-        return base::nullopt;
+        return std::nullopt;
     }
 
     xmlNodePtr front_camera_profile = NULL;
@@ -1268,7 +1269,7 @@ base::Optional<std::string> FilterMediaProfile(
         LOG(ERROR) << "Unknown cameraId \"" << cameraId
                    << "\" in media profile content:\n"
                    << content;
-        return base::nullopt;
+        return std::nullopt;
       }
     }
 

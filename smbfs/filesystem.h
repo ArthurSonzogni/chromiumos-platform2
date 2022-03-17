@@ -8,10 +8,10 @@
 #include <fuse_lowlevel.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/macros.h>
-#include <base/optional.h>
 
 #include "smbfs/request.h"
 
@@ -31,7 +31,7 @@ class Filesystem {
   virtual void GetAttr(std::unique_ptr<AttrRequest> request, fuse_ino_t inode);
   virtual void SetAttr(std::unique_ptr<AttrRequest> request,
                        fuse_ino_t inode,
-                       base::Optional<uint64_t> file_handle,
+                       std::optional<uint64_t> file_handle,
                        const struct stat& attr,
                        int to_set);
 

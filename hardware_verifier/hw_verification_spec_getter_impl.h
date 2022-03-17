@@ -7,6 +7,7 @@
 #define HARDWARE_VERIFIER_HW_VERIFICATION_SPEC_GETTER_IMPL_H_
 
 #include <memory>
+#include <optional>
 
 #include <base/files/file_path.h>
 
@@ -31,8 +32,8 @@ class HwVerificationSpecGetterImpl : public HwVerificationSpecGetter {
   HwVerificationSpecGetterImpl& operator=(const HwVerificationSpecGetterImpl&) =
       delete;
 
-  base::Optional<HwVerificationSpec> GetDefault() const override;
-  base::Optional<HwVerificationSpec> GetFromFile(
+  std::optional<HwVerificationSpec> GetDefault() const override;
+  std::optional<HwVerificationSpec> GetFromFile(
       const base::FilePath& file_path) const override;
 
  private:

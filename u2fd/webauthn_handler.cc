@@ -5,6 +5,7 @@
 #include "u2fd/webauthn_handler.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -150,7 +151,7 @@ void WebAuthnHandler::Initialize(
     // WebAuthnHandler should normally initialize on boot, before any user has
     // logged in. If there's already a user, then we have crashed during a user
     // session, so catch up on the state.
-    base::Optional<std::string> user = user_state_->GetUser();
+    std::optional<std::string> user = user_state_->GetUser();
     DCHECK(user);
     OnSessionStarted(*user);
   }
@@ -169,7 +170,7 @@ void WebAuthnHandler::OnSessionStarted(const std::string& account_id) {
   GetWebAuthnSecretHashAsync(account_id);
 
   webauthn_storage_->set_allow_access(true);
-  base::Optional<std::string> sanitized_user = user_state_->GetSanitizedUser();
+  std::optional<std::string> sanitized_user = user_state_->GetSanitizedUser();
   DCHECK(sanitized_user);
   webauthn_storage_->set_sanitized_user(*sanitized_user);
 
@@ -447,7 +448,7 @@ void WebAuthnHandler::DoMakeCredential(
   } else {
     // We are creating a credential that can only be signed with power button
     // press, and can be signed by u2f/g2f, so we must use the legacy secret.
-    base::Optional<brillo::SecureBlob> legacy_secret =
+    std::optional<brillo::SecureBlob> legacy_secret =
         user_state_->GetUserSecret();
     if (!legacy_secret) {
       LOG(ERROR) << "Cannot find user secret when trying to create u2f/g2f "
@@ -489,7 +490,7 @@ void WebAuthnHandler::DoMakeCredential(
     return;
   }
 
-  const base::Optional<std::vector<uint8_t>> authenticator_data =
+  const std::optional<std::vector<uint8_t>> authenticator_data =
       MakeAuthenticatorData(
           rp_id_hash, credential_id, credential_public_key,
           /* user_verified = */ session.request.verification_type() ==
@@ -513,7 +514,7 @@ void WebAuthnHandler::DoMakeCredential(
         util::BuildU2fRegisterResponseSignedData(
             rp_id_hash, util::ToVector(session.request.client_data_hash()),
             credential_public_key, credential_id);
-    base::Optional<std::vector<uint8_t>> attestation_statement =
+    std::optional<std::vector<uint8_t>> attestation_statement =
         MakeFidoU2fAttestationStatement(
             data_to_sign, session.request.attestation_conveyance_preference());
     if (!attestation_statement) {
@@ -561,7 +562,7 @@ void WebAuthnHandler::DoMakeCredential(
 // | Attested Credential Data: | Credential ID length (L): 2 bytes
 // | (if present)              | Credential ID:            L bytes
 // |                           | Credential public key:    variable length
-base::Optional<std::vector<uint8_t>> WebAuthnHandler::MakeAuthenticatorData(
+std::optional<std::vector<uint8_t>> WebAuthnHandler::MakeAuthenticatorData(
     const std::vector<uint8_t>& rp_id_hash,
     const std::vector<uint8_t>& credential_id,
     const std::vector<uint8_t>& credential_public_key,
@@ -583,10 +584,10 @@ base::Optional<std::vector<uint8_t>> WebAuthnHandler::MakeAuthenticatorData(
   // For platform authenticator credentials, we derive a counter from a
   // timestamp instead.
   if (is_u2f_authenticator_credential) {
-    base::Optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
+    std::optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
     if (!counter || !user_state_->IncrementCounter()) {
       // UserState logs an error in this case.
-      return base::nullopt;
+      return std::nullopt;
     }
     util::AppendToVector(*counter, &authenticator_data);
   } else {
@@ -614,7 +615,7 @@ void WebAuthnHandler::AppendNoneAttestation(MakeCredentialResponse* response) {
       kAttestationStatementNone);
 }
 
-base::Optional<std::vector<uint8_t>>
+std::optional<std::vector<uint8_t>>
 WebAuthnHandler::MakeFidoU2fAttestationStatement(
     const std::vector<uint8_t>& data_to_sign,
     const MakeCredentialRequest::AttestationConveyancePreference
@@ -623,20 +624,20 @@ WebAuthnHandler::MakeFidoU2fAttestationStatement(
   std::vector<uint8_t> signature;
   if (attestation_conveyance_preference == MakeCredentialRequest::G2F &&
       u2f_mode_ == U2fMode::kU2fExtended) {
-    base::Optional<std::vector<uint8_t>> g2f_cert =
+    std::optional<std::vector<uint8_t>> g2f_cert =
         u2f_command_processor_->GetG2fCert();
     if (g2f_cert.has_value()) {
       attestation_cert = *g2f_cert;
     } else {
       LOG(ERROR) << "Failed to get G2f cert for MakeCredential";
-      return base::nullopt;
+      return std::nullopt;
     }
 
-    base::Optional<brillo::SecureBlob> user_secret =
+    std::optional<brillo::SecureBlob> user_secret =
         user_state_->GetUserSecret();
     if (!user_secret.has_value()) {
       LOG(ERROR) << "No user secret.";
-      return base::nullopt;
+      return std::nullopt;
     }
 
     MakeCredentialResponse::MakeCredentialStatus attest_status =
@@ -645,18 +646,18 @@ WebAuthnHandler::MakeFidoU2fAttestationStatement(
 
     if (attest_status != MakeCredentialResponse::SUCCESS) {
       LOG(ERROR) << "Failed to do G2f attestation for MakeCredential";
-      return base::nullopt;
+      return std::nullopt;
     }
 
     if (allowlisting_util_ != nullptr &&
         !allowlisting_util_->AppendDataToCert(&attestation_cert)) {
       LOG(ERROR) << "Failed to get allowlisting data for G2F Enroll Request";
-      return base::nullopt;
+      return std::nullopt;
     }
   } else {
     if (!util::DoSoftwareAttest(data_to_sign, &attestation_cert, &signature)) {
       LOG(ERROR) << "Failed to do software attestation for MakeCredential";
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
@@ -797,7 +798,7 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
     }
 
     // Maybe signing u2fhid credentials. Use legacy secret instead.
-    base::Optional<brillo::SecureBlob> legacy_secret =
+    std::optional<brillo::SecureBlob> legacy_secret =
         user_state_->GetUserSecret();
     if (!legacy_secret) {
       LOG(ERROR)
@@ -812,7 +813,7 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
   }
 
   const std::vector<uint8_t> rp_id_hash = util::Sha256(session.request.rp_id());
-  const base::Optional<std::vector<uint8_t>> authenticator_data =
+  const std::optional<std::vector<uint8_t>> authenticator_data =
       MakeAuthenticatorData(
           rp_id_hash, std::vector<uint8_t>(), std::vector<uint8_t>(),
           // If presence requirement is "power button" then the user was not
@@ -877,7 +878,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
     }
   }
 
-  const base::Optional<brillo::SecureBlob> user_secret =
+  const std::optional<brillo::SecureBlob> user_secret =
       user_state_->GetUserSecret();
   if (!user_secret) {
     result.has_internal_error = true;
@@ -1046,7 +1047,7 @@ void WebAuthnHandler::IsUvpaa(
     return;
   }
 
-  base::Optional<std::string> account_id = user_state_->GetUser();
+  std::optional<std::string> account_id = user_state_->GetUser();
   if (!account_id) {
     LOG(ERROR) << "IsUvpaa called but no user.";
     response.set_available(false);
@@ -1060,7 +1061,7 @@ void WebAuthnHandler::IsUvpaa(
     return;
   }
 
-  base::Optional<std::string> sanitized_user = user_state_->GetSanitizedUser();
+  std::optional<std::string> sanitized_user = user_state_->GetSanitizedUser();
   DCHECK(sanitized_user);
   if (HasFingerprint(*sanitized_user)) {
     response.set_available(true);

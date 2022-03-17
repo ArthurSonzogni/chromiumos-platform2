@@ -8,9 +8,9 @@
 #define CAMERA_FEATURES_GCAM_AE_GCAM_AE_CONTROLLER_H_
 
 #include <memory>
+#include <optional>
 
 #include <base/files/scoped_file.h>
-#include <base/optional.h>
 #include <cutils/native_handle.h>
 #include <system/camera_metadata.h>
 
@@ -79,11 +79,11 @@ class GcamAeController {
   // if set, triggers logging per-frame metadata.
   virtual void OnOptionsUpdated(
       const base::Value& json_values,
-      base::Optional<MetadataLogger*> metadata_logger) = 0;
+      std::optional<MetadataLogger*> metadata_logger) = 0;
 
   // Gets the HDR ratio calculated by Gcam AE.  This is normally used to get the
   // input argument to the HDRnet processing pipeline.
-  virtual base::Optional<float> GetCalculatedHdrRatio(int frame_number) = 0;
+  virtual std::optional<float> GetCalculatedHdrRatio(int frame_number) = 0;
 
   // Sets the AE parameters calculated by the AE algorithm in the capture
   // request |request|.

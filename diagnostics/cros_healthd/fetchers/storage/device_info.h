@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 #include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/disk_iostat.h"

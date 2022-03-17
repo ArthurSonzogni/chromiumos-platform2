@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 
 namespace metrics {

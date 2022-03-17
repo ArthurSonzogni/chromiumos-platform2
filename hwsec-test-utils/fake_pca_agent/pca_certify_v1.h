@@ -7,10 +7,10 @@
 
 #include "hwsec-test-utils/fake_pca_agent/pca_base.h"
 
+#include <optional>
 #include <string>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
-#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 
 namespace hwsec_test_utils {
@@ -41,7 +41,7 @@ class PcaCertifyV1
   crypto::ScopedEVP_PKEY identity_key_;
   crypto::ScopedEVP_PKEY certified_key_;
   std::string certified_key_digest_;
-  base::Optional<std::string> issued_certificate_der_;
+  std::optional<std::string> issued_certificate_der_;
 };
 
 }  // namespace fake_pca_agent

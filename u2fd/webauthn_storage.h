@@ -6,11 +6,11 @@
 #define U2FD_WEBAUTHN_STORAGE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <metrics/metrics_library.h>
 
@@ -62,7 +62,7 @@ class WebAuthnStorage {
   // Clears in-memory records.
   virtual void Reset();
 
-  virtual base::Optional<brillo::Blob> GetSecretByCredentialId(
+  virtual std::optional<brillo::Blob> GetSecretByCredentialId(
       const std::string& credential_id);
 
   virtual bool GetSecretAndKeyBlobByCredentialId(
@@ -70,7 +70,7 @@ class WebAuthnStorage {
       brillo::Blob* secret,
       brillo::Blob* key_blob);
 
-  virtual base::Optional<WebAuthnRecord> GetRecordByCredentialId(
+  virtual std::optional<WebAuthnRecord> GetRecordByCredentialId(
       const std::string& credential_id);
 
   virtual int CountRecordsInTimeRange(int64_t timestamp_min,

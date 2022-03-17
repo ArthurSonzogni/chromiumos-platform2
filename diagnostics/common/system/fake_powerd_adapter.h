@@ -6,7 +6,7 @@
 #define DIAGNOSTICS_COMMON_SYSTEM_FAKE_POWERD_ADAPTER_H_
 
 #include <base/observer_list.h>
-#include <base/optional.h>
+#include <optional>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
@@ -26,8 +26,8 @@ class FakePowerdAdapter : public PowerdAdapter {
   void RemovePowerObserver(PowerObserver* observer) override;
   void AddLidObserver(LidObserver* observer) override;
   void RemoveLidObserver(LidObserver* observer) override;
-  base::Optional<power_manager::PowerSupplyProperties>
-  GetPowerSupplyProperties() override;
+  std::optional<power_manager::PowerSupplyProperties> GetPowerSupplyProperties()
+      override;
 
   bool HasPowerObserver(PowerObserver* observer) const;
   bool HasLidObserver(LidObserver* observer) const;
@@ -44,12 +44,12 @@ class FakePowerdAdapter : public PowerdAdapter {
   void EmitLidOpenedSignal() const;
 
   void SetPowerSupplyProperties(
-      base::Optional<power_manager::PowerSupplyProperties> properties);
+      std::optional<power_manager::PowerSupplyProperties> properties);
 
  private:
   base::ObserverList<PowerObserver> power_observers_;
   base::ObserverList<LidObserver> lid_observers_;
-  base::Optional<power_manager::PowerSupplyProperties> power_supply_properties_;
+  std::optional<power_manager::PowerSupplyProperties> power_supply_properties_;
 };
 
 }  // namespace diagnostics

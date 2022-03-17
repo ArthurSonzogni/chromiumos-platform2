@@ -7,6 +7,7 @@
 #ifndef CAMERA_COMMON_SENSOR_READER_H_
 #define CAMERA_COMMON_SENSOR_READER_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -61,8 +62,8 @@ class SensorReader final : public mojom::SensorDeviceSamplesObserver {
   SamplesObserver* samples_observer_;
   mojo::Remote<mojom::SensorDevice> sensor_device_remote_;
 
-  base::Optional<int32_t> channel_indices_[kNumberOfAxes];
-  base::Optional<int32_t> timestamp_index_;
+  std::optional<int32_t> channel_indices_[kNumberOfAxes];
+  std::optional<int32_t> timestamp_index_;
 
   mojo::Receiver<mojom::SensorDeviceSamplesObserver> receiver_{this};
 

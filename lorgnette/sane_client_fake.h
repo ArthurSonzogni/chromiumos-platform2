@@ -8,10 +8,10 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <sane/sane.h>
 
 #include "lorgnette/sane_client.h"
@@ -22,7 +22,7 @@ class SaneDeviceFake;
 
 class SaneClientFake : public SaneClient {
  public:
-  base::Optional<std::vector<ScannerInfo>> ListDevices(
+  std::optional<std::vector<ScannerInfo>> ListDevices(
       brillo::ErrorPtr* error) override {
     return scanners_;
   }
@@ -54,28 +54,28 @@ class SaneDeviceFake : public SaneDevice {
   SaneDeviceFake();
   ~SaneDeviceFake();
 
-  base::Optional<ValidOptionValues> GetValidOptionValues(
+  std::optional<ValidOptionValues> GetValidOptionValues(
       brillo::ErrorPtr* error) override;
 
-  base::Optional<int> GetScanResolution(brillo::ErrorPtr* error) override {
+  std::optional<int> GetScanResolution(brillo::ErrorPtr* error) override {
     return resolution_;
   }
 
   bool SetScanResolution(brillo::ErrorPtr* error, int resolution) override;
-  base::Optional<std::string> GetDocumentSource(
+  std::optional<std::string> GetDocumentSource(
       brillo::ErrorPtr* error) override {
     return source_name_;
   }
   bool SetDocumentSource(brillo::ErrorPtr* error,
                          const std::string& source_name) override;
-  base::Optional<ColorMode> GetColorMode(brillo::ErrorPtr* error) override {
+  std::optional<ColorMode> GetColorMode(brillo::ErrorPtr* error) override {
     return color_mode_;
   }
   bool SetColorMode(brillo::ErrorPtr* error, ColorMode color_mode) override;
   bool SetScanRegion(brillo::ErrorPtr* error,
                      const ScanRegion& region) override;
   SANE_Status StartScan(brillo::ErrorPtr* error) override;
-  base::Optional<ScanParameters> GetScanParameters(
+  std::optional<ScanParameters> GetScanParameters(
       brillo::ErrorPtr* error) override;
   SANE_Status ReadScanData(brillo::ErrorPtr* error,
                            uint8_t* buf,
@@ -83,9 +83,9 @@ class SaneDeviceFake : public SaneDevice {
                            size_t* read_out) override;
   bool CancelScan(brillo::ErrorPtr* error) override;
 
-  void SetValidOptionValues(const base::Optional<ValidOptionValues>& values);
+  void SetValidOptionValues(const std::optional<ValidOptionValues>& values);
   void SetStartScanResult(SANE_Status status);
-  void SetScanParameters(const base::Optional<ScanParameters>& params);
+  void SetScanParameters(const std::optional<ScanParameters>& params);
   void SetReadScanDataResult(SANE_Status result);
   void SetScanData(const std::vector<std::vector<uint8_t>>& scan_data);
 
@@ -93,12 +93,12 @@ class SaneDeviceFake : public SaneDevice {
   int resolution_;
   std::string source_name_;
   ColorMode color_mode_;
-  base::Optional<ValidOptionValues> values_;
+  std::optional<ValidOptionValues> values_;
   SANE_Status start_scan_result_;
   SANE_Status read_scan_data_result_;
   bool scan_running_;
   bool cancelled_;
-  base::Optional<ScanParameters> params_;
+  std::optional<ScanParameters> params_;
   std::vector<std::vector<uint8_t>> scan_data_;
   size_t current_page_;
   size_t scan_data_offset_;

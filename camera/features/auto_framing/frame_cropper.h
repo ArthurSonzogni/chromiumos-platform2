@@ -8,6 +8,7 @@
 #define CAMERA_FEATURES_AUTO_FRAMING_FRAME_CROPPER_H_
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <base/files/scoped_file.h>
@@ -66,7 +67,7 @@ class FrameCropper {
       buffer_handle_t input_yuv,
       base::ScopedFD input_acquire_fence,
       buffer_handle_t output_yuv,
-      base::Optional<Rect<float>> crop_override = base::nullopt);
+      std::optional<Rect<float>> crop_override = std::nullopt);
 
   // Translates the coordinates of the normalized rectangles |rectangles| in the
   // global active array space to normalized rectangles in the crop space.

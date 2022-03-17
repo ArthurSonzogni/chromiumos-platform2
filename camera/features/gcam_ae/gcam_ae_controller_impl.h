@@ -11,6 +11,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <base/sequence_checker.h>
@@ -42,8 +43,8 @@ class GcamAeControllerImpl : public GcamAeController {
   void RecordAeMetadata(Camera3CaptureDescriptor* result) override;
   void OnOptionsUpdated(
       const base::Value& json_values,
-      base::Optional<MetadataLogger*> metadata_logger) override;
-  base::Optional<float> GetCalculatedHdrRatio(int frame_number) override;
+      std::optional<MetadataLogger*> metadata_logger) override;
+  std::optional<float> GetCalculatedHdrRatio(int frame_number) override;
   void SetRequestAeParameters(Camera3CaptureDescriptor* request) override;
   void SetResultAeMetadata(Camera3CaptureDescriptor* result) override;
 

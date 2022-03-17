@@ -5,8 +5,9 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_STUB_H_
 
+#include <optional>
+
 #include <base/observer_list.h>
-#include <base/optional.h>
 
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
 
@@ -48,7 +49,7 @@ class AmbientLightSensorStub : public AmbientLightSensorInterface {
   // If this is nullopt, IsColorSensor returns false and GetColorTemperature
   // returns -1. Otherwise, IsColorSensor returns true and GetColorTemperature
   // returns this value.
-  base::Optional<int> color_temperature_;
+  std::optional<int> color_temperature_;
 
   // Value returned by GetIlluminancePath().
   base::FilePath path_;

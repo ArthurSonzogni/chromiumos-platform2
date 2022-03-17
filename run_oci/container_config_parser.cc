@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <map>
+#include <optional>
 #include <regex>  // NOLINT(build/c++11)
 #include <string>
 #include <utility>
@@ -29,7 +30,7 @@ namespace {
 // Gets an integer from the given dictionary.
 template <typename T>
 bool ParseIntFromDict(const base::Value& dict, const char* name, T* val_out) {
-  base::Optional<double> double_val = dict.FindDoubleKey(name);
+  std::optional<double> double_val = dict.FindDoubleKey(name);
   if (!double_val.has_value()) {
     return false;
   }
@@ -89,7 +90,7 @@ bool ParseRootFileSystemConfig(const base::Value& config_root_dict,
     return false;
   }
   config_out->root.path = base::FilePath(*path);
-  base::Optional<bool> read_only = rootfs_dict->FindBoolKey("readonly");
+  std::optional<bool> read_only = rootfs_dict->FindBoolKey("readonly");
   if (read_only.has_value())
     config_out->root.readonly = *read_only;
   return true;
@@ -214,7 +215,7 @@ bool ParseProcessConfig(const base::Value& config_root_dict,
     LOG(ERROR) << "Fail to get main process from config";
     return false;
   }
-  base::Optional<bool> terminal = process_dict->FindBoolKey("terminal");
+  std::optional<bool> terminal = process_dict->FindBoolKey("terminal");
   if (terminal.has_value())
     config_out->process.terminal = *terminal;
   // |user_dict| stays owned by |process_dict|
@@ -274,7 +275,7 @@ bool ParseProcessConfig(const base::Value& config_root_dict,
     return false;
   }
   config_out->process.cwd = base::FilePath(*path);
-  base::Optional<int> umask_int = process_dict->FindIntKey("umask");
+  std::optional<int> umask_int = process_dict->FindIntKey("umask");
   if (umask_int.has_value())
     config_out->process.umask = static_cast<mode_t>(*umask_int);
   else
@@ -343,7 +344,7 @@ bool ParseMounts(const base::Value& config_root_dict,
       return false;
     }
     mount.source = base::FilePath(*source);
-    base::Optional<bool> intermediate_namespace =
+    std::optional<bool> intermediate_namespace =
         mount_dict.FindBoolKey("performInIntermediateNamespace");
     mount.performInIntermediateNamespace =
         intermediate_namespace.value_or(false);
@@ -385,7 +386,7 @@ bool ParseResources(const base::Value& resources_dict,
       return false;
     }
 
-    base::Optional<bool> allow = dev.FindBoolKey("allow");
+    std::optional<bool> allow = dev.FindBoolKey("allow");
     if (!allow.has_value()) {
       LOG(ERROR) << "Fail to get allow value for device " << i;
       return false;
@@ -462,7 +463,7 @@ bool ParseDeviceList(const base::Value& linux_dict,
       return false;
     }
     device.type = *type;
-    base::Optional<bool> dynamic_major = dev.FindBoolKey("dynamicMajor");
+    std::optional<bool> dynamic_major = dev.FindBoolKey("dynamicMajor");
     if (dynamic_major.has_value())
       device.dynamicMajor = *dynamic_major;
     if (device.dynamicMajor) {
@@ -476,7 +477,7 @@ bool ParseDeviceList(const base::Value& linux_dict,
         return false;
     }
 
-    base::Optional<bool> dynamic_minor = dev.FindBoolKey("dynamicMinor");
+    std::optional<bool> dynamic_minor = dev.FindBoolKey("dynamicMinor");
     if (dynamic_minor.has_value())
       device.dynamicMinor = *dynamic_minor;
     if (device.dynamicMinor) {
@@ -742,7 +743,7 @@ bool ParseLinuxConfigDict(const base::Value& runtime_root_dict,
   config_out->linux_config.altSyscall =
       alt_syscall ? *alt_syscall : base::EmptyString();  // Optional
 
-  base::Optional<bool> core_sched = linux_dict->FindBoolKey("coreSched");
+  std::optional<bool> core_sched = linux_dict->FindBoolKey("coreSched");
   config_out->linux_config.coreSched = core_sched.value_or(false);  // Optional
 
   const base::Value* skip_securebits_list =
@@ -836,7 +837,7 @@ bool ParseHooksList(const base::Value& hooks_list,
       }
     }
 
-    base::Optional<int> timeout_seconds = hook_dict.FindIntKey("timeout");
+    std::optional<int> timeout_seconds = hook_dict.FindIntKey("timeout");
     // timeout is optional.
     hook.timeout = timeout_seconds.has_value() ? base::Seconds(*timeout_seconds)
                                                : base::TimeDelta::Max();

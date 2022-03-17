@@ -6,10 +6,10 @@
 #define FEDERATED_STORAGE_MANAGER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/no_destructor.h>
-#include <base/optional.h>
 #include <base/sequence_checker.h>
 
 #include "federated/example_database.h"
@@ -38,7 +38,7 @@ class StorageManager : public SessionManagerObserverInterface {
   virtual void InitializeSessionManagerProxy(dbus::Bus* bus);
   virtual bool OnExampleReceived(const std::string& client_name,
                                  const std::string& serialized_example);
-  virtual base::Optional<ExampleDatabase::Iterator> GetExampleIterator(
+  virtual std::optional<ExampleDatabase::Iterator> GetExampleIterator(
       const std::string& client_name) const;
 
  protected:

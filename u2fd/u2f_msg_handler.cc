@@ -4,6 +4,7 @@
 
 #include "u2fd/u2f_msg_handler.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,7 +30,7 @@ constexpr uint8_t kU2fVer2Prefix = 5;
 // UMA Metric names.
 constexpr char kU2fCommand[] = "Platform.U2F.Command";
 
-base::Optional<std::vector<uint8_t>> GetG2fCert(TpmVendorCommandProxy* proxy) {
+std::optional<std::vector<uint8_t>> GetG2fCert(TpmVendorCommandProxy* proxy) {
   std::string cert_str;
   std::vector<uint8_t> cert;
 
@@ -38,14 +39,14 @@ base::Optional<std::vector<uint8_t>> GetG2fCert(TpmVendorCommandProxy* proxy) {
   if (get_cert_status != 0) {
     LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
                << get_cert_status;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   util::AppendToVector(cert_str, &cert);
 
   if (!util::RemoveCertificatePadding(&cert)) {
     LOG(ERROR) << "Failed to remove padding from G2F certificate ";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return cert;
@@ -73,7 +74,7 @@ U2fMessageHandler::U2fMessageHandler(
 U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
   uint16_t u2f_status = 0;
 
-  base::Optional<U2fCommandApdu> apdu =
+  std::optional<U2fCommandApdu> apdu =
       U2fCommandApdu::ParseFromString(req, &u2f_status);
 
   if (!apdu.has_value()) {
@@ -92,7 +93,7 @@ U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
 
   switch (ins) {
     case U2fIns::kU2fRegister: {
-      base::Optional<U2fRegisterRequestApdu> reg_apdu =
+      std::optional<U2fRegisterRequestApdu> reg_apdu =
           U2fRegisterRequestApdu::FromCommandApdu(*apdu, &u2f_status);
       // Chrome may send a dummy register request, which is designed to
       // cause a USB device to flash it's LED. We should simply ignore
@@ -107,7 +108,7 @@ U2fResponseApdu U2fMessageHandler::ProcessMsg(const std::string& req) {
       break;  // Handle error.
     }
     case U2fIns::kU2fAuthenticate: {
-      base::Optional<U2fAuthenticateRequestApdu> auth_apdu =
+      std::optional<U2fAuthenticateRequestApdu> auth_apdu =
           U2fAuthenticateRequestApdu::FromCommandApdu(*apdu, &u2f_status);
       if (auth_apdu.has_value()) {
         return ProcessU2fAuthenticate(*auth_apdu);
@@ -157,7 +158,7 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fRegister(
   std::vector<uint8_t> allowlisting_data;
 
   if (allow_g2f_attestation_ && request.UseG2fAttestation()) {
-    base::Optional<std::vector<uint8_t>> g2f_cert = GetG2fCert(proxy_);
+    std::optional<std::vector<uint8_t>> g2f_cert = GetG2fCert(proxy_);
 
     if (g2f_cert.has_value()) {
       attestation_cert = *g2f_cert;
@@ -227,7 +228,7 @@ U2fResponseApdu U2fMessageHandler::ProcessU2fAuthenticate(
     }
   }
 
-  base::Optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
+  std::optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
   if (!counter.has_value()) {
     LOG(ERROR) << "Failed to retrieve counter value";
     return BuildEmptyResponse(U2F_SW_WTF);
@@ -273,7 +274,7 @@ U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoU2fGenerate(
     const std::vector<uint8_t>& app_id,
     std::vector<uint8_t>* pub_key,
     std::vector<uint8_t>* key_handle) {
-  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  std::optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
   if (!user_secret.has_value()) {
     return Cr50CmdStatus::kInvalidState;
   }
@@ -312,7 +313,7 @@ U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoU2fSign(
     const std::vector<uint8_t>& key_handle,
     const std::vector<uint8_t>& hash,
     std::vector<uint8_t>* signature_out) {
-  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  std::optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
   if (!user_secret.has_value()) {
     return Cr50CmdStatus::kInvalidState;
   }
@@ -347,7 +348,7 @@ U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoU2fSign(
     return sign_status;
   }
 
-  base::Optional<std::vector<uint8_t>> signature =
+  std::optional<std::vector<uint8_t>> signature =
       util::SignatureToDerBytes(sign_resp.sig_r, sign_resp.sig_s);
 
   if (!signature.has_value()) {
@@ -362,7 +363,7 @@ U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoU2fSign(
 U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoU2fSignCheckOnly(
     const std::vector<uint8_t>& app_id,
     const std::vector<uint8_t>& key_handle) {
-  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  std::optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
   if (!user_secret.has_value()) {
     return Cr50CmdStatus::kInvalidState;
   }
@@ -394,7 +395,7 @@ U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoG2fAttest(
     const std::vector<uint8_t>& data,
     uint8_t format,
     std::vector<uint8_t>* signature_out) {
-  base::Optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
+  std::optional<brillo::SecureBlob> user_secret = user_state_->GetUserSecret();
   if (!user_secret.has_value()) {
     return Cr50CmdStatus::kInvalidState;
   }
@@ -424,7 +425,7 @@ U2fMessageHandler::Cr50CmdStatus U2fMessageHandler::DoG2fAttest(
     return attest_status;
   }
 
-  base::Optional<std::vector<uint8_t>> signature =
+  std::optional<std::vector<uint8_t>> signature =
       util::SignatureToDerBytes(attest_resp.sig_r, attest_resp.sig_s);
 
   if (!signature.has_value()) {

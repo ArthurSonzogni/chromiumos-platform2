@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <climits>
 #include <iterator>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -763,8 +764,7 @@ void AttestationService::GetEndorsementInfo(
                                                   std::move(reply));
 }
 
-base::Optional<std::string> AttestationService::GetEndorsementPublicKey()
-    const {
+std::optional<std::string> AttestationService::GetEndorsementPublicKey() const {
   const auto& database_pb = database_->GetProtobuf();
   if (database_pb.has_credentials() &&
       database_pb.credentials().has_endorsement_public_key()) {
@@ -775,12 +775,12 @@ base::Optional<std::string> AttestationService::GetEndorsementPublicKey()
   std::string public_key;
   if (!tpm_utility_->GetEndorsementPublicKey(GetEndorsementKeyType(),
                                              &public_key)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return public_key;
 }
 
-base::Optional<std::string> AttestationService::GetEndorsementCertificate()
+std::optional<std::string> AttestationService::GetEndorsementCertificate()
     const {
   const auto& database_pb = database_->GetProtobuf();
   if (database_pb.has_credentials() &&
@@ -792,7 +792,7 @@ base::Optional<std::string> AttestationService::GetEndorsementCertificate()
   std::string certificate;
   if (!tpm_utility_->GetEndorsementCertificate(GetEndorsementKeyType(),
                                                &certificate)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return certificate;
 }
@@ -807,14 +807,14 @@ void AttestationService::GetEndorsementInfoTask(
     return;
   }
 
-  base::Optional<std::string> public_key = GetEndorsementPublicKey();
+  std::optional<std::string> public_key = GetEndorsementPublicKey();
   if (!public_key.has_value()) {
     LOG(ERROR) << __func__ << ": Endorsement public key not available.";
     result->set_status(STATUS_NOT_AVAILABLE);
     return;
   }
 
-  base::Optional<std::string> certificate = GetEndorsementCertificate();
+  std::optional<std::string> certificate = GetEndorsementCertificate();
   if (!certificate.has_value()) {
     LOG(ERROR) << __func__ << ": Endorsement cert not available.";
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
@@ -1956,7 +1956,7 @@ AttestationService::GetIdentityCertificateMap() const {
 
 bool AttestationService::EncryptAllEndorsementCredentials() {
   auto* database_pb = database_->GetMutableProtobuf();
-  base::Optional<std::string> ek_certificate = GetEndorsementCertificate();
+  std::optional<std::string> ek_certificate = GetEndorsementCertificate();
   if (!ek_certificate.has_value()) {
     LOG(ERROR) << "Attestation: Failed to obtain endorsement certificate.";
     return false;
@@ -2385,13 +2385,13 @@ void AttestationService::VerifyTask(
     const VerifyRequest& request, const std::shared_ptr<VerifyReply>& result) {
   result->set_verified(false);
 
-  base::Optional<std::string> ek_public_key = GetEndorsementPublicKey();
+  std::optional<std::string> ek_public_key = GetEndorsementPublicKey();
   if (!ek_public_key.has_value()) {
     LOG(ERROR) << __func__ << ": Endorsement key not available.";
     return;
   }
 
-  base::Optional<std::string> ek_cert = GetEndorsementCertificate();
+  std::optional<std::string> ek_cert = GetEndorsementCertificate();
   if (!ek_cert.has_value()) {
     LOG(ERROR) << __func__ << ": Endorsement cert not available.";
     return;
@@ -3158,7 +3158,7 @@ void AttestationService::SignEnterpriseChallengeTask(
   if (request.has_device_trust_signals())
     *key_info.mutable_device_trust_signals() = request.device_trust_signals();
 
-  base::Optional<CertifiedKey> key_for_certificate_and_spkac;
+  std::optional<CertifiedKey> key_for_certificate_and_spkac;
   if (is_user_specific) {
     // Always include the EUK certificate if an EUK is being challenged.
     // Note that if including SPKAC has been requested when challenging an EUK,

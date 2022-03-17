@@ -7,10 +7,10 @@
 
 #include <bitset>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/ec/ec_commands.h>
 #include <libec/ec_command.h>
@@ -53,10 +53,10 @@ class CrosFpDeviceInterface {
    * @return mode on success, FpMode(FpMode::Mode::kModeInvalid) on failure
    */
   virtual ec::FpMode GetFpMode() = 0;
-  virtual base::Optional<FpStats> GetFpStats() = 0;
-  virtual base::Optional<std::bitset<32>> GetDirtyMap() = 0;
+  virtual std::optional<FpStats> GetFpStats() = 0;
+  virtual std::optional<std::bitset<32>> GetDirtyMap() = 0;
   virtual bool SupportsPositiveMatchSecret() = 0;
-  virtual base::Optional<brillo::SecureVector> GetPositiveMatchSecret(
+  virtual std::optional<brillo::SecureVector> GetPositiveMatchSecret(
       int index) = 0;
   virtual std::unique_ptr<VendorTemplate> GetTemplate(int index) = 0;
   virtual bool UploadTemplate(const VendorTemplate& tmpl) = 0;

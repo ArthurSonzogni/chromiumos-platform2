@@ -8,6 +8,7 @@
 #include <stdio.h>  // Needed by jpeglib.h.
 
 #include <memory>
+#include <optional>
 
 #include <jerror.h>
 #include <jpeglib.h>
@@ -23,7 +24,7 @@ class JpegReader final : public ImageReader {
   static std::unique_ptr<ImageReader> Create(
       brillo::ErrorPtr* error,
       const ScanParameters& params,
-      const base::Optional<int>& resolution,
+      const std::optional<int>& resolution,
       base::ScopedFILE out_file);
   ~JpegReader();
 
@@ -34,7 +35,7 @@ class JpegReader final : public ImageReader {
   JpegReader(const ScanParameters& params, base::ScopedFILE out_file);
   bool ValidateParams(brillo::ErrorPtr* error) override;
   bool Initialize(brillo::ErrorPtr* error,
-                  const base::Optional<int>& resolution) override;
+                  const std::optional<int>& resolution) override;
 
   // Whether or not the libjpeg objects owned by JpegReader have been
   // initialized.

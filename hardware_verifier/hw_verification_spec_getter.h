@@ -6,8 +6,9 @@
 #ifndef HARDWARE_VERIFIER_HW_VERIFICATION_SPEC_GETTER_H_
 #define HARDWARE_VERIFIER_HW_VERIFICATION_SPEC_GETTER_H_
 
+#include <optional>
+
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
 
@@ -25,7 +26,7 @@ class HwVerificationSpecGetter {
   // stateful partition first, then the one on the rootfs.
   //
   // @return A |HwVerificationSpec| message if it succeeds.
-  virtual base::Optional<HwVerificationSpec> GetDefault() const = 0;
+  virtual std::optional<HwVerificationSpec> GetDefault() const = 0;
 
   // Reads the |HwVerificationSpec| message from the given path.
   //
@@ -37,7 +38,7 @@ class HwVerificationSpecGetter {
   // @param file_path: Path to the file that contains the data.
   //
   // @return A |HwVerificationSpec| message if it succeeds.
-  virtual base::Optional<HwVerificationSpec> GetFromFile(
+  virtual std::optional<HwVerificationSpec> GetFromFile(
       const base::FilePath& file_path) const = 0;
 };
 

@@ -4,7 +4,8 @@
 
 #include "oobe_config/rollback_openssl_encryption.h"
 
-#include <base/optional.h>
+#include <optional>
+
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 
@@ -23,7 +24,7 @@ const brillo::Blob kData(857, 63);
 namespace oobe_config {
 
 TEST(RollbackOpenSslEncryptionTest, EncryptDecrypt) {
-  base::Optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
+  std::optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
   ASSERT_TRUE(encrypted_data.has_value());
 
   // Make sure data was changed by encryption.
@@ -32,45 +33,45 @@ TEST(RollbackOpenSslEncryptionTest, EncryptDecrypt) {
                     std::begin(encrypted_data->data));
   ASSERT_FALSE(first_mismatch.first == std::end(kSensitiveData));
 
-  base::Optional<brillo::SecureBlob> decrypted_data = Decrypt(*encrypted_data);
+  std::optional<brillo::SecureBlob> decrypted_data = Decrypt(*encrypted_data);
   ASSERT_TRUE(decrypted_data.has_value());
   ASSERT_EQ(kSensitiveData, *decrypted_data);
 }
 
 TEST(RollbackOpenSslEncryptionTest, EncryptDecryptWithWrongKey) {
-  base::Optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
+  std::optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
   ASSERT_TRUE(encrypted_data.has_value());
 
-  base::Optional<brillo::SecureBlob> decrypted_data =
+  std::optional<brillo::SecureBlob> decrypted_data =
       Decrypt({encrypted_data->data, kKey});
   ASSERT_FALSE(decrypted_data.has_value());
 }
 
 TEST(RollbackOpenSslEncryptionTest, DecryptModifyData) {
-  base::Optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
+  std::optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
   ASSERT_TRUE(encrypted_data.has_value());
   encrypted_data->data[1]++;
-  base::Optional<brillo::SecureBlob> decrypted_data =
+  std::optional<brillo::SecureBlob> decrypted_data =
       Decrypt(encrypted_data.value());
   ASSERT_FALSE(decrypted_data.has_value());
 }
 
 TEST(RollbackOpenSslEncryptionTest, DecryptModifyKey) {
-  base::Optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
+  std::optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
   ASSERT_TRUE(encrypted_data.has_value());
   encrypted_data->key[1]++;
-  base::Optional<brillo::SecureBlob> decrypted_data =
+  std::optional<brillo::SecureBlob> decrypted_data =
       Decrypt(encrypted_data.value());
   ASSERT_FALSE(decrypted_data.has_value());
 }
 
 TEST(RollbackOpenSslEncryptionTest, DecryptNonesense) {
-  base::Optional<brillo::SecureBlob> decrypted_data = Decrypt({kData, kKey});
+  std::optional<brillo::SecureBlob> decrypted_data = Decrypt({kData, kKey});
   ASSERT_FALSE(decrypted_data.has_value());
 }
 
 TEST(RollbackOpenSslEncryptionTest, EncryptedDataSize) {
-  base::Optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
+  std::optional<EncryptedData> encrypted_data = Encrypt(kSensitiveData);
   ASSERT_TRUE(encrypted_data.has_value());
 
   EXPECT_GE(encrypted_data->data.size(),

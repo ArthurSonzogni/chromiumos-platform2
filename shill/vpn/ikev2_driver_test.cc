@@ -5,6 +5,7 @@
 #include "shill/vpn/ikev2_driver.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>

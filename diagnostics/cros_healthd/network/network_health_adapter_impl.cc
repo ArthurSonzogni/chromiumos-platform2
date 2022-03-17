@@ -4,11 +4,11 @@
 
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/callback.h>
 #include <base/logging.h>
-#include <base/optional.h>
 
 #include "diagnostics/mojom/external/network_health.mojom.h"
 
@@ -21,7 +21,7 @@ namespace network_health_ipc = chromeos::network_health::mojom;
 // Forwards the response from the network health remote to |callback|.
 void OnNetworkHealthStateReceived(
     base::OnceCallback<void(
-        base::Optional<network_health_ipc::NetworkHealthStatePtr>)> callback,
+        std::optional<network_health_ipc::NetworkHealthStatePtr>)> callback,
     network_health_ipc::NetworkHealthStatePtr response) {
   std::move(callback).Run(std::move(response));
 }
@@ -34,7 +34,7 @@ NetworkHealthAdapterImpl::~NetworkHealthAdapterImpl() = default;
 void NetworkHealthAdapterImpl::GetNetworkHealthState(
     FetchNetworkStateCallback callback) {
   if (!network_health_remote_.is_bound()) {
-    std::move(callback).Run(base::nullopt);
+    std::move(callback).Run(std::nullopt);
     return;
   }
 

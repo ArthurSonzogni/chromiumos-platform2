@@ -8,10 +8,10 @@
 #include "tpm_manager/server/tpm_status.h"
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/optional.h>
 #include <trousers/tss.h>
 
 #include <tpm_manager/server/tpm_connection.h>
@@ -55,26 +55,26 @@ class TpmStatusImpl : public TpmStatus {
   // 2. TpmOwnershipStatus::kTpmOwned if authentication fails with the default
   // owner password.
   // 3. TpmOwnershipStatus::kTpmDisabled if the TPM is disabled.
-  // 4. base::nullopt if any other errors.
+  // 4. std::nullopt if any other errors.
   //
   // Note that, w/o any useful cache data, testing tpm with owner auth means it
   // could increase DA counter or even fail during DA lockout. In case of no
   // useful delegate to reset DA, we don't have any way to reset DA so the all
   // the hwsec daemons cannot function correctly until DA unlocks itself after
   // timeout (crbug/1110741).
-  base::Optional<TpmStatus::TpmOwnershipStatus>
+  std::optional<TpmStatus::TpmOwnershipStatus>
   TestTpmWithDefaultOwnerPassword();
   // Tests if the TPM SRK with default auth. Returns:
   // 1. true if the test succeed.
   // 2. false if authentication fails with the default auth.
-  // 3. base::nullopt if any other errors.
+  // 3. std::nullopt if any other errors.
   //
   // Note that, w/o any useful cache data, testing tpm with wrong SRK auth means
   // it could increase DA counter or even fail during DA lockout. In case of no
   // useful delegate to reset DA, we don't have any way to reset DA so the all
   // the hwsec daemons cannot function correctly until DA unlocks itself after
   // timeout (crbug/1110741).
-  base::Optional<bool> TestTpmSrkWithDefaultAuth();
+  std::optional<bool> TestTpmSrkWithDefaultAuth();
   // This method refreshes the |is_owned_| and |is_enabled_| status of the
   // Tpm. It can be called multiple times.
   void RefreshOwnedEnabledInfo();
@@ -102,12 +102,12 @@ class TpmStatusImpl : public TpmStatus {
 
   // Whether current owner password in the TPM is the default one; in case of
   // nullopt the password status is not determined yet.
-  base::Optional<TpmStatus::TpmOwnershipStatus> owner_password_status_;
+  std::optional<TpmStatus::TpmOwnershipStatus> owner_password_status_;
 
   // Whether current SRK auth in the TPM is the default one(either the empty
   // password or the well-known SRK password); in case of nullopt the password
   // status is not determined yet.
-  base::Optional<bool> is_srk_auth_default_;
+  std::optional<bool> is_srk_auth_default_;
 };
 
 }  // namespace tpm_manager

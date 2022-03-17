@@ -8,6 +8,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -208,7 +209,7 @@ class V4L2TestEnvironment : public ::testing::Environment {
         device_path_(device_path),
         usb_info_(GetUsbInfo(base::FilePath(device_path))) {
     std::string model = []() -> std::string {
-      base::Optional<DeviceConfig> config = DeviceConfig::Create();
+      std::optional<DeviceConfig> config = DeviceConfig::Create();
       if (!config) {
         LOGF(WARNING) << "Failed to initialize CrOS config";
         return std::string();

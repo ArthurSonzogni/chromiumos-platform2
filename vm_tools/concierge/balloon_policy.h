@@ -4,10 +4,9 @@
 #ifndef VM_TOOLS_CONCIERGE_BALLOON_POLICY_H_
 #define VM_TOOLS_CONCIERGE_BALLOON_POLICY_H_
 
+#include <optional>
 #include <stdint.h>
 #include <string>
-
-#include <base/optional.h>
 
 namespace vm_tools {
 namespace concierge {
@@ -149,8 +148,8 @@ class LimitCacheBalloonPolicy : public BalloonPolicyInterface {
 };
 
 // Computes the sum of all of ChromeOS's zone's low watermarks. To help
-// initialize LimitCacheBalloonPolicy. Returns base::nullopt on error.
-base::Optional<uint64_t> HostZoneLowSum(bool log_on_error);
+// initialize LimitCacheBalloonPolicy. Returns std::nullopt on error.
+std::optional<uint64_t> HostZoneLowSum(bool log_on_error);
 
 // Computes the sum of all the zone low watermarks from the contents of
 // /proc/zoneinfo.
@@ -158,7 +157,7 @@ uint64_t ZoneLowSumFromZoneInfo(const std::string& zoneinfo);
 
 // Computes statistics so that a balloon policy can know when Linux is close to
 // reclaiming memory, or Android's LMKD is close to killing Apps.
-base::Optional<ZoneInfoStats> ParseZoneInfoStats(const std::string& zoneinfo);
+std::optional<ZoneInfoStats> ParseZoneInfoStats(const std::string& zoneinfo);
 
 }  // namespace concierge
 }  // namespace vm_tools

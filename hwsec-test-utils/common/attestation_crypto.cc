@@ -4,10 +4,10 @@
 
 #include "hwsec-test-utils/common/attestation_crypto.h"
 
+#include <optional>
 #include <string>
 
 #include <base/logging.h>
-#include <base/optional.h>
 #include <crypto/sha2.h>
 
 #include "hwsec-test-utils/common/openssl_utility.h"
@@ -47,13 +47,13 @@ ReturnStatus Decrypt(const attestation::EncryptedData& encrypted_data_proto,
                      const KeyDeriverBase& key_deriver,
                      std::string* decrypted) {
   // Decrypt.
-  base::Optional<std::string> seed = EVPRsaDecrypt(
+  std::optional<std::string> seed = EVPRsaDecrypt(
       key, encrypted_data_proto.wrapped_key(), RSA_PKCS1_OAEP_PADDING);
   if (!seed) {
     return ReturnStatus::kUnwrapKey;
   }
   const std::string aes_key = key_deriver.ToAesKey(*seed);
-  base::Optional<std::string> decrypted_data =
+  std::optional<std::string> decrypted_data =
       EVPAesDecrypt(encrypted_data_proto.encrypted_data(), EVP_aes_256_cbc(),
                     aes_key, encrypted_data_proto.iv());
   if (!decrypted_data) {
@@ -72,7 +72,7 @@ ReturnStatus Decrypt(const attestation::EncryptedData& encrypted_data_proto,
                << GetOpenSSLError();
     return ReturnStatus::kFailure;
   }
-  base::Optional<std::string> hmac = EVPDigestSign(
+  std::optional<std::string> hmac = EVPDigestSign(
       hmac_key, EVP_sha512(),
       encrypted_data_proto.iv() + encrypted_data_proto.encrypted_data());
   if (!hmac) {

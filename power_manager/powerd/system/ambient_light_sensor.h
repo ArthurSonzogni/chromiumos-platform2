@@ -6,9 +6,9 @@
 #define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_H_
 
 #include <memory>
+#include <optional>
 
 #include <base/observer_list.h>
-#include <base/optional.h>
 
 #include "power_manager/powerd/system/ambient_light_sensor_delegate.h"
 #include "power_manager/powerd/system/ambient_light_sensor_interface.h"
@@ -34,8 +34,8 @@ class AmbientLightSensor : public AmbientLightSensorInterface {
   base::FilePath GetIlluminancePath() const override;
 
  private:
-  void SetLuxAndColorTemperature(base::Optional<int> lux,
-                                 base::Optional<int> color_temperature);
+  void SetLuxAndColorTemperature(std::optional<int> lux,
+                                 std::optional<int> color_temperature);
 
   // List of backlight controllers that are currently interested in updates from
   // this sensor.

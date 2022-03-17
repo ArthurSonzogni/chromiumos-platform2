@@ -7,6 +7,7 @@
 
 #include <bitset>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <libec/fingerprint/fp_mode.h>
@@ -23,8 +24,8 @@ class MockCrosFpDevice : public CrosFpDeviceInterface {
   MOCK_METHOD(void, SetMkbpEventCallback, (MkbpCallback), (override));
   MOCK_METHOD(bool, SetFpMode, (const ec::FpMode& mode), (override));
   MOCK_METHOD(ec::FpMode, GetFpMode, (), (override));
-  MOCK_METHOD(base::Optional<FpStats>, GetFpStats, (), (override));
-  MOCK_METHOD(base::Optional<std::bitset<32>>, GetDirtyMap, (), (override));
+  MOCK_METHOD(std::optional<FpStats>, GetFpStats, (), (override));
+  MOCK_METHOD(std::optional<std::bitset<32>>, GetDirtyMap, (), (override));
   MOCK_METHOD(std::unique_ptr<VendorTemplate>,
               GetTemplate,
               (int index),
@@ -42,7 +43,7 @@ class MockCrosFpDevice : public CrosFpDeviceInterface {
               (uint16_t cmd, uint32_t ver),
               (override));
   MOCK_METHOD(bool, SupportsPositiveMatchSecret, (), (override));
-  MOCK_METHOD(base::Optional<brillo::SecureVector>,
+  MOCK_METHOD(std::optional<brillo::SecureVector>,
               GetPositiveMatchSecret,
               (int index),
               (override));

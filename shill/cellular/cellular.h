@@ -8,13 +8,13 @@
 #include <deque>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -684,7 +684,7 @@ class Cellular : public Device,
 
   Type type_;
   std::unique_ptr<CellularCapability> capability_;
-  base::Optional<InterfaceToProperties> initial_properties_;
+  std::optional<InterfaceToProperties> initial_properties_;
 
   ProcessManager* process_manager_;
 
@@ -743,7 +743,7 @@ class Cellular : public Device,
       last_cellular_connection_results_;
 
   // The current step of the Stop process.
-  base::Optional<StopSteps> stop_step_;
+  std::optional<StopSteps> stop_step_;
 
   base::WeakPtrFactory<Cellular> weak_ptr_factory_{this};
 };

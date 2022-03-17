@@ -5,6 +5,7 @@
 #include "croslog/log_parser_audit.h"
 
 #include <cmath>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -51,12 +52,12 @@ LogParserAudit::LogParserAudit() = default;
 MaybeLogEntry LogParserAudit::ParseInternal(std::string&& entire_line) {
   if (entire_line.empty()) {
     // Returns an invalid value if the line is invalid or empty.
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (entire_line.size() < kMinimumLength) {
     LOG(WARNING) << "The line is too short: invalid format?";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string type;
@@ -66,13 +67,13 @@ MaybeLogEntry LogParserAudit::ParseInternal(std::string&& entire_line) {
   if (!RE2::FullMatch(entire_line, *kLineRegexp, &type, &tag, &time_str,
                       &message)) {
     LOG(WARNING) << "Invalid line: " << entire_line;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   double time_in_seconds;
   if (!base::StringToDouble(time_str, &time_in_seconds)) {
     LOG(WARNING) << "Invalid timestamp: " << entire_line;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   int pid = -1;

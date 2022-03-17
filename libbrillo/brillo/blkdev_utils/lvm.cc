@@ -21,8 +21,9 @@
 
 #include "brillo/blkdev_utils/lvm.h"
 
+#include <optional>
+
 #include <base/logging.h>
-#include <base/optional.h>
 
 namespace brillo {
 
@@ -44,7 +45,7 @@ bool LogicalVolumeManager::ValidatePhysicalVolume(
     return false;
   }
 
-  base::Optional<base::Value> pv_dictionary =
+  std::optional<base::Value> pv_dictionary =
       lvm_->UnwrapReportContents(output, "pv");
 
   if (!pv_dictionary || !pv_dictionary->is_dict()) {
@@ -71,19 +72,19 @@ bool LogicalVolumeManager::ValidatePhysicalVolume(
   return true;
 }
 
-base::Optional<PhysicalVolume> LogicalVolumeManager::GetPhysicalVolume(
+std::optional<PhysicalVolume> LogicalVolumeManager::GetPhysicalVolume(
     const base::FilePath& device_path) {
   return ValidatePhysicalVolume(device_path, nullptr)
-             ? base::make_optional(PhysicalVolume(device_path, lvm_))
-             : base::nullopt;
+             ? std::make_optional(PhysicalVolume(device_path, lvm_))
+             : std::nullopt;
 }
 
-base::Optional<VolumeGroup> LogicalVolumeManager::GetVolumeGroup(
+std::optional<VolumeGroup> LogicalVolumeManager::GetVolumeGroup(
     const PhysicalVolume& pv) {
   std::string vg_name;
   return ValidatePhysicalVolume(pv.GetPath(), &vg_name)
-             ? base::make_optional(VolumeGroup(vg_name, lvm_))
-             : base::nullopt;
+             ? std::make_optional(VolumeGroup(vg_name, lvm_))
+             : std::nullopt;
 }
 
 bool LogicalVolumeManager::ValidateLogicalVolume(const VolumeGroup& vg,
@@ -101,7 +102,7 @@ bool LogicalVolumeManager::ValidateLogicalVolume(const VolumeGroup& vg,
     return false;
   }
 
-  base::Optional<base::Value> lv_dictionary =
+  std::optional<base::Value> lv_dictionary =
       lvm_->UnwrapReportContents(output, "lv");
 
   if (!lv_dictionary || !lv_dictionary->is_dict()) {
@@ -119,18 +120,18 @@ bool LogicalVolumeManager::ValidateLogicalVolume(const VolumeGroup& vg,
   return true;
 }
 
-base::Optional<Thinpool> LogicalVolumeManager::GetThinpool(
+std::optional<Thinpool> LogicalVolumeManager::GetThinpool(
     const VolumeGroup& vg, const std::string& thinpool_name) {
   return ValidateLogicalVolume(vg, thinpool_name, true /* is_thinpool */)
-             ? base::make_optional(Thinpool(thinpool_name, vg.GetName(), lvm_))
-             : base::nullopt;
+             ? std::make_optional(Thinpool(thinpool_name, vg.GetName(), lvm_))
+             : std::nullopt;
 }
 
-base::Optional<LogicalVolume> LogicalVolumeManager::GetLogicalVolume(
+std::optional<LogicalVolume> LogicalVolumeManager::GetLogicalVolume(
     const VolumeGroup& vg, const std::string& lv_name) {
   return ValidateLogicalVolume(vg, lv_name, false /* is_thinpool */)
-             ? base::make_optional(LogicalVolume(lv_name, vg.GetName(), lvm_))
-             : base::nullopt;
+             ? std::make_optional(LogicalVolume(lv_name, vg.GetName(), lvm_))
+             : std::nullopt;
 }
 
 std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
@@ -146,8 +147,7 @@ std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
     return lv_vector;
   }
 
-  base::Optional<base::Value> lv_list =
-      lvm_->UnwrapReportContents(output, "lv");
+  std::optional<base::Value> lv_list = lvm_->UnwrapReportContents(output, "lv");
   if (!lv_list || !lv_list->is_list()) {
     LOG(ERROR) << "Failed to get report contents";
     return lv_vector;
@@ -171,22 +171,22 @@ std::vector<LogicalVolume> LogicalVolumeManager::ListLogicalVolumes(
   return lv_vector;
 }
 
-base::Optional<PhysicalVolume> LogicalVolumeManager::CreatePhysicalVolume(
+std::optional<PhysicalVolume> LogicalVolumeManager::CreatePhysicalVolume(
     const base::FilePath& device_path) {
   return lvm_->RunCommand({"pvcreate", "-ff", "--yes", device_path.value()})
-             ? base::make_optional(PhysicalVolume(device_path, lvm_))
-             : base::nullopt;
+             ? std::make_optional(PhysicalVolume(device_path, lvm_))
+             : std::nullopt;
 }
 
-base::Optional<VolumeGroup> LogicalVolumeManager::CreateVolumeGroup(
+std::optional<VolumeGroup> LogicalVolumeManager::CreateVolumeGroup(
     const PhysicalVolume& pv, const std::string& vg_name) {
   return lvm_->RunCommand(
              {"vgcreate", "-p", "1", vg_name, pv.GetPath().value()})
-             ? base::make_optional(VolumeGroup(vg_name, lvm_))
-             : base::nullopt;
+             ? std::make_optional(VolumeGroup(vg_name, lvm_))
+             : std::nullopt;
 }
 
-base::Optional<Thinpool> LogicalVolumeManager::CreateThinpool(
+std::optional<Thinpool> LogicalVolumeManager::CreateThinpool(
     const VolumeGroup& vg, const base::Value& config) {
   std::vector<std::string> cmd = {"lvcreate"};
   const std::string* size = config.FindStringKey("size");
@@ -194,7 +194,7 @@ base::Optional<Thinpool> LogicalVolumeManager::CreateThinpool(
   const std::string* name = config.FindStringKey("name");
   if (!size || !name || !metadata_size) {
     LOG(ERROR) << "Invalid configuration";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   cmd.insert(cmd.end(),
@@ -202,11 +202,11 @@ base::Optional<Thinpool> LogicalVolumeManager::CreateThinpool(
               "--thinpool", *name, vg.GetName()});
 
   return lvm_->RunCommand(cmd)
-             ? base::make_optional(Thinpool(*name, vg.GetName(), lvm_))
-             : base::nullopt;
+             ? std::make_optional(Thinpool(*name, vg.GetName(), lvm_))
+             : std::nullopt;
 }
 
-base::Optional<LogicalVolume> LogicalVolumeManager::CreateLogicalVolume(
+std::optional<LogicalVolume> LogicalVolumeManager::CreateLogicalVolume(
     const VolumeGroup& vg,
     const Thinpool& thinpool,
     const base::Value& config) {
@@ -215,14 +215,14 @@ base::Optional<LogicalVolume> LogicalVolumeManager::CreateLogicalVolume(
   const std::string* name = config.FindStringKey("name");
   if (!size || !name) {
     LOG(ERROR) << "Invalid configuration";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   cmd.insert(cmd.end(), {"-V", *size + "M", "-n", *name, thinpool.GetName()});
 
   return lvm_->RunCommand(cmd)
-             ? base::make_optional(LogicalVolume(*name, vg.GetName(), lvm_))
-             : base::nullopt;
+             ? std::make_optional(LogicalVolume(*name, vg.GetName(), lvm_))
+             : std::nullopt;
 }
 
 }  // namespace brillo

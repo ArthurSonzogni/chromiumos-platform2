@@ -5,6 +5,7 @@
 #include "metrics/process_meter.h"
 
 #include <memory>
+#include <optional>
 
 #include <gtest/gtest.h>
 
@@ -14,7 +15,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -31,7 +31,7 @@ void CreateFile(const base::FilePath& path, std::string content) {
 
 void CreateProcEntry(const base::FilePath& procfs_path,
                      int pid,
-                     base::Optional<int> ppid,
+                     std::optional<int> ppid,
                      const char* name,
                      const char* cmdline,
                      int total_mib,
@@ -149,7 +149,7 @@ TEST_F(ProcessMeterTest, ReportProcessStats) {
                   "/opt/google/chrome/chrome --type=renderer",
                   113, 33, 80, 0, 0);
   // Unparsable ppid
-  CreateProcEntry(procfs_path, 214, base::nullopt, "chrome",
+  CreateProcEntry(procfs_path, 214, std::nullopt, "chrome",
                   "/opt/google/chrome/chrome --type=renderer",
                   213, 133, 80, 0, 0);
   // Missing cmdline.

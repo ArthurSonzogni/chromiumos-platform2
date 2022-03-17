@@ -5,6 +5,7 @@
 #include <fcntl.h>      // for open
 #include <sys/mount.h>  // for MS_SLAVE
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -19,7 +20,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/time/time.h>
-#include <base/optional.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
@@ -396,7 +396,7 @@ int main(int argc, char* argv[]) {
 
   UserCollectorBase::CrashAttributes user_crash_attrs;
   if (!FLAGS_user.empty()) {
-    base::Optional<UserCollectorBase::CrashAttributes> attrs =
+    std::optional<UserCollectorBase::CrashAttributes> attrs =
         UserCollectorBase::ParseCrashAttributes(FLAGS_user);
     if (!attrs.has_value()) {
       LOG(ERROR) << "Invalid parameter: --user=" << FLAGS_user;

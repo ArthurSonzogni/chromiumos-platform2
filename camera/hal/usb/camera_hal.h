@@ -8,6 +8,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -111,7 +112,7 @@ class CameraHal : public UdevWatcher::Observer {
   std::unique_ptr<UdevWatcher> udev_watcher_;
 
   // Used to access to the main configuration for Chrome OS.
-  base::Optional<DeviceConfig> cros_device_config_;
+  std::optional<DeviceConfig> cros_device_config_;
 
   // Map from device path to camera id.
   std::map<std::string, int> path_to_id_;

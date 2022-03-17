@@ -22,6 +22,7 @@
 #include <array>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <base/bind.h>
@@ -903,7 +904,7 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
   }
 
   if (base::PathExists(media_profile_xml)) {
-    base::Optional<std::string> content =
+    std::optional<std::string> content =
         FilterMediaProfile(media_profile_xml, arc_paths_->camera_test_config);
     EXIT_IF(!content);
 

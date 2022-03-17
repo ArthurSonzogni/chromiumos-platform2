@@ -7,12 +7,12 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/check.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -267,7 +267,7 @@ class TPM_MANAGER_EXPORT TpmManagerUtility
 
   // |ownership_taken_signal_| stores the data once the ownership
   // taken signal is received.
-  base::Optional<OwnershipTakenSignal> ownership_taken_signal_;
+  std::optional<OwnershipTakenSignal> ownership_taken_signal_;
 
   std::vector<OwnershipCallback> ownership_callbacks_;
 };

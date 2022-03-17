@@ -10,7 +10,6 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>

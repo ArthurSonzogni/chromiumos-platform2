@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -26,7 +27,6 @@
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -57,7 +57,7 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // only accepted if no higher ids were confirmed before; otherwise it is
   // accepted unconditionally.
   void Confirm(Priority priority,
-               absl::optional<int64_t> sequencing_id,
+               std::optional<int64_t> sequencing_id,
                bool force,
                base::OnceCallback<void(Status)> completion_cb);
 

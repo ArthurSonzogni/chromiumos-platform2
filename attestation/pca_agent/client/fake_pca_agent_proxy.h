@@ -10,7 +10,6 @@
 
 #include <attestation/pca_agent/dbus-proxy-mocks.h>
 #include <attestation/proto_bindings/pca_agent.pb.h>
-#include <base/optional.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 

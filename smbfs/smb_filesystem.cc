@@ -4,6 +4,7 @@
 
 #include "smbfs/smb_filesystem.h"
 
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -431,7 +432,7 @@ void SmbFilesystem::GetAttrInternal(std::unique_ptr<AttrRequest> request,
 
 void SmbFilesystem::SetAttr(std::unique_ptr<AttrRequest> request,
                             fuse_ino_t inode,
-                            base::Optional<uint64_t> file_handle,
+                            std::optional<uint64_t> file_handle,
                             const struct stat& attr,
                             int to_set) {
   samba_thread_.task_runner()->PostTask(
@@ -442,7 +443,7 @@ void SmbFilesystem::SetAttr(std::unique_ptr<AttrRequest> request,
 
 void SmbFilesystem::SetAttrInternal(std::unique_ptr<AttrRequest> request,
                                     fuse_ino_t inode,
-                                    base::Optional<uint64_t> file_handle,
+                                    std::optional<uint64_t> file_handle,
                                     const struct stat& attr,
                                     int to_set) {
   if (request->IsInterrupted()) {
@@ -504,7 +505,7 @@ void SmbFilesystem::SetAttrInternal(std::unique_ptr<AttrRequest> request,
 }
 
 int SmbFilesystem::SetFileSizeInternal(const std::string& share_file_path,
-                                       base::Optional<uint64_t> file_handle,
+                                       std::optional<uint64_t> file_handle,
                                        off_t size,
                                        const struct stat& current_stat,
                                        struct stat* reply_stat) {

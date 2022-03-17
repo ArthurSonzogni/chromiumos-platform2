@@ -5,11 +5,11 @@
 #ifndef MOJO_SERVICE_MANAGER_DAEMON_SERVICE_POLICY_LOADER_H_
 #define MOJO_SERVICE_MANAGER_DAEMON_SERVICE_POLICY_LOADER_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/values.h>
-#include <third_party/abseil-cpp/absl/types/optional.h>
 
 #include "mojo_service_manager/daemon/service_policy.h"
 
@@ -29,15 +29,15 @@ bool LoadAllServicePolicyFileFromDirectory(const base::FilePath& dir,
                                            ServicePolicyMap* policy_map);
 
 // Loads a policy file. Returns |nullopt| on error.
-absl::optional<ServicePolicyMap> LoadServicePolicyFile(
+std::optional<ServicePolicyMap> LoadServicePolicyFile(
     const base::FilePath& file);
 
 // Parses policy from a string. Returns |nullopt| on error.
-absl::optional<ServicePolicyMap> ParseServicePolicyFromString(
+std::optional<ServicePolicyMap> ParseServicePolicyFromString(
     const std::string& str);
 
 // Same as above but takes a |base::Value|.
-absl::optional<ServicePolicyMap> ParseServicePolicyFromValue(
+std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
     const base::Value& value);
 
 }  // namespace mojo_service_manager

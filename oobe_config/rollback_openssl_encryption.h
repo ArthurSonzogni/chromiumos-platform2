@@ -5,7 +5,8 @@
 #ifndef OOBE_CONFIG_ROLLBACK_OPENSSL_ENCRYPTION_H_
 #define OOBE_CONFIG_ROLLBACK_OPENSSL_ENCRYPTION_H_
 
-#include <base/optional.h>
+#include <optional>
+
 #include <brillo/secure_blob.h>
 
 namespace oobe_config {
@@ -16,12 +17,12 @@ struct EncryptedData {
 };
 
 // Encrypts data with AES_256_GCM and a randomly generated key. Returns key and
-// encrypted data on success and `base::nullopt` on failure.
-base::Optional<EncryptedData> Encrypt(const brillo::SecureBlob& plain_data);
+// encrypted data on success and `std::nullopt` on failure.
+std::optional<EncryptedData> Encrypt(const brillo::SecureBlob& plain_data);
 
-// Decrypts data with AES_256_GCM with the given key. Returns `base::nullopt`
+// Decrypts data with AES_256_GCM with the given key. Returns `std::nullopt`
 // on failure and the decrypted data on success.
-base::Optional<brillo::SecureBlob> Decrypt(const EncryptedData& encrypted_data);
+std::optional<brillo::SecureBlob> Decrypt(const EncryptedData& encrypted_data);
 
 }  // namespace oobe_config
 

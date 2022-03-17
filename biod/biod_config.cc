@@ -4,9 +4,9 @@
 
 #include "biod/biod_config.h"
 
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <cros_config/cros_config_interface.h>
 
 namespace biod {
@@ -30,12 +30,12 @@ bool FingerprintUnsupported(brillo::CrosConfigInterface* cros_config) {
   return false;
 }
 
-base::Optional<std::string> FingerprintBoard(
+std::optional<std::string> FingerprintBoard(
     brillo::CrosConfigInterface* cros_config) {
   std::string board_name;
   if (!cros_config->GetString(kCrosConfigFPPath, kCrosConfigFPBoard,
                               &board_name)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return board_name;
 }

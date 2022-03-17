@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -27,7 +28,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
@@ -146,7 +146,7 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
 SessionManagerService::SessionManagerService(
     std::unique_ptr<BrowserJobInterface> child_job,
     uid_t uid,
-    base::Optional<base::FilePath> ns_path,
+    std::optional<base::FilePath> ns_path,
     base::TimeDelta kill_timeout,
     bool enable_browser_abort_on_hang,
     base::TimeDelta hang_detection_interval,
@@ -373,9 +373,9 @@ bool SessionManagerService::IsBrowser(pid_t pid) {
   return (browser_->CurrentPid() > 0 && pid == browser_->CurrentPid());
 }
 
-base::Optional<pid_t> SessionManagerService::GetBrowserPid() const {
+std::optional<pid_t> SessionManagerService::GetBrowserPid() const {
   if (browser_->CurrentPid() <= 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return browser_->CurrentPid();
 }
@@ -713,7 +713,7 @@ void SessionManagerService::WriteBrowserPidFile(base::FilePath path) {
 }
 
 void SessionManagerService::OnLongKillTimeoutEnabled(
-    base::Optional<bool> enabled) {
+    std::optional<bool> enabled) {
   if (!enabled.has_value()) {
     LOG(ERROR) << "Failed to check kSessionManagerLongKillTimeout feature.";
     use_long_kill_timeout_ = false;
@@ -724,7 +724,7 @@ void SessionManagerService::OnLongKillTimeoutEnabled(
 }
 
 void SessionManagerService::OnLivenessCheckEnabled(
-    base::Optional<bool> enabled) {
+    std::optional<bool> enabled) {
   if (!enabled.has_value()) {
     LOG(ERROR) << "Failed to check SessionManagerLivenessCheck feature.";
     return;

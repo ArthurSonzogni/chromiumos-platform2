@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -17,7 +18,6 @@
 #include <base/containers/flat_set.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/synchronization/lock.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
@@ -110,7 +110,7 @@ class Manager : public org::chromium::lorgnette::ManagerAdaptor,
     int current_page = 1;
     // The total number of pages to scan for the scan job. If this is nullopt,
     // keep scanning until we get an error.
-    base::Optional<int> total_pages;
+    std::optional<int> total_pages;
     // The image format for scanned images for the scan job.
     ImageFormat format;
   };

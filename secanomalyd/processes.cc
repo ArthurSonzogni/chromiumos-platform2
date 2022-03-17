@@ -5,6 +5,7 @@
 #include "secanomalyd/processes.h"
 
 #include <algorithm>
+#include <optional>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -67,13 +68,13 @@ MaybeProcEntries ReadProcesses(brillo::Process* reader, ProcessFilter filter) {
   reader->RedirectUsingMemory(STDOUT_FILENO);
   if (reader->Run() != 0) {
     PLOG(ERROR) << "Failed to execute 'ps'";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string processes = reader->GetOutputString(STDOUT_FILENO);
   if (processes.empty()) {
     LOG(ERROR) << "Failed to read 'ps' output";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return ReadProcessesFromString(processes, filter);
@@ -85,11 +86,11 @@ MaybeProcEntries ReadProcessesFromString(const std::string& processes,
       processes, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   if (pieces.empty()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   ProcEntries res;
-  base::Optional<ino_t> init_pidns = base::nullopt;
+  std::optional<ino_t> init_pidns = std::nullopt;
   for (const auto& piece : pieces) {
     ProcEntry entry(piece);
     // Only add the entry to the list if it managed to parse a PID and a pidns.
@@ -125,12 +126,12 @@ MaybeProcEntries ReadProcessesFromString(const std::string& processes,
                 res.end());
     } else {
       LOG(ERROR) << "Failed to find init process";
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
   // If we failed to parse any valid processes, return nullopt.
-  return res.size() > 0 ? MaybeProcEntries(res) : base::nullopt;
+  return res.size() > 0 ? MaybeProcEntries(res) : std::nullopt;
 }
 
 }  // namespace secanomalyd

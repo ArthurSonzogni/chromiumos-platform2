@@ -15,10 +15,10 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 #include <trunks/trunks_factory.h>
@@ -65,7 +65,7 @@ struct PubSeeds {
   trunks::TPM2B_ECC_POINT pub_point;
   trunks::TPM2B_DIGEST iv;
   uint16_t plain_size;
-  base::Optional<std::string> policy_digest;
+  std::optional<std::string> policy_digest;
 };
 
 // Private seeds: the ephemeral private part that is "sealed" using the sealing
@@ -107,11 +107,11 @@ class SealedStorage {
 
   // Seals the provided plain data according to the policy specified in the
   // constructor. Returns the encrypted blob, or nullopt in case of error.
-  base::Optional<Data> Seal(const SecretData& plain_data) const;
+  std::optional<Data> Seal(const SecretData& plain_data) const;
 
   // Unseals the encrypted blob according to the policy specified in the
   // constructor. Returns the original plain data, or nullopt in case of error.
-  base::Optional<SecretData> Unseal(const Data& sealed_data) const;
+  std::optional<SecretData> Unseal(const Data& sealed_data) const;
 
   // Extends the PCR with the specified number, making sure it's no longer
   // in the initial state. Useful for locking the encrypted blob from further
@@ -124,7 +124,7 @@ class SealedStorage {
   // the constructor. Returns the flag, which indicates if the current state
   // matches the policy (true if yes, false if not), or nullopt in case of
   // error.
-  base::Optional<bool> CheckState() const;
+  std::optional<bool> CheckState() const;
 
  private:
   // Creates the TPM-bound ECC sealing key with the attached policy specified
@@ -134,7 +134,7 @@ class SealedStorage {
   // |resulting_digest| with the handle, name and policy digest of the created
   // key object. On failure, returns false.
   bool PrepareSealingKeyObject(
-      const base::Optional<std::string>& expected_digest,
+      const std::optional<std::string>& expected_digest,
       trunks::TPM_HANDLE* key_handle,
       std::string* key_name,
       std::string* resulting_digest) const;
@@ -178,8 +178,8 @@ class SealedStorage {
 
   // Serializes public seeds and encrypted data into an encrypted blob.
   // Returns the resulting blob on success, or nullopt otherwise.
-  base::Optional<Data> SerializeSealedBlob(const PubSeeds& pub_seeds,
-                                           const Data& encrypted_data) const;
+  std::optional<Data> SerializeSealedBlob(const PubSeeds& pub_seeds,
+                                          const Data& encrypted_data) const;
 
   // Deserializes the encrypted blob into public seeds and encrypted data.
   // On success, returns true and fills |pub_seeds| and |encrypted_data|.

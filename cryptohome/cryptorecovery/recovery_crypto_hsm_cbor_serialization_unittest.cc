@@ -396,7 +396,7 @@ TEST_F(HsmPayloadCborHelperTest, DeserializeAssociatedDataHsmPayloadNotCbor) {
 // if input is not a CBOR map.
 TEST_F(HsmPayloadCborHelperTest, DeserializeAssociatedDataHsmPayloadNotMap) {
   HsmAssociatedData hsm_associated_data;
-  base::Optional<std::vector<uint8_t>> serialized =
+  std::optional<std::vector<uint8_t>> serialized =
       cbor::Writer::Write(cbor::Value("a CBOR but not a map"));
   ASSERT_TRUE(serialized.has_value());
   brillo::SecureBlob hsm_cbor(serialized.value().begin(),

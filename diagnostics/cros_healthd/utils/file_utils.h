@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_FILE_UTILS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_UTILS_FILE_UTILS_H_
 
+#include <optional>
 #include <string>
 
 #include <base/check.h>
@@ -16,7 +17,7 @@ namespace diagnostics {
 // Reads the contents of |file_path| into |out|, trims leading and trailing
 // whitespace. Returns true on success.
 // |StringType| can be any type which can be converted from |std::string|. For
-// example, |base::Optional<std::string>|.
+// example, |std::optional<std::string>|.
 template <typename StringType>
 bool ReadAndTrimString(const base::FilePath& file_path, StringType* out) {
   DCHECK(out);

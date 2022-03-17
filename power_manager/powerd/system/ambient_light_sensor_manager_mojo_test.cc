@@ -5,10 +5,10 @@
 #include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <gtest/gtest.h>
 
@@ -65,8 +65,8 @@ class AmbientLightSensorManagerMojoTest : public ::testing::Test {
 
   void SetSensor(int32_t iio_device_id,
                  bool is_color_sensor,
-                 base::Optional<std::string> name,
-                 base::Optional<std::string> location) {
+                 std::optional<std::string> name,
+                 std::optional<std::string> location) {
     auto sensor_device = std::make_unique<FakeSensorDevice>(
         is_color_sensor, std::move(name), std::move(location));
     sensor_devices_[iio_device_id] = sensor_device.get();
@@ -74,12 +74,12 @@ class AmbientLightSensorManagerMojoTest : public ::testing::Test {
     sensor_service_.SetSensorDevice(iio_device_id, std::move(sensor_device));
   }
 
-  void SetLidSensor(bool is_color_sensor, base::Optional<std::string> name) {
+  void SetLidSensor(bool is_color_sensor, std::optional<std::string> name) {
     SetSensor(kFakeLidId, is_color_sensor, std::move(name),
               cros::mojom::kLocationLid);
   }
 
-  void SetBaseSensor(base::Optional<std::string> name) {
+  void SetBaseSensor(std::optional<std::string> name) {
     SetSensor(kFakeBaseId, /*is_color_sensor=*/false, std::move(name),
               cros::mojom::kLocationBase);
   }
@@ -108,7 +108,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, OneColorSensor) {
   prefs_.SetInt64(kAllowAmbientEQ, 1);
 
   SetLidSensor(/*is_color_sensor=*/true, kCrosECLightName);
-  SetBaseSensor(/*name=*/base::nullopt);
+  SetBaseSensor(/*name=*/std::nullopt);
 
   SetManager();
   EXPECT_FALSE(manager_->HasColorSensor());
@@ -144,7 +144,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, TwoSensorsNoColor) {
 
   SetSensor(kFakeAcpiAlsId,
             /*is_color_sensor=*/false, kAcpiAlsName,
-            /*location=*/base::nullopt);
+            /*location=*/std::nullopt);
   SetLidSensor(/*is_color_sensor=*/false, kCrosECLightName);
   SetBaseSensor(kCrosECLightName);
 
@@ -246,7 +246,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, OneLateColorSensor) {
   prefs_.SetInt64(kHasAmbientLightSensorPref, 1);
   prefs_.SetInt64(kAllowAmbientEQ, 1);
 
-  SetBaseSensor(/*name=*/base::nullopt);
+  SetBaseSensor(/*name=*/std::nullopt);
 
   SetManager();
   EXPECT_FALSE(manager_->HasColorSensor());
@@ -312,9 +312,9 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithOneColorSensor) {
 
   SetSensor(kFakeAcpiAlsId,
             /*is_color_sensor=*/false, kAcpiAlsName,
-            /*location=*/base::nullopt);
+            /*location=*/std::nullopt);
   SetLidSensor(/*is_color_sensor=*/true, kCrosECLightName);
-  SetBaseSensor(/*name=*/base::nullopt);
+  SetBaseSensor(/*name=*/std::nullopt);
 
   SetManager();
   EXPECT_FALSE(manager_->HasColorSensor());
@@ -347,7 +347,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithOneColorSensor) {
       cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
       "Device was removed");
   // Overwrite the lid and base light sensors in the iioservice.
-  SetLidSensor(/*is_color_sensor=*/true, /*name=*/base::nullopt);
+  SetLidSensor(/*is_color_sensor=*/true, /*name=*/std::nullopt);
   SetBaseSensor(kCrosECLightName);
 
   // Wait until all reconnection tasks are done.
@@ -371,7 +371,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithTwoSensors) {
 
   SetSensor(kFakeAcpiAlsId,
             /*is_color_sensor=*/false, kAcpiAlsName,
-            /*location=*/base::nullopt);
+            /*location=*/std::nullopt);
   SetLidSensor(/*is_color_sensor=*/true, kCrosECLightName);
   SetBaseSensor(/*name=*/kCrosECLightName);
 
@@ -407,7 +407,7 @@ TEST_F(AmbientLightSensorManagerMojoTest, DeviceRemovedWithTwoSensors) {
       cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
       "Device was removed");
   // Overwrite the lid and base light sensors in the iioservice.
-  SetLidSensor(/*is_color_sensor=*/true, /*name=*/base::nullopt);
+  SetLidSensor(/*is_color_sensor=*/true, /*name=*/std::nullopt);
 
   // Wait until all reconnection tasks are done.
   base::RunLoop().RunUntilIdle();

@@ -6,11 +6,11 @@
 #define LOGIN_MANAGER_PROCESS_MANAGER_SERVICE_INTERFACE_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 namespace login_manager {
 
@@ -77,7 +77,7 @@ class ProcessManagerServiceInterface {
   virtual bool IsBrowser(pid_t pid) = 0;
 
   // Returns the pid of the browser process, if there is one.
-  virtual base::Optional<pid_t> GetBrowserPid() const = 0;
+  virtual std::optional<pid_t> GetBrowserPid() const = 0;
 
   // Returns the last time that the browser was restarted after exiting
   // (typically due to a crash).

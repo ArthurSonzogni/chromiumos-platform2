@@ -6,13 +6,13 @@
 #define KERBEROS_KERBEROS_ADAPTOR_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <brillo/dbus/async_event_sequencer.h>
 
 #include "kerberos/org.chromium.Kerberos.h"
@@ -103,7 +103,7 @@ class KerberosAdaptor : public org::chromium::KerberosAdaptor,
   std::unique_ptr<AccountManager> manager_;
 
   // If set, overrides the directory where data is stored.
-  base::Optional<base::FilePath> storage_dir_for_testing_;
+  std::optional<base::FilePath> storage_dir_for_testing_;
 
   // If set, overrides the Krb5Interface instance passed to |manager_|.
   std::unique_ptr<Krb5Interface> krb5_for_testing_;

@@ -39,7 +39,6 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/synchronization/lock.h>
 #include <brillo/brillo_export.h>
 #include <gtest/gtest_prod.h>

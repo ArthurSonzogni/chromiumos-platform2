@@ -5,6 +5,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>

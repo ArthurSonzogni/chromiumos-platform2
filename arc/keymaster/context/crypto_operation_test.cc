@@ -4,8 +4,9 @@
 
 #include "arc/keymaster/context/crypto_operation.h"
 
+#include <optional>
+
 #include <gtest/gtest.h>
-#include "base/optional.h"
 
 namespace arc {
 namespace keymaster {
@@ -40,15 +41,15 @@ class TestOperation : public CryptoOperation {
   TestOperation(const TestOperation&) = delete;
   TestOperation& operator=(const TestOperation&) = delete;
 
-  base::Optional<uint64_t> Begin(MechanismDescription description) {
-    return base::nullopt;
+  std::optional<uint64_t> Begin(MechanismDescription description) {
+    return std::nullopt;
   }
 
-  base::Optional<brillo::Blob> Update(const brillo::Blob& input) {
-    return base::nullopt;
+  std::optional<brillo::Blob> Update(const brillo::Blob& input) {
+    return std::nullopt;
   }
 
-  base::Optional<brillo::Blob> Finish() { return base::nullopt; }
+  std::optional<brillo::Blob> Finish() { return std::nullopt; }
 
   bool Abort() { return false; }
 

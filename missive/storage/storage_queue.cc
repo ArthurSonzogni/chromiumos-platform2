@@ -11,6 +11,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -52,7 +53,6 @@
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/task_runner_context.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 
@@ -209,8 +209,8 @@ Status StorageQueue::Init() {
         LOG(ERROR) << "Unable to retrieve generation id, performing full reset";
         next_sequencing_id_ = 0;
         first_sequencing_id_ = 0;
-        first_unconfirmed_sequencing_id_ = absl::nullopt;
-        last_record_digest_ = absl::nullopt;
+        first_unconfirmed_sequencing_id_ = std::nullopt;
+        last_record_digest_ = std::nullopt;
         ReleaseAllFileInstances();
         used_files_set.clear();
       }
@@ -238,7 +238,7 @@ Status StorageQueue::Init() {
   return Status::StatusOK();
 }
 
-absl::optional<std::string> StorageQueue::GetLastRecordDigest() const {
+std::optional<std::string> StorageQueue::GetLastRecordDigest() const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   // Attach last record digest, if present.
   return last_record_digest_;
@@ -319,7 +319,7 @@ Status StorageQueue::EnumerateDataFiles(
   // We need to set first_sequencing_id_ to 0 if this is the initialization
   // of an empty StorageQueue, and to the lowest sequencing id among all
   // existing files, if it was already used.
-  absl::optional<int64_t> first_sequencing_id;
+  std::optional<int64_t> first_sequencing_id;
   base::FileEnumerator dir_enum(options_.directory(),
                                 /*recursive=*/false,
                                 base::FileEnumerator::FILES,
@@ -1386,7 +1386,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
 
   void OnCompressedRecordReady(
       std::string compressed_record_result,
-      absl::optional<CompressionInformation> compression_information) {
+      std::optional<CompressionInformation> compression_information) {
     // Encrypt the result. The callback is partially bounded to include
     // compression information.
     storage_queue_->encryption_module_->EncryptRecord(
@@ -1397,7 +1397,7 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
   }
 
   void OnEncryptedRecordReady(
-      absl::optional<CompressionInformation> compression_information,
+      std::optional<CompressionInformation> compression_information,
       StatusOr<EncryptedRecord> encrypted_record_result) {
     if (!encrypted_record_result.ok()) {
       // Failed to serialize or encrypt.
@@ -1548,7 +1548,7 @@ StorageQueue::CollectFilesForUpload(int64_t sequencing_id) const {
 
 class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
  public:
-  ConfirmContext(absl::optional<int64_t> sequencing_id,
+  ConfirmContext(std::optional<int64_t> sequencing_id,
                  bool force,
                  base::OnceCallback<void(Status)> end_callback,
                  scoped_refptr<StorageQueue> storage_queue)
@@ -1579,7 +1579,7 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
   }
 
   // Confirmed sequencing id.
-  absl::optional<int64_t> sequencing_id_;
+  std::optional<int64_t> sequencing_id_;
 
   bool force_;
 
@@ -1588,7 +1588,7 @@ class StorageQueue::ConfirmContext : public TaskRunnerContext<Status> {
   SEQUENCE_CHECKER(confirm_sequence_checker_);
 };
 
-void StorageQueue::Confirm(absl::optional<int64_t> sequencing_id,
+void StorageQueue::Confirm(std::optional<int64_t> sequencing_id,
                            bool force,
                            base::OnceCallback<void(Status)> completion_cb) {
   Start<ConfirmContext>(sequencing_id, force, std::move(completion_cb), this);
@@ -1733,7 +1733,7 @@ void StorageQueue::SingleFile::Close() {
     return;
   }
   handle_.reset();
-  is_readonly_ = absl::nullopt;
+  is_readonly_ = std::nullopt;
   if (buffer_) {
     buffer_.reset();
     GetMemoryResource()->Discard(buffer_size_);

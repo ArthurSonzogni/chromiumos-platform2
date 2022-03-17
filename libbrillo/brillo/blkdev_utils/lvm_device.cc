@@ -4,6 +4,7 @@
 
 #include "brillo/blkdev_utils/lvm_device.h"
 
+#include <optional>
 #include <utility>
 
 // lvm2 has multiple options for managing LVM objects:
@@ -240,7 +241,7 @@ bool Thinpool::GetTotalSpace(int64_t* size) {
     return false;
   }
 
-  base::Optional<base::Value> report_contents =
+  std::optional<base::Value> report_contents =
       lvm_->UnwrapReportContents(output, "lv");
 
   if (!report_contents || !report_contents->is_dict()) {
@@ -265,7 +266,7 @@ bool Thinpool::GetFreeSpace(int64_t* size) {
     return false;
   }
 
-  base::Optional<base::Value> report_contents =
+  std::optional<base::Value> report_contents =
       lvm_->UnwrapReportContents(output, "lv");
 
   if (!report_contents || !report_contents->is_dict()) {
@@ -351,35 +352,35 @@ bool LvmCommandRunner::RunProcess(const std::vector<std::string>& cmd,
 // Common function to fetch the underlying dictionary (assume for now
 // that the reports will be reporting just a single type (lv/vg/pv) for now).
 
-base::Optional<base::Value> LvmCommandRunner::UnwrapReportContents(
+std::optional<base::Value> LvmCommandRunner::UnwrapReportContents(
     const std::string& output, const std::string& key) {
   auto report = base::JSONReader::Read(output);
   if (!report || !report->is_dict()) {
     LOG(ERROR) << "Failed to get report as dictionary";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   base::Value* report_list = report->FindListKey("report");
   if (!report_list) {
     LOG(ERROR) << "Failed to find 'report' list";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (report_list->GetList().size() != 1) {
     LOG(ERROR) << "Unexpected size: " << report_list->GetList().size();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   base::Value& report_dictionary = report_list->GetList()[0];
   if (!report_dictionary.is_dict()) {
     LOG(ERROR) << "Failed to find 'report' dictionary";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   base::Value* key_list = report_dictionary.FindListKey(key);
   if (!key_list) {
     LOG(ERROR) << "Failed to find " << key << " list";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // If the list has just a single dictionary element, return it directly.
@@ -387,7 +388,7 @@ base::Optional<base::Value> LvmCommandRunner::UnwrapReportContents(
     base::Value& key_dictionary = key_list->GetList()[0];
     if (!key_dictionary.is_dict()) {
       LOG(ERROR) << "Failed to get " << key << " dictionary";
-      return base::nullopt;
+      return std::nullopt;
     }
     return std::move(key_dictionary);
   }

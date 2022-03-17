@@ -6,6 +6,7 @@
 #define TPM_MANAGER_SERVER_TPM_MANAGER_SERVICE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,7 +16,6 @@
 #include <base/macros.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/threading/thread.h>
@@ -329,11 +329,11 @@ class TpmManagerService : public TpmNvramInterface,
   TpmManagerMetrics default_tpm_manager_metrics_;
   TpmManagerMetrics* tpm_manager_metrics_{nullptr};
 
-  // Cache of TPM version info, base::nullopt if cache doesn't exist.
-  base::Optional<GetVersionInfoReply> version_info_cache_;
+  // Cache of TPM version info, std::nullopt if cache doesn't exist.
+  std::optional<GetVersionInfoReply> version_info_cache_;
 
-  // Cache of TPM supported features, base::nullopt if cache doesn't exist.
-  base::Optional<GetSupportedFeaturesReply> supported_features_cache_;
+  // Cache of TPM supported features, std::nullopt if cache doesn't exist.
+  std::optional<GetSupportedFeaturesReply> supported_features_cache_;
 
   // Cache of TPM status.
   GetTpmStatusReply get_tpm_status_cache_;

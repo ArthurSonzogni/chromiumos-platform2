@@ -4,6 +4,8 @@
 
 #include "diagnostics/common/system/fake_powerd_adapter.h"
 
+#include <optional>
+
 namespace diagnostics {
 
 FakePowerdAdapter::FakePowerdAdapter() = default;
@@ -26,7 +28,7 @@ void FakePowerdAdapter::RemoveLidObserver(LidObserver* observer) {
   lid_observers_.RemoveObserver(observer);
 }
 
-base::Optional<power_manager::PowerSupplyProperties>
+std::optional<power_manager::PowerSupplyProperties>
 FakePowerdAdapter::GetPowerSupplyProperties() {
   return power_supply_properties_;
 }
@@ -80,7 +82,7 @@ void FakePowerdAdapter::EmitLidOpenedSignal() const {
 }
 
 void FakePowerdAdapter::SetPowerSupplyProperties(
-    base::Optional<power_manager::PowerSupplyProperties> properties) {
+    std::optional<power_manager::PowerSupplyProperties> properties) {
   power_supply_properties_ = properties;
 }
 

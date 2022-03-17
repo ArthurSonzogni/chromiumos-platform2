@@ -7,6 +7,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -28,7 +29,7 @@ FakeGeneratorJob::Factory::~Factory() {}
 std::unique_ptr<GeneratorJobInterface> FakeGeneratorJob::Factory::Create(
     const std::string& filename,
     const base::FilePath& user_path,
-    const base::Optional<base::FilePath> ns_path,
+    const std::optional<base::FilePath> ns_path,
     uid_t desired_uid,
     SystemUtils* utils) {
   return std::unique_ptr<GeneratorJobInterface>(

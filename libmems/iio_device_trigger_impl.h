@@ -7,10 +7,9 @@
 
 #include <iio.h>
 
+#include <optional>
 #include <string>
 #include <vector>
-
-#include <base/optional.h>
 
 #include "libmems/export.h"
 #include "libmems/iio_device.h"
@@ -24,7 +23,7 @@ class IioContextImpl;
 class LIBMEMS_EXPORT IioDeviceTriggerImpl : public IioDevice {
  public:
   // Return -1 for iio_sysfs_trigger
-  static base::Optional<int> GetIdFromString(const char* id_str);
+  static std::optional<int> GetIdFromString(const char* id_str);
   // Return iio_sysfs_trigger for -1
   static std::string GetStringFromId(int id);
 
@@ -43,11 +42,11 @@ class LIBMEMS_EXPORT IioDeviceTriggerImpl : public IioDevice {
 
   base::FilePath GetPath() const override;
 
-  base::Optional<std::string> ReadStringAttribute(
+  std::optional<std::string> ReadStringAttribute(
       const std::string& name) const override;
-  base::Optional<int64_t> ReadNumberAttribute(
+  std::optional<int64_t> ReadNumberAttribute(
       const std::string& name) const override;
-  base::Optional<double> ReadDoubleAttribute(
+  std::optional<double> ReadDoubleAttribute(
       const std::string& name) const override;
 
   bool WriteStringAttribute(const std::string& name,
@@ -65,21 +64,19 @@ class LIBMEMS_EXPORT IioDeviceTriggerImpl : public IioDevice {
   IioDevice* GetTrigger() override { return nullptr; }
   IioDevice* GetHrtimer() override { return nullptr; }
 
-  base::Optional<size_t> GetSampleSize() const override {
-    return base::nullopt;
-  }
+  std::optional<size_t> GetSampleSize() const override { return std::nullopt; }
 
   bool EnableBuffer(size_t num) override { return false; }
   bool DisableBuffer() override { return false; }
   bool IsBufferEnabled(size_t* num = nullptr) const override { return false; }
 
   bool CreateBuffer() override { return false; }
-  base::Optional<int32_t> GetBufferFd() override { return base::nullopt; }
-  base::Optional<IioSample> ReadSample() override { return base::nullopt; }
+  std::optional<int32_t> GetBufferFd() override { return std::nullopt; }
+  std::optional<IioSample> ReadSample() override { return std::nullopt; }
   void FreeBuffer() override {}
 
-  base::Optional<int32_t> GetEventFd() override { return base::nullopt; }
-  base::Optional<iio_event_data> ReadEvent() override { return base::nullopt; }
+  std::optional<int32_t> GetEventFd() override { return std::nullopt; }
+  std::optional<iio_event_data> ReadEvent() override { return std::nullopt; }
 
  private:
   IioContextImpl* context_;    // non-owned

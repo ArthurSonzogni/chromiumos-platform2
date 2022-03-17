@@ -6,13 +6,13 @@
 #include <sysexits.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <attestation/proto_bindings/pca_agent.pb.h>
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/bus.h>
@@ -38,7 +38,7 @@ const char kInputSwitch[] = "input";
 const char kOutputSwitch[] = "output";
 const char kACATypeSwitch[] = "aca_type";
 
-base::Optional<attestation::ACAType> GetACAType(base::CommandLine* cmd_line) {
+std::optional<attestation::ACAType> GetACAType(base::CommandLine* cmd_line) {
   const std::string val = cmd_line->GetSwitchValueASCII(kACATypeSwitch);
   if (val.empty() || val == "default") {
     return attestation::DEFAULT_ACA;
@@ -46,7 +46,7 @@ base::Optional<attestation::ACAType> GetACAType(base::CommandLine* cmd_line) {
   if (val == "test") {
     return attestation::TEST_ACA;
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 }  // namespace
 

@@ -4,6 +4,7 @@
 
 #include "missive/compression/test_compression_module.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -28,9 +29,9 @@ TestCompressionModuleStrict::TestCompressionModuleStrict()
       .WillByDefault(Invoke(
           [](std::string record,
              base::OnceCallback<void(
-                 std::string, absl::optional<CompressionInformation>)> cb) {
+                 std::string, std::optional<CompressionInformation>)> cb) {
             // compression_info is not set.
-            std::move(cb).Run(record, absl::nullopt);
+            std::move(cb).Run(record, std::nullopt);
           }));
 }
 

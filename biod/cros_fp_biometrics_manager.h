@@ -8,6 +8,7 @@
 #include "biod/biometrics_manager.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -69,10 +70,10 @@ class CrosFpBiometricsManager : public BiometricsManager {
   virtual void OnMaintenanceTimerFired();
 
   // Returns RecordMetadata for given record.
-  virtual base::Optional<BiodStorageInterface::RecordMetadata>
-  GetRecordMetadata(const std::string& record_id) const;
+  virtual std::optional<BiodStorageInterface::RecordMetadata> GetRecordMetadata(
+      const std::string& record_id) const;
   // Returns RecordId for given template id.
-  virtual base::Optional<std::string> GetLoadedRecordId(int id);
+  virtual std::optional<std::string> GetLoadedRecordId(int id);
 
   std::vector<int> GetDirtyList();
   /**

@@ -9,9 +9,9 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 
 #include <base/callback.h>
-#include <base/optional.h>
 #include <base/synchronization/lock.h>
 
 #include "common/camera_buffer_pool.h"
@@ -40,7 +40,7 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
   // Return the stored ROI if a new detection is available, or nullopt if not.
   // After this call the stored ROI is cleared, waiting for another new
   // detection to fill it.
-  base::Optional<Rect<uint32_t>> TakeNewRegionOfInterest();
+  std::optional<Rect<uint32_t>> TakeNewRegionOfInterest();
 
   // Gets the crop window calculated by the full auto-framing pipeline.
   Rect<uint32_t> GetCropWindow();
@@ -63,7 +63,7 @@ class AutoFramingClient : public AutoFramingCrOS::Client {
   std::map<int64_t, CameraBufferPool::Buffer> inflight_buffers_;
 
   base::Lock lock_;
-  base::Optional<Rect<uint32_t>> region_of_interest_ GUARDED_BY(lock_);
+  std::optional<Rect<uint32_t>> region_of_interest_ GUARDED_BY(lock_);
   Rect<uint32_t> crop_window_ GUARDED_BY(lock_);
 };
 

@@ -11,9 +11,8 @@
 #include <stdint.h>
 
 #include <list>
+#include <optional>
 #include <utility>
-
-#include <base/optional.h>
 
 #include "cros-camera/camera_buffer_manager.h"
 
@@ -75,7 +74,7 @@ class CameraBufferPool {
 
   // Returns a Buffer, or nullopt if the number of buffers in use reaches
   // maximum.  The returned Buffer cannot out-live this class.
-  base::Optional<Buffer> RequestBuffer();
+  std::optional<Buffer> RequestBuffer();
 
  private:
   class BufferSlot {
@@ -93,7 +92,7 @@ class CameraBufferPool {
 
    private:
     ScopedBufferHandle handle_;
-    base::Optional<ScopedMapping> mapping_;
+    std::optional<ScopedMapping> mapping_;
     bool is_acquired_ = false;
   };
 

@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/optional.h>
-
 namespace mems_setup {
 
 enum class SensorKind {

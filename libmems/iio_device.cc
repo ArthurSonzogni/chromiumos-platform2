@@ -6,6 +6,8 @@
 
 #include <stdlib.h>
 
+#include <optional>
+
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -23,12 +25,12 @@ bool IioDevice::IsSingleSensor() const {
 }
 
 // static
-base::Optional<int> IioDevice::GetIdAfterPrefix(const char* id_str,
-                                                const char* prefix) {
+std::optional<int> IioDevice::GetIdAfterPrefix(const char* id_str,
+                                               const char* prefix) {
   size_t id_len = strlen(id_str);
   size_t prefix_len = strlen(prefix);
   if (id_len <= prefix_len || strncmp(id_str, prefix, prefix_len) != 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   int value = 0;
@@ -36,7 +38,7 @@ base::Optional<int> IioDevice::GetIdAfterPrefix(const char* id_str,
   if (success)
     return value;
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 std::vector<IioChannel*> IioDevice::GetAllChannels() {

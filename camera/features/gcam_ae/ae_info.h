@@ -8,11 +8,11 @@
 #define CAMERA_FEATURES_GCAM_AE_AE_INFO_H_
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include <base/files/scoped_file.h>
 #include <base/notreached.h>
-#include <base/optional.h>
 #include <cros-camera/gcam_ae.h>
 #include <cutils/native_handle.h>
 
@@ -97,14 +97,14 @@ struct AeFrameInfo {
   float exposure_time_ms = 0.0f;
   int ae_compensation = 0;
   float estimated_sensor_sensitivity = 0.0f;
-  base::Optional<std::vector<NormalizedRect>> faces;
+  std::optional<std::vector<NormalizedRect>> faces;
 
   // The capture request settings the camera client requested.
   struct {
-    base::Optional<uint8_t> ae_mode;
-    base::Optional<int32_t> ae_exposure_compensation;
-    base::Optional<uint8_t> ae_lock;
-    base::Optional<uint8_t> ae_antibanding_mode;
+    std::optional<uint8_t> ae_mode;
+    std::optional<int32_t> ae_exposure_compensation;
+    std::optional<uint8_t> ae_lock;
+    std::optional<uint8_t> ae_antibanding_mode;
   } client_request_settings;
 
   // The AWB gains and color correction matrix that will be applied to the

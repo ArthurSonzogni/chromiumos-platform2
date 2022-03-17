@@ -6,7 +6,6 @@
 
 #include <gtest/gtest.h>
 #include <utility>
-#include "base/optional.h"
 #include "keymaster/authorization_set.h"
 #include "keymaster/operation.h"
 

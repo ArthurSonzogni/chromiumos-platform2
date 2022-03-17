@@ -4,9 +4,8 @@
 
 #include "diagnostics/cros_healthd/network/fake_network_health_adapter.h"
 
+#include <optional>
 #include <utility>
-
-#include <base/optional.h>
 
 #include "diagnostics/mojom/external/network_health.mojom.h"
 
@@ -24,7 +23,7 @@ FakeNetworkHealthAdapter::~FakeNetworkHealthAdapter() = default;
 void FakeNetworkHealthAdapter::GetNetworkHealthState(
     FetchNetworkStateCallback callback) {
   if (!bound_) {
-    std::move(callback).Run(base::nullopt);
+    std::move(callback).Run(std::nullopt);
     return;
   }
 

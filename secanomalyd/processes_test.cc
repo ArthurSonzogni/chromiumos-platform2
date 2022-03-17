@@ -6,11 +6,11 @@
 
 #include "secanomalyd/processes.h"
 
+#include <optional>
 #include <string>
 
 #include <gtest/gtest.h>
 
-#include <base/optional.h>
 #include <brillo/process/process_mock.h>
 
 using testing::_;
@@ -89,7 +89,7 @@ TEST(ProcessesTest, EmptyString) {
 TEST(ProcessesTest, InvalidString) {
   MaybeProcEntries entries = ReadProcessesFromString(
       "this is not a valid string\ndef not", ProcessFilter::kAll);
-  // ASSERT_EQ(entries, base::nullopt);
+  // ASSERT_EQ(entries, std::nullopt);
   ASSERT_FALSE(entries.has_value());
 }
 

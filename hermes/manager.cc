@@ -8,6 +8,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,7 +20,7 @@
 
 namespace {
 
-std::string LogicalSlotToStr(base::Optional<uint8_t> logical_slot) {
+std::string LogicalSlotToStr(std::optional<uint8_t> logical_slot) {
   return logical_slot ? std::to_string(logical_slot.value()) : "None";
 }
 
@@ -82,7 +83,7 @@ void Manager::UpdateAvailableEuiccsProperty() {
 }
 
 void Manager::OnLogicalSlotUpdated(uint8_t physical_slot,
-                                   base::Optional<uint8_t> logical_slot) {
+                                   std::optional<uint8_t> logical_slot) {
   LOG(INFO) << __func__ << " physical_slot: " << physical_slot
             << " logical_slot: " << LogicalSlotToStr(logical_slot);
   auto iter = available_euiccs_.find(physical_slot);

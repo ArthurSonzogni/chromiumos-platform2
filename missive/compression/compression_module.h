@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
@@ -9,7 +10,6 @@
 #include <base/strings/string_piece.h>
 
 #include "missive/proto/record.pb.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 #ifndef MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
 #define MISSIVE_COMPRESSION_COMPRESSION_MODULE_H_
@@ -39,8 +39,8 @@ class CompressionModule : public base::RefCountedThreadSafe<CompressionModule> {
   // std::move(record).
   void CompressRecord(
       std::string record,
-      base::OnceCallback<
-          void(std::string, absl::optional<CompressionInformation>)> cb) const;
+      base::OnceCallback<void(std::string,
+                              std::optional<CompressionInformation>)> cb) const;
 
   // Returns 'true' if |kCompressReportingPipeline| feature is enabled.
   static bool is_enabled();
@@ -63,8 +63,8 @@ class CompressionModule : public base::RefCountedThreadSafe<CompressionModule> {
   // Compresses a record using snappy
   void CompressRecordSnappy(
       std::string record,
-      base::OnceCallback<
-          void(std::string, absl::optional<CompressionInformation>)> cb) const;
+      base::OnceCallback<void(std::string,
+                              std::optional<CompressionInformation>)> cb) const;
 
   // Minimum compression threshold (in bytes) for when a record will be
   // compressed

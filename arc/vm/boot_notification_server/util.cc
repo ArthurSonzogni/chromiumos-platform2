@@ -10,6 +10,8 @@
 #include <sys/un.h>
 #include <unistd.h>
 
+#include <optional>
+
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
@@ -65,7 +67,7 @@ base::ScopedFD WaitForClientConnect(int fd) {
   return client_fd;
 }
 
-base::Optional<std::string> ReadFD(int fd) {
+std::optional<std::string> ReadFD(int fd) {
   std::string out;
   char buf[kChunkSize];
 
@@ -73,7 +75,7 @@ base::Optional<std::string> ReadFD(int fd) {
     ssize_t len = HANDLE_EINTR(read(fd, buf, kChunkSize));
     if (len == -1) {
       PLOG(ERROR) << "Unable to read from fd " << fd;
-      return base::nullopt;
+      return std::nullopt;
     }
     if (len == 0)
       break;
@@ -82,12 +84,12 @@ base::Optional<std::string> ReadFD(int fd) {
   }
 
   if (out.empty())
-    return base::nullopt;
+    return std::nullopt;
 
   return out;
 }
 
-base::Optional<std::pair<unsigned int, std::string>> ExtractCidValue(
+std::optional<std::pair<unsigned int, std::string>> ExtractCidValue(
     const std::string& props) {
   // Pattern to extract CID from props string. `(?s)` flag is needed to let `.`
   // match newlines.
@@ -97,17 +99,17 @@ base::Optional<std::pair<unsigned int, std::string>> ExtractCidValue(
   if (!re2::RE2::FullMatch(props, pattern, &cid, &tail)) {
     LOG(ERROR) << "The input '" << props
                << "' did not match the expected pattern";
-    return base::nullopt;
+    return std::nullopt;
   }
   return std::make_pair(cid, tail);
 }
 
-base::Optional<unsigned int> GetPeerCid(int fd) {
+std::optional<unsigned int> GetPeerCid(int fd) {
   sockaddr_vm addr;
   socklen_t len = sizeof(sockaddr_vm);
   if (getpeername(fd, reinterpret_cast<sockaddr*>(&addr), &len) == -1) {
     PLOG(ERROR) << "Unable to get peer address from socket fd " << fd;
-    return base::nullopt;
+    return std::nullopt;
   }
   return addr.svm_cid;
 }

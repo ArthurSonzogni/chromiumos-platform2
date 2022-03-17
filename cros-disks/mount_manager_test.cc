@@ -11,6 +11,7 @@
 #include <sys/unistd.h>
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -120,7 +121,7 @@ class MountManagerUnderTest : public MountManager {
     return result;
   }
 
-  base::Optional<MountEntry> GetMountEntryForTest(const std::string& source) {
+  std::optional<MountEntry> GetMountEntryForTest(const std::string& source) {
     MountPoint* mp = FindMountBySource(source);
     if (!mp)
       return {};
@@ -395,7 +396,7 @@ TEST_F(MountManagerTest, MountSucceededWithGivenMountPath) {
   EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  base::Optional<MountEntry> mount_entry;
+  std::optional<MountEntry> mount_entry;
   mount_entry = manager_.GetMountEntryForTest(source_path_);
   EXPECT_TRUE(mount_entry);
   EXPECT_FALSE(mount_entry->is_read_only);
@@ -436,7 +437,7 @@ TEST_F(MountManagerTest, MountCachesStatusWithReadOnlyOption) {
   EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  base::Optional<MountEntry> mount_entry;
+  std::optional<MountEntry> mount_entry;
   mount_entry = manager_.GetMountEntryForTest(source_path_);
   EXPECT_TRUE(mount_entry);
   EXPECT_TRUE(mount_entry->is_read_only);
@@ -476,7 +477,7 @@ TEST_F(MountManagerTest, MountSuccededWithReadOnlyFallback) {
   EXPECT_EQ(kTestMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  base::Optional<MountEntry> mount_entry;
+  std::optional<MountEntry> mount_entry;
   mount_entry = manager_.GetMountEntryForTest(source_path_);
   EXPECT_TRUE(mount_entry);
   EXPECT_TRUE(mount_entry->is_read_only);
@@ -1215,7 +1216,7 @@ TEST_F(MountManagerTest, RemountSucceededWithGivenSourcePath) {
             manager_.Mount(kTestSourcePath, filesystem_type_,
                            {kMountOptionReadWrite}, &mount_path_));
   EXPECT_EQ(kTestMountPath, mount_path_);
-  base::Optional<MountEntry> mount_entry;
+  std::optional<MountEntry> mount_entry;
   mount_entry = manager_.GetMountEntryForTest(kTestSourcePath);
   ASSERT_TRUE(mount_entry);
   EXPECT_FALSE(mount_entry->is_read_only);

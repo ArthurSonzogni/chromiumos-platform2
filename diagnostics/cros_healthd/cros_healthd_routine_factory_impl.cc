@@ -5,10 +5,10 @@
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory_impl.h"
 
 #include <cstdint>
+#include <optional>
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/routines/ac_power/ac_power.h"
 #include "diagnostics/cros_healthd/routines/arc_dns_resolution/arc_dns_resolution.h"
@@ -58,23 +58,23 @@ std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeUrandomRoutine(
     chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds) {
   return CreateUrandomRoutine(length_seconds.is_null()
-                                  ? base::nullopt
-                                  : base::Optional<base::TimeDelta>(
+                                  ? std::nullopt
+                                  : std::optional<base::TimeDelta>(
                                         base::Seconds(length_seconds->value)));
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeBatteryCapacityRoutine() {
-  base::Optional<uint32_t> low_mah;
-  base::Optional<uint32_t> high_mah;
+  std::optional<uint32_t> low_mah;
+  std::optional<uint32_t> high_mah;
   parameter_fetcher_->GetBatteryCapacityParameters(&low_mah, &high_mah);
   return CreateBatteryCapacityRoutine(context_, low_mah, high_mah);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeBatteryHealthRoutine() {
-  base::Optional<uint32_t> maximum_cycle_count;
-  base::Optional<uint8_t> percent_battery_wear_allowed;
+  std::optional<uint32_t> maximum_cycle_count;
+  std::optional<uint8_t> percent_battery_wear_allowed;
   parameter_fetcher_->GetBatteryHealthParameters(&maximum_cycle_count,
                                                  &percent_battery_wear_allowed);
   return CreateBatteryHealthRoutine(context_, maximum_cycle_count,
@@ -89,25 +89,25 @@ CrosHealthdRoutineFactoryImpl::MakeSmartctlCheckRoutine() {
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeAcPowerRoutine(
     chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-    const base::Optional<std::string>& expected_power_type) {
+    const std::optional<std::string>& expected_power_type) {
   return std::make_unique<AcPowerRoutine>(expected_status, expected_power_type);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeCpuCacheRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   return CreateCpuCacheRoutine(exec_duration);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeCpuStressRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   return CreateCpuStressRoutine(exec_duration);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeFloatingPointAccuracyRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   return CreateFloatingPointAccuracyRoutine(exec_duration);
 }
 
@@ -144,8 +144,8 @@ CrosHealthdRoutineFactoryImpl::MakeDiskReadRoutine(
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakePrimeSearchRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
-  base::Optional<uint64_t> max_num;
+    const std::optional<base::TimeDelta>& exec_duration) {
+  std::optional<uint64_t> max_num;
   parameter_fetcher_->GetPrimeSearchParameters(&max_num);
   return CreatePrimeSearchRoutine(exec_duration, max_num);
 }
@@ -229,7 +229,7 @@ CrosHealthdRoutineFactoryImpl::MakeHttpsLatencyRoutine() {
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname) {
+    const std::optional<std::string>& stun_server_hostname) {
   return CreateVideoConferencingRoutine(
       stun_server_hostname, context_->network_diagnostics_adapter());
 }

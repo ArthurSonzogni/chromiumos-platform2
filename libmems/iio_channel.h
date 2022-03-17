@@ -5,10 +5,10 @@
 #ifndef LIBMEMS_IIO_CHANNEL_H_
 #define LIBMEMS_IIO_CHANNEL_H_
 
+#include <optional>
 #include <string>
 
 #include <base/macros.h>
-#include <base/optional.h>
 
 #include "libmems/export.h"
 
@@ -49,21 +49,21 @@ class IioChannel {
   virtual bool SetScanElementsEnabled(bool en) = 0;
 
   // Reads the |name| attribute of this channel and returns the value
-  // as a string. It will return base::nullopt if the attribute cannot
+  // as a string. It will return std::nullopt if the attribute cannot
   // be read.
-  virtual base::Optional<std::string> ReadStringAttribute(
+  virtual std::optional<std::string> ReadStringAttribute(
       const std::string& name) const = 0;
 
   // Reads the |name| attribute of this channel and returns the value
-  // as a signed number. It will return base::nullopt if the attribute
+  // as a signed number. It will return std::nullopt if the attribute
   // cannot be read or is not a valid number.
-  virtual base::Optional<int64_t> ReadNumberAttribute(
+  virtual std::optional<int64_t> ReadNumberAttribute(
       const std::string& name) const = 0;
 
   // Reads the |name| attribute of this device and returns the value
-  // as a double precision floating point. It will return base::nullopt
+  // as a double precision floating point. It will return std::nullopt
   // if the attribute cannot be read or is not a valid number.
-  virtual base::Optional<double> ReadDoubleAttribute(
+  virtual std::optional<double> ReadDoubleAttribute(
       const std::string& name) const = 0;
 
   // Writes the string |value| to the attribute |name| of this channel. Returns

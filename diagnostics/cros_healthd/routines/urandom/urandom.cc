@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/routines/urandom/urandom.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -24,7 +25,7 @@ constexpr char kUrandomExePath[] = "/usr/libexec/diagnostics/urandom";
 const base::TimeDelta kUrandomDefaultLength = base::Seconds(10);
 
 std::unique_ptr<DiagnosticRoutine> CreateUrandomRoutine(
-    const base::Optional<base::TimeDelta>& length_seconds) {
+    const std::optional<base::TimeDelta>& length_seconds) {
   base::TimeDelta routine_duration =
       length_seconds.value_or(kUrandomDefaultLength);
   return std::make_unique<SubprocRoutine>(

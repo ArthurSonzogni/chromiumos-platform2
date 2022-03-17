@@ -4,6 +4,7 @@
 
 #include "authpolicy/auth_data_cache.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -94,45 +95,45 @@ void AuthDataCache::Clear() {
   data_.Clear();
 }
 
-base::Optional<std::string> AuthDataCache::GetWorkgroup(
+std::optional<std::string> AuthDataCache::GetWorkgroup(
     const std::string& realm) const {
   const protos::CachedRealmData* realm_data = GetRealmDataForRead(realm);
   if (!realm_data || !realm_data->has_workgroup()) {
     LOG_START(INFO) << "No workgroup cached" << LOG_END;
-    return base::nullopt;
+    return std::nullopt;
   }
   LOG_START(INFO) << "Using cached workgroup" << LOG_END;
   return realm_data->workgroup();
 }
 
-base::Optional<std::string> AuthDataCache::GetKdcIp(
+std::optional<std::string> AuthDataCache::GetKdcIp(
     const std::string& realm) const {
   const protos::CachedRealmData* realm_data = GetRealmDataForRead(realm);
   if (!realm_data || !realm_data->has_kdc_ip()) {
     LOG_START(INFO) << "No KDC IP cached" << LOG_END;
-    return base::nullopt;
+    return std::nullopt;
   }
   LOG_START(INFO) << "Using cached KDC IP" << LOG_END;
   return realm_data->kdc_ip();
 }
 
-base::Optional<std::string> AuthDataCache::GetDcName(
+std::optional<std::string> AuthDataCache::GetDcName(
     const std::string& realm) const {
   const protos::CachedRealmData* realm_data = GetRealmDataForRead(realm);
   if (!realm_data || !realm_data->has_dc_name()) {
     LOG_START(INFO) << "No DC name cached" << LOG_END;
-    return base::nullopt;
+    return std::nullopt;
   }
   LOG_START(INFO) << "Using cached DC name" << LOG_END;
   return realm_data->dc_name();
 }
 
-base::Optional<bool> AuthDataCache::GetIsAffiliated(
+std::optional<bool> AuthDataCache::GetIsAffiliated(
     const std::string& realm) const {
   const protos::CachedRealmData* realm_data = GetRealmDataForRead(realm);
   if (!realm_data || !realm_data->has_is_affiliated()) {
     LOG_START(INFO) << "No affiliation flag cached" << LOG_END;
-    return base::nullopt;
+    return std::nullopt;
   }
   LOG_START(INFO) << "Using cached affiliation flag" << LOG_END;
   return realm_data->is_affiliated();

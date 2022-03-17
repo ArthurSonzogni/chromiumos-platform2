@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,7 +16,6 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
@@ -361,12 +361,12 @@ base::ScopedFD ProxyFileSystem::RegisterHandle(int64_t handle, int32_t flags) {
            new_flags)));
 }
 
-base::Optional<ProxyFileSystem::State> ProxyFileSystem::GetState(
+std::optional<ProxyFileSystem::State> ProxyFileSystem::GetState(
     fuse_ino_t inode) {
   base::AutoLock lock_(inode_lock_);
   auto iter = inode_to_state_.find(inode);
   if (iter == inode_to_state_.end())
-    return base::nullopt;
+    return std::nullopt;
   return iter->second;
 }
 

@@ -5,6 +5,7 @@
 #include "metrics/structured/key_data.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -54,7 +55,7 @@ KeyData::~KeyData() = default;
 // Key management
 //---------------
 
-base::Optional<std::string> KeyData::ValidateAndGetKey(
+std::optional<std::string> KeyData::ValidateAndGetKey(
     const uint64_t project_name_hash) {
   const int now = (base::Time::Now() - base::Time::UnixEpoch()).InDays();
   KeyProto& key = (*(proto_.get()->get()->mutable_keys()))[project_name_hash];
@@ -78,7 +79,7 @@ base::Optional<std::string> KeyData::ValidateAndGetKey(
   // Return the key unless it's the wrong size, in which case return nullopt.
   const std::string key_string = key.key();
   if (key_string.size() != kKeySize)
-    return base::nullopt;
+    return std::nullopt;
   return key_string;
 }
 
@@ -97,7 +98,7 @@ void KeyData::UpdateKey(KeyProto* key,
 
 uint64_t KeyData::Id(const uint64_t project_name_hash) {
   // Retrieve the key for |project_name_hash|.
-  const base::Optional<std::string> key = ValidateAndGetKey(project_name_hash);
+  const std::optional<std::string> key = ValidateAndGetKey(project_name_hash);
   if (!key) {
     NOTREACHED();
     return 0u;
@@ -113,7 +114,7 @@ uint64_t KeyData::HmacMetric(const uint64_t project_name_hash,
                              const uint64_t metric_name_hash,
                              const std::string& value) {
   // Retrieve the key for |project_name_hash|.
-  const base::Optional<std::string> key = ValidateAndGetKey(project_name_hash);
+  const std::optional<std::string> key = ValidateAndGetKey(project_name_hash);
   if (!key) {
     NOTREACHED();
     return 0u;

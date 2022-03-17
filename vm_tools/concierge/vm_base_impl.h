@@ -8,6 +8,7 @@
 #include "vm_tools/concierge/vm_interface.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -50,7 +51,7 @@ class VmBaseImpl : public VmInterface {
   pid_t pid() { return process_.pid(); }
 
   // VmInterface overrides.
-  base::Optional<BalloonStats> GetBalloonStats() override;
+  std::optional<BalloonStats> GetBalloonStats() override;
   void SetBalloonSize(int64_t byte_size) override;
   const std::unique_ptr<BalloonPolicyInterface>& GetBalloonPolicy(
       const MemoryMargins& margins, const std::string& vm) override;

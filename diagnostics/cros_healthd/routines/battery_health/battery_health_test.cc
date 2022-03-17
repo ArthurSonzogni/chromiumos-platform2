@@ -3,12 +3,12 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include <base/check.h>
 #include <base/json/json_writer.h>
-#include <base/optional.h>
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -234,7 +234,7 @@ TEST_F(BatteryHealthRoutineTest, CapacityExceedsDesignCapacity) {
 
 // Test that the battery health routine fails when powerd returns an error.
 TEST_F(BatteryHealthRoutineTest, PowerdError) {
-  fake_powerd_adapter()->SetPowerSupplyProperties(base::nullopt);
+  fake_powerd_adapter()->SetPowerSupplyProperties(std::nullopt);
 
   CreateRoutine();
   RunRoutineAndWaitForExit();

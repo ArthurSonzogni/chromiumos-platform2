@@ -7,9 +7,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
@@ -55,13 +54,13 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeSmartctlCheckRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
       chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-      const base::Optional<std::string>& expected_power_type) override;
+      const std::optional<std::string>& expected_power_type) override;
   std::unique_ptr<DiagnosticRoutine> MakeCpuCacheRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration) override;
+      const std::optional<base::TimeDelta>& exec_duration) override;
   std::unique_ptr<DiagnosticRoutine> MakeCpuStressRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration) override;
+      const std::optional<base::TimeDelta>& exec_duration) override;
   std::unique_ptr<DiagnosticRoutine> MakeFloatingPointAccuracyRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration) override;
+      const std::optional<base::TimeDelta>& exec_duration) override;
   std::unique_ptr<DiagnosticRoutine> MakeNvmeWearLevelRoutine(
       DebugdAdapter* debugd_adapter, uint32_t wear_level_threshold) override;
   std::unique_ptr<DiagnosticRoutine> MakeNvmeSelfTestRoutine(
@@ -73,7 +72,7 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
       base::TimeDelta exec_duration,
       uint32_t file_size_mb) override;
   std::unique_ptr<DiagnosticRoutine> MakePrimeSearchRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration) override;
+      const std::optional<base::TimeDelta>& exec_duration) override;
   std::unique_ptr<DiagnosticRoutine> MakeBatteryDischargeRoutine(
       base::TimeDelta exec_duration,
       uint32_t maximum_discharge_percent_allowed) override;
@@ -94,7 +93,7 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeHttpsFirewallRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeHttpsLatencyRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeVideoConferencingRoutine(
-      const base::Optional<std::string>& stun_server_hostname) override;
+      const std::optional<std::string>& stun_server_hostname) override;
   std::unique_ptr<DiagnosticRoutine> MakeArcHttpRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeArcPingRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeArcDnsResolutionRoutine() override;

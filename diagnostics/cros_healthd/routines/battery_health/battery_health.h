@@ -7,9 +7,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -36,8 +36,8 @@ extern const uint8_t kBatteryHealthDefaultPercentBatteryWearAllowed;
 // kBatteryHealthDefaultPercentBatteryWearAllowed.
 std::unique_ptr<DiagnosticRoutine> CreateBatteryHealthRoutine(
     Context* const context,
-    const base::Optional<uint32_t>& maximum_cycle_count,
-    const base::Optional<uint8_t>& percent_battery_wear_allowed);
+    const std::optional<uint32_t>& maximum_cycle_count,
+    const std::optional<uint8_t>& percent_battery_wear_allowed);
 
 }  // namespace diagnostics
 

@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <time.h>
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_util.h>

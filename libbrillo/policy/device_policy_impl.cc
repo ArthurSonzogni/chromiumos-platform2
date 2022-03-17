@@ -8,6 +8,7 @@
 #include <iterator>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -108,7 +109,7 @@ std::string DecodeConnectionType(int type) {
   return kConnectionTypes[type];
 }
 
-// TODO(adokar): change type to base::Optional<int> when available.
+// TODO(adokar): change type to std::optional<int> when available.
 int ConvertDayOfWeekStringToInt(const std::string& day_of_week_str) {
   if (day_of_week_str == "Sunday")
     return 0;
@@ -141,13 +142,13 @@ bool DecodeWeeklyTimeFromValue(const base::Value& dict_value,
     return false;
   }
 
-  base::Optional<int> hours = dict_value.FindIntKey("hours");
+  std::optional<int> hours = dict_value.FindIntKey("hours");
   if (!hours.has_value() || hours < 0 || hours > 23) {
     LOG(ERROR) << "Hours are absent or are outside of the range [0, 24).";
     return false;
   }
 
-  base::Optional<int> minutes = dict_value.FindIntKey("minutes");
+  std::optional<int> minutes = dict_value.FindIntKey("minutes");
   if (!minutes.has_value() || minutes < 0 || minutes > 59) {
     LOG(ERROR) << "Minutes are absent or are outside the range [0, 60)";
     return false;
@@ -157,37 +158,37 @@ bool DecodeWeeklyTimeFromValue(const base::Value& dict_value,
   return true;
 }
 
-base::Optional<base::Value> DecodeListValueFromJSON(
+std::optional<base::Value> DecodeListValueFromJSON(
     const std::string& json_string) {
   auto decoded_json = base::JSONReader::ReadAndReturnValueWithError(
       json_string, base::JSON_ALLOW_TRAILING_COMMAS);
   if (!decoded_json.value) {
     LOG(ERROR) << "Invalid JSON string: " << decoded_json.error_message;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!decoded_json.value->is_list()) {
     LOG(ERROR) << "JSON string is not a list";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return std::move(decoded_json.value);
 }
 
-base::Optional<base::Value> DecodeDictValueFromJSON(
+std::optional<base::Value> DecodeDictValueFromJSON(
     const std::string& json_string, const std::string& entry_name) {
   auto decoded_json = base::JSONReader::ReadAndReturnValueWithError(
       json_string, base::JSON_ALLOW_TRAILING_COMMAS);
   if (!decoded_json.value) {
     LOG(ERROR) << "Invalid JSON string in " << entry_name << ": "
                << decoded_json.error_message;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!decoded_json.value->is_dict()) {
     LOG(ERROR) << "Invalid JSON string in " << entry_name << ": "
                << "JSON string is not a dictionary";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return std::move(decoded_json.value);
@@ -614,7 +615,7 @@ bool DevicePolicyImpl::GetDeviceUpdateStagingSchedule(
   if (!proto.has_staging_schedule())
     return false;
 
-  base::Optional<base::Value> list_val =
+  std::optional<base::Value> list_val =
       DecodeListValueFromJSON(proto.staging_schedule());
   if (!list_val)
     return false;
@@ -622,8 +623,8 @@ bool DevicePolicyImpl::GetDeviceUpdateStagingSchedule(
   for (const auto& pair_value : list_val->GetList()) {
     if (!pair_value.is_dict())
       return false;
-    base::Optional<int> days = pair_value.FindIntKey("days");
-    base::Optional<int> percentage = pair_value.FindIntKey("percentage");
+    std::optional<int> days = pair_value.FindIntKey("days");
+    std::optional<int> percentage = pair_value.FindIntKey("percentage");
     if (!days.has_value() || !percentage.has_value())
       return false;
     // Limit the percentage to [0, 100] and days to [1, 28];
@@ -724,7 +725,7 @@ bool DevicePolicyImpl::GetDisallowedTimeIntervals(
     return false;
   }
 
-  base::Optional<base::Value> list_val =
+  std::optional<base::Value> list_val =
       DecodeListValueFromJSON(proto.disallowed_time_intervals());
   if (!list_val)
     return false;
@@ -811,7 +812,7 @@ bool DevicePolicyImpl::GetHighestDeviceMinimumVersion(
   if (!policy_string.has_value())
     return false;
 
-  const base::Optional<base::Value> decoded_policy =
+  const std::optional<base::Value> decoded_policy =
       DecodeDictValueFromJSON(policy_string.value(), "device_minimum_version");
   if (!decoded_policy)
     return false;

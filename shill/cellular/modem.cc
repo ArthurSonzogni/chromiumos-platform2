@@ -5,6 +5,7 @@
 #include "shill/cellular/modem.h"
 
 #include <limits>
+#include <optional>
 #include <tuple>
 
 #include <base/bind.h>
@@ -195,12 +196,12 @@ void Modem::CreateDeviceFromModemProperties(
                 << " Enabled: " << device->enabled();
 }
 
-base::Optional<int> Modem::GetDeviceParams(std::string* mac_address) {
+std::optional<int> Modem::GetDeviceParams(std::string* mac_address) {
   // TODO(petkov): Get the interface index from DeviceInfo, similar to the MAC
   // address below.
   int interface_index = rtnl_handler_->GetInterfaceIndex(link_name_);
   if (interface_index < 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   ByteString address_bytes;

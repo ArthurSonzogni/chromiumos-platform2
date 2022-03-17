@@ -7,6 +7,7 @@
 #define HARDWARE_VERIFIER_PROBE_RESULT_GETTER_IMPL_H_
 
 #include <memory>
+#include <optional>
 
 #include <base/macros.h>
 
@@ -35,9 +36,9 @@ class ProbeResultGetterImpl : public ProbeResultGetter {
  public:
   ProbeResultGetterImpl();
 
-  base::Optional<runtime_probe::ProbeResult> GetFromRuntimeProbe()
+  std::optional<runtime_probe::ProbeResult> GetFromRuntimeProbe()
       const override;
-  base::Optional<runtime_probe::ProbeResult> GetFromFile(
+  std::optional<runtime_probe::ProbeResult> GetFromFile(
       const base::FilePath& file_path) const override;
 
  private:

@@ -9,12 +9,11 @@
 #include <unistd.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
-
-#include <base/optional.h>
 
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/usb_control.h"
@@ -96,7 +95,7 @@ class VmInterface {
   virtual Info GetInfo() = 0;
 
   // Returns balloon stats info retrieved from virtio-balloon device.
-  virtual base::Optional<BalloonStats> GetBalloonStats() = 0;
+  virtual std::optional<BalloonStats> GetBalloonStats() = 0;
 
   // Resize the balloon size.
   virtual void SetBalloonSize(int64_t byte_size) = 0;

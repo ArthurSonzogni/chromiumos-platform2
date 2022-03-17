@@ -5,6 +5,7 @@
 #include "hwsec-test-utils/fake_pca_agent/pca_enroll_v1.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -36,7 +37,7 @@ constexpr int kAesKeySize = 32;
 constexpr int kAesBlockSize = 16;
 
 // Uses RSA_padding_add_PKCS1_OAEP_mgf1 to generate the padded data.
-base::Optional<std::string> OaepPaddingWithParam(
+std::optional<std::string> OaepPaddingWithParam(
     const std::string& data,
     size_t rsa_key_size,
     const std::string& encoding_param) {
@@ -136,7 +137,7 @@ bool PcaEnrollV1::Verify() {
 }
 
 bool PcaEnrollV1::Generate() {
-  base::Optional<std::string> cert_der = IssueTestCertificateDer(identity_key_);
+  std::optional<std::string> cert_der = IssueTestCertificateDer(identity_key_);
   if (!cert_der) {
     LOG(ERROR) << __func__
                << ": Failed to issue a test certificate for the identity key.";
@@ -144,19 +145,19 @@ bool PcaEnrollV1::Generate() {
   }
 
   // Generate an AES key and IV.
-  base::Optional<std::string> aes_key = GetRandom(kAesKeySize);
+  std::optional<std::string> aes_key = GetRandom(kAesKeySize);
   if (!aes_key) {
     LOG(ERROR) << __func__ << ": Failed to create aes key.";
     return false;
   }
-  base::Optional<std::string> iv = GetRandom(kAesBlockSize);
+  std::optional<std::string> iv = GetRandom(kAesBlockSize);
   if (!iv) {
     LOG(ERROR) << __func__ << ": Failed to create IV.";
     return false;
   }
 
   // Encrypt the certificate.
-  base::Optional<std::string> encrypted_cert =
+  std::optional<std::string> encrypted_cert =
       EVPAesEncrypt(*cert_der, EVP_aes_256_cbc(), *aes_key, *iv);
   if (!encrypted_cert) {
     LOG(ERROR) << __func__ << ": Failed to encrypt certificate.";
@@ -183,7 +184,7 @@ bool PcaEnrollV1::Generate() {
 
   // The padding scheme and parameters are defined at Part I, section 31.1.1 of
   // TPM spec part 1.
-  base::Optional<std::string> padded_asym_ac_contents_blob =
+  std::optional<std::string> padded_asym_ac_contents_blob =
       OaepPaddingWithParam(asym_ac_contents_blob,
                            RSA_size(EVP_PKEY_get0_RSA(endorsement_key_.get())),
                            "TCPA");
@@ -191,7 +192,7 @@ bool PcaEnrollV1::Generate() {
     LOG(ERROR) << __func__ << ": Failed to add padding.";
     return false;
   }
-  base::Optional<std::string> encrypted_asym_content = EVPRsaEncrypt(
+  std::optional<std::string> encrypted_asym_content = EVPRsaEncrypt(
       endorsement_key_, *padded_asym_ac_contents_blob, RSA_NO_PADDING);
   if (!encrypted_asym_content) {
     LOG(ERROR) << __func__ << ": Failed to encrypt TPM_ASYM_CA_CONTENTS.";

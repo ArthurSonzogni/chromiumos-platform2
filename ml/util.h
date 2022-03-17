@@ -5,8 +5,9 @@
 #ifndef ML_UTIL_H_
 #define ML_UTIL_H_
 
+#include <optional>
+
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 namespace ml {
 
@@ -50,7 +51,7 @@ constexpr bool IsAsan() {
 
 // Gives resolved path using realpath(3), or empty Optional upon error. Leaves
 // realpath's errno unchanged.
-base::Optional<base::FilePath> GetRealPath(const base::FilePath& path);
+std::optional<base::FilePath> GetRealPath(const base::FilePath& path);
 
 // Returns true if the given path is a valid path for DLC.
 // This allows ML Service to enforce a security check on the path received via

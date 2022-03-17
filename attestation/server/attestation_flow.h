@@ -5,12 +5,12 @@
 #ifndef ATTESTATION_SERVER_ATTESTATION_FLOW_H_
 #define ATTESTATION_SERVER_ATTESTATION_FLOW_H_
 
+#include <optional>
 #include <string>
 #include <utility>
 
 #include <attestation/proto_bindings/interface.pb.h>
 #include <base/callback.h>
-#include <base/optional.h>
 
 #include "attestation/common/attestation_interface.h"
 
@@ -89,10 +89,10 @@ class AttestationFlowData {
   void ReturnCertificate();
 
  private:
-  const base::Optional<EnrollRequest> enroll_request_;
-  const base::Optional<EnrollCallback> enroll_callback_;
-  const base::Optional<GetCertificateRequest> get_certificate_request_;
-  const base::Optional<GetCertificateCallback> get_certificate_callback_;
+  const std::optional<EnrollRequest> enroll_request_;
+  const std::optional<EnrollCallback> enroll_callback_;
+  const std::optional<GetCertificateRequest> get_certificate_request_;
+  const std::optional<GetCertificateCallback> get_certificate_callback_;
   AttestationFlowAction action_{AttestationFlowAction::kUnknown};
   AttestationStatus status_{STATUS_SUCCESS};
   std::string result_request_;

@@ -5,6 +5,7 @@
 #include "shill/device_info.h"
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -1626,7 +1627,7 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
   }
 
   Technology GetDeviceTechnology() {
-    return device_info_.GetDeviceTechnology(test_device_name_, base::nullopt);
+    return device_info_.GetDeviceTechnology(test_device_name_, std::nullopt);
   }
   Technology GetDeviceTechnology(const std::string& kind) {
     return device_info_.GetDeviceTechnology(test_device_name_, kind);
@@ -1840,7 +1841,7 @@ class DeviceInfoForDelayedCreationTest : public DeviceInfo {
               (override));
   MOCK_METHOD(Technology,
               GetDeviceTechnology,
-              (const std::string&, const base::Optional<std::string>& kind),
+              (const std::string&, const std::optional<std::string>& kind),
               (const, override));
 };
 

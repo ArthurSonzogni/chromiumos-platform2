@@ -6,10 +6,10 @@
 #define LIBCROSSYSTEM_CROSSYSTEM_H_
 
 #include <cstddef>
+#include <optional>
 
 #include <string>
 
-#include <base/optional.h>
 #include <brillo/brillo_export.h>
 
 namespace crossystem {
@@ -22,8 +22,8 @@ class BRILLO_EXPORT Crossystem {
   // Reads a system property integer.
   //
   // @param name The name of the target system property.
-  // @return The property value, or |base::nullopt| if error.
-  virtual base::Optional<int> VbGetSystemPropertyInt(
+  // @return The property value, or |std::nullopt| if error.
+  virtual std::optional<int> VbGetSystemPropertyInt(
       const std::string& name) const = 0;
 
   // Sets a system property integer.
@@ -36,8 +36,8 @@ class BRILLO_EXPORT Crossystem {
   // Reads a system property string.
   //
   // @param name The name of the target system property.
-  // @return The property value, or |base::nullopt| if error.
-  virtual base::Optional<std::string> VbGetSystemPropertyString(
+  // @return The property value, or |std::nullopt| if error.
+  virtual std::optional<std::string> VbGetSystemPropertyString(
       const std::string& name) const = 0;
 
   // Sets a system property string.
@@ -53,12 +53,12 @@ class BRILLO_EXPORT Crossystem {
 // in vboot/crossystem.h .
 class BRILLO_EXPORT CrossystemImpl : public Crossystem {
  public:
-  base::Optional<int> VbGetSystemPropertyInt(
+  std::optional<int> VbGetSystemPropertyInt(
       const std::string& name) const override;
 
   bool VbSetSystemPropertyInt(const std::string& name, int value) override;
 
-  base::Optional<std::string> VbGetSystemPropertyString(
+  std::optional<std::string> VbGetSystemPropertyString(
       const std::string& name) const override;
 
   bool VbSetSystemPropertyString(const std::string& name,

@@ -4,9 +4,9 @@
 
 #include "croslog/multiplexer.h"
 
+#include <optional>
 #include <utility>
 
-#include "base/optional.h"
 #include "base/strings/string_util.h"
 
 #include "croslog/log_parser_syslog.h"
@@ -84,7 +84,7 @@ MaybeLogEntry Multiplexer::Forward() {
   }
 
   if (next_source == nullptr) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   MaybeLogEntry entry = std::move(next_source->cache_next_forward);
@@ -125,7 +125,7 @@ MaybeLogEntry Multiplexer::Backward() {
   }
 
   if (next_source == nullptr) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   MaybeLogEntry entry = std::move(next_source->cache_next_backward);

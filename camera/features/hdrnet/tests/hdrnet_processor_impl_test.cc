@@ -5,6 +5,7 @@
  */
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/at_exit.h>
@@ -50,7 +51,7 @@ struct Options {
   Size input_size{1920, 1080};
   std::vector<Size> output_sizes{{1920, 1080}, {1280, 720}};
   bool dump_buffer = false;
-  base::Optional<base::FilePath> input_file;
+  std::optional<base::FilePath> input_file;
   bool use_default_processor_device_adapter = false;
   uint32_t input_format = HAL_PIXEL_FORMAT_YCbCr_420_888;
 };

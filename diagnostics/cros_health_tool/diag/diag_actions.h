@@ -7,9 +7,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <base/time/default_tick_clock.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
@@ -44,7 +44,7 @@ class DiagActions final {
   // ran, and was removed.
   bool ActionRunAcPowerRoutine(
       chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-      const base::Optional<std::string>& expected_power_type);
+      const std::optional<std::string>& expected_power_type);
   bool ActionRunBatteryCapacityRoutine();
   bool ActionRunBatteryChargeRoutine(base::TimeDelta exec_duration,
                                      uint32_t minimum_charge_percent_required);
@@ -54,9 +54,9 @@ class DiagActions final {
   bool ActionRunBatteryHealthRoutine();
   bool ActionRunCaptivePortalRoutine();
   bool ActionRunCpuCacheRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration);
+      const std::optional<base::TimeDelta>& exec_duration);
   bool ActionRunCpuStressRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration);
+      const std::optional<base::TimeDelta>& exec_duration);
   bool ActionRunDiskReadRoutine(
       chromeos::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
       base::TimeDelta exec_duration,
@@ -65,7 +65,7 @@ class DiagActions final {
   bool ActionRunDnsResolutionRoutine();
   bool ActionRunDnsResolverPresentRoutine();
   bool ActionRunFloatingPointAccuracyRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration);
+      const std::optional<base::TimeDelta>& exec_duration);
   bool ActionRunGatewayCanBePingedRoutine();
   bool ActionRunHasSecureWiFiConnectionRoutine();
   bool ActionRunHttpFirewallRoutine();
@@ -77,13 +77,13 @@ class DiagActions final {
       chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type);
   bool ActionRunNvmeWearLevelRoutine(uint32_t wear_level_threshold);
   bool ActionRunPrimeSearchRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration);
+      const std::optional<base::TimeDelta>& exec_duration);
   bool ActionRunSignalStrengthRoutine();
   bool ActionRunSmartctlCheckRoutine();
   bool ActionRunUrandomRoutine(
-      const base::Optional<base::TimeDelta>& length_seconds);
+      const std::optional<base::TimeDelta>& length_seconds);
   bool ActionRunVideoConferencingRoutine(
-      const base::Optional<std::string>& stun_server_hostname);
+      const std::optional<std::string>& stun_server_hostname);
   bool ActionRunArcHttpRoutine();
   bool ActionRunArcPingRoutine();
   bool ActionRunArcDnsResolutionRoutine();

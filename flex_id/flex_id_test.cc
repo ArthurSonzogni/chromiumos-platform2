@@ -4,8 +4,9 @@
 
 #include "flex_id/flex_id.h"
 
+#include <optional>
+
 #include <base/files/scoped_temp_dir.h>
-#include <base/optional.h>
 #include <gtest/gtest.h>
 
 namespace flex_id {
@@ -80,7 +81,7 @@ class FlexIdTest : public ::testing::Test {
     CHECK(base::DeleteFile(flex_id_path));
   }
 
-  base::Optional<flex_id::FlexIdGenerator> flex_id_generator_;
+  std::optional<flex_id::FlexIdGenerator> flex_id_generator_;
   base::ScopedTempDir test_dir_;
   base::FilePath test_path_;
 };

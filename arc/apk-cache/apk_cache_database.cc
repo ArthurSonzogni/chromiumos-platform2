@@ -7,13 +7,13 @@
 #include <cinttypes>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -242,20 +242,19 @@ int64_t ApkCacheDatabase::InsertSession(const Session& session) const {
   return sqlite3_last_insert_rowid(db_.get());
 }
 
-base::Optional<std::vector<Session>> ApkCacheDatabase::GetSessions() const {
+std::optional<std::vector<Session>> ApkCacheDatabase::GetSessions() const {
   std::vector<Session> sessions;
   ExecResult result = ExecSQL("SELECT id,source,timestamp,status FROM sessions",
                               GetSessionsCallback, &sessions);
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to query: (" << result.code << ") "
                << result.error_msg;
-    return base::nullopt;
+    return std::nullopt;
   }
-  return base::make_optional(std::move(sessions));
+  return std::make_optional(std::move(sessions));
 }
 
-base::Optional<std::vector<FileEntry>> ApkCacheDatabase::GetFileEntries()
-    const {
+std::optional<std::vector<FileEntry>> ApkCacheDatabase::GetFileEntries() const {
   std::vector<FileEntry> file_entries;
   ExecResult result = ExecSQL(
       "SELECT id,package_name,version_code,type,"
@@ -265,10 +264,10 @@ base::Optional<std::vector<FileEntry>> ApkCacheDatabase::GetFileEntries()
   if (result.code != SQLITE_OK) {
     LOG(ERROR) << "Failed to query: (" << result.code << ") "
                << result.error_msg;
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  return base::make_optional(std::move(file_entries));
+  return std::make_optional(std::move(file_entries));
 }
 
 bool ApkCacheDatabase::DeleteSession(int64_t session_id) const {

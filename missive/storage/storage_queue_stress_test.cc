@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <initializer_list>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -34,7 +35,6 @@
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using ::testing::_;
 using ::testing::Between;
@@ -61,7 +61,7 @@ class TestUploadClient : public UploaderInterface {
   // generation is uploaded without last record digest.
   using LastRecordDigestMap = base::flat_map<
       std::pair<int64_t /*generation id */, int64_t /*sequencing id*/>,
-      absl::optional<std::string /*digest*/>>;
+      std::optional<std::string /*digest*/>>;
 
   explicit TestUploadClient(LastRecordDigestMap* last_record_digest_map)
       : last_record_digest_map_(last_record_digest_map) {}
@@ -119,7 +119,7 @@ class TestUploadClient : public UploaderInterface {
   void Completed(Status status) override { ASSERT_OK(status); }
 
  private:
-  absl::optional<int64_t> generation_id_;
+  std::optional<int64_t> generation_id_;
   LastRecordDigestMap* const last_record_digest_map_;
 
   Sequence test_upload_sequence_;

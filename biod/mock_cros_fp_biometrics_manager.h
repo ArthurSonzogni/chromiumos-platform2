@@ -6,6 +6,7 @@
 #define BIOD_MOCK_CROS_FP_BIOMETRICS_MANAGER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -62,11 +63,11 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
   MOCK_METHOD(void, EndEnrollSession, (), (override));
   MOCK_METHOD(void, EndAuthSession, (), (override));
   MOCK_METHOD(void, OnMaintenanceTimerFired, (), (override));
-  MOCK_METHOD(base::Optional<BiodStorageInterface::RecordMetadata>,
+  MOCK_METHOD(std::optional<BiodStorageInterface::RecordMetadata>,
               GetRecordMetadata,
               (const std::string& record_id),
               (const, override));
-  MOCK_METHOD(base::Optional<std::string>,
+  MOCK_METHOD(std::optional<std::string>,
               GetLoadedRecordId,
               (int id),
               (override));

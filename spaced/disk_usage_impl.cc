@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <fcntl.h>
@@ -34,7 +35,7 @@ int DiskUsageUtilImpl::StatVFS(const base::FilePath& path, struct statvfs* st) {
   return HANDLE_EINTR(statvfs(path.value().c_str(), st));
 }
 
-base::Optional<base::FilePath> DiskUsageUtilImpl::GetRootDevice() {
+std::optional<base::FilePath> DiskUsageUtilImpl::GetRootDevice() {
   // Get the root device.
   char root_device[PATH_MAX];
   int ret = rootdev(root_device, sizeof(root_device),
@@ -42,18 +43,18 @@ base::Optional<base::FilePath> DiskUsageUtilImpl::GetRootDevice() {
                     true);  // Remove partition number.
   if (ret != 0) {
     LOG(WARNING) << "rootdev failed with error code " << ret;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return base::FilePath(root_device);
 }
 
-base::Optional<brillo::Thinpool> DiskUsageUtilImpl::GetThinpool() {
-  base::Optional<base::FilePath> root_device = GetRootDevice();
+std::optional<brillo::Thinpool> DiskUsageUtilImpl::GetThinpool() {
+  std::optional<base::FilePath> root_device = GetRootDevice();
 
   if (!root_device) {
     LOG(WARNING) << "Failed to get root device";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // For some storage devices (eg. eMMC), the path ends in a digit
@@ -69,14 +70,14 @@ base::Optional<brillo::Thinpool> DiskUsageUtilImpl::GetThinpool() {
   // volume.
   base::FilePath physical_volume(stateful_dev);
 
-  base::Optional<brillo::PhysicalVolume> pv =
+  std::optional<brillo::PhysicalVolume> pv =
       lvm_->GetPhysicalVolume(physical_volume);
   if (!pv || !pv->IsValid())
-    return base::nullopt;
+    return std::nullopt;
 
-  base::Optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
+  std::optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
   if (!vg || !vg->IsValid())
-    return base::nullopt;
+    return std::nullopt;
 
   return lvm_->GetThinpool(*vg, "thinpool");
 }
@@ -139,7 +140,7 @@ int64_t DiskUsageUtilImpl::GetBlockDeviceSize(const base::FilePath& device) {
 }
 
 int64_t DiskUsageUtilImpl::GetRootDeviceSize() {
-  base::Optional<base::FilePath> root_device = GetRootDevice();
+  std::optional<base::FilePath> root_device = GetRootDevice();
 
   if (!root_device) {
     LOG(WARNING) << "Failed to get root device";

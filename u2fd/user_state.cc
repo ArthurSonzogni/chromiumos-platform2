@@ -5,6 +5,7 @@
 #include "u2fd/user_state.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -65,37 +66,37 @@ bool UserState::HasUser() {
   return user_.has_value() && sanitized_user_.has_value();
 }
 
-base::Optional<std::string> UserState::GetUser() {
+std::optional<std::string> UserState::GetUser() {
   if (user_.has_value()) {
     return *user_;
   } else {
     LOG(ERROR) << "User requested but not available.";
-    return base::nullopt;
+    return std::nullopt;
   }
 }
 
-base::Optional<std::string> UserState::GetSanitizedUser() {
+std::optional<std::string> UserState::GetSanitizedUser() {
   if (sanitized_user_.has_value()) {
     return *sanitized_user_;
   } else {
     LOG(ERROR) << "Sanitized user requested but not available.";
-    return base::nullopt;
+    return std::nullopt;
   }
 }
 
-base::Optional<brillo::SecureBlob> UserState::GetUserSecret() {
+std::optional<brillo::SecureBlob> UserState::GetUserSecret() {
   if (user_secret_.has_value()) {
     return *user_secret_;
   } else {
     LOG(ERROR) << "User secret requested but not available.";
-    return base::nullopt;
+    return std::nullopt;
   }
 }
 
-base::Optional<std::vector<uint8_t>> UserState::GetCounter() {
+std::optional<std::vector<uint8_t>> UserState::GetCounter() {
   if (!counter_.has_value()) {
     LOG(ERROR) << "Counter requested but not available.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::vector<uint8_t> counter_bytes;

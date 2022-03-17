@@ -4,6 +4,8 @@
 
 #include "diagnostics/common/mojo_type_utils.h"
 
+#include <optional>
+
 #include <base/check.h>
 #include <base/strings/string_split.h>
 
@@ -129,9 +131,8 @@ std::string GetDiffString<std::string>(const std::string& a,
 }
 
 template <>
-std::string GetDiffString<base::Optional<std::string>>(
-    const base::Optional<std::string>& a,
-    const base::Optional<std::string>& b) {
+std::string GetDiffString<std::optional<std::string>>(
+    const std::optional<std::string>& a, const std::optional<std::string>& b) {
   if (a == b)
     return kEqualStr;
   return StringCompareFormat(a.value_or(kNullStr), b.value_or(kNullStr));

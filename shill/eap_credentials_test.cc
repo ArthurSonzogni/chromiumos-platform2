@@ -3,13 +3,13 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 
 #include "shill/eap_credentials.h"
 
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/stl_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -711,7 +711,7 @@ TEST_F(EapCredentialsTest, TestSubjectAlternativeNameMatchTranslation) {
        "{\"Type\":\"URI\",\"Value\":\"my_uri\"}"});
   std::string expected_translated =
       "EMAIL:my_email_1;EMAIL:my_email_2;EMAIL:my;email;DNS:my_dns;URI:my_uri";
-  base::Optional<std::string> altsubject_match =
+  std::optional<std::string> altsubject_match =
       EapCredentials::TranslateSubjectAlternativeNameMatch(
           subject_alternative_name_match_list);
   EXPECT_TRUE(altsubject_match.has_value());
@@ -721,7 +721,7 @@ TEST_F(EapCredentialsTest, TestSubjectAlternativeNameMatchTranslation) {
 TEST_F(EapCredentialsTest, TestSubjectAlternativeNameMatchTranslationFailure) {
   const std::vector<std::string> subject_alternative_name_match_list(
       {"{\"TYPE\":\"EMAIL\",\"Value\":\"my;email\"}"});
-  base::Optional<std::string> altsubject_match =
+  std::optional<std::string> altsubject_match =
       EapCredentials::TranslateSubjectAlternativeNameMatch(
           subject_alternative_name_match_list);
   EXPECT_FALSE(altsubject_match.has_value());

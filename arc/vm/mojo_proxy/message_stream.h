@@ -9,7 +9,6 @@
 
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
-#include <base/optional.h>
 
 #include "arc/vm/mojo_proxy/message.pb.h"
 

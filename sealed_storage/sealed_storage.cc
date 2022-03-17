@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -113,8 +114,8 @@ void ReportOpenSSLError(const std::string& op_name) {
 }
 
 // Gets policy data from serialized blob.
-// Returns base::nullopt in case of error.
-base::Optional<std::string> DeserializePolicyDigest(
+// Returns std::nullopt in case of error.
+std::optional<std::string> DeserializePolicyDigest(
     std::string* serialized_data) {
   DCHECK(serialized_data);
 
@@ -123,19 +124,19 @@ base::Optional<std::string> DeserializePolicyDigest(
                              nullptr /* value_bytes */) !=
       trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to parse policy digest size";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (serialized_data->size() < size) {
     LOG(ERROR) << "Policy digest longer than the remaining sealed data: "
                << serialized_data->size() << " < " << size;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string policy_digest = serialized_data->substr(0, size);
   serialized_data->erase(0, size);
   if (policy_digest.size() != kPolicySize) {
     LOG(ERROR) << "Unexpected policy digest size: " << policy_digest.size();
-    return base::nullopt;
+    return std::nullopt;
   }
   return policy_digest;
 }
@@ -159,12 +160,12 @@ struct Key {
 
   // Encrypts the plain data using the initialized key and IV. In case of error,
   // returns nullopt.
-  base::Optional<Data> Encrypt(const SecretData& plain_data) const;
+  std::optional<Data> Encrypt(const SecretData& plain_data) const;
 
   // Decrypts the data using the initialized key and IV. Verifies that the
   // resulting plaintext size matches the |expected size_|. In case of error,
   // returns nullopt.
-  base::Optional<SecretData> Decrypt(const Data& encrypted_data) const;
+  std::optional<SecretData> Decrypt(const Data& encrypted_data) const;
 
  private:
   brillo::SecureBlob key_;
@@ -222,56 +223,55 @@ ScopedTpmOwnership SealedStorage::CreateTpmOwnershipInterface() {
   return proxy;
 }
 
-base::Optional<Data> SealedStorage::Seal(const SecretData& plain_data) const {
+std::optional<Data> SealedStorage::Seal(const SecretData& plain_data) const {
   if (!CheckInitialized()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   PrivSeeds priv_seeds;
   PubSeeds pub_seeds;
   if (!CreateEncryptionSeeds(&priv_seeds, &pub_seeds)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   pub_seeds.plain_size = plain_data.size();
   VLOG(2) << "Created encryption seeds";
 
   Key key;
   if (!key.Init(priv_seeds, pub_seeds)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   VLOG(2) << "Created encryption key";
 
   auto encrypted_data = key.Encrypt(plain_data);
   if (!encrypted_data) {
-    return base::nullopt;
+    return std::nullopt;
   }
   VLOG(2) << "Encrypted data";
 
   return SerializeSealedBlob(pub_seeds, encrypted_data.value());
 }
 
-base::Optional<SecretData> SealedStorage::Unseal(
-    const Data& sealed_data) const {
+std::optional<SecretData> SealedStorage::Unseal(const Data& sealed_data) const {
   if (!CheckInitialized()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   PubSeeds pub_seeds;
   Data encrypted_data;
   if (!DeserializeSealedBlob(sealed_data, &pub_seeds, &encrypted_data)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   VLOG(2) << "Deserialized sealed blob";
 
   PrivSeeds priv_seeds;
   if (!RestoreEncryptionSeeds(pub_seeds, &priv_seeds)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   VLOG(2) << "Restored encryption seeds";
 
   Key key;
   if (!key.Init(priv_seeds, pub_seeds)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   VLOG(2) << "Created encryption key";
 
@@ -288,9 +288,9 @@ bool SealedStorage::ExtendPCR(uint32_t pcr_num) const {
       tpm_utility->ExtendPCR(pcr_num, GetExtendValue(), nullptr), "extend PCR");
 }
 
-base::Optional<bool> SealedStorage::CheckState() const {
+std::optional<bool> SealedStorage::CheckState() const {
   if (!CheckInitialized()) {
-    return base::nullopt;
+    return std::nullopt;
   }
   auto tpm_utility = trunks_factory_->GetTpmUtility();
 
@@ -301,7 +301,7 @@ base::Optional<bool> SealedStorage::CheckState() const {
     std::string value;
     auto result = tpm_utility->ReadPCR(pcr_val.first, &value);
     if (!CheckTpmResult(result, "read PCR")) {
-      return base::nullopt;
+      return std::nullopt;
     }
     if (value != pcr_val.second) {
       return false;
@@ -312,7 +312,7 @@ base::Optional<bool> SealedStorage::CheckState() const {
 }
 
 bool SealedStorage::PrepareSealingKeyObject(
-    const base::Optional<std::string>& expected_digest,
+    const std::optional<std::string>& expected_digest,
     trunks::TPM_HANDLE* key_handle,
     std::string* key_name,
     std::string* resulting_digest) const {
@@ -469,7 +469,7 @@ bool SealedStorage::CreateEncryptionSeeds(PrivSeeds* priv_seeds,
   trunks::TPM_HANDLE key_handle;
   std::string key_name;
   std::string resulting_digest;
-  if (!PrepareSealingKeyObject(base::nullopt, &key_handle, &key_name,
+  if (!PrepareSealingKeyObject(std::nullopt, &key_handle, &key_name,
                                &resulting_digest)) {
     return false;
   }
@@ -536,7 +536,7 @@ bool SealedStorage::RestoreEncryptionSeeds(const PubSeeds& pub_seeds,
   return true;
 }
 
-base::Optional<Data> SealedStorage::SerializeSealedBlob(
+std::optional<Data> SealedStorage::SerializeSealedBlob(
     const PubSeeds& pub_seeds, const Data& encrypted_data) const {
   std::string serialized_data(1, kSerializedVer2);
 
@@ -544,12 +544,12 @@ base::Optional<Data> SealedStorage::SerializeSealedBlob(
 
   if (!pub_seeds.policy_digest.has_value()) {
     LOG(ERROR) << "Missing policy digest during serialization";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (pub_seeds.policy_digest->size() != kPolicySize) {
     LOG(ERROR) << "Unexpected policy digest size during serialization: "
                << pub_seeds.policy_digest->size();
-    return base::nullopt;
+    return std::nullopt;
   }
   trunks::Serialize_uint16_t(pub_seeds.policy_digest->size(), &serialized_data);
   serialized_data.append(pub_seeds.policy_digest->begin(),
@@ -558,17 +558,17 @@ base::Optional<Data> SealedStorage::SerializeSealedBlob(
   if (trunks::Serialize_TPM2B_ECC_POINT(
           pub_seeds.pub_point, &serialized_data) != trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to serialize public point";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (trunks::Serialize_TPM2B_DIGEST(pub_seeds.iv, &serialized_data) !=
       trunks::TPM_RC_SUCCESS) {
     LOG(ERROR) << "Failed to serialize IV";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (encrypted_data.size() > UINT16_MAX) {
     LOG(ERROR) << "Too long encrypted data: " << encrypted_data.size();
-    return base::nullopt;
+    return std::nullopt;
   }
   uint16_t size = encrypted_data.size();
   trunks::Serialize_uint16_t(size, &serialized_data);
@@ -662,22 +662,22 @@ bool Key::Init(const PrivSeeds& priv_seeds, const PubSeeds& pub_seeds) {
   return true;
 }
 
-base::Optional<Data> Key::Encrypt(const SecretData& plain_data) const {
+std::optional<Data> Key::Encrypt(const SecretData& plain_data) const {
   if (plain_data.size() != expected_size_) {
     LOG(ERROR) << "Unexpected plain data size: " << plain_data.size()
                << " != " << expected_size_;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
   if (!ctx) {
     ReportOpenSSLError("allocate encryption context");
-    return base::nullopt;
+    return std::nullopt;
   }
   if (!EVP_EncryptInit_ex(ctx.get(), GetCipher(), nullptr, key_.data(),
                           iv_.data())) {
     ReportOpenSSLError("initialize encryption context");
-    return base::nullopt;
+    return std::nullopt;
   }
 
   const size_t max_encrypted_size = plain_data.size() + GetBlockSize();
@@ -687,12 +687,12 @@ base::Optional<Data> Key::Encrypt(const SecretData& plain_data) const {
           ctx.get(), static_cast<unsigned char*>(encrypted_data.data()),
           &encrypted_size, plain_data.data(), plain_data.size())) {
     ReportOpenSSLError("encrypt");
-    return base::nullopt;
+    return std::nullopt;
   }
   if (encrypted_size < 0 || encrypted_size > max_encrypted_size) {
     LOG(ERROR) << "Unexpected encrypted data size: " << encrypted_size << " > "
                << max_encrypted_size;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   unsigned char* final_buf = nullptr;
@@ -703,35 +703,35 @@ base::Optional<Data> Key::Encrypt(const SecretData& plain_data) const {
   int encrypted_size_final = 0;
   if (!EVP_EncryptFinal_ex(ctx.get(), final_buf, &encrypted_size_final)) {
     ReportOpenSSLError("finalize encryption");
-    return base::nullopt;
+    return std::nullopt;
   }
   if (encrypted_size_final < 0) {
     LOG(ERROR) << "Unexpected size for final encryption block: "
                << encrypted_size_final;
-    return base::nullopt;
+    return std::nullopt;
   }
   encrypted_size += encrypted_size_final;
   if (encrypted_size > max_encrypted_size) {
     LOG(ERROR) << "Unexpected encrypted data size after finalization: "
                << encrypted_size << " > " << max_encrypted_size;
-    return base::nullopt;
+    return std::nullopt;
   }
   encrypted_data.resize(encrypted_size);
 
   return encrypted_data;
 }
 
-base::Optional<SecretData> Key::Decrypt(const Data& encrypted_data) const {
+std::optional<SecretData> Key::Decrypt(const Data& encrypted_data) const {
   crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
   if (!ctx) {
     ReportOpenSSLError("allocate decryption context");
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!EVP_DecryptInit_ex(ctx.get(), GetCipher(), nullptr, key_.data(),
                           iv_.data())) {
     ReportOpenSSLError("initialize decryption context");
-    return base::nullopt;
+    return std::nullopt;
   }
 
   const size_t max_decrypted_size = encrypted_data.size() + GetBlockSize();
@@ -739,7 +739,7 @@ base::Optional<SecretData> Key::Decrypt(const Data& encrypted_data) const {
     LOG(ERROR) << "Not enough data for expected size: " << encrypted_data.size()
                << " leads to max " << max_decrypted_size << " < "
                << expected_size_;
-    return base::nullopt;
+    return std::nullopt;
   }
   SecretData decrypted_data(max_decrypted_size);
   int decrypted_size;
@@ -747,12 +747,12 @@ base::Optional<SecretData> Key::Decrypt(const Data& encrypted_data) const {
           ctx.get(), static_cast<unsigned char*>(decrypted_data.data()),
           &decrypted_size, encrypted_data.data(), encrypted_data.size())) {
     ReportOpenSSLError("decrypt");
-    return base::nullopt;
+    return std::nullopt;
   }
   if (decrypted_size < 0 || decrypted_size > max_decrypted_size) {
     LOG(ERROR) << "Unexpected decrypted data size: " << decrypted_size << " > "
                << max_decrypted_size;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   unsigned char* final_buf = nullptr;
@@ -763,18 +763,18 @@ base::Optional<SecretData> Key::Decrypt(const Data& encrypted_data) const {
   int decrypted_size_final = 0;
   if (!EVP_DecryptFinal_ex(ctx.get(), final_buf, &decrypted_size_final)) {
     ReportOpenSSLError("finalize decryption");
-    return base::nullopt;
+    return std::nullopt;
   }
   if (decrypted_size_final < 0) {
     LOG(ERROR) << "Unexpected size for final decryption block: "
                << decrypted_size_final;
-    return base::nullopt;
+    return std::nullopt;
   }
   decrypted_size += decrypted_size_final;
   if (decrypted_size != expected_size_) {
     LOG(ERROR) << "Unexpected decrypted data size: " << decrypted_size
                << " != " << expected_size_;
-    return base::nullopt;
+    return std::nullopt;
   }
   decrypted_data.resize(decrypted_size);
 

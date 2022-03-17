@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <sqlite3.h>
 
 #include "arc/apk-cache/apk_cache_database.h"

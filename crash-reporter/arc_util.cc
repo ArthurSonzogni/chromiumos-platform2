@@ -4,6 +4,7 @@
 
 #include "crash-reporter/arc_util.h"
 
+#include <optional>
 #include <sstream>
 
 #include <stdint.h>
@@ -70,7 +71,7 @@ const std::vector<std::pair<const char*, const char*>> kHeaderToFieldMapping = {
     {"Abi-Migration-Status", "abi_migration_status"},
 };
 
-base::Optional<std::string> GetVersionFromFingerprint(
+std::optional<std::string> GetVersionFromFingerprint(
     const std::string& fingerprint) {
   // fingerprint has the following format:
   //   $(PRODUCT_BRAND)/$(TARGET_PRODUCT)/$(TARGET_DEVICE):$(PLATFORM_VERSION)/
@@ -86,7 +87,7 @@ base::Optional<std::string> GetVersionFromFingerprint(
   // '/R' is the version.
   auto begin = fingerprint.find(':');
   if (begin == std::string::npos)
-    return base::nullopt;
+    return std::nullopt;
 
   // Make begin point to the start of the "version".
   begin++;
@@ -94,7 +95,7 @@ base::Optional<std::string> GetVersionFromFingerprint(
   // Version must have at least one digit.
   const auto end = fingerprint.find("/R", begin + 1);
   if (end == std::string::npos)
-    return base::nullopt;
+    return std::nullopt;
 
   return fingerprint.substr(begin, end - begin);
 }

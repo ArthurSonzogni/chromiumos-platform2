@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_AUDIO_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_AUDIO_FETCHER_H_
 
-#include <base/optional.h>
+#include <optional>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -24,7 +24,7 @@ class AudioFetcher final : public BaseFetcher {
 
  private:
   using OptionalProbeErrorPtr =
-      base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
+      std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
 
   OptionalProbeErrorPtr PopulateMuteInfo(
       chromeos::cros_healthd::mojom::AudioInfo* info);

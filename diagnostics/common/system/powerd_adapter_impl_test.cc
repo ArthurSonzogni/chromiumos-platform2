@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -186,7 +187,7 @@ TEST_F(BasePowerdAdapterImplTest, PowerSupplyFail) {
   EXPECT_CALL(*mock_dbus_object_proxy(), CallMethodAndBlock(_, _))
       .WillOnce([](dbus::MethodCall*, int) { return nullptr; });
 
-  ASSERT_EQ(powerd_adapter()->GetPowerSupplyProperties(), base::nullopt);
+  ASSERT_EQ(powerd_adapter()->GetPowerSupplyProperties(), std::nullopt);
 }
 
 TEST_F(BasePowerdAdapterImplTest, PowerSupplyParseError) {
@@ -195,7 +196,7 @@ TEST_F(BasePowerdAdapterImplTest, PowerSupplyParseError) {
       .WillOnce(
           [](dbus::MethodCall*, int) { return dbus::Response::CreateEmpty(); });
 
-  ASSERT_EQ(powerd_adapter()->GetPowerSupplyProperties(), base::nullopt);
+  ASSERT_EQ(powerd_adapter()->GetPowerSupplyProperties(), std::nullopt);
 }
 
 // This is a parameterized test with the following parameters:

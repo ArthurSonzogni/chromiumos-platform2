@@ -9,7 +9,6 @@
 
 #include <base/check.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/optional.h>
 #include <base/logging.h>
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>

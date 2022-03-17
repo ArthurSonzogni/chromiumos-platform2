@@ -6,6 +6,7 @@
 #define LIBBRILLO_POLICY_DEVICE_POLICY_IMPL_H_
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>

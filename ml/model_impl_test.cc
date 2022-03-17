@@ -4,6 +4,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -134,7 +135,7 @@ TEST_F(ModelImplTest, TestExampleModel) {
       std::move(inputs), std::move(outputs),
       base::BindOnce(
           [](bool* exe_callback_done, const ExecuteResult result,
-             base::Optional<std::vector<TensorPtr>> outputs) {
+             std::optional<std::vector<TensorPtr>> outputs) {
             // Check that the inference succeeded and gives the expected number
             // of outputs.
             EXPECT_EQ(result, ExecuteResult::OK);

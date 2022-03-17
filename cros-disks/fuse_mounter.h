@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -40,7 +41,7 @@ class FUSESandboxedProcessFactory : public SandboxedProcessFactory {
       OwnerUser run_as,
       bool has_network_access = false,
       std::vector<gid_t> supplementary_groups = {},
-      base::Optional<base::FilePath> mount_namespace = {});
+      std::optional<base::FilePath> mount_namespace = {});
   ~FUSESandboxedProcessFactory() override;
 
   // Returns pre-configured sandbox with the most essential set up. Additional
@@ -61,7 +62,7 @@ class FUSESandboxedProcessFactory : public SandboxedProcessFactory {
   const base::FilePath executable_;
 
   // Path to the seccomp policy configuration.
-  const base::Optional<base::FilePath> seccomp_policy_;
+  const std::optional<base::FilePath> seccomp_policy_;
 
   // UID/GID to run the FUSE daemon as.
   const OwnerUser run_as_;
@@ -73,7 +74,7 @@ class FUSESandboxedProcessFactory : public SandboxedProcessFactory {
   const std::vector<gid_t> supplementary_groups_;
 
   // Path identifying the mount namespace to use.
-  const base::Optional<base::FilePath> mount_namespace_;
+  const std::optional<base::FilePath> mount_namespace_;
 };
 
 // Uprivileged mounting of any FUSE filesystem. Filesystem-specific set up

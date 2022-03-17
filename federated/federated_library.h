@@ -5,11 +5,11 @@
 #ifndef FEDERATED_FEDERATED_LIBRARY_H_
 #define FEDERATED_FEDERATED_LIBRARY_H_
 
+#include <optional>
 #include <string>
 
 #include <absl/status/status.h>
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <base/scoped_native_library.h>
 #include <fcp/fcp.h>
 
@@ -41,7 +41,7 @@ class FederatedLibrary {
       DeviceStatusMonitor* const device_status_monitor);
 
  private:
-  base::Optional<base::ScopedNativeLibrary> library_;
+  std::optional<base::ScopedNativeLibrary> library_;
   absl::Status status_;
 
   FlRunPlanFn run_plan_;

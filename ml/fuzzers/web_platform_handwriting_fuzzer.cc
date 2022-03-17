@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -111,7 +112,7 @@ class WebPlatformHandwritingFuzzer {
     recognizer_->GetPrediction(
         std::move(strokes), std::move(hints),
         base::BindOnce([](bool* infer_callback_done,
-                          base::Optional<std::vector<HandwritingPredictionPtr>>
+                          std::optional<std::vector<HandwritingPredictionPtr>>
                               predictions) { *infer_callback_done = true; },
                        &infer_callback_done));
     base::RunLoop().RunUntilIdle();

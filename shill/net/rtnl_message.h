@@ -5,13 +5,13 @@
 #ifndef SHILL_NET_RTNL_MESSAGE_H_
 #define SHILL_NET_RTNL_MESSAGE_H_
 
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include <base/containers/contains.h>
 #include <base/macros.h>
-#include <base/optional.h>
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
@@ -49,7 +49,7 @@ class SHILL_EXPORT RTNLMessage {
     LinkStatus(unsigned int in_type,
                unsigned int in_flags,
                unsigned int in_change,
-               base::Optional<std::string> kind = base::nullopt)
+               std::optional<std::string> kind = std::nullopt)
         : type(in_type), flags(in_flags), change(in_change), kind(kind) {}
     // Device type. Corresponds to ifi_type.
     unsigned int type;
@@ -59,7 +59,7 @@ class SHILL_EXPORT RTNLMessage {
     unsigned int change;
     // Device kind, as defined by the device driver. Corresponds to rtattr
     // IFLA_INFO_KIND nested inside rtattr IFLA_LINKINFO.
-    base::Optional<std::string> kind;
+    std::optional<std::string> kind;
   };
 
   // Helper struct corresponding to struct ifaddrmsg.

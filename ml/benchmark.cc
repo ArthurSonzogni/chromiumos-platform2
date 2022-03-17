@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -364,7 +365,7 @@ BenchmarkResults InferenceForTfliteModel(
                const base::flat_map<std::string, TensorPtr>* const
                    expected_output,
                ExecuteResult result,
-               base::Optional<std::vector<TensorPtr>> outputs) {
+               std::optional<std::vector<TensorPtr>> outputs) {
               // Check that the inference run successfully.
               if (result != ExecuteResult::OK || !outputs.has_value()) {
                 accumulative_result->error_message = "Inference not OK";

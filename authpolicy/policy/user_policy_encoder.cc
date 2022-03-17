@@ -5,6 +5,7 @@
 #include "authpolicy/policy/user_policy_encoder.h"
 
 #include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -57,7 +58,7 @@ void UserPolicyEncoder::EncodeBoolean(em::CloudPolicySettings* policy,
                                       const BooleanPolicyAccess& access) const {
   const char* policy_name = access.policy_key;
 
-  base::Optional<bool> bool_value = EncodeBooleanPolicy(
+  std::optional<bool> bool_value = EncodeBooleanPolicy(
       policy_name, GetValueFromDictCallback(dict_), log_policy_values_);
   if (bool_value) {
     // Create proto and set value.
@@ -72,7 +73,7 @@ void UserPolicyEncoder::EncodeInteger(em::CloudPolicySettings* policy,
                                       const IntegerPolicyAccess& access) const {
   const char* policy_name = access.policy_key;
 
-  base::Optional<int> int_value = EncodeIntegerInRangePolicy(
+  std::optional<int> int_value = EncodeIntegerInRangePolicy(
       policy_name, GetValueFromDictCallback(dict_),
       std::numeric_limits<int>::min(), std::numeric_limits<int>::max(),
       log_policy_values_);
@@ -89,7 +90,7 @@ void UserPolicyEncoder::EncodeString(em::CloudPolicySettings* policy,
                                      const StringPolicyAccess& access) const {
   const char* policy_name = access.policy_key;
 
-  base::Optional<std::string> string_value = EncodeStringPolicy(
+  std::optional<std::string> string_value = EncodeStringPolicy(
       policy_name, GetValueFromDictCallback(dict_), log_policy_values_);
   if (string_value) {
     // Create proto and set value.
@@ -109,7 +110,7 @@ void UserPolicyEncoder::EncodeStringList(
   if (!key)
     return;
 
-  base::Optional<std::vector<std::string>> string_values =
+  std::optional<std::vector<std::string>> string_values =
       EncodeStringListPolicy(policy_name, GetValueFromDictCallback(key),
                              log_policy_values_);
   if (string_values) {

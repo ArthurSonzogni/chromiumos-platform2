@@ -5,12 +5,12 @@
 #ifndef U2FD_U2F_COMMAND_PROCESSOR_GSC_H_
 #define U2FD_U2F_COMMAND_PROCESSOR_GSC_H_
 
-#include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <trunks/cr50_headers/u2f.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
 #include <functional>
+#include <optional>
 #include <vector>
 
 #include "u2fd/tpm_vendor_cmd.h"
@@ -78,7 +78,7 @@ class U2fCommandProcessorGsc : public U2fCommandProcessor {
       uint8_t format,
       std::vector<uint8_t>* signature_out) override;
 
-  base::Optional<std::vector<uint8_t>> GetG2fCert() override;
+  std::optional<std::vector<uint8_t>> GetG2fCert() override;
 
   CoseAlgorithmIdentifier GetAlgorithm() override;
 

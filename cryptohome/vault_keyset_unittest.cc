@@ -7,11 +7,12 @@
 #include "cryptohome/vault_keyset.h"
 
 #include <memory>
+#include <openssl/evp.h>
+#include <optional>
 #include <string.h>  // For memcmp().
 #include <utility>
 #include <variant>
 #include <vector>
-#include <openssl/evp.h>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>

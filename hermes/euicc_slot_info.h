@@ -5,9 +5,12 @@
 #ifndef HERMES_EUICC_SLOT_INFO_H_
 #define HERMES_EUICC_SLOT_INFO_H_
 
-#include <base/check.h>
+#include <optional>
 #include <string>
 #include <utility>
+
+#include <base/check.h>
+
 #include "hermes/hermes_common.h"
 
 namespace hermes {

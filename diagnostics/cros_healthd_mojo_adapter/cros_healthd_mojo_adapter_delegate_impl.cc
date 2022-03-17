@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd_mojo_adapter/cros_healthd_mojo_adapter_delegate_impl.h"
 
+#include <optional>
 #include <string>
 
 #include <base/check.h>
@@ -85,7 +86,7 @@ CrosHealthdMojoAdapterDelegateImpl::CrosHealthdMojoAdapterDelegateImpl() {
 CrosHealthdMojoAdapterDelegateImpl::~CrosHealthdMojoAdapterDelegateImpl() =
     default;
 
-base::Optional<mojo::PendingRemote<
+std::optional<mojo::PendingRemote<
     chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>>
 CrosHealthdMojoAdapterDelegateImpl::GetCrosHealthdServiceFactory() {
   mojo::PlatformChannel channel;
@@ -105,7 +106,7 @@ CrosHealthdMojoAdapterDelegateImpl::GetCrosHealthdServiceFactory() {
   event.Wait();
 
   if (!success)
-    return base::nullopt;
+    return std::nullopt;
 
   mojo::IncomingInvitation invitation =
       mojo::IncomingInvitation::Accept(channel.TakeLocalEndpoint());

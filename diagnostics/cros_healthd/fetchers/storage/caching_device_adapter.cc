@@ -10,7 +10,6 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/fetchers/storage/storage_device_adapter.h"
 

@@ -4,10 +4,12 @@
 
 #include "runtime_probe/functions/generic_network.h"
 
+#include <optional>
+
 namespace runtime_probe {
 
-base::Optional<std::string> GenericNetworkFunction::GetNetworkType() const {
-  return base::nullopt;
+std::optional<std::string> GenericNetworkFunction::GetNetworkType() const {
+  return std::nullopt;
 }
 
 }  // namespace runtime_probe

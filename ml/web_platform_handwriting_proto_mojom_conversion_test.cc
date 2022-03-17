@@ -4,6 +4,7 @@
 
 #include "ml/web_platform_handwriting_proto_mojom_conversion.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -109,7 +110,7 @@ TEST(WebPlatformHandwritingProtoMojoConversionTest,
   chrome_knowledge::HandwritingRecognizerResult proto;
   *proto.add_candidates() = candidate;
 
-  // First tries an empty input strokes and it should return base::nullopt.
+  // First tries an empty input strokes and it should return std::nullopt.
   const auto predictions_empty_input_stroke =
       WebPlatformHandwritingPredictionsFromProto({}, proto);
   EXPECT_FALSE(predictions_empty_input_stroke.has_value());

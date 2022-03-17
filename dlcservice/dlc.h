@@ -7,13 +7,13 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <brillo/errors/error.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
@@ -121,7 +121,7 @@ class DlcBase {
 
   // Toggle for DLC to be reserved.
   // Will return the value set, pass `nullptr` to use as getter.
-  bool SetReserve(base::Optional<bool> reserve);
+  bool SetReserve(std::optional<bool> reserve);
 
  private:
   friend class DBusServiceTest;

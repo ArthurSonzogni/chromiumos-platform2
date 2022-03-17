@@ -4,6 +4,7 @@
 
 #include "crash-reporter/crash_reporter_parser.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_enumerator.h>
@@ -254,7 +255,7 @@ MaybeCrashReport CrashReporterParser::ParseLogEntry(const std::string& line) {
     crash.collector = Collector::USER;
     crash.timestamp = clock_->Now();
   } else {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Find the matching entry in our unmatched_crashes_ vector. We expect each
@@ -273,7 +274,7 @@ MaybeCrashReport CrashReporterParser::ParseLogEntry(const std::string& line) {
         LOG(WARNING) << "Could not mark Chrome crash as correctly processed";
       }
       recent_matched_crash_times_.push_back(clock_->Now());
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
@@ -282,7 +283,7 @@ MaybeCrashReport CrashReporterParser::ParseLogEntry(const std::string& line) {
   }
 
   unmatched_crashes_.push_back(crash);
-  return base::nullopt;
+  return std::nullopt;
 }
 
 MaybeCrashReport CrashReporterParser::PeriodicUpdate() {

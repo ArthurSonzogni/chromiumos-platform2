@@ -5,6 +5,7 @@
 #include "camera3_test/camera3_module_connector.h"
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -13,7 +14,6 @@
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/no_destructor.h>
-#include <base/optional.h>
 #include <base/unguessable_token.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
@@ -307,10 +307,10 @@ void CameraHalClient::OnGotAllTags(const std::vector<uint32_t>& tag_array) {
   }
 }
 
-void CameraHalClient::OnGotSectionName(
-    uint32_t tag, const base::Optional<std::string>& name) {
+void CameraHalClient::OnGotSectionName(uint32_t tag,
+                                       const std::optional<std::string>& name) {
   VLOGF_ENTER();
-  ASSERT_NE(base::nullopt, name);
+  ASSERT_NE(std::nullopt, name);
   vendor_tag_map_[tag].section_name = *name;
 
   vendor_tag_ops_->GetTagName(tag,
@@ -319,9 +319,9 @@ void CameraHalClient::OnGotSectionName(
 }
 
 void CameraHalClient::OnGotTagName(uint32_t tag,
-                                   const base::Optional<std::string>& name) {
+                                   const std::optional<std::string>& name) {
   VLOGF_ENTER();
-  ASSERT_NE(base::nullopt, name);
+  ASSERT_NE(std::nullopt, name);
   vendor_tag_map_[tag].tag_name = *name;
 
   vendor_tag_ops_->GetTagType(tag,

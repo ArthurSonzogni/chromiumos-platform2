@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -223,25 +224,25 @@ FakeCrosHealthdRoutineFactory::MakeSmartctlCheckRoutine() {
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeAcPowerRoutine(
     chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-    const base::Optional<std::string>& expected_power_type) {
+    const std::optional<std::string>& expected_power_type) {
   return std::move(next_routine_);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeCpuCacheRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   return std::move(next_routine_);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeCpuStressRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   return std::move(next_routine_);
 }
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeFloatingPointAccuracyRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   return std::move(next_routine_);
 }
 
@@ -270,7 +271,7 @@ FakeCrosHealthdRoutineFactory::MakeDiskReadRoutine(
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakePrimeSearchRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   return std::move(next_routine_);
 }
 
@@ -348,7 +349,7 @@ FakeCrosHealthdRoutineFactory::MakeHttpsLatencyRoutine() {
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname) {
+    const std::optional<std::string>& stun_server_hostname) {
   return std::move(next_routine_);
 }
 

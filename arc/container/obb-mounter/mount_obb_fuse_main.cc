@@ -6,6 +6,7 @@
 
 #include <fuse/fuse.h>
 #include <iterator>
+#include <optional>
 #include <time.h>
 #include <utility>
 
@@ -15,7 +16,6 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <base/strings/string_util.h>
 #include <base/strings/utf_string_conversions.h>
 #include <base/synchronization/lock.h>
@@ -81,11 +81,11 @@ bool GetDirectoryEntry(const base::StringPiece16& path, DirectoryEntry* out) {
       next_slash = path.size();
     }
     base::StringPiece16 name(path.data() + pos, next_slash - pos);
-    base::Optional<DirectoryEntry> entry;
+    std::optional<DirectoryEntry> entry;
     if (!g_volume->ReadDirectory(current_directory_start_sector,
                                  base::BindRepeating(
                                      [](const base::StringPiece16& name,
-                                        base::Optional<DirectoryEntry>* entry,
+                                        std::optional<DirectoryEntry>* entry,
                                         const base::StringPiece16& name_in,
                                         const DirectoryEntry& entry_in) {
                                        // TODO(hashimoto): Consider using

@@ -4,6 +4,7 @@
 
 #include <deque>
 #include <fstream>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -84,7 +85,7 @@ bool ValidateBootEntryWithTimezone(const std::string& boot_id_entry) {
 }
 
 // Read previous entries from the log file (FD).
-base::Optional<std::deque<std::string>> ReadPreviousBootEntries(
+std::optional<std::deque<std::string>> ReadPreviousBootEntries(
     const int fd,
     const base::Time first_timestamp_to_keep,
     size_t boot_log_max_entries) {
@@ -102,7 +103,7 @@ base::Optional<std::deque<std::string>> ReadPreviousBootEntries(
         static_cast<char*>(mmap(NULL, length, PROT_READ, MAP_PRIVATE, fd, 0));
     if (buffer == NULL) {
       PLOG(FATAL) << "mmap failed";
-      return base::nullopt;
+      return std::nullopt;
     }
 
     // Set the buffer to the stream.

@@ -6,6 +6,7 @@
 
 #include "camera/common/camera_buffer_pool.h"
 
+#include <optional>
 #include <vector>
 
 #include <gtest/gtest-death-test.h>
@@ -45,7 +46,7 @@ TEST(CameraBufferPoolTest, RequestAndReleaseBuffers) {
   for (size_t i = 1; i <= options.max_num_buffers; ++i) {
     std::vector<CameraBufferPool::Buffer> buffers;
     for (size_t j = 0; j < i; ++j) {
-      base::Optional<CameraBufferPool::Buffer> buffer = pool.RequestBuffer();
+      std::optional<CameraBufferPool::Buffer> buffer = pool.RequestBuffer();
       ASSERT_TRUE(buffer.has_value());
       ASSERT_NE(buffer->handle(), nullptr);
       buffers.push_back(*std::move(buffer));
@@ -56,7 +57,7 @@ TEST(CameraBufferPoolTest, RequestAndReleaseBuffers) {
   std::vector<CameraBufferPool::Buffer> buffers;
   for (size_t i = 0; i < options.max_num_buffers; ++i) {
     for (size_t j = 0; j < options.max_num_buffers - i; ++j) {
-      base::Optional<CameraBufferPool::Buffer> buffer = pool.RequestBuffer();
+      std::optional<CameraBufferPool::Buffer> buffer = pool.RequestBuffer();
       ASSERT_TRUE(buffer.has_value());
       ASSERT_NE(buffer->handle(), nullptr);
       buffers.push_back(*std::move(buffer));
@@ -77,7 +78,7 @@ TEST(CameraBufferPoolTest, DestroyBufferPoolInUse) {
       .max_num_buffers = 1,
   };
   // Holds a buffer that out-lives the pool.
-  base::Optional<CameraBufferPool::Buffer> buffer;
+  std::optional<CameraBufferPool::Buffer> buffer;
   ASSERT_DEATH(
       {
         CameraBufferPool pool(options);

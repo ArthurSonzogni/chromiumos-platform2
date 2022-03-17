@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -10,7 +11,6 @@
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/scoped_chromeos_version_info.h>
@@ -34,15 +34,15 @@ using ::testing::Invoke;
 using ::testing::WithArg;
 
 template <typename T>
-base::Optional<std::string> GetMockValue(const T& value) {
+std::optional<std::string> GetMockValue(const T& value) {
   return value;
 }
 
-base::Optional<std::string> GetMockValue(
+std::optional<std::string> GetMockValue(
     const mojo_ipc::NullableUint64Ptr& ptr) {
   if (ptr)
     return std::to_string(ptr->value);
-  return base::nullopt;
+  return std::nullopt;
 }
 
 void OnGetSystemInfoResponse(mojo_ipc::SystemResultPtr* response_update,
@@ -165,7 +165,7 @@ class SystemUtilsTest : public BaseFileTest {
   }
 
   void SetBootModeInProcCmd(const mojo_ipc::BootMode& boot_mode) {
-    base::Optional<std::string> proc_cmd;
+    std::optional<std::string> proc_cmd;
     switch (boot_mode) {
       case mojo_ipc::BootMode::kCrosSecure:
         proc_cmd = "Foo Bar=1 cros_secure Foo Bar=1";
@@ -274,11 +274,11 @@ class SystemUtilsTest : public BaseFileTest {
 };
 
 // Template for testing the missing field of vpd/dmi.
-#define TEST_MISSING_FIELD(info, field)                 \
-  TEST_F(SystemUtilsTest, TestNo_##info##_##field) {    \
-    expected_system_info_->info->field = base::nullopt; \
-    SetSystemInfo(expected_system_info_);               \
-    ExpectFetchSystemInfo();                            \
+#define TEST_MISSING_FIELD(info, field)                \
+  TEST_F(SystemUtilsTest, TestNo_##info##_##field) {   \
+    expected_system_info_->info->field = std::nullopt; \
+    SetSystemInfo(expected_system_info_);              \
+    ExpectFetchSystemInfo();                           \
   }
 
 TEST_F(SystemUtilsTest, TestFetchSystemInfo) {
@@ -300,7 +300,7 @@ TEST_F(SystemUtilsTest, TestNoSkuNumber) {
   SetSystemInfo(expected_system_info_);
   // Ensure that there is no sku number returned even if sku number exists.
   SetHasSkuNumber(false);
-  expected_system_info_->vpd_info->sku_number = base::nullopt;
+  expected_system_info_->vpd_info->sku_number = std::nullopt;
   ExpectFetchSystemInfo();
 
   // Sku number file doesn't exist.

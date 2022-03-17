@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include "biod/cros_fp_record_manager.h"
@@ -20,11 +21,11 @@ void CrosFpRecordManager::SetAllowAccess(bool allow) {
   biod_storage_->set_allow_access(allow);
 }
 
-base::Optional<RecordMetadata> CrosFpRecordManager::GetRecordMetadata(
+std::optional<RecordMetadata> CrosFpRecordManager::GetRecordMetadata(
     const std::string& record_id) {
   auto entry = records_metadata_.find(record_id);
   if (entry == records_metadata_.end())
-    return base::nullopt;
+    return std::nullopt;
 
   return entry->second.metadata;
 }

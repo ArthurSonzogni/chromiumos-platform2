@@ -13,7 +13,6 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/synchronization/waitable_event.h>
 #include <dbus/u2f/dbus-constants.h>
 #include <policy/device_policy.h>

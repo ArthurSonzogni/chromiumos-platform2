@@ -7,6 +7,7 @@
 #include "common/reloadable_config_file.h"
 
 #include <iomanip>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -65,7 +66,7 @@ void ReloadableConfigFile::ReadConfigFileLocked(
   std::string contents;
   CHECK(base::ReadFileToStringWithMaxSize(file_path, &contents,
                                           kConfigFileMaxSize));
-  base::Optional<base::Value> json_values =
+  std::optional<base::Value> json_values =
       base::JSONReader::Read(contents, base::JSON_ALLOW_TRAILING_COMMAS);
   if (!json_values) {
     LOGF(ERROR) << "Failed to load the config file content of " << file_path;

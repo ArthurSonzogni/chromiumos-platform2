@@ -7,10 +7,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include "base/memory/scoped_refptr.h"
-#include "base/optional.h"
 #include "dlcservice/proto_bindings/dlcservice.pb.h"
 #include "dlcservice/dbus-proxy-mocks.h"  //NOLINT (build/include_alpha)
 
@@ -78,7 +78,7 @@ TEST_F(DlcHelperTest, InstalledReturnsRootPath) {
 
   DlcHelper helper(std::move(handle));
   std::string error;
-  base::Optional<std::string> root_path = helper.GetRootPath("foobar", &error);
+  std::optional<std::string> root_path = helper.GetRootPath("foobar", &error);
 
   EXPECT_TRUE(error.empty());
   EXPECT_TRUE(root_path.has_value());

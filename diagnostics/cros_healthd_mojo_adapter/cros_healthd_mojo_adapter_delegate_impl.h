@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_MOJO_ADAPTER_CROS_HEALTHD_MOJO_ADAPTER_DELEGATE_IMPL_H_
 
 #include <memory>
+#include <optional>
 
 #include <base/threading/thread.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
@@ -26,7 +27,7 @@ class CrosHealthdMojoAdapterDelegateImpl final
   ~CrosHealthdMojoAdapterDelegateImpl() override;
 
   // CrosHealthdMojoAdapterDelegate overrides:
-  base::Optional<mojo::PendingRemote<
+  std::optional<mojo::PendingRemote<
       chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>>
   GetCrosHealthdServiceFactory() override;
 

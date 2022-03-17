@@ -5,10 +5,10 @@
 #ifndef VM_TOOLS_CICERONE_CRASH_LISTENER_IMPL_H_
 #define VM_TOOLS_CICERONE_CRASH_LISTENER_IMPL_H_
 
+#include <optional>
 #include <string>
 
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/task/sequenced_task_runner.h>
 #include <grpcpp/grpcpp.h>
@@ -43,7 +43,7 @@ class CrashListenerImpl final : public CrashListener::Service {
                                  EmptyMessage* response) override;
 
  private:
-  base::Optional<pid_t> GetPidFromPeerAddress(grpc::ServerContext* ctx);
+  std::optional<pid_t> GetPidFromPeerAddress(grpc::ServerContext* ctx);
   VirtualMachine* GetVirtualMachineForContext(grpc::ServerContext* ctx);
 
   void GetVirtualMachineForCidOrToken(const uint32_t cid,

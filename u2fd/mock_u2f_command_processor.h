@@ -5,9 +5,9 @@
 #ifndef U2FD_MOCK_U2F_COMMAND_PROCESSOR_H_
 #define U2FD_MOCK_U2F_COMMAND_PROCESSOR_H_
 
+#include <optional>
 #include <vector>
 
-#include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <gmock/gmock.h>
 #include <trunks/cr50_headers/u2f.h>
@@ -60,7 +60,7 @@ class MockU2fCommandProcessor : public U2fCommandProcessor {
                std::vector<uint8_t>* signature_out),
               (override));
 
-  MOCK_METHOD(base::Optional<std::vector<uint8_t>>, GetG2fCert, (), (override));
+  MOCK_METHOD(std::optional<std::vector<uint8_t>>, GetG2fCert, (), (override));
 
   MOCK_METHOD(CoseAlgorithmIdentifier, GetAlgorithm, (), (override));
 };

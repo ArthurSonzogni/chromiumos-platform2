@@ -5,6 +5,7 @@
 #include "hwsec-test-utils/common/openssl_utility.h"
 
 #include <memory>
+#include <optional>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -120,7 +121,7 @@ crypto::ScopedX509 PemToX509(const std::string& pem) {
   return x509;
 }
 
-base::Optional<std::string> GetRandom(size_t length) {
+std::optional<std::string> GetRandom(size_t length) {
   std::unique_ptr<unsigned char[]> buffer =
       std::make_unique<unsigned char[]>(length);
   if (RAND_bytes(buffer.get(), length) != 1) {
@@ -129,9 +130,9 @@ base::Optional<std::string> GetRandom(size_t length) {
   return std::string(buffer.get(), buffer.get() + length);
 }
 
-base::Optional<std::string> EVPDigestSign(const crypto::ScopedEVP_PKEY& key,
-                                          const EVP_MD* md_type,
-                                          const std::string& data) {
+std::optional<std::string> EVPDigestSign(const crypto::ScopedEVP_PKEY& key,
+                                         const EVP_MD* md_type,
+                                         const std::string& data) {
   CHECK(key.get());
   CHECK(md_type != nullptr);
 
@@ -207,9 +208,9 @@ bool EVPDigestVerify(const crypto::ScopedEVP_PKEY& key,
   return true;
 }
 
-base::Optional<std::string> EVPRsaEncrypt(const crypto::ScopedEVP_PKEY& key,
-                                          const std::string& data,
-                                          int rsa_padding) {
+std::optional<std::string> EVPRsaEncrypt(const crypto::ScopedEVP_PKEY& key,
+                                         const std::string& data,
+                                         int rsa_padding) {
   crypto::ScopedEVP_PKEY_CTX ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
   if (!ctx) {
     LOG(ERROR) << __func__
@@ -247,9 +248,9 @@ base::Optional<std::string> EVPRsaEncrypt(const crypto::ScopedEVP_PKEY& key,
   return std::string(output.get(), output.get() + output_length);
 }
 
-base::Optional<std::string> EVPRsaDecrypt(const crypto::ScopedEVP_PKEY& key,
-                                          const std::string& encrypted_data,
-                                          int rsa_padding) {
+std::optional<std::string> EVPRsaDecrypt(const crypto::ScopedEVP_PKEY& key,
+                                         const std::string& encrypted_data,
+                                         int rsa_padding) {
   crypto::ScopedEVP_PKEY_CTX ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
   if (!ctx) {
     LOG(ERROR) << __func__
@@ -289,10 +290,10 @@ base::Optional<std::string> EVPRsaDecrypt(const crypto::ScopedEVP_PKEY& key,
   return std::string(output.get(), output.get() + output_length);
 }
 
-base::Optional<std::string> EVPAesEncrypt(const std::string& data,
-                                          const EVP_CIPHER* evp_cipher,
-                                          const std::string& aes_key,
-                                          const std::string& iv) {
+std::optional<std::string> EVPAesEncrypt(const std::string& data,
+                                         const EVP_CIPHER* evp_cipher,
+                                         const std::string& aes_key,
+                                         const std::string& iv) {
   crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
   if (!ctx) {
     LOG(ERROR) << __func__
@@ -329,10 +330,10 @@ base::Optional<std::string> EVPAesEncrypt(const std::string& data,
   return std::string(output.get(), output.get() + output_length);
 }
 
-base::Optional<std::string> EVPAesDecrypt(const std::string& encrypted_data,
-                                          const EVP_CIPHER* evp_cipher,
-                                          const std::string& aes_key,
-                                          const std::string& iv) {
+std::optional<std::string> EVPAesDecrypt(const std::string& encrypted_data,
+                                         const EVP_CIPHER* evp_cipher,
+                                         const std::string& aes_key,
+                                         const std::string& iv) {
   crypto::ScopedEVP_CIPHER_CTX ctx(EVP_CIPHER_CTX_new());
   if (!ctx) {
     LOG(ERROR) << __func__
@@ -371,8 +372,8 @@ base::Optional<std::string> EVPAesDecrypt(const std::string& encrypted_data,
   return std::string(output.get(), output.get() + output_length);
 }
 
-base::Optional<std::string> EVPDerive(const crypto::ScopedEVP_PKEY& key,
-                                      const crypto::ScopedEVP_PKEY& peer_key) {
+std::optional<std::string> EVPDerive(const crypto::ScopedEVP_PKEY& key,
+                                     const crypto::ScopedEVP_PKEY& peer_key) {
   crypto::ScopedEVP_PKEY_CTX ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
   if (!ctx) {
     LOG(ERROR) << __func__

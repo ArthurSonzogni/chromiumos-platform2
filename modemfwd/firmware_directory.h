@@ -6,10 +6,10 @@
 #define MODEMFWD_FIRMWARE_DIRECTORY_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 #include "modemfwd/firmware_file_info.h"
 
@@ -18,9 +18,9 @@ namespace modemfwd {
 class FirmwareDirectory {
  public:
   struct Files {
-    base::Optional<FirmwareFileInfo> main_firmware;
-    base::Optional<FirmwareFileInfo> oem_firmware;
-    base::Optional<FirmwareFileInfo> carrier_firmware;
+    std::optional<FirmwareFileInfo> main_firmware;
+    std::optional<FirmwareFileInfo> oem_firmware;
+    std::optional<FirmwareFileInfo> carrier_firmware;
   };
 
   static const char kGenericCarrierId[];

@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -993,13 +994,13 @@ std::string ClobberState::GenerateRandomVolumeGroupName() {
 void ClobberState::RemoveLogicalVolumeStack() {
   // For logical volume stateful partition, deactivate the volume group before
   // wiping the device.
-  base::Optional<brillo::PhysicalVolume> pv = lvm_->GetPhysicalVolume(
+  std::optional<brillo::PhysicalVolume> pv = lvm_->GetPhysicalVolume(
       base::FilePath(wipe_info_.stateful_partition_device));
   if (!pv || !pv->IsValid()) {
     LOG(WARNING) << "Failed to get physical volume.";
     return;
   }
-  base::Optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
+  std::optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
   if (!vg || !vg->IsValid()) {
     LOG(WARNING) << "Failed to get volume group.";
     return;
@@ -1028,7 +1029,7 @@ void ClobberState::CreateLogicalVolumeStack() {
     return;
   }
 
-  base::Optional<brillo::PhysicalVolume> pv =
+  std::optional<brillo::PhysicalVolume> pv =
       lvm_->CreatePhysicalVolume(base_device);
 
   if (!pv || !pv->IsValid()) {
@@ -1036,8 +1037,7 @@ void ClobberState::CreateLogicalVolumeStack() {
     return;
   }
 
-  base::Optional<brillo::VolumeGroup> vg =
-      lvm_->CreateVolumeGroup(*pv, vg_name);
+  std::optional<brillo::VolumeGroup> vg = lvm_->CreateVolumeGroup(*pv, vg_name);
   if (!vg || !vg->IsValid()) {
     LOG(ERROR) << "Failed to create volume group.";
     return;
@@ -1054,7 +1054,7 @@ void ClobberState::CreateLogicalVolumeStack() {
   thinpool_config.SetStringKey("metadata_size",
                                base::NumberToString(thinpool_metadata_size));
 
-  base::Optional<brillo::Thinpool> thinpool =
+  std::optional<brillo::Thinpool> thinpool =
       lvm_->CreateThinpool(*vg, thinpool_config);
   if (!thinpool || !thinpool->IsValid()) {
     LOG(ERROR) << "Failed to create thinpool.";
@@ -1067,7 +1067,7 @@ void ClobberState::CreateLogicalVolumeStack() {
       "size",
       base::NumberToString(thinpool_size * kLogicalVolumeSizePercent / 100));
 
-  base::Optional<brillo::LogicalVolume> lv =
+  std::optional<brillo::LogicalVolume> lv =
       lvm_->CreateLogicalVolume(*vg, *thinpool, lv_config);
   if (!lv || !lv->IsValid()) {
     LOG(ERROR) << "Failed to create logical volume.";

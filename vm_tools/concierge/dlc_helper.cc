@@ -5,11 +5,11 @@
 #include "vm_tools/concierge/dlc_helper.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include "base/logging.h"
-#include "base/optional.h"
 #include "dbus/scoped_dbus_error.h"
 #include "dlcservice/proto_bindings/dlcservice.pb.h"
 #include "dlcservice/dbus-proxies.h"  // NOLINT (build/include_alpha)
@@ -29,8 +29,8 @@ DlcHelper::DlcHelper(const scoped_refptr<dbus::Bus>& bus)
 
 DlcHelper::~DlcHelper() = default;
 
-base::Optional<std::string> DlcHelper::GetRootPath(const std::string& dlc_id,
-                                                   std::string* out_error) {
+std::optional<std::string> DlcHelper::GetRootPath(const std::string& dlc_id,
+                                                  std::string* out_error) {
   DCHECK(out_error);
   dlcservice::DlcState state;
   brillo::ErrorPtr error;
@@ -42,13 +42,13 @@ base::Optional<std::string> DlcHelper::GetRootPath(const std::string& dlc_id,
     } else {
       *out_error = "Error calling dlcservice: unknown";
     }
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (state.state() != dlcservice::DlcState_State_INSTALLED) {
     *out_error = dlc_id + " was not installed, its state is: " +
                  std::to_string(state.state());
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return state.root_path();

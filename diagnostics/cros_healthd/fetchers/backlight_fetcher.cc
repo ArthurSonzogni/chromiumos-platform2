@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,7 +13,6 @@
 #include <base/check_op.h>
 #include <base/files/file_enumerator.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "diagnostics/cros_healthd/utils/error_utils.h"
@@ -28,9 +28,9 @@ constexpr char kRelativeBacklightDirectoryPath[] = "sys/class/backlight";
 
 // Fetches backlight information for a specific sysfs path. On success,
 // populates |output_info| with the fetched information and returns a
-// base::nullopt. When an error occurs, a ProbeError is returned and
+// std::nullopt. When an error occurs, a ProbeError is returned and
 // |output_info| does not contain valid information.
-base::Optional<mojo_ipc::ProbeErrorPtr> FetchBacklightInfoForPath(
+std::optional<mojo_ipc::ProbeErrorPtr> FetchBacklightInfoForPath(
     const base::FilePath& path, mojo_ipc::BacklightInfoPtr* output_info) {
   DCHECK(output_info);
 
@@ -51,7 +51,7 @@ base::Optional<mojo_ipc::ProbeErrorPtr> FetchBacklightInfoForPath(
   }
 
   *output_info = info.Clone();
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace

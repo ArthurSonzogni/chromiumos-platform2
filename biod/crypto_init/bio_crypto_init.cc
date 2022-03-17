@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <algorithm>
+#include <optional>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -49,7 +50,7 @@ bool BioCryptoInit::WriteSeedToCrosFp(const brillo::SecureVector& seed) {
     return false;
   }
 
-  base::Optional<uint32_t> firmware_fp_template_format_version =
+  std::optional<uint32_t> firmware_fp_template_format_version =
       GetFirmwareTemplateVersion();
   if (!firmware_fp_template_format_version.has_value()) {
     return false;
@@ -138,13 +139,13 @@ bool BioCryptoInit::InitCrosFp() {
   return true;
 }
 
-base::Optional<uint32_t> BioCryptoInit::GetFirmwareTemplateVersion() {
+std::optional<uint32_t> BioCryptoInit::GetFirmwareTemplateVersion() {
   auto fp_info_cmd = ec_command_factory_->FpInfoCommand();
   if (!fp_info_cmd->RunWithMultipleAttempts(
           cros_fp_fd_.get(), biod::CrosFpDevice::kMaxIoAttempts)) {
     LOG(ERROR) << "Checking template format compatibility: failed to get FP "
                   "information.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return fp_info_cmd->template_info()->version;

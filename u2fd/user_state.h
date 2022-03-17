@@ -5,11 +5,11 @@
 #ifndef U2FD_USER_STATE_H_
 #define U2FD_USER_STATE_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <dbus/bus.h>
 #include <session_manager/dbus-proxies.h>
@@ -27,16 +27,16 @@ class UserState {
 
   virtual ~UserState() = default;
 
-  // Get*() methods return base::nullopt if user state is currently
+  // Get*() methods return std::nullopt if user state is currently
   // unavailable.
 
   // Get the user secret.
-  virtual base::Optional<brillo::SecureBlob> GetUserSecret();
+  virtual std::optional<brillo::SecureBlob> GetUserSecret();
 
   // Returns the current counter value. The returned value must not be
   // returned externally until the counter has succesfully been
   // incremented (and persisted to disk).
-  virtual base::Optional<std::vector<uint8_t>> GetCounter();
+  virtual std::optional<std::vector<uint8_t>> GetCounter();
 
   // Increments the counter value, which is subsequently immediately
   // flushed to disk. Returns true on success, false if the counter
@@ -54,9 +54,9 @@ class UserState {
   // Returns if there is a known primary session username.
   virtual bool HasUser();
   // Returns the known primary session username.
-  virtual base::Optional<std::string> GetUser();
+  virtual std::optional<std::string> GetUser();
   // Returns the sanitized username.
-  virtual base::Optional<std::string> GetSanitizedUser();
+  virtual std::optional<std::string> GetSanitizedUser();
 
  protected:
   // Constructor for use by mock objects.
@@ -95,13 +95,13 @@ class UserState {
   bool PersistCounter();
 
   // Current username, if any.
-  base::Optional<std::string> user_;
+  std::optional<std::string> user_;
 
   // Current sanitized username, if any.
-  base::Optional<std::string> sanitized_user_;
+  std::optional<std::string> sanitized_user_;
 
-  base::Optional<brillo::SecureBlob> user_secret_;
-  base::Optional<uint32_t> counter_;
+  std::optional<brillo::SecureBlob> user_secret_;
+  std::optional<uint32_t> counter_;
 
   org::chromium::SessionManagerInterfaceProxy* sm_proxy_;
   base::WeakPtrFactory<UserState> weak_ptr_factory_;

@@ -5,13 +5,13 @@
 #include "diagnostics/cros_healthd/fetchers/storage/disk_iostat.h"
 
 #include <cstdint>
+#include <optional>
 #include <sstream>
 #include <string>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 
 #include "diagnostics/common/statusor.h"
@@ -82,12 +82,12 @@ base::TimeDelta DiskIoStat::GetIoTime() const {
   return base::Milliseconds(static_cast<int64_t>(io_ticks));
 }
 
-base::Optional<base::TimeDelta> DiskIoStat::GetDiscardTime() const {
+std::optional<base::TimeDelta> DiskIoStat::GetDiscardTime() const {
   DCHECK(iostat_populated_);
   if (extended_iostat_) {
     return base::Milliseconds(static_cast<int64_t>(discard_ticks));
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace diagnostics

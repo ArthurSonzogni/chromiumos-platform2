@@ -5,6 +5,7 @@
 #include "shill/eap_credentials.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -149,7 +150,7 @@ void EapCredentials::PopulateSupplicantProperties(
       KeyVal(WPASupplicant::kNetworkPropertyEapSubjectMatch,
              subject_match_.c_str()),
   };
-  base::Optional<std::string> altsubject_match =
+  std::optional<std::string> altsubject_match =
       TranslateSubjectAlternativeNameMatch(
           subject_alternative_name_match_list_);
   if (altsubject_match.has_value()) {
@@ -157,7 +158,7 @@ void EapCredentials::PopulateSupplicantProperties(
         KeyVal(WPASupplicant::kNetworkPropertyEapSubjectAlternativeNameMatch,
                altsubject_match.value().c_str()));
   }
-  base::Optional<std::string> domain_suffix_match =
+  std::optional<std::string> domain_suffix_match =
       TranslateDomainSuffixMatch(domain_suffix_match_list_);
   if (domain_suffix_match.has_value()) {
     propertyvals.push_back(
@@ -610,10 +611,10 @@ bool EapCredentials::ValidDomainSuffixMatch(
 }
 
 // static
-base::Optional<std::string> EapCredentials::TranslateDomainSuffixMatch(
+std::optional<std::string> EapCredentials::TranslateDomainSuffixMatch(
     const std::vector<std::string>& domain_suffix_match_list) {
   if (domain_suffix_match_list.empty())
-    return base::nullopt;
+    return std::nullopt;
   std::vector<std::string> filtered_domains;
   for (const std::string& domain : domain_suffix_match_list) {
     if (ValidDomainSuffixMatch(domain)) {
@@ -625,14 +626,13 @@ base::Optional<std::string> EapCredentials::TranslateDomainSuffixMatch(
     }
   }
   if (filtered_domains.empty())
-    return base::nullopt;
+    return std::nullopt;
 
   return base::JoinString(filtered_domains, ";");
 }
 
 // static
-base::Optional<std::string>
-EapCredentials::TranslateSubjectAlternativeNameMatch(
+std::optional<std::string> EapCredentials::TranslateSubjectAlternativeNameMatch(
     const std::vector<std::string>& subject_alternative_name_match_list) {
   std::vector<std::string> entries;
   for (const auto& subject_alternative_name_match :
@@ -644,7 +644,7 @@ EapCredentials::TranslateSubjectAlternativeNameMatch(
       LOG(ERROR)
           << "Could not deserialize a subject alternative name match. Error: "
           << json_value.error_message;
-      return base::nullopt;
+      return std::nullopt;
     }
     base::Value deserialized_value = std::move(*json_value.value);
 
@@ -654,12 +654,12 @@ EapCredentials::TranslateSubjectAlternativeNameMatch(
       LOG(ERROR) << "Could not find "
                  << kEapSubjectAlternativeNameMatchTypeProperty
                  << " of a subject alternative name match.";
-      return base::nullopt;
+      return std::nullopt;
     }
     if (!ValidSubjectAlternativeNameMatchType(*type)) {
       LOG(ERROR) << "Subject alternative name match type: \"" << *type
                  << "\" is not supported.";
-      return base::nullopt;
+      return std::nullopt;
     }
     const std::string* value = deserialized_value.FindStringKey(
         kEapSubjectAlternativeNameMatchValueProperty);
@@ -667,7 +667,7 @@ EapCredentials::TranslateSubjectAlternativeNameMatch(
       LOG(ERROR) << "Could not find "
                  << kEapSubjectAlternativeNameMatchValueProperty
                  << " of a subject alternative name match.";
-      return base::nullopt;
+      return std::nullopt;
     }
     std::string translated_entry = *type + ":" + *value;
     entries.push_back(translated_entry);

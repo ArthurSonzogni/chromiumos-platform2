@@ -5,6 +5,7 @@
 #ifndef HPS_UTILS_H_
 #define HPS_UTILS_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>

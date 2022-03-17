@@ -12,6 +12,7 @@
 #include <iterator>
 #include <memory>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -142,9 +143,9 @@ class MockSender : public util::Sender {
 //
 // => [{"field1":"foo1","field2":"foo2"}, {"field1":"bar1","field2":"bar2"}]
 //
-std::vector<base::Optional<base::Value>> ParseChromeUploadsLog(
+std::vector<std::optional<base::Value>> ParseChromeUploadsLog(
     const std::string& contents) {
-  std::vector<base::Optional<base::Value>> rows;
+  std::vector<std::optional<base::Value>> rows;
 
   std::vector<std::string> lines = base::SplitString(
       contents, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -1959,7 +1960,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   std::string contents;
   ASSERT_TRUE(
       base::ReadFileToString(paths::Get(paths::kChromeCrashLog), &contents));
-  std::vector<base::Optional<base::Value>> rows =
+  std::vector<std::optional<base::Value>> rows =
       ParseChromeUploadsLog(contents);
   // Should only contain two results, since max_crash_rate is set to 2.
   // FakeSleep should be called three times since we sleep before we check the
@@ -1971,7 +1972,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   // <value>,"local_id":<value>,"capture_time":<value>,"state":<value>,"source":
   // <value>}".
   // The first run should be for the meta file in the system directory.
-  base::Optional<base::Value> row = std::move(rows[0]);
+  std::optional<base::Value> row = std::move(rows[0]);
   ASSERT_TRUE(row.has_value());
   ASSERT_EQ(6, row->DictSize());
   EXPECT_TRUE(row->FindKey("upload_time"));

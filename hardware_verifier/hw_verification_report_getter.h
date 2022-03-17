@@ -6,7 +6,8 @@
 #ifndef HARDWARE_VERIFIER_HW_VERIFICATION_REPORT_GETTER_H_
 #define HARDWARE_VERIFIER_HW_VERIFICATION_REPORT_GETTER_H_
 
-#include <base/optional.h>
+#include <optional>
+
 #include <base/strings/string_piece.h>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
@@ -54,7 +55,7 @@ class HwVerificationReportGetter {
   // @param out_error_code: The error code to the method.
   //
   // @return A |HwVerificationReport| message if it succeeds.
-  virtual base::Optional<HwVerificationReport> Get(
+  virtual std::optional<HwVerificationReport> Get(
       const base::StringPiece& probe_result_file,
       const base::StringPiece& hw_verification_spec_file,
       ErrorCode* out_error_code) const = 0;

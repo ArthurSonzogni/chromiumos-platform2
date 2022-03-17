@@ -4,6 +4,8 @@
 
 #include "vm_tools/concierge/shared_data.h"
 
+#include <optional>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
@@ -12,7 +14,7 @@
 namespace vm_tools {
 namespace concierge {
 
-base::Optional<base::FilePath> GetFilePathFromName(
+std::optional<base::FilePath> GetFilePathFromName(
     const std::string& cryptohome_id,
     const std::string& vm_name,
     StorageLocation storage_location,
@@ -20,7 +22,7 @@ base::Optional<base::FilePath> GetFilePathFromName(
     bool create_parent_dir) {
   if (!base::ContainsOnlyChars(cryptohome_id, kValidCryptoHomeCharacters)) {
     LOG(ERROR) << "Invalid cryptohome_id specified";
-    return base::nullopt;
+    return std::nullopt;
   }
   // Encode the given disk name to ensure it only has valid characters.
   std::string encoded_name = GetEncodedName(vm_name);
@@ -37,21 +39,21 @@ base::Optional<base::FilePath> GetFilePathFromName(
     }
     default: {
       LOG(ERROR) << "Unknown storage location type";
-      return base::nullopt;
+      return std::nullopt;
     }
   }
   storage_dir = storage_dir.Append(cryptohome_id);
 
   if (!base::DirectoryExists(storage_dir)) {
     if (!create_parent_dir) {
-      return base::nullopt;
+      return std::nullopt;
     }
     base::File::Error dir_error;
 
     if (!base::CreateDirectoryAndGetError(storage_dir, &dir_error)) {
       LOG(ERROR) << "Failed to create storage directory " << storage_dir << ": "
                  << base::File::ErrorToString(dir_error);
-      return base::nullopt;
+      return std::nullopt;
     }
   }
   return storage_dir.Append(encoded_name).AddExtension(extension);

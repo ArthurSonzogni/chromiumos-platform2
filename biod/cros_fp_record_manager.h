@@ -6,6 +6,7 @@
 #define BIOD_CROS_FP_RECORD_MANAGER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -24,7 +25,7 @@ class CrosFpRecordManagerInterface {
   virtual ~CrosFpRecordManagerInterface() = default;
 
   virtual void SetAllowAccess(bool allow) = 0;
-  virtual base::Optional<RecordMetadata> GetRecordMetadata(
+  virtual std::optional<RecordMetadata> GetRecordMetadata(
       const std::string& record_id) = 0;
   virtual std::vector<Record> GetRecordsForUser(const std::string& user_id) = 0;
   virtual bool UserHasInvalidRecords(const std::string& user_id) = 0;
@@ -50,7 +51,7 @@ class CrosFpRecordManager : public CrosFpRecordManagerInterface {
   void SetAllowAccess(bool allow) override;
 
   // Returns RecordMetadata for given record.
-  base::Optional<RecordMetadata> GetRecordMetadata(
+  std::optional<RecordMetadata> GetRecordMetadata(
       const std::string& record_id) override;
   std::vector<Record> GetRecordsForUser(const std::string& user_id) override;
   bool UserHasInvalidRecords(const std::string& user_id) override;

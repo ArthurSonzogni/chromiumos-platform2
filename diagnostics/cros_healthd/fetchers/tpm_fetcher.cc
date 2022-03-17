@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -70,8 +71,8 @@ void TpmFetcher::HandleVersion(brillo::Error* err,
   version->tpm_model = reply.tpm_model();
   version->firmware_version = reply.firmware_version();
   version->vendor_specific = reply.vendor_specific().empty()
-                                 ? base::nullopt
-                                 : base::make_optional(reply.vendor_specific());
+                                 ? std::nullopt
+                                 : std::make_optional(reply.vendor_specific());
   info_->version = std::move(version);
   CheckAndSendInfo();
 }

@@ -5,8 +5,9 @@
 #ifndef LIBHWSEC_FOUNDATION_TPM_TPM_VERSION_H_
 #define LIBHWSEC_FOUNDATION_TPM_TPM_VERSION_H_
 
+#include <optional>
+
 #include <base/logging.h>
-#include <base/optional.h>
 
 #include "libhwsec-foundation/hwsec-foundation_export.h"
 
@@ -23,7 +24,7 @@ enum class TPMVer {
 #if USE_TPM_DYNAMIC
 
 HWSEC_FOUNDATION_EXPORT TPMVer
-RuntimeTPMVer(base::Optional<TPMVer> set_cache_for_testing = base::nullopt);
+RuntimeTPMVer(std::optional<TPMVer> set_cache_for_testing = std::nullopt);
 
 #else
 

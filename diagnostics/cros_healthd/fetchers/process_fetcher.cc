@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,7 +16,6 @@
 #include <base/bind.h>
 #include <base/check.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -46,10 +46,10 @@ constexpr char kProcessIOFileRegex[] =
     R"(_bytes:\s+(\d+)\nwrite_bytes:\s+(\d+)\ncancelled_write_bytes:\s+(\d+))";
 
 // Converts the raw process state read from procfs to a mojo_ipc::ProcessState.
-// If the conversion is successful, returns base::nullopt and sets
+// If the conversion is successful, returns std::nullopt and sets
 // |mojo_state_out| to the converted value. If the conversion fails,
 // |mojo_state_out| is invalid and an appropriate error is returned.
-base::Optional<mojo_ipc::ProbeErrorPtr> GetProcessState(
+std::optional<mojo_ipc::ProbeErrorPtr> GetProcessState(
     base::StringPiece raw_state, mojo_ipc::ProcessState* mojo_state_out) {
   DCHECK(mojo_state_out);
   // See https://man7.org/linux/man-pages/man5/proc.5.html for allowable raw
@@ -74,14 +74,14 @@ base::Optional<mojo_ipc::ProbeErrorPtr> GetProcessState(
         "Undefined process state: " + std::string(raw_state));
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 // Converts |str| to a signed, 8-bit integer. If the conversion is successful,
-// returns base::nullopt and sets |int_out| to the converted value. If the
+// returns std::nullopt and sets |int_out| to the converted value. If the
 // conversion fails, |int_out| is invalid and an appropriate error is returned.
-base::Optional<mojo_ipc::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
-                                                          int8_t* int_out) {
+std::optional<mojo_ipc::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
+                                                         int8_t* int_out) {
   DCHECK(int_out);
 
   int full_size_int;
@@ -99,7 +99,7 @@ base::Optional<mojo_ipc::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
 
   *int_out = static_cast<int8_t>(full_size_int);
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 void FinishFetchingProcessInfo(
@@ -278,7 +278,7 @@ void ProcessFetcher::FetchProcessInfo(
                      std::move(process_info)));
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
+std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
     mojo_ipc::ProcessState* state,
     int8_t* priority,
     int8_t* nice,
@@ -327,10 +327,10 @@ base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
                                       std::string(start_time_str));
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
+std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
     uint32_t* total_memory_kib,
     uint32_t* resident_memory_kib,
     uint32_t* free_memory_kib) {
@@ -393,10 +393,10 @@ base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
   *free_memory_kib = static_cast<uint32_t>(
       (total_memory_pages - resident_memory_pages) * kPageSizeInKiB);
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::CalculateProcessUptime(
+std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::CalculateProcessUptime(
     uint64_t start_time_ticks, uint64_t* process_uptime_ticks) {
   DCHECK(process_uptime_ticks);
 
@@ -431,10 +431,10 @@ base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::CalculateProcessUptime(
       static_cast<uint64_t>(system_uptime_seconds *
                             static_cast<double>(kClockTicksPerSecond)) -
       start_time_ticks;
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
+std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
     uid_t* user_id) {
   DCHECK(user_id);
 
@@ -472,7 +472,7 @@ base::Optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
                                   "Failed to find Uid key.");
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace diagnostics

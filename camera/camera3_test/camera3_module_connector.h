@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -144,8 +145,8 @@ class CameraHalClient final : public cros::mojom::CameraHalClient,
 
   void OnGotVendorTagOps();
   void OnGotAllTags(const std::vector<uint32_t>& tag_array);
-  void OnGotSectionName(uint32_t tag, const base::Optional<std::string>& name);
-  void OnGotTagName(uint32_t tag, const base::Optional<std::string>& name);
+  void OnGotSectionName(uint32_t tag, const std::optional<std::string>& name);
+  void OnGotTagName(uint32_t tag, const std::optional<std::string>& name);
   void OnGotTagType(uint32_t tag, int32_t type);
 
   void GetNumberOfCamerasOnIpcThread(base::OnceCallback<void(int32_t)> cb);

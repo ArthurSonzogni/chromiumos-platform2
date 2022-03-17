@@ -7,6 +7,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -18,7 +19,6 @@
 #include <base/files/file_util.h>
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -50,7 +50,7 @@ constexpr char kPKCS11ObjectIDPrefix[] = "shill";
 // so we don't want to hardcode it around this file.
 constexpr char kListSeparator = ';';
 
-std::string Escape(const std::string& str, base::Optional<char> separator) {
+std::string Escape(const std::string& str, std::optional<char> separator) {
   std::string out;
   bool leading_space = true;
   for (const char c : str) {
@@ -95,7 +95,7 @@ std::string Escape(const std::string& str, base::Optional<char> separator) {
 }
 
 bool Unescape(const std::string& str,
-              base::Optional<char> separator,
+              std::optional<char> separator,
               std::vector<std::string>* out) {
   DCHECK(out);
   out->clear();
@@ -176,10 +176,10 @@ class Group {
     index_[key] = &entries_.back();
   }
 
-  base::Optional<std::string> Get(const std::string& key) const {
+  std::optional<std::string> Get(const std::string& key) const {
     const auto it = index_.find(key);
     if (it == index_.end()) {
-      return base::nullopt;
+      return std::nullopt;
     }
 
     return it->second->second;
@@ -313,11 +313,11 @@ class KeyFileStore::KeyFile {
     index_[group]->Set(key, value);
   }
 
-  base::Optional<std::string> Get(const std::string& group,
-                                  const std::string& key) const {
+  std::optional<std::string> Get(const std::string& group,
+                                 const std::string& key) const {
     const auto it = index_.find(group);
     if (it == index_.end()) {
-      return base::nullopt;
+      return std::nullopt;
     }
 
     return it->second->Get(key);
@@ -513,14 +513,14 @@ bool KeyFileStore::GetString(const std::string& group,
                              const std::string& key,
                              std::string* value) const {
   CHECK(key_file_);
-  base::Optional<std::string> data = key_file_->Get(group, key);
+  std::optional<std::string> data = key_file_->Get(group, key);
   if (!data.has_value()) {
     SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
   }
 
   std::vector<std::string> temp;
-  if (!Unescape(data.value(), base::nullopt, &temp)) {
+  if (!Unescape(data.value(), std::nullopt, &temp)) {
     SLOG(this, 10) << "Failed to parse (" << group << ":" << key << ") as"
                    << " string";
     return false;
@@ -537,7 +537,7 @@ bool KeyFileStore::SetString(const std::string& group,
                              const std::string& key,
                              const std::string& value) {
   CHECK(key_file_);
-  key_file_->Set(group, key, Escape(value, base::nullopt));
+  key_file_->Set(group, key, Escape(value, std::nullopt));
   return true;
 }
 
@@ -545,7 +545,7 @@ bool KeyFileStore::GetBool(const std::string& group,
                            const std::string& key,
                            bool* value) const {
   CHECK(key_file_);
-  base::Optional<std::string> data = key_file_->Get(group, key);
+  std::optional<std::string> data = key_file_->Get(group, key);
   if (!data.has_value()) {
     SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
@@ -580,7 +580,7 @@ bool KeyFileStore::GetInt(const std::string& group,
                           const std::string& key,
                           int* value) const {
   CHECK(key_file_);
-  base::Optional<std::string> data = key_file_->Get(group, key);
+  std::optional<std::string> data = key_file_->Get(group, key);
   if (!data.has_value()) {
     SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
@@ -611,7 +611,7 @@ bool KeyFileStore::GetUint64(const std::string& group,
                              const std::string& key,
                              uint64_t* value) const {
   CHECK(key_file_);
-  base::Optional<std::string> data = key_file_->Get(group, key);
+  std::optional<std::string> data = key_file_->Get(group, key);
   if (!data.has_value()) {
     SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;
@@ -642,7 +642,7 @@ bool KeyFileStore::GetStringList(const std::string& group,
                                  const std::string& key,
                                  std::vector<std::string>* value) const {
   CHECK(key_file_);
-  base::Optional<std::string> data = key_file_->Get(group, key);
+  std::optional<std::string> data = key_file_->Get(group, key);
   if (!data.has_value()) {
     SLOG(this, 10) << "Failed to lookup (" << group << ":" << key << ")";
     return false;

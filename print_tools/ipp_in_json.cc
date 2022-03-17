@@ -10,7 +10,6 @@
 #include <base/check.h>
 #include <base/json/json_writer.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <base/values.h>
 
 namespace {

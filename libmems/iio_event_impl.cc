@@ -5,6 +5,7 @@
 #include "libmems/iio_event_impl.h"
 
 #include <map>
+#include <optional>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -43,11 +44,11 @@ bool MatchString(std::string chan_str, const char prefix[]) {
   return chan_str.compare(0, prefix_len, prefix) == 0;
 }
 
-base::Optional<iio_chan_type> GetChanType(std::string chan_str) {
+std::optional<iio_chan_type> GetChanType(std::string chan_str) {
   if (MatchString(chan_str, kProximity))
     return iio_chan_type::IIO_PROXIMITY;
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 const char* GetChanTypeStr(iio_chan_type chan_type) {
@@ -74,8 +75,8 @@ int GetChannel(std::string chan_str, iio_chan_type chan_type) {
   return channel;
 }
 
-base::Optional<iio_event_type> GetEventType(std::string event_type_str,
-                                            std::string prev_str) {
+std::optional<iio_event_type> GetEventType(std::string event_type_str,
+                                           std::string prev_str) {
   if (event_type_str.compare(kThresh) == 0)
     return iio_event_type::IIO_EV_TYPE_THRESH;
   if (event_type_str.compare(kMag) == 0)
@@ -91,10 +92,10 @@ base::Optional<iio_event_type> GetEventType(std::string event_type_str,
   if (event_type_str.compare(kChange) == 0)
     return iio_event_type::IIO_EV_TYPE_CHANGE;
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<iio_event_direction> GetDirection(std::string direction_str) {
+std::optional<iio_event_direction> GetDirection(std::string direction_str) {
   if (direction_str.compare(kEither) == 0)
     return iio_event_direction::IIO_EV_DIR_EITHER;
   if (direction_str.compare(kRising) == 0)
@@ -104,7 +105,7 @@ base::Optional<iio_event_direction> GetDirection(std::string direction_str) {
   if (direction_str.compare(kNone) == 0)
     return iio_event_direction::IIO_EV_DIR_NONE;
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace
@@ -120,18 +121,18 @@ std::unique_ptr<IioEventImpl> IioEventImpl::Create(base::FilePath file) {
     return nullptr;
   }
 
-  base::Optional<iio_chan_type> chan_type = ::libmems::GetChanType(pieces[1]);
+  std::optional<iio_chan_type> chan_type = ::libmems::GetChanType(pieces[1]);
   if (!chan_type.has_value())
     return nullptr;
 
   int channel = ::libmems::GetChannel(pieces[1], chan_type.value());
 
-  base::Optional<iio_event_type> event_type = ::libmems::GetEventType(
+  std::optional<iio_event_type> event_type = ::libmems::GetEventType(
       pieces[pieces.size() - 3], pieces[pieces.size() - 4]);
   if (!event_type.has_value())
     return nullptr;
 
-  base::Optional<iio_event_direction> direction =
+  std::optional<iio_event_direction> direction =
       ::libmems::GetDirection(pieces[pieces.size() - 2]);
   if (!direction.has_value())
     return nullptr;
@@ -175,14 +176,14 @@ void IioEventImpl::SetEnabled(bool en) {
     LOG(ERROR) << "Failed to write file: " << file.value();
 }
 
-base::Optional<std::string> IioEventImpl::ReadStringAttribute(
+std::optional<std::string> IioEventImpl::ReadStringAttribute(
     const std::string& name) const {
   base::FilePath file = GetAttributePath(name);
 
   std::string value;
   if (!ReadFileToString(file, &value)) {
     LOG(ERROR) << "Failed to read file: " << file.value();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return value;

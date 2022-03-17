@@ -32,6 +32,7 @@
 #include <algorithm>
 #include <limits>
 #include <list>
+#include <optional>
 #include <set>
 #include <utility>
 #include <vector>
@@ -767,7 +768,7 @@ class Init::Worker {
 
     std::list<base::Time> spawn_times;
 
-    base::Optional<base::OnceCallback<void(ProcessStatus, int)>> exit_cb;
+    std::optional<base::OnceCallback<void(ProcessStatus, int)>> exit_cb;
   };
 
   Worker()
@@ -1172,7 +1173,7 @@ bool Init::Spawn(
     bool use_console,
     bool wait_for_exit,
     ProcessLaunchInfo* launch_info,
-    base::Optional<base::OnceCallback<void(ProcessStatus, int)>> exit_cb) {
+    std::optional<base::OnceCallback<void(ProcessStatus, int)>> exit_cb) {
   CHECK(!argv.empty());
   CHECK(!(respawn && wait_for_exit));
   CHECK(launch_info);

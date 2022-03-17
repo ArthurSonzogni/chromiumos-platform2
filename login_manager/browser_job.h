@@ -14,12 +14,12 @@
 #include <deque>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <brillo/namespaces/mount_namespace.h>
 
@@ -136,7 +136,7 @@ class BrowserJob : public BrowserJobInterface {
     bool isolate_guest_session;
     bool isolate_regular_session;
     // Put the browser process tree in the specified non-root mount namespace.
-    base::Optional<base::FilePath> chrome_mount_ns_path;
+    std::optional<base::FilePath> chrome_mount_ns_path;
   };
 
   BrowserJob(const std::vector<std::string>& arguments,

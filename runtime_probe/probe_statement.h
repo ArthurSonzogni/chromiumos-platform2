@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -58,10 +59,10 @@ class ProbeStatement {
   // - Return final results that passed |expect_| check.
   ProbeFunction::DataType Eval() const;
 
-  base::Optional<base::Value> GetInformation() const {
+  std::optional<base::Value> GetInformation() const {
     if (information_)
       return information_->Clone();
-    return base::nullopt;
+    return std::nullopt;
   }
 
  private:
@@ -71,7 +72,7 @@ class ProbeStatement {
   std::unique_ptr<ProbeFunction> eval_;
   std::set<std::string> key_;
   std::unique_ptr<ProbeResultChecker> expect_;
-  base::Optional<base::Value> information_;
+  std::optional<base::Value> information_;
 
   FRIEND_TEST(ProbeConfigTest, LoadConfig);
   FRIEND_TEST(ProbeStatementTest, TestEval);

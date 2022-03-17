@@ -8,6 +8,7 @@
 #include <sys/eventfd.h>
 
 #include <iterator>
+#include <optional>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -33,23 +34,23 @@ bool FakeIioChannel::SetScanElementsEnabled(bool en) {
 }
 
 template <typename T>
-base::Optional<T> FakeReadAttributes(const std::string& name,
-                                     std::map<std::string, T> attributes) {
+std::optional<T> FakeReadAttributes(const std::string& name,
+                                    std::map<std::string, T> attributes) {
   auto k = attributes.find(name);
   if (k == attributes.end())
-    return base::nullopt;
+    return std::nullopt;
   return k->second;
 }
 
-base::Optional<std::string> FakeIioChannel::ReadStringAttribute(
+std::optional<std::string> FakeIioChannel::ReadStringAttribute(
     const std::string& name) const {
   return FakeReadAttributes<>(name, text_attributes_);
 }
-base::Optional<int64_t> FakeIioChannel::ReadNumberAttribute(
+std::optional<int64_t> FakeIioChannel::ReadNumberAttribute(
     const std::string& name) const {
   return FakeReadAttributes<>(name, numeric_attributes_);
 }
-base::Optional<double> FakeIioChannel::ReadDoubleAttribute(
+std::optional<double> FakeIioChannel::ReadDoubleAttribute(
     const std::string& name) const {
   return FakeReadAttributes<>(name, double_attributes_);
 }
@@ -70,9 +71,9 @@ bool FakeIioChannel::WriteDoubleAttribute(const std::string& name,
   return true;
 }
 
-base::Optional<int64_t> FakeIioChannel::GetData(int index) {
+std::optional<int64_t> FakeIioChannel::GetData(int index) {
   if (!enabled_ || index < 0 || index >= std::size(kFakeAccelSamples))
-    return base::nullopt;
+    return std::nullopt;
 
   auto raw = ReadNumberAttribute(kRawAttr);
   if (raw.has_value())
@@ -83,7 +84,7 @@ base::Optional<int64_t> FakeIioChannel::GetData(int index) {
       return kFakeAccelSamples[index][i];
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 FakeIioEvent::FakeIioEvent(iio_chan_type chan_type,
@@ -96,11 +97,11 @@ void FakeIioEvent::SetEnabled(bool en) {
   enabled_ = en;
 }
 
-base::Optional<std::string> FakeIioEvent::ReadStringAttribute(
+std::optional<std::string> FakeIioEvent::ReadStringAttribute(
     const std::string& name) const {
   auto k = text_attributes_.find(name);
   if (k == text_attributes_.end())
-    return base::nullopt;
+    return std::nullopt;
   return k->second;
 }
 
@@ -110,9 +111,9 @@ bool FakeIioEvent::WriteStringAttribute(const std::string& name,
   return true;
 }
 
-base::Optional<uint64_t> FakeIioEvent::GetData(int index) {
+std::optional<uint64_t> FakeIioEvent::GetData(int index) {
   if (index >= kEventNumber)
-    return base::nullopt;
+    return std::nullopt;
 
   iio_event_direction dir =
       (direction_ == iio_event_direction::IIO_EV_DIR_EITHER)
@@ -138,17 +139,17 @@ base::FilePath FakeIioDevice::GetPath() const {
   return base::FilePath(kSysDevString).Append(id_str);
 }
 
-base::Optional<std::string> FakeIioDevice::ReadStringAttribute(
+std::optional<std::string> FakeIioDevice::ReadStringAttribute(
     const std::string& name) const {
   if (name.compare(kDeviceName) == 0)
     return name_;
   return FakeReadAttributes<>(name, text_attributes_);
 }
-base::Optional<int64_t> FakeIioDevice::ReadNumberAttribute(
+std::optional<int64_t> FakeIioDevice::ReadNumberAttribute(
     const std::string& name) const {
   return FakeReadAttributes<>(name, numeric_attributes_);
 }
-base::Optional<double> FakeIioDevice::ReadDoubleAttribute(
+std::optional<double> FakeIioDevice::ReadDoubleAttribute(
     const std::string& name) const {
   return FakeReadAttributes<>(name, double_attributes_);
 }
@@ -208,37 +209,37 @@ bool FakeIioDevice::CreateBuffer() {
   return true;
 }
 
-base::Optional<int32_t> FakeIioDevice::GetBufferFd() {
+std::optional<int32_t> FakeIioDevice::GetBufferFd() {
   if (disabled_fd_ || !sample_fd_.is_valid())
-    return base::nullopt;
+    return std::nullopt;
 
   return sample_fd_.get();
 }
 
-base::Optional<IioDevice::IioSample> FakeIioDevice::ReadSample() {
+std::optional<IioDevice::IioSample> FakeIioDevice::ReadSample() {
   if (sample_fd_.is_paused || disabled_fd_ || !sample_fd_.is_valid())
-    return base::nullopt;
+    return std::nullopt;
 
   if (!sample_fd_.failed_read_queue.empty()) {
     CHECK_GE(sample_fd_.failed_read_queue.top(), sample_fd_.index);
     if (sample_fd_.failed_read_queue.top() == sample_fd_.index) {
       sample_fd_.failed_read_queue.pop();
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
   if (!sample_fd_.ReadByte())
-    return base::nullopt;
+    return std::nullopt;
 
-  base::Optional<double> freq_opt = ReadDoubleAttribute(kSamplingFrequencyAttr);
+  std::optional<double> freq_opt = ReadDoubleAttribute(kSamplingFrequencyAttr);
   if (!freq_opt.has_value()) {
     LOG(ERROR) << "sampling_frequency not set";
-    return base::nullopt;
+    return std::nullopt;
   }
   double frequency = freq_opt.value();
   if (frequency <= 0.0) {
     LOG(ERROR) << "Invalid frequency: " << frequency;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   IioDevice::IioSample sample;
@@ -248,7 +249,7 @@ base::Optional<IioDevice::IioSample> FakeIioDevice::ReadSample() {
     auto value = chn->GetData(sample_fd_.index);
     if (!value.has_value()) {
       LOG(ERROR) << "Channel: " << channels_[i].chn_id << " has no sample";
-      return base::nullopt;
+      return std::nullopt;
     }
 
     sample[i] = value.value();
@@ -261,7 +262,7 @@ base::Optional<IioDevice::IioSample> FakeIioDevice::ReadSample() {
         sample_fd_.index == sample_fd_.pause_index.value()) {
       sample_fd_.SetPause();
     } else if (!sample_fd_.WriteByte()) {
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
@@ -272,9 +273,9 @@ void FakeIioDevice::FreeBuffer() {
   sample_fd_.ClosePipe();
 }
 
-base::Optional<int32_t> FakeIioDevice::GetEventFd() {
+std::optional<int32_t> FakeIioDevice::GetEventFd() {
   if (disabled_fd_)
-    return base::nullopt;
+    return std::nullopt;
 
   if (!event_fd_.is_valid()) {
     int fd = eventfd(0, 0);
@@ -285,7 +286,7 @@ base::Optional<int32_t> FakeIioDevice::GetEventFd() {
         !event_fd_.readable) {
       if (!event_fd_.WriteByte()) {
         event_fd_.ClosePipe();
-        return base::nullopt;
+        return std::nullopt;
       }
     }
   }
@@ -293,20 +294,20 @@ base::Optional<int32_t> FakeIioDevice::GetEventFd() {
   return event_fd_.get();
 }
 
-base::Optional<iio_event_data> FakeIioDevice::ReadEvent() {
+std::optional<iio_event_data> FakeIioDevice::ReadEvent() {
   if (event_fd_.is_paused || disabled_fd_ || !event_fd_.is_valid())
-    return base::nullopt;
+    return std::nullopt;
 
   if (!event_fd_.failed_read_queue.empty()) {
     CHECK_GE(event_fd_.failed_read_queue.top(), event_fd_.index);
     if (event_fd_.failed_read_queue.top() == event_fd_.index) {
       event_fd_.failed_read_queue.pop();
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
   if (!event_fd_.ReadByte())
-    return base::nullopt;
+    return std::nullopt;
 
   iio_event_data data;
   data.timestamp = 1000000000LL * (int64_t)event_fd_.index;
@@ -331,7 +332,7 @@ base::Optional<iio_event_data> FakeIioDevice::ReadEvent() {
         event_fd_.index == event_fd_.pause_index.value()) {
       event_fd_.SetPause();
     } else if (!event_fd_.WriteByte()) {
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 

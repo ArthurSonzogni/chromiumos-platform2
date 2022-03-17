@@ -7,10 +7,10 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
-#include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
@@ -68,8 +68,8 @@ class U2fCommandProcessorGeneric : public U2fCommandProcessor {
   }
 
   // Currently doesn't support u2f/g2f mode.
-  base::Optional<std::vector<uint8_t>> GetG2fCert() override {
-    return base::nullopt;
+  std::optional<std::vector<uint8_t>> GetG2fCert() override {
+    return std::nullopt;
   }
 
   CoseAlgorithmIdentifier GetAlgorithm() override;
@@ -81,7 +81,7 @@ class U2fCommandProcessorGeneric : public U2fCommandProcessor {
           cryptohome_proxy,
       std::unique_ptr<SignManager> sign_manager);
 
-  base::Optional<brillo::SecureBlob> GetWebAuthnSecret();
+  std::optional<brillo::SecureBlob> GetWebAuthnSecret();
 
   UserState* user_state_;
   std::unique_ptr<org::chromium::UserDataAuthInterfaceProxyInterface>

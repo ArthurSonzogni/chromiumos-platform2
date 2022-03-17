@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -14,7 +15,6 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
@@ -1133,7 +1133,7 @@ TEST_F(GrpcServiceWithMockSystemFilesServiceTest, DirectoryAcpiButtonEmpty) {
 TEST_F(GrpcServiceWithMockSystemFilesServiceTest, DirectoryAcpiButtonMissing) {
   EXPECT_CALL(*system_files_service_,
               GetDirectoryDump(SystemFilesService::Directory::kProcAcpiButton))
-      .WillOnce(Return(ByMove(base::nullopt)));
+      .WillOnce(Return(ByMove(std::nullopt)));
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(grpc_api::GetProcDataRequest::DIRECTORY_ACPI_BUTTON,
@@ -1192,7 +1192,7 @@ TEST_P(SingleProcFileGrpcServiceTest, Success) {
 // Test that GetProcData() returns empty result when the file doesn't exist.
 TEST_P(SingleProcFileGrpcServiceTest, NonExisting) {
   EXPECT_CALL(*system_files_service_, GetFileDump(expected_location()))
-      .WillOnce(Return(ByMove(base::nullopt)));
+      .WillOnce(Return(ByMove(std::nullopt)));
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetProcData(proc_data_request_type(), &file_dumps);
@@ -1301,7 +1301,7 @@ TEST_P(SysfsDirectoryGrpcServiceTest, MultiFile) {
 // exist.
 TEST_P(SysfsDirectoryGrpcServiceTest, NonExisting) {
   EXPECT_CALL(*system_files_service_, GetDirectoryDump(expected_location()))
-      .WillOnce(Return(ByMove(base::nullopt)));
+      .WillOnce(Return(ByMove(std::nullopt)));
 
   std::vector<grpc_api::FileDump> file_dumps;
   ExecuteGetSysfsData(sysfs_data_request_type(), &file_dumps);
@@ -1676,7 +1676,7 @@ TEST_P(GetVpdFieldGrpcServiceTest, Success) {
 // Test that GetVpdField() returns error if VPD field does not exist.
 TEST_P(GetVpdFieldGrpcServiceTest, NoVpdField) {
   EXPECT_CALL(*system_files_service_, GetVpdField(expected_vpd_field()))
-      .WillOnce(Return(base::nullopt));
+      .WillOnce(Return(std::nullopt));
 
   grpc_api::GetVpdFieldResponse::Status status;
   std::string vpd_field_value;

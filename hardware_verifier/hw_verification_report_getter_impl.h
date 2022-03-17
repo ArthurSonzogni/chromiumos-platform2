@@ -7,9 +7,9 @@
 #define HARDWARE_VERIFIER_HW_VERIFICATION_REPORT_GETTER_IMPL_H_
 
 #include <memory>
+#include <optional>
 #include <utility>
 
-#include <base/optional.h>
 #include <base/strings/string_piece.h>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
@@ -29,7 +29,7 @@ class HwVerificationReportGetterImpl : public HwVerificationReportGetter {
   HwVerificationReportGetterImpl& operator=(
       const HwVerificationReportGetterImpl&) = delete;
 
-  base::Optional<HwVerificationReport> Get(
+  std::optional<HwVerificationReport> Get(
       const base::StringPiece& probe_result_file,
       const base::StringPiece& hw_verification_spec_file,
       ErrorCode* error_code) const override;

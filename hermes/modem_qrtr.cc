@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -727,7 +728,7 @@ int ModemQrtr::ReceiveQmiSwitchSlot(const qrtr_packet& packet) {
                                        switch_slot_tx_info->logical_slot_);
   if (stored_active_slot_)
     euicc_manager_->OnLogicalSlotUpdated(stored_active_slot_.value(),
-                                         base::nullopt);
+                                         std::nullopt);
 
   // Sending QMI messages immediately after switch slot leads to QMI errors
   // since slot switching takes time. If channel reacquisition fails despite

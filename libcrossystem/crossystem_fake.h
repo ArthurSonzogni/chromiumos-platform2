@@ -6,6 +6,7 @@
 #define LIBCROSSYSTEM_CROSSYSTEM_FAKE_H_
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -18,17 +19,17 @@ namespace fake {
 
 // A fake implementation that simulates the manipulation of system properties
 // with an in-memory table.  By default, all properties are unset so getters
-// will return |base::nullopt| (or other equivalent value type).
+// will return |std::nullopt| (or other equivalent value type).
 class BRILLO_EXPORT CrossystemFake : public Crossystem {
  public:
   CrossystemFake() = default;
 
-  base::Optional<int> VbGetSystemPropertyInt(
+  std::optional<int> VbGetSystemPropertyInt(
       const std::string& name) const override;
 
   bool VbSetSystemPropertyInt(const std::string& name, int value) override;
 
-  base::Optional<std::string> VbGetSystemPropertyString(
+  std::optional<std::string> VbGetSystemPropertyString(
       const std::string& name) const override;
 
   bool VbSetSystemPropertyString(const std::string& name,
@@ -37,7 +38,7 @@ class BRILLO_EXPORT CrossystemFake : public Crossystem {
   // Unset the value of the specific system property.
   //
   // After the property is unset, both VbGetSystemPropertyInt() and
-  // VbGetSystemPropertyString() return |base::nullopt|.
+  // VbGetSystemPropertyString() return |std::nullopt|.
   //
   // @param name The name of the target system property.
   void UnsetSystemPropertyValue(const std::string& name);

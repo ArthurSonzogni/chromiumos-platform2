@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -102,7 +103,7 @@ class MockKeysetManagement : public KeysetManagement {
               GetValidKeysetWithKeyBlobs,
               (const std::string&,
                KeyBlobs,
-               const base::Optional<std::string>&,
+               const std::optional<std::string>&,
                MountError*),
               (override));
   MOCK_METHOD(CryptohomeErrorCode,

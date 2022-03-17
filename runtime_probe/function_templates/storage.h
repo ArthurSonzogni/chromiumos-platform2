@@ -5,11 +5,11 @@
 #ifndef RUNTIME_PROBE_FUNCTION_TEMPLATES_STORAGE_H_
 #define RUNTIME_PROBE_FUNCTION_TEMPLATES_STORAGE_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <base/values.h>
 
 #include "runtime_probe/probe_function.h"
@@ -31,11 +31,11 @@ class StorageFunction : public PrivilegedProbeFunction {
 
   // Probes the information from storage tools. This will be called in
   // |PostHelperEvalImpl| with the permissions to connect to dbus services.
-  virtual base::Optional<base::Value> ProbeFromStorageTool(
+  virtual std::optional<base::Value> ProbeFromStorageTool(
       const base::FilePath& node_path) const = 0;
 
   // Probes the information from sysfs.
-  virtual base::Optional<base::Value> ProbeFromSysfs(
+  virtual std::optional<base::Value> ProbeFromSysfs(
       const base::FilePath& node_path) const = 0;
 };
 

@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/routine_parameter_fetcher.h"
 
+#include <optional>
 #include <string>
 
 #include <base/check.h>
@@ -24,8 +25,8 @@ RoutineParameterFetcher::RoutineParameterFetcher(
 RoutineParameterFetcher::~RoutineParameterFetcher() = default;
 
 void RoutineParameterFetcher::GetBatteryCapacityParameters(
-    base::Optional<uint32_t>* low_mah_out,
-    base::Optional<uint32_t>* high_mah_out) const {
+    std::optional<uint32_t>* low_mah_out,
+    std::optional<uint32_t>* high_mah_out) const {
   FetchUint32Parameter(kBatteryCapacityPropertiesPath, kLowMahProperty,
                        low_mah_out);
   FetchUint32Parameter(kBatteryCapacityPropertiesPath, kHighMahProperty,
@@ -33,8 +34,8 @@ void RoutineParameterFetcher::GetBatteryCapacityParameters(
 }
 
 void RoutineParameterFetcher::GetBatteryHealthParameters(
-    base::Optional<uint32_t>* maximum_cycle_count_out,
-    base::Optional<uint8_t>* percent_battery_wear_allowed_out) const {
+    std::optional<uint32_t>* maximum_cycle_count_out,
+    std::optional<uint8_t>* percent_battery_wear_allowed_out) const {
   FetchUint32Parameter(kBatteryHealthPropertiesPath, kMaximumCycleCountProperty,
                        maximum_cycle_count_out);
   FetchUint8Parameter(kBatteryHealthPropertiesPath,
@@ -43,7 +44,7 @@ void RoutineParameterFetcher::GetBatteryHealthParameters(
 }
 
 void RoutineParameterFetcher::GetPrimeSearchParameters(
-    base::Optional<uint64_t>* max_num_out) const {
+    std::optional<uint64_t>* max_num_out) const {
   FetchUint64Parameter(kPrimeSearchPropertiesPath, kMaxNumProperty,
                        max_num_out);
 }
@@ -51,11 +52,11 @@ void RoutineParameterFetcher::GetPrimeSearchParameters(
 void RoutineParameterFetcher::FetchUint64Parameter(
     const std::string& path,
     const std::string& parameter_name,
-    base::Optional<uint64_t>* parameter_out) const {
+    std::optional<uint64_t>* parameter_out) const {
   DCHECK(parameter_out);
 
   // Assume the property cannot be fetched.
-  *parameter_out = base::nullopt;
+  *parameter_out = std::nullopt;
 
   std::string parameter_str;
   if (cros_config_->GetString(path, parameter_name, &parameter_str)) {
@@ -73,11 +74,11 @@ void RoutineParameterFetcher::FetchUint64Parameter(
 void RoutineParameterFetcher::FetchUint32Parameter(
     const std::string& path,
     const std::string& parameter_name,
-    base::Optional<uint32_t>* parameter_out) const {
+    std::optional<uint32_t>* parameter_out) const {
   DCHECK(parameter_out);
 
   // Assume the property cannot be fetched.
-  *parameter_out = base::nullopt;
+  *parameter_out = std::nullopt;
 
   std::string parameter_str;
   if (cros_config_->GetString(path, parameter_name, &parameter_str)) {
@@ -95,11 +96,11 @@ void RoutineParameterFetcher::FetchUint32Parameter(
 void RoutineParameterFetcher::FetchUint8Parameter(
     const std::string& path,
     const std::string& parameter_name,
-    base::Optional<uint8_t>* parameter_out) const {
+    std::optional<uint8_t>* parameter_out) const {
   DCHECK(parameter_out);
 
   // Assume the property cannot be fetched.
-  *parameter_out = base::nullopt;
+  *parameter_out = std::nullopt;
 
   std::string parameter_str;
   if (cros_config_->GetString(path, parameter_name, &parameter_str)) {

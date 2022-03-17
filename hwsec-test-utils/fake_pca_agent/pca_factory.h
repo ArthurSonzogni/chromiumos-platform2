@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
-#include <base/optional.h>
 
 #include "hwsec-test-utils/fake_pca_agent/pca_base.h"
 

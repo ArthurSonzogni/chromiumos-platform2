@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -36,7 +37,7 @@ KeyGenerator::KeyGenerator(uid_t uid, SystemUtils* utils)
 KeyGenerator::~KeyGenerator() {}
 
 bool KeyGenerator::Start(const string& username,
-                         const base::Optional<base::FilePath>& ns_path) {
+                         const std::optional<base::FilePath>& ns_path) {
   DCHECK(!generating_) << "Must call Reset() between calls to Start()!";
   base::FilePath user_path(brillo::cryptohome::home::GetUserPath(username));
   base::FilePath temporary_key_path(

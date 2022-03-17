@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/routines/floating_point/floating_point_accuracy.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -23,7 +24,7 @@ constexpr char kFloatingPointAccuracyTestExePath[] =
 }  // namespace
 
 std::unique_ptr<DiagnosticRoutine> CreateFloatingPointAccuracyRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   base::TimeDelta duration = exec_duration.value_or(kDefaultCpuStressRuntime);
   return std::make_unique<SubprocRoutine>(
       base::CommandLine(std::vector<std::string>{

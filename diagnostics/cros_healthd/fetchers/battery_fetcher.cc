@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -15,7 +16,6 @@
 #include <base/check.h>
 #include <base/process/launch.h>
 #include <base/files/file_util.h>
-#include <base/optional.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -83,7 +83,7 @@ mojo_ipc::BatteryResultPtr BatteryFetcher::FetchBatteryInfo() {
   return mojo_ipc::BatteryResult::NewBatteryInfo(info.Clone());
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr>
+std::optional<mojo_ipc::ProbeErrorPtr>
 BatteryFetcher::PopulateBatteryInfoFromPowerdResponse(
     const power_manager::PowerSupplyProperties& power_supply_proto,
     mojo_ipc::BatteryInfo* info) {
@@ -110,11 +110,11 @@ BatteryFetcher::PopulateBatteryInfoFromPowerdResponse(
   info->technology = power_supply_proto.battery_technology();
   info->status = power_supply_proto.battery_status();
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr>
-BatteryFetcher::PopulateSmartBatteryInfo(mojo_ipc::BatteryInfo* info) {
+std::optional<mojo_ipc::ProbeErrorPtr> BatteryFetcher::PopulateSmartBatteryInfo(
+    mojo_ipc::BatteryInfo* info) {
   uint32_t manufacture_date;
   auto convert_hex_string_to_uint32 =
       base::BindOnce([](const base::StringPiece& input, uint32_t* output) {
@@ -140,11 +140,11 @@ BatteryFetcher::PopulateSmartBatteryInfo(mojo_ipc::BatteryInfo* info) {
   }
   info->temperature = mojo_ipc::NullableUint64::New(temperature);
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 template <typename T>
-base::Optional<mojo_ipc::ProbeErrorPtr> BatteryFetcher::GetSmartBatteryMetric(
+std::optional<mojo_ipc::ProbeErrorPtr> BatteryFetcher::GetSmartBatteryMetric(
     const std::string& metric_name,
     base::OnceCallback<bool(const base::StringPiece& input, T* output)>
         convert_string_to_num,
@@ -176,7 +176,7 @@ base::Optional<mojo_ipc::ProbeErrorPtr> BatteryFetcher::GetSmartBatteryMetric(
         "Unable to run convert string to num callback");
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace diagnostics

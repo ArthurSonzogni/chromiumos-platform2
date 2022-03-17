@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <optional>
 #include <utility>
 
 #include "biod/biod_crypto_test_data.h"
@@ -413,7 +414,7 @@ TEST_F(CrosFpRecordManagerTest, TestUpdateMetadataRecordReadFailed) {
   record_manager_->GetRecordsForUser(kUserID1);
 
   EXPECT_CALL(*mock_biod_storage_, ReadSingleRecord(kUserID1, kRecordID1))
-      .WillOnce(Return(base::nullopt));
+      .WillOnce(Return(std::nullopt));
   EXPECT_CALL(*mock_biod_storage_, WriteRecord).Times(0);
   EXPECT_FALSE(record_manager_->UpdateRecordMetadata(record_metadata2));
 

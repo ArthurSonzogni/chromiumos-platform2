@@ -5,6 +5,7 @@
 #include "runtime_probe/function_templates/network.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -48,11 +49,11 @@ constexpr int PCI_REVISION_ID_OFFSET = 0x08;
 // For linux kernels of versions before 4.10-rc1, there is no standalone file
 // `revision` describing the revision id of the PCI component.  The revision is
 // still available at offset 8 of the binary file `config`.
-base::Optional<uint8_t> GetPciRevisionIdFromConfig(base::FilePath node_path) {
+std::optional<uint8_t> GetPciRevisionIdFromConfig(base::FilePath node_path) {
   const auto file_path = node_path.Append("config");
   if (!base::PathExists(file_path)) {
     LOG(ERROR) << file_path.value() << " doesn't exist.";
-    return base::nullopt;
+    return std::nullopt;
   }
   base::File config{file_path, base::File::FLAG_OPEN | base::File::FLAG_READ};
   uint8_t revision_array[1];
@@ -60,13 +61,13 @@ base::Optional<uint8_t> GetPciRevisionIdFromConfig(base::FilePath node_path) {
   if (!config.ReadAndCheck(PCI_REVISION_ID_OFFSET, revision_span)) {
     LOG(ERROR) << "Cannot read file " << file_path << " at offset "
                << PCI_REVISION_ID_OFFSET;
-    return base::nullopt;
+    return std::nullopt;
   }
   return revision_array[0];
 }
 
 std::vector<brillo::VariantDictionary> GetDevicesProps(
-    base::Optional<std::string> type) {
+    std::optional<std::string> type) {
   std::vector<brillo::VariantDictionary> devices_props{};
 
   brillo::DBusConnection dbus_connection;
@@ -107,13 +108,13 @@ std::vector<brillo::VariantDictionary> GetDevicesProps(
   return devices_props;
 }
 
-base::Optional<base::Value> GetNetworkData(const base::FilePath& node_path) {
+std::optional<base::Value> GetNetworkData(const base::FilePath& node_path) {
   const auto dev_path = node_path.Append("device");
   const auto dev_subsystem_path = dev_path.Append("subsystem");
   base::FilePath dev_subsystem_link_path;
   if (!base::ReadSymbolicLink(dev_subsystem_path, &dev_subsystem_link_path)) {
     LOG(ERROR) << "Cannot get real path of " << dev_subsystem_path.value();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   auto bus_type_idx = dev_subsystem_link_path.value().find_last_of('/') + 1;
@@ -136,14 +137,14 @@ base::Optional<base::Value> GetNetworkData(const base::FilePath& node_path) {
     optional_fields = &kUsbOptionalFields;
   } else {
     LOG(ERROR) << "Unknown bus_type " << bus_type;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   auto res = MapFilesToDict(field_path, *fields, *optional_fields);
   if (!res) {
     LOG(ERROR) << "Cannot find " << bus_type << "-specific fields on network \""
                << dev_path.value() << "\"";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (bus_type == kBusTypePci && !res->FindKey("revision")) {

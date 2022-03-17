@@ -7,12 +7,11 @@
 #ifndef CAMERA_HAL_ADAPTER_CAMERA_HAL_TEST_ADAPTER_H_
 #define CAMERA_HAL_ADAPTER_CAMERA_HAL_TEST_ADAPTER_H_
 
+#include <optional>
 #include <utility>
 #include <vector>
 
 #include <hardware/camera3.h>
-
-#include <base/optional.h>
 
 #include "hal_adapter/camera_hal_adapter.h"
 
@@ -67,9 +66,9 @@ class CameraHalTestAdapter : public CameraHalAdapter {
   // reassign new id exposed to framework based on its index in this vector.
   std::vector<int> enable_camera_ids_;
 
-  base::Optional<int32_t> GetRemappedCameraId(int camera_id);
+  std::optional<int32_t> GetRemappedCameraId(int camera_id);
 
-  base::Optional<int32_t> GetUnRemappedCameraId(int camera_id);
+  std::optional<int32_t> GetUnRemappedCameraId(int camera_id);
 };
 
 }  // namespace cros

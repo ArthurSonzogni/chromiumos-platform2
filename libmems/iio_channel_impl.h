@@ -8,6 +8,7 @@
 #include <iio.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "libmems/export.h"
@@ -33,11 +34,11 @@ class LIBMEMS_EXPORT IioChannelImpl : public IioChannel {
 
   bool SetScanElementsEnabled(bool en) override;
 
-  base::Optional<std::string> ReadStringAttribute(
+  std::optional<std::string> ReadStringAttribute(
       const std::string& name) const override;
-  base::Optional<int64_t> ReadNumberAttribute(
+  std::optional<int64_t> ReadNumberAttribute(
       const std::string& name) const override;
-  base::Optional<double> ReadDoubleAttribute(
+  std::optional<double> ReadDoubleAttribute(
       const std::string& name) const override;
 
   bool WriteStringAttribute(const std::string& name,
@@ -45,8 +46,8 @@ class LIBMEMS_EXPORT IioChannelImpl : public IioChannel {
   bool WriteNumberAttribute(const std::string& name, int64_t value) override;
   bool WriteDoubleAttribute(const std::string& name, double value) override;
 
-  base::Optional<int64_t> Convert(const uint8_t* src) const;
-  base::Optional<uint64_t> Length() const;
+  std::optional<int64_t> Convert(const uint8_t* src) const;
+  std::optional<uint64_t> Length() const;
 
  private:
   iio_channel* const channel_;  // non-owned

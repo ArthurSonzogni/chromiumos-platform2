@@ -9,12 +9,12 @@
 #include <sys/ioctl.h>
 
 #include <algorithm>
+#include <optional>
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/ec/cros_ec_dev.h>
@@ -53,14 +53,14 @@ CrosFpDevice::~CrosFpDevice() {
     ResetContext();
 }
 
-base::Optional<CrosFpDevice::EcProtocolInfo> CrosFpDevice::EcProtoInfo() {
+std::optional<CrosFpDevice::EcProtocolInfo> CrosFpDevice::EcProtoInfo() {
   /* read max request / response size from the MCU for protocol v3+ */
   EcCommand<EmptyParam, struct ec_response_get_protocol_info> cmd(
       EC_CMD_GET_PROTOCOL_INFO);
   // We retry this command because it is known to occasionally fail
   // with ETIMEDOUT on first attempt.
   if (!cmd.RunWithMultipleAttempts(cros_fd_.get(), kMaxIoAttempts)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   uint16_t max_read =
@@ -75,7 +75,7 @@ base::Optional<CrosFpDevice::EcProtocolInfo> CrosFpDevice::EcProtoInfo() {
   };
 }
 
-base::Optional<std::string> CrosFpDevice::ReadVersion() {
+std::optional<std::string> CrosFpDevice::ReadVersion() {
   // TODO(b/131438292): Remove the hardcoded size for the version buffer.
   std::array<uint8_t, 80> version_buf;
   for (int retry = 0; retry < kMaxIoAttempts; retry++) {
@@ -91,7 +91,7 @@ base::Optional<std::string> CrosFpDevice::ReadVersion() {
 
       size_t newline_pos = str.find_first_of('\n');
       if (newline_pos == std::string::npos) {
-        return base::nullopt;
+        return std::nullopt;
       }
 
       return str.substr(0, newline_pos);
@@ -100,20 +100,20 @@ base::Optional<std::string> CrosFpDevice::ReadVersion() {
       PLOG(ERROR) << "FPMCU failed to read cros_fp device on attempt "
                   << retry + 1 << "/" << kMaxIoAttempts
                   << ", retry is not allowed for error";
-      return base::nullopt;
+      return std::nullopt;
     }
     PLOG(ERROR) << "FPMCU failed to read cros_fp device on attempt "
                 << retry + 1 << "/" << kMaxIoAttempts;
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 bool CrosFpDevice::EcDevInit() {
   // This is a special read (before events are enabled) that can fail due
   // to ETIMEDOUT. This is because the first read with events disabled
   // triggers a get_version request to the FPMCU, which can timeout.
-  base::Optional<std::string> version = ReadVersion();
+  std::optional<std::string> version = ReadVersion();
   if (!version) {
     LOG(ERROR) << "Failed to read cros_fp device version.";
     return false;
@@ -124,7 +124,7 @@ bool CrosFpDevice::EcDevInit() {
     return false;
   }
 
-  base::Optional<EcProtocolInfo> info = EcProtoInfo();
+  std::optional<EcProtocolInfo> info = EcProtoInfo();
   if (!info) {
     LOG(ERROR) << "Failed to get cros_fp protocol info.";
     return false;
@@ -218,7 +218,7 @@ bool CrosFpDevice::SupportsPositiveMatchSecret() {
   }
 }
 
-base::Optional<brillo::SecureVector> CrosFpDevice::FpReadMatchSecret(
+std::optional<brillo::SecureVector> CrosFpDevice::FpReadMatchSecret(
     uint16_t index) {
   EcCommand<struct ec_params_fp_read_match_secret,
             struct ec_response_fp_read_match_secret>
@@ -227,12 +227,12 @@ base::Optional<brillo::SecureVector> CrosFpDevice::FpReadMatchSecret(
   if (!cmd.Run(cros_fd_.get()) &&
       cmd.Result() == ec::kEcCommandUninitializedResult) {
     LOG(ERROR) << "Failed to run EC_CMD_FP_READ_MATCH_SECRET command.";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (cmd.Result() != EC_RES_SUCCESS) {
     LOG(ERROR) << "Failed to read positive match secret, result: "
                << cmd.Result() << ".";
-    return base::nullopt;
+    return std::nullopt;
   }
   brillo::SecureVector secret(sizeof(cmd.Resp()->positive_match_secret));
   std::copy(cmd.Resp()->positive_match_secret,
@@ -254,15 +254,15 @@ bool CrosFpDevice::UpdateFpInfo() {
   return true;
 }
 
-base::Optional<CrosFpDeviceInterface::FpStats> CrosFpDevice::GetFpStats() {
+std::optional<CrosFpDeviceInterface::FpStats> CrosFpDevice::GetFpStats() {
   EcCommand<EmptyParam, struct ec_response_fp_stats> cmd(EC_CMD_FP_STATS);
   if (!cmd.Run(cros_fd_.get())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   uint8_t inval = cmd.Resp()->timestamps_invalid;
   if (inval & (FPSTATS_CAPTURE_INV | FPSTATS_MATCHING_INV)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   FpStats stats = {
@@ -303,12 +303,12 @@ bool CrosFpDevice::WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
 }
 
 // static
-base::Optional<CrosFpDeviceInterface::EcVersion> CrosFpDevice::GetVersion(
+std::optional<CrosFpDeviceInterface::EcVersion> CrosFpDevice::GetVersion(
     const base::ScopedFD& cros_fp_fd) {
   EcCommand<EmptyParam, struct ec_response_get_version> cmd(EC_CMD_GET_VERSION);
   if (!cmd.Run(cros_fp_fd.get())) {
     LOG(ERROR) << "Failed to fetch cros_fp firmware version.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // buffers should already be null terminated -- this is a safeguard
@@ -384,18 +384,18 @@ bool CrosFpDevice::AddEntropy(bool reset) {
   return false;
 }
 
-base::Optional<int32_t> CrosFpDevice::GetRollBackInfoId() {
+std::optional<int32_t> CrosFpDevice::GetRollBackInfoId() {
   EcCommand<EmptyParam, struct ec_response_rollback_info> cmd_rb_info(
       EC_CMD_ROLLBACK_INFO);
   if (!cmd_rb_info.Run(cros_fd_.get())) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return cmd_rb_info.Resp()->id;
 }
 
 bool CrosFpDevice::InitEntropy(bool reset) {
-  base::Optional<int32_t> block_id = GetRollBackInfoId();
+  std::optional<int32_t> block_id = GetRollBackInfoId();
   if (!block_id) {
     LOG(ERROR) << "Failed to read block ID from FPMCU.";
     return false;
@@ -501,34 +501,34 @@ bool CrosFpDevice::Init() {
   return true;
 }
 
-base::Optional<std::bitset<32>> CrosFpDevice::GetDirtyMap() {
+std::optional<std::bitset<32>> CrosFpDevice::GetDirtyMap() {
   // Retrieve the up-to-date dirty bitmap from the MCU.
   if (!UpdateFpInfo()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return info_->template_info()->dirty;
 }
 
-base::Optional<int> CrosFpDevice::GetIndexOfLastTemplate() {
+std::optional<int> CrosFpDevice::GetIndexOfLastTemplate() {
   if (!UpdateFpInfo()) {
-    return base::nullopt;
+    return std::nullopt;
   }
   int index = info_->template_info()->num_valid - 1;
   if (index < 0 || index >= MaxTemplateCount()) {
     LOG(ERROR) << "Invalid index of last template: " << index << ".";
-    return base::nullopt;
+    return std::nullopt;
   }
   return index;
 }
 
-base::Optional<brillo::SecureVector> CrosFpDevice::GetPositiveMatchSecret(
+std::optional<brillo::SecureVector> CrosFpDevice::GetPositiveMatchSecret(
     int index) {
-  auto opt_index = base::make_optional<int>(index);
+  auto opt_index = std::make_optional<int>(index);
   if (opt_index == kLastTemplate) {
     opt_index = GetIndexOfLastTemplate();
     if (!opt_index) {
-      return base::nullopt;
+      return std::nullopt;
     }
   }
   return FpReadMatchSecret(static_cast<uint16_t>(*opt_index));
@@ -688,7 +688,7 @@ bool CrosFpDevice::ResetContext() {
 
 bool CrosFpDevice::UpdateEntropy(bool reset) {
   // Stash the most recent block id.
-  base::Optional<int32_t> block_id = GetRollBackInfoId();
+  std::optional<int32_t> block_id = GetRollBackInfoId();
   if (!block_id) {
     LOG(ERROR) << "Failed to block ID from FPMCU before entropy reset.";
     return false;
@@ -712,7 +712,7 @@ bool CrosFpDevice::UpdateEntropy(bool reset) {
     return false;
   }
 
-  base::Optional<int32_t> new_block_id = GetRollBackInfoId();
+  std::optional<int32_t> new_block_id = GetRollBackInfoId();
   if (!new_block_id) {
     LOG(ERROR) << "Failed to block ID from FPMCU after entropy reset.";
     return false;

@@ -9,6 +9,7 @@
 #include "hardware_verifier/verifier.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -25,7 +26,7 @@ class VerifierImpl : public Verifier {
  public:
   VerifierImpl();
 
-  base::Optional<HwVerificationReport> Verify(
+  std::optional<HwVerificationReport> Verify(
       const runtime_probe::ProbeResult& probe_result,
       const HwVerificationSpec& hw_verification_spec) const override;
 

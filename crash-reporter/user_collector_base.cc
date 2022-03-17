@@ -8,6 +8,8 @@
 
 #include <signal.h>  // SIGSYS
 
+#include <optional>
+
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -121,18 +123,18 @@ bool UserCollectorBase::HandleCrash(
   return true;
 }
 
-base::Optional<UserCollectorBase::CrashAttributes>
+std::optional<UserCollectorBase::CrashAttributes>
 UserCollectorBase::ParseCrashAttributes(const std::string& crash_attributes) {
   RE2 re("(\\d+):(\\d+):(\\d+):(\\d+):(.*)");
   UserCollectorBase::CrashAttributes attrs;
   if (!RE2::FullMatch(crash_attributes, re, &attrs.pid, &attrs.signal,
                       &attrs.uid, &attrs.gid, &attrs.exec_name)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return attrs;
 }
 
-bool UserCollectorBase::ShouldDump(base::Optional<pid_t> pid,
+bool UserCollectorBase::ShouldDump(std::optional<pid_t> pid,
                                    std::string* reason) const {
   VmSupport* vm_support = VmSupport::Get();
   if (vm_support) {
@@ -151,7 +153,7 @@ bool UserCollectorBase::ShouldDump(base::Optional<pid_t> pid,
 }
 
 bool UserCollectorBase::ShouldDump(std::string* reason) const {
-  return ShouldDump(base::nullopt, reason);
+  return ShouldDump(std::nullopt, reason);
 }
 
 bool UserCollectorBase::GetFirstLineWithPrefix(

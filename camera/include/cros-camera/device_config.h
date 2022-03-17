@@ -10,10 +10,10 @@
 #include <linux/media.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
@@ -66,8 +66,8 @@ struct CrosConfigCameraInfo {
 };
 
 struct PlatformCameraInfo {
-  base::Optional<EepromInfo> eeprom;
-  base::Optional<V4L2SensorInfo> v4l2_sensor;
+  std::optional<EepromInfo> eeprom;
+  std::optional<V4L2SensorInfo> v4l2_sensor;
   std::string sysfs_name;
 
   std::string module_id() const {
@@ -92,7 +92,7 @@ struct PlatformCameraInfo {
 // This class wraps the brillo::CrosConfig and stores the required values.
 class CROS_CAMERA_EXPORT DeviceConfig {
  public:
-  static base::Optional<DeviceConfig> Create();
+  static std::optional<DeviceConfig> Create();
 
   bool IsV1Device() const { return is_v1_device_; }
 
@@ -101,15 +101,15 @@ class CROS_CAMERA_EXPORT DeviceConfig {
 
   // Gets the total number of built-in cameras on the device, or nullopt if the
   // information is not available.
-  base::Optional<int> GetBuiltInCameraCount() const { return count_; }
+  std::optional<int> GetBuiltInCameraCount() const { return count_; }
 
   // Gets the total number of cameras on the given interface |interface|, or
   // nullopt if the information is not available.
-  base::Optional<int> GetCameraCount(Interface interface) const;
+  std::optional<int> GetCameraCount(Interface interface) const;
 
   // Gets camera orientation of the camera facing the given |facing| direction,
   // or nullopt if the information is not available.
-  base::Optional<int> GetOrientationFromFacing(LensFacing facing) const;
+  std::optional<int> GetOrientationFromFacing(LensFacing facing) const;
 
   base::span<const PlatformCameraInfo> GetPlatformCameraInfo() const {
     return platform_cameras_;
@@ -131,9 +131,9 @@ class CROS_CAMERA_EXPORT DeviceConfig {
   bool is_v1_device_;
   std::string model_name_;
 
-  // The number of built-in cameras, or |base::nullopt| when this information is
+  // The number of built-in cameras, or |std::nullopt| when this information is
   // not available.
-  base::Optional<int> count_;
+  std::optional<int> count_;
 
   // Detailed topology of the camera devices, or empty when this information is
   // not available. |count_| has value |devices_.size()| if |devices_| is not

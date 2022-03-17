@@ -6,6 +6,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <optional>
 #include <tuple>
 #include <utility>
 
@@ -41,7 +42,6 @@
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using ::testing::_;
 using ::testing::Between;
@@ -366,7 +366,7 @@ class StorageTest
         base::flat_map<std::tuple<Priority,
                                   int64_t /*generation id*/,
                                   int64_t /*sequencing id*/>,
-                       absl::optional<std::string /*digest*/>>;
+                       std::optional<std::string /*digest*/>>;
 
     // Helper class for setting up mock uploader expectations of a successful
     // completion.
@@ -604,7 +604,7 @@ class StorageTest
           std::make_tuple(sequence_information.priority(),
                           sequence_information.sequencing_id(),
                           sequence_information.generation_id()),
-          absl::nullopt);
+          std::nullopt);
 
       sequence_bound_upload_.AsyncCall(&SequenceBoundUpload::DoUploadGap)
           .WithArgs(uploader_id_, sequence_information.priority(),
@@ -698,7 +698,7 @@ class StorageTest
     // match the expected uploader.
     const int64_t uploader_id_;
 
-    absl::optional<int64_t> generation_id_;
+    std::optional<int64_t> generation_id_;
     LastRecordDigestMap* const last_record_digest_map_;
 
     const MockUpload* const mock_upload_;
@@ -844,7 +844,7 @@ class StorageTest
   }
 
   void ConfirmOrDie(Priority priority,
-                    absl::optional<std::int64_t> sequencing_id,
+                    std::optional<std::int64_t> sequencing_id,
                     bool force = false) {
     test::TestEvent<Status> c;
     LOG(ERROR) << "Confirm priority=" << priority << " force=" << force
@@ -1659,7 +1659,7 @@ TEST_P(StorageTest, ForceConfirm) {
   }
 
   // Now force confirm #0 and forward time again.
-  ConfirmOrDie(FAST_BATCH, /*sequencing_id=*/absl::nullopt, /*force=*/true);
+  ConfirmOrDie(FAST_BATCH, /*sequencing_id=*/std::nullopt, /*force=*/true);
   // Set uploader expectations: #0 and #1 could be returned as Gaps
   {
     test::TestCallbackAutoWaiter waiter;

@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/routines/cpu_cache/cpu_cache.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,7 +22,7 @@ constexpr char kCpuRoutineExePath[] = "/usr/bin/stressapptest";
 }  // namespace
 
 std::unique_ptr<DiagnosticRoutine> CreateCpuCacheRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration) {
+    const std::optional<base::TimeDelta>& exec_duration) {
   base::TimeDelta duration = exec_duration.value_or(kDefaultCpuStressRuntime);
   std::vector<std::string> cmd{kCpuRoutineExePath, "--cc_test", "-s",
                                std::to_string(duration.InSeconds())};

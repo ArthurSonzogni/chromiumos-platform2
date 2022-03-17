@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <string>
 
 #include <base/logging.h>
@@ -278,7 +279,7 @@ class SealedStorageTest : public ::testing::Test {
 
   std::string policy_digest_ = DftPolicyDigest();
 
-  base::Optional<std::string> random_ = {};
+  std::optional<std::string> random_ = {};
 };
 
 TEST_F(SealedStorageTest, WrongRestoredZPointError) {

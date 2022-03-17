@@ -7,6 +7,7 @@
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -59,10 +60,10 @@ constexpr int kMaxDenoiserBurstLength = 1;
 // HdrNetStreamManipulator::HdrNetStreamContext implementations.
 //
 
-base::Optional<int> HdrNetStreamManipulator::HdrNetStreamContext::PopBuffer() {
+std::optional<int> HdrNetStreamManipulator::HdrNetStreamContext::PopBuffer() {
   if (usable_buffer_list.empty()) {
     LOGF(ERROR) << "Buffer underrun";
-    return base::nullopt;
+    return std::nullopt;
   }
   HdrNetStreamContext::UsableBufferInfo buffer_info =
       std::move(usable_buffer_list.front());
@@ -566,7 +567,7 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
   // After we have the set of HdrNet streams, allocate the HdrNet buffers for
   // the request.
   for (auto& info : hdrnet_buf_to_add) {
-    base::Optional<int> buffer_index = info.stream_context->PopBuffer();
+    std::optional<int> buffer_index = info.stream_context->PopBuffer();
     if (!buffer_index) {
       // TODO(jcliang): This is unlikely, but we should report a buffer error in
       // this case.
@@ -911,8 +912,7 @@ HdrNetConfig::Options HdrNetStreamManipulator::PrepareProcessorConfig(
   HdrNetConfig::Options run_options = options_;
 
   // Use the HDR ratio calculated by Gcam AE if available.
-  base::Optional<float> gcam_ae_hdr_ratio =
-      result->feature_metadata().hdr_ratio;
+  std::optional<float> gcam_ae_hdr_ratio = result->feature_metadata().hdr_ratio;
   if (gcam_ae_hdr_ratio) {
     run_options.hdr_ratio = *result->feature_metadata().hdr_ratio;
     DVLOGFID(1, result->frame_number())

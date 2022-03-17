@@ -8,6 +8,7 @@
 #define CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_H_
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <base/callback.h>
@@ -36,7 +37,7 @@ class HdrNetProcessor {
   struct Options {
     // MetadataLogger instance for logging and dumping per-frame metadata.
     // Mainly used for testing and debugging.
-    base::Optional<MetadataLogger*> metadata_logger;
+    std::optional<MetadataLogger*> metadata_logger;
   };
 
   virtual ~HdrNetProcessor() = default;

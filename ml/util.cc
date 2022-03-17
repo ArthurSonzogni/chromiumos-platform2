@@ -5,6 +5,7 @@
 #include "ml/util.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -107,7 +108,7 @@ bool GetTotalProcessMemoryUsage(size_t* total_memory) {
 
 // Gives resolved path using realpath(3), or empty Optional upon error. Leaves
 // realpath's errno unchanged.
-base::Optional<base::FilePath> GetRealPath(const base::FilePath& path) {
+std::optional<base::FilePath> GetRealPath(const base::FilePath& path) {
   const std::unique_ptr<char, base::FreeDeleter> result(
       realpath(path.value().c_str(), nullptr));
   if (!result) {

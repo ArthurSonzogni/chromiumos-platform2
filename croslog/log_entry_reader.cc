@@ -5,9 +5,9 @@
 #include "croslog/log_entry_reader.h"
 
 #include <list>
+#include <optional>
 #include <utility>
 
-#include "base/optional.h"
 #include "base/strings/string_util.h"
 
 #include "croslog/log_parser_syslog.h"
@@ -39,7 +39,7 @@ MaybeLogEntry LogEntryReader::GetPreviousEntry() {
     auto [line, result] = line_reader_.Backward();
     if (result != LogLineReader::ReadResult::NO_ERROR) {
       // No more entry or failed to read
-      return base::nullopt;
+      return std::nullopt;
     }
 
     MaybeLogEntry entry = parser_->Parse(std::move(line));
@@ -61,7 +61,7 @@ MaybeLogEntry LogEntryReader::GetNextEntry() {
       auto [line, result] = line_reader_.Forward();
       if (result != LogLineReader::ReadResult::NO_ERROR) {
         // No more entry or failed to read
-        return base::nullopt;
+        return std::nullopt;
       }
 
       MaybeLogEntry maybe_entry = parser_->Parse(std::move(line));

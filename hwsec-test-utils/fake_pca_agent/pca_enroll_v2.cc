@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -224,7 +225,7 @@ bool PcaEnrollV2::Generate() {
     LOG(ERROR) << __func__ << ": Only ECC EK is supported.";
     return false;
   }
-  base::Optional<std::string> cert_der = IssueTestCertificateDer(identity_key_);
+  std::optional<std::string> cert_der = IssueTestCertificateDer(identity_key_);
   if (!cert_der) {
     LOG(ERROR) << __func__
                << ": Failed to issue a test certificate for the identity key.";
@@ -241,7 +242,7 @@ bool PcaEnrollV2::Generate() {
   }
   CHECK_EQ(ephemeral_x.size(), kEcPointModulusLength);
   CHECK_EQ(ephemeral_y.size(), kEcPointModulusLength);
-  base::Optional<std::string> z = EVPDerive(ephemeral_key, endorsement_key_);
+  std::optional<std::string> z = EVPDerive(ephemeral_key, endorsement_key_);
   if (!z) {
     LOG(ERROR) << __func__ << ": Failed to create shared secret.";
     return false;
@@ -263,13 +264,13 @@ bool PcaEnrollV2::Generate() {
   const std::string sized_ephemeral_x = ToSizedEccParameter(ephemeral_x);
   const std::string sized_ephemeral_y = ToSizedEccParameter(ephemeral_y);
 
-  base::Optional<std::string> secret = GetRandom(32);
+  std::optional<std::string> secret = GetRandom(32);
   if (!secret) {
     LOG(ERROR) << __func__ << ": Failed to get random secret.";
     return false;
   }
   // TPM2.0 spec Part I, 24.4 Symmetric Encryption.
-  base::Optional<std::string> aes_key =
+  std::optional<std::string> aes_key =
       KDFa(ecdh_seed, "STORAGE", identity_key_name_, "", 128);
   if (!aes_key) {
     LOG(ERROR) << __func__ << ": Failed to derive aes key.";
@@ -283,7 +284,7 @@ bool PcaEnrollV2::Generate() {
   CHECK_EQ(trunks::Serialize_TPM2B_DIGEST(tpm2b_digest, &serialized_secret),
            trunks::TPM_RC_SUCCESS);
 
-  base::Optional<std::string> encrypted_secret = EVPAesEncrypt(
+  std::optional<std::string> encrypted_secret = EVPAesEncrypt(
       serialized_secret, EVP_aes_128_cfb(), *aes_key, std::string(16, '\x00'));
   if (!encrypted_secret) {
     LOG(ERROR) << __func__ << ": Failed to encrypt secret.";
@@ -291,7 +292,7 @@ bool PcaEnrollV2::Generate() {
   }
 
   // TPM2.0 spec Part I, 24.5 HMAC.
-  base::Optional<std::string> hmac_key_str =
+  std::optional<std::string> hmac_key_str =
       KDFa(ecdh_seed, "INTEGRITY", "", "", 256);
   if (!hmac_key_str) {
     LOG(ERROR) << __func__ << ": Failed to derive hmac key.";
@@ -306,7 +307,7 @@ bool PcaEnrollV2::Generate() {
                << GetOpenSSLError();
     return false;
   }
-  base::Optional<std::string> encrypted_secret_hmac = EVPDigestSign(
+  std::optional<std::string> encrypted_secret_hmac = EVPDigestSign(
       hmac_key, EVP_sha256(), *encrypted_secret + identity_key_name_);
   if (!encrypted_secret_hmac) {
     LOG(ERROR) << __func__
@@ -317,12 +318,12 @@ bool PcaEnrollV2::Generate() {
   attestation::EncryptedData encrypted_credential;
   encrypted_credential.set_wrapped_key(*encrypted_secret);
   attestation_crypto::KeyDeriverSha256WithHeader key_deriver;
-  base::Optional<std::string> iv = GetRandom(16);
+  std::optional<std::string> iv = GetRandom(16);
   if (!iv) {
     LOG(ERROR) << __func__ << ": Failed to generate IV.";
     return false;
   }
-  base::Optional<std::string> encrypted_cert_der = EVPAesEncrypt(
+  std::optional<std::string> encrypted_cert_der = EVPAesEncrypt(
       *cert_der, EVP_aes_256_cbc(), key_deriver.ToAesKey(*secret), *iv);
   if (!encrypted_cert_der) {
     LOG(ERROR) << __func__ << ": Failed to encrypt cert.";
@@ -335,7 +336,7 @@ bool PcaEnrollV2::Generate() {
                            reinterpret_cast<const unsigned char*>(
                                encrypted_cert_der_hmac_key_str.data()),
                            encrypted_cert_der_hmac_key_str.length()));
-  base::Optional<std::string> encrypted_cert_der_hmac = EVPDigestSign(
+  std::optional<std::string> encrypted_cert_der_hmac = EVPDigestSign(
       encrypted_cert_der_hmac_key, EVP_sha512(), *iv + *encrypted_cert_der);
   if (!encrypted_cert_der_hmac) {
     LOG(ERROR) << __func__

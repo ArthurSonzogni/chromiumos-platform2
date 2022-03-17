@@ -6,6 +6,7 @@
 #define LIBMEMS_IIO_EVENT_IMPL_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -27,7 +28,7 @@ class LIBMEMS_EXPORT IioEventImpl : public IioEvent {
   // IioEvent overrides.
   bool IsEnabled() const override;
   void SetEnabled(bool en) override;
-  base::Optional<std::string> ReadStringAttribute(
+  std::optional<std::string> ReadStringAttribute(
       const std::string& name) const override;
   bool WriteStringAttribute(const std::string& name,
                             const std::string& value) override;

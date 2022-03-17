@@ -6,11 +6,11 @@
 #define U2FD_UTIL_H_
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/sha.h>
@@ -65,9 +65,9 @@ void AppendSubstringToVector(const std::string& from,
 //////////////////////////////////////////////////////////////////////
 
 // Attempts to convert the specified ECDSA signature (specified as r and s
-// values) to DER encoding; returns base::nullopt on error.
-base::Optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
-                                                         const uint8_t* s);
+// values) to DER encoding; returns std::nullopt on error.
+std::optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
+                                                        const uint8_t* s);
 
 // Returns the SHA-256 of the specified data.
 template <typename Blob>
@@ -95,13 +95,13 @@ bool DoSoftwareAttest(const std::vector<uint8_t>& data_to_sign,
 crypto::ScopedEC_KEY CreateAttestationKey();
 
 // Signs data using attestion_key, and returns the DER-encoded signature,
-// or base::nullopt on error.
-base::Optional<std::vector<uint8_t>> AttestToData(
+// or std::nullopt on error.
+std::optional<std::vector<uint8_t>> AttestToData(
     const std::vector<uint8_t>& data, EC_KEY* attestation_key);
 
 // Returns an X509 certificate for the specified attestation_key, to be included
-// in a U2F register response, or base::nullopt on error.
-base::Optional<std::vector<uint8_t>> CreateAttestationCertificate(
+// in a U2F register response, or std::nullopt on error.
+std::optional<std::vector<uint8_t>> CreateAttestationCertificate(
     EC_KEY* attestation_key);
 
 // Parses the specified certificate and re-serializes it to the same vector,

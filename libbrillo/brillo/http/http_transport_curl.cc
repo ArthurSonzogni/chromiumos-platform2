@@ -7,6 +7,7 @@
 #include <brillo/http/http_transport_curl.h>
 
 #include <limits>
+#include <optional>
 
 #include <base/bind.h>
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -314,11 +315,11 @@ void Transport::ResolveHostToIp(const std::string& host,
           .c_str());
 }
 
-void Transport::SetBufferSize(base::Optional<int> buffer_size) {
+void Transport::SetBufferSize(std::optional<int> buffer_size) {
   buffer_size_ = buffer_size;
 }
 
-void Transport::SetUploadBufferSize(base::Optional<int> buffer_size) {
+void Transport::SetUploadBufferSize(std::optional<int> buffer_size) {
   upload_buffer_size_ = buffer_size;
 }
 

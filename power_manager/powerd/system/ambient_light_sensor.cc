@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -24,7 +25,7 @@ void AmbientLightSensor::SetDelegate(
 }
 
 void AmbientLightSensor::SetLuxAndColorTemperature(
-    base::Optional<int> lux, base::Optional<int> color_temperature) {
+    std::optional<int> lux, std::optional<int> color_temperature) {
   if (lux.has_value())
     lux_value_ = lux.value();
 

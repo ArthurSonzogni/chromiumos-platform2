@@ -4,12 +4,13 @@
 
 #include <stdlib.h>
 
+#include <optional>
+
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
@@ -41,7 +42,7 @@ const char kSELinuxEnforcePath[] = "/sys/fs/selinux/enforce";
 class CpufreqConf {
  public:
   explicit CpufreqConf(std::string path);
-  base::Optional<std::string> GetValue(std::string key) const;
+  std::optional<std::string> GetValue(std::string key) const;
 
  private:
   base::StringPairs pairs_;
@@ -61,12 +62,12 @@ CpufreqConf::CpufreqConf(std::string path) {
   }
 }
 
-base::Optional<std::string> CpufreqConf::GetValue(std::string key) const {
+std::optional<std::string> CpufreqConf::GetValue(std::string key) const {
   for (const auto& pair : pairs_)
     if (key == pair.first)
       return pair.second;
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 bool BatteryStateIsCharging(void) {
@@ -99,7 +100,7 @@ bool BatteryStateIsCharging(void) {
 }
 
 // Determine which governor we should use.
-base::Optional<std::string> GetGovernor(const CpufreqConf& conf) {
+std::optional<std::string> GetGovernor(const CpufreqConf& conf) {
   auto governor = conf.GetValue(kKeyGovernor);
   if (governor.has_value())
     return governor;
@@ -136,8 +137,8 @@ bool SetGovernor(const std::string& governor) {
   return ret;
 }
 
-base::Optional<std::string> GetConfigValue(const CpufreqConf& conf,
-                                           const std::string& setting) {
+std::optional<std::string> GetConfigValue(const CpufreqConf& conf,
+                                          const std::string& setting) {
   return conf.GetValue("CPUFREQ_" + base::ToUpperASCII(setting));
 }
 
@@ -146,7 +147,7 @@ base::Optional<std::string> GetConfigValue(const CpufreqConf& conf,
 // system, ignore it.
 bool MultiPolicySetOptional(const CpufreqConf& conf,
                             const std::string& setting) {
-  base::Optional<std::string> value = GetConfigValue(conf, setting);
+  std::optional<std::string> value = GetConfigValue(conf, setting);
   if (!value.has_value())
     return true;
 
@@ -171,7 +172,7 @@ bool MultiPolicySetOptional(const CpufreqConf& conf,
 bool GovernorSetOptional(const CpufreqConf& conf,
                          const std::string& governor,
                          const std::string& setting) {
-  base::Optional<std::string> value = GetConfigValue(conf, setting);
+  std::optional<std::string> value = GetConfigValue(conf, setting);
   if (!value.has_value())
     return true;
 
@@ -284,7 +285,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  base::Optional<std::string> governorOption = GetGovernor(conf);
+  std::optional<std::string> governorOption = GetGovernor(conf);
   // No governor == do nothing.
   if (!governorOption.has_value())
     return 0;

@@ -4,12 +4,12 @@
 
 #include "diagnostics/wilco_dtc_supportd/dbus_service.h"
 
+#include <optional>
 #include <string>
 
 #include <base/check.h>
 #include <base/location.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/errors/error_codes.h>
 #include <dbus/dbus-protocol.h>
 #include <dbus/object_path.h>
@@ -30,7 +30,7 @@ DBusService::~DBusService() = default;
 bool DBusService::BootstrapMojoConnection(brillo::ErrorPtr* error,
                                           const base::ScopedFD& mojo_fd) {
   VLOG(0) << "Received BootstrapMojoConnection D-Bus request";
-  const base::Optional<std::string> bootstrap_error =
+  const std::optional<std::string> bootstrap_error =
       mojo_service_factory_->BootstrapMojoConnection(mojo_fd);
   if (bootstrap_error.has_value()) {
     *error = brillo::Error::Create(FROM_HERE, brillo::errors::dbus::kDomain,

@@ -4,6 +4,8 @@
 
 #include "croslog/boot_records.h"
 
+#include <optional>
+
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -139,7 +141,7 @@ BootRecords::BootRecords(base::FilePath file_path)
 BootRecords::BootRecords(std::vector<BootRecords::BootEntry> entries)
     : boot_ranges_(ConvertBootEntriesToRanges(entries)) {}
 
-base::Optional<BootRecords::BootRange> BootRecords::GetBootRange(
+std::optional<BootRecords::BootRange> BootRecords::GetBootRange(
     const std::string& boot_str) const {
   int boot_offset = 0;
   if (boot_str.empty() || base::StringToInt(boot_str, &boot_offset)) {
@@ -154,12 +156,12 @@ base::Optional<BootRecords::BootRange> BootRecords::GetBootRange(
       boot_offset_nth = boot_ranges_.size() + boot_offset - 1;
       if (boot_offset_nth < 0) {
         // Invalid offset.
-        return base::nullopt;
+        return std::nullopt;
       }
     } else {
       // Positive offset is not supported.
       // TODO(yoshiki): support positive offset values.
-      return base::nullopt;
+      return std::nullopt;
     }
 
     return boot_ranges_[boot_offset_nth];
@@ -176,7 +178,7 @@ base::Optional<BootRecords::BootRange> BootRecords::GetBootRange(
   }
 
   // Invalid boot ID format, or no corresponding boot in the entries.
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace croslog

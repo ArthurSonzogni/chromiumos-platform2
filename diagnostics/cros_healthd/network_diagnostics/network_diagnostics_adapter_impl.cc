@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
 
+#include <optional>
 #include <utility>
 
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_utils.h"
@@ -178,7 +179,7 @@ void NetworkDiagnosticsAdapterImpl::RunHttpsLatencyRoutine(
 }
 
 void NetworkDiagnosticsAdapterImpl::RunVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname,
+    const std::optional<std::string>& stun_server_hostname,
     network_diagnostics_ipc::NetworkDiagnosticsRoutines::
         RunVideoConferencingCallback callback) {
   if (!network_diagnostics_routines_.is_bound()) {

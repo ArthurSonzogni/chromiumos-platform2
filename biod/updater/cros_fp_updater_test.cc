@@ -5,6 +5,7 @@
 #include "biod/updater/cros_fp_updater.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -49,7 +50,7 @@ const std::vector<enum ec_image> kEcCurrentImageEnums = {
 
 class MockCrosFpDeviceUpdate : public biod::CrosFpDeviceUpdate {
  public:
-  MOCK_METHOD(base::Optional<biod::CrosFpDeviceInterface::EcVersion>,
+  MOCK_METHOD(std::optional<biod::CrosFpDeviceInterface::EcVersion>,
               GetVersion,
               (),
               (const, override));
@@ -172,7 +173,7 @@ TEST(CrosFpDeviceUpdateTest, UniqueEcCurrentImageString) {
 
 TEST_F(CrosFpUpdaterTest, GetDeviceVersionFails) {
   // Given a device which fails to report its version,
-  EXPECT_CALL(dev_update_, GetVersion()).WillOnce(Return(base::nullopt));
+  EXPECT_CALL(dev_update_, GetVersion()).WillOnce(Return(std::nullopt));
 
   // expect the updater to report a get version failure with no update reason.
   auto result = RunUpdater();

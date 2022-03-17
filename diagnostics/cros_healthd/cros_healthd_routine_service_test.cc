@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -386,7 +387,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunAcPowerRoutine) {
   base::RunLoop run_loop;
   service()->RunAcPowerRoutine(
       /*expected_status=*/mojo_ipc::AcPowerStatusEnum::kConnected,
-      /*expected_power_type=*/base::Optional<std::string>{"power_type"},
+      /*expected_power_type=*/std::optional<std::string>{"power_type"},
       base::BindLambdaForTesting(
           [&](mojo_ipc::RunRoutineResponsePtr received_response) {
             response = std::move(received_response);
@@ -873,7 +874,7 @@ TEST_F(CrosHealthdRoutineServiceTest, RunVideoConferencingRoutine) {
   mojo_ipc::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   service()->RunVideoConferencingRoutine(
-      /*stun_server_hostname=*/base::Optional<
+      /*stun_server_hostname=*/std::optional<
           std::string>{"http://www.stunserverhostname.com/path?k=v"},
       base::BindLambdaForTesting(
           [&](mojo_ipc::RunRoutineResponsePtr received_response) {

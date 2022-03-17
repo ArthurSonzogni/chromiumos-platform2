@@ -5,11 +5,11 @@
 #include "u2fd/u2f_command_processor_gsc.h"
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <chromeos/cbor/values.h>
@@ -159,7 +159,7 @@ GetAssertionResponse::GetAssertionStatus U2fCommandProcessorGsc::U2fSign(
       if (sign_status != 0)
         return GetAssertionResponse::INTERNAL_ERROR;
 
-      base::Optional<std::vector<uint8_t>> opt_signature =
+      std::optional<std::vector<uint8_t>> opt_signature =
           util::SignatureToDerBytes(sign_resp.sig_r, sign_resp.sig_s);
       if (!opt_signature.has_value()) {
         return GetAssertionResponse::INTERNAL_ERROR;
@@ -289,7 +289,7 @@ MakeCredentialResponse::MakeCredentialStatus U2fCommandProcessorGsc::G2fAttest(
     return MakeCredentialResponse::INTERNAL_ERROR;
   }
 
-  base::Optional<std::vector<uint8_t>> signature =
+  std::optional<std::vector<uint8_t>> signature =
       util::SignatureToDerBytes(attest_resp.sig_r, attest_resp.sig_s);
 
   if (!signature.has_value()) {
@@ -302,7 +302,7 @@ MakeCredentialResponse::MakeCredentialStatus U2fCommandProcessorGsc::G2fAttest(
   return MakeCredentialResponse::SUCCESS;
 }
 
-base::Optional<std::vector<uint8_t>> U2fCommandProcessorGsc::GetG2fCert() {
+std::optional<std::vector<uint8_t>> U2fCommandProcessorGsc::GetG2fCert() {
   std::string cert_str;
   std::vector<uint8_t> cert;
 
@@ -311,14 +311,14 @@ base::Optional<std::vector<uint8_t>> U2fCommandProcessorGsc::GetG2fCert() {
   if (get_cert_status != 0) {
     LOG(ERROR) << "Failed to retrieve G2F certificate, status: " << std::hex
                << get_cert_status;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   util::AppendToVector(cert_str, &cert);
 
   if (!util::RemoveCertificatePadding(&cert)) {
     LOG(ERROR) << "Failed to remove padding from G2F certificate ";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return cert;
@@ -397,7 +397,7 @@ U2fCommandProcessorGsc::SendU2fSignWaitForPresence(
   brillo::SecureClearContainer(sign_req->userSecret);
 
   if (sign_status == 0) {
-    base::Optional<std::vector<uint8_t>> opt_signature =
+    std::optional<std::vector<uint8_t>> opt_signature =
         util::SignatureToDerBytes(sign_resp->sig_r, sign_resp->sig_s);
     if (!opt_signature.has_value()) {
       return GetAssertionResponse::INTERNAL_ERROR;

@@ -4,6 +4,7 @@
 
 #include "login_manager/chrome_setup.h"
 
+#include <optional>
 #include <set>
 #include <utility>
 
@@ -16,7 +17,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -304,7 +304,7 @@ TEST_F(ChromeSetupTest, TestSchedulerFlags) {
   EXPECT_EQ(kBoostUrgentVal, GetFlag(argv, "--scheduler-boost-urgent"));
 }
 
-void InitWithUseFlag(base::Optional<std::string> flag,
+void InitWithUseFlag(std::optional<std::string> flag,
                      base::ScopedTempDir* temp_dir,
                      ChromiumCommandBuilder* builder) {
   ASSERT_TRUE(temp_dir->CreateUniqueTempDir());
@@ -338,7 +338,7 @@ void InitWithUseFlag(base::Optional<std::string> flag,
 TEST(TestAddCrashHandlerFlag, Crashpad) {
   base::ScopedTempDir temp_dir;
   ChromiumCommandBuilder builder;
-  InitWithUseFlag(base::nullopt, &temp_dir, &builder);
+  InitWithUseFlag(std::nullopt, &temp_dir, &builder);
   AddCrashHandlerFlag(&builder);
   EXPECT_THAT(builder.arguments(), ElementsAre("--enable-crashpad"));
 }

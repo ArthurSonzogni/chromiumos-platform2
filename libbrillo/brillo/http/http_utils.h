@@ -6,6 +6,7 @@
 #define LIBBRILLO_BRILLO_HTTP_HTTP_UTILS_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -293,7 +294,7 @@ BRILLO_EXPORT RequestID PatchJson(const std::string& url,
 // Returns null if failed. Optional |error| can be passed in to
 // get the extended error information as to why the parse failed.
 
-BRILLO_EXPORT base::Optional<base::Value> ParseJsonResponse(
+BRILLO_EXPORT std::optional<base::Value> ParseJsonResponse(
     Response* response, int* status_code, brillo::ErrorPtr* error);
 
 // Converts a request header name to canonical form (lowercase with uppercase

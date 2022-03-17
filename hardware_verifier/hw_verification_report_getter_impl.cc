@@ -6,11 +6,11 @@
 #include "hardware_verifier/hw_verification_report_getter_impl.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/optional.h>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
 #include "hardware_verifier/hw_verification_spec_getter_impl.h"
@@ -25,19 +25,19 @@ HwVerificationReportGetterImpl::HwVerificationReportGetterImpl()
       vs_getter_(std::make_unique<HwVerificationSpecGetterImpl>()),
       verifier_(std::make_unique<VerifierImpl>()) {}
 
-base::Optional<HwVerificationReport> HwVerificationReportGetterImpl::Get(
+std::optional<HwVerificationReport> HwVerificationReportGetterImpl::Get(
     const base::StringPiece& probe_result_file,
     const base::StringPiece& hw_verification_spec_file,
     ErrorCode* out_error_code) const {
   DVLOG(1) << "Get the verification payload.";
-  base::Optional<HwVerificationSpec> hw_verification_spec;
+  std::optional<HwVerificationSpec> hw_verification_spec;
   if (hw_verification_spec_file.empty()) {
     hw_verification_spec = vs_getter_->GetDefault();
     if (!hw_verification_spec) {
       if (out_error_code)
         *out_error_code =
             ErrorCode::kErrorCodeMissingDefaultHwVerificationSpecFile;
-      return base::nullopt;
+      return std::nullopt;
     }
   } else {
     hw_verification_spec =
@@ -45,12 +45,12 @@ base::Optional<HwVerificationReport> HwVerificationReportGetterImpl::Get(
     if (!hw_verification_spec) {
       if (out_error_code)
         *out_error_code = ErrorCode::kErrorCodeInvalidHwVerificationSpecFile;
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
   DVLOG(1) << "Get the probe result.";
-  base::Optional<runtime_probe::ProbeResult> probe_result;
+  std::optional<runtime_probe::ProbeResult> probe_result;
   if (probe_result_file.empty()) {
     auto observer = Observer::GetInstance();
     observer->StartTimer(hardware_verifier::kMetricTimeToProbe);
@@ -60,14 +60,14 @@ base::Optional<HwVerificationReport> HwVerificationReportGetterImpl::Get(
     if (!probe_result) {
       if (out_error_code)
         *out_error_code = ErrorCode::kErrorCodeProbeFail;
-      return base::nullopt;
+      return std::nullopt;
     }
   } else {
     probe_result = pr_getter_->GetFromFile(base::FilePath(probe_result_file));
     if (!probe_result) {
       if (out_error_code)
         *out_error_code = ErrorCode::kErrorCodeInvalidProbeResultFile;
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 

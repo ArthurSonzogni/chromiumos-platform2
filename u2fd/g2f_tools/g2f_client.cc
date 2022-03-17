@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iterator>
+#include <optional>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -557,7 +558,7 @@ bool CheckBlobLength(const brillo::Blob& blob,
 
 }  // namespace
 
-bool U2F::Register(base::Optional<uint8_t> p1,
+bool U2F::Register(std::optional<uint8_t> p1,
                    const brillo::Blob& challenge,
                    const brillo::Blob& application,
                    bool use_g2f_att_key,
@@ -630,7 +631,7 @@ bool U2F::Register(base::Optional<uint8_t> p1,
   return true;
 }
 
-bool U2F::Authenticate(base::Optional<uint8_t> p1,
+bool U2F::Authenticate(std::optional<uint8_t> p1,
                        const brillo::Blob& challenge,
                        const brillo::Blob& application,
                        const brillo::Blob& key_handle,

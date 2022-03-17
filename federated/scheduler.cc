@@ -4,6 +4,7 @@
 
 #include "federated/scheduler.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -141,7 +142,7 @@ void Scheduler::TryToStartJobForSession(
     return;
   }
 
-  base::Optional<ExampleDatabase::Iterator> example_iterator =
+  std::optional<ExampleDatabase::Iterator> example_iterator =
       storage_manager_->GetExampleIterator(federated_session->GetSessionName());
   if (!example_iterator.has_value()) {
     DVLOG(1) << "Client " << federated_session->GetSessionName()

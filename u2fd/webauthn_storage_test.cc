@@ -5,6 +5,7 @@
 #include "u2fd/webauthn_storage.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/check.h>
@@ -82,7 +83,7 @@ TEST_F(WebAuthnStorageTest, WriteAndReadRecord) {
 
   EXPECT_TRUE(webauthn_storage_->LoadRecords());
 
-  base::Optional<WebAuthnRecord> record_loaded =
+  std::optional<WebAuthnRecord> record_loaded =
       webauthn_storage_->GetRecordByCredentialId(kCredentialId);
   EXPECT_TRUE(record_loaded);
   EXPECT_EQ(record.secret, record_loaded->secret);
@@ -114,7 +115,7 @@ TEST_F(WebAuthnStorageTest, WriteAndReadRecordWithEmptyUserIdAndDisplayName) {
 
   EXPECT_TRUE(webauthn_storage_->LoadRecords());
 
-  base::Optional<WebAuthnRecord> record_loaded =
+  std::optional<WebAuthnRecord> record_loaded =
       webauthn_storage_->GetRecordByCredentialId(kCredentialId);
   EXPECT_TRUE(record_loaded);
   EXPECT_EQ(record.secret, record_loaded->secret);

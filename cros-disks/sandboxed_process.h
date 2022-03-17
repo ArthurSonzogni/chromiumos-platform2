@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -124,7 +125,7 @@ class SandboxedProcessFactory {
 // Ties executable with the corresponding seccomp policy configuration.
 struct SandboxedExecutable {
   base::FilePath executable;
-  base::Optional<base::FilePath> seccomp_policy = {};
+  std::optional<base::FilePath> seccomp_policy = {};
 };
 
 // Fake SandboxedProcess for testing. Doesn't launch any actual process.
@@ -137,7 +138,7 @@ class FakeSandboxedProcess : public SandboxedProcess {
   int WaitImpl() final;
   int WaitNonBlockingImpl() final;
 
-  base::Optional<int> ret_code_;
+  std::optional<int> ret_code_;
 };
 
 }  // namespace cros_disks

@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <optional>
 #include <utility>
 
 #include <base/files/file.h>

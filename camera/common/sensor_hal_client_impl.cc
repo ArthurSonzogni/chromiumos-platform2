@@ -7,6 +7,7 @@
 #include "common/sensor_hal_client_impl.h"
 
 #include <iterator>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -49,7 +50,7 @@ bool IsSupported(cros::mojom::DeviceType type) {
   }
 }
 
-base::Optional<mojom::DeviceType> ConvertDeviceType(
+std::optional<mojom::DeviceType> ConvertDeviceType(
     SensorHalClient::DeviceType type) {
   switch (type) {
     case SensorHalClient::DeviceType::kAccel:
@@ -62,12 +63,12 @@ base::Optional<mojom::DeviceType> ConvertDeviceType(
       return mojom::DeviceType::GRAVITY;
 
     default:
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 
-base::Optional<cros::SensorHalClient::Location> ParseLocation(
-    const base::Optional<std::string>& raw_location) {
+std::optional<cros::SensorHalClient::Location> ParseLocation(
+    const std::optional<std::string>& raw_location) {
   if (!raw_location) {
     LOGF(WARNING) << "No location attribute";
     return cros::SensorHalClient::Location::kNone;
@@ -102,7 +103,7 @@ SensorHalClientImpl::~SensorHalClientImpl() {
 }
 
 bool SensorHalClientImpl::HasDevice(DeviceType type, Location location) {
-  base::Optional<mojom::DeviceType> device_type = ConvertDeviceType(type);
+  std::optional<mojom::DeviceType> device_type = ConvertDeviceType(type);
   if (!device_type) {
     return false;
   }
@@ -124,7 +125,7 @@ bool SensorHalClientImpl::RegisterSamplesObserver(
     Location location,
     double frequency,
     SamplesObserver* samples_observer) {
-  base::Optional<mojom::DeviceType> device_type = ConvertDeviceType(type);
+  std::optional<mojom::DeviceType> device_type = ConvertDeviceType(type);
   if (!device_type) {
     return false;
   }
@@ -431,7 +432,7 @@ SensorHalClientImpl::IPCBridge::GetSensorDeviceRemote(int32_t iio_device_id) {
 void SensorHalClientImpl::IPCBridge::GetAttributesCallback(
     int32_t iio_device_id,
     const std::vector<std::string> attr_names,
-    const std::vector<base::Optional<std::string>>& values) {
+    const std::vector<std::optional<std::string>>& values) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
 
   auto it = devices_.find(iio_device_id);

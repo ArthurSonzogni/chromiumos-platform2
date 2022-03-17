@@ -7,6 +7,7 @@
 
 #include "login_manager/key_generator.h"
 
+#include <optional>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -21,7 +22,7 @@ class MockKeyGenerator : public KeyGenerator {
   ~MockKeyGenerator() override;
   MOCK_METHOD(bool,
               Start,
-              (const std::string&, const base::Optional<base::FilePath>&),
+              (const std::string&, const std::optional<base::FilePath>&),
               (override));
 };
 }  // namespace login_manager

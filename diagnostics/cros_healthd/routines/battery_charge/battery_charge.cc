@@ -7,6 +7,7 @@
 #include <inttypes.h>
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -126,7 +127,7 @@ void BatteryChargeRoutine::CalculateProgressPercent() {
 
 mojo_ipc::DiagnosticRoutineStatusEnum
 BatteryChargeRoutine::RunBatteryChargeRoutine() {
-  base::Optional<power_manager::PowerSupplyProperties> response =
+  std::optional<power_manager::PowerSupplyProperties> response =
       context_->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
     status_message_ = kPowerdPowerSupplyPropertiesFailedMessage;
@@ -168,7 +169,7 @@ BatteryChargeRoutine::RunBatteryChargeRoutine() {
 
 void BatteryChargeRoutine::DetermineRoutineResult(
     double beginning_charge_percent) {
-  base::Optional<power_manager::PowerSupplyProperties> response =
+  std::optional<power_manager::PowerSupplyProperties> response =
       context_->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
     status_message_ = kPowerdPowerSupplyPropertiesFailedMessage;

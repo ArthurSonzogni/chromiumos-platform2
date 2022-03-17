@@ -6,11 +6,11 @@
 #define DIAGNOSTICS_BINDINGS_CONNECTIVITY_DATA_GENERATOR_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <vector>
 
-#include <absl/types/optional.h>
 #include <base/containers/flat_map.h>
 #include <mojo/public/cpp/system/handle.h>
 
@@ -72,7 +72,7 @@ class DataGenerator : public DataGeneratorInterface<T> {
 // Generator for optional types.
 template <typename GeneratorType>
 class OptionalGenerator : public DataGeneratorInterface<
-                              absl::optional<typename GeneratorType::Type>> {
+                              std::optional<typename GeneratorType::Type>> {
  public:
   OptionalGenerator(const OptionalGenerator&) = delete;
   OptionalGenerator& operator=(const OptionalGenerator&) = delete;
@@ -85,11 +85,11 @@ class OptionalGenerator : public DataGeneratorInterface<
 
  public:
   // DataGeneratorInterface overrides.
-  absl::optional<typename GeneratorType::Type> Generate() override {
+  std::optional<typename GeneratorType::Type> Generate() override {
     if (generator_->HasNext())
       return generator_->Generate();
     returned_null_ = true;
-    return absl::nullopt;
+    return std::nullopt;
   }
 
   bool HasNext() override { return !returned_null_ || generator_->HasNext(); }

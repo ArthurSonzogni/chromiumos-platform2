@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -95,7 +96,7 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
   base::Value manifest_dict = std::move(*manifest_value.value);
 
   // This will have to be changed if the manifest version is bumped.
-  base::Optional<int> manifest_version =
+  std::optional<int> manifest_version =
       manifest_dict.FindIntKey(kManifestVersionField);
   if (!manifest_version.has_value()) {
     LOG(ERROR) << "Could not parse manifest version field from manifest.";
@@ -153,22 +154,22 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
     fs_type_ = FileSystem::kSquashFS;
   }
 
-  base::Optional<bool> is_removable =
+  std::optional<bool> is_removable =
       manifest_dict.FindBoolKey(kIsRemovableField);
   // If |is-removable| field does not exist, by default it is false.
   is_removable_ = is_removable.value_or(false);
 
-  base::Optional<bool> preload_allowed =
+  std::optional<bool> preload_allowed =
       manifest_dict.FindBoolKey(kPreloadAllowed);
   // If |preaload-allowed| field does not exist, by default it is false.
   preload_allowed_ = preload_allowed.value_or(false);
 
-  base::Optional<bool> factory_install =
+  std::optional<bool> factory_install =
       manifest_dict.FindBoolKey(kFactoryInstall);
   // If |factory-install| field does not exist, by default it is false.
   factory_install_ = factory_install.value_or(false);
 
-  base::Optional<bool> mount_file_required =
+  std::optional<bool> mount_file_required =
       manifest_dict.FindBoolKey(kMountFileRequired);
   // If 'mount-file-required' field does not exist, by default it is false.
   mount_file_required_ = mount_file_required.value_or(false);

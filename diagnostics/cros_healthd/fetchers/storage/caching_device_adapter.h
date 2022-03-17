@@ -7,9 +7,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 #include "diagnostics/common/status_macros.h"
 #include "diagnostics/common/statusor.h"
@@ -43,15 +42,15 @@ class CachingDeviceAdapter final : public StorageDeviceAdapter {
   const std::unique_ptr<const StorageDeviceAdapter> adapter_;
 
   // The fields have to be mutable because of the const interface.
-  mutable base::Optional<std::string> device_name_;
-  mutable base::Optional<chromeos::cros_healthd::mojom::BlockDeviceVendor>
+  mutable std::optional<std::string> device_name_;
+  mutable std::optional<chromeos::cros_healthd::mojom::BlockDeviceVendor>
       vendor_id_;
-  mutable base::Optional<chromeos::cros_healthd::mojom::BlockDeviceProduct>
+  mutable std::optional<chromeos::cros_healthd::mojom::BlockDeviceProduct>
       product_id_;
-  mutable base::Optional<chromeos::cros_healthd::mojom::BlockDeviceRevision>
+  mutable std::optional<chromeos::cros_healthd::mojom::BlockDeviceRevision>
       revision_;
-  mutable base::Optional<std::string> model_;
-  mutable base::Optional<chromeos::cros_healthd::mojom::BlockDeviceFirmware>
+  mutable std::optional<std::string> model_;
+  mutable std::optional<chromeos::cros_healthd::mojom::BlockDeviceFirmware>
       firmware_;
 };
 

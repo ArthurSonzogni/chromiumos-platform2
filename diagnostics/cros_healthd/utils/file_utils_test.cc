@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "diagnostics/common/file_test_utils.h"
@@ -40,7 +40,7 @@ TEST_F(FileUtilsTest, ReadAndTrimString) {
 
   ASSERT_FALSE(ReadAndTrimString(root_dir(), kFileNameNotExist, &str));
 
-  base::Optional<std::string> opt_str;
+  std::optional<std::string> opt_str;
   ASSERT_TRUE(ReadAndTrimString(root_dir(), kFileNameTest, &opt_str));
   ASSERT_TRUE(opt_str.has_value());
   EXPECT_EQ(opt_str.value(), kExpectedStr);

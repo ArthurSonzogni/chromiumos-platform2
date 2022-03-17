@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/routines/video_conferencing/video_conferencing.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -80,7 +81,7 @@ void ParseVideoConferencingResult(
 // We include |output_dict| here to satisfy SimpleRoutine - the video
 // conferencing routine never includes an output.
 void RunVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname,
+    const std::optional<std::string>& stun_server_hostname,
     NetworkDiagnosticsAdapter* network_diagnostics_adapter,
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
     std::string* status_message,
@@ -109,7 +110,7 @@ const char kVideoConferencingRoutineNotRunMessage[] =
     "Video conferencing routine did not run.";
 
 std::unique_ptr<DiagnosticRoutine> CreateVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname,
+    const std::optional<std::string>& stun_server_hostname,
     NetworkDiagnosticsAdapter* network_diagnostics_adapter) {
   return std::make_unique<SimpleRoutine>(
       base::BindOnce(&RunVideoConferencingRoutine, stun_server_hostname,

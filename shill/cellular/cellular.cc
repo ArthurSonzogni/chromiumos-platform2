@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 
+#include <optional>
 #include <set>
 #include <tuple>
 #include <utility>
@@ -1005,7 +1006,7 @@ void Cellular::CreateCapability() {
       manager()->modem_info()->pending_activation_store());
   if (initial_properties_.has_value()) {
     SetInitialProperties(*initial_properties_);
-    initial_properties_ = base::nullopt;
+    initial_properties_ = std::nullopt;
   }
 
   home_provider_info_->AddObserver(this);

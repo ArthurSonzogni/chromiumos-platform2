@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/system/fake_sensor_device.h"
 
+#include <optional>
 #include <utility>
 
 #include "power_manager/powerd/system/ambient_light_sensor_delegate_mojo.h"
@@ -14,8 +15,8 @@ namespace power_manager {
 namespace system {
 
 FakeSensorDevice::FakeSensorDevice(bool is_color_sensor,
-                                   base::Optional<std::string> name,
-                                   base::Optional<std::string> location)
+                                   std::optional<std::string> name,
+                                   std::optional<std::string> location)
     : is_color_sensor_(is_color_sensor) {
   if (name.has_value())
     SetAttribute(cros::mojom::kDeviceName, name.value());
@@ -61,14 +62,14 @@ void FakeSensorDevice::SetAttribute(std::string attr_name, std::string value) {
 
 void FakeSensorDevice::GetAttributes(const std::vector<std::string>& attr_names,
                                      GetAttributesCallback callback) {
-  std::vector<base::Optional<std::string>> attr_values;
+  std::vector<std::optional<std::string>> attr_values;
   attr_values.reserve(attr_names.size());
   for (const auto& attr_name : attr_names) {
     auto it = attributes_.find(attr_name);
     if (it != attributes_.end())
       attr_values.push_back(it->second);
     else
-      attr_values.push_back(base::nullopt);
+      attr_values.push_back(std::nullopt);
   }
 
   std::move(callback).Run(std::move(attr_values));
@@ -119,8 +120,8 @@ void FakeSensorDevice::GetChannelsAttributes(
     const std::vector<int32_t>& iio_chn_indices,
     const std::string& attr_name,
     GetChannelsAttributesCallback callback) {
-  std::move(callback).Run(std::move(std::vector<base::Optional<std::string>>(
-      iio_chn_indices.size(), base::nullopt)));
+  std::move(callback).Run(std::move(std::vector<std::optional<std::string>>(
+      iio_chn_indices.size(), std::nullopt)));
 }
 
 void FakeSensorDevice::GetAllEvents(GetAllEventsCallback callback) {
@@ -144,8 +145,8 @@ void FakeSensorDevice::GetEventsAttributes(
     const std::vector<int32_t>& iio_event_indices,
     const std::string& attr_name,
     GetEventsAttributesCallback callback) {
-  std::move(callback).Run(std::vector<base::Optional<std::string>>(
-      iio_event_indices.size(), base::nullopt));
+  std::move(callback).Run(std::vector<std::optional<std::string>>(
+      iio_event_indices.size(), std::nullopt));
 }
 
 void FakeSensorDevice::StartReadingEvents(

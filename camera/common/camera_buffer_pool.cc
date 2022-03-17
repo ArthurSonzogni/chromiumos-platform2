@@ -6,6 +6,8 @@
 
 #include "camera/common/camera_buffer_pool.h"
 
+#include <optional>
+
 #include "cros-camera/common.h"
 
 namespace cros {
@@ -52,7 +54,7 @@ void CameraBufferPool::BufferSlot::Release() {
 
 const ScopedMapping& CameraBufferPool::BufferSlot::Map() {
   if (!mapping_) {
-    mapping_ = base::make_optional<ScopedMapping>(*handle_);
+    mapping_ = std::make_optional<ScopedMapping>(*handle_);
   }
   return *mapping_;
 }
@@ -70,7 +72,7 @@ CameraBufferPool::~CameraBufferPool() {
   }
 }
 
-base::Optional<CameraBufferPool::Buffer> CameraBufferPool::RequestBuffer() {
+std::optional<CameraBufferPool::Buffer> CameraBufferPool::RequestBuffer() {
   auto it =
       std::find_if(buffer_slots_.begin(), buffer_slots_.end(),
                    [](const BufferSlot& slot) { return !slot.is_acquired(); });
@@ -81,14 +83,14 @@ base::Optional<CameraBufferPool::Buffer> CameraBufferPool::RequestBuffer() {
     ScopedBufferHandle handle = CameraBufferManager::AllocateScopedBuffer(
         options_.width, options_.height, options_.format, options_.usage);
     if (!handle) {
-      return base::nullopt;
+      return std::nullopt;
     }
     buffer_slots_.emplace_back(std::move(handle));
     VLOGF(1) << "Increased pool buffer count to " << buffer_slots_.size();
     return buffer_slots_.back().Acquire();
   }
   VLOGF(1) << "Buffer pool ran out of free buffers";
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace cros

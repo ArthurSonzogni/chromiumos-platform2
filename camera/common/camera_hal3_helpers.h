@@ -8,6 +8,7 @@
 #define CAMERA_COMMON_CAMERA_HAL3_HELPERS_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -45,14 +46,14 @@ inline bool HaveSameAspectRatio(const camera3_stream_t* s1,
 struct FeatureMetadata {
   // |hdr_ratio| produced by GcamAeStreamManipulator and consumed by
   // HdrNetStreamManipulator for HDRnet output frame rendering.
-  base::Optional<float> hdr_ratio;
+  std::optional<float> hdr_ratio;
 
 #if USE_CAMERA_FEATURE_FACE_DETECTION
   // The face rectangles detected by the FaceDetectionStreamManipulator when
   // CrOS face detector is enabled. The coordinates of the rectangles are
   // normalized with respect to the active sensor array size. The face ROIs are
   // consumed by GcamAeStreamManipulator as input metadata.
-  base::Optional<std::vector<human_sensing::CrosFace>> faces;
+  std::optional<std::vector<human_sensing::CrosFace>> faces;
 #endif
 };
 
@@ -103,7 +104,7 @@ class CROS_CAMERA_EXPORT Camera3StreamConfiguration {
   uint32_t operation_mode_ = 0;
   const camera_metadata_t* session_parameters_ = nullptr;
 
-  base::Optional<camera3_stream_configuration_t> raw_configuration_;
+  std::optional<camera3_stream_configuration_t> raw_configuration_;
 };
 
 // A helper class to make it easy to modify camera3_capture_request_t and
@@ -224,7 +225,7 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
     camera3_capture_request_t raw_request;
     camera3_capture_result_t raw_result;
   };
-  base::Optional<RawDescriptor> raw_descriptor_;
+  std::optional<RawDescriptor> raw_descriptor_;
 };
 
 template <>

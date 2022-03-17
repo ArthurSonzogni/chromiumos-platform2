@@ -30,6 +30,7 @@
 #include <iterator>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -50,7 +51,6 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -693,7 +693,7 @@ VmInfo::VmType ClassifyVm(const StartVmRequest& request) {
 
 }  // namespace
 
-base::Optional<int64_t> Service::GetAvailableMemory() {
+std::optional<int64_t> Service::GetAvailableMemory() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetAvailableMemoryKBMethod);
   auto dbus_response = brillo::dbus_utils::CallDBusMethod(
@@ -701,19 +701,19 @@ base::Optional<int64_t> Service::GetAvailableMemory() {
       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to get available memory size from resourced";
-    return base::nullopt;
+    return std::nullopt;
   }
   dbus::MessageReader reader(dbus_response.get());
   uint64_t available_kb;
   if (!reader.PopUint64(&available_kb)) {
     LOG(ERROR)
         << "Failed to read available memory size from the D-Bus response";
-    return base::nullopt;
+    return std::nullopt;
   }
   return available_kb * KIB;
 }
 
-base::Optional<int64_t> Service::GetForegroundAvailableMemory() {
+std::optional<int64_t> Service::GetForegroundAvailableMemory() {
   dbus::MethodCall method_call(
       resource_manager::kResourceManagerInterface,
       resource_manager::kGetForegroundAvailableMemoryKBMethod);
@@ -723,19 +723,19 @@ base::Optional<int64_t> Service::GetForegroundAvailableMemory() {
   if (!dbus_response) {
     LOG(ERROR)
         << "Failed to get foreground available memory size from resourced";
-    return base::nullopt;
+    return std::nullopt;
   }
   dbus::MessageReader reader(dbus_response.get());
   uint64_t available_kb;
   if (!reader.PopUint64(&available_kb)) {
     LOG(ERROR) << "Failed to read foreground available memory size from the "
                   "D-Bus response";
-    return base::nullopt;
+    return std::nullopt;
   }
   return available_kb * KIB;
 }
 
-base::Optional<MemoryMargins> Service::GetMemoryMargins() {
+std::optional<MemoryMargins> Service::GetMemoryMargins() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetMemoryMarginsKBMethod);
   auto dbus_response = brillo::dbus_utils::CallDBusMethod(
@@ -743,26 +743,26 @@ base::Optional<MemoryMargins> Service::GetMemoryMargins() {
       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to get critical margin size from resourced";
-    return base::nullopt;
+    return std::nullopt;
   }
   dbus::MessageReader reader(dbus_response.get());
   MemoryMargins margins;
   if (!reader.PopUint64(&margins.critical)) {
     LOG(ERROR)
         << "Failed to read available critical margin from the D-Bus response";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (!reader.PopUint64(&margins.moderate)) {
     LOG(ERROR)
         << "Failed to read available moderate margin from the D-Bus response";
-    return base::nullopt;
+    return std::nullopt;
   }
   margins.critical *= KIB;
   margins.moderate *= KIB;
   return margins;
 }
 
-base::Optional<resource_manager::GameMode> Service::GetGameMode() {
+std::optional<resource_manager::GameMode> Service::GetGameMode() {
   dbus::MethodCall method_call(resource_manager::kResourceManagerInterface,
                                resource_manager::kGetGameModeMethod);
   auto dbus_response = brillo::dbus_utils::CallDBusMethod(
@@ -770,28 +770,28 @@ base::Optional<resource_manager::GameMode> Service::GetGameMode() {
       dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response) {
     LOG(ERROR) << "Failed to get geme mode from resourced";
-    return base::nullopt;
+    return std::nullopt;
   }
   dbus::MessageReader reader(dbus_response.get());
   uint8_t game_mode;
   if (!reader.PopByte(&game_mode)) {
     LOG(ERROR) << "Failed to read game mode from the D-Bus response";
-    return base::nullopt;
+    return std::nullopt;
   }
   return static_cast<resource_manager::GameMode>(game_mode);
 }
 
-static base::Optional<std::string> GameModeToForegroundVmName(
+static std::optional<std::string> GameModeToForegroundVmName(
     resource_manager::GameMode game_mode) {
   using resource_manager::GameMode;
   if (game_mode == GameMode::BOREALIS) {
     return "borealis";
   }
   if (game_mode == GameMode::OFF) {
-    return base::nullopt;
+    return std::nullopt;
   }
   LOG(ERROR) << "Unexpected game mode value " << static_cast<int>(game_mode);
-  return base::nullopt;
+  return std::nullopt;
 }
 
 // Runs balloon policy against each VM to balance memory.
@@ -847,7 +847,7 @@ void Service::FinishBalloonPolicy(TaggedBalloonStats stats) {
   if (!game_mode.has_value()) {
     return;
   }
-  base::Optional<int64_t> foreground_available_memory;
+  std::optional<int64_t> foreground_available_memory;
   if (*game_mode != resource_manager::GameMode::OFF) {
     // foreground_available_memory is only used when the game mode is enabled.
     foreground_available_memory = GetForegroundAvailableMemory();
@@ -1449,7 +1449,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   VmInfo* vm_info = response.mutable_vm_info();
   vm_info->set_vm_type(classification);
 
-  base::Optional<base::ScopedFD> kernel_fd, rootfs_fd, initrd_fd, storage_fd,
+  std::optional<base::ScopedFD> kernel_fd, rootfs_fd, initrd_fd, storage_fd,
       bios_fd;
   for (const auto& fdType : request.fds()) {
     base::ScopedFD fd;
@@ -1828,7 +1828,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     }
   }
 
-  base::Optional<std::string> cpu_affinity =
+  std::optional<std::string> cpu_affinity =
       GetCpuAffinityFromClusters(cpu_clusters, cpu_capacity_groups);
   if (cpu_affinity) {
     vm_builder.AppendCustomParam("--cpu-affinity", *cpu_affinity);
@@ -2088,7 +2088,7 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
   struct ThreadContext {
     base::PlatformThreadHandle handle;
     uint32_t cid;
-    base::Optional<uint32_t> vm_memory_id;
+    std::optional<uint32_t> vm_memory_id;
     VMDelegate delegate;
   };
   std::vector<ThreadContext> ctxs(vms_.size());
@@ -4121,7 +4121,7 @@ Service::VmMap::iterator Service::FindVm(const std::string& owner_id,
 base::FilePath Service::GetVmImagePath(const std::string& dlc_id,
                                        std::string* failure_reason) {
   DCHECK(failure_reason);
-  base::Optional<std::string> dlc_root =
+  std::optional<std::string> dlc_root =
       AsyncNoReject(bus_->GetDBusTaskRunner(),
                     base::BindOnce(
                         [](DlcHelper* dlc_helper, const std::string& dlc_id,
@@ -4141,10 +4141,10 @@ base::FilePath Service::GetVmImagePath(const std::string& dlc_id,
 
 Service::VMImageSpec Service::GetImageSpec(
     const vm_tools::concierge::VirtualMachineSpec& vm,
-    const base::Optional<base::ScopedFD>& kernel_fd,
-    const base::Optional<base::ScopedFD>& rootfs_fd,
-    const base::Optional<base::ScopedFD>& initrd_fd,
-    const base::Optional<base::ScopedFD>& bios_fd,
+    const std::optional<base::ScopedFD>& kernel_fd,
+    const std::optional<base::ScopedFD>& rootfs_fd,
+    const std::optional<base::ScopedFD>& initrd_fd,
+    const std::optional<base::ScopedFD>& bios_fd,
     bool is_termina,
     string* failure_reason) {
   DCHECK(failure_reason);

@@ -6,11 +6,11 @@
 #define INSTALLER_EFIVAR_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/memory/free_deleter.h>
-#include <base/optional.h>
 
 // All the efi variables we're writing want the same set of attributes,
 // according to the UEFI spec v2.9 section 3.3, Table 3-1 "Global Variables".
@@ -23,7 +23,7 @@ class EfiVarInterface {
 
   virtual bool EfiVariablesSupported() = 0;
 
-  virtual base::Optional<std::string> GetNextVariableName() = 0;
+  virtual std::optional<std::string> GetNextVariableName() = 0;
 
   virtual bool GetVariable(const std::string& name,
                            Bytes& data,
@@ -57,7 +57,7 @@ class EfiVarImpl : public EfiVarInterface {
  public:
   bool EfiVariablesSupported() override;
 
-  base::Optional<std::string> GetNextVariableName() override;
+  std::optional<std::string> GetNextVariableName() override;
 
   bool GetVariable(const std::string& name,
                    Bytes& data,

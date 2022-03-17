@@ -6,6 +6,7 @@
 #define HERMES_FAKE_EUICC_MANAGER_H_
 
 #include <map>
+#include <optional>
 #include <utility>
 
 #include "hermes/euicc_manager_interface.h"
@@ -28,7 +29,7 @@ class FakeEuiccManager : public EuiccManagerInterface {
     valid_slots_.erase(physical_slot);
   }
   void OnLogicalSlotUpdated(uint8_t physical_slot,
-                            base::Optional<uint8_t> logical_slot) override {
+                            std::optional<uint8_t> logical_slot) override {
     auto iter = valid_slots_.find(physical_slot);
     if (iter == valid_slots_.end()) {
       VLOG(2) << "Ignoring logical slot change for non-eUICC physical slot:"

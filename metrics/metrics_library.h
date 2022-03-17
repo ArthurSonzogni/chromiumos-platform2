@@ -7,7 +7,9 @@
 
 #include <sys/types.h>
 #include <unistd.h>
+
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/compiler_specific.h>
@@ -16,7 +18,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "policy/libpolicy.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 class MetricsLibraryInterface {
  public:
@@ -244,7 +245,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
   // session-manager is not up, or session-manager calls AreMetricsEnabled?) and
   // anyway it's not totally clear which user a metric or crash is from if
   // multiple users are signed in simultaneously.
-  absl::optional<bool> ArePerUserMetricsEnabled();
+  std::optional<bool> ArePerUserMetricsEnabled();
 
   // Time at which we last checked if metrics were enabled.
   static time_t cached_enabled_time_;

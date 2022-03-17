@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <optional>
 
 #include <base/command_line.h>
 #include <base/strings/string_number_conversions.h>

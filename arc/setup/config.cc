@@ -4,6 +4,7 @@
 
 #include "arc/setup/config.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -11,7 +12,6 @@
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
@@ -60,7 +60,7 @@ bool Config::GetString(base::StringPiece name, std::string* out) const {
 bool Config::GetInt(base::StringPiece name, int* out) const {
   base::Value* config = FindConfig(name);
   if (config) {
-    if (base::Optional<int> val = config->GetIfInt()) {
+    if (std::optional<int> val = config->GetIfInt()) {
       *out = *val;
       return true;
     }
@@ -73,7 +73,7 @@ bool Config::GetInt(base::StringPiece name, int* out) const {
 bool Config::GetBool(base::StringPiece name, bool* out) const {
   base::Value* config = FindConfig(name);
   if (config) {
-    if (base::Optional<bool> val = config->GetIfBool()) {
+    if (std::optional<bool> val = config->GetIfBool()) {
       *out = *val;
       return true;
     }

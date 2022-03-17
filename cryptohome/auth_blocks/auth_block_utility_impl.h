@@ -6,6 +6,7 @@
 #define CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_UTILITY_IMPL_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <brillo/secure_blob.h>

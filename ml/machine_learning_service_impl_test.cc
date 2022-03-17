@@ -4,6 +4,7 @@
 
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -354,7 +355,7 @@ void CheckOutputTensor(const std::vector<int64_t> expected_shape,
                        const double expected_value,
                        bool* infer_callback_done,
                        ExecuteResult result,
-                       base::Optional<std::vector<TensorPtr>> outputs) {
+                       std::optional<std::vector<TensorPtr>> outputs) {
   // Check that the inference succeeded and gives the expected number
   // of outputs.
   EXPECT_EQ(result, ExecuteResult::OK);
@@ -1226,7 +1227,7 @@ class WebPlatformHandwritingRecognizerTest : public testing::Test {
         GetDefaultStrokes(), hints_.Clone(),
         base::BindOnce(
             [](bool* infer_callback_done, const std::string& text,
-               base::Optional<
+               std::optional<
                    std::vector<chromeos::machine_learning::web_platform::mojom::
                                    HandwritingPredictionPtr>> predictions) {
               // Check that the inference succeeded and gives
@@ -1304,7 +1305,7 @@ TEST_F(WebPlatformHandwritingRecognizerTest, FailOnEmptyStrokes) {
       {}, hints_.Clone(),
       base::BindOnce(
           [](bool* infer_callback_done,
-             base::Optional<
+             std::optional<
                  std::vector<chromeos::machine_learning::web_platform::mojom::
                                  HandwritingPredictionPtr>> predictions) {
             // Check that the inference failed.

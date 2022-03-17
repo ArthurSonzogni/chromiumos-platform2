@@ -4,6 +4,8 @@
 
 #include "diagnostics/cros_healthd/routines/ac_power/ac_power.h"
 
+#include <optional>
+
 #include <base/check_op.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -51,7 +53,7 @@ const uint32_t kAcPowerRoutineWaitingProgressPercent = 33;
 
 AcPowerRoutine::AcPowerRoutine(
     chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-    const base::Optional<std::string>& expected_power_type,
+    const std::optional<std::string>& expected_power_type,
     const base::FilePath& root_dir)
     : status_(mojo_ipc::DiagnosticRoutineStatusEnum::kReady),
       expected_power_status_(expected_status),

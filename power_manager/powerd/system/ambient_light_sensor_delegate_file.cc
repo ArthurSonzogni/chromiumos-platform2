@@ -12,6 +12,7 @@
 #include <cstring>
 #include <iterator>
 #include <map>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -168,7 +169,7 @@ void AmbientLightSensorDelegateFile::ReadCallback(const std::string& data) {
   }
 
   if (ParseLuxData(data, &value))
-    set_lux_callback_.Run(value, base::nullopt);
+    set_lux_callback_.Run(value, std::nullopt);
 
   StartTimer();
 }
@@ -207,7 +208,7 @@ void AmbientLightSensorDelegateFile::CollectChannelReadings() {
   }
 
   std::map<ChannelType, int> readings;
-  base::Optional<int> lux_value = base::nullopt;
+  std::optional<int> lux_value = std::nullopt;
   if (clear_reading_.value() > -1)
     lux_value = clear_reading_.value();
 

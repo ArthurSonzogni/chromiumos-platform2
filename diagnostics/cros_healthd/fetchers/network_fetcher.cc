@@ -4,11 +4,11 @@
 
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/callback.h>
 #include <base/check.h>
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
@@ -24,8 +24,8 @@ namespace network_health_ipc = ::chromeos::network_health::mojom;
 // Forwards the response from Chrome's NetworkHealthService to the caller.
 void HandleNetworkInfoResponse(
     base::OnceCallback<void(cros_healthd_ipc::NetworkResultPtr)> callback,
-    base::Optional<network_health_ipc::NetworkHealthStatePtr> result) {
-  if (result == base::nullopt) {
+    std::optional<network_health_ipc::NetworkHealthStatePtr> result) {
+  if (result == std::nullopt) {
     std::move(callback).Run(cros_healthd_ipc::NetworkResult::NewError(
         CreateAndLogProbeError(cros_healthd_ipc::ErrorType::kServiceUnavailable,
                                "Network Health Service unavailable")));

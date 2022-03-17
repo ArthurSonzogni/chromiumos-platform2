@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -35,7 +36,7 @@ struct ArcVmFeatures {
   bool use_dev_conf;
 
   // Use the LimitCacheBalloonPolicy.
-  base::Optional<LimitCacheBalloonPolicy::Params> balloon_policy_params;
+  std::optional<LimitCacheBalloonPolicy::Params> balloon_policy_params;
 };
 
 // Represents a single instance of a running termina VM.
@@ -149,7 +150,7 @@ class ArcVm final : public VmBaseImpl {
   // TODO(cwd): When we are sure what synchronization is needed to make sure the
   // host knows the correct zone sizes (which change during boot), then replace
   // this timeout.
-  base::Optional<base::Time> balloon_refresh_time_ = base::nullopt;
+  std::optional<base::Time> balloon_refresh_time_ = std::nullopt;
 };
 
 }  // namespace concierge

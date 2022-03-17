@@ -5,6 +5,7 @@
 
 #include <iomanip>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -64,13 +65,13 @@ bool CameraConfigImpl::HasKey(const std::string& key) const {
 
 bool CameraConfigImpl::GetBoolean(const std::string& path,
                                   bool default_value) const {
-  base::Optional<bool> result = config_.FindBoolPath(path);
+  std::optional<bool> result = config_.FindBoolPath(path);
   return result.has_value() ? result.value() : default_value;
 }
 
 int CameraConfigImpl::GetInteger(const std::string& path,
                                  int default_value) const {
-  base::Optional<int> result = config_.FindIntPath(path);
+  std::optional<int> result = config_.FindIntPath(path);
   return result.has_value() ? result.value() : default_value;
 }
 

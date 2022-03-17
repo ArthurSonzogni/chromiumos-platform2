@@ -6,11 +6,10 @@
 
 #include "secanomalyd/mounts.h"
 
+#include <optional>
 #include <string>
 
 #include <gtest/gtest.h>
-
-#include <base/optional.h>
 
 namespace secanomalyd {
 
@@ -34,7 +33,7 @@ constexpr char kMounts[] =
 
 TEST(MountsTest, EmptyString) {
   MaybeMountEntries entries = ReadMountsFromString("", MountFilter::kAll);
-  ASSERT_EQ(entries, base::nullopt);
+  ASSERT_EQ(entries, std::nullopt);
 }
 
 TEST(MountsTest, ActualMounts) {

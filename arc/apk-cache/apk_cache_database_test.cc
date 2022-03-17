@@ -4,13 +4,13 @@
 
 #include "arc/apk-cache/apk_cache_database.h"
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/time/time.h>
-#include <base/optional.h>
 #include <gtest/gtest.h>
 #include <sqlite3.h>
 
@@ -36,7 +36,7 @@ void CreateTestPackage(const base::FilePath& db_path) {
                           kTestPackageName,
                           kTestVersionCode,
                           kFileTypeBaseApk,
-                          base::nullopt,
+                          std::nullopt,
                           kTestPackageSize,
                           std::string(kTestPackageHash),
                           base::Time::Now(),
@@ -89,7 +89,7 @@ TEST_F(ApkCacheDatabaseTest, DatabaseQuery) {
 
   // Query sessions
   auto sessions = db.GetSessions();
-  ASSERT_TRUE(sessions != base::nullopt);
+  ASSERT_TRUE(sessions != std::nullopt);
   EXPECT_GT((*sessions)[0].id, 0);
   EXPECT_EQ((*sessions)[0].source, std::string(kTestSessionSource));
   EXPECT_LT((*sessions)[0].timestamp, base::Time::Now() + base::Seconds(1));
@@ -97,12 +97,12 @@ TEST_F(ApkCacheDatabaseTest, DatabaseQuery) {
 
   // Query file entries
   auto file_entries = db.GetFileEntries();
-  ASSERT_TRUE(file_entries != base::nullopt);
+  ASSERT_TRUE(file_entries != std::nullopt);
   EXPECT_GT((*file_entries)[0].id, 0);
   EXPECT_EQ((*file_entries)[0].package_name, std::string(kTestPackageName));
   EXPECT_EQ((*file_entries)[0].version_code, kTestVersionCode);
   EXPECT_EQ((*file_entries)[0].type, std::string(kFileTypeBaseApk));
-  EXPECT_EQ((*file_entries)[0].attributes, base::nullopt);
+  EXPECT_EQ((*file_entries)[0].attributes, std::nullopt);
   EXPECT_EQ((*file_entries)[0].size, kTestPackageSize);
   EXPECT_EQ((*file_entries)[0].hash, std::string(kTestPackageHash));
   EXPECT_LT((*file_entries)[0].access_time,
@@ -125,7 +125,7 @@ TEST_F(ApkCacheDatabaseTest, DeleteSession) {
 
   // Query sessions
   auto sessions = db.GetSessions();
-  ASSERT_TRUE(sessions != base::nullopt);
+  ASSERT_TRUE(sessions != std::nullopt);
   EXPECT_EQ(sessions->size(), 1);
 
   // Delete session
@@ -133,12 +133,12 @@ TEST_F(ApkCacheDatabaseTest, DeleteSession) {
 
   // Session should be removed
   sessions = db.GetSessions();
-  ASSERT_TRUE(sessions != base::nullopt);
+  ASSERT_TRUE(sessions != std::nullopt);
   EXPECT_EQ(sessions->size(), 0);
 
   // File entry should also be removed
   auto file_entries = db.GetFileEntries();
-  ASSERT_TRUE(file_entries != base::nullopt);
+  ASSERT_TRUE(file_entries != std::nullopt);
   EXPECT_EQ(file_entries->size(), 0);
 
   EXPECT_EQ(db.Close(), SQLITE_OK);
@@ -156,7 +156,7 @@ TEST_F(ApkCacheDatabaseTest, DeleteFileEntry) {
 
   // Query file entries
   auto file_entries = db.GetFileEntries();
-  ASSERT_TRUE(file_entries != base::nullopt);
+  ASSERT_TRUE(file_entries != std::nullopt);
   EXPECT_EQ(file_entries->size(), 1);
 
   // Delete file entry
@@ -164,12 +164,12 @@ TEST_F(ApkCacheDatabaseTest, DeleteFileEntry) {
 
   // File entry should be removed
   file_entries = db.GetFileEntries();
-  ASSERT_TRUE(file_entries != base::nullopt);
+  ASSERT_TRUE(file_entries != std::nullopt);
   EXPECT_EQ(file_entries->size(), 0);
 
   // Session should not be removed
   auto sessions = db.GetSessions();
-  ASSERT_TRUE(sessions != base::nullopt);
+  ASSERT_TRUE(sessions != std::nullopt);
   EXPECT_EQ(sessions->size(), 1);
 
   EXPECT_EQ(db.Close(), SQLITE_OK);

@@ -5,13 +5,13 @@
 #include "tpm_manager/server/tpm_status_impl.h"
 
 #include <algorithm>
+#include <optional>
 #include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/file_utils.h>
 #include <tpm_manager/server/tpm_util.h>
 #include <trousers/trousers.h>
@@ -106,7 +106,7 @@ bool TpmStatusImpl::GetTpmOwned(TpmStatus::TpmOwnershipStatus* status) {
     return true;
   }
 
-  const base::Optional<TpmStatus::TpmOwnershipStatus> owner_password_status =
+  const std::optional<TpmStatus::TpmOwnershipStatus> owner_password_status =
       TestTpmWithDefaultOwnerPassword();
   if (!owner_password_status.has_value()) {
     LOG(ERROR) << __func__ << ": Failed to test default owner password.";
@@ -120,7 +120,7 @@ bool TpmStatusImpl::GetTpmOwned(TpmStatus::TpmOwnershipStatus* status) {
     return true;
   }
 
-  const base::Optional<bool> is_default_srk_auth = TestTpmSrkWithDefaultAuth();
+  const std::optional<bool> is_default_srk_auth = TestTpmSrkWithDefaultAuth();
   if (!is_default_srk_auth.has_value()) {
     LOG(ERROR) << __func__ << ": Failed to test default SRK auth.";
     return false;
@@ -267,7 +267,7 @@ bool TpmStatusImpl::GetVersionInfo(uint32_t* family,
   return true;
 }
 
-base::Optional<TpmStatus::TpmOwnershipStatus>
+std::optional<TpmStatus::TpmOwnershipStatus>
 TpmStatusImpl::TestTpmWithDefaultOwnerPassword() {
   if (base::PathExists(base::FilePath(kTpmFullyInitializedPath))) {
     owner_password_status_ = TpmStatus::kTpmOwned;
@@ -280,7 +280,7 @@ TpmStatusImpl::TestTpmWithDefaultOwnerPassword() {
   TpmConnection connection(GetDefaultOwnerPassword());
   TSS_HTPM tpm_handle = connection.GetTpm();
   if (tpm_handle == 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Call Tspi_TPM_GetStatus to test the default owner password.
@@ -307,7 +307,7 @@ TpmStatusImpl::TestTpmWithDefaultOwnerPassword() {
   return owner_password_status_;
 }
 
-base::Optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
+std::optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
   if (GetNoSrkAuth(local_data_store_)) {
     is_srk_auth_default_ = false;
   }
@@ -324,7 +324,7 @@ base::Optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
                     connection.GetContext(), TSS_PS_TYPE_SYSTEM, SRK_UUID,
                     srk_handle.ptr()))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_Context_LoadKeyByUUID";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Check if the SRK wants a password
@@ -333,7 +333,7 @@ base::Optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
                     srk_handle, TSS_TSPATTRIB_KEY_INFO,
                     TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, &srk_authusage))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_GetAttribUint32";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!srk_authusage) {
@@ -346,7 +346,7 @@ base::Optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
   if (TPM_ERROR(result = Tspi_GetPolicyObject(srk_handle, TSS_POLICY_USAGE,
                                               &srk_usage_policy))) {
     TPM_LOG(ERROR, result) << "Error calling Tspi_GetPolicyObject";
-    return base::nullopt;
+    return std::nullopt;
   }
   BYTE default_auth[0];
   result = Tspi_Policy_SetSecret(srk_usage_policy, TSS_SECRET_MODE_PLAIN, 0,
@@ -354,7 +354,7 @@ base::Optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
   if (result != TPM_SUCCESS) {
     TPM_LOG(ERROR, result)
         << "Unexpected error calling |Tspi_Policy_SetSecret|.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   unsigned public_srk_size;
@@ -370,7 +370,7 @@ base::Optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
     }
   } else {
     TPM_LOG(ERROR, result) << "Unexpected error calling |Tspi_Key_GetPubKey|.";
-    return base::nullopt;
+    return std::nullopt;
   }
   return is_srk_auth_default_;
 }

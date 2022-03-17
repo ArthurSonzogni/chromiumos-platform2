@@ -159,9 +159,9 @@ class PrivilegedProbeFunction : public ProbeFunction {
 
   // Serializes this probe function and passes it to helper.  Helper function
   // for InvokeHelper() where the output is known in advanced in JSON format.
-  // The transform of JSON will be automatically applied.  Returns base::nullopt
+  // The transform of JSON will be automatically applied.  Returns std::nullopt
   // on failure.
-  base::Optional<base::Value> InvokeHelperToJSON() const;
+  std::optional<base::Value> InvokeHelperToJSON() const;
 
  private:
   // This method is called after |EvalImpl()| finished. The |result| is the

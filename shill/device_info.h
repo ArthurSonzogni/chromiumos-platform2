@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -16,7 +17,6 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
@@ -259,7 +259,7 @@ class DeviceInfo {
   // an identifier indicating its type.
   virtual Technology GetDeviceTechnology(
       const std::string& iface_name,
-      const base::Optional<std::string>& kind) const;
+      const std::optional<std::string>& kind) const;
   // Checks the device specified by |iface_name| to see if it's a modem device.
   // This method assumes that |iface_name| has already been determined to be
   // using the cdc_ether / cdc_ncm driver.

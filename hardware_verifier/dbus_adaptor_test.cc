@@ -6,6 +6,7 @@
 #include "hardware_verifier/dbus_adaptor.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -64,7 +65,7 @@ TEST_F(DBusAdaptorTest, VerifyComponents_Success) {
       .WillByDefault(
           DoAll(SetArgPointee<2>(ReportGetterErrorCode ::kErrorCodeNoError),
                 Return(vr)));
-  base::Optional<VerifyComponentsReply> reply;
+  std::optional<VerifyComponentsReply> reply;
   auto response =
       std::make_unique<MockDBusMethodResponse<VerifyComponentsReply>>(nullptr);
   response->save_return_args(&reply);
@@ -90,8 +91,8 @@ TEST_F(DBusAdaptorTest, VerifyComponents_Fail) {
        ERROR_PROBE_RESULT_HW_VERIFICATION_SPEC_MISALIGNMENT}};
   for (const auto& [input, output] : testdata) {
     ON_CALL(*vr_getter_, Get(_, _, _))
-        .WillByDefault(DoAll(SetArgPointee<2>(input), Return(base::nullopt)));
-    base::Optional<VerifyComponentsReply> reply;
+        .WillByDefault(DoAll(SetArgPointee<2>(input), Return(std::nullopt)));
+    std::optional<VerifyComponentsReply> reply;
     auto response =
         std::make_unique<MockDBusMethodResponse<VerifyComponentsReply>>(
             nullptr);

@@ -7,7 +7,7 @@
 
 #include <base/macros.h>
 #include <base/observer_list.h>
-#include <base/optional.h>
+#include <optional>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
@@ -54,7 +54,7 @@ class PowerdEventServiceImpl : public PowerdEventService,
 
   // Latest external power AC event since powerd sent PowerSupplyPollSignal
   // (updates every 30 seconds or when something changes in power supply).
-  base::Optional<PowerdEventService::Observer::PowerEventType>
+  std::optional<PowerdEventService::Observer::PowerEventType>
       external_power_ac_event_;
 };
 

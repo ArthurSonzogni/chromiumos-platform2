@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -59,7 +60,7 @@ class CameraTool {
   }
 
  private:
-  base::Optional<cros::DeviceConfig> device_config_;
+  std::optional<cros::DeviceConfig> device_config_;
 };
 
 bool StringEqualsCaseInsensitiveASCII(const std::string& a,

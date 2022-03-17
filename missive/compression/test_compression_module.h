@@ -5,6 +5,7 @@
 #ifndef MISSIVE_COMPRESSION_TEST_COMPRESSION_MODULE_H_
 #define MISSIVE_COMPRESSION_TEST_COMPRESSION_MODULE_H_
 
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
@@ -28,7 +29,7 @@ class TestCompressionModuleStrict : public CompressionModule {
               CompressRecord,
               (std::string record,
                base::OnceCallback<void(
-                   std::string, absl::optional<CompressionInformation>)> cb),
+                   std::string, std::optional<CompressionInformation>)> cb),
               (const override));
 
  protected:

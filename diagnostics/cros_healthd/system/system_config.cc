@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/system/system_config.h"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 
 #include <chromeos/chromeos-config/libcros_config/cros_config.h>
@@ -151,19 +152,19 @@ bool SystemConfig::IsWilcoDevice() {
                      });
 }
 
-base::Optional<std::string> SystemConfig::GetMarketingName() {
+std::optional<std::string> SystemConfig::GetMarketingName() {
   std::string marketing_name;
   if (!cros_config_->GetString(kBrandingPath, kMarketingNameProperty,
                                &marketing_name)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return marketing_name;
 }
 
-base::Optional<std::string> SystemConfig::GetOemName() {
+std::optional<std::string> SystemConfig::GetOemName() {
   std::string oem_name;
   if (!cros_config_->GetString(kBrandingPath, kOemNameProperty, &oem_name)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return oem_name;
 }

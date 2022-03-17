@@ -6,6 +6,7 @@
 
 #include <limits.h>
 #include <memory>
+#include <optional>
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>

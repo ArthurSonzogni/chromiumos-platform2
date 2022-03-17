@@ -149,11 +149,11 @@ class LIBMEMS_EXPORT FakeIioChannel : public IioChannel {
   bool IsScanElementsEnabled() { return scan_elements_enabled_; }
   bool SetScanElementsEnabled(bool en) override;
 
-  base::Optional<std::string> ReadStringAttribute(
+  std::optional<std::string> ReadStringAttribute(
       const std::string& name) const override;
-  base::Optional<int64_t> ReadNumberAttribute(
+  std::optional<int64_t> ReadNumberAttribute(
       const std::string& name) const override;
-  base::Optional<double> ReadDoubleAttribute(
+  std::optional<double> ReadDoubleAttribute(
       const std::string& name) const override;
 
   bool WriteStringAttribute(const std::string& name,
@@ -165,8 +165,8 @@ class LIBMEMS_EXPORT FakeIioChannel : public IioChannel {
   // attribute exists, the value is returned; otherwise, if the channel's id is
   // within kFakeAccelChns, the corresponding value in |kFakeAccelSamples| is
   // returned.
-  // Returns base::nullopt if none of the above is true.
-  base::Optional<int64_t> GetData(int index);
+  // Returns std::nullopt if none of the above is true.
+  std::optional<int64_t> GetData(int index);
 
  private:
   std::string id_;
@@ -187,15 +187,15 @@ class LIBMEMS_EXPORT FakeIioEvent : public IioEvent {
   // IioEvent overrides.
   bool IsEnabled() const override { return enabled_; }
   void SetEnabled(bool en) override;
-  base::Optional<std::string> ReadStringAttribute(
+  std::optional<std::string> ReadStringAttribute(
       const std::string& name) const override;
   bool WriteStringAttribute(const std::string& name,
                             const std::string& value) override;
 
   // |index| should be within [0, |kEventNumber|). If direction is either,
   // returns rising and falling by turn.
-  // Returns base::nullopt if |index| is out of bound.
-  base::Optional<uint64_t> GetData(int index);
+  // Returns std::nullopt if |index| is out of bound.
+  std::optional<uint64_t> GetData(int index);
 
  private:
   bool dir_turn_ = true;
@@ -221,11 +221,11 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   const char* GetName() const override { return name_.c_str(); }
   int GetId() const override { return id_; }
 
-  base::Optional<std::string> ReadStringAttribute(
+  std::optional<std::string> ReadStringAttribute(
       const std::string& name) const override;
-  base::Optional<int64_t> ReadNumberAttribute(
+  std::optional<int64_t> ReadNumberAttribute(
       const std::string& name) const override;
-  base::Optional<double> ReadDoubleAttribute(
+  std::optional<double> ReadDoubleAttribute(
       const std::string& name) const override;
 
   bool WriteStringAttribute(const std::string& name,
@@ -252,17 +252,15 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
   bool DisableBuffer() override;
   bool IsBufferEnabled(size_t* n = nullptr) const override;
 
-  base::Optional<size_t> GetSampleSize() const override {
-    return base::nullopt;
-  }
+  std::optional<size_t> GetSampleSize() const override { return std::nullopt; }
 
   bool CreateBuffer() override;
-  base::Optional<int32_t> GetBufferFd() override;
-  base::Optional<IioSample> ReadSample() override;
+  std::optional<int32_t> GetBufferFd() override;
+  std::optional<IioSample> ReadSample() override;
   void FreeBuffer() override;
 
-  base::Optional<int32_t> GetEventFd() override;
-  base::Optional<iio_event_data> ReadEvent() override;
+  std::optional<int32_t> GetEventFd() override;
+  std::optional<iio_event_data> ReadEvent() override;
 
   // Simulates a bad device: not readable fd and fails all reading samples and
   // events.
@@ -311,7 +309,7 @@ class LIBMEMS_EXPORT FakeIioDevice : public IioDevice {
     int index = 0;
 
     bool is_paused = false;
-    base::Optional<int> pause_index;
+    std::optional<int> pause_index;
     base::OnceCallback<void()> pause_callback;
 
     // Pops from the failure with the smallest sample index.

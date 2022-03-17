@@ -6,6 +6,7 @@
 #define DLCSERVICE_DLC_SERVICE_H_
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -13,7 +14,6 @@
 
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <brillo/message_loops/message_loop.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -142,7 +142,7 @@ class DlcService : public DlcServiceInterface {
   void OnSessionStateChangedSignal(const std::string& state);
 
   // Holds the DLC that is being installed by update_engine.
-  base::Optional<DlcId> installing_dlc_id_;
+  std::optional<DlcId> installing_dlc_id_;
 
   std::unique_ptr<DlcManagerInterface> dlc_manager_;
 

@@ -9,6 +9,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -213,7 +214,7 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   // constructor, hardware specific.
   uint8_t logical_slot_;
   // Store the previous active slot before a switch slot
-  base::Optional<uint32_t> stored_active_slot_;
+  std::optional<uint32_t> stored_active_slot_;
 
   // Ask SendApdu commands to send final result and status words only.
   // If set, intermediate procedure bytes are not sent by the Euicc.

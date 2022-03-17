@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/base64.h>
@@ -245,32 +246,32 @@ int64_t GetVmMemoryMiB() {
   return vm_memory_mb;
 }
 
-base::Optional<int32_t> ReadFileToInt32(const base::FilePath& filename) {
+std::optional<int32_t> ReadFileToInt32(const base::FilePath& filename) {
   std::string str;
   int int_val;
   if (base::ReadFileToString(filename, &str) &&
       base::StringToInt(
           base::TrimWhitespaceASCII(str, base::TrimPositions::TRIM_TRAILING),
           &int_val)) {
-    return base::Optional<int32_t>(int_val);
+    return std::optional<int32_t>(int_val);
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<int32_t> GetCpuPackageId(int32_t cpu) {
+std::optional<int32_t> GetCpuPackageId(int32_t cpu) {
   base::FilePath topology_path(base::StringPrintf(
       "/sys/devices/system/cpu/cpu%d/topology/physical_package_id", cpu));
   return ReadFileToInt32(topology_path);
 }
 
-base::Optional<int32_t> GetCpuCapacity(int32_t cpu) {
+std::optional<int32_t> GetCpuCapacity(int32_t cpu) {
   base::FilePath cpu_capacity_path(
       base::StringPrintf("/sys/devices/system/cpu/cpu%d/cpu_capacity", cpu));
   return ReadFileToInt32(cpu_capacity_path);
 }
 
-base::Optional<std::string> GetCpuAffinityFromClusters(
+std::optional<std::string> GetCpuAffinityFromClusters(
     const std::vector<std::vector<std::string>>& cpu_clusters,
     const std::map<int32_t, std::vector<std::string>>& cpu_capacity_groups) {
   if (cpu_clusters.size() > 1) {
@@ -301,7 +302,7 @@ base::Optional<std::string> GetCpuAffinityFromClusters(
     }
     return base::JoinString(cpu_affinities, ":");
   } else {
-    return base::nullopt;
+    return std::nullopt;
   }
 }
 
@@ -411,7 +412,7 @@ void RunCrosvmCommand(std::string command, std::string socket_path) {
   RunCrosvmCommand({command, socket_path});
 }
 
-base::Optional<BalloonStats> GetBalloonStats(std::string socket_path) {
+std::optional<BalloonStats> GetBalloonStats(std::string socket_path) {
   // TODO(hikalium): Rewrite this logic to use FFI
   // after b/188858559 is done.
   brillo::ProcessImpl crosvm;
@@ -422,7 +423,7 @@ base::Optional<BalloonStats> GetBalloonStats(std::string socket_path) {
 
   if (crosvm.Run() != 0) {
     LOG(ERROR) << "Failed to run crosvm balloon_stats";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   base::ScopedFD read_fd(crosvm.GetPipe(STDOUT_FILENO));
@@ -432,39 +433,39 @@ base::Optional<BalloonStats> GetBalloonStats(std::string socket_path) {
       read(read_fd.get(), crosvm_response.data(), crosvm_response.size());
   if (response_size < 0) {
     LOG(ERROR) << "Failed to read balloon_stats";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (response_size == crosvm_response.size()) {
     LOG(ERROR) << "Response of balloon_stats is too large";
-    return base::nullopt;
+    return std::nullopt;
   }
   crosvm_response.resize(response_size);
 
   auto root_value = base::JSONReader::Read(crosvm_response);
   if (!root_value) {
     LOG(ERROR) << "Failed to parse balloon_stats JSON";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!root_value->is_dict()) {
     LOG(ERROR) << "Output of balloon_stats was not a dict";
-    return base::nullopt;
+    return std::nullopt;
   }
   auto balloon_stats = root_value->FindDictKey("BalloonStats");
   if (!balloon_stats || !balloon_stats->is_dict()) {
     LOG(ERROR) << "BalloonStats dict not found";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return ParseBalloonStats(*balloon_stats);
 }
 
-base::Optional<BalloonStats> ParseBalloonStats(
+std::optional<BalloonStats> ParseBalloonStats(
     const base::Value& balloon_stats) {
   auto additional_stats = balloon_stats.FindDictKey("stats");
   if (!additional_stats || !additional_stats->is_dict()) {
     LOG(ERROR) << "stats dict not found";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   BalloonStats stats;
@@ -652,14 +653,14 @@ void CustomParametersForDev::Apply(base::StringPairs* args) {
   }
 }
 
-base::Optional<const std::string>
-CustomParametersForDev::ObtainSpecialParameter(const std::string& key) {
+std::optional<const std::string> CustomParametersForDev::ObtainSpecialParameter(
+    const std::string& key) {
   if (!initialized_)
-    return base::nullopt;
+    return std::nullopt;
   if (special_parameters_.find(key) != special_parameters_.end()) {
     return special_parameters_[key];
   } else {
-    return base::nullopt;
+    return std::nullopt;
   }
 }
 

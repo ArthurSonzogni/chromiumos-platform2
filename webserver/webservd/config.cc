@@ -4,13 +4,13 @@
 
 #include "webservd/config.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/values.h>
 #include <brillo/errors/error_codes.h>
 
@@ -48,7 +48,7 @@ const char kDefaultConfig[] = R"({
 bool LoadHandlerConfig(const base::Value& handler_value,
                        Config::ProtocolHandler* handler_config,
                        brillo::ErrorPtr* error) {
-  base::Optional<int> port = handler_value.FindIntKey(kPortKey);
+  std::optional<int> port = handler_value.FindIntKey(kPortKey);
   if (!port.has_value()) {
     brillo::Error::AddTo(error, FROM_HERE, webservd::errors::kDomain,
                          webservd::errors::kInvalidConfig, "Port is missing");
@@ -63,7 +63,7 @@ bool LoadHandlerConfig(const base::Value& handler_value,
   handler_config->port = *port;
 
   // Allow "use_tls" to be omitted, so not returning an error here.
-  base::Optional<bool> use_tls = handler_value.FindBoolKey(kUseTLSKey);
+  std::optional<bool> use_tls = handler_value.FindBoolKey(kUseTLSKey);
   if (use_tls.has_value())
     handler_config->use_tls = *use_tls;
 

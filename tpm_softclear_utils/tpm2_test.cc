@@ -4,11 +4,11 @@
 
 #include "tpm_softclear_utils/tpm2_impl.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
@@ -98,7 +98,7 @@ TEST_F(Tpm2ImplTest, GetLockoutPasswordFromFile) {
   local_data.set_lockout_password(expected_lockout_password);
   tpm2_impl_.set_local_data_content(local_data.SerializeAsString());
 
-  base::Optional<std::string> actual_lockout_password =
+  std::optional<std::string> actual_lockout_password =
       tpm2_impl_.GetAuthForOwnerReset();
   EXPECT_TRUE(actual_lockout_password);
   EXPECT_EQ(*actual_lockout_password, expected_lockout_password);
@@ -108,7 +108,7 @@ TEST_F(Tpm2ImplTest, GetLockoutPasswordFromFile) {
 TEST_F(Tpm2ImplTest, GetDefaultLockoutPassword) {
   EXPECT_CALL(mock_tpm_state_, IsLockoutPasswordSet()).WillOnce(Return(false));
 
-  base::Optional<std::string> actual_lockout_password =
+  std::optional<std::string> actual_lockout_password =
       tpm2_impl_.GetAuthForOwnerReset();
   EXPECT_TRUE(actual_lockout_password);
   EXPECT_EQ(*actual_lockout_password, kDefaultLockoutPassword);

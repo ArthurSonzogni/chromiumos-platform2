@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -219,7 +220,7 @@ class ServiceTest : public PropertyStoreTest {
     return SortingOrderIs(service0, service1, kShouldCompareConnectivityState);
   }
 
-  base::Optional<base::TimeDelta> GetTimeSinceFailed() {
+  std::optional<base::TimeDelta> GetTimeSinceFailed() {
     // Wait 1 MS before calling GetTimeSinceFailed.
     base::RunLoop run_loop;
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
@@ -768,7 +769,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
   service_->SetFailure(Service::kFailureOutOfRange);
   EXPECT_TRUE(service_->IsFailed());
-  base::Optional<base::TimeDelta> time_failed = GetTimeSinceFailed();
+  std::optional<base::TimeDelta> time_failed = GetTimeSinceFailed();
   ASSERT_TRUE(time_failed);
   EXPECT_GT(*time_failed, base::TimeDelta());
   EXPECT_GT(service_->previous_error_serial_number_, 0);

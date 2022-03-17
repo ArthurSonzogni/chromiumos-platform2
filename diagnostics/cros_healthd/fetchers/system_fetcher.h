@@ -9,7 +9,6 @@
 
 #include <base/callback_forward.h>
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"

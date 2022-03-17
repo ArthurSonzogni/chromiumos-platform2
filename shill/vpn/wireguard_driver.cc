@@ -7,6 +7,7 @@
 #include <poll.h>
 
 #include <iterator>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -273,7 +274,7 @@ bool WireGuardDriver::Load(const StoreInterface* storage,
   }
 
   for (const auto& peer_json : encoded_peers) {
-    base::Optional<base::Value> val = base::JSONReader::Read(peer_json);
+    std::optional<base::Value> val = base::JSONReader::Read(peer_json);
     if (!val || !val->is_dict()) {
       LOG(ERROR) << "Failed to parse a peer. Skipped it.";
       continue;

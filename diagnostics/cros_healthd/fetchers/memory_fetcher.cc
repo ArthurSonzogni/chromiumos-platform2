@@ -4,11 +4,12 @@
 
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 
+#include <optional>
 #include <string>
 #include <utility>
+
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_tokenizer.h>
@@ -22,7 +23,7 @@ namespace {
 
 namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-using OptionalProbeErrorPtr = base::Optional<mojo_ipc::ProbeErrorPtr>;
+using OptionalProbeErrorPtr = std::optional<mojo_ipc::ProbeErrorPtr>;
 
 // Path to procfs, relative to the root directory.
 constexpr char kRelativeProcCpuInfoPath[] = "proc/cpuinfo";

@@ -5,7 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_MOJO_ADAPTER_CROS_HEALTHD_MOJO_ADAPTER_DELEGATE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_MOJO_ADAPTER_CROS_HEALTHD_MOJO_ADAPTER_DELEGATE_H_
 
-#include <base/optional.h>
+#include <optional>
+
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
@@ -19,7 +20,7 @@ class CrosHealthdMojoAdapterDelegate {
 
   // Bootstraps a mojo connection to cros_healthd, then returns one end of the
   // bound pipe.
-  virtual base::Optional<mojo::PendingRemote<
+  virtual std::optional<mojo::PendingRemote<
       chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>>
   GetCrosHealthdServiceFactory() = 0;
 };

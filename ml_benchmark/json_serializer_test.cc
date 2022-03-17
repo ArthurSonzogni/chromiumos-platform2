@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -18,12 +19,12 @@ namespace {
 
 // Helps avoid having to do separate checks for key presence and value
 // correctness.
-base::Optional<std::string> GetStringKey(const base::Value& v,
-                                         base::StringPiece key) {
+std::optional<std::string> GetStringKey(const base::Value& v,
+                                        base::StringPiece key) {
   const std::string* result = v.FindStringKey(key);
   if (result)
     return *result;
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace
@@ -35,7 +36,7 @@ TEST(BenchmarkResultsToJson, Basics) {
   results.set_status(chrome::ml_benchmark::RUNTIME_ERROR);
   results.set_results_message("Test error");
 
-  const base::Optional<base::Value> json =
+  const std::optional<base::Value> json =
       ml_benchmark::BenchmarkResultsToJson(results);
   ASSERT_TRUE(json);
   EXPECT_EQ(json->FindIntKey("status"), chrome::ml_benchmark::RUNTIME_ERROR);
@@ -50,7 +51,7 @@ TEST(BenchmarkResultsToJson, Percentiles) {
   latency_map[95] = 3000;
   latency_map[99] = 4000;
 
-  const base::Optional<base::Value> json =
+  const std::optional<base::Value> json =
       ml_benchmark::BenchmarkResultsToJson(results);
   ASSERT_TRUE(json);
   const base::Value* latencies = json->FindKeyOfType(
@@ -84,7 +85,7 @@ TEST(BenchmarkResultsToJson, Metrics) {
     m->add_values(42);
   }
 
-  const base::Optional<base::Value> json =
+  const std::optional<base::Value> json =
       ml_benchmark::BenchmarkResultsToJson(results);
   ASSERT_TRUE(json);
   const base::Value* metrics =
@@ -124,11 +125,11 @@ TEST(BenchmarkResultsToJson, Metrics) {
 
 TEST(BenchmarkResultsToJson, MetricsCardinality) {
   auto get_metrics_size =
-      [](const BenchmarkResults& results) -> base::Optional<size_t> {
-    const base::Optional<base::Value> json =
+      [](const BenchmarkResults& results) -> std::optional<size_t> {
+    const std::optional<base::Value> json =
         ml_benchmark::BenchmarkResultsToJson(results);
     if (!json)
-      return base::nullopt;
+      return std::nullopt;
 
     const base::Value* metrics =
         json->FindKeyOfType("metrics", base::Value::Type::LIST);
@@ -174,7 +175,7 @@ TEST(BenchmarkResultsToJson, MetricsCardinality) {
     m->add_values(1);
     m->add_values(2);
     m->add_values(3);
-    EXPECT_EQ(get_metrics_size(results), base::nullopt);
+    EXPECT_EQ(get_metrics_size(results), std::nullopt);
   }
 
   {
@@ -182,7 +183,7 @@ TEST(BenchmarkResultsToJson, MetricsCardinality) {
     Metric* m = results.add_metrics();
     m->set_cardinality(Metric::SINGLE);
     // No results instead of a single one is not OK.
-    EXPECT_EQ(get_metrics_size(results), base::nullopt);
+    EXPECT_EQ(get_metrics_size(results), std::nullopt);
   }
 }
 

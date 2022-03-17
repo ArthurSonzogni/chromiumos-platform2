@@ -6,11 +6,11 @@
 #define MINIOS_SCREEN_CONTROLLER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/optional.h>
 #include <brillo/errors/error.h>
 #include <minios/proto_bindings/minios.pb.h>
 
@@ -122,7 +122,7 @@ class ScreenController : public ScreenControllerInterface,
 
   std::shared_ptr<NetworkManagerInterface> network_manager_;
 
-  base::Optional<State::States> dbus_recovery_state_;
+  std::optional<State::States> dbus_recovery_state_;
   // Pre-seeded network credentials.
   std::string seeded_ssid_;
   std::string seeded_passphrase_;

@@ -8,6 +8,7 @@
 #include <sys/statvfs.h>
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -36,10 +37,10 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
   virtual int StatVFS(const base::FilePath& path, struct statvfs* st);
 
   // Retrieves the stateful partition's thinpool.
-  virtual base::Optional<brillo::Thinpool> GetThinpool();
+  virtual std::optional<brillo::Thinpool> GetThinpool();
 
   // Retrieves the root device.
-  virtual base::Optional<base::FilePath> GetRootDevice();
+  virtual std::optional<base::FilePath> GetRootDevice();
 
   // Gets the block device size in bytes for a given device.
   virtual int64_t GetBlockDeviceSize(const base::FilePath& device);

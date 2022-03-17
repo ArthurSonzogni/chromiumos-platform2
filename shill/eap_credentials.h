@@ -6,11 +6,11 @@
 #define SHILL_EAP_CREDENTIALS_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/macros.h>
-#include <base/optional.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <libpasswordprovider/password_provider.h>
 
@@ -107,12 +107,12 @@ class EapCredentials {
   // wpa_supplicant by translating |domain_suffix_match_list| and filtering out
   // entries that are not valid domain names according to
   // `ValidDomainSuffixMatch`.
-  static base::Optional<std::string> TranslateDomainSuffixMatch(
+  static std::optional<std::string> TranslateDomainSuffixMatch(
       const std::vector<std::string>& domain_suffix_match_list);
 
   // Returns subject alternative name match in the format used by
   // wpa_supplicant by translating |subject_alternative_name_match_list|.
-  static base::Optional<std::string> TranslateSubjectAlternativeNameMatch(
+  static std::optional<std::string> TranslateSubjectAlternativeNameMatch(
       const std::vector<std::string>& subject_alternative_name_match_list);
 
   std::string GetEapPassword(Error* error) const;

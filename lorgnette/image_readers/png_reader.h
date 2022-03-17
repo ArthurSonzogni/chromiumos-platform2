@@ -6,6 +6,7 @@
 #define LORGNETTE_IMAGE_READERS_PNG_READER_H_
 
 #include <memory>
+#include <optional>
 
 #include <png.h>
 
@@ -20,7 +21,7 @@ class PngReader final : public ImageReader {
   static std::unique_ptr<ImageReader> Create(
       brillo::ErrorPtr* error,
       const ScanParameters& params,
-      const base::Optional<int>& resolution,
+      const std::optional<int>& resolution,
       base::ScopedFILE out_file);
   ~PngReader();
 
@@ -31,7 +32,7 @@ class PngReader final : public ImageReader {
   PngReader(const ScanParameters& params, base::ScopedFILE out_file);
   bool ValidateParams(brillo::ErrorPtr* error) override;
   bool Initialize(brillo::ErrorPtr* error,
-                  const base::Optional<int>& resolution) override;
+                  const std::optional<int>& resolution) override;
 
   // Whether or not the PngReader is in a valid state.
   bool valid_ = false;

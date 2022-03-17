@@ -5,9 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_SYSTEM_CONFIG_INTERFACE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_SYSTEM_CONFIG_INTERFACE_H_
 
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 namespace diagnostics {
 
@@ -44,10 +43,10 @@ class SystemConfigInterface {
   virtual bool IsWilcoDevice() = 0;
 
   // Returns the marketing name associated with this device.
-  virtual base::Optional<std::string> GetMarketingName() = 0;
+  virtual std::optional<std::string> GetMarketingName() = 0;
 
   // Returns the oem name associated with this device.
-  virtual base::Optional<std::string> GetOemName() = 0;
+  virtual std::optional<std::string> GetOemName() = 0;
 
   // Returns the code name associated with this device.
   virtual std::string GetCodeName() = 0;

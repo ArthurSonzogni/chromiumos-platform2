@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <optional>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
@@ -107,7 +108,7 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
   const auto probe_config_loader =
       std::make_unique<runtime_probe::ProbeConfigLoaderImpl>();
 
-  base::Optional<runtime_probe::ProbeConfigData> probe_config_data;
+  std::optional<runtime_probe::ProbeConfigData> probe_config_data;
   if (config_file_path == "") {
     probe_config_data = probe_config_loader->LoadDefault();
   } else {

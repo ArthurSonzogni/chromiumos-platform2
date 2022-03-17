@@ -5,15 +5,14 @@
 #ifndef OOBE_CONFIG_NETWORK_EXPORTER_H_
 #define OOBE_CONFIG_NETWORK_EXPORTER_H_
 
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 namespace oobe_config {
 
 // Exports network configuration for rollback from Chrome. Only call with the
 // oobe_config_save user and while Chrome and shill are running.
-base::Optional<std::string> ExportNetworkConfig();
+std::optional<std::string> ExportNetworkConfig();
 
 }  // namespace oobe_config
 

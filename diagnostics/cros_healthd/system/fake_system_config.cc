@@ -4,6 +4,8 @@
 
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 
+#include <optional>
+
 namespace diagnostics {
 
 FakeSystemConfig::FakeSystemConfig() = default;
@@ -49,11 +51,11 @@ bool FakeSystemConfig::IsWilcoDevice() {
   return wilco_device_;
 }
 
-base::Optional<std::string> FakeSystemConfig::GetMarketingName() {
+std::optional<std::string> FakeSystemConfig::GetMarketingName() {
   return marketing_name_;
 }
 
-base::Optional<std::string> FakeSystemConfig::GetOemName() {
+std::optional<std::string> FakeSystemConfig::GetOemName() {
   return oem_name_;
 }
 
@@ -94,11 +96,11 @@ void FakeSystemConfig::SetIsWilcoDevice(bool value) {
 }
 
 void FakeSystemConfig::SetMarketingName(
-    const base::Optional<std::string>& value) {
+    const std::optional<std::string>& value) {
   marketing_name_ = value;
 }
 
-void FakeSystemConfig::SetOemName(const base::Optional<std::string>& value) {
+void FakeSystemConfig::SetOemName(const std::optional<std::string>& value) {
   oem_name_ = value;
 }
 

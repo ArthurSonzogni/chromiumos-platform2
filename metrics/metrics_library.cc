@@ -20,6 +20,7 @@
 
 #include <cstdio>
 #include <cstring>
+#include <optional>
 #include <vector>
 
 #include "metrics/serialization/metric_sample.h"
@@ -173,7 +174,7 @@ bool MetricsLibrary::ConsentId(std::string* id) {
   return true;
 }
 
-absl::optional<bool> MetricsLibrary::ArePerUserMetricsEnabled() {
+std::optional<bool> MetricsLibrary::ArePerUserMetricsEnabled() {
   base::FileEnumerator consent_files(
       daemon_store_dir_,
       /*recursive=*/true, base::FileEnumerator::FILES, kDaemonStoreConsentFile,
@@ -228,7 +229,7 @@ bool MetricsLibrary::AreMetricsEnabledWithPerUser(bool per_user) {
     cached_enabled_time_ = this_check_time;
 
     if (per_user) {
-      absl::optional<bool> user_consent = ArePerUserMetricsEnabled();
+      std::optional<bool> user_consent = ArePerUserMetricsEnabled();
       if (user_consent.has_value() && !user_consent.value()) {
         // If the user consented, also make sure device owner opted in.
         // (Theoretically, if device policy is off, the user shouldn't be *able*

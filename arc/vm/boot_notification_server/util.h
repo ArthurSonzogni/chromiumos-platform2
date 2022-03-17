@@ -7,11 +7,11 @@
 
 #include <sys/socket.h>
 
+#include <optional>
 #include <string>
 #include <utility>
 
 #include <base/files/scoped_file.h>
-#include <base/optional.h>
 
 // Returns the length of the corresponding sockaddr_XX structure for the given
 // socket family.
@@ -27,17 +27,17 @@ base::ScopedFD WaitForClientConnect(int fd);
 
 // Reads from fd until EOF (read() returns 0). If able to read successfully,
 // returns read data as a string. Else, returns empty optional.
-base::Optional<std::string> ReadFD(int fd);
+std::optional<std::string> ReadFD(int fd);
 
 // Locates the CID key in the given string and returns the CID value if it
 // exists, and the |props| string with the CID line removed. Else, returns empty
 // optional. This function expects the CID line to be at the beginning of the
 // string.
-base::Optional<std::pair<unsigned int, std::string>> ExtractCidValue(
+std::optional<std::pair<unsigned int, std::string>> ExtractCidValue(
     const std::string& props);
 
 // Returns the CID of the peer that is connected to |fd|, which must be a
 // connected VSOCK socket.
-base::Optional<unsigned int> GetPeerCid(int fd);
+std::optional<unsigned int> GetPeerCid(int fd);
 
 #endif  // ARC_VM_BOOT_NOTIFICATION_SERVER_UTIL_H_

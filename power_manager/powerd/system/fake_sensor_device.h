@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_SYSTEM_FAKE_SENSOR_DEVICE_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -18,8 +19,8 @@ namespace system {
 class FakeSensorDevice : public cros::mojom::SensorDevice {
  public:
   FakeSensorDevice(bool is_color_sensor,
-                   base::Optional<std::string> name,
-                   base::Optional<std::string> location);
+                   std::optional<std::string> name,
+                   std::optional<std::string> location);
 
   mojo::ReceiverId AddReceiver(
       mojo::PendingReceiver<cros::mojom::SensorDevice> pending_receiver);

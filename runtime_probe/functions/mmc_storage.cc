@@ -6,6 +6,7 @@
 
 #include <pcrecpp.h>
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -205,19 +206,19 @@ bool CheckStorageTypeMatch(const base::FilePath& node_path) {
 
 }  // namespace
 
-base::Optional<base::Value> MmcStorageFunction::ProbeFromSysfs(
+std::optional<base::Value> MmcStorageFunction::ProbeFromSysfs(
     const base::FilePath& node_path) const {
   VLOG(2) << "Processnig the node \"" << node_path.value() << "\"";
 
   if (!CheckStorageTypeMatch(node_path))
-    return base::nullopt;
+    return std::nullopt;
 
   const auto mmc_path = node_path.Append("device");
 
   if (!base::PathExists(mmc_path)) {
     VLOG(1) << "eMMC-specific path does not exist on storage device \""
             << node_path.value() << "\"";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   auto mmc_res = MapFilesToDict(mmc_path, kMmcFields, kMmcOptionalFields);
@@ -225,14 +226,14 @@ base::Optional<base::Value> MmcStorageFunction::ProbeFromSysfs(
   if (!mmc_res) {
     VLOG(1) << "eMMC-specific fields do not exist on storage \""
             << node_path.value() << "\"";
-    return base::nullopt;
+    return std::nullopt;
   }
   PrependToDVKey(&*mmc_res, kMmcPrefix);
   mmc_res->SetStringKey("type", kMmcType);
   return mmc_res;
 }
 
-base::Optional<base::Value> MmcStorageFunction::ProbeFromStorageTool(
+std::optional<base::Value> MmcStorageFunction::ProbeFromStorageTool(
     const base::FilePath& node_path) const {
   base::Value result(base::Value::Type::DICTIONARY);
   auto storage_fw_version = GetStorageFwVersion(node_path);

@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -15,7 +16,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/optional.h>
 #include <base/strings/string_util.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/default_clock.h>
@@ -45,15 +45,15 @@ void AddMetaField(crash::CrashInfo* info,
   meta->set_text(value);
 }
 
-base::Optional<crash::CrashBlob> MakeBlob(const std::string& name,
-                                          const base::FilePath& file) {
+std::optional<crash::CrashBlob> MakeBlob(const std::string& name,
+                                         const base::FilePath& file) {
   if (!base::IsStringUTF8(name)) {
     LOG(ERROR) << "key was not UTF8: " << name;
-    return base::nullopt;
+    return std::nullopt;
   }
   std::string contents;
   if (!base::ReadFileToString(file, &contents)) {
-    return base::nullopt;
+    return std::nullopt;
   }
   crash::CrashBlob b;
   b.set_key(name);
@@ -217,7 +217,7 @@ bool Serializer::SerializeCrash(const util::CrashDetails& details,
   }
 
   // Add payload file
-  base::Optional<crash::CrashBlob> payload =
+  std::optional<crash::CrashBlob> payload =
       MakeBlob(crash.payload.first, crash.payload.second);
   if (!payload) {
     return false;
@@ -226,7 +226,7 @@ bool Serializer::SerializeCrash(const util::CrashDetails& details,
 
   // Add files
   for (const auto& kv : crash.files) {
-    base::Optional<crash::CrashBlob> blob = MakeBlob(kv.first, kv.second);
+    std::optional<crash::CrashBlob> blob = MakeBlob(kv.first, kv.second);
     if (blob) {
       blobs->push_back(*blob);
     }

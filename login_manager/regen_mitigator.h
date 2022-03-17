@@ -5,11 +5,11 @@
 #ifndef LOGIN_MANAGER_REGEN_MITIGATOR_H_
 #define LOGIN_MANAGER_REGEN_MITIGATOR_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/optional.h>
 
 #include "login_manager/owner_key_loss_mitigator.h"
 
@@ -35,7 +35,7 @@ class RegenMitigator : public OwnerKeyLossMitigator {
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
   bool Mitigate(const std::string& ownername,
-                const base::Optional<base::FilePath>& ns_path) override;
+                const std::optional<base::FilePath>& ns_path) override;
 
   bool Mitigating() override;
 

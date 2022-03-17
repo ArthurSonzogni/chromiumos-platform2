@@ -7,10 +7,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <optional>
+
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
@@ -148,10 +149,10 @@ grpc::Status CrashListenerImpl::SendCrashReport(grpc::ServerContext* ctx,
     return {grpc::UNKNOWN, "Crash_reporter encountered an error"};
 }
 
-base::Optional<pid_t> CrashListenerImpl::GetPidFromPeerAddress(
+std::optional<pid_t> CrashListenerImpl::GetPidFromPeerAddress(
     grpc::ServerContext* ctx) {
   VirtualMachine* vm = GetVirtualMachineForContext(ctx);
-  return vm ? base::Optional<pid_t>(vm->pid()) : base::nullopt;
+  return vm ? std::optional<pid_t>(vm->pid()) : std::nullopt;
 }
 
 VirtualMachine* CrashListenerImpl::GetVirtualMachineForContext(

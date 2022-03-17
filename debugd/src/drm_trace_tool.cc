@@ -6,6 +6,7 @@
 
 #include "debugd/src/drm_trace_tool.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_util.h>

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -380,8 +381,8 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   base::FilePath GetPathForId(const std::string& id) const;
 
   // Returns the value of |pref_name|, an int64_t pref containing a
-  // millisecond-based duration. base::nullopt is returned if the pref is unset.
-  base::Optional<base::TimeDelta> GetMsPref(const std::string& pref_name) const;
+  // millisecond-based duration. std::nullopt is returned if the pref is unset.
+  std::optional<base::TimeDelta> GetMsPref(const std::string& pref_name) const;
 
   // Sets |battery_stabilized_timestamp_| so that the current and charge won't
   // be sampled again until at least |stabilized_delay| in the future.

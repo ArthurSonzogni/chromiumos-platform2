@@ -6,9 +6,11 @@
 
 #include <chromeos/dbus/shill/dbus-constants.h>
 
+#include <optional>
+
 namespace runtime_probe {
 
-base::Optional<std::string> EthernetNetworkFunction::GetNetworkType() const {
+std::optional<std::string> EthernetNetworkFunction::GetNetworkType() const {
   return shill::kTypeEthernet;
 }
 

@@ -4,6 +4,7 @@
 
 #include "biod/cros_fp_biometrics_manager.h"
 
+#include <optional>
 #include <utility>
 
 #include <errno.h>
@@ -187,14 +188,14 @@ CrosFpBiometricsManager::GetLoadedRecords() {
   return records;
 }
 
-base::Optional<BiodStorageInterface::RecordMetadata>
+std::optional<BiodStorageInterface::RecordMetadata>
 CrosFpBiometricsManager::GetRecordMetadata(const std::string& record_id) const {
   return record_manager_->GetRecordMetadata(record_id);
 }
 
-base::Optional<std::string> CrosFpBiometricsManager::GetLoadedRecordId(int id) {
+std::optional<std::string> CrosFpBiometricsManager::GetLoadedRecordId(int id) {
   if (id < 0 || id >= loaded_records_.size()) {
-    return base::nullopt;
+    return std::nullopt;
   }
   return loaded_records_[id];
 }
@@ -501,7 +502,7 @@ void CrosFpBiometricsManager::DoEnrollImageEvent(
     return;
   }
 
-  base::Optional<brillo::SecureVector> secret =
+  std::optional<brillo::SecureVector> secret =
       cros_dev_->GetPositiveMatchSecret(CrosFpDevice::kLastTemplate);
   if (!secret) {
     LOG(ERROR) << "Failed to get positive match secret.";
@@ -558,7 +559,7 @@ void CrosFpBiometricsManager::DoMatchFingerUpEvent(uint32_t event) {
 
 bool CrosFpBiometricsManager::CheckPositiveMatchSecret(
     const std::string& record_id, int match_idx) {
-  base::Optional<brillo::SecureVector> secret =
+  std::optional<brillo::SecureVector> secret =
       cros_dev_->GetPositiveMatchSecret(match_idx);
   biod_metrics_->SendReadPositiveMatchSecretSuccess(secret.has_value());
 
@@ -665,8 +666,8 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   }
 
   FingerprintMessage result;
-  base::Optional<std::string> matched_record_id;
-  base::Optional<RecordMetadata> matched_record_meta;
+  std::optional<std::string> matched_record_id;
+  std::optional<RecordMetadata> matched_record_meta;
 
   uint32_t match_idx = EC_MKBP_FP_MATCH_IDX(event);
   LOG(INFO) << __func__ << " result: '" << MatchResultToString(match_result)
@@ -728,15 +729,14 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
       result.set_scan_result(ScanResult::SCAN_RESULT_SUCCESS);
     } else {
       LOG(ERROR) << "Failed to check Secure Secret for " << match_idx;
-      matched_record_meta = base::nullopt;
+      matched_record_meta = std::nullopt;
     }
   }
 
   // Send back the result directly (as we are running on the main thread).
   OnAuthScanDone(std::move(result), std::move(matches));
 
-  base::Optional<CrosFpDeviceInterface::FpStats> stats =
-      cros_dev_->GetFpStats();
+  std::optional<CrosFpDeviceInterface::FpStats> stats = cros_dev_->GetFpStats();
   if (stats) {
     biod_metrics_->SendFpLatencyStats(matched_record_meta.has_value(), *stats);
   }
@@ -800,7 +800,7 @@ std::vector<int> CrosFpBiometricsManager::GetDirtyList() {
   std::vector<int> dirty_list;
 
   // Retrieve which templates have been updated.
-  base::Optional<std::bitset<32>> dirty_bitmap = cros_dev_->GetDirtyMap();
+  std::optional<std::bitset<32>> dirty_bitmap = cros_dev_->GetDirtyMap();
   if (!dirty_bitmap) {
     LOG(ERROR) << "Failed to get updated templates map";
     return dirty_list;

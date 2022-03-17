@@ -11,6 +11,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -20,7 +21,6 @@
 #include <base/at_exit.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -310,7 +310,7 @@ void SetJsonDictValue(const std::string& key,
     // |base::Value| doesn't support these types, we need to convert them to
     // string.
     SetJsonDictValue(key, std::to_string(value), output);
-  } else if constexpr (std::is_same_v<T, base::Optional<std::string>>) {
+  } else if constexpr (std::is_same_v<T, std::optional<std::string>>) {
     if (value.has_value())
       SetJsonDictValue(key, value.value(), output);
   } else if constexpr (std::is_same_v<T, NullableDoublePtr>) {

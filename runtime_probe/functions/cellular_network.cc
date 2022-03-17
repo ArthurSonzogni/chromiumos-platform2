@@ -6,9 +6,11 @@
 
 #include <chromeos/dbus/shill/dbus-constants.h>
 
+#include <optional>
+
 namespace runtime_probe {
 
-base::Optional<std::string> CellularNetworkFunction::GetNetworkType() const {
+std::optional<std::string> CellularNetworkFunction::GetNetworkType() const {
   return shill::kTypeCellular;
 }
 

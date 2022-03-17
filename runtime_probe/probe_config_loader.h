@@ -5,10 +5,10 @@
 #ifndef RUNTIME_PROBE_PROBE_CONFIG_LOADER_H_
 #define RUNTIME_PROBE_PROBE_CONFIG_LOADER_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <base/values.h>
 
 namespace runtime_probe {
@@ -26,10 +26,10 @@ class ProbeConfigLoader {
   virtual ~ProbeConfigLoader() = default;
 
   // Loads probe config from the default path.
-  virtual base::Optional<ProbeConfigData> LoadDefault() const = 0;
+  virtual std::optional<ProbeConfigData> LoadDefault() const = 0;
 
   // Loads probe config from the given path.
-  virtual base::Optional<ProbeConfigData> LoadFromFile(
+  virtual std::optional<ProbeConfigData> LoadFromFile(
       const base::FilePath& file_path) const = 0;
 };
 

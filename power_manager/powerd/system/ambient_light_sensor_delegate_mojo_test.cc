@@ -6,6 +6,7 @@
 
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -80,7 +81,7 @@ class AmbientLightSensorDelegateMojoTest : public ::testing::Test {
 
   void InitSensor(bool color_delegate, bool fake_color_sensor) {
     sensor_device_ = std::make_unique<FakeSensorDevice>(
-        fake_color_sensor, /*name=*/base::nullopt, /*location=*/base::nullopt);
+        fake_color_sensor, /*name=*/std::nullopt, /*location=*/std::nullopt);
 
     base::RunLoop loop;
 

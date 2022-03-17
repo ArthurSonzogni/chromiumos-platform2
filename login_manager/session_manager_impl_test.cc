@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -34,7 +35,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/notreached.h>
-#include <base/optional.h>
 #include <base/posix/unix_domain_socket.h>
 #include <base/run_loop.h>
 #include <base/strings/string_util.h>
@@ -381,7 +381,7 @@ class SessionManagerImplTest : public ::testing::Test,
     impl_ = std::make_unique<SessionManagerImpl>(
         this /* delegate */, base::WrapUnique(init_controller_), bus_.get(),
         &key_gen_, &device_identifier_generator_, &manager_, &metrics_, &nss_,
-        base::nullopt, &utils_, &crossystem_, &vpd_process_, &owner_key_,
+        std::nullopt, &utils_, &crossystem_, &vpd_process_, &owner_key_,
         &android_container_, &install_attributes_reader_, powerd_proxy_.get(),
         system_clock_proxy_.get(), debugd_proxy_.get(), arc_sideload_status_);
     impl_->SetSystemClockLastSyncInfoRetryDelayForTesting(base::TimeDelta());

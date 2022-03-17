@@ -20,7 +20,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>

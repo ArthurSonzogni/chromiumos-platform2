@@ -5,6 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <iterator>
+#include <optional>
 #include <set>
 #include <utility>
 
@@ -163,7 +164,7 @@ TEST_F(SensorDeviceImplTest, GetAttributes) {
                                kDummyChnAttrName2},
       base::BindOnce(
           [](base::Closure closure, base::FilePath link_to,
-             const std::vector<base::Optional<std::string>>& values) {
+             const std::vector<std::optional<std::string>>& values) {
             EXPECT_EQ(values.size(), 7u);
             EXPECT_FALSE(values.front().has_value());
             EXPECT_FALSE(values.back().has_value());
@@ -284,7 +285,7 @@ TEST_F(SensorDeviceImplTest, GetChannelsAttributes) {
       indices, kChnAttrName,
       base::BindOnce(
           [](base::Closure closure,
-             const std::vector<base::Optional<std::string>>& values) {
+             const std::vector<std::optional<std::string>>& values) {
             EXPECT_EQ(values.size(), std::size(libmems::fakes::kFakeAccelChns));
             for (int i = 0; i < values.size(); ++i) {
               if (i % 2 == 0) {

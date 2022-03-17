@@ -5,6 +5,7 @@
 #include "u2fd/util.h"
 
 #include <array>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -46,22 +47,22 @@ std::vector<uint8_t> ToVector(const std::string& str) {
   return vect;
 }
 
-base::Optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
-                                                         const uint8_t* s) {
+std::optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
+                                                        const uint8_t* s) {
   crypto::ScopedBIGNUM sig_r(BN_new()), sig_s(BN_new());
   crypto::ScopedECDSA_SIG sig(ECDSA_SIG_new());
   if (!sig_r || !sig_s || !sig) {
     LOG(ERROR) << "Failed to allocate ECDSA_SIG or BIGNUM.";
-    return base::nullopt;
+    return std::nullopt;
   }
   if (!BN_bin2bn(r, 32, sig_r.get()) || !BN_bin2bn(s, 32, sig_s.get())) {
     LOG(ERROR) << "Failed to convert ECDSA_SIG parameters to BIGNUM";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!ECDSA_SIG_set0(sig.get(), sig_r.release(), sig_s.release())) {
     LOG(ERROR) << "Failed to initialize ECDSA_SIG";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   int sig_len = i2d_ECDSA_SIG(sig.get(), nullptr);
@@ -71,7 +72,7 @@ base::Optional<std::vector<uint8_t>> SignatureToDerBytes(const uint8_t* r,
 
   if (i2d_ECDSA_SIG(sig.get(), &sig_ptr) != sig_len) {
     LOG(ERROR) << "DER encoding returned unexpected length";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return signature;
@@ -93,9 +94,9 @@ bool DoSoftwareAttest(const std::vector<uint8_t>& data_to_sign,
     return false;
   }
 
-  base::Optional<std::vector<uint8_t>> cert_result =
+  std::optional<std::vector<uint8_t>> cert_result =
       util::CreateAttestationCertificate(attestation_key.get());
-  base::Optional<std::vector<uint8_t>> attest_result =
+  std::optional<std::vector<uint8_t>> attest_result =
       util::AttestToData(data_to_sign, attestation_key.get());
 
   if (!cert_result.has_value() || !attest_result.has_value()) {
@@ -121,7 +122,7 @@ crypto::ScopedEC_KEY CreateAttestationKey() {
   }
 }
 
-base::Optional<std::vector<uint8_t>> AttestToData(
+std::optional<std::vector<uint8_t>> AttestToData(
     const std::vector<uint8_t>& data, EC_KEY* attestation_key) {
   std::vector<uint8_t> digest = Sha256(data);
 
@@ -131,7 +132,7 @@ base::Optional<std::vector<uint8_t>> AttestToData(
   if (!ECDSA_sign(0 /* type: ignored by OpenSSL */, &digest[0], digest.size(),
                   signature.data(), &signature_length, attestation_key)) {
     LOG(ERROR) << "Failed to sign data using U2F attestation key";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   signature.resize(signature_length);
@@ -156,11 +157,11 @@ crypto::ScopedOpenSSL<X509, X509_free> ParseX509(const C& container) {
   return cert;
 }
 
-base::Optional<std::vector<uint8_t>> DerEncodeCertificate(X509* cert) {
+std::optional<std::vector<uint8_t>> DerEncodeCertificate(X509* cert) {
   int cert_size = i2d_X509(cert, nullptr);
   if (cert_size < 0) {
     LOG(ERROR) << "Failed to DER-encode X509 certficate, error: " << cert_size;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::vector<uint8_t> cert_der(cert_size);
@@ -169,7 +170,7 @@ base::Optional<std::vector<uint8_t>> DerEncodeCertificate(X509* cert) {
   if (i2d_X509(cert, &output_ptr) != cert_size) {
     LOG(ERROR) << "X509 DER-encoding returned unexpected size, expected "
                << cert_size;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return cert_der;
@@ -177,7 +178,7 @@ base::Optional<std::vector<uint8_t>> DerEncodeCertificate(X509* cert) {
 
 }  // namespace
 
-base::Optional<std::vector<uint8_t>> CreateAttestationCertificate(
+std::optional<std::vector<uint8_t>> CreateAttestationCertificate(
     EC_KEY* attestation_key) {
   // We use a fixed template for the X509 certificate rather than generating one
   // using OpenSSL, so that we can ensure that u2fd and cr50 both return
@@ -203,20 +204,20 @@ base::Optional<std::vector<uint8_t>> CreateAttestationCertificate(
 
   crypto::ScopedOpenSSL<X509, X509_free> cert = ParseX509(cert_template);
   if (!cert) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   crypto::ScopedEVP_PKEY pkey(EVP_PKEY_new());
   if (!pkey || !EVP_PKEY_set1_EC_KEY(pkey.get(), attestation_key)) {
     LOG(ERROR) << "Failed to create EVP_PKEY";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!X509_set_pubkey(cert.get(), pkey.get()) ||
       X509_sign(cert.get(), pkey.get(), EVP_sha256()) <=
           0 /* returns length on succes */) {
     LOG(ERROR) << "Failed to update X509 pubkey and signature fields";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return DerEncodeCertificate(cert.get());

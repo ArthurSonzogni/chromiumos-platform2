@@ -5,9 +5,9 @@
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
-#include <base/optional.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/powerd/system/ambient_light_observer.h"
@@ -47,8 +47,8 @@ class TestDelegate : public AmbientLightSensorDelegate {
     return base::FilePath();
   }
 
-  void SetLuxAndColorTemperature(base::Optional<int> lux,
-                                 base::Optional<int> color_temperature) {
+  void SetLuxAndColorTemperature(std::optional<int> lux,
+                                 std::optional<int> color_temperature) {
     if (color_temperature.has_value())
       is_color_sensor_ = true;
 
@@ -94,7 +94,7 @@ TEST_F(AmbientLightSensorTest, IsColorSensor) {
 }
 
 TEST_F(AmbientLightSensorTest, UpdateWithoutData) {
-  delegate_->SetLuxAndColorTemperature(base::nullopt, base::nullopt);
+  delegate_->SetLuxAndColorTemperature(std::nullopt, std::nullopt);
   EXPECT_TRUE(observer_.Updated());
 
   EXPECT_EQ(-1, sensor_->GetAmbientLightLux());
@@ -102,13 +102,13 @@ TEST_F(AmbientLightSensorTest, UpdateWithoutData) {
 }
 
 TEST_F(AmbientLightSensorTest, UpdateWithLux) {
-  delegate_->SetLuxAndColorTemperature(100, base::nullopt);
+  delegate_->SetLuxAndColorTemperature(100, std::nullopt);
   EXPECT_TRUE(observer_.Updated());
 
   EXPECT_EQ(100, sensor_->GetAmbientLightLux());
   EXPECT_EQ(-1, sensor_->GetColorTemperature());
 
-  delegate_->SetLuxAndColorTemperature(base::nullopt, base::nullopt);
+  delegate_->SetLuxAndColorTemperature(std::nullopt, std::nullopt);
   EXPECT_TRUE(observer_.Updated());
 
   // lux doesn't change.
@@ -118,14 +118,14 @@ TEST_F(AmbientLightSensorTest, UpdateWithLux) {
 
 TEST_F(AmbientLightSensorTest, UpdateWithColorTemperature) {
   EXPECT_FALSE(sensor_->IsColorSensor());
-  delegate_->SetLuxAndColorTemperature(base::nullopt, 200);
+  delegate_->SetLuxAndColorTemperature(std::nullopt, 200);
   EXPECT_TRUE(sensor_->IsColorSensor());
   EXPECT_TRUE(observer_.Updated());
 
   EXPECT_EQ(-1, sensor_->GetAmbientLightLux());
   EXPECT_EQ(200, sensor_->GetColorTemperature());
 
-  delegate_->SetLuxAndColorTemperature(base::nullopt, base::nullopt);
+  delegate_->SetLuxAndColorTemperature(std::nullopt, std::nullopt);
   EXPECT_TRUE(observer_.Updated());
 
   // lux doesn't change.
@@ -140,7 +140,7 @@ TEST_F(AmbientLightSensorTest, UpdateWithLuxAndColorTemperature) {
   EXPECT_EQ(100, sensor_->GetAmbientLightLux());
   EXPECT_EQ(200, sensor_->GetColorTemperature());
 
-  delegate_->SetLuxAndColorTemperature(base::nullopt, base::nullopt);
+  delegate_->SetLuxAndColorTemperature(std::nullopt, std::nullopt);
   EXPECT_TRUE(observer_.Updated());
 
   // lux doesn't change.

@@ -5,6 +5,7 @@
 #ifndef CROSLOG_BOOT_RECORDS_H_
 #define CROSLOG_BOOT_RECORDS_H_
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -64,7 +65,7 @@ class BootRecords {
   //   - Zero or negative offset number from the last. Zero represents the last
   //     boot. (positive offset value is not supported yet)
   //   - Full boot ID
-  base::Optional<BootRange> GetBootRange(const std::string& boot_str) const;
+  std::optional<BootRange> GetBootRange(const std::string& boot_str) const;
 
  private:
   FRIEND_TEST(BootRecordsTest, Load);

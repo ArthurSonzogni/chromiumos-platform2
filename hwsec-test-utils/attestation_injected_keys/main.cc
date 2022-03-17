@@ -5,7 +5,6 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/file_utils.h>
 #include <brillo/syslog_logging.h>
 

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -22,10 +23,10 @@ inline std::string BytesToString(const std::vector<uint8_t>& bytes) {
   return std::string(bytes.begin(), bytes.end());
 }
 
-inline base::Optional<std::string> BytesToString(
-    const base::Optional<std::vector<uint8_t>>& maybe_bytes) {
-  if (maybe_bytes == base::nullopt) {
-    return base::nullopt;
+inline std::optional<std::string> BytesToString(
+    const std::optional<std::vector<uint8_t>>& maybe_bytes) {
+  if (maybe_bytes == std::nullopt) {
+    return std::nullopt;
   }
   return BytesToString(*maybe_bytes);
 }

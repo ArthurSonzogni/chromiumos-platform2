@@ -6,6 +6,7 @@
 #include <brillo/http/http_utils.h>
 
 #include <algorithm>
+#include <optional>
 
 #include <base/bind.h>
 #include <base/json/json_reader.h>
@@ -308,11 +309,11 @@ RequestID PatchJson(const std::string& url,
                      error_callback);
 }
 
-base::Optional<base::Value> ParseJsonResponse(Response* response,
-                                              int* status_code,
-                                              brillo::ErrorPtr* error) {
+std::optional<base::Value> ParseJsonResponse(Response* response,
+                                             int* status_code,
+                                             brillo::ErrorPtr* error) {
   if (!response)
-    return base::nullopt;
+    return std::nullopt;
 
   if (status_code)
     *status_code = response->GetStatusCode();
@@ -325,7 +326,7 @@ base::Optional<base::Value> ParseJsonResponse(Response* response,
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::json::kDomain,
                          "non_json_content_type",
                          "Unexpected response content type: " + content_type);
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string json = response->ExtractDataAsString();
@@ -336,14 +337,14 @@ base::Optional<base::Value> ParseJsonResponse(Response* response,
                                brillo::errors::json::kParseError,
                                "Error '%s' occurred parsing JSON string '%s'",
                                json_result.error_message.c_str(), json.c_str());
-    return base::nullopt;
+    return std::nullopt;
   }
   if (!json_result.value->is_dict()) {
     brillo::Error::AddToPrintf(error, FROM_HERE, brillo::errors::json::kDomain,
                                brillo::errors::json::kObjectExpected,
                                "Response is not a valid dictionary: '%s'",
                                json.c_str());
-    return base::nullopt;
+    return std::nullopt;
   }
   return std::move(json_result.value);
 }

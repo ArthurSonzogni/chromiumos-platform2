@@ -7,6 +7,8 @@
 
 #include <gmock/gmock.h>
 
+#include <optional>
+
 #include "biod/crypto_init/bio_crypto_init.h"
 
 namespace biod {
@@ -24,7 +26,7 @@ class MockBioCryptoInit : public BioCryptoInit {
               (const brillo::SecureVector& seed),
               (override));
   MOCK_METHOD(bool, InitCrosFp, (), (override));
-  MOCK_METHOD(base::Optional<uint32_t>,
+  MOCK_METHOD(std::optional<uint32_t>,
               GetFirmwareTemplateVersion,
               (),
               (override));

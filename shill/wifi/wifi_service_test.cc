@@ -5,6 +5,7 @@
 #include "shill/wifi/wifi_service.h"
 
 #include <limits>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -602,7 +603,7 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
     wifi_service->mutable_eap()->set_password("mumble");
     wifi_service->OnEapCredentialsChanged(Service::kReasonCredentialsLoaded);
 
-    manager()->props_.ft_enabled = base::nullopt;
+    manager()->props_.ft_enabled = std::nullopt;
     wifi_service->Connect(nullptr, "in test");
     KeyValueStore params = wifi_service->GetSupplicantConfigurationParameters();
     std::string default_key_mgmt = "WPA-EAP WPA-EAP-SHA256 FT-EAP";

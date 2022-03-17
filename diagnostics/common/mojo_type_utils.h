@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_COMMON_MOJO_TYPE_UTILS_H_
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -121,8 +122,8 @@ std::string GetDiffString<std::string>(const std::string& a,
                                        const std::string& b);
 
 template <>
-std::string GetDiffString<base::Optional<std::string>>(
-    const base::Optional<std::string>& a, const base::Optional<std::string>& b);
+std::string GetDiffString<std::optional<std::string>>(
+    const std::optional<std::string>& a, const std::optional<std::string>& b);
 
 template <>
 std::string GetDiffString<::chromeos::cros_healthd::mojom::NullableUint64>(

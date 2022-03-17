@@ -8,11 +8,11 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 #include <ostream>
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 namespace shill {
 
@@ -67,9 +67,9 @@ class DeviceId {
 
  private:
   BusType bus_type_;
-  base::Optional<LocationType> location_type_;
-  base::Optional<uint16_t> vendor_id_;
-  base::Optional<uint16_t> product_id_;
+  std::optional<LocationType> location_type_;
+  std::optional<uint16_t> vendor_id_;
+  std::optional<uint16_t> product_id_;
 };
 
 }  // namespace shill

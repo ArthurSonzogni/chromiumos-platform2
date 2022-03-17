@@ -5,12 +5,13 @@
 #include "kerberos/platform_helper.h"
 
 #include <unistd.h>
+
 #include <algorithm>
+#include <optional>
 #include <string>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 
 namespace kerberos {
 
@@ -24,7 +25,7 @@ const size_t kBufferSize = PIPE_BUF;  // ~4 Kb on my system
 
 }  // namespace
 
-base::Optional<std::string> ReadPipeToString(int fd) {
+std::optional<std::string> ReadPipeToString(int fd) {
   std::string data;
   char buffer[kBufferSize];
   size_t total_read = 0;
@@ -32,7 +33,7 @@ base::Optional<std::string> ReadPipeToString(int fd) {
     const ssize_t bytes_read = HANDLE_EINTR(
         read(fd, buffer, std::min(kBufferSize, kMaxReadSize - total_read)));
     if (bytes_read < 0)
-      return base::nullopt;
+      return std::nullopt;
     if (bytes_read == 0)
       return data;
     total_read += bytes_read;
@@ -42,7 +43,7 @@ base::Optional<std::string> ReadPipeToString(int fd) {
   // Size limit hit. Do one more read to check if the file size is exactly
   // kMaxReadSize bytes.
   if (HANDLE_EINTR(read(fd, buffer, 1)) != 0)
-    return base::nullopt;
+    return std::nullopt;
   return data;
 }
 

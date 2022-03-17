@@ -6,6 +6,8 @@
 
 #include "features/zsl/zsl_stream_manipulator.h"
 
+#include <optional>
+
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 
@@ -17,7 +19,7 @@ ZslStreamManipulator::~ZslStreamManipulator() {}
 
 bool ZslStreamManipulator::Initialize(const camera_metadata_t* static_info,
                                       CaptureResultCallback result_callback) {
-  base::Optional<int32_t> partial_result_count =
+  std::optional<int32_t> partial_result_count =
       GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
   partial_result_count_ = partial_result_count.value_or(1);
   zsl_helper_ = std::make_unique<ZslHelper>(static_info);

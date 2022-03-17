@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <limits>
+#include <optional>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -247,7 +248,7 @@ TEST(GetRealPathTest, VariousInputs) {
 
   // Resolve current directory.
   const base::FilePath path_1(".");
-  base::Optional<base::FilePath> real_1 = GetRealPath(path_1);
+  std::optional<base::FilePath> real_1 = GetRealPath(path_1);
   EXPECT_TRUE(real_1.has_value());
   EXPECT_EQ(cd_str, real_1.value().value());
 
@@ -255,13 +256,13 @@ TEST(GetRealPathTest, VariousInputs) {
   const base::FilePath temp_path_2("/tmp/getrealpathtest/dir2");
   base::CreateDirectory(temp_path_2);
   const base::FilePath path_2("/tmp/getrealpathtest/dir2/../");
-  base::Optional<base::FilePath> real_2 = GetRealPath(path_2);
+  std::optional<base::FilePath> real_2 = GetRealPath(path_2);
   EXPECT_TRUE(real_2.has_value());
   EXPECT_EQ("/tmp/getrealpathtest", real_2.value().value());
 
   // Check non-existing path.
   const base::FilePath path_4("/run/imageloader/fake-dlc-foo/package/root/");
-  base::Optional<base::FilePath> real_4 = GetRealPath(path_4);
+  std::optional<base::FilePath> real_4 = GetRealPath(path_4);
   EXPECT_FALSE(real_4.has_value());
 }
 

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <map>
+#include <optional>
 #include <utility>
 
 #include <chromeos/dbus/service_constants.h>
@@ -71,7 +72,7 @@ SaneDeviceFake::SaneDeviceFake()
 
 SaneDeviceFake::~SaneDeviceFake() {}
 
-base::Optional<ValidOptionValues> SaneDeviceFake::GetValidOptionValues(
+std::optional<ValidOptionValues> SaneDeviceFake::GetValidOptionValues(
     brillo::ErrorPtr* error) {
   if (!values_.has_value()) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
@@ -135,7 +136,7 @@ SANE_Status SaneDeviceFake::StartScan(brillo::ErrorPtr* error) {
   return SANE_STATUS_GOOD;
 }
 
-base::Optional<ScanParameters> SaneDeviceFake::GetScanParameters(
+std::optional<ScanParameters> SaneDeviceFake::GetScanParameters(
     brillo::ErrorPtr* error) {
   if (!params_.has_value()) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
@@ -197,7 +198,7 @@ bool SaneDeviceFake::CancelScan(brillo::ErrorPtr* error) {
 }
 
 void SaneDeviceFake::SetValidOptionValues(
-    const base::Optional<ValidOptionValues>& values) {
+    const std::optional<ValidOptionValues>& values) {
   values_ = values;
 }
 
@@ -206,7 +207,7 @@ void SaneDeviceFake::SetStartScanResult(SANE_Status status) {
 }
 
 void SaneDeviceFake::SetScanParameters(
-    const base::Optional<ScanParameters>& params) {
+    const std::optional<ScanParameters>& params) {
   params_ = params;
 }
 

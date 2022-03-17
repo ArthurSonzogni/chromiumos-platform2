@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include <limits>
+#include <optional>
 
 #include <base/base64.h>
 #include <base/bind.h>
@@ -63,7 +64,7 @@ constexpr char kTestProperitesFromFileContentBad[] =
     "ro.product.board board\n";  // no '=' separator
 
 struct FilterMediaProfileParam {
-  base::Optional<std::string> test_config_content;
+  std::optional<std::string> test_config_content;
   std::string media_profile_content;
   std::string result_content;
 };
@@ -310,7 +311,7 @@ class FilterMediaProfileTest
     : public ::testing::TestWithParam<FilterMediaProfileParam> {};
 
 const FilterMediaProfileParam kFilterMediaProfileParam[] = {
-    {base::nullopt,
+    {std::nullopt,
      TestMediaProfile(/* has_front_camera */ true, /* has_back_camera */ true),
      TestMediaProfile(/* has_front_camera */ true, /* has_back_camera */ true)},
     {R"({"enable_front_camera": true, "enable_back_camera": true})",

@@ -6,6 +6,7 @@
 #define DEBUGD_SRC_HELPERS_SYSTEM_SERVICE_PROXY_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -46,17 +47,17 @@ class SystemServiceProxy {
   // Calls the specified D-Bus method |method_call| on a D-Bus object
   // identified by |object_path| and waits for the response until the default
   // timeout is reached. Returns the response represented as a base::Value or a
-  // base::nullopt on error.
-  base::Optional<base::Value> CallMethodAndGetResponse(
+  // std::nullopt on error.
+  std::optional<base::Value> CallMethodAndGetResponse(
       const dbus::ObjectPath& object_path, dbus::MethodCall* method_call);
 
   // Gets the properties associated with the interface named |interface_name|
   // of a D-Bus object identified by |object_path|. The properties are expected
-  // to be a dictionary. Returns base::nullopt on error. The implementation
+  // to be a dictionary. Returns std::nullopt on error. The implementation
   // provided by this class uses org.freedesktop.DBus.Properties.GetAll to
   // retrieve properties, but a derived class can override this method to use an
   // alternative means to retrieve properties.
-  virtual base::Optional<base::Value> GetProperties(
+  virtual std::optional<base::Value> GetProperties(
       const std::string& interface_name, const dbus::ObjectPath& object_path);
 
   // Returns a map from object path to object properties with the interface

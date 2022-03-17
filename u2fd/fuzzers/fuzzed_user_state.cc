@@ -4,6 +4,8 @@
 
 #include "u2fd/fuzzers/fuzzed_user_state.h"
 
+#include <optional>
+
 #include <base/sys_byteorder.h>
 
 #include "u2fd/util.h"
@@ -30,24 +32,24 @@ void FuzzedUserState::NextState() {
   if (data_provider_->ConsumeBool()) {
     user_secret_ = brillo::SecureBlob(user_secret);
   } else {
-    user_secret_ = base::nullopt;
+    user_secret_ = std::nullopt;
   }
 
   uint32_t counter = data_provider_->ConsumeIntegral<uint32_t>();
   if (data_provider_->ConsumeBool()) {
     counter_ = counter;
   } else {
-    counter_ = base::nullopt;
+    counter_ = std::nullopt;
   }
 }
 
-base::Optional<brillo::SecureBlob> FuzzedUserState::GetUserSecret() {
+std::optional<brillo::SecureBlob> FuzzedUserState::GetUserSecret() {
   return user_secret_;
 }
 
-base::Optional<std::vector<uint8_t>> FuzzedUserState::GetCounter() {
+std::optional<std::vector<uint8_t>> FuzzedUserState::GetCounter() {
   if (!counter_.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::vector<uint8_t> counter_bytes;
@@ -78,10 +80,10 @@ bool FuzzedUserState::HasUser() {
   // the user.
   return true;
 }
-base::Optional<std::string> FuzzedUserState::GetUser() {
+std::optional<std::string> FuzzedUserState::GetUser() {
   return kUser;
 }
-base::Optional<std::string> FuzzedUserState::GetSanitizedUser() {
+std::optional<std::string> FuzzedUserState::GetSanitizedUser() {
   return kSanitizedUser;
 }
 

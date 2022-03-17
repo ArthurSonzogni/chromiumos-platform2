@@ -4,6 +4,7 @@
 
 #include "hwsec-test-utils/verified_access/verified_access.h"
 
+#include <optional>
 #include <stdio.h>
 #include <utility>
 
@@ -11,7 +12,6 @@
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/optional.h>
 #include <brillo/data_encoding.h>
 #include <brillo/syslog_logging.h>
 
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
 
   if (args.front() == kGenerateCommand) {
     hwsec_test_utils::verified_access::VerifiedAccessChallenge va;
-    base::Optional<attestation::SignedData> challenge =
+    std::optional<attestation::SignedData> challenge =
         va.GenerateChallenge(kExpectedChallengePrefix);
     if (!challenge) {
       printf("Failed to generate VA challenge.\n");

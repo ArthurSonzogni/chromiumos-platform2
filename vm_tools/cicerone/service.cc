@@ -14,6 +14,7 @@
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -323,7 +324,7 @@ void SetTimezoneForContainer(VirtualMachine* vm,
   }
 }
 
-base::Optional<tremplin::StartContainerRequest_PrivilegeLevel>
+std::optional<tremplin::StartContainerRequest_PrivilegeLevel>
 ConvertPrivilegeLevelFromCiceroneToTremplin(
     StartLxdContainerRequest_PrivilegeLevel privilege_level) {
   switch (privilege_level) {
@@ -335,7 +336,7 @@ ConvertPrivilegeLevelFromCiceroneToTremplin(
       return tremplin::StartContainerRequest_PrivilegeLevel_PRIVILEGED;
     default:
       LOG(ERROR) << "Bad privilege level value: " << privilege_level;
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 
@@ -386,7 +387,7 @@ bool Service::run_grpc_ = true;
 
 std::unique_ptr<Service> Service::Create(
     base::OnceClosure quit_closure,
-    const base::Optional<base::FilePath>& unix_socket_path_for_testing,
+    const std::optional<base::FilePath>& unix_socket_path_for_testing,
     scoped_refptr<dbus::Bus> bus) {
   auto service =
       base::WrapUnique(new Service(std::move(quit_closure), std::move(bus)));
@@ -1430,7 +1431,7 @@ void Service::ReleaseSpace(
 }
 
 bool Service::Init(
-    const base::Optional<base::FilePath>& unix_socket_path_for_testing) {
+    const std::optional<base::FilePath>& unix_socket_path_for_testing) {
   if (!bus_->Connect()) {
     LOG(ERROR) << "Failed to connect to system bus";
     return false;

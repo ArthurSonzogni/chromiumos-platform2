@@ -5,12 +5,13 @@
 #ifndef LOGIN_MANAGER_LIVENESS_CHECKER_IMPL_H_
 #define LOGIN_MANAGER_LIVENESS_CHECKER_IMPL_H_
 
+#include <optional>
+
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/strings/string_piece_forward.h>
 #include <base/time/time.h>
 
@@ -75,7 +76,7 @@ class LivenessCheckerImpl : public LivenessChecker {
   // Returns a SafeFD if successful, nothing on error. If there is an error,
   // the error has already been logged and the caller does not need to log
   // another error.
-  base::Optional<brillo::SafeFD> OpenBrowserProcFile(
+  std::optional<brillo::SafeFD> OpenBrowserProcFile(
       base::StringPiece file_name);
 
   // Reads /proc/browser_pid/status and returns the state of the browser at

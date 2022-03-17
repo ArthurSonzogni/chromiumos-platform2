@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_manager_mojo.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -165,7 +166,7 @@ void AmbientLightSensorManagerMojo::ResetStates() {
   for (auto& sensor : sensors_)
     sensor->SetDelegate(nullptr);
 
-  lid_sensor_.iio_device_id = base_sensor_.iio_device_id = base::nullopt;
+  lid_sensor_.iio_device_id = base_sensor_.iio_device_id = std::nullopt;
   lights_.clear();
 
   QueryDevices();
@@ -205,7 +206,7 @@ void AmbientLightSensorManagerMojo::OnSensorDeviceDisconnect(
 }
 
 void AmbientLightSensorManagerMojo::GetNameCallback(
-    int32_t id, const std::vector<base::Optional<std::string>>& values) {
+    int32_t id, const std::vector<std::optional<std::string>>& values) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK_EQ(num_sensors_, 1);
 
@@ -266,7 +267,7 @@ void AmbientLightSensorManagerMojo::GetNameCallback(
 }
 
 void AmbientLightSensorManagerMojo::GetNameAndLocationCallback(
-    int32_t id, const std::vector<base::Optional<std::string>>& values) {
+    int32_t id, const std::vector<std::optional<std::string>>& values) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK_GE(num_sensors_, 2);
 
@@ -296,7 +297,7 @@ void AmbientLightSensorManagerMojo::GetNameAndLocationCallback(
     return;
   }
 
-  const base::Optional<std::string>& location = values[1];
+  const std::optional<std::string>& location = values[1];
   if (!location.has_value()) {
     LOG(WARNING) << "Sensor doesn't have the location attribute: " << id;
     SetSensorDeviceAtLocation(id, SensorLocation::UNKNOWN);

@@ -15,7 +15,6 @@
 #include <snappy.h>
 
 #include "missive/proto/record.pb.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 

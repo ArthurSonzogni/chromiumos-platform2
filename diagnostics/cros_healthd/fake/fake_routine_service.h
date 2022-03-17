@@ -6,9 +6,8 @@
 #define DIAGNOSTICS_CROS_HEALTHD_FAKE_FAKE_ROUTINE_SERVICE_H_
 
 #include <cstdint>
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
@@ -45,7 +44,7 @@ class FakeRoutineService final
       RunSmartctlCheckRoutineCallback callback) override;
   void RunAcPowerRoutine(
       chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-      const base::Optional<std::string>& expected_power_type,
+      const std::optional<std::string>& expected_power_type,
       RunAcPowerRoutineCallback callback) override;
   void RunCpuCacheRoutine(
       chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
@@ -99,7 +98,7 @@ class FakeRoutineService final
       RunHttpsFirewallRoutineCallback callback) override;
   void RunHttpsLatencyRoutine(RunHttpsLatencyRoutineCallback callback) override;
   void RunVideoConferencingRoutine(
-      const base::Optional<std::string>& stun_server_hostname,
+      const std::optional<std::string>& stun_server_hostname,
       RunVideoConferencingRoutineCallback callback) override;
   void RunArcHttpRoutine(RunArcHttpRoutineCallback callback) override;
   void RunArcPingRoutine(RunArcPingRoutineCallback callback) override;

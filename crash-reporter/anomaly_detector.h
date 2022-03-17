@@ -17,10 +17,10 @@
 #ifndef CRASH_REPORTER_ANOMALY_DETECTOR_H_
 #define CRASH_REPORTER_ANOMALY_DETECTOR_H_
 
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <dbus/bus.h>
 
+#include <optional>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -39,7 +39,7 @@ struct CrashReport {
 bool operator==(const CrashReport& lhs, const CrashReport& rhs);
 std::ostream& operator<<(std::ostream& out, const CrashReport& cr);
 
-using MaybeCrashReport = base::Optional<CrashReport>;
+using MaybeCrashReport = std::optional<CrashReport>;
 
 constexpr size_t HASH_BITMAP_SIZE(1 << 15);
 

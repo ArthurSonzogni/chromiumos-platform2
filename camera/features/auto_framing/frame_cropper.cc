@@ -7,6 +7,7 @@
 #include "features/auto_framing/frame_cropper.h"
 
 #include <algorithm>
+#include <optional>
 
 #include <sync/sync.h>
 
@@ -97,7 +98,7 @@ base::ScopedFD FrameCropper::CropBuffer(
     buffer_handle_t input_yuv,
     base::ScopedFD input_acquire_fence,
     buffer_handle_t output_yuv,
-    base::Optional<Rect<float>> crop_override) {
+    std::optional<Rect<float>> crop_override) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   Rect<float> crop;

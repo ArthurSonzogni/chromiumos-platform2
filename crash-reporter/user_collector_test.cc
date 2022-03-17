@@ -8,6 +8,7 @@
 #include <elf.h>
 #include <unistd.h>
 
+#include <optional>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -176,7 +177,7 @@ TEST_F(UserCollectorTest, DisableNoFileAccess) {
 }
 
 TEST_F(UserCollectorTest, ParseCrashAttributes) {
-  base::Optional<UserCollectorBase::CrashAttributes> attrs =
+  std::optional<UserCollectorBase::CrashAttributes> attrs =
       UserCollectorBase::ParseCrashAttributes("123456:11:1000:2000:foobar");
   ASSERT_TRUE(attrs);
   EXPECT_EQ(123456, attrs->pid);

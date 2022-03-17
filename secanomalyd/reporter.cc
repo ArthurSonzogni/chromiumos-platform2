@@ -4,6 +4,7 @@
 
 #include "secanomalyd/reporter.h"
 
+#include <optional>
 #include <vector>
 
 #include <base/files/file_util.h>
@@ -78,7 +79,7 @@ MaybeReport GenerateAnomalousSystemReport(const MountEntryMap& wx_mounts,
 
   // We need at least one anomalous condition to generate the report signature.
   if (wx_mounts.empty()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::vector<std::string> lines;

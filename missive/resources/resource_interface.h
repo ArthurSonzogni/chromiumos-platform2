@@ -6,8 +6,7 @@
 #define MISSIVE_RESOURCES_RESOURCE_INTERFACE_H_
 
 #include <cstdint>
-
-#include "third_party/abseil-cpp/absl/types/optional.h"
+#include <optional>
 
 namespace reporting {
 
@@ -68,7 +67,7 @@ class ScopedReservation {
 
  private:
   ResourceInterface* const resource_interface_;
-  absl::optional<uint64_t> size_;
+  std::optional<uint64_t> size_;
 };
 
 ResourceInterface* GetMemoryResource();

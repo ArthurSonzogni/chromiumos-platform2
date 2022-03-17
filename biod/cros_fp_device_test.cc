@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libec/fingerprint/fp_info_command.h>
@@ -246,7 +248,7 @@ TEST_F(CrosFpDevice_ReadVersion, ValidVersionStringNotNulTerminated) {
         std::memcpy(buffer, kVersionStr.data(), num_bytes);
         return num_bytes;
       });
-  base::Optional<std::string> version = mock_cros_fp_device_.ReadVersion();
+  std::optional<std::string> version = mock_cros_fp_device_.ReadVersion();
   EXPECT_TRUE(version.has_value());
   EXPECT_EQ(*version, std::string("1.0.0"));
 }
@@ -271,7 +273,7 @@ TEST_F(CrosFpDevice_ReadVersion, ValidVersionStringNulTerminated) {
         buffer[num_bytes] = '\0';
         return num_bytes;
       });
-  base::Optional<std::string> version = mock_cros_fp_device_.ReadVersion();
+  std::optional<std::string> version = mock_cros_fp_device_.ReadVersion();
   EXPECT_TRUE(version.has_value());
   EXPECT_EQ(*version, std::string("1.0.0"));
 }
@@ -288,7 +290,7 @@ TEST_F(CrosFpDevice_ReadVersion, InvalidVersionStringNoNewline) {
         std::memcpy(buffer, kVersionStr.data(), num_bytes);
         return num_bytes;
       });
-  base::Optional<std::string> version = mock_cros_fp_device_.ReadVersion();
+  std::optional<std::string> version = mock_cros_fp_device_.ReadVersion();
   EXPECT_FALSE(version.has_value());
 }
 

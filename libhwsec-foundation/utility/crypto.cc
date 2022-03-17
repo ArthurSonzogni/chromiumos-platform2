@@ -5,11 +5,11 @@
 #include "libhwsec-foundation/utility/crypto.h"
 
 #include <limits>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/bio.h>
@@ -26,18 +26,18 @@ namespace {
 // unique_ptr::get will only return the non-const version. It will break the
 // type deduction of template.
 template <typename OpenSSLType>
-base::Optional<std::vector<uint8_t>> OpenSSLObjectToBytes(
+std::optional<std::vector<uint8_t>> OpenSSLObjectToBytes(
     int (*i2d_convert_function)(OpenSSLType*, unsigned char**),
     typename std::remove_const<OpenSSLType>::type* object) {
   if (object == nullptr) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   unsigned char* openssl_buffer = nullptr;
 
   int size = i2d_convert_function(object, &openssl_buffer);
   if (size < 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   crypto::ScopedOpenSSLBytes scoped_buffer(openssl_buffer);
@@ -77,12 +77,12 @@ std::string GetOpensslError() {
   return error_string;
 }
 
-base::Optional<std::vector<uint8_t>> RsaKeyToSubjectPublicKeyInfoBytes(
+std::optional<std::vector<uint8_t>> RsaKeyToSubjectPublicKeyInfoBytes(
     const crypto::ScopedRSA& key) {
   return OpenSSLObjectToBytes(i2d_RSA_PUBKEY, key.get());
 }
 
-base::Optional<std::vector<uint8_t>> EccKeyToSubjectPublicKeyInfoBytes(
+std::optional<std::vector<uint8_t>> EccKeyToSubjectPublicKeyInfoBytes(
     const crypto::ScopedEC_KEY& key) {
   return OpenSSLObjectToBytes(i2d_EC_PUBKEY, key.get());
 }

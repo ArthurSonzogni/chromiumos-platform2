@@ -7,6 +7,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <optional>
 #include <set>
 #include <string>
 #include <tuple>
@@ -85,7 +86,7 @@ class TpmManagerUtilityTest : public Test {
 
   void RunReadSpaceTest(bool use_owner_auth,
                         tpm_manager::NvramResult result,
-                        base::Optional<std::string> value,
+                        std::optional<std::string> value,
                         bool expect_success);
 
   void RunDefineSpaceTest(bool write_define,
@@ -494,7 +495,7 @@ TEST_F(TpmManagerUtilityTest, DestroySpaceFail) {
 
 void TpmManagerUtilityTest::RunReadSpaceTest(bool use_owner_auth,
                                              tpm_manager::NvramResult result,
-                                             base::Optional<std::string> value,
+                                             std::optional<std::string> value,
                                              bool expect_success) {
   constexpr uint32_t kNvIndex = 0x0123456;
   tpm_manager::ReadSpaceRequest request;

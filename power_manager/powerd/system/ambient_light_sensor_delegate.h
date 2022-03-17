@@ -6,10 +6,10 @@
 #define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_DELEGATE_H_
 
 #include <map>
+#include <optional>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 namespace power_manager {
 namespace system {
@@ -41,8 +41,8 @@ class AmbientLightSensorDelegate {
   // |readings[ChannelType::X]|: red color reading value.
   // |readings[ChannelType::Y]|: green color reading value.
   // |readings[ChannelType::Z]|: blue color reading value.
-  // Returns base::nullopt if the color temperature is unavailable.
-  static base::Optional<int> CalculateColorTemperature(
+  // Returns std::nullopt if the color temperature is unavailable.
+  static std::optional<int> CalculateColorTemperature(
       const std::map<ChannelType, int>& readings);
 
   AmbientLightSensorDelegate() {}
@@ -55,11 +55,11 @@ class AmbientLightSensorDelegate {
   virtual base::FilePath GetIlluminancePath() const = 0;
 
   void SetLuxCallback(
-      base::RepeatingCallback<void(base::Optional<int>, base::Optional<int>)>
+      base::RepeatingCallback<void(std::optional<int>, std::optional<int>)>
           set_lux_callback);
 
  protected:
-  base::RepeatingCallback<void(base::Optional<int>, base::Optional<int>)>
+  base::RepeatingCallback<void(std::optional<int>, std::optional<int>)>
       set_lux_callback_;
 };
 

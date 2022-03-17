@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -451,9 +452,9 @@ int CameraHal::Init() {
   }
 
   bool enough_camera_probed = true;
-  base::Optional<int> num_camera_from_config =
+  std::optional<int> num_camera_from_config =
       cros_device_config_ ? cros_device_config_->GetCameraCount(Interface::kUsb)
-                          : base::nullopt;
+                          : std::nullopt;
   if (num_camera_from_config) {
     if (num_builtin_cameras_ != *num_camera_from_config) {
       LOGF(ERROR) << "Expected " << *num_camera_from_config

@@ -5,6 +5,7 @@
 #include "oobe_config/network_exporter.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -14,7 +15,6 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/optional.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_connection.h>
@@ -132,7 +132,7 @@ std::string FetchNetworkConfigs(
 
 }  // namespace
 
-base::Optional<std::string> ExportNetworkConfig() {
+std::optional<std::string> ExportNetworkConfig() {
   brillo::DBusConnection dbus_connection;
   auto bus = InitDBus(&dbus_connection);
   // Initializing mojo requires that the current thread has an associated
@@ -145,7 +145,7 @@ base::Optional<std::string> ExportNetworkConfig() {
   if (network_config_remote.is_bound()) {
     return FetchNetworkConfigs(network_config_remote, message_loop.get());
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace oobe_config

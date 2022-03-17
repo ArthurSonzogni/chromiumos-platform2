@@ -6,6 +6,7 @@
 
 #include "cros-camera/camera_face_detection.h"
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -51,7 +52,7 @@ FaceDetector::FaceDetector(
 FaceDetectResult FaceDetector::Detect(
     buffer_handle_t buffer,
     std::vector<human_sensing::CrosFace>* faces,
-    base::Optional<Size> active_sensor_array_size) {
+    std::optional<Size> active_sensor_array_size) {
   DCHECK(faces);
   base::AutoLock l(lock_);
   Size input_size = Size(buffer_manager_->GetWidth(buffer),
@@ -91,7 +92,7 @@ FaceDetectResult FaceDetector::Detect(
   }
 
   if (active_sensor_array_size) {
-    base::Optional<std::tuple<float, float, float>> transform =
+    std::optional<std::tuple<float, float, float>> transform =
         GetCoordinateTransform(input_size, *active_sensor_array_size);
     if (!transform) {
       return FaceDetectResult::kTransformError;
@@ -115,10 +116,10 @@ FaceDetectResult FaceDetector::Detect(
 }
 
 // static
-base::Optional<std::tuple<float, float, float>>
+std::optional<std::tuple<float, float, float>>
 FaceDetector::GetCoordinateTransform(const Size src, const Size dst) {
   if (src.width > dst.width || src.height > dst.height) {
-    return base::nullopt;
+    return std::nullopt;
   }
   const float width_ratio = static_cast<float>(dst.width) / src.width;
   const float height_ratio = static_cast<float>(dst.height) / src.height;

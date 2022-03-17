@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -16,7 +17,6 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>
-#include <base/optional.h>
 #include <base/values.h>
 #include <brillo/process/process.h>
 #include <vm_tools/concierge/usb_control.h>
@@ -33,9 +33,9 @@ class Disk {
  public:
   struct Config {
     bool writable{false};
-    base::Optional<bool> sparse;
-    base::Optional<bool> o_direct;
-    base::Optional<size_t> block_size;
+    std::optional<bool> sparse;
+    std::optional<bool> o_direct;
+    std::optional<size_t> block_size;
   };
 
   Disk(base::FilePath path, bool writable);
@@ -60,13 +60,13 @@ class Disk {
   bool writable_;
 
   // Whether the disk should allow sparse file operations (discard) by the VM.
-  base::Optional<bool> sparse_;
+  std::optional<bool> sparse_;
 
   // Whether the disk access should be done with O_DIRECT by the VM.
-  base::Optional<bool> o_direct_;
+  std::optional<bool> o_direct_;
 
   // Block size.
-  base::Optional<size_t> block_size_;
+  std::optional<size_t> block_size_;
 };
 
 // Path to the crosvm binary.
@@ -80,16 +80,16 @@ int64_t GetVmMemoryMiB();
 
 // Retrieves the physical package ID for |cpu| from the topology information in
 // sysfs.
-base::Optional<int32_t> GetCpuPackageId(int32_t cpu);
+std::optional<int32_t> GetCpuPackageId(int32_t cpu);
 
 // Retrieves the CPU capacity property for |cpu| from sysfs.
-base::Optional<int32_t> GetCpuCapacity(int32_t cpu);
+std::optional<int32_t> GetCpuCapacity(int32_t cpu);
 
 // Calculate an appropriate CPU affinity setting based on the host system's
 // CPU clusters and capacity. CPUs will be grouped based on cluster if multiple
 // clusters exist, or based on groupings of equal CPU capacity if more than one
 // such grouping exists. Otherwise, |nullopt| will be returned.
-base::Optional<std::string> GetCpuAffinityFromClusters(
+std::optional<std::string> GetCpuAffinityFromClusters(
     const std::vector<std::vector<std::string>>& cpu_clusters,
     const std::map<int32_t, std::vector<std::string>>& cpu_capacity_groups);
 
@@ -116,11 +116,10 @@ void RunCrosvmCommand(std::initializer_list<std::string> args);
 void RunCrosvmCommand(std::string command, std::string socket_path);
 
 // Returns balloon stats info retrieved from virtio-balloon device.
-base::Optional<BalloonStats> GetBalloonStats(std::string socket_path);
+std::optional<BalloonStats> GetBalloonStats(std::string socket_path);
 
 // Parses balloon stats info from a JSON value.
-base::Optional<BalloonStats> ParseBalloonStats(
-    const base::Value& balloon_stats);
+std::optional<BalloonStats> ParseBalloonStats(const base::Value& balloon_stats);
 
 // Attaches an usb device at host |bus|:|addr|, with |vid|, |pid| and an
 // opened |fd|.
@@ -166,7 +165,7 @@ class CustomParametersForDev {
   // string pairs.
   void Apply(base::StringPairs* args);
 
-  base::Optional<const std::string> ObtainSpecialParameter(
+  std::optional<const std::string> ObtainSpecialParameter(
       const std::string& key);
 
  private:

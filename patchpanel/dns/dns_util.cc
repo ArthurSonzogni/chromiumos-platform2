@@ -7,9 +7,8 @@
 #include <errno.h>
 #include <limits.h>
 
+#include <optional>
 #include <string>
-
-#include "base/optional.h"
 
 #include "patchpanel/dns/dns_protocol.h"
 
@@ -107,22 +106,22 @@ bool IsValidHostLabelCharacter(char c, bool is_first_char) {
          (c >= '0' && c <= '9') || (!is_first_char && c == '-') || c == '_';
 }
 
-base::Optional<std::string> DnsDomainToString(base::StringPiece domain) {
+std::optional<std::string> DnsDomainToString(base::StringPiece domain) {
   std::string ret;
 
   for (unsigned i = 0; i < domain.size() && domain[i]; i += domain[i] + 1) {
 #if CHAR_MIN < 0
     if (domain[i] < 0)
-      return base::nullopt;
+      return std::nullopt;
 #endif
     if (domain[i] > kMaxLabelLength)
-      return base::nullopt;
+      return std::nullopt;
 
     if (i)
       ret += ".";
 
     if (static_cast<unsigned>(domain[i]) + i + 1 > domain.size())
-      return base::nullopt;
+      return std::nullopt;
 
     ret.append(domain.data() + i + 1, domain[i]);
   }

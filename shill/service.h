@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -16,7 +17,6 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
@@ -297,7 +297,7 @@ class Service : public base::RefCounted<Service> {
   mockable void SetFailureSilent(ConnectFailure failure);
 
   // Returns a TimeDelta from |failed_time_| or nullopt if unset (no failure).
-  base::Optional<base::TimeDelta> GetTimeSinceFailed() const;
+  std::optional<base::TimeDelta> GetTimeSinceFailed() const;
 
   void set_failed_time_for_testing(base::Time failed_time) {
     failed_time_ = failed_time;
@@ -1002,7 +1002,7 @@ class Service : public base::RefCounted<Service> {
   bool save_credentials_;
   // If this is nullopt, try to infer whether or not this service is metered
   // by e.g. technology type.
-  base::Optional<bool> metered_override_;
+  std::optional<bool> metered_override_;
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   std::unique_ptr<EapCredentials> eap_;
 #endif  // DISABLE_WIFI || DISABLE_WIRED_8021X

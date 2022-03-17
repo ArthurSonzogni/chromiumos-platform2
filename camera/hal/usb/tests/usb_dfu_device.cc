@@ -9,6 +9,7 @@
 #include <libusb-1.0/libusb.h>
 
 #include <algorithm>
+#include <optional>
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
@@ -316,7 +317,7 @@ bool UsbDfuDevice::Reset() const {
   return true;
 }
 
-base::Optional<DfuStatus> UsbDfuDevice::GetStatus() const {
+std::optional<DfuStatus> UsbDfuDevice::GetStatus() const {
   unsigned char data[6];
   int ret =
       libusb_control_transfer(handle_,
@@ -327,12 +328,12 @@ base::Optional<DfuStatus> UsbDfuDevice::GetStatus() const {
                               /*wLength=*/sizeof(data), kTransferTimeoutMs);
   if (ret < 0) {
     LOG(ERROR) << "DFU_GETSTATUS failed: " << libusb_error_name(ret);
-    return base::nullopt;
+    return std::nullopt;
   }
   if (ret != base::checked_cast<int>(sizeof(data))) {
     LOG(ERROR) << "DFU_GETSTATUS transferred unexpected number of bytes: "
                << ret;
-    return base::nullopt;
+    return std::nullopt;
   }
   return DfuStatus{
       .status = base::strict_cast<uint8_t>(data[0]),
@@ -341,7 +342,7 @@ base::Optional<DfuStatus> UsbDfuDevice::GetStatus() const {
   };
 }
 
-base::Optional<uint8_t> UsbDfuDevice::GetState() const {
+std::optional<uint8_t> UsbDfuDevice::GetState() const {
   unsigned char data[1];
   int ret =
       libusb_control_transfer(handle_,
@@ -352,12 +353,12 @@ base::Optional<uint8_t> UsbDfuDevice::GetState() const {
                               /*wLength=*/sizeof(data), kTransferTimeoutMs);
   if (ret < 0) {
     LOG(ERROR) << "DFU_GETSTATE failed: " << libusb_error_name(ret);
-    return base::nullopt;
+    return std::nullopt;
   }
   if (ret != base::checked_cast<int>(sizeof(data))) {
     LOG(ERROR) << "DFU_GETSTATE transferred unexpected number of bytes: "
                << ret;
-    return base::nullopt;
+    return std::nullopt;
   }
   return base::strict_cast<uint8_t>(data[0]);
 }
@@ -366,7 +367,7 @@ bool UsbDfuDevice::SyncDownload() const {
   constexpr base::TimeDelta kTimeout = base::Seconds(1);
 
   base::ElapsedTimer timer;
-  base::Optional<DfuStatus> status;
+  std::optional<DfuStatus> status;
   while (true) {
     status = GetStatus();
     if (!status) {
@@ -405,7 +406,7 @@ bool UsbDfuDevice::SyncManifest() const {
     LOG(WARNING) << "Device doesn't have bitManifestationTolerant attribute";
   }
   base::ElapsedTimer timer;
-  base::Optional<DfuStatus> status;
+  std::optional<DfuStatus> status;
   while (true) {
     status = GetStatus();
     if (!status) {

@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,7 +13,6 @@
 #include <base/check_op.h>
 #include <base/files/file_enumerator.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_tokenizer.h>
@@ -29,7 +29,7 @@ namespace {
 
 namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-using OptionalProbeErrorPtr = base::Optional<mojo_ipc::ProbeErrorPtr>;
+using OptionalProbeErrorPtr = std::optional<mojo_ipc::ProbeErrorPtr>;
 constexpr auto kInterfaceNameRegex = R"(\s*Interface\s+([A-Za-z0-9]+)\s*)";
 constexpr auto kLinkNoConnectionRegex = R"((Not\s+connected.)\s*)";
 constexpr auto kAccessPointRegex =

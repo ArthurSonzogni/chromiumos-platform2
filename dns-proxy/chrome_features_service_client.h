@@ -6,12 +6,12 @@
 #define DNS_PROXY_CHROME_FEATURES_SERVICE_CLIENT_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
 #include <base/macros.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 
@@ -30,10 +30,10 @@ class ChromeFeaturesServiceClient {
   virtual ~ChromeFeaturesServiceClient() = default;
 
   // Async call to check whether given feature is enabled. |enabled| is
-  // base::nullopt if there is error calling the service. Otherwise,
+  // std::nullopt if there is error calling the service. Otherwise,
   // |enable.value()| indicates whether the feature is enabled or not.
   using IsFeatureEnabledCallback =
-      base::OnceCallback<void(base::Optional<bool> enabled)>;
+      base::OnceCallback<void(std::optional<bool> enabled)>;
 
   // Checks the Chrome Features service to determine whether or not the
   // dns-proxy service is enabled.

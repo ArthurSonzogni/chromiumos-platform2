@@ -5,6 +5,7 @@
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_mojo.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/containers/contains.h>
@@ -75,7 +76,7 @@ AmbientLightSensorWatcherMojo::GetDevice(int32_t iio_device_id) {
 
 void AmbientLightSensorWatcherMojo::GetSysPathCallback(
     int32_t iio_device_id,
-    const std::vector<base::Optional<std::string>>& values) {
+    const std::vector<std::optional<std::string>>& values) {
   DCHECK(device_remotes_.find(iio_device_id) != device_remotes_.end());
 
   if (values.empty() || !values[0].has_value()) {

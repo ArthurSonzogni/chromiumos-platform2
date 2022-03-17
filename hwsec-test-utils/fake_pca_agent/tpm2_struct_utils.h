@@ -11,7 +11,6 @@
 
 #include <string>
 
-#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 
 namespace hwsec_test_utils {

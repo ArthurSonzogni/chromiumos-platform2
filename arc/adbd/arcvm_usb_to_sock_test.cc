@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -30,13 +31,13 @@ std::unique_ptr<ArcVmUsbToSock> SetupChannel(const int sock_fd,
   return channel;
 }
 
-base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> SetupSocketPair() {
+std::optional<std::pair<base::ScopedFD, base::ScopedFD>> SetupSocketPair() {
   int fds[2];
   if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, fds) == -1) {
     PLOG(ERROR) << "Failed to create socket pair for test";
-    return base::nullopt;
+    return std::nullopt;
   }
-  return base::make_optional(
+  return std::make_optional(
       std::make_pair(base::ScopedFD(fds[0]), base::ScopedFD(fds[1])));
 }
 

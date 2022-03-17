@@ -4,6 +4,7 @@
 
 #include "lorgnette/image_readers/png_reader.h"
 
+#include <optional>
 #include <utility>
 
 #include <dbus/lorgnette/dbus-constants.h>
@@ -49,7 +50,7 @@ int LibpngErrorWrap(brillo::ErrorPtr* error,
 std::unique_ptr<ImageReader> PngReader::Create(
     brillo::ErrorPtr* error,
     const ScanParameters& params,
-    const base::Optional<int>& resolution,
+    const std::optional<int>& resolution,
     base::ScopedFILE out_file) {
   std::unique_ptr<PngReader> reader(new PngReader(params, std::move(out_file)));
 
@@ -121,7 +122,7 @@ bool PngReader::ValidateParams(brillo::ErrorPtr* error) {
 }
 
 bool PngReader::Initialize(brillo::ErrorPtr* error,
-                           const base::Optional<int>& resolution) {
+                           const std::optional<int>& resolution) {
   png_ =
       png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
   if (!png_) {

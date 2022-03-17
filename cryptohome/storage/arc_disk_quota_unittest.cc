@@ -8,6 +8,7 @@
 #include "cryptohome/storage/mock_homedirs.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <gmock/gmock.h>

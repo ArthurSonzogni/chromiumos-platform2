@@ -4,6 +4,7 @@
 
 #include "mojo_service_manager/daemon/service_policy_loader.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -73,7 +74,7 @@ bool LoadAllServicePolicyFileFromDirectory(const base::FilePath& dir,
   base::FileEnumerator e(dir, /*recursive=*/false, base::FileEnumerator::FILES);
   bool res = true;
   for (base::FilePath file = e.Next(); !file.empty(); file = e.Next()) {
-    absl::optional<ServicePolicyMap> file_policy_map =
+    std::optional<ServicePolicyMap> file_policy_map =
         LoadServicePolicyFile(file);
     if (file_policy_map.has_value()) {
       if (!MergeServicePolicyMaps(&file_policy_map.value(), policy_map)) {
@@ -88,22 +89,22 @@ bool LoadAllServicePolicyFileFromDirectory(const base::FilePath& dir,
   return res;
 }
 
-absl::optional<ServicePolicyMap> LoadServicePolicyFile(
+std::optional<ServicePolicyMap> LoadServicePolicyFile(
     const base::FilePath& file) {
   std::string str;
   if (!base::ReadFileToString(file, &str)) {
     LOG(ERROR) << "Failed to read policy file: " << file;
-    return absl::nullopt;
+    return std::nullopt;
   }
 
-  absl::optional<ServicePolicyMap> policy_map =
+  std::optional<ServicePolicyMap> policy_map =
       ParseServicePolicyFromString(str);
   LOG_IF(ERROR, !policy_map.has_value())
       << "Failed to parse policy file: " << file;
   return policy_map;
 }
 
-absl::optional<ServicePolicyMap> ParseServicePolicyFromString(
+std::optional<ServicePolicyMap> ParseServicePolicyFromString(
     const std::string& str) {
   auto value_with_error =
       base::JSONReader::ReadAndReturnValueWithError(str, kJSONOption);
@@ -111,52 +112,52 @@ absl::optional<ServicePolicyMap> ParseServicePolicyFromString(
     LOG(ERROR) << "Cannot parse json: " << value_with_error.error_message
                << " (line: " << value_with_error.error_line
                << ", column: " << value_with_error.error_column << ")";
-    return absl::nullopt;
+    return std::nullopt;
   }
   return ParseServicePolicyFromValue(value_with_error.value.value());
 }
 
-absl::optional<ServicePolicyMap> ParseServicePolicyFromValue(
+std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
     const base::Value& value) {
   if (!value.is_list()) {
     LOG(ERROR) << "Expected policy to be a list, got: " << value;
-    return absl::nullopt;
+    return std::nullopt;
   }
   ServicePolicyMap result;
   for (const auto& policy : value.GetList()) {
     std::string identity;
     if (!GetStringByKey(policy, kKeyIdentity, &identity))
-      return absl::nullopt;
+      return std::nullopt;
     if (!ValidateSecurityContext(identity)) {
       LOG(ERROR) << "\"" << identity
                  << "\" is not a valid SELinux security context.";
-      return absl::nullopt;
+      return std::nullopt;
     }
 
     std::vector<std::string> owns;
     if (!ParseOptionalStringListByKey(policy, kKeyOwn, &owns)) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     for (const auto& service : owns) {
       if (!ValidateServiceName(service)) {
         LOG(ERROR) << "\"" << service << "\" is not a valid service name.";
-        return absl::nullopt;
+        return std::nullopt;
       }
       if (!result[service].owner().empty()) {
         LOG(ERROR) << "\"" << service << "\" can have only one owner.";
-        return absl::nullopt;
+        return std::nullopt;
       }
       result[service].SetOwner(identity);
     }
 
     std::vector<std::string> requests;
     if (!ParseOptionalStringListByKey(policy, kKeyRequest, &requests)) {
-      return absl::nullopt;
+      return std::nullopt;
     }
     for (const auto& service : requests) {
       if (!ValidateServiceName(service)) {
         LOG(ERROR) << "\"" << service << "\" is not a valid service name.";
-        return absl::nullopt;
+        return std::nullopt;
       }
       result[service].AddRequester(identity);
     }

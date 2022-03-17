@@ -6,6 +6,7 @@
 // tool.
 #include "ml/simple.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -113,7 +114,7 @@ AddResult Add(const double x,
       base::BindOnce(
           [](bool* const inference_ok, double* const sum,
              const ExecuteResult execute_result,
-             base::Optional<std::vector<TensorPtr>> outputs) {
+             std::optional<std::vector<TensorPtr>> outputs) {
             // Check that the inference succeeded and gave the expected number
             // of outputs.
             *inference_ok = execute_result == ExecuteResult::OK &&

@@ -7,12 +7,12 @@
 
 #include <sys/types.h>
 
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <base/optional.h>
 
 namespace virtual_file_provider {
 
@@ -40,8 +40,8 @@ class FuseMainDelegate {
 // Returns the value returned by libfuse's fuse_main().
 int FuseMain(const base::FilePath& mount_path,
              FuseMainDelegate* delegate,
-             base::Optional<uid_t> userId,
-             base::Optional<gid_t> groupId);
+             std::optional<uid_t> userId,
+             std::optional<gid_t> groupId);
 
 }  // namespace virtual_file_provider
 

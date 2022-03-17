@@ -7,6 +7,7 @@
 #include <atomic>
 #include <cstdint>
 #include <initializer_list>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -37,7 +38,6 @@
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 using ::testing::_;
 using ::testing::Between;
@@ -240,7 +240,7 @@ class StorageQueueTest
     // no-value if there was a gap record instead of a real one.
     using LastRecordDigestMap = base::flat_map<
         std::pair<int64_t /*generation id */, int64_t /*sequencing id*/>,
-        absl::optional<std::string /*digest*/>>;
+        std::optional<std::string /*digest*/>>;
 
     // Helper class for setting up mock uploader expectations of a successful
     // completion.
@@ -411,7 +411,7 @@ class StorageQueueTest
       last_record_digest_map_->emplace(
           std::make_pair(sequence_information.sequencing_id(),
                          sequence_information.generation_id()),
-          absl::nullopt);
+          std::nullopt);
 
       sequence_bound_upload_.AsyncCall(&SequenceBoundUpload::DoUploadGap)
           .WithArgs(uploader_id_, sequence_information.sequencing_id(), count,
@@ -502,7 +502,7 @@ class StorageQueueTest
     // match the expected uploader.
     const int64_t uploader_id_;
 
-    absl::optional<int64_t> generation_id_;
+    std::optional<int64_t> generation_id_;
     LastRecordDigestMap* const last_record_digest_map_;
 
     const MockUpload* const mock_upload_;
@@ -629,7 +629,7 @@ class StorageQueueTest
     ASSERT_OK(write_result) << write_result;
   }
 
-  void ConfirmOrDie(absl::optional<std::int64_t> sequencing_id,
+  void ConfirmOrDie(std::optional<std::int64_t> sequencing_id,
                     bool force = false) {
     test::TestEvent<Status> c;
     LOG(ERROR) << "Confirm force=" << force << " seq="
@@ -1680,7 +1680,7 @@ TEST_P(StorageQueueTest, ForceConfirm) {
   }
 
   // Now force confirm the very beginning and forward time again.
-  ConfirmOrDie(/*sequencing_id=*/absl::nullopt, /*force=*/true);
+  ConfirmOrDie(/*sequencing_id=*/std::nullopt, /*force=*/true);
 
   {
     // Set uploader expectations.

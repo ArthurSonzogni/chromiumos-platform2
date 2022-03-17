@@ -7,11 +7,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/time/default_tick_clock.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
@@ -74,7 +74,7 @@ class BatteryChargeRoutine final : public DiagnosticRoutine {
   // A measure of how far along the routine is, reported in all status updates.
   uint32_t progress_percent_ = 0;
   // When the routine started. Used to calculate |progress_percent_|.
-  base::Optional<base::TimeTicks> start_ticks_ = base::nullopt;
+  std::optional<base::TimeTicks> start_ticks_ = std::nullopt;
   // Tracks the passage of time.
   std::unique_ptr<base::DefaultTickClock> default_tick_clock_;
   // Unowned pointer which should outlive this instance. Allows the default tick

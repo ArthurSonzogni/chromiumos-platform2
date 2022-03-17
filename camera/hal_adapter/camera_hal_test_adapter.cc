@@ -6,6 +6,7 @@
 
 #include "hal_adapter/camera_hal_test_adapter.h"
 
+#include <optional>
 #include <string>
 
 #include "cros-camera/common.h"
@@ -37,7 +38,7 @@ int32_t CameraHalTestAdapter::OpenDevice(
     cros::mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
 
-  base::Optional<int> unremapped_id = GetUnRemappedCameraId(camera_id);
+  std::optional<int> unremapped_id = GetUnRemappedCameraId(camera_id);
   if (!unremapped_id) {
     return -EINVAL;
   }
@@ -59,7 +60,7 @@ int32_t CameraHalTestAdapter::GetCameraInfo(
     cros::mojom::CameraClientType camera_client_type) {
   VLOGF_ENTER();
 
-  base::Optional<int> unremapped_id = GetUnRemappedCameraId(camera_id);
+  std::optional<int> unremapped_id = GetUnRemappedCameraId(camera_id);
   if (!unremapped_id) {
     camera_info->reset();
     return -EINVAL;
@@ -74,7 +75,7 @@ int32_t CameraHalTestAdapter::GetCameraInfo(
   if ((*camera_info)->conflicting_devices) {
     std::vector<std::string> conflicting_devices;
     for (const std::string& id_str : *(*camera_info)->conflicting_devices) {
-      base::Optional<int> remapped_id = GetRemappedCameraId(std::stoi(id_str));
+      std::optional<int> remapped_id = GetRemappedCameraId(std::stoi(id_str));
       if (remapped_id) {
         conflicting_devices.push_back(std::to_string(*remapped_id));
       }
@@ -87,7 +88,7 @@ int32_t CameraHalTestAdapter::GetCameraInfo(
 int32_t CameraHalTestAdapter::SetTorchMode(int32_t camera_id, bool enabled) {
   VLOGF_ENTER();
 
-  base::Optional<int> unremapped_id = GetUnRemappedCameraId(camera_id);
+  std::optional<int> unremapped_id = GetUnRemappedCameraId(camera_id);
   if (!unremapped_id) {
     return -EINVAL;
   }
@@ -142,7 +143,7 @@ void CameraHalTestAdapter::NotifyCameraDeviceStatusChange(
     camera_device_status_t status) {
   VLOGF_ENTER();
 
-  base::Optional<int> remapped_id = GetRemappedCameraId(camera_id);
+  std::optional<int> remapped_id = GetRemappedCameraId(camera_id);
   if (remapped_id) {
     LOGF(INFO) << "Remap external camera id " << camera_id << "->"
                << *remapped_id;
@@ -157,14 +158,14 @@ void CameraHalTestAdapter::NotifyTorchModeStatusChange(
     torch_mode_status_t status) {
   VLOGF_ENTER();
 
-  base::Optional<int> remapped_id = GetRemappedCameraId(camera_id);
+  std::optional<int> remapped_id = GetRemappedCameraId(camera_id);
   if (remapped_id) {
     CameraHalAdapter::NotifyTorchModeStatusChange(delegate, *remapped_id,
                                                   status);
   }
 }
 
-base::Optional<int> CameraHalTestAdapter::GetUnRemappedCameraId(int camera_id) {
+std::optional<int> CameraHalTestAdapter::GetUnRemappedCameraId(int camera_id) {
   if (camera_id < 0) {
     LOGF(ERROR) << "Invalid remapped camera id: " << camera_id;
     return {};
@@ -179,7 +180,7 @@ base::Optional<int> CameraHalTestAdapter::GetUnRemappedCameraId(int camera_id) {
   }
 }
 
-base::Optional<int> CameraHalTestAdapter::GetRemappedCameraId(int camera_id) {
+std::optional<int> CameraHalTestAdapter::GetRemappedCameraId(int camera_id) {
   if (camera_id < 0) {
     LOGF(ERROR) << "Invalid unremapped camera id: " << camera_id;
     return {};
@@ -188,7 +189,7 @@ base::Optional<int> CameraHalTestAdapter::GetRemappedCameraId(int camera_id) {
     auto it = std::find(enable_camera_ids_.begin(), enable_camera_ids_.end(),
                         camera_id);
     return it != enable_camera_ids_.end() ? it - enable_camera_ids_.begin()
-                                          : base::Optional<int>{};
+                                          : std::optional<int>{};
   } else if (enable_external_) {
     return camera_id - CameraHalAdapter::GetNumberOfCameras() +
            GetNumberOfCameras();

@@ -4,11 +4,11 @@
 
 #include "runtime_probe/function_templates/storage.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/strings/string_utils.h>
 
@@ -55,7 +55,7 @@ std::vector<base::FilePath> GetFixedDevices() {
 }
 
 // Get storage size based on |node_path|.
-base::Optional<int64_t> GetStorageSectorCount(const base::FilePath& node_path) {
+std::optional<int64_t> GetStorageSectorCount(const base::FilePath& node_path) {
   // The sysfs entry for size info.
   const auto size_path = node_path.Append("size");
   std::string size_content;
@@ -63,14 +63,14 @@ base::Optional<int64_t> GetStorageSectorCount(const base::FilePath& node_path) {
                                          kReadFileMaxSize)) {
     LOG(WARNING) << "Storage device " << node_path.value()
                  << " does not specify size.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   int64_t sector_int;
   if (!StringToInt64(size_content, &sector_int)) {
     LOG(ERROR) << "Failed to parse recorded sector of" << node_path.value()
                << " to integer!";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return sector_int;

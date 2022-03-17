@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_SYSTEM_CONFIG_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_SYSTEM_CONFIG_H_
 
+#include <optional>
 #include <string>
 
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
@@ -28,8 +29,8 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool NvmeSelfTestSupported() override;
   bool SmartCtlSupported() override;
   bool IsWilcoDevice() override;
-  base::Optional<std::string> GetMarketingName() override;
-  base::Optional<std::string> GetOemName() override;
+  std::optional<std::string> GetMarketingName() override;
+  std::optional<std::string> GetOemName() override;
   std::string GetCodeName() override;
 
   // Setters for FakeSystemConfig attributes.
@@ -42,8 +43,8 @@ class FakeSystemConfig final : public SystemConfigInterface {
   void SetNvmeSelfTestSupported(bool value);
   void SetSmartCtrlSupported(bool value);
   void SetIsWilcoDevice(bool value);
-  void SetMarketingName(const base::Optional<std::string>& value);
-  void SetOemName(const base::Optional<std::string>& value);
+  void SetMarketingName(const std::optional<std::string>& value);
+  void SetOemName(const std::optional<std::string>& value);
   void SetCodeName(const std::string& value);
 
  private:
@@ -56,8 +57,8 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool nvme_self_test_supported_ = true;
   bool smart_ctrl_supported_ = true;
   bool wilco_device_ = true;
-  base::Optional<std::string> marketing_name_;
-  base::Optional<std::string> oem_name_;
+  std::optional<std::string> marketing_name_;
+  std::optional<std::string> oem_name_;
   std::string code_name_;
 };
 

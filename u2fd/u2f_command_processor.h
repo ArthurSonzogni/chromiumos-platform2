@@ -5,9 +5,9 @@
 #ifndef U2FD_U2F_COMMAND_PROCESSOR_H_
 #define U2FD_U2F_COMMAND_PROCESSOR_H_
 
+#include <optional>
 #include <vector>
 
-#include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 
 #include "u2fd/webauthn_handler.h"
@@ -60,7 +60,7 @@ class U2fCommandProcessor {
       uint8_t format,
       std::vector<uint8_t>* signature_out) = 0;
 
-  virtual base::Optional<std::vector<uint8_t>> GetG2fCert() = 0;
+  virtual std::optional<std::vector<uint8_t>> GetG2fCert() = 0;
 
   // Return the algorithm type of the key pair U2fGenerate generates.
   virtual CoseAlgorithmIdentifier GetAlgorithm() = 0;

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <brillo/secure_blob.h>
@@ -66,8 +67,8 @@ class RecoveryCryptoTpm1BackendTest : public testing::Test {
       &tpm_};
 
   ScopedBN_CTX context_;
-  base::Optional<EllipticCurve> ec_256_;
-  base::Optional<EllipticCurve> ec_521_;
+  std::optional<EllipticCurve> ec_256_;
+  std::optional<EllipticCurve> ec_521_;
 };
 
 TEST_F(RecoveryCryptoTpm1BackendTest, GenerateKeyAuthValue) {
@@ -132,7 +133,7 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   brillo::SecureBlob encrypted_privated_key;
   EXPECT_TRUE(recovery_crypto_tpm1_backend_.EncryptEccPrivateKey(
       ec_256_.value(), own_key_pair,
-      /*auth_value=*/base::nullopt, &encrypted_privated_key));
+      /*auth_value=*/std::nullopt, &encrypted_privated_key));
   EXPECT_EQ(encrypted_privated_key.to_string(),
             expected_privated_key.to_string());
 }
@@ -316,7 +317,7 @@ TEST_F(RecoveryCryptoTpm1BackendTest,
   crypto::ScopedEC_POINT shared_secret_point =
       recovery_crypto_tpm1_backend_.GenerateDiffieHellmanSharedSecret(
           ec_256_.value(), own_priv_point_blob,
-          /*auth_value=*/base::nullopt, *others_pub_key);
+          /*auth_value=*/std::nullopt, *others_pub_key);
   EXPECT_NE(nullptr, shared_secret_point);
   EXPECT_TRUE(ec_256_->AreEqual(*shared_secret_point,
                                 *expected_shared_secret_point, context_.get()));

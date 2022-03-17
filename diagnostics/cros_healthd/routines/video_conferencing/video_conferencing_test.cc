@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -10,7 +11,6 @@
 #include <base/check.h>
 #include <base/json/json_writer.h>
 #include <base/run_loop.h>
-#include <base/optional.h>
 #include <base/values.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
@@ -50,7 +50,7 @@ class VideoConferencingRoutineTest : public testing::Test {
       delete;
 
   void SetUp() override {
-    routine_ = CreateVideoConferencingRoutine(base::nullopt,
+    routine_ = CreateVideoConferencingRoutine(std::nullopt,
                                               network_diagnostics_adapter());
   }
 
@@ -80,7 +80,7 @@ TEST_F(VideoConferencingRoutineTest, RoutineSuccess) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunVideoConferencingRoutine(_, _))
       .WillOnce(
-          Invoke([&](const base::Optional<std::string>& stun_server_hostname,
+          Invoke([&](const std::optional<std::string>& stun_server_hostname,
                      network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                          RunVideoConferencingCallback callback) {
             auto result = CreateResult(
@@ -102,7 +102,7 @@ TEST_F(VideoConferencingRoutineTest, RoutineError) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunVideoConferencingRoutine(_, _))
       .WillOnce(
-          Invoke([&](const base::Optional<std::string>& stun_server_hostname,
+          Invoke([&](const std::optional<std::string>& stun_server_hostname,
                      network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                          RunVideoConferencingCallback callback) {
             auto result =
@@ -138,7 +138,7 @@ TEST_P(VideoConferencingProblemTest, HandleVideoConferencingProblem) {
   EXPECT_CALL(*(network_diagnostics_adapter()),
               RunVideoConferencingRoutine(_, _))
       .WillOnce(
-          Invoke([&](const base::Optional<std::string>& stun_server_hostname,
+          Invoke([&](const std::optional<std::string>& stun_server_hostname,
                      network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                          RunVideoConferencingCallback callback) {
             auto result = CreateResult(

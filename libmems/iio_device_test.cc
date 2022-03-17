@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
+
 #include <gtest/gtest.h>
 
 #include "libmems/common_types.h"
@@ -27,8 +29,8 @@ constexpr char kDevice12Attr[] = "iio:device12";
 
 class IioDeviceTest : public fakes::FakeIioDevice, public ::testing::Test {
  public:
-  static base::Optional<int> GetIdAfterPrefix(const char* id_str,
-                                              const char* prefix) {
+  static std::optional<int> GetIdAfterPrefix(const char* id_str,
+                                             const char* prefix) {
     return IioDevice::GetIdAfterPrefix(id_str, prefix);
   }
 

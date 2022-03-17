@@ -4,6 +4,7 @@
 
 #include "iioservice/daemon/events_handler.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -356,7 +357,7 @@ void EventsHandler::OnEventAvailableWithoutBlocking() {
   }
 
   cros::mojom::IioEventPtr iio_event = ExtractIioEvent(event.value());
-  base::Optional<int32_t> chn_index;
+  std::optional<int32_t> chn_index;
   for (int32_t i = 0, size = iio_device_->GetAllEvents().size(); i < size;
        ++i) {
     if (iio_device_->GetEvent(i)->MatchMask(event.value().id)) {

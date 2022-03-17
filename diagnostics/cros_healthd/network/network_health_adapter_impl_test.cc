@@ -3,10 +3,10 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/callback.h>
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
@@ -163,7 +163,7 @@ TEST_F(NetworkHealthAdapterImplTest, RequestNetworkHealthState) {
       }));
 
   network_health_adapter()->GetNetworkHealthState(base::BindLambdaForTesting(
-      [&](base::Optional<network_health_ipc::NetworkHealthStatePtr> response) {
+      [&](std::optional<network_health_ipc::NetworkHealthStatePtr> response) {
         ASSERT_TRUE(response.has_value());
         EXPECT_EQ(canned_response, response);
         run_loop.Quit();
@@ -244,11 +244,11 @@ TEST_F(NetworkHealthAdapterImplTest, ReceiveSignalStrengthChangeEvent) {
   run_loop.Run();
 }
 
-// Test a base::nullopt is returned if no remote is bound;
+// Test a std::nullopt is returned if no remote is bound;
 TEST_F(NetworkHealthAdapterImplTest, NoRemote) {
   base::RunLoop run_loop;
   network_health_adapter()->GetNetworkHealthState(base::BindLambdaForTesting(
-      [&](base::Optional<network_health_ipc::NetworkHealthStatePtr> response) {
+      [&](std::optional<network_health_ipc::NetworkHealthStatePtr> response) {
         EXPECT_FALSE(response.has_value());
         run_loop.Quit();
       }));

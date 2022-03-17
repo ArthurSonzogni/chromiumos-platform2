@@ -4,6 +4,7 @@
 
 #include "modemfwd/firmware_manifest.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/logging.h>
@@ -234,7 +235,7 @@ bool ParseFirmwareManifestV2(const base::FilePath& manifest,
   return true;
 }
 
-base::Optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
+std::optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
     Compression compression) {
   switch (compression) {
     case Compression::NONE:
@@ -246,7 +247,7 @@ base::Optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
       if (name.empty())
         name = base::NumberToString(compression);
       LOG(ERROR) << "Unsupported compression: " << name;
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 

@@ -4,11 +4,11 @@
 
 #include "lorgnette/image_readers/png_reader.h"
 
-#include <base/optional.h>
 #include <brillo/errors/error.h>
 #include <dbus/lorgnette/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <optional>
 
 #include "lorgnette/constants.h"
 #include "lorgnette/sane_client.h"
@@ -44,7 +44,7 @@ TEST(PngReaderTest, CreateWithInvalidRgbBitDepth) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(PngReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(PngReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -59,7 +59,7 @@ TEST(PngReaderTest, CreateWithUnknownLength) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(PngReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(PngReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -73,7 +73,7 @@ TEST(PngReaderTest, CreateWithNoLines) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(PngReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(PngReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -87,7 +87,7 @@ TEST(PngReaderTest, CreateWithInvalidHeight) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(PngReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(PngReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -101,7 +101,7 @@ TEST(PngReaderTest, CreateWithNegativeWidth) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(PngReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(PngReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -115,7 +115,7 @@ TEST(PngReaderTest, CreateWithInvalidWidth) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(PngReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(PngReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -131,7 +131,7 @@ TEST(PngReaderTest, CreateWithInvalidBytesPerLine) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(PngReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(PngReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -146,7 +146,7 @@ TEST(PngReaderTest, CreateWithInvalidImageSize) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(PngReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(PngReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);
@@ -161,7 +161,7 @@ TEST(PngReaderTest, CreateWithInvalidBitDepth) {
 
   brillo::ErrorPtr error;
 
-  EXPECT_FALSE(PngReader::Create(&error, parameters, base::nullopt, nullptr));
+  EXPECT_FALSE(PngReader::Create(&error, parameters, std::nullopt, nullptr));
 
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetDomain(), kDbusDomain);

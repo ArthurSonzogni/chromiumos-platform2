@@ -5,6 +5,7 @@
 #include "biod/cros_fp_biometrics_manager.h"
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/base64.h>
@@ -207,7 +208,7 @@ TEST_F(CrosFpBiometricsManagerTest, TestPositiveMatchSecretIsNotCorrect) {
 
 TEST_F(CrosFpBiometricsManagerTest, TestCheckPositiveMatchSecretNoSecret) {
   EXPECT_CALL(*mock_cros_dev_, GetPositiveMatchSecret)
-      .WillOnce(Return(base::nullopt));
+      .WillOnce(Return(std::nullopt));
   EXPECT_FALSE(
       cros_fp_biometrics_manager_peer_->CheckPositiveMatchSecret(kRecordID, 0));
 }
@@ -856,7 +857,7 @@ TEST_F(CrosFpBiometricsManagerMockTest,
   const std::vector<int> dirty_list = {0};
   const std::unordered_set<uint32_t> suspicious_templates;
 
-  EXPECT_CALL(*mock_, GetLoadedRecordId(0)).WillOnce(Return(base::nullopt));
+  EXPECT_CALL(*mock_, GetLoadedRecordId(0)).WillOnce(Return(std::nullopt));
   EXPECT_CALL(*mock_cros_dev_, GetTemplate).Times(0);
   EXPECT_CALL(*mock_record_manager_, UpdateRecord).Times(0);
 

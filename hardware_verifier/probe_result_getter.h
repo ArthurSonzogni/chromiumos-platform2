@@ -7,7 +7,7 @@
 #define HARDWARE_VERIFIER_PROBE_RESULT_GETTER_H_
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
+#include <optional>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 namespace hardware_verifier {
@@ -20,7 +20,7 @@ class ProbeResultGetter {
   // Gets the |ProbeResult| message by invoking |runtime_probe|.
   //
   // @return A |runtime_probe::ProbeResult| message if it succeeds.
-  virtual base::Optional<runtime_probe::ProbeResult> GetFromRuntimeProbe()
+  virtual std::optional<runtime_probe::ProbeResult> GetFromRuntimeProbe()
       const = 0;
 
   // Gets the |ProbeResult| message from the given file.
@@ -31,7 +31,7 @@ class ProbeResultGetter {
   // @param file_path: Path to the file thath contains the data.
   //
   // @return A |runtime_probe::ProbeResult| message if it succeeds.
-  virtual base::Optional<runtime_probe::ProbeResult> GetFromFile(
+  virtual std::optional<runtime_probe::ProbeResult> GetFromFile(
       const base::FilePath& file_path) const = 0;
 };
 

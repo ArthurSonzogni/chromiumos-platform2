@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <chromeos/dbus/service_constants.h>
@@ -38,7 +39,7 @@ class SaneDeviceImplTest : public testing::Test {
 
 // Check that GetValidOptionValues returns correct values for the test backend.
 TEST_F(SaneDeviceImplTest, GetValidOptionValuesSuccess) {
-  base::Optional<ValidOptionValues> values =
+  std::optional<ValidOptionValues> values =
       device_->GetValidOptionValues(nullptr);
   EXPECT_TRUE(values.has_value());
   ASSERT_EQ(values->resolutions.size(), 1200);
@@ -61,7 +62,7 @@ TEST_F(SaneDeviceImplTest, GetValidOptionValuesSuccess) {
 
 // Check that SetScanResolution works for all valid values.
 TEST_F(SaneDeviceImplTest, SetResolution) {
-  base::Optional<ValidOptionValues> values =
+  std::optional<ValidOptionValues> values =
       device_->GetValidOptionValues(nullptr);
   EXPECT_TRUE(values.has_value());
 
@@ -75,7 +76,7 @@ TEST_F(SaneDeviceImplTest, SetResolution) {
 TEST_F(SaneDeviceImplTest, SetSource) {
   EXPECT_FALSE(device_->SetDocumentSource(nullptr, "invalid source"));
 
-  base::Optional<ValidOptionValues> values =
+  std::optional<ValidOptionValues> values =
       device_->GetValidOptionValues(nullptr);
   EXPECT_TRUE(values.has_value());
 
@@ -90,7 +91,7 @@ TEST_F(SaneDeviceImplTest, SetSource) {
         ReloadOptions();
       }
 
-      base::Optional<std::string> scanner_value =
+      std::optional<std::string> scanner_value =
           device_->GetDocumentSource(nullptr);
       EXPECT_TRUE(scanner_value.has_value());
       EXPECT_EQ(scanner_value.value(), source.name());
@@ -104,7 +105,7 @@ TEST_F(SaneDeviceImplTest, SetSource) {
 TEST_F(SaneDeviceImplTest, SetColorMode) {
   EXPECT_FALSE(device_->SetColorMode(nullptr, MODE_UNSPECIFIED));
 
-  base::Optional<ValidOptionValues> values =
+  std::optional<ValidOptionValues> values =
       device_->GetValidOptionValues(nullptr);
   EXPECT_TRUE(values.has_value());
 
@@ -123,7 +124,7 @@ TEST_F(SaneDeviceImplTest, SetColorMode) {
         ReloadOptions();
       }
 
-      base::Optional<ColorMode> scanner_value = device_->GetColorMode(nullptr);
+      std::optional<ColorMode> scanner_value = device_->GetColorMode(nullptr);
       EXPECT_TRUE(scanner_value.has_value());
       EXPECT_EQ(scanner_value.value(), mode);
     }
@@ -143,7 +144,7 @@ TEST_F(SaneDeviceImplTest, SetScanRegionWithJustification) {
   region.set_bottom_right_x(width);
   region.set_bottom_right_y(height);
 
-  base::Optional<ValidOptionValues> values =
+  std::optional<ValidOptionValues> values =
       device_->GetValidOptionValues(nullptr);
   EXPECT_TRUE(values.has_value());
 
@@ -175,7 +176,7 @@ TEST_F(SaneDeviceImplTest, GetScanParameters) {
   region.set_bottom_right_y(height);
   EXPECT_TRUE(device_->SetScanRegion(nullptr, region));
 
-  base::Optional<ScanParameters> params = device_->GetScanParameters(nullptr);
+  std::optional<ScanParameters> params = device_->GetScanParameters(nullptr);
   EXPECT_TRUE(params.has_value());
   EXPECT_TRUE(params->format == kGrayscale);
 
@@ -253,14 +254,14 @@ TEST_F(SaneClientTest, ScannerInfoFromDeviceListInvalidParameters) {
 }
 
 TEST_F(SaneClientTest, ScannerInfoFromDeviceListNoDevices) {
-  base::Optional<std::vector<ScannerInfo>> info =
+  std::optional<std::vector<ScannerInfo>> info =
       SaneClientImpl::DeviceListToScannerInfo(empty_devices_);
   EXPECT_TRUE(info.has_value());
   EXPECT_EQ(info->size(), 0);
 }
 
 TEST_F(SaneClientTest, ScannerInfoFromDeviceListOneDevice) {
-  base::Optional<std::vector<ScannerInfo>> opt_info =
+  std::optional<std::vector<ScannerInfo>> opt_info =
       SaneClientImpl::DeviceListToScannerInfo(one_device_);
   EXPECT_TRUE(opt_info.has_value());
   std::vector<ScannerInfo> info = opt_info.value();
@@ -274,7 +275,7 @@ TEST_F(SaneClientTest, ScannerInfoFromDeviceListOneDevice) {
 TEST_F(SaneClientTest, ScannerInfoFromDeviceListNullFields) {
   dev_ = CreateTestDevice();
   dev_.name = NULL;
-  base::Optional<std::vector<ScannerInfo>> opt_info =
+  std::optional<std::vector<ScannerInfo>> opt_info =
       SaneClientImpl::DeviceListToScannerInfo(one_device_);
   EXPECT_TRUE(opt_info.has_value());
   EXPECT_EQ(opt_info->size(), 0);
@@ -314,7 +315,7 @@ TEST_F(SaneClientTest, ScannerInfoFromDeviceListNullFields) {
 }
 
 TEST_F(SaneClientTest, ScannerInfoFromDeviceListMultipleDevices) {
-  base::Optional<std::vector<ScannerInfo>> opt_info =
+  std::optional<std::vector<ScannerInfo>> opt_info =
       SaneClientImpl::DeviceListToScannerInfo(two_devices_);
   EXPECT_FALSE(opt_info.has_value());
 
@@ -522,7 +523,7 @@ TEST(ValidOptionValues, InvalidDescriptorWordList) {
   std::vector<SANE_String_Const> valid_values = {nullptr};
   desc.constraint.string_list = valid_values.data();
 
-  base::Optional<std::vector<uint32_t>> values =
+  std::optional<std::vector<uint32_t>> values =
       SaneDeviceImpl::GetValidIntOptionValues(nullptr, desc);
   EXPECT_FALSE(values.has_value());
 }
@@ -533,7 +534,7 @@ TEST(ValidOptionValues, EmptyWordList) {
   std::vector<SANE_Word> valid_values = {0};
   desc.constraint.word_list = valid_values.data();
 
-  base::Optional<std::vector<uint32_t>> values =
+  std::optional<std::vector<uint32_t>> values =
       SaneDeviceImpl::GetValidIntOptionValues(nullptr, desc);
   EXPECT_TRUE(values.has_value());
   EXPECT_EQ(values.value().size(), 0);
@@ -545,7 +546,7 @@ TEST(ValidOptionValues, NonEmptyWordList) {
   std::vector<SANE_Word> valid_values = {4, 0, 729, 368234, 15};
   desc.constraint.word_list = valid_values.data();
 
-  base::Optional<std::vector<uint32_t>> values =
+  std::optional<std::vector<uint32_t>> values =
       SaneDeviceImpl::GetValidIntOptionValues(nullptr, desc);
   EXPECT_TRUE(values.has_value());
   EXPECT_EQ(values.value().size(), 4);
@@ -558,7 +559,7 @@ TEST(ValidOptionValues, InvalidDescriptorRangeList) {
   SANE_Range range;
   desc.constraint.range = &range;
 
-  base::Optional<std::vector<std::string>> values =
+  std::optional<std::vector<std::string>> values =
       SaneDeviceImpl::GetValidStringOptionValues(nullptr, desc);
   EXPECT_FALSE(values.has_value());
 }
@@ -572,7 +573,7 @@ TEST(ValidOptionValues, EmptyRangeList) {
   range.quant = 1;
   desc.constraint.range = &range;
 
-  base::Optional<std::vector<uint32_t>> values =
+  std::optional<std::vector<uint32_t>> values =
       SaneDeviceImpl::GetValidIntOptionValues(nullptr, desc);
   EXPECT_TRUE(values.has_value());
   EXPECT_EQ(values.value().size(), 0);
@@ -587,7 +588,7 @@ TEST(ValidOptionValues, SingleStepRangeList) {
   range.quant = 1;
   desc.constraint.range = &range;
 
-  base::Optional<std::vector<uint32_t>> values =
+  std::optional<std::vector<uint32_t>> values =
       SaneDeviceImpl::GetValidIntOptionValues(nullptr, desc);
   EXPECT_TRUE(values.has_value());
   EXPECT_EQ(values.value(), std::vector<uint32_t>({5, 6, 7, 8, 9, 10, 11}));
@@ -602,7 +603,7 @@ TEST(ValidOptionValues, FourStepRangeList) {
   range.quant = 4;
   desc.constraint.range = &range;
 
-  base::Optional<std::vector<uint32_t>> values =
+  std::optional<std::vector<uint32_t>> values =
       SaneDeviceImpl::GetValidIntOptionValues(nullptr, desc);
   EXPECT_TRUE(values.has_value());
   EXPECT_EQ(values.value(), std::vector<uint32_t>({13, 17, 21, 25}));
@@ -614,7 +615,7 @@ TEST(ValidOptionValues, InvalidDescriptorStringList) {
   std::vector<SANE_Word> valid_values = {4, 0, 729, 368234, 15};
   desc.constraint.word_list = valid_values.data();
 
-  base::Optional<std::vector<std::string>> values =
+  std::optional<std::vector<std::string>> values =
       SaneDeviceImpl::GetValidStringOptionValues(nullptr, desc);
   EXPECT_FALSE(values.has_value());
 }
@@ -625,7 +626,7 @@ TEST(ValidOptionValues, EmptyStringList) {
   std::vector<SANE_String_Const> valid_values = {nullptr};
   desc.constraint.string_list = valid_values.data();
 
-  base::Optional<std::vector<std::string>> values =
+  std::optional<std::vector<std::string>> values =
       SaneDeviceImpl::GetValidStringOptionValues(nullptr, desc);
   EXPECT_TRUE(values.has_value());
   EXPECT_EQ(values.value().size(), 0);
@@ -638,7 +639,7 @@ TEST(ValidOptionValues, NonEmptyStringList) {
                                                  nullptr};
   desc.constraint.string_list = valid_values.data();
 
-  base::Optional<std::vector<std::string>> values =
+  std::optional<std::vector<std::string>> values =
       SaneDeviceImpl::GetValidStringOptionValues(nullptr, desc);
   desc.constraint.string_list = valid_values.data();
   values = SaneDeviceImpl::GetValidStringOptionValues(nullptr, desc);
@@ -687,7 +688,7 @@ TEST(GetOptionRange, ValidFixedValue) {
   desc.constraint.range = &range;
   desc.type = SANE_TYPE_FIXED;
 
-  base::Optional<OptionRange> range_result =
+  std::optional<OptionRange> range_result =
       SaneDeviceImpl::GetOptionRange(nullptr, desc);
   EXPECT_TRUE(range_result.has_value());
   EXPECT_NEAR(range_result.value().start, 2.3, 1e-4);
@@ -705,7 +706,7 @@ TEST(GetOptionRange, ValidIntValue) {
   desc.constraint.range = &range;
   desc.type = SANE_TYPE_INT;
 
-  base::Optional<OptionRange> range_result =
+  std::optional<OptionRange> range_result =
       SaneDeviceImpl::GetOptionRange(nullptr, desc);
   EXPECT_TRUE(range_result.has_value());
   EXPECT_NEAR(range_result.value().start, 3, 1e-4);

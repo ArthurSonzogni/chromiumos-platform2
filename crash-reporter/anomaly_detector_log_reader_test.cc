@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <gtest/gtest.h>
 #include <re2/re2.h>
 

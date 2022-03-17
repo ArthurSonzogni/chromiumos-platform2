@@ -7,6 +7,7 @@
 
 #include <list>
 #include <map>
+#include <optional>
 #include <string>
 
 #include <base/compiler_specific.h>
@@ -118,7 +119,7 @@ class AmbientLightSensorDelegateFile : public AmbientLightSensorDelegate {
 
   // Lux value read by the |als_file_| reader. We need to gather data from all
   // four channels before notifying observers.
-  base::Optional<int> clear_reading_;
+  std::optional<int> clear_reading_;
   // Values read by the |color_als_files_| readers. We need to gather data
   // from all four channels before computing a color temperature and notifying
   // observers.

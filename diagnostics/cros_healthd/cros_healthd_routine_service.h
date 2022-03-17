@@ -8,12 +8,12 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
@@ -43,7 +43,7 @@ class CrosHealthdRoutineService final
       GetRoutineUpdateCallback callback) override;
   void RunAcPowerRoutine(
       chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-      const base::Optional<std::string>& expected_power_type,
+      const std::optional<std::string>& expected_power_type,
       RunAcPowerRoutineCallback callback) override;
   void RunBatteryCapacityRoutine(
       RunBatteryCapacityRoutineCallback callback) override;
@@ -106,7 +106,7 @@ class CrosHealthdRoutineService final
       chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunUrandomRoutineCallback callback) override;
   void RunVideoConferencingRoutine(
-      const base::Optional<std::string>& stun_server_hostname,
+      const std::optional<std::string>& stun_server_hostname,
       RunVideoConferencingRoutineCallback callback) override;
   void RunArcHttpRoutine(RunArcHttpRoutineCallback callback) override;
   void RunArcPingRoutine(RunArcPingRoutineCallback callback) override;

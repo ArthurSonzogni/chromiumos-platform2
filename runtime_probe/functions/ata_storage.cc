@@ -4,6 +4,7 @@
 
 #include "runtime_probe/functions/ata_storage.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -47,19 +48,19 @@ bool CheckStorageTypeMatch(const base::FilePath& node_path) {
 
 }  // namespace
 
-base::Optional<base::Value> AtaStorageFunction::ProbeFromSysfs(
+std::optional<base::Value> AtaStorageFunction::ProbeFromSysfs(
     const base::FilePath& node_path) const {
   VLOG(2) << "Processnig the node \"" << node_path.value() << "\"";
 
   if (!CheckStorageTypeMatch(node_path))
-    return base::nullopt;
+    return std::nullopt;
 
   const auto ata_path = node_path.Append("device");
 
   if (!base::PathExists(ata_path)) {
     VLOG(1) << "ATA-specific path does not exist on storage device \""
             << node_path.value() << "\"";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   auto ata_res = MapFilesToDict(ata_path, kAtaFields, {});
@@ -67,14 +68,14 @@ base::Optional<base::Value> AtaStorageFunction::ProbeFromSysfs(
   if (!ata_res) {
     VLOG(1) << "ATA-specific fields do not exist on storage \""
             << node_path.value() << "\"";
-    return base::nullopt;
+    return std::nullopt;
   }
   PrependToDVKey(&*ata_res, kAtaPrefix);
   ata_res->SetStringKey("type", kAtaType);
   return ata_res;
 }
 
-base::Optional<base::Value> AtaStorageFunction::ProbeFromStorageTool(
+std::optional<base::Value> AtaStorageFunction::ProbeFromStorageTool(
     const base::FilePath& node_path) const {
   base::Value result(base::Value::Type::DICTIONARY);
   auto storage_fw_version = GetStorageFwVersion(base::FilePath(node_path));

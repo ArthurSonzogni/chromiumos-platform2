@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <optional>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
@@ -144,9 +145,9 @@ bool ParseCpuTime(std::istream* input, CpuTimeRecord* record) {
   return true;
 }
 
-base::Optional<std::vector<int>> GetOnlineCpus(std::istream& proc_cpuinfo) {
+std::optional<std::vector<int>> GetOnlineCpus(std::istream& proc_cpuinfo) {
   if (!proc_cpuinfo) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Search for lines like "processor : 0" in /proc/cpuinfo and add the CPU ID

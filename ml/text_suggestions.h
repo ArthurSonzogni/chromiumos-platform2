@@ -5,8 +5,9 @@
 #ifndef ML_TEXT_SUGGESTIONS_H_
 #define ML_TEXT_SUGGESTIONS_H_
 
+#include <optional>
+
 #include <base/no_destructor.h>
-#include <base/optional.h>
 #include <base/scoped_native_library.h>
 #include <chromeos/libsuggest/text_suggester_interface.h>
 
@@ -85,7 +86,7 @@ class TextSuggestions {
   TextSuggestions(const TextSuggestions&) = delete;
   TextSuggestions& operator=(const TextSuggestions&) = delete;
 
-  base::Optional<base::ScopedNativeLibrary> library_;
+  std::optional<base::ScopedNativeLibrary> library_;
   Status status_;
 
   // Store the interface function pointers

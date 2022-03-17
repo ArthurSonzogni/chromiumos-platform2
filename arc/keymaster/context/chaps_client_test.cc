@@ -5,6 +5,7 @@
 #include "arc/keymaster/context/chaps_client.h"
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -261,7 +262,7 @@ TEST_P(ChapsClientTest, ExportExistingEncryptionKey) {
   EXPECT_CALL(chaps_mock_, GenerateKey(_, _, _, _, _, _)).Times(0);
 
   // Call export key.
-  base::Optional<brillo::SecureBlob> encryption_key =
+  std::optional<brillo::SecureBlob> encryption_key =
       chaps_client_.ExportOrGenerateEncryptionKey();
 
   // Verify output.
@@ -278,7 +279,7 @@ TEST_P(ChapsClientTest, ExportGeneratedEncryptionKey) {
       .WillOnce(Return(CKR_OK));
 
   // Call export key.
-  base::Optional<brillo::SecureBlob> encryption_key =
+  std::optional<brillo::SecureBlob> encryption_key =
       chaps_client_.ExportOrGenerateEncryptionKey();
 
   // Verify output.
@@ -292,7 +293,7 @@ TEST_P(ChapsClientTest, CachesExportedEncryptionKey) {
   EXPECT_CALL(chaps_mock_, FindObjects(_, _, _, _)).Times(1);
 
   // Call export key.
-  base::Optional<brillo::SecureBlob> encryption_key =
+  std::optional<brillo::SecureBlob> encryption_key =
       chaps_client_.ExportOrGenerateEncryptionKey();
 
   // Verify exported key is cached in adaptor
@@ -316,7 +317,7 @@ TEST_P(ChapsClientTest, ReturnsCachedEncryptionKey) {
   EXPECT_CALL(chaps_mock_, GenerateKey(_, _, _, _, _, _)).Times(0);
 
   // Call export key.
-  base::Optional<brillo::SecureBlob> encryption_key =
+  std::optional<brillo::SecureBlob> encryption_key =
       chaps_client_.ExportOrGenerateEncryptionKey();
 
   // Verify exported key is what we prepared in adaptor cache.
@@ -368,7 +369,7 @@ TEST_P(ChapsClientTest, FinalizeSignature) {
   // Expect the output is forwarded from chaps.
   EXPECT_CALL(chaps_mock_, SignFinal(_, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(kSignatureBlob), Return(CKR_OK)));
-  base::Optional<brillo::Blob> signature = chaps_client_.FinalizeSignature();
+  std::optional<brillo::Blob> signature = chaps_client_.FinalizeSignature();
   ASSERT_EQ(kSignatureBlob, signature);
 }
 
@@ -380,7 +381,7 @@ TEST_P(ChapsClientTest, FindObjectHandlesInvalidSession) {
       .WillOnce(DoAll(SetArgPointee<3>(kObjectList), Return(CKR_OK)));
 
   // Call find object.
-  base::Optional<CK_OBJECT_HANDLE> handle =
+  std::optional<CK_OBJECT_HANDLE> handle =
       chaps_client_.FindObject(CKO_CERTIFICATE, std::string(kLabel), kId);
 
   // Verify the correct handle is returned.
@@ -399,7 +400,7 @@ TEST_P(ChapsClientTest, ExportSubjectPublicKeyInfoHandlesInvalidSession) {
           Invoke(/* obj_ptr */ this, &ChapsClientTest::FakeGetCertificateBlob));
 
   // Call export SPKI.
-  base::Optional<brillo::Blob> spki =
+  std::optional<brillo::Blob> spki =
       chaps_client_.ExportSubjectPublicKeyInfo(std::string(kLabel), kId);
 
   // Verify the correct blob is returned.
@@ -407,7 +408,7 @@ TEST_P(ChapsClientTest, ExportSubjectPublicKeyInfoHandlesInvalidSession) {
   EXPECT_EQ(kCertificateSpkiDer, spki.value());
 }
 
-// base::Optional<brillo::Blob> ExportSubjectPublicKeyInfo(
+// std::optional<brillo::Blob> ExportSubjectPublicKeyInfo(
 //    const std::string& label, const brillo::Blob& id);
 
 TEST_P(ChapsClientTest, FindKeyHandlesInvalidSession) {
@@ -418,7 +419,7 @@ TEST_P(ChapsClientTest, FindKeyHandlesInvalidSession) {
       .WillOnce(DoAll(SetArgPointee<3>(kObjectList), Return(CKR_OK)));
 
   // Call export key.
-  base::Optional<brillo::SecureBlob> encryption_key =
+  std::optional<brillo::SecureBlob> encryption_key =
       chaps_client_.ExportOrGenerateEncryptionKey();
 
   // Verify key is exported successfully.
@@ -437,7 +438,7 @@ TEST_P(ChapsClientTest, GenerateKeyHandlesInvalidSession) {
       .WillOnce(Return(CKR_OK));
 
   // Call export key.
-  base::Optional<brillo::SecureBlob> encryption_key =
+  std::optional<brillo::SecureBlob> encryption_key =
       chaps_client_.ExportOrGenerateEncryptionKey();
 
   // Verify output.
@@ -455,7 +456,7 @@ TEST_P(ChapsClientTest, GetAttributeHandlesInvalidSession) {
           Invoke(/* obj_ptr */ this, &ChapsClientTest::FakeGetAttribute));
 
   // Call export key.
-  base::Optional<brillo::SecureBlob> encryption_key =
+  std::optional<brillo::SecureBlob> encryption_key =
       chaps_client_.ExportOrGenerateEncryptionKey();
 
   // Verify output.

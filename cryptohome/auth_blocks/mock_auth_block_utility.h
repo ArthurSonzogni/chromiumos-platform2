@@ -8,6 +8,7 @@
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 

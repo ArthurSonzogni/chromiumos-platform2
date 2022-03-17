@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <cctype>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -48,7 +49,7 @@ BootPerformanceFetcher::FetchBootPerformanceInfo() {
   return mojo_ipc::BootPerformanceResult::NewBootPerformanceInfo(info.Clone());
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr>
+std::optional<mojo_ipc::ProbeErrorPtr>
 BootPerformanceFetcher::PopulateBootUpInfo(
     mojo_ipc::BootPerformanceInfo* info) {
   // Boot up stages
@@ -85,10 +86,10 @@ BootPerformanceFetcher::PopulateBootUpInfo(
   info->boot_up_timestamp =
       context_->time().ToDoubleT() - proc_uptime - firmware_time;
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr>
+std::optional<mojo_ipc::ProbeErrorPtr>
 BootPerformanceFetcher::ParseBootFirmwareTime(double* firmware_time) {
   const auto& data_path = context_->root_dir().Append(kRelativeBiosTimesPath);
   std::string content;
@@ -123,10 +124,10 @@ BootPerformanceFetcher::ParseBootFirmwareTime(double* firmware_time) {
   }
   *firmware_time = *firmware_time / base::Time::kMicrosecondsPerSecond;
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr>
+std::optional<mojo_ipc::ProbeErrorPtr>
 BootPerformanceFetcher::ParseBootKernelTime(double* kernel_time) {
   const auto& data_path = context_->root_dir().Append(kRelativeUptimeLoginPath);
   std::string content;
@@ -144,10 +145,10 @@ BootPerformanceFetcher::ParseBootKernelTime(double* kernel_time) {
                                   "Failed to parse uptime log value: " + value);
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<mojo_ipc::ProbeErrorPtr> BootPerformanceFetcher::ParseProcUptime(
+std::optional<mojo_ipc::ProbeErrorPtr> BootPerformanceFetcher::ParseProcUptime(
     double* proc_uptime) {
   const auto& data_path = GetProcUptimePath(context_->root_dir());
   std::string content;
@@ -166,7 +167,7 @@ base::Optional<mojo_ipc::ProbeErrorPtr> BootPerformanceFetcher::ParseProcUptime(
         "Failed to parse /proc/uptime value: " + value);
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 void BootPerformanceFetcher::PopulateShutdownInfo(

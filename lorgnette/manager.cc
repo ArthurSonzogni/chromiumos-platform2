@@ -8,6 +8,7 @@
 #include <setjmp.h>
 
 #include <algorithm>
+#include <optional>
 #include <utility>
 
 #include <base/bits.h>
@@ -87,10 +88,10 @@ base::ScopedFILE SetupOutputFile(brillo::ErrorPtr* error,
 // to a SANE backend that needs the access when connecting to a device. The
 // caller should keep the returned object alive as long as port access is
 // needed.
-base::Optional<PortToken> RequestPortAccessIfNeeded(
+std::optional<PortToken> RequestPortAccessIfNeeded(
     const std::string& device_name, FirewallManager* firewall_manager) {
   if (BackendFromDeviceName(device_name) != kPixma)
-    return base::nullopt;
+    return std::nullopt;
 
   return firewall_manager->RequestPixmaPortAccess();
 }
@@ -252,7 +253,7 @@ bool Manager::ListScanners(brillo::ErrorPtr* error,
   }
 
   LOG(INFO) << "Getting list of SANE scanners.";
-  base::Optional<std::vector<ScannerInfo>> sane_scanners =
+  std::optional<std::vector<ScannerInfo>> sane_scanners =
       sane_client_->ListDevices(error);
   if (!sane_scanners.has_value()) {
     return false;
@@ -328,14 +329,14 @@ bool Manager::GetScannerCapabilities(brillo::ErrorPtr* error,
     return false;
   }
 
-  base::Optional<PortToken> token =
+  std::optional<PortToken> token =
       RequestPortAccessIfNeeded(device_name, firewall_manager_.get());
   std::unique_ptr<SaneDevice> device =
       sane_client_->ConnectToDevice(error, nullptr, device_name);
   if (!device)
     return false;
 
-  base::Optional<ValidOptionValues> options =
+  std::optional<ValidOptionValues> options =
       device->GetValidOptionValues(error);
   if (!options.has_value())
     return false;
@@ -403,7 +404,7 @@ std::vector<uint8_t> Manager::StartScan(
     return impl::SerializeProto(response);
   }
 
-  base::Optional<std::string> source_name = device->GetDocumentSource(&error);
+  std::optional<std::string> source_name = device->GetDocumentSource(&error);
   if (!source_name.has_value()) {
     response.set_failure_reason("Failed to get DocumentSource: " +
                                 SerializeError(error));
@@ -420,7 +421,7 @@ std::vector<uint8_t> Manager::StartScan(
   // scanning until an error is received.
   // Otherwise, stop scanning after one page.
   if (source_type == SOURCE_ADF_SIMPLEX || source_type == SOURCE_ADF_DUPLEX) {
-    scan_state.total_pages = base::nullopt;
+    scan_state.total_pages = std::nullopt;
   } else {
     scan_state.total_pages = 1;
   }
@@ -624,7 +625,7 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
     return false;
   }
 
-  base::Optional<PortToken> token =
+  std::optional<PortToken> token =
       RequestPortAccessIfNeeded(request.device_name(), firewall_manager_.get());
 
   // If ConnectToDevice() fails without updating |status|, |status| will be
@@ -649,7 +650,7 @@ bool Manager::StartScanInternal(brillo::ErrorPtr* error,
       return false;
     }
 
-    base::Optional<int> resolution = device->GetScanResolution(error);
+    std::optional<int> resolution = device->GetScanResolution(error);
     if (!resolution.has_value()) {
       return false;
     }
@@ -804,14 +805,14 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
   DCHECK(scan_state);
 
   SaneDevice* device = scan_state->device.get();
-  base::Optional<ScanParameters> params = device->GetScanParameters(error);
+  std::optional<ScanParameters> params = device->GetScanParameters(error);
   if (!params.has_value()) {
     return SCAN_STATE_FAILED;
   }
 
   // Get resolution value in DPI so that we can record it in the image.
   brillo::ErrorPtr resolution_error;
-  base::Optional<int> resolution = device->GetScanResolution(&resolution_error);
+  std::optional<int> resolution = device->GetScanResolution(&resolution_error);
   if (!resolution.has_value()) {
     LOG(WARNING) << "Failed to get scan resolution: "
                  << SerializeError(resolution_error);

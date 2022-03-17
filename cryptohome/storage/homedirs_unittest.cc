@@ -4,6 +4,7 @@
 
 #include "cryptohome/storage/homedirs.h"
 
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>

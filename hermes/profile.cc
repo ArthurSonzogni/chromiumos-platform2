@@ -5,13 +5,13 @@
 #include "hermes/profile.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "hermes/executor.h"
@@ -24,7 +24,7 @@ namespace {
 
 const char kBasePath[] = "/org/chromium/Hermes/profile/";
 
-base::Optional<profile::State> LpaProfileStateToHermes(
+std::optional<profile::State> LpaProfileStateToHermes(
     lpa::proto::ProfileState state) {
   switch (state) {
     case lpa::proto::DISABLED:
@@ -33,11 +33,11 @@ base::Optional<profile::State> LpaProfileStateToHermes(
       return profile::kActive;
     default:
       LOG(ERROR) << "Unrecognized lpa ProfileState: " << state;
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 
-base::Optional<profile::ProfileClass> LpaProfileClassToHermes(
+std::optional<profile::ProfileClass> LpaProfileClassToHermes(
     lpa::proto::ProfileClass cls) {
   switch (cls) {
     case lpa::proto::TESTING:
@@ -48,7 +48,7 @@ base::Optional<profile::ProfileClass> LpaProfileClassToHermes(
       return profile::kOperational;
     default:
       LOG(ERROR) << "Unrecognized lpa ProfileClass: " << cls;
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 
@@ -99,7 +99,7 @@ std::unique_ptr<Profile> Profile::Create(
                        profile_info.profile_owner().mnc());
   }
   profile->SetActivationCode(profile_info.activation_code());
-  base::Optional<profile::State> state;
+  std::optional<profile::State> state;
   state = is_pending ? profile::kPending
                      : LpaProfileStateToHermes(profile_info.profile_state());
   if (!state.has_value()) {

@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -23,7 +24,7 @@ namespace {
 
 // Functions for mapping the ErrorAction in cryptohome into PossibleAction and
 // PrimaryAction that the chromium side can understand.
-base::Optional<user_data_auth::PrimaryAction> ErrorActionToPrimaryAction(
+std::optional<user_data_auth::PrimaryAction> ErrorActionToPrimaryAction(
     ErrorAction err) {
   switch (err) {
     case ErrorAction::kCreateRequired:
@@ -42,11 +43,11 @@ base::Optional<user_data_auth::PrimaryAction> ErrorActionToPrimaryAction(
     case ErrorAction::kIncorrectAuth:
       return user_data_auth::PrimaryAction::PRIMARY_INCORRECT_AUTH;
     default:
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 
-base::Optional<user_data_auth::PossibleAction> ErrorActionToPossibleAction(
+std::optional<user_data_auth::PossibleAction> ErrorActionToPossibleAction(
     ErrorAction err) {
   switch (err) {
     case ErrorAction::kRetry:
@@ -65,7 +66,7 @@ base::Optional<user_data_auth::PossibleAction> ErrorActionToPossibleAction(
     case ErrorAction::kFatal:
       return user_data_auth::PossibleAction::POSSIBLY_FATAL;
     default:
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 

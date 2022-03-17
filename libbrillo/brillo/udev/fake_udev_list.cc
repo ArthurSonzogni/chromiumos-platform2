@@ -4,6 +4,7 @@
 
 #include <brillo/udev/fake_udev_list.h>
 
+#include <optional>
 #include <utility>
 
 #include <base/check.h>

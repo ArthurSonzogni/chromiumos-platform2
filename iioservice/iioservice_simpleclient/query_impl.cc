@@ -4,6 +4,7 @@
 
 #include "iioservice/iioservice_simpleclient/query_impl.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -99,7 +100,7 @@ void QueryImpl::GetDeviceIdsCallback(
 void QueryImpl::GetAttributesCallback(
     int32_t iio_device_id,
     std::vector<cros::mojom::DeviceType> types,
-    const std::vector<base::Optional<std::string>>& values) {
+    const std::vector<std::optional<std::string>>& values) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   DCHECK(device_ids_.find(iio_device_id) != device_ids_.end());
   DCHECK_EQ(attributes_.size(), values.size());

@@ -7,11 +7,11 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 #include "modemfwd/firmware_file_info.h"
 
@@ -19,7 +19,7 @@
 
 namespace modemfwd {
 
-base::Optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
+std::optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
     Compression compression);
 
 struct DeviceType {

@@ -6,8 +6,9 @@
 #ifndef HARDWARE_VERIFIER_VERIFIER_H_
 #define HARDWARE_VERIFIER_VERIFIER_H_
 
-#include <base/optional.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
+
+#include <optional>
 
 #include "hardware_verifier/hardware_verifier.pb.h"
 
@@ -25,7 +26,7 @@ class Verifier {
   //     expectation of the probe result.
   //
   // @return Instance of |HwVerificationReport| if it succeeds.
-  virtual base::Optional<HwVerificationReport> Verify(
+  virtual std::optional<HwVerificationReport> Verify(
       const runtime_probe::ProbeResult& probe_result,
       const HwVerificationSpec& hw_verification_spec) const = 0;
 };

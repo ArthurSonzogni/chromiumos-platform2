@@ -5,6 +5,7 @@
 #include "lorgnette/ippusb_device.h"
 
 #include <memory>
+#include <optional>
 
 #include <libusb.h>
 #include <sys/socket.h>
@@ -86,7 +87,7 @@ bool ContainsIppUsbInterface(const libusb_config_descriptor* config,
 // support through the ippusb backend, but this function will not check for
 // proper support.  The caller must connect to the device and probe it before
 // attempting to scan.
-base::Optional<ScannerInfo> ScannerInfoForDevice(
+std::optional<ScannerInfo> ScannerInfoForDevice(
     libusb_device* device, const libusb_device_descriptor& descriptor) {
   const std::string vid_pid = VidPid(descriptor);
 
@@ -95,7 +96,7 @@ base::Optional<ScannerInfo> ScannerInfoForDevice(
   if (status < 0) {
     LOG(ERROR) << "Failed to open device " << vid_pid << ": "
                << libusb_error_name(status);
-    return base::nullopt;
+    return std::nullopt;
   }
   auto handle = std::unique_ptr<libusb_device_handle, decltype(&libusb_close)>(
       h, libusb_close);
@@ -106,7 +107,7 @@ base::Optional<ScannerInfo> ScannerInfoForDevice(
   if (bytes < 0) {
     LOG(ERROR) << "Failed to read manufacturer from device " << vid_pid << ": "
                << libusb_error_name(bytes);
-    return base::nullopt;
+    return std::nullopt;
   }
   std::string mfgr_name((const char*)buf.data(), bytes);
 
@@ -115,7 +116,7 @@ base::Optional<ScannerInfo> ScannerInfoForDevice(
   if (bytes < 0) {
     LOG(ERROR) << "Failed to read product name from device " << vid_pid << ": "
                << libusb_error_name(bytes);
-    return base::nullopt;
+    return std::nullopt;
   }
   std::string model_name((const char*)buf.data(), bytes);
 
@@ -141,20 +142,20 @@ base::Optional<ScannerInfo> ScannerInfoForDevice(
 
 // Check if |device| is a printer that supports IPP-USB and return a ScannerInfo
 // proto if it is.
-base::Optional<ScannerInfo> CheckUsbDevice(libusb_device* device) {
+std::optional<ScannerInfo> CheckUsbDevice(libusb_device* device) {
   libusb_device_descriptor descriptor;
   int status = libusb_get_device_descriptor(device, &descriptor);
   if (status < 0) {
     LOG(WARNING) << "Failed to get device descriptor: "
                  << libusb_error_name(status);
-    return base::nullopt;
+    return std::nullopt;
   }
   const std::string vid_pid = VidPid(descriptor);
 
   // Printers always have a printer class interface defined.  They don't define
   // a top-level device class.
   if (descriptor.bDeviceClass != LIBUSB_CLASS_PER_INTERFACE) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   bool isPrinter = false;
@@ -179,7 +180,7 @@ base::Optional<ScannerInfo> CheckUsbDevice(libusb_device* device) {
     LOG(INFO) << "Device " << vid_pid << " is a printer without IPP-USB";
   }
   if (!isIppUsb) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return ScannerInfoForDevice(device, descriptor);
@@ -187,20 +188,20 @@ base::Optional<ScannerInfo> CheckUsbDevice(libusb_device* device) {
 
 }  // namespace
 
-base::Optional<std::string> BackendForDevice(const std::string& device_name) {
+std::optional<std::string> BackendForDevice(const std::string& device_name) {
   LOG(INFO) << "Finding real backend for device: " << device_name;
   std::string protocol, name, vid, pid, path;
   if (!RE2::FullMatch(
           device_name,
           "ippusb:([^:]+):([^:]+):([0-9A-Fa-f]{4})_([0-9A-Fa-f]{4})(/.*)",
           &protocol, &name, &vid, &pid, &path)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string socket =
       base::StringPrintf("%s-%s.sock", vid.c_str(), pid.c_str());
   if (!WaitForSocket(socket, kSocketCreationTimeout)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string real_device =
@@ -229,7 +230,7 @@ std::vector<ScannerInfo> FindIppUsbDevices() {
 
   std::vector<ScannerInfo> scanners;
   for (ssize_t i = 0; i < num_devices; i++) {
-    base::Optional<ScannerInfo> info = CheckUsbDevice(dev_list[i]);
+    std::optional<ScannerInfo> info = CheckUsbDevice(dev_list[i]);
     if (info.has_value()) {
       scanners.push_back(info.value());
     }

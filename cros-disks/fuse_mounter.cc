@@ -21,6 +21,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -130,7 +131,7 @@ FUSESandboxedProcessFactory::FUSESandboxedProcessFactory(
     OwnerUser run_as,
     bool has_network_access,
     std::vector<gid_t> supplementary_groups,
-    base::Optional<base::FilePath> mount_namespace)
+    std::optional<base::FilePath> mount_namespace)
     : platform_(platform),
       executable_(std::move(executable.executable)),
       seccomp_policy_(std::move(executable.seccomp_policy)),

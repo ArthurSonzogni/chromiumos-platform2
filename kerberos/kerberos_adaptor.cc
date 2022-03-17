@@ -4,6 +4,7 @@
 
 #include "kerberos/kerberos_adaptor.h"
 
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -12,7 +13,6 @@
 #include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_object.h>
@@ -262,7 +262,7 @@ ByteArray KerberosAdaptor::AcquireKerberosTgt(
   AcquireKerberosTgtRequest request;
   ErrorType error = ParseProto(&request, request_blob);
 
-  base::Optional<std::string> password;
+  std::optional<std::string> password;
   if (error == ERROR_NONE) {
     password = ReadPipeToString(password_fd.get());
     if (!password.has_value()) {

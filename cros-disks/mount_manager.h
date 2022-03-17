@@ -16,7 +16,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
 

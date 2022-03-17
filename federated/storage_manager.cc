@@ -6,11 +6,11 @@
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/stringprintf.h>
 
 #include "federated/federated_metadata.h"
@@ -52,18 +52,18 @@ bool StorageManager::OnExampleReceived(const std::string& client_name,
   return example_database_->InsertExample(client_name, example_record);
 }
 
-base::Optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
+std::optional<ExampleDatabase::Iterator> StorageManager::GetExampleIterator(
     const std::string& client_name) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (example_database_ == nullptr || !example_database_->IsOpen()) {
     VLOG(1) << "No database connection";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (example_database_->ExampleCount(client_name) < kMinExampleCount) {
     DVLOG(1) << "Client '" << client_name << " "
              << "doesn't meet the minimum example count requirement";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return example_database_->GetIterator(client_name);

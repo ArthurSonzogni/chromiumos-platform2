@@ -6,12 +6,12 @@
 #define LIBBRILLO_BRILLO_DBUS_MOCK_DBUS_METHOD_RESPONSE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <gmock/gmock.h>
 
@@ -28,11 +28,11 @@ namespace internal {
 // This is the terminal, boundary condition template when there's only one
 // template parameter left.
 template <typename T>
-base::Callback<void(const T&)> CreateSaveArgsOnceFn(base::Optional<T>* dest) {
+base::Callback<void(const T&)> CreateSaveArgsOnceFn(std::optional<T>* dest) {
   // This create a Callback by binding in the |dest| pointer so that once the
   // callback is called, it'll save the argument into |dest|.
   return base::Bind(
-      [](base::Optional<T>* dest_ptr, const T& orig) {
+      [](std::optional<T>* dest_ptr, const T& orig) {
         // Ensure that this is called no more than once.
         CHECK(!dest_ptr->has_value());
         *dest_ptr = orig;
@@ -44,7 +44,7 @@ base::Callback<void(const T&)> CreateSaveArgsOnceFn(base::Optional<T>* dest) {
 // time.
 template <typename First, typename... Rest>
 base::Callback<void(const First&, const Rest&...)> CreateSaveArgsOnceFn(
-    base::Optional<First>* first_dest, base::Optional<Rest>*... rest_dest) {
+    std::optional<First>* first_dest, std::optional<Rest>*... rest_dest) {
   // This create a callback by binding in |first_dest|, which is where we are
   // going to save the first parameter when called. After that, this also binds
   // into the callback another callback, named |rest_callback|, that is created
@@ -54,7 +54,7 @@ base::Callback<void(const First&, const Rest&...)> CreateSaveArgsOnceFn(
   // saving the rest of the parameters into |rest_dest|.
   return base::Bind(
       [](base::Callback<void(const Rest&...)> rest_callback,
-         base::Optional<First>* local_first_dest, const First& first_orig,
+         std::optional<First>* local_first_dest, const First& first_orig,
          const Rest&... rest_orig) {
         // Ensure that this is called no more than once.
         CHECK(!local_first_dest->has_value());
@@ -181,7 +181,7 @@ class MockDBusMethodResponse
 
   // Set the return callback to save all arguments passed to the return callback
   // into |destination|.
-  void save_return_args(base::Optional<Types>*... destination) {
+  void save_return_args(std::optional<Types>*... destination) {
     set_return_callback(
         internal::CreateSaveArgsOnceFn<Types...>(destination...));
   }

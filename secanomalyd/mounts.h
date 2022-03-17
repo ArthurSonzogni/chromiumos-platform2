@@ -5,17 +5,16 @@
 #ifndef SECANOMALYD_MOUNTS_H_
 #define SECANOMALYD_MOUNTS_H_
 
+#include <optional>
 #include <string>
 #include <vector>
-
-#include <base/optional.h>
 
 #include "secanomalyd/mount_entry.h"
 
 namespace secanomalyd {
 
 using MountEntries = std::vector<MountEntry>;
-using MaybeMountEntries = base::Optional<MountEntries>;
+using MaybeMountEntries = std::optional<MountEntries>;
 
 enum class MountFilter { kAll = 0, kUploadableOnly };
 

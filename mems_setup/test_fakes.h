@@ -31,7 +31,7 @@ class FakeDelegate : public Delegate {
     vpd_.emplace(name, value);
   }
 
-  base::Optional<std::string> ReadVpdValue(const std::string& key) override;
+  std::optional<std::string> ReadVpdValue(const std::string& key) override;
 
   bool ProbeKernelModule(const std::string& module) override;
 
@@ -44,7 +44,7 @@ class FakeDelegate : public Delegate {
 
   void CreateFile(const base::FilePath&);
 
-  base::Optional<gid_t> FindGroupId(const char* group) override;
+  std::optional<gid_t> FindGroupId(const char* group) override;
 
   int GetPermissions(const base::FilePath& path) override;
   bool SetPermissions(const base::FilePath& path, int mode) override;

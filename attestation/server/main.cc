@@ -7,6 +7,7 @@
 
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <attestation/proto_bindings/google_key.pb.h>
@@ -16,7 +17,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/cryptohome.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -65,7 +65,7 @@ std::string ReadAbeDataFileContents() {
   return data;
 }
 
-base::Optional<attestation::GoogleKeys> ReadGoogleKeysIfExists() {
+std::optional<attestation::GoogleKeys> ReadGoogleKeysIfExists() {
   base::FilePath file_path(kGoogleKeysPath);
   std::string data;
   if (!base::ReadFileToString(file_path, &data)) {
@@ -121,7 +121,7 @@ using brillo::dbus_utils::AsyncEventSequencer;
 class AttestationDaemon : public brillo::DBusServiceDaemon {
  public:
   AttestationDaemon(brillo::SecureBlob abe_data,
-                    base::Optional<attestation::GoogleKeys> google_keys)
+                    std::optional<attestation::GoogleKeys> google_keys)
       : brillo::DBusServiceDaemon(attestation::kAttestationServiceName),
         abe_data_(std::move(abe_data)),
         attestation_service_(&abe_data_) {

@@ -8,8 +8,9 @@
 #include "hwsec-test-utils/fake_pca_agent/pca_base.h"
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
-#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
+
+#include <optional>
 
 namespace hwsec_test_utils {
 namespace fake_pca_agent {
@@ -37,7 +38,7 @@ class PcaEnrollV1 : public PcaBase<attestation::AttestationEnrollmentRequest,
  private:
   crypto::ScopedEVP_PKEY endorsement_key_;
   crypto::ScopedEVP_PKEY identity_key_;
-  base::Optional<attestation::EncryptedIdentityCredential>
+  std::optional<attestation::EncryptedIdentityCredential>
       encrypted_identity_credential_;
 };
 

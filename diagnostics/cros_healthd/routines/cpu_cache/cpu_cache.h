@@ -7,8 +7,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 
-#include <base/optional.h>
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
@@ -16,7 +16,7 @@
 namespace diagnostics {
 
 std::unique_ptr<DiagnosticRoutine> CreateCpuCacheRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration);
+    const std::optional<base::TimeDelta>& exec_duration);
 
 }  // namespace diagnostics
 

@@ -7,12 +7,12 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
 #include <base/location.h>
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <brillo/brillo_export.h>
 #include <brillo/http/curl_api.h>
 #include <brillo/http/http_transport.h>
@@ -75,8 +75,8 @@ class BRILLO_EXPORT Transport : public http::Transport {
                        uint16_t port,
                        const std::string& ip_address) override;
 
-  void SetBufferSize(base::Optional<int> buffer_size) override;
-  void SetUploadBufferSize(base::Optional<int> buffer_size) override;
+  void SetBufferSize(std::optional<int> buffer_size) override;
+  void SetUploadBufferSize(std::optional<int> buffer_size) override;
 
   // Helper methods to convert CURL error codes (CURLcode and CURLMcode)
   // into brillo::Error object.
@@ -148,8 +148,8 @@ class BRILLO_EXPORT Transport : public http::Transport {
   std::string ip_address_;
   base::FilePath certificate_path_;
   curl_slist* host_list_{nullptr};
-  base::Optional<int> buffer_size_;
-  base::Optional<int> upload_buffer_size_;
+  std::optional<int> buffer_size_;
+  std::optional<int> upload_buffer_size_;
 
   base::WeakPtrFactory<Transport> weak_ptr_factory_for_timer_{this};
   base::WeakPtrFactory<Transport> weak_ptr_factory_{this};

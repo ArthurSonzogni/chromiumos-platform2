@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -117,11 +118,11 @@ bool IsStreamBypassed(camera3_stream_t* stream) {
              GRALLOC_USAGE_HW_CAMERA_ZSL;
 }
 
-base::Optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc) {
+std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc) {
   base::span<const int64_t> timestamp =
       desc->GetMetadata<int64_t>(ANDROID_SENSOR_TIMESTAMP);
-  return timestamp.size() == 1 ? base::make_optional(timestamp[0])
-                               : base::nullopt;
+  return timestamp.size() == 1 ? std::make_optional(timestamp[0])
+                               : std::nullopt;
 }
 
 template <class T>
@@ -194,8 +195,8 @@ std::pair<uint32_t, uint32_t> GetAspectRatio(const Size& size) {
 struct AutoFramingStreamManipulator::CaptureContext {
   bool enable;
   std::vector<camera3_stream_buffer_t> client_buffers;
-  base::Optional<CameraBufferPool::Buffer> full_frame_buffer;
-  base::Optional<int64_t> timestamp;
+  std::optional<CameraBufferPool::Buffer> full_frame_buffer;
+  std::optional<int64_t> timestamp;
 };
 
 AutoFramingStreamManipulator::AutoFramingStreamManipulator()
@@ -293,7 +294,7 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
     CaptureResultCallback result_callback) {
   DCHECK(thread_.IsCurrentThread());
 
-  base::Optional<int32_t> partial_result_count =
+  std::optional<int32_t> partial_result_count =
       GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT);
   partial_result_count_ = partial_result_count.value_or(1);
 
@@ -583,7 +584,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     }
 
     if (!override_crop_window_) {
-      base::Optional<Rect<uint32_t>> roi =
+      std::optional<Rect<uint32_t>> roi =
           auto_framing_client_.TakeNewRegionOfInterest();
       if (roi) {
         DCHECK_NE(frame_cropper_, nullptr);
@@ -605,15 +606,15 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
       close(b.acquire_fence);
       b.acquire_fence = -1;
     }
-    base::Optional<Rect<float>> crop_override;
+    std::optional<Rect<float>> crop_override;
     if (options_.debug) {
       // In debug mode we draw the crop area on the full frame instead.
-      crop_override = base::make_optional<Rect<float>>(0.0f, 0.0f, 1.0f, 1.0f);
+      crop_override = std::make_optional<Rect<float>>(0.0f, 0.0f, 1.0f, 1.0f);
     } else if (override_crop_window_) {
       Rect<uint32_t> crop_window_for_output = AdjustCropRectForScalingToTarget(
           full_frame_size_, auto_framing_client_.GetCropWindow(),
           Size(b.stream->width, b.stream->height));
-      crop_override = base::make_optional<Rect<float>>(
+      crop_override = std::make_optional<Rect<float>>(
           NormalizeRect(crop_window_for_output, full_frame_size_));
     }
     base::ScopedFD release_fence = frame_cropper_->CropBuffer(

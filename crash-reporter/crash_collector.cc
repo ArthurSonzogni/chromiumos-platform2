@@ -16,6 +16,7 @@
 
 #include <ctime>
 #include <map>
+#include <optional>
 #include <set>
 #include <utility>
 #include <vector>
@@ -402,7 +403,7 @@ CrashCollector::CrashCollector(
       device_policy_(std::make_unique<policy::DevicePolicyImpl>()),
       crash_directory_selection_method_(crash_directory_selection_method),
       crash_sending_mode_(crash_sending_mode),
-      force_daemon_store_(base::nullopt),
+      force_daemon_store_(std::nullopt),
       is_finished_(false),
       bytes_written_(0),
       tag_(tag) {
@@ -894,12 +895,12 @@ FilePath CrashCollector::GetUserCrashDirectoryOld(bool use_daemon_store) {
   return user_directory;
 }
 
-base::Optional<FilePath> CrashCollector::GetUserCrashDirectoryNew() {
+std::optional<FilePath> CrashCollector::GetUserCrashDirectoryNew() {
   if (util::IsTestImage() || ShouldHandleChromeCrashes()) {
     // When testing, store crashes in the fallback crash directory
     // (/var/spool/crash or /home/chronos/crash); otherwise,
     // the test framework can't get to them after logging the user out.
-    return base::nullopt;
+    return std::nullopt;
   }
   // In this multiprofile world, there is no one-specific user dir anymore.
   // Ask the session manager for the active ones, then just run with the
@@ -910,7 +911,7 @@ base::Optional<FilePath> CrashCollector::GetUserCrashDirectoryNew() {
                                             &directories) ||
       directories.empty()) {
     LOG(ERROR) << "Could not get user crash directories";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return directories[0];
@@ -936,7 +937,7 @@ bool CrashCollector::UseDaemonStore() {
   return base::RandGenerator(2) == 0;
 }
 
-base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
+std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
     uid_t process_euid,
     uid_t default_user_id,
     mode_t* mode,
@@ -954,7 +955,7 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
       if (!brillo::userdb::GetGroupInfo(constants::kCrashName,
                                         directory_owner)) {
         PLOG(ERROR) << "Couldn't look up user " << constants::kCrashName;
-        return base::nullopt;
+        return std::nullopt;
       }
     } else {
       *mode = kUserCrashPathMode;
@@ -964,7 +965,7 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
                                       directory_group)) {
       PLOG(ERROR) << "Couldn't look up group "
                   << constants::kCrashUserGroupName;
-      return base::nullopt;
+      return std::nullopt;
     }
     return GetUserCrashDirectoryOld(crash_directory_selection_method_ ==
                                     kAlwaysUseDaemonStore);
@@ -975,12 +976,12 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoOld(
   if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
                                     directory_group)) {
     PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
-    return base::nullopt;
+    return std::nullopt;
   }
   return system_crash_path_;
 }
 
-base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
+std::optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
     uid_t process_euid,
     uid_t default_user_id,
     mode_t* mode,
@@ -1003,15 +1004,15 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
     *mode = kDaemonStoreCrashPathMode;
     if (!brillo::userdb::GetGroupInfo(constants::kCrashName, directory_owner)) {
       PLOG(ERROR) << "Couldn't look up user " << constants::kCrashName;
-      return base::nullopt;
+      return std::nullopt;
     }
     if (!brillo::userdb::GetGroupInfo(constants::kCrashUserGroupName,
                                       directory_group)) {
       PLOG(ERROR) << "Couldn't look up group "
                   << constants::kCrashUserGroupName;
-      return base::nullopt;
+      return std::nullopt;
     }
-    base::Optional<FilePath> maybe_path = GetUserCrashDirectoryNew();
+    std::optional<FilePath> maybe_path = GetUserCrashDirectoryNew();
     if (maybe_path) {
       return maybe_path;
     }
@@ -1019,7 +1020,7 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
 
   if (crash_directory_selection_method_ == kAlwaysUseDaemonStore) {
     LOG(ERROR) << "Using daemon-store failed but daemon-store was required";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Otherwise, we can't use daemon store, so try the fallback directory if
@@ -1030,7 +1031,7 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
                                       directory_group)) {
       PLOG(ERROR) << "Couldn't look up group "
                   << constants::kCrashUserGroupName;
-      return base::nullopt;
+      return std::nullopt;
     }
     *mode = kUserCrashPathMode;
     *directory_owner = default_user_id;
@@ -1046,7 +1047,7 @@ base::Optional<FilePath> CrashCollector::GetCrashDirectoryInfoNew(
   if (!brillo::userdb::GetGroupInfo(constants::kCrashGroupName,
                                     directory_group)) {
     PLOG(ERROR) << "Couldn't look up group " << constants::kCrashGroupName;
-    return base::nullopt;
+    return std::nullopt;
   }
   return system_crash_path_;
 }
@@ -1080,7 +1081,7 @@ bool CrashCollector::GetCreatedCrashDirectoryByEuid(uid_t euid,
   mode_t directory_mode;
   uid_t directory_owner;
   gid_t directory_group;
-  base::Optional<base::FilePath> maybe_path;
+  std::optional<base::FilePath> maybe_path;
   // Roll a die to decide whether to attempt using daemon-store. Even if this
   // comes up as true, we might not use daemon-store (for example if the user is
   // logged out, or we otherwise fail to get the daemon-store directory)
@@ -1528,12 +1529,12 @@ std::string CrashCollector::GetKernelVersion() const {
   return StringPrintf("%s %s", buf.release, buf.version);
 }
 
-base::Optional<bool> CrashCollector::IsEnterpriseEnrolled() {
+std::optional<bool> CrashCollector::IsEnterpriseEnrolled() {
   DCHECK(device_policy_);
   if (!device_policy_loaded_) {
     if (!device_policy_->LoadPolicy()) {
       LOG(ERROR) << "Failed to load device policy";
-      return base::nullopt;
+      return std::nullopt;
     }
     device_policy_loaded_ = true;
   }
@@ -1613,7 +1614,7 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
   std::string version_info =
       product_version_info + lsb_release_info + kernel_info;
 
-  base::Optional<bool> is_enterprise_enrolled = IsEnterpriseEnrolled();
+  std::optional<bool> is_enterprise_enrolled = IsEnterpriseEnrolled();
   if (is_enterprise_enrolled.has_value()) {
     AddCrashMetaUploadData("is-enterprise-enrolled",
                            *is_enterprise_enrolled ? "true" : "false");

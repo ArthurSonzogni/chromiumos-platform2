@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/optional.h>
 #include <base/values.h>
 #include <dbus/bus.h>
 

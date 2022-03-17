@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_WATCHER_MOJO_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -43,7 +44,7 @@ class AmbientLightSensorWatcherMojo : public AmbientLightSensorWatcherInterface,
  private:
   void GetSysPathCallback(
       int32_t iio_device_id,
-      const std::vector<base::Optional<std::string>>& values);
+      const std::vector<std::optional<std::string>>& values);
 
   void OnSensorDeviceDisconnect(int32_t iio_device_id,
                                 uint32_t custom_reason_code,

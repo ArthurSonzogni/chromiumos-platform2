@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,7 +13,6 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
@@ -56,11 +56,11 @@ std::vector<base::FilePath> ListDirectory(const base::FilePath& path) {
   return res;
 }
 
-base::Optional<std::string> GetDriver(const base::FilePath& path) {
+std::optional<std::string> GetDriver(const base::FilePath& path) {
   base::FilePath driver_path;
   if (base::ReadSymbolicLink(path.Append(kFileDriver), &driver_path))
     return driver_path.BaseName().value();
-  return base::nullopt;
+  return std::nullopt;
 }
 
 mojo_ipc::PciBusInfoPtr FetchPciInfo(const base::FilePath& path) {

@@ -4,6 +4,7 @@
 #include "ml/machine_learning_service_impl.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -133,7 +134,7 @@ class MLServiceFuzzer {
         std::move(inputs), std::move(outputs),
         base::BindOnce(
             [](bool* infer_callback_done, const ExecuteResult result,
-               base::Optional<std::vector<TensorPtr>> outputs) {
+               std::optional<std::vector<TensorPtr>> outputs) {
               // Basic inference checks.
               CHECK_EQ(result, ExecuteResult::OK);
               CHECK(outputs.has_value());

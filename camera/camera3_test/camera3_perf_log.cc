@@ -7,10 +7,10 @@
 #include <inttypes.h>
 
 #include <numeric>
+#include <optional>
 
 #include <base/command_line.h>
 #include <base/containers/contains.h>
-#include <base/optional.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 
@@ -177,7 +177,7 @@ std::vector<std::pair<std::string, int64_t>> Camera3PerfLog::CollectPerfLogs(
 
     // Still capture shot to shot times.
     std::vector<int64_t> logs;
-    base::Optional<base::TimeTicks> start_ticks;
+    std::optional<base::TimeTicks> start_ticks;
     for (const auto& it : frame_events_.at(cam_id)) {
       if (!base::Contains(it.second, FrameEvent::STILL_CAPTURE_RESULT))
         continue;

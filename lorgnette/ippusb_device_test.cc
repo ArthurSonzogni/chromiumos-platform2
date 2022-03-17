@@ -4,6 +4,7 @@
 
 #include "lorgnette/ippusb_device.h"
 
+#include <optional>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -11,13 +12,13 @@
 namespace lorgnette {
 
 TEST(IppUsbDeviceLookup, NoBackendForNonIppUsb) {
-  base::Optional<std::string> backend =
+  std::optional<std::string> backend =
       BackendForDevice("notippusb:device_string");
   EXPECT_FALSE(backend.has_value());
 }
 
 TEST(IppUsbDeviceLookup, NoBackendForBadFormat) {
-  base::Optional<std::string> backend =
+  std::optional<std::string> backend =
       BackendForDevice("ippusb:not_an_escl_string");
   EXPECT_FALSE(backend.has_value());
 }

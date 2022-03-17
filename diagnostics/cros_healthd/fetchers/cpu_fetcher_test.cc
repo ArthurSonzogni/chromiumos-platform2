@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -345,7 +346,7 @@ class CpuFetcherTest : public testing::Test {
   }
 
   // Writes to cpuinfo_max_freq, scaling_max_freq, and scaling_cur_freq. If any
-  // of the optional values are base::nullopt, the corresponding file will not
+  // of the optional values are std::nullopt, the corresponding file will not
   // be written.
   void WritePolicyData(const std::string cpuinfo_max_freq_contents,
                        const std::string scaling_max_freq_contents,
@@ -736,7 +737,7 @@ TEST_F(CpuFetcherTest, CpuTemperatureWithoutLabel) {
   // Since fetching temperatures uses base::FileEnumerator, we're not
   // guaranteed the order of the two results.
   auto first_expected_temp = mojo_ipc::CpuTemperatureChannel::New(
-      base::nullopt, kFirstFakeCpuTemperature);
+      std::nullopt, kFirstFakeCpuTemperature);
   auto second_expected_temp = mojo_ipc::CpuTemperatureChannel::New(
       kSecondFakeCpuTemperatureLabel, kSecondFakeCpuTemperature);
   EXPECT_THAT(
@@ -775,7 +776,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedTemperature) {
 
 // Test that we handle uname failing.
 TEST_F(CpuFetcherTest, UnameFailure) {
-  fake_system_utils()->SetUnameResponse(-1, base::nullopt);
+  fake_system_utils()->SetUnameResponse(-1, std::nullopt);
 
   auto cpu_result = FetchCpuInfo();
 

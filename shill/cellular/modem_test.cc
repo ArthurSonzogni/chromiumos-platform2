@@ -5,6 +5,7 @@
 #include "shill/cellular/modem.h"
 
 #include <iterator>
+#include <optional>
 #include <tuple>
 #include <utility>
 
@@ -124,7 +125,7 @@ class ModemTest : public Test {
     modem_->CreateDevice(properties);
   }
 
-  base::Optional<int> GetDeviceParams(std::string* mac_address) {
+  std::optional<int> GetDeviceParams(std::string* mac_address) {
     return modem_->GetDeviceParams(mac_address);
   }
 
@@ -238,7 +239,7 @@ TEST_F(ModemTest, GetDeviceParams) {
 
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(1));
   EXPECT_CALL(device_info_, GetMacAddress(_, _)).WillOnce(Return(false));
-  base::Optional<int> interface_index = GetDeviceParams(&mac_address);
+  std::optional<int> interface_index = GetDeviceParams(&mac_address);
   EXPECT_TRUE(interface_index.has_value());
   EXPECT_EQ(1, interface_index.value());
 

@@ -5,10 +5,10 @@
 #ifndef OOBE_CONFIG_PSTORE_STORAGE_H_
 #define OOBE_CONFIG_PSTORE_STORAGE_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 
 namespace oobe_config {
 
@@ -23,9 +23,9 @@ namespace oobe_config {
 // wiping the device.
 bool StageForPstore(const std::string& data, const base::FilePath& root_path);
 
-// Loads data directly from pstore. Returns `base::nullopt` if
+// Loads data directly from pstore. Returns `std::nullopt` if
 // no rollback data was found.
-base::Optional<std::string> LoadFromPstore(const base::FilePath& root_path);
+std::optional<std::string> LoadFromPstore(const base::FilePath& root_path);
 
 }  // namespace oobe_config
 

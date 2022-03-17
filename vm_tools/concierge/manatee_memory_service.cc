@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -47,9 +48,9 @@ constexpr uint32_t kPrepareVmId = 3;
 constexpr uint32_t kFinishAddVmId = 4;
 constexpr uint32_t kRemoveVmId = 5;
 
-base::Optional<base::Value> DoSynchronousCall(base::ScopedFD& fd,
-                                              uint32_t type,
-                                              base::Value msg) {
+std::optional<base::Value> DoSynchronousCall(base::ScopedFD& fd,
+                                             uint32_t type,
+                                             base::Value msg) {
   std::string msg_str;
   if (!msg.DictEmpty()) {
     base::JSONWriter::Write(msg, &msg_str);
@@ -66,28 +67,28 @@ base::Optional<base::Value> DoSynchronousCall(base::ScopedFD& fd,
 
   if (!base::WriteFileDescriptor(fd.get(), msg_bytes)) {
     PLOG(ERROR) << "Failed to write message";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   struct mms_message_header resp_header;
   if (!base::ReadFromFD(fd.get(), reinterpret_cast<char*>(&resp_header),
                         sizeof(resp_header))) {
     PLOG(ERROR) << "Failed to read header";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::string resp;
   resp.resize(resp_header.len);
   if (!base::ReadFromFD(fd.get(), resp.data(), resp_header.len)) {
     PLOG(ERROR) << "Partial message from mms";
-    return base::nullopt;
+    return std::nullopt;
   }
   resp.resize(resp_header.len);
 
   if (resp_header.type != type) {
     LOG(ERROR) << "Unexpected response: expected=" << type
                << " actual=" << resp_header.type;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   auto root_value = base::JSONReader::Read(resp);
@@ -97,9 +98,9 @@ base::Optional<base::Value> DoSynchronousCall(base::ScopedFD& fd,
   return root_value;
 }
 
-bool check_simple_response(const base::Optional<base::Value>& resp,
+bool check_simple_response(const std::optional<base::Value>& resp,
                            const char* type) {
-  auto res = resp ? resp->FindIntKey("res") : base::nullopt;
+  auto res = resp ? resp->FindIntKey("res") : std::nullopt;
   if (!resp || !res) {
     LOG(ERROR) << "Malformed " << type << " resp";
     return false;
@@ -279,8 +280,8 @@ bool ManateeMemoryService::LaunchVmOnThread(
                base::Value(static_cast<double>(init_mem_size)));
 
     auto resp = DoSynchronousCall(mms_socket_, kPrepareVmId, std::move(msg));
-    auto res = resp ? resp->FindIntKey("res") : base::nullopt;
-    auto ret_id = resp ? resp->FindIntKey("id") : base::nullopt;
+    auto res = resp ? resp->FindIntKey("res") : std::nullopt;
+    auto ret_id = resp ? resp->FindIntKey("id") : std::nullopt;
     if (!resp || !res || !ret_id) {
       LOG(ERROR) << "Malformed prepare vm resp";
       break;

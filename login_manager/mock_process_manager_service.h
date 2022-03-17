@@ -8,6 +8,7 @@
 #include "login_manager/process_manager_service_interface.h"
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -56,7 +57,7 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
               (const std::string&),
               (override));
   MOCK_METHOD(bool, IsBrowser, (pid_t), (override));
-  MOCK_METHOD(base::Optional<pid_t>, GetBrowserPid, (), (const override));
+  MOCK_METHOD(std::optional<pid_t>, GetBrowserPid, (), (const override));
   MOCK_METHOD(base::TimeTicks, GetLastBrowserRestartTime, (), (override));
 };
 }  // namespace login_manager

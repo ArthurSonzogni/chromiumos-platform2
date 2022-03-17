@@ -6,10 +6,10 @@
 #define AUTHPOLICY_AUTH_DATA_CACHE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/macros.h>
-#include <base/optional.h>
 #include "base/time/time.h"
 
 #include "bindings/authpolicy_containers.pb.h"
@@ -51,11 +51,11 @@ class AuthDataCache {
   void SetEnabled(bool enabled) { enabled_ = enabled; }
   bool IsEnabled() const { return enabled_; }
 
-  // Getters return base::nullopt if the values are not in the cache.
-  base::Optional<std::string> GetWorkgroup(const std::string& realm) const;
-  base::Optional<std::string> GetKdcIp(const std::string& realm) const;
-  base::Optional<std::string> GetDcName(const std::string& realm) const;
-  base::Optional<bool> GetIsAffiliated(const std::string& realm) const;
+  // Getters return std::nullopt if the values are not in the cache.
+  std::optional<std::string> GetWorkgroup(const std::string& realm) const;
+  std::optional<std::string> GetKdcIp(const std::string& realm) const;
+  std::optional<std::string> GetDcName(const std::string& realm) const;
+  std::optional<bool> GetIsAffiliated(const std::string& realm) const;
 
   // Setters create new cache entries if they don't exist yet.
   void SetWorkgroup(const std::string& realm, const std::string& workgroup);

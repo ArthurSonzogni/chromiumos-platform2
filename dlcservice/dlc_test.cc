@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
+
 #include <base/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -912,7 +914,7 @@ TEST_F(DlcBaseTest, ReserveValueClearsAfterPurge) {
       .WillOnce(DoAll(SetArgPointee<2>(true), Return(true)));
   EXPECT_TRUE(dlc.Purge(&err_));
 
-  EXPECT_FALSE(dlc.SetReserve(base::nullopt));
+  EXPECT_FALSE(dlc.SetReserve(std::nullopt));
 }
 
 }  // namespace dlcservice

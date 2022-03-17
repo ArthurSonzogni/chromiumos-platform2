@@ -5,10 +5,10 @@
 #ifndef LIBBRILLO_BRILLO_TIMEZONE_TZIF_PARSER_H_
 #define LIBBRILLO_BRILLO_TIMEZONE_TZIF_PARSER_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/optional.h>
 #include <brillo/brillo_export.h>
 
 namespace brillo {
@@ -19,7 +19,7 @@ namespace timezone {
 // a string. See 'man tzfile' for more info on the format. If |tzif_path| is a
 // relative path, it will be appended to /usr/share/zoneinfo/, otherwise
 // |tzif_path| as an absolute path will be used directly.
-base::Optional<std::string> BRILLO_EXPORT
+std::optional<std::string> BRILLO_EXPORT
 GetPosixTimezone(const base::FilePath& tzif_path);
 
 }  // namespace timezone

@@ -16,7 +16,6 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/optional.h>
 #include <camera/camera_metadata.h>
 #include <sync/sync.h>
 #include <system/camera_metadata.h>

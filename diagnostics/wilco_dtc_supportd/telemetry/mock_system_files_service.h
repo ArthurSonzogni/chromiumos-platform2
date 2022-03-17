@@ -6,10 +6,10 @@
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_MOCK_SYSTEM_FILES_SERVICE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <gmock/gmock.h>
 
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service.h"
@@ -28,12 +28,12 @@ class MockSystemFilesService : public SystemFilesService {
   MockSystemFilesService(const MockSystemFilesService&) = delete;
   MockSystemFilesService& operator=(const MockSystemFilesService&) = delete;
 
-  MOCK_METHOD(base::Optional<FileDump>, GetFileDump, (File), (override));
-  MOCK_METHOD(base::Optional<FileDumps>,
+  MOCK_METHOD(std::optional<FileDump>, GetFileDump, (File), (override));
+  MOCK_METHOD(std::optional<FileDumps>,
               GetDirectoryDump,
               (Directory),
               (override));
-  MOCK_METHOD(base::Optional<std::string>, GetVpdField, (VpdField), (override));
+  MOCK_METHOD(std::optional<std::string>, GetVpdField, (VpdField), (override));
 };
 
 }  // namespace wilco

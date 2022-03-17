@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/system/fake_system_utilities.h"
 
 #include <cstdio>
+#include <optional>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -25,7 +26,7 @@ int FakeSystemUtilities::Uname(struct utsname* buf) {
 }
 
 void FakeSystemUtilities::SetUnameResponse(
-    int ret_code, const base::Optional<std::string>& machine) {
+    int ret_code, const std::optional<std::string>& machine) {
   uname_ret_code_ = ret_code;
   if (machine.has_value())
     uname_machine_ = machine.value();

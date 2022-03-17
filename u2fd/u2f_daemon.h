@@ -11,7 +11,6 @@
 
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
-#include <base/optional.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/dbus_signal.h>

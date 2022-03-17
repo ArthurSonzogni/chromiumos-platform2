@@ -4,10 +4,10 @@
 
 #include "power_manager/powerd/system/ambient_light_sensor_delegate.h"
 
+#include <optional>
 #include <utility>
 #include <vector>
 
-#include <base/optional.h>
 #include <gtest/gtest.h>
 
 namespace power_manager {
@@ -15,7 +15,7 @@ namespace system {
 
 class AmbientLightSensorDelegateTest
     : public testing::TestWithParam<
-          std::pair<std::vector<base::Optional<int>>, base::Optional<int>>> {};
+          std::pair<std::vector<std::optional<int>>, std::optional<int>>> {};
 
 TEST_P(AmbientLightSensorDelegateTest, CheckCalculateColorTemperature) {
   ASSERT_EQ(GetParam().first.size(), 3);
@@ -35,18 +35,18 @@ INSTANTIATE_TEST_SUITE_P(
     AmbientLightSensorDelegateTestRun,
     AmbientLightSensorDelegateTest,
     ::testing::Values(
-        std::make_pair(std::vector<base::Optional<int>>{base::nullopt, 1, 1},
-                       base::nullopt),
-        std::make_pair(std::vector<base::Optional<int>>{1, base::nullopt, 1},
-                       base::nullopt),
-        std::make_pair(std::vector<base::Optional<int>>{1, 1, base::nullopt},
-                       base::nullopt),
-        std::make_pair(std::vector<base::Optional<int>>{100, 10, 100},
-                       base::nullopt),
-        std::make_pair(std::vector<base::Optional<int>>{50, 50, 50}, 5458),
-        std::make_pair(std::vector<base::Optional<int>>{100, 100, 100}, 5458),
-        std::make_pair(std::vector<base::Optional<int>>{50, 50, 100}, 20921),
-        std::make_pair(std::vector<base::Optional<int>>{50, 60, 60}, 7253)));
+        std::make_pair(std::vector<std::optional<int>>{std::nullopt, 1, 1},
+                       std::nullopt),
+        std::make_pair(std::vector<std::optional<int>>{1, std::nullopt, 1},
+                       std::nullopt),
+        std::make_pair(std::vector<std::optional<int>>{1, 1, std::nullopt},
+                       std::nullopt),
+        std::make_pair(std::vector<std::optional<int>>{100, 10, 100},
+                       std::nullopt),
+        std::make_pair(std::vector<std::optional<int>>{50, 50, 50}, 5458),
+        std::make_pair(std::vector<std::optional<int>>{100, 100, 100}, 5458),
+        std::make_pair(std::vector<std::optional<int>>{50, 50, 100}, 20921),
+        std::make_pair(std::vector<std::optional<int>>{50, 60, 60}, 7253)));
 
 }  // namespace system
 }  // namespace power_manager

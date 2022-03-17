@@ -5,6 +5,7 @@
 #ifndef LIBBRILLO_POLICY_MOCK_DEVICE_POLICY_H_
 #define LIBBRILLO_POLICY_MOCK_DEVICE_POLICY_H_
 
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>

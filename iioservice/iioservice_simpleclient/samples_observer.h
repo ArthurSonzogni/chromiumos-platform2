@@ -6,6 +6,7 @@
 #define IIOSERVICE_IIOSERVICE_SIMPLECLIENT_SAMPLES_OBSERVER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -83,7 +84,7 @@ class SamplesObserver final : public SensorClient,
   std::vector<int32_t> channel_indices_;
   std::vector<std::string> iio_chn_ids_;
 
-  base::Optional<int> timestamp_index_ = base::nullopt;
+  std::optional<int> timestamp_index_ = std::nullopt;
 
   int num_success_reads_ = 0;
 

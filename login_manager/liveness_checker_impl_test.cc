@@ -5,6 +5,7 @@
 #include "login_manager/liveness_checker_impl.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -105,7 +106,7 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
 
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
   EXPECT_CALL(*manager_.get(), GetBrowserPid())
-      .WillRepeatedly(Return(base::nullopt));
+      .WillRepeatedly(Return(std::nullopt));
   EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
                              LoginMetrics::BrowserState::kErrorGettingState))
       .Times(1);
@@ -122,7 +123,7 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
 
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
   EXPECT_CALL(*manager_.get(), GetBrowserPid())
-      .WillRepeatedly(Return(base::nullopt));
+      .WillRepeatedly(Return(std::nullopt));
   EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
                              LoginMetrics::BrowserState::kErrorGettingState))
       .Times(1);
@@ -147,7 +148,7 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(0);
   // But we still record the UMA.
   EXPECT_CALL(*manager_.get(), GetBrowserPid())
-      .WillRepeatedly(Return(base::nullopt));
+      .WillRepeatedly(Return(std::nullopt));
   EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
                              LoginMetrics::BrowserState::kErrorGettingState))
       .Times(1);

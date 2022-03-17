@@ -6,13 +6,13 @@
 #define VM_TOOLS_CONCIERGE_SHARED_DATA_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/system/sys_info.h>
 
 #include "vm_tools/concierge/service.h"
@@ -39,7 +39,7 @@ constexpr char kRuntimeDir[] = "/run/vm";
 constexpr char kValidCryptoHomeCharacters[] = "abcdefABCDEF0123456789";
 
 // Gets the path to the file given the name, user id, location, and extension.
-base::Optional<base::FilePath> GetFilePathFromName(
+std::optional<base::FilePath> GetFilePathFromName(
     const std::string& cryptohome_id,
     const std::string& vm_name,
     StorageLocation storage_location,

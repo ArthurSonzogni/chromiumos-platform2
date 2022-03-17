@@ -4,6 +4,7 @@
 
 #include "ml/web_platform_handwriting_recognizer_impl.h"
 
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -100,7 +101,7 @@ void WebPlatformHandwritingRecognizerImpl::GetPrediction(
     }
   }
   // Recognition failed, run callback on empty result.
-  std::move(callback).Run(base::nullopt);
+  std::move(callback).Run(std::nullopt);
   request_metrics.RecordRequestEvent(
       HandwritingRecognizerResult::Status::ERROR);
 }

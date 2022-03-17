@@ -6,6 +6,8 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include <optional>
+
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
 #include "lorgnette/ippusb_device.h"
 
@@ -18,7 +20,7 @@ std::unique_ptr<SaneDevice> SaneClient::ConnectToDevice(
   std::string real_device = device_name;
   if (device_name.substr(0, 7) == "ippusb:") {
     LOG(INFO) << "Finding real backend for device: " << device_name;
-    base::Optional<std::string> backend = BackendForDevice(device_name);
+    std::optional<std::string> backend = BackendForDevice(device_name);
     if (!backend.has_value()) {
       brillo::Error::AddToPrintf(
           error, FROM_HERE, brillo::errors::dbus::kDomain, kManagerServiceError,

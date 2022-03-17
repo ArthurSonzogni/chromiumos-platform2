@@ -8,7 +8,6 @@
 #include <string>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
-#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 
 namespace hwsec_test_utils {

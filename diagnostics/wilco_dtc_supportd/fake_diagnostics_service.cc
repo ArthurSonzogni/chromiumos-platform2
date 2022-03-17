@@ -4,6 +4,7 @@
 
 #include "diagnostics/wilco_dtc_supportd/fake_diagnostics_service.h"
 
+#include <optional>
 #include <utility>
 
 #include "diagnostics/common/mojo_utils.h"
@@ -73,7 +74,7 @@ void FakeDiagnosticsService::RunSmartctlCheckRoutine(
 
 void FakeDiagnosticsService::RunAcPowerRoutine(
     chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-    const base::Optional<std::string>& expected_power_type,
+    const std::optional<std::string>& expected_power_type,
     RunAcPowerRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }
@@ -196,7 +197,7 @@ void FakeDiagnosticsService::RunHttpsLatencyRoutine(
 }
 
 void FakeDiagnosticsService::RunVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname,
+    const std::optional<std::string>& stun_server_hostname,
     RunVideoConferencingRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }

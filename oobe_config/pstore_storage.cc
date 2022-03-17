@@ -4,6 +4,7 @@
 
 #include "oobe_config/pstore_storage.h"
 
+#include <optional>
 #include <sstream>
 #include <string>
 
@@ -11,7 +12,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 
@@ -56,13 +56,13 @@ bool ExtractRollbackData(const base::FilePath& file,
   return false;
 }
 
-base::Optional<std::string> HexToBinary(const std::string& hex) {
+std::optional<std::string> HexToBinary(const std::string& hex) {
   std::string binary;
   bool success = base::HexStringToString(hex, &binary);
 
   if (!success) {
     LOG(ERROR) << "Could not decode rollback data.";
-    return base::nullopt;
+    return std::nullopt;
   }
   return binary;
 }
@@ -83,7 +83,7 @@ bool StageForPstore(const std::string& data, const base::FilePath& root_path) {
   return true;
 }
 
-base::Optional<std::string> LoadFromPstore(const base::FilePath& root_path) {
+std::optional<std::string> LoadFromPstore(const base::FilePath& root_path) {
   base::FileEnumerator pmsg_ramoops_enumerator = EnumerateRamoops(root_path);
   for (base::FilePath ramoops_file = pmsg_ramoops_enumerator.Next();
        !ramoops_file.empty(); ramoops_file = pmsg_ramoops_enumerator.Next()) {
@@ -95,7 +95,7 @@ base::Optional<std::string> LoadFromPstore(const base::FilePath& root_path) {
     LOG(INFO) << "No rollback data found in that file.";
   }
   LOG(ERROR) << "No rollback data found.";
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace oobe_config

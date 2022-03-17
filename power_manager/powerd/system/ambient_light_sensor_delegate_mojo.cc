@@ -10,6 +10,7 @@
 #include <cmath>
 #include <iterator>
 #include <map>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -87,7 +88,7 @@ void AmbientLightSensorDelegateMojo::OnSampleUpdated(
     return;
 
   auto it = sample.find(illuminance_index_.value());
-  base::Optional<int> lux_value, color_temperature;
+  std::optional<int> lux_value, color_temperature;
   if (it == sample.end()) {
     VLOG(2) << "No channel " << cros::mojom::kLightChannel
             << " found in the sample.";
@@ -308,20 +309,20 @@ AmbientLightSensorDelegateMojo::GetRemote() {
   return pending_remote;
 }
 
-base::Optional<int> AmbientLightSensorDelegateMojo::GetColorValue(
+std::optional<int> AmbientLightSensorDelegateMojo::GetColorValue(
     const base::flat_map<int32_t, int64_t>& sample, ChannelType type) {
   auto it_color_index = color_indices_.find(type);
   if (it_color_index == color_indices_.end())
-    return base::nullopt;
+    return std::nullopt;
 
   auto it = sample.find(it_color_index->second);
   if (it == sample.end())
-    return base::nullopt;
+    return std::nullopt;
 
   return it->second;
 }
 
-base::Optional<int> AmbientLightSensorDelegateMojo::GetColorTemperature(
+std::optional<int> AmbientLightSensorDelegateMojo::GetColorTemperature(
     const base::flat_map<int32_t, int64_t>& sample) {
   std::map<ChannelType, int> readings;
   for (const ColorChannelInfo& channel : kColorChannelConfig) {

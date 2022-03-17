@@ -4,9 +4,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/system/fake_powerd_adapter.h"
@@ -88,7 +88,7 @@ TEST_F(BatteryCapacityRoutineTest, GoodChargeFullDesign) {
 // Test that the battery routine handles an error from powerd.
 TEST_F(BatteryCapacityRoutineTest, PowerdError) {
   CreateRoutine();
-  fake_powerd_adapter()->SetPowerSupplyProperties(base::nullopt);
+  fake_powerd_adapter()->SetPowerSupplyProperties(std::nullopt);
   RunRoutineAndWaitForExit();
   VerifyNonInteractiveUpdate(update()->routine_update_union,
                              mojo_ipc::DiagnosticRoutineStatusEnum::kError,

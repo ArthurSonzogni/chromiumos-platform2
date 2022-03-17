@@ -1,6 +1,7 @@
 // Copyright 2019 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
+#include <optional>
 #include <string>
 
 #include <base/check.h>
@@ -21,7 +22,7 @@ constexpr char kAddTrigger[] = "add_trigger";
 
 namespace libmems {
 
-base::Optional<int> IioDeviceTriggerImpl::GetIdFromString(const char* id_str) {
+std::optional<int> IioDeviceTriggerImpl::GetIdFromString(const char* id_str) {
   size_t id_len = strlen(id_str);
   if (id_len == strlen(kIioSysfsTrigger) &&
       strncmp(id_str, kIioSysfsTrigger, id_len) == 0) {
@@ -73,7 +74,7 @@ base::FilePath IioDeviceTriggerImpl::GetPath() const {
   return path;
 }
 
-base::Optional<std::string> IioDeviceTriggerImpl::ReadStringAttribute(
+std::optional<std::string> IioDeviceTriggerImpl::ReadStringAttribute(
     const std::string& name) const {
   char data[kReadAttrBufferSize] = {0};
   ssize_t len =
@@ -81,31 +82,31 @@ base::Optional<std::string> IioDeviceTriggerImpl::ReadStringAttribute(
   if (len < 0) {
     LOG(WARNING) << log_prefix_ << "Attempting to read string attribute "
                  << name << " failed: " << len;
-    return base::nullopt;
+    return std::nullopt;
   }
   return std::string(data, len);
 }
 
-base::Optional<int64_t> IioDeviceTriggerImpl::ReadNumberAttribute(
+std::optional<int64_t> IioDeviceTriggerImpl::ReadNumberAttribute(
     const std::string& name) const {
   long long val = 0;  // NOLINT(runtime/int)
   int error = iio_device_attr_read_longlong(trigger_, name.c_str(), &val);
   if (error) {
     LOG(WARNING) << log_prefix_ << "Attempting to read number attribute "
                  << name << " failed: " << error;
-    return base::nullopt;
+    return std::nullopt;
   }
   return val;
 }
 
-base::Optional<double> IioDeviceTriggerImpl::ReadDoubleAttribute(
+std::optional<double> IioDeviceTriggerImpl::ReadDoubleAttribute(
     const std::string& name) const {
   double val = 0;
   int error = iio_device_attr_read_double(trigger_, name.c_str(), &val);
   if (error) {
     LOG(WARNING) << log_prefix_ << "Attempting to read double attribute "
                  << name << " failed: " << error;
-    return base::nullopt;
+    return std::nullopt;
   }
   return val;
 }

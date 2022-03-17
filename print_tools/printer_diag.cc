@@ -7,8 +7,8 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <optional>
 
-#include <base/optional.h>
 #include <brillo/flag_helper.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
@@ -87,7 +87,7 @@ void PrintHttpError(const std::string& msg, const brillo::ErrorPtr* err_ptr) {
 // Sends IPP frame (in |data| parameter) to given URL. In case of error, it
 // prints out error message to stderr and returns nullopt. Otherwise, it returns
 // the body from the response.
-base::Optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
+std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
     std::string url, const std::vector<uint8_t>& data) {
   using Transport = brillo::http::Transport;
   using Request = brillo::http::Request;
@@ -101,20 +101,20 @@ base::Optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
   if (!data.empty()) {
     if (!request.AddRequestBody(data.data(), data.size(), &error)) {
       PrintHttpError("cannot set request body", &error);
-      return base::nullopt;
+      return std::nullopt;
     }
   }
   // Send the request and interpret obtained response.
   std::unique_ptr<Response> response = request.GetResponseAndBlock(&error);
   if (response == nullptr) {
     PrintHttpError("exchange failed", &error);
-    return base::nullopt;
+    return std::nullopt;
   }
   if (!response->IsSuccessful()) {
     const std::string msg = "unexpected response code: " +
                             std::to_string(response->GetStatusCode());
     PrintHttpError(msg, &error);
-    return base::nullopt;
+    return std::nullopt;
   }
   return (response->ExtractData());
 }

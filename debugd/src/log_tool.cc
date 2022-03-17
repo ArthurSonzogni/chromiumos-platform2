@@ -10,6 +10,7 @@
 #include <inttypes.h>
 #include <lzma.h>
 #include <memory>
+#include <optional>
 #include <pwd.h>
 #include <stdint.h>
 #include <string>

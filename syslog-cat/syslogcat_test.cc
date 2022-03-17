@@ -5,6 +5,7 @@
 #include "syslog-cat/syslogcat.h"
 
 #include <memory>
+#include <optional>
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -41,14 +42,14 @@ base::ScopedFD CreateDomainSocket(const base::FilePath& path) {
   return peer;
 }
 
-base::Optional<std::string> AcceptAndReadFromSocket(int fd, int size) {
+std::optional<std::string> AcceptAndReadFromSocket(int fd, int size) {
   struct sockaddr_un sun_client = {};
   socklen_t socklen = sizeof(sun_client);
 
   base::ScopedFD fd_client(
       HANDLE_EINTR(accept(fd, (struct sockaddr*)&sun_client, &socklen)));
   if (!fd_client.is_valid())
-    return base::nullopt;
+    return std::nullopt;
 
   const size_t kBufSize = 1000;
   char buf[kBufSize];
@@ -124,14 +125,14 @@ TEST_F(SyslogCatTest, Echo) {
 
   std::string expected_stdout =
       base::StringPrintf("TAG=IDENT[%d]\nPRIORITY=6\n\n1234567890", child_pid);
-  base::Optional<std::string> actual_stdout =
+  std::optional<std::string> actual_stdout =
       AcceptAndReadFromSocket(GetStdOutFd(), expected_stdout.length());
   EXPECT_TRUE(actual_stdout.has_value());
   EXPECT_EQ(expected_stdout, *actual_stdout);
 
   std::string expected_stderr =
       base::StringPrintf("TAG=IDENT[%d]\nPRIORITY=4\n\n", child_pid);
-  base::Optional<std::string> actual_stderr =
+  std::optional<std::string> actual_stderr =
       AcceptAndReadFromSocket(GetStdErrFd(), expected_stderr.length());
   EXPECT_TRUE(actual_stderr.has_value());
   EXPECT_EQ(expected_stderr, *actual_stderr);
@@ -143,14 +144,14 @@ TEST_F(SyslogCatTest, StdErr) {
 
   std::string expected_stdout =
       base::StringPrintf("TAG=IDENT[%d]\nPRIORITY=6\n\n", child_pid);
-  base::Optional<std::string> actual_stdout =
+  std::optional<std::string> actual_stdout =
       AcceptAndReadFromSocket(GetStdOutFd(), expected_stdout.length());
   EXPECT_TRUE(actual_stdout.has_value());
   EXPECT_EQ(expected_stdout, *actual_stdout);
 
   std::string expected_stderr =
       base::StringPrintf("TAG=IDENT[%d]\nPRIORITY=4\n\n1234567890", child_pid);
-  base::Optional<std::string> actual_stderr =
+  std::optional<std::string> actual_stderr =
       AcceptAndReadFromSocket(GetStdErrFd(), expected_stderr.length());
   EXPECT_TRUE(actual_stderr.has_value());
   EXPECT_EQ(expected_stderr, *actual_stderr);
@@ -162,14 +163,14 @@ TEST_F(SyslogCatTest, StdOutAndErr) {
 
   std::string expected_stdout = base::StringPrintf(
       "TAG=IDENT[%d]\nPRIORITY=6\n\nSTDOUT\nHELLO.", child_pid);
-  base::Optional<std::string> actual_stdout =
+  std::optional<std::string> actual_stdout =
       AcceptAndReadFromSocket(GetStdOutFd(), expected_stdout.length());
   EXPECT_TRUE(actual_stdout.has_value());
   EXPECT_EQ(expected_stdout, *actual_stdout);
 
   std::string expected_stderr =
       base::StringPrintf("TAG=IDENT[%d]\nPRIORITY=4\n\nSTDERR", child_pid);
-  base::Optional<std::string> actual_stderr =
+  std::optional<std::string> actual_stderr =
       AcceptAndReadFromSocket(GetStdErrFd(), expected_stderr.length());
   EXPECT_TRUE(actual_stderr.has_value());
   EXPECT_EQ(expected_stderr, *actual_stderr);

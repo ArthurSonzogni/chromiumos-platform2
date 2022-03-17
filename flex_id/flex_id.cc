@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <map>
+#include <optional>
 #include <utility>
 
 #include <base/containers/contains.h>
@@ -50,10 +51,10 @@ const char* kPriorityInterfaces[] = {"eth0", "wlan0"};
 const char* kBadInterfacePrefixes[] = {"arc", "docker"};
 const char* kBadMacs[] = {"00:00:00:00:00:00"};
 
-base::Optional<std::string> ReadAndTrimFile(const base::FilePath& file_path) {
+std::optional<std::string> ReadAndTrimFile(const base::FilePath& file_path) {
   std::string out;
   if (!base::ReadFileToString(file_path, &out))
-    return base::nullopt;
+    return std::nullopt;
 
   base::TrimWhitespaceASCII(out, base::TRIM_ALL, &out);
 
@@ -101,66 +102,66 @@ FlexIdGenerator::FlexIdGenerator(const base::FilePath& base_path) {
   base_path_ = base_path;
 }
 
-base::Optional<std::string> FlexIdGenerator::AddFlexIdPrefix(
+std::optional<std::string> FlexIdGenerator::AddFlexIdPrefix(
     const std::string& flex_id) {
   return kFlexIdPrefix + flex_id;
 }
 
-base::Optional<std::string> FlexIdGenerator::ReadFlexId() {
+std::optional<std::string> FlexIdGenerator::ReadFlexId() {
   const base::FilePath flex_id_path = base_path_.Append(kFlexIdFile);
 
   return ReadAndTrimFile(flex_id_path);
 }
 
-base::Optional<std::string> FlexIdGenerator::TryClientId() {
-  base::Optional<std::string> client_id;
+std::optional<std::string> FlexIdGenerator::TryClientId() {
+  std::optional<std::string> client_id;
   const base::FilePath client_id_path = base_path_.Append(kClientIdFile);
 
   if (!(client_id = ReadAndTrimFile(client_id_path)))
-    return base::nullopt;
+    return std::nullopt;
   if (client_id.value().empty())
-    return base::nullopt;
+    return std::nullopt;
 
   return client_id;
 }
 
-base::Optional<std::string> FlexIdGenerator::TryLegacy() {
-  base::Optional<std::string> legacy;
+std::optional<std::string> FlexIdGenerator::TryLegacy() {
+  std::optional<std::string> legacy;
   const base::FilePath legacy_path = base_path_.Append(kLegacyClientIdFile);
 
   if (!(legacy = ReadAndTrimFile(legacy_path)))
-    return base::nullopt;
+    return std::nullopt;
   if (legacy.value().empty())
-    return base::nullopt;
+    return std::nullopt;
 
   return legacy;
 }
 
-base::Optional<std::string> FlexIdGenerator::TrySerial() {
-  base::Optional<std::string> serial;
+std::optional<std::string> FlexIdGenerator::TrySerial() {
+  std::optional<std::string> serial;
   const base::FilePath serial_path = base_path_.Append(kDmiSerialPath);
 
   // check if serial is present.
   if (!(serial = ReadAndTrimFile(serial_path)))
-    return base::nullopt;
+    return std::nullopt;
 
   // check if the serial is long enough.
   if (serial.value().length() < kMinSerialLength)
-    return base::nullopt;
+    return std::nullopt;
 
   // check if the serial is not made up of a single repeated character.
   std::size_t found = serial.value().find_first_not_of(serial.value()[0]);
   if (found == std::string::npos)
-    return base::nullopt;
+    return std::nullopt;
 
   // check if the serial is in the bad serials list.
   if (base::Contains(kBadSerials, serial))
-    return base::nullopt;
+    return std::nullopt;
 
   return serial;
 }
 
-base::Optional<std::string> FlexIdGenerator::TryMac() {
+std::optional<std::string> FlexIdGenerator::TryMac() {
   std::map<std::string, std::string> interfaces;
 
   const base::FilePath interfaces_path =
@@ -174,7 +175,7 @@ base::Optional<std::string> FlexIdGenerator::TryMac() {
     std::string name = interface_dir.BaseName().value();
     base::FilePath address_file_path =
         interfaces_path.Append(name).Append(kInterfaceAddressFile);
-    base::Optional<std::string> address;
+    std::optional<std::string> address;
 
     // skip the interface if it has no address
     if (!(address = ReadAndTrimFile(address_file_path)))
@@ -206,10 +207,10 @@ base::Optional<std::string> FlexIdGenerator::TryMac() {
     return interface.second;
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<std::string> FlexIdGenerator::TryUuid() {
+std::optional<std::string> FlexIdGenerator::TryUuid() {
   const base::FilePath uuid_path = base_path_.Append(kUuidPath);
 
   return ReadAndTrimFile(uuid_path);
@@ -223,8 +224,8 @@ bool FlexIdGenerator::WriteFlexId(const std::string& flex_id) {
   return false;
 }
 
-base::Optional<std::string> FlexIdGenerator::GenerateAndSaveFlexId() {
-  base::Optional<std::string> flex_id;
+std::optional<std::string> FlexIdGenerator::GenerateAndSaveFlexId() {
+  std::optional<std::string> flex_id;
 
   // Check for existing flex_id and exit early.
   if ((flex_id = ReadFlexId())) {
@@ -246,7 +247,7 @@ base::Optional<std::string> FlexIdGenerator::GenerateAndSaveFlexId() {
     LOG(INFO) << "Using random UUID for flex_id: " << flex_id.value();
   } else {
     LOG(ERROR) << "No valid flex_id source was found";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // save result
@@ -255,7 +256,7 @@ base::Optional<std::string> FlexIdGenerator::GenerateAndSaveFlexId() {
     return flex_id;
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 }  // namespace flex_id

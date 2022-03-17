@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -30,13 +31,13 @@ std::string GetProbeConfigSHA1Hash(const std::string& content) {
   return base::HexEncode(hash_val.data(), hash_val.size());
 }
 
-base::Optional<ProbeConfigData> LoadProbeConfig(
+std::optional<ProbeConfigData> LoadProbeConfig(
     const base::FilePath& file_path) {
   DVLOG(2) << "LoadProbeConfig: " << file_path;
   std::string config_json;
   if (!base::ReadFileToString(file_path, &config_json)) {
     DVLOG(2) << "Failed to read probe config";
-    return base::nullopt;
+    return std::nullopt;
   }
   const auto probe_config_sha1_hash = GetProbeConfigSHA1Hash(config_json);
   DVLOG(3) << "SHA1 hash of probe config: " << probe_config_sha1_hash;
@@ -45,7 +46,7 @@ base::Optional<ProbeConfigData> LoadProbeConfig(
   if (!json_val || !json_val->is_dict()) {
     DVLOG(2) << "Failed to parse probe config as JSON.";
     DVLOG(3) << "Input: " << config_json;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   const auto absolute_path = base::MakeAbsoluteFilePath(file_path);
@@ -64,7 +65,7 @@ ProbeConfigLoaderImpl::ProbeConfigLoaderImpl() : root_("/") {
   system_property_ = std::make_unique<SystemPropertyImpl>();
 }
 
-base::Optional<ProbeConfigData> ProbeConfigLoaderImpl::LoadDefault() const {
+std::optional<ProbeConfigData> ProbeConfigLoaderImpl::LoadDefault() const {
   for (const auto& file_path : GetDefaultPaths()) {
     auto ret = LoadProbeConfig(file_path);
     if (ret) {
@@ -73,14 +74,14 @@ base::Optional<ProbeConfigData> ProbeConfigLoaderImpl::LoadDefault() const {
     }
   }
   DVLOG(1) << "Cannot find any default probe configs";
-  return base::nullopt;
+  return std::nullopt;
 }
 
-base::Optional<ProbeConfigData> ProbeConfigLoaderImpl::LoadFromFile(
+std::optional<ProbeConfigData> ProbeConfigLoaderImpl::LoadFromFile(
     const base::FilePath& file_path) const {
   if (GetCrosDebug() != 1) {
     LOG(ERROR) << "Arbitrary probe config is only allowed with cros_debug=1";
-    return base::nullopt;
+    return std::nullopt;
   }
   auto ret = LoadProbeConfig(file_path);
   DVLOG(1) << "Load config from: " << file_path;

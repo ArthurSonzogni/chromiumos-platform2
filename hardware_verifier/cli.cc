@@ -6,13 +6,13 @@
 #include "hardware_verifier/cli.h"
 
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/notreached.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -52,7 +52,7 @@ ConvertHwVerificationReportGetterErrorCodeToCLIVerificationResult(
   }
 }
 
-base::Optional<std::string> OutputInTextFormat(
+std::optional<std::string> OutputInTextFormat(
     HwVerificationReport hw_verification_report, bool pii) {
   std::stringstream ss;
   const auto generic_device_info = hw_verification_report.generic_device_info();
@@ -68,7 +68,7 @@ base::Optional<std::string> OutputInTextFormat(
   if (!convert_status.ok()) {
     LOG(ERROR) << "Failed to output the qualification report in JSON: "
                << convert_status.ToString() << ".";
-    return base::nullopt;
+    return std::nullopt;
   }
   ss << "[Component Qualification Status]\n" << json_output_data;
 
@@ -82,7 +82,7 @@ base::Optional<std::string> OutputInTextFormat(
                                              &ostream_output_stream)) {
       LOG(ERROR)
           << "Failed to output the generic device info in prototxt format.";
-      return base::nullopt;
+      return std::nullopt;
     }
   }
   return ss.str();

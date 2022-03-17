@@ -6,6 +6,7 @@
 
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -65,14 +66,14 @@ class FakeSensorDeviceFusion final : public SensorDeviceFusion {
   // SensorDeviceFusion overrides:
   void GetAttributes(const std::vector<std::string>& attr_names,
                      GetAttributesCallback callback) override {
-    std::move(callback).Run(std::vector<base::Optional<std::string>>(
-        attr_names.size(), base::nullopt));
+    std::move(callback).Run(std::vector<std::optional<std::string>>(
+        attr_names.size(), std::nullopt));
   }
   void GetChannelsAttributes(const std::vector<int32_t>& iio_chn_indices,
                              const std::string& attr_name,
                              GetChannelsAttributesCallback callback) override {
-    std::move(callback).Run(std::vector<base::Optional<std::string>>(
-        iio_chn_indices.size(), base::nullopt));
+    std::move(callback).Run(std::vector<std::optional<std::string>>(
+        iio_chn_indices.size(), std::nullopt));
   }
 
  protected:
@@ -238,7 +239,7 @@ TEST_F(IioDeviceHandlerTest, GetAttributes) {
       {kDeviceAttrName, libmems::kSamplingFrequencyAvailable},
       base::BindOnce(
           [](base::RepeatingClosure closure,
-             const std::vector<base::Optional<std::string>>& values) {
+             const std::vector<std::optional<std::string>>& values) {
             EXPECT_EQ(values.size(), 2u);
             EXPECT_TRUE(values[0].has_value());
             EXPECT_EQ(values[0].value().compare(kParsedDeviceAttrValue), 0);
@@ -342,7 +343,7 @@ TEST_F(IioDeviceHandlerInvalidTest, MissingChannel) {
       {kDeviceAttrName, libmems::kSamplingFrequencyAvailable},
       base::BindOnce(
           [](base::RepeatingClosure closure,
-             const std::vector<base::Optional<std::string>>& values) {
+             const std::vector<std::optional<std::string>>& values) {
             EXPECT_EQ(values.size(), 2u);
             // Mojo pipe SensorDevice should be reset, so attributes should not
             // be available.

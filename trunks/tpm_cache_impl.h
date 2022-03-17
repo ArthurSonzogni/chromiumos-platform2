@@ -5,10 +5,11 @@
 #ifndef TRUNKS_TPM_CACHE_IMPL_H_
 #define TRUNKS_TPM_CACHE_IMPL_H_
 
+#include <optional>
+
 #include "trunks/tpm_cache.h"
 
 #include <base/macros.h>
-#include <base/optional.h>
 
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_export.h"
@@ -31,11 +32,11 @@ class TRUNKS_EXPORT TpmCacheImpl : public TpmCache {
 
  private:
   // Salting key public area cache.
-  base::Optional<TPMT_PUBLIC> salting_key_pub_area_;
+  std::optional<TPMT_PUBLIC> salting_key_pub_area_;
 
   // Cache of the best SRK and salting key type. If the optional value exists,
   // it can only be TPM_ALG_ECC or TPM_ALG_RSA.
-  base::Optional<TPM_ALG_ID> best_key_type_;
+  std::optional<TPM_ALG_ID> best_key_type_;
 
   const TrunksFactory& factory_;
 };

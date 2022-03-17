@@ -4,6 +4,7 @@
 
 #include "ml/graph_executor_impl.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/stl_util.h>
@@ -39,7 +40,7 @@ void GraphExecutorImpl::Execute(base::flat_map<std::string, TensorPtr> tensors,
                                                   output_tensors);
 
   if (result != ExecuteResult::OK) {
-    std::move(callback).Run(result, base::nullopt);
+    std::move(callback).Run(result, std::nullopt);
   } else {
     std::move(callback).Run(result, std::move(output_tensors));
   }

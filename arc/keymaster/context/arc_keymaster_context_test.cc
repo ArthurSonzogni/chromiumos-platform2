@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -650,7 +651,7 @@ TEST_F(ArcKeymasterContextTest,
 
 TEST_F(ArcKeymasterContextTest, SerializeKeyDataBlob_EncryptionKeyError) {
   // Clear the cached encryption key.
-  ContextTestPeer::context_adaptor(context_).set_encryption_key(base::nullopt);
+  ContextTestPeer::context_adaptor(context_).set_encryption_key(std::nullopt);
   // Make sure an existing key won't be found in chaps.
   ::testing::StrictMock<::chaps::ChapsProxyMock> chaps_mock(
       /* is_initialized */ true);
@@ -680,7 +681,7 @@ TEST_F(ArcKeymasterContextTest, DeserializeKeyDataBlob_InvalidKeyDataError) {
   key_data.SerializeWithCachedSizesToArray(key_data_blob.data());
   brillo::Blob hidden_blob =
       internal::TestSerializeAuthorizationSetToBlob(hidden_);
-  base::Optional<brillo::Blob> encrypted =
+  std::optional<brillo::Blob> encrypted =
       Aes256GcmEncrypt(kEncryptionKey, hidden_blob, key_data_blob);
   ASSERT_TRUE(encrypted.has_value());
 

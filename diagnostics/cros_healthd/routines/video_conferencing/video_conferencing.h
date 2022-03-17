@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_VIDEO_CONFERENCING_VIDEO_CONFERENCING_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
@@ -27,7 +28,7 @@ extern const char kVideoConferencingRoutineSupportDetailsKey[];
 
 // Creates an instance of the video conferencing routine.
 std::unique_ptr<DiagnosticRoutine> CreateVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname,
+    const std::optional<std::string>& stun_server_hostname,
     NetworkDiagnosticsAdapter* network_diagnostics_adapter);
 
 }  // namespace diagnostics

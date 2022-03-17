@@ -6,9 +6,9 @@
 #define LORGNETTE_IMAGE_READERS_IMAGE_READER_H_
 
 #include <cstdint>
+#include <optional>
 
 #include <base/files/file.h>
-#include <base/optional.h>
 #include <brillo/errors/error.h>
 
 #include "lorgnette/sane_client.h"
@@ -43,7 +43,7 @@ class ImageReader {
   // Sets up objects needed by the image reader. Must be called before
   // ReadData().
   virtual bool Initialize(brillo::ErrorPtr* error,
-                          const base::Optional<int>& resolution) = 0;
+                          const std::optional<int>& resolution) = 0;
 
   const ScanParameters params_;
   base::ScopedFILE out_file_;

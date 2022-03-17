@@ -4,6 +4,7 @@
 
 #include "dns-proxy/chrome_features_service_client.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -50,7 +51,7 @@ void ChromeFeaturesServiceClient::OnWaitForServiceAndCallMethod(
     IsFeatureEnabledCallback callback,
     bool available) {
   if (!available) {
-    std::move(callback).Run(base::nullopt);
+    std::move(callback).Run(std::nullopt);
     return;
   }
 
@@ -65,14 +66,14 @@ void ChromeFeaturesServiceClient::OnWaitForServiceAndCallMethod(
 void ChromeFeaturesServiceClient::HandleCallResponse(
     IsFeatureEnabledCallback callback, dbus::Response* response) {
   if (!response) {
-    std::move(callback).Run(base::nullopt);
+    std::move(callback).Run(std::nullopt);
     return;
   }
 
   dbus::MessageReader reader(response);
   bool feature_enabled = false;
   if (!reader.PopBool(&feature_enabled)) {
-    std::move(callback).Run(base::nullopt);
+    std::move(callback).Run(std::nullopt);
     return;
   }
 

@@ -4,6 +4,8 @@
 
 #include "diagnostics/cros_healthd/fake/fake_routine_service.h"
 
+#include <optional>
+
 #include <base/logging.h>
 #include <base/notreached.h>
 
@@ -56,7 +58,7 @@ void FakeRoutineService::RunSmartctlCheckRoutine(
 
 void FakeRoutineService::RunAcPowerRoutine(
     mojo_ipc::AcPowerStatusEnum expected_status,
-    const base::Optional<std::string>& expected_power_type,
+    const std::optional<std::string>& expected_power_type,
     RunAcPowerRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
@@ -178,7 +180,7 @@ void FakeRoutineService::RunHttpsLatencyRoutine(
 }
 
 void FakeRoutineService::RunVideoConferencingRoutine(
-    const base::Optional<std::string>& stun_server_hostname,
+    const std::optional<std::string>& stun_server_hostname,
     RunVideoConferencingRoutineCallback callback) {
   NOTIMPLEMENTED();
 }

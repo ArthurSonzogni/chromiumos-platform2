@@ -11,6 +11,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -1016,7 +1017,7 @@ TEST_F(CrashCollectorTest, GetCrashDirectoryInfoNewLoggedOut) {
 
   collector_.crash_directory_selection_method_ =
       CrashCollector::kAlwaysUseDaemonStore;
-  base::Optional<FilePath> path_maybe = collector_.GetCrashDirectoryInfoNew(
+  std::optional<FilePath> path_maybe = collector_.GetCrashDirectoryInfoNew(
       kChronosUid, kChronosUid, &directory_mode, &directory_owner,
       &directory_group);
   EXPECT_FALSE(path_maybe.has_value());
@@ -1163,7 +1164,7 @@ struct MetaDataTest {
   bool test_in_prog = false;
   bool add_variations = false;
   std::string exec_name = "kernel";
-  base::Optional<bool> enterprise_enrolled = false;
+  std::optional<bool> enterprise_enrolled = false;
   std::string expected_meta;
 };
 
@@ -1410,7 +1411,7 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
 
   MetaDataTest device_policy_not_loaded;
   device_policy_not_loaded.test_case_name = "Device_policy_not_loaded";
-  device_policy_not_loaded.enterprise_enrolled = base::nullopt;
+  device_policy_not_loaded.enterprise_enrolled = std::nullopt;
   device_policy_not_loaded.expected_meta = StringPrintf(
       "upload_var_collector=mock\n"
       "foo=bar\n"

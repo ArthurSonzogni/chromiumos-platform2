@@ -4,6 +4,7 @@
 
 #include "secanomalyd/mounts.h"
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_util.h>
@@ -23,7 +24,7 @@ MaybeMountEntries ReadMounts(MountFilter filter) {
   if (!base::ReadFileToStringNonBlocking(base::FilePath(kProcSelfMountsPath),
                                          &proc_mounts)) {
     PLOG(ERROR) << "Failed to read " << kProcSelfMountsPath;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return ReadMountsFromString(proc_mounts, filter);
@@ -35,7 +36,7 @@ MaybeMountEntries ReadMountsFromString(const std::string& mounts,
       mounts, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
   if (pieces.empty()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   MountEntries res;

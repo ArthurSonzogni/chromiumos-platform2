@@ -223,7 +223,7 @@ std::optional<brillo::SecureBlob> VaultKeyset::GetOrGenerateResetSecret() {
   }
 
   if (reset_seed_.empty()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!reset_salt_.has_value()) {

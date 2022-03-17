@@ -7,6 +7,7 @@
 #include <regex.h>
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -65,7 +66,7 @@ std::string GetApnAuthentication(
   return std::string();
 }
 
-base::Optional<std::string> GetIpType(
+std::optional<std::string> GetIpType(
     const shill::mobile_operator_db::MobileAPN& apn) {
   if (!apn.has_ip_type()) {
     return kApnIpTypeV4;
@@ -73,7 +74,7 @@ base::Optional<std::string> GetIpType(
 
   switch (apn.ip_type()) {
     case mobile_operator_db::MobileAPN_IpType_UNKNOWN:
-      return base::nullopt;
+      return std::nullopt;
     case mobile_operator_db::MobileAPN_IpType_IPV4:
       return kApnIpTypeV4;
     case mobile_operator_db::MobileAPN_IpType_IPV6:
@@ -888,7 +889,7 @@ void MobileOperatorInfoImpl::ReloadData(
       apn.authentication = GetApnAuthentication(apn_data);
       apn.is_attach_apn =
           apn_data.has_is_attach_apn() ? apn_data.is_attach_apn() : false;
-      base::Optional<std::string> ip_type = GetIpType(apn_data);
+      std::optional<std::string> ip_type = GetIpType(apn_data);
       if (!ip_type.has_value()) {
         LOG(INFO) << "Unknown IP type for APN \"" << apn_data.apn() << "\"";
         continue;

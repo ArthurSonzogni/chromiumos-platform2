@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
-#include <base/optional.h>
 #include <metrics/metrics_library.h>
 
 #include "u2fd/allowlisting_util.h"

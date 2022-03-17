@@ -3,11 +3,10 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/fetchers/display_fetcher.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
@@ -71,11 +70,11 @@ mojo_ipc::EmbeddedDisplayInfoPtr FetchEmbeddedDisplayInfo(
   return info;
 }
 
-base::Optional<std::vector<mojo_ipc::ExternalDisplayInfoPtr>>
+std::optional<std::vector<mojo_ipc::ExternalDisplayInfoPtr>>
 FetchExternalDisplayInfo(const std::unique_ptr<LibdrmUtil>& libdrm_util) {
   auto connector_ids = libdrm_util->GetExternalDisplayConnectorID();
   if (connector_ids.size() == 0)
-    return base::nullopt;
+    return std::nullopt;
 
   std::vector<mojo_ipc::ExternalDisplayInfoPtr> infos;
   for (const auto& connector_id : connector_ids) {

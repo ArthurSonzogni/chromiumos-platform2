@@ -4,6 +4,8 @@
 
 #include "debugd/src/helpers/system_service_proxy.h"
 
+#include <optional>
+
 #include <base/memory/ptr_util.h>
 #include <dbus/values_util.h>
 
@@ -42,20 +44,20 @@ scoped_refptr<dbus::Bus> SystemServiceProxy::ConnectToSystemBus() {
   return bus;
 }
 
-base::Optional<base::Value> SystemServiceProxy::CallMethodAndGetResponse(
+std::optional<base::Value> SystemServiceProxy::CallMethodAndGetResponse(
     const dbus::ObjectPath& object_path, dbus::MethodCall* method_call) {
   dbus::ObjectProxy* object_proxy =
       bus_->GetObjectProxy(service_name_, object_path);
   std::unique_ptr<dbus::Response> response = object_proxy->CallMethodAndBlock(
       method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!response)
-    return base::nullopt;
+    return std::nullopt;
 
   dbus::MessageReader reader(response.get());
-  return base::Optional<base::Value>(dbus::PopDataAsValue(&reader));
+  return std::optional<base::Value>(dbus::PopDataAsValue(&reader));
 }
 
-base::Optional<base::Value> SystemServiceProxy::GetProperties(
+std::optional<base::Value> SystemServiceProxy::GetProperties(
     const std::string& interface_name, const dbus::ObjectPath& object_path) {
   dbus::MethodCall method_call(kDBusPropertiesInterface,
                                kDBusPropertiesGetAllMethod);

@@ -5,6 +5,7 @@
 #include "crash-reporter/generic_failure_collector.h"
 
 #include <memory>
+#include <optional>
 
 #include <base/bind.h>
 #include <base/files/file_util.h>
@@ -51,7 +52,7 @@ bool GenericFailureCollector::LoadGenericFailure(std::string* content,
 
 bool GenericFailureCollector::CollectFull(const std::string& exec_name,
                                           const std::string& log_key_name,
-                                          base::Optional<int> weight) {
+                                          std::optional<int> weight) {
   LOG(INFO) << "Processing generic failure";
 
   std::string generic_failure;

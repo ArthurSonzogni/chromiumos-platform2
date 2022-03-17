@@ -4,6 +4,7 @@
 
 #include "u2fd/webauthn_handler.h"
 
+#include <optional>
 #include <regex>  // NOLINT(build/c++11)
 #include <string>
 #include <utility>
@@ -229,7 +230,7 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
       bool user_verified,
       bool include_attested_credential_data,
       bool is_u2f_authenticator_credential) {
-    base::Optional<std::vector<uint8_t>> authenticator_data =
+    std::optional<std::vector<uint8_t>> authenticator_data =
         handler_->MakeAuthenticatorData(
             GetRpIdHash(), credential_id, credential_public_key, user_verified,
             include_attested_credential_data, is_u2f_authenticator_credential);

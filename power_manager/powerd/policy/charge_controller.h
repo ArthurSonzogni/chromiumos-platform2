@@ -5,10 +5,10 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_CHARGE_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_POLICY_CHARGE_CONTROLLER_H_
 
+#include <optional>
 #include <string>
 
 #include <base/macros.h>
-#include <base/optional.h>
 
 #include "power_manager/proto_bindings/policy.pb.h"
 
@@ -106,7 +106,7 @@ class ChargeController {
   BatteryPercentageConverter* battery_percentage_converter_ = nullptr;
 
   // Contains last successfully applied power policies settings.
-  base::Optional<PowerManagementPolicy> cached_policy_;
+  std::optional<PowerManagementPolicy> cached_policy_;
 };
 
 }  // namespace policy

@@ -6,9 +6,8 @@
 #define RUNTIME_PROBE_FUNCTIONS_ETHERNET_NETWORK_H_
 
 #include <memory>
+#include <optional>
 #include <string>
-
-#include <base/optional.h>
 
 #include "runtime_probe/function_templates/network.h"
 
@@ -21,7 +20,7 @@ class EthernetNetworkFunction : public NetworkFunction {
   NAME_PROBE_FUNCTION("ethernet_network");
 
  protected:
-  base::Optional<std::string> GetNetworkType() const override;
+  std::optional<std::string> GetNetworkType() const override;
 };
 
 }  // namespace runtime_probe

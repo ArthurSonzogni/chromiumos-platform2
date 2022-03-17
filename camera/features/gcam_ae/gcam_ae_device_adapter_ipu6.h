@@ -10,6 +10,7 @@
 #include "features/gcam_ae/gcam_ae_device_adapter.h"
 
 #include <memory>
+#include <optional>
 
 #include <base/containers/flat_map.h>
 #include <cros-camera/gcam_ae.h>
@@ -40,11 +41,11 @@ class GcamAeDeviceAdapterIpu6 : public GcamAeDeviceAdapter {
   struct AeStatsEntry {
     int frame_number = -1;
     AeStatsIntelIpu6 ae_stats;
-    base::Optional<Range<float>> tet_range;
+    std::optional<Range<float>> tet_range;
   };
 
-  base::Optional<AeStatsEntry*> GetAeStatsEntry(int frame_number,
-                                                bool create_entry = false);
+  std::optional<AeStatsEntry*> GetAeStatsEntry(int frame_number,
+                                               bool create_entry = false);
 
   std::array<AeStatsEntry, kAeStatsRingBufferSize> ae_stats_;
 

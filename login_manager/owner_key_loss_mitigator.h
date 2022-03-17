@@ -5,11 +5,11 @@
 #ifndef LOGIN_MANAGER_OWNER_KEY_LOSS_MITIGATOR_H_
 #define LOGIN_MANAGER_OWNER_KEY_LOSS_MITIGATOR_H_
 
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/optional.h>
 
 namespace login_manager {
 
@@ -31,7 +31,7 @@ class OwnerKeyLossMitigator {
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
   virtual bool Mitigate(const std::string& ownername,
-                        const base::Optional<base::FilePath>& ns_path) = 0;
+                        const std::optional<base::FilePath>& ns_path) = 0;
 
   virtual bool Mitigating() = 0;
 

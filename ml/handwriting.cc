@@ -5,6 +5,7 @@
 #include "ml/handwriting.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -15,7 +16,6 @@
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/native_library.h>
-#include <base/optional.h>
 #include <base/strings/string_util.h>
 
 #include "ml/util.h"
@@ -103,7 +103,7 @@ class HandwritingLibraryImpl : public HandwritingLibrary {
   HandwritingLibraryImpl(const HandwritingLibraryImpl&) = delete;
   HandwritingLibraryImpl& operator=(const HandwritingLibraryImpl&) = delete;
 
-  base::Optional<base::ScopedNativeLibrary> library_;
+  std::optional<base::ScopedNativeLibrary> library_;
   Status status_;
   // Path that contains the library and the model files.
   const base::FilePath lib_path_;
@@ -111,7 +111,7 @@ class HandwritingLibraryImpl : public HandwritingLibrary {
   // Store the interface function pointers.
   // TODO(honglinyu) as pointed out by cjmcdonald@, we should group the pointers
   // into a single `HandwritingInterface` struct and make it optional, i.e.,
-  // declaring something like |base::Optional<HandwritingInterface> interface_|.
+  // declaring something like |std::optional<HandwritingInterface> interface_|.
   CreateHandwritingRecognizerFn create_handwriting_recognizer_;
   LoadHandwritingRecognizerFn load_handwriting_recognizer_;
   RecognizeHandwritingFn recognize_handwriting_;
@@ -214,7 +214,7 @@ bool HandwritingLibraryImpl::LoadHandwritingRecognizer(
   if (ml::HandwritingLibrary::IsUseLanguagePacksEnabled() &&
       spec->language_pack_path) {
     const std::string target_path = spec->language_pack_path.value();
-    const base::Optional<base::FilePath> real_language_pack_path =
+    const std::optional<base::FilePath> real_language_pack_path =
         GetRealPath(base::FilePath(target_path));
     if (!real_language_pack_path) {
       LOG(ERROR) << "Bad Language Pack path" << target_path;

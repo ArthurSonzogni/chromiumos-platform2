@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/logging.h>
@@ -23,7 +24,7 @@ int main(int argc, char* argv[]) {
     return -1;
   }
 
-  base::Optional<std::string> auth_value = tpm->GetAuthForOwnerReset();
+  std::optional<std::string> auth_value = tpm->GetAuthForOwnerReset();
   if (!auth_value) {
     LOG(ERROR) << "Unable to soft-clear the TPM: failed to get the auth value.";
     return -1;

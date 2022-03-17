@@ -17,6 +17,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/logging.h>
@@ -438,7 +439,7 @@ bool RTNLMessage::DecodeLink(const RTNLHeader* hdr,
   if (!attrs)
     return false;
 
-  base::Optional<std::string> kind_option;
+  std::optional<std::string> kind_option;
 
   if (base::Contains(*attrs, IFLA_LINKINFO)) {
     ByteString& bytes = attrs->find(IFLA_LINKINFO)->second;

@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
@@ -96,7 +96,7 @@ class MockNetworkDiagnosticsRoutines final
               (override));
   MOCK_METHOD(void,
               RunVideoConferencing,
-              (const base::Optional<std::string>&,
+              (const std::optional<std::string>&,
                network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                    RunVideoConferencingCallback),
               (override));
@@ -503,7 +503,7 @@ TEST_F(NetworkDiagnosticsAdapterImplTest, RunVideoConferencingRoutine) {
   base::RunLoop run_loop;
   EXPECT_CALL(network_diagnostics_routines, RunVideoConferencing(_, _))
       .WillOnce(testing::Invoke(
-          [&](const base::Optional<std::string>& stun_server_hostname,
+          [&](const std::optional<std::string>& stun_server_hostname,
               network_diagnostics_ipc::NetworkDiagnosticsRoutines::
                   RunVideoConferencingCallback callback) {
             auto result = CreateResult(

@@ -5,10 +5,10 @@
 #include "u2fd/fuzzers/fuzzed_allowlisting_util_factory.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <attestation/proto_bindings/interface.pb.h>
-#include <base/optional.h>
 
 #include "u2fd/allowlisting_util.h"
 
@@ -30,11 +30,11 @@ FuzzedAllowlistingUtilFactory::CreateAllowlistingUtil() {
              : std::unique_ptr<u2f::AllowlistingUtil>(nullptr);
 }
 
-base::Optional<attestation::GetCertifiedNvIndexReply>
+std::optional<attestation::GetCertifiedNvIndexReply>
 FuzzedAllowlistingUtilFactory::GetCertifiedG2fCert(int g2f_cert_size) {
   if (data_provider_->ConsumeIntegralInRange<uint32_t>(0, 99) <
       kGetCertifiedG2fCertFailureRate) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   attestation::GetCertifiedNvIndexReply reply;

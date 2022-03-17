@@ -6,6 +6,7 @@
 #define LIBBRILLO_BRILLO_BLKDEV_UTILS_LVM_DEVICE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -31,7 +32,7 @@ class BRILLO_EXPORT LvmCommandRunner {
                           std::string* output = nullptr);
 
   // Unwraps LVM2 JSON reports into the contents stored at |key|.
-  virtual base::Optional<base::Value> UnwrapReportContents(
+  virtual std::optional<base::Value> UnwrapReportContents(
       const std::string& output, const std::string& key);
 };
 

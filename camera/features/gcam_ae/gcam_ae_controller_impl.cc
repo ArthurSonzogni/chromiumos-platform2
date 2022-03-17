@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <tuple>
 #include <utility>
 
@@ -101,9 +102,9 @@ GcamAeControllerImpl::GcamAeControllerImpl(
       ae_device_adapter_(std::move(ae_device_adapter)) {
   base::span<const int32_t> sensitivity_range = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SENSOR_INFO_SENSITIVITY_RANGE);
-  base::Optional<int32_t> max_analog_sensitivity = GetRoMetadata<int32_t>(
+  std::optional<int32_t> max_analog_sensitivity = GetRoMetadata<int32_t>(
       static_info, ANDROID_SENSOR_MAX_ANALOG_SENSITIVITY);
-  base::Optional<Rational> ae_compensation_step = GetRoMetadata<Rational>(
+  std::optional<Rational> ae_compensation_step = GetRoMetadata<Rational>(
       static_info, ANDROID_CONTROL_AE_COMPENSATION_STEP);
   base::span<const int32_t> ae_compensation_range =
       GetRoMetadataAsSpan<int32_t>(static_info,
@@ -266,7 +267,7 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
       }
     }
     frame_info->faces =
-        base::make_optional<std::vector<NormalizedRect>>(std::move(faces));
+        std::make_optional<std::vector<NormalizedRect>>(std::move(faces));
   }
   if (metadata_logger_) {
     const int num_faces = frame_info->faces.value().size();
@@ -339,7 +340,7 @@ void GcamAeControllerImpl::RecordAeMetadata(Camera3CaptureDescriptor* result) {
 
 void GcamAeControllerImpl::OnOptionsUpdated(
     const base::Value& json_values,
-    base::Optional<MetadataLogger*> metadata_logger) {
+    std::optional<MetadataLogger*> metadata_logger) {
   bool enabled;
   if (LoadIfExist(json_values, kGcamAeEnableKey, &enabled)) {
     if (options_.enabled && !enabled) {
@@ -366,7 +367,7 @@ void GcamAeControllerImpl::OnOptionsUpdated(
         LOGF(ERROR) << "Invalid gain value: " << k;
         continue;
       }
-      base::Optional<double> ratio = v.GetIfDouble();
+      std::optional<double> ratio = v.GetIfDouble();
       if (!ratio) {
         LOGF(ERROR) << "Invalid max_hdr_ratio";
         continue;
@@ -426,14 +427,14 @@ void GcamAeControllerImpl::OnOptionsUpdated(
   ae_state_machine_.OnOptionsUpdated(json_values);
 }
 
-base::Optional<float> GcamAeControllerImpl::GetCalculatedHdrRatio(
+std::optional<float> GcamAeControllerImpl::GetCalculatedHdrRatio(
     int frame_number) {
   if (!options_.enabled) {
-    return base::nullopt;
+    return std::nullopt;
   }
   AeFrameInfo* frame_info = GetAeFrameInfoEntry(frame_number);
   if (!frame_info) {
-    return base::nullopt;
+    return std::nullopt;
   }
   if (IsClientManualSensorControlSet(*frame_info)) {
     // The client is doing manual exposure control, so let's not do too much

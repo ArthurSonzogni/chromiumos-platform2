@@ -7,12 +7,12 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <base/optional.h>
 #include <base/task/sequenced_task_runner.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 #include <mojo/public/cpp/bindings/remote.h>
@@ -49,7 +49,7 @@ class SensorDeviceFusion : public cros::mojom::SensorDevice {
         base::OnceCallback<void()> invalidate_callback);
 
     void SetAttribute(std::string attr_name,
-                      base::Optional<std::string> attr_value);
+                      std::optional<std::string> attr_value);
 
     void SetFrequency(double frequency,
                       cros::mojom::SensorDevice::SetFrequencyCallback callback =
@@ -81,7 +81,7 @@ class SensorDeviceFusion : public cros::mojom::SensorDevice {
     void GetAttributesCallback(
         const std::vector<std::string>& attr_names,
         cros::mojom::SensorDevice::GetAttributesCallback callback,
-        const std::vector<base::Optional<std::string>>& values);
+        const std::vector<std::optional<std::string>>& values);
 
     void GetAllChannelIdsCallback(const std::vector<std::string>& iio_chn_ids);
     void SetChannelsEnabledCallback(const std::vector<int32_t>& failed_indices);
@@ -99,7 +99,7 @@ class SensorDeviceFusion : public cros::mojom::SensorDevice {
     mojo::Remote<cros::mojom::SensorDevice> remote_;
 
     // Overridden attributes.
-    std::map<std::string, base::Optional<std::string>> attributes_;
+    std::map<std::string, std::optional<std::string>> attributes_;
 
     // Required channel ids.
     std::vector<std::string> channel_ids_;

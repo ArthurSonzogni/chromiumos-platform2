@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/routines/battery_capacity/battery_capacity.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
@@ -43,7 +44,7 @@ void RunBatteryCapacityRoutine(Context* const context,
     return;
   }
 
-  base::Optional<power_manager::PowerSupplyProperties> response =
+  std::optional<power_manager::PowerSupplyProperties> response =
       context->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
     *status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
@@ -84,8 +85,8 @@ const uint32_t kBatteryCapacityDefaultHighMah = 10000;
 
 std::unique_ptr<DiagnosticRoutine> CreateBatteryCapacityRoutine(
     Context* const context,
-    const base::Optional<uint32_t>& low_mah,
-    const base::Optional<uint32_t>& high_mah) {
+    const std::optional<uint32_t>& low_mah,
+    const std::optional<uint32_t>& high_mah) {
   return std::make_unique<SimpleRoutine>(
       base::BindOnce(&RunBatteryCapacityRoutine, context,
                      low_mah.value_or(kBatteryCapacityDefaultLowMah),

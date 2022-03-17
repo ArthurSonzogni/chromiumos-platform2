@@ -4,6 +4,7 @@
 
 #include "authpolicy/policy/policy_encoder_helper.h"
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -69,7 +70,7 @@ bool LoadPRegFilesIntoDict(const std::vector<base::FilePath>& preg_files,
   return true;
 }
 
-base::Optional<bool> GetAsBoolean(const base::Value* value) {
+std::optional<bool> GetAsBoolean(const base::Value* value) {
   if (value->is_bool())
     return value->GetBool();
 
@@ -80,7 +81,7 @@ base::Optional<bool> GetAsBoolean(const base::Value* value) {
       return int_value != 0;
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 void PrintConversionError(const base::Value* value,
@@ -131,19 +132,19 @@ void SetPolicyOptions(em::PolicyOptions* options, PolicyLevel level) {
                         : em::PolicyOptions_PolicyMode_MANDATORY);
 }
 
-base::Optional<bool> EncodeBooleanPolicy(const char* policy_name,
-                                         PolicyValueCallback get_policy_value,
-                                         bool log_policy_value) {
+std::optional<bool> EncodeBooleanPolicy(const char* policy_name,
+                                        PolicyValueCallback get_policy_value,
+                                        bool log_policy_value) {
   const base::Value* value = get_policy_value.Run(policy_name);
 
   if (!value)
-    return base::nullopt;
+    return std::nullopt;
 
   // Get actual value, doing type conversion if necessary.
-  base::Optional<bool> bool_value = GetAsBoolean(value);
+  std::optional<bool> bool_value = GetAsBoolean(value);
   if (!bool_value.has_value()) {
     PrintConversionError(value, "boolean", policy_name);
-    return base::nullopt;
+    return std::nullopt;
   }
 
   LOG_IF(INFO, log_policy_value)
@@ -153,7 +154,7 @@ base::Optional<bool> EncodeBooleanPolicy(const char* policy_name,
   return bool_value;
 }
 
-base::Optional<int> EncodeIntegerInRangePolicy(
+std::optional<int> EncodeIntegerInRangePolicy(
     const char* policy_name,
     PolicyValueCallback get_policy_value,
     int range_min,
@@ -161,35 +162,35 @@ base::Optional<int> EncodeIntegerInRangePolicy(
     bool log_policy_value) {
   const base::Value* value = get_policy_value.Run(policy_name);
   if (!value)
-    return base::nullopt;
+    return std::nullopt;
 
   // Get actual value, doing type conversion if necessary.
   int int_value;
   if (!GetAsIntegerInRangeAndPrintError(value, range_min, range_max,
                                         policy_name, &int_value)) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   LOG_IF(INFO, log_policy_value)
       << authpolicy::kColorPolicy << "  " << policy_name << " = " << int_value
       << authpolicy::kColorReset;
 
-  return base::make_optional(int_value);
+  return std::make_optional(int_value);
 }
 
-base::Optional<std::string> EncodeStringPolicy(
+std::optional<std::string> EncodeStringPolicy(
     const char* policy_name,
     PolicyValueCallback get_policy_value,
     bool log_policy_value) {
   // Try to get policy value from dict.
   const base::Value* value = get_policy_value.Run(policy_name);
   if (!value)
-    return base::nullopt;
+    return std::nullopt;
 
   // Get actual value, doing type conversion if necessary.
   if (!value->is_string()) {
     PrintConversionError(value, "string", policy_name);
-    return base::nullopt;
+    return std::nullopt;
   }
 
   const std::string& string_value = value->GetString();
@@ -200,7 +201,7 @@ base::Optional<std::string> EncodeStringPolicy(
   return string_value;
 }
 
-base::Optional<std::vector<std::string>> EncodeStringListPolicy(
+std::optional<std::vector<std::string>> EncodeStringListPolicy(
     const char* policy_name,
     PolicyValueCallback get_policy_value,
     bool log_policy_value) {
@@ -214,7 +215,7 @@ base::Optional<std::vector<std::string>> EncodeStringListPolicy(
 
     if (!value->is_string()) {
       PrintConversionError(value, "string", policy_name, &index_str);
-      return base::nullopt;
+      return std::nullopt;
     }
     string_values.push_back(value->GetString());
   }
@@ -227,7 +228,7 @@ base::Optional<std::vector<std::string>> EncodeStringListPolicy(
                 << authpolicy::kColorReset;
   }
 
-  return base::make_optional(string_values);
+  return std::make_optional(string_values);
 }
 
 }  // namespace policy

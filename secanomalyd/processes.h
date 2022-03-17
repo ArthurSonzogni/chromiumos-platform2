@@ -8,10 +8,10 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/strings/string_piece.h>
 
 #include <brillo/process/process.h>
@@ -43,7 +43,7 @@ class ProcEntry {
 };
 
 using ProcEntries = std::vector<ProcEntry>;
-using MaybeProcEntries = base::Optional<ProcEntries>;
+using MaybeProcEntries = std::optional<ProcEntries>;
 
 enum class ProcessFilter { kAll = 0, kInitPidNamespaceOnly };
 

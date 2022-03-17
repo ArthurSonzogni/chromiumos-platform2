@@ -11,6 +11,7 @@
 #include <initializer_list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -298,7 +299,7 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
 
 // Filters camera profiles in |media_profile_xml| with the settings in
 // |camera_test_config| and returns the filtered content.
-base::Optional<std::string> FilterMediaProfile(
+std::optional<std::string> FilterMediaProfile(
     const base::FilePath& media_profile_xml,
     const base::FilePath& camera_test_config);
 

@@ -5,6 +5,7 @@
 #include "ml/soda_recognizer_impl.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,7 +13,6 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
-#include <base/optional.h>
 #include <base/strings/string_util.h>
 #include <brillo/message_loops/message_loop.h>
 
@@ -123,7 +123,7 @@ SodaRecognizerImpl::SodaRecognizerImpl(
     : successfully_loaded_(false),
       receiver_(this, std::move(soda_recognizer)),
       client_remote_(std::move(soda_client)) {
-  const base::Optional<base::FilePath> real_library_dlc_path =
+  const std::optional<base::FilePath> real_library_dlc_path =
       GetRealPath(base::FilePath(spec->library_dlc_path));
   if (!real_library_dlc_path) {
     PLOG(ERROR) << "Bad library path " << spec->library_dlc_path;
@@ -134,7 +134,7 @@ SodaRecognizerImpl::SodaRecognizerImpl(
     return;
   }
 
-  const base::Optional<base::FilePath> real_language_dlc_path =
+  const std::optional<base::FilePath> real_language_dlc_path =
       GetRealPath(base::FilePath(spec->language_dlc_path));
   if (!real_language_dlc_path) {
     PLOG(ERROR) << "Bad language path " << spec->language_dlc_path;

@@ -5,9 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_NETWORK_DIAGNOSTICS_NETWORK_DIAGNOSTICS_ADAPTER_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_NETWORK_DIAGNOSTICS_NETWORK_DIAGNOSTICS_ADAPTER_IMPL_H_
 
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
@@ -63,7 +63,7 @@ class NetworkDiagnosticsAdapterImpl final : public NetworkDiagnosticsAdapter {
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
           RunHttpsLatencyCallback) override;
   void RunVideoConferencingRoutine(
-      const base::Optional<std::string>& stun_server_hostname,
+      const std::optional<std::string>& stun_server_hostname,
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines::
           RunVideoConferencingCallback) override;
   void RunArcHttpRoutine(

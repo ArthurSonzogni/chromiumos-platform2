@@ -8,11 +8,11 @@
 #include <sys/socket.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -95,7 +95,7 @@ class L2tpManager : public ServiceManager {
   FRIEND_TEST(L2tpManagerTest, Terminate);
 
   bool CreatePppLogFifo();
-  base::Optional<std::string> FormatL2tpdConfiguration(
+  std::optional<std::string> FormatL2tpdConfiguration(
       const std::string& ppp_config_path);
   std::string FormatPppdConfiguration();
   bool Initiate();

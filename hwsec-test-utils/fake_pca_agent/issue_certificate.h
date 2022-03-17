@@ -5,9 +5,9 @@
 #ifndef HWSEC_TEST_UTILS_FAKE_PCA_AGENT_ISSUE_CERTIFICATE_H_
 #define HWSEC_TEST_UTILS_FAKE_PCA_AGENT_ISSUE_CERTIFICATE_H_
 
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <crypto/scoped_openssl_types.h>
 
 namespace hwsec_test_utils {
@@ -18,7 +18,7 @@ crypto::ScopedX509 IssueTestCertificate(const crypto::ScopedEVP_PKEY& subject);
 
 // Creates a certificate signed by a random RSA key to |subject| and convert it
 // to DER-encoded string.
-base::Optional<std::string> IssueTestCertificateDer(
+std::optional<std::string> IssueTestCertificateDer(
     const crypto::ScopedEVP_PKEY& subject);
 
 }  // namespace hwsec_test_utils

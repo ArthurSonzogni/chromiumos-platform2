@@ -10,6 +10,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -324,10 +325,10 @@ class Service final {
   VmMap::iterator FindVm(const std::string& owner_id,
                          const std::string& vm_name);
 
-  base::Optional<int64_t> GetAvailableMemory();
-  base::Optional<int64_t> GetForegroundAvailableMemory();
-  base::Optional<MemoryMargins> GetMemoryMargins();
-  base::Optional<resource_manager::GameMode> GetGameMode();
+  std::optional<int64_t> GetAvailableMemory();
+  std::optional<int64_t> GetForegroundAvailableMemory();
+  std::optional<MemoryMargins> GetMemoryMargins();
+  std::optional<resource_manager::GameMode> GetGameMode();
   void RunBalloonPolicy();
   void FinishBalloonPolicy(
       std::vector<std::pair<uint32_t, BalloonStats>> stats);
@@ -348,10 +349,10 @@ class Service final {
   // failure.
   Service::VMImageSpec GetImageSpec(
       const vm_tools::concierge::VirtualMachineSpec& vm,
-      const base::Optional<base::ScopedFD>& kernel_fd,
-      const base::Optional<base::ScopedFD>& rootfs_fd,
-      const base::Optional<base::ScopedFD>& initrd_fd,
-      const base::Optional<base::ScopedFD>& bios_fd,
+      const std::optional<base::ScopedFD>& kernel_fd,
+      const std::optional<base::ScopedFD>& rootfs_fd,
+      const std::optional<base::ScopedFD>& initrd_fd,
+      const std::optional<base::ScopedFD>& bios_fd,
       bool is_termina,
       std::string* failure_reason);
 
@@ -461,7 +462,7 @@ class Service final {
 
   // A cache for the result of GetMemoryMargins, so we don't need to query it
   // every balloon_resizing_timer_ tick.
-  base::Optional<MemoryMargins> memory_margins_;
+  std::optional<MemoryMargins> memory_margins_;
 
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

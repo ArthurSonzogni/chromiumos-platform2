@@ -6,12 +6,12 @@
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_SYSTEM_FILES_SERVICE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/macros.h>
-#include <base/optional.h>
 
 namespace diagnostics {
 namespace wilco {
@@ -88,19 +88,19 @@ class SystemFilesService {
 
   virtual ~SystemFilesService() = default;
 
-  // Gets the dump of the specified file. Returns base::nullopt on failure.
-  virtual base::Optional<FileDump> GetFileDump(File location) = 0;
+  // Gets the dump of the specified file. Returns std::nullopt on failure.
+  virtual std::optional<FileDump> GetFileDump(File location) = 0;
 
   // Gets the dumps of the files in the specified directory.  Returns true if
   // successful.
-  virtual base::Optional<FileDumps> GetDirectoryDump(Directory location) = 0;
+  virtual std::optional<FileDumps> GetDirectoryDump(Directory location) = 0;
 
   // Gets trimmed value of the specified VPD field.
-  // Returns base::nullopt if VPD value does not exist, empty or contains
+  // Returns std::nullopt if VPD value does not exist, empty or contains
   // non-ASCII symbols.
   // TODO(b/154595154): consider changing behavior: empty string is valid, non
   // ASCII symbols are allowed.
-  virtual base::Optional<std::string> GetVpdField(VpdField vpd_field) = 0;
+  virtual std::optional<std::string> GetVpdField(VpdField vpd_field) = 0;
 };
 
 }  // namespace wilco

@@ -8,6 +8,7 @@
 #include <fuse_opt.h>
 #include <unistd.h>
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -212,7 +213,7 @@ class FuseSession::Impl {
             << " to_set: " << ToSetFlagsToString(to_set)
             << " handle: " << (info ? info->fh : 0);
     fs_->SetAttr(std::make_unique<AttrRequest>(request), inode,
-                 info ? info->fh : base::Optional<uint64_t>(), *attr, to_set);
+                 info ? info->fh : std::optional<uint64_t>(), *attr, to_set);
   }
 
   void Open(fuse_req_t request, fuse_ino_t inode, fuse_file_info* info) {

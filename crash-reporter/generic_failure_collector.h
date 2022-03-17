@@ -12,10 +12,10 @@
 #ifndef CRASH_REPORTER_GENERIC_FAILURE_COLLECTOR_H_
 #define CRASH_REPORTER_GENERIC_FAILURE_COLLECTOR_H_
 
+#include <optional>
 #include <string>
 
 #include <base/macros.h>
-#include <base/optional.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "crash-reporter/crash_collector.h"
@@ -31,12 +31,12 @@ class GenericFailureCollector : public CrashCollector {
 
   // Collects generic failure.
   bool Collect(const std::string& exec_name) {
-    return CollectFull(exec_name, exec_name, base::nullopt);
+    return CollectFull(exec_name, exec_name, std::nullopt);
   }
 
   // Collects generic failure with a weight specified.
   bool CollectWithWeight(const std::string& exec_name,
-                         base::Optional<int> weight) {
+                         std::optional<int> weight) {
     return CollectFull(exec_name, exec_name, weight);
   }
 
@@ -46,7 +46,7 @@ class GenericFailureCollector : public CrashCollector {
   // if weight is not nullopt, the "weight" key is set to that value.
   bool CollectFull(const std::string& exec_name,
                    const std::string& log_key_name,
-                   base::Optional<int> weight);
+                   std::optional<int> weight);
 
   static CollectorInfo GetHandlerInfo(bool suspend_failure,
                                       bool auth_failure,
@@ -57,7 +57,7 @@ class GenericFailureCollector : public CrashCollector {
   std::string failure_report_path_;
   std::string exec_name_;
   std::string log_key_name_;
-  base::Optional<int> weight_;
+  std::optional<int> weight_;
 
  private:
   friend class GenericFailureCollectorTest;

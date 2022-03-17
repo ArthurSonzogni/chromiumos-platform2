@@ -7,6 +7,7 @@
 
 #include <linux/iio/types.h>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -26,7 +27,7 @@ enum Location {
   kCamera = 3,
 };
 
-base::Optional<base::FilePath> GetAbsoluteSysPath(
+std::optional<base::FilePath> GetAbsoluteSysPath(
     libmems::IioDevice* const iio_device);
 
 class DeviceData {
@@ -79,7 +80,7 @@ constexpr char kSamplingFrequencyAvailableFormat[] = "0.000000 %.6f %.6f";
 std::string GetSamplingFrequencyAvailable(double min_frequency,
                                           double max_frequency);
 
-base::Optional<std::string> DeviceTypeToString(cros::mojom::DeviceType type);
+std::optional<std::string> DeviceTypeToString(cros::mojom::DeviceType type);
 
 cros::mojom::IioChanType ConvertChanType(iio_chan_type chan_type);
 cros::mojom::IioEventType ConvertEventType(iio_event_type event_type);

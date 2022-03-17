@@ -7,7 +7,8 @@
 #ifndef CAMERA_FEATURES_FEATURE_PROFILE_H_
 #define CAMERA_FEATURES_FEATURE_PROFILE_H_
 
-#include <base/optional.h>
+#include <optional>
+
 #include <base/values.h>
 
 #include "common/reloadable_config_file.h"
@@ -39,8 +40,8 @@ class FeatureProfile {
   // If |feature_config| is nullopt, then by default  the config stored in
   // kFeatureProfileFilePath will be loaded. If |device_config| is nullopt, then
   // the default DeviceConfig instance from DeviceConfig::Create() will be used.
-  FeatureProfile(base::Optional<base::Value> feature_config = base::nullopt,
-                 base::Optional<DeviceConfig> device_config = base::nullopt);
+  FeatureProfile(std::optional<base::Value> feature_config = std::nullopt,
+                 std::optional<DeviceConfig> device_config = std::nullopt);
 
   // Checks if |feature| is enabled.
   bool IsEnabled(FeatureType feature) const;
@@ -58,7 +59,7 @@ class FeatureProfile {
   };
 
   ReloadableConfigFile config_file_;
-  base::Optional<DeviceConfig> device_config_;
+  std::optional<DeviceConfig> device_config_;
 
   // The parsed feature settings.
   base::flat_map<FeatureType, FeatureSetting> feature_settings_;

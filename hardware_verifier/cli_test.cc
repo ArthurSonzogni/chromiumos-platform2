@@ -4,6 +4,7 @@
  */
 
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <utility>
 
@@ -107,7 +108,7 @@ TEST_F(CLITest, TestGetReportFailed) {
   ON_CALL(*mock_vr_getter_, Get(_, _, _))
       .WillByDefault(
           DoAll(SetArgPointee<2>(ReportGetterErrorCode::kErrorCodeProbeFail),
-                Return(base::nullopt)));
+                Return(std::nullopt)));
 
   EXPECT_EQ(cli_->Run("", "", CLIOutputFormat::kProtoBin, true),
             CLIVerificationResult::kProbeFail);
@@ -118,7 +119,7 @@ TEST_F(CLITest, TestMissingPayloads) {
       .WillByDefault(DoAll(
           SetArgPointee<2>(ReportGetterErrorCode::
                                kErrorCodeMissingDefaultHwVerificationSpecFile),
-          Return(base::nullopt)));
+          Return(std::nullopt)));
 
   EXPECT_EQ(cli_->Run("", "", CLIOutputFormat::kProtoBin, true),
             CLIVerificationResult::kSkippedVerification);

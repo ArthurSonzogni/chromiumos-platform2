@@ -4,6 +4,8 @@
 
 #include "login_manager/regen_mitigator.h"
 
+#include <optional>
+
 #include "login_manager/session_manager_service.h"
 
 #include <base/check.h>
@@ -18,7 +20,7 @@ RegenMitigator::RegenMitigator(KeyGenerator* generator)
 RegenMitigator::~RegenMitigator() {}
 
 bool RegenMitigator::Mitigate(const std::string& ownername,
-                              const base::Optional<base::FilePath>& ns_path) {
+                              const std::optional<base::FilePath>& ns_path) {
   return mitigating_ = generator_->Start(ownername, ns_path);
 }
 

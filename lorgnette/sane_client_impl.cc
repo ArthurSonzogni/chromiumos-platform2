@@ -4,6 +4,8 @@
 
 #include "lorgnette/sane_client_impl.h"
 
+#include <optional>
+
 #include <base/check.h>
 #include <base/containers/contains.h>
 #include <base/containers/flat_map.h>
@@ -27,7 +29,7 @@ namespace {
 DocumentSource CreateDocumentSource(const std::string& name) {
   DocumentSource source;
   source.set_name(name);
-  base::Optional<SourceType> type = GuessSourceType(name);
+  std::optional<SourceType> type = GuessSourceType(name);
   if (type.has_value()) {
     source.set_type(type.value());
   }
@@ -62,7 +64,7 @@ SaneClientImpl::~SaneClientImpl() {
   sane_exit();
 }
 
-base::Optional<std::vector<ScannerInfo>> SaneClientImpl::ListDevices(
+std::optional<std::vector<ScannerInfo>> SaneClientImpl::ListDevices(
     brillo::ErrorPtr* error) {
   base::AutoLock auto_lock(lock_);
   const SANE_Device** device_list;
@@ -70,18 +72,18 @@ base::Optional<std::vector<ScannerInfo>> SaneClientImpl::ListDevices(
   if (status != SANE_STATUS_GOOD) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "Unable to get device list from SANE");
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return DeviceListToScannerInfo(device_list);
 }
 
 // static
-base::Optional<std::vector<ScannerInfo>>
-SaneClientImpl::DeviceListToScannerInfo(const SANE_Device** device_list) {
+std::optional<std::vector<ScannerInfo>> SaneClientImpl::DeviceListToScannerInfo(
+    const SANE_Device** device_list) {
   if (!device_list) {
     LOG(ERROR) << "'device_list' cannot be NULL";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::unordered_set<std::string> names;
@@ -93,7 +95,7 @@ SaneClientImpl::DeviceListToScannerInfo(const SANE_Device** device_list) {
 
     if (names.count(dev->name) != 0) {
       LOG(ERROR) << "Duplicate device name: " << dev->name;
-      return base::nullopt;
+      return std::nullopt;
     }
     names.insert(dev->name);
 
@@ -157,21 +159,21 @@ SaneDeviceImpl::~SaneDeviceImpl() {
   open_devices_->second.erase(name_);
 }
 
-base::Optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
+std::optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
     brillo::ErrorPtr* error) {
   if (!handle_) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "No scanner connected");
-    return base::nullopt;
+    return std::nullopt;
   }
 
   ValidOptionValues values;
 
   // TODO(b/179492658): Once the scan app is using the resolutions from
   // DocumentSource instead of ScannerCapabilities, remove this logic.
-  base::Optional<std::vector<uint32_t>> resolutions = GetResolutions(error);
+  std::optional<std::vector<uint32_t>> resolutions = GetResolutions(error);
   if (!resolutions.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
   values.resolutions = std::move(resolutions.value());
 
@@ -183,15 +185,15 @@ base::Optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
       brillo::Error::AddToPrintf(
           error, FROM_HERE, kDbusDomain, kManagerServiceError,
           "Unable to get source option at index %d", index);
-      return base::nullopt;
+      return std::nullopt;
     }
 
-    base::Optional<std::vector<std::string>> source_names =
+    std::optional<std::vector<std::string>> source_names =
         GetValidStringOptionValues(error, *descriptor);
     if (!source_names.has_value()) {
       brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                            "Failed to get valid values for sources setting");
-      return base::nullopt;
+      return std::nullopt;
     }
 
     for (const std::string& source_name : source_names.value()) {
@@ -214,26 +216,26 @@ base::Optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
     // document source to each possible value, and then calculating the area
     // for that source and retrieving the source's supported resolutions and
     // color modes.
-    base::Optional<std::string> initial_source = GetDocumentSource(error);
+    std::optional<std::string> initial_source = GetDocumentSource(error);
     if (!initial_source.has_value()) {
-      return base::nullopt;
+      return std::nullopt;
     }
 
     for (DocumentSource& source : values.sources) {
       if (!SetDocumentSource(error, source.name())) {
-        return base::nullopt;
+        return std::nullopt;
       }
 
-      base::Optional<ScannableArea> area = CalculateScannableArea(error);
+      std::optional<ScannableArea> area = CalculateScannableArea(error);
       if (!area.has_value()) {
-        return base::nullopt;
+        return std::nullopt;
       }
 
       *source.mutable_area() = std::move(area.value());
 
-      base::Optional<std::vector<uint32_t>> resolutions = GetResolutions(error);
+      std::optional<std::vector<uint32_t>> resolutions = GetResolutions(error);
       if (!resolutions.has_value()) {
-        return base::nullopt;
+        return std::nullopt;
       }
 
       // These values correspond to the values of Chromium's
@@ -249,10 +251,10 @@ base::Optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
         }
       }
 
-      base::Optional<std::vector<std::string>> color_modes =
+      std::optional<std::vector<std::string>> color_modes =
           GetColorModes(error);
       if (!color_modes.has_value()) {
-        return base::nullopt;
+        return std::nullopt;
       }
 
       for (const std::string& mode : color_modes.value()) {
@@ -265,22 +267,22 @@ base::Optional<ValidOptionValues> SaneDeviceImpl::GetValidOptionValues(
 
     // Restore DocumentSource to its initial value.
     if (!SetDocumentSource(error, initial_source.value())) {
-      return base::nullopt;
+      return std::nullopt;
     }
   }
 
   // TODO(b/179492658): Once the scan app is using the color modes from
   // DocumentSource instead of ScannerCapabilities, remove this logic.
-  base::Optional<std::vector<std::string>> color_modes = GetColorModes(error);
+  std::optional<std::vector<std::string>> color_modes = GetColorModes(error);
   if (!color_modes.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
   values.color_modes = std::move(color_modes.value());
 
   return values;
 }
 
-base::Optional<int> SaneDeviceImpl::GetScanResolution(brillo::ErrorPtr* error) {
+std::optional<int> SaneDeviceImpl::GetScanResolution(brillo::ErrorPtr* error) {
   return GetOption<int>(error, kResolution);
 }
 
@@ -289,7 +291,7 @@ bool SaneDeviceImpl::SetScanResolution(brillo::ErrorPtr* error,
   return SetOption(error, kResolution, resolution);
 }
 
-base::Optional<std::string> SaneDeviceImpl::GetDocumentSource(
+std::optional<std::string> SaneDeviceImpl::GetDocumentSource(
     brillo::ErrorPtr* error) {
   return GetOption<std::string>(error, kSource);
 }
@@ -299,12 +301,11 @@ bool SaneDeviceImpl::SetDocumentSource(brillo::ErrorPtr* error,
   return SetOption(error, kSource, source_name);
 }
 
-base::Optional<ColorMode> SaneDeviceImpl::GetColorMode(
-    brillo::ErrorPtr* error) {
-  base::Optional<std::string> sane_color_mode =
+std::optional<ColorMode> SaneDeviceImpl::GetColorMode(brillo::ErrorPtr* error) {
+  std::optional<std::string> sane_color_mode =
       GetOption<std::string>(error, kScanMode);
   if (!sane_color_mode.has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   return ColorModeFromSaneString(sane_color_mode.value());
 }
@@ -353,19 +354,19 @@ bool SaneDeviceImpl::SetScanRegion(brillo::ErrorPtr* error,
   // doesn't start at (0, 0), we can translate the requested region into the
   // device's coordinates. We provide the appearance to the user that all
   // region options start at (0, 0).
-  base::Optional<double> x_offset = GetOptionOffset(error, kTopLeftX);
+  std::optional<double> x_offset = GetOptionOffset(error, kTopLeftX);
   if (!x_offset.has_value())
     return false;
 
   // Get ADF justification offset modification if justification is specified.
-  base::Optional<uint32_t> justification_x_offset =
+  std::optional<uint32_t> justification_x_offset =
       GetJustificationXOffset(region, error);
   if (!justification_x_offset.has_value()) {
     return false;
   }
   x_offset.value() += justification_x_offset.value();
 
-  base::Optional<double> y_offset = GetOptionOffset(error, kTopLeftY);
+  std::optional<double> y_offset = GetOptionOffset(error, kTopLeftY);
   if (!y_offset.has_value())
     return false;
 
@@ -405,12 +406,12 @@ SANE_Status SaneDeviceImpl::StartScan(brillo::ErrorPtr* error) {
   return status;
 }
 
-base::Optional<ScanParameters> SaneDeviceImpl::GetScanParameters(
+std::optional<ScanParameters> SaneDeviceImpl::GetScanParameters(
     brillo::ErrorPtr* error) {
   if (!handle_) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "No scanner connected");
-    return base::nullopt;
+    return std::nullopt;
   }
 
   SANE_Parameters params;
@@ -419,7 +420,7 @@ base::Optional<ScanParameters> SaneDeviceImpl::GetScanParameters(
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Failed to read scan parameters: %s", sane_strstatus(status));
-    return base::nullopt;
+    return std::nullopt;
   }
 
   ScanParameters parameters;
@@ -433,7 +434,7 @@ base::Optional<ScanParameters> SaneDeviceImpl::GetScanParameters(
     default:
       brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                            "Unsupported scan frame format");
-      return base::nullopt;
+      return std::nullopt;
   }
 
   parameters.bytes_per_line = params.bytes_per_line;
@@ -487,14 +488,14 @@ bool SaneDeviceImpl::CancelScan(brillo::ErrorPtr* error) {
 }
 
 // static
-base::Optional<std::vector<std::string>>
+std::optional<std::vector<std::string>>
 SaneDeviceImpl::GetValidStringOptionValues(brillo::ErrorPtr* error,
                                            const SANE_Option_Descriptor& opt) {
   if (opt.constraint_type != SANE_CONSTRAINT_STRING_LIST) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Invalid option constraint type %d", opt.constraint_type);
-    return base::nullopt;
+    return std::nullopt;
   }
 
   std::vector<std::string> values;
@@ -506,7 +507,7 @@ SaneDeviceImpl::GetValidStringOptionValues(brillo::ErrorPtr* error,
 }
 
 // static
-base::Optional<std::vector<uint32_t>> SaneDeviceImpl::GetValidIntOptionValues(
+std::optional<std::vector<uint32_t>> SaneDeviceImpl::GetValidIntOptionValues(
     brillo::ErrorPtr* error, const SANE_Option_Descriptor& opt) {
   std::vector<uint32_t> values;
   if (opt.constraint_type == SANE_CONSTRAINT_WORD_LIST) {
@@ -526,20 +527,20 @@ base::Optional<std::vector<uint32_t>> SaneDeviceImpl::GetValidIntOptionValues(
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Invalid option constraint type %d", opt.constraint_type);
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return values;
 }
 
 // static
-base::Optional<OptionRange> SaneDeviceImpl::GetOptionRange(
+std::optional<OptionRange> SaneDeviceImpl::GetOptionRange(
     brillo::ErrorPtr* error, const SANE_Option_Descriptor& opt) {
   if (opt.constraint_type != SANE_CONSTRAINT_RANGE) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Expected range constraint for option %s", opt.name);
-    return base::nullopt;
+    return std::nullopt;
   }
 
   OptionRange option_range;
@@ -557,7 +558,7 @@ base::Optional<OptionRange> SaneDeviceImpl::GetOptionRange(
       brillo::Error::AddToPrintf(
           error, FROM_HERE, kDbusDomain, kManagerServiceError,
           "Unexpected option type %d for option %s", opt.type, opt.name);
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 
@@ -615,21 +616,21 @@ bool SaneOption::Set(const std::string& s) {
 }
 
 template <>
-base::Optional<int> SaneOption::Get() const {
+std::optional<int> SaneOption::Get() const {
   switch (type_) {
     case SANE_TYPE_INT:
       return int_data_.i;
     case SANE_TYPE_FIXED:
       return static_cast<int>(SANE_UNFIX(int_data_.f));
     default:
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 
 template <>
-base::Optional<std::string> SaneOption::Get() const {
+std::optional<std::string> SaneOption::Get() const {
   if (type_ != SANE_TYPE_STRING)
-    return base::nullopt;
+    return std::nullopt;
 
   return std::string(string_data_.data());
 }
@@ -715,7 +716,7 @@ bool SaneDeviceImpl::LoadOptions(brillo::ErrorPtr* error) {
       return false;
     }
 
-    base::Optional<ScanOption> option_name;
+    std::optional<ScanOption> option_name;
     if ((opt->type == SANE_TYPE_INT || opt->type == SANE_TYPE_FIXED) &&
         opt->size == sizeof(SANE_Int) && opt->unit == SANE_UNIT_DPI &&
         strcmp(opt->name, SANE_NAME_SCAN_RESOLUTION) == 0) {
@@ -789,7 +790,7 @@ bool SaneDeviceImpl::UpdateDeviceOption(brillo::ErrorPtr* error,
   return true;
 }
 
-base::Optional<ScannableArea> SaneDeviceImpl::CalculateScannableArea(
+std::optional<ScannableArea> SaneDeviceImpl::CalculateScannableArea(
     brillo::ErrorPtr* error) {
   // What we know from the SANE API docs (verbatim):
   // * The unit of all four scan region options must be identical
@@ -806,15 +807,15 @@ base::Optional<ScannableArea> SaneDeviceImpl::CalculateScannableArea(
   // define the real maximum values.  If these are present, they are handled
   // automatically in the GetXRange and GetYRange functions.
   ScannableArea area;
-  base::Optional<OptionRange> x_range = GetXRange(error);
+  std::optional<OptionRange> x_range = GetXRange(error);
   if (!x_range.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
   area.set_width(x_range.value().size);
 
-  base::Optional<OptionRange> y_range = GetYRange(error);
+  std::optional<OptionRange> y_range = GetYRange(error);
   if (!y_range.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
   area.set_height(y_range.value().size);
   return area;
@@ -823,13 +824,13 @@ base::Optional<ScannableArea> SaneDeviceImpl::CalculateScannableArea(
 // Calculates the starting value of the range for the given ScanOption.
 // Requires that |options_| contains |option|, and that the corresponding
 // option descriptor for |option| has a range constraint.
-base::Optional<double> SaneDeviceImpl::GetOptionOffset(
+std::optional<double> SaneDeviceImpl::GetOptionOffset(
     brillo::ErrorPtr* error, SaneDeviceImpl::ScanOption option) {
   if (options_.count(option) == 0) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Device is missing option %s", OptionDisplayName(option));
-    return base::nullopt;
+    return std::nullopt;
   }
 
   int index = options_.at(option).GetIndex();
@@ -840,15 +841,15 @@ base::Optional<double> SaneDeviceImpl::GetOptionOffset(
                                kManagerServiceError,
                                "Unable to get option %s at index %d",
                                OptionDisplayName(option), index);
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  base::Optional<OptionRange> range = GetOptionRange(error, *descriptor);
+  std::optional<OptionRange> range = GetOptionRange(error, *descriptor);
   if (!range.has_value()) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Failed to get range for %s option.", descriptor->name);
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return range->start;
@@ -901,17 +902,17 @@ bool SaneDeviceImpl::SetOption(brillo::ErrorPtr* error,
 }
 
 template <typename T>
-base::Optional<T> SaneDeviceImpl::GetOption(brillo::ErrorPtr* error,
-                                            ScanOption option_type) {
+std::optional<T> SaneDeviceImpl::GetOption(brillo::ErrorPtr* error,
+                                           ScanOption option_type) {
   if (options_.count(option_type) == 0) {
     brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
                                kManagerServiceError, "No %s option found.",
                                OptionDisplayName(option_type));
-    return base::nullopt;
+    return std::nullopt;
   }
 
   const SaneOption& option = options_.at(option_type);
-  base::Optional<T> value = option.Get<T>();
+  std::optional<T> value = option.Get<T>();
   if (!value.has_value()) {
     brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
                          kManagerServiceError,
@@ -921,10 +922,10 @@ base::Optional<T> SaneDeviceImpl::GetOption(brillo::ErrorPtr* error,
   return value;
 }
 
-base::Optional<std::vector<uint32_t>> SaneDeviceImpl::GetResolutions(
+std::optional<std::vector<uint32_t>> SaneDeviceImpl::GetResolutions(
     brillo::ErrorPtr* error) {
   if (options_.count(kResolution) == 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   int index = options_.at(kResolution).GetIndex();
@@ -934,23 +935,23 @@ base::Optional<std::vector<uint32_t>> SaneDeviceImpl::GetResolutions(
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Unable to get resolution option at index %d", index);
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  base::Optional<std::vector<uint32_t>> resolutions =
+  std::optional<std::vector<uint32_t>> resolutions =
       GetValidIntOptionValues(error, *descriptor);
   if (!resolutions.has_value()) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "Failed to get valid values for resolution setting");
-    return base::nullopt;
+    return std::nullopt;
   }
   return resolutions.value();
 }
 
-base::Optional<std::vector<std::string>> SaneDeviceImpl::GetColorModes(
+std::optional<std::vector<std::string>> SaneDeviceImpl::GetColorModes(
     brillo::ErrorPtr* error) {
   if (options_.count(kScanMode) == 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   int index = options_.at(kScanMode).GetIndex();
@@ -960,38 +961,38 @@ base::Optional<std::vector<std::string>> SaneDeviceImpl::GetColorModes(
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Unable to get scan mode option at index %d", index);
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  base::Optional<std::vector<std::string>> color_modes =
+  std::optional<std::vector<std::string>> color_modes =
       GetValidStringOptionValues(error, *descriptor);
 
   if (!color_modes.has_value()) {
     brillo::Error::AddTo(error, FROM_HERE, kDbusDomain, kManagerServiceError,
                          "Failed to get valid values for scan modes setting");
-    return base::nullopt;
+    return std::nullopt;
   }
   return color_modes.value();
 }
 
-base::Optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
+std::optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
     const ScanRegion& region, brillo::ErrorPtr* error) {
   // Offset modification only necessary for ADF source at the moment.
-  base::Optional<std::string> current_source = GetDocumentSource(error);
+  std::optional<std::string> current_source = GetDocumentSource(error);
   if (!current_source.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
   DocumentSource src = CreateDocumentSource(current_source.value());
   if (src.type() != SOURCE_ADF_SIMPLEX && src.type() != SOURCE_ADF_DUPLEX) {
     return 0;
   }
 
-  base::Optional<OptionRange> x_range = GetXRange(error);
+  std::optional<OptionRange> x_range = GetXRange(error);
   if (!x_range.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  base::Optional<std::string> x_justification =
+  std::optional<std::string> x_justification =
       GetOption<std::string>(error, kJustificationX);
   if (!x_justification.has_value()) {
     return 0;
@@ -1010,7 +1011,7 @@ base::Optional<uint32_t> SaneDeviceImpl::GetJustificationXOffset(
   return x_offset;
 }
 
-base::Optional<OptionRange> SaneDeviceImpl::GetXRange(brillo::ErrorPtr* error) {
+std::optional<OptionRange> SaneDeviceImpl::GetXRange(brillo::ErrorPtr* error) {
   int index;
   if (base::Contains(options_, kPageWidth)) {
     index = options_.at(kPageWidth).GetIndex();
@@ -1023,18 +1024,18 @@ base::Optional<OptionRange> SaneDeviceImpl::GetXRange(brillo::ErrorPtr* error) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Unable to get top-left X option at index %d", index);
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  base::Optional<OptionRange> x_range = GetOptionRange(error, *descriptor);
+  std::optional<OptionRange> x_range = GetOptionRange(error, *descriptor);
   if (!x_range.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return x_range;
 }
 
-base::Optional<OptionRange> SaneDeviceImpl::GetYRange(brillo::ErrorPtr* error) {
+std::optional<OptionRange> SaneDeviceImpl::GetYRange(brillo::ErrorPtr* error) {
   int index;
   if (base::Contains(options_, kPageHeight)) {
     index = options_.at(kPageHeight).GetIndex();
@@ -1047,12 +1048,12 @@ base::Optional<OptionRange> SaneDeviceImpl::GetYRange(brillo::ErrorPtr* error) {
     brillo::Error::AddToPrintf(
         error, FROM_HERE, kDbusDomain, kManagerServiceError,
         "Unable to get bottom-right Y option at index %d", index);
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  base::Optional<OptionRange> y_range = GetOptionRange(error, *descriptor);
+  std::optional<OptionRange> y_range = GetOptionRange(error, *descriptor);
   if (!y_range.has_value()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return y_range;

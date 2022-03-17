@@ -13,6 +13,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
@@ -20,7 +21,6 @@
 #include <base/files/scoped_file.h>
 #include <base/macros.h>
 #include <base/memory/ref_counted.h>
-#include <base/optional.h>
 #include <base/synchronization/lock.h>
 
 #include "arc/vm/mojo_proxy/mojo_proxy.h"
@@ -111,12 +111,12 @@ class ProxyFileSystem {
                      off_t off);
 
   // Returns the state of the given inode.
-  // If not registered, base::nullopt is returned.
+  // If not registered, std::nullopt is returned.
   struct State {
     int64_t handle = 0;
     bool is_open = false;
   };
-  base::Optional<State> GetState(fuse_ino_t inode);
+  std::optional<State> GetState(fuse_ino_t inode);
 
   Delegate* const delegate_;
   scoped_refptr<base::TaskRunner> delegate_task_runner_;

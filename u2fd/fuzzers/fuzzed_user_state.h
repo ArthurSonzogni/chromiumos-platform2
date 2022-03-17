@@ -7,11 +7,11 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/logging.h>
-#include <base/optional.h>
 #include <brillo/secure_blob.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
@@ -27,22 +27,22 @@ class FuzzedUserState : public UserState {
   void NextState();
 
   // UserState methods
-  base::Optional<brillo::SecureBlob> GetUserSecret() override;
-  base::Optional<std::vector<uint8_t>> GetCounter() override;
+  std::optional<brillo::SecureBlob> GetUserSecret() override;
+  std::optional<std::vector<uint8_t>> GetCounter() override;
   bool IncrementCounter() override;
   void SetSessionStartedCallback(
       base::RepeatingCallback<void(const std::string&)> callback) override;
   void SetSessionStoppedCallback(
       base::RepeatingCallback<void()> callback) override;
   bool HasUser() override;
-  base::Optional<std::string> GetUser() override;
-  base::Optional<std::string> GetSanitizedUser() override;
+  std::optional<std::string> GetUser() override;
+  std::optional<std::string> GetSanitizedUser() override;
 
  private:
   FuzzedDataProvider* const data_provider_;
 
-  base::Optional<brillo::SecureBlob> user_secret_;
-  base::Optional<uint32_t> counter_;
+  std::optional<brillo::SecureBlob> user_secret_;
+  std::optional<uint32_t> counter_;
 };
 
 }  // namespace u2f

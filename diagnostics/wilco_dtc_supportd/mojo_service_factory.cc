@@ -4,6 +4,7 @@
 
 #include "diagnostics/wilco_dtc_supportd/mojo_service_factory.h"
 
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -57,7 +58,7 @@ MojoService* MojoServiceFactory::Get() const {
   return mojo_service_.get();
 }
 
-base::Optional<std::string> MojoServiceFactory::BootstrapMojoConnection(
+std::optional<std::string> MojoServiceFactory::BootstrapMojoConnection(
     const base::ScopedFD& mojo_fd) {
   if (!mojo_fd.is_valid()) {
     LOG(ERROR) << "Invalid Mojo file descriptor";
@@ -76,7 +77,7 @@ base::Optional<std::string> MojoServiceFactory::BootstrapMojoConnection(
   return Start(std::move(mojo_fd_copy));
 }
 
-base::Optional<std::string> MojoServiceFactory::Start(
+std::optional<std::string> MojoServiceFactory::Start(
     base::ScopedFD mojo_pipe_fd) {
   DCHECK(mojo_pipe_fd.is_valid());
 
@@ -109,7 +110,7 @@ base::Optional<std::string> MojoServiceFactory::Start(
       "Mojo connection error" /* debug_reason */));
 
   LOG(INFO) << "Successfully bootstrapped Mojo connection";
-  return base::nullopt;
+  return std::nullopt;
 }
 
 MojoServiceFactory::BindFactoryCallback

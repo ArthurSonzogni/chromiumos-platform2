@@ -9,6 +9,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -92,8 +93,8 @@ class SensorHalClientImpl final : public SensorHalClient {
       bool ignored = false;
 
       std::vector<mojom::DeviceType> types;
-      base::Optional<Location> location;
-      base::Optional<double> scale;
+      std::optional<Location> location;
+      std::optional<double> scale;
 
       // Temporarily stores the remote, waiting for its attributes information.
       // It'll be passed to SensorDevice's constructor as an argument after all
@@ -129,7 +130,7 @@ class SensorHalClientImpl final : public SensorHalClient {
     void GetAttributesCallback(
         int32_t iio_device_id,
         const std::vector<std::string> attr_names,
-        const std::vector<base::Optional<std::string>>& values);
+        const std::vector<std::optional<std::string>>& values);
 
     void IgnoreDevice(int32_t iio_device_id);
     // Return true if all devices of |type| are initialized and attributes are

@@ -8,9 +8,9 @@
 #define CAMERA_FEATURES_GCAM_AE_AE_STATE_MACHINE_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
-#include <base/optional.h>
 #include <base/synchronization/lock.h>
 #include <base/timer/timer.h>
 
@@ -268,12 +268,12 @@ class AeStateMachine {
   float tet_step_log2_ = 0.0f;
 
   // The target TET for the state machine to converge the actual TET to.
-  base::Optional<ExposureDescriptor> target_ GUARDED_BY(lock_);
+  std::optional<ExposureDescriptor> target_ GUARDED_BY(lock_);
 
   // The converged TET that the state machine has settled with.
-  base::Optional<ExposureDescriptor> converged_ GUARDED_BY(lock_);
-  base::Optional<base::TimeTicks> converged_start_time_ GUARDED_BY(lock_);
-  base::Optional<int> tet_retention_duration_ms_ GUARDED_BY(lock_);
+  std::optional<ExposureDescriptor> converged_ GUARDED_BY(lock_);
+  std::optional<base::TimeTicks> converged_start_time_ GUARDED_BY(lock_);
+  std::optional<int> tet_retention_duration_ms_ GUARDED_BY(lock_);
   static constexpr int kInvalidFrame = -1;
   int convergence_starting_frame_ GUARDED_BY(lock_) = kInvalidFrame;
 
@@ -281,7 +281,7 @@ class AeStateMachine {
   base::TimeTicks last_converged_time_ GUARDED_BY(lock_);
 
   // Whether the AE needs to be locked.
-  base::Optional<ExposureDescriptor> locked_ GUARDED_BY(lock_);
+  std::optional<ExposureDescriptor> locked_ GUARDED_BY(lock_);
   bool ae_locked_ GUARDED_BY(lock_) = false;
 
   GcamAeMetrics gcam_ae_metrics_ GUARDED_BY(lock_);

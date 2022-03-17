@@ -9,10 +9,10 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/time/time.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -54,7 +54,7 @@ class CrosHealthdMojoAdapter {
 
   // Runs the urandom routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
-  RunUrandomRoutine(const base::Optional<base::TimeDelta>& length_seconds) = 0;
+  RunUrandomRoutine(const std::optional<base::TimeDelta>& length_seconds) = 0;
 
   // Runs the battery capacity routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
@@ -72,20 +72,20 @@ class CrosHealthdMojoAdapter {
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
   RunAcPowerRoutine(
       chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-      const base::Optional<std::string>& expected_power_type) = 0;
+      const std::optional<std::string>& expected_power_type) = 0;
 
   // Runs the CPU cache routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
-  RunCpuCacheRoutine(const base::Optional<base::TimeDelta>& exec_duration) = 0;
+  RunCpuCacheRoutine(const std::optional<base::TimeDelta>& exec_duration) = 0;
 
   // Runs the CPU stress routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
-  RunCpuStressRoutine(const base::Optional<base::TimeDelta>& exec_duration) = 0;
+  RunCpuStressRoutine(const std::optional<base::TimeDelta>& exec_duration) = 0;
 
   // Runs the floating-point-accuracy routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
   RunFloatingPointAccuracyRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration) = 0;
+      const std::optional<base::TimeDelta>& exec_duration) = 0;
 
   // Runs the NvmeWearLevel routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
@@ -106,7 +106,7 @@ class CrosHealthdMojoAdapter {
   // Runs the prime search routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
   RunPrimeSearchRoutine(
-      const base::Optional<base::TimeDelta>& exec_duration) = 0;
+      const std::optional<base::TimeDelta>& exec_duration) = 0;
 
   // Runs the battery discharge routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
@@ -169,7 +169,7 @@ class CrosHealthdMojoAdapter {
   // Runs the video conferencing routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
   RunVideoConferencingRoutine(
-      const base::Optional<std::string>& stun_server_hostname) = 0;
+      const std::optional<std::string>& stun_server_hostname) = 0;
 
   // Runs the ARC HTTP routine.
   virtual chromeos::cros_healthd::mojom::RunRoutineResponsePtr
@@ -184,7 +184,7 @@ class CrosHealthdMojoAdapter {
   RunArcDnsResolutionRoutine() = 0;
 
   // Returns which routines are available on the platform.
-  virtual base::Optional<
+  virtual std::optional<
       std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>>
   GetAvailableRoutines() = 0;
 

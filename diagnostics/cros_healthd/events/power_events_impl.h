@@ -5,9 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EVENTS_POWER_EVENTS_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_POWER_EVENTS_IMPL_H_
 
-#include <base/optional.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
+#include <optional>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
@@ -66,7 +66,7 @@ class PowerEventsImpl final : public PowerEvents,
   // Most recent external power AC event, from powerd's last
   // PowerSupplyPollSignal (updates every 30 seconds or when something changes
   // in the power supply).
-  base::Optional<PowerEventType> external_power_ac_event_;
+  std::optional<PowerEventType> external_power_ac_event_;
 
   // Each observer in |observers_| will be notified of any power event in the
   // chromeos::cros_healthd::mojom::CrosHealthdPowerObserver interface. The

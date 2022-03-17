@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <initializer_list>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -35,8 +36,8 @@ namespace {
 struct ImuVpdCalibrationEntry {
   std::string name;
   std::string calib;
-  base::Optional<int> max_value;
-  base::Optional<int> value;
+  std::optional<int> max_value;
+  std::optional<int> value;
   bool missing_is_error;
 };
 
@@ -47,7 +48,7 @@ struct LightVpdCalibrationEntry {
 
 struct LightColorCalibrationEntry {
   std::string iio_name;
-  base::Optional<double> value;
+  std::optional<double> value;
   libmems::IioChannel* chn;
 };
 
@@ -179,9 +180,9 @@ bool Configuration::CopyLightCalibrationFromVpd() {
    * RGB sensors may need per channel calibration.
    */
   std::vector<LightColorCalibrationEntry> calib_color_entries = {
-      {"illuminance_red", base::nullopt, nullptr},
-      {"illuminance_green", base::nullopt, nullptr},
-      {"illuminance_blue", base::nullopt, nullptr},
+      {"illuminance_red", std::nullopt, nullptr},
+      {"illuminance_green", std::nullopt, nullptr},
+      {"illuminance_blue", std::nullopt, nullptr},
   };
   for (auto& color_entry : calib_color_entries) {
     color_entry.chn = sensor_->GetChannel(color_entry.iio_name);
@@ -248,13 +249,13 @@ bool Configuration::CopyImuCalibationFromVpd(int max_value,
   std::string kind = SensorKindToString(kind_);
 
   std::vector<ImuVpdCalibrationEntry> calib_attributes = {
-      {"x", kCalibrationBias, max_value, base::nullopt, true},
-      {"y", kCalibrationBias, max_value, base::nullopt, true},
-      {"z", kCalibrationBias, max_value, base::nullopt, true},
+      {"x", kCalibrationBias, max_value, std::nullopt, true},
+      {"y", kCalibrationBias, max_value, std::nullopt, true},
+      {"z", kCalibrationBias, max_value, std::nullopt, true},
 
-      {"x", kCalibrationScale, base::nullopt, base::nullopt, false},
-      {"y", kCalibrationScale, base::nullopt, base::nullopt, false},
-      {"z", kCalibrationScale, base::nullopt, base::nullopt, false},
+      {"x", kCalibrationScale, std::nullopt, std::nullopt, false},
+      {"y", kCalibrationScale, std::nullopt, std::nullopt, false},
+      {"z", kCalibrationScale, std::nullopt, std::nullopt, false},
   };
 
   for (auto& calib_attribute : calib_attributes) {
@@ -370,7 +371,7 @@ bool Configuration::AddSysfsTrigger(int sysfs_trigger_id) {
 
   base::FilePath trigger_now = triggers[0]->GetPath().Append("trigger_now");
 
-  base::Optional<gid_t> chronos_gid = delegate_->FindGroupId("chronos");
+  std::optional<gid_t> chronos_gid = delegate_->FindGroupId("chronos");
   if (!chronos_gid) {
     LOG(ERROR) << "chronos group not found";
     return false;
@@ -459,7 +460,7 @@ bool Configuration::EnableKeyboardAngle() {
     return true;
   }
 
-  base::Optional<gid_t> power_gid = delegate_->FindGroupId("power");
+  std::optional<gid_t> power_gid = delegate_->FindGroupId("power");
   if (!power_gid) {
     LOG(ERROR) << "cannot configure ownership on the wake angle file";
     return false;

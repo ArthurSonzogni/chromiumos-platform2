@@ -5,10 +5,9 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BATTERY_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BATTERY_FETCHER_H_
 
+#include <optional>
 #include <string>
 #include <vector>
-
-#include <base/optional.h>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -28,22 +27,22 @@ class BatteryFetcher final : public BaseFetcher {
 
  private:
   using OptionalProbeErrorPtr =
-      base::Optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
+      std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
 
   // Populates general battery data fields in |info| obtained from the provided
-  // |power_supply_proto|. Returns base::nullopt on success or a ProbeError
+  // |power_supply_proto|. Returns std::nullopt on success or a ProbeError
   // on failure.
   OptionalProbeErrorPtr PopulateBatteryInfoFromPowerdResponse(
       const power_manager::PowerSupplyProperties& power_supply_proto,
       chromeos::cros_healthd::mojom::BatteryInfo* info);
 
   // Populates the Smart Battery fields in |info| obtained by using ectool
-  // via debugd. Returns base::nullopt on success or a ProbeError on failure.
+  // via debugd. Returns std::nullopt on success or a ProbeError on failure.
   OptionalProbeErrorPtr PopulateSmartBatteryInfo(
       chromeos::cros_healthd::mojom::BatteryInfo* info);
 
   // Populates |metric_value| with the value obtained from requesting
-  // |metric_name| from ectool via debugd. Returns base::nullopt on success or a
+  // |metric_name| from ectool via debugd. Returns std::nullopt on success or a
   // ProbeError on failure.
   template <typename T>
   OptionalProbeErrorPtr GetSmartBatteryMetric(

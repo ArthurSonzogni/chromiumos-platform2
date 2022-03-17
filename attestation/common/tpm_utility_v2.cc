@@ -6,12 +6,12 @@
 
 #include <ios>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
@@ -44,7 +44,7 @@ inline std::string BytesToString(const std::vector<uint8_t>& bytes) {
 }
 
 inline std::string BytesToString(
-    const base::Optional<std::vector<uint8_t>>& maybe_bytes) {
+    const std::optional<std::vector<uint8_t>>& maybe_bytes) {
   return BytesToString(maybe_bytes.value_or(std::vector<uint8_t>()));
 }
 
@@ -155,18 +155,18 @@ crypto::ScopedEC_KEY GetEccPublicKeyFromTpmPublicArea(
 }
 
 template <typename OpenSSLType>
-base::Optional<std::vector<uint8_t>> OpenSSLObjectToBytes(
+std::optional<std::vector<uint8_t>> OpenSSLObjectToBytes(
     int (*i2d_convert_function)(OpenSSLType*, unsigned char**),
     typename std::remove_const<OpenSSLType>::type* type) {
   if (type == nullptr) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   unsigned char* openssl_buffer = nullptr;
 
   int size = i2d_convert_function(type, &openssl_buffer);
   if (size < 0) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   crypto::ScopedOpenSSLBytes scoped_buffer(openssl_buffer);
@@ -210,7 +210,7 @@ crypto::ScopedECDSA_SIG CreateEcdsaSigFromRS(std::string r, std::string s) {
   return sig;
 }
 
-base::Optional<std::string> SerializeFromTpmSignature(
+std::optional<std::string> SerializeFromTpmSignature(
     const trunks::TPMT_SIGNATURE& signature) {
   switch (signature.sig_alg) {
     case trunks::TPM_ALG_RSASSA:
@@ -226,7 +226,7 @@ base::Optional<std::string> SerializeFromTpmSignature(
     default:
       LOG(ERROR) << __func__
                  << ": unkown TPM 2.0 signature type: " << signature.sig_alg;
-      return base::nullopt;
+      return std::nullopt;
   }
 }
 

@@ -5,7 +5,6 @@
 #include <set>
 #include <utility>
 
-#include <base/optional.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/error.h>

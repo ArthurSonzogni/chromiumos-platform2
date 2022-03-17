@@ -5,13 +5,13 @@
 #ifndef VM_TOOLS_CONCIERGE_VM_BUILDER_H_
 #define VM_TOOLS_CONCIERGE_VM_BUILDER_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/string_split.h>
-#include <base/optional.h>
 #include <dbus/object_proxy.h>
 
 #include "vm_tools/concierge/vm_interface.h"
@@ -102,9 +102,9 @@ class VmBuilder {
   base::FilePath kernel_;
   base::FilePath initrd_;
   base::FilePath bios_;
-  base::Optional<Rootfs> rootfs_;
+  std::optional<Rootfs> rootfs_;
   int32_t cpus_ = 0;
-  base::Optional<uint32_t> vsock_cid_;
+  std::optional<uint32_t> vsock_cid_;
   std::string memory_in_mib_;
   std::string balloon_bias_mib_;
 
@@ -124,7 +124,7 @@ class VmBuilder {
   bool enable_video_decoder_ = false;
   bool enable_video_encoder_ = false;
   bool enable_battery_ = false;
-  base::Optional<bool> enable_smt_ = false;
+  std::optional<bool> enable_smt_ = false;
   bool enable_delay_rt_ = false;
   bool enable_per_vm_core_scheduling_ = false;
 
@@ -142,7 +142,7 @@ class VmBuilder {
   std::vector<std::string> shared_dirs_;
   std::vector<std::vector<int32_t>> cpu_clusters_;
 
-  base::Optional<VmMemoryId> vm_memory_id_;
+  std::optional<VmMemoryId> vm_memory_id_;
 
   base::StringPairs custom_params_;
 };

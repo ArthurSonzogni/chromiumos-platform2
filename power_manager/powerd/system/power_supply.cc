@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <optional>
 #include <utility>
 
 #include <fcntl.h>
@@ -19,7 +20,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/optional.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -783,12 +783,12 @@ base::FilePath PowerSupply::GetPathForId(const std::string& id) const {
   return path;
 }
 
-base::Optional<base::TimeDelta> PowerSupply::GetMsPref(
+std::optional<base::TimeDelta> PowerSupply::GetMsPref(
     const std::string& pref_name) const {
   int64_t duration_ms;
   if (prefs_->GetInt64(pref_name, &duration_ms))
     return base::Milliseconds(duration_ms);
-  return base::nullopt;
+  return std::nullopt;
 }
 
 void PowerSupply::DeferBatterySampling(base::TimeDelta stabilized_delay) {

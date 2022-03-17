@@ -18,7 +18,6 @@
 #include "missive/encryption/encryption.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
-#include "third_party/abseil-cpp/absl/types/optional.h"
 
 namespace reporting {
 namespace test {

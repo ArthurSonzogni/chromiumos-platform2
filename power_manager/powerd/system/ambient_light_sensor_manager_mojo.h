@@ -7,10 +7,10 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
-#include <base/optional.h>
 #include <base/sequence_checker.h>
 #include <iioservice/mojo/cros_sensor_service.mojom.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -54,7 +54,7 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
 
  private:
   struct Sensor {
-    base::Optional<int> iio_device_id;
+    std::optional<int> iio_device_id;
     system::AmbientLightSensor* sensor = nullptr;
   };
 
@@ -62,8 +62,8 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
     // Something is wrong of the attributes, or this light sensor is not needed.
     bool ignored = false;
 
-    base::Optional<std::string> name;
-    base::Optional<SensorLocation> location;
+    std::optional<std::string> name;
+    std::optional<SensorLocation> location;
 
     // Temporarily stores the accelerometer mojo::Remote, waiting for its
     // attribute information. It'll be passed to AmbientLightSensorDelegateMojo
@@ -83,9 +83,9 @@ class AmbientLightSensorManagerMojo : public AmbientLightSensorManagerInterface,
                                 const std::string& description);
 
   void GetNameCallback(int32_t id,
-                       const std::vector<base::Optional<std::string>>& values);
+                       const std::vector<std::optional<std::string>>& values);
   void GetNameAndLocationCallback(
-      int32_t id, const std::vector<base::Optional<std::string>>& values);
+      int32_t id, const std::vector<std::optional<std::string>>& values);
   void SetSensorDeviceAtLocation(int32_t id, SensorLocation location);
 
   void AllDevicesFound();

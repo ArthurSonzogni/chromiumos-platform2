@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <inttypes.h>
+#include <optional>
 #include <stdio.h>
 #include <string>
 

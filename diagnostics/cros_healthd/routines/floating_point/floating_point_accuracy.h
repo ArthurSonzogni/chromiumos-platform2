@@ -6,8 +6,8 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_FLOATING_POINT_FLOATING_POINT_ACCURACY_H_
 
 #include <memory>
+#include <optional>
 
-#include <base/optional.h>
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
@@ -15,7 +15,7 @@
 namespace diagnostics {
 
 std::unique_ptr<DiagnosticRoutine> CreateFloatingPointAccuracyRoutine(
-    const base::Optional<base::TimeDelta>& exec_duration);
+    const std::optional<base::TimeDelta>& exec_duration);
 
 }  // namespace diagnostics
 

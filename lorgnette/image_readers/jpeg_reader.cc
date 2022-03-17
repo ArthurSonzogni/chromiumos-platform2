@@ -4,6 +4,7 @@
 
 #include "lorgnette/image_readers/jpeg_reader.h"
 
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -18,7 +19,7 @@ namespace lorgnette {
 std::unique_ptr<ImageReader> JpegReader::Create(
     brillo::ErrorPtr* error,
     const ScanParameters& params,
-    const base::Optional<int>& resolution,
+    const std::optional<int>& resolution,
     base::ScopedFILE out_file) {
   std::unique_ptr<JpegReader> reader(
       new JpegReader(params, std::move(out_file)));
@@ -93,7 +94,7 @@ bool JpegReader::ValidateParams(brillo::ErrorPtr* error) {
 }
 
 bool JpegReader::Initialize(brillo::ErrorPtr* error,
-                            const base::Optional<int>& resolution) {
+                            const std::optional<int>& resolution) {
   cinfo_.err = jpeg_std_error(&jerr_);
   jpeg_create_compress(&cinfo_);
   jpeg_stdio_dest(&cinfo_, out_file_.get());

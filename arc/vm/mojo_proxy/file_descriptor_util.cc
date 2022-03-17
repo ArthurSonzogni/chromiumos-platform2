@@ -17,6 +17,8 @@
 // Needs to be included after sys/socket.h
 #include <linux/un.h>
 
+#include <optional>
+
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -43,26 +45,26 @@ bool ToSockAddr(const base::FilePath& path, struct sockaddr_un* sa) {
 
 }  // namespace
 
-base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreatePipe() {
+std::optional<std::pair<base::ScopedFD, base::ScopedFD>> CreatePipe() {
   int fds[2];
   if (pipe2(fds, O_CLOEXEC | O_NONBLOCK) == -1) {
     PLOG(ERROR) << "Failed to create pipe";
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  return base::make_optional(
+  return std::make_optional(
       std::make_pair(base::ScopedFD(fds[0]), base::ScopedFD(fds[1])));
 }
 
-base::Optional<std::pair<base::ScopedFD, base::ScopedFD>> CreateSocketPair(
+std::optional<std::pair<base::ScopedFD, base::ScopedFD>> CreateSocketPair(
     int type) {
   int fds[2];
   if (socketpair(AF_UNIX, type | SOCK_CLOEXEC, 0 /* protocol */, fds) == -1) {
     PLOG(ERROR) << "Failed to create socketpair";
-    return base::nullopt;
+    return std::nullopt;
   }
 
-  return base::make_optional(
+  return std::make_optional(
       std::make_pair(base::ScopedFD(fds[0]), base::ScopedFD(fds[1])));
 }
 

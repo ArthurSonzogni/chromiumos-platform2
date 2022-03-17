@@ -4,6 +4,7 @@
 
 #include <fcntl.h>
 #include <memory>
+#include <optional>
 #include <string>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -36,7 +37,7 @@ constexpr char kHWFifoWatermarkMaxAttr[] = "hwfifo_watermark_max";
 };  // namespace
 
 // static
-base::Optional<int> IioDeviceImpl::GetIdFromString(const char* id_str) {
+std::optional<int> IioDeviceImpl::GetIdFromString(const char* id_str) {
   return IioDevice::GetIdAfterPrefix(id_str, kDeviceIdPrefix);
 }
 
@@ -109,40 +110,40 @@ base::FilePath IioDeviceImpl::GetPath() const {
   return path;
 }
 
-base::Optional<std::string> IioDeviceImpl::ReadStringAttribute(
+std::optional<std::string> IioDeviceImpl::ReadStringAttribute(
     const std::string& name) const {
   char data[kReadAttrBufferSize] = {0};
   ssize_t len = iio_device_attr_read(device_, name.c_str(), data, sizeof(data));
   if (len < 0) {
     LOG(WARNING) << log_prefix_ << "Attempting to read string attribute "
                  << name << " failed: " << len;
-    return base::nullopt;
+    return std::nullopt;
   }
   return std::string(base::TrimString(std::string(data, len),
                                       base::StringPiece("\0\n", 2),
                                       base::TRIM_TRAILING));
 }
 
-base::Optional<int64_t> IioDeviceImpl::ReadNumberAttribute(
+std::optional<int64_t> IioDeviceImpl::ReadNumberAttribute(
     const std::string& name) const {
   long long val = 0;  // NOLINT(runtime/int)
   int error = iio_device_attr_read_longlong(device_, name.c_str(), &val);
   if (error) {
     LOG(WARNING) << log_prefix_ << "Attempting to read number attribute "
                  << name << " failed: " << error;
-    return base::nullopt;
+    return std::nullopt;
   }
   return val;
 }
 
-base::Optional<double> IioDeviceImpl::ReadDoubleAttribute(
+std::optional<double> IioDeviceImpl::ReadDoubleAttribute(
     const std::string& name) const {
   double val = 0;
   int error = iio_device_attr_read_double(device_, name.c_str(), &val);
   if (error) {
     LOG(WARNING) << log_prefix_ << "Attempting to read double attribute "
                  << name << " failed: " << error;
-    return base::nullopt;
+    return std::nullopt;
   }
   return val;
 }
@@ -266,13 +267,13 @@ IioDevice* IioDeviceImpl::GetHrtimer() {
   return hrtimer_;
 }
 
-base::Optional<size_t> IioDeviceImpl::GetSampleSize() const {
+std::optional<size_t> IioDeviceImpl::GetSampleSize() const {
   ssize_t sample_size = iio_device_get_sample_size(device_);
   if (sample_size < 0) {
     char errMsg[kErrorBufferSize];
     iio_strerror(errno, errMsg, sizeof(errMsg));
     LOG(WARNING) << log_prefix_ << "Unable to get sample size: " << errMsg;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return static_cast<size_t>(sample_size);
@@ -315,22 +316,22 @@ bool IioDeviceImpl::CreateBuffer() {
   return true;
 }
 
-base::Optional<int32_t> IioDeviceImpl::GetBufferFd() {
+std::optional<int32_t> IioDeviceImpl::GetBufferFd() {
   if (!buffer_)
-    return base::nullopt;
+    return std::nullopt;
 
   int32_t fd = iio_buffer_get_poll_fd(buffer_.get());
   if (fd < 0) {
     LOG(ERROR) << log_prefix_ << "Failed to get poll fd: " << fd;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return fd;
 }
 
-base::Optional<IioDevice::IioSample> IioDeviceImpl::ReadSample() {
+std::optional<IioDevice::IioSample> IioDeviceImpl::ReadSample() {
   if (!buffer_)
-    return base::nullopt;
+    return std::nullopt;
 
   ssize_t ret = iio_buffer_refill(buffer_.get());
   if (ret < 0) {
@@ -338,7 +339,7 @@ base::Optional<IioDevice::IioSample> IioDeviceImpl::ReadSample() {
     iio_strerror(-ret, errMsg, sizeof(errMsg));
     LOG(ERROR) << log_prefix_ << "Unable to refill buffer: " << errMsg;
 
-    return base::nullopt;
+    return std::nullopt;
   }
 
   const auto buf_step = iio_buffer_step(buffer_.get());
@@ -350,7 +351,7 @@ base::Optional<IioDevice::IioSample> IioDeviceImpl::ReadSample() {
                << "sample_size doesn't match in refill: " << buf_step
                << ", sample_size: " << sample_size;
 
-    return base::nullopt;
+    return std::nullopt;
   }
 
   uint8_t* start = reinterpret_cast<uint8_t*>(iio_buffer_start(buffer_.get()));
@@ -362,7 +363,7 @@ void IioDeviceImpl::FreeBuffer() {
   buffer_.reset();
 }
 
-base::Optional<int32_t> IioDeviceImpl::GetEventFd() {
+std::optional<int32_t> IioDeviceImpl::GetEventFd() {
   if (event_fd_.has_value())
     return event_fd_;
 
@@ -371,7 +372,7 @@ base::Optional<int32_t> IioDeviceImpl::GetEventFd() {
   int fd = open(file.c_str(), O_RDONLY);
   if (fd == -1) {
     LOG(ERROR) << "Unable to open file " << file;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   int event_fd = -1;
@@ -380,21 +381,21 @@ base::Optional<int32_t> IioDeviceImpl::GetEventFd() {
 
   if (ret < 0 || event_fd == -1) {
     LOG(ERROR) << "Unable to open event descriptor for file " << file;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   event_fd_ = event_fd;
   return event_fd_;
 }
 
-base::Optional<iio_event_data> IioDeviceImpl::ReadEvent() {
+std::optional<iio_event_data> IioDeviceImpl::ReadEvent() {
   if (!event_fd_ && !GetEventFd().has_value())
-    return base::nullopt;
+    return std::nullopt;
 
   struct iio_event_data iio_event_buf = {0};
   if (read(event_fd_.value(), &iio_event_buf, sizeof(iio_event_buf)) == -1) {
     LOG(ERROR) << "Failed to read from FD " << event_fd_.value();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return iio_event_buf;
@@ -426,7 +427,7 @@ IioDevice::IioSample IioDeviceImpl::DeserializeSample(const uint8_t* src) {
       pos += space_in_block;
     }
 
-    base::Optional<int64_t> value = chn->Convert(src + pos);
+    std::optional<int64_t> value = chn->Convert(src + pos);
     pos += len;
 
     if (value.has_value())

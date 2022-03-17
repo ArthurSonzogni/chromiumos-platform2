@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <regex>  // NOLINT(build/c++11)
 #include <string>
 
@@ -115,17 +116,17 @@ class U2fMessageHandlerTest : public ::testing::Test {
 
   void ExpectGetUserSecretFails() {
     EXPECT_CALL(mock_user_state_, GetUserSecret())
-        .WillOnce(Return(base::Optional<brillo::SecureBlob>()));
+        .WillOnce(Return(std::optional<brillo::SecureBlob>()));
   }
 
   void ExpectGetCounter() {
     EXPECT_CALL(mock_user_state_, GetCounter())
-        .WillOnce(Return(base::Optional<std::vector<uint8_t>>({kCounter})));
+        .WillOnce(Return(std::optional<std::vector<uint8_t>>({kCounter})));
   }
 
   void ExpectGetCounterFails() {
     EXPECT_CALL(mock_user_state_, GetCounter())
-        .WillOnce(Return(base::Optional<std::vector<uint8_t>>()));
+        .WillOnce(Return(std::optional<std::vector<uint8_t>>()));
   }
 
   void ExpectIncrementCounter() {
@@ -447,7 +448,7 @@ TEST_F(U2fMessageHandlerTest, RegisterG2fAttestSecretNotAvailable) {
   // Called again for attestation, fail.
   EXPECT_CALL(mock_user_state_, GetUserSecret())
       .WillOnce(Return(ArrayToSecureBlob(kUserSecret)))
-      .WillOnce(Return(base::Optional<brillo::SecureBlob>()));
+      .WillOnce(Return(std::optional<brillo::SecureBlob>()));
 
   EXPECT_CALL(mock_tpm_proxy_,
               SendU2fGenerate(StructMatchesRegex(kCr50ExpectedGenReqRegex),

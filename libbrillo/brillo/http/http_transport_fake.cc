@@ -5,6 +5,7 @@
 #include <base/check.h>
 #include <brillo/http/http_transport_fake.h>
 
+#include <optional>
 #include <utility>
 
 #include <base/bind.h>
@@ -171,15 +172,15 @@ std::string ServerRequestResponseBase::GetDataAsString() const {
   return std::string(chars, data_.size());
 }
 
-base::Optional<base::Value> ServerRequestResponseBase::GetDataAsJson() const {
+std::optional<base::Value> ServerRequestResponseBase::GetDataAsJson() const {
   if (brillo::mime::RemoveParameters(GetHeader(request_header::kContentType)) ==
       brillo::mime::application::kJson) {
     auto value = base::JSONReader::Read(GetDataAsString());
     if (!value->is_dict())
-      return base::nullopt;
+      return std::nullopt;
     return value;
   }
-  return base::nullopt;
+  return std::nullopt;
 }
 
 std::string ServerRequestResponseBase::GetDataAsNormalizedJsonString() const {

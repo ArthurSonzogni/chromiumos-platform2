@@ -6,6 +6,7 @@
 #define MEMS_SETUP_DELEGATE_IMPL_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -22,7 +23,7 @@ class DelegateImpl : public Delegate {
  public:
   DelegateImpl() = default;
 
-  base::Optional<std::string> ReadVpdValue(const std::string& key) override;
+  std::optional<std::string> ReadVpdValue(const std::string& key) override;
   bool ProbeKernelModule(const std::string& module) override;
 
   bool CreateDirectory(const base::FilePath&) override;
@@ -30,7 +31,7 @@ class DelegateImpl : public Delegate {
   std::vector<base::FilePath> EnumerateAllFiles(
       base::FilePath file_path) override;
 
-  base::Optional<gid_t> FindGroupId(const char* group) override;
+  std::optional<gid_t> FindGroupId(const char* group) override;
 
   int GetPermissions(const base::FilePath& path) override;
   bool SetPermissions(const base::FilePath& path, int mode) override;

@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <queue>
 #include <set>
 #include <vector>
@@ -93,7 +94,7 @@ class HdrNetStreamManipulator : public StreamManipulator {
     bool should_reset_temporal_buffer = true;
 
     // Pops a free buffer from |usable_buffer_list|.
-    base::Optional<int> PopBuffer();
+    std::optional<int> PopBuffer();
 
     // Pushes a free buffer into |usable_buffer_list|.
     void PushBuffer(int index, base::ScopedFD acquire_fence);

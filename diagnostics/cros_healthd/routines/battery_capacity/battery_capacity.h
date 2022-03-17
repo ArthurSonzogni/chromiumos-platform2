@@ -7,8 +7,7 @@
 
 #include <cstdint>
 #include <memory>
-
-#include <base/optional.h>
+#include <optional>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -31,8 +30,8 @@ extern const uint32_t kBatteryCapacityDefaultHighMah;
 // kBatteryCapacityDefaultHighMah.
 std::unique_ptr<DiagnosticRoutine> CreateBatteryCapacityRoutine(
     Context* const context,
-    const base::Optional<uint32_t>& low_mah,
-    const base::Optional<uint32_t>& high_mah);
+    const std::optional<uint32_t>& low_mah,
+    const std::optional<uint32_t>& high_mah);
 
 }  // namespace diagnostics
 

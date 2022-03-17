@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -15,7 +16,6 @@
 #include <base/check_op.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/optional.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
 
@@ -162,8 +162,8 @@ void* Init(struct fuse_conn_info* conn) {
 
 int FuseMain(const base::FilePath& mount_path,
              FuseMainDelegate* delegate,
-             base::Optional<uid_t> userId,
-             base::Optional<gid_t> groupId) {
+             std::optional<uid_t> userId,
+             std::optional<gid_t> groupId) {
   std::string mount_options = "noexec";  // disallow code execution
   if (userId || groupId) {
     // allow others to access files

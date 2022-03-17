@@ -8,6 +8,7 @@
 #include <gmock/gmock.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -22,7 +23,7 @@ class MockCrosFpRecordManager : public CrosFpRecordManagerInterface {
   MockCrosFpRecordManager& operator=(const MockCrosFpRecordManager&) = delete;
 
   MOCK_METHOD(void, SetAllowAccess, (bool allow));
-  MOCK_METHOD(base::Optional<RecordMetadata>,
+  MOCK_METHOD(std::optional<RecordMetadata>,
               GetRecordMetadata,
               (const std::string& record_id));
   MOCK_METHOD(std::vector<Record>,

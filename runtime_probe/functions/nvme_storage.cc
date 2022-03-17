@@ -6,6 +6,7 @@
 
 #include <pcrecpp.h>
 
+#include <optional>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -54,45 +55,45 @@ bool NvmeCliList(std::string* output) {
   return false;
 }
 
-base::Optional<base::Value> GetStorageToolData() {
+std::optional<base::Value> GetStorageToolData() {
   std::string output;
   if (!NvmeCliList(&output))
-    return base::nullopt;
+    return std::nullopt;
 
   auto value = base::JSONReader::Read(output);
   if (!value) {
     LOG(ERROR) << "Debugd::Nvme failed to parse output as json:\n" << output;
-    return base::nullopt;
+    return std::nullopt;
   }
   return value;
 }
 
 }  // namespace
 
-base::Optional<base::Value> NvmeStorageFunction::ProbeFromSysfs(
+std::optional<base::Value> NvmeStorageFunction::ProbeFromSysfs(
     const base::FilePath& node_path) const {
   VLOG(2) << "Processnig the node \"" << node_path.value() << "\"";
   if (!CheckStorageTypeMatch(node_path))
-    return base::nullopt;
+    return std::nullopt;
 
   const auto nvme_path = node_path.Append(kNvmeDevicePath);
   auto nvme_res = MapFilesToDict(nvme_path, kNvmeFields, {});
   if (!nvme_res)
-    return base::nullopt;
+    return std::nullopt;
   PrependToDVKey(&*nvme_res, kNvmePrefix);
   nvme_res->SetStringKey("type", kNvmeType);
   return nvme_res;
 }
 
-base::Optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
+std::optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
     const base::FilePath& node_path) const {
   auto nvme_data = GetStorageToolData();
   if (!nvme_data)
-    return base::nullopt;
+    return std::nullopt;
   const auto* devices = nvme_data->FindListKey("Devices");
   if (!devices) {
     LOG(ERROR) << "Cannot find \"Devices\" in nvme output.";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   const auto& device_name = node_path.BaseName();

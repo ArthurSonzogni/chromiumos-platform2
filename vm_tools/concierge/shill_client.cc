@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/shill_client.h"
 
+#include <optional>
 #include <utility>
 #include <vector>
 
