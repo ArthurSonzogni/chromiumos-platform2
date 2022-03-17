@@ -107,26 +107,6 @@ bool BindMountFile(const base::FilePath& source, const base::FilePath& target) {
   return true;
 }
 
-// Writes a string to a file. Returns false if the full string was not able to
-// be written.
-// TODO(crbug.com/1094927): Remove after r780000 uprev and replace usages by
-// base::WriteFile.
-bool WriteFile(const base::FilePath& filename, const std::string& contents) {
-  int bytes_written =
-      base::WriteFile(filename, contents.c_str(), contents.size());
-  if (bytes_written == -1) {
-    PLOG(ERROR) << "Failed to write '" << contents << "' to "
-                << filename.value();
-    return false;
-  }
-  if (bytes_written < contents.size()) {
-    LOG(ERROR) << "Truncated write '" << contents << "' to "
-               << filename.value();
-    return false;
-  }
-  return true;
-}
-
 }  // namespace
 
 bool CreatePipe(const base::FilePath& path) {
@@ -273,21 +253,21 @@ bool SetupConfigFS(const std::string& serialnumber,
   // In libchrome r780000, the variant
   // base::WriteFile(const FilePath& filename, StringPiece data) will be added
   // which causes ambiguity to calling adbd::WriteFile.
-  if (!adbd::WriteFile(gadget_path.Append("idVendor"), "0x18d1"))
+  if (!base::WriteFile(gadget_path.Append("idVendor"), "0x18d1"))
     return false;
-  if (!adbd::WriteFile(gadget_path.Append("idProduct"), usb_product_id))
+  if (!base::WriteFile(gadget_path.Append("idProduct"), usb_product_id))
     return false;
-  if (!adbd::WriteFile(gadget_path.Append("strings/0x409/serialnumber"),
+  if (!base::WriteFile(gadget_path.Append("strings/0x409/serialnumber"),
                        serialnumber)) {
     return false;
   }
-  if (!adbd::WriteFile(gadget_path.Append("strings/0x409/manufacturer"),
+  if (!base::WriteFile(gadget_path.Append("strings/0x409/manufacturer"),
                        "google"))
     return false;
-  if (!adbd::WriteFile(gadget_path.Append("strings/0x409/product"),
+  if (!base::WriteFile(gadget_path.Append("strings/0x409/product"),
                        usb_product_name))
     return false;
-  if (!adbd::WriteFile(gadget_path.Append("configs/b.1/MaxPower"), "500"))
+  if (!base::WriteFile(gadget_path.Append("configs/b.1/MaxPower"), "500"))
     return false;
 
   return true;
@@ -339,8 +319,8 @@ base::ScopedFD SetupFunctionFS(const std::string& udc_driver_name) {
     PLOG(ERROR) << "Failed to write the control strings";
     return base::ScopedFD();
   }
-  if (!WriteFile(base::FilePath("/dev/config/usb_gadget/g1/UDC"),
-                 udc_driver_name)) {
+  if (!base::WriteFile(base::FilePath("/dev/config/usb_gadget/g1/UDC"),
+                       udc_driver_name)) {
     return base::ScopedFD();
   }
 
