@@ -17,6 +17,8 @@
 #include <base/memory/weak_ptr.h>
 #include <shill/dbus-proxies.h>
 
+#include "patchpanel/system.h"
+
 namespace patchpanel {
 
 // Listens for shill signals over dbus in order to:
@@ -65,7 +67,6 @@ class ShillClient {
   // Represents the properties of an object of org.chromium.flimflam.Device.
   // Only contains the properties we care about.
   // TODO(jiejiang): add the following fields into this struct:
-  // - the dbus path of the Service associated to this Device if any
   // - the connection state of the Service, if possible by translating back to
   //   the enum shill::Service::ConnectState
   struct Device {
@@ -84,6 +85,7 @@ class ShillClient {
     };
 
     Type type;
+    uint32_t ifindex;
     std::string ifname;
     std::string service_path;
     IPConfig ipconfig;
@@ -108,7 +110,7 @@ class ShillClient {
   using IPv6NetworkChangeHandler = base::RepeatingCallback<void(
       const std::string& ifname, const std ::string& ipv6_address)>;
 
-  explicit ShillClient(const scoped_refptr<dbus::Bus>& bus);
+  explicit ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system);
   ShillClient(const ShillClient&) = delete;
   ShillClient& operator=(const ShillClient&) = delete;
 
@@ -238,6 +240,8 @@ class ShillClient {
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::flimflam::ManagerProxy> manager_proxy_;
+  // Owned by Manager
+  System* system_;
 
   base::WeakPtrFactory<ShillClient> weak_factory_{this};
 };

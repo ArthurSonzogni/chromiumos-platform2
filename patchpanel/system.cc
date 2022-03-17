@@ -5,6 +5,7 @@
 #include "patchpanel/system.h"
 
 #include <fcntl.h>
+#include <net/if.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -101,6 +102,29 @@ bool System::SysNetSet(SysNet target,
   }
 }
 
+std::string System::IfIndextoname(int ifindex) {
+  char ifname[IFNAMSIZ];
+  if (if_indextoname(ifindex, ifname) == nullptr) {
+    return "";
+  }
+  return ifname;
+}
+
+uint32_t System::IfNametoindex(const std::string& ifname) {
+  uint32_t ifindex = if_nametoindex(ifname.c_str());
+  if (ifindex > 0) {
+    if_nametoindex_[ifname] = ifindex;
+    return ifindex;
+  }
+
+  const auto it = if_nametoindex_.find(ifname);
+  if (it != if_nametoindex_.end())
+    return it->second;
+
+  return 0;
+}
+
+// static
 bool System::Write(const std::string& path, const std::string& content) {
   base::ScopedFD fd(open(path.c_str(), O_WRONLY | O_TRUNC | O_CLOEXEC));
   if (!fd.is_valid()) {

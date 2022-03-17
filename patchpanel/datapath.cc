@@ -8,7 +8,6 @@
 #include <fcntl.h>
 #include <linux/if_tun.h>
 #include <linux/sockios.h>
-#include <net/if.h>
 #include <net/if_arp.h>
 #include <netinet/in.h>
 #include <string.h>
@@ -124,15 +123,15 @@ std::string ArcBridgeName(const std::string& ifname) {
   return PrefixIfname("arc_", ifname);
 }
 
-Datapath::Datapath()
-    : Datapath(new MinijailedProcessRunner(), new Firewall(), new System()) {}
+Datapath::Datapath(System* system)
+    : Datapath(new MinijailedProcessRunner(), new Firewall(), system) {}
 
 Datapath::Datapath(MinijailedProcessRunner* process_runner,
                    Firewall* firewall,
-                   System* system) {
+                   System* system)
+    : system_(system) {
   process_runner_.reset(process_runner);
   firewall_.reset(firewall);
-  system_.reset(system);
 }
 
 void Datapath::Start() {
@@ -540,7 +539,7 @@ bool Datapath::NetnsDeleteName(const std::string& netns_name) {
 bool Datapath::AddBridge(const std::string& ifname,
                          uint32_t ipv4_addr,
                          uint32_t ipv4_prefix_len) {
-  if (!Ioctl(system_.get(), SIOCBRADDBR, ifname.c_str())) {
+  if (!Ioctl(system_, SIOCBRADDBR, ifname.c_str())) {
     LOG(ERROR) << "Failed to create bridge " << ifname;
     return false;
   }
@@ -565,7 +564,7 @@ bool Datapath::AddBridge(const std::string& ifname,
 
 void Datapath::RemoveBridge(const std::string& ifname) {
   process_runner_->ip("link", "set", {ifname, "down"});
-  if (!Ioctl(system_.get(), SIOCBRDELBR, ifname.c_str()))
+  if (!Ioctl(system_, SIOCBRDELBR, ifname.c_str()))
     LOG(ERROR) << "Failed to destroy bridge " << ifname;
 }
 
@@ -574,9 +573,9 @@ bool Datapath::AddToBridge(const std::string& br_ifname,
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
   strncpy(ifr.ifr_name, br_ifname.c_str(), sizeof(ifr.ifr_name));
-  ifr.ifr_ifindex = FindIfIndex(ifname);
+  ifr.ifr_ifindex = system_->IfNametoindex(ifname);
 
-  if (!Ioctl(system_.get(), SIOCBRADDIF, reinterpret_cast<const char*>(&ifr))) {
+  if (!Ioctl(system_, SIOCBRADDIF, reinterpret_cast<const char*>(&ifr))) {
     LOG(ERROR) << "Failed to add " << ifname << " to bridge " << br_ifname;
     return false;
   }
@@ -1152,7 +1151,7 @@ void Datapath::StartRoutingDevice(const std::string& ext_ifname,
   if (!ext_ifname.empty()) {
     // If |ext_ifname| is not null, mark egress traffic with the
     // fwmark routing tag corresponding to |ext_ifname|.
-    int ifindex = FindIfIndex(ext_ifname);
+    int ifindex = system_->IfNametoindex(ext_ifname);
     if (ifindex == 0) {
       LOG(ERROR) << "Failed to retrieve interface index of " << ext_ifname;
       return;
@@ -1402,7 +1401,7 @@ void Datapath::RemoveIPv6Address(const std::string& ifname,
 }
 
 void Datapath::StartConnectionPinning(const std::string& ext_ifname) {
-  int ifindex = FindIfIndex(ext_ifname);
+  int ifindex = system_->IfNametoindex(ext_ifname);
   if (ifindex == 0) {
     // Can happen if the interface has already been removed (b/183679000).
     LOG(ERROR) << "Failed to set up connection pinning on " << ext_ifname;
@@ -1466,7 +1465,7 @@ void Datapath::StopConnectionPinning(const std::string& ext_ifname) {
 }
 
 void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
-  int ifindex = FindIfIndex(vpn_ifname);
+  int ifindex = system_->IfNametoindex(vpn_ifname);
   if (ifindex == 0) {
     // Can happen if the interface has already been removed (b/183679000).
     LOG(ERROR) << "Failed to start VPN routing on " << vpn_ifname;
@@ -1919,24 +1918,6 @@ bool Datapath::SetRouteLocalnet(const std::string& ifname, const bool enable) {
 
 bool Datapath::ModprobeAll(const std::vector<std::string>& modules) {
   return process_runner_->modprobe_all(modules) == 0;
-}
-
-void Datapath::SetIfnameIndex(const std::string& ifname, int ifindex) {
-  if_nametoindex_[ifname] = ifindex;
-}
-
-int Datapath::FindIfIndex(const std::string& ifname) {
-  uint32_t ifindex = if_nametoindex(ifname.c_str());
-  if (ifindex > 0) {
-    if_nametoindex_[ifname] = ifindex;
-    return ifindex;
-  }
-
-  const auto it = if_nametoindex_.find(ifname);
-  if (it != if_nametoindex_.end())
-    return it->second;
-
-  return 0;
 }
 
 bool Datapath::ModifyPortRule(

@@ -36,6 +36,7 @@
 #include "patchpanel/net_util.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/scoped_ns.h"
+#include "patchpanel/system.h"
 
 namespace patchpanel {
 namespace {
@@ -97,7 +98,8 @@ Manager::Manager(std::unique_ptr<HelperProcess> adb_proxy,
     : adb_proxy_(std::move(adb_proxy)),
       mcast_proxy_(std::move(mcast_proxy)),
       nd_proxy_(std::move(nd_proxy)) {
-  datapath_ = std::make_unique<Datapath>();
+  system_ = std::make_unique<System>();
+  datapath_ = std::make_unique<Datapath>(system_.get());
 }
 
 std::map<const std::string, bool> Manager::cached_feature_enabled_ = {};
@@ -209,7 +211,7 @@ void Manager::InitialSetup() {
   }
 
   metrics_ = std::make_unique<MetricsLibrary>();
-  shill_client_ = std::make_unique<ShillClient>(bus_);
+  shill_client_ = std::make_unique<ShillClient>(bus_, system_.get());
 
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Manager::*)(dbus::MethodCall*);

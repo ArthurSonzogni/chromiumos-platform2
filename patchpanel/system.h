@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 
+#include <map>
 #include <string>
 
 namespace patchpanel {
@@ -19,9 +20,10 @@ namespace patchpanel {
 // it's 32 bits on 32-bit platform and 64 bits on 64-bit one.
 using ioctl_req_t = unsigned long;  // NOLINT(runtime/int)
 
-// Stateless class used for holding all utility functions with side
-// effects on the environment. Facilitates mocking these functions in unit
-// tests.
+// Class used for:
+//  - holding all utility functions with side effects on the environment.
+//  - wrapping commonly used system calls.
+// This class facilitates mocking these functions in unit tests.
 class System {
  public:
   // Enum used for restricting the possible paths that SysNetSet can write to.
@@ -62,9 +64,23 @@ class System {
 
   virtual pid_t WaitPid(pid_t pid, int* wstatus, int options = 0);
 
+  // Return the interface name of the network interface with index |ifindex|, or
+  // empty string if it fails.
+  virtual std::string IfIndextoname(int ifindex);
+  // Return the index of the interface with name |ifname|, or 0 if it fails.
+  virtual uint32_t IfNametoindex(const std::string& ifname);
+
   static bool Write(const std::string& path, const std::string& content);
 
  private:
+  // A map used for remembering the interface index of an interface. This
+  // information is necessary when cleaning up the state of various subsystems
+  // in patchpanel that directly references the interface index. However after
+  // receiving the interface removal event (RTM_DELLINK event or shill DBus
+  // event), the interface index cannot be retrieved anymore. A new entry is
+  // only added when a new upstream network interface appears, and entries are
+  // not removed.
+  std::map<std::string, int> if_nametoindex_;
 };
 
 }  // namespace patchpanel

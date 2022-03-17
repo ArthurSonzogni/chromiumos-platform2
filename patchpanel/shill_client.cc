@@ -55,7 +55,8 @@ const std::string DeviceTypeName(ShillClient::Device::Type type) {
 
 }  // namespace
 
-ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus) : bus_(bus) {
+ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
+    : bus_(bus), system_(system) {
   manager_proxy_.reset(new org::chromium::flimflam::ManagerProxy(bus_));
   manager_proxy_->RegisterPropertyChangedSignalHandler(
       base::BindRepeating(&ShillClient::OnManagerPropertyChange,
@@ -254,6 +255,7 @@ ShillClient::Device ShillClient::GetDevice(const dbus::ObjectPath& service_path,
     return {};
   }
 
+  device.ifindex = system_->IfNametoindex(device.ifname);
   device.type = ParseDeviceType(service_type);
   device.service_path = service_path.value();
   return device;
@@ -575,7 +577,7 @@ void ShillClient::OnDevicePropertyChange(const std::string& device,
 }
 
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {
-  return stream << "{ifname: " << dev.ifname
+  return stream << "{ifname: " << dev.ifname << ", ifindex: " << dev.ifindex
                 << ", type: " << DeviceTypeName(dev.type)
                 << ", service: " << dev.service_path << "}";
 }

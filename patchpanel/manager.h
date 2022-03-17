@@ -31,6 +31,7 @@
 #include "patchpanel/shill_client.h"
 #include "patchpanel/socket.h"
 #include "patchpanel/subnet.h"
+#include "patchpanel/system.h"
 
 namespace patchpanel {
 
@@ -205,6 +206,8 @@ class Manager final : public brillo::DBusDaemon {
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
+  // Unique instance of patchpanel::System shared for all subsystems.
+  std::unique_ptr<System> system_;
   // UMA metrics client.
   std::unique_ptr<MetricsLibraryInterface> metrics_;
   // Shill Dbus client.

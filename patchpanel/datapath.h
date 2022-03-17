@@ -108,7 +108,7 @@ std::string ArcBridgeName(const std::string& ifname);
 // (not in CIDR representation
 class Datapath {
  public:
-  Datapath();
+  explicit Datapath(System* system);
   // Provided for testing only.
   Datapath(MinijailedProcessRunner* process_runner,
            Firewall* firewall,
@@ -322,10 +322,6 @@ class Datapath {
                           const std::string dns_ipv4_addr);
   bool RemoveRedirectDnsRule(const std::string& ifname);
 
-  // Set or override the interface name to index mapping for |ifname|.
-  // Only used for testing.
-  void SetIfnameIndex(const std::string& ifname, int ifindex);
-
   // Add, remove, or flush chain |chain| in table |table|.
   bool AddChain(IpFamily family,
                 const std::string& table,
@@ -452,15 +448,11 @@ class Datapath {
                                    const std::string& uid,
                                    bool log_failures = true);
   bool ModifyRtentry(ioctl_req_t op, struct rtentry* route);
-  // Uses if_nametoindex to return the interface index of |ifname|. If |ifname|
-  // does not exist anymore, looks up the cache |if_nametoindex_|. It is
-  // incorrect to use this function in situations where the interface has been
-  // recreated and the older value must be recovered (b/183679000).
-  int FindIfIndex(const std::string& ifname);
 
   std::unique_ptr<MinijailedProcessRunner> process_runner_;
   std::unique_ptr<Firewall> firewall_;
-  std::unique_ptr<System> system_;
+  // Owned by Manager
+  System* system_;
 
   FRIEND_TEST(DatapathTest, AddInboundIPv4DNAT);
   FRIEND_TEST(DatapathTest, AddVirtualInterfacePair);

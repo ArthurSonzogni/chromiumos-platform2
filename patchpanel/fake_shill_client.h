@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "patchpanel/shill_client.h"
+#include "patchpanel/system.h"
 
 using testing::_;
 using testing::AnyNumber;
@@ -27,7 +28,8 @@ namespace patchpanel {
 
 class FakeShillClient : public ShillClient {
  public:
-  explicit FakeShillClient(scoped_refptr<dbus::Bus> bus) : ShillClient(bus) {}
+  explicit FakeShillClient(scoped_refptr<dbus::Bus> bus, System* system)
+      : ShillClient(bus, system) {}
 
   std::pair<Device, Device> GetDefaultDevices() override {
     Device default_logical_device = {.type = Device::Type::kUnknown,
@@ -104,7 +106,7 @@ class FakeShillClientHelper {
                                                 "PropertyChanged", _, _))
         .Times(AnyNumber());
 
-    client_ = std::make_unique<FakeShillClient>(mock_bus_);
+    client_ = std::make_unique<FakeShillClient>(mock_bus_, nullptr);
   }
 
   std::unique_ptr<ShillClient> Client() { return std::move(client_); }
