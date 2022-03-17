@@ -11,6 +11,7 @@
 
 namespace bluetooth = metrics::structured::events::bluetooth;
 namespace bluetooth_device = metrics::structured::events::bluetooth_device;
+namespace bluetooth_chipset = metrics::structured::events::bluetooth_chipset;
 
 extern "C" void BluetoothAdapterStateChanged(const char* boot_id,
                                              int64_t system_time,
@@ -111,5 +112,17 @@ extern "C" void BluetoothDeviceInfo(int device_type,
       .SetVendorIdSource(vendor_id_source)
       .SetProductId(product_id)
       .SetProductVersion(product_version)
+      .Record();
+}
+
+extern "C" void BluetoothChipsetInfo(int vendor_id,
+                                     int product_id,
+                                     int transport,
+                                     const char* chipset_string) {
+  bluetooth_chipset::BluetoothChipsetInfo()
+      .SetVendorId(vendor_id)
+      .SetProductId(product_id)
+      .SetTransport(transport)
+      .SetChipsetString(chipset_string)
       .Record();
 }

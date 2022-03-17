@@ -70,6 +70,13 @@ BRILLO_EXPORT void BluetoothDeviceInfo(int device_type,
                                        int vendor_id_source,
                                        int product_id,
                                        int product_version);
+
+// C wrapper for
+// metrics::structured::events::bluetooth_chipset::BluetoothChipsetInfo.
+BRILLO_EXPORT void BluetoothChipsetInfo(int vendor_id,
+                                        int product_id,
+                                        int transport,
+                                        const char* chipset_string);
 #if defined(__cplusplus)
 }
 #endif

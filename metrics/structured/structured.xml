@@ -250,6 +250,41 @@
   </event>
 </project>
 
+<project name="BluetoothChipset">
+  <owner>chromeos-bt-kpi@google.com</owner>
+  <id>none</id>
+  <summary>
+    Project for recording Bluetooth chipset information separately from the
+    main Bluetooth project to meet privacy constraints.
+  </summary>
+
+  <event name="BluetoothChipsetInfo">
+    <summary>
+      Records the bluetooth chipset info.
+    </summary>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the bluetooth controller.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the bluetooth controller.
+      </summary>
+    </metric>
+    <metric name="Transport" type="int">
+      <summary>
+        Which transport the bluetooth controller uses.
+      </summary>
+    </metric>
+    <metric name="ChipsetString" type="raw-string">
+      <summary>
+        The modalias of the bluetooth controller.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="HardwareVerifier">
   <owner>kevinptt@chromium.org</owner>
   <id>per-project</id>
