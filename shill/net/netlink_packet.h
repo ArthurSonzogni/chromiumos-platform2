@@ -10,8 +10,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
-
 #include "shill/net/attribute_list.h"
 #include "shill/net/shill_export.h"
 

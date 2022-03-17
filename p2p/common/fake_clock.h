@@ -5,7 +5,6 @@
 #ifndef P2P_COMMON_FAKE_CLOCK_H_
 #define P2P_COMMON_FAKE_CLOCK_H_
 
-#include <base/macros.h>
 #include <base/synchronization/waitable_event.h>
 
 #include "p2p/common/clock_interface.h"

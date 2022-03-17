@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/notreached.h>
 
 #include <libmems/common_types.h>

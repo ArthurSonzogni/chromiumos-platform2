@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/containers/contains.h>
-#include <base/macros.h>
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"

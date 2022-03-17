@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/compiler_specific.h>
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 
 namespace brillo {

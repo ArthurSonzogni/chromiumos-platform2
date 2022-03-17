@@ -15,7 +15,6 @@
 #include <base/callback_helpers.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>

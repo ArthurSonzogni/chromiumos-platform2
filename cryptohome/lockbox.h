@@ -10,7 +10,6 @@
 
 #include <openssl/sha.h>
 
-#include <base/macros.h>
 #include <base/strings/string_util.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>

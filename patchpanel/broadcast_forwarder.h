@@ -13,7 +13,6 @@
 #include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
-#include <base/macros.h>
 #include <shill/net/rtnl_listener.h>
 #include <shill/net/rtnl_message.h>
 

@@ -5,7 +5,6 @@
 #ifndef OOBE_CONFIG_METRICS_H_
 #define OOBE_CONFIG_METRICS_H_
 
-#include <base/macros.h>
 #include <metrics/metrics_library.h>
 
 namespace oobe_config {

@@ -18,7 +18,6 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/notreached.h>
 
 #include "p2p/common/util.h"

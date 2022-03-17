@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "modemfwd/modem_helper.h"

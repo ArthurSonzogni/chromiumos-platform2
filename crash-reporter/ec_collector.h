@@ -12,7 +12,6 @@
 #define CRASH_REPORTER_EC_COLLECTOR_H_
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 
 #include "crash-reporter/crash_collector.h"
 

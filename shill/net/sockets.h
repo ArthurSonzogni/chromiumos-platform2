@@ -13,7 +13,6 @@
 #include <string>
 
 #include <base/compiler_specific.h>
-#include <base/macros.h>
 
 #include "shill/net/shill_export.h"
 

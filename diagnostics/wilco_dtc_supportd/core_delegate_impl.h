@@ -7,8 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
-
 #include "diagnostics/common/system/bluetooth_client.h"
 #include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/common/system/powerd_adapter.h"

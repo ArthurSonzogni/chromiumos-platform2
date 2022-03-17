@@ -11,7 +11,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <chaps/pkcs11/cryptoki.h>
 
 namespace shill {

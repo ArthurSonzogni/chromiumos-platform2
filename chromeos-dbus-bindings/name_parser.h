@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 namespace chromeos_dbus_bindings {
 
 class IndentedText;

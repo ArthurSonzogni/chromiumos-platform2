@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 
 #include "debugd/src/subprocess_tool.h"
 

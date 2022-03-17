@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
 

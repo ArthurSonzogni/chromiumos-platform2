@@ -18,7 +18,6 @@
 #include <base/hash/sha1.h>
 #include <base/location.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>

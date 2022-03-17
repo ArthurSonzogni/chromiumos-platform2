@@ -5,7 +5,6 @@
 #ifndef SHILL_MOCK_ARES_H_
 #define SHILL_MOCK_ARES_H_
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/shill_ares.h"

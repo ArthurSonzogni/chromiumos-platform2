@@ -5,7 +5,6 @@
 #include <memory>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/task_environment.h>

@@ -9,8 +9,6 @@
 
 #include "trunks/tpm_cache.h"
 
-#include <base/macros.h>
-
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_export.h"
 #include "trunks/trunks_factory.h"

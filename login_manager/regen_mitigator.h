@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 
 #include "login_manager/owner_key_loss_mitigator.h"
 

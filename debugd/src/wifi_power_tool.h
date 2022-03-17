@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 namespace debugd {
 
 // Gets and sets WiFi power save mode.

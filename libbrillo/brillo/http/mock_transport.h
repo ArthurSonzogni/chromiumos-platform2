@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/location.h>
-#include <base/macros.h>
 #include <brillo/http/http_transport.h>
 #include <gmock/gmock.h>
 

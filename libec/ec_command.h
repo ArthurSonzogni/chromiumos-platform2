@@ -13,7 +13,6 @@
 #include <limits>
 
 #include <base/logging.h>
-#include <base/macros.h>
 #include <chromeos/ec/cros_ec_dev.h>
 
 namespace ec {

@@ -13,7 +13,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/errors/error.h>
 #include <gtest/gtest_prod.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>

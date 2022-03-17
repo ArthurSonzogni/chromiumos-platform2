@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "brillo/secure_blob.h"
 #include "chaps/chaps.h"
 #include "chaps/token_manager_interface.h"

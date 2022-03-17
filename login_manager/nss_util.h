@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <crypto/scoped_nss_types.h>
 
 namespace crypto {

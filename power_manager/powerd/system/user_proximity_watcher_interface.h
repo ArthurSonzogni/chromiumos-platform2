@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_INTERFACE_H_
 #define POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_INTERFACE_H_
 
-#include <base/macros.h>
-
 namespace power_manager {
 namespace system {
 

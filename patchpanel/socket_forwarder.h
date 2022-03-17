@@ -13,7 +13,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/simple_thread.h>
 #include <brillo/brillo_export.h>

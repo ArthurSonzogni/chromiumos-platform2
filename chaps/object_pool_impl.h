@@ -13,8 +13,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "chaps/object_store.h"
 
 namespace chaps {

@@ -5,7 +5,6 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-#include <base/macros.h>
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
 

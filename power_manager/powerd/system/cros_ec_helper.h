@@ -6,7 +6,6 @@
 #define POWER_MANAGER_POWERD_SYSTEM_CROS_EC_HELPER_H_
 
 #include <base/files/file_util.h>
-#include <base/macros.h>
 
 #include "power_manager/powerd/system/cros_ec_helper_interface.h"
 

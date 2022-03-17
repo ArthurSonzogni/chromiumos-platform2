@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
 

@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/location.h>
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 namespace shill {

@@ -9,7 +9,6 @@
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 
 #include "kerberos/krb5_interface.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"

@@ -12,7 +12,6 @@
 #include <brillo/secure_blob.h>
 
 #include "base/component_export.h"
-#include "base/macros.h"
 
 namespace cryptohome {
 namespace fido_device {

@@ -19,7 +19,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/crypto_error.h"

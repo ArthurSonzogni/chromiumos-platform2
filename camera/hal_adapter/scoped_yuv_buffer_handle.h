@@ -7,8 +7,6 @@
 #ifndef CAMERA_HAL_ADAPTER_SCOPED_YUV_BUFFER_HANDLE_H_
 #define CAMERA_HAL_ADAPTER_SCOPED_YUV_BUFFER_HANDLE_H_
 
-#include <base/macros.h>
-
 #include "cros-camera/camera_buffer_manager.h"
 
 namespace cros {

@@ -12,7 +12,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 #include <leveldb/db.h>

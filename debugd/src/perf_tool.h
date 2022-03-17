@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/errors/error.h>
 #include <brillo/process/process_reaper.h>

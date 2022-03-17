@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/cancelable_callback.h>
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

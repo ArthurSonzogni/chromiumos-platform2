@@ -11,7 +11,6 @@
 #include <set>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/status.h>

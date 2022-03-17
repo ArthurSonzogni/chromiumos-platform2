@@ -32,7 +32,6 @@
 #ifndef DEBUGD_SRC_RESTRICTED_TOOL_WRAPPER_H_
 #define DEBUGD_SRC_RESTRICTED_TOOL_WRAPPER_H_
 
-#include <base/macros.h>
 #include <brillo/errors/error.h>
 
 #include "debugd/src/dev_mode_no_owner_restriction.h"

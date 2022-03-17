@@ -11,7 +11,6 @@
 
 #include <base/containers/contains.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <brillo/proto_file_io.h>
 
 #include "modemfwd/firmware_directory.h"

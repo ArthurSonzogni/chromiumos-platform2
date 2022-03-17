@@ -10,8 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
-
 struct minijail;
 
 namespace authpolicy {

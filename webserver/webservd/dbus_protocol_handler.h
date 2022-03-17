@@ -12,7 +12,6 @@
 #include <tuple>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/bus.h>

@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/compiler_specific.h>
-#include <base/macros.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"

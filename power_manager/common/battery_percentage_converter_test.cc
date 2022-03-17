@@ -6,7 +6,6 @@
 
 #include <cmath>
 
-#include <base/macros.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/power_constants.h"

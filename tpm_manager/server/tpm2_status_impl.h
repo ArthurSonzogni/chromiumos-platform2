@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <base/macros.h>
 #include <trunks/tpm_state.h>
 #include <trunks/trunks_factory.h>
 

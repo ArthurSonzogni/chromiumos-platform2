@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <brillo/files/safe_fd.h>
 
 #include "usb_bouncer/usb_bouncer.pb.h"

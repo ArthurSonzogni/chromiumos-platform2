@@ -11,7 +11,6 @@
 #include <utility>
 
 #include <base/component_export.h>
-#include <base/macros.h>
 
 #include "arc/setup/android_sdk_version.h"
 #include "arc/setup/arc_setup_metrics.h"

@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 #include "metrics/uploader/sender.h"
 
 // Sender implemented using http_utils from libchromeos

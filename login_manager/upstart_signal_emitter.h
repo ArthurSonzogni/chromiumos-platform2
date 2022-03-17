@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "login_manager/init_daemon_controller.h"
 
 namespace base {

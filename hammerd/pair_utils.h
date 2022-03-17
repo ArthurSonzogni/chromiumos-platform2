@@ -5,7 +5,6 @@
 #ifndef HAMMERD_PAIR_UTILS_H_
 #define HAMMERD_PAIR_UTILS_H_
 
-#include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
 #include "hammerd/curve25519.h"

@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 
 #include <libmems/iio_device.h>
 #include "mems_setup/delegate.h"

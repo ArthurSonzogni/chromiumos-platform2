@@ -19,7 +19,6 @@
 #include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/synchronization/lock.h>
 

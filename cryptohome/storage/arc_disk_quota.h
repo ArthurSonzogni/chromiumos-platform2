@@ -11,7 +11,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 
 #include "cryptohome/platform.h"

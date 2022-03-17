@@ -7,8 +7,6 @@
 
 #include "shill/net/netlink_socket.h"
 
-#include <base/macros.h>
-
 #include <gmock/gmock.h>
 
 namespace shill {

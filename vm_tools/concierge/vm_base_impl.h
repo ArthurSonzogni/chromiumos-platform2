@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
-#include <base/macros.h>
 #include <base/strings/string_split.h>
 #include <brillo/process/process.h>
 #include <chromeos/patchpanel/dbus/client.h>

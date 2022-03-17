@@ -8,8 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
-
 #include "install_attributes/libinstallattributes.h"
 
 #pragma GCC visibility push(default)

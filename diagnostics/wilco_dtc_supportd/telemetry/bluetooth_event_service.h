@@ -11,7 +11,6 @@
 
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
-#include <base/macros.h>
 
 namespace diagnostics {
 namespace wilco {

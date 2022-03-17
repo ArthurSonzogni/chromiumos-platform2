@@ -4,7 +4,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>

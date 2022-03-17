@@ -11,7 +11,6 @@
 #include <utility>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
 

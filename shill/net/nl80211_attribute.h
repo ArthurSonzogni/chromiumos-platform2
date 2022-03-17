@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 #include "shill/net/netlink_attribute.h"
 #include "shill/net/netlink_message.h"
 

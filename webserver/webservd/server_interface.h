@@ -5,8 +5,6 @@
 #ifndef WEBSERVER_WEBSERVD_SERVER_INTERFACE_H_
 #define WEBSERVER_WEBSERVD_SERVER_INTERFACE_H_
 
-#include <base/macros.h>
-
 #include "webservd/config.h"
 
 namespace webservd {

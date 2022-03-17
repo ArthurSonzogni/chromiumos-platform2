@@ -8,7 +8,6 @@
 #include <string>
 #include <utility>
 
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

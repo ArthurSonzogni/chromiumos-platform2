@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/message_loops/base_message_loop.h>
 
 #include "vm_tools/notificationd/dbus_interface.h"

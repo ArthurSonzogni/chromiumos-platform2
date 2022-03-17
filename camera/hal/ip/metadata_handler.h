@@ -6,7 +6,6 @@
 #ifndef CAMERA_HAL_IP_METADATA_HANDLER_H_
 #define CAMERA_HAL_IP_METADATA_HANDLER_H_
 
-#include <base/macros.h>
 #include <string>
 #include <vector>
 

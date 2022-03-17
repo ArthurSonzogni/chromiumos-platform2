@@ -12,7 +12,6 @@
 #include <base/bind.h>
 #include <base/check_op.h>
 #include <base/containers/flat_map.h>
-#include <base/macros.h>
 #include <base/run_loop.h>
 #include <base/callback_helpers.h>
 #include <brillo/test_helpers.h>

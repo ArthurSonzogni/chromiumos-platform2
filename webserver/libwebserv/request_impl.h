@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/files/file.h>
-#include <base/macros.h>
 #include <brillo/streams/stream.h>
 #include <libwebserv/request.h>
 

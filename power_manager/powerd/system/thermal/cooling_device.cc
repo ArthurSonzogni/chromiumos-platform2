@@ -16,7 +16,6 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <base/macros.h>
 
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"

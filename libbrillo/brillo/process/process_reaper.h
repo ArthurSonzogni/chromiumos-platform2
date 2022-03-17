@@ -11,7 +11,6 @@
 
 #include <base/callback.h>
 #include <base/location.h>
-#include <base/macros.h>
 #include <brillo/asynchronous_signal_handler.h>
 
 namespace brillo {

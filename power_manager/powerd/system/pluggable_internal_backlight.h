@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/observer_list.h>
 
 #include "power_manager/powerd/system/backlight_interface.h"

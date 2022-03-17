@@ -5,7 +5,6 @@
 #ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_FAKE_POWERD_EVENT_SERVICE_H_
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_FAKE_POWERD_EVENT_SERVICE_H_
 
-#include <base/macros.h>
 #include <base/observer_list.h>
 
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"

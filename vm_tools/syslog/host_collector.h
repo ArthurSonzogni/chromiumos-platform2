@@ -9,7 +9,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <dbus/bus.h>

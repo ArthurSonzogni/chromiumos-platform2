@@ -10,7 +10,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
 #include <base/time/time.h>
 
 #include "trunks/command_transceiver.h"

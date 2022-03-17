@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/async_event_sequencer.h>
 

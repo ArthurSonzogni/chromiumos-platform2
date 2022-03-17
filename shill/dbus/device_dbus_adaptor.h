@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "dbus_bindings/org.chromium.flimflam.Device.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus/dbus_adaptor.h"

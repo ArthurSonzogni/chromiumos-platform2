@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 #include "trunks/tpm_generated.h"
 
 namespace trunks {

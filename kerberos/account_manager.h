@@ -13,7 +13,6 @@
 #include <base/callback.h>
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 
 #include "bindings/kerberos_containers.pb.h"
 #include "kerberos/config_parser.h"

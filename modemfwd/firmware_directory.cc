@@ -9,7 +9,6 @@
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <cros_config/cros_config.h>
 
 #include "modemfwd/firmware_manifest.h"

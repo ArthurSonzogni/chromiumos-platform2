@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 namespace debugd {
 
 // Tool to tweak u2fd daemon.

@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/variant_dictionary.h>

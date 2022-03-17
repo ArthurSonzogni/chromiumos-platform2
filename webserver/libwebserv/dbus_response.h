@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/streams/stream.h>
 #include <libwebserv/response.h>
 

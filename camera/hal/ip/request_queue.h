@@ -10,7 +10,6 @@
 #include <deque>
 #include <memory>
 
-#include <base/macros.h>
 #include <base/synchronization/condition_variable.h>
 #include <camera/camera_metadata.h>
 

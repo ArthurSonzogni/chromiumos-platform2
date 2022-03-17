@@ -10,8 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "arc/vm/libvda/libvda_decode.h"
 
 // This class is forked from Chromium's VDA testing helpers. See

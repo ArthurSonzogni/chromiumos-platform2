@@ -13,7 +13,6 @@
 #include <string>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 
 namespace patchpanel {

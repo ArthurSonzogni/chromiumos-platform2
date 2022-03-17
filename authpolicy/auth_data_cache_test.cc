@@ -9,7 +9,6 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/macros.h>
 #include <base/test/simple_test_clock.h>
 #include <gtest/gtest.h>
 

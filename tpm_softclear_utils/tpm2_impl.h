@@ -12,7 +12,6 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/macros.h>
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
 

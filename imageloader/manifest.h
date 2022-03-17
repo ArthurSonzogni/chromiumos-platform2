@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 
 namespace imageloader {

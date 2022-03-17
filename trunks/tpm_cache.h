@@ -5,8 +5,6 @@
 #ifndef TRUNKS_TPM_CACHE_H_
 #define TRUNKS_TPM_CACHE_H_
 
-#include <base/macros.h>
-
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_export.h"
 

@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

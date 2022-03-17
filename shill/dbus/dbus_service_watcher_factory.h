@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <base/no_destructor.h>
 #include <dbus/bus.h>
 

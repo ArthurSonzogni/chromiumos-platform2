@@ -11,7 +11,6 @@
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
-#include <base/macros.h>
 #include <base/values.h>
 
 #include <brillo/dbus/exported_object_manager.h>

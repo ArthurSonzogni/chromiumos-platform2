@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <gtest/gtest.h>
 
 #include "shill/net/byte_string.h"

@@ -9,8 +9,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
-
 #include "shill/net/ip_address.h"
 
 namespace shill {

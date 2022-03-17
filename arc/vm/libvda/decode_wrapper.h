@@ -9,8 +9,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
-
 #include "arc/vm/libvda/event_pipe.h"
 #include "arc/vm/libvda/libvda_decode.h"
 

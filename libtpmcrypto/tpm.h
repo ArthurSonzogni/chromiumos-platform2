@@ -11,7 +11,6 @@
 #include <string>
 
 #include <base/compiler_specific.h>
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 

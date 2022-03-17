@@ -7,7 +7,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 

@@ -13,7 +13,6 @@
 #include <set>
 #include <string>
 
-#include <base/macros.h>
 #include <gtest/gtest_prod.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 #include <trunks/hmac_session.h>

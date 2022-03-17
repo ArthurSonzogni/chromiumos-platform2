@@ -10,8 +10,6 @@
 #include <optional>
 #include <string>
 
-#include <base/macros.h>
-
 namespace tpm_softclear_utils {
 
 // Utility class for soft-clearing TPM 1.2.

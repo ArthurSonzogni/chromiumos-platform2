@@ -8,7 +8,6 @@
 #include <base/bind.h>
 #include <base/containers/flat_map.h>
 #include <base/files/file_util.h>
-#include <base/macros.h>
 #include <base/memory/read_only_shared_memory_region.h>
 #include <base/run_loop.h>
 #include <gmock/gmock.h>

@@ -9,7 +9,6 @@
 #include <iterator>
 
 #include <base/command_line.h>
-#include <base/macros.h>
 #include <brillo/flag_helper.h>
 
 #include <gtest/gtest.h>

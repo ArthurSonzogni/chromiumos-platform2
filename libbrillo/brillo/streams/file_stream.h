@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include <brillo/streams/stream.h>
 

@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/user_proximity_handler.h"
 #include "power_manager/powerd/system/udev.h"

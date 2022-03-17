@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "chromeos-dbus-bindings/indented_text.h"
 
 namespace base {

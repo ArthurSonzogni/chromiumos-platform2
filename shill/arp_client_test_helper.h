@@ -5,8 +5,6 @@
 #ifndef SHILL_ARP_CLIENT_TEST_HELPER_H_
 #define SHILL_ARP_CLIENT_TEST_HELPER_H_
 
-#include <base/macros.h>
-
 #include "shill/mock_arp_client.h"
 #include "shill/net/arp_packet.h"
 #include "shill/net/byte_string.h"

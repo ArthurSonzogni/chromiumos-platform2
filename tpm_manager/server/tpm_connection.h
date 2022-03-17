@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trousers/scoped_tss_type.h>
 

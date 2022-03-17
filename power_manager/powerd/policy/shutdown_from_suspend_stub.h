@@ -7,8 +7,6 @@
 
 #include "power_manager/powerd/policy/shutdown_from_suspend_interface.h"
 
-#include <base/macros.h>
-
 namespace power_manager {
 namespace policy {
 

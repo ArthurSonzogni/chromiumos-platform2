@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <google/protobuf/message_lite.h>
 
 #include "patchpanel/message_dispatcher.h"

@@ -12,7 +12,6 @@
 #include <utility>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <base/time/tick_clock.h>
 #include <libpasswordprovider/password.h>
 

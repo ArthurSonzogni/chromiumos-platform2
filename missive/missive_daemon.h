@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
 #include <base/threading/thread.h>
 #include <brillo/daemons/dbus_daemon.h>
 

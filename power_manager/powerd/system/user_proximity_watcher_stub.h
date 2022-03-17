@@ -5,7 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_USER_PROXIMITY_WATCHER_STUB_H_
 
-#include <base/macros.h>
 #include <base/observer_list.h>
 #include <vector>
 

@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 
 #include "metrics/structured/persistent_proto.h"
 #include "metrics/structured/proto/storage.pb.h"

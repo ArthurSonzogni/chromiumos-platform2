@@ -10,7 +10,6 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/macros.h>
 
 #include "trunks/error_codes.h"
 #include "trunks/hmac_session.h"

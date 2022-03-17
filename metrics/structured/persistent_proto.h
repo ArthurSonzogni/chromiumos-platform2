@@ -11,7 +11,6 @@
 
 #include <base/check.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
 

@@ -9,8 +9,6 @@
 
 #include <unordered_map>
 
-#include <base/macros.h>
-
 namespace power_manager {
 namespace policy {
 

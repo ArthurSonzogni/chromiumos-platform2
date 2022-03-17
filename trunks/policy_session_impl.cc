@@ -11,7 +11,6 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <crypto/sha2.h>
 #include <openssl/rand.h>
 

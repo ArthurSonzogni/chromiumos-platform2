@@ -8,7 +8,6 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/macros.h>
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 #include <vm_protos/proto_bindings/vm_host.pb.h>

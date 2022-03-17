@@ -6,7 +6,6 @@
 #define ML_TEXT_SUGGESTER_IMPL_H_
 
 #include <base/callback_forward.h>
-#include <base/macros.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 

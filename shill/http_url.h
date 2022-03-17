@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 namespace shill {
 
 // Simple URL parsing class.

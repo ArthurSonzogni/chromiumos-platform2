@@ -8,8 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
-
 #include "power_manager/powerd/system/acpi_wakeup_helper_interface.h"
 
 namespace power_manager {

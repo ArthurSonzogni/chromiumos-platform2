@@ -11,7 +11,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/values.h>
 #include <brillo/streams/stream.h>
 #include <libwebserv/export.h>

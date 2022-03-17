@@ -11,8 +11,6 @@
 #include <optional>
 #include <string>
 
-#include <base/macros.h>
-
 #include "smbfs/request.h"
 
 namespace smbfs {

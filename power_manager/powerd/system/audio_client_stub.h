@@ -5,7 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_STUB_H_
 
-#include <base/macros.h>
 #include <base/observer_list.h>
 
 #include "power_manager/powerd/system/audio_client_interface.h"

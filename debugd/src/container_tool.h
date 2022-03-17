@@ -5,8 +5,6 @@
 #ifndef DEBUGD_SRC_CONTAINER_TOOL_H_
 #define DEBUGD_SRC_CONTAINER_TOOL_H_
 
-#include <base/macros.h>
-
 namespace debugd {
 
 class ContainerTool {

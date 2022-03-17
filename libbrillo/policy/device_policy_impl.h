@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"

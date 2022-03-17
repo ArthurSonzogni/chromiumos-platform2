@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
 
 namespace brillo {

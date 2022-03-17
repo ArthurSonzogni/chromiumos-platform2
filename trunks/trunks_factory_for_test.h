@@ -11,8 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "trunks/password_authorization_delegate.h"
 #include "trunks/trunks_export.h"
 

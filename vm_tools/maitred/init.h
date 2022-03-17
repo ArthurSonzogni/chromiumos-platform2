@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/threading/thread.h>
 
 namespace vm_tools {

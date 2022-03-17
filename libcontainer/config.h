@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <base/callback_forward.h>
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include <libminijail.h>
 

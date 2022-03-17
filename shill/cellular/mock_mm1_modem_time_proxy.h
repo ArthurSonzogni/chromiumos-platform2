@@ -5,7 +5,6 @@
 #ifndef SHILL_CELLULAR_MOCK_MM1_MODEM_TIME_PROXY_H_
 #define SHILL_CELLULAR_MOCK_MM1_MODEM_TIME_PROXY_H_
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/cellular/mm1_modem_time_proxy_interface.h"

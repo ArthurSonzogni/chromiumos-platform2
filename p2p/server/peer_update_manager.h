@@ -5,8 +5,6 @@
 #ifndef P2P_SERVER_PEER_UPDATE_MANAGER_H_
 #define P2P_SERVER_PEER_UPDATE_MANAGER_H_
 
-#include <base/macros.h>
-
 #include "p2p/server/file_watcher.h"
 #include "p2p/server/http_server.h"
 #include "p2p/server/service_publisher.h"

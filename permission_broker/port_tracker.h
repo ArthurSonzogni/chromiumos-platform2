@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
-#include <base/macros.h>
 #include <base/task/sequenced_task_runner.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 

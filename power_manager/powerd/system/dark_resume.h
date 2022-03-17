@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/powerd/system/dark_resume_interface.h"
 

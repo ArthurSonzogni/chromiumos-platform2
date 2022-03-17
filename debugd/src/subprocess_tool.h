@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/errors/error.h>
 
 #include "debugd/src/process_with_id.h"

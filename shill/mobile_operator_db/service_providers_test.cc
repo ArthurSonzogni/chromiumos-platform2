@@ -6,7 +6,6 @@
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <google/protobuf/repeated_field.h>
 #include <gtest/gtest.h>
 

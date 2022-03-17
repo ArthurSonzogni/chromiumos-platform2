@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 

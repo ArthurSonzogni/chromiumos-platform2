@@ -10,7 +10,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
 #include <trunks/trunks_factory.h>
 
 #include "tpm_manager/common/typedefs.h"

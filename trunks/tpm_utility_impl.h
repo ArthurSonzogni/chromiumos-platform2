@@ -14,7 +14,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
 

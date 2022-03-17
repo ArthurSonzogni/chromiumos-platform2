@@ -5,7 +5,6 @@
 #ifndef PERMISSION_BROKER_DENY_CLAIMED_USB_DEVICE_RULE_H_
 #define PERMISSION_BROKER_DENY_CLAIMED_USB_DEVICE_RULE_H_
 
-#include <base/macros.h>
 #include <vector>
 
 #include "permission_broker/usb_subsystem_udev_rule.h"

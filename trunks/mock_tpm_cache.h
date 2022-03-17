@@ -5,7 +5,6 @@
 #ifndef TRUNKS_MOCK_TPM_CACHE_H_
 #define TRUNKS_MOCK_TPM_CACHE_H_
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "trunks/tpm_cache.h"

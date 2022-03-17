@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
 #include <brillo/http/http_connection.h>
 #include <gmock/gmock.h>
 

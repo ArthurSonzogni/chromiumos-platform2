@@ -7,7 +7,6 @@
 
 #include <sys/types.h>
 
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 
 namespace brillo {

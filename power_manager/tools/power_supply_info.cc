@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>

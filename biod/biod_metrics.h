@@ -8,7 +8,6 @@
 #include <memory>
 #include <utility>
 
-#include <base/macros.h>
 #include <libec/fingerprint/fp_mode.h>
 #include <metrics/metrics_library.h>
 

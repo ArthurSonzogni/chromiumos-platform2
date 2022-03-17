@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/macros.h>
 
 #include "chromeos-dbus-bindings/interface.h"
 

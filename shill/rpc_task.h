@@ -9,8 +9,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
-
 #include "shill/data_types.h"
 
 namespace shill {

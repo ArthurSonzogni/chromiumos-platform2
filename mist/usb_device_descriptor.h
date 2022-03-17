@@ -10,7 +10,6 @@
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
 struct libusb_device_descriptor;

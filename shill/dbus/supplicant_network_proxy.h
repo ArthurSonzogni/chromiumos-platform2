@@ -8,8 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
-
 #include "shill/data_types.h"
 #include "shill/refptr_types.h"
 #include "shill/supplicant/supplicant_network_proxy_interface.h"

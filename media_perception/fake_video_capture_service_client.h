@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "base/macros.h"
 #include "media_perception/video_capture_service_client.h"
 
 namespace mri {

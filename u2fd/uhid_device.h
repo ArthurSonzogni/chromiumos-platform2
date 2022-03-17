@@ -10,7 +10,6 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 
 #include "u2fd/hid_interface.h"
 

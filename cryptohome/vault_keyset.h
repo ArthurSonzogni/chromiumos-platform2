@@ -12,7 +12,6 @@
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/gtest_prod_util.h>
-#include <base/macros.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"

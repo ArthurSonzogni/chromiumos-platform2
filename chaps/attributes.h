@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {

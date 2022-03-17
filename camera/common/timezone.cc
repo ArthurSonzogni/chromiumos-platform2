@@ -13,7 +13,6 @@
 #include <map>
 
 #include <base/files/file_util.h>
-#include <base/macros.h>
 #include <base/strings/utf_string_conversions.h>
 
 #include "cros-camera/common.h"

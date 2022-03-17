@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 #include "kerberos/config_parser.h"
 #include "kerberos/krb5_interface.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"

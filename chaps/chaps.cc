@@ -17,7 +17,6 @@
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 

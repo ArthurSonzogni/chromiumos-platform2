@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/compiler_specific.h>
-#include <base/macros.h>
 
 #include "smbprovider/iterator/directory_iterator.h"
 #include "smbprovider/metadata_cache.h"

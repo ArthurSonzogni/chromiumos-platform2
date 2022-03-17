@@ -7,7 +7,6 @@
 
 #include <vector>
 
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <mojo/cert_store.mojom.h>
 

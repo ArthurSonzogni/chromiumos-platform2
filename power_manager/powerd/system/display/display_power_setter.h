@@ -6,7 +6,6 @@
 #define POWER_MANAGER_POWERD_SYSTEM_DISPLAY_DISPLAY_POWER_SETTER_H_
 
 #include <base/compiler_specific.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <chromeos/dbus/service_constants.h>

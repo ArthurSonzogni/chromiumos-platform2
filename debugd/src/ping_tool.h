@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 

@@ -6,7 +6,6 @@
 #define ML_BENCHMARK_SHARED_LIBRARY_BENCHMARK_FUNCTIONS_H_
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/scoped_native_library.h>
 
 #include "ml_benchmark/benchmark_functions.h"

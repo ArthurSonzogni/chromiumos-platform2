@@ -5,8 +5,6 @@
 #ifndef SHILL_NET_CONTROL_NETLINK_ATTRIBUTE_H_
 #define SHILL_NET_CONTROL_NETLINK_ATTRIBUTE_H_
 
-#include <base/macros.h>
-
 #include "shill/net/netlink_attribute.h"
 
 namespace shill {

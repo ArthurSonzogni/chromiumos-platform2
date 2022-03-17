@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_THERMAL_COOLING_DEVICE_H_
 #define POWER_MANAGER_POWERD_SYSTEM_THERMAL_COOLING_DEVICE_H_
 
-#include <base/macros.h>
-
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 

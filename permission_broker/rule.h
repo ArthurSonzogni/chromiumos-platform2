@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 struct udev_device;
 
 namespace permission_broker {

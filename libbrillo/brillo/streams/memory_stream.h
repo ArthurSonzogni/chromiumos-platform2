@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
 #include <brillo/streams/memory_containers.h>

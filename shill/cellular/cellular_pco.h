@@ -11,8 +11,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
-
 namespace shill {
 
 // A class that encapsulates elements extracted from the raw data of Protocol

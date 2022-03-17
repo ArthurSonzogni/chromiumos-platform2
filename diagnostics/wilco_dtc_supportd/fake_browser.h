@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
 #include <mojo/public/cpp/bindings/receiver.h>

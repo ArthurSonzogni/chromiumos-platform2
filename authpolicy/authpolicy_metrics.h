@@ -5,7 +5,6 @@
 #ifndef AUTHPOLICY_AUTHPOLICY_METRICS_H_
 #define AUTHPOLICY_AUTHPOLICY_METRICS_H_
 
-#include <base/macros.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 

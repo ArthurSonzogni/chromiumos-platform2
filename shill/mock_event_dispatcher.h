@@ -6,7 +6,6 @@
 #define SHILL_MOCK_EVENT_DISPATCHER_H_
 
 #include <base/location.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 

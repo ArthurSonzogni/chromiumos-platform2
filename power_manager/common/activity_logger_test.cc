@@ -5,7 +5,6 @@
 #include "power_manager/common/activity_logger.h"
 
 #include <base/check.h>
-#include <base/macros.h>
 #include <base/memory/ptr_util.h>
 #include <gtest/gtest.h>
 

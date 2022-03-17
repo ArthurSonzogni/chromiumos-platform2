@@ -10,7 +10,6 @@
 
 #include <base/callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/time/time.h>

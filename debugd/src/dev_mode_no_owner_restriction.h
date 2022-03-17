@@ -5,7 +5,6 @@
 #ifndef DEBUGD_SRC_DEV_MODE_NO_OWNER_RESTRICTION_H_
 #define DEBUGD_SRC_DEV_MODE_NO_OWNER_RESTRICTION_H_
 
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>

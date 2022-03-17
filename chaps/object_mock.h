@@ -9,7 +9,6 @@
 
 #include <string>
 
-#include <base/macros.h>
 #include <base/notreached.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

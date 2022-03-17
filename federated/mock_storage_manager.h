@@ -10,7 +10,6 @@
 #include <optional>
 #include <string>
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 namespace federated {

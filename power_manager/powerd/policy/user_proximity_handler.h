@@ -8,8 +8,6 @@
 #include <memory>
 #include <unordered_map>
 
-#include <base/macros.h>
-
 #include "power_manager/powerd/policy/user_proximity_voting.h"
 #include "power_manager/powerd/system/user_proximity_observer.h"
 #include "power_manager/powerd/system/user_proximity_watcher.h"

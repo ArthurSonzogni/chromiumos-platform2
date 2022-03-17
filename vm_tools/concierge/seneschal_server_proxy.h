@@ -11,7 +11,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/files/scoped_file.h>
 #include <dbus/object_proxy.h>
 #include <seneschal/proto_bindings/seneschal_service.pb.h>

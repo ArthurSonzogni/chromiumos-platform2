@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <base/strings/string_piece.h>
 #include <grpcpp/grpcpp.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>

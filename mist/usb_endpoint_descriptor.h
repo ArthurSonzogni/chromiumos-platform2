@@ -10,8 +10,6 @@
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
-#include <base/macros.h>
-
 #include "mist/usb_constants.h"
 
 struct libusb_endpoint_descriptor;

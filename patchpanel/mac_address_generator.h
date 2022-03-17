@@ -11,7 +11,6 @@
 #include <functional>
 #include <unordered_set>
 
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 
 namespace patchpanel {

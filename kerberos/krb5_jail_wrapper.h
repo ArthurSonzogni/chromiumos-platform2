@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 
-#include <base/macros.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
 

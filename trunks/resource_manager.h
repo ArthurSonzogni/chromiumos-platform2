@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/location.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 
 #include "trunks/tpm_generated.h"

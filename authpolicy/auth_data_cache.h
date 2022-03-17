@@ -9,7 +9,6 @@
 #include <optional>
 #include <string>
 
-#include <base/macros.h>
 #include "base/time/time.h"
 
 #include "bindings/authpolicy_containers.pb.h"

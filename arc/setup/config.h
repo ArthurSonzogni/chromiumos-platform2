@@ -11,7 +11,6 @@
 #include <string>
 
 #include <base/environment.h>
-#include <base/macros.h>
 #include <base/strings/string_piece.h>
 #include <base/values.h>
 

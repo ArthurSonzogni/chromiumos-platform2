@@ -8,7 +8,6 @@
 #include <string>
 
 #include <brillo/errors/error.h>
-#include <base/macros.h>
 
 namespace debugd {
 

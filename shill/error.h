@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/location.h>
-#include <base/macros.h>
 
 namespace brillo {
 class Error;

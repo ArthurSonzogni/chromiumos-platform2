@@ -14,7 +14,6 @@
 #include <base/callback_forward.h>
 #include <base/files/file_path.h>
 #include <base/location.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/brillo_export.h>
 #include <brillo/errors/error.h>

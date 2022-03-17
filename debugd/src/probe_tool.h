@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/values.h>
 #include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>

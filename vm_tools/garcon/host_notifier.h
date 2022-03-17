@@ -14,7 +14,6 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <base/timer/timer.h>
 #include <base/synchronization/waitable_event.h>
 #include <grpcpp/grpcpp.h>

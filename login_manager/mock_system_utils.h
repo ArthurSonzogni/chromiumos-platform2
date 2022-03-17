@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "login_manager/system_utils.h"

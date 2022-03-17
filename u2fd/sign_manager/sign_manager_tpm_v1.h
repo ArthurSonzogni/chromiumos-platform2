@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/secure_blob.h>
 #include <openssl/rsa.h>
 #include <tpm_manager/client/tpm_manager_utility.h>

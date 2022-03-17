@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include <brillo/http/http_connection.h>
 #include <brillo/http/http_transport_curl.h>

@@ -9,8 +9,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 #include "permission_broker/usb_subsystem_udev_rule.h"
 
 namespace permission_broker {

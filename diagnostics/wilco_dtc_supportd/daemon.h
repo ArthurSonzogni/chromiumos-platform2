@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
 #include <base/timer/timer.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>

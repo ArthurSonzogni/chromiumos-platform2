@@ -12,7 +12,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 

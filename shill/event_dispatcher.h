@@ -9,7 +9,6 @@
 
 #include <base/callback.h>
 #include <base/location.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 
 namespace shill {

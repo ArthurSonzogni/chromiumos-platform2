@@ -20,8 +20,6 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
-#include <base/macros.h>
-
 namespace {
 
 using ::testing::_;

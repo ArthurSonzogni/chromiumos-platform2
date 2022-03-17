@@ -9,8 +9,6 @@
 #include <string>
 #include <utility>
 
-#include <base/macros.h>
-
 #include "modemfwd/firmware_directory.h"
 
 namespace modemfwd {

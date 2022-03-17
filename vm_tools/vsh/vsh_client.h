@@ -12,7 +12,6 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/message_loops/message_loop.h>
 #include <google/protobuf/message_lite.h>

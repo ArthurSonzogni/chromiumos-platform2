@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 
 #include "arc/vm/mojo_proxy/message_stream.h"

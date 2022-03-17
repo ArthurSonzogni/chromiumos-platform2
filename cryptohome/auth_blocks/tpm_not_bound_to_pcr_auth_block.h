@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/gtest_prod_util.h>
-#include <base/macros.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"

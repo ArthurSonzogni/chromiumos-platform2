@@ -10,8 +10,6 @@
 #include <string>
 #include <vector>
 
-#include "base/macros.h"
-
 namespace mri {
 
 class FakeRtanalytics : public Rtanalytics {

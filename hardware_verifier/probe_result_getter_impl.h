@@ -9,8 +9,6 @@
 #include <memory>
 #include <optional>
 
-#include <base/macros.h>
-
 #include "hardware_verifier/probe_result_getter.h"
 
 namespace hardware_verifier {

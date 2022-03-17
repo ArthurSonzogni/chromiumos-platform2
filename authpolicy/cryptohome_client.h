@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 
-#include <base/macros.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 

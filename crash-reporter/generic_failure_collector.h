@@ -15,7 +15,6 @@
 #include <optional>
 #include <string>
 
-#include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "crash-reporter/crash_collector.h"

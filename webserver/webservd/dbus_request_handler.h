@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
 #include <dbus/object_path.h>
 
 #include "libwebserv/dbus-proxies.h"

@@ -37,7 +37,6 @@
 #include <base/files/scoped_file.h>
 #include <base/location.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>

@@ -20,7 +20,6 @@
 #include <base/files/file_path.h>
 #include <base/files/memory_mapped_file.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>

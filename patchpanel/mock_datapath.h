@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "patchpanel/datapath.h"
 
 namespace patchpanel {

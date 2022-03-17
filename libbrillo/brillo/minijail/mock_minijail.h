@@ -7,7 +7,6 @@
 
 #include <vector>
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "brillo/minijail/minijail.h"

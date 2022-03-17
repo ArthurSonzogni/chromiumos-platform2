@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/logging.h>
-#include <base/macros.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 

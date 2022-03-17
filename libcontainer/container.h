@@ -6,7 +6,6 @@
 #define LIBCONTAINER_CONTAINER_H_
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/strings/string_piece.h>
 #include <brillo/brillo_export.h>
 

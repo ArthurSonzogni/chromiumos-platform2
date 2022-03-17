@@ -9,8 +9,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 namespace debugd {
 
 class ExampleTool {

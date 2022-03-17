@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_TPM_IMPL_H_
 #define CRYPTOHOME_TPM_IMPL_H_
 
-#include <base/macros.h>
-
 #include <libhwsec/error/tpm1_error.h>
 #include <libhwsec/status.h>
 #include <tpm_manager/client/tpm_manager_utility.h>

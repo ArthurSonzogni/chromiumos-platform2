@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/control_interface.h"

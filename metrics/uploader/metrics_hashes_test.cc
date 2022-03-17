@@ -5,7 +5,6 @@
 #include "metrics/uploader/metrics_hashes.h"
 
 #include <base/format_macros.h>
-#include <base/macros.h>
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>

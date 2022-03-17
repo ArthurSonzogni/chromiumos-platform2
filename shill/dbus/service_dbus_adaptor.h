@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "dbus_bindings/org.chromium.flimflam.Service.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/data_types.h"

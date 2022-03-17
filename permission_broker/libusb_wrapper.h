@@ -12,7 +12,6 @@
 #include <libusb-1.0/libusb.h>
 #include <linux/usb/ch11.h>
 
-#include <base/macros.h>
 #include <base/strings/stringprintf.h>
 
 namespace permission_broker {

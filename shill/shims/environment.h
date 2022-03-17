@@ -8,7 +8,6 @@
 #include <map>
 #include <string>
 
-#include <base/macros.h>
 #include <base/no_destructor.h>
 
 namespace shill {

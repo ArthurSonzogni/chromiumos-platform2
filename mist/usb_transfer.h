@@ -12,7 +12,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
 #include "mist/usb_constants.h"

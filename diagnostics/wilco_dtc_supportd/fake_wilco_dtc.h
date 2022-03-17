@@ -11,7 +11,6 @@
 #include <utility>
 
 #include <base/callback.h>
-#include <base/macros.h>
 
 #include <brillo/grpc/async_grpc_client.h>
 #include <brillo/grpc/async_grpc_server.h>

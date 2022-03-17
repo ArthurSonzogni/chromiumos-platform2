@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/memory/scoped_refptr.h>
 #include <brillo/secure_blob.h>
 #include <hardware/keymaster_defs.h>

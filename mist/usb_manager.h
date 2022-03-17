@@ -10,7 +10,6 @@
 #include <memory>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
 #include "mist/usb_error.h"

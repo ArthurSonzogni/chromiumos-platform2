@@ -9,7 +9,6 @@
 #include <typeinfo>
 
 #include <base/bind.h>
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include <brillo/dbus/dbus_param_writer.h>
 #include <dbus/message.h>

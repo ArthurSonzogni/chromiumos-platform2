@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include "chromeos-config/libcros_config/cros_config_interface.h"
 

@@ -9,7 +9,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
 #include <base/no_destructor.h>
 
 #include "shill/net/byte_string.h"

@@ -5,7 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_DARK_RESUME_STUB_H_
 
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 

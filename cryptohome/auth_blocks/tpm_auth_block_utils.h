@@ -5,8 +5,6 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_TPM_AUTH_BLOCK_UTILS_H_
 #define CRYPTOHOME_AUTH_BLOCKS_TPM_AUTH_BLOCK_UTILS_H_
 
-#include <base/macros.h>
-
 #include <string>
 
 #include <libhwsec/status.h>

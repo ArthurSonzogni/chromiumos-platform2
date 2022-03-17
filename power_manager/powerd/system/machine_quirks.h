@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 
 #include "power_manager/common/prefs_observer.h"
 

@@ -14,7 +14,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/writable_shared_memory_region.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>

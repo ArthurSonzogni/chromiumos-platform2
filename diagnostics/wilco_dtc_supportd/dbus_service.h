@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <base/memory/scoped_refptr.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>

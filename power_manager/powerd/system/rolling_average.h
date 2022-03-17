@@ -7,7 +7,6 @@
 
 #include <queue>
 
-#include <base/macros.h>
 #include <base/time/time.h>
 
 namespace power_manager {

@@ -5,7 +5,6 @@
 #ifndef SHILL_CELLULAR_MOCK_DBUS_OBJECTMANAGER_PROXY_H_
 #define SHILL_CELLULAR_MOCK_DBUS_OBJECTMANAGER_PROXY_H_
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"

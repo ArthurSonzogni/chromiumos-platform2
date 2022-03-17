@@ -14,7 +14,6 @@
 #include <base/callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 
 namespace power_manager {
 namespace system {

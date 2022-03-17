@@ -5,7 +5,6 @@
 #ifndef ARC_KEYMASTER_KEYMASTER_LOGGER_H_
 #define ARC_KEYMASTER_KEYMASTER_LOGGER_H_
 
-#include <base/macros.h>
 #include <keymaster/logger.h>
 
 namespace arc {

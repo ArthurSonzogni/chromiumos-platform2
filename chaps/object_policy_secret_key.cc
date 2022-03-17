@@ -6,8 +6,6 @@
 
 #include <iterator>
 
-#include <base/macros.h>
-
 #include "chaps/chaps_utility.h"
 
 namespace chaps {

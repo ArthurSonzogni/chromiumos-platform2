@@ -11,7 +11,6 @@
 #include <utility>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 

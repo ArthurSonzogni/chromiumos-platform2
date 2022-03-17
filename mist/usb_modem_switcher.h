@@ -9,8 +9,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 #include "mist/usb_device_event_observer.h"
 
 namespace mist {

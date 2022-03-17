@@ -21,7 +21,6 @@
 #include <base/command_line.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/unsafe_shared_memory_region.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/posix/eintr_wrapper.h>

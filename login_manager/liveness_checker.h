@@ -5,8 +5,6 @@
 #ifndef LOGIN_MANAGER_LIVENESS_CHECKER_H_
 #define LOGIN_MANAGER_LIVENESS_CHECKER_H_
 
-#include <base/macros.h>
-
 namespace login_manager {
 
 // Provides an interface for classes that ping the browser to see if it's

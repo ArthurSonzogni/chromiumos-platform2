@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 

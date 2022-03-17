@@ -20,7 +20,6 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <brillo/daemons/daemon.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

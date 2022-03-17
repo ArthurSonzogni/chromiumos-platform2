@@ -10,7 +10,6 @@
 
 #include <string>
 
-#include "base/macros.h"
 #include "base/metrics/histogram.h"
 #include "base/time/time.h"
 #include "metrics/uploader/proto/chrome_user_metrics_extension.pb.h"

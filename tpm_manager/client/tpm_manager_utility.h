@@ -12,7 +12,6 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/macros.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>

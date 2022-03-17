@@ -11,7 +11,6 @@
 #include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
-#include <base/macros.h>
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>
 

@@ -5,7 +5,6 @@
 #ifndef ARC_CONTAINER_OBB_MOUNTER_SERVICE_H_
 #define ARC_CONTAINER_OBB_MOUNTER_SERVICE_H_
 
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus/exported_object.h>
 

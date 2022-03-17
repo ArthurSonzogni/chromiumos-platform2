@@ -5,8 +5,6 @@
 #ifndef DEBUGD_SRC_WIFI_FW_DUMP_TOOL_H_
 #define DEBUGD_SRC_WIFI_FW_DUMP_TOOL_H_
 
-#include <base/macros.h>
-
 #include <string>
 
 namespace debugd {

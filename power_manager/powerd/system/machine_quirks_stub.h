@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_MACHINE_QUIRKS_STUB_H_
 #define POWER_MANAGER_POWERD_SYSTEM_MACHINE_QUIRKS_STUB_H_
 
-#include <base/macros.h>
-
 #include "power_manager/powerd/system/machine_quirks.h"
 
 namespace power_manager {

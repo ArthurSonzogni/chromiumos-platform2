@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trousers/tss.h>
 

@@ -12,7 +12,6 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <wayland-server.h>
 
 #include "notification-shell-unstable-v1-client-protocol.h"  // NOLINT(build/include_directory)

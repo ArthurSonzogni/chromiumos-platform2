@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <brillo/any.h>
 #include <brillo/variant_dictionary.h>
 

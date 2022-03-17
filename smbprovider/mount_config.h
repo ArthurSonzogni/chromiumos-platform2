@@ -5,8 +5,6 @@
 #ifndef SMBPROVIDER_MOUNT_CONFIG_H_
 #define SMBPROVIDER_MOUNT_CONFIG_H_
 
-#include <base/macros.h>
-
 namespace smbprovider {
 
 struct MountConfig {

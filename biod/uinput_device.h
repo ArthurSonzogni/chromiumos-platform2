@@ -6,7 +6,6 @@
 #define BIOD_UINPUT_DEVICE_H_
 
 #include <base/files/file_util.h>
-#include <base/macros.h>
 
 namespace biod {
 

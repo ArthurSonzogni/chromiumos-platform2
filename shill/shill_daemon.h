@@ -5,7 +5,6 @@
 #ifndef SHILL_SHILL_DAEMON_H_
 #define SHILL_SHILL_DAEMON_H_
 
-#include <base/macros.h>
 #include <brillo/daemons/daemon.h>
 
 #include "shill/daemon_task.h"

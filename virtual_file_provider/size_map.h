@@ -9,7 +9,6 @@
 #include <stdint.h>
 #include <string>
 
-#include <base/macros.h>
 #include <base/synchronization/lock.h>
 
 namespace virtual_file_provider {

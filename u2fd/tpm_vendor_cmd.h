@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
 #include <trunks/command_transceiver.h>
 #include <trunks/cr50_headers/u2f.h>
 

@@ -14,7 +14,6 @@
 #include <base/callback.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/sys_byteorder.h>
 #include <crypto/secure_hash.h>

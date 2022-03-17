@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 namespace trunks {
 
 // AuthorizationDelegate is an interface passed to TPM commands. The delegate

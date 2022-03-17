@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/cancelable_callback.h>
-#include <base/macros.h>
 
 #include "authpolicy/path_service.h"
 #include "authpolicy/proto_bindings/active_directory_info.pb.h"

@@ -8,7 +8,6 @@
 #include <memory>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <libwebserv/export.h>
 #include <libwebserv/request_handler_interface.h>
 

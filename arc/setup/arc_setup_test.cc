@@ -13,7 +13,6 @@
 #include <base/environment.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/macros.h>
 #include <gtest/gtest.h>
 
 #include "arc/setup/arc_setup_util.h"

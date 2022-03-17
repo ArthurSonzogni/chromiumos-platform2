@@ -13,7 +13,6 @@
 
 #include <base/callback.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/timer/timer.h>
 
 namespace power_manager {

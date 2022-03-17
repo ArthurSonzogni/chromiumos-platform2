@@ -11,7 +11,6 @@
 #include <string>
 #include <unordered_set>
 
-#include <base/macros.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 
 namespace attestation {

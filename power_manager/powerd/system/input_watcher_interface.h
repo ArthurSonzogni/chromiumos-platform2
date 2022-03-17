@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_INTERFACE_H_
 #define POWER_MANAGER_POWERD_SYSTEM_INPUT_WATCHER_INTERFACE_H_
 
-#include <base/macros.h>
-
 #include "power_manager/common/power_constants.h"
 
 namespace power_manager {

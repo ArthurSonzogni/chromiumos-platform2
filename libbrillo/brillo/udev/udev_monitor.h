@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 
 struct udev_monitor;

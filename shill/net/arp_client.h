@@ -7,8 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
-
 #include "shill/net/shill_export.h"
 
 namespace shill {

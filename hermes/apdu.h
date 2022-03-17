@@ -9,8 +9,6 @@
 #include <initializer_list>
 #include <vector>
 
-#include <base/macros.h>
-
 namespace hermes {
 
 enum ApduClass : uint8_t {

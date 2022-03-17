@@ -10,8 +10,6 @@
 #include <memory>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "shill/net/ip_address.h"
 #include "shill/net/netlink_fd.h"
 #include "shill/net/shill_export.h"

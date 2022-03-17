@@ -12,7 +12,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 

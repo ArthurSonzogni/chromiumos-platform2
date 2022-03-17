@@ -4,7 +4,6 @@
 
 #include "power_manager/powerd/policy/shutdown_from_suspend.h"
 
-#include <base/macros.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"

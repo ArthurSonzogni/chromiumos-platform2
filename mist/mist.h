@@ -5,8 +5,6 @@
 #ifndef MIST_MIST_H_
 #define MIST_MIST_H_
 
-#include <base/macros.h>
-
 namespace base {
 
 class CommandLine;

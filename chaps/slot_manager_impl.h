@@ -17,8 +17,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "chaps/chaps_factory.h"
 #include "chaps/chaps_metrics.h"
 #include "chaps/object_pool.h"

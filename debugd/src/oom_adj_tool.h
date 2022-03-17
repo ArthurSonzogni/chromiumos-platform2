@@ -11,8 +11,6 @@
 #include <map>
 #include <string>
 
-#include <base/macros.h>
-
 #include "debugd/src/subprocess_tool.h"
 
 namespace debugd {

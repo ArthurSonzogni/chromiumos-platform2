@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/bind.h>
-#include <base/macros.h>
 #include <base/logging.h>
 #include <base/guid.h>
 #include <metrics/structured/structured_events.h>

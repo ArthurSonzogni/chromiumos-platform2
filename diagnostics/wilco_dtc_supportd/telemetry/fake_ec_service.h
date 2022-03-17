@@ -5,8 +5,6 @@
 #ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_FAKE_EC_SERVICE_H_
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_FAKE_EC_SERVICE_H_
 
-#include <base/macros.h>
-
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_service.h"
 
 namespace diagnostics {

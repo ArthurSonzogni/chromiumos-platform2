@@ -12,7 +12,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <base/files/file_path.h>
 #include <dbus/bus.h>
 #include <mojo/public/cpp/bindings/remote.h>

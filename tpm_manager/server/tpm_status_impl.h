@@ -11,7 +11,6 @@
 #include <optional>
 #include <vector>
 
-#include <base/macros.h>
 #include <trousers/tss.h>
 
 #include <tpm_manager/server/tpm_connection.h>

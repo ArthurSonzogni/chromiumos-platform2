@@ -7,7 +7,6 @@
 #include <string>
 
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/stl_util.h>
 #include <openssl/rand.h>
 

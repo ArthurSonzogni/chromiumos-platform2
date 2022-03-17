@@ -9,7 +9,6 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread_checker.h>
 #include <dbus/exported_object.h>

@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/variant_dictionary.h>
 
 namespace debugd {

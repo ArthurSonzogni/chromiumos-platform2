@@ -8,7 +8,6 @@
 #include <utility>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 
 namespace brillo {
 namespace dbus_utils {

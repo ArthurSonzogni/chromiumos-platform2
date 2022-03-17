@@ -6,7 +6,6 @@
 #define SHILL_STORE_PROPERTY_ACCESSOR_H_
 
 #include <base/check.h>
-#include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST.
 
 #include "shill/error.h"

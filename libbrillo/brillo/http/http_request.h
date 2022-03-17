@@ -12,7 +12,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_connection.h>

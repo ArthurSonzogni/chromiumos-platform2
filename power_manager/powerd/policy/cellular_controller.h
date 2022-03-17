@@ -10,8 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #if USE_CELLULAR
 #include "modemmanager/dbus-proxies.h"
 #endif

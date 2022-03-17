@@ -12,8 +12,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 namespace hammerd {
 
 class FmapInterface {

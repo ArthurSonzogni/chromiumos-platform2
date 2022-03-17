@@ -12,7 +12,6 @@
 #include <openssl/evp.h>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec-foundation/hwsec-foundation_export.h"

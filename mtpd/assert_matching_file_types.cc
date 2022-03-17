@@ -4,8 +4,6 @@
 
 #include <libmtp.h>
 
-#include <base/macros.h>
-
 #include "system_api/proto_bindings/mtp_file_entry.pb.h"
 
 #define COMPILE_ASSERT_MATCH(libmtp_type, protobuf_type)                \

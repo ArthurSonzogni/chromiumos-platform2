@@ -5,8 +5,6 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_INTERFACE_H_
 #define POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_INTERFACE_H_
 
-#include <base/macros.h>
-
 #include "power_manager/powerd/system/audio_observer.h"
 
 namespace power_manager {

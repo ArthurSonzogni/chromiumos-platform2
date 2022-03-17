@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <glib-bridge/glib_bridge.h>
 #include <glib-bridge/glib_logger.h>

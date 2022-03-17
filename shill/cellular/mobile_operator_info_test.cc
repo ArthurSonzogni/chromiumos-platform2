@@ -12,7 +12,6 @@
 
 #include <base/check_op.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

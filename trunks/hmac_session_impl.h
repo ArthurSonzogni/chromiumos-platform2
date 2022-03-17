@@ -10,8 +10,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
-
 #include "trunks/hmac_authorization_delegate.h"
 #include "trunks/session_manager.h"
 #include "trunks/trunks_export.h"

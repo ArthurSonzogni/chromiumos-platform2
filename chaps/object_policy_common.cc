@@ -9,7 +9,6 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/macros.h>
 
 #include "chaps/chaps_utility.h"
 #include "chaps/object.h"

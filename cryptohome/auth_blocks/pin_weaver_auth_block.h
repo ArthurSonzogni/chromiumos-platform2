@@ -10,8 +10,6 @@
 
 #include "cryptohome/le_credential_manager.h"
 
-#include <base/macros.h>
-
 namespace cryptohome {
 
 class PinWeaverAuthBlock : public SyncAuthBlock {

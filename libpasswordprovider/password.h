@@ -7,8 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
-
 #include "libpasswordprovider/libpasswordprovider_export.h"
 
 namespace password_provider {

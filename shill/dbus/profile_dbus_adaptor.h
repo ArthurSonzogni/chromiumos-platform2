@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 #include "dbus_bindings/org.chromium.flimflam.Profile.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus/dbus_adaptor.h"

@@ -7,7 +7,6 @@
 
 #include "login_manager/login_metrics.h"
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 namespace login_manager {

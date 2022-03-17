@@ -11,7 +11,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <brillo/http/http_connection.h>
 #include <brillo/http/http_transport_fake.h>
 

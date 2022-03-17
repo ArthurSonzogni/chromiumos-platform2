@@ -7,8 +7,6 @@
 
 #include <vector>
 
-#include <base/macros.h>
-
 #include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
 
 namespace diagnostics {

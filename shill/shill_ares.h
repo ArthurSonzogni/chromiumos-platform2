@@ -7,7 +7,6 @@
 
 #include <ares.h>
 
-#include <base/macros.h>
 #include <base/no_destructor.h>
 
 namespace shill {

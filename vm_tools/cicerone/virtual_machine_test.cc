@@ -6,7 +6,6 @@
 
 #include <base/guid.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <gtest/gtest.h>
 
 #include <vm_cicerone/proto_bindings/cicerone_service.pb.h>

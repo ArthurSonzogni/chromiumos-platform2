@@ -6,7 +6,6 @@
 #define POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_STUB_H_
 
 #include <base/compiler_specific.h>
-#include <base/macros.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
 

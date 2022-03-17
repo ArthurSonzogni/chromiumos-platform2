@@ -9,7 +9,6 @@
 
 #include <base/at_exit.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <brillo/brillo_export.h>

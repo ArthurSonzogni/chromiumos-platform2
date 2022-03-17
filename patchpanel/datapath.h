@@ -15,7 +15,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "patchpanel/firewall.h"

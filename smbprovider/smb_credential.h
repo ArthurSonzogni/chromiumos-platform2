@@ -10,7 +10,6 @@
 #include <utility>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <libpasswordprovider/password.h>
 
 namespace smbprovider {

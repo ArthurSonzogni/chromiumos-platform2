@@ -10,7 +10,6 @@
 #include <set>
 #include <vector>
 
-#include <base/macros.h>
 #include <libhwsec/status.h>
 
 #include "cryptohome/signature_sealing_backend.h"

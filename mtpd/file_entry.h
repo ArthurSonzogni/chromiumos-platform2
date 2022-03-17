@@ -10,8 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "system_api/proto_bindings/mtp_file_entry.pb.h"
 
 namespace mtpd {

@@ -10,7 +10,6 @@
 #include <memory>
 #include <vector>
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 namespace permission_broker {

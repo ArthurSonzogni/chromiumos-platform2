@@ -11,7 +11,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/sequence_checker.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>

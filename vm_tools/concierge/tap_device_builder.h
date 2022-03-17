@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
 
 namespace vm_tools {

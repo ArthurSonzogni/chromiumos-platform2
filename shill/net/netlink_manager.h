@@ -65,7 +65,6 @@
 #include <base/bind.h>
 #include <base/cancelable_callback.h>
 #include <base/lazy_instance.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 

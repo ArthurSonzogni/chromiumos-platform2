@@ -9,7 +9,6 @@
 
 #include <string>
 
-#include <base/macros.h>
 #include <base/observer_list_types.h>
 
 namespace mist {

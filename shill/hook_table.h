@@ -34,7 +34,6 @@
 #include <string>
 
 #include <base/cancelable_callback.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>
 

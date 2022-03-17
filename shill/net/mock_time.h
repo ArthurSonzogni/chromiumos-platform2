@@ -7,7 +7,6 @@
 
 #include "shill/net/shill_time.h"
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 namespace shill {

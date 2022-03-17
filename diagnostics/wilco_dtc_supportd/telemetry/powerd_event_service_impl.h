@@ -5,7 +5,6 @@
 #ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_POWERD_EVENT_SERVICE_IMPL_H_
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_TELEMETRY_POWERD_EVENT_SERVICE_IMPL_H_
 
-#include <base/macros.h>
 #include <base/observer_list.h>
 #include <optional>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>

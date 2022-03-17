@@ -13,7 +13,6 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/macros.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/time/time.h>

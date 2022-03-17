@@ -10,7 +10,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
-#include <base/macros.h>
 #include <base/strings/stringprintf.h>
 #include <components/policy/core/common/registry_dict.h>
 #include <gmock/gmock.h>

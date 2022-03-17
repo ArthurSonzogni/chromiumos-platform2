@@ -11,7 +11,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <dbus/bus.h>

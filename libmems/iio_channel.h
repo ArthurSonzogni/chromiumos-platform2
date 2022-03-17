@@ -8,8 +8,6 @@
 #include <optional>
 #include <string>
 
-#include <base/macros.h>
-
 #include "libmems/export.h"
 
 namespace libmems {

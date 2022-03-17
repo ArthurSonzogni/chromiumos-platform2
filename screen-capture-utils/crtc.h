@@ -10,7 +10,6 @@
 #include <vector>
 
 #include <base/files/file.h>
-#include <base/macros.h>
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 

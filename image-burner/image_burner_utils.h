@@ -11,7 +11,6 @@
 
 #include <base/files/file.h>
 #include <base/callback.h>
-#include <base/macros.h>
 
 #include "image-burner/image_burner_utils_interfaces.h"
 

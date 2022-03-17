@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
 #include <brillo/variant_dictionary.h>
 
 #include "debugd/src/subprocess_tool.h"

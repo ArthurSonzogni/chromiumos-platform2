@@ -4,7 +4,6 @@
 
 #include "arc_setup_metrics.h"  // NOLINT - TODO(b/32971714): fix it properly.
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>

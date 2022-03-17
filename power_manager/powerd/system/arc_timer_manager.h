@@ -12,7 +12,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/memory/weak_ptr.h>
 
 #include "power_manager/powerd/system/dbus_wrapper.h"

@@ -8,8 +8,6 @@
 #include <map>
 #include <string>
 
-#include <base/macros.h>
-
 #include "power_manager/powerd/system/charge_controller_helper_interface.h"
 
 namespace power_manager {

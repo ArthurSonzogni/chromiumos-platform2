@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "arc/setup/android_sdk_version.h"
 #include "arc/setup/arc_setup_util.h"
 

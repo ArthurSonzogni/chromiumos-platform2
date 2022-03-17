@@ -15,7 +15,6 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>

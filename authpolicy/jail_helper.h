@@ -5,8 +5,6 @@
 #ifndef AUTHPOLICY_JAIL_HELPER_H_
 #define AUTHPOLICY_JAIL_HELPER_H_
 
-#include <base/macros.h>
-
 #include "authpolicy/authpolicy_metrics.h"
 #include "authpolicy/path_service.h"
 

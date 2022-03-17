@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include <base/bind.h>
-#include <base/macros.h>
 #include <brillo/mime_utils.h>
 #include <brillo/syslog_logging.h>
 #include <libwebserv/protocol_handler.h>

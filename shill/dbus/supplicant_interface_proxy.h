@@ -10,8 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "shill/refptr_types.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "supplicant/dbus-proxies.h"

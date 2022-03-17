@@ -5,7 +5,6 @@
 #ifndef VM_TOOLS_GARCON_SERVICE_IMPL_H_
 #define VM_TOOLS_GARCON_SERVICE_IMPL_H_
 
-#include <base/macros.h>
 #include <base/task/task_runner.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>

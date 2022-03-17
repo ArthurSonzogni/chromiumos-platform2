@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
-
 namespace power_manager {
 
 // Joins a sequence of strings describing actions using commas. The list of

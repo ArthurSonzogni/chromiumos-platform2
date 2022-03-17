@@ -8,8 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
-
 #include "trunks/authorization_delegate.h"
 #include "trunks/blob_parser.h"
 #include "trunks/hmac_session.h"

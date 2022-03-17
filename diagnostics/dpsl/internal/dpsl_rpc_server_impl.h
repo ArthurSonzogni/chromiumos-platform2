@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <base/sequence_checker_impl.h>
 #include <brillo/grpc/async_grpc_server.h>
 

@@ -10,7 +10,6 @@
 #include <memory>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <gtest/gtest_prod.h>
 
 namespace mist {

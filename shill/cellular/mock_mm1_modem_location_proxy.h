@@ -5,7 +5,6 @@
 #ifndef SHILL_CELLULAR_MOCK_MM1_MODEM_LOCATION_PROXY_H_
 #define SHILL_CELLULAR_MOCK_MM1_MODEM_LOCATION_PROXY_H_
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"

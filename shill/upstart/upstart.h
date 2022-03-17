@@ -7,8 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
-
 #include "shill/upstart/upstart_proxy_interface.h"
 
 namespace shill {

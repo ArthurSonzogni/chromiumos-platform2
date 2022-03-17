@@ -12,7 +12,6 @@
 #include <utility>
 
 #include <base/compiler_specific.h>
-#include <base/macros.h>
 
 #include "power_manager/common/prefs.h"
 

@@ -5,8 +5,6 @@
 #ifndef MIST_USB_BULK_TRANSFER_H_
 #define MIST_USB_BULK_TRANSFER_H_
 
-#include <base/macros.h>
-
 #include "mist/usb_transfer.h"
 
 namespace mist {

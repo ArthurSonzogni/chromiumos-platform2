@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 

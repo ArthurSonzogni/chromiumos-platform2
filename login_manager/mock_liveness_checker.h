@@ -7,7 +7,6 @@
 
 #include "login_manager/liveness_checker.h"
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 namespace login_manager {

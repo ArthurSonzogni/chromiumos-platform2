@@ -7,7 +7,6 @@
 
 #include "chaps/chaps_factory.h"
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 namespace chaps {

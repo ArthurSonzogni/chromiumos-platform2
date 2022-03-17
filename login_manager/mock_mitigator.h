@@ -8,7 +8,6 @@
 #include <optional>
 #include <string>
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "login_manager/owner_key_loss_mitigator.h"

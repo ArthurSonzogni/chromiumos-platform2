@@ -5,7 +5,6 @@
 #ifndef SHILL_MOCK_POWER_MANAGER_H_
 #define SHILL_MOCK_POWER_MANAGER_H_
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "shill/power_manager.h"

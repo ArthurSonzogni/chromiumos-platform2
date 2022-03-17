@@ -5,7 +5,6 @@
 #ifndef SHILL_TEST_EVENT_DISPATCHER_H_
 #define SHILL_TEST_EVENT_DISPATCHER_H_
 
-#include <base/macros.h>
 #include <base/test/task_environment.h>
 #include <brillo/message_loops/base_message_loop.h>
 

@@ -13,7 +13,6 @@
 #include <set>
 #include <string>
 
-#include <base/macros.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
 #include <libhwsec/status.h>

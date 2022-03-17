@@ -4,7 +4,6 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <brillo/syslog_logging.h>
 
 #include "crosdns/crosdns_daemon.h"

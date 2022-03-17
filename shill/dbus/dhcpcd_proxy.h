@@ -8,8 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
-
 #include "dhcpcd/dbus-proxies.h"
 #include "shill/network/dhcp_proxy_interface.h"
 

@@ -5,7 +5,6 @@
 #include "power_manager/powerd/policy/cellular_controller.h"
 
 #include <base/check_op.h>
-#include <base/macros.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"

@@ -10,8 +10,6 @@
 #include <map>
 #include <vector>
 
-#include <base/macros.h>
-
 #include <vboot/tlcl.h>
 
 namespace mount_encrypted {

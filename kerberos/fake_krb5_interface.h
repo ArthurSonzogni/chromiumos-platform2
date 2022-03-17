@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/compiler_specific.h>
-#include <base/macros.h>
 
 #include "kerberos/krb5_interface.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"

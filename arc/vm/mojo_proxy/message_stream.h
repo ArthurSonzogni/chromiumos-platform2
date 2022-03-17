@@ -8,7 +8,6 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 
 #include "arc/vm/mojo_proxy/message.pb.h"
 

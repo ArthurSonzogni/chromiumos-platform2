@@ -7,7 +7,6 @@
 
 #include <vector>
 
-#include <base/macros.h>
 #include <base/observer_list.h>
 
 #include "power_manager/powerd/policy/backlight_controller.h"

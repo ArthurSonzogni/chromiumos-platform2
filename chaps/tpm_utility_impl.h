@@ -12,7 +12,6 @@
 #include <set>
 #include <string>
 
-#include <base/macros.h>
 #include <trousers/scoped_tss_type.h>
 #include <trousers/tss.h>
 #include <tpm_manager/client/tpm_manager_utility.h>

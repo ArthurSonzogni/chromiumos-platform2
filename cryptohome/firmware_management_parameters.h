@@ -9,7 +9,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
 #include <base/strings/string_util.h>
 #include <brillo/secure_blob.h>
 #include <openssl/sha.h>

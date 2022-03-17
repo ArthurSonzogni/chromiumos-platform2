@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
 #include <base/no_destructor.h>
 
 #include "shill/net/io_handler_factory.h"

@@ -10,7 +10,6 @@
 #include <string>
 
 #include <base/callback_forward.h>
-#include <base/macros.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <chaps/token_manager_client.h>
 

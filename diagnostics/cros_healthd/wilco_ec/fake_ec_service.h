@@ -5,8 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_WILCO_EC_FAKE_EC_SERVICE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_WILCO_EC_FAKE_EC_SERVICE_H_
 
-#include <base/macros.h>
-
 #include "diagnostics/cros_healthd/wilco_ec/ec_service.h"
 
 namespace diagnostics {

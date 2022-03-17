@@ -12,8 +12,6 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <string>
 
-#include <base/macros.h>
-
 #include "trunks/command_transceiver.h"
 
 namespace trunks {

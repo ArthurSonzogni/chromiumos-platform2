@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/notreached.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>

@@ -10,7 +10,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
 #include <brillo/brillo_export.h>
 #include <brillo/udev/udev_list_entry.h>
 

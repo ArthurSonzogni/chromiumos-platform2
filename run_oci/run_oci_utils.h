@@ -11,7 +11,6 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <base/process/process.h>
 #include <brillo/files/safe_fd.h>
 

@@ -14,7 +14,6 @@
 #include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>

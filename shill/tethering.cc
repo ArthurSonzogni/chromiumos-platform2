@@ -8,8 +8,6 @@
 #include <set>
 #include <vector>
 
-#include <base/macros.h>
-
 namespace shill {
 
 // static

@@ -10,8 +10,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
-
 #include "libpasswordprovider/password.h"
 
 namespace password_provider {

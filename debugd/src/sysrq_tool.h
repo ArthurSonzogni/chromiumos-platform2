@@ -5,7 +5,6 @@
 #ifndef DEBUGD_SRC_SYSRQ_TOOL_H_
 #define DEBUGD_SRC_SYSRQ_TOOL_H_
 
-#include <base/macros.h>
 #include <brillo/errors/error.h>
 
 namespace debugd {

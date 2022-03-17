@@ -11,7 +11,6 @@
 
 #include <base/callback_forward.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/strings/string_piece.h>
 
 namespace chromeos_metrics {

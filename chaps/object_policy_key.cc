@@ -6,8 +6,6 @@
 
 #include <iterator>
 
-#include <base/macros.h>
-
 namespace chaps {
 
 // Read policy list as follows:

@@ -7,7 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
 #include <base/process/process_metrics.h>
 #include <metrics/cumulative_metrics.h>
 #include <metrics/metrics_library.h>

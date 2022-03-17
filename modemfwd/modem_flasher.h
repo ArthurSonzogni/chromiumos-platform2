@@ -11,7 +11,6 @@
 #include <string>
 
 #include <base/callback.h>
-#include <base/macros.h>
 
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/journal.h"

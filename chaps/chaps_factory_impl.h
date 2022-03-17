@@ -7,8 +7,6 @@
 
 #include "chaps/chaps_factory.h"
 
-#include <base/macros.h>
-
 #include "chaps/chaps_metrics.h"
 
 namespace chaps {

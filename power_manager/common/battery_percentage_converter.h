@@ -7,8 +7,6 @@
 
 #include <memory>
 
-#include <base/macros.h>
-
 namespace power_manager {
 
 class PrefsInterface;

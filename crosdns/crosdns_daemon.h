@@ -8,7 +8,6 @@
 #include <memory>
 #include <string>
 
-#include <base/macros.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/errors/error.h>
 

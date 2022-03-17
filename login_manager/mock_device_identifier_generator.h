@@ -5,7 +5,6 @@
 #ifndef LOGIN_MANAGER_MOCK_DEVICE_IDENTIFIER_GENERATOR_H_
 #define LOGIN_MANAGER_MOCK_DEVICE_IDENTIFIER_GENERATOR_H_
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include "login_manager/device_identifier_generator.h"

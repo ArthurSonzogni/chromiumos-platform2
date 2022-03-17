@@ -29,7 +29,6 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/net/shill_export.h"

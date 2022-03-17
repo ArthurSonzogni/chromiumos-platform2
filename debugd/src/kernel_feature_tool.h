@@ -9,7 +9,6 @@
 #include <string>
 #include <unordered_map>
 
-#include <base/macros.h>
 #include <base/values.h>
 #include <brillo/errors/error.h>
 #include <vector>

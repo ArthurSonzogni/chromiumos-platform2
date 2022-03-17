@@ -7,8 +7,6 @@
 
 #include "power_manager/powerd/system/suspend_freezer.h"
 
-#include <base/macros.h>
-
 namespace power_manager {
 namespace system {
 

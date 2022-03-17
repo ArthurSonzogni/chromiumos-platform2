@@ -9,7 +9,6 @@
 #include <optional>
 #include <string>
 
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 
 #include "debugd/src/helpers/system_service_proxy.h"

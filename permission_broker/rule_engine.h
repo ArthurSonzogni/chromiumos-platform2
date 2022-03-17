@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/time/time.h>
 
 #include "permission_broker/rule.h"

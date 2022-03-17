@@ -23,7 +23,6 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>

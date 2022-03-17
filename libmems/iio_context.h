@@ -12,8 +12,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "libmems/export.h"
 
 namespace libmems {

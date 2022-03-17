@@ -8,8 +8,6 @@
 #include <optional>
 #include <string>
 
-#include <base/macros.h>
-
 namespace tpm_softclear_utils {
 
 // Interface for soft-clearing TPM utilities.

@@ -5,7 +5,6 @@
 #include "secanomalyd/metrics.h"
 
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/numerics/safe_conversions.h>
 
 #include <metrics/metrics_library.h>

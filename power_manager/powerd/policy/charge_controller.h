@@ -8,8 +8,6 @@
 #include <optional>
 #include <string>
 
-#include <base/macros.h>
-
 #include "power_manager/proto_bindings/policy.pb.h"
 
 namespace power_manager {

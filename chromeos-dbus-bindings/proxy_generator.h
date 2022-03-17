@@ -8,8 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "chromeos-dbus-bindings/indented_text.h"
 #include "chromeos-dbus-bindings/interface.h"
 #include "chromeos-dbus-bindings/service_config.h"

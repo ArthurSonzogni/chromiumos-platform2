@@ -10,7 +10,6 @@
 #include <memory>
 #include <vector>
 
-#include <base/macros.h>
 #include <gbm.h>
 
 #include <EGL/egl.h>

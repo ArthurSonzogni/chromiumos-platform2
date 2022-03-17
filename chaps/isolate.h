@@ -7,7 +7,6 @@
 
 #include <string>
 
-#include <base/macros.h>
 #include <brillo/secure_blob.h>
 
 #include "chaps/chaps.h"

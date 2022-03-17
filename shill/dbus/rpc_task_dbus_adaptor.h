@@ -8,8 +8,6 @@
 #include <map>
 #include <string>
 
-#include <base/macros.h>
-
 #include "dbus_bindings/org.chromium.flimflam.Task.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/dbus/dbus_adaptor.h"

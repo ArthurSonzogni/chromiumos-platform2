@@ -10,7 +10,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <gmock/gmock.h>
 
 #include <libwebserv/response.h>

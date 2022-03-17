@@ -14,7 +14,6 @@
 #include <openssl/sha.h>
 
 #include <base/files/file_path.h>
-#include <base/macros.h>
 
 #define DIGEST_LENGTH SHA256_DIGEST_LENGTH
 

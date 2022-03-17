@@ -7,7 +7,6 @@
 #include <iterator>
 
 #include <base/logging.h>
-#include <base/macros.h>
 
 namespace fat {
 

@@ -10,8 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <base/macros.h>
-
 #include "shill/data_types.h"
 #include "shill/store/key_value_store.h"
 

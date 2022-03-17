@@ -9,8 +9,6 @@
 
 #include <libusb.h>
 
-#include <base/macros.h>
-
 namespace mist {
 
 // A USB error, which represents one of the errors defined by libusb 1.0 in the

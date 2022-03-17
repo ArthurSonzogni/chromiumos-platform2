@@ -12,7 +12,6 @@
 #include <utility>
 
 #include <base/files/file.h>
-#include <base/macros.h>
 
 #include "hal/usb/common_types.h"
 

@@ -5,7 +5,6 @@
 #define CRYPTOHOME_DIRCRYPTO_DATA_MIGRATOR_ATOMIC_FLAG_H_
 
 #include <base/atomicops.h>
-#include <base/macros.h>
 #include <base/sequence_checker.h>
 
 namespace cryptohome {

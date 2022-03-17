@@ -10,7 +10,6 @@
 #include <memory>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <gbm.h>
 
 #include "screen-capture-utils/capture.h"

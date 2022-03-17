@@ -12,7 +12,6 @@
 
 #include <libusb-1.0/libusb.h>
 
-#include <base/macros.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_object.h>
 

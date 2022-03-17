@@ -8,7 +8,6 @@
 #include <string>
 
 #include <base/containers/flat_set.h>
-#include <base/macros.h>
 
 #include "kerberos/kerberos_metrics.h"
 #include "kerberos/proto_bindings/kerberos_service.pb.h"

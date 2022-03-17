@@ -12,7 +12,6 @@
 
 #include <base/compiler_specific.h>
 #include <base/files/file_path.h>
-#include <base/macros.h>
 #include <base/timer/timer.h>
 
 #include "power_manager/common/power_constants.h"

@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/macros.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
