@@ -10,7 +10,7 @@ use std::collections::BTreeSet as Set;
 use std::convert::TryFrom;
 use std::env::args;
 use std::fs::File;
-use std::io::{stdout, Read, Stdout, Write};
+use std::io::{stdout, BufWriter, Read, Stdout, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{bail, Context, Result};
@@ -184,7 +184,8 @@ fn main() -> Result<()> {
     };
 
     if matches.opt_present(OUTPUT_JSON) {
-        serde_json::to_writer_pretty(writer, &entries).context("Failed to serialize")
+        serde_json::to_writer_pretty(BufWriter::new(writer), &entries)
+            .context("Failed to serialize")
     } else {
         let serialized: Vec<u8> = flexbuffers::to_vec(&entries).context("Failed to serialize")?;
         writer

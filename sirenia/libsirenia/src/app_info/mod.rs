@@ -10,7 +10,7 @@ pub use crate::communication::ExecutableInfo;
 use std::collections::BTreeMap as Map;
 use std::fmt::Debug;
 use std::fs::{read_dir, File};
-use std::io::{self, Read};
+use std::io::{self, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::result::Result as StdResult;
 
@@ -228,7 +228,7 @@ pub fn entries_from_path<A: AsRef<Path>>(name: A) -> Result<Vec<AppManifestEntry
             .to_lowercase();
         let mut file = File::open(name.as_ref()).map_err(Error::OpenConfig)?;
         let entries: Vec<AppManifestEntry> = if lowercase_name.ends_with(JSON_EXTENSION) {
-            serde_json::from_reader(file).map_err(Error::JsonParse)?
+            serde_json::from_reader(BufReader::new(file)).map_err(Error::JsonParse)?
         } else if lowercase_name.ends_with(FLEXBUFFER_EXTENSION) {
             let mut contents = Vec::<u8>::new();
             file.read_to_end(&mut contents).map_err(Error::ReadConfig)?;
