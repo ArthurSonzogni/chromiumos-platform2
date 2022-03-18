@@ -50,6 +50,7 @@ RmadErrorCode FinalizeStateHandler::InitializeState() {
   if (!state_.has_finalize()) {
     state_.set_allocated_finalize(new FinalizeState);
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_UNKNOWN);
+    status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
   }
   if (!task_runner_) {
     task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
@@ -126,6 +127,7 @@ void FinalizeStateHandler::StopStatusTimer() {
 void FinalizeStateHandler::StartFinalize() {
   status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS);
   status_.set_progress(0);
+  status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
   task_runner_->PostTask(FROM_HERE,
                          base::BindOnce(&FinalizeStateHandler::FinalizeTask,
                                         base::Unretained(this)));
@@ -135,16 +137,20 @@ void FinalizeStateHandler::FinalizeTask() {
   if (!cr50_utils_->DisableFactoryMode()) {
     LOG(ERROR) << "Failed to disable factory mode";
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+    status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
     return;
   }
   status_.set_progress(0.5);
   if (!flashrom_utils_->EnableSoftwareWriteProtection()) {
     LOG(ERROR) << "Failed to enable software write protection";
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+    status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_SWWP);
     return;
   }
+  // TODO(chenghan): Check cr50 data (e.g. board ID) and GBB flags.
   status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
   status_.set_progress(1);
+  status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
 }
 
 }  // namespace rmad

@@ -40,7 +40,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
   };
 
   scoped_refptr<FinalizeStateHandler> CreateStateHandler(
-      bool disable_factory_mode_success) {
+      bool disable_factory_mode_success, bool enable_swwp_success) {
     // Mock |Cr50Utils|.
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
     ON_CALL(*mock_cr50_utils, DisableFactoryMode())
@@ -48,7 +48,7 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     // Mock |FlashromUtils|.
     auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
     ON_CALL(*mock_flashrom_utils, EnableSoftwareWriteProtection())
-        .WillByDefault(Return(true));
+        .WillByDefault(Return(enable_swwp_success));
 
     auto handler = base::MakeRefCounted<FinalizeStateHandler>(
         json_store_, std::move(mock_cr50_utils),
@@ -70,31 +70,51 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
       .WillOnce(Invoke([](const FinalizeStatus& status) {
         EXPECT_EQ(status.status(),
                   FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE);
+        EXPECT_EQ(status.progress(), 1);
+        EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
       }));
   task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
 }
 
 TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
-  auto handler = CreateStateHandler(false);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
       .WillOnce(Invoke([](const FinalizeStatus& status) {
         EXPECT_EQ(status.status(),
                   FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+        EXPECT_EQ(status.progress(), 0);
+        EXPECT_EQ(status.error(),
+                  FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
+      }));
+  task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
+}
+
+TEST_F(FinalizeStateHandlerTest, InitializeState_EnableSwwpFailed) {
+  auto handler = CreateStateHandler(true, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  EXPECT_CALL(signal_sender_, SendFinalizeProgressSignal(_))
+      .WillOnce(Invoke([](const FinalizeStatus& status) {
+        EXPECT_EQ(status.status(),
+                  FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+        EXPECT_EQ(status.progress(), 0.5);
+        EXPECT_EQ(status.error(),
+                  FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_SWWP);
       }));
   task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.RunUntilIdle();
 
@@ -109,7 +129,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Success) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto finalize = std::make_unique<FinalizeState>();
@@ -125,7 +145,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.RunUntilIdle();
 
@@ -137,7 +157,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
-  auto handler = CreateStateHandler(true);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.RunUntilIdle();
 
@@ -152,7 +172,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_BlockingFailure_Retry) {
-  auto handler = CreateStateHandler(false);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.RunUntilIdle();
 
