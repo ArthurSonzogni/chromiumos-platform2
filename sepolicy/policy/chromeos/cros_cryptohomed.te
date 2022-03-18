@@ -247,11 +247,27 @@ is_arc_vm(`
   };
   allow cros_cryptohomed arc_files:file relabelfrom;
 
+  # cryptohomed needs to remove files and directories when removing a user profile.
+  allow cros_cryptohomed { file_type -cros_system_file_type }:dir rmdir;
+  allow cros_cryptohomed { file_type -cros_system_file_type }:{
+    file
+    blk_file
+    chr_file
+    fifo_file
+    lnk_file
+    sock_file
+  } unlink;
+
   # Permissions to remove ARCVM files when removing a user
   allow cros_cryptohomed { arc_files unlabeled }:dir { rw_dir_perms rmdir };
-  allow cros_cryptohomed { arc_files unlabeled }:file { rw_file_perms unlink };
-  allow cros_cryptohomed { arc_files unlabeled }:lnk_file { rw_file_perms unlink };
-  allow cros_cryptohomed { arc_files unlabeled }:sock_file { rw_file_perms unlink };
+  allow cros_cryptohomed { arc_files unlabeled }:{
+    file
+    blk_file
+    chr_file
+    fifo_file
+    lnk_file
+    sock_file
+  } { rw_file_perms unlink };
   # Managing dm_task_cookie for setting up/tearing down dm-crypt devices
   allow cros_cryptohomed self:sem { associate create destroy read unix_read unix_write write };
 ',`
@@ -271,11 +287,27 @@ is_arc_vm(`
     };
     allow cros_cryptohomed arc_files:file relabelfrom;
 
+    # cryptohomed needs to remove files and directories when removing a user profile.
+    allow cros_cryptohomed { file_type -cros_system_file_type }:dir rmdir;
+    allow cros_cryptohomed { file_type -cros_system_file_type }:{
+      file
+      blk_file
+      chr_file
+      fifo_file
+      lnk_file
+      sock_file
+    } unlink;
+
     # Permissions to remove ARC Container files when removing a user
     allow cros_cryptohomed arc_files:dir { rw_dir_perms rmdir };
-    allow cros_cryptohomed arc_files:file { rw_file_perms unlink };
-    allow cros_cryptohomed arc_files:lnk_file { rw_file_perms unlink };
-    allow cros_cryptohomed arc_files:sock_file { rw_file_perms unlink };
+    allow cros_cryptohomed arc_files:{
+      file
+      blk_file
+      chr_file
+      fifo_file
+      lnk_file
+      sock_file
+    } { rw_file_perms unlink };
     # Managing dm_task_cookie for setting up/tearing down dm-crypt devices
     allow cros_cryptohomed self:sem { associate create destroy read unix_read unix_write write };
   ', (`cros_cryptohomed'));
