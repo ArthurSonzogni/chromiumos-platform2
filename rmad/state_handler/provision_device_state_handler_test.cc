@@ -54,7 +54,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
   };
 
   void QueueStatus(const ProvisionStatus& status) {
-    status_hitory_.push_back(status);
+    status_history_.push_back(status);
   }
 
   scoped_refptr<ProvisionDeviceStateHandler> CreateStateHandler(
@@ -123,7 +123,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
  protected:
   NiceMock<SignalSender> signal_sender_;
-  std::vector<ProvisionStatus> status_hitory_;
+  std::vector<ProvisionStatus> status_history_;
   bool reboot_called_;
 
   // Variables for TaskRunner.
@@ -153,8 +153,8 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 1);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
 
   auto provision = std::make_unique<ProvisionDeviceState>();
@@ -188,8 +188,8 @@ TEST_F(ProvisionDeviceStateHandlerTest, TryGetNextStateCaseAtBoot_Success) {
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 1);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
 
   auto provision = std::make_unique<ProvisionDeviceState>();
@@ -219,9 +219,11 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 1);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
 
   auto provision = std::make_unique<ProvisionDeviceState>();
   provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
@@ -240,9 +242,11 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 1);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
 
   auto provision = std::make_unique<ProvisionDeviceState>();
   provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_RETRY);
@@ -257,9 +261,11 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
 
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 2);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 2);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 
   RunHandlerTaskRunner(handler);
 }
@@ -272,9 +278,11 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 1);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_GENERATE_SECRET);
 
   RunHandlerTaskRunner(handler);
 }
@@ -286,9 +294,11 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 1);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
 
   RunHandlerTaskRunner(handler);
 }
@@ -301,8 +311,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 1);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
 
   auto provision = std::make_unique<ProvisionDeviceState>();
@@ -333,9 +343,11 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 1);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
@@ -345,9 +357,11 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 1);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
 
   RunHandlerTaskRunner(handler);
 }
@@ -359,9 +373,11 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_hitory_.size(), 1);
-  EXPECT_EQ(status_hitory_.back().status(),
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
             ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+  EXPECT_EQ(status_history_.back().error(),
+            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
 
   RunHandlerTaskRunner(handler);
 }

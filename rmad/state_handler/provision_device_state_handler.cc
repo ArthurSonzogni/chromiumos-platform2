@@ -41,7 +41,8 @@ namespace {
 constexpr int kStableDeviceSecretSize = 32;
 
 constexpr double kProgressComplete = 1.0;
-constexpr double kProgressFailedNonblocking = -1.0;
+// TODO(chenghan): Uncomment this when we have a non-blocking error.
+// constexpr double kProgressFailedNonblocking = -1.0;
 constexpr double kProgressFailedBlocking = -2.0;
 constexpr double kProgressInit = 0.0;
 constexpr double kProgressGetDestination = 0.3;
@@ -81,6 +82,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   status_.set_progress(kProgressInit);
+  status_.set_error(ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 }
 
 ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
@@ -99,6 +101,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       vpd_utils_(std::move(vpd_utils)) {
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   status_.set_progress(kProgressInit);
+  status_.set_error(ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 }
 
 RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
@@ -117,7 +120,8 @@ RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
   if (std::string status_name;
       json_store_->GetValue(kProvisionFinishedStatus, &status_name) &&
       ProvisionStatus::Status_Parse(status_name, &provision_status)) {
-    UpdateProgress(kProgressInit, provision_status);
+    UpdateStatus(provision_status, kProgressInit,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
   }
 
   if (provision_status == ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN) {
@@ -216,8 +220,8 @@ void ProvisionDeviceStateHandler::StopStatusTimer() {
 }
 
 void ProvisionDeviceStateHandler::StartProvision() {
-  UpdateProgress(kProgressInit,
-                 ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+               kProgressInit, ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&ProvisionDeviceStateHandler::RunProvision,
                                 base::Unretained(this)));
@@ -231,69 +235,81 @@ void ProvisionDeviceStateHandler::RunProvision() {
   bool same_owner = false;
   if (!json_store_->GetValue(kSameOwner, &same_owner)) {
     LOG(ERROR) << "Failed to get device destination from json store";
-    UpdateProgress(kProgressFailedBlocking,
-                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
     return;
   }
-  UpdateProgress(kProgressGetDestination,
-                 ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+               kProgressGetDestination,
+               ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 
   std::string model_name;
   if (!cros_config_utils_->GetModelName(&model_name)) {
     LOG(ERROR) << "Failed to get model name from cros_config.";
-    UpdateProgress(kProgressFailedBlocking,
-                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
     return;
   }
-  UpdateProgress(kProgressGetModelName,
-                 ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+               kProgressGetModelName,
+               ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 
   bool need_to_update_ssfc = false;
   uint32_t ssfc;
   if (!ssfc_utils_->GetSSFC(model_name, &need_to_update_ssfc, &ssfc)) {
-    UpdateProgress(kProgressFailedBlocking,
-                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
     return;
   }
-  UpdateProgress(kProgressGetSSFC,
-                 ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+               kProgressGetSSFC, ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 
   if (need_to_update_ssfc && !cbi_utils_->SetSSFC(ssfc)) {
-    UpdateProgress(kProgressFailedBlocking,
-                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
     return;
   }
-  UpdateProgress(kProgressWriteSSFC,
-                 ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+               kProgressWriteSSFC,
+               ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 
-  // All blocking items should be finished before here.
   if (!same_owner) {
     std::string stable_device_secret;
     if (!GenerateStableDeviceSecret(&stable_device_secret) ||
         !vpd_utils_->SetStableDeviceSecret(stable_device_secret)) {
-      UpdateProgress(kProgressFailedNonblocking,
-                     ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_GENERATE_SECRET);
       return;
     }
-    UpdateProgress(kProgressUpdateStableDeviceSecret,
-                   ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS);
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
+                 kProgressUpdateStableDeviceSecret,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
     // TODO(genechang): Reset fingerprint sensor here."
   }
 
   if (!vpd_utils_->FlushOutRoVpdCache()) {
-    UpdateProgress(kProgressFailedNonblocking,
-                   ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
     return;
   }
-  UpdateProgress(kProgressFlushOutVpdCache,
-                 ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
+               kProgressFlushOutVpdCache,
+               ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
 }
 
-void ProvisionDeviceStateHandler::UpdateProgress(
-    double progress, ProvisionStatus::Status status) {
+void ProvisionDeviceStateHandler::UpdateStatus(ProvisionStatus::Status status,
+                                               double progress,
+                                               ProvisionStatus::Error error) {
   base::AutoLock scoped_lock(lock_);
-  status_.set_progress(progress);
   status_.set_status(status);
+  status_.set_progress(progress);
+  status_.set_error(error);
 }
 
 ProvisionStatus ProvisionDeviceStateHandler::GetProgress() const {

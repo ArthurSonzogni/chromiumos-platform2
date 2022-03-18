@@ -70,7 +70,9 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
 
   void StartProvision();
   void RunProvision();
-  void UpdateProgress(double progress, ProvisionStatus::Status status);
+  void UpdateStatus(ProvisionStatus::Status status,
+                    double progress,
+                    ProvisionStatus::Error error);
   ProvisionStatus GetProgress() const;
 
   bool GenerateStableDeviceSecret(std::string* stable_device_secret);
