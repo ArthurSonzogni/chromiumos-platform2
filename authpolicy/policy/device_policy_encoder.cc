@@ -157,25 +157,6 @@ bool EncodeWeeklyTimeIntervalProto(const base::Value& value,
          EncodeWeeklyTimeProto(*end, proto->mutable_end());
 }
 
-void CopyStringListPolicy(const std::vector<std::string>& list,
-                          RepeatedPtrField<std::string>* proto_list) {
-  *proto_list = {list.begin(), list.end()};
-}
-
-// Copies either `new_list` (preferred) or `old_list` to the specified
-// proto_list. At least one of new_list or old_list must have a value.
-void CopyStringListPolicyWithFallback(
-    const std::optional<std::vector<std::string>>& new_list,
-    const std::optional<std::vector<std::string>>& old_list,
-    RepeatedPtrField<std::string>* proto_list) {
-  if (new_list) {
-    CopyStringListPolicy(new_list.value(), proto_list);
-  } else {
-    DCHECK(old_list);
-    CopyStringListPolicy(old_list.value(), proto_list);
-  }
-}
-
 }  // namespace
 
 DevicePolicyEncoder::DevicePolicyEncoder(const RegistryDict* dict,
@@ -212,22 +193,10 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
     policy->mutable_show_user_names()->set_show_user_names(value.value());
   if (std::optional<bool> value = EncodeBoolean(key::kDeviceAllowNewUsers))
     policy->mutable_allow_new_users()->set_allow_new_users(value.value());
-  // The original policy has been replaced by an inclusively named version. For
-  // backwards compatibility, copy the original policy to the newly named proto
-  // if no value exists for the newly named proto.
-  std::optional<std::vector<std::string>> user_allowlist_values =
-      EncodeStringList(key::kDeviceUserAllowlist);
-  std::optional<std::vector<std::string>> deprecated_user_allowlist_values =
-      EncodeStringList(key::kDeviceUserWhitelist);  // nocheck
-  if (user_allowlist_values || deprecated_user_allowlist_values) {
-    CopyStringListPolicyWithFallback(
-        user_allowlist_values, deprecated_user_allowlist_values,
-        policy->mutable_user_allowlist()->mutable_user_allowlist());
-  }
-  if (deprecated_user_allowlist_values) {
-    CopyStringListPolicy(
-        deprecated_user_allowlist_values.value(),
-        policy->mutable_user_whitelist()->mutable_user_whitelist());  // nocheck
+  if (base::Optional<std::vector<std::string>> values =
+          EncodeStringList(key::kDeviceUserAllowlist)) {
+    *policy->mutable_user_allowlist()->mutable_user_allowlist() = {
+        values.value().begin(), values.value().end()};
   }
   if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceEphemeralUsersEnabled))
@@ -765,59 +734,11 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         value.value());
   }
 
-  // The original policy has been replaced by an inclusively named version. For
-  // backwards compatibility, copy the original policy to the newly named proto
-  // if no value exists for the newly named proto.
-  std::optional<std::vector<std::string>> usb_detachable_allowlist_values =
-      EncodeStringList(key::kUsbDetachableAllowlist);
-  if (std::optional<std::vector<std::string>> values =
-          EncodeStringList(key::kUsbDetachableWhitelist)) {  // nocheck
-    auto deprecated_allowlist =
-        policy->mutable_usb_detachable_whitelist();  // nocheck
-    auto allowlist = policy->mutable_usb_detachable_allowlist();
-    DCHECK(!deprecated_allowlist->id_size());
-    if (!usb_detachable_allowlist_values) {
-      DCHECK(!allowlist->id_size());
-    }
-    for (const std::string& value : values.value()) {
-      std::string error;
-      std::optional<base::Value> dict_value = JsonToDictionary(value, &error);
-      if (!dict_value) {
-        LOG(ERROR) << "Failed to parse string as dictionary: '"
-                   << (!error.empty() ? error : value) << "' for policy '"
-                   << key::kUsbDetachableWhitelist  // nocheck
-                   << "', ignoring.";
-        continue;
-      }
-
-      std::optional<int> vid = dict_value->FindIntKey("vendor_id");
-      std::optional<int> pid = dict_value->FindIntKey("product_id");
-      if (!vid.has_value() || !pid.has_value()) {
-        LOG(ERROR) << "Invalid JSON string '"
-                   << (!error.empty() ? error : value) << "' for policy '"
-                   << key::kUsbDetachableWhitelist  // nocheck
-                   << "', ignoring. Expected: "
-                   << "'{\"vendor_id\"=<vid>, \"product_id\"=<pid>}'.";
-        continue;
-      }
-
-      em::UsbDeviceIdProto* deprecated_allowlist_entry =
-          deprecated_allowlist->add_id();
-      deprecated_allowlist_entry->set_vendor_id(*vid);
-      deprecated_allowlist_entry->set_product_id(*pid);
-
-      if (!usb_detachable_allowlist_values) {
-        em::UsbDeviceIdInclusiveProto* allowlist_entry = allowlist->add_id();
-        allowlist_entry->set_vendor_id(*vid);
-        allowlist_entry->set_product_id(*pid);
-      }
-    }
-  }
-
-  if (usb_detachable_allowlist_values) {
+  if (base::Optional<std::vector<std::string>> values =
+          EncodeStringList(key::kUsbDetachableAllowlist)) {
     auto list = policy->mutable_usb_detachable_allowlist();
     DCHECK(!list->id_size());
-    for (const std::string& value : usb_detachable_allowlist_values.value()) {
+    for (const std::string& value : values.value()) {
       std::string error;
       std::optional<base::Value> dict_value = JsonToDictionary(value, &error);
       if (!dict_value) {
@@ -899,92 +820,20 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   if (std::optional<std::string> value = EncodeString(key::kCastReceiverName))
     policy->mutable_cast_receiver_name()->set_name(value.value());
 
-  // The original policy has been replaced by an inclusively named version. For
-  // backwards compatibility, copy the original policy to the newly named proto
-  // if no value exists for the newly named proto.
-  std::optional<std::string> device_printers_value =
-      EncodeString(key::kDevicePrinters);
-  std::optional<std::string> deprecated_device_printers_value =
-      EncodeString(key::kDeviceNativePrinters);  // nocheck
-  if (device_printers_value || deprecated_device_printers_value) {
-    policy->mutable_device_printers()->set_external_policy(
-        device_printers_value ? device_printers_value.value()
-                              : deprecated_device_printers_value.value());
-  }
-  if (deprecated_device_printers_value) {
-    policy->mutable_native_device_printers()->set_external_policy(  // nocheck
-        deprecated_device_printers_value.value());
-  }
-
-  // The original policy has been replaced by an inclusively named version. For
-  // backwards compatibility, copy the original policy to the newly named proto
-  // if no value exists for the newly named proto.
-  std::optional<int> device_printers_access_mode_value =
-      EncodeInteger(key::kDevicePrintersAccessMode);
-  std::optional<int> deprecated_device_printers_access_mode_value =
-      EncodeInteger(key::kDeviceNativePrintersAccessMode);  // nocheck
-  if (device_printers_access_mode_value ||
-      deprecated_device_printers_access_mode_value) {
+  if (base::Optional<std::string> value = EncodeString(key::kDevicePrinters))
+    policy->mutable_device_printers()->set_external_policy(value.value());
+  if (base::Optional<int> value = EncodeInteger(key::kDevicePrintersAccessMode))
     policy->mutable_device_printers_access_mode()->set_access_mode(
         static_cast<em::DevicePrintersAccessModeProto_AccessMode>(
-            device_printers_access_mode_value
-                ? device_printers_access_mode_value.value()
-                : deprecated_device_printers_access_mode_value.value()));
-  }
-  if (deprecated_device_printers_access_mode_value) {
-    policy
-        ->mutable_native_device_printers_access_mode()  // nocheck
-        ->set_access_mode(
-            static_cast<
-                em::DeviceNativePrintersAccessModeProto_AccessMode>(  // nocheck
-                deprecated_device_printers_access_mode_value.value()));
-  }
-
-  // The original policy has been replaced by an inclusively named version. For
-  // backwards compatibility, copy the original policy to the newly named proto
-  // if no value exists for the newly named proto.
-  std::optional<std::vector<std::string>> device_printers_blocklist_value =
-      EncodeStringList(key::kDevicePrintersBlocklist);
-  std::optional<std::vector<std::string>>
-      deprecated_device_printers_blocklist_value =
-          EncodeStringList(key::kDeviceNativePrintersBlacklist);  // nocheck
-  if (device_printers_blocklist_value ||
-      deprecated_device_printers_blocklist_value) {
-    CopyStringListPolicyWithFallback(
-        device_printers_blocklist_value,
-        deprecated_device_printers_blocklist_value,
-        policy->mutable_device_printers_blocklist()->mutable_blocklist());
-  }
-  if (deprecated_device_printers_blocklist_value) {
-    CopyStringListPolicy(
-        deprecated_device_printers_blocklist_value.value(),
-        policy
-            ->mutable_native_device_printers_blacklist()  // nocheck
-            ->mutable_blacklist());                       // nocheck
-  }
-
-  // The original policy has been replaced by an inclusively named version. For
-  // backwards compatibility, copy the original policy to the newly named proto
-  // if no value exists for the newly named proto.
-  std::optional<std::vector<std::string>> device_printers_allowlist_value =
-      EncodeStringList(key::kDevicePrintersAllowlist);
-  std::optional<std::vector<std::string>>
-      deprecated_device_printers_allowlist_value =
-          EncodeStringList(key::kDeviceNativePrintersWhitelist);  // nocheck
-  if (device_printers_allowlist_value ||
-      deprecated_device_printers_allowlist_value) {
-    CopyStringListPolicyWithFallback(
-        device_printers_allowlist_value,
-        deprecated_device_printers_allowlist_value,
-        policy->mutable_device_printers_allowlist()->mutable_allowlist());
-  }
-  if (deprecated_device_printers_allowlist_value) {
-    CopyStringListPolicy(
-        deprecated_device_printers_allowlist_value.value(),
-        policy
-            ->mutable_native_device_printers_whitelist()  // nocheck
-            ->mutable_whitelist());                       // nocheck
-  }
+            value.value()));
+  if (base::Optional<std::vector<std::string>> values =
+          EncodeStringList(key::kDevicePrintersAllowlist))
+    *policy->mutable_device_printers_allowlist()->mutable_allowlist() = {
+        values.value().begin(), values.value().end()};
+  if (base::Optional<std::vector<std::string>> values =
+          EncodeStringList(key::kDevicePrintersBlocklist))
+    *policy->mutable_device_printers_blocklist()->mutable_blocklist() = {
+        values.value().begin(), values.value().end()};
 
   if (std::optional<std::string> value =
           EncodeString(key::kDeviceExternalPrintServers)) {
