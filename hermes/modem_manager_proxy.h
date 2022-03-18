@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
@@ -46,6 +47,8 @@ class ModemManagerProxy {
   void WaitForModemStepGetObjects(base::OnceClosure cb, bool /*is_available*/);
   void OnInterfaceAdded(const dbus::ObjectPath& object_path,
                         const DBusInterfaceToProperties& properties);
+  void OnInterfaceRemoved(const dbus::ObjectPath& object_path,
+                          const std::vector<std::string>& iface);
   void WaitForModemStepLast(
       base::OnceClosure cb,
       const DBusObjectsWithProperties& dbus_objects_with_properties);
@@ -64,7 +67,11 @@ class ModemManagerProxy {
   std::unique_ptr<org::freedesktop::DBus::ObjectManagerProxy>
       object_manager_proxy_;
   std::unique_ptr<org::freedesktop::ModemManager1Proxy> mm_proxy_;
+  std::optional<std::string> cached_primary_port_;
   std::unique_ptr<org::freedesktop::ModemManager1::ModemProxy> modem_proxy_;
+
+  std::optional<std::basic_string<char>> device_identifier_;
+  bool modem_appeared_;
   base::OnceClosure on_modem_appeared_cb_;
 
   std::optional<std::basic_string<char>> inhibited_uid_;

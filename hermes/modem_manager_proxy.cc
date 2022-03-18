@@ -19,18 +19,23 @@ ModemManagerProxy::ModemManagerProxy(const scoped_refptr<dbus::Bus>& bus)
               dbus::ObjectPath(modemmanager::kModemManager1ServicePath))),
       mm_proxy_(std::make_unique<org::freedesktop::ModemManager1Proxy>(
           bus, modemmanager::kModemManager1ServiceName)),
+      modem_appeared_(false),
       weak_factory_(this) {
   auto on_interface_added = base::BindRepeating(
       &ModemManagerProxy::OnInterfaceAdded, weak_factory_.GetWeakPtr());
+  auto on_interface_removed = base::BindRepeating(
+      &ModemManagerProxy::OnInterfaceRemoved, weak_factory_.GetWeakPtr());
   auto on_dbus_signal_connected =
-      base::BindOnce([](const std::string& interface, const std::string& signal,
-                        bool success) {
+      base::BindRepeating([](const std::string& interface,
+                             const std::string& signal, bool success) {
         if (!success)
           LOG(ERROR) << "Failed to connect to signal " << interface << "."
                      << signal;
       });
   object_manager_proxy_->RegisterInterfacesAddedSignalHandler(
-      std::move(on_interface_added), std::move(on_dbus_signal_connected));
+      std::move(on_interface_added), on_dbus_signal_connected);
+  object_manager_proxy_->RegisterInterfacesRemovedSignalHandler(
+      std::move(on_interface_removed), on_dbus_signal_connected);
 }
 
 ModemManagerProxy::ModemManagerProxy() : weak_factory_(this) {}
@@ -42,6 +47,10 @@ void ModemManagerProxy::RegisterModemAppearedCallback(base::OnceClosure cb) {
 
 void ModemManagerProxy::WaitForModem(base::OnceClosure cb) {
   VLOG(2) << __func__;
+  if (modem_proxy_) {
+    std::move(cb).Run();
+    return;
+  }
   auto on_service_available =
       base::BindOnce(&ModemManagerProxy::WaitForModemStepGetObjects,
                      weak_factory_.GetWeakPtr(), std::move(cb));
@@ -92,8 +101,30 @@ void ModemManagerProxy::OnInterfaceAdded(
   OnNewModemDetected(object_path);
 }
 
+void ModemManagerProxy::OnInterfaceRemoved(
+    const dbus::ObjectPath& object_path,
+    const std::vector<std::string>& iface) {
+  brillo::ErrorPtr error;
+  VLOG(2) << __func__ << ": " << object_path.value();
+  if (!base::Contains(iface, modemmanager::kModemManager1ModemInterface)) {
+    VLOG(2) << __func__ << "Interfaces removed, but not modem interface.";
+    return;
+  }
+  if (modem_proxy_->GetObjectPath() != object_path)
+    return;
+  LOG(INFO) << "Clearing modem proxy for "
+            << modem_proxy_->GetObjectPath().value();
+  modem_proxy_.reset();
+}
+
 void ModemManagerProxy::OnNewModemDetected(dbus::ObjectPath object_path) {
   LOG(INFO) << __func__ << ": New modem detected at " << object_path.value();
+  if (modem_proxy_) {
+    LOG(INFO) << "Already tracking " << modem_proxy_->GetObjectPath().value()
+              << ". Ignoring " << object_path.value();
+    return;
+  }
+  modem_appeared_ = true;
   modem_proxy_ = std::make_unique<org::freedesktop::ModemManager1::ModemProxy>(
       bus_, modemmanager::kModemManager1ServiceName, object_path);
   modem_proxy_->InitializeProperties(base::BindRepeating(
@@ -101,18 +132,36 @@ void ModemManagerProxy::OnNewModemDetected(dbus::ObjectPath object_path) {
 }
 
 void ModemManagerProxy::OnPropertiesChanged(
-    org::freedesktop::ModemManager1::ModemProxyInterface* /*unused*/,
+    org::freedesktop::ModemManager1::ModemProxyInterface* modem_proxy_interface,
     const std::string& prop) {
   VLOG(3) << __func__ << " : " << prop << " changed.";
-  if (!modem_proxy_->GetProperties()->primary_port.is_valid() ||
-      !modem_proxy_->GetProperties()->device_identifier.is_valid())
+
+  // wait for all properties that we will be read by ModemMbim.
+  if (!modem_proxy_->GetProperties()->primary_port.is_valid())
     return;
+
+  // Ignore on_modem_appeared_cb if a property update on an existing
+  // modem_proxy_ triggered this call.
+  if (!modem_appeared_)
+    return;
+  modem_appeared_ = false;
+  if (cached_primary_port_.has_value() &&
+      cached_primary_port_ != modem_proxy_->primary_port()) {
+    LOG(ERROR) << "Unexpected modem appeared at "
+               << modem_proxy_->primary_port();
+    return;
+  }
+  cached_primary_port_ = modem_proxy_->primary_port();
   if (!on_modem_appeared_cb_.is_null())
     std::move(on_modem_appeared_cb_).Run();
 }
 
 std::string ModemManagerProxy::GetPrimaryPort() const {
-  return modem_proxy_->primary_port();
+  if (!cached_primary_port_.has_value()) {
+    LOG(ERROR) << __func__ << ": Primary port has never been read.";
+    return "";
+  }
+  return cached_primary_port_.value();
 }
 
 void ModemManagerProxy::Uninhibit() {
