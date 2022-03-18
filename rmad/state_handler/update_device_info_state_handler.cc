@@ -89,6 +89,12 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   CHECK(regions_utils_);
   CHECK(vpd_utils_);
 
+  // Make sure HWWP is off before initializing the state.
+  if (int hwwp_status;
+      crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status != 0) {
+    return RMAD_ERROR_WP_ENABLED;
+  }
+
   auto update_dev_info = std::make_unique<UpdateDeviceInfoState>();
 
   std::string serial_number;
