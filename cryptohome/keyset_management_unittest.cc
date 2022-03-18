@@ -592,6 +592,31 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
 }
 
 // Fail to get keyset due to invalid label.
+TEST_F(KeysetManagementTest, GetValidKeysetWithEmptyLabelSucceeds) {
+  // SETUP
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData key_data;
+  key_data.set_label(kAltPasswordLabel);
+  new_credentials.set_key_data(key_data);
+
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), false));
+
+  // TEST
+  key_data.set_label("");
+  new_credentials.set_key_data(key_data);
+  std::unique_ptr<VaultKeyset> vk2 =
+      keyset_management_->GetValidKeyset(new_credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+}
+
+// Fail to get keyset due to invalid label.
 TEST_F(KeysetManagementTest, GetValidKeysetNonExistentLabel) {
   // SETUP
 

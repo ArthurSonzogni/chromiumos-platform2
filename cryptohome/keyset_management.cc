@@ -152,7 +152,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetValidKeysetImpl(
       continue;
     }
 
-    if (std::move(decrypt_vk_callback).Run(vk.get(), &last_crypto_error)) {
+    if (decrypt_vk_callback.Run(vk.get(), &last_crypto_error)) {
       return vk;
     }
   }
