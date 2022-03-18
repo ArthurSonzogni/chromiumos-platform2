@@ -157,7 +157,8 @@ class BasePowerdAdapterImplTest : public ::testing::Test {
 
   std::unique_ptr<PowerdAdapterImpl> powerd_adapter_;
 
-  std::unordered_map<std::string, base::Callback<void(dbus::Signal* signal)>>
+  std::unordered_map<std::string,
+                     base::RepeatingCallback<void(dbus::Signal* signal)>>
       on_signal_callbacks_;
 };
 

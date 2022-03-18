@@ -26,16 +26,16 @@ class DebugdAdapterImpl final : public DebugdAdapter {
   ~DebugdAdapterImpl() override;
 
   // DebugdAdapter overrides:
-  void GetSmartAttributes(const StringResultCallback& callback) override;
-  void GetNvmeIdentity(const StringResultCallback& callback) override;
+  void GetSmartAttributes(OnceStringResultCallback callback) override;
+  void GetNvmeIdentity(OnceStringResultCallback callback) override;
   StringResult GetNvmeIdentitySync() override;
-  void RunNvmeShortSelfTest(const StringResultCallback& callback) override;
-  void RunNvmeLongSelfTest(const StringResultCallback& callback) override;
-  void StopNvmeSelfTest(const StringResultCallback& callback) override;
+  void RunNvmeShortSelfTest(OnceStringResultCallback callback) override;
+  void RunNvmeLongSelfTest(OnceStringResultCallback callback) override;
+  void StopNvmeSelfTest(OnceStringResultCallback callback) override;
   void GetNvmeLog(uint32_t page_id,
                   uint32_t length,
                   bool raw_binary,
-                  const StringResultCallback& callback) override;
+                  OnceStringResultCallback callback) override;
 
  private:
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;

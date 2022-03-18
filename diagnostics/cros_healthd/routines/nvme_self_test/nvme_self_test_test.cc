@@ -29,6 +29,7 @@ using testing::WithArg;
 namespace diagnostics {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+using OnceStringResultCallback = DebugdAdapter::OnceStringResultCallback;
 using routine_status = mojo_ipc::DiagnosticRoutineStatusEnum;
 
 // Success message from controller if launching is completed without errors.
@@ -77,9 +78,9 @@ class NvmeSelfTestRoutineTest : public testing::Test {
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   EXPECT_EQ(routine()->GetStatus(),
@@ -98,9 +99,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(nvme_encoded_output, nullptr); }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(nvme_encoded_output, nullptr);
+      }));
   VerifyNonInteractiveUpdate(RunRoutinePopulate()->routine_update_union,
                              mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
                              NvmeSelfTestRoutine::kNvmeSelfTestRoutineRunning);
@@ -118,9 +119,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(nvme_encoded_output, nullptr); }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(nvme_encoded_output, nullptr);
+      }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
       mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
@@ -132,9 +133,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestPass) {
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestStartError) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kNvmeError, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kNvmeError, nullptr);
+      }));
   RunRoutineStart();
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
@@ -147,9 +148,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestStartError) {
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestError) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   // Progress(byte-0): Bits 3:0, 0 means test is completed.
@@ -166,9 +167,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestError) {
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(nvme_encoded_output, nullptr); }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(nvme_encoded_output, nullptr);
+      }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
       mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
@@ -180,9 +181,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestError) {
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidError) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   // Progress(byte-0): Bits 3:0, 0 means test is completed.
@@ -199,9 +200,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidError) {
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(nvme_encoded_output, nullptr); }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(nvme_encoded_output, nullptr);
+      }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
       mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
@@ -213,9 +214,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidError) {
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidType) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   // Progress(byte-0): Bits 3:0, 0 means test is completed.
@@ -232,9 +233,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidType) {
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(nvme_encoded_output, nullptr); }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(nvme_encoded_output, nullptr);
+      }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
       mojo_ipc::DiagnosticRoutineStatusEnum::kError,
@@ -249,20 +250,18 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgress) {
 
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   EXPECT_CALL(debugd_adapter_,
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) {
-            callback.Run(kSelfTestInvalidProgress, nullptr);
-          }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kSelfTestInvalidProgress, nullptr);
+      }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
       mojo_ipc::DiagnosticRoutineStatusEnum::kError,
@@ -274,9 +273,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgress) {
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgressLength) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   EXPECT_EQ(routine()->GetStatus(),
@@ -295,9 +294,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgressLength) {
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(nvme_encoded_output, nullptr); }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(nvme_encoded_output, nullptr);
+      }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
       mojo_ipc::DiagnosticRoutineStatusEnum::kError,
@@ -309,17 +308,17 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestInvalidProgressLength) {
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelPass) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   // Success message from controller if abortion is completed without an error.
   const char kAbortSuccess[] = "Aborting device self-test operation";
   EXPECT_CALL(debugd_adapter_, StopNvmeSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kAbortSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kAbortSuccess, nullptr);
+      }));
   RunRoutineCancel();
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
@@ -332,15 +331,15 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelPass) {
 TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelError) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   EXPECT_CALL(debugd_adapter_, StopNvmeSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kNvmeError, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kNvmeError, nullptr);
+      }));
   RunRoutineCancel();
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
@@ -353,9 +352,9 @@ TEST_F(NvmeSelfTestRoutineTest, ShortSelfTestCancelError) {
 TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunLongSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeLongSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   EXPECT_EQ(routine()->GetStatus(),
@@ -374,9 +373,9 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(nvme_encoded_output, nullptr); }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(nvme_encoded_output, nullptr);
+      }));
   VerifyNonInteractiveUpdate(RunRoutinePopulate()->routine_update_union,
                              mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
                              NvmeSelfTestRoutine::kNvmeSelfTestRoutineRunning);
@@ -394,9 +393,9 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(nvme_encoded_output, nullptr); }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(nvme_encoded_output, nullptr);
+      }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
       mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
@@ -408,9 +407,9 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestPass) {
 TEST_F(NvmeSelfTestRoutineTest, LongSelfTestError) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunLongSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeLongSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   // Progress(byte-0): Bits 3:0, 0 means test is completed.
@@ -427,9 +426,9 @@ TEST_F(NvmeSelfTestRoutineTest, LongSelfTestError) {
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(nvme_encoded_output, nullptr); }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(nvme_encoded_output, nullptr);
+      }));
   VerifyNonInteractiveUpdate(
       RunRoutinePopulate()->routine_update_union,
       mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
@@ -443,9 +442,9 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdError) {
       brillo::Error::Create(FROM_HERE, "", "", kDebugdErrorMessage);
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunLongSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeLongSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run("", kError.get()); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run("", kError.get());
+      }));
   RunRoutineStart();
   VerifyNonInteractiveUpdate(RunRoutinePopulate()->routine_update_union,
                              mojo_ipc::DiagnosticRoutineStatusEnum::kError,
@@ -457,9 +456,9 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdError) {
 TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForCancelling) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunLongSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeLongSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   EXPECT_EQ(routine()->GetStatus(),
@@ -469,9 +468,9 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForCancelling) {
   const brillo::ErrorPtr kError =
       brillo::Error::Create(FROM_HERE, "", "", kDebugdErrorMessage);
   EXPECT_CALL(debugd_adapter_, StopNvmeSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run("", kError.get()); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run("", kError.get());
+      }));
   RunRoutineCancel();
   VerifyNonInteractiveUpdate(RunRoutinePopulate()->routine_update_union,
                              mojo_ipc::DiagnosticRoutineStatusEnum::kError,
@@ -483,9 +482,9 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForCancelling) {
 TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForGettingProgress) {
   CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunLongSelfTest);
   EXPECT_CALL(debugd_adapter_, RunNvmeLongSelfTest(_))
-      .WillOnce(WithArg<0>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kStartSuccess, nullptr); }));
+      .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run(kStartSuccess, nullptr);
+      }));
   RunRoutineStart();
 
   EXPECT_EQ(routine()->GetStatus(),
@@ -498,9 +497,9 @@ TEST_F(NvmeSelfTestRoutineTest, DebugdErrorForGettingProgress) {
               GetNvmeLog(NvmeSelfTestRoutine::kNvmeLogPageId,
                          NvmeSelfTestRoutine::kNvmeLogDataLength,
                          NvmeSelfTestRoutine::kNvmeLogRawBinary, _))
-      .WillOnce(WithArg<3>(
-          [&](const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run("", kError.get()); }));
+      .WillOnce(WithArg<3>([&](OnceStringResultCallback callback) {
+        std::move(callback).Run("", kError.get());
+      }));
   VerifyNonInteractiveUpdate(RunRoutinePopulate()->routine_update_union,
                              mojo_ipc::DiagnosticRoutineStatusEnum::kError,
                              kDebugdErrorMessage);
@@ -532,11 +531,9 @@ TEST_F(NvmeSelfTestRoutineTest, RoutineStatusTransition) {
   for (const auto& testcase : testcases) {
     CreateSelfTestRoutine(NvmeSelfTestRoutine::kRunShortSelfTest);
     EXPECT_CALL(debugd_adapter_, RunNvmeShortSelfTest(_))
-        .WillOnce(
-            WithArg<0>([&](const base::RepeatingCallback<void(
-                               const std::string&, brillo::Error*)>& callback) {
-              callback.Run(kStartSuccess, nullptr);
-            }));
+        .WillOnce(WithArg<0>([&](OnceStringResultCallback callback) {
+          std::move(callback).Run(kStartSuccess, nullptr);
+        }));
     RunRoutineStart();
     EXPECT_EQ(routine()->GetStatus(),
               mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);

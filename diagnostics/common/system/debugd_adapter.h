@@ -15,8 +15,8 @@ namespace diagnostics {
 // Adapter for communication with debugd daemon.
 class DebugdAdapter {
  public:
-  using StringResultCallback =
-      base::Callback<void(const std::string& result, brillo::Error* error)>;
+  using OnceStringResultCallback =
+      base::OnceCallback<void(const std::string& result, brillo::Error* error)>;
 
   struct StringResult {
     std::string value;
@@ -27,11 +27,11 @@ class DebugdAdapter {
 
   // Sends async request to debugd via D-Bus call. On success, debugd runs
   // smartctl util to retrieve SMART attributes and returns output via callback.
-  virtual void GetSmartAttributes(const StringResultCallback& callback) = 0;
+  virtual void GetSmartAttributes(OnceStringResultCallback callback) = 0;
 
   // Sends async request to debugd via D-Bus call. On success, debugd runs
   // nvme util to retrieve NVMe identity data and returns output via callback.
-  virtual void GetNvmeIdentity(const StringResultCallback& callback) = 0;
+  virtual void GetNvmeIdentity(OnceStringResultCallback callback) = 0;
 
   // Sends synchonous request to debugd via D-Bus call. On success, debugd runs
   // nvme util to retrieve NVMe identity data and returns output or an error.
@@ -40,16 +40,16 @@ class DebugdAdapter {
   // Sends async request to debugd via D-Bus call. On success, debugd runs
   // nvme util to start NVMe short-time self-test and returns start result
   // output via callback.
-  virtual void RunNvmeShortSelfTest(const StringResultCallback& callback) = 0;
+  virtual void RunNvmeShortSelfTest(OnceStringResultCallback callback) = 0;
 
   // Sends async request to debugd via D-Bus call. On success, debugd runs
   // nvme util to start NVMe long-time self-test and returns start result
   // via callback.
-  virtual void RunNvmeLongSelfTest(const StringResultCallback& callback) = 0;
+  virtual void RunNvmeLongSelfTest(OnceStringResultCallback callback) = 0;
 
   // Sends async request to debugd via D-Bus call. On success, debugd runs
   // nvme util to abort NVMe self-test..
-  virtual void StopNvmeSelfTest(const StringResultCallback& callback) = 0;
+  virtual void StopNvmeSelfTest(OnceStringResultCallback callback) = 0;
 
   // Sends async request to debugd via D-Bus call. On success, debugd runs
   // nvme util to retrieve NVMe info from log page and returns output via
@@ -60,7 +60,7 @@ class DebugdAdapter {
   virtual void GetNvmeLog(uint32_t page_id,
                           uint32_t length,
                           bool raw_binary,
-                          const StringResultCallback& callback) = 0;
+                          OnceStringResultCallback callback) = 0;
 };
 
 }  // namespace diagnostics

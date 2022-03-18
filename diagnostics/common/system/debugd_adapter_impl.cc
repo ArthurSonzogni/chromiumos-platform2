@@ -25,19 +25,20 @@ constexpr char kNvmeShortSelfTestOption[] = "short_self_test";
 constexpr char kNvmeLongSelfTestOption[] = "long_self_test";
 constexpr char kNvmeStopSelfTestOption[] = "stop_self_test";
 
-auto CreateSuccessCallback(
-    const DebugdAdapter::StringResultCallback& callback) {
-  return base::BindOnce(
-      [](const DebugdAdapter::StringResultCallback& callback,
-         const std::string& result) { callback.Run(result, nullptr); },
-      callback);
-}
-
-auto CreateErrorCallback(const DebugdAdapter::StringResultCallback& callback) {
-  return base::BindOnce(
-      [](const DebugdAdapter::StringResultCallback& callback,
-         brillo::Error* error) { callback.Run(std::string(), error); },
-      callback);
+using OnceStringResultCallback = DebugdAdapter::OnceStringResultCallback;
+auto SplitStringResultCallback(OnceStringResultCallback callback) {
+  auto [cb1, cb2] = base::SplitOnceCallback(std::move(callback));
+  auto on_success = base::BindOnce(
+      [](OnceStringResultCallback callback, const std::string& result) {
+        std::move(callback).Run(result, nullptr);
+      },
+      std::move(cb1));
+  auto on_error = base::BindOnce(
+      [](OnceStringResultCallback callback, brillo::Error* error) {
+        std::move(callback).Run(std::string(), error);
+      },
+      std::move(cb2));
+  return std::make_pair(std::move(on_success), std::move(on_error));
 }
 
 }  // namespace
@@ -50,16 +51,16 @@ DebugdAdapterImpl::DebugdAdapterImpl(
 
 DebugdAdapterImpl::~DebugdAdapterImpl() = default;
 
-void DebugdAdapterImpl::GetSmartAttributes(
-    const StringResultCallback& callback) {
-  debugd_proxy_->SmartctlAsync(kSmartctlAttributesOption,
-                               CreateSuccessCallback(callback),
-                               CreateErrorCallback(callback));
+void DebugdAdapterImpl::GetSmartAttributes(OnceStringResultCallback callback) {
+  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
+  debugd_proxy_->SmartctlAsync(kSmartctlAttributesOption, std::move(on_success),
+                               std::move(on_error));
 }
 
-void DebugdAdapterImpl::GetNvmeIdentity(const StringResultCallback& callback) {
-  debugd_proxy_->NvmeAsync(kNvmeIdentityOption, CreateSuccessCallback(callback),
-                           CreateErrorCallback(callback));
+void DebugdAdapterImpl::GetNvmeIdentity(OnceStringResultCallback callback) {
+  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
+  debugd_proxy_->NvmeAsync(kNvmeIdentityOption, std::move(on_success),
+                           std::move(on_error));
 }
 
 DebugdAdapter::StringResult DebugdAdapterImpl::GetNvmeIdentitySync() {
@@ -69,32 +70,31 @@ DebugdAdapter::StringResult DebugdAdapterImpl::GetNvmeIdentitySync() {
 }
 
 void DebugdAdapterImpl::RunNvmeShortSelfTest(
-    const StringResultCallback& callback) {
-  debugd_proxy_->NvmeAsync(kNvmeShortSelfTestOption,
-                           CreateSuccessCallback(callback),
-                           CreateErrorCallback(callback));
+    OnceStringResultCallback callback) {
+  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
+  debugd_proxy_->NvmeAsync(kNvmeShortSelfTestOption, std::move(on_success),
+                           std::move(on_error));
 }
 
-void DebugdAdapterImpl::RunNvmeLongSelfTest(
-    const StringResultCallback& callback) {
-  debugd_proxy_->NvmeAsync(kNvmeLongSelfTestOption,
-                           CreateSuccessCallback(callback),
-                           CreateErrorCallback(callback));
+void DebugdAdapterImpl::RunNvmeLongSelfTest(OnceStringResultCallback callback) {
+  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
+  debugd_proxy_->NvmeAsync(kNvmeLongSelfTestOption, std::move(on_success),
+                           std::move(on_error));
 }
 
-void DebugdAdapterImpl::StopNvmeSelfTest(const StringResultCallback& callback) {
-  debugd_proxy_->NvmeAsync(kNvmeStopSelfTestOption,
-                           CreateSuccessCallback(callback),
-                           CreateErrorCallback(callback));
+void DebugdAdapterImpl::StopNvmeSelfTest(OnceStringResultCallback callback) {
+  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
+  debugd_proxy_->NvmeAsync(kNvmeStopSelfTestOption, std::move(on_success),
+                           std::move(on_error));
 }
 
 void DebugdAdapterImpl::GetNvmeLog(uint32_t page_id,
                                    uint32_t length,
                                    bool raw_binary,
-                                   const StringResultCallback& callback) {
+                                   OnceStringResultCallback callback) {
+  auto [on_success, on_error] = SplitStringResultCallback(std::move(callback));
   debugd_proxy_->NvmeLogAsync(page_id, length, raw_binary,
-                              CreateSuccessCallback(callback),
-                              CreateErrorCallback(callback));
+                              std::move(on_success), std::move(on_error));
 }
 
 }  // namespace diagnostics

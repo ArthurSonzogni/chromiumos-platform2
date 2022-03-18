@@ -1073,10 +1073,11 @@ TEST_F(BootstrappedCoreTest, GetConfigurationDataFromBrowser) {
 TEST_F(BootstrappedCoreTest, GetDriveSystemData) {
   constexpr char kFakeSmartctlData[] = "Fake smartctl data";
   EXPECT_CALL(*core_delegate()->debugd_adapter(), GetSmartAttributes(_))
-      .WillOnce(WithArg<0>(
-          [kFakeSmartctlData](
-              const base::Callback<void(const std::string&, brillo::Error*)>&
-                  callback) { callback.Run(kFakeSmartctlData, nullptr); }));
+      .WillOnce(
+          WithArg<0>([kFakeSmartctlData](
+                         DebugdAdapter::OnceStringResultCallback callback) {
+            std::move(callback).Run(kFakeSmartctlData, nullptr);
+          }));
   std::unique_ptr<grpc_api::GetDriveSystemDataResponse> response;
   {
     base::RunLoop run_loop;

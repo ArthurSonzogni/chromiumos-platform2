@@ -73,8 +73,10 @@ class AudioEventsImplTest : public testing::Test {
   }
 
   // Simulate signal is fired and then callback is run.
-  void InvokeUnderrunEvent() { underrun_callback_.Run(); }
-  void InvokeSevereUnderrunEvent() { severe_underrun_callback_.Run(); }
+  void InvokeUnderrunEvent() { std::move(underrun_callback_).Run(); }
+  void InvokeSevereUnderrunEvent() {
+    std::move(severe_underrun_callback_).Run();
+  }
 
   MockAudioObserver* mock_observer() { return observer_.get(); }
 
@@ -83,8 +85,8 @@ class AudioEventsImplTest : public testing::Test {
   MockContext mock_context_;
   std::unique_ptr<AudioEventsImpl> audio_events_impl_;
   std::unique_ptr<StrictMock<MockAudioObserver>> observer_;
-  base::Callback<void()> underrun_callback_;
-  base::Callback<void()> severe_underrun_callback_;
+  base::OnceCallback<void()> underrun_callback_;
+  base::OnceCallback<void()> severe_underrun_callback_;
 };
 
 TEST_F(AudioEventsImplTest, UnderrunEvent) {
