@@ -3,8 +3,6 @@
 # found in the LICENSE file.
 
 access: 1
-faccessat: 1
-faccessat2: 1
 arch_prctl: 1
 brk: 1
 chdir: 1
@@ -18,6 +16,8 @@ dup: 1
 execve: 1
 exit: 1
 exit_group: 1
+faccessat2: 1
+faccessat: 1
 fcntl: 1
 fstat: 1
 fstatfs: 1
