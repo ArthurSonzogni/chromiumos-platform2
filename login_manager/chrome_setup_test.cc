@@ -351,12 +351,4 @@ TEST(TestAddCrashHandlerFlag, Breakpad) {
   EXPECT_THAT(builder.arguments(), ElementsAre("--no-enable-crashpad"));
 }
 
-TEST(AddVmodulePatterns, AddsArcVmoduleFlagWhenCheetsInUse) {
-  base::ScopedTempDir temp_dir;
-  ChromiumCommandBuilder builder;
-  InitWithUseFlag("cheets", &temp_dir, &builder);
-  AddVmodulePatterns(&builder);
-  EXPECT_THAT(builder.arguments(), Contains(HasSubstr("*arc/*")));
-}
-
 }  // namespace login_manager

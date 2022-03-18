@@ -953,28 +953,6 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
   SetUpHasHpsFlag(builder, cros_config);
 }
 
-// Adds patterns to the --vmodule flag.
-void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
-  // Turn on basic logging for Ozone platform implementations.
-  builder->AddVmodulePattern("*/ui/ozone/*=1");
-
-  // Turn on basic logging for full restore.
-  builder->AddVmodulePattern("*/browser/ash/app_restore/*=1");
-
-  // Turn on OOBE/Login logs.
-  builder->AddVmodulePattern("*/browser/ash/login/screens/*=1");
-  builder->AddVmodulePattern("*/webui/chromeos/login/*=1");
-  builder->AddVmodulePattern("wizard_controller=1");
-  builder->AddVmodulePattern("existing_user_controller=1");
-
-  // TODO(https://crbug.com/907158): Needed for investigating issues with tablet
-  // mode detection and internal input device event blocking logic.
-  builder->AddVmodulePattern("*/ash/wm/tablet_mode/*=1");
-
-  if (builder->UseFlagIsSet("cheets"))
-    builder->AddVmodulePattern("*arc/*=1");
-}
-
 void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
                         bool* is_developer_end_user_out,
                         std::map<std::string, std::string>* env_vars_out,
@@ -1003,7 +981,6 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   AddBorealisFlags(&builder);
   AddLacrosFlags(&builder);
   AddEnterpriseFlags(&builder);
-  AddVmodulePatterns(&builder);
   AddCrashHandlerFlag(&builder);
   AddMlFlags(&builder, cros_config);
 

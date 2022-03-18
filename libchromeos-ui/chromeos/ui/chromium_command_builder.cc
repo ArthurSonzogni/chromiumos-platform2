@@ -248,6 +248,8 @@ bool ChromiumCommandBuilder::ApplyUserConfig(
     return false;
   }
 
+  bool has_vmodule_flag = false;
+
   std::vector<std::string> lines = base::SplitString(
       data, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
@@ -278,6 +280,7 @@ bool ChromiumCommandBuilder::ApplyUserConfig(
     // November 2017; we continue supporting them for backwards compatibility
     // with existing configs and developer behavior.
     if (name == kVmoduleFlag || name == std::string("--") + kVmoduleFlag) {
+      has_vmodule_flag = true;
       for (const auto& pattern : SplitFlagValues(value))
         AddVmodulePattern(pattern);
     } else if (name == kEnableFeaturesFlag ||
@@ -298,6 +301,13 @@ bool ChromiumCommandBuilder::ApplyUserConfig(
     } else if (!HasPrefix(line, disallowed_prefixes)) {
       AddArg(line);
     }
+  }
+
+  if (has_vmodule_flag) {
+    LOG(WARNING) << "--vmodule detected. Note that Ash Chrome on ChromeOS "
+                    "defaults to use build-time VLOG so --vmodule is ignored. "
+                    "To use --vmodule, Please make sure your chrome is built "
+                    "with `use_runtime_vlog = true` gn arg.";
   }
 
   return true;
