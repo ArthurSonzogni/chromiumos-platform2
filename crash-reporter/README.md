@@ -123,6 +123,7 @@ More details on each can be found in the sections below.
 * [crash-reporter-early-init.conf]: One-off early boot initialization
   (before stateful is mounted).
 * [crash-sender.conf]: Background daemon for uploading reports.
+* [crash-sender-login.conf]: One-off instance of crash-sender to run on login.
 
 ## Initialization
 

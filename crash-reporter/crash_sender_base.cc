@@ -144,6 +144,11 @@ void RecordCrashDone() {
     // third_party/autotest/files/client/cros/crash/crash_test.py and
     // platform/tast-tests/src/chromiumos/tast/local/crash/sender.go
     LOG(INFO) << "crash_sender done. (mock)";
+    base::FilePath done_file =
+        paths::GetAt(paths::kSystemRunStateDirectory, paths::kCrashSenderDone);
+    if (base::WriteFile(done_file, "", 0) != 0) {
+      PLOG(ERROR) << "Error writing out crash-sender-done file: " << done_file;
+    }
   }
 }
 

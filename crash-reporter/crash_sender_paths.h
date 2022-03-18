@@ -25,6 +25,11 @@ constexpr char kCrashSenderStateDirectory[] = "/var/lib/crash_sender/state";
 // Chrome's crash report log file.
 constexpr char kChromeCrashLog[] = "/var/log/chrome/Crash Reports/uploads.log";
 
+// File indicating that crash-sender ran and finished (only used during
+// integration test or mock runs).
+// MUST MATCH sender_login.go in tast-tests repo.
+constexpr char kCrashSenderDone[] = "crash-sender-done";
+
 }  // namespace paths
 
 #endif  // CRASH_REPORTER_CRASH_SENDER_PATHS_H_
