@@ -87,8 +87,10 @@ class AuthSession final {
 
   // AddCredentials is called when newly created or existing user wants to add
   // new credentials.
-  user_data_auth::CryptohomeErrorCode AddCredentials(
-      const user_data_auth::AddCredentialsRequest& request);
+  void AddCredentials(
+      const user_data_auth::AddCredentialsRequest& request,
+      base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
+          on_done);
 
   // UpdateCredential is called when an existing user wants to update
   // an existing credential.
@@ -196,6 +198,30 @@ class AuthSession final {
   std::unique_ptr<Credentials> GetCredentials(
       const cryptohome::AuthorizationRequest& authorization_request,
       MountError* error);
+
+  // Determines which AuthBlockType to use, instantiates an AuthBlock of that
+  // type, and uses that AuthBlock to derive KeyBlobs for the AuthSession to
+  // add a VaultKeyset.
+  void CreateKeyBlobsToAddKeyset(
+      const Credentials& credentials,
+      bool initial_keyset,
+      base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
+          on_done);
+
+  // Adds VaultKeyset for the |obfuscated_username_| by calling
+  // KeysetManagement::AddInitialKeyset() or KeysetManagement::AddKeyset()
+  // based on whether any keyset is generated for the user or not. This function
+  // is needed for processing callback results in an asynchronous manner through
+  // |on_done| callback.
+  void AddVaultKeyset(
+      const KeyData& key_data,
+      const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
+          challenge_credentials_keyset_info,
+      base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
+          on_done,
+      CryptoError callback_error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_state);
 
   user_data_auth::CryptohomeErrorCode AddAuthFactorViaUserSecretStash(
       AuthFactorType auth_factor_type,

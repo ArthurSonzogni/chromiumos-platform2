@@ -13,6 +13,7 @@
 #include <utility>
 
 #include <base/callback_helpers.h>
+#include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/timer/mock_timer.h>
 #include <brillo/cryptohome.h>
@@ -22,6 +23,7 @@
 #include <libhwsec-foundation/crypto/aes.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
@@ -231,8 +233,15 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  // For AuthSession::AddInitialKeyset/AddKeyset callback to properly
+  // execute auth_block_utility_ cannot be a mock
+  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_ =
+      std::make_unique<AuthBlockUtilityImpl>(&keyset_management_, &crypto_,
+                                             &platform_);
+  // Setting the expectation that the user does not exist.
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_, &auth_block_utility_,
+                           &crypto_, &keyset_management_,
+                           auth_block_utility_impl_.get(),
                            &auth_factor_manager_, &user_secret_stash_storage_);
 
   // Test.
@@ -247,15 +256,22 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
 
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _))
+  EXPECT_CALL(keyset_management_,
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+
+  base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)> on_done =
+      base::BindLambdaForTesting(
+          [](const user_data_auth::AddCredentialsReply& reply) {
+            // Evaluate error returned by callback.
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
+          });
 
   // Verify.
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               auth_session.OnUserCreated());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
-  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-              auth_session.AddCredentials(add_cred_request));
+  auth_session.AddCredentials(add_cred_request, std::move(on_done));
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
@@ -265,12 +281,24 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
 TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   // Setup.
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // For AuthSession::AddInitialKeyset/AddKeyset callback to properly
+  // execute auth_block_utility_ cannot be a mock
+  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_ =
+      std::make_unique<AuthBlockUtilityImpl>(&keyset_management_, &crypto_,
+                                             &platform_);
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   AuthSession auth_session(kFakeUsername, flags,
                            /*on_timeout=*/base::DoNothing(), &crypto_,
-                           &keyset_management_, &auth_block_utility_,
+                           &keyset_management_, auth_block_utility_impl_.get(),
                            &auth_factor_manager_, &user_secret_stash_storage_);
+
+  base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)> on_done =
+      base::BindLambdaForTesting(
+          [](const user_data_auth::AddCredentialsReply& reply) {
+            // Evaluate error returned by callback.
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
+          });
 
   // Test adding the first credential.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
@@ -284,16 +312,23 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
 
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _))
+  EXPECT_CALL(keyset_management_,
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
       .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               auth_session.OnUserCreated());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
-  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-              auth_session.AddCredentials(add_cred_request));
+  auth_session.AddCredentials(add_cred_request, std::move(on_done));
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   // Test adding the second credential.
+  // Set up expectation in callback for success.
+  base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
+      other_on_done = base::BindLambdaForTesting(
+          [](const user_data_auth::AddCredentialsReply& reply) {
+            // Evaluate error returned by callback.
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
+          });
   user_data_auth::AddCredentialsRequest add_other_cred_request;
   cryptohome::AuthorizationRequest* other_authorization_request =
       add_other_cred_request.mutable_authorization();
@@ -301,11 +336,9 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   other_authorization_request->mutable_key()->mutable_data()->set_label(
       kFakeOtherLabel);
 
-  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _))
+  EXPECT_CALL(keyset_management_, AddKeysetWithKeyBlobs(_, _, _, _, _, _))
       .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
-
-  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-              auth_session.AddCredentials(add_other_cred_request));
+  auth_session.AddCredentials(add_other_cred_request, std::move(other_on_done));
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
@@ -381,11 +414,19 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
   authorization_request->mutable_key()->set_secret(kFakePass);
   authorization_request->mutable_key()->mutable_data()->set_label(kFakeLabel);
 
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _)).Times(0);
+  EXPECT_CALL(keyset_management_,
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+      .Times(0);
+
+  base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)> on_done =
+      base::BindLambdaForTesting(
+          [](const user_data_auth::AddCredentialsReply& reply) {
+            // Evaluate error returned by callback.
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
+          });
 
   // Verify.
-  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-              auth_session.AddCredentials(add_cred_request));
+  auth_session.AddCredentials(add_cred_request, std::move(on_done));
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 

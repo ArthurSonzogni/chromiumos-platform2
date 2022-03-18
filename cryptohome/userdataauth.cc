@@ -3484,8 +3484,7 @@ bool UserDataAuth::AddCredentials(
 
   // Add credentials using data in AuthorizationRequest and
   // auth_session_token.
-  reply.set_error(auth_session->AddCredentials(request));
-  std::move(on_done).Run(reply);
+  auth_session->AddCredentials(request, std::move(on_done));
   return true;
 }
 
