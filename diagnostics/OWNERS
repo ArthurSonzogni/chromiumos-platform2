@@ -2,10 +2,12 @@
 lamzin@google.com
 mgawad@google.com
 
-# cros_healthd owners:
+# healthd owners:
 menghuan@chromium.org
 kerker@chromium.org
-chungsheng@chromium.org
+chungsheng@google.com
+dennyh@google.com
+weiluanwang@google.com
 
 # Backup Wilco reviewers:
 emaxx@chromium.org
