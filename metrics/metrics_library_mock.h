@@ -33,14 +33,17 @@ class MetricsLibraryMock : public MetricsLibraryInterface {
               (override));
 #endif
   bool AreMetricsEnabled() override { return metrics_enabled_; }
+  bool UsePerUserMetricsConsent() override { return use_per_user_; }
   bool IsGuestMode() override { return guest_mode_; }
 
   void set_metrics_enabled(bool value) { metrics_enabled_ = value; }
+  void set_use_per_user(bool value) { use_per_user_ = value; }
   void set_guest_mode(bool value) { guest_mode_ = value; }
 
  private:
   bool metrics_enabled_ = true;
   bool guest_mode_ = false;
+  bool use_per_user_ = false;
 };
 
 #endif  // METRICS_METRICS_LIBRARY_MOCK_H_

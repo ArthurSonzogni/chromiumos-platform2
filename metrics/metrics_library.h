@@ -22,6 +22,7 @@ class MetricsLibraryInterface {
  public:
   virtual void Init() = 0;  // TODO(chromium:940343): Remove this function.
   virtual bool AreMetricsEnabled() = 0;
+  virtual bool UsePerUserMetricsConsent() { return false; }
   virtual bool IsGuestMode() = 0;
   virtual bool SendToUMA(
       const std::string& name, int sample, int min, int max, int nbuckets) = 0;
@@ -214,7 +215,7 @@ class MetricsLibrary : public MetricsLibraryInterface {
 
   // Determine whether to use per-user metrics consent.
   // TODO(b/214111113): Enable by default when all CLs are ready to go.
-  bool UsePerUserMetricsConsent();
+  bool UsePerUserMetricsConsent() override;
 
   void SetConsentFileForTest(const base::FilePath& consent_file);
 

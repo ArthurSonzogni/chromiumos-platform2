@@ -393,6 +393,21 @@ SenderBase::Action Sender::ChooseAction(const base::FilePath& meta_file,
     return kIgnore;
   }
   if (!HasCrashUploadingConsent()) {
+    // When using per-user consent, it's possible that user A consented to crash
+    // collection, a crash occurred which logged them out or caused the system
+    // to reboot, and then the crash was written to the system directory. Then,
+    // user B might log in, who does not consent to crash reporting.
+    // In such a case, we still may upload the crash when user A logs in, so do
+    // *not* delete the crash -- instead, wait for a consenting user to log in.
+    // This should not cause the crash directory to fill up, because if there is
+    // no consent for an extended period of time, we will not write any new
+    // crashes to the spool directory.
+    if (metrics_lib_->UsePerUserMetricsConsent() &&
+        (paths::Get(paths::kSystemCrashDirectory).IsParent(meta_file) ||
+         paths::Get(paths::kFallbackUserCrashDirectory).IsParent(meta_file))) {
+      *reason = "Crash sending delayed for system dir due to lack of consent";
+      return kIgnore;
+    }
     *reason = "Crash reporting is disabled";
     // Note that this will probably not actually be sent (since there's no
     // consent). Record it for completion and in case the user later enables

@@ -536,7 +536,14 @@ class CrashSenderUtilTest : public testing::Test {
   bool SetConditions(BuildType build_type,
                      SessionType session_type,
                      MetricsFlag metrics_flag) {
-    return SetConditions(build_type, session_type, metrics_flag,
+    return SetConditions(build_type, session_type, metrics_flag, false,
+                         metrics_lib_.get());
+  }
+  bool SetConditions(BuildType build_type,
+                     SessionType session_type,
+                     MetricsFlag metrics_flag,
+                     bool use_per_user) {
+    return SetConditions(build_type, session_type, metrics_flag, use_per_user,
                          metrics_lib_.get());
   }
 
@@ -547,11 +554,20 @@ class CrashSenderUtilTest : public testing::Test {
                             SessionType session_type,
                             MetricsFlag metrics_flag,
                             MetricsLibraryMock* metrics_lib) {
+    return SetConditions(build_type, session_type, metrics_flag, false,
+                         metrics_lib);
+  }
+  static bool SetConditions(BuildType build_type,
+                            SessionType session_type,
+                            MetricsFlag metrics_flag,
+                            bool use_per_user,
+                            MetricsLibraryMock* metrics_lib) {
     if (!CreateLsbReleaseFile(build_type))
       return false;
 
     metrics_lib->set_guest_mode(session_type == kGuestMode);
     metrics_lib->set_metrics_enabled(metrics_flag == kMetricsEnabled);
+    metrics_lib->set_use_per_user(use_per_user);
 
     return true;
   }
@@ -1045,6 +1061,19 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   ASSERT_TRUE(SetConditions(kOfficialBuild, kGuestMode, kMetricsDisabled,
                             raw_metrics_lib));
   EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
+
+  // Valid crash files in the system directory should be ignored if metrics are
+  // disabled.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled, true,
+                            raw_metrics_lib));
+  EXPECT_EQ(Sender::kIgnore, sender.ChooseAction(good_meta_, &reason, &info));
+  EXPECT_THAT(reason, HasSubstr("delayed for system dir"));
+
+  // Valid crash files in the system directory should be sent if metrics are
+  // enabled and we're using per-user consent.
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled, true,
+                            raw_metrics_lib));
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(good_meta_, &reason, &info));
 }
 
 // Test that when force_upload_on_test_images is set, we set hwtest_suite_run.
