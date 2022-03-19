@@ -187,8 +187,7 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   // remove this check. b/219677829
   if (!ValidateStartArcVmRequest(&request)) {
     response.set_failure_reason("Invalid request");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+    return response;
   }
 
   std::vector<Disk> disks;
