@@ -118,6 +118,7 @@ _IUSE = [
     'prjquota',
     'profiling',
     'qrtr',
+    'report_requisition',
     'selinux',
     'slow_mount',
     'systemd',
