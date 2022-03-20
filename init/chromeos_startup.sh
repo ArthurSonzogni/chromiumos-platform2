@@ -120,8 +120,8 @@ check_clock() {
   # the system where this image was built/modified, and on the runtime image
   # (in case a dev modified random paths while the clock was out of sync).
   # Calculated using: date -d"01 Jan $(date +%Y) UTC" +%s
-  local year="2021"
-  local base_secs="1609459200"
+  local year="2022"
+  local base_secs="1640995200"
 
   # See if the current time is older than our fixed time.  If so, pull up.
   if [ "$(date -u +%s)" -lt "${base_secs}" ]; then
