@@ -73,6 +73,7 @@ AuthSession::AuthSession(
     std::string username,
     unsigned int flags,
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
+    Crypto* crypto,
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
@@ -84,12 +85,14 @@ AuthSession::AuthSession(
           AuthSession::GetSerializedStringFromToken(token_).value_or("")),
       is_ephemeral_user_(flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
       on_timeout_(std::move(on_timeout)),
+      crypto_(crypto),
       keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
       user_secret_stash_storage_(user_secret_stash_storage) {
   // Preconditions.
   DCHECK(!serialized_token_.empty());
+  DCHECK(crypto_);
   DCHECK(keyset_management_);
   DCHECK(auth_block_utility_);
   DCHECK(auth_factor_manager_);

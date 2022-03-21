@@ -15,6 +15,7 @@
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session.h"
+#include "cryptohome/crypto.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/user_secret_stash_storage.h"
 
@@ -22,9 +23,11 @@ namespace cryptohome {
 
 class AuthSessionManager {
  public:
-  // The `KeysetManagement*`, `AuthBlockUtility*`, `AuthFactorManager*`,
-  // `UserSecretStashStorage*` are unowned and must outlive the created object.
+  // The `Crypto`, `KeysetManagement*`, `AuthBlockUtility*`,
+  // `AuthFactorManager*`, `UserSecretStashStorage*` are unowned and must
+  // outlive the created object.
   explicit AuthSessionManager(
+      Crypto* crypto,
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
@@ -50,6 +53,8 @@ class AuthSessionManager {
   AuthSession* FindAuthSession(const std::string& serialized_token) const;
 
  private:
+  // Unowned; must outlive `this`.
+  Crypto* const crypto_;
   // Unowned; must outlive `this`.
   KeysetManagement* const keyset_management_;
   // Unowned; must outlive `this`.

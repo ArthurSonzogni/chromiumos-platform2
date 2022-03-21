@@ -14,6 +14,7 @@
 
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
+#include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/user_secret_stash_storage.h"
@@ -30,6 +31,7 @@ class AuthSessionManagerTest : public ::testing::Test {
   AuthSessionManagerTest& operator=(AuthSessionManagerTest&) = delete;
 
  protected:
+  NiceMock<MockCrypto> crypto_;
   NiceMock<MockPlatform> platform_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
@@ -57,7 +59,7 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
   UserSecretStashStorage user_secret_stash_storage(&platform);
   NiceMock<MockAuthBlockUtility> auth_block_utility;
   AuthSessionManager auth_session_manager(
-      &keyset_management, &auth_block_utility, &auth_factor_manager,
+      &crypto_, &keyset_management, &auth_block_utility, &auth_factor_manager,
       &user_secret_stash_storage);
 
   AuthSession* auth_session =
@@ -89,7 +91,7 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
   UserSecretStashStorage user_secret_stash_storage(&platform);
   NiceMock<MockAuthBlockUtility> auth_block_utility;
   AuthSessionManager auth_session_manager(
-      &keyset_management, &auth_block_utility, &auth_factor_manager,
+      &crypto_, &keyset_management, &auth_block_utility, &auth_factor_manager,
       &user_secret_stash_storage);
 
   AuthSession* auth_session =

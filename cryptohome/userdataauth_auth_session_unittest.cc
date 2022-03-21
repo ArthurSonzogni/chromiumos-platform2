@@ -66,8 +66,8 @@ class AuthSessionInterfaceTest : public ::testing::Test {
 
   void SetUp() override {
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        &keyset_management_, &auth_block_utility_, &auth_factor_manager_,
-        &user_secret_stash_storage_);
+        &crypto_, &keyset_management_, &auth_block_utility_,
+        &auth_factor_manager_, &user_secret_stash_storage_);
 
     userdataauth_.set_platform(&platform_);
     userdataauth_.set_homedirs(&homedirs_);

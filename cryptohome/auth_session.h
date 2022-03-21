@@ -24,6 +24,7 @@
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/crypto.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -59,6 +60,7 @@ class AuthSession final {
       std::string username,
       unsigned int flags,
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
+      Crypto* crypto,
       KeysetManagement* keyset_management,
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
@@ -222,6 +224,9 @@ class AuthSession final {
   std::unique_ptr<UserSecretStash> user_secret_stash_;
   // The UserSecretStash main key. Only populated iff |user_secret_stash_| is.
   std::optional<brillo::SecureBlob> user_secret_stash_main_key_;
+  // The creator of the AuthSession object is responsible for the life of
+  // Crypto object.
+  Crypto* const crypto_;
   // The creator of the AuthSession object is responsible for the life of
   // KeysetManagement object.
   // TODO(crbug.com/1171024): Change KeysetManagement to use AuthBlock.

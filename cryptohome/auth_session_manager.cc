@@ -21,15 +21,18 @@
 namespace cryptohome {
 
 AuthSessionManager::AuthSessionManager(
+    Crypto* crypto,
     KeysetManagement* keyset_management,
     AuthBlockUtility* auth_block_utility,
     AuthFactorManager* auth_factor_manager,
     UserSecretStashStorage* user_secret_stash_storage)
-    : keyset_management_(keyset_management),
+    : crypto_(crypto),
+      keyset_management_(keyset_management),
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
       user_secret_stash_storage_(user_secret_stash_storage) {
   // Preconditions
+  DCHECK(crypto_);
   DCHECK(keyset_management_);
   DCHECK(auth_block_utility_);
   DCHECK(auth_factor_manager_);
@@ -44,7 +47,7 @@ AuthSession* AuthSessionManager::CreateAuthSession(
                                    base::Unretained(this));
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   std::unique_ptr<AuthSession> auth_session = std::make_unique<AuthSession>(
-      account_id, flags, std::move(on_timeout), keyset_management_,
+      account_id, flags, std::move(on_timeout), crypto_, keyset_management_,
       auth_block_utility_, auth_factor_manager_, user_secret_stash_storage_);
 
   auto token = auth_session->token();
