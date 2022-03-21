@@ -103,6 +103,7 @@ _IUSE = [
     'msan',
     'mtd',
     'ndk_translation',
+    'oemcrypto_v16',
     'ondevice_document_scanner',
     'ondevice_grammar',
     'ondevice_handwriting',
