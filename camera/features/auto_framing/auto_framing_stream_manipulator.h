@@ -21,6 +21,9 @@
 #include "features/auto_framing/auto_framing_client.h"
 #include "features/auto_framing/face_tracker.h"
 #include "features/auto_framing/frame_cropper.h"
+#include "gpu/egl/egl_context.h"
+#include "gpu/image_processor.h"
+#include "gpu/shared_image.h"
 
 namespace cros {
 
@@ -102,19 +105,30 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   CaptureContext* CreateCaptureContext(uint32_t frame_number);
   CaptureContext* GetCaptureContext(uint32_t frame_number) const;
 
+  // Crops |input_yuv| into |output_yuv| with the |crop_region|.
+  base::ScopedFD CropBufferOnThread(buffer_handle_t input_yuv,
+                                    base::ScopedFD input_fence,
+                                    buffer_handle_t output_yuv,
+                                    base::ScopedFD output_fence,
+                                    const Rect<float>& crop_region);
+
   ReloadableConfigFile config_;
 
   Options options_;
 
+  std::unique_ptr<EglContext> egl_context_;
+  std::unique_ptr<GpuImageProcessor> image_processor_;
+
   // Determined by static camera metadata and fixed after Initialize().
   Size active_array_dimension_;
   Size full_frame_size_;
-
+  Rect<float> full_frame_crop_;
   int partial_result_count_ = 0;
 
   // Per-stream-config contexts.
   std::vector<camera3_stream_t*> client_streams_;
   camera3_stream_t full_frame_stream_ = {};
+  const camera3_stream_t* target_output_stream_ = nullptr;
   bool override_crop_window_ = false;
   std::map<uint32_t, std::unique_ptr<CaptureContext>> capture_contexts_;
 

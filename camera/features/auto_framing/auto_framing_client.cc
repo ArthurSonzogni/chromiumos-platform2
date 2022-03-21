@@ -17,6 +17,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/common.h"
 
 namespace cros {
@@ -32,21 +33,6 @@ constexpr uint32_t kInputBufferUsage = GRALLOC_USAGE_HW_TEXTURE |
 
 constexpr char kAutoFramingGraphConfigOverridePath[] =
     "/run/camera/auto_framing_subgraph.pbtxt";
-
-Rect<uint32_t> GetCenteringFullCrop(Size size,
-                                    uint32_t aspect_ratio_x,
-                                    uint32_t aspect_ratio_y) {
-  uint32_t crop_width = size.width;
-  uint32_t crop_height = size.height;
-  if (size.width * aspect_ratio_y >= size.height * aspect_ratio_x) {
-    crop_width = size.height * aspect_ratio_x / aspect_ratio_y;
-  } else {
-    crop_height = size.width * aspect_ratio_y / aspect_ratio_x;
-  }
-  uint32_t dx = (size.width - crop_width) / 2;
-  uint32_t dy = (size.height - crop_height) / 2;
-  return Rect<uint32_t>(dx, dy, crop_width, crop_height);
-}
 
 }  // namespace
 

@@ -21,6 +21,7 @@
 #include <base/task/bind_post_task.h>
 
 #include "cros-camera/camera_metadata_utils.h"
+#include "gpu/egl/egl_fence.h"
 
 namespace cros {
 
@@ -131,55 +132,66 @@ std::vector<T> CopyToVector(base::span<const T> src) {
   return std::vector<T>(src.begin(), src.end());
 }
 
-Rect<float> NormalizeRect(const Rect<uint32_t>& rect, const Size& size) {
-  return Rect<float>(
-      static_cast<float>(rect.left) / static_cast<float>(size.width),
-      static_cast<float>(rect.top) / static_cast<float>(size.height),
-      static_cast<float>(rect.width) / static_cast<float>(size.width),
-      static_cast<float>(rect.height) / static_cast<float>(size.height));
-}
-
-Rect<uint32_t> AdjustCropRectForScalingToTarget(const Size& size,
-                                                const Rect<uint32_t>& rect,
-                                                const Size& target_size) {
-  // Try extend |rect| to the same aspect ratio as |target_size| within |size|.
-  uint32_t x, y, w, h;
-  if (rect.width * target_size.height <= target_size.width * rect.height) {
-    w = static_cast<uint32_t>(static_cast<double>(rect.height) /
-                                  target_size.height * target_size.width +
-                              0.5);
+Rect<float> AdjustCropRectToTargetAspectRatio(const Rect<float>& rect,
+                                              float target_aspect_ratio) {
+  const float aspect_ratio = rect.width / rect.height;
+  float x, y, w, h;
+  if (aspect_ratio <= target_aspect_ratio) {
+    w = rect.height * target_aspect_ratio;
     h = rect.height;
-    if (w > size.width) {
-      w = size.width;
-      h = static_cast<uint32_t>(static_cast<double>(size.width) /
-                                    target_size.width * target_size.height +
-                                0.5);
+    if (w > 1.0f) {
+      w = 1.0f;
+      h = 1.0f / target_aspect_ratio;
     }
-    uint32_t dx = (w - rect.width) / 2;
-    x = rect.left < dx ? 0
-                       : (rect.left - dx + w > size.width ? size.width - w
-                                                          : rect.left - dx);
+    const float dx = (w - rect.width) * 0.5f;
+    x = std::clamp(rect.left - dx, 0.0f, 1.0f - w);
     // Prefer cropping from bottom to avoid cropping head region.
     y = rect.top;
   } else {
     w = rect.width;
-    h = static_cast<uint32_t>(static_cast<double>(rect.width) /
-                                  target_size.width * target_size.height +
-                              0.5);
-    if (h > size.height) {
-      w = static_cast<uint32_t>(static_cast<double>(size.height) /
-                                    target_size.height * target_size.width +
-                                0.5);
-      h = size.height;
+    h = rect.width / target_aspect_ratio;
+    if (h > 1.0f) {
+      w = target_aspect_ratio;
+      h = 1.0f;
     }
-    uint32_t dx = (rect.width - w) / 2;
-    uint32_t dy = (h - rect.height) / 2;
+    const float dx = (rect.width - w) * 0.5f;
+    const float dy = (h - rect.height) * 0.5f;
     x = rect.left + dx;
-    y = rect.top < dy ? 0
-                      : (rect.top - dy + h > size.height ? size.height - h
-                                                         : rect.top - dy);
+    y = std::clamp(rect.top - dy, 0.0f, 1.0f - h);
   }
-  return Rect<uint32_t>(x, y, w, h);
+  return Rect<float>(x, y, w, h);
+}
+
+// Converts |rect| to the simulated active array region corresponding to the
+// |crop_region| seen by the client.  |rect| and |crop_region| coordinates are
+// relative to the active array size.
+Rect<float> ConvertToCropSpace(const Rect<float>& rect,
+                               const Rect<float>& crop_region) {
+  const float active_region_dim =
+      std::max(crop_region.width, crop_region.height);
+  const float active_region_x =
+      crop_region.left + (crop_region.width - active_region_dim) * 0.5f;
+  const float active_region_y =
+      crop_region.top + (crop_region.height - active_region_dim) * 0.5f;
+  const float mapped_rect_x0 =
+      std::clamp((rect.left - active_region_x) / active_region_dim, 0.0f, 1.0f);
+  const float mapped_rect_y0 =
+      std::clamp((rect.top - active_region_y) / active_region_dim, 0.0f, 1.0f);
+  const float mapped_rect_x1 = std::clamp(
+      (rect.right() - active_region_x) / active_region_dim, 0.0f, 1.0f);
+  const float mapped_rect_y1 = std::clamp(
+      (rect.bottom() - active_region_y) / active_region_dim, 0.0f, 1.0f);
+  return Rect<float>(mapped_rect_x0, mapped_rect_y0,
+                     mapped_rect_x1 - mapped_rect_x0,
+                     mapped_rect_y1 - mapped_rect_y0);
+}
+
+Rect<float> ConvertToParentSpace(const Rect<float>& rect,
+                                 const Rect<float>& crop_region) {
+  return Rect<float>(rect.left * crop_region.width + crop_region.left,
+                     rect.top * crop_region.height + crop_region.top,
+                     rect.width * crop_region.width,
+                     rect.height * crop_region.height);
 }
 
 std::pair<uint32_t, uint32_t> GetAspectRatio(const Size& size) {
@@ -316,6 +328,11 @@ bool AutoFramingStreamManipulator::InitializeOnThread(
   VLOGF(1) << "Full frame size for auto-framing: "
            << full_frame_size_.ToString();
 
+  full_frame_crop_ = NormalizeRect(
+      GetCenteringFullCrop(active_array_dimension_, full_frame_size_.width,
+                           full_frame_size_.height),
+      active_array_dimension_);
+
   return true;
 }
 
@@ -335,7 +352,6 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
   // Filter client streams into |hal_streams| that will be requested to the HAL.
   client_streams_ = CopyToVector(stream_config->GetStreams());
   std::vector<camera3_stream_t*> hal_streams;
-  const camera3_stream_t* target_output_stream = nullptr;
   for (auto* s : client_streams_) {
     hal_streams.push_back(s);
     if (IsStreamBypassed(s)) {
@@ -344,19 +360,19 @@ bool AutoFramingStreamManipulator::ConfigureStreamsOnThread(
     // Choose the output stream of the largest resolution for matching the crop
     // window aspect ratio. Prefer taller size since extending crop windows
     // horizontally (for other outputs) looks better.
-    if (!target_output_stream || s->height > target_output_stream->height ||
-        (s->height == target_output_stream->height &&
-         s->width > target_output_stream->width)) {
-      target_output_stream = s;
+    if (!target_output_stream_ || s->height > target_output_stream_->height ||
+        (s->height == target_output_stream_->height &&
+         s->width > target_output_stream_->width)) {
+      target_output_stream_ = s;
     }
   }
-  if (!target_output_stream) {
+  if (!target_output_stream_) {
     LOGF(ERROR) << "No valid output stream found in stream config";
     return false;
   }
-  VLOGF(1) << "Target output stream: " << GetDebugString(target_output_stream);
+  VLOGF(1) << "Target output stream: " << GetDebugString(target_output_stream_);
   auto [target_aspect_ratio_x, target_aspect_ratio_y] = GetAspectRatio(
-      Size(target_output_stream->width, target_output_stream->height));
+      Size(target_output_stream_->width, target_output_stream_->height));
 
   // Create a stream to run auto-framing on.
   full_frame_stream_ = camera3_stream_t{
@@ -437,7 +453,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
 
   if (VLOG_IS_ON(2)) {
     VLOGFID(2, request->frame_number())
-        << " Request stream buffers from client:";
+        << "Request stream buffers from client:";
     for (auto& b : request->GetOutputBuffers()) {
       VLOGF(2) << "  " << GetDebugString(b.stream);
     }
@@ -483,7 +499,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureRequestOnThread(
   request->SetOutputBuffers(hal_buffers);
 
   if (VLOG_IS_ON(2)) {
-    VLOGFID(2, request->frame_number()) << " Request stream buffers to HAL:";
+    VLOGFID(2, request->frame_number()) << "Request stream buffers to HAL:";
     for (auto& b : request->GetOutputBuffers()) {
       VLOGF(2) << "  " << GetDebugString(b.stream);
     }
@@ -497,7 +513,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   DCHECK(thread_.IsCurrentThread());
 
   if (VLOG_IS_ON(2)) {
-    VLOGFID(2, result->frame_number()) << " Result stream buffers from HAL:";
+    VLOGFID(2, result->frame_number()) << "Result stream buffers from HAL:";
     for (auto& b : result->GetOutputBuffers()) {
       VLOGF(2) << "  " << GetDebugString(b.stream);
     }
@@ -514,6 +530,21 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     return true;
   }
 
+  if (face_tracker_) {
+    // Using face detector.
+    if (result->feature_metadata().faces) {
+      face_tracker_->OnNewFaceData(*result->feature_metadata().faces);
+      faces_ = face_tracker_->GetActiveFaceRectangles();
+      region_of_interest_ =
+          face_tracker_->GetActiveBoundingRectangleOnActiveStream();
+      frame_cropper_->OnNewRegionOfInterest(result->frame_number(),
+                                            region_of_interest_);
+    }
+  }
+
+  // Update face metadata using the last framing information.
+  UpdateFaceRectangleMetadataOnThread(result);
+
   if (!ctx->timestamp.has_value()) {
     ctx->timestamp = TryGetSensorTimestamp(result);
   }
@@ -524,15 +555,6 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     return b.stream == &full_frame_stream_;
   });
   if (it == hal_buffers.end()) {
-    // Partial result.
-    if (!std::all_of(hal_buffers.begin(), hal_buffers.end(),
-                     [](const camera3_stream_buffer_t& b) {
-                       return IsStreamBypassed(b.stream);
-                     })) {
-      LOGF(ERROR) << "Unexpected output stream received in result "
-                  << result->frame_number();
-      return false;
-    }
     return true;
   }
   full_frame_buffer = *it;
@@ -549,18 +571,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     return false;
   }
 
-  if (face_tracker_) {
-    // Using face detector.
-    if (result->feature_metadata().faces) {
-      face_tracker_->OnNewFaceData(*result->feature_metadata().faces);
-      faces_ = face_tracker_->GetActiveFaceRectangles();
-      region_of_interest_ =
-          face_tracker_->GetActiveBoundingRectangleOnActiveStream();
-      frame_cropper_->OnNewRegionOfInterest(result->frame_number(),
-                                            region_of_interest_);
-    }
-    UpdateFaceRectangleMetadataOnThread(result);
-  } else {
+  if (!face_tracker_) {
     // Using FPP detector.
     if (!ctx->timestamp.has_value()) {
       VLOGF(1) << "Sensor timestamp not found for result "
@@ -584,45 +595,47 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
       return false;
     }
 
-    if (!override_crop_window_) {
-      std::optional<Rect<uint32_t>> roi =
-          auto_framing_client_.TakeNewRegionOfInterest();
-      if (roi) {
+    std::optional<Rect<uint32_t>> roi =
+        auto_framing_client_.TakeNewRegionOfInterest();
+    if (roi) {
+      region_of_interest_ = NormalizeRect(*roi, full_frame_size_);
+      if (!override_crop_window_) {
         DCHECK_NE(frame_cropper_, nullptr);
-        frame_cropper_->OnNewRegionOfInterest(
-            result->frame_number(), NormalizeRect(*roi, full_frame_size_));
+        frame_cropper_->OnNewRegionOfInterest(result->frame_number(),
+                                              region_of_interest_);
       }
     }
   }
 
   // Crop the full frame into client buffers.
-  DCHECK_NE(frame_cropper_, nullptr);
+  if (override_crop_window_) {
+    active_crop_region_ =
+        NormalizeRect(auto_framing_client_.GetCropWindow(), full_frame_size_);
+  } else {
+    DCHECK_NE(frame_cropper_, nullptr);
+    active_crop_region_ =
+        frame_cropper_->ComputeActiveCropRegion(result->frame_number());
+  }
   for (auto& b : ctx->client_buffers) {
-    if (b.acquire_fence != -1) {
-      if (sync_wait(b.acquire_fence, kSyncWaitTimeoutMs) != 0) {
-        LOGF(ERROR) << "sync_wait() client buffers timed out on capture result "
-                    << result->frame_number();
-        return false;
-      }
-      close(b.acquire_fence);
-      b.acquire_fence = -1;
-    }
-    std::optional<Rect<float>> crop_override;
+    Rect<float> crop_region;
     if (options_.debug) {
       // In debug mode we draw the crop area on the full frame instead.
-      crop_override = std::make_optional<Rect<float>>(0.0f, 0.0f, 1.0f, 1.0f);
-    } else if (override_crop_window_) {
-      Rect<uint32_t> crop_window_for_output = AdjustCropRectForScalingToTarget(
-          full_frame_size_, auto_framing_client_.GetCropWindow(),
-          Size(b.stream->width, b.stream->height));
-      crop_override = std::make_optional<Rect<float>>(
-          NormalizeRect(crop_window_for_output, full_frame_size_));
+      crop_region =
+          NormalizeRect(GetCenteringFullCrop(full_frame_size_, b.stream->width,
+                                             b.stream->height),
+                        full_frame_size_);
+    } else {
+      crop_region = AdjustCropRectToTargetAspectRatio(
+          active_crop_region_,
+          static_cast<float>(full_frame_size_.height * b.stream->width) /
+              static_cast<float>(full_frame_size_.width * b.stream->height));
     }
-    base::ScopedFD release_fence = frame_cropper_->CropBuffer(
-        base::checked_cast<int>(result->frame_number()),
+    base::ScopedFD release_fence = CropBufferOnThread(
         *full_frame_buffer.buffer,
         base::ScopedFD(full_frame_buffer.release_fence), *b.buffer,
-        crop_override);
+        base::ScopedFD(b.acquire_fence), crop_region);
+    full_frame_buffer.release_fence = -1;
+    b.acquire_fence = -1;
     b.release_fence = release_fence.release();
   }
 
@@ -644,7 +657,7 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
   capture_contexts_.erase(result->frame_number());
 
   if (VLOG_IS_ON(2)) {
-    VLOGFID(2, result->frame_number()) << " Result stream buffers to client:";
+    VLOGFID(2, result->frame_number()) << "Result stream buffers to client:";
     for (auto& b : result->GetOutputBuffers()) {
       VLOGF(2) << "  " << GetDebugString(b.stream);
     }
@@ -687,8 +700,29 @@ bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
   override_crop_window_ = options_.motion_model == MotionModel::kLibAutoFraming;
 
   frame_cropper_ = std::make_unique<FrameCropper>(
-      FrameCropper::Options{.input_size = full_frame_size_},
+      FrameCropper::Options{
+          .input_size = full_frame_size_,
+          .target_aspect_ratio_x = target_aspect_ratio_x,
+          .target_aspect_ratio_y = target_aspect_ratio_y,
+      },
       thread_.task_runner());
+
+  if (!egl_context_) {
+    egl_context_ = EglContext::GetSurfacelessContext();
+    if (!egl_context_->IsValid()) {
+      LOGF(ERROR) << "Failed to create EGL context";
+      return false;
+    }
+  }
+  if (!egl_context_->MakeCurrent()) {
+    LOGF(ERROR) << "Failed to make EGL context current";
+    return false;
+  }
+  image_processor_ = std::make_unique<GpuImageProcessor>();
+  if (!image_processor_) {
+    LOGF(ERROR) << "Failed to create GpuImageProcessor";
+    return false;
+  }
 
   return true;
 }
@@ -701,14 +735,18 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
     return;
   }
 
+  const Rect<float> roi_in_active_array =
+      ConvertToParentSpace(region_of_interest_, full_frame_crop_);
+  const Rect<float> crop_in_active_array =
+      ConvertToParentSpace(active_crop_region_, full_frame_crop_);
+
   std::vector<Rect<float>> face_rectangles;
   if (options_.debug) {
     // Show the detected faces, aggregated region of interest and the active
     // crop region in debug mode.
     face_rectangles = faces_;
-    face_rectangles.push_back(region_of_interest_);
-    Rect<float> active_crop_region = frame_cropper_->GetActiveCropRegion();
-    face_rectangles.push_back(active_crop_region);
+    face_rectangles.push_back(roi_in_active_array);
+    face_rectangles.push_back(crop_in_active_array);
     if (!result->UpdateMetadata<uint8_t>(
             ANDROID_STATISTICS_FACE_DETECT_MODE,
             (uint8_t[]){ANDROID_STATISTICS_FACE_DETECT_MODE_SIMPLE})) {
@@ -724,22 +762,24 @@ void AutoFramingStreamManipulator::UpdateFaceRectangleMetadataOnThread(
     }
     for (size_t i = 0; i < raw_face_rectangles.size(); i += 4) {
       const int* rect_bound = &raw_face_rectangles[i];
-      face_rectangles.push_back(Rect<float>(
-          static_cast<float>(rect_bound[0]) / active_array_dimension_.width,
-          static_cast<float>(rect_bound[1]) / active_array_dimension_.height,
-          static_cast<float>(rect_bound[2] - rect_bound[0]) /
-              active_array_dimension_.width,
-          static_cast<float>(rect_bound[3] - rect_bound[1]) /
-              active_array_dimension_.height));
+      Rect<float> rect = NormalizeRect(
+          Rect<int>(rect_bound[0], rect_bound[1], rect_bound[2] - rect_bound[0],
+                    rect_bound[3] - rect_bound[1])
+              .AsRect<uint32_t>(),
+          active_array_dimension_);
+      face_rectangles.push_back(ConvertToCropSpace(rect, crop_in_active_array));
     }
-    frame_cropper_->ConvertToCropSpace(&face_rectangles);
   }
   std::vector<int32_t> face_coordinates;
   for (const auto& f : face_rectangles) {
-    face_coordinates.push_back(f.left * active_array_dimension_.width);
-    face_coordinates.push_back(f.top * active_array_dimension_.height);
-    face_coordinates.push_back(f.right() * active_array_dimension_.width);
-    face_coordinates.push_back(f.bottom() * active_array_dimension_.height);
+    face_coordinates.push_back(static_cast<int32_t>(
+        f.left * static_cast<float>(active_array_dimension_.width)));
+    face_coordinates.push_back(static_cast<int32_t>(
+        f.top * static_cast<float>(active_array_dimension_.height)));
+    face_coordinates.push_back(static_cast<int32_t>(
+        f.right() * static_cast<float>(active_array_dimension_.width)));
+    face_coordinates.push_back(static_cast<int32_t>(
+        f.bottom() * static_cast<float>(active_array_dimension_.height)));
   }
   if (!result->UpdateMetadata<int32_t>(ANDROID_STATISTICS_FACE_RECTANGLES,
                                        face_coordinates)) {
@@ -780,8 +820,13 @@ void AutoFramingStreamManipulator::ResetOnThread() {
 
   client_streams_.clear();
   full_frame_stream_ = {};
+  target_output_stream_ = nullptr;
   capture_contexts_.clear();
   full_frame_buffer_pool_.reset();
+
+  faces_.clear();
+  region_of_interest_ = Rect<float>(0.0f, 0.0f, 1.0f, 1.0f);
+  active_crop_region_ = Rect<float>(0.0f, 0.0f, 1.0f, 1.0f);
 }
 
 void AutoFramingStreamManipulator::UpdateOptionsOnThread(
@@ -840,6 +885,35 @@ AutoFramingStreamManipulator::GetCaptureContext(uint32_t frame_number) const {
     return nullptr;
   }
   return it->second.get();
+}
+
+base::ScopedFD AutoFramingStreamManipulator::CropBufferOnThread(
+    buffer_handle_t input_yuv,
+    base::ScopedFD input_release_fence,
+    buffer_handle_t output_yuv,
+    base::ScopedFD output_acquire_fence,
+    const Rect<float>& crop_region) {
+  DCHECK(thread_.IsCurrentThread());
+
+  if (input_release_fence.is_valid() &&
+      sync_wait(input_release_fence.get(), kSyncWaitTimeoutMs) != 0) {
+    LOGF(ERROR) << "sync_wait() timed out on input buffer";
+  }
+  if (output_acquire_fence.is_valid() &&
+      sync_wait(output_acquire_fence.get(), kSyncWaitTimeoutMs) != 0) {
+    LOGF(ERROR) << "sync_wait() timed out on output buffer";
+  }
+
+  SharedImage input_image = SharedImage::CreateFromBuffer(
+      input_yuv, Texture2D::Target::kTarget2D, true);
+  SharedImage output_image = SharedImage::CreateFromBuffer(
+      output_yuv, Texture2D::Target::kTarget2D, true);
+  image_processor_->CropYuv(input_image.y_texture(), input_image.uv_texture(),
+                            crop_region, output_image.y_texture(),
+                            output_image.uv_texture());
+
+  EglFence fence;
+  return fence.GetNativeFd();
 }
 
 }  // namespace cros

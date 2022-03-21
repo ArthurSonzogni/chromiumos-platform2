@@ -11,9 +11,9 @@
 
 #include <sync/sync.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "common/reloadable_config_file.h"
 #include "cros-camera/common.h"
-#include "gpu/egl/egl_fence.h"
 
 namespace cros {
 
@@ -46,8 +46,10 @@ FrameCropper::FrameCropper(
     const Options& options,
     scoped_refptr<base::SingleThreadTaskRunner> task_runner)
     : options_(options), task_runner_(task_runner) {
-  task_runner_->PostTask(FROM_HERE, base::BindOnce(&FrameCropper::SetUpPipeline,
-                                                   base::Unretained(this)));
+  active_crop_region_ = NormalizeRect(
+      GetCenteringFullCrop(options_.input_size, options_.target_aspect_ratio_x,
+                           options_.target_aspect_ratio_y),
+      options_.input_size);
 }
 
 void FrameCropper::OnNewFaceRegions(int frame_number,
@@ -93,68 +95,6 @@ void FrameCropper::OnNewRegionOfInterest(int frame_number,
   ComputeActiveCropRegion(frame_number);
 }
 
-base::ScopedFD FrameCropper::CropBuffer(
-    int frame_number,
-    buffer_handle_t input_yuv,
-    base::ScopedFD input_acquire_fence,
-    buffer_handle_t output_yuv,
-    std::optional<Rect<float>> crop_override) {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-
-  Rect<float> crop;
-  if (crop_override) {
-    crop = *crop_override;
-  } else {
-    ComputeActiveCropRegion(frame_number);
-    crop = active_crop_region_;
-  }
-  if (input_acquire_fence.is_valid()) {
-    sync_wait(input_acquire_fence.get(), 300);
-  }
-  SharedImage input_image = SharedImage::CreateFromBuffer(
-      input_yuv, Texture2D::Target::kTarget2D, true);
-  SharedImage output_image = SharedImage::CreateFromBuffer(
-      output_yuv, Texture2D::Target::kTarget2D, true);
-  image_processor_->CropYuv(input_image.y_texture(), input_image.uv_texture(),
-                            crop, y_intermediate_.texture(),
-                            uv_intermediate_.texture());
-  image_processor_->YUVToYUV(
-      y_intermediate_.texture(), uv_intermediate_.texture(),
-      output_image.y_texture(), output_image.uv_texture());
-  EglFence fence;
-  return fence.GetNativeFd();
-}
-
-void FrameCropper::ConvertToCropSpace(
-    std::vector<Rect<float>>* rectangles) const {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-
-  auto transform_x = [&](float in_x) -> float {
-    float mapped_x = std::clamp(
-        (in_x - active_crop_region_.left) / active_crop_region_.width, 0.0f,
-        1.0f);
-    return mapped_x;
-  };
-  auto transform_y = [&](float in_y) -> float {
-    float mapped_y = std::clamp(
-        (in_y - active_crop_region_.top) / active_crop_region_.height, 0.0f,
-        1.0f);
-    return mapped_y;
-  };
-  for (auto& r : *rectangles) {
-    const float left = transform_x(r.left);
-    const float top = transform_y(r.top);
-    r = Rect<float>(left, top, transform_x(r.right()) - left,
-                    transform_y(r.bottom()) - top);
-  }
-}
-
-Rect<float> FrameCropper::GetActiveCropRegion() const {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-
-  return active_crop_region_;
-}
-
 void FrameCropper::OnOptionsUpdated(const base::Value& json_values) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
@@ -170,37 +110,7 @@ void FrameCropper::OnOptionsUpdated(const base::Value& json_values) {
            << " crop_filter_strength=" << options_.crop_filter_strength;
 }
 
-void FrameCropper::SetUpPipeline() {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-
-  if (!egl_context_) {
-    egl_context_ = EglContext::GetSurfacelessContext();
-    if (!egl_context_->IsValid()) {
-      LOGF(ERROR) << "Failed to create EGL context";
-      return;
-    }
-  }
-  if (!egl_context_->MakeCurrent()) {
-    LOGF(ERROR) << "Failed to make EGL context current";
-    return;
-  }
-  image_processor_ = std::make_unique<GpuImageProcessor>();
-  if (!image_processor_) {
-    LOGF(ERROR) << "Failed to create GpuImageProcessor";
-    return;
-  }
-  y_intermediate_ = SharedImage::CreateFromGpuTexture(
-      GL_R8, options_.input_size.width, options_.input_size.height);
-  uv_intermediate_ = SharedImage::CreateFromGpuTexture(
-      GL_RG8, options_.input_size.width / 2, options_.input_size.height / 2);
-  if (!y_intermediate_.texture().IsValid() ||
-      !uv_intermediate_.texture().IsValid()) {
-    LOGF(ERROR) << "Failed to create intermediate textures";
-    return;
-  }
-}
-
-void FrameCropper::ComputeActiveCropRegion(int frame_number) {
+Rect<float> FrameCropper::ComputeActiveCropRegion(int frame_number) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   const float min_crop_size = 1.0f / options_.max_zoom_ratio;
@@ -210,10 +120,20 @@ void FrameCropper::ComputeActiveCropRegion(int frame_number) {
   const float new_y_crop_size =
       std::clamp(region_of_interest_.height * options_.target_crop_to_roi_ratio,
                  min_crop_size, 1.0f);
-  const float new_crop_size = std::max(new_x_crop_size, new_y_crop_size);
+  // We expand the raw crop region to match the desired output aspect ratio.
+  const float target_aspect_ratio =
+      static_cast<float>(options_.input_size.height) /
+      static_cast<float>(options_.input_size.width) *
+      static_cast<float>(options_.target_aspect_ratio_x) /
+      static_cast<float>(options_.target_aspect_ratio_y);
   Rect<float> new_crop;
-  new_crop.width = new_crop_size;
-  new_crop.height = new_crop_size;
+  if (new_x_crop_size <= new_y_crop_size * target_aspect_ratio) {
+    new_crop.width = std::min(new_y_crop_size * target_aspect_ratio, 1.0f);
+    new_crop.height = new_crop.width / target_aspect_ratio;
+  } else {
+    new_crop.height = std::min(new_x_crop_size / target_aspect_ratio, 1.0f);
+    new_crop.width = new_crop.height * target_aspect_ratio;
+  }
 
   const float roi_x_mid =
       region_of_interest_.left + (region_of_interest_.width / 2);
@@ -242,6 +162,7 @@ void FrameCropper::ComputeActiveCropRegion(int frame_number) {
     DVLOGFID(2, frame_number) << "new_crop_region=" << new_crop;
     DVLOGFID(2, frame_number) << "active_crop_region=" << active_crop_region_;
   }
+  return active_crop_region_;
 }
 
 }  // namespace cros

@@ -31,6 +31,10 @@ class FrameCropper {
     // The input buffer dimension in pixels.
     Size input_size;
 
+    // The target aspect ratio of the cropped region.
+    uint32_t target_aspect_ratio_x = 16;
+    uint32_t target_aspect_ratio_y = 9;
+
     // The maximum allowed zoom ratio.
     float max_zoom_ratio = 2.0f;
 
@@ -60,40 +64,19 @@ class FrameCropper {
                         const std::vector<Rect<float>>& faces);
   void OnNewRegionOfInterest(int frame_number, const Rect<float>& roi);
 
-  // Crops |input_yuv| into |output_yuv| with the active crop region, or with
-  // |crop_override| if given.
-  base::ScopedFD CropBuffer(
-      int frame_number,
-      buffer_handle_t input_yuv,
-      base::ScopedFD input_acquire_fence,
-      buffer_handle_t output_yuv,
-      std::optional<Rect<float>> crop_override = std::nullopt);
-
-  // Translates the coordinates of the normalized rectangles |rectangles| in the
-  // global active array space to normalized rectangles in the crop space.
-  void ConvertToCropSpace(std::vector<Rect<float>>* rectangles) const;
-
-  // Gets the active region, out of the full frame area, that needs to be
-  // cropped to emulate PTZ.
-  Rect<float> GetActiveCropRegion() const;
+  // Computes and gets the active region, out of the full frame area, that needs
+  // to be cropped to emulate PTZ.
+  Rect<float> ComputeActiveCropRegion(int frame_number);
 
   void OnOptionsUpdated(const base::Value& json_values);
 
  private:
-  void SetUpPipeline();
-  void ComputeActiveCropRegion(int frame_number);
-
   Options options_;
   scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
   Rect<float> region_of_interest_ = {0.0f, 0.0f, 1.0f, 1.0f};
   Rect<float> active_crop_region_ = {0.0f, 0.0f, 1.0f, 1.0f};
   base::TimeTicks timestamp_ = base::TimeTicks::Max();
-
-  std::unique_ptr<EglContext> egl_context_;
-  std::unique_ptr<GpuImageProcessor> image_processor_;
-  SharedImage y_intermediate_;
-  SharedImage uv_intermediate_;
 };
 
 }  // namespace cros

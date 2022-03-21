@@ -41,6 +41,20 @@ inline bool HaveSameAspectRatio(const camera3_stream_t* s1,
   return (s1->width * s2->height == s1->height * s2->width);
 }
 
+inline Rect<float> NormalizeRect(const Rect<uint32_t>& rect, const Size& size) {
+  return Rect<float>(
+      static_cast<float>(rect.left) / static_cast<float>(size.width),
+      static_cast<float>(rect.top) / static_cast<float>(size.height),
+      static_cast<float>(rect.width) / static_cast<float>(size.width),
+      static_cast<float>(rect.height) / static_cast<float>(size.height));
+}
+
+// Returns the maximum centering crop window within |size| with the specified
+// aspect ratio.
+Rect<uint32_t> GetCenteringFullCrop(Size size,
+                                    uint32_t aspect_ratio_x,
+                                    uint32_t aspect_ratio_y);
+
 // A container for passing metadata across different StreamManipulator instances
 // to allow different feature implementations to communicate with one another.
 struct FeatureMetadata {
