@@ -94,8 +94,10 @@ class AuthSession final {
 
   // UpdateCredential is called when an existing user wants to update
   // an existing credential.
-  user_data_auth::CryptohomeErrorCode UpdateCredential(
-      const user_data_auth::UpdateCredentialRequest& request);
+  void UpdateCredential(
+      const user_data_auth::UpdateCredentialRequest& request,
+      base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+          on_done);
 
   // AddCredentials is called when newly created or existing user wants to add
   // new credentials.
@@ -207,6 +209,13 @@ class AuthSession final {
       bool initial_keyset,
       base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
           on_done);
+  // Determines which AuthBlockType to use, instantiates an AuthBlock of that
+  // type, and uses that AuthBlock to create KeyBlobs for the AuthSession to
+  // update a VaultKeyset.
+  void CreateKeyBlobsToUpdateKeyset(
+      const Credentials& credentials,
+      base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+          on_done);
 
   // Adds VaultKeyset for the |obfuscated_username_| by calling
   // KeysetManagement::AddInitialKeyset() or KeysetManagement::AddKeyset()
@@ -218,6 +227,19 @@ class AuthSession final {
       const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
           challenge_credentials_keyset_info,
       base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
+          on_done,
+      CryptoError callback_error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_state);
+
+  // Updates a VaultKeyset for the |obfuscated_username_| by calling
+  // KeysetManagement::UpdateKeysetWithKeyBlobs(). The VaultKeyset and it's
+  // corresponding label are updated through the information provided by
+  // |key_data|. This function is needed for processing callback results in an
+  // asynchronous manner through |on_done| callback.
+  void UpdateVaultKeyset(
+      const KeyData& key_data,
+      base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
           on_done,
       CryptoError callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,

@@ -385,35 +385,118 @@ void AuthSession::AddVaultKeyset(
   return;
 }
 
-user_data_auth::CryptohomeErrorCode AuthSession::UpdateCredential(
-    const user_data_auth::UpdateCredentialRequest& request) {
+void AuthSession::UpdateCredential(
+    const user_data_auth::UpdateCredentialRequest& request,
+    base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+        on_done) {
   MountError code;
+  user_data_auth::UpdateCredentialReply reply;
   CHECK(request.authorization().key().has_data());
   auto credentials = GetCredentials(request.authorization(), &code);
   if (!credentials) {
-    return MountErrorToCryptohomeError(code);
+    reply.set_error(MountErrorToCryptohomeError(code));
+    std::move(on_done).Run(reply);
+    return;
   }
 
   // Can't update kiosk key for an existing user.
   if (credentials->key_data().type() == KeyData::KEY_TYPE_KIOSK) {
     LOG(ERROR) << "Add Credentials: tried adding kiosk auth for user";
-    return MountErrorToCryptohomeError(MOUNT_ERROR_UNPRIVILEGED_KEY);
+    reply.set_error(MountErrorToCryptohomeError(MOUNT_ERROR_UNPRIVILEGED_KEY));
+    std::move(on_done).Run(reply);
+    return;
   }
 
   // To update a key, we need to ensure that the existing label and the new
   // label match.
   if (credentials->key_data().label() != request.old_credential_label()) {
     LOG(ERROR) << "AuthorizationRequest does not have a matching label";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(reply);
+    return;
   }
 
   // At this point we have to have keyset since we have to be authed.
   if (status_ != AuthStatus::kAuthStatusAuthenticated) {
-    return user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION;
+    reply.set_error(
+        user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
+    std::move(on_done).Run(reply);
+    return;
   }
 
-  return static_cast<user_data_auth::CryptohomeErrorCode>(
-      keyset_management_->UpdateKeyset(*credentials, *vault_keyset_));
+  CreateKeyBlobsToUpdateKeyset(*credentials.get(), std::move(on_done));
+  return;
+}
+
+void AuthSession::CreateKeyBlobsToUpdateKeyset(
+    const Credentials& credentials,
+    base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+        on_done) {
+  user_data_auth::UpdateCredentialReply reply;
+
+  bool is_le_credential =
+      credentials.key_data().policy().low_entropy_credential();
+  bool is_challenge_credential =
+      credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE;
+
+  AuthBlockType auth_block_type;
+  auth_block_type = auth_block_utility_->GetAuthBlockTypeForCreation(
+      is_le_credential, is_challenge_credential);
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    reply.set_error(static_cast<user_data_auth::CryptohomeErrorCode>(
+        CryptohomeErrorCode::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
+    std::move(on_done).Run(reply);
+    return;
+  }
+  if (auth_block_type == AuthBlockType::kChallengeCredential) {
+    LOG(ERROR) << "UpdateCredentials: ChallengeCredential not supported";
+    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+    std::move(on_done).Run(reply);
+    return;
+  }
+
+  std::optional<brillo::SecureBlob> reset_secret;
+  if (auth_block_type == AuthBlockType::kPinWeaver) {
+    reset_secret = vault_keyset_->GetOrGenerateResetSecret();
+  }
+
+  // Create and initialize fields for auth_input.
+  AuthInput auth_input = {credentials.passkey(),
+                          /*locked_to_single_user=*/std::nullopt,
+                          obfuscated_username_, reset_secret};
+
+  AuthBlock::CreateCallback create_callback =
+      base::BindOnce(&AuthSession::UpdateVaultKeyset, base::Unretained(this),
+                     credentials.key_data(), std::move(on_done));
+  auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
+      auth_block_type, auth_input, std::move(create_callback));
+  return;
+}
+
+void AuthSession::UpdateVaultKeyset(
+    const KeyData& key_data,
+    base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+        on_done,
+    CryptoError callback_error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::unique_ptr<AuthBlockState> auth_state) {
+  user_data_auth::UpdateCredentialReply reply;
+  if (callback_error != CryptoError::CE_NONE || key_blobs == nullptr ||
+      auth_state == nullptr) {
+    LOG(ERROR) << "KeyBlobs derivation failed before updating keyset.";
+    reply.set_error(
+        static_cast<user_data_auth::CryptohomeErrorCode>(callback_error));
+    std::move(on_done).Run(reply);
+    return;
+  }
+  user_data_auth::CryptohomeErrorCode error_code =
+      static_cast<user_data_auth::CryptohomeErrorCode>(
+          keyset_management_->UpdateKeysetWithKeyBlobs(
+              obfuscated_username_, key_data, *vault_keyset_.get(),
+              std::move(*key_blobs.get()), std::move(auth_state)));
+  reply.set_error(error_code);
+  std::move(on_done).Run(reply);
+  return;
 }
 
 user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(

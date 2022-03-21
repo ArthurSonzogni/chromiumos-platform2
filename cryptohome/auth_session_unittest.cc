@@ -431,7 +431,7 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
 }
 
 // Test if AuthSession correctly updates existing credentials for a new user.
-TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAUthSession) {
+TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAuthSession) {
   // Setup.
   bool called = false;
   auto on_timeout = base::BindOnce(
@@ -451,22 +451,36 @@ TEST_F(AuthSessionTest, UpdateCredentialUnauthenticatedAUthSession) {
   update_cred_request.set_old_credential_label(kFakeLabel);
 
   // Test.
-  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION,
-              auth_session.UpdateCredential(update_cred_request));
+  base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+      on_done = base::BindLambdaForTesting(
+          [](const user_data_auth::UpdateCredentialReply& reply) {
+            // Evaluate error returned by callback.
+            EXPECT_EQ(
+                user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION,
+                reply.error());
+          });
+  auth_session.UpdateCredential(update_cred_request, std::move(on_done));
 }
 
 // Test if AuthSession correctly updates existing credentials for a new user.
-TEST_F(AuthSessionTest, UpdateCredentialuccess) {
+TEST_F(AuthSessionTest, UpdateCredentialSuccess) {
   // Setup.
   bool called = false;
   auto on_timeout = base::BindOnce(
       [](bool& called, const base::UnguessableToken&) { called = true; },
       std::ref(called));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // For AuthSession::UpdateKeyset callback to properly
+  // execute auth_block_utility_ cannot be a mock
+  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_ =
+      std::make_unique<AuthBlockUtilityImpl>(&keyset_management_, &crypto_,
+                                             &platform_);
+
   // Setting the expectation that the user does exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   AuthSession auth_session(kFakeUsername, flags, std::move(on_timeout),
-                           &crypto_, &keyset_management_, &auth_block_utility_,
+                           &crypto_, &keyset_management_,
+                           auth_block_utility_impl_.get(),
                            &auth_factor_manager_, &user_secret_stash_storage_);
   auth_session.SetStatus(AuthStatus::kAuthStatusAuthenticated);
   user_data_auth::UpdateCredentialRequest update_cred_request;
@@ -477,10 +491,15 @@ TEST_F(AuthSessionTest, UpdateCredentialuccess) {
   update_cred_request.set_old_credential_label(kFakeLabel);
 
   // Test.
-  EXPECT_CALL(keyset_management_, UpdateKeyset(_, _))
+  EXPECT_CALL(keyset_management_, UpdateKeysetWithKeyBlobs(_, _, _, _, _))
       .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
-  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
-              auth_session.UpdateCredential(update_cred_request));
+  base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+      on_done = base::BindLambdaForTesting(
+          [](const user_data_auth::UpdateCredentialReply& reply) {
+            // Evaluate error returned by callback.
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
+          });
+  auth_session.UpdateCredential(update_cred_request, std::move(on_done));
 }
 // Test if AuthSession correctly updates existing credentials for a new user.
 TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
@@ -503,8 +522,14 @@ TEST_F(AuthSessionTest, UpdateCredentialInvalidLabel) {
   update_cred_request.set_old_credential_label("wrong-label");
 
   // Test.
-  EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
-              auth_session.UpdateCredential(update_cred_request));
+  base::OnceCallback<void(const user_data_auth::UpdateCredentialReply&)>
+      on_done = base::BindLambdaForTesting(
+          [](const user_data_auth::UpdateCredentialReply& reply) {
+            // Evaluate error returned by callback.
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT,
+                      reply.error());
+          });
+  auth_session.UpdateCredential(update_cred_request, std::move(on_done));
 }
 
 // Test that the UserSecretStash isn't created by default when a new user is

@@ -3506,8 +3506,7 @@ void UserDataAuth::UpdateCredential(
   }
   // Update credentials using data in AuthorizationRequest and
   // auth_session_token.
-  reply.set_error(auth_session->UpdateCredential(request));
-  std::move(on_done).Run(reply);
+  auth_session->UpdateCredential(request, std::move(on_done));
   return;
 }
 
