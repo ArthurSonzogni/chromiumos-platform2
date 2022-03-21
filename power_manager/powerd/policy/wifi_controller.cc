@@ -76,7 +76,7 @@ void WifiController::Init(Delegate* delegate,
   }
 
   udev_->AddSubsystemObserver(kUdevSubsystem, this);
-  UpdateTransmitPower();
+  UpdateTransmitPower(TriggerSource::INIT);
 }
 
 void WifiController::HandleTabletModeChange(TabletMode mode) {
@@ -84,7 +84,7 @@ void WifiController::HandleTabletModeChange(TabletMode mode) {
     return;
 
   tablet_mode_ = mode;
-  UpdateTransmitPower();
+  UpdateTransmitPower(TriggerSource::TABLET_MODE);
 }
 
 void WifiController::HandleRegDomainChange(WifiRegDomain domain) {
@@ -92,7 +92,7 @@ void WifiController::HandleRegDomainChange(WifiRegDomain domain) {
     return;
 
   wifi_reg_domain_ = domain;
-  UpdateTransmitPower();
+  UpdateTransmitPower(TriggerSource::REG_DOMAIN);
 }
 
 void WifiController::ProximitySensorDetected(UserProximity value) {
@@ -109,73 +109,73 @@ void WifiController::HandleProximityChange(UserProximity proximity) {
     return;
 
   proximity_ = proximity;
-  UpdateTransmitPower();
+  UpdateTransmitPower(TriggerSource::PROXIMITY);
 }
 
 void WifiController::OnUdevEvent(const system::UdevEvent& event) {
   DCHECK_EQ(event.device_info.subsystem, kUdevSubsystem);
   if (event.action == system::UdevEvent::Action::ADD &&
       event.device_info.devtype == kUdevDevtype)
-    UpdateTransmitPower();
+    UpdateTransmitPower(TriggerSource::UDEV_EVENT);
 }
 
-void WifiController::UpdateTransmitPower() {
+void WifiController::UpdateTransmitPower(TriggerSource tr_source) {
   switch (update_power_input_source_) {
     case UpdatePowerInputSource::TABLET_MODE:
-      UpdateTransmitPowerForTabletMode();
+      UpdateTransmitPowerForTabletMode(tr_source);
       break;
     case UpdatePowerInputSource::PROXIMITY:
-      UpdateTransmitPowerForProximity();
+      UpdateTransmitPowerForProximity(tr_source);
       break;
     case UpdatePowerInputSource::STATIC_MODE:
-      UpdateTransmitPowerForStaticMode();
+      UpdateTransmitPowerForStaticMode(tr_source);
       break;
     case UpdatePowerInputSource::NONE:
       break;
   }
 }
 
-void WifiController::UpdateTransmitPowerForStaticMode() {
+void WifiController::UpdateTransmitPowerForStaticMode(TriggerSource tr_source) {
   switch (static_mode_) {
     case StaticMode::UNSUPPORTED:
       break;
     case StaticMode::HIGH_TRANSMIT_POWER:
       delegate_->SetWifiTransmitPower(RadioTransmitPower::HIGH,
-                                      wifi_reg_domain_);
+                                      wifi_reg_domain_, tr_source);
       break;
     case StaticMode::LOW_TRANSMIT_POWER:
-      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW,
-                                      wifi_reg_domain_);
+      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW, wifi_reg_domain_,
+                                      tr_source);
       break;
   }
 }
 
-void WifiController::UpdateTransmitPowerForTabletMode() {
+void WifiController::UpdateTransmitPowerForTabletMode(TriggerSource tr_source) {
   switch (tablet_mode_) {
     case TabletMode::UNSUPPORTED:
       break;
     case TabletMode::ON:
-      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW,
-                                      wifi_reg_domain_);
+      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW, wifi_reg_domain_,
+                                      tr_source);
       break;
     case TabletMode::OFF:
       delegate_->SetWifiTransmitPower(RadioTransmitPower::HIGH,
-                                      wifi_reg_domain_);
+                                      wifi_reg_domain_, tr_source);
       break;
   }
 }
 
-void WifiController::UpdateTransmitPowerForProximity() {
+void WifiController::UpdateTransmitPowerForProximity(TriggerSource tr_source) {
   switch (proximity_) {
     case UserProximity::UNKNOWN:
       break;
     case UserProximity::NEAR:
-      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW,
-                                      wifi_reg_domain_);
+      delegate_->SetWifiTransmitPower(RadioTransmitPower::LOW, wifi_reg_domain_,
+                                      tr_source);
       break;
     case UserProximity::FAR:
       delegate_->SetWifiTransmitPower(RadioTransmitPower::HIGH,
-                                      wifi_reg_domain_);
+                                      wifi_reg_domain_, tr_source);
       break;
   }
 }

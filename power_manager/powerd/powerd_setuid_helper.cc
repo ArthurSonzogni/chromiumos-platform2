@@ -82,6 +82,8 @@ int main(int argc, char* argv[]) {
               "Set wifi transmit power mode to tablet mode");
   DEFINE_string(wifi_transmit_power_domain, "",
                 "Regulatory domain for wifi transmit power");
+  DEFINE_string(wifi_transmit_power_source, "",
+                "The change source for wifi transmit power");
   DEFINE_bool(cellular_transmit_power_low, false,
               "Set cellular transmit power mode to low");
   DEFINE_int64(cellular_transmit_power_gpio, -1,
@@ -122,8 +124,9 @@ int main(int argc, char* argv[]) {
     const std::string tablet =
         FLAGS_wifi_transmit_power_tablet ? "--tablet" : "--notablet";
     const std::string domain = "--domain=" + FLAGS_wifi_transmit_power_domain;
+    const std::string source = "--source=" + FLAGS_wifi_transmit_power_source;
     RunCommand("set_wifi_transmit_power", tablet.c_str(), domain.c_str(),
-               nullptr);
+               source.c_str(), nullptr);
   } else if (FLAGS_action == "suspend") {
     std::string suspend_flavor = FLAGS_suspend_to_disk
                                      ? std::string("--suspend_to_disk")

@@ -429,6 +429,15 @@ enum class ModemState {
   UNKNOWN,
 };
 
+enum class TriggerSource {
+  INIT,
+  TABLET_MODE,
+  REG_DOMAIN,
+  PROXIMITY,
+  UDEV_EVENT,
+  UNKNOWN,
+};
+
 enum class CellularRegulatoryDomain {
   FCC,
   ISED,
