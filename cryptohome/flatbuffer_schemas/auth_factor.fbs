@@ -9,8 +9,11 @@ namespace cryptohome;
 // Metadata for a `PASSWORD` auth factor.
 table SerializedPasswordMetadata {}
 
+// Metadata for a `PIN` auth factor.
+table SerializedPinMetadata {}
+
 // Union that holds auth factor's metadata.
-union SerializedAuthFactorMetadata { SerializedPasswordMetadata }
+union SerializedAuthFactorMetadata { SerializedPasswordMetadata, SerializedPinMetadata }
 
 // Container that stores information about auth factor to be persisted on disk.
 table SerializedAuthFactor {
