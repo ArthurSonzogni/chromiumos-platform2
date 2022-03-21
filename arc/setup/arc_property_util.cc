@@ -456,23 +456,57 @@ StringPieceType SafelyReadFile(const base::FilePath& path,
 
 }  // namespace
 
-static bool ParseOneSocinfo(const base::FilePath& sysfs_machine_path,
+static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
                             std::string* dest) {
-  std::string machine;
+  auto machine_path = soc_dir_path.Append("machine");
+  auto family_path = soc_dir_path.Append("family");
+  auto soc_id_path = soc_dir_path.Append("soc_id");
+  std::string machine = "";
+  std::string family = "";
+  std::string soc_id = "";
 
-  // NOTE: Use base::ReadFileToString() instead of SafelyReadFile() on purpose
-  // because Linux sysfs expects symlink traversal.
-  if (!base::ReadFileToString(sysfs_machine_path, &machine)) {
-    PLOG(ERROR) << "Failed to read " << sysfs_machine_path;
-    return false;
+  // Different socinfo drivers expose different attributes.
+  // For simplicity we'll just end up with a empty string for any
+  // ones not present.
+  //
+  // NOTE: Use base::ReadFileToString() instead of SafelyReadFile() below
+  // on purpose because Linux sysfs expects symlink traversal.
+  if (base::PathExists(machine_path)) {
+    if (!base::ReadFileToString(machine_path, &machine))
+      PLOG(ERROR) << "Failed to read " << machine_path;
+  }
+  if (base::PathExists(family_path)) {
+    if (!base::ReadFileToString(family_path, &family))
+      PLOG(ERROR) << "Failed to read " << family_path;
+  }
+  if (base::PathExists(soc_id_path)) {
+    if (!base::ReadFileToString(soc_id_path, &soc_id))
+      PLOG(ERROR) << "Failed to read " << soc_id_path;
   }
 
-  // Rather than read the manufacturer ID from /proc/cpuinfo, we deduce it from
-  // the SOC model name.
-  // TODO(b/175610620): Also support Mediatek-ARM devices.
+  // There can be SoC-specif socinfo drivers in the kernel that have a
+  // table mapping IDs to nice names and avoids us having to have our own
+  // table here. For instance, Qualcomm SoCs have a driver for this. See
+  // "drivers/soc/qcom/socinfo.c" in the Linux kernel sources.
+  // That's how we get family = "Snapdragon" and machine = "SC7180".
+  //
+  // If we're running on an ARM SoC without a nice driver then we can fall
+  // back to something that just exposes what the firmware tells us. There
+  // we'll see something like family = "jep106:0070" and
+  // soc_id = "jep106:0070:7180". If we're running on an ARM SoC that only
+  // has what the firmware exposes then we'll need a table here for each
+  // SoC. TODO(b/175610620): Add some entries for Mediatek-ARM devices.
+  //
+  // NOTES:
+  // - On ARM devices /proc/cpuinfo _doesn't_ have details about the CPU model.
+  // - The "socinfo" drivers in the Linux kernel are somewhat recent but is
+  //   the official suggested way to get this info. A technique that used to
+  //   be used was to assume that "/proc/device-tree/compatible" had an entry
+  //   describing the SoC, but though we usually include the SoC there by
+  //   convention there is actually no requirement for it and future boards
+  //   might not include this info.
   std::string manufacturer;
-  if (machine == "SC7180\n") {
-    // For a Trogdor board.
+  if (family == "Snapdragon\n" && machine != "") {
     manufacturer = "Qualcomm";
   } else {
     return false;
@@ -496,11 +530,8 @@ void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
                                   soc_pattern);
 
   for (auto soc_dir_path = soc_dir_it.Next(); !found && !soc_dir_path.empty();
-       soc_dir_path = soc_dir_it.Next()) {
-    auto machine_path = soc_dir_path.Append("machine");
-    if (base::PathExists(machine_path))
-      found = ParseOneSocinfo(machine_path, dest);
-  }
+       soc_dir_path = soc_dir_it.Next())
+    found = ParseOneSocinfo(soc_dir_path, dest);
 
   if (!found)
     LOG(ERROR) << "Unknown ARM SoC";
