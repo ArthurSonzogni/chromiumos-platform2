@@ -237,6 +237,7 @@ void Daemon::OnModemCarrierIdReady(
 
   if (IsAutoUpdateDisabledByPref()) {
     LOG(INFO) << "Update disabled by pref";
+    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess();
     return;
   }
 
