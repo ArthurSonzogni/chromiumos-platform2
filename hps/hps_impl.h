@@ -88,6 +88,8 @@ class HPS_impl : public HPS {
   uint16_t hw_rev_;
   uint32_t stage1_version_;
   bool write_protect_off_;
+  bool mcu_update_sent_ = false;
+  bool spi_update_sent_ = false;
   uint16_t feat_enabled_;
   base::FilePath mcu_blob_;
   base::FilePath fpga_bitstream_;

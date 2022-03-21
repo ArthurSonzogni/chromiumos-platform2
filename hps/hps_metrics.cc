@@ -82,6 +82,8 @@ bool HpsMetrics::SendHpsTurnOnResult(HpsTurnOnResult result,
     case HpsTurnOnResult::kFault:
     case HpsTurnOnResult::kMcuUpdateFailure:
     case HpsTurnOnResult::kSpiUpdateFailure:
+    case HpsTurnOnResult::kMcuUpdatedThenFailed:
+    case HpsTurnOnResult::kSpiUpdatedThenFailed:
       metrics_lib_->SendToUMA(kHpsBootFailedDuration,
                               static_cast<int>(duration.InMilliseconds()), 1,
                               kHpsBootMaxDurationMilliSeconds, 50);

@@ -50,6 +50,10 @@ static constexpr base::TimeDelta kPowerOnDelay = base::Milliseconds(1000);
 // Time for letting the sensor settle after powering it off.
 static constexpr base::TimeDelta kPowerOffDelay = base::Milliseconds(100);
 
+// Special exit code to prevent upstart respawning us and crash
+// service-failure-hpsd from being uploaded. See normal exit.
+static constexpr int kNoRespawnExit = 5;
+
 // Initialise the firmware parameters.
 void HPS_impl::Init(uint32_t stage1_version,
                     const base::FilePath& mcu,
@@ -178,6 +182,14 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       }
       break;
     case BootResult::kUpdate:
+      if (mcu_update_sent_) {
+        LOG(ERROR) << "Failed to boot after MCU update, giving up";
+        hps_metrics_->SendHpsTurnOnResult(
+            HpsTurnOnResult::kMcuUpdatedThenFailed,
+            base::TimeTicks::Now() - this->boot_start_time_);
+        exit(kNoRespawnExit);
+      }
+      mcu_update_sent_ = true;
       SendStage1Update();
       return BootResult::kUpdate;
   }
@@ -195,6 +207,14 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       VLOG(1) << "Application Running";
       return BootResult::kOk;
     case BootResult::kUpdate:
+      if (spi_update_sent_) {
+        LOG(ERROR) << "Failed to boot after SPI update, giving up";
+        hps_metrics_->SendHpsTurnOnResult(
+            HpsTurnOnResult::kSpiUpdatedThenFailed,
+            base::TimeTicks::Now() - this->boot_start_time_);
+        exit(kNoRespawnExit);
+      }
+      spi_update_sent_ = true;
       SendApplicationUpdate();
       return BootResult::kUpdate;
   }

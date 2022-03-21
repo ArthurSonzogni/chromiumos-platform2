@@ -57,12 +57,20 @@ class HpsMetricsTest : public testing::Test {
 
 TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
   std::vector<HpsTurnOnResult> all_results = {
-      HpsTurnOnResult::kSuccess,          HpsTurnOnResult::kMcuVersionMismatch,
-      HpsTurnOnResult::kSpiNotVerified,   HpsTurnOnResult::kMcuNotVerified,
-      HpsTurnOnResult::kStage1NotStarted, HpsTurnOnResult::kApplNotStarted,
-      HpsTurnOnResult::kNoResponse,       HpsTurnOnResult::kTimeout,
-      HpsTurnOnResult::kBadMagic,         HpsTurnOnResult::kFault,
-      HpsTurnOnResult::kMcuUpdateFailure, HpsTurnOnResult::kSpiUpdateFailure,
+      HpsTurnOnResult::kSuccess,
+      HpsTurnOnResult::kMcuVersionMismatch,
+      HpsTurnOnResult::kSpiNotVerified,
+      HpsTurnOnResult::kMcuNotVerified,
+      HpsTurnOnResult::kStage1NotStarted,
+      HpsTurnOnResult::kApplNotStarted,
+      HpsTurnOnResult::kNoResponse,
+      HpsTurnOnResult::kTimeout,
+      HpsTurnOnResult::kBadMagic,
+      HpsTurnOnResult::kFault,
+      HpsTurnOnResult::kMcuUpdateFailure,
+      HpsTurnOnResult::kSpiUpdateFailure,
+      HpsTurnOnResult::kMcuUpdatedThenFailed,
+      HpsTurnOnResult::kSpiUpdatedThenFailed,
   };
   // Check that we have all the values of the enum
   ASSERT_EQ(all_results.size(),
@@ -88,6 +96,8 @@ TEST_F(HpsMetricsTest, SendHpsTurnOnResult) {
       case HpsTurnOnResult::kFault:
       case HpsTurnOnResult::kMcuUpdateFailure:
       case HpsTurnOnResult::kSpiUpdateFailure:
+      case HpsTurnOnResult::kMcuUpdatedThenFailed:
+      case HpsTurnOnResult::kSpiUpdatedThenFailed:
         EXPECT_CALL(*GetMetricsLibraryMock(),
                     SendToUMA(kHpsBootFailedDuration, kDuration, _, _, _))
             .Times(1);
