@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/command_line.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
@@ -382,7 +383,7 @@ bool ExpandPropertyContents(const std::string& content,
 
     case ExtraProps::kSoc:
 #if defined(ARCH_CPU_ARM_FAMILY)
-      AppendArmSocProperties(base::FilePath("/sys/devices/soc0/machine"),
+      AppendArmSocProperties(base::FilePath("/sys/bus/soc/devices"),
                              &new_properties);
 #else
       AppendIntelSocProperties(base::FilePath("/proc/cpuinfo"),
@@ -455,10 +456,16 @@ StringPieceType SafelyReadFile(const base::FilePath& path,
 
 }  // namespace
 
-void AppendArmSocProperties(const base::FilePath& sysfs_machine_path,
+static bool ParseOneSocinfo(const base::FilePath& sysfs_machine_path,
                             std::string* dest) {
-  std::vector<char> buffer;
-  auto machine = SafelyReadFile<base::StringPiece>(sysfs_machine_path, &buffer);
+  std::string machine;
+
+  // NOTE: Use base::ReadFileToString() instead of SafelyReadFile() on purpose
+  // because Linux sysfs expects symlink traversal.
+  if (!base::ReadFileToString(sysfs_machine_path, &machine)) {
+    PLOG(ERROR) << "Failed to read " << sysfs_machine_path;
+    return false;
+  }
 
   // Rather than read the manufacturer ID from /proc/cpuinfo, we deduce it from
   // the SOC model name.
@@ -468,14 +475,35 @@ void AppendArmSocProperties(const base::FilePath& sysfs_machine_path,
     // For a Trogdor board.
     manufacturer = "Qualcomm";
   } else {
-    LOG(ERROR) << "Unknown SoC model: " << machine;
-    return;
+    return false;
   }
 
   *dest += "ro.soc.manufacturer=" + manufacturer + "\n";
 
   // machine already has a trailing newline.
   *dest += base::StrCat({"ro.soc.model=", machine});
+
+  return true;
+}
+
+void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
+                            std::string* dest) {
+  const std::string soc_pattern("*");
+  bool found = false;
+
+  base::FileEnumerator soc_dir_it(sysfs_socinfo_devices_path, false,
+                                  base::FileEnumerator::FileType::DIRECTORIES,
+                                  soc_pattern);
+
+  for (auto soc_dir_path = soc_dir_it.Next(); !found && !soc_dir_path.empty();
+       soc_dir_path = soc_dir_it.Next()) {
+    auto machine_path = soc_dir_path.Append("machine");
+    if (base::PathExists(machine_path))
+      found = ParseOneSocinfo(machine_path, dest);
+  }
+
+  if (!found)
+    LOG(ERROR) << "Unknown ARM SoC";
 }
 
 void AppendIntelSocProperties(const base::FilePath& cpuinfo_path,

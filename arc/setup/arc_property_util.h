@@ -26,10 +26,11 @@ namespace arc {
 void AppendIntelSocProperties(const base::FilePath& cpuinfo_path,
                               std::string* dest);
 
-// Detects the SOC manufacturer and model from the given file which should have
-// contents equivalent to /sys/devices/soc0/machine. Appends results to |dest|.
-// Used for ARM architectures. The path is overridable for testing.
-void AppendArmSocProperties(const base::FilePath& sysfs_machine_path,
+// Tries to detect the SoC manufacturer and model given the socinfo directory
+// in Linux sysfs. Should be passed a path to the directory
+// /sys/bus/soc/devices which can be overridden for testing.
+// Appends results to |dest|. Used for ARM architectures.
+void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
                             std::string* dest);
 
 // Expands the contents of a template Android property file.  Strings like

@@ -752,27 +752,88 @@ TEST_F(ArcPropertyUtilTest, AppendIntelSocPropertiesDoesNotOverwrite) {
 }
 
 TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesNoMatch) {
-  auto machine_path = GetTempDir().Append("machine");
+  auto socinfo_devices_dir = GetTempDir();
+  auto soc0_path = socinfo_devices_dir.Append("soc0");
+  auto machine_path = soc0_path.Append("machine");
 
+  ASSERT_TRUE(base::CreateDirectory(soc0_path));
   ASSERT_TRUE(base::WriteFile(machine_path, "unknown486\n"));
 
   std::string dest = "4=2+2\n";
-  AppendArmSocProperties(machine_path, &dest);
+  AppendArmSocProperties(socinfo_devices_dir, &dest);
   EXPECT_EQ(dest, "4=2+2\n");
 }
 
 TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMatch) {
-  auto machine_path = GetTempDir().Append("machine");
+  auto socinfo_devices_dir = GetTempDir();
+  auto soc0_path = socinfo_devices_dir.Append("soc0");
+  auto machine_path = soc0_path.Append("machine");
 
+  ASSERT_TRUE(base::CreateDirectory(soc0_path));
   ASSERT_TRUE(base::WriteFile(machine_path, "SC7180\n"));
 
   // Make sure the file is opened read-only by turning off the writable perms.
   ASSERT_EQ(chmod(machine_path.value().c_str(), 0444), 0);
 
   std::string dest = "jkl=aoe\n";
-  AppendArmSocProperties(machine_path, &dest);
+  AppendArmSocProperties(socinfo_devices_dir, &dest);
   EXPECT_EQ(dest,
             "jkl=aoe\n"
+            "ro.soc.manufacturer=Qualcomm\n"
+            "ro.soc.model=SC7180\n");
+}
+
+TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesSymlink) {
+  auto sysfs_dir = GetTempDir();
+  auto devices_dir = sysfs_dir.Append("devices");
+  auto soc0_path = devices_dir.Append("soc0");
+  auto machine_path = soc0_path.Append("machine");
+  auto bus_dir = sysfs_dir.Append("bus");
+  auto socinfo_dir = bus_dir.Append("soc");
+  auto socinfo_devices_dir = bus_dir.Append("devices");
+  auto socinfo_soc0_path = socinfo_devices_dir.Append("soc0");
+
+  // Try to replicate something akin to the real structure of sysfs, which has
+  // symlinks. This helps confirm we aren't using "safe" functions to read.
+  ASSERT_TRUE(base::CreateDirectory(devices_dir));
+  ASSERT_TRUE(base::CreateDirectory(soc0_path));
+  ASSERT_TRUE(base::WriteFile(machine_path, "SC7180\n"));
+  ASSERT_TRUE(base::CreateDirectory(bus_dir));
+  ASSERT_TRUE(base::CreateDirectory(socinfo_dir));
+  ASSERT_TRUE(base::CreateDirectory(socinfo_devices_dir));
+  ASSERT_TRUE(base::CreateSymbolicLink(soc0_path, socinfo_soc0_path));
+
+  // Make sure the file is opened read-only by turning off the writable perms.
+  ASSERT_EQ(chmod(machine_path.value().c_str(), 0444), 0);
+
+  std::string dest = "symlinks=fun\n";
+  AppendArmSocProperties(socinfo_devices_dir, &dest);
+  EXPECT_EQ(dest,
+            "symlinks=fun\n"
+            "ro.soc.manufacturer=Qualcomm\n"
+            "ro.soc.model=SC7180\n");
+}
+
+TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesTwo) {
+  auto socinfo_devices_dir = GetTempDir();
+  auto soc0_path = socinfo_devices_dir.Append("soc0");
+  auto soc1_path = socinfo_devices_dir.Append("soc1");
+  auto machine0_path = soc0_path.Append("machine");
+  auto machine1_path = soc1_path.Append("machine");
+
+  // soc0 will exist, but _not_ have a machine file
+  ASSERT_TRUE(base::CreateDirectory(soc0_path));
+
+  ASSERT_TRUE(base::CreateDirectory(soc1_path));
+  ASSERT_TRUE(base::WriteFile(machine1_path, "SC7180\n"));
+
+  // Make sure the file is opened read-only by turning off the writable perms.
+  ASSERT_EQ(chmod(machine1_path.value().c_str(), 0444), 0);
+
+  std::string dest = "one=two\n";
+  AppendArmSocProperties(socinfo_devices_dir, &dest);
+  EXPECT_EQ(dest,
+            "one=two\n"
             "ro.soc.manufacturer=Qualcomm\n"
             "ro.soc.model=SC7180\n");
 }
@@ -786,10 +847,11 @@ TEST_F(ArcPropertyUtilTest, AppendIntelSocPropertiesCannotOpenCpuinfo) {
 }
 
 TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesCannotOpenMachineFile) {
-  auto machine_path = GetTempDir().Append("machine.nothere");
+  auto temp_dir = GetTempDir();
+  auto socinfo_path = temp_dir.Append("directory.nothere");
 
   std::string dest;
-  AppendArmSocProperties(machine_path, &dest);
+  AppendArmSocProperties(socinfo_path, &dest);
   EXPECT_EQ(dest, "");
 }
 
