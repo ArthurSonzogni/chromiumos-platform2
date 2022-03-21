@@ -82,6 +82,7 @@ struct TextAnnotation {
 // Contains the input and parameters used to annotate the text.
 // This is a combination of string and `AnnotationOptions` in tclib (see
 // "tclib/annotator/types.h").
+// Next MinVersion: 2
 [Stable]
 struct TextAnnotationRequest {
   // The text to be annotated.
@@ -101,6 +102,8 @@ struct TextAnnotationRequest {
   // Enabled entities. If empty (default), all types of entities will be
   // enabled.
   array<string>? enabled_entities@6;
+  // To enable text annotations for simple words.
+  [MinVersion=1] bool trigger_dictionary_on_beginner_words@7 = false;
 };
 
 // Marks a span in a sequence of codepoints.

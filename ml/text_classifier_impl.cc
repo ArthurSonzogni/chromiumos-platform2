@@ -36,7 +36,8 @@ using ::chromeos::machine_learning::mojom::TextLanguagePtr;
 
 constexpr char kTextClassifierModelFilePath[] =
     "/opt/google/chrome/ml_models/"
-    "mlservice-model-text_classifier_en-v711_vocab-v1.fb";
+    "mlservice-model-text_classifier_en-v714_vocab-"
+    "with_beginner_words-20220318.fb";
 
 constexpr char kLanguageIdentificationModelFilePath[] =
     "/opt/google/chrome/ml_models/"
@@ -118,6 +119,10 @@ void TextClassifierImpl::Annotate(TextAnnotationRequestPtr request,
 
   // Uses the vocab based model.
   option.use_vocab_annotator = true;
+
+  // Trigger dictionary for simple words (see b/222559828).
+  option.trigger_dictionary_on_beginner_words =
+      request->trigger_dictionary_on_beginner_words;
 
   // Do the annotation.
   const std::vector<libtextclassifier3::AnnotatedSpan> annotated_spans =
