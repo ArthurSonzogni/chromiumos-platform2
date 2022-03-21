@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 
@@ -48,10 +49,6 @@ CryptohomeVaultFactory::CryptohomeVaultFactory(
     : platform_(platform),
       encrypted_container_factory_(std::move(encrypted_container_factory)) {}
 
-CryptohomeVaultFactory::CryptohomeVaultFactory(Platform* platform)
-    : CryptohomeVaultFactory(
-          platform, std::make_unique<EncryptedContainerFactory>(platform)) {}
-
 CryptohomeVaultFactory::~CryptohomeVaultFactory() {}
 
 std::unique_ptr<EncryptedContainer>
@@ -60,7 +57,7 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
     const std::string& obfuscated_username,
     const FileSystemKeyReference& key_reference,
     const std::string& container_identifier,
-    bool keylocker_enabled) {
+    const DmOptions& dm_options) {
   EncryptedContainerConfig config;
   base::FilePath stateful_device;
   uint64_t stateful_size;
@@ -83,7 +80,8 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
       if (!platform_->GetBlkSize(stateful_device, &stateful_size))
         return nullptr;
 
-      LOG_IF(INFO, keylocker_enabled) << "Using Keylocker for encryption";
+      LOG_IF(INFO, dm_options.keylocker_enabled)
+          << "Using Keylocker for encryption";
 
       config.type = EncryptedContainerType::kDmcrypt;
       config.dmcrypt_config = {
@@ -98,8 +96,10 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
                                   .physical_volume = stateful_device}},
           .dmcrypt_device_name =
               DmcryptVolumePrefix(obfuscated_username) + container_identifier,
-          .dmcrypt_cipher = keylocker_enabled ? "capi:xts-aes-aeskl-plain64"
-                                              : "aes-xts-plain64",
+          .dmcrypt_cipher = dm_options.keylocker_enabled
+                                ? "capi:xts-aes-aeskl-plain64"
+                                : "aes-xts-plain64",
+          .is_raw_device = dm_options.is_raw_device,
           // TODO(sarthakkukreti): Add more dynamic checks for filesystem
           // features once dm-crypt cryptohomes are stable.
           .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-N",
@@ -148,9 +148,19 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   }
 
   // Generate containers for the vault.
+
+  DmOptions vault_dm_options = {
+      .keylocker_enabled = keylocker_enabled,
+      .is_raw_device = false,
+  };
+  DmOptions app_dm_options = {
+      .keylocker_enabled = keylocker_enabled,
+      .is_raw_device = true,
+  };
+
   std::unique_ptr<EncryptedContainer> container = GenerateEncryptedContainer(
       container_type, obfuscated_username, key_reference,
-      kDmcryptDataContainerSuffix, keylocker_enabled);
+      kDmcryptDataContainerSuffix, vault_dm_options);
   if (!container) {
     LOG(ERROR) << "Could not create vault container";
     return nullptr;
@@ -160,7 +170,7 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   if (migrating_container_type != EncryptedContainerType::kUnknown) {
     migrating_container = GenerateEncryptedContainer(
         migrating_container_type, obfuscated_username, key_reference,
-        kDmcryptDataContainerSuffix, keylocker_enabled);
+        kDmcryptDataContainerSuffix, vault_dm_options);
     if (!migrating_container) {
       LOG(ERROR) << "Could not create vault container for migration";
       return nullptr;
@@ -168,20 +178,33 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   }
 
   std::unique_ptr<EncryptedContainer> cache_container;
+  std::vector<std::unique_ptr<EncryptedContainer>> application_containers;
   if (container_type == EncryptedContainerType::kDmcrypt ||
       container_type == EncryptedContainerType::kEcryptfsToDmcrypt ||
       container_type == EncryptedContainerType::kFscryptToDmcrypt) {
     cache_container = GenerateEncryptedContainer(
         container_type, obfuscated_username, key_reference,
-        kDmcryptCacheContainerSuffix, keylocker_enabled);
+        kDmcryptCacheContainerSuffix, vault_dm_options);
     if (!cache_container) {
       LOG(ERROR) << "Could not create vault container for cache";
       return nullptr;
     }
+    if (enable_application_containers_) {
+      for (const auto& app : std::vector<std::string>{"arcvm"}) {
+        std::unique_ptr<EncryptedContainer> tmp_container =
+            GenerateEncryptedContainer(container_type, obfuscated_username,
+                                       key_reference, app, app_dm_options);
+        if (!tmp_container) {
+          LOG(ERROR) << "Could not create vault container for app: " << app;
+          return nullptr;
+        }
+        application_containers.emplace_back(std::move(tmp_container));
+      }
+    }
   }
   return std::make_unique<CryptohomeVault>(
       obfuscated_username, std::move(container), std::move(migrating_container),
-      std::move(cache_container), platform_);
+      std::move(cache_container), std::move(application_containers), platform_);
 }
 
 }  // namespace cryptohome

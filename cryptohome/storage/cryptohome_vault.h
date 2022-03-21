@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <dbus/cryptohome/dbus-constants.h>
 
@@ -37,11 +38,13 @@ class CryptohomeVault {
     // migration.
     bool block_ecryptfs = false;
   };
-  CryptohomeVault(const std::string& obfuscated_username,
-                  std::unique_ptr<EncryptedContainer> container,
-                  std::unique_ptr<EncryptedContainer> migrating_container,
-                  std::unique_ptr<EncryptedContainer> cache_container,
-                  Platform* platform);
+  CryptohomeVault(
+      const std::string& obfuscated_username,
+      std::unique_ptr<EncryptedContainer> container,
+      std::unique_ptr<EncryptedContainer> migrating_container,
+      std::unique_ptr<EncryptedContainer> cache_container,
+      std::vector<std::unique_ptr<EncryptedContainer>> application_containers,
+      Platform* platform);
   ~CryptohomeVault();
 
   // Sets up the cryptohome vault for mounting.
@@ -93,6 +96,8 @@ class CryptohomeVault {
   // For dm-crypt based vaults, we set up an additional cache container that
   // serves as the backing store for temporary data.
   std::unique_ptr<EncryptedContainer> cache_container_;
+  // Containers that store application info.
+  std::vector<std::unique_ptr<EncryptedContainer>> application_containers_;
 
   Platform* platform_;
 };

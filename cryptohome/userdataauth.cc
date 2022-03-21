@@ -315,6 +315,8 @@ bool UserDataAuth::Initialize() {
     container_factory->set_allow_fscrypt_v2(fscrypt_v2_);
     auto vault_factory = std::make_unique<CryptohomeVaultFactory>(
         platform_, std::move(container_factory));
+    vault_factory->set_enable_application_containers(
+        enable_application_containers_);
     // This callback runs in HomeDirs::Remove on |this.homedirs_|. Since
     // |this.keyset_management_| won't be destroyed upon call of Remove(),
     // base::Unretained(keyset_management_) will be valid when the callback
@@ -838,6 +840,9 @@ bool UserDataAuth::CleanUpStaleMounts(bool force) {
   // persisted to disk which would make resumption much easier.
   //
   // (*) Relies on the expectation that all processes have been killed off.
+
+  // TODO(b:225769250, dlunev): figure out cleanup for non-mounted application
+  // containers.
 
   // Stale shadow and ephemeral mounts.
   std::multimap<const FilePath, const FilePath> shadow_mounts;

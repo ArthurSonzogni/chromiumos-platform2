@@ -8,6 +8,7 @@
 #include <string>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -27,11 +28,13 @@ CryptohomeVault::CryptohomeVault(
     std::unique_ptr<EncryptedContainer> container,
     std::unique_ptr<EncryptedContainer> migrating_container,
     std::unique_ptr<EncryptedContainer> cache_container,
+    std::vector<std::unique_ptr<EncryptedContainer>> application_containers,
     Platform* platform)
     : obfuscated_username_(obfuscated_username),
       container_(std::move(container)),
       migrating_container_(std::move(migrating_container)),
       cache_container_(std::move(cache_container)),
+      application_containers_(std::move(application_containers)),
       platform_(platform) {}
 
 // Teardown the vault on object destruction.
@@ -73,6 +76,15 @@ MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {
     // TODO(sarthakkukreti): MOUNT_ERROR_KEYRING_FAILED should be replaced
     //  with a more specific type.
     return MOUNT_ERROR_KEYRING_FAILED;
+  }
+
+  for (auto& container : application_containers_) {
+    if (!container->Setup(filesystem_key)) {
+      LOG(ERROR) << "Failed to setup an application container.";
+      // TODO(sarthakkukreti): MOUNT_ERROR_KEYRING_FAILED should be replaced
+      //  with a more specific type.
+      return MOUNT_ERROR_KEYRING_FAILED;
+    }
   }
 
   if (container_->GetType() == EncryptedContainerType::kEphemeral) {
@@ -183,6 +195,9 @@ bool CryptohomeVault::SetLazyTeardownWhenUnused() {
     ret = false;
   }
 
+  // TODO(b:225769250, dlunev): figure out lazy teardown for non-mounted
+  // application containers.
+
   return ret;
 }
 
@@ -201,6 +216,13 @@ bool CryptohomeVault::Teardown() {
   if (cache_container_ && !cache_container_->Teardown()) {
     LOG(ERROR) << "Failed to teardown cache container";
     ret = false;
+  }
+
+  for (auto& container : application_containers_) {
+    if (!container->Teardown()) {
+      LOG(ERROR) << "Failed to teardown application container";
+      ret = false;
+    }
   }
 
   return ret;
@@ -223,6 +245,13 @@ bool CryptohomeVault::Purge() {
       !cache_container_->Purge()) {
     LOG(ERROR) << "Failed to purge cache container";
     ret = false;
+  }
+
+  for (auto& container : application_containers_) {
+    if (container->Exists() && !container->Purge()) {
+      LOG(ERROR) << "Failed to purge application container";
+      ret = false;
+    }
   }
 
   return ret;

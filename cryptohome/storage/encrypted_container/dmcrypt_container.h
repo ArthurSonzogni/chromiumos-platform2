@@ -63,6 +63,7 @@ class DmcryptContainer : public EncryptedContainer {
   const std::string dmcrypt_device_name_;
   const std::string dmcrypt_cipher_;
 
+  const bool is_raw_device_;
   const std::vector<std::string> mkfs_opts_;
   const std::vector<std::string> tune2fs_opts_;
 

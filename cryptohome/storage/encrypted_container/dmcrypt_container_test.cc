@@ -88,6 +88,25 @@ TEST_F(DmcryptContainerTest, SetupCreateCheck) {
   EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
 }
 
+// Tests the creation path for the dm-crypt container with raw device only.
+TEST_F(DmcryptContainerTest, SetupCreateRawCheck) {
+  EXPECT_CALL(platform_, GetBlkSize(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
+  EXPECT_CALL(platform_, UdevAdmSettle(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(platform_, FormatExt4(_, _, _)).Times(0);
+  EXPECT_CALL(platform_, Tune2Fs(_, _)).Times(0);
+
+  config_.is_raw_device = true;
+
+  GenerateContainer();
+
+  EXPECT_TRUE(container_->Setup(key_));
+  // Check that the device mapper target exists.
+  EXPECT_EQ(device_mapper_.GetTable(config_.dmcrypt_device_name).CryptGetKey(),
+            key_descriptor_);
+  EXPECT_TRUE(device_mapper_.Remove(config_.dmcrypt_device_name));
+}
+
 // Tests the setup path with an existing container.
 TEST_F(DmcryptContainerTest, SetupNoCreateCheck) {
   EXPECT_CALL(platform_, GetBlkSize(_, _))

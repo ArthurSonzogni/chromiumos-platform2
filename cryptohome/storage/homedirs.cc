@@ -70,7 +70,9 @@ HomeDirs::HomeDirs(Platform* platform,
     : HomeDirs(platform,
                std::move(policy_provider),
                remove_callback,
-               std::make_unique<CryptohomeVaultFactory>(platform)) {}
+               std::make_unique<CryptohomeVaultFactory>(
+                   platform,
+                   std::make_unique<EncryptedContainerFactory>(platform))) {}
 
 HomeDirs::HomeDirs(Platform* platform,
                    std::unique_ptr<policy::PolicyProvider> policy_provider,

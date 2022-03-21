@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
@@ -199,9 +200,12 @@ class CryptohomeVaultTest
     if (create_cache_container)
       CreateExistingContainer(CacheContainerType());
 
+    std::vector<std::unique_ptr<EncryptedContainer>> application_containers;
+
     vault_ = std::make_unique<CryptohomeVault>(
         obfuscated_username_, std::move(container),
-        std::move(migrating_container), std::move(cache_container), &platform_);
+        std::move(migrating_container), std::move(cache_container),
+        std::move(application_containers), &platform_);
   }
 
  protected:

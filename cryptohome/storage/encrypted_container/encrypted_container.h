@@ -34,6 +34,7 @@ struct DmcryptConfig {
   BackingDeviceConfig backing_device_config;
   std::string dmcrypt_device_name;
   std::string dmcrypt_cipher;
+  bool is_raw_device;
   std::vector<std::string> mkfs_opts;
   std::vector<std::string> tune2fs_opts;
 };

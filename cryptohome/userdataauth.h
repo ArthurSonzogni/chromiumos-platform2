@@ -175,6 +175,11 @@ class UserDataAuth {
   // Enable version 2 of fscrypt interface.
   void set_fscrypt_v2(bool enable_v2) { fscrypt_v2_ = enable_v2; }
 
+  // Enable creating LVM volumes for applications.
+  void set_enable_application_containers(bool value) {
+    enable_application_containers_ = value;
+  }
+
   // Set the |legacy_mount_| variable. For more information on legacy_mount_,
   // see comment of Mount::MountLegacyHome(). Note that this is usually used in
   // main() because there's a command line switch for selecting this.
@@ -1344,6 +1349,9 @@ class UserDataAuth {
 
   // Force v2 version for fscrypt interface.
   bool fscrypt_v2_;
+
+  // Enable creation of LVM volumes for applications.
+  bool enable_application_containers_;
 
   // Whether we are using legacy mount. See Mount::MountLegacyHome()'s comment
   // for more information.

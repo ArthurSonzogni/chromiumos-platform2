@@ -42,6 +42,7 @@ DmcryptContainer::DmcryptContainer(
     std::unique_ptr<brillo::DeviceMapper> device_mapper)
     : dmcrypt_device_name_(config.dmcrypt_device_name),
       dmcrypt_cipher_(config.dmcrypt_cipher),
+      is_raw_device_(config.is_raw_device),
       mkfs_opts_(config.mkfs_opts),
       tune2fs_opts_(config.tune2fs_opts),
       backing_device_(std::move(backing_device)),
@@ -169,14 +170,15 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  // Create filesystem.
-  if (created && !platform_->FormatExt4(dmcrypt_device_path, mkfs_opts_, 0)) {
+  // Create filesystem, unless we only should provide a raw device.
+  if (created && !is_raw_device_ &&
+      !platform_->FormatExt4(dmcrypt_device_path, mkfs_opts_, 0)) {
     PLOG(ERROR) << "Failed to format ext4 filesystem";
     return false;
   }
 
   // Modify features depending on whether we already have the following enabled.
-  if (!tune2fs_opts_.empty() &&
+  if (!is_raw_device_ && !tune2fs_opts_.empty() &&
       !platform_->Tune2Fs(dmcrypt_device_path, tune2fs_opts_)) {
     PLOG(ERROR) << "Failed to tune ext4 filesystem";
     return false;

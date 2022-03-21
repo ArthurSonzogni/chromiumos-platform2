@@ -24,7 +24,6 @@ class CryptohomeVaultFactory {
   CryptohomeVaultFactory(
       Platform* platform,
       std::unique_ptr<EncryptedContainerFactory> encrypted_container_factory);
-  explicit CryptohomeVaultFactory(Platform* platform);
 
   virtual ~CryptohomeVaultFactory();
 
@@ -34,16 +33,26 @@ class CryptohomeVaultFactory {
       EncryptedContainerType vault_type,
       bool keylocker_enabled = false);
 
+  void set_enable_application_containers(bool value) {
+    enable_application_containers_ = value;
+  }
+
  private:
+  struct DmOptions {
+    bool keylocker_enabled = false;
+    bool is_raw_device = false;
+  };
+
   virtual std::unique_ptr<EncryptedContainer> GenerateEncryptedContainer(
       EncryptedContainerType type,
       const std::string& obfuscated_username,
       const FileSystemKeyReference& key_reference,
       const std::string& container_identifier,
-      bool keylocker_enabled = false);
+      const DmOptions& dm_options);
 
   Platform* platform_;
   std::unique_ptr<EncryptedContainerFactory> encrypted_container_factory_;
+  bool enable_application_containers_;
 };
 
 }  // namespace cryptohome
