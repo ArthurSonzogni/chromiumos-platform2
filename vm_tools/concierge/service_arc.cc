@@ -52,13 +52,15 @@ bool IsValidDemoImagePath(const base::FilePath& path) {
 
 // Returns true if the path is a valid data image path.
 bool IsValidDataImagePath(const base::FilePath& path) {
-  // A valid data image path looks like: /home/root/<hash>/crosvm/YXJjdm0=.img.
+  // A valid data image path looks like:
+  // /run/daemon-store/crosvm/<hash>/YXJjdm0=.img
   std::vector<std::string> components;
   path.GetComponents(&components);
   return components.size() == 6 && components[0] == "/" &&
-         components[1] == "home" && components[2] == "root" &&
-         base::ContainsOnlyChars(components[3], "0123456789abcdef") &&
-         components[4] == "crosvm" && components[5] == "YXJjdm0=.img";
+         components[1] == "run" && components[2] == "daemon-store" &&
+         components[3] == "crosvm" &&
+         base::ContainsOnlyChars(components[4], "0123456789abcdef") &&
+         components[5] == "YXJjdm0=.img";
 }
 
 // TODO(hashimoto): Move VM configuration logic from chrome to concierge and
