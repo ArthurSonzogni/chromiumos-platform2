@@ -59,6 +59,7 @@ struct CommandLineFlags {
   bool test_mode = false;
   bool upload_old_reports = false;
   bool force_upload_on_test_images = false;
+  bool consent_already_checked_by_crash_reporter = false;
 };
 
 // Represents a metadata file name, and its parsed metadata.
@@ -165,6 +166,10 @@ class Sender : public SenderBase {
     // If true, always upload on test images and add a flag to the metadata
     // indicating that it's from a test image.
     bool force_upload_on_test_images = false;
+
+    // If true, the caller is asserting that it is crash_reporter and has
+    // already checked for consent, so any additional checks are not needed.
+    bool consent_already_checked_by_crash_reporter = false;
   };
 
   Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
@@ -232,7 +237,7 @@ class Sender : public SenderBase {
   SenderBase::CrashRemoveReason RequestToSendCrash(const CrashDetails& details);
 
   // Returns true if we have consent to send crashes to Google.
-  bool HasCrashUploadingConsent();
+  bool HasCrashUploadingConsent(const CrashInfo& info);
 
   // Is this a "safe" device coredump, from an allowlist of driver names
   // for devices whose device coredump does not contain PII?
@@ -254,6 +259,7 @@ class Sender : public SenderBase {
   const bool test_mode_;
   const bool upload_old_reports_;
   const bool force_upload_on_test_images_;
+  const bool consent_already_checked_by_crash_reporter_;
 };
 
 }  // namespace util

@@ -31,12 +31,14 @@ constexpr char CrashSenderTool::kErrorBadFileName[];
 
 void CrashSenderTool::UploadCrashes() {
   RunCrashSender(false /* ignore_hold_off_time */,
-                 base::FilePath("") /* crash_directory */);
+                 base::FilePath("") /* crash_directory */,
+                 false /* consent_already_checked_by_crash_reporter */);
 }
 
 bool CrashSenderTool::UploadSingleCrash(
     const std::vector<std::tuple<std::string, base::ScopedFD>>& in_files,
-    brillo::ErrorPtr* error) {
+    brillo::ErrorPtr* error,
+    bool consent_already_checked_by_crash_reporter) {
   // debugd runs in a non-root mount namespace and mounts a new tmpfs on /tmp
   // inside the namespace, so this should be invisible to all other processes
   // and not written to disk.
@@ -120,13 +122,16 @@ bool CrashSenderTool::UploadSingleCrash(
       base::NumberToString(crash_directory_fd.get()));
 
   const bool ignore_hold_off_time = true;  // We already flushed all the files.
-  RunCrashSender(ignore_hold_off_time, munged_crash_directory);
+  RunCrashSender(ignore_hold_off_time, munged_crash_directory,
+                 consent_already_checked_by_crash_reporter);
 
   return true;
 }
 
-void CrashSenderTool::RunCrashSender(bool ignore_hold_off_time,
-                                     const base::FilePath& crash_directory) {
+void CrashSenderTool::RunCrashSender(
+    bool ignore_hold_off_time,
+    const base::FilePath& crash_directory,
+    bool consent_already_checked_by_crash_reporter) {
   // 'crash_sender' requires accessing user mounts to upload user crashes.
   ProcessWithId* p =
       CreateProcess(false /* sandboxed */, true /* access_root_mount_ns */);
@@ -146,6 +151,10 @@ void CrashSenderTool::RunCrashSender(bool ignore_hold_off_time,
 
   if (test_mode_) {
     p->AddArg("--test_mode");
+  }
+
+  if (consent_already_checked_by_crash_reporter) {
+    p->AddArg("--consent_already_checked_by_crash_reporter");
   }
 
   p->Run();

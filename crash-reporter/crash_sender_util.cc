@@ -22,6 +22,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -117,6 +118,10 @@ void ParseCommandLine(int argc,
   DEFINE_bool(force_upload_on_test_images, false,
               "If set, upload even on test images. Still respects consent. "
               "(Use either the mock-consent file or normal consent settings.)");
+  DEFINE_bool(consent_already_checked_by_crash_reporter, false,
+              "Indicates that crash_reporter already made a consent check "
+              "before invoking crash_sender. Therefore, skip the consent "
+              "check.");
 
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Crash Sender");
   if (FLAGS_max_spread_time < 0) {
@@ -133,6 +138,16 @@ void ParseCommandLine(int argc,
   flags->test_mode = FLAGS_test_mode;
   flags->upload_old_reports = FLAGS_upload_old_reports;
   flags->force_upload_on_test_images = FLAGS_force_upload_on_test_images;
+  flags->consent_already_checked_by_crash_reporter =
+      FLAGS_consent_already_checked_by_crash_reporter;
+  // We should only be skipping the consent check if we are sure it has been
+  // checked prior to crash_sender being invoked. This only happens when the
+  // flag is set via debugd, which also sets the crash_directory flag.
+  if (flags->consent_already_checked_by_crash_reporter &&
+      flags->crash_directory.empty()) {
+    LOG(ERROR) << "Skipping the consent check is only valid via debugd";
+    exit(EXIT_FAILURE);
+  }
   if (flags->test_mode) {
     // The pause file is intended to pause the cronjob crash_sender during
     // tests, not the crash_sender invoked by the test code.
@@ -351,11 +366,25 @@ Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
       allow_dev_sending_(options.allow_dev_sending),
       test_mode_(options.test_mode),
       upload_old_reports_(options.upload_old_reports),
-      force_upload_on_test_images_(options.force_upload_on_test_images) {}
+      force_upload_on_test_images_(options.force_upload_on_test_images),
+      consent_already_checked_by_crash_reporter_(
+          options.consent_already_checked_by_crash_reporter) {}
 
-bool Sender::HasCrashUploadingConsent() {
+bool Sender::HasCrashUploadingConsent(const CrashInfo& info) {
   if (util::HasMockConsent()) {
     return true;
+  }
+
+  if (consent_already_checked_by_crash_reporter_) {
+    // The crash_loop_mode metadata key is set as an upload var, so we need to
+    // apply the prefix when checking if it is set.
+    const std::string crash_loop_mode_key = base::StrCat(
+        {constants::kUploadVarPrefix, constants::kCrashLoopModeKey});
+    // Only skip consent check if the crash happened in crash loop mode.
+    bool crash_loop_mode;
+    if (!info.metadata.GetBoolean(crash_loop_mode_key, &crash_loop_mode))
+      return false;
+    return crash_loop_mode;
   }
 
   return metrics_lib_->AreMetricsEnabled();
@@ -392,7 +421,15 @@ SenderBase::Action Sender::ChooseAction(const base::FilePath& meta_file,
     *reason = "Crash sending delayed due to guest mode";
     return kIgnore;
   }
-  if (!HasCrashUploadingConsent()) {
+
+  bool allow_old_os_timestamps =
+      allow_dev_sending_ || test_mode_ || upload_old_reports_;
+
+  std::unique_ptr<util::ScopedProcessingFile> f;
+  SenderBase::Action act = EvaluateMetaFileMinimal(
+      meta_file, allow_old_os_timestamps, reason, info, &f);
+
+  if (!HasCrashUploadingConsent(*info)) {
     // When using per-user consent, it's possible that user A consented to crash
     // collection, a crash occurred which logged them out or caused the system
     // to reboot, and then the crash was written to the system directory. Then,
@@ -415,13 +452,6 @@ SenderBase::Action Sender::ChooseAction(const base::FilePath& meta_file,
     RecordCrashRemoveReason(kNoMetricsConsent);
     return kRemove;
   }
-
-  bool allow_old_os_timestamps =
-      allow_dev_sending_ || test_mode_ || upload_old_reports_;
-
-  std::unique_ptr<util::ScopedProcessingFile> f;
-  SenderBase::Action act = EvaluateMetaFileMinimal(
-      meta_file, allow_old_os_timestamps, reason, info, &f);
 
   // Always set these tags on test images for easier filtering in dashboards.
   if (force_upload_on_test_images_) {
@@ -516,7 +546,7 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
       // max_spread_time_ between sends. We only need to check if metrics are
       // enabled and not guest mode because in guest mode, it always indicates
       // that metrics are disabled.
-      if (!HasCrashUploadingConsent()) {
+      if (!HasCrashUploadingConsent(info)) {
         LOG(INFO) << "Metrics disabled or guest mode entered, delaying crash "
                   << "sending";
         return;

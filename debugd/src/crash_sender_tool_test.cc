@@ -70,6 +70,17 @@ class CrashSenderToolWithMockCreateProcess : public CrashSenderTool {
         .WillOnce(SaveArg<0>(crash_directory_arg));
   }
 
+  void ExpectSingleCrashAndConsentAlreadyCheckedArgs(
+      std::string* crash_directory_arg) {
+    ExpectStandardArgs();
+    EXPECT_CALL(mock_process_, AddArg("--ignore_hold_off_time")).Times(1);
+    EXPECT_CALL(mock_process_,
+                AddArg("--consent_already_checked_by_crash_reporter"))
+        .Times(1);
+    EXPECT_CALL(mock_process_, AddArg(StartsWith(kCrashDirectoryStart)))
+        .WillOnce(SaveArg<0>(crash_directory_arg));
+  }
+
  private:
   MockProcessWithId mock_process_;
 };
@@ -193,7 +204,8 @@ TEST(UploadSingleCrash, CreatesDirectory) {
   EXPECT_CALL(test_tool.mock_process(), Run())
       .WillOnce(Invoke(run_state_verifier));
 
-  EXPECT_TRUE(test_tool.UploadSingleCrash(files, &error));
+  EXPECT_TRUE(test_tool.UploadSingleCrash(
+      files, &error, false /* consent_already_checked_by_crash_reporter */));
   EXPECT_EQ(error.get(), nullptr);
 
   // /tmp/crash.1 should now be deleted, and the file descriptor closed. We
@@ -230,7 +242,8 @@ TEST(UploadSingleCrash, CreatesFilesInDirectory) {
   EXPECT_CALL(test_tool.mock_process(), Run())
       .WillOnce(Invoke(run_state_verifier));
 
-  EXPECT_TRUE(test_tool.UploadSingleCrash(files, &error));
+  EXPECT_TRUE(test_tool.UploadSingleCrash(
+      files, &error, false /* consent_already_checked_by_crash_reporter */));
   EXPECT_EQ(error.get(), nullptr);
   EXPECT_FALSE(base::PathExists(kExpectedCrashDirectory));
 
@@ -263,7 +276,8 @@ TEST(UploadSingleCrash, CreatesEmptyFile) {
   EXPECT_CALL(test_tool.mock_process(), Run())
       .WillOnce(Invoke(run_state_verifier));
 
-  EXPECT_TRUE(test_tool.UploadSingleCrash(files, &error));
+  EXPECT_TRUE(test_tool.UploadSingleCrash(
+      files, &error, false /* consent_already_checked_by_crash_reporter */));
   EXPECT_EQ(error.get(), nullptr);
   EXPECT_FALSE(base::PathExists(kExpectedCrashDirectory));
 
@@ -303,7 +317,8 @@ TEST(UploadSingleCrash, CreatesLargeFilesCorrectly) {
   EXPECT_CALL(test_tool.mock_process(), Run())
       .WillOnce(Invoke(run_state_verifier));
 
-  EXPECT_TRUE(test_tool.UploadSingleCrash(files, &error));
+  EXPECT_TRUE(test_tool.UploadSingleCrash(
+      files, &error, false /* consent_already_checked_by_crash_reporter */));
   EXPECT_EQ(error.get(), nullptr);
   EXPECT_FALSE(base::PathExists(kExpectedCrashDirectory));
 
@@ -311,6 +326,32 @@ TEST(UploadSingleCrash, CreatesLargeFilesCorrectly) {
       file_name_contents,
       UnorderedElementsAre(Pair("/tmp/crash.1/aaa.meta", kFileAaaContents),
                            Pair("/tmp/crash.1/long.log", long_string)));
+}
+
+TEST(UploadSingleCrash, PassesConsentAlreadyCheckedCheckFlag) {
+  // The directory /tmp/crash is specifically used for directories, and uses an
+  // incrementing extension, so /tmp/crash.1 should be the first directory
+  // selected to store crashes.
+  const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
+  // Tests aren't as hermetic as we'd like; make sure that stale crash
+  // directories aren't left over from previous failures.
+  base::DeletePathRecursively(kExpectedCrashDirectory);
+
+  std::vector<std::tuple<std::string, base::ScopedFD>> files;
+  brillo::ErrorPtr error;
+
+  CrashSenderToolWithMockCreateProcess test_tool;
+  std::string crash_directory_arg;
+  test_tool.ExpectSingleCrashAndConsentAlreadyCheckedArgs(&crash_directory_arg);
+
+  EXPECT_TRUE(test_tool.UploadSingleCrash(
+      files, &error, true /* consent_already_checked_by_crash_reporter */));
+  EXPECT_EQ(error.get(), nullptr);
+
+  // /tmp/crash.1 should now be deleted, and the file descriptor closed. We
+  // don't check for the file descriptor being closed since some other part of
+  // the system might have reused it.
+  EXPECT_FALSE(base::PathExists(kExpectedCrashDirectory));
 }
 
 // Test that the filename given by the parameter will be rejected with a
@@ -333,7 +374,8 @@ TEST_P(BadFilenameTest, ReturnsBadFileNameError) {
   // We should NOT run if there's a bad file name
   EXPECT_CALL(test_tool.mock_process(), Run()).Times(0);
 
-  EXPECT_FALSE(test_tool.UploadSingleCrash(files, &error));
+  EXPECT_FALSE(test_tool.UploadSingleCrash(
+      files, &error, false /* consent_already_checked_by_crash_reporter */));
   ASSERT_TRUE(error);
   EXPECT_EQ(error->GetCode(), CrashSenderTool::kErrorBadFileName);
 }

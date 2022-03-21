@@ -153,8 +153,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   void UploadCrashes() override;
   bool UploadSingleCrash(
       brillo::ErrorPtr* error,
-      const std::vector<std::tuple<std::string, base::ScopedFD>>& in_files)
-      override;
+      const std::vector<std::tuple<std::string, base::ScopedFD>>& in_files,
+      bool consent_already_checked_by_crash_reporter) override;
   bool RemoveRootfsVerification(brillo::ErrorPtr* error) override;
   bool EnableBootFromUsb(brillo::ErrorPtr* error) override;
   bool EnableChromeRemoteDebugging(brillo::ErrorPtr* error) override;

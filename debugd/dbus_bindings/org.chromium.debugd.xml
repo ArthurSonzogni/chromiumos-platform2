@@ -677,6 +677,13 @@
           file name.
         </tp:docstring>
       </arg>
+      <arg name="consent_already_checked_by_crash_reporter" type="b" direction="in">
+        <tp:docstring>
+          If true, the caller is asserting that it is crash_reporter and that it
+           has already checked for consent, so crash_sender does not need to do
+           an additional consent check.
+        </tp:docstring>
+      </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <tp:property name="CrashSenderTestMode" type="b" access="readwrite">

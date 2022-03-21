@@ -25,6 +25,10 @@ constexpr char kUploadVarPrefix[] = "upload_var_";
 constexpr char kUploadTextPrefix[] = "upload_text_";
 constexpr char kUploadFilePrefix[] = "upload_file_";
 
+// An upload var for the metafile, indicating that a crash happened
+// in crash loop mode.
+constexpr char kCrashLoopModeKey[] = "crash_loop_mode";
+
 constexpr char kJavaScriptStackExtension[] = "js_stack";
 constexpr char kJavaScriptStackExtensionWithDot[] = ".js_stack";
 // This *must match* the crash::FileStorage::kJsStacktraceFileName constant

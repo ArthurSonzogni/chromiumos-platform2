@@ -41,7 +41,8 @@ class CrashSenderTool : public SubprocessTool {
   // Run crash_sender to upload the crash given in the files in |in_files|.
   bool UploadSingleCrash(
       const std::vector<std::tuple<std::string, base::ScopedFD>>& in_files,
-      brillo::ErrorPtr* error);
+      brillo::ErrorPtr* error,
+      bool consent_already_checked_by_crash_reporter);
 
   // Called when the CrashSenderTestMode dbus property is changed.
   void OnTestModeChanged(
@@ -56,7 +57,8 @@ class CrashSenderTool : public SubprocessTool {
   bool test_mode_ = false;
 
   void RunCrashSender(bool ignore_hold_off_time,
-                      const base::FilePath& crash_directory);
+                      const base::FilePath& crash_directory,
+                      bool consent_already_checked_by_crash_reporter);
 };
 
 }  // namespace debugd

@@ -101,6 +101,8 @@ int RunChildMain(int argc, char* argv[]) {
   options.test_mode = flags.test_mode;
   options.upload_old_reports = flags.upload_old_reports;
   options.force_upload_on_test_images = flags.force_upload_on_test_images;
+  options.consent_already_checked_by_crash_reporter =
+      flags.consent_already_checked_by_crash_reporter;
   util::Sender sender(std::move(metrics_lib), std::move(clock), options);
 
   // If you add sigificant code past this point, consider updating

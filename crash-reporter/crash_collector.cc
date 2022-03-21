@@ -59,7 +59,6 @@ const char kDefaultLogConfig[] = "/etc/crash_reporter_logs.conf";
 const char kDefaultUserName[] = "chronos";
 const char kShellPath[] = "/bin/sh";
 const char kCollectorNameKey[] = "collector";
-const char kCrashLoopModeKey[] = "crash_loop_mode";
 const char kDaemonStoreKey[] = "using_daemon_store";
 const char kEarlyCrashKey[] = "is_early_boot";
 const char kChannelKey[] = "channel";
@@ -409,7 +408,7 @@ CrashCollector::CrashCollector(
       tag_(tag) {
   AddCrashMetaUploadData(kCollectorNameKey, collector_name);
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
-    AddCrashMetaUploadData(kCrashLoopModeKey, "true");
+    AddCrashMetaUploadData(constants::kCrashLoopModeKey, "true");
   }
   metrics_lib_ = std::make_unique<MetricsLibrary>();
 }
@@ -1667,8 +1666,13 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
     dbus::MethodCall method_call(debugd::kDebugdInterface,
                                  debugd::kUploadSingleCrash);
     dbus::MessageWriter writer(&method_call);
+
+    // Append the file list.
     brillo::dbus_utils::DBusParamWriter::Append(&writer,
                                                 std::move(in_memory_files_));
+    // Append a true value for `consent_already_checked_by_crash_reporter`.
+    brillo::dbus_utils::DBusParamWriter::Append(&writer, true);
+
     debugd_proxy_->GetObjectProxy()->CallMethodWithErrorCallback(
         &method_call, 0 /*timeout_ms*/,
         base::BindOnce(IgnoreResponsePointer, quit_closure),

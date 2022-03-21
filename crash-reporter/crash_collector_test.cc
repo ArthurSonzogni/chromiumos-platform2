@@ -1974,7 +1974,9 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
         // contents inside the lambda.
         dbus::MessageReader reader(method_call);
         dbus::MessageReader array_reader(nullptr);
+        bool consent_already_checked = false;
         EXPECT_TRUE(reader.PopArray(&array_reader));
+        EXPECT_TRUE(reader.PopBool(&consent_already_checked));
         EXPECT_FALSE(reader.HasMoreData());
         dbus::MessageReader struct_reader_1(nullptr);
         EXPECT_TRUE(array_reader.PopStruct(&struct_reader_1));
@@ -1982,6 +1984,8 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
         EXPECT_TRUE(array_reader.PopStruct(&struct_reader_2));
         EXPECT_FALSE(array_reader.HasMoreData())
             << "Should only have 2 files in array";
+        EXPECT_TRUE(consent_already_checked);
+
         std::string file_name_1;
         EXPECT_TRUE(struct_reader_1.PopString(&file_name_1));
         base::ScopedFD fd_1;

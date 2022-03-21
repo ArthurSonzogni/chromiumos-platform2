@@ -528,6 +528,12 @@ class CrashSenderUtilTest : public testing::Test {
       return false;
     }
 
+    loop_meta_ = crash_directory.Append("loop.meta");
+    if (!CreateFile(
+            loop_meta_,
+            "payload=good.log\nupload_var_crash_loop_mode=true\ndone=1\n", now))
+      return false;
+
     return true;
   }
 
@@ -606,6 +612,7 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath old_os_new_lacros_meta_;
   base::FilePath old_os_old_lacros_meta_;
   base::FilePath large_meta_;
+  base::FilePath loop_meta_;
 };
 
 base::FilePath* CrashSenderUtilTest::build_directory_ = nullptr;
@@ -627,6 +634,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
   EXPECT_FALSE(flags.allow_dev_sending);
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
+  EXPECT_FALSE(flags.force_upload_on_test_images);
+  EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
 }
 
 TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_InvalidMaxSpreadTime) {
@@ -654,6 +663,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
+  EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
@@ -671,6 +681,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
+  EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
@@ -688,6 +699,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
+  EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
@@ -705,6 +717,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
+  EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_Dev) {
@@ -722,6 +735,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_Dev) {
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
+  EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnorePauseFile) {
@@ -739,6 +753,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnorePauseFile) {
   EXPECT_TRUE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
+  EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_UploadOldReports) {
@@ -756,6 +771,7 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_UploadOldReports) {
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_TRUE(flags.upload_old_reports);
   EXPECT_FALSE(flags.force_upload_on_test_images);
+  EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_ForceUploadOnTestImages) {
@@ -773,6 +789,39 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ForceUploadOnTestImages) {
   EXPECT_FALSE(flags.ignore_pause_file);
   EXPECT_FALSE(flags.upload_old_reports);
   EXPECT_TRUE(flags.force_upload_on_test_images);
+  EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+}
+
+TEST_F(CrashSenderUtilDeathTest,
+       ParseCommandLine_ConsentAlreadyCheckedWithEmptyDir) {
+  const char* argv[] = {"crash_sender",
+                        "--consent_already_checked_by_crash_reporter"};
+  base::CommandLine command_line(std::size(argv), argv);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      &command_line);
+  CommandLineFlags flags;
+  EXPECT_DEATH(ParseCommandLine(std::size(argv), argv, &flags),
+               "Skipping the consent check is only valid via debugd");
+}
+
+TEST_F(CrashSenderUtilTest, ParseCommandLine_ConsentAlreadyCheckedWithDir) {
+  const char* argv[] = {"crash_sender",
+                        "--consent_already_checked_by_crash_reporter",
+                        "--crash_directory=/tmp"};
+  base::CommandLine command_line(std::size(argv), argv);
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      &command_line);
+  CommandLineFlags flags;
+  ParseCommandLine(std::size(argv), argv, &flags);
+  EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_EQ(flags.crash_directory, "/tmp");
+  EXPECT_FALSE(flags.ignore_rate_limits);
+  EXPECT_FALSE(flags.ignore_hold_off_time);
+  EXPECT_FALSE(flags.allow_dev_sending);
+  EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.upload_old_reports);
+  EXPECT_FALSE(flags.force_upload_on_test_images);
+  EXPECT_TRUE(flags.consent_already_checked_by_crash_reporter);
 }
 
 TEST_F(CrashSenderUtilTest, DoesPauseFileExist) {
@@ -1239,8 +1288,9 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_TRUE(base::PathExists(old_os_new_lacros_meta_));
   EXPECT_FALSE(base::PathExists(old_os_old_lacros_meta_));
   EXPECT_FALSE(base::PathExists(root_payload_meta_));
+  EXPECT_TRUE(base::PathExists(loop_meta_));
   // Check what files were picked for sending.
-  EXPECT_EQ(3, to_send.size());
+  EXPECT_EQ(4, to_send.size());
   EXPECT_EQ(good_meta_.value(), to_send[0].first.value());
   EXPECT_EQ(recent_os_meta_.value(), to_send[1].first.value());
 
@@ -1286,7 +1336,7 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   CreateDeviceCoredumpUploadAllowedFile();
   to_send.clear();
   sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
-  EXPECT_EQ(4, to_send.size());
+  EXPECT_EQ(5, to_send.size());
   EXPECT_EQ(devcore_meta_.value(), to_send[2].first.value());
 }
 
@@ -1549,6 +1599,44 @@ TEST_F(CrashSenderUtilTest, GetUserCrashDirectories) {
                            paths::Get("/home/user/hash2/crash"),
                            paths::Get("/run/daemon-store/crash/hash1"),
                            paths::Get("/run/daemon-store/crash/hash2")));
+}
+
+TEST_F(CrashSenderUtilTest, SkipConsentCheckWhenFlagIsProvided) {
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled));
+
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+
+  Sender::Options options;
+  options.consent_already_checked_by_crash_reporter = true;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  std::string reason;
+  CrashInfo info;
+
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(loop_meta_, &reason, &info));
+}
+
+TEST_F(CrashSenderUtilTest, DoNotSkipConsentCheckWithoutCrashLoopMeta) {
+  ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsDisabled));
+
+  const base::FilePath crash_directory =
+      paths::Get(paths::kSystemCrashDirectory);
+  ASSERT_TRUE(CreateDirectory(crash_directory));
+  ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
+
+  Sender::Options options;
+  options.consent_already_checked_by_crash_reporter = true;
+  Sender sender(std::move(metrics_lib_),
+                std::make_unique<test_util::AdvancingClock>(), options);
+
+  std::string reason;
+  CrashInfo info;
+
+  EXPECT_EQ(Sender::kRemove, sender.ChooseAction(good_meta_, &reason, &info));
 }
 
 enum MissingFile {

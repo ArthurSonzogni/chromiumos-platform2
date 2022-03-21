@@ -345,8 +345,10 @@ void DebugdDBusAdaptor::UploadCrashes() {
 
 bool DebugdDBusAdaptor::UploadSingleCrash(
     brillo::ErrorPtr* error,
-    const std::vector<std::tuple<std::string, base::ScopedFD>>& in_files) {
-  return crash_sender_tool_->UploadSingleCrash(in_files, error);
+    const std::vector<std::tuple<std::string, base::ScopedFD>>& in_files,
+    bool consent_already_checked_by_crash_reporter) {
+  return crash_sender_tool_->UploadSingleCrash(
+      in_files, error, consent_already_checked_by_crash_reporter);
 }
 
 bool DebugdDBusAdaptor::RemoveRootfsVerification(brillo::ErrorPtr* error) {
