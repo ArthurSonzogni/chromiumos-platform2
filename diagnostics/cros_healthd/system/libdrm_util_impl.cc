@@ -186,6 +186,7 @@ bool LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
   if (crtc) {
     *horizontal = crtc->mode.hdisplay;
     *vertical = crtc->mode.vdisplay;
+    return true;
   } else {
     // Fall back to use the preferred mode info in connector.
     ScopedDrmModeConnectorPtr connector(
@@ -196,11 +197,12 @@ bool LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
       if (connector->modes[i].type & DRM_MODE_TYPE_PREFERRED) {
         *horizontal = connector->modes[i].hdisplay;
         *vertical = connector->modes[i].vdisplay;
+        return true;
       }
     }
   }
 
-  return true;
+  return false;
 }
 
 bool LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
@@ -216,6 +218,7 @@ bool LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
     // calculate it.
     *refresh_rate =
         crtc->mode.clock * 1000.0 / (crtc->mode.htotal * crtc->mode.vtotal);
+    return true;
   } else {
     // Fall back to use the preferred mode info in connector.
     ScopedDrmModeConnectorPtr connector(
@@ -227,11 +230,12 @@ bool LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
         *refresh_rate =
             connector->modes[i].clock * 1000.0 /
             (connector->modes[i].htotal * connector->modes[i].vtotal);
+        return true;
       }
     }
   }
 
-  return true;
+  return false;
 }
 
 }  // namespace diagnostics
