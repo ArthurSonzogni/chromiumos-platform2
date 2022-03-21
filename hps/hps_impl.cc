@@ -60,12 +60,11 @@ void HPS_impl::Init(uint32_t stage1_version,
 
 // Attempt the boot sequence
 // returns true if booting completed
-bool HPS_impl::Boot() {
+void HPS_impl::Boot() {
   // Make sure blobs are set etc.
   if (this->mcu_blob_.empty() || this->fpga_bitstream_.empty() ||
       this->fpga_app_image_.empty()) {
-    LOG(ERROR) << "No HPS firmware to download.";
-    return false;
+    LOG(FATAL) << "No HPS firmware to download.";
   }
 
   this->Reboot();
@@ -77,9 +76,7 @@ bool HPS_impl::Boot() {
     switch (this->TryBoot()) {
       case BootResult::kOk:
         LOG(INFO) << "HPS device booted";
-        return true;
-      case BootResult::kFail:
-        return false;
+        return;
       case BootResult::kUpdate:
         LOG(INFO) << "Update sent, rebooting";
         this->Reboot();
@@ -177,23 +174,16 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
         OnFatalError(FROM_HERE, "Launch stage 1 failed");
       }
       break;
-    case BootResult::kFail:
-      return BootResult::kFail;
     case BootResult::kUpdate:
-      return SendStage1Update();
+      SendStage1Update();
+      return BootResult::kUpdate;
   }
 
   // Inspect stage1 flags and either fail or launch application and continue
-  switch (this->CheckStage1()) {
-    case BootResult::kOk:
-      VLOG(1) << "Launching Application";
-      if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunchAppl)) {
-        OnFatalError(FROM_HERE, "Launch Application failed");
-      }
-      break;
-    case BootResult::kFail:
-    case BootResult::kUpdate:
-      return BootResult::kFail;
+  this->CheckStage1();
+  VLOG(1) << "Launching Application";
+  if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunchAppl)) {
+    OnFatalError(FROM_HERE, "Launch Application failed");
   }
 
   // Inspect application flags and either fail, send an update, or succeed
@@ -201,10 +191,9 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
     case BootResult::kOk:
       VLOG(1) << "Application Running";
       return BootResult::kOk;
-    case BootResult::kFail:
-      return BootResult::kFail;
     case BootResult::kUpdate:
-      return SendApplicationUpdate();
+      SendApplicationUpdate();
+      return BootResult::kUpdate;
   }
 }
 
@@ -244,7 +233,6 @@ bool HPS_impl::CheckMagic() {
 // Check stage1 verification and version.
 // Return BootResult::kOk if booting should continue.
 // Return BootResult::kUpdate if an update should be sent.
-// Else return BootResult::kFail.
 hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   if (!CheckMagic()) {
     hps_metrics_->SendHpsTurnOnResult(
@@ -313,10 +301,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
 // Check stage1 status:
 // Check status flags.
 // Check spi verification.
-// Return BootResult::kOk if booting should continue.
-// Return BootResult::kUpdate if an update should be sent.
-// Else return BootResult::kFail.
-hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
+// Returns if booting should continue.
+void HPS_impl::CheckStage1() {
   if (!CheckMagic()) {
     hps_metrics_->SendHpsTurnOnResult(
         HpsTurnOnResult::kStage1NotStarted,
@@ -341,14 +327,12 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
     OnFatalError(FROM_HERE, "Stage 1 did not start");
   }
   VLOG(1) << "Stage 1 OK";
-  return BootResult::kOk;
 }
 
 // Check stage2 status:
 // Check status flags.
 // Return BootResult::kOk if application is running.
 // Return BootResult::kUpdate if an update should be sent.
-// Else returns BootResult::kFail.
 hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
   // Poll for kAppl (started) or kSpiNotVer (not started)
   base::ElapsedTimer timer;
@@ -457,35 +441,33 @@ bool HPS_impl::IsRunning() {
 }
 
 // Send the stage1 MCU flash update.
-// Returns kFail or kUpdate.
-hps::HPS_impl::BootResult HPS_impl::SendStage1Update() {
+// Returns if update was sent
+void HPS_impl::SendStage1Update() {
   LOG(INFO) << "Updating MCU flash";
   base::ElapsedTimer timer;
   if (this->Download(HpsBank::kMcuFlash, this->mcu_blob_)) {
     hps_metrics_->SendHpsUpdateDuration(HpsBank::kMcuFlash, timer.Elapsed());
-    return BootResult::kUpdate;
   } else {
     hps_metrics_->SendHpsTurnOnResult(
         HpsTurnOnResult::kMcuUpdateFailure,
         base::TimeTicks::Now() - this->boot_start_time_);
-    return BootResult::kFail;
+    OnFatalError(FROM_HERE, "Failed sending stage1 update");
   }
 }
 
 // Send the Application SPI flash update.
 // Returns kFail or kUpdate.
-hps::HPS_impl::BootResult HPS_impl::SendApplicationUpdate() {
+void HPS_impl::SendApplicationUpdate() {
   LOG(INFO) << "Updating SPI flash";
   base::ElapsedTimer timer;
   if (this->Download(HpsBank::kSpiFlash, this->fpga_bitstream_) &&
       this->Download(HpsBank::kSocRom, this->fpga_app_image_)) {
     hps_metrics_->SendHpsUpdateDuration(HpsBank::kSpiFlash, timer.Elapsed());
-    return BootResult::kUpdate;
   } else {
     hps_metrics_->SendHpsTurnOnResult(
         HpsTurnOnResult::kSpiUpdateFailure,
         base::TimeTicks::Now() - this->boot_start_time_);
-    return BootResult::kFail;
+    OnFatalError(FROM_HERE, "Failed sending stage1 update");
   }
 }
 

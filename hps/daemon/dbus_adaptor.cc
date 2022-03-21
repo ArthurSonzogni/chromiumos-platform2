@@ -112,7 +112,7 @@ void DBusAdaptor::BootIfNeeded() {
   if (hps_booted_) {
     return;
   }
-  CHECK(hps_->Boot()) << "Failed to boot";
+  hps_->Boot();
   hps_booted_ = true;
 }
 

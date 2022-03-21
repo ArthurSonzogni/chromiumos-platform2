@@ -44,7 +44,7 @@ class HPS_impl : public HPS {
             const base::FilePath& mcu,
             const base::FilePath& fpga_bitstream,
             const base::FilePath& fpga_app_image) override;
-  bool Boot() override;
+  void Boot() override;
   bool ShutDown() override;
   bool IsRunning() override;
   bool Enable(uint8_t feature) override;
@@ -56,7 +56,6 @@ class HPS_impl : public HPS {
 
  private:
   enum class BootResult {
-    kFail,
     kOk,
     kUpdate,
   };
@@ -68,14 +67,14 @@ class HPS_impl : public HPS {
   BootResult TryBoot();
   bool CheckMagic();
   BootResult CheckStage0();
-  BootResult CheckStage1();
+  void CheckStage1();
   BootResult CheckApplication();
   bool Reboot();
   [[noreturn]] void OnBootFault(const base::Location&);
   [[noreturn]] void OnFatalError(const base::Location&, const std::string& msg);
   bool WaitForBankReady(uint8_t bank);
-  BootResult SendStage1Update();
-  BootResult SendApplicationUpdate();
+  void SendStage1Update();
+  void SendApplicationUpdate();
   bool WriteFile(uint8_t bank, const base::FilePath& source);
   std::unique_ptr<DevInterface> device_;
   base::TimeTicks boot_start_time_;

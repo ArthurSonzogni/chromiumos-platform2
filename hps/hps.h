@@ -30,7 +30,7 @@ class HPS {
   // Requires that the MCU and SPI flash blobs have been
   // set via Init().
   //
-  virtual bool Boot() = 0;
+  virtual void Boot() = 0;
 
   // Shut down the module. If the module is needed again, it must be
   // reinitialized with Boot() before calling other operations.

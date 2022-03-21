@@ -53,11 +53,7 @@ int Boot(std::unique_ptr<hps::HPS> hps,
 
   hps->Init(version, base::FilePath(mcu), base::FilePath(fpga_bitstream),
             base::FilePath(fpga_app_image));
-  if (hps->Boot()) {
-    std::cout << "Successful boot" << std::endl;
-  } else {
-    std::cout << "Boot failed" << std::endl;
-  }
+  hps->Boot();
   return 0;
 }
 

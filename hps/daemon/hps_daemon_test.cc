@@ -34,7 +34,7 @@ class MockHps : public HPS {
                const base::FilePath&,
                const base::FilePath&),
               (override));
-  MOCK_METHOD(bool, Boot, (), (override));
+  MOCK_METHOD(void, Boot, (), (override));
   MOCK_METHOD(bool, ShutDown, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (override));
   MOCK_METHOD(bool, Enable, (uint8_t), (override));
@@ -102,7 +102,7 @@ class HpsDaemonTest : public testing::Test {
 TEST_F(HpsDaemonTest, EnableFeatureFailed) {
   EXPECT_DEATH(
       {
-        EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+        EXPECT_CALL(*mock_hps_, Boot());
         EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(false));
         brillo::ErrorPtr error;
         hps_daemon_->EnableHpsSense(&error, feature_config_);
@@ -113,7 +113,7 @@ TEST_F(HpsDaemonTest, EnableFeatureFailed) {
 TEST_F(HpsDaemonTest, DisableFeatureFailed) {
   EXPECT_DEATH(
       {
-        EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+        EXPECT_CALL(*mock_hps_, Boot());
         EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
         EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(true));
         EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(false));
@@ -125,7 +125,7 @@ TEST_F(HpsDaemonTest, DisableFeatureFailed) {
 }
 
 TEST_F(HpsDaemonTest, EnableFeatureReady) {
-  EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_hps_, Boot());
   EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
   brillo::ErrorPtr error;
   bool result = hps_daemon_->EnableHpsSense(&error, feature_config_);
@@ -140,7 +140,7 @@ TEST_F(HpsDaemonTest, DisableFeatureNotEnabled) {
 
 // With another feature still enabled the device is not shutdown
 TEST_F(HpsDaemonTest, DisableFeatureReady) {
-  EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_hps_, Boot());
   EXPECT_CALL(*mock_hps_, IsRunning()).WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
   EXPECT_CALL(*mock_hps_, Enable(1)).WillOnce(Return(true));
@@ -154,7 +154,7 @@ TEST_F(HpsDaemonTest, DisableFeatureReady) {
 
 // When the last feature is disabled the device is shutdown
 TEST_F(HpsDaemonTest, DisableFeatureReadyLast) {
-  EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_hps_, Boot());
   EXPECT_CALL(*mock_hps_, IsRunning()).WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
   EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(true));
@@ -172,7 +172,7 @@ TEST_F(HpsDaemonTest, DisableThenEnableFeature) {
   brillo::ErrorPtr error;
   {
     InSequence sequence;
-    EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Boot());
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Disable(0)).WillOnce(Return(true));
@@ -184,7 +184,7 @@ TEST_F(HpsDaemonTest, DisableThenEnableFeature) {
   }
   {
     InSequence sequence;
-    EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Boot());
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     bool result = hps_daemon_->EnableHpsSense(&error, feature_config_);
     EXPECT_TRUE(result);
@@ -204,7 +204,7 @@ TEST_F(HpsDaemonTest, TestPollTimer) {
   FeatureResult feature_result{.valid = true};
   {
     InSequence sequence;
-    EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Boot());
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(feature_result));
@@ -236,7 +236,7 @@ TEST_F(HpsDaemonTest, TestPollTimerMultipleFeatures) {
   FeatureResult feature_result{.valid = true};
   {
     InSequence sequence;
-    EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Boot());
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Enable(1)).WillOnce(Return(true));
@@ -332,13 +332,13 @@ TEST_F(HpsDaemonTest, TestSuspendAndResume) {
   FeatureResult feature_result{.valid = true};
   {
     InSequence sequence;
-    EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Boot());
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(feature_result));
     EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(false));
     EXPECT_CALL(*mock_hps_, ShutDown()).WillOnce(Return(true));
-    EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Boot());
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(feature_result));
     EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(true));
@@ -364,39 +364,10 @@ TEST_F(HpsDaemonTest, TestSuspendAndResume) {
   EXPECT_EQ(task_environment_.GetPendingMainThreadTaskCount(), 0u);
 }
 
-TEST_F(HpsDaemonTest, TestFailedResume) {
-  testing::GTEST_FLAG(death_test_style) = "threadsafe";
-  EXPECT_DEATH(
-      {
-        FeatureResult feature_result{.valid = true};
-        {
-          InSequence sequence;
-          EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
-          EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
-          EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(true));
-          EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(feature_result));
-          EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(false));
-          EXPECT_CALL(*mock_hps_, ShutDown()).WillOnce(Return(true));
-          EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(false));
-        }
-
-        brillo::ErrorPtr error;
-        bool result = hps_daemon_->EnableHpsSense(&error, feature_config_);
-        EXPECT_TRUE(result);
-
-        // Advance timer far enough so that the poll timer should fire twice. On
-        // the second invocation, HPS pretends that it has rebooted (IsRunning()
-        // == false), so we reinitialize the enabled features before resuming
-        // polling.
-        task_environment_.FastForwardBy(kPollTime * 2);
-      },
-      ".*Failed to boot.*");
-}
-
 TEST_F(HpsDaemonTest, DisableFeatureAfterResume) {
   {
     InSequence sequence;
-    EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Boot());
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(false));
     EXPECT_CALL(*mock_hps_, ShutDown()).WillOnce(Return(true));
@@ -423,7 +394,7 @@ TEST_F(HpsDaemonTest, AverageFilter) {
   FeatureResult feature_result2{.inference_result = -100, .valid = true};
   {
     InSequence sequence;
-    EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Boot());
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(feature_result1));
@@ -453,13 +424,13 @@ TEST_F(HpsDaemonTest, ResetFilterOnResume) {
   FeatureResult feature_result2{.inference_result = -100, .valid = true};
   {
     InSequence sequence;
-    EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Boot());
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(feature_result1));
     EXPECT_CALL(*mock_hps_, IsRunning()).WillOnce(Return(false));
     EXPECT_CALL(*mock_hps_, ShutDown()).WillOnce(Return(true));
-    EXPECT_CALL(*mock_hps_, Boot()).WillOnce(Return(true));
+    EXPECT_CALL(*mock_hps_, Boot());
     EXPECT_CALL(*mock_hps_, Enable(0)).WillOnce(Return(true));
     EXPECT_CALL(*mock_hps_, Result(0)).WillOnce(Return(feature_result2));
   }

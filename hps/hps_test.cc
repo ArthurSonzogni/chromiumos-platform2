@@ -345,7 +345,7 @@ TEST_F(HPSTest, NormalBoot) {
   // Boot the module.
   EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
-  ASSERT_TRUE(hps_->Boot());
+  hps_->Boot();
 
   // Ensure that features can be enabled.
   EXPECT_TRUE(hps_->Enable(0));
@@ -376,8 +376,8 @@ TEST_F(HPSTest, NormalBootTwice) {
   // Boot the module.
   EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(2);
-  ASSERT_TRUE(hps_->Boot());
-  ASSERT_TRUE(hps_->Boot());
+  hps_->Boot();
+  hps_->Boot();
 }
 
 /*
@@ -410,7 +410,7 @@ TEST_F(HPSTest, McuUpdate) {
       .Times(1);
   EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
-  ASSERT_TRUE(hps_->Boot());
+  hps_->Boot();
 
   // Check that MCU was downloaded.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
@@ -450,7 +450,7 @@ TEST_F(HPSTest, SpiUpdate) {
       .Times(1);
   EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
-  ASSERT_TRUE(hps_->Boot());
+  hps_->Boot();
 
   // Check that SPI was downloaded.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), 0);
@@ -499,7 +499,7 @@ TEST_F(HPSTest, BothUpdate) {
       .Times(1);
   EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
-  ASSERT_TRUE(hps_->Boot());
+  hps_->Boot();
 
   // Check that both MCU and SPI blobs were updated.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
@@ -535,7 +535,7 @@ TEST_F(HPSTest, WpOffNoUpdate) {
   // Boot the module.
   EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
-  ASSERT_TRUE(hps_->Boot());
+  hps_->Boot();
 
   // Check that neither MCU nor SPI blobs were updated.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), 0);
@@ -578,7 +578,7 @@ TEST_F(HPSTest, WpOffUpdate) {
       .Times(1);
   EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
-  ASSERT_TRUE(hps_->Boot());
+  hps_->Boot();
 
   // Check that neither MCU nor SPI blobs were updated.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
@@ -625,7 +625,7 @@ TEST_F(HPSTest, VersionUpdate) {
       .Times(1);
   EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
       .Times(1);
-  ASSERT_TRUE(hps_->Boot());
+  hps_->Boot();
 
   // Check that both MCU and SPI were downloaded.
   EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
