@@ -14,6 +14,7 @@
 
 #include <base/check.h>
 #include <base/command_line.h>
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
@@ -202,6 +203,8 @@ void FlagHelper::Init(int argc,
 
   GetInstance()->SetUsageMessage(help_usage);
 
+  GetInstance()->SetProgramName(argv[0]);
+
   GetInstance()->UpdateFlagValues();
 }
 
@@ -235,21 +238,24 @@ void FlagHelper::UpdateFlagValues() {
     if (df_it != defined_flags_.end()) {
       Flag* flag = df_it->second.get();
       if (!flag->SetValue(value)) {
-        base::StringAppendF(
-            &error_msg,
-            "ERROR: illegal value '%s' specified for %s flag '%s'\n",
-            value.c_str(), flag->GetType(), flag->name_);
+        base::StringAppendF(&error_msg,
+                            "%s: ERROR: illegal value '%s' "
+                            "specified for %s flag '%s'\n",
+                            GetProgramName().c_str(), value.c_str(),
+                            flag->GetType(), flag->name_);
         error_code = EX_DATAERR;
       }
     } else {
-      base::StringAppendF(&error_msg, "ERROR: unknown command line flag '%s'\n",
-                          key.c_str());
+      base::StringAppendF(&error_msg,
+                          "%s: ERROR: "
+                          "unknown command line flag '%s'\n",
+                          GetProgramName().c_str(), key.c_str());
       error_code = EX_USAGE;
     }
   }
 
   if (error_code != EX_OK) {
-    puts(error_msg.c_str());
+    fputs(error_msg.c_str(), stderr);
     exit(error_code);
   }
 }
@@ -274,6 +280,15 @@ std::string FlagHelper::GetHelpMessage() const {
     }
   }
   return help;
+}
+
+void FlagHelper::SetProgramName(std::string prog_name) {
+  std::string prog_name_base = base::FilePath(prog_name).BaseName().value();
+  program_name_.assign(std::move(prog_name_base));
+}
+
+std::string FlagHelper::GetProgramName() const {
+  return program_name_;
 }
 
 }  // namespace brillo

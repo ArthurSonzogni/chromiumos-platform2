@@ -269,6 +269,9 @@ class BRILLO_EXPORT FlagHelper final {
   // Sets the usage message, which is prepended to the --help message.
   void SetUsageMessage(std::string help_usage);
 
+  // Sets the program name.
+  void SetProgramName(std::string prog_name);
+
  private:
   FlagHelper();
   FlagHelper(const FlagHelper&) = delete;
@@ -279,7 +282,11 @@ class BRILLO_EXPORT FlagHelper final {
   // Generates a help message from the Usage Message and registered flags.
   std::string GetHelpMessage() const;
 
+  // Returns the program name.
+  std::string GetProgramName() const;
+
   std::string help_usage_;
+  std::string program_name_;
   std::map<std::string, std::unique_ptr<Flag>> defined_flags_;
 
   // base::CommandLine object for parsing the command line switches.  This
