@@ -50,7 +50,6 @@ class TpmImpl : public Tpm {
       TpmKeyHandle key_handle,
       const brillo::SecureBlob& ciphertext,
       const brillo::SecureBlob& key,
-      const std::map<uint32_t, brillo::Blob>& pcr_map,
       brillo::SecureBlob* plaintext) override;
   hwsec::StatusChain<hwsec::TPMErrorBase> SealToPcrWithAuthorization(
       const brillo::SecureBlob& plaintext,

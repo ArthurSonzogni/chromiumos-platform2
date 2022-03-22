@@ -287,7 +287,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
   brillo::SecureBlob aes_key(32);
   crypto_.Init(&tpm_, &cryptohome_keys_manager_);
   ASSERT_TRUE(DeriveSecretsScrypt(passkey, salt, {&aes_key}));
-  EXPECT_CALL(tpm_, DecryptBlob(_, tpm_key, aes_key, _, _)).Times(Exactly(1));
+  EXPECT_CALL(tpm_, DecryptBlob(_, tpm_key, aes_key, _)).Times(Exactly(1));
 
   TpmNotBoundToPcrAuthBlockState tpm_state = {
       .scrypt_derived = true, .salt = salt, .tpm_key = tpm_key};

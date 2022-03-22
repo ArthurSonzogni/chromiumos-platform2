@@ -37,7 +37,6 @@ class MockTpm : public Tpm {
               (TpmKeyHandle,
                const brillo::SecureBlob&,
                const brillo::SecureBlob&,
-               (const std::map<uint32_t, brillo::Blob>&),
                brillo::SecureBlob*),
               (override));
   MOCK_METHOD(hwsec::StatusChain<hwsec::TPMErrorBase>,
@@ -206,7 +205,6 @@ class MockTpm : public Tpm {
       TpmKeyHandle _key,
       const brillo::SecureBlob& plaintext,
       const brillo::SecureBlob& key,
-      const std::map<uint32_t, brillo::Blob>& pcr_map,
       brillo::SecureBlob* ciphertext) {
     return Xor(_key, plaintext, key, ciphertext);
   }

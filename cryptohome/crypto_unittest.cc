@@ -287,8 +287,8 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
 
   CryptoError crypto_error = CryptoError::CE_NONE;
 
-  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<4>(vkk_key), ReturnError<TPMErrorBase>()));
+  EXPECT_CALL(tpm, DecryptBlob(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(vkk_key), ReturnError<TPMErrorBase>()));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));

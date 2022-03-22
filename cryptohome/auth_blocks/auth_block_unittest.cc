@@ -289,7 +289,7 @@ TEST(TpmNotBoundToPcrTest, DeriveSuccess) {
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   TpmNotBoundToPcrAuthBlock auth_block(&tpm, &cryptohome_keys_manager);
-  EXPECT_CALL(tpm, DecryptBlob(_, tpm_key, aes_key, _, _)).Times(Exactly(1));
+  EXPECT_CALL(tpm, DecryptBlob(_, tpm_key, aes_key, _)).Times(Exactly(1));
   AuthBlockState auth_state;
   TpmNotBoundToPcrAuthBlockState state;
   state.scrypt_derived = true;
@@ -667,7 +667,7 @@ TEST(TPMAuthBlockTest, DecryptNotBoundToPcrTest) {
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  EXPECT_CALL(tpm, DecryptBlob(_, tpm_key, aes_key, _, _)).Times(Exactly(1));
+  EXPECT_CALL(tpm, DecryptBlob(_, tpm_key, aes_key, _)).Times(Exactly(1));
 
   TpmNotBoundToPcrAuthBlockState tpm_state;
   tpm_state.scrypt_derived = true;

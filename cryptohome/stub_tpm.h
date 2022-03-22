@@ -39,7 +39,6 @@ class StubTpm : public Tpm {
       TpmKeyHandle key_handle,
       const SecureBlob& ciphertext,
       const SecureBlob& key,
-      const std::map<uint32_t, brillo::Blob>& pcr_map,
       SecureBlob* plaintext) override {
     return hwsec_foundation::error::CreateError<hwsec::TPMError>(
         "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);

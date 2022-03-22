@@ -209,9 +209,9 @@ CryptoError TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
   }
 
   for (int i = 0; i < kTpmDecryptMaxRetries; i++) {
-    StatusChain<TPMErrorBase> err = tpm_->DecryptBlob(
-        cryptohome_key_loader_->GetCryptohomeKey(), tpm_key, aes_skey,
-        std::map<uint32_t, brillo::Blob>(), &local_vault_key);
+    StatusChain<TPMErrorBase> err =
+        tpm_->DecryptBlob(cryptohome_key_loader_->GetCryptohomeKey(), tpm_key,
+                          aes_skey, &local_vault_key);
     if (err == nullptr) {
       break;
     }

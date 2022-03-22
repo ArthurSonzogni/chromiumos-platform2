@@ -22,7 +22,7 @@ MockTpm::MockTpm() {
   ON_CALL(*this, GetVersion()).WillByDefault(Return(TpmVersion::TPM_UNKNOWN));
   ON_CALL(*this, EncryptBlob(_, _, _, _))
       .WillByDefault(Invoke(this, &MockTpm::Xor));
-  ON_CALL(*this, DecryptBlob(_, _, _, _, _))
+  ON_CALL(*this, DecryptBlob(_, _, _, _))
       .WillByDefault(Invoke(this, &MockTpm::XorDecrypt));
   ON_CALL(*this, GetPublicKeyHash(_, _))
       .WillByDefault(ReturnError<TPMErrorBase>());

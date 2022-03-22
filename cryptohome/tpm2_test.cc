@@ -1213,9 +1213,7 @@ TEST_F(Tpm2Test, DecryptBlobSuccess) {
   EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(handle, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(tpm_plaintext), Return(TPM_RC_SUCCESS)));
   SecureBlob plaintext;
-  EXPECT_EQ(nullptr,
-            tpm_->DecryptBlob(handle, ciphertext, key,
-                              std::map<uint32_t, brillo::Blob>(), &plaintext));
+  EXPECT_EQ(nullptr, tpm_->DecryptBlob(handle, ciphertext, key, &plaintext));
 }
 
 TEST_F(Tpm2Test, DecryptBlobBadAesKey) {
@@ -1223,8 +1221,8 @@ TEST_F(Tpm2Test, DecryptBlobBadAesKey) {
   SecureBlob key(16, 'a');
   SecureBlob ciphertext(32, 'b');
   SecureBlob plaintext;
-  StatusChain<TPMErrorBase> err = tpm_->DecryptBlob(
-      handle, ciphertext, key, std::map<uint32_t, brillo::Blob>(), &plaintext);
+  StatusChain<TPMErrorBase> err =
+      tpm_->DecryptBlob(handle, ciphertext, key, &plaintext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1234,8 +1232,8 @@ TEST_F(Tpm2Test, DecryptBlobBadCiphertext) {
   SecureBlob key(32, 'a');
   SecureBlob ciphertext(16, 'b');
   SecureBlob plaintext;
-  StatusChain<TPMErrorBase> err = tpm_->DecryptBlob(
-      handle, ciphertext, key, std::map<uint32_t, brillo::Blob>(), &plaintext);
+  StatusChain<TPMErrorBase> err =
+      tpm_->DecryptBlob(handle, ciphertext, key, &plaintext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1247,8 +1245,8 @@ TEST_F(Tpm2Test, DecryptBlobFailure) {
   EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(handle, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob plaintext;
-  StatusChain<TPMErrorBase> err = tpm_->DecryptBlob(
-      handle, ciphertext, key, std::map<uint32_t, brillo::Blob>(), &plaintext);
+  StatusChain<TPMErrorBase> err =
+      tpm_->DecryptBlob(handle, ciphertext, key, &plaintext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }

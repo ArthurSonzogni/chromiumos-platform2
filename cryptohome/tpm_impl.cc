@@ -336,8 +336,7 @@ void TpmImpl::GetStatus(std::optional<TpmKeyHandle> key_handle,
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
     if (StatusChain<TPMErrorBase> err =
-            DecryptBlob(key_handle.value(), data_out, key,
-                        std::map<uint32_t, brillo::Blob>(), &data)) {
+            DecryptBlob(key_handle.value(), data_out, key, &data)) {
       LOG(ERROR) << __func__ << ": Failed to decrypt blob: " << err;
       return;
     }
@@ -533,12 +532,10 @@ StatusChain<TPMErrorBase> TpmImpl::EncryptBlob(TpmKeyHandle key_handle,
   }
   return nullptr;
 }
-StatusChain<TPMErrorBase> TpmImpl::DecryptBlob(
-    TpmKeyHandle key_handle,
-    const SecureBlob& ciphertext,
-    const SecureBlob& key,
-    const std::map<uint32_t, brillo::Blob>& pcr_map,
-    SecureBlob* plaintext) {
+StatusChain<TPMErrorBase> TpmImpl::DecryptBlob(TpmKeyHandle key_handle,
+                                               const SecureBlob& ciphertext,
+                                               const SecureBlob& key,
+                                               SecureBlob* plaintext) {
   SecureBlob local_data;
   if (!UnobscureRsaMessage(ciphertext, key, &local_data)) {
     return CreateError<TPMError>("Error unobscureing message",

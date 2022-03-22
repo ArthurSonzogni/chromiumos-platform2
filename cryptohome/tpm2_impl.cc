@@ -47,7 +47,6 @@
 #include <trunks/trunks_factory.h>
 #include <trunks/trunks_factory_impl.h>
 
-
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
@@ -939,12 +938,10 @@ StatusChain<TPMErrorBase> Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
   return nullptr;
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::DecryptBlob(
-    TpmKeyHandle key_handle,
-    const SecureBlob& ciphertext,
-    const SecureBlob& key,
-    const std::map<uint32_t, brillo::Blob>& pcr_map,
-    SecureBlob* plaintext) {
+StatusChain<TPMErrorBase> Tpm2Impl::DecryptBlob(TpmKeyHandle key_handle,
+                                                const SecureBlob& ciphertext,
+                                                const SecureBlob& key,
+                                                SecureBlob* plaintext) {
   CHECK(plaintext);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -956,35 +953,15 @@ StatusChain<TPMErrorBase> Tpm2Impl::DecryptBlob(
     return CreateError<TPMError>("Error unobscureing message",
                                  TPMRetryAction::kNoRetry);
   }
-  trunks::AuthorizationDelegate* delegate;
-  std::unique_ptr<trunks::PolicySession> policy_session;
-  std::unique_ptr<trunks::AuthorizationDelegate> default_delegate;
-  if (!pcr_map.empty()) {
-    std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
-    policy_session = trunks->factory->GetPolicySession();
-    if (StatusChain<TPMErrorBase> err =
-            HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
-                policy_session->StartUnboundSession(true, true)))) {
-      return WrapError<TPMError>(std::move(err),
-                                 "Error starting policy session",
-                                 TPMRetryAction::kNoRetry);
-    }
-    if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
-            CreateError<TPM2Error>(policy_session->PolicyPCR(str_pcr_map)))) {
-      return WrapError<TPMError>(std::move(err), "Error creating PCR policy",
-                                 TPMRetryAction::kNoRetry);
-    }
-    delegate = policy_session->GetDelegate();
-  } else {
-    default_delegate = trunks->factory->GetPasswordAuthorization("");
-    delegate = default_delegate.get();
-  }
+
+  std::unique_ptr<trunks::AuthorizationDelegate> delegate =
+      trunks->factory->GetPasswordAuthorization("");
 
   std::string tpm_plaintext;
   if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->AsymmetricDecrypt(
               key_handle, trunks::TPM_ALG_OAEP, trunks::TPM_ALG_SHA256,
-              local_data.to_string(), delegate, &tpm_plaintext)))) {
+              local_data.to_string(), delegate.get(), &tpm_plaintext)))) {
     return WrapError<TPMError>(std::move(err), "Error decrypting plaintext");
   }
   plaintext->assign(tpm_plaintext.begin(), tpm_plaintext.end());
@@ -1168,8 +1145,7 @@ void Tpm2Impl::GetStatus(std::optional<TpmKeyHandle> key,
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
     if (StatusChain<TPMErrorBase> err =
-            DecryptBlob(key.value(), data_out, aes_key,
-                        std::map<uint32_t, brillo::Blob>(), &data)) {
+            DecryptBlob(key.value(), data_out, aes_key, &data)) {
       LOG(ERROR) << __func__ << ": Failed to decrypt blob: " << err;
       return;
     }

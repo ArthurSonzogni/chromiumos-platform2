@@ -200,16 +200,11 @@ class Tpm {
   //   key_handle - The loaded TPM key handle
   //   ciphertext - One RSA message to encrypt
   //   key - AES key to encrypt with
-  //   pcr_map - The map of PCR index -> value bound to the key. This is used
-  //             only for TPM 2.0. If the key is not bound to PCR, an empty map
-  //             should be provided. For TPM 1.2 this parameter is ignored, even
-  //             if the key is bound to PCR, so an empty map can be used.
   //   plaintext (OUT) - Decrypted blob
   virtual hwsec::StatusChain<hwsec::TPMErrorBase> DecryptBlob(
       TpmKeyHandle key_handle,
       const brillo::SecureBlob& ciphertext,
       const brillo::SecureBlob& key,
-      const std::map<uint32_t, brillo::Blob>& pcr_map,
       brillo::SecureBlob* plaintext) = 0;
 
   // Seals a data blob to provided PCR data, while assigning a authorization

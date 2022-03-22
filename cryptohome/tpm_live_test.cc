@@ -192,8 +192,7 @@ bool TpmLiveTest::DecryptionKeyTest() {
   }
   SecureBlob decrypted_plaintext;
   if (StatusChain<TPMErrorBase> err = tpm_->DecryptBlob(
-          handle.value(), ciphertext, aes_key,
-          std::map<uint32_t, brillo::Blob>(), &decrypted_plaintext)) {
+          handle.value(), ciphertext, aes_key, &decrypted_plaintext)) {
     LOG(ERROR) << "Error decrypting blob: " << err;
     return false;
   }
