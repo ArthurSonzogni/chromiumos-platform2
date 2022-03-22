@@ -21,33 +21,71 @@
 
 #include <limits>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/containers/contains.h>
 #include <base/containers/cxx20_erase.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <cros_config/cros_config.h>
 
 #include "installer/efi_boot_management.h"
 #include "installer/efivar.h"
 #include "installer/inst_util.h"
 
 namespace {
-// Description of the managed boot entry.
-// TODO(tbrandston): b/215430733 for making this overridable.
-const char kCrosEfiDescription[] = "Chromium OS";
+// Default description of the managed boot entry.
+const char kCrosEfiDefaultDescription[] = "ChromiumOS";
+// For accessing an override for the description of the managed boot entry.
+const char kCrosConfigEfiDescriptionPath[] = "/efi";
+const char kCrosConfigEfiDescriptionKey[] = "bootvar-name-override";
 
 // The name of the efi variable where Boot order is stored.
 const char kBootOrder[] = "BootOrder";
 
 // The base for our standard error message.
 const char kCantEnsureBoot[] = "Can't ensure successful boot: ";
+
+// Returns the description to use for managed EFI entries.
+// Uses chromeos-config to look for a board-specific override if present,
+// falling back to a hard-coded default if the override can't be read.
+// An optional `CrosConfigInterface` parameter is supplied for testing.
+std::string EfiDescription(
+    std::unique_ptr<brillo::CrosConfigInterface> config = nullptr) {
+  // If not passed a CrosConfig, make one.
+  if (!config) {
+    // Temporarily hold in a `CrosConfig` object, because `Init` isn't available
+    // on `CrosConfigInterface`.
+    auto cros_config = std::make_unique<brillo::CrosConfig>();
+
+    if (cros_config->Init()) {
+      config = std::move(cros_config);
+    } else {
+      LOG(WARNING) << "Can't initialize CrosConfig, using default entry name";
+      return kCrosEfiDefaultDescription;
+    }
+  }
+
+  std::string description;
+  if (!config->GetString(kCrosConfigEfiDescriptionPath,
+                         kCrosConfigEfiDescriptionKey, &description)) {
+    LOG(WARNING) << "Can't read name override, using default entry name";
+
+    // If we couldn't read it, return the default.
+    return kCrosEfiDefaultDescription;
+  }
+
+  return description;
+}
 
 // Returns true if the passed string matches the "Boot####" format:
 // starts with "Boot", followed by four hex digits, with nothing trailing.
@@ -139,12 +177,6 @@ class EfiBootEntryContents {
   EfiBootEntryContents(const std::string& description,
                        const std::vector<uint8_t>& device_path)
       : description_(description), device_path_(device_path) {}
-
-  // Checks if this is an entry we manage by comparing against our
-  // description constant.
-  bool IsCrosEntry() const {
-    return description_ == std::string(kCrosEfiDescription);
-  }
 
   bool operator==(const EfiBootEntryContents& other) const {
     return description_ == other.description_ &&
@@ -264,7 +296,8 @@ class EfiBootManager {
   using EntriesMap =
       std::map<EfiBootNumber, EfiBootEntryContents, EfiBootNumber::Comparator>;
 
-  explicit EfiBootManager(EfiVarInterface& efivar) : efivar_(&efivar) {}
+  EfiBootManager(EfiVarInterface& efivar, const std::string& description)
+      : efivar_(&efivar), entry_description_(description) {}
 
   // Wrapper around libefivar's variable iteration to filter only Boot* entries.
   // Returns each Boot entry name in turn until all are read, nullopt after.
@@ -381,7 +414,7 @@ class EfiBootManager {
       return std::nullopt;
     }
 
-    return EfiBootEntryContents(kCrosEfiDescription, efidp);
+    return EfiBootEntryContents(entry_description_, efidp);
   }
 
   // Returns an entry with desired contents that also appears in the boot order,
@@ -416,10 +449,10 @@ class EfiBootManager {
   // Best-effort removal from disk and boot order for all entries with
   // "our description", i.e. managed by us. We only do best-effort because
   // entries left behind shouldn't interfere with future boots.
-  void RemoveAllCrosEntries() {
+  void RemoveAllManagedEntries() {
     auto entry_iter = entries_.begin();
     while (entry_iter != entries_.end()) {
-      if (entry_iter->second.IsCrosEntry()) {
+      if (entry_iter->second.Description() == entry_description_) {
         // Best effort removal, including from boot order.
         LOG(INFO) << "Trying to remove " << entry_iter->first.Name();
         if (RemoveEntry(entry_iter->first)) {
@@ -498,13 +531,13 @@ class EfiBootManager {
       LOG(INFO) << "Found matching entry, no need to create one.";
 
       // If we found something drop it from the list so we don't have to avoid
-      // deleting it in RemoveAllCrosEntries.
+      // deleting it in RemoveAllManagedEntries.
       entries_.erase(found_entry.value());
     }
 
     // Any remaining cros entries don't match what we want, and should be
     // removed.
-    RemoveAllCrosEntries();
+    RemoveAllManagedEntries();
 
     // If we didn't find an existing one, we'll need to create a new entry.
     if (!found_entry) {
@@ -553,6 +586,9 @@ class EfiBootManager {
   EntriesMap entries_;
 
   BootOrder boot_order_;
+
+  // The description to be used for managed entries.
+  const std::string entry_description_;
 };
 
 }  // namespace
@@ -577,7 +613,7 @@ bool UpdateEfiBootEntries(const InstallConfig& install_config) {
     return false;
   }
 
-  EfiBootManager efi_boot_manager(efivar);
+  EfiBootManager efi_boot_manager(efivar, EfiDescription());
   if (!efi_boot_manager.UpdateEfiBootEntries(install_config,
                                              efi_size.value())) {
     LOG(ERROR) << "Failed to manage EFI boot entries, can't continue.";

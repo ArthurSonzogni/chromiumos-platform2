@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <optional>
@@ -58,17 +59,16 @@ const uint8_t kExampleDataLinux[] =
     "\x5C\x00\x47\x00\x65\x00\x6E\x00\x74\x00\x6F\x00\x6F\x00\x5C\x00\x67\x00"
     "\x72\x00\x75\x00\x62\x00\x2E\x00\x65\x00\x66\x00\x69\x00\x00\x00\x7F\xFF"
     "\x04";
-const char kExampleDescriptionLinux[] = "Linux";
 
 const uint8_t kExampleDataCros[] =
     "\x01\x00\x00\x00\x5E\x00\x43\x00\x68\x00\x72\x00\x6F\x00\x6D\x00\x69\x00"
-    "\x75\x00\x6D\x00\x20\x00\x4F\x00\x53\x00\x00\x00\x04\x01\x2A\x00\x0C\x00"
-    "\x00\x00\x00\x90\x01\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00"
-    "\x34\xEB\x97\xB6\x17\xB3\x43\xA6\x97\xDE\x49\x70\x9D\xF0\xB6\x03\x02\x02"
-    "\x04\x04\x30\x00\x5C\x00\x65\x00\x66\x00\x69\x00\x5C\x00\x62\x00\x6F\x00"
-    "\x6F\x00\x74\x00\x5C\x00\x62\x00\x6F\x00\x6F\x00\x74\x00\x78\x00\x36\x00"
-    "\x34\x00\x2E\x00\x65\x00\x66\x00\x69\x00\x00\x00\x7F\xFF\x04";
-const char kExampleDescriptionCros[] = "Chromium OS";
+    "\x75\x00\x6D\x00\x4F\x00\x53\x00\x00\x00\x04\x01\x2A\x00\x0C\x00\x00\x00"
+    "\x00\x90\x01\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00\x34\xEB"
+    "\x97\xB6\x17\xB3\x43\xA6\x97\xDE\x49\x70\x9D\xF0\xB6\x03\x02\x02\x04\x04"
+    "\x30\x00\x5C\x00\x65\x00\x66\x00\x69\x00\x5C\x00\x62\x00\x6F\x00\x6F\x00"
+    "\x74\x00\x5C\x00\x62\x00\x6F\x00\x6F\x00\x74\x00\x78\x00\x36\x00\x34\x00"
+    "\x2E\x00\x65\x00\x66\x00\x69\x00\x00\x00\x7F\xFF\x04";
+const char kExampleDescriptionCros[] = "ChromiumOS";
 const uint8_t kExamplePathCros[] =
     "\x04\x01\x2A\x00\x0C\x00\x00\x00\x00\x90\x01\x00\x00\x00\x00\x00\x00\x00"
     "\x02\x00\x00\x00\x00\x00\x34\xEB\x97\xB6\x17\xB3\x43\xA6\x97\xDE\x49\x70"
@@ -182,17 +182,17 @@ std::vector<uint8_t> BootOrderData(const std::vector<uint16_t>& input) {
 
 }  // namespace
 
-class EfiBootEntryContentsTest : public ::testing::Test {};
+TEST(EfiDescriptionTest, Default) {
+  EXPECT_EQ(kCrosEfiDefaultDescription, EfiDescription());
+}
 
-TEST(EfiBootEntryContentsTest, IsCrosEntry) {
-  EfiBootEntryContents entryQemuDisk(kExampleDescriptionQemuDisk, {});
-  EfiBootEntryContents entryLinux(kExampleDescriptionLinux, {});
-  EfiBootEntryContents entryCros(kExampleDescriptionCros, {});
+TEST(EfiDescriptionTest, Override) {
+  auto cros_config = std::make_unique<brillo::FakeCrosConfig>();
 
-  EXPECT_FALSE(entryQemuDisk.IsCrosEntry());
-  EXPECT_FALSE(entryLinux.IsCrosEntry());
+  cros_config->SetString(kCrosConfigEfiDescriptionPath,
+                         kCrosConfigEfiDescriptionKey, "test override");
 
-  EXPECT_TRUE(entryCros.IsCrosEntry());
+  EXPECT_EQ("test override", EfiDescription(std::move(cros_config)));
 }
 
 TEST(EfiBootEntryContentsTest, Equals) {
@@ -307,7 +307,8 @@ TEST_F(BootOrderTest, Contains) {
 
 class EfiBootManagerTest : public ::testing::Test {
  protected:
-  EfiBootManagerTest() : efivar_(), efi_boot_manager_(efivar_) {}
+  EfiBootManagerTest()
+      : efivar_(), efi_boot_manager_(efivar_, kCrosEfiDefaultDescription) {}
 
   EfiVarFake efivar_;
   EfiBootManager efi_boot_manager_;
@@ -395,7 +396,7 @@ TEST_F(EfiBootManagerTest, NextAvailableBootNum) {
 
 TEST_F(EfiBootManagerTest, FindContentsInBootOrder) {
   const EfiBootEntryContents desired(
-      kCrosEfiDescription,
+      kCrosEfiDefaultDescription,
       VecU8From(kExamplePathCros, sizeof(kExamplePathCros)));
   std::optional<EfiBootNumber> entry;
 
@@ -445,7 +446,7 @@ TEST_F(EfiBootManagerTest, FindContentsInBootOrder) {
 
 TEST_F(EfiBootManagerTest, FindContents) {
   const EfiBootEntryContents desired(
-      kCrosEfiDescription,
+      kCrosEfiDefaultDescription,
       VecU8From(kExamplePathCros, sizeof(kExamplePathCros)));
   std::optional<EfiBootNumber> entry;
 
@@ -475,18 +476,18 @@ TEST_F(EfiBootManagerTest, FindContents) {
   EXPECT_EQ(entry.value().Number(), 3);
 }
 
-TEST_F(EfiBootManagerTest, RemoveAllCrosEntries) {
+TEST_F(EfiBootManagerTest, RemoveAllManagedEntries) {
   efi_boot_manager_.SetBootOrder(
       BootOrderFromExample(kExampleBootOrder123, sizeof(kExampleBootOrder123)));
 
   // Set up to also empty the boot order.
   efi_boot_manager_.SetEntries({
-      BootPair(0x0001, kCrosEfiDescription, {}),
+      BootPair(0x0001, kCrosEfiDefaultDescription, {}),
       BootPair(0xA000, "Chromium", {}),
-      BootPair(0x0002, kCrosEfiDescription, {}),
-      BootPair(0xB000, "ChromiumOS", {}),
+      BootPair(0x0002, kCrosEfiDefaultDescription, {}),
+      BootPair(0xB000, "Chromium OS", {}),
       BootPair(0xC000, "something", {}),
-      BootPair(0x0003, kCrosEfiDescription, {}),
+      BootPair(0x0003, kCrosEfiDefaultDescription, {}),
       BootPair(0xD000, "Linux", {}),
       BootPair(0xE000, "Linux", {}),
   });
@@ -503,7 +504,7 @@ TEST_F(EfiBootManagerTest, RemoveAllCrosEntries) {
       {"BootE000", {}},
   });
 
-  efi_boot_manager_.RemoveAllCrosEntries();
+  efi_boot_manager_.RemoveAllManagedEntries();
 
   EXPECT_THAT(
       efivar_.data_,

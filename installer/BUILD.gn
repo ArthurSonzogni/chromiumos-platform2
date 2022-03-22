@@ -35,6 +35,7 @@ if (use.manage_efi_boot_entries) {
     pkg_deps = [
       "efiboot",
       "efivar",
+      "libcros_config",
     ]
   }
 }

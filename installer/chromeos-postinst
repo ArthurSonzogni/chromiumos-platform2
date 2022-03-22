@@ -19,6 +19,9 @@ INSTALL_ROOT=$(dirname "$0")
 # Set up the mount points userland needs/expects.
 MOUNTS="/proc /dev /sys /tmp /run /var /mnt/stateful_partition"
 
+# Include chromeos-config, which is a submount of /run
+MOUNTS="${MOUNTS} /run/chromeos-config/v1"
+
 cleanup() {
   local d
   for d in ${MOUNTS}; do
