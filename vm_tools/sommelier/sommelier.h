@@ -339,7 +339,7 @@ struct sl_host_gamepad {
   int state;
   struct libevdev* ev_dev;
   struct libevdev_uinput* uinput_dev;
-  bool stadia;
+  bool axes_quirk;
   struct wl_list link;
 };
 #endif

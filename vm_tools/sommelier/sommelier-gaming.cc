@@ -52,6 +52,12 @@ const uint32_t kXboxVendor = 0x45e;
 const uint32_t kXboxProduct = 0x2ea;
 const uint32_t kXboxVersion = 0x301;
 
+// Note: the BT vendor ID for SteelSeries is due to a chipset bug
+// and is not an actual claimed Vendor ID.
+const uint32_t kSteelSeriesVendorBt = 0x111;
+const uint32_t kSteelSeriesProductDuoBt = 0x1431;
+const uint32_t kSteelSeriesProductProtonBt = 0x1434;
+
 const uint32_t kStadiaVendor = 0x18d1;
 const uint32_t kStadiaProduct = 0x9400;
 const uint32_t kStadiaVersion = 0x111;
@@ -84,7 +90,7 @@ static void sl_internal_gamepad_removed(void* data,
 
 static uint32_t remap_axis(struct sl_host_gamepad* host_gamepad,
                            uint32_t axis) {
-  if (host_gamepad->stadia) {
+  if (host_gamepad->axes_quirk) {
     if (axis == ABS_Z)
       axis = ABS_RX;
     else if (axis == ABS_RZ)
@@ -241,7 +247,7 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
   host_gamepad->state = kStatePending;
   host_gamepad->ev_dev = libevdev_new();
   host_gamepad->uinput_dev = NULL;
-  host_gamepad->stadia = false;
+  host_gamepad->axes_quirk = false;
 
   if (host_gamepad->ev_dev == NULL) {
     fprintf(stderr, "error: libevdev_new failed\n");
@@ -254,7 +260,12 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
 
   if (product_id == kStadiaProduct && vendor_id == kStadiaVendor &&
       version == kStadiaVersion) {
-    host_gamepad->stadia = true;
+    host_gamepad->axes_quirk = true;
+  } else if (bus == ZCR_GAMING_SEAT_V2_BUS_TYPE_BLUETOOTH &&
+             vendor_id == kSteelSeriesVendorBt &&
+             (product_id == kSteelSeriesProductDuoBt ||
+              product_id == kSteelSeriesProductProtonBt)) {
+    host_gamepad->axes_quirk = true;
   }
 
   // Describe a common controller
