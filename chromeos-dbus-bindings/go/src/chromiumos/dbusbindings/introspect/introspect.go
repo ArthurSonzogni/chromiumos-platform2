@@ -8,6 +8,25 @@ package introspect
 
 // TODO(chromium:983008): Add checks for the presence of unexpected elements in XML files.
 
+// MethodKind is an enum to represent the kind of a method.
+type MethodKind int
+
+const (
+	// MethodKindSimple indicates that the method doesn't fail and no brillo::ErrorPtr argument is given.
+	MethodKindSimple MethodKind = iota
+
+	// MethodKindNormal indicates that the method returns false and sets a brillo::ErrorPtr on failure.
+	MethodKindNormal
+
+	// MethodKindAsync indicates that instead of returning "out" arguments directly,
+	// the method takes a DBusMethodResponse argument templated on the types of the "out" arguments.
+	MethodKindAsync
+
+	// MethodKindRaw indicates that the method takes a dbus::MethodCall and dbus::ExportedObject::ResponseSender
+	// object directly.
+	MethodKindRaw
+)
+
 // Annotation adds settings to MethodArg, SignalArg and Method.
 type Annotation struct {
 	Name  string `xml:"name,attr"`
@@ -66,4 +85,71 @@ type Interface struct {
 type Introspection struct {
 	Name       string      `xml:"name,attr"`
 	Interfaces []Interface `xml:"interface"`
+}
+
+// InputArguments returns the array of input arguments extracted from method arguments.
+func (m *Method) InputArguments() []MethodArg {
+	var ret []MethodArg
+	for _, a := range m.Args {
+		if a.Direction == "in" || a.Direction == "" { // default direction is "in"
+			ret = append(ret, a)
+		}
+	}
+	return ret
+}
+
+// OutputArguments returns the array of output arguments extracted from method arguments.
+func (m *Method) OutputArguments() []MethodArg {
+	var ret []MethodArg
+	for _, a := range m.Args {
+		if a.Direction == "out" {
+			ret = append(ret, a)
+		}
+	}
+	return ret
+}
+
+// Kind returns the kind of method.
+func (m *Method) Kind() MethodKind {
+	for _, a := range m.Annotations {
+		// Support GLib.Async annotation as well.
+		if a.Name == "org.freedesktop.DBus.GLib.Async" {
+			return MethodKindAsync
+		}
+
+		if a.Name == "org.chromium.DBus.Method.Kind" {
+			switch a.Value {
+			case "simple":
+				return MethodKindSimple
+			case "normal":
+				return MethodKindNormal
+			case "async":
+				return MethodKindAsync
+			case "raw":
+				return MethodKindRaw
+			}
+		}
+	}
+
+	return MethodKindSimple
+}
+
+// IncludeDBusMessage returns true if the method needs a message argument added.
+func (m *Method) IncludeDBusMessage() bool {
+	for _, a := range m.Annotations {
+		if a.Name == "org.chromium.DBus.Method.IncludeDBusMessage" {
+			return a.Value == "true"
+		}
+	}
+	return false
+}
+
+// Const returns true if the method is a const member function.
+func (m *Method) Const() bool {
+	for _, a := range m.Annotations {
+		if a.Name == "org.chromium.DBus.Method.Const" {
+			return a.Value == "true"
+		}
+	}
+	return false
 }
