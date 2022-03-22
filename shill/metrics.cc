@@ -1566,7 +1566,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
     else if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceModem)
       apn_source = kCellularApnSourceModem;
 
-    if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb) {
+    if (apn_info.at(cellular::kApnSource) == cellular::kApnSourceMoDb ||
+        apn_info.at(cellular::kApnSource) == cellular::kApnSourceModem) {
       if (base::Contains(apn_info, kApnProperty))
         apn_name = apn_info.at(kApnProperty);
       if (base::Contains(apn_info, kApnUsernameProperty))
