@@ -21,12 +21,12 @@ print_usage () {
 Usage: $0 [OPTIONS...] PATH PROPERTY
 
 Optional arguments:
-  --configfs-image FILE   Path to configfs image.
-  --smbios-name NAME      Override the SMBIOS name from firmware.
-  --dt-compatible STRING  Add STRING to the device-tree compatible list.
-  --sku-id SKU            Override the SKU id from firmware.
-  --whitelabel-tag VALUE  Override the whitelabel tag from VPD.
-  --help                  Show this help message and exit.
+  --configfs-image FILE     Path to configfs image.
+  --smbios-name NAME        Override the SMBIOS name from firmware.
+  --dt-compatible STRING    Add STRING to the device-tree compatible list.
+  --sku-id SKU              Override the SKU id from firmware.
+  --custom-label-tag VALUE  Override the whitelabel tag from VPD.
+  --help                    Show this help message and exit.
 
 Positional arguments:
   PATH                    The path to get from config.
@@ -57,8 +57,8 @@ while [[ "${1:0:1}" != "/" ]]; do
       SKU_ID="$2"
       shift
       ;;
-    --whitelabel-tag )
-      WHITELABEL_TAG="$2"
+    --custom-label-tag )
+      CUSTOM_LABEL_TAG="$2"
       shift
       ;;
     --help )
@@ -107,8 +107,12 @@ if [[ -f /sys/class/dmi/id/product_sku && -z "${SKU_ID}" ]]; then
   SKU_ID="$(cut -b4- </sys/class/dmi/id/product_sku)"
 fi
 
-if [[ -f /sys/firmware/vpd/ro/whitelabel_tag && -z "${WHITELABEL_TAG}" ]]; then
-  read -r WHITELABEL_TAG </sys/firmware/vpd/ro/whitelabel_tag
+if [[ -f /sys/firmware/vpd/ro/custom_label_tag && -z "${CUSTOM_LABEL_TAG}" ]]; then
+  read -r CUSTOM_LABEL_TAG </sys/firmware/vpd/ro/custom_label_tag
+fi
+
+if [[ -f /sys/firmware/vpd/whitelabel_tag && -z "${CUSTOM_LABEL_TAG}" ]]; then
+  read -r CUSTOM_LABEL_TAG </sys/firmware/vpd/whitelabel_tag
 fi
 
 on_exit_unmount () {
@@ -147,7 +151,7 @@ for base in "${SQUASHFS_BASE}"/v1/chromeos/configs/*; do
     continue
   fi
 
-  if file_mismatch "${base}/identity/whitelabel-tag" "${WHITELABEL_TAG}"; then
+  if file_mismatch "${base}/identity/custom-label-tag" "${CUSTOM_LABEL_TAG}"; then
     continue
   fi
 
