@@ -81,7 +81,8 @@ class AuthBlockUtility {
   // AuthBlock::Create() based on the |credentials|, |tpm_| and |crypto_|
   // status.
   virtual AuthBlockType GetAuthBlockTypeForCreation(
-      const Credentials& credentials) const = 0;
+      const bool is_le_credential,
+      const bool is_challenge_credential) const = 0;
 
   // This function returns the AuthBlock type for AuthBlock::Derive()
   // based on the vault keyset flags value.

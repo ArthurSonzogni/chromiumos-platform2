@@ -80,7 +80,8 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       AuthBlock::DeriveCallback derive_callback) override;
 
   AuthBlockType GetAuthBlockTypeForCreation(
-      const Credentials& credentials) const override;
+      const bool is_le_credential,
+      const bool is_challenge_credential) const override;
 
   AuthBlockType GetAuthBlockTypeForDerivation(
       const Credentials& credentials) const override;

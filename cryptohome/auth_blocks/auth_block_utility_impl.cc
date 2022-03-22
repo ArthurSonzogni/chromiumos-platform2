@@ -238,16 +238,11 @@ bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
 }
 
 AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
-    const Credentials& credentials) const {
-  bool is_le_credential =
-      credentials.key_data().policy().low_entropy_credential();
-
+    const bool is_le_credential, const bool is_challenge_credential) const {
   if (is_le_credential) {
     return AuthBlockType::kPinWeaver;
   }
 
-  bool is_challenge_credential =
-      credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE;
   if (is_challenge_credential) {
     return AuthBlockType::kChallengeCredential;
   }

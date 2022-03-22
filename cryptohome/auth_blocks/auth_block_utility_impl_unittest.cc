@@ -1299,20 +1299,26 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
       keyset_management_.get(), &crypto_, &platform_);
 
   // Test for kLibScryptCompat
-  EXPECT_EQ(AuthBlockType::kLibScryptCompat,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(credentials));
+  EXPECT_EQ(
+      AuthBlockType::kLibScryptCompat,
+      auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+          /*is_le_credential =*/false, /*is_challenge_credential =*/false));
   // Test for kPinWeaver
   KeyData key_data;
   key_data.mutable_policy()->set_low_entropy_credential(true);
   credentials.set_key_data(key_data);
-  EXPECT_EQ(AuthBlockType::kPinWeaver,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(credentials));
+  EXPECT_EQ(
+      AuthBlockType::kPinWeaver,
+      auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+          /*is_le_credential =*/true, /*is_challenge_credential =*/false));
   // Test for kChallengeResponse
   KeyData key_data2;
   key_data2.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   credentials.set_key_data(key_data2);
-  EXPECT_EQ(AuthBlockType::kChallengeCredential,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(credentials));
+  EXPECT_EQ(
+      AuthBlockType::kChallengeCredential,
+      auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+          /*is_le_credential =*/false, /*is_challenge_credential =*/true));
   // Test for Tpm backed AuthBlock types.
   ON_CALL(tpm_, IsOwned()).WillByDefault(Return(true));
   // credentials.key_data type shouldn't be challenge credential any more.
@@ -1320,20 +1326,26 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   credentials.set_key_data(key_data3);
 
   // Test for kTpmEcc
-  EXPECT_EQ(AuthBlockType::kTpmEcc,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(credentials));
+  EXPECT_EQ(
+      AuthBlockType::kTpmEcc,
+      auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+          /*is_le_credential =*/false, /*is_challenge_credential =*/false));
 
   // Test for kTpmNotBoundToPcr (No TPM or no TPM2.0)
   EXPECT_CALL(tpm_, GetVersion()).WillOnce(Return(Tpm::TPM_1_2));
-  EXPECT_EQ(AuthBlockType::kTpmNotBoundToPcr,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(credentials));
+  EXPECT_EQ(
+      AuthBlockType::kTpmNotBoundToPcr,
+      auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+          /*is_le_credential =*/false, /*is_challenge_credential =*/false));
 
   // Test for kTpmBoundToPcr (TPM2.0 but no support for ECC key)
   EXPECT_CALL(tpm_, GetVersion()).WillOnce(Return(Tpm::TPM_2_0));
   EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
       .WillOnce(Return(nullptr));
-  EXPECT_EQ(AuthBlockType::kTpmBoundToPcr,
-            auth_block_utility_impl_->GetAuthBlockTypeForCreation(credentials));
+  EXPECT_EQ(
+      AuthBlockType::kTpmBoundToPcr,
+      auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+          /*is_le_credential =*/false, /*is_challenge_credential =*/false));
 }
 
 TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForDerivation) {
