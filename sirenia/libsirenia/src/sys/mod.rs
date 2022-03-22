@@ -7,14 +7,32 @@
 //! interact with the libc package.
 
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::{self, stdin, Write};
 use std::mem::MaybeUninit;
 use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
 use std::ptr::null_mut;
 
 use anyhow::Context;
-use libc::{self, c_int, sigfillset, sigprocmask, sigset_t, wait, ECHILD, SIG_BLOCK, SIG_UNBLOCK};
-use sys_util::{add_fd_flags, PollContext, WatchingEvents};
+use libc::{
+    self, c_int, isatty, sigfillset, sigprocmask, sigset_t, wait, ECHILD, SIG_BLOCK, SIG_UNBLOCK,
+};
+use sys_util::{self, add_fd_flags, error, PollContext, Terminal, WatchingEvents};
+
+pub struct ScopedRaw {}
+
+impl ScopedRaw {
+    pub fn new() -> Result<Self, sys_util::Error> {
+        stdin().set_raw_mode().map(|_| ScopedRaw {})
+    }
+}
+
+impl Drop for ScopedRaw {
+    fn drop(&mut self) {
+        if let Err(err) = stdin().set_canon_mode() {
+            error!("Failed exit raw stdin: {}", err);
+        }
+    }
+}
 
 pub fn errno() -> c_int {
     io::Error::last_os_error().raw_os_error().unwrap()
@@ -82,6 +100,11 @@ pub fn dup<F: FromRawFd>(fd: RawFd) -> Result<F, io::Error> {
         return Err(io::Error::last_os_error());
     }
     Ok(unsafe { F::from_raw_fd(dup_fd as RawFd) })
+}
+
+pub fn is_a_tty(fd: RawFd) -> bool {
+    // This is trivially safe.
+    unsafe { isatty(fd) != 0 }
 }
 
 pub fn get_a_pty() -> Result<(File, File), anyhow::Error> {

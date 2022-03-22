@@ -10,7 +10,7 @@ use std::env;
 use std::fs::File;
 use std::io::{copy, stdin, stdout, BufRead, BufReader, Read};
 use std::mem::replace;
-use std::os::unix::io::FromRawFd;
+use std::os::unix::io::{AsRawFd, FromRawFd};
 use std::path::{Path, PathBuf};
 use std::process::{exit, ChildStderr, Command, Stdio};
 use std::str::FromStr;
@@ -25,7 +25,6 @@ use dbus::{
 };
 use getopts::Options;
 use libsirenia::linux::events::CopyFdEventSource;
-use libsirenia::sys::dup;
 use libsirenia::{
     build_info::BUILD_TIMESTAMP,
     cli::{
@@ -34,6 +33,7 @@ use libsirenia::{
     },
     communication::trichechus::{self, AppInfo, Trichechus, TrichechusClient},
     linux::events::EventMultiplexer,
+    sys::{self, dup, is_a_tty},
     transport::{
         Transport, TransportType, DEFAULT_CLIENT_PORT, DEFAULT_SERVER_PORT, LOOPBACK_DEFAULT,
     },
@@ -184,8 +184,7 @@ fn connect_to_dugong<'a>(c: &'a Connection) -> Result<Proxy<'a, &Connection>> {
 
 fn handle_app_fds_interactive(input: File, output: File) -> Result<()> {
     let mut ctx = EventMultiplexer::new().unwrap();
-    let raw = termion::raw::IntoRawMode::into_raw_mode(stdout())
-        .map_err(|_| anyhow!("failed to put stdin in raw mode"))?;
+    let raw = sys::ScopedRaw::new().map_err(|_| anyhow!("failed to put stdin in raw mode"))?;
 
     let copy_in = CopyFdEventSource::new(Box::new(input), Box::new(dup::<File>(1)?))?;
     ctx.add_event(Box::new(copy_in.0))?;
@@ -621,7 +620,7 @@ fn main() -> Result<()> {
         None
     };
 
-    let handler: &dyn Fn(File, File) -> Result<()> = if termion::is_tty(&stdin())
+    let handler: &dyn Fn(File, File) -> Result<()> = if is_a_tty(stdin().as_raw_fd())
         && interactive.unwrap_or_else(|| app_id.as_str() == DEVELOPER_SHELL_APP_ID)
     {
         &handle_app_fds_interactive
