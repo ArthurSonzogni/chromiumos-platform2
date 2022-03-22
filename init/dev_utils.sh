@@ -88,6 +88,7 @@ dev_update_stateful_partition() {
   # are available.
   if [ -d "${developer_new}" ] && [ -d "${var_new}" ]; then
     clobber-log -- "Updating from ${developer_new} && ${var_new}."
+    mkdir -p "${developer_target}" "${var_target}"
     find "${developer_target}" "${var_target}" -mindepth 1 -maxdepth 1 \
         -exec rm -rf {} +
     find "${var_new}" -mindepth 1 -maxdepth 1 -exec mv {} "${var_target}" \;
