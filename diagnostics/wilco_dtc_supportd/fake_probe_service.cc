@@ -32,16 +32,16 @@ FakeProbeService::FakeProbeService()
 FakeProbeService::~FakeProbeService() = default;
 
 void FakeProbeService::SetProbeTelemetryInfoCallback(
-    base::Callback<
+    base::OnceCallback<
         void(std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>,
              ProbeTelemetryInfoCallback)> callback) {
-  telemetry_callback_ = callback;
+  telemetry_callback_ = std::move(callback);
 }
 
 void FakeProbeService::ProbeTelemetryInfo(
     std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories,
     ProbeTelemetryInfoCallback callback) {
-  telemetry_callback_.Run(categories, std::move(callback));
+  std::move(telemetry_callback_).Run(categories, std::move(callback));
 }
 
 }  // namespace wilco

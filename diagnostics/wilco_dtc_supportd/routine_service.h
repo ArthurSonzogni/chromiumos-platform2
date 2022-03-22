@@ -26,21 +26,21 @@ namespace wilco {
 // routines.
 class RoutineService final {
  public:
-  using GetAvailableRoutinesToServiceCallback = base::Callback<void(
+  using GetAvailableRoutinesToServiceCallback = base::OnceCallback<void(
       const std::vector<grpc_api::DiagnosticRoutine>& routines,
       grpc_api::RoutineServiceStatus service_status)>;
   using RunRoutineToServiceCallback =
-      base::Callback<void(int uuid,
-                          grpc_api::DiagnosticRoutineStatus status,
-                          grpc_api::RoutineServiceStatus service_status)>;
-  using GetRoutineUpdateRequestToServiceCallback =
-      base::Callback<void(int uuid,
-                          grpc_api::DiagnosticRoutineStatus status,
-                          int progress_percent,
-                          grpc_api::DiagnosticRoutineUserMessage user_message,
-                          const std::string& output,
-                          const std::string& status_message,
-                          grpc_api::RoutineServiceStatus service_status)>;
+      base::OnceCallback<void(int uuid,
+                              grpc_api::DiagnosticRoutineStatus status,
+                              grpc_api::RoutineServiceStatus service_status)>;
+  using GetRoutineUpdateRequestToServiceCallback = base::OnceCallback<void(
+      int uuid,
+      grpc_api::DiagnosticRoutineStatus status,
+      int progress_percent,
+      grpc_api::DiagnosticRoutineUserMessage user_message,
+      const std::string& output,
+      const std::string& status_message,
+      grpc_api::RoutineServiceStatus service_status)>;
 
   class Delegate {
    public:
@@ -63,15 +63,13 @@ class RoutineService final {
 
   ~RoutineService();
 
-  void GetAvailableRoutines(
-      const GetAvailableRoutinesToServiceCallback& callback);
+  void GetAvailableRoutines(GetAvailableRoutinesToServiceCallback callback);
   void RunRoutine(const grpc_api::RunRoutineRequest& request,
-                  const RunRoutineToServiceCallback& callback);
-  void GetRoutineUpdate(
-      int uuid,
-      grpc_api::GetRoutineUpdateRequest::Command command,
-      bool include_output,
-      const GetRoutineUpdateRequestToServiceCallback& callback);
+                  RunRoutineToServiceCallback callback);
+  void GetRoutineUpdate(int uuid,
+                        grpc_api::GetRoutineUpdateRequest::Command command,
+                        bool include_output,
+                        GetRoutineUpdateRequestToServiceCallback callback);
 
  private:
   // Forwards and wraps the result of a GetAvailableRoutines call into a gRPC

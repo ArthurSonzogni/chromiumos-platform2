@@ -45,8 +45,8 @@ class MojoService final
   using MojomWilcoDtcSupportdEvent =
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdEvent;
   using MojomSendWilcoDtcMessageToUiCallback =
-      base::Callback<void(grpc::Status, base::StringPiece)>;
-  using MojomPerformWebRequestCallback = base::Callback<void(
+      base::OnceCallback<void(grpc::Status, base::StringPiece)>;
+  using MojomPerformWebRequestCallback = base::OnceCallback<void(
       MojomWilcoDtcSupportdWebRequestStatus, int, base::StringPiece)>;
   using MojomGetConfigurationDataCallback =
       base::OnceCallback<void(const std::string&)>;
@@ -72,14 +72,13 @@ class MojoService final
   void NotifyConfigurationDataChanged() override;
 
   // Calls to WilcoDtcSupportdClient.
-  void SendWilcoDtcMessageToUi(
-      const std::string& json,
-      const MojomSendWilcoDtcMessageToUiCallback& callback);
+  void SendWilcoDtcMessageToUi(const std::string& json,
+                               MojomSendWilcoDtcMessageToUiCallback callback);
   void PerformWebRequest(MojomWilcoDtcSupportdWebRequestHttpMethod http_method,
                          const std::string& url,
                          const std::vector<std::string>& headers,
                          const std::string& request_body,
-                         const MojomPerformWebRequestCallback& callback);
+                         MojomPerformWebRequestCallback callback);
   void GetConfigurationData(MojomGetConfigurationDataCallback callback);
   void HandleEvent(const MojomWilcoDtcSupportdEvent event);
   void GetCrosHealthdDiagnosticsService(

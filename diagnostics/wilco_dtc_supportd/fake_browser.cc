@@ -52,14 +52,14 @@ bool FakeBrowser::BootstrapMojoConnection(
 
 bool FakeBrowser::SendUiMessageToWilcoDtc(
     const std::string& json_message,
-    const base::Callback<void(mojo::ScopedHandle)>& callback) {
+    base::OnceCallback<void(mojo::ScopedHandle)> callback) {
   mojo::ScopedHandle handle = CreateReadOnlySharedMemoryRegionMojoHandle(
       base::StringPiece(json_message));
   if (!handle.is_valid()) {
     return false;
   }
   wilco_dtc_supportd_service_->SendUiMessageToWilcoDtc(std::move(handle),
-                                                       callback);
+                                                       std::move(callback));
   return true;
 }
 

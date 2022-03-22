@@ -261,7 +261,7 @@ bool Core::BindCrosHealthdProbeService(
 }
 
 void Core::SendWilcoDtcMessageToUi(const std::string& json_message,
-                                   const SendMessageToUiCallback& callback) {
+                                   SendMessageToUiCallback callback) {
   VLOG(1) << "SendWilcoDtcMessageToUi() json_message=" << json_message;
   MojoService* mojo_service = mojo_service_factory_->Get();
   if (!mojo_service) {
@@ -269,10 +269,11 @@ void Core::SendWilcoDtcMessageToUi(const std::string& json_message,
         "GetConfigurationDataFromBrowser happens before "
         "Mojo connection is established.";
     LOG(WARNING) << kErrMsg;
-    callback.Run(grpc::Status(grpc::StatusCode::UNKNOWN, kErrMsg), "");
+    std::move(callback).Run(grpc::Status(grpc::StatusCode::UNKNOWN, kErrMsg),
+                            "");
     return;
   }
-  mojo_service->SendWilcoDtcMessageToUi(json_message, callback);
+  mojo_service->SendWilcoDtcMessageToUi(json_message, std::move(callback));
 }
 
 void Core::PerformWebRequestToBrowser(
@@ -280,75 +281,77 @@ void Core::PerformWebRequestToBrowser(
     const std::string& url,
     const std::vector<std::string>& headers,
     const std::string& request_body,
-    const PerformWebRequestToBrowserCallback& callback) {
+    PerformWebRequestToBrowserCallback callback) {
   VLOG(1) << "Core::PerformWebRequestToBrowser";
 
   MojoService* mojo_service = mojo_service_factory_->Get();
   if (!mojo_service) {
     LOG(WARNING) << "PerformWebRequestToBrowser happens before Mojo connection "
                  << "is established.";
-    callback.Run(WebRequestStatus::kInternalError, 0 /* http_status */,
-                 "" /* response_body */);
+    std::move(callback).Run(WebRequestStatus::kInternalError,
+                            0 /* http_status */, "" /* response_body */);
     return;
   }
 
   MojomWilcoDtcSupportdWebRequestHttpMethod mojo_http_method;
   if (!ConvertWebRequestHttpMethodToMojom(http_method, &mojo_http_method)) {
     LOG(ERROR) << "Unknown gRPC http method: " << static_cast<int>(http_method);
-    callback.Run(WebRequestStatus::kInternalError, 0 /* http_status */,
-                 "" /* response_body */);
+    std::move(callback).Run(WebRequestStatus::kInternalError,
+                            0 /* http_status */, "" /* response_body */);
     return;
   }
 
   mojo_service->PerformWebRequest(
       mojo_http_method, url, headers, request_body,
-      base::Bind(
-          [](const PerformWebRequestToBrowserCallback& callback,
+      base::BindOnce(
+          [](PerformWebRequestToBrowserCallback callback,
              MojomWilcoDtcSupportdWebRequestStatus mojo_status, int http_status,
              base::StringPiece response_body) {
             WebRequestStatus status;
             if (!ConvertStatusFromMojom(mojo_status, &status)) {
               LOG(ERROR) << "Unknown mojo web request status: " << mojo_status;
-              callback.Run(WebRequestStatus::kInternalError,
-                           0 /* http_status */, "" /* response_body */);
+              std::move(callback).Run(WebRequestStatus::kInternalError,
+                                      0 /* http_status */,
+                                      "" /* response_body */);
               return;
             }
-            callback.Run(status, http_status, response_body);
+            std::move(callback).Run(status, http_status, response_body);
           },
-          callback));
+          std::move(callback)));
 }
 
 void Core::GetAvailableRoutinesToService(
-    const GetAvailableRoutinesToServiceCallback& callback) {
-  routine_service_.GetAvailableRoutines(callback);
+    GetAvailableRoutinesToServiceCallback callback) {
+  routine_service_.GetAvailableRoutines(std::move(callback));
 }
 
 void Core::RunRoutineToService(const grpc_api::RunRoutineRequest& request,
-                               const RunRoutineToServiceCallback& callback) {
-  routine_service_.RunRoutine(request, callback);
+                               RunRoutineToServiceCallback callback) {
+  routine_service_.RunRoutine(request, std::move(callback));
 }
 
 void Core::GetRoutineUpdateRequestToService(
     int uuid,
     grpc_api::GetRoutineUpdateRequest::Command command,
     bool include_output,
-    const GetRoutineUpdateRequestToServiceCallback& callback) {
-  routine_service_.GetRoutineUpdate(uuid, command, include_output, callback);
+    GetRoutineUpdateRequestToServiceCallback callback) {
+  routine_service_.GetRoutineUpdate(uuid, command, include_output,
+                                    std::move(callback));
 }
 
 void Core::GetConfigurationDataFromBrowser(
-    const GetConfigurationDataFromBrowserCallback& callback) {
+    GetConfigurationDataFromBrowserCallback callback) {
   VLOG(1) << "Core::GetConfigurationDataFromBrowser";
 
   MojoService* mojo_service = mojo_service_factory_->Get();
   if (!mojo_service) {
     LOG(WARNING) << "GetConfigurationDataFromBrowser happens before Mojo "
                  << "connection is established.";
-    callback.Run("" /* json_configuration_data */);
+    std::move(callback).Run("" /* json_configuration_data */);
     return;
   }
 
-  mojo_service->GetConfigurationData(callback);
+  mojo_service->GetConfigurationData(std::move(callback));
 }
 
 void Core::GetDriveSystemData(DriveSystemDataType data_type,

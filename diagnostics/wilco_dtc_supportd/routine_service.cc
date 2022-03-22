@@ -235,11 +235,11 @@ RoutineService::~RoutineService() {
 }
 
 void RoutineService::GetAvailableRoutines(
-    const GetAvailableRoutinesToServiceCallback& callback) {
+    GetAvailableRoutinesToServiceCallback callback) {
   if (!BindCrosHealthdDiagnosticsServiceIfNeeded()) {
     LOG(WARNING) << "GetAvailableRoutines called before mojo was bootstrapped.";
-    callback.Run(std::vector<grpc_api::DiagnosticRoutine>{},
-                 grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+    std::move(callback).Run(std::vector<grpc_api::DiagnosticRoutine>{},
+                            grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
     return;
   }
 
@@ -253,11 +253,12 @@ void RoutineService::GetAvailableRoutines(
 }
 
 void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
-                                const RunRoutineToServiceCallback& callback) {
+                                RunRoutineToServiceCallback callback) {
   if (!BindCrosHealthdDiagnosticsServiceIfNeeded()) {
     LOG(WARNING) << "RunRoutine called before mojo was bootstrapped.";
-    callback.Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_FAILED_TO_START,
-                 grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+    std::move(callback).Run(0 /* uuid */,
+                            grpc_api::ROUTINE_STATUS_FAILED_TO_START,
+                            grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
     return;
   }
 
@@ -379,8 +380,9 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
       break;
     default:
       LOG(ERROR) << "RunRoutineRequest routine not set or unrecognized.";
-      it.first->second.Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_INVALID_FIELD,
-                           grpc_api::ROUTINE_SERVICE_STATUS_OK);
+      std::move(it.first->second)
+          .Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_INVALID_FIELD,
+               grpc_api::ROUTINE_SERVICE_STATUS_OK);
       run_routine_callbacks_.erase(it.first);
       break;
   }
@@ -390,22 +392,22 @@ void RoutineService::GetRoutineUpdate(
     int uuid,
     grpc_api::GetRoutineUpdateRequest::Command command,
     bool include_output,
-    const GetRoutineUpdateRequestToServiceCallback& callback) {
+    GetRoutineUpdateRequestToServiceCallback callback) {
   if (!BindCrosHealthdDiagnosticsServiceIfNeeded()) {
     LOG(WARNING) << "GetRoutineUpdate called before mojo was bootstrapped.";
-    callback.Run(uuid, grpc_api::ROUTINE_STATUS_ERROR, 0 /* progress_percent */,
-                 grpc_api::ROUTINE_USER_MESSAGE_UNSET, "" /* output */,
-                 "" /* status_message */,
-                 grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+    std::move(callback).Run(
+        uuid, grpc_api::ROUTINE_STATUS_ERROR, 0 /* progress_percent */,
+        grpc_api::ROUTINE_USER_MESSAGE_UNSET, "" /* output */,
+        "" /* status_message */, grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
     return;
   }
 
   chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum mojo_command;
   if (!GetMojoCommandFromGrpcCommand(command, &mojo_command)) {
-    callback.Run(uuid, grpc_api::ROUTINE_STATUS_INVALID_FIELD,
-                 0 /* progress_percent */, grpc_api::ROUTINE_USER_MESSAGE_UNSET,
-                 "" /* output */, "" /* status_message */,
-                 grpc_api::ROUTINE_SERVICE_STATUS_OK);
+    std::move(callback).Run(
+        uuid, grpc_api::ROUTINE_STATUS_INVALID_FIELD, 0 /* progress_percent */,
+        grpc_api::ROUTINE_USER_MESSAGE_UNSET, "" /* output */,
+        "" /* status_message */, grpc_api::ROUTINE_SERVICE_STATUS_OK);
     return;
   }
 
@@ -413,7 +415,7 @@ void RoutineService::GetRoutineUpdate(
   next_get_routine_update_key_++;
   DCHECK_EQ(get_routine_update_callbacks_.count(callback_key), 0);
   get_routine_update_callbacks_.insert(
-      {callback_key, {uuid, std::move(callback)}});
+      {callback_key, std::make_pair(uuid, std::move(callback))});
   service_->GetRoutineUpdate(
       uuid, mojo_command, include_output,
       base::Bind(&RoutineService::ForwardGetRoutineUpdateResponse,
@@ -441,7 +443,8 @@ void RoutineService::ForwardGetAvailableRoutinesResponse(
         grpc_routines.push_back(grpc_routine);
   }
 
-  it->second.Run(std::move(grpc_routines), grpc_api::ROUTINE_SERVICE_STATUS_OK);
+  std::move(it->second)
+      .Run(std::move(grpc_routines), grpc_api::ROUTINE_SERVICE_STATUS_OK);
   get_available_routines_callbacks_.erase(it);
 }
 
@@ -460,11 +463,12 @@ void RoutineService::ForwardRunRoutineResponse(
   chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum mojo_status =
       response->status;
   if (!GetGrpcStatusFromMojoStatus(mojo_status, &grpc_status)) {
-    it->second.Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_ERROR,
-                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
+    std::move(it->second)
+        .Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_ERROR,
+             grpc_api::ROUTINE_SERVICE_STATUS_OK);
   } else {
-    it->second.Run(response->id, grpc_status,
-                   grpc_api::ROUTINE_SERVICE_STATUS_OK);
+    std::move(it->second)
+        .Run(response->id, grpc_status, grpc_api::ROUTINE_SERVICE_STATUS_OK);
   }
   run_routine_callbacks_.erase(it);
 }
@@ -482,11 +486,11 @@ void RoutineService::ForwardGetRoutineUpdateResponse(
 
   grpc_api::GetRoutineUpdateResponse grpc_response;
   SetGrpcUpdateFromMojoUpdate(std::move(response), &grpc_response);
-  it->second.second.Run(it->second.first /* uuid */, grpc_response.status(),
-                        grpc_response.progress_percent(),
-                        grpc_response.user_message(), grpc_response.output(),
-                        grpc_response.status_message(),
-                        grpc_api::ROUTINE_SERVICE_STATUS_OK);
+  std::move(it->second.second)
+      .Run(it->second.first /* uuid */, grpc_response.status(),
+           grpc_response.progress_percent(), grpc_response.user_message(),
+           grpc_response.output(), grpc_response.status_message(),
+           grpc_api::ROUTINE_SERVICE_STATUS_OK);
   get_routine_update_callbacks_.erase(it);
 }
 
@@ -513,23 +517,24 @@ void RoutineService::OnDisconnect() {
 
 void RoutineService::RunInFlightCallbacks() {
   for (auto& it : get_available_routines_callbacks_) {
-    it.second.Run(std::vector<grpc_api::DiagnosticRoutine>{},
-                  grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+    std::move(it.second).Run(std::vector<grpc_api::DiagnosticRoutine>{},
+                             grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
   }
   get_available_routines_callbacks_.clear();
 
   for (auto& it : run_routine_callbacks_) {
-    it.second.Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_FAILED_TO_START,
-                  grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+    std::move(it.second).Run(0 /* uuid */,
+                             grpc_api::ROUTINE_STATUS_FAILED_TO_START,
+                             grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
   }
   run_routine_callbacks_.clear();
 
   for (auto& it : get_routine_update_callbacks_) {
-    it.second.second.Run(
-        it.second.first /* uuid */, grpc_api::ROUTINE_STATUS_ERROR,
-        0 /* progress_percent */, grpc_api::ROUTINE_USER_MESSAGE_UNSET,
-        "" /* output */, "" /* status_message */,
-        grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
+    std::move(it.second.second)
+        .Run(it.second.first /* uuid */, grpc_api::ROUTINE_STATUS_ERROR,
+             0 /* progress_percent */, grpc_api::ROUTINE_USER_MESSAGE_UNSET,
+             "" /* output */, "" /* status_message */,
+             grpc_api::ROUTINE_SERVICE_STATUS_UNAVAILABLE);
   }
   get_routine_update_callbacks_.clear();
 }

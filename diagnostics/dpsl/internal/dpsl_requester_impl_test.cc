@@ -447,10 +447,10 @@ class TestDsplMultiRequesterServer {
   }
 
  private:
-  using HandleSendMessageToUiCallback = base::Callback<void(
+  using HandleSendMessageToUiCallback = base::RepeatingCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::SendMessageToUiResponse>)>;
 
-  using HandlePerformWebRequestCallback = base::Callback<void(
+  using HandlePerformWebRequestCallback = base::RepeatingCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::PerformWebRequestResponse>)>;
 
   void HandleSendMessageToUiCallbackCall(
@@ -611,7 +611,7 @@ class TestDsplRequesterServer {
 
  private:
   using HandleCallCallback =
-      base::Callback<void(grpc::Status, std::unique_ptr<Response>)>;
+      base::RepeatingCallback<void(grpc::Status, std::unique_ptr<Response>)>;
 
   void HandleCall(std::unique_ptr<Request> request,
                   const HandleCallCallback& callback) {

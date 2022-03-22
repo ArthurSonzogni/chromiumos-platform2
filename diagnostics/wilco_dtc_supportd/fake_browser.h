@@ -76,7 +76,7 @@ class FakeBrowser final {
   // BootstrapMojoConnection().
   bool SendUiMessageToWilcoDtc(
       const std::string& json_message,
-      const base::Callback<void(mojo::ScopedHandle)>& callback);
+      base::OnceCallback<void(mojo::ScopedHandle)> callback);
 
   // Call the |NotifyConfigurationDataChanged| Mojo method on wilco_dtc_supportd
   // daemon, which will call the corresponding gRPC method on wilco_dtc.

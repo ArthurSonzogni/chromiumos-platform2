@@ -128,27 +128,25 @@ class Core final : public GrpcService::Delegate,
       chromeos::wilco_dtc_supportd::mojom::WilcoDtcSupportdService;
 
   // WilcoDtcSupportdGrpcService::Delegate overrides:
-  void SendWilcoDtcMessageToUi(
-      const std::string& json_message,
-      const SendMessageToUiCallback& callback) override;
+  void SendWilcoDtcMessageToUi(const std::string& json_message,
+                               SendMessageToUiCallback callback) override;
   void PerformWebRequestToBrowser(
       WebRequestHttpMethod http_method,
       const std::string& url,
       const std::vector<std::string>& headers,
       const std::string& request_body,
-      const PerformWebRequestToBrowserCallback& callback) override;
+      PerformWebRequestToBrowserCallback callback) override;
   void GetAvailableRoutinesToService(
-      const GetAvailableRoutinesToServiceCallback& callback) override;
-  void RunRoutineToService(
-      const grpc_api::RunRoutineRequest& request,
-      const RunRoutineToServiceCallback& callback) override;
+      GetAvailableRoutinesToServiceCallback callback) override;
+  void RunRoutineToService(const grpc_api::RunRoutineRequest& request,
+                           RunRoutineToServiceCallback callback) override;
   void GetRoutineUpdateRequestToService(
       int uuid,
       grpc_api::GetRoutineUpdateRequest::Command command,
       bool include_output,
-      const GetRoutineUpdateRequestToServiceCallback& callback) override;
+      GetRoutineUpdateRequestToServiceCallback callback) override;
   void GetConfigurationDataFromBrowser(
-      const GetConfigurationDataFromBrowserCallback& callback) override;
+      GetConfigurationDataFromBrowserCallback callback) override;
   void GetDriveSystemData(DriveSystemDataType data_type,
                           const GetDriveSystemDataCallback& callback) override;
   void RequestBluetoothDataNotification() override;

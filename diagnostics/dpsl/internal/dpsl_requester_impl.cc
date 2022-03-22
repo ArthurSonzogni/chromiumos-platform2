@@ -192,7 +192,7 @@ template <typename GrpcStubMethod, typename RequestType, typename ResponseType>
 void DpslRequesterImpl::CallGrpcClientMethod(
     GrpcStubMethod grpc_stub_method,
     std::unique_ptr<RequestType> request,
-    base::Callback<void(grpc::Status, std::unique_ptr<ResponseType>)>
+    base::RepeatingCallback<void(grpc::Status, std::unique_ptr<ResponseType>)>
         response_callback) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
   if (async_grpc_client_shutting_down_) {

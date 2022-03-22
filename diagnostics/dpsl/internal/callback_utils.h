@@ -18,21 +18,11 @@
 
 namespace diagnostics {
 
-// A function that transforms base::Callback into std::function
-
-template <typename ReturnType, typename... ArgType>
-inline std::function<ReturnType(ArgType...)> MakeStdFunctionFromCallback(
-    base::Callback<ReturnType(ArgType...)> callback) {
-  return [callback](ArgType&&... args) {
-    return callback.Run(std::forward<ArgType>(args)...);
-  };
-}
-
-// A function that transforms base::Callback into std::function, and
+// A function that transforms base::RepeatingCallback into std::function, and
 // automatically adds grpc::Status::OK
 template <typename ReturnType, typename... ArgType>
 inline std::function<ReturnType(ArgType...)> MakeStdFunctionFromCallbackGrpc(
-    base::Callback<ReturnType(grpc::Status, ArgType...)> callback) {
+    base::RepeatingCallback<ReturnType(grpc::Status, ArgType...)> callback) {
   return [callback](ArgType&&... args) {
     return callback.Run(grpc::Status::OK, std::forward<ArgType>(args)...);
   };
@@ -56,17 +46,18 @@ inline ReturnType RunStdFunctionWithArgsGrpc(
 
 }  // namespace internal
 
-// Transforms std::function into base::Callback.
+// Transforms std::function into base::RepeatingCallback.
 template <typename ReturnType, typename... ArgTypes>
-inline base::Callback<ReturnType(ArgTypes...)> MakeCallbackFromStdFunction(
-    std::function<ReturnType(ArgTypes...)> function) {
+inline base::RepeatingCallback<ReturnType(ArgTypes...)>
+MakeCallbackFromStdFunction(std::function<ReturnType(ArgTypes...)> function) {
   return base::Bind(&internal::RunStdFunctionWithArgs<ReturnType, ArgTypes...>,
                     base::Passed(std::move(function)));
 }
 
-// Transforms std::function into base::Callback, and ignores grpc::Status
+// Transforms std::function into base::RepeatingCallback, and ignores
+// grpc::Status
 template <typename ReturnType, typename... ArgTypes>
-inline base::Callback<ReturnType(grpc::Status, ArgTypes...)>
+inline base::RepeatingCallback<ReturnType(grpc::Status, ArgTypes...)>
 MakeCallbackFromStdFunctionGrpc(
     std::function<ReturnType(ArgTypes...)> function) {
   return base::Bind(
@@ -77,10 +68,11 @@ MakeCallbackFromStdFunctionGrpc(
 namespace internal {
 
 template <typename... ArgTypes>
-inline void RunCallbackOnTaskRunner(scoped_refptr<base::TaskRunner> task_runner,
-                                    const base::Location& location,
-                                    base::Callback<void(ArgTypes...)> callback,
-                                    ArgTypes... args) {
+inline void RunCallbackOnTaskRunner(
+    scoped_refptr<base::TaskRunner> task_runner,
+    const base::Location& location,
+    base::RepeatingCallback<void(ArgTypes...)> callback,
+    ArgTypes... args) {
   task_runner->PostTask(location, base::Bind(std::move(callback),
                                              base::Passed(std::move(args))...));
 }
@@ -90,9 +82,10 @@ inline void RunCallbackOnTaskRunner(scoped_refptr<base::TaskRunner> task_runner,
 // Returns a callback that remembers the current task runner and, when called,
 // posts |callback| to it (with all arguments forwarded).
 template <typename... ArgTypes>
-inline base::Callback<void(ArgTypes...)> MakeOriginTaskRunnerPostingCallback(
+inline base::RepeatingCallback<void(ArgTypes...)>
+MakeOriginTaskRunnerPostingCallback(
     const base::Location& location,
-    base::Callback<void(ArgTypes...)> callback) {
+    base::RepeatingCallback<void(ArgTypes...)> callback) {
   return base::Bind(&internal::RunCallbackOnTaskRunner<ArgTypes...>,
                     base::ThreadTaskRunnerHandle::Get(), location,
                     std::move(callback));

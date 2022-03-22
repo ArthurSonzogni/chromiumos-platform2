@@ -19,7 +19,7 @@ class GrpcClientManager;
 class MojoGrpcAdapter final {
  public:
   using SendGrpcUiMessageToWilcoDtcCallback =
-      base::Callback<void(std::string response_json_message)>;
+      base::RepeatingCallback<void(std::string response_json_message)>;
 
   explicit MojoGrpcAdapter(GrpcClientManager* grpc_client_manager);
   MojoGrpcAdapter(const MojoGrpcAdapter&) = delete;

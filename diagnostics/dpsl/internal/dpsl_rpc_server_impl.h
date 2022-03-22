@@ -37,17 +37,17 @@ class DpslRpcServerImpl final : public DpslRpcServer {
   bool Init();
 
  private:
-  using HandleMessageFromUiCallback = base::Callback<void(
+  using HandleMessageFromUiCallback = base::RepeatingCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::HandleMessageFromUiResponse>)>;
-  using HandleEcNotificationCallback = base::Callback<void(
+  using HandleEcNotificationCallback = base::RepeatingCallback<void(
       grpc::Status, std::unique_ptr<grpc_api::HandleEcNotificationResponse>)>;
-  using HandlePowerNotificationCallback = base::Callback<void(
+  using HandlePowerNotificationCallback = base::RepeatingCallback<void(
       grpc::Status,
       std::unique_ptr<grpc_api::HandlePowerNotificationResponse>)>;
-  using HandleConfigurationDataChangedCallback = base::Callback<void(
+  using HandleConfigurationDataChangedCallback = base::RepeatingCallback<void(
       grpc::Status,
       std::unique_ptr<grpc_api::HandleConfigurationDataChangedResponse>)>;
-  using HandleBluetoothDataChangedCallback = base::Callback<void(
+  using HandleBluetoothDataChangedCallback = base::RepeatingCallback<void(
       grpc::Status,
       std::unique_ptr<grpc_api::HandleBluetoothDataChangedResponse>)>;
 

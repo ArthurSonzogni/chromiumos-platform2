@@ -107,7 +107,7 @@ using MojomWilcoDtcSupportdWebRequestStatus =
 // Returns a callback that, once called, saves its parameter to |*response| and
 // quits |*run_loop|.
 template <typename ValueType>
-base::Callback<void(grpc::Status, std::unique_ptr<ValueType>)>
+base::RepeatingCallback<void(grpc::Status, std::unique_ptr<ValueType>)>
 MakeAsyncResponseWriter(const base::Closure& callback,
                         std::unique_ptr<ValueType>* response) {
   return base::Bind(
@@ -741,11 +741,12 @@ class BootstrappedCoreTest : public StartedCoreTest {
 
   FakeWilcoDtc* fake_wilco_dtc() { return fake_wilco_dtc_.get(); }
 
-  base::Callback<void(mojo::ScopedHandle)> fake_browser_valid_handle_callback(
-      const base::Closure& callback,
+  base::OnceCallback<void(mojo::ScopedHandle)>
+  fake_browser_valid_handle_callback(
+      const base::RepeatingClosure& callback,
       const std::string& expected_response_json_message) {
-    return base::Bind(
-        [](const base::Closure& callback,
+    return base::BindOnce(
+        [](base::OnceClosure callback,
            const std::string& expected_response_json_message,
            mojo::ScopedHandle response_json_message_handle) {
           auto shm_mapping = GetReadOnlySharedMemoryMappingFromMojoHandle(
@@ -754,18 +755,18 @@ class BootstrappedCoreTest : public StartedCoreTest {
           ASSERT_EQ(expected_response_json_message,
                     std::string(shm_mapping.GetMemoryAs<const char>(),
                                 shm_mapping.mapped_size()));
-          callback.Run();
+          std::move(callback).Run();
         },
         callback, expected_response_json_message);
   }
 
-  base::Callback<void(mojo::ScopedHandle)> fake_browser_invalid_handle_callback(
-      const base::Closure& callback) {
-    return base::Bind(
-        [](const base::Closure& callback,
+  base::OnceCallback<void(mojo::ScopedHandle)>
+  fake_browser_invalid_handle_callback(const base::RepeatingClosure& callback) {
+    return base::BindOnce(
+        [](base::OnceClosure callback,
            mojo::ScopedHandle response_json_message_handle) {
           ASSERT_FALSE(response_json_message_handle.is_valid());
-          callback.Run();
+          std::move(callback).Run();
         },
         callback);
   }
@@ -798,9 +799,10 @@ TEST_F(BootstrappedCoreTest, SendGrpcUiMessageToWilcoDtc) {
     FAIL();
   }));
 
-  EXPECT_TRUE(fake_browser()->SendUiMessageToWilcoDtc(
-      kJsonMessageRequest, fake_browser_valid_handle_callback(
-                               barrier_closure, kJsonMessageResponse)));
+  auto callback =
+      fake_browser_valid_handle_callback(barrier_closure, kJsonMessageResponse);
+  EXPECT_TRUE(fake_browser()->SendUiMessageToWilcoDtc(kJsonMessageRequest,
+                                                      std::move(callback)));
 
   run_loop.Run();
 
@@ -818,7 +820,8 @@ TEST_F(BootstrappedCoreTest, SendGrpcUiMessageToWilcoDtcInvalidJSON) {
 
   auto callback =
       fake_browser_invalid_handle_callback(run_loop_fake_browser.QuitClosure());
-  EXPECT_TRUE(fake_browser()->SendUiMessageToWilcoDtc(kJsonMessage, callback));
+  EXPECT_TRUE(fake_browser()->SendUiMessageToWilcoDtc(kJsonMessage,
+                                                      std::move(callback)));
 
   run_loop_fake_browser.Run();
   // There's no reliable way to wait till the wrong HandleMessageFromUi(), if

@@ -99,7 +99,7 @@ class DpslRequesterImpl final : public DpslRequester {
   void CallGrpcClientMethod(
       GrpcStubMethod grpc_stub_method,
       std::unique_ptr<RequestType> request,
-      base::Callback<void(grpc::Status, std::unique_ptr<ResponseType>)>
+      base::RepeatingCallback<void(grpc::Status, std::unique_ptr<ResponseType>)>
           response_callback);
 
   // Task runner of the main thread (on which this instance was created).
