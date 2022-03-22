@@ -124,7 +124,6 @@ class Device : public base::RefCounted<Device> {
                          Error* error,
                          const ResultCallback& callback);
   virtual void Reset(Error* error, const ResultCallback& callback);
-  virtual void RefreshIPConfig(Error* error);
 
   // Returns false if IPv6 is allowed and should be enabled when the device
   // tries to acquire an IP configuration. The default implementation allows

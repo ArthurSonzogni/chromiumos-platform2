@@ -231,13 +231,6 @@ void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
       technology().GetName() + " device doesn't implement Reset");
 }
 
-void Device::RefreshIPConfig(Error* /*error*/) {
-  SLOG(this, 2) << __func__;
-  if (ipconfig_) {
-    ipconfig_->Refresh();
-  }
-}
-
 bool Device::GetIPv6Disabled(Error* error) {
   return ipv6_disabled_;
 }
