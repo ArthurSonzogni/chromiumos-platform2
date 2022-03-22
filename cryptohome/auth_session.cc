@@ -437,6 +437,11 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddAuthFactor(
 
   // TODO(b/216804305): Verify the auth session is authenticated, after
   // `OnUserCreated()` is changed to mark the session authenticated.
+  // At this point AuthSession should be authenticated as it needs
+  // FileSystemKeys to wrap the new credentials.
+  if (status_ != AuthStatus::kAuthStatusAuthenticated) {
+    return user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION;
+  }
 
   AuthFactorMetadata auth_factor_metadata;
   AuthFactorType auth_factor_type;
