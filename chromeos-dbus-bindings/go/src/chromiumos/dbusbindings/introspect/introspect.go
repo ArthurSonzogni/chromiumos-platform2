@@ -140,7 +140,7 @@ func (m *Method) Kind() MethodKind {
 		}
 	}
 
-	return MethodKindSimple
+	return MethodKindNormal
 }
 
 // IncludeDBusMessage returns true if the method needs a message argument added.

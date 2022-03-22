@@ -11,8 +11,6 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// TODO(chromium:983008): After implementing signature function contents, fix types of want.
-
 func TestMakeMethodRetType(t *testing.T) {
 	cases := []struct {
 		input introspect.Method
@@ -50,14 +48,14 @@ func TestMakeMethodRetType(t *testing.T) {
 		}, {
 			input: introspect.Method{
 				Name: "normalMethod",
-				Annotations: []introspect.Annotation{
-					{Name: "org.chromium.DBus.Method.Kind", Value: "normal"},
-				},
 			},
 			want: "bool",
 		}, {
 			input: introspect.Method{
 				Name: "theOtherMethods",
+				Annotations: []introspect.Annotation{
+					{Name: "org.chromium.DBus.Method.Kind", Value: "simple"},
+				},
 			},
 			want: "void",
 		},
@@ -207,12 +205,104 @@ func TestMakeMethodArgs(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-		got, err := makeMethodArgs(tc.input)
+		got, err := makeMethodParams(tc.input)
 		if err != nil {
-			t.Errorf("makeMethodArgs got error, want nil: %v", err)
+			t.Errorf("makeMethodParams got error, want nil: %v", err)
 		}
 		if diff := cmp.Diff(got, tc.want); diff != "" {
-			t.Errorf("makeMethodArgs failed, method name is %s\n(-got +want):\n%s", tc.input.Name, diff)
+			t.Errorf("makeMethodParams failed, method name is %s\n(-got +want):\n%s", tc.input.Name, diff)
+		}
+	}
+}
+
+func TestMakeSignalParams(t *testing.T) {
+	cases := []struct {
+		input introspect.Signal
+		want  []string
+	}{
+		{
+			input: introspect.Signal{
+				Name: "sig1",
+				Args: []introspect.SignalArg{
+					{
+						Name: "a1",
+						Type: "h",
+					}, {
+						Name: "",
+						Type: "ay",
+						Annotation: introspect.Annotation{
+							Name:  "org.chromium.DBus.Argument.ProtobufClass",
+							Value: "MyProto",
+						},
+					},
+				},
+			},
+			want: []string{
+				"const brillo::dbus_utils::FileDescriptor& in_a1",
+				"const MyProto& in_2",
+			},
+		}, {
+			input: introspect.Signal{
+				Name: "EmptySig",
+				Args: nil,
+			},
+			want: nil,
+		},
+	}
+
+	for _, tc := range cases {
+		got, err := makeSignalParams(tc.input)
+		if err != nil {
+			t.Errorf("makeSignalParams got error, want nil: %v", err)
+		}
+		if diff := cmp.Diff(got, tc.want); diff != "" {
+			t.Errorf("makeSignalParams failed, signal name is %s\n(-got +want):\n%s", tc.input.Name, diff)
+		}
+	}
+}
+
+func TestMakeDBusSignalParams(t *testing.T) {
+	cases := []struct {
+		input introspect.Signal
+		want  []string
+	}{
+		{
+			input: introspect.Signal{
+				Name: "sig1",
+				Args: []introspect.SignalArg{
+					{
+						Name: "a1",
+						Type: "h",
+					}, {
+						Name: "",
+						Type: "ay",
+						Annotation: introspect.Annotation{
+							Name:  "org.chromium.DBus.Argument.ProtobufClass",
+							Value: "MyProto",
+						},
+					},
+				},
+			},
+			want: []string{
+				"brillo::dbus_utils::FileDescriptor /*a1*/",
+				"MyProto",
+			},
+		}, {
+			input: introspect.Signal{
+				Name: "EmptySig",
+				Args: nil,
+			},
+			want: nil,
+		},
+	}
+
+	for _, tc := range cases {
+		got, err := makeDBusSignalParams(tc.input)
+		if err != nil {
+			t.Errorf("makeDBusSignalParams got error, want nil: %v", err)
+		}
+		if diff := cmp.Diff(got, tc.want); diff != "" {
+			t.Errorf("makeDBusSignalParams failed, signal name is %s\n(-got +want):\n%s", tc.input.Name, diff)
 		}
 	}
 }

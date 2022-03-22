@@ -55,10 +55,10 @@ func TestKind(t *testing.T) {
 			input: introspect.Method{
 				Name: "f1",
 				Annotations: []introspect.Annotation{
-					{Name: "org.chromium.DBus.Method.Kind", Value: "normal"},
+					{Name: "org.chromium.DBus.Method.Kind", Value: "simple"},
 				},
 			},
-			want: introspect.MethodKindNormal,
+			want: introspect.MethodKindSimple,
 		}, {
 			input: introspect.Method{
 				Name: "f2",
@@ -79,7 +79,7 @@ func TestKind(t *testing.T) {
 			input: introspect.Method{
 				Name: "f4",
 			},
-			want: introspect.MethodKindSimple,
+			want: introspect.MethodKindNormal,
 		},
 	}
 	for _, tc := range cases {
