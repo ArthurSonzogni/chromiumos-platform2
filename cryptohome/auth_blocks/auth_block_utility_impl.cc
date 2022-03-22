@@ -441,9 +441,10 @@ CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
     return CryptoError::CE_OTHER_CRYPTO;
   }
   // TODO(b/216804305): Stop hardcoding the auth block.
-  TpmBoundToPcrAuthBlock auth_block(crypto_->tpm(),
-                                    crypto_->cryptohome_keys_manager());
-  return auth_block.Create(auth_input, &out_auth_block_state, &out_key_blobs);
+  std::unique_ptr<SyncAuthBlock> auth_block =
+      GetAuthBlockWithType(GetAuthBlockTypeForCreation(
+          /*is_le_credential =*/false, /*is_challenge_credential =*/false));
+  return auth_block->Create(auth_input, &out_auth_block_state, &out_key_blobs);
 }
 
 CryptoError AuthBlockUtilityImpl::DeriveKeyBlobs(
