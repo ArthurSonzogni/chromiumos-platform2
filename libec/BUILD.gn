@@ -60,6 +60,7 @@ shared_library("libec") {
 
 install_config("install_libec_headers") {
   sources = [
+    "charge_control_set_command.h",
     "device_event_command.h",
     "display_soc_command.h",
     "ec_command.h",
@@ -100,6 +101,7 @@ install_config("install_fingerprint_headers") {
 if (use.test) {
   executable("libec_tests") {
     sources = [
+      "charge_control_set_command_test.cc",
       "device_event_command_test.cc",
       "display_soc_command_test.cc",
       "ec_command_async_test.cc",
