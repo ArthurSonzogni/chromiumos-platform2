@@ -17,6 +17,7 @@ extern "C" {
 // metrics::structured::events::bluetooth::BluetoothAdapterStateChanged.
 BRILLO_EXPORT void BluetoothAdapterStateChanged(const char* boot_id,
                                                 int64_t system_time,
+                                                bool is_floss,
                                                 int state);
 
 // C wrapper for
