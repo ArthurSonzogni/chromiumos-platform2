@@ -656,8 +656,9 @@ properties:
                   type: string
                   build-only-element: false
                 no-firmware:
-                  description: Does nothing and pending removal. Do not set.
-                    ([Bug](https://crbug.com/1072007))
+                  description: Set this flag to True to indicate the sku has no firmware bundle
+                    (bios+ec) and should be included in the firmware section even if `build-targets`
+                    is not specified.
                   type: boolean
                   build-only-element: true
                 firmware-config:

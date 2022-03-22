@@ -615,7 +615,7 @@ In the tables below,
 | main-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | main-rw-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 | name | string |  | False |  | True | This is a human-recognizable name used to refer to the firmware. It will be used when generating the shellball via firmware packer. Mainly, this is only for compatibility testing with device tree (since DT allowed firmwares to be named). |
-| no-firmware | boolean |  | False |  | True | Does nothing and pending removal. Do not set. ([Bug](https://crbug.com/1072007)) |
+| no-firmware | boolean |  | False |  | True | Set this flag to True to indicate the sku has no firmware bundle (bios+ec) and should be included in the firmware section even if `build-targets` is not specified. |
 | pd-ro-image | string |  | False |  | True | Name of the file located in BCS under the respective bcs-overlay. |
 
 ### build-targets
