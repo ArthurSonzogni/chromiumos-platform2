@@ -16,7 +16,7 @@ namespace {
 
 constexpr char kECInventoryFeatureRegex[] = R"((\d+)\ +:\ +[\S\ ]+)";
 constexpr int kAPModeEntryFeatureNumber = 42;
-constexpr uint32_t kTypeCControlWaitMs = 20;
+constexpr uint32_t kTypeCControlWaitMs = 200;
 
 bool CheckInventoryForModeEntry(const std::string& inventory) {
   for (const auto& line : base::SplitString(
