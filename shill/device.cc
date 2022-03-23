@@ -977,12 +977,6 @@ void Device::OnIPConfigExpired(const IPConfigRefPtr& ipconfig) {
 
 void Device::OnConnected() {}
 
-void Device::OnConnectionUpdated() {
-  if (selected_service_) {
-    manager_->UpdateService(selected_service_);
-  }
-}
-
 void Device::CreateConnection() {
   SLOG(this, 2) << __func__;
   if (!connection_) {
