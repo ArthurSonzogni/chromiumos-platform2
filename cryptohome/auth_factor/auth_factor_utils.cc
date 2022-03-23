@@ -65,7 +65,7 @@ bool GetAuthFactorMetadata(const user_data_auth::AuthFactor& auth_factor,
       out_auth_factor_type = AuthFactorType::kPassword;
       break;
     case user_data_auth::AUTH_FACTOR_TYPE_PIN:
-      DCHECK(auth_factor.has_password_metadata());
+      DCHECK(auth_factor.has_pin_metadata());
       GetPinMetadata(auth_factor, out_auth_factor_metadata);
       out_auth_factor_type = AuthFactorType::kPin;
       break;

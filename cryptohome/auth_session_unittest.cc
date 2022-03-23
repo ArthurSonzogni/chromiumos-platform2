@@ -48,8 +48,10 @@ namespace {
 // Fake labels to be in used in this test suite.
 constexpr char kFakeLabel[] = "test_label";
 constexpr char kFakeOtherLabel[] = "test_other_label";
+constexpr char kFakePinLabel[] = "test_pin_label";
 // Fake passwords to be in used in this test suite.
 constexpr char kFakePass[] = "test_pass";
+constexpr char kFakePin[] = "123456";
 constexpr char kFakeOtherPass[] = "test_other_pass";
 // Fake username to be used in this test suite.
 constexpr char kFakeUsername[] = "test_username";
@@ -626,6 +628,83 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorUnAuthenticated) {
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
 }
 
+// Test that a new auth factor and a pin can be added to the newly created user,
+// in case the UserSecretStash experiment is on.
+TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
+  // Setup.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  // Setting the expectation that the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  // Creating the user.
+  auth_session.OnUserCreated();
+  EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+  // Add a password first.
+  // Setting the expectation that the auth block utility will create key blobs.
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthFactorType(AuthFactorType::kPassword,
+                                               /*auth_input=*/_,
+                                               /*out_auth_block_state=*/_,
+                                               /*out_key_blobs=*/_))
+      .WillOnce([](AuthFactorType auth_factor_type, const AuthInput& auth_input,
+                   AuthBlockState& out_auth_block_state,
+                   KeyBlobs& out_key_blobs) {
+        // An arbitrary auth block state type can be used in this test.
+        out_auth_block_state.state = TpmBoundToPcrAuthBlockState();
+        out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
+        return CryptoError::CE_NONE;
+      });
+  // Calling AddAuthFactor.
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  request.mutable_auth_factor()->set_label(kFakeLabel);
+  request.mutable_auth_factor()->mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+  EXPECT_EQ(auth_session.AddAuthFactor(request),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Test.
+  // Setting the expectation that the auth block utility will create key blobs.
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthFactorType(AuthFactorType::kPin,
+                                               /*auth_input=*/_,
+                                               /*out_auth_block_state=*/_,
+                                               /*out_key_blobs=*/_))
+      .WillOnce([](AuthFactorType auth_factor_type, const AuthInput& auth_input,
+                   AuthBlockState& out_auth_block_state,
+                   KeyBlobs& out_key_blobs) {
+        // An arbitrary auth block state type can be used in this test.
+        out_auth_block_state.state = PinWeaverAuthBlockState();
+        out_key_blobs.vkk_key = brillo::SecureBlob("fake vkk key");
+        return CryptoError::CE_NONE;
+      });
+  // Calling AddAuthFactor.
+  user_data_auth::AddAuthFactorRequest add_pin_request;
+  add_pin_request.set_auth_session_id(auth_session.serialized_token());
+  add_pin_request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  add_pin_request.mutable_auth_factor()->set_label(kFakePinLabel);
+  add_pin_request.mutable_auth_factor()->mutable_pin_metadata();
+  add_pin_request.mutable_auth_input()->mutable_pin_input()->set_secret(
+      kFakePin);
+  EXPECT_EQ(auth_session.AddAuthFactor(add_pin_request),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Verify.
+  std::map<std::string, AuthFactorType> stored_factors =
+      auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
+  EXPECT_THAT(stored_factors,
+              ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
+                          Pair(kFakePinLabel, AuthFactorType::kPin)));
+}
+
 TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   // Setup.
   const std::string obfuscated_username = SanitizeUserName(kFakeUsername);
@@ -681,6 +760,71 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(kFakeLabel);
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+  EXPECT_EQ(auth_session.AuthenticateAuthFactor(request),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Verify.
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_NE(auth_session.user_secret_stash_for_testing(), nullptr);
+  EXPECT_NE(auth_session.user_secret_stash_main_key_for_testing(),
+            std::nullopt);
+}
+
+TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
+  // Setup.
+  const std::string obfuscated_username = SanitizeUserName(kFakeUsername);
+  const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Generating the USS.
+  std::unique_ptr<UserSecretStash> uss =
+      UserSecretStash::CreateRandom(FileSystemKeyset::CreateRandom());
+  ASSERT_NE(uss, nullptr);
+  std::optional<brillo::SecureBlob> uss_main_key =
+      UserSecretStash::CreateRandomMainKey();
+  ASSERT_TRUE(uss_main_key.has_value());
+  // Creating the auth factor. An arbitrary auth block state is used in this
+  // test.
+  AuthFactor auth_factor(
+      AuthFactorType::kPin, kFakePinLabel,
+      AuthFactorMetadata{.metadata = PinAuthFactorMetadata()},
+      AuthBlockState{.state = PinWeaverAuthBlockState()});
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactor(obfuscated_username, auth_factor));
+  // Adding the auth factor into the USS and persisting the latter.
+  const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
+  std::optional<brillo::SecureBlob> wrapping_key =
+      key_blobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(wrapping_key.has_value());
+  EXPECT_TRUE(uss->AddWrappedMainKey(uss_main_key.value(), kFakePinLabel,
+                                     wrapping_key.value()));
+  std::optional<brillo::SecureBlob> encrypted_uss =
+      uss->GetEncryptedContainer(uss_main_key.value());
+  ASSERT_TRUE(encrypted_uss.has_value());
+  EXPECT_TRUE(user_secret_stash_storage_.Persist(encrypted_uss.value(),
+                                                 obfuscated_username));
+  // Creating the auth session.
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  EXPECT_TRUE(auth_session.user_exists());
+
+  // Test.
+  // Setting the expectation that the auth block utility will derive key blobs.
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobs(_, _, _))
+      .WillOnce([&](const AuthInput& auth_input,
+                    const AuthBlockState& auth_block_state,
+                    KeyBlobs& out_key_blobs) {
+        out_key_blobs.vkk_key = kFakePerCredentialSecret;
+        return CryptoError::CE_NONE;
+      });
+  // Calling AuthenticateAuthFactor.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakePinLabel);
+  request.mutable_auth_input()->mutable_pin_input()->set_secret(kFakePin);
   EXPECT_EQ(auth_session.AuthenticateAuthFactor(request),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 

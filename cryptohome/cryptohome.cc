@@ -337,6 +337,7 @@ static const char kKeyDelegateName[] = "key_delegate_name";
 static const char kKeyDelegatePath[] = "key_delegate_path";
 static const char kExtensionDuration[] = "extension_duration";
 static const char kUnlockWebAuthnSecret[] = "unlock_webauthn_secret";
+static const char kPinSwitch[] = "pin";
 }  // namespace switches
 
 brillo::SecureBlob GetSystemSalt(
@@ -394,14 +395,14 @@ bool GetAuthSessionId(const base::CommandLine* cl,
   return true;
 }
 
-bool GetPassword(org::chromium::CryptohomeMiscInterfaceProxy* proxy,
-                 const base::CommandLine* cl,
-                 const std::string& cl_switch,
-                 const std::string& prompt,
-                 std::string* password_out) {
-  std::string password = cl->GetSwitchValueASCII(cl_switch);
+bool GetSecret(org::chromium::CryptohomeMiscInterfaceProxy* proxy,
+               const base::CommandLine* cl,
+               const std::string& cl_switch,
+               const std::string& prompt,
+               std::string* secret_out) {
+  std::string secret = cl->GetSwitchValueASCII(cl_switch);
 
-  if (password.length() == 0) {
+  if (secret.length() == 0) {
     char buffer[256];
     struct termios original_attr;
     struct termios new_attr;
@@ -412,17 +413,17 @@ bool GetPassword(org::chromium::CryptohomeMiscInterfaceProxy* proxy,
     printf("%s: ", prompt.c_str());
     fflush(stdout);
     if (fgets(buffer, std::size(buffer), stdin))
-      password = buffer;
+      secret = buffer;
     printf("\n");
     tcsetattr(0, TCSANOW, &original_attr);
   }
 
-  std::string trimmed_password;
-  base::TrimString(password, "\r\n", &trimmed_password);
+  std::string trimmed_secret;
+  base::TrimString(secret, "\r\n", &trimmed_secret);
   SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey(trimmed_password.c_str(),
+  cryptohome::Crypto::PasswordToPasskey(trimmed_secret.c_str(),
                                         GetSystemSalt(proxy), &passkey);
-  *password_out = passkey.to_string();
+  *secret_out = passkey.to_string();
 
   return true;
 }
@@ -601,8 +602,8 @@ bool BuildAuthorization(base::CommandLine* cl,
       auth->mutable_key()->set_secret(raw_byte.to_string());
     } else {
       std::string password;
-      GetPassword(proxy, cl, switches::kPasswordSwitch, "Enter the password",
-                  &password);
+      GetSecret(proxy, cl, switches::kPasswordSwitch, "Enter the password",
+                &password);
 
       auth->mutable_key()->set_secret(password);
     }
@@ -633,6 +634,11 @@ bool BuildAuthFactor(base::CommandLine* cl,
     // Password metadata has no fields currently.
     auth_factor->mutable_password_metadata();
     return true;
+  } else if (cl->HasSwitch(switches::kPinSwitch)) {
+    auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+    // Pin metadata has no fields currently.
+    auth_factor->mutable_pin_metadata();
+    return true;
   }
   printf("No auth factor specified\n");
   return false;
@@ -643,10 +649,19 @@ bool BuildAuthInput(base::CommandLine* cl,
                     user_data_auth::AuthInput* auth_input) {
   // TODO(b/208357699): Support other auth factor types.
   std::string password;
-  if (GetPassword(proxy, cl, switches::kPasswordSwitch, "Enter the password",
+  if (cl->HasSwitch(switches::kPasswordSwitch)) {
+    std::string password;
+    if (GetSecret(proxy, cl, switches::kPasswordSwitch, "Enter the password",
                   &password)) {
-    auth_input->mutable_password_input()->set_secret(password);
-    return true;
+      auth_input->mutable_password_input()->set_secret(password);
+      return true;
+    }
+  } else if (cl->HasSwitch(switches::kPinSwitch)) {
+    std::string pin;
+    if (GetSecret(proxy, cl, switches::kPinSwitch, "Enter the pin", &pin)) {
+      auth_input->mutable_pin_input()->set_secret(pin);
+      return true;
+    }
   }
   printf("No auth input specified\n");
   return false;
@@ -1006,10 +1021,10 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    GetPassword(&misc_proxy, cl, switches::kPasswordSwitch,
-                StringPrintf("Enter the password for <%s>", account_id.c_str()),
-                &password);
-    GetPassword(
+    GetSecret(&misc_proxy, cl, switches::kPasswordSwitch,
+              StringPrintf("Enter the password for <%s>", account_id.c_str()),
+              &password);
+    GetSecret(
         &misc_proxy, cl, switches::kOldPasswordSwitch,
         StringPrintf("Enter the old password for <%s>", account_id.c_str()),
         &old_password);
@@ -1038,8 +1053,8 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions[switches::ACTION_ADD_KEY_EX],
                      action.c_str())) {
     std::string new_password;
-    GetPassword(&misc_proxy, cl, switches::kNewPasswordSwitch,
-                "Enter the new password", &new_password);
+    GetSecret(&misc_proxy, cl, switches::kNewPasswordSwitch,
+              "Enter the new password", &new_password);
 
     user_data_auth::AddKeyRequest req;
     if (!BuildAccountId(cl, req.mutable_account_id()))

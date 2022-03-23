@@ -436,14 +436,17 @@ CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
     const AuthInput& auth_input,
     AuthBlockState& out_auth_block_state,
     KeyBlobs& out_key_blobs) {
-  if (auth_factor_type != AuthFactorType::kPassword) {
+  bool is_le_credential = auth_factor_type == AuthFactorType::kPin;
+  AuthBlockType auth_block_type =
+      GetAuthBlockTypeForCreation(is_le_credential,
+                                  /*is_challenge_credential =*/false);
+  if (auth_block_type == AuthBlockType::kChallengeCredential) {
     LOG(ERROR) << "Unsupported auth factor type";
     return CryptoError::CE_OTHER_CRYPTO;
   }
   // TODO(b/216804305): Stop hardcoding the auth block.
   std::unique_ptr<SyncAuthBlock> auth_block =
-      GetAuthBlockWithType(GetAuthBlockTypeForCreation(
-          /*is_le_credential =*/false, /*is_challenge_credential =*/false));
+      GetAuthBlockWithType(auth_block_type);
   return auth_block->Create(auth_input, &out_auth_block_state, &out_key_blobs);
 }
 
@@ -479,8 +482,7 @@ CryptoError AuthBlockUtilityImpl::DeriveKeyBlobs(
     KeyBlobs& out_key_blobs) {
   AuthBlockType auth_block_type = GetAuthBlockTypeForDerive(auth_block_state);
   if (auth_block_type == AuthBlockType::kMaxValue ||
-      auth_block_type == AuthBlockType::kChallengeCredential ||
-      auth_block_type == AuthBlockType::kPinWeaver) {
+      auth_block_type == AuthBlockType::kChallengeCredential) {
     LOG(ERROR) << "Unsupported auth factor type";
     return CryptoError::CE_OTHER_CRYPTO;
   }

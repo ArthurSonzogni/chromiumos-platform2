@@ -364,7 +364,11 @@ user_data_auth::CryptohomeErrorCode AuthSession::AuthenticateAuthFactor(
     return error;
   }
 
-  // 5. Flip the status on the successful authentication.
+  // 5. Reset LE Credential counter if the current AutFactor is not an
+  // LECredential.
+  ResetLECredentials();
+
+  // 6. Flip the status on the successful authentication.
   status_ = AuthStatus::kAuthStatusAuthenticated;
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
@@ -464,6 +468,10 @@ user_data_auth::CryptohomeErrorCode AuthSession::AddAuthFactor(
     // The user has a UserSecretStash (either because it's a new user and the
     // experiment is on or it's an existing user who went through this flow), so
     // proceed with wrapping the USS via the new factor and persisting both.
+
+    // 0. Add reset secret to AuthInput required from user secret stash.
+    auth_input->reset_secret = user_secret_stash_->GetResetSecret();
+
     return AddAuthFactorViaUserSecretStash(auth_factor_type, auth_factor_label,
                                            auth_factor_metadata,
                                            auth_input.value());
@@ -584,6 +592,32 @@ user_data_auth::CryptohomeErrorCode AuthSession::AuthenticateViaUserSecretStash(
   file_system_keyset_ = user_secret_stash_->GetFileSystemKeyset();
 
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
+void AuthSession::ResetLECredentials() {
+  CryptoError error;
+  // Loop through all the AuthFactors.
+  for (auto& iter : label_to_auth_factor_) {
+    // Look for only pinweaver backed AuthFactors.
+    auto* state = std::get_if<::cryptohome::PinWeaverAuthBlockState>(
+        &(iter.second->auth_block_state().state));
+    if (!state) {
+      continue;
+    }
+    // Ensure that the AuthFactor has le_label.
+    if (!state->le_label.has_value()) {
+      LOG(WARNING) << "PinWeaver AuthBlock State does not have le_label";
+      continue;
+    }
+    // TODO(b/226957785): Have a reset secret per credential in USS.
+    // Reset the attempt count for the pinweaver leaf.
+    // If there is an error, warn for the error in log.
+    if (!crypto_->ResetLeCredentialEx(state->le_label.value(),
+                                      user_secret_stash_->GetResetSecret(),
+                                      error)) {
+      LOG(WARNING) << "Failed to reset an LE credential: " << error;
+    }
+  }
 }
 
 }  // namespace cryptohome

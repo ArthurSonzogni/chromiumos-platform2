@@ -205,6 +205,10 @@ class AuthSession final {
   user_data_auth::CryptohomeErrorCode AuthenticateViaUserSecretStash(
       const std::string& auth_factor_label, const KeyBlobs& key_blobs);
 
+  // This function is used to reset the attempt count for a low entropy
+  // credential.
+  void ResetLECredentials();
+
   const std::string username_;
   const std::string obfuscated_username_;
   const base::UnguessableToken token_;
