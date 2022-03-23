@@ -36,13 +36,17 @@ pub enum Error {
     WriteData(storage::Error),
     #[error("failed to read data: '{0:?}'")]
     ReadData(storage::Error),
+    #[error("failed to remove data: '{0:?}'")]
+    Remove(storage::Error),
 }
 
 impl Error {
     pub fn is_unwritten_id(&self) -> bool {
         matches!(
             self,
-            Error::DomainNotExist(_) | Error::ReadData(storage::Error::IdNotFound(_))
+            Error::DomainNotExist(_)
+                | Error::ReadData(storage::Error::IdNotFound(_))
+                | Error::Remove(storage::Error::IdNotFound(_))
         )
     }
 }
@@ -104,6 +108,16 @@ pub fn persist(scope: Scope, domain: &str, identifier: &str, data: &[u8]) -> Res
     storage
         .write_raw(identifier, data)
         .map_err(Error::WriteData)
+}
+
+/// Removes the data from the specified location denoted by (scope, domain, identifier).
+pub fn remove(scope: Scope, domain: &str, identifier: &str) -> Result<()> {
+    let path = get_storage_path(scope, domain)?;
+    if !path.is_dir() {
+        return Err(Error::DomainNotExist(domain.to_string()));
+    }
+    let mut storage = FileStorage::new(path).map_err(Error::FileStorage)?;
+    storage.remove(identifier).map_err(Error::Remove)
 }
 
 /// Retrieves the data from the specified location denoted by (scope, domain, identifier).

@@ -27,12 +27,18 @@ pub enum Error {
     CastData { from: String, to: String },
     #[error("failed to read data")]
     ReadData(#[source] Option<anyhow::Error>),
+    #[error("failed to remove data")]
+    Remove(#[source] Option<anyhow::Error>),
     #[error("failed to write data")]
     WriteData(#[source] Option<anyhow::Error>),
 }
 
 pub fn to_read_data_error<E: Into<anyhow::Error>>(err: E) -> Error {
     Error::ReadData(Some(err.into()))
+}
+
+pub fn to_remove_error<E: Into<anyhow::Error>>(err: E) -> Error {
+    Error::Remove(Some(err.into()))
 }
 
 pub fn to_write_data_error<E: Into<anyhow::Error>>(err: E) -> Error {
@@ -47,6 +53,7 @@ impl<S: Any + Clone + Serialize + DeserializeOwned> Storable for S {}
 
 pub trait Storage {
     fn read_raw(&mut self, id: &str) -> Result<Vec<u8>>;
+    fn remove(&mut self, id: &str) -> Result<()>;
     fn write_raw(&mut self, id: &str, data: &[u8]) -> Result<()>;
     fn read_data<S: Storable>(&mut self, id: &str) -> Result<S> {
         let contents = self.read_raw(id)?;

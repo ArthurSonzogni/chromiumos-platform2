@@ -9,7 +9,9 @@ use std::sync::Arc;
 
 use libsirenia::communication::persistence::Status;
 use libsirenia::communication::tee_api::{TeeApi, TeeApiClient};
-use libsirenia::storage::{to_read_data_error, to_write_data_error, Error, Result, Storage};
+use libsirenia::storage::{
+    to_read_data_error, to_remove_error, to_write_data_error, Error, Result, Storage,
+};
 use libsirenia::transport::Transport;
 use sync::Mutex;
 
@@ -57,6 +59,14 @@ impl Storage for TrichechusStorage {
         }
     }
 
+    fn remove(&mut self, id: &str) -> Result<()> {
+        match self.rpc.lock().remove(id.to_string()) {
+            Ok(Status::Success) => Ok(()),
+            Ok(_) => Err(Error::Remove(None)),
+            Err(err) => Err(to_remove_error(err)),
+        }
+    }
+
     /// Write without serializing.
     fn write_raw(&mut self, id: &str, data: &[u8]) -> Result<()> {
         match self.rpc.lock().write_data(id.to_string(), data.to_vec()) {
@@ -97,6 +107,13 @@ pub mod tests {
                 Some(val) => Ok((Status::Success, val.to_vec())),
                 None => Err(anyhow!("id missing")),
             }
+        }
+
+        fn remove(&mut self, id: String) -> Result<Status> {
+            Ok(match self.map.borrow_mut().remove(&id) {
+                Some(_) => Status::Success,
+                None => Status::IdNotFound,
+            })
         }
 
         fn write_data(&mut self, id: String, data: Vec<u8>) -> Result<Status> {

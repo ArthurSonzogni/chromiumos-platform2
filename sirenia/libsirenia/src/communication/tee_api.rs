@@ -14,5 +14,6 @@ use crate::communication::persistence;
 pub trait TeeApi<E> {
     // Storage.
     fn read_data(&mut self, id: String) -> StdResult<(persistence::Status, Vec<u8>), E>;
+    fn remove(&mut self, id: String) -> StdResult<persistence::Status, E>;
     fn write_data(&mut self, id: String, data: Vec<u8>) -> StdResult<persistence::Status, E>;
 }

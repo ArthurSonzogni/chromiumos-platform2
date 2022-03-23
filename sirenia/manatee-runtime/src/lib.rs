@@ -168,6 +168,10 @@ mod tests {
             Err(libsirenia::storage::Error::ReadData(None))
         }
 
+        fn remove(&mut self, _id: &str) -> Result<()> {
+            Err(libsirenia::storage::Error::Remove(None))
+        }
+
         fn write_raw(&mut self, _id: &str, _data: &[u8]) -> Result<()> {
             Err(libsirenia::storage::Error::WriteData(None))
         }

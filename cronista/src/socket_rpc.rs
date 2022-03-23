@@ -54,9 +54,9 @@ pub struct CliConfigGenerator {
 
 impl CliConfigGenerator {
     /// Registers the relevant parameters with the specified Options.
-    pub fn new(mut opts: &mut Options) -> Self {
+    pub fn new(opts: &mut Options) -> Self {
         CliConfigGenerator {
-            bind_addr: TransportTypeOption::default(&mut opts),
+            bind_addr: TransportTypeOption::default(opts),
         }
     }
 
@@ -77,10 +77,10 @@ impl CliConfigGenerator {
 /// Sets up a socket based RPC server on the EventMultiplexer.
 pub fn register_socket_rpc(
     config: &Config,
-    mut event_multiplexer: &mut EventMultiplexer,
+    event_multiplexer: &mut EventMultiplexer,
 ) -> StdResult<Option<TransportType>, RpcError> {
     let handler: Box<dyn CronistaServer> = Box::new(CronistaServerImpl {});
-    register_server(&mut event_multiplexer, &config.bind_addr, handler)
+    register_server(event_multiplexer, &config.bind_addr, handler)
 }
 
 /// Manages a single RPC connection.
@@ -105,6 +105,27 @@ impl Cronista<anyhow::Error> for CronistaServerImpl {
                 }
             },
         )
+    }
+
+    fn remove(
+        &mut self,
+        scope: Scope,
+        domain: String,
+        identifier: String,
+    ) -> StdResult<Status, anyhow::Error> {
+        info!("Received remove message",);
+        let res = storage::remove(scope, &domain, &identifier);
+        Ok(match &res {
+            Ok(_) => Status::Success,
+            Err(err) => {
+                if is_unwritten_id(&res) {
+                    Status::IdNotFound
+                } else {
+                    error!("remove failure: {}", err);
+                    Status::Failure
+                }
+            }
+        })
     }
 
     fn retrieve(

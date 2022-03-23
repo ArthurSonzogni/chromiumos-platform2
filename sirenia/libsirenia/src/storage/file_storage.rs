@@ -4,7 +4,9 @@
 
 //! Implements file based implementation of the Storage trait.
 
-use std::fs::File;
+use crate::storage::to_remove_error;
+use std::fs::{remove_file, File};
+use std::io;
 use std::io::{Error as IoError, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 use std::result::Result as StdResult;
@@ -67,6 +69,17 @@ impl Storage for FileStorage {
             .map_err(to_read_data_error)?;
 
         Ok(contents)
+    }
+
+    fn remove(&mut self, id: &str) -> Result<()> {
+        let filepath = self.root.join(Self::validate_id(id)?);
+        remove_file(filepath).map_err(|err| {
+            if err.kind() == io::ErrorKind::NotFound {
+                Error::IdNotFound(id.to_string())
+            } else {
+                to_remove_error(err)
+            }
+        })
     }
 
     /// Write without serializing.
@@ -145,6 +158,8 @@ mod test {
         let read_value: u64 = storage.as_mut().read_data(VALID_TEST_ID).unwrap();
 
         assert_eq!(test_value, read_value);
+
+        assert_matches!(storage.as_mut().remove(VALID_TEST_ID), Ok(()));
     }
 
     #[test]
@@ -153,6 +168,16 @@ mod test {
 
         assert_matches!(
             storage.as_mut().read_data::<u64>(VALID_TEST_ID),
+            Err(Error::IdNotFound(_))
+        );
+    }
+
+    #[test]
+    fn storage_removenotfound() {
+        let mut storage = TestFileStorage::new();
+
+        assert_matches!(
+            storage.as_mut().remove(VALID_TEST_ID),
             Err(Error::IdNotFound(_))
         );
     }

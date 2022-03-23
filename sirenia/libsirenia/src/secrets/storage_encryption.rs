@@ -358,6 +358,15 @@ impl<'a> Cronista<anyhow::Error> for StorageEncryption<'a> {
         }
     }
 
+    fn remove(
+        &mut self,
+        scope: Scope,
+        domain: String,
+        identifier: String,
+    ) -> Result<Status, anyhow::Error> {
+        self.storage_client.remove(scope, domain, identifier)
+    }
+
     fn retrieve(
         &mut self,
         scope: Scope,

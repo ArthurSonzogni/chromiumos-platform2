@@ -43,6 +43,12 @@ pub trait Cronista<E> {
         identifier: String,
         data: Vec<u8>,
     ) -> std::result::Result<Status, E>;
+    fn remove(
+        &mut self,
+        scope: Scope,
+        domain: String,
+        identifier: String,
+    ) -> std::result::Result<Status, E>;
     fn retrieve(
         &mut self,
         scope: Scope,
@@ -123,6 +129,32 @@ impl Cronista<anyhow::Error> for MockCronista {
             .deref_mut()
             .insert(CronistaIdentifier::new(scope, domain, identifier), data);
         Ok(Status::Success)
+    }
+
+    fn remove(
+        &mut self,
+        scope: Scope,
+        domain: String,
+        identifier: String,
+    ) -> Result<Status, anyhow::Error> {
+        if let Some(err) = self.next_error.lock().unwrap().deref_mut().pop_front() {
+            return Err(err);
+        }
+        if self.fail_next {
+            return Ok(Status::Failure);
+        }
+        Ok(
+            match self
+                .storage
+                .lock()
+                .unwrap()
+                .deref_mut()
+                .remove(&CronistaIdentifier::new(scope, domain, identifier))
+            {
+                Some(_) => Status::Success,
+                None => Status::IdNotFound,
+            },
+        )
     }
 
     fn retrieve(

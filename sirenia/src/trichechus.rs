@@ -158,6 +158,12 @@ impl TeeApi<Error> for TeeAppHandler {
         })
     }
 
+    fn remove(&mut self, id: String) -> StdResult<Status, Error> {
+        self.conditionally_use_storage_encryption(|params, cronista| {
+            cronista.remove(params.scope.clone(), params.domain.to_string(), id.clone())
+        })
+    }
+
     fn write_data(&mut self, id: String, data: Vec<u8>) -> Result<Status> {
         self.conditionally_use_storage_encryption(|params, cronista| {
             cronista.persist(
