@@ -109,7 +109,6 @@ socketpair: 1
 sched_setaffinity: 1
 uname: 1
 exit_group: 1
-execve: 1
 ARM_set_tls: 1
 set_tid_address: 1
 ugetrlimit: 1

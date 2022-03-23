@@ -138,7 +138,6 @@ munmap: 1
 getdents64: 1
 dup2: 1
 prctl: arg0 == PR_SET_NO_NEW_PRIVS || arg0 == PR_SET_NAME
-execve: 1
 arch_prctl: 1
 set_tid_address: 1
 tgkill: 1
