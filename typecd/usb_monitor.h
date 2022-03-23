@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <gtest/gtest_prod.h>
 
+#include "typecd/metrics.h"
 #include "typecd/udev_monitor.h"
 #include "typecd/usb_device.h"
 
@@ -21,6 +22,8 @@ namespace typecd {
 class UsbMonitor : public UdevMonitor::UsbObserver {
  public:
   UsbMonitor() = default;
+
+  void SetMetrics(Metrics* metrics) { metrics_ = metrics; }
 
  private:
   friend class UsbMonitorFuzzer;
@@ -38,10 +41,17 @@ class UsbMonitor : public UdevMonitor::UsbObserver {
   // devices_. If there is none, return nullptr.
   UsbDevice* GetDevice(std::string key);
 
+  // Central function to perform metrics reporting
+  void ReportMetrics(const base::FilePath& path, std::string key);
+
   // key: USB root hub and hub port numbers in the final path component of the
   // sysfs directory path. (e.g. 2-1 if sysfs path is /sys/bus/usb/devices/2-1)
   // value: USB device associated with the sysfs directory.
   std::map<std::string, std::unique_ptr<UsbDevice>> devices_;
+
+  // Pointer to the metrics reporting class. NOTE: This is owned by the parent
+  // Daemon, and not UsbMonitor.
+  Metrics* metrics_;
 };
 
 }  // namespace typecd

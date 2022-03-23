@@ -145,6 +145,8 @@ void UsbMonitor::OnDeviceAddedOrRemoved(const base::FilePath& path,
       GetDevice(key)->SetVersion(ConvertToUsbVersion(version));
     }
 
+    ReportMetrics(path, key);
+
   } else {
     if (it == devices_.end()) {
       LOG(WARNING) << "Attempting to remove a non-existent usb device in "
@@ -162,6 +164,21 @@ UsbDevice* UsbMonitor::GetDevice(std::string key) {
     return nullptr;
 
   return it->second.get();
+}
+
+void UsbMonitor::ReportMetrics(const base::FilePath& path, std::string key) {
+  if (!metrics_)
+    return;
+
+  UsbDevice* device = GetDevice(key);
+  if (!device) {
+    LOG(WARNING)
+        << "Metrics reporting attempted for non-existent usb device in "
+        << path;
+    return;
+  }
+
+  device->ReportMetrics(metrics_);
 }
 
 }  // namespace typecd

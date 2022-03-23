@@ -11,6 +11,7 @@ constexpr char kPartnerTypeMetricName[] = "ChromeOS.TypeC.PartnerType";
 constexpr char kCableSpeedMetricName[] = "ChromeOS.TypeC.CableSpeed";
 constexpr char kWrongConfigurationMetricName[] =
     "ChromeOS.TypeC.WrongConfiguration";
+constexpr char kUsbDeviceSpeedMetricName[] = "ChromeOS.TypeC.UsbDeviceSpeed";
 }  // namespace
 
 namespace typecd {
@@ -33,6 +34,13 @@ void Metrics::ReportWrongCableError(WrongConfigurationMetric value) {
   if (!metrics_library_.SendEnumToUMA(kWrongConfigurationMetricName, value)) {
     LOG(WARNING) << "Failed to send wrong cable config sample to UMA, value: "
                  << static_cast<int>(value);
+  }
+}
+
+void Metrics::ReportUsbDeviceSpeed(UsbDeviceSpeedMetric speed) {
+  if (!metrics_library_.SendEnumToUMA(kUsbDeviceSpeedMetricName, speed)) {
+    LOG(WARNING) << "Failed to send USB device speed sample to UMA, speed: "
+                 << static_cast<int>(speed);
   }
 }
 

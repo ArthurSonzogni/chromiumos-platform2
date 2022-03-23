@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "typecd/metrics.h"
+
 namespace typecd {
 
 // Speed exposed in USB device sysfs that can be mapped to USB standard.
@@ -43,7 +45,11 @@ enum class UsbVersion {
 // the USB device is connected to.
 class UsbDevice {
  public:
-  UsbDevice(int busnum, int devnum, std::string hub);
+  UsbDevice(int busnum,
+            int devnum,
+            std::string hub,
+            UsbSpeed speed = UsbSpeed::kOther,
+            UsbVersion version = UsbVersion::kOther);
 
   void SetTypecPortNum(int typec_port_num) { typec_port_num_ = typec_port_num; }
   void SetSpeed(UsbSpeed speed) { speed_ = speed; }
@@ -59,7 +65,19 @@ class UsbDevice {
   UsbDeviceClass GetDeviceClass() { return device_class_; }
   UsbVersion GetVersion() { return version_; }
 
+  // Report metrics using UMA reporting. If the |metrics| pointer is nullptr,
+  // or if metrics have already been reported i.e |metrics_reported_| is true,
+  // we return immediately.
+  void ReportMetrics(Metrics* metrics);
+
  private:
+  friend class MetricsTest;
+  FRIEND_TEST(MetricsTest, CheckUsbDeviceSpeed480Version20);
+  FRIEND_TEST(MetricsTest, CheckUsbDeviceSpeed480Version21);
+  FRIEND_TEST(MetricsTest, CheckUsbDeviceSpeed5000);
+  FRIEND_TEST(MetricsTest, CheckUsbDeviceSpeed20000InvalidVersion);
+  FRIEND_TEST(MetricsTest, CheckUsbDeviceSpeed480InvalidVersion);
+
   int busnum_;
   int devnum_;
   int typec_port_num_;
@@ -71,6 +89,13 @@ class UsbDevice {
   // https://www.usb.org/defined-class-codes
   UsbDeviceClass device_class_;
   UsbVersion version_;
+  // Field which tracks whether metrics have been reported for the USB device.
+  // This prevents duplicate reporting.
+  bool metrics_reported_;
+
+  // Convenience function used by ReportMetrics to get the right enum for
+  // UsbDeviceSpeedMetric.
+  UsbDeviceSpeedMetric GetUsbDeviceSpeedMetric();
 };
 
 }  // namespace typecd
