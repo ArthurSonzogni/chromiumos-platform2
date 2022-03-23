@@ -105,7 +105,6 @@ Device::Device(Manager* manager,
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
-      ipv6_disabled_(false),
       is_multi_homed_(false),
       fixed_ip_params_(false),
       traffic_counter_callback_id_(0),
@@ -137,8 +136,6 @@ Device::Device(Manager* manager,
   // kUseAttachAPNProperty: Registered in Cellular
 
   store_.RegisterConstString(kInterfaceProperty, &link_name_);
-  HelpRegisterDerivedBool(kIPv6DisabledProperty, &Device::GetIPv6Disabled,
-                          &Device::SetIPv6Disabled, &Device::ClearIPv6Disabled);
   HelpRegisterConstDerivedRpcIdentifier(
       kSelectedServiceProperty, &Device::GetSelectedServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(kIPConfigsProperty,
@@ -231,30 +228,6 @@ void Device::Reset(Error* error, const ResultCallback& /*callback*/) {
       technology().GetName() + " device doesn't implement Reset");
 }
 
-bool Device::GetIPv6Disabled(Error* error) {
-  return ipv6_disabled_;
-}
-
-bool Device::SetIPv6Disabled(const bool& disabling, Error* /*error*/) {
-  if (disabling == ipv6_disabled_)
-    return false;
-  ipv6_disabled_ = disabling;
-  if (ipv6_disabled_) {
-    StopIPv6();
-  } else {
-    StartIPv6();
-  }
-  return true;
-}
-
-void Device::ClearIPv6Disabled(Error* error) {
-  SetIPv6Disabled(IsIPv6DisabledByDefault(), error);
-}
-
-bool Device::IsIPv6DisabledByDefault() const {
-  return false;
-}
-
 void Device::StopIPv6() {
   SLOG(this, 2) << __func__;
   SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "1");
@@ -262,11 +235,6 @@ void Device::StopIPv6() {
 
 void Device::StartIPv6() {
   SLOG(this, 2) << __func__;
-  if (ipv6_disabled_) {
-    LOG(INFO) << "Skip enabling IPv6 on " << link_name_
-              << " as it is disabled.";
-    return;
-  }
   SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagDisableIPv6, "0");
 
   SetIPFlag(IPAddress::kFamilyIPv6, kIPFlagAcceptDuplicateAddressDetection,
@@ -709,15 +677,6 @@ void Device::AssignIPv6Config(const IPConfig::Properties& properties) {
 
 void Device::DestroyIPConfigLease(const std::string& name) {
   dhcp_provider_->DestroyLease(name);
-}
-
-void Device::HelpRegisterDerivedBool(const std::string& name,
-                                     bool (Device::*get)(Error* error),
-                                     bool (Device::*set)(const bool&, Error*),
-                                     void (Device::*clear)(Error*)) {
-  store_.RegisterDerivedBool(
-      name,
-      BoolAccessor(new CustomAccessor<Device, bool>(this, get, set, clear)));
 }
 
 void Device::HelpRegisterConstDerivedString(

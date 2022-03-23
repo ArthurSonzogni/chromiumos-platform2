@@ -125,11 +125,6 @@ class Device : public base::RefCounted<Device> {
                          const ResultCallback& callback);
   virtual void Reset(Error* error, const ResultCallback& callback);
 
-  // Returns false if IPv6 is allowed and should be enabled when the device
-  // tries to acquire an IP configuration. The default implementation allows
-  // IPv6, which can be overridden by a derived class.
-  virtual bool IsIPv6DisabledByDefault() const;
-
   void StopIPv6();
   void StartIPv6();
   mockable void EnableIPv6Privacy();
@@ -485,16 +480,6 @@ class Device : public base::RefCounted<Device> {
   // Indicates if the selected service is configured with a static IP address.
   bool IsUsingStaticIP() const;
 
-  // RPC getter, setter, and clear method for the "IPv6Disabled" property.
-  bool GetIPv6Disabled(Error* error);
-  bool SetIPv6Disabled(const bool& connect, Error* error);
-  void ClearIPv6Disabled(Error* error);
-
-  void HelpRegisterDerivedBool(const std::string& name,
-                               bool (Device::*get)(Error* error),
-                               bool (Device::*set)(const bool& value,
-                                                   Error* error),
-                               void (Device::*clear)(Error* error));
   void HelpRegisterConstDerivedString(const std::string& name,
                                       std::string (Device::*get)(Error*));
 
@@ -746,8 +731,6 @@ class Device : public base::RefCounted<Device> {
   RTNLHandler* rtnl_handler_;
 
   std::unique_ptr<PortalDetector> connection_tester_;
-
-  bool ipv6_disabled_;
 
   // Track the current same-net multi-home state.
   bool is_multi_homed_;

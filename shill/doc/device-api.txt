@@ -562,12 +562,6 @@ Properties	string Address [readonly]
 			these IPConfigs, a PropertyChanged signal will be
 			emitted for the Device's IPConfig property.
 
-		boolean IPv6Disabled [readwrite]
-
-			A switch to force disabling IPv6 on the device.
-			Disabling and enabling this switch has no impact on
-			IPv4 connectivity.
-
 		dict LinkStatistics [readonly]
 
 			(WiFi only) A dictionary providing current link

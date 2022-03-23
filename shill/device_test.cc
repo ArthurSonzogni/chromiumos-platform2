@@ -371,20 +371,6 @@ TEST_F(DeviceTest, StartIPv6) {
   device_->StartIPv6();
 }
 
-TEST_F(DeviceTest, StartIPv6Disabled) {
-  Error error;
-  EXPECT_CALL(*device_,
-              SetIPFlag(IPAddress::kFamilyIPv6,
-                        StrEq(Device::kIPFlagDisableIPv6), StrEq("1")))
-      .WillOnce(Return(true));
-  device_->SetIPv6Disabled(true, &error);
-  Mock::VerifyAndClearExpectations(device_.get());
-  EXPECT_CALL(*device_, SetIPFlag(_, _, _)).Times(0);
-  device_->StartIPv6();
-  Mock::VerifyAndClearExpectations(device_.get());
-  device_->SetIPv6Disabled(false, &error);
-}
-
 TEST_F(DeviceTest, MultiHomed) {
   // Device should have multi-homing disabled by default.
   EXPECT_CALL(*device_, SetIPFlag(_, _, _)).Times(0);
