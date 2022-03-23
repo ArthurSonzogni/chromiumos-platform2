@@ -65,6 +65,8 @@ restart_syscall: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
+sched_getattr: 1
+sched_setattr: 1
 sched_yield: 1
 send: 1
 setgroups32: 1
