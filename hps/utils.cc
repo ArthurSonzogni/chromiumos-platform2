@@ -128,6 +128,18 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
         ret.push_back("kCmdInProgress");
         val ^= kCmdInProgress;
       }
+      if (val & kStage0Locked) {
+        ret.push_back("kStage0Locked");
+        val ^= kStage0Locked;
+      }
+      if (val & kStage0PermLocked) {
+        ret.push_back("kStage0PermLocked");
+        val ^= kStage0PermLocked;
+      }
+      if (val & kOneTimeInit) {
+        ret.push_back("kOneTimeInit");
+        val ^= kOneTimeInit;
+      }
       if (val) {
         ret.push_back(base::StringPrintf("0x%x", val));
       }

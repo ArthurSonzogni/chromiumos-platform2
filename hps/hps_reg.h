@@ -56,9 +56,12 @@ enum R2 : uint16_t {
   kWpOff = BIT(5),
   // Unused          BIT(6),
   // Unused          BIT(7),
-  kStage1 = BIT(8),          // Stage1 running
-  kAppl = BIT(9),            // Application running
-  kCmdInProgress = BIT(10),  // Command in progress (often SPI flash hashing)
+  kStage1 = BIT(8),             // Stage1 running
+  kAppl = BIT(9),               // Application running
+  kCmdInProgress = BIT(10),     // Command in progress (often SPI flash hashing)
+  kStage0Locked = BIT(11),      // Stage0 has been made read-only
+  kStage0PermLocked = BIT(12),  // Stage0 has been made permanently read-only
+  kOneTimeInit = BIT(13),       // one_time_init payload is running
 };
 
 // Register 3 (WO) - System command register.
