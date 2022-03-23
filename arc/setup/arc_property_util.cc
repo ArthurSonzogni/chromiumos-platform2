@@ -386,8 +386,7 @@ bool ExpandPropertyContents(const std::string& content,
       AppendArmSocProperties(base::FilePath("/sys/bus/soc/devices"),
                              &new_properties);
 #else
-      AppendIntelSocProperties(base::FilePath("/proc/cpuinfo"),
-                               &new_properties);
+      AppendX86SocProperties(base::FilePath("/proc/cpuinfo"), &new_properties);
 #endif
       break;
   }
@@ -542,9 +541,9 @@ void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
     LOG(ERROR) << "Unknown ARM SoC";
 }
 
-void AppendIntelSocProperties(const base::FilePath& cpuinfo_path,
-                              std::string* dest) {
-  // TODO(b/175610620): Also support AMD and Intel Pentium devices.
+void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
+                            std::string* dest) {
+  // TODO(b/175610620): Also support Intel Pentium devices.
   std::vector<char> buffer;
   auto cpuinfo = SafelyReadFile<re2::StringPiece>(cpuinfo_path, &buffer);
 
@@ -557,14 +556,23 @@ void AppendIntelSocProperties(const base::FilePath& cpuinfo_path,
   }
 
   std::string model;
-  re2::RE2 model_re(R"(Intel\(R\) (?:Celeron\(R\)|Core\(TM\)) ([^ ]+) CPU)");
-  if (!re2::RE2::PartialMatch(cpuinfo, model_re, &model)) {
+  base::StringPiece manufacturer;
+  if (re2::RE2::PartialMatch(
+          model_field, R"(Intel\(R\) (?:Celeron\(R\)|Core\(TM\)) ([^ ]+) CPU)",
+          &model)) {
+    manufacturer = "Intel";
+  } else if (re2::RE2::PartialMatch(
+                 model_field,
+                 R"(AMD (Ryzen 3 [A-Z0-9]+) [0-9]+W with Radeon Graphics)",
+                 &model)) {
+    manufacturer = "AMD";
+  } else {
     LOG(ERROR) << "Unknown CPU in '" << model_field << "'; won't set ro.soc.*";
     return;
   }
 
-  *dest += "ro.soc.manufacturer=Intel\n";
-  *dest += "ro.soc.model=" + model + "\n";
+  *dest += base::StrCat({"ro.soc.manufacturer=", manufacturer, "\n",
+                         "ro.soc.model=", model, "\n"});
 }
 
 bool ExpandPropertyContentsForTesting(const std::string& content,

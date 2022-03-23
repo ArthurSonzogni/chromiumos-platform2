@@ -23,8 +23,8 @@ namespace arc {
 // Parses SOC manufacturer and model from /proc/cpuinfo and appends the results
 // to |dest|. Used for x86/64 architectures. The path of /proc/cpuinfo can be
 // overridden for testing purposes.
-void AppendIntelSocProperties(const base::FilePath& cpuinfo_path,
-                              std::string* dest);
+void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
+                            std::string* dest);
 
 // Tries to detect the SoC manufacturer and model given the socinfo directory
 // in Linux sysfs. Should be passed a path to the directory

@@ -709,7 +709,7 @@ TEST_F(ArcPropertyUtilTest, TestAddingCdmProperties_DbusFailure) {
             content);
 }
 
-TEST_F(ArcPropertyUtilTest, AppendIntelSocProperties) {
+TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
   int case_no = 0;
 
   for (auto& testcase :
@@ -719,6 +719,13 @@ TEST_F(ArcPropertyUtilTest, AppendIntelSocProperties) {
         {"xyz\nmodel name\t\t: Intel(R) Core(TM) i7-920 CPU @ 2.67GHz\nabc\n",
          "ro.soc.manufacturer=Intel\nro.soc.model=i7-920\n"},
         {"nomatch\nnomatch\nnomatch\n", ""},
+
+        // For a Zork board.
+        {"line1\n"
+         "model name\t: AMD Ryzen 3 3250C 15W with Radeon Graphics\n"
+         "line3\n",
+         "ro.soc.manufacturer=AMD\n"
+         "ro.soc.model=Ryzen 3 3250C\n"},
 
         // For an Octopus board.
         {"model name: Intel(R) Celeron(R) N4000 CPU @ 1.10GHz\n",
@@ -734,20 +741,20 @@ TEST_F(ArcPropertyUtilTest, AppendIntelSocProperties) {
     ASSERT_EQ(chmod(cpuinfo_path.value().c_str(), 0444), 0);
 
     std::string actual;
-    AppendIntelSocProperties(cpuinfo_path, &actual);
+    AppendX86SocProperties(cpuinfo_path, &actual);
 
     EXPECT_EQ(expected, actual);
   }
 }
 
-TEST_F(ArcPropertyUtilTest, AppendIntelSocPropertiesDoesNotOverwrite) {
+TEST_F(ArcPropertyUtilTest, AppendX86SocPropertiesDoesNotOverwrite) {
   auto cpuinfo_path = GetTempDir().Append("cpuinfo");
 
   ASSERT_TRUE(base::WriteFile(cpuinfo_path,
                               "model name : Intel(R) Core(TM) i7-5200U CPU\n"));
 
   std::string dest = "xyz=123\n";
-  AppendIntelSocProperties(cpuinfo_path, &dest);
+  AppendX86SocProperties(cpuinfo_path, &dest);
   EXPECT_THAT(dest, StartsWith("xyz=123\nro.soc."));
 }
 
@@ -856,11 +863,11 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesTwo) {
             "ro.soc.model=SC7180\n");
 }
 
-TEST_F(ArcPropertyUtilTest, AppendIntelSocPropertiesCannotOpenCpuinfo) {
+TEST_F(ArcPropertyUtilTest, AppendX86SocPropertiesCannotOpenCpuinfo) {
   auto cpuinfo_path = GetTempDir().Append("cpuinfo.nothere");
 
   std::string dest;
-  AppendIntelSocProperties(cpuinfo_path, &dest);
+  AppendX86SocProperties(cpuinfo_path, &dest);
   EXPECT_EQ(dest, "");
 }
 
