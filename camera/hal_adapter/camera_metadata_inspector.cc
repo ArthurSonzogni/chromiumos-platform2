@@ -328,7 +328,7 @@ void CameraMetadataInspector::InspectOnThread(size_t position,
   DCHECK(thread_->task_runner()->BelongsToCurrentThread());
   auto map = MapFromMetadata(metadata);
   base::Time::Exploded exploded;
-  time.LocalExplode(&exploded);
+  time.UTCExplode(&exploded);
   auto diffs = Compare(latest_map_[position][static_cast<size_t>(kind)], map);
   std::stringstream ss;
   for (auto diff : diffs) {
