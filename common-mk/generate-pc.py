@@ -42,54 +42,54 @@ Cflags: %(cflags)s
 
 
 def _generate(output, params):
-  """Generates a .pc file.
+    """Generates a .pc file.
 
-  Args:
-    output: Path to the output file.
-    params: an object containing the .pc file data. It should have the
-        following members: name, description, version, requires,
-        requies_private, libs, libs_private and cflags.
-  """
-  with open(output, 'w') as f:
-    f.write(_TEMPLATE.lstrip('\n') % {
-        'name': params.name,
-        'description': params.description,
-        'version': params.version,
-        'requires': ' '.join(params.requires),
-        'requires_private': ' '.join(params.requires_private),
-        'libs': ' '.join(params.libs),
-        'libs_private': ' '.join(params.libs_private),
-        'cflags': ' '.join(params.cflags)
-    })
+    Args:
+        output: Path to the output file.
+        params: an object containing the .pc file data. It should have the
+            following members: name, description, version, requires,
+            requies_private, libs, libs_private and cflags.
+    """
+    with open(output, 'w') as f:
+        f.write(_TEMPLATE.lstrip('\n') % {
+            'name': params.name,
+            'description': params.description,
+            'version': params.version,
+            'requires': ' '.join(params.requires),
+            'requires_private': ' '.join(params.requires_private),
+            'libs': ' '.join(params.libs),
+            'libs_private': ' '.join(params.libs_private),
+            'cflags': ' '.join(params.cflags)
+        })
 
 
 def _get_parser():
-  """Returns an argument parser for this script."""
-  parser = argparse.ArgumentParser(description=__doc__)
-  parser.add_argument('--output', required=True, help='The output file name')
-  parser.add_argument('--name', required=True, help='The library name')
-  parser.add_argument('--description', default='',
-                      help='The description of the library')
-  parser.add_argument('--version', required=True,
-                      help='The version of the library')
-  parser.add_argument('--requires', action='append', default=[],
-                      help='Packages for Required')
-  parser.add_argument('--requires-private', action='append', default=[],
-                      help='Packages for Required.private')
-  parser.add_argument('--libs', action='append', default=[],
-                      help='Libraries for Libs')
-  parser.add_argument('--libs-private', action='append', default=[],
-                      help='Libraries for Libs.private')
-  parser.add_argument('--cflags', action='append', default=[],
-                      help='Compiler flags')
-  return parser
+    """Returns an argument parser for this script."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', required=True, help='The output file name')
+    parser.add_argument('--name', required=True, help='The library name')
+    parser.add_argument('--description', default='',
+                        help='The description of the library')
+    parser.add_argument('--version', required=True,
+                        help='The version of the library')
+    parser.add_argument('--requires', action='append', default=[],
+                        help='Packages for Required')
+    parser.add_argument('--requires-private', action='append', default=[],
+                        help='Packages for Required.private')
+    parser.add_argument('--libs', action='append', default=[],
+                        help='Libraries for Libs')
+    parser.add_argument('--libs-private', action='append', default=[],
+                        help='Libraries for Libs.private')
+    parser.add_argument('--cflags', action='append', default=[],
+                        help='Compiler flags')
+    return parser
 
 
 def main(argv):
-  parser = _get_parser()
-  options = parser.parse_args(argv)
-  _generate(options.output, options)
+    parser = _get_parser()
+    options = parser.parse_args(argv)
+    _generate(options.output, options)
 
 
 if __name__ == '__main__':
-  sys.exit(main(sys.argv[1:]))
+    sys.exit(main(sys.argv[1:]))
