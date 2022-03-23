@@ -25,9 +25,9 @@ export LC_ALL=C
 copy_with_validation() {
   local from validation to file
 
-  from="$(readlink -m "$1")"
-  validation="$(readlink -m "$2")"
-  to="$(readlink -m "$3")"
+  from="$1"
+  validation="$2"
+  to="$3"
 
   echo "Copy ${from} -> ${to}, validated by ${validation}."
 
