@@ -10,7 +10,7 @@ use std::time::Duration;
 use crate::common::{parse_file_to_u64, set_epp};
 use crate::memory::{
     calculate_available_memory_kb, calculate_reserved_free_kb, parse_margins, parse_meminfo,
-    parse_psi_memory, MemInfo,
+    parse_psi_memory, total_mem_to_margins_bps, MemInfo,
 };
 
 use crate::gpu_freq_scaling::amd_device::AmdDeviceConfig;
@@ -191,6 +191,25 @@ fn test_parse_margins() {
     assert_eq!(margins.len(), 2);
     assert_eq!(margins[0], 123);
     assert_eq!(margins[1], 456);
+}
+
+#[test]
+fn test_bps_to_margins_bps() {
+    let (critical, moderate) = total_mem_to_margins_bps(
+        100000, /* 100mb */
+        1200,   /* 12% */
+        3600,   /* 36% */
+    );
+    assert_eq!(critical, 12000 /* 12mb */);
+    assert_eq!(moderate, 36000 /* 36mb */);
+
+    let (critical, moderate) = total_mem_to_margins_bps(
+        1000000, /* 1000mb */
+        1250,    /* 12.50% */
+        7340,    /* 73.4% */
+    );
+    assert_eq!(critical, 125000 /* 125mb */);
+    assert_eq!(moderate, 734000 /* 734mb */);
 }
 
 #[test]

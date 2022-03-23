@@ -5,6 +5,7 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
+use std::sync::Mutex;
 
 use anyhow::{bail, Context, Result};
 use once_cell::sync::Lazy;
@@ -285,19 +286,33 @@ pub fn parse_margins<R: BufRead>(reader: R) -> Result<Vec<u64>> {
     }
 }
 
-fn get_memory_margins_kb_impl() -> (u64, u64) {
-    // TODO(vovoy): Use a regular config file instead of sysfs file.
-    let margin_path = "/sys/kernel/mm/chromeos-low_mem/margin";
-    match File::open(Path::new(margin_path)).map(BufReader::new) {
-        Ok(reader) => match parse_margins(reader) {
-            Ok(margins) => return (margins[0] * 1024, margins[1] * 1024),
-            Err(e) => error!("Couldn't parse {}: {}", margin_path, e),
-        },
-        Err(e) => error!("Couldn't read {}: {}", margin_path, e),
-    }
+struct MemoryMarginsKb {
+    critical: u64,
+    moderate: u64,
+}
 
-    // Critical margin is 5.2% of total memory, moderate margin is 40% of total
-    // memory. See also /usr/share/cros/init/swap.sh on DUT.
+static MEMORY_MARGINS: Lazy<Mutex<MemoryMarginsKb>> =
+    Lazy::new(|| Mutex::new(get_default_memory_margins_kb_impl()));
+
+// Given the total system memory in KB and the basis points for critical and moderate margins
+// calculate the absolute values in KBs.
+pub fn total_mem_to_margins_bps(
+    total_mem_kb: u64,
+    critical_bps: u64,
+    moderate_bps: u64,
+) -> (u64, u64) {
+    // A basis point is 1/100th of a percent, so we need to convert to whole digit percent and then
+    // convert into a fraction of 1, so we divide by 100 twice, ie. 4000bps -> 40% -> .4.
+    let total_mem_kb = total_mem_kb as f64;
+    let critical_bps = critical_bps as f64;
+    let moderate_bps = moderate_bps as f64;
+    (
+        (total_mem_kb * (critical_bps / 100.0) / 100.0) as u64,
+        (total_mem_kb * (moderate_bps / 100.0) / 100.0) as u64,
+    )
+}
+
+fn get_memory_margins_kb_from_bps(critical_bps: u64, moderate_bps: u64) -> MemoryMarginsKb {
     let total_memory_kb = match get_meminfo() {
         Ok(meminfo) => meminfo.total,
         Err(e) => {
@@ -305,12 +320,52 @@ fn get_memory_margins_kb_impl() -> (u64, u64) {
             2 * 1024
         }
     };
-    (total_memory_kb * 13 / 250, total_memory_kb * 2 / 5)
+
+    let (critical, moderate) =
+        total_mem_to_margins_bps(total_memory_kb, critical_bps, moderate_bps);
+    MemoryMarginsKb { critical, moderate }
+}
+
+fn get_default_memory_margins_kb_impl() -> MemoryMarginsKb {
+    // TODO(vovoy): Use a regular config file instead of sysfs file.
+    let margin_path = "/sys/kernel/mm/chromeos-low_mem/margin";
+    match File::open(Path::new(margin_path)).map(BufReader::new) {
+        Ok(reader) => match parse_margins(reader) {
+            Ok(margins) => {
+                return MemoryMarginsKb {
+                    critical: margins[0] * 1024,
+                    moderate: margins[1] * 1024,
+                }
+            }
+            Err(e) => error!("Couldn't parse {}: {}", margin_path, e),
+        },
+        Err(e) => error!("Couldn't read {}: {}", margin_path, e),
+    }
+
+    // Critical margin is 5.2% of total memory, moderate margin is 40% of total
+    // memory. See also /usr/share/cros/init/swap.sh on DUT.
+    get_memory_margins_kb_from_bps(520, 4000)
 }
 
 pub fn get_memory_margins_kb() -> (u64, u64) {
-    static MARGINS: Lazy<(u64, u64)> = Lazy::new(get_memory_margins_kb_impl);
-    *MARGINS
+    match MEMORY_MARGINS.lock() {
+        Ok(data) => (data.critical, data.moderate),
+        Err(poisoned) => {
+            let data = poisoned.into_inner();
+            (data.critical, data.moderate)
+        }
+    }
+}
+
+pub fn set_memory_margins_bps(critical: u32, moderate: u32) -> Result<()> {
+    match MEMORY_MARGINS.lock() {
+        Ok(mut data) => {
+            let margins = get_memory_margins_kb_from_bps(critical.into(), moderate.into());
+            *data = margins;
+            Ok(())
+        }
+        Err(_) => bail!("Failed to set memory margins"),
+    }
 }
 
 struct ComponentMarginsKb {

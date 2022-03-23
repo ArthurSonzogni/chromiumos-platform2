@@ -75,6 +75,14 @@ fn get_memory_margins_kb(m: &MethodInfo) -> MethodResult {
     Ok(vec![m.msg.method_return().append2(margins.0, margins.1)])
 }
 
+fn set_memory_margins_bps(m: &MethodInfo) -> MethodResult {
+    let (bps_critical_raw, bps_moderate_raw): (u32, u32) = m.msg.read2()?;
+    match memory::set_memory_margins_bps(bps_critical_raw, bps_moderate_raw) {
+        Ok(()) => get_memory_margins_kb(m),
+        Err(_) => Err(MethodErr::failed("Failed to set memory thresholds")),
+    }
+}
+
 fn get_game_mode(m: &MethodInfo) -> MethodResult {
     match common::get_game_mode() {
         Ok(game_mode) => Ok(vec![m.msg.method_return().append1(game_mode as u8)]),
@@ -216,6 +224,12 @@ pub fn service_main() -> Result<()> {
                 .add_m(
                     f.method("GetMemoryMarginsKB", (), get_memory_margins_kb)
                         .outarg::<u64, _>("reply"),
+                )
+                .add_m(
+                    f.method("SetMemoryMarginsBps", (), set_memory_margins_bps)
+                        .inarg::<u32, _>("critical_bps")
+                        .inarg::<u32, _>("moderate_bps")
+                        .outarg::<Vec<u32>, _>("reply"),
                 )
                 .add_m(
                     f.method("GetGameMode", (), get_game_mode)
