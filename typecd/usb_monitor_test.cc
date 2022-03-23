@@ -86,7 +86,7 @@ TEST_F(UsbMonitorTest, TestDeviceAddAndRemove) {
   EXPECT_EQ(std::stoi(kBusnum), usb_device->GetBusnum());
   EXPECT_EQ(std::stoi(kDevnum), usb_device->GetDevnum());
   EXPECT_EQ(kTypecPortNum, usb_device->GetTypecPortNum());
-  EXPECT_EQ(std::stoi(kSpeed), usb_device->GetSpeed());
+  EXPECT_EQ(UsbSpeed::k10000, usb_device->GetSpeed());
   EXPECT_EQ(std::stoi(kDeviceClass, 0, 16), usb_device->GetDeviceClass());
   EXPECT_EQ(std::stoi(kInterfaceClass, 0, 16), usb_device->GetInterfaceClass());
   EXPECT_EQ(UsbVersion::k3_0, usb_device->GetVersion());

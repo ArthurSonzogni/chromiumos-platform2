@@ -13,7 +13,7 @@ UsbDevice::UsbDevice(int busnum, int devnum, std::string hub)
       devnum_(devnum),
       typec_port_num_(-1),
       hub_(hub),
-      speed_(-1),
+      speed_(UsbSpeed::kOther),
       device_class_(-1),
       interface_class_(-1),
       version_(UsbVersion::kOther) {

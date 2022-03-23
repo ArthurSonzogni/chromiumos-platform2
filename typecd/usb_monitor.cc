@@ -17,6 +17,23 @@ constexpr char kInterfaceFilePathRegex[] =
     R"((\d+)-(\d+)(\.(\d+))*:(\d+)\.(\d+))";
 constexpr char kTypecPortUeventRegex[] = R"(TYPEC_PORT=port(\d+))";
 
+typecd::UsbSpeed ConvertToUsbSpeed(std::string speed) {
+  if (speed == "1.5")
+    return typecd::UsbSpeed::k1_5;
+  else if (speed == "12")
+    return typecd::UsbSpeed::k12;
+  else if (speed == "480")
+    return typecd::UsbSpeed::k480;
+  else if (speed == "5000")
+    return typecd::UsbSpeed::k5000;
+  else if (speed == "10000")
+    return typecd::UsbSpeed::k10000;
+  else if (speed == "20000")
+    return typecd::UsbSpeed::k20000;
+  else
+    return typecd::UsbSpeed::kOther;
+}
+
 // Convert version string parsed from USB device sysfs to UsbVersion enum to
 // store in UsbDevice.
 typecd::UsbVersion ConvertToUsbVersion(std::string version) {
@@ -103,11 +120,9 @@ void UsbMonitor::OnDeviceAddedOrRemoved(const base::FilePath& path,
     }
 
     std::string speed;
-    int speed_int;
     if (base::ReadFileToString(path.Append("speed"), &speed)) {
       base::TrimWhitespaceASCII(speed, base::TRIM_TRAILING, &speed);
-      if (base::StringToInt(speed, &speed_int))
-        GetDevice(key)->SetSpeed(speed_int);
+      GetDevice(key)->SetSpeed(ConvertToUsbSpeed(speed));
     }
 
     std::string device_class;
