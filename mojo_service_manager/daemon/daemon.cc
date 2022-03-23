@@ -12,7 +12,8 @@
 namespace chromeos {
 namespace mojo_service_manager {
 
-Daemon::Daemon() : mojo_thread_("mojo thread") {
+Daemon::Daemon(ServicePolicyMap policy_map)
+    : mojo_thread_("mojo thread"), service_manager_(std::move(policy_map)) {
   mojo_thread_.StartWithOptions(
       base::Thread::Options(base::MessagePumpType::IO, 0));
   mojo_task_runner_ = mojo_thread_.task_runner();

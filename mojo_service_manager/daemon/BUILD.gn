@@ -21,6 +21,7 @@ pkg_config("target_default") {
 
 source_set("libmojo_service_manager_daemon") {
   sources = [
+    "service_manager.cc",
     "service_policy.cc",
     "service_policy_loader.cc",
   ]
