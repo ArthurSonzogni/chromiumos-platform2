@@ -597,6 +597,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
       auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword)));
+  EXPECT_NE(auth_session.label_to_auth_factor_.find(kFakeLabel),
+            auth_session.label_to_auth_factor_.end());
 }
 
 // Test that a new auth factor cannot be added for an unauthenticated

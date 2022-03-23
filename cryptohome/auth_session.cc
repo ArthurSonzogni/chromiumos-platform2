@@ -542,6 +542,8 @@ AuthSession::AddAuthFactorViaUserSecretStash(
     return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
   }
 
+  label_to_auth_factor_.emplace(auth_factor_label, std::move(auth_factor));
+
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
 }
 
