@@ -70,6 +70,25 @@ bool FaceDetectionStreamManipulator::Initialize(
 
 bool FaceDetectionStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
+  auto is_larger_or_closer_to_native_aspect_ratio =
+      [&](const camera3_stream_t* lhs, const camera3_stream_t* rhs) -> bool {
+    if (lhs->width >= rhs->width && lhs->height >= rhs->height) {
+      return true;
+    }
+    if (lhs->width <= rhs->width && lhs->height <= rhs->height) {
+      return false;
+    }
+    float active_aspect_ratio =
+        static_cast<float>(active_array_dimension_.width) /
+        static_cast<float>(active_array_dimension_.height);
+    float lhs_aspect_ratio =
+        static_cast<float>(lhs->width) / static_cast<float>(lhs->height);
+    float rhs_aspect_ratio =
+        static_cast<float>(rhs->width) / static_cast<float>(rhs->height);
+    return std::abs(lhs_aspect_ratio - active_aspect_ratio) <=
+           std::abs(rhs_aspect_ratio - active_aspect_ratio);
+  };
+
   yuv_stream_ = nullptr;
 
   for (auto* s : stream_config->GetStreams()) {
@@ -88,10 +107,11 @@ bool FaceDetectionStreamManipulator::ConfigureStreams(
         continue;
       }
 
-      // Pick the buffer with the largest width to AE controller. This is a
-      // heuristic and shouldn't matter for the majority of the time, as for
-      // most cases the requested streams would have the same aspect ratio.
-      if (!yuv_stream_ || s->width > yuv_stream_->width) {
+      // Pick a buffer for AE controller. This is a heuristic and shouldn't
+      // matter for the majority of the time, as for most cases the requested
+      // streams would have the same aspect ratio.
+      if (!yuv_stream_ ||
+          is_larger_or_closer_to_native_aspect_ratio(s, yuv_stream_)) {
         yuv_stream_ = s;
       }
     }

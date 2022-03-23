@@ -72,7 +72,8 @@ Size GetFullFrameResolution(const camera_metadata_t* static_info,
     return false;
   };
 
-  auto has_larger_fov = [&](const Size& lhs, const Size& rhs) -> bool {
+  auto is_larger_or_closer_to_native_aspect_ratio =
+      [&](const Size& lhs, const Size& rhs) -> bool {
     if (lhs.width >= rhs.width && lhs.height >= rhs.height) {
       return true;
     }
@@ -101,7 +102,7 @@ Size GetFullFrameResolution(const camera_metadata_t* static_info,
          format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
         direction == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT &&
         is_frame_duration_ok(format, width, height) &&
-        has_larger_fov(size, max_size)) {
+        is_larger_or_closer_to_native_aspect_ratio(size, max_size)) {
       max_size = size;
     }
   }
