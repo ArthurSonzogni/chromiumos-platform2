@@ -572,27 +572,6 @@ message ArcVmCompleteBootResponse {
   ArcVmCompleteBootResult result = 1;
 }
 
-// TODO(kalutes, b:188858559) Deprecate this request once usage is updated to
-// ArcVmCompleteBoot Request for creating RT vCPUs.
-message MakeRtVcpuRequest {
-  // The name of the VM.
-  string name = 1;
-
-  // The owner of the vm.
-  string owner_id = 2;
-}
-
-// TODO(kalutes, b:188858559) Deprecate this response once usage is updated to
-// ArcVmCompleteBoot
-// Response sent back by vm_concierge for a MakeRtVcpuRequest dbus message.
-message MakeRtVcpuResponse {
-  // If true, the request succeeded.
-  bool success = 1;
-
-  // The failure_reason if the request could not be processed.
-  string failure_reason = 2;
-}
-
 // The type of storage location for a disk image.
 enum StorageLocation {
   // Subdirectory under /home/root/<id>/crosvm.

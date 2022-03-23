@@ -156,10 +156,6 @@ class Service final {
   std::unique_ptr<dbus::Response> GetVmEnterpriseReportingInfo(
       dbus::MethodCall* method_call);
 
-  // Handles a request to make RT vCPU.  |method_call| must have a
-  // MakeRtVcpuRequest protobuf serialized as an array of bytes.
-  std::unique_ptr<dbus::Response> MakeRtVcpu(dbus::MethodCall* method_call);
-
   // Handles a request to complete the boot of an ARC VM.
   // |method_call| must have a ArcVmCompleteBootRequest
   // protobuf serialized as an array of bytes.
