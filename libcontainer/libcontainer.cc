@@ -34,7 +34,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <libminijail.h>
@@ -596,7 +595,7 @@ bool DoContainerMounts(struct container* c,
   }
 
   // The mounts have been done successfully, no need to tear them down anymore.
-  ignore_result(teardown.Release());
+  teardown.ReplaceClosure(base::DoNothing());
 
   return true;
 }
@@ -1558,7 +1557,7 @@ int container_start(struct container* c,
   }
 
   // The container has started successfully, no need to tear it down anymore.
-  ignore_result(teardown.Release());
+  teardown.ReplaceClosure(base::DoNothing());
   return 0;
 }
 

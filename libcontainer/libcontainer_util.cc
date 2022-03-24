@@ -25,7 +25,6 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -407,7 +406,7 @@ bool LoopdevSetup(const base::FilePath& source, Loopdev* loopdev_out) {
       return false;
     }
 
-    ignore_result(loop_device_cleanup.Release());
+    loop_device_cleanup.ReplaceClosure(base::DoNothing());
     loopdev_out->path = loopdev_path;
     loopdev_out->fd = std::move(loop_fd);
     loopdev_out->info = loop_info;
