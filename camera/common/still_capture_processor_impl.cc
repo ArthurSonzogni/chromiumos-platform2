@@ -493,7 +493,7 @@ void StillCaptureProcessorImpl::MaybeProduceCaptureResultOnThread(
             dst_addr += app1_size;
             break;
           }
-          FALLTHROUGH;
+          [[fallthrough]];
         }
 
         default:

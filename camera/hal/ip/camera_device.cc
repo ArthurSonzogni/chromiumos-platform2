@@ -153,7 +153,7 @@ int CameraDevice::Init(mojo::PendingRemote<mojom::IpCameraDevice> ip_device,
   switch (format) {
     case mojom::PixelFormat::JPEG:
       jpeg_ = true;
-      FALLTHROUGH;
+      [[fallthrough]];
     case mojom::PixelFormat::YUV_420:
       break;
     default:
