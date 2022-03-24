@@ -11,9 +11,9 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <tuple>
 #include <vector>
 
-#include <base/macros.h>
 #include <base/optional.h>
 #include <base/files/scoped_file.h>
 #include <base/posix/eintr_wrapper.h>
@@ -276,7 +276,7 @@ TEST(ReporterTest, CrashReporterSuceeds) {
 
   // SendReport() puts the subprocess' stdin fd into a scoper class, so it's
   // been closed by the time SendReport() returns.
-  ignore_result(dev_null.release());
+  std::ignore = dev_null.release();
 }
 
 TEST(ReporterTest, StartFails) {
