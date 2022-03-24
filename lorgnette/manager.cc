@@ -13,7 +13,6 @@
 
 #include <base/bits.h>
 #include <base/check.h>
-#include <base/compiler_specific.h>
 #include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/logging.h>
@@ -720,7 +719,7 @@ void Manager::GetNextImageInternal(const std::string& uuid,
       return;
     default:
       LOG(ERROR) << "Unexpected scan state: " << ScanState_Name(result);
-      FALLTHROUGH;
+      [[fallthrough]];
     case SCAN_STATE_FAILED:
       ReportScanFailed(scan_state->device_name);
       SendFailureSignal(uuid, SerializeError(error), failure_mode);
