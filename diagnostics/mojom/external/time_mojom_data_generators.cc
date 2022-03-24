@@ -13,7 +13,7 @@ base::Time BaseTimeGenerator::Generate() {
 
 base::TimeDelta BaseTimeDeltaGenerator::Generate() {
   has_next_ = false;
-  return base::TimeDelta::FromSeconds(1);
+  return base::Seconds(1);
 }
 
 }  // namespace diagnostics

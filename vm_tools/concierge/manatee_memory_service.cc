@@ -268,7 +268,7 @@ bool ManateeMemoryService::LaunchVmOnThread(
   for (int i = 0; i < kNumTries; i++) {
     // The system should be reclaiming memory, wait a little bit for progress.
     if (i != 0) {
-      auto delay_ms = base::TimeDelta::FromMilliseconds(i * 500);
+      auto delay_ms = base::Milliseconds(i * 500);
       LOG(INFO) << "Insufficient memory reserved for VM. Retrying in "
                 << delay_ms;
       base::PlatformThread::Sleep(delay_ms);

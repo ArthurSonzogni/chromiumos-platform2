@@ -238,7 +238,7 @@ TEST(AlarmTimerTest, NonRepeatIsRunning) {
 
   auto timer = SimpleAlarmTimer::CreateForTesting();
   EXPECT_FALSE(timer->IsRunning());
-  timer->Start(FROM_HERE, base::TimeDelta::FromDays(1), base::DoNothing());
+  timer->Start(FROM_HERE, base::Days(1), base::DoNothing());
 
   // Allow FileDescriptorWatcher to start watching the timer. Without this, a
   // task posted by FileDescriptorWatcher::WatchReadable() is leaked.
@@ -259,7 +259,7 @@ TEST(AlarmTimerTest, RetainNonRepeatIsRunning) {
 
   auto timer = SimpleAlarmTimer::CreateForTesting();
   EXPECT_FALSE(timer->IsRunning());
-  timer->Start(FROM_HERE, base::TimeDelta::FromDays(1), base::DoNothing());
+  timer->Start(FROM_HERE, base::Days(1), base::DoNothing());
 
   // Allow FileDescriptorWatcher to start watching the timer. Without this, a
   // task posted by FileDescriptorWatcher::WatchReadable() is leaked.
@@ -305,12 +305,12 @@ TEST(AlarmTimerTest, ContinuationStopStart) {
   base::FileDescriptorWatcher watcher(task_executor.task_runner());
 
   auto timer = SimpleAlarmTimer::CreateForTesting();
-  timer->Start(FROM_HERE, base::TimeDelta::FromMilliseconds(10),
+  timer->Start(FROM_HERE, base::Milliseconds(10),
                base::BindRepeating(&SetCallbackHappened1, base::DoNothing()));
   timer->Stop();
 
   base::RunLoop run_loop;
-  timer->Start(FROM_HERE, base::TimeDelta::FromMilliseconds(40),
+  timer->Start(FROM_HERE, base::Milliseconds(40),
                base::BindRepeating(&SetCallbackHappened2,
                                    run_loop.QuitWhenIdleClosure()));
   run_loop.Run();
@@ -326,7 +326,7 @@ TEST(AlarmTimerTest, ContinuationReset) {
 
   base::RunLoop run_loop;
   auto timer = SimpleAlarmTimer::CreateForTesting();
-  timer->Start(FROM_HERE, base::TimeDelta::FromMilliseconds(10),
+  timer->Start(FROM_HERE, base::Milliseconds(10),
                base::BindRepeating(&SetCallbackHappened1,
                                    run_loop.QuitWhenIdleClosure()));
   timer->Reset();
@@ -347,7 +347,7 @@ TEST(AlarmTimerTest, DeleteTimerWhileCallbackIsRunning) {
   auto timer = SimpleAlarmTimer::CreateForTesting();
   auto* timer_ptr = timer.get();
   timer_ptr->Start(
-      FROM_HERE, base::TimeDelta::FromMilliseconds(10),
+      FROM_HERE, base::Milliseconds(10),
       base::BindRepeating([](std::unique_ptr<SimpleAlarmTimer> timer,
                              base::RunLoop* run_loop) { run_loop->Quit(); },
                           base::Passed(std::move(timer)), &run_loop));

@@ -194,11 +194,11 @@ int diag_main(int argc, char** argv) {
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kCpuCache:
         routine_result = actions.ActionRunCpuCacheRoutine(
-            base::TimeDelta().FromSeconds(FLAGS_cpu_stress_length_seconds));
+            base::Seconds(FLAGS_cpu_stress_length_seconds));
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kCpuStress:
         routine_result = actions.ActionRunCpuStressRoutine(
-            base::TimeDelta().FromSeconds(FLAGS_cpu_stress_length_seconds));
+            base::Seconds(FLAGS_cpu_stress_length_seconds));
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kFloatingPointAccuracy:
         routine_result = actions.ActionRunFloatingPointAccuracyRoutine(
