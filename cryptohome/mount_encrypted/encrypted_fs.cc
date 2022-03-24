@@ -16,7 +16,6 @@
 #include <optional>
 #include <string>
 
-#include <base/compiler_specific.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -414,7 +413,7 @@ result_code EncryptedFs::TeardownByStage(TeardownStage stage,
       platform_->Sync();
 
       // Intentionally fall through here to teardown the lower dmcrypt device.
-      FALLTHROUGH;
+      [[fallthrough]];
     case TeardownStage::kTeardownContainer:
       LOG(INFO) << "Removing " << dmcrypt_dev_;
       if (!container_->Teardown() && !ignore_errors) {
