@@ -579,6 +579,48 @@
   </event>
 </project>
 
+<project name="WiFiChipset">
+  <owner>druth@google.com</owner>
+  <owner>matthewmwang@chromium.org</owner>
+  <owner>norvez@chromium.org</owner>
+  <owner>cros-network-metrics@google.com</owner>
+  <id>none</id>
+  <summary>
+    Information about the WiFi adapter present on the system. Different
+    project from the main "WiFi" project to meet privacy requirements.
+  </summary>
+
+  <event name="WiFiChipsetInfo">
+    <summary>
+      Records which chipset is installed on the system.
+    </summary>
+    <metric name="EventVersion" type="int">
+      <summary>
+        Integer version number that indicates the format of the event.
+        Used by the event processor to know which metric is available in a
+        particular event.
+        v0: unknown (should not happen)
+        v1: initial version
+      </summary>
+    </metric>
+    <metric name="VendorId" type="int">
+      <summary>
+        Manufacturer ID of the WiFi adapter.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        Product ID of the WiFi adapter.
+      </summary>
+    </metric>
+    <metric name="SubsystemId" type="int">
+      <summary>
+        Subsystem ID of the WiFi adapter.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="WiFi">
   <owner>druth@google.com</owner>
   <owner>matthewmwang@chromium.org</owner>
