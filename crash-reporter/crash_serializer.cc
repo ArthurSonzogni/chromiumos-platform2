@@ -11,7 +11,6 @@
 
 #include <base/big_endian.h>
 #include <base/check_op.h>
-#include <base/compiler_specific.h>  // FALLTHROUGH
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
@@ -87,7 +86,7 @@ void Serializer::PickCrashFiles(const base::FilePath& crash_dir,
                                     &reason, &info,
                                     /*processing_file=*/nullptr)) {
       case kRemove:
-        FALLTHROUGH;  // Don't remove; rather, ignore the report.
+        [[fallthrough]];  // Don't remove; rather, ignore the report.
       case kIgnore:
         LOG(INFO) << "Ignoring: " << reason;
         break;
