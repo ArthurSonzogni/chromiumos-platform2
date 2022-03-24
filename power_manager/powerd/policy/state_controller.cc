@@ -1516,11 +1516,7 @@ void StateController::HandleUpdateEngineStatusMessage(dbus::Message* message) {
   }
 
   update_engine::Operation operation = status.current_operation();
-  // TODO(crbug.com/977320): Through the protobuf we don't have access to the
-  // string value of the current operation. One way to get around this is to add
-  // a new |current_operation_string| value to the protobuf with the current
-  // operation's string representation for these logging purposes.
-  LOG(INFO) << "Update operation is " << operation;
+  LOG(INFO) << "Update operation is " << Operation_Name(operation);
   UpdaterState state = UpdaterState::IDLE;
   if (operation == update_engine::Operation::DOWNLOADING ||
       operation == update_engine::Operation::VERIFYING ||
