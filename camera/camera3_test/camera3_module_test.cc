@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <iterator>
 #include <string>
+#include <tuple>
 
 #include <base/at_exit.h>
 #include <base/bind.h>
@@ -1423,7 +1424,7 @@ extern "C" int LLVMFuzzerInitialize(int* argc, char*** argv) {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* Data, size_t Size) {
   camera3_test::Camera3TestDataForwarder::GetInstance()->SetData(Data, Size);
-  ignore_result(RUN_ALL_TESTS());
+  std::ignore = RUN_ALL_TESTS();
   return 0;
 }
 
