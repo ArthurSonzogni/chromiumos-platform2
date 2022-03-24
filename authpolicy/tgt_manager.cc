@@ -5,6 +5,7 @@
 #include "authpolicy/tgt_manager.h"
 
 #include <algorithm>
+#include <tuple>
 #include <vector>
 
 #include <base/check.h>
@@ -556,7 +557,7 @@ bool TgtManager::Restore(const protos::TgtState& state) {
   // GetKerberosFiles(). Don't exit here since we'd be in an undefined state.
   // Even if this fails here, it'll eventually recover since many instances
   // write the config.
-  ignore_result(WriteKrb5Conf());
+  std::ignore = WriteKrb5Conf();
 
   // Trigger files changed signal.
   kerberos_files_dirty_ = true;

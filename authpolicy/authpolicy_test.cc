@@ -2441,7 +2441,8 @@ TEST_F(AuthPolicyTest, AnonymizerCalledWithLogging) {
   // Turn on max logging and trigger an error. This triggers debug logging
   // which should be anonymized.
   samba().SetDefaultLogLevel(AuthPolicyFlags::kMaxLevel);
-  ignore_result(Join(kTooLongMachineName, kUserPrincipal, MakePasswordFd()));
+  EXPECT_EQ(ERROR_MACHINE_NAME_TOO_LONG,
+            Join(kTooLongMachineName, kUserPrincipal, MakePasswordFd()));
   EXPECT_TRUE(samba().GetAnonymizerForTesting()->process_called_for_testing());
 }
 
