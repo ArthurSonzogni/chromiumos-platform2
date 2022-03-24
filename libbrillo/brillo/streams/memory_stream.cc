@@ -78,7 +78,6 @@ StreamPtr MemoryStream::CreateEx(
     std::unique_ptr<data_container::DataContainerInterface> container,
     size_t stream_position,
     ErrorPtr* error) {
-  ignore_result(error);  // Unused.
   return StreamPtr{new MemoryStream(std::move(container), stream_position)};
 }
 
@@ -180,7 +179,6 @@ bool MemoryStream::FlushBlocking(ErrorPtr* error) {
 }
 
 bool MemoryStream::CloseBlocking(ErrorPtr* error) {
-  ignore_result(error);  // Unused.
   container_.reset();
   return true;
 }
