@@ -428,7 +428,7 @@ void ScreenNetwork::SetStateForTest(NetworkState state) {
 bool ScreenNetwork::MoveForward(brillo::ErrorPtr* error) {
   switch (state_) {
     case NetworkState::kDropdownClosed:
-      FALLTHROUGH;
+      [[fallthrough]];
     case NetworkState::kDropdownOpen: {
       if (ssid_.empty()) {
         Error::AddTo(error, FROM_HERE, error::kFailedGoToNextScreen,
@@ -469,7 +469,7 @@ bool ScreenNetwork::MoveForward(brillo::ErrorPtr* error) {
 bool ScreenNetwork::MoveBackward(brillo::ErrorPtr* error) {
   switch (state_) {
     case NetworkState::kDropdownClosed:
-      FALLTHROUGH;
+      [[fallthrough]];
     case NetworkState::kGetPassword: {
       index_ = 2;
       OnKeyPress(KEY_ENTER);
