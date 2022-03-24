@@ -6,6 +6,7 @@
 package genutil
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 )
@@ -55,4 +56,12 @@ func Reverse(s []string) []string {
 		s[i], s[j] = s[j], s[i]
 	}
 	return s
+}
+
+// ArgName makes a name of a method argument.
+func ArgName(prefix, argName string, argIndex int) string {
+	if argName == "" {
+		return fmt.Sprintf("%s_%d", prefix, argIndex)
+	}
+	return fmt.Sprintf("%s_%s", prefix, argName)
 }

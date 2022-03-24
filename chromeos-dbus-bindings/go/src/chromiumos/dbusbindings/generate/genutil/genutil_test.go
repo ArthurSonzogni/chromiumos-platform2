@@ -77,3 +77,21 @@ func TestReverse(t *testing.T) {
 		}
 	}
 }
+
+func TestArgName(t *testing.T) {
+	cases := []struct {
+		prefix, argName, want string
+		argIndex              int
+	}{
+		{prefix: "in", argName: "", argIndex: 1, want: "in_1"},
+		{prefix: "out", argName: "ret", argIndex: 3, want: "out_ret"},
+	}
+
+	for _, tc := range cases {
+		got := genutil.ArgName(tc.prefix, tc.argName, tc.argIndex)
+		if got != tc.want {
+			t.Errorf("Wrong result in ArgName(%q, %q, %d):\ngot %s, want %s",
+				tc.prefix, tc.argName, tc.argIndex, got, tc.want)
+		}
+	}
+}
