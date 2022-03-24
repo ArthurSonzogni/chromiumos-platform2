@@ -9,9 +9,9 @@
 #include "chaps/token_file_manager.h"
 
 #include <string>
+#include <tuple>
 
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
 
@@ -25,8 +25,8 @@ namespace chaps {
 
 TokenFileManager::TokenFileManager(uid_t chapsd_uid, gid_t chapsd_gid)
     : chapsd_uid_(chapsd_uid), chapsd_gid_(chapsd_gid) {
-  ignore_result(chapsd_uid_);
-  ignore_result(chapsd_gid_);
+  std::ignore = chapsd_uid_;
+  std::ignore = chapsd_gid_;
 }
 
 TokenFileManager::~TokenFileManager() {}
