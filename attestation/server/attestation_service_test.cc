@@ -2090,7 +2090,7 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
 
 // For generic TPM2, we only support ECC EK type, so the testing is not
 // applicable.
-#if !USE_GENERIC_TPM2
+#if !USE_GENERIC_TPM2 && !USE_TI50_ONBOARD
 
 TEST_P(AttestationServiceTest,
        PrepareForEnrollmentCannotQuoteOptionalNvramForRsaEK) {

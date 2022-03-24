@@ -64,7 +64,7 @@ namespace attestation {
 // process a task after destruction). Weak pointers are used to post replies
 // back to the main thread.
 
-#if USE_GENERIC_TPM2
+#if USE_GENERIC_TPM2 || USE_TI50_ONBOARD
 constexpr static KeyType kEndorsementKeyTypeForEnrollmentID = KEY_TYPE_ECC;
 #else
 constexpr static KeyType kEndorsementKeyTypeForEnrollmentID = KEY_TYPE_RSA;

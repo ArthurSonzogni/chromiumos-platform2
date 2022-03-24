@@ -54,6 +54,7 @@ pkg_config("target_defaults") {
     "USE_TPM2=${use.tpm2}",
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_GENERIC_TPM2=${use.generic_tpm2}",
+    "USE_TI50_ONBOARD=${use.ti50_onboard}",
   ]
 }
 
