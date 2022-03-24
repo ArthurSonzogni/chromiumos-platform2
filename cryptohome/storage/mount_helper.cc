@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 
 #include <memory>
+#include <tuple>
 #include <unordered_set>
 #include <vector>
 
@@ -191,7 +192,7 @@ bool CreateVaultDirectoryStructure(
     if (!platform->SafeCreateDirAndSetOwnershipAndPermissions(
             subdir.path, subdir.mode, subdir.uid, subdir.gid)) {
       LOG(ERROR) << "Couldn't create path directory: " << subdir.path;
-      ignore_result(platform->DeletePathRecursively(subdir.path));
+      std::ignore = platform->DeletePathRecursively(subdir.path);
       success = false;
       continue;
     }
@@ -673,8 +674,8 @@ bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
       kDefaultEcryptfsKeySize, fnek_signature.c_str(), fek_signature.c_str());
 
   // Create <vault_path>/user and <vault_path>/root.
-  ignore_result(CreateVaultDirectoryStructure(
-      platform_, GetCommonSubdirectories(vault_path)));
+  std::ignore = CreateVaultDirectoryStructure(
+      platform_, GetCommonSubdirectories(vault_path));
 
   // b/115997660: Mount eCryptfs after creating the tracked subdirectories.
   if (!MountAndPush(vault_path, mount_point, "ecryptfs", ecryptfs_options)) {
@@ -688,10 +689,10 @@ bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
 void MountHelper::SetUpDircryptoMount(const std::string& obfuscated_username) {
   const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
 
-  ignore_result(CreateVaultDirectoryStructure(
-      platform_, GetCommonSubdirectories(mount_point)));
-  ignore_result(
-      SetTrackingXattr(platform_, GetCommonSubdirectories(mount_point)));
+  std::ignore = CreateVaultDirectoryStructure(
+      platform_, GetCommonSubdirectories(mount_point));
+  std::ignore =
+      SetTrackingXattr(platform_, GetCommonSubdirectories(mount_point));
 }
 
 bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username,
@@ -720,8 +721,8 @@ bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username,
     return false;
   }
 
-  ignore_result(CreateVaultDirectoryStructure(
-      platform_, GetDmcryptSubdirectories(UserPath(obfuscated_username))));
+  std::ignore = CreateVaultDirectoryStructure(
+      platform_, GetDmcryptSubdirectories(UserPath(obfuscated_username)));
 
   return true;
 }

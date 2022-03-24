@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <tuple>
 #include <utility>
 
 #include <base/bind.h>
@@ -140,7 +141,7 @@ MountError Mount::MountEphemeralCryptohome(const std::string& username) {
     return error;
   }
 
-  ignore_result(cleanup_runner.Release());
+  cleanup_runner.ReplaceClosure(base::DoNothing());
 
   return MOUNT_ERROR_NONE;
 }
@@ -208,10 +209,10 @@ MountError Mount::MountCryptohome(
   // TODO(sarthakkukreti): remove this in favor of using the session-manager
   // as the source-of-truth during crash recovery. That would allow us to
   // reconstruct the run-time state of cryptohome vault(s) at the time of crash.
-  ignore_result(user_cryptohome_vault_->SetLazyTeardownWhenUnused());
+  std::ignore = user_cryptohome_vault_->SetLazyTeardownWhenUnused();
 
   // At this point we're done mounting.
-  ignore_result(cleanup_runner.Release());
+  cleanup_runner.ReplaceClosure(base::DoNothing());
 
   user_cryptohome_vault_->ReportVaultEncryptionType();
 

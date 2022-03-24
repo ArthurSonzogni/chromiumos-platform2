@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include <base/logging.h>
@@ -35,7 +36,7 @@ CryptohomeVault::CryptohomeVault(
 
 // Teardown the vault on object destruction.
 CryptohomeVault::~CryptohomeVault() {
-  ignore_result(Teardown());
+  std::ignore = Teardown();
 }
 
 MountError CryptohomeVault::Setup(const FileSystemKey& filesystem_key) {

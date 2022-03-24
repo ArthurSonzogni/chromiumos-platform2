@@ -131,7 +131,7 @@ bool EncryptedRebootVault::CreateVault() {
     return false;
   }
 
-  ignore_result(reset_vault.Release());
+  reset_vault.ReplaceClosure(base::DoNothing());
   return true;
 }
 
@@ -180,6 +180,6 @@ bool EncryptedRebootVault::UnlockVault() {
     return false;
   }
 
-  ignore_result(reset_vault.Release());
+  reset_vault.ReplaceClosure(base::DoNothing());
   return true;
 }

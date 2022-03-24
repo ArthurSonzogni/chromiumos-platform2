@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/logging.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
@@ -500,22 +501,22 @@ class HomeDirsVaultTest : public ::testing::Test {
 
     switch (test_case.existing_container_type) {
       case EncryptedContainerType::kEcryptfs:
-        ignore_result(platform->CreateDirectory(
+        ASSERT_TRUE(platform->CreateDirectory(
             GetEcryptfsUserVaultPath(user_.obfuscated)));
-        ignore_result(
+        ASSERT_TRUE(
             platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
         break;
       case EncryptedContainerType::kFscrypt:
-        ignore_result(
+        ASSERT_TRUE(
             platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
         ON_CALL(*platform,
                 GetDirCryptoKeyState(GetUserMountDirectory(user_.obfuscated)))
             .WillByDefault(Return(dircrypto::KeyState::ENCRYPTED));
         break;
       case EncryptedContainerType::kEcryptfsToFscrypt:
-        ignore_result(platform->CreateDirectory(
+        ASSERT_TRUE(platform->CreateDirectory(
             GetEcryptfsUserVaultPath(user_.obfuscated)));
-        ignore_result(
+        ASSERT_TRUE(
             platform->CreateDirectory(GetUserMountDirectory(user_.obfuscated)));
         ON_CALL(*platform,
                 GetDirCryptoKeyState(GetUserMountDirectory(user_.obfuscated)))

@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -1021,8 +1022,8 @@ bool KeysetManagement::RecordVaultKeysetMetrics(
 void KeysetManagement::CleanupPerIndexTimestampFiles(
     const std::string& obfuscated) {
   for (int i = 0; i < kKeyFileMax; ++i) {
-    ignore_result(platform_->DeleteFileDurable(
-        UserActivityPerIndexTimestampPath(obfuscated, i)));
+    std::ignore = platform_->DeleteFileDurable(
+        UserActivityPerIndexTimestampPath(obfuscated, i));
   }
 }
 

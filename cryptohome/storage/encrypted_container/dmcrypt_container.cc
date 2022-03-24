@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <utility>
 
 #include <base/bind.h>
@@ -65,7 +66,7 @@ DmcryptContainer::DmcryptContainer(
 bool DmcryptContainer::Purge() {
   // Stale dm-crypt containers may need an extra teardown before purging the
   // device.
-  ignore_result(Teardown());
+  std::ignore = Teardown();
 
   return backing_device_->Purge();
 }
@@ -181,7 +182,7 @@ bool DmcryptContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  ignore_result(device_cleanup_runner.Release());
+  device_cleanup_runner.ReplaceClosure(base::DoNothing());
   return true;
 }
 

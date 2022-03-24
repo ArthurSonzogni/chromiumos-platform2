@@ -247,7 +247,7 @@ bool OutOfProcessMountHelper::LaunchOutOfProcessHelper(
   }
 
   // OOP mount helper started successfully, release the clean-up closure.
-  ignore_result(kill_runner.Release());
+  kill_runner.ReplaceClosure(base::DoNothing());
 
   LOG(INFO) << "OOP mount helper started successfully";
   ReportOOPMountOperationResult(OOPMountOperationResult::kSuccess);

@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <optional>
+#include <tuple>
 #include <utility>
 
 #include <base/callback_helpers.h>
@@ -27,8 +28,8 @@ EphemeralContainer::EphemeralContainer(
     : backing_device_(std::move(backing_device)), platform_(platform) {}
 
 EphemeralContainer::~EphemeralContainer() {
-  ignore_result(Teardown());
-  ignore_result(Purge());
+  std::ignore = Teardown();
+  std::ignore = Purge();
 }
 
 bool EphemeralContainer::Exists() {
@@ -50,14 +51,14 @@ bool EphemeralContainer::Setup(const FileSystemKey& encryption_key) {
   base::ScopedClosureRunner cleanup(base::BindOnce(
       [](EphemeralContainer* container, BackingDevice* backing_device) {
         // Try purging backing device even if teardown failed.
-        ignore_result(container->Teardown());
-        ignore_result(container->Purge());
+        std::ignore = container->Teardown();
+        std::ignore = container->Purge();
       },
       base::Unretained(this), base::Unretained(backing_device_.get())));
 
   // Clean any pre-existing ram disks for the user.
   if (backing_device_->Exists()) {
-    ignore_result(backing_device_->Teardown());
+    std::ignore = backing_device_->Teardown();
     if (!backing_device_->Purge()) {
       LOG(ERROR) << "Can't teardown previous backing store for the ephemeral.";
     }
@@ -86,14 +87,14 @@ bool EphemeralContainer::Setup(const FileSystemKey& encryption_key) {
     return false;
   }
 
-  ignore_result(cleanup.Release());
+  std::ignore = cleanup.Release();
 
   return true;
 }
 
 bool EphemeralContainer::Teardown() {
   // Try purging backing device even if teardown failed.
-  ignore_result(backing_device_->Teardown());
+  std::ignore = backing_device_->Teardown();
   return backing_device_->Purge();
 }
 
