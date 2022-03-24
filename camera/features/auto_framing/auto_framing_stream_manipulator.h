@@ -20,7 +20,7 @@
 #include "cros-camera/common_types.h"
 #include "features/auto_framing/auto_framing_client.h"
 #include "features/auto_framing/face_tracker.h"
-#include "features/auto_framing/frame_cropper.h"
+#include "features/auto_framing/framer.h"
 #include "gpu/egl/egl_context.h"
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
@@ -45,7 +45,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
   };
 
   enum class MotionModel {
-    // IIR filtering implemented in FrameCropper.
+    // IIR filtering implemented in Framer.
     kIirFilter = 0,
     // Motion model implemented in libautoframing.
     kLibAutoFraming = 1,
@@ -134,7 +134,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
 
   AutoFramingClient auto_framing_client_;
   std::unique_ptr<FaceTracker> face_tracker_;
-  std::unique_ptr<FrameCropper> frame_cropper_;
+  std::unique_ptr<Framer> framer_;
   std::unique_ptr<CameraBufferPool> full_frame_buffer_pool_;
 
   std::vector<Rect<float>> faces_;

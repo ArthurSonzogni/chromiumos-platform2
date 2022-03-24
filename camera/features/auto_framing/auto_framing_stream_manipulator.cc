@@ -537,8 +537,8 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
       faces_ = face_tracker_->GetActiveFaceRectangles();
       region_of_interest_ =
           face_tracker_->GetActiveBoundingRectangleOnActiveStream();
-      frame_cropper_->OnNewRegionOfInterest(result->frame_number(),
-                                            region_of_interest_);
+      framer_->OnNewRegionOfInterest(result->frame_number(),
+                                     region_of_interest_);
     }
   }
 
@@ -600,9 +600,9 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     if (roi) {
       region_of_interest_ = NormalizeRect(*roi, full_frame_size_);
       if (!override_crop_window_) {
-        DCHECK_NE(frame_cropper_, nullptr);
-        frame_cropper_->OnNewRegionOfInterest(result->frame_number(),
-                                              region_of_interest_);
+        DCHECK_NE(framer_, nullptr);
+        framer_->OnNewRegionOfInterest(result->frame_number(),
+                                       region_of_interest_);
       }
     }
   }
@@ -612,9 +612,9 @@ bool AutoFramingStreamManipulator::ProcessCaptureResultOnThread(
     active_crop_region_ =
         NormalizeRect(auto_framing_client_.GetCropWindow(), full_frame_size_);
   } else {
-    DCHECK_NE(frame_cropper_, nullptr);
+    DCHECK_NE(framer_, nullptr);
     active_crop_region_ =
-        frame_cropper_->ComputeActiveCropRegion(result->frame_number());
+        framer_->ComputeActiveCropRegion(result->frame_number());
   }
   for (auto& b : ctx->client_buffers) {
     Rect<float> crop_region;
@@ -699,8 +699,8 @@ bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
   }
   override_crop_window_ = options_.motion_model == MotionModel::kLibAutoFraming;
 
-  frame_cropper_ = std::make_unique<FrameCropper>(
-      FrameCropper::Options{
+  framer_ = std::make_unique<Framer>(
+      Framer::Options{
           .input_size = full_frame_size_,
           .target_aspect_ratio_x = target_aspect_ratio_x,
           .target_aspect_ratio_y = target_aspect_ratio_y,
@@ -816,7 +816,7 @@ void AutoFramingStreamManipulator::ResetOnThread() {
 
   auto_framing_client_.TearDown();
   face_tracker_.reset();
-  frame_cropper_.reset();
+  framer_.reset();
 
   client_streams_.clear();
   full_frame_stream_ = {};
@@ -851,8 +851,8 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   if (face_tracker_) {
     face_tracker_->OnOptionsUpdated(json_values);
   }
-  if (frame_cropper_) {
-    frame_cropper_->OnOptionsUpdated(json_values);
+  if (framer_) {
+    framer_->OnOptionsUpdated(json_values);
   }
 }
 

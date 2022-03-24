@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_AUTO_FRAMING_FRAME_CROPPER_H_
-#define CAMERA_FEATURES_AUTO_FRAMING_FRAME_CROPPER_H_
+#ifndef CAMERA_FEATURES_AUTO_FRAMING_FRAMER_H_
+#define CAMERA_FEATURES_AUTO_FRAMING_FRAMER_H_
 
 #include <memory>
 #include <optional>
@@ -22,10 +22,10 @@
 
 namespace cros {
 
-// FrameCropper takes a bounding rectangle for the region of interest (ROI) as
+// Framer takes a bounding rectangle for the region of interest (ROI) as
 // input, temporal-filters the input to determine the intermediate crop regions,
 // and produces the output cropped buffer.
-class FrameCropper {
+class Framer {
  public:
   struct Options {
     // The input buffer dimension in pixels.
@@ -53,12 +53,12 @@ class FrameCropper {
     float crop_filter_strength = 0.95f;
   };
 
-  FrameCropper(const Options& options,
-               scoped_refptr<base::SingleThreadTaskRunner> task_runner);
-  ~FrameCropper() = default;
+  Framer(const Options& options,
+         scoped_refptr<base::SingleThreadTaskRunner> task_runner);
+  ~Framer() = default;
 
-  FrameCropper(FrameCropper& other) = delete;
-  FrameCropper& operator=(FrameCropper& other) = delete;
+  Framer(const Framer& other) = delete;
+  Framer& operator=(const Framer& other) = delete;
 
   void OnNewFaceRegions(int frame_number,
                         const std::vector<Rect<float>>& faces);
@@ -81,4 +81,4 @@ class FrameCropper {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_AUTO_FRAMING_FRAME_CROPPER_H_
+#endif  // CAMERA_FEATURES_AUTO_FRAMING_FRAMER_H_

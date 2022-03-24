@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "features/auto_framing/frame_cropper.h"
+#include "features/auto_framing/framer.h"
 
 #include <algorithm>
 #include <optional>
@@ -42,9 +42,8 @@ float ElapsedTimeMs(base::TimeTicks since) {
 
 }  // namespace
 
-FrameCropper::FrameCropper(
-    const Options& options,
-    scoped_refptr<base::SingleThreadTaskRunner> task_runner)
+Framer::Framer(const Options& options,
+               scoped_refptr<base::SingleThreadTaskRunner> task_runner)
     : options_(options), task_runner_(task_runner) {
   active_crop_region_ = NormalizeRect(
       GetCenteringFullCrop(options_.input_size, options_.target_aspect_ratio_x,
@@ -52,8 +51,8 @@ FrameCropper::FrameCropper(
       options_.input_size);
 }
 
-void FrameCropper::OnNewFaceRegions(int frame_number,
-                                    const std::vector<Rect<float>>& faces) {
+void Framer::OnNewFaceRegions(int frame_number,
+                              const std::vector<Rect<float>>& faces) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   if (faces.empty()) {
@@ -72,8 +71,7 @@ void FrameCropper::OnNewFaceRegions(int frame_number,
   ComputeActiveCropRegion(frame_number);
 }
 
-void FrameCropper::OnNewRegionOfInterest(int frame_number,
-                                         const Rect<float>& roi) {
+void Framer::OnNewRegionOfInterest(int frame_number, const Rect<float>& roi) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   if (!roi.is_valid()) {
@@ -95,7 +93,7 @@ void FrameCropper::OnNewRegionOfInterest(int frame_number,
   ComputeActiveCropRegion(frame_number);
 }
 
-void FrameCropper::OnOptionsUpdated(const base::Value& json_values) {
+void Framer::OnOptionsUpdated(const base::Value& json_values) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   LoadIfExist(json_values, kMaxZoomRatio, &options_.max_zoom_ratio);
@@ -103,14 +101,14 @@ void FrameCropper::OnOptionsUpdated(const base::Value& json_values) {
               &options_.target_crop_to_roi_ratio);
   LoadIfExist(json_values, kRoiFilterStrength, &options_.roi_filter_strength);
   LoadIfExist(json_values, kCropFilterStrength, &options_.crop_filter_strength);
-  VLOGF(1) << "FrameCropper options:"
+  VLOGF(1) << "Framer options:"
            << " max_zoom_ratio" << options_.max_zoom_ratio
            << " target_crop_to_roi_ratio=" << options_.target_crop_to_roi_ratio
            << " roi_filter_strength=" << options_.roi_filter_strength
            << " crop_filter_strength=" << options_.crop_filter_strength;
 }
 
-Rect<float> FrameCropper::ComputeActiveCropRegion(int frame_number) {
+Rect<float> Framer::ComputeActiveCropRegion(int frame_number) {
   DCHECK(task_runner_->BelongsToCurrentThread());
 
   const float min_crop_size = 1.0f / options_.max_zoom_ratio;
