@@ -37,6 +37,7 @@ BASE_TABLE = {
     'homestar': 'star',
     'mrbland': 'bland',
     'wormdingler': 'eel',
+    'quackingstick': 'duck',
 }
 
 BOARD_NAME = cros_config('/', 'name')

@@ -31,7 +31,7 @@ A list of current devices with detachable base mappings is as follows:
 |Homestar              |Star
 |MrBland               |Bland
 |Wormdingler           |Eel
-
+|Quackingstick         |Duck
 
 ## On Host
 
