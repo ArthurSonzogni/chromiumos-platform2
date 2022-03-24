@@ -27,7 +27,6 @@
 #include <base/files/scoped_file.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
@@ -813,8 +812,8 @@ int RunOci(const base::FilePath& bundle_dir,
     // The container has reached a steady state. We can now return and let the
     // container keep running. We don't want to run the post-stop hooks now, but
     // until the user actually deletes the container.
-    ignore_result(post_stop_hooks.Release());
-    ignore_result(cleanup.Release());
+    post_stop_hooks.ReplaceClosure(base::DoNothing());
+    cleanup.ReplaceClosure(base::DoNothing());
     return 0;
   }
 

@@ -19,6 +19,7 @@
 
 #include <iterator>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -64,7 +65,7 @@ bool CreateStdioPipe(base::ScopedFD* pipe_read_fd, int stdio_fd) {
       return false;
     }
     // Finally, release it so that it is not closed upon returning.
-    ignore_result(pipe_write_fd.release());
+    std::ignore = pipe_write_fd.release();
   } else {
     if (dup2(pipe_write_fd.get(), stdio_fd) == -1) {
       PLOG(ERROR) << "Failed to redirect stdio for " << stdio_fd;
