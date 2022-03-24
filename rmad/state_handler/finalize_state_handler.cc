@@ -87,7 +87,7 @@ BaseStateHandler::GetNextStateCaseReply FinalizeStateHandler::GetNextStateCase(
         case FinalizeStatus::RMAD_FINALIZE_STATUS_IN_PROGRESS:
           return NextStateCaseWrapper(RMAD_ERROR_WAIT);
         case FinalizeStatus::RMAD_FINALIZE_STATUS_COMPLETE:
-          FALLTHROUGH;
+          [[fallthrough]];
         case FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_NON_BLOCKING:
           return NextStateCaseWrapper(RmadState::StateCase::kRepairComplete);
         case FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING:

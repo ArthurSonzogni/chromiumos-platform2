@@ -139,7 +139,7 @@ UpdateRoFirmwareStateHandler::GetNextStateCase(const RmadState& state) {
         return NextStateCaseWrapper(RMAD_ERROR_WAIT);
       }
       // Firmware update completed. Same behavior as SKIP.
-      FALLTHROUGH;
+      [[fallthrough]];
     case UpdateRoFirmwareState::RMAD_UPDATE_CHOICE_SKIP:
       if (bool mlb_repair;
           json_store_->GetValue(kMlbRepair, &mlb_repair) && mlb_repair) {

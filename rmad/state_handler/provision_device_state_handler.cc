@@ -180,7 +180,7 @@ ProvisionDeviceStateHandler::GetNextStateCase(const RmadState& state) {
         case ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS:
           return NextStateCaseWrapper(RMAD_ERROR_WAIT);
         case ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE:
-          FALLTHROUGH;
+          [[fallthrough]];
         case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING:
           json_store_->SetValue(kProvisionFinishedStatus,
                                 ProvisionStatus::Status_Name(status.status()));
@@ -213,7 +213,7 @@ ProvisionDeviceStateHandler::TryGetNextStateCaseAtBoot() {
   // to the next state. Otherwise, don't transition.
   switch (GetProgress().status()) {
     case ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE:
-      FALLTHROUGH;
+      [[fallthrough]];
     case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING:
       if (should_calibrate_) {
         return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
