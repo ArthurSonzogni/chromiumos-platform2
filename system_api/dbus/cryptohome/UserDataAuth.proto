@@ -1473,6 +1473,8 @@ message AuthenticateAuthFactorReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 2;
+  // Returns if the Auth Session is authenticated.
+  bool authenticated = 3;
 }
 
 // UpdateAuthFactorRequest is built when a user is trying to

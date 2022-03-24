@@ -112,8 +112,10 @@ class AuthSession final {
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession. It may be called multiple times depending on errors or various
   // steps involved in multi-factor authentication.
-  CryptohomeStatus Authenticate(
-      const cryptohome::AuthorizationRequest& authorization_request);
+  void Authenticate(
+      const cryptohome::AuthorizationRequest& authorization_request,
+      base::OnceCallback<
+          void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done);
 
   // Authenticate is called when the user wants to authenticate the current
   // AuthSession via an auth factor. It may be called multiple times depending
@@ -232,6 +234,9 @@ class AuthSession final {
   MountStatusOr<std::unique_ptr<Credentials>> GetCredentials(
       const cryptohome::AuthorizationRequest& authorization_request);
 
+  // This function sets the credential_verifier_ based on the passkey parameter.
+  void SetCredentialVerifier(const brillo::SecureBlob& passkey);
+
   // Helper function to update a keyset on disk on KeyBlobs generated. If update
   // succeeds |vault_keyset_| is also updated. Failure doesn't return error and
   // doesn't block authentication operations.
@@ -312,16 +317,24 @@ class AuthSession final {
       AuthFactor& auth_factor);
 
   // Authenticates the user using VaultKeysets with the given |auth_input|.
+  // TODO(b/232852086) - Once Authentication through AuthSession/
+  // AuthenticateAuthSessionReply is deprecated remove template
+  // AuthenticateReply.
+  template <typename AuthenticateReply>
   bool AuthenticateViaVaultKeyset(
       const AuthInput& auth_input,
-      base::OnceCallback<
-          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done);
+      base::OnceCallback<void(const AuthenticateReply&)> on_done);
 
-  // Loads and decrypts VaultKeyset with the given |key_blobs|.
+  // Fetches a valid VaultKeyset for |obfuscated_username_| that matches the
+  // label provided by key_data_.label(). The VaultKeyset is loaded and
+  // initialized into |vault_keyset_| through
+  // KeysetManagement::GetValidKeysetWithKeyBlobs(). This function is needed for
+  // processing callback results in an asynchronous manner through the |on_done|
+  // callback.
+  template <typename AuthenticateReply>
   void LoadVaultKeysetAndFsKeys(
       const std::optional<brillo::SecureBlob> passkey,
-      base::OnceCallback<
-          void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done,
+      base::OnceCallback<void(const AuthenticateReply&)> on_done,
       CryptoStatus error,
       std::unique_ptr<KeyBlobs> key_blobs);
 

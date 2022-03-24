@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/test/mock_callback.h>
 #include <base/test/task_environment.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
@@ -14,7 +15,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "cryptohome/auth_blocks/mock_auth_block_utility.h"
+#include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
@@ -22,10 +23,13 @@
 #include "cryptohome/credentials_test_util.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_keyset_management.h"
+#include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_platform.h"
+#include "cryptohome/mock_tpm.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/user_secret_stash_storage.h"
@@ -52,6 +56,9 @@ using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::status::OkStatus;
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
+using AuthenticateCallback = base::OnceCallback<void(
+    const user_data_auth::AuthenticateAuthSessionReply&)>;
+
 namespace {
 constexpr char kUsername[] = "foo@example.com";
 constexpr char kPassword[] = "password";
@@ -70,8 +77,14 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   AuthSessionInterfaceTest& operator=(const AuthSessionInterfaceTest&) = delete;
 
   void SetUp() override {
+    MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
+    crypto_.set_le_manager_for_testing(
+        std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
+    crypto_.Init(&tpm_, &cryptohome_keys_manager_);
+    auth_block_utility_ = std::make_unique<AuthBlockUtilityImpl>(
+        &keyset_management_, &crypto_, &platform_);
     auth_session_manager_ = std::make_unique<AuthSessionManager>(
-        &crypto_, &keyset_management_, &auth_block_utility_,
+        &crypto_, &keyset_management_, auth_block_utility_.get(),
         &auth_factor_manager_, &user_secret_stash_storage_);
 
     userdataauth_.set_platform(&platform_);
@@ -98,8 +111,10 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   Crypto crypto_;
   NiceMock<MockHomeDirs> homedirs_;
+  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
+  NiceMock<MockTpm> tpm_;
   NiceMock<MockUserSessionFactory> user_session_factory_;
-  NiceMock<MockAuthBlockUtility> auth_block_utility_;
+  std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   NiceMock<MockKeysetManagement> keyset_management_;
@@ -149,6 +164,10 @@ class AuthSessionInterfaceTest : public ::testing::Test {
     AuthorizationRequest req;
     req.mutable_key()->set_secret(secret);
     req.mutable_key()->mutable_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
+    req.mutable_key()
+        ->mutable_data()
+        ->mutable_policy()
+        ->set_low_entropy_credential(true);
     return req;
   }
 
@@ -156,8 +175,37 @@ class AuthSessionInterfaceTest : public ::testing::Test {
                   const brillo::SecureBlob& secret) {
     auto vk = std::make_unique<VaultKeyset>();
     Credentials creds(username, secret);
-    EXPECT_CALL(keyset_management_, GetValidKeyset(CredentialsMatcher(creds)))
+    EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
         .WillOnce(Return(ByMove(std::move(vk))));
+  }
+
+  void ExpectVaultKeyset() {
+    // Setup expectations for GetVaultKeyset to return an initialized
+    // VaultKeyset Construct the vault keyset with credentials for
+    // AuthBlockType::kTpmNotBoundToPcrAuthBlockState.
+    auto vk = std::make_unique<VaultKeyset>();
+    auto vk2 = std::make_unique<VaultKeyset>();
+
+    const brillo::SecureBlob blob16(16, 'A');
+
+    brillo::SecureBlob passkey(20, 'A');
+    Credentials credentials("Test User", passkey);
+
+    brillo::SecureBlob system_salt_ =
+        brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt());
+
+    SerializedVaultKeyset serialized;
+    serialized.set_flags(SerializedVaultKeyset::LE_CREDENTIAL);
+    serialized.set_salt(system_salt_.data(), system_salt_.size());
+    serialized.set_le_chaps_iv(blob16.data(), blob16.size());
+    serialized.set_le_label(0);
+    serialized.set_le_fek_iv(blob16.data(), blob16.size());
+    vk->InitializeFromSerialized(serialized);
+    vk2->InitializeFromSerialized(serialized);
+
+    EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
+        .WillOnce(Return(ByMove(std::move(vk))))
+        .WillOnce(Return(ByMove(std::move(vk2))));
   }
 };
 
@@ -186,21 +234,37 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
 
   // ... ephemeral, ...
+  // Set up expectation in callback for success.
+  ExpectVaultKeyset();
+  user_data_auth::AuthenticateAuthSessionReply reply;
+  base::MockCallback<AuthenticateCallback> on_done_ephemeral;
+  EXPECT_CALL(on_done_ephemeral, Run(testing::_))
+      .WillOnce(testing::SaveArg<0>(&reply));
+
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
-  ASSERT_TRUE(auth_session->Authenticate(CreateAuthorization(kPassword)).ok());
+  auth_session->Authenticate(CreateAuthorization(kPassword),
+                             on_done_ephemeral.Get());
   status = PrepareEphemeralVaultImpl(auth_session->serialized_token());
   ASSERT_FALSE(status.ok());
   ASSERT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 
   // ... or regular.
+  // Set up expectation in callback for success.
+  base::MockCallback<AuthenticateCallback> on_done_regular;
+  EXPECT_CALL(on_done_regular, Run(testing::_))
+      .WillOnce(testing::SaveArg<0>(&reply));
+
   auth_session = auth_session_manager_->CreateAuthSession(kUsername2, 0);
-  ASSERT_TRUE(auth_session->Authenticate(CreateAuthorization(kPassword2)).ok());
+  auth_session->Authenticate(CreateAuthorization(kPassword2),
+                             on_done_regular.Get());
   status = PreparePersistentVaultImpl(auth_session->serialized_token(), {});
   ASSERT_FALSE(status.ok());
   ASSERT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 }
 
 TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
@@ -228,6 +292,16 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
       .WillOnce(ReturnError<CryptohomeMountError>());
 
   ASSERT_TRUE(PrepareEphemeralVaultImpl(auth_session->serialized_token()).ok());
+  ExpectVaultKeyset();
+
+  // Set up expectation for Authenticate callback success.
+  user_data_auth::AuthenticateAuthSessionReply reply;
+  base::MockCallback<AuthenticateCallback> on_done;
+  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
+
+  // Evaluate error returned by callback.
+  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 
   // Trying to mount again will yield busy.
   status = PrepareEphemeralVaultImpl(auth_session->serialized_token());
@@ -256,9 +330,18 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
   ASSERT_TRUE(
       PrepareEphemeralVaultImpl(auth_session2->serialized_token()).ok());
+  // Set up expectation in callback for success.
+  base::MockCallback<AuthenticateCallback> on_done_second;
+  EXPECT_CALL(on_done_second, Run(testing::_))
+      .WillOnce(testing::SaveArg<0>(&reply));
+
+  auth_session2->Authenticate(CreateAuthorization(kPassword2),
+                              on_done_second.Get());
   ASSERT_THAT(HandleAddCredentialForEphemeralVault(
                   CreateAuthorization(kPassword3), auth_session2),
               Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  // Evaluate error returned by callback.
+  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 
   // ... and so regular.
   scoped_refptr<MockUserSession> user_session3 =
@@ -275,10 +358,17 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
 
   AuthSession* auth_session3 =
       auth_session_manager_->CreateAuthSession(kUsername3, 0);
-  ASSERT_TRUE(
-      auth_session3->Authenticate(CreateAuthorization(kPassword3)).ok());
+
+  // Set up expectation in callback for success.
+  base::MockCallback<AuthenticateCallback> on_done_third;
+  EXPECT_CALL(on_done_third, Run(testing::_))
+      .WillOnce(testing::SaveArg<0>(&reply));
+  auth_session3->Authenticate(CreateAuthorization(kPassword3),
+                              on_done_third.Get());
   ASSERT_TRUE(
       PreparePersistentVaultImpl(auth_session3->serialized_token(), {}).ok());
+  // Evaluate error returned by callback.
+  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 }
 
 TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
@@ -313,7 +403,16 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
       .WillRepeatedly(Return(true));
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
 
-  ASSERT_TRUE(auth_session->Authenticate(CreateAuthorization(kPassword)).ok());
+  ExpectVaultKeyset();
+
+  // Set up expectation in callback for success.
+  user_data_auth::AuthenticateAuthSessionReply reply;
+  base::MockCallback<AuthenticateCallback> on_done;
+  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+
+  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
+  // Evaluate error returned by callback.
+  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 
   // If no shadow homedir - we do not have a user.
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
@@ -353,10 +452,20 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
 
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
-  ASSERT_TRUE(
-      auth_session2->Authenticate(CreateAuthorization(kPassword2)).ok());
+
+  ExpectVaultKeyset();
+
+  // Set up expectation in callback for success.
+  // Evaluate error returned by callback.
+  base::MockCallback<AuthenticateCallback> on_done_second;
+  EXPECT_CALL(on_done_second, Run(testing::_))
+      .WillOnce(testing::SaveArg<0>(&reply));
+  auth_session2->Authenticate(CreateAuthorization(kPassword2),
+                              on_done_second.Get());
   ASSERT_TRUE(
       PrepareEphemeralVaultImpl(auth_session2->serialized_token()).ok());
+  // Evaluate error returned by callback.
+  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 
   // ... and so regular.
   scoped_refptr<MockUserSession> user_session3 =
@@ -373,10 +482,18 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
 
   AuthSession* auth_session3 =
       auth_session_manager_->CreateAuthSession(kUsername3, 0);
-  ASSERT_TRUE(
-      auth_session3->Authenticate(CreateAuthorization(kPassword3)).ok());
+
+  // Set up expectation in callback for success.
+  base::MockCallback<AuthenticateCallback> on_done_third;
+  EXPECT_CALL(on_done_third, Run(testing::_))
+      .WillOnce(testing::SaveArg<0>(&reply));
+
+  auth_session3->Authenticate(CreateAuthorization(kPassword3),
+                              on_done_third.Get());
   ASSERT_TRUE(
       PreparePersistentVaultImpl(auth_session3->serialized_token(), {}).ok());
+  // Evaluate error returned by callback.
+  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 }
 
 TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
@@ -388,7 +505,17 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
   AuthSession* auth_session =
       auth_session_manager_->CreateAuthSession(kUsername, 0);
   ExpectAuth(kUsername, brillo::SecureBlob(kPassword));
-  ASSERT_TRUE(auth_session->Authenticate(CreateAuthorization(kPassword)).ok());
+
+  ExpectVaultKeyset();
+
+  // Set up expectation in callback for success.
+  user_data_auth::AuthenticateAuthSessionReply reply;
+  base::MockCallback<AuthenticateCallback> on_done;
+  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+
+  auth_session->Authenticate(CreateAuthorization(kPassword), on_done.Get());
+  // Evaluate error returned by callback.
+  ASSERT_THAT(reply.error(), Eq(MOUNT_ERROR_NONE));
 
   // Vault already exists.
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername), _))

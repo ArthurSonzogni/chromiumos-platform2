@@ -649,22 +649,168 @@ void AuthSession::UpdateVaultKeyset(
   }
 }
 
-CryptohomeStatus AuthSession::Authenticate(
-    const cryptohome::AuthorizationRequest& authorization_request) {
+template <typename AuthenticateReply>
+bool AuthSession::AuthenticateViaVaultKeyset(
+    const AuthInput& auth_input,
+    base::OnceCallback<void(const AuthenticateReply&)> on_done) {
+  AuthenticateReply reply;
+  AuthBlockType auth_block_type =
+      auth_block_utility_->GetAuthBlockTypeForDerivation(key_data_.label(),
+                                                         obfuscated_username_);
+
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    LOG(ERROR) << "Error in obtaining AuthBlock type for key derivation.";
+    reply.set_authenticated(GetStatus() ==
+                            AuthStatus::kAuthStatusAuthenticated);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<error::CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionInvalidBlockTypeInAuthViaVaultKey),
+            ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
+    return false;
+  }
+
+  AuthBlockState auth_state;
+  if (!auth_block_utility_->GetAuthBlockStateFromVaultKeyset(
+          key_data_.label(), obfuscated_username_, auth_state /*Out*/)) {
+    LOG(ERROR) << "Error in obtaining AuthBlock state for key derivation.";
+    reply.set_authenticated(GetStatus() ==
+                            AuthStatus::kAuthStatusAuthenticated);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<error::CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionBlockStateMissingInAuthViaVaultKey),
+            ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
+    return false;
+  }
+
+  // Derive KeyBlobs from the existing VaultKeyset, using GetValidKeyset
+  // as a callback that loads |vault_keyset_| and resaves if needed.
+  AuthBlock::DeriveCallback derive_callback = base::BindOnce(
+      &AuthSession::LoadVaultKeysetAndFsKeys<AuthenticateReply>,
+      weak_factory_.GetWeakPtr(), auth_input.user_input, std::move(on_done));
+
+  return auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
+      auth_block_type, auth_input, auth_state, std::move(derive_callback));
+}
+
+template <typename AuthenticateReply>
+void AuthSession::LoadVaultKeysetAndFsKeys(
+    const std::optional<brillo::SecureBlob> passkey,
+    base::OnceCallback<void(const AuthenticateReply&)> on_done,
+    CryptoStatus error,
+    std::unique_ptr<KeyBlobs> key_blobs) {
+  AuthenticateReply reply;
+  // The error should be evaluated the same way as it is done in
+  // AuthSession::Authenticate(), which directly returns the GetValidKeyset()
+  // error. So we are doing a similar error handling here as in
+  // KeysetManagement::GetValidKeyset() to preserve the behavior. Empty label
+  // case is dropped in here since it is not a valid case anymore.
+  if (!key_blobs) {
+    DCHECK(!error.ok());
+    // TODO(b/229830217): Change the CreateCallback to pass StatusChainOr of
+    // (key_blobs, auth_state) and error instead.
+    if (error.ok()) {
+      // Maps to the default value of MountError which is
+      // MOUNT_ERROR_KEY_FAILURE
+      error = MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocAuthSessionNullParamInCallbackInLoadVaultKeyset),
+          ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+          CryptoError::CE_OTHER_CRYPTO,
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+    }
+    LOG(ERROR) << "Failed to load VaultKeyset since key blobs has not been "
+                  "derived.";
+    reply.set_authenticated(GetStatus() ==
+                            AuthStatus::kAuthStatusAuthenticated);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<error::CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveFailedInLoadVaultKeyset))
+            .Wrap(std::move(error)));
+    return;
+  }
+
+  DCHECK(error.ok());
+
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      keyset_management_->GetValidKeysetWithKeyBlobs(
+          obfuscated_username_, std::move(*key_blobs.get()), key_data_.label());
+  if (!vk_status.ok()) {
+    vault_keyset_ = nullptr;
+
+    LOG(ERROR) << "Failed to load VaultKeyset and file system keyset.";
+    reply.set_authenticated(GetStatus() ==
+                            AuthStatus::kAuthStatusAuthenticated);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeMountError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionGetValidKeysetFailedInLoadVaultKeyset))
+            .Wrap(std::move(vk_status).status()));
+    return;
+  }
+
+  vault_keyset_ = std::move(vk_status).value();
+
+  // Authentication is successfully completed. Reset LE Credential counter if
+  // the current AutFactor is not an LECredential.
+  if (!vault_keyset_->IsLECredential()) {
+    keyset_management_->ResetLECredentials(std::nullopt, *vault_keyset_,
+                                           obfuscated_username_);
+  }
+  ResaveVaultKeysetIfNeeded(passkey);
+  file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
+
+  // Flip the status on the successful authentication.
+  SetAuthSessionAsAuthenticated();
+
+  // Set the credential verifier for this credential.
+  if (passkey.has_value()) {
+    SetCredentialVerifier(passkey.value());
+  }
+
+  reply.set_authenticated(GetStatus() == AuthStatus::kAuthStatusAuthenticated);
+  ReplyWithError(std::move(on_done), reply, OkStatus<error::CryptohomeError>());
+}
+
+void AuthSession::Authenticate(
+    const cryptohome::AuthorizationRequest& authorization_request,
+    base::OnceCallback<
+        void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done) {
   MountStatusOr<std::unique_ptr<Credentials>> credentials_or_err =
       GetCredentials(authorization_request);
+
+  user_data_auth::AuthenticateAuthSessionReply reply;
+  CryptohomeStatus err = OkStatus<CryptohomeError>();
+
   if (!credentials_or_err.ok()) {
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(kLocAuthSessionGetCredFailedInAuth))
-        .Wrap(std::move(credentials_or_err).status());
+    err = MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionGetCredFailedInAuth))
+              .Wrap(std::move(credentials_or_err).status());
+    reply.set_authenticated(GetStatus() ==
+                            AuthStatus::kAuthStatusAuthenticated);
+    ReplyWithError(std::move(on_done), reply, std::move(err));
+    return;
   }
+
   if (authorization_request.key().data().type() != KeyData::KEY_TYPE_PASSWORD &&
       authorization_request.key().data().type() != KeyData::KEY_TYPE_KIOSK) {
     // AuthSession::Authenticate is only supported for two types of cases
-    return MakeStatus<CryptohomeError>(
+    err = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnsupportedKeyTypesInAuth),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+    reply.set_authenticated(GetStatus() ==
+                            AuthStatus::kAuthStatusAuthenticated);
+    ReplyWithError(std::move(on_done), reply, std::move(err));
+    return;
   }
 
   std::unique_ptr<Credentials> credentials =
@@ -673,34 +819,28 @@ CryptohomeStatus AuthSession::Authenticate(
   // Store key data in current auth_factor for future use.
   key_data_ = credentials->key_data();
 
-  if (!is_ephemeral_user_) {
-    // A persistent mount will always have a persistent key on disk. Here
-    // keyset_management tries to fetch that persistent credential.
-    MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_->GetValidKeyset(*credentials);
-    if (!vk_status.ok()) {
-      return MakeStatus<CryptohomeMountError>(
-                 CRYPTOHOME_ERR_LOC(kLocAuthSessionGetValidKeysetFailedInAuth))
-          .Wrap(std::move(vk_status).status());
-    }
-    vault_keyset_ = std::move(vk_status).value();
-    file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
-    // Add the missing fields in the keyset, if any, and resave.
-    CryptohomeStatus status = keyset_management_->ReSaveKeysetIfNeeded(
-        *credentials, vault_keyset_.get());
-    if (!status.ok()) {
-      LOG(INFO) << "Non-fatal error in resaving keyset during authentication: "
-                << status;
-    }
+  if (is_ephemeral_user_) {  // Ephemeral mount.
+    // For ephemeral session, just authenticate the session,
+    // no need to derive KeyBlobs.
+    // Set the credential verifier for this credential.
+    SetCredentialVerifier(credentials->passkey());
+
+    // SetAuthSessionAsAuthenticated() should already have been called
+    // in the constructor by this point.
+    reply.set_authenticated(GetStatus() ==
+                            AuthStatus::kAuthStatusAuthenticated);
+    ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+    return;
   }
-
-  // Set the credential verifier for this credential.
-  credential_verifier_.reset(new ScryptVerifier());
-  credential_verifier_->Set(credentials->passkey());
-
-  SetAuthSessionAsAuthenticated();
-
-  return OkStatus<CryptohomeError>();
+  // Persistent mount.
+  // A persistent mount will always have a persistent key on disk. Here
+  // keyset_management tries to fetch that persistent credential.
+  // TODO(dlunev): fix conditional error when we switch to StatusOr.
+  AuthInput auth_input = {credentials->passkey(),
+                          /*locked_to_single_user=*/
+                          auth_block_utility_->GetLockedToSingleUser()};
+  AuthenticateViaVaultKeyset<user_data_auth::AuthenticateAuthSessionReply>(
+      auth_input, std::move(on_done));
 }
 
 const FileSystemKeyset& AuthSession::file_system_keyset() const {
@@ -792,7 +932,9 @@ bool AuthSession::AuthenticateAuthFactor(
             ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
     return false;
   }
-  return AuthenticateViaVaultKeyset(auth_input.value(), std::move(on_done));
+  return AuthenticateViaVaultKeyset<
+      user_data_auth::AuthenticateAuthFactorReply>(auth_input.value(),
+                                                   std::move(on_done));
 }
 
 bool AuthSession::GetRecoveryRequest(
@@ -869,124 +1011,6 @@ bool AuthSession::GetRecoveryRequest(
   return true;
 }
 
-bool AuthSession::AuthenticateViaVaultKeyset(
-    const AuthInput& auth_input,
-    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
-        on_done) {
-  user_data_auth::AuthenticateAuthFactorReply reply;
-
-  AuthBlockType auth_block_type =
-      auth_block_utility_->GetAuthBlockTypeForDerivation(key_data_.label(),
-                                                         obfuscated_username_);
-
-  if (auth_block_type == AuthBlockType::kMaxValue) {
-    LOG(ERROR) << "Error in obtaining AuthBlock type for key derivation.";
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionInvalidBlockTypeInAuthViaVaultKey),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
-    return false;
-  }
-
-  AuthBlockState auth_state;
-  if (!auth_block_utility_->GetAuthBlockStateFromVaultKeyset(
-          key_data_.label(), obfuscated_username_, auth_state)) {
-    LOG(ERROR) << "Error in obtaining AuthBlock state for key derivation.";
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionBlockStateMissingInAuthViaVaultKey),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED));
-    return false;
-  }
-
-  // Authenticate and derive KeyBlobs.
-  return auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input, auth_state,
-      base::BindOnce(&AuthSession::LoadVaultKeysetAndFsKeys,
-                     weak_factory_.GetWeakPtr(), auth_input.user_input,
-                     std::move(on_done)));
-}
-
-void AuthSession::LoadVaultKeysetAndFsKeys(
-    const std::optional<brillo::SecureBlob> passkey,
-    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
-        on_done,
-    CryptoStatus callback_error,
-    std::unique_ptr<KeyBlobs> key_blobs) {
-  user_data_auth::AuthenticateAuthFactorReply reply;
-
-  // The error should be evaluated the same way as it is done in
-  // AuthSession::Authenticate(), which directly returns the GetValidKeyset()
-  // error. So we are doing a similar error handling here as in
-  // KeysetManagement::GetValidKeyset() to preserve the behavior. Empty label
-  // case is dropped in here since it is not a valid case anymore.
-  if (!key_blobs) {
-    DCHECK(!callback_error.ok());
-    // TODO(b/229830217): Change the CreateCallback to pass StatusChainOr of
-    // (key_blobs, auth_state) and error instead.
-    if (callback_error.ok()) {
-      // Maps to the default value of MountError which is
-      // MOUNT_ERROR_KEY_FAILURE
-      callback_error = MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthSessionNullParamInCallbackInLoadVaultKeyset),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          CryptoError::CE_OTHER_CRYPTO,
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-    }
-    LOG(ERROR) << "Failed to load VaultKeyset since key blobs has not been "
-                  "derived.";
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveFailedInLoadVaultKeyset))
-            .Wrap(std::move(callback_error)));
-    return;
-  }
-
-  DCHECK(callback_error.ok());
-
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-      keyset_management_->GetValidKeysetWithKeyBlobs(
-          obfuscated_username_, std::move(*key_blobs.get()), key_data_.label());
-  if (!vk_status.ok()) {
-    vault_keyset_ = nullptr;
-
-    LOG(ERROR) << "Failed to load VaultKeyset and file system keyset.";
-
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeMountError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionGetValidKeysetFailedInLoadVaultKeyset))
-            .Wrap(std::move(vk_status).status()));
-    return;
-  }
-
-  vault_keyset_ = std::move(vk_status).value();
-
-  // Authentication is successfully completed. Reset LE Credential counter if
-  // the current AutFactor is not an LECredential.
-  if (!vault_keyset_->IsLECredential()) {
-    keyset_management_->ResetLECredentials(std::nullopt, *vault_keyset_,
-                                           obfuscated_username_);
-  }
-  ResaveVaultKeysetIfNeeded(passkey);
-  file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
-
-  // Flip the status on the successful authentication.
-  SetAuthSessionAsAuthenticated();
-
-  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-}
-
 void AuthSession::ResaveVaultKeysetIfNeeded(
     const std::optional<brillo::SecureBlob> user_input) {
   // Check whether an update is needed for the VaultKeyset. If the user setup
@@ -1045,6 +1069,11 @@ void AuthSession::ResaveKeysetOnKeyBlobsGenerated(
 
 std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {
   return std::move(credential_verifier_);
+}
+
+void AuthSession::SetCredentialVerifier(const brillo::SecureBlob& passkey) {
+  credential_verifier_.reset(new ScryptVerifier());
+  credential_verifier_->Set(passkey);
 }
 
 // static

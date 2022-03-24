@@ -397,7 +397,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthCreateFailedInStartAuthSession = 285,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInAuthAuthSession = 286,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthAuthFailedInAuthAuthSession = 287,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInExtendAuthSession = 288,
@@ -465,7 +465,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionGetCredFailedInAuth = 319,
   /* ./auth_session.cc */
   kLocAuthSessionUnsupportedKeyTypesInAuth = 320,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionGetValidKeysetFailedInAuth = 321,
   /* ./auth_session.cc */
   kLocAuthSessionFactorNotFoundInAuthAuthFactor = 322,

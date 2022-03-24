@@ -3989,18 +3989,7 @@ void UserDataAuth::AuthenticateAuthSession(
 
   // Perform authentication using data in AuthorizationRequest and
   // auth_session_token.
-  // TODO(crbug.com/1157622) : Complete the API with actual authentication.
-  CryptohomeStatus ret = auth_session->Authenticate(request.authorization());
-
-  CryptohomeStatus err = OkStatus<CryptohomeError>();
-  if (!ret.ok()) {
-    err = MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(kLocUserDataAuthAuthFailedInAuthAuthSession))
-              .Wrap(std::move(ret));
-  }
-  reply.set_authenticated(auth_session->GetStatus() ==
-                          AuthStatus::kAuthStatusAuthenticated);
-  ReplyWithError(std::move(on_done), reply, std::move(err));
+  auth_session->Authenticate(request.authorization(), std::move(on_done));
 }
 
 void UserDataAuth::InvalidateAuthSession(

@@ -350,10 +350,12 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
 // user.
 TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   // Setup.
-  bool called = false;
+  bool called_timeout = false;
   auto on_timeout = base::BindOnce(
-      [](bool& called, const base::UnguessableToken&) { called = true; },
-      std::ref(called));
+      [](bool& called_timeout, const base::UnguessableToken&) {
+        called_timeout = true;
+      },
+      std::ref(called_timeout));
   int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -371,14 +373,42 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   authorization_request.mutable_key()->set_secret(kFakePass);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
 
-  auto vk = std::make_unique<VaultKeyset>();
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
-      .WillOnce(Return(ByMove(std::move(vk))));
-  EXPECT_CALL(keyset_management_, ReSaveKeysetIfNeeded(_, _))
-      .WillOnce(ReturnError<CryptohomeError>());
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+      .WillOnce(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
+      .WillOnce(Return(false));
+
+  auto key_blobs = std::make_unique<KeyBlobs>();
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
+        return true;
+      });
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  auth_session.Authenticate(
+      authorization_request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AuthenticateAuthSessionReply& reply) {
+            called = true;
+            error = reply.error();
+            // Evaluate error returned by callback.
+            EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET, reply.error());
+          },
+          std::ref(called), std::ref(error)));
 
   // Verify.
-  EXPECT_TRUE(auth_session.Authenticate(authorization_request).ok());
+  EXPECT_TRUE(called);
   ASSERT_TRUE(auth_session.timer_.IsRunning());
 
   EXPECT_EQ(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
@@ -620,20 +650,25 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
       });
 
   bool called = false;
+  bool authenticated = true;
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
   EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
       request,
       base::BindOnce(
           [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             bool& authenticated,
              const user_data_auth::AuthenticateAuthFactorReply& reply) {
             called = true;
             error = reply.error();
+            authenticated = reply.authenticated();
           },
-          std::ref(called), std::ref(error))));
+          std::ref(called), std::ref(error), std::ref(authenticated))));
 
   // Verify.
   EXPECT_TRUE(called);
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET, error);
+  EXPECT_TRUE(authenticated);
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
