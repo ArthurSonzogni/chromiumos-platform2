@@ -251,6 +251,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/cache/modem-utilities(/.*)? u:object_r:cros_var_cache_modem_utilities:s0
 /var/cache/camera(/.*)?         u:object_r:cros_var_cache_camera:s0
 /var/cache/cups(/.*)?           u:object_r:cros_var_cache_cups:s0
+/var/cache/diagnostics(/.*)?    u:object_r:cros_var_cache_diagnostics:s0
 /var/cache/fwupd                u:object_r:cros_var_cache_fwupd:s0
 /var/db                         u:object_r:cros_var_db:s0
 /var/empty                      u:object_r:cros_var_empty:s0

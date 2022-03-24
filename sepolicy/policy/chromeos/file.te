@@ -365,6 +365,7 @@ type cros_var_cache_shill, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_modem_utilities, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_camera, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_cups, file_type, cros_file_type, cros_var_file_type;
+type cros_var_cache_diagnostics, file_type, cros_file_type, cros_var_file_type;
 type cros_var_cache_fwupd, file_type, cros_file_type, cros_var_file_type;
 
 # /var/db
