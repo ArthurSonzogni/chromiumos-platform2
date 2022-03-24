@@ -457,7 +457,7 @@ class ArcMounterImpl : public ArcMounter {
       return false;
     }
 
-    ignore_result(loop_device_cleanup.Release());
+    loop_device_cleanup.ReplaceClosure(base::DoNothing());
 
     // Verify that the loop device did not get redirected.
     if (ioctl(scoped_loop_fd.get(), LOOP_GET_STATUS64, &loop_info) == 0) {

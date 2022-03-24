@@ -26,7 +26,6 @@
 #include <base/files/scoped_file.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/process/launch.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
@@ -135,7 +134,7 @@ bool CreatePipe(const base::FilePath& path) {
                 << path.value();
     return false;
   }
-  ignore_result(unlink_fifo.Release());
+  unlink_fifo.ReplaceClosure(base::DoNothing());
   return true;
 }
 
