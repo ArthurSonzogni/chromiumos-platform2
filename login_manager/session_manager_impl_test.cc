@@ -26,7 +26,6 @@
 #include <base/callback.h>
 #include <base/check.h>
 #include <base/command_line.h>
-#include <base/compiler_specific.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -2835,7 +2834,7 @@ TEST_P(SessionManagerPackagesCacheTest, PackagesCache) {
   switch (std::get<0>(GetParam())) {
     case UpgradeArcContainerRequest_PackageCacheMode_SKIP_SETUP_COPY_ON_INIT:
       skip_packages_cache_setup = true;
-      FALLTHROUGH;
+      [[fallthrough]];
     case UpgradeArcContainerRequest_PackageCacheMode_COPY_ON_INIT:
       copy_cache_setup = true;
       break;
