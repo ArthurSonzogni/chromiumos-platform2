@@ -3655,6 +3655,16 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
             user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED);
 }
 
+TEST_F(UserDataAuthExTest, RemoveBusyMounted) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
+  PrepareArguments();
+  SetupMount(kUser);
+  remove_homedir_req_->mutable_identifier()->set_account_id(kUser);
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  EXPECT_EQ(userdataauth_->Remove(*remove_homedir_req_),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
+}
+
 TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kMountThread);
   PrepareArguments();

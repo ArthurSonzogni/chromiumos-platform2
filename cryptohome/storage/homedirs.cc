@@ -525,6 +525,12 @@ bool HomeDirs::Remove(const std::string& obfuscated) {
   FilePath root_path =
       brillo::cryptohome::home::GetRootPathPrefix().Append(obfuscated);
 
+  if (platform_->IsDirectoryMounted(user_path) ||
+      platform_->IsDirectoryMounted(root_path)) {
+    LOG(ERROR) << "Can't remove mounted vault";
+    return false;
+  }
+
   bool ret = true;
 
   if (DmcryptCryptohomeExists(obfuscated)) {

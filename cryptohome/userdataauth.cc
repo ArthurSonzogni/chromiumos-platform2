@@ -2787,7 +2787,15 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::Remove(
   }
 
   std::string obfuscated = SanitizeUserName(account_id);
+
+  scoped_refptr<UserSession> session = GetUserSession(account_id);
+  if (session.get() && session->IsActive()) {
+    LOG(ERROR) << "Can't remove active user";
+    return user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
+  }
+
   if (!homedirs_->Remove(obfuscated)) {
+    LOG(ERROR) << "User vault removal failed";
     return user_data_auth::CRYPTOHOME_ERROR_REMOVE_FAILED;
   }
 

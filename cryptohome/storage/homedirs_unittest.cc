@@ -217,6 +217,24 @@ TEST_P(HomeDirsTest, CreateCryptohome) {
   EXPECT_TRUE(platform_.DirectoryExists(kNewUserPath));
 }
 
+TEST_P(HomeDirsTest, RemoveCryptohome) {
+  constexpr char kNewUserId[] = "some_new_user";
+  const std::string kHashedNewUserId =
+      brillo::cryptohome::home::SanitizeUserName(kNewUserId);
+  const base::FilePath kNewUserPath = UserPath(kHashedNewUserId);
+
+  EXPECT_TRUE(homedirs_->Create(kNewUserId));
+  EXPECT_TRUE(platform_.DirectoryExists(kNewUserPath));
+
+  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillOnce(Return(true));
+  EXPECT_FALSE(homedirs_->Remove(kHashedNewUserId));
+  EXPECT_TRUE(platform_.DirectoryExists(kNewUserPath));
+
+  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
+  EXPECT_TRUE(homedirs_->Remove(kHashedNewUserId));
+  EXPECT_FALSE(platform_.DirectoryExists(kNewUserPath));
+}
+
 TEST_P(HomeDirsTest, ComputeDiskUsage) {
   // /home/.shadow/$hash/mount in production code.
   base::FilePath mount_dir = users_[0].homedir_path.Append(kMountDir);
