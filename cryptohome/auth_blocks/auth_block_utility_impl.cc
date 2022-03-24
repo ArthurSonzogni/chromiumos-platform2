@@ -447,22 +447,45 @@ CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
   return auth_block->Create(auth_input, &out_auth_block_state, &out_key_blobs);
 }
 
+AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerive(
+    const AuthBlockState& auth_block_state) const {
+  AuthBlockType auth_block_type = AuthBlockType::kMaxValue;
+  if (const auto* state = std::get_if<TpmNotBoundToPcrAuthBlockState>(
+          &auth_block_state.state)) {
+    auth_block_type = AuthBlockType::kTpmNotBoundToPcr;
+  } else if (const auto* state = std::get_if<TpmBoundToPcrAuthBlockState>(
+                 &auth_block_state.state)) {
+    auth_block_type = AuthBlockType::kTpmBoundToPcr;
+  } else if (const auto* state = std::get_if<PinWeaverAuthBlockState>(
+                 &auth_block_state.state)) {
+    auth_block_type = AuthBlockType::kPinWeaver;
+  } else if (const auto* state = std::get_if<LibScryptCompatAuthBlockState>(
+                 &auth_block_state.state)) {
+    auth_block_type = AuthBlockType::kLibScryptCompat;
+  } else if (const auto* state =
+                 std::get_if<TpmEccAuthBlockState>(&auth_block_state.state)) {
+    auth_block_type = AuthBlockType::kTpmEcc;
+  } else if (const auto& state = std::get_if<ChallengeCredentialAuthBlockState>(
+                 &auth_block_state.state)) {
+    auth_block_type = AuthBlockType::kChallengeCredential;
+  }
+
+  return auth_block_type;
+}
+
 CryptoError AuthBlockUtilityImpl::DeriveKeyBlobs(
     const AuthInput& auth_input,
     const AuthBlockState& auth_block_state,
     KeyBlobs& out_key_blobs) {
-  std::unique_ptr<SyncAuthBlock> auth_block;
-  if (const auto* state =
-          std::get_if<TpmBoundToPcrAuthBlockState>(&auth_block_state.state)) {
-    auth_block = std::make_unique<TpmBoundToPcrAuthBlock>(
-        crypto_->tpm(), crypto_->cryptohome_keys_manager());
-  }
-  // TODO(b/216804305): Support other auth blocks.
-
-  if (!auth_block) {
-    LOG(ERROR) << "Unsupported auth block";
+  AuthBlockType auth_block_type = GetAuthBlockTypeForDerive(auth_block_state);
+  if (auth_block_type == AuthBlockType::kMaxValue ||
+      auth_block_type == AuthBlockType::kChallengeCredential ||
+      auth_block_type == AuthBlockType::kPinWeaver) {
+    LOG(ERROR) << "Unsupported auth factor type";
     return CryptoError::CE_OTHER_CRYPTO;
   }
+  std::unique_ptr<SyncAuthBlock> auth_block =
+      GetAuthBlockWithType(auth_block_type);
   return auth_block->Derive(auth_input, auth_block_state, &out_key_blobs);
 }
 

@@ -84,6 +84,11 @@ class AuthBlockUtility {
       const bool is_le_credential,
       const bool is_challenge_credential) const = 0;
 
+  // This function returns the AuthBlock type for
+  // AuthBlock::Derive() based on AutBlockState.
+  virtual AuthBlockType GetAuthBlockTypeForDerive(
+      const AuthBlockState& state) const = 0;
+
   // This function returns the AuthBlock type for AuthBlock::Derive()
   // based on the vault keyset flags value.
   virtual AuthBlockType GetAuthBlockTypeForDerivation(

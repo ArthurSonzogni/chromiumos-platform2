@@ -83,6 +83,11 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const bool is_le_credential,
       const bool is_challenge_credential) const override;
 
+  // This function returns the AuthBlock type for
+  // AuthBlock::Derive() based on AutBlockState.
+  AuthBlockType GetAuthBlockTypeForDerive(
+      const AuthBlockState& state) const override;
+
   AuthBlockType GetAuthBlockTypeForDerivation(
       const Credentials& credentials) const override;
 
