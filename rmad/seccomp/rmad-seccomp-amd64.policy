@@ -25,9 +25,9 @@ lseek: 1
 fcntl: 1
 iopl: 1
 stat: 1
-prctl: arg0 == PR_CAPBSET_DROP || arg0 == PR_SET_NO_NEW_PRIVS || \
-       arg0 == PR_SET_SECUREBITS || arg0 == PR_CAP_AMBIENT || \
-       arg0 == PR_GET_SECUREBITS || arg0 == PR_SET_NAME
+
+# Required for base::ThreadPoolInstance::CreateAndStartWithDefaultParams.
+prctl: arg0 == PR_SET_NAME
 execve: 1
 arch_prctl: 1
 unlink: 1
