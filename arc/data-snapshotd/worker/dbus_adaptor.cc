@@ -12,7 +12,6 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/data_encoding.h>
@@ -166,7 +165,7 @@ bool DBusAdaptor::TakeSnapshot(const std::string& account_id,
     return false;
   }
   // Snapshot saved correctly, release closure without running it.
-  ignore_result(snapshot_clearer.Release());
+  snapshot_clearer.ReplaceClosure(base::DoNothing());
   return true;
 }
 
