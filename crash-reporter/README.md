@@ -17,15 +17,24 @@ We're in the process of migrating to buganizer:
 
 ## Data Consent
 
-No crashes get collected without explicit consent from the device owner.
-This is normally part of the OOBE setup flow (but can also be controlled via OS
-Settings).
+No crashes get collected without explicit consent from the device owner AND
+the currently logged in user.  This is normally part of the OOBE setup flow (but
+can also be controlled via OS Settings).
 
-Consent is controlled by the device owner and covers all users of that device.
+Consent is first set up by the device owner and covers all users of that device.
 If no consent has been granted, then `crash_reporter`  will generally exit
-rather than doing any further processing (e.g. running collectors).
+rather than doing any further processing (e.g. running collectors). If the
+device owner consents, users will be able to opt in or out as well, post M-103.
+`metrics_library` determines whether the currently logged-in-user consents to
+crash collection, with one exception: boot crash collection.
 
-The only case where we `crash_reporter` collects crashes even without consent is
+When the device kernel panics or otherwise forcibly reboots, we use the
+`/home/chronos/boot-collect-consent` file to determine whether the user that was
+signed in *at the time of the crash* consented to crash collection, since no
+user will be logged in when the boot collector runs. If the last-logged-in user
+consented to collection, we then fall back to device policy.
+
+The only case where `crash_reporter` collects crashes even without consent is
 for early crashes that occur before stateful partitions are mounted (because we
 cannot check consent then). `crash_sender` still checks consent before it
 uploads crashes.
@@ -40,10 +49,15 @@ privacy guarantees.
 
 *** aside
 Crashes are technically collected, but because they are saved in the guest's
-informal profile, they are all automatically throw away on log out.
+informal profile, they are all automatically thrown away on log out.
 ***
 
 If consent is later revoked, we do not upload any crashes that had been queued.
+In general, `crash_sender` will remove crashes that are present if consent is
+revoked, but in some cases it will not: most notably, if a crash is stored to a
+system directory (i.e., not in a cryptohome) and we're using per-user consent,
+`crash_sender` keeps the report around in case it is associated with a
+consenting user that later logs in again.
 
 ## Life Cycle
 

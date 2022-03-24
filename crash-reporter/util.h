@@ -46,6 +46,16 @@ bool HasMockConsent();
 // Does not take ownership of |metrics_lib|
 bool IsFeedbackAllowed(MetricsLibraryInterface* metrics_lib);
 
+// Determines whether feedback is allowed, for early boot collectors.
+// If the boot-collector-consent file is present, and contains anything other
+// than "1" (the opt-in value), skip collecting the crash. Otherwise, fall back
+// to IsFeedbackAllowed().
+// This mirrors metrics_lib's AreMetricsEnabled method, which checks the
+// per-user consent file and determines there's no consent if it's present and
+// contains anything but "1".
+// Does not take ownership of |metrics_lib|
+bool IsBootFeedbackAllowed(MetricsLibraryInterface* metrics_lib);
+
 // Returns true if we should skip crash collection (based on the filter-in
 // and filter-out files).
 // Specifically, if filter-in exists, crash_reporter will exit early unless its

@@ -122,7 +122,7 @@ int BootCollect(
   bool was_unclean_shutdown = false;
   LOG(INFO) << "Running boot collector";
 
-  if (always_allow_feedback || util::IsFeedbackAllowed(&s_metrics_lib)) {
+  if (always_allow_feedback || util::IsBootFeedbackAllowed(&s_metrics_lib)) {
     /* TODO(drinkcat): Distinguish between EC crash and unclean shutdown. */
     ec_collector->Collect();
 

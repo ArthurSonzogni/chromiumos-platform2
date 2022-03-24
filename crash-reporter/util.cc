@@ -148,6 +148,21 @@ bool IsFeedbackAllowed(MetricsLibraryInterface* metrics_lib) {
   return ret;
 }
 
+bool IsBootFeedbackAllowed(MetricsLibraryInterface* metrics_lib) {
+  if (metrics_lib->UsePerUserMetricsConsent()) {
+    std::string contents;
+    if (base::ReadFileToString(paths::Get(paths::kBootConsentFile),
+                               &contents)) {
+      if (contents != "1") {
+        return false;
+      }
+      // else fall back to normal consent -- checking policy, etc., as
+      // metrics_library does.
+    }
+  }
+  return IsFeedbackAllowed(metrics_lib);
+}
+
 // Determine if the filter-in file tells us to skip
 static bool SkipForFilterIn(std::string command_line) {
   base::FilePath file =

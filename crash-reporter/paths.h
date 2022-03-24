@@ -129,6 +129,11 @@ constexpr char kVariationsListFile[] = ".variations-list.txt";
 // logged in.
 constexpr char kFallbackToHomeDir[] = "/home/chronos";
 
+// File to override consent *FOR BOOT COLLECTORS ONLY*. Must match
+// kOutOfCryptohomeConsent in chromium repo's
+// per_user_state_manager_chromeos.cc.
+constexpr char kBootConsentFile[] = "/home/chronos/boot-collect-consent";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);
