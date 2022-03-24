@@ -36,7 +36,6 @@ class HPS_impl : public HPS {
         wake_lock_(device_->CreateWakeLock()),  // Power on by default.
         hps_metrics_(std::move(metrics)),
         hw_rev_(0),
-        stage1_version_(0),
         write_protect_off_(false),
         feat_enabled_(0) {}
 
@@ -86,7 +85,8 @@ class HPS_impl : public HPS {
   std::unique_ptr<WakeLock> wake_lock_;
   std::unique_ptr<HpsMetricsInterface> hps_metrics_;
   uint16_t hw_rev_;
-  uint32_t stage1_version_;
+  uint32_t required_stage1_version_ = 0;
+  uint32_t actual_stage1_version_ = 0;
   bool write_protect_off_;
   bool mcu_update_sent_ = false;
   bool spi_update_sent_ = false;

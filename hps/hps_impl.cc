@@ -59,7 +59,7 @@ void HPS_impl::Init(uint32_t stage1_version,
                     const base::FilePath& mcu,
                     const base::FilePath& fpga_bitstream,
                     const base::FilePath& fpga_app_image) {
-  this->stage1_version_ = stage1_version;
+  this->required_stage1_version_ = stage1_version;
   this->mcu_blob_ = mcu;
   this->fpga_bitstream_ = fpga_bitstream;
   this->fpga_app_image_ = fpga_app_image;
@@ -304,16 +304,17 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
     // TODO(evanbenn) log a metric
     OnFatalError(FROM_HERE, "ReadReg failure");
   }
-  uint32_t version =
+  this->actual_stage1_version_ =
       static_cast<uint32_t>(version_high.value() << 16) | version_low.value();
-  if (version == this->stage1_version_) {
+  if (this->actual_stage1_version_ == this->required_stage1_version_) {
     // Stage 1 is verified
     VLOG(1) << "Stage1 version OK";
     return BootResult::kOk;
   } else {
     // Versions do not match, need to update.
-    LOG(INFO) << "Stage1 version mismatch, module: " << version
-              << " expected: " << this->stage1_version_;
+    LOG(INFO) << "Stage1 version mismatch, module: "
+              << this->actual_stage1_version_
+              << " expected: " << this->required_stage1_version_;
     hps_metrics_->SendHpsTurnOnResult(
         HpsTurnOnResult::kMcuVersionMismatch,
         base::TimeTicks::Now() - this->boot_start_time_);
@@ -453,8 +454,15 @@ bool HPS_impl::IsRunning() {
 [[noreturn]] void HPS_impl::OnFatalError(const base::Location& location,
                                          const std::string& msg) {
   LOG(ERROR) << "Fatal error at " << location.ToString() << ": " << msg;
-  LOG(ERROR) << base::StringPrintf("- Feature status: 0x%04x", feat_enabled_);
-  LOG(ERROR) << base::StringPrintf("- Stage1 version: 0x%04x", stage1_version_);
+  LOG(ERROR) << base::StringPrintf("- Requested feature status: 0x%04x",
+                                   feat_enabled_);
+  LOG(ERROR) << base::StringPrintf("- Stage1 rootfs version: 0x%08x",
+                                   required_stage1_version_);
+  LOG(ERROR) << base::StringPrintf("- Stage1 running version: 0x%08x",
+                                   actual_stage1_version_);
+  LOG(ERROR) << base::StringPrintf("- HW rev: 0x%04x", hw_rev_);
+  LOG(ERROR) << base::StringPrintf("- Updates sent: mcu:%d spi:%d",
+                                   mcu_update_sent_, spi_update_sent_);
   LOG(ERROR) << base::StringPrintf("- Wake lock: %d", !!wake_lock_);
   DumpHpsRegisters(*device_,
                    [](const std::string& s) { LOG(ERROR) << "- " << s; });
