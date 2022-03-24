@@ -4,6 +4,7 @@
 
 #include "mist/usb_modem_switch_operation.h"
 
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -79,7 +80,7 @@ UsbModemSwitchOperation::~UsbModemSwitchOperation() {
   // invalidated weak pointer to this object) before mist terminates or is
   // discarded after mist terminates.
   if (bulk_transfer_ && bulk_transfer_->state() == UsbTransfer::kCancelling)
-    ignore_result(bulk_transfer_.release());
+    std::ignore = bulk_transfer_.release();
 }
 
 void UsbModemSwitchOperation::Start(CompletionCallback completion_callback) {
