@@ -1483,7 +1483,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
     *error = CREATE_ERROR_AND_LOG(dbus_error::kLowFreeDisk,
                                   "Low free disk under /home");
     StopArcInstanceInternal(ArcContainerStopReason::LOW_DISK_SPACE);
-    ignore_result(scoped_runner.Release());
+    scoped_runner.ReplaceClosure(base::DoNothing());
     return false;
   }
 
@@ -1529,7 +1529,7 @@ bool SessionManagerImpl::UpgradeArcContainer(
 
   login_metrics_->StartTrackingArcUseTime();
 
-  ignore_result(scoped_runner.Release());
+  scoped_runner.ReplaceClosure(base::DoNothing());
   DeleteArcBugReportBackup(account_id);
 
   return true;
