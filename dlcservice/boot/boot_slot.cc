@@ -110,7 +110,7 @@ bool BootSlot::SplitPartitionName(string partition_name,
                             partition_num_out);
           return true;
         }
-        FALLTHROUGH;
+        [[fallthrough]];
       default:
         *disk_name_out = partition_name.substr(0, nondigit_pos + 1);
         base::StringToInt(partition_name.substr(nondigit_pos + 1),

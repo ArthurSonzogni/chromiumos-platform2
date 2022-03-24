@@ -295,7 +295,7 @@ bool DlcService::HandleStatusResult(brillo::ErrorPtr* err) {
       // TODO(ahassani): Add unittest for this.
       dlc_manager_->ChangeProgress(status.progress());
 
-      FALLTHROUGH;
+      [[fallthrough]];
     default:
       return true;
   }

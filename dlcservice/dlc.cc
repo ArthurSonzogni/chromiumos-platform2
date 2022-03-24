@@ -692,7 +692,7 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
       // We still have to uninstall the DLC, in case we never mounted in this
       // session.
       LOG(WARNING) << "Trying to uninstall not installed DLC=" << id_;
-      FALLTHROUGH;
+      [[fallthrough]];
     case DlcState::INSTALLED: {
       ref_count_->UninstalledDlc();
       ErrorPtr tmp_err;
