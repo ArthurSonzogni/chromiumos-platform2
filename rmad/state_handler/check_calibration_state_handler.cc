@@ -207,6 +207,7 @@ bool CheckCalibrationStateHandler::CheckIsCalibrationRequired(
 
     switch (status) {
       case CalibrationComponentStatus::RMAD_CALIBRATION_WAITING:
+      case CalibrationComponentStatus::RMAD_CALIBRATION_FAILED:
         *need_calibration = true;
         break;
       // For those already calibrated and skipped components, we don't need to
@@ -223,6 +224,11 @@ bool CheckCalibrationStateHandler::CheckIsCalibrationRequired(
         return false;
     }
 
+    // For sensors that failed to calibrate, we need to retry, so we set them to
+    // wait for calibration.
+    if (status == CalibrationComponentStatus::RMAD_CALIBRATION_FAILED) {
+      status = CalibrationComponentStatus::RMAD_CALIBRATION_WAITING;
+    }
     calibration_map_[GetCalibrationSetupInstruction(component)][component] =
         status;
   }

@@ -201,24 +201,6 @@ TEST_F(RunCalibrationStateHandlerTest, InitializeState_Success) {
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
-TEST_F(RunCalibrationStateHandlerTest, InitializeState_JsonFailed) {
-  const std::map<std::string, std::map<std::string, std::string>>
-      predefined_calibration_map = {{kBaseInstructionName,
-                                     {{kBaseAccName, kStatusInProgressName},
-                                      {kBaseGyroName, kStatusWaitingName}}},
-                                    {kLidInstructionName,
-                                     {{kLidAccName, kStatusWaitingName},
-                                      {kLidGyroName, kStatusWaitingName}}}};
-  EXPECT_TRUE(
-      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
-
-  base::SetPosixFilePermissions(GetStateFilePath(), 0444);
-
-  auto handler = CreateStateHandler(false, {}, false, {}, false, {}, false, {});
-  EXPECT_EQ(handler->InitializeState(),
-            RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
-}
-
 TEST_F(RunCalibrationStateHandlerTest, InitializeState_NoCalibrationMap) {
   auto handler = CreateStateHandler(false, {}, false, {}, false, {}, false, {});
   EXPECT_EQ(handler->InitializeState(),
@@ -231,6 +213,8 @@ TEST_F(RunCalibrationStateHandlerTest, InitializeState_NoCalibrationMap) {
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kLidInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -295,6 +279,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_EQ(overall_status_history_.size(), 1);
   EXPECT_EQ(overall_status_history_[0], RMAD_CALIBRATION_OVERALL_COMPLETE);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -304,6 +289,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success) {
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success_NoWipeDevice) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kLidInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -368,6 +355,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success_NoWipeDevice) {
   EXPECT_EQ(overall_status_history_.size(), 1);
   EXPECT_EQ(overall_status_history_[0], RMAD_CALIBRATION_OVERALL_COMPLETE);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -378,6 +366,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success_NoWipeDevice) {
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessNeedAnotherRound) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -445,6 +435,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(overall_status_history_[0],
             RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -486,6 +477,7 @@ TEST_F(RunCalibrationStateHandlerTest,
                                   {kLidGyroName, kStatusCompleteName}}}};
   EXPECT_EQ(current_calibration_map, target_calibration_map);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -527,6 +519,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NoNeedCalibration) {
   EXPECT_EQ(overall_status_history_.size(), 1);
   EXPECT_EQ(overall_status_history_[0], RMAD_CALIBRATION_OVERALL_COMPLETE);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -569,6 +562,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(overall_status_history_.size(), 1);
   EXPECT_EQ(overall_status_history_[0], RMAD_CALIBRATION_OVERALL_COMPLETE);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -578,6 +572,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -605,9 +601,9 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
             CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
   EXPECT_EQ(progress_history_[1].component(), RMAD_COMPONENT_BASE_GYROSCOPE);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   // No RunCalibrationState.
   RmadState state;
-
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
   EXPECT_EQ(state_case, RmadState::StateCase::kRunCalibration);
@@ -615,6 +611,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingWipeDeviceVar) {
   // No kWipeDevice set.
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -642,6 +640,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingWipeDeviceVar) {
             CalibrationComponentStatus::RMAD_CALIBRATION_COMPLETE);
   EXPECT_EQ(progress_history_[1].component(), RMAD_COMPONENT_BASE_GYROSCOPE);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_TRANSITION_FAILED);
@@ -650,6 +649,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingWipeDeviceVar) {
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnexpectedReboot) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(json_store_->SetValue(kCalibrationInstruction, kLidAccName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -663,6 +663,10 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnexpectedReboot) {
 
   auto handler = CreateStateHandler(false, {}, false, {}, false, {}, false, {});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
+  handler->CleanUpState();
 
   std::map<std::string, std::map<std::string, std::string>>
       current_calibration_map;
@@ -676,19 +680,12 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnexpectedReboot) {
            {{kLidAccName, kStatusFailedName},
             {kLidGyroName, kStatusFailedName}}}};
   EXPECT_EQ(current_calibration_map, target_calibration_map_one_interval);
-
-  // Simulate unexpected reboot and then auto-transition here.
-  RmadState state = handler->GetState();
-
-  // For those
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
-  handler->CleanUpState();
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NotFinished) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -700,8 +697,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NotFinished) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler(true, {0.5, 1.0}, false, {}, true,
-                                    {0.5, 1.0}, false, {});
+  auto handler =
+      CreateStateHandler(true, {0.5}, false, {}, true, {0.5}, false, {});
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   task_environment_.FastForwardBy(RunCalibrationStateHandler::kPollInterval);
@@ -729,6 +726,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NotFinished) {
             {kLidGyroName, kStatusWaitingName}}}};
   EXPECT_EQ(current_calibration_map, target_calibration_map_one_interval);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_WAIT);
@@ -738,6 +736,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NotFinished) {
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessUnknownComponent) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
@@ -772,6 +772,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(overall_status_history_[0],
             RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -782,6 +783,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessInvalidComponent) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {
@@ -816,6 +819,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(overall_status_history_[0],
             RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -825,6 +829,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessUnknownStatus) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -858,6 +864,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessUnknownStatus) {
   EXPECT_EQ(overall_status_history_[0],
             RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_COMPLETE);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -868,6 +875,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessUnknownStatus) {
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessCalibrationFailed) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -899,6 +908,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(overall_status_history_[0],
             RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -909,6 +919,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessCalibrationFailedNoMoreSensors) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kLidInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
@@ -939,6 +951,7 @@ TEST_F(RunCalibrationStateHandlerTest,
   EXPECT_EQ(overall_status_history_[0],
             RMAD_CALIBRATION_OVERALL_CURRENT_ROUND_FAILED);
 
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   RmadState state = handler->GetState();
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
@@ -948,6 +961,8 @@ TEST_F(RunCalibrationStateHandlerTest,
 
 TEST_F(RunCalibrationStateHandlerTest, TryGetNextStateCaseAtBoot_Success) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationInstruction, kLidInstructionName));
 
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,

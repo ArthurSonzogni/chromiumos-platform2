@@ -72,7 +72,12 @@ class RunCalibrationStateHandler : public BaseStateHandler {
   // Once we find the first sensor to be calibrated, we only calibrate those
   // sensors that have the same setup instruction as it.
   InstructionCalibrationStatusMap calibration_map_;
-  CalibrationSetupInstruction running_group_;
+  // The instruction that has been setup in previous handler.
+  CalibrationSetupInstruction setup_instruction_;
+  // The instruction that we are going to calibrate (might be the same as the
+  // setup instruction when this cycle has not completed or the next instruction
+  // after the current cycle has completed).
+  CalibrationSetupInstruction running_instruction_;
   CalibrationOverallSignalCallback calibration_overall_signal_sender_;
   CalibrationComponentSignalCallback calibration_component_signal_sender_;
 

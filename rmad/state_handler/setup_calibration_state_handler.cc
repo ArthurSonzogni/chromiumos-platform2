@@ -122,6 +122,9 @@ SetupCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
     return NextStateCaseWrapper(RmadState::StateCase::kCheckCalibration);
   }
 
+  json_store_->SetValue(
+      kCalibrationInstruction,
+      CalibrationSetupInstruction_Name(running_setup_instruction_));
   return NextStateCaseWrapper(RmadState::StateCase::kRunCalibration);
 }
 

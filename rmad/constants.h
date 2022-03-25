@@ -40,6 +40,7 @@ inline constexpr char kWpDisableSkipped[] = "wp_disable_skipped";
 inline constexpr char kMlbRepair[] = "mlb_repair";
 inline constexpr char kFirmwareUpdated[] = "firmware_updated";
 inline constexpr char kCalibrationMap[] = "calibration_map";
+inline constexpr char kCalibrationInstruction[] = "calibration_instruction";
 inline constexpr char kProvisionFinishedStatus[] = "provision_finished_status";
 inline constexpr char kPowerwashCount[] = "powerwash_count";
 
