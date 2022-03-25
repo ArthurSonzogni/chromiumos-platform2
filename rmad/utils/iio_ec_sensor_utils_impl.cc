@@ -20,7 +20,6 @@ constexpr int kMaxNumEntries = 1024;
 constexpr char kIioDevicePathPrefix[] = "/sys/bus/iio/devices/iio:device";
 constexpr char kIioDeviceEntryName[] = "name";
 constexpr char kIioDeviceEntryLocation[] = "location";
-constexpr char kIioDeviceEntryFrequency[] = "sampling_frequency";
 constexpr char kIioDeviceEntryFrequencyAvailable[] =
     "sampling_frequency_available";
 constexpr char kIioDeviceEntryScale[] = "scale";
@@ -152,74 +151,71 @@ void IioEcSensorUtilsImpl::Initialize() {
       break;
     }
 
-    base::FilePath entry_name = sysfs_path.Append(kIioDeviceEntryName);
-    if (std::string buf;
-        !base::PathExists(entry_name) ||
-        !base::ReadFileToString(entry_name, &buf) ||
-        name_ != base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING)) {
-      continue;
+    if (InitializeFromSysfsPath(sysfs_path)) {
+      id_ = i;
+      sysfs_path_ = sysfs_path;
+      initialized_ = true;
+      break;
     }
-
-    base::FilePath entry_location = sysfs_path.Append(kIioDeviceEntryLocation);
-    if (std::string buf;
-        !base::PathExists(entry_location) ||
-        !base::ReadFileToString(entry_location, &buf) ||
-        location_ != base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING)) {
-      continue;
-    }
-
-    base::FilePath entry_frequency =
-        sysfs_path.Append(kIioDeviceEntryFrequency);
-    if (std::string buf;
-        !base::PathExists(entry_frequency) ||
-        !base::ReadFileToString(entry_frequency, &buf) ||
-        !base::StringToDouble(
-            base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING), &frequency_)) {
-      continue;
-    }
-
-    // This is a special case where the sensor has not been set. We should set
-    // it according to one of its available sampling frequency. We will use the
-    // slowest one for calibration.
-    if (frequency_ == 0) {
-      base::FilePath entry_frequency_available =
-          sysfs_path.Append(kIioDeviceEntryFrequencyAvailable);
-      if (std::string buf;
-          !base::PathExists(entry_frequency_available) ||
-          !base::ReadFileToString(entry_frequency_available, &buf)) {
-        continue;
-      } else {
-        // The value from sysfs could be like "0.000000 13.000000 208.000000"
-        // or "13.000000 208.000000", and we will choose the first non-zero
-        // frequency.
-        re2::StringPiece str_piece(buf);
-        re2::RE2 reg(R"((\d+.\d+))");
-        std::string match;
-        while (RE2::FindAndConsume(&str_piece, reg, &match)) {
-          if (base::StringToDouble(match, &frequency_) && frequency_ > 0) {
-            break;
-          }
-        }
-        if (frequency_ == 0) {
-          continue;
-        }
-      }
-    }
-
-    base::FilePath entry_scale = sysfs_path.Append(kIioDeviceEntryScale);
-    if (std::string buf;
-        !base::PathExists(entry_scale) ||
-        !base::ReadFileToString(entry_scale, &buf) ||
-        !base::StringToDouble(
-            base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING), &scale_)) {
-      continue;
-    }
-
-    id_ = i;
-    sysfs_path_ = sysfs_path;
-    initialized_ = true;
-    break;
   }
+}
+
+bool IioEcSensorUtilsImpl::InitializeFromSysfsPath(
+    const base::FilePath& sysfs_path) {
+  CHECK(base::PathExists(sysfs_path));
+
+  base::FilePath entry_name = sysfs_path.Append(kIioDeviceEntryName);
+  if (std::string buf;
+      !base::PathExists(entry_name) ||
+      !base::ReadFileToString(entry_name, &buf) ||
+      name_ != base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING)) {
+    return false;
+  }
+
+  base::FilePath entry_location = sysfs_path.Append(kIioDeviceEntryLocation);
+  if (std::string buf;
+      !base::PathExists(entry_location) ||
+      !base::ReadFileToString(entry_location, &buf) ||
+      location_ != base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING)) {
+    return false;
+  }
+
+  // For the sensor to work properly, we should set it according to one of its
+  // available sampling frequencies. Since all available frequencies should
+  // work, we will use the fastest frequency for calibration to save time.
+  base::FilePath entry_frequency_available =
+      sysfs_path.Append(kIioDeviceEntryFrequencyAvailable);
+  std::string frequency_available;
+  if (!base::PathExists(entry_frequency_available) ||
+      !base::ReadFileToString(entry_frequency_available,
+                              &frequency_available)) {
+    return false;
+  }
+  // The value from sysfs could be like "0.000000 13.000000 208.000000"
+  frequency_ = 0;
+  re2::StringPiece str_piece(frequency_available);
+  re2::RE2 reg(R"((\d+.\d+))");
+  std::string match;
+  while (RE2::FindAndConsume(&str_piece, reg, &match)) {
+    double freq;
+    if (base::StringToDouble(match, &freq) && freq > frequency_) {
+      frequency_ = freq;
+    }
+  }
+  if (frequency_ == 0) {
+    return false;
+  }
+
+  base::FilePath entry_scale = sysfs_path.Append(kIioDeviceEntryScale);
+  if (std::string buf;
+      !base::PathExists(entry_scale) ||
+      !base::ReadFileToString(entry_scale, &buf) ||
+      !base::StringToDouble(base::TrimWhitespaceASCII(buf, base::TRIM_TRAILING),
+                            &scale_)) {
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace rmad

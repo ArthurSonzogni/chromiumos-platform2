@@ -27,10 +27,11 @@ class IioEcSensorUtilsImpl : public IioEcSensorUtils {
                     std::vector<double>* values) override;
 
  private:
+  void Initialize();
   // To find out a specific sensor and how to communicate with it, we will check
   // the value in sysfs and then get all the necessary information in the init
   // step.
-  void Initialize();
+  bool InitializeFromSysfsPath(const base::FilePath& sysfs_path);
 
   base::FilePath sysfs_path_;
   int id_;
