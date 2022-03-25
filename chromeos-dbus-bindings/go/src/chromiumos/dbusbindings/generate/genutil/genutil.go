@@ -58,6 +58,16 @@ func Reverse(s []string) []string {
 	return s
 }
 
+// FormatComment removes extraneous white space, inserts a double slash and adds an indent of |indent| characters
+// to each line for the string
+func FormatComment(s string, indent int) string {
+	// TODO(chromium:983008): Implement function contents.
+	if s == "" {
+		return s
+	}
+	return fmt.Sprintf("%s// this is comment\n", strings.Repeat(" ", indent))
+}
+
 // ArgName makes a name of a method argument.
 func ArgName(prefix, argName string, argIndex int) string {
 	if argName == "" {

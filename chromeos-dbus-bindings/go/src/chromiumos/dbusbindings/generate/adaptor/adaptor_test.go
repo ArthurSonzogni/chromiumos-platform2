@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-package adaptor_test
+package adaptor
 
 import (
 	"bytes"
 	"testing"
+	"text/template"
 
-	"chromiumos/dbusbindings/generate/adaptor"
 	"chromiumos/dbusbindings/introspect"
 
 	"github.com/google/go-cmp/cmp"
@@ -41,6 +41,8 @@ namespace chromium {
 class TestInterface {
  public:
   virtual ~TestInterface() = default;
+
+  virtual i f() = 0;
 };
 
 // Interface adaptor for org::chromium::Test.
@@ -198,7 +200,10 @@ func TestGenerateAdaptors(t *testing.T) {
 		Name: "org.chromium.Test",
 		Methods: []introspect.Method{
 			{
-				Name: "Kaneda",
+				Name: "f",
+				Args: []introspect.MethodArg{
+					{Type: "s", Direction: "out"},
+				},
 			},
 		},
 	}
@@ -223,7 +228,7 @@ func TestGenerateAdaptors(t *testing.T) {
 	}
 
 	out := new(bytes.Buffer)
-	if err := adaptor.Generate(introspections, out, "/tmp/adaptor.h"); err != nil {
+	if err := Generate(introspections, out, "/tmp/adaptor.h"); err != nil {
 		t.Errorf("Generate got error, want nil: %v", err)
 	}
 
@@ -246,11 +251,116 @@ func TestGenerateAdaptorIncludingNewFileDescriptors(t *testing.T) {
 	}
 
 	out := new(bytes.Buffer)
-	if err := adaptor.Generate(introspections, out, "/tmp/adaptor2.h"); err != nil {
+	if err := Generate(introspections, out, "/tmp/adaptor2.h"); err != nil {
 		t.Errorf("Generate got error, want nil: %v", err)
 	}
 
 	if diff := cmp.Diff(out.String(), newFileDescriptorsOutput); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
+	}
+}
+
+func TestInterfaceMethodsTempl(t *testing.T) {
+	cases := []struct {
+		input introspect.Interface
+		want  string
+	}{
+		{
+			input: introspect.Interface{
+				Name: "itfWithNoMethod",
+			},
+			want: "",
+		}, {
+			input: introspect.Interface{
+				Name: "itfWithMethodsWithComment",
+				Methods: []introspect.Method{
+					{
+						Name:      "methodWithComment1",
+						DocString: "this is comment1",
+					}, {
+						Name:      "methodWithComment2",
+						DocString: "this is comment2",
+					},
+				},
+			},
+			// TODO(chromium:983008): After implementing dbustype package,
+			// fix comments to "this is comment1" and "this is comment2" for each.
+			want: `
+  // this is comment
+  virtual void methodWithComment1() = 0;
+  // this is comment
+  virtual void methodWithComment2() = 0;
+`,
+		}, {
+			input: introspect.Interface{
+				Name: "itfWithMethodWithNoArg",
+				Methods: []introspect.Method{
+					{
+						Name: "methodWithNoArg",
+						Args: []introspect.MethodArg{
+							{Name: "onlyOutput", Direction: "out", Type: "i"},
+						},
+						Annotations: []introspect.Annotation{
+							{Name: "org.chromium.DBus.Method.Kind", Value: "simple"},
+						},
+					},
+				},
+			},
+			want: `
+  virtual i methodWithNoArg() = 0;
+`,
+		}, {
+			input: introspect.Interface{
+				Name: "itfWithMethodWithArgs",
+				Methods: []introspect.Method{
+					{
+						Name: "methodWithArgs",
+						Args: []introspect.MethodArg{
+							{Name: "n", Direction: "in", Type: "i"},
+							{Name: "", Direction: "in", Type: "s"},
+						},
+					},
+				},
+			},
+			want: `
+  virtual void methodWithArgs(
+      i in_n,
+      i in_2) = 0;
+`,
+		}, {
+			input: introspect.Interface{
+				Name: "itfWithConstMethod",
+				Methods: []introspect.Method{
+					{
+						Name: "methodWithArgs",
+						Args: []introspect.MethodArg{
+							{Name: "n", Direction: "in", Type: "i"},
+						},
+						Annotations: []introspect.Annotation{
+							{Name: "org.chromium.DBus.Method.Const", Value: "true"},
+						},
+					},
+				},
+			},
+			want: `
+  virtual void methodWithArgs(
+      i in_n) const = 0;
+`,
+		},
+	}
+
+	tmpl := template.Must(template.New("interfaceMethodsTempl").Funcs(funcMap).Parse(`{{template "interfaceMethods" .}}`))
+	if _, err := tmpl.Parse(interfaceMethodsTempl); err != nil {
+		t.Fatalf("InterfaceMethodsTempl parse got error, want nil: %v", err)
+	}
+
+	for _, tc := range cases {
+		out := new(bytes.Buffer)
+		if err := tmpl.Execute(out, tc.input); err != nil {
+			t.Fatalf("InterfaceMethodsTempl execute got error, want nil: %v", err)
+		}
+		if diff := cmp.Diff(out.String(), tc.want); diff != "" {
+			t.Errorf("InterfaceMethodsTempl execute faild, interface name is %s\n(-got +want):\n%s", tc.input.Name, diff)
+		}
 	}
 }

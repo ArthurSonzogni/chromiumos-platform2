@@ -23,10 +23,14 @@ var funcMap = template.FuncMap{
 	"makeAdaptorName":   genutil.MakeAdaptorName,
 	"makeFullItfName":   genutil.MakeFullItfName,
 	"extractNameSpaces": genutil.ExtractNameSpaces,
+	"formatComment":     genutil.FormatComment,
+	"makeMethodRetType": makeMethodRetType,
+	"makeMethodArgs":    makeMethodArgs,
 	"reverse":           genutil.Reverse,
 }
 
-const templateText = `// Automatic generation of D-Bus interfaces:
+const (
+	templateText = `// Automatic generation of D-Bus interfaces:
 {{range .Introspects}}{{range .Interfaces -}}
 //  - {{.Name}}
 {{end}}{{end -}}
@@ -58,9 +62,7 @@ namespace {{.}} {
 class {{$itfName}} {
  public:
   virtual ~{{$itfName}}() = default;
-  {{- with .Methods}}
-  {{- /* TODO(chromium:983008): Add interface methods */}}
-  {{- end}}
+{{template "interfaceMethods" . -}}
 };
 
 // Interface adaptor for {{$fullItfName}}.
@@ -109,6 +111,20 @@ class {{$className}} {
 {{end}}{{end -}}
 #endif  // {{.HeaderGuard}}
 `
+	interfaceMethodsTempl = `{{define "interfaceMethods" -}}
+{{if .Methods}}
+{{range .Methods -}}
+{{formatComment .DocString 2 -}}
+{{"  "}}virtual {{makeMethodRetType .}} {{.Name}}(
+{{- range $i, $arg := makeMethodArgs .}}{{if ne $i 0}},{{end}}
+      {{$arg -}}
+{{end -}}
+) {{if .Const}}const {{end}}= 0;
+{{end -}}
+{{end -}}
+{{end -}}
+`
+)
 
 // Generate prints an interface definition and an interface adaptor for each interface in introspects.
 func Generate(introspects []introspect.Introspection, f io.Writer, outputFilePath string) error {
@@ -116,6 +132,10 @@ func Generate(introspects []introspect.Introspection, f io.Writer, outputFilePat
 	if err != nil {
 		return err
 	}
+	if _, err = tmpl.Parse(interfaceMethodsTempl); err != nil {
+		return err
+	}
+
 	var headerGuard = genutil.GenerateHeaderGuard(outputFilePath)
 	return tmpl.Execute(f, templateArgs{introspects, headerGuard})
 }
