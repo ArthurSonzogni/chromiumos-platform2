@@ -55,8 +55,8 @@ const uint32_t kXboxVersion = 0x301;
 // Note: the BT vendor ID for SteelSeries is due to a chipset bug
 // and is not an actual claimed Vendor ID.
 const uint32_t kSteelSeriesVendorBt = 0x111;
-const uint32_t kSteelSeriesProductDuoBt = 0x1431;
-const uint32_t kSteelSeriesProductProtonBt = 0x1434;
+const uint32_t kSteelSeriesProductStratusDuoBt = 0x1431;
+const uint32_t kSteelSeriesProductStratusPlusBt = 0x1434;
 
 const uint32_t kStadiaVendor = 0x18d1;
 const uint32_t kStadiaProduct = 0x9400;
@@ -263,8 +263,8 @@ static void sl_internal_gaming_seat_gamepad_added_with_device_info(
     host_gamepad->axes_quirk = true;
   } else if (bus == ZCR_GAMING_SEAT_V2_BUS_TYPE_BLUETOOTH &&
              vendor_id == kSteelSeriesVendorBt &&
-             (product_id == kSteelSeriesProductDuoBt ||
-              product_id == kSteelSeriesProductProtonBt)) {
+             (product_id == kSteelSeriesProductStratusDuoBt ||
+              product_id == kSteelSeriesProductStratusPlusBt)) {
     host_gamepad->axes_quirk = true;
   }
 
