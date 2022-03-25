@@ -3821,11 +3821,9 @@ bool WiFi::SupportsWPA3() const {
 void WiFi::GetDeviceHardwareIds(int* vendor,
                                 int* product,
                                 int* subsystem) const {
-  if ((false)) {
-    if (manager() && manager()->device_info()) {
-      manager()->device_info()->GetWiFiHardwareIds(interface_index(), vendor,
-                                                   product, subsystem);
-    }
+  if (manager() && manager()->device_info()) {
+    manager()->device_info()->GetWiFiHardwareIds(interface_index(), vendor,
+                                                 product, subsystem);
   }
 }
 

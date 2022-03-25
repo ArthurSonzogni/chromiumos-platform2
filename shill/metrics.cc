@@ -1285,14 +1285,20 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
     LOG(ERROR) << "Failed to read timestamp";
     usecs = kWiFiStructuredMetricsErrorValue;
   }
+  metrics::structured::events::wi_fi_chipset::WiFiChipsetInfo()
+      .SetEventVersion(kWiFiStructuredMetricsVersion)
+      .SetVendorId(vendor_id)
+      .SetProductId(product_id)
+      .SetSubsystemId(subsystem_id)
+      .Record();
   metrics::structured::events::wi_fi::WiFiAdapterStateChanged()
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
       .SetAdapterState(enabled)
-      .SetVendorId(vendor_id)
-      .SetProductId(product_id)
-      .SetSubsystemId(subsystem_id)
+      .SetVendorId(Metrics::kWiFiStructuredMetricsErrorValue)
+      .SetProductId(Metrics::kWiFiStructuredMetricsErrorValue)
+      .SetSubsystemId(Metrics::kWiFiStructuredMetricsErrorValue)
       .Record();
 }
 
