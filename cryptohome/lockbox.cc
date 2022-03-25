@@ -31,10 +31,10 @@
 
 using base::FilePath;
 using brillo::SecureBlob;
-using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
 using hwsec_foundation::SecureBlobToHex;
 using hwsec_foundation::Sha256;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 namespace {

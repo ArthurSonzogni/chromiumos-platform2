@@ -14,6 +14,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::StatusChain;
+
 namespace hwsec {
 
 class TestingTPMErrorTest : public ::testing::Test {

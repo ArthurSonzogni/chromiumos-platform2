@@ -43,10 +43,11 @@ class ErrorConverterTest : public ::testing::Test {
 };
 
 TEST_F(ErrorConverterTest, BasicConversionTest) {
-  hwsec::StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
-      kTestLocation2, ErrorActionSet({ErrorAction::kPowerwash}),
-      user_data_auth::CryptohomeErrorCode::
-          CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+  hwsec_foundation::status::StatusChain<CryptohomeError> err1 =
+      MakeStatus<CryptohomeError>(
+          kTestLocation2, ErrorActionSet({ErrorAction::kPowerwash}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
   user_data_auth::CryptohomeErrorCode ec =
       static_cast<user_data_auth::CryptohomeErrorCode>(
@@ -63,7 +64,7 @@ TEST_F(ErrorConverterTest, BasicConversionTest) {
 }
 
 TEST_F(ErrorConverterTest, Success) {
-  hwsec::StatusChain<CryptohomeError> err1;
+  hwsec_foundation::status::StatusChain<CryptohomeError> err1;
 
   user_data_auth::CryptohomeErrorCode ec =
       static_cast<user_data_auth::CryptohomeErrorCode>(
@@ -78,12 +79,13 @@ TEST_F(ErrorConverterTest, Success) {
 }
 
 TEST_F(ErrorConverterTest, WrappedPossibleAction) {
-  hwsec::StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
-      kTestLocation2, ErrorActionSet({ErrorAction::kPowerwash}),
-      user_data_auth::CryptohomeErrorCode::
-          CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+  hwsec_foundation::status::StatusChain<CryptohomeError> err1 =
+      MakeStatus<CryptohomeError>(
+          kTestLocation2, ErrorActionSet({ErrorAction::kPowerwash}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
-  hwsec::StatusChain<CryptohomeError> err2 =
+  hwsec_foundation::status::StatusChain<CryptohomeError> err2 =
       MakeStatus<CryptohomeError>(kTestLocation1,
                                   ErrorActionSet({ErrorAction::kReboot}))
           .Wrap(std::move(err1));
@@ -104,12 +106,13 @@ TEST_F(ErrorConverterTest, WrappedPossibleAction) {
 }
 
 TEST_F(ErrorConverterTest, WrappedPrimaryAction) {
-  hwsec::StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
-      kTestLocation2, ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
-      user_data_auth::CryptohomeErrorCode::
-          CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+  hwsec_foundation::status::StatusChain<CryptohomeError> err1 =
+      MakeStatus<CryptohomeError>(
+          kTestLocation2, ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
-  hwsec::StatusChain<CryptohomeError> err2 =
+  hwsec_foundation::status::StatusChain<CryptohomeError> err2 =
       MakeStatus<CryptohomeError>(kTestLocation1,
                                   ErrorActionSet({ErrorAction::kReboot}))
           .Wrap(std::move(err1));
@@ -138,12 +141,13 @@ TEST_F(ErrorConverterTest, ReplyWithErrorPrimary) {
       base::Unretained(&reply_received), base::Unretained(&received_reply));
 
   // Prepare the status chain.
-  hwsec::StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
-      kTestLocation2, ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
-      user_data_auth::CryptohomeErrorCode::
-          CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+  hwsec_foundation::status::StatusChain<CryptohomeError> err1 =
+      MakeStatus<CryptohomeError>(
+          kTestLocation2, ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
-  hwsec::StatusChain<CryptohomeError> err2 =
+  hwsec_foundation::status::StatusChain<CryptohomeError> err2 =
       MakeStatus<CryptohomeError>(kTestLocation1,
                                   ErrorActionSet({ErrorAction::kReboot}))
           .Wrap(std::move(err1));
@@ -181,7 +185,7 @@ TEST_F(ErrorConverterTest, ReplyWithErrorSuccess) {
       base::Unretained(&reply_received), base::Unretained(&received_reply));
 
   // Prepare the status chain.
-  hwsec::StatusChain<CryptohomeError> err1;
+  hwsec_foundation::status::StatusChain<CryptohomeError> err1;
 
   // Make the call.
   user_data_auth::MountReply passedin_reply;

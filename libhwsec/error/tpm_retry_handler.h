@@ -36,7 +36,7 @@ void HWSEC_EXPORT RetryDelayHandler(RetryInternalData* data);
     using wrapped_type = typename return_type::element_type;                  \
     static_assert(std::is_base_of_v<::hwsec::TPMErrorBase, wrapped_type>,     \
                   "The result type isn't a valid TPM error type.");           \
-    hwsec::StatusChain<hwsec::TPMErrorBase> out_result;                       \
+    ::hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> out_result;  \
     ::hwsec::RetryInternalData retry_internal;                                \
     while (retry_internal.try_count > 0) {                                    \
       return_type tmp_result = (x);                                           \
@@ -47,8 +47,8 @@ void HWSEC_EXPORT RetryDelayHandler(RetryInternalData* data);
         break;                                                                \
       }                                                                       \
       if (retry_internal.try_count <= 1) {                                    \
-        out_result = hwsec::MakeStatus<TPMError>("Retry Failed",              \
-                                                 TPMRetryAction::kLater)      \
+        out_result = ::hwsec_foundation::status::MakeStatus<TPMError>(        \
+                         "Retry Failed", TPMRetryAction::kLater)              \
                          .Wrap(std::move(tmp_result));                        \
         break;                                                                \
       }                                                                       \

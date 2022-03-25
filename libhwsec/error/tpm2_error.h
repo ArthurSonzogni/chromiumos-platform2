@@ -21,6 +21,9 @@ class HWSEC_EXPORT TPM2Error : public TPMErrorBase {
  public:
   struct MakeStatusTrait {
     auto operator()(trunks::TPM_RC error_code) {
+      using hwsec_foundation::status::NewStatus;
+      using hwsec_foundation::status::OkStatus;
+
       if (error_code != trunks::TPM_RC_SUCCESS) {
         return NewStatus<TPM2Error>(error_code);
       }

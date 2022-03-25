@@ -37,7 +37,6 @@
 using ::base::FilePath;
 using ::brillo::Blob;
 using ::brillo::SecureBlob;
-using ::hwsec::StatusChain;
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec::TPMRetryAction;
@@ -46,6 +45,7 @@ using ::hwsec_foundation::SecureBlobToHexToBuffer;
 using ::hwsec_foundation::Sha1;
 using ::hwsec_foundation::Sha256;
 using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::DoAll;

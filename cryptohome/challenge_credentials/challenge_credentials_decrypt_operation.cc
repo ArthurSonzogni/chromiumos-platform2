@@ -19,12 +19,12 @@
 
 using brillo::Blob;
 using brillo::SecureBlob;
-using hwsec::StatusChain;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 

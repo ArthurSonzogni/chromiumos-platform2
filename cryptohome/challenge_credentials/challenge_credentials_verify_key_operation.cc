@@ -18,8 +18,8 @@
 #include "cryptohome/tpm.h"
 
 using brillo::Blob;
-using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 

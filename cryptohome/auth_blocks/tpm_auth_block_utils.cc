@@ -15,8 +15,8 @@
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
-using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 

@@ -27,7 +27,6 @@
 #include "cryptohome/tpm.h"
 #include "cryptohome/vault_keyset.pb.h"
 
-using hwsec::StatusChain;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
@@ -38,6 +37,7 @@ using hwsec_foundation::kDefaultAesKeySize;
 using hwsec_foundation::kDefaultPassBlobSize;
 using hwsec_foundation::kTpmDecryptMaxRetries;
 using hwsec_foundation::error::WrapError;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 

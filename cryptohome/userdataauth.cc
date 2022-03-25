@@ -63,9 +63,9 @@ using base::FilePath;
 using brillo::Blob;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserName;
-using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
 using hwsec_foundation::Sha1;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 

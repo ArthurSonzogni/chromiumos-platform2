@@ -14,11 +14,11 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_tpm.h"
 
-using ::hwsec::StatusChain;
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::NiceMock;

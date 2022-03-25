@@ -21,9 +21,9 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/sha2.h>
-#include <libhwsec/error/error.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec-foundation/error/error.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <openssl/bn.h>
 #include <openssl/err.h>
@@ -45,10 +45,10 @@ using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::BlobToString;
 using brillo::SecureBlob;
-using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
 using hwsec_foundation::CreateRsaKey;
 using hwsec_foundation::Sha256;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 

@@ -14,6 +14,8 @@ namespace hwsec {
 
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::StatusChain;
 
 class TestingTPM1ErrorTest : public ::testing::Test {
  public:

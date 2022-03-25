@@ -11,9 +11,8 @@
 #include <utility>
 
 #include <base/logging.h>
-
-#include <libhwsec/error/error.h>
 #include <libhwsec-foundation/error/error.h>
+
 #include "cryptohome/error/action.h"
 
 namespace cryptohome {
@@ -72,7 +71,8 @@ base::Optional<user_data_auth::PossibleAction> ErrorActionToPossibleAction(
 
 // Retrieve the ErrorID (aka, the location) from the stack of errors.
 // It looks something like this: 5-42-17
-std::string ErrorIDFromStack(const hwsec::StatusChain<CryptohomeError>& stack) {
+std::string ErrorIDFromStack(
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& stack) {
   std::string result;
   for (const auto& err : stack.const_range()) {
     if (!result.empty()) {
@@ -88,9 +88,10 @@ std::string ErrorIDFromStack(const hwsec::StatusChain<CryptohomeError>& stack) {
 // the issue, or there's a specific reason why it failed. PossibleAction means
 // that cryptohome is uncertain if some actions would resolve the issue but it's
 // worth a try anyway.
-void ActionsFromStack(const hwsec::StatusChain<CryptohomeError>& stack,
-                      user_data_auth::PrimaryAction* primary,
-                      std::set<user_data_auth::PossibleAction>* possible) {
+void ActionsFromStack(
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& stack,
+    user_data_auth::PrimaryAction* primary,
+    std::set<user_data_auth::PossibleAction>* possible) {
   // Check to see if we've any PrimaryAction in the stack.
   *primary = user_data_auth::PrimaryAction::PRIMARY_NONE;
   for (const auto& err : stack.const_range()) {
@@ -127,7 +128,7 @@ void ActionsFromStack(const hwsec::StatusChain<CryptohomeError>& stack,
 
 // Retrieves the legacy CryptohomeErrorCode from the stack of errors.
 user_data_auth::CryptohomeErrorCode LegacyErrorCodeFromStack(
-    const hwsec::StatusChain<CryptohomeError>& stack) {
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& stack) {
   // Traverse down the stack for the first error
   for (const auto& err : stack.const_range()) {
     auto current_legacy_err = err->local_legacy_error();
@@ -143,7 +144,7 @@ user_data_auth::CryptohomeErrorCode LegacyErrorCodeFromStack(
 }  // namespace
 
 user_data_auth::CryptohomeErrorInfo CryptohomeErrorToUserDataAuthError(
-    const hwsec::StatusChain<CryptohomeError>& err,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err,
     user_data_auth::CryptohomeErrorCode* legacy_ec) {
   user_data_auth::CryptohomeErrorInfo result;
   if (err.ok()) {
@@ -181,9 +182,10 @@ user_data_auth::CryptohomeErrorInfo CryptohomeErrorToUserDataAuthError(
 }
 
 template <typename ReplyType>
-void ReplyWithError(base::OnceCallback<void(const ReplyType&)> on_done,
-                    const ReplyType& reply,
-                    const hwsec::StatusChain<CryptohomeError>& err) {
+void ReplyWithError(
+    base::OnceCallback<void(const ReplyType&)> on_done,
+    const ReplyType& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err) {
   bool success = err.ok();
 
   ReplyType actual_reply;
@@ -210,7 +212,7 @@ void ReplyWithError(base::OnceCallback<void(const ReplyType&)> on_done,
 template void ReplyWithError(
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done,
     const user_data_auth::MountReply& reply,
-    const hwsec::StatusChain<CryptohomeError>& err);
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
 
 }  // namespace error
 

@@ -13,12 +13,12 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
-#include <libhwsec/error/error.h>
 #include <libhwsec/error/tpm1_error.h>
 #include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/ecdh_hkdf.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/error/error.h>
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <trousers/scoped_tss_type.h>
@@ -30,13 +30,13 @@
 namespace cryptohome {
 namespace cryptorecovery {
 
-using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
 using hwsec_foundation::BigNumToSecureBlob;
 using hwsec_foundation::CreateBigNumContext;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::EllipticCurve;
 using hwsec_foundation::ScopedBN_CTX;
+using hwsec_foundation::status::StatusChain;
 
 namespace {
 // Size of the auth_value blob to be randomly generated.

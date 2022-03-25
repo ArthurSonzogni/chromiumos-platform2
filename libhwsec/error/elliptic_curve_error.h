@@ -19,9 +19,10 @@ enum class EllipticCurveErrorCode {
 };
 
 // An EllipticCurve error.
-class HWSEC_EXPORT EllipticCurveError : public hwsec::TPMErrorBase {
+class HWSEC_EXPORT EllipticCurveError : public TPMErrorBase {
  public:
-  using MakeStatusTrait = hwsec::DefaultMakeStatus<EllipticCurveError>;
+  using MakeStatusTrait =
+      hwsec_foundation::status::DefaultMakeStatus<EllipticCurveError>;
 
   explicit EllipticCurveError(EllipticCurveErrorCode error_code);
   ~EllipticCurveError() override = default;

@@ -9,7 +9,8 @@
 #include <string>
 #include <utility>
 
-#include <libhwsec/error/error.h>
+#include <libhwsec-foundation/error/error.h>
+
 #include "libhwsec/error/tpm_retry_action.h"
 #include "libhwsec/hwsec_export.h"
 
@@ -59,9 +60,9 @@
 namespace hwsec {
 
 // A base class for TPM errors.
-class HWSEC_EXPORT TPMErrorBase : public Error {
+class HWSEC_EXPORT TPMErrorBase : public hwsec_foundation::status::Error {
  public:
-  using MakeStatusTrait = ForbidMakeStatus;
+  using MakeStatusTrait = hwsec_foundation::status::ForbidMakeStatus;
 
   explicit TPMErrorBase(std::string message);
   ~TPMErrorBase() override = default;
@@ -88,7 +89,8 @@ class HWSEC_EXPORT TPMError : public TPMErrorBase {
           : error_message_(error_message) {}
 
       // Wrap will convert the stab into the appropriate Status type.
-      auto Wrap(StatusChain<TPMErrorBase> status) && {
+      auto Wrap(hwsec_foundation::status::StatusChain<TPMErrorBase> status) && {
+        using hwsec_foundation::status::NewStatus;
         return NewStatus<TPMError>(error_message_, status->ToTPMRetryAction())
             .Wrap(std::move(status));
       }
@@ -105,6 +107,7 @@ class HWSEC_EXPORT TPMError : public TPMErrorBase {
 
     // If we get action as an argument - create the Status directly.
     auto operator()(std::string error_message, TPMRetryAction action) {
+      using hwsec_foundation::status::NewStatus;
       return NewStatus<TPMError>(error_message, action);
     }
   };

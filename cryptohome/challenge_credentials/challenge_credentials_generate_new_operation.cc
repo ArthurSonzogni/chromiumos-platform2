@@ -18,8 +18,8 @@
 using brillo::Blob;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
-using hwsec::StatusChain;
 using hwsec::TPMErrorBase;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 

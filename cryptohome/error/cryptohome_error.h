@@ -5,15 +5,13 @@
 #ifndef CRYPTOHOME_ERROR_CRYPTOHOME_ERROR_H_
 #define CRYPTOHOME_ERROR_CRYPTOHOME_ERROR_H_
 
-#include <libhwsec/error/error.h>
-
 #include <optional>
 #include <set>
 #include <sstream>
 #include <string>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
-#include <gtest/gtest.h>
+#include <libhwsec-foundation/error/error.h>
 
 #include "cryptohome/error/action.h"
 
@@ -21,9 +19,10 @@ namespace cryptohome {
 
 namespace error {
 
-class CryptohomeError : public hwsec::Error {
+class CryptohomeError : public hwsec_foundation::status::Error {
  public:
-  using MakeStatusTrait = hwsec::DefaultMakeStatus<CryptohomeError>;
+  using MakeStatusTrait =
+      hwsec_foundation::status::DefaultMakeStatus<CryptohomeError>;
   using BaseErrorType = CryptohomeError;
 
   // Note that while ErrorLocation is represented as an integer, the error

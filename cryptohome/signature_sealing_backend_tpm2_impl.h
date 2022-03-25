@@ -34,7 +34,7 @@ class SignatureSealingBackendTpm2Impl final : public SignatureSealingBackend {
   ~SignatureSealingBackendTpm2Impl() override;
 
   // SignatureSealingBackend:
-  hwsec::StatusChain<hwsec::TPMErrorBase> CreateSealedSecret(
+  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::map<uint32_t, brillo::Blob>& default_pcr_map,
@@ -43,7 +43,8 @@ class SignatureSealingBackendTpm2Impl final : public SignatureSealingBackend {
       const brillo::Blob& /* delegate_secret */,
       brillo::SecureBlob* secret_value,
       structure::SignatureSealedData* sealed_secret_data) override;
-  hwsec::StatusChain<hwsec::TPMErrorBase> CreateUnsealingSession(
+  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
+  CreateUnsealingSession(
       const structure::SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,

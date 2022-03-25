@@ -22,6 +22,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
   ]
+  libs = [ "hwsec-foundation" ]
   defines = [
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}",
@@ -43,7 +44,6 @@ static_library("overalls_library") {
 source_set("error_library") {
   sources = [
     "error/elliptic_curve_error.cc",
-    "error/error_linkage.cc",
     "error/tpm_error.cc",
     "error/tpm_retry_handler.cc",
   ]

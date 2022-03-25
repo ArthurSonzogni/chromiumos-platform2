@@ -32,7 +32,6 @@
 
 using hwsec::EllipticCurveError;
 using hwsec::EllipticCurveErrorCode;
-using hwsec::StatusChain;
 using hwsec::TPMError;
 using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
@@ -44,6 +43,7 @@ using hwsec_foundation::kDefaultPassBlobSize;
 using hwsec_foundation::kTpmDecryptMaxRetries;
 using hwsec_foundation::Sha256;
 using hwsec_foundation::error::WrapError;
+using hwsec_foundation::status::StatusChain;
 
 namespace {
 
