@@ -108,7 +108,8 @@ bool Service::Init() {
     LOG(ERROR) << "Failed to connect to D-Bus";
     return false;
   }
-  termina_parser_ = std::make_unique<anomaly::TerminaParser>(dbus_);
+  termina_parser_ = std::make_unique<anomaly::TerminaParser>(
+      dbus_, std::make_unique<MetricsLibrary>());
 
   // Export a bus object so that other processes can register signal handlers
   // and make method calls.

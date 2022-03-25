@@ -19,8 +19,10 @@
 
 #include <base/time/time.h>
 #include <dbus/bus.h>
+#include <metrics/metrics_library.h>
 
 #include <optional>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -141,12 +143,14 @@ class SuspendParser : public Parser {
 
 class TerminaParser {
  public:
-  explicit TerminaParser(scoped_refptr<dbus::Bus> dbus);
+  explicit TerminaParser(scoped_refptr<dbus::Bus> dbus,
+                         std::unique_ptr<MetricsLibraryInterface> metrics_lib);
   MaybeCrashReport ParseLogEntryForBtrfs(int cid, const std::string& line);
   MaybeCrashReport ParseLogEntryForOom(int cid, const std::string& line);
 
  private:
   scoped_refptr<dbus::Bus> dbus_;
+  std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 };
 
 class CryptohomeParser : public Parser {

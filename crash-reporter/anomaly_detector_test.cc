@@ -4,6 +4,9 @@
 
 #include "crash-reporter/anomaly_detector.h"
 
+#include <memory>
+#include <utility>
+
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -12,6 +15,7 @@
 #include <dbus/mock_exported_object.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/anomaly_detector_test_utils.h"
 
@@ -20,6 +24,7 @@ namespace {
 using ::testing::_;
 using ::testing::Eq;
 using ::testing::IsEmpty;
+using ::testing::NiceMock;
 using ::testing::Return;
 
 using ::anomaly::CryptohomeParser;
@@ -526,7 +531,10 @@ TEST(AnomalyDetectorTest, BTRFSExtentCorruption) {
                   anomaly_detector::kAnomalyGuestFileCorruptionSignalName)))
       .Times(1);
 
-  TerminaParser parser(bus);
+  auto metrics = std::make_unique<NiceMock<MetricsLibraryMock>>();
+  EXPECT_CALL(*metrics, SendCrosEventToUMA(_)).Times(0);
+
+  TerminaParser parser(bus, std::move(metrics));
 
   parser.ParseLogEntryForBtrfs(
       3,
@@ -551,7 +559,10 @@ TEST(AnomalyDetectorTest, BTRFSTreeCorruption) {
                   anomaly_detector::kAnomalyGuestFileCorruptionSignalName)))
       .Times(1);
 
-  TerminaParser parser(bus);
+  auto metrics = std::make_unique<NiceMock<MetricsLibraryMock>>();
+  EXPECT_CALL(*metrics, SendCrosEventToUMA(_)).Times(0);
+
+  TerminaParser parser(bus, std::move(metrics));
 
   parser.ParseLogEntryForBtrfs(
       3,
@@ -576,7 +587,11 @@ TEST(AnomalyDetectorTest, OomEvent) {
                           anomaly_detector::kAnomalyGuestOomEventSignalName)))
       .Times(1);
 
-  TerminaParser parser(bus);
+  auto metrics = std::make_unique<NiceMock<MetricsLibraryMock>>();
+  EXPECT_CALL(*metrics, SendCrosEventToUMA("Crostini.OomEvent"))
+      .WillOnce(Return(true));
+
+  TerminaParser parser(bus, std::move(metrics));
 
   parser.ParseLogEntryForOom(
       3,

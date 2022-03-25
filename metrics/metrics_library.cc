@@ -89,12 +89,13 @@ const char* kCrosEventNames[] = {
     "Crash.Sender.AttemptedCrashRemoval",       // 31
     "Chaps.DatabaseOpenedSuccessfully",         // 32
     "Chaps.DatabaseOpenAttempt",                // 33
+    "Crostini.OomEvent",                        // 34
 };
 
 // Update this to be last entry + 1 when you add new entries to the end. Checks
 // that no one tries to remove entries from the middle or misnumbers during a
 // merge conflict.
-static_assert(std::size(kCrosEventNames) == 34,
+static_assert(std::size(kCrosEventNames) == 35,
               "CrosEvent enums not lining up properly");
 
 }  // namespace

@@ -5,6 +5,7 @@
 #include "crash-reporter/anomaly_detector.h"
 
 #include <optional>
+#include <memory>
 #include <unordered_set>
 #include <utility>
 
@@ -19,6 +20,7 @@
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
+#include <metrics/metrics_library.h>
 #include <re2/re2.h>
 
 #include "crash-reporter/util.h"
@@ -457,7 +459,12 @@ MaybeCrashReport SuspendParser::ParseLogEntry(const std::string& line) {
   return CrashReport(std::move(text), {"--suspend_failure"});
 }
 
-TerminaParser::TerminaParser(scoped_refptr<dbus::Bus> dbus) : dbus_(dbus) {}
+TerminaParser::TerminaParser(
+    scoped_refptr<dbus::Bus> dbus,
+    std::unique_ptr<MetricsLibraryInterface> metrics_lib)
+    : dbus_(dbus), metrics_lib_(std::move(metrics_lib)) {
+  metrics_lib_->Init();
+}
 
 constexpr LazyRE2 btrfs_extent_corruption = {
     R"(BTRFS warning \(device .*\): csum failed root [[:digit:]]+ )"
@@ -467,6 +474,7 @@ constexpr LazyRE2 btrfs_tree_node_corruption = {
     R"(BTRFS warning \(device .*\): .* checksum verify failed on )"
     R"([[:digit:]]+ wanted (0x)?[[:xdigit:]]+ found (0x)?[[:xdigit:]]+ level )"
     R"([[:digit:]]+)"};
+constexpr char kUMAOomEvent[] = "Crostini.OomEvent";
 
 MaybeCrashReport TerminaParser::ParseLogEntryForBtrfs(int cid,
                                                       const std::string& line) {
@@ -515,6 +523,10 @@ MaybeCrashReport TerminaParser::ParseLogEntryForOom(int cid,
   dbus::ExportedObject* exported_object = dbus_->GetExportedObject(
       dbus::ObjectPath(anomaly_detector::kAnomalyEventServicePath));
   exported_object->SendSignal(&signal);
+
+  if (!metrics_lib_->SendCrosEventToUMA(kUMAOomEvent)) {
+    LOG(WARNING) << "Could not send OomEvent metric to UMA";
+  }
 
   // TODO(crbug/1193485): we would like to submit a crash report here, impl
   // is pending resolution of privacy concerns.
