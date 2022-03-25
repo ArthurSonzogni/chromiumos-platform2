@@ -16,11 +16,11 @@ namespace mojo_service_manager {
 class ServicePolicy {
  public:
   ServicePolicy();
-  ~ServicePolicy();
   ServicePolicy(const ServicePolicy&) = delete;
   ServicePolicy& operator=(const ServicePolicy&) = delete;
   ServicePolicy(ServicePolicy&&);
   ServicePolicy& operator=(ServicePolicy&&);
+  ~ServicePolicy();
 
   // Sets a |security_context| as the owner of this service.
   void SetOwner(const std::string& security_context);
