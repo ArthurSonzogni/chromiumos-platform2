@@ -190,6 +190,7 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest,
               SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse);
   FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddresses);
+  FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver);
   FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddressesFeatureDisabled);
   FRIEND_TEST(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses);
   FRIEND_TEST(ProxyTest, ShillInitializedWhenReady);

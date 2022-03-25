@@ -313,8 +313,29 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
               ShillClient());
   proxy.shill_ready_ = true;
   proxy.feature_enabled_ = true;
+  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   EXPECT_CALL(mock_manager_,
               SetDNSProxyAddresses(ElementsAre("10.10.10.10", "::1"), _, _))
+      .WillOnce(Return(true));
+  proxy.SetShillDNSProxyAddresses("10.10.10.10", "::1");
+}
+
+TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient());
+  proxy.shill_ready_ = true;
+  proxy.feature_enabled_ = true;
+
+  // Only IPv4 nameserver.
+  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {});
+  EXPECT_CALL(mock_manager_,
+              SetDNSProxyAddresses(ElementsAre("10.10.10.10"), _, _))
+      .WillOnce(Return(true));
+  proxy.SetShillDNSProxyAddresses("10.10.10.10", "::1");
+
+  // Only IPv6 nameserver.
+  proxy.doh_config_.set_nameservers({}, {"2001:4860:4860::8888"});
+  EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(ElementsAre("::1"), _, _))
       .WillOnce(Return(true));
   proxy.SetShillDNSProxyAddresses("10.10.10.10", "::1");
 }

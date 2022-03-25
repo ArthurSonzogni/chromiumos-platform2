@@ -735,10 +735,10 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
   }
 
   std::vector<std::string> addrs;
-  if (!ipv4_addr.empty()) {
+  if (!ipv4_addr.empty() && !doh_config_.ipv4_nameservers().empty()) {
     addrs.push_back(ipv4_addr);
   }
-  if (!ipv6_addr.empty()) {
+  if (!ipv6_addr.empty() && !doh_config_.ipv6_nameservers().empty()) {
     addrs.push_back(ipv6_addr);
   }
   if (addrs.empty()) {
