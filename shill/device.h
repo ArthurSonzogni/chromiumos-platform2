@@ -280,15 +280,6 @@ class Device : public base::RefCounted<Device> {
   // Initiate renewal of existing DHCP lease.
   void RenewDHCPLease(bool from_dbus, Error* error);
 
-  // Resolve the |input| string into a MAC address for a peer local to this
-  // device. This could be a trivial operation if the |input| is already a MAC
-  // address, or could involve an ARP table lookup.  Returns true and populates
-  // |output| if the resolution completes, otherwise returns false and
-  // populates |error|.
-  bool ResolvePeerMacAddress(const std::string& input,
-                             std::string* output,
-                             Error* error);
-
   // Creates a byte vector from a colon-separated hardware address string.
   static std::vector<uint8_t> MakeHardwareAddressFromString(
       const std::string& address_string);
@@ -648,10 +639,6 @@ class Device : public base::RefCounted<Device> {
 
   // Indicates if the selected service is configured with static nameservers.
   bool IsUsingStaticNameServers() const;
-
-  // Returns true if any of the addresses for this Device are on the same
-  // network prefix as |address|.
-  bool HasDirectConnectivityTo(const IPAddress& address) const;
 
   // Atomically update the counters of the old service and the snapshot of the
   // new service. |GetTrafficCountersPatchpanelCallback| calls

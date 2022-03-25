@@ -1236,37 +1236,6 @@ TEST_F(DeviceTest, PrependWithStaticConfiguration) {
   EXPECT_EQ(static_servers, device_->ipconfig()->properties().dns_servers);
 }
 
-TEST_F(DeviceTest, ResolvePeerMacAddress) {
-  IPAddress device_address(IPAddress::kFamilyIPv4);
-  ASSERT_TRUE(device_address.SetAddressAndPrefixFromString("192.168.5.2/24"));
-  EXPECT_CALL(device_info_, GetAddresses(device_->interface_index()))
-      .WillRepeatedly(Return(std::vector<IPAddress>{device_address}));
-
-  const char kResolvedMac[] = "00:11:22:33:44:55";
-  const ByteString kMacBytes(
-      Device::MakeHardwareAddressFromString(kResolvedMac));
-  EXPECT_CALL(device_info_,
-              GetMacAddressOfPeer(device_->interface_index(), _, _))
-      .WillRepeatedly(DoAll(SetArgPointee<2>(kMacBytes), Return(true)));
-
-  // Invalid peer address (not a valid IP address nor MAC address).
-  Error error;
-  std::string result;
-  const char kInvalidPeer[] = "peer";
-  EXPECT_FALSE(device_->ResolvePeerMacAddress(kInvalidPeer, &result, &error));
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-
-  // No direct connectivity to the peer.
-  error.Reset();
-  EXPECT_FALSE(device_->ResolvePeerMacAddress("192.168.1.1", &result, &error));
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-
-  // Provided IP address is in the ARP cache, return the resolved MAC address.
-  error.Reset();
-  EXPECT_TRUE(device_->ResolvePeerMacAddress("192.168.5.1", &result, &error));
-  EXPECT_EQ(kResolvedMac, result);
-}
-
 TEST_F(DeviceTest, SetHostnameWithEmptyHostname) {
   EXPECT_CALL(*manager(), ShouldAcceptHostnameFrom(_)).Times(0);
   EXPECT_CALL(device_info_, SetHostname(_)).Times(0);

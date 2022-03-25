@@ -578,17 +578,6 @@ bool Device::IsUsingStaticNameServers() const {
   return selected_service_->HasStaticNameServers();
 }
 
-bool Device::HasDirectConnectivityTo(const IPAddress& address) const {
-  for (const auto& device_address :
-       manager()->device_info()->GetAddresses(interface_index())) {
-    if (device_address.family() == address.family() &&
-        device_address.CanReachAddress(address)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 bool Device::AcquireIPConfig() {
   return AcquireIPConfigWithLeaseName(std::string());
 }
@@ -1513,56 +1502,6 @@ void Device::SetEnabledUnchecked(bool enable,
 void Device::UpdateIPConfigsProperty() {
   adaptor_->EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
                                           AvailableIPConfigs(nullptr));
-}
-
-bool Device::ResolvePeerMacAddress(const std::string& input,
-                                   std::string* output,
-                                   Error* error) {
-  if (!MakeHardwareAddressFromString(input).empty()) {
-    // Input is already a MAC address.
-    *output = input;
-    return true;
-  }
-
-  IPAddress ip_address(IPAddress::kFamilyIPv4);
-  if (!ip_address.SetAddressFromString(input)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Peer is neither an IP Address nor a MAC address");
-    return false;
-  }
-
-  // Peer address was specified as an IP address which we need to resolve.
-  const DeviceInfo* device_info = manager()->device_info();
-  if (!HasDirectConnectivityTo(ip_address)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "IP address is not local to this interface");
-    return false;
-  }
-
-  ByteString mac_address;
-  if (device_info->GetMacAddressOfPeer(interface_index_, ip_address,
-                                       &mac_address)) {
-    *output = MakeStringFromHardwareAddress(std::vector<uint8_t>(
-        mac_address.GetConstData(),
-        mac_address.GetConstData() + mac_address.GetLength()));
-    SLOG(this, 2) << "ARP cache lookup returned peer: " << *output;
-    return true;
-  }
-
-  Icmp pinger;
-  if (!pinger.Start(ip_address, interface_index_) ||
-      !pinger.TransmitEchoRequest(1, 1)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          "Failed to send ICMP request to peer to setup ARP");
-  } else {
-    // ARP request was transmitted successfully, address resolution is still
-    // pending.
-    error->Populate(Error::kInProgress,
-                    "Peer MAC address was not found in the ARP cache, "
-                    "but an ARP request was sent to find it.  "
-                    "Please try again.");
-  }
-  return false;
 }
 
 // static
