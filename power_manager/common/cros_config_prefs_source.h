@@ -29,6 +29,9 @@ class CrosConfigPrefsSource : public PrefsSourceInterface {
   // PrefsSourceInterface:
   std::string GetDescription() const override;
   bool ReadPrefString(const std::string& name, std::string* value_out) override;
+  bool ReadExternalString(const std::string& path,
+                          const std::string& name,
+                          std::string* value_out) override;
 
  private:
   std::unique_ptr<brillo::CrosConfigInterface> config_;

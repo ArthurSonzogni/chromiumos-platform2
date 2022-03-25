@@ -9,6 +9,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 
 #include <base/compiler_specific.h>
 #include <base/macros.h>
@@ -44,6 +45,13 @@ class FakePrefs : public PrefsInterface {
   void SetInt64(const std::string& name, int64_t value) override;
   void SetDouble(const std::string& name, double value) override;
   void SetBool(const std::string& name, bool value) override;
+  bool GetExternalString(const std::string& path,
+                         const std::string& name,
+                         std::string* value) override;
+
+  void set_external_string_for_testing(const std::string& path,
+                                       const std::string& name,
+                                       const std::string& value);
 
  private:
   base::ObserverList<PrefsObserver> observers_;
@@ -51,6 +59,7 @@ class FakePrefs : public PrefsInterface {
   std::map<std::string, int64_t> int64_prefs_;
   std::map<std::string, double> double_prefs_;
   std::map<std::string, std::string> string_prefs_;
+  std::map<std::pair<std::string, std::string>, std::string> external_prefs_;
 };
 
 }  // namespace power_manager

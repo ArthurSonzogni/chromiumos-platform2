@@ -83,4 +83,22 @@ void FakePrefs::SetBool(const std::string& name, bool value) {
   SetInt64(name, static_cast<int64_t>(value));
 }
 
+bool FakePrefs::GetExternalString(const std::string& path,
+                                  const std::string& name,
+                                  std::string* value) {
+  auto key = std::pair<std::string, std::string>(path, name);
+  if (external_prefs_.find(key) != external_prefs_.end()) {
+    *value = external_prefs_[key];
+    return true;
+  }
+
+  return false;
+}
+
+void FakePrefs::set_external_string_for_testing(const std::string& path,
+                                                const std::string& name,
+                                                const std::string& value) {
+  external_prefs_[std::pair<std::string, std::string>(path, name)] = value;
+}
+
 }  // namespace power_manager

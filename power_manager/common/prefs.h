@@ -43,6 +43,12 @@ class PrefsInterface {
   virtual void SetInt64(const std::string& name, int64_t value) = 0;
   virtual void SetDouble(const std::string& name, double value) = 0;
   virtual void SetBool(const std::string& name, bool value) = 0;
+
+  // Reads non-power settings that are part of one of the PrefsSourceInterfaces.
+  // These settings cannot be modified via the PrefsInterface.
+  virtual bool GetExternalString(const std::string& path,
+                                 const std::string& name,
+                                 std::string* value) = 0;
 };
 
 class PrefsSourceInterface;
@@ -67,6 +73,12 @@ class PrefsSourceInterface {
   // Reads a pref named |name| from this source into the given string.
   virtual bool ReadPrefString(const std::string& name,
                               std::string* value_out) = 0;
+
+  // Reads non-power setting |name| from the |path| location into the given
+  // string.
+  virtual bool ReadExternalString(const std::string& path,
+                                  const std::string& name,
+                                  std::string* value_out) = 0;
 };
 
 // Interface for readable and writable storage of preferences.
@@ -111,7 +123,6 @@ class Prefs : public PrefsInterface {
 
    private:
     Prefs* prefs_;  // weak
-
   };
 
   Prefs();
@@ -143,6 +154,9 @@ class Prefs : public PrefsInterface {
   void SetInt64(const std::string& name, int64_t value) override;
   void SetDouble(const std::string& name, double value) override;
   void SetBool(const std::string& name, bool value) override;
+  bool GetExternalString(const std::string& path,
+                         const std::string& name,
+                         std::string* value) override;
 
  private:
   // Handle changes to pref values in |pref_store_|.

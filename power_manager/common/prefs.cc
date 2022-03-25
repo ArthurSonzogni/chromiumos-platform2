@@ -215,6 +215,17 @@ void Prefs::SetBool(const std::string& name, bool value) {
   SetInt64(name, static_cast<int64_t>(value));
 }
 
+bool Prefs::GetExternalString(const std::string& path,
+                              const std::string& name,
+                              std::string* value) {
+  DCHECK(value);
+  for (const auto& source : pref_sources_) {
+    if (source->ReadExternalString(path, name, value))
+      return true;
+  }
+  return false;
+}
+
 void Prefs::ScheduleWrite() {
   base::TimeDelta time_since_last_write =
       base::TimeTicks::Now() - last_write_time_;

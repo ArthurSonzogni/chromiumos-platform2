@@ -35,4 +35,15 @@ bool CrosConfigPrefsSource::ReadPrefString(const std::string& name,
   return true;
 }
 
+bool CrosConfigPrefsSource::ReadExternalString(const std::string& path,
+                                               const std::string& name,
+                                               std::string* value_out) {
+  if (!config_->GetString(path, name, value_out))
+    return false;
+
+  // Trim trailing whitespace to be consistent with ReadPrefString().
+  base::TrimWhitespaceASCII(*value_out, base::TRIM_TRAILING, value_out);
+  return true;
+}
+
 }  // namespace power_manager

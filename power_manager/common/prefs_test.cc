@@ -393,4 +393,22 @@ TEST_F(PrefsTest, TestLibCrosConfigPrefsTrailingWhitespace) {
   EXPECT_EQ("value", value);
 }
 
+TEST_F(PrefsTest, TestLibCrosConfigPrefsExternalString) {
+  InitPrefs();
+  cros_config_->SetString("/external", "name", "value");
+
+  std::string value;
+  EXPECT_TRUE(prefs_.GetExternalString("/external", "name", &value));
+  EXPECT_EQ("value", value);
+}
+
+TEST_F(PrefsTest, TestLibCrosConfigExternalTrailingWhitespace) {
+  InitPrefs();
+  cros_config_->SetString("/external", "name", "value \n");
+
+  std::string value;
+  EXPECT_TRUE(prefs_.GetExternalString("/external", "name", &value));
+  EXPECT_EQ("value", value);
+}
+
 }  // namespace power_manager

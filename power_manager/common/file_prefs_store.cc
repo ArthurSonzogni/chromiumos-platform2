@@ -30,6 +30,14 @@ bool FilePrefsStore::ReadPrefString(const std::string& name,
   return util::MaybeReadStringFile(path, value_out);
 }
 
+bool FilePrefsStore::ReadExternalString(const std::string& path,
+                                        const std::string& name,
+                                        std::string* value_out) {
+  // Not currently implemented since there's no non-powerd setting we need to
+  // read from a directory, such as /usr/share/<non-power_manager directory>/
+  return false;
+}
+
 bool FilePrefsStore::WritePrefString(const std::string& name,
                                      const std::string& value) {
   base::FilePath path = pref_path_.Append(name);
