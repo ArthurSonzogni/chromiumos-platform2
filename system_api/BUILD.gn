@@ -18,6 +18,7 @@ group("all") {
     ":system_api-chaps-protos",
     ":system_api-chunneld-protos",
     ":system_api-cryptohome-goprotos",
+    ":system_api-dlcservice-goprotos",
     ":system_api-dlcservice-protos",
     ":system_api-dlp-protos",
     ":system_api-fusebox-protos",
@@ -422,6 +423,12 @@ proto_library("system_api-dlcservice-protos") {
   proto_out_dir = "include/dlcservice/proto_bindings"
   sources = [ "${proto_in_dir}/dlcservice.proto" ]
   standalone = true
+}
+
+goproto_library("system_api-dlcservice-goprotos") {
+  proto_in_dir = "dbus/dlcservice"
+  proto_out_dir = "go/src/"
+  sources = [ "${proto_in_dir}/dlcservice.proto" ]
 }
 
 proto_library("system_api-update_engine-protos") {
