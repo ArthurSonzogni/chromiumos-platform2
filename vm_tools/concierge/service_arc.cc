@@ -69,13 +69,9 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
   const std::set<std::string> kAllowedKernelParams = {
       "androidboot.arc_generate_pai=1",
       "androidboot.arcvm_mount_debugfs=1",
-      "androidboot.container=1",
       "androidboot.disable_download_provider=1",
       "androidboot.disable_media_store_maintenance=1",
-      "androidboot.hardware=bertha",
       "androidboot.vshd_service_override=vshd_for_test",
-      "init=/init",
-      "root=/dev/vda",
       "rw",
   };
   // List of allowed kernel parameter prefixes.
@@ -291,11 +287,20 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   vm_info->set_seneschal_server_handle(seneschal_server_handle);
 
   // Build the plugin params.
-  std::vector<std::string> params(
-      std::make_move_iterator(request.mutable_params()->begin()),
-      std::make_move_iterator(request.mutable_params()->end()));
-  params.emplace_back(base::StringPrintf("androidboot.seneschal_server_port=%d",
-                                         seneschal_server_port));
+  std::vector<std::string> params = {
+      "root=/dev/vda",
+      "init=/init",
+      // Note: Do not change the value "bertha". This string is checked in
+      // platform2/metrics/process_meter.cc to detect ARCVM's crosvm processes,
+      // for example.
+      "androidboot.hardware=bertha",
+      "androidboot.container=1",
+  };
+  params.insert(params.end(),
+                std::make_move_iterator(request.mutable_params()->begin()),
+                std::make_move_iterator(request.mutable_params()->end()));
+  params.push_back(base::StringPrintf("androidboot.seneschal_server_port=%d",
+                                      seneschal_server_port));
 
   // Start the VM and build the response.
   ArcVmFeatures features;
