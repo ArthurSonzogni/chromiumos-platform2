@@ -13,6 +13,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/threading/thread.h>
@@ -75,7 +76,11 @@ class HPS_impl : public HPS {
   bool WaitForBankReady(uint8_t bank);
   void SendStage1Update();
   void SendApplicationUpdate();
-  bool WriteFile(uint8_t bank, const base::FilePath& source);
+  std::optional<std::vector<uint8_t>> DecompressFile(
+      const base::FilePath& source);
+  bool WriteFile(uint8_t bank,
+                 const base::FilePath& source,
+                 const std::vector<uint8_t>& contents);
   std::unique_ptr<DevInterface> device_;
   base::TimeTicks boot_start_time_;
   std::unique_ptr<WakeLock> wake_lock_;

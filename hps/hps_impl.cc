@@ -4,15 +4,18 @@
 
 // Main HPS class.
 
+#include <algorithm>
 #include <fstream>
 #include <vector>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
+#include <lzma.h>
 
 #include "hps/hps_impl.h"
 #include "hps/hps_reg.h"
@@ -483,7 +486,43 @@ bool HPS_impl::Download(hps::HpsBank bank, const base::FilePath& source) {
                << source;
     return -1;
   }
-  return this->WriteFile(ibank, source);
+  std::optional<std::vector<uint8_t>> contents = this->DecompressFile(source);
+  if (!contents.has_value())
+    return false;
+  return this->WriteFile(ibank, source, contents.value());
+}
+
+std::optional<std::vector<uint8_t>> HPS_impl::DecompressFile(
+    const base::FilePath& source) {
+  std::string compressed_contents;
+  if (!base::ReadFileToString(source, &compressed_contents)) {
+    PLOG(ERROR) << "DecompressFile: \"" << source << "\": Reading failed";
+    return std::nullopt;
+  }
+
+  if (source.FinalExtension() != ".xz") {
+    // Assume it's not actually compressed and return its contents as is.
+    std::vector<uint8_t> uncompressed(compressed_contents.begin(),
+                                      compressed_contents.end());
+    return std::make_optional(std::move(uncompressed));
+  }
+
+  std::vector<uint8_t> decompressed(2 * 1024 * 1024);  // max 2MB decompressed
+  uint64_t memlimit = 20 * 1024 * 1024;  // limit decoder to allocating 20MB
+  size_t in_pos = 0;
+  size_t out_pos = 0;
+  lzma_ret ret = lzma_stream_buffer_decode(
+      &memlimit, /* flags */ 0, /* allocator */ nullptr,
+      reinterpret_cast<const uint8_t*>(compressed_contents.data()), &in_pos,
+      compressed_contents.size(), decompressed.data(), &out_pos,
+      decompressed.size());
+  if (ret != LZMA_OK) {
+    LOG(ERROR) << "DecompressFile: \"" << source
+               << "\": Decompressing failed with error " << ret;
+    return std::nullopt;
+  }
+  decompressed.resize(out_pos);
+  return std::make_optional(std::move(decompressed));
 }
 
 void HPS_impl::SetDownloadObserver(DownloadObserver observer) {
@@ -493,20 +532,9 @@ void HPS_impl::SetDownloadObserver(DownloadObserver observer) {
 /*
  * Write the file to the bank indicated.
  */
-bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
-  base::File file(source,
-                  base::File::Flags::FLAG_OPEN | base::File::Flags::FLAG_READ);
-  if (!file.IsValid()) {
-    PLOG(ERROR) << "WriteFile: \"" << source << "\": Open failed: "
-                << base::File::ErrorToString(file.error_details());
-    return false;
-  }
-  uint64_t bytes = 0;
-  int64_t total_bytes = file.GetLength();
-  if (total_bytes < 0) {
-    PLOG(ERROR) << "WriteFile: \"" << source << "\" GetLength failed: ";
-    return false;
-  }
+bool HPS_impl::WriteFile(uint8_t bank,
+                         const base::FilePath& source,
+                         const std::vector<uint8_t>& contents) {
   switch (bank) {
     case static_cast<uint8_t>(HpsBank::kMcuFlash):
       if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kEraseStage1)) {
@@ -528,9 +556,13 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
       // Assume it was already erased by writing HpsBank::kSpiFlash before this.
       break;
   }
-  uint32_t address = 0;
-  int rd;
+  if (!this->WaitForBankReady(bank)) {
+    LOG(ERROR) << "WriteFile: bank " << static_cast<int>(bank)
+               << " not ready after erase";
+    return false;
+  }
   base::ElapsedTimer timer;
+  size_t block_size = this->device_->BlockSizeBytes();
   /*
    * Leave room for a 32 bit address at the start of the block to be written.
    * The address is updated for each block to indicate
@@ -539,41 +571,45 @@ bool HPS_impl::WriteFile(uint8_t bank, const base::FilePath& source) {
    *    4 bytes of address in big endian format
    *    data
    */
-  auto buf = std::make_unique<uint8_t[]>(this->device_->BlockSizeBytes() +
-                                         sizeof(uint32_t));
-
-  do {
-    if (!this->WaitForBankReady(bank)) {
-      LOG(ERROR) << "WriteFile: bank not ready: " << static_cast<int>(bank);
-      return false;
-    }
+  auto buf = std::make_unique<uint8_t[]>(block_size + sizeof(uint32_t));
+  // Iterate over the firmware contents in blocks of *block_size* bytes.
+  auto block_begin = contents.begin();
+  while (block_begin != contents.end()) {
+    // The current block ends after *block_size* bytes,
+    // or at end of *contents* if there are fewer bytes remaining.
+    auto block_end = std::distance(block_begin, contents.end()) >=
+                             static_cast<std::ptrdiff_t>(block_size)
+                         ? block_begin + block_size
+                         : contents.end();
+    // The address is just the offset of the current block from the beginning.
+    uint32_t address =
+        static_cast<uint32_t>(std::distance(contents.begin(), block_begin));
     buf[0] = address >> 24;
     buf[1] = (address >> 16) & 0xff;
     buf[2] = (address >> 8) & 0xff;
     buf[3] = address & 0xff;
-    rd = file.ReadAtCurrentPos(
-        reinterpret_cast<char*>(&buf[sizeof(uint32_t)]),
-        static_cast<int>(this->device_->BlockSizeBytes()));
-    if (rd < 0) {
-      PLOG(ERROR) << "WriteFile: \"" << source << "\" Read failed: ";
+    std::copy(block_begin, block_end, &buf[sizeof(uint32_t)]);
+    size_t length = std::distance(block_begin, block_end) + sizeof(uint32_t);
+    if (!this->device_->Write(I2cMemWrite(bank), &buf[0], length)) {
+      LOG(ERROR) << "WriteFile: device write error. bank: "
+                 << static_cast<int>(bank);
       return false;
     }
-    if (rd > 0) {
-      if (!this->device_->Write(I2cMemWrite(bank), &buf[0],
-                                static_cast<size_t>(rd) + sizeof(uint32_t))) {
-        LOG(ERROR) << "WriteFile: device write error. bank: "
-                   << static_cast<int>(bank);
-        return false;
-      }
-      address += static_cast<uint32_t>(rd);
-      bytes += static_cast<uint64_t>(rd);
-      if (download_observer_) {
-        download_observer_.Run(source, static_cast<uint32_t>(total_bytes),
-                               bytes, timer.Elapsed());
-      }
+    // Wait for the bank to become ready, indicating that the previous write has
+    // finished.
+    if (!this->WaitForBankReady(bank)) {
+      LOG(ERROR) << "WriteFile: bank " << static_cast<int>(bank)
+                 << " not ready after write";
+      return false;
     }
-  } while (rd > 0);  // A read returning 0 indicates EOF.
-  VLOG(1) << "Wrote " << bytes << " bytes from " << source << " in "
+    if (download_observer_) {
+      download_observer_.Run(source, static_cast<uint32_t>(contents.size()),
+                             std::distance(contents.begin(), block_end),
+                             timer.Elapsed());
+    }
+    block_begin = block_end;
+  }
+  VLOG(1) << "Wrote " << contents.size() << " bytes from " << source << " in "
           << timer.Elapsed().InMilliseconds() << "ms";
   return true;
 }

@@ -110,6 +110,7 @@ static_library("hpsdlib") {
 pkg_config("hpslib_config") {
   pkg_deps = [
     "libchrome",
+    "liblzma",
     "libmetrics",
     "libusb-1.0",
   ]
