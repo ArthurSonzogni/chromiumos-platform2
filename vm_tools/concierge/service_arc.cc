@@ -40,13 +40,14 @@ constexpr char kArcvmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm-vcpus";
 bool IsValidDemoImagePath(const base::FilePath& path) {
   // A valid demo image path looks like:
   //   /run/imageloader/demo-mode-resources/<version>/android_demo_apps.squash
+  //   <version> part looks like 0.12.34.56 ("[0-9]+(.[0-9]+){0,3}" in regex).
   std::vector<std::string> components;
   path.GetComponents(&components);
-  // TODO(hashimoto): Replace components[4] != ".." with a more strict check.
-  // b/219677829
   return components.size() == 6 && components[0] == "/" &&
          components[1] == "run" && components[2] == "imageloader" &&
-         components[3] == "demo-mode-resources" && components[4] != ".." &&
+         components[3] == "demo-mode-resources" &&
+         base::ContainsOnlyChars(components[4], "0123456789.") &&
+         !base::StartsWith(components[4], ".") &&
          components[5] == "android_demo_apps.squash";
 }
 
