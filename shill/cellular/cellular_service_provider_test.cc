@@ -28,6 +28,7 @@ using testing::Return;
 namespace shill {
 
 namespace {
+
 const char kTestDeviceName[] = "usb0";
 const char kTestDeviceAddress[] = "000102030405";
 const int kTestInterfaceIndex = 1;
@@ -36,6 +37,14 @@ const RpcIdentifier kDBusPath("/org/freedesktop/ModemManager1/Modem/0");
 // EID must be 32 chars
 const char kEid1[] = "eid1_678901234567890123456789012";
 const char kEid2[] = "eid2_678901234567890123456789012";
+
+CellularService* AsCellularService(ServiceRefPtr service) {
+  if (service->technology() != Technology::kCellular) {
+    return nullptr;
+  }
+  return static_cast<CellularService*>(service.get());
+}
+
 }  // namespace
 
 class CellularServiceProviderTest : public testing::Test {
@@ -114,6 +123,7 @@ class CellularServiceProviderTest : public testing::Test {
   }
 
   CellularServiceProvider* provider() { return provider_.get(); }
+  ProfileRefPtr profile() { return profile_; }
 
  private:
   EventDispatcherForTest dispatcher_;
@@ -338,6 +348,141 @@ TEST_F(CellularServiceProviderTest, OnServiceUnloaded) {
     }
   }
   EXPECT_EQ(1u, GetProviderServices().size());
+}
+
+TEST_F(CellularServiceProviderTest, CreateTemporaryService) {
+  KeyValueStore args;
+
+  args.Set(CellularService::kStorageIccid, std::string("iccid1"));
+
+  Error error;
+  ServiceRefPtr service = provider()->CreateTemporaryService(args, &error);
+
+  ASSERT_TRUE(service);
+  ASSERT_TRUE(error.IsSuccess());
+  EXPECT_EQ("iccid1", AsCellularService(service)->iccid());
+}
+
+TEST_F(CellularServiceProviderTest, CreateTemporaryServiceNoIccid) {
+  KeyValueStore args;
+
+  args.Set(CellularService::kStorageImsi, std::string("imsi1"));
+
+  Error error;
+  ServiceRefPtr service = provider()->CreateTemporaryService(args, &error);
+
+  ASSERT_FALSE(service);
+  ASSERT_FALSE(error.IsSuccess());
+}
+
+TEST_F(CellularServiceProviderTest, CreateTemporaryServiceWithImsi) {
+  KeyValueStore args;
+
+  args.Set(CellularService::kStorageIccid, std::string("iccid1"));
+  args.Set(CellularService::kStorageImsi, std::string("imsi1"));
+
+  Error error;
+  ServiceRefPtr service = provider()->CreateTemporaryService(args, &error);
+
+  ASSERT_TRUE(service);
+  ASSERT_TRUE(error.IsSuccess());
+
+  CellularService* cellular_service = AsCellularService(service);
+  EXPECT_EQ("iccid1", cellular_service->iccid());
+  EXPECT_EQ("imsi1", cellular_service->imsi());
+}
+
+TEST_F(CellularServiceProviderTest, CreateTemporaryServiceWithSimCardId) {
+  KeyValueStore args;
+
+  args.Set(CellularService::kStorageIccid, std::string("iccid1"));
+  args.Set(CellularService::kStorageSimCardId, std::string("iccid1"));
+
+  Error error;
+  ServiceRefPtr service = provider()->CreateTemporaryService(args, &error);
+
+  ASSERT_TRUE(service);
+  ASSERT_TRUE(error.IsSuccess());
+
+  // SIM card ID is the ICCID, so it shouldn't set any other identifiers.
+  CellularService* cellular_service = AsCellularService(service);
+  EXPECT_EQ("iccid1", cellular_service->iccid());
+  EXPECT_EQ("", cellular_service->imsi());
+  EXPECT_EQ("", cellular_service->eid());
+}
+
+TEST_F(CellularServiceProviderTest, CreateTemporaryServiceWithEid) {
+  KeyValueStore args;
+
+  args.Set(CellularService::kStorageIccid, std::string("iccid1"));
+  args.Set(CellularService::kStorageSimCardId, std::string(kEid1));
+
+  Error error;
+  ServiceRefPtr service = provider()->CreateTemporaryService(args, &error);
+
+  ASSERT_TRUE(service);
+  ASSERT_TRUE(error.IsSuccess());
+
+  // SIM card ID is not the ICCID, and it looks like an EID, so we assume
+  // it is the EID.
+  CellularService* cellular_service = AsCellularService(service);
+  EXPECT_EQ("iccid1", cellular_service->iccid());
+  EXPECT_EQ("", cellular_service->imsi());
+  EXPECT_EQ(kEid1, cellular_service->eid());
+}
+
+TEST_F(CellularServiceProviderTest, CreateTemporaryServiceWithUnusedSimCardId) {
+  KeyValueStore args;
+
+  args.Set(CellularService::kStorageIccid, std::string("iccid1"));
+  args.Set(CellularService::kStorageSimCardId, std::string("sim_card_id"));
+
+  Error error;
+  ServiceRefPtr service = provider()->CreateTemporaryService(args, &error);
+
+  ASSERT_TRUE(service);
+  ASSERT_TRUE(error.IsSuccess());
+
+  // SIM card ID is neither the ICCID nor does it look like an EID. So we don't
+  // use it.
+  CellularService* cellular_service = AsCellularService(service);
+  EXPECT_EQ("iccid1", cellular_service->iccid());
+  EXPECT_EQ("", cellular_service->imsi());
+  EXPECT_EQ("", cellular_service->eid());
+}
+
+TEST_F(CellularServiceProviderTest, CreateTemporaryServiceFromProfile) {
+  CellularRefPtr device = CreateDevice("imsi1", "iccid1");
+  std::string identifier = device->GetStorageIdentifier();
+
+  SetupCellularStore(identifier, "imsi1", "iccid1", "iccid1");
+
+  // Ensure that the service is loaded from storage.
+  Error error;
+  ServiceRefPtr service = provider()->CreateTemporaryServiceFromProfile(
+      profile(), identifier, &error);
+
+  ASSERT_TRUE(service);
+  ASSERT_TRUE(error.IsSuccess());
+
+  CellularService* cellular_service = AsCellularService(service);
+  EXPECT_EQ("iccid1", cellular_service->iccid());
+  EXPECT_EQ("imsi1", cellular_service->imsi());
+}
+
+TEST_F(CellularServiceProviderTest, CreateTemporaryServiceFromProfileNoIccid) {
+  CellularRefPtr device = CreateDevice("imsi1", "iccid1");
+  std::string identifier = device->GetStorageIdentifier();
+
+  SetupCellularStore(identifier, "imsi1", "", "");
+
+  // Ensure that the service is loaded from storage.
+  Error error;
+  ServiceRefPtr service = provider()->CreateTemporaryServiceFromProfile(
+      profile(), identifier, &error);
+
+  ASSERT_FALSE(service);
+  ASSERT_FALSE(error.IsSuccess());
 }
 
 }  // namespace shill
