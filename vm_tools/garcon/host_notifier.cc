@@ -314,6 +314,30 @@ bool HostNotifier::ReleaseSpace(
   return true;
 }
 
+bool HostNotifier::ReportMetrics(
+    vm_tools::container::ReportMetricsRequest request,
+    vm_tools::container::ReportMetricsResponse* response) {
+  std::string host_ip = GetHostIp();
+  std::string token = GetSecurityToken();
+  if (token.empty() || host_ip.empty()) {
+    return false;
+  }
+  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
+  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
+      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
+                                             vm_tools::kGarconPort),
+                          grpc::InsecureChannelCredentials()));
+
+  grpc::ClientContext ctx;
+  request.set_token(token);
+  grpc::Status status = stub->ReportMetrics(&ctx, request, response);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to report metrics: " << status.error_message();
+    return false;
+  }
+  return true;
+}
+
 HostNotifier::HostNotifier(base::OnceClosure shutdown_closure)
     : update_app_list_posted_(false),
       send_app_list_to_host_in_progress_(false),

@@ -213,6 +213,7 @@ static_library("libcicerone") {
     "../cicerone/container_listener_impl.cc",
     "../cicerone/crash_listener_impl.cc",
     "../cicerone/grpc_util.cc",
+    "../cicerone/guest_metrics.cc",
     "../cicerone/service.cc",
     "../cicerone/shill_client.cc",
     "../cicerone/tremplin_listener_impl.cc",
@@ -225,6 +226,7 @@ static_library("libcicerone") {
     "libmetrics",
     "libshill-client",
     "protobuf",
+    "re2",
     "system_api",
     "vm_protos",
   ]

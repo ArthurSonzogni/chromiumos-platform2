@@ -5,7 +5,9 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <grpcpp/impl/call.h>
@@ -14,6 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <vm_applications/proto_bindings/apps.pb.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
+#include <vm_protos/proto_bindings/container_host.pb.h>
 
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/dbus_message_testing_helper.h"
@@ -843,6 +846,125 @@ TEST(CointainerListenerImplTest,
   EXPECT_EQ(dbus_result.status(),
             ApplyAnsiblePlaybookProgressSignal::IN_PROGRESS);
   EXPECT_EQ(dbus_result.status_string(0), kStatusString);
+}
+
+TEST(ContainerListenerImplTest, ValidReportMetricsCallShouldAccumulateMetrics) {
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
+  test_framework.SetUpDefaultVmAndContainer();
+  test_framework.ExpectNoDBusMessages();
+
+  // Fake an RPC from the guest containing two metrics.
+  vm_tools::container::ReportMetricsRequest request;
+  vm_tools::container::ReportMetricsResponse response;
+
+  request.set_token(ServiceTestingHelper::kDefaultContainerToken);
+  vm_tools::container::Metric* m = request.add_metric();
+  m->set_name("borealis-swap-kb-written");
+  m->set_value(123456);
+  m = request.add_metric();
+  m->set_name("borealis-disk-kb-read");
+  m->set_value(654321);
+
+  grpc::ServerContext ctx;
+  grpc::Status status =
+      test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
+          &ctx, &request, &response);
+  ASSERT_TRUE(status.ok()) << status.error_message();
+
+  // Force a call to GuestMetrics::ReportDailyMetrics, which should report all
+  // four disk metrics to UMA.  The two which received data from the fake RPC
+  // above should contain the reported data, and the other two should be zero.
+  EXPECT_CALL(*test_framework.GetMetricsLibraryMock(), SendToUMA(_, _, _, _, _))
+      .Times(4)
+      .WillRepeatedly([](const std::string& name, int sample, int min, int max,
+                         int nbuckets) {
+        if (name == "Borealis.Disk.SwapWritesDaily") {
+          EXPECT_EQ(sample, 123456);
+        } else if (name == "Borealis.Disk.StatefulReadsDaily") {
+          EXPECT_EQ(sample, 654321);
+        } else {
+          // Borealis.Disk.{SwapReads,StatefulWrites}Daily
+          EXPECT_EQ(sample, 0);
+        }
+        return true;
+      });
+  test_framework.GetGuestMetrics()->ReportMetricsImmediatelyForTesting();
+}
+
+TEST(ContainerListenerImplTest, ReportMetricsCallWithTooManyMetricsShouldFail) {
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
+  test_framework.SetUpDefaultVmAndContainer();
+  test_framework.ExpectNoDBusMessages();
+
+  vm_tools::container::ReportMetricsRequest request;
+  vm_tools::container::ReportMetricsResponse response;
+
+  request.set_token(ServiceTestingHelper::kDefaultContainerToken);
+  for (int i = 0; i < 20; ++i) {
+    vm_tools::container::Metric* m = request.add_metric();
+    m->set_name("a-fake-metric-whose-name-will-be-ignored");
+    m->set_value(123456);
+  }
+
+  grpc::ServerContext ctx;
+  grpc::Status status =
+      test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
+          &ctx, &request, &response);
+  ASSERT_FALSE(status.ok()) << status.error_message();
+}
+
+TEST(ContainerListenerImplTest, ReportMetricsCallWithBadMetricNameShouldFail) {
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
+  test_framework.SetUpDefaultVmAndContainer();
+  test_framework.ExpectNoDBusMessages();
+
+  vm_tools::container::ReportMetricsRequest request;
+  vm_tools::container::ReportMetricsResponse response;
+
+  request.set_token(ServiceTestingHelper::kDefaultContainerToken);
+  vm_tools::container::Metric* m = request.add_metric();
+  m->set_name("This name contains forbidden characters!");
+  m->set_value(123456);
+
+  grpc::ServerContext ctx;
+  grpc::Status status =
+      test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
+          &ctx, &request, &response);
+  ASSERT_FALSE(status.ok()) << status.error_message();
+}
+
+TEST(ContainerListenerImplTest, ReportMetricsCallsShouldBeRateLimited) {
+  ServiceTestingHelper test_framework(ServiceTestingHelper::NORMAL_MOCKS);
+  test_framework.SetUpDefaultVmAndContainer();
+  test_framework.ExpectNoDBusMessages();
+
+  vm_tools::container::ReportMetricsRequest request;
+  vm_tools::container::ReportMetricsResponse response;
+
+  request.set_token(ServiceTestingHelper::kDefaultContainerToken);
+  vm_tools::container::Metric* m = request.add_metric();
+  m->set_name("borealis-swap-kb-written");
+  m->set_value(123456);
+
+  grpc::ServerContext ctx;
+  // First call should succeed...
+  grpc::Status status =
+      test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
+          &ctx, &request, &response);
+  EXPECT_TRUE(status.ok()) << status.error_message();
+  EXPECT_EQ(response.error(), 0);
+  // Second call should succeed...
+  status =
+      test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
+          &ctx, &request, &response);
+  EXPECT_TRUE(status.ok()) << status.error_message();
+  EXPECT_EQ(response.error(), 0);
+  // Third call should hit the rate limit and fail.
+  status =
+      test_framework.get_service().GetContainerListenerImpl()->ReportMetrics(
+          &ctx, &request, &response);
+  EXPECT_TRUE(status.ok()) << status.error_message();
+  EXPECT_NE(response.error(), 0);
 }
 
 }  // namespace
