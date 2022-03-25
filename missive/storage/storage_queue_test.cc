@@ -350,8 +350,7 @@ class StorageQueueTest
         : uploader_id_(next_uploader_id.fetch_add(1)),
           last_record_digest_map_(&self->last_record_digest_map_),
           mock_upload_(&self->mock_upload_),
-          sequence_bound_upload_(self->main_thread_task_runner_,
-                                 &self->mock_upload_) {
+          sequence_bound_upload_(self->main_task_runner_, &self->mock_upload_) {
       DETACH_FROM_SEQUENCE(test_uploader_checker_);
     }
 
@@ -586,7 +585,7 @@ class StorageQueueTest
   void AsyncStartMockUploader(
       UploaderInterface::UploadReason reason,
       UploaderInterface::UploaderInterfaceResultCb start_uploader_cb) {
-    main_thread_task_runner_->PostTask(
+    main_task_runner_->PostTask(
         FROM_HERE,
         base::BindOnce(
             [](UploaderInterface::UploadReason reason,
@@ -645,9 +644,9 @@ class StorageQueueTest
   std::string dm_token_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-  // Single task runner where all EXPECTs will happen - main thread.
-  const scoped_refptr<base::SingleThreadTaskRunner> main_thread_task_runner_{
-      base::ThreadTaskRunnerHandle::Get()};
+  // Sequenced task runner where all EXPECTs will happen.
+  const scoped_refptr<base::SequencedTaskRunner> main_task_runner_{
+      base::SequencedTaskRunnerHandle::Get()};
 
   test::ScopedEncryptionFeature encryption_feature_{/*enable=*/true};
   test::ScopedCompressionFeature compression_feature_{/*enable=*/true};
@@ -835,7 +834,7 @@ TEST_P(
 
   ResetTestStorageQueue();
 
-  // Delete all metadata files.
+  // Delete the last metadata file.
   {  // scoping this block so that dir_enum is not used later.
     const auto last_metadata_file_pattern = base::StrCat({METADATA_NAME, ".2"});
     base::FileEnumerator dir_enum(options.directory(),
