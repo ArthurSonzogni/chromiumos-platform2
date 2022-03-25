@@ -781,7 +781,8 @@ bool KeyFileStore::PKCS11SetString(const std::string& group,
                                    const std::string& key,
                                    const std::string& value) {
   if (!TryGetPKCS11SlotID()) {
-    LOG(ERROR) << "Store does not have a PKCS#11 slot associated.";
+    LOG(WARNING) << __func__
+                 << ": store does not have a PKCS#11 slot associated.";
     return false;
   }
   Pkcs11DataStore pkcs11_store;
@@ -794,7 +795,8 @@ bool KeyFileStore::PKCS11GetString(const std::string& group,
                                    const std::string& key,
                                    std::string* value) const {
   if (!TryGetPKCS11SlotID()) {
-    LOG(ERROR) << "Store does not have a PKCS#11 slot associated.";
+    LOG(WARNING) << __func__
+                 << ": store does not have a PKCS#11 slot associated.";
     return false;
   }
   Pkcs11DataStore pkcs11_store;
@@ -805,7 +807,8 @@ bool KeyFileStore::PKCS11GetString(const std::string& group,
 
 bool KeyFileStore::PKCS11DeleteGroup(const std::string& group) {
   if (!TryGetPKCS11SlotID()) {
-    LOG(ERROR) << "Store does not have a PKCS#11 slot associated.";
+    LOG(WARNING) << __func__
+                 << ": store does not have a PKCS#11 slot associated.";
     return false;
   }
   Pkcs11DataStore pkcs11_store;
@@ -820,7 +823,6 @@ bool KeyFileStore::TryGetPKCS11SlotID() const {
   }
   Pkcs11DataStore pkcs11_store;
   if (!pkcs11_store.GetUserSlot(user_hash_, &slot_id_)) {
-    LOG(ERROR) << "Failed to get slot ID.";
     return false;
   }
   return true;
