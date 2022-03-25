@@ -880,7 +880,7 @@ class ClobberStateMock : public ClobberState {
 
  private:
   std::unordered_map<std::string, struct stat> result_map_;
-  uint64_t stateful_partition_size_ = 5UL * 1024 * 1024 * 1024;
+  uint64_t stateful_partition_size_ = 5ULL * 1024 * 1024 * 1024;
   bool secure_erase_supported_;
 };
 
