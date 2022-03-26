@@ -213,14 +213,11 @@ class ArcMounterImpl : public ArcMounter {
              const char* filesystem_type,
              unsigned long mount_flags,  // NOLINT(runtime/int)
              const char* data) override {
-    std::string source_resolved;
-    if (!source.empty() && source[0] == '/')
-      source_resolved = Realpath(base::FilePath(source)).value();
-    else
-      source_resolved = source;  // not a path (e.g. "tmpfs")
-
-    if (mount(source_resolved.c_str(), Realpath(target).value().c_str(),
-              filesystem_type, mount_flags, data) != 0) {
+    // The mount call would fail when the |target| is a symlink
+    // as we are not calling Realpath() on |target| to prevent
+    // mounting to unintended locations.
+    if (mount(source.c_str(), target.value().c_str(), filesystem_type,
+              mount_flags, data) != 0) {
       PLOG(ERROR) << "Failed to mount " << source << " to " << target.value();
       return false;
     }
@@ -249,16 +246,6 @@ class ArcMounterImpl : public ArcMounter {
       LOG(INFO) << "LoopMountInternal failed with EBUSY. Retrying...";
     }
     return false;
-  }
-
-  bool BindMountWithNoPathResolution(const base::FilePath& old_path,
-                                     const base::FilePath& new_path) override {
-    if (mount(old_path.value().c_str(), new_path.value().c_str(), nullptr,
-              MS_BIND, nullptr) != 0) {
-      PLOG(ERROR) << "Failed to mount " << old_path << " to " << new_path;
-      return false;
-    }
-    return true;
   }
 
   bool BindMount(const base::FilePath& old_path,
