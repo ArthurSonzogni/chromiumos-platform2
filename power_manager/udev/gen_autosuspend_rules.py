@@ -275,6 +275,21 @@ PCI_IDS += [
     '8086:9d4e',
     # wifi 7265 (nami)
     '8086:095b',
+    # Graphics (brya)
+    '8086:46a8',
+    # Core 12G GNA (brya)
+    '8086:464f',
+    # PCH Shared SRAM (brya)
+    '8086:51ef',
+    # PCH eSPI (brya)
+    '8086:5182',
+    '8086:4601',
+    # Core 12G DTT (brya)
+    '8086:461d',
+    # Wifi (Brya)
+    '8086:51f0',
+    # PCH SPI (brya)
+    '8086:51a4',
 ]
 
 # Samsung
@@ -283,6 +298,8 @@ PCI_IDS += [
     '144d:a806',
     # NVMe MZVLB256HAHQ
     '144d:a808',
+    # NVMe MZ9LQ256HBJD-00BH1 (brya)
+    '144d:a809',
 ]
 
 # Lite-on
@@ -301,6 +318,12 @@ PCI_IDS += [
 PCI_IDS += [
     # RBUSNS8154P3128GJ3
     '2646:5008',
+]
+
+# Genesys Logic
+PCI_IDS += [
+    # SD Host Controller (brya)
+    '17a0:9755',
 ]
 
 # Do not edit below this line. #################################################
