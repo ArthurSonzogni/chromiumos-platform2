@@ -22,7 +22,10 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libchrome",
   ]
-  libs = [ "hwsec-foundation" ]
+  libs = [
+    "hwsec-foundation",
+    "tpm_manager",
+  ]
   defines = [
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}",
@@ -45,6 +48,8 @@ source_set("error_library") {
   sources = [
     "error/elliptic_curve_error.cc",
     "error/tpm_error.cc",
+    "error/tpm_manager_error.cc",
+    "error/tpm_nvram_error.cc",
     "error/tpm_retry_handler.cc",
   ]
   deps = []
@@ -136,7 +141,11 @@ if (use.test) {
   }
 
   executable("hwsec_testrunner") {
-    sources = [ "error/tpm_error_test.cc" ]
+    sources = [
+      "error/tpm_error_test.cc",
+      "error/tpm_manager_error_test.cc",
+      "error/tpm_nvram_error_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
