@@ -24,6 +24,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
@@ -34,7 +35,6 @@ using brillo::SecureBlob;
 using hwsec::TPMErrorBase;
 using hwsec_foundation::SecureBlobToHex;
 using hwsec_foundation::Sha256;
-using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 namespace {
@@ -155,7 +155,7 @@ bool Lockbox::Store(const brillo::Blob& blob, LockboxError* error) {
   // Grab key material from the TPM.
   brillo::SecureBlob key_material(contents->key_material_size());
   if (IsKeyMaterialInLockbox()) {
-    if (StatusChain<TPMErrorBase> err =
+    if (hwsec::Status err =
             tpm_->GetRandomDataSecureBlob(key_material.size(), &key_material)) {
       LOG(ERROR) << "Failed to get key material from the TPM: " << err;
       *error = LockboxError::kTpmError;

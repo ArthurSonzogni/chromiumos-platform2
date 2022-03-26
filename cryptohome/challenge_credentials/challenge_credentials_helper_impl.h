@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread_checker.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
@@ -94,7 +95,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
       bool locked_to_single_user,
       int attempt_number,
       DecryptCallback original_callback,
-      hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> retry_action,
+      hwsec::Status retry_action,
       std::unique_ptr<brillo::SecureBlob> passkey);
 
   // Wrapper for the completion callback of VerifyKey(). Cleans up resources

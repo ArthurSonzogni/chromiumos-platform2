@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
@@ -16,7 +17,6 @@
 #include "cryptohome/vault_keyset.pb.h"
 
 using hwsec::TPMErrorBase;
-using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -24,8 +24,7 @@ TpmAuthBlockUtils::TpmAuthBlockUtils(Tpm* tpm,
                                      CryptohomeKeyLoader* cryptohome_key_loader)
     : tpm_(tpm), cryptohome_key_loader_(cryptohome_key_loader) {}
 
-CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(
-    const StatusChain<hwsec::TPMErrorBase>& err) {
+CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(const hwsec::Status& err) {
   hwsec::TPMRetryAction action = err->ToTPMRetryAction();
   switch (action) {
     case hwsec::TPMRetryAction::kCommunication:
@@ -42,8 +41,7 @@ CryptoError TpmAuthBlockUtils::TPMErrorToCrypto(
   }
 }
 
-bool TpmAuthBlockUtils::TPMErrorIsRetriable(
-    const StatusChain<hwsec::TPMErrorBase>& err) {
+bool TpmAuthBlockUtils::TPMErrorIsRetriable(const hwsec::Status& err) {
   hwsec::TPMRetryAction action = err->ToTPMRetryAction();
   return action == hwsec::TPMRetryAction::kLater ||
          action == hwsec::TPMRetryAction::kCommunication;
@@ -52,7 +50,7 @@ bool TpmAuthBlockUtils::TPMErrorIsRetriable(
 CryptoError TpmAuthBlockUtils::IsTPMPubkeyHash(
     const brillo::SecureBlob& hash) const {
   brillo::SecureBlob pub_key_hash;
-  if (StatusChain<TPMErrorBase> err = tpm_->GetPublicKeyHash(
+  if (hwsec::Status err = tpm_->GetPublicKeyHash(
           cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash)) {
     if (TPMErrorIsRetriable(err)) {
       if (!cryptohome_key_loader_->ReloadCryptohomeKey()) {

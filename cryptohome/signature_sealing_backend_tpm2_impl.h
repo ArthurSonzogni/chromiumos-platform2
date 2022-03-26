@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/macros.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/signature_sealing_backend.h"
 
@@ -34,7 +35,7 @@ class SignatureSealingBackendTpm2Impl final : public SignatureSealingBackend {
   ~SignatureSealingBackendTpm2Impl() override;
 
   // SignatureSealingBackend:
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> CreateSealedSecret(
+  hwsec::Status CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::map<uint32_t, brillo::Blob>& default_pcr_map,
@@ -43,8 +44,7 @@ class SignatureSealingBackendTpm2Impl final : public SignatureSealingBackend {
       const brillo::Blob& /* delegate_secret */,
       brillo::SecureBlob* secret_value,
       structure::SignatureSealedData* sealed_secret_data) override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  CreateUnsealingSession(
+  hwsec::Status CreateUnsealingSession(
       const structure::SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,

@@ -15,6 +15,7 @@
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/error/tpm1_error.h>
 #include <libhwsec/error/tpm_retry_handler.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/ecdh_hkdf.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -36,7 +37,6 @@ using hwsec_foundation::CreateBigNumContext;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::EllipticCurve;
 using hwsec_foundation::ScopedBN_CTX;
-using hwsec_foundation::status::StatusChain;
 
 namespace {
 // Size of the auth_value blob to be randomly generated.
@@ -116,10 +116,9 @@ bool RecoveryCryptoTpm1BackendImpl::EncryptEccPrivateKey(
   // and if auth_value is provided, one's own private key will be sealed.
   if (!auth_value.has_value()) {
     *encrypted_own_priv_key = own_priv_key;
-  } else if (StatusChain<TPMErrorBase> err =
-                 tpm_impl_->SealToPcrWithAuthorization(
-                     own_priv_key, auth_value.value(), /*pcr_map=*/{{}},
-                     encrypted_own_priv_key)) {
+  } else if (hwsec::Status err = tpm_impl_->SealToPcrWithAuthorization(
+                 own_priv_key, auth_value.value(), /*pcr_map=*/{{}},
+                 encrypted_own_priv_key)) {
     LOG(ERROR) << "Error sealing the blob: " << err;
     return false;
   }
@@ -144,7 +143,7 @@ RecoveryCryptoTpm1BackendImpl::GenerateDiffieHellmanSharedSecret(
   // and if auth_value is provided, one's own private key will be unsealed.
   if (!auth_value.has_value()) {
     unencrypted_own_priv_key = encrypted_own_priv_key;
-  } else if (StatusChain<TPMErrorBase> err = tpm_impl_->UnsealWithAuthorization(
+  } else if (hwsec::Status err = tpm_impl_->UnsealWithAuthorization(
                  /*preload_handle=*/std::nullopt, encrypted_own_priv_key,
                  auth_value.value(),
                  /* pcr_map=*/{}, &unencrypted_own_priv_key)) {

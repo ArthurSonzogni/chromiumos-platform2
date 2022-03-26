@@ -16,6 +16,7 @@
 #include <base/macros.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
+#include <libhwsec/status.h>
 #include <tpm_manager/client/tpm_manager_utility.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <trunks/error_codes.h>
@@ -66,42 +67,37 @@ class Tpm2Impl : public Tpm {
 
   // Tpm methods
   TpmVersion GetVersion() override { return TpmVersion::TPM_2_0; }
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> EncryptBlob(
-      TpmKeyHandle key_handle,
+  hwsec::Status EncryptBlob(TpmKeyHandle key_handle,
+                            const brillo::SecureBlob& plaintext,
+                            const brillo::SecureBlob& key,
+                            brillo::SecureBlob* ciphertext) override;
+  hwsec::Status DecryptBlob(TpmKeyHandle key_handle,
+                            const brillo::SecureBlob& ciphertext,
+                            const brillo::SecureBlob& key,
+                            brillo::SecureBlob* plaintext) override;
+  hwsec::Status SealToPcrWithAuthorization(
       const brillo::SecureBlob& plaintext,
-      const brillo::SecureBlob& key,
-      brillo::SecureBlob* ciphertext) override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> DecryptBlob(
-      TpmKeyHandle key_handle,
-      const brillo::SecureBlob& ciphertext,
-      const brillo::SecureBlob& key,
-      brillo::SecureBlob* plaintext) override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  SealToPcrWithAuthorization(const brillo::SecureBlob& plaintext,
-                             const brillo::SecureBlob& auth_value,
-                             const std::map<uint32_t, brillo::Blob>& pcr_map,
-                             brillo::SecureBlob* sealed_data) override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> PreloadSealedData(
+      const brillo::SecureBlob& auth_value,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
+      brillo::SecureBlob* sealed_data) override;
+  hwsec::Status PreloadSealedData(const brillo::SecureBlob& sealed_data,
+                                  ScopedKeyHandle* preload_handle) override;
+  hwsec::Status UnsealWithAuthorization(
+      std::optional<TpmKeyHandle> preload_handle,
       const brillo::SecureBlob& sealed_data,
-      ScopedKeyHandle* preload_handle) override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  UnsealWithAuthorization(std::optional<TpmKeyHandle> preload_handle,
-                          const brillo::SecureBlob& sealed_data,
-                          const brillo::SecureBlob& auth_value,
-                          const std::map<uint32_t, brillo::Blob>& pcr_map,
-                          brillo::SecureBlob* plaintext) override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> GetPublicKeyHash(
-      TpmKeyHandle key_handle, brillo::SecureBlob* hash) override;
+      const brillo::SecureBlob& auth_value,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
+      brillo::SecureBlob* plaintext) override;
+  hwsec::Status GetPublicKeyHash(TpmKeyHandle key_handle,
+                                 brillo::SecureBlob* hash) override;
   bool IsEnabled() override;
   bool IsOwned() override;
   bool IsOwnerPasswordPresent() override;
   bool HasResetLockPermissions() override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> GetRandomDataBlob(
-      size_t length, brillo::Blob* data) override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  GetRandomDataSecureBlob(size_t length, brillo::SecureBlob* data) override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> GetAlertsData(
-      Tpm::AlertsData* alerts) override;
+  hwsec::Status GetRandomDataBlob(size_t length, brillo::Blob* data) override;
+  hwsec::Status GetRandomDataSecureBlob(size_t length,
+                                        brillo::SecureBlob* data) override;
+  hwsec::Status GetAlertsData(Tpm::AlertsData* alerts) override;
   bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override;
   bool DestroyNvram(uint32_t index) override;
   bool WriteNvram(uint32_t index, const brillo::SecureBlob& blob) override;
@@ -134,16 +130,14 @@ class Tpm2Impl : public Tpm {
                   const brillo::SecureBlob& prime_factor,
                   brillo::SecureBlob* wrapped_key) override;
   bool CreateWrappedEccKey(brillo::SecureBlob* wrapped_key) override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> LoadWrappedKey(
-      const brillo::SecureBlob& wrapped_key,
-      ScopedKeyHandle* key_handle) override;
+  hwsec::Status LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
+                               ScopedKeyHandle* key_handle) override;
   bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
                                brillo::SecureBlob* key_blob) override;
   void CloseHandle(TpmKeyHandle key_handle) override;
   void GetStatus(std::optional<TpmKeyHandle> key,
                  TpmStatusInfo* status) override;
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  IsSrkRocaVulnerable(bool* result) override;
+  hwsec::Status IsSrkRocaVulnerable(bool* result) override;
   bool GetDictionaryAttackInfo(int* counter,
                                int* threshold,
                                bool* lockout,
@@ -179,8 +173,7 @@ class Tpm2Impl : public Tpm {
                              trunks::AuthorizationDelegate* session_delegate,
                              ScopedKeyHandle* key_handle);
 
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  IsDelegateBoundToPcr(bool* result) override;
+  hwsec::Status IsDelegateBoundToPcr(bool* result) override;
   bool DelegateCanResetDACounter() override;
   std::map<uint32_t, brillo::Blob> GetPcrMap(
       const std::string& obfuscated_username,
@@ -189,18 +182,16 @@ class Tpm2Impl : public Tpm {
   // Derives the |auth_value| by decrypting the |pass_blob| using |key_handle|
   // and hashing the result. The key must be a RSA key. The input |pass_blob|
   // must have 256 bytes, the size of cryptohome key modulus.
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> GetAuthValue(
-      std::optional<TpmKeyHandle> key_handle,
-      const brillo::SecureBlob& pass_blob,
-      brillo::SecureBlob* auth_value) override;
+  hwsec::Status GetAuthValue(std::optional<TpmKeyHandle> key_handle,
+                             const brillo::SecureBlob& pass_blob,
+                             brillo::SecureBlob* auth_value) override;
 
   // Derives the |auth_value| by decrypting the |pass_blob| using |key_handle|
   // and hashing the result. The key must be an ECC key. The input |pass_blob|
   // must have 256 bytes, the size of cryptohome key modulus.
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> GetEccAuthValue(
-      std::optional<TpmKeyHandle> key_handle,
-      const brillo::SecureBlob& pass_blob,
-      brillo::SecureBlob* auth_value) override;
+  hwsec::Status GetEccAuthValue(std::optional<TpmKeyHandle> key_handle,
+                                const brillo::SecureBlob& pass_blob,
+                                brillo::SecureBlob* auth_value) override;
 
  private:
   // Initializes |tpm_manager_utility_|; returns |true| iff successful.

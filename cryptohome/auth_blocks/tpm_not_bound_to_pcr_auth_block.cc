@@ -12,6 +12,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
@@ -35,7 +36,6 @@ using hwsec_foundation::kDefaultAesKeySize;
 using hwsec_foundation::kDefaultLegacyPasswordRounds;
 using hwsec_foundation::kTpmDecryptMaxRetries;
 using hwsec_foundation::PasskeyToAesKey;
-using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -135,7 +135,7 @@ CryptoError TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   // encrypted blob in tpm_key, which is stored in the serialized vault
   // keyset.
   for (int i = 0; i < kTpmDecryptMaxRetries; i++) {
-    StatusChain<TPMErrorBase> err =
+    hwsec::Status err =
         tpm_->EncryptBlob(cryptohome_key_loader_->GetCryptohomeKey(),
                           local_blob, aes_skey, &tpm_key);
     if (err == nullptr) {
@@ -161,7 +161,7 @@ CryptoError TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   // detect a TPM clear.  If this fails due to a transient issue, then on next
   // successful login, the vault keyset will be re-saved anyway.
   brillo::SecureBlob pub_key_hash;
-  StatusChain<TPMErrorBase> err = tpm_->GetPublicKeyHash(
+  hwsec::Status err = tpm_->GetPublicKeyHash(
       cryptohome_key_loader_->GetCryptohomeKey(), &pub_key_hash);
   if (err != nullptr) {
     LOG(ERROR) << "Failed to get tpm public key hash: " << err;
@@ -209,7 +209,7 @@ CryptoError TpmNotBoundToPcrAuthBlock::DecryptTpmNotBoundToPcr(
   }
 
   for (int i = 0; i < kTpmDecryptMaxRetries; i++) {
-    StatusChain<TPMErrorBase> err =
+    hwsec::Status err =
         tpm_->DecryptBlob(cryptohome_key_loader_->GetCryptohomeKey(), tpm_key,
                           aes_skey, &local_vault_key);
     if (err == nullptr) {

@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/mock_platform.h"
@@ -18,7 +19,6 @@ using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::error::testing::ReturnError;
-using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::NiceMock;
@@ -44,13 +44,12 @@ class CryptohomeRsaKeyLoaderTest : public ::testing::Test {
   // For TPM-related flags: enabled is always true, other flags are settable.
   bool IsTpmOwned() const { return is_tpm_owned_; }
   void SetIsTpmOwned(bool is_tpm_owned) { is_tpm_owned_ = is_tpm_owned; }
-  StatusChain<TPMErrorBase> GetRandomDataBlob(size_t length,
-                                              brillo::Blob* data) const {
+  hwsec::Status GetRandomDataBlob(size_t length, brillo::Blob* data) const {
     data->resize(length, 0);
     return nullptr;
   }
-  StatusChain<TPMErrorBase> GetRandomDataSecureBlob(
-      size_t length, brillo::SecureBlob* data) const {
+  hwsec::Status GetRandomDataSecureBlob(size_t length,
+                                        brillo::SecureBlob* data) const {
     data->resize(length, 0);
     return nullptr;
   }

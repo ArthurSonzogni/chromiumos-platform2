@@ -14,6 +14,7 @@
 
 #include <brillo/secure_blob.h>
 #include <libhwsec/error/tpm_error.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/signature_sealed_data.pb.h"
 #include "cryptohome/signature_sealing/structures.h"
@@ -51,9 +52,8 @@ class SignatureSealingBackend {
     //                            GetChallengeValue() using the algorithm as
     //                            returned by GetChallengeAlgorithm().
     //   unsealed_value - The unsealed value, if the function returned true.
-    virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> Unseal(
-        const brillo::Blob& signed_challenge_value,
-        brillo::SecureBlob* unsealed_value) = 0;
+    virtual hwsec::Status Unseal(const brillo::Blob& signed_challenge_value,
+                                 brillo::SecureBlob* unsealed_value) = 0;
   };
 
   virtual ~SignatureSealingBackend() = default;
@@ -78,8 +78,7 @@ class SignatureSealingBackend {
   //   delegate_secret - The delegate secret for the delegate blob.
   //   secret_value - The created secret value.
   //   sealed_secret_data - Securely sealed representation of the secret value.
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  CreateSealedSecret(
+  virtual hwsec::Status CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
       const std::map<uint32_t, brillo::Blob>& default_pcr_map,
@@ -106,8 +105,7 @@ class SignatureSealingBackend {
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret for the delegate blob.
   //   locked_to_single_user - Should use extended PCR to unseal or not.
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  CreateUnsealingSession(
+  virtual hwsec::Status CreateUnsealingSession(
       const structure::SignatureSealedData& sealed_secret_data,
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,

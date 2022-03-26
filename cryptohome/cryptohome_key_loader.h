@@ -9,6 +9,7 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/platform.h"
 #include "cryptohome/tpm.h"
@@ -38,8 +39,7 @@ class CryptohomeKeyLoader {
   virtual bool CreateCryptohomeKey(brillo::SecureBlob* wrapped_key) = 0;
   bool SaveCryptohomeKey(const brillo::SecureBlob& wrapped_key);
 
-  hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> LoadCryptohomeKey(
-      ScopedKeyHandle* key_handle);
+  hwsec::Status LoadCryptohomeKey(ScopedKeyHandle* key_handle);
 
   bool LoadOrCreateCryptohomeKey(ScopedKeyHandle* key_handle);
 

@@ -13,6 +13,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/signature_sealing/structures.h"
@@ -24,7 +25,6 @@ using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
-using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -54,7 +54,7 @@ ChallengeCredentialsDecryptOperation::~ChallengeCredentialsDecryptOperation() =
 
 void ChallengeCredentialsDecryptOperation::Start() {
   DCHECK(thread_checker_.CalledOnValidThread());
-  if (StatusChain<TPMErrorBase> err = StartProcessing()) {
+  if (hwsec::Status err = StartProcessing()) {
     Resolve(WrapError<TPMError>(std::move(err),
                                 "Failed to start the decryption operation"),
             nullptr /* passkey */);
@@ -69,8 +69,7 @@ void ChallengeCredentialsDecryptOperation::Abort() {
   // |this| can be already destroyed at this point.
 }
 
-StatusChain<TPMErrorBase>
-ChallengeCredentialsDecryptOperation::StartProcessing() {
+hwsec::Status ChallengeCredentialsDecryptOperation::StartProcessing() {
   if (!signature_sealing_backend_) {
     return CreateError<TPMError>("Signature sealing is disabled",
                                  TPMRetryAction::kNoRetry);
@@ -85,7 +84,7 @@ ChallengeCredentialsDecryptOperation::StartProcessing() {
       keyset_challenge_info_.public_key_spki_der) {
     return CreateError<TPMError>("Wrong public key", TPMRetryAction::kNoRetry);
   }
-  if (StatusChain<TPMErrorBase> err = StartProcessingSalt()) {
+  if (hwsec::Status err = StartProcessingSalt()) {
     return WrapError<TPMError>(std::move(err),
                                "Failed to start processing salt");
   }
@@ -94,8 +93,7 @@ ChallengeCredentialsDecryptOperation::StartProcessing() {
   return StartProcessingSealedSecret();
 }
 
-StatusChain<TPMErrorBase>
-ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
+hwsec::Status ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   if (keyset_challenge_info_.salt.empty()) {
     return CreateError<TPMError>("Missing salt", TPMRetryAction::kNoRetry);
   }
@@ -129,7 +127,7 @@ ChallengeCredentialsDecryptOperation::StartProcessingSalt() {
   return nullptr;
 }
 
-StatusChain<TPMErrorBase>
+hwsec::Status
 ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
   if (public_key_info_.public_key_spki_der.empty()) {
     return CreateError<TPMError>("Missing public key",
@@ -146,12 +144,11 @@ ChallengeCredentialsDecryptOperation::StartProcessingSealedSecret() {
     pcr_set.insert(pcr_index);
   }
 
-  if (StatusChain<TPMErrorBase> err =
-          signature_sealing_backend_->CreateUnsealingSession(
-              keyset_challenge_info_.sealed_secret,
-              public_key_info_.public_key_spki_der, key_sealing_algorithms,
-              pcr_set, delegate_blob_, delegate_secret_, locked_to_single_user_,
-              &unsealing_session_)) {
+  if (hwsec::Status err = signature_sealing_backend_->CreateUnsealingSession(
+          keyset_challenge_info_.sealed_secret,
+          public_key_info_.public_key_spki_der, key_sealing_algorithms, pcr_set,
+          delegate_blob_, delegate_secret_, locked_to_single_user_,
+          &unsealing_session_)) {
     return WrapError<TPMError>(
         std::move(err), "Failed to start unsealing session for the secret");
   }
@@ -190,7 +187,7 @@ void ChallengeCredentialsDecryptOperation::OnUnsealingChallengeResponse(
     return;
   }
   SecureBlob unsealed_secret;
-  if (StatusChain<TPMErrorBase> err =
+  if (hwsec::Status err =
           unsealing_session_->Unseal(*challenge_signature, &unsealed_secret)) {
     // TODO(crbug.com/842791): Determine the retry action based on the type of
     // the error.
@@ -213,8 +210,7 @@ void ChallengeCredentialsDecryptOperation::ProceedIfChallengesDone() {
 }
 
 void ChallengeCredentialsDecryptOperation::Resolve(
-    StatusChain<TPMErrorBase> error,
-    std::unique_ptr<brillo::SecureBlob> passkey) {
+    hwsec::Status error, std::unique_ptr<brillo::SecureBlob> passkey) {
   // Invalidate weak pointers in order to cancel all jobs that are currently
   // waiting, to prevent them from running and consuming resources after our
   // abortion (in case |this| doesn't get destroyed immediately).

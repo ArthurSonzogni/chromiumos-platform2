@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_decrypt_operation.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_generate_new_operation.h"
@@ -24,13 +25,12 @@ using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
-using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
 namespace {
 
-bool IsOperationFailureTransient(const StatusChain<TPMErrorBase>& error) {
+bool IsOperationFailureTransient(const hwsec::Status& error) {
   TPMRetryAction action = error->ToTPMRetryAction();
   return action == TPMRetryAction::kCommunication ||
          action == TPMRetryAction::kLater;
@@ -150,7 +150,7 @@ void ChallengeCredentialsHelperImpl::OnDecryptCompleted(
     bool locked_to_single_user,
     int attempt_number,
     DecryptCallback original_callback,
-    StatusChain<TPMErrorBase> error,
+    hwsec::Status error,
     std::unique_ptr<brillo::SecureBlob> passkey) {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK_EQ(passkey == nullptr, error != nullptr);

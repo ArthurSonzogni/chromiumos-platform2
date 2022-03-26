@@ -22,6 +22,7 @@
 #include <base/synchronization/lock.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/error/tpm_error.h>
+#include <libhwsec/status.h>
 #include <openssl/rsa.h>
 
 namespace cryptohome {
@@ -180,36 +181,34 @@ class Tpm {
   virtual TpmVersion GetVersion() = 0;
 
   // Encrypts a data blob using the provided RSA key. Returns a
-  // StatusChain<hwsec::TPMErrorBase>.
+  // hwsec::Status.
   //
   // Parameters
   //   key_handle - The loaded TPM key handle
   //   plaintext - One RSA message to encrypt
   //   key - AES key to encrypt with
   //   ciphertext (OUT) - Encrypted blob
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  EncryptBlob(TpmKeyHandle key_handle,
-              const brillo::SecureBlob& plaintext,
-              const brillo::SecureBlob& key,
-              brillo::SecureBlob* ciphertext) = 0;
+  virtual hwsec::Status EncryptBlob(TpmKeyHandle key_handle,
+                                    const brillo::SecureBlob& plaintext,
+                                    const brillo::SecureBlob& key,
+                                    brillo::SecureBlob* ciphertext) = 0;
 
   // Decrypts a data blob using the provided RSA key. Returns a
-  // StatusChain<hwsec::TPMErrorBase>.
+  // hwsec::Status.
   //
   // Parameters
   //   key_handle - The loaded TPM key handle
   //   ciphertext - One RSA message to encrypt
   //   key - AES key to encrypt with
   //   plaintext (OUT) - Decrypted blob
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  DecryptBlob(TpmKeyHandle key_handle,
-              const brillo::SecureBlob& ciphertext,
-              const brillo::SecureBlob& key,
-              brillo::SecureBlob* plaintext) = 0;
+  virtual hwsec::Status DecryptBlob(TpmKeyHandle key_handle,
+                                    const brillo::SecureBlob& ciphertext,
+                                    const brillo::SecureBlob& key,
+                                    brillo::SecureBlob* plaintext) = 0;
 
   // Seals a data blob to provided PCR data, while assigning a authorization
   // value derived from provided |auth_value|. Returns a
-  // StatusChain<hwsec::TPMErrorBase>.
+  // hwsec::Status.
   //
   // Parameters
   //   plaintext - The data blob to be sealed.
@@ -217,11 +216,11 @@ class Tpm {
   //   pcr_map - The map of PCR index -> expected value when Unseal will be
   //             used.
   //   sealed_data (OUT) - Sealed blob.
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  SealToPcrWithAuthorization(const brillo::SecureBlob& plaintext,
-                             const brillo::SecureBlob& auth_value,
-                             const std::map<uint32_t, brillo::Blob>& pcr_map,
-                             brillo::SecureBlob* sealed_data) = 0;
+  virtual hwsec::Status SealToPcrWithAuthorization(
+      const brillo::SecureBlob& plaintext,
+      const brillo::SecureBlob& auth_value,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
+      brillo::SecureBlob* sealed_data) = 0;
 
   // Preload the data for unsealing.
   // For TPM2.0, |sealed_data| is the data that needs to be load into the TPM.
@@ -230,9 +229,8 @@ class Tpm {
   // Parameters
   //   sealed_data - The sealed data.
   //   preload_handle (OUT) - A handle to the sealed data loaded into the TPM.
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  PreloadSealedData(const brillo::SecureBlob& sealed_data,
-                    ScopedKeyHandle* preload_handle) = 0;
+  virtual hwsec::Status PreloadSealedData(const brillo::SecureBlob& sealed_data,
+                                          ScopedKeyHandle* preload_handle) = 0;
 
   // Unseal a data blob using the provided |auth_value| to derive the
   // authorization value. Also for TPM2.0, the session used to unseal is not
@@ -241,7 +239,7 @@ class Tpm {
   // auth_value, and we can't afford to add a second operation. This might
   // change in the future if we implement ECC encryption for salted sessions.
   // For TPM1.2 the |preload_handle| are unused. Returns a
-  // hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase> struct.
+  // hwsec::Status struct.
   //
   // Parameters
   //   preload_handle - The handle to the sealed data. (optional)
@@ -251,16 +249,16 @@ class Tpm {
   //             only for TPM 2.0. For TPM 1.2 this parameter is ignored, even
   //             so an empty map can be used.
   //   plaintext (OUT) - Unsealed blob.
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  UnsealWithAuthorization(std::optional<TpmKeyHandle> preload_handle,
-                          const brillo::SecureBlob& sealed_data,
-                          const brillo::SecureBlob& auth_value,
-                          const std::map<uint32_t, brillo::Blob>& pcr_map,
-                          brillo::SecureBlob* plaintext) = 0;
+  virtual hwsec::Status UnsealWithAuthorization(
+      std::optional<TpmKeyHandle> preload_handle,
+      const brillo::SecureBlob& sealed_data,
+      const brillo::SecureBlob& auth_value,
+      const std::map<uint32_t, brillo::Blob>& pcr_map,
+      brillo::SecureBlob* plaintext) = 0;
 
   // Retrieves the sha1sum of the public key component of the RSA key
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  GetPublicKeyHash(TpmKeyHandle key_handle, brillo::SecureBlob* hash) = 0;
+  virtual hwsec::Status GetPublicKeyHash(TpmKeyHandle key_handle,
+                                         brillo::SecureBlob* hash) = 0;
 
   // Returns whether or not the TPM is enabled.  This method call returns a
   // cached result because querying the TPM directly will block if ownership is
@@ -283,8 +281,8 @@ class Tpm {
   // Parameters
   //   length - The number of bytes to get
   //   data (OUT) - The random data from the TPM
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  GetRandomDataBlob(size_t length, brillo::Blob* data) = 0;
+  virtual hwsec::Status GetRandomDataBlob(size_t length,
+                                          brillo::Blob* data) = 0;
 
   // Gets random bytes from the TPM, returns them in a SecureBlob.
   // brillo::SecureBlob intentionally does not inherit from brillo::Blob.
@@ -292,16 +290,15 @@ class Tpm {
   // Parameters
   //   length - The number of bytes to get
   //   data (OUT) - The random data from the TPM
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  GetRandomDataSecureBlob(size_t length, brillo::SecureBlob* data) = 0;
+  virtual hwsec::Status GetRandomDataSecureBlob(size_t length,
+                                                brillo::SecureBlob* data) = 0;
 
   // Gets alerts data the TPM
   //
   // Parameters
   //   alerts (OUT) - Struct that contains TPM alerts information
   // Returns true is hardware supports Alerts reporting, false otherwise
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  GetAlertsData(Tpm::AlertsData* alerts) = 0;
+  virtual hwsec::Status GetAlertsData(Tpm::AlertsData* alerts) = 0;
 
   // Creates a NVRAM space in the TPM
   //
@@ -471,9 +468,8 @@ class Tpm {
   // Parameters
   //   wrapped_key - The blob (as produced by WrapRsaKey).
   //   key_handle (OUT) - A handle to the key loaded into the TPM.
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
-                 ScopedKeyHandle* key_handle) = 0;
+  virtual hwsec::Status LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
+                                       ScopedKeyHandle* key_handle) = 0;
 
   // Loads the Cryptohome Key using a pre-defined UUID. This method does
   // nothing when using TPM2.0
@@ -500,8 +496,7 @@ class Tpm {
   // Returns whether the TPM SRK is vulnerable to the ROCA vulnerability.
   // An empty optional is returned when the result is unknown due to an error.
   // This method always returns |false| when using TPM 2.0.
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  IsSrkRocaVulnerable(bool* result) = 0;
+  virtual hwsec::Status IsSrkRocaVulnerable(bool* result) = 0;
 
   // Gets the current state of the dictionary attack logic. Returns false on
   // failure.
@@ -576,8 +571,7 @@ class Tpm {
                            bool* has_reset_lock_permissions) = 0;
 
   // Returns whether the owner auth delegate set by is bound to PCR.
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  IsDelegateBoundToPcr(bool* result) = 0;
+  virtual hwsec::Status IsDelegateBoundToPcr(bool* result) = 0;
 
   // Returns whether the owner auth delegate set by has reset lock permissions.
   virtual bool DelegateCanResetDACounter() = 0;
@@ -593,19 +587,17 @@ class Tpm {
   // The input |pass_blob| must have 256 bytes. For TPM2.0, |key_handle| is used
   // to decrypt the |pass_blob| and it must be a RSA key, obtaining the
   // authorization value. For TPM1.2 the |key_handle| is unused.
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  GetAuthValue(std::optional<TpmKeyHandle> key_handle,
-               const brillo::SecureBlob& pass_blob,
-               brillo::SecureBlob* auth_value) = 0;
+  virtual hwsec::Status GetAuthValue(std::optional<TpmKeyHandle> key_handle,
+                                     const brillo::SecureBlob& pass_blob,
+                                     brillo::SecureBlob* auth_value) = 0;
 
   // Derive the |auth_value| from |pass_blob| using |key_handle|.
   // The input |pass_blob| must have at least 32 bytes. For TPM2.0, |key_handle|
   // is used to decrypt the |pass_blob| and it must be an ECC key, obtaining the
   // authorization value. For TPM1.2 the |key_handle| is unused.
-  virtual hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>
-  GetEccAuthValue(std::optional<TpmKeyHandle> key_handle,
-                  const brillo::SecureBlob& pass_blob,
-                  brillo::SecureBlob* auth_value) = 0;
+  virtual hwsec::Status GetEccAuthValue(std::optional<TpmKeyHandle> key_handle,
+                                        const brillo::SecureBlob& pass_blob,
+                                        brillo::SecureBlob* auth_value) = 0;
 
  private:
   static Tpm* singleton_;

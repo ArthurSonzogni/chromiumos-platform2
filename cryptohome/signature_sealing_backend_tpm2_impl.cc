@@ -22,6 +22,7 @@
 #include <cryptohome/proto_bindings/key.pb.h>
 #include <google/protobuf/repeated_field.h>
 #include <libhwsec/error/tpm2_error.h>
+#include <libhwsec/status.h>
 #include <trunks/error_codes.h>
 #include <trunks/policy_session.h>
 #include <trunks/tpm_generated.h>
@@ -44,7 +45,6 @@ using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
-using hwsec_foundation::status::StatusChain;
 using trunks::GetErrorString;
 using trunks::TPM_ALG_ID;
 using trunks::TPM_ALG_NULL;
@@ -80,8 +80,8 @@ class UnsealingSessionTpm2Impl final
   // UnsealingSession:
   structure::ChallengeSignatureAlgorithm GetChallengeAlgorithm() override;
   Blob GetChallengeValue() override;
-  StatusChain<TPMErrorBase> Unseal(const Blob& signed_challenge_value,
-                                   SecureBlob* unsealed_value) override;
+  hwsec::Status Unseal(const Blob& signed_challenge_value,
+                       SecureBlob* unsealed_value) override;
 
  private:
   // Unowned.
@@ -161,7 +161,7 @@ Blob UnsealingSessionTpm2Impl::GetChallengeValue() {
   return CombineBlobs({policy_session_tpm_nonce_, expiration_blob});
 }
 
-StatusChain<TPMErrorBase> UnsealingSessionTpm2Impl::Unseal(
+hwsec::Status UnsealingSessionTpm2Impl::Unseal(
     const Blob& signed_challenge_value, SecureBlob* unsealed_value) {
   DCHECK(thread_checker_.CalledOnValidThread());
   // Start a TPM authorization session.
@@ -225,7 +225,7 @@ std::map<uint32_t, std::string> ToStrPcrMap(
   return str_pcr_map;
 }
 
-StatusChain<TPMError> GetPcrPolicyDigest(
+hwsec::Status GetPcrPolicyDigest(
     trunks::PolicySession* policy_session,
     const std::map<uint32_t, brillo::Blob>& pcr_map,
     std::string* pcr_policy_digest) {
@@ -258,7 +258,7 @@ SignatureSealingBackendTpm2Impl::SignatureSealingBackendTpm2Impl(Tpm2Impl* tpm)
 
 SignatureSealingBackendTpm2Impl::~SignatureSealingBackendTpm2Impl() = default;
 
-StatusChain<TPMErrorBase> SignatureSealingBackendTpm2Impl::CreateSealedSecret(
+hwsec::Status SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
     const std::map<uint32_t, brillo::Blob>& default_pcr_map,
@@ -324,7 +324,7 @@ StatusChain<TPMErrorBase> SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   std::vector<std::string> pcr_policy_digests;
 
   std::string default_pcr_policy_digest;
-  if (StatusChain<TPMError> err = GetPcrPolicyDigest(
+  if (hwsec::Status err = GetPcrPolicyDigest(
           policy_session.get(), default_pcr_map, &default_pcr_policy_digest)) {
     return WrapError<TPMError>(std::move(err),
                                "Error getting default PCR policy digest");
@@ -332,7 +332,7 @@ StatusChain<TPMErrorBase> SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   pcr_policy_digests.push_back(default_pcr_policy_digest);
 
   std::string extended_pcr_policy_digest;
-  if (StatusChain<TPMError> err = GetPcrPolicyDigest(
+  if (hwsec::Status err = GetPcrPolicyDigest(
           policy_session.get(), default_pcr_map, &extended_pcr_policy_digest)) {
     return WrapError<TPMError>(std::move(err),
                                "Error getting default PCR policy digest");
@@ -400,8 +400,7 @@ StatusChain<TPMErrorBase> SignatureSealingBackendTpm2Impl::CreateSealedSecret(
   return nullptr;
 }
 
-StatusChain<TPMErrorBase>
-SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
+hwsec::Status SignatureSealingBackendTpm2Impl::CreateUnsealingSession(
     const structure::SignatureSealedData& sealed_secret_data,
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,

@@ -30,6 +30,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/error/elliptic_curve_error.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <openssl/bn.h>
 #include <openssl/evp.h>
@@ -61,7 +62,6 @@ using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::Sha256;
 using hwsec_foundation::Sha256ToSecureBlob;
-using hwsec_foundation::status::StatusChain;
 using testing::_;
 using testing::DoAll;
 using testing::ElementsAreArray;
@@ -354,7 +354,7 @@ TEST_F(Tpm2Test, GetRandomDataFailure) {
   size_t num_bytes = 5;
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(num_bytes, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  StatusChain<TPMErrorBase> err = tpm_->GetRandomDataBlob(num_bytes, &data);
+  hwsec::Status err = tpm_->GetRandomDataBlob(num_bytes, &data);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -365,7 +365,7 @@ TEST_F(Tpm2Test, GetRandomDataBadLength) {
   size_t num_bytes = random_data.size() + 1;
   EXPECT_CALL(mock_tpm_utility_, GenerateRandom(num_bytes, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(random_data), Return(TPM_RC_SUCCESS)));
-  StatusChain<TPMErrorBase> err = tpm_->GetRandomDataBlob(num_bytes, &data);
+  hwsec::Status err = tpm_->GetRandomDataBlob(num_bytes, &data);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1090,8 +1090,7 @@ TEST_F(Tpm2Test, LoadWrappedKeyFailure) {
   ScopedKeyHandle key_handle;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
-  StatusChain<TPMErrorBase> err =
-      tpm_->LoadWrappedKey(wrapped_key, &key_handle);
+  hwsec::Status err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1101,8 +1100,7 @@ TEST_F(Tpm2Test, LoadWrappedKeyTransientDevWriteFailure) {
   ScopedKeyHandle key_handle;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
       .WillRepeatedly(Return(trunks::TRUNKS_RC_WRITE_ERROR));
-  StatusChain<TPMErrorBase> err =
-      tpm_->LoadWrappedKey(wrapped_key, &key_handle);
+  hwsec::Status err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kLater, err->ToTPMRetryAction());
 }
@@ -1119,8 +1117,7 @@ TEST_F(Tpm2Test, LoadWrappedKeyRetryActions) {
         .WillOnce(Return(error_code_fmt0 | layer_code))
         .WillOnce(Return(error_code_fmt1 | layer_code))
         .RetiresOnSaturation();
-    StatusChain<TPMErrorBase> err =
-        tpm_->LoadWrappedKey(wrapped_key, &key_handle);
+    hwsec::Status err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
     EXPECT_NE(nullptr, err);
     EXPECT_EQ(TPMRetryAction::kLater, err->ToTPMRetryAction());
     err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
@@ -1134,8 +1131,7 @@ TEST_F(Tpm2Test, LoadWrappedKeyRetryActions) {
         .WillOnce(Return(error_code_fmt0 | layer_code))
         .WillOnce(Return(error_code_fmt1 | layer_code))
         .RetiresOnSaturation();
-    StatusChain<TPMErrorBase> err =
-        tpm_->LoadWrappedKey(wrapped_key, &key_handle);
+    hwsec::Status err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
     EXPECT_NE(nullptr, err);
     EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
     err = tpm_->LoadWrappedKey(wrapped_key, &key_handle);
@@ -1171,8 +1167,7 @@ TEST_F(Tpm2Test, EncryptBlobBadAesKey) {
       .WillOnce(
           DoAll(SetArgPointee<5>(tpm_ciphertext), Return(TPM_RC_SUCCESS)));
   SecureBlob ciphertext;
-  StatusChain<TPMErrorBase> err =
-      tpm_->EncryptBlob(handle, plaintext, key, &ciphertext);
+  hwsec::Status err = tpm_->EncryptBlob(handle, plaintext, key, &ciphertext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1186,8 +1181,7 @@ TEST_F(Tpm2Test, EncryptBlobBadTpmEncrypt) {
       .WillOnce(
           DoAll(SetArgPointee<5>(tpm_ciphertext), Return(TPM_RC_SUCCESS)));
   SecureBlob ciphertext;
-  StatusChain<TPMErrorBase> err =
-      tpm_->EncryptBlob(handle, plaintext, key, &ciphertext);
+  hwsec::Status err = tpm_->EncryptBlob(handle, plaintext, key, &ciphertext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1199,8 +1193,7 @@ TEST_F(Tpm2Test, EncryptBlobFailure) {
   EXPECT_CALL(mock_tpm_utility_, AsymmetricEncrypt(handle, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob ciphertext;
-  StatusChain<TPMErrorBase> err =
-      tpm_->EncryptBlob(handle, plaintext, key, &ciphertext);
+  hwsec::Status err = tpm_->EncryptBlob(handle, plaintext, key, &ciphertext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1221,8 +1214,7 @@ TEST_F(Tpm2Test, DecryptBlobBadAesKey) {
   SecureBlob key(16, 'a');
   SecureBlob ciphertext(32, 'b');
   SecureBlob plaintext;
-  StatusChain<TPMErrorBase> err =
-      tpm_->DecryptBlob(handle, ciphertext, key, &plaintext);
+  hwsec::Status err = tpm_->DecryptBlob(handle, ciphertext, key, &plaintext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1232,8 +1224,7 @@ TEST_F(Tpm2Test, DecryptBlobBadCiphertext) {
   SecureBlob key(32, 'a');
   SecureBlob ciphertext(16, 'b');
   SecureBlob plaintext;
-  StatusChain<TPMErrorBase> err =
-      tpm_->DecryptBlob(handle, ciphertext, key, &plaintext);
+  hwsec::Status err = tpm_->DecryptBlob(handle, ciphertext, key, &plaintext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1245,8 +1236,7 @@ TEST_F(Tpm2Test, DecryptBlobFailure) {
   EXPECT_CALL(mock_tpm_utility_, AsymmetricDecrypt(handle, _, _, _, _, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob plaintext;
-  StatusChain<TPMErrorBase> err =
-      tpm_->DecryptBlob(handle, ciphertext, key, &plaintext);
+  hwsec::Status err = tpm_->DecryptBlob(handle, ciphertext, key, &plaintext);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1299,8 +1289,8 @@ TEST_F(Tpm2Test, GetEccAuthValueFailedWithAuthorizationBadAuthSize) {
   TpmKeyHandle handle = 42;
   SecureBlob pass_blob(16, 'a');
   SecureBlob auth_value;
-  StatusChain<TPMErrorBase> err = tpm_->GetEccAuthValue(
-      std::optional<TpmKeyHandle>(handle), pass_blob, &auth_value);
+  hwsec::Status err = tpm_->GetEccAuthValue(std::optional<TpmKeyHandle>(handle),
+                                            pass_blob, &auth_value);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1311,8 +1301,8 @@ TEST_F(Tpm2Test, GetEccAuthValueFailed) {
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob pass_blob(256, 'a');
   SecureBlob auth_value;
-  StatusChain<TPMErrorBase> err = tpm_->GetEccAuthValue(
-      std::optional<TpmKeyHandle>(handle), pass_blob, &auth_value);
+  hwsec::Status err = tpm_->GetEccAuthValue(std::optional<TpmKeyHandle>(handle),
+                                            pass_blob, &auth_value);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }
@@ -1324,8 +1314,8 @@ TEST_F(Tpm2Test, GetEccAuthValueScalarOutOfRange) {
   SecureBlob pass_blob;
   EXPECT_TRUE(brillo::SecureBlob::HexStringToSecureBlob(kOorStr, &pass_blob));
   SecureBlob auth_value;
-  StatusChain<TPMErrorBase> err = tpm_->GetEccAuthValue(
-      std::optional<TpmKeyHandle>(handle), pass_blob, &auth_value);
+  hwsec::Status err = tpm_->GetEccAuthValue(std::optional<TpmKeyHandle>(handle),
+                                            pass_blob, &auth_value);
 
   EXPECT_NE(nullptr, err);
   auto ecc_err = err.Find<EllipticCurveError>();
@@ -1364,7 +1354,7 @@ TEST_F(Tpm2Test, UnsealWithAuthorizationWithPreloadSuccess) {
   EXPECT_CALL(mock_tpm_utility_, UnsealDataWithHandle(preload_handle, _, _))
       .WillOnce(Return(TPM_RC_SUCCESS));
   SecureBlob plaintext;
-  StatusChain<TPMErrorBase> err = tpm_->UnsealWithAuthorization(
+  hwsec::Status err = tpm_->UnsealWithAuthorization(
       preload_handle, sealed_data, auth_value,
       std::map<uint32_t, brillo::Blob>(), &plaintext);
   EXPECT_EQ(nullptr, err);
@@ -1389,8 +1379,7 @@ TEST_F(Tpm2Test, GetPublicKeyHashFailure) {
   EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(handle, _))
       .WillOnce(Return(TPM_RC_FAILURE));
   SecureBlob public_key_hash;
-  StatusChain<TPMErrorBase> err =
-      tpm_->GetPublicKeyHash(handle, &public_key_hash);
+  hwsec::Status err = tpm_->GetPublicKeyHash(handle, &public_key_hash);
   EXPECT_NE(nullptr, err);
   EXPECT_EQ(TPMRetryAction::kNoRetry, err->ToTPMRetryAction());
 }

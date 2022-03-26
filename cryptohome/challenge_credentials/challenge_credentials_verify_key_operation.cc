@@ -12,6 +12,7 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <crypto/scoped_openssl_types.h>
+#include <libhwsec/status.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
@@ -19,7 +20,6 @@
 
 using brillo::Blob;
 using hwsec::TPMErrorBase;
-using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -143,7 +143,7 @@ void ChallengeCredentialsVerifyKeyOperation::Start() {
     return;
   }
   Blob challenge;
-  if (StatusChain<TPMErrorBase> err =
+  if (hwsec::Status err =
           tpm_->GetRandomDataBlob(kChallengeByteCount, &challenge)) {
     LOG(ERROR)
         << "Failed to generate random bytes for the verification challenge: "

@@ -19,6 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/secure_blob.h>
 #include <crypto/sha2.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/libscrypt_compat.h>
@@ -46,7 +47,6 @@ using hwsec::TPMErrorBase;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::SecureBlobToHex;
 using hwsec_foundation::SecureBlobToHexToBuffer;
-using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -219,8 +219,7 @@ bool Crypto::CanUnsealWithUserAuth() const {
     return false;
 
   bool is_pcr_bound;
-  if (StatusChain<TPMErrorBase> err =
-          tpm_->IsDelegateBoundToPcr(&is_pcr_bound)) {
+  if (hwsec::Status err = tpm_->IsDelegateBoundToPcr(&is_pcr_bound)) {
     LOG(ERROR) << "Failed to check the status of delegate bound to pcr: "
                << err;
   } else {

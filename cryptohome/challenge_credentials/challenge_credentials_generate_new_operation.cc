@@ -11,6 +11,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
+#include <libhwsec/status.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/tpm.h"
@@ -19,7 +20,6 @@ using brillo::Blob;
 using brillo::CombineBlobs;
 using brillo::SecureBlob;
 using hwsec::TPMErrorBase;
-using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -118,7 +118,7 @@ bool ChallengeCredentialsGenerateNewOperation::StartProcessing() {
 
 bool ChallengeCredentialsGenerateNewOperation::GenerateSalt() {
   Blob salt_random_bytes;
-  if (StatusChain<TPMErrorBase> err = tpm_->GetRandomDataBlob(
+  if (hwsec::Status err = tpm_->GetRandomDataBlob(
           kChallengeCredentialsSaltRandomByteCount, &salt_random_bytes)) {
     LOG(ERROR) << "Failed to generate random bytes for the salt: " << err;
     return false;
@@ -152,12 +152,11 @@ bool ChallengeCredentialsGenerateNewOperation::StartGeneratingSaltSignature() {
 
 bool ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
   SecureBlob local_tpm_protected_secret_value;
-  if (StatusChain<TPMErrorBase> err =
-          signature_sealing_backend_->CreateSealedSecret(
-              public_key_info_.public_key_spki_der,
-              public_key_info_.signature_algorithm, default_pcr_map_,
-              extended_pcr_map_, delegate_blob_, delegate_secret_,
-              &local_tpm_protected_secret_value, &tpm_sealed_secret_data_)) {
+  if (hwsec::Status err = signature_sealing_backend_->CreateSealedSecret(
+          public_key_info_.public_key_spki_der,
+          public_key_info_.signature_algorithm, default_pcr_map_,
+          extended_pcr_map_, delegate_blob_, delegate_secret_,
+          &local_tpm_protected_secret_value, &tpm_sealed_secret_data_)) {
     LOG(ERROR) << "Failed to create TPM-protected secret: " << err;
     return false;
   }

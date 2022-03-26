@@ -22,7 +22,6 @@ using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::error::testing::ReturnError;
-using ::hwsec_foundation::status::StatusChain;
 using testing::_;
 using testing::AtLeast;
 using testing::ByMove;

@@ -72,7 +72,6 @@ using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::Sha1;
 using ::hwsec_foundation::error::testing::ReturnError;
-using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::ByMove;

@@ -26,6 +26,7 @@
 #include <chaps/token_manager_client.h>
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
@@ -65,7 +66,6 @@ using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserName;
 using hwsec::TPMErrorBase;
 using hwsec_foundation::Sha1;
-using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -1527,8 +1527,7 @@ bool UserDataAuth::InitForChallengeResponseAuth(
 
   // Fail if the TPM is known to be vulnerable and we're not in a test image.
   bool is_srk_roca_vulnerable;
-  if (StatusChain<TPMErrorBase> err =
-          tpm_->IsSrkRocaVulnerable(&is_srk_roca_vulnerable)) {
+  if (hwsec::Status err = tpm_->IsSrkRocaVulnerable(&is_srk_roca_vulnerable)) {
     LOG(ERROR) << "Cannot do challenge-response mount: Failed to check for "
                   "ROCA vulnerability: "
                << err;
@@ -3390,7 +3389,7 @@ void UserDataAuth::UploadAlertsDataCallback() {
   Tpm::AlertsData alerts;
 
   CHECK(tpm_);
-  if (StatusChain<TPMErrorBase> err = tpm_->GetAlertsData(&alerts)) {
+  if (hwsec::Status err = tpm_->GetAlertsData(&alerts)) {
     // TODO(b/141294469): Change the code to retry even when it fails.
     LOG(INFO) << "The TPM chip does not support GetAlertsData. Stop "
                  "UploadAlertsData task: "
@@ -3410,7 +3409,7 @@ void UserDataAuth::SeedUrandom() {
   AssertOnOriginThread();
 
   brillo::Blob random;
-  if (StatusChain<TPMErrorBase> err =
+  if (hwsec::Status err =
           tpm_->GetRandomDataBlob(kDefaultRandomSeedLength, &random)) {
     LOG(ERROR) << "Could not get random data from the TPM " << err;
   }

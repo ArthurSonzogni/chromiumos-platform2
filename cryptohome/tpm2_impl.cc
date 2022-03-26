@@ -26,6 +26,7 @@
 #include <libhwsec/error/elliptic_curve_error.h>
 #include <libhwsec/error/tpm_retry_handler.h>
 #include <libhwsec/error/tpm2_error.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>
@@ -67,7 +68,6 @@ using hwsec_foundation::Sha256;
 using hwsec_foundation::UnobscureRsaMessage;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
-using hwsec_foundation::status::StatusChain;
 using trunks::GetErrorString;
 using trunks::TPM_RC_SUCCESS;
 using trunks::TrunksFactory;
@@ -127,8 +127,8 @@ trunks::TpmUtility::AsymmetricKeyUsage ConvertAsymmetricKeyUsage(
   }
 }
 
-StatusChain<TPMErrorBase> DeriveTpmEccPointFromSeed(
-    const SecureBlob& seed, trunks::TPMS_ECC_POINT* out_point) {
+hwsec::Status DeriveTpmEccPointFromSeed(const SecureBlob& seed,
+                                        trunks::TPMS_ECC_POINT* out_point) {
   // Generate an ECC private key (scalar) based on the seed.
   crypto::ScopedBIGNUM private_key = SecureBlobToBigNum(Sha256(seed));
 
@@ -358,18 +358,17 @@ bool Tpm2Impl::HasResetLockPermissions() {
   return has_reset_lock_permissions;
 }
 
-StatusChain<hwsec::TPMErrorBase> Tpm2Impl::GetRandomDataBlob(
-    size_t length, brillo::Blob* data) {
+hwsec::Status Tpm2Impl::GetRandomDataBlob(size_t length, brillo::Blob* data) {
   brillo::SecureBlob blob(length);
-  if (StatusChain<TPMErrorBase> err = GetRandomDataSecureBlob(length, &blob)) {
+  if (hwsec::Status err = GetRandomDataSecureBlob(length, &blob)) {
     return WrapError<TPMError>(std::move(err), "GetRandomDataBlob failed");
   }
   data->assign(blob.begin(), blob.end());
   return nullptr;
 }
 
-StatusChain<hwsec::TPMErrorBase> Tpm2Impl::GetRandomDataSecureBlob(
-    size_t length, brillo::SecureBlob* data) {
+hwsec::Status Tpm2Impl::GetRandomDataSecureBlob(size_t length,
+                                                brillo::SecureBlob* data) {
   CHECK(data);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -377,7 +376,7 @@ StatusChain<hwsec::TPMErrorBase> Tpm2Impl::GetRandomDataSecureBlob(
                                  TPMRetryAction::kNoRetry);
   }
   std::string random_data;
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->GenerateRandom(
               length, /* delegate */ nullptr, &random_data)))) {
     return WrapError<TPMError>(std::move(err), "Error getting random data");
@@ -393,8 +392,7 @@ StatusChain<hwsec::TPMErrorBase> Tpm2Impl::GetRandomDataSecureBlob(
   return nullptr;
 }
 
-StatusChain<hwsec::TPMErrorBase> Tpm2Impl::GetAlertsData(
-    Tpm::AlertsData* alerts) {
+hwsec::Status Tpm2Impl::GetAlertsData(Tpm::AlertsData* alerts) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
     return CreateError<TPMError>("Failed to get trunks context",
@@ -402,9 +400,8 @@ StatusChain<hwsec::TPMErrorBase> Tpm2Impl::GetAlertsData(
   }
 
   trunks::TpmAlertsData trunks_alerts;
-  if (StatusChain<TPMErrorBase> err =
-          HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
-              trunks->tpm_utility->GetAlertsData(&trunks_alerts)))) {
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+          trunks->tpm_utility->GetAlertsData(&trunks_alerts)))) {
     if (err.Is<TPM2Error>() &&
         err.Cast<TPM2Error>()->ErrorCode() == trunks::TPM_RC_NO_SUCH_COMMAND) {
       return WrapError<TPMError>(
@@ -565,13 +562,12 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
   std::unique_ptr<trunks::HmacSession> hmac_session;
   if (bound_pcr_index != kNotBoundToPCR) {
     policy_session = trunks->factory->GetPolicySession();
-    if (StatusChain<TPMErrorBase> err =
-            HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
-                policy_session->StartUnboundSession(true, false)))) {
+    if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+            policy_session->StartUnboundSession(true, false)))) {
       LOG(ERROR) << "Error starting policy session: " << err;
       return false;
     }
-    if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+    if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
             CreateError<TPM2Error>(policy_session->PolicyPCR(
                 std::map<uint32_t, std::string>({{bound_pcr_index, ""}}))))) {
       LOG(ERROR) << "Error creating PCR policy: " << err;
@@ -580,9 +576,8 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
     delegate = policy_session->GetDelegate();
   } else {
     hmac_session = trunks->factory->GetHmacSession();
-    if (StatusChain<TPMErrorBase> err =
-            HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
-                hmac_session->StartUnboundSession(true, true)))) {
+    if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+            hmac_session->StartUnboundSession(true, true)))) {
       LOG(ERROR) << "Error starting hmac session: " << err;
       return false;
     }
@@ -591,12 +586,12 @@ bool Tpm2Impl::Sign(const SecureBlob& key_blob,
   }
 
   ScopedKeyHandle handle;
-  if (StatusChain<TPMErrorBase> err = LoadWrappedKey(key_blob, &handle)) {
+  if (hwsec::Status err = LoadWrappedKey(key_blob, &handle)) {
     LOG(ERROR) << "Error loading pcr bound key: " << err;
     return false;
   }
   std::string tpm_signature;
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->Sign(
               handle.value(), trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA256,
               input.to_string(), true /* generate_hash */, delegate,
@@ -622,10 +617,9 @@ bool Tpm2Impl::CreatePCRBoundKey(
   }
   std::string policy_digest;
   std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
-  if (StatusChain<TPMErrorBase> err =
-          HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
-              trunks->tpm_utility->GetPolicyDigestForPcrValues(
-                  str_pcr_map, false /* use_auth_value */, &policy_digest)))) {
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+          trunks->tpm_utility->GetPolicyDigestForPcrValues(
+              str_pcr_map, false /* use_auth_value */, &policy_digest)))) {
     LOG(ERROR) << "Error getting policy digest: " << err;
     return false;
   }
@@ -637,7 +631,7 @@ bool Tpm2Impl::CreatePCRBoundKey(
   std::string tpm_creation_blob;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->CreateRSAKeyPair(
               ConvertAsymmetricKeyUsage(key_type), kDefaultTpmRsaModulusSize,
               kDefaultTpmPublicExponent,
@@ -726,12 +720,11 @@ bool Tpm2Impl::VerifyPCRBoundKey(
   }
   // Then we certify that the key was created by the TPM.
   ScopedKeyHandle scoped_handle;
-  if (StatusChain<TPMErrorBase> err =
-          LoadWrappedKey(key_blob, &scoped_handle)) {
+  if (hwsec::Status err = LoadWrappedKey(key_blob, &scoped_handle)) {
     LOG(ERROR) << "Failed to load wrapped key: " << err;
     return false;
   }
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->CertifyCreation(
               scoped_handle.value(), creation_blob.to_string())))) {
     LOG(ERROR) << "Error certifying that key was created by TPM: " << err;
@@ -740,26 +733,25 @@ bool Tpm2Impl::VerifyPCRBoundKey(
   // Finally we verify that the key's policy_digest is the expected value.
   std::unique_ptr<trunks::PolicySession> trial_session =
       trunks->factory->GetTrialSession();
-  if (StatusChain<TPMErrorBase> err =
-          HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
-              trial_session->StartUnboundSession(true, true)))) {
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+          trial_session->StartUnboundSession(true, true)))) {
     LOG(ERROR) << "Error starting a trial session: " << err;
     return false;
   }
   std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trial_session->PolicyPCR(str_pcr_map)))) {
     LOG(ERROR) << "Error restricting trial policy to pcr value: " << err;
     return false;
   }
   std::string policy_digest;
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trial_session->GetDigest(&policy_digest)))) {
     LOG(ERROR) << "Error getting policy digest: " << err;
     return false;
   }
   trunks::TPMT_PUBLIC public_area;
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->GetKeyPublicArea(
               scoped_handle.value(), &public_area)))) {
     LOG(ERROR) << "Error getting key public area: " << err;
@@ -787,13 +779,13 @@ bool Tpm2Impl::ExtendPCR(uint32_t pcr_index, const Blob& extension) {
   }
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->ExtendPCR(
               pcr_index, BlobToString(extension), delegate.get())))) {
     LOG(ERROR) << "Error extending PCR: " << err;
     return false;
   }
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->ExtendPCRForCSME(
               pcr_index, BlobToString(extension))))) {
     LOG(ERROR) << "Error extending PCR for CSME: " << err;
@@ -809,9 +801,8 @@ bool Tpm2Impl::ReadPCR(uint32_t pcr_index, Blob* pcr_value) {
     return false;
   }
   std::string pcr_digest;
-  if (StatusChain<TPMErrorBase> err =
-          HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
-              trunks->tpm_utility->ReadPCR(pcr_index, &pcr_digest)))) {
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+          trunks->tpm_utility->ReadPCR(pcr_index, &pcr_digest)))) {
     LOG(ERROR) << "Error reading from PCR: " << err;
     return false;
   }
@@ -829,7 +820,7 @@ bool Tpm2Impl::WrapRsaKey(const SecureBlob& public_modulus,
   std::string key_blob;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->ImportRSAKey(
               trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey,
               public_modulus.to_string(), kDefaultTpmPublicExponent,
@@ -854,7 +845,7 @@ bool Tpm2Impl::CreateWrappedEccKey(SecureBlob* wrapped_key) {
   std::string tpm_creation_blob;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->CreateECCKeyPair(
               trunks::TpmUtility::kDecryptKey, kDefaultTpmCurveId,
               "",     // No authorization
@@ -870,8 +861,8 @@ bool Tpm2Impl::CreateWrappedEccKey(SecureBlob* wrapped_key) {
   return true;
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::LoadWrappedKey(
-    const SecureBlob& wrapped_key, ScopedKeyHandle* key_handle) {
+hwsec::Status Tpm2Impl::LoadWrappedKey(const SecureBlob& wrapped_key,
+                                       ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -881,7 +872,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::LoadWrappedKey(
   trunks::TPM_HANDLE handle;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->LoadKey(
               wrapped_key.to_string(), delegate.get(), &handle)))) {
     return WrapError<TPMError>(std::move(err), "Error loading SRK wrapped key");
@@ -905,8 +896,7 @@ void Tpm2Impl::CloseHandle(TpmKeyHandle key_handle) {
       key_handle, nullptr,
       base::BindRepeating(
           [](TpmKeyHandle key_handle, trunks::TPM_RC result) {
-            if (StatusChain<TPMErrorBase> err =
-                    CreateError<TPM2Error>(result)) {
+            if (hwsec::Status err = CreateError<TPM2Error>(result)) {
               LOG(WARNING) << "Error flushing tpm handle " << key_handle << ": "
                            << err;
             }
@@ -914,10 +904,10 @@ void Tpm2Impl::CloseHandle(TpmKeyHandle key_handle) {
           key_handle));
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
-                                                const SecureBlob& plaintext,
-                                                const SecureBlob& key,
-                                                SecureBlob* ciphertext) {
+hwsec::Status Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
+                                    const SecureBlob& plaintext,
+                                    const SecureBlob& key,
+                                    SecureBlob* ciphertext) {
   CHECK(ciphertext);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -925,7 +915,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
                                  TPMRetryAction::kNoRetry);
   }
   std::string tpm_ciphertext;
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->AsymmetricEncrypt(
               key_handle, trunks::TPM_ALG_OAEP, trunks::TPM_ALG_SHA256,
               plaintext.to_string(), nullptr, &tpm_ciphertext)))) {
@@ -938,10 +928,10 @@ StatusChain<TPMErrorBase> Tpm2Impl::EncryptBlob(TpmKeyHandle key_handle,
   return nullptr;
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::DecryptBlob(TpmKeyHandle key_handle,
-                                                const SecureBlob& ciphertext,
-                                                const SecureBlob& key,
-                                                SecureBlob* plaintext) {
+hwsec::Status Tpm2Impl::DecryptBlob(TpmKeyHandle key_handle,
+                                    const SecureBlob& ciphertext,
+                                    const SecureBlob& key,
+                                    SecureBlob* plaintext) {
   CHECK(plaintext);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -958,7 +948,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::DecryptBlob(TpmKeyHandle key_handle,
       trunks->factory->GetPasswordAuthorization("");
 
   std::string tpm_plaintext;
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->AsymmetricDecrypt(
               key_handle, trunks::TPM_ALG_OAEP, trunks::TPM_ALG_SHA256,
               local_data.to_string(), delegate.get(), &tpm_plaintext)))) {
@@ -968,7 +958,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::DecryptBlob(TpmKeyHandle key_handle,
   return nullptr;
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::SealToPcrWithAuthorization(
+hwsec::Status Tpm2Impl::SealToPcrWithAuthorization(
     const SecureBlob& plaintext,
     const SecureBlob& auth_value,
     const std::map<uint32_t, brillo::Blob>& pcr_map,
@@ -983,22 +973,21 @@ StatusChain<TPMErrorBase> Tpm2Impl::SealToPcrWithAuthorization(
 
   // Get the policy digest for PCR.
   std::string policy_digest;
-  if (StatusChain<TPMErrorBase> err =
-          HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
-              trunks->tpm_utility->GetPolicyDigestForPcrValues(
-                  str_pcr_map, true /* use_auth_value */, &policy_digest)))) {
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+          trunks->tpm_utility->GetPolicyDigestForPcrValues(
+              str_pcr_map, true /* use_auth_value */, &policy_digest)))) {
     return WrapError<TPMError>(std::move(err), "Error getting policy digest");
   }
 
   std::unique_ptr<trunks::HmacSession> session =
       trunks->factory->GetHmacSession();
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(session->StartUnboundSession(true, true)))) {
     return WrapError<TPMError>(std::move(err), "Error starting hmac session");
   }
 
   std::string sealed_str;
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->SealData(
               plaintext.to_string(), policy_digest, auth_value.to_string(),
               /*require_admin_with_policy=*/true, session->GetDelegate(),
@@ -1011,16 +1000,15 @@ StatusChain<TPMErrorBase> Tpm2Impl::SealToPcrWithAuthorization(
   return nullptr;
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::PreloadSealedData(
-    const brillo::SecureBlob& sealed_data, ScopedKeyHandle* preload_handle) {
-  if (StatusChain<TPMErrorBase> err =
-          LoadWrappedKey(sealed_data, preload_handle)) {
+hwsec::Status Tpm2Impl::PreloadSealedData(const brillo::SecureBlob& sealed_data,
+                                          ScopedKeyHandle* preload_handle) {
+  if (hwsec::Status err = LoadWrappedKey(sealed_data, preload_handle)) {
     return WrapError<TPMError>(std::move(err), "Failed to load sealed data");
   }
   return nullptr;
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::UnsealWithAuthorization(
+hwsec::Status Tpm2Impl::UnsealWithAuthorization(
     std::optional<TpmKeyHandle> preload_handle,
     const SecureBlob& sealed_data,
     const SecureBlob& auth_value,
@@ -1035,26 +1023,25 @@ StatusChain<TPMErrorBase> Tpm2Impl::UnsealWithAuthorization(
   std::unique_ptr<trunks::PolicySession> policy_session =
       trunks->factory->GetPolicySession();
   // Use unsalted session here, to unseal faster.
-  if (StatusChain<TPMErrorBase> err =
-          HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
-              policy_session->StartUnboundSession(false, false)))) {
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+          policy_session->StartUnboundSession(false, false)))) {
     return WrapError<TPMError>(std::move(err), "Error starting policy session");
   }
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(policy_session->PolicyAuthValue()))) {
     return WrapError<TPMError>(std::move(err),
                                "Error setting session to use auth_value");
   }
 
   std::map<uint32_t, std::string> str_pcr_map = ToStrPcrMap(pcr_map);
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(policy_session->PolicyPCR(str_pcr_map)))) {
     return WrapError<TPMError>(std::move(err), "Error in PolicyPCR");
   }
   policy_session->SetEntityAuthorizationValue(auth_value.to_string());
   std::string unsealed_data;
   if (preload_handle) {
-    if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+    if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
             CreateError<TPM2Error>(trunks->tpm_utility->UnsealDataWithHandle(
                 *preload_handle, policy_session->GetDelegate(),
                 &unsealed_data)))) {
@@ -1062,7 +1049,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::UnsealWithAuthorization(
                                  "Error unsealing data with authorization");
     }
   } else {
-    if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+    if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
             CreateError<TPM2Error>(trunks->tpm_utility->UnsealData(
                 sealed_data.to_string(), policy_session->GetDelegate(),
                 &unsealed_data)))) {
@@ -1075,8 +1062,8 @@ StatusChain<TPMErrorBase> Tpm2Impl::UnsealWithAuthorization(
   return nullptr;
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
-                                                     SecureBlob* hash) {
+hwsec::Status Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
+                                         SecureBlob* hash) {
   CHECK(hash);
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {
@@ -1084,9 +1071,8 @@ StatusChain<TPMErrorBase> Tpm2Impl::GetPublicKeyHash(TpmKeyHandle key_handle,
                                  TPMRetryAction::kNoRetry);
   }
   trunks::TPMT_PUBLIC public_data;
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
-          CreateError<TPM2Error>(trunks->tpm_utility->GetKeyPublicArea(
-              key_handle, &public_data)))) {
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+          trunks->tpm_utility->GetKeyPublicArea(key_handle, &public_data)))) {
     return WrapError<TPMError>(std::move(err), "Error getting key public area");
   }
   std::string public_modulus =
@@ -1135,7 +1121,7 @@ void Tpm2Impl::GetStatus(std::optional<TpmKeyHandle> key,
     memset(data_out.data(), 'D', data_out.size());
     SecureBlob aes_key;
     PasskeyToAesKey(password, salt, 13, &aes_key, NULL);
-    if (StatusChain<TPMErrorBase> err =
+    if (hwsec::Status err =
             EncryptBlob(key.value(), data, aes_key, &data_out)) {
       LOG(ERROR) << __func__ << ": Failed to encrypt blob: " << err;
       return;
@@ -1144,7 +1130,7 @@ void Tpm2Impl::GetStatus(std::optional<TpmKeyHandle> key,
 
     // Check decryption (we don't care about the contents, just whether or not
     // there was an error)
-    if (StatusChain<TPMErrorBase> err =
+    if (hwsec::Status err =
             DecryptBlob(key.value(), data_out, aes_key, &data)) {
       LOG(ERROR) << __func__ << ": Failed to decrypt blob: " << err;
       return;
@@ -1153,7 +1139,7 @@ void Tpm2Impl::GetStatus(std::optional<TpmKeyHandle> key,
   }
 }
 
-StatusChain<hwsec::TPMErrorBase> Tpm2Impl::IsSrkRocaVulnerable(bool* result) {
+hwsec::Status Tpm2Impl::IsSrkRocaVulnerable(bool* result) {
   // This doesn't apply to devices with TPM 2.0.
   *result = false;
   return nullptr;
@@ -1183,9 +1169,8 @@ bool Tpm2Impl::ResetDictionaryAttackMitigation(
 void Tpm2Impl::DeclareTpmFirmwareStable() {
   TrunksClientContext* trunks;
   if (!fw_declared_stable_ && GetTrunksContext(&trunks)) {
-    StatusChain<TPMErrorBase> err =
-        HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
-            trunks->tpm_utility->DeclareTpmFirmwareStable()));
+    hwsec::Status err = HANDLE_TPM_COMM_ERROR(CreateError<TPM2Error>(
+        trunks->tpm_utility->DeclareTpmFirmwareStable()));
     fw_declared_stable_ = (err == nullptr);
   }
 }
@@ -1266,7 +1251,7 @@ bool Tpm2Impl::LoadPublicKeyFromSpki(
   if (!GetTrunksContext(&trunks))
     return false;
   trunks::TPM_HANDLE key_handle_raw = 0;
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->LoadRSAPublicKey(
               ConvertAsymmetricKeyUsage(key_type), scheme, hash_alg,
               key_modulus.to_string(), key_exponent, session_delegate,
@@ -1308,10 +1293,9 @@ bool Tpm2Impl::PublicAreaToPublicKeyDER(const trunks::TPMT_PUBLIC& public_area,
   return true;
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::GetAuthValue(
-    std::optional<TpmKeyHandle> key_handle,
-    const SecureBlob& pass_blob,
-    SecureBlob* auth_value) {
+hwsec::Status Tpm2Impl::GetAuthValue(std::optional<TpmKeyHandle> key_handle,
+                                     const SecureBlob& pass_blob,
+                                     SecureBlob* auth_value) {
   if (!key_handle) {
     LOG(DFATAL) << "TPM2.0 needs a key_handle to get auth value.";
     return CreateError<TPMError>("TPM2.0 needs a key_handle to get auth value",
@@ -1336,7 +1320,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::GetAuthValue(
   std::string decrypted_value;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->AsymmetricDecrypt(
               key_handle.value(), trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL,
               value_to_decrypt, delegate.get(), &decrypted_value)))) {
@@ -1347,10 +1331,9 @@ StatusChain<TPMErrorBase> Tpm2Impl::GetAuthValue(
   return nullptr;
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::GetEccAuthValue(
-    std::optional<TpmKeyHandle> key_handle,
-    const SecureBlob& pass_blob,
-    SecureBlob* auth_value) {
+hwsec::Status Tpm2Impl::GetEccAuthValue(std::optional<TpmKeyHandle> key_handle,
+                                        const SecureBlob& pass_blob,
+                                        SecureBlob* auth_value) {
   if (!key_handle) {
     LOG(DFATAL) << "TPM2.0 needs a key_handle to get ECC auth value.";
     return CreateError<TPMError>(
@@ -1371,8 +1354,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::GetEccAuthValue(
   }
 
   trunks::TPMS_ECC_POINT ecc_point;
-  if (StatusChain<TPMErrorBase> err =
-          DeriveTpmEccPointFromSeed(pass_blob, &ecc_point)) {
+  if (hwsec::Status err = DeriveTpmEccPointFromSeed(pass_blob, &ecc_point)) {
     return WrapError<TPMError>(std::move(err),
                                "Failed to derive TPM ECC point from ");
   }
@@ -1383,7 +1365,7 @@ StatusChain<TPMErrorBase> Tpm2Impl::GetEccAuthValue(
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       trunks->factory->GetPasswordAuthorization("");
 
-  if (StatusChain<TPMErrorBase> err = HANDLE_TPM_COMM_ERROR(
+  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
           CreateError<TPM2Error>(trunks->tpm_utility->ECDHZGen(
               key_handle.value(), in_point, delegate.get(), &z_point)))) {
     return WrapError<TPMError>(std::move(err), "Error doing ECDH ZGen");
@@ -1502,7 +1484,7 @@ bool Tpm2Impl::GetDelegate(brillo::Blob* /*blob*/,
   return true;
 }
 
-StatusChain<TPMErrorBase> Tpm2Impl::IsDelegateBoundToPcr(bool* result) {
+hwsec::Status Tpm2Impl::IsDelegateBoundToPcr(bool* result) {
   *result = false;
   return nullptr;
 }

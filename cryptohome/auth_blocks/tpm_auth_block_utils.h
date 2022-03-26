@@ -9,6 +9,8 @@
 
 #include <string>
 
+#include <libhwsec/status.h>
+
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_key_loader.h"
 #include "cryptohome/tpm.h"
@@ -24,13 +26,11 @@ class TpmAuthBlockUtils {
 
   // A static method which converts an error object.
   // |err| shouldn't be a nullptr.
-  static CryptoError TPMErrorToCrypto(
-      const hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>& err);
+  static CryptoError TPMErrorToCrypto(const hwsec::Status& err);
 
   // A static method to report which errors can be recovered from with a retry.
   // |err| shouldn't be a nullptr.
-  static bool TPMErrorIsRetriable(
-      const hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>& err);
+  static bool TPMErrorIsRetriable(const hwsec::Status& err);
 
   // Checks if the specified |hash| is the same as the hash for the |tpm_| used
   // by the class.

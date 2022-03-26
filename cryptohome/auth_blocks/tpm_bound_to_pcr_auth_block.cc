@@ -15,6 +15,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -37,7 +38,6 @@ using hwsec_foundation::kDefaultAesKeySize;
 using hwsec_foundation::kDefaultPassBlobSize;
 using hwsec_foundation::kTpmDecryptMaxRetries;
 using hwsec_foundation::error::WrapError;
-using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -105,7 +105,7 @@ CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   brillo::SecureBlob auth_value;
 
   for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
-    StatusChain<TPMErrorBase> err =
+    hwsec::Status err =
         tpm_->GetAuthValue(cryptohome_key, pass_blob, &auth_value);
     if (err == nullptr) {
       break;
@@ -128,7 +128,7 @@ CryptoError TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   }
 
   brillo::SecureBlob tpm_key;
-  StatusChain<TPMErrorBase> err = tpm_->SealToPcrWithAuthorization(
+  hwsec::Status err = tpm_->SealToPcrWithAuthorization(
       vkk_key, auth_value, default_pcr_map, &tpm_key);
   if (err != nullptr) {
     LOG(ERROR) << "Failed to wrap vkk with creds: " << err;
@@ -272,7 +272,7 @@ CryptoError TpmBoundToPcrAuthBlock::DecryptTpmBoundToPcr(
 
   // Preload the sealed data while deriving secrets in scrypt.
   ScopedKeyHandle preload_handle;
-  StatusChain<TPMErrorBase> err;
+  hwsec::Status err;
   for (int i = 0; i < kTpmDecryptMaxRetries; ++i) {
     err = tpm_->PreloadSealedData(tpm_key, &preload_handle);
     if (err == nullptr)

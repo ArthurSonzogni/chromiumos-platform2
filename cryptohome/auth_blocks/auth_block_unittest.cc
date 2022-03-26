@@ -52,7 +52,6 @@ using ::hwsec_foundation::kAesBlockSize;
 using ::hwsec_foundation::kDefaultAesKeySize;
 using ::hwsec_foundation::kDefaultPassBlobSize;
 using ::hwsec_foundation::error::testing::ReturnError;
-using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Exactly;

@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <libhwsec/status.h>
 
 using brillo::SecureBlob;
 using hwsec::TPMError;
@@ -14,7 +15,6 @@ using hwsec::TPMErrorBase;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::CreateError;
 using hwsec_foundation::error::WrapError;
-using hwsec_foundation::status::StatusChain;
 namespace cryptohome {
 
 CryptohomeKeyLoader::CryptohomeKeyLoader(Tpm* tpm,
@@ -31,14 +31,13 @@ bool CryptohomeKeyLoader::SaveCryptohomeKey(const SecureBlob& wrapped_key) {
   return ok;
 }
 
-StatusChain<TPMErrorBase> CryptohomeKeyLoader::LoadCryptohomeKey(
+hwsec::Status CryptohomeKeyLoader::LoadCryptohomeKey(
     ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
   // First, try loading the key from the key file.
   SecureBlob raw_key;
   if (platform_->ReadFileToSecureBlob(cryptohome_key_path_, &raw_key)) {
-    if (StatusChain<TPMErrorBase> err =
-            tpm_->LoadWrappedKey(raw_key, key_handle)) {
+    if (hwsec::Status err = tpm_->LoadWrappedKey(raw_key, key_handle)) {
       if (err->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
         LOG(INFO) << "Using legacy upgrade path: " << err;
         goto legacy_upgrade_path;
@@ -74,7 +73,7 @@ bool CryptohomeKeyLoader::LoadOrCreateCryptohomeKey(
   }
 
   // Try to load the cryptohome key.
-  if (StatusChain<TPMErrorBase> err = LoadCryptohomeKey(key_handle)) {
+  if (hwsec::Status err = LoadCryptohomeKey(key_handle)) {
     if (err->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
       // The key couldn't be loaded, and it wasn't due to a transient error,
       // so we must create the key.
@@ -113,7 +112,7 @@ bool CryptohomeKeyLoader::ReloadCryptohomeKey() {
   // TODO(crbug.com/687330): change to closing the handle and ignoring errors
   // once checking for stale virtual handles is implemented in trunksd.
   cryptohome_key_.release();
-  if (StatusChain<TPMErrorBase> err = LoadCryptohomeKey(&cryptohome_key_)) {
+  if (hwsec::Status err = LoadCryptohomeKey(&cryptohome_key_)) {
     LOG(ERROR) << "Error reloading Cryptohome key: " << err;
     return false;
   }
