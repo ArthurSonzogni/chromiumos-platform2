@@ -17,7 +17,7 @@ namespace hwsec_foundation {
 namespace status {
 
 template <typename _Vt, typename _Et>
-class StatusChainOr {
+class [[nodiscard]] StatusChainOr {
  public:
   using value_type = _Vt;
   using status_type = StatusChain<_Et>;

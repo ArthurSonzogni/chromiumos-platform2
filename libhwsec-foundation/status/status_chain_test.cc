@@ -488,7 +488,7 @@ TEST_F(StatusChainTest, StatusChainOrAssignAndRead) {
   EXPECT_EQ(*status_or4, "data");
 
   EXPECT_DEATH_IF_SUPPORTED(
-      (StatusChainOr<std::string, Fake1Error>(OkStatus<Fake1Error>())),
+      (StatusChainOr<std::string, Fake1Error>(OkStatus<Fake1Error>()).ok()),
       "Check failed");
 }
 

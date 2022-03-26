@@ -143,7 +143,12 @@ int VerifyEK(bool is_cros_core) {
 int GetRandom(unsigned int random_bytes_count) {
   cryptohome::Tpm* tpm = cryptohome::Tpm::GetSingleton();
   brillo::SecureBlob random_bytes;
-  tpm->GetRandomDataSecureBlob(random_bytes_count, &random_bytes);
+  hwsec::Status status =
+      tpm->GetRandomDataSecureBlob(random_bytes_count, &random_bytes);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to get random: " << status;
+    return -1;
+  }
   if (random_bytes_count != random_bytes.size())
     return -1;
 

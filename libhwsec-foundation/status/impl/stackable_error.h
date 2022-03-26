@@ -12,6 +12,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <absl/base/attributes.h>
 #include <base/check_op.h>
 
 #include "libhwsec-foundation/status/impl/stackable_error_forward_declarations.h"
@@ -104,7 +105,7 @@ struct WrapTransformOnly {};
 // _Ut - uptype of |_Et| Type
 // _Dt - a dynamic castable from |_Et| type
 template <typename _Et = Error>
-class StackableError {
+class [[nodiscard]] StackableError {
  public:
   static_assert(has_make_status_trait_v<_Et>,
                 "|_Et| type doesn't define |MakeStatusTrait|");
