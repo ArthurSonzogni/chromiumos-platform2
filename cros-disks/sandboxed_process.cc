@@ -211,14 +211,15 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
 }
 
 int SandboxedProcess::WaitImpl() {
+  if (run_custom_init_)
+    return SandboxedInit::WaitForLauncherStatus(&custom_init_control_fd_);
+
   while (true) {
     const int status = minijail_wait(jail_);
-    if (status >= 0) {
+    if (status >= 0)
       return status;
-    }
 
-    const int err = -status;
-    if (err != EINTR) {
+    if (const int err = -status; err != EINTR) {
       LOG(ERROR) << "Cannot wait for process " << pid() << ": "
                  << base::safe_strerror(err);
       return MINIJAIL_ERR_INIT;
@@ -227,12 +228,8 @@ int SandboxedProcess::WaitImpl() {
 }
 
 int SandboxedProcess::WaitNonBlockingImpl() {
-  int exit_code;
-
-  if (run_custom_init_ &&
-      SandboxedInit::PollLauncherStatus(&custom_init_control_fd_, &exit_code)) {
-    return exit_code;
-  }
+  if (run_custom_init_)
+    return SandboxedInit::PollLauncherStatus(&custom_init_control_fd_);
 
   // TODO(chromium:971667) Use Minijail's non-blocking wait once it exists.
   int wstatus;

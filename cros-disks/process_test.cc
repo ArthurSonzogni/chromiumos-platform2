@@ -554,8 +554,7 @@ TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
   LOG(INFO) << "Background process finished";
 }
 
-// TODO(crbug.com/1007613) Enable test once bug is fixed.
-TEST_P(ProcessRunTest, DISABLED_WaitDoesNotWaitForBackgroundProcessToFinish) {
+TEST_P(ProcessRunTest, WaitDoesNotWaitForBackgroundProcessToFinish) {
   Process& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");

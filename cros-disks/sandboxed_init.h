@@ -54,8 +54,22 @@ class SandboxedInit {
   [[noreturn]] void RunInsideSandboxNoReturn(
       base::OnceCallback<int()> launcher);
 
-  static bool PollLauncherStatus(base::ScopedFD* ctrl_fd, int* exit_code);
+  // Reads and returns the exit code from |*ctrl_fd|. Returns -1 immediately if
+  // no data is available yet. Closes |*ctrl_fd| once the exit code has been
+  // read.
+  //
+  // Precondition: ctrl_fd != nullptr && ctrl_fd->is_valid()
+  static int PollLauncherStatus(base::ScopedFD* ctrl_fd);
 
+  // Reads and returns the exit code from |*ctrl_fd|. Waits for data to be
+  // available. Closes |*ctrl_fd| once the exit code has been read.
+  //
+  // Precondition: ctrl_fd != nullptr && ctrl_fd->is_valid()
+  static int WaitForLauncherStatus(base::ScopedFD* ctrl_fd);
+
+  // Converts a process "wait status" (as returned by wait() and waitpid()) to
+  // an exit code in the range 0 to 255. Returns -1 if the wait status |wstatus|
+  // indicates that the process hasn't finished yet.
   static int WStatusToStatus(int wstatus);
 
  private:

@@ -5,17 +5,19 @@
 #include "cros-disks/sandboxed_init.h"
 
 #include <utility>
-#include <stdlib.h>
-#include <unistd.h>
 
+#include <poll.h>
+#include <stdlib.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/posix/eintr_wrapper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/libminijail.h>
 
@@ -190,17 +192,58 @@ pid_t SandboxedInit::StartLauncher(base::OnceCallback<int()> launcher) {
   return exec_child;
 }
 
-bool SandboxedInit::PollLauncherStatus(base::ScopedFD* ctrl_fd,
-                                       int* exit_code) {
-  CHECK(ctrl_fd->is_valid());
-  ssize_t read_bytes =
-      HANDLE_EINTR(read(ctrl_fd->get(), exit_code, sizeof(*exit_code)));
-  if (read_bytes != sizeof(*exit_code)) {
-    return false;
+int SandboxedInit::PollLauncherStatus(base::ScopedFD* const ctrl_fd) {
+  DCHECK(ctrl_fd);
+  DCHECK(ctrl_fd->is_valid());
+
+  int exit_code;
+  const ssize_t read_bytes =
+      HANDLE_EINTR(read(ctrl_fd->get(), &exit_code, sizeof(exit_code)));
+
+  // If an error occurs while reading from the pipe, consider that the init
+  // process was killed before it could even write to the pipe.
+  const int error_code = MINIJAIL_ERR_SIG_BASE + SIGKILL;
+
+  if (read_bytes < 0) {
+    // Cannot read data from pipe.
+    if (errno == EAGAIN) {
+      VLOG(1) << "No data is available from control pipe " << ctrl_fd->get()
+              << " yet";
+      return -1;
+    }
+
+    PLOG(ERROR) << "Cannot read from control pipe";
+    exit_code = error_code;
+  } else if (read_bytes < sizeof(exit_code)) {
+    // Cannot read enough data from pipe.
+    DCHECK_GE(read_bytes, 0);
+    LOG(ERROR) << "Short read of " << read_bytes << " bytes from control pipe "
+               << ctrl_fd->get();
+    exit_code = error_code;
+  } else {
+    DCHECK_EQ(read_bytes, sizeof(exit_code));
+    VLOG(1) << "Received exit code " << exit_code << " from control pipe "
+            << ctrl_fd->get();
+    DCHECK_GE(exit_code, 0);
+    DCHECK_LE(exit_code, 255);
   }
 
   ctrl_fd->reset();
-  return true;
+  return exit_code;
+}
+
+int SandboxedInit::WaitForLauncherStatus(base::ScopedFD* const ctrl_fd) {
+  while (true) {
+    DCHECK(ctrl_fd);
+    DCHECK(ctrl_fd->is_valid());
+
+    struct pollfd pfd = {.fd = ctrl_fd->get(), .events = POLLIN};
+    const int n = HANDLE_EINTR(poll(&pfd, 1, /* timeout = */ -1));
+    PLOG_IF(ERROR, n < 0) << "Cannot poll control pipe " << pfd.fd;
+
+    if (const int exit_code = PollLauncherStatus(ctrl_fd); exit_code >= 0)
+      return exit_code;
+  }
 }
 
 int SandboxedInit::WStatusToStatus(int wstatus) {

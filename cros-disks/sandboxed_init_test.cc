@@ -16,15 +16,11 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
-#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 namespace cros_disks {
-
 namespace {
-
-constexpr auto kTimeout = base::Seconds(30);
 
 int CallFunc(std::function<int()> func) {
   return func();
@@ -68,43 +64,27 @@ class SandboxedInitTest : public testing::Test {
     CHECK(base::SetNonBlocking(ctrl_.get()));
   }
 
-  bool Wait(int* status, bool no_hang) {
+  bool Wait(int* status, bool no_hang = false) {
     CHECK_LT(0, pid_);
+
     int ret = waitpid(pid_, status, no_hang ? WNOHANG : 0);
-    if (ret < 0) {
-      PLOG(FATAL) << "waitpid failed.";
-      return true;
-    }
+    CHECK_GE(ret, 0) << "Cannot wait for PID " << pid_;
+
     if (ret == 0) {
+      CHECK(no_hang);
       return false;
     }
+
     if (WIFEXITED(*status) || WIFSIGNALED(*status)) {
       pid_ = -1;
       return true;
     }
+
     return false;
   }
 
-  bool Poll(const base::TimeDelta& timeout, std::function<bool()> func) {
-    constexpr int64_t kUSleepDelay = 100000;
-    auto counter = timeout.InMicroseconds() / kUSleepDelay;
-    while (!func()) {
-      if (counter-- <= 0) {
-        return false;
-      }
-      usleep(kUSleepDelay);
-    }
-    return true;
-  }
-
-  bool PollForExitStatus(const base::TimeDelta& timeout, int* status) {
-    return Poll(timeout, [status, this]() {
-      return SandboxedInit::PollLauncherStatus(&ctrl_, status);
-    });
-  }
-
-  bool PollWait(const base::TimeDelta& timeout, int* status) {
-    return Poll(timeout, [status, this]() { return Wait(status, true); });
+  int WaitForLauncherStatus() {
+    return SandboxedInit::WaitForLauncherStatus(&ctrl_);
   }
 
   pid_t pid_ = -1;
@@ -117,7 +97,7 @@ TEST_F(SandboxedInitTest, BasicReturnCode) {
   pid_ = RunInFork([]() { return 42; });
 
   int status;
-  ASSERT_TRUE(Wait(&status, false));
+  ASSERT_TRUE(Wait(&status));
   ASSERT_EQ(42, WEXITSTATUS(status));
 }
 
@@ -125,7 +105,7 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_WaitForTermination) {
   RunUnderInit([]() { return 12; });
 
   int status;
-  ASSERT_TRUE(Wait(&status, false));
+  ASSERT_TRUE(Wait(&status));
   ASSERT_EQ(12, WEXITSTATUS(status));
 }
 
@@ -133,7 +113,7 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_Crash) {
   RunUnderInit([]() -> int { _exit(1); });
 
   int status;
-  ASSERT_TRUE(Wait(&status, false));
+  ASSERT_TRUE(Wait(&status));
   ASSERT_EQ(1, WEXITSTATUS(status));
 }
 
@@ -149,7 +129,7 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_IO) {
   EXPECT_STREQ("abcd", buffer);
 
   int status;
-  ASSERT_TRUE(Wait(&status, false));
+  ASSERT_TRUE(Wait(&status));
   ASSERT_EQ(12, WEXITSTATUS(status));
 }
 
@@ -189,7 +169,7 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_UndisturbedBySignal) {
 
   // Wait for init process to finish.
   int status;
-  ASSERT_TRUE(Wait(&status, false));
+  ASSERT_TRUE(Wait(&status));
   ASSERT_EQ(WEXITSTATUS(status), 12);
 }
 
@@ -197,12 +177,11 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_ReadLauncherCode) {
   RunUnderInit([]() { return 12; });
 
   ASSERT_TRUE(ctrl_.is_valid());
-  int status;
-  ASSERT_TRUE(PollForExitStatus(kTimeout, &status));
-  ASSERT_FALSE(ctrl_.is_valid());
-  EXPECT_EQ(12, status);
+  EXPECT_EQ(12, WaitForLauncherStatus());
+  EXPECT_FALSE(ctrl_.is_valid());
 
-  ASSERT_TRUE(Wait(&status, false));
+  int status;
+  ASSERT_TRUE(Wait(&status));
   ASSERT_EQ(12, WEXITSTATUS(status));
 }
 
@@ -218,15 +197,16 @@ TEST_F(SandboxedInitTest, RunInitWithDaemon) {
     return 42;
   });
 
-  int status;
-  ASSERT_TRUE(PollForExitStatus(kTimeout, &status));
-  EXPECT_EQ(0, status);
+  ASSERT_TRUE(ctrl_.is_valid());
+  EXPECT_EQ(0, WaitForLauncherStatus());
+  EXPECT_FALSE(ctrl_.is_valid());
 
+  int status;
   EXPECT_FALSE(Wait(&status, true));
 
   // Tell the daemon to stop.
   EXPECT_EQ(4, write(comm[1], "die", 4));
-  EXPECT_TRUE(Wait(&status, false));
+  EXPECT_TRUE(Wait(&status));
   close(comm[0]);
   close(comm[1]);
   EXPECT_EQ(42, WEXITSTATUS(status));
@@ -245,7 +225,7 @@ TEST_F(SandboxedInitTest, RunInitNoDaemon_NonBlockingWait) {
   EXPECT_FALSE(Wait(&status, true));
 
   EXPECT_EQ(4, write(comm[1], "die", 4));
-  EXPECT_TRUE(PollWait(kTimeout, &status));
+  EXPECT_TRUE(Wait(&status));
   close(comm[0]);
   close(comm[1]);
   EXPECT_EQ(6, WEXITSTATUS(status));
@@ -267,10 +247,11 @@ TEST_F(SandboxedInitTest, RunInitWithDaemon_NonBlockingWait) {
     return 42;
   });
 
-  int status;
-  ASSERT_TRUE(PollForExitStatus(kTimeout, &status));
-  EXPECT_EQ(0, status);
+  ASSERT_TRUE(ctrl_.is_valid());
+  EXPECT_EQ(0, WaitForLauncherStatus());
+  EXPECT_FALSE(ctrl_.is_valid());
 
+  int status;
   EXPECT_FALSE(Wait(&status, true));
 
   // Tell the daemon to stop.
@@ -278,7 +259,7 @@ TEST_F(SandboxedInitTest, RunInitWithDaemon_NonBlockingWait) {
   close(comm[0]);
   close(comm[1]);
 
-  EXPECT_TRUE(PollWait(kTimeout, &status));
+  EXPECT_TRUE(Wait(&status));
   EXPECT_EQ(42, WEXITSTATUS(status));
 }
 
