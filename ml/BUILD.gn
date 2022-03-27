@@ -114,6 +114,12 @@ proto_library("ml_assist_ranker_proto") {
   ]
 }
 
+proto_library("ml_ica_proto") {
+  proto_in_dir = "${sysroot}/usr/include/chromeos/libica/proto"
+  proto_out_dir = "chrome/knowledge/ica/"
+  sources = [ "${proto_in_dir}/ica.proto" ]
+}
+
 source_set("example_preprocessor") {
   sources = [
     "example_preprocessor/example_preprocessing.cc",
@@ -180,6 +186,8 @@ static_library("ml_common") {
     "USE_ONDEVICE_DOCUMENT_SCANNER_DLC=${use.ondevice_document_scanner_dlc}",
     "USE_ONDEVICE_GRAMMAR=${use.ondevice_grammar}",
     "USE_ONDEVICE_TEXT_SUGGESTIONS=${use.ondevice_text_suggestions}",
+    "USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION=" +
+        "${use.ondevice_image_content_annotation}",
     "TC3_VOCAB_ANNOTATOR_IMPL",
   ]
   public_deps = [ ":ml_mojo_bindings_lib" ]
@@ -200,6 +208,10 @@ static_library("ml_common") {
     deps += [ ":ml_soda_proto" ]
   } else {
     sources += [ "soda_recognizer_impl_fake.cc" ]
+  }
+  if (use.ondevice_image_content_annotation) {
+    sources += [ "image_content_annotation.cc" ]
+    deps += [ ":ml_ica_proto" ]
   }
 
   # Enables handwriting for all boards in fuzzer, including those don't support
@@ -326,12 +338,19 @@ if (use.test) {
       "//common-mk/testrunner:testrunner",
       "//ml/dbus_service:core",
     ]
+    pkg_deps = []
     if (use.ondevice_speech && !use.asan) {
       sources += [
         "soda_proto_mojom_conversion_test.cc",
         "soda_test.cc",
       ]
       defines += [ "USE_ONDEVICE_SPEECH" ]
+    }
+    if (use.ondevice_image_content_annotation) {
+      sources += [ "image_content_annotation_test.cc" ]
+      defines += [ "USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION" ]
+      include_dirs += [ "${sysroot}/usr/include/opencv4" ]
+      pkg_deps += [ "opencv4" ]
     }
     if (use.ml_benchmark_drivers) {
       sources += [ "benchmark_test.cc" ]

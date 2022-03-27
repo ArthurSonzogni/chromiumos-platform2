@@ -121,6 +121,7 @@ _IUSE = [
     "ondevice_grammar",
     "ondevice_handwriting",
     "ondevice_handwriting_dlc",
+    "ondevice_image_content_annotation",
     "ondevice_speech",
     "ondevice_text_suggestions",
     "opengles",
