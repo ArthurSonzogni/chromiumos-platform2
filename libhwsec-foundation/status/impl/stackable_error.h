@@ -355,6 +355,10 @@ class [[nodiscard]] StackableError {
   // Returns true if StackableError represents a success.
   bool ok() const noexcept { return IsOkInternal(); }
 
+  // Returns self.
+  constexpr const StackableError& status() const& noexcept { return *this; }
+  StackableError status()&& noexcept { return std::move(*this); }
+
   // Explicit conversion to bool returns true if the object doesn't represent
   // a a success. This semantic added to preserve the behaviour of the code upon
   // conversion, without the need to change every conditional. Current code
