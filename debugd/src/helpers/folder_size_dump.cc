@@ -12,12 +12,16 @@
 #include <vector>
 
 #include <brillo/flag_helper.h>
+#include <base/bits.h>
 #include <base/logging.h>
 #include <base/files/dir_reader_posix.h>
+#include <base/files/file_util.h>
 #include <base/process/launch.h>
 #include <re2/re2.h>
 
 namespace {
+
+constexpr char kShadowPath[] = "/home/.shadow/";
 
 typedef bool (*FilterFunction)(const std::string& path);
 
@@ -69,6 +73,10 @@ class DirAdder {
 constexpr char kUserRegex[] = "[a-z0-9]{40}";
 bool FilterUserDirs(const std::string& entry) {
   return !RE2::PartialMatch(entry, kUserRegex);
+}
+
+bool FilterNonUserDirs(const std::string& entry) {
+  return RE2::PartialMatch(entry, kUserRegex);
 }
 
 bool FilterStateful(const std::string& entry) {
@@ -157,10 +165,9 @@ bool DumpSystemDirectories() {
 }
 
 bool DumpDaemonStore() {
-  const std::string kShadowPath = "/home/.shadow/";
   const std::string kDaemonSubPath = "/mount/root/";
 
-  base::DirReaderPosix dir_reader(kShadowPath.c_str());
+  base::DirReaderPosix dir_reader(kShadowPath);
 
   if (!dir_reader.IsValid()) {
     return false;
@@ -179,7 +186,7 @@ bool DumpDaemonStore() {
       continue;
     }
 
-    auto entry = kShadowPath + name + kDaemonSubPath;
+    auto entry = std::string(kShadowPath) + name + kDaemonSubPath;
     deamonPaths.push_back(entry);
   }
 
@@ -196,6 +203,66 @@ bool DumpDaemonStore() {
   return result;
 }
 
+// Reduce the precision of the size (in bytes).
+// Returns value in MiB.
+uint64_t ObfuscateSize(uint64_t size) {
+  uint64_t result = size;
+
+  // Count the number of bits set.
+  auto ct = 64 - base::bits::CountLeadingZeroBits64(size);
+
+  // Only keep the 2 most significant bits.
+  if (ct > 2) {
+    result &= (1 << (ct - 1)) | (1 << (ct - 2));
+  }
+
+  // Convert to MiB.
+  result /= 1024 * 1024;
+
+  return result;
+}
+
+// Dump the sizes of all user folders (individual and summed).
+// Only prints information at the MiB level.
+// For individual user directories only the 2 most significant bits of the
+// value are kept. We are only interested in the distribution of data.
+bool DumpUserFolders() {
+  const DirAdder shadowAdder(kShadowPath, FilterNonUserDirs, true);
+
+  std::vector<std::string> paths;
+  if (!shadowAdder.AppendDirEntries(&paths)) {
+    return false;
+  }
+
+  std::vector<uint64_t> results;
+  uint64_t sum = 0;
+  for (const auto& path : paths) {
+    auto size = ComputeDirectorySize(base::FilePath(path));
+
+    if (size < 0) {
+      LOG(ERROR) << "Failed to determine the size of " << path;
+      // Continuing despite the error.
+    }
+
+    sum += size;
+
+    results.push_back(ObfuscateSize(size));
+  }
+
+  std::sort(results.begin(), results.end());
+
+  // Convert to MiB.
+  sum /= 1024 * 1024;
+
+  for (int i = 0; i < results.size(); i++) {
+    std::cout << i << ": " << results[i] << " MiB" << std::endl;
+  }
+
+  std::cout << "Sum: " << sum << " MiB" << std::endl;
+
+  return true;
+}
+
 const DirAdder kUserDir("/home/chronos/user/", FilterNone, true);
 
 bool DumpUserDirectories() {
@@ -208,6 +275,11 @@ bool DumpUserDirectories() {
 
   std::cout << "--- User directory ---" << std::endl;
   if (!DumpDirectory(kUserDir)) {
+    result = false;
+  }
+
+  std::cout << "--- Other users ---" << std::endl;
+  if (!DumpUserFolders()) {
     result = false;
   }
 
