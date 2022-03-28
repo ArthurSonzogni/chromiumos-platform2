@@ -132,7 +132,7 @@ impl SuspendConductor {
         let block_path = path_to_stateful_block()?;
         let dry_run = self.options.dry_run;
         let snap_dev = frozen_userspace.as_mut();
-        snap_dev.set_platform_mode(false)?;
+        snap_dev.set_platform_mode(self.options.force_platform_mode)?;
         // This is where the suspend path and resume path fork. On success,
         // both halves of these conditions execute, just at different times.
         if snap_dev.atomic_snapshot()? {
