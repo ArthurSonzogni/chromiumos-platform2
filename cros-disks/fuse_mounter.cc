@@ -101,21 +101,25 @@ class FUSEMountPoint : public MountPoint {
   base::WeakPtrFactory<FUSEMountPoint> weak_factory_{this};
 };
 
-bool GetPhysicalBlockSize(const std::string& source, int* size) {
-  base::ScopedFD fd(open(source.c_str(), O_RDONLY | O_CLOEXEC));
-
-  *size = 0;
+// Gets the physical block size of the given block device.
+// Returns 0 in case of error.
+int GetPhysicalBlockSize(const std::string& source) {
+  const base::ScopedFD fd(open(source.c_str(), O_RDONLY | O_CLOEXEC));
   if (!fd.is_valid()) {
-    PLOG(WARNING) << "Couldn't open " << source;
-    return false;
+    PLOG(WARNING) << "Cannot open device " << quote(source);
+    return 0;
   }
 
-  if (ioctl(fd.get(), BLKPBSZGET, size) < 0) {
-    PLOG(WARNING) << "Failed to get block size for" << source;
-    return false;
+  int block_size;
+  if (ioctl(fd.get(), BLKPBSZGET, &block_size) < 0) {
+    PLOG(WARNING) << "Cannot get block size of device " << quote(source);
+    return 0;
   }
 
-  return true;
+  DCHECK_GE(block_size, 0);
+  LOG(INFO) << "Device " << quote(source) << " has a block size of "
+            << block_size << " bytes";
+  return block_size;
 }
 
 }  // namespace
@@ -300,19 +304,14 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   std::string source_descr = source;
   base::stat_wrapper_t statbuf = {0};
   if (platform_->Lstat(source, &statbuf) && S_ISBLK(statbuf.st_mode)) {
-    int blksize = 0;
-
     // TODO(crbug.com/931500): It's possible that specifying a block size equal
     // to the file system cluster size (which might be larger than the physical
     // block size) might be more efficient. Data would be needed to see what
     // kind of performance benefit, if any, could be gained. At the very least,
     // specify the block size of the underlying device. Without this, UFS cards
     // with 4k sector size will fail to mount.
-    if (GetPhysicalBlockSize(source, &blksize) && blksize > 0)
+    if (const int blksize = GetPhysicalBlockSize(source))
       fuse_mount_options.append(base::StringPrintf(",blksize=%d", blksize));
-
-    LOG(INFO) << "Source file " << quote(source)
-              << " is a block device with block size " << blksize;
 
     fuse_type = "fuseblk";
   } else {
