@@ -472,12 +472,6 @@ const char Metrics::kMetricDeviceConnectionStatus[] =
     "Network.Shill.DeviceConnectionStatus";
 
 // static
-const char Metrics::kMetricDhcpClientStatus[] =
-    "Network.Shill.DHCPClientStatus";
-
-// static
-const char Metrics::kMetricDhcpClientMTUValue[] =
-    "Network.Shill.DHCPClientMTUValue";
 const char Metrics::kMetricPPPMTUValue[] = "Network.Shill.PPPMTUValue";
 
 // static
@@ -1711,10 +1705,6 @@ void Metrics::NotifyUserInitiatedConnectionFailureReason(
 
 void Metrics::NotifyDeviceConnectionStatus(ConnectionStatus status) {
   SendEnumToUMA(kMetricDeviceConnectionStatus, status, kConnectionStatusMax);
-}
-
-void Metrics::NotifyDhcpClientStatus(DhcpClientStatus status) {
-  SendEnumToUMA(kMetricDhcpClientStatus, status, kDhcpClientStatusMax);
 }
 
 void Metrics::NotifyNetworkConnectionIPType(Technology technology_id,

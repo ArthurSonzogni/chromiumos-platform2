@@ -693,13 +693,6 @@ TEST_F(MetricsTest, NotifyUserInitiatedConnectionResult) {
       Metrics::kUserInitiatedConnectionResultSuccess);
 }
 
-TEST_F(MetricsTest, NotifyDhcpClientStatus) {
-  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.DHCPClientStatus",
-                                      Metrics::kDhcpClientStatusReboot,
-                                      Metrics::kDhcpClientStatusMax));
-  metrics_.NotifyDhcpClientStatus(Metrics::kDhcpClientStatusReboot);
-}
-
 TEST_F(MetricsTest, DeregisterDevice) {
   const int kInterfaceIndex = 1;
   metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);

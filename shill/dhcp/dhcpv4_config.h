@@ -38,7 +38,6 @@ class DHCPv4Config : public DHCPConfig {
   // Inherited from DHCPConfig.
   void ProcessEventSignal(const std::string& reason,
                           const KeyValueStore& configuration) override;
-  void ProcessStatusChangeSignal(const std::string& status) override;
 
  protected:
   // Inherited from DHCPConfig.
@@ -93,23 +92,6 @@ class DHCPv4Config : public DHCPConfig {
   static const char kReasonRebind[];
   static const char kReasonReboot[];
   static const char kReasonRenew[];
-
-  static const char kStatusArpGateway[];
-  static const char kStatusArpSelf[];
-  static const char kStatusBound[];
-  static const char kStatusDiscover[];
-  static const char kStatusIgnoreAdditionalOffer[];
-  static const char kStatusIgnoreFailedOffer[];
-  static const char kStatusIgnoreInvalidOffer[];
-  static const char kStatusIgnoreNonOffer[];
-  static const char kStatusInform[];
-  static const char kStatusInit[];
-  static const char kStatusNakDefer[];
-  static const char kStatusRebind[];
-  static const char kStatusReboot[];
-  static const char kStatusRelease[];
-  static const char kStatusRenew[];
-  static const char kStatusRequest[];
 
   static const char kType[];
 

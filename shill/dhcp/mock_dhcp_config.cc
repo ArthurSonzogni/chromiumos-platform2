@@ -19,6 +19,4 @@ MockDHCPConfig::~MockDHCPConfig() = default;
 
 void MockDHCPConfig::ProcessEventSignal(const std::string& reason,
                                         const KeyValueStore& configuration) {}
-void MockDHCPConfig::ProcessStatusChangeSignal(const std::string& status) {}
-
 }  // namespace shill

@@ -61,23 +61,6 @@ const char DHCPv4Config::kReasonNak[] = "NAK";
 const char DHCPv4Config::kReasonRebind[] = "REBIND";
 const char DHCPv4Config::kReasonReboot[] = "REBOOT";
 const char DHCPv4Config::kReasonRenew[] = "RENEW";
-const char DHCPv4Config::kStatusArpGateway[] = "ArpGateway";
-const char DHCPv4Config::kStatusArpSelf[] = "ArpSelf";
-const char DHCPv4Config::kStatusBound[] = "Bound";
-const char DHCPv4Config::kStatusDiscover[] = "Discover";
-const char DHCPv4Config::kStatusIgnoreAdditionalOffer[] =
-    "IgnoreAdditionalOffer";
-const char DHCPv4Config::kStatusIgnoreFailedOffer[] = "IgnoreFailedOffer";
-const char DHCPv4Config::kStatusIgnoreInvalidOffer[] = "IgnoreInvalidOffer";
-const char DHCPv4Config::kStatusIgnoreNonOffer[] = "IgnoreNonOffer";
-const char DHCPv4Config::kStatusInform[] = "Inform";
-const char DHCPv4Config::kStatusInit[] = "Init";
-const char DHCPv4Config::kStatusNakDefer[] = "NakDefer";
-const char DHCPv4Config::kStatusRebind[] = "Rebind";
-const char DHCPv4Config::kStatusReboot[] = "Reboot";
-const char DHCPv4Config::kStatusRelease[] = "Release";
-const char DHCPv4Config::kStatusRenew[] = "Renew";
-const char DHCPv4Config::kStatusRequest[] = "Request";
 const char DHCPv4Config::kType[] = "dhcp";
 
 DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
@@ -144,49 +127,6 @@ void DHCPv4Config::ProcessEventSignal(const std::string& reason,
   } else {
     DHCPConfig::UpdateProperties(properties, true);
     is_gateway_arp_active_ = false;
-  }
-}
-
-void DHCPv4Config::ProcessStatusChangeSignal(const std::string& status) {
-  SLOG(this, 2) << __func__ << ": " << status;
-
-  if (status == kStatusArpGateway) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusArpGateway);
-  } else if (status == kStatusArpSelf) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusArpSelf);
-  } else if (status == kStatusBound) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusBound);
-  } else if (status == kStatusDiscover) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusDiscover);
-  } else if (status == kStatusIgnoreAdditionalOffer) {
-    metrics_->NotifyDhcpClientStatus(
-        Metrics::kDhcpClientStatusIgnoreAdditionalOffer);
-  } else if (status == kStatusIgnoreFailedOffer) {
-    metrics_->NotifyDhcpClientStatus(
-        Metrics::kDhcpClientStatusIgnoreFailedOffer);
-  } else if (status == kStatusIgnoreInvalidOffer) {
-    metrics_->NotifyDhcpClientStatus(
-        Metrics::kDhcpClientStatusIgnoreInvalidOffer);
-  } else if (status == kStatusIgnoreNonOffer) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusIgnoreNonOffer);
-  } else if (status == kStatusInform) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusInform);
-  } else if (status == kStatusInit) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusInit);
-  } else if (status == kStatusNakDefer) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusNakDefer);
-  } else if (status == kStatusRebind) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusRebind);
-  } else if (status == kStatusReboot) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusReboot);
-  } else if (status == kStatusRelease) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusRelease);
-  } else if (status == kStatusRenew) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusRenew);
-  } else if (status == kStatusRequest) {
-    metrics_->NotifyDhcpClientStatus(Metrics::kDhcpClientStatusRequest);
-  } else {
-    LOG(ERROR) << "DHCP client reports unknown status " << status;
   }
 }
 
@@ -365,7 +305,6 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       properties->domain_search = value.Get<std::vector<std::string>>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.Get<uint16_t>();
-      metrics_->SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, mtu);
       if (mtu >= minimum_mtu() && mtu != kMinIPv4MTU) {
         properties->mtu = mtu;
       }

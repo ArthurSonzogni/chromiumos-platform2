@@ -604,26 +604,6 @@ class Metrics : public DefaultServiceObserver {
     kUserInitiatedConnectionFailureReasonMax
   };
 
-  enum DhcpClientStatus {
-    kDhcpClientStatusArpGateway = 0,
-    kDhcpClientStatusArpSelf = 1,
-    kDhcpClientStatusBound = 2,
-    kDhcpClientStatusDiscover = 3,
-    kDhcpClientStatusIgnoreAdditionalOffer = 4,
-    kDhcpClientStatusIgnoreFailedOffer = 5,
-    kDhcpClientStatusIgnoreInvalidOffer = 6,
-    kDhcpClientStatusIgnoreNonOffer = 7,
-    kDhcpClientStatusInform = 8,
-    kDhcpClientStatusInit = 9,
-    kDhcpClientStatusNakDefer = 10,
-    kDhcpClientStatusRebind = 11,
-    kDhcpClientStatusReboot = 12,
-    kDhcpClientStatusRelease = 13,
-    kDhcpClientStatusRenew = 14,
-    kDhcpClientStatusRequest = 15,
-    kDhcpClientStatusMax
-  };
-
   enum NetworkConnectionIPType {
     kNetworkConnectionIPTypeIPv4 = 0,
     kNetworkConnectionIPTypeIPv6 = 1,
@@ -1079,11 +1059,7 @@ class Metrics : public DefaultServiceObserver {
   // Device's connection status.
   static const char kMetricDeviceConnectionStatus[];
 
-  // DHCP client status.
-  static const char kMetricDhcpClientStatus[];
-
-  // Assigned MTU values, both from DHCP and PPP.
-  static const char kMetricDhcpClientMTUValue[];
+  // Assigned MTU values from PPP.
   static const char kMetricPPPMTUValue[];
 
   // Network connection IP type.
@@ -1400,9 +1376,6 @@ class Metrics : public DefaultServiceObserver {
 
   // Notifies this object about current connection status (online vs offline).
   virtual void NotifyDeviceConnectionStatus(Metrics::ConnectionStatus status);
-
-  // Notifies this object about the DHCP client status.
-  virtual void NotifyDhcpClientStatus(Metrics::DhcpClientStatus status);
 
   // Notifies this object about the IP type of the current network connection.
   virtual void NotifyNetworkConnectionIPType(Technology technology_id,

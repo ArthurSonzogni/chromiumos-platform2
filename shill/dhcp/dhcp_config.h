@@ -60,9 +60,6 @@ class DHCPConfig : public IPConfig {
   virtual void ProcessEventSignal(const std::string& reason,
                                   const KeyValueStore& configuration) = 0;
 
-  // Processes an Status Change signal from dhcpcd.
-  virtual void ProcessStatusChangeSignal(const std::string& status) = 0;
-
   // Set the minimum MTU that this configuration will respect.
   virtual void set_minimum_mtu(const int minimum_mtu) {
     minimum_mtu_ = minimum_mtu;

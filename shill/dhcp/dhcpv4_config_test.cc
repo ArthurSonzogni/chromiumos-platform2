@@ -227,8 +227,6 @@ TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
   conf.Set<std::vector<uint8_t>>(DHCPv4Config::kConfigurationKeyiSNSOptionData,
                                  isns_data);
 
-  EXPECT_CALL(*metrics(),
-              SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 600));
   IPConfig::Properties properties;
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ("4.3.2.1", properties.address);
@@ -255,8 +253,6 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 576);
 
   IPConfig::Properties properties;
-  EXPECT_CALL(*metrics(),
-              SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 576));
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
   Mock::VerifyAndClearExpectations(metrics());
@@ -265,8 +261,6 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   config_->set_minimum_mtu(1500);
   conf.Remove(DHCPv4Config::kConfigurationKeyMTU);
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 1499);
-  EXPECT_CALL(*metrics(),
-              SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 1499));
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
   Mock::VerifyAndClearExpectations(metrics());
@@ -275,8 +269,6 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   config_->set_minimum_mtu(577);
   conf.Remove(DHCPv4Config::kConfigurationKeyMTU);
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 577);
-  EXPECT_CALL(*metrics(),
-              SendSparseToUMA(Metrics::kMetricDhcpClientMTUValue, 577));
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(577, properties.mtu);
 }
@@ -485,12 +477,6 @@ TEST_F(DHCPv4ConfigCallbackTest, ProcessEventSignalGatewayArpNak) {
   // Will fail on acquisition timeout since Gateway ARP is not active.
   EXPECT_TRUE(config_->ShouldFailOnAcquisitionTimeout());
   Mock::VerifyAndClearExpectations(this);
-}
-
-TEST_F(DHCPv4ConfigTest, ProcessStatusChangeSingal) {
-  EXPECT_CALL(*metrics(),
-              NotifyDhcpClientStatus(Metrics::kDhcpClientStatusBound));
-  config_->ProcessStatusChangeSignal(DHCPv4Config::kStatusBound);
 }
 
 TEST_F(DHCPv4ConfigTest, StartSuccessEphemeral) {

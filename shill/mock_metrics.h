@@ -92,10 +92,6 @@ class MockMetrics : public Metrics {
               (Metrics::ConnectionStatus),
               (override));
   MOCK_METHOD(void,
-              NotifyDhcpClientStatus,
-              (Metrics::DhcpClientStatus),
-              (override));
-  MOCK_METHOD(void,
               NotifyNetworkConnectionIPType,
               (Technology, Metrics::NetworkConnectionIPType),
               (override));

@@ -167,7 +167,6 @@ void DHCPCDListener::StatusChangedSignal(const std::string& sender,
     return;
   }
   config->InitProxy(sender);
-  config->ProcessStatusChangeSignal(status);
 }
 
 }  // namespace shill
