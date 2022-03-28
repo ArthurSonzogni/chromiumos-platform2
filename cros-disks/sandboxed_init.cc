@@ -135,6 +135,8 @@ int SandboxedInit::RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd) {
       if (errno == ECHILD) {
         // No more child
         CHECK(!ctrl_fd.is_valid());
+        VLOG(1) << "PID namespace 'init' process finishing with exit code "
+                << last_failure_code;
         return last_failure_code;
       }
 
@@ -143,25 +145,30 @@ int SandboxedInit::RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd) {
 
     // Convert wait status to exit code.
     const int exit_code = WStatusToStatus(wstatus);
-    if (exit_code >= 0) {
-      // A child process finished.
-      if (exit_code) {
-        last_failure_code = exit_code;
-      }
+    if (exit_code < 0)
+      continue;
 
-      // Was it the launcher?
-      if (pid == root_pid) {
-        // Write the launcher's exit code to the control pipe.
-        const ssize_t written =
-            HANDLE_EINTR(write(ctrl_fd.get(), &exit_code, sizeof(exit_code)));
-        if (written != sizeof(exit_code)) {
-          PLOG(ERROR) << "Cannot write exit code";
-          return MINIJAIL_ERR_INIT;
-        }
+    VLOG(1) << "Process " << pid << " in PID namespace finished with exit code "
+            << exit_code;
 
-        ctrl_fd.reset();
-      }
+    // A child process finished.
+    if (exit_code > 0)
+      last_failure_code = exit_code;
+
+    // Was it the launcher?
+    if (pid != root_pid)
+      continue;
+
+    // Write the launcher's exit code to the control pipe.
+    const ssize_t written =
+        HANDLE_EINTR(write(ctrl_fd.get(), &exit_code, sizeof(exit_code)));
+    if (written != sizeof(exit_code)) {
+      PLOG(ERROR) << "Cannot write exit code " << exit_code
+                  << " to control pipe " << ctrl_fd.get();
+      return MINIJAIL_ERR_INIT;
     }
+
+    ctrl_fd.reset();
   }
 }
 
