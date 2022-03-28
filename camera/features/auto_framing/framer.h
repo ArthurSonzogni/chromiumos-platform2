@@ -23,8 +23,9 @@
 namespace cros {
 
 // Framer takes a bounding rectangle for the region of interest (ROI) as
-// input, temporal-filters the input to determine the intermediate crop regions,
-// and produces the output cropped buffer.
+// input, and temporal-filters the input to determine the intermediate crop
+// regions. The user of this class has to make sure they synchronize the access
+// to the methods.
 class Framer {
  public:
   struct Options {
@@ -53,8 +54,7 @@ class Framer {
     float crop_filter_strength = 0.95f;
   };
 
-  Framer(const Options& options,
-         scoped_refptr<base::SingleThreadTaskRunner> task_runner);
+  explicit Framer(const Options& options);
   ~Framer() = default;
 
   Framer(const Framer& other) = delete;
@@ -72,7 +72,6 @@ class Framer {
 
  private:
   Options options_;
-  scoped_refptr<base::SingleThreadTaskRunner> task_runner_;
 
   Rect<float> region_of_interest_ = {0.0f, 0.0f, 1.0f, 1.0f};
   Rect<float> active_crop_region_ = {0.0f, 0.0f, 1.0f, 1.0f};

@@ -42,9 +42,7 @@ float ElapsedTimeMs(base::TimeTicks since) {
 
 }  // namespace
 
-Framer::Framer(const Options& options,
-               scoped_refptr<base::SingleThreadTaskRunner> task_runner)
-    : options_(options), task_runner_(task_runner) {
+Framer::Framer(const Options& options) : options_(options) {
   active_crop_region_ = NormalizeRect(
       GetCenteringFullCrop(options_.input_size, options_.target_aspect_ratio_x,
                            options_.target_aspect_ratio_y),
@@ -53,8 +51,6 @@ Framer::Framer(const Options& options,
 
 void Framer::OnNewFaceRegions(int frame_number,
                               const std::vector<Rect<float>>& faces) {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-
   if (faces.empty()) {
     // TODO(jcliang): See if we want to zoom out to whole frame.
     return;
@@ -72,8 +68,6 @@ void Framer::OnNewFaceRegions(int frame_number,
 }
 
 void Framer::OnNewRegionOfInterest(int frame_number, const Rect<float>& roi) {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-
   if (!roi.is_valid()) {
     // TODO(jcliang): See if we want to zoom out to whole frame.
     return;
@@ -94,8 +88,6 @@ void Framer::OnNewRegionOfInterest(int frame_number, const Rect<float>& roi) {
 }
 
 void Framer::OnOptionsUpdated(const base::Value& json_values) {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-
   LoadIfExist(json_values, kMaxZoomRatio, &options_.max_zoom_ratio);
   LoadIfExist(json_values, kTargetCropToRoiRatio,
               &options_.target_crop_to_roi_ratio);
@@ -109,8 +101,6 @@ void Framer::OnOptionsUpdated(const base::Value& json_values) {
 }
 
 Rect<float> Framer::ComputeActiveCropRegion(int frame_number) {
-  DCHECK(task_runner_->BelongsToCurrentThread());
-
   const float min_crop_size = 1.0f / options_.max_zoom_ratio;
   const float new_x_crop_size =
       std::clamp(region_of_interest_.width * options_.target_crop_to_roi_ratio,

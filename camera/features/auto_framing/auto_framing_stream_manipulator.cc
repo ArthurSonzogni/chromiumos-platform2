@@ -699,13 +699,11 @@ bool AutoFramingStreamManipulator::SetUpPipelineOnThread(
   }
   override_crop_window_ = options_.motion_model == MotionModel::kLibAutoFraming;
 
-  framer_ = std::make_unique<Framer>(
-      Framer::Options{
-          .input_size = full_frame_size_,
-          .target_aspect_ratio_x = target_aspect_ratio_x,
-          .target_aspect_ratio_y = target_aspect_ratio_y,
-      },
-      thread_.task_runner());
+  framer_ = std::make_unique<Framer>(Framer::Options{
+      .input_size = full_frame_size_,
+      .target_aspect_ratio_x = target_aspect_ratio_x,
+      .target_aspect_ratio_y = target_aspect_ratio_y,
+  });
 
   if (!egl_context_) {
     egl_context_ = EglContext::GetSurfacelessContext();
