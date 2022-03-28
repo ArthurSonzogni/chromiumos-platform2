@@ -358,9 +358,6 @@ TEST_F(VPNServiceTest, CustomSetterNoopChange) {
 }
 
 TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
-  service_->SetConnection(connection_);
-  EXPECT_EQ(connection_, service_->connection());
-
   // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
   EXPECT_CALL(manager_, GetPrimaryPhysicalService()).WillOnce(Return(nullptr));
 
@@ -370,30 +367,15 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
 }
 
 TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
-  EXPECT_CALL(*connection_, technology()).Times(0);
-  service_->SetConnection(connection_);
-  EXPECT_EQ(connection_, service_->connection());
-
-  scoped_refptr<NiceMock<MockConnection>> lower_connection =
-      new NiceMock<MockConnection>(&device_info_);
+  auto underlying_service = new MockService(&manager_);
   EXPECT_CALL(manager_, GetPrimaryPhysicalService())
-      .WillOnce(Return(ByMove(CreateUnderlyingService(lower_connection))));
-
-  // Set the type of the lower connection to "wifi" and expect that type to be
-  // returned by GetPhysicalTechnologyProperty().
-  EXPECT_CALL(*lower_connection, technology())
+      .WillOnce(Return(underlying_service));
+  EXPECT_CALL(*underlying_service, technology())
       .WillOnce(Return(Technology::kWiFi));
 
   Error error;
   EXPECT_EQ(kTypeWifi, service_->GetPhysicalTechnologyProperty(&error));
   EXPECT_TRUE(error.IsSuccess());
-
-  // Clear expectations now, so the Return(lower_connection) action releases
-  // the reference to |lower_connection| allowing it to be destroyed now.
-  Mock::VerifyAndClearExpectations(connection_.get());
-  // Destroying the |lower_connection| at function exit will also call an extra
-  // FlushAddresses on the |device_info_| object.
-  EXPECT_CALL(device_info_, FlushAddresses(0));
 }
 
 TEST_F(VPNServiceTest, GetTethering) {

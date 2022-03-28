@@ -73,7 +73,6 @@ using ProfileConstRefPtr = scoped_refptr<const Profile>;
 using ProfileRefPtr = scoped_refptr<Profile>;
 
 class Connection;
-using ConnectionConstRefPtr = scoped_refptr<const Connection>;
 using ConnectionRefPtr = scoped_refptr<Connection>;
 
 }  // namespace shill

@@ -111,7 +111,6 @@ class Connection : public base::RefCounted<Connection> {
 
   virtual const IPAddress& local() const { return local_; }
   virtual const IPAddress& gateway() const { return gateway_; }
-  virtual Technology technology() const { return technology_; }
   void set_allowed_srcs(std::vector<IPAddress> addresses);
 
   // Return true if this is an IPv6 connection.

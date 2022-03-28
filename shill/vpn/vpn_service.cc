@@ -14,7 +14,6 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/connection.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -191,13 +190,13 @@ std::string VPNService::CreateStorageIdentifier(const KeyValueStore& args,
 }
 
 std::string VPNService::GetPhysicalTechnologyProperty(Error* error) {
-  ConnectionConstRefPtr underlying_connection = GetUnderlyingConnection();
-  if (!underlying_connection) {
+  ServiceRefPtr underlying_service = manager()->GetPrimaryPhysicalService();
+  if (!underlying_service) {
     error->Populate(Error::kOperationFailed);
     return "";
   }
 
-  return underlying_connection->technology().GetName();
+  return underlying_service->technology().GetName();
 }
 
 RpcIdentifier VPNService::GetDeviceRpcId(Error* error) const {
@@ -206,17 +205,6 @@ RpcIdentifier VPNService::GetDeviceRpcId(Error* error) const {
     return DBusControl::NullRpcIdentifier();
   }
   return device_->GetRpcIdentifier();
-}
-
-ConnectionConstRefPtr VPNService::GetUnderlyingConnection() const {
-  // TODO(crbug.com/941597) Policy routing should be used to enforce that VPN
-  // traffic can only exit the interface it is supposed to. The VPN driver
-  // should also be informed of changes in underlying connection.
-  ServiceRefPtr underlying_service = manager()->GetPrimaryPhysicalService();
-  if (!underlying_service) {
-    return nullptr;
-  }
-  return underlying_service->connection();
 }
 
 bool VPNService::Load(const StoreInterface* storage) {

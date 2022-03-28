@@ -56,8 +56,7 @@ class VPNService : public Service,
                                              Error* error);
   void set_storage_id(const std::string& id) { storage_id_ = id; }
 
-  // Returns the Type name of the lowest connection (presumably the "physical"
-  // connection) that this service depends on.
+  // Returns the type name of the underlying physical service.
   std::string GetPhysicalTechnologyProperty(Error* error);
 
   // Returns true if the service supports always-on VPN.
@@ -89,8 +88,6 @@ class VPNService : public Service,
   static const char kAutoConnVPNAlreadyActive[];
 
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
-
-  ConnectionConstRefPtr GetUnderlyingConnection() const;
 
   // Create a VPN VirtualDevice as device_.
   bool CreateDevice(const std::string& if_name, int if_index);
