@@ -191,9 +191,10 @@ void FlagHelper::ResetForTesting() {
   instance_ = nullptr;
 }
 
-void FlagHelper::Init(int argc,
+bool FlagHelper::Init(int argc,
                       const char* const* argv,
-                      std::string help_usage) {
+                      std::string help_usage,
+                      InitFuncType func_type) {
   brillo::FlagHelper* helper = GetInstance();
   if (!helper->command_line_) {
     if (!base::CommandLine::InitializedForCurrentProcess())
@@ -205,10 +206,22 @@ void FlagHelper::Init(int argc,
 
   GetInstance()->SetProgramName(argv[0]);
 
-  GetInstance()->UpdateFlagValues();
+  int exit_code = GetInstance()->UpdateFlagValues();
+
+  if (exit_code == EX_OK)
+    return true;
+
+  switch (func_type) {
+    case InitFuncType::kExit:
+      exit(exit_code);
+    case InitFuncType::kAbort:
+      abort();
+    case InitFuncType::kReturn:
+      return false;
+  }
 }
 
-void FlagHelper::UpdateFlagValues() {
+int FlagHelper::UpdateFlagValues() {
   std::string error_msg;
   int error_code = EX_OK;
 
@@ -218,7 +231,7 @@ void FlagHelper::UpdateFlagValues() {
   // If the --help flag exists, print out help message and exit.
   if (command_line_->HasSwitch("help")) {
     puts(GetHelpMessage().c_str());
-    exit(EX_OK);
+    exit(error_code);
   }
 
   // Iterate over the base::CommandLine switches.  Update the value
@@ -256,8 +269,9 @@ void FlagHelper::UpdateFlagValues() {
 
   if (error_code != EX_OK) {
     fputs(error_msg.c_str(), stderr);
-    exit(error_code);
   }
+
+  return error_code;
 }
 
 void FlagHelper::AddFlag(std::unique_ptr<Flag> flag) {

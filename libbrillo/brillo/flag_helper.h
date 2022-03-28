@@ -243,8 +243,17 @@ class BRILLO_EXPORT FlagHelper final {
   // Flag definitions from carrying over from previous tests.
   static void ResetForTesting();
 
-  // Initializes the base::CommandLine class, then calls UpdateFlagValues().
-  static void Init(int argc, const char* const* argv, std::string help_usage);
+  enum class InitFuncType {
+    kAbort,   // Always aborts.
+    kExit,    // Always exits the function with exit code.
+    kReturn,  // Always returns boolean results.
+  };
+
+  // This function aborts/exits/returns based on the func_type arg.
+  static bool Init(int argc,
+                   const char* const* argv,
+                   std::string help_usage,
+                   InitFuncType func_type = InitFuncType::kExit);
 
   // Only to be used for running unit tests.
   void set_command_line_for_testing(base::CommandLine* command_line) {
@@ -254,10 +263,10 @@ class BRILLO_EXPORT FlagHelper final {
   // Checks all the parsed command line flags.  This iterates over the switch
   // map from base::CommandLine, and finds the corresponding Flag in order to
   // update the FLAGS_xxxx values to the parsed value.  If the --help flag is
-  // passed in, it outputs a help message and exits the program.  If an unknown
-  // flag is passed in, it outputs an error message and exits the program with
-  // exit code EX_USAGE.
-  void UpdateFlagValues();
+  // passed in, it outputs a help message and exits the program. If an unknown
+  // flag is passed in, it outputs an error message and returns exit code
+  // EX_USAGE.
+  int UpdateFlagValues();
 
   // Adds a flag to be tracked and updated once the command line is actually
   // parsed.  This function is an implementation detail, and is not meant
