@@ -676,7 +676,6 @@ class Cellular : public Device,
   int primary_sim_slot_ = -1;
   // vector of KeyValueStore dictionaries, emitted as Device.SIMSlotInfo.
   KeyValueStores sim_slot_info_;
-  bool sim_slot_switch_allowed_ = true;
 
   // End of DBus properties.
   // ///////////////////////////////////////////////////////////////////////////

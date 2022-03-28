@@ -1092,44 +1092,6 @@ TEST_P(CellularTest, SetSimSlotProperties) {
   CallSetSimSlotProperties(slot_properties, 0u);
 }
 
-TEST_P(CellularTest, SimSlotSwitch) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
-  // Only provide a SIM in the second slot.
-  std::vector<Cellular::SimProperties> slot_properties = {
-      {0, "", "", "", "", ""},
-      {1, "iccid2", "", "operator_id2", "spn2", "imsi2"},
-  };
-  base::flat_map<RpcIdentifier, Cellular::SimProperties> sim_properties;
-  sim_properties[RpcIdentifier("sim_path1")] = slot_properties[0];
-  sim_properties[RpcIdentifier("sim_path2")] = slot_properties[1];
-  GetCapability3gpp()->set_sim_properties_for_testing(sim_properties);
-
-  // Calling SetSimProperties with the first slot active should trigger a switch
-  // to the second slot.
-  mm1::MockModemProxy* mm1_modem_proxy = SetModemProxyExpectations();
-  InitCapability3gppProxies();
-  EXPECT_CALL(*mm1_modem_proxy, SetPrimarySimSlot(2u, _, _));
-  CallSetSimProperties(slot_properties, 0u);
-
-  // Only provide a SIM in the first slot.
-  slot_properties = {
-      {0, "iccid1", "eid1", "operator_id1", "spn1", "imsi1"},
-      {1, "", "", "", "", ""},
-  };
-  sim_properties[RpcIdentifier("sim_path1")] = slot_properties[0];
-  sim_properties[RpcIdentifier("sim_path2")] = slot_properties[1];
-  GetCapability3gpp()->set_sim_properties_for_testing(sim_properties);
-
-  // Calling SetSimProperties with the first second active should *not* trigger
-  // a switch to the first slot since a slot switch already occurred without
-  // an explicit slot switch requested (e.g. with Service.Connect).
-  EXPECT_CALL(*mm1_modem_proxy, SetPrimarySimSlot(_, _, _)).Times(0);
-  CallSetSimProperties(slot_properties, 1u);
-}
-
 TEST_P(CellularTest, StorageIdentifier) {
   // The default storage identifier should always be cellular_{iccid}
   InitCapability3gppProxies();

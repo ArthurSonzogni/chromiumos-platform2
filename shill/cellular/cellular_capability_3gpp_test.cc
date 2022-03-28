@@ -2162,33 +2162,6 @@ TEST_F(CellularCapability3gppTest, SimPathOnly) {
   VerifyAndSetActivationExpectations();
 }
 
-// Tests that when the primary SIM ICCID is empty, and another SIM has a valid
-// ICCID, the other SIM is selected.
-TEST_F(CellularCapability3gppTest, SetPrimarySimSlot) {
-  EXPECT_CALL(*modem_proxy_, SetPrimarySimSlot(2, _, _)).Times(1);
-  InitProxies();
-
-  const char kIccid1[] = "";
-  const char kEid1[] = "110100000002";
-  KeyValueStore sim_properties1;
-  sim_properties1.Set<std::string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid1);
-  sim_properties1.Set<std::string>(MM_SIM_PROPERTY_EID, kEid1);
-  SetSimProperties(kSimPath1, sim_properties1);
-
-  const char kIccid2[] = "210100000001";
-  const char kEid2[] = "210100000002";
-  KeyValueStore sim_properties2;
-  sim_properties2.Set<std::string>(MM_SIM_PROPERTY_SIMIDENTIFIER, kIccid2);
-  sim_properties2.Set<std::string>(MM_SIM_PROPERTY_EID, kEid2);
-  SetSimProperties(kSimPath2, sim_properties2);
-
-  UpdateSims(kSimPath1);
-
-  // TODO(b/169581681): Fake Modem.SetPrimarySimSlot() behavior to provide
-  // updated SIM properties.
-  VerifyAndSetActivationExpectations();
-}
-
 TEST_F(CellularCapability3gppTest, EmptySimSlot) {
   InitProxies();
 

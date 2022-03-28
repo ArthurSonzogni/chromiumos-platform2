@@ -1169,10 +1169,6 @@ void Cellular::Connect(CellularService* service, Error* error) {
     // slot change completes (which may take a while).
     if (StateIsConnected())
       Disconnect(nullptr, "switching service");
-    if (!sim_slot_switch_allowed_) {
-      LOG(INFO) << "sim_slot_switch_allowed -> true";
-      sim_slot_switch_allowed_ = true;
-    }
     if (capability_->SetPrimarySimSlotForIccid(service->iccid())) {
       SetPendingConnect(service->iccid());
     } else {
@@ -2074,18 +2070,6 @@ void Cellular::SetSimProperties(
 
   // Ensure that secondary services are created and updated.
   UpdateSecondaryServices();
-
-  // If the Primary SIM does not have a SIM profile available, attempt to switch
-  // to a slot with a SIM profile available.
-  if (!inhibited_ && primary_sim_properties.iccid.empty()) {
-    if (sim_slot_switch_allowed_) {
-      LOG(INFO) << "No Primary SIM properties, attempting to switch slots.";
-      // Attempt to switch to the first valid sim slot.
-      capability_->SetPrimarySimSlotForIccid(std::string());
-    } else {
-      LOG(INFO) << "No Primary SIM properties, slot switch disabled.";
-    }
-  }
 }
 
 void Cellular::OnProfilesChanged() {
@@ -2272,13 +2256,6 @@ void Cellular::SetSimSlotProperties(
                 << " Primary: " << primary_slot;
   sim_slot_properties_ = slot_properties;
   if (primary_sim_slot_ != primary_slot) {
-    if (primary_sim_slot_ != -1 && sim_slot_switch_allowed_) {
-      // After a slot change, do not allow Shill to change slots until/unless
-      // an explicit connect to a Service in a different slot is requested.
-      // This helps prevent Shill from interfering with Hermes operations.
-      LOG(INFO) << "sim_slot_switch_allowed -> false";
-      sim_slot_switch_allowed_ = false;
-    }
     primary_sim_slot_ = primary_slot;
   }
   // Set |sim_slot_info_| and emit SIMSlotInfo
