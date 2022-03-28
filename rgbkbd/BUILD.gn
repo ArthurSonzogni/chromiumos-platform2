@@ -2,17 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":rgbkbd" ]
+  deps = [
+    ":install_dbus_activation",
+    ":install_dbus_config",
+    ":install_upstart_config",
+    ":rgbkbd",
+  ]
+
   if (use.test) {
-    deps += [
-      ":install_dbus_activation",
-      ":install_dbus_config",
-      ":install_upstart_config",
-      ":rgbkbd_test",
-    ]
+    deps += [ ":rgbkbd_test" ]
   }
 }
 
@@ -29,24 +31,30 @@ pkg_config("target_defaults") {
   ]
 }
 
-static_library("libdbus_service") {
-  sources = [ "dbus_service.cc" ]
-  configs += [ ":target_defaults" ]
+generate_dbus_adaptors("rgbkbd-adaptor") {
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/rgbkbd/dbus_adaptors"
+  sources = [ "dbus_bindings/org.chromium.Rgbkbd.xml" ]
 }
 
 static_library("librgbkbd") {
-  sources = [ "keyboard_backlight_logger.cc" ]
+  sources = [
+    "keyboard_backlight_logger.cc",
+    "rgb_keyboard_controller.h",
+    "rgb_keyboard_controller_impl.cc",
+    "rgb_keyboard_controller_impl.h",
+    "rgbkbd_daemon.cc",
+    "rgbkbd_daemon.h",
+  ]
   configs += [ ":target_defaults" ]
+  deps = [ ":rgbkbd-adaptor" ]
 }
 
 executable("rgbkbd") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "sbin"
-  deps = [
-    ":libdbus_service",
-    ":librgbkbd",
-  ]
+  deps = [ ":librgbkbd" ]
 }
 
 # Install upstart configs and scripts.
@@ -70,8 +78,8 @@ install_config("install_dbus_activation") {
 if (use.test) {
   executable("rgbkbd_test") {
     sources = [
-      "dbus_service_test.cc",
       "keyboard_backlight_logger_test.cc",
+      "rgb_keyboard_controller_test.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -79,7 +87,6 @@ if (use.test) {
     ]
     run_test = true
     deps = [
-      ":libdbus_service",
       ":librgbkbd",
       "//common-mk/testrunner",
     ]

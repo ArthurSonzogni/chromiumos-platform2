@@ -10,6 +10,15 @@ namespace rgbkbd {
 const char kRgbkbdServicePath[] = "/org/chromium/Rgbkbd";
 const char kRgbkbdServiceName[] = "org.chromium.Rgbkbd";
 
+// Methods
+const char kGetRgbKeyboardCapabilities[] = "GetRgbKeyboardCapabilities";
+
+enum class RgbKeyboardCapabilities {
+  kNone = 0,
+  kIndividualKey = 1,
+  kFiveZone = 2,
+};
+
 }  // namespace rgbkbd
 
 #endif  // SYSTEM_API_DBUS_RGBKBD_DBUS_CONSTANTS_H_

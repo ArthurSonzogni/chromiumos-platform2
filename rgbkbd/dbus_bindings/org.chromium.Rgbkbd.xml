@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2022 The Chromium OS Authors. All rights reserved.
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+<node name="/org/chromium/Rgbkbd">
+  <interface name="org.chromium.Rgbkbd">
+    <method name="GetRgbKeyboardCapabilities">
+      <tp:docstring>
+        Retrieve whether or not RGB keyboard is supported for the current device. It
+        can be one of the enum values of rgbkbd::RgbKeyboardCapabilities. See
+        platform2/system_api/dbus/rgbkbd/dbus-constants.h
+      </tp:docstring>
+      <arg name="keyboard_capabilities" type="u" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+  </interface>
+</node>
