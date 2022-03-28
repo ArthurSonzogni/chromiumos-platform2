@@ -1303,13 +1303,13 @@ mno {
     uuid : "e6f985b8-f59c-45e0-aebd-a2fa2a8e127a"
     country : "be"
     localized_name {
-      name : "Base"
+      name : "BASE"
     }
     mccmnc : "20620"
     mobile_apn {
       apn : "gprs.base.be"
-      username : "base"
-      password : "base"
+      username : "BASE"
+      password : "BASE"
     }
   }
 }
@@ -1321,7 +1321,7 @@ mno {
     localized_name {
       name : "Mobile Vikings"
     }
-    mccmnc : "20620"
+    mccmnc : "20630"
     mobile_apn {
       apn : "web.be"
       username : "web"
@@ -1332,54 +1332,14 @@ mno {
 
 mno {
   data {
-    uuid : "0b85355e-7466-4977-ba8a-09d53de91b6e"
-    country : "be"
-    localized_name {
-      name : "Mobistar"
-    }
-    mccmnc : "20610"
-    mobile_apn {
-      apn : "web.pro.be"
-      localized_name {
-        name : "Business"
-      }
-      username : "mobistar"
-      password : "mobistar"
-    }
-    mobile_apn {
-      apn : "internet.be"
-      localized_name {
-        name : "Personal"
-      }
-      username : "mobistar"
-      password : "mobistar"
-    }
-    mobile_apn {
-      apn : "iew.be"
-      localized_name {
-        name : "Internet Everywhere"
-      }
-      username : "mobistar"
-      password : "mobistar"
-    }
-    mobile_apn {
-      apn : "mworld.be"
-      username : "mobistar"
-      password : "mobistar"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "ad256c38-0dce-4905-b606-f1277ec78f7c"
     country : "be"
     localized_name {
-      name : "Orange"
+      name : "Orange B"
     }
     mccmnc : "20610"
     mobile_apn {
-      apn : "orangeinternet"
+      apn : "mworld.be"
     }
   }
 }
@@ -1394,15 +1354,7 @@ mno {
     mccmnc : "20601"
     mobile_apn {
       apn : "internet.proximus.be"
-      localized_name {
-        name : "Inter"
-      }
-    }
-    mobile_apn {
-      apn : "intraprox.be"
-      localized_name {
-        name : "Intra"
-      }
+      ip_type : IPV4V6
     }
   }
 }
@@ -1412,20 +1364,25 @@ mno {
     uuid : "8dc79866-23e5-4e62-8f00-ecfe85a660be"
     country : "be"
     localized_name {
-      name : "Telenet Mobile"
+      name : "Telenet"
     }
-    mccmnc : "20610"
-    mobile_apn {
-      apn : "mobile.internet.be"
-      localized_name {
-        name : "Old Walk & Surf"
-      }
-    }
+    mccmnc : "20605"
     mobile_apn {
       apn : "telenetwap.be"
-      localized_name {
-        name : "Walk & Talk"
-      }
+    }
+  }
+}
+
+mno {
+  data {
+    uuid : "19B8E57F-949B-42FC-9D85-5A3FD266EC9F"
+    country : "be"
+    localized_name {
+      name : "VOO"
+    }
+    mccmnc : "20608"
+    mobile_apn {
+      apn : "internet.voo.be"
     }
   }
 }
@@ -8332,11 +8289,29 @@ mno {
     uuid : "712bcc83-b6ba-4763-ab04-280f56b199d7"
     country : "lu"
     localized_name {
-      name : "LUXGSM"
+      name : "POST"
     }
     mccmnc : "27001"
     mobile_apn {
       apn : "web.pt.lu"
+      ip_type: IPV4
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Join"
+    }
+    data {
+      uuid : "6244B0EC-FD28-4504-BB9E-B32F1B057A70"
+      country : "lu"
+      localized_name {
+        name : "Join"
+      }
+      mccmnc : "27001"
+      mobile_apn {
+        apn : "join"
+      }
     }
   }
 }
@@ -8346,7 +8321,7 @@ mno {
     uuid : "56e1c2f0-0f1b-4c0f-bd8d-9b7e2b99b228"
     country : "lu"
     localized_name {
-      name : "Orange"
+      name : "Orange LUX"
     }
     mccmnc : "27099"
     mobile_apn {
@@ -8364,34 +8339,12 @@ mno {
     }
     mccmnc : "27077"
     mobile_apn {
-      apn : "hspa"
-      localized_name {
-        name : "hspa"
-      }
-      username : "tango"
-      password : "tango"
-    }
-    mobile_apn {
       apn : "internet"
       localized_name {
         name : "internet"
       }
       username : "tango"
       password : "tango"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "612723d3-46ea-451e-a81f-ea6ca147499b"
-    country : "lu"
-    localized_name {
-      name : "VOXmobile"
-    }
-    mccmnc : "27099"
-    mobile_apn {
-      apn : "vox.lu"
     }
   }
 }
@@ -9501,31 +9454,12 @@ mno {
     uuid : "52e56bd7-0035-4187-86ee-2fc7c65b1a49"
     country : "nl"
     localized_name {
-      name : "KPN NL"
+      name : "NL KPN"
     }
     mccmnc : "20408"
     mobile_apn {
-      apn : "kpn4g.nl"
-    }
-    mobile_apn {
-      apn : "prepaidinternet"
-    }
-    mobile_apn {
-      apn : "fastinternet"
-    }
-    mobile_apn {
       apn : "internet"
-      username : "KPN"
-      password : "gprs"
-    }
-    mobile_apn {
-      localized_name {
-        name : "Contract"
-      }
-      apn : "portalmmm.nl"
-    }
-    mobile_apn {
-      apn : "noapn"
+      ip_type: IPV4V6
     }
   }
   mvno {
@@ -9606,12 +9540,31 @@ mno {
     uuid : "d1d4554d-62be-462c-a1c7-412208572b56"
     country : "nl"
     localized_name {
-      name : "T-Mobile Internet"
+      name : "T-Mobile NL"
     }
     mccmnc : "20416"
     mccmnc : "20420"
     mobile_apn {
       apn : "smartsites.t-mobile"
+      ip_type: IPV4V6
+    }
+  }
+  mvno {
+    mvno_filter {
+      type : OPERATOR_NAME
+      regex : "Tele2 NL"
+    }
+    data {
+      uuid : "745E497E-A612-44BB-8CD3-CE7D884971C9"
+      country : "nl"
+      localized_name {
+        name : "Tele2 NL"
+      }
+      mccmnc : "20416"
+      mobile_apn {
+        apn : "smartsites.t-mobile"
+        ip_type: IPV4V6
+      }
     }
   }
 }
@@ -9684,11 +9637,12 @@ mno {
     uuid : "09166b23-b0e1-4fc3-9c70-632d52bcb937"
     country : "nl"
     localized_name {
-      name : "Telfort"
+      name : "NL Telfort"
     }
     mccmnc : "20412"
     mobile_apn {
       apn : "internet"
+      ip_type: IPV4V6
     }
   }
   mvno {
@@ -9716,7 +9670,7 @@ mno {
     uuid : "7dbf0fff-cf7e-479c-9e8f-5f9eb0e791c6"
     country : "nl"
     localized_name {
-      name : "Vodafone"
+      name : "Vodafone NL"
     }
     mccmnc : "20404"
     mobile_apn {
@@ -9726,23 +9680,6 @@ mno {
       }
       username : "vodafone"
       password : "vodafone"
-    }
-    mobile_apn {
-      apn : "office.vodafone.nl"
-      localized_name {
-        name : "Business"
-      }
-      username : "vodafone"
-      password : "vodafone"
-      is_attach_apn : true
-    }
-    mobile_apn {
-      apn : "m2m.global.vodafone.nl"
-      localized_name {
-        name : "M2M"
-      }
-      username : "web"
-      password : "web"
     }
   }
 }
