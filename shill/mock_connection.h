@@ -39,7 +39,6 @@ class MockConnection : public Connection {
   MOCK_METHOD(const IPAddress&, local, (), (const, override));
   MOCK_METHOD(const IPAddress&, gateway, (), (const, override));
   MOCK_METHOD(Technology, technology, (), (const, override));
-  MOCK_METHOD(std::string&, tethering, (), (const, override));
   MOCK_METHOD(void,
               UpdateDNSServers,
               (const std::vector<std::string>&),

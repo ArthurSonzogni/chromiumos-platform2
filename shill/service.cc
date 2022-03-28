@@ -1056,10 +1056,7 @@ void Service::EnableAndRetainAutoConnect() {
 }
 
 void Service::SetConnection(const ConnectionRefPtr& connection) {
-  if (connection) {
-    Error unused_error;
-    connection->set_tethering(GetTethering(&unused_error));
-  } else {
+  if (!connection) {
     static_ip_parameters_.ClearSavedParameters();
   }
   connection_ = connection;

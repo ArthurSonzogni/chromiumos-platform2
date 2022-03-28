@@ -113,8 +113,6 @@ class Connection : public base::RefCounted<Connection> {
   virtual const IPAddress& gateway() const { return gateway_; }
   virtual Technology technology() const { return technology_; }
   void set_allowed_srcs(std::vector<IPAddress> addresses);
-  virtual const std::string& tethering() const { return tethering_; }
-  void set_tethering(const std::string& tethering) { tethering_ = tethering; }
 
   // Return true if this is an IPv6 connection.
   virtual bool IsIPv6();
@@ -189,11 +187,6 @@ class Connection : public base::RefCounted<Connection> {
   uint32_t blackhole_table_id_;
   IPAddress local_;
   IPAddress gateway_;
-
-  // Track the tethering status of the Service associated with this connection.
-  // This property is set by a service as it takes ownership of a connection,
-  // and is read by services that are bound through this connection.
-  std::string tethering_;
 
   // Store cached copies of singletons for speed/ease of testing
   const DeviceInfo* device_info_;

@@ -284,22 +284,16 @@ bool VPNService::IsAutoConnectable(const char** reason) const {
 }
 
 std::string VPNService::GetTethering(Error* error) const {
-  ConnectionConstRefPtr underlying_connection = GetUnderlyingConnection();
-  std::string tethering;
-  if (underlying_connection) {
-    tethering = underlying_connection->tethering();
-    if (!tethering.empty()) {
-      return tethering;
-    }
-    // The underlying service may not have a Tethering property.  This is
-    // not strictly an error, so we don't print an error message.  Populating
-    // an error here just serves to propagate the lack of a property in
-    // GetProperties().
-    error->Populate(Error::kNotSupported);
-  } else {
-    error->Populate(Error::kOperationFailed);
+  if (!IsConnected()) {
+    return Service::GetTethering(error);
   }
-  return "";
+
+  ServiceRefPtr underlying_service = manager()->GetPrimaryPhysicalService();
+  if (!underlying_service) {
+    error->Populate(Error::kOperationFailed);
+    return "";
+  }
+  return underlying_service->GetTethering(error);
 }
 
 bool VPNService::SetNameProperty(const std::string& name, Error* error) {

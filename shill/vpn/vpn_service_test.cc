@@ -38,8 +38,9 @@ using testing::SaveArg;
 
 namespace {
 
-const char kInterfaceName[] = "tun0";
-const int kInterfaceIndex = 123;
+constexpr char kInterfaceName[] = "tun0";
+constexpr int kInterfaceIndex = 123;
+constexpr char kTethering[] = "moon unit";
 
 }  // namespace
 
@@ -396,49 +397,41 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
 }
 
 TEST_F(VPNServiceTest, GetTethering) {
-  service_->SetConnection(connection_);
-  EXPECT_EQ(connection_, service_->connection());
+  // Service is not connected.
+  {
+    Error error;
+    EXPECT_EQ("", service_->GetTethering(&error));
+    EXPECT_EQ(Error::kNotSupported, error.type());
+  }
 
+  service_->SetState(Service::kStateConnected);
   // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
   EXPECT_CALL(manager_, GetPrimaryPhysicalService()).WillOnce(Return(nullptr));
-
   {
     Error error;
     EXPECT_EQ("", service_->GetTethering(&error));
     EXPECT_EQ(Error::kOperationFailed, error.type());
   }
 
-  scoped_refptr<NiceMock<MockConnection>> lower_connection =
-      new NiceMock<MockConnection>(&device_info_);
-
-  EXPECT_CALL(*connection_, tethering()).Times(0);
-
-  const char kTethering[] = "moon unit";
-  EXPECT_CALL(*lower_connection, tethering())
-      .WillOnce(ReturnRefOfCopy(std::string(kTethering)))
-      .WillOnce(ReturnRefOfCopy(std::string()));
-
+  auto underlying_service = new MockService(&manager_);
+  EXPECT_CALL(manager_, GetPrimaryPhysicalService())
+      .WillRepeatedly(Return(underlying_service));
+  EXPECT_CALL(*underlying_service, GetTethering(_))
+      .WillOnce([](Error* error) { return kTethering; })
+      .WillOnce([](Error* error) {
+        error->Populate(Error::kNotSupported);
+        return "";
+      });
   {
-    EXPECT_CALL(manager_, GetPrimaryPhysicalService())
-        .WillOnce(Return(ByMove(CreateUnderlyingService(lower_connection))));
     Error error;
     EXPECT_EQ(kTethering, service_->GetTethering(&error));
     EXPECT_TRUE(error.IsSuccess());
   }
   {
-    EXPECT_CALL(manager_, GetPrimaryPhysicalService())
-        .WillOnce(Return(ByMove(CreateUnderlyingService(lower_connection))));
     Error error;
     EXPECT_EQ("", service_->GetTethering(&error));
     EXPECT_EQ(Error::kNotSupported, error.type());
   }
-
-  // Clear expectations now, so the Return(lower_connection) action releases
-  // the reference to |lower_connection| allowing it to be destroyed now.
-  Mock::VerifyAndClearExpectations(connection_.get());
-  // Destroying the |lower_connection| at function exit will also call an extra
-  // FlushAddresses on the |device_info_| object.
-  EXPECT_CALL(device_info_, FlushAddresses(0));
 }
 
 TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {
