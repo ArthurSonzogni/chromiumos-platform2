@@ -1786,6 +1786,7 @@ TEST_F(PowerSupplyTest, SendPowerStatusOverDBus) {
 
 TEST_F(PowerSupplyTest, SendBatteryStatePollOverDBus) {
   WriteDefaultValues(PowerSource::AC);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kMainsType, kDischarging);
   Init();
 
   // On refresh, a PowerSupplyPoll signal should be emitted.
@@ -1804,13 +1805,14 @@ TEST_F(PowerSupplyTest, SendBatteryStatePollOverDBus) {
 
   // AC charging maps to 1 in power_manager::system::ExternalPowerType.
   EXPECT_EQ(1, external_power_type);
-  // Battery full maps to 4 in power_manager::system::UpowerBatteryState.
-  EXPECT_EQ(4, battery_state);
+  // Battery discharging maps to 2 in power_manager::system::UpowerBatteryState.
+  EXPECT_EQ(2, battery_state);
   EXPECT_DOUBLE_EQ(100, display_battery_percentage);
 }
 
 TEST_F(PowerSupplyTest, SendGetBatteryStateOverDBus) {
   WriteDefaultValues(PowerSource::AC);
+  UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kMainsType, kDischarging);
   Init();
 
   ASSERT_TRUE(power_supply_->RefreshImmediately());
@@ -1831,8 +1833,8 @@ TEST_F(PowerSupplyTest, SendGetBatteryStateOverDBus) {
 
   // AC charging maps to 1 in power_manager::system::ExternalPowerType.
   EXPECT_EQ(1, external_power_type);
-  // Battery full maps to 4 in power_manager::system::UpowerBatteryState.
-  EXPECT_EQ(4, battery_state);
+  // Battery discharging maps to 2 in power_manager::system::UpowerBatteryState.
+  EXPECT_EQ(2, battery_state);
   EXPECT_DOUBLE_EQ(100, display_battery_percentage);
 }
 

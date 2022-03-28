@@ -240,20 +240,15 @@ enum class UpowerBatteryState {
 };
 
 // Returns a mapping of |curr_state| to its equivalent upower enum.
-UpowerBatteryState BatteryStateToUpowerEnum(
-    PowerSupplyProperties::BatteryState curr_state) {
-  switch (curr_state) {
-    case PowerSupplyProperties_BatteryState_NOT_PRESENT:
-      return UpowerBatteryState::UpowerUnknown;
-    case PowerSupplyProperties_BatteryState_CHARGING:
-      return UpowerBatteryState::UpowerCharging;
-    case PowerSupplyProperties_BatteryState_DISCHARGING:
-      return UpowerBatteryState::UpowerDischarging;
-    case PowerSupplyProperties_BatteryState_FULL:
-      return UpowerBatteryState::UpowerFullyCharged;
-    default:
-      return UpowerBatteryState::UpowerUnknown;
-  }
+UpowerBatteryState BatteryStateToUpowerEnum(std::string curr_state) {
+  if (curr_state == PowerSupply::kBatteryStatusCharging)
+    return UpowerBatteryState::UpowerCharging;
+  else if (curr_state == PowerSupply::kBatteryStatusDischarging)
+    return UpowerBatteryState::UpowerDischarging;
+  else if (curr_state == PowerSupply::kBatteryStatusFull)
+    return UpowerBatteryState::UpowerFullyCharged;
+  else
+    return UpowerBatteryState::UpowerUnknown;
 }
 
 // Returns true if |port| is connected to a dedicated power source or dual-role
@@ -1421,7 +1416,7 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
   writer.AppendUint32(static_cast<uint32_t>(
       ExternalPowerToExternalPowerEnum(power_status_.external_power)));
   writer.AppendUint32(static_cast<uint32_t>(
-      BatteryStateToUpowerEnum(power_status_.battery_state)));
+      BatteryStateToUpowerEnum(power_status_.battery_status_string)));
   writer.AppendDouble(power_status_.display_battery_percentage);
   dbus_wrapper_->EmitSignal(&signal);
 
@@ -1482,7 +1477,7 @@ void PowerSupply::OnGetBatteryStateMethodCall(
   writer.AppendUint32(static_cast<uint32_t>(
       ExternalPowerToExternalPowerEnum(power_status_.external_power)));
   writer.AppendUint32(static_cast<uint32_t>(
-      BatteryStateToUpowerEnum(power_status_.battery_state)));
+      BatteryStateToUpowerEnum(power_status_.battery_status_string)));
   writer.AppendDouble(power_status_.display_battery_percentage);
   std::move(response_sender).Run(std::move(response));
 }
