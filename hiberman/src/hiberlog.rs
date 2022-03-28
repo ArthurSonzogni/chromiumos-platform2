@@ -51,7 +51,7 @@ macro_rules! lock {
         match lock() {
             Ok(s) => s,
             _ => return,
-        };
+        }
     };
 }
 
@@ -433,7 +433,7 @@ fn replay_line(syslogger: &BasicLogger, line: String) {
 
     // Now trim <11>hiberman into <11, and parse 11 out of the combined
     // priority + facility.
-    let facprio_string = header.splitn(2, '>').next().unwrap();
+    let facprio_string = header.split_once('>').map_or(header, |x| x.0);
     let facprio: u8 = match facprio_string[1..].parse() {
         Ok(i) => i,
         Err(_) => {
