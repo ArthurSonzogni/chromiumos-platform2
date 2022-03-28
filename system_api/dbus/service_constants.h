@@ -218,6 +218,8 @@ const char kUserAuthenticationServicePath[] =
 const char kUserAuthenticationServiceInterface[] =
     "org.chromium.UserAuthenticationServiceInterface";
 const char kUserAuthenticationServiceShowAuthDialogMethod[] = "ShowAuthDialog";
+const char kUserAuthenticationServiceShowAuthDialogV2Method[] =
+    "ShowAuthDialogV2";
 const char kUserAuthenticationServiceCancelMethod[] = "Cancel";
 const char kUserAuthenticationServiceIsAuthenticatorAvailableMethod[] =
     "IsAuthenticatorAvailable";
