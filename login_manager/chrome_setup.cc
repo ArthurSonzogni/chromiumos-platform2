@@ -290,9 +290,6 @@ void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("virtio_gpu")) {
     builder->AddFeatureEnableOverride("CrostiniGpuSupport");
   }
-  if (builder->UseFlagIsSet("kvm_transition")) {
-    builder->AddArg("--kernelnext-restrict-vms");
-  }
 }
 
 void AddPluginVmFlags(ChromiumCommandBuilder* builder) {
