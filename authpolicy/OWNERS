@@ -1,10 +1,12 @@
-# Current owners (prefer)
+# Current owner(s) (prefer)
 fsandrade@chromium.org
-tomdobro@chromium.org
 
-# Previous owners (ask if current owners are not available)
-# Commented out so automatic tools don't prefer
+# Secondary owner(s)
+rsorokin@chromium.org
+
+# Previous owners (for general questions, if current owners are not available)
+# Commented out so automatic tools don't prefer.
 # ljusten@chromium.org
-# rsorokin@chromium.org
+# tomdobro@chromium.org
 
-# COMPONENT: Enterprise>ActiveDirectory
+# COMPONENT: OS>Software>Enterprise>ActiveDirectory
