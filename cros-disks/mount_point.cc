@@ -42,13 +42,12 @@ MountPoint::MountPoint(MountPointData data, const Platform* platform)
 }
 
 MountPoint::~MountPoint() {
-  if (!released_) {
-    MountErrorType error = Unmount();
-    if (error != MOUNT_ERROR_NONE && error != MOUNT_ERROR_PATH_NOT_MOUNTED) {
-      LOG(WARNING) << "Unmount error while destroying MountPoint("
-                   << quote(path()) << "): " << error;
-    }
-  }
+  if (released_)
+    return;
+
+  const MountErrorType error = Unmount();
+  LOG_IF(WARNING, error && error != MOUNT_ERROR_PATH_NOT_MOUNTED)
+      << "Cannot unmount " << quote(path()) << ": " << error;
 }
 
 void MountPoint::Release() {
@@ -56,28 +55,25 @@ void MountPoint::Release() {
 }
 
 MountErrorType MountPoint::Unmount() {
-  if (released_) {
-    // TODO(amistry): "not mounted" and "already unmounted" are logically
-    // different and should be treated differently. Introduce a new error code
-    // to represent this distinction.
+  if (released_)
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
-  }
-  MountErrorType error = UnmountImpl();
-  if (error == MOUNT_ERROR_NONE || error == MOUNT_ERROR_PATH_NOT_MOUNTED) {
-    released_ = true;
-  }
+
+  const MountErrorType error = UnmountImpl();
+  released_ = !error || error == MOUNT_ERROR_PATH_NOT_MOUNTED;
+
   return error;
 }
 
 MountErrorType MountPoint::Remount(bool read_only) {
-  if (released_) {
+  if (released_)
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
-  }
-  int new_flags = (data_.flags & ~MS_RDONLY) | (read_only ? MS_RDONLY : 0);
-  MountErrorType error = RemountImpl(new_flags);
-  if (error == MOUNT_ERROR_NONE) {
+
+  const int new_flags =
+      (data_.flags & ~MS_RDONLY) | (read_only ? MS_RDONLY : 0);
+  const MountErrorType error = RemountImpl(new_flags);
+  if (!error)
     data_.flags = new_flags;
-  }
+
   return error;
 }
 
@@ -89,23 +85,25 @@ MountErrorType MountPoint::UnmountImpl() {
   // user can take, and these filesystem are sometimes unmounted implicitly on
   // login/logout/suspend.
 
-  MountErrorType error = platform_->Unmount(path().value(), 0 /* flags */);
-  if (error != MOUNT_ERROR_PATH_ALREADY_MOUNTED) {
-    // MOUNT_ERROR_PATH_ALREADY_MOUNTED is returned on EBUSY.
+  const base::FilePath& mount_point = path();
+  LOG(INFO) << "Unmounting " << redact(mount_point) << "...";
+  if (const MountErrorType error = platform_->Unmount(mount_point.value(), 0);
+      error != MOUNT_ERROR_PATH_ALREADY_MOUNTED)
     return error;
-  }
 
-  // For FUSE filesystems, MNT_FORCE will cause the kernel driver to
-  // immediately close the channel to the user-space driver program and cancel
-  // all outstanding requests. However, if any program is still accessing the
+  // The mount point couldn't be unmounted because it is BUSY.
+  LOG(WARNING) << "Mount point " << quote(mount_point) << " is busy";
+
+  // For FUSE filesystems, MNT_FORCE will cause the kernel driver to immediately
+  // close the channel to the user-space driver program and cancel all
+  // outstanding requests. However, if any program is still accessing the
   // filesystem, the umount2() will fail with EBUSY and the mountpoint will
-  // still be attached. Since the mountpoint is no longer valid, use
-  // MNT_DETACH to also force the mountpoint to be disconnected.
-  // On a non-FUSE filesystem MNT_FORCE doesn't have effect, so it only
-  // handles MNT_DETACH, but it's OK to pass MNT_FORCE too.
-  LOG(WARNING) << "Mount point " << quote(path())
-               << " is busy, using force unmount";
-  return platform_->Unmount(path().value(), MNT_FORCE | MNT_DETACH);
+  // still be attached. Since the mountpoint is no longer valid, use MNT_DETACH
+  // to also force the mountpoint to be disconnected. On a non-FUSE filesystem
+  // MNT_FORCE doesn't have effect, so it only handles MNT_DETACH, but it's OK
+  // to pass MNT_FORCE too.
+  LOG(WARNING) << "Forcefully unmounting " << quote(mount_point) << "...";
+  return platform_->Unmount(mount_point.value(), MNT_FORCE | MNT_DETACH);
 }
 
 MountErrorType MountPoint::RemountImpl(int flags) {

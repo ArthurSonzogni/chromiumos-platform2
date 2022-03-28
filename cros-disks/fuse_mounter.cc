@@ -60,7 +60,7 @@ class FUSEMountPoint : public MountPoint {
   }
 
   static void CleanUpCallback(const base::FilePath& mount_path,
-                              base::WeakPtr<FUSEMountPoint> ptr,
+                              const base::WeakPtr<FUSEMountPoint> ptr,
                               const siginfo_t& info) {
     CHECK_EQ(SIGCHLD, info.si_signo);
     if (info.si_code != CLD_EXITED) {
@@ -74,29 +74,22 @@ class FUSEMountPoint : public MountPoint {
       LOG(INFO) << "FUSE daemon for " << quote(mount_path)
                 << " exited normally";
     }
-    if (!ptr) {
-      // If the MountPoint instance has been deleted, it was
-      // already unmounted and cleaned up due to a
-      // request from the browser (or logout). In this
-      // case, there's nothing to do.
-      // TODO(dats): Consolidate this logic into centralized place (likely
-      //  MountPoint base class).
-      return;
-    }
-    ptr->CleanUp();
+
+    // If the MountPoint instance has been deleted, it was already unmounted and
+    // cleaned up due to a request from the browser (or logout). In this case,
+    // there's nothing to do.
+    if (ptr)
+      ptr->CleanUp();
   }
 
  private:
   void CleanUp() {
-    MountErrorType unmount_error = Unmount();
-    LOG_IF(ERROR, unmount_error != MOUNT_ERROR_NONE)
-        << "Cannot unmount FUSE mount point " << redact(path())
-        << " after process exit: " << unmount_error;
+    if (const MountErrorType error = Unmount())
+      LOG(ERROR) << "Cannot unmount " << redact(path()) << ": " << error;
 
-    if (!platform_->RemoveEmptyDirectory(path().value())) {
-      PLOG(ERROR) << "Cannot remove FUSE mount point " << redact(path())
-                  << " after process exit";
-    }
+    LOG(INFO) << "Removing " << redact(path()) << "...";
+    if (!platform_->RemoveEmptyDirectory(path().value()))
+      PLOG(ERROR) << "Cannot remove " << redact(path());
   }
 
   base::WeakPtrFactory<FUSEMountPoint> weak_factory_{this};
@@ -179,12 +172,12 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
   // Add the sandboxed process to its cgroup that should be setup. Return an
   // error if it's not there.
   if (!platform_->PathExists(cgroup.value())) {
-    LOG(ERROR) << "Freezer cgroup, " << cgroup << " is missing";
+    LOG(ERROR) << "Freezer cgroup " << quote(cgroup) << " is missing";
     return MOUNT_ERROR_INTERNAL;
   }
 
   if (!sandbox->AddToCgroup(cgroup.value())) {
-    LOG(ERROR) << "Unable to add sandboxed process to cgroup " << cgroup;
+    LOG(ERROR) << "Cannot add sandboxed process to cgroup " << quote(cgroup);
     return MOUNT_ERROR_INTERNAL;
   }
 
@@ -248,7 +241,7 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
   }
 
   if (!platform_->PathExists(executable_.value())) {
-    LOG(ERROR) << "Cannot find mount program " << quote(executable_);
+    LOG(ERROR) << "Cannot find mounter program " << quote(executable_);
     return false;
   }
   sandbox->AddArgument(executable_.value());
@@ -279,8 +272,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
       base::FilePath(kFuseDeviceFile),
       base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
   if (!fuse_file.IsValid()) {
-    LOG(ERROR) << "Unable to open FUSE device file. Error: "
-               << fuse_file.error_details() << " "
+    LOG(ERROR) << "Cannot open FUSE device " << quote(kFuseDeviceFile) << ": "
                << base::File::ErrorToString(fuse_file.error_details());
     *error = MOUNT_ERROR_INTERNAL;
     return nullptr;
@@ -339,27 +331,30 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     return nullptr;
   }
 
-  pid_t pid =
+  const pid_t pid =
       StartDaemon(fuse_file, source, target_path, std::move(params), error);
   if (*error != MOUNT_ERROR_NONE || pid == Process::kInvalidProcessId) {
-    LOG(ERROR) << "FUSE daemon start failure: " << *error;
-    LOG(INFO) << "FUSE cleanup on start failure for " << quote(target_path);
-    MountErrorType unmount_error =
+    LOG(ERROR) << "Cannot start FUSE daemon for " << redact(source) << ": "
+               << *error;
+    LOG(INFO) << "Forcefully unmounting " << quote(target_path) << "...";
+    const MountErrorType unmount_error =
         platform_->Unmount(target_path.value(), MNT_FORCE | MNT_DETACH);
-    LOG_IF(ERROR, unmount_error != MOUNT_ERROR_NONE)
-        << "Cannot unmount FUSE mount point " << redact(target_path)
-        << " after launch failure: " << unmount_error;
+    LOG_IF(ERROR, unmount_error)
+        << "Cannot unmount " << redact(target_path) << ": " << unmount_error;
     return nullptr;
   }
+
+  LOG(INFO) << "Started FUSE daemon for " << quote(target_path)
+            << " as PID namespace " << pid;
 
   // At this point, the FUSE daemon has successfully started.
   std::unique_ptr<FUSEMountPoint> mount_point =
       std::make_unique<FUSEMountPoint>(std::move(data), platform_);
 
-  // Add a watcher that cleans up the FUSE mount when the process exits.
-  // This is defined as in-jail "init" process, denoted by pid(),
-  // terminates, which happens only when the last process in the jailed PID
-  // namespace terminates.
+  // Add a watcher that cleans up the FUSE mount when the FUSE daemon exits.
+  // This is detected when the in-jail "init" process |pid| terminates, which
+  // happens only when the last daemon process in the jailed PID namespace
+  // terminates.
   process_reaper_->WatchForChild(
       FROM_HERE, pid,
       base::BindOnce(&FUSEMountPoint::CleanUpCallback, target_path,
@@ -390,13 +385,14 @@ pid_t FUSEMounter::StartDaemon(const base::File& fuse_file,
   if (*error != MOUNT_ERROR_NONE) {
     const auto& executable = mount_process->arguments()[0];
     if (!output.empty()) {
-      LOG(ERROR) << "FUSE mount program " << quote(executable) << " outputted "
+      LOG(ERROR) << "FUSE mounter " << quote(executable) << " outputted "
                  << output.size() << " lines:";
       for (const std::string& line : output) {
         LOG(ERROR) << line;
       }
     }
-    LOG(ERROR) << "FUSE mount program " << quote(executable)
+
+    LOG(ERROR) << "FUSE mounter " << quote(executable)
                << " returned error code " << return_code;
     return Process::kInvalidProcessId;
   }
