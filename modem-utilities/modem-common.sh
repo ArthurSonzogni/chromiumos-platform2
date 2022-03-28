@@ -278,9 +278,12 @@ esim_status_feedback() {
 
 esim_refresh_profiles() {
   local euicc="$1"
+  local should_not_switch_slot="$2"
+  [ -z "${should_not_switch_slot}" ] && should_not_switch_slot="false"
 
   dbus_call "${HERMES}" "${euicc}" \
-           "${HERMES_EUICC_IFACE}.RequestInstalledProfiles"
+           "${HERMES_EUICC_IFACE}.RefreshInstalledProfiles" \
+           boolean:"${should_not_switch_slot}"
 }
 
 esim_install() {

@@ -42,6 +42,8 @@ class EuiccDBusAdaptor : public EuiccAdaptorInterface,
                               const std::string& in_root_smds) override;
   void RequestInstalledProfiles(
       std::unique_ptr<DBusResponse<>> response) override;
+  void RefreshInstalledProfiles(std::unique_ptr<DBusResponse<>> response,
+                                bool should_not_switch_slot) override;
   void SetTestMode(std::unique_ptr<DBusResponse<>> response,
                    bool in_is_test_mode) override;
   void UseTestCerts(bool in_use_test_certs) override;

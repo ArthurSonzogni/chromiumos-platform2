@@ -6,6 +6,18 @@
 -->
 <node>
   <interface name="org.chromium.Hermes.Euicc">
+    <method name="RefreshInstalledProfiles">
+      <tp:docstring>
+        Reload the profiles installed on a eUICC.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="async" />
+      <arg name="should_not_switch_slot" type="b" direction="in" >
+        <tp:docstring>
+          If set to true, the active slot before and after fetching profiles
+          will be unchanged.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="RequestInstalledProfiles">
       <tp:docstring>
         Reload the profiles installed on a eUICC.

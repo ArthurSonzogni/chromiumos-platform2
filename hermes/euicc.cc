@@ -316,18 +316,20 @@ void Euicc::SendNotifications(
       });
 }
 
-void Euicc::RequestInstalledProfiles(DbusResult<> dbus_result) {
-  LOG(INFO) << __func__;
+void Euicc::RefreshInstalledProfiles(bool restore_slot,
+                                     DbusResult<> dbus_result) {
+  LOG(INFO) << __func__ << ": restore_slot=" << restore_slot;
   if (!context_->lpa()->IsLpaIdle()) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
-        base::BindOnce(&Euicc::RequestInstalledProfiles,
-                       weak_factory_.GetWeakPtr(), std::move(dbus_result)),
+        base::BindOnce(&Euicc::RefreshInstalledProfiles,
+                       weak_factory_.GetWeakPtr(), restore_slot,
+                       std::move(dbus_result)),
         kLpaRetryDelay);
     return;
   }
-  auto get_installed_profiles =
-      base::BindOnce(&Euicc::GetInstalledProfiles, weak_factory_.GetWeakPtr());
+  auto get_installed_profiles = base::BindOnce(
+      &Euicc::GetInstalledProfiles, weak_factory_.GetWeakPtr(), restore_slot);
   auto get_card_version =
       base::BindOnce(&Euicc::GetCardVersion<>, weak_factory_.GetWeakPtr(),
                      std::move(get_installed_profiles));
@@ -337,13 +339,13 @@ void Euicc::RequestInstalledProfiles(DbusResult<> dbus_result) {
                      std::move(get_card_version), std::move(dbus_result)));
 }
 
-void Euicc::GetInstalledProfiles(DbusResult<> dbus_result) {
+void Euicc::GetInstalledProfiles(bool restore_slot, DbusResult<> dbus_result) {
   context_->lpa()->GetInstalledProfiles(
       context_->executor(),
-      [dbus_result{std::move(dbus_result)}, this](
+      [restore_slot, dbus_result{std::move(dbus_result)}, this](
           std::vector<lpa::proto::ProfileInfo>& profile_infos,
           int error) mutable {
-        OnInstalledProfilesReceived(profile_infos, error,
+        OnInstalledProfilesReceived(profile_infos, error, restore_slot,
                                     std::move(dbus_result));
       });
 }
@@ -351,6 +353,7 @@ void Euicc::GetInstalledProfiles(DbusResult<> dbus_result) {
 void Euicc::OnInstalledProfilesReceived(
     const std::vector<lpa::proto::ProfileInfo>& profile_infos,
     int error,
+    bool restore_slot,
     DbusResult<> dbus_result) {
   LOG(INFO) << __func__;
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
@@ -374,7 +377,16 @@ void Euicc::OnInstalledProfilesReceived(
     }
   }
   UpdateInstalledProfilesProperty();
-  EndEuiccOp(dbus_result);
+  if (!restore_slot) {
+    EndEuiccOp(dbus_result);
+    return;
+  }
+  // Restore the active slot and Run end_euicc_op.
+  auto end_euicc_op =
+      base::BindOnce(&Euicc::EndEuiccOpNoObject, weak_factory_.GetWeakPtr());
+  context_->modem_control()->RestoreActiveSlot(
+      base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
+                     std::move(end_euicc_op), std::move(dbus_result)));
 }
 
 void Euicc::RequestPendingProfiles(DbusResult<> dbus_result,
@@ -560,6 +572,12 @@ void Euicc::EndEuiccOp(DbusResult<T...> dbus_result, T... object) {
       dbus_result, object...);
   context_->modem_control()->ProcessEuiccEvent({physical_slot_, EuiccStep::END},
                                                std::move(send_dbus_response));
+}
+
+// Remove variadic template, and polymorphism on EndEuiccOp for use in lambdas
+// and callbacks.
+void Euicc::EndEuiccOpNoObject(DbusResult<> dbus_result) {
+  EndEuiccOp(std::move(dbus_result));
 }
 
 template <typename... T>

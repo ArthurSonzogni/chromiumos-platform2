@@ -69,7 +69,15 @@ void EuiccDBusAdaptor::RequestPendingProfiles(
 void EuiccDBusAdaptor::RequestInstalledProfiles(
     std::unique_ptr<DBusResponse<>> response) {
   DbusResult<> dbus_result(std::move(response));
-  euicc_->RequestInstalledProfiles(std::move(dbus_result));
+  euicc_->RefreshInstalledProfiles(false /* should_not_switch_slot */,
+                                   std::move(dbus_result));
+}
+
+void EuiccDBusAdaptor::RefreshInstalledProfiles(
+    std::unique_ptr<DBusResponse<>> response, bool should_not_switch_slot) {
+  DbusResult<> dbus_result(std::move(response));
+  euicc_->RefreshInstalledProfiles(should_not_switch_slot,
+                                   std::move(dbus_result));
 }
 
 void EuiccDBusAdaptor::SetTestMode(std::unique_ptr<DBusResponse<>> response,

@@ -38,7 +38,8 @@ class Euicc {
   void UninstallProfile(dbus::ObjectPath profile_path,
                         DbusResult<> dbus_result);
   // Request the eUICC to provide all installed profiles.
-  void RequestInstalledProfiles(DbusResult<> dbus_result);
+  void RefreshInstalledProfiles(bool should_not_switch_slot,
+                                DbusResult<> dbus_result);
 
   void InstallPendingProfile(dbus::ObjectPath profile_path,
                              std::string confirmation_code,
@@ -68,6 +69,7 @@ class Euicc {
   void OnInstalledProfilesReceived(
       const std::vector<lpa::proto::ProfileInfo>& profile_infos,
       int error,
+      bool should_not_switch_slot,
       DbusResult<> dbus_result);
 
   // Update |pending_profiles_| with all profiles installed on the SMDS.
@@ -80,7 +82,8 @@ class Euicc {
   // Methods that call an eponymous LPA method.
   // These methods are used once a slot switch is performed and a channel has
   // been acquired.
-  void GetInstalledProfiles(DbusResult<> dbus_result);
+  void GetInstalledProfiles(bool should_not_switch_slot,
+                            DbusResult<> dbus_result);
   void DownloadProfile(std::string activation_code,
                        std::string confirmation_code,
                        DbusResult<dbus::ObjectPath> dbus_result);
@@ -110,6 +113,7 @@ class Euicc {
   void EndEuiccOp(DbusResult<T...> dbus_result, T... object);
   template <typename... T>
   void EndEuiccOp(DbusResult<T...> dbus_result, brillo::ErrorPtr error);
+  void EndEuiccOpNoObject(DbusResult<> dbus_result);
   template <typename... T>
   void RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
                     DbusResult<T...> dbus_result,
