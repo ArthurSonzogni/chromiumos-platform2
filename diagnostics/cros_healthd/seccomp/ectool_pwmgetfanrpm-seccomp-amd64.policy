@@ -37,6 +37,7 @@ ioctl: arg1 == 0xc108ec01 || arg1 == 0xc0283a00 || arg1 == 0xc014ec00 || \
        arg1 == 0x0c0103a01
 brk: 1
 rt_sigaction: 1
+execve: 1
 arch_prctl: 1
 set_tid_address: 1
 prlimit64: 1
