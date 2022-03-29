@@ -15,6 +15,7 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <chromeos/cbor/values.h>
 #include <chromeos/cbor/writer.h>
@@ -266,13 +267,20 @@ void WebAuthnHandler::MakeCredential(
 
   if (session.request.verification_type() ==
       VerificationType::VERIFICATION_USER_VERIFICATION) {
+    std::string request_id;
+    if (session.request.request_id_str().empty()) {
+      request_id = base::NumberToString(session.request.request_id());
+    } else {
+      request_id = session.request.request_id_str();
+    }
+
     dbus::MethodCall call(
         chromeos::kUserAuthenticationServiceInterface,
-        chromeos::kUserAuthenticationServiceShowAuthDialogMethod);
+        chromeos::kUserAuthenticationServiceShowAuthDialogV2Method);
     dbus::MessageWriter writer(&call);
     writer.AppendString(session.request.rp_id());
     writer.AppendInt32(session.request.verification_type());
-    writer.AppendUint64(session.request.request_id());
+    writer.AppendString(request_id);
 
     pending_uv_make_credential_session_ = std::move(session);
     auth_dialog_dbus_proxy_->CallMethod(
@@ -295,22 +303,32 @@ CancelWebAuthnFlowResponse WebAuthnHandler::Cancel(
     return response;
   }
 
-  if (pending_uv_make_credential_session_ &&
-      pending_uv_make_credential_session_->request.request_id() !=
-          request.request_id()) {
-    LOG(ERROR)
-        << "MakeCredential session has a different request_id, not cancelling.";
-    response.set_canceled(false);
-    return response;
+  if (pending_uv_make_credential_session_) {
+    if ((request.request_id_str().empty() &&
+         pending_uv_make_credential_session_->request.request_id() !=
+             request.request_id()) ||
+        (!request.request_id_str().empty() &&
+         pending_uv_make_credential_session_->request.request_id_str() !=
+             request.request_id_str())) {
+      LOG(ERROR) << "MakeCredential session has a different request_id, not "
+                    "cancelling.";
+      response.set_canceled(false);
+      return response;
+    }
   }
 
-  if (pending_uv_get_assertion_session_ &&
-      pending_uv_get_assertion_session_->request.request_id() !=
-          request.request_id()) {
-    LOG(ERROR)
-        << "GetAssertion session has a different request_id, not cancelling.";
-    response.set_canceled(false);
-    return response;
+  if (pending_uv_get_assertion_session_) {
+    if ((request.request_id_str().empty() &&
+         pending_uv_get_assertion_session_->request.request_id() !=
+             request.request_id()) ||
+        (!request.request_id_str().empty() &&
+         pending_uv_get_assertion_session_->request.request_id_str() !=
+             request.request_id_str())) {
+      LOG(ERROR) << "GetAssertion session has a different request_id, not "
+                    "cancelling.";
+      response.set_canceled(false);
+      return response;
+    }
   }
 
   dbus::MethodCall call(chromeos::kUserAuthenticationServiceInterface,
@@ -759,13 +777,20 @@ void WebAuthnHandler::GetAssertion(
   if (session.request.verification_type() ==
           VerificationType::VERIFICATION_USER_VERIFICATION &&
       !is_legacy_credential) {
+    std::string request_id;
+    if (session.request.request_id_str().empty()) {
+      request_id = base::NumberToString(session.request.request_id());
+    } else {
+      request_id = session.request.request_id_str();
+    }
+
     dbus::MethodCall call(
         chromeos::kUserAuthenticationServiceInterface,
-        chromeos::kUserAuthenticationServiceShowAuthDialogMethod);
+        chromeos::kUserAuthenticationServiceShowAuthDialogV2Method);
     dbus::MessageWriter writer(&call);
     writer.AppendString(session.request.rp_id());
     writer.AppendInt32(session.request.verification_type());
-    writer.AppendUint64(session.request.request_id());
+    writer.AppendString(request_id);
 
     pending_uv_get_assertion_session_ = std::move(session);
     auth_dialog_dbus_proxy_->CallMethod(
