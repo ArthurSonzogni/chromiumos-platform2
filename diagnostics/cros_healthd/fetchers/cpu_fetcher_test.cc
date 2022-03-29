@@ -22,7 +22,6 @@
 #include "diagnostics/cros_healthd/system/fake_system_utilities.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/system/system_utilities_constants.h"
-#include "diagnostics/cros_healthd/utils/cpu_file_helpers.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -235,7 +234,7 @@ class CpuFetcherTest : public testing::Test {
                                              kFakeStatContents));
     // Write /sys/devices/system/cpu/present.
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        GetCpuDirectoryPath(root_dir()).Append(kCpuPresentFile),
+        root_dir().Append(kRelativeCpuDir).Append(kPresentFileName),
         kFakePresentContents));
     // Write policy data for the first logical CPU.
     WritePolicyData(std::to_string(kFirstFakeMaxClockSpeed),
@@ -352,12 +351,13 @@ class CpuFetcherTest : public testing::Test {
                        const std::string scaling_max_freq_contents,
                        const std::string scaling_cur_freq_contents,
                        const std::string& logical_id) {
-    WritePolicyFile(logical_id, kCpuinfoMaxFreqFile, cpuinfo_max_freq_contents);
+    WritePolicyFile(logical_id, kCpuinfoMaxFreqFileName,
+                    cpuinfo_max_freq_contents);
 
-    WritePolicyFile(logical_id, kCpuScalingMaxFreqFile,
+    WritePolicyFile(logical_id, kScalingMaxFreqFileName,
                     scaling_max_freq_contents);
 
-    WritePolicyFile(logical_id, kCpuScalingCurFreqFile,
+    WritePolicyFile(logical_id, kScalingCurFreqFileName,
                     scaling_cur_freq_contents);
   }
 
@@ -369,11 +369,11 @@ class CpuFetcherTest : public testing::Test {
     int state_to_write = c_states_written[logical_id];
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         policy_dir.Append("state" + std::to_string(state_to_write))
-            .Append(kCStateNameFile),
+            .Append(kCStateNameFileName),
         name_contents));
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         policy_dir.Append("state" + std::to_string(state_to_write))
-            .Append(kCStateTimeFile),
+            .Append(kCStateTimeFileName),
         time_contents));
     c_states_written[logical_id] += 1;
   }
@@ -571,7 +571,7 @@ TEST_F(CpuFetcherTest, StatFileMissingLogicalCpuEntry) {
 // Test that we handle a missing present file.
 TEST_F(CpuFetcherTest, MissingPresentFile) {
   ASSERT_TRUE(base::DeleteFile(
-      GetCpuDirectoryPath(root_dir()).Append(kCpuPresentFile)));
+      root_dir().Append(kRelativeCpuDir).Append(kPresentFileName)));
 
   auto cpu_result = FetchCpuInfo();
 
@@ -582,7 +582,7 @@ TEST_F(CpuFetcherTest, MissingPresentFile) {
 // Test that we handle an incorrectly-formatted present file.
 TEST_F(CpuFetcherTest, IncorrectlyFormattedPresentFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
-      GetCpuDirectoryPath(root_dir()).Append(kCpuPresentFile),
+      root_dir().Append(kRelativeCpuDir).Append(kPresentFileName),
       kBadPresentContents));
 
   auto cpu_result = FetchCpuInfo();
@@ -595,7 +595,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedPresentFile) {
 TEST_F(CpuFetcherTest, MissingCpuinfoMaxFreqFile) {
   ASSERT_TRUE(
       base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
-                           .Append(kCpuinfoMaxFreqFile)));
+                           .Append(kCpuinfoMaxFreqFileName)));
 
   auto cpu_result = FetchCpuInfo();
 
@@ -607,7 +607,7 @@ TEST_F(CpuFetcherTest, MissingCpuinfoMaxFreqFile) {
 TEST_F(CpuFetcherTest, IncorrectlyFormattedCpuinfoMaxFreqFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
-          .Append(kCpuinfoMaxFreqFile),
+          .Append(kCpuinfoMaxFreqFileName),
       kNonIntegralFileContents));
 
   auto cpu_result = FetchCpuInfo();
@@ -620,7 +620,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCpuinfoMaxFreqFile) {
 TEST_F(CpuFetcherTest, MissingScalingMaxFreqFile) {
   ASSERT_TRUE(
       base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
-                           .Append(kCpuScalingMaxFreqFile)));
+                           .Append(kScalingMaxFreqFileName)));
 
   auto cpu_result = FetchCpuInfo();
 
@@ -632,7 +632,7 @@ TEST_F(CpuFetcherTest, MissingScalingMaxFreqFile) {
 TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingMaxFreqFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
-          .Append(kCpuScalingMaxFreqFile),
+          .Append(kScalingMaxFreqFileName),
       kNonIntegralFileContents));
 
   auto cpu_result = FetchCpuInfo();
@@ -645,7 +645,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingMaxFreqFile) {
 TEST_F(CpuFetcherTest, MissingScalingCurFreqFile) {
   ASSERT_TRUE(
       base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
-                           .Append(kCpuScalingCurFreqFile)));
+                           .Append(kScalingCurFreqFileName)));
 
   auto cpu_result = FetchCpuInfo();
 
@@ -657,7 +657,7 @@ TEST_F(CpuFetcherTest, MissingScalingCurFreqFile) {
 TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingCurFreqFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
-          .Append(kCpuScalingCurFreqFile),
+          .Append(kScalingCurFreqFileName),
       kNonIntegralFileContents));
 
   auto cpu_result = FetchCpuInfo();
@@ -671,7 +671,7 @@ TEST_F(CpuFetcherTest, MissingCStateNameFile) {
   ASSERT_TRUE(
       base::DeleteFile(GetCStateDirectoryPath(root_dir(), kFirstLogicalId)
                            .Append(kFirstCStateDir)
-                           .Append(kCStateNameFile)));
+                           .Append(kCStateNameFileName)));
 
   auto cpu_result = FetchCpuInfo();
 
@@ -684,7 +684,7 @@ TEST_F(CpuFetcherTest, MissingCStateTimeFile) {
   ASSERT_TRUE(
       base::DeleteFile(GetCStateDirectoryPath(root_dir(), kFirstLogicalId)
                            .Append(kFirstCStateDir)
-                           .Append(kCStateTimeFile)));
+                           .Append(kCStateTimeFileName)));
 
   auto cpu_result = FetchCpuInfo();
 
@@ -697,7 +697,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCStateTimeFile) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(
       GetCStateDirectoryPath(root_dir(), kFirstLogicalId)
           .Append(kFirstCStateDir)
-          .Append(kCStateTimeFile),
+          .Append(kCStateTimeFileName),
       kNonIntegralFileContents));
 
   auto cpu_result = FetchCpuInfo();
@@ -823,6 +823,5 @@ INSTANTIATE_TEST_SUITE_P(
                                        mojo_ipc::CpuArchitectureEnum::kArmv7l},
         ParseCpuArchitectureTestParams{
             "Unknown uname machine", mojo_ipc::CpuArchitectureEnum::kUnknown}));
-
 }  // namespace
 }  // namespace diagnostics

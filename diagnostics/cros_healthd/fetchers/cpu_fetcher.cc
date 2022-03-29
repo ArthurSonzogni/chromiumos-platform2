@@ -26,7 +26,6 @@
 #include <re2/re2.h>
 
 #include "diagnostics/cros_healthd/system/system_utilities_constants.h"
-#include "diagnostics/cros_healthd/utils/cpu_file_helpers.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
@@ -37,7 +36,7 @@ namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
-// Regex used to parse kCpuPresentFile.
+// Regex used to parse kPresentFileName.
 constexpr char kPresentFileRegex[] = R"((\d+)-(\d+))";
 
 // Pattern that all C-state directories follow.
@@ -157,8 +156,8 @@ std::optional<std::vector<mojo_ipc::CpuCStateInfoPtr>> GetCStates(
   for (base::FilePath c_state_dir = c_state_it.Next(); !c_state_dir.empty();
        c_state_dir = c_state_it.Next()) {
     mojo_ipc::CpuCStateInfo c_state;
-    if (!ReadAndTrimString(c_state_dir, kCStateNameFile, &c_state.name) ||
-        !ReadInteger(c_state_dir, kCStateTimeFile, &base::StringToUint64,
+    if (!ReadAndTrimString(c_state_dir, kCStateNameFileName, &c_state.name) ||
+        !ReadInteger(c_state_dir, kCStateTimeFileName, &base::StringToUint64,
                      &c_state.time_in_state_since_last_boot_us)) {
       return std::nullopt;
     }
@@ -176,11 +175,11 @@ std::optional<mojo_ipc::ProbeErrorPtr> GetNumTotalThreads(
   DCHECK(num_total_threads);
 
   std::string cpu_present;
-  auto cpu_dir = GetCpuDirectoryPath(root_dir);
-  if (!ReadAndTrimString(cpu_dir, kCpuPresentFile, &cpu_present)) {
+  auto cpu_dir = root_dir.Append(kRelativeCpuDir);
+  if (!ReadAndTrimString(cpu_dir, kPresentFileName, &cpu_present)) {
     return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
                                   "Unable to read CPU present file: " +
-                                      cpu_dir.Append(kCpuPresentFile).value());
+                                      cpu_dir.Append(kPresentFileName).value());
   }
 
   // Two strings will be parsed directly from the regex, then converted to
@@ -356,13 +355,13 @@ std::optional<mojo_ipc::ProbeErrorPtr> FetchKeylockerInfo(
     const base::FilePath& root_dir,
     mojo_ipc::KeylockerInfoPtr* keylocker_info) {
   std::string file_contents;
-  auto keylocker_dir = GetCryptoDirectoryPath(root_dir);
-  // Crypto file is commmon for all CPU architects. However, crypto algorithms
+  // Crypto file is common for all CPU architects. However, crypto algorithms
   // populated in crypto file could be hardware dependent.
-  if (!ReadAndTrimString(keylocker_dir, kCryptoFile, &file_contents)) {
+  if (!ReadAndTrimString(root_dir, kRelativeCryptoFilePath, &file_contents)) {
     return CreateAndLogProbeError(
         mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read file: " + keylocker_dir.Append(kCryptoFile).value());
+        "Unable to read file: " +
+            root_dir.Append(kRelativeCryptoFilePath).value());
   }
   // aeskl algorithm populated in crypto file is the indication that keylocker
   // driver had been loaded, the hardware had been configured and ready for use.
@@ -440,28 +439,28 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
     logical_cpu.c_states = std::move(c_states.value());
 
     auto cpufreq_dir = GetCpuFreqDirectoryPath(root_dir, processor_id);
-    if (!ReadInteger(cpufreq_dir, kCpuinfoMaxFreqFile, &base::StringToUint,
+    if (!ReadInteger(cpufreq_dir, kCpuinfoMaxFreqFileName, &base::StringToUint,
                      &logical_cpu.max_clock_speed_khz)) {
       return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
           mojo_ipc::ErrorType::kFileReadError,
           "Unable to read max CPU frequency file to integer: " +
-              cpufreq_dir.Append(kCpuinfoMaxFreqFile).value()));
+              cpufreq_dir.Append(kCpuinfoMaxFreqFileName).value()));
     }
 
-    if (!ReadInteger(cpufreq_dir, kCpuScalingMaxFreqFile, &base::StringToUint,
+    if (!ReadInteger(cpufreq_dir, kScalingMaxFreqFileName, &base::StringToUint,
                      &logical_cpu.scaling_max_frequency_khz)) {
       return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
           mojo_ipc::ErrorType::kFileReadError,
           "Unable to read scaling max frequency file to integer: " +
-              cpufreq_dir.Append(kCpuScalingMaxFreqFile).value()));
+              cpufreq_dir.Append(kScalingMaxFreqFileName).value()));
     }
 
-    if (!ReadInteger(cpufreq_dir, kCpuScalingCurFreqFile, &base::StringToUint,
+    if (!ReadInteger(cpufreq_dir, kScalingCurFreqFileName, &base::StringToUint,
                      &logical_cpu.scaling_current_frequency_khz)) {
       return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
           mojo_ipc::ErrorType::kFileReadError,
           "Unable to read scaling current frequency file to integer: " +
-              cpufreq_dir.Append(kCpuScalingCurFreqFile).value()));
+              cpufreq_dir.Append(kScalingCurFreqFileName).value()));
     }
 
     // Add this logical CPU to the corresponding physical CPU.
@@ -495,6 +494,34 @@ mojo_ipc::CpuResultPtr GetCpuInfoFromProcessorInfo(
 }
 
 }  // namespace
+
+base::FilePath GetCStateDirectoryPath(const base::FilePath& root_dir,
+                                      const std::string& logical_id) {
+  std::string logical_cpu_dir = "cpu" + logical_id;
+  std::string cpuidle_dirname = "cpuidle";
+  return root_dir.Append(kRelativeCpuDir)
+      .Append(logical_cpu_dir)
+      .Append(cpuidle_dirname);
+}
+
+// If the CPU has a governing policy, return that path, otherwise return the
+// cpufreq directory for the given logical CPU.
+base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
+                                       const std::string& logical_id) {
+  std::string cpufreq_policy_dir = "cpufreq/policy" + logical_id;
+
+  auto policy_path =
+      root_dir.Append(kRelativeCpuDir).Append(cpufreq_policy_dir);
+  if (base::PathExists(policy_path)) {
+    return policy_path;
+  }
+
+  std::string logical_cpu_dir = "cpu" + logical_id;
+  std::string cpufreq_dirname = "cpufreq";
+  return root_dir.Append(kRelativeCpuDir)
+      .Append(logical_cpu_dir)
+      .Append(cpufreq_dirname);
+}
 
 mojo_ipc::CpuResultPtr CpuFetcher::FetchCpuInfo() {
   std::string stat_contents;

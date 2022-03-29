@@ -18,7 +18,6 @@ source_set("libcros_healthd_utils") {
   configs += [ ":libcros_healthd_utils_pkg_deps" ]
   deps = [ "//diagnostics/mojom/public:cros_healthd_mojo_bindings" ]
   sources = [
-    "cpu_file_helpers.cc",
     "file_utils.cc",
     "helper_tool_utils.cc",
     "procfs_utils.cc",
@@ -36,7 +35,6 @@ if (use.test) {
 
   source_set("libcros_healthd_utils_test") {
     sources = [
-      "cpu_file_helpers_test.cc",
       "file_utils_test.cc",
       "helper_tool_utils_test.cc",
       "procfs_utils_test.cc",
