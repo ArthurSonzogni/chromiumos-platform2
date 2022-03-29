@@ -38,11 +38,13 @@ static_library("libiioservice_simpleclient") {
 executable("iioservice_simpleclient") {
   sources = [ "iioservice_simpleclient.cc" ]
   configs += [ ":target_defaults_pkg_deps" ]
+  install_path = "sbin"
   deps = [ ":libiioservice_simpleclient" ]
 }
 
 executable("iioservice_query") {
   sources = [ "iioservice_query.cc" ]
   configs += [ ":target_defaults_pkg_deps" ]
+  install_path = "sbin"
   deps = [ ":libiioservice_simpleclient" ]
 }
