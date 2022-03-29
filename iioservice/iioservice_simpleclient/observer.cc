@@ -101,7 +101,7 @@ void Observer::AddTimestamp(int64_t timestamp) {
 
   struct timespec ts = {};
   if (clock_gettime(CLOCK_BOOTTIME, &ts) < 0) {
-    PLOG(ERROR) << "clock_gettime(CLOCK_BOOTTIME) failed";
+    PLOGF(ERROR) << "clock_gettime(CLOCK_BOOTTIME) failed";
     return;
   }
 
@@ -137,31 +137,27 @@ void Observer::AddSuccessRead() {
     std::nth_element(latencies_.begin(), --latencies_.end(), latencies_.end());
     base::TimeDelta max_latency = *(--latencies_.end());
 
-    if (max_latency > latency_tolerance)
-      // Don't Change: Used as a check sentence in the tast test.
-      LOGF(ERROR) << "Max latency exceeds latency tolerance.";
-
     if (max_latency > latency_tolerance) {
       // Don't Change: Used as a check sentence in the tast test.
-      LOG(ERROR) << "Max Latency exceeds Latency Tolerance.";
-      LOG(ERROR) << "Latency Tolerance: " << latency_tolerance;
-      LOG(ERROR) << "Max latency      : " << max_latency;
+      LOGF(ERROR) << "Max latency exceeds latency tolerance.";
+      LOGF(ERROR) << "Latency tolerance: " << latency_tolerance;
+      LOGF(ERROR) << "Max latency      : " << max_latency;
     } else {
-      LOG(INFO) << "Latency tolerance: " << latency_tolerance;
-      LOG(INFO) << "Max latency      : " << max_latency;
+      LOGF(INFO) << "Latency tolerance: " << latency_tolerance;
+      LOGF(INFO) << "Max latency      : " << max_latency;
     }
 
     if (min_latency < base::Seconds(0.0)) {
       // Don't Change: Used as a check sentence in the tast test.
       LOGF(ERROR)
           << "Min latency less than zero: a timestamp was set in the past.";
-      LOG(ERROR) << "Min latency      : " << min_latency;
+      LOGF(ERROR) << "Min latency      : " << min_latency;
     } else {
-      LOG(INFO) << "Min latency      : " << min_latency;
+      LOGF(INFO) << "Min latency      : " << min_latency;
     }
 
-    LOG(INFO) << "Median latency   : " << median_latency;
-    LOG(INFO) << "Mean latency     : " << total_latency_ / n;
+    LOGF(INFO) << "Median latency   : " << median_latency;
+    LOGF(INFO) << "Mean latency     : " << total_latency_ / n;
   }
 
   Reset();

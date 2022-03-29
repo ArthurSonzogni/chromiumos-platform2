@@ -25,12 +25,12 @@ void quit_daemon() {
     return;
 
   daemon_running = false;
-  LOG(INFO) << "Quiting daemon";
+  LOGF(INFO) << "Quiting daemon";
   exec_daemon->Quit();
 }
 
 void signal_handler_stop(int signal) {
-  LOG(INFO) << "Signal: " << signal;
+  LOGF(INFO) << "Signal: " << signal;
 
   quit_daemon();
 }
@@ -57,8 +57,9 @@ int main(int argc, char** argv) {
   std::vector<std::string> attributes = base::SplitString(
       FLAGS_attributes, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   if (attributes.empty()) {
-    LOG(ERROR) << "iioservice_query must be called with at least one attribute "
-                  "to query.";
+    LOGF(ERROR)
+        << "iioservice_query must be called with at least one attribute "
+           "to query.";
     exit(1);
   }
 

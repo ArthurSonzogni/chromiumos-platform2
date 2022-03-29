@@ -29,12 +29,12 @@ void quit_daemon() {
     return;
 
   daemon_running = false;
-  LOG(INFO) << "Quiting daemon";
+  LOGF(INFO) << "Quiting daemon";
   exec_daemon->Quit();
 }
 
 void signal_handler_stop(int signal) {
-  LOG(INFO) << "Signal: " << signal;
+  LOGF(INFO) << "Signal: " << signal;
 
   quit_daemon();
 }
@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
   for (const auto& str : event_indices_str) {
     int index;
     if (!base::StringToInt(str, &index) || index < 0) {
-      LOG(ERROR) << "Invalid event index: " << str;
+      LOGF(ERROR) << "Invalid event index: " << str;
       continue;
     }
 
@@ -73,13 +73,13 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_device_id == -1 && FLAGS_device_type == 0) {
-    LOG(ERROR)
+    LOGF(ERROR)
         << "iioservice_simpleclient must be called with a sensor specified.";
     exit(1);
   }
   if (event_indices.empty()) {
-    LOG(ERROR) << "iioservice_simpleclient must be called with at least one "
-                  "event enabled.";
+    LOGF(ERROR) << "iioservice_simpleclient must be called with at least one "
+                   "event enabled.";
     exit(1);
   }
 
