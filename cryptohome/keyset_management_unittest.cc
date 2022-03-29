@@ -591,7 +591,8 @@ TEST_F(KeysetManagementTest, AddKeysetNoClobber) {
   VerifyKeysetNotPresentWithCreds(new_credentials);
 }
 
-// Fail to get keyset due to invalid label.
+// Verify that a keyset with no label (treated as a wildcard by Chrome) can be
+// retrieved.
 TEST_F(KeysetManagementTest, GetValidKeysetWithEmptyLabelSucceeds) {
   // SETUP
   KeysetSetUpWithKeyData(DefaultKeyData());
@@ -613,7 +614,7 @@ TEST_F(KeysetManagementTest, GetValidKeysetWithEmptyLabelSucceeds) {
   new_credentials.set_key_data(key_data);
   std::unique_ptr<VaultKeyset> vk2 =
       keyset_management_->GetValidKeyset(new_credentials, /* error */ nullptr);
-  ASSERT_NE(vk.get(), nullptr);
+  ASSERT_NE(vk2.get(), nullptr);
 }
 
 // Fail to get keyset due to invalid label.
