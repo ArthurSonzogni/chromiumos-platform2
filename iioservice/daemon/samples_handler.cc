@@ -500,7 +500,7 @@ void SamplesHandler::UpdateChannelsEnabledOnThread(
     for (int32_t chn_index : iio_chn_indices) {
       client_data->enabled_chn_indices.erase(chn_index);
       // remove cached chn's moving average
-      clients_map_[client_data].chns.erase(chn_index);
+      clients_map_[client_data]->chns_.erase(chn_index);
     }
   }
 

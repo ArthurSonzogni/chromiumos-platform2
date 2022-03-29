@@ -20,6 +20,22 @@ namespace iioservice {
 
 class SamplesHandlerBase {
  protected:
+  class SampleData {
+   public:
+    explicit SampleData(ClientData* client_data = nullptr);
+    ~SampleData();
+
+    void SampleTimeout(uint64_t sample_index);
+
+    ClientData* client_data_ = nullptr;
+    // The starting index of the next sample.
+    uint64_t sample_index_ = 0;
+    // Moving averages of channels except for channels that have no batch mode
+    std::map<int32_t, int64_t> chns_;
+
+    base::WeakPtrFactory<SampleData> weak_factory_{this};
+  };
+
   explicit SamplesHandlerBase(
       scoped_refptr<base::SequencedTaskRunner> task_runner);
 
@@ -50,7 +66,6 @@ class SamplesHandlerBase {
   virtual bool UpdateRequestedFrequencyOnThread() = 0;
 
   void SetTimeoutTaskOnThread(ClientData* client_data);
-  void SampleTimeout(ClientData* client_data, uint64_t sample_index);
 
   virtual void OnSampleAvailableOnThread(
       const base::flat_map<int32_t, int64_t>& sample);
@@ -61,7 +76,7 @@ class SamplesHandlerBase {
   // Clients that either have invalid frequency or no enabled channels.
   std::set<ClientData*> inactive_clients_;
   // First is the active client, second is its data.
-  std::map<ClientData*, SampleData> clients_map_;
+  std::map<ClientData*, std::unique_ptr<SampleData>> clients_map_;
 
   // Requested frequencies from clients.
   std::multiset<double> frequencies_;

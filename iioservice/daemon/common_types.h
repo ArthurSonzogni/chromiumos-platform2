@@ -60,13 +60,6 @@ class ClientData {
   mojo::Remote<cros::mojom::SensorDeviceEventsObserver> events_observer;
 };
 
-struct SampleData {
-  // The starting index of the next sample.
-  uint64_t sample_index = 0;
-  // Moving averages of channels except for channels that have no batch mode
-  std::map<int32_t, int64_t> chns;
-};
-
 std::vector<std::string> GetGravityChannels();
 
 constexpr char kInputAttr[] = "input";

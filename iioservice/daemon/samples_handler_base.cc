@@ -22,6 +22,22 @@ constexpr char kNoBatchChannels[][10] = {"timestamp", "count"};
 
 }  // namespace
 
+SamplesHandlerBase::SampleData::SampleData(ClientData* client_data)
+    : client_data_(client_data) {}
+
+SamplesHandlerBase::SampleData::~SampleData() = default;
+
+void SamplesHandlerBase::SampleData::SampleTimeout(uint64_t sample_index) {
+  if (sample_index != sample_index_ ||
+      !client_data_->samples_observer.is_bound()) {
+    return;
+  }
+
+  LOGF(WARNING) << "Sample timed out on client with id: " << client_data_->id;
+  client_data_->samples_observer->OnErrorOccurred(
+      cros::mojom::ObserverErrorType::READ_TIMEOUT);
+}
+
 SamplesHandlerBase::SamplesHandlerBase(
     scoped_refptr<base::SequencedTaskRunner> task_runner)
     : task_runner_(std::move(task_runner)) {}
@@ -119,8 +135,8 @@ void SamplesHandlerBase::AddActiveClientOnThread(ClientData* client_data) {
   DCHECK(inactive_clients_.find(client_data) == inactive_clients_.end());
   DCHECK(clients_map_.find(client_data) == clients_map_.end());
 
-  clients_map_.emplace(client_data, SampleData{});
-  clients_map_[client_data].sample_index = samples_cnt_;
+  clients_map_.emplace(client_data, std::make_unique<SampleData>(client_data));
+  clients_map_[client_data]->sample_index_ = samples_cnt_;
 
   SetTimeoutTaskOnThread(client_data);
 
@@ -199,32 +215,19 @@ bool SamplesHandlerBase::RemoveFrequencyOnThread(double frequency) {
 
 void SamplesHandlerBase::SetTimeoutTaskOnThread(ClientData* client_data) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
+  DCHECK(clients_map_.find(client_data) != clients_map_.end());
 
   if (client_data->timeout == 0)
     return;
 
+  auto& sample_data = clients_map_[client_data];
+
   task_runner_->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&SamplesHandlerBase::SampleTimeout,
-                     weak_factory_.GetWeakPtr(), client_data,
-                     clients_map_[client_data].sample_index),
+      base::BindOnce(&SamplesHandlerBase::SampleData::SampleTimeout,
+                     sample_data->weak_factory_.GetWeakPtr(),
+                     sample_data->sample_index_),
       base::Milliseconds(client_data->timeout));
-}
-
-void SamplesHandlerBase::SampleTimeout(ClientData* client_data,
-                                       uint64_t sample_index) {
-  DCHECK(task_runner_->RunsTasksInCurrentSequence());
-
-  if (!client_data->samples_observer.is_bound())
-    return;
-
-  auto it = clients_map_.find(client_data);
-  if (it == clients_map_.end() || it->second.sample_index != sample_index)
-    return;
-
-  LOGF(WARNING) << "Sample timed out on client with id: " << client_data->id;
-  client_data->samples_observer->OnErrorOccurred(
-      cros::mojom::ObserverErrorType::READ_TIMEOUT);
 }
 
 void SamplesHandlerBase::OnSampleAvailableOnThread(
@@ -261,20 +264,20 @@ void SamplesHandlerBase::OnSampleAvailableOnThread(
         continue;
       }
 
-      int size = samples_cnt_ - sample_data.sample_index + 1;
-      if (sample_data.chns.find(chn_index) == sample_data.chns.end() &&
+      int size = samples_cnt_ - sample_data->sample_index_ + 1;
+      if (sample_data->chns_.find(chn_index) == sample_data->chns_.end() &&
           size != 1) {
         // A new enabled channel: fill up previous sample points with the
         // current value
-        sample_data.chns[chn_index] = it->second * (size * (size - 1) / 2);
+        sample_data->chns_[chn_index] = it->second * (size * (size - 1) / 2);
       }
 
-      sample_data.chns[chn_index] += it->second * size;
+      sample_data->chns_[chn_index] += it->second * size;
     }
 
-    if (sample_data.sample_index + step - 1 <= samples_cnt_) {
+    if (sample_data->sample_index_ + step - 1 <= samples_cnt_) {
       // Send a sample to the client
-      int64_t size = samples_cnt_ - sample_data.sample_index + 1;
+      int64_t size = samples_cnt_ - sample_data->sample_index_ + 1;
       DCHECK_GE(size, 1);
       int64_t denom = ((size + 1) * size / 2);
 
@@ -293,17 +296,17 @@ void SamplesHandlerBase::OnSampleAvailableOnThread(
           continue;
         }
 
-        if (sample_data.chns.find(chn_index) == sample_data.chns.end()) {
+        if (sample_data->chns_.find(chn_index) == sample_data->chns_.end()) {
           LOGF(ERROR) << "Missed chn index: " << chn_index
                       << " in moving averages";
           continue;
         }
 
-        client_sample[chn_index] = sample_data.chns[chn_index] / denom;
+        client_sample[chn_index] = sample_data->chns_[chn_index] / denom;
       }
 
-      sample_data.sample_index = samples_cnt_ + 1;
-      sample_data.chns.clear();
+      sample_data->sample_index_ = samples_cnt_ + 1;
+      sample_data->chns_.clear();
 
       client_data->samples_observer->OnSampleUpdated(std::move(client_sample));
       SetTimeoutTaskOnThread(client_data);

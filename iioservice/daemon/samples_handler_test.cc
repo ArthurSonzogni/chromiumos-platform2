@@ -31,6 +31,8 @@ namespace iioservice {
 
 namespace {
 
+constexpr uint32_t kTimeoutInMilliseconds = 10;
+
 constexpr double kMinFrequency = 5.00;
 constexpr double kMaxFrequency = 40.0;
 
@@ -228,6 +230,50 @@ TEST_F(SamplesHandlerTest, AddClientAndRemoveClient) {
     handler_->RemoveClient(&client_data, run_loop.QuitClosure());
     run_loop.Run();
   }
+}
+
+// Even if the new client data uses the same memory address, the timeout task of
+// the unregistered client should not be triggered.
+TEST_F(SamplesHandlerTest, NoTimeout) {
+  // No samples in this test
+  device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
+
+  device_data_ = std::make_unique<DeviceData>(
+      device_.get(),
+      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::ACCEL});
+
+  // ClientData should be valid until |handler_| is destructed.
+  clients_data_.emplace_back(ClientData(0, device_data_.get()));
+  ClientData& client_data = clients_data_[0];
+
+  client_data.timeout = kTimeoutInMilliseconds;
+  client_data.frequency = kFooFrequency;
+  client_data.enabled_chn_indices.emplace(3);  // timestamp
+
+  {
+    base::RunLoop run_loop;
+    fakes::FakeObserver observer(run_loop.QuitClosure());
+    handler_->AddClient(&client_data, observer.GetRemote());
+    handler_->RemoveClient(&client_data, base::DoNothing());
+
+    run_loop.Run();
+  }
+
+  // Don't trigger timeout task in the second client.
+  client_data.timeout = 0;
+  fakes::FakeObserver observer(base::DoNothing());
+  handler_->AddClient(&client_data, observer.GetRemote());
+
+  base::RunLoop run_loop;
+  task_environment_.GetMainThreadTaskRunner()->PostDelayedTask(
+      FROM_HERE, run_loop.QuitClosure(),
+      base::Milliseconds(kTimeoutInMilliseconds * 2));
+
+  run_loop.Run();
+
+  EXPECT_FALSE(observer.GetError().has_value());
+
+  handler_->RemoveClient(&client_data, base::DoNothing());
 }
 
 // Add clients with only timestamp channel enabled, enable all other channels,

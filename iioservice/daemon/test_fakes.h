@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/callback.h>
+#include <base/optional.h>
 #include <base/sequence_checker.h>
 #include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/receiver.h>
@@ -76,9 +77,13 @@ class FakeObserver : cros::mojom::SensorDeviceSamplesObserver {
     return pending_remote;
   }
 
+  base::Optional<cros::mojom::ObserverErrorType>& GetError() { return type_; }
+
   // cros::mojom::SensorDeviceSamplesObserver overrides:
   void OnSampleUpdated(const libmems::IioDevice::IioSample& sample) override {}
-  void OnErrorOccurred(cros::mojom::ObserverErrorType type) override {}
+  void OnErrorOccurred(cros::mojom::ObserverErrorType type) override {
+    type_ = type;
+  }
 
  private:
   void OnObserverDisconnect() {
@@ -88,6 +93,7 @@ class FakeObserver : cros::mojom::SensorDeviceSamplesObserver {
 
   base::RepeatingClosure quit_closure_;
   mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_{this};
+  base::Optional<cros::mojom::ObserverErrorType> type_;
 };
 
 class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
