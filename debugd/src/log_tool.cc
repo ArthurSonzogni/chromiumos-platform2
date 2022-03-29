@@ -245,12 +245,14 @@ const std::array kCommandLogs {
   Log{kGlob, "drm_state", "/sys/kernel/debug/dri/?/state",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kFile, "drm_trace", "/sys/kernel/debug/tracing/instances/drm/trace",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+    SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
+    LogTool::Encoding::kUtf8},
   // TODO(seanpaul): Once we've finished moving over to the upstream tracefs
   //                 implementation, remove drm_trace_legacy. Tracked in
   //                 b/163580546.
   Log{kFile, "drm_trace_legacy", "/sys/kernel/debug/dri/trace",
-    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+    SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
+    LogTool::Encoding::kUtf8},
   Log{kFile, "ec_info", "/var/log/ec_info.txt"},
   Log{kCommand, "edid-decode",
     "for f in /sys/class/drm/card?-*/edid; do "
