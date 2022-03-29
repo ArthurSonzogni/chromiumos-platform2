@@ -15,14 +15,17 @@
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
+#include <base/containers/span.h>
 #include <base/check.h>
 #include <base/files/file.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/guid.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
@@ -31,6 +34,7 @@
 #include <chromeos/constants/vm_tools.h>
 
 #include "vm_tools/concierge/future.h"
+#include "vm_tools/concierge/sibling_vms.h"
 #include "vm_tools/concierge/tap_device_builder.h"
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
@@ -302,15 +306,20 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       &SetUpCrosvmProcess, base::FilePath(kTerminaCpuCgroup).Append("tasks")));
 
   if (USE_CROSVM_SIBLINGS) {
-    VmBuilder::SiblingStartCommands cmds = vm_builder.BuildSiblingCmds();
-    if (!StartSiblingVvuDevices(cmds.vvu_cmds)) {
+    auto cmds = vm_builder.BuildSiblingCmds(GetVvuDevicesSocketIndices());
+    if (!cmds) {
+      LOG(ERROR) << "Failed to build sibling VM commands";
+      return false;
+    }
+
+    if (!StartSiblingVvuDevices(cmds->vvu_cmds)) {
       LOG(ERROR) << "Failed to start VVU devices";
       return false;
     }
 
     // TODO(b/196186396): There needs to be a way of knowing when the devices
     // have booted up before we start the sibling VM.
-    if (!StartSiblingVm(cmds.sibling_cmd_args)) {
+    if (!StartSiblingVm(cmds->sibling_cmd_args)) {
       LOG(ERROR) << "Failed to start termina as a sibling";
       return false;
     }
