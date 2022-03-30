@@ -63,6 +63,20 @@ void TpmManagerMetrics::ReportVersionFingerprint(int fingerprint) {
   metrics_library_->SendSparseToUMA(kTPMVersionFingerprint, fingerprint);
 }
 
+void TpmManagerMetrics::ReportAlertsData(const TpmStatus::AlertsData& alerts) {
+  for (int i = 0; i < std::size(alerts.counters); i++) {
+    uint16_t counter = alerts.counters[i];
+    if (counter) {
+      LOG(INFO) << "TPM alert of type " << i << " reported " << counter
+                << " time(s)";
+    }
+    for (int c = 0; c < counter; c++) {
+      metrics_library_->SendEnumToUMA(kTPMAlertsHistogram, i,
+                                      std::size(alerts.counters));
+    }
+  }
+}
+
 void TpmManagerMetrics::ReportTimeToTakeOwnership(
     base::TimeDelta elapsed_time) {
   metrics_library_->SendToUMA(

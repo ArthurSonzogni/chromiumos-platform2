@@ -156,6 +156,26 @@ TEST_F(TpmManagerServiceTest_NoWaitForOwnership, AutoInitialize) {
   RunServiceWorkerAndQuit();
 }
 
+TEST_F(TpmManagerServiceTest_NoWaitForOwnership, InitializeMetrics) {
+  // Called in InitializeTask()
+  EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))
+      .Times(1)
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(TpmStatus::kTpmUnowned), Return(true)));
+
+  EXPECT_CALL(mock_tpm_status_, GetVersionInfo(_, _, _, _, _, _))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(mock_tpm_status_, GetAlertsData(_)).WillOnce(Return(true));
+
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportVersionFingerprint(_)).Times(1);
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportAlertsData(_))
+      .WillOnce([this](auto&&) { Quit(); });
+  SetupService();
+  Run();
+}
+
 TEST_F(TpmManagerServiceTest_NoWaitForOwnership, NoNeedToInitialize) {
   // Called in InitializeTask()
   EXPECT_CALL(mock_tpm_status_, GetTpmOwned(_))

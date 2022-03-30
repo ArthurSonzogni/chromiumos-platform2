@@ -23,6 +23,10 @@ class MockTpmManagerMetrics : public TpmManagerMetrics {
   MOCK_METHOD(void, ReportVersionFingerprint, (int), (override));
   MOCK_METHOD(void, ReportTimeToTakeOwnership, (base::TimeDelta), (override));
   MOCK_METHOD(void, ReportSecretStatus, (const SecretStatus&), (override));
+  MOCK_METHOD(void,
+              ReportAlertsData,
+              (const TpmStatus::AlertsData&),
+              (override));
 };
 
 }  // namespace tpm_manager

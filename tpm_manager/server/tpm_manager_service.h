@@ -103,6 +103,8 @@ class TpmManagerService : public TpmNvramInterface,
 
   void ReportVersionFingerprint();
 
+  void UploadAlertsDataTask();
+
   // TpmOwnershipInterface methods.
   void GetTpmStatus(const GetTpmStatusRequest& request,
                     GetTpmStatusCallback callback) override;

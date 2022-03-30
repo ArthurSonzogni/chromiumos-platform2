@@ -29,6 +29,7 @@
 namespace {
 
 constexpr int kDictionaryAttackResetPeriodInHours = 1;
+constexpr base::TimeDelta kUploadAlertsPeriod = base::Hours(6);
 
 #if USE_TPM2
 // Timeout waiting for Trunks daemon readiness.
@@ -159,6 +160,11 @@ bool TpmManagerService::Initialize() {
       &TpmManagerService::InitializeTask);
 
   ReportVersionFingerprint();
+
+  worker_thread_->task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&TpmManagerService::UploadAlertsDataTask,
+                                base::Unretained(this)));
+
   VLOG(1) << "Worker thread started.";
   return true;
 }
@@ -181,6 +187,28 @@ void TpmManagerService::ReportVersionFingerprint() {
       },
       base::Unretained(tpm_manager_metrics_));
   GetVersionInfo(tpm_manager::GetVersionInfoRequest(), std::move(callback));
+}
+
+void TpmManagerService::UploadAlertsDataTask() {
+  TpmStatus::AlertsData alerts;
+
+  if (!tpm_allowed_ || !tpm_status_) {
+    LOG(INFO) << "No need to upload alerts.";
+    return;
+  }
+
+  if (!tpm_status_->GetAlertsData(&alerts)) {
+    LOG(INFO) << "The TPM chip does not support GetAlertsData. Stop "
+                 "UploadAlertsData task.";
+    return;
+  }
+
+  tpm_manager_metrics_->ReportAlertsData(alerts);
+  worker_thread_->task_runner()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&TpmManagerService::UploadAlertsDataTask,
+                     base::Unretained(this)),
+      kUploadAlertsPeriod);
 }
 
 std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {

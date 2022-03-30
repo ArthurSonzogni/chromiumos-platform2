@@ -9,6 +9,7 @@
 #include <metrics/metrics_library.h>
 
 #include "tpm_manager/server/dictionary_attack_reset_status.h"
+#include "tpm_manager/server/tpm_status.h"
 
 namespace tpm_manager {
 
@@ -42,6 +43,8 @@ class TpmManagerMetrics : private MetricsLibrary {
   virtual void ReportVersionFingerprint(int fingerprint);
 
   virtual void ReportTimeToTakeOwnership(base::TimeDelta elapsed_time);
+
+  virtual void ReportAlertsData(const TpmStatus::AlertsData& alerts);
 
   void set_metrics_library_for_testing(
       MetricsLibraryInterface* metrics_library) {

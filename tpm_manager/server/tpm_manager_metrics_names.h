@@ -13,6 +13,7 @@ constexpr char kDictionaryAttackCounterHistogram[] =
     "Platform.TPM.DictionaryAttackCounter";
 constexpr char kTPMVersionFingerprint[] = "Platform.TPM.VersionFingerprint";
 constexpr char kTPMTimeToTakeOwnership[] = "Platform.TPM.TimeToTakeOwnership";
+constexpr char kTPMAlertsHistogram[] = "Platform.TPM.HardwareAlerts";
 
 // The secret status records the presence of each secret in the bit fields along
 // with the TPM version information. Currently only the least significant byte
