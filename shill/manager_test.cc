@@ -324,6 +324,18 @@ class ManagerTest : public PropertyStoreTest {
     EXPECT_TRUE(manager()->device_claimer_->default_claimer());
   }
 
+  void SelectServiceForDevice(scoped_refptr<MockService> service,
+                              ConnectionRefPtr connection,
+                              scoped_refptr<MockDevice> device) {
+    manager()->RegisterDevice(device);
+    device->set_selected_service_for_testing(service);
+    device->set_connection_for_testing(connection);
+    if (service) {
+      EXPECT_CALL(*service, HasActiveConnection())
+          .WillRepeatedly(Return(connection != nullptr));
+    }
+  }
+
  protected:
   using MockServiceRefPtr = scoped_refptr<MockService>;
 
@@ -2221,8 +2233,8 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
-  mock_service0->set_mock_connection(mock_connection0);
-  mock_service1->set_mock_connection(mock_connection1);
+  SelectServiceForDevice(mock_service0, mock_connection0, mock_devices_[0]);
+  SelectServiceForDevice(mock_service1, mock_connection1, mock_devices_[1]);
 
   // Add an entry to the dns_servers() list to test the logic in
   // SortServicesTask() which figures out which connection owns the system
@@ -2292,7 +2304,8 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
               SetPriority(Connection::kDefaultPriority, true));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
-  mock_service1->set_mock_connection(nullptr);  // So DeregisterService works.
+  // So DeregisterService works.
+  SelectServiceForDevice(nullptr, nullptr, mock_devices_[1]);
   manager()->DeregisterService(mock_service1);
   CompleteServiceSort();
 
@@ -2300,7 +2313,8 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // nullptr.  Appropriate notifications are sent.
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
-  mock_service0->set_mock_connection(nullptr);  // So DeregisterService works.
+  // So DeregisterService works.
+  SelectServiceForDevice(nullptr, nullptr, mock_devices_[0]);
   manager()->DeregisterService(mock_service0);
   CompleteServiceSort();
 
@@ -2941,11 +2955,11 @@ TEST_F(ManagerTest, GetDefaultService) {
 
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(device_info_.get()));
-  mock_service->set_mock_connection(mock_connection);
+  SelectServiceForDevice(mock_service, mock_connection, mock_devices_[0]);
   EXPECT_EQ(mock_service, manager()->GetDefaultService());
   EXPECT_EQ(mock_service->GetRpcIdentifier(), GetDefaultServiceRpcIdentifier());
 
-  mock_service->set_mock_connection(nullptr);
+  SelectServiceForDevice(nullptr, nullptr, mock_devices_[0]);
   manager()->DeregisterService(mock_service);
 }
 
@@ -3066,7 +3080,7 @@ TEST_F(ManagerTest, RefreshConnectionState) {
 
   scoped_refptr<MockConnection> mock_connection(
       new NiceMock<MockConnection>(device_info_.get()));
-  mock_service->set_mock_connection(mock_connection);
+  SelectServiceForDevice(mock_service, mock_connection, mock_devices_[0]);
   EXPECT_CALL(*mock_service, state()).WillOnce(Return(Service::kStateIdle));
   RefreshConnectionState();
 
@@ -3080,7 +3094,7 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   Mock::VerifyAndClearExpectations(manager_adaptor_);
   Mock::VerifyAndClearExpectations(upstart_);
 
-  mock_service->set_mock_connection(nullptr);
+  SelectServiceForDevice(nullptr, nullptr, mock_devices_[0]);
   manager()->DeregisterService(mock_service);
 
   EXPECT_CALL(*manager_adaptor_,

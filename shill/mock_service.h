@@ -72,8 +72,8 @@ class MockService : public Service {
   MOCK_METHOD(bool, IsPortalDetectionAuto, (), (const, override));
   MOCK_METHOD(bool, IsRemembered, (), (const, override));
   MOCK_METHOD(bool, HasProxyConfig, (), (const, override));
-  MOCK_METHOD(void, SetConnection, (const ConnectionRefPtr&), (override));
-  MOCK_METHOD(const ConnectionRefPtr&, connection, (), (const, override));
+  MOCK_METHOD(void, SetIPConfig, (RpcIdentifier), (override));
+  MOCK_METHOD(bool, HasActiveConnection, (), (const, override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   MOCK_METHOD(const EapCredentials*, eap, (), (const, override));
@@ -81,7 +81,6 @@ class MockService : public Service {
   MOCK_METHOD(Technology, technology, (), (const, override));
   MOCK_METHOD(void, OnPropertyChanged, (const std::string&), (override));
   MOCK_METHOD(void, ClearExplicitlyDisconnected, (), (override));
-  MOCK_METHOD(void, NotifyIPConfigChanges, (), (override));
   MOCK_METHOD(bool, link_monitor_disabled, (), (const, override));
   MOCK_METHOD(void, EnableAndRetainAutoConnect, (), (override));
   MOCK_METHOD(void, OnBeforeSuspend, (const ResultCallback&), (override));
@@ -95,11 +94,6 @@ class MockService : public Service {
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.
   bool FauxSave(StoreInterface* store);
-  // Sets the connection reference returned by default when connection()
-  // is called.
-  void set_mock_connection(const ConnectionRefPtr& connection) {
-    mock_connection_ = connection;
-  }
   const std::string& friendly_name() const { return Service::friendly_name(); }
 
  protected:
@@ -107,7 +101,6 @@ class MockService : public Service {
   void OnDisconnect(Error* /*error*/, const char* /*reason*/) override {}
 
  private:
-  ConnectionRefPtr mock_connection_;
   RpcIdentifier id_;
   RpcIdentifier null_id_;
 };

@@ -30,7 +30,6 @@ MockService::MockService(Manager* manager)
   ON_CALL(*this, state()).WillByDefault(Return(kStateUnknown));
   ON_CALL(*this, failure()).WillByDefault(Return(kFailureUnknown));
   ON_CALL(*this, technology()).WillByDefault(Return(Technology::kUnknown));
-  ON_CALL(*this, connection()).WillByDefault(ReturnRef(mock_connection_));
 }
 
 MockService::~MockService() = default;

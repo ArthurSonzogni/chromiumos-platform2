@@ -26,9 +26,7 @@
 #include "shill/ipconfig.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_device.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
@@ -1479,36 +1477,22 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     EXPECT_EQ(Error::kNotFound, error.type());
   }
 
-  auto mock_device_info =
-      std::make_unique<NiceMock<MockDeviceInfo>>(&mock_manager_);
-  scoped_refptr<MockConnection> mock_connection(
-      new NiceMock<MockConnection>(mock_device_info.get()));
-
-  service_->connection_ = mock_connection;
-
-  {
-    Error error;
-    const RpcIdentifier empty_rpcid;
-    EXPECT_CALL(*mock_connection, ipconfig_rpc_identifier())
-        .WillOnce(ReturnRef(empty_rpcid));
-    EXPECT_EQ(DBusControl::NullRpcIdentifier(),
-              service_->GetIPConfigRpcIdentifier(&error));
-    EXPECT_EQ(Error::kNotFound, error.type());
-  }
-
   {
     Error error;
     const RpcIdentifier nonempty_rpcid("/ipconfig/path");
-    EXPECT_CALL(*mock_connection, ipconfig_rpc_identifier())
-        .WillOnce(ReturnRef(nonempty_rpcid));
+    service_->SetIPConfig(nonempty_rpcid);
     EXPECT_EQ(nonempty_rpcid, service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_TRUE(error.IsSuccess());
   }
 
-  // Assure orderly destruction of the Connection before DeviceInfo.
-  service_->connection_ = nullptr;
-  mock_connection = nullptr;
-  mock_device_info.reset();
+  {
+    Error error;
+    const RpcIdentifier empty_rpcid;
+    service_->SetIPConfig(empty_rpcid);
+    EXPECT_EQ(DBusControl::NullRpcIdentifier(),
+              service_->GetIPConfigRpcIdentifier(&error));
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)

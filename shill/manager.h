@@ -116,8 +116,8 @@ struct ManagerProperties {
   // used instead of the legacy one based on ipsec script and stroke. This
   // property will be deprecated and removed when the migration is done.
   std::optional<bool> use_swanctl_driver;
-    // Hostname to be used in DHCP request.
-    std::string dhcp_hostname;
+  // Hostname to be used in DHCP request.
+  std::string dhcp_hostname;
 
 #if !defined(DISABLE_WIFI)
   base::Optional<bool> ft_enabled;
@@ -209,7 +209,14 @@ class Manager {
 
   // Return the Device that has selected this Service. If no Device has selected
   // this Service or the Service pointer is null, return nullptr.
-  virtual DeviceRefPtr FindDeviceFromService(const ServiceRefPtr& service);
+  virtual DeviceRefPtr FindDeviceFromService(
+      const ServiceRefPtr& service) const;
+
+  // It the service has an active connection, Returns the Connection object
+  // associated with the Device which has selected this Service. Returns nullptr
+  // if no such Connection or the Service pointer is null.
+  ConnectionRefPtr FindConnectionFromService(
+      const ServiceRefPtr& service) const;
 
   // Return the highest priority service of a physical technology type (i.e. not
   // VPN, ARC, etc), or nullptr if no such service is found.
@@ -421,21 +428,13 @@ class Manager {
     return power_manager_->suspend_duration_us();
   }
 
-  virtual const ManagerProperties& GetProperties() const {
-    return props_;
-  }
+  virtual const ManagerProperties& GetProperties() const { return props_; }
 
-  bool GetArpGateway() const {
-    return props_.arp_gateway;
-  }
+  bool GetArpGateway() const { return props_.arp_gateway; }
 
-  virtual int GetMinimumMTU() const {
-    return props_.minimum_mtu;
-  }
+  virtual int GetMinimumMTU() const { return props_.minimum_mtu; }
 
-  virtual void SetMinimumMTU(const int mtu) {
-    props_.minimum_mtu = mtu;
-  }
+  virtual void SetMinimumMTU(const int mtu) { props_.minimum_mtu = mtu; }
 
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();

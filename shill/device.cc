@@ -770,13 +770,8 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   bool ipv6_connectivity = IPConfigCompleted(ip6config_);
   metrics()->NotifyIPv6ConnectivityStatus(technology_, ipv6_connectivity);
 
-  // SetConnection must occur after the UpdateFromIPConfig so the
-  // service can use the values derived from the connection.
   if (selected_service_) {
-    // The service state change needs to happen after this call, so that
-    // at the time we report the state change to the manager, the service
-    // has its connection.
-    selected_service_->SetConnection(connection_);
+    selected_service_->SetIPConfig(ipconfig->GetRpcIdentifier());
 
     // If the service is already in a Connected state (this happens during a
     // roam or DHCP renewal), transitioning back to Connected isn't productive.
@@ -980,9 +975,7 @@ void Device::DestroyConnection() {
   SLOG(this, 2) << __func__ << " on " << link_name_;
   StopAllActivities();
   if (selected_service_) {
-    SLOG(this, 3) << "Clearing connection of service "
-                  << selected_service_->log_name();
-    selected_service_->SetConnection(nullptr);
+    selected_service_->SetIPConfig(RpcIdentifier());
   }
   connection_ = nullptr;
 }
@@ -1035,9 +1028,7 @@ void Device::SelectService(const ServiceRefPtr& service) {
     if (selected_service_->state() != Service::kStateFailure) {
       selected_service_->SetState(Service::kStateIdle);
     }
-    // Just in case the Device subclass has not already done so, make
-    // sure the previously selected service has its connection removed.
-    selected_service_->SetConnection(nullptr);
+    selected_service_->SetIPConfig(RpcIdentifier());
     StopAllActivities();
   }
 
@@ -1550,6 +1541,10 @@ EventDispatcher* Device::dispatcher() const {
 
 Metrics* Device::metrics() const {
   return manager_->metrics();
+}
+
+void Device::set_connection_for_testing(const ConnectionRefPtr& connection) {
+  connection_ = connection;
 }
 
 }  // namespace shill

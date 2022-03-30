@@ -1055,20 +1055,21 @@ void Service::EnableAndRetainAutoConnect() {
   RetainAutoConnect();
 }
 
-void Service::SetConnection(const ConnectionRefPtr& connection) {
-  if (!connection) {
+void Service::SetIPConfig(RpcIdentifier ipconfig_rpc_id) {
+  if (ipconfig_rpc_id.value().empty()) {
     static_ip_parameters_.ClearSavedParameters();
   }
-  connection_ = connection;
-  NotifyIPConfigChanges();
-}
+  ipconfig_rpc_identifier_ = ipconfig_rpc_id;
 
-void Service::NotifyIPConfigChanges() {
   Error error;
   RpcIdentifier ipconfig = GetIPConfigRpcIdentifier(&error);
   if (error.IsSuccess()) {
     adaptor_->EmitRpcIdentifierChanged(kIPConfigProperty, ipconfig);
   }
+}
+
+bool Service::HasActiveConnection() const {
+  return !ipconfig_rpc_identifier_.value().empty();
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -1608,20 +1609,13 @@ void Service::OnDefaultServiceStateChanged(const ServiceRefPtr& parent) {
 }
 
 RpcIdentifier Service::GetIPConfigRpcIdentifier(Error* error) const {
-  if (!connection_) {
-    error->Populate(Error::kNotFound);
-    return DBusControl::NullRpcIdentifier();
-  }
-
-  RpcIdentifier id = connection_->ipconfig_rpc_identifier();
-
-  if (id.value().empty()) {
+  if (ipconfig_rpc_identifier_.value().empty()) {
     // Do not return an empty IPConfig.
     error->Populate(Error::kNotFound);
     return DBusControl::NullRpcIdentifier();
   }
 
-  return id;
+  return ipconfig_rpc_identifier_;
 }
 
 void Service::SetConnectable(bool connectable) {

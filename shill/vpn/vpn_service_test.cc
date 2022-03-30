@@ -12,7 +12,6 @@
 
 #include "shill/error.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
@@ -56,7 +55,6 @@ class VPNServiceTest : public testing::Test {
     driver_ = new MockVPNDriver();
     EXPECT_CALL(*driver_, GetProviderType())
         .WillRepeatedly(Return(kProviderL2tpIpsec));
-    connection_ = new NiceMock<MockConnection>(&device_info_);
     // There is at least one online service when the test service is created.
     EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
     service_ = new VPNService(&manager_, base::WrapUnique(driver_));
@@ -66,10 +64,6 @@ class VPNServiceTest : public testing::Test {
 
  protected:
   void SetUp() override {
-    ON_CALL(*connection_, interface_name())
-        .WillByDefault(ReturnRef(interface_name_));
-    ON_CALL(*connection_, ipconfig_rpc_identifier())
-        .WillByDefault(ReturnRef(ipconfig_rpc_identifier_));
     manager_.set_mock_device_info(&device_info_);
     manager_.vpn_provider_ = std::make_unique<MockVPNProvider>();
     manager_.vpn_provider_->manager_ = &manager_;
@@ -79,7 +73,6 @@ class VPNServiceTest : public testing::Test {
 
   void TearDown() override {
     manager_.vpn_provider_.reset();
-    EXPECT_CALL(device_info_, FlushAddresses(0));
   }
 
   void SetServiceState(Service::ConnectState state) {
@@ -118,13 +111,6 @@ class VPNServiceTest : public testing::Test {
     return static_cast<ServiceMockAdaptor*>(service_->adaptor());
   }
 
-  ServiceRefPtr CreateUnderlyingService(
-      ConnectionRefPtr underlying_connection) {
-    auto service = new MockService(&manager_);
-    service->set_mock_connection(underlying_connection);
-    return service;
-  }
-
   std::string interface_name_;
   RpcIdentifier ipconfig_rpc_identifier_;
   MockVPNDriver* driver_;  // Owned by |service_|.
@@ -133,7 +119,6 @@ class VPNServiceTest : public testing::Test {
   EventDispatcherForTest dispatcher_;
   MockManager manager_;
   MockDeviceInfo device_info_;
-  scoped_refptr<NiceMock<MockConnection>> connection_;
   VPNServiceRefPtr service_;
 };
 

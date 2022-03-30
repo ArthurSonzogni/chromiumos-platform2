@@ -1024,7 +1024,8 @@ ServiceRefPtr Manager::GetServiceWithGUID(const std::string& guid,
 
 ServiceRefPtr Manager::GetDefaultService() const {
   SLOG(this, 2) << __func__;
-  if (services_.empty() || !services_[0]->connection().get()) {
+  // TODO(b/182777518): Check the connection state instead.
+  if (services_.empty() || !FindConnectionFromService(services_[0])) {
     SLOG(this, 2) << "In " << __func__ << ": No default connection exists.";
     return nullptr;
   }
@@ -1490,9 +1491,6 @@ void Manager::DeregisterService(const ServiceRefPtr& to_forget) {
   SLOG(this, 2) << "Deregistering service " << to_forget->log_name();
   for (auto it = services_.begin(); it != services_.end(); ++it) {
     if (to_forget->serial_number() == (*it)->serial_number()) {
-      DLOG_IF(FATAL, (*it)->connection())
-          << "Service " << (*it)->log_name()
-          << " still has a connection (in call to " << __func__ << ")";
       (*it)->Unload();
       (*it)->SetProfile(nullptr);
       // We expect the service being deregistered to be destroyed here as well,
@@ -1519,7 +1517,6 @@ bool Manager::UnloadService(
     SetAlwaysOnVpn(kAlwaysOnVpnModeOff, nullptr);
   }
 
-  DCHECK(!(**service_iterator)->connection());
   (**service_iterator)->SetProfile(nullptr);
   *service_iterator = services_.erase(*service_iterator);
 
@@ -1857,11 +1854,13 @@ void Manager::SortServicesTask() {
   uint32_t priority = Connection::kDefaultPriority;
   bool found_dns = false;
   ServiceRefPtr old_logical;
+  ConnectionRefPtr old_logical_connection;
   int old_logical_priority;
   ServiceRefPtr new_logical;
+  ConnectionRefPtr new_logical_connection;
   ServiceRefPtr new_physical;
   for (const auto& service : services_) {
-    ConnectionRefPtr conn = service->connection();
+    ConnectionRefPtr conn = FindConnectionFromService(service);
     if (!new_physical && service->technology() != Technology::kVPN) {
       new_physical = service;
     }
@@ -1873,11 +1872,15 @@ void Manager::SortServicesTask() {
         conn->SetUseDNS(false);
       }
 
-      new_logical = new_logical ? new_logical : service;
+      if (!new_logical) {
+        new_logical = service;
+        new_logical_connection = conn;
+      }
 
       priority += Connection::kPriorityStep;
       if (conn->IsDefault()) {
         old_logical = service;
+        old_logical_connection = conn;
         old_logical_priority = priority;
       } else {
         conn->SetPriority(priority, new_physical == service);
@@ -1886,13 +1889,13 @@ void Manager::SortServicesTask() {
   }
 
   if (old_logical && old_logical != new_logical) {
-    old_logical->connection()->SetPriority(old_logical_priority,
-                                           old_logical == new_physical);
+    old_logical_connection->SetPriority(old_logical_priority,
+                                        old_logical == new_physical);
   }
   if (new_logical) {
     bool is_primary_physical = new_logical == new_physical;
-    new_logical->connection()->SetPriority(Connection::kDefaultPriority,
-                                           is_primary_physical);
+    new_logical_connection->SetPriority(Connection::kDefaultPriority,
+                                        is_primary_physical);
     auto device = FindDeviceFromService(new_logical);
     if (device && device->technology().IsPrimaryConnectivityTechnology() &&
         new_logical->IsPortalled()) {
@@ -2709,17 +2712,30 @@ ServiceRefPtr Manager::FindMatchingService(const KeyValueStore& args,
   return nullptr;
 }
 
-DeviceRefPtr Manager::FindDeviceFromService(const ServiceRefPtr& service) {
+DeviceRefPtr Manager::FindDeviceFromService(
+    const ServiceRefPtr& service) const {
   if (!service) {
     return nullptr;
   }
 
-  for (auto& device : devices_) {
+  for (const auto& device : devices_) {
     if (device->selected_service() == service) {
       return device;
     }
   }
   return nullptr;
+}
+
+ConnectionRefPtr Manager::FindConnectionFromService(
+    const ServiceRefPtr& service) const {
+  if (!service || !service->HasActiveConnection()) {
+    return nullptr;
+  }
+  auto device = FindDeviceFromService(service);
+  if (!device) {
+    return nullptr;
+  }
+  return device->connection();
 }
 
 ServiceRefPtr Manager::GetPrimaryPhysicalService() {

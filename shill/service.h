@@ -395,14 +395,13 @@ class Service : public base::RefCounted<Service> {
   // its value to true and mark it saved.
   virtual void EnableAndRetainAutoConnect();
 
-  // Set the connection for this service.  If the connection is non-NULL, create
-  // an HTTP Proxy that will utilize this service's connection to serve
-  // requests.
-  virtual void SetConnection(const ConnectionRefPtr& connection);
-  mockable const ConnectionRefPtr& connection() const { return connection_; }
+  // The IPConfig object associated with this service has changed. The Service
+  // class will cache this path. Called by Device.
+  mockable void SetIPConfig(RpcIdentifier ipconfig_rpc_id);
 
-  // Emit service's IP config change event to chrome.
-  mockable void NotifyIPConfigChanges();
+  // Whether this service is connected to an active connection. It is
+  // implemented by checking whether this service has a valid IPConfig now.
+  mockable bool HasActiveConnection() const;
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Examines the EAP credentials for the service and returns true if a
@@ -1030,8 +1029,11 @@ class Service : public base::RefCounted<Service> {
   // List of subject names reported by remote entity during TLS setup.
   std::vector<std::string> remote_certification_;
 
+  // The IPConfig object associated with this service currently. Can be empty if
+  // no IPConfig object is associated.
+  RpcIdentifier ipconfig_rpc_identifier_;
+
   std::unique_ptr<ServiceAdaptorInterface> adaptor_;
-  ConnectionRefPtr connection_;
   StaticIPParameters static_ip_parameters_;
   Manager* manager_;
 

@@ -313,6 +313,8 @@ class Device : public base::RefCounted<Device> {
     selected_service_ = service;
   }
 
+  void set_connection_for_testing(const ConnectionRefPtr& connection);
+
  protected:
   friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
