@@ -517,7 +517,10 @@ message RepairCompleteState {
     RMAD_REPAIR_COMPLETE_SHUTDOWN = 2;
     RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF = 3;
   }
+  // Provided by client.
   ShutdownMethod shutdown = 1;
+  // Provided by daemon.
+  bool powerwash_required = 2;
 }
 
 message RmadState {
