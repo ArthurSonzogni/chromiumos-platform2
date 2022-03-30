@@ -312,6 +312,13 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
       "0 ${STATE_SIZE} snapshot ${STATE_DEV} ${COW_LOOP} P 8"
 
     STATE_DEV="/dev/mapper/stateful-rw"
+    if [ "${USE_LVM_STATEFUL_PARTITION}" -eq "1" ]; then
+      # The LVs won't add if duplicate devices are detected (such as this
+      # stateful-rw device and the physical disk). Rename the VG in the snapshot
+      # to avoid duplicates. This would also fail without modification if there
+      # were a non-LVM disk.
+      vgimportclone -n "$(generate_random_label)" -i "${STATE_DEV}"
+    fi
   fi
 
   if [ "${USE_LVM_STATEFUL_PARTITION}" -eq "1" ]; then
