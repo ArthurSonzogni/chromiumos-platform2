@@ -164,7 +164,16 @@ constexpr char kKindWireGuard[] = "wireguard";
 constexpr char kKindXfrm[] = "xfrm";
 
 // Modem drivers that we support.
-const char* const kModemDrivers[] = {"cdc_mbim", "qmi_wwan"};
+const char* const kModemDrivers[] = {
+    // For modems which expose MBIM to userspace (Fibocom L850-GL, NL668-AM,
+    // FM101, etc.)
+    "cdc_mbim",
+    // For modems which expose QMI to userspace. This may not be usable if
+    // USE=qmi is not set.
+    "qmi_wwan",
+    // For Mediatek-based PCIe modems (Fibocom FM350, etc.)
+    "mtk_t7xx",
+};
 
 // Path to the tun device.
 constexpr char kTunDeviceName[] = "/dev/net/tun";
