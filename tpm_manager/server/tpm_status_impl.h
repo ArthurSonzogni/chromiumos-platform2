@@ -47,6 +47,7 @@ class TpmStatusImpl : public TpmStatus {
   GscVersion GetGscVersion() override;
   bool GetRoVerificationStatus(
       tpm_manager::RoVerificationStatus* status) override;
+  bool GetAlertsData(AlertsData* alerts) override;
 
  private:
   // Tests if the TPM owner password is the default one. Returns:

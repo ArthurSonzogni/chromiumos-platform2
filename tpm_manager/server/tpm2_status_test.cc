@@ -322,4 +322,49 @@ TEST_F(Tpm2StatusTest, GetRoVerificationStatusFailure) {
   EXPECT_FALSE(tpm_status_->GetRoVerificationStatus(&status));
 }
 
+TEST_F(Tpm2StatusTest, GetAlertsDataSuccess) {
+  EXPECT_CALL(mock_tpm_utility_, GetAlertsData(_))
+      .WillOnce([](trunks::TpmAlertsData* alerts) {
+        *alerts = trunks::TpmAlertsData{
+            .chip_family = trunks::kFamilyH1,
+            .alerts_num = 2,
+            .counters = {5, 9},
+        };
+        return TPM_RC_SUCCESS;
+      });
+  TpmStatus::AlertsData alerts;
+  EXPECT_TRUE(tpm_status_->GetAlertsData(&alerts));
+  EXPECT_EQ(alerts.counters[1], 5);
+  EXPECT_EQ(alerts.counters[2], 9);
+}
+
+TEST_F(Tpm2StatusTest, GetAlertsDataWrongFamily) {
+  EXPECT_CALL(mock_tpm_utility_, GetAlertsData(_))
+      .WillOnce([](trunks::TpmAlertsData* alerts) {
+        *alerts = trunks::TpmAlertsData{
+            .chip_family = 0x42,
+            .alerts_num = 2,
+            .counters = {5, 9},
+        };
+        return TPM_RC_SUCCESS;
+      });
+  TpmStatus::AlertsData alerts;
+  EXPECT_FALSE(tpm_status_->GetAlertsData(&alerts));
+}
+
+TEST_F(Tpm2StatusTest, GetAlertsDataNoSuchCommand) {
+  EXPECT_CALL(mock_tpm_utility_, GetAlertsData(_))
+      .WillRepeatedly(Return(trunks::TPM_RC_NO_SUCH_COMMAND));
+  TpmStatus::AlertsData alerts;
+  EXPECT_FALSE(tpm_status_->GetAlertsData(&alerts));
+}
+
+TEST_F(Tpm2StatusTest, GetAlertsDataFailure) {
+  EXPECT_CALL(mock_tpm_utility_, GetAlertsData(_))
+      .WillRepeatedly(Return(trunks::TPM_RC_FAILURE));
+  TpmStatus::AlertsData alerts;
+  EXPECT_TRUE(tpm_status_->GetAlertsData(&alerts));
+  EXPECT_EQ(alerts.counters[1], 0);
+}
+
 }  // namespace tpm_manager

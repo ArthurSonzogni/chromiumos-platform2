@@ -476,4 +476,9 @@ bool TpmStatusImpl::GetRoVerificationStatus(
   return true;
 }
 
+bool TpmStatusImpl::GetAlertsData(AlertsData* alerts) {
+  // TPM 1.2 doesn't support to get alerts data.
+  return false;
+}
+
 }  // namespace tpm_manager

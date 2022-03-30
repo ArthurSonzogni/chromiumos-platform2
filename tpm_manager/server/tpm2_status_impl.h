@@ -47,6 +47,7 @@ class Tpm2StatusImpl : public TpmStatus {
   GscVersion GetGscVersion() override;
   bool GetRoVerificationStatus(
       tpm_manager::RoVerificationStatus* status) override;
+  bool GetAlertsData(AlertsData* alerts) override;
 
  private:
   // Refreshes the Tpm state information. Can be called as many times as needed

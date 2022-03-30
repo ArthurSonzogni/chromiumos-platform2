@@ -17,6 +17,13 @@ namespace tpm_manager {
 // of TPM device.
 class TpmStatus {
  public:
+  // Number of alerts supported by UMA
+  static inline constexpr size_t kAlertsNumber = 45;
+  struct AlertsData {
+    // alert counters with UMA enum index
+    uint16_t counters[kAlertsNumber];
+  };
+
   enum TpmOwnershipStatus {
     // TPM is not owned. The owner password is empty.
     kTpmUnowned = 0,
@@ -89,6 +96,13 @@ class TpmStatus {
   //
   // NOTE: This method should be used by TPM 1.2 only.
   virtual void MarkRandomOwnerPasswordSet() = 0;
+
+  // Gets alerts data the TPM
+  //
+  // Parameters
+  //   alerts (OUT) - Struct that contains TPM alerts information
+  // Returns true is hardware supports Alerts reporting, false otherwise
+  virtual bool GetAlertsData(AlertsData* alerts) = 0;
 };
 
 }  // namespace tpm_manager

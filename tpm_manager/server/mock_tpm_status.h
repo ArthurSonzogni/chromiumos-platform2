@@ -42,6 +42,7 @@ class MockTpmStatus : public TpmStatus {
               GetRoVerificationStatus,
               (tpm_manager::RoVerificationStatus*),
               (override));
+  MOCK_METHOD(bool, GetAlertsData, (AlertsData * alerts), (override));
 };
 
 }  // namespace tpm_manager
