@@ -115,6 +115,11 @@ constexpr char kInterfaceDevice[] = "device";
 // Sysfs path to the driver of a device via its interface name.
 constexpr char kInterfaceDriver[] = "device/driver";
 
+// Sysfs path to the driver of an FM350 device via its interface name. This is
+// a temporary fix until the mtkt7xx driver exposes the driver symlink at the
+// same "device/driver" endpoint as expected (b/225373673)
+constexpr char kInterfaceDriverMtkt7xx[] = "device/device/driver";
+
 // Sysfs path to the vendor ID file via its interface name.
 constexpr char kInterfaceVendorId[] = "device/vendor";
 
@@ -473,7 +478,9 @@ Technology DeviceInfo::GetDeviceTechnology(
   }
 
   base::FilePath driver_path;
-  if (!GetDeviceInfoSymbolicLink(iface_name, kInterfaceDriver, &driver_path)) {
+  if (!GetDeviceInfoSymbolicLink(iface_name, kInterfaceDriver, &driver_path) &&
+      !GetDeviceInfoSymbolicLink(iface_name, kInterfaceDriverMtkt7xx,
+                                 &driver_path)) {
     SLOG(this, 2) << __func__ << ": device " << iface_name
                   << " has no device symlink";
     if (arp_type == ARPHRD_LOOPBACK) {

@@ -1742,6 +1742,14 @@ TEST_F(DeviceInfoTechnologyTest, CellularCdcMbim) {
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
+// Test path to the driver of an FM350 device. This is temporary coverage until
+// the mtkt7xx driver exposes the driver symlink at the same "device/driver"
+// endpoint as expected (b/225373673)
+TEST_F(DeviceInfoTechnologyTest, CellularMtkt7xx) {
+  CreateInfoSymLink("device/device/driver", "mtk_t7xx");
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+}
+
 TEST_F(DeviceInfoTechnologyTest, CellularQmiWwan) {
   CreateInfoSymLink("device/driver", "qmi_wwan");
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
