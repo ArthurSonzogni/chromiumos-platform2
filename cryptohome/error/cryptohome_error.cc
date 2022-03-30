@@ -18,9 +18,9 @@ namespace cryptohome {
 namespace error {
 
 CryptohomeError::CryptohomeError(
-    ErrorLocation loc,
-    std::set<Action> actions,
-    std::optional<user_data_auth::CryptohomeErrorCode> ec)
+    const ErrorLocation loc,
+    const std::set<Action>& actions,
+    const std::optional<user_data_auth::CryptohomeErrorCode> ec)
     : loc_(loc), actions_(actions), ec_(ec) {}
 
 std::string CryptohomeError::ToString() const {

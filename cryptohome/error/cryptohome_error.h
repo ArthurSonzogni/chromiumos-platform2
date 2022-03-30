@@ -36,10 +36,10 @@ class CryptohomeError : public hwsec_foundation::status::Error {
   using Action = ErrorAction;
 
   // Standard constructor taking the error location and actions.
-  CryptohomeError(
-      ErrorLocation loc,
-      std::set<Action> actions,
-      std::optional<user_data_auth::CryptohomeErrorCode> ec = std::nullopt);
+  CryptohomeError(const ErrorLocation loc,
+                  const std::set<Action>& actions,
+                  const std::optional<user_data_auth::CryptohomeErrorCode> ec =
+                      std::nullopt);
   ~CryptohomeError() override = default;
 
   // Return the location id in this error.
