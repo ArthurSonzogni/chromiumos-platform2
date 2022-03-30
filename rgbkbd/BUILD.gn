@@ -34,11 +34,19 @@ static_library("libdbus_service") {
   configs += [ ":target_defaults" ]
 }
 
+static_library("librgbkbd") {
+  sources = [ "keyboard_backlight_logger.cc" ]
+  configs += [ ":target_defaults" ]
+}
+
 executable("rgbkbd") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "sbin"
-  deps = [ ":libdbus_service" ]
+  deps = [
+    ":libdbus_service",
+    ":librgbkbd",
+  ]
 }
 
 # Install upstart configs and scripts.
@@ -61,7 +69,10 @@ install_config("install_dbus_activation") {
 
 if (use.test) {
   executable("rgbkbd_test") {
-    sources = [ "dbus_service_test.cc" ]
+    sources = [
+      "dbus_service_test.cc",
+      "keyboard_backlight_logger_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -69,6 +80,7 @@ if (use.test) {
     run_test = true
     deps = [
       ":libdbus_service",
+      ":librgbkbd",
       "//common-mk/testrunner",
     ]
   }
