@@ -249,6 +249,8 @@ include(sepolicy/file_contexts/sysfs_contexts)
 
 /var                            u:object_r:cros_var:s0
 /var/cache                      u:object_r:cros_var_cache:s0
+/var/cache/dlc(/.*)?            u:object_r:cros_var_cache_dlcservice:s0
+/var/cache/dlc-images(/.*)?     u:object_r:cros_var_cache_dlcservice_images:s0
 /var/cache/shill(/.*)?          u:object_r:cros_var_cache_shill:s0
 /var/cache/modemfwd(/.*)?       u:object_r:cros_var_cache_modemfwd:s0
 /var/cache/modem-utilities(/.*)? u:object_r:cros_var_cache_modem_utilities:s0
@@ -263,6 +265,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/chaps(/.*)?            u:object_r:cros_var_lib_chaps:s0
 /var/lib/cras(/.*)?             u:object_r:cros_var_lib_cras:s0
 /var/lib/crash_reporter(/.*)?   u:object_r:cros_var_lib_crash_reporter:s0
+/var/lib/dlcservice(/.*)?       u:object_r:cros_var_lib_dlcservice:s0
 /var/lib/dbus(/.*)?             u:object_r:cros_var_lib_dbus:s0
 /var/lib/dhcpcd(/.*)?           u:object_r:cros_var_lib_shill:s0
 /var/lib/fwupd                  u:object_r:cros_var_lib_fwupd:s0
@@ -464,6 +467,7 @@ has_arc(`
 /mnt/stateful_partition/home/root(/[0-9a-z]{40})? u:object_r:cros_home_root:s0
 /mnt/stateful_partition/home/user(/[0-9a-z]{40})? u:object_r:cros_home_user:s0
 /mnt/stateful_partition/home/chronos(/(?!(u-[0-9a-z]{40}|user)).*)?   u:object_r:cros_home_chronos:s0
+/mnt/stateful_partition/var_overlay/cache/dlc-images(/.*)? u:object_r:cros_var_cache_dlcservice_images:s0
 /mnt/stateful_partition/var_overlay/db/pkg(/.*)? u:object_r:cros_var_db_pkg:s0
 /mnt/stateful_partition/var_overlay/lib/portage(/.*)? u:object_r:cros_var_lib_portage:s0
 
