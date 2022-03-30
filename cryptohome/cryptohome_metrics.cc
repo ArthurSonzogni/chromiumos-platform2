@@ -181,6 +181,10 @@ constexpr char kCryptohomeDeprecatedApiHistogramName[] =
 
 constexpr char kAttestationStatusHistogramPrefix[] = "Hwsec.Attestation.Status";
 
+// Set to true to disable CryptohomeError related reporting, see
+// DisableErrorMetricsReporting().
+bool g_disable_error_metrics = false;
+
 MetricsLibraryInterface* g_metrics = NULL;
 chromeos_metrics::TimerReporter* g_timers[cryptohome::kNumTimerTypes] = {NULL};
 
@@ -223,6 +227,10 @@ void OverrideMetricsLibraryForTesting(MetricsLibraryInterface* lib) {
 
 void ClearMetricsLibraryForTesting() {
   g_metrics = nullptr;
+}
+
+void DisableErrorMetricsReporting() {
+  g_disable_error_metrics = true;
 }
 
 void ReportWrappingKeyDerivationType(DerivationType derivation_type,
@@ -724,6 +732,52 @@ void ReportVaultKeysetMetrics(const VaultKeysetMetrics& keyset_metrics) {
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[8]),
       keyset_metrics.unclassified_count, kMin, kMax, kNumBuckets);
+}
+
+void ReportCryptohomeErrorHashedStack(const uint32_t hashed) {
+  if (!g_metrics || g_disable_error_metrics) {
+    return;
+  }
+
+  g_metrics->SendSparseToUMA(std::string(kCryptohomeErrorHashedStack),
+                             static_cast<int>(hashed));
+}
+
+void ReportCryptohomeErrorLeaf(const uint32_t node) {
+  if (!g_metrics || g_disable_error_metrics) {
+    return;
+  }
+
+  g_metrics->SendSparseToUMA(std::string(kCryptohomeErrorLeafWithoutTPM),
+                             static_cast<int>(node));
+}
+
+void ReportCryptohomeErrorLeafWithTPM(const uint32_t mixed) {
+  if (!g_metrics || g_disable_error_metrics) {
+    return;
+  }
+
+  g_metrics->SendSparseToUMA(std::string(kCryptohomeErrorLeafWithTPM),
+                             static_cast<int>(mixed));
+}
+
+void ReportCryptohomeErrorDevCheckUnexpectedState(const uint32_t loc) {
+  if (!g_metrics || g_disable_error_metrics) {
+    return;
+  }
+
+  g_metrics->SendSparseToUMA(
+      std::string(kCryptohomeErrorDevCheckUnexpectedState),
+      static_cast<int>(loc));
+}
+
+void ReportCryptohomeErrorAllLocations(const uint32_t loc) {
+  if (!g_metrics || g_disable_error_metrics) {
+    return;
+  }
+
+  g_metrics->SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
+                             static_cast<int>(loc));
 }
 
 }  // namespace cryptohome

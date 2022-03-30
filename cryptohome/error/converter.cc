@@ -15,6 +15,7 @@
 #include <libhwsec-foundation/error/error.h>
 
 #include "cryptohome/error/action.h"
+#include "cryptohome/error/reporting.h"
 
 namespace cryptohome {
 
@@ -197,6 +198,7 @@ void ReplyWithError(
   if (!success) {
     user_data_auth::CryptohomeErrorCode legacy_ec;
     auto info = CryptohomeErrorToUserDataAuthError(err, &legacy_ec);
+    ReportCryptohomeError(err, info);
 
     actual_reply.mutable_error_info()->CopyFrom(info);
     actual_reply.set_error(legacy_ec);

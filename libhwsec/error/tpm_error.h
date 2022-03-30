@@ -95,6 +95,8 @@ typedef int64_t UnifiedError;
 inline constexpr UnifiedError kUnifiedErrorMask = 0x0FFFFLL;
 inline constexpr UnifiedError kUnifiedErrorBit = 0x10000LL;
 
+inline constexpr int64_t kUnifiedErrorLayerMask = 0x0F000LL;
+
 // Note: This is enforced by static_assert in tpm2_error_test.cc
 inline constexpr UnifiedError kHwsecTpmErrorBase = (7 << 12);
 

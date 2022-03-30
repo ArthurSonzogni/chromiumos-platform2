@@ -40,6 +40,7 @@ static const char* kCleanupThreshold = "cleanup_threshold";
 static const char* kAggressiveThreshold = "aggressive_cleanup_threshold";
 static const char* kCriticalThreshold = "critical_cleanup_threshold";
 static const char* kTargetFreeSpace = "target_free_space";
+static const char* kDisableErrorMetrics = "disable_error_metrics";
 
 }  // namespace switches
 
@@ -90,6 +91,7 @@ int main(int argc, char** argv) {
                    !cl->HasSwitch(switches::kNegateFscryptV2ForTest);
   bool application_containers = cl->HasSwitch(switches::kApplicationContainers);
   bool daemonize = !cl->HasSwitch(switches::kNoDaemonize);
+  bool disable_error_metrics = cl->HasSwitch(switches::kDisableErrorMetrics);
   uint64_t cleanup_threshold =
       ReadCleanupThreshold(cl, switches::kCleanupThreshold,
                            cryptohome::kFreeSpaceThresholdToTriggerCleanup);
@@ -113,6 +115,10 @@ int main(int argc, char** argv) {
   // Because mount thread may use metrics after main scope, don't
   // TearDownMetrics after main finished.
   cryptohome::InitializeMetrics();
+
+  if (disable_error_metrics) {
+    cryptohome::DisableErrorMetricsReporting();
+  }
 
   // Make sure scrypt parameters are correct.
   hwsec_foundation::AssertProductionScryptParams();

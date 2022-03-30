@@ -398,6 +398,7 @@ static_library("libcryptohome") {
     "../error/cryptohome_error.cc",
     "../error/cryptohome_mount_error.cc",
     "../error/cryptohome_tpm_error.cc",
+    "../error/reporting.cc",
     "../filesystem_layout.cc",
     "../fingerprint_manager.cc",
     "../key_challenge_service_factory_impl.cc",

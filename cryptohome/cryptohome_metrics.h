@@ -477,6 +477,17 @@ enum class LegacyCodePathLocation {
   kMaxValue = kGenerateResetSeedDuringAddKey
 };
 
+inline constexpr char kCryptohomeErrorHashedStack[] =
+    "Cryptohome.Error.HashedStack";
+inline constexpr char kCryptohomeErrorLeafWithoutTPM[] =
+    "Cryptohome.Error.LeafErrorWithoutTPM";
+inline constexpr char kCryptohomeErrorLeafWithTPM[] =
+    "Cryptohome.Error.LeafErrorWithTPM";
+inline constexpr char kCryptohomeErrorDevCheckUnexpectedState[] =
+    "Cryptohome.Error.DevUnexpectedState";
+inline constexpr char kCryptohomeErrorAllLocations[] =
+    "Cryptohome.Error.AllLocations";
+
 // Initializes cryptohome metrics. If this is not called, all calls to Report*
 // will have no effect.
 void InitializeMetrics();
@@ -697,6 +708,29 @@ void ReportUsageOfLegacyCodePath(LegacyCodePathLocation location, bool result);
 // without KeyProviderData, and the number of labeled/label-less PIN
 // VaultKeysets.
 void ReportVaultKeysetMetrics(const VaultKeysetMetrics& keyset_metrics);
+
+// Cryptohome Error Reporting related UMAs
+
+// Reports the full error id's hash when an error occurred.
+void ReportCryptohomeErrorHashedStack(const uint32_t hashed);
+
+// Reports the leaf node of an error id when an error occurred.
+void ReportCryptohomeErrorLeaf(const uint32_t node);
+
+// Reports the leaf node and TPM error when an error occurred.
+void ReportCryptohomeErrorLeafWithTPM(const uint32_t mixed);
+
+// Reports the error location when kDevCheckUnexpectedState happened.
+void ReportCryptohomeErrorDevCheckUnexpectedState(const uint32_t loc);
+
+// Reports a node in the error ID. This will be called multiple times for
+// an error ID with multiple nodes.
+void ReportCryptohomeErrorAllLocations(const uint32_t loc);
+
+// Call this to disable all CryptohomeError related metrics reporting. This is
+// for situations in which we generate too many possible values in
+// CryptohomeError related reporting.
+void DisableErrorMetricsReporting();
 
 // Initialization helper.
 class ScopedMetricsInitializer {

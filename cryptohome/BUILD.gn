@@ -370,6 +370,7 @@ if (use.test) {
       "error/cryptohome_error_test.cc",
       "error/cryptohome_mount_error_test.cc",
       "error/cryptohome_tpm_error_test.cc",
+      "error/reporting_test.cc",
       "fake_le_credential_backend.cc",
       "fido/make_credential_response_test.cc",
       "fingerprint_manager_unittest.cc",
@@ -454,6 +455,7 @@ if (use.test) {
       sources += [
         "cryptorecovery/recovery_crypto_tpm2_backend_impl_unittest.cc",
         "error/cryptohome_tpm2_error_test.cc",
+        "error/reporting_tpm2_test.cc",
         "pinweaver_le_credential_backend_unittest.cc",
         "tpm2_test.cc",
       ]
@@ -463,6 +465,7 @@ if (use.test) {
       sources += [
         "cryptorecovery/recovery_crypto_tpm1_backend_impl_unittest.cc",
         "error/cryptohome_tpm1_error_test.cc",
+        "error/reporting_tpm1_test.cc",
         "tpm1_static_utils_unittest.cc",
         "tpm1_test.cc",
       ]
