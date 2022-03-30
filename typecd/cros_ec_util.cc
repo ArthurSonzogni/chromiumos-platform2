@@ -43,7 +43,7 @@ CrosECUtil::CrosECUtil(scoped_refptr<dbus::Bus> bus)
 bool CrosECUtil::ModeEntrySupported() {
   std::string inventory;
   brillo::ErrorPtr error;
-  int retries = 20;
+  int retries = 40;
 
   while (retries--) {
     if (debugd_proxy_->EcGetInventory(&inventory, &error))
