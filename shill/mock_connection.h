@@ -27,10 +27,6 @@ class MockConnection : public Connection {
   MOCK_METHOD(bool, IsDefault, (), (const, override));
   MOCK_METHOD(void, SetPriority, (uint32_t, bool), (override));
   MOCK_METHOD(void, SetUseDNS, (bool), (override));
-  MOCK_METHOD(const RpcIdentifier&,
-              ipconfig_rpc_identifier,
-              (),
-              (const, override));
   MOCK_METHOD(const std::string&, interface_name, (), (const, override));
   MOCK_METHOD(const std::vector<std::string>&,
               dns_servers,

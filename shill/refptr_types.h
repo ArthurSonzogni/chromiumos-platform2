@@ -72,9 +72,6 @@ class Profile;
 using ProfileConstRefPtr = scoped_refptr<const Profile>;
 using ProfileRefPtr = scoped_refptr<Profile>;
 
-class Connection;
-using ConnectionRefPtr = scoped_refptr<Connection>;
-
 }  // namespace shill
 
 #endif  // SHILL_REFPTR_TYPES_H_

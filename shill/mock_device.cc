@@ -24,7 +24,7 @@ MockDevice::MockDevice(Manager* manager,
           manager, link_name, address, interface_index, Technology::kUnknown) {
   DefaultValue<Technology>::Set(Technology::kUnknown);
   ON_CALL(*this, connection())
-      .WillByDefault(testing::ReturnRef(Device::connection()));
+      .WillByDefault(testing::Return(Device::connection()));
 }
 
 MockDevice::~MockDevice() = default;

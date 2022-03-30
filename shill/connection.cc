@@ -73,13 +73,10 @@ Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        bool fixed_ip_params,
                        Technology technology,
-                       const DeviceInfo* device_info,
-                       ControlInterface* control_interface)
-    : weak_ptr_factory_(this),
-      use_dns_(false),
+                       const DeviceInfo* device_info)
+    : use_dns_(false),
       priority_(kLeastPriority),
       is_primary_physical_(false),
-      has_broadcast_domain_(false),
       interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
@@ -92,8 +89,7 @@ Connection::Connection(int interface_index,
       device_info_(device_info),
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()),
-      control_interface_(control_interface) {
+      rtnl_handler_(RTNLHandler::GetInstance()) {
   SLOG(this, 2) << __func__ << "(" << interface_index << ", " << interface_name
                 << ", " << technology << ")";
 }
@@ -290,13 +286,10 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
     dns_domain_name_ = config->properties().domain_name;
   }
 
-  ipconfig_rpc_identifier_ = config->GetRpcIdentifier();
-
   PushDNSConfig();
 
   local_ = local;
   gateway_ = gateway;
-  has_broadcast_domain_ = !is_p2p;
 }
 
 void Connection::UpdateGatewayMetric(const IPConfigRefPtr& config) {
@@ -390,16 +383,6 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
   // probes when the network connection is IPv6 only. For the time being the
   // only supported case is traffic from shill.
   uint32_t shill_uid = getuid();
-
-  for (const auto& source_address : allowed_srcs_) {
-    auto src_addr_rule = RoutingPolicyEntry::CreateFromSrc(source_address)
-                             .SetPriority(base_priority)
-                             .SetTable(table_id);
-    if (source_address.family() == IPAddress::kFamilyIPv6 && no_ipv6) {
-      src_addr_rule.SetUid(shill_uid);
-    }
-    routing_table_->AddRule(interface_index_, src_addr_rule);
-  }
 
   for (const auto& dst_address : allowed_dsts_) {
     auto dst_addr_rule = RoutingPolicyEntry::CreateFromDst(dst_address)
@@ -516,10 +499,6 @@ std::string Connection::GetSubnetName() const {
   }
   return base::StringPrintf(
       "%s/%d", local().GetNetworkPart().ToString().c_str(), local().prefix());
-}
-
-void Connection::set_allowed_srcs(std::vector<IPAddress> addresses) {
-  allowed_srcs_ = std::move(addresses);
 }
 
 bool Connection::FixGatewayReachability(const IPAddress& local,

@@ -22,6 +22,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
+#include "shill/connection.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
@@ -193,7 +194,7 @@ class Device : public base::RefCounted<Device> {
   const std::string& mac_address() const { return mac_address_; }
   const std::string& link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
-  mockable const ConnectionRefPtr& connection() const { return connection_; }
+  mockable Connection* connection() const { return connection_.get(); }
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
   mockable Technology technology() const { return technology_; }
@@ -312,8 +313,6 @@ class Device : public base::RefCounted<Device> {
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;
   }
-
-  void set_connection_for_testing(const ConnectionRefPtr& connection);
 
  protected:
   friend class base::RefCounted<Device>;
@@ -698,7 +697,7 @@ class Device : public base::RefCounted<Device> {
   Manager* manager_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;
-  ConnectionRefPtr connection_;
+  std::unique_ptr<Connection> connection_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;
   // Callback to invoke when IPv6 DNS servers lifetime expired.

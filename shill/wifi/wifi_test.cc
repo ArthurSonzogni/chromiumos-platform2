@@ -1123,10 +1123,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->SuspectCredentials(service, failure);
   }
 
-  void SetConnection(ConnectionRefPtr connection) {
-    wifi_->connection_ = connection;
-  }
-
   void OnNeighborReachabilityEvent(
       const IPAddress& ip_address,
       patchpanel::NeighborReachabilityEventSignal::Role role,
@@ -1147,8 +1143,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   // Used by tests for link status (L2 failure, reliability).
   void SetupConnectionAndIPConfig(const std::string& ipv4_gateway_address) {
-    scoped_refptr<MockConnection> connection(new MockConnection(device_info()));
-    SetConnection(connection);
+    wifi_->connection_ = std::make_unique<MockConnection>(device_info());
     scoped_refptr<MockIPConfig> ipconfig(
         new MockIPConfig(control_interface(), kDeviceName));
     SetIPConfig(ipconfig);

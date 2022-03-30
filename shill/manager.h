@@ -23,6 +23,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "shill/connection.h"
 #include "shill/default_service_observer.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -213,11 +214,11 @@ class Manager {
   virtual DeviceRefPtr FindDeviceFromService(
       const ServiceRefPtr& service) const;
 
-  // It the service has an active connection, Returns the Connection object
-  // associated with the Device which has selected this Service. Returns nullptr
-  // if no such Connection or the Service pointer is null.
-  ConnectionRefPtr FindConnectionFromService(
-      const ServiceRefPtr& service) const;
+  // It the service has an active connection, returns the Connection object
+  // associated with the Device which has selected this Service. This pointer is
+  // owned by Device and thus cannot be held. Returns nullptr if no such
+  // Connection or the Service pointer is null.
+  Connection* FindConnectionFromService(const ServiceRefPtr& service) const;
 
   // Return the highest priority service of a physical technology type (i.e. not
   // VPN, ARC, etc), or nullptr if no such service is found.

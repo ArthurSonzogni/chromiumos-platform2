@@ -1854,13 +1854,13 @@ void Manager::SortServicesTask() {
   uint32_t priority = Connection::kDefaultPriority;
   bool found_dns = false;
   ServiceRefPtr old_logical;
-  ConnectionRefPtr old_logical_connection;
+  Connection* old_logical_connection;
   int old_logical_priority;
   ServiceRefPtr new_logical;
-  ConnectionRefPtr new_logical_connection;
+  Connection* new_logical_connection;
   ServiceRefPtr new_physical;
   for (const auto& service : services_) {
-    ConnectionRefPtr conn = FindConnectionFromService(service);
+    Connection* conn = FindConnectionFromService(service);
     if (!new_physical && service->technology() != Technology::kVPN) {
       new_physical = service;
     }
@@ -2726,7 +2726,7 @@ DeviceRefPtr Manager::FindDeviceFromService(
   return nullptr;
 }
 
-ConnectionRefPtr Manager::FindConnectionFromService(
+Connection* Manager::FindConnectionFromService(
     const ServiceRefPtr& service) const {
   if (!service || !service->HasActiveConnection()) {
     return nullptr;

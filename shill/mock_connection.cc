@@ -9,9 +9,7 @@
 namespace shill {
 
 MockConnection::MockConnection(const DeviceInfo* device_info)
-    : Connection(
-          0, std::string(), false, Technology::kUnknown, device_info, nullptr) {
-}
+    : Connection(0, std::string(), false, Technology::kUnknown, device_info) {}
 
 MockConnection::~MockConnection() = default;
 

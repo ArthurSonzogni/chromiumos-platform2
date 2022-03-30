@@ -965,9 +965,9 @@ void Device::OnConnected() {}
 void Device::CreateConnection() {
   SLOG(this, 2) << __func__;
   if (!connection_) {
-    connection_ = new Connection(interface_index_, link_name_, fixed_ip_params_,
-                                 technology_, manager_->device_info(),
-                                 control_interface());
+    connection_ = std::make_unique<Connection>(interface_index_, link_name_,
+                                               fixed_ip_params_, technology_,
+                                               manager_->device_info());
   }
 }
 
@@ -1541,10 +1541,6 @@ EventDispatcher* Device::dispatcher() const {
 
 Metrics* Device::metrics() const {
   return manager_->metrics();
-}
-
-void Device::set_connection_for_testing(const ConnectionRefPtr& connection) {
-  connection_ = connection;
 }
 
 }  // namespace shill

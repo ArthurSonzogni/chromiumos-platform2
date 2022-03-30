@@ -5,13 +5,9 @@
 #ifndef SHILL_CONNECTION_H_
 #define SHILL_CONNECTION_H_
 
-#include <deque>
-#include <memory>
 #include <string>
 #include <vector>
 
-#include <base/memory/ref_counted.h>
-#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
@@ -22,7 +18,6 @@
 
 namespace shill {
 
-class ControlInterface;
 class DeviceInfo;
 class RTNLHandler;
 class Resolver;
@@ -30,7 +25,7 @@ class RoutingTable;
 
 // The Connection maintains the implemented state of an IPConfig, e.g,
 // the IP address, routing table and DNS table entries.
-class Connection : public base::RefCounted<Connection> {
+class Connection {
  public:
   // The routing rule priority used for the default service, whether physical or
   // VPN.
@@ -54,10 +49,10 @@ class Connection : public base::RefCounted<Connection> {
              const std::string& interface_name,
              bool fixed_ip_params,
              Technology technology_,
-             const DeviceInfo* device_info,
-             ControlInterface* control_interface);
+             const DeviceInfo* device_info);
   Connection(const Connection&) = delete;
   Connection& operator=(const Connection&) = delete;
+  virtual ~Connection();
 
   // Add the contents of an IPConfig reference to the list of managed state.
   // This will replace all previous state for this address family.
@@ -95,11 +90,6 @@ class Connection : public base::RefCounted<Connection> {
   virtual const std::vector<std::string>& dns_servers() const {
     return dns_servers_;
   }
-  virtual uint32_t table_id() const { return table_id_; }
-
-  virtual const RpcIdentifier& ipconfig_rpc_identifier() const {
-    return ipconfig_rpc_identifier_;
-  }
 
   // Flush and (re)create routing policy rules for the connection.
   // The rule priority will be set to |priority_| so that Manager's service
@@ -111,15 +101,9 @@ class Connection : public base::RefCounted<Connection> {
 
   virtual const IPAddress& local() const { return local_; }
   virtual const IPAddress& gateway() const { return gateway_; }
-  void set_allowed_srcs(std::vector<IPAddress> addresses);
 
   // Return true if this is an IPv6 connection.
   virtual bool IsIPv6();
-
- protected:
-  friend class base::RefCounted<Connection>;
-
-  virtual ~Connection();
 
  private:
   friend class ConnectionTest;
@@ -153,8 +137,6 @@ class Connection : public base::RefCounted<Connection> {
   // Send our DNS configuration to the resolver.
   void PushDNSConfig();
 
-  base::WeakPtrFactory<Connection> weak_ptr_factory_;
-
   bool use_dns_;
   // The base priority for rules corresponding to this Connection. Set by
   // Manager through SetPriority. Note that this value is occasionally used as a
@@ -164,19 +146,16 @@ class Connection : public base::RefCounted<Connection> {
   // tell the rule priorities corresponding to the displayed default routes.
   uint32_t priority_;
   bool is_primary_physical_;
-  bool has_broadcast_domain_;
   int interface_index_;
   const std::string interface_name_;
   Technology technology_;
   std::vector<std::string> dns_servers_;
   std::vector<std::string> dns_domain_search_;
   std::string dns_domain_name_;
-  RpcIdentifier ipconfig_rpc_identifier_;
 
   // True if this device should have rules sending traffic whose src address
   // matches one of the interface's addresses to the per-device table.
   bool use_if_addrs_;
-  std::vector<IPAddress> allowed_srcs_;
   std::vector<IPAddress> allowed_dsts_;
   std::vector<uint32_t> blackholed_uids_;
 
@@ -192,8 +171,6 @@ class Connection : public base::RefCounted<Connection> {
   Resolver* resolver_;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
-
-  ControlInterface* control_interface_;
 };
 
 }  // namespace shill

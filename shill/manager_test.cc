@@ -325,11 +325,11 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   void SelectServiceForDevice(scoped_refptr<MockService> service,
-                              ConnectionRefPtr connection,
+                              Connection* connection,
                               scoped_refptr<MockDevice> device) {
     manager()->RegisterDevice(device);
     device->set_selected_service_for_testing(service);
-    device->set_connection_for_testing(connection);
+    EXPECT_CALL(*device, connection()).WillRepeatedly(Return(connection));
     if (service) {
       EXPECT_CALL(*service, HasActiveConnection())
           .WillRepeatedly(Return(connection != nullptr));
@@ -2181,11 +2181,6 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
 
-  scoped_refptr<MockConnection> mock_connection0(
-      new NiceMock<MockConnection>(device_info_.get()));
-  scoped_refptr<MockConnection> mock_connection1(
-      new NiceMock<MockConnection>(device_info_.get()));
-
   // A single registered Service, without a connection.  The
   // DefaultService should be nullptr.  If a change notification is
   // generated, it should reference kNullPath.
@@ -2233,32 +2228,34 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   manager()->SortServicesTask();
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
-  SelectServiceForDevice(mock_service0, mock_connection0, mock_devices_[0]);
-  SelectServiceForDevice(mock_service1, mock_connection1, mock_devices_[1]);
+  NiceMock<MockConnection> mock_connection0(device_info_.get());
+  NiceMock<MockConnection> mock_connection1(device_info_.get());
+  SelectServiceForDevice(mock_service0, &mock_connection0, mock_devices_[0]);
+  SelectServiceForDevice(mock_service1, &mock_connection1, mock_devices_[1]);
 
   // Add an entry to the dns_servers() list to test the logic in
   // SortServicesTask() which figures out which connection owns the system
   // DNS configuration.
   std::vector<std::string> dns_servers;
   dns_servers.push_back("8.8.8.8");
-  EXPECT_CALL(*mock_connection0, dns_servers())
+  EXPECT_CALL(mock_connection0, dns_servers())
       .WillRepeatedly(ReturnRef(dns_servers));
-  EXPECT_CALL(*mock_connection1, dns_servers())
+  EXPECT_CALL(mock_connection1, dns_servers())
       .WillRepeatedly(ReturnRef(dns_servers));
 
   // If both Services have Connections, the DefaultService follows
   // from ServiceOrderIs.  We notify others of the change in
   // DefaultService.
-  EXPECT_CALL(*mock_connection0, SetUseDNS(true));
-  EXPECT_CALL(*mock_connection0, SetPriority(Connection::kDefaultPriority +
-                                                 Connection::kPriorityStep,
-                                             true));
-  EXPECT_CALL(*mock_connection0,
+  EXPECT_CALL(mock_connection0, SetUseDNS(true));
+  EXPECT_CALL(mock_connection0, SetPriority(Connection::kDefaultPriority +
+                                                Connection::kPriorityStep,
+                                            true));
+  EXPECT_CALL(mock_connection0,
               SetPriority(Connection::kDefaultPriority, true));
-  EXPECT_CALL(*mock_connection1, SetUseDNS(false));
-  EXPECT_CALL(*mock_connection1, SetPriority(Connection::kDefaultPriority +
-                                                 2 * Connection::kPriorityStep,
-                                             false));
+  EXPECT_CALL(mock_connection1, SetUseDNS(false));
+  EXPECT_CALL(mock_connection1, SetPriority(Connection::kDefaultPriority +
+                                                2 * Connection::kPriorityStep,
+                                            false));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
   manager()->SortServicesTask();
@@ -2270,15 +2267,15 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   // Changing the ordering causes the DefaultService to change, and
   // appropriate notifications are sent.
   mock_service1->SetPriority(1, nullptr);
-  EXPECT_CALL(*mock_connection0, SetUseDNS(false));
-  EXPECT_CALL(*mock_connection0, SetPriority(Connection::kDefaultPriority +
-                                                 2 * Connection::kPriorityStep,
-                                             false));
-  EXPECT_CALL(*mock_connection1, SetUseDNS(true));
-  EXPECT_CALL(*mock_connection1, SetPriority(Connection::kDefaultPriority +
-                                                 Connection::kPriorityStep,
-                                             true));
-  EXPECT_CALL(*mock_connection1,
+  EXPECT_CALL(mock_connection0, SetUseDNS(false));
+  EXPECT_CALL(mock_connection0, SetPriority(Connection::kDefaultPriority +
+                                                2 * Connection::kPriorityStep,
+                                            false));
+  EXPECT_CALL(mock_connection1, SetUseDNS(true));
+  EXPECT_CALL(mock_connection1, SetPriority(Connection::kDefaultPriority +
+                                                Connection::kPriorityStep,
+                                            true));
+  EXPECT_CALL(mock_connection1,
               SetPriority(Connection::kDefaultPriority, true));
   EXPECT_CALL(service_watcher, OnDefaultLogicalServiceChanged(_));
   EXPECT_CALL(service_watcher, OnDefaultPhysicalServiceChanged(_));
@@ -2296,11 +2293,11 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
 
   // Deregistering the current DefaultService causes the other Service
   // to become default.  Appropriate notifications are sent.
-  EXPECT_CALL(*mock_connection0, SetUseDNS(true));
-  EXPECT_CALL(*mock_connection0, SetPriority(Connection::kDefaultPriority +
-                                                 Connection::kPriorityStep,
-                                             true));
-  EXPECT_CALL(*mock_connection0,
+  EXPECT_CALL(mock_connection0, SetUseDNS(true));
+  EXPECT_CALL(mock_connection0, SetPriority(Connection::kDefaultPriority +
+                                                Connection::kPriorityStep,
+                                            true));
+  EXPECT_CALL(mock_connection0,
               SetPriority(Connection::kDefaultPriority, true));
   EXPECT_CALL(*manager_adaptor_,
               EmitRpcIdentifierChanged(kDefaultServiceProperty, _));
@@ -2953,9 +2950,8 @@ TEST_F(ManagerTest, GetDefaultService) {
   EXPECT_EQ(nullptr, manager()->GetDefaultService());
   EXPECT_EQ(DBusControl::NullRpcIdentifier(), GetDefaultServiceRpcIdentifier());
 
-  scoped_refptr<MockConnection> mock_connection(
-      new NiceMock<MockConnection>(device_info_.get()));
-  SelectServiceForDevice(mock_service, mock_connection, mock_devices_[0]);
+  NiceMock<MockConnection> mock_connection(device_info_.get());
+  SelectServiceForDevice(mock_service, &mock_connection, mock_devices_[0]);
   EXPECT_EQ(mock_service, manager()->GetDefaultService());
   EXPECT_EQ(mock_service->GetRpcIdentifier(), GetDefaultServiceRpcIdentifier());
 
@@ -3078,9 +3074,8 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   manager()->RegisterService(mock_service);
   RefreshConnectionState();
 
-  scoped_refptr<MockConnection> mock_connection(
-      new NiceMock<MockConnection>(device_info_.get()));
-  SelectServiceForDevice(mock_service, mock_connection, mock_devices_[0]);
+  NiceMock<MockConnection> mock_connection(device_info_.get());
+  SelectServiceForDevice(mock_service, &mock_connection, mock_devices_[0]);
   EXPECT_CALL(*mock_service, state()).WillOnce(Return(Service::kStateIdle));
   RefreshConnectionState();
 
@@ -3922,8 +3917,8 @@ TEST_F(ManagerTest, IsWifiIdle) {
 }
 
 TEST_F(ManagerTest, DetectMultiHomedDevices) {
-  std::vector<scoped_refptr<MockConnection>> mock_connections;
-  std::vector<ConnectionRefPtr> device_connections;
+  std::vector<std::unique_ptr<MockConnection>> mock_connections;
+  std::vector<Connection*> device_connections;
   mock_devices_.push_back(
       new NiceMock<MockDevice>(manager(), "null4", "addr4", 0));
   mock_devices_.push_back(
@@ -3932,7 +3927,7 @@ TEST_F(ManagerTest, DetectMultiHomedDevices) {
     manager()->RegisterDevice(device);
     mock_connections.emplace_back(
         new NiceMock<MockConnection>(device_info_.get()));
-    device_connections.emplace_back(mock_connections.back());
+    device_connections.emplace_back(mock_connections.back().get());
   }
   EXPECT_CALL(*mock_connections[1], GetSubnetName()).WillOnce(Return("1"));
   EXPECT_CALL(*mock_connections[2], GetSubnetName()).WillOnce(Return("2"));
@@ -3942,15 +3937,15 @@ TEST_F(ManagerTest, DetectMultiHomedDevices) {
 
   // Do not assign a connection to mock_devices_[0].
   EXPECT_CALL(*mock_devices_[1], connection())
-      .WillRepeatedly(ReturnRef(device_connections[1]));
+      .WillRepeatedly(Return(mock_connections[1].get()));
   EXPECT_CALL(*mock_devices_[2], connection())
-      .WillRepeatedly(ReturnRef(device_connections[2]));
+      .WillRepeatedly(Return(mock_connections[2].get()));
   EXPECT_CALL(*mock_devices_[3], connection())
-      .WillRepeatedly(ReturnRef(device_connections[3]));
+      .WillRepeatedly(Return(mock_connections[3].get()));
   EXPECT_CALL(*mock_devices_[4], connection())
-      .WillRepeatedly(ReturnRef(device_connections[4]));
+      .WillRepeatedly(Return(mock_connections[4].get()));
   EXPECT_CALL(*mock_devices_[5], connection())
-      .WillRepeatedly(ReturnRef(device_connections[5]));
+      .WillRepeatedly(Return(mock_connections[5].get()));
 
   EXPECT_CALL(*mock_devices_[0], SetIsMultiHomed(false));
   EXPECT_CALL(*mock_devices_[1], SetIsMultiHomed(true));

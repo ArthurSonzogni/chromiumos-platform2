@@ -67,7 +67,7 @@ class MockDevice : public Device {
               (const, override));
   MOCK_METHOD(void, OnIPv6DnsServerAddressesChanged, (), (override));
   MOCK_METHOD(bool, StartConnectivityTest, (), (override));
-  MOCK_METHOD(const ConnectionRefPtr&, connection, (), (const, override));
+  MOCK_METHOD(Connection*, connection, (), (const, override));
   MOCK_METHOD(void, UpdateBlackholeUserTraffic, (), (override));
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,

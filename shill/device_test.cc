@@ -184,8 +184,8 @@ class DeviceTest : public testing::Test {
     device_->SelectService(service);
   }
 
-  void SetConnection(ConnectionRefPtr connection) {
-    device_->connection_ = connection;
+  void SetConnection(std::unique_ptr<Connection> connection) {
+    device_->connection_ = std::move(connection);
   }
 
   DeviceMockAdaptor* GetDeviceMockAdaptor() {
@@ -486,9 +486,8 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
       new NiceMock<MockIPConfig>(control_interface(), kDeviceName);
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
-  scoped_refptr<MockConnection> connection(
-      new StrictMock<MockConnection>(&device_info_));
-  SetConnection(connection.get());
+  auto* connection = new StrictMock<MockConnection>(&device_info_);
+  SetConnection(std::unique_ptr<Connection>(connection));
 
   EXPECT_CALL(*ipconfig, ResetProperties());
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
@@ -514,9 +513,8 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
       new NiceMock<MockIPConfig>(control_interface(), kDeviceName);
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
-  scoped_refptr<MockConnection> connection(
-      new StrictMock<MockConnection>(&device_info_));
-  SetConnection(connection.get());
+  auto* connection = new StrictMock<MockConnection>(&device_info_);
+  SetConnection(std::unique_ptr<Connection>(connection));
 
   EXPECT_CALL(*ipconfig, ResetProperties());
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(true));
@@ -524,7 +522,7 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
   EXPECT_CALL(*service, SetIPConfig(RpcIdentifier())).Times(0);
   OnIPConfigFailed(ipconfig.get());
   // Verify connection not teardown.
-  EXPECT_THAT(device_->connection(), NotNullRefPtr());
+  EXPECT_NE(device_->connection(), nullptr);
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
@@ -965,9 +963,8 @@ TEST_F(DeviceTest, OnIPv6DnsServerAddressesChanged) {
 
   // With existing IPv4 connection, so no attempt to setup IPv6 connection.
   // IPv6 connection is being tested in OnIPv6ConfigurationCompleted test.
-  scoped_refptr<MockConnection> connection(
-      new StrictMock<MockConnection>(&device_info_));
-  SetConnection(connection.get());
+  auto* connection = new StrictMock<MockConnection>(&device_info_);
+  SetConnection(std::unique_ptr<Connection>(connection));
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
 
   // IPv6 DNS server addresses are not provided will not emit a change.
@@ -1089,16 +1086,15 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
       .WillRepeatedly(Return(std::vector<std::string>()));
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
-  scoped_refptr<MockConnection> connection(
-      new StrictMock<MockConnection>(&device_info_));
-  SetConnection(connection.get());
+  auto* connection = new StrictMock<MockConnection>(&device_info_);
+  SetConnection(std::unique_ptr<Connection>(connection));
 
   // Setup initial IPv6 configuration.
   SetupIPv6Config();
   EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
 
   // IPv6 configuration update with non-IPv6 connection, no connection update.
-  EXPECT_THAT(device_->connection(), NotNullRefPtr());
+  EXPECT_NE(device_->connection(), nullptr);
   IPAddress address1(IPAddress::kFamilyIPv6);
   const char kAddress1[] = "fe80::1aa9:5ff:abcd:1231";
   ASSERT_TRUE(address1.SetAddressFromString(kAddress1));
@@ -1112,7 +1108,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(service.get());
-  Mock::VerifyAndClearExpectations(connection.get());
+  Mock::VerifyAndClearExpectations(connection);
 
   // IPv6 configuration update with IPv6 connection, connection update.
   IPAddress address2(IPAddress::kFamilyIPv6);
@@ -1141,7 +1137,7 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
   Mock::VerifyAndClearExpectations(GetDeviceMockAdaptor());
   Mock::VerifyAndClearExpectations(&device_info_);
   Mock::VerifyAndClearExpectations(service.get());
-  Mock::VerifyAndClearExpectations(connection.get());
+  Mock::VerifyAndClearExpectations(connection);
 }
 
 TEST_F(DeviceTest, PrependIPv4DNSServers) {
@@ -1213,9 +1209,8 @@ TEST_F(DeviceTest, PrependWithStaticConfiguration) {
   parameters->args_.Set<std::string>(kAddressProperty, "1.1.1.1");
   parameters->args_.Set<int32_t>(kPrefixlenProperty, 16);
 
-  scoped_refptr<MockConnection> connection =
-      new NiceMock<MockConnection>(&device_info_);
-  SetConnection(connection);
+  auto* connection = new NiceMock<MockConnection>(&device_info_);
+  SetConnection(std::unique_ptr<Connection>(connection));
 
   // Ensure that in the absence of statically configured nameservers that the
   // prepend DNS servers are still prepended.
@@ -1356,7 +1351,7 @@ class DevicePortalDetectionTest : public DeviceTest {
   void SetUp() override {
     DeviceTest::SetUp();
     SelectService(service_);
-    SetConnection(connection_.get());
+    SetConnection(std::unique_ptr<Connection>(connection_));
     device_->portal_detector_.reset(portal_detector_);  // Passes ownership.
   }
 
@@ -1389,7 +1384,7 @@ class DevicePortalDetectionTest : public DeviceTest {
     EXPECT_NE(nullptr, device_->portal_detector_);
   }
   void DestroyConnection() { device_->DestroyConnection(); }
-  scoped_refptr<MockConnection> connection_;
+  MockConnection* connection_;  // owned by device_
   scoped_refptr<MockService> service_;
 
   // Used only for EXPECT_CALL().  Object is owned by device.
@@ -1938,12 +1933,8 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
 }
 
 TEST_F(DevicePortalDetectionTest, DestroyConnection) {
-  scoped_refptr<MockConnection> connection =
-      new NiceMock<MockConnection>(&device_info_);
-  // This test holds a single reference to the mock connection.
-  EXPECT_TRUE(connection->HasOneRef());
-
-  SetConnection(connection);
+  auto* connection = new NiceMock<MockConnection>(&device_info_);
+  SetConnection(std::unique_ptr<MockConnection>(connection));
 
   ExpectPortalEnabled();
   const IPAddress ip_addr = IPAddress("1.2.3.4");
@@ -1966,7 +1957,6 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
   // except the one left in this scope.
   EXPECT_CALL(*service_, SetIPConfig(RpcIdentifier()));
   DestroyConnection();
-  EXPECT_TRUE(connection->HasOneRef());
 }
 
 }  // namespace shill
