@@ -75,7 +75,6 @@ class MetricsDaemonTest : public testing::Test {
  protected:
   std::string kFakeDiskStats0;
   std::string kFakeDiskStats1;
-  base::FilePath fake_temperature_dir_;
 
   virtual void SetUp() {
     PersistentInteger::SetCreationCallbackForTesting(
@@ -99,9 +98,6 @@ class MetricsDaemonTest : public testing::Test {
                  kFakeVmStatsName, kFakeScalingMaxFreqPath,
                  kFakeCpuinfoMaxFreqPath, base::Minutes(30), kMetricsServer,
                  kMetricsFilePath, "/", backing_dir_path);
-
-    CHECK(base::CreateNewTempDirectory("", &fake_temperature_dir_));
-    daemon_.SetThermalZonePathBaseForTest(fake_temperature_dir_);
 
     // Replace original persistent values with mock ones.
     base::FilePath m1 = backing_dir_path.Append("1.mock");
@@ -217,28 +213,6 @@ class MetricsDaemonTest : public testing::Test {
                                                      value_string.length()));
   }
 
-  base::FilePath CreateZonePath(int zone) {
-    std::string thermal_zone = base::StringPrintf("thermal_zone%d", zone);
-    return fake_temperature_dir_.Append(thermal_zone);
-  }
-
-  // Creates two input files containing a thermal zone type and a
-  // temperature value at the appropriate zone path given by
-  // fake_temperature_dir_, sysfs' thermal zone format, and |zone|.
-  void CreateFakeTemperatureSamplesFiles(int zone,
-                                         const std::string& type,
-                                         uint64_t value) {
-    base::FilePath zone_path = CreateZonePath(zone);
-    CHECK(base::CreateDirectory(zone_path));
-    base::FilePath type_path = zone_path.Append("type");
-    std::string type_string = type + "\n";
-    ASSERT_EQ(
-        base::WriteFile(type_path, type_string.c_str(), type_string.length()),
-        type_string.length());
-
-    CreateUint64ValueFile(zone_path.Append("temp"), value);
-  }
-
   // The MetricsDaemon under test.
   MetricsDaemon daemon_;
   // The system time just before the daemon was initialized.
@@ -328,156 +302,6 @@ TEST_F(MetricsDaemonTest, ReportDiskStats) {
   EXPECT_CALL(metrics_lib_, SendEnumToUMA(_, _, _));  // SendCpuThrottleMetrics
   daemon_.StatsCallback();
   EXPECT_TRUE(s_state != daemon_.stats_state_);
-}
-
-TEST_F(MetricsDaemonTest, SendTemperatureSamplesBasic) {
-  CreateFakeTemperatureSamplesFiles(0, "x86_pkg_temp", 42000);
-  CreateFakeTemperatureSamplesFiles(1, "TCPU", 27200);
-  CreateFakeTemperatureSamplesFiles(2, "TSR1", 18700);
-  CreateFakeTemperatureSamplesFiles(3, "TSR0", 30500);
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureCpuName, 27,
-                            MetricsDaemon::kMetricTemperatureMax));
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureOneName, 19,
-                            MetricsDaemon::kMetricTemperatureMax));
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
-                            MetricsDaemon::kMetricTemperatureMax));
-  daemon_.SendTemperatureSamples();
-}
-
-TEST_F(MetricsDaemonTest, SendTemperatureSamplesAlternative) {
-  CreateFakeTemperatureSamplesFiles(0, "TSR1", 42390);
-  CreateFakeTemperatureSamplesFiles(1, "acpitz", 10298);
-  CreateFakeTemperatureSamplesFiles(2, "TSR0", 31337);
-  CreateFakeTemperatureSamplesFiles(3, "x86_pkg_temp", 80091);
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureOneName, 42,
-                            MetricsDaemon::kMetricTemperatureMax));
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureCpuName, 10,
-                            MetricsDaemon::kMetricTemperatureMax));
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
-                            MetricsDaemon::kMetricTemperatureMax));
-  daemon_.SendTemperatureSamples();
-}
-
-TEST_F(MetricsDaemonTest, SendTemperatureSamplesReadError) {
-  brillo::InitLog(/*init_flags=*/0);
-  CreateFakeTemperatureSamplesFiles(0, "TSR1", 42390);
-  CreateFakeTemperatureSamplesFiles(1, "acpitz", 10598);
-  CreateFakeTemperatureSamplesFiles(2, "TSR0", 31499);
-  base::FilePath zone_path_zero = CreateZonePath(0);
-  base::FilePath zone_path_one = CreateZonePath(1);
-  base::FilePath zone_path_two = CreateZonePath(2);
-
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureOneName, 42,
-                            MetricsDaemon::kMetricTemperatureMax));
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureCpuName, 11,
-                            MetricsDaemon::kMetricTemperatureMax));
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
-                            MetricsDaemon::kMetricTemperatureMax));
-  brillo::LogToString(true);
-  daemon_.SendTemperatureSamples();
-
-  // Check that no error messages were logged.
-  std::string zone_zero_read_error =
-      "cannot read " + zone_path_zero.MaybeAsASCII();
-  EXPECT_FALSE(brillo::FindLog(zone_zero_read_error.c_str()));
-
-  std::string zone_one_read_error =
-      "cannot read " + zone_path_one.MaybeAsASCII();
-  EXPECT_FALSE(brillo::FindLog(zone_one_read_error.c_str()));
-
-  std::string zone_two_read_error =
-      "cannot read " + zone_path_two.MaybeAsASCII();
-  EXPECT_FALSE(brillo::FindLog(zone_two_read_error.c_str()));
-
-  // Break zones 0 and 1 by deleting input files.
-  base::FilePath value_path_zero =
-      zone_path_zero.Append(MetricsDaemon::kSysfsTemperatureValueFile);
-  base::DeleteFile(value_path_zero);
-
-  base::FilePath type_path_one =
-      zone_path_one.Append(MetricsDaemon::kSysfsTemperatureTypeFile);
-  base::DeleteFile(type_path_one);
-
-  // Zone 2 metric should still be reported despite breakages.
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
-                            MetricsDaemon::kMetricTemperatureMax));
-  brillo::ClearLog();
-  daemon_.SendTemperatureSamples();
-
-  // An error should've been reported for zone zero only.
-  EXPECT_TRUE(brillo::FindLog(zone_zero_read_error.c_str()));
-  EXPECT_FALSE(brillo::FindLog(zone_one_read_error.c_str()));
-  EXPECT_FALSE(brillo::FindLog(zone_two_read_error.c_str()));
-
-  brillo::ClearLog();
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricTemperatureZeroName, 31,
-                            MetricsDaemon::kMetricTemperatureMax));
-  daemon_.SendTemperatureSamples();
-  // No error should be reported now.
-  EXPECT_FALSE(brillo::FindLog(zone_zero_read_error.c_str()));
-  EXPECT_FALSE(brillo::FindLog(zone_one_read_error.c_str()));
-  EXPECT_FALSE(brillo::FindLog(zone_two_read_error.c_str()));
-
-  brillo::LogToString(false);
-}
-
-TEST_F(MetricsDaemonTest, SendTemperatureAtResume) {
-  CreateFakeTemperatureSamplesFiles(0, "x86_pkg_temp", 32894);
-  CreateFakeTemperatureSamplesFiles(1, "TCPU", 59703);
-  CreateFakeTemperatureSamplesFiles(2, "TSR1", 10129);
-  CreateFakeTemperatureSamplesFiles(3, "TSR0", 44292);
-
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricSuspendedTemperatureCpuName,
-                            60, MetricsDaemon::kMetricTemperatureMax));
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricSuspendedTemperatureOneName,
-                            10, MetricsDaemon::kMetricTemperatureMax));
-  EXPECT_CALL(metrics_lib_,
-              SendEnumToUMA(MetricsDaemon::kMetricSuspendedTemperatureZeroName,
-                            44, MetricsDaemon::kMetricTemperatureMax));
-
-  dbus::Signal suspend_done(power_manager::kPowerManagerInterface,
-                            power_manager::kSuspendDoneSignal);
-  dbus::MessageWriter writer(&suspend_done);
-  power_manager::SuspendDone info;
-  info.set_suspend_id(24712939);
-  info.set_suspend_duration(
-      (MetricsDaemon::kMinSuspendDurationForAmbientTemperature +
-       base::Minutes(1))
-          .ToInternalValue());
-  writer.AppendProtoAsArrayOfBytes(info);
-  daemon_.HandleSuspendDone(&suspend_done);
-}
-
-TEST_F(MetricsDaemonTest, DoNotSendTemperatureShortResume) {
-  CreateFakeTemperatureSamplesFiles(0, "x86_pkg_temp", 32894);
-  CreateFakeTemperatureSamplesFiles(1, "TCPU", 59703);
-  CreateFakeTemperatureSamplesFiles(2, "TSR1", 10129);
-  CreateFakeTemperatureSamplesFiles(3, "TSR0", 44292);
-
-  dbus::Signal suspend_done(power_manager::kPowerManagerInterface,
-                            power_manager::kSuspendDoneSignal);
-  dbus::MessageWriter writer(&suspend_done);
-  power_manager::SuspendDone info;
-  info.set_suspend_id(39218752);
-  info.set_suspend_duration(
-      (MetricsDaemon::kMinSuspendDurationForAmbientTemperature -
-       base::Minutes(23))
-          .ToInternalValue());
-  writer.AppendProtoAsArrayOfBytes(info);
-  daemon_.HandleSuspendDone(&suspend_done);
 }
 
 TEST_F(MetricsDaemonTest, ProcessMeminfo) {

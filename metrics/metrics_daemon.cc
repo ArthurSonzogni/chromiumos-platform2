@@ -31,7 +31,6 @@
 #include <dbus/object_proxy.h>
 
 #include "metrics/process_meter.h"
-#include "power_manager/proto_bindings/suspend.pb.h"
 #include "uploader/upload_service.h"
 
 // Returns a pointer for use in PostDelayedTask.  The daemon never exits on its
@@ -138,13 +137,6 @@ constexpr char kUncleanShutdownsWeeklyName[] =
 // few more years).
 constexpr int kMaxMemSizeMiB = 64 * (1 << 10);
 
-// Handles the result of an attempt to connect to a D-Bus signal.
-void DBusSignalConnected(const std::string& interface,
-                         const std::string& signal,
-                         bool success) {
-  CHECK(success) << "Unable to connect to " << interface << "." << signal;
-}
-
 }  // namespace
 
 // disk stats metrics
@@ -225,25 +217,6 @@ const char MetricsDaemon::kOrigDataSizeName[] = "orig_data_size";
 const char MetricsDaemon::kZeroPagesName[] = "zero_pages";
 const char MetricsDaemon::kMMStatName[] = "mm_stat";
 
-constexpr char MetricsDaemon::kSysfsThermalZoneFormat[];
-constexpr char MetricsDaemon::kSysfsTemperatureValueFile[];
-constexpr char MetricsDaemon::kSysfsTemperatureTypeFile[];
-
-constexpr char MetricsDaemon::kMetricTemperatureCpuName[];
-constexpr char MetricsDaemon::kMetricTemperatureZeroName[];
-constexpr char MetricsDaemon::kMetricTemperatureOneName[];
-constexpr char MetricsDaemon::kMetricTemperatureTwoName[];
-
-constexpr int MetricsDaemon::kMetricTemperatureMax;
-
-constexpr base::TimeDelta
-    MetricsDaemon::kMinSuspendDurationForAmbientTemperature;
-
-constexpr char MetricsDaemon::kMetricSuspendedTemperatureCpuName[];
-constexpr char MetricsDaemon::kMetricSuspendedTemperatureZeroName[];
-constexpr char MetricsDaemon::kMetricSuspendedTemperatureOneName[];
-constexpr char MetricsDaemon::kMetricSuspendedTemperatureTwoName[];
-
 // Detachable base autosuspend metrics.
 
 const char MetricsDaemon::kMetricDetachableBaseActivePercentName[] =
@@ -275,8 +248,7 @@ MetricsDaemon::MetricsDaemon()
       ticks_per_second_(0),
       latest_cpu_use_ticks_(0),
       detachable_base_active_time_(0),
-      detachable_base_suspended_time_(0),
-      thermal_zone_count_(-1) {}
+      detachable_base_suspended_time_(0) {}
 
 MetricsDaemon::~MetricsDaemon() {}
 
@@ -413,8 +385,6 @@ void MetricsDaemon::Init(bool testing,
   scaling_max_freq_path_ = scaling_max_freq_path;
   cpuinfo_max_freq_path_ = cpuinfo_max_freq_path;
 
-  zone_path_base_ = base::FilePath("/sys/class/thermal/");
-
   vmstats_daily_success = VmStatsReadStats(&vmstats_daily_start);
 
   // Start the "last update" time at the time of metrics daemon starting.
@@ -485,18 +455,6 @@ int MetricsDaemon::OnInit() {
                  << error.name << ": " << error.message;
       return EX_SOFTWARE;
     }
-
-    dbus::ObjectProxy* powerd_proxy = bus_->GetObjectProxy(
-        power_manager::kPowerManagerServiceName,
-        dbus::ObjectPath(power_manager::kPowerManagerServicePath));
-
-    powerd_proxy->ConnectToSignal(
-        power_manager::kPowerManagerInterface,
-        power_manager::kSuspendDoneSignal,
-        base::BindRepeating(&MetricsDaemon::HandleSuspendDone,
-                            GET_THIS_FOR_POSTTASK()),
-        base::BindOnce(&DBusSignalConnected));
-
   } else {
     LOG(ERROR) << "DBus isn't connected.";
     return EX_UNAVAILABLE;
@@ -744,110 +702,6 @@ bool MetricsDaemon::VmStatsReadStats(struct VmstatRecord* stats) {
   return VmStatsParseStats(&vmstat_stream, stats);
 }
 
-void MetricsDaemon::SetThermalZonePathBaseForTest(const base::FilePath& path) {
-  zone_path_base_ = path;
-}
-
-std::map<std::string, uint64_t> MetricsDaemon::ReadSensorTemperatures() {
-  // -1 value means we haven't yet determined how many zones there are
-  // this run, we'll iterate until we get an error reading a file.
-  bool update_zone_count = thermal_zone_count_ == -1;
-  if (update_zone_count)
-    thermal_zone_read_failure_notified_.clear();
-
-  std::map<std::string, uint64_t> readings;
-  for (int zone = 0; zone < thermal_zone_count_ || update_zone_count; zone++) {
-    std::string thermal_zone =
-        base::StringPrintf(MetricsDaemon::kSysfsThermalZoneFormat, zone);
-    FilePath zone_path = zone_path_base_.Append(thermal_zone);
-    std::string type;
-    bool type_read_success = base::ReadFileToString(
-        zone_path.Append(kSysfsTemperatureTypeFile), &type);
-
-    if (!type_read_success) {
-      if (update_zone_count) {
-        // We failed to read from a zone. Since this is the first time during
-        // this loop, the last valid zone must have been (|zone| - 1), meaning
-        // the number of thermal zones must equal |zone|.
-        thermal_zone_count_ = zone;
-        break;
-      }
-      LOG(WARNING) << "Failed to read type file for zone " << zone_path.value();
-      // This read failed so we'll skip reading the value, but there are more
-      // zones to read from so remain in the loop.
-      continue;
-    }
-
-    if (update_zone_count) {
-      thermal_zone_read_failure_notified_.push_back(false);
-    }
-    bool warn_on_read_failure = !thermal_zone_read_failure_notified_.at(zone);
-    uint64_t temperature = 0;
-    if (ReadFileToUint64(zone_path.Append(kSysfsTemperatureValueFile),
-                         &temperature, warn_on_read_failure)) {
-      base::TrimWhitespaceASCII(type, base::TRIM_TRAILING, &type);
-      readings.emplace(type, temperature);
-      thermal_zone_read_failure_notified_.at(zone) = false;
-    } else {
-      thermal_zone_read_failure_notified_.at(zone) = true;
-    }
-  }
-  return readings;
-}
-
-void MetricsDaemon::SendTemperatureSamples() {
-  for (const auto& entry : ReadSensorTemperatures()) {
-    std::string metric_name;
-    // Name for CPU sensor is platform dependent.
-    if (entry.first == "TCPU" || entry.first == "B0D4" ||
-        entry.first == "acpitz") {
-      metric_name = kMetricTemperatureCpuName;
-    } else if (entry.first == "TSR0") {
-      metric_name = kMetricTemperatureZeroName;
-    } else if (entry.first == "TSR1") {
-      metric_name = kMetricTemperatureOneName;
-    } else if (entry.first == "TSR2") {
-      metric_name = kMetricTemperatureTwoName;
-    } else {
-      continue;
-    }
-    // Readings are millidegrees Celsius, convert to degrees.
-    int sample = static_cast<int>(round(entry.second / 1000.0));
-    SendLinearSample(metric_name, sample, kMetricTemperatureMax,
-                     kMetricTemperatureMax + 1);
-  }
-}
-
-void MetricsDaemon::HandleSuspendDone(dbus::Signal* signal) {
-  power_manager::SuspendDone info;
-  dbus::MessageReader reader(signal);
-  CHECK(reader.PopArrayOfBytesAsProto(&info));
-  const base::TimeDelta duration =
-      base::TimeDelta::FromInternalValue(info.suspend_duration());
-  if (duration >= kMinSuspendDurationForAmbientTemperature) {
-    for (const auto& entry : ReadSensorTemperatures()) {
-      std::string metric_name;
-      // Name for CPU sensor is platform dependent.
-      if (entry.first == "TCPU" || entry.first == "B0D4" ||
-          entry.first == "acpitz") {
-        metric_name = kMetricSuspendedTemperatureCpuName;
-      } else if (entry.first == "TSR0") {
-        metric_name = kMetricSuspendedTemperatureZeroName;
-      } else if (entry.first == "TSR1") {
-        metric_name = kMetricSuspendedTemperatureOneName;
-      } else if (entry.first == "TSR2") {
-        metric_name = kMetricSuspendedTemperatureTwoName;
-      } else {
-        continue;
-      }
-      // Readings are millidegrees Celsius, convert to degrees.
-      int sample = static_cast<int>(round(entry.second / 1000.0));
-      SendLinearSample(metric_name, sample, kMetricTemperatureMax,
-                       kMetricTemperatureMax + 1);
-    }
-  }
-}
-
 bool MetricsDaemon::ReadFreqToInt(const string& sysfs_file_name, int* value) {
   const FilePath sysfs_path(sysfs_file_name);
   string value_string;
@@ -986,7 +840,6 @@ void MetricsDaemon::StatsCallback() {
         vmstats_ = vmstats_now;
       }
       SendCpuThrottleMetrics();
-      SendTemperatureSamples();
       // Set start time for new cycle.
       stats_initial_time_ = time_now;
       // Schedule short callback.
