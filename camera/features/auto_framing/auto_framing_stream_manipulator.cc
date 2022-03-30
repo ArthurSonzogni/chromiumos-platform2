@@ -34,6 +34,7 @@ constexpr char kEnableKey[] = "enable";
 constexpr char kDebugKey[] = "debug";
 constexpr char kDetectorKey[] = "detector";
 constexpr char kMotionModelKey[] = "motion_model";
+constexpr char kOutputFilterModeKey[] = "output_filter_mode";
 
 constexpr int32_t kRequiredFrameRate = 30;
 constexpr uint32_t kFramingBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
@@ -831,12 +832,15 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
     const base::Value& json_values) {
   DCHECK(thread_.IsCurrentThread());
 
-  int detector, motion_model;
+  int detector, motion_model, filter_mode;
   if (LoadIfExist(json_values, kDetectorKey, &detector)) {
     options_.detector = static_cast<Detector>(detector);
   }
   if (LoadIfExist(json_values, kMotionModelKey, &motion_model)) {
     options_.motion_model = static_cast<MotionModel>(motion_model);
+  }
+  if (LoadIfExist(json_values, kOutputFilterModeKey, &filter_mode)) {
+    options_.output_filter_mode = static_cast<FilterMode>(filter_mode);
   }
   LoadIfExist(json_values, kEnableKey, &options_.enable);
   LoadIfExist(json_values, kDebugKey, &options_.debug);
@@ -844,6 +848,8 @@ void AutoFramingStreamManipulator::UpdateOptionsOnThread(
   VLOGF(1) << "AutoFramingStreamManipulator options:"
            << " detector=" << static_cast<int>(options_.detector)
            << " motion_model=" << static_cast<int>(options_.motion_model)
+           << " output_filter_mode="
+           << static_cast<int>(options_.output_filter_mode)
            << " enable=" << options_.enable << " debug=" << options_.debug;
 
   if (face_tracker_) {
@@ -908,7 +914,8 @@ base::ScopedFD AutoFramingStreamManipulator::CropBufferOnThread(
       output_yuv, Texture2D::Target::kTarget2D, true);
   image_processor_->CropYuv(input_image.y_texture(), input_image.uv_texture(),
                             crop_region, output_image.y_texture(),
-                            output_image.uv_texture());
+                            output_image.uv_texture(),
+                            options_.output_filter_mode);
 
   EglFence fence;
   return fence.GetNativeFd();

@@ -58,6 +58,9 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     // The motion model for smoothing framing window moves.
     MotionModel motion_model = MotionModel::kLibAutoFraming;
 
+    // The filtering algorithm to scale the cropped region into output frames.
+    FilterMode output_filter_mode = FilterMode::kBicubic;
+
     // Whether the CrOS Auto Framing is enabled.
     bool enable = true;
 

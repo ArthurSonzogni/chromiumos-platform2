@@ -508,7 +508,8 @@ bool GpuImageProcessor::CropYuv(const Texture2D& y_input,
                                 const Texture2D& uv_input,
                                 Rect<float> crop_region,
                                 const Texture2D& y_output,
-                                const Texture2D& uv_output) {
+                                const Texture2D& uv_output,
+                                FilterMode filter_mode) {
   if ((y_input.width() / 2 != uv_input.width()) ||
       (y_input.height() / 2 != uv_input.height())) {
     LOGF(ERROR) << "Invalid Y (" << y_input.width() << ", " << y_input.height()
@@ -536,6 +537,8 @@ bool GpuImageProcessor::CropYuv(const Texture2D& y_input,
     return false;
   }
 
+  Sampler& sampler = GetSampler(filter_mode);
+
   FramebufferGuard fb_guard;
   ViewportGuard viewport_guard;
   ProgramGuard program_guard;
@@ -544,7 +547,7 @@ bool GpuImageProcessor::CropYuv(const Texture2D& y_input,
   rect_.SetAsVertexInput();
 
   constexpr int kInputTextureBinding = 0;
-  linear_clamp_to_edge_.Bind(kInputTextureBinding);
+  sampler.Bind(kInputTextureBinding);
 
   crop_yuv_program_.UseProgram();
 
@@ -553,9 +556,12 @@ bool GpuImageProcessor::CropYuv(const Texture2D& y_input,
   GLint uTextureMatrix = crop_yuv_program_.GetUniformLocation("uTextureMatrix");
   glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
   GLint uCropRegion = crop_yuv_program_.GetUniformLocation("uCropRegion");
+  GLint uBicubic = crop_yuv_program_.GetUniformLocation("uBicubic");
 
   glUniform4f(uCropRegion, crop_region.left, crop_region.top, crop_region.width,
               crop_region.height);
+  glUniform1i(uBicubic,
+              filter_mode == FilterMode::kBicubic ? GL_TRUE : GL_FALSE);
   // Y pass.
   {
     glActiveTexture(GL_TEXTURE0 + kInputTextureBinding);
@@ -584,6 +590,16 @@ bool GpuImageProcessor::CropYuv(const Texture2D& y_input,
   Sampler::Unbind(kInputTextureBinding);
 
   return true;
+}
+
+Sampler& GpuImageProcessor::GetSampler(FilterMode filter_mode) {
+  switch (filter_mode) {
+    case FilterMode::kNearest:
+      return nearest_clamp_to_edge_;
+    case FilterMode::kBilinear:
+    case FilterMode::kBicubic:
+      return linear_clamp_to_edge_;
+  }
 }
 
 }  // namespace cros

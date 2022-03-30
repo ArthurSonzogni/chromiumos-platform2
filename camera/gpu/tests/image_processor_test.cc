@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <hardware/gralloc.h>
 #include <system/graphics.h>
@@ -39,8 +40,6 @@
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 #include "gpu/test_support/gl_test_fixture.h"
-
-using ::testing::TestInfo;
 
 namespace cros {
 
@@ -125,11 +124,8 @@ void ParseCommandLine(int argc, char** argv) {
 
 }  // namespace
 
-class GlImageProcessorTest : public testing::Test {
+class GlImageProcessorTestBase {
  protected:
-  GlImageProcessorTest() = default;
-  ~GlImageProcessorTest() = default;
-
   void AllocateExternalNV12Input() {
     // NV12 buffer with GL_TEXTURE_EXTERNAL_OES texture.
     input_buffer_ = CameraBufferManager::AllocateScopedBuffer(
@@ -194,7 +190,9 @@ class GlImageProcessorTest : public testing::Test {
     }
     const testing::TestInfo* const test_info =
         testing::UnitTest::GetInstance()->current_test_info();
-    std::string filename = base::StringPrintf("%sInput.bin", test_info->name());
+    std::string filename;
+    base::RemoveChars(test_info->name(), "/", &filename);
+    filename += "Input.bin";
     ASSERT_TRUE(WriteBufferIntoFile(*input_buffer_, base::FilePath(filename)));
   }
 
@@ -204,8 +202,9 @@ class GlImageProcessorTest : public testing::Test {
     }
     const testing::TestInfo* const test_info =
         testing::UnitTest::GetInstance()->current_test_info();
-    std::string filename =
-        base::StringPrintf("%sOutput%s.bin", test_info->name(), suffix.c_str());
+    std::string filename;
+    base::RemoveChars(test_info->name(), "/", &filename);
+    filename += base::StringPrintf("Output%s.bin", suffix.c_str());
     ASSERT_TRUE(WriteBufferIntoFile(*output_buffer_, base::FilePath(filename)));
   }
 
@@ -220,6 +219,9 @@ class GlImageProcessorTest : public testing::Test {
   SharedImage input_image_;
   SharedImage output_image_;
 };
+
+class GlImageProcessorTest : public GlImageProcessorTestBase,
+                             public ::testing::Test {};
 
 TEST_F(GlImageProcessorTest, RGBAToNV12Test) {
   AllocateRGBAInput();
@@ -339,7 +341,33 @@ TEST_F(GlImageProcessorTest, ApplyRgbLutTest) {
   DumpOutputBuffer();
 }
 
-TEST_F(GlImageProcessorTest, CropYuvTest) {
+class GlImageProcessorTestWithFilterMode
+    : public GlImageProcessorTestBase,
+      public ::testing::TestWithParam<FilterMode> {};
+
+const char* FilterModeToString(FilterMode filter_mode) {
+  switch (filter_mode) {
+    case FilterMode::kNearest:
+      return "Nearest";
+    case FilterMode::kBilinear:
+      return "Bilinear";
+    case FilterMode::kBicubic:
+      return "Bicubic";
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(,
+                         GlImageProcessorTestWithFilterMode,
+                         ::testing::Values(FilterMode::kNearest,
+                                           FilterMode::kBilinear,
+                                           FilterMode::kBicubic),
+                         [](const ::testing::TestParamInfo<FilterMode>& info) {
+                           return FilterModeToString(info.param);
+                         });
+
+TEST_P(GlImageProcessorTestWithFilterMode, CropYuvTest) {
+  const FilterMode filter_mode = GetParam();
+
   AllocateNV12Input();
   FillTestPattern(*input_buffer_);
   DumpInputBuffer();
@@ -352,7 +380,7 @@ TEST_F(GlImageProcessorTest, CropYuvTest) {
       /*height=*/g_args.crop_region.height / g_args.input_size.height);
   EXPECT_TRUE(image_processor_.CropYuv(
       input_image_.y_texture(), input_image_.uv_texture(), crop_region,
-      output_image_.y_texture(), output_image_.uv_texture()));
+      output_image_.y_texture(), output_image_.uv_texture(), filter_mode));
   glFinish();
   DumpOutputBuffer();
 }

@@ -16,6 +16,15 @@
 
 namespace cros {
 
+enum class FilterMode {
+  // Nearest-neighboar sampling (GL_NEAREST).
+  kNearest,
+  // Bilinear filtering (GL_LINEAR).
+  kBilinear,
+  // Bicubic filtering (calculated with 2x2 GL_LINEAR samples).
+  kBicubic,
+};
+
 class GpuImageProcessor {
  public:
   GpuImageProcessor();
@@ -199,6 +208,8 @@ class GpuImageProcessor {
   //        The output 2D texture for UV plane.  The texture must be of format
   //        GR8.  The pixel dimension must be
   //        (|y_output|.width / 2, |y_output|.height / 2).
+  //    |filter_mode|:
+  //        The filtering algorithm to sample the input textures.
   //
   // Returns:
   //    true if GL commands are successfully submitted; false otherwise.
@@ -206,9 +217,12 @@ class GpuImageProcessor {
                const Texture2D& uv_input,
                Rect<float> crop_region,
                const Texture2D& y_output,
-               const Texture2D& uv_output);
+               const Texture2D& uv_output,
+               FilterMode filter_mode);
 
  private:
+  Sampler& GetSampler(FilterMode filter_mode);
+
   ScreenSpaceRect rect_;
 
   ShaderProgram rgba_to_nv12_program_;
