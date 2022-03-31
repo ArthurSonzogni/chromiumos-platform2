@@ -8,11 +8,13 @@
 #include <utility>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/callback.h>
 #include <base/check.h>
 #include <trunks/tpm_generated.h>
 
 #include "vtpm/backends/scoped_host_key_handle.h"
+#include "vtpm/backends/static_analyzer.h"
 
 namespace vtpm {
 
@@ -87,7 +89,53 @@ void ForwardCommand::Run(const std::string& command,
   host_command.replace(trunks::kHeaderSize, host_handle_bytes.size(),
                        host_handle_bytes);
   CHECK_EQ(command.size(), host_command.size());
-  direct_forwarder_->Run(host_command, std::move(callback));
+  CommandResponseCallback post_processed_callback = base::BindOnce(
+      &ForwardCommand::RunWithPostProcess, base::Unretained(this), cc,
+      std::move(host_handles), std::move(callback));
+  direct_forwarder_->Run(host_command, std::move(post_processed_callback));
+}
+
+void ForwardCommand::RunWithPostProcess(
+    trunks::TPM_CC cc,
+    std::vector<ScopedHostKeyHandle> host_handles,
+    CommandResponseCallback callback,
+    const std::string& host_response) {
+  // If the command doesn't succeed, no state is changed on host, so no
+  // loading/unloading has happened.
+  if (!static_analyzer_->IsSuccessfulResponse(host_response)) {
+    std::move(callback).Run(host_response);
+    return;
+  }
+
+  // Inform `tpm_handle_manager_` the information about context being
+  // loaded/flushed, according to the context change.
+  switch (static_analyzer_->GetOperationContextType(cc)) {
+    case OperationContextType::kLoad: {
+      // To prevent the future exntension from ignoring the change that has to
+      // be done here.
+      DCHECK_EQ(host_handles.size(), 1)
+          << "Currently only support a single parent key to be retained.";
+      DCHECK_EQ(static_analyzer_->GetResponseHandleCount(cc), 1)
+          << "Currently only support a single key to be unloaded.";
+      std::string buffer =
+          host_response.substr(trunks::kHeaderSize, sizeof(trunks::TPM_HANDLE));
+      trunks::TPM_HANDLE child_handle;
+      trunks::Parse_TPM_HANDLE(&buffer, &child_handle, nullptr);
+      tpm_handle_manager_->OnLoad(host_handles[0].Get(), child_handle);
+    } break;
+    case OperationContextType::kUnload: {
+      // To prevent the future exntension from ignoring the change that has to
+      // be done here.
+      DCHECK_EQ(host_handles.size(), 1)
+          << "Currently only support a single key to be unloaded.";
+      tpm_handle_manager_->OnUnload(std::move(host_handles[0].Get()));
+    } break;
+    case OperationContextType::kNone:
+      break;
+      // No default case, for every single case should be dealt with explicitly.
+  }
+
+  std::move(callback).Run(host_response);
 }
 
 void ForwardCommand::ReturnWithError(trunks::TPM_RC rc,

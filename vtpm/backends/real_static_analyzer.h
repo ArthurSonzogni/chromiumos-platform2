@@ -7,6 +7,8 @@
 
 #include "vtpm/backends/static_analyzer.h"
 
+#include <string>
+
 #include <trunks/tpm_generated.h>
 
 namespace vtpm {
@@ -16,6 +18,9 @@ class RealStaticAnalyzer : public StaticAnalyzer {
  public:
   ~RealStaticAnalyzer() override = default;
   int GetCommandHandleCount(trunks::TPM_CC cc) override;
+  int GetResponseHandleCount(trunks::TPM_CC cc) override;
+  bool IsSuccessfulResponse(const std::string& response) override;
+  OperationContextType GetOperationContextType(trunks::TPM_CC cc) override;
 };
 
 }  // namespace vtpm

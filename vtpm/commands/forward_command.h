@@ -8,6 +8,7 @@
 #include "vtpm/commands/command.h"
 
 #include <string>
+#include <vector>
 
 #include <base/callback.h>
 #include <trunks/command_parser.h>
@@ -35,6 +36,11 @@ class ForwardCommand : public Command {
 
  private:
   void ReturnWithError(trunks::TPM_RC rc, CommandResponseCallback callback);
+
+  void RunWithPostProcess(trunks::TPM_CC cc,
+                          std::vector<ScopedHostKeyHandle> host_handles,
+                          CommandResponseCallback callback,
+                          const std::string& host_response);
 
   trunks::CommandParser* const command_parser_;
   trunks::ResponseSerializer* const response_serializer_;

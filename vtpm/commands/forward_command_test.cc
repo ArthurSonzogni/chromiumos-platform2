@@ -17,6 +17,7 @@
 #include "vtpm/backends/mock_static_analyzer.h"
 #include "vtpm/backends/mock_tpm_handle_manager.h"
 #include "vtpm/backends/scoped_host_key_handle.h"
+#include "vtpm/backends/static_analyzer.h"
 #include "vtpm/commands/mock_command.h"
 
 namespace vtpm {
@@ -112,6 +113,11 @@ TEST_F(ForwardCommandTest, SuccessOneHandle) {
   EXPECT_CALL(mock_tpm_handle_manager_, FlushHostHandle(kFakeHostHandle1))
       .After(consume);
 
+  EXPECT_CALL(mock_static_analyzer_, IsSuccessfulResponse(kTestResponse))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_static_analyzer_, GetOperationContextType(kFakeCC))
+      .WillOnce(Return(OperationContextType::kNone));
+
   std::string response;
   CommandResponseCallback callback =
       base::BindOnce([](std::string* resp_out,
@@ -153,6 +159,11 @@ TEST_F(ForwardCommandTest, SuccessTwoHandles) {
   EXPECT_CALL(mock_tpm_handle_manager_, FlushHostHandle(kFakeHostHandle2))
       .After(consume);
 
+  EXPECT_CALL(mock_static_analyzer_, IsSuccessfulResponse(kTestResponse))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_static_analyzer_, GetOperationContextType(kFakeCC))
+      .WillOnce(Return(OperationContextType::kNone));
+
   std::string response;
   CommandResponseCallback callback =
       base::BindOnce([](std::string* resp_out,
@@ -175,6 +186,11 @@ TEST_F(ForwardCommandTest, SuccessNoHandle) {
       .WillOnce(WithArgs<1>([](CommandResponseCallback callback) {
         std::move(callback).Run(kTestResponse);
       }));
+
+  EXPECT_CALL(mock_static_analyzer_, IsSuccessfulResponse(kTestResponse))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_static_analyzer_, GetOperationContextType(kFakeCC))
+      .WillOnce(Return(OperationContextType::kNone));
 
   std::string response;
   CommandResponseCallback callback =
@@ -230,6 +246,134 @@ TEST_F(ForwardCommandTest, FailureHeaderError) {
   EXPECT_CALL(mock_resp_serializer_,
               SerializeHeaderOnlyResponse(trunks::TPM_RC_INSUFFICIENT, _))
       .WillOnce(SetArgPointee<1>(kTestResponse));
+
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  command_.Run(fake_command, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
+TEST_F(ForwardCommandTest, SuccessOneHandleUnsuccessfulTpmOperation) {
+  std::string fake_command = GetFakeHeader();
+  fake_command += ToSerializedHandle(kFakeVirtualHandle1);
+  fake_command += kFakeParam;
+
+  EXPECT_CALL(mock_cmd_parser_, ParseHeader(Pointee(fake_command), _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(kFakeCC), Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_static_analyzer_, GetCommandHandleCount(kFakeCC))
+      .WillOnce(Return(1));
+
+  EXPECT_CALL(mock_tpm_handle_manager_, TranslateHandle(kFakeVirtualHandle1, _))
+      .WillOnce(Invoke(this, &ForwardCommandTest::FakeTranslateHandle));
+
+  const std::string expected_host_command =
+      GetFakeHeader() + ToSerializedHandle(kFakeHostHandle1) + kFakeParam;
+
+  Expectation consume =
+      EXPECT_CALL(mock_direct_forwarder_, Run(expected_host_command, _))
+          .WillOnce(WithArgs<1>([](CommandResponseCallback callback) {
+            std::move(callback).Run(kTestResponse);
+          }));
+
+  EXPECT_CALL(mock_tpm_handle_manager_, FlushHostHandle(kFakeHostHandle1))
+      .After(consume);
+
+  EXPECT_CALL(mock_static_analyzer_, IsSuccessfulResponse(kTestResponse))
+      .WillOnce(Return(false));
+
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  command_.Run(fake_command, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
+TEST_F(ForwardCommandTest, SuccessOneHandleWithLoad) {
+  std::string fake_command = GetFakeHeader();
+  fake_command += ToSerializedHandle(kFakeVirtualHandle1);
+  fake_command += kFakeParam;
+
+  EXPECT_CALL(mock_cmd_parser_, ParseHeader(Pointee(fake_command), _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(kFakeCC), Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_static_analyzer_, GetCommandHandleCount(kFakeCC))
+      .WillOnce(Return(1));
+
+  EXPECT_CALL(mock_tpm_handle_manager_, TranslateHandle(kFakeVirtualHandle1, _))
+      .WillOnce(Invoke(this, &ForwardCommandTest::FakeTranslateHandle));
+
+  const std::string expected_host_command =
+      GetFakeHeader() + ToSerializedHandle(kFakeHostHandle1) + kFakeParam;
+
+  Expectation consume =
+      EXPECT_CALL(mock_direct_forwarder_, Run(expected_host_command, _))
+          .WillOnce(WithArgs<1>([](CommandResponseCallback callback) {
+            std::move(callback).Run(kTestResponse);
+          }));
+
+  EXPECT_CALL(mock_tpm_handle_manager_, FlushHostHandle(kFakeHostHandle1))
+      .After(consume);
+
+  EXPECT_CALL(mock_static_analyzer_, IsSuccessfulResponse(kTestResponse))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_static_analyzer_, GetOperationContextType(kFakeCC))
+      .WillOnce(Return(OperationContextType::kLoad));
+  EXPECT_CALL(mock_tpm_handle_manager_, OnLoad(_, _));
+
+  // To satisfy the assertion we have; it doesn't matter if it is calls or not.
+  EXPECT_CALL(mock_static_analyzer_, GetResponseHandleCount(kFakeCC))
+      .WillRepeatedly(Return(1));
+
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  command_.Run(fake_command, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
+TEST_F(ForwardCommandTest, SuccessOneHandleWithUnload) {
+  std::string fake_command = GetFakeHeader();
+  fake_command += ToSerializedHandle(kFakeVirtualHandle1);
+  fake_command += kFakeParam;
+
+  EXPECT_CALL(mock_cmd_parser_, ParseHeader(Pointee(fake_command), _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(kFakeCC), Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_static_analyzer_, GetCommandHandleCount(kFakeCC))
+      .WillOnce(Return(1));
+
+  EXPECT_CALL(mock_tpm_handle_manager_, TranslateHandle(kFakeVirtualHandle1, _))
+      .WillOnce(Invoke(this, &ForwardCommandTest::FakeTranslateHandle));
+
+  const std::string expected_host_command =
+      GetFakeHeader() + ToSerializedHandle(kFakeHostHandle1) + kFakeParam;
+
+  Expectation consume =
+      EXPECT_CALL(mock_direct_forwarder_, Run(expected_host_command, _))
+          .WillOnce(WithArgs<1>([](CommandResponseCallback callback) {
+            std::move(callback).Run(kTestResponse);
+          }));
+
+  EXPECT_CALL(mock_tpm_handle_manager_, FlushHostHandle(kFakeHostHandle1))
+      .After(consume);
+
+  EXPECT_CALL(mock_static_analyzer_, IsSuccessfulResponse(kTestResponse))
+      .WillOnce(Return(true));
+  EXPECT_CALL(mock_static_analyzer_, GetOperationContextType(kFakeCC))
+      .WillOnce(Return(OperationContextType::kUnload));
+  EXPECT_CALL(mock_tpm_handle_manager_, OnUnload(_));
+
+  // To satisfy the assertion we have; it doesn't matter if it is calls or not.
+  EXPECT_CALL(mock_static_analyzer_, GetResponseHandleCount(kFakeCC))
+      .WillRepeatedly(Return(1));
 
   std::string response;
   CommandResponseCallback callback =

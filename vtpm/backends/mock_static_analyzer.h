@@ -7,6 +7,8 @@
 
 #include "vtpm/backends/static_analyzer.h"
 
+#include <string>
+
 #include <gmock/gmock.h>
 #include <trunks/tpm_generated.h>
 
@@ -16,6 +18,12 @@ class MockStaticAnalyzer : public StaticAnalyzer {
  public:
   ~MockStaticAnalyzer() override = default;
   MOCK_METHOD(int, GetCommandHandleCount, (trunks::TPM_CC cc), (override));
+  MOCK_METHOD(int, GetResponseHandleCount, (trunks::TPM_CC cc), (override));
+  MOCK_METHOD(bool, IsSuccessfulResponse, (const std::string&), (override));
+  MOCK_METHOD(OperationContextType,
+              GetOperationContextType,
+              (trunks::TPM_CC),
+              (override));
 };
 
 }  // namespace vtpm
