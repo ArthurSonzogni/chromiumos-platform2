@@ -1,19 +1,16 @@
 # To add a new cell, type '# %%'
 # To add a new markdown cell, type '# %% [markdown]'
 # %% # Imports
-import sys
-import time
 import sys  # sys.getsizeof()
-
-from IPython.display import display, HTML, Markdown
-import matplotlib.pyplot as plt
-from matplotlib import pyplot as plt
-import matplotlib
 from math import radians, sqrt
 
-import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import scipy.stats as st
+from IPython.display import HTML, Markdown, display
+from matplotlib import pyplot as plt
 
 import fpsutils
 from experiment import Experiment
@@ -31,6 +28,7 @@ from fpc_bet_results import FPCBETResults
 # For VSCode No Interactive
 # %matplotlib inline
 # %matplotlib --list
+
 
 def confidence(ups, downs):
     '''This is some algo from a blog that was used for reddit'''
@@ -183,8 +181,8 @@ DoReport(tc0_far_20k, FPCBETResults.SecLevel.Target_20K)
 # display(tc0_far_20k.sum())
 
 display(Markdown('# TC-01 FA List Analysis FAR @ 1/20k'))
-tc0_far_20k_fa: pd.DataFrame = bet.read_fa_list_file(
-    FPCBETResults.TestCase.TUDisabled)
+tc0_far_20k_fa: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUDisabled,
+                                             FPCBETResults.TableType.FA_List)
 display(tc0_far_20k_fa)
 b = Experiment(num_verification=60,
                num_fingers=6,
@@ -243,15 +241,19 @@ fa_set = fpsutils.DataFrameSetAccess(b.FAList(), fa_set_tuple)
 for s in range(NUM_SAMPLES):
     sample = []
     # 72 users
-    sample_verify_users = rng.choice(b.num_users, size=b.num_users, replace=True)
+    sample_verify_users = rng.choice(b.num_users,
+                                     size=b.num_users,
+                                     replace=True)
     sample_verify_users = np.repeat(sample_verify_users, b.num_users-1)
     # against 71 other template users
-    sample_enroll_users = rng.choice(b.num_users-1, size=b.num_users*(b.num_users-1), replace=True)
+    sample_enroll_users = rng.choice(b.num_users-1,
+                                     size=b.num_users*(b.num_users-1),
+                                     replace=True)
     sample_users = np.stack((sample_verify_users, sample_enroll_users), axis=1)
 
     # Enforce nested loop invariant:
     # Effectively "omit" the verify user id from the enroll users
-    sample_users[sample_users[:,0] <= sample_users[:,1]][:,1] += 1
+    sample_users[sample_users[:, 0] <= sample_users[:, 1]][:, 1] += 1
 
     for v, t in sample_users:
         pass
