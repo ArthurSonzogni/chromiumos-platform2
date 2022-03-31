@@ -72,8 +72,6 @@ WakeOnWiFi::WakeOnWiFi(NetlinkManager* netlink_manager,
     : dispatcher_(dispatcher),
       netlink_manager_(netlink_manager),
       metrics_(metrics),
-      report_metrics_callback_(
-          base::Bind(&WakeOnWiFi::ReportMetrics, base::Unretained(this))),
       num_set_wake_on_wifi_retries_(0),
       wake_on_wifi_max_ssids_(0),
       wiphy_index_(0),
@@ -125,14 +123,7 @@ void WakeOnWiFi::InitPropertyStore(PropertyStore* store) {
           this, &WakeOnWiFi::GetLastWakeReason, nullptr)));
 }
 
-void WakeOnWiFi::StartMetricsTimer() {
-  dispatcher_->PostDelayedTask(FROM_HERE, report_metrics_callback_.callback(),
-                               kMetricsReportingFrequency);
-}
-
-void WakeOnWiFi::Start() {
-  StartMetricsTimer();
-}
+void WakeOnWiFi::Start() {}
 
 bool WakeOnWiFi::GetWakeOnWiFiAllowed(Error* /*error*/) {
   return wake_on_wifi_allowed_;
@@ -608,16 +599,12 @@ void WakeOnWiFi::VerifyWakeOnWiFiSettings(
                               wake_on_allowed_ssids_)) {
     SLOG(this, 2) << __func__ << ": "
                   << "Wake on WiFi settings successfully verified";
-    metrics_->NotifyVerifyWakeOnWiFiSettingsResult(
-        Metrics::kVerifyWakeOnWiFiSettingsResultSuccess);
     RunAndResetSuspendActionsDoneCallback(Error(Error::kSuccess));
   } else {
     LOG(ERROR) << __func__
                << " failed: discrepancy between wake-on-packet "
                   "settings on NIC and those in local data "
                   "structure detected";
-    metrics_->NotifyVerifyWakeOnWiFiSettingsResult(
-        Metrics::kVerifyWakeOnWiFiSettingsResultFailure);
     RetrySetWakeOnWiFiConnections();
   }
 }
@@ -720,22 +707,6 @@ bool WakeOnWiFi::WakeOnWiFiDarkConnectEnabledAndSupported() {
   return true;
 }
 
-void WakeOnWiFi::ReportMetrics() {
-  Metrics::WakeOnWiFiFeaturesEnabledState reported_state;
-  if (wake_on_wifi_features_enabled_ == kWakeOnWiFiFeaturesEnabledNone) {
-    reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStateNone;
-  } else if (wake_on_wifi_features_enabled_ ==
-             kWakeOnWiFiFeaturesEnabledDarkConnect) {
-    reported_state = Metrics::kWakeOnWiFiFeaturesEnabledStateDarkConnect;
-  } else {
-    LOG(ERROR) << __func__ << ": "
-               << "Invalid wake on WiFi features state";
-    return;
-  }
-  metrics_->NotifyWakeOnWiFiFeaturesEnabledState(reported_state);
-  StartMetricsTimer();
-}
-
 void WakeOnWiFi::ParseWakeOnWiFiCapabilities(
     const Nl80211Message& nl80211_message) {
   // Verify NL80211_CMD_NEW_WIPHY.
@@ -795,7 +766,6 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
                   << "Wakeup reason not meant for this interface";
     return;
   }
-  metrics_->NotifyWakeupReasonReceived();
   SLOG(this, 3) << __func__ << ": "
                 << "Parsing wakeup reason";
   AttributeListConstRefPtr triggers;
@@ -880,7 +850,6 @@ void WakeOnWiFi::OnAfterResume() {
     // Unconditionally disable wake on WiFi on resume if these features
     // were enabled before the last suspend.
     DisableWakeOnWiFi();
-    metrics_->NotifySuspendWithWakeOnWiFiEnabledDone();
   }
 }
 
@@ -899,7 +868,6 @@ void WakeOnWiFi::OnDarkResume(
 
   LOG(INFO) << __func__ << ": "
             << "Wake reason " << last_wake_reason_;
-  metrics_->NotifyWakeOnWiFiOnDarkResume(last_wake_reason_);
   dark_resume_scan_retries_left_ = 0;
   suspend_actions_done_callback_ = done_callback;
   wake_on_allowed_ssids_ = allowed_ssids;
@@ -941,7 +909,6 @@ void WakeOnWiFi::OnDarkResume(
         base::Bind(&WakeOnWiFi::OnTimerWakeDoNothing, base::Unretained(this)));
     DisableWakeOnWiFi();
     dark_resume_history_.Clear();
-    metrics_->NotifyWakeOnWiFiThrottled();
     last_ssid_match_freqs_.clear();
     return;
   }
@@ -950,7 +917,6 @@ void WakeOnWiFi::OnDarkResume(
     case kWakeTriggerSSID:
     case kWakeTriggerDisconnect: {
       remove_supplicant_networks_callback.Run();
-      metrics_->NotifyDarkResumeInitiateScan();
       InitiateScanInDarkResume(std::move(initiate_scan_callback),
                                last_wake_reason_ == kWakeTriggerSSID
                                    ? last_ssid_match_freqs_
@@ -963,7 +929,6 @@ void WakeOnWiFi::OnDarkResume(
         std::move(renew_dhcp_lease_callback).Run();
       } else {
         remove_supplicant_networks_callback.Run();
-        metrics_->NotifyDarkResumeInitiateScan();
         InitiateScanInDarkResume(std::move(initiate_scan_callback),
                                  WiFi::FreqSet());
       }
@@ -993,7 +958,6 @@ void WakeOnWiFi::BeforeSuspendActions(
   // Note: No conditional compilation because all entry points to this functions
   // are already conditionally compiled based on DISABLE_WAKE_ON_WIFI.
 
-  metrics_->NotifyBeforeSuspendActions(is_connected, in_dark_resume_);
   last_ssid_match_freqs_.clear();
   last_wake_reason_ = kWakeTriggerUnsupported;
   // Add relevant triggers to be programmed into the NIC.
@@ -1147,27 +1111,12 @@ void WakeOnWiFi::OnConnectedAndReachable(
 
 void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected,
                                                    int seconds_in_suspend) {
-  Metrics::WiFiConnectionStatusAfterWake status;
-  if (WakeOnWiFiDarkConnectEnabledAndSupported()) {
-    // Only logged if wake on WiFi is supported and wake on SSID was enabled to
-    // maintain connectivity while suspended.
-    status = is_connected
-                 ? Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected
-                 : Metrics::kWiFiConnectionStatusAfterWakeWoWOnDisconnected;
-  } else {
-    status = is_connected
-                 ? Metrics::kWiFiConnectionStatusAfterWakeWoWOffConnected
-                 : Metrics::kWiFiConnectionStatusAfterWakeWoWOffDisconnected;
-  }
-  metrics_->NotifyConnectedToServiceAfterWake(status);
-
-  // Only log time spent in suspended state for each
-  // connection status if wifi was connected before suspending
   if (connected_before_suspend_) {
-    LOG(INFO) << "NotifySuspendDurationAfterWake: "
-              << "status: " << status
-              << "seconds_in_suspend: " << seconds_in_suspend;
-    metrics_->NotifySuspendDurationAfterWake(status, seconds_in_suspend);
+    LOG(INFO) << "NotifySuspendDurationAfterWake:"
+              << " is_connected: " << is_connected
+              << " is_dark_connect_enabled: "
+              << WakeOnWiFiDarkConnectEnabledAndSupported()
+              << " seconds_in_suspend: " << seconds_in_suspend;
   }
 }
 
@@ -1189,7 +1138,6 @@ void WakeOnWiFi::OnNoAutoConnectableServicesAfterScan(
     SLOG(this, 3) << __func__ << ": "
                   << "Retrying dark resume scan ("
                   << dark_resume_scan_retries_left_ << " tries left)";
-    metrics_->NotifyDarkResumeScanRetry();
     // Note: a scan triggered by supplicant in dark resume might cause a
     // retry, but we consider this acceptable.
     std::move(initiate_scan_callback).Run(last_ssid_match_freqs_);
@@ -1216,14 +1164,9 @@ void WakeOnWiFi::OnScanStarted(bool is_active_scan) {
     if (is_active_scan) {
       LOG(ERROR) << "Unexpected active scan launched in dark resume";
     }
-    metrics_->NotifyScanStartedInDarkResume(is_active_scan);
   }
 }
 
-void WakeOnWiFi::OnScanCompleted() {
-  if (in_dark_resume_) {
-    metrics_->NotifyDarkResumeScanResultsReceived();
-  }
-}
+void WakeOnWiFi::OnScanCompleted() {}
 
 }  // namespace shill

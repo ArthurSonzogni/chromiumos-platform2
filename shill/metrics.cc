@@ -211,50 +211,6 @@ const char Metrics::kMetricSuspendActionResult[] =
 const int Metrics::kMetricSuspendActionTimeTakenMillisecondsMax = 20000;
 const int Metrics::kMetricSuspendActionTimeTakenMillisecondsMin = 1;
 
-const char Metrics::kMetricDarkResumeActionTimeTaken[] =
-    "Network.Shill.DarkResumeActionTimeTaken";
-const char Metrics::kMetricDarkResumeActionResult[] =
-    "Network.Shill.DarkResumeActionResult";
-const int Metrics::kMetricDarkResumeActionTimeTakenMillisecondsMax = 20000;
-const int Metrics::kMetricDarkResumeActionTimeTakenMillisecondsMin = 1;
-const char Metrics::kMetricDarkResumeUnmatchedScanResultReceived[] =
-    "Network.Shill.WiFi.DarkResumeUnmatchedScanResultsReceived";
-
-const char Metrics::kMetricWakeOnWiFiFeaturesEnabledState[] =
-    "Network.Shill.WiFi.WakeOnWiFiFeaturesEnabledState";
-const char Metrics::kMetricVerifyWakeOnWiFiSettingsResult[] =
-    "Network.Shill.WiFi.VerifyWakeOnWiFiSettingsResult";
-const char Metrics::kMetricWiFiConnectionStatusAfterWake[] =
-    "Network.Shill.WiFi.WiFiConnectionStatusAfterWake";
-const char Metrics::kMetricWakeOnWiFiThrottled[] =
-    "Network.Shill.WiFi.WakeOnWiFiThrottled";
-const char Metrics::kMetricWakeReasonReceivedBeforeOnDarkResume[] =
-    "Network.Shill.WiFi.WakeReasonReceivedBeforeOnDarkResume";
-const char Metrics::kMetricDarkResumeWakeReason[] =
-    "Network.Shill.WiFi.DarkResumeWakeReason";
-const char Metrics::kMetricDarkResumeScanType[] =
-    "Network.Shill.WiFi.DarkResumeScanType";
-const char Metrics::kMetricDarkResumeScanRetryResult[] =
-    "Network.Shill.WiFi.DarkResumeScanRetryResult";
-const char Metrics::kMetricDarkResumeScanNumRetries[] =
-    "Network.Shill.WiFi.DarkResumeScanNumRetries";
-const int Metrics::kMetricDarkResumeScanNumRetriesMax = 20;
-const int Metrics::kMetricDarkResumeScanNumRetriesMin = 0;
-
-const char Metrics::kMetricSuspendDurationWoWOnConnected[] =
-    "Network.Shill.WiFi.SuspendDurationWoWOnConnected";
-const char Metrics::kMetricSuspendDurationWoWOnDisconnected[] =
-    "Network.Shill.WiFi.SuspendDurationWoWOnDisconnected";
-const char Metrics::kMetricSuspendDurationWoWOffConnected[] =
-    "Network.Shill.WiFi.SuspendDurationWoWOffConnected";
-const char Metrics::kMetricSuspendDurationWoWOffDisconnected[] =
-    "Network.Shill.WiFi.SuspendDurationWoWOffDisconnected";
-const int Metrics::kSuspendDurationMin = 1;
-// Max suspend duration that we care about, for the purpose
-// of tracking wifi disconnect on resume. Set to 1 day.
-const int Metrics::kSuspendDurationMax = 86400;
-const int Metrics::kSuspendDurationNumBuckets = 60;
-
 // static
 const uint16_t Metrics::kWiFiBandwidth5MHz = 5;
 const uint16_t Metrics::kWiFiBandwidth20MHz = 20;
@@ -537,11 +493,6 @@ Metrics::Metrics()
       time_resume_to_ready_timer_(new chromeos_metrics::Timer),
       time_termination_actions_timer(new chromeos_metrics::Timer),
       time_suspend_actions_timer(new chromeos_metrics::Timer),
-      time_dark_resume_actions_timer(new chromeos_metrics::Timer),
-      num_scan_results_expected_in_dark_resume_(0),
-      wake_on_wifi_throttled_(false),
-      wake_reason_received_(false),
-      dark_resume_scan_retries_(0),
       time_(Time::GetInstance()) {
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
 }
@@ -930,29 +881,6 @@ std::string Metrics::GetFullMetricName(const char* metric_suffix,
                             metric_suffix);
 }
 
-std::string Metrics::GetSuspendDurationMetricNameFromStatus(
-    WiFiConnectionStatusAfterWake status) {
-  switch (status) {
-    case kWiFiConnectionStatusAfterWakeWoWOnConnected:
-      return kMetricSuspendDurationWoWOnConnected;
-
-    case kWiFiConnectionStatusAfterWakeWoWOnDisconnected:
-      return kMetricSuspendDurationWoWOnDisconnected;
-
-    case kWiFiConnectionStatusAfterWakeWoWOffConnected:
-      return kMetricSuspendDurationWoWOffConnected;
-
-    case kWiFiConnectionStatusAfterWakeWoWOffDisconnected:
-      return kMetricSuspendDurationWoWOffDisconnected;
-
-    default:
-      // The return type is std::string, which cannot
-      // be assigned NULL. Return an empty string instead.
-      std::string value;
-      return value;
-  }
-}
-
 void Metrics::NotifyServiceDisconnect(const Service& service) {
   Technology technology = service.technology();
   const auto histogram = GetFullMetricName(kMetricDisconnectSuffix, technology);
@@ -973,34 +901,6 @@ void Metrics::NotifySignalAtDisconnect(const Service& service,
 
 void Metrics::NotifySuspendDone() {
   time_resume_to_ready_timer_->Start();
-}
-
-void Metrics::NotifyWakeOnWiFiFeaturesEnabledState(
-    WakeOnWiFiFeaturesEnabledState state) {
-  SendEnumToUMA(kMetricWakeOnWiFiFeaturesEnabledState, state,
-                kWakeOnWiFiFeaturesEnabledStateMax);
-}
-
-void Metrics::NotifyVerifyWakeOnWiFiSettingsResult(
-    VerifyWakeOnWiFiSettingsResult result) {
-  SendEnumToUMA(kMetricVerifyWakeOnWiFiSettingsResult, result,
-                kVerifyWakeOnWiFiSettingsResultMax);
-}
-
-void Metrics::NotifyConnectedToServiceAfterWake(
-    WiFiConnectionStatusAfterWake status) {
-  SendEnumToUMA(kMetricWiFiConnectionStatusAfterWake, status,
-                kWiFiConnectionStatusAfterWakeMax);
-}
-
-void Metrics::NotifySuspendDurationAfterWake(
-    WiFiConnectionStatusAfterWake status, int seconds_in_suspend) {
-  const auto metric = GetSuspendDurationMetricNameFromStatus(status);
-
-  if (!metric.empty()) {
-    SendToUMA(metric, seconds_in_suspend, kSuspendDurationMin,
-              kSuspendDurationMax, kSuspendDurationNumBuckets);
-  }
 }
 
 void Metrics::NotifyTerminationActionsStarted() {
@@ -1035,15 +935,11 @@ void Metrics::NotifySuspendActionsStarted() {
   if (time_suspend_actions_timer->HasStarted())
     return;
   time_suspend_actions_timer->Start();
-  wake_on_wifi_throttled_ = false;
 }
 
 void Metrics::NotifySuspendActionsCompleted(bool success) {
   if (!time_suspend_actions_timer->HasStarted())
     return;
-
-  // Reset for next dark resume.
-  wake_reason_received_ = false;
 
   SuspendActionResult result =
       success ? kSuspendActionResultSuccess : kSuspendActionResultFailure;
@@ -1061,57 +957,6 @@ void Metrics::NotifySuspendActionsCompleted(bool success) {
             kTimerHistogramNumBuckets);
 
   SendEnumToUMA(result_metric, result, kSuspendActionResultMax);
-}
-
-void Metrics::NotifyDarkResumeActionsStarted() {
-  if (time_dark_resume_actions_timer->HasStarted())
-    return;
-  time_dark_resume_actions_timer->Start();
-  num_scan_results_expected_in_dark_resume_ = 0;
-  dark_resume_scan_retries_ = 0;
-}
-
-void Metrics::NotifyDarkResumeActionsCompleted(bool success) {
-  if (!time_dark_resume_actions_timer->HasStarted())
-    return;
-
-  // Reset for next dark resume.
-  wake_reason_received_ = false;
-
-  DarkResumeActionResult result =
-      success ? kDarkResumeActionResultSuccess : kDarkResumeActionResultFailure;
-
-  base::TimeDelta elapsed_time;
-  time_dark_resume_actions_timer->GetElapsedTime(&elapsed_time);
-  time_dark_resume_actions_timer->Reset();
-
-  SendToUMA(kMetricDarkResumeActionTimeTaken, elapsed_time.InMilliseconds(),
-            kMetricDarkResumeActionTimeTakenMillisecondsMin,
-            kMetricDarkResumeActionTimeTakenMillisecondsMax,
-            kTimerHistogramNumBuckets);
-
-  SendEnumToUMA(kMetricDarkResumeActionResult, result,
-                kDarkResumeActionResultMax);
-
-  DarkResumeUnmatchedScanResultReceived unmatched_scan_results_received =
-      (num_scan_results_expected_in_dark_resume_ < 0)
-          ? kDarkResumeUnmatchedScanResultsReceivedTrue
-          : kDarkResumeUnmatchedScanResultsReceivedFalse;
-  SendEnumToUMA(kMetricDarkResumeUnmatchedScanResultReceived,
-                unmatched_scan_results_received,
-                kDarkResumeUnmatchedScanResultsReceivedMax);
-
-  SendToUMA(kMetricDarkResumeScanNumRetries, dark_resume_scan_retries_,
-            kMetricDarkResumeScanNumRetriesMin,
-            kMetricDarkResumeScanNumRetriesMax, kTimerHistogramNumBuckets);
-}
-
-void Metrics::NotifyDarkResumeInitiateScan() {
-  ++num_scan_results_expected_in_dark_resume_;
-}
-
-void Metrics::NotifyDarkResumeScanResultsReceived() {
-  --num_scan_results_expected_in_dark_resume_;
 }
 
 void Metrics::NotifyNeighborLinkMonitorFailure(
@@ -1780,70 +1625,6 @@ bool Metrics::SendSparseToUMA(const std::string& name, int sample) {
   SLOG(this, 5) << "Sending sparse metric " << name << " with value " << sample
                 << ".";
   return library_->SendSparseToUMA(name, sample);
-}
-
-void Metrics::NotifyWakeOnWiFiThrottled() {
-  wake_on_wifi_throttled_ = true;
-}
-
-void Metrics::NotifySuspendWithWakeOnWiFiEnabledDone() {
-  SendBoolToUMA(kMetricWakeOnWiFiThrottled, wake_on_wifi_throttled_);
-}
-
-void Metrics::NotifyWakeupReasonReceived() {
-  wake_reason_received_ = true;
-}
-
-#if !defined(DISABLE_WIFI)
-// TODO(zqiu): Change argument type from WakeOnWiFi::WakeOnWiFiTrigger to
-// Metrics::DarkResumeWakeReason, to remove the dependency for WakeOnWiFi.
-// to remove the dependency for WakeOnWiFi.
-void Metrics::NotifyWakeOnWiFiOnDarkResume(
-    WakeOnWiFi::WakeOnWiFiTrigger reason) {
-  WakeReasonReceivedBeforeOnDarkResume result =
-      wake_reason_received_ ? kWakeReasonReceivedBeforeOnDarkResumeTrue
-                            : kWakeReasonReceivedBeforeOnDarkResumeFalse;
-
-  SendEnumToUMA(kMetricWakeReasonReceivedBeforeOnDarkResume, result,
-                kWakeReasonReceivedBeforeOnDarkResumeMax);
-
-  DarkResumeWakeReason wake_reason;
-  switch (reason) {
-    case WakeOnWiFi::kWakeTriggerDisconnect:
-      wake_reason = kDarkResumeWakeReasonDisconnect;
-      break;
-    case WakeOnWiFi::kWakeTriggerSSID:
-      wake_reason = kDarkResumeWakeReasonSSID;
-      break;
-    case WakeOnWiFi::kWakeTriggerUnsupported:
-    default:
-      wake_reason = kDarkResumeWakeReasonUnsupported;
-      break;
-  }
-  SendEnumToUMA(kMetricDarkResumeWakeReason, wake_reason,
-                kDarkResumeWakeReasonMax);
-}
-#endif  // DISABLE_WIFI
-
-void Metrics::NotifyScanStartedInDarkResume(bool is_active_scan) {
-  DarkResumeScanType scan_type =
-      is_active_scan ? kDarkResumeScanTypeActive : kDarkResumeScanTypePassive;
-  SendEnumToUMA(kMetricDarkResumeScanType, scan_type, kDarkResumeScanTypeMax);
-}
-
-void Metrics::NotifyDarkResumeScanRetry() {
-  ++dark_resume_scan_retries_;
-}
-
-void Metrics::NotifyBeforeSuspendActions(bool is_connected,
-                                         bool in_dark_resume) {
-  if (in_dark_resume && dark_resume_scan_retries_) {
-    DarkResumeScanRetryResult connect_result =
-        is_connected ? kDarkResumeScanRetryResultConnected
-                     : kDarkResumeScanRetryResultNotConnected;
-    SendEnumToUMA(kMetricDarkResumeScanRetryResult, connect_result,
-                  kDarkResumeScanRetryResultMax);
-  }
 }
 
 void Metrics::NotifyConnectionDiagnosticsIssue(const std::string& issue) {

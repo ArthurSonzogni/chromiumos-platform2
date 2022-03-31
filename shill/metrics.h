@@ -308,32 +308,6 @@ class Metrics : public DefaultServiceObserver {
     kSuspendActionResultMax
   };
 
-  enum DarkResumeActionResult {
-    kDarkResumeActionResultSuccess,
-    kDarkResumeActionResultFailure,
-    kDarkResumeActionResultMax
-  };
-
-  enum DarkResumeUnmatchedScanResultReceived {
-    kDarkResumeUnmatchedScanResultsReceivedFalse = 0,
-    kDarkResumeUnmatchedScanResultsReceivedTrue = 1,
-    kDarkResumeUnmatchedScanResultsReceivedMax
-  };
-
-  enum VerifyWakeOnWiFiSettingsResult {
-    kVerifyWakeOnWiFiSettingsResultSuccess,
-    kVerifyWakeOnWiFiSettingsResultFailure,
-    kVerifyWakeOnWiFiSettingsResultMax
-  };
-
-  enum WiFiConnectionStatusAfterWake {
-    kWiFiConnectionStatusAfterWakeWoWOnConnected = 0,
-    kWiFiConnectionStatusAfterWakeWoWOnDisconnected = 1,
-    kWiFiConnectionStatusAfterWakeWoWOffConnected = 2,
-    kWiFiConnectionStatusAfterWakeWoWOffDisconnected = 3,
-    kWiFiConnectionStatusAfterWakeMax
-  };
-
   enum Cellular3GPPRegistrationDelayedDrop {
     kCellular3GPPRegistrationDelayedDropPosted = 0,
     kCellular3GPPRegistrationDelayedDropCanceled = 1,
@@ -667,40 +641,6 @@ class Metrics : public DefaultServiceObserver {
     kNetworkServiceErrorMax
   };
 
-  enum WakeOnWiFiFeaturesEnabledState {
-    kWakeOnWiFiFeaturesEnabledStateNone = 0,
-    kWakeOnWiFiFeaturesEnabledStatePacket = 1,  // Deprecated.
-    kWakeOnWiFiFeaturesEnabledStateDarkConnect = 2,
-    kWakeOnWiFiFeaturesEnabledStatePacketDarkConnect = 3,  // Deprecated.
-    kWakeOnWiFiFeaturesEnabledStateMax
-  };
-
-  enum WakeReasonReceivedBeforeOnDarkResume {
-    kWakeReasonReceivedBeforeOnDarkResumeFalse = 0,
-    kWakeReasonReceivedBeforeOnDarkResumeTrue = 1,
-    kWakeReasonReceivedBeforeOnDarkResumeMax
-  };
-
-  enum DarkResumeWakeReason {
-    kDarkResumeWakeReasonUnsupported = 0,
-    kDarkResumeWakeReasonPattern = 1,
-    kDarkResumeWakeReasonDisconnect = 2,
-    kDarkResumeWakeReasonSSID = 3,
-    kDarkResumeWakeReasonMax
-  };
-
-  enum DarkResumeScanType {
-    kDarkResumeScanTypeActive = 0,
-    kDarkResumeScanTypePassive = 1,
-    kDarkResumeScanTypeMax
-  };
-
-  enum DarkResumeScanRetryResult {
-    kDarkResumeScanRetryResultNotConnected = 0,
-    kDarkResumeScanRetryResultConnected = 1,
-    kDarkResumeScanRetryResultMax
-  };
-
   // Corresponds to RegulatoryDomain enum values in
   // /chromium/src/tools/metrics/histograms/enums.xml.
   // kRegDom00, kRegDom99, kRegDom98 and kRegDom97 are special alpha2 codes
@@ -801,19 +741,6 @@ class Metrics : public DefaultServiceObserver {
   static const int kTimerHistogramMillisecondsMin;
   static const int kTimerHistogramNumBuckets;
 
-  // The 4 histograms below track the time spent in suspended
-  // state for each of the 4 scenarios in WiFiConnectionStatusAfterWake
-  // We consider it normal that wifi disconnects after a resume after
-  // a long time spent in suspend, but not after a short time.
-  // See bug chromium:614790.
-  static const char kMetricSuspendDurationWoWOnConnected[];
-  static const char kMetricSuspendDurationWoWOnDisconnected[];
-  static const char kMetricSuspendDurationWoWOffConnected[];
-  static const char kMetricSuspendDurationWoWOffDisconnected[];
-  static const int kSuspendDurationMin;
-  static const int kSuspendDurationMax;
-  static const int kSuspendDurationNumBuckets;
-
   // The total number of portal detections attempted between the Connected
   // state and the Online state.  This includes both failure/timeout attempts
   // and the final successful attempt.
@@ -890,30 +817,6 @@ class Metrics : public DefaultServiceObserver {
   static const char kMetricSuspendActionResult[];
   static const int kMetricSuspendActionTimeTakenMillisecondsMax;
   static const int kMetricSuspendActionTimeTakenMillisecondsMin;
-
-  // Shill dark resume action statistics.
-  static const char kMetricDarkResumeActionTimeTaken[];
-  static const char kMetricDarkResumeActionResult[];
-  static const int kMetricDarkResumeActionTimeTakenMillisecondsMax;
-  static const int kMetricDarkResumeActionTimeTakenMillisecondsMin;
-  static const char kMetricDarkResumeUnmatchedScanResultReceived[];
-
-  // Shill wake on WiFi feature state statistics.
-  static const char kMetricWakeOnWiFiFeaturesEnabledState[];
-  // The result of NIC wake on WiFi settings verification.
-  static const char kMetricVerifyWakeOnWiFiSettingsResult[];
-  static const char kMetricWiFiConnectionStatusAfterWake[];
-  // Whether or not wake on WiFi was throttled during the last suspend.
-  static const char kMetricWakeOnWiFiThrottled[];
-  // Whether or not a wakeup reason was received before WakeOnWiFi::OnDarkResume
-  // executes.
-  static const char kMetricWakeReasonReceivedBeforeOnDarkResume[];
-  static const char kMetricDarkResumeWakeReason[];
-  static const char kMetricDarkResumeScanType[];
-  static const char kMetricDarkResumeScanRetryResult[];
-  static const char kMetricDarkResumeScanNumRetries[];
-  static const int kMetricDarkResumeScanNumRetriesMax;
-  static const int kMetricDarkResumeScanNumRetriesMin;
 
   // Cellular specific statistics.
   static const char kMetricCellular3GPPRegistrationDelayedDrop[];
@@ -1156,9 +1059,6 @@ class Metrics : public DefaultServiceObserver {
   std::string GetFullMetricName(const char* metric_suffix,
                                 Technology technology_id);
 
-  std::string GetSuspendDurationMetricNameFromStatus(
-      WiFiConnectionStatusAfterWake status);
-
   // Implements DefaultServiceObserver.
   void OnDefaultLogicalServiceChanged(
       const ServiceRefPtr& logical_service) override;
@@ -1179,21 +1079,6 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object of the end of a suspend attempt.
   void NotifySuspendDone();
 
-  // Notifies this object of the current wake on WiFi features enabled
-  // represented by the WakeOnWiFiFeaturesEnabledState |state|.
-  void NotifyWakeOnWiFiFeaturesEnabledState(
-      WakeOnWiFiFeaturesEnabledState state);
-
-  // Notifies this object of the result of NIC wake on WiFi settings
-  // verification.
-  virtual void NotifyVerifyWakeOnWiFiSettingsResult(
-      VerifyWakeOnWiFiSettingsResult result);
-
-  // Notifies this object of whether or not the WiFi device is connected to a
-  // service after waking from suspend.
-  virtual void NotifyConnectedToServiceAfterWake(
-      WiFiConnectionStatusAfterWake status);
-
   // Notifies this object that termination actions started executing.
   void NotifyTerminationActionsStarted();
 
@@ -1201,29 +1086,12 @@ class Metrics : public DefaultServiceObserver {
   // |success| is true, if the termination actions completed successfully.
   void NotifyTerminationActionsCompleted(bool success);
 
-  virtual void NotifySuspendDurationAfterWake(
-      WiFiConnectionStatusAfterWake status, int seconds_in_suspend);
-
   // Notifies this object that suspend actions started executing.
   void NotifySuspendActionsStarted();
 
   // Notifies this object that suspend actions have been completed.
   // |success| is true, if the suspend actions completed successfully.
   void NotifySuspendActionsCompleted(bool success);
-
-  // Notifies this object that dark resume actions started executing.
-  void NotifyDarkResumeActionsStarted();
-
-  // Notifies this object that dark resume actions have been completed.
-  // |success| is true, if the dark resume actions completed successfully.
-  void NotifyDarkResumeActionsCompleted(bool success);
-
-  // Notifies this object that a scan has been initiated by shill while in dark
-  // resume.
-  virtual void NotifyDarkResumeInitiateScan();
-
-  // Notifies this object that a scan results have been received in dark resume.
-  void NotifyDarkResumeScanResultsReceived();
 
   // Notifies this object of a failure in patchpanel::NeighborLinkMonitor.
   void NotifyNeighborLinkMonitorFailure(
@@ -1407,44 +1275,6 @@ class Metrics : public DefaultServiceObserver {
   // Sends sparse histogram data to UMA.
   virtual bool SendSparseToUMA(const std::string& name, int sample);
 
-  // Notifies this object that wake on WiFi has been disabled because of
-  // excessive dark resume wakes.
-  virtual void NotifyWakeOnWiFiThrottled();
-
-  // Notifies this object that shill has resumed from a period of suspension
-  // where wake on WiFi functionality was enabled on the NIC.
-  virtual void NotifySuspendWithWakeOnWiFiEnabledDone();
-
-  // Notifies this object that a wakeup reason has been received.
-  virtual void NotifyWakeupReasonReceived();
-
-#if !defined(DISABLE_WIFI)
-  // Notifies this object that WakeOnWiFi::OnDarkResume has begun executing,
-  // and that the dark resume was caused by |reason|.
-  virtual void NotifyWakeOnWiFiOnDarkResume(
-      WakeOnWiFi::WakeOnWiFiTrigger reason);
-#endif  // DISABLE_WIFI
-
-  // Notifies this object that a scan was started in dark resume. If
-  // |is_active_scan| is true, the scan started was an active scan. Otherwise
-  // the scan started was a passive scan.
-  // Note: Metrics::NotifyDarkResumeInitiateScan is called when shill initiates
-  // a scan in dark resume, while Metrics::NotifyScanStartedInDarkResume is
-  // called when the kernel notifies shill that a scan (shill-initiated or not)
-  // has actually started.
-  virtual void NotifyScanStartedInDarkResume(bool is_active_scan);
-
-  // Notifies this object that a dark resume scan retry was launched.
-  virtual void NotifyDarkResumeScanRetry();
-
-  // Notifies this object that shill is about to suspend and is executing
-  // WakeOnWiFi::BeforeSuspendActions. |is_connected| indicates whether shill
-  // was connected before suspending, and |in_dark_resume| indicates whether
-  // shill is current in dark resume.
-  // Note: this will only be called if wake on WiFi is supported and enabled.
-  virtual void NotifyBeforeSuspendActions(bool is_connected,
-                                          bool in_dark_resume);
-
   // Notifies this object that connection diagnostics have been performed, and
   // the connection issue that was diagnosed is |issue|.
   virtual void NotifyConnectionDiagnosticsIssue(const std::string& issue);
@@ -1555,19 +1385,9 @@ class Metrics : public DefaultServiceObserver {
   FRIEND_TEST(MetricsTest, TimeToPortal);
   FRIEND_TEST(MetricsTest, TimeToScanIgnore);
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
-  FRIEND_TEST(MetricsTest, NotifySuspendWithWakeOnWiFiEnabledDone);
-  FRIEND_TEST(MetricsTest, NotifyWakeOnWiFiThrottled);
   FRIEND_TEST(MetricsTest, NotifySuspendActionsCompleted_Success);
   FRIEND_TEST(MetricsTest, NotifySuspendActionsCompleted_Failure);
-  FRIEND_TEST(MetricsTest, NotifyDarkResumeActionsCompleted_Success);
-  FRIEND_TEST(MetricsTest, NotifyDarkResumeActionsCompleted_Failure);
   FRIEND_TEST(MetricsTest, NotifySuspendActionsStarted);
-  FRIEND_TEST(MetricsTest, NotifyDarkResumeActionsStarted);
-  FRIEND_TEST(MetricsTest, NotifyDarkResumeInitiateScan);
-  FRIEND_TEST(MetricsTest, NotifyDarkResumeScanResultsReceived);
-  FRIEND_TEST(MetricsTest, NotifyDarkResumeScanRetry);
-  FRIEND_TEST(MetricsTest, NotifyBeforeSuspendActions_InDarkResume);
-  FRIEND_TEST(MetricsTest, NotifyBeforeSuspendActions_NotInDarkResume);
   FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
 
   using TimerReporters =
@@ -1650,9 +1470,6 @@ class Metrics : public DefaultServiceObserver {
   void set_time_suspend_actions_timer(chromeos_metrics::Timer* timer) {
     time_suspend_actions_timer.reset(timer);  // Passes ownership
   }
-  void set_time_dark_resume_actions_timer(chromeos_metrics::Timer* timer) {
-    time_dark_resume_actions_timer.reset(timer);  // Passes ownership
-  }
   void set_time_to_scan_timer(int interface_index,
                               chromeos_metrics::TimerReporter* timer) {
     DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
@@ -1684,12 +1501,7 @@ class Metrics : public DefaultServiceObserver {
   std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
   std::unique_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
-  std::unique_ptr<chromeos_metrics::Timer> time_dark_resume_actions_timer;
   DeviceMetricsLookupMap devices_metrics_;
-  int num_scan_results_expected_in_dark_resume_;
-  bool wake_on_wifi_throttled_;
-  bool wake_reason_received_;
-  int dark_resume_scan_retries_;
   Time* time_;
 };
 

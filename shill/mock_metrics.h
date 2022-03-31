@@ -105,31 +105,6 @@ class MockMetrics : public Metrics {
               (Technology, int),
               (override));
   MOCK_METHOD(void,
-              NotifyVerifyWakeOnWiFiSettingsResult,
-              (VerifyWakeOnWiFiSettingsResult),
-              (override));
-  MOCK_METHOD(void,
-              NotifyConnectedToServiceAfterWake,
-              (WiFiConnectionStatusAfterWake),
-              (override));
-  MOCK_METHOD(void,
-              NotifySuspendDurationAfterWake,
-              (WiFiConnectionStatusAfterWake, int),
-              (override));
-  MOCK_METHOD(void, NotifyWakeOnWiFiThrottled, (), (override));
-  MOCK_METHOD(void, NotifySuspendWithWakeOnWiFiEnabledDone, (), (override));
-  MOCK_METHOD(void, NotifyDarkResumeInitiateScan, (), (override));
-  MOCK_METHOD(void, NotifyWakeupReasonReceived, (), (override));
-#if !defined(DISABLE_WIFI)
-  MOCK_METHOD(void,
-              NotifyWakeOnWiFiOnDarkResume,
-              (WakeOnWiFi::WakeOnWiFiTrigger),
-              (override));
-#endif  // DISABLE_WIFI
-  MOCK_METHOD(void, NotifyScanStartedInDarkResume, (bool), (override));
-  MOCK_METHOD(void, NotifyDarkResumeScanRetry, (), (override));
-  MOCK_METHOD(void, NotifyBeforeSuspendActions, (bool, bool), (override));
-  MOCK_METHOD(void,
               NotifyConnectionDiagnosticsIssue,
               (const std::string&),
               (override));

@@ -303,7 +303,6 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   static const int kMaxFreqsForDarkResumeScanRetries;
   static const int kMaxDarkResumeScanRetries;
 
-  void StartMetricsTimer();
   bool GetWakeOnWiFiAllowed(Error* error);
   bool SetWakeOnWiFiAllowed(const bool& enabled, Error* error);
   std::string GetWakeOnWiFiFeaturesEnabled(Error* error);
@@ -391,8 +390,6 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // enabled based on the descriptor |wake_on_wifi_features_enabled_| and
   // are supported by the NIC.
   bool WakeOnWiFiDarkConnectEnabledAndSupported();
-  // Called by metrics_timer_ to reports metrics.
-  void ReportMetrics();
   // Actions executed before normal suspend and dark resume suspend.
   //
   // Arguments:
@@ -441,8 +438,6 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   // Callback to be invoked after all suspend actions finish executing both
   // before regular suspend and before suspend in dark resume.
   ResultCallback suspend_actions_done_callback_;
-  // Callback to report wake on WiFi related metrics.
-  base::CancelableClosure report_metrics_callback_;
   // Number of retry attempts to program the NIC's wake-on-WiFi settings.
   int num_set_wake_on_wifi_retries_;
   // Keeps track of triggers that the NIC will be programmed to wake from

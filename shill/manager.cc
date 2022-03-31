@@ -1738,7 +1738,6 @@ void Manager::OnSuspendDone() {
 }
 
 void Manager::OnDarkSuspendImminent() {
-  metrics_->NotifyDarkResumeActionsStarted();
   if (devices_.empty()) {
     // If there are no devices, then suspend actions succeeded synchronously.
     // Make a call to the Manager::OnDarkResumeActionsComplete directly, since
@@ -1765,7 +1764,6 @@ void Manager::OnSuspendActionsComplete(const Error& error) {
 
 void Manager::OnDarkResumeActionsComplete(const Error& error) {
   LOG(INFO) << "Finished dark resume actions. Result: " << error;
-  metrics_->NotifyDarkResumeActionsCompleted(error.IsSuccess());
   power_manager_->ReportDarkSuspendReadiness();
 }
 

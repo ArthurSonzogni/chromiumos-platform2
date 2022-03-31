@@ -703,72 +703,11 @@ TEST_F(MetricsTest, DeregisterDevice) {
   metrics_.DeregisterDevice(kInterfaceIndex);
 }
 
-TEST_F(MetricsTest, NotifyWakeOnWiFiFeaturesEnabledState) {
-  const Metrics::WakeOnWiFiFeaturesEnabledState state =
-      Metrics::kWakeOnWiFiFeaturesEnabledStateNone;
-  EXPECT_CALL(
-      library_,
-      SendEnumToUMA("Network.Shill.WiFi.WakeOnWiFiFeaturesEnabledState", state,
-                    Metrics::kWakeOnWiFiFeaturesEnabledStateMax));
-  metrics_.NotifyWakeOnWiFiFeaturesEnabledState(state);
-}
-
-TEST_F(MetricsTest, NotifyVerifyWakeOnWiFiSettingsResult) {
-  const Metrics::VerifyWakeOnWiFiSettingsResult result =
-      Metrics::kVerifyWakeOnWiFiSettingsResultSuccess;
-  EXPECT_CALL(
-      library_,
-      SendEnumToUMA("Network.Shill.WiFi.VerifyWakeOnWiFiSettingsResult", result,
-                    Metrics::kVerifyWakeOnWiFiSettingsResultMax));
-  metrics_.NotifyVerifyWakeOnWiFiSettingsResult(result);
-}
-
-TEST_F(MetricsTest, NotifyConnectedToServiceAfterWake) {
-  const Metrics::WiFiConnectionStatusAfterWake status =
-      Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected;
-  EXPECT_CALL(
-      library_,
-      SendEnumToUMA("Network.Shill.WiFi.WiFiConnectionStatusAfterWake", status,
-                    Metrics::kWiFiConnectionStatusAfterWakeMax));
-  metrics_.NotifyConnectedToServiceAfterWake(status);
-}
-
-TEST_F(MetricsTest, NotifySuspendDurationAfterWake) {
-  const Metrics::WiFiConnectionStatusAfterWake status =
-      Metrics::kWiFiConnectionStatusAfterWakeWoWOnConnected;
-  int seconds_in_suspend = 1;
-  EXPECT_CALL(library_,
-              SendToUMA("Network.Shill.WiFi.SuspendDurationWoWOnConnected",
-                        seconds_in_suspend, Metrics::kSuspendDurationMin,
-                        Metrics::kSuspendDurationMax,
-                        Metrics::kSuspendDurationNumBuckets));
-  metrics_.NotifySuspendDurationAfterWake(status, seconds_in_suspend);
-}
-
-TEST_F(MetricsTest, NotifyWakeOnWiFiThrottled) {
-  EXPECT_FALSE(metrics_.wake_on_wifi_throttled_);
-  metrics_.NotifyWakeOnWiFiThrottled();
-  EXPECT_TRUE(metrics_.wake_on_wifi_throttled_);
-}
-
-TEST_F(MetricsTest, NotifySuspendWithWakeOnWiFiEnabledDone) {
-  metrics_.wake_on_wifi_throttled_ = true;
-  EXPECT_CALL(library_,
-              SendBoolToUMA("Network.Shill.WiFi.WakeOnWiFiThrottled", true));
-  metrics_.NotifySuspendWithWakeOnWiFiEnabledDone();
-
-  metrics_.wake_on_wifi_throttled_ = false;
-  EXPECT_CALL(library_,
-              SendBoolToUMA("Network.Shill.WiFi.WakeOnWiFiThrottled", false));
-  metrics_.NotifySuspendWithWakeOnWiFiEnabledDone();
-}
-
 TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
   base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
   chromeos_metrics::TimerMock* mock_time_suspend_actions_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_suspend_actions_timer(mock_time_suspend_actions_timer);
-  metrics_.wake_reason_received_ = true;
   EXPECT_CALL(*mock_time_suspend_actions_timer, GetElapsedTime(_))
       .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
@@ -783,7 +722,6 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {
                                       Metrics::kSuspendActionResultSuccess,
                                       Metrics::kSuspendActionResultMax));
   metrics_.NotifySuspendActionsCompleted(true);
-  EXPECT_FALSE(metrics_.wake_reason_received_);
 }
 
 TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
@@ -791,7 +729,6 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
   chromeos_metrics::TimerMock* mock_time_suspend_actions_timer =
       new chromeos_metrics::TimerMock;
   metrics_.set_time_suspend_actions_timer(mock_time_suspend_actions_timer);
-  metrics_.wake_reason_received_ = true;
   EXPECT_CALL(*mock_time_suspend_actions_timer, GetElapsedTime(_))
       .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   EXPECT_CALL(*mock_time_suspend_actions_timer, HasStarted())
@@ -806,154 +743,12 @@ TEST_F(MetricsTest, NotifySuspendActionsCompleted_Failure) {
                                       Metrics::kSuspendActionResultFailure,
                                       Metrics::kSuspendActionResultMax));
   metrics_.NotifySuspendActionsCompleted(false);
-  EXPECT_FALSE(metrics_.wake_reason_received_);
-}
-
-TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Success) {
-  metrics_.num_scan_results_expected_in_dark_resume_ = 0;
-  base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
-  chromeos_metrics::TimerMock* mock_time_dark_resume_actions_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_dark_resume_actions_timer(
-      mock_time_dark_resume_actions_timer);
-  metrics_.wake_reason_received_ = true;
-  const int non_zero_num_retries = 3;
-  metrics_.dark_resume_scan_retries_ = non_zero_num_retries;
-  EXPECT_CALL(*mock_time_dark_resume_actions_timer, GetElapsedTime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
-  EXPECT_CALL(*mock_time_dark_resume_actions_timer, HasStarted())
-      .WillOnce(Return(true));
-  EXPECT_CALL(
-      library_,
-      SendToUMA(Metrics::kMetricDarkResumeActionTimeTaken,
-                non_zero_time_delta.InMilliseconds(),
-                Metrics::kMetricDarkResumeActionTimeTakenMillisecondsMin,
-                Metrics::kMetricDarkResumeActionTimeTakenMillisecondsMax,
-                Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricDarkResumeActionResult,
-                                      Metrics::kDarkResumeActionResultSuccess,
-                                      Metrics::kDarkResumeActionResultMax));
-  EXPECT_CALL(
-      library_,
-      SendEnumToUMA(Metrics::kMetricDarkResumeUnmatchedScanResultReceived,
-                    Metrics::kDarkResumeUnmatchedScanResultsReceivedFalse,
-                    Metrics::kDarkResumeUnmatchedScanResultsReceivedMax));
-  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricDarkResumeScanNumRetries,
-                                  non_zero_num_retries,
-                                  Metrics::kMetricDarkResumeScanNumRetriesMin,
-                                  Metrics::kMetricDarkResumeScanNumRetriesMax,
-                                  Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifyDarkResumeActionsCompleted(true);
-  EXPECT_FALSE(metrics_.wake_reason_received_);
-}
-
-TEST_F(MetricsTest, NotifyDarkResumeActionsCompleted_Failure) {
-  metrics_.num_scan_results_expected_in_dark_resume_ = 0;
-  base::TimeDelta non_zero_time_delta = base::Milliseconds(1);
-  chromeos_metrics::TimerMock* mock_time_dark_resume_actions_timer =
-      new chromeos_metrics::TimerMock;
-  metrics_.set_time_dark_resume_actions_timer(
-      mock_time_dark_resume_actions_timer);
-  metrics_.wake_reason_received_ = true;
-  const int non_zero_num_retries = 3;
-  metrics_.dark_resume_scan_retries_ = non_zero_num_retries;
-  EXPECT_CALL(*mock_time_dark_resume_actions_timer, GetElapsedTime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
-  EXPECT_CALL(*mock_time_dark_resume_actions_timer, HasStarted())
-      .WillOnce(Return(true));
-  EXPECT_CALL(
-      library_,
-      SendToUMA(Metrics::kMetricDarkResumeActionTimeTaken,
-                non_zero_time_delta.InMilliseconds(),
-                Metrics::kMetricDarkResumeActionTimeTakenMillisecondsMin,
-                Metrics::kMetricDarkResumeActionTimeTakenMillisecondsMax,
-                Metrics::kTimerHistogramNumBuckets));
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricDarkResumeActionResult,
-                                      Metrics::kDarkResumeActionResultFailure,
-                                      Metrics::kDarkResumeActionResultMax));
-  EXPECT_CALL(
-      library_,
-      SendEnumToUMA(Metrics::kMetricDarkResumeUnmatchedScanResultReceived,
-                    Metrics::kDarkResumeUnmatchedScanResultsReceivedFalse,
-                    Metrics::kDarkResumeUnmatchedScanResultsReceivedMax));
-  EXPECT_CALL(library_, SendToUMA(Metrics::kMetricDarkResumeScanNumRetries,
-                                  non_zero_num_retries,
-                                  Metrics::kMetricDarkResumeScanNumRetriesMin,
-                                  Metrics::kMetricDarkResumeScanNumRetriesMax,
-                                  Metrics::kTimerHistogramNumBuckets));
-  metrics_.NotifyDarkResumeActionsCompleted(false);
-  EXPECT_FALSE(metrics_.wake_reason_received_);
 }
 
 TEST_F(MetricsTest, NotifySuspendActionsStarted) {
   metrics_.time_suspend_actions_timer->Stop();
-  metrics_.wake_on_wifi_throttled_ = true;
   metrics_.NotifySuspendActionsStarted();
   EXPECT_TRUE(metrics_.time_suspend_actions_timer->HasStarted());
-  EXPECT_FALSE(metrics_.wake_on_wifi_throttled_);
-}
-
-TEST_F(MetricsTest, NotifyDarkResumeActionsStarted) {
-  metrics_.time_dark_resume_actions_timer->Stop();
-  metrics_.num_scan_results_expected_in_dark_resume_ = 2;
-  metrics_.dark_resume_scan_retries_ = 3;
-  metrics_.NotifyDarkResumeActionsStarted();
-  EXPECT_TRUE(metrics_.time_dark_resume_actions_timer->HasStarted());
-  EXPECT_EQ(0, metrics_.num_scan_results_expected_in_dark_resume_);
-  EXPECT_EQ(0, metrics_.dark_resume_scan_retries_);
-}
-
-TEST_F(MetricsTest, NotifyDarkResumeInitiateScan) {
-  metrics_.num_scan_results_expected_in_dark_resume_ = 0;
-  metrics_.NotifyDarkResumeInitiateScan();
-  EXPECT_EQ(1, metrics_.num_scan_results_expected_in_dark_resume_);
-}
-
-TEST_F(MetricsTest, NotifyDarkResumeScanResultsReceived) {
-  metrics_.num_scan_results_expected_in_dark_resume_ = 1;
-  metrics_.NotifyDarkResumeScanResultsReceived();
-  EXPECT_EQ(0, metrics_.num_scan_results_expected_in_dark_resume_);
-}
-
-TEST_F(MetricsTest, NotifyDarkResumeScanRetry) {
-  const int initial_num_retries = 2;
-  metrics_.dark_resume_scan_retries_ = initial_num_retries;
-  metrics_.NotifyDarkResumeScanRetry();
-  EXPECT_EQ(initial_num_retries + 1, metrics_.dark_resume_scan_retries_);
-}
-
-TEST_F(MetricsTest, NotifyBeforeSuspendActions_InDarkResume) {
-  const bool in_dark_resume = true;
-  bool is_connected;
-  metrics_.dark_resume_scan_retries_ = 1;
-
-  is_connected = true;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricDarkResumeScanRetryResult,
-                            Metrics::kDarkResumeScanRetryResultConnected,
-                            Metrics::kDarkResumeScanRetryResultMax));
-  metrics_.NotifyBeforeSuspendActions(is_connected, in_dark_resume);
-
-  is_connected = false;
-  EXPECT_CALL(library_,
-              SendEnumToUMA(Metrics::kMetricDarkResumeScanRetryResult,
-                            Metrics::kDarkResumeScanRetryResultNotConnected,
-                            Metrics::kDarkResumeScanRetryResultMax));
-  metrics_.NotifyBeforeSuspendActions(is_connected, in_dark_resume);
-}
-
-TEST_F(MetricsTest, NotifyBeforeSuspendActions_NotInDarkResume) {
-  const bool in_dark_resume = false;
-  bool is_connected;
-  metrics_.dark_resume_scan_retries_ = 1;
-
-  is_connected = true;
-  EXPECT_CALL(library_, SendEnumToUMA(_, _, _)).Times(0);
-  metrics_.NotifyBeforeSuspendActions(is_connected, in_dark_resume);
-
-  is_connected = false;
-  EXPECT_CALL(library_, SendEnumToUMA(_, _, _)).Times(0);
-  metrics_.NotifyBeforeSuspendActions(is_connected, in_dark_resume);
 }
 
 TEST_F(MetricsTest, NotifyConnectionDiagnosticsIssue_Success) {
