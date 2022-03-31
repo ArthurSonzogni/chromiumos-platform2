@@ -248,6 +248,8 @@ class FPCBETResults:
         VerifyUser, VerifyFinger, VerifySample, EnrollUser, EnrollFinger, Strong FA
         '''
 
+        assert test_case in self.TestCase
+
         file_name = self.file_name(test_case, self.TableType.FA_List)
         tbl = pd.read_csv(
             file_name,
@@ -278,6 +280,9 @@ class FPCBETResults:
 
         This only reads the last/bottom table of the file.
         '''
+
+        assert test_case in self.TestCase
+        assert table_type in [self.TableType.FAR, self.TableType.FRR]
 
         file_name = self.file_name(test_case, table_type)
         blank_lines = self.find_blank_lines(file_name)
