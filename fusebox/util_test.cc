@@ -47,6 +47,18 @@ TEST(UtilTest, GetResponseErrnoNoError) {
   EXPECT_EQ(0, GetResponseErrno(&reader, response.get()));
 }
 
+TEST(UtilTest, GetResponseErrnoPosixErrno) {
+  std::unique_ptr<dbus::Response> response = dbus::Response::CreateEmpty();
+
+  dbus::MessageWriter writer(response.get());
+  int posix_io_error = EIO;
+  AppendValueToWriter(&writer, posix_io_error);
+  ASSERT_GT(posix_io_error, 0);
+
+  dbus::MessageReader reader(response.get());
+  EXPECT_EQ(EIO, GetResponseErrno(&reader, response.get()));
+}
+
 TEST(UtilTest, FileErrorToErrno) {
   int ok = static_cast<int>(base::File::Error::FILE_OK);
   EXPECT_EQ(0, FileErrorToErrno(ok));

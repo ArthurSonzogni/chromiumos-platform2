@@ -21,15 +21,20 @@ int GetResponseErrno(dbus::MessageReader* reader, dbus::Response* response) {
     return ENODEV;
   }
 
-  int32_t response_file_error;
-  CHECK(reader->PopInt32(&response_file_error));
+  int32_t response_error;
+  CHECK(reader->PopInt32(&response_error));
 
-  if (response_file_error != 0) {
-    int file_errno = FileErrorToErrno(response_file_error);
-    auto file_error = static_cast<base::File::Error>(response_file_error);
-    LOG(ERROR) << "error: " << base::safe_strerror(file_errno) << " ["
-               << base::File::ErrorToString(file_error) << "]";
+  if (response_error < 0) {  // base::File::Errors are negative
+    int file_errno = FileErrorToErrno(response_error);
+    auto file_error = static_cast<base::File::Error>(response_error);
+    LOG(ERROR) << base::safe_strerror(file_errno) << " "
+               << base::File::ErrorToString(file_error);
     return file_errno;
+  }
+
+  if (response_error > 0) {  // POSIX errno errors are positive
+    LOG(ERROR) << base::safe_strerror(response_error);
+    return response_error;
   }
 
   return 0;
