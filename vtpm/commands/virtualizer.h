@@ -33,6 +33,8 @@
 #include "vtpm/backends/real_static_analyzer.h"
 #include "vtpm/backends/real_tpm_handle_manager.h"
 #include "vtpm/backends/vek.h"
+#include "vtpm/backends/vek_cert.h"
+#include "vtpm/backends/vek_cert_manager.h"
 #include "vtpm/backends/vsrk.h"
 #include "vtpm/commands/direct_forward_command.h"
 
@@ -72,14 +74,18 @@ class Virtualizer : public Command {
   trunks::TrunksFactoryImpl trunks_factory_;
   Vsrk vsrk_{&trunks_factory_};
   std::unique_ptr<Vek> vek_;
+  std::unique_ptr<VekCert> vek_cert_;
   DirectForwardCommand direct_forwarder_{&trunks_factory_};
 
   // Functional object candidates dynamically determined by profile.
   std::unique_ptr<DiskCacheBlob> vsrk_cache_;
   std::unique_ptr<DiskCacheBlob> vek_cache_;
+  std::unique_ptr<DiskCacheBlob> vek_cert_cache_;
   std::unique_ptr<CacheableBlob> cacheable_vsrk_;
   std::unique_ptr<CacheableBlob> cacheable_vek_;
+  std::unique_ptr<CacheableBlob> cacheable_vek_cert_;
   std::unique_ptr<RealTpmHandleManager> real_tpm_handle_manager_;
+  std::unique_ptr<VekCertManager> vek_cert_manager_;
 
   std::vector<std::unique_ptr<Command>> commands_;
 

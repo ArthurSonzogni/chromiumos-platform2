@@ -18,6 +18,7 @@
 
 #include "vtpm/commands/forward_command.h"
 #include "vtpm/commands/get_capability_command.h"
+#include "vtpm/commands/nv_read_command.h"
 #include "vtpm/commands/unsupported_command.h"
 
 namespace vtpm {
@@ -33,6 +34,8 @@ constexpr trunks::TPM_HANDLE kEkHandle = trunks::PERSISTENT_FIRST + 3;
 // the bug is resolved.
 constexpr char kVsrkCachePath[] = "/var/lib/vtpm/vsrk.blob";
 constexpr char kVekCachePath[] = "/var/lib/vtpm/vek.blob";
+constexpr char kVekCertCachePath[] = "/var/lib/vtpm/vek_cert.blob";
+constexpr trunks::TPM_NV_INDEX kVekCertIndex = 0x01C00001;
 
 }  // namespace
 
@@ -69,11 +72,22 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
     v->cacheable_vek_ =
         std::make_unique<CacheableBlob>(v->vek_.get(), v->vek_cache_.get());
 
+    // Set up VEK cert.
+    v->vek_cert_cache_ =
+        std::make_unique<DiskCacheBlob>(base::FilePath(kVekCertCachePath));
+    v->vek_cert_ =
+        std::make_unique<VekCert>(v->attested_virtual_endorsement_.get());
+    v->cacheable_vek_cert_ = std::make_unique<CacheableBlob>(
+        v->vek_cert_.get(), v->vek_cert_cache_.get());
+
     v->real_tpm_handle_manager_ = std::make_unique<RealTpmHandleManager>(
         &v->trunks_factory_, std::map<trunks::TPM_HANDLE, Blob*>{
                                  {kSrkHandle, v->cacheable_vsrk_.get()},
                                  {kEkHandle, v->cacheable_vek_.get()},
                              });
+
+    v->vek_cert_manager_ = std::make_unique<VekCertManager>(
+        kVekCertIndex, v->cacheable_vek_cert_.get());
 
     // add `GetCapabilityCommand`.
     v->commands_.emplace_back(std::make_unique<GetCapabilityCommand>(
@@ -81,6 +95,16 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
         v->real_tpm_handle_manager_.get()));
 
     v->command_table_.emplace(trunks::TPM_CC_GetCapability,
+                              v->commands_.back().get());
+
+    // Add `NvReadCommand`.
+    // Since the only nv sapce is vEK certificate, and no known potential use of
+    // any other nv space, use `vek_cert_manager_` directly.
+    v->commands_.emplace_back(std::make_unique<NvReadCommand>(
+        &v->real_command_parser_, &v->real_response_serializer_,
+        v->vek_cert_manager_.get()));
+
+    v->command_table_.emplace(trunks::TPM_CC_NV_Read,
                               v->commands_.back().get());
 
     // Add forwarded command w/ handle translateion.
