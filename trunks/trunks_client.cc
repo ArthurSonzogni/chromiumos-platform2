@@ -126,6 +126,12 @@ void PrintUsage() {
   puts("               [--or=<val1>,<val2>,<val3>]");
   puts("      - Delete test nvmem space with UDS digest and");
   puts("        optional PolicyOR using current PCR0 value.");
+  puts("  --ecc_ek_handle --password=<endorsement passwword");
+  puts("      - Get the ECC EK handle.");
+  puts("  --test_credential_command --password=<hex endorsement password>");
+  puts("                             -handle=<endorsement key handle>");
+  puts("      - Perform a closed-loop testing: Create AIK-> Make credential");
+  puts("        -> Activate credential with EK.");
   puts("D-Bus options:");
   puts("  --vtpm");
   puts("      - Send the TPM command to vtpm instead of trunks.");
@@ -753,6 +759,128 @@ std::unique_ptr<trunks::PolicySession> GetUDSSession(
   return session;
 }
 
+int PrintEccEndorsementKeyHandle(const trunks::TrunksFactory& factory,
+                                 const std::string& endorsement_password) {
+  std::unique_ptr<AuthorizationDelegate> endorsement_password_authorization =
+      factory.GetPasswordAuthorization(endorsement_password);
+  // Won't be used because we don't persist ECC EK.
+  std::unique_ptr<AuthorizationDelegate> owner_password_authorization =
+      factory.GetPasswordAuthorization("");
+  trunks::TPM_HANDLE endorsement_key_handle = 0;
+  trunks::TPM_RC rc = factory.GetTpmUtility()->GetEndorsementKey(
+      trunks::TPM_ALG_ECC, endorsement_password_authorization.get(),
+      owner_password_authorization.get(), &endorsement_key_handle);
+  if (rc) {
+    LOG(ERROR) << "Error getting ECC EK handle: " << trunks::GetErrorString(rc);
+    return -1;
+  }
+  printf("Loaded key handle: %#x\n", endorsement_key_handle);
+  return 0;
+}
+
+bool TestCredentialCommand(const trunks::TrunksFactory& factory,
+                           const std::string& endorsement_password,
+                           trunks::TPM_HANDLE endorsement_key_handle) {
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      factory.GetPasswordAuthorization("");
+  std::string aik_blob;
+  trunks::TPM_RC rc = factory.GetTpmUtility()->CreateIdentityKey(
+      trunks::TPM_ALG_ECC, empty_password_authorization.get(), &aik_blob);
+  if (rc) {
+    LOG(ERROR) << "Failed to call `TpmUtility::CreateIdentityKey()`: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+  // load aik.
+  trunks::TPM_HANDLE aik_handle = 0;
+  rc = factory.GetTpmUtility()->LoadKey(
+      aik_blob, empty_password_authorization.get(), &aik_handle);
+  if (rc) {
+    LOG(ERROR) << "Failed to call `TpmUtility::LoadKey()`: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  // Make sure the object is flushed.
+  trunks::ScopedKeyHandle scoped_aik(factory, aik_handle);
+  scoped_aik.set_synchronized(true);
+
+  const std::string fake_credential = "fake credential";
+  std::string endorsement_key_name;
+  rc = factory.GetTpmUtility()->GetKeyName(endorsement_key_handle,
+                                           &endorsement_key_name);
+  if (rc) {
+    LOG(ERROR) << "Failed to call `TpmUtility::GetKeyName()` for ek: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+  std::string aik_name;
+  rc = factory.GetTpmUtility()->GetKeyName(aik_handle, &aik_name);
+  if (rc) {
+    LOG(ERROR) << "Failed to call `TpmUtility::GetKeyName()` for aik: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+  trunks::TPM2B_ID_OBJECT credential_blob = {};
+  trunks::TPM2B_ENCRYPTED_SECRET secret = {};
+  rc = factory.GetTpm()->MakeCredentialSync(
+      endorsement_key_handle, endorsement_key_name,
+      trunks::Make_TPM2B_DIGEST(fake_credential),
+      trunks::Make_TPM2B_NAME(aik_name), &credential_blob, &secret, nullptr);
+  if (rc) {
+    LOG(ERROR) << "Failed to call `Tpm::MakeCredentialSync()`: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  // Prepare the auth session.
+  std::unique_ptr<AuthorizationDelegate> endorsement_password_authorization =
+      factory.GetPasswordAuthorization(endorsement_password);
+
+  std::unique_ptr<trunks::PolicySession> session = factory.GetPolicySession();
+  rc = session->StartUnboundSession(false /* salted */,
+                                    false /* enable_encryption */);
+  if (rc) {
+    LOG(ERROR) << "Failed to start policy session: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  trunks::TPMI_DH_ENTITY auth_entity = trunks::TPM_RH_ENDORSEMENT;
+  std::string auth_entity_name;
+  trunks::Serialize_TPM_HANDLE(auth_entity, &auth_entity_name);
+
+  rc = session->PolicySecret(auth_entity, auth_entity_name, std::string(),
+                             std::string(), std::string(), 0,
+                             endorsement_password_authorization.get());
+  if (rc) {
+    LOG(ERROR) << __func__
+               << ": Failed to set the secret: " << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  // Activate the credential.
+  MultipleAuthorizations authorization;
+  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+  authorization.AddAuthorizationDelegate(session->GetDelegate());
+
+  trunks::TPM2B_DIGEST blob_out;
+  LOG(WARNING) << secret.size;
+
+  rc = factory.GetTpm()->ActivateCredentialSync(
+      aik_handle, aik_name, endorsement_key_handle, endorsement_key_name,
+      credential_blob, secret, &blob_out, &authorization);
+  if (rc) {
+    LOG(ERROR) << "Failed to call `Tpm::ActivateCredentialSync()`: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+  std::string activated_credential = trunks::StringFrom_TPM2B_DIGEST(blob_out);
+  printf("fake credential in:  %s\n", fake_credential.c_str());
+  printf("fake credential out: %s\n", activated_credential.c_str());
+  return fake_credential == activated_credential;
+}
+
 std::vector<std::string> BreakByDelim(const std::string& value,
                                       const std::string& delim) {
   std::vector<std::string> result;
@@ -1293,6 +1421,35 @@ int main(int argc, char** argv) {
       return -1;
     }
     return 0;
+  }
+  if (cl->HasSwitch("ecc_ek_handle") && cl->HasSwitch("password")) {
+    const std::string hex_password = cl->GetSwitchValueASCII("password");
+    std::string endorsement_password;
+    if (!hex_password.empty() &&
+        !base::HexStringToString(hex_password, &endorsement_password)) {
+      puts("Error hex-decoding endorsement password.");
+      return -1;
+    }
+    return PrintEccEndorsementKeyHandle(factory, endorsement_password);
+  }
+  if (cl->HasSwitch("test_credential_command") && cl->HasSwitch("password") &&
+      cl->HasSwitch("handle")) {
+    uint32_t endorsement_key_handle =
+        std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
+    const std::string hex_password = cl->GetSwitchValueASCII("password");
+    std::string endorsement_password;
+    if (!hex_password.empty() &&
+        !base::HexStringToString(hex_password, &endorsement_password)) {
+      puts("Error hex-decoding endorsement password.");
+      return -1;
+    }
+    if (TestCredentialCommand(factory, endorsement_password,
+                              endorsement_key_handle)) {
+      puts("pass");
+      return 0;
+    }
+    puts("fail");
+    return -1;
   }
 
   puts("Invalid options!");
