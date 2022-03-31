@@ -21,9 +21,11 @@ group("all") {
 pkg_config("target_defaults") {
   pkg_deps = [
     # This is a list of pkg-config dependencies
+    "libattestation-client",
     "libbrillo",
     "libchrome",
     "protobuf",
+    "system_api",
   ]
 }
 
@@ -47,6 +49,7 @@ generate_dbus_adaptors("vtpm-adaptors") {
 
 source_set("vtpm_server_library") {
   sources = [
+    "backends/attested_virtual_endorsement.cc",
     "backends/cacheable_blob.cc",
     "backends/disk_cache_blob.cc",
     "backends/real_static_analyzer.cc",
@@ -116,6 +119,7 @@ if (use.test) {
   }
   executable("vtpm_test") {
     sources = [
+      "backends/attested_virtual_endorsement_test.cc",
       "backends/cacheable_blob_test.cc",
       "backends/disk_cache_blob_test.cc",
       "backends/real_tpm_handle_manager_test.cc",
@@ -128,6 +132,7 @@ if (use.test) {
       "commands/virtualizer_test.cc",
       "vtpm_service_test.cc",
     ]
+    pkg_deps = [ "libattestation-client-test" ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
