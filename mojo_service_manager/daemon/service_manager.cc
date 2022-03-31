@@ -15,7 +15,7 @@ ServiceManager::ServiceManager(Configuration configuration,
     : configuration_(std::move(configuration)) {
   for (auto& item : policy_map) {
     auto& [service_name, policy] = item;
-    service_map_[service_name] = ServiceState{.policy = std::move(policy)};
+    service_map_[service_name].policy = std::move(policy);
   }
 }
 

@@ -23,9 +23,11 @@ pkg_config("target_default") {
 source_set("libmojo_service_manager_daemon") {
   sources = [
     "daemon.cc",
+    "mojo_error_util.cc",
     "service_manager.cc",
     "service_policy.cc",
     "service_policy_loader.cc",
+    "service_request_queue.cc",
   ]
   configs += [ ":target_default" ]
   deps = [ "//mojo_service_manager/lib/mojom" ]
@@ -67,6 +69,7 @@ if (use.test) {
       "service_policy_loader_test.cc",
       "service_policy_test.cc",
       "service_policy_test_util.cc",
+      "service_request_queue_test.cc",
     ]
     configs += [
       ":target_test",

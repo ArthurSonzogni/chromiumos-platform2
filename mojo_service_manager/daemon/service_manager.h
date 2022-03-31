@@ -12,6 +12,7 @@
 
 #include "mojo_service_manager/daemon/configuration.h"
 #include "mojo_service_manager/daemon/service_policy.h"
+#include "mojo_service_manager/daemon/service_request_queue.h"
 #include "mojo_service_manager/lib/mojom/service_manager.mojom.h"
 
 namespace chromeos {
@@ -37,6 +38,9 @@ class ServiceManager : public mojom::ServiceManager {
     ServicePolicy policy;
     // The identity of the current owner process.
     mojom::ProcessIdentityPtr owner;
+    // The queue to keep the service request before the service is available.
+    // Note that this is not moveable.
+    ServiceRequestQueue request_queue;
   };
 
   // mojom::ServiceManager overrides.
