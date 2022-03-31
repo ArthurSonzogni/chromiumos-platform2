@@ -31,6 +31,7 @@ using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::StrEq;
+using ::testing::WithArg;
 using ::testing::WithArgs;
 
 namespace reporting {
@@ -144,10 +145,7 @@ TEST_F(UploadClientTest, SuccessfulCall) {
   EXPECT_CALL(*mock_chrome_proxy_, DoCallMethod(_, _, _))
       .WillOnce(WithArgs<0, 2>(Invoke([&encrypted_record, &dbus_response](
                                           dbus::MethodCall* call,
-                                          base::OnceCallback<void(
-                                              // clang-format off
-                                              dbus::Response* response)>*
-                                              // clang-format on
+                                          dbus::ObjectProxy::ResponseCallback*
                                               response_cb) {
         ASSERT_NE(call, nullptr);
         ASSERT_THAT(call->GetInterface(),
@@ -226,6 +224,53 @@ TEST_F(UploadClientTest, CallUnavailable) {
   upload_client_->SendEncryptedRecords(std::move(records),
                                        /*need_encryption_keys=*/false,
                                        std::move(response_callback));
+  waiter.Wait();
+}
+
+TEST_F(UploadClientTest, CallBecameUnavailable) {
+  test::TestCallbackWaiter waiter;
+  waiter.Attach();
+  auto response_callback = base::BindOnce(
+      [](test::TestCallbackWaiter* waiter,
+         StatusOr<UploadEncryptedRecordResponse> response) {
+        ASSERT_FALSE(response.ok());
+        ASSERT_THAT(response.status().code(), Eq(error::UNAVAILABLE))
+            << response.status().ToString();
+        waiter->Signal();
+      },
+      &waiter);
+
+  constexpr char kTestData[] = "TEST_DATA";
+  EncryptedRecord encrypted_record;
+  encrypted_record.set_encrypted_wrapped_record(kTestData);
+
+  const int64_t kSequenceId = 42;
+  const int64_t kGenerationId = 1701;
+  const Priority kPriority = Priority::SLOW_BATCH;
+  SequenceInformation* sequence_information =
+      encrypted_record.mutable_sequence_information();
+  sequence_information->set_sequencing_id(kSequenceId);
+  sequence_information->set_generation_id(kGenerationId);
+  sequence_information->set_priority(kPriority);
+
+  dbus::ObjectProxy::ResponseCallback delayed_response_cb;
+  EXPECT_CALL(*mock_chrome_proxy_, DoCallMethod(_, _, _))
+      .WillOnce(WithArg<2>(
+          Invoke([&delayed_response_cb](
+                     dbus::ObjectProxy::ResponseCallback* response_cb) {
+            // Simulate dBus loss: do nothing, do not respond.
+            delayed_response_cb = std::move(*response_cb);
+          })));
+
+  std::unique_ptr<std::vector<EncryptedRecord>> records =
+      std::make_unique<std::vector<EncryptedRecord>>();
+  records->push_back(encrypted_record);
+  upload_client_->SendEncryptedRecords(std::move(records),
+                                       /*need_encryption_keys=*/false,
+                                       std::move(response_callback));
+
+  upload_client_->SetAvailabilityForTest(/*is_available=*/false);
+
   waiter.Wait();
 }
 }  // namespace

@@ -13,6 +13,7 @@
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
@@ -75,6 +76,8 @@ class UploadClient : public base::RefCountedThreadSafe<UploadClient> {
 
   scoped_refptr<dbus::Bus> const bus_;
   dbus::ObjectProxy* const chrome_proxy_;
+
+  SEQUENCE_CHECKER(sequence_checker_);
 
   std::unique_ptr<DisconnectableClient, base::OnTaskRunnerDeleter> client_;
 

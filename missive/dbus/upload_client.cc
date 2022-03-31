@@ -11,8 +11,8 @@
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include "base/run_loop.h"
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_piece.h>
+#include <base/sequence_checker.h>
+#include <base/task/bind_post_task.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/message.h>
@@ -32,6 +32,8 @@ UploadClient::UploadClient(scoped_refptr<dbus::Bus> bus,
     : bus_(bus),
       chrome_proxy_(chrome_proxy),
       client_(nullptr, base::OnTaskRunnerDeleter(bus_->GetOriginTaskRunner())) {
+  // Client is created outside of bus OriginThread.
+  DETACH_FROM_SEQUENCE(sequence_checker_);
   chrome_proxy_->SetNameOwnerChangedCallback(base::BindRepeating(
       &UploadClient::OwnerChanged, weak_ptr_factory_.GetWeakPtr()));
   chrome_proxy_->WaitForServiceToBeAvailable(base::BindOnce(
@@ -87,6 +89,7 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
 
   // Implementation of DisconnectableClient::Delegate
   void DoCall(base::OnceClosure cb) final {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     bus_->AssertOnOriginThread();
     base::ScopedClosureRunner autorun(std::move(cb));
     dbus::MethodCall method_call(
@@ -104,26 +107,16 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
     // Make a dBus call.
     chrome_proxy_->CallMethod(
         &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-        base::BindOnce(
-            [](base::ScopedClosureRunner autorun,
-               base::WeakPtr<UploadEncryptedRecordDelegate> self,
-               dbus::Response* response) {
-              if (!self) {
-                return;  // Delegate already deleted.
-              }
-              self->bus_->AssertOnOriginThread();
-              if (!response) {
-                self->Respond(
-                    Status(error::UNAVAILABLE, "Returned no response"));
-                return;
-              }
-              self->response_ = response;
-            },
-            std::move(autorun), weak_ptr_factory_.GetWeakPtr()));
+        base::BindPostTask(
+            bus_->GetOriginTaskRunner(),
+            base::BindOnce(&UploadEncryptedRecordDelegate::DoResponse,
+                           weak_ptr_factory_.GetWeakPtr(),
+                           std::move(autorun))));
   }
 
   // Process dBus response, if status is OK, or error otherwise.
   void Respond(Status status) final {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     bus_->AssertOnOriginThread();
     if (!response_callback_) {
       return;
@@ -153,12 +146,24 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
   }
 
  private:
-  dbus::Response* response_;
+  void DoResponse(base::ScopedClosureRunner autorun, dbus::Response* response) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    bus_->AssertOnOriginThread();
+    if (!response) {
+      Respond(Status(error::UNAVAILABLE, "Returned no response"));
+      return;
+    }
+    response_ = response;
+  }
+
+  dbus::Response* response_{nullptr};
   scoped_refptr<dbus::Bus> const bus_;
   dbus::ObjectProxy* const chrome_proxy_;
 
   UploadEncryptedRecordRequest request_;
   UploadClient::HandleUploadResponseCallback response_callback_;
+
+  SEQUENCE_CHECKER(sequence_checker_);
 
   // Weak pointer factory - must be last member of the class.
   base::WeakPtrFactory<UploadEncryptedRecordDelegate> weak_ptr_factory_{this};
@@ -168,6 +173,7 @@ void UploadClient::MaybeMakeCall(
     std::unique_ptr<std::vector<EncryptedRecord>> records,
     const bool need_encryption_keys,
     HandleUploadResponseCallback response_callback) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bus_->AssertOnOriginThread();
   auto delegate = std::make_unique<UploadEncryptedRecordDelegate>(
       std::move(records), need_encryption_keys, bus_, chrome_proxy_,
@@ -176,6 +182,7 @@ void UploadClient::MaybeMakeCall(
 }
 
 DisconnectableClient* UploadClient::GetDisconnectableClient() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bus_->AssertOnOriginThread();
   if (!client_) {
     client_ = std::unique_ptr<DisconnectableClient, base::OnTaskRunnerDeleter>(
@@ -198,12 +205,14 @@ void UploadClient::SendEncryptedRecords(
 
 void UploadClient::OwnerChanged(const std::string& old_owner,
                                 const std::string& new_owner) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bus_->AssertOnOriginThread();
   GetDisconnectableClient()->SetAvailability(
       /*is_available=*/!new_owner.empty());
 }
 
 void UploadClient::ServerAvailable(bool service_is_available) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   bus_->AssertOnOriginThread();
   GetDisconnectableClient()->SetAvailability(
       /*is_available=*/service_is_available);
