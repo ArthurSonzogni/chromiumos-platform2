@@ -287,6 +287,10 @@ class MockTpmUtility : public TpmUtility {
   MOCK_METHOD1(GetRsuDeviceId, TPM_RC(std::string*));
   MOCK_METHOD1(GetRoVerificationStatus, TPM_RC(ApRoStatus*));
   MOCK_METHOD(bool, IsCr50, (), (override));
+  MOCK_METHOD(std::string,
+              SendCommandAndWait,
+              (const std::string& command),
+              (override));
 };
 
 }  // namespace trunks

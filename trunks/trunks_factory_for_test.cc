@@ -616,6 +616,10 @@ class TpmUtilityForwarder : public TpmUtility {
 
   bool IsCr50() override { return target_->IsCr50(); }
 
+  std::string SendCommandAndWait(const std::string& command) override {
+    return target_->SendCommandAndWait(command);
+  }
+
  private:
   TpmUtility* target_;
 };

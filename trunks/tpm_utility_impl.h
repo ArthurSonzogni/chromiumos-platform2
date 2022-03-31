@@ -293,6 +293,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   bool IsCr50() override;
 
+  std::string SendCommandAndWait(const std::string& command) override;
+
  private:
   friend class TpmUtilityTest;
   friend class NVTpmUtilityTest;
@@ -445,10 +447,6 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
 
   // Returns true for TPMs running on simulator.
   bool IsSimulator();
-
-  // Send an arbitrary command to the TPM and wait for the response.
-  // Returns the response packet.
-  std::string SendCommandAndWait(const std::string& command);
 
   // Sends vendor command in cr50 format, built from subcommand and already
   // serialized |command_payload|.

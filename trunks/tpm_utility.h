@@ -789,6 +789,10 @@ class TRUNKS_EXPORT TpmUtility {
 
   // Returns true for TPMs running Cr50.
   virtual bool IsCr50() = 0;
+
+  // Send an arbitrary command to the TPM and wait for the response.
+  // Returns the response packet.
+  virtual std::string SendCommandAndWait(const std::string& command) = 0;
 };
 
 }  // namespace trunks
