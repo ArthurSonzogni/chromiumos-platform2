@@ -70,6 +70,9 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
     v->command_table_.emplace(trunks::TPM_CC_ReadPublic,
                               v->commands_.back().get());
     v->command_table_.emplace(trunks::TPM_CC_Create, v->commands_.back().get());
+    v->command_table_.emplace(trunks::TPM_CC_Load, v->commands_.back().get());
+    v->command_table_.emplace(trunks::TPM_CC_FlushContext,
+                              v->commands_.back().get());
 
     // Use an `UnsupportedCommand` as fallback.
     v->commands_.emplace_back(

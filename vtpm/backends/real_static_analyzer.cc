@@ -13,6 +13,10 @@
 namespace vtpm {
 
 int RealStaticAnalyzer::GetCommandHandleCount(trunks::TPM_CC cc) {
+  // The handle to be flushed is a parameter instead of a handle field.
+  if (cc == trunks::TPM_CC_FlushContext) {
+    return 1;
+  }
   return trunks::GetNumberOfRequestHandles(cc);
 }
 
