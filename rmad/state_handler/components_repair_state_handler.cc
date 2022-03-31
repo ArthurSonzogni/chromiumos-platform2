@@ -21,8 +21,10 @@
 #include "rmad/system/fake_runtime_probe_client.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/fake_cr50_utils.h"
+#include "rmad/utils/fake_crossystem_utils.h"
 
 // Used as an unique identifier for supported components.
 using ComponentKey = std::pair<rmad::RmadComponent, std::string>;
@@ -132,7 +134,8 @@ FakeComponentsRepairStateHandler::FakeComponentsRepairStateHandler(
           json_store,
           std::make_unique<FakeCryptohomeClient>(working_dir_path),
           std::make_unique<FakeRuntimeProbeClient>(),
-          std::make_unique<FakeCr50Utils>(working_dir_path)) {}
+          std::make_unique<FakeCr50Utils>(working_dir_path),
+          std::make_unique<FakeCrosSystemUtils>(working_dir_path)) {}
 
 }  // namespace fake
 
@@ -143,18 +146,21 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
   runtime_probe_client_ =
       std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
 }
 
 ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store,
     std::unique_ptr<CryptohomeClient> cryptohome_client,
     std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
-    std::unique_ptr<Cr50Utils> cr50_utils)
+    std::unique_ptr<Cr50Utils> cr50_utils,
+    std::unique_ptr<CrosSystemUtils> crossystem_utils)
     : BaseStateHandler(json_store),
       active_(false),
       cryptohome_client_(std::move(cryptohome_client)),
       runtime_probe_client_(std::move(runtime_probe_client)),
-      cr50_utils_(std::move(cr50_utils)) {}
+      cr50_utils_(std::move(cr50_utils)),
+      crossystem_utils_(std::move(crossystem_utils)) {}
 
 RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
   // Probing takes a lot of time. Early return to avoid probing again if we are
@@ -265,6 +271,13 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
             static_cast<int>(WriteProtectDisableMethod::SKIPPED));
         return NextStateCaseWrapper(RmadState::StateCase::kWpDisableComplete);
       }
+      // If HWWP is already disabled, assume the user will select the physical
+      // method and go directly to WpDisablePhysical state.
+      if (int hwwp_status;
+          crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status == 0) {
+        return NextStateCaseWrapper(RmadState::StateCase::kWpDisablePhysical);
+      }
+      // Otherwise, let the user choose between physical method or RSU.
       return NextStateCaseWrapper(RmadState::StateCase::kWpDisableMethod);
     }
   }

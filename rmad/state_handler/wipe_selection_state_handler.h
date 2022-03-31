@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 
 #include "rmad/utils/cr50_utils.h"
+#include "rmad/utils/crossystem_utils.h"
 
 namespace rmad {
 
@@ -20,7 +21,8 @@ class WipeSelectionStateHandler : public BaseStateHandler {
   explicit WipeSelectionStateHandler(scoped_refptr<JsonStore> json_store);
   // Used to inject mock |cr50_utils_| for testing.
   WipeSelectionStateHandler(scoped_refptr<JsonStore> json_store,
-                            std::unique_ptr<Cr50Utils> cr50_utils);
+                            std::unique_ptr<Cr50Utils> cr50_utils,
+                            std::unique_ptr<CrosSystemUtils> crossystem_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWipeSelection);
   SET_REPEATABLE;
@@ -40,6 +42,7 @@ class WipeSelectionStateHandler : public BaseStateHandler {
   bool InitializeVarsFromStateFile();
 
   std::unique_ptr<Cr50Utils> cr50_utils_;
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
 
   bool wp_disable_required_;
   bool ccd_blocked_;

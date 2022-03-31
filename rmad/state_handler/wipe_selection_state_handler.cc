@@ -12,7 +12,9 @@
 
 #include "rmad/constants.h"
 #include "rmad/utils/cr50_utils_impl.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/fake_cr50_utils.h"
+#include "rmad/utils/fake_crossystem_utils.h"
 
 namespace rmad {
 
@@ -21,7 +23,9 @@ namespace fake {
 FakeWipeSelectionStateHandler::FakeWipeSelectionStateHandler(
     scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
     : WipeSelectionStateHandler(
-          json_store, std::make_unique<FakeCr50Utils>(working_dir_path)) {}
+          json_store,
+          std::make_unique<FakeCr50Utils>(working_dir_path),
+          std::make_unique<FakeCrosSystemUtils>(working_dir_path)) {}
 
 }  // namespace fake
 
@@ -29,11 +33,16 @@ WipeSelectionStateHandler::WipeSelectionStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
 }
 
 WipeSelectionStateHandler::WipeSelectionStateHandler(
-    scoped_refptr<JsonStore> json_store, std::unique_ptr<Cr50Utils> cr50_utils)
-    : BaseStateHandler(json_store), cr50_utils_(std::move(cr50_utils)) {}
+    scoped_refptr<JsonStore> json_store,
+    std::unique_ptr<Cr50Utils> cr50_utils,
+    std::unique_ptr<CrosSystemUtils> crossystem_utils)
+    : BaseStateHandler(json_store),
+      cr50_utils_(std::move(cr50_utils)),
+      crossystem_utils_(std::move(crossystem_utils)) {}
 
 RmadErrorCode WipeSelectionStateHandler::InitializeState() {
   if (!state_.has_wipe_selection()) {
@@ -121,7 +130,15 @@ WipeSelectionStateHandler::GetNextStateCase(const RmadState& state) {
     } else {
       if (wipe_device) {
         // Case 3.
-        next_state = RmadState::StateCase::kWpDisableMethod;
+        // If HWWP is already disabled, assume the user will select the physical
+        // method and go directly to WpDisablePhysical state. Otherwise, let the
+        // user choose between physical method or RSU.
+        if (int hwwp_status; crossystem_utils_->GetHwwpStatus(&hwwp_status) &&
+                             hwwp_status == 0) {
+          next_state = RmadState::StateCase::kWpDisablePhysical;
+        } else {
+          next_state = RmadState::StateCase::kWpDisableMethod;
+        }
       } else {
         // Case 4.
         next_state = RmadState::StateCase::kWpDisablePhysical;
