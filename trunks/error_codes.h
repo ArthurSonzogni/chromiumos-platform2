@@ -23,6 +23,11 @@ const TPM_RC kSapiErrorBase = (9 << 12);
 const TPM_RC kResourceManagerTpmErrorBase = (11 << 12);
 const TPM_RC kResourceManagerErrorBase = (12 << 12);
 
+// Note that the trunks error layer is shared with the unified error code in
+// TPMError and related classes, see libhwsec/error/tpm_error.h for more info.
+// From the perspective of trunks, trunks can only use kTrunksErrorBase + 0 up
+// to kTrunksErrorBase + 1023. The other 3072 error code is reserved for use by
+// the TPMError and related classes.
 const TPM_RC TRUNKS_RC_AUTHORIZATION_FAILED = kTrunksErrorBase + 1;
 const TPM_RC TRUNKS_RC_ENCRYPTION_FAILED = kTrunksErrorBase + 2;
 const TPM_RC TRUNKS_RC_READ_ERROR = kTrunksErrorBase + 3;

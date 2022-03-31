@@ -35,9 +35,12 @@ TEST_F(TestingTPMNvramErrorTest, MakeStatus) {
 }
 
 TEST_F(TestingTPMNvramErrorTest, TPMRetryAction) {
-  Status status =
-      MakeStatus<TPMNvramError>(NvramResult::NVRAM_RESULT_IPC_ERROR);
+  constexpr NvramResult kTestNvramResult1 = NvramResult::NVRAM_RESULT_IPC_ERROR;
+  Status status = MakeStatus<TPMNvramError>(kTestNvramResult1);
   EXPECT_EQ(status->ToTPMRetryAction(), TPMRetryAction::kCommunication);
+  EXPECT_EQ(status->UnifiedErrorCode(),
+            static_cast<unified_tpm_error::UnifiedError>(kTestNvramResult1) +
+                unified_tpm_error::kUnifiedErrorNvramBase);
 
   Status status2 = MakeStatus<TPMError>("OuO*").Wrap(std::move(status));
   EXPECT_EQ("OuO*: NVRAM result 100 (NVRAM_RESULT_IPC_ERROR)",

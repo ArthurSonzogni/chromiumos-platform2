@@ -18,6 +18,9 @@ enum TpmManagerStatus {
   // The error that is translated into by the client to indicate any kind of
   // D-Bus error.
   STATUS_DBUS_ERROR = 3;
+
+  // Note: TpmManagerStatus should not exceed 127, or it may cause problem with
+  // libhwsec's unified error code. See libhwsec/error/tpm_error.h.
 }
 
 // Result codes. For convenience, keep these in sync with Brillo NVRAM HAL
@@ -39,6 +42,9 @@ enum NvramResult {
   NVRAM_RESULT_INSUFFICIENT_SPACE = 7;
   // An error occurred sending the request to the system service.
   NVRAM_RESULT_IPC_ERROR = 100;
+
+  // Note: NvramResult should not exceed 127, or it may cause problem with
+  // libhwsec's unified error code. See libhwsec/error/tpm_error.h.
 }
 
 // More background on these attributes can be found by looking up the TPMA_NV_*

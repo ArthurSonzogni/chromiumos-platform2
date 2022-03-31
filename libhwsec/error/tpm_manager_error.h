@@ -39,6 +39,16 @@ class HWSEC_EXPORT TPMManagerError : public TPMErrorBase {
   TPMRetryAction ToTPMRetryAction() const override;
   TpmManagerStatus ErrorCode() const { return error_code_; }
 
+  unified_tpm_error::UnifiedError UnifiedErrorCode() const override {
+    unified_tpm_error::UnifiedError error_code =
+        static_cast<unified_tpm_error::UnifiedError>(error_code_);
+    error_code += unified_tpm_error::kUnifiedErrorTpmManagerBase;
+    DCHECK_LT(error_code, unified_tpm_error::kUnifiedErrorTpmManagerMax);
+    return error_code;
+  }
+
+  void LogUnifiedErrorCodeMapping() const override {}
+
  private:
   TpmManagerStatus error_code_;
 };

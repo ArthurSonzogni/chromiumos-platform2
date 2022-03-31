@@ -54,4 +54,25 @@ TEST_F(TestingTPMErrorTest, TPMRetryHandler) {
   EXPECT_EQ(counter, 5);
 }
 
+TEST_F(TestingTPMErrorTest, UnifiedErrorCode) {
+  StatusChain<TPMErrorBase> status1 = HANDLE_TPM_COMM_ERROR(
+      MakeStatus<TPMError>("QAQ", TPMRetryAction::kReboot));
+  // Test LogUnifiedErrorCodeMapping to make sure it doesn't cause trouble, and
+  // also makes debugging easier.
+  status1->LogUnifiedErrorCodeMapping();
+  // 0x0132 is the precomputed test vector for "QAQ".
+  EXPECT_EQ(status1->UnifiedErrorCode(),
+            unified_tpm_error::kUnifiedErrorBit |
+                (unified_tpm_error::kUnifiedErrorHashedTpmErrorBase + 0x0132));
+
+  // 0x01A9 is the precomputed test vector for "QwQ".
+  StatusChain<TPMErrorBase> status2 =
+      MakeStatus<TPMError>("QwQ", TPMRetryAction::kLater)
+          .Wrap(std::move(status1));
+  status2->LogUnifiedErrorCodeMapping();
+  EXPECT_EQ(status2->UnifiedErrorCode(),
+            unified_tpm_error::kUnifiedErrorBit |
+                (unified_tpm_error::kUnifiedErrorHashedTpmErrorBase + 0x01A9));
+}
+
 }  // namespace hwsec

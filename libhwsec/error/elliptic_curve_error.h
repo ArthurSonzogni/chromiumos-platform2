@@ -28,6 +28,15 @@ class HWSEC_EXPORT EllipticCurveError : public TPMErrorBase {
   ~EllipticCurveError() override = default;
   hwsec::TPMRetryAction ToTPMRetryAction() const override;
   EllipticCurveErrorCode ErrorCode() const { return error_code_; }
+  hwsec::unified_tpm_error::UnifiedError UnifiedErrorCode() const override {
+    hwsec::unified_tpm_error::UnifiedError result =
+        hwsec::unified_tpm_error::kUnifiedErrorECBase +
+        static_cast<hwsec::unified_tpm_error::UnifiedError>(error_code_);
+    DCHECK_LT(result, hwsec::unified_tpm_error::kUnifiedErrorECMax);
+    return result | hwsec::unified_tpm_error::kUnifiedErrorBit;
+  }
+
+  void LogUnifiedErrorCodeMapping() const override {}
 
  private:
   const EllipticCurveErrorCode error_code_;

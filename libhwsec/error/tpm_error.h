@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 
+#include <base/optional.h>
 #include <libhwsec-foundation/error/error.h>
 
 #include "libhwsec/error/tpm_retry_action.h"
@@ -59,6 +60,67 @@
 
 namespace hwsec {
 
+namespace unified_tpm_error {
+
+typedef int64_t UnifiedError;
+
+// Note on the unified error code:
+// The unified error code unifies error code from various TPM versions,
+// furthermore, it also unifies error code from the generic TPMError (that
+// contains a string) and the TPM-related errors on Cryptohome side. For all
+// valid values of unified error code, it is expected that it'll map one to
+// one to one of those errors above.
+
+// For the encoding of the unified error code, TPM 1.2 and TPM 2.0 error code
+// already coexist in the same error space, so they will remain intact, except
+// the extra kUnifiedErrorBit.
+// For the other error codes, such as those from elliptic curve, tpm_manager,
+// or the generic variant of TPMError, they'll be mapped into the later 3072
+// error codes of the trunks layer.
+
+// A layer in TPM error encoding is a 4096 error code allocation with the same
+// 12-15 bit. There's already 1 layer allocated to trunks (0x7000), but trunks
+// doesn't need the entire 4096 error code encoding space, and thus the later
+// 3072 of them is allocated to TPMError and related.
+// The allocation is as below: (base is kTrunksErrorBase)
+// base+0x000 to base+0x3FF       Allocated to trunks.
+// base+0x800 to base+0x87F       Allocated to tpm_manager error.
+// base+0x880 to base+0x8FF       Allocated to tpm_manager/nvram error.
+// base+0x900 to base+0x97F       Allocated to elliptic curve and related.
+// base+0xC00 to base+0xFFF       Allocated to hashed TPMError.
+
+// When reporting the unified error code, bit 16 (0x10000) is set to indicate
+// that it's a unified error code.
+
+inline constexpr UnifiedError kUnifiedErrorMask = 0x0FFFFLL;
+inline constexpr UnifiedError kUnifiedErrorBit = 0x10000LL;
+
+// Note: This is enforced by static_assert in tpm2_error_test.cc
+inline constexpr UnifiedError kHwsecTpmErrorBase = (7 << 12);
+
+// Note: All the *Max entries below are inclusive.
+
+inline constexpr UnifiedError kUnifiedErrorTpmManagerBase =
+    kHwsecTpmErrorBase + 0x800;
+inline constexpr UnifiedError kUnifiedErrorTpmManagerMax =
+    kHwsecTpmErrorBase + 0x87F;
+
+inline constexpr UnifiedError kUnifiedErrorNvramBase =
+    kHwsecTpmErrorBase + 0x880;
+inline constexpr UnifiedError kUnifiedErrorNvramMax =
+    kHwsecTpmErrorBase + 0x8FF;
+
+inline constexpr UnifiedError kUnifiedErrorECBase = kHwsecTpmErrorBase + 0x900;
+inline constexpr UnifiedError kUnifiedErrorECMax = kHwsecTpmErrorBase + 0x97F;
+
+inline constexpr UnifiedError kUnifiedErrorHashedTpmErrorBase =
+    kHwsecTpmErrorBase + 0xC00;
+inline constexpr UnifiedError kUnifiedErrorHashedTpmErrorMax =
+    kHwsecTpmErrorBase + 0xFFF;
+inline constexpr UnifiedError kUnifiedErrorHashedTpmErrorMask = 0x3FF;
+
+}  // namespace unified_tpm_error
+
 // A base class for TPM errors.
 class HWSEC_EXPORT TPMErrorBase : public hwsec_foundation::status::Error {
  public:
@@ -71,6 +133,14 @@ class HWSEC_EXPORT TPMErrorBase : public hwsec_foundation::status::Error {
 
   // Returns what the action should do after this error happen.
   virtual TPMRetryAction ToTPMRetryAction() const = 0;
+
+  // Returns a unified error code.
+  virtual unified_tpm_error::UnifiedError UnifiedErrorCode() const = 0;
+
+  // If there's any hashing that is used to derive the unified error code, then
+  // this method print out the original content before hashing so that we can
+  // discover what the hashed unified error code was when we're debugging.
+  virtual void LogUnifiedErrorCodeMapping() const = 0;
 };
 
 // A TPM error which contains error message and retry action. Doesn't contain
@@ -118,8 +188,16 @@ class HWSEC_EXPORT TPMError : public TPMErrorBase {
   ~TPMError() override = default;
 
   TPMRetryAction ToTPMRetryAction() const override { return retry_action_; }
+  unified_tpm_error::UnifiedError UnifiedErrorCode() const override {
+    return CalculateUnifiedErrorCode(ToString());
+  }
+
+  void LogUnifiedErrorCodeMapping() const override;
 
  private:
+  static unified_tpm_error::UnifiedError CalculateUnifiedErrorCode(
+      const std::string& msg);
+
   const TPMRetryAction retry_action_;
 };
 

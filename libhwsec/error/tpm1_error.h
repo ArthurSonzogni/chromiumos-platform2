@@ -35,6 +35,15 @@ class HWSEC_EXPORT TPM1Error : public TPMErrorBase {
   ~TPM1Error() override = default;
   TPMRetryAction ToTPMRetryAction() const override;
   TSS_RESULT ErrorCode() const { return error_code_; }
+  unified_tpm_error::UnifiedError UnifiedErrorCode() const override {
+    // TPM 1.2 error code is 16 bits, with bit 12-15 being the layer bit.
+    unified_tpm_error::UnifiedError error_code =
+        static_cast<unified_tpm_error::UnifiedError>(error_code_);
+    DCHECK_EQ(error_code & (~unified_tpm_error::kUnifiedErrorMask), 0);
+    return error_code | unified_tpm_error::kUnifiedErrorBit;
+  }
+
+  void LogUnifiedErrorCodeMapping() const override {}
 
  private:
   const TSS_RESULT error_code_;

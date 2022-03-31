@@ -17,6 +17,9 @@ using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::StatusChain;
 
+static_assert(unified_tpm_error::kHwsecTpmErrorBase == trunks::kTrunksErrorBase,
+              "kHwsecTpmErrorBase and kTrunksErrorBase mismatch.");
+
 class TestingTPM2ErrorTest : public ::testing::Test {
  public:
   TestingTPM2ErrorTest() {}
@@ -41,6 +44,22 @@ TEST_F(TestingTPM2ErrorTest, TPMRetryAction) {
   EXPECT_EQ("OuO|||: TPM2 error 0x18b (Handle 1: TPM_RC_HANDLE)",
             status2.ToFullString());
   EXPECT_EQ(status2->ToTPMRetryAction(), TPMRetryAction::kLater);
+}
+
+TEST_F(TestingTPM2ErrorTest, UnifiedErrorUsual) {
+  StatusChain<TPMErrorBase> status =
+      MakeStatus<TPM2Error>(trunks::TPM_RC_HANDLE | trunks::TPM_RC_1);
+  EXPECT_EQ(status->UnifiedErrorCode(),
+            unified_tpm_error::kUnifiedErrorBit |
+                static_cast<int64_t>(trunks::TPM_RC_HANDLE | trunks::TPM_RC_1));
+}
+
+TEST_F(TestingTPM2ErrorTest, UnifiedErrorExtraLayers) {
+  StatusChain<TPMErrorBase> status =
+      MakeStatus<TPM2Error>(trunks::TRUNKS_RC_IPC_ERROR);
+  EXPECT_EQ(status->UnifiedErrorCode(),
+            static_cast<int64_t>(trunks::TRUNKS_RC_IPC_ERROR) |
+                unified_tpm_error::kUnifiedErrorBit);
 }
 
 }  // namespace hwsec

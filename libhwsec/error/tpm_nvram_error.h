@@ -39,6 +39,16 @@ class HWSEC_EXPORT TPMNvramError : public TPMErrorBase {
   TPMRetryAction ToTPMRetryAction() const override;
   NvramResult ErrorCode() const { return error_code_; }
 
+  unified_tpm_error::UnifiedError UnifiedErrorCode() const override {
+    unified_tpm_error::UnifiedError error_code =
+        static_cast<unified_tpm_error::UnifiedError>(error_code_);
+    error_code += unified_tpm_error::kUnifiedErrorNvramBase;
+    DCHECK_LT(error_code, unified_tpm_error::kUnifiedErrorNvramMax);
+    return error_code;
+  }
+
+  void LogUnifiedErrorCodeMapping() const override {}
+
  private:
   const NvramResult error_code_;
 };
