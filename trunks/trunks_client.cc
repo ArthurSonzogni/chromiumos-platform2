@@ -38,6 +38,7 @@
 
 namespace {
 
+using trunks::AuthorizationDelegate;
 using trunks::CommandTransceiver;
 using trunks::CreateTrunksDBusProxyToTrunks;
 using trunks::CreateTrunksDBusProxyToVtpm;
@@ -108,6 +109,7 @@ void PrintUsage() {
   puts("  --sess_* - group of options providing parameters for auth session:");
   puts("      --sess_salted");
   puts("      --sess_encrypted");
+  puts("      --sess_empty_auth (supports --key_create  and --key_load)");
   puts("  --index_name --index=<N> - print the name of NV index N in hex");
   puts("                             format.");
   puts("  --ext_command_test - Runs regression tests on extended commands.");
@@ -748,6 +750,9 @@ int main(int argc, char** argv) {
   TrunksFactoryImpl factory(dbus_proxy.get());
   CHECK(factory.Initialize()) << "Failed to initialize trunks factory.";
 
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      factory.GetPasswordAuthorization("");
+
   bool print_time = cl->HasSwitch("print_time");
   if (cl->HasSwitch("status")) {
     return DumpStatus(factory);
@@ -898,12 +903,18 @@ int main(int argc, char** argv) {
     if (GetKeyUsage(cl->GetSwitchValueASCII("usage"), &key_usage)) {
       return -1;
     }
-    trunks::HmacAuthorizationDelegate delegate;
+    trunks::HmacAuthorizationDelegate hmac_delegate;
+    trunks::AuthorizationDelegate* delegate = nullptr;
     std::unique_ptr<trunks::SessionManager> session_manager =
         factory.GetSessionManager();
-    if (KeyStartSession(session_manager.get(), cl, &delegate)) {
+    if (cl->HasSwitch("sess_empty_auth")) {
+      delegate = empty_password_authorization.get();
+    } else if (KeyStartSession(session_manager.get(), cl, &hmac_delegate)) {
       return -1;
+    } else {
+      delegate = &hmac_delegate;
     }
+
     std::string key_blob;
 
     if (cl->HasSwitch("rsa")) {
@@ -913,7 +924,7 @@ int main(int argc, char** argv) {
                          modulus_bits, 0x10001 /* exponent */,
                          "" /* password */, "" /* policy_digest */,
                          false /* use_only_policy_digest */,
-                         std::vector<uint32_t>() /* pcrs */, &delegate,
+                         std::vector<uint32_t>() /* pcrs */, delegate,
                          &key_blob, nullptr /* creation_blob */)) {
         return -1;
       }
@@ -923,7 +934,7 @@ int main(int argc, char** argv) {
                          trunks::TPM_ECC_NIST_P256 /* curve_id */,
                          "" /* password */, "" /* policy_digest */,
                          false /* use_only_policy_digest */,
-                         std::vector<uint32_t>() /* pcrs */, &delegate,
+                         std::vector<uint32_t>() /* pcrs */, delegate,
                          &key_blob, nullptr /* creation_blob */)) {
         return -1;
       }
@@ -935,15 +946,21 @@ int main(int argc, char** argv) {
     if (InputFromFile(cl->GetSwitchValueASCII("key_blob"), &key_blob)) {
       return -1;
     }
-    trunks::HmacAuthorizationDelegate delegate;
+    trunks::HmacAuthorizationDelegate hmac_delegate;
+    trunks::AuthorizationDelegate* delegate = nullptr;
     std::unique_ptr<trunks::SessionManager> session_manager =
         factory.GetSessionManager();
-    if (KeyStartSession(session_manager.get(), cl, &delegate)) {
+    if (cl->HasSwitch("sess_empty_auth")) {
+      delegate = empty_password_authorization.get();
+    } else if (KeyStartSession(session_manager.get(), cl, &hmac_delegate)) {
       return -1;
+    } else {
+      delegate = &hmac_delegate;
     }
+
     trunks::TPM_HANDLE handle;
     if (CallTpmUtility(print_time, factory, "Load",
-                       &trunks::TpmUtility::LoadKey, key_blob, &delegate,
+                       &trunks::TpmUtility::LoadKey, key_blob, delegate,
                        &handle)) {
       return -1;
     }
