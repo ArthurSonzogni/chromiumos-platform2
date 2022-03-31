@@ -51,6 +51,36 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthMountCreateMultipleKey = 112,
   /* ./userdataauth.cc */
   kLocUserDataAuthMountCreateKeyNotSpecified = 113,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptCantStartProcessing = 114,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptOperationAborted = 115,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptNoSignatureSealingBackend = 116,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptNoPubKeySigSize = 117,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptSPKIPubKeyMismatch = 118,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptSaltProcessingFailed = 119,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptNoSalt = 120,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptNoSPKIPubKeyDERWhileProcessingSalt = 121,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptSaltPrefixIncorrect = 122,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptNoSPKIPubKeyDERWhileProcessingSecret = 123,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptCreateUnsealingSessionFailed = 124,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptSaltResponseNoSignature = 125,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptUnsealingResponseNoSignature = 126,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptUnsealFailed = 127,
+  /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
+  kLocChalCredDecryptNoSaltSigAlgoWhileProcessingSalt = 128,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
