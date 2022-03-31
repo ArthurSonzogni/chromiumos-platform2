@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include "mojo_service_manager/daemon/configuration.h"
 #include "mojo_service_manager/daemon/service_policy.h"
 #include "mojo_service_manager/lib/mojom/service_manager.mojom.h"
 
@@ -18,7 +19,7 @@ namespace mojo_service_manager {
 // Implements mojom::ServiceManager.
 class ServiceManager : public mojom::ServiceManager {
  public:
-  explicit ServiceManager(ServicePolicyMap policy_map);
+  ServiceManager(Configuration configuration, ServicePolicyMap policy_map);
   ServiceManager(const ServiceManager&) = delete;
   ServiceManager& operator=(const ServiceManager&) = delete;
   ~ServiceManager() override;
@@ -41,6 +42,8 @@ class ServiceManager : public mojom::ServiceManager {
   void AddServiceObserver(
       mojo::PendingRemote<mojom::ServiceObserver> observer) override;
 
+  // The service manager configuration.
+  const Configuration configuration_;
   // Maps each service name to a ServiceState.
   std::map<std::string, ServiceState> service_map_;
 };

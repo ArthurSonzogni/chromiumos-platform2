@@ -14,7 +14,9 @@
 namespace chromeos {
 namespace mojo_service_manager {
 
-ServiceManager::ServiceManager(ServicePolicyMap policy_map) {
+ServiceManager::ServiceManager(Configuration configuration,
+                               ServicePolicyMap policy_map)
+    : configuration_(std::move(configuration)) {
   for (auto& item : policy_map) {
     auto& [service_name, policy] = item;
     service_map_[service_name] = ServiceState{.policy = std::move(policy)};

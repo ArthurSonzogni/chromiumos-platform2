@@ -47,7 +47,7 @@ class DaemonTest : public ::testing::Test {
     if (pid == 0) {
       // In child process, run until the daemon stop. Daemon needs to be created
       // in this process.
-      Daemon daemon{socket_path, ServicePolicyMap{}};
+      Daemon daemon{socket_path, Configuration{}, ServicePolicyMap{}};
       exit(daemon.Run());
     }
     // In parent process, track the daemon process in |daemon_process_|.
@@ -97,7 +97,7 @@ base::ScopedFD ConnectToSocket(const base::FilePath& socket_path) {
 TEST_F(DaemonTest, FailToListenSocket) {
   // Create the socket file so the daemon will fail to create it.
   ASSERT_TRUE(base::WriteFile(GetSocketPath(), "test"));
-  Daemon daemon{GetSocketPath(), ServicePolicyMap{}};
+  Daemon daemon{GetSocketPath(), Configuration{}, ServicePolicyMap{}};
   EXPECT_NE(daemon.Run(), EX_OK);
 }
 

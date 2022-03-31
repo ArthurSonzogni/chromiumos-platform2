@@ -13,6 +13,7 @@
 #include <brillo/daemons/daemon.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
+#include "mojo_service_manager/daemon/configuration.h"
 #include "mojo_service_manager/daemon/service_manager.h"
 #include "mojo_service_manager/daemon/service_policy.h"
 
@@ -23,7 +24,9 @@ namespace mojo_service_manager {
 // service manager daemon.
 class Daemon : public brillo::Daemon {
  public:
-  Daemon(const base::FilePath& socket_path, ServicePolicyMap policy_map);
+  Daemon(const base::FilePath& socket_path,
+         Configuration configuration,
+         ServicePolicyMap policy_map);
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
   ~Daemon() override;

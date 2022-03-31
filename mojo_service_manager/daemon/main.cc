@@ -11,6 +11,7 @@
 #include <mojo/core/embedder/embedder.h>
 #include <vboot/crossystem.h>
 
+#include "mojo_service_manager/daemon/configuration.h"
 #include "mojo_service_manager/daemon/constants.h"
 #include "mojo_service_manager/daemon/daemon.h"
 #include "mojo_service_manager/daemon/service_policy_loader.h"
@@ -33,6 +34,10 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(log_level, 0,
                "Logging level - 0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR), "
                "-1: VLOG(1), -2: VLOG(2), ...");
+  DEFINE_bool(permissive, false,
+              "Indicates whether the service manager daemon is in the "
+              "permissive mode. In permissive mode, the requests with wrong "
+              "identity won't be rejected.");
 
   brillo::FlagHelper::Init(argc, argv, "ChromeOS mojo service manager.");
 
@@ -51,7 +56,14 @@ int main(int argc, char* argv[]) {
         base::FilePath{service_manager::kExtraPolicyDirectoryPathInDevMode},
         &policy_map);
   }
+
+  service_manager::Configuration configuration{};
+  if (FLAGS_permissive) {
+    configuration.is_permissive = true;
+  }
+
   service_manager::Daemon daemon(base::FilePath{service_manager::kSocketPath},
+                                 std::move(configuration),
                                  std::move(policy_map));
   return daemon.Run();
 }

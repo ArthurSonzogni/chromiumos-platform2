@@ -60,12 +60,14 @@ base::ScopedFD AcceptSocket(const base::ScopedFD& server_fd) {
 
 }  // namespace
 
-Daemon::Daemon(const base::FilePath& socket_path, ServicePolicyMap policy_map)
+Daemon::Daemon(const base::FilePath& socket_path,
+               Configuration configuration,
+               ServicePolicyMap policy_map)
     : ipc_support_(base::ThreadTaskRunnerHandle::Get(),
                    mojo::core::ScopedIPCSupport::ShutdownPolicy::
                        CLEAN /* blocking shutdown */),
       socket_path_(socket_path),
-      service_manager_(std::move(policy_map)) {}
+      service_manager_(std::move(configuration), std::move(policy_map)) {}
 
 Daemon::~Daemon() {}
 
