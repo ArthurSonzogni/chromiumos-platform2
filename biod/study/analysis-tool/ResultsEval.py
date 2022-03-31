@@ -22,7 +22,7 @@ import scipy.stats as st
 # %matplotlib notebook
 # For VSCode Interactive
 # get_ipython().run_line_magic('matplotlib', "widget")
-%matplotlib widget
+#! %matplotlib widget
 # %matplotlib widget
 # %matplotlib gui
 # For VSCode No Interactive
@@ -522,7 +522,7 @@ b = Experiment(num_verification=60,
                fa_list=tc0_far_20k_fa)
 
 # %%
-# %%timeit
+#! %time
 
 NUM_SAMPLES = 1
 rng = np.random.default_rng()
@@ -556,8 +556,8 @@ for s in range(NUM_SAMPLES):
     # print('samples =', sample)
     # print('sum(samples) =', sum(sample))
 
-# %%
-# %%timeit
+# %% Attempt to flatten the loops.
+#! %time
 
 NUM_SAMPLES = 30
 rng = np.random.default_rng()
@@ -605,31 +605,31 @@ for s in range(NUM_SAMPLES):
     print('sum(samples) =', sum(sample))
 # %%
 
-%timeit b.FAList()
-%timeit b.FAQuery()
+#! %timeit b.FAList()
+#! %timeit b.FAQuery()
 
 
 # %%
 print('Query 1 Timing')
-%timeit b.FAQuery(verify_user_id=10071)
-%timeit b.FAQuery(verify_user_id=10071, verify_finger_id=0)
-%timeit b.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)
-%timeit b.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)
-%timeit b.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)
+#! %timeit b.FAQuery(verify_user_id=10071)
+#! %timeit b.FAQuery(verify_user_id=10071, verify_finger_id=0)
+#! %timeit b.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)
+#! %timeit b.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)
+#! %timeit b.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)
 
 # %%
 print('Query 2 Timing')
-%timeit b.FAQuery2(verify_user_id=10071)
+#! %timeit b.FAQuery2(verify_user_id=10071)
 # %timeit b.FAQuery2(verify_user_id=10071, verify_finger_id=0)
 # %timeit b.FAQuery2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)
 # %timeit b.FAQuery2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)
-%timeit b.FAQuery2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)
+#! %timeit b.FAQuery2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)
 
 # %%
 
 print('Query 3 Timing')
 s = DataFrameSetAccess(b.FAList())
-%timeit s.isin((10011, 5, 69, 10012, 0, False))
+#! %timeit s.isin((10011, 5, 69, 10012, 0, False))
 
 # %%
 
