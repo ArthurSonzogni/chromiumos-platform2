@@ -4,12 +4,16 @@
 
 #include "vtpm/backends/real_tpm_handle_manager.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <base/check.h>
 #include <base/logging.h>
 #include <trunks/tpm_generated.h>
+#include <trunks/trunks_factory.h>
+
+#include "vtpm/backends/scoped_host_key_handle.h"
 
 namespace vtpm {
 
@@ -25,8 +29,10 @@ bool DoesManagerSupportHandleType(trunks::TPM_HANDLE handle) {
 }  // namespace
 
 RealTpmHandleManager::RealTpmHandleManager(
+    trunks::TrunksFactory* trunks_factory,
     std::map<trunks::TPM_HANDLE, Blob*> table)
-    : handle_mapping_table_(table) {
+    : trunks_factory_(trunks_factory), handle_mapping_table_(table) {
+  CHECK(trunks_factory_);
   for (const auto& entry : handle_mapping_table_) {
     DCHECK(DoesManagerSupportHandleType(entry.first))
         << "Handle with Unsupported handle type: " << entry.first;
@@ -56,6 +62,47 @@ trunks::TPM_RC RealTpmHandleManager::GetHandleList(
     found_handles->push_back(iter->first);
   }
   return trunks::TPM_RC_SUCCESS;
+}
+
+trunks::TPM_RC RealTpmHandleManager::TranslateHandle(
+    trunks::TPM_HANDLE handle, ScopedHostKeyHandle* host_handle) {
+  // Currently this supports only known virtual "persistent key handles", while
+  // the limitation is subject to change, for guest needs to load their key
+  // blob(s).
+  if (!IsHandleTypeSuppoerted(handle)) {
+    return trunks::TPM_RC_HANDLE;
+  }
+  auto iter = handle_mapping_table_.find(handle);
+  if (iter == handle_mapping_table_.end()) {
+    return trunks::TPM_RC_HANDLE;
+  }
+  // Load the corresponding transient host key.
+  std::string host_key_blob;
+  trunks::TPM_RC rc = iter->second->Get(host_key_blob);
+  if (rc) {
+    return rc;
+  }
+  // Load the key to host TPM.
+  // Always use the correct auth. If the guest feeds wrong auth, the follow-up
+  // operation will fail anyway.
+  std::unique_ptr<trunks::AuthorizationDelegate> empty_password_authorization =
+      trunks_factory_->GetPasswordAuthorization(std::string());
+  trunks::TPM_HANDLE raw_host_handle;
+  rc = trunks_factory_->GetTpmUtility()->LoadKey(
+      host_key_blob, empty_password_authorization.get(), &raw_host_handle);
+  if (rc) {
+    return rc;
+  }
+
+  // Construct the ScopedHostKeyHandle.
+  *host_handle = ScopedHostKeyHandle(this, raw_host_handle, raw_host_handle);
+  return trunks::TPM_RC_SUCCESS;
+}
+
+trunks::TPM_RC RealTpmHandleManager::FlushHostHandle(
+    trunks::TPM_HANDLE handle) {
+  return trunks_factory_->GetTpm()->FlushContextSync(
+      handle, /*authorization_delegate=*/nullptr);
 }
 
 }  // namespace vtpm

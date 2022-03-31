@@ -49,9 +49,9 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
         std::make_unique<CacheableBlob>(&v->vsrk_, v->vsrk_cache_.get());
 
     v->real_tpm_handle_manager_ = std::make_unique<RealTpmHandleManager>(
-        std::map<trunks::TPM_HANDLE, Blob*>{
-            {kSrkHandle, v->cacheable_vsrk_.get()},
-        });
+        &v->trunks_factory_, std::map<trunks::TPM_HANDLE, Blob*>{
+                                 {kSrkHandle, v->cacheable_vsrk_.get()},
+                             });
 
     // add `GetCapabilityCommand`.
     v->commands_.emplace_back(std::make_unique<GetCapabilityCommand>(

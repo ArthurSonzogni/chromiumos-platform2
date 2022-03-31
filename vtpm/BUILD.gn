@@ -50,6 +50,7 @@ source_set("vtpm_server_library") {
     "backends/cacheable_blob.cc",
     "backends/disk_cache_blob.cc",
     "backends/real_tpm_handle_manager.cc",
+    "backends/scoped_host_key_handle.cc",
     "backends/vsrk.cc",
     "commands/direct_forward_command.cc",
     "commands/get_capability_command.cc",

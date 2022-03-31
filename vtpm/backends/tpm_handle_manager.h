@@ -11,6 +11,8 @@
 
 namespace vtpm {
 
+class ScopedHostKeyHandle;
+
 // This interface manages mainly the following functions:
 // 1. The usage of the virtual TPM handles,
 // 2. The usage of the host TPM handles, and
@@ -29,6 +31,14 @@ class TpmHandleManager {
   virtual trunks::TPM_RC GetHandleList(
       trunks::TPM_HANDLE starting_handle,
       std::vector<trunks::TPM_HANDLE>* found_handles) = 0;
+
+  // Translates `handle` from virtual TPM to the handle that is valid on host
+  // TPM.
+  virtual trunks::TPM_RC TranslateHandle(trunks::TPM_HANDLE handle,
+                                         ScopedHostKeyHandle* host_handle) = 0;
+
+  // Flushes `handle` on the "host TPM".
+  virtual trunks::TPM_RC FlushHostHandle(trunks::TPM_HANDLE handle) = 0;
 };
 
 }  // namespace vtpm

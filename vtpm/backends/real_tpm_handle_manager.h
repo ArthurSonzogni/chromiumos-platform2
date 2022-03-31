@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <trunks/tpm_generated.h>
+#include <trunks/trunks_factory.h>
 
 #include "vtpm/backends/blob.h"
 
@@ -21,7 +22,8 @@ namespace vtpm {
 class RealTpmHandleManager : public TpmHandleManager {
  public:
   // Constructs an instance. `blob_` is set to table`.
-  explicit RealTpmHandleManager(std::map<trunks::TPM_HANDLE, Blob*> table);
+  RealTpmHandleManager(trunks::TrunksFactory* trunks_factory,
+                       std::map<trunks::TPM_HANDLE, Blob*> table);
   ~RealTpmHandleManager() override = default;
 
   // Checks if `handles falls in the range of what this class supports.
@@ -37,7 +39,13 @@ class RealTpmHandleManager : public TpmHandleManager {
       trunks::TPM_HANDLE starting_handle,
       std::vector<trunks::TPM_HANDLE>* found_handles) override;
 
+  trunks::TPM_RC TranslateHandle(trunks::TPM_HANDLE handle,
+                                 ScopedHostKeyHandle* host_handle) override;
+
+  trunks::TPM_RC FlushHostHandle(trunks::TPM_HANDLE handle) override;
+
  private:
+  trunks::TrunksFactory* const trunks_factory_;
   // Stores virtual handles and their getter of corresponding data on/from the
   // host TPM.
   std::map<trunks::TPM_HANDLE, Blob*> handle_mapping_table_;

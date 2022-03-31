@@ -26,6 +26,16 @@ class MockTpmHandleManager : public TpmHandleManager {
               GetHandleList,
               (trunks::TPM_HANDLE, std::vector<trunks::TPM_HANDLE>*),
               (override));
+
+  MOCK_METHOD(trunks::TPM_RC,
+              TranslateHandle,
+              (trunks::TPM_HANDLE handle, ScopedHostKeyHandle*),
+              (override));
+
+  MOCK_METHOD(trunks::TPM_RC,
+              FlushHostHandle,
+              (trunks::TPM_HANDLE),
+              (override));
 };
 
 }  // namespace vtpm
