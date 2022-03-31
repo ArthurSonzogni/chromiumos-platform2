@@ -103,6 +103,7 @@ void PrintUsage() {
   puts("             [--ecc] [--print_time] [--sess_*]");
   puts("                    - Signs the hash of data using the loaded key.");
   puts("  --key_info --handle=<H> - Prints information about the loaded key.");
+  puts("  --persistent_keys - Prints all persistent key handles (Up to 128).");
   puts("  --key_test_short_ecc --handle=<H>.");
   puts("  --sess_* - group of options providing parameters for auth session:");
   puts("      --sess_salted");
@@ -469,6 +470,28 @@ int KeyInfo(bool print_time, const TrunksFactory& factory, uint32_t handle) {
   }
   printf("Key name: %s\n", HexEncode(key_name).c_str());
 
+  return 0;
+}
+
+int PersistentKeys(const TrunksFactory& factory) {
+  trunks::TPMI_YES_NO more_data = YES;
+  trunks::TPMS_CAPABILITY_DATA capability_data;
+  trunks::TPM_RC rc = factory.GetTpm()->GetCapabilitySync(
+      trunks::TPM_CAP_HANDLES, trunks::PERSISTENT_FIRST, 128 /*property_count*/,
+      &more_data, &capability_data, nullptr /*authorization_delegate*/);
+  if (rc != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << ": Error querying handles: " << trunks::GetErrorString(rc);
+    return -1;
+  }
+  const trunks::TPML_HANDLE& handles = capability_data.data.handles;
+  if (handles.count == 0) {
+    puts("No persistent key found.");
+    return 0;
+  }
+  puts("Persistent keys:");
+  for (int i = 0; i < handles.count; ++i) {
+    printf("  %#x\n", handles.handle[i]);
+  }
   return 0;
 }
 
@@ -999,6 +1022,9 @@ int main(int argc, char** argv) {
   if (cl->HasSwitch("key_info") && cl->HasSwitch("handle")) {
     uint32_t handle = std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
     return KeyInfo(print_time, factory, handle);
+  }
+  if (cl->HasSwitch("persistent_keys")) {
+    return PersistentKeys(factory);
   }
   if (cl->HasSwitch("key_test_short_ecc") && cl->HasSwitch("handle")) {
     uint32_t handle = std::stoul(cl->GetSwitchValueASCII("handle"), nullptr, 0);
