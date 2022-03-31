@@ -228,10 +228,6 @@ class FPCBETResults:
         def column_total(self) -> str:
             return self.name + '_Total'
 
-        # def proportion(self) -> float:
-        #         return 20
-        #     return
-
     def __init__(self, report_directory):
         self.dir = report_directory
 
@@ -542,6 +538,7 @@ for s in range(NUM_SAMPLES):
         # 71 other template users
         for t in rng.choice(list(range(v)) + list(range(v+1, b.num_users)), size=b.num_users-1, replace=True):
             # 6 fingers
+            # TODO: We need enrollment finger choice too.
             for f in rng.choice(b.num_fingers, size=b.num_fingers, replace=True):
                 # 60 verification samples
                 for a in rng.choice(b.num_verification, size=b.num_verification, replace=True):
@@ -585,21 +582,21 @@ for s in range(NUM_SAMPLES):
     for v, t in sample_users:
         pass
 
-    for v in rng.choice(b.num_users, size=b.num_users, replace=True):
-        # print(v)
-        # 71 other template users
-        for t in rng.choice(list(range(v)) + list(range(v+1, b.num_users)), size=b.num_users-1, replace=True):
-            # 6 fingers
-            for f in rng.choice(b.num_fingers, size=b.num_fingers, replace=True):
-                # 60 verification samples
-                for a in rng.choice(b.num_verification, size=b.num_verification, replace=True):
-                    # fa = b.FAQuery(verify_user_id=v, enroll_finger_id=t, verify_finger_id=f, verify_sample_index=a)
-                    # sample.append(fa.shape[0] != 0)
-                    query = (v, t, f, a)
-                    sample.append(fa_set.isin(query))
-                    # print(query)
-                    # sample.append(fa_set.isin((10012, 10011, 5, 12)))
-                    # pass
+    # for v in rng.choice(b.num_users, size=b.num_users, replace=True):
+    #     # print(v)
+    #     # 71 other template users
+    #     for t in rng.choice(list(range(v)) + list(range(v+1, b.num_users)), size=b.num_users-1, replace=True):
+    #         # 6 fingers
+    #         for f in rng.choice(b.num_fingers, size=b.num_fingers, replace=True):
+    #             # 60 verification samples
+    #             for a in rng.choice(b.num_verification, size=b.num_verification, replace=True):
+    #                 # fa = b.FAQuery(verify_user_id=v, enroll_finger_id=t, verify_finger_id=f, verify_sample_index=a)
+    #                 # sample.append(fa.shape[0] != 0)
+    #                 query = (v, t, f, a)
+    #                 sample.append(fa_set.isin(query))
+    #                 # print(query)
+    #                 # sample.append(fa_set.isin((10012, 10011, 5, 12)))
+    #                 # pass
     print('')
     # print('samples =', sample)
     print('sum(samples) =', sum(sample))
