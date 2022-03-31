@@ -808,14 +808,14 @@ impl Methods {
     }
 
     /// Request that concierge create a new VM image.
-    fn create_vm_image(
+    fn create_vm_image<T: AsRef<str>>(
         &mut self,
         vm_name: &str,
         user_id_hash: &str,
         plugin_vm: bool,
         source_name: Option<&str>,
         removable_media: Option<&str>,
-        params: &[&str],
+        params: &[T],
     ) -> Result<Option<String>, Box<dyn Error>> {
         let mut request = CreateDiskImageRequest::new();
         request.vm_name = vm_name.to_owned();
@@ -856,7 +856,7 @@ impl Methods {
         };
 
         for param in params {
-            request.mut_params().push(param.to_string());
+            request.mut_params().push(param.as_ref().to_string());
         }
 
         // We can't use sync_protobus because we need to append the file descriptor out of band from
@@ -1966,14 +1966,14 @@ impl Methods {
         }
     }
 
-    pub fn vm_create(
+    pub fn vm_create<T: AsRef<str>>(
         &mut self,
         name: &str,
         user_id_hash: &str,
         plugin_vm: bool,
         source_name: Option<&str>,
         removable_media: Option<&str>,
-        params: &[&str],
+        params: &[T],
     ) -> Result<Option<String>, Box<dyn Error>> {
         if plugin_vm {
             self.ensure_plugin_vm_available(user_id_hash)?;

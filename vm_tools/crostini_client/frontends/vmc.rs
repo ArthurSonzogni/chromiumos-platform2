@@ -395,32 +395,36 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
     }
 
     fn create(&mut self) -> VmcResult {
-        let plugin_vm = self.args.len() > 0 && self.args[0] == "-p";
-        if plugin_vm {
-            // Discard the first argument (-p).
-            self.args = &self.args[1..];
-        }
+        let mut opts = Options::new();
+        // By using StopAtFirstFree we allow this command to continue using `--`
+        // as a separator for params which avoids breaking the existing
+        // interface.
+        opts.parsing_style(getopts::ParsingStyle::StopAtFirstFree);
+        opts.optflag("p", "pluginvm", "create a pluginvm vm");
 
-        let mut s = self.args.splitn(2, |arg| *arg == "--");
+        let matches = opts.parse(self.args)?;
+        let plugin_vm = matches.opt_present("p");
+
+        let mut s = matches.free.splitn(2, |arg| *arg == "--");
         let args = s.next().expect("failed to split argument list");
         let params = s.next().unwrap_or(&[]);
 
         let (vm_name, file_name, removable_media) = match args.len() {
-            1 => (args[0], None, None),
-            2 => (args[0], Some(args[1]), None),
-            3 => (args[0], Some(args[1]), Some(args[2])),
+            1 => (args[0].as_str(), None, None),
+            2 => (args[0].as_str(), Some(args[1].as_str()), None),
+            3 => (args[0].as_str(), Some(args[1].as_str()), Some(args[2].as_str())),
             _ => return Err(ExpectedVmAndMaybeFileName.into()),
         };
 
         let user_id_hash = get_user_hash(self.environ)?;
 
         if let Some(uuid) = try_command!(self.methods.vm_create(
-            vm_name,
+            &vm_name,
             &user_id_hash,
             plugin_vm,
             file_name,
             removable_media,
-            params,
+            &params,
         )) {
             println!("VM creation in progress: {}", uuid);
             self.wait_disk_op_completion(&uuid, &user_id_hash, DiskOpType::Create, "VM creation")?;
@@ -1156,6 +1160,7 @@ mod tests {
             &["vmc", "launch", "termina"],
             &["vmc", "create", "termina"],
             &["vmc", "create", "-p", "termina"],
+            &["vmc", "create", "--pluginvm", "termina"],
             &[
                 "vmc",
                 "create",
@@ -1166,6 +1171,7 @@ mod tests {
             ],
             &["vmc", "create", "-p", "termina", "--"],
             &["vmc", "create", "-p", "termina", "--", "param"],
+            &["vmc", "create", "-p", "termina", "--", "param1", "param2"],
             &["vmc", "create-extra-disk", "--size=1000000", "foo.img"],
             &["vmc", "create-extra-disk", "--size=256M", "foo.img"],
             &["vmc", "create-extra-disk", "--size=1G", "foo.img"],
