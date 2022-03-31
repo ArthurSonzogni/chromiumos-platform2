@@ -3,11 +3,15 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-proxies.gni")
-import("//common-mk/pkg_config.gni")
+import("//common-mk/install_seccomp_policy.gni")
 
 group("all") {
   deps = [
     ":dbus-proxies",
+    ":diagnostics_seccomp",
+    ":install_dbus_config",
+    ":install_init_config",
+    ":install_tmpfiles_config",
     "//diagnostics/cros_health_tool:cros-health-tool",
     "//diagnostics/cros_healthd:cros_healthd",
     "//diagnostics/cros_healthd/routines:floating-point-accuracy",
@@ -36,4 +40,51 @@ generate_dbus_proxies("cras-proxies") {
       [ "${sysroot}/usr/share/dbus-1/interfaces/org.chromium.cras.Control.xml" ]
   proxy_output_file = "include/cras/dbus-proxies.h"
   mock_output_file = "include/cras/dbus-proxy-mocks.h"
+}
+
+install_seccomp_policy("diagnostics_seccomp") {
+  _arch = getenv("ARCH")
+  sources = [
+    "cros_healthd/seccomp/${_arch}/ectool_i2cread-seccomp.policy",
+    "cros_healthd/seccomp/${_arch}/ectool_pwmgetfanrpm-seccomp.policy",
+    "cros_healthd/seccomp/${_arch}/iw-seccomp.policy",
+    "cros_healthd/seccomp/${_arch}/memtester-seccomp.policy",
+    "init/${_arch}/cros_healthd-seccomp.policy",
+  ]
+  install_path = "/usr/share/policy"
+  if (use.wilco) {
+    sources += [
+      "init/${_arch}/wilco-dtc-e2fsck-seccomp.policy",
+      "init/${_arch}/wilco-dtc-resize2fs-seccomp.policy",
+      "init/${_arch}/wilco_dtc_supportd-seccomp.policy",
+    ]
+  }
+}
+
+install_config("install_dbus_config") {
+  sources = [ "dbus/org.chromium.CrosHealthd.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+  if (use.wilco) {
+    sources += [
+      "dbus/WilcoDtcUpstart.conf",
+      "dbus/org.chromium.WilcoDtcSupportd.conf",
+    ]
+  }
+}
+
+install_config("install_init_config") {
+  sources = [ "init/cros_healthd.conf" ]
+  install_path = "/etc/init"
+  if (use.wilco) {
+    sources += [
+      "init/wilco_dtc.conf",
+      "init/wilco_dtc_dispatcher.conf",
+      "init/wilco_dtc_supportd.conf",
+    ]
+  }
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "init/tmpfiles.d/cros_healthd.conf" ]
+  install_path = "/usr/lib/tmpfiles.d/on-demand"
 }

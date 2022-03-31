@@ -14,6 +14,7 @@ pkg_config("common_pkg_deps") {
 executable("urandom") {
   sources = [ "urandom/main.cc" ]
   configs += [ ":common_pkg_deps" ]
+  install_path = "/usr/libexec/diagnostics"
 }
 
 pkg_config("smartctl-check_pkg_deps") {
@@ -29,6 +30,7 @@ executable("smartctl-check") {
     ":smartctl-check_pkg_deps",
     ":common_pkg_deps",
   ]
+  install_path = "/usr/libexec/diagnostics"
 }
 
 executable("floating-point-accuracy") {
@@ -38,6 +40,7 @@ executable("floating-point-accuracy") {
     "-msse",
     "-mno-mmx",
   ]
+  install_path = "/usr/libexec/diagnostics"
 }
 
 executable("prime-search") {
@@ -46,6 +49,7 @@ executable("prime-search") {
     "prime_search/prime_number_search.cc",
   ]
   configs += [ ":common_pkg_deps" ]
+  install_path = "/usr/libexec/diagnostics"
 }
 
 pkg_config("libdiag_routine_pkg_deps") {

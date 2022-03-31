@@ -46,6 +46,7 @@ executable("cros_healthd") {
     "minijail:libcros_healthd_minijail",
     "system:libcros_healthd_system",
   ]
+  install_path = "bin"
 }
 
 if (use.test) {
@@ -57,6 +58,7 @@ if (use.test) {
   }
 
   executable("cros_healthd_test") {
+    run_test = true
     sources = [
       "cros_healthd_connectivity_test.cc",
       "cros_healthd_routine_service_test.cc",

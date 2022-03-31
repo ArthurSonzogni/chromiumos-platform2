@@ -45,10 +45,16 @@ executable("wilco_dtc_supportd") {
   ]
   configs += [ ":common_pkg_deps" ]
   deps = [ ":libwilco_dtc_supportd" ]
+  if (use.wilco) {
+    install_path = "bin"
+  }
 }
 
 if (use.test) {
   executable("wilco_dtc_supportd_test") {
+    if (use.wilco) {
+      run_test = true
+    }
     sources = [
       "core_test.cc",
       "dbus_service_test.cc",

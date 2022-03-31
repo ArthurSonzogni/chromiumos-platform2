@@ -143,6 +143,7 @@ _IUSE = [
     'vulkan',
     'wake_on_wifi',
     'wifi',
+    'wilco',
     'wired_8021x',
     'wpa3_sae',
 ]

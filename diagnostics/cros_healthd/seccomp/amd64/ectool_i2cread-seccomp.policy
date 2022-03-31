@@ -57,7 +57,8 @@ mprotect: arg2 == PROT_READ || arg2 == PROT_NONE
 execve: 1
 brk: 1
 flock: 1
-mmap: arg2 == PROT_READ || arg2 == PROT_READ|PROT_WRITE || arg2 == PROT_READ|PROT_EXEC
+mmap: arg2 == PROT_READ || arg2 == PROT_READ|PROT_WRITE || \
+      arg2 == PROT_READ|PROT_EXEC
 dup2: 1
 arch_prctl: 1
 getpid: 1
