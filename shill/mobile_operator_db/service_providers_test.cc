@@ -8,6 +8,7 @@
 #include <base/files/file_path.h>
 #include <google/protobuf/repeated_field.h>
 #include <gtest/gtest.h>
+#include <re2/re2.h>
 
 #include "shill/metrics.h"
 #include "shill/mobile_operator_db/mobile_operator_db.pb.h"
@@ -212,6 +213,33 @@ TEST_F(ServiceProvidersTest, VerifyUniquenessOfApnHashes) {
           << " username: " << mobile_apn.username()
           << ", password:" << mobile_apn.password() << ", and " << hashes[hash];
       hashes[hash] = mvno->data().uuid() + ":" + mobile_apn.apn();
+    }
+  }
+}
+
+TEST_F(ServiceProvidersTest, CheckApnNames) {
+  // According to TS 123.003 rel-15, only alphabetic characters, digits and
+  // the hyphen are allowed.
+
+  re2::RE2 chars_regex = {"[^a-zA-Z\\d\\-\\.]"};
+  re2::RE2 begin_end_regex = {"^[a-zA-Z\\d].*[a-zA-Z\\d]$"};
+  auto regex_check = [&chars_regex, &begin_end_regex](auto uuid, auto apn) {
+    EXPECT_FALSE(RE2::PartialMatch(apn, chars_regex))
+        << "MVNO with uuid: " << uuid << ", apn:'" << apn << "'"
+        << " contains characters that are non alphanumeric or hyphen.";
+    EXPECT_TRUE(RE2::FullMatch(apn, begin_end_regex))
+        << "MVNO with uuid: " << uuid << ", apn:'" << apn << "'"
+        << " has a non alphanumeric char in the first or last position.";
+  };
+  for (const auto& mno : database_->mno()) {
+    for (const auto& mobile_apn : mno.data().mobile_apn()) {
+      regex_check(mno.data().uuid(), mobile_apn.apn());
+    }
+  }
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    for (const auto& mobile_apn : mvno->data().mobile_apn()) {
+      regex_check(mvno->data().uuid(), mobile_apn.apn());
     }
   }
 }
