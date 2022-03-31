@@ -10,6 +10,13 @@
 
 #include "trunks/tpm_generated.h"
 
+// TODO(b/230343588): Use `TpmStructureParser` to re-implement these methods.
+// Cureently the function signatures is intended to be
+// `trunks::Parse_XXX()-like, so it takes an in/out `std::string` pointer, but
+// that might not be the best decision for the consumers (in particular, vtpm).
+// Once we revisit the signatures and we can determine if `TpmStructureParser`
+// is a better alternatives than hard-codeds sequence of those command parsing
+// methods.
 namespace trunks {
 
 namespace {
