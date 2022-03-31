@@ -340,6 +340,27 @@ class FPCBETResults:
 
         return tbl
 
+    def read_file(self,
+                  test_case: TestCase,
+                  table_type: TableType) -> pd.DataFrame:
+        '''Read specified BET generated table for the specified `test_case`.
+
+        This is an interface that calls on the correct read file function for
+        the specified table.
+        '''
+
+        assert test_case in self.TestCase
+        assert table_type in self.TableType
+
+        if table_type in [self.TableType.FAR, self.TableType.FRR]:
+            return self.read_far_frr_file(test_case, table_type)
+        elif table_type is self.TableType.FA_List:
+            return self.read_fa_list_file(test_case)
+        elif table_type in [self.TableType.FAR_Decision, self.TableType.FRR_Decision]:
+            return self.read_decision_file(test_case, table_type)
+        else:
+            return None
+
 
 def confidence(ups, downs):
     '''This is some algo from a blog that was used for reddit'''
