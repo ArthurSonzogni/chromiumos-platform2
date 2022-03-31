@@ -147,7 +147,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockUtilDeriveFailedInDeriveKeyBlobs = 160,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNoAuthBlockInDeriveKeyBlobsAsync = 161,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilCHRecoveryUnsupportedInGetAuthBlockWithType = 162,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilMaxValueUnsupportedInGetAuthBlockWithType = 163,
@@ -895,6 +895,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocCryptohomeRecoveryAuthBlockCantParseResponseInDerive = 534,
   /* ./auth_session.cc */
   kLocWrongAuthFactorInGetRecoveryRequest = 535,
+  /* ./auth_session.cc */
+  kLocAuthSessionEmptyKeyLabelInAuth = 536,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

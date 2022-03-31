@@ -163,6 +163,7 @@ class AuthSessionInterfaceTest : public ::testing::Test {
   AuthorizationRequest CreateAuthorization(const std::string& secret) {
     AuthorizationRequest req;
     req.mutable_key()->set_secret(secret);
+    req.mutable_key()->mutable_data()->set_label("test-label");
     req.mutable_key()->mutable_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
     req.mutable_key()
         ->mutable_data()
@@ -550,6 +551,31 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(true));
   ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());
+}
+
+TEST_F(AuthSessionInterfaceTest, CreatePersistentUserFailNoLabel) {
+  // No auth session.
+  ASSERT_THAT(CreatePersistentUserImpl("")->local_legacy_error().value(),
+              Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+
+  // Auth session not authed.
+  AuthSession* auth_session =
+      auth_session_manager_->CreateAuthSession(kUsername, 0);
+
+  // Set up expectation in callback for failure, no label with the
+  // AuthorizationRequest.
+  user_data_auth::AuthenticateAuthSessionReply reply;
+  base::MockCallback<AuthenticateCallback> on_done;
+  EXPECT_CALL(on_done, Run(testing::_)).WillOnce(testing::SaveArg<0>(&reply));
+
+  AuthorizationRequest auth_req;
+  auth_req.mutable_key()->set_secret(kPassword);
+  auth_req.mutable_key()->mutable_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
+  auth_session->Authenticate(auth_req, on_done.Get());
+
+  // Evaluate error returned by callback.
+  ASSERT_THAT(reply.error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
 
 TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {

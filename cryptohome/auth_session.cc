@@ -816,6 +816,18 @@ void AuthSession::Authenticate(
   std::unique_ptr<Credentials> credentials =
       std::move(credentials_or_err).value();
 
+  if (credentials->key_data().label().empty()) {
+    LOG(ERROR) << "Authenticate: Credentials key_data.label() is empty.";
+    err = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionEmptyKeyLabelInAuth),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    reply.set_authenticated(GetStatus() ==
+                            AuthStatus::kAuthStatusAuthenticated);
+    ReplyWithError(std::move(on_done), reply, std::move(err));
+    return;
+  }
+
   // Store key data in current auth_factor for future use.
   key_data_ = credentials->key_data();
 
