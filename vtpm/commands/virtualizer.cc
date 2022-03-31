@@ -153,6 +153,9 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
       v->command_table_.emplace(cc, v->commands_.back().get());
     }
 
+    // Add `SelfTestCommand`.
+    v->command_table_.emplace(trunks::TPM_CC_SelfTest, &v->self_test_command_);
+
     // Use an `UnsupportedCommand` as fallback.
     v->commands_.emplace_back(
         std::make_unique<UnsupportedCommand>(v->response_serializer_));

@@ -38,6 +38,7 @@
 #include "vtpm/backends/vek_cert_manager.h"
 #include "vtpm/backends/vsrk.h"
 #include "vtpm/commands/direct_forward_command.h"
+#include "vtpm/commands/self_test_command.h"
 
 namespace vtpm {
 
@@ -66,6 +67,7 @@ class Virtualizer : public Command {
   trunks::RealResponseSerializer real_response_serializer_;
   trunks::RealCommandParser real_command_parser_;
   RealStaticAnalyzer real_static_analyzer_;
+  SelfTestCommand self_test_command_{&real_response_serializer_};
   brillo::DBusConnection system_bus_connection_;
   std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy_;
   std::unique_ptr<AttestedVirtualEndorsement> attested_virtual_endorsement_;
