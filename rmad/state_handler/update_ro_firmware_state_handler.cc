@@ -31,7 +31,6 @@
 namespace {
 
 constexpr char kFirmwareUpdaterFilePath[] = "usr/sbin/chromeos-firmwareupdate";
-constexpr char kHwwpProperty[] = "wpsw_cur";
 
 bool IsRootfsPartition(const std::string& path) {
   return re2::RE2::FullMatch(path, R"(/dev/sd[a-z]3)");
@@ -267,9 +266,8 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
   }
 
   // Make sure HWWP is off.
-  if (int hwwp_enabled;
-      !crossystem_utils_->GetInt(kHwwpProperty, &hwwp_enabled) ||
-      hwwp_enabled == 1) {
+  if (int hwwp_status;
+      !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status == 1) {
     LOG(ERROR) << "HWWP is enabled. Aborting firmware update.";
     return false;
   }

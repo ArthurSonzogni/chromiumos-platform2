@@ -14,13 +14,6 @@
 
 #include <base/logging.h>
 
-namespace {
-
-// crossystem HWWP property name.
-constexpr char kWriteProtectProperty[] = "wpsw_cur";
-
-}  // namespace
-
 namespace rmad {
 
 namespace fake {
@@ -75,8 +68,7 @@ WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
   }
 
   int hwwp_status;
-  if (crossystem_utils_->GetInt(kWriteProtectProperty, &hwwp_status) &&
-      hwwp_status == 1) {
+  if (crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status == 1) {
     return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
   }
   return NextStateCaseWrapper(RMAD_ERROR_WAIT);
@@ -96,7 +88,7 @@ void WriteProtectEnablePhysicalStateHandler::CheckWriteProtectOnTask() {
   VLOG(1) << "Check write protection";
 
   int hwwp_status;
-  if (!crossystem_utils_->GetInt(kWriteProtectProperty, &hwwp_status)) {
+  if (!crossystem_utils_->GetHwwpStatus(&hwwp_status)) {
     LOG(ERROR) << "Failed to get HWWP status";
     return;
   }

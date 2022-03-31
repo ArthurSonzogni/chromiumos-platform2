@@ -33,6 +33,13 @@ class CrosSystemUtils {
   // function. Return true if successfully get the value, false if fail to get
   // the value.
   virtual bool GetString(const std::string& key, std::string* value) const = 0;
+
+  // Some common crossystem values.
+  static constexpr char kHwwpStatusProperty[] = "wpsw_cur";
+  static constexpr char kHwidProperty[] = "hwid";
+
+  bool GetHwwpStatus(int* value) { return GetInt(kHwwpStatusProperty, value); }
+  bool GetHwid(std::string* value) { return GetString(kHwidProperty, value); }
 };
 
 }  // namespace rmad

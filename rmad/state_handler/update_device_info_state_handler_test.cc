@@ -24,6 +24,7 @@
 using testing::_;
 using testing::Assign;
 using testing::DoAll;
+using testing::Eq;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
@@ -58,9 +59,6 @@ constexpr uint32_t kNewSkuSelection = 1;
 constexpr uint32_t kNewWhitelabelSelection = 2;
 constexpr char kNewDramPartNum[] = "NewTestDramPartNum";
 
-// crossystem HWWP property name.
-constexpr char kHwwpProperty[] = "wpsw_cur";
-
 class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<UpdateDeviceInfoStateHandler> CreateStateHandler(
@@ -86,7 +84,8 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     auto regions_utils = std::make_unique<NiceMock<MockRegionsUtils>>();
     auto vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
 
-    ON_CALL(*crossystem_utils, GetInt(kHwwpProperty, _))
+    ON_CALL(*crossystem_utils,
+            GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
         .WillByDefault(
             DoAll(SetArgPointee<1>(wp_enabled ? 1 : 0), Return(true)));
     ON_CALL(*vpd_utils, FlushOutRoVpdCache())

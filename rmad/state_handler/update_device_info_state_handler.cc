@@ -26,9 +26,6 @@
 
 namespace {
 
-// crossystem HWWP property name.
-constexpr char kHwwpProperty[] = "wpsw_cur";
-
 template <typename T>
 bool IsRepeatedFieldSame(const T& list1, const T& list2) {
   int size = list1.size();
@@ -211,8 +208,7 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
     vpd_utils_->ClearRoVpdCache();
     vpd_utils_->ClearRwVpdCache();
     if (int hwwp_status;
-        crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status) &&
-        hwwp_status != 0) {
+        crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status != 0) {
       return NextStateCaseWrapper(RMAD_ERROR_WP_ENABLED);
     }
     return NextStateCaseWrapper(RMAD_ERROR_CANNOT_WRITE);

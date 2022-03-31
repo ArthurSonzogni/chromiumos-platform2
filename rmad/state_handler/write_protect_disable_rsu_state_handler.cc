@@ -23,11 +23,6 @@
 
 namespace {
 
-// crossystem HWID property name.
-constexpr char kHwidProperty[] = "hwid";
-// crossystem HWWP property name.
-constexpr char kHwwpProperty[] = "wpsw_cur";
-
 // RSU server URL.
 constexpr char kRsuUrlFormat[] =
     "https://www.google.com/chromeos/partner/console/"
@@ -88,7 +83,7 @@ RmadErrorCode WriteProtectDisableRsuStateHandler::InitializeState() {
     // This is fine since HWID is only used for server side logging. It doesn't
     // affect RSU functionality.
     std::string hwid = "";
-    crossystem_utils_->GetString(kHwidProperty, &hwid);
+    crossystem_utils_->GetHwid(&hwid);
     wp_disable_rsu->set_hwid(hwid);
 
     // 256 is enough for the URL.
@@ -144,7 +139,7 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
 bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {
   bool factory_mode_enabled = cr50_utils_->IsFactoryModeEnabled();
   int hwwp_status = 1;
-  crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status);
+  crossystem_utils_->GetHwwpStatus(&hwwp_status);
   VLOG(3) << "WriteProtectDisableRsuState: Cr50 factory mode: "
           << (factory_mode_enabled ? "enabled" : "disabled");
   VLOG(3) << "WriteProtectDisableRsuState: Hardware write protect"

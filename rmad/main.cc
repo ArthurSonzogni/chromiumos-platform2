@@ -74,8 +74,8 @@ void EnterMinijail() {
                 "/mnt/stateful_partition/unencrypted/preserve", 0);
 
   rmad::CrosSystemUtilsImpl crossystem_utils;
-  int wpsw_cur;
-  if (crossystem_utils.GetInt("wpsw_cur", &wpsw_cur) && wpsw_cur == 0) {
+  int hwwp_status;
+  if (crossystem_utils.GetHwwpStatus(&hwwp_status) && hwwp_status == 0) {
     VLOG(1) << "Hardware write protection off.";
     minijail_use_caps(j.get(), CAP_TO_MASK(CAP_SYS_RAWIO) |
                                    CAP_TO_MASK(CAP_DAC_OVERRIDE) |

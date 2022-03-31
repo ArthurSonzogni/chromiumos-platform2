@@ -34,12 +34,10 @@ namespace {
 constexpr char kTestChallengeCode[] = "ABCDEFGH";
 constexpr char kTestUnlockCode[] = "abcdefgh";
 constexpr char kWrongUnlockCode[] = "aaa";
-constexpr char kHwidProperty[] = "hwid";
 constexpr char kTestHwid[] = "MODEL TEST";
 constexpr char kTestUrl[] =
     "https://www.google.com/chromeos/partner/console/"
     "cr50reset?challenge=ABCDEFGH&hwid=MODEL_TEST";
-constexpr char kHwwpProperty[] = "wpsw_cur";
 
 }  // namespace
 
@@ -61,9 +59,11 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
         std::make_unique<NiceMock<MockCrosSystemUtils>>();
-    ON_CALL(*mock_crossystem_utils, GetString(Eq(kHwidProperty), _))
+    ON_CALL(*mock_crossystem_utils,
+            GetString(Eq(CrosSystemUtils::kHwidProperty), _))
         .WillByDefault(DoAll(SetArgPointee<1>(kTestHwid), Return(true)));
-    ON_CALL(*mock_crossystem_utils, GetInt(Eq(kHwwpProperty), _))
+    ON_CALL(*mock_crossystem_utils,
+            GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
         .WillByDefault(DoAll(SetArgPointee<1>(factory_mode_enabled ? 0 : 1),
                              Return(true)));
 

@@ -22,6 +22,7 @@
 using testing::_;
 using testing::Assign;
 using testing::DoAll;
+using testing::Eq;
 using testing::InSequence;
 using testing::IsFalse;
 using testing::NiceMock;
@@ -52,7 +53,8 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
     {
       InSequence seq;
       for (int i = 0; i < wp_status_list.size(); ++i) {
-        EXPECT_CALL(*mock_crossystem_utils, GetInt(_, _))
+        EXPECT_CALL(*mock_crossystem_utils,
+                    GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
             .WillOnce(DoAll(SetArgPointee<1>(wp_status_list[i]), Return(true)));
       }
     }

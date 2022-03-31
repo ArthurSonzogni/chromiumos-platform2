@@ -59,6 +59,8 @@ TEST_F(FakeCrosSystemUtilsTest, GetInt_Wpsw_FactoryModeEnabled) {
   int value;
   ASSERT_TRUE(fake_crossystem_utils_->GetInt("wpsw_cur", &value));
   ASSERT_EQ(value, 0);
+  ASSERT_TRUE(fake_crossystem_utils_->GetHwwpStatus(&value));
+  ASSERT_EQ(value, 0);
 }
 
 TEST_F(FakeCrosSystemUtilsTest, GetInt_Wpsw_HwwpDisabled) {
@@ -77,10 +79,12 @@ TEST_F(FakeCrosSystemUtilsTest, GetInt_Wpsw_FactoryModeDisabled_HwwpEnaabled) {
   ASSERT_EQ(value, 1);
 }
 
-TEST_F(FakeCrosSystemUtilsTest, SetString_Success_GetString) {
-  ASSERT_TRUE(fake_crossystem_utils_->SetString("key", "value"));
+TEST_F(FakeCrosSystemUtilsTest, Hwid_SetString_Success_GetString) {
+  ASSERT_TRUE(fake_crossystem_utils_->SetString("hwid", "value"));
   std::string value;
-  ASSERT_TRUE(fake_crossystem_utils_->GetString("key", &value));
+  ASSERT_TRUE(fake_crossystem_utils_->GetString("hwid", &value));
+  ASSERT_EQ(value, "value");
+  ASSERT_TRUE(fake_crossystem_utils_->GetHwid(&value));
   ASSERT_EQ(value, "value");
 }
 

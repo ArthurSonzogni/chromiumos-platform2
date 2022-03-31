@@ -19,13 +19,6 @@
 #include "rmad/utils/fake_cr50_utils.h"
 #include "rmad/utils/fake_crossystem_utils.h"
 
-namespace {
-
-// crossystem HWWP property name.
-constexpr char kHwwpProperty[] = "wpsw_cur";
-
-}  // namespace
-
 namespace rmad {
 
 namespace fake {
@@ -115,8 +108,7 @@ WriteProtectDisablePhysicalStateHandler::GetNextStateCase(
 
 bool WriteProtectDisablePhysicalStateHandler::IsHwwpDisabled() const {
   int hwwp_status;
-  return (crossystem_utils_->GetInt(kHwwpProperty, &hwwp_status) &&
-          hwwp_status == 0);
+  return (crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status == 0);
 }
 
 bool WriteProtectDisablePhysicalStateHandler::CanSkipEnablingFactoryMode()
