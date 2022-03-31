@@ -12,7 +12,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
+#include <attestation/proto_bindings/interface.pb.h>
 #include <base/callback.h>
+#include <brillo/dbus/dbus_connection.h>
+#include <brillo/errors/error.h>
 #include <trunks/command_parser.h>
 #include <trunks/real_command_parser.h>
 #include <trunks/real_response_serializer.h>
@@ -20,10 +24,15 @@
 #include <trunks/tpm_generated.h>
 #include <trunks/trunks_factory_impl.h>
 
+// Requires proto_bindings `attestation`.
+#include <attestation-client/attestation/dbus-proxies.h>
+
+#include "vtpm/backends/attested_virtual_endorsement.h"
 #include "vtpm/backends/cacheable_blob.h"
 #include "vtpm/backends/disk_cache_blob.h"
 #include "vtpm/backends/real_static_analyzer.h"
 #include "vtpm/backends/real_tpm_handle_manager.h"
+#include "vtpm/backends/vek.h"
 #include "vtpm/backends/vsrk.h"
 #include "vtpm/commands/direct_forward_command.h"
 
@@ -54,15 +63,22 @@ class Virtualizer : public Command {
   trunks::RealResponseSerializer real_response_serializer_;
   trunks::RealCommandParser real_command_parser_;
   RealStaticAnalyzer real_static_analyzer_;
+  brillo::DBusConnection system_bus_connection_;
+  std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy_;
+  std::unique_ptr<AttestedVirtualEndorsement> attested_virtual_endorsement_;
+
   // NOTE: This factory might be limited to used on the `Create()`-calling
   // thread.
   trunks::TrunksFactoryImpl trunks_factory_;
   Vsrk vsrk_{&trunks_factory_};
+  std::unique_ptr<Vek> vek_;
   DirectForwardCommand direct_forwarder_{&trunks_factory_};
 
   // Functional object candidates dynamically determined by profile.
   std::unique_ptr<DiskCacheBlob> vsrk_cache_;
+  std::unique_ptr<DiskCacheBlob> vek_cache_;
   std::unique_ptr<CacheableBlob> cacheable_vsrk_;
+  std::unique_ptr<CacheableBlob> cacheable_vek_;
   std::unique_ptr<RealTpmHandleManager> real_tpm_handle_manager_;
 
   std::vector<std::unique_ptr<Command>> commands_;

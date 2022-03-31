@@ -25,12 +25,14 @@ namespace vtpm {
 namespace {
 
 constexpr trunks::TPM_HANDLE kSrkHandle = trunks::PERSISTENT_FIRST;
+constexpr trunks::TPM_HANDLE kEkHandle = trunks::PERSISTENT_FIRST + 3;
 
 // TODO(b/228789530): Virtualizer is not the best one that decides the layout of
 // files. We should make sure that the path is managed in a more systematic way,
 // and it should be revolved after all the persistent data is ready, and before
 // the bug is resolved.
 constexpr char kVsrkCachePath[] = "/var/lib/vtpm/vsrk.blob";
+constexpr char kVekCachePath[] = "/var/lib/vtpm/vek.blob";
 
 }  // namespace
 
@@ -49,9 +51,28 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
     v->cacheable_vsrk_ =
         std::make_unique<CacheableBlob>(&v->vsrk_, v->vsrk_cache_.get());
 
+    // Set up attestation client.
+    scoped_refptr<dbus::Bus> bus = v->system_bus_connection_.Connect();
+    CHECK(bus) << "Failed to connect to system D-Bus";
+    v->attestation_proxy_ =
+        std::make_unique<org::chromium::AttestationProxy>(bus);
+
+    // Set up virtual endorsemnet.
+    v->attested_virtual_endorsement_ =
+        std::make_unique<AttestedVirtualEndorsement>(
+            v->attestation_proxy_.get());
+
+    // Set up VEK.
+    v->vek_cache_ =
+        std::make_unique<DiskCacheBlob>(base::FilePath(kVekCachePath));
+    v->vek_ = std::make_unique<Vek>(v->attested_virtual_endorsement_.get());
+    v->cacheable_vek_ =
+        std::make_unique<CacheableBlob>(v->vek_.get(), v->vek_cache_.get());
+
     v->real_tpm_handle_manager_ = std::make_unique<RealTpmHandleManager>(
         &v->trunks_factory_, std::map<trunks::TPM_HANDLE, Blob*>{
                                  {kSrkHandle, v->cacheable_vsrk_.get()},
+                                 {kEkHandle, v->cacheable_vek_.get()},
                              });
 
     // add `GetCapabilityCommand`.
