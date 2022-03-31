@@ -4,6 +4,7 @@
 
 #include "vtpm/commands/virtualizer.h"
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -13,7 +14,25 @@
 #include <trunks/response_serializer.h>
 #include <trunks/tpm_generated.h>
 
+#include "vtpm/commands/unsupported_command.h"
+
 namespace vtpm {
+
+std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
+  std::unique_ptr<Virtualizer> v =
+      std::unique_ptr<Virtualizer>(new Virtualizer());
+  if (profile == Virtualizer::Profile::kGLinux) {
+    v->command_parser_ = &v->real_command_parser_;
+    v->response_serializer_ = &v->real_response_serializer_;
+
+    // Use an `UnsupportedCommand` as fallback.
+    v->commands_.emplace_back(
+        std::make_unique<UnsupportedCommand>(v->response_serializer_));
+    v->fallback_command_ = v->commands_.back().get();
+    // Others are not implemented yet.
+  }
+  return v;
+}
 
 Virtualizer::Virtualizer(trunks::CommandParser* parser,
                          trunks::ResponseSerializer* serializer,

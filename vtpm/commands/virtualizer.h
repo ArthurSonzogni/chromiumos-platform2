@@ -7,11 +7,15 @@
 
 #include "vtpm/commands/command.h"
 
+#include <memory>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <base/callback.h>
 #include <trunks/command_parser.h>
+#include <trunks/real_command_parser.h>
+#include <trunks/real_response_serializer.h>
 #include <trunks/response_serializer.h>
 #include <trunks/tpm_generated.h>
 
@@ -24,6 +28,10 @@ namespace vtpm {
 // delegated objects.
 class Virtualizer : public Command {
  public:
+  enum Profile {
+    kGLinux,
+  };
+  static std::unique_ptr<Virtualizer> Create(Profile profile);
   Virtualizer(trunks::CommandParser* parser,
               trunks::ResponseSerializer* serializer,
               std::unordered_map<trunks::TPM_CC, Command*> table,
@@ -32,6 +40,17 @@ class Virtualizer : public Command {
            CommandResponseCallback callback) override;
 
  private:
+  Virtualizer() = default;
+
+  // Functional object candidates for all profiles.
+  trunks::RealResponseSerializer real_response_serializer_;
+  trunks::RealCommandParser real_command_parser_;
+
+  // Functional object candidates dynamically determined by profile.
+  std::vector<std::unique_ptr<Command>> commands_;
+
+  // Functional objects used to execute the vtpm functions. The ownership of
+  // the pointees of these are owned the Virtualizer w/ the fields above
   trunks::CommandParser* command_parser_ = nullptr;
   trunks::ResponseSerializer* response_serializer_ = nullptr;
   // The command table of which entries are the objects `this` delegates a TPM

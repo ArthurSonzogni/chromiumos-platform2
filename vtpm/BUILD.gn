@@ -53,9 +53,17 @@ source_set("vtpm_server_library") {
   ]
 }
 
+config("vtpmd_config") {
+  libs = [ "trunks" ]
+}
+
 executable("vtpmd") {
   sources = [ "main.cc" ]
-  configs += [ ":target_defaults" ]
+  configs += [
+    ":target_defaults",
+    ":vtpmd_config",
+  ]
+
   install_path = "sbin"
 
   deps = [
@@ -83,6 +91,9 @@ install_config("install_systemd") {
 }
 
 if (use.test) {
+  config("vtpm_test_config") {
+    libs = [ "trunks" ]
+  }
   executable("vtpm_test") {
     sources = [
       "commands/unsupported_command_test.cc",
@@ -92,6 +103,7 @@ if (use.test) {
     configs += [
       "//common-mk:test",
       ":target_defaults",
+      ":vtpm_test_config",
     ]
     deps = [
       ":vtpm_server_library",

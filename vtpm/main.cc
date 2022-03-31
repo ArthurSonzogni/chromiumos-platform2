@@ -6,6 +6,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "vtpm/commands/null_command.h"
+#include "vtpm/commands/virtualizer.h"
 #include "vtpm/vtpm_daemon.h"
 
 int main(int argc, char* argv[]) {
@@ -17,10 +18,8 @@ int main(int argc, char* argv[]) {
   }
   brillo::InitLog(flags);
 
-  // Currently this is null-implemented, and always returns an empty string.
-  // TODO(b/227341806): Implement the commands to be supported in a virtual vtpm
-  // implementation.
-  vtpm::NullCommand null_command;
+  std::unique_ptr<vtpm::Command> vtpm =
+      vtpm::Virtualizer::Create(vtpm::Virtualizer::Profile::kGLinux);
 
-  return vtpm::VtpmDaemon(&null_command).Run();
+  return vtpm::VtpmDaemon(vtpm.get()).Run();
 }
