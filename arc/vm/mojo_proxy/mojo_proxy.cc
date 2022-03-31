@@ -180,6 +180,21 @@ void MojoProxy::Fstat(int64_t handle, FstatCallback callback) {
     Stop();
 }
 
+void MojoProxy::Ftruncate(int64_t handle,
+                          int64_t length,
+                          FtruncateCallback callback) {
+  const int64_t cookie = GenerateCookie();
+
+  arc_proxy::MojoMessage message;
+  auto* request = message.mutable_ftruncate_request();
+  request->set_cookie(cookie);
+  request->set_handle(handle);
+  request->set_length(length);
+  pending_ftruncate_.emplace(cookie, std::move(callback));
+  if (!delegate_->SendMessage(message, {}))
+    Stop();
+}
+
 void MojoProxy::Close(int64_t handle) {
   arc_proxy::MojoMessage message;
   message.mutable_close()->set_handle(handle);
@@ -224,6 +239,11 @@ bool MojoProxy::HandleMessage(arc_proxy::MojoMessage* message,
       return true;
     case arc_proxy::MojoMessage::kFstatResponse:
       return OnFstatResponse(message->mutable_fstat_response());
+    case arc_proxy::MojoMessage::kFtruncateRequest:
+      OnFtruncateRequest(message->mutable_ftruncate_request());
+      return true;
+    case arc_proxy::MojoMessage::kFtruncateResponse:
+      return OnFtruncateResponse(message->mutable_ftruncate_response());
     default:
       LOG(ERROR) << "Unknown message type: " << message->command_case();
       return false;
@@ -235,6 +255,10 @@ void MojoProxy::Stop() {
     return;
 
   // Run all pending callbacks.
+  for (auto& x : pending_ftruncate_) {
+    FtruncateCallback& callback = x.second;
+    std::move(callback).Run(ECONNREFUSED);
+  }
   for (auto& x : pending_fstat_) {
     FstatCallback& callback = x.second;
     std::move(callback).Run(ECONNREFUSED, 0);
@@ -493,13 +517,52 @@ void MojoProxy::SendFstatResponse(int64_t cookie,
 bool MojoProxy::OnFstatResponse(arc_proxy::FstatResponse* response) {
   auto it = pending_fstat_.find(response->cookie());
   if (it == pending_fstat_.end()) {
-    LOG(ERROR) << "Unexpected pread response: cookie=" << response->cookie();
+    LOG(ERROR) << "Unexpected fstat response: cookie=" << response->cookie();
     return false;
   }
 
   auto callback = std::move(it->second);
   pending_fstat_.erase(it);
   std::move(callback).Run(response->error_code(), response->size());
+  return true;
+}
+
+void MojoProxy::OnFtruncateRequest(arc_proxy::FtruncateRequest* request) {
+  auto it = fd_map_.find(request->handle());
+  if (it == fd_map_.end()) {
+    LOG(ERROR) << "Couldn't find handle: handle=" << request->handle();
+    arc_proxy::FtruncateResponse response;
+    response.set_error_code(EBADF);
+    SendFtruncateResponse(request->cookie(), std::move(response));
+    return;
+  }
+  it->second.file->Ftruncate(
+      request->length(),
+      base::BindOnce(&MojoProxy::SendFtruncateResponse,
+                     weak_factory_.GetWeakPtr(), request->cookie()));
+}
+
+void MojoProxy::SendFtruncateResponse(int64_t cookie,
+                                      arc_proxy::FtruncateResponse response) {
+  response.set_cookie(cookie);
+  arc_proxy::MojoMessage reply;
+  *reply.mutable_ftruncate_response() = std::move(response);
+
+  if (!delegate_->SendMessage(reply, {}))
+    Stop();
+}
+
+bool MojoProxy::OnFtruncateResponse(arc_proxy::FtruncateResponse* response) {
+  auto it = pending_ftruncate_.find(response->cookie());
+  if (it == pending_ftruncate_.end()) {
+    LOG(ERROR) << "Unexpected ftruncate response: cookie="
+               << response->cookie();
+    return false;
+  }
+
+  auto callback = std::move(it->second);
+  pending_ftruncate_.erase(it);
+  std::move(callback).Run(response->error_code());
   return true;
 }
 

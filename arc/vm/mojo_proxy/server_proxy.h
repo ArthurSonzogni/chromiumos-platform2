@@ -58,6 +58,9 @@ class ServerProxy : public MojoProxy::Delegate,
               PwriteCallback callback) override;
   void Close(int64_t handle) override;
   void Fstat(int64_t handle, FstatCallback callback) override;
+  void Ftruncate(int64_t handle,
+                 int64_t length,
+                 FtruncateCallback callback) override;
 
  private:
   scoped_refptr<base::TaskRunner> proxy_file_system_task_runner_;

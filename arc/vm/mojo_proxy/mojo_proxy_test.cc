@@ -620,5 +620,46 @@ TEST_F(MojoProxyTest, Fstat_UnknownHandle) {
   run_loop.Run();
 }
 
+TEST_F(MojoProxyTest, Ftruncate) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  const base::FilePath file_path = temp_dir.GetPath().Append("test.txt");
+  ASSERT_EQ(0, base::WriteFile(file_path, nullptr, 0));
+
+  base::ScopedFD fd(HANDLE_EINTR(open(file_path.value().c_str(), O_WRONLY)));
+  ASSERT_TRUE(fd.is_valid());
+  const int64_t handle = client()->RegisterFileDescriptor(
+      std::move(fd), arc_proxy::FileDescriptor::REGULAR_FILE, 0);
+
+  constexpr int64_t kLength = 5;
+  base::RunLoop run_loop;
+  server()->Ftruncate(handle, kLength,
+                      base::BindOnce(
+                          [](base::RunLoop* run_loop, int error_code) {
+                            run_loop->Quit();
+                            EXPECT_EQ(0, error_code);
+                          },
+                          &run_loop));
+  run_loop.Run();
+
+  std::string contents;
+  ASSERT_TRUE(ReadFileToString(file_path, &contents));
+  EXPECT_EQ(contents.size(), kLength);
+}
+
+TEST_F(MojoProxyTest, Ftruncate_UnknownHandle) {
+  constexpr int64_t kUnknownHandle = 100;
+  constexpr int64_t kLength = 5;
+  base::RunLoop run_loop;
+  server()->Ftruncate(kUnknownHandle, kLength,
+                      base::BindOnce(
+                          [](base::RunLoop* run_loop, int error_code) {
+                            run_loop->Quit();
+                            EXPECT_EQ(EBADF, error_code);
+                          },
+                          &run_loop));
+  run_loop.Run();
+}
+
 }  // namespace
 }  // namespace arc

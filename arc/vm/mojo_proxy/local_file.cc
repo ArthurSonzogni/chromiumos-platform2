@@ -141,6 +141,24 @@ void LocalFile::Fstat(FstatCallback callback) {
                                    std::move(callback));
 }
 
+void LocalFile::Ftruncate(int64_t length, FtruncateCallback callback) {
+  base::PostTaskAndReplyWithResult(
+      blocking_task_runner_.get(), FROM_HERE,
+      base::BindOnce(
+          [](int fd, int64_t length) {
+            arc_proxy::FtruncateResponse response;
+            int result = HANDLE_EINTR(ftruncate(fd, length));
+            if (result < 0) {
+              response.set_error_code(errno);
+            } else {
+              response.set_error_code(0);
+            }
+            return response;
+          },
+          fd_.get(), length),
+      std::move(callback));
+}
+
 void LocalFile::TrySendMsg() {
   DCHECK(!pending_write_.empty());
   for (; !pending_write_.empty(); pending_write_.pop_front()) {

@@ -40,6 +40,8 @@ message MojoMessage {
     PwriteResponse pwrite_response = 8;
     FstatRequest fstat_request = 9;
     FstatResponse fstat_response = 10;
+    FtruncateRequest ftruncate_request = 11;
+    FtruncateResponse ftruncate_response = 12;
   }
 }
 
@@ -164,4 +166,21 @@ message FstatResponse {
   // Note: at the moment, |size| is the only information needed to implement
   // proxy, so in order to keep the message size as small as possible, no other
   // fields are added. They can be, upon necessary.
+}
+
+// Request to ftruncate(2) a file.
+message FtruncateRequest {
+  int64 cookie = 1;
+
+  // Handle of the file. Its type needs to be REGULAR_FILE.
+  int64 handle = 2;
+
+  // Desired length.
+  int64 length = 3;
+}
+
+// Response to a FtruncateRequest.
+message FtruncateResponse {
+  int64 cookie = 1;
+  int32 error_code = 2;
 }

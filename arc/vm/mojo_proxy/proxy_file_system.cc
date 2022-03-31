@@ -43,6 +43,14 @@ void GetAttr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
   GetFileSystem(req)->GetAttr(req, ino, fi);
 }
 
+void SetAttr(fuse_req_t req,
+             fuse_ino_t ino,
+             struct stat* attr,
+             int to_set,
+             struct fuse_file_info* fi) {
+  GetFileSystem(req)->SetAttr(req, ino, attr, to_set, fi);
+}
+
 void Open(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
   GetFileSystem(req)->Open(req, ino, fi);
 }
@@ -115,6 +123,7 @@ bool ProxyFileSystem::Init() {
   constexpr struct fuse_lowlevel_ops operations = {
       .lookup = arc::Lookup,
       .getattr = arc::GetAttr,
+      .setattr = arc::SetAttr,
       .open = arc::Open,
       .read = arc::Read,
       .write = arc::Write,
@@ -166,6 +175,7 @@ void ProxyFileSystem::GetAttr(fuse_req_t req,
   if (!state.has_value()) {
     LOG(ERROR) << "Inode not found: " << ino;
     fuse_reply_err(req, ENOENT);
+    return;
   }
 
   struct stat stat = {};
@@ -203,6 +213,51 @@ void ProxyFileSystem::GetAttrInternal(fuse_req_t req,
                                  }
                                },
                                req, stat));
+}
+
+void ProxyFileSystem::SetAttr(fuse_req_t req,
+                              fuse_ino_t ino,
+                              struct stat* attr,
+                              int to_set,
+                              struct fuse_file_info* fi) {
+  auto state = GetState(ino);
+  if (!state.has_value()) {
+    LOG(ERROR) << "Inode not found: " << ino;
+    fuse_reply_err(req, ENOENT);
+    return;
+  }
+  // FUSE_SET_ATTR_SIZE is the only supported flag.
+  if (to_set != FUSE_SET_ATTR_SIZE) {
+    LOG(ERROR) << "Unsupported to_set flags: " << to_set;
+    fuse_reply_err(req, EINVAL);
+    return;
+  }
+  struct stat new_attr = {};
+  new_attr.st_ino = ino;
+  new_attr.st_mode = S_IFREG;
+  new_attr.st_nlink = 1;
+  new_attr.st_size = attr->st_size;
+
+  delegate_task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&ProxyFileSystem::SetAttrInternal, base::Unretained(this),
+                     req, state->handle, new_attr));
+}
+
+void ProxyFileSystem::SetAttrInternal(fuse_req_t req,
+                                      int64_t handle,
+                                      struct stat attr) {
+  delegate_->Ftruncate(
+      handle, attr.st_size,
+      base::BindOnce(
+          [](fuse_req_t req, struct stat attr, int error_code) {
+            if (error_code == 0) {
+              fuse_reply_attr(req, &attr, 0);
+            } else {
+              fuse_reply_err(req, error_code);
+            }
+          },
+          req, attr));
 }
 
 void ProxyFileSystem::Open(fuse_req_t req,

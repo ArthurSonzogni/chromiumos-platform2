@@ -25,6 +25,7 @@ struct fuse_chan* Mount(const base::FilePath& mount_path,
   const char* argv[] = {
       "",  // Dummy argv[0],
       subtype_option.c_str(),
+      "-oallow_other",  // Allow other users to use FDs.
   };
   struct fuse_args args =
       FUSE_ARGS_INIT(std::size(argv), const_cast<char**>(argv));

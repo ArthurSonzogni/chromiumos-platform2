@@ -191,4 +191,10 @@ void ServerProxy::Fstat(int64_t handle, FstatCallback callback) {
   mojo_proxy_->Fstat(handle, std::move(callback));
 }
 
+void ServerProxy::Ftruncate(int64_t handle,
+                            int64_t length,
+                            FtruncateCallback callback) {
+  mojo_proxy_->Ftruncate(handle, length, std::move(callback));
+}
+
 }  // namespace arc

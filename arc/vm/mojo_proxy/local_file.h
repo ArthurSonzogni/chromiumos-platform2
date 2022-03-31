@@ -69,6 +69,12 @@ class LocalFile {
   using FstatCallback = base::OnceCallback<void(arc_proxy::FstatResponse)>;
   void Fstat(FstatCallback callback);
 
+  // Truncates the file to the specified length and runs the callback with the
+  // result.
+  using FtruncateCallback =
+      base::OnceCallback<void(arc_proxy::FtruncateResponse)>;
+  void Ftruncate(int64_t length, FtruncateCallback callback);
+
  private:
   void TrySendMsg();
 

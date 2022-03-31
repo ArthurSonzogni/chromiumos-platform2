@@ -62,10 +62,9 @@ class ProxyFileSystemTest : public testing::Test,
              uint64_t offset,
              PreadCallback callback) override {
     if (handle == kHandle) {
-      const std::string data(kTestData);
-      offset = std::min(static_cast<uint64_t>(data.size()), offset);
-      count = std::min(static_cast<uint64_t>(data.size()) - offset, count);
-      std::move(callback).Run(0, data.substr(offset, count));
+      offset = std::min(static_cast<uint64_t>(data_.size()), offset);
+      count = std::min(static_cast<uint64_t>(data_.size()) - offset, count);
+      std::move(callback).Run(0, data_.substr(offset, count));
     } else {
       std::move(callback).Run(EBADF, std::string());
     }
@@ -75,9 +74,9 @@ class ProxyFileSystemTest : public testing::Test,
               uint64_t offset,
               PwriteCallback callback) override {
     if (handle == kHandle) {
-      data_written_.resize(std::max(data_written_.size(),
-                                    static_cast<size_t>(offset + blob.size())));
-      data_written_.replace(offset, blob.size(), blob);
+      data_.resize(
+          std::max(data_.size(), static_cast<size_t>(offset + blob.size())));
+      data_.replace(offset, blob.size(), blob);
       std::move(callback).Run(0, blob.size());
     } else {
       std::move(callback).Run(EBADF, 0);
@@ -90,9 +89,19 @@ class ProxyFileSystemTest : public testing::Test,
   }
   void Fstat(int64_t handle, FstatCallback callback) override {
     if (handle == kHandle) {
-      std::move(callback).Run(0, sizeof(kTestData));
+      std::move(callback).Run(0, data_.size());
     } else {
       std::move(callback).Run(EBADF, 0);
+    }
+  }
+  void Ftruncate(int64_t handle,
+                 int64_t length,
+                 FtruncateCallback callback) override {
+    if (handle == kHandle) {
+      data_.resize(length);
+      std::move(callback).Run(0);
+    } else {
+      std::move(callback).Run(EBADF);
     }
   }
 
@@ -114,7 +123,7 @@ class ProxyFileSystemTest : public testing::Test,
       base::WaitableEvent::ResetPolicy::MANUAL,
       base::WaitableEvent::InitialState::NOT_SIGNALED};
 
-  std::string data_written_;
+  std::string data_;
 };
 
 // On ARM devices, unit tests run without necessary capabilities in QEMU.
@@ -122,13 +131,18 @@ class ProxyFileSystemTest : public testing::Test,
 #define MAYBE_RegularFileReadTest DISABLED_RegularFileReadTest
 #define MAYBE_RegularFileWriteTest DISABLED_RegularFileWriteTest
 #define MAYBE_RegularFileReadWriteTest DISABLED_RegularFileReadWriteTest
+#define MAYBE_RegularFileTruncateAndStatTest \
+  DISABLED_RegularFileTruncateAndStatTest
 #else
 #define MAYBE_RegularFileReadTest RegularFileReadTest
 #define MAYBE_RegularFileWriteTest RegularFileWriteTest
 #define MAYBE_RegularFileReadWriteTest RegularFileReadWriteTest
+#define MAYBE_RegularFileTruncateAndStatTest RegularFileTruncateAndStatTest
 #endif
 
 TEST_F(ProxyFileSystemTest, MAYBE_RegularFileReadTest) {
+  data_ = kTestData;
+
   base::ScopedFD fd = file_system_->RegisterHandle(kHandle, O_RDONLY);
   char buf[10];
   ASSERT_EQ(sizeof(buf), HANDLE_EINTR(read(fd.get(), buf, sizeof(buf))));
@@ -150,7 +164,7 @@ TEST_F(ProxyFileSystemTest, MAYBE_RegularFileWriteTest) {
   ASSERT_EQ(10, HANDLE_EINTR(write(fd.get(), kTestData, 10)));
   ASSERT_EQ(10, HANDLE_EINTR(write(fd.get(), kTestData + 10, 10)));
   ASSERT_EQ(6, HANDLE_EINTR(write(fd.get(), kTestData + 20, 6)));
-  EXPECT_EQ(kTestData, data_written_);
+  EXPECT_EQ(kTestData, data_);
 
   // Close the file descriptor.
   fd.reset();
@@ -160,11 +174,25 @@ TEST_F(ProxyFileSystemTest, MAYBE_RegularFileWriteTest) {
 TEST_F(ProxyFileSystemTest, MAYBE_RegularFileReadWriteTest) {
   base::ScopedFD fd = file_system_->RegisterHandle(kHandle, O_RDWR);
   ASSERT_EQ(26, HANDLE_EINTR(pwrite(fd.get(), kTestData, 26, 0)));
-  EXPECT_EQ(kTestData, data_written_);
+  EXPECT_EQ(kTestData, data_);
 
   char buf[26];
   ASSERT_EQ(sizeof(buf), HANDLE_EINTR(pread(fd.get(), buf, sizeof(buf), 0)));
   EXPECT_EQ(kTestData, std::string(buf, sizeof(buf)));
+
+  // Close the file descriptor.
+  fd.reset();
+  close_was_called_.Wait();
+}
+
+TEST_F(ProxyFileSystemTest, MAYBE_RegularFileTruncateAndStatTest) {
+  constexpr int64_t kLength = 5;
+  base::ScopedFD fd = file_system_->RegisterHandle(kHandle, O_RDWR);
+  EXPECT_EQ(0, HANDLE_EINTR(ftruncate(fd.get(), kLength)));
+
+  struct stat attr = {};
+  ASSERT_EQ(0, fstat(fd.get(), &attr));
+  EXPECT_EQ(kLength, attr.st_size);
 
   // Close the file descriptor.
   fd.reset();

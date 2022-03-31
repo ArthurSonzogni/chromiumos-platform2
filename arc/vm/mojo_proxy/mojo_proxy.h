@@ -120,6 +120,12 @@ class MojoProxy {
   using FstatCallback = base::OnceCallback<void(int, int64_t)>;
   void Fstat(int64_t handle, FstatCallback callback);
 
+  // Requests to call ftruncate(2) for the file in the other side represented by
+  // the handle.
+  // The callback will be called with errno.
+  using FtruncateCallback = base::OnceCallback<void(int)>;
+  void Ftruncate(int64_t handle, int64_t length, FtruncateCallback);
+
  private:
   // Callback called when a new mojo message is available.
   void OnMojoMessageAvailable();
@@ -148,6 +154,10 @@ class MojoProxy {
   void OnFstatRequest(arc_proxy::FstatRequest* request);
   void SendFstatResponse(int64_t cookie, arc_proxy::FstatResponse response);
   bool OnFstatResponse(arc_proxy::FstatResponse* response);
+  void OnFtruncateRequest(arc_proxy::FtruncateRequest* request);
+  void SendFtruncateResponse(int64_t cookie,
+                             arc_proxy::FtruncateResponse response);
+  bool OnFtruncateResponse(arc_proxy::FtruncateResponse* response);
 
   // Callback called when local file descriptor gets ready to read.
   // Reads Message from the file descriptor corresponding to the |handle|,
@@ -198,6 +208,7 @@ class MojoProxy {
   std::map<int64_t, PreadCallback> pending_pread_;
   std::map<int64_t, PwriteCallback> pending_pwrite_;
   std::map<int64_t, FstatCallback> pending_fstat_;
+  std::map<int64_t, FtruncateCallback> pending_ftruncate_;
 
   // Virtwl doesn't maintain message boundaries, and doesn't synchronize
   // between the data and fd stream. Keep a queue of received fds to handle the
