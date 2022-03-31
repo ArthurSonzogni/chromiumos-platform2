@@ -66,6 +66,7 @@ shared_library("libhwsec-foundation") {
     "tpm_error/tpm_error_data.cc",
     "tpm_error/tpm_error_uma_reporter.cc",
     "utility/crypto.cc",
+    "vpd_reader/vpd_reader_impl.cc",
   ]
   pkg_deps = [
     "libmetrics",
@@ -119,6 +120,7 @@ install_config("install_headers") {
     ":install_syscaller_headers",
     ":install_tpm_error_headers",
     ":install_utility_headers",
+    ":install_vpd_reader_headers",
   ]
 }
 
@@ -174,6 +176,14 @@ install_config("install_utility_headers") {
   install_path = "/usr/include/libhwsec-foundation/utility"
 }
 
+install_config("install_vpd_reader_headers") {
+  sources = [
+    "vpd_reader/vpd_reader.h",
+    "vpd_reader/vpd_reader_impl.h",
+  ]
+  install_path = "/usr/include/libhwsec-foundation/vpd_reader"
+}
+
 install_config("install_test_syscaller_headers") {
   sources = [ "syscaller/mock_syscaller.h" ]
   install_path = "/usr/include/libhwsec-foundation/syscaller"
@@ -213,6 +223,7 @@ if (use.test) {
       "utility/crypto_test.cc",
       "utility/synchronized_test.cc",
       "utility/task_dispatching_framework_test.cc",
+      "vpd_reader/vpd_reader_impl_test.cc",
     ]
     sources += [
       "tpm_error/tpm_error_data.cc",
