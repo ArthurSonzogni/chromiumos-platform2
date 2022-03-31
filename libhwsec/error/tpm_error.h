@@ -63,6 +63,8 @@ namespace hwsec {
 class HWSEC_EXPORT TPMErrorBase : public hwsec_foundation::status::Error {
  public:
   using MakeStatusTrait = hwsec_foundation::status::ForbidMakeStatus;
+  // TPMErrorBase is the base of all TPM-related error in libhwsec.
+  using BaseErrorType = TPMErrorBase;
 
   explicit TPMErrorBase(std::string message);
   ~TPMErrorBase() override = default;
