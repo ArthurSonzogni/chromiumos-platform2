@@ -17,11 +17,7 @@
 
 namespace {
 
-using chromeos::mojo_service_manager::Daemon;
-using chromeos::mojo_service_manager::kExtraPolicyDirectoryPathInDevMode;
-using chromeos::mojo_service_manager::kPolicyDirectoryPath;
-using chromeos::mojo_service_manager::LoadAllServicePolicyFileFromDirectory;
-using chromeos::mojo_service_manager::ServicePolicyMap;
+namespace service_manager = chromeos::mojo_service_manager;
 
 bool IsDevMode() {
   int value = ::VbGetSystemPropertyInt("cros_debug");
@@ -45,14 +41,15 @@ int main(int argc, char* argv[]) {
 
   mojo::core::Init(mojo::core::Configuration{.is_broker_process = true});
 
-  ServicePolicyMap policy_map;
-  LoadAllServicePolicyFileFromDirectory(base::FilePath{kPolicyDirectoryPath},
-                                        &policy_map);
+  service_manager::ServicePolicyMap policy_map;
+  service_manager::LoadAllServicePolicyFileFromDirectory(
+      base::FilePath{service_manager::kPolicyDirectoryPath}, &policy_map);
   if (IsDevMode()) {
     LOG(INFO) << "DevMode is enabled, load extra configs from "
-              << kExtraPolicyDirectoryPathInDevMode;
-    LoadAllServicePolicyFileFromDirectory(
-        base::FilePath{kExtraPolicyDirectoryPathInDevMode}, &policy_map);
+              << service_manager::kExtraPolicyDirectoryPathInDevMode;
+    service_manager::LoadAllServicePolicyFileFromDirectory(
+        base::FilePath{service_manager::kExtraPolicyDirectoryPathInDevMode},
+        &policy_map);
   }
-  return Daemon(std::move(policy_map)).Run();
+  return service_manager::Daemon(std::move(policy_map)).Run();
 }
