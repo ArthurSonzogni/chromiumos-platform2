@@ -70,11 +70,6 @@ const uint16_t kCr50SubcmdManageCCDPwd = 33;
 const uint16_t kCr50SubcmdGetAlertsData = 35;
 const uint16_t kCr50SubcmdPinWeaver = 37;
 const uint16_t kCr50SubcmdGetRoStatus = 57;
-// Auth policy used in RSA and ECC templates for EK keys generation.
-// From TCG Credential Profile EK 2.0. Section 2.1.5.
-const std::string kEKTemplateAuthPolicy(
-    "\x83\x71\x97\x67\x44\x84\xB3\xF8\x1A\x90\xCC\x8D\x46\xA5\xD7\x24"
-    "\xFD\x52\xD7\x6E\x06\x52\x0B\x64\xF2\xA1\xDA\x1B\x33\x14\x69\xAA");
 
 // Salt used exclusively for the Remote Server Unlock process due to the privacy
 // reasons.
@@ -2176,7 +2171,8 @@ TPM_RC TpmUtilityImpl::GetEndorsementKey(
   public_area.object_attributes = kFixedTPM | kFixedParent |
                                   kSensitiveDataOrigin | kAdminWithPolicy |
                                   kRestricted | kDecrypt;
-  public_area.auth_policy = Make_TPM2B_DIGEST(kEKTemplateAuthPolicy);
+  public_area.auth_policy =
+      Make_TPM2B_DIGEST(std::string(GetEkTemplateAuthPolicy()));
   if (key_type == TPM_ALG_RSA) {
     public_area.parameters.rsa_detail.symmetric.algorithm = TPM_ALG_AES;
     public_area.parameters.rsa_detail.symmetric.key_bits.aes = 128;

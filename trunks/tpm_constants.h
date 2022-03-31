@@ -5,6 +5,9 @@
 #ifndef TRUNKS_TPM_CONSTANTS_H_
 #define TRUNKS_TPM_CONSTANTS_H_
 
+#include <iterator>
+#include <string_view>
+
 #include "trunks/tpm_generated.h"
 
 namespace trunks {
@@ -51,6 +54,25 @@ constexpr TPM_CC TPM_CC_VENDOR_SPECIFIC_MASK = 1U << 29;
 
 // This needs to be used to be backwards compatible with older Cr50 versions.
 constexpr TPM_CC TPM_CC_CR50_EXTENSION_COMMAND = 0xbaccd00a;
+
+// Auth policy used in RSA and ECC templates for EK keys generation.
+// From TCG Credential Profile EK 2.0. Section 2.1.5.
+constexpr inline char kEKTemplateAuthPolicy[] = {
+    '\x83', '\x71', '\x97', '\x67', '\x44', '\x84', '\xB3', '\xF8',
+    '\x1A', '\x90', '\xCC', '\x8D', '\x46', '\xA5', '\xD7', '\x24',
+    '\xFD', '\x52', '\xD7', '\x6E', '\x06', '\x52', '\x0B', '\x64',
+    '\xF2', '\xA1', '\xDA', '\x1B', '\x33', '\x14', '\x69', '\xAA',
+};
+
+static_assert(sizeof(kEKTemplateAuthPolicy) == SHA256_DIGEST_SIZE,
+              "auth policy not a sha256 digest.");
+
+// Returns a `std::string_view` of `kEKTemplateAuthPolicy`.
+constexpr inline std::string_view GetEkTemplateAuthPolicy() {
+  return std::string_view(kEKTemplateAuthPolicy,
+                          std::size(kEKTemplateAuthPolicy));
+}
+
 }  // namespace trunks
 
 #endif  // TRUNKS_TPM_CONSTANTS_H_
