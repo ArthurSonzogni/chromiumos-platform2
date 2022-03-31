@@ -1380,35 +1380,6 @@ bool AttestationService::CreateCertificateRequestInternal(
   return true;
 }
 
-bool AttestationService::FinishCertificateRequestInternal(
-    const std::string& certificate_response,
-    const std::string& username,
-    const std::string& key_label,
-    const std::string& message_id,
-    CertifiedKey* key,
-    std::string* certificate_chain,
-    std::string* server_error) {
-  if (!tpm_utility_->IsTpmReady()) {
-    return false;
-  }
-  AttestationCertificateResponse response_pb;
-  if (!response_pb.ParseFromString(certificate_response)) {
-    LOG(ERROR) << __func__ << ": Failed to parse response from Attestation CA.";
-    return false;
-  }
-  if (response_pb.status() != OK) {
-    *server_error = response_pb.detail();
-    LogErrorFromCA(__func__, response_pb.detail(), response_pb.extra_details());
-    return false;
-  }
-  if (message_id != response_pb.message_id()) {
-    LOG(ERROR) << __func__ << ": Message ID mismatch.";
-    return false;
-  }
-  return PopulateAndStoreCertifiedKey(response_pb, username, key_label, key,
-                                      certificate_chain);
-}
-
 bool AttestationService::PopulateAndStoreCertifiedKey(
     const AttestationCertificateResponse& response_pb,
     const std::string& username,

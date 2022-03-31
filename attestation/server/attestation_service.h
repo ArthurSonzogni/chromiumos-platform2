@@ -388,19 +388,6 @@ class AttestationService : public AttestationInterface {
                                         std::string* certificate_request,
                                         std::string* message_id);
 
-  // Finishes a certificate request by decoding the |certificate_response| to
-  // recover the |certificate_chain| and storing it in association with the
-  // |key| identified by |username| and |key_label|. Returns true on success. On
-  // failure, returns false and sets |server_error| to the error string from the
-  // CA. Calls PopulateAndStoreCertifiedKey internally.
-  bool FinishCertificateRequestInternal(const std::string& certificate_response,
-                                        const std::string& username,
-                                        const std::string& key_label,
-                                        const std::string& message_id,
-                                        CertifiedKey* key,
-                                        std::string* certificate_chain,
-                                        std::string* server_error);
-
   // Recover the |certificate_chain| from |response_pb| and store it in
   // association with the |key| identified by |username| and |key_label|.
   // Returns true on success.
