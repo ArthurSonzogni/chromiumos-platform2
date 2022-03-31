@@ -52,6 +52,7 @@ source_set("vtpm_server_library") {
     "backends/attested_virtual_endorsement.cc",
     "backends/cacheable_blob.cc",
     "backends/disk_cache_blob.cc",
+    "backends/endorsement_password_changer.cc",
     "backends/real_static_analyzer.cc",
     "backends/real_tpm_handle_manager.cc",
     "backends/scoped_host_key_handle.cc",
@@ -77,7 +78,10 @@ source_set("vtpm_server_library") {
 }
 
 config("vtpmd_config") {
-  libs = [ "trunks" ]
+  libs = [
+    "tpm_manager",
+    "trunks",
+  ]
 }
 
 executable("vtpmd") {
@@ -116,6 +120,7 @@ install_config("install_systemd") {
 if (use.test) {
   config("vtpm_test_config") {
     libs = [
+      "tpm_manager",
       "trunks",
       "trunks_test",
     ]
@@ -125,6 +130,7 @@ if (use.test) {
       "backends/attested_virtual_endorsement_test.cc",
       "backends/cacheable_blob_test.cc",
       "backends/disk_cache_blob_test.cc",
+      "backends/endorsement_password_changer_test.cc",
       "backends/real_tpm_handle_manager_test.cc",
       "backends/vek_cert_manager_test.cc",
       "backends/vek_cert_test.cc",
