@@ -112,6 +112,8 @@ void PrintUsage() {
   puts("      --sess_empty_auth (supports --key_create  and --key_load)");
   puts("  --index_name --index=<N> - print the name of NV index N in hex");
   puts("                             format.");
+  puts("  --index_data --index=<N> - print the data of NV index N in hex");
+  puts("                             format.");
   puts("  --ext_command_test - Runs regression tests on extended commands.");
   puts("  --uds_calc [(--zero|--rec|--recdev)]");
   puts("      - Calculate UnDefineSpecial(UDS) digest for the PCR0 value");
@@ -665,6 +667,33 @@ int PrintIndexNameInHex(const TrunksFactory& factory, int index) {
   return 0;
 }
 
+int PrintIndexDataInHex(const TrunksFactory& factory, int index) {
+  // Mask out the nv index handle so the user can either add or not add it
+  // themselves.
+  index &= trunks::HR_HANDLE_MASK;
+  std::unique_ptr<trunks::TpmUtility> tpm_utility = factory.GetTpmUtility();
+  trunks::TPMS_NV_PUBLIC nvram_public;
+  trunks::TPM_RC rc = tpm_utility->GetNVSpacePublicArea(index, &nvram_public);
+  if (rc != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading NV space public area: "
+               << trunks::GetErrorString(rc);
+    return -1;
+  }
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      factory.GetPasswordAuthorization("");
+  std::string nvram_data;
+  rc =
+      tpm_utility->ReadNVSpace(index, /*offset=*/0, nvram_public.data_size,
+                               /*using_owner_authorization=*/false, &nvram_data,
+                               empty_password_authorization.get());
+  if (rc != trunks::TPM_RC_SUCCESS) {
+    LOG(ERROR) << "Error reading NV space: " << trunks::GetErrorString(rc);
+    return -1;
+  }
+  printf("NV Index data: %s\n", HexEncode(nvram_data).c_str());
+  return 0;
+}
+
 std::string DigestString(const unsigned char* digest_value) {
   auto ptr = reinterpret_cast<const char*>(digest_value);
   return std::string(ptr, SHA256_DIGEST_SIZE);
@@ -1064,6 +1093,11 @@ int main(int argc, char** argv) {
     uint32_t nv_index =
         std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 16);
     return PrintIndexNameInHex(factory, nv_index);
+  }
+  if (cl->HasSwitch("index_data") && cl->HasSwitch("index")) {
+    uint32_t nv_index =
+        std::stoul(cl->GetSwitchValueASCII("index"), nullptr, 16);
+    return PrintIndexDataInHex(factory, nv_index);
   }
 
   if (cl->HasSwitch("uds_calc")) {
