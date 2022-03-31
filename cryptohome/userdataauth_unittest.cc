@@ -37,6 +37,8 @@
 #include "cryptohome/credentials_test_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/cryptohome_mount_error.h"
+#include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_crypto.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -66,6 +68,8 @@ using base::FilePath;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
+using cryptohome::error::CryptohomeMountError;
+using cryptohome::error::NoErrorAction;
 
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
@@ -73,6 +77,9 @@ using ::hwsec::TPMRetryAction;
 using ::hwsec_foundation::CreateSecureRandomBlob;
 using ::hwsec_foundation::Sha1;
 using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::ByMove;
@@ -109,6 +116,10 @@ constexpr auto kAuthSessionExtension =
 
 // Fake labels to be in used in this test suite.
 constexpr char kFakeLabel[] = "test_label";
+
+constexpr ::cryptohome::error::CryptohomeError::ErrorLocation
+    kErrorLocationPlaceholder =
+        static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1);
 
 }  // namespace
 
@@ -2604,7 +2615,9 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
   EXPECT_CALL(user_session_factory_, New(_, _))
       .WillOnce(Invoke([this](bool, bool) {
         SetupMount(kGuestUserName);
-        EXPECT_CALL(*session_, MountGuest()).WillOnce(Return(MOUNT_ERROR_NONE));
+        EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([]() {
+          return OkStatus<CryptohomeMountError>();
+        }));
         return session_;
       }));
 
@@ -2646,6 +2659,11 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
               *called_ptr = true;
               EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY,
                         reply.error());
+              EXPECT_EQ(user_data_auth::PrimaryAction::PRIMARY_NONE,
+                        reply.error_info().primary_action());
+              EXPECT_THAT(
+                  reply.error_info().possible_actions(),
+                  ElementsAre(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
             },
             base::Unretained(&called)));
   }
@@ -2662,8 +2680,11 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
   EXPECT_CALL(user_session_factory_, New(_, _))
       .WillOnce(Invoke([this](bool, bool) {
         SetupMount(kGuestUserName);
-        EXPECT_CALL(*session_, MountGuest())
-            .WillOnce(Return(MOUNT_ERROR_FATAL));
+        EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([]() {
+          return MakeStatus<CryptohomeMountError>(
+              kErrorLocationPlaceholder, NoErrorAction(), MOUNT_ERROR_FATAL,
+              base::nullopt);
+        }));
         return session_;
       }));
 

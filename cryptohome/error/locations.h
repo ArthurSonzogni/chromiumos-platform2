@@ -23,6 +23,14 @@ namespace error {
 // ErrorLocation so that if the macro is not used, the compiler will catch it.
 enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   // Start of generated content. Do NOT modify after this line.
+  /* ./user_session/real_user_session.cc */
+  kLocUserSessionMountEphemeralFailed = 100,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountGuestMountPointBusy = 101,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountGuestNoGuestSession = 102,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthMountGuestSessionMountFailed = 103,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

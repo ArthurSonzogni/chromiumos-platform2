@@ -47,6 +47,9 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptohome_rsa_key_loader.h"
+#include "cryptohome/error/converter.h"
+#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory.h"
@@ -68,8 +71,16 @@ using base::FilePath;
 using brillo::Blob;
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserName;
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::CryptohomeMountError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using cryptohome::error::NoErrorAction;
 using hwsec::TPMErrorBase;
 using hwsec_foundation::Sha1;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -1361,30 +1372,47 @@ void UserDataAuth::MountGuest(
   reply.set_sanitized_username(SanitizeUserName(guest_user_));
   if (!ok) {
     LOG(ERROR) << "Could not unmount cryptohomes for Guest use";
-    reply.set_error(user_data_auth::CryptohomeErrorCode::
-                        CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
-    std::move(on_done).Run(reply);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountGuestMountPointBusy),
+            ErrorActionSet({ErrorAction::kReboot}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
     return;
   }
   ReportTimerStart(kMountGuestExTimer);
 
+  StatusChain<CryptohomeError> status;
+
   // Create a ref-counted guest mount for async use and then throw it away.
   scoped_refptr<UserSession> guest_session =
       GetOrCreateUserSession(guest_user_);
-  if (!guest_session || guest_session->MountGuest() != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Could not initialize guest session.";
-    reply.set_error(
+  if (!guest_session) {
+    LOG(ERROR) << "Failed to create guest session.";
+    // This should not happen.
+    status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountGuestNoGuestSession),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
+  } else {
+    auto inner = guest_session->MountGuest();
+    if (inner) {
+      LOG(ERROR) << "Could not initialize guest session.";
+      status = MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountGuestSessionMountFailed),
+          NoErrorAction(),
+          user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
+    }
   }
 
-  if (reply.error() ==
-      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+  if (!status.ok()) {
     // We only report the guest mount time for successful cases.
     ReportTimerStop(kMountGuestExTimer);
   }
 
   // TODO(b/137073669): Cleanup guest_mount if mount failed.
-  std::move(on_done).Run(reply);
+  ReplyWithError(std::move(on_done), reply, std::move(status));
 }
 
 void UserDataAuth::DoMount(
@@ -3955,14 +3983,16 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareGuestVaultImpl() {
 
   LOG(INFO) << "Started mounting for guest";
   ReportTimerStart(kMountGuestExTimer);
-  MountError mount_error = session->MountGuest();
+  StatusChain<CryptohomeMountError> status = session->MountGuest();
   ReportTimerStop(kMountGuestExTimer);
-  if (mount_error != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Finished mounting with status code: " << mount_error;
-  } else {
-    LOG(INFO) << "Mount succeeded.";
+  if (!status.ok()) {
+    DCHECK(status->mount_error() != MOUNT_ERROR_NONE);
+    LOG(ERROR) << "Finished mounting with status code: "
+               << status->mount_error();
+    return MountErrorToCryptohomeError(status->mount_error());
   }
-  return MountErrorToCryptohomeError(mount_error);
+  LOG(INFO) << "Mount succeeded.";
+  return MountErrorToCryptohomeError(MountError::MOUNT_ERROR_NONE);
 }
 
 user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareEphemeralVaultImpl(

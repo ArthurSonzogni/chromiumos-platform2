@@ -16,6 +16,7 @@
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/pkcs11/pkcs11_token_factory.h"
@@ -63,7 +64,9 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
 
   // Creates and mounts a ramdisk backed ephemeral session for an anonymous
   // user.
-  virtual MountError MountGuest() = 0;
+  virtual hwsec_foundation::status::StatusChain<
+      cryptohome::error::CryptohomeMountError>
+  MountGuest() = 0;
 
   // Unmounts the session.
   virtual bool Unmount() = 0;

@@ -46,7 +46,11 @@ class MockUserSession : public UserSession {
                const CryptohomeVault::Options&),
               (override));
   MOCK_METHOD(MountError, MountEphemeral, (const std::string), (override));
-  MOCK_METHOD(MountError, MountGuest, (), (override));
+  MOCK_METHOD(hwsec_foundation::status::StatusChain<
+                  cryptohome::error::CryptohomeMountError>,
+              MountGuest,
+              (),
+              (override));
   MOCK_METHOD(bool, Unmount, (), (override));
   MOCK_METHOD(base::Value, GetStatus, (), (const, override));
   MOCK_METHOD(std::unique_ptr<brillo::SecureBlob>,

@@ -38,6 +38,7 @@ using ::testing::_;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Eq;
+using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgPointee;
@@ -45,6 +46,8 @@ using ::testing::SetArgPointee;
 using base::test::TaskEnvironment;
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
+using error::CryptohomeMountError;
+using hwsec_foundation::status::OkStatus;
 using user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_EPHEMERAL_USER;
 
 namespace {
@@ -159,7 +162,9 @@ TEST_F(AuthSessionInterfaceTest, PrepareGuestVault) {
       base::MakeRefCounted<MockUserSession>();
   EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(user_session));
   EXPECT_CALL(*user_session, IsActive()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*user_session, MountGuest()).WillOnce(Return(MOUNT_ERROR_NONE));
+  EXPECT_CALL(*user_session, MountGuest()).WillOnce(Invoke([]() {
+    return OkStatus<CryptohomeMountError>();
+  }));
 
   // Expect auth and existing cryptohome-dir only for non-ephemeral
   ExpectAuth(kUsername2, brillo::SecureBlob(kPassword2));

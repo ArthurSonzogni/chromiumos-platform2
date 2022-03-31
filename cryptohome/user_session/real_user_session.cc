@@ -19,6 +19,9 @@
 
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
+#include "cryptohome/error/cryptohome_mount_error.h"
+#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/pkcs11_token.h"
@@ -28,8 +31,15 @@
 
 using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
+using cryptohome::error::CryptohomeMountError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
+using cryptohome::error::NoErrorAction;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::Sha256;
+using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::OkStatus;
+using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -93,8 +103,16 @@ MountError RealUserSession::MountEphemeral(const std::string username) {
   return error;
 }
 
-MountError RealUserSession::MountGuest() {
-  return mount_->MountEphemeralCryptohome(kGuestUserName);
+StatusChain<CryptohomeMountError> RealUserSession::MountGuest() {
+  MountError mount_error = mount_->MountEphemeralCryptohome(kGuestUserName);
+  if (mount_error == MOUNT_ERROR_NONE) {
+    return OkStatus<CryptohomeMountError>();
+  }
+  return MakeStatus<CryptohomeMountError>(
+      CRYPTOHOME_ERR_LOC(kLocUserSessionMountEphemeralFailed),
+      ErrorActionSet(
+          {ErrorAction::kRetry, ErrorAction::kReboot, ErrorAction::kPowerwash}),
+      mount_error, base::nullopt);
 }
 
 bool RealUserSession::Unmount() {
