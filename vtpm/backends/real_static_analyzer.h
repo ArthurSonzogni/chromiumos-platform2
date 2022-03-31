@@ -21,6 +21,8 @@ class RealStaticAnalyzer : public StaticAnalyzer {
   int GetResponseHandleCount(trunks::TPM_CC cc) override;
   bool IsSuccessfulResponse(const std::string& response) override;
   OperationContextType GetOperationContextType(trunks::TPM_CC cc) override;
+  trunks::TPM_RC ComputeNvName(const trunks::TPMS_NV_PUBLIC& nv_public,
+                               std::string& nv_name) override;
 };
 
 }  // namespace vtpm

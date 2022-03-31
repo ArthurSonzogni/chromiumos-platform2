@@ -38,6 +38,11 @@ class StaticAnalyzer {
 
   // Returns the corresponding `OperationContextType` of `cc`.
   virtual OperationContextType GetOperationContextType(trunks::TPM_CC cc) = 0;
+
+  // Computes the name from a nv space public area `nv_public`. Returns an error
+  // if marshal error occurs or the algorithm occurs.
+  virtual trunks::TPM_RC ComputeNvName(const trunks::TPMS_NV_PUBLIC& nv_public,
+                                       std::string& nv_name) = 0;
 };
 
 }  // namespace vtpm

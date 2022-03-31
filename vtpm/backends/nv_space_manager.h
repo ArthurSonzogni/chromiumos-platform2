@@ -23,6 +23,24 @@ class NvSpaceManager {
   virtual trunks::TPM_RC Read(trunks::TPM_NV_INDEX nv_index,
                               const std::string& password,
                               std::string& nv_data) = 0;
+
+  // Sets the data size of `nv_index` to `data_size` and returns
+  // `TPM_RC_SUCCESS` in a successful case. Otherwise, returns a certain error
+  // code.
+  virtual trunks::TPM_RC GetDataSize(trunks::TPM_NV_INDEX nv_index,
+                                     trunks::UINT16& data_size) = 0;
+
+  // Sets the data size of `nv_index` to `attributes` and returns
+  // `TPM_RC_SUCCESS` in a successful case. Otherwise, returns a certain error
+  // code.
+  virtual trunks::TPM_RC GetAttributes(trunks::TPM_NV_INDEX nv_index,
+                                       trunks::TPMA_NV& attributes) = 0;
+
+  // Sets the name algorithm of `nv_index` to `algorithm` and returns
+  // `TPM_RC_SUCCESS` in a successful case. Otherwise, returns a certain error
+  // code.
+  virtual trunks::TPM_RC GetNameAlgorithm(trunks::TPM_NV_INDEX nv_index,
+                                          trunks::TPMI_ALG_HASH& algorithm) = 0;
 };
 
 }  // namespace vtpm

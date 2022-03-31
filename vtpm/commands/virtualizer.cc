@@ -19,6 +19,7 @@
 #include "vtpm/commands/forward_command.h"
 #include "vtpm/commands/get_capability_command.h"
 #include "vtpm/commands/nv_read_command.h"
+#include "vtpm/commands/nv_read_public_command.h"
 #include "vtpm/commands/unsupported_command.h"
 
 namespace vtpm {
@@ -128,6 +129,14 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
         v->vek_cert_manager_.get()));
 
     v->command_table_.emplace(trunks::TPM_CC_NV_Read,
+                              v->commands_.back().get());
+
+    // Add `NvReadPublicCommand`.
+    v->commands_.emplace_back(std::make_unique<NvReadPublicCommand>(
+        &v->real_command_parser_, &v->real_response_serializer_,
+        v->vek_cert_manager_.get(), &v->real_static_analyzer_));
+
+    v->command_table_.emplace(trunks::TPM_CC_NV_ReadPublic,
                               v->commands_.back().get());
 
     // Add forwarded command w/ handle translateion.

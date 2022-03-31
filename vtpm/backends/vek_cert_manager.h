@@ -24,6 +24,15 @@ class VekCertManager : public NvSpaceManager {
                       const std::string& password,
                       std::string& nv_data) override;
 
+  trunks::TPM_RC GetDataSize(trunks::TPM_NV_INDEX nv_index,
+                             trunks::UINT16& data_size) override;
+
+  trunks::TPM_RC GetAttributes(trunks::TPM_NV_INDEX nv_index,
+                               trunks::TPMA_NV& attributes) override;
+
+  trunks::TPM_RC GetNameAlgorithm(trunks::TPM_NV_INDEX nv_index,
+                                  trunks::TPMI_ALG_HASH& algorithm) override;
+
  private:
   const trunks::TPM_NV_INDEX nv_index_;
   Blob* const blob_;

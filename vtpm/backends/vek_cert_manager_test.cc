@@ -67,6 +67,48 @@ TEST_F(VekCertManagerTest, FailureWrongIndex) {
             trunks::TPM_RC_NV_SPACE);
 }
 
+TEST_F(VekCertManagerTest, GetDataSizeSuccess) {
+  EXPECT_CALL(mock_blob_, Get(_))
+      .WillOnce(
+          DoAll(SetArgReferee<0>(kFakeCert), Return(trunks::TPM_RC_SUCCESS)));
+  trunks::UINT16 data_size = 0;
+  EXPECT_EQ(manager_.GetDataSize(kFakeIndex, data_size),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_EQ(data_size, std::string(kFakeCert).size());
+}
+
+TEST_F(VekCertManagerTest, GetDataSizeFailureWrongIndex) {
+  trunks::UINT16 data_size = 0;
+  EXPECT_EQ(manager_.GetDataSize(kFakeIndex + 1, data_size),
+            trunks::TPM_RC_NV_SPACE);
+}
+
+TEST_F(VekCertManagerTest, GetAttributesSuccess) {
+  trunks::TPMA_NV attributes = 0;
+  EXPECT_EQ(manager_.GetAttributes(kFakeIndex, attributes),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_NE(attributes, 0);
+}
+
+TEST_F(VekCertManagerTest, GetAttributesFailureWrongIndex) {
+  trunks::TPMA_NV attributes = 0;
+  EXPECT_EQ(manager_.GetAttributes(kFakeIndex + 1, attributes),
+            trunks::TPM_RC_NV_SPACE);
+}
+
+TEST_F(VekCertManagerTest, GetNameAlgorithmSuccess) {
+  trunks::TPMI_ALG_HASH name_algorithm = 0;
+  EXPECT_EQ(manager_.GetNameAlgorithm(kFakeIndex, name_algorithm),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_EQ(name_algorithm, trunks::TPM_ALG_SHA256);
+}
+
+TEST_F(VekCertManagerTest, GetNameAlgorithmFailureWrongIndex) {
+  trunks::TPMI_ALG_HASH name_algorithm = 0;
+  EXPECT_EQ(manager_.GetNameAlgorithm(kFakeIndex + 1, name_algorithm),
+            trunks::TPM_RC_NV_SPACE);
+}
+
 }  // namespace
 
 }  // namespace vtpm

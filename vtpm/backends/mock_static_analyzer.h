@@ -24,6 +24,10 @@ class MockStaticAnalyzer : public StaticAnalyzer {
               GetOperationContextType,
               (trunks::TPM_CC),
               (override));
+  MOCK_METHOD(trunks::TPM_RC,
+              ComputeNvName,
+              (const trunks::TPMS_NV_PUBLIC&, std::string&),
+              (override));
 };
 
 }  // namespace vtpm

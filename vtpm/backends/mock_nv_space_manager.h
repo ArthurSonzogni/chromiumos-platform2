@@ -20,6 +20,21 @@ class MockNvSpaceManager : public NvSpaceManager {
               Read,
               (trunks::TPM_NV_INDEX, const std::string&, std::string&),
               (override));
+
+  MOCK_METHOD(trunks::TPM_RC,
+              GetDataSize,
+              (trunks::TPM_NV_INDEX, trunks::UINT16&),
+              (override));
+
+  MOCK_METHOD(trunks::TPM_RC,
+              GetAttributes,
+              (trunks::TPM_NV_INDEX, trunks::TPMA_NV&),
+              (override));
+
+  MOCK_METHOD(trunks::TPM_RC,
+              GetNameAlgorithm,
+              (trunks::TPM_NV_INDEX, trunks::TPMI_ALG_HASH&),
+              (override));
 };
 
 }  // namespace vtpm
