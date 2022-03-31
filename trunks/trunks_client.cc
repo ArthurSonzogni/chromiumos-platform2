@@ -135,6 +135,8 @@ void PrintUsage() {
   puts("      - Perform a closed-loop testing: Create AIK-> Make credential");
   puts("        -> Activate credential with EK.");
   puts("  --test_sign_verify - Perform a closed-loop sign and verify test");
+  puts("  --test_certify_simple");
+  puts("     - Perform certifying key and partially verify the output-");
   puts("D-Bus options:");
   puts("  --vtpm");
   puts("      - Send the TPM command to vtpm instead of trunks.");
@@ -980,6 +982,108 @@ bool TestSignVerify(const trunks::TrunksFactory& factory) {
   return true;
 }
 
+bool TestCertify(const trunks::TrunksFactory& factory) {
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      factory.GetPasswordAuthorization("");
+  std::string aik_blob;
+  trunks::TPM_RC rc = factory.GetTpmUtility()->CreateIdentityKey(
+      trunks::TPM_ALG_ECC, empty_password_authorization.get(), &aik_blob);
+  if (rc) {
+    LOG(ERROR) << "Failed to call `TpmUtility::CreateIdentityKey()`: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  std::string blob, creation_blob;
+  rc = factory.GetTpmUtility()->CreateECCKeyPair(
+      trunks::TpmUtility::AsymmetricKeyUsage::kSignKey,
+      trunks::TPM_ECC_NIST_P256,
+      /*password=*/"",
+      /*policy_digest=*/"",
+      /*use_only_policy_authorization=*/false,
+      /*creation_pcr_indexes=*/{}, empty_password_authorization.get(), &blob,
+      &creation_blob);
+  if (rc) {
+    LOG(ERROR) << "Failed to create key: " << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  // Load aik.
+  trunks::TPM_HANDLE aik_handle = 0;
+  rc = factory.GetTpmUtility()->LoadKey(
+      aik_blob, empty_password_authorization.get(), &aik_handle);
+  if (rc) {
+    LOG(ERROR) << "Failed to call `TpmUtility::LoadKey()`: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  // Load key to be certified.
+  trunks::TPM_HANDLE handle = 0;
+  rc = factory.GetTpmUtility()->LoadKey(
+      blob, empty_password_authorization.get(), &handle);
+  if (rc) {
+    LOG(ERROR) << "Failed to call `TpmUtility::LoadKey()`: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  // Make sure the object is flushed.
+  trunks::ScopedKeyHandle scoped_aik(factory, aik_handle);
+  scoped_aik.set_synchronized(true);
+  trunks::ScopedKeyHandle scoped_key(factory, handle);
+  scoped_key.set_synchronized(true);
+
+  // Certify.
+  MultipleAuthorizations authorization;
+  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+
+  trunks::TPMT_SIG_SCHEME scheme = {
+      .scheme = trunks::TPM_ALG_ECDSA,
+      .details.any.hash_alg = trunks::TPM_ALG_SHA256,
+  };
+
+  trunks::TPM2B_ATTEST certify_info = {};
+  trunks::TPMT_SIGNATURE signature = {};
+
+  rc = factory.GetTpm()->CertifySync(
+      handle,
+      /*object_handle_name=*/"not used w/o auth session", aik_handle,
+      /*sign_handle_name=*/"not used w/o auth session",
+      trunks::Make_TPM2B_DATA("qualifying data"), scheme, &certify_info,
+      &signature, &authorization);
+
+  if (rc) {
+    LOG(ERROR) << "Failed to certify: " << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  // Only perform a simple verification against the output `TPMS_ATTEST`.
+  trunks::TPMS_ATTEST attest = {};
+  std::string buffer = StringFrom_TPM2B_ATTEST(certify_info);
+  rc = trunks::Parse_TPMS_ATTEST(&buffer, &attest, nullptr);
+  if (rc) {
+    LOG(ERROR) << "Failed to call `Parse_TPMS_ATTEST()`: "
+               << trunks::GetErrorString(rc);
+    return false;
+  }
+  if (!buffer.empty()) {
+    LOG(ERROR) << "wrong size of `TPMS_ATTEST` buffer.";
+    return false;
+  }
+  if (attest.magic != trunks::TPM_GENERATED_VALUE) {
+    LOG(ERROR) << "Unexpected magic number: " << attest.magic;
+    return false;
+  }
+  if (attest.type != trunks::TPM_ST_ATTEST_CERTIFY) {
+    LOG(ERROR) << "Unexpected attest type: " << attest.type;
+    return false;
+  }
+
+  return true;
+}
+
 std::vector<std::string> BreakByDelim(const std::string& value,
                                       const std::string& delim) {
   std::vector<std::string> result;
@@ -1559,6 +1663,14 @@ int main(int argc, char** argv) {
   }
   if (cl->HasSwitch("test_sign_verify")) {
     if (TestSignVerify(factory)) {
+      puts("pass");
+      return 0;
+    }
+    puts("fail");
+    return -1;
+  }
+  if (cl->HasSwitch("test_certify_simple")) {
+    if (TestCertify(factory)) {
       puts("pass");
       return 0;
     }
