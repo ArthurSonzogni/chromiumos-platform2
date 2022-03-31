@@ -26,6 +26,30 @@ const int kDBusMaxTimeout = 5 * 60 * 1000;
 
 namespace trunks {
 
+TrunksDBusProxy::TrunksDBusProxy()
+    : TrunksDBusProxy(kTrunksServiceName,
+                      kTrunksServicePath,
+                      kTrunksInterface,
+                      /*bus=*/nullptr) {}
+
+TrunksDBusProxy::TrunksDBusProxy(const std::string& name,
+                                 const std::string& path,
+                                 const std::string& interface)
+    : TrunksDBusProxy(name, path, interface, /*bus=*/nullptr) {}
+
+TrunksDBusProxy::TrunksDBusProxy(const std::string& name,
+                                 const std::string& path,
+                                 const std::string& interface,
+                                 scoped_refptr<dbus::Bus> bus)
+    : dbus_name_(name),
+      dbus_path_(path),
+      dbus_interface_(interface),
+      bus_(bus) {}
+
+TrunksDBusProxy::TrunksDBusProxy(dbus::Bus* bus)
+    : TrunksDBusProxy(
+          kTrunksServiceName, kTrunksServicePath, kTrunksInterface, bus) {}
+
 TrunksDBusProxy::~TrunksDBusProxy() {
   if (bus_) {
     bus_->ShutdownAndBlock();
@@ -44,8 +68,7 @@ bool TrunksDBusProxy::Init() {
   }
   if (!object_proxy_) {
     object_proxy_ =
-        bus_->GetObjectProxy(trunks::kTrunksServiceName,
-                             dbus::ObjectPath(trunks::kTrunksServicePath));
+        bus_->GetObjectProxy(dbus_name_, dbus::ObjectPath(dbus_path_));
     if (!object_proxy_) {
       return false;
     }
@@ -96,8 +119,8 @@ void TrunksDBusProxy::SendCommand(const std::string& command,
       },
       std::move(split.first));
   brillo::dbus_utils::CallMethodWithTimeout(
-      kDBusMaxTimeout, object_proxy_, trunks::kTrunksInterface,
-      trunks::kSendCommand, std::move(on_success),
+      kDBusMaxTimeout, object_proxy_, dbus_interface_, trunks::kSendCommand,
+      std::move(on_success),
       base::BindOnce(&TrunksDBusProxy::OnError, GetWeakPtr(),
                      std::move(split.second)),
       tpm_command_proto);
@@ -124,8 +147,8 @@ std::string TrunksDBusProxy::SendCommandAndWait(const std::string& command) {
   brillo::ErrorPtr error;
   std::unique_ptr<dbus::Response> dbus_response =
       brillo::dbus_utils::CallMethodAndBlockWithTimeout(
-          kDBusMaxTimeout, object_proxy_, trunks::kTrunksInterface,
-          trunks::kSendCommand, &error, tpm_command_proto);
+          kDBusMaxTimeout, object_proxy_, dbus_interface_, trunks::kSendCommand,
+          &error, tpm_command_proto);
   SendCommandResponse tpm_response_proto;
   if (dbus_response.get() &&
       brillo::dbus_utils::ExtractMethodCallResults(dbus_response.get(), &error,

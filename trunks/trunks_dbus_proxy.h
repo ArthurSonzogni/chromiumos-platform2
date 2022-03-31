@@ -24,7 +24,14 @@ namespace trunks {
 // instance must be used in only one thread.
 class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
  public:
-  TrunksDBusProxy() = default;
+  TrunksDBusProxy();
+  TrunksDBusProxy(const std::string& name,
+                  const std::string& path,
+                  const std::string& interface);
+  TrunksDBusProxy(const std::string& name,
+                  const std::string& path,
+                  const std::string& interface,
+                  scoped_refptr<dbus::Bus> bus);
   ~TrunksDBusProxy() override;
 
   // Initializes the D-Bus client. Returns true on success.
@@ -57,7 +64,7 @@ class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
   friend class TrunksDBusProxyTest;
 
   // Constructor for mock bus injection in unit tests.
-  explicit TrunksDBusProxy(dbus::Bus* bus) : bus_(bus) {}
+  explicit TrunksDBusProxy(dbus::Bus* bus);
   TrunksDBusProxy(const TrunksDBusProxy&) = delete;
   TrunksDBusProxy& operator=(const TrunksDBusProxy&) = delete;
 
@@ -70,6 +77,11 @@ class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
   base::WeakPtr<TrunksDBusProxy> GetWeakPtr() {
     return weak_factory_.GetWeakPtr();
   }
+
+  // D-Bus interface description.
+  const std::string dbus_name_;
+  const std::string dbus_path_;
+  const std::string dbus_interface_;
 
   bool service_ready_ = false;
   // Timeout waiting for trunksd service readiness on dbus when initializing.
