@@ -41,6 +41,7 @@ generate_dbus_adaptors("vtpm-adaptors") {
 
 source_set("vtpm_server_library") {
   sources = [
+    "commands/get_capability_command.cc",
     "commands/null_command.cc",
     "commands/unsupported_command.cc",
     "commands/virtualizer.cc",
@@ -96,6 +97,7 @@ if (use.test) {
   }
   executable("vtpm_test") {
     sources = [
+      "commands/get_capability_command_test.cc",
       "commands/unsupported_command_test.cc",
       "commands/virtualizer_test.cc",
       "vtpm_service_test.cc",
