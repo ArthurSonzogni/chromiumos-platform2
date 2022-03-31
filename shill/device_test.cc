@@ -24,9 +24,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/dhcp/dhcp_provider.h"
-#include "shill/dhcp/mock_dhcp_config.h"
-#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
@@ -42,6 +39,9 @@
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_time.h"
 #include "shill/net/ndisc.h"
+#include "shill/network/dhcp_provider.h"
+#include "shill/network/mock_dhcp_config.h"
+#include "shill/network/mock_dhcp_provider.h"
 #include "shill/portal_detector.h"
 #include "shill/routing_table.h"
 #include "shill/static_ip_parameters.h"

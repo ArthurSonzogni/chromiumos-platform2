@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DHCP_DHCPV4_CONFIG_H_
-#define SHILL_DHCP_DHCPV4_CONFIG_H_
+#ifndef SHILL_NETWORK_DHCPV4_CONFIG_H_
+#define SHILL_NETWORK_DHCPV4_CONFIG_H_
 
 #include <string>
 #include <vector>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/dhcp/dhcp_config.h"
+#include "shill/network/dhcp_config.h"
 
 namespace shill {
 
@@ -127,4 +127,4 @@ class DHCPv4Config : public DHCPConfig {
 
 }  // namespace shill
 
-#endif  // SHILL_DHCP_DHCPV4_CONFIG_H_
+#endif  // SHILL_NETWORK_DHCPV4_CONFIG_H_

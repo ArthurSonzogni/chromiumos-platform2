@@ -2,15 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/dhcp/dhcp_provider.h"
+#include "shill/network/dhcp_provider.h"
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/dhcp/dhcp_config.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/network/dhcp_config.h"
 
 using testing::_;
 using testing::StrictMock;

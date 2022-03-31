@@ -11,7 +11,7 @@
 #include <base/macros.h>
 
 #include "dhcpcd/dbus-proxies.h"
-#include "shill/dhcp/dhcp_proxy_interface.h"
+#include "shill/network/dhcp_proxy_interface.h"
 
 namespace shill {
 

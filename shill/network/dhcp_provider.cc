@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/dhcp/dhcp_provider.h"
+#include "shill/network/dhcp_provider.h"
 
 #include <signal.h>
 
@@ -16,10 +16,10 @@
 #include <base/time/time.h>
 
 #include "shill/control_interface.h"
-#include "shill/dhcp/dhcpcd_listener_interface.h"
-#include "shill/dhcp/dhcpv4_config.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/network/dhcpcd_listener_interface.h"
+#include "shill/network/dhcpv4_config.h"
 
 namespace shill {
 

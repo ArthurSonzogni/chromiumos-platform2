@@ -15,7 +15,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/daemon_task.h"
-#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/logging.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
@@ -25,6 +24,7 @@
 #include "shill/net/io_handler.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/ndisc.h"
+#include "shill/network/mock_dhcp_provider.h"
 #include "shill/shill_test_config.h"
 #include "shill/test_event_dispatcher.h"
 

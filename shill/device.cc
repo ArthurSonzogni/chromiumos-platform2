@@ -36,8 +36,6 @@
 
 #include "shill/connection.h"
 #include "shill/control_interface.h"
-#include "shill/dhcp/dhcp_config.h"
-#include "shill/dhcp/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/icmp.h"
@@ -47,6 +45,8 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_provider.h"
 #include "shill/refptr_types.h"
 #include "shill/routing_table.h"
 #include "shill/routing_table_entry.h"

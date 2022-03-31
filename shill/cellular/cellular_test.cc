@@ -48,8 +48,6 @@ extern "C" {
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/fake_properties_proxy.h"
-#include "shill/dhcp/mock_dhcp_config.h"
-#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
@@ -61,6 +59,8 @@ extern "C" {
 #include "shill/mock_process_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/net/mock_rtnl_handler.h"
+#include "shill/network/mock_dhcp_config.h"
+#include "shill/network/mock_dhcp_provider.h"
 #include "shill/ppp_device.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
 #include "shill/service.h"

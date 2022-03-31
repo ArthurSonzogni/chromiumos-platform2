@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/dhcp/dhcpv4_config.h"
+#include "shill/network/dhcpv4_config.h"
 
 #include <memory>
 #include <string>
@@ -13,11 +13,11 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "shill/dhcp/mock_dhcp_provider.h"
-#include "shill/dhcp/mock_dhcp_proxy.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_process_manager.h"
+#include "shill/network/mock_dhcp_provider.h"
+#include "shill/network/mock_dhcp_proxy.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store_test.h"
 #include "shill/testing.h"

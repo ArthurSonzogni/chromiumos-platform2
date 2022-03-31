@@ -262,9 +262,6 @@ static_library("libshill") {
     "device_claimer.cc",
     "device_id.cc",
     "device_info.cc",
-    "dhcp/dhcp_config.cc",
-    "dhcp/dhcp_provider.cc",
-    "dhcp/dhcpv4_config.cc",
     "dns_client.cc",
     "dns_util.cc",
     "ephemeral_profile.cc",
@@ -288,6 +285,9 @@ static_library("libshill") {
     "mac_address.cc",
     "manager.cc",
     "metrics.cc",
+    "network/dhcp_config.cc",
+    "network/dhcp_provider.cc",
+    "network/dhcpv4_config.cc",
     "portal_detector.cc",
     "power_manager.cc",
     "process_manager.cc",
@@ -517,7 +517,7 @@ if (use.fuzzer) {
     deps = [ ":libshill" ]
   }
   executable("dhcpv4_static_routes_fuzzer") {
-    sources = [ "dhcp/dhcpv4_static_routes_fuzzer.cc" ]
+    sources = [ "network/dhcpv4_static_routes_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
       ":target_defaults",
@@ -660,12 +660,6 @@ if (use.test) {
       "device_id_test.cc",
       "device_info_test.cc",
       "device_test.cc",
-      "dhcp/dhcp_config_test.cc",
-      "dhcp/dhcp_provider_test.cc",
-      "dhcp/dhcpv4_config_test.cc",
-      "dhcp/mock_dhcp_config.cc",
-      "dhcp/mock_dhcp_provider.cc",
-      "dhcp/mock_dhcp_proxy.cc",
       "dns_client_test.cc",
       "dns_util_test.cc",
       "error_test.cc",
@@ -714,6 +708,12 @@ if (use.test) {
       "mock_service.cc",
       "mock_throttler.cc",
       "mock_virtual_device.cc",
+      "network/dhcp_config_test.cc",
+      "network/dhcp_provider_test.cc",
+      "network/dhcpv4_config_test.cc",
+      "network/mock_dhcp_config.cc",
+      "network/mock_dhcp_provider.cc",
+      "network/mock_dhcp_proxy.cc",
       "portal_detector_test.cc",
       "power_manager_test.cc",
       "process_manager_test.cc",

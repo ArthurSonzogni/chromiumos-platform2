@@ -27,8 +27,6 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/dbus/dbus_control.h"
-#include "shill/dhcp/mock_dhcp_config.h"
-#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
@@ -56,6 +54,8 @@
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
+#include "shill/network/mock_dhcp_config.h"
+#include "shill/network/mock_dhcp_provider.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store_test.h"
 #include "shill/supplicant/mock_supplicant_bss_proxy.h"

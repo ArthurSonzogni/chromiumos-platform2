@@ -13,12 +13,12 @@
 
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
-#include "shill/dhcp/dhcp_provider.h"
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
+#include "shill/network/dhcp_provider.h"
 #include "shill/process_manager.h"
 #include "shill/routing_table.h"
 #include "shill/shill_config.h"

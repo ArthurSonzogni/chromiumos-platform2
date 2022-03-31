@@ -14,10 +14,10 @@
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <dbus/util.h>
 
-#include "shill/dhcp/dhcp_config.h"
-#include "shill/dhcp/dhcp_provider.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_provider.h"
 
 namespace shill {
 

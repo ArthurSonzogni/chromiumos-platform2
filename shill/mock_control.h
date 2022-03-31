@@ -13,8 +13,8 @@
 #include <gmock/gmock.h>
 
 #include "shill/control_interface.h"
-#include "shill/dhcp/dhcp_proxy_interface.h"
-#include "shill/dhcp/dhcpcd_listener_interface.h"
+#include "shill/network/dhcp_proxy_interface.h"
+#include "shill/network/dhcpcd_listener_interface.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/upstart/upstart_proxy_interface.h"
 

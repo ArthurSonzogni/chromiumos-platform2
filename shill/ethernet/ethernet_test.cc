@@ -20,8 +20,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/dhcp/mock_dhcp_config.h"
-#include "shill/dhcp/mock_dhcp_provider.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/ethernet/mock_ethernet_service.h"
 #include "shill/mock_control.h"
@@ -34,6 +32,8 @@
 #include "shill/mock_service.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_sockets.h"
+#include "shill/network/mock_dhcp_config.h"
+#include "shill/network/mock_dhcp_provider.h"
 #include "shill/testing.h"
 
 #if !defined(DISABLE_WIRED_8021X)

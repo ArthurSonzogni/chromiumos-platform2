@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DHCP_DHCPCD_LISTENER_INTERFACE_H_
-#define SHILL_DHCP_DHCPCD_LISTENER_INTERFACE_H_
+#ifndef SHILL_NETWORK_DHCPCD_LISTENER_INTERFACE_H_
+#define SHILL_NETWORK_DHCPCD_LISTENER_INTERFACE_H_
 
 namespace shill {
 
@@ -14,4 +14,4 @@ class DHCPCDListenerInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_DHCP_DHCPCD_LISTENER_INTERFACE_H_
+#endif  // SHILL_NETWORK_DHCPCD_LISTENER_INTERFACE_H_

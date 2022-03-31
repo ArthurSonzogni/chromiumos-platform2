@@ -14,7 +14,7 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 
-#include "shill/dhcp/dhcpcd_listener_interface.h"
+#include "shill/network/dhcpcd_listener_interface.h"
 
 namespace shill {
 

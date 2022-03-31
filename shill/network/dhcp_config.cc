@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/dhcp/dhcp_config.h"
+#include "shill/network/dhcp_config.h"
 
 #include <arpa/inet.h>
 #include <stdlib.h>
@@ -15,12 +15,12 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/control_interface.h"
-#include "shill/dhcp/dhcp_provider.h"
-#include "shill/dhcp/dhcp_proxy_interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
+#include "shill/network/dhcp_provider.h"
+#include "shill/network/dhcp_proxy_interface.h"
 #include "shill/process_manager.h"
 
 namespace shill {

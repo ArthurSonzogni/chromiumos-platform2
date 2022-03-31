@@ -2,16 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DHCP_MOCK_DHCP_PROVIDER_H_
-#define SHILL_DHCP_MOCK_DHCP_PROVIDER_H_
+#ifndef SHILL_NETWORK_MOCK_DHCP_PROVIDER_H_
+#define SHILL_NETWORK_MOCK_DHCP_PROVIDER_H_
 
 #include <string>
 
 #include <base/macros.h>
 #include <gmock/gmock.h>
 
-#include "shill/dhcp/dhcp_config.h"
-#include "shill/dhcp/dhcp_provider.h"
+#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_provider.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -39,4 +39,4 @@ class MockDHCPProvider : public DHCPProvider {
 
 }  // namespace shill
 
-#endif  // SHILL_DHCP_MOCK_DHCP_PROVIDER_H_
+#endif  // SHILL_NETWORK_MOCK_DHCP_PROVIDER_H_

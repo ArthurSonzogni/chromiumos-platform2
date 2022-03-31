@@ -8,7 +8,7 @@
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
-#include "shill/dhcp/dhcpv4_config.h"
+#include "shill/network/dhcpv4_config.h"
 
 namespace shill {
 
