@@ -119,6 +119,7 @@ shared_library("trunks") {
     "tpm_utility_impl.cc",
     "trunks_dbus_proxy.cc",
     "trunks_factory_impl.cc",
+    "vtpm_client_support/create_dbus_proxy.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [ "hwsec-foundation" ]

@@ -34,10 +34,14 @@
 #include "trunks/tpm_utility.h"
 #include "trunks/trunks_client_test.h"
 #include "trunks/trunks_factory_impl.h"
+#include "trunks/vtpm_client_support/create_dbus_proxy.h"
 
 namespace {
 
 using trunks::CommandTransceiver;
+using trunks::CreateTrunksDBusProxyToTrunks;
+using trunks::CreateTrunksDBusProxyToVtpm;
+using trunks::TrunksDBusProxy;
 using trunks::TrunksFactory;
 using trunks::TrunksFactoryImpl;
 
@@ -69,7 +73,7 @@ constexpr unsigned char kPcr0ValueRecDev[SHA256_DIGEST_SIZE] = {
 };
 
 void PrintUsage() {
-  puts("Options:");
+  puts("TPM command options:");
   puts("  --allocate_pcr - Configures PCR 0-15 under the SHA256 bank.");
   puts("  --clear - Clears the TPM. Use before initializing the TPM.");
   puts("  --csme_test_pcr --index=<INDEX>.");
@@ -117,6 +121,9 @@ void PrintUsage() {
   puts("               [--or=<val1>,<val2>,<val3>]");
   puts("      - Delete test nvmem space with UDS digest and");
   puts("        optional PolicyOR using current PCR0 value.");
+  puts("D-Bus options:");
+  puts("  --vtpm");
+  puts("      - Send the TPM command to vtpm instead of trunks.");
 }
 
 std::string HexEncode(const std::string& bytes) {
@@ -709,7 +716,13 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  TrunksFactoryImpl factory;
+  std::unique_ptr<TrunksDBusProxy> dbus_proxy =
+      cl->HasSwitch("vtpm") ? CreateTrunksDBusProxyToVtpm()
+                            : CreateTrunksDBusProxyToTrunks();
+
+  CHECK(dbus_proxy->Init()) << "Failed to initialize D-Bus proxy.";
+
+  TrunksFactoryImpl factory(dbus_proxy.get());
   CHECK(factory.Initialize()) << "Failed to initialize trunks factory.";
 
   bool print_time = cl->HasSwitch("print_time");
