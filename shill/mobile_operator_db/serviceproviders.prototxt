@@ -189,23 +189,6 @@ mno {
 
 mno {
   data {
-    uuid : "3499e4b5-11d1-4789-a53c-e223eea1ac24"
-    country : "ao"
-    localized_name {
-      name : "Movinet"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Movinet"
-      }
-      username : "uname"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "6bee70c8-5ff5-410d-9c8f-05bc6c328506"
     country : "ao"
     localized_name {
@@ -1227,25 +1210,6 @@ mno {
       localized_name {
         name : "Web"
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "63df5410-07ea-43cc-84d1-ae09cda7d37f"
-    country : "bd"
-    localized_name {
-      name : "Citycell"
-    }
-    sid : "13480"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Citycell"
-      }
-      username : "waps"
-      password : "waps"
     }
   }
 }
@@ -3460,24 +3424,6 @@ mno {
 
 mno {
   data {
-    uuid : "477e55f6-21a6-4100-b30c-8c4b1384edd6"
-    country : "dk"
-    localized_name {
-      name : "ice.net (Nordisk Mobiltelefon)"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "ice.net (Nordisk Mobiltelefon)"
-      }
-      username : "cdma"
-      password : "cdma"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "ca3c4157-1689-496e-b957-8a2dd82bf2dc"
     country : "do"
     localized_name {
@@ -4013,24 +3959,6 @@ mno {
     mccmnc : "21417"
     mobile_apn {
       apn : "internet.mundo-r.com"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "f09980f3-4e74-468a-a42d-becfb6667ab2"
-    country : "et"
-    localized_name {
-      name : "Ethio Telecom"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Ethio Telecom"
-      }
-      username : "etc"
-      password : "etc"
     }
   }
 }
@@ -4890,24 +4818,6 @@ mno {
 
 mno {
   data {
-    uuid : "0b3f6028-a379-4bc1-ac90-e07841e64126"
-    country : "gh"
-    localized_name {
-      name : "Expresso"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Expresso"
-      }
-      username : "evdo@expresso.com"
-      password : "evdo"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "640272a1-5a1c-46d9-9649-0a7fc23b1d16"
     country : "gh"
     localized_name {
@@ -5505,35 +5415,6 @@ mno {
 
 mno {
   data {
-    uuid : "553d3044-0d8f-4413-af58-80d5f8694d68"
-    country : "id"
-    localized_name {
-      name : "Ceria"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Ceria"
-      }
-      username : "internet"
-      password : "ceria"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "718d0984-224f-452e-a6b8-22f613855247"
-    country : "id"
-    localized_name {
-      name : "Esia"
-    }
-    sid : "10623"
-  }
-}
-
-mno {
-  data {
     uuid : "04588c1a-a0cf-4f5b-a513-aa48ad9ec9e3"
     country : "id"
     localized_name {
@@ -5544,25 +5425,6 @@ mno {
       apn : "www.xlgprs.net"
       username : "xlgprs"
       password : "proxl"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "a324c633-701e-41a6-b0a5-c77ce8c3c3d0"
-    country : "id"
-    localized_name {
-      name : "Fren"
-    }
-    sid : "10530"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Fren"
-      }
-      username : "m8"
-      password : "m8"
     }
   }
 }
@@ -5591,64 +5453,6 @@ mno {
       }
       username : "indosat"
       password : "indosat"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "aeef7d31-1bdb-4252-8796-6cb2026c46c6"
-    country : "id"
-    localized_name {
-      name : "SMART"
-    }
-    sid : "10608"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "SMART"
-      }
-      username : "smart"
-      password : "smart"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "7c28d871-4cca-41c3-9a6f-c2d405dc1576"
-    country : "id"
-    localized_name {
-      name : "StarOne"
-    }
-    sid : "10817"
-    sid : "10819"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "StarOne"
-      }
-      username : "starone"
-      password : "indosat"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "759a5e5d-a9c2-4fd2-afbc-0758edf7e020"
-    country : "id"
-    localized_name {
-      name : "Telkom Flexy"
-    }
-    sid : "10496"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Telkom Flexy"
-      }
-      username : "telkomnet@flexi"
-      password : "telkom"
     }
   }
 }
@@ -6402,43 +6206,6 @@ mno {
 
 mno {
   data {
-    uuid : "9157d542-562f-45ea-b16f-8a360d12fe8b"
-    country : "in"
-    localized_name {
-      name : "Tata Indicom (Photon+)"
-    }
-    sid : "14836"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Tata Indicom (Photon+)"
-      }
-      username : "internet"
-      password : "internet"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "8b751fca-4080-446e-a402-a8ae9cc06f09"
-    country : "in"
-    localized_name {
-      name : "Tata Indicom (Plug2Surf)"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Tata Indicom (Plug2Surf)"
-      }
-      username : "internet"
-      password : "internet"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "550e03f2-76f6-46d0-96e1-f541ecd4acbf"
     country : "in"
     localized_name {
@@ -6536,36 +6303,6 @@ mno {
 
 mno {
   data {
-    uuid : "9e25f149-3ec1-4a18-9ae3-763fb4ed98f4"
-    country : "iq"
-    localized_name {
-      name : "Itisaluna"
-    }
-    sid : "15456"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Itisaluna"
-      }
-      username : "itisaluna"
-      password : "itisaluna"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "d3704d0d-2598-4e9a-b0b1-669c8e6046b1"
-    country : "iq"
-    localized_name {
-      name : "Kalimat Telecom"
-    }
-    sid : "15470"
-  }
-}
-
-mno {
-  data {
     uuid : "e87c10ad-98dc-4e64-b1ae-514e433425e2"
     country : "iq"
     localized_name {
@@ -6576,24 +6313,6 @@ mno {
       apn : "net.korek.com"
       username : "korek"
       password : "korek"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "ddc4f279-2ada-44f2-b198-1cb9e767f1f3"
-    country : "iq"
-    localized_name {
-      name : "Omnea Telecom"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Omnea Telecom"
-      }
-      username : "omnea"
-      password : "omnea"
     }
   }
 }
@@ -7585,24 +7304,6 @@ mno {
 
 mno {
   data {
-    uuid : "69a944ae-5e30-4493-8664-4b6b77032679"
-    country : "kg"
-    localized_name {
-      name : "FONEX"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "FONEX"
-      }
-      username : "cdma"
-      password : "cdma"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "3881429c-8b6d-4a16-9f00-5bfe3e6b8007"
     country : "kg"
     localized_name {
@@ -7625,54 +7326,6 @@ mno {
     mccmnc : "43709"
     mobile_apn {
       apn : "internet"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "558e377d-8c1d-4f36-9957-e31b10359a61"
-    country : "kg"
-    localized_name {
-      name : "nexi (kg)"
-    }
-    localized_name {
-      name : "Зона КГ"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "nexi (kg)"
-      }
-      localized_name {
-        name : "Зона КГ"
-      }
-      username : "999@kg"
-      password : "999"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "b8927dc2-1c36-4129-8281-930cad0d91e6"
-    country : "kg"
-    localized_name {
-      name : "nexi (mir+kg)"
-    }
-    localized_name {
-      name : "Зона Мир+КГ"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "nexi (mir+kg)"
-      }
-      localized_name {
-        name : "Зона Мир+КГ"
-      }
-      username : "555@mir"
-      password : "555"
     }
   }
 }
@@ -7789,24 +7442,6 @@ mno {
 
 mno {
   data {
-    uuid : "59e7a5b4-5bfc-458b-b933-f03fe577c06b"
-    country : "kr"
-    localized_name {
-      name : "KTF"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "KTF"
-      }
-      username : "ktf"
-      password : "ktf"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "1349247a-5352-46fb-8ef1-163e4d7c29d1"
     country : "kr"
     localized_name {
@@ -7849,23 +7484,6 @@ mno {
     country : "kr"
     localized_name {
       name : "LGUPlus"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "10795ffd-7192-4097-acfe-168357c085cf"
-    country : "kr"
-    localized_name {
-      name : "SKTelecom"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "SKTelecom"
-      }
-      username : "sktelecom"
     }
   }
 }
@@ -7977,24 +7595,6 @@ mno {
 
 mno {
   data {
-    uuid : "611686eb-433a-4d33-997e-da390842accd"
-    country : "kz"
-    localized_name {
-      name : "Dalacom"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Dalacom"
-      }
-      username : "Dalacom"
-      password : "Dalacom"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "209f3c76-c3b0-43b4-8c0e-3b5cf64a82fc"
     country : "kz"
     localized_name {
@@ -8003,24 +7603,6 @@ mno {
     mccmnc : "40102"
     mobile_apn {
       apn : "internet"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "62030569-a86c-4c2b-83e2-332ae874791c"
-    country : "kz"
-    localized_name {
-      name : "Pathword"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Pathword"
-      }
-      username : "Pathword"
-      password : "Pathword"
     }
   }
 }
@@ -8733,24 +8315,6 @@ mno {
 
 mno {
   data {
-    uuid : "505bda54-41ad-4d67-b4c9-6a5c36164d82"
-    country : "ml"
-    localized_name {
-      name : "Internet Mobile+"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Internet Mobile+"
-      }
-      username : "card"
-      password : "card"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "79c13567-7381-45c7-b226-c2cb61e3f06f"
     country : "ml"
     localized_name {
@@ -9272,23 +8836,6 @@ mno {
 
 mno {
   data {
-    uuid : "55534d01-25b1-4d74-8ae0-9f1f30bd77d5"
-    country : "na"
-    localized_name {
-      name : "switch"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "switch"
-      }
-      password : "telecom"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "1077c7e2-0cf3-430e-bed5-6a4d3121088c"
     country : "ng"
     localized_name {
@@ -9372,25 +8919,6 @@ mno {
     country : "ng"
     localized_name {
       name : "Multilinks"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "f662854b-d3c0-4856-a619-f3746ef5a59c"
-    country : "ng"
-    localized_name {
-      name : "Starcomms"
-    }
-    sid : "2"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Starcomms"
-      }
-      username : "your_phone_number@starcomms.com"
-      password : "your_phone_number"
     }
   }
 }
@@ -10334,24 +9862,6 @@ mno {
 
 mno {
   data {
-    uuid : "59952880-7c73-44fb-8fc3-44089756bb50"
-    country : "pk"
-    localized_name {
-      name : "Ptcl EVO"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Ptcl EVO"
-      }
-      username : "vwireless@ptcl.com"
-      password : "ptcl"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "31602bcf-0886-40dc-8b96-1e2e1b568964"
     country : "pk"
     localized_name {
@@ -10430,42 +9940,6 @@ mno {
     mccmnc : "26012"
     mobile_apn {
       apn : "multi.internet"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "5fc2bd58-2fa7-4e15-b1c8-c80709b192c0"
-    country : "pl"
-    localized_name {
-      name : "Multimo"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Multimo"
-      }
-      username : "cdma@orange"
-      password : "orange"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "630a507b-e435-4077-ad79-2f75bb334e51"
-    country : "pl"
-    localized_name {
-      name : "Nordisk Polska"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Nordisk Polska"
-      }
-      username : "CDMA"
-      password : "CDMA"
     }
   }
 }
@@ -10572,24 +10046,6 @@ mno {
         }
         username : "telogic.internet"
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "bab14fa4-7043-4540-a8b6-b9a391089288"
-    country : "pl"
-    localized_name {
-      name : "Orange"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Orange"
-      }
-      username : "cdma@orange"
-      password : "orange"
     }
   }
 }
@@ -10725,24 +10181,6 @@ mno {
       mobile_apn {
         apn : "www.mobile.pl"
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "798f2062-1493-4601-969d-2e49ed323586"
-    country : "pl"
-    localized_name {
-      name : "Sferia"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Sferia"
-      }
-      username : "sferia"
-      password : "sferia"
     }
   }
 }
@@ -11231,24 +10669,6 @@ mno {
 
 mno {
   data {
-    uuid : "e83cf8d2-da74-4f80-83e1-60cb81bedab5"
-    country : "ro"
-    localized_name {
-      name : "Zapp"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Zapp"
-      }
-      username : "zapp"
-      password : "zapp"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "f0c407b1-8ea3-4496-bf62-f76be7601055"
     country : "rs"
     localized_name {
@@ -11473,121 +10893,6 @@ mno {
 
 mno {
   data {
-    uuid : "1edf9172-2443-42a8-b094-c1d6ef0940d2"
-    country : "ru"
-    localized_name {
-      name : "Skylink"
-    }
-    localized_name {
-      name : "Скайлинк"
-    }
-    sid : "11396"
-    sid : "11398"
-    sid : "11400"
-    sid : "11418"
-    sid : "11424"
-    sid : "11432"
-    sid : "11434"
-    sid : "11438"
-    sid : "11440"
-    sid : "11442"
-    sid : "11446"
-    sid : "11452"
-    sid : "11456"
-    sid : "11462"
-    sid : "11465"
-    sid : "11482"
-    sid : "11484"
-    sid : "11492"
-    sid : "11494"
-    sid : "11498"
-    sid : "11510"
-    sid : "11532"
-    sid : "11546"
-    sid : "11556"
-    sid : "11568"
-    sid : "11572"
-    sid : "11578"
-    sid : "11582"
-    sid : "11590"
-    sid : "11596"
-    sid : "11604"
-    sid : "11616"
-    sid : "11622"
-    sid : "11630"
-    sid : "11642"
-    sid : "11646"
-    sid : "11650"
-    sid : "11668"
-    sid : "11672"
-    sid : "11676"
-    sid : "11684"
-    sid : "11692"
-    sid : "11698"
-    sid : "11700"
-    sid : "11732"
-    sid : "11736"
-    sid : "11754"
-    sid : "11758"
-    sid : "11772"
-    sid : "11780"
-    sid : "11784"
-    sid : "11788"
-    sid : "11790"
-    sid : "11794"
-    sid : "11802"
-    sid : "11806"
-    sid : "11816"
-    sid : "11826"
-    sid : "11830"
-    sid : "11844"
-    sid : "11848"
-    sid : "11868"
-    sid : "11874"
-    sid : "11884"
-    sid : "11892"
-    sid : "11908"
-    sid : "11922"
-    sid : "11924"
-    sid : "11948"
-    sid : "11960"
-    sid : "11964"
-    sid : "11968"
-    sid : "11978"
-    sid : "11984"
-    sid : "11990"
-    sid : "12006"
-    sid : "12012"
-    sid : "12020"
-    sid : "12060"
-    sid : "12061"
-    sid : "12063"
-    sid : "12064"
-    sid : "12065"
-    sid : "12066"
-    sid : "12067"
-    sid : "12085"
-    sid : "12087"
-    sid : "12090"
-    sid : "12092"
-    sid : "12094"
-    sid : "12095"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Skylink"
-      }
-      localized_name {
-        name : "Скайлинк"
-      }
-      username : "mobile"
-      password : "internet"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "584cc131-7a52-44b6-a131-197769c556a3"
     country : "ru"
     localized_name {
@@ -11724,24 +11029,6 @@ mno {
     mccmnc : "63402"
     mobile_apn {
       apn : "internet"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "97fe3985-b0b4-4822-8f7a-695febcb80c6"
-    country : "sd"
-    localized_name {
-      name : "Sudani"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Sudani"
-      }
-      username : "sudani"
-      password : "sudani"
     }
   }
 }
@@ -12095,24 +11382,6 @@ mno {
     mccmnc : "24009"
     mobile_apn {
       apn : "internet.djuice.se"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "b6288010-64f0-42a0-b6b7-e4b346fe5309"
-    country : "se"
-    localized_name {
-      name : "ice.net (Nordisk Mobiltelefon)"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "ice.net (Nordisk Mobiltelefon)"
-      }
-      username : "cdma"
-      password : "cdma"
     }
   }
 }
@@ -12739,25 +12008,6 @@ mno {
 
 mno {
   data {
-    uuid : "a24f2ee5-cd68-4f5b-99b3-866fbb467727"
-    country : "tz"
-    localized_name {
-      name : "Sasatel"
-    }
-    sid : "9891"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Sasatel"
-      }
-      username : "sasatel"
-      password : "sasatel"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "a82b8f3d-0d9c-48f8-b992-0b44bc26f332"
     country : "tz"
     localized_name {
@@ -12796,24 +12046,6 @@ mno {
 
 mno {
   data {
-    uuid : "ed260c17-f03e-4e14-a54e-bad045fa51c3"
-    country : "tz"
-    localized_name {
-      name : "Zantel"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "Zantel"
-      }
-      username : "@zantel.com"
-      password : " "
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "5207e312-2d2c-400f-84ba-19c274e7bc24"
     country : "tz"
     localized_name {
@@ -12836,24 +12068,6 @@ mno {
     mccmnc : "25502"
     mobile_apn {
       apn : "internet.beeline.ua"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "87d2f216-d85a-4caa-8aec-2c04daf76703"
-    country : "ua"
-    localized_name {
-      name : "CDMA Ukraine"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "CDMA Ukraine"
-      }
-      username : "cdma"
-      password : "cdma"
     }
   }
 }
@@ -12883,25 +12097,6 @@ mno {
       localized_name {
         name : "Internet 3G"
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "3025964e-0d7e-4537-829a-f41555398b14"
-    country : "ua"
-    localized_name {
-      name : "InterTelecom"
-    }
-    sid : "15906"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "InterTelecom"
-      }
-      username : "IT@IT"
-      password : "IT"
     }
   }
 }
@@ -12958,35 +12153,6 @@ mno {
       localized_name {
         name : "umc.ua"
       }
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "66aed04b-57e6-4d20-a2a7-7d58bab09f18"
-    country : "ua"
-    localized_name {
-      name : "MTS Connect 3G"
-    }
-    sid : "15907"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "MTS Connect 3G"
-      }
-      username : "mobile"
-      password : "internet"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "907a72ac-6600-4d6f-b96c-51a7462203a6"
-    country : "ua"
-    localized_name {
-      name : "PEOPLEnet"
     }
   }
 }
@@ -14711,24 +13877,6 @@ mno {
 
 mno {
   data {
-    uuid : "fd28d583-4fd7-45ef-80b2-d51fedb8b8e1"
-    country : "vn"
-    localized_name {
-      name : "EVNTelecom/E-Mobile"
-    }
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "EVNTelecom/E-Mobile"
-      }
-      username : "evntelecom"
-      password : "evntelecom"
-    }
-  }
-}
-
-mno {
-  data {
     uuid : "263e84f8-7ce0-432b-811a-a0a80b2913be"
     country : "vn"
     localized_name {
@@ -14756,24 +13904,6 @@ mno {
       apn : "m-wap"
       username : "mms"
       password : "mms"
-    }
-  }
-}
-
-mno {
-  data {
-    uuid : "ca71dcae-8f56-4ec0-a212-60c29e86ce1a"
-    country : "vn"
-    localized_name {
-      name : "S-Fone"
-    }
-    sid : "13331"
-    mobile_apn {
-      apn : ""
-      localized_name {
-        name : "S-Fone"
-      }
-      username : "S-Fone"
     }
   }
 }
