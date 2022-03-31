@@ -134,6 +134,7 @@ void PrintUsage() {
   puts("                             -handle=<endorsement key handle>");
   puts("      - Perform a closed-loop testing: Create AIK-> Make credential");
   puts("        -> Activate credential with EK.");
+  puts("  --test_sign_verify - Perform a closed-loop sign and verify test");
   puts("D-Bus options:");
   puts("  --vtpm");
   puts("      - Send the TPM command to vtpm instead of trunks.");
@@ -917,6 +918,68 @@ bool TestCredentialCommand(const trunks::TrunksFactory& factory,
   return fake_credential == activated_credential;
 }
 
+bool TestSignVerify(const trunks::TrunksFactory& factory) {
+  std::unique_ptr<AuthorizationDelegate> empty_password_authorization =
+      factory.GetPasswordAuthorization("");
+  std::string blob, creation_blob;
+  trunks::TPM_RC rc = factory.GetTpmUtility()->CreateECCKeyPair(
+      trunks::TpmUtility::AsymmetricKeyUsage::kSignKey,
+      trunks::TPM_ECC_NIST_P256,
+      /*password=*/"",
+      /*policy_digest=*/"",
+      /*use_only_policy_authorization=*/false,
+      /*creation_pcr_indexes=*/{}, empty_password_authorization.get(), &blob,
+      &creation_blob);
+  if (rc) {
+    LOG(ERROR) << "Failed to create key: " << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  trunks::TPM_HANDLE handle;
+  rc = factory.GetTpmUtility()->LoadKey(
+      blob, empty_password_authorization.get(), &handle);
+  if (rc) {
+    LOG(ERROR) << "Failed to load key: " << trunks::GetErrorString(rc);
+    return false;
+  }
+  trunks::ScopedKeyHandle scoped_key(factory, handle);
+  scoped_key.set_synchronized(true);
+
+  const std::string data = "At the end it doesn't even matter.";
+  trunks::TPM2B_DIGEST digest = {};
+  trunks::TPMT_TK_HASHCHECK validation = {};
+  rc = factory.GetTpm()->HashSync(trunks::Make_TPM2B_MAX_BUFFER(data),
+                                  trunks::TPM_ALG_SHA256, trunks::TPM_RH_OWNER,
+                                  &digest, &validation,
+                                  /*authorization_delegate=*/nullptr);
+  if (rc) {
+    LOG(ERROR) << "Failed to hash: " << trunks::GetErrorString(rc);
+    return false;
+  }
+
+  trunks::TPMT_SIG_SCHEME scheme = {
+      .scheme = trunks::TPM_ALG_ECDSA,
+      .details.any.hash_alg = trunks::TPM_ALG_SHA256,
+  };
+  trunks::TPMT_SIGNATURE signature = {};
+  rc = factory.GetTpm()->SignSync(
+      handle, /*key_handle_name=*/"not used w/o auth session", digest, scheme,
+      validation, &signature, empty_password_authorization.get());
+  if (rc) {
+    LOG(ERROR) << "Failed to sign: " << trunks::GetErrorString(rc);
+    return false;
+  }
+  trunks::TPMT_TK_VERIFIED verified = {};
+  rc = factory.GetTpm()->VerifySignatureSync(
+      handle, /*key_handle_name=*/"not used w/o auth session", digest,
+      signature, &verified, /*authorization_delegate=*/nullptr);
+  if (rc) {
+    LOG(ERROR) << "Failed to verify signature: " << trunks::GetErrorString(rc);
+    return false;
+  }
+  return true;
+}
+
 std::vector<std::string> BreakByDelim(const std::string& value,
                                       const std::string& delim) {
   std::vector<std::string> result;
@@ -1488,6 +1551,14 @@ int main(int argc, char** argv) {
     }
     if (TestCredentialCommand(factory, endorsement_password,
                               endorsement_key_handle)) {
+      puts("pass");
+      return 0;
+    }
+    puts("fail");
+    return -1;
+  }
+  if (cl->HasSwitch("test_sign_verify")) {
+    if (TestSignVerify(factory)) {
       puts("pass");
       return 0;
     }
