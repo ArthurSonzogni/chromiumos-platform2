@@ -43,6 +43,7 @@ class TpmUtilityV1 : public TpmUtilityCommon {
                                std::string* credential) override;
   bool CreateCertifiedKey(KeyType key_type,
                           KeyUsage key_usage,
+                          KeyRestriction key_restriction,
                           const std::string& identity_key_blob,
                           const std::string& external_data,
                           std::string* key_blob,

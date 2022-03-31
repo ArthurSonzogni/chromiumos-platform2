@@ -1285,10 +1285,11 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeySuccess) {
   // Configure a fake TPM response.
   EXPECT_CALL(
       mock_tpm_utility_,
-      CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<5>(std::string("public_key")),
-                      SetArgPointee<7>(std::string("certify_info")),
-                      SetArgPointee<8>(std::string("certify_info_signature")),
+      CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
+                         KeyRestriction::kUnrestricted, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(std::string("public_key")),
+                      SetArgPointee<8>(std::string("certify_info")),
+                      SetArgPointee<9>(std::string("certify_info_signature")),
                       Return(true)));
   // Expect the key to be written exactly once.
   EXPECT_CALL(mock_key_store_, Write("user", "label", _)).Times(1);
@@ -1318,10 +1319,11 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
   // Configure a fake TPM response.
   EXPECT_CALL(
       mock_tpm_utility_,
-      CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<5>(std::string("public_key")),
-                      SetArgPointee<7>(std::string("certify_info")),
-                      SetArgPointee<8>(std::string("certify_info_signature")),
+      CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
+                         KeyRestriction::kUnrestricted, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<6>(std::string("public_key")),
+                      SetArgPointee<8>(std::string("certify_info")),
+                      SetArgPointee<9>(std::string("certify_info_signature")),
                       Return(true)));
   // Expect the key to be written exactly once.
   EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
@@ -1390,7 +1392,8 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeyTpmCreateFailure) {
   // We need an identity to create a certifiable key.
   SetUpIdentity(identity_);
 
-  EXPECT_CALL(mock_tpm_utility_, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
+  EXPECT_CALL(mock_tpm_utility_,
+              CreateCertifiedKey(_, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure,

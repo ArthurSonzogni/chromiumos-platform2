@@ -226,6 +226,7 @@ bool TpmUtilityV1::ActivateIdentityForTpm2(
 
 bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
                                       KeyUsage key_usage,
+                                      KeyRestriction key_restriction,
                                       const std::string& identity_key_blob,
                                       const std::string& external_data,
                                       std::string* key_blob,
@@ -243,6 +244,10 @@ bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
   }
   if (key_type != KEY_TYPE_RSA) {
     LOG(ERROR) << "Only RSA supported on TPM v1.2.";
+    return false;
+  }
+  if (key_restriction == KeyRestriction::kRestricted) {
+    LOG(ERROR) << "restricted key is not support for TPM1.2.";
     return false;
   }
 

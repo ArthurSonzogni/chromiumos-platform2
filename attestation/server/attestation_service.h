@@ -404,6 +404,7 @@ class AttestationService : public AttestationInterface {
                  const std::string& key_label,
                  KeyType key_type,
                  KeyUsage key_usage,
+                 KeyRestriction key_restriction,
                  CertifiedKey* key);
 
   // Finds the |key| associated with |username| and |key_label|. Returns false

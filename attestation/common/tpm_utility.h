@@ -15,6 +15,11 @@
 
 namespace attestation {
 
+enum class KeyRestriction {
+  kUnrestricted,
+  kRestricted,
+};
+
 // A class which provides helpers for TPM-related tasks.
 class TpmUtility {
  public:
@@ -64,9 +69,12 @@ class TpmUtility {
   // |public_key_tpm_format| with the public key of |key_blob| in TPM_PUBKEY
   // format, |public_key_der| with DER encoded format which converted from
   // TPM_PUBKEY, |key_info| with the TPM_CERTIFY_INFO that was signed, and
-  // |proof| with the signature of |key_info| by the identity key.
+  // |proof| with the signature of |key_info| by the identity key. If
+  // |restriction| is |kRestricted|, the signing/decrypting cannot work on an
+  // arbitrary blob; instead the format is TPM-specific.
   virtual bool CreateCertifiedKey(KeyType key_type,
                                   KeyUsage key_usage,
+                                  KeyRestriction key_restriction,
                                   const std::string& identity_key_blob,
                                   const std::string& external_data,
                                   std::string* key_blob,

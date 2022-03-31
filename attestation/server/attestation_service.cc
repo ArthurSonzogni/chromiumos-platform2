@@ -420,6 +420,13 @@ constexpr KeyUsage GetKeyUsageByProfile(CertificateProfile profile) {
                                                    : KEY_USAGE_SIGN;
 }
 
+constexpr KeyRestriction GetKeyRestrictionByProfile(
+    CertificateProfile profile) {
+  return profile == ENTERPRISE_VTPM_EK_CERTIFICATE
+             ? KeyRestriction::kRestricted
+             : KeyRestriction::kUnrestricted;
+}
+
 }  // namespace
 
 #if USE_TPM2
@@ -958,7 +965,7 @@ void AttestationService::CreateCertifiableKeyTask(
     const std::shared_ptr<CreateCertifiableKeyReply>& result) {
   CertifiedKey key;
   if (!CreateKey(request.username(), request.key_label(), request.key_type(),
-                 request.key_usage(), &key)) {
+                 request.key_usage(), KeyRestriction::kUnrestricted, &key)) {
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
   }
@@ -1430,6 +1437,7 @@ bool AttestationService::CreateKey(const std::string& username,
                                    const std::string& key_label,
                                    KeyType key_type,
                                    KeyUsage key_usage,
+                                   KeyRestriction key_restriction,
                                    CertifiedKey* key) {
   auto database_pb = database_->GetProtobuf();
   const int identity = kFirstIdentity;
@@ -1451,9 +1459,9 @@ bool AttestationService::CreateKey(const std::string& username,
   std::string proof;
   const auto& identity_data = database_pb.identities().Get(identity);
   if (!tpm_utility_->CreateCertifiedKey(
-          key_type, key_usage, identity_data.identity_key().identity_key_blob(),
-          nonce, &key_blob, &public_key, &public_key_tpm_format, &key_info,
-          &proof)) {
+          key_type, key_usage, key_restriction,
+          identity_data.identity_key().identity_key_blob(), nonce, &key_blob,
+          &public_key, &public_key_tpm_format, &key_info, &proof)) {
     return false;
   }
   key->set_key_blob(key_blob);
@@ -2309,8 +2317,9 @@ bool AttestationService::VerifyCertifiedKeyGeneration(
     std::string key_info;
     std::string proof;
     if (!tpm_utility_->CreateCertifiedKey(
-            key_type, KEY_USAGE_SIGN, aik_key_blob, nonce, &key_blob,
-            &public_key_der, &public_key_tpm_format, &key_info, &proof)) {
+            key_type, KEY_USAGE_SIGN, KeyRestriction::kUnrestricted,
+            aik_key_blob, nonce, &key_blob, &public_key_der,
+            &public_key_tpm_format, &key_info, &proof)) {
       LOG(ERROR) << __func__
                  << ": Failed to create certified key for key_type: "
                  << key_type;
@@ -2895,12 +2904,14 @@ void AttestationService::CreateCertificateRequestTask(
 
   const KeyUsage key_usage =
       GetKeyUsageByProfile(request.certificate_profile());
+  const KeyRestriction key_restriction =
+      GetKeyRestrictionByProfile(request.certificate_profile());
 
   const auto& identity_data = database_pb.identities().Get(identity);
   if (!tpm_utility_->CreateCertifiedKey(
-          key_type, key_usage, identity_data.identity_key().identity_key_blob(),
-          nonce, &key_blob, &public_key_der, &public_key_tpm_format, &key_info,
-          &proof)) {
+          key_type, key_usage, key_restriction,
+          identity_data.identity_key().identity_key_blob(), nonce, &key_blob,
+          &public_key_der, &public_key_tpm_format, &key_info, &proof)) {
     LOG(ERROR) << __func__ << ": Failed to create a key.";
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;

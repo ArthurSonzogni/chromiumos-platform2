@@ -469,6 +469,7 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
 
 bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
                                       KeyUsage key_usage,
+                                      KeyRestriction key_restriction,
                                       const std::string& identity_key_blob,
                                       const std::string& external_data,
                                       std::string* key_blob,
@@ -490,6 +491,13 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
   TPM_RC result;
   switch (key_type) {
     case KEY_TYPE_RSA:
+      // The support should be trivial and simsilar to the way for ECC, but we
+      // don't have the product needs.
+      if (key_restriction == KeyRestriction::kRestricted) {
+        LOG(ERROR) << __func__
+                   << ": restricted RSA key creation is not implemented.";
+        return false;
+      }
       result = trunks_utility_->CreateRSAKeyPair(
           trunks_key_usage, 2048 /* modulus_bits */,
           0 /* Use default public exponent */, std::string() /* password */,
@@ -500,13 +508,26 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
           nullptr /* creation_blob */);
       break;
     case KEY_TYPE_ECC:
-      result = trunks_utility_->CreateECCKeyPair(
-          trunks_key_usage, trunks::TPM_ECC_NIST_P256 /* curve_id */,
-          std::string() /* password */, std::string() /* policy_digest */,
-          false /* use_only_policy_authorization */,
-          std::vector<uint32_t>() /* creation_pcr_indexes */,
-          empty_password_authorization.get(), key_blob,
-          nullptr /* creation_blob */);
+      switch (key_restriction) {
+        case KeyRestriction::kUnrestricted:
+          result = trunks_utility_->CreateECCKeyPair(
+              trunks_key_usage, trunks::TPM_ECC_NIST_P256 /* curve_id */,
+              std::string() /* password */, std::string() /* policy_digest */,
+              false /* use_only_policy_authorization */,
+              std::vector<uint32_t>() /* creation_pcr_indexes */,
+              empty_password_authorization.get(), key_blob,
+              nullptr /* creation_blob */);
+          break;
+        case KeyRestriction::kRestricted:
+          result = trunks_utility_->CreateRestrictedECCKeyPair(
+              trunks_key_usage, trunks::TPM_ECC_NIST_P256 /* curve_id */,
+              std::string() /* password */, std::string() /* policy_digest */,
+              false /* use_only_policy_authorization */,
+              std::vector<uint32_t>() /* creation_pcr_indexes */,
+              empty_password_authorization.get(), key_blob,
+              nullptr /* creation_blob */);
+          break;
+      }
       break;
     default:
       LOG(ERROR) << __func__ << ": Not implemented.";

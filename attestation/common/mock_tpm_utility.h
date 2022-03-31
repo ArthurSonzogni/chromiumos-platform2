@@ -49,6 +49,7 @@ class MockTpmUtility : public TpmUtility {
               CreateCertifiedKey,
               (KeyType,
                KeyUsage,
+               KeyRestriction,
                const std::string&,
                const std::string&,
                std::string*,

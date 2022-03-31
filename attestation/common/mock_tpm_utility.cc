@@ -80,7 +80,7 @@ MockTpmUtility::MockTpmUtility() {
   ON_CALL(*this, ActivateIdentity(_, _, _, _)).WillByDefault(Return(true));
   ON_CALL(*this, ActivateIdentityForTpm2(_, _, _, _, _, _))
       .WillByDefault(Return(true));
-  ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _, _, _))
+  ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _, _, _, _))
       .WillByDefault(Return(true));
   ON_CALL(*this, SealToPCR0(_, _))
       .WillByDefault(Invoke(TransformString("SealToPCR0")));
