@@ -50,6 +50,7 @@ source_set("vtpm_server_library") {
     "backends/cacheable_blob.cc",
     "backends/disk_cache_blob.cc",
     "backends/real_tpm_handle_manager.cc",
+    "backends/vsrk.cc",
     "commands/get_capability_command.cc",
     "commands/null_command.cc",
     "commands/unsupported_command.cc",
@@ -103,13 +104,17 @@ install_config("install_systemd") {
 
 if (use.test) {
   config("vtpm_test_config") {
-    libs = [ "trunks" ]
+    libs = [
+      "trunks",
+      "trunks_test",
+    ]
   }
   executable("vtpm_test") {
     sources = [
       "backends/cacheable_blob_test.cc",
       "backends/disk_cache_blob_test.cc",
       "backends/real_tpm_handle_manager_test.cc",
+      "backends/vsrk_test.cc",
       "commands/get_capability_command_test.cc",
       "commands/unsupported_command_test.cc",
       "commands/virtualizer_test.cc",
