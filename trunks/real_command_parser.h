@@ -24,6 +24,14 @@ class TRUNKS_EXPORT RealCommandParser : public CommandParser {
                      TPMI_ST_COMMAND_TAG* tag,
                      UINT32* command_size,
                      TPM_CC* cc) override;
+
+  // Parses a real `TPM2_GetCapability` command.
+  // Note that `command` is supposed to have `TPM_CC_GetCapability`. Otherwise,
+  // it crashes in debug mode (and return error in release).
+  TPM_RC ParseCommandGetCapability(std::string* command,
+                                   TPM_CAP* cap,
+                                   UINT32* property,
+                                   UINT32* property_count) override;
 };
 
 }  // namespace trunks

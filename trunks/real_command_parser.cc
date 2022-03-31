@@ -6,6 +6,8 @@
 
 #include <string>
 
+#include <base/logging.h>
+
 #include "trunks/tpm_generated.h"
 
 namespace trunks {
@@ -30,6 +32,48 @@ TPM_RC RealCommandParser::ParseHeader(std::string* command,
     return TPM_RC_COMMAND_SIZE;
   }
   return Parse_TPM_CC(command, cc, nullptr);
+}
+
+TPM_RC RealCommandParser::ParseCommandGetCapability(std::string* command,
+                                                    TPM_CAP* cap,
+                                                    UINT32* property,
+                                                    UINT32* property_count) {
+  TPMI_ST_COMMAND_TAG tag;
+  UINT32 size;
+  TPM_CC cc;
+  TPM_RC rc = ParseHeader(command, &tag, &size, &cc);
+  if (rc) {
+    return rc;
+  }
+
+  if (cc != TPM_CC_GetCapability) {
+    LOG(DFATAL) << __func__
+                << ": Expecting command code: " << TPM_CC_GetCapability
+                << "; got " << cc;
+    return TPM_RC_COMMAND_CODE;
+  }
+
+  rc = Parse_TPM_CAP(command, cap, nullptr);
+  if (rc) {
+    return rc;
+  }
+
+  // Note that validation of `cap` is not implemented in this parser because we
+  // don't have the usecase.
+
+  rc = Parse_UINT32(command, property, nullptr);
+  if (rc) {
+    return rc;
+  }
+  rc = Parse_UINT32(command, property_count, nullptr);
+  if (rc) {
+    return rc;
+  }
+
+  if (!command->empty()) {
+    rc = TPM_RC_SIZE;
+  }
+  return rc;
 }
 
 }  // namespace trunks

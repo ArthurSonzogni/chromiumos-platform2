@@ -26,6 +26,15 @@ class TRUNKS_EXPORT CommandParser {
                              TPMI_ST_COMMAND_TAG* tag,
                              UINT32* command_size,
                              TPM_CC* cc) = 0;
+
+  // Parses a `TPM2_GetCapability` command, and set `cap`, `property`, and
+  // `property_count` to the corresponding values in the command.
+  // If `command` doesn't have `TPM2_GetCapability` command code, the eror
+  // handling is implementation defined.
+  virtual TPM_RC ParseCommandGetCapability(std::string* command,
+                                           TPM_CAP* cap,
+                                           UINT32* property,
+                                           UINT32* property_count) = 0;
 };
 
 }  // namespace trunks
