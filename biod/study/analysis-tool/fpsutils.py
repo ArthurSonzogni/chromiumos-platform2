@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 import typing
 
 import matplotlib.pyplot as plt
@@ -8,6 +9,27 @@ import numpy.typing as nptyping
 import pandas as pd
 from IPython.display import Markdown, display
 from scipy.stats import norm
+
+
+class DataFrameSetAccess:
+    '''Provides a quick method of checking if a given row exists in the table.
+
+    This look method takes hundreds of nanoseconds vs other methods that take
+    hudreds of micro seconds. Given the amount of times we must query certain
+    tables, this order of magnitude difference is unacceptable.
+    '''
+
+    def __init__(self, table: pd.DataFrame, cols: list = None):
+
+        if not cols:
+            cols = table.columns
+
+        # This is an expensive operation.
+        self.set = {tuple(row) for row in np.array(table[cols])}
+        # print(f'Cached set takes {sys.getsizeof(self.set)/1024.0}KB of memory.')
+
+    def isin(self, values: tuple) -> bool:
+        return values in self.set
 
 
 def boot_sample(

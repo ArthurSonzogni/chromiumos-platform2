@@ -15,6 +15,7 @@ import pandas as pd
 import numpy as np
 import scipy.stats as st
 
+import fpsutils
 from experiment import Experiment
 from fpc_bet_results import FPCBETResults
 
@@ -30,32 +31,6 @@ from fpc_bet_results import FPCBETResults
 # For VSCode No Interactive
 # %matplotlib inline
 # %matplotlib --list
-
-
-# %% # Classes
-
-class DataFrameSetAccess:
-    '''Provides a quick method of checking if a given row exists in the table.
-
-    This look method takes hundreds of nanoseconds vs other methods that take
-    hudreds of micro seconds. Given the amount of times we must query certain
-    tables, this order of magnitude difference is unacceptable.
-    '''
-
-    def __init__(self, table: pd.DataFrame, cols: list = None):
-
-        if not cols:
-            cols = table.columns
-
-        # This is an expensive operation.
-        self.set = {tuple(row) for row in np.array(table[cols])}
-        # print(f'Cached set takes {sys.getsizeof(self.set)/1024.0}KB of memory.')
-
-    def isin(self, values: tuple) -> bool:
-        return values in self.set
-
-
-
 
 def confidence(ups, downs):
     '''This is some algo from a blog that was used for reddit'''
@@ -225,7 +200,7 @@ fa_set_tuple = [Experiment.FalseTableCol.Verify_User.value,
                 Experiment.FalseTableCol.Enroll_User.value,
                 Experiment.FalseTableCol.Verify_Finger.value,
                 Experiment.FalseTableCol.Verify_Sample.value]
-fa_set = DataFrameSetAccess(b.FAList(), fa_set_tuple)
+fa_set = fpsutils.DataFrameSetAccess(b.FAList(), fa_set_tuple)
 
 # This nieve approach take about 500ms to run one bootstrap sample, without
 # actually querying the FA table (replaced with pass).
@@ -261,7 +236,7 @@ fa_set_tuple = [Experiment.FalseTableCol.Verify_User.value,
                 Experiment.FalseTableCol.Enroll_User.value,
                 Experiment.FalseTableCol.Verify_Finger.value,
                 Experiment.FalseTableCol.Verify_Sample.value]
-fa_set = DataFrameSetAccess(b.FAList(), fa_set_tuple)
+fa_set = fpsutils.DataFrameSetAccess(b.FAList(), fa_set_tuple)
 
 # This nieve approach take about 500ms to run one bootstrap sample, without
 # actually querying the FA table (replaced with pass).
@@ -324,7 +299,7 @@ print('Query 2 Timing')
 # %%
 
 print('Query 3 Timing')
-s = DataFrameSetAccess(b.FAList())
+s = fpsutils.DataFrameSetAccess(b.FAList())
 #! %timeit s.isin((10011, 5, 69, 10012, 0, False))
 
 # %%
