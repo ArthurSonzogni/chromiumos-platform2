@@ -242,7 +242,11 @@ class FPCBETResults:
             return list(i for i, l in enumerate(f.readlines()) if l.isspace())
 
     def read_fa_list_file(self, test_case: TestCase) -> pd.DataFrame:
-        '''VerifyUser, VerifyFinger, VerifySample, EnrollUser, EnrollFinger, Strong FA'''
+        '''Read the `TableType.FA_List` (FalseAccepts.txt) file.
+
+        The table will include the following columns:
+        VerifyUser, VerifyFinger, VerifySample, EnrollUser, EnrollFinger, Strong FA
+        '''
 
         file_name = self.file_name(test_case, self.TableType.FA_List)
         tbl = pd.read_csv(
@@ -270,6 +274,11 @@ class FPCBETResults:
                           test_case: TestCase,
                           table_type: TableType,
                           sec_levels: List[SecLevel] = SecLevel.all()) -> pd.DataFrame:
+        '''Read `TableType.FAR` and `TableType.FRR` (F[AR]R_stats_4level.txt) file.
+
+        This only reads the last/bottom table of the file.
+        '''
+
         file_name = self.file_name(test_case, table_type)
         blank_lines = self.find_blank_lines(file_name)
         # Account for possibly extra blank lines.
