@@ -32,16 +32,19 @@ ForwardCommand::ForwardCommand(trunks::CommandParser* command_parser,
                                trunks::ResponseSerializer* response_serializer,
                                StaticAnalyzer* static_analyzer,
                                TpmHandleManager* tpm_handle_manager,
+                               PasswordChanger* password_changer,
                                Command* direct_forwarder)
     : command_parser_(command_parser),
       response_serializer_(response_serializer),
       static_analyzer_(static_analyzer),
       tpm_handle_manager_(tpm_handle_manager),
+      password_changer_(password_changer),
       direct_forwarder_(direct_forwarder) {
   CHECK(command_parser_);
   CHECK(response_serializer_);
   CHECK(static_analyzer_);
   CHECK(tpm_handle_manager_);
+  CHECK(password_changer_);
   CHECK(direct_forwarder_);
 }
 
@@ -51,8 +54,7 @@ void ForwardCommand::Run(const std::string& command,
   trunks::TPMI_ST_COMMAND_TAG tag;
   trunks::UINT32 size;
   trunks::TPM_CC cc;
-  const trunks::TPM_RC rc =
-      command_parser_->ParseHeader(&buffer, &tag, &size, &cc);
+  trunks::TPM_RC rc = command_parser_->ParseHeader(&buffer, &tag, &size, &cc);
   if (rc) {
     ReturnWithError(rc, std::move(callback));
     return;
@@ -90,6 +92,11 @@ void ForwardCommand::Run(const std::string& command,
   host_command.replace(trunks::kHeaderSize, host_handle_bytes.size(),
                        host_handle_bytes);
   CHECK_EQ(command.size(), host_command.size());
+  rc = password_changer_->Change(host_command);
+  if (rc) {
+    ReturnWithError(rc, std::move(callback));
+    return;
+  }
   CommandResponseCallback post_processed_callback = base::BindOnce(
       &ForwardCommand::RunWithPostProcess, base::Unretained(this), cc,
       std::move(host_handles), std::move(callback));

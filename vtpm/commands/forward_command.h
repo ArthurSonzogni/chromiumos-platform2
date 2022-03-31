@@ -14,6 +14,7 @@
 #include <trunks/command_parser.h>
 #include <trunks/response_serializer.h>
 
+#include "vtpm/backends/password_changer.h"
 #include "vtpm/backends/static_analyzer.h"
 #include "vtpm/backends/tpm_handle_manager.h"
 
@@ -27,6 +28,7 @@ class ForwardCommand : public Command {
                  trunks::ResponseSerializer* response_serializer,
                  StaticAnalyzer* static_analyzer,
                  TpmHandleManager* tpm_handle_manager,
+                 PasswordChanger* password_changer,
                  Command* direct_forwarder);
 
   // Forwards `command` to the host TPM. Does any pre-processing or
@@ -46,6 +48,7 @@ class ForwardCommand : public Command {
   trunks::ResponseSerializer* const response_serializer_;
   StaticAnalyzer* const static_analyzer_;
   TpmHandleManager* const tpm_handle_manager_;
+  PasswordChanger* const password_changer_;
   Command* const direct_forwarder_;
 };
 

@@ -14,6 +14,7 @@
 #include <trunks/mock_response_serializer.h>
 #include <trunks/tpm_generated.h>
 
+#include "vtpm/backends/mock_password_changer.h"
 #include "vtpm/backends/mock_static_analyzer.h"
 #include "vtpm/backends/mock_tpm_handle_manager.h"
 #include "vtpm/backends/scoped_host_key_handle.h"
@@ -26,6 +27,7 @@ namespace {
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::Eq;
 using ::testing::Expectation;
 using ::testing::Invoke;
 using ::testing::Pointee;
@@ -79,10 +81,11 @@ class ForwardCommandTest : public testing::Test {
   StrictMock<trunks::MockResponseSerializer> mock_resp_serializer_;
   StrictMock<MockStaticAnalyzer> mock_static_analyzer_;
   StrictMock<MockTpmHandleManager> mock_tpm_handle_manager_;
+  StrictMock<MockPasswordChanger> mock_password_changer_;
   StrictMock<MockCommand> mock_direct_forwarder_;
-  ForwardCommand command_{&mock_cmd_parser_, &mock_resp_serializer_,
-                          &mock_static_analyzer_, &mock_tpm_handle_manager_,
-                          &mock_direct_forwarder_};
+  ForwardCommand command_{&mock_cmd_parser_,       &mock_resp_serializer_,
+                          &mock_static_analyzer_,  &mock_tpm_handle_manager_,
+                          &mock_password_changer_, &mock_direct_forwarder_};
 };
 
 namespace {
@@ -103,6 +106,9 @@ TEST_F(ForwardCommandTest, SuccessOneHandle) {
 
   const std::string expected_host_command =
       GetFakeHeader() + ToSerializedHandle(kFakeHostHandle1) + kFakeParam;
+
+  EXPECT_CALL(mock_password_changer_, Change(Eq(expected_host_command)))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   Expectation consume =
       EXPECT_CALL(mock_direct_forwarder_, Run(expected_host_command, _))
@@ -148,6 +154,9 @@ TEST_F(ForwardCommandTest, SuccessTwoHandles) {
       GetFakeHeader() + ToSerializedHandle(kFakeHostHandle1) +
       ToSerializedHandle(kFakeHostHandle2) + kFakeParam;
 
+  EXPECT_CALL(mock_password_changer_, Change(Eq(expected_host_command)))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
   Expectation consume =
       EXPECT_CALL(mock_direct_forwarder_, Run(expected_host_command, _))
           .WillOnce(WithArgs<1>([](CommandResponseCallback callback) {
@@ -181,6 +190,9 @@ TEST_F(ForwardCommandTest, SuccessNoHandle) {
           DoAll(SetArgPointee<3>(kFakeCC), Return(trunks::TPM_RC_SUCCESS)));
   EXPECT_CALL(mock_static_analyzer_, GetCommandHandleCount(kFakeCC))
       .WillOnce(Return(0));
+
+  EXPECT_CALL(mock_password_changer_, Change(Eq(fake_command)))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   EXPECT_CALL(mock_direct_forwarder_, Run(fake_command, _))
       .WillOnce(WithArgs<1>([](CommandResponseCallback callback) {
@@ -234,6 +246,31 @@ TEST_F(ForwardCommandTest, FailureSecondTranslation) {
   EXPECT_EQ(response, kTestResponse);
 }
 
+TEST_F(ForwardCommandTest, FailureErrorChangingPassword) {
+  const std::string fake_command = GetFakeHeader() + kFakeParam;
+
+  EXPECT_CALL(mock_cmd_parser_, ParseHeader(Pointee(fake_command), _, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<3>(kFakeCC), Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_static_analyzer_, GetCommandHandleCount(kFakeCC))
+      .WillOnce(Return(0));
+
+  EXPECT_CALL(mock_password_changer_, Change(Eq(fake_command)))
+      .WillOnce(Return(trunks::TPM_RC_FAILURE));
+
+  EXPECT_CALL(mock_resp_serializer_,
+              SerializeHeaderOnlyResponse(trunks::TPM_RC_FAILURE, _))
+      .WillOnce(SetArgPointee<1>(kTestResponse));
+
+  std::string response;
+  CommandResponseCallback callback =
+      base::BindOnce([](std::string* resp_out,
+                        const std::string& resp_in) { *resp_out = resp_in; },
+                     &response);
+  command_.Run(fake_command, std::move(callback));
+  EXPECT_EQ(response, kTestResponse);
+}
+
 TEST_F(ForwardCommandTest, FailureHeaderError) {
   std::string fake_command = GetFakeHeader();
   fake_command += ToSerializedHandle(kFakeVirtualHandle1);
@@ -273,6 +310,9 @@ TEST_F(ForwardCommandTest, SuccessOneHandleUnsuccessfulTpmOperation) {
   const std::string expected_host_command =
       GetFakeHeader() + ToSerializedHandle(kFakeHostHandle1) + kFakeParam;
 
+  EXPECT_CALL(mock_password_changer_, Change(Eq(expected_host_command)))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+
   Expectation consume =
       EXPECT_CALL(mock_direct_forwarder_, Run(expected_host_command, _))
           .WillOnce(WithArgs<1>([](CommandResponseCallback callback) {
@@ -310,6 +350,9 @@ TEST_F(ForwardCommandTest, SuccessOneHandleWithLoad) {
 
   const std::string expected_host_command =
       GetFakeHeader() + ToSerializedHandle(kFakeHostHandle1) + kFakeParam;
+
+  EXPECT_CALL(mock_password_changer_, Change(Eq(expected_host_command)))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   Expectation consume =
       EXPECT_CALL(mock_direct_forwarder_, Run(expected_host_command, _))
@@ -355,6 +398,9 @@ TEST_F(ForwardCommandTest, SuccessOneHandleWithUnload) {
 
   const std::string expected_host_command =
       GetFakeHeader() + ToSerializedHandle(kFakeHostHandle1) + kFakeParam;
+
+  EXPECT_CALL(mock_password_changer_, Change(Eq(expected_host_command)))
+      .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   Expectation consume =
       EXPECT_CALL(mock_direct_forwarder_, Run(expected_host_command, _))

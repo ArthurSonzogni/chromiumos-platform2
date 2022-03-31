@@ -30,6 +30,7 @@
 #include "vtpm/backends/attested_virtual_endorsement.h"
 #include "vtpm/backends/cacheable_blob.h"
 #include "vtpm/backends/disk_cache_blob.h"
+#include "vtpm/backends/endorsement_password_changer.h"
 #include "vtpm/backends/real_static_analyzer.h"
 #include "vtpm/backends/real_tpm_handle_manager.h"
 #include "vtpm/backends/vek.h"
@@ -68,6 +69,7 @@ class Virtualizer : public Command {
   brillo::DBusConnection system_bus_connection_;
   std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy_;
   std::unique_ptr<AttestedVirtualEndorsement> attested_virtual_endorsement_;
+  std::unique_ptr<EndorsementPasswordChanger> endorsement_password_changer_;
 
   // NOTE: This factory might be limited to used on the `Create()`-calling
   // thread.

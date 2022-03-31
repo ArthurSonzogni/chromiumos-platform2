@@ -36,6 +36,18 @@ constexpr char kVsrkCachePath[] = "/var/lib/vtpm/vsrk.blob";
 constexpr char kVekCachePath[] = "/var/lib/vtpm/vek.blob";
 constexpr char kVekCertCachePath[] = "/var/lib/vtpm/vek_cert.blob";
 constexpr trunks::TPM_NV_INDEX kVekCertIndex = 0x01C00001;
+constexpr char kVirtualEndorsementPassword[] = "";
+
+constexpr trunks::TPM_CC kSupportedForwardCommands[] = {
+    trunks::TPM_CC_ReadPublic,
+    trunks::TPM_CC_Create,
+    trunks::TPM_CC_Load,
+    trunks::TPM_CC_FlushContext,
+    trunks::TPM_CC_StartAuthSession,
+    trunks::TPM_CC_PolicySecret,
+    trunks::TPM_CC_MakeCredential,
+    trunks::TPM_CC_ActivateCredential,
+};
 
 }  // namespace
 
@@ -64,6 +76,17 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
     v->attested_virtual_endorsement_ =
         std::make_unique<AttestedVirtualEndorsement>(
             v->attestation_proxy_.get());
+
+    // NOTE: This is not ideal due to race condition between tpm manager service
+    // being up and this call, and causes unnecessary crashes as other daemons
+    // have. However, the fix should not be here instead of
+    // `TpmManagerClient::Initialize()`.
+    CHECK(tpm_manager::TpmManagerUtility::GetSingleton())
+        << "Failed to initialize tpm manager utility.";
+    v->endorsement_password_changer_ =
+        std::make_unique<EndorsementPasswordChanger>(
+            tpm_manager::TpmManagerUtility::GetSingleton(),
+            kVirtualEndorsementPassword);
 
     // Set up VEK.
     v->vek_cache_ =
@@ -111,13 +134,11 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
     v->commands_.emplace_back(std::make_unique<ForwardCommand>(
         &v->real_command_parser_, &v->real_response_serializer_,
         &v->real_static_analyzer_, v->real_tpm_handle_manager_.get(),
-        &v->direct_forwarder_));
-    v->command_table_.emplace(trunks::TPM_CC_ReadPublic,
-                              v->commands_.back().get());
-    v->command_table_.emplace(trunks::TPM_CC_Create, v->commands_.back().get());
-    v->command_table_.emplace(trunks::TPM_CC_Load, v->commands_.back().get());
-    v->command_table_.emplace(trunks::TPM_CC_FlushContext,
-                              v->commands_.back().get());
+        v->endorsement_password_changer_.get(), &v->direct_forwarder_));
+
+    for (trunks::TPM_CC cc : kSupportedForwardCommands) {
+      v->command_table_.emplace(cc, v->commands_.back().get());
+    }
 
     // Use an `UnsupportedCommand` as fallback.
     v->commands_.emplace_back(
