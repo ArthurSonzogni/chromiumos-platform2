@@ -92,6 +92,9 @@ class RmadInterfaceImpl final : public RmadInterface {
   void GetLog(GetLogCallback callback) override;
   void SaveLog(const std::string& diagnostics_log_path,
                SaveLogCallback callback) override;
+  void RecordBrowserActionMetric(
+      const RecordBrowserActionMetricRequest& browser_action,
+      RecordBrowserActionMetricCallback callback) override;
   bool CanAbort() const override { return can_abort_; }
 
   void SetTestMode() { test_mode_ = true; }

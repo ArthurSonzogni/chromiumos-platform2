@@ -773,4 +773,33 @@ TEST_F(RmadInterfaceImplTest, SaveLog) {
   rmad_interface.SaveLog("", base::BindOnce(callback));
 }
 
+TEST_F(RmadInterfaceImplTest, RecordBrowserActionMetric) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, "", 0);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      CreateTpmManagerClient(RoVerificationStatus::NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateCmdUtils(), CreateMetricsUtils(true));
+  EXPECT_TRUE(rmad_interface.SetUp());
+
+  auto callback = [](const RecordBrowserActionMetricReply& reply) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+  };
+  RecordBrowserActionMetricRequest request;
+  request.set_diagnostics(true);
+  request.set_os_update(true);
+
+  rmad_interface.RecordBrowserActionMetric(request, base::BindOnce(callback));
+
+  std::vector<int> additional_activities;
+  EXPECT_TRUE(
+      json_store->GetValue(kAdditionalActivities, &additional_activities));
+  EXPECT_EQ(
+      additional_activities,
+      std::vector<int>({static_cast<int>(AdditionalActivity::DIAGNOSTICS),
+                        static_cast<int>(AdditionalActivity::OS_UPDATE)}));
+}
+
 }  // namespace rmad

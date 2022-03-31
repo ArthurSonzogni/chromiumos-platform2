@@ -581,6 +581,33 @@ void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_path,
   std::move(callback).Run(reply);
 }
 
+void RmadInterfaceImpl::RecordBrowserActionMetric(
+    const RecordBrowserActionMetricRequest& browser_action,
+    RecordBrowserActionMetricCallback callback) {
+  std::vector<int> additional_activities;
+  // Ignore the return value, since it may not have been set yet.
+  json_store_->GetValue(kAdditionalActivities, &additional_activities);
+
+  // TODO(genechang): Add a table to map all actions to metrics to simplify it.
+  if (browser_action.diagnostics()) {
+    additional_activities.push_back(
+        static_cast<int>(AdditionalActivity::DIAGNOSTICS));
+  }
+
+  if (browser_action.os_update()) {
+    additional_activities.push_back(
+        static_cast<int>(AdditionalActivity::OS_UPDATE));
+  }
+
+  RecordBrowserActionMetricReply reply;
+  if (json_store_->SetValue(kAdditionalActivities, additional_activities)) {
+    reply.set_error(RMAD_ERROR_OK);
+  } else {
+    reply.set_error(RMAD_ERROR_CANNOT_RECORD_BROWSER_ACTION);
+  }
+  std::move(callback).Run(reply);
+}
+
 bool RmadInterfaceImpl::CanGoBack() const {
   if (state_history_.size() > 1) {
     const auto current_state_handler =

@@ -63,6 +63,7 @@ enum class AdditionalActivity : int {
   REBOOT = 2,
   BATTERY_CUTOFF = 3,
   DIAGNOSTICS = 4,
+  OS_UPDATE = 5,
 };
 
 constexpr std::array<AdditionalActivity, 4> kValidAdditionalActivities = {

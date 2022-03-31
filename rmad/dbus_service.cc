@@ -365,6 +365,11 @@ void DBusService::RegisterDBusObjectsAsync(AsyncEventSequencer* sequencer) {
       kSaveLogMethod, base::Unretained(this),
       &DBusService::DelegateToInterface<std::string, SaveLogReply,
                                         &RmadInterface::SaveLog>);
+  dbus_interface->AddMethodHandler(
+      kRecordBrowserActionMetricMethod, base::Unretained(this),
+      &DBusService::DelegateToInterface<
+          RecordBrowserActionMetricRequest, RecordBrowserActionMetricReply,
+          &RmadInterface::RecordBrowserActionMetric>);
 
   error_signal_ = dbus_interface->RegisterSignal<RmadErrorCode>(kErrorSignal);
   hardware_verification_signal_ =

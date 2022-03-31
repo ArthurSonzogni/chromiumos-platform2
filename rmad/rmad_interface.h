@@ -95,9 +95,16 @@ class RmadInterface {
   virtual void GetLog(GetLogCallback callback) = 0;
 
   using SaveLogCallback = base::OnceCallback<void(const SaveLogReply&)>;
-  // Save the RMA logs
+  // Save the RMA logs.
   virtual void SaveLog(const std::string& diagnostics_log_path,
                        SaveLogCallback callback) = 0;
+
+  using RecordBrowserActionMetricCallback =
+      base::OnceCallback<void(const RecordBrowserActionMetricReply&)>;
+  // Record actions from Chrome.
+  virtual void RecordBrowserActionMetric(
+      const RecordBrowserActionMetricRequest& browser_action,
+      RecordBrowserActionMetricCallback callback) = 0;
 
   // Returns whether it's allowed to abort RMA now.
   virtual bool CanAbort() const = 0;
