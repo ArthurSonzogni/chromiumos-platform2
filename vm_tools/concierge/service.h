@@ -365,6 +365,11 @@ class Service final {
   // Returns true on success or false if an error occurred
   bool OnVmBootComplete(const std::string& owner_id, const std::string& name);
 
+  // Checks the current Feature settings and returns the CPU quota value (e.g.
+  // 50 meaning 50%) to be set as the cpu.cfs_quota_us cgroup. When the Feature
+  // is not enabled, returns kCpuPercentUnlimited.
+  int GetCpuQuota();
+
   // Resource allocators for VMs.
   VsockCidPool vsock_cid_pool_;
 

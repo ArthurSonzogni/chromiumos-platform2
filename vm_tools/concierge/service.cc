@@ -198,6 +198,14 @@ constexpr const char kMDSFilePath[] =
 
 constexpr gid_t kCrosvmUGid = 299;
 
+// Needs to be const as libfeatures does pointers checking.
+const Feature kArcVmInitialThrottle30Feature{
+    "CrOSLateBootArcVmInitial30Throttle", FEATURE_DISABLED_BY_DEFAULT};
+const Feature kArcVmInitialThrottle50Feature{
+    "CrOSLateBootArcVmInitial50Throttle", FEATURE_DISABLED_BY_DEFAULT};
+const Feature kArcVmInitialThrottle70Feature{
+    "CrOSLateBootArcVmInitial70Throttle", FEATURE_DISABLED_BY_DEFAULT};
+
 // Used with the |IsUntrustedVMAllowed| function.
 struct UntrustedVMCheckResult {
   UntrustedVMCheckResult(bool untrusted_vm_allowed, bool skip_host_checks)
@@ -3718,7 +3726,7 @@ std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
       success = PluginVm::SetVmCpuRestriction(state);
       break;
     case CPU_CGROUP_ARCVM:
-      success = ArcVm::SetVmCpuRestriction(state);
+      success = ArcVm::SetVmCpuRestriction(state, GetCpuQuota());
       break;
     default:
       LOG(ERROR) << "Unknown cpu_group";
@@ -4349,6 +4357,21 @@ Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
 
   return VMGpuCacheSpec{.device = std::move(cache_device_path),
                         .render_server = std::move(cache_render_server_path)};
+}
+
+int Service::GetCpuQuota() {
+  // We need 3 distinct boolean Features because platform2/ does not have
+  // Chromium's base::FeatureParam<> equivalent.
+  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle70Feature)) {
+    return 70;
+  }
+  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle50Feature)) {
+    return 50;
+  }
+  if (platform_features_->IsEnabledBlocking(kArcVmInitialThrottle30Feature)) {
+    return 30;
+  }
+  return kCpuPercentUnlimited;  // cfs_quota is disabled.
 }
 
 }  // namespace concierge

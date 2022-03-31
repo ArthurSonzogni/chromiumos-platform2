@@ -35,6 +35,9 @@ constexpr char kArcvmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm-vcpus";
 // `arcvm-vcpu` ones above) should belong to.
 constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm";
 
+// The value for setting the cgroup's CFS quota to unlimited.
+constexpr int kCpuPercentUnlimited = -1;
+
 struct ArcVmFeatures {
   // Whether the guest kernel root file system is writable.
   bool rootfs_writable;
@@ -111,8 +114,11 @@ class ArcVm final : public VmBaseImpl {
       std::string* failure_reason) override;
   void VmIdChanged() override { vm_upgraded_ = true; }
 
-  // Adjusts the amount of CPU the ARCVM processes are allowed to use.
-  static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state);
+  // Adjusts the amount of CPU the ARCVM processes are allowed to use. When
+  // the state is CPU_RESTRICTION_BACKGROUND_WITH_CFS_QUOTA_ENFORCED, the
+  // cpu.cfs_quota_us cgroup for ARCVM is updated with the |quota| value.
+  static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
+                                  int quota);
 
  private:
   ArcVm(int32_t vsock_cid,

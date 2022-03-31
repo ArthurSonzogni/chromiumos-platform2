@@ -95,13 +95,6 @@ constexpr char kSbinSharedDirTag[] = "sbin";
 constexpr char kUsrBinSharedDir[] = "/usr/bin";
 constexpr char kUsrBinSharedDirTag[] = "usr_bin";
 
-// The percentage of CPU to limit the ArcVm CGroup when a vCPU thread's
-// CPU usage is restricted.
-constexpr int kCpuPercentThrottle = 25;
-
-// The value for setting the cgroup's CFS quota to unlimited.
-constexpr int kCpuPercentUnlimited = -1;
-
 // For |kOemEtcSharedDir|, map host's crosvm to guest's root, also arc-camera
 // (603) to vendor_arc_camera (5003).
 constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
@@ -524,7 +517,8 @@ void ArcVm::HandleSuspendDone() {
 }
 
 // static
-bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
+bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
+                                int quota) {
   bool ret = true;
   if (!VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
                                        kArcvmCpuCgroup)) {
@@ -535,15 +529,14 @@ bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
     ret = false;
   }
 
-  int quota = kCpuPercentUnlimited;
   switch (cpu_restriction_state) {
     case CPU_RESTRICTION_FOREGROUND:
     case CPU_RESTRICTION_BACKGROUND:
       // Reset/remove the quota. Needed to handle the case where user signs out
       // before quota was reset.
+      quota = kCpuPercentUnlimited;
       break;
     case CPU_RESTRICTION_BACKGROUND_WITH_CFS_QUOTA_ENFORCED:
-      quota = kCpuPercentThrottle;
       break;
     default:
       NOTREACHED();
