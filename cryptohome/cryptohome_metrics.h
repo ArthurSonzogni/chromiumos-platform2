@@ -738,6 +738,11 @@ void ReportUsageOfLegacyCodePath(LegacyCodePathLocation location, bool result);
 // VaultKeysets.
 void ReportVaultKeysetMetrics(const VaultKeysetMetrics& keyset_metrics);
 
+// Reports number of files that exist in ~/MyFiles/Downloads prior to migrating
+// and bind mounting. This only records the top-level items but does not record
+// items in sub-directories.
+void ReportMaskedDownloadsItems(int num_items);
+
 // Cryptohome Error Reporting related UMAs
 
 // Reports the full error id's hash when an error occurred.

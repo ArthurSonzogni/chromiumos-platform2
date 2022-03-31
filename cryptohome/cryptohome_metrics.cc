@@ -116,6 +116,7 @@ constexpr char kFetchUssExperimentConfigRetries[] =
     "Cryptohome.UssExperiment.FetchUssExperimentConfigRetries";
 constexpr char kUssExperimentFlag[] =
     "Cryptohome.UssExperiment.UssExperimentFlag";
+constexpr char kMaskedDownloadsItems[] = "Cryptohome.MaskedDownloadsItems";
 
 // Histogram parameters. This should match the order of 'TimerType'.
 // Min and max samples are in milliseconds.
@@ -738,6 +739,16 @@ void ReportVaultKeysetMetrics(const VaultKeysetMetrics& keyset_metrics) {
   g_metrics->SendToUMA(
       std::string(kVaultKeysetMetric).append(kVaultKeysetMetricType[8]),
       keyset_metrics.unclassified_count, kMin, kMax, kNumBuckets);
+}
+
+void ReportMaskedDownloadsItems(int num_items) {
+  if (!g_metrics) {
+    return;
+  }
+
+  constexpr int kMin = 1, kMax = 1000, kNumBuckets = 20;
+  g_metrics->SendToUMA(kMaskedDownloadsItems, num_items, kMin, kMax,
+                       kNumBuckets);
 }
 
 void ReportCryptohomeErrorHashedStack(const uint32_t hashed) {

@@ -465,7 +465,8 @@ bool MountHelper::HandleMyFilesDownloads(const base::FilePath& user_home) {
   // User could have saved files in MyFiles/Downloads in case cryptohome
   // crashed and bind mounts were removed by error. See crbug.com/1080730.
   // Move the files back to Download unless a file already exists.
-  MigrateDirectory(downloads, downloads_in_myfiles);
+  int migrated_items = MigrateDirectory(downloads, downloads_in_myfiles);
+  ReportMaskedDownloadsItems(migrated_items);
 
   if (!BindAndPush(downloads, downloads_in_myfiles))
     return false;
@@ -571,9 +572,10 @@ bool MountHelper::MountDaemonStoreDirectories(
   return true;
 }
 
-void MountHelper::MigrateDirectory(const base::FilePath& dst,
-                                   const base::FilePath& src) const {
+int MountHelper::MigrateDirectory(const base::FilePath& dst,
+                                  const base::FilePath& src) const {
   VLOG(1) << "Migrating directory " << src << " -> " << dst;
+  int num_items = 0;
   std::unique_ptr<cryptohome::FileEnumerator> enumerator(
       platform_->GetFileEnumerator(
           src, false /* recursive */,
@@ -581,6 +583,7 @@ void MountHelper::MigrateDirectory(const base::FilePath& dst,
   for (base::FilePath src_obj = enumerator->Next(); !src_obj.empty();
        src_obj = enumerator->Next()) {
     base::FilePath dst_obj = dst.Append(src_obj.BaseName());
+    num_items++;
 
     // If the destination file exists, or rename failed for whatever reason,
     // then log a warning and delete the source file.
@@ -590,6 +593,7 @@ void MountHelper::MigrateDirectory(const base::FilePath& dst,
       platform_->DeletePathRecursively(src_obj);
     }
   }
+  return num_items;
 }
 
 bool MountHelper::MountHomesAndDaemonStores(

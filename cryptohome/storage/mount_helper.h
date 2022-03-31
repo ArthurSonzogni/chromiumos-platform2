@@ -184,9 +184,7 @@ class MountHelper : public MountHelperInterface {
 
   // Ensures that the |num|th component of |path| is owned by |uid|:|gid| and is
   // a directory.
-  bool EnsurePathComponent(const FilePath& path,
-                           uid_t uid,
-                           gid_t gid) const;
+  bool EnsurePathComponent(const FilePath& path, uid_t uid, gid_t gid) const;
 
   // Attempts to unmount a mountpoint. If the unmount fails, logs processes with
   // open handles to it and performs a lazy unmount.
@@ -197,9 +195,10 @@ class MountHelper : public MountHelperInterface {
   void ForceUnmount(const base::FilePath& src, const base::FilePath& dest);
 
   // Facilitates migration of files from one directory to another, removing the
-  // duplicates.
-  void MigrateDirectory(const base::FilePath& dst,
-                        const base::FilePath& src) const;
+  // duplicates. Returns the number of items migrated that are direct children
+  // of |dst| to |src|.
+  int MigrateDirectory(const base::FilePath& dst,
+                       const base::FilePath& src) const;
 
   // Bind-mounts
   //   /home/.shadow/$hash/mount/root/$daemon (*)
