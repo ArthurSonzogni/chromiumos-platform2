@@ -1977,7 +1977,8 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
       .SetAdapterState(enabled)
       .SetVendorId(vendor_id)
       .SetProductId(product_id)
-      .SetSubsystemId(subsystem_id);
+      .SetSubsystemId(subsystem_id)
+      .Record();
 }
 
 // static
@@ -2039,7 +2040,8 @@ void Metrics::NotifyWiFiConnectionAttempt(
           info.ap_features.krv_info.bss_transition_supported)
       .SetAP_HS20Support(info.ap_features.hs20_info.supported)
       .SetAP_HS20Version(info.ap_features.hs20_info.version)
-      .SetAP_MBOSupport(info.ap_features.mbo_supported);
+      .SetAP_MBOSupport(info.ap_features.mbo_supported)
+      .Record();
 }
 
 void Metrics::NotifyWiFiConnectionAttemptResult(
@@ -2053,7 +2055,8 @@ void Metrics::NotifyWiFiConnectionAttemptResult(
       .SetBootId(GetBootId())
       .SetSystemTime(usecs)
       .SetEventVersion(kWiFiStructuredMetricsVersion)
-      .SetResultCode(result_code);
+      .SetResultCode(result_code)
+      .Record();
 }
 
 // static
