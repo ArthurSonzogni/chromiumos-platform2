@@ -9,6 +9,7 @@
 
 #include <brillo/daemons/dbus_daemon.h>
 
+#include "vtpm/commands/command.h"
 #include "vtpm/dbus_interface.h"
 #include "vtpm/vtpm_service.h"
 
@@ -17,20 +18,23 @@ namespace vtpm {
 // This class runs the D-Bus service of virtual TPM.
 class VtpmDaemon : public brillo::DBusServiceDaemon {
  public:
-  VtpmDaemon() : DBusServiceDaemon(kVtpmServiceName) {}
+  VtpmDaemon() = delete;
+  explicit VtpmDaemon(Command* command)
+      : DBusServiceDaemon(kVtpmServiceName), command_(command) {}
   VtpmDaemon(const VtpmDaemon&) = delete;
   VtpmDaemon& operator=(const VtpmDaemon&) = delete;
 
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    service_.reset(new VtpmService());
+    service_.reset(new VtpmService(command_));
     adaptor_.reset(new VtpmServiceAdaptor(service_.get(), bus_));
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed", true));
   }
 
  private:
+  Command* const command_;
   std::unique_ptr<VtpmService> service_;
   std::unique_ptr<VtpmServiceAdaptor> adaptor_;
 };

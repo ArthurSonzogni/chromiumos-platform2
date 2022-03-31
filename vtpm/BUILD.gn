@@ -13,6 +13,9 @@ group("all") {
     ":install_systemd",
     ":vtpmd",
   ]
+  if (use.test) {
+    deps += [ ":vtpm_test" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -37,7 +40,10 @@ generate_dbus_adaptors("vtpm-adaptors") {
 }
 
 source_set("vtpm_server_library") {
-  sources = [ "vtpm_service.cc" ]
+  sources = [
+    "commands/null_command.cc",
+    "vtpm_service.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     ":interface_proto",
@@ -72,4 +78,19 @@ install_config("install_policy") {
 install_config("install_systemd") {
   sources = [ "org.chromium.Vtpm.conf" ]
   install_path = "/etc/dbus-1/system.d"
+}
+
+if (use.test) {
+  executable("vtpm_test") {
+    sources = [ "vtpm_service_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":vtpm_server_library",
+      "//common-mk/testrunner:testrunner",
+    ]
+    run_test = true
+  }
 }
