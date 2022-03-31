@@ -33,6 +33,7 @@ using trunks::TPM_RC_SUCCESS;
 
 const unsigned int kWellKnownExponent = 65537;
 constexpr size_t kEccKeyCoordinateByteLength = 32;
+constexpr size_t kRandomCertifiedKeyPasswordLength = 32;
 
 // TODO(crbug/916023): move these utility functions to shared library.
 inline const uint8_t* StringToByteBuffer(const char* str) {
@@ -466,13 +467,23 @@ bool TpmUtilityV2::CreateCertifiedKey(
   trunks::TpmUtility::AsymmetricKeyUsage trunks_key_usage =
       (key_usage == KEY_USAGE_SIGN) ? trunks::TpmUtility::kSignKey
                                     : trunks::TpmUtility::kDecryptKey;
-  const std::string policy_digest =
-      (profile_hint.has_value() &&
-       (*profile_hint == ENTERPRISE_VTPM_EK_CERTIFICATE))
-          ? std::string(trunks::GetEkTemplateAuthPolicy())
-          : "";
 
+  std::string policy_digest;
+  std::string password;
   TPM_RC result;
+  if (profile_hint.has_value() &&
+      (*profile_hint == ENTERPRISE_VTPM_EK_CERTIFICATE)) {
+    policy_digest = trunks::GetEkTemplateAuthPolicy();
+    result = trunks_utility_->GenerateRandom(kRandomCertifiedKeyPasswordLength,
+                                             /*authorization_delegate=*/nullptr,
+                                             &password);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << __func__ << ": Failed to create random password: "
+                 << trunks::GetErrorString(result);
+      return false;
+    }
+  }
+
   switch (key_type) {
     case KEY_TYPE_RSA:
       // The support should be trivial and simsilar to the way for ECC, but we
@@ -484,8 +495,8 @@ bool TpmUtilityV2::CreateCertifiedKey(
       }
       result = trunks_utility_->CreateRSAKeyPair(
           trunks_key_usage, 2048 /* modulus_bits */,
-          0 /* Use default public exponent */, std::string() /* password */,
-          policy_digest, false /* use_only_policy_authorization */,
+          0 /* Use default public exponent */, password, policy_digest,
+          false /* use_only_policy_authorization */,
           std::vector<uint32_t>() /* creation_pcr_indexes */,
           empty_password_authorization.get(), key_blob,
           nullptr /* creation_blob */);
@@ -495,7 +506,7 @@ bool TpmUtilityV2::CreateCertifiedKey(
         case KeyRestriction::kUnrestricted:
           result = trunks_utility_->CreateECCKeyPair(
               trunks_key_usage, trunks::TPM_ECC_NIST_P256 /* curve_id */,
-              std::string() /* password */, policy_digest,
+              password, policy_digest,
               false /* use_only_policy_authorization */,
               std::vector<uint32_t>() /* creation_pcr_indexes */,
               empty_password_authorization.get(), key_blob,
@@ -504,7 +515,7 @@ bool TpmUtilityV2::CreateCertifiedKey(
         case KeyRestriction::kRestricted:
           result = trunks_utility_->CreateRestrictedECCKeyPair(
               trunks_key_usage, trunks::TPM_ECC_NIST_P256 /* curve_id */,
-              std::string() /* password */, policy_digest,
+              password, policy_digest,
               false /* use_only_policy_authorization */,
               std::vector<uint32_t>() /* creation_pcr_indexes */,
               empty_password_authorization.get(), key_blob,
@@ -611,7 +622,10 @@ bool TpmUtilityV2::CreateCertifiedKey(
   trunks::TPM2B_ATTEST certify_info;
   trunks::TPMT_SIGNATURE signature;
   MultipleAuthorizations authorization;
-  authorization.AddAuthorizationDelegate(empty_password_authorization.get());
+  std::unique_ptr<AuthorizationDelegate> certified_key_password_authorization =
+      trunks_factory_->GetPasswordAuthorization(password);
+  authorization.AddAuthorizationDelegate(
+      certified_key_password_authorization.get());
   authorization.AddAuthorizationDelegate(empty_password_authorization.get());
   result = trunks_factory_->GetTpm()->CertifySync(
       key_handle, key_name, identity_key_handle, identity_key_name,
