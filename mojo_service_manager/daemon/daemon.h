@@ -7,7 +7,9 @@
 
 #include <memory>
 
-#include <base/threading/thread.h>
+#include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/file_path.h>
+#include <base/files/scoped_file.h>
 #include <brillo/daemons/daemon.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
@@ -21,22 +23,28 @@ namespace mojo_service_manager {
 // service manager daemon.
 class Daemon : public brillo::Daemon {
  public:
-  explicit Daemon(ServicePolicyMap policy_map);
+  Daemon(const base::FilePath& socket_path, ServicePolicyMap policy_map);
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
   ~Daemon() override;
 
- protected:
-  // ::brillo::Daemon override.
-  int OnEventLoopStarted() override;
-
  private:
-  // The thread for mojo io.
-  base::Thread mojo_thread_;
-  // The task runner to post tasks to the mojo thread.
-  scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner_;
-  // Sets task runner for mojo api.
-  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
+  // ::brillo::Daemon overrides.
+  int OnInit() override;
+  void OnShutdown(int* exit_code) override;
+
+  // Sends mojo invitation to the peer socket and binds the receiver of
+  // mojom::ServiceManager.
+  void SendMojoInvitationAndBindReceiver();
+
+  // The |ScopedIPCSupport| instance for mojo.
+  mojo::core::ScopedIPCSupport ipc_support_;
+  // The path to the unix socket of the daemon.
+  const base::FilePath socket_path_;
+  // The fd of the unix socket server of the daemon.
+  base::ScopedFD socket_fd_;
+  // The fd watcher to monitor the socket server.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
   // Implements mojom::ServiceManager.
   ServiceManager service_manager_;
 };

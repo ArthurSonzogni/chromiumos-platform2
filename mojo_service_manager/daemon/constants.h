@@ -8,6 +8,9 @@
 namespace chromeos {
 namespace mojo_service_manager {
 
+// The path of the service manager's socket server.
+constexpr char kSocketPath[] = "/run/mojo/service_manager";
+
 // The policy directory path.
 constexpr char kPolicyDirectoryPath[] = "/etc/mojo/service_manager/policy";
 

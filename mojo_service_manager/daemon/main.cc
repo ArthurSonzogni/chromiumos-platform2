@@ -51,5 +51,7 @@ int main(int argc, char* argv[]) {
         base::FilePath{service_manager::kExtraPolicyDirectoryPathInDevMode},
         &policy_map);
   }
-  return service_manager::Daemon(std::move(policy_map)).Run();
+  service_manager::Daemon daemon(base::FilePath{service_manager::kSocketPath},
+                                 std::move(policy_map));
+  return daemon.Run();
 }
