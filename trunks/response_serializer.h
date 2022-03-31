@@ -30,6 +30,11 @@ class TRUNKS_EXPORT ResponseSerializer {
   // Serializes the response for `TPM2_NV_Read`.
   virtual void SerializeResponseNvRead(const TPM2B_MAX_NV_BUFFER& data,
                                        std::string* response) = 0;
+
+  // Serializes the response for `TPM2_NV_ReadPublic`.
+  virtual void SerializeResponseNvReadPublic(const TPM2B_NV_PUBLIC& nv_public,
+                                             const TPM2B_NAME& nv_name,
+                                             std::string* response) = 0;
 };
 }  // namespace trunks
 

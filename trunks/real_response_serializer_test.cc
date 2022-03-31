@@ -5,6 +5,7 @@
 #include "trunks/real_response_serializer.h"
 
 #include <algorithm>
+#include <cstring>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -109,6 +110,51 @@ TEST_F(RealResponseSerializerTest, SerializeResponseNvRead) {
             TPM_RC_SUCCESS);
   EXPECT_EQ(std::string(data_out.buffer, data_out.buffer + data_out.size),
             fake_data);
+}
+
+TEST_F(RealResponseSerializerTest, SerializeResponseNvReadPublic) {
+  const std::string kFakeAuthPolicy = "fake auth policy";
+  const TPMS_NV_PUBLIC tpms_nv_public = {
+      .nv_index = 222,
+      .name_alg = TPM_ALG_SHA256,
+      .attributes = 123,
+      .auth_policy = Make_TPM2B_DIGEST(kFakeAuthPolicy),
+      .data_size = 66,
+  };
+  const TPM2B_NV_PUBLIC nv_public = Make_TPM2B_NV_PUBLIC(tpms_nv_public);
+  const std::string kFakeNvName = "fake nv name";
+  const TPM2B_NAME nv_name = Make_TPM2B_NAME(kFakeNvName);
+
+  std::string response;
+  serializer_.SerializeResponseNvReadPublic(nv_public, nv_name, &response);
+
+  TPM2B_NV_PUBLIC nv_public_out = {};
+  TPM2B_NAME nv_name_out = {};
+
+  ASSERT_EQ(Tpm::ParseResponse_NV_ReadPublic(response, &nv_public_out,
+                                             &nv_name_out, nullptr),
+            TPM_RC_SUCCESS);
+
+  EXPECT_EQ(nv_public_out.size, nv_public.size);
+  EXPECT_EQ(nv_public_out.nv_public.nv_index, nv_public.nv_public.nv_index);
+  EXPECT_EQ(nv_public_out.nv_public.name_alg, nv_public.nv_public.name_alg);
+  EXPECT_EQ(nv_public_out.nv_public.attributes, nv_public.nv_public.attributes);
+  EXPECT_EQ(nv_public_out.nv_public.auth_policy.size,
+            nv_public.nv_public.auth_policy.size);
+  ASSERT_LE(nv_public_out.nv_public.auth_policy.size,
+            sizeof(nv_public_out.nv_public.auth_policy.buffer));
+  EXPECT_EQ(memcmp(nv_public_out.nv_public.auth_policy.buffer,
+                   nv_public.nv_public.auth_policy.buffer,
+                   nv_public_out.nv_public.auth_policy.size),
+            0);
+  EXPECT_EQ(nv_public_out.nv_public.auth_policy.size,
+            nv_public.nv_public.auth_policy.size);
+  EXPECT_EQ(nv_public_out.nv_public.data_size, nv_public.nv_public.data_size);
+
+  ASSERT_LE(sizeof(nv_name_out.size) + nv_name_out.size, sizeof(nv_name_out));
+  EXPECT_EQ(memcmp(&nv_name_out, &nv_name,
+                   sizeof(nv_name_out.size) + nv_name_out.size),
+            0);
 }
 
 }  // namespace

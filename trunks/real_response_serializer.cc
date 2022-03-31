@@ -63,4 +63,19 @@ void RealResponseSerializer::SerializeResponseNvRead(
   *response = header + parameter_size + parameter + auth_section;
 }
 
+void RealResponseSerializer::SerializeResponseNvReadPublic(
+    const TPM2B_NV_PUBLIC& nv_public,
+    const TPM2B_NAME& nv_name,
+    std::string* response) {
+  std::string buffer;
+  Serialize_TPM2B_NV_PUBLIC(nv_public, &buffer);
+  Serialize_TPM2B_NAME(nv_name, &buffer);
+  const UINT32 size = kHeaderSize + buffer.size();
+  // Session is not supported.
+  Serialize_TPMI_ST_COMMAND_TAG(TPM_ST_NO_SESSIONS, response);
+  Serialize_UINT32(size, response);
+  Serialize_TPM_RC(TPM_RC_SUCCESS, response);
+  response->append(buffer);
+}
+
 }  // namespace trunks

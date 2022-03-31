@@ -26,6 +26,9 @@ class TRUNKS_EXPORT RealResponseSerializer : public ResponseSerializer {
                                       std::string* response) override;
   void SerializeResponseNvRead(const TPM2B_MAX_NV_BUFFER& data,
                                std::string* response) override;
+  void SerializeResponseNvReadPublic(const TPM2B_NV_PUBLIC& nv_public,
+                                     const TPM2B_NAME& nv_name,
+                                     std::string* response) override;
 };
 }  // namespace trunks
 
