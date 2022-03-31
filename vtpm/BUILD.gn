@@ -33,6 +33,12 @@ proto_library("interface_proto") {
   sources = [ "${proto_in_dir}/vtpm_interface.proto" ]
 }
 
+proto_library("database_proto") {
+  proto_in_dir = "./backends"
+  proto_out_dir = "include/vtpm/backends"
+  sources = [ "${proto_in_dir}/database.proto" ]
+}
+
 generate_dbus_adaptors("vtpm-adaptors") {
   sources = [ "dbus_bindings/org.chromium.Vtpm.xml" ]
   dbus_adaptors_out_dir = "include/vtpm/dbus_adaptors"
@@ -42,6 +48,7 @@ generate_dbus_adaptors("vtpm-adaptors") {
 source_set("vtpm_server_library") {
   sources = [
     "backends/cacheable_blob.cc",
+    "backends/disk_cache_blob.cc",
     "backends/real_tpm_handle_manager.cc",
     "commands/get_capability_command.cc",
     "commands/null_command.cc",
@@ -51,6 +58,7 @@ source_set("vtpm_server_library") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":database_proto",
     ":interface_proto",
     ":vtpm-adaptors",
   ]
@@ -100,6 +108,7 @@ if (use.test) {
   executable("vtpm_test") {
     sources = [
       "backends/cacheable_blob_test.cc",
+      "backends/disk_cache_blob_test.cc",
       "backends/real_tpm_handle_manager_test.cc",
       "commands/get_capability_command_test.cc",
       "commands/unsupported_command_test.cc",
