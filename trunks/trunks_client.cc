@@ -652,7 +652,16 @@ int PrintIndexNameInHex(const TrunksFactory& factory, int index) {
     LOG(ERROR) << "Error getting NV index name: " << trunks::GetErrorString(rc);
     return -1;
   }
-  printf("NV Index name: %s\n", HexEncode(name).c_str());
+  // Also, print the name returned by TPM directly..
+  trunks::TPM2B_NAME nvram_name;
+  trunks::TPM2B_NV_PUBLIC public_area;
+  public_area.nv_public.nv_index = 0;
+  const trunks::UINT32 nv_index = trunks::NV_INDEX_FIRST + index;
+  rc = factory.GetTpm()->NV_ReadPublicSync(nv_index, "", &public_area,
+                                           &nvram_name, nullptr);
+  std::string name_from_tpm(nvram_name.name, nvram_name.name + nvram_name.size);
+  printf("NV Index name:          %s\n", HexEncode(name).c_str());
+  printf("NV Index name from tpm: %s\n", HexEncode(name_from_tpm).c_str());
   return 0;
 }
 
