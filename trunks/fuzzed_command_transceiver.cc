@@ -12,13 +12,13 @@
 #include <base/callback.h>
 #include <base/check.h>
 
+#include "trunks/command_parser.h"
 #include "trunks/fuzzed_command_transceiver.h"
+#include "trunks/real_command_parser.h"
 #include "trunks/tpm_generated.h"
 
 namespace {
 
-// TPM message header size.
-constexpr size_t kHeaderSize = 10;
 // Probability in % of generating a pure random value or byte stream.
 constexpr uint32_t kPureRandomProb = 5;
 // Probability in % of generating an error response.
@@ -32,23 +32,6 @@ std::string BuildHeader(uint16_t tag, uint32_t size, uint32_t code) {
   trunks::Serialize_uint32_t(size, &header);
   trunks::Serialize_uint32_t(code, &header);
   return header;
-}
-
-bool ParseHeader(const std::string& command,
-                 uint16_t* tag,
-                 uint32_t* size,
-                 uint32_t* code) {
-  std::string header(command, 0, kHeaderSize);
-  if (trunks::Parse_uint16_t(&header, tag, nullptr)) {
-    return false;
-  }
-  if (trunks::Parse_uint32_t(&header, size, nullptr)) {
-    return false;
-  }
-  if (trunks::Parse_uint32_t(&header, code, nullptr)) {
-    return false;
-  }
-  return true;
 }
 
 }  // namespace
@@ -98,7 +81,9 @@ std::string FuzzedCommandTransceiver::ConsumeResponseForCommand(
   uint16_t cmd_tag = TPM_ST_NO_SESSIONS;
   uint32_t cmd_code = TPM_CC_FIRST;
   uint32_t cmd_size = 0;
-  ParseHeader(command, &cmd_tag, &cmd_size, &cmd_code);
+  RealCommandParser parser;
+  std::string buffer = command;
+  parser.ParseHeader(&buffer, &cmd_tag, &cmd_size, &cmd_code);
 
   // Decide if we want to return an error or success.
   uint32_t resp_code;
