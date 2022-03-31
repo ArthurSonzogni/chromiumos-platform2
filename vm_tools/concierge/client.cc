@@ -70,6 +70,7 @@ constexpr char kCgroupPluginVm[] = "pluginvm";
 constexpr char kCgroupArcVm[] = "arcvm";
 constexpr char kCpuForeground[] = "foreground";
 constexpr char kCpuBackground[] = "background";
+constexpr char kCpuBackgroundWithCfsQuotaEnforced[] = "background-quota";
 
 // Cryptohome user base path.
 constexpr char kCryptohomeUser[] = "/home/user";
@@ -1509,6 +1510,10 @@ int SetVmCpuRestriction(dbus::ObjectProxy* proxy,
   } else if (restriction == kCpuBackground) {
     request.set_cpu_restriction_state(
         vm_tools::concierge::CPU_RESTRICTION_BACKGROUND);
+  } else if (restriction == kCpuBackgroundWithCfsQuotaEnforced) {
+    request.set_cpu_restriction_state(
+        vm_tools::concierge::
+            CPU_RESTRICTION_BACKGROUND_WITH_CFS_QUOTA_ENFORCED);
   } else {
     LOG(ERROR) << "Unknown restriction. Specify " << kCpuForeground << " or "
                << kCpuBackground;

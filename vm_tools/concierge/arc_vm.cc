@@ -99,6 +99,9 @@ constexpr char kUsrBinSharedDirTag[] = "usr_bin";
 // CPU usage is restricted.
 constexpr int kCpuPercentThrottle = 25;
 
+// The value for setting the cgroup's CFS quota to unlimited.
+constexpr int kCpuPercentUnlimited = -1;
+
 // For |kOemEtcSharedDir|, map host's crosvm to guest's root, also arc-camera
 // (603) to vendor_arc_camera (5003).
 constexpr char kOemEtcUgidMapTemplate[] = "0 %u 1, 5000 600 50";
@@ -521,10 +524,7 @@ void ArcVm::HandleSuspendDone() {
 }
 
 // static
-bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
-                                bool initial_throttle) {
-  // Did we ever restrict ArcVm to the foreground or background before?
-  static bool bg_before = false;
+bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state) {
   bool ret = true;
   if (!VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
                                        kArcvmCpuCgroup)) {
@@ -535,28 +535,29 @@ bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
     ret = false;
   }
 
-  // Apply quota restrictions only until the first time ArcVm is foregrounded.
-  if (!ret || !initial_throttle)
-    return ret;
-
+  int quota = kCpuPercentUnlimited;
   switch (cpu_restriction_state) {
     case CPU_RESTRICTION_FOREGROUND:
+    case CPU_RESTRICTION_BACKGROUND:
       // Reset/remove the quota. Needed to handle the case where user signs out
       // before quota was reset.
-      return UpdateCpuQuota(base::FilePath(kArcvmCpuCgroup), -1);
-    case CPU_RESTRICTION_BACKGROUND:
-      // Quota is set only the first time a transition to background happens.
-      if (bg_before)
-        return ret;
-
-      bg_before = true;
-      // Apply quotas when ArcVm transitions to the background the first time.
-      return UpdateCpuQuota(base::FilePath(kArcvmCpuCgroup),
-                            kCpuPercentThrottle);
+      break;
+    case CPU_RESTRICTION_BACKGROUND_WITH_CFS_QUOTA_ENFORCED:
+      quota = kCpuPercentThrottle;
+      break;
     default:
       NOTREACHED();
   }
-  return false;
+
+  // Apply quotas.
+  if (!UpdateCpuQuota(base::FilePath(kArcvmCpuCgroup), quota)) {
+    ret = false;
+  }
+  if (!UpdateCpuQuota(base::FilePath(kArcvmVcpuCpuCgroup), quota)) {
+    ret = false;
+  }
+
+  return ret;
 }
 
 uint32_t ArcVm::IPv4Address() const {

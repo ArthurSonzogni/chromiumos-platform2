@@ -94,6 +94,7 @@ bool VmBaseImpl::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
     case CPU_RESTRICTION_FOREGROUND:
       break;
     case CPU_RESTRICTION_BACKGROUND:
+    case CPU_RESTRICTION_BACKGROUND_WITH_CFS_QUOTA_ENFORCED:
       cpu_shares = 64;
       break;
     default:

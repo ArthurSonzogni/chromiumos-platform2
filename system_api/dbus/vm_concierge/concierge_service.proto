@@ -1106,8 +1106,13 @@ enum CpuCgroup {
 enum CpuRestrictionState {
   // The CPU usage is relaxed.
   CPU_RESTRICTION_FOREGROUND = 0;
-  // The CPU usage is tightly restricted.
+  // The CPU usage is tightly restricted with cpu.shares.
   CPU_RESTRICTION_BACKGROUND = 1;
+  // The CPU usage is tightly restricted with both cpu.shares and
+  // cpu.cfs_quota_us cgroup. The latter sets an absolute quota for the VM
+  // even when other (non-VM) processes are not busy. Currently, this works
+  // only for ARCVM.
+  CPU_RESTRICTION_BACKGROUND_WITH_CFS_QUOTA_ENFORCED = 2;
 }
 
 // Information that must be included with every SetVmCpuRestriction dbus
