@@ -48,6 +48,9 @@ constexpr trunks::TPM_CC kSupportedForwardCommands[] = {
     trunks::TPM_CC_PolicySecret,
     trunks::TPM_CC_MakeCredential,
     trunks::TPM_CC_ActivateCredential,
+    trunks::TPM_CC_Hash,
+    trunks::TPM_CC_Sign,
+    trunks::TPM_CC_VerifySignature,
 };
 
 }  // namespace
