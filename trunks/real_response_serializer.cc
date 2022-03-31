@@ -21,4 +21,19 @@ void RealResponseSerializer::SerializeHeaderOnlyResponse(
   Serialize_TPM_RC(rc, response);
 }
 
+void RealResponseSerializer::SerializeResponseGetCapability(
+    TPMI_YES_NO has_more,
+    const TPMS_CAPABILITY_DATA& cap_data,
+    std::string* response) {
+  std::string buffer;
+  Serialize_TPMI_YES_NO(has_more, &buffer);
+  Serialize_TPMS_CAPABILITY_DATA(cap_data, &buffer);
+  const UINT32 size = kHeaderSize + buffer.size();
+  // Session is not supported.
+  Serialize_TPMI_ST_COMMAND_TAG(TPM_ST_NO_SESSIONS, response);
+  Serialize_UINT32(size, response);
+  Serialize_TPM_RC(TPM_RC_SUCCESS, response);
+  response->append(buffer);
+}
+
 }  // namespace trunks

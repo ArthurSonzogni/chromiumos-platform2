@@ -12,6 +12,19 @@
 
 namespace trunks {
 
+namespace {
+
+void InitializeFake(TPMS_CAPABILITY_DATA* data) {
+  memset(data, 0, sizeof(*data));
+  data->capability = TPM_CAP_HANDLES;
+  for (int i = 0; i < 3; ++i) {
+    data->data.handles.handle[data->data.handles.count] = i;
+    ++data->data.handles.count;
+  }
+}
+
+}  // namespace
+
 // A placeholder test fixture.
 class RealResponseSerializerTest : public testing::Test {
  protected:
@@ -56,6 +69,24 @@ TEST_F(RealResponseSerializerTest, SerializeHeaderOnlyResponseBadTag) {
   TPM_RC rc_out = TPM_RC_SUCCESS;
   EXPECT_EQ(Parse_TPM_RC(&response, &rc_out, nullptr), TPM_RC_SUCCESS);
   EXPECT_EQ(rc_out, rc);
+}
+
+TEST_F(RealResponseSerializerTest, SerializeResponseGetCapability) {
+  const TPMI_YES_NO more = YES;
+  TPMS_CAPABILITY_DATA data;
+  InitializeFake(&data);
+  std::string response;
+  serializer_.SerializeResponseGetCapability(more, data, &response);
+
+  TPMI_YES_NO more_out = NO;
+  TPMS_CAPABILITY_DATA data_out = {};
+
+  ASSERT_EQ(
+      Tpm::ParseResponse_GetCapability(response, &more_out, &data_out,
+                                       /*authorization_delegate=*/nullptr),
+      TPM_RC_SUCCESS);
+  EXPECT_EQ(more_out, more);
+  EXPECT_EQ(memcmp(&data, &data_out, sizeof(data_out)), 0);
 }
 
 }  // namespace
