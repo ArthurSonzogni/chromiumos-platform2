@@ -18,6 +18,12 @@
 #include <trunks/real_response_serializer.h>
 #include <trunks/response_serializer.h>
 #include <trunks/tpm_generated.h>
+#include <trunks/trunks_factory_impl.h>
+
+#include "vtpm/backends/cacheable_blob.h"
+#include "vtpm/backends/disk_cache_blob.h"
+#include "vtpm/backends/real_tpm_handle_manager.h"
+#include "vtpm/backends/vsrk.h"
 
 namespace vtpm {
 
@@ -45,8 +51,16 @@ class Virtualizer : public Command {
   // Functional object candidates for all profiles.
   trunks::RealResponseSerializer real_response_serializer_;
   trunks::RealCommandParser real_command_parser_;
+  // NOTE: This factory might be limited to used on the `Create()`-calling
+  // thread.
+  trunks::TrunksFactoryImpl trunks_factory_;
+  Vsrk vsrk_{&trunks_factory_};
 
   // Functional object candidates dynamically determined by profile.
+  std::unique_ptr<DiskCacheBlob> vsrk_cache_;
+  std::unique_ptr<CacheableBlob> cacheable_vsrk_;
+  std::unique_ptr<RealTpmHandleManager> real_tpm_handle_manager_;
+
   std::vector<std::unique_ptr<Command>> commands_;
 
   // Functional objects used to execute the vtpm functions. The ownership of
