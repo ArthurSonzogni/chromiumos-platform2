@@ -49,6 +49,7 @@ source_set("vtpm_server_library") {
   sources = [
     "backends/cacheable_blob.cc",
     "backends/disk_cache_blob.cc",
+    "backends/real_static_analyzer.cc",
     "backends/real_tpm_handle_manager.cc",
     "backends/scoped_host_key_handle.cc",
     "backends/vsrk.cc",

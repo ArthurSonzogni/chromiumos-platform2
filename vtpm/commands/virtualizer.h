@@ -22,8 +22,10 @@
 
 #include "vtpm/backends/cacheable_blob.h"
 #include "vtpm/backends/disk_cache_blob.h"
+#include "vtpm/backends/real_static_analyzer.h"
 #include "vtpm/backends/real_tpm_handle_manager.h"
 #include "vtpm/backends/vsrk.h"
+#include "vtpm/commands/direct_forward_command.h"
 
 namespace vtpm {
 
@@ -51,10 +53,12 @@ class Virtualizer : public Command {
   // Functional object candidates for all profiles.
   trunks::RealResponseSerializer real_response_serializer_;
   trunks::RealCommandParser real_command_parser_;
+  RealStaticAnalyzer real_static_analyzer_;
   // NOTE: This factory might be limited to used on the `Create()`-calling
   // thread.
   trunks::TrunksFactoryImpl trunks_factory_;
   Vsrk vsrk_{&trunks_factory_};
+  DirectForwardCommand direct_forwarder_{&trunks_factory_};
 
   // Functional object candidates dynamically determined by profile.
   std::unique_ptr<DiskCacheBlob> vsrk_cache_;

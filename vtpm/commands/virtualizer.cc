@@ -16,6 +16,7 @@
 #include <trunks/response_serializer.h>
 #include <trunks/tpm_generated.h>
 
+#include "vtpm/commands/forward_command.h"
 #include "vtpm/commands/get_capability_command.h"
 #include "vtpm/commands/unsupported_command.h"
 
@@ -60,6 +61,15 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
 
     v->command_table_.emplace(trunks::TPM_CC_GetCapability,
                               v->commands_.back().get());
+
+    // Add forwarded command w/ handle translateion.
+    v->commands_.emplace_back(std::make_unique<ForwardCommand>(
+        &v->real_command_parser_, &v->real_response_serializer_,
+        &v->real_static_analyzer_, v->real_tpm_handle_manager_.get(),
+        &v->direct_forwarder_));
+    v->command_table_.emplace(trunks::TPM_CC_ReadPublic,
+                              v->commands_.back().get());
+    v->command_table_.emplace(trunks::TPM_CC_Create, v->commands_.back().get());
 
     // Use an `UnsupportedCommand` as fallback.
     v->commands_.emplace_back(
