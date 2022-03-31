@@ -82,6 +82,7 @@ class AttestationFlowData {
   void set_certificate(std::string certificate) {
     certificate_ = std::move(certificate);
   }
+  void set_key_blob(std::string blob) { key_blob_ = std::move(blob); }
 
   // Operations on callbacks.
   void ReturnStatus();
@@ -98,6 +99,7 @@ class AttestationFlowData {
   std::string result_response_;
   std::string public_key_;
   std::string certificate_;
+  std::string key_blob_;
 };
 
 }  // namespace attestation

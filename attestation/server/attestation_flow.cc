@@ -78,6 +78,7 @@ void AttestationFlowData::ReturnCertificate() {
   reply.set_status(STATUS_SUCCESS);
   reply.set_public_key(public_key_);
   reply.set_certificate(certificate_);
+  reply.set_key_blob(key_blob_);
   std::move(get_certificate_callback_).Run(reply);
 }
 

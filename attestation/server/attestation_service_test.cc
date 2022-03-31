@@ -2815,7 +2815,9 @@ TEST_P(AttestationServiceTest, GetCertificateSuccess) {
   auto callback = [](const base::RepeatingClosure& quit_closure,
                      const GetCertificateReply& reply) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
+    EXPECT_TRUE(reply.has_public_key());
     EXPECT_TRUE(reply.has_certificate());
+    EXPECT_TRUE(reply.has_key_blob());
     quit_closure.Run();
   };
   GetCertificateRequest request;
@@ -2841,6 +2843,7 @@ TEST_P(AttestationServiceTest, GetCertificateSuccessNoop) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     EXPECT_TRUE(reply.has_public_key());
     EXPECT_TRUE(reply.has_certificate());
+    EXPECT_TRUE(reply.has_key_blob());
     quit_closure.Run();
   };
   GetCertificateRequest request;

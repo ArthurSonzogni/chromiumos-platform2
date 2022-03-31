@@ -395,7 +395,8 @@ class AttestationService : public AttestationInterface {
       const std::string& username,
       const std::string& key_label,
       CertifiedKey* key,
-      std::string* certificate_chain);
+      std::string* certificate_chain,
+      std::string* key_blob);
 
   // Creates, certifies, and saves a new |key| for |username| with the given
   // |key_label|, |key_type|, and |key_usage|. Returns true on success.
