@@ -4446,6 +4446,9 @@ mno {
       }
       mobile_apn {
         apn : "rakuten.jp"
+        localized_name {
+          name : "楽天(rakuten.jp)"
+        }
         is_attach_apn : true
       }
     }
@@ -7471,6 +7474,9 @@ mno {
     mccmnc : "44011"
     mobile_apn {
       apn : "rakuten.jp"
+      localized_name {
+        name : "楽天(rakuten.jp)"
+      }
       is_attach_apn : true
       ip_type : IPV4V6
     }
