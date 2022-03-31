@@ -39,6 +39,10 @@ class TpmHandleManager {
 
   // Flushes `handle` on the "host TPM".
   virtual trunks::TPM_RC FlushHostHandle(trunks::TPM_HANDLE handle) = 0;
+
+  virtual void OnLoad(trunks::TPM_HANDLE parent, trunks::TPM_HANDLE child) = 0;
+
+  virtual void OnUnload(trunks::TPM_HANDLE handle) = 0;
 };
 
 }  // namespace vtpm

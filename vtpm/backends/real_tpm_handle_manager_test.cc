@@ -106,17 +106,18 @@ TEST_F(RealTpmHandleManagerTest, IsHandleTypeSuppoerted) {
   EXPECT_FALSE(manager_->IsHandleTypeSuppoerted(trunks::HR_PERMANENT));
 }
 
-TEST_F(RealTpmHandleManagerTest, GetHandleList) {
+TEST_F(RealTpmHandleManagerTest, GetHandleListPersistentHandles) {
   EXPECT_CALL(mock_blob_1_, Get(_));
   EXPECT_CALL(mock_blob_2_, Get(_));
   EXPECT_CALL(mock_blob_3_, Get(_));
   std::vector<trunks::TPM_HANDLE> found_handles;
-  EXPECT_EQ(manager_->GetHandleList(0, &found_handles), trunks::TPM_RC_SUCCESS);
+  EXPECT_EQ(manager_->GetHandleList(trunks::PERSISTENT_FIRST, &found_handles),
+            trunks::TPM_RC_SUCCESS);
   EXPECT_THAT(found_handles,
               ElementsAre(kFakeHandle1, kFakeHandle2, kFakeHandle3));
 }
 
-TEST_F(RealTpmHandleManagerTest, GetHandleListSkipFirst) {
+TEST_F(RealTpmHandleManagerTest, GetHandleListPersistentHandlesSkipFirst) {
   EXPECT_CALL(mock_blob_2_, Get(_));
   EXPECT_CALL(mock_blob_3_, Get(_));
   std::vector<trunks::TPM_HANDLE> found_handles;
@@ -125,21 +126,55 @@ TEST_F(RealTpmHandleManagerTest, GetHandleListSkipFirst) {
   EXPECT_THAT(found_handles, ElementsAre(kFakeHandle2, kFakeHandle3));
 }
 
-TEST_F(RealTpmHandleManagerTest, GetHandleListEmpty) {
+TEST_F(RealTpmHandleManagerTest, GetHandleListPersistentHandlesEmpty) {
   std::vector<trunks::TPM_HANDLE> found_handles;
   EXPECT_EQ(manager_->GetHandleList(kFakeHandle3 + 1, &found_handles),
             trunks::TPM_RC_SUCCESS);
   EXPECT_TRUE(found_handles.empty());
 }
 
-TEST_F(RealTpmHandleManagerTest, GetHandleListError) {
+TEST_F(RealTpmHandleManagerTest, GetHandleListPersistentHandlesError) {
   EXPECT_CALL(mock_blob_1_, Get(_));
   EXPECT_CALL(mock_blob_2_, Get(_)).WillOnce(Return(trunks::TPM_RC_FAILURE));
   std::vector<trunks::TPM_HANDLE> found_handles;
-  EXPECT_EQ(manager_->GetHandleList(0, &found_handles), trunks::TPM_RC_FAILURE);
+  EXPECT_EQ(manager_->GetHandleList(trunks::PERSISTENT_FIRST, &found_handles),
+            trunks::TPM_RC_FAILURE);
 }
 
-TEST_F(RealTpmHandleManagerTest, TranslateHandleSuccess) {
+TEST_F(RealTpmHandleManagerTest, GetHandleListTransientHandles) {
+  std::vector<trunks::TPM_HANDLE> found_handles;
+  // Initially it should be empty.
+  EXPECT_EQ(manager_->GetHandleList(trunks::TRANSIENT_FIRST, &found_handles),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_TRUE(found_handles.empty());
+
+  // Simulate the loading of a transient object.
+  constexpr trunks::TPM_HANDLE kFakeParent = trunks::TRANSIENT_FIRST;
+  constexpr trunks::TPM_HANDLE kFakeChild = trunks::TRANSIENT_FIRST + 1;
+  manager_->OnLoad(kFakeParent, kFakeChild);
+  EXPECT_EQ(manager_->GetHandleList(trunks::TRANSIENT_FIRST, &found_handles),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_THAT(found_handles, ElementsAre(kFakeChild));
+}
+
+TEST_F(RealTpmHandleManagerTest,
+       GetHandleListTransientHandlesStartingTooLarge) {
+  std::vector<trunks::TPM_HANDLE> found_handles;
+  // Initially it should be empty.
+  EXPECT_EQ(manager_->GetHandleList(trunks::TRANSIENT_FIRST, &found_handles),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_TRUE(found_handles.empty());
+
+  // Simulate the loading of a transient object.
+  constexpr trunks::TPM_HANDLE kFakeParent = trunks::TRANSIENT_FIRST;
+  constexpr trunks::TPM_HANDLE kFakeChild = trunks::TRANSIENT_FIRST + 1;
+  manager_->OnLoad(kFakeParent, kFakeChild);
+  EXPECT_EQ(manager_->GetHandleList(kFakeChild + 1, &found_handles),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_TRUE(found_handles.empty());
+}
+
+TEST_F(RealTpmHandleManagerTest, TranslateHandleSuccessPersistentHandles) {
   EXPECT_CALL(mock_blob_1_, Get(_));
   ScopedHostKeyHandle host_handle;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(kFakeBlob1, _, _));
@@ -151,7 +186,8 @@ TEST_F(RealTpmHandleManagerTest, TranslateHandleSuccess) {
   EXPECT_CALL(mock_tpm_, FlushContextSync(host_handle.Get(), _));
 }
 
-TEST_F(RealTpmHandleManagerTest, TranslateHandleSuccessMovedScopedHostHandle) {
+TEST_F(RealTpmHandleManagerTest,
+       TranslateHandleSuccessPersistentHandlesMovedScopedHostHandle) {
   EXPECT_CALL(mock_blob_1_, Get(_));
   ScopedHostKeyHandle host_handle;
   EXPECT_CALL(mock_tpm_utility_, LoadKey(kFakeBlob1, _, _));
@@ -162,6 +198,73 @@ TEST_F(RealTpmHandleManagerTest, TranslateHandleSuccessMovedScopedHostHandle) {
   EXPECT_NE(host_handle.Get(), trunks::TPM_HANDLE());
   EXPECT_CALL(mock_tpm_, FlushContextSync(host_handle.Get(), _));
   ScopedHostKeyHandle moved_host_handle = std::move(host_handle);
+}
+
+TEST_F(RealTpmHandleManagerTest, TranslateHandleTransientHandles) {
+  // First, load a virtual persistent handle. Technically this is not necessary;
+  // it is just to make sure we don't have memory leak in normal operation
+  // flows.
+  ScopedHostKeyHandle parent_host_handle;
+  EXPECT_CALL(mock_blob_1_, Get(_));
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(kFakeBlob1, _, _));
+  EXPECT_EQ(manager_->TranslateHandle(kFakeHandle1, &parent_host_handle),
+            trunks::TPM_RC_SUCCESS);
+  // NOTE that through the entire flow no flush of a virtual transient handle
+  // should take place because the guest flushes the loaded object by their own
+  // instead of vtpm loading/unloading them transparently. Strick mock will
+  // verify.
+  ScopedHostKeyHandle host_handle;
+  const trunks::TPM_HANDLE fake_parent = parent_host_handle.Get();
+  constexpr trunks::TPM_HANDLE kFakeChild1 = trunks::TRANSIENT_FIRST + 1;
+  constexpr trunks::TPM_HANDLE kFakeChild2 = trunks::TRANSIENT_FIRST + 2;
+
+  // Deny the unloaded handle.
+  EXPECT_EQ(manager_->TranslateHandle(kFakeChild1, &host_handle),
+            trunks::TPM_RC_HANDLE);
+  EXPECT_EQ(manager_->TranslateHandle(kFakeChild2, &host_handle),
+            trunks::TPM_RC_HANDLE);
+
+  manager_->OnLoad(fake_parent, kFakeChild1);
+  EXPECT_EQ(manager_->TranslateHandle(kFakeChild1, &host_handle),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_EQ(host_handle.Get(), kFakeChild1);
+  EXPECT_EQ(manager_->TranslateHandle(kFakeChild2, &host_handle),
+            trunks::TPM_RC_HANDLE);
+
+  // Let go of the parent host handle. Note that it should not be flushed
+  // because the child handles force the parent to be retained. Strict mock will
+  // verify.
+  parent_host_handle = ScopedHostKeyHandle();
+
+  manager_->OnLoad(fake_parent, kFakeChild2);
+  EXPECT_EQ(manager_->TranslateHandle(kFakeChild1, &host_handle),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_EQ(host_handle.Get(), kFakeChild1);
+  EXPECT_EQ(manager_->TranslateHandle(kFakeChild2, &host_handle),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_EQ(host_handle.Get(), kFakeChild2);
+
+  manager_->OnUnload(kFakeChild2);
+  EXPECT_EQ(manager_->TranslateHandle(kFakeChild1, &host_handle),
+            trunks::TPM_RC_SUCCESS);
+  EXPECT_EQ(host_handle.Get(), kFakeChild1);
+  EXPECT_EQ(manager_->TranslateHandle(kFakeChild2, &host_handle),
+            trunks::TPM_RC_HANDLE);
+
+  // Unlaoding the last child of the parent should flush the parent handle.
+  EXPECT_CALL(mock_tpm_, FlushContextSync(fake_parent, _));
+
+  manager_->OnUnload(kFakeChild1);
+  EXPECT_EQ(manager_->TranslateHandle(kFakeChild1, &host_handle),
+            trunks::TPM_RC_HANDLE);
+  EXPECT_EQ(manager_->TranslateHandle(kFakeChild2, &host_handle),
+            trunks::TPM_RC_HANDLE);
+}
+
+TEST_F(RealTpmHandleManagerTest, UnloadNoexistentHandle) {
+  // Unloading a non-existent handle should not cause any consequence. In best
+  // effort we ensure it doesn't crash.
+  manager_->OnUnload(trunks::TRANSIENT_FIRST);
 }
 
 }  // namespace

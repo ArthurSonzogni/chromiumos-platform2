@@ -36,6 +36,13 @@ class MockTpmHandleManager : public TpmHandleManager {
               FlushHostHandle,
               (trunks::TPM_HANDLE),
               (override));
+
+  MOCK_METHOD(void,
+              OnLoad,
+              (trunks::TPM_HANDLE, trunks::TPM_HANDLE),
+              (override));
+
+  MOCK_METHOD(void, OnUnload, (trunks::TPM_HANDLE), (override));
 };
 
 }  // namespace vtpm

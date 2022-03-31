@@ -19,10 +19,11 @@ namespace vtpm {
 
 namespace {
 
-// Defines the supported handle types file-statically so it can be called in
-// the constructor.
-bool DoesManagerSupportHandleType(trunks::TPM_HANDLE handle) {
-  // Only persistent handle is supported for now.
+bool IsTransient(trunks::TPM_HANDLE handle) {
+  return (handle & trunks::HR_RANGE_MASK) == (trunks::HR_TRANSIENT);
+}
+
+bool IsPersistent(trunks::TPM_HANDLE handle) {
   return (handle & trunks::HR_RANGE_MASK) == (trunks::HR_PERSISTENT);
 }
 
@@ -34,44 +35,68 @@ RealTpmHandleManager::RealTpmHandleManager(
     : trunks_factory_(trunks_factory), handle_mapping_table_(table) {
   CHECK(trunks_factory_);
   for (const auto& entry : handle_mapping_table_) {
-    DCHECK(DoesManagerSupportHandleType(entry.first))
+    DCHECK(IsPersistent(entry.first))
         << "Handle with Unsupported handle type: " << entry.first;
   }
 }
 
 bool RealTpmHandleManager::IsHandleTypeSuppoerted(trunks::TPM_HANDLE handle) {
-  return DoesManagerSupportHandleType(handle);
+  return IsTransient(handle) || IsPersistent(handle);
 }
 
 trunks::TPM_RC RealTpmHandleManager::GetHandleList(
     trunks::TPM_HANDLE starting_handle,
     std::vector<trunks::TPM_HANDLE>* found_handles) {
-  for (auto iter = handle_mapping_table_.lower_bound(starting_handle);
-       iter != handle_mapping_table_.end(); ++iter) {
-    Blob* blob = iter->second;
-    std::string blob_not_used;
-    const trunks::TPM_RC rc = blob->Get(blob_not_used);
-    if (rc) {
-      found_handles->clear();
-      return rc;
+  if (!IsHandleTypeSuppoerted(starting_handle)) {
+    return trunks::TPM_RC_HANDLE;
+  }
+  if (IsPersistent(starting_handle)) {
+    for (auto iter = handle_mapping_table_.lower_bound(starting_handle);
+         iter != handle_mapping_table_.end(); ++iter) {
+      Blob* blob = iter->second;
+      std::string blob_not_used;
+      const trunks::TPM_RC rc = blob->Get(blob_not_used);
+      if (rc) {
+        found_handles->clear();
+        return rc;
+      }
+      // Note that the handle type is not validated because we support only 1
+      // type for now, and invalid entries are guarded in the constructor. But
+      // it wont stand when we have multiple supported types that are maintained
+      // in `handle_mapping_table_`.
+      found_handles->push_back(iter->first);
     }
-    // Note that the handle type is not validated because we support only 1 type
-    // for now, and invalid entries are guarded in the constructor. But it wont
-    // stand when we have multiple supported types that are maintained in
-    // `handle_mapping_table_`.
-    found_handles->push_back(iter->first);
+  } else if (IsTransient(starting_handle)) {
+    for (auto iter = child_parent_table_.lower_bound(starting_handle);
+         iter != child_parent_table_.end(); ++iter) {
+      found_handles->push_back(iter->first);
+    }
+  } else {
+    NOTREACHED();
   }
   return trunks::TPM_RC_SUCCESS;
 }
 
 trunks::TPM_RC RealTpmHandleManager::TranslateHandle(
     trunks::TPM_HANDLE handle, ScopedHostKeyHandle* host_handle) {
-  // Currently this supports only known virtual "persistent key handles", while
-  // the limitation is subject to change, for guest needs to load their key
-  // blob(s).
   if (!IsHandleTypeSuppoerted(handle)) {
     return trunks::TPM_RC_HANDLE;
   }
+
+  if (IsTransient(handle)) {
+    // If the is transient, it must be in `child_parent_table_` because it must
+    // be derived from the virtual root keys.
+    if (child_parent_table_.count(handle) > 0) {
+      // Copy the value as it is, for we don't do virtualization of a transient
+      // handle.
+      *host_handle = ScopedHostKeyHandle(this, handle);
+      return trunks::TPM_RC_SUCCESS;
+    }
+    return trunks::TPM_RC_HANDLE;
+  }
+
+  DCHECK(IsPersistent(handle));
+
   auto iter = handle_mapping_table_.find(handle);
   if (iter == handle_mapping_table_.end()) {
     return trunks::TPM_RC_HANDLE;
@@ -101,8 +126,35 @@ trunks::TPM_RC RealTpmHandleManager::TranslateHandle(
 
 trunks::TPM_RC RealTpmHandleManager::FlushHostHandle(
     trunks::TPM_HANDLE handle) {
+  // Should not flush the handle if other loaded handles are derived from it.
+  if (child_count_table_.count(handle) > 0) {
+    return trunks::TPM_RC_SUCCESS;
+  }
   return trunks_factory_->GetTpm()->FlushContextSync(
       handle, /*authorization_delegate=*/nullptr);
+}
+
+void RealTpmHandleManager::OnLoad(trunks::TPM_HANDLE parent,
+                                  trunks::TPM_HANDLE child) {
+  child_parent_table_[child].push_back(parent);
+  ++child_count_table_[parent];
+}
+
+void RealTpmHandleManager::OnUnload(trunks::TPM_HANDLE handle) {
+  // The performance is suboptimal due to repeated access to the same entry in
+  // the hash table below, but it  seems alright in favor of readability.
+  if (child_parent_table_.count(handle) == 0) {
+    LOG(WARNING) << __func__ << ": handle does not exist.";
+    return;
+  }
+  for (trunks::TPM_HANDLE parent : child_parent_table_[handle]) {
+    --child_count_table_[parent];
+    if (child_count_table_[parent] == 0) {
+      child_count_table_.erase(parent);
+      FlushHostHandle(parent);
+    }
+  }
+  child_parent_table_.erase(handle);
 }
 
 }  // namespace vtpm

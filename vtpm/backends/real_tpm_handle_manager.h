@@ -8,6 +8,7 @@
 #include "vtpm/backends/tpm_handle_manager.h"
 
 #include <map>
+#include <unordered_map>
 #include <vector>
 
 #include <trunks/tpm_generated.h>
@@ -44,11 +45,19 @@ class RealTpmHandleManager : public TpmHandleManager {
 
   trunks::TPM_RC FlushHostHandle(trunks::TPM_HANDLE handle) override;
 
+  void OnLoad(trunks::TPM_HANDLE parent, trunks::TPM_HANDLE child) override;
+
+  void OnUnload(trunks::TPM_HANDLE handle) override;
+
  private:
   trunks::TrunksFactory* const trunks_factory_;
   // Stores virtual handles and their getter of corresponding data on/from the
   // host TPM.
   std::map<trunks::TPM_HANDLE, Blob*> handle_mapping_table_;
+
+  std::map<trunks::TPM_HANDLE, std::vector<trunks::TPM_HANDLE>>
+      child_parent_table_;
+  std::unordered_map<trunks::TPM_HANDLE, int> child_count_table_;
 };
 
 }  // namespace vtpm
