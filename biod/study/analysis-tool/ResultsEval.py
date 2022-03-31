@@ -203,6 +203,8 @@ class FPCBETResults:
         FAR = 'FAR_stats_4levels.txt'
         FRR = 'FRR_stats_4levels.txt'
         FA_List = 'FalseAccepts.txt'
+        FAR_Decision = 'FAR_decision.csv'
+        FRR_Decision = 'FRR_decision.csv'
 
     class SecLevel(Enum):
         '''The order of these item are in increasing security level.'''
@@ -270,6 +272,27 @@ class FPCBETResults:
         tbl.attrs['ReportDir'] = self.dir
         tbl.attrs['TestCase'] = test_case.name
         tbl.attrs['TableType'] = self.TableType.FA_List
+        return tbl
+
+    def read_decision_file(self,
+                           test_case: TestCase,
+                           table_type: TableType) -> pd.DataFrame:
+        '''Read the `TableType.FAR_Decision` or `TableType.FRR_Decision` file.
+
+        The table will include the following columns:
+        VerifyUser, VerifyFinger, VerifySample, EnrollUser, EnrollFinger, Strong FA
+        '''
+
+        assert test_case in self.TestCase
+        assert table_type in [self.TableType.FAR_Decision,
+                              self.TableType.FRR_Decision]
+
+        file_name = self.file_name(test_case, table_type)
+        tbl = pd.read_csv(file_name)
+
+        tbl.attrs['ReportDir'] = self.dir
+        tbl.attrs['TestCase'] = test_case.name
+        tbl.attrs['TableType'] = table_type.name
         return tbl
 
     def read_far_frr_file(self,
