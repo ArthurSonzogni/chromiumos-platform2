@@ -27,6 +27,14 @@ bool IsPersistent(trunks::TPM_HANDLE handle) {
   return (handle & trunks::HR_RANGE_MASK) == (trunks::HR_PERSISTENT);
 }
 
+bool IsPermanent(trunks::TPM_HANDLE handle) {
+  return (handle & trunks::HR_RANGE_MASK) == (trunks::HR_PERMANENT);
+}
+
+bool IsPolicy(trunks::TPM_HANDLE handle) {
+  return (handle & trunks::HR_RANGE_MASK) == (trunks::HR_POLICY_SESSION);
+}
+
 }  // namespace
 
 RealTpmHandleManager::RealTpmHandleManager(
@@ -41,15 +49,13 @@ RealTpmHandleManager::RealTpmHandleManager(
 }
 
 bool RealTpmHandleManager::IsHandleTypeSuppoerted(trunks::TPM_HANDLE handle) {
-  return IsTransient(handle) || IsPersistent(handle);
+  return IsTransient(handle) || IsPersistent(handle) || IsPermanent(handle) ||
+         IsPolicy(handle);
 }
 
 trunks::TPM_RC RealTpmHandleManager::GetHandleList(
     trunks::TPM_HANDLE starting_handle,
     std::vector<trunks::TPM_HANDLE>* found_handles) {
-  if (!IsHandleTypeSuppoerted(starting_handle)) {
-    return trunks::TPM_RC_HANDLE;
-  }
   if (IsPersistent(starting_handle)) {
     for (auto iter = handle_mapping_table_.lower_bound(starting_handle);
          iter != handle_mapping_table_.end(); ++iter) {
@@ -72,7 +78,7 @@ trunks::TPM_RC RealTpmHandleManager::GetHandleList(
       found_handles->push_back(iter->first);
     }
   } else {
-    NOTREACHED();
+    return trunks::TPM_RC_HANDLE;
   }
   return trunks::TPM_RC_SUCCESS;
 }
@@ -81,6 +87,17 @@ trunks::TPM_RC RealTpmHandleManager::TranslateHandle(
     trunks::TPM_HANDLE handle, ScopedHostKeyHandle* host_handle) {
   if (!IsHandleTypeSuppoerted(handle)) {
     return trunks::TPM_RC_HANDLE;
+  }
+
+  // TODO(b/230343588): Limit the access to the policy sessions not created by
+  // the guest.
+  // Unlike key handles, the risk of exposing the host policy session handle is
+  // lower, though ideally we should treat it like a session handle.
+  // We will need to refine the interface of `Onload()`, and consider better
+  // structure of the implementation.
+  if (IsPolicy(handle) || IsPermanent(handle)) {
+    *host_handle = ScopedHostKeyHandle(this, handle);
+    return trunks::TPM_RC_SUCCESS;
   }
 
   if (IsTransient(handle)) {

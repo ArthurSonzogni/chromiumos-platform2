@@ -101,9 +101,12 @@ class RealTpmHandleManagerTest : public testing::Test {
 namespace {
 
 TEST_F(RealTpmHandleManagerTest, IsHandleTypeSuppoerted) {
-  EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::HR_PERSISTENT));
-  EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::HR_PERSISTENT + 1));
-  EXPECT_FALSE(manager_->IsHandleTypeSuppoerted(trunks::HR_PERMANENT));
+  EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::PERSISTENT_FIRST));
+  EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::PERSISTENT_FIRST + 1));
+  EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::TRANSIENT_FIRST));
+  EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::PERMANENT_FIRST));
+  EXPECT_TRUE(manager_->IsHandleTypeSuppoerted(trunks::POLICY_SESSION_FIRST));
+  EXPECT_FALSE(manager_->IsHandleTypeSuppoerted(trunks::PCR_FIRST));
 }
 
 TEST_F(RealTpmHandleManagerTest, GetHandleListPersistentHandles) {
@@ -174,6 +177,20 @@ TEST_F(RealTpmHandleManagerTest,
   EXPECT_TRUE(found_handles.empty());
 }
 
+TEST_F(RealTpmHandleManagerTest, GetHandleListPermanentHandlesNotSupported) {
+  std::vector<trunks::TPM_HANDLE> found_handles;
+  EXPECT_EQ(manager_->GetHandleList(trunks::PERMANENT_FIRST, &found_handles),
+            trunks::TPM_RC_HANDLE);
+}
+
+TEST_F(RealTpmHandleManagerTest,
+       GetHandleListPolicySessionHandlesNotSupported) {
+  std::vector<trunks::TPM_HANDLE> found_handles;
+  EXPECT_EQ(
+      manager_->GetHandleList(trunks::POLICY_SESSION_FIRST, &found_handles),
+      trunks::TPM_RC_HANDLE);
+}
+
 TEST_F(RealTpmHandleManagerTest, TranslateHandleSuccessPersistentHandles) {
   EXPECT_CALL(mock_blob_1_, Get(_));
   ScopedHostKeyHandle host_handle;
@@ -184,6 +201,25 @@ TEST_F(RealTpmHandleManagerTest, TranslateHandleSuccessPersistentHandles) {
   // it's up to implementation of the mocks.
   EXPECT_NE(host_handle.Get(), trunks::TPM_HANDLE());
   EXPECT_CALL(mock_tpm_, FlushContextSync(host_handle.Get(), _));
+}
+
+TEST_F(RealTpmHandleManagerTest, TranslateHandleSuccessPermanentHandles) {
+  ScopedHostKeyHandle host_handle;
+  constexpr trunks::TPM_HANDLE kPermanmentHandle = trunks::TPM_RH_ENDORSEMENT;
+  EXPECT_EQ(manager_->TranslateHandle(kPermanmentHandle, &host_handle),
+            trunks::TPM_RC_SUCCESS);
+  // The handle should not be changed.
+  EXPECT_EQ(host_handle.Get(), kPermanmentHandle);
+}
+
+TEST_F(RealTpmHandleManagerTest, TranslateHandleSuccessPolicySessionHandles) {
+  ScopedHostKeyHandle host_handle;
+  constexpr trunks::TPM_HANDLE kPolicySessionHandle =
+      trunks::POLICY_SESSION_FIRST;
+  EXPECT_EQ(manager_->TranslateHandle(kPolicySessionHandle, &host_handle),
+            trunks::TPM_RC_SUCCESS);
+  // The handle should not be changed.
+  EXPECT_EQ(host_handle.Get(), kPolicySessionHandle);
 }
 
 TEST_F(RealTpmHandleManagerTest,
