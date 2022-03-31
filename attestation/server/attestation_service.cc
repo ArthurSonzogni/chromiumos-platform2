@@ -41,6 +41,10 @@ extern "C" {
 #include <vboot/crossystem.h>
 }
 
+#if !USE_TPM2
+#include "attestation/common/nvram_index_placeholder.h"
+#endif
+
 #include "attestation/common/database.pb.h"
 #include "attestation/common/tpm_utility_factory.h"
 #include "attestation/server/attestation_flow.h"
@@ -420,8 +424,8 @@ constexpr KeyRestriction GetKeyRestrictionByProfile(
 
 }  // namespace
 
-#if USE_TPM2
-
+// TODO(b/188319058): Move all this to hide all the branches by TPM version in
+// this file.
 // For consistency with what we have in cr50 header, use all uppercases.
 constexpr uint32_t VIRTUAL_NV_INDEX_RMA_BYTES = 0x013fff04;
 constexpr uint32_t VIRTUAL_NV_INDEX_RMA_BYTES_SIZE = 8;
@@ -437,14 +441,23 @@ const struct {
      VIRTUAL_NV_INDEX_BOARD_ID_SIZE},
     {SN_BITS, "SN Bits", VIRTUAL_NV_INDEX_SN_DATA,
      VIRTUAL_NV_INDEX_SN_DATA_SIZE},
+#if USE_TPM2
     {RSA_PUB_EK_CERT, "RSA Public EK Certificate",
      trunks::kRsaEndorsementCertificateIndex, 0},
+#endif
     {RSU_DEVICE_ID, "RSU Device ID", VIRTUAL_NV_INDEX_RSU_DEV_ID,
      VIRTUAL_NV_INDEX_RSU_DEV_ID_SIZE},
     {RMA_BYTES, "RMA Bytes", VIRTUAL_NV_INDEX_RMA_BYTES,
      VIRTUAL_NV_INDEX_RMA_BYTES_SIZE},
 };
 
+// Types of quotes needed to obtain a VTPM EK certificate.
+// We keep it an array for symmetry though currently we only store 1 element.
+const NVRAMQuoteType kNvramQuoteTypeForVtpmEkCertificate[] = {
+    SN_BITS,
+};
+
+#if USE_TPM2
 // TODO(b/188319058): abstract the lists of nvram quotes from attestation
 // service, so attestation service doesn't have to care about the details of
 // nvram quote type by TPM versions.
@@ -462,15 +475,17 @@ const NVRAMQuoteType kNvramQuoteTypeInIdentityData[] = {BOARD_ID, SN_BITS};
 const NVRAMQuoteType kNvramQuoteTypeForEnrollmentCertificate[] = {
     BOARD_ID, SN_BITS, RSU_DEVICE_ID};
 #endif
-
 #endif
 
 using QuoteMap = google::protobuf::Map<int, Quote>;
 
 const size_t kChallengeSignatureNonceSize = 20;  // For all TPMs.
 
-AttestationService::AttestationService(brillo::SecureBlob* abe_data)
-    : abe_data_(abe_data), weak_factory_(this) {}
+AttestationService::AttestationService(brillo::SecureBlob* abe_data,
+                                       const std::string& attested_device_id)
+    : abe_data_(abe_data),
+      attested_device_id_(attested_device_id),
+      weak_factory_(this) {}
 
 AttestationService::~AttestationService() {
   // Stop the worker thread before we destruct it.
@@ -522,14 +537,9 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
     crypto_utility_ = default_crypto_utility_.get();
   }
 
-  TPM_SELECT_BEGIN;
-  TPM2_SECTION({
-    for (int i = 0; i < std::size(kNvramIndexData); ++i) {
-      nvram_quote_type_to_index_data_[kNvramIndexData[i].quote_type] = i;
-    }
-  });
-  OTHER_TPM_SECTION();
-  TPM_SELECT_END;
+  for (int i = 0; i < std::size(kNvramIndexData); ++i) {
+    nvram_quote_type_to_index_data_[kNvramIndexData[i].quote_type] = i;
+  }
 
   bool existing_database;
   if (database_) {
@@ -1296,6 +1306,10 @@ bool AttestationService::CreateCertificateRequestInternal(
                << GetACAName(aca_type) << ".";
     return false;
   }
+  if (profile == ENTERPRISE_VTPM_EK_CERTIFICATE && !does_support_vtpm_ek_) {
+    LOG(ERROR) << __func__ << ": VTPM EK not supported on non-GSC device.";
+    return false;
+  }
   auto found = FindIdentityCertificate(kFirstIdentity, aca_type);
   if (found ==
       database_->GetMutableProtobuf()->mutable_identity_certificates()->end()) {
@@ -1362,6 +1376,37 @@ bool AttestationService::CreateCertificateRequestInternal(
   });
   OTHER_TPM_SECTION();
   TPM_SELECT_END;
+
+  if (profile == ENTERPRISE_VTPM_EK_CERTIFICATE) {
+    // VTPM EK certificate requires `attested_device_id_` to be presented.
+    if (attested_device_id_.empty()) {
+      LOG(ERROR) << __func__ << ": VTPM EK certificate request requires ADID.";
+      return false;
+    }
+    request_pb.set_attested_device_id(attested_device_id_);
+
+    const int identity = identity_certificate.identity();
+    const AttestationDatabase::Identity& identity_data =
+        database_->GetProtobuf().identities().Get(identity);
+    for (const auto& quote_type : kNvramQuoteTypeForVtpmEkCertificate) {
+      const auto found = identity_data.nvram_quotes().find(quote_type);
+      if (found != identity_data.nvram_quotes().cend()) {
+        (*request_pb.mutable_nvram_quotes())[quote_type] = found->second;
+        continue;
+      }
+      Quote quote;
+      if (QuoteNvramData(quote_type, identity_data.identity_key(), &quote)) {
+        (*request_pb.mutable_nvram_quotes())[quote_type] = quote;
+        continue;
+      }
+      // For VTPM EK certificate, all the quotes are mandatory.
+      LOG(ERROR) << "Could not provide "
+                 << kNvramIndexData[nvram_quote_type_to_index_data_[quote_type]]
+                        .quote_name
+                 << " quote in VTPM EK cert request.";
+      return false;
+    }
+  }
 
   if (!origin.empty() &&
       (profile == CONTENT_PROTECTION_CERTIFICATE_WITH_STABLE_ID)) {
@@ -1840,47 +1885,43 @@ bool AttestationService::QuoteNvramData(NVRAMQuoteType quote_type,
                                         const IdentityKey& identity_key,
                                         Quote* quote) {
   TPM_SELECT_BEGIN;
-  TPM1_SECTION({
-    LOG(ERROR) << __func__ << ": Should not be called for TPM 1.2 devices.";
-  });
-  TPM2_SECTION({
-    const int id = nvram_quote_type_to_index_data_[quote_type];
-    const char* quote_name = kNvramIndexData[id].quote_name;
-    const uint32_t nv_index = kNvramIndexData[id].nv_index;
-    uint16_t nv_size = kNvramIndexData[id].nv_size;
-
-    if (!nv_size) {
-      uint16_t nv_data_size = 0;
-      if (tpm_utility_->GetNVDataSize(nv_index, &nv_data_size)) {
-        nv_size = nv_data_size;
-      } else {
-        LOG(ERROR) << "Attestation: Failed to obtain data about the "
-                   << quote_name << ".";
-      }
-    }
-
-    if (nv_size) {
-      auto identity_key_blob = identity_key.identity_key_blob();
-      std::string certified_value;
-      std::string signature;
-
-      if (tpm_utility_->CertifyNV(nv_index, nv_size, identity_key_blob,
-                                  &certified_value, &signature)) {
-        quote->set_quote(signature);
-        quote->set_quoted_data(certified_value);
-        return true;
-      } else {
-        LOG(WARNING) << "Attestation: Failed to certify " << quote_name
-                     << " NV data of size " << nv_size << " at index "
-                     << std::hex << std::showbase << nv_index << ".";
-      }
-    }
-  });
+  TPM2_SECTION();
   OTHER_TPM_SECTION({
-    LOG(ERROR) << __func__
-               << ": Should not be called for none spported TPM devices.";
+    LOG(WARNING) << __func__ << ": Should not be called for TPM 1.2 devices.";
   });
   TPM_SELECT_END;
+
+  const int id = nvram_quote_type_to_index_data_[quote_type];
+  const char* quote_name = kNvramIndexData[id].quote_name;
+  const uint32_t nv_index = kNvramIndexData[id].nv_index;
+  uint16_t nv_size = kNvramIndexData[id].nv_size;
+
+  if (!nv_size) {
+    uint16_t nv_data_size = 0;
+    if (tpm_utility_->GetNVDataSize(nv_index, &nv_data_size)) {
+      nv_size = nv_data_size;
+    } else {
+      LOG(ERROR) << "Attestation: Failed to obtain data about the "
+                 << quote_name << ".";
+    }
+  }
+
+  if (nv_size) {
+    auto identity_key_blob = identity_key.identity_key_blob();
+    std::string certified_value;
+    std::string signature;
+
+    if (tpm_utility_->CertifyNV(nv_index, nv_size, identity_key_blob,
+                                &certified_value, &signature)) {
+      quote->set_quote(signature);
+      quote->set_quoted_data(certified_value);
+      return true;
+    } else {
+      LOG(WARNING) << "Attestation: Failed to certify " << quote_name
+                   << " NV data of size " << nv_size << " at index " << std::hex
+                   << std::showbase << nv_index << ".";
+    }
+  }
 
   return false;
 }
@@ -1890,32 +1931,26 @@ bool AttestationService::InsertCertifiedNvramData(
     bool must_be_present,
     AttestationDatabase::Identity* identity) {
   TPM_SELECT_BEGIN;
-  TPM1_SECTION({
-    LOG(ERROR) << __func__ << ": Should not be called for TPM 1.2 devices.";
-  });
-  TPM2_SECTION({
-    Quote quote;
-    if (!QuoteNvramData(quote_type, identity->identity_key(), &quote)) {
-      return !must_be_present;
-    }
-
-    auto* nv_quote_map = identity->mutable_nvram_quotes();
-    auto in_bid = nv_quote_map->insert(QuoteMap::value_type(quote_type, quote));
-    if (in_bid.second) {
-      return true;
-    } else {
-      LOG(ERROR) << "Attestation: Failed to store "
-                 << kNvramIndexData[nvram_quote_type_to_index_data_[quote_type]]
-                        .quote_name
-                 << " quote for identity " << identity << ".";
-    }
-  });
+  TPM2_SECTION();
   OTHER_TPM_SECTION({
-    LOG(ERROR) << __func__
-               << ": Should not be called for none supported TPM devices.";
+    LOG(WARNING) << __func__ << ": Should not be called for TPM 1.2 devices.";
   });
   TPM_SELECT_END;
+  Quote quote;
+  if (!QuoteNvramData(quote_type, identity->identity_key(), &quote)) {
+    return !must_be_present;
+  }
 
+  auto* nv_quote_map = identity->mutable_nvram_quotes();
+  auto in_bid = nv_quote_map->insert(QuoteMap::value_type(quote_type, quote));
+  if (in_bid.second) {
+    return true;
+  } else {
+    LOG(ERROR) << "Attestation: Failed to store "
+               << kNvramIndexData[nvram_quote_type_to_index_data_[quote_type]]
+                      .quote_name
+               << " quote for identity " << identity << ".";
+  }
   return false;
 }
 

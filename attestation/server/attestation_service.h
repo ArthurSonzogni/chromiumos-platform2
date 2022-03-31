@@ -87,7 +87,8 @@ class AttestationService : public AttestationInterface {
 
   // If abe_data is not an empty blob, its contents will be
   // used to enable attestation-based enterprise enrollment.
-  explicit AttestationService(brillo::SecureBlob* abe_data);
+  AttestationService(brillo::SecureBlob* abe_data,
+                     const std::string& attested_device_id);
   AttestationService(const AttestationService&) = delete;
   AttestationService& operator=(const AttestationService&) = delete;
 
@@ -169,6 +170,14 @@ class AttestationService : public AttestationInterface {
   void set_hwid(const std::string& hwid) { hwid_ = hwid; }
 
   void set_abe_data(brillo::SecureBlob* abe_data) { abe_data_ = abe_data; }
+
+  void set_attested_device_id(const std::string& attested_device_id) {
+    attested_device_id_ = attested_device_id;
+  }
+
+  void set_vtpm_ek_support(bool does_support) {
+    does_support_vtpm_ek_ = does_support;
+  }
 
   void set_pca_agent_proxy(org::chromium::PcaAgentProxyInterface* proxy) {
     pca_agent_proxy_ = proxy;
@@ -737,6 +746,11 @@ class AttestationService : public AttestationInterface {
   CertRequestMap pending_cert_requests_;
   std::string system_salt_;
   brillo::SecureBlob* abe_data_;
+  std::string attested_device_id_;
+  // If `false`, disable VTPM EK support by force. Note that not all TPM2 but
+  // only GSC devices are supported while we use `USE_TPM2` in productiono for
+  // simplicity.
+  bool does_support_vtpm_ek_ = USE_TPM2;
   GoogleKeys google_keys_;
   // Default identity features for newly created identities.
   int default_identity_features_ =

@@ -30,6 +30,8 @@
 extern "C" {
 #include <trunks/cr50_headers/virtual_nvmem.h>
 }
+#else
+#include "attestation/common/nvram_index_placeholder.h"
 #endif
 
 #include "attestation/common/mock_crypto_utility.h"
@@ -153,7 +155,7 @@ class AttestationServiceBaseTest : public testing::Test {
 
   void SetUp() override {
     SET_DEFAULT_TPM_FOR_TESTING;
-    service_.reset(new AttestationService(nullptr));
+    service_.reset(new AttestationService(nullptr, ""));
     service_->set_database(&mock_database_);
     service_->set_crypto_utility(&mock_crypto_utility_);
     service_->set_key_store(&mock_key_store_);
@@ -218,22 +220,29 @@ class AttestationServiceBaseTest : public testing::Test {
         ->set_identity_public_key_tpm_format("public_key_tpm");
     (*identity_data->mutable_pcr_quotes())[0].set_quote("pcr0");
     (*identity_data->mutable_pcr_quotes())[1].set_quote("pcr1");
-    TPM_SELECT_BEGIN;
-    TPM2_SECTION({
-      (*identity_data->mutable_nvram_quotes())[BOARD_ID].set_quote("board_id");
-      (*identity_data->mutable_nvram_quotes())[SN_BITS].set_quote("sn_bits");
+    (*identity_data->mutable_nvram_quotes())[BOARD_ID].set_quote("board_id");
+    (*identity_data->mutable_nvram_quotes())[SN_BITS].set_quote("sn_bits");
 #if USE_GENERIC_TPM2
-      (*identity_data->mutable_nvram_quotes())[RMA_BYTES].set_quote(
-          "rma_bytes");
+    (*identity_data->mutable_nvram_quotes())[RMA_BYTES].set_quote("rma_bytes");
 #endif
-      if (service_->GetEndorsementKeyType() !=
-          kEndorsementKeyTypeForEnrollmentID) {
-        (*identity_data->mutable_nvram_quotes())[RSA_PUB_EK_CERT].set_quote(
-            "rsa_pub_ek_cert");
-      }
-    });
-    OTHER_TPM_SECTION();
-    TPM_SELECT_END;
+    if (service_->GetEndorsementKeyType() !=
+        kEndorsementKeyTypeForEnrollmentID) {
+      (*identity_data->mutable_nvram_quotes())[RSA_PUB_EK_CERT].set_quote(
+          "rsa_pub_ek_cert");
+    }
+  }
+
+  void RemoveNvramQuotesFromIdentity(int identity) {
+    auto* database = mock_database_.GetMutableProtobuf();
+    AttestationDatabase::Identity* identity_data;
+    ASSERT_GT(database->identities().size(), identity);
+    identity_data = database->mutable_identities()->Mutable(identity);
+    identity_data->clear_nvram_quotes();
+    ASSERT_EQ(database->mutable_identities()
+                  ->Mutable(identity)
+                  ->nvram_quotes()
+                  .size(),
+              0);
   }
 
   // Generate a unique name for a certificate from an ACA.
@@ -2497,6 +2506,163 @@ TEST_P(AttestationServiceTest, CreateCertificateRequestInternalFailure) {
   request.set_request_origin("origin");
   service_->CreateCertificateRequest(request,
                                      base::BindOnce(callback, QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest, CreateVtpmEkCertificateRequestSuccess) {
+  service_->set_vtpm_ek_support(true);
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+  auto callback = [](const std::string& cert_name,
+                     base::OnceClosure quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
+    EXPECT_EQ(ENTERPRISE_VTPM_EK_CERTIFICATE, pca_request.profile());
+    EXPECT_EQ(1, pca_request.nvram_quotes().size());
+    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
+    std::move(quit_closure).Run();
+  };
+  service_->set_attested_device_id("fake device id");
+  CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_certificate_profile(ENTERPRISE_VTPM_EK_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(
+      request,
+      base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
+                     QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest,
+       CreateVtpmEkCertificateRequestSuccessMissingQuotesInidentity) {
+  service_->set_vtpm_ek_support(true);
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+  RemoveNvramQuotesFromIdentity(identity_);
+  EXPECT_CALL(mock_tpm_utility_,
+              CertifyNV(VIRTUAL_NV_INDEX_SN_DATA, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>("sn_bits_data"),
+                      SetArgPointee<4>("sn_bits"), Return(true)));
+  auto callback = [](const std::string& cert_name,
+                     base::OnceClosure quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_TRUE(reply.has_pca_request());
+    AttestationCertificateRequest pca_request;
+    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
+    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
+    EXPECT_EQ(ENTERPRISE_VTPM_EK_CERTIFICATE, pca_request.profile());
+    EXPECT_EQ(1, pca_request.nvram_quotes().size());
+    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(cert_name, pca_request.identity_credential());
+    std::move(quit_closure).Run();
+  };
+  service_->set_attested_device_id("fake device id");
+  CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_certificate_profile(ENTERPRISE_VTPM_EK_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(
+      request,
+      base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
+                     QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest,
+       CreateVtpmEkCertificateRequestFailureNoAttestedDeviceId) {
+  service_->set_vtpm_ek_support(true);
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+  RemoveNvramQuotesFromIdentity(identity_);
+  EXPECT_CALL(mock_tpm_utility_,
+              CertifyNV(VIRTUAL_NV_INDEX_SN_DATA, _, _, _, _))
+      .Times(AtMost(1))
+      .WillRepeatedly(DoAll(SetArgPointee<3>("sn_bits_data"),
+                            SetArgPointee<4>("sn_bits"), Return(true)));
+
+  auto callback = [](const std::string& cert_name,
+                     base::OnceClosure quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    std::move(quit_closure).Run();
+  };
+  // Empty ADID should fail the operation.
+  service_->set_attested_device_id("");
+  CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_certificate_profile(ENTERPRISE_VTPM_EK_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(
+      request,
+      base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
+                     QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest,
+       CreateVtpmEkCertificateRequestFailureCertifyNVError) {
+  service_->set_vtpm_ek_support(true);
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+  RemoveNvramQuotesFromIdentity(identity_);
+  EXPECT_CALL(mock_tpm_utility_,
+              CertifyNV(VIRTUAL_NV_INDEX_SN_DATA, _, _, _, _))
+      .WillOnce(Return(false));
+  auto callback = [](const std::string& cert_name,
+                     base::OnceClosure quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    std::move(quit_closure).Run();
+  };
+  service_->set_attested_device_id("fake device id");
+  CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_certificate_profile(ENTERPRISE_VTPM_EK_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(
+      request,
+      base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
+                     QuitClosure()));
+  Run();
+}
+
+TEST_P(AttestationServiceTest,
+       CreateVtpmEkCertificateRequestFailureNotSupported) {
+  service_->set_vtpm_ek_support(false);
+  SetUpIdentity(identity_);
+  SetUpIdentityCertificate(identity_, aca_type_);
+  RemoveNvramQuotesFromIdentity(identity_);
+  EXPECT_CALL(mock_tpm_utility_,
+              CertifyNV(VIRTUAL_NV_INDEX_SN_DATA, _, _, _, _))
+      .Times(0);
+
+  auto callback = [](const std::string& cert_name,
+                     base::OnceClosure quit_closure,
+                     const CreateCertificateRequestReply& reply) {
+    EXPECT_NE(STATUS_SUCCESS, reply.status());
+    std::move(quit_closure).Run();
+  };
+  service_->set_attested_device_id("fake device id");
+  CreateCertificateRequestRequest request;
+  request.set_aca_type(aca_type_);
+  request.set_certificate_profile(ENTERPRISE_VTPM_EK_CERTIFICATE);
+  request.set_username("user");
+  request.set_request_origin("origin");
+  service_->CreateCertificateRequest(
+      request,
+      base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
+                     QuitClosure()));
   Run();
 }
 
