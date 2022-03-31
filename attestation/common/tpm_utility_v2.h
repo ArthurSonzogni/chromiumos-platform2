@@ -114,6 +114,14 @@ class TpmUtilityV2 : public TpmUtilityCommon {
   // the |key_handle|.
   bool GetEndorsementKey(KeyType key_type, trunks::TPM_HANDLE* key_handle);
 
+  // Creates an endorsement auth HMAC session.
+  std::unique_ptr<trunks::HmacSession> CreateEndorsementAuthorizationSession();
+
+  // Creates a policy session that is extended by PolicySecret with
+  // `endorsement_session`.
+  std::unique_ptr<trunks::PolicySession> CreateEndorsementPolicySecretSession(
+      const std::unique_ptr<trunks::HmacSession>& endorsement_session);
+
   // Gets the ECC EK's public key formatted as concatenation of X and Y
   // component, and stores in `xy`.
   bool GetECCEndorsementPublicKey(std::string* xy);

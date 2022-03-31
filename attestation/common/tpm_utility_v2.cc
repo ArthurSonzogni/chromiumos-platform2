@@ -405,43 +405,20 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
     return false;
   }
 
-  std::string endorsement_password;
-  if (!GetEndorsementPassword(&endorsement_password)) {
-    LOG(ERROR) << __func__ << ": Failed to get endorsement password";
-    return false;
-  }
-
   std::unique_ptr<HmacSession> endorsement_session =
-      trunks_factory_->GetHmacSession();
-  result = endorsement_session->StartUnboundSession(
-      true /* salted */, false /* enable_encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to setup endorsement session: "
-               << trunks::GetErrorString(result);
+      CreateEndorsementAuthorizationSession();
+  if (!endorsement_session) {
+    LOG(ERROR) << __func__
+               << ": Error calling `CreateEndorsementAuthorizationSession()`.";
     return false;
   }
-  endorsement_session->SetEntityAuthorizationValue(endorsement_password);
 
   std::unique_ptr<trunks::PolicySession> session =
-      trunks_factory_->GetPolicySession();
-  result = session->StartUnboundSession(true /* salted */,
-                                        false /* enable_encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to start session: "
-               << trunks::GetErrorString(result);
-    return false;
-  }
+      CreateEndorsementPolicySecretSession(endorsement_session);
 
-  trunks::TPMI_DH_ENTITY auth_entity = trunks::TPM_RH_ENDORSEMENT;
-  std::string auth_entity_name;
-  trunks::Serialize_TPM_HANDLE(auth_entity, &auth_entity_name);
-
-  result = session->PolicySecret(auth_entity, auth_entity_name, std::string(),
-                                 std::string(), std::string(), 0,
-                                 endorsement_session->GetDelegate());
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to set the secret: "
-               << trunks::GetErrorString(result);
+  if (!session) {
+    LOG(ERROR) << __func__
+               << ": Error calling `CreateEndorsementPolicySecretSession()`.";
     return false;
   }
 
@@ -1145,27 +1122,20 @@ bool TpmUtilityV2::GetEndorsementKey(KeyType key_type, TPM_HANDLE* key_handle) {
     *key_handle = endorsement_keys_[key_type];
     return true;
   }
-  std::string endorsement_password;
-  if (!GetEndorsementPassword(&endorsement_password)) {
-    return false;
-  }
   std::unique_ptr<HmacSession> endorsement_session =
-      trunks_factory_->GetHmacSession();
-  TPM_RC result = endorsement_session->StartUnboundSession(
-      true /* salted */, false /* enable_encryption */);
-  if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Failed to setup endorsement session: "
-               << trunks::GetErrorString(result);
+      CreateEndorsementAuthorizationSession();
+  if (!endorsement_session) {
+    LOG(ERROR) << __func__
+               << ": Error calling `CreateEndorsementAuthorizationSession()`.";
     return false;
   }
-  endorsement_session->SetEntityAuthorizationValue(endorsement_password);
   // Don't fail if the owner password is not available, it may not be needed.
   std::string owner_password;
   GetOwnerPassword(&owner_password);
   std::unique_ptr<HmacSession> owner_session =
       trunks_factory_->GetHmacSession();
-  result = owner_session->StartUnboundSession(true /* salted */,
-                                              false /* enable_encryption */);
+  TPM_RC result = owner_session->StartUnboundSession(
+      true /* salted */, false /* enable_encryption */);
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to setup owner session: "
                << trunks::GetErrorString(result);
@@ -1272,6 +1242,61 @@ bool TpmUtilityV2::CreateIdentity(KeyType key_type,
 bool TpmUtilityV2::GetRsuDeviceId(std::string* rsu_device_id) {
   return trunks_utility_->GetRsuDeviceId(rsu_device_id) ==
          trunks::TPM_RC_SUCCESS;
+}
+
+std::unique_ptr<trunks::HmacSession>
+TpmUtilityV2::CreateEndorsementAuthorizationSession() {
+  std::string endorsement_password;
+  if (!GetEndorsementPassword(&endorsement_password)) {
+    LOG(ERROR) << __func__ << ": Failed to get endorsement password";
+    return {};
+  }
+
+  std::unique_ptr<HmacSession> endorsement_session =
+      trunks_factory_->GetHmacSession();
+
+  const trunks::TPM_RC result = endorsement_session->StartUnboundSession(
+      true /* salted */, false /* enable_encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to setup endorsement session: "
+               << trunks::GetErrorString(result);
+    return {};
+  }
+  endorsement_session->SetEntityAuthorizationValue(endorsement_password);
+  return endorsement_session;
+}
+
+std::unique_ptr<trunks::PolicySession>
+TpmUtilityV2::CreateEndorsementPolicySecretSession(
+    const std::unique_ptr<trunks::HmacSession>& endorsement_session) {
+  std::unique_ptr<trunks::PolicySession> session =
+      trunks_factory_->GetPolicySession();
+  if (!session) {
+    LOG(ERROR) << __func__
+               << ": Failed to call `TrunksFactory::GetPolicySession()`.";
+    return {};
+  }
+  trunks::TPM_RC result = session->StartUnboundSession(
+      true /* salted */, false /* enable_encryption */);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to start session: "
+               << trunks::GetErrorString(result);
+    return {};
+  }
+
+  trunks::TPMI_DH_ENTITY auth_entity = trunks::TPM_RH_ENDORSEMENT;
+  std::string auth_entity_name;
+  trunks::Serialize_TPM_HANDLE(auth_entity, &auth_entity_name);
+
+  result = session->PolicySecret(auth_entity, auth_entity_name, std::string(),
+                                 std::string(), std::string(), 0,
+                                 endorsement_session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Failed to set the secret: "
+               << trunks::GetErrorString(result);
+    return {};
+  }
+  return session;
 }
 
 }  // namespace attestation
