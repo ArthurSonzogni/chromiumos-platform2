@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 
+#include <optional>
 #include <string>
 
 #include <openssl/rsa.h>
@@ -44,6 +45,7 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   bool CreateCertifiedKey(KeyType key_type,
                           KeyUsage key_usage,
                           KeyRestriction key_restriction,
+                          std::optional<CertificateProfile> profile_hint,
                           const std::string& identity_key_blob,
                           const std::string& external_data,
                           std::string* key_blob,

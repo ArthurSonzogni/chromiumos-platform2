@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <string>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
@@ -42,6 +43,7 @@ extern "C" {
 using testing::_;
 using testing::AtMost;
 using testing::DoAll;
+using testing::Eq;
 using testing::Invoke;
 using testing::NiceMock;
 using testing::Return;
@@ -1325,13 +1327,13 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeySuccess) {
   SetUpIdentity(identity_);
 
   // Configure a fake TPM response.
-  EXPECT_CALL(
-      mock_tpm_utility_,
-      CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
-                         KeyRestriction::kUnrestricted, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<6>(std::string("public_key")),
-                      SetArgPointee<8>(std::string("certify_info")),
-                      SetArgPointee<9>(std::string("certify_info_signature")),
+  EXPECT_CALL(mock_tpm_utility_,
+              CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
+                                 KeyRestriction::kUnrestricted,
+                                 Eq(std::nullopt), _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<7>(std::string("public_key")),
+                      SetArgPointee<9>(std::string("certify_info")),
+                      SetArgPointee<10>(std::string("certify_info_signature")),
                       Return(true)));
   // Expect the key to be written exactly once.
   EXPECT_CALL(mock_key_store_, Write("user", "label", _)).Times(1);
@@ -1359,13 +1361,13 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
   SetUpIdentity(identity_);
 
   // Configure a fake TPM response.
-  EXPECT_CALL(
-      mock_tpm_utility_,
-      CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
-                         KeyRestriction::kUnrestricted, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<6>(std::string("public_key")),
-                      SetArgPointee<8>(std::string("certify_info")),
-                      SetArgPointee<9>(std::string("certify_info_signature")),
+  EXPECT_CALL(mock_tpm_utility_,
+              CreateCertifiedKey(KEY_TYPE_RSA, KEY_USAGE_SIGN,
+                                 KeyRestriction::kUnrestricted,
+                                 Eq(std::nullopt), _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<7>(std::string("public_key")),
+                      SetArgPointee<9>(std::string("certify_info")),
+                      SetArgPointee<10>(std::string("certify_info_signature")),
                       Return(true)));
   // Expect the key to be written exactly once.
   EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
@@ -1435,7 +1437,7 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeyTpmCreateFailure) {
   SetUpIdentity(identity_);
 
   EXPECT_CALL(mock_tpm_utility_,
-              CreateCertifiedKey(_, _, _, _, _, _, _, _, _, _))
+              CreateCertifiedKey(_, _, _, _, _, _, _, _, _, _, _))
       .WillRepeatedly(Return(false));
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure,

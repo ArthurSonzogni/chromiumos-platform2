@@ -5,6 +5,7 @@
 #include "attestation/common/tpm_utility_v2.h"
 
 #include <ios>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -466,16 +467,18 @@ bool TpmUtilityV2::ActivateIdentityForTpm2(
   return true;
 }
 
-bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
-                                      KeyUsage key_usage,
-                                      KeyRestriction key_restriction,
-                                      const std::string& identity_key_blob,
-                                      const std::string& external_data,
-                                      std::string* key_blob,
-                                      std::string* public_key_der,
-                                      std::string* public_key_tpm_format,
-                                      std::string* key_info,
-                                      std::string* proof) {
+bool TpmUtilityV2::CreateCertifiedKey(
+    KeyType key_type,
+    KeyUsage key_usage,
+    KeyRestriction key_restriction,
+    std::optional<CertificateProfile> profile_hint,
+    const std::string& identity_key_blob,
+    const std::string& external_data,
+    std::string* key_blob,
+    std::string* public_key_der,
+    std::string* public_key_tpm_format,
+    std::string* key_info,
+    std::string* proof) {
   if (identity_key_blob.empty()) {
     LOG(ERROR) << __func__ << ": Unexpected empty identity_key_blob.";
     return false;
@@ -486,6 +489,11 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
   trunks::TpmUtility::AsymmetricKeyUsage trunks_key_usage =
       (key_usage == KEY_USAGE_SIGN) ? trunks::TpmUtility::kSignKey
                                     : trunks::TpmUtility::kDecryptKey;
+  const std::string policy_digest =
+      (profile_hint.has_value() &&
+       (*profile_hint == ENTERPRISE_VTPM_EK_CERTIFICATE))
+          ? std::string(trunks::GetEkTemplateAuthPolicy())
+          : "";
 
   TPM_RC result;
   switch (key_type) {
@@ -500,8 +508,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
       result = trunks_utility_->CreateRSAKeyPair(
           trunks_key_usage, 2048 /* modulus_bits */,
           0 /* Use default public exponent */, std::string() /* password */,
-          std::string() /* policy_digest */,
-          false /* use_only_policy_authorization */,
+          policy_digest, false /* use_only_policy_authorization */,
           std::vector<uint32_t>() /* creation_pcr_indexes */,
           empty_password_authorization.get(), key_blob,
           nullptr /* creation_blob */);
@@ -511,7 +518,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
         case KeyRestriction::kUnrestricted:
           result = trunks_utility_->CreateECCKeyPair(
               trunks_key_usage, trunks::TPM_ECC_NIST_P256 /* curve_id */,
-              std::string() /* password */, std::string() /* policy_digest */,
+              std::string() /* password */, policy_digest,
               false /* use_only_policy_authorization */,
               std::vector<uint32_t>() /* creation_pcr_indexes */,
               empty_password_authorization.get(), key_blob,
@@ -520,7 +527,7 @@ bool TpmUtilityV2::CreateCertifiedKey(KeyType key_type,
         case KeyRestriction::kRestricted:
           result = trunks_utility_->CreateRestrictedECCKeyPair(
               trunks_key_usage, trunks::TPM_ECC_NIST_P256 /* curve_id */,
-              std::string() /* password */, std::string() /* policy_digest */,
+              std::string() /* password */, policy_digest,
               false /* use_only_policy_authorization */,
               std::vector<uint32_t>() /* creation_pcr_indexes */,
               empty_password_authorization.get(), key_blob,

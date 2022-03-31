@@ -7,8 +7,10 @@
 
 #include <stdint.h>
 
+#include <optional>
 #include <string>
 
+#include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/interface.pb.h>
 
 #include "attestation/common/database.pb.h"
@@ -72,16 +74,18 @@ class TpmUtility {
   // |proof| with the signature of |key_info| by the identity key. If
   // |restriction| is |kRestricted|, the signing/decrypting cannot work on an
   // arbitrary blob; instead the format is TPM-specific.
-  virtual bool CreateCertifiedKey(KeyType key_type,
-                                  KeyUsage key_usage,
-                                  KeyRestriction key_restriction,
-                                  const std::string& identity_key_blob,
-                                  const std::string& external_data,
-                                  std::string* key_blob,
-                                  std::string* public_key_der,
-                                  std::string* public_key_tpm_format,
-                                  std::string* key_info,
-                                  std::string* proof) = 0;
+  virtual bool CreateCertifiedKey(
+      KeyType key_type,
+      KeyUsage key_usage,
+      KeyRestriction key_restriction,
+      std::optional<CertificateProfile> profile_hint,
+      const std::string& identity_key_blob,
+      const std::string& external_data,
+      std::string* key_blob,
+      std::string* public_key_der,
+      std::string* public_key_tpm_format,
+      std::string* key_info,
+      std::string* proof) = 0;
 
   // Seals |data| to the current value of PCR0 with the SRK and produces the
   // |sealed_data|. Returns true on success.

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <iterator>
+#include <optional>
 #include <vector>
 
 #include <base/check.h>
@@ -24,7 +25,9 @@ namespace {
 
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::Ne;
 using ::testing::NiceMock;
+using ::testing::Optional;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
@@ -238,8 +241,8 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyWithRsaKey) {
   std::string proof;
   EXPECT_TRUE(tpm_utility_->CreateCertifiedKey(
       KEY_TYPE_RSA, KEY_USAGE_SIGN, KeyRestriction::kUnrestricted,
-      "fake_identity_blob", "fake_external_data", &key_blob, &public_key_der,
-      &public_key_tpm_format, &key_info, &proof));
+      /*profile_hint=*/std::nullopt, "fake_identity_blob", "fake_external_data",
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
   EXPECT_EQ("fake_key_blob", key_blob);
   EXPECT_NE("", public_key_der);
   EXPECT_NE("", public_key_tpm_format);
@@ -292,8 +295,8 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyWithEccKey) {
   std::string proof;
   EXPECT_TRUE(tpm_utility_->CreateCertifiedKey(
       KEY_TYPE_ECC, KEY_USAGE_SIGN, KeyRestriction::kUnrestricted,
-      "fake_identity_blob", "fake_external_data", &key_blob, &public_key_der,
-      &public_key_tpm_format, &key_info, &proof));
+      /*profile_hint=*/std::nullopt, "fake_identity_blob", "fake_external_data",
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
   EXPECT_EQ(key_blob, kFakeKeyBlob);
   EXPECT_NE(public_key_der, "");
   EXPECT_NE(public_key_tpm_format, "");
@@ -347,8 +350,67 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyRestrictedECC) {
   std::string proof;
   EXPECT_TRUE(tpm_utility_->CreateCertifiedKey(
       KEY_TYPE_ECC, KEY_USAGE_SIGN, KeyRestriction::kRestricted,
-      "fake_identity_blob", "fake_external_data", &key_blob, &public_key_der,
-      &public_key_tpm_format, &key_info, &proof));
+      /*profile_hint=*/std::nullopt, "fake_identity_blob", "fake_external_data",
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
+  EXPECT_EQ(key_blob, kFakeKeyBlob);
+  EXPECT_NE(public_key_der, "");
+  EXPECT_NE(public_key_tpm_format, "");
+  EXPECT_EQ(key_info, "fake_attest");
+  EXPECT_NE(proof.find("fake_proof"), std::string::npos);
+  EXPECT_EQ(trunks::StringFrom_TPM2B_DATA(external_data), "fake_external_data");
+  EXPECT_EQ(scheme.scheme, trunks::TPM_ALG_RSASSA);
+  EXPECT_EQ(scheme.details.rsassa.hash_alg, trunks::TPM_ALG_SHA256);
+}
+
+TEST_F(TpmUtilityTest,
+       CreateCertifiedKeyRestrictedECCWithPolicySetByPolicyHint) {
+  const std::string kFakeKeyBlob = "fake_key_blob";
+
+  EXPECT_CALL(mock_tpm_utility_,
+              CreateRestrictedECCKeyPair(
+                  _, _, _, std::string(trunks::GetEkTemplateAuthPolicy()), _, _,
+                  _, _, _))
+      .WillOnce(DoAll(SetArgPointee<7>(kFakeKeyBlob), Return(TPM_RC_SUCCESS)));
+
+  // make sure LoadKey(created key) return ECC, RSA for AIK
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(_, _, _))
+      .WillRepeatedly(Return(TPM_RC_SUCCESS));
+  constexpr trunks::TPM_HANDLE kFakeKeyHandle = 0x12345678;
+  EXPECT_CALL(mock_tpm_utility_, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<2>(kFakeKeyHandle), Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(GetValidRsaPublicKey(nullptr)),
+                      Return(TPM_RC_SUCCESS)));
+  EXPECT_CALL(mock_tpm_utility_, GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(GetValidEccPublicKey(nullptr)),
+                      Return(TPM_RC_SUCCESS)));
+
+  // Still use RSA AIK to certified, so return the RSA signature.
+  trunks::TPM2B_DATA external_data;
+  trunks::TPMT_SIG_SCHEME scheme;
+  trunks::TPM2B_ATTEST fake_certify_info =
+      trunks::Make_TPM2B_ATTEST("fake_attest");
+  trunks::TPMT_SIGNATURE fake_signature;
+  fake_signature.sig_alg = trunks::TPM_ALG_RSASSA;
+  fake_signature.signature.rsassa.sig =
+      trunks::Make_TPM2B_PUBLIC_KEY_RSA("fake_proof");
+  EXPECT_CALL(mock_tpm_, CertifySync(_, _, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<4>(&external_data), SaveArg<5>(&scheme),
+                      SetArgPointee<6>(fake_certify_info),
+                      SetArgPointee<7>(fake_signature),
+                      Return(TPM_RC_SUCCESS)));
+
+  std::string key_blob;
+  std::string public_key_der;
+  std::string public_key_tpm_format;
+  std::string key_info;
+  std::string proof;
+  EXPECT_TRUE(tpm_utility_->CreateCertifiedKey(
+      KEY_TYPE_ECC, KEY_USAGE_SIGN, KeyRestriction::kRestricted,
+      ENTERPRISE_VTPM_EK_CERTIFICATE, "fake_identity_blob",
+      "fake_external_data", &key_blob, &public_key_der, &public_key_tpm_format,
+      &key_info, &proof));
   EXPECT_EQ(key_blob, kFakeKeyBlob);
   EXPECT_NE(public_key_der, "");
   EXPECT_NE(public_key_tpm_format, "");
@@ -367,8 +429,8 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyRestrictedRSANotSupported) {
   std::string proof;
   EXPECT_FALSE(tpm_utility_->CreateCertifiedKey(
       KEY_TYPE_RSA, KEY_USAGE_SIGN, KeyRestriction::kRestricted,
-      "fake_identity_blob", "fake_external_data", &key_blob, &public_key_der,
-      &public_key_tpm_format, &key_info, &proof));
+      /*profile_hint=*/std::nullopt, "fake_identity_blob", "fake_external_data",
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
 }
 
 TEST_F(TpmUtilityTest, CreateCertifiedKeyWithEccCertified) {
@@ -418,8 +480,8 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyWithEccCertified) {
   std::string proof;
   EXPECT_TRUE(tpm_utility_->CreateCertifiedKey(
       KEY_TYPE_RSA, KEY_USAGE_SIGN, KeyRestriction::kUnrestricted,
-      "fake_identity_blob", "fake_external_data", &key_blob, &public_key_der,
-      &public_key_tpm_format, &key_info, &proof));
+      /*profile_hint=*/std::nullopt, "fake_identity_blob", "fake_external_data",
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
   EXPECT_EQ("fake_key_blob", key_blob);
   EXPECT_NE("", public_key_der);
   EXPECT_NE("", public_key_tpm_format);
@@ -441,8 +503,8 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyFailCreate) {
   std::string proof;
   EXPECT_FALSE(tpm_utility_->CreateCertifiedKey(
       KEY_TYPE_RSA, KEY_USAGE_SIGN, KeyRestriction::kUnrestricted,
-      "fake_identity_blob", "fake_external_data", &key_blob, &public_key_der,
-      &public_key_tpm_format, &key_info, &proof));
+      /*profile_hint=*/std::nullopt, "fake_identity_blob", "fake_external_data",
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
   EXPECT_EQ("", key_blob);
   EXPECT_EQ("", public_key_der);
   EXPECT_EQ("", public_key_tpm_format);
@@ -461,8 +523,8 @@ TEST_F(TpmUtilityTest, CreateCertifiedKeyFailCertify) {
   std::string proof;
   EXPECT_FALSE(tpm_utility_->CreateCertifiedKey(
       KEY_TYPE_RSA, KEY_USAGE_SIGN, KeyRestriction::kUnrestricted,
-      "fake_identity_blob", "fake_external_data", &key_blob, &public_key_der,
-      &public_key_tpm_format, &key_info, &proof));
+      /*profile_hint=*/std::nullopt, "fake_identity_blob", "fake_external_data",
+      &key_blob, &public_key_der, &public_key_tpm_format, &key_info, &proof));
 }
 
 TEST_F(TpmUtilityTest, SealToPCR0) {

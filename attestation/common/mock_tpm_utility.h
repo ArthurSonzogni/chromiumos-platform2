@@ -9,6 +9,7 @@
 
 #include <stdint.h>
 
+#include <optional>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -50,6 +51,7 @@ class MockTpmUtility : public TpmUtility {
               (KeyType,
                KeyUsage,
                KeyRestriction,
+               std::optional<CertificateProfile>,
                const std::string&,
                const std::string&,
                std::string*,

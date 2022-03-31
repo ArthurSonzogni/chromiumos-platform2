@@ -27,6 +27,7 @@
 #include <cstdint>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <vector>
 
 #define TPM_LOG(severity, result)                               \
@@ -224,16 +225,18 @@ bool TpmUtilityV1::ActivateIdentityForTpm2(
   return false;
 }
 
-bool TpmUtilityV1::CreateCertifiedKey(KeyType key_type,
-                                      KeyUsage key_usage,
-                                      KeyRestriction key_restriction,
-                                      const std::string& identity_key_blob,
-                                      const std::string& external_data,
-                                      std::string* key_blob,
-                                      std::string* public_key,
-                                      std::string* public_key_tpm_format,
-                                      std::string* key_info,
-                                      std::string* proof) {
+bool TpmUtilityV1::CreateCertifiedKey(
+    KeyType key_type,
+    KeyUsage key_usage,
+    KeyRestriction key_restriction,
+    std::optional<CertificateProfile> profile_hint,
+    const std::string& identity_key_blob,
+    const std::string& external_data,
+    std::string* key_blob,
+    std::string* public_key,
+    std::string* public_key_tpm_format,
+    std::string* key_info,
+    std::string* proof) {
   CHECK(key_blob && public_key && public_key_tpm_format && key_info && proof);
   if (!InitializeContextHandle(__func__)) {
     return false;

@@ -1452,7 +1452,7 @@ bool AttestationService::CreateKey(const std::string& username,
   std::string proof;
   const auto& identity_data = database_pb.identities().Get(identity);
   if (!tpm_utility_->CreateCertifiedKey(
-          key_type, key_usage, key_restriction,
+          key_type, key_usage, key_restriction, std::nullopt,
           identity_data.identity_key().identity_key_blob(), nonce, &key_blob,
           &public_key, &public_key_tpm_format, &key_info, &proof)) {
     return false;
@@ -2311,7 +2311,7 @@ bool AttestationService::VerifyCertifiedKeyGeneration(
     std::string proof;
     if (!tpm_utility_->CreateCertifiedKey(
             key_type, KEY_USAGE_SIGN, KeyRestriction::kUnrestricted,
-            aik_key_blob, nonce, &key_blob, &public_key_der,
+            std::nullopt, aik_key_blob, nonce, &key_blob, &public_key_der,
             &public_key_tpm_format, &key_info, &proof)) {
       LOG(ERROR) << __func__
                  << ": Failed to create certified key for key_type: "
@@ -2894,7 +2894,7 @@ void AttestationService::CreateCertificateRequestTask(
 
   const auto& identity_data = database_pb.identities().Get(identity);
   if (!tpm_utility_->CreateCertifiedKey(
-          key_type, key_usage, key_restriction,
+          key_type, key_usage, key_restriction, request.certificate_profile(),
           identity_data.identity_key().identity_key_blob(), nonce, &key_blob,
           &public_key_der, &public_key_tpm_format, &key_info, &proof)) {
     LOG(ERROR) << __func__ << ": Failed to create a key.";
