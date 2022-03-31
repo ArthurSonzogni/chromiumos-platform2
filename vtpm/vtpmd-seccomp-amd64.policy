@@ -114,3 +114,4 @@ prctl: return 1
 
 sched_getattr: 1
 sched_setattr: 1
+sched_getaffinity: 1
