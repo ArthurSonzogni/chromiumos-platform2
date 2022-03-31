@@ -14926,12 +14926,12 @@ mno {
       is_attach_apn: true
     }
     mobile_apn {
-      apn : "internet_ipv6"
+      apn : "internet-ipv6"
       ip_type: IPV6
       is_attach_apn: true
     }
     mobile_apn {
-      apn : "internet_ipv4"
+      apn : "internet-ipv4"
       ip_type: IPV4
       is_attach_apn: true
     }
