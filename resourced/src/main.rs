@@ -10,6 +10,9 @@ mod memory;
 mod power;
 
 #[cfg(target_arch = "x86_64")]
+mod cgroup_x86_64;
+
+#[cfg(target_arch = "x86_64")]
 mod cpu_scaling;
 
 #[cfg(test)]
@@ -31,6 +34,9 @@ fn main() -> Result<()> {
     }
 
     info!("Starting resourced");
+
+    #[cfg(target_arch = "x86_64")]
+    cgroup_x86_64::init()?;
 
     let root = Path::new("/");
 

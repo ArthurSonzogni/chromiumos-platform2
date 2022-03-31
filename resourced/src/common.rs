@@ -14,6 +14,9 @@ use once_cell::sync::Lazy;
 
 use crate::power;
 
+#[cfg(target_arch = "x86_64")]
+use crate::cgroup_x86_64::{media_dynamic_cgroup, MediaDynamicCgroupAction};
+
 // Extract the parsing function for unittest.
 pub fn parse_file_to_u64<R: BufRead>(reader: R) -> Result<u64> {
     let first_line = reader.lines().next().context("No content in buffer")??;
@@ -178,6 +181,13 @@ pub fn set_fullscreen_video(
     }
 
     update_power_preferences(power_preference_manager)?;
+
+    #[cfg(target_arch = "x86_64")]
+    match mode {
+        FullscreenVideo::Active => media_dynamic_cgroup(MediaDynamicCgroupAction::Start)?,
+        FullscreenVideo::Inactive => media_dynamic_cgroup(MediaDynamicCgroupAction::Stop)?,
+    }
+
     Ok(())
 }
 
