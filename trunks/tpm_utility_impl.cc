@@ -1174,6 +1174,25 @@ TPM_RC TpmUtilityImpl::CreateECCKeyPair(
                             delegate, key_blob, creation_blob);
 }
 
+TPM_RC TpmUtilityImpl::CreateRestrictedECCKeyPair(
+    AsymmetricKeyUsage key_type,
+    TPMI_ECC_CURVE curve_id,
+    const std::string& password,
+    const std::string& policy_digest,
+    bool use_only_policy_authorization,
+    const std::vector<uint32_t>& creation_pcr_indexes,
+    AuthorizationDelegate* delegate,
+    std::string* key_blob,
+    std::string* creation_blob) {
+  TPMT_PUBLIC public_area = CreateDefaultPublicArea(TPM_ALG_ECC);
+  public_area.object_attributes |= kRestricted;
+  public_area.parameters.ecc_detail.curve_id = curve_id;
+
+  return CreateKeyPairInner(key_type, public_area, password, policy_digest,
+                            use_only_policy_authorization, creation_pcr_indexes,
+                            delegate, key_blob, creation_blob);
+}
+
 TPM_RC TpmUtilityImpl::CreateKeyPairInner(
     AsymmetricKeyUsage key_type,
     TPMT_PUBLIC public_area,
@@ -1227,6 +1246,14 @@ TPM_RC TpmUtilityImpl::CreateKeyPairInner(
   if (use_only_policy_authorization && !policy_digest.empty()) {
     public_area.object_attributes |= kAdminWithPolicy;
     public_area.object_attributes &= (~kUserWithAuth);
+  }
+
+  // Match the symmetric scheme of the SRK, which is the only possible parent
+  // key for now.
+  if (public_area.object_attributes & kRestricted) {
+    public_area.parameters.asym_detail.symmetric.algorithm = TPM_ALG_AES;
+    public_area.parameters.asym_detail.symmetric.key_bits.aes = 128;
+    public_area.parameters.asym_detail.symmetric.mode.aes = TPM_ALG_CFB;
   }
 
   TPML_PCR_SELECTION creation_pcrs = {};

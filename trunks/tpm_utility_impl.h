@@ -130,6 +130,16 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
                           AuthorizationDelegate* delegate,
                           std::string* key_blob,
                           std::string* creation_blob) override;
+  TPM_RC CreateRestrictedECCKeyPair(
+      AsymmetricKeyUsage key_type,
+      TPMI_ECC_CURVE curve_id,
+      const std::string& password,
+      const std::string& policy_digest,
+      bool use_only_policy_authorization,
+      const std::vector<uint32_t>& creation_pcr_indexes,
+      AuthorizationDelegate* delegate,
+      std::string* key_blob,
+      std::string* creation_blob) override;
   TPM_RC LoadKey(const std::string& key_blob,
                  AuthorizationDelegate* delegate,
                  TPM_HANDLE* key_handle) override;

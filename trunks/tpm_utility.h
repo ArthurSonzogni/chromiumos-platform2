@@ -330,6 +330,19 @@ class TRUNKS_EXPORT TpmUtility {
       std::string* key_blob,
       std::string* creation_blob) = 0;
 
+  // This method is performs as the same as `CreateECCKeyPair`, except that the
+  // generated key is restricted.
+  virtual TPM_RC CreateRestrictedECCKeyPair(
+      AsymmetricKeyUsage key_type,
+      TPMI_ECC_CURVE curve_id,
+      const std::string& password,
+      const std::string& policy_digest,
+      bool use_only_policy_authorization,
+      const std::vector<uint32_t>& creation_pcr_indexes,
+      AuthorizationDelegate* delegate,
+      std::string* key_blob,
+      std::string* creation_blob) = 0;
+
   // This method loads a pregenerated TPM key into the TPM. |key_blob| contains
   // the blob returned by a key creation function. The loaded key's handle is
   // returned using |key_handle|.
