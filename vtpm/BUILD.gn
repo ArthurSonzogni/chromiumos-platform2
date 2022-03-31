@@ -42,6 +42,7 @@ generate_dbus_adaptors("vtpm-adaptors") {
 source_set("vtpm_server_library") {
   sources = [
     "commands/null_command.cc",
+    "commands/virtualizer.cc",
     "vtpm_service.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -82,7 +83,10 @@ install_config("install_systemd") {
 
 if (use.test) {
   executable("vtpm_test") {
-    sources = [ "vtpm_service_test.cc" ]
+    sources = [
+      "commands/virtualizer_test.cc",
+      "vtpm_service_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
