@@ -12,6 +12,32 @@
 
 namespace trunks {
 
+namespace {
+
+TPM_RC ParseAuthSection(std::string* command, TPMS_AUTH_COMMAND* auth) {
+  UINT32 size;
+  TPM_RC rc = Parse_UINT32(command, &size, nullptr);
+  if (rc) {
+    return rc;
+  }
+  if (size > command->size()) {
+    return TPM_RC_AUTHSIZE;
+  }
+
+  std::string auth_section = command->substr(0, size);
+
+  rc = Parse_TPMS_AUTH_COMMAND(&auth_section, auth, nullptr);
+  if (rc) {
+    return rc;
+  }
+
+  // Remove the authorization section from the input.
+  *command = command->substr(size);
+  return TPM_RC_SUCCESS;
+}
+
+}  // namespace
+
 TPM_RC RealCommandParser::ParseHeader(std::string* command,
                                       TPMI_ST_COMMAND_TAG* tag,
                                       UINT32* size,
@@ -74,6 +100,54 @@ TPM_RC RealCommandParser::ParseCommandGetCapability(std::string* command,
     rc = TPM_RC_SIZE;
   }
   return rc;
+}
+
+TPM_RC RealCommandParser::ParseCommandNvRead(std::string* command,
+                                             TPMI_RH_NV_AUTH* auth_handle,
+                                             TPMI_RH_NV_INDEX* nv_index,
+                                             TPMS_AUTH_COMMAND* auth,
+                                             UINT16* nv_size,
+                                             UINT16* offset) {
+  TPMI_ST_COMMAND_TAG tag;
+  UINT32 size;
+  TPM_CC cc;
+  TPM_RC rc = ParseHeader(command, &tag, &size, &cc);
+  if (rc) {
+    return rc;
+  }
+
+  if (cc != TPM_CC_NV_Read) {
+    LOG(DFATAL) << __func__ << ": Expecting command code: " << TPM_CC_NV_Read
+                << "; got " << cc;
+    return TPM_RC_COMMAND_CODE;
+  }
+
+  if (tag == TPM_ST_NO_SESSIONS) {
+    return TPM_RC_AUTH_MISSING;
+  }
+
+  rc = Parse_TPMI_RH_NV_AUTH(command, auth_handle, nullptr);
+  if (rc) {
+    return rc;
+  }
+  rc = Parse_TPMI_RH_NV_INDEX(command, nv_index, nullptr);
+  if (rc) {
+    return rc;
+  }
+  rc = ParseAuthSection(command, auth);
+  if (rc) {
+    return rc;
+  }
+  rc = Parse_UINT16(command, nv_size, nullptr);
+  if (rc) {
+    return rc;
+  }
+  rc = Parse_UINT16(command, offset, nullptr);
+  if (rc) {
+    return rc;
+  }
+
+  return command->empty() ? TPM_RC_SUCCESS : TPM_RC_SIZE;
 }
 
 }  // namespace trunks

@@ -28,6 +28,16 @@ class MockCommandParser : public CommandParser {
               ParseCommandGetCapability,
               (std::string*, TPM_CAP*, UINT32*, UINT32*),
               (override));
+
+  MOCK_METHOD(TPM_RC,
+              ParseCommandNvRead,
+              (std::string*,
+               TPMI_RH_NV_AUTH*,
+               TPMI_RH_NV_INDEX*,
+               TPMS_AUTH_COMMAND*,
+               UINT16*,
+               UINT16*),
+              (override));
 };
 
 }  // namespace trunks

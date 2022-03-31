@@ -32,6 +32,13 @@ class TRUNKS_EXPORT RealCommandParser : public CommandParser {
                                    TPM_CAP* cap,
                                    UINT32* property,
                                    UINT32* property_count) override;
+
+  TPM_RC ParseCommandNvRead(std::string* command,
+                            TPMI_RH_NV_AUTH* auth_handle,
+                            TPMI_RH_NV_INDEX* nv_index,
+                            TPMS_AUTH_COMMAND* auth,
+                            UINT16* size,
+                            UINT16* offset) override;
 };
 
 }  // namespace trunks

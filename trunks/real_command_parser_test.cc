@@ -7,6 +7,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "trunks/password_authorization_delegate.h"
 #include "trunks/tpm_generated.h"
 
 namespace trunks {
@@ -291,6 +292,126 @@ TEST_F(RealCommandParserTest, ParseCommandGetCapabilityFailureParamTooLong) {
   EXPECT_EQ(parser_.ParseCommandGetCapability(&command, &cap_out, &property_out,
                                               &property_count_out),
             TPM_RC_SIZE);
+}
+
+TEST_F(RealCommandParserTest, ParseCommandNvReadSuccess) {
+  std::string command;
+  const TPMI_RH_NV_AUTH auth_handle = 111;
+  const std::string auth_handle_name = "auth_name";
+  const TPMI_RH_NV_INDEX nv_index = 222;
+  const std::string nv_index_name = "index_name";
+  const UINT16 size = 69;
+  const UINT16 offset = 449;
+  const std::string fake_password = "password";
+  PasswordAuthorizationDelegate delegate(fake_password);
+  ASSERT_EQ(Tpm::SerializeCommand_NV_Read(auth_handle, auth_handle_name,
+                                          nv_index, nv_index_name, size, offset,
+                                          &command, &delegate),
+            TPM_RC_SUCCESS);
+  TPMI_RH_NV_AUTH auth_handle_out = 0;
+  TPMI_RH_NV_INDEX nv_index_out = 0;
+  TPMS_AUTH_COMMAND auth_out;
+  UINT16 size_out = 0;
+  UINT16 offset_out = 0;
+  EXPECT_EQ(
+      parser_.ParseCommandNvRead(&command, &auth_handle_out, &nv_index_out,
+                                 &auth_out, &size_out, &offset_out),
+      TPM_RC_SUCCESS);
+  EXPECT_EQ(auth_handle_out, auth_handle);
+  EXPECT_EQ(nv_index_out, nv_index);
+  EXPECT_EQ(size_out, size);
+  EXPECT_EQ(offset_out, offset);
+  EXPECT_EQ(auth_out.session_handle, TPM_RS_PW);
+  EXPECT_EQ(std::string(auth_out.hmac.buffer,
+                        auth_out.hmac.buffer + auth_out.hmac.size),
+            fake_password);
+}
+
+TEST_F(RealCommandParserTest, ParseCommandNvReadFailureWrongHeader) {
+  std::string command;
+  const TPMI_RH_NV_AUTH auth_handle = 111;
+  const std::string auth_handle_name = "auth_name";
+  const TPMI_RH_NV_INDEX nv_index = 222;
+  const std::string nv_index_name = "index_name";
+  const UINT16 size = 69;
+  const UINT16 offset = 449;
+  const std::string fake_password = "password";
+  PasswordAuthorizationDelegate delegate(fake_password);
+  ASSERT_EQ(Tpm::SerializeCommand_NV_Read(auth_handle, auth_handle_name,
+                                          nv_index, nv_index_name, size, offset,
+                                          &command, &delegate),
+            TPM_RC_SUCCESS);
+
+  // Breaks the tag.
+  command[0] = ~command[0];
+
+  TPMI_RH_NV_AUTH auth_handle_out = 0;
+  TPMI_RH_NV_INDEX nv_index_out = 0;
+  TPMS_AUTH_COMMAND auth_out;
+  UINT16 size_out = 0;
+  UINT16 offset_out = 0;
+  EXPECT_NE(
+      parser_.ParseCommandNvRead(&command, &auth_handle_out, &nv_index_out,
+                                 &auth_out, &size_out, &offset_out),
+      TPM_RC_SUCCESS);
+}
+
+TEST_F(RealCommandParserTest, ParseCommandNvReadFailureShortParam) {
+  std::string command;
+  const TPMI_RH_NV_AUTH auth_handle = 111;
+  const std::string auth_handle_name = "auth_name";
+  const TPMI_RH_NV_INDEX nv_index = 222;
+  const std::string nv_index_name = "index_name";
+  const UINT16 size = 69;
+  const UINT16 offset = 449;
+  const std::string fake_password = "password";
+  PasswordAuthorizationDelegate delegate(fake_password);
+  ASSERT_EQ(Tpm::SerializeCommand_NV_Read(auth_handle, auth_handle_name,
+                                          nv_index, nv_index_name, size, offset,
+                                          &command, &delegate),
+            TPM_RC_SUCCESS);
+
+  // Make it short.
+  command = ResizeSerializedBuffer(command, -2);
+
+  TPMI_RH_NV_AUTH auth_handle_out = 0;
+  TPMI_RH_NV_INDEX nv_index_out = 0;
+  TPMS_AUTH_COMMAND auth_out;
+  UINT16 size_out = 0;
+  UINT16 offset_out = 0;
+  EXPECT_EQ(
+      parser_.ParseCommandNvRead(&command, &auth_handle_out, &nv_index_out,
+                                 &auth_out, &size_out, &offset_out),
+      TPM_RC_INSUFFICIENT);
+}
+
+TEST_F(RealCommandParserTest, ParseCommandNvReadFailureParamTooLong) {
+  std::string command;
+  const TPMI_RH_NV_AUTH auth_handle = 111;
+  const std::string auth_handle_name = "auth_name";
+  const TPMI_RH_NV_INDEX nv_index = 222;
+  const std::string nv_index_name = "index_name";
+  const UINT16 size = 69;
+  const UINT16 offset = 449;
+  const std::string fake_password = "password";
+  PasswordAuthorizationDelegate delegate(fake_password);
+  ASSERT_EQ(Tpm::SerializeCommand_NV_Read(auth_handle, auth_handle_name,
+                                          nv_index, nv_index_name, size, offset,
+                                          &command, &delegate),
+            TPM_RC_SUCCESS);
+
+  // Make it short.
+  command = ResizeSerializedBuffer(command, 2);
+
+  TPMI_RH_NV_AUTH auth_handle_out = 0;
+  TPMI_RH_NV_INDEX nv_index_out = 0;
+  TPMS_AUTH_COMMAND auth_out;
+  UINT16 size_out = 0;
+  UINT16 offset_out = 0;
+  EXPECT_EQ(
+      parser_.ParseCommandNvRead(&command, &auth_handle_out, &nv_index_out,
+                                 &auth_out, &size_out, &offset_out),
+      TPM_RC_SIZE);
 }
 
 }  // namespace
