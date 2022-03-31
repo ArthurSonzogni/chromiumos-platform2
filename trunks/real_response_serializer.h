@@ -24,6 +24,8 @@ class TRUNKS_EXPORT RealResponseSerializer : public ResponseSerializer {
   void SerializeResponseGetCapability(TPMI_YES_NO has_more,
                                       const TPMS_CAPABILITY_DATA& cap_data,
                                       std::string* response) override;
+  void SerializeResponseNvRead(const TPM2B_MAX_NV_BUFFER& data,
+                               std::string* response) override;
 };
 }  // namespace trunks
 

@@ -4,10 +4,13 @@
 
 #include "trunks/real_response_serializer.h"
 
+#include <algorithm>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "trunks/command_parser.h"
+#include "trunks/password_authorization_delegate.h"
 #include "trunks/tpm_generated.h"
 
 namespace trunks {
@@ -87,6 +90,25 @@ TEST_F(RealResponseSerializerTest, SerializeResponseGetCapability) {
       TPM_RC_SUCCESS);
   EXPECT_EQ(more_out, more);
   EXPECT_EQ(memcmp(&data, &data_out, sizeof(data_out)), 0);
+}
+
+TEST_F(RealResponseSerializerTest, SerializeResponseNvRead) {
+  const std::string fake_data = "fake data";
+  const TPM2B_MAX_NV_BUFFER data = Make_TPM2B_MAX_NV_BUFFER(fake_data);
+
+  std::string response;
+  serializer_.SerializeResponseNvRead(data, &response);
+
+  TPM2B_MAX_NV_BUFFER data_out = {};
+
+  PasswordAuthorizationDelegate fake_password_authorization(
+      "password placeholder");
+
+  ASSERT_EQ(Tpm::ParseResponse_NV_Read(response, &data_out,
+                                       &fake_password_authorization),
+            TPM_RC_SUCCESS);
+  EXPECT_EQ(std::string(data_out.buffer, data_out.buffer + data_out.size),
+            fake_data);
 }
 
 }  // namespace

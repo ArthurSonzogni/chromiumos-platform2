@@ -6,6 +6,9 @@
 
 #include <string>
 
+#include <base/logging.h>
+
+#include "trunks/authorization_delegate.h"
 #include "trunks/command_parser.h"
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_export.h"
@@ -34,6 +37,30 @@ void RealResponseSerializer::SerializeResponseGetCapability(
   Serialize_UINT32(size, response);
   Serialize_TPM_RC(TPM_RC_SUCCESS, response);
   response->append(buffer);
+}
+
+void RealResponseSerializer::SerializeResponseNvRead(
+    const TPM2B_MAX_NV_BUFFER& data, std::string* response) {
+  std::string parameter;
+  Serialize_TPM2B_MAX_NV_BUFFER(data, &parameter);
+  // For now, only password session is supported, so just hard-code the logic.
+  TPMS_AUTH_RESPONSE auth = {};
+  auth.session_attributes = kContinueSession;
+  std::string auth_section;
+  Serialize_TPMS_AUTH_RESPONSE(auth, &auth_section);
+  std::string parameter_size;
+  Serialize_UINT32(parameter.size(), &parameter_size);
+
+  const UINT32 size = kHeaderSize + parameter_size.size() + parameter.size() +
+                      auth_section.size();
+  // Serialize header.
+  std::string header;
+  // Session is required.
+  Serialize_TPMI_ST_COMMAND_TAG(TPM_ST_SESSIONS, &header);
+  Serialize_UINT32(size, &header);
+  Serialize_TPM_RC(TPM_RC_SUCCESS, &header);
+
+  *response = header + parameter_size + parameter + auth_section;
 }
 
 }  // namespace trunks

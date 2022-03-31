@@ -26,6 +26,10 @@ class TRUNKS_EXPORT ResponseSerializer {
       TPMI_YES_NO has_more,
       const TPMS_CAPABILITY_DATA& cap_data,
       std::string* response) = 0;
+
+  // Serializes the response for `TPM2_NV_Read`.
+  virtual void SerializeResponseNvRead(const TPM2B_MAX_NV_BUFFER& data,
+                                       std::string* response) = 0;
 };
 }  // namespace trunks
 

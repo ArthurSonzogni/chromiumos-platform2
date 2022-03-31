@@ -27,6 +27,10 @@ class MockResponseSerializer : public ResponseSerializer {
               SerializeResponseGetCapability,
               (TPMI_YES_NO, const TPMS_CAPABILITY_DATA&, std::string*),
               (override));
+  MOCK_METHOD(void,
+              SerializeResponseNvRead,
+              (const TPM2B_MAX_NV_BUFFER&, std::string*),
+              (override));
 };
 }  // namespace trunks
 
