@@ -26,6 +26,8 @@ using ::testing::StrictMock;
 using ::testing::WithArgs;
 
 constexpr char kFakeCertificate[] = "fake cert";
+constexpr attestation::AttestationStatus kFailedStatus =
+    attestation::STATUS_UNEXPECTED_DEVICE_ERROR;
 
 }  // namespace
 
@@ -43,6 +45,12 @@ class AttestedVirtualEndorsementTest : public testing::Test {
                           attestation::GetCertificateReply* reply) {
     reply->set_key_blob(request.SerializeAsString());
     reply->set_certificate(kFakeCertificate);
+    reply->set_status(attestation::STATUS_SUCCESS);
+    return true;
+  }
+  bool FakeGetCertificateWithFailedStatus(
+      attestation::GetCertificateReply* reply) {
+    reply->set_status(kFailedStatus);
     return true;
   }
   bool FakeGetCertificateWithError(brillo::ErrorPtr* err) {
@@ -72,10 +80,18 @@ TEST_F(AttestedVirtualEndorsementTest, Success) {
   EXPECT_TRUE(request.shall_trigger_enrollment());
 }
 
-TEST_F(AttestedVirtualEndorsementTest, Failure) {
+TEST_F(AttestedVirtualEndorsementTest, FailureDBusError) {
   EXPECT_CALL(mock_attestation_proxy_, GetCertificate(_, _, _, _))
       .WillOnce(WithArgs<2>(Invoke(
           this, &AttestedVirtualEndorsementTest::FakeGetCertificateWithError)));
+  EXPECT_NE(endorsemnet_.Create(), trunks::TPM_RC_SUCCESS);
+}
+
+TEST_F(AttestedVirtualEndorsementTest, FailureAttestationService) {
+  EXPECT_CALL(mock_attestation_proxy_, GetCertificate(_, _, _, _))
+      .WillOnce(
+          WithArgs<1>(Invoke(this, &AttestedVirtualEndorsementTest::
+                                       FakeGetCertificateWithFailedStatus)));
   EXPECT_NE(endorsemnet_.Create(), trunks::TPM_RC_SUCCESS);
 }
 

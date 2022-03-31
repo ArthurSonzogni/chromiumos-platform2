@@ -48,6 +48,11 @@ trunks::TPM_RC AttestedVirtualEndorsement::Create() {
                << "D-Bus error: " << error_ptr->GetMessage().c_str();
     return trunks::TPM_RC_FAILURE;
   }
+  if (reply.status() != ::attestation::STATUS_SUCCESS) {
+    LOG(ERROR) << __func__
+               << "Failed to get certificate; status: " << reply.status();
+    return trunks::TPM_RC_FAILURE;
+  }
   // Extract the key, blob, and the certificate.
   blob_ = reply.key_blob();
   certificate_ = reply.certificate();
