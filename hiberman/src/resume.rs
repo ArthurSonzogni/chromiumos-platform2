@@ -23,7 +23,8 @@ use crate::hibermeta::{
 };
 use crate::hiberutil::ResumeOptions;
 use crate::hiberutil::{
-    get_page_size, lock_process_memory, path_to_stateful_block, HibernateError, BUFFER_PAGES,
+    activate_physical_vg, get_page_size, lock_process_memory, path_to_stateful_block,
+    HibernateError, BUFFER_PAGES,
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
@@ -54,6 +55,8 @@ impl ResumeConductor {
     /// the case of resume failure, an error is returned.
     pub fn resume(&mut self, options: ResumeOptions) -> Result<()> {
         info!("Beginning resume");
+        // Ensure the persistent version of the stateful block device is available.
+        let _rw_volume_group = activate_physical_vg()?;
         self.options = options;
         // Fire up the dbus server.
         let mut dbus_connection = HiberDbusConnection::new()?;

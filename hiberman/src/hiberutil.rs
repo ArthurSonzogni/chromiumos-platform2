@@ -4,10 +4,14 @@
 
 //! Implement common functions and definitions used throughout the app and library.
 
+use std::fs;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io::BufReader;
 use std::process::Command;
 
 use anyhow::{Context, Result};
-use log::{error, warn};
+use log::{error, info, warn};
 use thiserror::Error as ThisError;
 
 /// Define the number of pages in a larger chunk used to read and write the
@@ -67,6 +71,9 @@ pub enum HibernateError {
     /// Snapshot ioctl error.
     #[error("Snapshot ioctl error: {0}: {1}")]
     SnapshotIoctlError(String, sys_util::Error),
+    /// Stateful partition not found.
+    #[error("Stateful partition not found")]
+    StatefulPartitionNotFoundError(),
 }
 
 /// Options taken from the command line affecting hibernate.
@@ -118,13 +125,70 @@ pub fn get_total_memory_pages() -> usize {
     pagecount
 }
 
-/// Return the underlying partition device the hibernate files reside on.
-/// Note: this still needs to return the real partition, even if stateful
-/// is mounted on a dm-snapshot. Otherwise, resume activities won't work
-/// across the transition.
+/// Returns the block device that the unencrypted stateful file system resides
+/// on. This function always returns the true RW block device, even if stateful
+/// is actually mounted on a dm-snapshot device where writes are being diverted.
+/// This is needed so that hibernate logs and data can be persisted across a
+/// successful resume.
 pub fn path_to_stateful_part() -> Result<String> {
+    let mounted_stateful = path_to_mounted_stateful_part()?;
+
+    // If the snapshot is not active, just use the stateful mount block device
+    // directly.
+    if !is_snapshot_active() {
+        return Ok(mounted_stateful);
+    }
+
+    // Ok, so there is a snapshot active. Try to get the volume group name for
+    // the stateful partition (by going directly up from the physical block
+    // device, rather than down from the mount). This is also a test of whether
+    // or not we're on an LVM-enabled system. If we fail to get the VG name,
+    // this must not be an LVM-enabled system, so just return partition one.
+    let partition1 = stateful_block_partition_one()?;
+    let vg_name = match get_vg_name(&partition1) {
+        Ok(vg) => vg,
+        Err(_) => {
+            return Ok(partition1);
+        }
+    };
+
+    Ok(format!("/dev/{}/unencrypted", vg_name))
+}
+
+/// Look through /proc/mounts to find the block device supporting the
+/// unencrypted stateful partition.
+fn path_to_mounted_stateful_part() -> Result<String> {
+    // Go look through the mounts to see where /mnt/stateful_partition is.
+    let f = File::open("/proc/mounts")?;
+    let buf_reader = BufReader::new(f);
+    for line in buf_reader.lines().flatten() {
+        let mut split = line.split_whitespace();
+        let blk = split.next();
+        let path = split.next();
+        if let Some(path) = path {
+            if path == "/mnt/stateful_partition" {
+                if let Some(blk) = blk {
+                    return Ok(blk.to_string());
+                }
+            }
+        }
+    }
+
+    Err(HibernateError::StatefulPartitionNotFoundError())
+        .context("Failed to find mounted stateful partition")
+}
+
+/// Return the path to partition one (stateful) on the root block device.
+fn stateful_block_partition_one() -> Result<String> {
     let rootdev = path_to_stateful_block()?;
-    Ok(format!("{}p1", rootdev))
+    let last = rootdev.chars().last();
+    if let Some(last) = last {
+        if last.is_numeric() {
+            return Ok(format!("{}p1", rootdev));
+        }
+    }
+
+    Ok(format!("{}1", rootdev))
 }
 
 /// Determine the path to the block device containing the stateful partition.
@@ -135,6 +199,80 @@ pub fn path_to_stateful_block() -> Result<String> {
         .output()
         .context("Cannot get rootdev")?;
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Get the volume group name for the stateful block device.
+fn get_vg_name(blockdev: &str) -> Result<String> {
+    let output = Command::new("/sbin/pvdisplay")
+        .args(["-C", "--noheadings", "-o", "vg_name", blockdev])
+        .output()
+        .context("Cannot run pvdisplay to get volume group name")?;
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Determines if the stateful-rw snapshot is active, indicating a resume boot.
+fn is_snapshot_active() -> bool {
+    fs::metadata("/dev/mapper/stateful-rw").is_ok()
+}
+
+pub struct ActivatedVolumeGroup {
+    vg_name: Option<String>,
+}
+
+impl ActivatedVolumeGroup {
+    fn new(vg_name: String) -> Result<Self> {
+        // If it already exists, don't reactivate it.
+        if fs::metadata(format!("/dev/{}", vg_name)).is_ok() {
+            return Ok(Self { vg_name: None });
+        }
+
+        Command::new("/sbin/vgchange")
+            .args(["-ay", &vg_name])
+            .output()
+            .context("Cannot activate volume group")?;
+
+        Ok(Self {
+            vg_name: Some(vg_name),
+        })
+    }
+}
+
+impl Drop for ActivatedVolumeGroup {
+    fn drop(&mut self) {
+        if let Some(vg_name) = &self.vg_name {
+            let r = Command::new("/sbin/vgchange")
+                .args(["-an", vg_name])
+                .output();
+
+            match r {
+                Ok(_) => {
+                    info!("Deactivated vg {}", vg_name);
+                }
+                Err(e) => {
+                    warn!("Failed to deactivate VG {}: {}", vg_name, e);
+                }
+            }
+        }
+    }
+}
+
+pub fn activate_physical_vg() -> Result<Option<ActivatedVolumeGroup>> {
+    if !is_snapshot_active() {
+        return Ok(None);
+    }
+
+    let partition1 = stateful_block_partition_one()?;
+    // Assume that a failure to get the VG name indicates a non-LVM system.
+    let vg_name = match get_vg_name(&partition1) {
+        Ok(vg) => vg,
+        Err(_) => {
+            return Ok(None);
+        }
+    };
+
+    let vg = ActivatedVolumeGroup::new(vg_name)?;
+    Ok(Some(vg))
 }
 
 pub struct LockedProcessMemory {}
