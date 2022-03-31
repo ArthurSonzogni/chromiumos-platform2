@@ -50,9 +50,10 @@ class SandboxedInit {
 
   ~SandboxedInit();
 
+  using Launcher = base::OnceCallback<int()>;
+
   // To be run inside the jail. Never returns.
-  [[noreturn]] void RunInsideSandboxNoReturn(
-      base::OnceCallback<int()> launcher);
+  [[noreturn]] void RunInsideSandboxNoReturn(Launcher launcher);
 
   // Reads and returns the exit code from |*ctrl_fd|. Returns -1 immediately if
   // no data is available yet. Closes |*ctrl_fd| once the exit code has been
@@ -73,8 +74,8 @@ class SandboxedInit {
   static int WStatusToStatus(int wstatus);
 
  private:
-  int RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd);
-  pid_t StartLauncher(base::OnceCallback<int()> launcher);
+  static int RunInitLoop(pid_t launcher_pid, base::ScopedFD ctrl_fd);
+  pid_t StartLauncher(Launcher launcher);
 
   base::ScopedFD in_fd_, out_fd_, err_fd_, ctrl_fd_;
 };

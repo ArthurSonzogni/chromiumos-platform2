@@ -24,11 +24,13 @@
 namespace cros_disks {
 namespace {
 
-// Signal handler that forwards the received signal to all children processes.
+// Signal handler that forwards the received signal to all processes.
 void SigTerm(int sig) {
-  if (kill(-1, sig) < 0) {
+  RAW_CHECK(sig == SIGTERM);
+  RAW_LOG(INFO, "The 'init' process received SIGTERM");
+  if (kill(-1, SIGTERM) < 0) {
     const int err = errno;
-    RAW_LOG(ERROR, "Cannot broadcast signal");
+    RAW_LOG(ERROR, "Cannot broadcast SIGTERM");
     _exit(err + 64);
   }
 }
@@ -63,8 +65,7 @@ SandboxedInit::SandboxedInit(base::ScopedFD in_fd,
 
 SandboxedInit::~SandboxedInit() = default;
 
-[[noreturn]] void SandboxedInit::RunInsideSandboxNoReturn(
-    base::OnceCallback<int()> launcher) {
+[[noreturn]] void SandboxedInit::RunInsideSandboxNoReturn(Launcher launcher) {
   // To run our custom init that handles daemonized processes inside the
   // sandbox we have to set up fork/exec ourselves. We do error-handling
   // the "minijail-style" - abort if something not right.
@@ -74,122 +75,116 @@ SandboxedInit::~SandboxedInit() = default;
   // to inherit right FDs.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
-  if (dup2(in_fd_.get(), STDIN_FILENO) < 0) {
+  if (dup2(in_fd_.get(), STDIN_FILENO) < 0)
     PLOG(FATAL) << "Cannot dup2 stdin";
-  }
 
-  if (dup2(out_fd_.get(), STDOUT_FILENO) < 0) {
+  if (dup2(out_fd_.get(), STDOUT_FILENO) < 0)
     PLOG(FATAL) << "Cannot dup2 stdout";
-  }
 
-  if (dup2(err_fd_.get(), STDERR_FILENO) < 0) {
+  if (dup2(err_fd_.get(), STDERR_FILENO) < 0)
     PLOG(FATAL) << "Cannot dup2 stderr";
-  }
 
   // Set an identifiable process name.
-  if (prctl(PR_SET_NAME, "cros-disks-INIT") < 0) {
-    PLOG(WARNING) << "Can't set init's process name";
-  }
+  if (prctl(PR_SET_NAME, "cros-disks-INIT") < 0)
+    PLOG(WARNING) << "Cannot set init's process name";
 
   // Close unused file descriptors.
   in_fd_.reset();
   out_fd_.reset();
   err_fd_.reset();
 
-  // Avoid leaking file descriptor into launcher process.
-  PCHECK(base::SetCloseOnExec(ctrl_fd_.get()));
-
   // Setup the SIGTERM signal handler.
-  if (signal(SIGTERM, SigTerm) == SIG_ERR) {
-    PLOG(FATAL) << "Cannot install signal handler";
-  }
+  if (signal(SIGTERM, SigTerm) == SIG_ERR)
+    PLOG(FATAL) << "Cannot install SIGTERM signal handler";
 
   // PID of the launcher process inside the jail PID namespace (e.g. PID 2).
-  pid_t root_pid = StartLauncher(std::move(launcher));
-  CHECK_LT(0, root_pid);
+  pid_t launcher_pid = StartLauncher(std::move(launcher));
+  CHECK_LT(0, launcher_pid);
 
-  _exit(RunInitLoop(root_pid, std::move(ctrl_fd_)));
+  _exit(RunInitLoop(launcher_pid, std::move(ctrl_fd_)));
   NOTREACHED();
 }
 
-int SandboxedInit::RunInitLoop(pid_t root_pid, base::ScopedFD ctrl_fd) {
+int SandboxedInit::RunInitLoop(pid_t launcher_pid, base::ScopedFD ctrl_fd) {
+  // Set up the SIGPIPE signal handler. Since we write to the control pipe, we
+  // don't want this 'init' process to be killed by a SIGPIPE.
+  if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+    PLOG(FATAL) << "Cannot install SIGPIPE signal handler";
+
+  DCHECK(ctrl_fd.is_valid());
   CHECK(base::SetNonBlocking(ctrl_fd.get()));
 
-  // Most of this is mirroring minijail's embedded "init" (exit status handling)
-  // with addition of piping the "root" status code to the calling process.
-
-  // By now it's unlikely something to go wrong here, so disconnect
-  // from in/out.
+  // Close stdin and stdout. Keep stderr open, so that error messages can still
+  // be logged.
   IGNORE_EINTR(close(STDIN_FILENO));
   IGNORE_EINTR(close(STDOUT_FILENO));
-  IGNORE_EINTR(close(STDERR_FILENO));
 
   // This loop will only end when either there are no processes left inside
   // our PID namespace or we get a signal.
   int last_failure_code = 0;
 
   while (true) {
-    // Wait for any child to terminate.
+    // Wait for any child process to terminate.
     int wstatus;
     const pid_t pid = HANDLE_EINTR(wait(&wstatus));
 
     if (pid < 0) {
       if (errno == ECHILD) {
-        // No more child
-        CHECK(!ctrl_fd.is_valid());
-        VLOG(1) << "PID namespace 'init' process finishing with exit code "
+        // No more child. By then, we should have closed the control pipe.
+        DCHECK(!ctrl_fd.is_valid());
+        VLOG(1) << "The 'init' process is finishing with exit code "
                 << last_failure_code;
         return last_failure_code;
       }
 
-      PLOG(FATAL) << "Cannot wait for child processes";
+      PLOG(FATAL) << "The 'init' process cannot wait for child processes";
     }
 
+    // A child process finished.
     // Convert wait status to exit code.
     const int exit_code = WStatusToStatus(wstatus);
-    if (exit_code < 0)
-      continue;
+    DCHECK_GE(exit_code, 0);
+    VLOG(1) << "Child process " << pid
+            << " of the 'init' process finished with exit code" << exit_code;
 
-    VLOG(1) << "Process " << pid << " in PID namespace finished with exit code "
-            << exit_code;
-
-    // A child process finished.
     if (exit_code > 0)
       last_failure_code = exit_code;
 
-    // Was it the launcher?
-    if (pid != root_pid)
+    // Was it the 'launcher' process?
+    if (pid != launcher_pid)
       continue;
 
-    // Write the launcher's exit code to the control pipe.
+    // Write the 'launcher' process's exit code to the control pipe.
+    DCHECK(ctrl_fd.is_valid());
     const ssize_t written =
         HANDLE_EINTR(write(ctrl_fd.get(), &exit_code, sizeof(exit_code)));
     if (written != sizeof(exit_code)) {
-      PLOG(ERROR) << "Cannot write exit code " << exit_code
+      PLOG(FATAL) << "Cannot write exit code " << exit_code
+                  << " of the 'launcher' process " << launcher_pid
                   << " to control pipe " << ctrl_fd.get();
-      return MINIJAIL_ERR_INIT;
     }
 
+    // Close the control pipe.
     ctrl_fd.reset();
   }
 }
 
-pid_t SandboxedInit::StartLauncher(base::OnceCallback<int()> launcher) {
-  pid_t exec_child = fork();
+pid_t SandboxedInit::StartLauncher(Launcher launcher) {
+  const pid_t pid = fork();
+  if (pid < 0)
+    PLOG(FATAL) << "Cannot fork";
 
-  if (exec_child < 0) {
-    PLOG(FATAL) << "Can't fork";
-  }
+  if (pid > 0)
+    return pid;  // In parent process
 
-  if (exec_child == 0) {
-    // In child process
-    // Launch the invoked program.
-    _exit(std::move(launcher).Run());
-    NOTREACHED();
-  }
+  // In launcher process.
+  // Avoid leaking file descriptor into launcher process.
+  DCHECK(ctrl_fd_.is_valid());
+  ctrl_fd_.reset();
 
-  // In parent process
-  return exec_child;
+  // Launch the invoked program.
+  _exit(std::move(launcher).Run());
+  NOTREACHED();
 }
 
 int SandboxedInit::PollLauncherStatus(base::ScopedFD* const ctrl_fd) {
