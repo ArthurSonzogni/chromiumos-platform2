@@ -157,4 +157,37 @@ TPM_RC RealCommandParser::ParseCommandNvRead(std::string* command,
   return command->empty() ? TPM_RC_SUCCESS : TPM_RC_SIZE;
 }
 
+TPM_RC RealCommandParser::ParseCommandNvReadPublic(std::string* command,
+                                                   TPMI_RH_NV_INDEX* nv_index) {
+  TPMI_ST_COMMAND_TAG tag;
+  UINT32 size;
+  TPM_CC cc;
+  TPM_RC rc = ParseHeader(command, &tag, &size, &cc);
+  if (rc) {
+    return rc;
+  }
+
+  if (cc != TPM_CC_NV_ReadPublic) {
+    LOG(DFATAL) << __func__
+                << ": Expecting command code: " << TPM_CC_GetCapability
+                << "; got " << cc;
+    return TPM_RC_COMMAND_CODE;
+  }
+
+  // Session is not supported.
+  if (tag != TPM_ST_NO_SESSIONS) {
+    return TPM_RC_BAD_TAG;
+  }
+
+  rc = Parse_TPMI_RH_NV_INDEX(command, nv_index, nullptr);
+  if (rc) {
+    return rc;
+  }
+
+  if (!command->empty()) {
+    rc = TPM_RC_SIZE;
+  }
+  return rc;
+}
+
 }  // namespace trunks

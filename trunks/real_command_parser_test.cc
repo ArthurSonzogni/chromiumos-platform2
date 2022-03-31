@@ -414,6 +414,67 @@ TEST_F(RealCommandParserTest, ParseCommandNvReadFailureParamTooLong) {
       TPM_RC_SIZE);
 }
 
+TEST_F(RealCommandParserTest, ParseCommandNvReadPublicSuccess) {
+  std::string command;
+  const TPMI_RH_NV_INDEX nv_index = 222;
+  ASSERT_EQ(Tpm::SerializeCommand_NV_ReadPublic(
+                nv_index, /*nv_index_name=*/"unused name", &command,
+                /*authorization_delegate=*/nullptr),
+            TPM_RC_SUCCESS);
+  TPMI_RH_NV_INDEX nv_index_out = 0;
+  EXPECT_EQ(parser_.ParseCommandNvReadPublic(&command, &nv_index_out),
+            TPM_RC_SUCCESS);
+  EXPECT_EQ(nv_index_out, nv_index);
+}
+
+TEST_F(RealCommandParserTest, ParseCommandNvReadPublicFailureWrongHeader) {
+  std::string command;
+  const TPMI_RH_NV_INDEX nv_index = 222;
+  ASSERT_EQ(Tpm::SerializeCommand_NV_ReadPublic(
+                nv_index, /*nv_index_name=*/"unused name", &command,
+                /*authorization_delegate=*/nullptr),
+            TPM_RC_SUCCESS);
+
+  // Breaks the tag.
+  command[0] = ~command[0];
+
+  TPMI_RH_NV_INDEX nv_index_out = 0;
+  EXPECT_NE(parser_.ParseCommandNvReadPublic(&command, &nv_index_out),
+            TPM_RC_SUCCESS);
+}
+
+TEST_F(RealCommandParserTest, ParseCommandNvReadPublicFailureShortParam) {
+  std::string command;
+  const TPMI_RH_NV_INDEX nv_index = 222;
+  ASSERT_EQ(Tpm::SerializeCommand_NV_ReadPublic(
+                nv_index, /*nv_index_name=*/"unused name", &command,
+                /*authorization_delegate=*/nullptr),
+            TPM_RC_SUCCESS);
+
+  // Make it short.
+  command = ResizeSerializedBuffer(command, -1);
+
+  TPMI_RH_NV_INDEX nv_index_out = 0;
+  EXPECT_EQ(parser_.ParseCommandNvReadPublic(&command, &nv_index_out),
+            TPM_RC_INSUFFICIENT);
+}
+
+TEST_F(RealCommandParserTest, ParseCommandNvReadPublicFailureParamTooLong) {
+  std::string command;
+  const TPMI_RH_NV_INDEX nv_index = 222;
+  ASSERT_EQ(Tpm::SerializeCommand_NV_ReadPublic(
+                nv_index, /*nv_index_name=*/"unused name", &command,
+                /*authorization_delegate=*/nullptr),
+            TPM_RC_SUCCESS);
+
+  // Make it short.
+  command = ResizeSerializedBuffer(command, 1);
+
+  TPMI_RH_NV_INDEX nv_index_out = 0;
+  EXPECT_EQ(parser_.ParseCommandNvReadPublic(&command, &nv_index_out),
+            TPM_RC_SIZE);
+}
+
 }  // namespace
 
 }  // namespace trunks

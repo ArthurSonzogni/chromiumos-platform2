@@ -46,6 +46,13 @@ class TRUNKS_EXPORT CommandParser {
                                     TPMS_AUTH_COMMAND* auth,
                                     UINT16* size,
                                     UINT16* offset) = 0;
+
+  // Parses a `TPM2_NV_ReadPublic` command, and set `nv_index` to the
+  // corresponding value in the command. If `command` doesn't have
+  // `TPM2_NV_ReadPublic` command code, the error handling is implementation
+  // defined.
+  virtual TPM_RC ParseCommandNvReadPublic(std::string* command,
+                                          TPMI_RH_NV_INDEX* nv_index) = 0;
 };
 
 }  // namespace trunks
