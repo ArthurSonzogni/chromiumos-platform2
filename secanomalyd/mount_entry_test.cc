@@ -96,4 +96,12 @@ TEST(MountEntryTest, HashReplacedSuccessfully) {
   ASSERT_EQ(e.dest().value(), "/home/root/<hash>/android-data/data");
 }
 
+TEST(MountEntryTest, IsKnownMountIncludesRunArcSharedMountsData) {
+  MountEntry e(
+      "/dev/mmcblk1p1 /run/arc/shared_mounts/data ext4 "
+      "rw,seclabel,nosuid,nodev");
+
+  ASSERT_TRUE(e.IsKnownMount());
+}
+
 }  // namespace secanomalyd

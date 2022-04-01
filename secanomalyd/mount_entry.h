@@ -37,6 +37,11 @@ class MountEntry {
   bool IsDestInUsrLocal() const;
   bool IsNamespaceBindMount() const;
 
+  // IsKnownMount() allows us to avoid polluting our reports with W+X mounts
+  // that we know are not high-risk. Each mount that we allow is covered by
+  // a bug tracking its fix.
+  bool IsKnownMount() const;
+
   const base::FilePath& src() const { return src_; }
   const base::FilePath& dest() const { return dest_; }
   const std::string& type() const { return type_; }

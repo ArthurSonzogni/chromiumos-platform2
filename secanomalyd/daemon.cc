@@ -85,11 +85,14 @@ void Daemon::DoWXMountCheck() {
           continue;
         }
 
-        if (e.IsNamespaceBindMount()) {
+        if (e.IsNamespaceBindMount() || e.IsKnownMount()) {
           // Namespace mounts happen when a namespace file in /proc/<pid>/ns/
           // gets bind-mounted somewhere else. These mounts can be W+X but are
           // not concerning since they consist of a single file and these files
           // cannot be executed.
+          // There are other W+X mounts that are low-risk (e.g. only exist on
+          // the login screen) and that we're in the process of fixing. These
+          // are considered "known" W+X mounts and are also skipped.
           VLOG(1) << "Not recording W+X mount at '" << e.dest() << "', type "
                   << e.type();
           continue;

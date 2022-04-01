@@ -33,6 +33,14 @@ const std::vector<base::FilePath> kDestPathsToFilter = {
     base::FilePath("/media/removable"),
 };
 
+const std::vector<base::FilePath> kKnownMounts = {
+    // b/219574442: Make /run/arc/shared_mounts/data not W+X.
+    // /run/arc/shared_mounts/data exists temporarily after the ARC++
+    // mini-container starts but before any users log in. Therefore, it's not
+    // exposed to any user session.
+    base::FilePath("/run/arc/shared_mounts/data"),
+};
+
 const base::FilePath kUsrLocal = base::FilePath("/usr/local");
 
 const re2::RE2 sha1_re("[a-f0-9]{40}");
@@ -90,6 +98,11 @@ bool MountEntry::IsDestInUsrLocal() const {
 
 bool MountEntry::IsNamespaceBindMount() const {
   return this->type() == "nsfs";
+}
+
+bool MountEntry::IsKnownMount() const {
+  return std::find(kKnownMounts.begin(), kKnownMounts.end(), this->dest()) !=
+         kKnownMounts.end();
 }
 
 std::string MountEntry::ShortDescription() const {
