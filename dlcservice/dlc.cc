@@ -777,7 +777,8 @@ void DlcBase::ChangeState(DlcState::State state) {
       NOTREACHED();
   }
 
-  LOG(INFO) << "Changing DLC=" << id_ << " state to " << state_.state();
+  LOG(INFO) << "Changing DLC=" << id_ << " state to "
+            << DlcState::State_Name(state_.state());
   SystemState::Get()->state_change_reporter()->DlcStateChanged(state_);
 }
 
