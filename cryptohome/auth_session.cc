@@ -130,6 +130,12 @@ AuthSession::AuthSession(
   } else {
     converter_->VaultKeysetsToAuthFactors(username_, label_to_auth_factor_);
   }
+
+  // If the Auth Session is started for an ephemeral user, we always start in an
+  // authenticated state.
+  if (is_ephemeral_user_) {
+    status_ = AuthStatus::kAuthStatusAuthenticated;
+  }
 }
 
 void AuthSession::AuthSessionTimedOut() {

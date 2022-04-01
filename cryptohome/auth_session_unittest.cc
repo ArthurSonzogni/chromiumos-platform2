@@ -371,8 +371,7 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
                            &auth_factor_manager_, &user_secret_stash_storage_);
 
   // Test.
-  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+  EXPECT_THAT(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
   EXPECT_FALSE(auth_session.user_exists());
   ASSERT_TRUE(auth_session.timer_.IsRunning());
 
@@ -387,8 +386,7 @@ TEST_F(AuthSessionTest, AddCredentialNewEphemeralUser) {
   // Verify.
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               auth_session.AddCredentials(add_cred_request));
-  EXPECT_EQ(auth_session.GetStatus(),
-            AuthStatus::kAuthStatusFurtherFactorRequired);
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
 }
 
 // Test if AuthSession correctly updates existing credentials for a new user.
