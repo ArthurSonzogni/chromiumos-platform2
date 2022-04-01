@@ -324,7 +324,7 @@ class CrosConfigHostTest(unittest.TestCase):
                        key_id='SOME',
                        have_image=True,
                        bios_build_target=None,
-                       ec_build_target=None,
+                       ec_build_target='experimental/some2',
                        main_image_uri='',
                        main_rw_image_uri='',
                        ec_image_uri='',

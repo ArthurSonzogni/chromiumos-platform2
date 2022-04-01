@@ -192,6 +192,8 @@ class CrosConfigJson(CrosConfigBaseImpl):
         if build_config:
           bios_build_target = config.GetValue(build_config, 'coreboot')
           ec_build_target = config.GetValue(build_config, 'ec')
+          if not ec_build_target:
+            ec_build_target = config.GetValue(build_config, 'zephyr-ec')
         else:
           bios_build_target, ec_build_target = None, None
 

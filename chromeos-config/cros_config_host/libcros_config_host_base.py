@@ -42,7 +42,8 @@ BaseFile = namedtuple('BaseFile', ['source', 'dest'])
 #       will be obtained from the customization_id in VPD when needed. Signing
 #       instructions should still be generated for this model.
 #   bios_build_target: Build target to use to build the BIOS, or None if none
-#   ec_build_target: Build target to use to build the EC, or None if none
+#   ec_build_target: Build target to use to build the EC (either CrOS EC or
+#       zephyr EC), or None if none
 #   main_image_uri: URI to use to obtain main firmware image (e.g.
 #       'bcs://Caroline.2017.21.1.tbz2')
 #   ec_image_uri: URI to use to obtain the EC (Embedded Controller) firmware
