@@ -90,7 +90,6 @@ _HEADER_FILE_INCLUDES = """
 
 #include <base/callback_forward.h>
 #include <base/check.h>
-#include <base/macros.h>
 
 #include "trunks/trunks_export.h"
 """
@@ -101,7 +100,6 @@ _IMPLEMENTATION_FILE_INCLUDES = """
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/sys_byteorder.h>
