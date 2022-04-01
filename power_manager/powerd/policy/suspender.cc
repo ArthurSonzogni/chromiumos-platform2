@@ -587,6 +587,11 @@ void Suspender::StartRequest() {
   SuspendImminent proto;
   proto.set_suspend_id(suspend_request_id_);
   proto.set_reason(suspend_request_reason_);
+  if (suspend_request_flavor_ == SuspendFlavor::RESUME_FROM_DISK_PREPARE) {
+    proto.set_action(SuspendImminent_Action_HIBERNATE_RESUME);
+  } else {
+    proto.set_action(SuspendImminent_Action_SUSPEND);
+  }
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendImminentSignal, proto);
 }
 
