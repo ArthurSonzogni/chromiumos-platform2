@@ -88,7 +88,7 @@ class FakeDev : public DevInterface {
   std::map<HpsBank, size_t> bank_len_;   // Count of writes to banks.
   std::map<HpsBank, bool> bank_erased_;  // Whether bank has been erased
   Stage stage_;                          // Current stage of the device
-  uint16_t fault_ = 0;                   // Fault bits
+  RError fault_ = RError::kNone;         // Fault (error) value
   uint16_t feature_on_ = 0;              // Enabled features.
   uint16_t bank_ = 0;                    // Current memory bank readiness
   uint16_t flags_ = 0;                   // Behaviour flags

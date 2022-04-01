@@ -158,70 +158,42 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
       return base::JoinString(ret, "|");
 
     case HpsReg::kError:
-      if (val & RError::kBufORun) {
-        ret.push_back("kBufORun");
-        val ^= RError::kBufORun;
+      switch (val) {
+        case RError::kNone:
+          return "kNone";
+        case RError::kHostI2cUnderrun:
+          return "kHostI2cUnderrun";
+        case RError::kMcuFlashWriteError:
+          return "kMcuFlashWriteError";
+        case RError::kPanic:
+          return "kPanic";
+        case RError::kHostI2cBusError:
+          return "kHostI2cBusError";
+        case RError::kHostI2cOverrun:
+          return "kHostI2cOverrun";
+        case RError::kCamera:
+          return "kCamera";
+        case RError::kSpiFlash:
+          return "kSpiFlash";
+        case RError::kHostI2cBadRequest:
+          return "kHostI2cBadRequest";
+        case RError::kBufferNotAvailable:
+          return "kBufferNotAvailable";
+        case RError::kBufferOverrun:
+          return "kBufferOverrun";
+        case RError::kSpiFlashNotVerified:
+          return "kSpiFlashNotVerified";
+        case RError::kTfliteFailure:
+          return "kTfliteFailure";
+        case RError::kSelfTestFailed:
+          return "kSelfTestFailed";
+        case RError::kFpgaMcuCommError:
+          return "kFpgaMcuCommError";
+        case RError::kFpgaTimeout:
+          return "kFpgaTimeout";
+        default:
+          return base::StringPrintf("0x%04x", val);
       }
-      if (val & RError::kBufNAvail) {
-        ret.push_back("kBufNAvail");
-        val ^= RError::kBufNAvail;
-      }
-      if (val & RError::kI2cBadReq) {
-        ret.push_back("kI2cBadReq");
-        val ^= RError::kI2cBadReq;
-      }
-      if (val & RError::kSpiFlash) {
-        ret.push_back("kSpiFlash");
-        val ^= RError::kSpiFlash;
-      }
-      if (val & RError::kCamera) {
-        ret.push_back("kCamera");
-        val ^= RError::kCamera;
-      }
-      if (val & RError::kI2cORun) {
-        ret.push_back("kI2cORun");
-        val ^= RError::kI2cORun;
-      }
-      if (val & RError::kI2cBErr) {
-        ret.push_back("kI2cBErr");
-        val ^= RError::kI2cBErr;
-      }
-      if (val & RError::kPanic) {
-        ret.push_back("kPanic");
-        val ^= RError::kPanic;
-      }
-      if (val & RError::kMcuFlash) {
-        ret.push_back("kMcuFlash");
-        val ^= RError::kMcuFlash;
-      }
-      if (val & RError::kI2cURun) {
-        ret.push_back("kI2cURun");
-        val ^= RError::kI2cURun;
-      }
-      if (val & RError::kSpiNotVer) {
-        ret.push_back("kSpiNotVerified");
-        val ^= RError::kSpiNotVer;
-      }
-      if (val & RError::kTflite) {
-        ret.push_back("kTflite");
-        val ^= RError::kTflite;
-      }
-      if (val & RError::kSelftest) {
-        ret.push_back("kSelftest");
-        val ^= RError::kSelftest;
-      }
-      if (val & RError::kFpgaComm) {
-        ret.push_back("kFpgaComm");
-        val ^= RError::kFpgaComm;
-      }
-      if (val & RError::kFpgaTime) {
-        ret.push_back("kFpgaTime");
-        val ^= RError::kFpgaTime;
-      }
-      if (val) {
-        ret.push_back(base::StringPrintf("0x%x", val));
-      }
-      return base::JoinString(ret, "|");
 
     case HpsReg::kApplVers:
     case HpsReg::kFeatEn:

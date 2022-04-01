@@ -381,7 +381,7 @@ hps::HPS_impl::BootResult HPS_impl::CheckApplication() {
       // TODO(evanbenn) log a metric
       OnFatalError(FROM_HERE, "ReadReg failure");
     }
-    if (error.value() & RError::kSpiNotVer) {
+    if (error.value() == RError::kSpiFlashNotVerified) {
       VLOG(1) << "SPI verification failed after "
               << timer.Elapsed().InMilliseconds() << "ms";
       hps_metrics_->SendHpsTurnOnResult(

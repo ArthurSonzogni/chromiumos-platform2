@@ -67,7 +67,7 @@ void FakeDev::SetStage(Stage s) {
   switch (s) {
     case Stage::kStage0:
       this->bank_ = BIT(0);
-      this->fault_ = 0;
+      this->fault_ = RError::kNone;
       this->feature_on_ = 0;
       break;
     case Stage::kStage1:
@@ -92,7 +92,7 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       break;
     case HpsReg::kSysStatus:
       v = hps::R2::kOK;
-      if (this->fault_) {
+      if (this->fault_ != RError::kNone) {
         v |= hps::R2::kFault;
       }
       if (this->Flag(Flags::kStage1NotVerified)) {
@@ -191,7 +191,7 @@ void FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
         if (this->stage_ == Stage::kStage1) {
           // only boot valid spi flash, else set fault bit
           if (this->Flag(Flags::kSpiNotVerified)) {
-            this->fault_ |= hps::RError::kSpiNotVer;
+            this->fault_ = hps::RError::kSpiFlashNotVerified;
           } else {
             this->SetStage(Stage::kAppl);
           }

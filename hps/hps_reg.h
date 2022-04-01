@@ -85,21 +85,22 @@ enum RFeat : uint16_t {
 };
 
 enum RError : uint16_t {
-  kFpgaTime = BIT(14),
-  kFpgaComm = BIT(13),
-  kSelftest = BIT(12),
-  kTflite = BIT(11),
-  kSpiNotVer = BIT(10),
-  kBufORun = BIT(9),
-  kBufNAvail = BIT(8),
-  kI2cBadReq = BIT(7),
-  kSpiFlash = BIT(6),
-  kCamera = BIT(5),
-  kI2cORun = BIT(4),
-  kI2cBErr = BIT(3),
-  kPanic = BIT(2),
-  kMcuFlash = BIT(1),
-  kI2cURun = BIT(0),
+  kNone = 0,
+  kHostI2cUnderrun = 0x0001,
+  kMcuFlashWriteError = 0x0002,
+  kPanic = 0x0004,
+  kHostI2cBusError = 0x0008,
+  kHostI2cOverrun = 0x0010,
+  kCamera = 0x0020,
+  kSpiFlash = 0x0040,
+  kHostI2cBadRequest = 0x0080,
+  kBufferNotAvailable = 0x0100,
+  kBufferOverrun = 0x0200,
+  kSpiFlashNotVerified = 0x0400,
+  kTfliteFailure = 0x0800,
+  kSelfTestFailed = 0x1000,
+  kFpgaMcuCommError = 0x2000,
+  kFpgaTimeout = 0x4000,
 };
 
 inline constexpr uint16_t kHpsMagic = 0x9df2;
