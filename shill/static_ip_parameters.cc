@@ -60,7 +60,7 @@ void StaticIPParameters::PlumbPropertyStore(PropertyStore* store) {
               &StaticIPParameters::SetStaticIP)));
 }
 
-void StaticIPParameters::Load(const StoreInterface* storage,
+bool StaticIPParameters::Load(const StoreInterface* storage,
                               const std::string& storage_id) {
   KeyValueStore args;
   for (const auto& property : kProperties) {
@@ -99,7 +99,7 @@ void StaticIPParameters::Load(const StoreInterface* storage,
         break;
     }
   }
-  SetStaticIP(args, nullptr);
+  return SetStaticIP(args, nullptr);
 }
 
 void StaticIPParameters::Save(StoreInterface* storage,
@@ -287,19 +287,11 @@ bool StaticIPParameters::SetStaticIP(const KeyValueStore& value,
     return false;
   }
   args_ = value;
-  if (ipconfig_) {
-    ipconfig_->Refresh();
-  }
   return true;
-}
-
-void StaticIPParameters::SetIPConfig(base::WeakPtr<IPConfig> ipconfig) {
-  ipconfig_ = ipconfig;
 }
 
 void StaticIPParameters::Reset() {
   ClearSavedParameters();
-  SetIPConfig(nullptr);
   args_ = KeyValueStore();
 }
 

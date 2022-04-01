@@ -57,7 +57,6 @@ class IPConfigTest : public Test {
 
   MOCK_METHOD(void, OnIPConfigUpdated, (const IPConfigRefPtr&, bool));
   MOCK_METHOD(void, OnIPConfigFailed, (const IPConfigRefPtr&));
-  MOCK_METHOD(void, OnIPConfigRefreshed, (const IPConfigRefPtr&));
   MOCK_METHOD(void, OnIPConfigExpired, (const IPConfigRefPtr&));
 
  protected:
@@ -173,35 +172,23 @@ TEST_F(IPConfigTest, Callbacks) {
       base::Bind(&IPConfigTest::OnIPConfigUpdated, base::Unretained(this)));
   ipconfig_->RegisterFailureCallback(
       base::Bind(&IPConfigTest::OnIPConfigFailed, base::Unretained(this)));
-  ipconfig_->RegisterRefreshCallback(
-      base::Bind(&IPConfigTest::OnIPConfigRefreshed, base::Unretained(this)));
   ipconfig_->RegisterExpireCallback(
       base::Bind(&IPConfigTest::OnIPConfigExpired, base::Unretained(this)));
 
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true));
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
-  EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
   UpdateProperties(IPConfig::Properties());
   Mock::VerifyAndClearExpectations(this);
 
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true)).Times(0);
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_));
-  EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
   NotifyFailure();
   Mock::VerifyAndClearExpectations(this);
 
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true)).Times(0);
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
-  EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_));
-  EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
-  ipconfig_->Refresh();
-  Mock::VerifyAndClearExpectations(this);
-
-  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true)).Times(0);
-  EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
-  EXPECT_CALL(*this, OnIPConfigRefreshed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_));
   NotifyExpiry();
   Mock::VerifyAndClearExpectations(this);

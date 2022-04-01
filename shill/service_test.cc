@@ -14,6 +14,7 @@
 #include <base/bind.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
+#include <base/test/bind.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
@@ -729,8 +730,8 @@ TEST_F(ServiceTest, Unload) {
 
 // Tests that static IP configs are set, stored and unloaded correctly.
 TEST_F(ServiceTest, StaticIPConfigs) {
-  const char kTestIpAddress[] = "1.2.3.4";
-  const int32_t kTestPrefixlen = 5;
+  constexpr char kTestIpAddress[] = "1.2.3.4";
+  constexpr int32_t kTestPrefixlen = 5;
   EXPECT_FALSE(service_->HasStaticIPAddress());
   KeyValueStore static_ip_configs;
   static_ip_configs.Set(kAddressProperty, std::string(kTestIpAddress));
@@ -744,6 +745,46 @@ TEST_F(ServiceTest, StaticIPConfigs) {
   EXPECT_FALSE(service_->HasStaticIPAddress());
   ASSERT_TRUE(service_->Load(&storage));
   EXPECT_TRUE(service_->HasStaticIPAddress());
+}
+
+// Tests that callback is invoked properly when static IP configs changed.
+TEST_F(ServiceTest, StaticIPConfigsChanged) {
+  constexpr char kTestIpAddress1[] = "1.2.3.4";
+  constexpr char kTestIpAddress2[] = "1.2.3.5";
+  KeyValueStore static_ip_configs;
+  FakeStore storage;
+
+  const auto update_address = [&](const std::string& ip_addr) {
+    static_ip_configs.Set(kAddressProperty, ip_addr);
+    service_->mutable_store()->SetKeyValueStoreProperty(
+        kStaticIPConfigProperty, static_ip_configs, /*error=*/nullptr);
+  };
+  update_address(kTestIpAddress1);
+  ASSERT_TRUE(service_->Save(&storage));
+
+  int cb_invoked_times = 0;
+  const auto static_ip_change_cb =
+      base::BindLambdaForTesting([&cb_invoked_times]() { cb_invoked_times++; });
+  service_->SetIPConfig({}, static_ip_change_cb);
+  SetStateField(Service::kStateConnected);
+
+  // Changes the address, callback should be invoked.
+  update_address(kTestIpAddress2);
+  EXPECT_EQ(cb_invoked_times, 1);
+  // Address is not changed, callback should not be invoked.
+  update_address(kTestIpAddress2);
+  EXPECT_EQ(cb_invoked_times, 1);
+  // Reloads the service, callback should be invoked since address is changed.
+  ASSERT_TRUE(service_->Load(&storage));
+  EXPECT_EQ(cb_invoked_times, 2);
+  // Persists the service and reloads again, callback should not be invoked
+  // since address is not changed.
+  ASSERT_TRUE(service_->Save(&storage));
+  EXPECT_EQ(cb_invoked_times, 2);
+  // Deregisters the callback, it should not be invoked anymore.
+  service_->SetIPConfig({}, {});
+  update_address(kTestIpAddress2);
+  EXPECT_EQ(cb_invoked_times, 2);
 }
 
 TEST_F(ServiceTest, State) {
@@ -1481,7 +1522,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   {
     Error error;
     const RpcIdentifier nonempty_rpcid("/ipconfig/path");
-    service_->SetIPConfig(nonempty_rpcid);
+    service_->SetIPConfig(nonempty_rpcid, {});
     EXPECT_EQ(nonempty_rpcid, service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -1489,7 +1530,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   {
     Error error;
     const RpcIdentifier empty_rpcid;
-    service_->SetIPConfig(empty_rpcid);
+    service_->SetIPConfig(empty_rpcid, {});
     EXPECT_EQ(DBusControl::NullRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());

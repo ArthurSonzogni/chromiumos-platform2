@@ -598,8 +598,6 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
       base::Bind(&Device::OnIPConfigUpdated, AsWeakPtr()));
   ipconfig_->RegisterFailureCallback(
       base::Bind(&Device::OnIPConfigFailed, AsWeakPtr()));
-  ipconfig_->RegisterRefreshCallback(
-      base::Bind(&Device::OnIPConfigRefreshed, AsWeakPtr()));
   ipconfig_->RegisterExpireCallback(
       base::Bind(&Device::OnIPConfigExpired, AsWeakPtr()));
   dispatcher()->PostTask(
@@ -771,7 +769,10 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   metrics()->NotifyIPv6ConnectivityStatus(technology_, ipv6_connectivity);
 
   if (selected_service_) {
-    selected_service_->SetIPConfig(ipconfig->GetRpcIdentifier());
+    selected_service_->SetIPConfig(
+        ipconfig->GetRpcIdentifier(),
+        base::BindRepeating(&Device::OnStaticIPConfigChanged,
+                            weak_ptr_factory_.GetWeakPtr()));
 
     // If the service is already in a Connected state (this happens during a
     // roam or DHCP renewal), transitioning back to Connected isn't productive.
@@ -933,13 +934,22 @@ void Device::OnIPConfigFailed(const IPConfigRefPtr& ipconfig) {
   DestroyConnection();
 }
 
-void Device::OnIPConfigRefreshed(const IPConfigRefPtr& ipconfig) {
+void Device::OnStaticIPConfigChanged() {
+  if (!ipconfig_ || !selected_service_) {
+    LOG(ERROR) << __func__ << " called but "
+               << (!ipconfig_ ? "no IPv4 config" : "no selected service");
+    return;
+  }
+
   // Clear the previously applied static IP parameters.
-  ipconfig->RestoreSavedIPParameters(
+  ipconfig_->RestoreSavedIPParameters(
       selected_service_->mutable_static_ip_parameters());
 
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
+
+  // Trigger DHCP renew.
+  ipconfig_->RenewIP();
 }
 
 void Device::OnIPConfigFailure() {
@@ -975,7 +985,8 @@ void Device::DestroyConnection() {
   SLOG(this, 2) << __func__ << " on " << link_name_;
   StopAllActivities();
   if (selected_service_) {
-    selected_service_->SetIPConfig(RpcIdentifier());
+    selected_service_->SetIPConfig(RpcIdentifier(),
+                                   /*static_ipconfig_changed_callback=*/{});
   }
   connection_ = nullptr;
 }
@@ -1028,7 +1039,8 @@ void Device::SelectService(const ServiceRefPtr& service) {
     if (selected_service_->state() != Service::kStateFailure) {
       selected_service_->SetState(Service::kStateIdle);
     }
-    selected_service_->SetIPConfig(RpcIdentifier());
+    selected_service_->SetIPConfig(RpcIdentifier(),
+                                   /*static_ipconfig_changed_callback=*/{});
     StopAllActivities();
   }
 

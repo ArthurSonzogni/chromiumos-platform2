@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include <base/memory/ref_counted.h>
 #include <base/logging.h>
 
 #include "shill/ipconfig.h"
@@ -37,7 +36,8 @@ class StaticIPParameters {
   void PlumbPropertyStore(PropertyStore* store);
 
   // Load static IP parameters from a persistent store with id |storage_id|.
-  void Load(const StoreInterface* storage, const std::string& storage_id);
+  // Return whether any property is changed.
+  bool Load(const StoreInterface* storage, const std::string& storage_id);
 
   // Save static IP parameters to a persistent store with id |storage_id|.
   void Save(StoreInterface* storage, const std::string& storage_id);
@@ -59,10 +59,7 @@ class StaticIPParameters {
   // Return whether configuration parameters contain a namerservers property.
   bool ContainsNameServers() const;
 
-  // Set the IPConfig object to update when static IP changes.
-  void SetIPConfig(base::WeakPtr<IPConfig> ipconfig);
-
-  // Reset the IPConfig object to defaults (e.g. when a service is unloaded).
+  // Reset all states to defaults (e.g. when a service is unloaded).
   void Reset();
 
  private:
@@ -107,7 +104,6 @@ class StaticIPParameters {
 
   KeyValueStore args_;
   KeyValueStore saved_args_;
-  base::WeakPtr<IPConfig> ipconfig_;
 };
 
 }  // namespace shill

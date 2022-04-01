@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 
@@ -72,7 +73,10 @@ class MockService : public Service {
   MOCK_METHOD(bool, IsPortalDetectionAuto, (), (const, override));
   MOCK_METHOD(bool, IsRemembered, (), (const, override));
   MOCK_METHOD(bool, HasProxyConfig, (), (const, override));
-  MOCK_METHOD(void, SetIPConfig, (RpcIdentifier), (override));
+  MOCK_METHOD(void,
+              SetIPConfig,
+              (RpcIdentifier, base::RepeatingClosure),
+              (override));
   MOCK_METHOD(bool, HasActiveConnection, (), (const, override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)

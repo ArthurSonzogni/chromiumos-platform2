@@ -723,7 +723,11 @@ bool Service::Load(const StoreInterface* storage) {
     metered_override_ = metered_override;
   }
 
-  static_ip_parameters_.Load(storage, id);
+  // Note that service might be connected when Load() is called, e.g., Ethernet
+  // service will keep connected when profile is changed.
+  if (static_ip_parameters_.Load(storage, id)) {
+    NotifyStaticIPConfigChanged();
+  }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Call OnEapCredentialsChanged with kReasonCredentialsLoaded to avoid
@@ -1056,11 +1060,14 @@ void Service::EnableAndRetainAutoConnect() {
   RetainAutoConnect();
 }
 
-void Service::SetIPConfig(RpcIdentifier ipconfig_rpc_id) {
+void Service::SetIPConfig(
+    RpcIdentifier ipconfig_rpc_id,
+    base::RepeatingClosure static_ipconfig_changed_callback) {
   if (ipconfig_rpc_id.value().empty()) {
     static_ip_parameters_.ClearSavedParameters();
   }
   ipconfig_rpc_identifier_ = ipconfig_rpc_id;
+  static_ipconfig_changed_callback_ = static_ipconfig_changed_callback;
 
   Error error;
   RpcIdentifier ipconfig = GetIPConfigRpcIdentifier(&error);
@@ -1071,6 +1078,12 @@ void Service::SetIPConfig(RpcIdentifier ipconfig_rpc_id) {
 
 bool Service::HasActiveConnection() const {
   return !ipconfig_rpc_identifier_.value().empty();
+}
+
+void Service::NotifyStaticIPConfigChanged() {
+  if (!static_ipconfig_changed_callback_.is_null()) {
+    static_ipconfig_changed_callback_.Run();
+  }
 }
 
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
@@ -1585,6 +1598,8 @@ void Service::OnPropertyChanged(const std::string& property) {
     // sorted differently by this change, so we can avoid doing this for
     // unconnected Services.
     manager_->SortServices();
+  } else if (property == kStaticIPConfigProperty) {
+    NotifyStaticIPConfigChanged();
   }
 }
 

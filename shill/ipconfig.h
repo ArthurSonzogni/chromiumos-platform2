@@ -141,13 +141,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // configurations.
   void RegisterFailureCallback(const Callback& callback);
 
-  // Registers a callback that's executed every time the Refresh method
-  // on the ipconfig is called.  Takes ownership of |callback|. Pass NULL
-  // to remove a callback. The callback's argument is a pointer to this IP
-  // configuration instance allowing clients to more easily manage multiple IP
-  // configurations.
-  void RegisterRefreshCallback(const Callback& callback);
-
   // Registers a callback that's executed every time the the lease exipres
   // and the IPConfig is about to perform a restart to attempt to regain it.
   // Takes ownership of |callback|. Pass NULL  to remove a callback. The
@@ -175,10 +168,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   virtual bool RequestIP();
   virtual bool RenewIP();
   virtual bool ReleaseIP(ReleaseReason reason);
-
-  // Refresh IP configuration. This will cause DHCPConfig children to renew
-  // their lease.
-  virtual void Refresh();
 
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
@@ -236,7 +225,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   FRIEND_TEST(ResolverTest, Empty);
   FRIEND_TEST(ResolverTest, NonEmpty);
   FRIEND_TEST(RoutingTableTest, RouteAddDelete);
-  FRIEND_TEST(StaticIPParametersTest, IPConfigRefreshed);
 
   static const char kType[];
 
@@ -249,7 +237,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   Properties properties_;
   UpdateCallback update_callback_;
   Callback failure_callback_;
-  Callback refresh_callback_;
   Callback expire_callback_;
   struct timeval current_lease_expiration_time_;
   Time* time_;

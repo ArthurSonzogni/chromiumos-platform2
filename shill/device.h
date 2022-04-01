@@ -556,9 +556,9 @@ class Device : public base::RefCounted<Device> {
   // Callback invoked on IP configuration failures.
   void OnIPConfigFailed(const IPConfigRefPtr& ipconfig);
 
-  // Callback invoked when "Refresh" is invoked on an IPConfig.  This usually
-  // signals a change in static IP parameters.
-  void OnIPConfigRefreshed(const IPConfigRefPtr& ipconfig);
+  // Callback invoked when the static IP properties configured on the selected
+  // service changed.
+  void OnStaticIPConfigChanged();
 
   // Callback invoked when an IPConfig restarts due to lease expiry.  This
   // is advisory, since an "Updated" or "Failed" signal is guaranteed to

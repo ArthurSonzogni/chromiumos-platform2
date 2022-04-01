@@ -27,7 +27,6 @@ class MockIPConfig : public IPConfig {
   MOCK_METHOD(bool, RequestIP, (), (override));
   MOCK_METHOD(bool, RenewIP, (), (override));
   MOCK_METHOD(bool, ReleaseIP, (ReleaseReason), (override));
-  MOCK_METHOD(void, Refresh, (), (override));
   MOCK_METHOD(void, ResetProperties, (), (override));
   MOCK_METHOD(void, EmitChanges, (), (override));
   MOCK_METHOD(void, UpdateDNSServers, (std::vector<std::string>), (override));

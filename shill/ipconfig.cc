@@ -106,17 +106,9 @@ bool IPConfig::ReleaseIP(ReleaseReason reason) {
   return false;
 }
 
-void IPConfig::Refresh() {
-  if (!refresh_callback_.is_null()) {
-    refresh_callback_.Run(this);
-  }
-  RenewIP();
-}
-
 void IPConfig::ApplyStaticIPParameters(
     StaticIPParameters* static_ip_parameters) {
   static_ip_parameters->ApplyTo(&properties_);
-  static_ip_parameters->SetIPConfig(weak_ptr_factory_.GetWeakPtr());
   EmitChanges();
 }
 
@@ -209,10 +201,6 @@ void IPConfig::RegisterUpdateCallback(const UpdateCallback& callback) {
 
 void IPConfig::RegisterFailureCallback(const Callback& callback) {
   failure_callback_ = callback;
-}
-
-void IPConfig::RegisterRefreshCallback(const Callback& callback) {
-  refresh_callback_ = callback;
 }
 
 void IPConfig::RegisterExpireCallback(const Callback& callback) {

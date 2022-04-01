@@ -396,8 +396,12 @@ class Service : public base::RefCounted<Service> {
   virtual void EnableAndRetainAutoConnect();
 
   // The IPConfig object associated with this service has changed. The Service
-  // class will cache this path. Called by Device.
-  mockable void SetIPConfig(RpcIdentifier ipconfig_rpc_id);
+  // class will cache this path. Also registers a callback which will be invoked
+  // when the static IPConfig configured with this Service changed. Called by
+  // Device.
+  mockable void SetIPConfig(
+      RpcIdentifier ipconfig_rpc_id,
+      base::RepeatingClosure static_ipconfig_changed_callback);
 
   // Whether this service is connected to an active connection. It is
   // implemented by checking whether this service has a valid IPConfig now.
@@ -955,6 +959,10 @@ class Service : public base::RefCounted<Service> {
       const ResultVariantDictionariesCallback& callback,
       const std::vector<patchpanel::TrafficCounter>& counters);
 
+  // Invokes |static_ipconfig_changed_callback_| to notify the listener of the
+  // change of static IP config.
+  void NotifyStaticIPConfigChanged();
+
   // WeakPtrFactory comes first, so that other fields can use it.
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 
@@ -1032,6 +1040,9 @@ class Service : public base::RefCounted<Service> {
   // The IPConfig object associated with this service currently. Can be empty if
   // no IPConfig object is associated.
   RpcIdentifier ipconfig_rpc_identifier_;
+  // Invoked when the Service is connected and the static IPConfig associated is
+  // changed.
+  base::RepeatingClosure static_ipconfig_changed_callback_;
 
   std::unique_ptr<ServiceAdaptorInterface> adaptor_;
   StaticIPParameters static_ip_parameters_;
