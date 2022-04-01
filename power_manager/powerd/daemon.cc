@@ -1476,7 +1476,10 @@ void Daemon::Suspend(SuspendImminent::Reason reason,
     return;
   }
 
-  if (use_external_wakeup_count) {
+  if (flavor == SuspendFlavor::RESUME_FROM_DISK_ABORT) {
+    suspender_->AbortResumeFromHibernate();
+
+  } else if (use_external_wakeup_count) {
     suspender_->RequestSuspendWithExternalWakeupCount(
         reason, external_wakeup_count, duration, flavor);
   } else {

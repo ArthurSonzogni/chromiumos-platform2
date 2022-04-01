@@ -143,6 +143,10 @@ void Suspender::RequestSuspendWithExternalWakeupCount(
   HandleEvent(Event::SUSPEND_REQUESTED);
 }
 
+void Suspender::AbortResumeFromHibernate() {
+  HandleEvent(Event::ABORT_RESUME_FROM_HIBERNATE);
+}
+
 void Suspender::HandleLidOpened() {
   HandleEvent(Event::USER_ACTIVITY);
 }
@@ -228,6 +232,8 @@ std::string Suspender::EventToString(Event event) {
       return "DisplayModeChange";
     case Event::NEW_DISPLAY:
       return "NewDisplay";
+    case Event::ABORT_RESUME_FROM_HIBERNATE:
+      return "AbortResumeFromHibernate";
   }
 }
 
@@ -395,6 +401,9 @@ void Suspender::HandleEvent(Event event) {
         case Event::SHUTDOWN_STARTED:
           state_ = State::SHUTTING_DOWN;
           break;
+        case Event::ABORT_RESUME_FROM_HIBERNATE:
+          LOG(WARNING) << "Ignoring hibernate abort request in idle state";
+          break;
         default:
           break;
       }
@@ -408,6 +417,9 @@ void Suspender::HandleEvent(Event event) {
       HandleEventInDarkResumeOrRetrySuspend(event);
       break;
     case State::SHUTTING_DOWN:
+      break;
+    case State::RESUMING_FROM_HIBERNATE:
+      HandleEventInResumingFromHibernate(event);
       break;
   }
 
@@ -431,7 +443,13 @@ void Suspender::HandleEventInWaitingForNormalSuspendDelays(Event event) {
   DCHECK_EQ(state_, State::WAITING_FOR_NORMAL_SUSPEND_DELAYS);
   switch (event) {
     case Event::SUSPEND_DELAYS_READY:
-      state_ = Suspend();
+      if (suspend_request_flavor_ == SuspendFlavor::RESUME_FROM_DISK_PREPARE) {
+        state_ = State::RESUMING_FROM_HIBERNATE;
+
+      } else {
+        state_ = Suspend();
+      }
+
       break;
     case Event::WAKE_NOTIFICATION:
       // fallthrough.
@@ -493,6 +511,43 @@ Suspender::State Suspender::HandleWakeEventInSuspend(Event event) {
   LOG(INFO) << "Aborting request in response to event " << EventToString(event);
   FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE);
   return State::IDLE;
+}
+
+void Suspender::HandleEventInResumingFromHibernate(Event event) {
+  CHECK_EQ(state_, State::RESUMING_FROM_HIBERNATE);
+  switch (event) {
+    // The success case out of this state stops executing this entire world, so
+    // there's no "event" out of it. The failure case aborts the resume from
+    // hibernate so that this world can idle out and continue normally.
+    case Event::ABORT_RESUME_FROM_HIBERNATE:
+      FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE);
+      state_ = State::IDLE;
+      break;
+
+    // Certain events may float in but don't change the fact that we're still
+    // braced for an imminent resume. Quietly ignore them.
+    case Event::USER_ACTIVITY:
+    case Event::SHUTDOWN_STARTED:
+    case Event::WAKE_NOTIFICATION:
+    case Event::DISPLAY_MODE_CHANGE:
+    case Event::NEW_DISPLAY:
+      break;
+
+    // Requests to suspend are ignored given the whole world is about to be
+    // blown away by an imminent resume.
+    case Event::SUSPEND_REQUESTED:
+      LOG(INFO)
+          << "Ignoring suspend request due to imminent resume from hibernation";
+      break;
+
+    // Certain events are just not expected in this state.
+    case Event::SUSPEND_DELAYS_READY:
+    case Event::READY_TO_RESUSPEND:
+    default:
+      LOG(ERROR) << "Unexpected event " << EventToString(event)
+                 << " received during imminent resume from hibernation";
+      break;
+  }
 }
 
 void Suspender::StartRequest() {
@@ -577,6 +632,13 @@ Suspender::State Suspender::Suspend() {
   bool hibernate_disabled = false;
 
   switch (suspend_request_flavor_) {
+    case SuspendFlavor::SUSPEND_TO_RAM:
+      break;
+
+    case SuspendFlavor::SUSPEND_TO_DISK:
+      hibernate = true;
+      break;
+
     // If the caller has no preference for suspend flavor, determine the
     // automatic action.
     case SuspendFlavor::SUSPEND_DEFAULT:
@@ -597,11 +659,9 @@ Suspender::State Suspender::Suspend() {
 
       break;
 
-    case SuspendFlavor::SUSPEND_TO_RAM:
-      break;
-
-    case SuspendFlavor::SUSPEND_TO_DISK:
-      hibernate = true;
+    default:
+      NOTREACHED() << "Unexpected suspend request flavor "
+                   << static_cast<int>(suspend_request_flavor_);
       break;
   }
 

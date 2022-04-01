@@ -236,6 +236,9 @@ class Suspender : public SuspendDelayObserver,
                                              base::TimeDelta duration,
                                              SuspendFlavor flavor);
 
+  // Aborts an imminent resume from hibernation.
+  void AbortResumeFromHibernate();
+
   // Handles events that may abort in-progress suspend attempts.
   void HandleLidOpened();
   void HandleUserActivity();
@@ -270,11 +273,14 @@ class Suspender : public SuspendDelayObserver,
     // powerd is waiting to resuspend after waking into a dark resume.
     WAITING_FOR_DARK_SUSPEND_DELAYS,
     // powerd is waiting to resuspend after a failed suspend attempt from normal
-    // or dark resume i.e.|dark_resume_->InDarkResume()| can be true in thi
+    // or dark resume i.e.|dark_resume_->InDarkResume()| can be true in this
     // state.
     WAITING_TO_RETRY_SUSPEND,
     // The system is shutting down. Suspend requests are ignored.
     SHUTTING_DOWN,
+    // The system is braced for an imminent hibernate resume, which if
+    // successful transfers execution to an entirely new world.
+    RESUMING_FROM_HIBERNATE,
   };
 
   enum class Event {
@@ -296,6 +302,8 @@ class Suspender : public SuspendDelayObserver,
     DISPLAY_MODE_CHANGE,
     // New display observed by powerd.
     NEW_DISPLAY,
+    // A request aborting resume from hibernation was received.
+    ABORT_RESUME_FROM_HIBERNATE,
   };
 
   // Converts |event| to a string.
@@ -336,6 +344,10 @@ class Suspender : public SuspendDelayObserver,
   // HandleEventInDarkResumeOrRetrySuspend to handle Event::USER_ACTIVITY or
   // Event::WAKE_NOTIFICATION. Returns new value for |state_|.
   State HandleWakeEventInSuspend(Event event);
+
+  // Helper method called by HandleEvent when in
+  // State::RESUMING_FROM_HIBERNATE.
+  void HandleEventInResumingFromHibernate(Event event);
 
   // Starts a new suspend request, notifying clients that have registered delays
   // that the system is about to suspend.

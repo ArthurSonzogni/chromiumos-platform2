@@ -501,6 +501,8 @@ enum class SuspendFlavor {
   SUSPEND_DEFAULT = 0,
   SUSPEND_TO_RAM = 1,
   SUSPEND_TO_DISK = 2,
+  RESUME_FROM_DISK_PREPARE = 3,
+  RESUME_FROM_DISK_ABORT = 4,
 };
 
 // Returns human-readable descriptions of enum values.
