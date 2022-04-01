@@ -42,7 +42,7 @@ class TestInterface {
  public:
   virtual ~TestInterface() = default;
 
-  virtual i f() = 0;
+  virtual std::string f() = 0;
 };
 
 // Interface adaptor for org::chromium::Test.
@@ -307,7 +307,7 @@ func TestInterfaceMethodsTempl(t *testing.T) {
 				},
 			},
 			want: `
-  virtual i methodWithNoArg() = 0;
+  virtual int32_t methodWithNoArg() = 0;
 `,
 		}, {
 			input: introspect.Interface{
@@ -324,8 +324,8 @@ func TestInterfaceMethodsTempl(t *testing.T) {
 			},
 			want: `
   virtual void methodWithArgs(
-      i in_n,
-      i in_2) = 0;
+      int32_t in_n,
+      const std::string& in_2) = 0;
 `,
 		}, {
 			input: introspect.Interface{
@@ -344,7 +344,7 @@ func TestInterfaceMethodsTempl(t *testing.T) {
 			},
 			want: `
   virtual void methodWithArgs(
-      i in_n) const = 0;
+      int32_t in_n) const = 0;
 `,
 		},
 	}

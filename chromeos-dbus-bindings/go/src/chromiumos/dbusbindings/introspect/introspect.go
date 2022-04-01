@@ -6,6 +6,11 @@
 // Method and signal handlers are generated from introspection.
 package introspect
 
+import (
+	"chromiumos/dbusbindings/dbustype"
+	"fmt"
+)
+
 // TODO(chromium:983008): Add checks for the presence of unexpected elements in XML files.
 
 // MethodKind is an enum to represent the kind of a method.
@@ -35,9 +40,11 @@ type Annotation struct {
 
 // MethodArg represents method argument or return value.
 type MethodArg struct {
-	Name       string     `xml:"name,attr"`
-	Type       string     `xml:"type,attr"`
-	Direction  string     `xml:"direction,attr"`
+	Name      string `xml:"name,attr"`
+	Type      string `xml:"type,attr"`
+	Direction string `xml:"direction,attr"`
+	// For now, MethodArg supports only ProtobufClass annotation only,
+	// so it can have at most one annotation.
 	Annotation Annotation `xml:"annotation"`
 }
 
@@ -51,8 +58,10 @@ type Method struct {
 
 // SignalArg represents signal message.
 type SignalArg struct {
-	Name       string     `xml:"name,attr"`
-	Type       string     `xml:"type,attr"`
+	Name string `xml:"name,attr"`
+	Type string `xml:"type,attr"`
+	// For now, MethodArg supports only ProtobufClass annotation only,
+	// so it can have at most one annotation.
 	Annotation Annotation `xml:"annotation"`
 }
 
@@ -152,4 +161,94 @@ func (m *Method) Const() bool {
 		}
 	}
 	return false
+}
+
+// BaseType returns the C++ type corresponding to the type that the argument describes.
+func (a *MethodArg) BaseType(dir dbustype.Direction) (string, error) {
+	return baseTypeInternal(a.Type, dir, &a.Annotation)
+}
+
+// InArgType returns the C++ type corresponding to the type that the argument describes
+// for an in argument.
+func (a *MethodArg) InArgType(receiver dbustype.Receiver) (string, error) {
+	return inArgTypeInternal(a.Type, receiver, &a.Annotation)
+}
+
+// OutArgType returns the C++ type corresponding to the type that the argument describes
+// for an out argument.
+func (a *MethodArg) OutArgType(receiver dbustype.Receiver) (string, error) {
+	return outArgTypeInternal(a.Type, receiver, &a.Annotation)
+}
+
+// BaseType returns the C++ type corresponding to the type that the argument describes.
+func (a *SignalArg) BaseType(dir dbustype.Direction) (string, error) {
+	return baseTypeInternal(a.Type, dir, &a.Annotation)
+}
+
+// InArgType returns the C++ type corresponding to the type that the argument describes
+// for an in argument.
+func (a *SignalArg) InArgType(receiver dbustype.Receiver) (string, error) {
+	return inArgTypeInternal(a.Type, receiver, &a.Annotation)
+}
+
+// OutArgType returns the C++ type corresponding to the type that the argument describes
+// for an out argument.
+func (a *SignalArg) OutArgType(receiver dbustype.Receiver) (string, error) {
+	return outArgTypeInternal(a.Type, receiver, &a.Annotation)
+}
+
+// BaseType returns the C++ type corresponding to the type that the property describes.
+func (p *Property) BaseType(dir dbustype.Direction) (string, error) {
+	return baseTypeInternal(p.Type, dir, nil)
+}
+
+// InArgType returns the C++ type corresponding to the type that the property describes
+// for an in argument.
+func (p *Property) InArgType(receiver dbustype.Receiver) (string, error) {
+	return inArgTypeInternal(p.Type, receiver, nil)
+}
+
+// OutArgType returns the C++ type corresponding to the type that the property describes
+// for an out argument.
+func (p *Property) OutArgType(receiver dbustype.Receiver) (string, error) {
+	return outArgTypeInternal(p.Type, receiver, nil)
+}
+
+func baseTypeInternal(s string, dir dbustype.Direction, a *Annotation) (string, error) {
+	// chromeos-dbus-binding supports native protobuf types.
+	if a != nil && a.Name == "org.chromium.DBus.Argument.ProtobufClass" {
+		return a.Value, nil
+	}
+
+	typ, err := dbustype.Parse(s)
+	if err != nil {
+		return "", err
+	}
+	return typ.BaseType(dir), nil
+}
+
+func inArgTypeInternal(s string, receiver dbustype.Receiver, a *Annotation) (string, error) {
+	// chromeos-dbus-binding supports native protobuf types.
+	if a != nil && a.Name == "org.chromium.DBus.Argument.ProtobufClass" {
+		return fmt.Sprintf("const %s&", a.Value), nil
+	}
+
+	typ, err := dbustype.Parse(s)
+	if err != nil {
+		return "", err
+	}
+	return typ.InArgType(receiver), nil
+}
+
+func outArgTypeInternal(s string, receiver dbustype.Receiver, a *Annotation) (string, error) {
+	// chromeos-dbus-binding supports native protobuf types.
+	if a != nil && a.Name == "org.chromium.DBus.Argument.ProtobufClass" {
+		return fmt.Sprintf("%s*", a.Value), nil
+	}
+
+	typ, err := dbustype.Parse(s)
+	if err != nil {
+		return "", err
+	}
+	return typ.OutArgType(receiver), nil
 }

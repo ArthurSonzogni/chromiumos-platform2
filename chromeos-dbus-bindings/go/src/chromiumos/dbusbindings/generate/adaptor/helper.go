@@ -17,11 +17,11 @@ func makeMethodRetType(method introspect.Method) (string, error) {
 	switch method.Kind() {
 	case introspect.MethodKindSimple:
 		if outputArguments := method.OutputArguments(); len(outputArguments) == 1 {
-			typ, err := dbustype.ParseSignature(outputArguments[0].Type)
+			baseType, err := outputArguments[0].BaseType(dbustype.DirectionAppend)
 			if err != nil {
 				return "", err
 			}
-			return typ.BaseType(dbustype.DirectionAppend), nil
+			return baseType, nil
 		}
 	case introspect.MethodKindNormal:
 		return "bool", nil
@@ -49,11 +49,11 @@ func makeMethodArgs(method introspect.Method) ([]string, error) {
 	case introspect.MethodKindAsync:
 		var outTypes []string
 		for _, arg := range outputArguments {
-			typ, err := dbustype.ParseSignature(arg.Type)
+			baseType, err := arg.BaseType(dbustype.DirectionAppend)
 			if err != nil {
 				return nil, err
 			}
-			outTypes = append(outTypes, typ.BaseType(dbustype.DirectionAppend))
+			outTypes = append(outTypes, baseType)
 		}
 		param := fmt.Sprintf(
 			"std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<%s>> response",
@@ -72,20 +72,20 @@ func makeMethodArgs(method introspect.Method) ([]string, error) {
 	}
 
 	index := 1
-	for _, args := range []struct {
-		args   []introspect.MethodArg
-		prefix string
+	for _, c := range []struct {
+		args        []introspect.MethodArg
+		makeArgType func(*introspect.MethodArg, dbustype.Receiver) (string, error)
+		prefix      string
 	}{
-		{inputArguments, "in"},
-		{outputArguments, "out"},
+		{inputArguments, (*introspect.MethodArg).InArgType, "in"},
+		{outputArguments, (*introspect.MethodArg).OutArgType, "out"},
 	} {
-		for _, arg := range args.args {
-			typ, err := dbustype.ParseSignature(arg.Type)
+		for _, arg := range c.args {
+			paramType, err := c.makeArgType(&arg, dbustype.ReceiverAdaptor)
 			if err != nil {
 				return nil, err
 			}
-			paramType := typ.InArgType(dbustype.ReceiverAdaptor)
-			paramName := genutil.ArgName(args.prefix, arg.Name, index)
+			paramName := genutil.ArgName(c.prefix, arg.Name, index)
 			index++
 			methodParams = append(methodParams, fmt.Sprintf("%s %s", paramType, paramName))
 		}

@@ -4,6 +4,7 @@
 package introspect_test
 
 import (
+	"chromiumos/dbusbindings/dbustype"
 	"chromiumos/dbusbindings/introspect"
 	"testing"
 
@@ -155,6 +156,246 @@ func TestConst(t *testing.T) {
 		got := tc.input.Const()
 		if got != tc.want {
 			t.Errorf("Const faild, method name is %s\n got %t, want %t", tc.input.Name, got, tc.want)
+		}
+	}
+}
+
+func TestMethodArgMethods(t *testing.T) {
+	cases := []struct {
+		receiver          introspect.MethodArg
+		BaseTypeExtract   string
+		BaseTypeAppend    string
+		InArgTypeAdaptor  string
+		InArgTypeProxy    string
+		OutArgTypeAdaptor string
+		OutArgTypeProxy   string
+	}{
+		{
+			receiver: introspect.MethodArg{
+				Name: "arg1",
+				Type: "ay",
+				Annotation: introspect.Annotation{
+					Name:  "org.chromium.DBus.Argument.ProtobufClass",
+					Value: "MyProtobufClass",
+				},
+			},
+			BaseTypeExtract:   "MyProtobufClass",
+			BaseTypeAppend:    "MyProtobufClass",
+			InArgTypeAdaptor:  "const MyProtobufClass&",
+			InArgTypeProxy:    "const MyProtobufClass&",
+			OutArgTypeAdaptor: "MyProtobufClass*",
+			OutArgTypeProxy:   "MyProtobufClass*",
+		}, {
+			receiver: introspect.MethodArg{
+				Name: "arg2",
+				Type: "h",
+			},
+			BaseTypeExtract:   "base::ScopedFD",
+			BaseTypeAppend:    "brillo::dbus_utils::FileDescriptor",
+			InArgTypeAdaptor:  "const base::ScopedFD&",
+			InArgTypeProxy:    "const brillo::dbus_utils::FileDescriptor&",
+			OutArgTypeAdaptor: "brillo::dbus_utils::FileDescriptor*",
+			OutArgTypeProxy:   "base::ScopedFD*",
+		},
+	}
+
+	for _, tc := range cases {
+		got, err := tc.receiver.BaseType(dbustype.DirectionExtract)
+		if err != nil {
+			t.Fatalf("getting the base type of %q got error, want nil\ndirection: DirectionExtract\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.BaseTypeExtract {
+			t.Fatalf("getting the base type of %q failed; want %s, got %s", tc.receiver.Name, tc.BaseTypeExtract, got)
+		}
+		got, err = tc.receiver.BaseType(dbustype.DirectionAppend)
+		if err != nil {
+			t.Fatalf("getting the base type of %q got error, want nil\ndirection: DirectionAppend\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.BaseTypeAppend {
+			t.Fatalf("getting the base type of %q failed; want %s, got %s", tc.receiver.Name, tc.BaseTypeAppend, got)
+		}
+		got, err = tc.receiver.InArgType(dbustype.ReceiverAdaptor)
+		if err != nil {
+			t.Fatalf("getting the in arg type of %q got error, want nil\nreceiver: ReceiverAdaptor\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.InArgTypeAdaptor {
+			t.Fatalf("getting the in arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.InArgTypeAdaptor, got)
+		}
+		got, err = tc.receiver.InArgType(dbustype.ReceiverProxy)
+		if err != nil {
+			t.Fatalf("getting the in arg type of %q got error, want nil\nreceiver: ReceiverProxy\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.InArgTypeProxy {
+			t.Fatalf("getting the in arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.InArgTypeProxy, got)
+		}
+		got, err = tc.receiver.OutArgType(dbustype.ReceiverAdaptor)
+		if err != nil {
+			t.Fatalf("getting the out arg type of %q got error, want nil\nreceiver: ReceiverAdaptor\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.OutArgTypeAdaptor {
+			t.Fatalf("getting the out arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.OutArgTypeAdaptor, got)
+		}
+		got, err = tc.receiver.OutArgType(dbustype.ReceiverProxy)
+		if err != nil {
+			t.Fatalf("getting the out arg type of %q got error, want nil\nreceiver: ReceiverProxy\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.OutArgTypeProxy {
+			t.Fatalf("getting the out arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.OutArgTypeProxy, got)
+		}
+	}
+}
+
+func TestSignalArgMethods(t *testing.T) {
+	cases := []struct {
+		receiver          introspect.SignalArg
+		BaseTypeExtract   string
+		BaseTypeAppend    string
+		InArgTypeAdaptor  string
+		InArgTypeProxy    string
+		OutArgTypeAdaptor string
+		OutArgTypeProxy   string
+	}{
+		{
+			receiver: introspect.SignalArg{
+				Name: "arg3",
+				Type: "ay",
+				Annotation: introspect.Annotation{
+					Name:  "org.chromium.DBus.Argument.ProtobufClass",
+					Value: "MyProtobufClass",
+				},
+			},
+			BaseTypeExtract:   "MyProtobufClass",
+			BaseTypeAppend:    "MyProtobufClass",
+			InArgTypeAdaptor:  "const MyProtobufClass&",
+			InArgTypeProxy:    "const MyProtobufClass&",
+			OutArgTypeAdaptor: "MyProtobufClass*",
+			OutArgTypeProxy:   "MyProtobufClass*",
+		}, {
+			receiver: introspect.SignalArg{
+				Name: "arg4",
+				Type: "h",
+			},
+			BaseTypeExtract:   "base::ScopedFD",
+			BaseTypeAppend:    "brillo::dbus_utils::FileDescriptor",
+			InArgTypeAdaptor:  "const base::ScopedFD&",
+			InArgTypeProxy:    "const brillo::dbus_utils::FileDescriptor&",
+			OutArgTypeAdaptor: "brillo::dbus_utils::FileDescriptor*",
+			OutArgTypeProxy:   "base::ScopedFD*",
+		},
+	}
+
+	for _, tc := range cases {
+		got, err := tc.receiver.BaseType(dbustype.DirectionExtract)
+		if err != nil {
+			t.Fatalf("getting the base type of %q got error, want nil\ndirection: DirectionExtract\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.BaseTypeExtract {
+			t.Fatalf("getting the base type of %q failed; want %s, got %s", tc.receiver.Name, tc.BaseTypeExtract, got)
+		}
+		got, err = tc.receiver.BaseType(dbustype.DirectionAppend)
+		if err != nil {
+			t.Fatalf("getting the base type of %q got error, want nil\ndirection: DirectionAppend\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.BaseTypeAppend {
+			t.Fatalf("getting the base type of %q failed; want %s, got %s", tc.receiver.Name, tc.BaseTypeAppend, got)
+		}
+		got, err = tc.receiver.InArgType(dbustype.ReceiverAdaptor)
+		if err != nil {
+			t.Fatalf("getting the in arg type of %q got error, want nil\nreceiver: ReceiverAdaptor\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.InArgTypeAdaptor {
+			t.Fatalf("getting the in arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.InArgTypeAdaptor, got)
+		}
+		got, err = tc.receiver.InArgType(dbustype.ReceiverProxy)
+		if err != nil {
+			t.Fatalf("getting the in arg type of %q got error, want nil\nreceiver: ReceiverProxy\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.InArgTypeProxy {
+			t.Fatalf("getting the in arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.InArgTypeProxy, got)
+		}
+		got, err = tc.receiver.OutArgType(dbustype.ReceiverAdaptor)
+		if err != nil {
+			t.Fatalf("getting the out arg type of %q got error, want nil\nreceiver: ReceiverAdaptor\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.OutArgTypeAdaptor {
+			t.Fatalf("getting the out arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.OutArgTypeAdaptor, got)
+		}
+		got, err = tc.receiver.OutArgType(dbustype.ReceiverProxy)
+		if err != nil {
+			t.Fatalf("getting the out arg type of %q got error, want nil\nreceiver: ReceiverProxy\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.OutArgTypeProxy {
+			t.Fatalf("getting the out arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.OutArgTypeProxy, got)
+		}
+	}
+}
+
+func TestPropertyMethods(t *testing.T) {
+	cases := []struct {
+		receiver          introspect.Property
+		BaseTypeExtract   string
+		BaseTypeAppend    string
+		InArgTypeAdaptor  string
+		InArgTypeProxy    string
+		OutArgTypeAdaptor string
+		OutArgTypeProxy   string
+	}{
+		{
+			receiver: introspect.Property{
+				Name: "property1",
+				Type: "h",
+			},
+			BaseTypeExtract:   "base::ScopedFD",
+			BaseTypeAppend:    "brillo::dbus_utils::FileDescriptor",
+			InArgTypeAdaptor:  "const base::ScopedFD&",
+			InArgTypeProxy:    "const brillo::dbus_utils::FileDescriptor&",
+			OutArgTypeAdaptor: "brillo::dbus_utils::FileDescriptor*",
+			OutArgTypeProxy:   "base::ScopedFD*",
+		},
+	}
+
+	for _, tc := range cases {
+		got, err := tc.receiver.BaseType(dbustype.DirectionExtract)
+		if err != nil {
+			t.Fatalf("getting the base type of %q got error, want nil\ndirection: DirectionExtract\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.BaseTypeExtract {
+			t.Fatalf("getting the base type of %q failed; want %s, got %s", tc.receiver.Name, tc.BaseTypeExtract, got)
+		}
+		got, err = tc.receiver.BaseType(dbustype.DirectionAppend)
+		if err != nil {
+			t.Fatalf("getting the base type of %q got error, want nil\ndirection: DirectionAppend\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.BaseTypeAppend {
+			t.Fatalf("getting the base type of %q failed; want %s, got %s", tc.receiver.Name, tc.BaseTypeAppend, got)
+		}
+		got, err = tc.receiver.InArgType(dbustype.ReceiverAdaptor)
+		if err != nil {
+			t.Fatalf("getting the in arg type of %q got error, want nil\nreceiver: ReceiverAdaptor\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.InArgTypeAdaptor {
+			t.Fatalf("getting the in arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.InArgTypeAdaptor, got)
+		}
+		got, err = tc.receiver.InArgType(dbustype.ReceiverProxy)
+		if err != nil {
+			t.Fatalf("getting the in arg type of %q got error, want nil\nreceiver: ReceiverProxy\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.InArgTypeProxy {
+			t.Fatalf("getting the in arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.InArgTypeProxy, got)
+		}
+		got, err = tc.receiver.OutArgType(dbustype.ReceiverAdaptor)
+		if err != nil {
+			t.Fatalf("getting the out arg type of %q got error, want nil\nreceiver: ReceiverAdaptor\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.OutArgTypeAdaptor {
+			t.Fatalf("getting the out arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.OutArgTypeAdaptor, got)
+		}
+		got, err = tc.receiver.OutArgType(dbustype.ReceiverProxy)
+		if err != nil {
+			t.Fatalf("getting the out arg type of %q got error, want nil\nreceiver: ReceiverProxy\n%s", tc.receiver.Name, err)
+		}
+		if got != tc.OutArgTypeProxy {
+			t.Fatalf("getting the out arg type of %q failed; want %s, got %s", tc.receiver.Name, tc.OutArgTypeProxy, got)
 		}
 	}
 }

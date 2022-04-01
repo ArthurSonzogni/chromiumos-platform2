@@ -20,16 +20,33 @@ func TestMakeMethodRetType(t *testing.T) {
 	}{
 		{
 			input: introspect.Method{
-				Name: "simpleMethodWithOnlyOutputArg",
+				Name: "simpleMethodWithOnlyOutputArg1",
 				Args: []introspect.MethodArg{
-					{Name: "onlyOutput", Direction: "out", Type: "i"},
+					{Name: "onlyOutput", Direction: "out", Type: "h"},
 				},
 				Annotations: []introspect.Annotation{
 					{Name: "org.chromium.DBus.Method.Kind", Value: "simple"},
 				},
 			},
-			// TODO(chromium:983008): After implementing dbustype package, fix to int32_t
-			want: "i",
+			want: "brillo::dbus_utils::FileDescriptor",
+		}, {
+			input: introspect.Method{
+				Name: "simpleMethodWithOnlyOutputArg2",
+				Args: []introspect.MethodArg{
+					{Name: "onlyOutput",
+						Direction: "out",
+						Type:      "ay",
+						Annotation: introspect.Annotation{
+							Name:  "org.chromium.DBus.Argument.ProtobufClass",
+							Value: "MyProtobufClass",
+						},
+					},
+				},
+				Annotations: []introspect.Annotation{
+					{Name: "org.chromium.DBus.Method.Kind", Value: "simple"},
+				},
+			},
+			want: "MyProtobufClass",
 		}, {
 			input: introspect.Method{
 				Name: "normalMethod",
@@ -82,8 +99,7 @@ func TestMakeMethodArgs(t *testing.T) {
 					{Name: "org.chromium.DBus.Method.Kind", Value: "simple"},
 				},
 			},
-			// TODO(chromium:983008): After implementing dbustype package, fix i to int32_t
-			want: []string{"i in_x"},
+			want: []string{"int32_t in_x"},
 		}, {
 			input: introspect.Method{
 				Name: "normalMethod",
@@ -105,15 +121,21 @@ func TestMakeMethodArgs(t *testing.T) {
 			input: introspect.Method{
 				Name: "asyncMethod",
 				Args: []introspect.MethodArg{
-					{Name: "x1", Direction: "out", Type: "i"},
-					{Name: "x2", Direction: "out", Type: "s"},
+					{Name: "x1", Direction: "out", Type: "h"},
+					{Name: "x2",
+						Direction: "out",
+						Type:      "ay",
+						Annotation: introspect.Annotation{
+							Name:  "org.chromium.DBus.Argument.ProtobufClass",
+							Value: "MyProtobufClass",
+						},
+					},
 				},
 				Annotations: []introspect.Annotation{
 					{Name: "org.chromium.DBus.Method.Kind", Value: "async"},
 				},
 			},
-			// TODO(chromium:983008): After implementing dbustype package, fix <i, i> to <int32_t, std::string>
-			want: []string{"std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<i, i>> response"},
+			want: []string{"std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<brillo::dbus_utils::FileDescriptor, MyProtobufClass>> response"},
 		}, {
 			input: introspect.Method{
 				Name: "asyncMethodWithNoArg",
@@ -134,8 +156,7 @@ func TestMakeMethodArgs(t *testing.T) {
 				},
 			},
 			want: []string{
-				// TODO(chromium:983008): After implementing dbustype package, fix i to int32_t
-				"std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<i>> response",
+				"std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<int32_t>> response",
 				"dbus::Message* message",
 			},
 		}, {
@@ -157,19 +178,31 @@ func TestMakeMethodArgs(t *testing.T) {
 			input: introspect.Method{
 				Name: "methodWithArgs",
 				Args: []introspect.MethodArg{
-					{Name: "", Direction: "in", Type: "b"},
-					{Name: "x", Direction: "in", Type: "d"},
-					{Name: "n", Direction: "out", Type: "i"},
-					{Name: "", Direction: "out", Type: "u"},
+					{Name: "x1", Direction: "in", Type: "h"},
+					{Name: "",
+						Direction: "in",
+						Type:      "ay",
+						Annotation: introspect.Annotation{
+							Name:  "org.chromium.DBus.Argument.ProtobufClass",
+							Value: "MyProtobufClass",
+						},
+					},
+					{Name: "x3", Direction: "out", Type: "h"},
+					{Name: "",
+						Direction: "out",
+						Type:      "ay",
+						Annotation: introspect.Annotation{
+							Name:  "org.chromium.DBus.Argument.ProtobufClass",
+							Value: "MyProtobufClass",
+						},
+					},
 				},
 				Annotations: []introspect.Annotation{
 					{Name: "org.chromium.DBus.Method.Kind", Value: "simple"},
 				},
 			},
 			want: []string{
-				// TODO(chromium:983008): After implementing dbustype package,
-				// fix to "bool in_1", "double in_x", "int32_t out_n", "uint32_t out_4"
-				"i in_1", "i in_x", "i out_n", "i out_4",
+				"const base::ScopedFD& in_x1", "const MyProtobufClass& in_2", "brillo::dbus_utils::FileDescriptor* out_x3", "MyProtobufClass* out_4",
 			},
 		},
 	}
