@@ -151,9 +151,9 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
  public:
   void SetUp() override {
     DHCPConfigTest::SetUp();
-    config_->RegisterUpdateCallback(base::Bind(
+    config_->RegisterUpdateCallback(base::BindRepeating(
         &DHCPConfigCallbackTest::SuccessCallback, base::Unretained(this)));
-    config_->RegisterFailureCallback(base::Bind(
+    config_->RegisterFailureCallback(base::BindRepeating(
         &DHCPConfigCallbackTest::FailureCallback, base::Unretained(this)));
     ip_config_ = config_;
   }
@@ -170,15 +170,13 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
   IPConfigRefPtr ip_config_;
 };
 
-void DoNothing() {}
-
 }  // namespace
 
 TEST_F(DHCPConfigCallbackTest, NotifyFailure) {
   EXPECT_CALL(*this, SuccessCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
-  config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
-  config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));
+  config_->lease_acquisition_timeout_callback_.Reset(base::DoNothing());
+  config_->lease_expiration_callback_.Reset(base::DoNothing());
   config_->NotifyFailure();
   Mock::VerifyAndClearExpectations(this);
   EXPECT_TRUE(config_->properties().address.empty());
@@ -294,7 +292,7 @@ TEST_F(DHCPConfigTest, RenewIP) {
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .Times(0);
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
-  config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));
+  config_->lease_expiration_callback_.Reset(base::DoNothing());
   config_->pid_ = 456;
   EXPECT_FALSE(config_->RenewIP());  // Expect no crash with NULL proxy.
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
@@ -380,8 +378,8 @@ TEST_F(DHCPConfigTest, Stop) {
       log,
       Log(_, _, ContainsRegex(base::StringPrintf("Stopping.+%s", __func__))));
   config_->pid_ = kPID;
-  config_->lease_acquisition_timeout_callback_.Reset(base::Bind(&DoNothing));
-  config_->lease_expiration_callback_.Reset(base::Bind(&DoNothing));
+  config_->lease_acquisition_timeout_callback_.Reset(base::DoNothing());
+  config_->lease_expiration_callback_.Reset(base::DoNothing());
   EXPECT_CALL(provider_, UnbindPID(kPID));
   config_->Stop(__func__);
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());

@@ -174,14 +174,14 @@ class DHCPConfig : public IPConfig {
   std::unique_ptr<DHCPProxyInterface> proxy_;
 
   // Called if we fail to get a DHCP lease in a timely manner.
-  base::CancelableClosure lease_acquisition_timeout_callback_;
+  base::CancelableOnceClosure lease_acquisition_timeout_callback_;
 
   // Time to wait for a DHCP lease. Represented as field so that it
   // can be overridden in tests.
   base::TimeDelta lease_acquisition_timeout_;
 
   // Called if a DHCP lease expires.
-  base::CancelableClosure lease_expiration_callback_;
+  base::CancelableOnceClosure lease_expiration_callback_;
 
   // The minimum MTU value this configuration will respect.
   int minimum_mtu_;
