@@ -335,7 +335,7 @@ TEST(ReporterTest, WriteFileDescriptorFails) {
 
   // SendReport() puts the subprocess' stdin fd into a scoper class, so it's
   // been closed by the time SendReport() returns.
-  ignore_result(dev_zero.release());
+  std::ignore = dev_zero.release();
 }
 
 TEST(ReporterTest, WaitFails) {
@@ -359,7 +359,7 @@ TEST(ReporterTest, WaitFails) {
 
   // SendReport() puts the subprocess' stdin fd into a scoper class, so it's
   // been closed by the time SendReport() returns.
-  ignore_result(dev_null.release());
+  std::ignore = dev_null.release();
 }
 
 }  // namespace secanomalyd
