@@ -232,6 +232,17 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   }
 
   std::vector<Disk> disks;
+  // Exists just to keep FDs around for crosvm to inherit
+  std::vector<brillo::SafeFD> owned_fds;
+  auto root_fd = brillo::SafeFD::Root();
+
+  if (brillo::SafeFD::IsError(root_fd.second)) {
+    LOG(ERROR) << "Could not open root directory: "
+               << static_cast<int>(root_fd.second);
+    response.set_failure_reason("Could not open root directory");
+    return response;
+  }
+
   // The rootfs can be treated as a disk as well and needs to be added before
   // other disks.
   Disk::Config config{};
@@ -242,10 +253,20 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
     config.block_size = rootfs_block_size;
   }
   const bool is_dev_mode = (VbGetSystemPropertyInt("cros_debug") == 1);
-  disks.push_back(
-      Disk(GetImagePath(base::FilePath(kRootfsPath), is_dev_mode), config));
+  auto rootfsPath = GetImagePath(base::FilePath(kRootfsPath), is_dev_mode);
+  auto failure_reason =
+      ConvertToFdBasedPath(root_fd.first, &rootfsPath,
+                           config.writable ? O_RDWR : O_RDONLY, owned_fds);
+  if (!failure_reason.empty()) {
+    LOG(ERROR) << "Could not open rootfs image" << rootfsPath;
+    response.set_failure_reason("Rootfs path does not exist");
+    return response;
+  }
+
+  disks.push_back(Disk(rootfsPath, config));
+
   for (const auto& disk : request.disks()) {
-    const base::FilePath path =
+    base::FilePath path =
         GetImagePath(base::FilePath(disk.path()), is_dev_mode);
     if (!base::PathExists(path)) {
       LOG(ERROR) << "Missing disk path: " << path;
@@ -257,6 +278,15 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
     if (block_size) {
       config.block_size = block_size;
     }
+    failure_reason = ConvertToFdBasedPath(
+        root_fd.first, &path, config.writable ? O_RDWR : O_RDONLY, owned_fds);
+
+    if (!failure_reason.empty()) {
+      LOG(ERROR) << "Could not open disk file";
+      response.set_failure_reason(failure_reason);
+      return response;
+    }
+
     disks.push_back(Disk(path, config));
   }
 
