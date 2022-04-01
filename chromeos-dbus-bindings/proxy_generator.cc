@@ -67,7 +67,6 @@ bool ProxyGenerator::GenerateProxies(const ServiceConfig& config,
   text.AddLine("#include <base/callback.h>");
   text.AddLine("#include <base/files/scoped_file.h>");
   text.AddLine("#include <base/logging.h>");
-  text.AddLine("#include <base/macros.h>");
   text.AddLine("#include <base/memory/ref_counted.h>");
   text.AddLine("#include <brillo/any.h>");
   text.AddLine("#include <brillo/dbus/dbus_method_invoker.h>");
@@ -123,7 +122,6 @@ bool ProxyGenerator::GenerateMocks(const ServiceConfig& config,
   text.AddBlankLine();
   text.AddLine("#include <base/callback_forward.h>");
   text.AddLine("#include <base/logging.h>");
-  text.AddLine("#include <base/macros.h>");
   text.AddLine("#include <brillo/any.h>");
   text.AddLine("#include <brillo/errors/error.h>");
   text.AddLine("#include <brillo/variant_dictionary.h>");

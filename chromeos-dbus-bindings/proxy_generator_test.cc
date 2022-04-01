@@ -41,7 +41,6 @@ const char kExpectedContent[] = R"literal_string(
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -470,7 +469,6 @@ const char kExpectedContentWithService[] = R"literal_string(
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -625,7 +623,6 @@ const char kExpectedContentWithObjectManager[] = R"literal_string(
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -1042,7 +1039,6 @@ const char kExpectedContentWithProperties[] = R"literal_string(
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -1176,7 +1172,6 @@ const char kExpectedContentWithObjectManagerAndServiceName[] = R"literal_string(
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -1529,7 +1524,6 @@ const char kExpectedContentNewFileDescriptors[] = R"literal_string(
 #include <base/callback.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_method_invoker.h>

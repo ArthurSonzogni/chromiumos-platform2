@@ -38,7 +38,6 @@ const char kExpectedContent[] = R"literal_string(
 
 #include <base/callback_forward.h>
 #include <base/logging.h>
-#include <base/macros.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>

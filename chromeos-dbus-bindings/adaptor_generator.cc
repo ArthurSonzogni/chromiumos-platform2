@@ -45,7 +45,6 @@ bool AdaptorGenerator::GenerateAdaptors(
   text.AddLine("#include <vector>");
   text.AddBlankLine();
   text.AddLine("#include <base/files/scoped_file.h>");
-  text.AddLine("#include <base/macros.h>");
   text.AddLine("#include <dbus/object_path.h>");
   text.AddLine("#include <brillo/any.h>");
   text.AddLine("#include <brillo/dbus/dbus_object.h>");

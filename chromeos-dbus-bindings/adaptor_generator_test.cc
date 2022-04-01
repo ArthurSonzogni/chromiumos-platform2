@@ -43,7 +43,6 @@ const char kGenerateAdaptorsOutput[] = R"literal_string(
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <dbus/object_path.h>
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_object.h>
@@ -286,7 +285,6 @@ const char kNewFileDescriptorsOutput[] = R"literal_string(
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/macros.h>
 #include <dbus/object_path.h>
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_object.h>
