@@ -86,15 +86,24 @@ struct AeFrameInfo {
   AeStatsInputMode ae_stats_input_mode = AeStatsInputMode::kFromVendorAeStats;
   Size active_array_dimension;
 
+  // The input parameters for Gcam AE.
   float target_tet = 0.0f;
   float target_hdr_ratio = 0.0f;
-  float target_ae_compensation = 0.0f;
+  // Base AE compensation in log2 space as configured in the Gcam AE config.
+  // This is used as a IQ tuning parameter to control the overall frame
+  // brightness and is agnostic to the camera client.
+  float base_ae_compensation_log2 = 0.0f;
+  // Client-requested AE compensation in log2 space. This is converted from the
+  // AE compensation metadata and the AE compensation step from the client
+  // request settings.
+  float client_ae_compensation_log2 = 0.0f;
   Range<int> target_fps_range = {15, 30};
 
-  // The settings used to capture the frame.
+  // The capture result metadata describing how the frame was captured.
   float analog_gain = 0.0f;
   float digital_gain = 0.0f;
   float exposure_time_ms = 0.0f;
+  // The AE compensation value in steps that was applied to capture the frame.
   int ae_compensation = 0;
   float estimated_sensor_sensitivity = 0.0f;
   std::optional<std::vector<NormalizedRect>> faces;
@@ -102,6 +111,7 @@ struct AeFrameInfo {
   // The capture request settings the camera client requested.
   struct {
     std::optional<uint8_t> ae_mode;
+    // The AE compensation value in steps.
     std::optional<int32_t> ae_exposure_compensation;
     std::optional<uint8_t> ae_lock;
     std::optional<uint8_t> ae_antibanding_mode;

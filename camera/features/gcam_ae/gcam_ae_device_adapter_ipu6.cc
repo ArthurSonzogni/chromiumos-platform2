@@ -174,7 +174,8 @@ AeParameters GcamAeDeviceAdapterIpu6::ComputeAeParameters(
       .actual_exposure_time_ms = frame_info.exposure_time_ms,
       .sensor_sensitivity = frame_info.estimated_sensor_sensitivity,
       .faces = *frame_info.faces,
-      .exposure_compensation = frame_info.target_ae_compensation,
+      .exposure_compensation = frame_info.base_ae_compensation_log2 +
+                               frame_info.client_ae_compensation_log2,
   };
 
   VLOGF(1) << "Running Gcam AE "

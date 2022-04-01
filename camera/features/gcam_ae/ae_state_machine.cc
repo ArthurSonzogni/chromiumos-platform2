@@ -489,7 +489,8 @@ void AeStateMachine::SearchTargetTet(const AeFrameInfo& frame_info,
   if (ae_locked_) {
     // AE compensation is still effective when AE is locked.
     target_ = {
-        .tet = locked_->tet * std::exp2f(frame_info.target_ae_compensation),
+        .tet =
+            locked_->tet * std::exp2f(frame_info.client_ae_compensation_log2),
         .hdr_ratio = locked_->hdr_ratio,
         .log_scene_brightness = locked_->log_scene_brightness,
     };

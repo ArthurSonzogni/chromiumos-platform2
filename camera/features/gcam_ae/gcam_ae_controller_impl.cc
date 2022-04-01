@@ -467,10 +467,11 @@ void GcamAeControllerImpl::SetRequestAeParameters(
                           frame_info->target_hdr_ratio);
   }
 
-  frame_info->target_ae_compensation = options_.exposure_compensation;
+  frame_info->base_ae_compensation_log2 = options_.exposure_compensation;
   if (frame_info->client_request_settings.ae_exposure_compensation) {
-    frame_info->target_ae_compensation +=
-        frame_info->client_request_settings.ae_exposure_compensation.value() *
+    frame_info->client_ae_compensation_log2 =
+        static_cast<float>(frame_info->client_request_settings
+                               .ae_exposure_compensation.value()) *
         ae_compensation_step_;
   }
 
