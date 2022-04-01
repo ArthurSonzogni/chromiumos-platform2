@@ -23,6 +23,8 @@ inline constexpr char kRelativeSoCDevicesDir[] = "sys/bus/soc/devices/";
 inline constexpr char kRelativeCompatibleFile[] =
     "sys/firmware/devicetree/base/compatible";
 
+// Relative path from root of the CPU directory.
+inline constexpr char kRelativeCpuDir[] = "sys/devices/system/cpu";
 // File read from the CPU directory.
 inline constexpr char kPresentFileName[] = "present";
 // Files read from the C-state directory.
@@ -32,14 +34,19 @@ inline constexpr char kCStateTimeFileName[] = "time";
 inline constexpr char kScalingMaxFreqFileName[] = "scaling_max_freq";
 inline constexpr char kScalingCurFreqFileName[] = "scaling_cur_freq";
 inline constexpr char kCpuinfoMaxFreqFileName[] = "cpuinfo_max_freq";
+// Path from relative cpu dir to the vulnerabilities directory.
+inline constexpr char kVulnerabilityDirName[] = "vulnerabilities";
+// Path from relative cpu dir to the SMT directory.
+inline constexpr char kSmtDirName[] = "smt";
+// File to find the status of SMT.
+inline constexpr char kSmtActiveFileName[] = "active";
+inline constexpr char kSmtControlFileName[] = "control";
+
 // File to read Keylocker information.
 inline constexpr char kRelativeCryptoFilePath[] = "proc/crypto";
 
-// Relative path from root of the CPU directory.
-inline constexpr char kRelativeCpuDir[] = "sys/devices/system/cpu";
-
-// Path from relative cpu dir to the vulnerabilities directory.
-inline constexpr char kVulnerabilityDirName[] = "vulnerabilities";
+// File to see if KVM exists.
+inline constexpr char kRelativeKvmFilePath[] = "dev/kvm";
 
 // Returns an absolute path to the C-state directory for the logical CPU with ID
 // |logical_id|. On a real device, this will be

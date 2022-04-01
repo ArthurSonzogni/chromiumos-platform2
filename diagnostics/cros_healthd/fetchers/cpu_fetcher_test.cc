@@ -288,6 +288,8 @@ class CpuFetcherTest : public testing::Test {
                                              kFakeCryptoContents));
     // Set the fake uname response.
     fake_system_utils()->SetUnameResponse(/*ret_code=*/0, kUnameMachineX86_64);
+    // Write the virtualization files.
+    SetupDefaultVirtualizationFiles();
   }
 
   void TearDown() override {
@@ -303,6 +305,19 @@ class CpuFetcherTest : public testing::Test {
                                                  .Append(kVulnerabilityDirName)
                                                  .Append(filename),
                                              content));
+  }
+
+  void SetupDefaultVirtualizationFiles() {
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(root_dir()
+                                                 .Append(kRelativeCpuDir)
+                                                 .Append(kSmtDirName)
+                                                 .Append(kSmtActiveFileName),
+                                             "1"));
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(root_dir()
+                                                 .Append(kRelativeCpuDir)
+                                                 .Append(kSmtDirName)
+                                                 .Append(kSmtControlFileName),
+                                             "on"));
   }
 
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
@@ -866,6 +881,163 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedVulnerabilityFile) {
   EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
 }
 
+// Test that we handle missing kvm file.
+TEST_F(CpuFetcherTest, MissingKvmFile) {
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  ASSERT_EQ(cpu_info->virtualization->has_kvm_device, false);
+}
+
+// Test that we handle missing kvm file.
+TEST_F(CpuFetcherTest, ExistingKvmFile) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      root_dir().Append(kRelativeKvmFilePath), ""));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  ASSERT_EQ(cpu_info->virtualization->has_kvm_device, true);
+}
+
+// Test that we handle missing SMT Active file.
+TEST_F(CpuFetcherTest, MissingSmtActiveFile) {
+  ASSERT_TRUE(base::DeleteFile(root_dir()
+                                   .Append(kRelativeCpuDir)
+                                   .Append(kSmtDirName)
+                                   .Append(kSmtActiveFileName)));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_error());
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+}
+
+// Test that we handle Incorrectly Formatted SMT Active file.
+TEST_F(CpuFetcherTest, IncorrectlyFormattedSMTActiveFile) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(root_dir()
+                                               .Append(kRelativeCpuDir)
+                                               .Append(kSmtDirName)
+                                               .Append(kSmtActiveFileName),
+                                           "1000"));
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_error());
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+}
+
+// Test that we handle Active SMT Active file.
+TEST_F(CpuFetcherTest, ActiveSMTActiveFile) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(root_dir()
+                                               .Append(kRelativeCpuDir)
+                                               .Append(kSmtDirName)
+                                               .Append(kSmtActiveFileName),
+                                           "1"));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  ASSERT_EQ(cpu_info->virtualization->is_smt_active, true);
+}
+
+// Test that we handle Inactive SMT Active file.
+TEST_F(CpuFetcherTest, InactiveSMTActiveFile) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(root_dir()
+                                               .Append(kRelativeCpuDir)
+                                               .Append(kSmtDirName)
+                                               .Append(kSmtActiveFileName),
+                                           "0"));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+  ASSERT_EQ(cpu_info->virtualization->is_smt_active, false);
+}
+
+// Test that we handle missing SMT Control file.
+TEST_F(CpuFetcherTest, MissingSmtControlFile) {
+  ASSERT_TRUE(base::DeleteFile(root_dir()
+                                   .Append(kRelativeCpuDir)
+                                   .Append(kSmtDirName)
+                                   .Append(kSmtControlFileName)));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_error());
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+}
+
+// Test that we handle Incorrectly Formatted SMT Control file.
+TEST_F(CpuFetcherTest, IncorrectlyFormattedSMTControlFile) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(root_dir()
+                                               .Append(kRelativeCpuDir)
+                                               .Append(kSmtDirName)
+                                               .Append(kSmtControlFileName),
+                                           "WRONG"));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_error());
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+}
+
+// POD struct for ParseSmtControlTest.
+struct ParseSmtControlTestParams {
+  std::string smt_control_content;
+  mojo_ipc::VirtualizationInfo::SMTControl expected_mojo_enum;
+};
+
+// Tests that CpuFetcher can correctly parse each known SMT Control.
+//
+// This is a parameterized test with the following parameters (accessed
+// through the ParseSmtControlTestParams POD struct):
+// * |raw_state| - written to /proc/|kPid|/stat's process state field.
+// * |expected_mojo_state| - expected value of the returned ProcessInfo's state
+//                           field.
+class ParseSmtControlTest
+    : public CpuFetcherTest,
+      public testing::WithParamInterface<ParseSmtControlTestParams> {
+ protected:
+  // Accessors to the test parameters returned by gtest's GetParam():
+  ParseSmtControlTestParams params() const { return GetParam(); }
+};
+
+// Test that we can parse the given uname response for CPU architecture.
+TEST_P(ParseSmtControlTest, ParseSmtControl) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(root_dir()
+                                               .Append(kRelativeCpuDir)
+                                               .Append(kSmtDirName)
+                                               .Append(kSmtControlFileName),
+                                           params().smt_control_content));
+
+  auto cpu_result = FetchCpuInfo();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  EXPECT_EQ(cpu_result->get_cpu_info()->virtualization->smt_control,
+            params().expected_mojo_enum);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    ,
+    ParseSmtControlTest,
+    testing::Values(
+        ParseSmtControlTestParams{
+            "on", mojo_ipc::VirtualizationInfo::SMTControl::kOn},
+        ParseSmtControlTestParams{
+            "off", mojo_ipc::VirtualizationInfo::SMTControl::kOff},
+        ParseSmtControlTestParams{
+            "forceoff", mojo_ipc::VirtualizationInfo::SMTControl::kForceOff},
+        ParseSmtControlTestParams{
+            "notsupported",
+            mojo_ipc::VirtualizationInfo::SMTControl::kNotSupported},
+        ParseSmtControlTestParams{
+            "notimplemented",
+            mojo_ipc::VirtualizationInfo::SMTControl::kNotImplemented}));
+
 // Tests that CpuFetcher can correctly parse each known architecture.
 //
 // This is a parameterized test with the following parameters (accessed
@@ -878,8 +1050,10 @@ class ParseCpuArchitectureTest
       public testing::WithParamInterface<ParseCpuArchitectureTestParams> {
  protected:
   // Accessors to the test parameters returned by gtest's GetParam():
-  ParseCpuArchitectureTestParams params() const { return GetParam(); }
-};
+  ParseCpuArchitectureTestParams params() const {
+    return GetParam();
+  }  // namespace
+};   // namespace diagnostics
 
 // Test that we can parse the given uname response for CPU architecture.
 TEST_P(ParseCpuArchitectureTest, ParseUnameResponse) {
