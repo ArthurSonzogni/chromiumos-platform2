@@ -119,6 +119,8 @@ enum RequestSuspendFlavor {
   REQUEST_SUSPEND_DEFAULT = 0,
   REQUEST_SUSPEND_TO_RAM = 1,
   REQUEST_SUSPEND_TO_DISK = 2,
+  RESUME_FROM_DISK_PREPARE = 3,
+  RESUME_FROM_DISK_ABORT = 4,
 };
 
 }  // namespace power_manager
