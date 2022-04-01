@@ -704,7 +704,6 @@ class Metrics : public DefaultServiceObserver {
   static const char kMetricTimeOnlineSecondsSuffix[];
   static const int kMetricTimeOnlineSecondsMax;
   static const int kMetricTimeOnlineSecondsMin;
-  static const int kMetricTimeOnlineSecondsNumBuckets;
   static const char kMetricTimeResumeToReadyMillisecondsSuffix[];
   static const char kMetricTimeToConfigMillisecondsSuffix[];
   static const char kMetricTimeToConnectMillisecondsSuffix[];
@@ -712,8 +711,6 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricTimeToConnectMillisecondsMin;
   static const int kMetricTimeToConnectMillisecondsNumBuckets;
   static const char kMetricTimeToScanAndConnectMillisecondsSuffix[];
-  static const char kMetricsCumulativeDirectory[];
-  static const int kMetricsCumulativeTimeOnlineBucketCount;
   static const char kMetricTimeToDropSeconds[];
   static const int kMetricTimeToDropSecondsMax;
   static const int kMetricTimeToDropSecondsMin;
@@ -821,10 +818,6 @@ class Metrics : public DefaultServiceObserver {
   // Cellular specific statistics.
   static const char kMetricCellular3GPPRegistrationDelayedDrop[];
   static const char kMetricCellularDrop[];
-  static const char kMetricCellularDropsPerHour[];
-  static const int kMetricCellularDropsPerHourMax;
-  static const int kMetricCellularDropsPerHourMin;
-  static const int kMetricCellularDropsPerHourNumBuckets;
   static const char kMetricCellularConnectResult[];
   static const char kMetricCellularOutOfCreditsReason[];
   static const char kMetricCellularSignalStrengthBeforeDrop[];
@@ -929,12 +922,6 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricWifiAvailableBSSesMin;
   static const int kMetricWifiAvailableBSSesNumBuckets;
 
-  // Number of services associated with currently connected network.
-  static const char kMetricServicesOnSameNetwork[];
-  static const int kMetricServicesOnSameNetworkMax;
-  static const int kMetricServicesOnSameNetworkMin;
-  static const int kMetricServicesOnSameNetworkNumBuckets;
-
   // Metric for user-initiated events.
   static const char kMetricUserInitiatedEvents[];
 
@@ -956,9 +943,6 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricWifiSupplicantAttemptsMax;
   static const int kMetricWifiSupplicantAttemptsMin;
   static const int kMetricWifiSupplicantAttemptsNumBuckets;
-
-  // DNS test result.
-  static const char kMetricFallbackDNSTestResultSuffix[];
 
   // Device's connection status.
   static const char kMetricDeviceConnectionStatus[];
@@ -1448,10 +1432,6 @@ class Metrics : public DefaultServiceObserver {
   // Notifies this object about the removal/resetting of a device with given
   // technology type.
   void NotifyDeviceRemovedEvent(Technology technology_id);
-
-  // Returns |true| if and only if a device that supports |technology_id| is
-  // registered.
-  bool IsTechnologyPresent(Technology technology_id) const;
 
   // For unit test purposes.
   void set_library(MetricsLibraryInterface* library);

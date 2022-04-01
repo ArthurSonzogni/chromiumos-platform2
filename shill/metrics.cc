@@ -114,11 +114,6 @@ const int Metrics::kMetricNetworkSignalStrengthMax = 200;
 const int Metrics::kMetricNetworkSignalStrengthMin = 1;
 const int Metrics::kMetricNetworkSignalStrengthNumBuckets = 40;
 
-constexpr char
-    Metrics::kMetricRememberedSystemWiFiNetworkCountBySecurityModeFormat[];
-constexpr char
-    Metrics::kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat[];
-
 const char Metrics::kMetricRememberedWiFiNetworkCount[] =
     "Network.Shill.WiFi.RememberedNetworkCount";
 const int Metrics::kMetricRememberedWiFiNetworkCountMax = 1024;
@@ -1939,14 +1934,6 @@ Metrics::DeviceMetrics* Metrics::GetDeviceMetrics(int interface_index) const {
     return nullptr;
   }
   return it->second.get();
-}
-
-bool Metrics::IsTechnologyPresent(Technology technology_id) const {
-  for (const auto& metrics : devices_metrics_) {
-    if (metrics.second->technology == technology_id)
-      return true;
-  }
-  return false;
 }
 
 // static
