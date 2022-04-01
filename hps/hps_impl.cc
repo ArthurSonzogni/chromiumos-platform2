@@ -182,6 +182,8 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
         OnFatalError(FROM_HERE, "Launch stage 1 failed");
       }
       break;
+    // TODO(b/227977336): this will no longer be reachable when we drop support
+    // for stage0 v3.
     case BootResult::kUpdate:
       if (mcu_update_sent_) {
         LOG(ERROR) << "Failed to boot after MCU update, giving up";
@@ -195,11 +197,34 @@ hps::HPS_impl::BootResult HPS_impl::TryBoot() {
       return BootResult::kUpdate;
   }
 
-  // Inspect stage1 flags and either fail or launch application and continue
-  this->CheckStage1();
-  VLOG(1) << "Launching Application";
-  if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunchAppl)) {
-    OnFatalError(FROM_HERE, "Launch Application failed");
+  // Inspect stage1 flags and either fail, update, or launch application and
+  // continue
+  switch (this->CheckStage1()) {
+    case BootResult::kOk:
+      VLOG(1) << "Launching Application";
+      if (!this->device_->WriteReg(HpsReg::kSysCmd, R3::kLaunchAppl)) {
+        OnFatalError(FROM_HERE, "Launch Application failed");
+      }
+      break;
+    case BootResult::kUpdate:
+      if (mcu_update_sent_) {
+        LOG(ERROR) << "Failed to launch stage1 after MCU update, giving up";
+        hps_metrics_->SendHpsTurnOnResult(
+            HpsTurnOnResult::kMcuUpdatedThenFailed,
+            base::TimeTicks::Now() - this->boot_start_time_);
+        exit(kNoRespawnExit);
+      }
+      mcu_update_sent_ = true;
+      VLOG(1) << "Rebooting back to stage0 before sending update";
+      this->Reboot();
+      if (!CheckMagic()) {
+        hps_metrics_->SendHpsTurnOnResult(
+            HpsTurnOnResult::kNoResponse,
+            base::TimeTicks::Now() - this->boot_start_time_);
+        OnFatalError(FROM_HERE, "Timeout waiting for stage0 magic number");
+      }
+      SendStage1Update();
+      return BootResult::kUpdate;
   }
 
   // Inspect application flags and either fail, send an update, or succeed
@@ -253,7 +278,6 @@ bool HPS_impl::CheckMagic() {
 // Check stage0 status:
 // Check status flags.
 // Read and store kHwRev.
-// Read and store kWpOff.
 // Check stage1 verification and version.
 // Return BootResult::kOk if booting should continue.
 // Return BootResult::kUpdate if an update should be sent.
@@ -282,12 +306,25 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   }
   this->hw_rev_ = hwrev.value();
 
-  this->write_protect_off_ = status.value() & R2::kWpOff;
-  VLOG_IF(1, this->write_protect_off_) << "kWpOff, ignoring verified bits";
+  if ((this->hw_rev_ & 0xff) >= 4) {
+    // From version 4, stage0 does not validate stage1 after reset, nor does it
+    // report the stage1 version. Instead it validates+launches stage1 when the
+    // 'launch1' command is sent below.
+    // It means we don't need to pay attention to the WP state, nor can we
+    // determine whether a stage1 update is needed here. So there is nothing
+    // more to do.
+    return BootResult::kOk;
+  }
+
+  // Old logic for stage0 version 3 and earlier follows.
+  // TODO(b/227977336): delete this when Taeko DVT is no longer in use.
+
+  bool write_protect_off = status.value() & R2::kWpOff;
+  VLOG_IF(1, write_protect_off) << "kWpOff, ignoring verified bits";
 
   // When write protect is off we ignore the verified signal.
   // When write protect is not off we update if there is no verified signal.
-  if (!this->write_protect_off_ && !(status.value() & R2::kStage1Verified)) {
+  if (!write_protect_off && !(status.value() & R2::kDeprecatedAVerify)) {
     // Stage1 not verified, so need to update it.
     LOG(INFO) << "Stage1 flash not verified";
     hps_metrics_->SendHpsTurnOnResult(
@@ -297,6 +334,21 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
   }
 
   // Verified, so now check the version. If it is different, update it.
+  return this->CheckStage1Version();
+}
+
+// Checks that stage1 version matches the version we expected.
+// Returns BootResult::kOk if it does.
+// Returns Bootresult::kUpdate if it doesn't.
+//
+// This is extracted to a helper function because it would normally be called
+// during CheckStage1, but for the older boot flow (stage0 version 3 and older)
+// it is done in CheckStage0 instead. We changed the behaviour so that stage1
+// reports its own version after launch, stage0 doesn't report the stage1
+// version anymore.
+// TODO(b/227977336): This logic can be moved into CheckStage1 after we stop
+// supporting stage0 v3.
+hps::HPS_impl::BootResult HPS_impl::CheckStage1Version() {
   std::optional<uint16_t> version_low =
       this->device_->ReadReg(HpsReg::kFirmwareVersionLow);
   std::optional<uint16_t> version_high =
@@ -325,9 +377,11 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage0() {
 
 // Check stage1 status:
 // Check status flags.
+// Check stage1 version.
 // Check spi verification.
-// Returns if booting should continue.
-void HPS_impl::CheckStage1() {
+// Return BootResult::kOk if stage1 is running and up-to-date.
+// Return BootResult::kUpdate if an update should be sent.
+hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
   if (!CheckMagic()) {
     hps_metrics_->SendHpsTurnOnResult(
         HpsTurnOnResult::kStage1NotStarted,
@@ -342,6 +396,24 @@ void HPS_impl::CheckStage1() {
   }
 
   if (status.value() & R2::kFault || !(status.value() & R2::kOK)) {
+    // If stage1 is blank/missing/out-of-date we will get one of the errors
+    // related to stage1 validation after we tried to launch it.
+    // Check for those first.
+    std::optional<uint16_t> error = this->device_->ReadReg(HpsReg::kError);
+    if (!error) {
+      OnFatalError(FROM_HERE, "ReadReg failure");
+    }
+    if (error.value() == RError::kStage1NotFound ||
+        error.value() == RError::kStage1TooOld ||
+        error.value() == RError::kStage1InvalidSignature) {
+      LOG(INFO) << "Stage1 flash not verified: "
+                << HpsRegValToString(HpsReg::kError, error.value());
+      hps_metrics_->SendHpsTurnOnResult(
+          HpsTurnOnResult::kMcuNotVerified,
+          base::TimeTicks::Now() - this->boot_start_time_);
+      return BootResult::kUpdate;
+    }
+    // Any other error after launching stage1 is unexpected.
     OnBootFault(FROM_HERE);
   }
 
@@ -352,6 +424,8 @@ void HPS_impl::CheckStage1() {
     OnFatalError(FROM_HERE, "Stage 1 did not start");
   }
   VLOG(1) << "Stage 1 OK";
+
+  return this->CheckStage1Version();
 }
 
 // Check stage2 status:

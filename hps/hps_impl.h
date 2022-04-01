@@ -36,7 +36,6 @@ class HPS_impl : public HPS {
         wake_lock_(device_->CreateWakeLock()),  // Power on by default.
         hps_metrics_(std::move(metrics)),
         hw_rev_(0),
-        write_protect_off_(false),
         feat_enabled_(0) {}
 
   // Methods for HPS
@@ -67,7 +66,8 @@ class HPS_impl : public HPS {
   BootResult TryBoot();
   bool CheckMagic();
   BootResult CheckStage0();
-  void CheckStage1();
+  BootResult CheckStage1Version();
+  BootResult CheckStage1();
   BootResult CheckApplication();
   bool Reboot();
   [[noreturn]] void OnBootFault(const base::Location&);
@@ -87,7 +87,6 @@ class HPS_impl : public HPS {
   uint16_t hw_rev_;
   uint32_t required_stage1_version_ = 0;
   uint32_t actual_stage1_version_ = 0;
-  bool write_protect_off_;
   bool mcu_update_sent_ = false;
   bool spi_update_sent_ = false;
   uint16_t feat_enabled_;

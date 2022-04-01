@@ -50,8 +50,8 @@ enum class HpsReg : uint8_t {
 enum R2 : uint16_t {
   kOK = BIT(0),
   kFault = BIT(1),
-  kStage1Verified = BIT(2),
-  kStage1NotVerified = BIT(3),
+  kDeprecatedAVerify = BIT(2),  // Unused (formerly AVERIFY in stage0 v3)
+  kStage0 = BIT(3),             // Stage0 running
   kWpOn = BIT(4),
   kWpOff = BIT(5),
   // Unused          BIT(6),
@@ -101,6 +101,10 @@ enum RError : uint16_t {
   kSelfTestFailed = 0x1000,
   kFpgaMcuCommError = 0x2000,
   kFpgaTimeout = 0x4000,
+  kStage1NotFound = 0x4001,
+  kStage1TooOld = 0x4002,
+  kStage1InvalidSignature = 0x4003,
+  kInternal = 0x4004,
 };
 
 inline constexpr uint16_t kHpsMagic = 0x9df2;

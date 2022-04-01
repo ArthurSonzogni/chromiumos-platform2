@@ -94,13 +94,13 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
         ret.push_back("kFault");
         val ^= kFault;
       }
-      if (val & kStage1Verified) {
-        ret.push_back("kStage1Verified");
-        val ^= kStage1Verified;
+      if (val & kDeprecatedAVerify) {
+        ret.push_back("kDeprecatedAVerify");
+        val ^= kDeprecatedAVerify;
       }
-      if (val & kStage1NotVerified) {
-        ret.push_back("kStage1NotVerified");
-        val ^= kStage1NotVerified;
+      if (val & kStage0) {
+        ret.push_back("kStage0");
+        val ^= kStage0;
       }
       if (val & kWpOff) {
         ret.push_back("kWpOff");
@@ -191,6 +191,14 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
           return "kFpgaMcuCommError";
         case RError::kFpgaTimeout:
           return "kFpgaTimeout";
+        case RError::kStage1NotFound:
+          return "kStage1NotFound";
+        case RError::kStage1TooOld:
+          return "kStage1TooOld";
+        case RError::kStage1InvalidSignature:
+          return "kStage1InvalidSignature";
+        case RError::kInternal:
+          return "kInternal";
         default:
           return base::StringPrintf("0x%04x", val);
       }

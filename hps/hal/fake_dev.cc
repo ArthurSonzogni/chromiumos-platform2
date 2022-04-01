@@ -87,7 +87,7 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       break;
     case HpsReg::kHwRev:
       if (this->stage_ == Stage::kStage0) {
-        v = 0x0101;  // Version return in stage0.
+        v = 0x0104;  // Version return in stage0.
       }
       break;
     case HpsReg::kSysStatus:
@@ -95,10 +95,8 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       if (this->fault_ != RError::kNone) {
         v |= hps::R2::kFault;
       }
-      if (this->Flag(Flags::kStage1NotVerified)) {
-        v |= hps::R2::kStage1NotVerified;
-      } else {
-        v |= hps::R2::kStage1Verified;
+      if (this->stage_ == Stage::kStage0) {
+        v |= hps::R2::kStage0;
       }
       if (this->Flag(Flags::kWpOff)) {
         v |= hps::R2::kWpOff;
@@ -130,11 +128,8 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       break;
 
     case HpsReg::kFirmwareVersionHigh:
-      // Firmware version, only returned in stage0 if the
-      // application has been verified.
-      if (this->stage_ == Stage::kStage0 &&
-          (!this->Flag(Flags::kStage1NotVerified) ||
-           this->Flag(Flags::kWpOff))) {
+      // Firmware version, only returned in stage1.
+      if (this->stage_ == Stage::kStage1) {
         v = static_cast<uint16_t>(firmware_version_ >> 16);
       } else {
         v = 0xFFFF;
@@ -142,11 +137,8 @@ uint16_t FakeDev::ReadRegister(HpsReg reg) {
       break;
 
     case HpsReg::kFirmwareVersionLow:
-      // Firmware version, only returned in stage0 if the
-      // application has been verified.
-      if (this->stage_ == Stage::kStage0 &&
-          (!this->Flag(Flags::kStage1NotVerified) ||
-           this->Flag(Flags::kWpOff))) {
+      // Firmware version, only returned in stage1.
+      if (this->stage_ == Stage::kStage1) {
         v = static_cast<uint16_t>(firmware_version_ & 0xFFFF);
       } else {
         v = 0xFFFF;
@@ -184,7 +176,13 @@ void FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
       } else if (value & hps::R3::kLaunch1) {
         // Only valid in stage0
         if (this->stage_ == Stage::kStage0) {
-          this->SetStage(Stage::kStage1);
+          // Only boot if stage1 was valid, or WP is off
+          if (this->Flag(Flags::kStage1NotVerified) &&
+              !this->Flag(Flags::kWpOff)) {
+            this->fault_ = hps::RError::kStage1InvalidSignature;
+          } else {
+            this->SetStage(Stage::kStage1);
+          }
         }
       } else if (value & hps::R3::kLaunchAppl) {
         // Only valid in stage1
