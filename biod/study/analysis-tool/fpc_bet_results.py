@@ -73,15 +73,19 @@ class FPCBETResults:
             file_name,
             skiprows=[0, 1, 2, 3, 4],
             header=None,
-            names=['VerifyUser', 'VerifyFinger', 'VerifySample',
-                   'EnrollUser', 'EnrollFinger'] + ['StrongFA'],
+            names=[Experiment.TableCol.Verify_User.value,
+                   Experiment.TableCol.Verify_Finger.value,
+                   Experiment.TableCol.Verify_Sample.value,
+                   Experiment.TableCol.Enroll_User.value,
+                   Experiment.TableCol.Enroll_Finger.value,
+                   'StrongFA'],
             sep=' ?[,\/] ?',
             engine='python',
         )
 
-        for col in Experiment.FalseTableCol.all_values():
-            col_text = tbl[col].str.extract('= (\d+)', expand=False)
-            tbl[col] = pd.to_numeric(col_text)
+        for col in Experiment.FalseTableCols:
+            col_text = tbl[col.value].str.extract('= (\d+)', expand=False)
+            tbl[col.value] = pd.to_numeric(col_text)
 
         tbl['StrongFA'] = (tbl['StrongFA'] != 'no')
 
@@ -105,6 +109,18 @@ class FPCBETResults:
 
         file_name = self.file_name(test_case, table_type)
         tbl = pd.read_csv(file_name)
+
+        tbl.rename(
+            columns={
+                'Enrolled user': Experiment.TableCol.Enroll_User.value,
+                'Enrolled finger': Experiment.TableCol.Enroll_Finger.value,
+                'User': Experiment.TableCol.Verify_User.value,
+                'Finger': Experiment.TableCol.Verify_Finger.value,
+                'Sample': Experiment.TableCol.Verify_Sample.value,
+                'Decision': Experiment.TableCol.Decision.value,
+            },
+            inplace=True,
+        )
 
         tbl.attrs['ReportDir'] = self.dir
         tbl.attrs['TestCase'] = test_case.name

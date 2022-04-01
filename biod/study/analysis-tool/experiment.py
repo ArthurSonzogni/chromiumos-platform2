@@ -25,12 +25,18 @@ class Experiment:
         E = 4
         F = 5
 
-    class FalseTableCol(Enum):
+    class TableCol(Enum):
+
         Enroll_User = 'EnrollUser'
         Enroll_Finger = 'EnrollFinger'
+        Enroll_Group = 'EnrollGroup'
         Verify_User = 'VerifyUser'
         Verify_Finger = 'VerifyFinger'
         Verify_Sample = 'VerifySample'
+        Verify_Group = 'VerifyGroup'
+        Decision = 'Decision'
+        User = 'User'
+        Group = 'Group'
 
         @classmethod
         def all(cls) -> list:
@@ -39,6 +45,17 @@ class Experiment:
         @classmethod
         def all_values(cls) -> list:
             return list(level.value for level in cls)
+
+    FalseTableCols = {TableCol.Enroll_User,
+                      TableCol.Enroll_Finger,
+                      TableCol.Verify_User,
+                      TableCol.Verify_Finger,
+                      TableCol.Verify_Sample}
+    DecisionTableCols = {TableCol.Enroll_User,
+                         TableCol.Enroll_Finger,
+                         TableCol.Verify_User,
+                         TableCol.Verify_Finger,
+                         TableCol.Verify_Sample}
 
     def _FalseTableQuery(false_table: pd.DataFrame,
                          enroll_user_id: int = None,
@@ -49,11 +66,11 @@ class Experiment:
         query_parts = []
 
         for arg, col in [
-            (enroll_user_id, Experiment.FalseTableCol.Enroll_User),
-            (enroll_finger_id, Experiment.FalseTableCol.Enroll_Finger),
-            (verify_user_id, Experiment.FalseTableCol.Verify_User),
-            (verify_finger_id, Experiment.FalseTableCol.Verify_Finger),
-            (verify_sample_index, Experiment.FalseTableCol.Verify_Sample),
+            (enroll_user_id, Experiment.TableCol.Enroll_User),
+            (enroll_finger_id, Experiment.TableCol.Enroll_Finger),
+            (verify_user_id, Experiment.TableCol.Verify_User),
+            (verify_finger_id, Experiment.TableCol.Verify_Finger),
+            (verify_sample_index, Experiment.TableCol.Verify_Sample),
         ]:
             if arg:
                 query_parts.append(f'({col.value} == {arg})')
@@ -75,11 +92,11 @@ class Experiment:
         # query_dict = {}
 
         for arg, col in [
-            (enroll_user_id, Experiment.FalseTableCol.Enroll_User),
-            (enroll_finger_id, Experiment.FalseTableCol.Enroll_Finger),
-            (verify_user_id, Experiment.FalseTableCol.Verify_User),
-            (verify_finger_id, Experiment.FalseTableCol.Verify_Finger),
-            (verify_sample_index, Experiment.FalseTableCol.Verify_Sample),
+            (enroll_user_id, Experiment.TableCol.Enroll_User),
+            (enroll_finger_id, Experiment.TableCol.Enroll_Finger),
+            (verify_user_id, Experiment.TableCol.Verify_User),
+            (verify_finger_id, Experiment.TableCol.Verify_Finger),
+            (verify_sample_index, Experiment.TableCol.Verify_Sample),
         ]:
             if arg:
                 # query_dict[col.value] = arg

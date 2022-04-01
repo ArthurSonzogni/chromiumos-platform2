@@ -194,10 +194,10 @@ b = Experiment(num_verification=60,
 
 NUM_SAMPLES = 1
 rng = np.random.default_rng()
-fa_set_tuple = [Experiment.FalseTableCol.Verify_User.value,
-                Experiment.FalseTableCol.Enroll_User.value,
-                Experiment.FalseTableCol.Verify_Finger.value,
-                Experiment.FalseTableCol.Verify_Sample.value]
+fa_set_tuple = [Experiment.TableCol.Verify_User.value,
+                Experiment.TableCol.Enroll_User.value,
+                Experiment.TableCol.Verify_Finger.value,
+                Experiment.TableCol.Verify_Sample.value]
 fa_set = fpsutils.DataFrameSetAccess(b.FAList(), fa_set_tuple)
 
 # This nieve approach take about 500ms to run one bootstrap sample, without
