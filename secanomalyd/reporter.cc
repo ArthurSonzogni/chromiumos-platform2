@@ -103,7 +103,7 @@ MaybeReport GenerateAnomalousSystemReport(const MountEntryMap& wx_mounts,
   // List anomalous conditions.
   lines.emplace_back("=== Anomalous conditions ===");
   for (const auto& tuple : wx_mounts) {
-    lines.push_back(tuple.second.ShortDescription());
+    lines.push_back(tuple.second.FullDescription());
   }
 
   lines.emplace_back("=== Mounts ===");

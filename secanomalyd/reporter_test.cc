@@ -192,7 +192,7 @@ TEST(ReporterTest, SimplestReport) {
   EXPECT_EQ(std::string(lines[6]), "=== Processes ===");
 
   // Anomalous mount.
-  EXPECT_EQ(std::string(lines[3]), "/dev/sda1 /usr/local ext4");
+  EXPECT_EQ(std::string(lines[3]), kWxMountUsrLocal_FullDescription);
 
   // Empty sections.
   EXPECT_EQ(std::string(lines[5]), "Could not obtain mounts");
@@ -244,7 +244,7 @@ TEST(ReporterTest, FullReport) {
   EXPECT_EQ(std::string(lines[9]), "=== Processes ===");
 
   // Anomalous mount.
-  EXPECT_EQ(std::string(lines[3]), "/dev/sda1 /usr/local ext4");
+  EXPECT_EQ(std::string(lines[3]), kWxMountUsrLocal_FullDescription);
 
   // Actual mounts.
   EXPECT_EQ(std::string(lines[5]), "/dev/root / ext2 rw,seclabel,relatime");
