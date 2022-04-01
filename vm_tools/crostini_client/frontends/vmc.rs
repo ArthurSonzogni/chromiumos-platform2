@@ -38,6 +38,7 @@ enum VmcError {
     ExpectedVmAndSize,
     ExpectedVmBusDevice,
     ExpectedVmPort,
+    UnexpectedSizeWithPluginVm,
     InvalidEmail,
     InvalidPath(std::ffi::OsString),
     InvalidVmType,
@@ -89,6 +90,16 @@ fn get_user_hash(environ: &EnvMap) -> Result<String, VmcError> {
     }
 }
 
+fn parse_disk_size(s: &str) -> Result<u64, VmcError> {
+    match s.chars().last() {
+        Some('M') => s[..s.len() - 1].parse::<u64>().map(|x| x * 1024 * 1024),
+        Some('G') => s[..s.len() - 1]
+            .parse::<u64>()
+            .map(|x| x * 1024 * 1024 * 1024),
+        _ => s.parse(),
+    }.map_err(|_| ExpectedUIntSize)
+}
+
 impl fmt::Display for VmcError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -129,6 +140,7 @@ impl fmt::Display for VmcError {
             ExpectedU8Port => write!(f, "expected <port> to fit into an 8-bit integer"),
             ExpectedUUID => write!(f, "expected <command UUID>"),
             ExpectedVmPort => write!(f, "expected <vm name> <port>"),
+            UnexpectedSizeWithPluginVm => write!(f, "unexpected --size parameter; -p doesn't support --size"),
             InvalidEmail => write!(f, "the active session has an invalid email address"),
             InvalidPath(path) => write!(f, "invalid path: {:?}", path),
             InvalidVmType => write!(f, "valid VM type not provided"),
@@ -401,9 +413,18 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         // interface.
         opts.parsing_style(getopts::ParsingStyle::StopAtFirstFree);
         opts.optflag("p", "pluginvm", "create a pluginvm vm");
+        opts.optopt("", "size", "size of the created vm's disk", "SIZE");
 
         let matches = opts.parse(self.args)?;
         let plugin_vm = matches.opt_present("p");
+        let size = match matches.opt_str("size") {
+            Some(s) => Some(parse_disk_size(&s)?),
+            None => None,
+        };
+
+        if plugin_vm && size != None {
+            return Err(UnexpectedSizeWithPluginVm.into());
+        }
 
         let mut s = matches.free.splitn(2, |arg| *arg == "--");
         let args = s.next().expect("failed to split argument list");
@@ -422,6 +443,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             &vm_name,
             &user_id_hash,
             plugin_vm,
+            size,
             file_name,
             removable_media,
             &params,
@@ -632,14 +654,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         let matches = opts.parse(self.args)?;
 
         let s = matches.opt_str("size").ok_or_else(|| ExpectedSize)?;
-        let size: u64 = match s.chars().last() {
-            Some('M') => s[..s.len() - 1].parse::<u64>().map(|x| x * 1024 * 1024),
-            Some('G') => s[..s.len() - 1]
-                .parse::<u64>()
-                .map(|x| x * 1024 * 1024 * 1024),
-            _ => s.parse(),
-        }
-        .map_err(|_| ExpectedUIntSize)?;
+        let size = parse_disk_size(&s)?;
 
         if matches.free.len() != 1 {
             return Err(ExpectedPath.into());
@@ -916,7 +931,7 @@ const USAGE: &str = r#"
    [ start [--enable-gpu] [--enable-vulkan] [--enable-big-gl] [--enable-audio-capture] [--untrusted] [--extra-disk PATH] [--kernel PATH] [--initrd PATH] [--writable-rootfs] [--kernel-param PARAM] [--bios PATH] [--timeout PARAM] <name> |
      stop <name> |
      launch <name> |
-     create [-p] <name> [<source media> [<removable storage name>]] [-- additional parameters]
+     create [-p] [--size SIZE] <name> [<source media> [<removable storage name>]] [-- additional parameters]
      create-extra-disk --size SIZE [--removable-media] <host disk path> |
      adjust <name> <operation> [additional parameters] |
      destroy <name> |
@@ -1172,6 +1187,9 @@ mod tests {
             &["vmc", "create", "-p", "termina", "--"],
             &["vmc", "create", "-p", "termina", "--", "param"],
             &["vmc", "create", "-p", "termina", "--", "param1", "param2"],
+            &["vmc", "create", "--size", "1000000", "termina"],
+            &["vmc", "create", "--size", "256M", "termina"],
+            &["vmc", "create", "--size", "1G", "termina"],
             &["vmc", "create-extra-disk", "--size=1000000", "foo.img"],
             &["vmc", "create-extra-disk", "--size=256M", "foo.img"],
             &["vmc", "create-extra-disk", "--size=1G", "foo.img"],
@@ -1279,6 +1297,10 @@ mod tests {
                 "removable media",
                 "extra args",
             ],
+            &["vmc", "create", "--size", "termina"],
+            &["vmc", "create", "--size", "52J", "termina"],
+            &["vmc", "create", "--size", "foo", "termina"],
+            &["vmc", "create", "-p", "--size", "10G", "termina"],
             &["vmc", "create-extra-disk"],
             &["vmc", "create-extra-disk", "foo.img"],
             &["vmc", "create-extra-disk", "--size", "1G"],

@@ -813,6 +813,7 @@ impl Methods {
         vm_name: &str,
         user_id_hash: &str,
         plugin_vm: bool,
+        size: Option<u64>,
         source_name: Option<&str>,
         removable_media: Option<&str>,
         params: &[T],
@@ -826,6 +827,9 @@ impl Methods {
         } else {
             StorageLocation::STORAGE_CRYPTOHOME_ROOT
         };
+        if let Some(s) = size {
+            request.disk_size = s;
+        }
 
         let source_fd = match source_name {
             Some(source) => {
@@ -1971,6 +1975,7 @@ impl Methods {
         name: &str,
         user_id_hash: &str,
         plugin_vm: bool,
+        size: Option<u64>,
         source_name: Option<&str>,
         removable_media: Option<&str>,
         params: &[T],
@@ -1984,6 +1989,7 @@ impl Methods {
             name,
             user_id_hash,
             plugin_vm,
+            size,
             source_name,
             removable_media,
             params,
