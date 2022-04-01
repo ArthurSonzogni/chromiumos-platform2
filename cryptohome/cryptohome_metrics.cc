@@ -91,7 +91,6 @@ constexpr char kDircryptoMigrationInitialFreeSpaceInMbHistogram[] =
     "Cryptohome.DircryptoMigrationInitialFreeSpaceInMb";
 constexpr char kDircryptoMigrationNoSpaceXattrSizeInBytesHistogram[] =
     "Cryptohome.DircryptoMigrationNoSpaceXattrSizeInBytes";
-constexpr char kTpmAlertsHistogram[] = "Platform.TPM.HardwareAlerts";
 constexpr char kOOPMountOperationResultHistogram[] =
     "Cryptohome.OOPMountOperationResult";
 constexpr char kOOPMountCleanupResultHistogram[] =
@@ -417,24 +416,6 @@ void ReportDircryptoMigrationFailedOperationType(
   g_metrics->SendEnumToUMA(
       kCryptohomeDircryptoMigrationFailedOperationTypeHistogram, type,
       kMigrationFailedOperationTypeNumBuckets);
-}
-
-void ReportAlertsData(const Tpm::AlertsData& alerts) {
-  if (!g_metrics) {
-    return;
-  }
-
-  for (int i = 0; i < std::size(alerts.counters); i++) {
-    uint16_t counter = alerts.counters[i];
-    if (counter) {
-      LOG(INFO) << "TPM alert of type " << i << " reported " << counter
-                << " time(s)";
-    }
-    for (int c = 0; c < counter; c++) {
-      g_metrics->SendEnumToUMA(kTpmAlertsHistogram, i,
-                               std::size(alerts.counters));
-    }
-  }
 }
 
 void ReportDircryptoMigrationFailedPathType(

@@ -162,13 +162,6 @@ class Tpm {
     uint16_t field_upgrade_counter;
   };
 
-  // Number of alerts supported by UMA
-  static constexpr size_t kAlertsNumber = 45;
-  struct AlertsData {
-    // alert counters with UMA enum index
-    uint16_t counters[kAlertsNumber];
-  };
-
   // Constants for default labels for use with the CreateDelegate() method.
   static constexpr uint8_t kDefaultDelegateFamilyLabel = 1;
   static constexpr uint8_t kDefaultDelegateLabel = 2;
@@ -292,13 +285,6 @@ class Tpm {
   //   data (OUT) - The random data from the TPM
   virtual hwsec::Status GetRandomDataSecureBlob(size_t length,
                                                 brillo::SecureBlob* data) = 0;
-
-  // Gets alerts data the TPM
-  //
-  // Parameters
-  //   alerts (OUT) - Struct that contains TPM alerts information
-  // Returns true is hardware supports Alerts reporting, false otherwise
-  virtual hwsec::Status GetAlertsData(Tpm::AlertsData* alerts) = 0;
 
   // Creates a NVRAM space in the TPM
   //

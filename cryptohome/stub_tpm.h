@@ -97,10 +97,6 @@ class StubTpm : public Tpm {
     return hwsec_foundation::error::CreateError<hwsec::TPMError>(
         "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
-  hwsec::Status GetAlertsData(Tpm::AlertsData* alerts) override {
-    return hwsec_foundation::error::CreateError<hwsec::TPMError>(
-        "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
-  }
   bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override {
     return false;
   }

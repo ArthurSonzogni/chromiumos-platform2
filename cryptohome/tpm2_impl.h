@@ -96,7 +96,6 @@ class Tpm2Impl : public Tpm {
   hwsec::Status GetRandomDataBlob(size_t length, brillo::Blob* data) override;
   hwsec::Status GetRandomDataSecureBlob(size_t length,
                                         brillo::SecureBlob* data) override;
-  hwsec::Status GetAlertsData(Tpm::AlertsData* alerts) override;
   bool DefineNvram(uint32_t index, size_t length, uint32_t flags) override;
   bool DestroyNvram(uint32_t index) override;
   bool WriteNvram(uint32_t index, const brillo::SecureBlob& blob) override;

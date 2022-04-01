@@ -11,7 +11,6 @@ namespace cryptohome {
 
 // Constants used in both service.cc and userdataauth.cc
 static constexpr char kPublicMountSaltFilePath[] = "/var/lib/public_mount_salt";
-static constexpr int kUploadAlertsPeriodMS = 1000 * 60 * 60 * 6;    // 6 hours
 
 static constexpr int kDefaultRandomSeedLength = 64;
 // The default entropy source to seed with random data from the TPM on startup.

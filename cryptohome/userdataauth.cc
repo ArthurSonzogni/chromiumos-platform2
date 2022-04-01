@@ -275,7 +275,6 @@ UserDataAuth::UserDataAuth()
       firmware_management_parameters_(nullptr),
       default_fingerprint_manager_(),
       fingerprint_manager_(nullptr),
-      upload_alerts_period_ms_(kUploadAlertsPeriodMS),
       ownership_callback_has_run_(false),
       default_install_attrs_(new cryptohome::InstallAttributes(NULL)),
       install_attrs_(default_install_attrs_.get()),
@@ -495,12 +494,6 @@ bool UserDataAuth::Initialize() {
   if (!low_disk_space_handler_->Init(base::BindRepeating(
           &UserDataAuth::PostTaskToMountThread, base::Unretained(this))))
     return false;
-
-  // Start scheduling periodic TPM alerts upload to UMA. Subsequent events are
-  // scheduled by the callback itself.
-  PostTaskToMountThread(FROM_HERE,
-                        base::BindOnce(&UserDataAuth::UploadAlertsDataCallback,
-                                       base::Unretained(this)));
 
   // Do Stateful Recovery if requested.
   auto mountfn = base::BindRepeating(&UserDataAuth::StatefulRecoveryMount,
@@ -3565,28 +3558,6 @@ void UserDataAuth::ResetDictionaryAttackMitigation() {
   brillo::Blob unused_blob;
   if (!tpm_->ResetDictionaryAttackMitigation(unused_blob, unused_blob)) {
     LOG(WARNING) << "Failed to reset DA";
-  }
-}
-
-void UserDataAuth::UploadAlertsDataCallback() {
-  AssertOnMountThread();
-
-  Tpm::AlertsData alerts;
-
-  CHECK(tpm_);
-  if (hwsec::Status err = tpm_->GetAlertsData(&alerts)) {
-    // TODO(b/141294469): Change the code to retry even when it fails.
-    LOG(INFO) << "The TPM chip does not support GetAlertsData. Stop "
-                 "UploadAlertsData task: "
-              << err;
-  } else {
-    ReportAlertsData(alerts);
-
-    PostTaskToMountThread(
-        FROM_HERE,
-        base::BindOnce(&UserDataAuth::UploadAlertsDataCallback,
-                       base::Unretained(this)),
-        base::Milliseconds(upload_alerts_period_ms_));
   }
 }
 

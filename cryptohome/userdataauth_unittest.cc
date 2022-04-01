@@ -4237,51 +4237,6 @@ class UserDataAuthTestThreaded : public UserDataAuthTestBase {
   base::Thread origin_thread_;
 };
 
-TEST_F(UserDataAuthTestTasked, UploadAlertsCallback) {
-  MetricsLibraryMock metrics;
-  OverrideMetricsLibraryForTesting(&metrics);
-
-  Tpm::AlertsData alert_data;
-  for (int i = 0; i < Tpm::kAlertsNumber; i++)
-    alert_data.counters[i] = 1;
-
-  // Checks that GetAlertsData is called during/after initialization.
-  EXPECT_CALL(tpm_, GetAlertsData(_))
-      .WillOnce(
-          DoAll(SetArgPointee<0>(alert_data), ReturnError<TPMErrorBase>()));
-
-  // This one is sent from platforms on "Durable" files reads.
-  constexpr char kChecksumStatusHistogram[] = "Cryptohome.ChecksumStatus";
-  EXPECT_CALL(metrics, SendEnumToUMA(kChecksumStatusHistogram, _, _))
-      .WillRepeatedly(Return(true));
-
-  // Checks that the metrics are reported.
-  constexpr char kDiskCleanupResultsHistogram[] =
-      "Cryptohome.DiskCleanupResult";
-  EXPECT_CALL(metrics, SendEnumToUMA(kDiskCleanupResultsHistogram, _, _))
-      .WillRepeatedly(Return(true));
-
-  // Checks that the metrics are reported.
-  constexpr char kTpmAlertsHistogram[] = "Platform.TPM.HardwareAlerts";
-  EXPECT_CALL(metrics, SendEnumToUMA(kTpmAlertsHistogram, _, _))
-      .Times(Tpm::kAlertsNumber);
-
-  InitializeUserDataAuth();
-
-  ClearMetricsLibraryForTesting();
-}
-
-TEST_F(UserDataAuthTestTasked, UploadAlertsCallbackPeriodical) {
-  // Checks that GetAlertsData is called periodically.
-  EXPECT_CALL(tpm_, GetAlertsData(_)).Times(1);
-
-  InitializeUserDataAuth();
-
-  EXPECT_CALL(tpm_, GetAlertsData(_)).Times(5);
-
-  FastForwardBy(base::Milliseconds(kUploadAlertsPeriodMS) * 5);
-}
-
 TEST_F(UserDataAuthTestThreaded, DetectEnterpriseOwnership) {
   // If asked, this machine is enterprise owned.
   static const std::string true_str = "true";

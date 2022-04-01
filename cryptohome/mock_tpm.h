@@ -75,7 +75,6 @@ class MockTpm : public Tpm {
               GetRandomDataSecureBlob,
               (size_t, brillo::SecureBlob*),
               (override));
-  MOCK_METHOD(hwsec::Status, GetAlertsData, (Tpm::AlertsData*), (override));
   MOCK_METHOD(bool, DefineNvram, (uint32_t, size_t, uint32_t), (override));
   MOCK_METHOD(bool,
               WriteNvram,

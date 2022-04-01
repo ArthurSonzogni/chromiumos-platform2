@@ -663,12 +663,6 @@ class UserDataAuth {
     sessions_[username] = session;
   }
 
-  // Override the time between each run of UploadAlertsDataCallback() for
-  // testing. This is so that we can finish the unit test in a shorter time.
-  void set_upload_alerts_period_ms(int value) {
-    upload_alerts_period_ms_ = value;
-  }
-
   bool StartAuthSession(
       user_data_auth::StartAuthSessionRequest request,
       base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>
@@ -969,9 +963,6 @@ class UserDataAuth {
   // Does what its name suggests. Usually called by DoAutoCleanup().
   void ResetDictionaryAttackMitigation();
 
-  // This method uploads the TPM Alerts data UMA.
-  void UploadAlertsDataCallback();
-
   // This method takes entropy from the TPM and seeds it to /dev/urandom.
   void SeedUrandom();
 
@@ -1205,9 +1196,6 @@ class UserDataAuth {
   // The actual Fingerprint Manager object that is used by this class, but
   // can be overridden for testing.
   FingerprintManager* fingerprint_manager_;
-
-  // The amount of time in between each run of UploadAlertsDataCallback()
-  int upload_alerts_period_ms_;
 
   // This is set to true iff OwnershipCallback has run.
   bool ownership_callback_has_run_;

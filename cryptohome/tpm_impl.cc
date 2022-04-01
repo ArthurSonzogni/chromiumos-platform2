@@ -948,10 +948,6 @@ hwsec::Status TpmImpl::GetRandomDataSecureBlob(size_t length,
   return nullptr;
 }
 
-hwsec::Status TpmImpl::GetAlertsData(Tpm::AlertsData* alerts) {
-  return CreateError<TPMError>("Not supported", TPMRetryAction::kNoRetry);
-}
-
 bool TpmImpl::DestroyNvram(uint32_t index) {
   if (!InitializeTpmManagerUtility()) {
     LOG(ERROR) << __func__ << ": Failed to initialize |TpmManagerUtility|.";
