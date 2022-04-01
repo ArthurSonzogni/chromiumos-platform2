@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <set>
+#include <string>
 #include <utility>
 
 #include <chromeos/dbus/service_constants.h>
@@ -31,27 +32,27 @@ class CryptohomeTPMError : public CryptohomeError {
     // called, or otherwise a type mismatch error will be raised.
     class Unactioned {
      public:
-      Unactioned(CryptohomeError::ErrorLocation loc,
-                 std::set<CryptohomeError::Action> actions);
+      Unactioned(const ErrorLocationPair& loc,
+                 const std::set<CryptohomeError::Action>& actions);
 
       hwsec_foundation::status::StatusChain<CryptohomeTPMError> Wrap(
           hwsec_foundation::status::StatusChain<CryptohomeTPMError> status) &&;
 
      private:
-      const CryptohomeError::ErrorLocation unified_loc_;
+      const ErrorLocationPair unified_loc_;
       const std::set<CryptohomeError::Action> actions_;
     };
 
     // Creates a stub which has to wrap another |hwsec::TPMErrorBase| or
     // |CryptohomeTPMError| to become a valid status chain.
-    Unactioned operator()(CryptohomeError::ErrorLocation loc,
-                          std::set<CryptohomeError::Action> actions);
+    Unactioned operator()(const ErrorLocationPair& loc,
+                          const std::set<CryptohomeError::Action>& actions);
 
     // Create an error directly.
     hwsec_foundation::status::StatusChain<CryptohomeTPMError> operator()(
-        CryptohomeError::ErrorLocation loc,
+        const ErrorLocationPair& loc,
         std::set<CryptohomeError::Action> actions,
-        hwsec::TPMRetryAction retry);
+        const hwsec::TPMRetryAction retry);
 
     // Create an error by converting |hwsec::TPMErrorBase|
     hwsec_foundation::status::StatusChain<CryptohomeTPMError> operator()(
@@ -67,7 +68,7 @@ class CryptohomeTPMError : public CryptohomeError {
   // class expects the ErrorLocation |loc| to be a unified error code. See
   // libhwsec's tpm_error.h for more information on the unified error code.
   CryptohomeTPMError(
-      const CryptohomeError::ErrorLocation loc,
+      const ErrorLocationPair& loc,
       const std::set<CryptohomeError::Action>& actions,
       const hwsec::TPMRetryAction retry,
       std::optional<hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>>

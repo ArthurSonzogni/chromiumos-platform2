@@ -117,10 +117,6 @@ constexpr auto kAuthSessionExtension =
 // Fake labels to be in used in this test suite.
 constexpr char kFakeLabel[] = "test_label";
 
-constexpr ::cryptohome::error::CryptohomeError::ErrorLocation
-    kErrorLocationPlaceholder =
-        static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1);
-
 }  // namespace
 
 // UserDataAuthTestBase is a test fixture that does not call
@@ -315,6 +311,11 @@ class UserDataAuthTestBase : public ::testing::Test {
   // This is important because otherwise the background thread may call into
   // mocks that have already been destroyed.
   std::unique_ptr<UserDataAuth> userdataauth_;
+
+  const error::CryptohomeError::ErrorLocationPair kErrorLocationPlaceholder =
+      error::CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          "Testing1");
 };
 
 // Test fixture that implements two task runners, which is similar to the task
@@ -2680,7 +2681,8 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
   EXPECT_CALL(user_session_factory_, New(_, _))
       .WillOnce(Invoke([this](bool, bool) {
         SetupMount(kGuestUserName);
-        EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([]() {
+        EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([this]() {
+          // |this| is captured for kErrorLocationPlaceholder.
           return MakeStatus<CryptohomeMountError>(
               kErrorLocationPlaceholder, NoErrorAction(), MOUNT_ERROR_FATAL,
               base::nullopt);

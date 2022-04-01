@@ -17,21 +17,29 @@ namespace cryptohome {
 
 namespace error {
 
-class CryptohomeErrorTest : public ::testing::Test {};
+class CryptohomeErrorTest : public ::testing::Test {
+ protected:
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting2 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(2),
+          std::string("Testing2"));
+};
 
 namespace {
 
 using hwsec_foundation::status::MakeStatus;
 
-constexpr int kTestLocation1 = 10001;
-constexpr int kTestLocation2 = 10002;
-
 TEST_F(CryptohomeErrorTest, LegacyCryptohomeErrorCode) {
-  auto err1 = MakeStatus<CryptohomeError>(kTestLocation1, NoErrorAction());
+  auto err1 =
+      MakeStatus<CryptohomeError>(kErrorLocationForTesting1, NoErrorAction());
   EXPECT_EQ(err1->local_legacy_error(), std::nullopt);
 
   auto err2 = MakeStatus<CryptohomeError>(
-      kTestLocation2, NoErrorAction(),
+      kErrorLocationForTesting2, NoErrorAction(),
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
   EXPECT_EQ(
       err2->local_legacy_error().value(),
@@ -42,14 +50,15 @@ TEST_F(CryptohomeErrorTest, BasicFields) {
   // This test checks that the basic fields that the error holds is working.
   // Basic fields as in location and actions.
 
-  auto err1 = MakeStatus<CryptohomeError>(kTestLocation1, NoErrorAction());
-  EXPECT_EQ(err1->local_location(), kTestLocation1);
+  auto err1 =
+      MakeStatus<CryptohomeError>(kErrorLocationForTesting1, NoErrorAction());
+  EXPECT_EQ(err1->local_location(), kErrorLocationForTesting1.location());
   EXPECT_EQ(err1->local_actions().size(), 0);
 
   auto err2 = MakeStatus<CryptohomeError>(
-      kTestLocation2,
+      kErrorLocationForTesting2,
       ErrorActionSet({ErrorAction::kRetry, ErrorAction::kPowerwash}));
-  EXPECT_EQ(err2->local_location(), kTestLocation2);
+  EXPECT_EQ(err2->local_location(), kErrorLocationForTesting2.location());
   EXPECT_EQ(err2->local_actions(),
             std::set<CryptohomeError::Action>(
                 {ErrorAction::kRetry, ErrorAction::kPowerwash}));
@@ -57,12 +66,13 @@ TEST_F(CryptohomeErrorTest, BasicFields) {
 
 TEST_F(CryptohomeErrorTest, ToString) {
   auto err2 = MakeStatus<CryptohomeError>(
-      kTestLocation2,
+      kErrorLocationForTesting2,
       ErrorActionSet({ErrorAction::kRetry, ErrorAction::kPowerwash}));
 
   std::stringstream ss;
-  ss << "Loc: " << kTestLocation2 << " Actions: (";
-  ss << static_cast<int>(ErrorAction::kRetry) << ", "
+  ss << "Loc: " << kErrorLocationForTesting2.name() << "/"
+     << kErrorLocationForTesting2.location() << " Actions: ("
+     << static_cast<int>(ErrorAction::kRetry) << ", "
      << static_cast<int>(ErrorAction::kPowerwash) << ")";
 
   EXPECT_EQ(err2->ToString(), ss.str());

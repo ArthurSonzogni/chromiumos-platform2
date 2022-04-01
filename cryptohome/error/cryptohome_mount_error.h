@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <set>
+#include <string>
 #include <utility>
 
 #include <base/optional.h>
@@ -30,7 +31,7 @@ class CryptohomeMountError : public CryptohomeError {
   // hwsec_foundation::status::Error class. See that class for more info.
 
   CryptohomeMountError(
-      const ErrorLocation loc,
+      const ErrorLocationPair& loc,
       const std::set<Action>& actions,
       const MountError mount_err,
       const base::Optional<user_data_auth::CryptohomeErrorCode> ec);

@@ -9,6 +9,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/error/error.h>
@@ -35,15 +36,35 @@ class CryptohomeError : public hwsec_foundation::status::Error {
   // Pull the ErrorAction enum in for convenience.
   using Action = ErrorAction;
 
+  // Holder for the string and numerical representation of the error location.
+  class ErrorLocationPair {
+   public:
+    ErrorLocationPair(const ErrorLocation input_loc,
+                      const std::string& input_name)
+        : loc_(input_loc), name_(input_name) {}
+
+    // This class is copyable or movable with the default copy/move
+    // constructor/assigment operator.
+
+    // Getter for the location enum or the name.
+    ErrorLocation location() const { return loc_; }
+    const std::string& name() const { return name_; }
+
+   private:
+    const ErrorLocation loc_;
+    const std::string name_;
+  };
+
   // Standard constructor taking the error location and actions.
-  CryptohomeError(const ErrorLocation loc,
+  CryptohomeError(const ErrorLocationPair& loc,
                   const std::set<Action>& actions,
                   const std::optional<user_data_auth::CryptohomeErrorCode> ec =
                       std::nullopt);
+
   ~CryptohomeError() override = default;
 
   // Return the location id in this error.
-  ErrorLocation local_location() const { return loc_; }
+  ErrorLocation local_location() const { return loc_.location(); }
 
   // Return the recommended actions in this error (but not the wrapped ones).
   const std::set<Action>& local_actions() const { return actions_; }
@@ -59,7 +80,7 @@ class CryptohomeError : public hwsec_foundation::status::Error {
 
  private:
   // From where was the error triggered?
-  ErrorLocation loc_;
+  ErrorLocationPair loc_;
 
   // What do we recommend the upper layers do?
   std::set<Action> actions_;

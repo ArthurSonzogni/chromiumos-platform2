@@ -46,10 +46,12 @@ class ErrorReportingTpm2Test : public ::testing::Test {
 
  protected:
   StrictMock<MetricsLibraryMock> metrics_;
-};
 
-constexpr CryptohomeError::ErrorLocation kErrorLocationForTesting1 =
-    static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1);
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+};
 
 constexpr trunks::TPM_RC kTestingTpmError1 = trunks::TPM_RC_LOCKOUT;
 
@@ -57,7 +59,7 @@ TEST_F(ErrorReportingTpm2Test, SimpleTPM2Error) {
   // Setup the expected result.
   EXPECT_CALL(metrics_,
               SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
-                              kErrorLocationForTesting1))
+                              kErrorLocationForTesting1.location()))
       .WillOnce(Return(true));
   EXPECT_CALL(metrics_,
               SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
@@ -74,7 +76,7 @@ TEST_F(ErrorReportingTpm2Test, SimpleTPM2Error) {
   // Generate the mixed TPM error.
   CryptohomeError::ErrorLocation mixed =
       static_cast<CryptohomeError::ErrorLocation>(kTestingTpmError1) |
-      (kErrorLocationForTesting1 << 16);
+      (kErrorLocationForTesting1.location() << 16);
   EXPECT_CALL(metrics_,
               SendSparseToUMA(std::string(kCryptohomeErrorLeafWithTPM), mixed))
       .WillOnce(Return(true));

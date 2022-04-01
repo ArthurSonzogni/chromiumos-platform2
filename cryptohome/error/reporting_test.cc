@@ -45,15 +45,16 @@ class ErrorReportingTest : public ::testing::Test {
 
  protected:
   StrictMock<MetricsLibraryMock> metrics_;
+
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting2 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(2),
+          std::string("Testing2"));
 };
-
-constexpr ::cryptohome::error::CryptohomeError::ErrorLocation
-    kErrorLocationForTesting1 =
-        static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1);
-
-constexpr ::cryptohome::error::CryptohomeError::ErrorLocation
-    kErrorLocationForTesting2 =
-        static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(2);
 
 TEST_F(ErrorReportingTest, SuccessNoReporting) {
   EXPECT_CALL(metrics_, SendSparseToUMA(_, _)).Times(0);
@@ -67,15 +68,15 @@ TEST_F(ErrorReportingTest, NoTPMError) {
   // Setup the expected result.
   EXPECT_CALL(metrics_,
               SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
-                              kErrorLocationForTesting1))
+                              kErrorLocationForTesting1.location()))
       .WillOnce(Return(true));
   EXPECT_CALL(metrics_,
               SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
-                              kErrorLocationForTesting2))
+                              kErrorLocationForTesting2.location()))
       .WillOnce(Return(true));
   EXPECT_CALL(metrics_,
               SendSparseToUMA(std::string(kCryptohomeErrorLeafWithoutTPM),
-                              kErrorLocationForTesting1))
+                              kErrorLocationForTesting1.location()))
       .WillOnce(Return(true));
   // HashedStack value is precomputed.
   EXPECT_CALL(
@@ -144,7 +145,7 @@ TEST_F(ErrorReportingTest, GenericTPMError) {
   // Setup the expected result.
   EXPECT_CALL(metrics_,
               SendSparseToUMA(std::string(kCryptohomeErrorAllLocations),
-                              kErrorLocationForTesting1))
+                              kErrorLocationForTesting1.location()))
       .WillOnce(Return(true));
   // 32527 is precomputed value for "Testing1"
   CryptohomeError::ErrorLocation kHashedTesting1 = 32527;
@@ -160,7 +161,7 @@ TEST_F(ErrorReportingTest, GenericTPMError) {
 
   // Generate the mixed TPM error.
   CryptohomeError::ErrorLocation mixed =
-      kHashedTesting1 | (kErrorLocationForTesting1 << 16);
+      kHashedTesting1 | (kErrorLocationForTesting1.location() << 16);
   EXPECT_CALL(metrics_,
               SendSparseToUMA(std::string(kCryptohomeErrorLeafWithTPM), mixed))
       .WillOnce(Return(true));

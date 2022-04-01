@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <set>
+#include <string>
 #include <utility>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -17,23 +18,28 @@ namespace cryptohome {
 
 namespace error {
 
-class CryptohomeMountErrorTest : public ::testing::Test {};
+class CryptohomeMountErrorTest : public ::testing::Test {
+ protected:
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+};
 
 namespace {
 
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::StatusChain;
 
-constexpr int kTestLocation1 = 1001;
-
 TEST_F(CryptohomeMountErrorTest, BasicConstruction) {
   auto err1 = MakeStatus<CryptohomeMountError>(
-      kTestLocation1, ErrorActionSet({ErrorAction::kResumePreviousMigration}),
+      kErrorLocationForTesting1,
+      ErrorActionSet({ErrorAction::kResumePreviousMigration}),
       MountError::MOUNT_ERROR_KEY_FAILURE,
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 
   ASSERT_FALSE(err1.ok());
-  EXPECT_EQ(err1->local_location(), kTestLocation1);
+  EXPECT_EQ(err1->local_location(), kErrorLocationForTesting1.location());
   EXPECT_EQ(err1->local_actions(),
             ErrorActionSet({ErrorAction::kResumePreviousMigration}));
   EXPECT_EQ(

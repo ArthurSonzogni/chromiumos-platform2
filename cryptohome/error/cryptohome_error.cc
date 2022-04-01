@@ -18,14 +18,14 @@ namespace cryptohome {
 namespace error {
 
 CryptohomeError::CryptohomeError(
-    const ErrorLocation loc,
+    const ErrorLocationPair& loc,
     const std::set<Action>& actions,
     const std::optional<user_data_auth::CryptohomeErrorCode> ec)
-    : loc_(loc), actions_(actions), ec_(ec) {}
+    : loc_(std::move(loc)), actions_(actions), ec_(ec) {}
 
 std::string CryptohomeError::ToString() const {
   std::stringstream ss;
-  ss << "Loc: " << loc_ << " Actions: (";
+  ss << "Loc: " << loc_.name() << "/" << loc_.location() << " Actions: (";
   std::vector<std::string> actions_str;
   for (const auto& action : actions_) {
     actions_str.push_back(std::to_string(static_cast<int>(action)));

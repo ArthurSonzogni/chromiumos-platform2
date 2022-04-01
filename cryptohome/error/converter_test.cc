@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <set>
+#include <string>
 #include <utility>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -19,9 +20,8 @@ namespace error {
 namespace {
 
 using hwsec_foundation::status::MakeStatus;
+using hwsec_foundation::status::StatusChain;
 
-constexpr int kTestLocation1 = 10001;
-constexpr int kTestLocation2 = 10002;
 constexpr char kTestSanitizedUsername1[] = "Abcdefghijklmnop1234!@#$%^&*()";
 
 // Note that the RepeatedField field in protobuf for PossibleAction uses int,
@@ -39,14 +39,23 @@ class ErrorConverterTest : public ::testing::Test {
  public:
   ErrorConverterTest() {}
   ~ErrorConverterTest() override = default;
+
+ protected:
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting2 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(2),
+          std::string("Testing2"));
 };
 
 TEST_F(ErrorConverterTest, BasicConversionTest) {
-  hwsec_foundation::status::StatusChain<CryptohomeError> err1 =
-      MakeStatus<CryptohomeError>(
-          kTestLocation2, ErrorActionSet({ErrorAction::kPowerwash}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+  StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
+      kErrorLocationForTesting2, ErrorActionSet({ErrorAction::kPowerwash}),
+      user_data_auth::CryptohomeErrorCode::
+          CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
   user_data_auth::CryptohomeErrorCode ec =
       static_cast<user_data_auth::CryptohomeErrorCode>(
@@ -55,7 +64,8 @@ TEST_F(ErrorConverterTest, BasicConversionTest) {
       CryptohomeErrorToUserDataAuthError(err1, &ec);
   EXPECT_EQ(ec, user_data_auth::CryptohomeErrorCode::
                     CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
-  EXPECT_EQ(info.error_id(), "10002");
+  EXPECT_EQ(info.error_id(),
+            std::to_string(kErrorLocationForTesting2.location()));
   EXPECT_EQ(info.primary_action(), user_data_auth::PrimaryAction::PRIMARY_NONE);
   ASSERT_EQ(info.possible_actions_size(), 1);
   EXPECT_EQ(info.possible_actions(0),
@@ -78,14 +88,13 @@ TEST_F(ErrorConverterTest, Success) {
 }
 
 TEST_F(ErrorConverterTest, WrappedPossibleAction) {
-  hwsec_foundation::status::StatusChain<CryptohomeError> err1 =
-      MakeStatus<CryptohomeError>(
-          kTestLocation2, ErrorActionSet({ErrorAction::kPowerwash}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+  StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
+      kErrorLocationForTesting2, ErrorActionSet({ErrorAction::kPowerwash}),
+      user_data_auth::CryptohomeErrorCode::
+          CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
-  hwsec_foundation::status::StatusChain<CryptohomeError> err2 =
-      MakeStatus<CryptohomeError>(kTestLocation1,
+  StatusChain<CryptohomeError> err2 =
+      MakeStatus<CryptohomeError>(kErrorLocationForTesting1,
                                   ErrorActionSet({ErrorAction::kReboot}))
           .Wrap(std::move(err1));
 
@@ -96,7 +105,9 @@ TEST_F(ErrorConverterTest, WrappedPossibleAction) {
       CryptohomeErrorToUserDataAuthError(err2, &ec);
   EXPECT_EQ(ec, user_data_auth::CryptohomeErrorCode::
                     CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
-  EXPECT_EQ(info.error_id(), "10001-10002");
+  EXPECT_EQ(info.error_id(),
+            std::to_string(kErrorLocationForTesting1.location()) + "-" +
+                std::to_string(kErrorLocationForTesting2.location()));
   EXPECT_EQ(info.primary_action(), user_data_auth::PrimaryAction::PRIMARY_NONE);
   EXPECT_EQ(ToStdSet<user_data_auth::PossibleAction>(info.possible_actions()),
             std::set<user_data_auth::PossibleAction>(
@@ -105,14 +116,14 @@ TEST_F(ErrorConverterTest, WrappedPossibleAction) {
 }
 
 TEST_F(ErrorConverterTest, WrappedPrimaryAction) {
-  hwsec_foundation::status::StatusChain<CryptohomeError> err1 =
-      MakeStatus<CryptohomeError>(
-          kTestLocation2, ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+  StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
+      kErrorLocationForTesting2,
+      ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
+      user_data_auth::CryptohomeErrorCode::
+          CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
-  hwsec_foundation::status::StatusChain<CryptohomeError> err2 =
-      MakeStatus<CryptohomeError>(kTestLocation1,
+  StatusChain<CryptohomeError> err2 =
+      MakeStatus<CryptohomeError>(kErrorLocationForTesting1,
                                   ErrorActionSet({ErrorAction::kReboot}))
           .Wrap(std::move(err1));
 
@@ -140,14 +151,14 @@ TEST_F(ErrorConverterTest, ReplyWithErrorPrimary) {
       base::Unretained(&reply_received), base::Unretained(&received_reply));
 
   // Prepare the status chain.
-  hwsec_foundation::status::StatusChain<CryptohomeError> err1 =
-      MakeStatus<CryptohomeError>(
-          kTestLocation2, ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
+  StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
+      kErrorLocationForTesting2,
+      ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
+      user_data_auth::CryptohomeErrorCode::
+          CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
 
-  hwsec_foundation::status::StatusChain<CryptohomeError> err2 =
-      MakeStatus<CryptohomeError>(kTestLocation1,
+  StatusChain<CryptohomeError> err2 =
+      MakeStatus<CryptohomeError>(kErrorLocationForTesting1,
                                   ErrorActionSet({ErrorAction::kReboot}))
           .Wrap(std::move(err1));
 
@@ -163,7 +174,9 @@ TEST_F(ErrorConverterTest, ReplyWithErrorPrimary) {
                 CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
   ASSERT_TRUE(received_reply.has_error_info());
   EXPECT_EQ(received_reply.sanitized_username(), kTestSanitizedUsername1);
-  EXPECT_EQ(received_reply.error_info().error_id(), "10001-10002");
+  EXPECT_EQ(received_reply.error_info().error_id(),
+            std::to_string(kErrorLocationForTesting1.location()) + "-" +
+                std::to_string(kErrorLocationForTesting2.location()));
   EXPECT_EQ(received_reply.error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_TPM_UDPATE_REQUIRED);
   EXPECT_EQ(received_reply.error_info().possible_actions_size(), 0);

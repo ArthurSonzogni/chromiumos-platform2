@@ -8,6 +8,9 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/locations.h"
 
+#include <string>
+#include <utility>
+
 namespace cryptohome {
 
 namespace error {
@@ -25,9 +28,11 @@ static_assert(
 // Note that this takes a enum in the ErrorLocationSpecifier enum class, and
 // converts it to the integer accepted by CryptohomeError. See CryptohomeError
 // class on why we need int vs enum.
-#define CRYPTOHOME_ERR_LOC(x)                                        \
-  (static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>( \
-      ::cryptohome::error::ErrorLocationSpecifier::x))
+#define CRYPTOHOME_ERR_LOC(x)                                           \
+  (::cryptohome::error::CryptohomeError::ErrorLocationPair(             \
+      static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>( \
+          ::cryptohome::error::ErrorLocationSpecifier::x),              \
+      std::string(#x)))
 
 }  // namespace error
 

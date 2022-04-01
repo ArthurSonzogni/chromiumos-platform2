@@ -4,6 +4,7 @@
 
 #include <optional>
 #include <set>
+#include <string>
 #include <utility>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -19,7 +20,13 @@ namespace cryptohome {
 
 namespace error {
 
-class CryptohomeTPMErrorTest : public ::testing::Test {};
+class CryptohomeTPMErrorTest : public ::testing::Test {
+ protected:
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+};
 
 namespace {
 
@@ -29,15 +36,14 @@ using hwsec::TPMRetryAction;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::StatusChain;
 
-constexpr int kTestLocation1 = 1001;
-
 TEST_F(CryptohomeTPMErrorTest, BasicConstruction) {
   auto err1 = MakeStatus<CryptohomeTPMError>(
-      kTestLocation1, ErrorActionSet({ErrorAction::kResumePreviousMigration}),
+      kErrorLocationForTesting1,
+      ErrorActionSet({ErrorAction::kResumePreviousMigration}),
       hwsec::TPMRetryAction::kNoRetry);
 
   ASSERT_FALSE(err1.ok());
-  EXPECT_EQ(err1->local_location(), kTestLocation1);
+  EXPECT_EQ(err1->local_location(), kErrorLocationForTesting1.location());
   EXPECT_EQ(err1->local_actions(),
             ErrorActionSet({ErrorAction::kResumePreviousMigration,
                             ErrorAction::kDevCheckUnexpectedState}));

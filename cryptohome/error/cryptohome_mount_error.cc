@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <set>
+#include <string>
 #include <utility>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -15,11 +16,11 @@ namespace cryptohome {
 namespace error {
 
 CryptohomeMountError::CryptohomeMountError(
-    const ErrorLocation loc,
+    const ErrorLocationPair& loc,
     const std::set<Action>& actions,
     const MountError mount_error,
     const base::Optional<user_data_auth::CryptohomeErrorCode> ec)
-    : CryptohomeError(loc, actions, ec), mount_error_(mount_error) {}
+    : CryptohomeError(std::move(loc), actions, ec), mount_error_(mount_error) {}
 
 }  // namespace error
 
