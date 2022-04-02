@@ -134,6 +134,9 @@ class TestSlotManager : public ::testing::Test {
     ic_ = IsolateCredentialManager::GetDefaultIsolateCredential();
   }
   void SetUp() {
+    // The default style "fast" does not support multi-threaded death tests.
+    testing::FLAGS_gtest_death_test_style = "threadsafe";
+
     EXPECT_CALL(factory_, CreateObjectPool(_, _, _, _))
         .WillRepeatedly(InvokeWithoutArgs(CreateObjectPoolMock));
     auto tpm_mock = std::make_unique<TPMUtilityMock>();
@@ -178,6 +181,9 @@ class TestSlotManager : public ::testing::Test {
 
 typedef TestSlotManager TestSlotManager_DeathTest;
 TEST(DeathTest, InvalidInit) {
+  // The default style "fast" does not support multi-threaded death tests.
+  testing::FLAGS_gtest_death_test_style = "threadsafe";
+
   ChapsFactoryMock factory;
   StrictMock<MetricsLibraryMock> mock_metrics_library;
   ChapsMetrics chaps_metrics;
@@ -243,6 +249,9 @@ TEST_F(TestSlotManager, DefaultSlotSetup) {
 #if GTEST_IS_THREADSAFE
 
 TEST(DeathTest, OutOfMemoryInit) {
+  // The default style "fast" does not support multi-threaded death tests.
+  testing::FLAGS_gtest_death_test_style = "threadsafe";
+
   auto tpm_mock = std::make_unique<TPMUtilityMock>();
   ConfigureTPMUtility(tpm_mock.get());
   auto tpm_thread_utility =
@@ -434,9 +443,6 @@ TEST_F(TestSlotManager, TestCloseIsolateUnloadToken) {
 }
 
 TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
-  // The default style "fast" does not support multi-threaded death tests.
-  testing::FLAGS_gtest_death_test_style = "threadsafe";
-
   CK_SLOT_INFO slot_info;
   CK_TOKEN_INFO token_info;
   Session* session;
@@ -548,6 +554,9 @@ class SoftwareOnlyTest : public TestSlotManager {
   ~SoftwareOnlyTest() override {}
 
   void SetUp() override {
+    // The default style "fast" does not support multi-threaded death tests.
+    testing::FLAGS_gtest_death_test_style = "threadsafe";
+
     // Use our own SlotPolicyFactory and ObjectPoolFactory.
     EXPECT_CALL(factory_, CreateSlotPolicy(false))
         .WillRepeatedly(
