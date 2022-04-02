@@ -668,13 +668,6 @@ TEST_F(MetricsTest, Logging) {
   ScopeLogger::GetInstance()->set_verbose_level(0);
 }
 
-TEST_F(MetricsTest, NotifyUserInitiatedEvent) {
-  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricUserInitiatedEvents,
-                                      Metrics::kUserInitiatedEventWifiScan,
-                                      Metrics::kUserInitiatedEventMax));
-  metrics_.NotifyUserInitiatedEvent(Metrics::kUserInitiatedEventWifiScan);
-}
-
 TEST_F(MetricsTest, NotifyWifiTxBitrate) {
   EXPECT_CALL(library_, SendToUMA(Metrics::kMetricWifiTxBitrate, 1,
                                   Metrics::kMetricWifiTxBitrateMin,
@@ -691,16 +684,6 @@ TEST_F(MetricsTest, NotifyUserInitiatedConnectionResult) {
   metrics_.NotifyUserInitiatedConnectionResult(
       Metrics::kMetricWifiUserInitiatedConnectionResult,
       Metrics::kUserInitiatedConnectionResultSuccess);
-}
-
-TEST_F(MetricsTest, DeregisterDevice) {
-  const int kInterfaceIndex = 1;
-  metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
-
-  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.DeviceRemovedEvent",
-                                      Metrics::kDeviceTechnologyTypeCellular,
-                                      Metrics::kDeviceTechnologyTypeMax));
-  metrics_.DeregisterDevice(kInterfaceIndex);
 }
 
 TEST_F(MetricsTest, NotifySuspendActionsCompleted_Success) {

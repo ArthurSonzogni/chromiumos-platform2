@@ -107,8 +107,6 @@ void DaemonTask::Init() {
 
 void DaemonTask::TerminationActionsCompleted(const Error& error) {
   SLOG(this, 1) << "Finished termination actions.  Result: " << error;
-  metrics_->NotifyTerminationActionsCompleted(error.IsSuccess());
-
   // Daemon::TerminationActionsCompleted() should not directly call
   // Daemon::Stop(). Otherwise, it could lead to the call sequence below. That
   // is not safe as the HookTable's start callback only holds a weak pointer to

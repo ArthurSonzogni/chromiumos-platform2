@@ -296,12 +296,6 @@ class Metrics : public DefaultServiceObserver {
     kScanResultMax
   };
 
-  enum TerminationActionResult {
-    kTerminationActionResultSuccess,
-    kTerminationActionResultFailure,
-    kTerminationActionResultMax
-  };
-
   enum SuspendActionResult {
     kSuspendActionResultSuccess,
     kSuspendActionResultFailure,
@@ -535,12 +529,6 @@ class Metrics : public DefaultServiceObserver {
     kVpnWireGuardAllowedIPsTypeHasDefaultRoute = 0,
     kVpnWireGuardAllowedIPsTypeNoDefaultRoute = 1,
     kVpnWireGuardAllowedIPsTypeMax
-  };
-
-  enum UserInitiatedEvent {
-    kUserInitiatedEventWifiScan = 0,
-    kUserInitiatedEventReserved,
-    kUserInitiatedEventMax
   };
 
   // Result of a connection initiated by Service::UserInitiatedConnect.
@@ -803,12 +791,6 @@ class Metrics : public DefaultServiceObserver {
 
   static const char kMetricApChannelSwitch[];
 
-  // Shill termination action statistics.
-  static const char kMetricTerminationActionTimeTaken[];
-  static const char kMetricTerminationActionResult[];
-  static const int kMetricTerminationActionTimeTakenMillisecondsMax;
-  static const int kMetricTerminationActionTimeTakenMillisecondsMin;
-
   // Shill suspend action statistics.
   static const char kMetricSuspendActionTimeTaken[];
   static const char kMetricSuspendActionResult[];
@@ -922,9 +904,6 @@ class Metrics : public DefaultServiceObserver {
   static const int kMetricWifiAvailableBSSesMin;
   static const int kMetricWifiAvailableBSSesNumBuckets;
 
-  // Metric for user-initiated events.
-  static const char kMetricUserInitiatedEvents[];
-
   // Wifi TX bitrate in Mbps.
   static const char kMetricWifiTxBitrate[];
   static const int kMetricWifiTxBitrateMax;
@@ -958,9 +937,6 @@ class Metrics : public DefaultServiceObserver {
 
   // Device presence.
   static const char kMetricDevicePresenceStatusSuffix[];
-
-  // Device removal event.
-  static const char kMetricDeviceRemovedEvent[];
 
   // Connection diagnostics issue.
   static const char kMetricConnectionDiagnosticsIssue[];
@@ -1062,13 +1038,6 @@ class Metrics : public DefaultServiceObserver {
 
   // Notifies this object of the end of a suspend attempt.
   void NotifySuspendDone();
-
-  // Notifies this object that termination actions started executing.
-  void NotifyTerminationActionsStarted();
-
-  // Notifies this object that termination actions have been completed.
-  // |success| is true, if the termination actions completed successfully.
-  void NotifyTerminationActionsCompleted(bool success);
 
   // Notifies this object that suspend actions started executing.
   void NotifySuspendActionsStarted();
@@ -1223,9 +1192,6 @@ class Metrics : public DefaultServiceObserver {
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();
-
-  // Notifies this object about user-initiated event.
-  virtual void NotifyUserInitiatedEvent(int event);
 
   // Notifies this object about current connection status (online vs offline).
   virtual void NotifyDeviceConnectionStatus(Metrics::ConnectionStatus status);
@@ -1429,10 +1395,6 @@ class Metrics : public DefaultServiceObserver {
 
   DeviceMetrics* GetDeviceMetrics(int interface_index) const;
 
-  // Notifies this object about the removal/resetting of a device with given
-  // technology type.
-  void NotifyDeviceRemovedEvent(Technology technology_id);
-
   // For unit test purposes.
   void set_library(MetricsLibraryInterface* library);
   void set_time_online_timer(chromeos_metrics::Timer* timer) {
@@ -1443,9 +1405,6 @@ class Metrics : public DefaultServiceObserver {
   }
   void set_time_resume_to_ready_timer(chromeos_metrics::Timer* timer) {
     time_resume_to_ready_timer_.reset(timer);  // Passes ownership
-  }
-  void set_time_termination_actions_timer(chromeos_metrics::Timer* timer) {
-    time_termination_actions_timer.reset(timer);  // Passes ownership
   }
   void set_time_suspend_actions_timer(chromeos_metrics::Timer* timer) {
     time_suspend_actions_timer.reset(timer);  // Passes ownership
@@ -1479,7 +1438,6 @@ class Metrics : public DefaultServiceObserver {
   std::unique_ptr<chromeos_metrics::Timer> time_online_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
   std::unique_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
-  std::unique_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
   std::unique_ptr<chromeos_metrics::Timer> time_suspend_actions_timer;
   DeviceMetricsLookupMap devices_metrics_;
   Time* time_;

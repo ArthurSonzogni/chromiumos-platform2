@@ -192,13 +192,6 @@ const char Metrics::kMetricScanResult[] = "Network.Shill.WiFi.ScanResult";
 const char Metrics::kMetricWiFiScanTimeInEbusyMilliseconds[] =
     "Network.Shill.WiFi.ScanTimeInEbusy";
 
-const char Metrics::kMetricTerminationActionTimeTaken[] =
-    "Network.Shill.TerminationActionTimeTaken";
-const char Metrics::kMetricTerminationActionResult[] =
-    "Network.Shill.TerminationActionResult";
-const int Metrics::kMetricTerminationActionTimeTakenMillisecondsMax = 20000;
-const int Metrics::kMetricTerminationActionTimeTakenMillisecondsMin = 1;
-
 const char Metrics::kMetricSuspendActionTimeTaken[] =
     "Network.Shill.SuspendActionTimeTaken";
 const char Metrics::kMetricSuspendActionResult[] =
@@ -393,10 +386,6 @@ const int Metrics::kMetricWifiAvailableBSSesMin = 1;
 const int Metrics::kMetricWifiAvailableBSSesNumBuckets = 10;
 
 // static
-const char Metrics::kMetricUserInitiatedEvents[] =
-    "Network.Shill.UserInitiatedEvents";
-
-// static
 const char Metrics::kMetricWifiTxBitrate[] =
     "Network.Shill.WiFi.TransmitBitrateMbps";
 const int Metrics::kMetricWifiTxBitrateMax = 7000;
@@ -436,10 +425,6 @@ const char Metrics::kMetricIPv6ConnectivityStatusSuffix[] =
 // static
 const char Metrics::kMetricDevicePresenceStatusSuffix[] =
     "DevicePresenceStatus";
-
-// static
-const char Metrics::kMetricDeviceRemovedEvent[] =
-    "Network.Shill.DeviceRemovedEvent";
 
 // static
 const char Metrics::kMetricConnectionDiagnosticsIssue[] =
@@ -486,7 +471,6 @@ Metrics::Metrics()
       time_online_timer_(new chromeos_metrics::Timer),
       time_to_drop_timer_(new chromeos_metrics::Timer),
       time_resume_to_ready_timer_(new chromeos_metrics::Timer),
-      time_termination_actions_timer(new chromeos_metrics::Timer),
       time_suspend_actions_timer(new chromeos_metrics::Timer),
       time_(Time::GetInstance()) {
   chromeos_metrics::TimerReporter::set_metrics_lib(library_);
@@ -898,34 +882,6 @@ void Metrics::NotifySuspendDone() {
   time_resume_to_ready_timer_->Start();
 }
 
-void Metrics::NotifyTerminationActionsStarted() {
-  if (time_termination_actions_timer->HasStarted())
-    return;
-  time_termination_actions_timer->Start();
-}
-
-void Metrics::NotifyTerminationActionsCompleted(bool success) {
-  if (!time_termination_actions_timer->HasStarted())
-    return;
-
-  TerminationActionResult result = success ? kTerminationActionResultSuccess
-                                           : kTerminationActionResultFailure;
-
-  base::TimeDelta elapsed_time;
-  time_termination_actions_timer->GetElapsedTime(&elapsed_time);
-  time_termination_actions_timer->Reset();
-  std::string time_metric, result_metric;
-  time_metric = kMetricTerminationActionTimeTaken;
-  result_metric = kMetricTerminationActionResult;
-
-  SendToUMA(time_metric, elapsed_time.InMilliseconds(),
-            kMetricTerminationActionTimeTakenMillisecondsMin,
-            kMetricTerminationActionTimeTakenMillisecondsMax,
-            kTimerHistogramNumBuckets);
-
-  SendEnumToUMA(result_metric, result, kTerminationActionResultMax);
-}
-
 void Metrics::NotifySuspendActionsStarted() {
   if (time_suspend_actions_timer->HasStarted())
     return;
@@ -1168,12 +1124,6 @@ bool Metrics::IsDeviceRegistered(int interface_index, Technology technology) {
 
 void Metrics::DeregisterDevice(int interface_index) {
   SLOG(this, 2) << __func__ << ": interface index: " << interface_index;
-
-  DeviceMetrics* device_metrics = GetDeviceMetrics(interface_index);
-  if (device_metrics != nullptr) {
-    NotifyDeviceRemovedEvent(device_metrics->technology);
-  }
-
   devices_metrics_.erase(interface_index);
 }
 
@@ -1476,10 +1426,6 @@ void Metrics::NotifyWifiAvailableBSSes(int num_bss) {
             kMetricWifiAvailableBSSesMax, kMetricWifiAvailableBSSesNumBuckets);
 }
 
-void Metrics::NotifyUserInitiatedEvent(int event) {
-  SendEnumToUMA(kMetricUserInitiatedEvents, event, kUserInitiatedEventMax);
-}
-
 void Metrics::NotifyWifiTxBitrate(int bitrate) {
   SendToUMA(kMetricWifiTxBitrate, bitrate, kMetricWifiTxBitrateMin,
             kMetricWifiTxBitrateMax, kMetricWifiTxBitrateNumBuckets);
@@ -1570,25 +1516,6 @@ void Metrics::NotifyDevicePresenceStatus(Technology technology_id,
   DevicePresenceStatus presence =
       status ? kDevicePresenceStatusYes : kDevicePresenceStatusNo;
   SendEnumToUMA(histogram, presence, kDevicePresenceStatusMax);
-}
-
-void Metrics::NotifyDeviceRemovedEvent(Technology technology_id) {
-  DeviceTechnologyType type;
-  switch (technology_id) {
-    case Technology::kEthernet:
-      type = kDeviceTechnologyTypeEthernet;
-      break;
-    case Technology::kWiFi:
-      type = kDeviceTechnologyTypeWifi;
-      break;
-    case Technology::kCellular:
-      type = kDeviceTechnologyTypeCellular;
-      break;
-    default:
-      type = kDeviceTechnologyTypeUnknown;
-      break;
-  }
-  SendEnumToUMA(kMetricDeviceRemovedEvent, type, kDeviceTechnologyTypeMax);
 }
 
 void Metrics::NotifyUnreliableLinkSignalStrength(Technology technology_id,

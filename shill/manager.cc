@@ -1628,7 +1628,6 @@ bool Manager::RunTerminationActionsAndNotifyMetrics(
   if (termination_actions_.IsEmpty())
     return false;
 
-  metrics_->NotifyTerminationActionsStarted();
   RunTerminationActions(done_callback);
   return true;
 }
@@ -2831,8 +2830,6 @@ void Manager::RequestScan(const std::string& technology, Error* error) {
 
     case Technology::kWiFi:
       for (const auto& device : FilterByTechnology(technology_identifier)) {
-        metrics_->NotifyUserInitiatedEvent(
-            Metrics::kUserInitiatedEventWifiScan);
         device->Scan(error, __func__);
       }
       break;

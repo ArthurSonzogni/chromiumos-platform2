@@ -46,7 +46,6 @@ void PPPDevice::UpdateIPConfigFromPPP(
     bool blackhole_ipv6) {
   SLOG(this, 2) << __func__ << " on " << link_name();
   IPConfig::Properties properties = ParseIPConfiguration(configuration);
-  metrics()->SendSparseToUMA(Metrics::kMetricPPPMTUValue, properties.mtu);
   properties.blackhole_ipv6 = blackhole_ipv6;
   properties.use_if_addrs = true;
   UpdateIPConfig(properties);
