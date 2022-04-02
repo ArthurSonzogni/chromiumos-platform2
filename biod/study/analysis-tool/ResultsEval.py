@@ -1,6 +1,9 @@
 # To add a new cell, type '# %%'
 # To add a new markdown cell, type '# %% [markdown]'
 # %% # Imports
+
+#! %load_ext autoreload
+#! %autoreload 1
 import sys  # sys.getsizeof()
 from math import radians, sqrt
 
@@ -12,6 +15,7 @@ import scipy.stats as st
 from IPython.display import HTML, Markdown, display
 from matplotlib import pyplot as plt
 
+#! %aimport fpsutils, experiment, fpc_bet_results
 import fpsutils
 from experiment import Experiment
 from fpc_bet_results import FPCBETResults
