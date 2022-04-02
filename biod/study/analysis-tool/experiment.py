@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from enum import Enum
+from typing import Optional
 
 import pandas as pd
 
@@ -117,15 +118,21 @@ class Experiment:
                  num_verification: int,
                  num_fingers: int,
                  num_users: int,
-                 fa_list: pd.DataFrame):
+                 far_decisions: Optional[pd.DataFrame] = None,
+                 fa_list: Optional[pd.DataFrame] = None):
+
         # self.num_enrollment = num_enrollment
         self.num_verification = num_verification
         self.num_fingers = num_fingers
         self.num_users = num_users
-        self.fa_list = fa_list
+        self.tbl_far_decisions = far_decisions
+        self.tbl_fa_list = fa_list
 
     def FAList(self) -> pd.DataFrame:
-        return self.fa_list
+        return self.tbl_fa_list
+
+    def FARDecisions(self) -> pd.DataFrame:
+        return self.tbl_far_decisions
 
     def FAQuery(self,
                 enroll_user_id: int = None,
