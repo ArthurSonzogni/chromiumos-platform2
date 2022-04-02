@@ -181,7 +181,7 @@ bet = FPCBETResults(REPORT_DIR)
 #     FPCBETResults.TableType.FRR)
 # display(tc0_frr)
 
-display(Markdown('# TC-01 FAR @ 1/20k'))
+display(Markdown('# TC-01 FAR'))
 tc0_far_20k: pd.DataFrame = bet.read_far_frr_file(
     FPCBETResults.TestCase.TUDisabled,
     FPCBETResults.TableType.FAR,
@@ -191,14 +191,35 @@ DoReport(tc0_far_20k, FPCBETResults.SecLevel.Target_20K)
 # display(tc0_far_20k.describe())
 # display(tc0_far_20k.sum())
 
-display(Markdown('# TC-01 FA List Analysis FAR @ 1/20k'))
-tc0_far_20k_fa: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUDisabled,
-                                             FPCBETResults.TableType.FA_List)
-display(tc0_far_20k_fa)
+# display(Markdown('# TC-01 FA List Analysis FAR'))
+tc0_far_fa: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUDisabled,
+                                         FPCBETResults.TableType.FA_List)
+tc0_far_decisions: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUDisabled,
+                                                FPCBETResults.TableType.FAR_Decision)
+# display(tc0_far_fa)
 b = Experiment(num_verification=60,
                num_fingers=6,
                num_users=72,
-               fa_list=tc0_far_20k_fa)
+               far_decisions=tc0_far_decisions,
+               fa_list=tc0_far_fa)
+
+b.AddGroupsFromCollectionDir(COLLECTION_DIR)
+
+# user_groups = Experiment._UserGroupsFromCollectionDir(COLLECTION_DIR)
+# user_groups
+
+# %% Check
+
+display(Markdown('''
+# Distribution of False Accepts
+
+This shows the number of false accepts as a function of each parameter.
+This helps to show if there is some enrollment user, verification user, finger,
+or sample that has an unusually high false acceptable rate.
+'''))
+fa_table = b.FARDecisions().loc[b.FARDecisions()['Decision'] == 'ACCEPT']
+fpsutils.plot_pd_hist_discrete(fa_table, title_prefix='False Accepts')
+
 
 # %%
 #! %time
