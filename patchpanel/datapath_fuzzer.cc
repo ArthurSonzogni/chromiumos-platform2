@@ -109,8 +109,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   auto runner = new FakeProcessRunner();
   auto firewall = new Firewall();
-  auto system = new NoopSystem();
-  Datapath datapath(runner, firewall, system);
+  NoopSystem system;
+  Datapath datapath(runner, firewall, &system);
   datapath.Start();
   datapath.Stop();
   datapath.NetnsAttachName(netns_name, pid);
