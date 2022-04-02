@@ -4,6 +4,9 @@
 
 #! %load_ext autoreload
 #! %autoreload 1
+
+import os
+import pathlib
 import sys  # sys.getsizeof()
 from math import radians, sqrt
 
