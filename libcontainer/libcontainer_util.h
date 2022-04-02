@@ -59,7 +59,7 @@ class HookState {
 
   // Waits for the event specified in InstallHook() and invokes |callbacks| in
   // the caller process. Returns true if all callbacks succeeded.
-  bool WaitForHookAndRun(const std::vector<HookCallback>& callbacks,
+  bool WaitForHookAndRun(std::vector<HookOnceCallback> callbacks,
                          pid_t container_pid);
 
  private:
@@ -130,8 +130,8 @@ HookCallback CreateExecveCallback(base::FilePath filename,
                                   base::ScopedFD stderr_fd);
 
 // Wraps a callback to be run in a subset of the container's namespaces.
-HookCallback AdaptCallbackToRunInNamespaces(HookCallback callback,
-                                            std::vector<int> nstypes);
+HookOnceCallback AdaptCallbackToRunInNamespaces(HookOnceCallback callback,
+                                                std::vector<int> nstypes);
 
 // Similar to base::CreateDirectory, but allows specifying the created
 // directories' mode and owner.

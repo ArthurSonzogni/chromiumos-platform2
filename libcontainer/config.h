@@ -19,6 +19,7 @@ namespace libcontainer {
 // parameter is the pid of the container's init process in the outer namespace.
 // The hook should return true on success.
 using HookCallback = base::Callback<bool(pid_t)>;
+using HookOnceCallback = base::OnceCallback<bool(pid_t)>;
 
 class BRILLO_EXPORT Config {
  public:

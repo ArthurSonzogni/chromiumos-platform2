@@ -251,7 +251,7 @@ struct container {
   std::string name;
 
   std::vector<std::pair<libcontainer::HookState,
-                        std::vector<libcontainer::HookCallback>>>
+                        std::vector<libcontainer::HookOnceCallback>>>
       hook_states;
 };
 
@@ -1349,18 +1349,18 @@ int container_start(struct container* c,
     return -1;
 
   // Must be root to modify device cgroup or mknod.
-  std::map<minijail_hook_event_t, std::vector<libcontainer::HookCallback>>
+  std::map<minijail_hook_event_t, std::vector<libcontainer::HookOnceCallback>>
       hook_callbacks;
   if (getuid() == 0) {
     if (!config->devices.empty()) {
       // Create the devices in the mount namespace.
       auto it = hook_callbacks.insert(
           std::make_pair(MINIJAIL_HOOK_EVENT_PRE_CHROOT,
-                         std::vector<libcontainer::HookCallback>()));
+                         std::vector<libcontainer::HookOnceCallback>()));
       it.first->second.emplace_back(
           libcontainer::AdaptCallbackToRunInNamespaces(
-              base::Bind(&CreateDeviceNodes, base::Unretained(c),
-                         base::Unretained(config)),
+              base::BindOnce(&CreateDeviceNodes, base::Unretained(c),
+                             base::Unretained(config)),
               {CLONE_NEWNS}));
     }
     if (!DeviceSetup(c, config))
@@ -1493,7 +1493,7 @@ int container_start(struct container* c,
   // container_config object in the correct order.
   for (const auto& config_hook : config->hooks) {
     auto it = hook_callbacks.insert(std::make_pair(
-        config_hook.first, std::vector<libcontainer::HookCallback>()));
+        config_hook.first, std::vector<libcontainer::HookOnceCallback>()));
     it.first->second.insert(it.first->second.end(), config_hook.second.begin(),
                             config_hook.second.end());
   }
@@ -1509,7 +1509,7 @@ int container_start(struct container* c,
     if (it == hook_callbacks.end())
       continue;
     c->hook_states.emplace_back(
-        std::make_pair(libcontainer::HookState(), it->second));
+        std::make_pair(libcontainer::HookState(), std::move(it->second)));
     if (!c->hook_states.back().first.InstallHook(c->jail.get(), event))
       return -1;
   }
@@ -1552,7 +1552,8 @@ int container_start(struct container* c,
 
   // |hook_states| is already sorted in the correct order.
   for (auto& hook_state : c->hook_states) {
-    if (!hook_state.first.WaitForHookAndRun(hook_state.second, c->init_pid))
+    if (!hook_state.first.WaitForHookAndRun(std::move(hook_state.second),
+                                            c->init_pid))
       return -1;
   }
 

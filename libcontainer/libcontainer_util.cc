@@ -68,7 +68,7 @@ std::string GetNamespaceNameForType(int nstype) {
 
 // Helper function that runs |callback| in all the namespaces identified by
 // |nstypes|.
-bool RunInNamespacesHelper(HookCallback callback,
+bool RunInNamespacesHelper(HookOnceCallback callback,
                            std::vector<int> nstypes,
                            pid_t container_pid) {
   pid_t child = fork();
@@ -100,7 +100,7 @@ bool RunInNamespacesHelper(HookCallback callback,
 
     // Preserve normal POSIX semantics of calling exit(2) with 0 for success and
     // non-zero for failure.
-    _exit(callback.Run(container_pid) ? 0 : 1);
+    _exit(std::move(callback).Run(container_pid) ? 0 : 1);
   }
 
   int status;
@@ -254,7 +254,7 @@ bool HookState::InstallHook(struct minijail* j, minijail_hook_event_t event) {
   return true;
 }
 
-bool HookState::WaitForHookAndRun(const std::vector<HookCallback>& callbacks,
+bool HookState::WaitForHookAndRun(std::vector<HookOnceCallback> callbacks,
                                   pid_t container_pid) {
   if (!installed_) {
     LOG(ERROR) << "Failed to wait for hook: not installed";
@@ -263,7 +263,7 @@ bool HookState::WaitForHookAndRun(const std::vector<HookCallback>& callbacks,
   reached_pipe_.Wait();
 
   for (auto& callback : callbacks) {
-    bool success = callback.Run(container_pid);
+    bool success = std::move(callback).Run(container_pid);
     if (!success)
       return false;
   }
@@ -572,10 +572,10 @@ HookCallback CreateExecveCallback(base::FilePath filename,
       base::Passed(std::move(stdout_fd)), base::Passed(std::move(stderr_fd)));
 }
 
-HookCallback AdaptCallbackToRunInNamespaces(HookCallback callback,
-                                            std::vector<int> nstypes) {
-  return base::Bind(&RunInNamespacesHelper, base::Passed(std::move(callback)),
-                    base::Passed(std::move(nstypes)));
+HookOnceCallback AdaptCallbackToRunInNamespaces(HookOnceCallback callback,
+                                                std::vector<int> nstypes) {
+  return base::BindOnce(&RunInNamespacesHelper, std::move(callback),
+                        std::move(nstypes));
 }
 
 bool CreateDirectoryOwnedBy(const base::FilePath& full_path,
