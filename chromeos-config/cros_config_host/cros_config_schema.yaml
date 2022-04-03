@@ -159,8 +159,9 @@ typeDefs:
         maximum: 0xFF
     additionalProperties: false
   rtw-wifi-transmit-power-chain: &rtw-wifi-transmit-power-chain
-    description: "[rtw] WiFi power chain for use with Realtek rtw88 drivers. Limits
-      in units of 0.125 dBm. 5g band 2 (channels 5.35G-5.47G) power limit is not supported."
+    description: "[rtw] WiFi power chain for use with Realtek rtw88 or rtw89 drivers. Limits
+      in units of 0.125 dBm for rtw88 and 0.25 dBm for rtw89. 5g band 2 (channels 5.35G-5.47G)
+      power limit is not supported."
     type: object
     properties:
       limit-2g:
@@ -418,9 +419,9 @@ properties:
             wifi:
               type: object
               description: Sets limits on maximum WiFi transmit power for tablet and non-tablet
-                device configurations. This config must contain properties for ath10k wifi driver,
-                rtw88 wifi driver, mtk driver, or intel driver. Note that configs for the intel driver are
-                delivered as encoded wifi sar hex files.
+                device configurations. This config must contain properties for ath10k driver,
+                rtw88 driver, rtw89 driver, mtk driver, or intel driver. Note that configs for
+                the intel driver are delivered as encoded wifi sar hex files.
               oneOf:
                 - properties:
                     tablet-mode-power-table-ath10k: *ath10k-wifi-transmit-power-chain
