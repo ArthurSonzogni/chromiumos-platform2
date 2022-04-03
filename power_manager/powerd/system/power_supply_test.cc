@@ -1786,6 +1786,7 @@ TEST_F(PowerSupplyTest, SendPowerStatusOverDBus) {
 
 TEST_F(PowerSupplyTest, SendBatteryStatePollOverDBus) {
   WriteDefaultValues(PowerSource::AC);
+  UpdateChargeAndCurrent(0.5, 0.0);
   UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kMainsType, kDischarging);
   Init();
 
@@ -1797,21 +1798,22 @@ TEST_F(PowerSupplyTest, SendBatteryStatePollOverDBus) {
   dbus::MessageReader reader(signal.get());
   uint32_t external_power_type;
   uint32_t battery_state;
-  double display_battery_percentage;
+  double battery_percentage;
   ASSERT_TRUE(reader.PopUint32(&external_power_type));
   ASSERT_TRUE(reader.PopUint32(&battery_state));
-  ASSERT_TRUE(reader.PopDouble(&display_battery_percentage));
+  ASSERT_TRUE(reader.PopDouble(&battery_percentage));
   ASSERT_FALSE(reader.HasMoreData());
 
   // AC charging maps to 1 in power_manager::system::ExternalPowerType.
   EXPECT_EQ(1, external_power_type);
   // Battery discharging maps to 2 in power_manager::system::UpowerBatteryState.
   EXPECT_EQ(2, battery_state);
-  EXPECT_DOUBLE_EQ(100, display_battery_percentage);
+  EXPECT_DOUBLE_EQ(50, battery_percentage);
 }
 
 TEST_F(PowerSupplyTest, SendGetBatteryStateOverDBus) {
   WriteDefaultValues(PowerSource::AC);
+  UpdateChargeAndCurrent(0.5, 0.0);
   UpdatePowerSourceAndBatteryStatus(PowerSource::AC, kMainsType, kDischarging);
   Init();
 
@@ -1825,17 +1827,17 @@ TEST_F(PowerSupplyTest, SendGetBatteryStateOverDBus) {
   dbus::MessageReader reader(response.get());
   uint32_t external_power_type;
   uint32_t battery_state;
-  double display_battery_percentage;
+  double battery_percentage;
   ASSERT_TRUE(reader.PopUint32(&external_power_type));
   ASSERT_TRUE(reader.PopUint32(&battery_state));
-  ASSERT_TRUE(reader.PopDouble(&display_battery_percentage));
+  ASSERT_TRUE(reader.PopDouble(&battery_percentage));
   ASSERT_FALSE(reader.HasMoreData());
 
   // AC charging maps to 1 in power_manager::system::ExternalPowerType.
   EXPECT_EQ(1, external_power_type);
   // Battery discharging maps to 2 in power_manager::system::UpowerBatteryState.
   EXPECT_EQ(2, battery_state);
-  EXPECT_DOUBLE_EQ(100, display_battery_percentage);
+  EXPECT_DOUBLE_EQ(50, battery_percentage);
 }
 
 TEST_F(PowerSupplyTest, CopyPowerStatusToProtocolBuffer) {

@@ -1415,9 +1415,12 @@ bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
   dbus::MessageWriter writer(&signal);
   writer.AppendUint32(static_cast<uint32_t>(
       ExternalPowerToExternalPowerEnum(power_status_.external_power)));
-  writer.AppendUint32(static_cast<uint32_t>(
-      BatteryStateToUpowerEnum(power_status_.battery_status_string)));
-  writer.AppendDouble(power_status_.display_battery_percentage);
+  UpowerBatteryState battery_state =
+      power_status_.battery_percentage == 100
+          ? UpowerBatteryState::UpowerFullyCharged
+          : BatteryStateToUpowerEnum(power_status_.battery_status_string);
+  writer.AppendUint32(static_cast<uint32_t>(battery_state));
+  writer.AppendDouble(power_status_.battery_percentage);
   dbus_wrapper_->EmitSignal(&signal);
 
   return true;
@@ -1476,9 +1479,12 @@ void PowerSupply::OnGetBatteryStateMethodCall(
   dbus::MessageWriter writer(response.get());
   writer.AppendUint32(static_cast<uint32_t>(
       ExternalPowerToExternalPowerEnum(power_status_.external_power)));
-  writer.AppendUint32(static_cast<uint32_t>(
-      BatteryStateToUpowerEnum(power_status_.battery_status_string)));
-  writer.AppendDouble(power_status_.display_battery_percentage);
+  UpowerBatteryState battery_state =
+      power_status_.battery_percentage == 100
+          ? UpowerBatteryState::UpowerFullyCharged
+          : BatteryStateToUpowerEnum(power_status_.battery_status_string);
+  writer.AppendUint32(static_cast<uint32_t>(battery_state));
+  writer.AppendDouble(power_status_.battery_percentage);
   std::move(response_sender).Run(std::move(response));
 }
 
