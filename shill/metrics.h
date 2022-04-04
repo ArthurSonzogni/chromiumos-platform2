@@ -650,29 +650,42 @@ class Metrics : public DefaultServiceObserver {
     kHS20SupportMax
   };
 
-  static const char kMetricDisconnectSuffix[];
-  static const int kMetricDisconnectMax;
-  static const int kMetricDisconnectMin;
-  static const int kMetricDisconnectNumBuckets;
-  static const char kMetricSignalAtDisconnectSuffix[];
-  static const int kMetricSignalAtDisconnectMin;
-  static const int kMetricSignalAtDisconnectMax;
-  static const int kMetricSignalAtDisconnectNumBuckets;
-  static const char kMetricNetworkChannelSuffix[];
-  static const int kMetricNetworkChannelMax;
-  static const char kMetricNetworkEapInnerProtocolSuffix[];
-  static const int kMetricNetworkEapInnerProtocolMax;
-  static const char kMetricNetworkEapOuterProtocolSuffix[];
-  static const int kMetricNetworkEapOuterProtocolMax;
-  static const char kMetricNetworkPhyModeSuffix[];
-  static const int kMetricNetworkPhyModeMax;
-  static const char kMetricNetworkSecuritySuffix[];
-  static const int kMetricNetworkSecurityMax;
-  static const char kMetricNetworkServiceErrorSuffix[];
-  static const char kMetricNetworkSignalStrengthSuffix[];
-  static const int kMetricNetworkSignalStrengthMin;
-  static const int kMetricNetworkSignalStrengthMax;
-  static const int kMetricNetworkSignalStrengthNumBuckets;
+  // Our disconnect enumeration values are 0 (System Disconnect) and
+  // 1 (User Disconnect), see histograms.xml, but Chrome needs a minimum
+  // enum value of 1 and the minimum number of buckets needs to be 3 (see
+  // histogram.h).  Instead of remapping System Disconnect to 1 and
+  // User Disconnect to 2, we can just leave the enumerated values as-is
+  // because Chrome implicitly creates a [0-1) bucket for us.  Using Min=1,
+  // Max=2 and NumBuckets=3 gives us the following three buckets:
+  // [0-1), [1-2), [2-INT_MAX).  We end up with an extra bucket [2-INT_MAX)
+  // that we can safely ignore.
+  static constexpr char kMetricDisconnectSuffix[] = "Disconnect";
+  static constexpr int kMetricDisconnectMax = 2;
+  static constexpr int kMetricDisconnectMin = 1;
+  static constexpr int kMetricDisconnectNumBuckets = 3;
+  static constexpr char kMetricSignalAtDisconnectSuffix[] =
+      "SignalAtDisconnect";
+  static constexpr int kMetricSignalAtDisconnectMin = 1;
+  static constexpr int kMetricSignalAtDisconnectMax = 200;
+  static constexpr int kMetricSignalAtDisconnectNumBuckets = 40;
+  static constexpr char kMetricNetworkChannelSuffix[] = "Channel";
+  static constexpr int kMetricNetworkChannelMax = kWiFiChannelMax;
+  static constexpr char kMetricNetworkEapInnerProtocolSuffix[] =
+      "EapInnerProtocol";
+  static constexpr int kMetricNetworkEapInnerProtocolMax = kEapInnerProtocolMax;
+  static constexpr char kMetricNetworkEapOuterProtocolSuffix[] =
+      "EapOuterProtocol";
+  static constexpr int kMetricNetworkEapOuterProtocolMax = kEapOuterProtocolMax;
+  static constexpr char kMetricNetworkPhyModeSuffix[] = "PhyMode";
+  static constexpr int kMetricNetworkPhyModeMax = kWiFiNetworkPhyModeMax;
+  static constexpr char kMetricNetworkSecuritySuffix[] = "Security";
+  static constexpr int kMetricNetworkSecurityMax = kWiFiSecurityMax;
+  static constexpr char kMetricNetworkServiceErrorSuffix[] = "ServiceErrors";
+  static constexpr char kMetricNetworkSignalStrengthSuffix[] = "SignalStrength";
+  static constexpr int kMetricNetworkSignalStrengthMin = 1;
+  static constexpr int kMetricNetworkSignalStrengthMax = 200;
+  static constexpr int kMetricNetworkSignalStrengthNumBuckets = 40;
+
   // Histogram parameters for next two are the same as for
   // kMetricRememberedWiFiNetworkCount. Must be constexpr, for static
   // checking of format string. Must be defined inline, for constexpr.
@@ -682,141 +695,191 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char
       kMetricRememberedUserWiFiNetworkCountBySecurityModeFormat[] =
           "Network.Shill.WiFi.RememberedUserNetworkCount.%s";
-  static const char kMetricRememberedWiFiNetworkCount[];
-  static const int kMetricRememberedWiFiNetworkCountMin;
-  static const int kMetricRememberedWiFiNetworkCountMax;
-  static const int kMetricRememberedWiFiNetworkCountNumBuckets;
-  static const char kMetricHiddenSSIDNetworkCount[];
-  static const char kMetricHiddenSSIDEverConnected[];
-  static const char kMetricWiFiCQMNotification[];
-  static const char kMetricTimeOnlineSecondsSuffix[];
-  static const int kMetricTimeOnlineSecondsMax;
-  static const int kMetricTimeOnlineSecondsMin;
-  static const char kMetricTimeResumeToReadyMillisecondsSuffix[];
-  static const char kMetricTimeToConfigMillisecondsSuffix[];
-  static const char kMetricTimeToConnectMillisecondsSuffix[];
-  static const int kMetricTimeToConnectMillisecondsMax;
-  static const int kMetricTimeToConnectMillisecondsMin;
-  static const int kMetricTimeToConnectMillisecondsNumBuckets;
-  static const char kMetricTimeToScanAndConnectMillisecondsSuffix[];
-  static const char kMetricTimeToDropSeconds[];
-  static const int kMetricTimeToDropSecondsMax;
-  static const int kMetricTimeToDropSecondsMin;
-  static const char kMetricTimeToDisableMillisecondsSuffix[];
-  static const int kMetricTimeToDisableMillisecondsMax;
-  static const int kMetricTimeToDisableMillisecondsMin;
-  static const int kMetricTimeToDisableMillisecondsNumBuckets;
-  static const char kMetricTimeToEnableMillisecondsSuffix[];
-  static const int kMetricTimeToEnableMillisecondsMax;
-  static const int kMetricTimeToEnableMillisecondsMin;
-  static const int kMetricTimeToEnableMillisecondsNumBuckets;
-  static const char kMetricTimeToInitializeMillisecondsSuffix[];
-  static const int kMetricTimeToInitializeMillisecondsMax;
-  static const int kMetricTimeToInitializeMillisecondsMin;
-  static const int kMetricTimeToInitializeMillisecondsNumBuckets;
-  static const char kMetricTimeToJoinMillisecondsSuffix[];
-  static const char kMetricTimeToOnlineMillisecondsSuffix[];
-  static const char kMetricTimeToPortalMillisecondsSuffix[];
-  static const char kMetricTimeToRedirectFoundMillisecondsSuffix[];
-  static const char kMetricTimeToScanMillisecondsSuffix[];
-  static const int kMetricTimeToScanMillisecondsMax;
-  static const int kMetricTimeToScanMillisecondsMin;
-  static const int kMetricTimeToScanMillisecondsNumBuckets;
-  static const int kTimerHistogramMillisecondsMax;
-  static const int kTimerHistogramMillisecondsMin;
-  static const int kTimerHistogramNumBuckets;
+  static constexpr char kMetricRememberedWiFiNetworkCount[] =
+      "Network.Shill.WiFi.RememberedNetworkCount";
+  static constexpr int kMetricRememberedWiFiNetworkCountMax = 1024;
+  static constexpr int kMetricRememberedWiFiNetworkCountMin = 1;
+  static constexpr int kMetricRememberedWiFiNetworkCountNumBuckets = 32;
+  static constexpr char kMetricHiddenSSIDNetworkCount[] =
+      "Network.Shill.WiFi.HiddenSSIDNetworkCount";
+  static constexpr char kMetricHiddenSSIDEverConnected[] =
+      "Network.Shill.WiFi.HiddenSSIDEverConnected";
+  static constexpr char kMetricWiFiCQMNotification[] =
+      "Network.Shill.WiFi.CQMNotification";
+  static constexpr char kMetricTimeOnlineSecondsSuffix[] = "TimeOnline";
+  static constexpr int kMetricTimeOnlineSecondsMax = 8 * 60 * 60;  // 8 hours
+  static constexpr int kMetricTimeOnlineSecondsMin = 1;
+
+  static constexpr char kMetricTimeToConnectMillisecondsSuffix[] =
+      "TimeToConnect";
+  static constexpr int kMetricTimeToConnectMillisecondsMax =
+      60 * 1000;  // 60 seconds
+  static constexpr int kMetricTimeToConnectMillisecondsMin = 1;
+  static constexpr int kMetricTimeToConnectMillisecondsNumBuckets = 60;
+  static constexpr char kMetricTimeToScanAndConnectMillisecondsSuffix[] =
+      "TimeToScanAndConnect";
+  static constexpr char kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";
+  static constexpr int kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
+  static constexpr int kMetricTimeToDropSecondsMin = 1;
+  static constexpr char kMetricTimeToDisableMillisecondsSuffix[] =
+      "TimeToDisable";
+  static constexpr int kMetricTimeToDisableMillisecondsMax =
+      60 * 1000;  // 60 seconds
+  static constexpr int kMetricTimeToDisableMillisecondsMin = 1;
+  static constexpr int kMetricTimeToDisableMillisecondsNumBuckets = 60;
+  static constexpr char kMetricTimeToEnableMillisecondsSuffix[] =
+      "TimeToEnable";
+  static constexpr int kMetricTimeToEnableMillisecondsMax =
+      60 * 1000;  // 60 seconds
+  static constexpr int kMetricTimeToEnableMillisecondsMin = 1;
+  static constexpr int kMetricTimeToEnableMillisecondsNumBuckets = 60;
+  static constexpr char kMetricTimeToInitializeMillisecondsSuffix[] =
+      "TimeToInitialize";
+  static constexpr int kMetricTimeToInitializeMillisecondsMax =
+      30 * 1000;  // 30 seconds
+  static constexpr int kMetricTimeToInitializeMillisecondsMin = 1;
+  static constexpr int kMetricTimeToInitializeMillisecondsNumBuckets = 30;
+  static constexpr char kMetricTimeResumeToReadyMillisecondsSuffix[] =
+      "TimeResumeToReady";
+  static constexpr char kMetricTimeToConfigMillisecondsSuffix[] =
+      "TimeToConfig";
+  static constexpr char kMetricTimeToJoinMillisecondsSuffix[] = "TimeToJoin";
+  static constexpr char kMetricTimeToOnlineMillisecondsSuffix[] =
+      "TimeToOnline";
+  static constexpr char kMetricTimeToPortalMillisecondsSuffix[] =
+      "TimeToPortal";
+  static constexpr char kMetricTimeToRedirectFoundMillisecondsSuffix[] =
+      "TimeToRedirectFound";
+  static constexpr char kMetricTimeToScanMillisecondsSuffix[] = "TimeToScan";
+  static constexpr int kMetricTimeToScanMillisecondsMax =
+      180 * 1000;  // 3 minutes
+  static constexpr int kMetricTimeToScanMillisecondsMin = 1;
+  static constexpr int kMetricTimeToScanMillisecondsNumBuckets = 90;
+  static constexpr int kTimerHistogramMillisecondsMax = 45 * 1000;
+  static constexpr int kTimerHistogramMillisecondsMin = 1;
+  static constexpr int kTimerHistogramNumBuckets = 50;
 
   // The total number of portal detections attempted between the Connected
   // state and the Online state.  This includes both failure/timeout attempts
   // and the final successful attempt.
-  static const char kMetricPortalAttemptsToOnlineSuffix[];
-  static const int kMetricPortalAttemptsToOnlineMax;
-  static const int kMetricPortalAttemptsToOnlineMin;
-  static const int kMetricPortalAttemptsToOnlineNumBuckets;
+  static constexpr char kMetricPortalAttemptsToOnlineSuffix[] =
+      "PortalAttemptsToOnline";
+  static constexpr int kMetricPortalAttemptsToOnlineMax = 100;
+  static constexpr int kMetricPortalAttemptsToOnlineMin = 1;
+  static constexpr int kMetricPortalAttemptsToOnlineNumBuckets = 10;
 
   // The result of the portal detection.
-  static const char kMetricPortalResultSuffix[];
+  static constexpr char kMetricPortalResultSuffix[] = "PortalResult";
 
-  static const char kMetricScanResult[];
-  static const char kMetricWiFiScanTimeInEbusyMilliseconds[];
+  static constexpr char kMetricScanResult[] = "Network.Shill.WiFi.ScanResult";
+  static constexpr char kMetricWiFiScanTimeInEbusyMilliseconds[] =
+      "Network.Shill.WiFi.ScanTimeInEbusy";
 
-  static const char kMetricPowerManagerKey[];
+  static constexpr char kMetricPowerManagerKey[] = "metrics";
 
   // patchpanel::NeighborLinkMonitor statistics.
-  static const char kMetricNeighborLinkMonitorFailureSuffix[];
+  static constexpr char kMetricNeighborLinkMonitorFailureSuffix[] =
+      "NeighborLinkMonitorFailure";
 
   // Signal strength when link becomes unreliable (multiple link monitor
   // failures in short period of time).
-  static const char kMetricUnreliableLinkSignalStrengthSuffix[];
-  static const int kMetricServiceSignalStrengthMin;
-  static const int kMetricServiceSignalStrengthMax;
-  static const int kMetricServiceSignalStrengthNumBuckets;
+  static constexpr char kMetricUnreliableLinkSignalStrengthSuffix[] =
+      "UnreliableLinkSignalStrength";
+  static constexpr int kMetricServiceSignalStrengthMin = 1;
+  static constexpr int kMetricServiceSignalStrengthMax = 100;
+  static constexpr int kMetricServiceSignalStrengthNumBuckets = 40;
 
   // AP 802.11r/k/v support statistics.
-  static const char kMetricAp80211kSupport[];
-  static const char kMetricAp80211rSupport[];
-  static const char kMetricAp80211vDMSSupport[];
-  static const char kMetricAp80211vBSSMaxIdlePeriodSupport[];
-  static const char kMetricAp80211vBSSTransitionSupport[];
+  static constexpr char kMetricAp80211kSupport[] =
+      "Network.Shill.WiFi.Ap80211kSupport";
+  static constexpr char kMetricAp80211rSupport[] =
+      "Network.Shill.WiFi.Ap80211rSupport";
+  static constexpr char kMetricAp80211vDMSSupport[] =
+      "Network.Shill.WiFi.Ap80211vDMSSupport";
+  static constexpr char kMetricAp80211vBSSMaxIdlePeriodSupport[] =
+      "Network.Shill.WiFi.Ap80211vBSSMaxIdlePeriodSupport";
+  static constexpr char kMetricAp80211vBSSTransitionSupport[] =
+      "Network.Shill.WiFi.Ap80211vBSSTransitionSupport";
 
-  static const char kMetricLinkClientDisconnectReason[];
-  static const char kMetricLinkApDisconnectReason[];
-  static const char kMetricLinkClientDisconnectType[];
-  static const char kMetricLinkApDisconnectType[];
+  static constexpr char kMetricLinkClientDisconnectReason[] =
+      "Network.Shill.WiFi.ClientDisconnectReason";
+  static constexpr char kMetricLinkApDisconnectReason[] =
+      "Network.Shill.WiFi.ApDisconnectReason";
+  static constexpr char kMetricLinkClientDisconnectType[] =
+      "Network.Shill.WiFi.ClientDisconnectType";
+  static constexpr char kMetricLinkApDisconnectType[] =
+      "Network.Shill.WiFi.ApDisconnectType";
 
   // 802.11 Status Codes for auth/assoc failures
-  static const char kMetricWiFiAssocFailureType[];
-  static const char kMetricWiFiAuthFailureType[];
+  static constexpr char kMetricWiFiAssocFailureType[] =
+      "Network.Shill.WiFi.AssocFailureType";
+  static constexpr char kMetricWiFiAuthFailureType[] =
+      "Network.Shill.WiFi.AuthFailureType";
 
   // Roam time for FT and non-FT key management suites.
-  static const char kMetricWifiRoamTimePrefix[];
-  static const int kMetricWifiRoamTimeMillisecondsMax;
-  static const int kMetricWifiRoamTimeMillisecondsMin;
-  static const int kMetricWifiRoamTimeNumBuckets;
+  static constexpr char kMetricWifiRoamTimePrefix[] =
+      "Network.Shill.WiFi.RoamTime";
+  static constexpr int kMetricWifiRoamTimeMillisecondsMax = 1000;
+  static constexpr int kMetricWifiRoamTimeMillisecondsMin = 1;
+  static constexpr int kMetricWifiRoamTimeNumBuckets = 20;
 
   // Roam completions for FT and non-FT key management suites.
-  static const char kMetricWifiRoamCompletePrefix[];
+  static constexpr char kMetricWifiRoamCompletePrefix[] =
+      "Network.Shill.WiFi.RoamComplete";
 
   // Session Lengths for FT and non-FT key management suites.
-  static const char kMetricWifiSessionLengthPrefix[];
-  static const int kMetricWifiSessionLengthMillisecondsMax;
-  static const int kMetricWifiSessionLengthMillisecondsMin;
-  static const int kMetricWifiSessionLengthNumBuckets;
+  static constexpr char kMetricWifiSessionLengthPrefix[] =
+      "Network.Shill.WiFi.SessionLength";
+  static constexpr int kMetricWifiSessionLengthMillisecondsMax = 10000;
+  static constexpr int kMetricWifiSessionLengthMillisecondsMin = 1;
+  static constexpr int kMetricWifiSessionLengthNumBuckets = 20;
 
   // Suffixes for roam histograms.
-  static const char kMetricWifiPSKSuffix[];
-  static const char kMetricWifiFTPSKSuffix[];
-  static const char kMetricWifiEAPSuffix[];
-  static const char kMetricWifiFTEAPSuffix[];
+  static constexpr char kMetricWifiPSKSuffix[] = "PSK";
+  static constexpr char kMetricWifiFTPSKSuffix[] = "FTPSK";
+  static constexpr char kMetricWifiEAPSuffix[] = "EAP";
+  static constexpr char kMetricWifiFTEAPSuffix[] = "FTEAP";
 
-  static const char kMetricApChannelSwitch[];
+  static constexpr char kMetricApChannelSwitch[] =
+      "Network.Shill.WiFi.ApChannelSwitch";
 
   // Shill suspend action statistics.
-  static const char kMetricSuspendActionTimeTaken[];
-  static const char kMetricSuspendActionResult[];
-  static const int kMetricSuspendActionTimeTakenMillisecondsMax;
-  static const int kMetricSuspendActionTimeTakenMillisecondsMin;
+  static constexpr char kMetricSuspendActionTimeTaken[] =
+      "Network.Shill.SuspendActionTimeTaken";
+  static constexpr char kMetricSuspendActionResult[] =
+      "Network.Shill.SuspendActionResult";
+  static constexpr int kMetricSuspendActionTimeTakenMillisecondsMax = 20000;
+  static constexpr int kMetricSuspendActionTimeTakenMillisecondsMin = 1;
 
   // Cellular specific statistics.
-  static const char kMetricCellular3GPPRegistrationDelayedDrop[];
-  static const char kMetricCellularDrop[];
-  static const char kMetricCellularConnectResult[];
-  static const char kMetricCellularOutOfCreditsReason[];
-  static const char kMetricCellularSignalStrengthBeforeDrop[];
-  static const int kMetricCellularSignalStrengthBeforeDropMax;
-  static const int kMetricCellularSignalStrengthBeforeDropMin;
-  static const int kMetricCellularSignalStrengthBeforeDropNumBuckets;
+  static constexpr char kMetricCellular3GPPRegistrationDelayedDrop[] =
+      "Network.Shill.Cellular.3GPPRegistrationDelayedDrop";
+  static constexpr char kMetricCellularDrop[] = "Network.Shill.Cellular.Drop";
+  static constexpr char kMetricCellularConnectResult[] =
+      "Network.Shill.Cellular.ConnectResult";
+  static constexpr char kMetricCellularOutOfCreditsReason[] =
+      "Network.Shill.Cellular.OutOfCreditsReason";
+  static constexpr char kMetricCellularSignalStrengthBeforeDrop[] =
+      "Network.Shill.Cellular.SignalStrengthBeforeDrop";
+  static constexpr int kMetricCellularSignalStrengthBeforeDropMax = 100;
+  static constexpr int kMetricCellularSignalStrengthBeforeDropMin = 1;
+  static constexpr int kMetricCellularSignalStrengthBeforeDropNumBuckets = 10;
 
   // Profile statistics.
-  static const char kMetricCorruptedProfile[];
+  static constexpr char kMetricCorruptedProfile[] =
+      "Network.Shill.CorruptedProfile";
 
   // VPN connection statistics.
-  static const char kMetricVpnDriver[];
-  static const int kMetricVpnDriverMax;
-  static const char kMetricVpnRemoteAuthenticationType[];
-  static const int kMetricVpnRemoteAuthenticationTypeMax;
-  static const char kMetricVpnUserAuthenticationType[];
-  static const int kMetricVpnUserAuthenticationTypeMax;
+  static constexpr char kMetricVpnDriver[] = "Network.Shill.Vpn.Driver";
+  static constexpr int kMetricVpnDriverMax = kVpnDriverMax;
+  static constexpr char kMetricVpnRemoteAuthenticationType[] =
+      "Network.Shill.Vpn.RemoteAuthenticationType";
+  static constexpr int kMetricVpnRemoteAuthenticationTypeMax =
+      kVpnRemoteAuthenticationTypeMax;
+  static constexpr char kMetricVpnUserAuthenticationType[] =
+      "Network.Shill.Vpn.UserAuthenticationType";
+  static constexpr int kMetricVpnUserAuthenticationTypeMax =
+      kVpnUserAuthenticationTypeMax;
 
   // IKEv2 connection statistics.
   static constexpr char kMetricVpnIkev2AuthenticationType[] =
@@ -847,127 +910,168 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kMetricVpnIkev2EndReasonMax = kNetworkServiceErrorMax;
 
   // L2TP/IPsec connection statistics.
-  static const char kMetricVpnL2tpIpsecTunnelGroupUsage[];
-  static const int kMetricVpnL2tpIpsecTunnelGroupUsageMax;
-  static const char kMetricVpnL2tpIpsecIkeEncryptionAlgorithm[];
-  static const int kMetricVpnL2tpIpsecIkeEncryptionAlgorithmMax;
-  static const char kMetricVpnL2tpIpsecIkeIntegrityAlgorithm[];
-  static const int kMetricVpnL2tpIpsecIkeIntegrityAlgorithmMax;
-  static const char kMetricVpnL2tpIpsecIkeDHGroup[];
-  static const int kMetricVpnL2tpIpsecIkeDHGroupMax;
-  static const char kMetricVpnL2tpIpsecEspEncryptionAlgorithm[];
-  static const int kMetricVpnL2tpIpsecEspEncryptionAlgorithmMax;
-  static const char kMetricVpnL2tpIpsecEspIntegrityAlgorithm[];
-  static const int kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax;
+  static constexpr char kMetricVpnL2tpIpsecTunnelGroupUsage[] =
+      "Network.Shill.Vpn.L2tpIpsecTunnelGroupUsage";
+  static constexpr int kMetricVpnL2tpIpsecTunnelGroupUsageMax =
+      kVpnL2tpIpsecTunnelGroupUsageMax;
+  static constexpr char kMetricVpnL2tpIpsecIkeEncryptionAlgorithm[] =
+      "Network.Shill.Vpn.L2tpIpsec.IkeEncryptionAlgorithm";
+  static constexpr int kMetricVpnL2tpIpsecIkeEncryptionAlgorithmMax =
+      kVpnIpsecEncryptionAlgorithmMax;
+  static constexpr char kMetricVpnL2tpIpsecIkeIntegrityAlgorithm[] =
+      "Network.Shill.Vpn.L2tpIpsec.IkeIntegrityAlgorithm";
+  static constexpr int kMetricVpnL2tpIpsecIkeIntegrityAlgorithmMax =
+      kVpnIpsecIntegrityAlgorithmMax;
+  static constexpr char kMetricVpnL2tpIpsecIkeDHGroup[] =
+      "Network.Shill.Vpn.L2tpIpsec.IkeDHGroup";
+  static constexpr int kMetricVpnL2tpIpsecIkeDHGroupMax = kVpnIpsecDHGroupMax;
+  static constexpr char kMetricVpnL2tpIpsecEspEncryptionAlgorithm[] =
+      "Network.Shill.Vpn.L2tpIpsec.EspEncryptionAlgorithm";
+  static constexpr int kMetricVpnL2tpIpsecEspEncryptionAlgorithmMax =
+      kVpnIpsecEncryptionAlgorithmMax;
+  static constexpr char kMetricVpnL2tpIpsecEspIntegrityAlgorithm[] =
+      "Network.Shill.Vpn.L2tpIpsec.EspIntegrityAlgorithm";
+  static constexpr int kMetricVpnL2tpIpsecEspIntegrityAlgorithmMax =
+      kVpnIpsecIntegrityAlgorithmMax;
   // Temporary metrics for comparing the robustness of the two L2TP/IPsec
   // drivers (b/204261554).
-  static const char kMetricVpnL2tpIpsecStrokeEndReason[];
-  static const int kMetricVpnL2tpIpsecStrokeEndReasonMax;
-  static const char kMetricVpnL2tpIpsecSwanctlEndReason[];
-  static const int kMetricVpnL2tpIpsecSwanctlEndReasonMax;
+  static constexpr char kMetricVpnL2tpIpsecStrokeEndReason[] =
+      "Network.Shill.Vpn.L2tpIpsec.StrokeEndReason";
+  static constexpr int kMetricVpnL2tpIpsecStrokeEndReasonMax =
+      kNetworkServiceErrorMax;
+  static constexpr char kMetricVpnL2tpIpsecSwanctlEndReason[] =
+      "Network.Shill.Vpn.L2tpIpsec.SwanctlEndReason";
+  static constexpr int kMetricVpnL2tpIpsecSwanctlEndReasonMax =
+      kNetworkServiceErrorMax;
 
   // OpenVPN connection statistics.
   // Cipher algorithm used after negotiating with server.
-  static const char kMetricVpnOpenVPNCipher[];
-  static const int kMetricVpnOpenVPNCipherMax;
+  static constexpr char kMetricVpnOpenVPNCipher[] =
+      "Network.Shill.Vpn.OpenVPNCipher";
+  static constexpr int kMetricVpnOpenVPNCipherMax = kVpnOpenVPNCipherMax;
 
   // WireGuard connection statistics.
   // Key pair source (e.g., user input) used in a WireGuard Connection.
-  static const char kMetricVpnWireGuardKeyPairSource[];
-  static const int kMetricVpnWireGuardKeyPairSourceMax;
+  static constexpr char kMetricVpnWireGuardKeyPairSource[] =
+      "Network.Shill.Vpn.WireGuardKeyPairSource";
+  static constexpr int kMetricVpnWireGuardKeyPairSourceMax =
+      kVpnWireGuardKeyPairSourceMax;
   // Number of peers used in a WireGuard connection.
-  static const char kMetricVpnWireGuardPeersNum[];
-  static const int kMetricVpnWireGuardPeersNumMin;
-  static const int kMetricVpnWireGuardPeersNumMax;
-  static const int kMetricVpnWireGuardPeersNumNumBuckets;
+  static constexpr char kMetricVpnWireGuardPeersNum[] =
+      "Network.Shill.Vpn.WireGuardPeersNum";
+  static constexpr int kMetricVpnWireGuardPeersNumMin = 1;
+  static constexpr int kMetricVpnWireGuardPeersNumMax = 10;
+  static constexpr int kMetricVpnWireGuardPeersNumNumBuckets = 11;
   // Allowed IPs type used in a WireGuard connection.
-  static const char kMetricVpnWireGuardAllowedIPsType[];
-  static const int kMetricVpnWireGuardAllowedIPsTypeMax;
+  static constexpr char kMetricVpnWireGuardAllowedIPsType[] =
+      "Network.Shill.Vpn.WireGuardAllowedIPsType";
+  static constexpr int kMetricVpnWireGuardAllowedIPsTypeMax =
+      kVpnWireGuardAllowedIPsTypeMax;
 
-  // The length in seconds of a lease that has expired while the DHCP
-  // client was attempting to renew the lease..
-  static const char kMetricExpiredLeaseLengthSecondsSuffix[];
-  static const int kMetricExpiredLeaseLengthSecondsMax;
-  static const int kMetricExpiredLeaseLengthSecondsMin;
-  static const int kMetricExpiredLeaseLengthSecondsNumBuckets;
+  // The length in seconds of a lease that has expired while the DHCP client was
+  // attempting to renew the lease. CL:557297 changed the number of buckets for
+  // the 'ExpiredLeaseLengthSeconds' metric. That would lead to confusing
+  // display of samples collected before and after the change. To avoid that,
+  // the 'ExpiredLeaseLengthSeconds' metric is renamed to
+  // 'ExpiredLeaseLengthSeconds2'.
+  static constexpr char kMetricExpiredLeaseLengthSecondsSuffix[] =
+      "ExpiredLeaseLengthSeconds2";
+  static constexpr int kMetricExpiredLeaseLengthSecondsMax =
+      7 * 24 * 60 * 60;  // 7 days
+  static constexpr int kMetricExpiredLeaseLengthSecondsMin = 1;
+  static constexpr int kMetricExpiredLeaseLengthSecondsNumBuckets = 100;
 
   // Number of wifi services available when auto-connect is initiated.
-  static const char kMetricWifiAutoConnectableServices[];
-  static const int kMetricWifiAutoConnectableServicesMax;
-  static const int kMetricWifiAutoConnectableServicesMin;
-  static const int kMetricWifiAutoConnectableServicesNumBuckets;
+  static constexpr char kMetricWifiAutoConnectableServices[] =
+      "Network.Shill.WiFi.AutoConnectableServices";
+  static constexpr int kMetricWifiAutoConnectableServicesMax = 50;
+  static constexpr int kMetricWifiAutoConnectableServicesMin = 1;
+  static constexpr int kMetricWifiAutoConnectableServicesNumBuckets = 10;
 
   // Number of BSSes available for a wifi service when we attempt to connect
   // to that service.
-  static const char kMetricWifiAvailableBSSes[];
-  static const int kMetricWifiAvailableBSSesMax;
-  static const int kMetricWifiAvailableBSSesMin;
-  static const int kMetricWifiAvailableBSSesNumBuckets;
+  static constexpr char kMetricWifiAvailableBSSes[] =
+      "Network.Shill.WiFi.AvailableBSSesAtConnect";
+  static constexpr int kMetricWifiAvailableBSSesMax = 50;
+  static constexpr int kMetricWifiAvailableBSSesMin = 1;
+  static constexpr int kMetricWifiAvailableBSSesNumBuckets = 10;
 
   // Wifi TX bitrate in Mbps.
-  static const char kMetricWifiTxBitrate[];
-  static const int kMetricWifiTxBitrateMax;
-  static const int kMetricWifiTxBitrateMin;
-  static const int kMetricWifiTxBitrateNumBuckets;
+  static constexpr char kMetricWifiTxBitrate[] =
+      "Network.Shill.WiFi.TransmitBitrateMbps";
+  static constexpr int kMetricWifiTxBitrateMax = 7000;
+  static constexpr int kMetricWifiTxBitrateMin = 1;
+  static constexpr int kMetricWifiTxBitrateNumBuckets = 100;
 
   // User-initiated wifi connection attempt result.
-  static const char kMetricWifiUserInitiatedConnectionResult[];
+  static constexpr char kMetricWifiUserInitiatedConnectionResult[] =
+      "Network.Shill.WiFi.UserInitiatedConnectionResult";
 
   // The reason of failed user-initiated wifi connection attempt.
-  static const char kMetricWifiUserInitiatedConnectionFailureReason[];
+  static constexpr char kMetricWifiUserInitiatedConnectionFailureReason[] =
+      "Network.Shill.WiFi.UserInitiatedConnectionFailureReason";
 
   // Number of attempts made to connect to supplicant before success (max ==
   // failure).
-  static const char kMetricWifiSupplicantAttempts[];
-  static const int kMetricWifiSupplicantAttemptsMax;
-  static const int kMetricWifiSupplicantAttemptsMin;
-  static const int kMetricWifiSupplicantAttemptsNumBuckets;
+  static constexpr char kMetricWifiSupplicantAttempts[] =
+      "Network.Shill.WiFi.SupplicantAttempts";
+  static constexpr int kMetricWifiSupplicantAttemptsMax = 10;
+  static constexpr int kMetricWifiSupplicantAttemptsMin = 1;
+  static constexpr int kMetricWifiSupplicantAttemptsNumBuckets = 11;
 
   // Device's connection status.
-  static const char kMetricDeviceConnectionStatus[];
+  static constexpr char kMetricDeviceConnectionStatus[] =
+      "Network.Shill.DeviceConnectionStatus";
 
   // Assigned MTU values from PPP.
-  static const char kMetricPPPMTUValue[];
+  static constexpr char kMetricPPPMTUValue[] = "Network.Shill.PPPMTUValue";
 
   // Network connection IP type.
-  static const char kMetricNetworkConnectionIPTypeSuffix[];
+  static constexpr char kMetricNetworkConnectionIPTypeSuffix[] =
+      "NetworkConnectionIPType";
 
   // IPv6 connectivity status.
-  static const char kMetricIPv6ConnectivityStatusSuffix[];
+  static constexpr char kMetricIPv6ConnectivityStatusSuffix[] =
+      "IPv6ConnectivityStatus";
 
   // Device presence.
-  static const char kMetricDevicePresenceStatusSuffix[];
+  static constexpr char kMetricDevicePresenceStatusSuffix[] =
+      "DevicePresenceStatus";
 
   // Connection diagnostics issue.
-  static const char kMetricConnectionDiagnosticsIssue[];
+  static constexpr char kMetricConnectionDiagnosticsIssue[] =
+      "Network.Shill.ConnectionDiagnosticsIssue";
 
   // Portal detection results.
-  static const char kMetricPortalDetectionMultiProbeResult[];
+  static constexpr char kMetricPortalDetectionMultiProbeResult[] =
+      "Network.Shill.PortalDetectionMultiProbeResult";
 
   // Wireless regulatory domain metric.
-  static const char kMetricRegulatoryDomain[];
+  static constexpr char kMetricRegulatoryDomain[] =
+      "Network.Shill.WiFi.RegulatoryDomain";
 
   // Hotspot 2.0 version number metric.
-  static const char kMetricHS20Support[];
+  static constexpr char kMetricHS20Support[] = "Network.Shill.WiFi.HS20Support";
 
   // MBO support metric.
-  static const char kMetricMBOSupport[];
+  static constexpr char kMetricMBOSupport[] = "Network.Shill.WiFi.MBOSupport";
 
   // Seconds between latest WiFi rekey attempt and service failure.
-  static const char kMetricTimeFromRekeyToFailureSeconds[];
-  static const int kMetricTimeFromRekeyToFailureSecondsMin;
-  static const int kMetricTimeFromRekeyToFailureSecondsMax;
-  static const int kMetricTimeFromRekeyToFailureSecondsNumBuckets;
+  static constexpr char kMetricTimeFromRekeyToFailureSeconds[] =
+      "Network.Shill.WiFi.TimeFromRekeyToFailureSeconds";
+  static constexpr int kMetricTimeFromRekeyToFailureSecondsMin = 0;
+  static constexpr int kMetricTimeFromRekeyToFailureSecondsMax = 180;
+  static constexpr int kMetricTimeFromRekeyToFailureSecondsNumBuckets = 30;
 
   // Version number of the format of WiFi structured metrics. Changed when the
   // formatting of the metrics changes, so that the server-side code knows
   // which fields to expect.
-  static const int kWiFiStructuredMetricsVersion;
+  static constexpr int kWiFiStructuredMetricsVersion = 1;
 
   // When emitting WiFi structured metrics, if we encounter errors and the
   // numeric values of some of the fields can not be populated, use this as
   // value for the field.
-  static const int kWiFiStructuredMetricsErrorValue;
+  static constexpr int kWiFiStructuredMetricsErrorValue = -1;
 
   Metrics();
   Metrics(const Metrics&) = delete;
@@ -1369,22 +1473,22 @@ class Metrics : public DefaultServiceObserver {
   using DeviceMetricsLookupMap =
       std::map<const int, std::unique_ptr<DeviceMetrics>>;
 
-  static const uint16_t kWiFiBandwidth5MHz;
-  static const uint16_t kWiFiBandwidth20MHz;
-  static const uint16_t kWiFiFrequency2412;
-  static const uint16_t kWiFiFrequency2472;
-  static const uint16_t kWiFiFrequency2484;
-  static const uint16_t kWiFiFrequency5170;
-  static const uint16_t kWiFiFrequency5180;
-  static const uint16_t kWiFiFrequency5230;
-  static const uint16_t kWiFiFrequency5240;
-  static const uint16_t kWiFiFrequency5320;
-  static const uint16_t kWiFiFrequency5500;
-  static const uint16_t kWiFiFrequency5700;
-  static const uint16_t kWiFiFrequency5745;
-  static const uint16_t kWiFiFrequency5825;
-  static const uint16_t kWiFiFrequency5955;
-  static const uint16_t kWiFiFrequency7115;
+  static constexpr uint16_t kWiFiBandwidth5MHz = 5;
+  static constexpr uint16_t kWiFiBandwidth20MHz = 20;
+  static constexpr uint16_t kWiFiFrequency2412 = 2412;
+  static constexpr uint16_t kWiFiFrequency2472 = 2472;
+  static constexpr uint16_t kWiFiFrequency2484 = 2484;
+  static constexpr uint16_t kWiFiFrequency5170 = 5170;
+  static constexpr uint16_t kWiFiFrequency5180 = 5180;
+  static constexpr uint16_t kWiFiFrequency5230 = 5230;
+  static constexpr uint16_t kWiFiFrequency5240 = 5240;
+  static constexpr uint16_t kWiFiFrequency5320 = 5320;
+  static constexpr uint16_t kWiFiFrequency5500 = 5500;
+  static constexpr uint16_t kWiFiFrequency5700 = 5700;
+  static constexpr uint16_t kWiFiFrequency5745 = 5745;
+  static constexpr uint16_t kWiFiFrequency5825 = 5825;
+  static constexpr uint16_t kWiFiFrequency5955 = 5955;
+  static constexpr uint16_t kWiFiFrequency7115 = 7115;
 
   static constexpr char kBootIdProcPath[] = "/proc/sys/kernel/random/boot_id";
 
