@@ -23,41 +23,71 @@ bool IsEfiGlobalGUID(const efi_guid_t* guid) {
 }
 
 // Wrapper around the libefivar error logging interface.
+//
 // libefivar stores a list of errors that it encounters, and lets you access
 // them by index. The list is cleared when certain calls succeed, but successive
 // errors can accumulate.
-void LogEfiErrors() {
-  uint32_t index = 0;
-
-  char* filename = nullptr;
-  char* function = nullptr;
-  int line = 0;
-  char* message = nullptr;
-  int error = 0;
-
-  while (true) {
-    int rc =
-        efi_error_get(index, &filename, &function, &line, &message, &error);
-
-    if (rc == -1) {
-      LOG(ERROR) << "programmer error, invalid args.";
-      return;
-    } else if (rc == 0) {
-      // No more errors, for now.
-      break;
-    }
-
-    // We don't know here whether it should be treated as a warning or an error,
-    // so we'll call everything a warning and let further logging clarify.
-    LOG(WARNING) << "efi error " << index << ": " << filename << ":" << line
-                 << ":" << function << " rc=" << rc << " " << message << ": "
-                 << std::strerror(error);
-    index += 1;
+//
+// This accumulation can make for confusing logs if we only clear these logs
+// after libefivar functions return failure.
+// For example, GenerateFileDevicePathFromEsp may produce a pair of errors like:
+// ./util.h:325:get_file rc=1 could not open file "/sys/devices/pci0000:00/..."
+// but efi_generate_file_device_path_from_esp still returns success. If we don't
+// clear those errors they'll show up the next time we look at logged errors,
+// which will be after an unrelated call.
+//
+// To simplify logging and clearing, and ensure that all returns will clear,
+// this wrapper logs all errors and clears the list on destruction. Instantiate
+// a local instance in each function that calls a libefivar function.
+class EfiLogWrapper {
+ public:
+  explicit EfiLogWrapper(const std::string& source) : source_(source) {
+    // Clear any errors encountered before construction to avoid confusion.
+    efi_error_clear();
   }
 
-  // Clear the errors we've just printed, so we don't hit them again next time.
-  efi_error_clear();
-}
+  ~EfiLogWrapper() {
+    // Log all errors upon destruction.
+    LogEfiErrors();
+    efi_error_clear();
+  }
+
+  // Log all libefivar errors.
+  void LogEfiErrors() {
+    uint32_t index = 0;
+
+    char* filename = nullptr;
+    char* function = nullptr;
+    int line = 0;
+    char* message = nullptr;
+    int error = 0;
+
+    while (true) {
+      int rc =
+          efi_error_get(index, &filename, &function, &line, &message, &error);
+
+      if (rc == -1) {
+        LOG(ERROR) << "programmer error, invalid args.";
+        return;
+      } else if (rc == 0) {
+        // No more errors, for now.
+        break;
+      }
+
+      // We don't know here whether it should be treated as a warning or an
+      // error, so we'll call everything a warning and let further logging
+      // clarify.
+      LOG(WARNING) << source_ << "triggered efi error " << index << ": "
+                   << filename << ":" << line << ":" << function << " rc=" << rc
+                   << " " << message << ": " << std::strerror(error);
+      index += 1;
+    }
+  }
+
+ private:
+  // Where this was instantiated, to help clarify where errors are coming from.
+  std::string source_;
+};
 
 }  // namespace
 
@@ -67,6 +97,7 @@ const uint32_t kBootVariableAttributes = EFI_VARIABLE_BOOTSERVICE_ACCESS |
 
 std::string EfiVarInterface::LoadoptDesc(uint8_t* const data,
                                          size_t data_size) {
+  EfiLogWrapper log_wrapper(__func__);
   efi_load_option* load_opt = reinterpret_cast<efi_load_option*>(data);
 
   // Memory returned by efi_loadopt_desc doesn't need to be freed.
@@ -80,6 +111,7 @@ std::string EfiVarInterface::LoadoptDesc(uint8_t* const data,
 
 std::vector<uint8_t> EfiVarInterface::LoadoptPath(uint8_t* const data,
                                                   size_t data_size) {
+  EfiLogWrapper log_wrapper(__func__);
   efi_load_option* load_opt = reinterpret_cast<efi_load_option*>(data);
 
   // This path_data is just a pointer into `data`, not separately allocated.
@@ -96,6 +128,7 @@ bool EfiVarInterface::LoadoptCreate(uint32_t loadopt_attributes,
                                     std::vector<uint8_t>& efidp_data,
                                     std::string& description,
                                     std::vector<uint8_t>* data) {
+  EfiLogWrapper log_wrapper(__func__);
   efidp device_path = reinterpret_cast<efidp>(efidp_data.data());
   unsigned char* description_data =
       reinterpret_cast<unsigned char*>(description.data());
@@ -115,7 +148,6 @@ bool EfiVarInterface::LoadoptCreate(uint32_t loadopt_attributes,
       efidp_data.size(), description_data, nullptr, 0);
 
   if (rv < 0) {
-    LogEfiErrors();
     LOG(ERROR) << "Error formatting data for efi variable.\n"
                << "attributes: " << loadopt_attributes << "\n"
                << "efidp_data: "
@@ -133,6 +165,8 @@ bool EfiVarImpl::EfiVariablesSupported() {
 }
 
 std::optional<std::string> EfiVarImpl::GetNextVariableName() {
+  EfiLogWrapper log_wrapper(__func__);
+
   efi_guid_t* guid = nullptr;
   char* name = nullptr;
   int rc = 0;
@@ -148,14 +182,14 @@ std::optional<std::string> EfiVarImpl::GetNextVariableName() {
     return std::string(name);
   }
 
-  if (rc < 0)
-    LogEfiErrors();
   return std::nullopt;
 }
 
 bool EfiVarImpl::GetVariable(const std::string& name,
                              Bytes& data,
                              size_t* data_size) {
+  EfiLogWrapper log_wrapper(__func__);
+
   // efi_get_variable will malloc some space and store it in `data`,
   // so we have to make sure it gets freed.
   uint8_t* data_ptr;
@@ -167,7 +201,6 @@ bool EfiVarImpl::GetVariable(const std::string& name,
 
   if (efi_get_variable(EFI_GLOBAL_GUID, name.c_str(), &data_ptr, data_size,
                        &ignored_attributes) < 0) {
-    LogEfiErrors();
     LOG(ERROR) << "Error getting '" << name << "'";
     // Okay to return without freeing data if ret < 0 (at least in the
     // current (v37) efivar implementation ...).
@@ -183,11 +216,12 @@ bool EfiVarImpl::GetVariable(const std::string& name,
 bool EfiVarImpl::SetVariable(const std::string& name,
                              uint32_t attributes,
                              std::vector<uint8_t>& data) {
+  EfiLogWrapper log_wrapper(__func__);
+
   if (efi_set_variable(EFI_GLOBAL_GUID, name.c_str(), data.data(), data.size(),
                        attributes,
                        // mode
                        0644) < 0) {
-    LogEfiErrors();
     LOG(ERROR) << "Error setting '" << name
                << "' data: " << base::HexEncode(data.data(), data.size());
     return false;
@@ -197,8 +231,8 @@ bool EfiVarImpl::SetVariable(const std::string& name,
 }
 
 bool EfiVarImpl::DelVariable(const std::string& name) {
+  EfiLogWrapper log_wrapper(__func__);
   if (efi_del_variable(EFI_GLOBAL_GUID, name.c_str()) < 0) {
-    LogEfiErrors();
     LOG(ERROR) << "Error deleting '" << name << "'";
     return false;
   }
@@ -211,13 +245,14 @@ bool EfiVarImpl::GenerateFileDevicePathFromEsp(
     int esp_partition,
     const std::string& boot_file,
     std::vector<uint8_t>& efidp_data) {
+  EfiLogWrapper log_wrapper(__func__);
+
   // Check how much capacity we'll need in efidp by passing null/0 first.
   const ssize_t required_size = efi_generate_file_device_path_from_esp(
       nullptr, 0, device_path.c_str(), esp_partition, boot_file.c_str(),
       EFIBOOT_ABBREV_HD);
 
   if (required_size < 0) {
-    LogEfiErrors();
     LOG(ERROR) << "Could not generate device path. "
                << "efi_generate_file_device_path_from_esp returned: "
                << required_size;
@@ -231,7 +266,6 @@ bool EfiVarImpl::GenerateFileDevicePathFromEsp(
       boot_file.c_str(), EFIBOOT_ABBREV_HD);
 
   if (rv < 0) {
-    LogEfiErrors();
     LOG(ERROR) << "Could not generate device path. "
                << "efi_generate_file_device_path_from_esp returned: " << rv;
     return false;
