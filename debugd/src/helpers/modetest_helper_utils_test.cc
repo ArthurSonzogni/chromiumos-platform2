@@ -10,6 +10,7 @@
 
 #include <gtest/gtest.h>
 
+using debugd::modetest_helper_utils::BlobFilter;
 using debugd::modetest_helper_utils::EDIDFilter;
 
 namespace {
@@ -178,4 +179,47 @@ TEST(ModetestHelperUtils, NotEDIDProperty) {
     edid_filter.ProcessLine(line);
     EXPECT_EQ(line, line_original);
   }
+}
+
+TEST(ModetestHelperUtils, FilterBlob) {
+  // modetest-like test data, and the line numbers describing the data.
+  constexpr int kBlobValueLineNum = 6;
+  constexpr int kNumBlobLines = 4;
+  std::string property_with_blob = R"(
+  props:
+    1 BLOBBY:
+        flags: immutable blob
+        blobs:
+
+        value:
+            00ffffffffffff004c83424112345678
+            131d0104b51d11780238d1ae513bb823
+            131d0104b51d11780238d1ae513bb823
+            131d0104b51d11780238d1ae513bb823
+    2 DPMS:
+        flags: enum
+        enums: On=0 Standby=1 Suspend=2 Off=3
+        value: 0
+)";
+  BlobFilter blob_filter("BLOBBY");
+
+  // Split test data by lines.
+  std::vector<std::string> lines = SplitLines(property_with_blob);
+  std::vector<std::string> filtered_lines;
+
+  // Validate the expectations about the input before validating below.
+
+  ASSERT_EQ(lines[kBlobValueLineNum], "        value:");
+  // Line after "value:" and the blob values.
+  ASSERT_EQ(lines[kBlobValueLineNum + kNumBlobLines + 1], "    2 DPMS:");
+
+  for (auto& line : lines) {
+    if (blob_filter.ProcessLine(line))
+      filtered_lines.push_back(line);
+  }
+
+  // The blob takes up four lines.
+  EXPECT_EQ(lines.size() - filtered_lines.size(), kNumBlobLines);
+  // Line after "value:" should be the next property.
+  EXPECT_EQ(filtered_lines[kBlobValueLineNum + 1], "    2 DPMS:");
 }

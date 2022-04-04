@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include <base/strings/stringprintf.h>
 #include <re2/re2.h>
 
 namespace debugd {
@@ -25,6 +26,15 @@ constexpr char kValueRegex[] = R"(^\s+value:$)";
 // The subsequent regex looks for the fixed pattern followed by two 32-bit
 // fields (manufacturer + product, serial number).
 constexpr char kEDIDSerialRegex[] = R"(^\s+(00f{12}00[0-9a-f]{8}[0-9a-f]{8}))";
+// Blob value is a sequence of at least one hex digit.
+constexpr char kBlobRegex[] = R"(^\s+[0-9a-f]+$)";
+
+RE2 GetPropertyRegex(const std::string& property_name) {
+  constexpr char kEDIDPropertyRegex[] = R"(^\s+\d+ %s:$)";
+  std::string property_regex =
+      base::StringPrintf(kEDIDPropertyRegex, property_name.c_str());
+  return RE2(property_regex.c_str());
+}
 }  // namespace
 
 EDIDFilter::EDIDFilter() : saw_edid_property_(false), saw_value_(false) {}
@@ -53,6 +63,31 @@ void EDIDFilter::ProcessLine(std::string& line) {
     saw_value_ = false;
     saw_edid_property_ = false;
   }
+}
+
+// BlobFilter will remove the blob value of the specified property.
+BlobFilter::BlobFilter(const std::string& property_name)
+    : saw_property_(false),
+      saw_value_(false),
+      property_pattern_(GetPropertyRegex(property_name)) {}
+
+bool BlobFilter::ProcessLine(const std::string& line) {
+  if (!saw_property_) {
+    saw_property_ = RE2::FullMatch(line, property_pattern_);
+  } else if (!saw_value_) {
+    saw_value_ = RE2::FullMatch(line, kValueRegex);
+  } else {
+    // While scanning the property's value, return |false| for every line
+    // that looks like a blob, indicating the line should be skipped.
+    if (RE2::FullMatch(line, kBlobRegex)) {
+      return false;
+    } else {
+      // Upon finding the first non-blob line, reset the state machine.
+      saw_value_ = false;
+      saw_property_ = false;
+    }
+  }
+  return true;
 }
 }  // namespace modetest_helper_utils
 }  // namespace debugd

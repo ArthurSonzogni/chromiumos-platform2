@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <re2/re2.h>
+
 namespace debugd {
 namespace modetest_helper_utils {
 
@@ -22,6 +24,19 @@ class EDIDFilter {
  private:
   bool saw_edid_property_;
   bool saw_value_;
+};
+
+// BlobFilter will remove the blob value of the specified property.
+class BlobFilter {
+ public:
+  explicit BlobFilter(const std::string& property_name);
+  // Returns |false| if this line should be skipped.
+  bool ProcessLine(const std::string& line);
+
+ private:
+  bool saw_property_;
+  bool saw_value_;
+  RE2 property_pattern_;
 };
 }  // namespace modetest_helper_utils
 }  // namespace debugd
