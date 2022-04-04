@@ -315,15 +315,30 @@ void RTNLHandler::ParseRTNL(InputData* data) {
             break;
           }
 
-          int error_number =
-              reinterpret_cast<nlmsgerr*>(NLMSG_DATA(hdr))->error;
+          const struct nlmsgerr* hdrErr =
+              reinterpret_cast<nlmsgerr*>(NLMSG_DATA(hdr));
           std::string request_str;
           RTNLMessage::Mode mode = RTNLMessage::kModeUnknown;
           if (request_msg) {
             request_str = " (" + request_msg->ToString() + ")";
             mode = request_msg->mode();
+          } else if (NLMSG_OK(&(hdrErr->msg),
+                              static_cast<unsigned int>(end - buf))) {
+            ByteString payloadFromErr(
+                reinterpret_cast<const unsigned char*>(&(hdrErr->msg)),
+                hdrErr->msg.nlmsg_len);
+            RTNLMessage msgErr;
+            if (msgErr.Decode(payloadFromErr)) {
+              request_str = " (" + msgErr.ToString() + ")";
+              mode = msgErr.mode();
+            }
           }
 
+          if (request_str.empty()) {
+            request_str = "(Request Unavailable)";
+          }
+
+          int error_number = hdrErr->error;
           if (error_number == 0) {
             SLOG(this, 3) << base::StringPrintf(
                 "sequence %d%s received success", hdr->nlmsg_seq,
