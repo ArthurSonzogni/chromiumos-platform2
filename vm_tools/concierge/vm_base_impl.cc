@@ -88,7 +88,7 @@ bool VmBaseImpl::ListUsbDevice(std::vector<UsbDevice>* devices) {
 
 // static
 bool VmBaseImpl::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
-                                     const char* CpuCgroup) {
+                                     const char* cpu_cgroup) {
   int cpu_shares = 1024;  // TODO(sonnyrao): Adjust |cpu_shares|.
   switch (cpu_restriction_state) {
     case CPU_RESTRICTION_FOREGROUND:
@@ -99,7 +99,7 @@ bool VmBaseImpl::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
     default:
       NOTREACHED();
   }
-  return UpdateCpuShares(base::FilePath(CpuCgroup), cpu_shares);
+  return UpdateCpuShares(base::FilePath(cpu_cgroup), cpu_shares);
 }
 
 bool VmBaseImpl::StartProcess(base::StringPairs args) {

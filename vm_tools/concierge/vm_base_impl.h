@@ -69,7 +69,7 @@ class VmBaseImpl : public VmInterface {
  protected:
   // Adjusts the amount of CPU the VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
-                                  const char* CpuCgroup);
+                                  const char* cpu_cgroup);
 
   // Starts |process_| with |args|. Returns true iff started successfully.
   bool StartProcess(base::StringPairs args);
