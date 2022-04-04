@@ -93,8 +93,17 @@ class UserSecretStash {
 
   const FileSystemKeyset& GetFileSystemKeyset() const;
 
-  const brillo::SecureBlob& GetResetSecret() const;
-  void SetResetSecret(const brillo::SecureBlob& secret);
+  // This gets the reset secret for the auth factor with the associated
+  // |label|.
+  std::optional<brillo::SecureBlob> GetResetSecretForLabel(
+      const std::string& label) const;
+
+  // This sets the reset secret for an auth factor with the associated |label|.
+  // This does not overwrite an existing reset secret. It returns if the
+  // insertion succeeded.
+  bool SetResetSecretForLabel(const std::string& label,
+                              const brillo::SecureBlob& secret)
+      WARN_UNUSED_RESULT;
 
   // The OS version on which this particular user secret stash was originally
   // created. The format is the one of the CHROMEOS_RELEASE_VERSION field in
@@ -143,14 +152,15 @@ class UserSecretStash {
       const std::string& created_on_os_version,
       const brillo::SecureBlob& main_key);
 
-  UserSecretStash(const FileSystemKeyset& file_system_keyset,
-                  const brillo::SecureBlob& reset_secret);
+  UserSecretStash(
+      const FileSystemKeyset& file_system_keyset,
+      const std::map<std::string, brillo::SecureBlob>& reset_secrets);
+
+  explicit UserSecretStash(const FileSystemKeyset& file_system_keyset);
 
   // Keys registered with the kernel to decrypt files and file names, together
   // with corresponding salts and signatures.
   const FileSystemKeyset file_system_keyset_;
-  // The reset secret used for any PinWeaver backed credentials.
-  brillo::SecureBlob reset_secret_;
   // Stores multiple wrapped (encrypted) representations of the main key, each
   // wrapped using a different intermediate key. The map's index is the wrapping
   // ID, which is an opaque string (although upper programmatic layers can add
@@ -159,6 +169,8 @@ class UserSecretStash {
   // The OS version on which this particular user secret stash was originally
   // created.
   std::string created_on_os_version_;
+  // The reset secrets corresponding to each auth factor, by label.
+  std::map<std::string, brillo::SecureBlob> reset_secrets_;
 };
 
 }  // namespace cryptohome

@@ -739,6 +739,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserSessionOwnerNotSupportedInMountEphemeral = 456,
   /* ./user_session/real_user_session.cc */
   kLocUserSessionMountFailedInMountEphemeral = 457,
+  /* ./auth_session.cc */
+  kLocAuthSessionAddResetSecretFailedInAddViaUSS = 458,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

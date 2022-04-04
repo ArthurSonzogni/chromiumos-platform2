@@ -29,5 +29,9 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
     const AuthFactorType& auth_factor_type,
     const std::string& auth_factor_label);
 
+// This returns if a given |auth_factor_type| is PinWeaver backed, and thus
+// needs a reset secret.
+bool NeedsResetSecret(AuthFactorType auth_factor_type);
+
 }  // namespace cryptohome
 #endif  // CRYPTOHOME_AUTH_FACTOR_AUTH_FACTOR_UTILS_H_

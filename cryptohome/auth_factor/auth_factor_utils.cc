@@ -115,4 +115,8 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
   return proto;
 }
 
+bool NeedsResetSecret(AuthFactorType auth_factor_type) {
+  return auth_factor_type == AuthFactorType::kPin;
+}
+
 }  // namespace cryptohome

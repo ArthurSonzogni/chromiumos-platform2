@@ -8,6 +8,7 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/aes.h>
+#include <libhwsec-foundation/utility/crypto.h>
 
 #include <algorithm>
 #include <limits>
@@ -16,6 +17,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_payload.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
@@ -25,6 +27,7 @@
 using ::hwsec_foundation::AesGcmDecrypt;
 using ::hwsec_foundation::AesGcmEncrypt;
 using ::hwsec_foundation::kAesGcm256KeySize;
+using ::hwsec_foundation::utility::CreateSecureRandomBlob;
 
 namespace cryptohome {
 
@@ -74,19 +77,9 @@ class UserSecretStashTest : public ::testing::Test {
 }  // namespace
 
 TEST_F(UserSecretStashTest, CreateRandom) {
-  EXPECT_FALSE(stash_->GetResetSecret().empty());
   // The secrets should be created randomly and never collide (in practice).
   EXPECT_THAT(stash_->GetFileSystemKeyset(),
               FileSystemKeysetEquals(kFileSystemKeyset));
-}
-
-// Verify that the USS secrets created by CreateRandom() don't repeat (in
-// practice).
-TEST_F(UserSecretStashTest, CreateRandomNotConstant) {
-  std::unique_ptr<UserSecretStash> stash2 =
-      UserSecretStash::CreateRandom(kFileSystemKeyset);
-  ASSERT_TRUE(stash2);
-  EXPECT_NE(stash_->GetResetSecret(), stash2->GetResetSecret());
 }
 
 // Basic test of the `CreateRandomMainKey()` method.
@@ -142,6 +135,14 @@ TEST_F(UserSecretStashTest, MainKeyWrapping) {
 }
 
 TEST_F(UserSecretStashTest, GetEncryptedUSS) {
+  // Add two reset secrets to make sure encryption covers those.
+  brillo::SecureBlob reset_secret1 =
+      CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+  brillo::SecureBlob reset_secret2 =
+      CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+  ASSERT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
+  ASSERT_TRUE(stash_->SetResetSecretForLabel("label2", reset_secret2));
+
   std::optional<brillo::SecureBlob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(std::nullopt, uss_container);
@@ -149,10 +150,13 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
   // No raw secrets in the encrypted USS, which is written to disk.
   EXPECT_FALSE(
       FindBlobInBlob(*uss_container, stash_->GetFileSystemKeyset().Key().fek));
-  EXPECT_FALSE(FindBlobInBlob(*uss_container, stash_->GetResetSecret()));
+  EXPECT_FALSE(FindBlobInBlob(*uss_container, reset_secret1));
+  EXPECT_FALSE(FindBlobInBlob(*uss_container, reset_secret2));
 }
 
 TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
+  ASSERT_TRUE(stash_->SetResetSecretForLabel("label1", {0xAA, 0xBB}));
+
   std::optional<brillo::SecureBlob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
   ASSERT_NE(std::nullopt, uss_container);
@@ -163,7 +167,8 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
 
   EXPECT_THAT(stash_->GetFileSystemKeyset(),
               FileSystemKeysetEquals(stash2->GetFileSystemKeyset()));
-  EXPECT_EQ(stash_->GetResetSecret(), stash2->GetResetSecret());
+  EXPECT_EQ(stash_->GetResetSecretForLabel("label1").value(),
+            stash2->GetResetSecretForLabel("label1").value());
 }
 
 // Test that deserialization fails on an empty blob. Normally this never occurs,
@@ -276,7 +281,6 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSViaWrappedKey) {
   ASSERT_TRUE(stash2);
   EXPECT_THAT(stash_->GetFileSystemKeyset(),
               FileSystemKeysetEquals(stash2->GetFileSystemKeyset()));
-  EXPECT_EQ(stash_->GetResetSecret(), stash2->GetResetSecret());
   EXPECT_EQ(unwrapped_main_key, kMainKey);
 }
 
@@ -365,6 +369,20 @@ TEST_F(UserSecretStashTest, MissingOsVersion) {
       UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
   ASSERT_TRUE(stash2);
   EXPECT_TRUE(stash2->GetCreatedOnOsVersion().empty());
+}
+
+// Test that SetResetSecretForLabel does not overwrite if a reset secret already
+// exists.
+TEST_F(UserSecretStashTest, DoubleInsertResetSecret) {
+  brillo::SecureBlob reset_secret1 = {0xAA, 0xBB, 0xCC};
+  brillo::SecureBlob reset_secret2 = {0xDD, 0xEE, 0x11};
+  brillo::SecureBlob reset_secret3 = {0x22, 0x33, 0x44};
+
+  EXPECT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
+  EXPECT_TRUE(stash_->SetResetSecretForLabel("label2", reset_secret2));
+  EXPECT_FALSE(stash_->SetResetSecretForLabel("label1", reset_secret3));
+
+  EXPECT_EQ(reset_secret1, stash_->GetResetSecretForLabel("label1").value());
 }
 
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using
@@ -662,16 +680,6 @@ TEST_F(UserSecretStashInternalsTest, DecryptErrorNoFnekSig) {
 // or intentional file corruption.
 TEST_F(UserSecretStashInternalsTest, DecryptErrorNoChapsKey) {
   uss_payload_struct_.chaps_key.clear();
-
-  EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
-      GetFlatbufferFromUssPayloadStruct(), kMainKey));
-}
-
-// Test the decryption fails when the payload's reset_secret field is missing.
-// Normally this never occurs, but we verify to be resilient against accidental
-// or intentional file corruption.
-TEST_F(UserSecretStashInternalsTest, DecryptErrorNoResetSecret) {
-  uss_payload_struct_.reset_secret.clear();
 
   EXPECT_FALSE(UserSecretStash::FromEncryptedContainer(
       GetFlatbufferFromUssPayloadStruct(), kMainKey));

@@ -25,6 +25,7 @@
 using brillo::Blob;
 using brillo::BlobFromString;
 using brillo::SecureBlob;
+using cryptohome::ResetSecretMapping;
 using cryptohome::UserSecretStash;
 using cryptohome::UserSecretStashContainer;
 using cryptohome::UserSecretStashPayload;
@@ -32,6 +33,9 @@ using hwsec_foundation::AesGcmEncrypt;
 using hwsec_foundation::kAesGcm256KeySize;
 
 namespace {
+
+constexpr char kResetSecretLabelOne[] = "label1";
+constexpr char kResetSecretLabelTwo[] = "label2";
 
 // Performs the static initialization that's needed only once across all fuzzer
 // runs.
@@ -64,8 +68,17 @@ void PrepareMutatedArguments(FuzzedDataProvider* fuzzed_data_provider,
       SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
   uss_payload_struct.fnek_sig =
       SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
-  uss_payload_struct.reset_secret =
-      SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString());
+
+  // Insert two reset secrets for two fixed labels.
+  uss_payload_struct.reset_secrets.push_back(ResetSecretMapping{
+      .auth_factor_label = kResetSecretLabelOne,
+      .reset_secret =
+          SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString())});
+
+  uss_payload_struct.reset_secrets.push_back(ResetSecretMapping{
+      .auth_factor_label = kResetSecretLabelTwo,
+      .reset_secret =
+          SecureBlob(fuzzed_data_provider->ConsumeRandomLengthString())});
 
   // Serialize the USS payload to flatbuffer and mutate it.
   std::optional<SecureBlob> uss_payload_optional =
@@ -135,8 +148,13 @@ void AssertStashesEqual(const UserSecretStash& first,
         second.GetFileSystemKeyset().KeyReference().fnek_sig);
   CHECK(first.GetFileSystemKeyset().chaps_key() ==
         second.GetFileSystemKeyset().chaps_key());
-  CHECK(first.GetResetSecret() == second.GetResetSecret());
   CHECK_EQ(first.GetCreatedOnOsVersion(), second.GetCreatedOnOsVersion());
+
+  // Check the reset secrets
+  CHECK(first.GetResetSecretForLabel(kResetSecretLabelOne).value() ==
+        second.GetResetSecretForLabel(kResetSecretLabelOne).value());
+  CHECK(first.GetResetSecretForLabel(kResetSecretLabelTwo).value() ==
+        second.GetResetSecretForLabel(kResetSecretLabelTwo).value());
 }
 
 }  // namespace

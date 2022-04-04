@@ -14,12 +14,14 @@
 #include <base/logging.h>
 #include <brillo/cryptohome.h>
 #include <cryptohome/scrypt_verifier.h>
+#include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
+#include "cryptohome/auth_factor/auth_factor_utils.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/auth_input_utils.h"
 #include "cryptohome/error/converter.h"
@@ -37,6 +39,7 @@ using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
+using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 using hwsec_foundation::status::StatusChain;
@@ -1050,8 +1053,12 @@ CryptohomeStatus AuthSession::AddAuthFactor(
     // experiment is on or it's an existing user who went through this flow), so
     // proceed with wrapping the USS via the new factor and persisting both.
 
-    // 0. Add reset secret to AuthInput required from user secret stash.
-    auth_input->reset_secret = user_secret_stash_->GetResetSecret();
+    // Anything backed PinWeaver needs a reset secret. The list of is_le_cred
+    // could expand in the future.
+    if (NeedsResetSecret(auth_factor_type)) {
+      auth_input->reset_secret = std::make_optional<brillo::SecureBlob>(
+          CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH));
+    }
 
     return AddAuthFactorViaUserSecretStash(auth_factor_type, auth_factor_label,
                                            auth_factor_metadata,
@@ -1114,6 +1121,17 @@ CryptohomeStatus AuthSession::AddAuthFactorViaUserSecretStash(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionAddMainKeyFailedInAddViaUSS),
         ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
                         ErrorAction::kDeleteVault}),
+        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+  }
+
+  if (auth_input.reset_secret.has_value() &&
+      !user_secret_stash_->SetResetSecretForLabel(
+          auth_factor_label, auth_input.reset_secret.value())) {
+    LOG(ERROR) << "Failed to insert reset secret for auth factor";
+    // TODO(b/229834676): Migrate USS and wrap the error.
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionAddResetSecretFailedInAddViaUSS),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry}),
         user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
   }
 
@@ -1269,12 +1287,21 @@ void AuthSession::ResetLECredentials() {
       LOG(WARNING) << "PinWeaver AuthBlock State does not have le_label";
       continue;
     }
-    // TODO(b/226957785): Have a reset secret per credential in USS.
+
+    // Get the reset secret from the USS for this auth factor label.
+    const std::string auth_factor_label = iter.first;
+    std::optional<brillo::SecureBlob> reset_secret =
+        user_secret_stash_->GetResetSecretForLabel(auth_factor_label);
+    if (!reset_secret.has_value()) {
+      LOG(WARNING) << "No reset secret for auth factor with label "
+                   << auth_factor_label << ", and cannot reset credential.";
+      continue;
+    }
+
     // Reset the attempt count for the pinweaver leaf.
     // If there is an error, warn for the error in log.
     if (!crypto_->ResetLeCredentialEx(state->le_label.value(),
-                                      user_secret_stash_->GetResetSecret(),
-                                      error)) {
+                                      reset_secret.value(), error)) {
       LOG(WARNING) << "Failed to reset an LE credential: " << error;
     }
   }

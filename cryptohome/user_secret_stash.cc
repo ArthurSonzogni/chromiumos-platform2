@@ -374,13 +374,11 @@ void SetUserSecretStashExperimentForTesting(std::optional<bool> enabled) {
 // static
 std::unique_ptr<UserSecretStash> UserSecretStash::CreateRandom(
     const FileSystemKeyset& file_system_keyset) {
-  brillo::SecureBlob reset_secret =
-      CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
   std::string current_os_version = GetCurrentOsVersion();
 
   // Note: make_unique() wouldn't work due to the constructor being private.
   std::unique_ptr<UserSecretStash> stash(
-      new UserSecretStash(file_system_keyset, reset_secret));
+      new UserSecretStash(file_system_keyset));
   stash->created_on_os_version_ = std::move(current_os_version);
   return stash;
 }
@@ -437,14 +435,21 @@ std::unique_ptr<UserSecretStash> UserSecretStash::FromEncryptedPayload(
         << "UserSecretStashPayload has invalid file system keyset information";
     return nullptr;
   }
-  if (uss_payload.value().reset_secret.empty()) {
-    LOG(ERROR) << "UserSecretStashPayload has no reset secret";
-    return nullptr;
+
+  std::map<std::string, brillo::SecureBlob> reset_secrets;
+  for (const ResetSecretMapping& item : uss_payload.value().reset_secrets) {
+    auto insertion_status =
+        reset_secrets.insert({item.auth_factor_label, item.reset_secret});
+    if (!insertion_status.second) {
+      LOG(ERROR) << "UserSecretStashPayload contains multiple reset secrets "
+                    "for label: "
+                 << item.auth_factor_label;
+    }
   }
 
   // Note: make_unique() wouldn't work due to the constructor being private.
-  std::unique_ptr<UserSecretStash> stash(new UserSecretStash(
-      file_system_keyset.value(), uss_payload.value().reset_secret));
+  std::unique_ptr<UserSecretStash> stash(
+      new UserSecretStash(file_system_keyset.value(), reset_secrets));
   stash->wrapped_key_blocks_ = wrapped_key_blocks;
   stash->created_on_os_version_ = created_on_os_version;
   return stash;
@@ -494,12 +499,19 @@ const FileSystemKeyset& UserSecretStash::GetFileSystemKeyset() const {
   return file_system_keyset_;
 }
 
-const brillo::SecureBlob& UserSecretStash::GetResetSecret() const {
-  return reset_secret_;
+std::optional<brillo::SecureBlob> UserSecretStash::GetResetSecretForLabel(
+    const std::string& label) const {
+  const auto iter = reset_secrets_.find(label);
+  if (iter == reset_secrets_.end()) {
+    return std::nullopt;
+  }
+  return iter->second;
 }
 
-void UserSecretStash::SetResetSecret(const brillo::SecureBlob& secret) {
-  reset_secret_ = secret;
+bool UserSecretStash::SetResetSecretForLabel(const std::string& label,
+                                             const brillo::SecureBlob& secret) {
+  const auto result = reset_secrets_.insert({label, secret});
+  return result.second;
 }
 
 const std::string& UserSecretStash::GetCreatedOnOsVersion() const {
@@ -582,8 +594,19 @@ std::optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
       .fek_sig = file_system_keyset_.KeyReference().fek_sig,
       .fnek_sig = file_system_keyset_.KeyReference().fnek_sig,
       .chaps_key = file_system_keyset_.chaps_key(),
-      .reset_secret = reset_secret_,
   };
+
+  // Note: It can happen that the USS container is created with empty
+  // |reset_secrets_| if no PinWeaver credentials are present yet.
+  for (const auto& item : reset_secrets_) {
+    const std::string& auth_factor_label = item.first;
+    const brillo::SecureBlob& reset_secret = item.second;
+    payload.reset_secrets.push_back(ResetSecretMapping{
+        .auth_factor_label = auth_factor_label,
+        .reset_secret = reset_secret,
+    });
+  }
+
   std::optional<brillo::SecureBlob> serialized_payload = payload.Serialize();
   if (!serialized_payload.has_value()) {
     LOG(ERROR) << "Failed to serialize UserSecretStashPayload";
@@ -627,10 +650,12 @@ std::optional<brillo::SecureBlob> UserSecretStash::GetEncryptedContainer(
   return serialized_contaner.value();
 }
 
-UserSecretStash::UserSecretStash(const FileSystemKeyset& file_system_keyset,
-                                 const brillo::SecureBlob& reset_secret)
-    : file_system_keyset_(file_system_keyset), reset_secret_(reset_secret) {
-  CHECK(!reset_secret_.empty());
-}
+UserSecretStash::UserSecretStash(
+    const FileSystemKeyset& file_system_keyset,
+    const std::map<std::string, brillo::SecureBlob>& reset_secrets)
+    : file_system_keyset_(file_system_keyset), reset_secrets_(reset_secrets) {}
+
+UserSecretStash::UserSecretStash(const FileSystemKeyset& file_system_keyset)
+    : file_system_keyset_(file_system_keyset) {}
 
 }  // namespace cryptohome

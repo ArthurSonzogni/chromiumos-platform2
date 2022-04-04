@@ -937,6 +937,13 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   EXPECT_THAT(stored_factors,
               ElementsAre(Pair(kFakeLabel, AuthFactorType::kPassword),
                           Pair(kFakePinLabel, AuthFactorType::kPin)));
+
+  // Ensure that a reset secret for the PIN was added.
+  const auto reset_secret =
+      auth_session.user_secret_stash_for_testing()->GetResetSecretForLabel(
+          kFakePinLabel);
+  EXPECT_TRUE(reset_secret.has_value());
+  EXPECT_EQ(CRYPTOHOME_RESET_SECRET_LENGTH, reset_secret->size());
 }
 
 TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
