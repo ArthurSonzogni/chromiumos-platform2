@@ -1610,8 +1610,16 @@ void StateController::HandleDimWithHps(
       screen_dimmed_ = false;
       last_dim_time_ = base::TimeTicks();
 
-      if (send_feedback_if_undimmed_) {
-        dim_advisor_.UnDimFeedback(now - last_dim_time_);
+      // We know that quick_dim happened quick_dim_ahead_ before standard dim,
+      // and duration_since_last_dim has passed since last dim.
+      // duration_since_last_dim >= quick_dim_ahead_ means that even if we
+      // didn't have quick dim before, we would have a standard dim by now.
+      // We named this case as a transitioning to standard dim.
+      const bool transitioned_to_standard_dim =
+          duration_since_last_dim >= quick_dim_ahead_;
+
+      if (send_feedback_if_undimmed_ && !transitioned_to_standard_dim) {
+        dim_advisor_.UnDimFeedback(undim_for_user_activity);
       }
 
       if (undim_for_hps) {
@@ -1635,12 +1643,7 @@ void StateController::HandleDimWithHps(
           delegate_->ReportDimEventDurationMetrics(
               metrics::kQuickDimDurationBeforeRevertedByUserSec,
               duration_since_last_dim);
-          // We know that quick_dim happened quick_dim_ahead_ before standard
-          // dim, and duration_since_last_dim has passed since last dim.
-          // duration_since_last_dim >= quick_dim_ahead_ means we would have a
-          // standard dim by now if the quick_dim didn't happen.
-          // We consider such case as a successful quick dim.
-          if (duration_since_last_dim >= quick_dim_ahead_) {
+          if (transitioned_to_standard_dim) {
             delegate_->ReportDimEventMetrics(
                 metrics::DimEvent::QUICK_DIM_TRANSITIONED_TO_STANDARD_DIM);
           } else {

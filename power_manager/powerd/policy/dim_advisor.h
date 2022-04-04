@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
@@ -43,9 +44,9 @@ class DimAdvisor : public system::DBusWrapperInterface::Observer {
   bool IsHpsSenseEnabled() const;
 
   // This allows DimAdvisor to update itself accordingly when screen is undim
-  // for any reasons, `dim_duration` is the period from last dim to the current
-  // undim.
-  void UnDimFeedback(base::TimeDelta dim_duration);
+  // for any reasons. Depends on whether the undimming is triggered by the user
+  // or by hps, we'll respond differently.
+  void UnDimFeedback(bool undimmed_by_user);
 
   // DBusWrapperInterface::Observer:
   void OnDBusNameOwnerChanged(const std::string& service_name,
@@ -69,6 +70,9 @@ class DimAdvisor : public system::DBusWrapperInterface::Observer {
   void HandleSmartDimResponse(dbus::Response* response);
   // Handle Hps sense signal.
   void HandleHpsSenseSignal(dbus::Signal* signal);
+  // If Hps is temporarily disabled upon undim feedback, then this will be
+  // called once the disabling is over.
+  void ReenableHps();
 
   // True if hps service is connected.
   bool hps_sense_connected_ = false;
@@ -80,6 +84,11 @@ class DimAdvisor : public system::DBusWrapperInterface::Observer {
   // consecutive requests with intervals shorter than screen_dim_imminent_delay,
   // see ReadyForSmartDimRequest.
   base::TimeTicks last_smart_dim_decision_request_time_;
+  // Whether hps is disabled temporarily.
+  bool hps_temporarily_disabled_ = false;
+
+  // Runs ReenableHps.
+  base::OneShotTimer hps_reenable_timer_;
 
   dbus::ObjectProxy* hps_dbus_proxy_ = nullptr;           // not owned
   dbus::ObjectProxy* ml_decision_dbus_proxy_ = nullptr;   // not owned

@@ -23,6 +23,13 @@ static constexpr base::TimeDelta kSmartDimDecisionTimeout = base::Seconds(3);
 // Timeout for GetResultHpsSense.
 static constexpr base::TimeDelta kGetResultHpsSenseTimeout = base::Seconds(3);
 
+// Timeout for disabling hps if screen is undim by the user.
+static constexpr base::TimeDelta kDisableHpsTimeoutOnUserUndim =
+    base::Minutes(30);
+// Timeout for disabling hps if screen is undim by hps itself.
+static constexpr base::TimeDelta kDisableHpsTimeoutOnHpsUndim =
+    base::Minutes(10);
+
 }  // namespace
 
 DimAdvisor::DimAdvisor() : weak_ptr_factory_(this) {}
@@ -80,7 +87,16 @@ bool DimAdvisor::IsSmartDimEnabled() const {
 }
 
 bool DimAdvisor::IsHpsSenseEnabled() const {
-  return hps_sense_connected_;
+  return hps_sense_connected_ && !hps_temporarily_disabled_;
+}
+
+void DimAdvisor::UnDimFeedback(bool undimmed_by_user) {
+  hps_temporarily_disabled_ = true;
+  LOG(INFO) << "DimAdvisor::UnDimFeedback hps is temporarily disabled";
+  const auto time_to_disable = undimmed_by_user ? kDisableHpsTimeoutOnUserUndim
+                                                : kDisableHpsTimeoutOnHpsUndim;
+  hps_reenable_timer_.Start(FROM_HERE, time_to_disable, this,
+                            &DimAdvisor::ReenableHps);
 }
 
 void DimAdvisor::OnDBusNameOwnerChanged(const std::string& service_name,
@@ -204,14 +220,15 @@ void DimAdvisor::HandleHpsSenseSignal(dbus::Signal* signal) {
     return;
   }
 
-  LOG(INFO) << "StateController::HandleHpsResultChange is called with value "
+  LOG(INFO) << "DimAdvisor::HandleHpsSenseSignal is called with value "
             << hps::HpsResult_Name(result_proto.value());
   // Calls StateController::HandleHpsResultChange to consume new hps result.
   state_controller_->HandleHpsResultChange(result_proto.value());
 }
 
-void DimAdvisor::UnDimFeedback(base::TimeDelta dim_duration) {
-  // TODO(charleszhao): Update the DimAdvisor based on the feedback.
+void DimAdvisor::ReenableHps() {
+  LOG(INFO) << "DimAdvisor::ReenableHps hps temporarily disabling is over";
+  hps_temporarily_disabled_ = false;
 }
 
 }  // namespace policy
