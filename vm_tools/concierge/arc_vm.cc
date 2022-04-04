@@ -54,9 +54,6 @@ constexpr base::TimeDelta kArcPowerctlConnectDelay = base::Milliseconds(250);
 // How long to wait before giving up on connecting to arc-powerctl.
 constexpr base::TimeDelta kArcPowerctlConnectTimeout = base::Seconds(5);
 
-// The CPU cgroup where all the ARCVM's crosvm processes should belong to.
-constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm";
-
 // Port for arc-powerctl running on the guest side.
 constexpr unsigned int kVSockPort = 4242;
 
@@ -350,7 +347,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
 
   // Change the process group before exec so that crosvm sending SIGKILL to the
   // whole process group doesn't kill us as well. The function also changes the
-  // cpu cgroup for ARCVM's crosvm processes.
+  // cpu cgroup for ARCVM's crosvm processes. Note that once crosvm starts,
+  // crosvm adds its vCPU threads to the kArcvmVcpuCpuCgroup by itself.
   process_.SetPreExecCallback(base::BindOnce(
       &SetUpCrosvmProcess, base::FilePath(kArcvmCpuCgroup).Append("tasks")));
 
@@ -527,8 +525,15 @@ bool ArcVm::SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
                                 bool initial_throttle) {
   // Did we ever restrict ArcVm to the foreground or background before?
   static bool bg_before = false;
-  const bool ret =
-      VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state, kArcvmCpuCgroup);
+  bool ret = true;
+  if (!VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
+                                       kArcvmCpuCgroup)) {
+    ret = false;
+  }
+  if (!VmBaseImpl::SetVmCpuRestriction(cpu_restriction_state,
+                                       kArcvmVcpuCpuCgroup)) {
+    ret = false;
+  }
 
   // Apply quota restrictions only until the first time ArcVm is foregrounded.
   if (!ret || !initial_throttle)

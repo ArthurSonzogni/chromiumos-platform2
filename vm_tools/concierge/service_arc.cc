@@ -33,9 +33,6 @@ constexpr char kRootfsPath[] = "/opt/google/vms/android/system.raw.img";
 // Path to the VM fstab file.
 constexpr char kFstabPath[] = "/run/arcvm/host_generated/fstab";
 
-// The CPU cgroup where all the ARCVM's crosvm processes should belong to.
-constexpr char kArcvmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm-vcpus";
-
 // Returns true if the path is a valid demo image path.
 bool IsValidDemoImagePath(const base::FilePath& path) {
   // A valid demo image path looks like:

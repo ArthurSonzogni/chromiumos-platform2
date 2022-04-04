@@ -28,6 +28,14 @@
 namespace vm_tools {
 namespace concierge {
 
+// The CPU cgroup where all the ARCVM's main crosvm process and its vCPU threads
+// should belong to.
+constexpr char kArcvmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm-vcpus";
+
+// The CPU cgroup where all the ARCVM's crosvm processes (except for the
+// `arcvm-vcpu` ones above) should belong to.
+constexpr char kArcvmCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm";
+
 struct ArcVmFeatures {
   // Whether the guest kernel root file system is writable.
   bool rootfs_writable;
