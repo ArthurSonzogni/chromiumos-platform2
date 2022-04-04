@@ -89,6 +89,7 @@ class DlcService : public DlcServiceInterface {
   FRIEND_TEST(DlcServiceTest, PeriodicInstallCheck);
   FRIEND_TEST(DlcServiceTest, InstallUpdateEngineBusyThenFreeTest);
   FRIEND_TEST(DlcServiceTest, InstallSchedulesPeriodicInstallCheck);
+  FRIEND_TEST(DlcServiceTest, UpdateEngineBecomesAvailable);
 
   // Install the DLC with ID |id| through update_engine by sending a request to
   // it.
@@ -131,6 +132,9 @@ class DlcService : public DlcServiceInterface {
   void OnStatusUpdateAdvancedSignalConnected(const std::string& interface_name,
                                              const std::string& signal_name,
                                              bool success);
+
+  // Called on when update_engine service becomes available.
+  void OnWaitForUpdateEngineServiceToBeAvailable(bool available);
 
   // Called when we are connected to the session_manager's |SessionStateChanged|
   // signal.

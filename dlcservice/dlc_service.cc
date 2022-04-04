@@ -55,10 +55,22 @@ void DlcService::Initialize() {
   dlc_manager_ = std::make_unique<DlcManager>();
 
   // Register D-Bus signal callbacks.
-  system_state->update_engine()->RegisterStatusUpdateAdvancedSignalHandler(
+  auto* update_engine = system_state->update_engine();
+  update_engine->RegisterStatusUpdateAdvancedSignalHandler(
       base::BindRepeating(&DlcService::OnStatusUpdateAdvancedSignal,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&DlcService::OnStatusUpdateAdvancedSignalConnected,
+                     weak_ptr_factory_.GetWeakPtr()));
+
+  // Default for update_engine status.
+  StatusResult status;
+  status.set_current_operation(Operation::IDLE);
+  status.set_is_install(false);
+  system_state->set_update_engine_status(status);
+  // Asynchronously schedule to get the actual update_engine status.
+  // In the meantime, early installation requests will fail.
+  update_engine->GetObjectProxy()->WaitForServiceToBeAvailable(
+      base::BindOnce(&DlcService::OnWaitForUpdateEngineServiceToBeAvailable,
                      weak_ptr_factory_.GetWeakPtr()));
 
   system_state->session_manager()->RegisterSessionStateChangedSignalHandler(
@@ -68,6 +80,12 @@ void DlcService::Initialize() {
                      weak_ptr_factory_.GetWeakPtr()));
 
   dlc_manager_->Initialize();
+}
+
+void DlcService::OnWaitForUpdateEngineServiceToBeAvailable(bool available) {
+  LOG(INFO) << "Update Engine service available=" << available;
+  SystemState::Get()->set_update_engine_service_available(available);
+  std::ignore = GetUpdateEngineStatus();
 }
 
 bool DlcService::Install(const InstallRequest& install_request, ErrorPtr* err) {
@@ -121,6 +139,15 @@ bool DlcService::InstallWithUpdateEngine(const InstallRequest& install_request,
   const auto id = install_request.id();
   // Need to set in order for the cancellation of DLC setup.
   installing_dlc_id_ = id;
+
+  // If update_engine needs to handle the installation, wait for the service to
+  // be up and DBus object exported. Returning busy error will allow Chrome
+  // client to retry the installation.
+  if (!SystemState::Get()->IsUpdateEngineServiceAvailable()) {
+    string err_str = "Installation called before update_engine is available.";
+    *err = Error::Create(FROM_HERE, kErrorBusy, err_str);
+    return false;
+  }
 
   // Check what state update_engine is in.
   if (SystemState::Get()->update_engine_status().current_operation() ==
@@ -314,7 +341,7 @@ bool DlcService::GetUpdateEngineStatus() {
   }
   SystemState::Get()->set_update_engine_status(status_result);
   LOG(INFO) << "Got update_engine status: "
-            << status_result.current_operation();
+            << update_engine::Operation_Name(status_result.current_operation());
   return true;
 }
 
@@ -332,15 +359,6 @@ void DlcService::OnStatusUpdateAdvancedSignalConnected(
     const string& interface_name, const string& signal_name, bool success) {
   if (!success) {
     LOG(ERROR) << "Failed to connect to update_engine's StatusUpdate signal.";
-  }
-  if (!GetUpdateEngineStatus()) {
-    // As a last resort, if we couldn't get the status, just set the status to
-    // IDLE, so things can move forward. This is mostly the case because when
-    // update_engine comes up its first status is IDLE and it will stay that way
-    // for quite a while.
-    StatusResult status;
-    status.set_current_operation(Operation::IDLE);
-    status.set_is_install(false);
   }
 }
 

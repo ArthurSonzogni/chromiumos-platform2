@@ -97,6 +97,14 @@ SystemState* SystemState::Get() {
   return g_instance_.get();
 }
 
+bool SystemState::IsUpdateEngineServiceAvailable() const {
+  return update_engine_service_available_;
+}
+
+void SystemState::set_update_engine_service_available(bool available) {
+  update_engine_service_available_ = available;
+}
+
 org::chromium::ImageLoaderInterfaceProxyInterface* SystemState::image_loader()
     const {
   return image_loader_proxy_.get();

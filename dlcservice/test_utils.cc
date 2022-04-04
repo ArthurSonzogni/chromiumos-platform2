@@ -49,6 +49,11 @@ BaseTest::BaseTest() {
       std::make_unique<StrictMock<ImageLoaderProxyMock>>();
   mock_image_loader_proxy_ptr_ = mock_image_loader_proxy_.get();
 
+  mock_bus_ = new dbus::MockBus(dbus::Bus::Options{});
+  mock_update_engine_object_proxy_ = new dbus::MockObjectProxy(
+      mock_bus_.get(), update_engine::kUpdateEngineServiceName,
+      dbus::ObjectPath(update_engine::kUpdateEngineServicePath));
+
   mock_update_engine_proxy_ =
       std::make_unique<StrictMock<UpdateEngineProxyMock>>();
   mock_update_engine_proxy_ptr_ = mock_update_engine_proxy_.get();
@@ -86,6 +91,7 @@ void BaseTest::SetUp() {
       manifest_path_, preloaded_content_path_, factory_install_path_,
       content_path_, prefs_path_, users_path_, verification_file_path_, &clock_,
       /*for_test=*/true);
+  SystemState::Get()->set_update_engine_service_available(true);
 }
 
 void BaseTest::SetUpFilesAndDirectories() {

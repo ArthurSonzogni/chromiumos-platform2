@@ -56,6 +56,9 @@ class SystemState {
   // Gets the pointer to the current |SystemState|.
   static SystemState* Get();
 
+  bool IsUpdateEngineServiceAvailable() const;
+  void set_update_engine_service_available(bool available);
+
   // Getters for states that |SystemState| holds.
   org::chromium::ImageLoaderInterfaceProxyInterface* image_loader() const;
   org::chromium::UpdateEngineInterfaceProxyInterface* update_engine() const;
@@ -108,10 +111,13 @@ class SystemState {
       base::Clock* clock);
 
  private:
+  void OnWaitForUpdateEngineServiceToBeAvailable(bool available);
+
   std::unique_ptr<org::chromium::ImageLoaderInterfaceProxyInterface>
       image_loader_proxy_;
   std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
       update_engine_proxy_;
+  bool update_engine_service_available_ = false;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_proxy_;
   StateChangeReporterInterface* state_change_reporter_;

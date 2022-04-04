@@ -13,6 +13,8 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/simple_test_clock.h>
 #include <brillo/message_loops/fake_message_loop.h>
+#include <dbus/mock_bus.h>
+#include <dbus/mock_object_proxy.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 #include <imageloader/dbus-proxy-mocks.h>
 #include <session_manager/dbus-proxy-mocks.h>
@@ -91,6 +93,9 @@ class BaseTest : public testing::Test {
   using ImageLoaderProxyMock = org::chromium::ImageLoaderInterfaceProxyMock;
   std::unique_ptr<ImageLoaderProxyMock> mock_image_loader_proxy_;
   ImageLoaderProxyMock* mock_image_loader_proxy_ptr_;
+
+  scoped_refptr<dbus::MockBus> mock_bus_;
+  scoped_refptr<dbus::MockObjectProxy> mock_update_engine_object_proxy_;
 
   using UpdateEngineProxyMock = org::chromium::UpdateEngineInterfaceProxyMock;
   std::unique_ptr<UpdateEngineProxyMock> mock_update_engine_proxy_;

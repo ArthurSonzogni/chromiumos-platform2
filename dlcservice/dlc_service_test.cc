@@ -56,19 +56,18 @@ class DlcServiceTest : public BaseTest {
     EXPECT_CALL(*mock_update_engine_proxy_ptr_,
                 DoRegisterStatusUpdateAdvancedSignalHandler(_, _))
         .Times(1);
+    EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetObjectProxy())
+        .WillOnce(Return(mock_update_engine_object_proxy_.get()));
+    EXPECT_CALL(*mock_update_engine_object_proxy_,
+                DoWaitForServiceToBeAvailable(_))
+        .Times(1);
+
     EXPECT_CALL(*mock_session_manager_proxy_ptr_,
                 DoRegisterSessionStateChangedSignalHandler(_, _))
         .Times(1);
 
     dlc_service_ = std::make_unique<DlcService>();
     dlc_service_->Initialize();
-
-    StatusResult status;
-    status.set_current_operation(Operation::IDLE);
-    EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
-        .WillOnce(DoAll(SetArgPointee<0>(status), Return(true)));
-    // To set the update_engine status for the first time.
-    dlc_service_->OnStatusUpdateAdvancedSignalConnected("", "", true);
   }
 
   // Successfully install a DLC.
@@ -888,6 +887,35 @@ TEST_F(DlcServiceTest, UpdateEngineFailureClearsInstalling) {
   SystemState::Get()->set_update_engine_status(status);
 
   EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+}
+
+TEST_F(DlcServiceTest, UpdateEngineServiceIsNotAvailable) {
+  SystemState::Get()->set_update_engine_service_available(false);
+
+  auto mock_dlc_manager = std::make_unique<StrictMock<MockDlcManager>>();
+  auto* mock_dlc_manager_ptr = mock_dlc_manager.get();
+
+  dlc_service_->SetDlcManagerForTest(std::move(mock_dlc_manager));
+
+  EXPECT_CALL(*mock_dlc_manager_ptr, Install(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(true), Return(true)));
+  EXPECT_CALL(*mock_dlc_manager_ptr, CancelInstall(kFirstDlc, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_metrics_, SendInstallResult(_));
+
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kFirstDlc), &err_));
+  EXPECT_EQ(err_->GetCode(), kErrorBusy);
+}
+
+TEST_F(DlcServiceTest, UpdateEngineBecomesAvailable) {
+  auto* system_state = SystemState::Get();
+  system_state->set_update_engine_service_available(false);
+
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvanced(_, _, _))
+      .Times(1);
+
+  dlc_service_->OnWaitForUpdateEngineServiceToBeAvailable(true);
+  EXPECT_TRUE(system_state->IsUpdateEngineServiceAvailable());
 }
 
 }  // namespace dlcservice
