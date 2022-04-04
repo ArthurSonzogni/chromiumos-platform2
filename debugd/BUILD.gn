@@ -25,6 +25,7 @@ group("all") {
     ":generate_logs",
     ":icmp",
     ":libdebugd",
+    ":modetest_helper",
     ":netif",
     ":network_status",
     ":scheduler_configuration_helper",
@@ -273,6 +274,15 @@ executable("icmp") {
   configs += [ ":target_defaults" ]
 }
 
+executable("modetest_helper") {
+  sources = [
+    "src/helpers/modetest_helper.cc",
+    "src/helpers/modetest_helper_utils.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  pkg_deps = [ "re2" ]
+}
+
 executable("netif") {
   sources = [ "src/helpers/netif.cc" ]
   configs += [ ":target_defaults" ]
@@ -354,6 +364,8 @@ if (use.test) {
       "src/helpers/cups_uri_helper_utils.cc",
       "src/helpers/dev_features_password_utils.cc",
       "src/helpers/dev_features_password_utils_test.cc",
+      "src/helpers/modetest_helper_utils.cc",
+      "src/helpers/modetest_helper_utils_test.cc",
       "src/helpers/scheduler_configuration_utils.cc",
       "src/helpers/scheduler_configuration_utils_test.cc",
       "src/helpers/typec_connector_class_helper_test.cc",
