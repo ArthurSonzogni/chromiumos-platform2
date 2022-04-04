@@ -313,27 +313,9 @@ const std::array kCommandLogs {
     // mosys may use 'i2c-dev', which may not be loaded yet.
     "modprobe i2c-dev 2>/dev/null && mosys -l memory spd print all 2>/dev/null",
     kRoot, kDebugfsGroup},
-  // The sed command finds the EDID blob (starting the line after "value:") and
-  // replaces the serial number with all zeroes.
-  //
-  // The EDID is printed as a hex dump over several lines, each line containing
-  // the contents of 16 bytes. The first 16 bytes are broken down as follows:
-  //   uint64_t fixed_pattern;      // Always 00 FF FF FF FF FF FF 00.
-  //   uint16_t manufacturer_id;    // Manufacturer ID, encoded as PNP IDs.
-  //   uint16_t product_code;       // Manufacturer product code, little-endian.
-  //   uint32_t serial_number;      // Serial number, little-endian.
-  // Source: https://en.wikipedia.org/wiki/EDID#EDID_1.3_data_format
-  //
-  // The subsequent substitution command looks for the fixed pattern followed by
-  // two 32-bit fields (manufacturer + product, serial number). It replaces the
-  // latter field with 8 bytes of zeroes.
-  //
-  // TODO(crbug.com/731133): Remove the sed command once modetest itself can
-  // remove serial numbers.
   Log{kCommand, "modetest",
     "(modetest; modetest -M evdi; modetest -M udl) | "
-    "sed -E '/EDID/ {:a;n;/value:/!ba;n;"
-    "s/(00f{12}00)([0-9a-f]{8})([0-9a-f]{8})/\\1\\200000000/}'",
+    "/usr/libexec/debugd/helpers/modetest_helper",
     kRoot, kRoot},
   Log{kFile, "mount-encrypted", "/var/log/mount-encrypted.log"},
   Log{kFile, "mountinfo", "/proc/1/mountinfo"},
