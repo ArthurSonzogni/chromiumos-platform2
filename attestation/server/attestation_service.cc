@@ -415,6 +415,11 @@ pca_agent::GetCertificateRequest ToPcaAgentCertRequest(
   return ret;
 }
 
+constexpr KeyUsage GetKeyUsageByProfile(CertificateProfile profile) {
+  return profile == ENTERPRISE_VTPM_EK_CERTIFICATE ? KEY_USAGE_DECRYPT
+                                                   : KEY_USAGE_SIGN;
+}
+
 }  // namespace
 
 #if USE_TPM2
@@ -2915,11 +2920,15 @@ void AttestationService::CreateCertificateRequestTask(
   std::string key_info;
   std::string proof;
   CertifiedKey key;
+
+  const KeyUsage key_usage =
+      GetKeyUsageByProfile(request.certificate_profile());
+
   const auto& identity_data = database_pb.identities().Get(identity);
   if (!tpm_utility_->CreateCertifiedKey(
-          key_type, KEY_USAGE_SIGN,
-          identity_data.identity_key().identity_key_blob(), nonce, &key_blob,
-          &public_key_der, &public_key_tpm_format, &key_info, &proof)) {
+          key_type, key_usage, identity_data.identity_key().identity_key_blob(),
+          nonce, &key_blob, &public_key_der, &public_key_tpm_format, &key_info,
+          &proof)) {
     LOG(ERROR) << __func__ << ": Failed to create a key.";
     result->set_status(STATUS_UNEXPECTED_DEVICE_ERROR);
     return;
@@ -2930,7 +2939,7 @@ void AttestationService::CreateCertificateRequestTask(
   key.set_certified_key_info(key_info);
   key.set_certified_key_proof(proof);
   key.set_key_type(key_type);
-  key.set_key_usage(KEY_USAGE_SIGN);
+  key.set_key_usage(key_usage);
   std::string message_id;
   if (!CreateCertificateRequestInternal(
           request.aca_type(), request.username(), key,

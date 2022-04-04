@@ -1343,6 +1343,38 @@ TEST_P(AttestationServiceTest, CreateCertifiableKeySuccessNoUser) {
   Run();
 }
 
+TEST_P(AttestationServiceTest, CreateCertifiableKeySuccessVtpmEk) {
+  // We need an identity to create a certifiable key.
+  SetUpIdentity(identity_);
+
+  // Configure a fake TPM response.
+  EXPECT_CALL(
+      mock_tpm_utility_,
+      CreateCertifiedKey(KEY_TYPE_ECC, KEY_USAGE_DECRYPT, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(std::string("public_key")),
+                      SetArgPointee<7>(std::string("certify_info")),
+                      SetArgPointee<8>(std::string("certify_info_signature")),
+                      Return(true)));
+  // Expect the key to be written exactly once.
+  EXPECT_CALL(mock_database_, SaveChanges()).Times(1);
+  // Set expectations on the outputs.
+  auto callback = [](base::OnceClosure quit_closure,
+                     const CreateCertifiableKeyReply& reply) {
+    EXPECT_EQ(STATUS_SUCCESS, reply.status());
+    EXPECT_EQ("public_key", reply.public_key());
+    EXPECT_EQ("certify_info", reply.certify_info());
+    EXPECT_EQ("certify_info_signature", reply.certify_info_signature());
+    std::move(quit_closure).Run();
+  };
+  CreateCertifiableKeyRequest request;
+  request.set_key_label("label");
+  request.set_key_type(KEY_TYPE_ECC);
+  request.set_key_usage(KEY_USAGE_DECRYPT);
+  service_->CreateCertifiableKey(request,
+                                 base::BindOnce(callback, QuitClosure()));
+  Run();
+}
+
 TEST_P(AttestationServiceTest, CreateCertifiableKeyRNGFailure) {
   // We need an identity to make sure it didn't fail because of that.
   SetUpIdentity(identity_);
