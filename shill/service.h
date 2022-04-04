@@ -407,6 +407,10 @@ class Service : public base::RefCounted<Service> {
   // implemented by checking whether this service has a valid IPConfig now.
   mockable bool HasActiveConnection() const;
 
+  // Returns the virtual device associated with this service. Currently this
+  // will return a Device pointer only for a connected VPN service.
+  virtual VirtualDeviceRefPtr GetVirtualDevice() const;
+
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
   // Examines the EAP credentials for the service and returns true if a
   // connection attempt can be made.

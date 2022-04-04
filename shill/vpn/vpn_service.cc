@@ -309,6 +309,10 @@ bool VPNService::SetNameProperty(const std::string& name, Error* error) {
   return true;
 }
 
+VirtualDeviceRefPtr VPNService::GetVirtualDevice() const {
+  return device_;
+}
+
 void VPNService::OnBeforeSuspend(const ResultCallback& callback) {
   driver_->OnBeforeSuspend(callback);
 }

@@ -37,6 +37,7 @@ class VPNService : public Service,
   bool Unload() override;
   void EnableAndRetainAutoConnect() override;
   bool SetNameProperty(const std::string& name, Error* error) override;
+  VirtualDeviceRefPtr GetVirtualDevice() const override;
 
   // Power management events.
   void OnBeforeSuspend(const ResultCallback& callback) override;
@@ -77,6 +78,7 @@ class VPNService : public Service,
 
  private:
   friend class VPNServiceTest;
+  FRIEND_TEST(ManagerTest, FindDeviceFromService);
   FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi);

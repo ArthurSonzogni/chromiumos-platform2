@@ -2715,6 +2715,11 @@ DeviceRefPtr Manager::FindDeviceFromService(
     return nullptr;
   }
 
+  const auto virtual_device = service->GetVirtualDevice();
+  if (virtual_device) {
+    return virtual_device;
+  }
+
   for (const auto& device : devices_) {
     if (device->selected_service() == service) {
       return device;

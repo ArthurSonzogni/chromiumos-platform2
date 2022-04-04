@@ -209,7 +209,8 @@ class Manager {
   ServiceRefPtr FindMatchingService(const KeyValueStore& args, Error* error);
 
   // Return the Device that has selected this Service. If no Device has selected
-  // this Service or the Service pointer is null, return nullptr.
+  // this Service or the Service pointer is null, return nullptr. Note that
+  // VirtualDevices which are not managed by Manager will also be included here.
   virtual DeviceRefPtr FindDeviceFromService(
       const ServiceRefPtr& service) const;
 

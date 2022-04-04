@@ -1086,6 +1086,10 @@ void Service::NotifyStaticIPConfigChanged() {
   }
 }
 
+VirtualDeviceRefPtr Service::GetVirtualDevice() const {
+  return nullptr;
+}
+
 #if !defined(DISABLE_WIFI) || !defined(DISABLE_WIRED_8021X)
 bool Service::Is8021xConnectable() const {
   return eap() && eap()->IsConnectable();

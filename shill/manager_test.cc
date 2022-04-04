@@ -44,6 +44,7 @@
 #include "shill/mock_resolver.h"
 #include "shill/mock_service.h"
 #include "shill/mock_throttler.h"
+#include "shill/mock_virtual_device.h"
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
 #include "shill/service_under_test.h"
@@ -53,6 +54,7 @@
 #include "shill/store/property_store_test.h"
 #include "shill/testing.h"
 #include "shill/upstart/mock_upstart.h"
+#include "shill/vpn/mock_vpn_service.h"
 
 #if !defined(DISABLE_WIFI)
 #include "shill/wifi/mock_wifi_provider.h"
@@ -2410,6 +2412,27 @@ TEST_F(ManagerTest, DefaultServiceStateChange) {
   manager()->DeregisterService(mock_service1);
   manager()->DeregisterService(mock_service0);
 }
+
+#if !defined(DISABLE_VPN)
+TEST_F(ManagerTest, FindDeviceFromService) {
+  MockServiceRefPtr not_selected_service(new MockService(manager()));
+  MockServiceRefPtr selected_service(new MockService(manager()));
+  scoped_refptr<MockVPNService> vpn_service(
+      new MockVPNService(manager(), nullptr));
+  scoped_refptr<MockVirtualDevice> vpn_device(
+      new MockVirtualDevice(manager(), "ppp0", 123, Technology::kVPN));
+
+  manager()->RegisterDevice(mock_devices_[0]);
+  mock_devices_[0]->set_selected_service_for_testing(selected_service);
+  vpn_service->device_ = vpn_device;
+
+  EXPECT_EQ(nullptr, manager()->FindDeviceFromService(nullptr));
+  EXPECT_EQ(nullptr, manager()->FindDeviceFromService(not_selected_service));
+  EXPECT_EQ(mock_devices_[0],
+            manager()->FindDeviceFromService(selected_service));
+  EXPECT_EQ(vpn_device, manager()->FindDeviceFromService(vpn_service));
+}
+#endif
 
 TEST_F(ManagerTest, UpdateDefaultServicesDNSProxy) {
   MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
