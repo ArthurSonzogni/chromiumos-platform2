@@ -84,6 +84,23 @@ class EfiLogWrapper {
     }
   }
 
+  // Get the errno stored in the libefivar log at index 0.
+  // This is the first one encountered and the most likely to be relevant.
+  std::optional<EfiVarError> GetFirstErrno() {
+    const uint32_t idx = 0;
+    char* file = nullptr;
+    char* func = nullptr;
+    int line = 0;
+    char* message = nullptr;
+    int error_num = 0;
+
+    if (efi_error_get(idx, &file, &func, &line, &message, &error_num) == 1) {
+      return error_num;
+    }
+
+    return std::nullopt;
+  }
+
  private:
   // Where this was instantiated, to help clarify where errors are coming from.
   std::string source_;
@@ -213,9 +230,9 @@ bool EfiVarImpl::GetVariable(const std::string& name,
   return true;
 }
 
-bool EfiVarImpl::SetVariable(const std::string& name,
-                             uint32_t attributes,
-                             std::vector<uint8_t>& data) {
+std::optional<EfiVarError> EfiVarImpl::SetVariable(const std::string& name,
+                                                   uint32_t attributes,
+                                                   std::vector<uint8_t>& data) {
   EfiLogWrapper log_wrapper(__func__);
 
   if (efi_set_variable(EFI_GLOBAL_GUID, name.c_str(), data.data(), data.size(),
@@ -224,10 +241,10 @@ bool EfiVarImpl::SetVariable(const std::string& name,
                        0644) < 0) {
     LOG(ERROR) << "Error setting '" << name
                << "' data: " << base::HexEncode(data.data(), data.size());
-    return false;
+    return log_wrapper.GetFirstErrno();
   }
 
-  return true;
+  return std::nullopt;
 }
 
 bool EfiVarImpl::DelVariable(const std::string& name) {

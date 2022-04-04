@@ -234,11 +234,11 @@ class BootOrder {
 
   // Write the data back to the EFI variable, but only if
   // we've made any modifications to the boot order.
-  // Returns false on errors writing the data, true otherwise.
-  bool WriteIfNeeded(EfiVarInterface& efivar) {
+  // Returns an errno from libefivar on failure, nullopt on success.
+  std::optional<EfiVarError> WriteIfNeeded(EfiVarInterface& efivar) {
     if (!needs_write_) {
       LOG(INFO) << "BootOrder: No write needed.";
-      return true;
+      return std::nullopt;
     }
 
     // Copy into `uint8_t`s for writing out.
@@ -246,14 +246,15 @@ class BootOrder {
     out.assign(reinterpret_cast<uint8_t*>(boot_order_.data()),
                reinterpret_cast<uint8_t*>(boot_order_.data()) +
                    (boot_order_.size() * sizeof(uint16_t)));
-    if (!efivar.SetVariable(kBootOrder, kBootVariableAttributes, out)) {
-      // SetVariable logs errors, but lets add our view of the boot order:
-      LOG(INFO) << "Unwritten BootOrder: " << ToString();
-      return false;
+
+    const std::optional<EfiVarError> error =
+        efivar.SetVariable(kBootOrder, kBootVariableAttributes, out);
+
+    if (!error) {
+      needs_write_ = false;
     }
 
-    needs_write_ = false;
-    return true;
+    return error;
   }
 
   bool Contains(const EfiBootNumber& entry) const {
@@ -353,11 +354,16 @@ class EfiBootManager {
 
   // Writes the boot entry contents to a boot number.
   // Returns false for errors writing, true otherwise.
+  // If an errno is returned by libefivar, it will be stored in error_num.
   bool WriteEntry(const EfiBootNumber& number,
-                  const EfiBootEntryContents& contents) {
+                  const EfiBootEntryContents& contents,
+                  EfiVarError* error_num) {
     std::vector<uint8_t> entry_data;
-    // Format the entry data:
 
+    // Ensure we only report an error on SetVariable fail.
+    *error_num = 0;
+
+    // Format the entry data:
     // UEFI spec v2.9 section 3.1.3 lists the possible attributes.
     // 1 means "active". We always create active entries.
     const uint32_t attributes = 1;
@@ -369,9 +375,11 @@ class EfiBootManager {
       return false;
     }
 
-    if (!efivar_->SetVariable(number.Name(), kBootVariableAttributes,
-                              entry_data)) {
-      // SetVariable logs errors for us.
+    const std::optional<EfiVarError> error = efivar_->SetVariable(
+        number.Name(), kBootVariableAttributes, entry_data);
+
+    if (error) {
+      *error_num = error.value();
       return false;
     }
 
@@ -485,6 +493,13 @@ class EfiBootManager {
     return std::nullopt;
   }
 
+  // We consider certain failures when writing "acceptable".
+  // While the failure will block writing, we believe the risk of the system
+  // being unable to boot without the entry to be sufficiently low that we'd
+  // rather allow the install/update to proceed. b/226935367
+  // Returns true if we consider this failure "acceptable", false otherwise.
+  bool IsAcceptableWriteFailure(EfiVarError error) { return error == ENOSPC; }
+
   // This is the high level logic of how we maintain our boot entries:
   // 1. Figure out what an entry pointing at our install would look like.
   //    This should be the same for slot A/B.
@@ -552,19 +567,32 @@ class EfiBootManager {
         return false;
       }
 
-      if (!WriteEntry(desired_num.value(), desired_contents.value())) {
-        LOG(ERROR) << kCantEnsureBoot << "need to write boot entry.";
-        return false;
-      }
+      EfiVarError error = 0;
 
-      boot_order_.Add(desired_num.value());
+      if (!WriteEntry(desired_num.value(), desired_contents.value(), &error)) {
+        if (!IsAcceptableWriteFailure(error)) {
+          // For other failures, block completion.
+          LOG(ERROR) << kCantEnsureBoot << "need to write boot entry.";
+          return false;
+        }
+        // We couldn't make the entry so don't add it to boot order.
+        LOG(WARNING) << "Couldn't write a boot entry. Proceeding anyway.";
+      } else {
+        boot_order_.Add(desired_num.value());
+      }
     }
 
     // This will be needed if we deleted any entries that were in the boot order
     // or if we wrote a new one.
-    if (!boot_order_.WriteIfNeeded(*efivar_)) {
-      LOG(ERROR) << kCantEnsureBoot << "need to write boot order.";
-      return false;
+    const std::optional<EfiVarError> error =
+        boot_order_.WriteIfNeeded(*efivar_);
+
+    if (error) {
+      if (!IsAcceptableWriteFailure(error.value())) {
+        LOG(ERROR) << kCantEnsureBoot << "need to write boot order.";
+        return false;
+      }
+      LOG(WARNING) << "Couldn't add entry to boot order. Proceeding anyway.";
     }
 
     return true;

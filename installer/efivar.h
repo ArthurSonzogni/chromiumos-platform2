@@ -16,6 +16,9 @@
 // according to the UEFI spec v2.9 section 3.3, Table 3-1 "Global Variables".
 extern const uint32_t kBootVariableAttributes;
 
+// Indicates that the int is an errno passed back from libefivar.
+using EfiVarError = int;
+
 // Interface to allow testing.
 class EfiVarInterface {
  public:
@@ -29,9 +32,10 @@ class EfiVarInterface {
                            Bytes& data,
                            size_t* data_size) = 0;
 
-  virtual bool SetVariable(const std::string& name,
-                           uint32_t attributes,
-                           std::vector<uint8_t>& data) = 0;
+  virtual std::optional<EfiVarError> SetVariable(
+      const std::string& name,
+      uint32_t attributes,
+      std::vector<uint8_t>& data) = 0;
 
   virtual bool DelVariable(const std::string& name) = 0;
 
@@ -63,9 +67,9 @@ class EfiVarImpl : public EfiVarInterface {
                    Bytes& data,
                    size_t* data_size) override;
 
-  bool SetVariable(const std::string& name,
-                   uint32_t attributes,
-                   std::vector<uint8_t>& data) override;
+  std::optional<EfiVarError> SetVariable(const std::string& name,
+                                         uint32_t attributes,
+                                         std::vector<uint8_t>& data) override;
 
   bool DelVariable(const std::string& name) override;
 

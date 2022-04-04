@@ -5,7 +5,10 @@
 #include <cros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <list>
+#include <map>
 #include <optional>
+#include <vector>
 
 #include "installer/efi_boot_management.cc"
 #include "installer/efivar.cc"
@@ -114,12 +117,23 @@ class EfiVarFake : public EfiVarInterface {
     return true;
   }
 
-  bool SetVariable(const std::string& name,
-                   uint32_t attributes,
-                   std::vector<uint8_t>& data) override {
-    // store in data_ for checking later.
-    data_.insert_or_assign(name, data);
-    return true;
+  std::optional<EfiVarError> SetVariable(const std::string& name,
+                                         uint32_t attributes,
+                                         std::vector<uint8_t>& data) override {
+    // Read desired return from our list of results.
+    std::optional<EfiVarError> result = std::nullopt;
+    if (!set_variable_result_.empty()) {
+      result = set_variable_result_.front();
+      set_variable_result_.pop_front();
+    }
+
+    // Simulated success.
+    if (!result) {
+      // Store in `data_` for checking later.
+      data_.insert_or_assign(name, data);
+    }
+
+    return result;
   }
 
   bool DelVariable(const std::string& name) override {
@@ -146,8 +160,12 @@ class EfiVarFake : public EfiVarInterface {
   }
 
   std::map<std::string, std::vector<uint8_t>> data_;
-  // Hang onto these for GetNextVariableName
+  // Hang onto these for `GetNextVariableName`
   std::vector<std::string> variable_names_;
+
+  // Allows setting return value on `SetVariable`.
+  // I suspect there's a way to get gMock to handle this.
+  std::list<std::optional<EfiVarError>> set_variable_result_;
 };
 
 // Helpers for quick/clear construction of test data.
@@ -245,8 +263,8 @@ TEST_F(BootOrderTest, NoWriteNeeded) {
   efivar_.SetData({{"BootOrder", VecU8From(kRawBootOrderSentinel,
                                            sizeof(kRawBootOrderSentinel))}});
 
-  bool result = boot_order_.WriteIfNeeded(efivar_);
-  EXPECT_TRUE(result);
+  std::optional<EfiVarError> error = boot_order_.WriteIfNeeded(efivar_);
+  EXPECT_FALSE(error);
   // Confirm it's still set to the sentinel.
   EXPECT_THAT(
       efivar_.data_,
@@ -261,8 +279,8 @@ TEST_F(BootOrderTest, Remove) {
   boot_order_.Load(efivar_);
   boot_order_.Remove(EfiBootNumber(1));
 
-  bool result = boot_order_.WriteIfNeeded(efivar_);
-  EXPECT_TRUE(result);
+  std::optional<EfiVarError> error = boot_order_.WriteIfNeeded(efivar_);
+  EXPECT_FALSE(error);
   EXPECT_THAT(efivar_.data_,
               Contains(Pair("BootOrder", BootOrderData({2, 3}))));
 }
@@ -275,8 +293,8 @@ TEST_F(BootOrderTest, RemoveDuplicate) {
   boot_order_.Load(efivar_);
   boot_order_.Remove(EfiBootNumber(1));
 
-  bool result = boot_order_.WriteIfNeeded(efivar_);
-  EXPECT_TRUE(result);
+  std::optional<EfiVarError> error = boot_order_.WriteIfNeeded(efivar_);
+  EXPECT_FALSE(error);
   EXPECT_THAT(efivar_.data_, Contains(Pair("BootOrder", BootOrderData({2}))));
 }
 
@@ -287,8 +305,8 @@ TEST_F(BootOrderTest, Add) {
   boot_order_.Load(efivar_);
   boot_order_.Add(EfiBootNumber(4));
 
-  bool result = boot_order_.WriteIfNeeded(efivar_);
-  EXPECT_TRUE(result);
+  std::optional<EfiVarError> error = boot_order_.WriteIfNeeded(efivar_);
+  EXPECT_FALSE(error);
   EXPECT_THAT(efivar_.data_,
               Contains(Pair("BootOrder", BootOrderData({4, 1, 2, 3}))));
 }
@@ -355,9 +373,11 @@ TEST_F(EfiBootManagerTest, EntryRoundTrip) {
   // Clear so that we can check what gets written to it.
   efivar_.data_.clear();
 
-  bool result =
-      efi_boot_manager_.WriteEntry(EfiBootNumber(0xFFFF), contents.value());
-  ASSERT_TRUE(result);
+  EfiVarError error = 0;
+  bool success = efi_boot_manager_.WriteEntry(EfiBootNumber(0xFFFF),
+                                              contents.value(), &error);
+  ASSERT_TRUE(success);
+  ASSERT_EQ(error, 0);
   EXPECT_THAT(efivar_.data_,
               Contains(Pair("BootFFFF", VecU8From(kExampleDataLinux,
                                                   sizeof(kExampleDataLinux)))));
@@ -614,6 +634,62 @@ TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_ExcessCrosEntries) {
                   Pair("Boot0004",
                        VecU8From(kExampleDataLinux, sizeof(kExampleDataLinux))),
                   Pair(testing::_,
+                       VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
+}
+
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_WriteFail) {
+  efivar_.SetData({{"BootOrder", {}}});
+  efivar_.set_variable_result_ = {EPERM};
+  InstallConfig install_config;
+
+  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+
+  EXPECT_FALSE(success);
+  EXPECT_THAT(efivar_.data_,
+              UnorderedElementsAre(Pair("BootOrder", BootOrderData({}))));
+}
+
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableWriteFail) {
+  efivar_.SetData({{"BootOrder", {}}});
+  // ENOSPC is an acceptable fail, says b/226935367.
+  efivar_.set_variable_result_ = {ENOSPC};
+  InstallConfig install_config;
+
+  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+
+  EXPECT_TRUE(success);
+  EXPECT_THAT(efivar_.data_,
+              UnorderedElementsAre(Pair("BootOrder", BootOrderData({}))));
+}
+
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_BootWriteFail) {
+  efivar_.SetData({{"BootOrder", {}}});
+  efivar_.set_variable_result_ = {std::nullopt, EPERM};
+  InstallConfig install_config;
+
+  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+
+  EXPECT_FALSE(success);
+  EXPECT_THAT(efivar_.data_,
+              UnorderedElementsAre(
+                  Pair("BootOrder", BootOrderData({})),
+                  Pair("Boot0000",
+                       VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
+}
+
+TEST_F(EfiBootManagerTest, UpdateEfiBootEntries_AcceptableBootWriteFail) {
+  efivar_.SetData({{"BootOrder", {}}});
+  // ENOSPC is an acceptable fail, says b/226935367.
+  efivar_.set_variable_result_ = {std::nullopt, ENOSPC};
+  InstallConfig install_config;
+
+  bool success = efi_boot_manager_.UpdateEfiBootEntries(install_config, 64);
+
+  EXPECT_TRUE(success);
+  EXPECT_THAT(efivar_.data_,
+              UnorderedElementsAre(
+                  Pair("BootOrder", BootOrderData({})),
+                  Pair("Boot0000",
                        VecU8From(kExampleDataCros, sizeof(kExampleDataCros)))));
 }
 
