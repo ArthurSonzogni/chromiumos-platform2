@@ -416,6 +416,10 @@ fn replay_line(syslogger: &BasicLogger, line: String) {
     // The log lines are in kmsg format, like:
     // <11>hiberman: [src/hiberman.rs:529] Hello 2004
     // Trim off the first colon, everything after is line contents.
+    if line.is_empty() {
+        return;
+    }
+
     let mut elements = line.splitn(2, ": ");
     let header = elements.next().unwrap();
     let contents = match elements.next() {
