@@ -166,3 +166,7 @@ std::string OpenFlagsToString(int flags) {
 std::string ToSetFlagsToString(int flags) {
   return FlagsToString(kFuseToSetFlags, flags);
 }
+
+std::string Redact(const std::string& name) {
+  return LOG_IS_ON(INFO) ? name : "(redacted)";
+}
