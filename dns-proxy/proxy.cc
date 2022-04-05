@@ -662,6 +662,14 @@ void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
   std::vector<std::string> ipv4_nameservers;
   std::vector<std::string> ipv6_nameservers;
 
+  auto maybe_add_to_ipv6_nameservers = [&](const std::string& addr) {
+    struct in6_addr addr6;
+    if (inet_pton(AF_INET6, addr.c_str(), &addr6.s6_addr) == 1 &&
+        memcmp(&addr6, &in6addr_any, sizeof(in6_addr)) != 0) {
+      ipv6_nameservers.push_back(addr);
+    }
+  };
+
   // Validate name servers.
   for (const auto& addr : ipconfig.ipv4_dns_addresses) {
     struct in_addr addr4;
@@ -669,14 +677,15 @@ void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
     if (inet_pton(AF_INET, addr.c_str(), &addr4) == 1 &&
         addr4.s_addr != INADDR_ANY) {
       ipv4_nameservers.push_back(addr);
+      continue;
     }
+    // When IPv6 nameservers are set from the UI, it will be stored inside
+    // IPConfig's IPv4 DNS addresses.
+    maybe_add_to_ipv6_nameservers(addr);
   }
+
   for (const auto& addr : ipconfig.ipv6_dns_addresses) {
-    struct in6_addr addr6;
-    if (inet_pton(AF_INET6, addr.c_str(), &addr6.s6_addr) == 1 &&
-        memcmp(&addr6, &in6addr_any, sizeof(in6_addr)) != 0) {
-      ipv6_nameservers.push_back(addr);
-    }
+    maybe_add_to_ipv6_nameservers(addr);
   }
 
   doh_config_.set_nameservers(ipv4_nameservers, ipv6_nameservers);

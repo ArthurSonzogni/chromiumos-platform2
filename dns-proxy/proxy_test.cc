@@ -1957,8 +1957,8 @@ TEST_F(ProxyTest, UpdateNameServers) {
                                  "192.168.1.1",
                                  "256.256.256.256",
                                  "0.0.0.0",
-                                 "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e",
-                                 "::1",
+                                 "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16d",
+                                 "::2",
                                  "::",
                                  "a",
                                  ""};
@@ -1974,6 +1974,7 @@ TEST_F(ProxyTest, UpdateNameServers) {
   proxy.UpdateNameServers(ipconfig);
   const std::string expected_ipv4_dns_addresses[] = {"8.8.4.4", "192.168.1.1"};
   const std::string expected_ipv6_dns_addresses[] = {
+      "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16d", "::2",
       "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e", "::1"};
   EXPECT_THAT(proxy.doh_config_.ipv4_nameservers(),
               ElementsAreArray(expected_ipv4_dns_addresses));
