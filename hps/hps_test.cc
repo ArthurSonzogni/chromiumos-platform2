@@ -421,6 +421,43 @@ TEST_F(HPSTest, McuUpdate) {
 }
 
 /*
+ * Test that the MCU flash is updated when it has a flash ECC error.
+ */
+TEST_F(HPSTest, McuUpdateOnFlashEccError) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  // Create MCU and SPI flash filenames (but do not
+  // create the files themselves).
+  auto mcu = temp_dir.GetPath().Append("mcu");
+  auto spi1 = temp_dir.GetPath().Append("spi1");
+  auto spi2 = temp_dir.GetPath().Append("spi2");
+  const int len = 1024;
+  CreateBlob(mcu, len);
+
+  // Set the expected version
+  const uint32_t version = 0x01020304;
+  fake_->SetVersion(version);
+  fake_->Set(hps::FakeDev::Flags::kFlashEccError);
+  // Set up the version and files.
+  hps_->Init(version, mcu, spi1, spi2);
+
+  // Boot the module.
+  EXPECT_CALL(*metrics_, SendHpsUpdateDuration(hps::HpsBank::kMcuFlash, _))
+      .Times(1);
+  EXPECT_CALL(*metrics_,
+              SendHpsTurnOnResult(hps::HpsTurnOnResult::kMcuNotVerified, _))
+      .Times(1);
+  EXPECT_CALL(*metrics_, SendHpsTurnOnResult(hps::HpsTurnOnResult::kSuccess, _))
+      .Times(1);
+  hps_->Boot();
+
+  // Check that MCU firmware was downloaded.
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kMcuFlash), len);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSpiFlash), 0);
+  EXPECT_EQ(fake_->GetBankLen(hps::HpsBank::kSocRom), 0);
+}
+
+/*
  * Test that the SPI flash is updated when not verified.
  */
 TEST_F(HPSTest, SpiUpdate) {

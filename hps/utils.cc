@@ -199,6 +199,10 @@ std::string HpsRegValToString(HpsReg reg, uint16_t val) {
           return "kStage1InvalidSignature";
         case RError::kInternal:
           return "kInternal";
+        case RError::kMcuFlashEcc:
+          return "kMcuFlashEcc";
+        case RError::kMcuNmi:
+          return "kMcuNmi";
         default:
           return base::StringPrintf("0x%04x", val);
       }

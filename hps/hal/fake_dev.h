@@ -45,6 +45,8 @@ class FakeDev : public DevInterface {
     kResetSpiVerification = 6,
     // When a RW download occurs, increment the firmware version number.
     kIncrementVersion = 7,
+    // Set MCU flash ECC error bit when launching stage1.
+    kFlashEccError = 8,
   };
   bool ReadDevice(uint8_t cmd, uint8_t* data, size_t len) override;
   bool WriteDevice(uint8_t cmd, const uint8_t* data, size_t len) override;

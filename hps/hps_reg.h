@@ -105,6 +105,8 @@ enum RError : uint16_t {
   kStage1TooOld = 0x4002,
   kStage1InvalidSignature = 0x4003,
   kInternal = 0x4004,
+  kMcuFlashEcc = 0x4005,
+  kMcuNmi = 0x4006,
 };
 
 inline constexpr uint16_t kHpsMagic = 0x9df2;

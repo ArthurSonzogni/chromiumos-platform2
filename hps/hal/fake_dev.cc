@@ -180,6 +180,9 @@ void FakeDev::WriteRegister(HpsReg reg, uint16_t value) {
           if (this->Flag(Flags::kStage1NotVerified) &&
               !this->Flag(Flags::kWpOff)) {
             this->fault_ = hps::RError::kStage1InvalidSignature;
+          } else if (this->Flag(Flags::kFlashEccError)) {
+            this->Clear(Flags::kFlashEccError);
+            this->fault_ = hps::RError::kMcuFlashEcc;
           } else {
             this->SetStage(Stage::kStage1);
           }

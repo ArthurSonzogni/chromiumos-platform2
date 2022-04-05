@@ -405,7 +405,8 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
     }
     if (error.value() == RError::kStage1NotFound ||
         error.value() == RError::kStage1TooOld ||
-        error.value() == RError::kStage1InvalidSignature) {
+        error.value() == RError::kStage1InvalidSignature ||
+        error.value() == RError::kMcuFlashEcc) {
       LOG(INFO) << "Stage1 flash not verified: "
                 << HpsRegValToString(HpsReg::kError, error.value());
       hps_metrics_->SendHpsTurnOnResult(
