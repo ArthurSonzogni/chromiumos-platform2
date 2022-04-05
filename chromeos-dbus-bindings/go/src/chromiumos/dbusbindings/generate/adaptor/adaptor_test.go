@@ -283,12 +283,10 @@ func TestInterfaceMethodsTempl(t *testing.T) {
 					},
 				},
 			},
-			// TODO(chromium:983008): After implementing dbustype package,
-			// fix comments to "this is comment1" and "this is comment2" for each.
 			want: `
-  // this is comment
+  // this is comment1
   virtual void methodWithComment1() = 0;
-  // this is comment
+  // this is comment2
   virtual void methodWithComment2() = 0;
 `,
 		}, {

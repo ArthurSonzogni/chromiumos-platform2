@@ -7,6 +7,7 @@ package genutil
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -58,14 +59,53 @@ func Reverse(s []string) []string {
 	return s
 }
 
+var indentRE = regexp.MustCompile(`^[ \t]+`)
+
 // FormatComment removes extraneous white space, inserts a double slash and adds an indent of |indent| characters
-// to each line for the string
-func FormatComment(s string, indent int) string {
-	// TODO(chromium:983008): Implement function contents.
-	if s == "" {
-		return s
+// to each line for the string.
+// This function tries to retain indentation in the comments to maintain the comment layout.
+func FormatComment(docString string, indent int) string {
+	lines := strings.Split(docString, "\n")
+
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " \t")
 	}
-	return fmt.Sprintf("%s// this is comment\n", strings.Repeat(" ", indent))
+
+	var i int
+	for i = 0; i < len(lines); i++ {
+		if lines[i] != "" {
+			break
+		}
+	}
+	lines = lines[i:]
+	for i = len(lines) - 1; i >= 0; i-- {
+		if lines[i] != "" {
+			break
+		}
+	}
+	lines = lines[:i+1]
+
+	trimPrefix := ""
+	if len(lines) > 0 {
+		trimPrefix = indentRE.FindString(lines[0])
+	}
+
+	var ret strings.Builder
+	prefix := strings.Repeat(" ", indent) + "//"
+	for _, line := range lines {
+		ret.WriteString(prefix)
+		if line != "" {
+			ret.WriteString(" ")
+			if strings.HasPrefix(line, trimPrefix) {
+				line = line[len(trimPrefix):]
+			} else {
+				line = strings.TrimLeft(line, " \t")
+			}
+			ret.WriteString(line)
+		}
+		ret.WriteRune('\n')
+	}
+	return ret.String()
 }
 
 // ArgName makes a name of a method argument.
@@ -74,4 +114,17 @@ func ArgName(prefix, argName string, argIndex int) string {
 		return fmt.Sprintf("%s_%d", prefix, argIndex)
 	}
 	return fmt.Sprintf("%s_%s", prefix, argName)
+}
+
+var insertRE = regexp.MustCompile(`([^A-Z])([A-Z])`)
+
+// MakeVariableName discards the namespace parts and converts CamelCase name to google_style variable name.
+func MakeVariableName(s string) string {
+	split := strings.Split(s, ".")
+	camelCase := split[len(split)-1]
+
+	f := func(s string) string {
+		return fmt.Sprintf("%c_%c", s[0], s[1])
+	}
+	return strings.ToLower(insertRE.ReplaceAllStringFunc(camelCase, f))
 }

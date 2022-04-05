@@ -78,6 +78,55 @@ func TestReverse(t *testing.T) {
 	}
 }
 
+func TestFormatComment(t *testing.T) {
+	cases := []struct {
+		indent      int
+		input, want string
+	}{
+		{2, "", ""},
+		{2, " \tcomment\t ", "  // comment\n"},
+		{2, "  \n \t  \n", ""},
+		{
+			indent: 0,
+			input: `
+
+    line1
+
+    line2
+
+
+	`,
+			want: `// line1
+//
+// line2
+`,
+		}, {
+			indent: 2,
+			input: `
+    line1
+      - bullet1
+        line2
+      - bullet2
+  line3
+`,
+			want: `  // line1
+  //   - bullet1
+  //     line2
+  //   - bullet2
+  // line3
+`,
+		},
+	}
+
+	for _, tc := range cases {
+		got := genutil.FormatComment(tc.input, tc.indent)
+		if diff := cmp.Diff(got, tc.want); diff != "" {
+			t.Errorf("Wrong result in FormatComment(%q, %d): diff (-got +want):\n%s",
+				tc.input, tc.indent, diff)
+		}
+	}
+}
+
 func TestArgName(t *testing.T) {
 	cases := []struct {
 		prefix, argName, want string
@@ -92,6 +141,25 @@ func TestArgName(t *testing.T) {
 		if got != tc.want {
 			t.Errorf("Wrong result in ArgName(%q, %q, %d):\ngot %s, want %s",
 				tc.prefix, tc.argName, tc.argIndex, got, tc.want)
+		}
+	}
+}
+
+func TestMakeVariableName(t *testing.T) {
+	cases := []struct {
+		input, want string
+	}{
+		{"foo.bar.FooBar", "foo_bar"},
+		{"foo", "foo"},
+		{"fooBarBaz", "foo_bar_baz"},
+		{"UUID", "uuid"},
+		{"FOObarBAZ", "foobar_baz"},
+	}
+
+	for _, tc := range cases {
+		got := genutil.MakeVariableName(tc.input)
+		if got != tc.want {
+			t.Errorf("Wrong result in MakeVariableName(%q):\ngot %s, want %s", tc.input, got, tc.want)
 		}
 	}
 }
