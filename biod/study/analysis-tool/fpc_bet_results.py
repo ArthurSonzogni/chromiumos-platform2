@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from enum import Enum
 import pathlib
-from typing import List
+from enum import Enum
+from typing import List, Union
 
 import pandas as pd
 
@@ -18,6 +18,14 @@ class FPCBETResults:
         TUSpecificSamples = 'TC-02-TU'
         TUEnabled = 'TC-03-TU-Continuous'
 
+        @classmethod
+        def all(cls) -> list:
+            return list(level for level in cls)
+
+        @classmethod
+        def all_values(cls) -> List[str]:
+            return list(level.value for level in cls)
+
     class TableType(Enum):
         '''Identify what type of experiment data is represented in a table.'''
 
@@ -26,6 +34,14 @@ class FPCBETResults:
         FA_List = 'FalseAccepts.txt'
         FAR_Decision = 'FAR_decisions.csv'
         FRR_Decision = 'FRR_decisions.csv'
+
+        @classmethod
+        def all(cls) -> list:
+            return list(level for level in cls)
+
+        @classmethod
+        def all_values(cls) -> List[str]:
+            return list(level.value for level in cls)
 
     class SecLevel(Enum):
         '''The order of these item are in increasing security level.'''
@@ -40,7 +56,7 @@ class FPCBETResults:
             return list(level for level in cls)
 
         @classmethod
-        def all_values(cls) -> list:
+        def all_values(cls) -> List[str]:
             return list(level.value for level in cls)
 
         def column_false(self) -> str:
@@ -49,7 +65,7 @@ class FPCBETResults:
         def column_total(self) -> str:
             return self.name + '_Total'
 
-    def __init__(self, report_directory):
+    def __init__(self, report_directory: Union[pathlib.Path, str]):
         self.dir = pathlib.Path(report_directory)
 
     def file_name(self, test_case: TestCase, table_type: TableType) -> str:
