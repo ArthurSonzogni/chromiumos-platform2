@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
+import timeit
 import typing
 
 import matplotlib.pyplot as plt
@@ -117,3 +118,35 @@ def plt_discrete_hist(data, bins=None):
     # plt.plot(x_curve, p_scaled, 'k', linewidth=2)
 
     # plt.show()
+
+
+def smalltimestr(sec: float) -> str:
+    """Convert a seconds value into a more easily interpretable units str.
+
+    Example: smalltimestr(0.003) -> "3ms"
+    """
+
+    s = int(sec)
+    ms = int(sec * 1e3) % 1000
+    us = int(sec * 1e6) % 1000
+    ns = (sec * 1e9) % 1000
+
+    string = s and f'{s}s' or ''
+    string += ms and f'{ms}ms' or ''
+    string += us and f'{us}us' or ''
+    string += ns and f'{ns:3.3f}ns' or ''
+    return string
+
+
+def autorange(stmt: str,
+              setup: str = 'pass',
+              globals: dict = {**locals(), **globals()}):
+    """Invoke timeit.Timer.autorange and print results."""
+
+    loops, sec = timeit.Timer(
+        stmt,
+        setup=setup,
+        globals=globals).autorange()
+    print(f'Ran "{stmt}" {loops} times over {sec}s.'
+          ' '
+          f'It took {smalltimestr(sec/loops)} per loop.')
