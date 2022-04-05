@@ -4,6 +4,7 @@
 
 #include "cros-disks/sandboxed_init.h"
 
+#include <string>
 #include <utility>
 
 #include <stdlib.h>
@@ -16,6 +17,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/test/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -229,6 +231,50 @@ TEST_F(SandboxedInitTest, LauncherWritesToStdOut) {
   EXPECT_EQ("Sent to stdout", Read(out_));
 
   EXPECT_EQ(12, WaitForLauncher());
+  EXPECT_EQ(12, WaitForInit());
+  EXPECT_EQ("", Read(out_));
+}
+
+TEST_F(SandboxedInitTest, LauncherStopsAndContinues) {
+  RunUnderInit([]() {
+    // Signal that the 'launcher' process started.
+    Write(STDOUT_FILENO, base::NumberToString(getpid()));
+
+    // Wait to be unblocked.
+    const std::string s = Read(STDIN_FILENO);
+
+    // Signal that the 'launcher' process was unblocked.
+    Write(STDOUT_FILENO, "Received: " + s);
+    return 12;
+  });
+
+  // Wait for the 'launcher' process to start.
+  pid_t launcher_pid;
+  EXPECT_TRUE(base::StringToInt(Read(out_), &launcher_pid));
+  EXPECT_LT(0, launcher_pid);
+  LOG(INFO) << "The 'launcher' process has PID " << launcher_pid;
+
+  // Send SIGSTOP to the 'launcher' process.
+  EXPECT_EQ(0, kill(launcher_pid, SIGSTOP));
+  usleep(100'000);
+  EXPECT_EQ(-1, PollLauncher());
+
+  // Try to unblock the 'launcher' process by writing to its stdin. The
+  // 'launcher' process won't be able to react since it is still stopped.
+  Write(in_.get(), "Continue");
+  usleep(100'000);
+
+  // The 'launcher' process is still stopped.
+  EXPECT_EQ(-1, PollLauncher());
+
+  // Send SIGCONT to wake up the 'launcher' process.
+  EXPECT_EQ(0, kill(launcher_pid, SIGCONT));
+
+  // Wait for the 'launcher' process to continue.
+  EXPECT_EQ("Received: Continue", Read(out_));
+  EXPECT_EQ(12, WaitForLauncher());
+
+  // Wait for the 'init' process to finish.
   EXPECT_EQ(12, WaitForInit());
   EXPECT_EQ("", Read(out_));
 }
