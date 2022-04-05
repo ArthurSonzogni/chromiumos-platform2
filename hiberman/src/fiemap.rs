@@ -226,6 +226,19 @@ impl Fiemap {
             fiemap = std::ptr::read_unaligned(buffer[0..fiemap_len].as_ptr() as *const _);
         }
 
+        // There seem to be instances where the FS will return a larger number
+        // of extents (by one) when no buffer is given, but then the smaller
+        // correct number once the buffer is supplied. Allow the fiemap vector
+        // to shrink to accomodate this, though it's weird.
+        if (fiemap.fm_mapped_extents as usize) < extents.len() {
+            debug!(
+                "Fiemap shrunk from {} to {}",
+                extents.len(),
+                fiemap.fm_mapped_extents
+            );
+            extents.truncate(fiemap.fm_mapped_extents as usize);
+        }
+
         if fiemap.fm_mapped_extents as usize != extents.len() {
             return Err(HibernateError::InvalidFiemapError(format!(
                 "Got {} fiemap extents, expected {}",
