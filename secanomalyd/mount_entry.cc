@@ -105,10 +105,6 @@ bool MountEntry::IsKnownMount() const {
          kKnownMounts.end();
 }
 
-std::string MountEntry::ShortDescription() const {
-  return base::JoinString({src_.value(), dest_.value(), type_}, " ");
-}
-
 std::string MountEntry::FullDescription() const {
   return base::JoinString(
       {src_.value(), dest_.value(), type_, base::JoinString(opts_, ",")}, " ");
