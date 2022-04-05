@@ -229,9 +229,9 @@ fpsutils.plot_pd_hist_discrete(fa_table, title_prefix='False Accepts')
 
 
 # %%
-#! %time
+#! %%time
 
-NUM_SAMPLES = 1
+NUM_SAMPLES = 20
 rng = np.random.default_rng()
 fa_set_tuple = [Experiment.TableCol.Verify_User.value,
                 Experiment.TableCol.Enroll_User.value,
@@ -239,8 +239,9 @@ fa_set_tuple = [Experiment.TableCol.Verify_User.value,
                 Experiment.TableCol.Verify_Sample.value]
 fa_set = fpsutils.DataFrameSetAccess(b.FAList(), fa_set_tuple)
 
-# This nieve approach take about 500ms to run one bootstrap sample, without
+# This naive approach take about 500ms to run one bootstrap sample, without
 # actually querying the FA table (replaced with pass).
+samples = []
 for s in range(NUM_SAMPLES):
     sample = []
     # 72 users
@@ -260,9 +261,12 @@ for s in range(NUM_SAMPLES):
                     query = (v, t, f, a)
                     sample.append(fa_set.isin(query))
                     # pass
+    samples.append(sum(sample))
+
     # print('')
     # print('samples =', sample)
     # print('sum(samples) =', sum(sample))
+print(samples)
 
 # %% Attempt to flatten the loops.
 #! %time
