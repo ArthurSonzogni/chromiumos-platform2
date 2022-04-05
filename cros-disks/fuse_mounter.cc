@@ -369,21 +369,22 @@ pid_t FUSEMounter::StartDaemon(const base::File& fuse_file,
                                const base::FilePath& target_path,
                                std::vector<std::string> params,
                                MountErrorType* error) const {
-  auto mount_process =
+  std::unique_ptr<SandboxedProcess> mount_process =
       PrepareSandbox(source, target_path, std::move(params), error);
-  if (*error != MOUNT_ERROR_NONE) {
+
+  if (*error != MOUNT_ERROR_NONE)
     return Process::kInvalidProcessId;
-  }
 
   mount_process->AddArgument(
       base::StringPrintf("/dev/fd/%d", fuse_file.GetPlatformFile()));
+  mount_process->PreserveFile(fuse_file.GetPlatformFile());
 
   std::vector<std::string> output;
   const int return_code = mount_process->Run(&output);
   *error = InterpretReturnCode(return_code);
 
   if (*error != MOUNT_ERROR_NONE) {
-    const auto& executable = mount_process->arguments()[0];
+    const std::string& executable = mount_process->arguments()[0];
     if (!output.empty()) {
       LOG(ERROR) << "FUSE mounter " << quote(executable) << " outputted "
                  << output.size() << " lines:";

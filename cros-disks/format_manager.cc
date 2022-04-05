@@ -136,11 +136,8 @@ FormatErrorType StartFormatProcess(const std::string& device_file,
                                                        base::File::FLAG_READ |
                                                        base::File::FLAG_WRITE);
   if (!dev_file.IsValid()) {
-    LOG(WARNING) << "Could not open " << device_file << " for formatting";
-    return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
-  }
-  if (!process->PreserveFile(dev_file)) {
-    LOG(WARNING) << "Could not preserve device fd";
+    PLOG(ERROR) << "Cannot open " << quote(device_file) << " for formatting: "
+                << base::File::ErrorToString(dev_file.error_details());
     return FORMAT_ERROR_FORMAT_PROGRAM_FAILED;
   }
 
@@ -158,16 +155,16 @@ FormatErrorType StartFormatProcess(const std::string& device_file,
   process->SetUserId(user_id);
   process->SetGroupId(group_id);
 
-  process->CloseOpenFds();
-
   process->AddArgument(format_program);
 
-  for (std::string arg : arguments) {
+  for (const std::string& arg : arguments) {
     process->AddArgument(arg);
   }
 
   process->AddArgument(
       base::StringPrintf("/dev/fd/%d", dev_file.GetPlatformFile()));
+  process->PreserveFile(dev_file.GetPlatformFile());
+
   if (!process->Start()) {
     LOG(WARNING) << "Cannot start process " << quote(format_program)
                  << " to format " << quote(device_file);

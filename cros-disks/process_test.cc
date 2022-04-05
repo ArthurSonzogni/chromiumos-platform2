@@ -123,7 +123,7 @@ class ProcessUnderTest : public Process {
 
 struct ProcessFactory {
   base::StringPiece name;
-  std::unique_ptr<Process> (*make_process)();
+  std::unique_ptr<SandboxedProcess> (*make_process)();
 };
 
 std::ostream& operator<<(std::ostream& out, const ProcessFactory& x) {
@@ -189,7 +189,7 @@ class ProcessRunTest : public ::testing::TestWithParam<ProcessFactory> {
     minijail_log_to_fd(STDERR_FILENO, 0);
   }
 
-  const std::unique_ptr<Process> process_ = GetParam().make_process();
+  const std::unique_ptr<SandboxedProcess> process_ = GetParam().make_process();
 };
 
 TEST_P(ProcessRunTest, RunReturnsZero) {
@@ -269,7 +269,7 @@ TEST_P(ProcessRunTest, WaitKilledBySigSys) {
 }
 
 TEST_P(ProcessRunTest, ExternallyKilledBySigKill) {
-  Process& process = *process_;
+  SandboxedProcess& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
 
@@ -287,6 +287,9 @@ TEST_P(ProcessRunTest, ExternallyKilledBySigKill) {
         exit 42;
     )",
       to_wait.child_fd.get(), to_block.child_fd.get(), to_wait.child_fd.get()));
+
+  process.PreserveFile(to_wait.child_fd.get());
+  process.PreserveFile(to_block.child_fd.get());
 
   EXPECT_TRUE(process.Start());
 
@@ -308,7 +311,7 @@ TEST_P(ProcessRunTest, ExternallyKilledBySigKill) {
 }
 
 TEST_P(ProcessRunTest, ExternallyKilledBySigTerm) {
-  Process& process = *process_;
+  SandboxedProcess& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
 
@@ -326,6 +329,9 @@ TEST_P(ProcessRunTest, ExternallyKilledBySigTerm) {
         exit 42;
     )",
       to_wait.child_fd.get(), to_block.child_fd.get(), to_wait.child_fd.get()));
+
+  process.PreserveFile(to_wait.child_fd.get());
+  process.PreserveFile(to_block.child_fd.get());
 
   EXPECT_TRUE(process.Start());
 
@@ -409,7 +415,7 @@ TEST_P(ProcessRunTest, CapturesLotsOfOutputData) {
 }
 
 TEST_P(ProcessRunTest, DoesNotBlockWhenNotCapturingOutput) {
-  Process& process = *process_;
+  SandboxedProcess& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
 
@@ -424,6 +430,8 @@ TEST_P(ProcessRunTest, DoesNotBlockWhenNotCapturingOutput) {
       exit 42;
     )",
                                          to_wait.child_fd.get()));
+
+  process.PreserveFile(to_wait.child_fd.get());
 
   // This process generates lots of output on stdout and stderr, ie more than
   // what a pipe can hold without blocking. If the pipes connected to stdout and
@@ -504,7 +512,7 @@ TEST_P(ProcessRunTest, WaitDoesNotBlockWhenReadingFromStdIn) {
 }
 
 TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
-  Process& process = *process_;
+  SandboxedProcess& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
 
@@ -531,6 +539,9 @@ TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
                                          to_continue.child_fd.get(),
                                          to_wait.child_fd.get()));
 
+  process.PreserveFile(to_wait.child_fd.get());
+  process.PreserveFile(to_continue.child_fd.get());
+
   LOG(INFO) << "Running launcher process";
   std::vector<std::string> output;
   EXPECT_EQ(process.Run(&output), 5);
@@ -555,7 +566,7 @@ TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
 }
 
 TEST_P(ProcessRunTest, WaitDoesNotWaitForBackgroundProcessToFinish) {
-  Process& process = *process_;
+  SandboxedProcess& process = *process_;
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
 
@@ -580,6 +591,9 @@ TEST_P(ProcessRunTest, WaitDoesNotWaitForBackgroundProcessToFinish) {
                                          to_wait.child_fd.get(),
                                          to_continue.child_fd.get(),
                                          to_wait.child_fd.get()));
+
+  process.PreserveFile(to_wait.child_fd.get());
+  process.PreserveFile(to_continue.child_fd.get());
 
   LOG(INFO) << "Starting launcher process";
   EXPECT_TRUE(process.Start());
@@ -695,7 +709,7 @@ INSTANTIATE_TEST_SUITE_P(ProcessRun,
                          ProcessRunTest,
                          Values(ProcessFactory{
                              "SandboxedProcess",
-                             []() -> std::unique_ptr<Process> {
+                             []() {
                                return std::make_unique<SandboxedProcess>();
                              }}),
                          PrintToStringParamName());
@@ -706,7 +720,7 @@ INSTANTIATE_TEST_SUITE_P(ProcessRunAsRoot,
                          ProcessRunTest,
                          Values(ProcessFactory{
                              "WithPidNamespace",
-                             []() -> std::unique_ptr<Process> {
+                             []() {
                                auto process =
                                    std::make_unique<SandboxedProcess>();
                                process->NewPidNamespace();

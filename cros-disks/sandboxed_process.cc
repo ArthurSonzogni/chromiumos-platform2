@@ -153,13 +153,11 @@ bool SandboxedProcess::AddToCgroup(const std::string& cgroup) {
   return minijail_add_to_cgroup(jail_, cgroup.c_str()) == 0;
 }
 
-void SandboxedProcess::CloseOpenFds() {
-  minijail_close_open_fds(jail_);
-}
-
-bool SandboxedProcess::PreserveFile(const base::File& file) {
-  return minijail_preserve_fd(jail_, file.GetPlatformFile(),
-                              file.GetPlatformFile()) == 0;
+void SandboxedProcess::PreserveFile(int fd) {
+  if (const int ret = minijail_preserve_fd(jail_, fd, fd)) {
+    LOG(FATAL) << "Cannot preserve file descriptor " << fd << ": "
+               << base::safe_strerror(-ret);
+  }
 }
 
 pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
@@ -171,6 +169,8 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
   DCHECK(env);
 
   pid_t child_pid = kInvalidProcessId;
+
+  minijail_close_open_fds(jail_);
 
   if (!run_custom_init_) {
     minijail_preserve_fd(jail_, in_fd.get(), STDIN_FILENO);
@@ -185,9 +185,14 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
       return kInvalidProcessId;
     }
   } else {
+    base::ScopedFD ctrl_fd = SubprocessPipe::Open(
+        SubprocessPipe::kChildToParent, &custom_init_control_fd_);
+    PreserveFile(in_fd.get());
+    PreserveFile(out_fd.get());
+    PreserveFile(err_fd.get());
+    PreserveFile(ctrl_fd.get());
     SandboxedInit init(std::move(in_fd), std::move(out_fd), std::move(err_fd),
-                       SubprocessPipe::Open(SubprocessPipe::kChildToParent,
-                                            &custom_init_control_fd_));
+                       std::move(ctrl_fd));
 
     // Create child process.
     child_pid = minijail_fork(jail_);

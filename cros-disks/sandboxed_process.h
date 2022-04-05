@@ -93,12 +93,9 @@ class SandboxedProcess : public Process {
   // Adds the minijail to |cgroup|.
   bool AddToCgroup(const std::string& cgroup);
 
-  // Close all open fds on fork.
-  void CloseOpenFds();
-
-  // Preserves |file| to still be available in the sandboxed process with the
-  // same file descriptor. Only effective if CloseOpenFds has been called.
-  bool PreserveFile(const base::File& file);
+  // Preserves the given file descriptor to still be available in the sandboxed
+  // process.
+  void PreserveFile(int fd);
 
  protected:
   // Process overrides:

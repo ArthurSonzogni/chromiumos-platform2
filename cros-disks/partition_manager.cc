@@ -54,17 +54,10 @@ PartitionErrorType StartPartitionProcess(const base::FilePath& device_file,
                                        base::File::FLAG_READ |
                                        base::File::FLAG_WRITE);
   if (!dev_file.IsValid()) {
-    LOG(WARNING) << "Could not open " << quote(device_file)
-                 << " for partitioning";
+    PLOG(ERROR) << "Cannot open " << quote(device_file) << " for partitioning: "
+                << base::File::ErrorToString(dev_file.error_details());
     return PARTITION_ERROR_PROGRAM_FAILED;
   }
-
-  if (!process->PreserveFile(dev_file)) {
-    LOG(WARNING) << "Could not preserve device fd";
-    return PARTITION_ERROR_PROGRAM_FAILED;
-  }
-
-  process->CloseOpenFds();
 
   process->AddArgument(partition_program);
   process->AddArgument("--no-reread");
@@ -78,6 +71,7 @@ PartitionErrorType StartPartitionProcess(const base::FilePath& device_file,
 
   process->AddArgument(
       base::StringPrintf("/dev/fd/%d", dev_file.GetPlatformFile()));
+  process->PreserveFile(dev_file.GetPlatformFile());
 
   process->SetStdIn(partition_input);
 
