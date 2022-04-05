@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/time/time.h>
 #include <metrics/metrics_library.h>
 
 namespace attestation {
@@ -41,6 +42,7 @@ class AttestationServiceMetrics : private MetricsLibrary {
 
   virtual void ReportAttestationOpsStatus(const std::string& operation,
                                           AttestationOpsStatus status);
+  virtual void ReportAttestationPrepareDuration(base::TimeDelta delta);
 
   void set_metrics_library_for_testing(
       MetricsLibraryInterface* metrics_library) {

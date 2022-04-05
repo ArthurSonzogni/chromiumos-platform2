@@ -1771,6 +1771,7 @@ void AttestationService::PrepareForEnrollment(
   base::TimeDelta delta = (base::TimeTicks::Now() - start);
   LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
             << "ms) with " << GetKeyTypeName(key_type) << " EK.";
+  metrics_.ReportAttestationPrepareDuration(delta);
   metrics_.ReportAttestationOpsStatus(kAttestationPrepareForEnrollment,
                                       AttestationOpsStatus::kSuccess);
   std::move(callback).Run(true);
