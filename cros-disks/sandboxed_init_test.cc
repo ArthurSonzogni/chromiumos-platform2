@@ -100,7 +100,7 @@ class SandboxedInitTest : public testing::Test {
   // Waits for the 'init' process to terminate if |no_hang == false|. Returns
   // the process's exit code, or -1 if the process is still running and |no_hang
   // == true|.
-  int WaitForInitExit(bool no_hang = false) {
+  int WaitForInit(bool no_hang = false) {
     CHECK_LT(0, pid_);
     if (no_hang) {
       LOG(INFO) << "Checking if 'init' is still running...";
@@ -120,17 +120,17 @@ class SandboxedInitTest : public testing::Test {
       return -1;
     }
 
-    const int exit_code = SandboxedInit::WStatusToStatus(wstatus);
+    const int exit_code = SandboxedInit::WaitStatusToExitCode(wstatus);
     LOG(INFO) << "The 'init' process finished with exit code " << exit_code;
     pid_ = -1;
     return exit_code;
   }
 
   // Waits for the 'launcher' process to finish and returns its exit code.
-  int WaitForLauncherExit() {
+  int WaitForLauncher() {
     EXPECT_TRUE(ctrl_.is_valid());
     LOG(INFO) << "Waiting for the 'launcher' process to finish...";
-    const int exit_code = SandboxedInit::WaitForLauncherStatus(&ctrl_);
+    const int exit_code = SandboxedInit::WaitForLauncher(&ctrl_);
     LOG(INFO) << "The 'launcher' process finished with exit code " << exit_code;
     EXPECT_FALSE(ctrl_.is_valid());
     return exit_code;
@@ -141,7 +141,7 @@ class SandboxedInitTest : public testing::Test {
   int PollLauncher() {
     EXPECT_TRUE(ctrl_.is_valid());
     LOG(INFO) << "Checking if the 'launcher' process is still running...";
-    const int exit_code = SandboxedInit::PollLauncherStatus(&ctrl_);
+    const int exit_code = SandboxedInit::PollLauncher(&ctrl_);
 
     if (exit_code < 0) {
       LOG(INFO) << "The 'launcher' process is still running";
@@ -163,14 +163,14 @@ class SandboxedInitTest : public testing::Test {
 
 TEST_F(SandboxedInitTest, LauncherTerminatesSuccessfully) {
   RunUnderInit([]() { return 0; });
-  EXPECT_EQ(0, WaitForLauncherExit());
-  EXPECT_EQ(0, WaitForInitExit());
+  EXPECT_EQ(0, WaitForLauncher());
+  EXPECT_EQ(0, WaitForInit());
 }
 
 TEST_F(SandboxedInitTest, LauncherTerminatesWithError) {
   RunUnderInit([]() { return 12; });
-  EXPECT_EQ(12, WaitForLauncherExit());
-  EXPECT_EQ(12, WaitForInitExit());
+  EXPECT_EQ(12, WaitForLauncher());
+  EXPECT_EQ(12, WaitForInit());
 }
 
 TEST_F(SandboxedInitTest, LauncherCrashes) {
@@ -179,8 +179,8 @@ TEST_F(SandboxedInitTest, LauncherCrashes) {
     pause();
     return 35;
   });
-  EXPECT_EQ(128 + SIGALRM, WaitForLauncherExit());
-  EXPECT_EQ(128 + SIGALRM, WaitForInitExit());
+  EXPECT_EQ(128 + SIGALRM, WaitForLauncher());
+  EXPECT_EQ(128 + SIGALRM, WaitForInit());
 }
 
 TEST_F(SandboxedInitTest, CtrlPipeIsClosed) {
@@ -213,7 +213,7 @@ TEST_F(SandboxedInitTest, CtrlPipeIsClosed) {
   EXPECT_EQ("", Read(out_));
 
   // Wait for the 'init' process to finish.
-  EXPECT_EQ(128 + SIGABRT, WaitForInitExit());
+  EXPECT_EQ(128 + SIGABRT, WaitForInit());
 }
 
 TEST_F(SandboxedInitTest, LauncherWritesToStdOut) {
@@ -228,8 +228,8 @@ TEST_F(SandboxedInitTest, LauncherWritesToStdOut) {
 
   EXPECT_EQ("Sent to stdout", Read(out_));
 
-  EXPECT_EQ(12, WaitForLauncherExit());
-  EXPECT_EQ(12, WaitForInitExit());
+  EXPECT_EQ(12, WaitForLauncher());
+  EXPECT_EQ(12, WaitForInit());
   EXPECT_EQ("", Read(out_));
 }
 
@@ -266,10 +266,10 @@ TEST_F(SandboxedInitTest, InitUndisturbedBySignal) {
 
   // Wait for the 'launcher' process to continue.
   EXPECT_EQ("Received: Continue", Read(out_));
-  EXPECT_EQ(12, WaitForLauncherExit());
+  EXPECT_EQ(12, WaitForLauncher());
 
   // Wait for the 'init' process to finish.
-  EXPECT_EQ(12, WaitForInitExit());
+  EXPECT_EQ(12, WaitForInit());
   EXPECT_EQ("", Read(out_));
 }
 
@@ -294,13 +294,13 @@ TEST_F(SandboxedInitTest, InitCrashesWhileLauncherIsRunning) {
   EXPECT_EQ(kill(pid_, SIGALRM), 0);
 
   // Wait for the 'init' process to finish.
-  EXPECT_EQ(128 + SIGALRM, WaitForInitExit());
+  EXPECT_EQ(128 + SIGALRM, WaitForInit());
 
   // Since the 'init' process is not monitoring the 'launcher' process anymore,
   // it reports the 'launcher' process as having been terminated by SIGKILL
   // (which would have happened if this 'init' process was running in a PID
   // namespace).
-  EXPECT_EQ(128 + SIGKILL, WaitForLauncherExit());
+  EXPECT_EQ(128 + SIGKILL, WaitForLauncher());
 
   // Actually, in this test, the 'launcher' process has been orphaned, but it is
   // still alive. Unblock the 'launcher' process and wait for it to finish.
@@ -327,20 +327,20 @@ TEST_F(SandboxedInitTest, InitCrashesWhileDaemonIsRunning) {
   });
 
   // The 'launcher' process should terminate first.
-  EXPECT_EQ(0, WaitForLauncherExit());
+  EXPECT_EQ(0, WaitForLauncher());
 
   // Wait for 'daemon' process to start.
   EXPECT_EQ("Begin", Read(out_));
 
   // The 'init' process should still be there, having adopted the 'daemon'
   // process.
-  EXPECT_EQ(-1, WaitForInitExit(true));
+  EXPECT_EQ(-1, WaitForInit(true));
 
   // Send SIGALRM to crash the 'init' process.
   EXPECT_EQ(kill(pid_, SIGALRM), 0);
 
   // Wait for the 'init' process to finish.
-  EXPECT_EQ(128 + SIGALRM, WaitForInitExit());
+  EXPECT_EQ(128 + SIGALRM, WaitForInit());
 
   // If the 'init' process was in a PID namespace, the 'daemon' process would
   // have been killed by a SIGKILL sent by the kernel. But, in this test, the
@@ -369,14 +369,14 @@ TEST_F(SandboxedInitTest, DaemonBlocksAndTerminates) {
   });
 
   // The 'launcher' process should terminate first.
-  EXPECT_EQ(0, WaitForLauncherExit());
+  EXPECT_EQ(0, WaitForLauncher());
 
   // Wait for 'daemon' process to start.
   EXPECT_EQ("Begin", Read(out_));
 
   // The 'init' process should still be there, having adopted the 'daemon'
   // process.
-  EXPECT_EQ(-1, WaitForInitExit(true));
+  EXPECT_EQ(-1, WaitForInit(true));
 
   // Unblock the 'daemon' process.
   Write(in_.get(), "Continue");
@@ -386,7 +386,7 @@ TEST_F(SandboxedInitTest, DaemonBlocksAndTerminates) {
 
   // Wait for the 'init' process to finish and relay the 'daemon' process exit
   // code.
-  EXPECT_EQ(42, WaitForInitExit());
+  EXPECT_EQ(42, WaitForInit());
   EXPECT_EQ("", Read(out_));
 }
 
@@ -411,11 +411,11 @@ TEST_F(SandboxedInitTest, DaemonCrashes) {
   });
 
   // The 'launcher' process should terminate first.
-  EXPECT_EQ(0, WaitForLauncherExit());
+  EXPECT_EQ(0, WaitForLauncher());
 
   // Wait for the 'init' process to finish and relay the 'daemon' process exit
   // code.
-  EXPECT_EQ(128 + SIGALRM, WaitForInitExit());
+  EXPECT_EQ(128 + SIGALRM, WaitForInit());
 
   // The 'daemon' process should have only written these lines to its stdout.
   EXPECT_EQ("Begin", Read(out_));
@@ -449,14 +449,14 @@ TEST_F(SandboxedInitTest, DISABLED_InitRelaysSigTerm) {
   });
 
   // The 'launcher' process should terminate first.
-  EXPECT_EQ(0, WaitForLauncherExit());
+  EXPECT_EQ(0, WaitForLauncher());
 
   // Wait for 'daemon' process to start.
   EXPECT_EQ("Begin", Read(out_));
 
   // The 'init' process should still be there, having adopted the 'daemon'
   // process.
-  EXPECT_EQ(-1, WaitForInitExit(true));
+  EXPECT_EQ(-1, WaitForInit(true));
 
   // Send SIGTERM to the 'init' process.
   if (kill(pid_, SIGTERM) < 0)
@@ -468,7 +468,7 @@ TEST_F(SandboxedInitTest, DISABLED_InitRelaysSigTerm) {
 
   // Wait for the 'init' process to finish and relay the 'daemon' process exit
   // code.
-  EXPECT_EQ(43, WaitForInitExit());
+  EXPECT_EQ(43, WaitForInit());
   EXPECT_EQ("", Read(out_));
 }
 

@@ -212,7 +212,7 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
 
 int SandboxedProcess::WaitImpl() {
   if (run_custom_init_)
-    return SandboxedInit::WaitForLauncherStatus(&custom_init_control_fd_);
+    return SandboxedInit::WaitForLauncher(&custom_init_control_fd_);
 
   while (true) {
     const int status = minijail_wait(jail_);
@@ -229,7 +229,7 @@ int SandboxedProcess::WaitImpl() {
 
 int SandboxedProcess::WaitNonBlockingImpl() {
   if (run_custom_init_)
-    return SandboxedInit::PollLauncherStatus(&custom_init_control_fd_);
+    return SandboxedInit::PollLauncher(&custom_init_control_fd_);
 
   // TODO(chromium:971667) Use Minijail's non-blocking wait once it exists.
   int wstatus;
@@ -245,7 +245,7 @@ int SandboxedProcess::WaitNonBlockingImpl() {
     return -1;
   }
 
-  return SandboxedInit::WStatusToStatus(wstatus);
+  return SandboxedInit::WaitStatusToExitCode(wstatus);
 }
 
 int FakeSandboxedProcess::OnProcessLaunch(

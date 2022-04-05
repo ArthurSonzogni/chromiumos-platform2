@@ -215,14 +215,14 @@ bool Process::Start() {
 
 int Process::Wait() {
   if (finished()) {
-    return status_;
+    return exit_code_;
   }
 
   CHECK_NE(kInvalidProcessId, pid_);
-  status_ = WaitImpl();
+  exit_code_ = WaitImpl();
   CHECK(finished());
   pid_ = kInvalidProcessId;
-  return status_;
+  return exit_code_;
 }
 
 bool Process::IsFinished() {
@@ -231,7 +231,7 @@ bool Process::IsFinished() {
   }
 
   CHECK_NE(kInvalidProcessId, pid_);
-  status_ = WaitNonBlockingImpl();
+  exit_code_ = WaitNonBlockingImpl();
   return finished();
 }
 

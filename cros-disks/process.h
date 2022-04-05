@@ -50,14 +50,14 @@ class Process {
   // process can be waiting for to finish using Wait().
   bool Start();
 
-  // Waits for the process to finish and returns its exit status.
+  // Waits for the process to finish and returns its exit code.
   int Wait();
 
   // Checks if the process finished.
   bool IsFinished();
 
   // Starts a process, captures its output and waits for it to finish. Returns
-  // the same exit status as Wait().
+  // the same exit code as Wait().
   //
   // Precondition: output is non-null
   int Run(std::vector<std::string>* output);
@@ -91,12 +91,12 @@ class Process {
                           base::ScopedFD err_fd) = 0;
 
   // Once either WaitImpl() or WaitNonBlockingImpl() has returned a nonnegative
-  // exit status, none of these methods is called again.
+  // exit code, none of these methods is called again.
 
-  // Waits for the process to finish and returns its nonnegative exit status.
+  // Waits for the process to finish and returns its nonnegative exit code.
   virtual int WaitImpl() = 0;
 
-  // Checks if the process has finished and returns its nonnegative exit status,
+  // Checks if the process has finished and returns its nonnegative exit code,
   // or -1 if the process is still running.
   virtual int WaitNonBlockingImpl() = 0;
 
@@ -117,7 +117,7 @@ class Process {
   // |arguments_array_| are overridden.
   void BuildArgumentsArray();
 
-  bool finished() const { return status_ >= 0; }
+  bool finished() const { return exit_code_ >= 0; }
 
   // Process arguments.
   std::vector<std::string> arguments_;
@@ -135,8 +135,8 @@ class Process {
   // Process ID (default to kInvalidProcessId when the process has not started).
   pid_t pid_ = kInvalidProcessId;
 
-  // Exit status. A nonnegative value indicates that the process has finished.
-  int status_ = -1;
+  // Exit code. A nonnegative value indicates that the process has finished.
+  int exit_code_ = -1;
 
   FRIEND_TEST(ProcessTest, GetArguments);
   FRIEND_TEST(ProcessTest, GetArgumentsWithNoArgumentsAdded);

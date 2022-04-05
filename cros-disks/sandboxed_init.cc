@@ -142,7 +142,7 @@ int SandboxedInit::RunInitLoop(pid_t launcher_pid, base::ScopedFD ctrl_fd) {
 
     // A child process finished.
     // Convert wait status to exit code.
-    const int exit_code = WStatusToStatus(wstatus);
+    const int exit_code = WaitStatusToExitCode(wstatus);
     DCHECK_GE(exit_code, 0);
     VLOG(1) << "Child process " << pid
             << " of the 'init' process finished with exit code" << exit_code;
@@ -187,7 +187,7 @@ pid_t SandboxedInit::StartLauncher(Launcher launcher) {
   NOTREACHED();
 }
 
-int SandboxedInit::PollLauncherStatus(base::ScopedFD* const ctrl_fd) {
+int SandboxedInit::PollLauncher(base::ScopedFD* const ctrl_fd) {
   DCHECK(ctrl_fd);
   DCHECK(ctrl_fd->is_valid());
 
@@ -227,7 +227,7 @@ int SandboxedInit::PollLauncherStatus(base::ScopedFD* const ctrl_fd) {
   return exit_code;
 }
 
-int SandboxedInit::WaitForLauncherStatus(base::ScopedFD* const ctrl_fd) {
+int SandboxedInit::WaitForLauncher(base::ScopedFD* const ctrl_fd) {
   while (true) {
     DCHECK(ctrl_fd);
     DCHECK(ctrl_fd->is_valid());
@@ -236,12 +236,12 @@ int SandboxedInit::WaitForLauncherStatus(base::ScopedFD* const ctrl_fd) {
     const int n = HANDLE_EINTR(poll(&pfd, 1, /* timeout = */ -1));
     PLOG_IF(ERROR, n < 0) << "Cannot poll control pipe " << pfd.fd;
 
-    if (const int exit_code = PollLauncherStatus(ctrl_fd); exit_code >= 0)
+    if (const int exit_code = PollLauncher(ctrl_fd); exit_code >= 0)
       return exit_code;
   }
 }
 
-int SandboxedInit::WStatusToStatus(int wstatus) {
+int SandboxedInit::WaitStatusToExitCode(int wstatus) {
   if (WIFEXITED(wstatus)) {
     return WEXITSTATUS(wstatus);
   }
