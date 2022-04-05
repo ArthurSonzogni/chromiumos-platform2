@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from enum import Enum
+import pathlib
 from typing import List
 
 import pandas as pd
@@ -49,10 +50,10 @@ class FPCBETResults:
             return self.name + '_Total'
 
     def __init__(self, report_directory):
-        self.dir = report_directory
+        self.dir = pathlib.Path(report_directory)
 
     def file_name(self, test_case: TestCase, table_type: TableType) -> str:
-        return self.dir + '/' + test_case.value + '/' + table_type.value
+        return self.dir.joinpath(test_case.value).joinpath(table_type.value)
 
     @staticmethod
     def find_blank_lines(file_name: str) -> int:
