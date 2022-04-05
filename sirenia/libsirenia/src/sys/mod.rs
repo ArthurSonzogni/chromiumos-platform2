@@ -16,7 +16,7 @@ use anyhow::Context;
 use libc::{
     self, c_int, isatty, sigfillset, sigprocmask, sigset_t, wait, ECHILD, SIG_BLOCK, SIG_UNBLOCK,
 };
-use sys_util::{self, add_fd_flags, error, PollContext, Terminal, WatchingEvents};
+use sys_util::{self, add_fd_flags, error, handle_eintr, PollContext, Terminal, WatchingEvents};
 
 pub struct ScopedRaw {}
 
@@ -202,7 +202,7 @@ pub fn write_all_blocking<W: Write + AsRawFd>(write: &mut W, buf: &[u8]) -> Resu
     let mut poll: Option<PollContext<()>> = None;
     let mut offset = 0usize;
     while offset < buf.len() {
-        match write.write(&buf[offset..]) {
+        match handle_eintr!(write.write(&buf[offset..])) {
             Ok(written) => {
                 offset += written;
             }

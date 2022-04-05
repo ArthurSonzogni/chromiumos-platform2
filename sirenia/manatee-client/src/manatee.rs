@@ -41,6 +41,7 @@ use libsirenia::{
 use log::{self, debug, error, info};
 use manatee_client::client::OrgChromiumManaTEEInterface;
 use sys_util::{
+    handle_eintr,
     vsock::{SocketAddr as VsockAddr, VsockCid},
     wait_for_interrupt, KillOnDrop,
 };
@@ -204,12 +205,12 @@ fn handle_app_fds_interactive(input: File, output: File) -> Result<()> {
 
 fn handle_app_fds(mut input: File, mut output: File) -> Result<()> {
     let output_thread_handle = spawn(move || -> Result<()> {
-        copy(&mut input, &mut stdout()).context("failed to copy to stdout")?;
+        handle_eintr!(copy(&mut input, &mut stdout())).context("failed to copy to stdout")?;
         // Once stdout is closed, stdin is invalid and it is time to exit.
         exit(0);
     });
 
-    copy(&mut stdin(), &mut output).context("failed to copy from stdin")?;
+    handle_eintr!(copy(&mut stdin(), &mut output)).context("failed to copy from stdin")?;
 
     output_thread_handle
         .join()
