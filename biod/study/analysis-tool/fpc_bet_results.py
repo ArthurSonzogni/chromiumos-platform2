@@ -24,8 +24,8 @@ class FPCBETResults:
         FAR = 'FAR_stats_4levels.txt'
         FRR = 'FRR_stats_4levels.txt'
         FA_List = 'FalseAccepts.txt'
-        FAR_Decision = 'FAR_decision.csv'
-        FRR_Decision = 'FRR_decision.csv'
+        FAR_Decision = 'FAR_decisions.csv'
+        FRR_Decision = 'FRR_decisions.csv'
 
     class SecLevel(Enum):
         '''The order of these item are in increasing security level.'''
