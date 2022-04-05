@@ -566,9 +566,13 @@ bool CrosvmDiskResize(std::string socket_path,
 
 bool UpdateCpuShares(const base::FilePath& cpu_cgroup, int cpu_shares) {
   const std::string cpu_shares_str = std::to_string(cpu_shares);
-  return base::WriteFile(cpu_cgroup.Append("cpu.shares"),
-                         cpu_shares_str.c_str(),
-                         cpu_shares_str.size()) == cpu_shares_str.size();
+  if (base::WriteFile(cpu_cgroup.Append("cpu.shares"), cpu_shares_str.c_str(),
+                      cpu_shares_str.size()) != cpu_shares_str.size()) {
+    PLOG(ERROR) << "Failed to update " << cpu_cgroup.value() << " to "
+                << cpu_shares;
+    return false;
+  }
+  return true;
 }
 
 // This will limit the tasks in the CGroup to P @percent of CPU.
