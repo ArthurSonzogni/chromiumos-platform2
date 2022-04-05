@@ -40,17 +40,6 @@ MMC_NAME_14="rel_sectors"
 MMC_NAME_15="serial"
 MMC_NAME_MAX=15
 
-UFS_DIR_NAME_0="string_descriptors"
-UFS_DIR_NAME_1="health_descriptor"
-UFS_DIR_NAME_2="device_descriptor"
-UFS_DIR_NAME_3="flags"
-UFS_DIR_NAME_4="geometry_descriptor"
-UFS_DIR_NAME_5="interconnect_descriptor"
-UFS_DIR_NAME_6="attributes"
-UFS_DIR_NAME_7="power"
-UFS_DIR_NAME_8=""
-UFS_DIR_NAME_MAX=8
-
 # exapnd_var - evaluates a variable represented by a string
 #
 # inputs:
@@ -191,41 +180,30 @@ print_nvme_info() {
 }
 
 # print_ufs_info - Print UFS device information
-#
 # inputs:
 #   device name for instance sdb.
 print_ufs_info() {
-  local dev="$1"
-  local ufs_dir
-  local ufs_name
-  local ufs_path
-  local ufs_result
-  local i
-  local file
+  # TODO(dlunev, b:219839139): deduce it instead of hardcoding.
+  local bsg_dev="/dev/bsg/ufs-bsg0"
+  local dev_node="/sys/block/${dev}/device"
 
-  ufs_dir="$(readlink -f "/sys/block/${dev}")"
+  echo "Device: /dev/$1"
+  echo "Vendor:" "$(cat "${dev_node}"/vendor)"
+  echo "Model:" "$(cat "${dev_node}"/model)"
+  echo "Firmware:" "$(cat "${dev_node}"/rev)"
+  echo ""
 
-  while true; do
-    case "$(basename "${ufs_dir}")" in
-      *ufs*)
-        break
-        ;;
-      *)
-        ufs_dir="$(dirname "${ufs_dir}")"
-        ;;
-    esac
-  done
-
-  echo "/sys/block/$1"
-  for i in $(seq 0 "${UFS_DIR_NAME_MAX}"); do
-    ufs_name=$(expand_var "UFS_DIR_NAME_${i}")
-    ufs_path="${ufs_dir}/${ufs_name}"
-    echo "${ufs_path}"
-    find "${ufs_path}" -maxdepth 1 -type f -not -name uevent \
-      -exec grep ^ {} + | cut -b"${#ufs_path}-" | \
-      cut -f2 -d"/"
-    echo ""
-  done
+  echo_run ufs-utils desc -a -p "${bsg_dev}"
+  echo_run ufs-utils attr -a -p "${bsg_dev}"
+  echo_run ufs-utils fl -a -p "${bsg_dev}"
+  echo_run ufs-utils uic -t 0 -a -p "${bsg_dev}"
+  echo_run ufs-utils uic -t 1 -a -p "${bsg_dev}"
+  echo_run ufs-utils uic -t 2 -a -p "${bsg_dev}"
+  # BUG: the commands above set error code if any field it expects is missing.
+  # Given that the tool is generic for UFS3.1 and UFS2.1, it may attempt to
+  # query UFS3 a attributes on UFS2 device. We want to ignore those partial
+  # failures.
+  echo ""
 }
 
 # get_storage_info - Print device information.
