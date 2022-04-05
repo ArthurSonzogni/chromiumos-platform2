@@ -6,10 +6,10 @@
 
 """A tool to generate simulated fingerprint study results."""
 
-# %%
 import argparse
 import pathlib
 import sys
+import time
 from typing import List, Optional
 
 import numpy as np
@@ -26,6 +26,9 @@ def GenerateFARResults(
     prob: float = 1/100000.0,
     verbose: bool = False,
 ) -> pd.DataFrame:
+
+    time_start = time.perf_counter()
+
     users = np.arange(10001, 10001+num_users)
     fingers = np.arange(num_fingers)
     samples = np.arange(num_verify_samples)
@@ -125,6 +128,10 @@ def GenerateFARResults(
                        fa_list=None)
         e.AddGroups(user_groups_tbl)
         df = e.FARDecisions()
+
+    time_end = time.perf_counter()
+    if verbose:
+        print(f'Generation took {time_end-time_start:.5}s.')
 
     # TODO: Add options to allow forcing specific anomalous users.
     # One way to do this might be to choose a few user and redraw the
