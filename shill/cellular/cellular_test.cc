@@ -565,6 +565,11 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     GetCapability3gpp()->modem_simple_proxy_ = std::move(mm1_simple_proxy_);
   }
 
+  void SetCapability3gppRegistrationState(
+      const MMModem3gppRegistrationState registration_state) {
+    GetCapability3gpp()->registration_state_ = registration_state;
+  }
+
   void Capability3gppCallOnProfilesChanged(
       const CellularCapability3gpp::Profiles& profiles) {
     GetCapability3gpp()->OnProfilesChanged(profiles);
@@ -1178,6 +1183,76 @@ TEST_P(CellularTest, Connect) {
   EXPECT_TRUE(error.IsSuccess());
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(Cellular::State::kConnected, device_->state());
+}
+
+TEST_P(CellularTest, SimSlotSwitch) {
+  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
+    return;
+  }
+
+  // Only provide a SIM in the second slot. Setup capability with all sim
+  // properties.
+  std::vector<Cellular::SimProperties> slot_properties = {
+      {0, "", "eid1", "", "", ""},
+      {1, "unknown-iccid", "", "", "", ""},
+  };
+  base::flat_map<RpcIdentifier, Cellular::SimProperties> sim_properties;
+  sim_properties[RpcIdentifier("sim_path1")] = slot_properties[0];
+  sim_properties[RpcIdentifier("sim_path2")] = slot_properties[1];
+  GetCapability3gpp()->set_sim_properties_for_testing(sim_properties);
+
+  // Simulate creation of capability and enabling the modem.
+  mm1::MockModemProxy* mm1_modem_proxy = SetModemProxyExpectations();
+  EXPECT_CALL(*mm1_modem_proxy, SetPrimarySimSlot(2u, _, _));
+  EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
+  InitCapability3gppProxies();
+  device_->SetEnabled(true);
+  device_->set_state_for_testing(Cellular::State::kModemStarted);
+  CallSetSimProperties(slot_properties, 0u);
+
+  // Call Connect on secondary slot
+  Error error;
+  device_->Connect(
+      cellular_service_provider_.FindService("unknown-iccid").get(), &error);
+  EXPECT_TRUE(error.IsSuccess());
+  dispatcher_.DispatchPendingEvents();
+
+  // Simulate MM state changes that occur when a slot switch occurs
+  device_->OnModemStateChanged(Cellular::kModemStateDisabling);
+  dispatcher_.DispatchPendingEvents();
+  device_->OnModemStateChanged(Cellular::kModemStateDisabled);
+  dispatcher_.DispatchPendingEvents();
+  device_->OnModemDestroyed();
+  // Check that existing services aren't destroyed even though the modem DBus
+  // object is
+  EXPECT_TRUE(cellular_service_provider_.FindService("unknown-iccid"));
+
+  // Simulate MM changes that occur when a new MM DBus object appears after a
+  // slot switch
+  device_->UpdateModemProperties(kDBusPath, "");
+  device_->OnModemStateChanged(Cellular::kModemStateDisabled);
+  slot_properties[1].iccid = "8900000000000000000",
+  GetCapability3gpp()->set_sim_properties_for_testing(sim_properties);
+  CallSetSimProperties(slot_properties, 1u);
+  device_->set_state_for_testing(Cellular::State::kModemStarted);
+  device_->OnModemStateChanged(Cellular::kModemStateEnabling);
+  dispatcher_.DispatchPendingEvents();
+  device_->OnModemStateChanged(Cellular::kModemStateEnabled);
+  dispatcher_.DispatchPendingEvents();
+  device_->OnModemStateChanged(Cellular::kModemStateRegistered);
+  dispatcher_.DispatchPendingEvents();
+
+  // Cellular should call Connect once MM's 3GPP interface updates it's
+  // registration state
+  SetCapability3gppRegistrationState(MM_MODEM_3GPP_REGISTRATION_STATE_HOME);
+  PopulateProxies();
+  EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _));
+  SetCapability3gppModemSimpleProxy();
+  device_->HandleNewRegistrationState();
+  constexpr base::TimeDelta kTestTimeout =
+      Cellular::kPendingConnectDelay + base::Seconds(10);
+  dispatcher_.task_environment().FastForwardBy(kTestTimeout);
 }
 
 TEST_P(CellularTest, Disconnect) {

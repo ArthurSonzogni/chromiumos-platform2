@@ -1155,13 +1155,6 @@ void Cellular::Connect(CellularService* service, Error* error) {
     return;
   }
 
-  if (scanning_) {
-    LOG(INFO) << "Cellular is scanning. Pending connect to: "
-              << service->log_name();
-    SetPendingConnect(service->iccid());
-    return;
-  }
-
   if (service->iccid() != iccid_) {
     // If the Service has a different ICCID than the current one, Disconnect
     // from the current Service if connected, switch to the correct SIM slot,
@@ -1177,6 +1170,13 @@ void Cellular::Connect(CellularService* service, Error* error) {
       NotifyCellularConnectionResult(*error, service->iccid(),
                                      service_->is_in_user_connect());
     }
+    return;
+  }
+
+  if (scanning_) {
+    LOG(INFO) << "Cellular is scanning. Pending connect to: "
+              << service->log_name();
+    SetPendingConnect(service->iccid());
     return;
   }
 
