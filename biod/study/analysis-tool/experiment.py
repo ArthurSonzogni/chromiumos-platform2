@@ -28,6 +28,11 @@ class Experiment:
         E = 4
         F = 5
 
+    class Decision(Enum):
+
+        Accept = 'ACCEPT'
+        Reject = 'REJECT'
+
     class TableCol(Enum):
 
         Enroll_User = 'EnrollUser'
