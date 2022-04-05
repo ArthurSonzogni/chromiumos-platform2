@@ -204,13 +204,13 @@ tc0_far_fa: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUDisabled,
 tc0_far_decisions: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUDisabled,
                                                 FPCBETResults.TableType.FAR_Decision)
 # display(tc0_far_fa)
-b = Experiment(num_verification=60,
+exp = Experiment(num_verification=60,
                num_fingers=6,
                num_users=72,
                far_decisions=tc0_far_decisions,
                fa_list=tc0_far_fa)
 
-b.AddGroupsFromCollectionDir(COLLECTION_DIR)
+exp.AddGroupsFromCollectionDir(COLLECTION_DIR)
 
 # user_groups = Experiment._UserGroupsFromCollectionDir(COLLECTION_DIR)
 # user_groups
@@ -224,7 +224,7 @@ This shows the number of false accepts as a function of each parameter.
 This helps to show if there is some enrollment user, verification user, finger,
 or sample that has an unusually high false acceptable rate.
 '''))
-fa_table = b.FARDecisions().loc[b.FARDecisions()['Decision'] == 'ACCEPT']
+fa_table = exp.FARDecisions().loc[exp.FARDecisions()['Decision'] == 'ACCEPT']
 fpsutils.plot_pd_hist_discrete(fa_table, title_prefix='False Accepts')
 
 
@@ -237,7 +237,7 @@ fa_set_tuple = [Experiment.TableCol.Verify_User.value,
                 Experiment.TableCol.Enroll_User.value,
                 Experiment.TableCol.Verify_Finger.value,
                 Experiment.TableCol.Verify_Sample.value]
-fa_set = fpsutils.DataFrameSetAccess(b.FAList(), fa_set_tuple)
+fa_set = fpsutils.DataFrameSetAccess(exp.FAList(), fa_set_tuple)
 
 # This naive approach take about 500ms to run one bootstrap sample, without
 # actually querying the FA table (replaced with pass).
@@ -245,15 +245,15 @@ samples = []
 for s in range(NUM_SAMPLES):
     sample = []
     # 72 users
-    for v in rng.choice(b.num_users, size=b.num_users, replace=True):
+    for v in rng.choice(exp.num_users, size=exp.num_users, replace=True):
         # print(v)
         # 71 other template users
-        for t in rng.choice(list(range(v)) + list(range(v+1, b.num_users)), size=b.num_users-1, replace=True):
+        for t in rng.choice(list(range(v)) + list(range(v+1, exp.num_users)), size=exp.num_users-1, replace=True):
             # 6 fingers
             # TODO: We need enrollment finger choice too.
-            for f in rng.choice(b.num_fingers, size=b.num_fingers, replace=True):
+            for f in rng.choice(exp.num_fingers, size=exp.num_fingers, replace=True):
                 # 60 verification samples
-                for a in rng.choice(b.num_verification, size=b.num_verification, replace=True):
+                for a in rng.choice(exp.num_verification, size=exp.num_verification, replace=True):
                     # b.FAQuery(verify_user_id=v, enroll_finger_id=t, verify_finger_id=f, verify_sample_index=a)
                     # fa = b.FAQuery(verify_user_id=v, enroll_finger_id=t, verify_finger_id=f, verify_sample_index=a)
                     # sample.append(fa.shape[0] != 0)
@@ -277,20 +277,20 @@ fa_set_tuple = [Experiment.FalseTableCol.Verify_User.value,
                 Experiment.FalseTableCol.Enroll_User.value,
                 Experiment.FalseTableCol.Verify_Finger.value,
                 Experiment.FalseTableCol.Verify_Sample.value]
-fa_set = fpsutils.DataFrameSetAccess(b.FAList(), fa_set_tuple)
+fa_set = fpsutils.DataFrameSetAccess(exp.FAList(), fa_set_tuple)
 
 # This nieve approach take about 500ms to run one bootstrap sample, without
 # actually querying the FA table (replaced with pass).
 for s in range(NUM_SAMPLES):
     sample = []
     # 72 users
-    sample_verify_users = rng.choice(b.num_users,
-                                     size=b.num_users,
+    sample_verify_users = rng.choice(exp.num_users,
+                                     size=exp.num_users,
                                      replace=True)
-    sample_verify_users = np.repeat(sample_verify_users, b.num_users-1)
+    sample_verify_users = np.repeat(sample_verify_users, exp.num_users-1)
     # against 71 other template users
-    sample_enroll_users = rng.choice(b.num_users-1,
-                                     size=b.num_users*(b.num_users-1),
+    sample_enroll_users = rng.choice(exp.num_users-1,
+                                     size=exp.num_users*(exp.num_users-1),
                                      replace=True)
     sample_users = np.stack((sample_verify_users, sample_enroll_users), axis=1)
 
