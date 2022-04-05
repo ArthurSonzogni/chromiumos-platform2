@@ -120,6 +120,7 @@ nosystemconfig
 usepeerdns
 lcp-echo-failure 4
 lcp-echo-interval 30
+logfd -1
 )";
 
 // The expected contents of l2tpd.conf excluding the line for "pppoptfile" which

@@ -219,6 +219,14 @@ bool L2TPConnection::WritePPPDConfig() {
     lines.push_back("lcp-echo-interval 30");
   }
 
+  // This option avoids pppd logging to the fd of stdout (which is 1) (note that
+  // pppd will still log to syslog). We need to put this option before the
+  // plugin option below, since pppd will try to log when process that option,
+  // and fd of 1 may point to the actual data channel, which in turn causes that
+  // pppd sends the log string to the peer (see b/218437737 for an issue caused
+  // by this).
+  lines.push_back("logfd -1");
+
   lines.push_back(base::StrCat({"plugin ", PPPDaemon::kShimPluginPath}));
 
   std::string contents = base::JoinString(lines, "\n");
