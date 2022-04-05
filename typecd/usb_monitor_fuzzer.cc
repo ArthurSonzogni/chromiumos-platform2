@@ -68,6 +68,30 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
              0);
   }
 
+  // USB device may or may not have speed information.
+  if (data_provider.ConsumeBool()) {
+    auto speed = data_provider.ConsumeRandomLengthString();
+    CHECK_GE(
+        base::WriteFile(path.Append("speed"), speed.c_str(), speed.length()),
+        0);
+  }
+
+  // USB device may or may not have version (bcdUSB) information.
+  if (data_provider.ConsumeBool()) {
+    auto version = data_provider.ConsumeRandomLengthString();
+    CHECK_GE(base::WriteFile(path.Append("version"), version.c_str(),
+                             version.length()),
+             0);
+  }
+
+  // USB device may or may not have device class information.
+  if (data_provider.ConsumeBool()) {
+    auto device_class = data_provider.ConsumeRandomLengthString();
+    CHECK_GE(base::WriteFile(path.Append("bDeviceClass"), device_class.c_str(),
+                             device_class.length()),
+             0);
+  }
+
   fuzzer.OnDeviceAddedOrRemoved(path, data_provider.ConsumeBool());
 
   return 0;
