@@ -284,16 +284,19 @@ message PowerManagementPolicy {
   // Unused unless Adaptive Charging is enabled.
   optional int32 adaptive_charging_hold_percent = 28;
 
-  // The minimum confidence according to our prediction model for the charger
-  // being connected to hold off on charging while at
-  // |adaptive_charging_hold_percent|. This is used for evaluating the output of
-  // the ML model, which are 8 values in the range [0.0, 1.0]. Each value
-  // represents the model's confidence that the system will continue to be
-  // plugged in for the corresponding hour. For example, changing this value
-  // from 0.5 to 0.3 will make Adaptive Charging more aggressive in predicting
-  // that the system will continue to be plugged in.
+  // The minimum probability required from the prediction model to delay
+  // charging due to the Adaptive Charging feature. The ML model produces 9
+  // values in the range [0.0, 1.0] (sum of 1.0). The first 8 values represent
+  // the probability that the charger will be disconnected for the associated
+  // hour. The last value represents the probability that the charger will be
+  // unplugged more than 8 hours from now. If no value is higher than
+  // |adaptive_charging_min_probability|, we assume that the model does not have
+  // enough confidence in any prediction, so we don't delay charging. The
+  // highest probability is taken as the prediction for when the charger will be
+  // unplugged, and Adaptive Charging will attempt to fully charge the battery
+  // by then.
   // Unused unless Adaptive Charging is enabled.
-  optional double adaptive_charging_min_confidence = 29;
+  optional double adaptive_charging_min_probability = 29;
 
   // Next value to use: 30
 }
