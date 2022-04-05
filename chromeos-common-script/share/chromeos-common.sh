@@ -176,6 +176,7 @@ get_device_type() {
   local dev
   local vdr
   local type_file
+  local dev_node
   # True device path of a NVMe device is just a simple PCI device.
   # (there are no other buses),
   # Use the device name to identify the type precisely.
@@ -187,6 +188,7 @@ get_device_type() {
       ;;
   esac
 
+  dev_node="/sys/block/${dev}/device"
   type_file="/sys/block/${dev}/device/type"
   # To detect device managed by the MMC stack
   case $(readlink -f "${type_file}") in
@@ -199,9 +201,9 @@ get_device_type() {
       echo "USB"
       ;;
     *ufs*)
-        # Check if it is a UFS device.
-        echo "UFS"
-        ;;
+      # Check if it is UFS device on Platform bus.
+      echo "UFS"
+      ;;
     *target*)
       # Other SCSI devices.
       # Check if it is an ATA device.
@@ -209,7 +211,18 @@ get_device_type() {
       if [ "${vdr%% *}" = "ATA" ]; then
         echo "ATA"
       else
-        echo "OTHER"
+        # Check if it is UFS device on PCIe bus. The dev node points to the
+        # /sys/devices and '..' on a link will get parents of the target. We
+        # aim to find the driver node of a SCSI device, which should point to
+        # ufshcd driver.
+        case $(readlink -f "${dev_node}/../../../driver") in
+          */ufshcd)
+            echo "UFS"
+            ;;
+          *)
+            echo "OTHER"
+            ;;
+        esac
       fi
       ;;
     *)
