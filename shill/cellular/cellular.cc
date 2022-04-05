@@ -389,7 +389,7 @@ void Cellular::StopStep(Error* error,
         return;
       }
       stop_step_ = StopSteps::kModemStopped;
-      FALLTHROUGH;
+      [[fallthrough]];
 
     case StopSteps::kModemStopped:
       SetState(State::kDisabled);
