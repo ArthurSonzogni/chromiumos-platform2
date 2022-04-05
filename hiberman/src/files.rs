@@ -5,16 +5,19 @@
 //! High level support for creating and opening the files used by hibernate.
 
 use std::convert::TryInto;
+use std::fs;
 use std::fs::{create_dir, File, OpenOptions};
+use std::io::{Seek, SeekFrom, Write};
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use log::{debug, info};
+use log::debug;
 
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::hiberlog::HiberlogFile;
 use crate::hiberutil::{get_page_size, get_total_memory_pages, HibernateError};
+use crate::mmapbuf::MmapBuffer;
 use crate::splitter::HIBER_HEADER_MAX_SIZE;
 
 /// Define the directory where hibernate state files are kept.
@@ -45,33 +48,30 @@ pub fn create_hibernate_dir() -> Result<()> {
 }
 
 /// Preallocates the metadata file and opens it for I/O.
-pub fn preallocate_metadata_file() -> Result<BouncedDiskFile> {
+pub fn preallocate_metadata_file(zero_out: bool) -> Result<BouncedDiskFile> {
     let metadata_path = Path::new(HIBERNATE_DIR).join(HIBER_META_NAME);
-    let mut meta_file = preallocate_file(&metadata_path, HIBER_META_SIZE)?;
-    BouncedDiskFile::new(&mut meta_file, None)
+    preallocate_bounced_disk_file(&metadata_path, HIBER_META_SIZE, zero_out)
 }
 
 /// Preallocate and open the suspend or resume log file.
-pub fn preallocate_log_file(log_file: HiberlogFile) -> Result<BouncedDiskFile> {
+pub fn preallocate_log_file(log_file: HiberlogFile, zero_out: bool) -> Result<BouncedDiskFile> {
     let name = match log_file {
         HiberlogFile::Suspend => SUSPEND_LOG_FILE_NAME,
         HiberlogFile::Resume => RESUME_LOG_FILE_NAME,
     };
 
     let log_file_path = Path::new(HIBERNATE_DIR).join(name);
-    let mut log_file = preallocate_file(&log_file_path, HIBER_LOG_SIZE)?;
-    BouncedDiskFile::new(&mut log_file, None)
+    preallocate_bounced_disk_file(log_file_path, HIBER_LOG_SIZE, zero_out)
 }
 
 /// Preallocate the header pages file.
-pub fn preallocate_header_file() -> Result<DiskFile> {
+pub fn preallocate_header_file(zero_out: bool) -> Result<DiskFile> {
     let path = Path::new(HIBERNATE_DIR).join(HIBER_HEADER_NAME);
-    let mut file = preallocate_file(&path, HIBER_HEADER_MAX_SIZE)?;
-    DiskFile::new(&mut file, None)
+    preallocate_disk_file(path, HIBER_HEADER_MAX_SIZE, zero_out)
 }
 
 /// Preallocate the hibernate image file.
-pub fn preallocate_hiberfile() -> Result<DiskFile> {
+pub fn preallocate_hiberfile(zero_out: bool) -> Result<DiskFile> {
     let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
 
     // The maximum size of the hiberfile is half of memory, plus a little
@@ -86,9 +86,8 @@ pub fn preallocate_hiberfile() -> Result<DiskFile> {
     );
 
     let hiber_size = (hiberfile_mb as i64) * 1024 * 1024;
-    let mut hiber_file = preallocate_file(&hiberfile_path, hiber_size)?;
-    info!("Successfully preallocated {} MB hiberfile", hiberfile_mb);
-    DiskFile::new(&mut hiber_file, None)
+    let hiber_file = preallocate_disk_file(hiberfile_path, hiber_size, zero_out)?;
+    Ok(hiber_file)
 }
 
 /// Open a pre-existing disk file with bounce buffer,
@@ -112,6 +111,12 @@ pub fn open_header_file() -> Result<DiskFile> {
 pub fn open_hiberfile() -> Result<DiskFile> {
     let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
     open_disk_file(&hiberfile_path)
+}
+
+/// Helper function to determine if the hiberfile already exists.
+pub fn does_hiberfile_exist() -> bool {
+    let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
+    fs::metadata(hiberfile_path).is_ok()
 }
 
 /// Open a pre-existing hiberfile, still with read and write permissions.
@@ -140,6 +145,46 @@ fn get_total_memory_mb() -> u32 {
     debug!("Pagesize {} pagecount {}", pagesize, pagecount);
     let mb = pagecount * pagesize / (1024 * 1024);
     mb.try_into().unwrap_or(u32::MAX)
+}
+
+/// Helper function used to preallocate and possibly initialize a DiskFile.
+fn preallocate_disk_file<P: AsRef<Path>>(path: P, size: i64, zero_out: bool) -> Result<DiskFile> {
+    let mut fs_file = preallocate_file(path, size)?;
+    let mut disk_file = DiskFile::new(&mut fs_file, None)?;
+    if zero_out {
+        zero_disk_file(&mut disk_file, size)?;
+    }
+
+    Ok(disk_file)
+}
+
+/// Helper function used to preallocate and possibly initialize a BouncedDiskFile.
+fn preallocate_bounced_disk_file<P: AsRef<Path>>(
+    path: P,
+    size: i64,
+    zero_out: bool,
+) -> Result<BouncedDiskFile> {
+    let mut fs_file = preallocate_file(path, size)?;
+    if zero_out {
+        let mut disk_file = DiskFile::new(&mut fs_file, None)?;
+        zero_disk_file(&mut disk_file, size)?;
+    }
+
+    BouncedDiskFile::new(&mut fs_file, None)
+}
+
+/// Write zeroes to the given DiskFile for a size, then seek back to 0.
+fn zero_disk_file(disk_file: &mut DiskFile, mut size: i64) -> Result<()> {
+    // MmapBuffers come zeroed.
+    let buf = MmapBuffer::new(1024 * 64)?;
+    while size != 0 {
+        let this_size: usize = (std::cmp::min(size, buf.len() as i64)) as usize;
+        disk_file.write_all(&buf.u8_slice()[..this_size])?;
+        size -= this_size as i64;
+    }
+
+    disk_file.seek(SeekFrom::Start(0))?;
+    Ok(())
 }
 
 /// Helper function used to preallocate space on a file using the fallocate64()

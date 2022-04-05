@@ -9,10 +9,13 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::process::Command;
+use std::str;
 
 use anyhow::{Context, Result};
 use log::{error, info, warn};
 use thiserror::Error as ThisError;
+
+use crate::mmapbuf::MmapBuffer;
 
 /// Define the number of pages in a larger chunk used to read and write the
 /// hibernate data file.
@@ -155,6 +158,24 @@ pub fn path_to_stateful_part() -> Result<String> {
     Ok(format!("/dev/{}/unencrypted", vg_name))
 }
 
+/// Helper function to determine if this is a system where the stateful
+/// partition is running on top of LVM.
+pub fn is_lvm_system() -> Result<bool> {
+    let partition1 = stateful_block_partition_one()?;
+    let mut file = File::open(&partition1)?;
+    let mut buffer = MmapBuffer::new(4096)?;
+    let buf = buffer.u8_slice_mut();
+    file.read_exact(buf)
+        .context(format!("Failed to read {}", partition1))?;
+    // LVM systems have a Physical Volume Label header that starts with
+    // "LABELONE" as its magic. If that's found, this is an LVM system.
+    // https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/4/html/cluster_logical_volume_manager/lvm_metadata
+    match str::from_utf8(&buf[512..520]) {
+        Ok(l) => Ok(l == "LABELONE"),
+        Err(_) => Ok(false),
+    }
+}
+
 /// Look through /proc/mounts to find the block device supporting the
 /// unencrypted stateful partition.
 fn path_to_mounted_stateful_part() -> Result<String> {
@@ -223,7 +244,7 @@ pub struct ActivatedVolumeGroup {
 impl ActivatedVolumeGroup {
     fn new(vg_name: String) -> Result<Self> {
         // If it already exists, don't reactivate it.
-        if fs::metadata(format!("/dev/{}", vg_name)).is_ok() {
+        if fs::metadata(format!("/dev/{}/unencrypted", vg_name)).is_ok() {
             return Ok(Self { vg_name: None });
         }
 

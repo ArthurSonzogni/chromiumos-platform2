@@ -140,13 +140,14 @@ impl DiskFile {
         let blockdev = match block_file {
             None => {
                 let blockdev_path = path_to_stateful_part()?;
-                debug!("Found hibernate block device: {}", blockdev_path);
                 OpenOptions::new()
                     .read(true)
                     .write(true)
                     .custom_flags(libc::O_DIRECT)
                     .open(&blockdev_path)
-                    .context("Failed to open disk file block device")?
+                    .with_context(|| {
+                        format!("Failed to open disk file block device: {}", blockdev_path)
+                    })?
             }
             Some(f) => f,
         };

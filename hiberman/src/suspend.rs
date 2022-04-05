@@ -6,6 +6,7 @@
 
 use std::ffi::CString;
 use std::mem::MaybeUninit;
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 use log::{debug, error, info};
@@ -15,13 +16,15 @@ use crate::cookie::set_hibernate_cookie;
 use crate::crypto::{CryptoMode, CryptoWriter};
 use crate::diskfile::{BouncedDiskFile, DiskFile};
 use crate::files::{
-    create_hibernate_dir, preallocate_header_file, preallocate_hiberfile, preallocate_log_file,
-    preallocate_metadata_file, HIBERNATE_DIR,
+    create_hibernate_dir, does_hiberfile_exist, preallocate_header_file, preallocate_hiberfile,
+    preallocate_log_file, preallocate_metadata_file, HIBERNATE_DIR,
 };
 use crate::hiberlog::{flush_log, redirect_log, replay_logs, reset_log, HiberlogFile, HiberlogOut};
 use crate::hibermeta::{HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_VALID, META_TAG_SIZE};
 use crate::hiberutil::HibernateOptions;
-use crate::hiberutil::{get_page_size, lock_process_memory, path_to_stateful_block, BUFFER_PAGES};
+use crate::hiberutil::{
+    get_page_size, is_lvm_system, lock_process_memory, path_to_stateful_block, BUFFER_PAGES,
+};
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
 use crate::snapdev::{FrozenUserspaceTicket, SnapshotDevice, SnapshotMode};
@@ -55,16 +58,29 @@ impl SuspendConductor {
     /// hibernation.
     pub fn hibernate(&mut self, options: HibernateOptions) -> Result<()> {
         info!("Beginning hibernate");
+        let start = Instant::now();
         create_hibernate_dir()?;
-        let header_file = preallocate_header_file()?;
-        let hiber_file = preallocate_hiberfile()?;
-        let meta_file = preallocate_metadata_file()?;
-        self.options = options;
+        let is_lvm = is_lvm_system()?;
+        let files_exist = does_hiberfile_exist();
+        let should_zero = is_lvm && !files_exist;
+        let header_file = preallocate_header_file(should_zero)?;
+        let hiber_file = preallocate_hiberfile(should_zero)?;
+        let meta_file = preallocate_metadata_file(should_zero)?;
 
         // The resume log file needs to be preallocated now before the
         // snapshot is taken, though it's not used here.
-        preallocate_log_file(HiberlogFile::Resume)?;
-        let mut log_file = preallocate_log_file(HiberlogFile::Suspend)?;
+        preallocate_log_file(HiberlogFile::Resume, should_zero)?;
+        let mut log_file = preallocate_log_file(HiberlogFile::Suspend, should_zero)?;
+        let duration = start.elapsed();
+        info!(
+            "Set up {}hibernate files on {}LVM system in {}.{:03} seconds",
+            if files_exist { "" } else { "new " },
+            if is_lvm { "" } else { "non-" },
+            duration.as_secs(),
+            duration.subsec_millis()
+        );
+
+        self.options = options;
         // Don't allow the logfile to log as it creates a deadlock.
         log_file.set_logging(false);
         let fs_stats = Self::get_fs_stats()?;
