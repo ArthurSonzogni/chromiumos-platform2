@@ -140,9 +140,14 @@ int passthrough_create(const char* path,
   if (check_allowed_result < 0) {
     return check_allowed_result;
   }
+
+  const bool force_group_permission =
+      static_cast<FusePrivateData*>(fuse_get_context()->private_data)
+          ->force_group_permission;
+
   // Ignore specified |mode| and always use a fixed mode since we do not allow
-  // chmod anyway. Note that we explicitly set the umask to 0022 in main().
-  int fd = open(path, fi->flags, 0644);
+  // chmod anyway. Note that we explicitly set the umask in main().
+  int fd = open(path, fi->flags, force_group_permission ? 0664 : 0644);
   if (fd < 0) {
     return -errno;
   }
