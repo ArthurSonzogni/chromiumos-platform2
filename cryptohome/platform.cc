@@ -91,6 +91,8 @@ namespace {
 
 // Log sync(), fsync(), etc. calls that take this many seconds or longer.
 const base::TimeDelta kLongSync = base::Seconds(10);
+// Hibernation stateful device: keep in sync with chromeos_startup.sh.
+constexpr char kStatefulHibernationDevice[] = "/dev/mapper/stateful-rw";
 
 class ScopedPath {
  public:
@@ -817,6 +819,11 @@ bool Platform::UdevAdmSettle(const base::FilePath& device_path,
 }
 
 base::FilePath Platform::GetStatefulDevice() {
+  // Check if the stateful hibernation dm-snapshot device is active and use it.
+  base::FilePath stateful_hibernation_device(kStatefulHibernationDevice);
+  if (FileExists(stateful_hibernation_device))
+    return stateful_hibernation_device;
+
   char root_device[PATH_MAX];
   int ret = rootdev(root_device, sizeof(root_device),
                     true,   // Do full resolution.
