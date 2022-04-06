@@ -296,7 +296,8 @@ void L2TPConnection::StartXl2tpd() {
 
   std::vector<std::string> args = {
       "-c", l2tpd_config_path_.value(), "-C", l2tpd_control_path.value(),
-      "-D"  // prevents xl2tpd from detaching from the terminal and daemonizing
+      "-D",  // prevents xl2tpd from detaching from the terminal and daemonizing
+      "-l",  // lets xl2tpd use syslog
   };
 
   std::map<std::string, std::string> env = {

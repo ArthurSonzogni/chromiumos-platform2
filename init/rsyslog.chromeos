@@ -46,7 +46,8 @@ if (($programname == 'charon') or \
     ($programname == 'pppd') or \
     ($programname == 'pseudomodem') or \
     ($programname == 'shill') or \
-    ($programname == 'wpa_supplicant')) then -/var/log/net.log
+    ($programname == 'wpa_supplicant') or \
+    ($programname == 'xl2tpd')) then -/var/log/net.log
 
 # Log important (EMERG..ERR) network stuff in /var/log/messages too,
 # but discard anything less severe
@@ -64,7 +65,8 @@ if (($programname == 'charon') or \
     ($programname == 'pppd') or \
     ($programname == 'pseudomodem') or \
     ($programname == 'shill') or \
-    ($programname == 'wpa_supplicant')) and $syslogseverity >= '4' then stop
+    ($programname == 'wpa_supplicant') or \
+    ($programname == 'xl2tpd')) and $syslogseverity >= '4' then stop
 
 # Keep all bluetooth logs in /var/log/bluetooth.log
 if $programname == 'bluetoothd' then -/var/log/bluetooth.log
