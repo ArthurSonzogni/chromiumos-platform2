@@ -20,10 +20,11 @@ class Test_boot_sample(unittest.TestCase):
 
         print('# Running benchmarks for boot_sample')
 
-        # Test the performance of boot_sampl.
+        # Test the performance of boot_sample.
         rng = np.random.default_rng()
         vals = rng.integers(1000000, size=100)
-        # We would expect the first two tests to have similar execultion performance.
+        # We would expect the first two tests to have similar runtime
+        # performance.
         vars = {**locals(), **globals()}
         fpsutils.autorange('fpsutils.boot_sample(vals, rng=rng)',
                            globals=vars)
@@ -33,39 +34,99 @@ class Test_boot_sample(unittest.TestCase):
                            globals=vars)
 
 
+class Test_boot_sample_range(unittest.TestCase):
+    def test_benchmark(self):
+        # self.assertEqual(inc_dec.increment(3), 4)
+
+        print('# Running benchmarks for boot_sample_range')
+
+        # Test the performance of boot_sample_range.
+        rng = np.random.default_rng()
+        # These are equivalent calls and should be extremely close in runtime.
+        fpsutils.autorange(
+            'fpsutils.boot_sample_range(100, rng=rng)',
+            globals={**locals(), **globals()})
+        fpsutils.autorange('rng.choice(100, size=100)',
+                           globals={**locals(), **globals()})
+
+
+def generate_fake_decision_table() -> pd.DataFrame:
+    return pd.DataFrame({
+        # Column : Aligned Row Values
+        'A': np.arange(600),
+        'B': np.arange(600),
+        'C': np.arange(600),
+        'D': np.arange(600),
+        # Simulated False Accept when True. Odd number is True.
+        'E': [False, True]*300,
+    })
+
+
 class Test_DataFrameSetAccess(unittest.TestCase):
     def test_benchmark(self):
-        df = pd.DataFrame({
-            # Column : Aligned Row Values
-            'A': np.arange(600),
-            'B': np.arange(600),
-            'C': np.arange(600),
-            'D': np.arange(600),
-            'E': [False]*300 + [True]*300,  # Simulated False Accept when True.
-        })
-        print(df)
-
+        df = generate_fake_decision_table()
         # Select the True rows and save only the columns A through B.
         # This equates to all number 300 through 599.
         fa_table = df.loc[df['E'] == True][['A', 'B', 'C', 'D']]
-        # print(fa_table)
         s = fpsutils.DataFrameSetAccess(fa_table)
+
+        # Not in set
+        self.assertFalse(s.isin((0, 0, 0, 0)))
         fpsutils.autorange('s.isin((0, 0, 0, 0))',
-                           globals={**locals(), **globals()})  # Not in set
-        fpsutils.autorange('s.isin((400, 400, 400, 400))',
-                           globals={**locals(), **globals()})  # In set
-
-        # print((400, 400, 400, 400, True) in df.values)
-        fpsutils.autorange('(400, 400, 400, 400, True) in df.values',
-                           globals={**locals(), **globals()})
-        fpsutils.autorange('(400, 400, 400, 400, True) in df.values',
                            globals={**locals(), **globals()})
 
-        df = df.set_index(['A', 'B', 'C', 'D', 'E'])
-        # print((400, 400, 400, 400, True) in df.values)
-        fpsutils.autorange('(400, 400, 400, 400, True) in df.values',
+        # In set
+        self.assertTrue(s.isin((501, 501, 501, 501)))
+        fpsutils.autorange('s.isin((501, 501, 501, 501))',
                            globals={**locals(), **globals()})
-        fpsutils.autorange('(400, 400, 400, 400, True) in df.values',
+
+        print('# Try the alternative scheme of querying the DataFrame directly.')
+        # print((df == [501, 501, 501, 501, True]).all(axis=1).any())
+        self.assertTrue((df == [501, 501, 501, 501, True]).all(axis=1).any())
+        fpsutils.autorange('(df == (501, 501, 501, 501, True)).all(axis=1).any()',
+                           globals={**locals(), **globals()})
+        # This is faster, but deprecated.
+        # self.assertTrue((501, 501, 501, 501, True) in df.values)
+        # fpsutils.autorange('(501, 501, 501, 501, True) in df.values',
+        #                    globals={**locals(), **globals()})
+
+        # print('# Try querying after we set all columns as indicies.')
+        # df = df.set_index(['A', 'B', 'C', 'D', 'E'])
+        # I can't seem to get this to work.
+        # print(df.isin((501, 501, 501, 501, True)).all(axis=1).any())
+        # self.assertTrue((501, 501, 501, 501, True) in df.values)
+        # print((501, 501, 501, 501, True) in df.values)
+        # fpsutils.autorange('(501, 501, 501, 501, True) in df.values',
+        #                    globals={**locals(), **globals()})
+        # fpsutils.autorange('df.isin((501, 501, 501, 501, True)).all(axis=1).any()',
+        #                    globals={**locals(), **globals()})
+        # fpsutils.autorange('(df == (501, 501, 501, 501, True)).all(axis=1).any()',
+        #                    globals={**locals(), **globals()})
+
+
+class Test_DataFrameCountTrieAccess(unittest.TestCase):
+    def test_benchmark(self):
+        df = generate_fake_decision_table()
+        # Select the True rows and save only the columns A through B.
+        # This equates to all number 300 through 599.
+        fa_table = df.loc[df['E'] == True][['A', 'B', 'C', 'D']]
+        s = fpsutils.DataFrameCountTrieAccess(fa_table)
+
+        # Not in set
+        self.assertFalse(s.isin((0, 0, 0, 0)))
+        fpsutils.autorange('s.isin((0, 0, 0, 0))',
+                           globals={**locals(), **globals()})
+
+        # In set
+        self.assertTrue(s.isin((501, 501, 501, 501)))
+        fpsutils.autorange('s.isin((501, 501, 501, 501))',
+                           globals={**locals(), **globals()})
+        self.assertGreater(s.counts(()), 1)
+        self.assertEqual(s.counts((501,)), 1)
+        self.assertEqual(s.counts((501, 501)), 1)
+        self.assertEqual(s.counts((501, 501, 501)), 1)
+        self.assertEqual(s.counts((501, 501, 501, 501)), 1)
+        fpsutils.autorange('s.isin((501, 501, 501, 501))',
                            globals={**locals(), **globals()})
 
 
