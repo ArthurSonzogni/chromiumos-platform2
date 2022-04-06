@@ -131,6 +131,7 @@ static_library("libmessaging_layer") {
   deps = [
     ":missive_dbus_adaptors",
     ":missive_dbus_proxies",
+    "//missive/analytics:libanalytics",
     "//missive/dbus:upload_client",
     "//missive/encryption:encryption_module",
     "//missive/encryption:verification",
@@ -199,6 +200,7 @@ if (use.test) {
     deps = [
       ":libmessaging_layer",
       "//common-mk/testrunner",
+      "//missive/analytics:unit_tests",
       "//missive/client:client_test_support",
       "//missive/compression:compression_module",
       "//missive/compression:compression_test_support",

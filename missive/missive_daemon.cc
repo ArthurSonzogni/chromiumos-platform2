@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "missive/compression/compression_module.h"

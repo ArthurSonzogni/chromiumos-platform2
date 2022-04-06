@@ -1,0 +1,33 @@
+# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD - style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libchrome",
+    "libmetrics",
+  ]
+}
+
+static_library("libanalytics") {
+  sources = [
+    "registry.cc",
+    "registry.h",
+    "resource_collector.cc",
+    "resource_collector.h",
+  ]
+  configs += [ ":target_defaults" ]
+}
+
+source_set("unit_tests") {
+  sources = [
+    "registry_test.cc",
+    "resource_collector_mock.cc",
+    "resource_collector_mock.h",
+    "resource_collector_test.cc",
+  ]
+  deps = [ ":libanalytics" ]
+  configs += [ ":target_defaults" ]
+}
