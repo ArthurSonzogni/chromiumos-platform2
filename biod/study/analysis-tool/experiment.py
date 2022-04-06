@@ -196,6 +196,13 @@ class Experiment:
         self.tbl_far_decisions = far_decisions
         self.tbl_fa_list = fa_list
 
+    def Describe(self):
+        print('Users:', self.num_users)
+        print('Fingers:', self.num_fingers)
+        print('Verification Samples:', self.num_verification)
+        print(self.FARDecisions().describe())
+        print(self.FAList().describe())
+
     def FAList(self) -> pd.DataFrame:
         """Return a FAR table that only contains the False Acceptances."""
         if self.tbl_fa_list is None:
