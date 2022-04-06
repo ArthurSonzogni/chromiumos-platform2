@@ -25,7 +25,7 @@ namespace hermes {
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  Daemon();
+  explicit Daemon(bool enable_wwan0mbim0);
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
@@ -44,6 +44,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   AdaptorFactory adaptor_factory_;
   std::unique_ptr<Manager> manager_;
   std::unique_ptr<glib_bridge::GlibBridge> glib_bridge_;
+  bool enable_wwan0mbim0_;
 };
 
 }  // namespace hermes

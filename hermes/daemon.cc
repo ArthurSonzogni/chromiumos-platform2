@@ -23,23 +23,26 @@
 #endif
 
 namespace hermes {
-Daemon::Daemon()
+Daemon::Daemon(bool enable_wwan0mbim0)
     : DBusServiceDaemon(kHermesServiceName),
       executor_(base::ThreadTaskRunnerHandle::Get()),
       smdp_(&logger_, &executor_),
-      glib_bridge_(std::make_unique<glib_bridge::GlibBridge>()) {
+      glib_bridge_(std::make_unique<glib_bridge::GlibBridge>()),
+      enable_wwan0mbim0_(enable_wwan0mbim0) {
   glib_bridge::ForwardLogs();
 }
 
 void Daemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   auto modem_manager_proxy = std::make_unique<ModemManagerProxy>(bus_);
+
+  VLOG(2) << __func__ << ": enable_wwan0mbim0_=" << enable_wwan0mbim0_;
 #if USE_QRTR
   modem_ = ModemQrtr::Create(std::make_unique<SocketQrtr>(), &logger_,
                              &executor_, std::move(modem_manager_proxy));
 #else
-  modem_ =
-      ModemMbim::Create(&logger_, &executor_, std::move(modem_manager_proxy));
+  modem_ = ModemMbim::Create(
+      &logger_, &executor_, std::move(modem_manager_proxy), enable_wwan0mbim0_);
 #endif
 
   lpa::core::Lpa::Builder b;
