@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-from enum import Enum
 import glob
 import pathlib
-from typing import Optional
+from enum import Enum
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -187,6 +187,7 @@ class Experiment:
                  num_users: int,
                  far_decisions: Optional[pd.DataFrame] = None,
                  fa_list: Optional[pd.DataFrame] = None):
+        """Initialize a new experiment."""
 
         # self.num_enrollment = num_enrollment
         self.num_verification = num_verification
