@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 mod common;
+mod config;
 mod dbus;
 mod gpu_freq_scaling;
 mod memory;

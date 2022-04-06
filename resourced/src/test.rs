@@ -2,12 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
+use anyhow::Result;
+
 use crate::common::{parse_file_to_u64, set_epp};
+use crate::config;
+use crate::config::ConfigProvider;
+
 use crate::memory::{
     calculate_available_memory_kb, calculate_reserved_free_kb, parse_margins, parse_meminfo,
     parse_psi_memory, total_mem_to_margins_bps, MemInfo,
@@ -15,7 +21,7 @@ use crate::memory::{
 
 use crate::gpu_freq_scaling::amd_device::AmdDeviceConfig;
 use crate::gpu_freq_scaling::{evaluate_gpu_frequency, init_gpu_params, init_gpu_scaling_thread};
-use tempfile::TempDir;
+use tempfile::{tempdir, TempDir};
 
 #[test]
 fn test_parse_file_to_u64() {
@@ -376,4 +382,115 @@ fn test_gpu_thread_on_off() {
     thread::sleep(Duration::from_millis(500));
 
     println!("gpu thread exit gracefully");
+}
+
+#[test]
+fn test_config_provider_empty_root() -> Result<()> {
+    let root = tempdir()?;
+    let provider = config::DirectoryConfigProvider {
+        root: root.path().to_str().unwrap(),
+    };
+
+    let preference = provider.read_power_preferences(
+        config::PowerSourceType::AC,
+        config::PowerPreferencesType::Default,
+    )?;
+
+    assert!(preference.is_none());
+
+    let preference = provider.read_power_preferences(
+        config::PowerSourceType::DC,
+        config::PowerPreferencesType::Default,
+    )?;
+
+    assert!(preference.is_none());
+
+    Ok(())
+}
+
+#[test]
+fn test_config_provider_empty_dir() -> Result<()> {
+    let root = tempdir()?;
+    let path = root.path().join(config::RESOURCED_CONFIG_PATH);
+    fs::create_dir_all(path).unwrap();
+
+    let provider = config::DirectoryConfigProvider {
+        root: root.path().to_str().unwrap(),
+    };
+
+    let preference = provider.read_power_preferences(
+        config::PowerSourceType::AC,
+        config::PowerPreferencesType::Default,
+    )?;
+
+    assert!(preference.is_none());
+
+    let preference = provider.read_power_preferences(
+        config::PowerSourceType::DC,
+        config::PowerPreferencesType::Default,
+    )?;
+
+    assert!(preference.is_none());
+
+    Ok(())
+}
+
+#[test]
+fn test_config_provider_ondemand_all_types() -> Result<()> {
+    let power_source_params = [
+        (config::PowerSourceType::AC, "ac"),
+        (config::PowerSourceType::DC, "dc"),
+    ];
+
+    let preference_params = [
+        (
+            config::PowerPreferencesType::Default,
+            "default-power-preferences",
+        ),
+        (
+            config::PowerPreferencesType::WebRTC,
+            "web-rtc-power-preferences",
+        ),
+        (
+            config::PowerPreferencesType::Fullscreen,
+            "fullscreen-power-preferences",
+        ),
+        (
+            config::PowerPreferencesType::Gaming,
+            "gaming-power-preferences",
+        ),
+    ];
+
+    for (power_source, power_source_path) in power_source_params {
+        for (preference, preference_path) in preference_params {
+            let root = tempdir()?;
+            let ondemand_path = root
+                .path()
+                .join(config::RESOURCED_CONFIG_PATH)
+                .join(power_source_path)
+                .join(preference_path)
+                .join("governor")
+                .join("ondemand");
+            fs::create_dir_all(&ondemand_path)?;
+
+            let powersave_bias_path = ondemand_path.join("powersave-bias");
+            fs::write(&powersave_bias_path, b"340")?;
+
+            let provider = config::DirectoryConfigProvider {
+                root: root.path().to_str().unwrap(),
+            };
+
+            let actual = provider.read_power_preferences(power_source, preference)?;
+
+            let expected = config::PowerPreferences {
+                governor: Some(config::Governor::OndemandGovernor {
+                    powersave_bias: 340,
+                }),
+            };
+
+            assert_eq!(expected, actual.unwrap());
+        }
+    }
+
+    Ok(())
 }

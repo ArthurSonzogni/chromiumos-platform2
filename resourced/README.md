@@ -9,6 +9,19 @@ Check go/resourced for details.
     *   Method GetMemoryMarginsKB - returns the margin (threshold) for critical
         and moderate memory pressure.
 
+## ChromeOS Config
+
+The following chromeos-config values are supported:
+
+ * resource/
+ *   * {ac,dc}
+ *     * web-rtc-power-preferences/governor/
+ *       * ondemand/
+ *         * powersave-bias
+ *     * fullscreen-power-preferences/governor/..
+ *     * gaming-power-preferences/governor/..
+ *     * default-power-preferences/governor/..
+
 ## Debugging
 
 You can use the following to call the dbus service:
