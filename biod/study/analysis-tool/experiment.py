@@ -5,6 +5,7 @@ import glob
 import pathlib
 from typing import Optional
 
+import numpy as np
 import pandas as pd
 
 
@@ -213,6 +214,49 @@ class Experiment:
 
     def FARDecisions(self) -> pd.DataFrame:
         return self.tbl_far_decisions
+
+    def UniqueList(self, column: TableCol) -> np.array:
+        """Return a unique and sorted list of items for the given column.
+
+        These items are discovered from the FAR decision table.
+        The returned array is indexable from 0, since they are in a numpy array.
+        """
+
+        return np.sort(self.tbl_far_decisions[column.value].unique())
+
+    def UserList(self) -> np.array:
+        """Return a unique set of sorted User IDs from the verification set.
+
+        These are indexable from 0, since they are in a numpy array.
+        """
+
+        return self.UniqueList(Experiment.TableCol.Verify_User)
+
+    def FingerList(self) -> np.array:
+        """Return a unique set of sorted Finger IDs from the verification sets.
+
+        These are indexable from 0, since they are in a numpy array.
+        """
+
+        return self.UniqueList(Experiment.TableCol.Verify_Finger)
+
+    def SampleList(self) -> np.array:
+        """Return a unique set of sorted Sample IDs from the verification sets.
+
+        These are indexable from 0, since they are in a numpy array.
+        """
+
+        return self.UniqueList(Experiment.TableCol.Verify_Sample)
+
+    def GroupList(self) -> np.array:
+        """Return a unique set of sorted Group IDs from the verification sets.
+
+        Recall that these groups might have been added by this class itself.
+
+        These are indexable from 0, since they are in a numpy array.
+        """
+
+        return self.UniqueList(Experiment.TableCol.Verify_Group)
 
     def FAQuery(self,
                 enroll_user_id: int = None,
