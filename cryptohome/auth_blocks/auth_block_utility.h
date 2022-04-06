@@ -36,7 +36,7 @@ class AuthBlockUtility {
 
   // Returns whether the system is locked to only allow authenticating a single
   // user.
-  virtual bool GetLockedToSingleUser() = 0;
+  virtual bool GetLockedToSingleUser() const = 0;
 
   // Creates KeyBlobs and AuthBlockState with the given type of AuthBlock for
   // the given credentials. Creating KeyBlobs means generating the KeyBlobs from
@@ -48,7 +48,7 @@ class AuthBlockUtility {
       const Credentials& credentials,
       const std::optional<brillo::SecureBlob>& reset_secret,
       AuthBlockState& out_state,
-      KeyBlobs& out_key_blobs) = 0;
+      KeyBlobs& out_key_blobs) const = 0;
 
   // Creates KeyBlobs and AuthBlockState for the given credentials and returns
   // through the asynchronous create_callback.
@@ -67,7 +67,7 @@ class AuthBlockUtility {
       AuthBlockType auth_block_type,
       const Credentials& credentials,
       const AuthBlockState& state,
-      KeyBlobs& out_key_blobs) = 0;
+      KeyBlobs& out_key_blobs) const = 0;
 
   // Creates KeyBlobs and AuthBlockState for the given credentials and returns
   // through the asynchronous derive_callback.
@@ -99,12 +99,12 @@ class AuthBlockUtility {
   virtual bool GetAuthBlockStateFromVaultKeyset(
       const std::string& label,
       const std::string& obfuscated_username,
-      AuthBlockState& out_state) = 0;
+      AuthBlockState& out_state) const = 0;
 
   // Reads an auth block state and update the given VaultKeyset with what it
   // returns.
-  virtual void AssignAuthBlockStateToVaultKeyset(const AuthBlockState& state,
-                                                 VaultKeyset& vault_keyset) = 0;
+  virtual void AssignAuthBlockStateToVaultKeyset(
+      const AuthBlockState& state, VaultKeyset& vault_keyset) const = 0;
 
   // Creates a new auth block state and key blobs using an auth block. On error,
   // returns the error code.
@@ -112,12 +112,12 @@ class AuthBlockUtility {
       AuthFactorType auth_factor_type,
       const AuthInput& auth_input,
       AuthBlockState& out_auth_block_state,
-      KeyBlobs& out_key_blobs) WARN_UNUSED_RESULT = 0;
+      KeyBlobs& out_key_blobs) const WARN_UNUSED_RESULT = 0;
 
   // Derives key blobs using the given auth block state and input.
   virtual CryptoError DeriveKeyBlobs(const AuthInput& auth_input,
                                      const AuthBlockState& auth_block_state,
-                                     KeyBlobs& out_key_blobs)
+                                     KeyBlobs& out_key_blobs) const
       WARN_UNUSED_RESULT = 0;
 };
 

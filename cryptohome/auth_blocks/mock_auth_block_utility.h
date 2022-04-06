@@ -28,7 +28,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
   MockAuthBlockUtility() = default;
   ~MockAuthBlockUtility() = default;
 
-  MOCK_METHOD(bool, GetLockedToSingleUser, (), (override));
+  MOCK_METHOD(bool, GetLockedToSingleUser, (), (const, override));
   MOCK_METHOD(CryptoError,
               CreateKeyBlobsWithAuthBlock,
               (AuthBlockType auth_block_type,
@@ -36,7 +36,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const std::optional<brillo::SecureBlob>& reset_secret,
                AuthBlockState& out_state,
                KeyBlobs& out_key_blobs),
-              (override));
+              (const, override));
   MOCK_METHOD(bool,
               CreateKeyBlobsWithAuthBlockAsync,
               (AuthBlockType auth_block_type,
@@ -49,7 +49,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const Credentials& credentials,
                const AuthBlockState& state,
                KeyBlobs& out_key_blobs),
-              (override));
+              (const, override));
   MOCK_METHOD(bool,
               DeriveKeyBlobsWithAuthBlockAsync,
               (AuthBlockType auth_block_type,
@@ -74,24 +74,24 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               (const std::string& label,
                const std::string& obfuscated_username,
                AuthBlockState& out_state),
-              (override));
+              (const, override));
   MOCK_METHOD(void,
               AssignAuthBlockStateToVaultKeyset,
               (const AuthBlockState& state, VaultKeyset& vault_keyset),
-              (override));
+              (const, override));
   MOCK_METHOD(CryptoError,
               CreateKeyBlobsWithAuthFactorType,
               (AuthFactorType auth_factor_type,
                const AuthInput& auth_input,
                AuthBlockState& out_auth_block_state,
                KeyBlobs& out_key_blobs),
-              (override));
+              (const, override));
   MOCK_METHOD(CryptoError,
               DeriveKeyBlobs,
               (const AuthInput& auth_input,
                const AuthBlockState& auth_block_state,
                KeyBlobs& out_key_blobs),
-              (override));
+              (const, override));
 };
 
 }  // namespace cryptohome

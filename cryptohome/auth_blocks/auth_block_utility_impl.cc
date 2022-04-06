@@ -76,7 +76,7 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
 }
 AuthBlockUtilityImpl::~AuthBlockUtilityImpl() = default;
 
-bool AuthBlockUtilityImpl::GetLockedToSingleUser() {
+bool AuthBlockUtilityImpl::GetLockedToSingleUser() const {
   return platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
 }
 
@@ -85,7 +85,7 @@ CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
     const Credentials& credentials,
     const std::optional<brillo::SecureBlob>& reset_secret,
     AuthBlockState& out_state,
-    KeyBlobs& out_key_blobs) {
+    KeyBlobs& out_key_blobs) const {
   std::unique_ptr<SyncAuthBlock> auth_block =
       GetAuthBlockWithType(auth_block_type);
   if (!auth_block) {
@@ -143,7 +143,7 @@ CryptoError AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
     AuthBlockType auth_block_type,
     const Credentials& credentials,
     const AuthBlockState& auth_state,
-    KeyBlobs& out_key_blobs) {
+    KeyBlobs& out_key_blobs) const {
   DCHECK_NE(auth_block_type, AuthBlockType::kMaxValue);
 
   CryptoError error = CryptoError::CE_NONE;
@@ -269,7 +269,7 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerivation(
 }
 
 std::unique_ptr<SyncAuthBlock> AuthBlockUtilityImpl::GetAuthBlockWithType(
-    const AuthBlockType& auth_block_type) {
+    const AuthBlockType& auth_block_type) const {
   switch (auth_block_type) {
     case AuthBlockType::kPinWeaver:
       return std::make_unique<PinWeaverAuthBlock>(
@@ -368,7 +368,7 @@ std::unique_ptr<AuthBlock> AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
 bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(
     const std::string& label,
     const std::string& obfuscated_username,
-    AuthBlockState& out_state) {
+    AuthBlockState& out_state) const {
   std::unique_ptr<VaultKeyset> vault_keyset =
       keyset_management_->GetVaultKeyset(obfuscated_username, label);
   // If there is no keyset on the disk for the given user and label (or for the
@@ -384,7 +384,7 @@ bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(
 }
 
 void AuthBlockUtilityImpl::AssignAuthBlockStateToVaultKeyset(
-    const AuthBlockState& auth_state, VaultKeyset& vault_keyset) {
+    const AuthBlockState& auth_state, VaultKeyset& vault_keyset) const {
   if (const auto* state =
           std::get_if<TpmNotBoundToPcrAuthBlockState>(&auth_state.state)) {
     vault_keyset.SetTpmNotBoundToPcrState(*state);
@@ -413,7 +413,7 @@ CryptoError AuthBlockUtilityImpl::CreateKeyBlobsWithAuthFactorType(
     AuthFactorType auth_factor_type,
     const AuthInput& auth_input,
     AuthBlockState& out_auth_block_state,
-    KeyBlobs& out_key_blobs) {
+    KeyBlobs& out_key_blobs) const {
   bool is_le_credential = auth_factor_type == AuthFactorType::kPin;
   AuthBlockType auth_block_type =
       GetAuthBlockTypeForCreation(is_le_credential,
@@ -457,7 +457,7 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeForDerive(
 CryptoError AuthBlockUtilityImpl::DeriveKeyBlobs(
     const AuthInput& auth_input,
     const AuthBlockState& auth_block_state,
-    KeyBlobs& out_key_blobs) {
+    KeyBlobs& out_key_blobs) const {
   AuthBlockType auth_block_type = GetAuthBlockTypeForDerive(auth_block_state);
   if (auth_block_type == AuthBlockType::kMaxValue ||
       auth_block_type == AuthBlockType::kChallengeCredential) {

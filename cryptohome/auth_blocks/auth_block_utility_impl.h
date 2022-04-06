@@ -50,14 +50,14 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   AuthBlockUtilityImpl& operator=(const AuthBlockUtilityImpl&) = delete;
   ~AuthBlockUtilityImpl() override;
 
-  bool GetLockedToSingleUser() override;
+  bool GetLockedToSingleUser() const override;
 
   CryptoError CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const Credentials& credentials,
       const std::optional<brillo::SecureBlob>& reset_secret,
       AuthBlockState& out_state,
-      KeyBlobs& out_key_blobs) override;
+      KeyBlobs& out_key_blobs) const override;
 
   // Creates KeyBlobs and AuthBlockState for the given credentials and returns
   // through the asynchronous create_callback.
@@ -66,10 +66,11 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const AuthInput& auth_input,
       AuthBlock::CreateCallback create_callback) override;
 
-  CryptoError DeriveKeyBlobsWithAuthBlock(AuthBlockType auth_block_type,
-                                          const Credentials& credentials,
-                                          const AuthBlockState& state,
-                                          KeyBlobs& out_key_blobs) override;
+  CryptoError DeriveKeyBlobsWithAuthBlock(
+      AuthBlockType auth_block_type,
+      const Credentials& credentials,
+      const AuthBlockState& state,
+      KeyBlobs& out_key_blobs) const override;
 
   // Creates KeyBlobs and AuthBlockState for the given credentials and returns
   // through the asynchronous derive_callback.
@@ -92,27 +93,29 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const std::string& label,
       const std::string& obfuscated_username) const override;
 
-  bool GetAuthBlockStateFromVaultKeyset(const std::string& label,
-                                        const std::string& obfuscated_username,
-                                        AuthBlockState& out_state) override;
+  bool GetAuthBlockStateFromVaultKeyset(
+      const std::string& label,
+      const std::string& obfuscated_username,
+      AuthBlockState& out_state) const override;
 
-  void AssignAuthBlockStateToVaultKeyset(const AuthBlockState& state,
-                                         VaultKeyset& vault_keyset) override;
+  void AssignAuthBlockStateToVaultKeyset(
+      const AuthBlockState& state, VaultKeyset& vault_keyset) const override;
 
   CryptoError CreateKeyBlobsWithAuthFactorType(
       AuthFactorType auth_factor_type,
       const AuthInput& auth_input,
       AuthBlockState& out_auth_block_state,
-      KeyBlobs& out_key_blobs) override;
+      KeyBlobs& out_key_blobs) const override;
+
   CryptoError DeriveKeyBlobs(const AuthInput& auth_input,
                              const AuthBlockState& auth_block_state,
-                             KeyBlobs& out_key_blobs) override;
+                             KeyBlobs& out_key_blobs) const override;
 
  private:
   // This helper function serves as a factory method to return the authblock
   // used in authentication.
   std::unique_ptr<SyncAuthBlock> GetAuthBlockWithType(
-      const AuthBlockType& auth_block_type);
+      const AuthBlockType& auth_block_type) const;
 
   // This helper function returns an authblock with asynchronous create and
   // derive.
