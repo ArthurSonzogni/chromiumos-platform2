@@ -152,12 +152,13 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
  public:
   void SetUp() override {
     DHCPConfigTest::SetUp();
-    config_->RegisterUpdateCallback(base::BindRepeating(
-        &DHCPConfigCallbackTest::UpdateCallback, base::Unretained(this)));
-    config_->RegisterFailureCallback(base::BindRepeating(
-        &DHCPConfigCallbackTest::FailureCallback, base::Unretained(this)));
-    config_->RegisterExpireCallback(base::BindRepeating(
-        &DHCPConfigCallbackTest::ExpireCallback, base::Unretained(this)));
+    config_->RegisterCallbacks(
+        base::BindRepeating(&DHCPConfigCallbackTest::UpdateCallback,
+                            base::Unretained(this)),
+        base::BindRepeating(&DHCPConfigCallbackTest::FailureCallback,
+                            base::Unretained(this)),
+        base::BindRepeating(&DHCPConfigCallbackTest::ExpireCallback,
+                            base::Unretained(this)));
     ip_config_ = config_;
   }
 

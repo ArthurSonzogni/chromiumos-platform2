@@ -75,6 +75,14 @@ DHCPConfig::~DHCPConfig() {
   Stop(__func__);
 }
 
+void DHCPConfig::RegisterCallbacks(UpdateCallback update_callback,
+                                   FailureCallback failure_callback,
+                                   ExpireCallback expire_callback) {
+  update_callback_ = update_callback;
+  failure_callback_ = failure_callback;
+  expire_callback_ = expire_callback;
+}
+
 bool DHCPConfig::RequestIP() {
   SLOG(this, 2) << __func__ << ": " << device_name();
   if (!pid_) {
@@ -148,14 +156,32 @@ void DHCPConfig::OnIPConfigUpdated(const Properties& properties,
     }
   }
 
-  IPConfig::UpdateProperties(properties);
-  IPConfig::NotifyUpdate(new_lease_acquired);
+  UpdateProperties(properties);
+
+  // Take a reference of this instance to make sure we don't get destroyed in
+  // the middle of this call. (The |update_callback_| may cause a reference
+  // to be dropped. See, e.g., EthernetService::Disconnect and
+  // Ethernet::DropConnection.)
+  IPConfigRefPtr me = this;
+
+  if (!update_callback_.is_null()) {
+    update_callback_.Run(this, new_lease_acquired);
+  }
 }
 
 void DHCPConfig::NotifyFailure() {
   StopAcquisitionTimeout();
   StopExpirationTimeout();
-  IPConfig::NotifyFailure();
+
+  // Take a reference of this instance to make sure we don't get destroyed in
+  // the middle of this call. (The |update_callback_| may cause a reference
+  // to be dropped. See, e.g., EthernetService::Disconnect and
+  // Ethernet::DropConnection.)
+  IPConfigRefPtr me = this;
+
+  if (!failure_callback_.is_null()) {
+    failure_callback_.Run(this);
+  }
 }
 
 bool DHCPConfig::IsEphemeralLease() const {
@@ -298,7 +324,9 @@ void DHCPConfig::StopExpirationTimeout() {
 void DHCPConfig::ProcessExpirationTimeout() {
   LOG(ERROR) << "DHCP lease expired on " << device_name()
              << "; restarting DHCP client instance.";
-  NotifyExpiry();
+  if (!expire_callback_.is_null()) {
+    expire_callback_.Run(this);
+  }
   if (!Restart()) {
     NotifyFailure();
   }

@@ -339,10 +339,12 @@ class DHCPv4ConfigCallbackTest : public DHCPv4ConfigTest {
  public:
   void SetUp() override {
     DHCPv4ConfigTest::SetUp();
-    config_->RegisterUpdateCallback(base::BindRepeating(
-        &DHCPv4ConfigCallbackTest::SuccessCallback, base::Unretained(this)));
-    config_->RegisterFailureCallback(base::BindRepeating(
-        &DHCPv4ConfigCallbackTest::FailureCallback, base::Unretained(this)));
+    config_->RegisterCallbacks(
+        base::BindRepeating(&DHCPv4ConfigCallbackTest::SuccessCallback,
+                            base::Unretained(this)),
+        base::BindRepeating(&DHCPv4ConfigCallbackTest::FailureCallback,
+                            base::Unretained(this)),
+        base::DoNothing());
     ip_config_ = config_;
   }
 

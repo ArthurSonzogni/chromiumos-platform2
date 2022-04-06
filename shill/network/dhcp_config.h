@@ -36,6 +36,17 @@ class ProcessManager;
 // Otherwise, the lease file persists and will be re-used in future attempts.
 class DHCPConfig : public IPConfig {
  public:
+  // Called when the IPConfig got from DHCP is updated. The second parameter of
+  // UpdateCallback indicates whether or not a DHCP lease was acquired from the
+  // server.
+  using UpdateCallback =
+      base::RepeatingCallback<void(const IPConfigRefPtr&, bool)>;
+  // Called when DHCP failed.
+  using FailureCallback = base::RepeatingCallback<void(const IPConfigRefPtr&)>;
+  // Called when lease expires and this class is about to perform a restart to
+  // attempt to regain it.
+  using ExpireCallback = base::RepeatingCallback<void(const IPConfigRefPtr&)>;
+
   DHCPConfig(ControlInterface* control_interface,
              EventDispatcher* dispatcher,
              DHCPProvider* provider,
@@ -46,6 +57,11 @@ class DHCPConfig : public IPConfig {
   DHCPConfig& operator=(const DHCPConfig&) = delete;
 
   ~DHCPConfig() override;
+
+  // Registers callbacks for DHCP events.
+  void RegisterCallbacks(UpdateCallback update_callback,
+                         FailureCallback failure_callback,
+                         ExpireCallback expire_callback);
 
   // Inherited from IPConfig.
   bool RequestIP() override;
@@ -70,7 +86,11 @@ class DHCPConfig : public IPConfig {
   // indicates whether this is an authoritative confirmation.
   void OnIPConfigUpdated(const Properties& properties, bool new_lease_acquired);
 
-  void NotifyFailure() override;
+  // Notifies registered listeners that the configuration process has failed.
+  void NotifyFailure();
+
+  // Notifies registered listeners that the lease has expired.
+  void NotifyUpdate(bool new_lease_acquired);
 
   int minimum_mtu() const { return minimum_mtu_; }
 
@@ -185,6 +205,11 @@ class DHCPConfig : public IPConfig {
 
   // Called if a DHCP lease expires.
   base::CancelableOnceClosure lease_expiration_callback_;
+
+  // Callbacks registered by RegisterCallbacks().
+  UpdateCallback update_callback_;
+  FailureCallback failure_callback_;
+  ExpireCallback expire_callback_;
 
   // The minimum MTU value this configuration will respect.
   int minimum_mtu_;

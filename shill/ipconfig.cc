@@ -166,48 +166,6 @@ void IPConfig::UpdateDNSServers(std::vector<std::string> dns_servers) {
   EmitChanges();
 }
 
-void IPConfig::NotifyUpdate(bool new_lease_acquired) {
-  // Take a reference of this instance to make sure we don't get destroyed in
-  // the middle of this call. (The |update_callback_| may cause a reference
-  // to be dropped. See, e.g., EthernetService::Disconnect and
-  // Ethernet::DropConnection.)
-  IPConfigRefPtr me = this;
-
-  if (!update_callback_.is_null()) {
-    update_callback_.Run(this, new_lease_acquired);
-  }
-}
-
-void IPConfig::NotifyFailure() {
-  // Take a reference of this instance to make sure we don't get destroyed in
-  // the middle of this call. (The |update_callback_| may cause a reference
-  // to be dropped. See, e.g., EthernetService::Disconnect and
-  // Ethernet::DropConnection.)
-  IPConfigRefPtr me = this;
-
-  if (!failure_callback_.is_null()) {
-    failure_callback_.Run(this);
-  }
-}
-
-void IPConfig::NotifyExpiry() {
-  if (!expire_callback_.is_null()) {
-    expire_callback_.Run(this);
-  }
-}
-
-void IPConfig::RegisterUpdateCallback(const UpdateCallback& callback) {
-  update_callback_ = callback;
-}
-
-void IPConfig::RegisterFailureCallback(const Callback& callback) {
-  failure_callback_ = callback;
-}
-
-void IPConfig::RegisterExpireCallback(const Callback& callback) {
-  expire_callback_ = callback;
-}
-
 void IPConfig::ResetProperties() {
   properties_ = Properties();
   EmitChanges();

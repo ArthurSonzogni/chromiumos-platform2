@@ -593,13 +593,11 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
     dhcp_config->set_minimum_mtu(minimum_mtu);
   }
 
+  dhcp_config->RegisterCallbacks(
+      base::BindRepeating(&Device::OnIPConfigUpdated, AsWeakPtr()),
+      base::BindRepeating(&Device::OnIPConfigFailed, AsWeakPtr()),
+      base::BindRepeating(&Device::OnIPConfigExpired, AsWeakPtr()));
   ipconfig_ = dhcp_config;
-  ipconfig_->RegisterUpdateCallback(
-      base::Bind(&Device::OnIPConfigUpdated, AsWeakPtr()));
-  ipconfig_->RegisterFailureCallback(
-      base::Bind(&Device::OnIPConfigFailed, AsWeakPtr()));
-  ipconfig_->RegisterExpireCallback(
-      base::Bind(&Device::OnIPConfigExpired, AsWeakPtr()));
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
   return ipconfig_->RequestIP();

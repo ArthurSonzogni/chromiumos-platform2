@@ -103,9 +103,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   enum ReleaseReason { kReleaseReasonDisconnect, kReleaseReasonStaticIP };
 
-  using UpdateCallback = base::Callback<void(const IPConfigRefPtr&, bool)>;
-  using Callback = base::Callback<void(const IPConfigRefPtr&)>;
-
   // Define a default and a minimum viable MTU value.
   static const int kDefaultMTU;
   static const int kMinIPv4MTU;
@@ -126,28 +123,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   uint32_t serial() const { return serial_; }
 
   const RpcIdentifier& GetRpcIdentifier() const;
-
-  // Registers a callback that's executed every time the configuration
-  // properties are acquired. Takes ownership of |callback|.  Pass NULL
-  // to remove a callback. The callback's first argument is a pointer to this IP
-  // configuration instance allowing clients to more easily manage multiple IP
-  // configurations. The callback's second argument is a boolean indicating
-  // whether or not a DHCP lease was acquired from the server.
-  void RegisterUpdateCallback(const UpdateCallback& callback);
-
-  // Registers a callback that's executed every time the configuration
-  // properties fail to be acquired. Takes ownership of |callback|.  Pass NULL
-  // to remove a callback. The callback's argument is a pointer to this IP
-  // configuration instance allowing clients to more easily manage multiple IP
-  // configurations.
-  void RegisterFailureCallback(const Callback& callback);
-
-  // Registers a callback that's executed every time the the lease exipres
-  // and the IPConfig is about to perform a restart to attempt to regain it.
-  // Takes ownership of |callback|. Pass NULL  to remove a callback. The
-  // callback's argument is a pointer to this IP configuration instance
-  // allowing clients to more easily manage multiple IP configurations.
-  void RegisterExpireCallback(const Callback& callback);
 
   void set_properties(const Properties& props) { properties_ = props; }
   mockable const Properties& properties() const { return properties_; }
@@ -202,15 +177,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // Updates the IP configuration properties.
   void UpdateProperties(const Properties& properties);
 
-  // Notifies registered listeners that the IP config is updated from DHCP.
-  void NotifyUpdate(bool new_lease_acquired);
-
-  // Notifies registered listeners that the configuration process has failed.
-  virtual void NotifyFailure();
-
-  // Notifies registered listeners that the lease has expired.
-  void NotifyExpiry();
-
  private:
   friend class IPConfigAdaptorInterface;
   friend class IPConfigTest;
@@ -237,9 +203,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   const uint32_t serial_;
   std::unique_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
-  UpdateCallback update_callback_;
-  Callback failure_callback_;
-  Callback expire_callback_;
   struct timeval current_lease_expiration_time_;
   Time* time_;
   base::WeakPtrFactory<IPConfig> weak_ptr_factory_;
