@@ -53,6 +53,34 @@ def boot_sample(
         return rng.choice(a, size=a.size, replace=True)
 
 
+def plot_pd_hist_discrete(tbl: pd.DataFrame,
+                          title_prefix: str = None,
+                          figsize: tuple = None):
+    '''Plot the histograms of a DataFrame columns.
+
+    This is different than `pd.DataFrame.hist`, because it ensures that all
+    unique elements of the column are represented in a bar plot. Other
+    implementations will try to bin multiple values and doesn't center the
+    graphical bars on the values.
+    '''
+
+    num_plots = len(tbl.columns)
+    if not figsize:
+        figsize = (10, 6*num_plots)
+
+    plt.figure(figsize=figsize)
+    for index, col in enumerate(tbl.columns):
+        plt.subplot(num_plots, 1, index+1)
+        vals = np.unique(tbl[col], return_counts=True)
+        plt.bar(*vals)
+        plt.xticks(vals[0], rotation='vertical', fontsize=5)
+        plt.xlabel(col)
+        plt.ylabel('Count')
+        if title_prefix:
+            plt.title(f'{title_prefix} by {col}')
+    plt.show()
+
+
 def discrete_hist(data, discrete_bins):
     # unique_elements = np.unique(data)
     bins = np.append(discrete_bins, np.max(discrete_bins) + 1)
