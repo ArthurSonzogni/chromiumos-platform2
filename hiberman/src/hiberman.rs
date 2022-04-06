@@ -18,6 +18,7 @@ mod hiberutil;
 mod imagemover;
 mod keyman;
 mod mmapbuf;
+mod powerd;
 mod preloader;
 mod resume;
 mod snapdev;

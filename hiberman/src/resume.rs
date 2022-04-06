@@ -28,6 +28,7 @@ use crate::hiberutil::{
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
+use crate::powerd::PowerdPendingResume;
 use crate::preloader::ImagePreloader;
 use crate::snapdev::{FrozenUserspaceTicket, SnapshotDevice, SnapshotMode};
 use crate::splitter::ImageJoiner;
@@ -154,6 +155,9 @@ impl ResumeConductor {
         // Also explicitly clear the private key from the key manager. The
         // public key is still needed so it can be saved.
         self.key_manager.clear_private_key()?;
+        // Let other daemons know it's the end of the world.
+        let _powerd_resume =
+            PowerdPendingResume::new().context("Failed to call powerd for imminent resume")?;
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
         if self.options.dry_run {
