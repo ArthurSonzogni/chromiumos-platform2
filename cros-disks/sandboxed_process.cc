@@ -172,11 +172,13 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
 
   minijail_close_open_fds(jail_);
 
-  if (!run_custom_init_) {
-    minijail_preserve_fd(jail_, in_fd.get(), STDIN_FILENO);
-    minijail_preserve_fd(jail_, out_fd.get(), STDOUT_FILENO);
-    minijail_preserve_fd(jail_, err_fd.get(), STDERR_FILENO);
+  // Set up stdin, stdout and stderr to be connected to the matching pipes in
+  // the jailed process.
+  CHECK_EQ(minijail_preserve_fd(jail_, in_fd.get(), STDIN_FILENO), 0);
+  CHECK_EQ(minijail_preserve_fd(jail_, out_fd.get(), STDOUT_FILENO), 0);
+  CHECK_EQ(minijail_preserve_fd(jail_, err_fd.get(), STDERR_FILENO), 0);
 
+  if (!run_custom_init_) {
     const int ret = minijail_run_env_pid_pipes(
         jail_, args[0], args, env, &child_pid, nullptr, nullptr, nullptr);
     if (ret < 0) {
@@ -187,12 +189,8 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
   } else {
     base::ScopedFD ctrl_fd = SubprocessPipe::Open(
         SubprocessPipe::kChildToParent, &custom_init_control_fd_);
-    PreserveFile(in_fd.get());
-    PreserveFile(out_fd.get());
-    PreserveFile(err_fd.get());
     PreserveFile(ctrl_fd.get());
-    SandboxedInit init(std::move(in_fd), std::move(out_fd), std::move(err_fd),
-                       std::move(ctrl_fd));
+    SandboxedInit init(std::move(ctrl_fd));
 
     // Create child process.
     child_pid = minijail_fork(jail_);

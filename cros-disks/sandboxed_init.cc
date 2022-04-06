@@ -4,8 +4,6 @@
 
 #include "cros-disks/sandboxed_init.h"
 
-#include <utility>
-
 #include <poll.h>
 #include <stdlib.h>
 #include <sys/prctl.h>
@@ -54,17 +52,6 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
   return std::move(p.child_fd);
 }
 
-SandboxedInit::SandboxedInit(base::ScopedFD in_fd,
-                             base::ScopedFD out_fd,
-                             base::ScopedFD err_fd,
-                             base::ScopedFD ctrl_fd)
-    : in_fd_(std::move(in_fd)),
-      out_fd_(std::move(out_fd)),
-      err_fd_(std::move(err_fd)),
-      ctrl_fd_(std::move(ctrl_fd)) {}
-
-SandboxedInit::~SandboxedInit() = default;
-
 [[noreturn]] void SandboxedInit::RunInsideSandboxNoReturn(Launcher launcher) {
   // To run our custom init that handles daemonized processes inside the
   // sandbox we have to set up fork/exec ourselves. We do error-handling
@@ -75,23 +62,9 @@ SandboxedInit::~SandboxedInit() = default;
   // to inherit right FDs.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
 
-  if (dup2(in_fd_.get(), STDIN_FILENO) < 0)
-    PLOG(FATAL) << "Cannot dup2 stdin";
-
-  if (dup2(out_fd_.get(), STDOUT_FILENO) < 0)
-    PLOG(FATAL) << "Cannot dup2 stdout";
-
-  if (dup2(err_fd_.get(), STDERR_FILENO) < 0)
-    PLOG(FATAL) << "Cannot dup2 stderr";
-
   // Set an identifiable process name.
   if (prctl(PR_SET_NAME, "cros-disks-INIT") < 0)
     PLOG(WARNING) << "Cannot set init's process name";
-
-  // Close unused file descriptors.
-  in_fd_.reset();
-  out_fd_.reset();
-  err_fd_.reset();
 
   // Setup the SIGTERM signal handler.
   if (signal(SIGTERM, SigTerm) == SIG_ERR)
@@ -145,7 +118,7 @@ int SandboxedInit::RunInitLoop(pid_t launcher_pid, base::ScopedFD ctrl_fd) {
     const int exit_code = WaitStatusToExitCode(wstatus);
     DCHECK_GE(exit_code, 0);
     VLOG(1) << "Child process " << pid
-            << " of the 'init' process finished with exit code" << exit_code;
+            << " of the 'init' process finished with exit code " << exit_code;
 
     if (exit_code > 0)
       last_failure_code = exit_code;

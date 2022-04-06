@@ -51,21 +51,23 @@ class SandboxedInitTest : public testing::Test {
  protected:
   template <typename F>
   void RunUnderInit(F launcher) {
-    SandboxedInit init(
-        SubprocessPipe::Open(SubprocessPipe::kParentToChild, &in_),
-        SubprocessPipe::Open(SubprocessPipe::kChildToParent, &out_),
-        base::ScopedFD(dup(STDERR_FILENO)),
-        SubprocessPipe::Open(SubprocessPipe::kChildToParent, &ctrl_));
+    SubprocessPipe in(SubprocessPipe::kParentToChild);
+    SubprocessPipe out(SubprocessPipe::kChildToParent);
+    SubprocessPipe ctrl(SubprocessPipe::kChildToParent);
 
-    CHECK(base::SetNonBlocking(ctrl_.get()));
+    SandboxedInit init(std::move(ctrl.child_fd));
 
     const pid_t pid = fork();
     if (pid < 0)
       PLOG(FATAL) << "Cannot fork";
 
     if (pid > 0) {
-      // Parent process.
+      // In parent process.
       pid_ = pid;
+      in_ = std::move(in.parent_fd);
+      out_ = std::move(out.parent_fd);
+      ctrl_ = std::move(ctrl.parent_fd);
+      PCHECK(base::SetNonBlocking(ctrl_.get()));
       return;
     }
 
@@ -73,25 +75,31 @@ class SandboxedInitTest : public testing::Test {
     DCHECK_EQ(0, pid);
     LOG(INFO) << "The 'init' process started";
 
+    // Connect stdin and stdout to the matching pipes.
+    PCHECK(dup2(in.child_fd.get(), STDIN_FILENO) >= 0);
+    PCHECK(dup2(out.child_fd.get(), STDOUT_FILENO) >= 0);
+
+    // Close pipe ends that are now unused in the 'init' process.
+    in.child_fd.reset();
+    in.parent_fd.reset();
+    out.child_fd.reset();
+    out.parent_fd.reset();
+    ctrl.parent_fd.reset();
+
     // Make the 'init' process a child subreaper, so that it adopts the orphaned
     // 'daemon' process.
-    if (prctl(PR_SET_CHILD_SUBREAPER, 1) < 0)
-      PLOG(FATAL) << "Cannot make the 'init' process a child subreaper";
-
-    // Avoid leaking pipe file descriptors into the 'init' process.
-    in_.reset();
-    out_.reset();
-    ctrl_.reset();
+    PCHECK(prctl(PR_SET_CHILD_SUBREAPER, 1) >= 0)
+        << "Cannot make the 'init' process a child subreaper";
 
     // Sets a signal handler for SIGUSR1. This signal handler doesn't do
     // anything, but it is put in place so that SIGUSR1 doesn't terminate the
     // 'init' process.
-    CHECK_NE(signal(SIGUSR1,
-                    [](int sig) {
-                      RAW_LOG(INFO, "The 'init' process received SIGUSR1");
-                      RAW_CHECK(sig == SIGUSR1);
-                    }),
-             SIG_ERR);
+    PCHECK(signal(SIGUSR1,
+                  [](int sig) {
+                    RAW_LOG(INFO, "The 'init' process received SIGUSR1");
+                    RAW_CHECK(sig == SIGUSR1);
+                  }) != SIG_ERR)
+        << "Cannot set up SIGUSR1 handler";
 
     // Run the main 'init' process loop.
     init.RunInsideSandboxNoReturn(
@@ -157,7 +165,10 @@ class SandboxedInitTest : public testing::Test {
     return exit_code;
   }
 
+  // PID of the 'init' process.
   pid_t pid_ = -1;
+
+  // Parent-side of the pipes.
   base::ScopedFD in_, out_, ctrl_;
 };
 

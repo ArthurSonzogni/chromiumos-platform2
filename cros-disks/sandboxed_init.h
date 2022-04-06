@@ -5,9 +5,7 @@
 #ifndef CROS_DISKS_SANDBOXED_INIT_H_
 #define CROS_DISKS_SANDBOXED_INIT_H_
 
-#include <memory>
-#include <string>
-#include <vector>
+#include <utility>
 
 #include <sys/types.h>
 
@@ -41,15 +39,10 @@ struct SubprocessPipe {
 // to terminate.
 class SandboxedInit {
  public:
-  SandboxedInit(base::ScopedFD in_fd,
-                base::ScopedFD out_fd,
-                base::ScopedFD err_fd,
-                base::ScopedFD ctrl_fd);
-  SandboxedInit(const SandboxedInit&) = delete;
-  SandboxedInit& operator=(const SandboxedInit&) = delete;
+  explicit SandboxedInit(base::ScopedFD ctrl_fd)
+      : ctrl_fd_(std::move(ctrl_fd)) {}
 
-  ~SandboxedInit();
-
+  // Function to run in the 'launcher' process.
   using Launcher = base::OnceCallback<int()>;
 
   // To be run inside the jail. Never returns.
@@ -77,7 +70,9 @@ class SandboxedInit {
   static int RunInitLoop(pid_t launcher_pid, base::ScopedFD ctrl_fd);
   pid_t StartLauncher(Launcher launcher);
 
-  base::ScopedFD in_fd_, out_fd_, err_fd_, ctrl_fd_;
+  // Write end of the pipe into which the exit code of the launcher process is
+  // written.
+  base::ScopedFD ctrl_fd_;
 };
 
 }  // namespace cros_disks
