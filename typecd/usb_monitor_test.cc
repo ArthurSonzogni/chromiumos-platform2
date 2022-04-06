@@ -79,7 +79,7 @@ TEST_F(UsbMonitorTest, TestDeviceAddAndRemove) {
   EXPECT_EQ(std::stoi(kDevnum), usb_device->GetDevnum());
   EXPECT_EQ(kTypecPortNum, usb_device->GetTypecPortNum());
   EXPECT_EQ(UsbSpeed::k10000, usb_device->GetSpeed());
-  EXPECT_EQ(std::stoi(kDeviceClass, 0, 16), usb_device->GetDeviceClass());
+  EXPECT_EQ(UsbDeviceClass::kNone, usb_device->GetDeviceClass());
   EXPECT_EQ(UsbVersion::k3_0, usb_device->GetVersion());
 
   // USB device removed from the map.

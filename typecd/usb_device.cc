@@ -14,7 +14,7 @@ UsbDevice::UsbDevice(int busnum, int devnum, std::string hub)
       typec_port_num_(-1),
       hub_(hub),
       speed_(UsbSpeed::kOther),
-      device_class_(-1),
+      device_class_(UsbDeviceClass::kOther),
       version_(UsbVersion::kOther) {
   LOG(INFO) << "USB device " << hub_ << " enumerated.";
 }

@@ -20,6 +20,13 @@ enum class UsbSpeed {
   k20000,  // 20000 Mbps (USB 3.2 Gen 2x2)
 };
 
+// Device class exposed in USB device sysfs.
+enum class UsbDeviceClass {
+  kOther = 0,
+  kNone,  // class code 0x00 (Refer to interface class)
+  kHub,   // class code 0x09
+};
+
 // Version exposed in USB device sysfs, derived from bcdUSB.
 enum class UsbVersion {
   kOther = 0,
@@ -40,14 +47,16 @@ class UsbDevice {
 
   void SetTypecPortNum(int typec_port_num) { typec_port_num_ = typec_port_num; }
   void SetSpeed(UsbSpeed speed) { speed_ = speed; }
-  void SetDeviceClass(int device_class) { device_class_ = device_class; }
+  void SetDeviceClass(UsbDeviceClass device_class) {
+    device_class_ = device_class;
+  }
   void SetVersion(UsbVersion version) { version_ = version; }
 
   int GetBusnum() { return busnum_; }
   int GetDevnum() { return devnum_; }
   int GetTypecPortNum() { return typec_port_num_; }
   UsbSpeed GetSpeed() { return speed_; }
-  int GetDeviceClass() { return device_class_; }
+  UsbDeviceClass GetDeviceClass() { return device_class_; }
   UsbVersion GetVersion() { return version_; }
 
  private:
@@ -60,7 +69,7 @@ class UsbDevice {
   UsbSpeed speed_;
   // Identifies type of device.
   // https://www.usb.org/defined-class-codes
-  int device_class_;
+  UsbDeviceClass device_class_;
   UsbVersion version_;
 };
 

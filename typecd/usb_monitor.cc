@@ -34,6 +34,15 @@ typecd::UsbSpeed ConvertToUsbSpeed(std::string speed) {
     return typecd::UsbSpeed::kOther;
 }
 
+typecd::UsbDeviceClass ConvertToUsbClass(std::string device_class) {
+  if (device_class == "00")
+    return typecd::UsbDeviceClass::kNone;
+  else if (device_class == "09")
+    return typecd::UsbDeviceClass::kHub;
+  else
+    return typecd::UsbDeviceClass::kOther;
+}
+
 // Convert version string parsed from USB device sysfs to UsbVersion enum to
 // store in UsbDevice.
 typecd::UsbVersion ConvertToUsbVersion(std::string version) {
@@ -124,12 +133,10 @@ void UsbMonitor::OnDeviceAddedOrRemoved(const base::FilePath& path,
     }
 
     std::string device_class;
-    int device_class_int;
     if (base::ReadFileToString(path.Append("bDeviceClass"), &device_class)) {
       base::TrimWhitespaceASCII(device_class, base::TRIM_TRAILING,
                                 &device_class);
-      if (base::HexStringToInt(device_class, &device_class_int))
-        GetDevice(key)->SetDeviceClass(device_class_int);
+      GetDevice(key)->SetDeviceClass(ConvertToUsbClass(device_class));
     }
 
     std::string version;
