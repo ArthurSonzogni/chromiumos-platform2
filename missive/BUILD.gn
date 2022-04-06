@@ -65,6 +65,7 @@ generate_pkg_config("libmissiveclient_pc") {
   defines = [ "USE_RTTI_FOR_TYPE_TAGS" ]
   libs = [
     "-lmissiveclientlib",
+    "-lmissiveprotosecurityevents",
     "-lmissiveprotostatus",
     "-lmissiveprotorecordconstants",
     "-lmissiveprotorecord",
@@ -120,6 +121,7 @@ static_library("missiveclientlib") {
     "//missive/proto:libmissiveprotointerface",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
+    "//missive/proto:libmissiveprotosecurityevents",
   ]
 }
 
