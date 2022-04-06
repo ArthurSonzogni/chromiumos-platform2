@@ -105,9 +105,10 @@ def GenerateFARResults(
         print('Generate Decisions')
     rng = np.random.default_rng()
     df[Experiment.TableCol.Decision.value] = \
-        rng.choice([False, True], size=num_rows,
+        rng.choice([Experiment.Decision.Reject.value,
+                    Experiment.Decision.Accept.value],
+                   size=num_rows,
                    p=[1-prob, prob])
-
     if not user_groups is None:
         if verbose:
             print('Adding Group Associations')
