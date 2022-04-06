@@ -174,6 +174,12 @@ class Experiment:
                             columns=[Experiment.TableCol.User.value,
                                      Experiment.TableCol.Group.value])
 
+    def _ReadFARDecisionFile(csv_file_path: pathlib.Path) -> pd.DataFrame:
+        far_decisions = pd.read_csv(csv_file_path)
+        # Ensure that the required columns exist.
+        assert Experiment.DecisionTableCols <= set(far_decisions.columns)
+        return far_decisions
+
     def __init__(self,
                  #  num_enrollment: int,
                  num_verification: int,
@@ -284,6 +290,9 @@ class Experiment:
                                             verify_finger_id=verify_finger_id,
                                             verify_sample_index=verify_sample_index)
 
+    def AddFARDecisionsFromCSV(self, csv_file_path: pathlib.Path):
+        """Read FAR decision file and add to experiment."""
+        self.tbl_far_decisions = Experiment._ReadFARDecisionFile(csv_file_path)
     def AddGroups(self, user_groups: pd.DataFrame):
         '''Add the appropriate group columns to all saved tables.'''
 
