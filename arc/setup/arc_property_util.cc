@@ -495,7 +495,7 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
   // we'll see something like family = "jep106:0070" and
   // soc_id = "jep106:0070:7180". If we're running on an ARM SoC that only
   // has what the firmware exposes then we'll need a table here for each
-  // SoC. TODO(b/175610620): Add some entries for Mediatek-ARM devices.
+  // SoC.
   //
   // NOTES:
   // - On ARM devices /proc/cpuinfo _doesn't_ have details about the CPU model.
@@ -508,6 +508,11 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
   std::string manufacturer;
   if (family == "Snapdragon\n" && machine != "") {
     manufacturer = "Qualcomm";
+  } else if (family == "jep106:0426\n") {
+    manufacturer = "Mediatek";
+    machine = soc_id;
+    constexpr base::StringPiece mtk_prefix("jep106:0426:");
+    machine.replace(0, mtk_prefix.length(), "MT");
   } else {
     return false;
   }
