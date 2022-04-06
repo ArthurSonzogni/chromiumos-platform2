@@ -21,16 +21,38 @@ namespace cros {
 // GPU) without needing to explicitly copying the buffer content.
 class SharedImage {
  public:
-  // Creates a SharedImage from the give buffer handle |buffer|. |buffer| will
-  // be bound to the texture target |texture_target| if |separate_yuv_textures|
-  // is false. If |separate_yuv_textures| is true, then |buffer| will be bound
-  // to the Texture2D texture target, since TextureExternalOES doesn't work if
-  // we need to write to the underlying DMA-buf.
-  static SharedImage CreateFromBuffer(buffer_handle_t buffer,
-                                      Texture2D::Target texture_target,
-                                      bool separate_yuv_textures = false);
+  // Creates a SharedImage from the given buffer handle |buffer|.
+  //
+  // If |buffer|'s HAL format is  YUYV (HAL_PIXEL_FORMAT_YCbCr_422_I), this will
+  // create two 2D textures for reading Y and UV. Y texture is created with
+  // format GR88, whose 1st channel corresponds to Y. UV texture is created with
+  // format ABGR8888, whose 2nd and 4th channel correspond to U and V
+  // respectively. In this case, |texture_target| and |separate_yuv_textures|
+  // are not used.
+  //
+  // If |separate_yuv_textures| is false, |buffer| will be bound to the
+  // texture target |texture_target|.
+  // If the format is YUV (semi-)planar and |separate_yuv_textures| is true,
+  // then |buffer| will be bound to the Texture2D texture target, since
+  // TextureExternalOES doesn't work if we need to write to the underlying
+  // DMA-buf.
+  static SharedImage CreateFromBuffer(
+      buffer_handle_t buffer,
+      Texture2D::Target texture_target = Texture2D::Target::kTarget2D,
+      bool separate_yuv_textures = false);
 
-  // Creates a SharedImage with the given GL format |gl_format| and dimension
+  // If fourcc is V4L2_PIX_FMT_YUYV, creates a YUYV SharedImage with format
+  // |fourcc|, dimensions |width| x |height|, and DMA-bufs from |planes|. This
+  // will create two 2D textures for reading Y and UV. Y texture is created
+  // with format GR88, whose 1st channel corresponds to Y. UV texture is
+  // created with format ABGR8888, whose 2nd and 4th channel correspond to U
+  // and V respectively.
+  static SharedImage FromDmaBufFds(const std::vector<DmaBufPlane>& planes,
+                                   int width,
+                                   int height,
+                                   uint32_t fourcc);
+
+  // Creates a SharedImage with the given GL format |gl_format| and dimensions
   // |width| x |height|. The SharedImage image is a pure container of some GPU
   // textures and no DMA-buf buffer will be associated.
   static SharedImage CreateFromGpuTexture(GLenum gl_format,
@@ -52,6 +74,7 @@ class SharedImage {
   const Texture2D& uv_texture() const;
 
   void SetDestructionCallback(base::OnceClosure callback);
+  bool IsValid();
 
  private:
   // Creates a SharedImage from the given |buffer|, |egl_images| and |textures|.

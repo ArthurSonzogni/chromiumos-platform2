@@ -31,6 +31,11 @@ std::array<uint8_t, 4> GetTestRgbaColor(int x, int y, int width, int height);
 // (|width|, |height|) with pixel values filled by FillTestPattern().
 std::array<uint8_t, 3> GetTestYuvColor(int x, int y, int width, int height);
 
+// Gets the YUYV pixel value at (|x|, |y|) on an image of dimension
+// (|width|, |height|) with pixel values filled by FillTestPattern().
+// Here, one pixel corresponds to one (YU, YV) pair, which amounts to 4 bytes.
+std::array<uint8_t, 4> GetTestYuyvColor(int x, int y, int width, int height);
+
 class GlTestFixture {
  public:
   GlTestFixture();

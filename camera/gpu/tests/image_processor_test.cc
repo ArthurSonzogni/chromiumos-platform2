@@ -63,6 +63,7 @@ struct Options {
 Options g_args;
 
 constexpr uint32_t kNV12Format = HAL_PIXEL_FORMAT_YCbCr_420_888;
+constexpr uint32_t kYUYVFormat = HAL_PIXEL_FORMAT_YCbCr_422_I;
 constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
 constexpr uint32_t kBufferUsage = GRALLOC_USAGE_SW_READ_OFTEN |
                                   GRALLOC_USAGE_SW_WRITE_OFTEN |
@@ -134,7 +135,19 @@ class GlImageProcessorTestBase {
     input_image_ = SharedImage::CreateFromBuffer(
         *input_buffer_, Texture2D::Target::kTargetExternal);
     ASSERT_TRUE(input_buffer_);
-    ASSERT_TRUE(input_image_.texture().IsValid());
+    ASSERT_TRUE(input_image_.IsValid());
+  }
+
+  void AllocateYUYVInput() {
+    // YUYV buffer with dual GL_TEXTURE_2D textures for reading Y and UV.
+    // YUYV corresponds to one pixel width, since internally it is allocated
+    // as XBGR8888, hence |width| needs to be divided by 2.
+    input_buffer_ = CameraBufferManager::AllocateScopedBuffer(
+        g_args.input_size.width / 2, g_args.input_size.height, kYUYVFormat,
+        kBufferUsage);
+    input_image_ = SharedImage::CreateFromBuffer(*input_buffer_);
+    ASSERT_TRUE(input_buffer_);
+    ASSERT_TRUE(input_image_.IsValid());
   }
 
   void AllocateNV12Input() {
@@ -146,8 +159,7 @@ class GlImageProcessorTestBase {
         *input_buffer_, Texture2D::Target::kTarget2D,
         /*separate_yuv_textures=*/true);
     ASSERT_TRUE(input_buffer_);
-    ASSERT_TRUE(input_image_.y_texture().IsValid());
-    ASSERT_TRUE(input_image_.uv_texture().IsValid());
+    ASSERT_TRUE(input_image_.IsValid());
   }
 
   void AllocateNV12Output(size_t width, size_t height) {
@@ -158,8 +170,7 @@ class GlImageProcessorTestBase {
         *output_buffer_, Texture2D::Target::kTarget2D,
         /*separate_yuv_textures=*/true);
     ASSERT_TRUE(output_buffer_);
-    ASSERT_TRUE(output_image_.y_texture().IsValid());
-    ASSERT_TRUE(output_image_.uv_texture().IsValid());
+    ASSERT_TRUE(output_image_.IsValid());
   }
 
   void AllocateRGBAInput() {
@@ -170,7 +181,7 @@ class GlImageProcessorTestBase {
     input_image_ = SharedImage::CreateFromBuffer(*input_buffer_,
                                                  Texture2D::Target::kTarget2D);
     ASSERT_TRUE(input_buffer_);
-    ASSERT_TRUE(input_image_.texture().IsValid());
+    ASSERT_TRUE(input_image_.IsValid());
   }
 
   void AllocateRGBAOutput() {
@@ -181,7 +192,7 @@ class GlImageProcessorTestBase {
     output_image_ = SharedImage::CreateFromBuffer(*output_buffer_,
                                                   Texture2D::Target::kTarget2D);
     ASSERT_TRUE(output_buffer_);
-    ASSERT_TRUE(output_image_.texture().IsValid());
+    ASSERT_TRUE(output_image_.IsValid());
   }
 
   void DumpInputBuffer() {
@@ -281,6 +292,19 @@ TEST_F(GlImageProcessorTest, NV12ToNV12Test) {
 
   AllocateNV12Output(g_args.output_size.width, g_args.output_size.height);
   EXPECT_TRUE(image_processor_.YUVToYUV(
+      input_image_.y_texture(), input_image_.uv_texture(),
+      output_image_.y_texture(), output_image_.uv_texture()));
+  glFinish();
+  DumpOutputBuffer();
+}
+
+TEST_F(GlImageProcessorTest, YUYVToNV12Test) {
+  AllocateYUYVInput();
+  FillTestPattern(*input_buffer_);
+  DumpInputBuffer();
+
+  AllocateNV12Output(g_args.output_size.width, g_args.output_size.height);
+  EXPECT_TRUE(image_processor_.YUYVToNV12(
       input_image_.y_texture(), input_image_.uv_texture(),
       output_image_.y_texture(), output_image_.uv_texture()));
   glFinish();

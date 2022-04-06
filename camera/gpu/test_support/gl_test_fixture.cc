@@ -13,7 +13,22 @@ void FillTestPattern(buffer_handle_t buffer) {
   int width = CameraBufferManager::GetWidth(buffer);
   int height = CameraBufferManager::GetHeight(buffer);
   uint32_t hal_format = CameraBufferManager::GetHalPixelFormat(buffer);
-  if (hal_format == HAL_PIXEL_FORMAT_RGBX_8888) {
+  if (hal_format == HAL_PIXEL_FORMAT_YCbCr_422_I) {
+    void* addr = nullptr;
+    CHECK_EQ(buf_mgr->Lock(buffer, 0, 0, 0, width, height, &addr), 0);
+    uint32_t* as_uint32 = reinterpret_cast<uint32_t*>(addr);
+    size_t pixel_stride =
+        CameraBufferManager::GetPlaneStride(buffer, 0) / sizeof(uint32_t);
+    int base = 0;
+    for (int y = 0; y < height; ++y) {
+      base = y * pixel_stride;
+      for (int x = 0; x < width; ++x) {
+        as_uint32[base + x] = *reinterpret_cast<uint32_t*>(
+            GetTestYuyvColor(x, y, width, height).data());
+      }
+    }
+    CHECK_EQ(buf_mgr->Unlock(buffer), 0);
+  } else if (hal_format == HAL_PIXEL_FORMAT_RGBX_8888) {
     void* addr = nullptr;
     CHECK_EQ(buf_mgr->Lock(buffer, 0, 0, 0, width, height, &addr), 0);
     uint32_t* as_uint32 = reinterpret_cast<uint32_t*>(addr);
@@ -116,6 +131,12 @@ std::array<uint8_t, 3> GetTestYuvColor(int x, int y, int width, int height) {
   return std::array<uint8_t, 3>{base::checked_cast<uint8_t>(Y),
                                 base::checked_cast<uint8_t>(U),
                                 base::checked_cast<uint8_t>(V)};
+}
+
+std::array<uint8_t, 4> GetTestYuyvColor(int x, int y, int width, int height) {
+  auto yuv1 = GetTestYuvColor(x * 2, y, width * 2, height);
+  auto yuv2 = GetTestYuvColor(x * 2 + 1, y, width * 2, height);
+  return std::array<uint8_t, 4>{yuv1[0], yuv1[1], yuv2[0], yuv1[2]};
 }
 
 GlTestFixture::GlTestFixture() {

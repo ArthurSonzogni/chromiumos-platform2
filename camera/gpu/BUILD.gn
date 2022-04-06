@@ -23,6 +23,7 @@ cc_embed_data("embedded_gpu_shaders") {
     "//camera/gpu/shaders/nv12_to_rgba.frag",
     "//camera/gpu/shaders/rgba_to_nv12.frag",
     "//camera/gpu/shaders/yuv_to_yuv.frag",
+    "//camera/gpu/shaders/yuyv_to_nv12.frag",
   ]
 }
 

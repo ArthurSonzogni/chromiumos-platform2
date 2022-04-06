@@ -31,6 +31,7 @@ constexpr const char* kYuvToYuvFilename = "yuv_to_yuv.frag";
 constexpr const char* kGammaCorrectionFilename = "gamma_correction.frag";
 constexpr const char* kLutFilename = "lut.frag";
 constexpr const char* kCropFilename = "crop.frag";
+constexpr const char* kYuyvToNv12Filename = "yuyv_to_nv12.frag";
 
 }  // namespace
 
@@ -103,6 +104,13 @@ GpuImageProcessor::GpuImageProcessor()
     CHECK(fragment_shader.IsValid());
     crop_yuv_program_ = ShaderProgram({&vertex_shader, &fragment_shader});
   }
+  {
+    base::span<const char> src = gpu_shaders.Get(kYuyvToNv12Filename);
+    Shader fragment_shader(GL_FRAGMENT_SHADER,
+                           std::string(src.data(), src.size()));
+    CHECK(fragment_shader.IsValid());
+    yuyv_to_nv12_program_ = ShaderProgram({&vertex_shader, &fragment_shader});
+  }
 }
 
 GpuImageProcessor::~GpuImageProcessor() = default;
@@ -110,8 +118,8 @@ GpuImageProcessor::~GpuImageProcessor() = default;
 bool GpuImageProcessor::RGBAToNV12(const Texture2D& rgba_input,
                                    const Texture2D& y_output,
                                    const Texture2D& uv_output) {
-  if ((y_output.width() / 2 != uv_output.width()) ||
-      (y_output.height() / 2 != uv_output.height())) {
+  if ((y_output.width() != uv_output.width() * 2) ||
+      (y_output.height() != uv_output.height() * 2)) {
     LOGF(ERROR) << "Invalid Y (" << y_output.width() << ", "
                 << y_output.height() << ") and UV (" << uv_output.width()
                 << ", " << uv_output.height() << ") output dimension";
@@ -171,8 +179,8 @@ bool GpuImageProcessor::RGBAToNV12(const Texture2D& rgba_input,
 bool GpuImageProcessor::ExternalYUVToNV12(const Texture2D& external_yuv_input,
                                           const Texture2D& y_output,
                                           const Texture2D& uv_output) {
-  if ((y_output.width() / 2 != uv_output.width()) ||
-      (y_output.height() / 2 != uv_output.height())) {
+  if ((y_output.width() != uv_output.width() * 2) ||
+      (y_output.height() != uv_output.height() * 2)) {
     LOGF(ERROR) << "Invalid Y (" << y_output.width() << ", "
                 << y_output.height() << ") and UV (" << uv_output.width()
                 << ", " << uv_output.height() << ") output dimension";
@@ -269,8 +277,8 @@ bool GpuImageProcessor::ExternalYUVToRGBA(const Texture2D& external_yuv_input,
 bool GpuImageProcessor::NV12ToRGBA(const Texture2D& y_input,
                                    const Texture2D& uv_input,
                                    const Texture2D& rgba_output) {
-  if ((y_input.width() / 2 != uv_input.width()) ||
-      (y_input.height() / 2 != uv_input.height())) {
+  if ((y_input.width() != uv_input.width() * 2) ||
+      (y_input.height() != uv_input.height() * 2)) {
     LOGF(ERROR) << "Invalid Y (" << y_input.width() << ", " << y_input.height()
                 << ") and UV (" << uv_input.width() << ", " << uv_input.height()
                 << ") input dimension";
@@ -322,15 +330,15 @@ bool GpuImageProcessor::YUVToYUV(const Texture2D& y_input,
                                  const Texture2D& uv_input,
                                  const Texture2D& y_output,
                                  const Texture2D& uv_output) {
-  if ((y_input.width() / 2 != uv_input.width()) ||
-      (y_input.height() / 2 != uv_input.height())) {
+  if ((y_input.width() != uv_input.width() * 2) ||
+      (y_input.height() != uv_input.height() * 2)) {
     LOGF(ERROR) << "Invalid Y (" << y_input.width() << ", " << y_input.height()
                 << ") and UV (" << uv_input.width() << ", " << uv_input.height()
                 << ") input dimension";
     return false;
   }
-  if ((y_output.width() / 2 != uv_output.width()) ||
-      (y_output.height() / 2 != uv_output.height())) {
+  if ((y_output.width() != uv_output.width() * 2) ||
+      (y_output.height() != uv_output.height() * 2)) {
     LOGF(ERROR) << "Invalid Y (" << y_output.width() << ", "
                 << y_output.height() << ") and UV (" << uv_output.width()
                 << ", " << uv_output.height() << ") output dimension";
@@ -388,6 +396,81 @@ bool GpuImageProcessor::YUVToYUV(const Texture2D& y_input,
   Sampler::Unbind(kYInputBinding);
   glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
   uv_input.Unbind();
+  Sampler::Unbind(kUvInputBinding);
+
+  return true;
+}
+
+bool GpuImageProcessor::YUYVToNV12(const Texture2D& yx_input,
+                                   const Texture2D& yuyv_input,
+                                   const Texture2D& y_output,
+                                   const Texture2D& uv_output) {
+  if ((yx_input.width() != yuyv_input.width() * 2) ||
+      (yx_input.height() != yuyv_input.height())) {
+    LOGF(ERROR) << "Invalid Y (" << yx_input.width() << ", "
+                << yx_input.height() << ") and UV (" << yuyv_input.width()
+                << ", " << yuyv_input.height() << ") input dimension";
+    return false;
+  }
+  if ((y_output.width() != uv_output.width() * 2) ||
+      (y_output.height() != uv_output.height() * 2)) {
+    LOGF(ERROR) << "Invalid Y (" << y_output.width() << ", "
+                << y_output.height() << ") and UV (" << uv_output.width()
+                << ", " << uv_output.height() << ") output dimension";
+    return false;
+  }
+
+  FramebufferGuard fb_guard;
+  ViewportGuard viewport_guard;
+  ProgramGuard program_guard;
+  VertexArrayGuard va_guard;
+
+  rect_.SetAsVertexInput();
+
+  constexpr int kYInputBinding = 0;
+  constexpr int kUvInputBinding = 1;
+  glActiveTexture(GL_TEXTURE0 + kYInputBinding);
+  yx_input.Bind();
+  nearest_clamp_to_edge_.Bind(kYInputBinding);
+  glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
+  yuyv_input.Bind();
+  nearest_clamp_to_edge_.Bind(kUvInputBinding);
+
+  yuyv_to_nv12_program_.UseProgram();
+
+  // Set shader uniforms.
+  std::vector<float> texture_matrix = TextureSpaceFromNdc();
+  GLint uTextureMatrix =
+      yuyv_to_nv12_program_.GetUniformLocation("uTextureMatrix");
+  glUniformMatrix4fv(uTextureMatrix, 1, false, texture_matrix.data());
+  GLint uIsYPlane = yuyv_to_nv12_program_.GetUniformLocation("uIsYPlane");
+
+  // Y pass.
+  {
+    glUniform1i(uIsYPlane, true);
+    Framebuffer fb;
+    fb.Bind();
+    fb.Attach(GL_COLOR_ATTACHMENT0, y_output);
+    glViewport(0, 0, y_output.width(), y_output.height());
+    rect_.Draw();
+  }
+
+  // UV pass.
+  {
+    glUniform1i(uIsYPlane, false);
+    Framebuffer fb;
+    fb.Bind();
+    fb.Attach(GL_COLOR_ATTACHMENT0, uv_output);
+    glViewport(0, 0, uv_output.width(), uv_output.height());
+    rect_.Draw();
+  }
+
+  // Clean up.
+  glActiveTexture(GL_TEXTURE0 + kYInputBinding);
+  yx_input.Unbind();
+  Sampler::Unbind(kYInputBinding);
+  glActiveTexture(GL_TEXTURE0 + kUvInputBinding);
+  yuyv_input.Unbind();
   Sampler::Unbind(kUvInputBinding);
 
   return true;
@@ -510,15 +593,15 @@ bool GpuImageProcessor::CropYuv(const Texture2D& y_input,
                                 const Texture2D& y_output,
                                 const Texture2D& uv_output,
                                 FilterMode filter_mode) {
-  if ((y_input.width() / 2 != uv_input.width()) ||
-      (y_input.height() / 2 != uv_input.height())) {
+  if ((y_input.width() != uv_input.width() * 2) ||
+      (y_input.height() != uv_input.height() * 2)) {
     LOGF(ERROR) << "Invalid Y (" << y_input.width() << ", " << y_input.height()
                 << ") and UV (" << uv_input.width() << ", " << uv_input.height()
                 << ") input dimension";
     return false;
   }
-  if ((y_output.width() / 2 != uv_output.width()) ||
-      (y_output.height() / 2 != uv_output.height())) {
+  if ((y_output.width() != uv_output.width() * 2) ||
+      (y_output.height() != uv_output.height() * 2)) {
     LOGF(ERROR) << "Invalid Y (" << y_output.width() << ", "
                 << y_output.height() << ") and UV (" << uv_output.width()
                 << ", " << uv_output.height() << ") output dimension";

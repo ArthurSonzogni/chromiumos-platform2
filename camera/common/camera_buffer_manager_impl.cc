@@ -32,6 +32,9 @@ std::unordered_map<uint32_t, std::vector<uint32_t>> kSupportedHalFormats{
      {DRM_FORMAT_NV12, DRM_FORMAT_XBGR8888, DRM_FORMAT_MTISP_SXYZW10}},
     {HAL_PIXEL_FORMAT_RGBX_8888, {DRM_FORMAT_XBGR8888}},
     {HAL_PIXEL_FORMAT_YCbCr_420_888, {DRM_FORMAT_NV12}},
+    // Map to DRM_FORMAT_ABGR8888 because DRM_FORMAT_VYUY or DRM_FORMAT_YUYV is
+    // not generally supported by minigbm.
+    {HAL_PIXEL_FORMAT_YCbCr_422_I, {DRM_FORMAT_ABGR8888}},
     {HAL_PIXEL_FORMAT_YCBCR_P010, {DRM_FORMAT_P010}},
     {HAL_PIXEL_FORMAT_Y8, {DRM_FORMAT_R8}},
 };
@@ -76,7 +79,7 @@ bool IsMatchingFormat(int32_t hal_pixel_format, uint32_t drm_format) {
     case HAL_PIXEL_FORMAT_YCrCb_420_SP:
       return drm_format == DRM_FORMAT_NV21;
     case HAL_PIXEL_FORMAT_YCbCr_422_I:
-      return drm_format == DRM_FORMAT_YUYV;
+      return drm_format == DRM_FORMAT_ABGR8888;
     case HAL_PIXEL_FORMAT_BLOB:
       return drm_format == DRM_FORMAT_R8;
     case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:

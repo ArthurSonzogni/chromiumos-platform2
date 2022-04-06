@@ -27,7 +27,7 @@ namespace cros {
 
 namespace {
 
-bool IsYuv(uint32_t drm_format) {
+bool IsPlanarYuv(uint32_t drm_format) {
   switch (drm_format) {
     case DRM_FORMAT_P010:
     case DRM_FORMAT_NV12:
@@ -108,7 +108,7 @@ EglImage EglImage::FromBuffer(buffer_handle_t buffer) {
         static_cast<EGLint>(EGL_DMA_BUF_PLANE0_PITCH_EXT + plane * 3));
     attrs.push_back(stride);
   }
-  if (IsYuv(drm_format)) {
+  if (IsPlanarYuv(drm_format)) {
     // TODO(jcliang): Allow specifying the following attributes.
     attrs.push_back(EGL_YUV_COLOR_SPACE_HINT_EXT);
     attrs.push_back(EGL_ITU_REC601_EXT);
@@ -121,6 +121,32 @@ EglImage EglImage::FromBuffer(buffer_handle_t buffer) {
   }
   attrs.push_back(EGL_NONE);
 
+  EglImage image(attrs);
+  image.width_ = width;
+  image.height_ = height;
+  return image;
+}
+
+// static
+EglImage EglImage::FromDmaBufFds(const std::vector<DmaBufPlane>& planes,
+                                 int width,
+                                 int height,
+                                 uint32_t drm_format) {
+  std::vector<EGLint> attrs = {EGL_WIDTH,
+                               static_cast<EGLint>(width),
+                               EGL_HEIGHT,
+                               static_cast<EGLint>(height),
+                               EGL_LINUX_DRM_FOURCC_EXT,
+                               static_cast<EGLint>(drm_format)};
+  for (size_t i = 0; i < planes.size(); ++i) {
+    attrs.push_back(static_cast<EGLint>(EGL_DMA_BUF_PLANE0_FD_EXT + i * 3));
+    attrs.push_back(planes[i].fd);
+    attrs.push_back(static_cast<EGLint>(EGL_DMA_BUF_PLANE0_OFFSET_EXT + i * 3));
+    attrs.push_back(planes[i].offset);
+    attrs.push_back(static_cast<EGLint>(EGL_DMA_BUF_PLANE0_PITCH_EXT + i * 3));
+    attrs.push_back(planes[i].stride);
+  }
+  attrs.push_back(EGL_NONE);
   EglImage image(attrs);
   image.width_ = width;
   image.height_ = height;

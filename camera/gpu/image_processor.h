@@ -137,6 +137,34 @@ class GpuImageProcessor {
                 const Texture2D& y_output,
                 const Texture2D& uv_output);
 
+  // Convert the input YUYV |yx_input| and |yuyv_input| textures to NV12.
+  // |yx_input| and |yuyv_input| are bound to the same YUYV buffer, but they are
+  // interpreted as different numbers of channels for the purpose of reading Y
+  // and UV values.
+  //
+  // Args:
+  //    |yx_input|:
+  //        The input 2D texture for reading Y from the 1st channel.  The
+  //        texture must be of format GR88.
+  //    |yuyv_input|:
+  //        The input 2D texture for reading U and V from the 2nd and 4th
+  //        channels respectively.  The texture must be of format ABGR8888.
+  //        The pixel dimension must be (|yx_input|.width / 2, |yx_input|).
+  //    |y_output|:
+  //        The output 2D texture for Y plane.  The texture must be of format
+  //        R8.
+  //    |uv_output|:
+  //        The output 2D texture for UV plane.  The texture must be of format
+  //        GR8.  The pixel dimension must be
+  //        (|y_output|.width / 2, |y_output|.height / 2).
+  //
+  // Returns:
+  //    true if GL commands are successfully submitted; false otherwise.
+  bool YUYVToNV12(const Texture2D& yx_input,
+                  const Texture2D& yuyv_input,
+                  const Texture2D& y_output,
+                  const Texture2D& uv_output);
+
   // Apply the Gamma curve: OUT = pow(IN, 1/|gamma_value|) to each of the RGB
   // channels of |rgba_input|.  The results are written to |rgba_output|.
   //
@@ -233,6 +261,7 @@ class GpuImageProcessor {
   ShaderProgram gamma_correction_program_;
   ShaderProgram lut_program_;
   ShaderProgram crop_yuv_program_;
+  ShaderProgram yuyv_to_nv12_program_;
 
   Sampler nearest_clamp_to_edge_;
   Sampler linear_clamp_to_edge_;
