@@ -156,25 +156,26 @@ bool IPConfig::ClearBlackholedUids() {
   return SetBlackholedUids(std::vector<uint32_t>());
 }
 
-void IPConfig::UpdateProperties(const Properties& properties,
-                                bool new_lease_acquired) {
-  // Take a reference of this instance to make sure we don't get destroyed in
-  // the middle of this call. (The |update_callback_| may cause a reference
-  // to be dropped. See, e.g., EthernetService::Disconnect and
-  // Ethernet::DropConnection.)
-  IPConfigRefPtr me = this;
-
+void IPConfig::UpdateProperties(const Properties& properties) {
   properties_ = properties;
-
-  if (!update_callback_.is_null()) {
-    update_callback_.Run(this, new_lease_acquired);
-  }
   EmitChanges();
 }
 
 void IPConfig::UpdateDNSServers(std::vector<std::string> dns_servers) {
   properties_.dns_servers = std::move(dns_servers);
   EmitChanges();
+}
+
+void IPConfig::NotifyUpdate(bool new_lease_acquired) {
+  // Take a reference of this instance to make sure we don't get destroyed in
+  // the middle of this call. (The |update_callback_| may cause a reference
+  // to be dropped. See, e.g., EthernetService::Disconnect and
+  // Ethernet::DropConnection.)
+  IPConfigRefPtr me = this;
+
+  if (!update_callback_.is_null()) {
+    update_callback_.Run(this, new_lease_acquired);
+  }
 }
 
 void IPConfig::NotifyFailure() {

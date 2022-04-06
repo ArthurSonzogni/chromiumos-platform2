@@ -111,23 +111,19 @@ void DHCPv4Config::ProcessEventSignal(const std::string& reason,
   IPConfig::Properties properties;
   CHECK(ParseConfiguration(configuration, &properties));
 
-  // This needs to be set before calling UpdateProperties() below since
+  // This needs to be set before calling OnIPConfigUpdated() below since
   // those functions may indirectly call other methods like ReleaseIP that
   // depend on or change this value.
   set_is_lease_active(true);
 
-  if (reason == kReasonGatewayArp) {
-    // This is a non-authoritative confirmation that we or on the same
-    // network as the one we received a lease on previously.  The DHCP
-    // client is still running, so we should not cancel the timeout
-    // until that completes.  In the meantime, however, we can tentatively
-    // configure our network in anticipation of successful completion.
-    IPConfig::UpdateProperties(properties, false);
-    is_gateway_arp_active_ = true;
-  } else {
-    DHCPConfig::UpdateProperties(properties, true);
-    is_gateway_arp_active_ = false;
-  }
+  const bool is_gateway_arp = reason == kReasonGatewayArp;
+  // This is a non-authoritative confirmation that we or on the same
+  // network as the one we received a lease on previously.  The DHCP
+  // client is still running, so we should not cancel the timeout
+  // until that completes.  In the meantime, however, we can tentatively
+  // configure our network in anticipation of successful completion.
+  OnIPConfigUpdated(properties, /*new_lease_acquired=*/!is_gateway_arp);
+  is_gateway_arp_active_ = is_gateway_arp;
 }
 
 void DHCPv4Config::CleanupClientState() {

@@ -207,7 +207,7 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
   // running inadvertently as a result.
   EXPECT_CALL(*this, SuccessCallback(ConfigRef(), true))
       .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
-  config_->UpdateProperties(properties, true);
+  config_->OnIPConfigUpdated(properties, true);
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());

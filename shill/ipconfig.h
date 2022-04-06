@@ -16,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/mockable.h"
 #include "shill/net/ip_address.h"
 #include "shill/refptr_types.h"
 #include "shill/routing_policy_entry.h"
@@ -149,14 +150,14 @@ class IPConfig : public base::RefCounted<IPConfig> {
   void RegisterExpireCallback(const Callback& callback);
 
   void set_properties(const Properties& props) { properties_ = props; }
-  virtual const Properties& properties() const { return properties_; }
+  mockable const Properties& properties() const { return properties_; }
 
   // Update DNS servers setting for this ipconfig, this allows Chrome
   // to retrieve the new DNS servers.
-  virtual void UpdateDNSServers(std::vector<std::string> dns_servers);
+  mockable void UpdateDNSServers(std::vector<std::string> dns_servers);
 
   // Reset the IPConfig properties to their default values.
-  virtual void ResetProperties();
+  mockable void ResetProperties();
 
   // Request, renew and release IP configuration. Return true on success, false
   // otherwise. The default implementation always returns false indicating a
@@ -196,18 +197,19 @@ class IPConfig : public base::RefCounted<IPConfig> {
  protected:
   // Inform RPC listeners of changes to our properties. MAY emit
   // changes even on unchanged properties.
-  virtual void EmitChanges();
+  mockable void EmitChanges();
 
-  // Updates the IP configuration properties and notifies registered listeners
-  // about the event.
-  virtual void UpdateProperties(const Properties& properties,
-                                bool new_lease_acquired);
+  // Updates the IP configuration properties.
+  void UpdateProperties(const Properties& properties);
+
+  // Notifies registered listeners that the IP config is updated from DHCP.
+  void NotifyUpdate(bool new_lease_acquired);
 
   // Notifies registered listeners that the configuration process has failed.
   virtual void NotifyFailure();
 
   // Notifies registered listeners that the lease has expired.
-  virtual void NotifyExpiry();
+  void NotifyExpiry();
 
  private:
   friend class IPConfigAdaptorInterface;

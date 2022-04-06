@@ -66,9 +66,10 @@ class DHCPConfig : public IPConfig {
   }
 
  protected:
-  // Overrides base clase implementation.
-  void UpdateProperties(const Properties& properties,
-                        bool new_lease_acquired) override;
+  // On we get a new IP config properties via DHCP. The second parameter
+  // indicates whether this is an authoritative confirmation.
+  void OnIPConfigUpdated(const Properties& properties, bool new_lease_acquired);
+
   void NotifyFailure() override;
 
   int minimum_mtu() const { return minimum_mtu_; }

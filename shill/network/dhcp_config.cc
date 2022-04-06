@@ -133,18 +133,23 @@ void DHCPConfig::InitProxy(const std::string& service) {
   }
 }
 
-void DHCPConfig::UpdateProperties(const Properties& properties,
-                                  bool new_lease_acquired) {
-  StopAcquisitionTimeout();
-  if (properties.lease_duration_seconds) {
-    UpdateLeaseExpirationTime(properties.lease_duration_seconds);
-    StartExpirationTimeout(properties.lease_duration_seconds);
-  } else {
-    LOG(WARNING) << "Lease duration is zero; not starting an expiration timer.";
-    ResetLeaseExpirationTime();
-    StopExpirationTimeout();
+void DHCPConfig::OnIPConfigUpdated(const Properties& properties,
+                                   bool new_lease_acquired) {
+  if (new_lease_acquired) {
+    StopAcquisitionTimeout();
+    if (properties.lease_duration_seconds) {
+      UpdateLeaseExpirationTime(properties.lease_duration_seconds);
+      StartExpirationTimeout(properties.lease_duration_seconds);
+    } else {
+      LOG(WARNING)
+          << "Lease duration is zero; not starting an expiration timer.";
+      ResetLeaseExpirationTime();
+      StopExpirationTimeout();
+    }
   }
-  IPConfig::UpdateProperties(properties, new_lease_acquired);
+
+  IPConfig::UpdateProperties(properties);
+  IPConfig::NotifyUpdate(new_lease_acquired);
 }
 
 void DHCPConfig::NotifyFailure() {

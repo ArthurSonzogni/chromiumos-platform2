@@ -65,7 +65,11 @@ class IPConfigTest : public Test {
   }
 
   void UpdateProperties(const IPConfig::Properties& properties) {
-    ipconfig_->UpdateProperties(properties, true);
+    ipconfig_->UpdateProperties(properties);
+  }
+
+  void NotifyUpdate(bool new_lease_acquired) {
+    ipconfig_->NotifyUpdate(new_lease_acquired);
   }
 
   void NotifyFailure() { ipconfig_->NotifyFailure(); }
@@ -178,7 +182,7 @@ TEST_F(IPConfigTest, Callbacks) {
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true));
   EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
   EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
-  UpdateProperties(IPConfig::Properties());
+  NotifyUpdate(true);
   Mock::VerifyAndClearExpectations(this);
 
   EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true)).Times(0);
@@ -194,12 +198,12 @@ TEST_F(IPConfigTest, Callbacks) {
   Mock::VerifyAndClearExpectations(this);
 }
 
-TEST_F(IPConfigTest, UpdatePropertiesWithDropRef) {
+TEST_F(IPConfigTest, NotifyUpdateWithDropRef) {
   // The UpdateCallback should be able to drop a reference to the
   // IPConfig object without crashing.
   ipconfig_->RegisterUpdateCallback(
       base::Bind(&IPConfigTest::DropRef, base::Unretained(this)));
-  UpdateProperties(IPConfig::Properties());
+  NotifyUpdate(true);
 }
 
 TEST_F(IPConfigTest, PropertyChanges) {

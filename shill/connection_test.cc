@@ -151,10 +151,10 @@ class ConnectionTest : public Test {
     }
   }
 
-  void UpdateProperties() { ipconfig_->UpdateProperties(properties_, true); }
+  void UpdateProperties() { ipconfig_->UpdateProperties(properties_); }
 
   void UpdateIPv6Properties() {
-    ip6config_->UpdateProperties(ipv6_properties_, true);
+    ip6config_->UpdateProperties(ipv6_properties_);
   }
 
   bool FixGatewayReachability(const IPAddress& local,
