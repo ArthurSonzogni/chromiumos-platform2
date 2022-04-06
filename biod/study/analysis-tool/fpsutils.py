@@ -230,7 +230,7 @@ def smalltimestr(sec: float) -> str:
 
 def autorange(stmt: str,
               setup: str = 'pass',
-              globals: dict = {**locals(), **globals()}):
+              globals: dict = {**locals(), **globals()}) -> Tuple[int, float]:
     """Invoke timeit.Timer.autorange and print results."""
 
     loops, sec = timeit.Timer(
@@ -240,3 +240,4 @@ def autorange(stmt: str,
     print(f'Ran "{stmt}" {loops} times over {sec}s.'
           ' '
           f'It took {smalltimestr(sec/loops)} per loop.')
+    return loops, sec
