@@ -101,8 +101,8 @@ class FPCBETResults:
         )
 
         for col in Experiment.FalseTableCols:
-            col_text = tbl[col.value].str.extract('= (\d+)', expand=False)
-            tbl[col.value] = pd.to_numeric(col_text)
+            col_text = tbl[col].str.extract('= (\d+)', expand=False)
+            tbl[col] = pd.to_numeric(col_text)
 
         tbl['StrongFA'] = (tbl['StrongFA'] != 'no')
 

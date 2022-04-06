@@ -54,16 +54,17 @@ class Experiment:
         def all_values(cls) -> list:
             return list(level.value for level in cls)
 
-    FalseTableCols = {TableCol.Enroll_User,
-                      TableCol.Enroll_Finger,
-                      TableCol.Verify_User,
-                      TableCol.Verify_Finger,
-                      TableCol.Verify_Sample}
-    DecisionTableCols = {TableCol.Enroll_User,
-                         TableCol.Enroll_Finger,
-                         TableCol.Verify_User,
-                         TableCol.Verify_Finger,
-                         TableCol.Verify_Sample}
+    FalseTableCols = {TableCol.Enroll_User.value,
+                      TableCol.Enroll_Finger.value,
+                      TableCol.Verify_User.value,
+                      TableCol.Verify_Finger.value,
+                      TableCol.Verify_Sample.value}
+    DecisionTableCols = {TableCol.Enroll_User.value,
+                         TableCol.Enroll_Finger.value,
+                         TableCol.Verify_User.value,
+                         TableCol.Verify_Finger.value,
+                         TableCol.Verify_Sample.value,
+                         TableCol.Decision.value}
 
     def _FalseTableQuery(false_table: pd.DataFrame,
                          enroll_user_id: int = None,
