@@ -124,6 +124,7 @@ if (use.test) {
       "get_version_command_test.cc",
       "mkbp_wake_mask_command_test.cc",
       "pd_chip_info_command_test.cc",
+      "pwm_command_test.cc",
       "reboot_command_test.cc",
       "rgb_keyboard_command_test.cc",
       "rwsig_action_command_test.cc",
