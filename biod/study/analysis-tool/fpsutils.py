@@ -99,6 +99,22 @@ def boot_sample(
         return rng.choice(a, size=a.size, replace=True)
 
 
+def boot_sample_range(
+    # Scalar input is the fastest invocation to rng.choice.
+    range: int,
+    n: Optional[int] = None,
+    rng: np.random.Generator = np.random.default_rng()
+) -> np.ndarray:
+    """Sample with replacement `range` elements from `0` to `range`.
+
+    This is slightly faster than `fpsutils.boot_sample`.
+
+    Equivalent to `rng.choice(range, size=range, replace=True)`.
+    """
+
+    return rng.choice(range, range, replace=True)
+
+
 def plot_pd_hist_discrete(tbl: pd.DataFrame,
                           title_prefix: str = None,
                           figsize: tuple = None):
