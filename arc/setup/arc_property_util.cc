@@ -564,6 +564,11 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
   } else if (re2::RE2::PartialMatch(
                  model_field,
                  R"(AMD (Ryzen 3 [A-Z0-9]+) [0-9]+W with Radeon Graphics)",
+                 &model) ||
+
+             // Simpler AMD model names missing a watt value.
+             re2::RE2::PartialMatch(
+                 model_field, R"(AMD ([0-9A-Za-z]+) with Radeon Graphics)",
                  &model)) {
     manufacturer = "AMD";
   } else {

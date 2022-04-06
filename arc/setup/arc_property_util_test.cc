@@ -727,6 +727,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=AMD\n"
          "ro.soc.model=Ryzen 3 3250C\n"},
 
+        // For a Zork board. (includes dirinboz, ezkinil, and morphius devices)
+        {"model name\t: AMD 3015Ce with Radeon Graphics\n",
+         "ro.soc.manufacturer=AMD\n"
+         "ro.soc.model=3015Ce\n"},
+
         // For an Octopus board.
         {"model name: Intel(R) Celeron(R) N4000 CPU @ 1.10GHz\n",
          "ro.soc.manufacturer=Intel\nro.soc.model=N4000\n"}}) {
