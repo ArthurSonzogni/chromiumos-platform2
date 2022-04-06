@@ -44,6 +44,41 @@ class DataFrameSetAccess:
         return values in self.set
 
 
+class DataFrameCountTrieAccess:
+    """Provides a quick method of checking the number of matching rows.
+
+    This implementation builds a trie with all partial row columns,
+    from the empty tuple to the full row tuple. At each node, the count
+    of all downstream nodes is saved.
+
+    This is on par with the performance of `DataFrameSetAccess`, but still
+    tens of nanoseconds slower.
+    """
+
+    def __init__(self, table: pd.DataFrame, cols: List[str] = None):
+        """This is an expensive caching operation."""
+
+        if not cols:
+            cols = list(table.columns)
+        self.cols = cols
+
+        self.counts_dict = dict()
+
+        for row in np.array(table[cols]):
+            for i in range(len(cols)+1):
+                # We include the empty tuple (row[0:0]) count also.
+                t = tuple(row)[0:i]
+                self.counts_dict[t] = self.counts_dict.get(t, 0) + 1
+
+    def isin(self, values: tuple) -> bool:
+        """A tuple will only be in the cache if the count is at least 1."""
+        return values in self.counts_dict
+
+    def counts(self, values: tuple) -> int:
+        """Get the number of rows that start with `values` tuple."""
+        return self.counts_dict.get(values, 0)
+
+
 def boot_sample(
     a,
     *,
