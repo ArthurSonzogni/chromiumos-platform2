@@ -13,6 +13,8 @@ use glob::glob;
 use once_cell::sync::Lazy;
 use sys_util::error;
 
+use crate::power;
+
 // Extract the parsing function for unittest.
 pub fn parse_file_to_u64<R: BufRead>(reader: R) -> Result<u64> {
     let first_line = reader.lines().next().context("No content in buffer")??;
@@ -49,14 +51,20 @@ impl TryFrom<u8> for GameMode {
 
 static GAME_MODE: Lazy<Mutex<GameMode>> = Lazy::new(|| Mutex::new(GameMode::Off));
 
-pub fn set_game_mode(mode: GameMode) -> Result<()> {
+pub fn set_game_mode(
+    power_preference_manager: &dyn power::PowerPreferencesManager,
+    mode: GameMode,
+) -> Result<()> {
     match GAME_MODE.lock() {
         Ok(mut data) => {
             *data = mode;
-            Ok(())
         }
         Err(_) => bail!("Failed to set game mode"),
-    }
+    };
+
+    update_power_preferences(power_preference_manager)?;
+
+    Ok(())
 }
 
 pub fn get_game_mode() -> Result<GameMode> {
@@ -132,6 +140,7 @@ pub fn set_epp(root_path: &str, value: &str) -> Result<()> {
     Ok(())
 }
 
+/* TODO(b/233359053): This method should be migrated to use chromeos-config */
 pub fn update_epp_if_needed() -> Result<()> {
     match RTC_AUDIO_ACTIVE.lock() {
         Ok(rtc_data) => {
@@ -153,7 +162,29 @@ pub fn update_epp_if_needed() -> Result<()> {
     Ok(())
 }
 
-pub fn set_rtc_audio_active(mode: RTCAudioActive) -> Result<()> {
+pub fn update_power_preferences(
+    power_preference_manager: &dyn power::PowerPreferencesManager,
+) -> Result<()> {
+    // We need to ensure that any function that locks more than one lock does it
+    // in the same order to avoid any dead locks.
+    match RTC_AUDIO_ACTIVE.lock() {
+        Ok(rtc_data) => match FULLSCREEN_VIDEO.lock() {
+            Ok(fsv_data) => match GAME_MODE.lock() {
+                Ok(game_data) => power_preference_manager
+                    .update_power_preferences(*rtc_data, *fsv_data, *game_data)?,
+                Err(_) => bail!("Failed to get game mode"),
+            },
+            Err(_) => bail!("Failed to get fullscreen mode!"),
+        },
+        Err(_) => bail!("Failed to get rtd audio mode!"),
+    }
+    Ok(())
+}
+
+pub fn set_rtc_audio_active(
+    power_preference_manager: &dyn power::PowerPreferencesManager,
+    mode: RTCAudioActive,
+) -> Result<()> {
     match RTC_AUDIO_ACTIVE.lock() {
         Ok(mut data) => {
             *data = mode;
@@ -165,6 +196,7 @@ pub fn set_rtc_audio_active(mode: RTCAudioActive) -> Result<()> {
         Err(_) => bail!("Failed to set RTC audio activity"),
     }
     update_epp_if_needed()?;
+    update_power_preferences(power_preference_manager)?;
     Ok(())
 }
 
@@ -175,7 +207,10 @@ pub fn get_rtc_audio_active() -> Result<RTCAudioActive> {
     }
 }
 
-pub fn set_fullscreen_video(mode: FullscreenVideo) -> Result<()> {
+pub fn set_fullscreen_video(
+    power_preference_manager: &dyn power::PowerPreferencesManager,
+    mode: FullscreenVideo,
+) -> Result<()> {
     match FULLSCREEN_VIDEO.lock() {
         Ok(mut data) => {
             *data = mode;
@@ -183,6 +218,7 @@ pub fn set_fullscreen_video(mode: FullscreenVideo) -> Result<()> {
         Err(_) => bail!("Failed to set full screen video activity"),
     }
     update_epp_if_needed()?;
+    update_power_preferences(power_preference_manager)?;
     Ok(())
 }
 

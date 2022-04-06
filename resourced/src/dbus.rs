@@ -17,6 +17,7 @@ use sys_util::{error, warn, PollContext, PollToken, TimerFd, WatchingEvents};
 
 use crate::common;
 use crate::memory;
+use crate::power;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
 const PATH_NAME: &str = "/org/chromium/ResourceManager";
@@ -36,12 +37,24 @@ impl fmt::Debug for DbusContext {
     }
 }
 
+struct DbusTreeContext {
+    // We use `dyn` because using a templated type forces the generic parameter
+    // to be declared on all the dbus methods.
+    power_preferences_manager: Rc<dyn power::PowerPreferencesManager>,
+}
+
+impl fmt::Debug for DbusTreeContext {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("DbusTreeContext").finish()
+    }
+}
+
 // Defines the custom data types for the D-Bus service.
 #[derive(Default)]
 struct CustomData;
 
 impl dbus_tree::DataType for CustomData {
-    type Tree = ();
+    type Tree = DbusTreeContext;
     type ObjectPath = DbusContext;
     type Interface = ();
     type Property = ();
@@ -109,7 +122,8 @@ fn set_game_mode(m: &MethodInfo) -> MethodResult {
     let mode = common::GameMode::try_from(mode_raw)
         .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
 
-    common::set_game_mode(mode).map_err(|e| {
+    let context = m.tree.get_data();
+    common::set_game_mode(&*context.power_preferences_manager, mode).map_err(|e| {
         error!("{:#}", e);
 
         MethodErr::failed("Failed to set game mode")
@@ -131,7 +145,8 @@ fn set_game_mode_with_timeout(m: &MethodInfo) -> MethodResult {
         .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
     let timeout = Duration::from_secs(timeout_raw.into());
 
-    common::set_game_mode(mode).map_err(|e| {
+    let context = m.tree.get_data();
+    common::set_game_mode(&*context.power_preferences_manager, mode).map_err(|e| {
         error!("{:#}", e);
 
         MethodErr::failed("Failed to set game mode")
@@ -157,7 +172,8 @@ fn set_rtc_audio_active(m: &MethodInfo) -> MethodResult {
     let active = common::RTCAudioActive::try_from(active_raw)
         .map_err(|_| MethodErr::failed("Unsupported RTC audio active value"))?;
 
-    match common::set_rtc_audio_active(active) {
+    let context = m.tree.get_data();
+    match common::set_rtc_audio_active(&*context.power_preferences_manager, active) {
         Ok(()) => Ok(vec![m.msg.method_return()]),
         Err(e) => {
             error!("{:#}", e);
@@ -179,7 +195,8 @@ fn set_fullscreen_video_with_timeout(m: &MethodInfo) -> MethodResult {
         .map_err(|_| MethodErr::failed("Unsupported fullscreen video value"))?;
     let timeout = Duration::from_secs(timeout_raw.into());
 
-    common::set_fullscreen_video(mode).map_err(|e| {
+    let context = m.tree.get_data();
+    common::set_fullscreen_video(&*context.power_preferences_manager, mode).map_err(|e| {
         error!("{:#}", e);
 
         MethodErr::failed("Failed to set full screen video mode")
@@ -214,7 +231,9 @@ fn send_pressure_signal(conn: &Connection, signal: &Signal, level: u8, reclaim_t
     }
 }
 
-pub fn service_main() -> Result<()> {
+pub fn service_main<P: 'static + power::PowerPreferencesManager>(
+    power_preferences_manager: P,
+) -> Result<()> {
     // Starting up a connection to the system bus and request a name.
     let conn = Connection::new_system()?;
     conn.register_name(SERVICE_NAME, 0)?;
@@ -224,8 +243,17 @@ pub fn service_main() -> Result<()> {
 
     let f = dbus_tree::Factory::new_fn::<CustomData>();
 
+    // We need the Rc since we use the power_preferences_manager in the tree context and in the
+    // event loop below.
+    let power_preferences_manager: Rc<dyn power::PowerPreferencesManager> =
+        Rc::new(power_preferences_manager);
+
+    let tree_context = DbusTreeContext {
+        power_preferences_manager: Rc::clone(&power_preferences_manager),
+    };
+
     // We create a tree with one object path inside and make that path introspectable.
-    let tree = f.tree(()).add(
+    let tree = f.tree(tree_context).add(
         f.object_path(
             PATH_NAME,
             DbusContext {
@@ -379,7 +407,9 @@ pub fn service_main() -> Result<()> {
                     // wait() reads the fd. It's necessary to read timerfd after timeout.
                     reset_game_mode_timer.wait()?;
 
-                    if common::set_game_mode(common::GameMode::Off).is_err() {
+                    if common::set_game_mode(&*power_preferences_manager, common::GameMode::Off)
+                        .is_err()
+                    {
                         error!("Reset game mode failed.");
                     }
                 }
@@ -389,7 +419,12 @@ pub fn service_main() -> Result<()> {
                     // wait() reads the fd. It's necessary to read timerfd after timeout.
                     reset_fullscreen_video_timer.wait()?;
 
-                    if common::set_fullscreen_video(common::FullscreenVideo::Inactive).is_err() {
+                    if common::set_fullscreen_video(
+                        &*power_preferences_manager,
+                        common::FullscreenVideo::Inactive,
+                    )
+                    .is_err()
+                    {
                         error!("Reset fullscreen video mode failed.");
                     }
                 }

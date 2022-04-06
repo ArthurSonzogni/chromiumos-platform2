@@ -12,6 +12,8 @@ mod power;
 #[cfg(test)]
 mod test;
 
+use std::path::Path;
+
 use anyhow::{bail, Result};
 use sys_util::{info, syslog};
 
@@ -21,5 +23,14 @@ fn main() -> Result<()> {
     }
 
     info!("Starting resourced");
-    dbus::service_main()
+
+    let root = Path::new("/");
+
+    let power_preferences_manager = power::DirectoryPowerPreferencesManager {
+        root: root.to_path_buf(),
+        config_provider: config::DirectoryConfigProvider { root },
+        power_source_provider: power::DirectoryPowerSourceProvider { root },
+    };
+
+    dbus::service_main(power_preferences_manager)
 }
