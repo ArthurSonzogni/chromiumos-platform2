@@ -188,17 +188,19 @@ class Experiment:
         self.tbl_far_decisions = far_decisions
         self.tbl_fa_list = fa_list
 
+    def FAList(self) -> pd.DataFrame:
+        """Return a FAR table that only contains the False Acceptances."""
         if self.tbl_fa_list is None:
             far = self.FARDecisions()
             fa_list = far.loc[
-                far[Experiment.TableCol.Decision.value]
+                far[Experiment.TableCol.Decision.value] ==
+                Experiment.Decision.Accept.value
             ].copy(deep=True)
             fa_list.drop([Experiment.TableCol.Decision.value],
                          axis=1, inplace=True)
             fa_list.reset_index(drop=True, inplace=True)
             self.tbl_fa_list = fa_list
 
-    def FAList(self) -> pd.DataFrame:
         return self.tbl_fa_list
 
     def FARDecisions(self) -> pd.DataFrame:
