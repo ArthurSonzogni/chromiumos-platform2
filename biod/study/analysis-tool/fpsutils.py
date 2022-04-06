@@ -38,7 +38,6 @@ class DataFrameSetAccess:
 
         # This is an expensive operation.
         self.set = {tuple(row) for row in np.array(table[cols])}
-        # print(f'Cached set takes {sys.getsizeof(self.set)/1024.0}KB of memory.')
 
     def isin(self, values: tuple) -> bool:
         return values in self.set
@@ -80,9 +79,10 @@ class DataFrameCountTrieAccess:
 
 
 def boot_sample(
-    a,
+    # This is the fastest input to rng.choice, other than a scalar.
+    a: np.array,
     *,
-    n: int = None,
+    n: Optional[int] = None,
     rng: np.random.Generator = np.random.default_rng()
 ) -> np.ndarray:
     """Sample with replacement the same number of elements given.
@@ -91,6 +91,10 @@ def boot_sample(
     and return an `n x a.size` ndarray.
 
     Equivalent to `rng.choice(a, size=(a.size, n), replace=True)`.
+
+    NOTE: It is slightly faster when invoking rng.choice with a scalar as the
+          first argument, instead of giving it an np.array.
+          See `boot_sample_range`.
     """
 
     if n:
