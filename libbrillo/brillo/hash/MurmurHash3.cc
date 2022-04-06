@@ -16,6 +16,10 @@
 // compile and run any of them on any platform, but your performance with the
 // non-native version will be less than optimal.
 
+#include <string.h>
+
+#include <base/sys_byteorder.h>
+
 #include "libbrillo/brillo/hash/MurmurHash3.h"
 
 //-----------------------------------------------------------------------------
@@ -65,12 +69,18 @@ inline uint64_t rotl64(uint64_t x, int8_t r) {
 // Block read - if your platform needs to do endian-swapping or can only
 // handle aligned reads, do the conversion here
 
-FORCE_INLINE uint32_t getblock32(const uint32_t* p, int i) {
-  return p[i];
+FORCE_INLINE uint32_t getblock32(const uint8_t* p, int i) {
+  // The convention in Chromium OS is to prohibit unaligned access, and the code
+  // is expected to run on any endian and therefore we need to do byte swap.
+  uint32_t res;
+  memcpy(&res, &p[i * sizeof(res)], sizeof(res));
+  return base::ByteSwapToLE32(res);
 }
 
-FORCE_INLINE uint64_t getblock64(const uint64_t* p, int i) {
-  return p[i];
+FORCE_INLINE uint64_t getblock64(const uint8_t* p, int i) {
+  uint64_t res;
+  memcpy(&res, &p[i * sizeof(res)], sizeof(res));
+  return base::ByteSwapToLE32(res);
 }
 
 //-----------------------------------------------------------------------------
@@ -112,7 +122,7 @@ void MurmurHash3_x86_32(const void* key, int len, uint32_t seed, void* out) {
   //----------
   // body
 
-  const uint32_t* blocks = (const uint32_t*)(data + nblocks * 4);
+  const uint8_t* blocks = &data[nblocks * 4];
 
   for (int i = -nblocks; i; i++) {
     uint32_t k1 = getblock32(blocks, i);
@@ -180,7 +190,7 @@ void MurmurHash3_x86_128(const void* key,
   //----------
   // body
 
-  const uint32_t* blocks = (const uint32_t*)(data + nblocks * 16);
+  const uint8_t* blocks = &data[nblocks * 16];
 
   for (int i = -nblocks; i; i++) {
     uint32_t k1 = getblock32(blocks, i * 4 + 0);
@@ -352,7 +362,7 @@ void MurmurHash3_x64_128(const void* key,
   //----------
   // body
 
-  const uint64_t* blocks = (const uint64_t*)(data);
+  const uint8_t* blocks = data;
 
   for (int i = 0; i < nblocks; i++) {
     uint64_t k1 = getblock64(blocks, i * 2 + 0);
