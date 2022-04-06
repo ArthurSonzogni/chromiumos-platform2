@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 
 #include <string>
+#include <utility>
 
 #include <base/containers/span.h>
 #include <base/files/file_enumerator.h>
@@ -287,13 +288,13 @@ bool IsVvuPciDevice(const base::FilePath& pci_device) {
 
 }  // namespace
 
-std::vector<int32_t> GetVvuDevicesSocketIndices() {
+std::vector<VvuDeviceInfo> GetVvuDevicesInfo() {
   // PCI devices have paths like these /sys/devices/pci0000:02/0000:02:01.0.
   // The first enumerator is to look for "pci0000:02" under /sys/devices/.
   base::FileEnumerator pci_device_roots = base::FileEnumerator(
       base::FilePath(kPciDevicesPath), false /* recursive */,
       base::FileEnumerator::FileType::DIRECTORIES, kTopLevelPciDevicePattern);
-  std::vector<int32_t> socket_indices;
+  std::vector<VvuDeviceInfo> vvu_devices_info;
 
   for (auto pci_device_root = pci_device_roots.Next(); !pci_device_root.empty();
        pci_device_root = pci_device_roots.Next()) {
@@ -318,7 +319,10 @@ std::vector<int32_t> GetVvuDevicesSocketIndices() {
       if (socket_index) {
         LOG(INFO) << "Found VVU socket index: " << socket_index.value()
                   << " for PCI device: " << pci_device;
-        socket_indices.push_back(socket_index.value());
+        VvuDeviceInfo device_info;
+        device_info.proxy_device = pci_device;
+        device_info.proxy_socket_index = socket_index.value();
+        vvu_devices_info.push_back(std::move(device_info));
       } else {
         LOG(ERROR) << "Failed to get socket index for PCI device: "
                    << pci_device;
@@ -326,7 +330,7 @@ std::vector<int32_t> GetVvuDevicesSocketIndices() {
     }
   }
 
-  return socket_indices;
+  return vvu_devices_info;
 }
 
 }  // namespace concierge

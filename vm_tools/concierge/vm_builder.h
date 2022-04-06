@@ -14,6 +14,7 @@
 #include <base/strings/string_split.h>
 #include <dbus/object_proxy.h>
 
+#include "vm_tools/concierge/sibling_vms.h"
 #include "vm_tools/concierge/vm_interface.h"
 #include "vm_tools/concierge/vm_util.h"
 
@@ -111,7 +112,7 @@ class VmBuilder {
   // Returns the command line arguments to start a sibling VM as well as the VVU
   // devices associated with it. Returns base::nullopt in case of any error.
   base::Optional<SiblingStartCommands> BuildSiblingCmds(
-      std::vector<int32_t> vvu_socket_indices) const;
+      std::vector<VvuDeviceInfo> vvu_devices_info) const;
 
  private:
   base::FilePath kernel_;
