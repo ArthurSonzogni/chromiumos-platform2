@@ -1443,7 +1443,8 @@ TEST_F(KeysetManagementTest, ResetLECredentialsAuthLocked) {
   EXPECT_TRUE(le_vk->GetAuthLocked());
 
   // Have a correct attempt that will reset the credentials.
-  keyset_management_->ResetLECredentials(users_[0].credentials);
+  keyset_management_->ResetLECredentials(users_[0].credentials, std::nullopt,
+                                         users_[0].obfuscated);
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()), 0);
   le_vk = keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
   EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
@@ -1492,7 +1493,8 @@ TEST_F(KeysetManagementTest, ResetLECredentialsNotAuthLocked) {
   EXPECT_FALSE(le_vk->GetAuthLocked());
 
   // Have a correct attempt that will reset the credentials.
-  keyset_management_->ResetLECredentials(users_[0].credentials);
+  keyset_management_->ResetLECredentials(users_[0].credentials, std::nullopt,
+                                         users_[0].obfuscated);
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()), 0);
   le_vk = keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
   EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
@@ -1542,12 +1544,118 @@ TEST_F(KeysetManagementTest, ResetLECredentialsWrongCredential) {
 
   // Have an attempt that will fail to reset the credentials.
   Credentials wrong_credentials(users_[0].name, wrong_key);
-  keyset_management_->ResetLECredentials(wrong_credentials);
+  keyset_management_->ResetLECredentials(wrong_credentials, std::nullopt,
+                                         users_[0].obfuscated);
   EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
             (kWrongAuthAttempts - 1));
   le_vk = keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
   EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
   EXPECT_TRUE(le_vk->GetAuthLocked());
+}
+
+// Test that ResetLECredential resets the PIN counter when called with a
+// pre-validated vault keyset.
+TEST_F(KeysetManagementTest, ResetLECredentialsWithPreValidatedKeyset) {
+  // Ensure the wrong_auth_counter is reset to 0 after a correct attempt,
+  // even if auth_locked is false.
+  // Setup
+  NiceMock<MockCryptohomeKeysManager> mock_cryptohome_keys_manager;
+  FakeLECredentialBackend fake_backend_;
+  auto le_cred_manager =
+      std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
+  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
+  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  // Create an LECredential and add to keyset_mangement_.
+  // Setup pin credentials.
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData key_data = DefaultLEKeyData();
+  new_credentials.set_key_data(key_data);
+
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+  // Add Pin Keyset.
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), true));
+
+  std::unique_ptr<VaultKeyset> le_vk =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+  EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+
+  // Manually trigger attempts, but not enough to set auth_locked to true.
+  brillo::SecureBlob wrong_key(kWrongPasskey);
+  for (int iter = 0; iter < (kWrongAuthAttempts - 1); iter++) {
+    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false, nullptr));
+  }
+
+  EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
+            (kWrongAuthAttempts - 1));
+  EXPECT_FALSE(le_vk->GetAuthLocked());
+
+  // Have a correct attempt that will reset the credentials.
+  keyset_management_->ResetLECredentials(std::nullopt, *vk,
+                                         users_[0].obfuscated);
+  EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()), 0);
+  le_vk = keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+  EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+  EXPECT_FALSE(le_vk->GetAuthLocked());
+}
+
+// Test that ResetLECredential fails to reset the PIN counter when called with a
+// wrong vault keyset.
+TEST_F(KeysetManagementTest, ResetLECredentialsFailsWithUnValidatedKeyset) {
+  // Ensure the wrong_auth_counter is reset to 0 after a correct attempt,
+  // even if auth_locked is false.
+  // Setup
+  NiceMock<MockCryptohomeKeysManager> mock_cryptohome_keys_manager;
+  FakeLECredentialBackend fake_backend_;
+  auto le_cred_manager =
+      std::make_unique<LECredentialManagerImpl>(&fake_backend_, CredDirPath());
+  crypto_.set_le_manager_for_testing(std::move(le_cred_manager));
+  crypto_.Init(&tpm_, &mock_cryptohome_keys_manager);
+
+  KeysetSetUpWithKeyData(DefaultKeyData());
+
+  // Create an LECredential and add to keyset_mangement_.
+  // Setup pin credentials.
+  brillo::SecureBlob new_passkey(kNewPasskey);
+  Credentials new_credentials(users_[0].name, new_passkey);
+  KeyData key_data = DefaultLEKeyData();
+  new_credentials.set_key_data(key_data);
+
+  std::unique_ptr<VaultKeyset> vk = keyset_management_->GetValidKeyset(
+      users_[0].credentials, /* error */ nullptr);
+  ASSERT_NE(vk.get(), nullptr);
+  // Add Pin Keyset.
+  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
+            keyset_management_->AddKeyset(new_credentials, *vk.get(), true));
+
+  std::unique_ptr<VaultKeyset> le_vk =
+      keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+  EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
+
+  // Manually trigger attempts, but not enough to set auth_locked to true.
+  brillo::SecureBlob wrong_key(kWrongPasskey);
+  for (int iter = 0; iter < (kWrongAuthAttempts - 1); iter++) {
+    EXPECT_FALSE(le_vk->Decrypt(wrong_key, false, nullptr));
+  }
+
+  EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
+            (kWrongAuthAttempts - 1));
+  EXPECT_FALSE(le_vk->GetAuthLocked());
+
+  // Have an attempt that will fail to reset the credentials.
+  VaultKeyset wrong_vk;
+  keyset_management_->ResetLECredentials(std::nullopt, wrong_vk,
+                                         users_[0].obfuscated);
+  EXPECT_EQ(crypto_.GetWrongAuthAttempts(le_vk->GetLELabel()),
+            (kWrongAuthAttempts - 1));
+  le_vk = keyset_management_->GetVaultKeyset(users_[0].obfuscated, kPinLabel);
+  EXPECT_TRUE(le_vk->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL);
 }
 
 // Tests whether AddWrappedResetSeedIfMissing() adds a reset seed to the input

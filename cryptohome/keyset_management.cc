@@ -834,16 +834,37 @@ bool KeysetManagement::Migrate(const VaultKeyset& old_vk,
   return true;
 }
 
-void KeysetManagement::ResetLECredentials(const Credentials& creds) {
-  std::string obfuscated = creds.GetObfuscatedUsername();
+void KeysetManagement::ResetLECredentials(
+    const std::optional<Credentials>& creds,
+    const std::optional<VaultKeyset>& validated_vk,
+    const std::string& obfuscated) {
+  if (!creds.has_value() && !validated_vk.has_value()) {
+    LOG(WARNING) << "Neither credentials nor validated keyset is provided "
+                    "for LE credential reset, reset skipped.";
+    return;
+  }
+
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices)) {
     LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
     return;
   }
 
-  bool credentials_checked = false;
   std::unique_ptr<VaultKeyset> vk;
+  if (validated_vk.has_value()) {
+    vk = std::make_unique<VaultKeyset>(validated_vk.value());
+  }
+  if (!validated_vk.has_value()) {
+    // Make sure the credential can actually be used for sign-in.
+    // It is also the easiest way to get a valid keyset.
+    vk = GetValidKeyset(creds.value(), nullptr /* error */);
+    if (!vk) {
+      LOG(WARNING) << "The provided credentials are incorrect or invalid"
+                      " for LE credential reset, reset skipped.";
+      return;
+    }
+  }
+
   for (int index : key_indices) {
     std::unique_ptr<VaultKeyset> vk_reset =
         LoadVaultKeysetForUser(obfuscated, index);
@@ -852,26 +873,15 @@ void KeysetManagement::ResetLECredentials(const Credentials& creds) {
       continue;
     }
 
-    if (!credentials_checked) {
-      // Make sure the credential can actually be used for sign-in.
-      // It is also the easiest way to get a valid keyset.
-      vk = GetValidKeyset(creds, nullptr /* error */);
-      if (!vk) {
-        LOG(WARNING) << "The provided credentials are incorrect or invalid"
-                        " for LE credential reset, reset skipped.";
-        return;
-      }
-      credentials_checked = true;
-    }
-
     CryptoError err;
     if (!crypto_->ResetLECredential(*vk_reset, *vk, &err)) {
       LOG(WARNING) << "Failed to reset an LE credential: " << err;
-    } else {
-      vk_reset->SetAuthLocked(false);
-      if (!vk_reset->Save(vk_reset->GetSourceFile())) {
-        LOG(WARNING) << "Failed to clear auth_locked in VaultKeyset on disk.";
-      }
+      continue;
+    }
+
+    vk_reset->SetAuthLocked(false);
+    if (!vk_reset->Save(vk_reset->GetSourceFile())) {
+      LOG(WARNING) << "Failed to clear auth_locked in VaultKeyset on disk.";
     }
   }
 }

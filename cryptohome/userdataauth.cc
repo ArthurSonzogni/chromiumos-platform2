@@ -1848,7 +1848,7 @@ void UserDataAuth::ContinueMountWithCredentials(
 
   // Setup a reply for use during error handling.
   user_data_auth::MountReply reply;
-
+  std::string obfuscated_username = credentials->GetObfuscatedUsername();
   // This is safe even if cryptohomed restarts during a multi-mount
   // session and a new mount is added because cleanup is not forced.
   // An existing process will keep the mount alive.  On the next
@@ -1867,8 +1867,7 @@ void UserDataAuth::ContinueMountWithCredentials(
 
   // If the home directory for our user doesn't exist and we aren't instructed
   // to create the home directory, and reply with the error.
-  if (!request.has_create() &&
-      !homedirs_->Exists(credentials->GetObfuscatedUsername()) &&
+  if (!request.has_create() && !homedirs_->Exists(obfuscated_username) &&
       !token.has_value()) {
     LOG(ERROR) << "Account not found when mounting with credentials.";
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
@@ -1951,7 +1950,8 @@ void UserDataAuth::ContinueMountWithCredentials(
     // Attempt a short-circuited credential test.
     if (user_session->VerifyCredentials(*credentials)) {
       std::move(on_done).Run(reply);
-      keyset_management_->ResetLECredentials(*credentials);
+      keyset_management_->ResetLECredentials(*credentials, std::nullopt,
+                                             obfuscated_username);
       return;
     }
     // If the Mount has invalid credentials (repopulated from system state)
@@ -1963,7 +1963,8 @@ void UserDataAuth::ContinueMountWithCredentials(
       reply.set_error(
           user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
     } else {
-      keyset_management_->ResetLECredentials(*credentials);
+      keyset_management_->ResetLECredentials(*credentials, std::nullopt,
+                                             obfuscated_username);
     }
     std::move(on_done).Run(reply);
     return;
@@ -2008,8 +2009,7 @@ void UserDataAuth::ContinueMountWithCredentials(
 
   if (code == MOUNT_ERROR_VAULT_UNRECOVERABLE) {
     LOG(ERROR) << "Unrecoverable vault, removing.";
-    std::string obfuscated = credentials->GetObfuscatedUsername();
-    if (!homedirs_->Remove(obfuscated)) {
+    if (!homedirs_->Remove(obfuscated_username)) {
       LOG(ERROR) << "Failed to remove unrecoverable vault.";
       code = MOUNT_ERROR_REMOVE_INVALID_USER_FAILED;
     }
@@ -2027,7 +2027,8 @@ void UserDataAuth::ContinueMountWithCredentials(
     return;
   }
 
-  keyset_management_->ResetLECredentials(*credentials);
+  keyset_management_->ResetLECredentials(*credentials, std::nullopt,
+                                         obfuscated_username);
   std::move(on_done).Run(reply);
 
   InitializePkcs11(user_session.get());
@@ -2422,7 +2423,8 @@ void UserDataAuth::CheckKey(
 
   if (found_valid_credentials) {
     // Entered the right creds, so reset LE credentials.
-    keyset_management_->ResetLECredentials(credentials);
+    keyset_management_->ResetLECredentials(credentials, std::nullopt,
+                                           obfuscated_username);
 
     if (request.unlock_webauthn_secret()) {
       std::unique_ptr<VaultKeyset> vk =
@@ -2460,7 +2462,8 @@ void UserDataAuth::CheckKey(
     return;
   }
 
-  keyset_management_->ResetLECredentials(credentials);
+  keyset_management_->ResetLECredentials(credentials, std::nullopt,
+                                         obfuscated_username);
 
   if (request.unlock_webauthn_secret()) {
     if (!PrepareWebAuthnSecret(account_id, *vk)) {
@@ -2716,7 +2719,8 @@ void UserDataAuth::OnFullChallengeResponseCheckKeyDone(
   credentials->set_key_data(authorization.key().data());
 
   // Entered the right creds, so reset LE credentials.
-  keyset_management_->ResetLECredentials(*credentials);
+  keyset_management_->ResetLECredentials(*credentials, std::nullopt,
+                                         credentials->GetObfuscatedUsername());
 
   std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }

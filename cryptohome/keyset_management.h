@@ -151,7 +151,9 @@ class KeysetManagement {
 
   // Attempts to reset all LE credentials associated with a username, given
   // a credential |cred|.
-  void ResetLECredentials(const Credentials& creds);
+  void ResetLECredentials(const std::optional<Credentials>& creds,
+                          const std::optional<VaultKeyset>& validated_vk,
+                          const std::string& obfuscated);
 
   // Removes all LE credentials for a user with |obfuscated_username|.
   virtual void RemoveLECredentials(const std::string& obfuscated_username);
