@@ -6,8 +6,9 @@
 #define MOJO_SERVICE_MANAGER_DAEMON_SERVICE_MANAGER_H_
 
 #include <map>
-#include <memory>
 #include <string>
+
+#include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "mojo_service_manager/daemon/configuration.h"
 #include "mojo_service_manager/daemon/service_policy.h"
@@ -23,6 +24,11 @@ class ServiceManager : public mojom::ServiceManager {
   ServiceManager(const ServiceManager&) = delete;
   ServiceManager& operator=(const ServiceManager&) = delete;
   ~ServiceManager() override;
+
+  // Adds a receiver of mojom::ServiceManager to the receiver set. A process
+  // identity will be bound to this receiver.
+  void AddReceiver(mojom::ProcessIdentityPtr process_identity,
+                   mojo::PendingReceiver<mojom::ServiceManager> receiver);
 
  private:
   // Keeps all the objects related to a mojo service.
@@ -46,6 +52,11 @@ class ServiceManager : public mojom::ServiceManager {
   const Configuration configuration_;
   // Maps each service name to a ServiceState.
   std::map<std::string, ServiceState> service_map_;
+  // The receivers of mojom::ServiceManager. The context type of the
+  // mojo::ReceiverSet is set to mojom::ProcessIdentity so it can be used when
+  // handle the requests.
+  mojo::ReceiverSet<mojom::ServiceManager, mojom::ProcessIdentityPtr>
+      receiver_set_;
 };
 
 }  // namespace mojo_service_manager

@@ -4,20 +4,25 @@
 
 #include "mojo_service_manager/daemon/daemon.h"
 
+#include <linux/limits.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sysexits.h>
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <mojo/public/cpp/platform/platform_channel_endpoint.h>
+#include <mojo/public/cpp/system/invitation.h>
+
+#include "mojo_service_manager/daemon/service_manager.h"
 
 namespace chromeos {
 namespace mojo_service_manager {
@@ -58,14 +63,47 @@ base::ScopedFD AcceptSocket(const base::ScopedFD& server_fd) {
                                              SOCK_NONBLOCK | SOCK_CLOEXEC))};
 }
 
+mojo::PendingReceiver<mojom::ServiceManager> SendMojoInvitationAndPassReceiver(
+    base::ScopedFD peer) {
+  mojo::OutgoingInvitation invitation;
+  mojo::PendingReceiver<mojom::ServiceManager> receiver{
+      invitation.AttachMessagePipe(kMojoInvitationPipeName)};
+  mojo::OutgoingInvitation::Send(
+      std::move(invitation), base::kNullProcessHandle,
+      mojo::PlatformChannelEndpoint(mojo::PlatformHandle(std::move(peer))));
+  return receiver;
+}
+
 }  // namespace
 
-Daemon::Daemon(const base::FilePath& socket_path,
+std::string GetSEContextStringFromChar(const char* buf, size_t len) {
+  // The length may or may not contains the null-terminator.
+  if (len > 0 && buf[len - 1] == '\0') {
+    return std::string(buf);
+  }
+  return std::string(buf, len);
+}
+
+Daemon::Delegate::Delegate() = default;
+
+Daemon::Delegate::~Delegate() = default;
+
+int Daemon::Delegate::GetSockOpt(const base::ScopedFD& socket,
+                                 int level,
+                                 int optname,
+                                 void* optval,
+                                 socklen_t* optlen) const {
+  return getsockopt(socket.get(), level, optname, optval, optlen);
+}
+
+Daemon::Daemon(Delegate* delegate,
+               const base::FilePath& socket_path,
                Configuration configuration,
                ServicePolicyMap policy_map)
     : ipc_support_(base::ThreadTaskRunnerHandle::Get(),
                    mojo::core::ScopedIPCSupport::ShutdownPolicy::
                        CLEAN /* blocking shutdown */),
+      delegate_(delegate),
       socket_path_(socket_path),
       service_manager_(std::move(configuration), std::move(policy_map)) {}
 
@@ -101,7 +139,47 @@ void Daemon::SendMojoInvitationAndBindReceiver() {
     LOG(ERROR) << "Failed to accept peer socket";
     return;
   }
-  NOTIMPLEMENTED();
+  mojom::ProcessIdentityPtr identity = GetProcessIdentityFromPeerSocket(peer);
+  mojo::PendingReceiver<mojom::ServiceManager> receiver =
+      SendMojoInvitationAndPassReceiver(std::move(peer));
+  if (!identity) {
+    receiver.ResetWithReason(
+        static_cast<uint32_t>(mojom::ErrorCode::kUnexpectedOsError),
+        "Cannot get identity from peer socket.");
+    return;
+  }
+  service_manager_.AddReceiver(std::move(identity), std::move(receiver));
+}
+
+mojom::ProcessIdentityPtr Daemon::GetProcessIdentityFromPeerSocket(
+    const base::ScopedFD& peer) const {
+  auto identity = mojom::ProcessIdentity::New();
+  struct ucred ucred_data {};
+  socklen_t len = sizeof(ucred_data);
+  if (delegate_->GetSockOpt(peer, SOL_SOCKET, SO_PEERCRED, &ucred_data, &len) <
+      0) {
+    PLOG(ERROR) << "Failed to get SO_PEERCRED from peer socket.";
+    return nullptr;
+  }
+  static_assert(sizeof(ucred_data.pid) == 4);
+  static_assert(sizeof(ucred_data.uid) == 4);
+  static_assert(sizeof(ucred_data.gid) == 4);
+  identity->pid = static_cast<uint32_t>(ucred_data.pid);
+  identity->uid = static_cast<uint32_t>(ucred_data.uid);
+  identity->gid = static_cast<uint32_t>(ucred_data.gid);
+
+  char buf[NAME_MAX] = {};
+  len = NAME_MAX;
+  if (delegate_->GetSockOpt(peer, SOL_SOCKET, SO_PEERSEC, &buf, &len) < 0) {
+    PLOG(ERROR) << "Failed to get SO_PEERSEC from peer socket.";
+    return nullptr;
+  }
+  identity->security_context = GetSEContextStringFromChar(buf, len);
+  if (identity->security_context.size() == 0) {
+    LOG(ERROR) << "The length of security context gotten from socket is 0.";
+    return nullptr;
+  }
+  return identity;
 }
 
 }  // namespace mojo_service_manager

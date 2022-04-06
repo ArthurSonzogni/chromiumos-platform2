@@ -70,7 +70,8 @@ int main(int argc, char* argv[]) {
     configuration.is_permissive = true;
   }
 
-  service_manager::Daemon daemon(base::FilePath{kSocketPath},
+  service_manager::Daemon::Delegate delegate;
+  service_manager::Daemon daemon(&delegate, base::FilePath{kSocketPath},
                                  std::move(configuration),
                                  std::move(policy_map));
   return daemon.Run();

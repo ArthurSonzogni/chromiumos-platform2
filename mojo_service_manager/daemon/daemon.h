@@ -6,6 +6,7 @@
 #define MOJO_SERVICE_MANAGER_DAEMON_DAEMON_H_
 
 #include <memory>
+#include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
@@ -20,11 +21,33 @@
 namespace chromeos {
 namespace mojo_service_manager {
 
+// The pipe name used by mojo invitation.
+inline constexpr int kMojoInvitationPipeName = 0;
+
+// Exported for testing.
+std::string GetSEContextStringFromChar(const char* buf, size_t len);
+
 // Sets up threading environment and initializes unix socket server of the
 // service manager daemon.
 class Daemon : public brillo::Daemon {
  public:
-  Daemon(const base::FilePath& socket_path,
+  class Delegate {
+   public:
+    Delegate();
+    Delegate(const Delegate&) = delete;
+    Delegate& operator=(const Delegate&) = delete;
+    virtual ~Delegate();
+
+    // Calls |getsockopt| system call.
+    virtual int GetSockOpt(const base::ScopedFD& socket,
+                           int level,
+                           int optname,
+                           void* optval,
+                           socklen_t* optlen) const;
+  };
+
+  Daemon(Delegate* delegate,
+         const base::FilePath& socket_path,
          Configuration configuration,
          ServicePolicyMap policy_map);
   Daemon(const Daemon&) = delete;
@@ -40,8 +63,14 @@ class Daemon : public brillo::Daemon {
   // mojom::ServiceManager.
   void SendMojoInvitationAndBindReceiver();
 
+  // Gets the identity of the remote process of the peer socket.
+  mojom::ProcessIdentityPtr GetProcessIdentityFromPeerSocket(
+      const base::ScopedFD& peer) const;
+
   // The |ScopedIPCSupport| instance for mojo.
   mojo::core::ScopedIPCSupport ipc_support_;
+  // Accesses Delegate.
+  Delegate* const delegate_;
   // The path to the unix socket of the daemon.
   const base::FilePath socket_path_;
   // The fd of the unix socket server of the daemon.

@@ -2,32 +2,33 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <errno.h>
 #include <sys/socket.h>
-#include <sys/un.h>
 #include <sysexits.h>
-#include <unistd.h>
 
+#include <cstring>
+#include <optional>
 #include <string>
+#include <utility>
 
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/posix/eintr_wrapper.h>
+#include <base/process/launch.h>
 #include <base/test/bind.h>
 #include <base/test/test_timeouts.h>
-#include <base/threading/platform_thread.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <base/timer/elapsed_timer.h>
-#include <brillo/process/process.h>
 #include <gtest/gtest.h>
 
 #include "mojo_service_manager/daemon/daemon.h"
+#include "mojo_service_manager/daemon/daemon_test_helper.h"
 
 namespace chromeos {
 namespace mojo_service_manager {
 namespace {
 
-constexpr char kTestSocketName[] = "test_socket";
+constexpr char kFakeSecurityContext[] = "u:r:cros_fake:s0";
+constexpr char kDaemonTestHelperExecName[] = "daemon_test_helper";
 
 class DaemonTest : public ::testing::Test {
  public:
@@ -37,77 +38,154 @@ class DaemonTest : public ::testing::Test {
     return temp_dir_.GetPath().Append(kTestSocketName);
   }
 
-  // Starts a daemon in another process for testing.
-  bool StartDaemonProcess(const base::FilePath& socket_path) {
-    pid_t pid = fork();
-    if (pid == -1) {
-      PLOG(ERROR) << "Failed to fork for daemon process.";
-      return false;
-    }
-    if (pid == 0) {
-      // In child process, run until the daemon stop. Daemon needs to be created
-      // in this process.
-      Daemon daemon{socket_path, Configuration{}, ServicePolicyMap{}};
-      exit(daemon.Run());
-    }
-    // In parent process, track the daemon process in |daemon_process_|.
-    daemon_process_.Reset(pid);
-    // Wait for the server to be ready.
-    for (base::ElapsedTimer t; t.Elapsed() < TestTimeouts::action_timeout();
-         base::PlatformThread::Sleep(base::Milliseconds(1))) {
-      if (base::PathExists(socket_path))
-        return true;
-    }
-    LOG(ERROR) << "Socket server didn't show up after timeout.";
-    return false;
+  void RunDaemonAndExpectTestSubprocessResult(Daemon::Delegate* delegate,
+                                              DaemonTestHelperResult result) {
+    Daemon daemon{delegate, GetSocketPath(), Configuration{},
+                  ServicePolicyMap{}};
+    base::CommandLine command_line{
+        base::CommandLine::ForCurrentProcess()->GetProgram().DirName().Append(
+            kDaemonTestHelperExecName)};
+    base::LaunchOptions option;
+    // Set the current directory to the test root for child to find it.
+    option.current_directory = temp_dir_.GetPath();
+    base::Process process = base::LaunchProcess(command_line, option);
+    base::ElapsedTimer t;
+    // Wait async so the main thread won't be block.
+    base::RepeatingClosure wait_exit_async = base::BindLambdaForTesting([&]() {
+      int exit_code = 1;
+      if (process.WaitForExitWithTimeout(base::Milliseconds(1), &exit_code)) {
+        EXPECT_EQ(exit_code, static_cast<int>(result));
+        daemon.Quit();
+        return;
+      }
+      if (t.Elapsed() < TestTimeouts::action_timeout()) {
+        base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
+                                                      wait_exit_async);
+        return;
+      }
+      EXPECT_TRUE(false) << "Timeout is reached";
+      daemon.Quit();
+    });
+    wait_exit_async.Run();
+    EXPECT_EQ(daemon.Run(), EX_OK);
   }
 
  private:
-  // Temp directory for test.
   base::ScopedTempDir temp_dir_;
-  // Keeps the daemon process.
-  brillo::ProcessImpl daemon_process_;
 };
 
-base::ScopedFD ConnectToSocket(const base::FilePath& socket_path) {
-  base::ScopedFD sock{socket(AF_UNIX, SOCK_STREAM, 0)};
-  if (!sock.is_valid()) {
-    LOG(ERROR) << "Failed to create socket";
-    return base::ScopedFD{};
-  }
+// Fake Daemon::Delegate to return fake |getsockopt|. If the expected field is
+// set to nullopt, the |getsockopt| returns error when trying to report that
+// field.
+class FakeDelegate : public Daemon::Delegate {
+ public:
+  FakeDelegate(std::optional<struct ucred> ucred = std::nullopt,
+               std::optional<std::string> security_context = std::nullopt);
+  FakeDelegate(const FakeDelegate&) = delete;
+  FakeDelegate& operator=(const FakeDelegate&) = delete;
+  ~FakeDelegate() override;
 
-  struct sockaddr_un unix_addr {
-    .sun_family = AF_UNIX,
-  };
-  constexpr size_t kMaxSize =
-      sizeof(unix_addr.sun_path) - /*NULL-terminator*/ 1;
-  CHECK_LE(socket_path.value().size(), kMaxSize);
-  strncpy(unix_addr.sun_path, socket_path.value().c_str(), kMaxSize);
+  // Overrides Daemon::Delegate.
+  int GetSockOpt(const base::ScopedFD& socket,
+                 int level,
+                 int optname,
+                 void* optval,
+                 socklen_t* optlen) const override;
 
-  int rc = HANDLE_EINTR(connect(sock.get(),
-                                reinterpret_cast<const sockaddr*>(&unix_addr),
-                                sizeof(unix_addr)));
-  if (rc == -1 && errno != EISCONN) {
-    LOG(ERROR) << "Failed to connect to socket";
-    return base::ScopedFD{};
+ private:
+  std::optional<struct ucred> ucred_;
+
+  std::optional<std::string> security_context_;
+};
+
+FakeDelegate::FakeDelegate(std::optional<struct ucred> ucred,
+                           std::optional<std::string> security_context)
+    : ucred_(std::move(ucred)),
+      security_context_(std::move(security_context)) {}
+
+FakeDelegate::~FakeDelegate() = default;
+
+int FakeDelegate::GetSockOpt(const base::ScopedFD& socket,
+                             int level,
+                             int optname,
+                             void* optval,
+                             socklen_t* optlen) const {
+  switch (optname) {
+    case SO_PEERCRED:
+      if (!ucred_)
+        return -1;
+      CHECK_EQ(*optlen, sizeof(struct ucred));
+      *reinterpret_cast<struct ucred*>(optval) = ucred_.value();
+      return 0;
+    case SO_PEERSEC:
+      if (!security_context_)
+        return -1;
+      CHECK_GE(*optlen, security_context_->size());
+      *optlen = security_context_->size();
+      strncpy(reinterpret_cast<char*>(optval), security_context_->c_str(),
+              security_context_->size());
+      return 0;
+    default:
+      CHECK(false);
+      return 0;
   }
-  return sock;
 }
 
 TEST_F(DaemonTest, FailToListenSocket) {
   // Create the socket file so the daemon will fail to create it.
   ASSERT_TRUE(base::WriteFile(GetSocketPath(), "test"));
-  Daemon daemon{GetSocketPath(), Configuration{}, ServicePolicyMap{}};
+  FakeDelegate delegate{};
+  Daemon daemon{&delegate, GetSocketPath(), Configuration{},
+                ServicePolicyMap{}};
   EXPECT_NE(daemon.Run(), EX_OK);
 }
 
+TEST_F(DaemonTest, FailToGetSocketCred) {
+  // Set ucred to nullopt to fail the test.
+  FakeDelegate delegate{std::nullopt, kFakeSecurityContext};
+  RunDaemonAndExpectTestSubprocessResult(
+      &delegate, DaemonTestHelperResult::kResetWithOsError);
+}
+
+TEST_F(DaemonTest, FailToGetSocketSecurityContext) {
+  // Set security context to nullopt to fail the test.
+  struct ucred ucred = {};
+  FakeDelegate delegate{ucred, std::nullopt};
+  RunDaemonAndExpectTestSubprocessResult(
+      &delegate, DaemonTestHelperResult::kResetWithOsError);
+}
+
+TEST_F(DaemonTest, FailToGetSocketSecurityContextEmptyString) {
+  // Set security context to empty string to fail the test.
+  struct ucred ucred = {};
+  FakeDelegate delegate{ucred, std::string()};
+  RunDaemonAndExpectTestSubprocessResult(
+      &delegate, DaemonTestHelperResult::kResetWithOsError);
+}
+
 TEST_F(DaemonTest, Connect) {
-  ASSERT_TRUE(StartDaemonProcess(GetSocketPath()));
+  struct ucred ucred = {};
+  FakeDelegate delegate{ucred, kFakeSecurityContext};
+  RunDaemonAndExpectTestSubprocessResult(
+      &delegate, DaemonTestHelperResult::kConnectSuccessfully);
+}
 
-  base::ScopedFD sock = ConnectToSocket(GetSocketPath());
-  ASSERT_TRUE(sock.is_valid());
+TEST(DaemonUtilTest, GetSEContextStringFromChar) {
+  // The length doesn't contain the null-terminator.
+  EXPECT_EQ(GetSEContextStringFromChar("", 0), "");
+  EXPECT_EQ(GetSEContextStringFromChar("a", 1), "a");
+  EXPECT_EQ(GetSEContextStringFromChar("aa", 2), "aa");
 
-  // TODO(chungsheng): Verify the sock can be used after implement the server.
+  // The length contains the null-terminator.
+  EXPECT_EQ(GetSEContextStringFromChar("\0", 1), "");
+  EXPECT_EQ(GetSEContextStringFromChar("a\0", 2), "a");
+  EXPECT_EQ(GetSEContextStringFromChar("aa\0", 3), "aa");
+
+  // The length doesn't contain the null-terminator and the last char is not
+  // null-terminator.
+  EXPECT_EQ(GetSEContextStringFromChar("a", 0), "");
+  EXPECT_EQ(GetSEContextStringFromChar("aa", 1), "a");
+  EXPECT_EQ(GetSEContextStringFromChar("aaa", 2), "aa");
 }
 
 }  // namespace

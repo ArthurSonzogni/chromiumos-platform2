@@ -4,12 +4,8 @@
 
 #include "mojo_service_manager/daemon/service_manager.h"
 
-#include <map>
-#include <memory>
 #include <string>
 #include <utility>
-
-#include <base/notreached.h>
 
 namespace chromeos {
 namespace mojo_service_manager {
@@ -24,6 +20,12 @@ ServiceManager::ServiceManager(Configuration configuration,
 }
 
 ServiceManager::~ServiceManager() = default;
+
+void ServiceManager::AddReceiver(
+    mojom::ProcessIdentityPtr process_identity,
+    mojo::PendingReceiver<mojom::ServiceManager> receiver) {
+  receiver_set_.Add(this, std::move(receiver), std::move(process_identity));
+}
 
 void ServiceManager::Register(
     const std::string& service_name,

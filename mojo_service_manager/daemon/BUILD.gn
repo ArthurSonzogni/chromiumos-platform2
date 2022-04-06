@@ -16,6 +16,7 @@ pkg_config("target_default") {
     "libbrillo",
     "libchrome",
     "libmojo",
+    "vboot_host",
   ]
 }
 
@@ -49,6 +50,15 @@ if (use.test) {
     ]
   }
 
+  executable("daemon_test_helper") {
+    sources = [ "daemon_test_helper.cc" ]
+    configs += [
+      ":target_test",
+      "//common-mk:test",
+    ]
+    deps = [ ":libmojo_service_manager_daemon" ]
+  }
+
   executable("mojo_service_manager_test") {
     sources = [
       "daemon_test.cc",
@@ -63,6 +73,7 @@ if (use.test) {
     ]
     run_test = true
     deps = [
+      ":daemon_test_helper",
       ":libmojo_service_manager_daemon",
       "//common-mk/testrunner:testrunner",
     ]

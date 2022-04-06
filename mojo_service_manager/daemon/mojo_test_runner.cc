@@ -11,6 +11,5 @@
 int main(int argc, char** argv) {
   auto runner = platform2::TestRunner(argc, argv);
   mojo::core::Init();
-
   return runner.Run();
 }
