@@ -157,13 +157,6 @@ pub fn set_rtc_audio_active(mode: RTCAudioActive) -> Result<()> {
     match RTC_AUDIO_ACTIVE.lock() {
         Ok(mut data) => {
             *data = mode;
-
-            let epp_value = if mode == RTCAudioActive::Active {
-                "179" // Set EPP to 70%
-            } else {
-                "balance_performance" // Default EPP
-            };
-            set_epp("/", epp_value).context("Failed to set EPP sysfs value!")?;
             /* TODO(b/226646450): set_gt_boost_freq_mhz fails on non-Intel platforms. */
             if let Err(err) = set_gt_boost_freq_mhz(mode) {
                 error!("Failed to set boost freq: {:#}", err)
