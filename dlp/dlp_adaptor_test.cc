@@ -110,9 +110,9 @@ class DlpAdaptorTest : public ::testing::Test {
   }
 
   std::vector<uint8_t> CreateSerializedRequestFileAccessRequest(
-      ino_t inode, int pid, const std::string& destination) {
+      std::vector<ino_t> inodes, int pid, const std::string& destination) {
     RequestFileAccessRequest request;
-    request.set_inode(inode);
+    *request.mutable_inodes() = {inodes.begin(), inodes.end()};
     request.set_process_id(pid);
     request.set_destination_url(destination);
 
@@ -231,14 +231,19 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
   base::CreateNewTempDirectory("dlpdatabase", &database_directory);
   GetDlpAdaptor()->InitDatabase(database_directory);
 
-  // Create file to request access by inode.
-  base::FilePath file_path;
-  base::CreateTemporaryFile(&file_path);
-  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
+  // Create files to request access by inodes.
+  base::FilePath file_path1;
+  base::CreateTemporaryFile(&file_path1);
+  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  base::FilePath file_path2;
+  base::CreateTemporaryFile(&file_path2);
+  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
 
-  // Add the file to the database.
+  // Add the files to the database.
   GetDlpAdaptor()->AddFile(
-      CreateSerializedAddFileRequest(file_path.value(), "source", "referrer"));
+      CreateSerializedAddFileRequest(file_path1.value(), "source", "referrer"));
+  GetDlpAdaptor()->AddFile(
+      CreateSerializedAddFileRequest(file_path2.value(), "source", "referrer"));
 
   // Setup callback for DlpFilesPolicyService::IsRestricted()
   is_file_policy_restricted_ = false;
@@ -264,19 +269,137 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
       },
       &allowed, &lifeline_fd));
   GetDlpAdaptor()->RequestFileAccess(
-      std::move(response),
-      CreateSerializedRequestFileAccessRequest(inode, kPid, "destination"));
+      std::move(response), CreateSerializedRequestFileAccessRequest(
+                               {inode1, inode2}, kPid, "destination"));
 
   EXPECT_TRUE(allowed);
   EXPECT_FALSE(IsFdClosed(lifeline_fd.get()));
 
-  // Access the file.
+  // Access the first file.
   FileOpenRequestResultWaiter waiter;
-  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode1, kPid, waiter.GetCallback());
 
   EXPECT_TRUE(waiter.GetResult());
 
   // Second request still allowed.
+  FileOpenRequestResultWaiter waiter2;
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode1, kPid, waiter2.GetCallback());
+
+  EXPECT_TRUE(waiter2.GetResult());
+
+  // Access the second file.
+  FileOpenRequestResultWaiter waiter3;
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode2, kPid, waiter3.GetCallback());
+
+  EXPECT_TRUE(waiter3.GetResult());
+}
+
+TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
+  // Create database.
+  base::FilePath database_directory;
+  base::CreateNewTempDirectory("dlpdatabase", &database_directory);
+  GetDlpAdaptor()->InitDatabase(database_directory);
+
+  // Create files to request access by inodes.
+  base::FilePath file_path1;
+  base::CreateTemporaryFile(&file_path1);
+  const ino_t inode1 = GetDlpAdaptor()->GetInodeValue(file_path1.value());
+  base::FilePath file_path2;
+  base::CreateTemporaryFile(&file_path2);
+  const ino_t inode2 = GetDlpAdaptor()->GetInodeValue(file_path2.value());
+
+  // Add only first file to the database.
+  GetDlpAdaptor()->AddFile(
+      CreateSerializedAddFileRequest(file_path1.value(), "source", "referrer"));
+
+  // Setup callback for DlpFilesPolicyService::IsRestricted()
+  is_file_policy_restricted_ = false;
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
+              DoCallMethodWithErrorCallback(_, _, _, _))
+      .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsRestricted));
+
+  // Request access to the file.
+  std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>
+      response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+          std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
+  bool allowed;
+  brillo::dbus_utils::FileDescriptor lifeline_fd;
+  response->set_return_callback(base::BindRepeating(
+      [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
+         const std::vector<uint8_t>& proto_blob,
+         const brillo::dbus_utils::FileDescriptor& fd) {
+        RequestFileAccessResponse response;
+        response.ParseFromArray(proto_blob.data(), proto_blob.size());
+        *allowed = response.allowed();
+        *lifeline_fd = brillo::dbus_utils::FileDescriptor(fd.get());
+      },
+      &allowed, &lifeline_fd));
+  GetDlpAdaptor()->RequestFileAccess(
+      std::move(response), CreateSerializedRequestFileAccessRequest(
+                               {inode1, inode2}, kPid, "destination"));
+
+  EXPECT_TRUE(allowed);
+  EXPECT_FALSE(IsFdClosed(lifeline_fd.get()));
+
+  // Access the first file.
+  FileOpenRequestResultWaiter waiter;
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode1, kPid, waiter.GetCallback());
+
+  EXPECT_TRUE(waiter.GetResult());
+
+  // Access the second file.
+  FileOpenRequestResultWaiter waiter2;
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode2, kPid, waiter2.GetCallback());
+
+  EXPECT_TRUE(waiter2.GetResult());
+}
+
+TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
+  // Create database.
+  base::FilePath database_directory;
+  base::CreateNewTempDirectory("dlpdatabase", &database_directory);
+  GetDlpAdaptor()->InitDatabase(database_directory);
+
+  // Create files to request access by inodes.
+  base::FilePath file_path;
+  base::CreateTemporaryFile(&file_path);
+  const ino_t inode = GetDlpAdaptor()->GetInodeValue(file_path.value());
+
+  // Access already allowed.
+  FileOpenRequestResultWaiter waiter;
+  GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter.GetCallback());
+  EXPECT_TRUE(waiter.GetResult());
+
+  // Setup callback for DlpFilesPolicyService::IsRestricted()
+  EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
+              DoCallMethodWithErrorCallback(_, _, _, _))
+      .Times(0);
+
+  // Request access to the file.
+  std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>
+      response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+          std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
+  bool allowed;
+  brillo::dbus_utils::FileDescriptor lifeline_fd;
+  response->set_return_callback(base::BindRepeating(
+      [](bool* allowed, brillo::dbus_utils::FileDescriptor* lifeline_fd,
+         const std::vector<uint8_t>& proto_blob,
+         const brillo::dbus_utils::FileDescriptor& fd) {
+        RequestFileAccessResponse response;
+        response.ParseFromArray(proto_blob.data(), proto_blob.size());
+        *allowed = response.allowed();
+        *lifeline_fd = brillo::dbus_utils::FileDescriptor(fd.get());
+      },
+      &allowed, &lifeline_fd));
+  GetDlpAdaptor()->RequestFileAccess(
+      std::move(response),
+      CreateSerializedRequestFileAccessRequest({inode}, kPid, "destination"));
+
+  EXPECT_TRUE(allowed);
+
+  // Access still allowed.
   FileOpenRequestResultWaiter waiter2;
   GetDlpAdaptor()->ProcessFileOpenRequest(inode, kPid, waiter2.GetCallback());
 
@@ -323,7 +446,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
       &allowed, &lifeline_fd));
   GetDlpAdaptor()->RequestFileAccess(
       std::move(response),
-      CreateSerializedRequestFileAccessRequest(inode, kPid, "destination"));
+      CreateSerializedRequestFileAccessRequest({inode}, kPid, "destination"));
 
   EXPECT_FALSE(allowed);
   EXPECT_TRUE(IsFdClosed(lifeline_fd.get()));
@@ -381,7 +504,7 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
       &allowed, &lifeline_fd));
   GetDlpAdaptor()->RequestFileAccess(
       std::move(response),
-      CreateSerializedRequestFileAccessRequest(inode, kPid, "destination"));
+      CreateSerializedRequestFileAccessRequest({inode}, kPid, "destination"));
 
   EXPECT_TRUE(allowed);
   EXPECT_FALSE(IsFdClosed(lifeline_fd.get()));
@@ -432,7 +555,7 @@ TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
       &allowed, &lifeline_fd));
   GetDlpAdaptor()->RequestFileAccess(
       std::move(response),
-      CreateSerializedRequestFileAccessRequest(inode, kPid, "destination"));
+      CreateSerializedRequestFileAccessRequest({inode}, kPid, "destination"));
 
   EXPECT_TRUE(allowed);
 }

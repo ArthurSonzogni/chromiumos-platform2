@@ -14,6 +14,7 @@
 #include <base/bind.h>
 #include <base/callback_helpers.h>
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/location.h>
@@ -221,30 +222,42 @@ void DlpAdaptor::RequestFileAccess(
     return;
   }
 
-  const std::string inode_s = base::NumberToString(request.inode());
-  std::string serialized_proto;
-  const leveldb::Status get_status =
-      db_->Get(leveldb::ReadOptions(), inode_s, &serialized_proto);
-  if (!get_status.ok()) {
+  std::vector<std::string> file_sources;
+  std::vector<uint64_t> inodes;
+  for (uint64_t inode_n : request.inodes()) {
+    const std::string inode_s = base::NumberToString(inode_n);
+    std::string serialized_proto;
+    const leveldb::Status get_status =
+        db_->Get(leveldb::ReadOptions(), inode_s, &serialized_proto);
+    if (!get_status.ok()) {
+      // Skip file if it's not DLP-protected as access to it is always allowed.
+      continue;
+    }
+    FileEntry file_entry;
+    file_entry.ParseFromString(serialized_proto);
+    file_sources.push_back(file_entry.source_url());
+    inodes.push_back(inode_n);
+  }
+  // If access to all requested files was allowed, return immediately.
+  if (inodes.empty()) {
     ReplyOnRequestFileAccess(std::move(response), std::move(remote_fd),
                              /*allowed=*/true,
                              /*error_message=*/std::string());
     return;
   }
-  FileEntry file_entry;
-  file_entry.ParseFromString(serialized_proto);
 
   std::pair<RequestFileAccessCallback, RequestFileAccessCallback> callbacks =
       base::SplitOnceCallback(base::BindOnce(
           &DlpAdaptor::ReplyOnRequestFileAccess, base::Unretained(this),
           std::move(response), std::move(remote_fd)));
   IsRestrictedRequest is_restricted_request;
-  is_restricted_request.set_source_url(file_entry.source_url());
+  *is_restricted_request.mutable_source_urls() = {file_sources.begin(),
+                                                  file_sources.end()};
   is_restricted_request.set_destination_url(request.destination_url());
   dlp_files_policy_service_->IsRestrictedAsync(
       SerializeProto(is_restricted_request),
       base::BindOnce(&DlpAdaptor::OnIsRestrictedReply, base::Unretained(this),
-                     request.inode(), request.process_id(), std::move(local_fd),
+                     inodes, request.process_id(), std::move(local_fd),
                      std::move(callbacks.first)),
       base::BindOnce(&DlpAdaptor::OnIsRestrictedError, base::Unretained(this),
                      std::move(callbacks.second)));
@@ -343,7 +356,7 @@ void DlpAdaptor::ProcessFileOpenRequest(
 
   int lifeline_fd = -1;
   for (const auto& [key, value] : approved_requests_) {
-    if (value.first == inode && value.second == pid) {
+    if (base::Contains(value.first, inode) && value.second == pid) {
       lifeline_fd = key;
       break;
     }
@@ -386,7 +399,7 @@ void DlpAdaptor::OnDlpPolicyMatchedError(
 }
 
 void DlpAdaptor::OnIsRestrictedReply(
-    uint64_t inode,
+    std::vector<uint64_t> inodes,
     int pid,
     base::ScopedFD local_fd,
     RequestFileAccessCallback callback,
@@ -402,8 +415,8 @@ void DlpAdaptor::OnIsRestrictedReply(
 
   if (!response.restricted()) {
     int lifeline_fd = AddLifelineFd(local_fd.get());
-    std::pair<uint64_t, int> pair = std::make_pair(inode, pid);
-    approved_requests_[lifeline_fd] = pair;
+    approved_requests_.insert_or_assign(lifeline_fd,
+                                        std::make_pair(std::move(inodes), pid));
   }
 
   std::move(callback).Run(!response.restricted(),

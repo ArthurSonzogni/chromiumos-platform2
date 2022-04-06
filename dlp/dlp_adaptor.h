@@ -71,6 +71,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   FRIEND_TEST(DlpAdaptorTest, NotRestrictedFileAddedAndAllowed);
   FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndNotAllowed);
   FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed);
+  FRIEND_TEST(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed);
+  FRIEND_TEST(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed);
   FRIEND_TEST(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed);
   FRIEND_TEST(DlpAdaptorTest,
               RestrictedFileAddedRequestedAndCancelledNotAllowed);
@@ -98,7 +100,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   using RequestFileAccessCallback =
       base::OnceCallback<void(bool, const std::string&)>;
   // Callbacks on IsRestricted D-Bus request.
-  void OnIsRestrictedReply(uint64_t inode,
+  void OnIsRestrictedReply(std::vector<uint64_t> inodes,
                            int pid,
                            base::ScopedFD local_fd,
                            RequestFileAccessCallback callback,
@@ -136,8 +138,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
       dlp_files_policy_service_;
 
   // Map holding the currently approved access requests.
-  // Maps from the lifeline fd to a pair of inode and pid.
-  std::map<int, std::pair<uint64_t, int>> approved_requests_;
+  // Maps from the lifeline fd to a pair of list of files inodes and pid.
+  std::map<int, std::pair<std::vector<uint64_t>, int>> approved_requests_;
 
   // Map holding watchers for lifeline fd corresponding currently approved
   // requests. Maps from the lifeline fd to the watcher.
