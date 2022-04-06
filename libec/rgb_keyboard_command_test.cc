@@ -57,5 +57,25 @@ TEST(RgbkbdSetColorCommand, RgbkbdSetColorCommandMultiple) {
             0);
 }
 
+TEST(RgbkbdCommand, RgbkbdClearCommand) {
+  struct rgb_s color;
+
+  color.r = 0x0a;
+  color.g = 0x0b;
+  color.b = 0x0c;
+
+  auto cmd = RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_CLEAR, color);
+  EXPECT_TRUE(cmd);
+  EXPECT_EQ(cmd->Command(), EC_CMD_RGBKBD);
+  EXPECT_EQ(cmd->Version(), 0);
+  EXPECT_EQ(cmd->Req()->subcmd, EC_RGBKBD_SUBCMD_CLEAR);
+  EXPECT_EQ(cmd->Req()->color.r, color.r);
+  EXPECT_EQ(cmd->Req()->color.g, color.g);
+  EXPECT_EQ(cmd->Req()->color.b, color.b);
+
+  cmd = RgbkbdCommand::Create(EC_RGBKBD_SUBCMD_COUNT, color);
+  EXPECT_FALSE(cmd);
+}
+
 }  // namespace
 }  // namespace ec

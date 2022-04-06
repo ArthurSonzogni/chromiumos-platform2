@@ -6,8 +6,10 @@
 #define LIBEC_RGB_KEYBOARD_COMMAND_H_
 
 #include <algorithm>
+#include <memory>
 #include <vector>
 
+#include <base/memory/ptr_util.h>
 #include <brillo/brillo_export.h>
 #include "libec/ec_command.h"
 #include "libec/rgb_keyboard_params.h"
@@ -34,6 +36,37 @@ class BRILLO_EXPORT RgbkbdSetColorCommand
 static_assert(!std::is_copy_constructible<RgbkbdSetColorCommand>::value,
               "EcCommands are not copyable by default");
 static_assert(!std::is_copy_assignable<RgbkbdSetColorCommand>::value,
+              "EcCommands are not copy-assignable by default");
+
+class BRILLO_EXPORT RgbkbdCommand
+    : public EcCommand<struct ec_params_rgbkbd, EmptyParam> {
+ public:
+  template <typename T = RgbkbdCommand>
+  static std::unique_ptr<T> Create(enum ec_rgbkbd_subcmd subcmd,
+                                   struct rgb_s color) {
+    static_assert(std::is_base_of<RgbkbdCommand, T>::value,
+                  "Only classes derived from RgbkbdCommand can use Create");
+
+    if (subcmd < 0 || subcmd >= EC_RGBKBD_SUBCMD_COUNT) {
+      return nullptr;
+    }
+
+    return base::WrapUnique(new T(subcmd, color));
+  }
+
+  ~RgbkbdCommand() override = default;
+
+ protected:
+  RgbkbdCommand(enum ec_rgbkbd_subcmd subcmd, struct rgb_s color)
+      : EcCommand(EC_CMD_RGBKBD, 0) {
+    Req()->subcmd = subcmd;
+    Req()->color = color;
+  }
+};
+
+static_assert(!std::is_copy_constructible<RgbkbdCommand>::value,
+              "EcCommands are not copyable by default");
+static_assert(!std::is_copy_assignable<RgbkbdCommand>::value,
               "EcCommands are not copy-assignable by default");
 
 }  // namespace ec
