@@ -11,6 +11,7 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
 
+#include "cryptohome/crypto_error.h"
 #include "cryptohome/platform.h"
 
 namespace cryptohome {
@@ -33,6 +34,9 @@ bool WriteProtobuf(int fd, const google::protobuf::MessageLite& message);
 // down the entire process, therefore allowing it to clean up and exit
 // normally.
 void ForkAndCrash(const std::string& message);
+
+// Convert a CryptoError returned from AuthBlocks or VaultKeysets to MountError.
+MountError CryptoErrorToMountError(CryptoError crypto_error);
 
 // Convert MountError used by mount.cc to CryptohomeErrorCode defined in the
 // protos.

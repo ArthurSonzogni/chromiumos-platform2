@@ -19,6 +19,8 @@
 #include <base/logging.h>
 #include <chromeos/constants/cryptohome.h>
 
+#include "cryptohome/crypto_error.h"
+
 namespace {
 // Size of span when writing protobuf message size to file.
 constexpr int kSpanSize = 1;
@@ -95,6 +97,29 @@ void ForkAndCrash(const std::string& message) {
     // normally.
     waitpid(child_pid, nullptr, 0);
   }
+}
+
+MountError CryptoErrorToMountError(CryptoError crypto_error) {
+  MountError local_error = MOUNT_ERROR_NONE;
+  switch (crypto_error) {
+    case CryptoError::CE_TPM_FATAL:
+    case CryptoError::CE_OTHER_FATAL:
+      local_error = MOUNT_ERROR_VAULT_UNRECOVERABLE;
+      break;
+    case CryptoError::CE_TPM_COMM_ERROR:
+      local_error = MOUNT_ERROR_TPM_COMM_ERROR;
+      break;
+    case CryptoError::CE_TPM_DEFEND_LOCK:
+      local_error = MOUNT_ERROR_TPM_DEFEND_LOCK;
+      break;
+    case CryptoError::CE_TPM_REBOOT:
+      local_error = MOUNT_ERROR_TPM_NEEDS_REBOOT;
+      break;
+    default:
+      local_error = MOUNT_ERROR_KEY_FAILURE;
+      break;
+  }
+  return local_error;
 }
 
 user_data_auth::CryptohomeErrorCode MountErrorToCryptohomeError(

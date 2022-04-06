@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "cryptohome/userdataauth.h"
+
 #include <optional>
 #include <set>
 #include <string>
@@ -30,6 +32,7 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
+#include "cryptohome/auth_blocks/auth_block_state.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
@@ -48,6 +51,7 @@
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"
+#include "cryptohome/keyset_management.h"
 #include "cryptohome/pkcs11/real_pkcs11_token_factory.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/stateful_recovery.h"
@@ -58,7 +62,7 @@
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
-#include "cryptohome/userdataauth.h"
+#include "cryptohome/vault_keyset.h"
 
 using base::FilePath;
 using brillo::Blob;
@@ -163,6 +167,89 @@ void GroupDmcryptDeviceMounts(
         match->first.value().substr(0, last_component_index));
     grouped_mounts->insert({device_group, match->second});
   }
+}
+
+// Creates KeyBlobs and AuthBlockState for the given |new_credentials| on
+// |auth_block_utility|.
+bool CreateKeyBlobs(const AuthBlockUtility& auth_block_utility,
+                    const KeysetManagement& keyset_management,
+                    bool is_le_credential,
+                    bool is_challenge_credential,
+                    const Credentials& credentials,
+                    CryptoError& out_error,
+                    KeyBlobs& out_key_blobs,
+                    AuthBlockState& out_state) {
+  AuthBlockType auth_block_type =
+      auth_block_utility.GetAuthBlockTypeForCreation(is_le_credential,
+                                                     is_challenge_credential);
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    LOG(ERROR) << "Error in obtaining AuthBlock type.";
+    return false;
+  }
+  std::optional<brillo::SecureBlob> reset_secret;
+  if (auth_block_type == AuthBlockType::kPinWeaver) {
+    std::unique_ptr<VaultKeyset> vk = keyset_management.GetVaultKeyset(
+        credentials.GetObfuscatedUsername(), credentials.key_data().label());
+    reset_secret = vk->GetOrGenerateResetSecret();
+  }
+
+  out_error = auth_block_utility.CreateKeyBlobsWithAuthBlock(
+      auth_block_type, credentials, reset_secret, out_state, out_key_blobs);
+  if (out_error != CryptoError::CE_NONE) {
+    LOG(ERROR) << "Error in creating AuthBlock.";
+    return false;
+  }
+  return true;
+}
+
+// Derives KeyBlobs for the given |credentials| on |auth_block_utility|.
+bool DeriveKeyBlobs(AuthBlockUtility& auth_block_utility,
+                    const Credentials& credentials,
+                    CryptoError& out_error,
+                    KeyBlobs& out_key_blobs) {
+  AuthBlockType auth_block_type =
+      auth_block_utility.GetAuthBlockTypeForDerivation(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername());
+
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    LOG(ERROR) << "Error in obtaining AuthBlock type for key derivation.";
+    return false;
+  }
+
+  AuthBlockState auth_state;
+  if (!auth_block_utility.GetAuthBlockStateFromVaultKeyset(
+          credentials.key_data().label(), credentials.GetObfuscatedUsername(),
+          auth_state /*Out*/)) {
+    LOG(ERROR) << "Error in obtaining AuthBlock state for key derivation.";
+    return false;
+  }
+
+  out_error = auth_block_utility.DeriveKeyBlobsWithAuthBlock(
+      auth_block_type, credentials, auth_state, out_key_blobs);
+  if (out_error != CryptoError::CE_NONE) {
+    LOG(ERROR) << "Error in key derivation with AuthBlock.";
+    return false;
+  }
+  return true;
+}
+
+// Returns a vector of all the VaultKeyset labels in |out_labels| if the
+// |credentials| has an empty label and the key type is KEY_TYPE_PASSWORD,
+// otherwise |credentials|'s label is pushed to |out_labels|. Returns false if
+// there are no VaultKeysets on the disk, otherwise returns true.
+bool GetKeyLabels(const KeysetManagement& keyset_management,
+                  const Credentials& credentials,
+                  std::vector<std::string>& out_labels) {
+  if (credentials.key_data().label() == "" &&
+      credentials.key_data().type() == KeyData::KEY_TYPE_PASSWORD) {
+    if (!keyset_management.GetVaultKeysetLabels(
+            credentials.GetObfuscatedUsername(), &out_labels)) {
+      return false;
+    }
+    return true;
+  }
+  out_labels.push_back(credentials.key_data().label());
+  return true;
 }
 
 }  // namespace
@@ -1952,26 +2039,115 @@ void UserDataAuth::ContinueMountWithCredentials(
 
 std::unique_ptr<VaultKeyset> UserDataAuth::LoadVaultKeyset(
     const Credentials& credentials, bool is_new_user, MountError* error) {
+  CryptoError crypto_error;
+  AuthBlockState out_state;
+  std::string obfuscated_username = credentials.GetObfuscatedUsername();
   PopulateError(error, MountError::MOUNT_ERROR_NONE);
-
+  // 1. Handle initial user case.
   if (is_new_user) {
-    if (!keyset_management_->AddInitialKeyset(
-            credentials, FileSystemKeyset::CreateRandom())) {
-      LOG(ERROR) << "Error adding initial keyset.";
+    // Although there isn't any real use case of having LE credential as an
+    // initial credential, some cryptohome tast tests add LE credential first.
+    // For that we need to keep this check here until the tast test is changed.
+    bool is_le_credential = false;
+    bool is_challenge_credential =
+        credentials.key_data().type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE;
+    KeyBlobs key_blobs;
+    if (!CreateKeyBlobs(*auth_block_utility_, *keyset_management_,
+                        is_le_credential, is_challenge_credential, credentials,
+                        crypto_error, key_blobs, out_state)) {
+      LOG(ERROR) << "Error in creating key blobs to add initial keyset.";
+      PopulateError(error, MountError::MOUNT_ERROR_KEY_FAILURE);
+      return nullptr;
+    }
+    std::unique_ptr<AuthBlockState> auth_state =
+        std::make_unique<AuthBlockState>(out_state);
+    if (!keyset_management_->AddInitialKeysetWithKeyBlobs(
+            obfuscated_username, credentials.key_data(),
+            credentials.challenge_credentials_keyset_info(),
+            FileSystemKeyset::CreateRandom(), std::move(key_blobs),
+            std::move(auth_state))) {
+      LOG(ERROR) << "Error in adding initial keyset.";
       PopulateError(error, MountError::MOUNT_ERROR_KEY_FAILURE);
       return nullptr;
     }
   }
-  std::unique_ptr<VaultKeyset> vk =
-      keyset_management_->GetValidKeyset(credentials, error);
+
+  // 2. Load decrypted VaultKeyset.
+  // Empty labels are regarded as wild-card. If the label is empty, try
+  // authentication with each of the VaultKeysets on the disk until
+  // authentication succeeds.
+  std::vector<std::string> key_labels;
+  // If |credentials.label| is empty and the key type is KEY_TYPE_PASSWORD get
+  // label list of all the VaultKeysets on the disk. Otherwise the label
+  // received from |credentials| will be used. GetKeyLabels() fails only if
+  // there is no VaultKeyset found on the disk, which is not an expected
+  // situation at this point.
+  if (!GetKeyLabels(*keyset_management_, credentials, key_labels /*Out*/)) {
+    LOG(ERROR) << "Error in LoadVaultKeyset getting the key data of the "
+                  "existing keysets.";
+    PopulateError(error, MountError::MOUNT_ERROR_VAULT_UNRECOVERABLE);
+    return nullptr;
+  }
+
+  // Assign each label from the existing vault keysets one by one to try
+  // authentication against each vault keyset.
+  std::unique_ptr<VaultKeyset> vk;
+  Credentials temp_credential(credentials.username(), credentials.passkey());
+  KeyData key_data = credentials.key_data();
+  for (auto label : key_labels) {
+    // There is no manipulation with the credential, only the label is
+    // changed (if empty) temporarily to run the wildcard.
+    key_data.set_label(label);
+    temp_credential.set_key_data(key_data);
+    KeyBlobs key_blobs;
+    if (!DeriveKeyBlobs(*auth_block_utility_, temp_credential, crypto_error,
+                        key_blobs /*Out*/)) {
+      if (crypto_error != CryptoError::CE_NONE) {
+        PopulateError(error, CryptoErrorToMountError(crypto_error));
+      }
+      // If the key derivation fails try key derivation with the next label. In
+      // the key derivation process label is used to obtain the AuthBlockState
+      // from the VaultKeyset with the given label for a given user.
+      continue;
+    }
+    vk = keyset_management_->GetValidKeysetWithKeyBlobs(
+        obfuscated_username, std::move(key_blobs), label, error);
+    if (vk != nullptr) {
+      LOG(INFO) << "Authenticated VaultKeyset with label: " << label;
+      break;
+    }
+  }
   if (!vk) {
     return nullptr;
   }
-  // Reencrypt keyset with a TPM backed key if it is not the case, fill in
-  // missing fields in the keyset, and resave.
-  keyset_management_->ReSaveKeysetIfNeeded(credentials, vk.get());
 
-  return vk;
+  // 3. Check whether an update is needed for the VaultKeyset. Reencrypt keyset
+  // with a TPM backed key if user logged in while TPM ownership was taken. If
+  // this is not the case, fill in missing fields in the keyset, and resave.
+  VaultKeyset updated_vault_keyset = *(vk.get());
+  if (!keyset_management_->ShouldReSaveKeyset(&updated_vault_keyset)) {
+    return vk;
+  }
+  // KeyBlobs needs to be re-created since there maybe a change in the
+  // AuthBlock type with the change in TPM state. Don't abort on failure.
+  KeyBlobs key_blobs;
+  if (!CreateKeyBlobs(*auth_block_utility_, *keyset_management_,
+                      /*is_le_credential*/ false,
+                      /* is_challenge_credential */ false, credentials,
+                      crypto_error, key_blobs /*out*/, out_state)) {
+    LOG(ERROR) << "Error in key creation to resave the keyset. Old vault "
+                  "keyset will be used.";
+    return vk;
+  }
+  std::unique_ptr<AuthBlockState> auth_state =
+      std::make_unique<AuthBlockState>(out_state);
+  if (!keyset_management_->ReSaveKeysetWithKeyBlobs(
+          updated_vault_keyset, std::move(key_blobs), std::move(auth_state))) {
+    LOG(ERROR) << "Error in resaving updated vault keyset. Old vault keyset "
+                  "will be used.";
+    return vk;
+  }
+  return std::make_unique<VaultKeyset>(updated_vault_keyset);
 }
 
 MountError UserDataAuth::AttemptUserMount(

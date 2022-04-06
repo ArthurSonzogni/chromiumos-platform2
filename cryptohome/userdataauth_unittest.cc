@@ -28,6 +28,7 @@
 #include <tpm_manager/client/mock_tpm_manager_utility.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
+#include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/cleanup/mock_disk_cleanup.h"
@@ -143,6 +144,7 @@ class UserDataAuthTestBase : public ::testing::Test {
     }
     userdataauth_->set_crypto(&crypto_);
     userdataauth_->set_keyset_management(&keyset_management_);
+    userdataauth_->set_auth_block_utility(&auth_block_utility_);
     userdataauth_->set_user_activity_timestamp_manager(
         &user_activity_timestamp_manager_);
     userdataauth_->set_homedirs(&homedirs_);
@@ -213,6 +215,10 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Mock KeysetManagent object, will be passed to UserDataAuth for its internal
   // use.
   NiceMock<MockKeysetManagement> keyset_management_;
+
+  // Mock AuthBlockUtility object, will be passed to UserDataAuth for its
+  // internal use.
+  NiceMock<MockAuthBlockUtility> auth_block_utility_;
 
   // Mock UserOldestActivityTimestampManager, will be passed to UserDataAuth for
   // its internal use.
@@ -2140,9 +2146,17 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+      .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
+      .WillRepeatedly(Return(CryptoError::CE_NONE));
   auto vk = std::make_unique<VaultKeyset>();
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
-      .WillOnce(Return(ByMove(std::move(vk))));
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+      .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
+      .WillOnce(Return(false));
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*session_, MountVault(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -2240,9 +2254,17 @@ TEST_F(UserDataAuthTest,
   session_ = base::MakeRefCounted<NiceMock<MockUserSession>>();
   EXPECT_CALL(user_session_factory_, New(_, _)).WillOnce(Return(session_));
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+      .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
+      .WillRepeatedly(Return(CryptoError::CE_NONE));
   auto vk = std::make_unique<VaultKeyset>();
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
-      .WillOnce(Return(ByMove(std::move(vk))));
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+      .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
+      .WillOnce(Return(false));
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*session_, MountVault(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -2789,9 +2811,21 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(testing::InvokeWithoutArgs([&]() {
     SetupMount(kUser);
     EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(true));
-    auto vk = std::make_unique<VaultKeyset>();
-    EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
-        .WillOnce(Return(ByMove(std::move(vk))));
+
+    std::vector<std::string> key_labels;
+    key_labels.push_back("label");
+    EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+        .WillRepeatedly(DoAll(SetArgPointee<1>(key_labels), Return(true)));
+    EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+        .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
+    EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
+        .WillRepeatedly(Return(CryptoError::CE_NONE));
+    EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+        .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
+    EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
+        .WillOnce(Return(false));
     EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
     EXPECT_CALL(*session_, MountVault(_, _, _))
         .WillOnce(Return(MOUNT_ERROR_NONE));
@@ -2826,11 +2860,30 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
   SetupMount(kUser);
   EXPECT_CALL(homedirs_, CryptohomeExists(_, _)).WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUser)).WillOnce(Return(true));
-  VaultKeyset vk;
-  EXPECT_CALL(keyset_management_, AddInitialKeyset(_, _))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>(vk))));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_, _))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>(vk))));
+
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _))
+      .WillOnce(Return(AuthBlockType::kTpmNotBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _, _, _))
+      .WillOnce(Return(CryptoError::CE_NONE));
+  auto vk = std::make_unique<VaultKeyset>();
+  EXPECT_CALL(keyset_management_,
+              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _))
+      .WillOnce(Return(ByMove(std::move(vk))));
+
+  std::vector<std::string> key_labels;
+  key_labels.push_back("label");
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(key_labels), Return(true)));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+      .WillRepeatedly(Return(AuthBlockType::kTpmNotBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
+      .WillRepeatedly(Return(CryptoError::CE_NONE));
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+      .WillRepeatedly(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
+      .WillOnce(Return(false));
   EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_));
   EXPECT_CALL(*session_, MountVault(_, _, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));

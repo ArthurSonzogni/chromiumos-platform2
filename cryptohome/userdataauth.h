@@ -526,6 +526,11 @@ class UserDataAuth {
     keyset_management_ = value;
   }
 
+  // Override |keyset_management_| for testing purpose
+  void set_auth_block_utility(AuthBlockUtility* value) {
+    auth_block_utility_ = value;
+  }
+
   // Override |auth_factor_manager_| for testing purpose
   void set_auth_factor_manager_for_testing(AuthFactorManager* value) {
     auth_factor_manager_ = value;
@@ -771,10 +776,6 @@ class UserDataAuth {
   // thread.
   void CreateMountThreadDBus();
 
-  std::unique_ptr<VaultKeyset> LoadVaultKeyset(const Credentials& credentials,
-                                               bool is_new_user,
-                                               MountError* error);
-
   // =============== Mount Related Utilities ===============
 
   // Performs a single attempt to Mount a non-annonimous user.
@@ -913,11 +914,16 @@ class UserDataAuth {
 
   // ================= Key Management Related Helper Methods ============
 
-  // This utility function wraps the keyset_management methods to add a new
-  // credential to the user keyset. Obtains the existing vault keyset by
-  // authenticating with the existing credentials; adds a reset seed to the
-  // existing vault keyset; and then adds the new credentials and key data to
-  // the user vault keyset.
+  // This utility function loads the user vault keyset. Add the vault keyset
+  // first, if the user is a new user.
+  std::unique_ptr<VaultKeyset> LoadVaultKeyset(const Credentials& credentials,
+                                               bool is_new_user,
+                                               MountError* error);
+
+  // This utility function adds a new credential to the user keyset. Obtains the
+  // existing vault keyset by authenticating with the existing credentials; adds
+  // a reset seed to the existing vault keyset; and then adds the new
+  // credentials and key data to the user vault keyset.
   CryptohomeErrorCode AddVaultKeyset(const Credentials& existing_credentials,
                                      const Credentials& new_credentials,
                                      bool clobber);
