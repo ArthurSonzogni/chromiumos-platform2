@@ -12,13 +12,22 @@
 #include <vboot/crossystem.h>
 
 #include "mojo_service_manager/daemon/configuration.h"
-#include "mojo_service_manager/daemon/constants.h"
 #include "mojo_service_manager/daemon/daemon.h"
 #include "mojo_service_manager/daemon/service_policy_loader.h"
 
 namespace {
 
 namespace service_manager = chromeos::mojo_service_manager;
+
+// The path of the service manager's socket server.
+constexpr char kSocketPath[] = "/run/mojo/service_manager";
+
+// The policy directory path.
+constexpr char kPolicyDirectoryPath[] = "/etc/mojo/service_manager/policy";
+
+// The extra policy directory path which is only used in dev mode.
+constexpr char kExtraPolicyDirectoryPathInDevMode[] =
+    "/usr/local/etc/mojo/service_manager/policy";
 
 bool IsDevMode() {
   int value = ::VbGetSystemPropertyInt("cros_debug");
@@ -48,13 +57,12 @@ int main(int argc, char* argv[]) {
 
   service_manager::ServicePolicyMap policy_map;
   service_manager::LoadAllServicePolicyFileFromDirectory(
-      base::FilePath{service_manager::kPolicyDirectoryPath}, &policy_map);
+      base::FilePath{kPolicyDirectoryPath}, &policy_map);
   if (IsDevMode()) {
     LOG(INFO) << "DevMode is enabled, load extra configs from "
-              << service_manager::kExtraPolicyDirectoryPathInDevMode;
+              << kExtraPolicyDirectoryPathInDevMode;
     service_manager::LoadAllServicePolicyFileFromDirectory(
-        base::FilePath{service_manager::kExtraPolicyDirectoryPathInDevMode},
-        &policy_map);
+        base::FilePath{kExtraPolicyDirectoryPathInDevMode}, &policy_map);
   }
 
   service_manager::Configuration configuration{};
@@ -62,7 +70,7 @@ int main(int argc, char* argv[]) {
     configuration.is_permissive = true;
   }
 
-  service_manager::Daemon daemon(base::FilePath{service_manager::kSocketPath},
+  service_manager::Daemon daemon(base::FilePath{kSocketPath},
                                  std::move(configuration),
                                  std::move(policy_map));
   return daemon.Run();
