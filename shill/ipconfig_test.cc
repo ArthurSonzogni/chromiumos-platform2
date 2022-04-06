@@ -50,15 +50,6 @@ class IPConfigTest : public Test {
     ScopeLogger::GetInstance()->set_verbose_level(0);
   }
 
-  void DropRef(const IPConfigRefPtr& /*ipconfig*/,
-               bool /*new_lease_acquired*/) {
-    ipconfig_ = nullptr;
-  }
-
-  MOCK_METHOD(void, OnIPConfigUpdated, (const IPConfigRefPtr&, bool));
-  MOCK_METHOD(void, OnIPConfigFailed, (const IPConfigRefPtr&));
-  MOCK_METHOD(void, OnIPConfigExpired, (const IPConfigRefPtr&));
-
  protected:
   IPConfigMockAdaptor* GetAdaptor() {
     return static_cast<IPConfigMockAdaptor*>(ipconfig_->adaptor_.get());
@@ -67,14 +58,6 @@ class IPConfigTest : public Test {
   void UpdateProperties(const IPConfig::Properties& properties) {
     ipconfig_->UpdateProperties(properties);
   }
-
-  void NotifyUpdate(bool new_lease_acquired) {
-    ipconfig_->NotifyUpdate(new_lease_acquired);
-  }
-
-  void NotifyFailure() { ipconfig_->NotifyFailure(); }
-
-  void NotifyExpiry() { ipconfig_->NotifyExpiry(); }
 
   void ExpectPropertiesEqual(const IPConfig::Properties& properties) {
     EXPECT_EQ(properties.address, ipconfig_->properties().address);
@@ -158,52 +141,9 @@ TEST_F(IPConfigTest, UpdateProperties) {
   UpdateProperties(properties);
   ExpectPropertiesEqual(properties);
 
-  // We should not reset on NotifyFailure.
-  NotifyFailure();
-  ExpectPropertiesEqual(properties);
-
-  // We should not reset on NotifyExpiry.
-  NotifyExpiry();
-  ExpectPropertiesEqual(properties);
-
   // We should reset if ResetProperties is called.
   ipconfig_->ResetProperties();
   ExpectPropertiesEqual(IPConfig::Properties());
-}
-
-TEST_F(IPConfigTest, Callbacks) {
-  ipconfig_->RegisterUpdateCallback(
-      base::Bind(&IPConfigTest::OnIPConfigUpdated, base::Unretained(this)));
-  ipconfig_->RegisterFailureCallback(
-      base::Bind(&IPConfigTest::OnIPConfigFailed, base::Unretained(this)));
-  ipconfig_->RegisterExpireCallback(
-      base::Bind(&IPConfigTest::OnIPConfigExpired, base::Unretained(this)));
-
-  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true));
-  EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
-  EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
-  NotifyUpdate(true);
-  Mock::VerifyAndClearExpectations(this);
-
-  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true)).Times(0);
-  EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_));
-  EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_)).Times(0);
-  NotifyFailure();
-  Mock::VerifyAndClearExpectations(this);
-
-  EXPECT_CALL(*this, OnIPConfigUpdated(ipconfig_, true)).Times(0);
-  EXPECT_CALL(*this, OnIPConfigFailed(ipconfig_)).Times(0);
-  EXPECT_CALL(*this, OnIPConfigExpired(ipconfig_));
-  NotifyExpiry();
-  Mock::VerifyAndClearExpectations(this);
-}
-
-TEST_F(IPConfigTest, NotifyUpdateWithDropRef) {
-  // The UpdateCallback should be able to drop a reference to the
-  // IPConfig object without crashing.
-  ipconfig_->RegisterUpdateCallback(
-      base::Bind(&IPConfigTest::DropRef, base::Unretained(this)));
-  NotifyUpdate(true);
 }
 
 TEST_F(IPConfigTest, PropertyChanges) {
@@ -224,21 +164,6 @@ TEST_F(IPConfigTest, PropertyChanges) {
   EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
   EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
   UpdateProperties(ip_properties);
-  Mock::VerifyAndClearExpectations(adaptor);
-
-  // It is the callback's responsibility for resetting the IPConfig
-  // properties (via IPConfig::ResetProperties()).  Since NotifyFailure
-  // by itself doesn't change any properties, it should not emit any
-  // property change events either.
-  EXPECT_CALL(*adaptor, EmitStringChanged(_, _)).Times(0);
-  EXPECT_CALL(*adaptor, EmitStringsChanged(_, _)).Times(0);
-  NotifyFailure();
-  Mock::VerifyAndClearExpectations(adaptor);
-
-  // Similarly, NotifyExpiry() should have no property change side effects.
-  EXPECT_CALL(*adaptor, EmitStringChanged(_, _)).Times(0);
-  EXPECT_CALL(*adaptor, EmitStringsChanged(_, _)).Times(0);
-  NotifyExpiry();
   Mock::VerifyAndClearExpectations(adaptor);
 
   EXPECT_CALL(*adaptor, EmitStringChanged(kAddressProperty, _));
