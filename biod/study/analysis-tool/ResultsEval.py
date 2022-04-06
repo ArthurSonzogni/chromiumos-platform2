@@ -2,6 +2,8 @@
 # To add a new markdown cell, type '# %% [markdown]'
 # %% # Imports
 
+#! %pip install pandas numpy matplotlib scipy tqdm ipympl
+
 #! %load_ext autoreload
 #! %autoreload 1
 
