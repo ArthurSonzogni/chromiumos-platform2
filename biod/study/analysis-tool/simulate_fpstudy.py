@@ -140,6 +140,9 @@ def GenerateFARResults(
 
     return df
 
+# TODO: Add a function for generating fake collection directories to test
+# collection directory group discovery.
+
 
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
     parser = argparse.ArgumentParser(
