@@ -203,6 +203,14 @@ class Experiment:
 
         return self.tbl_fa_list
 
+    def FARMatches(self) -> int:
+        """Return the number of FAR Cross Matches."""
+        return self.FARDecisions().shape[0]
+
+    def FACount(self) -> int:
+        """Return the number of False Acceptances."""
+        return self.FAList().shape[0]
+
     def FARDecisions(self) -> pd.DataFrame:
         return self.tbl_far_decisions
 
