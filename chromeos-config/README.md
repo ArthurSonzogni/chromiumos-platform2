@@ -436,6 +436,7 @@ In the tables below,
 | power | [power](#power) |  | False |  | False | Defines settings that control power management functions. This mostly defines power_manager preferences, but there are a few other power related settings included. For details about each power_manager preference, see - src/platform2/power_manager/common/power_constants.h/cc For examples on setting these properties (including multiline examples), see the power config example in test_data/test.yaml |
 | proximity-sensor | [proximity-sensor](#proximity_sensor) |  | False |  | False | Defines the proximity sensor settings for devices such as /dev/proximity-wifi and /dev/proximity-wifi-lte typically used for SAR. |
 | regulatory-label | string |  | False |  | False | Base name of the directory containing the regulatory label files to show on this device. |
+| resource | [resource](#resource) |  | False |  | False | Defines settings that configure resourced. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto |
 | scheduler-tune | [scheduler-tune](#scheduler_tune) |  | False |  | False | ChromeOS scheduler's tunable values. |
 | test-label | string |  | False |  | False | Test alias (model) label that will be applied in Autotest and reported for test results. |
 | thermal | [thermal](#thermal) |  | False |  | False |  |
@@ -869,6 +870,74 @@ In the tables below,
 | thresh-rising | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising threshold. |
 | thresh-rising-hysteresis | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising hysteresis. |
 | thresh-rising-period | string | ```^[0-9.]+$``` | False |  | False | Proximity sensor rising threshold period (debounce). |
+
+### resource
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| default-power-preferences | [default-power-preferences](#default_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+| fullscreen-power-preferences | [fullscreen-power-preferences](#fullscreen_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+| gaming-power-preferences | [gaming-power-preferences](#gaming_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+| web-rtc-power-preferences | [web-rtc-power-preferences](#web_rtc_power_preferences) |  | False |  | False | For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md |
+
+### default-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+
+### fullscreen-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+
+### gaming-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
+
+### web-rtc-power-preferences
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| governor | [governor](#governor) |  | False |  | False |  |
+
+### governor
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| ondemand | [ondemand](#ondemand) |  | False | GROUP(0) | False |  |
+
+### ondemand
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| powersave-bias | integer |  | False |  | False |  |
 
 ### scheduler-tune
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

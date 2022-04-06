@@ -268,6 +268,19 @@ typeDefs:
         minimum: 0x0
         maximum: 0xFF
     additionalProperties: false
+  resourced_power_preferences: &resourced_power_preferences
+    type: object
+    description: For details, see https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/resourced/README.md
+    properties:
+      governor:
+        type: object
+        oneOf:
+          - properties:
+              ondemand:
+                type: object
+                properties:
+                  powersave-bias:
+                    type: integer
 type: object
 properties:
   chromeos:
@@ -834,6 +847,15 @@ properties:
                 wifi: *proximity_sensor_items
                 wifi-lte: *proximity_sensor_items
               additionalProperties: false
+            resource:
+              description: Defines settings that configure resourced.
+                https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto
+              type: object
+              properties:
+                default-power-preferences: *resourced_power_preferences
+                web-rtc-power-preferences: *resourced_power_preferences
+                fullscreen-power-preferences: *resourced_power_preferences
+                gaming-power-preferences: *resourced_power_preferences
             test-label:
               description: Test alias (model) label that will be applied in Autotest and
                 reported for test results.
