@@ -3,6 +3,7 @@
 import sys
 import timeit
 import typing
+from typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,10 +21,20 @@ class DataFrameSetAccess:
     tables, this order of magnitude difference is unacceptable.
     '''
 
-    def __init__(self, table: pd.DataFrame, cols: list = None):
+    def __init__(self, table: pd.DataFrame, cols: List[str] = None):
 
         if not cols:
-            cols = table.columns
+            cols = list(table.columns)
+        self.cols = cols
+
+        # There is nothing wrong with having duplicate rows for this
+        # implementation, but having duplicates might indicate that we are
+        # attempting to analyze cross sections of data using the wrong tool.
+        # Just take for example that we are caching only the first three columns
+        # of a dataframe. We really migt need to know the number of rows that
+        # happen to have a particular three starting values, but this accessor
+        # will only say one exists.
+        assert not table.duplicated(subset=cols).any()
 
         # This is an expensive operation.
         self.set = {tuple(row) for row in np.array(table[cols])}
