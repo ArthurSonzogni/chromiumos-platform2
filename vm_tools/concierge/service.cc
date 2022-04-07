@@ -1820,17 +1820,23 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   }
 
   if (request.vm().wayland_server().empty()) {
-    std::string wayland_server =
-        vm_launch_interface_->GetWaylandSocketForVm(vm_id, classification);
-    // Prevent certain VMs from running without a secure server.
-    //
-    // TODO(b/212636975): All VMs should use this, not just special ones.
-    if (classification == VmInfo::BOREALIS && wayland_server.empty()) {
-      response.set_failure_reason(
-          "Borealis VMs must have a secure wayland server. Likely borealis is "
-          "disabled.");
-      LOG(ERROR) << response.failure_reason();
-      return response;
+    std::string get_wayland_socket_error;
+    std::string wayland_server = vm_launch_interface_->GetWaylandSocketForVm(
+        vm_id, classification, get_wayland_socket_error);
+    if (wayland_server.empty()) {
+      // Prevent certain VMs from running without a secure server.
+      //
+      // TODO(b/212636975): All VMs should use this, not just special ones.
+      if (classification == VmInfo::BOREALIS ||
+          classification == VmInfo::TERMINA) {
+        response.set_failure_reason("Unable to start a wayland server: " +
+                                    get_wayland_socket_error);
+        LOG(ERROR) << response.failure_reason();
+        return response;
+      } else {
+        LOG(WARNING) << "Using default wayland server: "
+                     << get_wayland_socket_error;
+      }
     }
     vm_builder.SetWaylandSocket(std::move(wayland_server));
   } else {

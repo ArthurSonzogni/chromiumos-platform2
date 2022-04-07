@@ -63,7 +63,11 @@ TEST_F(VmLaunchInterfaceTest, FailureReturnsEmpty) {
           }));
 
   VmId id("test_owner_id", "test_vm_name");
-  EXPECT_EQ(launch_interface.GetWaylandSocketForVm(id, VmInfo::UNKNOWN), "");
+  std::string out_error;
+  EXPECT_EQ(
+      launch_interface.GetWaylandSocketForVm(id, VmInfo::UNKNOWN, out_error),
+      "");
+  EXPECT_NE(out_error, "");
 }
 
 TEST_F(VmLaunchInterfaceTest, SuccessReturnsNonEmpty) {
@@ -87,8 +91,11 @@ TEST_F(VmLaunchInterfaceTest, SuccessReturnsNonEmpty) {
           }));
 
   VmId id("test_owner_id", "test_vm_name");
-  EXPECT_EQ(launch_interface.GetWaylandSocketForVm(id, VmInfo::UNKNOWN),
-            "test_path");
+  std::string out_error;
+  EXPECT_EQ(
+      launch_interface.GetWaylandSocketForVm(id, VmInfo::UNKNOWN, out_error),
+      "test_path");
+  EXPECT_EQ(out_error, "");
 }
 
 }  // namespace concierge

@@ -32,9 +32,10 @@ class VmLaunchInterface {
   // Requests a custom wayland server for VMs of type |classification| from
   // chrome, which will be used by the VM with the given |vm_id|. This process
   // is document in go/secure-exo-ids. Returns a path to the server's socket on
-  // success, or "" on failure.
+  // success, or "" on failure. Writes a reason for a failure into |out_error|.
   std::string GetWaylandSocketForVm(const VmId& vm_id,
-                                    VmInfo_VmType classification);
+                                    VmInfo_VmType classification,
+                                    std::string& out_error);
 
  private:
   scoped_refptr<dbus::Bus> bus_;

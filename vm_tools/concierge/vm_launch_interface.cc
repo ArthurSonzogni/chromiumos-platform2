@@ -46,7 +46,7 @@ VmLaunchInterface::VmLaunchInterface(scoped_refptr<dbus::Bus> bus)
 VmLaunchInterface::~VmLaunchInterface() = default;
 
 std::string VmLaunchInterface::GetWaylandSocketForVm(
-    const VmId& vm_id, VmInfo::VmType classification) {
+    const VmId& vm_id, VmInfo::VmType classification, std::string& out_error) {
   dbus::MethodCall method_call(
       launch::kVmLaunchServiceInterface,
       launch::kVmLaunchServiceStartWaylandServerMethod);
@@ -57,7 +57,7 @@ std::string VmLaunchInterface::GetWaylandSocketForVm(
   request.set_owner_id(vm_id.owner_id());
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
-    LOG(ERROR) << "Failed to encode StartWaylandServerRequest protobuf";
+    out_error = "Failed to encode StartWaylandServerRequest protobuf";
     return "";
   }
 
@@ -68,18 +68,19 @@ std::string VmLaunchInterface::GetWaylandSocketForVm(
           &dbus_error);
   if (!dbus_response) {
     if (dbus_error.is_set()) {
-      LOG(ERROR) << "StartWaylandServerRequest call failed: "
-                 << dbus_error.name() << " (" << dbus_error.message() << ")";
+      out_error = std::string("StartWaylandServerRequest call failed: ") +
+                  dbus_error.name() + " (" + dbus_error.message() + ")";
     } else {
-      LOG(ERROR) << "Failed to send StartWaylandServerRequest message to "
-                    "vm_launch service";
+      out_error =
+          "Failed to send StartWaylandServerRequest message to vm_launch "
+          "service";
     }
     return "";
   }
   dbus::MessageReader reader(dbus_response.get());
   launch::StartWaylandServerResponse response;
   if (!reader.PopArrayOfBytesAsProto(&response)) {
-    LOG(ERROR) << "Failed to parse StartWaylandServerResponse protobuf";
+    out_error = "Failed to parse StartWaylandServerResponse protobuf";
     return "";
   }
 
