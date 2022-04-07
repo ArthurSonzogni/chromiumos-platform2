@@ -139,7 +139,7 @@ TEST(BalloonPolicyTest, LimitCacheModerate) {
   // Test that when we are way below the moderate margin, we still give the
   // guest MinFree() memory.
   {
-    BalloonStats stats = {.disk_caches = 1000 * MIB,
+    BalloonStats stats = {.disk_caches = 2000 * MIB,
                           .free_memory = policy.MaxFree()};
     const int64_t free_above_min = stats.free_memory - policy.MinFree();
     EXPECT_EQ(free_above_min, policy.ComputeBalloonDeltaImpl(

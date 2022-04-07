@@ -253,7 +253,17 @@ int64_t LimitCacheBalloonPolicy::ComputeBalloonDeltaImpl(
 }
 
 int64_t LimitCacheBalloonPolicy::MaxFree() {
-  return guest_zoneinfo_.totalreserve + MAX_OOM_MIN_FREE;
+  // TODO(b:225085765): Once we properly respond to LMKD telling us to deflate
+  // the balloon, remove the `margins_.critical` term here, as we won't need the
+  // buffer to avoid killing fast allocating Apps.
+  // margins_.critical is used because it is a reasonable size and scales
+  // linearly with RAM size (unlike zone watermarks), and it's conveniently
+  // accessible from this scope. Otherwise, using a host specific counter inside
+  // the guest doesn't make much sense.
+
+  // guest_zoneinfo_.totalreserve + MAX_OOM_MIN_FREE is the amount of memory
+  // LMKD needs to not kill even the lowest priority App.
+  return guest_zoneinfo_.totalreserve + MAX_OOM_MIN_FREE + margins_.critical;
 }
 
 std::optional<uint64_t> HostZoneLowSum(bool log_on_error) {
