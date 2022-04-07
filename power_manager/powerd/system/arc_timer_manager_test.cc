@@ -330,7 +330,6 @@ class ArcTimerManagerTest : public ::testing::Test {
     // Map of timer id to the read fd that will indicate expiration of the
     // timer.
     std::map<ArcTimerManager::TimerId, base::ScopedFD> arc_timers_;
-
   };
 
   // Mapping of a client's tag and the |ArcTimerStore| to use with it.
