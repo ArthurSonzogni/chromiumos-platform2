@@ -14,6 +14,9 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/run_loop.h>
+#include <base/test/bind.h>
+#include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -30,6 +33,8 @@ namespace {
 
 namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
+using ::testing::_;
+using ::testing::Invoke;
 using ::testing::UnorderedElementsAreArray;
 
 // POD struct for ParseCpuArchitectureTest.
@@ -283,13 +288,28 @@ class CpuFetcherTest : public testing::Test {
     fake_system_utils()->SetUnameResponse(/*ret_code=*/0, kUnameMachineX86_64);
   }
 
+  void TearDown() override {
+    // Wait for all task to be done.
+    task_environment_.RunUntilIdle();
+  }
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
+  MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
   FakeSystemUtilities* fake_system_utils() const {
     return mock_context_.fake_system_utils();
   }
 
-  mojo_ipc::CpuResultPtr FetchCpuInfo() { return cpu_fetcher_.FetchCpuInfo(); }
+  mojo_ipc::CpuResultPtr FetchCpuInfo() {
+    base::RunLoop run_loop;
+    mojo_ipc::CpuResultPtr result;
+    cpu_fetcher_.Fetch(
+        base::BindLambdaForTesting([&](mojo_ipc::CpuResultPtr response) {
+          result = std::move(response);
+          run_loop.Quit();
+        }));
+    run_loop.Run();
+    return result;
+  }
 
   const std::vector<std::pair<std::string, uint64_t>>& GetCStateVector(
       const std::string& logical_id) {
@@ -387,8 +407,10 @@ class CpuFetcherTest : public testing::Test {
                                              file_contents));
   }
 
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
-  CpuFetcher cpu_fetcher_{&mock_context_};
+  AsyncFetcher<CpuFetcher> cpu_fetcher_{&mock_context_};
   // Records the next C-state file to be written.
   std::map<std::string, int> c_states_written = {
       {kFirstLogicalId, 0}, {kSecondLogicalId, 0}, {kThirdLogicalId, 0}};

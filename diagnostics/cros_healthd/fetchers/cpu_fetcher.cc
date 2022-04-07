@@ -523,36 +523,74 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
       .Append(cpufreq_dirname);
 }
 
-mojo_ipc::CpuResultPtr CpuFetcher::FetchCpuInfo() {
+void CpuFetcher::HandleCallbackComplete(bool all_callback_called) {
+  if (!all_callback_called) {
+    LogAndSetError(mojo_ipc::ErrorType::kServiceUnavailable,
+                   "Not all Fetch Cpu Virtualization Callbacks "
+                   "have been sucessfully called");
+  }
+  if (!error_.is_null()) {
+    std::move(callback_).Run(mojo_ipc::CpuResult::NewError(std::move(error_)));
+    return;
+  }
+  std::move(callback_).Run(
+      mojo_ipc::CpuResult::NewCpuInfo(std::move(cpu_info_)));
+}
+
+void CpuFetcher::LogAndSetError(chromeos::cros_healthd::mojom::ErrorType type,
+                                const std::string& message) {
+  LOG(ERROR) << message;
+  if (error_.is_null())
+    error_ = chromeos::cros_healthd::mojom::ProbeError::New(type, message);
+}
+
+void CpuFetcher::FetchImpl(ResultCallback callback) {
+  callback_ = std::move(callback);
+
+  CallbackBarrier barrier{
+      base::BindOnce(&CpuFetcher::HandleCallbackComplete,
+                     weak_factory_.GetWeakPtr(), /*all_callback_called=*/true),
+      base::BindOnce(&CpuFetcher::HandleCallbackComplete,
+                     weak_factory_.GetWeakPtr(),
+                     /*all_callback_called=*/false)};
+
   std::string stat_contents;
   auto stat_file = GetProcStatPath(context_->root_dir());
   if (!ReadFileToString(stat_file, &stat_contents)) {
-    return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read stat file: " + stat_file.value()));
+    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                   "Unable to read stat file: " + stat_file.value());
+    return;
   }
 
   const auto parsed_stat_contents = ParseStatContents(stat_contents);
   if (!parsed_stat_contents.has_value()) {
-    return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
-        "Unable to parse stat contents: " + stat_contents));
+    LogAndSetError(mojo_ipc::ErrorType::kParseError,
+                   "Unable to parse stat contents: " + stat_contents);
+    return;
   }
 
   std::string cpu_info_contents;
   auto cpu_info_file = GetProcCpuInfoPath(context_->root_dir());
   if (!ReadFileToString(cpu_info_file, &cpu_info_contents)) {
-    return mojo_ipc::CpuResult::NewError(CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
-        "Unable to read CPU info file: " + cpu_info_file.value()));
+    LogAndSetError(mojo_ipc::ErrorType::kFileReadError,
+                   "Unable to read CPU info file: " + cpu_info_file.value());
+    return;
   }
 
   std::vector<std::string> processor_info = base::SplitStringUsingSubstr(
       cpu_info_contents, "\n\n", base::KEEP_WHITESPACE,
       base::SPLIT_WANT_NONEMPTY);
-  return GetCpuInfoFromProcessorInfo(processor_info,
-                                     parsed_stat_contents.value(),
-                                     context_->root_dir(), GetArchitecture());
+  mojo_ipc::CpuResultPtr cpu_result =
+      GetCpuInfoFromProcessorInfo(processor_info, parsed_stat_contents.value(),
+                                  context_->root_dir(), GetArchitecture());
+  if (cpu_result->is_error()) {
+    // TODO(b/230046339): Use LogAndSetError after refactor
+    // GetCpuInfoFromProcessorInfo.
+    error_ = std::move(cpu_result->get_error());
+    return;
+  }
+  cpu_info_ = std::move(cpu_result->get_cpu_info());
+  return;
 }
 
 mojo_ipc::CpuArchitectureEnum CpuFetcher::GetArchitecture() {

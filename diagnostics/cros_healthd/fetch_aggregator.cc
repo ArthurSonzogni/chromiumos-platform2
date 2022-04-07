@@ -86,7 +86,7 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kCpu: {
-        info->cpu_result = cpu_fetcher_.FetchCpuInfo();
+        cpu_fetcher_.Fetch(CreateFetchCallback(&barrier, &info->cpu_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kNonRemovableBlockDevices: {

@@ -8,7 +8,11 @@
 #include <base/files/file_path.h>
 #include <string>
 
+#include <base/memory/weak_ptr.h>
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
+
+#include "diagnostics/cros_healthd/fetchers/async_fetcher.h"
+#include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -49,17 +53,36 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
 
 // The CpuFetcher class is responsible for gathering CPU info reported by
 // cros_healthd.
-class CpuFetcher final : public BaseFetcher {
+class CpuFetcher final
+    : public AsyncFetcherInterface<chromeos::cros_healthd::mojom::CpuResult> {
  public:
-  using BaseFetcher::BaseFetcher;
-
-  // Returns a structure with a list of data fields for each of the device's
-  // CPUs or the error that occurred fetching the information.
-  chromeos::cros_healthd::mojom::CpuResultPtr FetchCpuInfo();
+  using AsyncFetcherInterface::AsyncFetcherInterface;
 
  private:
+  // AsyncFetcherInterface override
+  void FetchImpl(ResultCallback callback) override;
+
   // Uses |context_| to obtain the CPU architecture.
   chromeos::cros_healthd::mojom::CpuArchitectureEnum GetArchitecture();
+
+  // Calls |callback_| and passes the result. If |all_callback_called| or
+  // |error_| is set, the result is a ProbeError, otherwise it is |cpu_info_|.
+  void HandleCallbackComplete(bool all_callback_called);
+
+  // Logs |message| and sets |error_|. Only do the logging if |error_| has been
+  // set.
+  void LogAndSetError(chromeos::cros_healthd::mojom::ErrorType type,
+                      const std::string& message);
+
+  // Stores the callback received from FetchImpl.
+  ResultCallback callback_;
+  // Stores the error that will be returned. HandleCallbackComplete will report
+  // error if this is set.
+  chromeos::cros_healthd::mojom::ProbeErrorPtr error_;
+  // Stores the final cpu info that will be returned.
+  chromeos::cros_healthd::mojom::CpuInfoPtr cpu_info_;
+  // Must be the last member of the class.
+  base::WeakPtrFactory<CpuFetcher> weak_factory_{this};
 };
 
 }  // namespace diagnostics
