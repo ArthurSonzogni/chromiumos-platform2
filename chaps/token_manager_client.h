@@ -46,9 +46,9 @@ class EXPORT_SPEC TokenManagerClient : public TokenManagerInterface {
                  const brillo::SecureBlob& auth_data,
                  const std::string& label,
                  int* slot_id) override;
-  void UnloadToken(const brillo::SecureBlob& isolate_credential,
+  bool UnloadToken(const brillo::SecureBlob& isolate_credential,
                    const base::FilePath& path) override;
-  void ChangeTokenAuthData(const base::FilePath& path,
+  bool ChangeTokenAuthData(const base::FilePath& path,
                            const brillo::SecureBlob& old_auth_data,
                            const brillo::SecureBlob& new_auth_data) override;
   bool GetTokenPath(const brillo::SecureBlob& isolate_credential,

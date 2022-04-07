@@ -48,68 +48,85 @@ void PrintHelp() {
   printf("  --list : Lists all loaded token paths.\n");
 }
 
-void Ping() {
+int Ping() {
   auto proxy = chaps::ChapsProxyImpl::Create(false /* shadow_at_exit */);
   if (!proxy)
-    exit(-1);
+    return -1;
   vector<uint64_t> slot_list;
-  uint32_t result = proxy->GetSlotList(
-      IsolateCredentialManager::GetDefaultIsolateCredential(), true,
-      &slot_list);
-  if (result != 0) {
+  if (proxy->GetSlotList(
+          IsolateCredentialManager::GetDefaultIsolateCredential(), true,
+          &slot_list) != 0) {
     LOG(ERROR) << "Chaps is available but failed to provide a token list.";
-    exit(-1);
+    return -1;
   }
   LOG(INFO) << "Chaps is available with " << slot_list.size() << " token(s).";
+  return 0;
 }
 
 // Loads a token given a path and auth data.
-void LoadToken(const string& path, const string& auth, const string& label) {
+int LoadToken(const string& path, const string& auth, const string& label) {
   chaps::TokenManagerClient client;
   int slot_id = -1;
-  client.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
-                   FilePath(path), SecureBlob(auth.begin(), auth.end()), label,
-                   &slot_id);
+  if (client.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
+                       FilePath(path), SecureBlob(auth.begin(), auth.end()),
+                       label, &slot_id) == false) {
+    LOG(ERROR) << "LoadToken: " << path << " - slot = " << slot_id << " failed";
+    return -1;
+  }
   LOG(INFO) << "LoadToken: " << path << " - slot = " << slot_id;
+  return 0;
 }
 
 // Unloads a token given a path.
-void UnloadToken(const string& path) {
+int UnloadToken(const string& path) {
   chaps::TokenManagerClient client;
-  client.UnloadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
-                     FilePath(path));
+  if (client.UnloadToken(
+          IsolateCredentialManager::GetDefaultIsolateCredential(),
+          FilePath(path)) == false) {
+    LOG(ERROR) << "Sent Event: Logout: " << path << " failed";
+    return -1;
+  }
   LOG(INFO) << "Sent Event: Logout: " << path;
+  return 0;
 }
 
 // Changes authorization data for a token at the given path.
-void ChangeAuthData(const string& path,
-                    const string& auth_old,
-                    const string& auth_new) {
+int ChangeAuthData(const string& path,
+                   const string& auth_old,
+                   const string& auth_new) {
   chaps::TokenManagerClient client;
-  client.ChangeTokenAuthData(FilePath(path),
-                             SecureBlob(auth_old.begin(), auth_old.end()),
-                             SecureBlob(auth_new.begin(), auth_new.end()));
+  if (client.ChangeTokenAuthData(
+          FilePath(path), SecureBlob(auth_old.begin(), auth_old.end()),
+          SecureBlob(auth_new.begin(), auth_new.end())) == false) {
+    LOG(ERROR) << "Sent Event: Change Authorization Data: " << path
+               << " failed";
+    return -1;
+  }
   LOG(INFO) << "Sent Event: Change Authorization Data: " << path;
+  return 0;
 }
 
 // Sets the logging level.
-void SetLogLevel(int level) {
+int SetLogLevel(int level) {
   auto proxy = chaps::ChapsProxyImpl::Create(false /* shadow_at_exit */);
-  if (!proxy)
-    exit(-1);
+  if (!proxy) {
+    LOG(ERROR) << "Set log level failed.";
+    return -1;
+  }
   proxy->SetLogLevel(level);
+  return 0;
 }
 
-void ListTokens() {
+int ListTokens() {
   auto proxy = chaps::ChapsProxyImpl::Create(false /* shadow_at_exit */);
   if (!proxy)
-    exit(-1);
+    return -1;
   vector<uint64_t> slot_list;
   uint32_t result = proxy->GetSlotList(
       IsolateCredentialManager::GetDefaultIsolateCredential(), true,
       &slot_list);
   if (result != 0)
-    exit(-1);
+    return -1;
   chaps::TokenManagerClient client;
   for (size_t i = 0; i < slot_list.size(); ++i) {
     int slot = slot_list[i];
@@ -122,6 +139,7 @@ void ListTokens() {
       LOG(INFO) << "Slot " << slot << ": Empty";
     }
   }
+  return 0;
 }
 
 }  // namespace
@@ -140,33 +158,36 @@ int main(int argc, char** argv) {
                       cl->HasSwitch("auth") && cl->HasSwitch("new_auth"));
   bool set_log_level = cl->HasSwitch("set_log_level");
   bool list = cl->HasSwitch("list");
+  int result = 0;
+
   if (ping + load + unload + change_auth + set_log_level + list != 1) {
     PrintHelp();
     exit(-1);
   }
   if (ping) {
-    Ping();
+    result = Ping();
   } else if (load) {
     string label = "Default Token";
     if (cl->HasSwitch("label"))
       label = cl->GetSwitchValueASCII("label");
-    LoadToken(cl->GetSwitchValueASCII("path"), cl->GetSwitchValueASCII("auth"),
-              label);
+    result = LoadToken(cl->GetSwitchValueASCII("path"),
+                       cl->GetSwitchValueASCII("auth"), label);
   } else if (change_auth) {
-    ChangeAuthData(cl->GetSwitchValueASCII("path"),
-                   cl->GetSwitchValueASCII("auth"),
-                   cl->GetSwitchValueASCII("new_auth"));
+    result = ChangeAuthData(cl->GetSwitchValueASCII("path"),
+                            cl->GetSwitchValueASCII("auth"),
+                            cl->GetSwitchValueASCII("new_auth"));
   } else if (unload) {
-    UnloadToken(cl->GetSwitchValueASCII("path"));
+    result = UnloadToken(cl->GetSwitchValueASCII("path"));
   } else if (set_log_level) {
     int level = 0;
     if (!base::StringToInt(cl->GetSwitchValueASCII("set_log_level"), &level)) {
       LOG(ERROR) << "Invalid argument.";
-      exit(-1);
+      result = -1;
+    } else {
+      result = SetLogLevel(level);
     }
-    SetLogLevel(level);
   } else if (list) {
-    ListTokens();
+    result = ListTokens();
   }
-  return 0;
+  return result;
 }

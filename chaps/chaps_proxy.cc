@@ -171,18 +171,24 @@ bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
   return success && result;
 }
 
-void ChapsProxyImpl::UnloadToken(const SecureBlob& isolate_credential,
+bool ChapsProxyImpl::UnloadToken(const SecureBlob& isolate_credential,
                                  const string& path) {
-  SendRequestAndWait(&org::chromium::ChapsProxyInterface::UnloadToken,
-                     ToBlob(isolate_credential), path);
+  bool result = false;
+  bool success =
+      SendRequestAndWait(&org::chromium::ChapsProxyInterface::UnloadToken,
+                         ToBlob(isolate_credential), path, &result);
+  return success && result;
 }
 
-void ChapsProxyImpl::ChangeTokenAuthData(
+bool ChapsProxyImpl::ChangeTokenAuthData(
     const string& path,
     const brillo::SecureBlob& old_auth_data,
     const brillo::SecureBlob& new_auth_data) {
-  SendRequestAndWait(&org::chromium::ChapsProxyInterface::ChangeTokenAuthData,
-                     path, ToBlob(old_auth_data), ToBlob(new_auth_data));
+  bool result = false;
+  bool success = SendRequestAndWait(
+      &org::chromium::ChapsProxyInterface::ChangeTokenAuthData, path,
+      ToBlob(old_auth_data), ToBlob(new_auth_data), &result);
+  return success && result;
 }
 
 bool ChapsProxyImpl::GetTokenPath(const SecureBlob& isolate_credential,

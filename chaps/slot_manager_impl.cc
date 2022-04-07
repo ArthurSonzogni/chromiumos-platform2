@@ -814,12 +814,12 @@ bool SlotManagerImpl::IsSharedSlot(const FilePath& path) {
   return path == FilePath(kSystemTokenPath);
 }
 
-void SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
+bool SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
                                   const FilePath& path) {
   VLOG(1) << "SlotManagerImpl::UnloadToken";
   if (isolate_map_.find(isolate_credential) == isolate_map_.end()) {
     LOG(WARNING) << "Invalid isolate credential for UnloadToken.";
-    return;
+    return false;
   }
   Isolate& isolate = isolate_map_[isolate_credential];
 
@@ -827,12 +827,12 @@ void SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
     LOG(WARNING) << "Unload Token event received for unknown path: "
                  << path.value();
-    return;
+    return false;
   }
   int slot_id = path_slot_map_[path];
   if (!IsTokenAccessible(isolate_credential, slot_id)) {
     LOG(WARNING) << "Attempted to unload token with invalid isolate credential";
-    return;
+    return false;
   }
 
   if (tpm_utility_->IsTPMAvailable()) {
@@ -848,14 +848,15 @@ void SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
   LOG(INFO) << "Token at " << path.value() << " has been removed from slot "
             << slot_id;
   VLOG(1) << "SlotManagerImpl::Unload token success";
+  return true;
 }
 
-void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
+bool SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
                                           const SecureBlob& old_auth_data,
                                           const SecureBlob& new_auth_data) {
   if (!InitStage2()) {
     LOG(ERROR) << "Initialization failed; ignoring change auth event.";
-    return;
+    return false;
   }
   // This event can be handled whether or not we are already managing the token
   // but if we're not, we won't start until a Load Token event comes in.
@@ -879,7 +880,7 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
     if (!CheckAuthDataValid(HashAuthData(old_auth_data),
                             saved_auth_data_hash)) {
       LOG(ERROR) << "Old authorization data is not correct.";
-      return;
+      return false;
     }
     string auth_key_blob;
     string new_auth_key_blob;
@@ -905,14 +906,14 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
     if (!object_pool->GetInternalBlob(kEncryptedRootKey, &encrypted_root_key) ||
         !object_pool->GetInternalBlob(kAuthDataHash, &saved_mac)) {
       LOG(INFO) << "Token not initialized; ignoring change auth data event.";
-      return;
+      return false;
     }
     // Check if old_auth_data is valid.
     SecureBlob old_auth_key_mac =
         Sha256(SecureBlob::Combine(old_auth_data, SecureBlob(kKeyPurposeMac)));
     if (HmacSha512(kAuthKeyMacInput, old_auth_key_mac) != saved_mac) {
       LOG(ERROR) << "Old authorization data is not correct.";
-      return;
+      return false;
     }
     // Decrypt the root key with the old_auth_data.
     SecureBlob old_auth_key_encrypt = Sha256(
@@ -923,7 +924,7 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
                    std::string(),  // Use a random IV.
                    encrypted_root_key, &root_key)) {
       LOG(ERROR) << "Failed to decrypt root key with old auth data.";
-      return;
+      return false;
     }
     // Encrypt the root key with the new_auth_data.
     SecureBlob new_auth_key_encrypt = Sha256(
@@ -933,7 +934,7 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
                    std::string(),  // Use a random IV.
                    root_key, &encrypted_root_key)) {
       LOG(ERROR) << "Failed to encrypt root key with new auth data.";
-      return;
+      return false;
     }
     brillo::SecureClearContainer(root_key);
     // Write out the new blobs.
@@ -943,9 +944,10 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
         !object_pool->SetInternalBlob(
             kAuthDataHash, HmacSha512(kAuthKeyMacInput, new_auth_key_mac))) {
       LOG(ERROR) << "Failed to write new root key blobs.";
-      return;
+      return false;
     }
   }
+  return true;
 }
 
 bool SlotManagerImpl::GetTokenPath(const SecureBlob& isolate_credential,

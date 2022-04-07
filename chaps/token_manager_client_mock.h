@@ -27,9 +27,9 @@ class TokenManagerClientMock : public TokenManagerClient {
                     const std::string&,
                     int*));
   MOCK_METHOD2(UnloadToken,
-               void(const brillo::SecureBlob&, const base::FilePath&));
+               bool(const brillo::SecureBlob&, const base::FilePath&));
   MOCK_METHOD3(ChangeTokenAuthData,
-               void(const base::FilePath&,
+               bool(const base::FilePath&,
                     const brillo::SecureBlob&,
                     const brillo::SecureBlob&));
   MOCK_METHOD3(GetTokenPath,

@@ -49,10 +49,12 @@ class ChapsAdaptor {
                  uint64_t* slot_id,
                  bool* result);
   void UnloadToken(const brillo::SecureVector& isolate_credential,
-                   const std::string& path);
+                   const std::string& path,
+                   bool* result);
   void ChangeTokenAuthData(const std::string& path,
                            const brillo::SecureVector& old_auth_data,
-                           const brillo::SecureVector& new_auth_data);
+                           const brillo::SecureVector& new_auth_data,
+                           bool* result);
   void GetTokenPath(const brillo::SecureVector& isolate_credential,
                     uint64_t slot_id,
                     std::string* path,

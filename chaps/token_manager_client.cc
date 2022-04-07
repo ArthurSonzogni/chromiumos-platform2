@@ -80,23 +80,26 @@ bool TokenManagerClient::LoadToken(const SecureBlob& isolate_credential,
   return result;
 }
 
-void TokenManagerClient::UnloadToken(const SecureBlob& isolate_credential,
+bool TokenManagerClient::UnloadToken(const SecureBlob& isolate_credential,
                                      const FilePath& path) {
   if (!Connect()) {
     LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
-    return;
+    return false;
   }
-  proxy_->UnloadToken(isolate_credential, path.value());
+  bool result = proxy_->UnloadToken(isolate_credential, path.value());
+  return result;
 }
 
-void TokenManagerClient::ChangeTokenAuthData(const FilePath& path,
+bool TokenManagerClient::ChangeTokenAuthData(const FilePath& path,
                                              const SecureBlob& old_auth_data,
                                              const SecureBlob& new_auth_data) {
   if (!Connect()) {
     LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
-    return;
+    return false;
   }
-  proxy_->ChangeTokenAuthData(path.value(), old_auth_data, new_auth_data);
+  bool result =
+      proxy_->ChangeTokenAuthData(path.value(), old_auth_data, new_auth_data);
+  return result;
 }
 
 bool TokenManagerClient::GetTokenPath(const SecureBlob& isolate_credential,

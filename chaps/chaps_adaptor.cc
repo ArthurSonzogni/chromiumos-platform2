@@ -244,28 +244,31 @@ void ChapsAdaptor::LoadToken(const brillo::SecureVector& isolate_credential,
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
   SecureBlob auth_data_blob(auth_data.begin(), auth_data.end());
-    *result = token_manager_->LoadToken(isolate_credential_blob, FilePath(path),
-                                        auth_data_blob, label,
-                                        PreservedValue<uint64_t, int>(slot_id));
+  *result = token_manager_->LoadToken(isolate_credential_blob, FilePath(path),
+                                      auth_data_blob, label,
+                                      PreservedValue<uint64_t, int>(slot_id));
 }
 
 void ChapsAdaptor::UnloadToken(const brillo::SecureVector& isolate_credential,
-                               const string& path) {
+                               const string& path,
+                               bool* result) {
   VLOG(1) << "CALL: " << __func__;
   SecureBlob isolate_credential_blob(isolate_credential.begin(),
                                      isolate_credential.end());
 
-    token_manager_->UnloadToken(isolate_credential_blob, FilePath(path));
+  *result =
+      token_manager_->UnloadToken(isolate_credential_blob, FilePath(path));
 }
 
 void ChapsAdaptor::ChangeTokenAuthData(
     const string& path,
     const brillo::SecureVector& old_auth_data,
-    const brillo::SecureVector& new_auth_data) {
+    const brillo::SecureVector& new_auth_data,
+    bool* result) {
   VLOG(1) << "CALL: " << __func__;
-    token_manager_->ChangeTokenAuthData(
-        FilePath(path), SecureBlob(old_auth_data.begin(), old_auth_data.end()),
-        SecureBlob(new_auth_data.begin(), new_auth_data.end()));
+  *result = token_manager_->ChangeTokenAuthData(
+      FilePath(path), SecureBlob(old_auth_data.begin(), old_auth_data.end()),
+      SecureBlob(new_auth_data.begin(), new_auth_data.end()));
 }
 
 void ChapsAdaptor::GetTokenPath(const brillo::SecureVector& isolate_credential,

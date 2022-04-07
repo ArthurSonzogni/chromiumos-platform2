@@ -342,21 +342,22 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
                                        MakeBlob(kAuthData), kTokenLabel,
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 2));
-  slot_manager_->ChangeTokenAuthData(FilePath("some_path"), MakeBlob(kAuthData),
-                                     MakeBlob(kNewAuthData));
-  slot_manager_->ChangeTokenAuthData(FilePath("yet_another_path"),
-                                     MakeBlob(kAuthData),
-                                     MakeBlob(kNewAuthData));
+  EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(
+      FilePath("some_path"), MakeBlob(kAuthData), MakeBlob(kNewAuthData)));
+  EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(FilePath("yet_another_path"),
+                                                 MakeBlob(kAuthData),
+                                                 MakeBlob(kNewAuthData)));
   // Logout with an unknown path.
-  slot_manager_->UnloadToken(ic_, FilePath("still_yet_another_path"));
-  slot_manager_->UnloadToken(ic_, FilePath("some_path"));
+  EXPECT_FALSE(
+      slot_manager_->UnloadToken(ic_, FilePath("still_yet_another_path")));
+  EXPECT_TRUE(slot_manager_->UnloadToken(ic_, FilePath("some_path")));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 2));
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, FilePath("one_more_path"),
                                        MakeBlob(kAuthData), kTokenLabel,
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 1));
-  slot_manager_->UnloadToken(ic_, FilePath("another_path"));
+  EXPECT_TRUE(slot_manager_->UnloadToken(ic_, FilePath("another_path")));
 }
 
 TEST_F(TestSlotManager, ManyLoadToken) {
@@ -364,16 +365,16 @@ TEST_F(TestSlotManager, ManyLoadToken) {
   for (int i = 0; i < 100; ++i) {
     string path = base::StringPrintf("test%d", i);
     int slot_id = 0;
-    slot_manager_->LoadToken(ic_, FilePath(path), MakeBlob(kAuthData),
-                             kTokenLabel, &slot_id);
-    slot_manager_->ChangeTokenAuthData(FilePath(path), MakeBlob(kAuthData),
-                                       MakeBlob(kNewAuthData));
-    slot_manager_->ChangeTokenAuthData(
-        FilePath(path + "_"), MakeBlob(kAuthData), MakeBlob(kNewAuthData));
+    EXPECT_TRUE(slot_manager_->LoadToken(
+        ic_, FilePath(path), MakeBlob(kAuthData), kTokenLabel, &slot_id));
+    EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(
+        FilePath(path), MakeBlob(kAuthData), MakeBlob(kNewAuthData)));
+    EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(
+        FilePath(path + "_"), MakeBlob(kAuthData), MakeBlob(kNewAuthData)));
   }
   for (int i = 0; i < 100; ++i) {
     string path = base::StringPrintf("test%d", i);
-    slot_manager_->UnloadToken(ic_, FilePath(path));
+    EXPECT_TRUE(slot_manager_->UnloadToken(ic_, FilePath(path)));
   }
 }
 
@@ -619,7 +620,7 @@ class SoftwareOnlyTest : public TestSlotManager {
     int slot_id = 0;
     ASSERT_TRUE(slot_manager_->LoadToken(
         ic_, kTestTokenPath, MakeBlob(kAuthData), kTokenLabel, &slot_id));
-    slot_manager_->UnloadToken(ic_, kTestTokenPath);
+    ASSERT_TRUE(slot_manager_->UnloadToken(ic_, kTestTokenPath));
     set_encryption_key_num_calls_ = 0;
     delete_all_num_calls_ = 0;
   }
@@ -768,14 +769,14 @@ TEST_F(SoftwareOnlyTest, Unload) {
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
                                        kTokenLabel, &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenAccessible(ic_, slot_id));
-  slot_manager_->UnloadToken(ic_, kTestTokenPath);
+  EXPECT_TRUE(slot_manager_->UnloadToken(ic_, kTestTokenPath));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, slot_id));
 }
 
 TEST_F(SoftwareOnlyTest, ChangeAuth) {
   InitializeObjectPoolBlobs();
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
-                                     MakeBlob("new"));
+  EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(
+      kTestTokenPath, MakeBlob(kAuthData), MakeBlob("new")));
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob("new"),
                                        kTokenLabel, &slot_id));
@@ -787,8 +788,8 @@ TEST_F(SoftwareOnlyTest, ChangeAuthWhileLoaded) {
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
                                        kTokenLabel, &slot_id));
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
-                                     MakeBlob("new"));
+  EXPECT_TRUE(slot_manager_->ChangeTokenAuthData(
+      kTestTokenPath, MakeBlob(kAuthData), MakeBlob("new")));
   slot_manager_->UnloadToken(ic_, kTestTokenPath);
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob("new"),
                                        kTokenLabel, &slot_id));
@@ -796,8 +797,8 @@ TEST_F(SoftwareOnlyTest, ChangeAuthWhileLoaded) {
 }
 
 TEST_F(SoftwareOnlyTest, ChangeAuthBeforeInit) {
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
-                                     MakeBlob("new"));
+  EXPECT_FALSE(slot_manager_->ChangeTokenAuthData(
+      kTestTokenPath, MakeBlob(kAuthData), MakeBlob("new")));
   // At this point we expect the token to still not exist.
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob("new"),
@@ -807,8 +808,8 @@ TEST_F(SoftwareOnlyTest, ChangeAuthBeforeInit) {
 
 TEST_F(SoftwareOnlyTest, ChangeAuthWithBadOldAuth) {
   InitializeObjectPoolBlobs();
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob("bad"),
-                                     MakeBlob("new"));
+  EXPECT_FALSE(slot_manager_->ChangeTokenAuthData(
+      kTestTokenPath, MakeBlob("bad"), MakeBlob("new")));
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
                                        kTokenLabel, &slot_id));
@@ -818,16 +819,16 @@ TEST_F(SoftwareOnlyTest, ChangeAuthWithBadOldAuth) {
 TEST_F(SoftwareOnlyTest, ChangeAuthWithCorruptRootKey) {
   InitializeObjectPoolBlobs();
   pool_blobs_[kEncryptedRootKey] = "bad";
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
-                                     MakeBlob("new"));
+  EXPECT_FALSE(slot_manager_->ChangeTokenAuthData(
+      kTestTokenPath, MakeBlob(kAuthData), MakeBlob("new")));
   EXPECT_EQ("bad", pool_blobs_[kEncryptedRootKey]);
 }
 
 TEST_F(SoftwareOnlyTest, ChangeAuthWithWriteErrors) {
   InitializeObjectPoolBlobs();
   pool_write_result_ = false;
-  slot_manager_->ChangeTokenAuthData(kTestTokenPath, MakeBlob(kAuthData),
-                                     MakeBlob("new"));
+  EXPECT_FALSE(slot_manager_->ChangeTokenAuthData(
+      kTestTokenPath, MakeBlob(kAuthData), MakeBlob("new")));
   pool_write_result_ = true;
   int slot_id = 0;
   EXPECT_TRUE(slot_manager_->LoadToken(ic_, kTestTokenPath, MakeBlob(kAuthData),
