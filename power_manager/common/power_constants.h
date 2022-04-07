@@ -165,6 +165,25 @@ extern const char kUsbMinAcWattsPref[];
 // "RIGHT", "LEFT_FRONT", etc.).
 extern const char kChargingPortsPref[];
 
+// The number of seconds between rechecking our predictions for Adaptive
+// Charging.
+extern const char kAdaptiveChargingAlarmSecPref[];
+
+// The battery charge percent (display percent) to hold at for Adaptive
+// Charging.
+extern const char kAdaptiveChargingHoldPercentPref[];
+
+// The percent range over which the battery will charge/discharge while Adaptive
+// Charging is delaying the charge to full.
+extern const char kAdaptiveChargingHoldDeltaPercentPref[];
+
+// The probability cutoff value to use for ML models for a prediction on whether
+// the system will be unplugged on a given hour.
+extern const char kAdaptiveChargingMinProbabilityPref[];
+
+// If true, Adaptive Charging will be enabled by default.
+extern const char kAdaptiveChargingEnabledPref[];
+
 // Milliseconds to wait after setting the backlight to 0 before asking Chrome to
 // turn off the display via DPMS.
 extern const char kTurnOffScreenTimeoutMsPref[];

@@ -128,6 +128,11 @@ powerd_prefs: &powerd_prefs
     <<: *powerd_prefs_default
     default: "20.0"
   charging-ports: *powerd_prefs_default
+  adaptive-charging-alarm-sec: *powerd_prefs_default
+  adaptive-charging-hold-percent: *powerd_prefs_default
+  adaptive-charging-hold-delta-percent: *powerd_prefs_default
+  adaptive-charging-min-probability: *powerd_prefs_default
+  adaptive-charging-enabled: *powerd_prefs_default
   turn-off-screen-timeout-ms:
     <<: *powerd_prefs_default
     default: "3000"

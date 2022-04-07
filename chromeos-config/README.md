@@ -719,6 +719,11 @@ In the tables below,
 ### power
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| adaptive-charging-alarm-sec | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
+| adaptive-charging-enabled | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
+| adaptive-charging-hold-delta-percent | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
+| adaptive-charging-hold-percent | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
+| adaptive-charging-min-probability | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | allow-ambient-eq | string | ```^[01]$``` | False |  | False | Enable (1) or disable (0) Ambient EQ. |
 | als-smoothing-constant | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | autobrightness | [autobrightness](#autobrightness) |  | False |  | False |  |

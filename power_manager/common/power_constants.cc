@@ -72,6 +72,14 @@ const char kMaxCurrentSamplesPref[] = "max_current_samples";
 const char kMaxChargeSamplesPref[] = "max_charge_samples";
 const char kUsbMinAcWattsPref[] = "usb_min_ac_watts";
 const char kChargingPortsPref[] = "charging_ports";
+const char kAdaptiveChargingAlarmSecPref[] = "adaptive_charging_alarm_sec";
+const char kAdaptiveChargingHoldPercentPref[] =
+    "adaptive_charging_hold_percent";
+const char kAdaptiveChargingHoldDeltaPercentPref[] =
+    "adaptive_charging_hold_delta_percent";
+const char kAdaptiveChargingMinProbabilityPref[] =
+    "adaptive_charging_min_probability";
+const char kAdaptiveChargingEnabledPref[] = "adaptive_charging_enabled";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
 const char kDisableDarkResumePref[] = "disable_dark_resume";
 const char kDisableHibernatePref[] = "disable_hibernate";
