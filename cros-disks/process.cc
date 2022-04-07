@@ -58,19 +58,13 @@ class StreamMerger {
   explicit StreamMerger(std::vector<std::string>* output) : output_(output) {}
 
   ~StreamMerger() {
-    for (size_t i = 0; i < kStreamCount; ++i) {
-      if (std::string& s = remaining_[i]; !s.empty())
-        output_->push_back(std::move(s));
-    }
+    if (!remaining_.empty())
+      output_->push_back(std::move(remaining_));
   }
 
-  void Append(const size_t i, const base::StringPiece data) {
-    DCHECK_LT(i, kStreamCount);
-
+  void Append(const base::StringPiece data) {
     if (data.empty())
       return;
-
-    std::string& remaining = remaining_[i];
 
     std::vector<base::StringPiece> lines = base::SplitStringPiece(
         data, "\n", base::WhitespaceHandling::KEEP_WHITESPACE,
@@ -79,21 +73,17 @@ class StreamMerger {
     lines.pop_back();
 
     for (const base::StringPiece line : lines) {
-      output_->push_back(base::StrCat({remaining, line}));
-      remaining.clear();
+      output_->push_back(base::StrCat({remaining_, line}));
+      remaining_.clear();
     }
 
-    remaining = std::string(last_line);
+    remaining_ = std::string(last_line);
   }
 
  private:
-  // Number of streams to interleave.
-  static const size_t kStreamCount = 2;
   std::vector<std::string>* const output_;
-  std::string remaining_[kStreamCount];
+  std::string remaining_;
 };
-
-const size_t StreamMerger::kStreamCount;
 
 // Opens /dev/null. Dies in case of error.
 base::ScopedFD OpenNull() {
@@ -189,9 +179,7 @@ char* const* Process::GetEnvironment() {
   return environment_array_.data();
 }
 
-bool Process::Start(base::ScopedFD in_fd,
-                    base::ScopedFD out_fd,
-                    base::ScopedFD err_fd) {
+bool Process::Start(base::ScopedFD in_fd, base::ScopedFD out_fd) {
   CHECK_EQ(kInvalidProcessId, pid_);
   CHECK(!finished());
   CHECK(!arguments_.empty()) << "No arguments provided";
@@ -199,12 +187,12 @@ bool Process::Start(base::ScopedFD in_fd,
             << " with arguments " << quote(arguments_);
   LOG_IF(INFO, !environment_.empty())
       << "and extra environment " << quote(environment_);
-  pid_ = StartImpl(std::move(in_fd), std::move(out_fd), std::move(err_fd));
+  pid_ = StartImpl(std::move(in_fd), std::move(out_fd));
   return pid_ != kInvalidProcessId;
 }
 
 bool Process::Start() {
-  return Start(WrapStdIn(input_), OpenNull(), OpenNull());
+  return Start(WrapStdIn(input_), OpenNull());
 }
 
 int Process::Wait() {
@@ -232,14 +220,13 @@ bool Process::IsFinished() {
 int Process::Run(std::vector<std::string>* output) {
   DCHECK(output);
 
-  base::ScopedFD out_fd, err_fd;
+  base::ScopedFD out_fd;
   if (!Start(WrapStdIn(input_),
-             SubprocessPipe::Open(SubprocessPipe::kChildToParent, &out_fd),
-             SubprocessPipe::Open(SubprocessPipe::kChildToParent, &err_fd))) {
+             SubprocessPipe::Open(SubprocessPipe::kChildToParent, &out_fd))) {
     return -1;
   }
 
-  Communicate(output, std::move(out_fd), std::move(err_fd));
+  Communicate(output, std::move(out_fd));
 
   const int result = Wait();
 
@@ -255,64 +242,44 @@ int Process::Run(std::vector<std::string>* output) {
 }
 
 void Process::Communicate(std::vector<std::string>* output,
-                          base::ScopedFD out_fd,
-                          base::ScopedFD err_fd) {
+                          base::ScopedFD out_fd) {
   DCHECK(output);
 
   if (out_fd.is_valid())
     PCHECK(base::SetNonBlocking(out_fd.get()));
 
-  if (err_fd.is_valid())
-    PCHECK(base::SetNonBlocking(err_fd.get()));
-
   std::string data;
   StreamMerger merger(output);
-  std::array<struct pollfd, 2> fds;
-  fds[0] = {out_fd.get(), POLLIN, 0};
-  fds[1] = {err_fd.get(), POLLIN, 0};
 
-  while (!IsFinished()) {
-    size_t still_open = 0;
-    for (const auto& f : fds) {
-      still_open += f.fd != kInvalidFD;
-    }
-    if (still_open == 0) {
-      // No comms expected anymore.
-      break;
-    }
+  while (!IsFinished() && out_fd.is_valid()) {
+    struct pollfd pfd {
+      out_fd.get(), POLLIN, 0
+    };
+    const int ret = HANDLE_EINTR(poll(&pfd, 1, 100 /* milliseconds */));
 
-    const int ret =
-        HANDLE_EINTR(poll(fds.data(), fds.size(), 10 /* milliseconds */));
-    if (ret == -1) {
-      PLOG(ERROR) << "poll() failed";
+    if (ret < 0) {
+      PLOG(ERROR) << "Cannot poll file descriptor " << out_fd.get();
       break;
     }
 
     if (ret == 0)
       continue;
 
-    for (size_t i = 0; i < fds.size(); ++i) {
-      auto& f = fds[i];
-      if (f.revents) {
-        if (ReadFD(f.fd, &data) == ReadResult::kFailure) {
-          // Failure.
-          f.fd = kInvalidFD;
-        } else {
-          merger.Append(i, data);
-        }
-      }
+    if (ReadFD(out_fd.get(), &data) == ReadResult::kFailure) {
+      // Failure.
+      out_fd.reset();
+    } else {
+      merger.Append(data);
     }
   }
 
   Wait();
 
   // Final read after process exited.
-  for (size_t i = 0; i < fds.size(); ++i) {
-    auto& f = fds[i];
-    if (f.fd != kInvalidFD) {
-      while (ReadFD(f.fd, &data) != ReadResult::kFailure && !data.empty()) {
-        merger.Append(i, data);
-      }
+  if (out_fd.is_valid()) {
+    while (ReadFD(out_fd.get(), &data) != ReadResult::kFailure &&
+           !data.empty()) {
+      merger.Append(data);
     }
   }
 }

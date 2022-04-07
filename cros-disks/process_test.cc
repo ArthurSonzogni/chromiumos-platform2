@@ -113,10 +113,7 @@ void Write(const int fd, base::StringPiece s) {
 // A mock Process class for testing the Process base class.
 class ProcessUnderTest : public Process {
  public:
-  MOCK_METHOD(pid_t,
-              StartImpl,
-              (base::ScopedFD, base::ScopedFD, base::ScopedFD),
-              (override));
+  MOCK_METHOD(pid_t, StartImpl, (base::ScopedFD, base::ScopedFD), (override));
   MOCK_METHOD(int, WaitImpl, (), (override));
   MOCK_METHOD(int, WaitNonBlockingImpl, (), (override));
 };
@@ -162,7 +159,7 @@ TEST_F(ProcessTest, GetArgumentsWithNoArgumentsAdded) {
 
 TEST_F(ProcessTest, Run_Success) {
   process_.AddArgument("foo");
-  EXPECT_CALL(process_, StartImpl(_, _, _)).WillOnce(Return(123));
+  EXPECT_CALL(process_, StartImpl(_, _)).WillOnce(Return(123));
   EXPECT_CALL(process_, WaitImpl()).Times(0);
   EXPECT_CALL(process_, WaitNonBlockingImpl()).WillOnce(Return(42));
   std::vector<std::string> output;
@@ -172,7 +169,7 @@ TEST_F(ProcessTest, Run_Success) {
 
 TEST_F(ProcessTest, Run_Fail) {
   process_.AddArgument("foo");
-  EXPECT_CALL(process_, StartImpl(_, _, _)).WillOnce(Return(-1));
+  EXPECT_CALL(process_, StartImpl(_, _)).WillOnce(Return(-1));
   EXPECT_CALL(process_, WaitImpl()).Times(0);
   EXPECT_CALL(process_, WaitNonBlockingImpl()).Times(0);
   std::vector<std::string> output;

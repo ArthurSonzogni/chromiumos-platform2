@@ -99,9 +99,7 @@ class SandboxedProcess : public Process {
 
  protected:
   // Process overrides:
-  pid_t StartImpl(base::ScopedFD in_fd,
-                  base::ScopedFD out_fd,
-                  base::ScopedFD err_fd) override;
+  pid_t StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) override;
   int WaitImpl() override;
   int WaitNonBlockingImpl() override;
 
@@ -131,7 +129,7 @@ class FakeSandboxedProcess : public SandboxedProcess {
   virtual int OnProcessLaunch(const std::vector<std::string>& argv);
 
  private:
-  pid_t StartImpl(base::ScopedFD, base::ScopedFD, base::ScopedFD) final;
+  pid_t StartImpl(base::ScopedFD, base::ScopedFD) final;
   int WaitImpl() final;
   int WaitNonBlockingImpl() final;
 

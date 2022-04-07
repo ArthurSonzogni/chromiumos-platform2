@@ -62,9 +62,7 @@ class MockMounter : public Mounter {
 class MockSandboxedProcess : public SandboxedProcess {
  public:
   MockSandboxedProcess() = default;
-  pid_t StartImpl(base::ScopedFD, base::ScopedFD, base::ScopedFD) override {
-    return 123;
-  }
+  pid_t StartImpl(base::ScopedFD, base::ScopedFD) override { return 123; }
   MOCK_METHOD(int, WaitImpl, (), (override));
   MOCK_METHOD(int, WaitNonBlockingImpl, (), (override));
 };

@@ -86,9 +86,7 @@ class Process {
   // file descriptors.
   //
   // Returns the PID of the started process, or -1 in case of error.
-  virtual pid_t StartImpl(base::ScopedFD in_fd,
-                          base::ScopedFD out_fd,
-                          base::ScopedFD err_fd) = 0;
+  virtual pid_t StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) = 0;
 
   // Once either WaitImpl() or WaitNonBlockingImpl() has returned a nonnegative
   // exit code, none of these methods is called again.
@@ -103,15 +101,11 @@ class Process {
  private:
   // Starts the process. The started process has its stdin, stdout and stderr
   // redirected to the given file descriptors. Returns true in case of success.
-  bool Start(base::ScopedFD in_fd,
-             base::ScopedFD out_fd,
-             base::ScopedFD err_fd);
+  bool Start(base::ScopedFD in_fd, base::ScopedFD out_fd);
 
   // Waits for process to finish collecting process' stdout and stderr
   // output and fills interleaved version of it.
-  void Communicate(std::vector<std::string>* output,
-                   base::ScopedFD out_fd,
-                   base::ScopedFD err_fd);
+  void Communicate(std::vector<std::string>* output, base::ScopedFD out_fd);
 
   // Builds |arguments_array_| from |arguments_|. Existing values of
   // |arguments_array_| are overridden.

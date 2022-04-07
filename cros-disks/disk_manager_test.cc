@@ -146,7 +146,7 @@ class MockPlatform : public Platform {
 
 class MockSandboxedProcess : public SandboxedProcess {
  public:
-  pid_t StartImpl(base::ScopedFD, base::ScopedFD, base::ScopedFD) override {
+  pid_t StartImpl(base::ScopedFD, base::ScopedFD) override {
     OnStart(arguments());
     return 123;
   }

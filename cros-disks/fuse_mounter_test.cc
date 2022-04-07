@@ -122,10 +122,7 @@ class MockFUSEPlatform : public Platform {
 class MockSandboxedProcess : public SandboxedProcess {
  public:
   MockSandboxedProcess() = default;
-  MOCK_METHOD(pid_t,
-              StartImpl,
-              (base::ScopedFD, base::ScopedFD, base::ScopedFD),
-              (override));
+  MOCK_METHOD(pid_t, StartImpl, (base::ScopedFD, base::ScopedFD), (override));
   MOCK_METHOD(int, WaitImpl, (), (override));
   MOCK_METHOD(int, WaitNonBlockingImpl, (), (override));
 };

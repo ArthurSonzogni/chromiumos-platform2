@@ -160,9 +160,7 @@ void SandboxedProcess::PreserveFile(int fd) {
   }
 }
 
-pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
-                                  base::ScopedFD out_fd,
-                                  base::ScopedFD err_fd) {
+pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
   char* const* const args = GetArguments();
   DCHECK(args && args[0]);
   char* const* const env = GetEnvironment();
@@ -176,7 +174,7 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
   // the jailed process.
   CHECK_EQ(minijail_preserve_fd(jail_, in_fd.get(), STDIN_FILENO), 0);
   CHECK_EQ(minijail_preserve_fd(jail_, out_fd.get(), STDOUT_FILENO), 0);
-  CHECK_EQ(minijail_preserve_fd(jail_, err_fd.get(), STDERR_FILENO), 0);
+  CHECK_EQ(minijail_preserve_fd(jail_, out_fd.get(), STDERR_FILENO), 0);
 
   if (!run_custom_init_) {
     const int ret = minijail_run_env_pid_pipes(
@@ -255,9 +253,7 @@ int FakeSandboxedProcess::OnProcessLaunch(
   return 0;
 }
 
-pid_t FakeSandboxedProcess::StartImpl(base::ScopedFD,
-                                      base::ScopedFD,
-                                      base::ScopedFD) {
+pid_t FakeSandboxedProcess::StartImpl(base::ScopedFD, base::ScopedFD) {
   DCHECK(!ret_code_);
   ret_code_ = OnProcessLaunch(arguments());
   return 42;
