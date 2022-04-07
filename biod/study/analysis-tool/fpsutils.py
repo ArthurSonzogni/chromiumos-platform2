@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
-import sys
+"""Utilities needed for Fingerprint Study Analysis."""
+
 import timeit
-import typing
 from typing import List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.typing as nptyping
 import pandas as pd
 from IPython.display import Markdown, display
 from scipy.stats import norm
 
 
 class DataFrameSetAccess:
-    '''Provides a quick method of checking if a given row exists in the table.
+    """Provides a quick method of checking if a given row exists in the table.
 
     This look method takes hundreds of nanoseconds vs other methods that take
     hudreds of micro seconds. Given the amount of times we must query certain
     tables, this order of magnitude difference is unacceptable.
-    '''
+    """
 
     def __init__(self, table: pd.DataFrame, cols: List[str] = None):
 
@@ -122,13 +125,13 @@ def boot_sample_range(
 def plot_pd_hist_discrete(tbl: pd.DataFrame,
                           title_prefix: str = None,
                           figsize: tuple = None):
-    '''Plot the histograms of a DataFrame columns.
+    """Plot the histograms of a DataFrame columns.
 
     This is different than `pd.DataFrame.hist`, because it ensures that all
     unique elements of the column are represented in a bar plot. Other
     implementations will try to bin multiple values and doesn't center the
     graphical bars on the values.
-    '''
+    """
 
     num_plots = len(tbl.columns)
     if not figsize:
@@ -147,21 +150,20 @@ def plot_pd_hist_discrete(tbl: pd.DataFrame,
     plt.show()
 
 
-def discrete_hist(data, discrete_bins):
-    # unique_elements = np.unique(data)
-    bins = np.append(discrete_bins, np.max(discrete_bins) + 1)
-    hist, bin_edges = np.histogram(data, bins=bins)
-    return hist, discrete_bins
+def discrete_hist(data) -> Tuple[np.array, np.array]:
+    """Return a tuple of unique items and their counts.
+
+    Returns:
+        ([items], [counts])
+    """
+
+    return np.unique(data, return_counts=True)
 
 
-def plt_discrete_hist(data, bins=None):
+def plt_discrete_hist(data):
 
-    if bins:
-        pass
-    else:
-        counts = np.bincount(data)
+    counts = np.bincount(data)
 
-    # hist, bin_edges = np.histogram(grouped_counts, bins=np.arange(max_count+1+1))
     # We need to zoom in, since there would be thousands of thousands of bars that
     # are zero near the tail end.
     nonzero_indicies = np.nonzero(counts)
@@ -171,9 +173,8 @@ def plt_discrete_hist(data, bins=None):
 
     if (last_index-first_index) < 2000:
         # plt.title(f'Samples {np.size(r)} | p = {p:.3e} | Groups {groups}')
-        # x = bin_edges[first_index:last_index+1]
+
         x = np.arange(start=first_index, stop=last_index+1)
-        # h = hist[first_index:last_index+1]
         h = counts[first_index:last_index+1]
         plt.bar(x, h)
         # plt.xticks(x)
@@ -195,47 +196,47 @@ def plt_discrete_hist(data, bins=None):
         plt.xticks([mean - 3*std, mean, mean + 3*std])
     else:
         display(Markdown(
-            f'Plot is too large (first={first_index} last={last_index}), not diplaying.'))
-
-    # plt.hist(results)
-
-    # # Overlay Norm Curve
-    # mu, std = norm.fit(results)
-    # mean = np.mean(results)
-    # print(f'first={first_index} last={last_index}')
-    # print(f'mu={mu} , std={std} 3*std={3*std}, np.mean(grouped_counts) = {np.mean(grouped_counts)}')
-
-    # # x_curve = x
-    # x_curve = np.linspace(mean - 3*std, mean + 3*std, 50)
-    # p = norm.pdf(x_curve, mu, std)
-    # p_scaled = p * np.sum(np.bincount(results))
-    # plt.plot(x_curve, p_scaled, 'k', linewidth=2)
-
-    # plt.show()
+            f'Plot is too large (first={first_index} last={last_index}),'
+            ' not diplaying.'
+        ))
 
 
-def smalltimestr(sec: float) -> str:
+def elapsed_time_str(sec: float) -> str:
     """Convert a seconds value into a more easily interpretable units str.
 
-    Example: smalltimestr(0.003) -> "3ms"
+    Example: elapsed_time_str(0.003) -> "3ms"
     """
 
+    hour = int(sec / 60.0**2)
+    sec -= hour * 60**2
+    min = int(sec / 60.0)
+    sec -= min * 60.0
     s = int(sec)
     ms = int(sec * 1e3) % 1000
     us = int(sec * 1e6) % 1000
     ns = (sec * 1e9) % 1000
 
-    string = s and f'{s}s' or ''
-    string += ms and f'{ms}ms' or ''
-    string += us and f'{us}us' or ''
-    string += ns and f'{ns:3.3f}ns' or ''
-    return string
+    string = ''
+    string += hour and f'{hour}hr ' or ''
+    string += min and f'{min}min ' or ''
+    string += s and f'{s}s ' or ''
+    string += ms and f'{ms}ms ' or ''
+    string += us and f'{us}us ' or ''
+    string += ns and f'{ns:3.3f}ns ' or ''
+    return string.rstrip()
 
 
-def autorange(stmt: str,
+def benchmark(stmt: str,
               setup: str = 'pass',
-              globals: dict = {**locals(), **globals()}) -> Tuple[int, float]:
-    """Invoke timeit.Timer.autorange and print results."""
+              globals: dict = {**locals(), **globals()}) \
+        -> Tuple[int, float, float]:
+    """Measure the runtime of `stmt`.
+
+    This method invokes timeit.Timer.autorange and print results.
+
+    Returns:
+        (num_loops, sec_total, sec_per_loop)
+    """
 
     loops, sec = timeit.Timer(
         stmt,
@@ -243,5 +244,5 @@ def autorange(stmt: str,
         globals=globals).autorange()
     print(f'Ran "{stmt}" {loops} times over {sec}s.'
           ' '
-          f'It took {smalltimestr(sec/loops)} per loop.')
-    return loops, sec
+          f'It took {elapsed_time_str(sec/loops)} per loop.')
+    return loops, sec, np.divide(sec, loops)

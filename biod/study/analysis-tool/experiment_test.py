@@ -34,21 +34,21 @@ class Test_FAQuery(unittest.TestCase):
     def test_benchmark_faquery1(self):
         print('Query 1 Timing')
 
-        fpsutils.autorange('self.exp.FAQuery(verify_user_id=10071)',
+        fpsutils.benchmark('self.exp.FAQuery(verify_user_id=10071)',
                            globals={**globals(), **locals()})
-        fpsutils.autorange('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0)',
+        fpsutils.benchmark('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0)',
                            globals={**globals(), **locals()})
-        fpsutils.autorange('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)',
+        fpsutils.benchmark('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)',
                            globals={**globals(), **locals()})
-        fpsutils.autorange('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)',
+        fpsutils.benchmark('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)',
                            globals={**globals(), **locals()})
-        fpsutils.autorange('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)',
+        fpsutils.benchmark('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)',
                            globals={**globals(), **locals()})
 
     def test_benchmark_faquery2(self):
         print('Query 2 Timing')
 
-        fpsutils.autorange('self.exp.FAQuery2(verify_user_id=10071)',
+        fpsutils.benchmark('self.exp.FAQuery2(verify_user_id=10071)',
                            globals={**globals(), **locals()})
         # fpsutils.autorange('self.exp.FAQuery2(verify_user_id=10071, verify_finger_id=0)',
         #                    globals={**globals(), **locals()})
@@ -56,7 +56,7 @@ class Test_FAQuery(unittest.TestCase):
         #                    globals={**globals(), **locals()})
         # fpsutils.autorange('self.exp.FAQuery2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)',
         #                    globals={**globals(), **locals()})
-        fpsutils.autorange('self.exp.FAQuery2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)',
+        fpsutils.benchmark('self.exp.FAQuery2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)',
                            globals={**globals(), **locals()})
 
 
