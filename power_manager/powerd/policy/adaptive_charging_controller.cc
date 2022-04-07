@@ -43,6 +43,7 @@ void AdaptiveChargingController::Init(
   recheck_alarm_interval_ = kDefaultAlarmInterval;
   hold_percent_ = kDefaultHoldPercent;
   hold_delta_percent_ = 0;
+  display_percent_ = kDefaultHoldPercent;
   min_probability_ = kDefaultMinProbability;
   cached_external_power_ = PowerSupplyProperties_ExternalPower_DISCONNECTED;
   is_sustain_set_ = false;
@@ -81,6 +82,7 @@ void AdaptiveChargingController::Init(
             << "), Minimum ML probability value: " << min_probability_;
 
   SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
+  power_supply_->SetAdaptiveChargingSupported(adaptive_charging_supported_);
 }
 
 void AdaptiveChargingController::HandlePolicyChange(
@@ -213,6 +215,7 @@ void AdaptiveChargingController::OnPredictionResponse(
     LOG(ERROR) << "Battery Sustain command failed. Stopping Adaptive Charging";
   }
   is_sustain_set_ = true;
+  display_percent_ = sustain_percent;
 }
 
 void AdaptiveChargingController::OnPredictionFail(brillo::Error* error) {
@@ -233,7 +236,14 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
                PowerSupplyProperties_ExternalPower_AC) {
       StopAdaptiveCharging();
     }
+
     cached_external_power_ = status.external_power;
+  }
+
+  if (adaptive_charging_enabled_ && is_sustain_set_ &&
+      AtHoldPercent(status.display_battery_percentage)) {
+    power_supply_->SetAdaptiveCharging(target_full_charge_time_,
+                                       display_percent_);
   }
 }
 
@@ -319,6 +329,7 @@ void AdaptiveChargingController::StopAdaptiveCharging() {
   charge_alarm_->Stop();
   SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
   is_sustain_set_ = false;
+  power_supply_->ClearAdaptiveCharging();
 }
 
 bool AdaptiveChargingController::IsRunning() {

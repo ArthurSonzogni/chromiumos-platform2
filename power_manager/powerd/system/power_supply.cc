@@ -340,6 +340,10 @@ void CopyPowerStatusToProtocolBuffer(const PowerStatus& status,
       proto->set_battery_discharge_rate(status.battery_energy_rate);
     }
 
+    // Parameters for the Adaptive Charging UI
+    proto->set_adaptive_charging_supported(status.adaptive_charging_supported);
+    proto->set_adaptive_delaying_charge(status.adaptive_delaying_charge);
+
     // Cros_healthd is interested in the following items for reporting
     // telemetry data.
     proto->set_battery_vendor(status.battery_vendor);
@@ -724,6 +728,24 @@ void PowerSupply::SetSuspended(bool suspended) {
   }
 }
 
+void PowerSupply::SetAdaptiveChargingSupported(bool supported) {
+  adaptive_charging_supported_ = supported;
+}
+
+void PowerSupply::SetAdaptiveCharging(const base::TimeTicks& target_time,
+                                      double hold_percent) {
+  DCHECK(adaptive_charging_supported_);
+  DCHECK(target_time != base::TimeTicks());
+  adaptive_charging_target_full_time_ = target_time;
+  adaptive_charging_hold_percent_ = hold_percent;
+  adaptive_delaying_charge_ = true;
+}
+
+void PowerSupply::ClearAdaptiveCharging() {
+  adaptive_delaying_charge_ = false;
+  adaptive_charging_target_full_time_ = base::TimeTicks();
+}
+
 void PowerSupply::OnUdevEvent(const UdevEvent& event) {
   VLOG(1) << "Got udev event for " << event.device_info.sysname;
   // Bail out of the update if the available power sources didn't actually
@@ -933,6 +955,21 @@ bool PowerSupply::UpdatePowerStatus(UpdatePolicy policy) {
     status.is_calculating_battery_time = !UpdateBatteryTimeEstimates(&status);
     status.battery_below_shutdown_threshold =
         IsBatteryBelowShutdownThreshold(status);
+
+    // Update and modify values based on Adaptive Charging
+    status.adaptive_charging_supported = adaptive_charging_supported_;
+    status.adaptive_delaying_charge = adaptive_delaying_charge_;
+
+    if (adaptive_delaying_charge_) {
+      status.display_battery_percentage = adaptive_charging_hold_percent_;
+      // If `adaptive_charging_target_full_time_` is the max value, there's no
+      // current target for fully charging, and the expected value to be set in
+      // this case is 0.
+      status.battery_time_to_full =
+          adaptive_charging_target_full_time_ == base::TimeTicks::Max()
+              ? base::TimeDelta()
+              : adaptive_charging_target_full_time_ - now;
+    }
   }
 
   power_status_ = status;

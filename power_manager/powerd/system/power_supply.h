@@ -211,6 +211,12 @@ struct PowerStatus {
   // requesting the user use a higher-power external power source, this value
   // can be displayed.
   double preferred_minimum_external_power = 0.0;
+
+  // Indicates if Adaptive Charging is supported for this system.
+  bool adaptive_charging_supported = false;
+
+  // Indicates if Adaptive Charging is currently delaying charge to the battery.
+  bool adaptive_delaying_charge = false;
 };
 
 // Fetches the system's power status, e.g. whether on AC or battery, charge and
@@ -235,6 +241,22 @@ class PowerSupplyInterface {
   // notifies observers asynchronously, and schedules a poll for the near
   // future.
   virtual void SetSuspended(bool suspended) = 0;
+
+  // Sets if Adaptive Charging is supported or not.
+  virtual void SetAdaptiveChargingSupported(bool supported) = 0;
+
+  // Starts Adaptive Charging logic. |target_time| is the current estimate for
+  // when Adaptive Charging will allow the battery to finish charging to full.
+  // |hold_percent| is the what to set
+  // |power_status_.display_battery_percentage| to while Adaptive Charging is
+  // delaying the charge.
+  virtual void SetAdaptiveCharging(const base::TimeTicks& target_time,
+                                   double hold_percent) = 0;
+
+  // Clears |adaptive_charging_hold_percent_|.
+  // |power_status_.display_battery_percentage| is no longer held at
+  // |adaptive_charging_hold_percent_|.
+  virtual void ClearAdaptiveCharging() = 0;
 };
 
 // Real implementation of PowerSupplyInterface that reads from sysfs.
@@ -348,6 +370,10 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   PowerStatus GetPowerStatus() const override;
   bool RefreshImmediately() override;
   void SetSuspended(bool suspended) override;
+  void SetAdaptiveChargingSupported(bool supported) override;
+  void SetAdaptiveCharging(const base::TimeTicks& target_time,
+                           double hold_percent) override;
+  void ClearAdaptiveCharging() override;
 
   // UdevSubsystemObserver implementation:
   void OnUdevEvent(const UdevEvent& event) override;
@@ -555,6 +581,20 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
 
   // The number of samples of zero current we got in a row.
   int64_t num_zero_samples_ = 0;
+
+  // The value to use for |power_status_.display_battery_percentage| while
+  // Adaptive Charging is delaying charge.
+  double adaptive_charging_hold_percent_ = 100.0;
+
+  // The expected time that the battery will be full, for when Adaptive Charging
+  // is delaying charge.
+  base::TimeTicks adaptive_charging_target_full_time_;
+
+  // Indicates if the system supports Adaptive Charging.
+  bool adaptive_charging_supported_ = false;
+
+  // Set to true when charge is delayed by Adaptive Charging.
+  bool adaptive_delaying_charge_ = false;
 
   // Calls HandlePollTimeout().
   base::OneShotTimer poll_timer_;

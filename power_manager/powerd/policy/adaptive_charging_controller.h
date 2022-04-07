@@ -223,6 +223,11 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // avoid the "singing" of these capacitors.
   int64_t hold_delta_percent_;
 
+  // The battery percent to display while delaying charge. Will be
+  // `hold_percent_` or the display battery percentage when battery sustainer
+  // starts if it's higher than `hold_percent_`.
+  int64_t display_percent_;
+
   // Minimum value for the prediction from the Adaptive Charging ml-service that
   // is interpreted as expecting the AC to be unplugged at a specific hour. The
   // service returns a vector of doubles in the range (0.0, 1.0). The largest

@@ -2193,5 +2193,51 @@ TEST_F(PowerSupplyTest, NotifyForUdevWithMultipleBatteries) {
   EXPECT_EQ(2, observer.num_updates());
 }
 
+TEST_F(PowerSupplyTest, AdaptiveChargingTarget) {
+  WriteDefaultValues(PowerSource::BATTERY);
+  Init();
+
+  double actual_charge = 0.75;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  power_supply_->SetAdaptiveChargingSupported(true);
+
+  // The Adaptive Charging Target will override the existing values for
+  // display_battery_percentage and battery_time_to_full.
+  PowerStatus status;
+  double hold_charge = 0.8;
+  base::TimeDelta target_time_delta = base::Hours(4);
+  power_supply_->SetAdaptiveCharging(
+      test_api_->GetCurrentTime() + target_time_delta, hold_charge);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_DOUBLE_EQ(hold_charge, status.display_battery_percentage);
+  EXPECT_EQ(target_time_delta.InHours(), status.battery_time_to_full.InHours());
+  EXPECT_TRUE(status.adaptive_delaying_charge);
+  EXPECT_TRUE(status.adaptive_charging_supported);
+
+  power_supply_->ClearAdaptiveCharging();
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_DOUBLE_EQ((100.0 * actual_charge) / kFullFactor,
+                   status.display_battery_percentage);
+  EXPECT_FALSE(status.adaptive_delaying_charge);
+}
+
+// Check that we set the battery_time_to_full to 0 when the
+// `adaptive_charging_target_full_time_` is the max value (Chrome expects 0 in
+// this case, when we don't have a time estimate yet).
+TEST_F(PowerSupplyTest, AdaptiveChargingMaxTargetTime) {
+  WriteDefaultValues(PowerSource::BATTERY);
+  Init();
+
+  double actual_charge = 0.75;
+  UpdateChargeAndCurrent(actual_charge, kDefaultCurrent);
+  power_supply_->SetAdaptiveChargingSupported(true);
+
+  PowerStatus status;
+  double hold_charge = 0.8;
+  power_supply_->SetAdaptiveCharging(base::TimeTicks::Max(), hold_charge);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(base::TimeDelta(), status.battery_time_to_full);
+}
+
 }  // namespace system
 }  // namespace power_manager

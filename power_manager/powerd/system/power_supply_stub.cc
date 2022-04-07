@@ -38,5 +38,12 @@ bool PowerSupplyStub::RefreshImmediately() {
 
 void PowerSupplyStub::SetSuspended(bool suspended) {}
 
+void PowerSupplyStub::SetAdaptiveChargingSupported(bool supported) {}
+
+void PowerSupplyStub::SetAdaptiveCharging(const base::TimeTicks& target_time,
+                                          double hold_percent) {}
+
+void PowerSupplyStub::ClearAdaptiveCharging() {}
+
 }  // namespace system
 }  // namespace power_manager

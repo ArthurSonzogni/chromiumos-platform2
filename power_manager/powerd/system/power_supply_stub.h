@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/observer_list.h>
+#include <base/time/time.h>
 
 namespace power_manager {
 namespace system {
@@ -35,6 +36,10 @@ class PowerSupplyStub : public PowerSupplyInterface {
   PowerStatus GetPowerStatus() const override;
   bool RefreshImmediately() override;
   void SetSuspended(bool suspended) override;
+  void SetAdaptiveChargingSupported(bool supported) override;
+  void SetAdaptiveCharging(const base::TimeTicks& target_time,
+                           double hold_percent) override;
+  void ClearAdaptiveCharging() override;
 
  private:
   // Result to return from RefreshImmediately().
