@@ -23,7 +23,8 @@ use crate::hiberlog::{flush_log, redirect_log, replay_logs, reset_log, HiberlogF
 use crate::hibermeta::{HibernateMetadata, META_FLAG_ENCRYPTED, META_FLAG_VALID, META_TAG_SIZE};
 use crate::hiberutil::HibernateOptions;
 use crate::hiberutil::{
-    get_page_size, is_lvm_system, lock_process_memory, path_to_stateful_block, BUFFER_PAGES,
+    get_page_size, is_lvm_system, lock_process_memory, path_to_stateful_block, prealloc_mem,
+    BUFFER_PAGES,
 };
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
@@ -107,6 +108,8 @@ impl SuspendConductor {
         unsafe {
             libc::sync();
         }
+
+        prealloc_mem().context("Failed to preallocate memory for hibernate")?;
 
         let result = self.suspend_system(header_file, hiber_file, meta_file);
         // Now send any remaining logs and future logs to syslog.

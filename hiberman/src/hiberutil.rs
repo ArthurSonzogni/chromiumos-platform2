@@ -4,6 +4,7 @@
 
 //! Implement common functions and definitions used throughout the app and library.
 
+use std::convert::TryInto;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
@@ -12,7 +13,7 @@ use std::process::Command;
 use std::str;
 
 use anyhow::{Context, Result};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use thiserror::Error as ThisError;
 
 use crate::mmapbuf::MmapBuffer;
@@ -47,6 +48,9 @@ pub enum HibernateError {
     /// Header incomplete
     #[error("Header incomplete")]
     HeaderIncomplete(),
+    /// Insufficient Memory available.
+    #[error("Not enough free memory and swap")]
+    InsufficientMemoryAvailableError(),
     /// Invalid fiemap
     #[error("Invalid fiemap: {0}")]
     InvalidFiemapError(String),
@@ -77,6 +81,9 @@ pub enum HibernateError {
     /// Stateful partition not found.
     #[error("Stateful partition not found")]
     StatefulPartitionNotFoundError(),
+    /// Swap information not found.
+    #[error("Swap information not found")]
+    SwapInfoNotFoundError(),
 }
 
 /// Options taken from the command line affecting hibernate.
@@ -126,6 +133,91 @@ pub fn get_total_memory_pages() -> usize {
     }
 
     pagecount
+}
+
+/// Helper function to get the amount of free physical memory on this system,
+/// in megabytes.
+fn get_available_memory_mb() -> u32 {
+    let pagesize = get_page_size() as u64;
+    let pagecount = get_available_pages() as u64;
+
+    let mb = pagecount * pagesize / (1024 * 1024);
+    mb.try_into().unwrap_or(u32::MAX)
+}
+
+// Helper function to get the amount of free swap on this system.
+fn get_available_swap_mb() -> Result<u32> {
+    // Look in /proc/meminfo to find swap info.
+    let f = File::open("/proc/meminfo")?;
+    let buf_reader = BufReader::new(f);
+    for line in buf_reader.lines().flatten() {
+        let mut split = line.split_whitespace();
+        let arg = split.next();
+        let value = split.next();
+        if let Some(arg) = arg {
+            if arg == "SwapFree:" {
+                if let Some(value) = value {
+                    let swap_free: u32 = value.parse().context("Failed to parse SwapFree value")?;
+                    let mb: u32 = swap_free / 1024;
+                    return Ok(mb);
+                }
+            }
+        }
+    }
+    Err(HibernateError::SwapInfoNotFoundError())
+        .context("Failed to find available swap information")
+}
+
+// Preallocate memory that will be needed for the hibernate snapshot.
+// Currently the kernel is not always able to reclaim memory effectively
+// when allocating the memory needed for the hibernate snapshot. By
+// preallocating this memory, we force memory to be swapped into zram and
+// ensure that we have the free memory needed for the snapshot.
+pub fn prealloc_mem() -> Result<()> {
+    let available_mb = get_available_memory_mb();
+    let available_swap = get_available_swap_mb()?;
+    debug!(
+        "System has {} MB of free memory, {} MB of swap free",
+        available_mb, available_swap
+    );
+    let memory_pages = get_total_memory_pages();
+    let hiber_pages = memory_pages / 2;
+    let page_size = get_page_size();
+    let hiber_size = page_size * hiber_pages;
+    let hiber_mb = hiber_size / (1024 * 1024);
+    if hiber_mb > (available_mb + available_swap).try_into().unwrap() {
+        return Err(HibernateError::InsufficientMemoryAvailableError())
+            .context("Not enough free memory and swap space for hibernate");
+    }
+    debug!(
+        "System has {} pages of memory, preallocating {} pages for hibernate",
+        memory_pages, hiber_pages
+    );
+
+    let mut buffer =
+        MmapBuffer::new(hiber_size).context("Failed to create buffer for memory allocation")?;
+    let buf = buffer.u8_slice_mut();
+    let mut i = 0;
+    while i < buf.len() {
+        buf[i] = 0;
+        i += page_size
+    }
+
+    let available_mb_after = get_available_memory_mb();
+    let available_swap_after = get_available_swap_mb()?;
+    debug!(
+        "System has {} MB of free memory, {} MB of free swap after giant allocation",
+        available_mb_after, available_swap_after
+    );
+
+    drop(buffer);
+    let available_mb_final = get_available_memory_mb();
+    let available_swap_final = get_available_swap_mb()?;
+    debug!(
+        "System has {} MB of free memory, {} MB of free swap after freeing giant allocation",
+        available_mb_final, available_swap_final
+    );
+    Ok(())
 }
 
 /// Returns the block device that the unencrypted stateful file system resides
