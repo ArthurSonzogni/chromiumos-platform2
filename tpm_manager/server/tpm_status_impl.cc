@@ -323,6 +323,10 @@ std::optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
   if (TPM_ERROR(result = Tspi_Context_LoadKeyByUUID(
                     connection.GetContext(), TSS_PS_TYPE_SYSTEM, SRK_UUID,
                     srk_handle.ptr()))) {
+    if (ERROR_CODE(result) == TSS_E_PS_KEY_NOTFOUND) {
+      LOG(WARNING) << "SRK not found. This is normal on a pre-owned device.";
+      return false;
+    }
     TPM_LOG(ERROR, result) << "Error calling Tspi_Context_LoadKeyByUUID";
     return std::nullopt;
   }
@@ -363,7 +367,7 @@ std::optional<bool> TpmStatusImpl::TestTpmSrkWithDefaultAuth() {
       Tspi_Key_GetPubKey(srk_handle, &public_srk_size, public_srk_bytes.ptr());
   if (result == TPM_SUCCESS) {
     is_srk_auth_default_ = true;
-  } else if (result == TPM_ERROR(TPM_E_AUTHFAIL)) {
+  } else if (ERROR_CODE(result) == TPM_E_AUTHFAIL) {
     is_srk_auth_default_ = false;
     if (!SetNoSrkAuth(local_data_store_, true)) {
       LOG(WARNING) << __func__ << ": Failed to set no_srk_auth";

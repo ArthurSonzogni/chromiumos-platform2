@@ -20,7 +20,10 @@ namespace {
 
 #if USE_TPM_DYNAMIC
 
-const char kTpmForceAllowTpmFile[] = "/var/lib/tpm_manager/force_allow_tpm";
+constexpr char kTpmForceAllowTpmFile[] = "/var/lib/tpm_manager/force_allow_tpm";
+
+// The path to check the TPM is enabled or not.
+constexpr char kTpmEnabledFile[] = "/sys/class/tpm/tpm0/enabled";
 
 // Simulator Vendor ID ("SIMU").
 constexpr uint32_t kVendorIdSimulator = 0x53494d55;
@@ -86,6 +89,25 @@ constexpr DeviceFamily kTpm2FamiliesAllowlist[] = {
     DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 8", kVendorIdStm},
     DeviceFamily{"LENOVO", "ThinkPad X1 Carbon Gen 9", kVendorIdStm},
 };
+
+std::optional<bool> IsTpmFileEnabled() {
+  base::FilePath file_path(kTpmEnabledFile);
+  std::string file_content;
+
+  if (!base::ReadFileToString(file_path, &file_content)) {
+    return {};
+  }
+
+  std::string enabled_str;
+  base::TrimWhitespaceASCII(file_content, base::TRIM_ALL, &enabled_str);
+
+  int enabled = 0;
+  if (!base::StringToInt(enabled_str, &enabled)) {
+    LOG(ERROR) << "enabled is not a number";
+    return {};
+  }
+  return static_cast<bool>(enabled);
+}
 
 bool GetDidVid(uint16_t* did, uint16_t* vid) {
   base::FilePath file_path(kTpmDidVidPath);
@@ -265,6 +287,12 @@ bool TpmAllowlistImpl::IsAllowed() {
   });
 
   TPM1_SECTION({
+    std::optional<bool> is_enabled = IsTpmFileEnabled();
+    if (is_enabled.has_value() && !is_enabled.value()) {
+      LOG(WARNING) << __func__ << ": Disallow the disabled TPM.";
+      return false;
+    }
+
     uint16_t device_id;
     uint16_t vendor_id;
 
