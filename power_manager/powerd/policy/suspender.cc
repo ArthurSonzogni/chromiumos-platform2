@@ -447,6 +447,7 @@ void Suspender::HandleEventInWaitingForNormalSuspendDelays(Event event) {
   switch (event) {
     case Event::SUSPEND_DELAYS_READY:
       if (suspend_request_flavor_ == SuspendFlavor::RESUME_FROM_DISK_PREPARE) {
+        EmitHibernateResumeReadySignal(suspend_request_id_);
         state_ = State::RESUMING_FROM_HIBERNATE;
 
       } else {
@@ -845,6 +846,13 @@ void Suspender::EmitDarkSuspendImminentSignal() {
   SuspendImminent proto;
   proto.set_suspend_id(dark_suspend_id_);
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kDarkSuspendImminentSignal,
+                                              proto);
+}
+
+void Suspender::EmitHibernateResumeReadySignal(int suspend_request_id) {
+  HibernateResumeReady proto;
+  proto.set_suspend_id(suspend_request_id);
+  dbus_wrapper_->EmitSignalWithProtocolBuffer(kHibernateResumeReadySignal,
                                               proto);
 }
 

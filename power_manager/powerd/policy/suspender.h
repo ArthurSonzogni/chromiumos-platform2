@@ -383,6 +383,10 @@ class Suspender : public SuspendDelayObserver,
   // dark resume. |dark_resume_id_| is used as the request ID.
   void EmitDarkSuspendImminentSignal();
 
+  // Emits a D-Bus signal indicating that suspend callbacks have been processed
+  // and the system is fully ready to resume from hibernation.
+  void EmitHibernateResumeReadySignal(int suspend_request_id);
+
   Delegate* delegate_ = nullptr;                          // weak
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
   system::DarkResumeInterface* dark_resume_ = nullptr;    // weak

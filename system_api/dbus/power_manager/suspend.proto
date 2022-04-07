@@ -166,3 +166,10 @@ message DarkResumeWakeReason {
   optional string wake_reason = 1;
 }
 
+// Included in powerd's HibernateResumeReady signal.
+message HibernateResumeReady {
+  // Next ID to use: 2
+
+  // Indicates the suspend_id that's ready to resume.
+  optional int32 suspend_id = 1;
+}
