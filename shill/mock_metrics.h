@@ -119,6 +119,10 @@ class MockMetrics : public Metrics {
               NotifyWiFiConnectionAttemptResult,
               (NetworkServiceError),
               (override));
+  MOCK_METHOD(void,
+              NotifyWiFiAdapterStateChanged,
+              (bool, const WiFiAdapterInfo&),
+              (override));
 };
 
 }  // namespace shill

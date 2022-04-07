@@ -252,11 +252,13 @@ void WiFi::Start(Error* error,
   if (enabled()) {
     return;
   }
-  int vendor = Metrics::kWiFiStructuredMetricsErrorValue;
-  int product = Metrics::kWiFiStructuredMetricsErrorValue;
-  int subsystem = Metrics::kWiFiStructuredMetricsErrorValue;
-  GetDeviceHardwareIds(&vendor, &product, &subsystem);
-  metrics()->NotifyWiFiAdapterStateChanged(true, vendor, product, subsystem);
+  Metrics::WiFiAdapterInfo hw_info{
+      .vendor_id = Metrics::kWiFiStructuredMetricsErrorValue,
+      .product_id = Metrics::kWiFiStructuredMetricsErrorValue,
+      .subsystem_id = Metrics::kWiFiStructuredMetricsErrorValue};
+  GetDeviceHardwareIds(&hw_info.vendor_id, &hw_info.product_id,
+                       &hw_info.subsystem_id);
+  metrics()->NotifyWiFiAdapterStateChanged(true, hw_info);
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error) {
     error->Reset();  // indicate immediate completion
@@ -285,11 +287,13 @@ void WiFi::Stop(Error* error, const EnabledStateChangedCallback& /*callback*/) {
   SLOG(this, 2) << "WiFi " << link_name() << " stopping.";
   // Unlike other devices, we leave the DBus name watcher in place here, because
   // WiFi callbacks expect notifications even if the device is disabled.
-  int vendor = Metrics::kWiFiStructuredMetricsErrorValue;
-  int product = Metrics::kWiFiStructuredMetricsErrorValue;
-  int subsystem = Metrics::kWiFiStructuredMetricsErrorValue;
-  GetDeviceHardwareIds(&vendor, &product, &subsystem);
-  metrics()->NotifyWiFiAdapterStateChanged(false, vendor, product, subsystem);
+  Metrics::WiFiAdapterInfo hw_info{
+      .vendor_id = Metrics::kWiFiStructuredMetricsErrorValue,
+      .product_id = Metrics::kWiFiStructuredMetricsErrorValue,
+      .subsystem_id = Metrics::kWiFiStructuredMetricsErrorValue};
+  GetDeviceHardwareIds(&hw_info.vendor_id, &hw_info.product_id,
+                       &hw_info.subsystem_id);
+  metrics()->NotifyWiFiAdapterStateChanged(false, hw_info);
   DropConnection();
   StopScanTimer();
   for (const auto& endpoint : endpoint_by_rpcid_) {

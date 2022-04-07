@@ -1073,6 +1073,12 @@ class Metrics : public DefaultServiceObserver {
   // value for the field.
   static constexpr int kWiFiStructuredMetricsErrorValue = -1;
 
+  struct WiFiAdapterInfo {
+    int vendor_id;
+    int product_id;
+    int subsystem_id;
+  };
+
   Metrics();
   Metrics(const Metrics&) = delete;
   Metrics& operator=(const Metrics&) = delete;
@@ -1355,10 +1361,8 @@ class Metrics : public DefaultServiceObserver {
   // Emits the |WiFiAdapterStateChanged| structured event that notifies that
   // the WiFi adapter has been enabled or disabled. Includes the IDs describing
   // the type of the adapter (e.g. PCI IDs).
-  void NotifyWiFiAdapterStateChanged(bool enabled,
-                                     int vendor_id,
-                                     int product_id,
-                                     int subsystem_id);
+  mockable void NotifyWiFiAdapterStateChanged(bool enabled,
+                                              const WiFiAdapterInfo& info);
 
   enum ConnectionAttemptType {
     kAttemptTypeUnknown = 0,
