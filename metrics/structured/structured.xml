@@ -80,6 +80,11 @@
         The time elapsed since boot, in microseconds.
       </summary>
     </metric>
+    <metric name="IsFloss" type="int">
+      <summary>
+        Boolean indicating if the Bluetooth is using Floss.
+      </summary>
+    </metric>
     <metric name="DeviceId" type="hmac-string">
       <summary>
         The bluetooth device id.

@@ -32,6 +32,7 @@ BRILLO_EXPORT void BluetoothPairingStateChanged(const char* boot_id,
 // metrics::structured::events::bluetooth::BluetoothAclConnectionStateChanged.
 BRILLO_EXPORT void BluetoothAclConnectionStateChanged(const char* boot_id,
                                                       int64_t system_time,
+                                                      bool is_floss,
                                                       const char* device_id,
                                                       int device_type,
                                                       int connection_direction,
