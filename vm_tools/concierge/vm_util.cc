@@ -583,10 +583,11 @@ bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent) {
 
   // Set period to 100000us and quota to percent * 1000us.
   const std::string cpu_period_str = std::to_string(100000);
-  if (base::WriteFile(cpu_cgroup.Append("cpu.cfs_period_us"),
-                      cpu_period_str.c_str(),
+  const base::FilePath cfs_period_us = cpu_cgroup.Append("cpu.cfs_period_us");
+  if (base::WriteFile(cfs_period_us, cpu_period_str.c_str(),
                       cpu_period_str.size()) != cpu_period_str.size()) {
-    PLOG(ERROR) << "Failed to set cpu.cfs_period_us";
+    PLOG(ERROR) << "Failed to update " << cfs_period_us.value() << " to "
+                << cpu_period_str;
     return false;
   }
 
@@ -597,10 +598,11 @@ bool UpdateCpuQuota(const base::FilePath& cpu_cgroup, int percent) {
     quota_int = percent * 1000;
 
   const std::string cpu_quota_str = std::to_string(quota_int);
-  if (base::WriteFile(cpu_cgroup.Append("cpu.cfs_quota_us"),
-                      cpu_quota_str.c_str(),
+  const base::FilePath cfs_quota_us = cpu_cgroup.Append("cpu.cfs_quota_us");
+  if (base::WriteFile(cfs_quota_us, cpu_quota_str.c_str(),
                       cpu_quota_str.size()) != cpu_quota_str.size()) {
-    PLOG(ERROR) << "Failed to set cpu.cfs_quota_us";
+    PLOG(ERROR) << "Failed to update " << cfs_quota_us.value() << " to "
+                << cpu_quota_str;
     return false;
   }
 
