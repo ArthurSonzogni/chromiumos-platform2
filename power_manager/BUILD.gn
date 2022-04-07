@@ -99,6 +99,7 @@ pkg_config("target_defaults") {
     "libshill-client",
     "libshill-dbus-client",
     "libec",
+    "libml-client",
     "libmojo",
     "libudev",
     "re2",
@@ -253,6 +254,7 @@ static_library("libsystem_stub") {
 
 static_library("libpolicy") {
   sources = [
+    "powerd/policy/adaptive_charging_controller.cc",
     "powerd/policy/ambient_light_handler.cc",
     "powerd/policy/backlight_controller.cc",
     "powerd/policy/cellular_controller.cc",
@@ -518,6 +520,7 @@ if (use.test) {
   executable("power_manager_policy_test") {
     sources = [
       "common/testrunner.cc",
+      "powerd/policy/adaptive_charging_controller_test.cc",
       "powerd/policy/ambient_light_handler_test.cc",
       "powerd/policy/backlight_controller_test_util.cc",
       "powerd/policy/cellular_controller_test.cc",
