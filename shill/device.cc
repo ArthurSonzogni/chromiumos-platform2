@@ -1246,19 +1246,10 @@ void Device::set_mac_address(const std::string& mac_address) {
 }
 
 std::optional<base::TimeDelta> Device::TimeToNextDHCPLeaseRenewal() {
-  if (!ipconfig() && !ip6config()) {
+  if (!ipconfig()) {
     return std::nullopt;
   }
-  uint32_t time_to_ipv4_lease_expiry = UINT32_MAX;
-  uint32_t time_to_ipv6_lease_expiry = UINT32_MAX;
-  if (ipconfig()) {
-    ipconfig()->TimeToLeaseExpiry(&time_to_ipv4_lease_expiry);
-  }
-  if (ip6config()) {
-    ip6config()->TimeToLeaseExpiry(&time_to_ipv6_lease_expiry);
-  }
-  return base::Seconds(
-      std::min(time_to_ipv4_lease_expiry, time_to_ipv6_lease_expiry));
+  return ipconfig()->TimeToLeaseExpiry();
 }
 
 void Device::SetServiceConnectedState(Service::ConnectState state) {

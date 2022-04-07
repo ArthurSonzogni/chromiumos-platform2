@@ -7,10 +7,12 @@
 #include <sys/time.h>
 
 #include <limits>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -30,12 +32,6 @@ static std::string ObjectID(const IPConfig* i) {
   return i->GetRpcIdentifier().value();
 }
 }  // namespace Logging
-
-namespace {
-
-const time_t kDefaultLeaseExpirationTime = std::numeric_limits<time_t>::max();
-
-}  // namespace
 
 // static
 const int IPConfig::kDefaultMTU = 1500;
@@ -58,7 +54,6 @@ IPConfig::IPConfig(ControlInterface* control_interface,
       type_(type),
       serial_(global_serial_++),
       adaptor_(control_interface->CreateIPConfigAdaptor(this)),
-      current_lease_expiration_time_({kDefaultLeaseExpirationTime, 0}),
       time_(Time::GetInstance()),
       weak_ptr_factory_(this) {
   store_.RegisterConstString(kAddressProperty, &properties_.address);
@@ -126,22 +121,21 @@ void IPConfig::UpdateLeaseExpirationTime(uint32_t new_lease_duration) {
 }
 
 void IPConfig::ResetLeaseExpirationTime() {
-  current_lease_expiration_time_ = {kDefaultLeaseExpirationTime, 0};
+  current_lease_expiration_time_ = std::nullopt;
 }
 
-bool IPConfig::TimeToLeaseExpiry(uint32_t* time_left) {
-  if (current_lease_expiration_time_.tv_sec == kDefaultLeaseExpirationTime) {
+std::optional<base::TimeDelta> IPConfig::TimeToLeaseExpiry() {
+  if (!current_lease_expiration_time_.has_value()) {
     SLOG(this, 2) << __func__ << ": No current DHCP lease";
-    return false;
+    return std::nullopt;
   }
   struct timeval now;
   time_->GetTimeBoottime(&now);
-  if (now.tv_sec > current_lease_expiration_time_.tv_sec) {
+  if (now.tv_sec > current_lease_expiration_time_->tv_sec) {
     SLOG(this, 2) << __func__ << ": Current DHCP lease has already expired";
-    return false;
+    return std::nullopt;
   }
-  *time_left = current_lease_expiration_time_.tv_sec - now.tv_sec;
-  return true;
+  return base::Seconds(current_lease_expiration_time_->tv_sec - now.tv_sec);
 }
 
 bool IPConfig::SetBlackholedUids(const std::vector<uint32_t>& uids) {

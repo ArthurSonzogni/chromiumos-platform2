@@ -642,13 +642,14 @@ void WiFiService::SetState(ConnectState state) {
   } else if (state == kStateConnected) {
     // Now that we are connected let's check if we have a DHCP lease ...
     dhcp4_lease_expiry_ = base::Time();
-    if (wifi_ && wifi_->ipconfig() && wifi_->ipconfig()->type() == kTypeDHCP) {
+    if (wifi_) {
       // ... and get its expiry so that next time we attempt to connect we know
       // if the lease is still (potentially) valid and don't regenerate MAC
       // address for this network.
-      uint32_t lease_time;
-      if (wifi_->ipconfig()->TimeToLeaseExpiry(&lease_time)) {
-        dhcp4_lease_expiry_ = clock_->Now() + base::Seconds(lease_time);
+      std::optional<base::TimeDelta> lease_time =
+          wifi_->TimeToNextDHCPLeaseRenewal();
+      if (lease_time.has_value()) {
+        dhcp4_lease_expiry_ = clock_->Now() + lease_time.value();
       } else {
         LOG(WARNING) << "Failed to get lease time";
       }

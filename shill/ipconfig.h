@@ -8,12 +8,14 @@
 #include <sys/time.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include <base/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/mockable.h"
@@ -161,9 +163,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
   void ResetLeaseExpirationTime();
 
   // Returns the time left (in seconds) till the current DHCP lease is to be
-  // renewed in |time_left|. Returns false if an error occurs (i.e. current
+  // renewed in |time_left|. Returns nullopt if an error occurs (i.e. current
   // lease has already expired or no current DHCP lease), true otherwise.
-  bool TimeToLeaseExpiry(uint32_t* time_left);
+  std::optional<base::TimeDelta> TimeToLeaseExpiry();
 
   // Returns whether the function call changed the configuration.
   bool SetBlackholedUids(const std::vector<uint32_t>& uids);
@@ -203,7 +205,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   const uint32_t serial_;
   std::unique_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
-  struct timeval current_lease_expiration_time_;
+  std::optional<struct timeval> current_lease_expiration_time_;
   Time* time_;
   base::WeakPtrFactory<IPConfig> weak_ptr_factory_;
 };

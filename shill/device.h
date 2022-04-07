@@ -309,6 +309,13 @@ class Device : public base::RefCounted<Device> {
       patchpanel::NeighborReachabilityEventSignal::Role role,
       patchpanel::NeighborReachabilityEventSignal::EventType event_type);
 
+  // Calculates the duration till a DHCP lease is due for renewal, and stores
+  // this value in |result|. Returns std::nullopt if there is no upcoming DHCP
+  // lease renewal, base::TimeDelta wrapped in std::optional otherwise.
+  // TODO(jiejiang): Move this out of Device class before Device has multiple
+  // active connection.
+  std::optional<base::TimeDelta> TimeToNextDHCPLeaseRenewal();
+
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;
   }
@@ -486,11 +493,6 @@ class Device : public base::RefCounted<Device> {
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
   bool fixed_ip_params() const { return fixed_ip_params_; }
-
-  // Calculates the duration till a DHCP lease is due for renewal, and stores
-  // this value in |result|. Returns std::nullopt if there is no upcoming DHCP
-  // lease renewal, base::TimeDelta wrapped in std::optional otherwise.
-  std::optional<base::TimeDelta> TimeToNextDHCPLeaseRenewal();
 
   virtual void set_mac_address(const std::string& mac_address);
 
