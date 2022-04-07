@@ -152,10 +152,21 @@ def DoReport(tbl: pd.DataFrame, level: FPCBETResults.SecLevel):
         mean - (2*se), [20]), print_far_value(mean + (2*se), [20])])
 
 
+# %% Find Data
+
+# We expect a symbolic link named `data` to point to the directory that
+# contains the FPC BET reports and raw collection.
+print('# Discover Root Data Directory')
+data_root = pathlib.Path(os.readlink('data'))
+if not data_root.is_dir():
+    raise Exception('Data root doesn\'t exist')
+print(f'Using root {data_root}')
+
+# REPORT_DIR = str(data_root.joinpath('report2'))
+REPORT_DIR = data_root.joinpath('report-100k')
+COLLECTION_DIR = data_root.joinpath('orig-data')
+
 # %%
-
-REPORT_DIR = 'data' # symbolic link to data
-
 bet = FPCBETResults(REPORT_DIR)
 
 # display(Markdown('# TC-01 FAR'))
