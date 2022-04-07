@@ -6,7 +6,10 @@
 
 #include <arpa/inet.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <sys/wait.h>
+
+#include <optional>
 
 #include <base/check.h>
 #include <base/logging.h>
@@ -61,7 +64,8 @@ DHCPConfig::DHCPConfig(ControlInterface* control_interface,
       root_("/"),
       weak_ptr_factory_(this),
       dispatcher_(dispatcher),
-      process_manager_(ProcessManager::GetInstance()) {
+      process_manager_(ProcessManager::GetInstance()),
+      time_(Time::GetInstance()) {
   SLOG(this, 2) << __func__ << ": " << device_name;
   if (lease_file_suffix_.empty()) {
     lease_file_suffix_ = device_name;
@@ -139,6 +143,20 @@ void DHCPConfig::InitProxy(const std::string& service) {
     LOG(INFO) << "Init DHCP Proxy: " << device_name() << " at " << service;
     proxy_ = control_interface_->CreateDHCPProxy(service);
   }
+}
+
+std::optional<base::TimeDelta> DHCPConfig::TimeToLeaseExpiry() {
+  if (!current_lease_expiration_time_.has_value()) {
+    SLOG(this, 2) << __func__ << ": No current DHCP lease";
+    return std::nullopt;
+  }
+  struct timeval now;
+  time_->GetTimeBoottime(&now);
+  if (now.tv_sec > current_lease_expiration_time_->tv_sec) {
+    SLOG(this, 2) << __func__ << ": Current DHCP lease has already expired";
+    return std::nullopt;
+  }
+  return base::Seconds(current_lease_expiration_time_->tv_sec - now.tv_sec);
 }
 
 void DHCPConfig::OnIPConfigUpdated(const Properties& properties,
@@ -330,6 +348,17 @@ void DHCPConfig::ProcessExpirationTimeout() {
   if (!Restart()) {
     NotifyFailure();
   }
+}
+
+void DHCPConfig::UpdateLeaseExpirationTime(uint32_t new_lease_duration) {
+  struct timeval new_expiration_time;
+  time_->GetTimeBoottime(&new_expiration_time);
+  new_expiration_time.tv_sec += new_lease_duration;
+  current_lease_expiration_time_ = new_expiration_time;
+}
+
+void DHCPConfig::ResetLeaseExpirationTime() {
+  current_lease_expiration_time_ = std::nullopt;
 }
 
 }  // namespace shill

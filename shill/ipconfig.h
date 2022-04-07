@@ -5,8 +5,6 @@
 #ifndef SHILL_IPCONFIG_H_
 #define SHILL_IPCONFIG_H_
 
-#include <sys/time.h>
-
 #include <memory>
 #include <optional>
 #include <string>
@@ -155,27 +153,16 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // static IP parameters were previously applied.
   void RestoreSavedIPParameters(StaticIPParameters* static_ip_parameters);
 
-  // Updates |current_lease_expiration_time_| by adding |new_lease_duration| to
-  // the current time.
-  void UpdateLeaseExpirationTime(uint32_t new_lease_duration);
-
-  // Resets |current_lease_expiration_time_| to its default value.
-  void ResetLeaseExpirationTime();
-
-  // Returns the time left (in seconds) till the current DHCP lease is to be
-  // renewed in |time_left|. Returns nullopt if an error occurs (i.e. current
-  // lease has already expired or no current DHCP lease), true otherwise.
-  std::optional<base::TimeDelta> TimeToLeaseExpiry();
+  // See DHCPConfig::TimeToLeaseExpiry(). Returns base::nullopt in the base
+  // class.
+  // TODO(b/227560694): Remove this method.
+  virtual std::optional<base::TimeDelta> TimeToLeaseExpiry();
 
   // Returns whether the function call changed the configuration.
   bool SetBlackholedUids(const std::vector<uint32_t>& uids);
   bool ClearBlackholedUids();
 
  protected:
-  // Inform RPC listeners of changes to our properties. MAY emit
-  // changes even on unchanged properties.
-  mockable void EmitChanges();
-
   // Updates the IP configuration properties.
   void UpdateProperties(const Properties& properties);
 
@@ -183,10 +170,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   friend class IPConfigAdaptorInterface;
   friend class IPConfigTest;
   friend class ConnectionTest;
-
-  // TODO(b/227560694): Can be removed after moving lease fields into
-  // DHCPConfig.
-  friend class DHCPConfigTest;
 
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
@@ -198,6 +181,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   static const char kType[];
 
+  // Inform RPC listeners of changes to our properties. MAY emit
+  // changes even on unchanged properties.
+  mockable void EmitChanges();
+
   static uint32_t global_serial_;
   PropertyStore store_;
   const std::string device_name_;
@@ -205,8 +192,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   const uint32_t serial_;
   std::unique_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
-  std::optional<struct timeval> current_lease_expiration_time_;
-  Time* time_;
   base::WeakPtrFactory<IPConfig> weak_ptr_factory_;
 };
 

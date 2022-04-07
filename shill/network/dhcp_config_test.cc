@@ -88,12 +88,12 @@ class DHCPConfigTest : public PropertyStoreTest {
 
   void SetUp() override {
     config_->process_manager_ = &process_manager_;
-    ScopeLogger::GetInstance()->EnableScopesByName("inet");
+    ScopeLogger::GetInstance()->EnableScopesByName("dhcp");
     ScopeLogger::GetInstance()->set_verbose_level(3);
   }
 
   void TearDown() override {
-    ScopeLogger::GetInstance()->EnableScopesByName("-inet");
+    ScopeLogger::GetInstance()->EnableScopesByName("-dhcp");
     ScopeLogger::GetInstance()->set_verbose_level(0);
   }
 

@@ -54,7 +54,6 @@ IPConfig::IPConfig(ControlInterface* control_interface,
       type_(type),
       serial_(global_serial_++),
       adaptor_(control_interface->CreateIPConfigAdaptor(this)),
-      time_(Time::GetInstance()),
       weak_ptr_factory_(this) {
   store_.RegisterConstString(kAddressProperty, &properties_.address);
   store_.RegisterConstString(kBroadcastProperty,
@@ -113,29 +112,8 @@ void IPConfig::RestoreSavedIPParameters(
   EmitChanges();
 }
 
-void IPConfig::UpdateLeaseExpirationTime(uint32_t new_lease_duration) {
-  struct timeval new_expiration_time;
-  time_->GetTimeBoottime(&new_expiration_time);
-  new_expiration_time.tv_sec += new_lease_duration;
-  current_lease_expiration_time_ = new_expiration_time;
-}
-
-void IPConfig::ResetLeaseExpirationTime() {
-  current_lease_expiration_time_ = std::nullopt;
-}
-
 std::optional<base::TimeDelta> IPConfig::TimeToLeaseExpiry() {
-  if (!current_lease_expiration_time_.has_value()) {
-    SLOG(this, 2) << __func__ << ": No current DHCP lease";
-    return std::nullopt;
-  }
-  struct timeval now;
-  time_->GetTimeBoottime(&now);
-  if (now.tv_sec > current_lease_expiration_time_->tv_sec) {
-    SLOG(this, 2) << __func__ << ": Current DHCP lease has already expired";
-    return std::nullopt;
-  }
-  return base::Seconds(current_lease_expiration_time_->tv_sec - now.tv_sec);
+  return std::nullopt;
 }
 
 bool IPConfig::SetBlackholedUids(const std::vector<uint32_t>& uids) {

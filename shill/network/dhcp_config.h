@@ -6,6 +6,7 @@
 #define SHILL_NETWORK_DHCP_CONFIG_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -76,6 +77,11 @@ class DHCPConfig : public IPConfig {
   virtual void ProcessEventSignal(const std::string& reason,
                                   const KeyValueStore& configuration) = 0;
 
+  // Returns the time left (in seconds) till the current DHCP lease is to be
+  // renewed in |time_left|. Returns nullopt if an error occurs (i.e. current
+  // lease has already expired or no current DHCP lease), true otherwise.
+  std::optional<base::TimeDelta> TimeToLeaseExpiry() override;
+
   // Set the minimum MTU that this configuration will respect.
   virtual void set_minimum_mtu(const int minimum_mtu) {
     minimum_mtu_ = minimum_mtu;
@@ -109,6 +115,13 @@ class DHCPConfig : public IPConfig {
 
   // Return true if we should keep the lease on disconnect.
   virtual bool ShouldKeepLeaseOnDisconnect() { return false; }
+
+  // Updates |current_lease_expiration_time_| by adding |new_lease_duration| to
+  // the current time.
+  void UpdateLeaseExpirationTime(uint32_t new_lease_duration);
+
+  // Resets |current_lease_expiration_time_| to its default value.
+  void ResetLeaseExpirationTime();
 
   // Return the list of flags used to start dhcpcd.
   virtual std::vector<std::string> GetFlags();
@@ -201,6 +214,8 @@ class DHCPConfig : public IPConfig {
   // can be overridden in tests.
   base::TimeDelta lease_acquisition_timeout_;
 
+  std::optional<struct timeval> current_lease_expiration_time_;
+
   // Called if a DHCP lease expires.
   base::CancelableOnceClosure lease_expiration_callback_;
 
@@ -219,6 +234,7 @@ class DHCPConfig : public IPConfig {
   EventDispatcher* dispatcher_;
   ProcessManager* process_manager_;
   Metrics* metrics_;
+  Time* time_;
 };
 
 }  // namespace shill
