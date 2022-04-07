@@ -13,6 +13,7 @@
 
 #include <base/bind.h>
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
@@ -429,13 +430,20 @@ std::string UdevDevice::StorageDevicePath() const {
   std::string path;
   EnumerateParentDevices(base::BindRepeating(
       [](std::string* path, const brillo::UdevDevice& device) {
-        base::StringPiece subsystem(device.GetSubsystem());
-        if (subsystem == kSubsystemMmc || subsystem == kSubsystemNvme ||
-            subsystem == kSubsystemScsi) {
-          *path = device.GetSysPath();
-          return true;
+        const char* const subsystem = device.GetSubsystem();
+        const base::StringPiece allowed_subsystems[] = {
+            kSubsystemMmc, kSubsystemNvme, kSubsystemScsi};
+        if (!subsystem ||
+            !base::Contains(allowed_subsystems, base::StringPiece(subsystem)))
+          return false;
+
+        if (const char* const sys_path = device.GetSysPath()) {
+          path->assign(sys_path);
+        } else {
+          path->clear();
         }
-        return false;
+
+        return true;
       },
       &path));
   return path;
