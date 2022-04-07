@@ -63,8 +63,6 @@ void UsbMonitor::OnDeviceAddedOrRemoved(const base::FilePath& path,
                                         bool added) {
   auto key = path.BaseName().value();
   if (RE2::FullMatch(key, kInterfaceFilePathRegex)) {
-    if (added)
-      AddInterface(path);
     return;
   }
 
@@ -157,27 +155,6 @@ UsbDevice* UsbMonitor::GetDevice(std::string key) {
     return nullptr;
 
   return it->second.get();
-}
-
-void UsbMonitor::AddInterface(const base::FilePath& path) {
-  // e.g. If interface is 2-1:1.0, key is 2-1
-  auto name = path.BaseName().value();
-  auto key = name.substr(0, name.find(":"));
-
-  // Assume USB device is added before interface is added.
-  auto device = GetDevice(key);
-  if (device == nullptr)
-    return;
-
-  std::string interface_class;
-  int interface_class_int;
-  if (base::ReadFileToString(path.Append("bInterfaceClass"),
-                             &interface_class)) {
-    base::TrimWhitespaceASCII(interface_class, base::TRIM_TRAILING,
-                              &interface_class);
-    if (base::HexStringToInt(interface_class, &interface_class_int))
-      device->SetInterfaceClass(interface_class_int);
-  }
 }
 
 }  // namespace typecd

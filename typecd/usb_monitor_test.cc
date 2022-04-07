@@ -19,7 +19,6 @@ namespace {
 constexpr char kBusnum[] = "1\n";
 constexpr char kDevnum[] = "1\n";
 constexpr char kDeviceClass[] = "00\n";
-constexpr char kInterfaceClass[] = "e0\n";
 constexpr char kSpeed[] = "10000\n";
 constexpr char kVersion[] = "3.00";
 constexpr char kInvalidVersion[] = "4.01";
@@ -70,17 +69,10 @@ TEST_F(UsbMonitorTest, TestDeviceAddAndRemove) {
   auto version_path = usb_sysfs_path.Append("version");
   ASSERT_TRUE(base::WriteFile(version_path, kVersion, strlen(kVersion)));
 
-  auto interface_dir_path = usb_sysfs_path.Append("1-1:1.0");
-  base::CreateDirectory(interface_dir_path);
-  auto interface_class_path = interface_dir_path.Append("bInterfaceClass");
-  ASSERT_TRUE(base::WriteFile(interface_class_path, kInterfaceClass,
-                              strlen(kInterfaceClass)));
-
   auto usb_monitor = std::make_unique<UsbMonitor>();
 
   // New USB device created and added to the map.
   usb_monitor->OnDeviceAddedOrRemoved(usb_sysfs_path, true);
-  usb_monitor->OnDeviceAddedOrRemoved(interface_dir_path, true);
   auto usb_device = usb_monitor->GetDevice(usb_sysfs_path.BaseName().value());
   EXPECT_NE(nullptr, usb_device);
   EXPECT_EQ(std::stoi(kBusnum), usb_device->GetBusnum());
@@ -88,7 +80,6 @@ TEST_F(UsbMonitorTest, TestDeviceAddAndRemove) {
   EXPECT_EQ(kTypecPortNum, usb_device->GetTypecPortNum());
   EXPECT_EQ(UsbSpeed::k10000, usb_device->GetSpeed());
   EXPECT_EQ(std::stoi(kDeviceClass, 0, 16), usb_device->GetDeviceClass());
-  EXPECT_EQ(std::stoi(kInterfaceClass, 0, 16), usb_device->GetInterfaceClass());
   EXPECT_EQ(UsbVersion::k3_0, usb_device->GetVersion());
 
   // USB device removed from the map.

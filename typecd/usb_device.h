@@ -41,9 +41,6 @@ class UsbDevice {
   void SetTypecPortNum(int typec_port_num) { typec_port_num_ = typec_port_num; }
   void SetSpeed(UsbSpeed speed) { speed_ = speed; }
   void SetDeviceClass(int device_class) { device_class_ = device_class; }
-  void SetInterfaceClass(int interface_class) {
-    interface_class_ = interface_class;
-  }
   void SetVersion(UsbVersion version) { version_ = version; }
 
   int GetBusnum() { return busnum_; }
@@ -51,7 +48,6 @@ class UsbDevice {
   int GetTypecPortNum() { return typec_port_num_; }
   UsbSpeed GetSpeed() { return speed_; }
   int GetDeviceClass() { return device_class_; }
-  int GetInterfaceClass() { return interface_class_; }
   UsbVersion GetVersion() { return version_; }
 
  private:
@@ -65,7 +61,6 @@ class UsbDevice {
   // Identifies type of device.
   // https://www.usb.org/defined-class-codes
   int device_class_;
-  int interface_class_;
   UsbVersion version_;
 };
 
