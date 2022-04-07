@@ -16,7 +16,6 @@
 
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/calibration_utils.h"
-#include "rmad/utils/mock_iio_sensor_probe_utils.h"
 
 using testing::_;
 using testing::Assign;
@@ -49,76 +48,12 @@ namespace rmad {
 
 class SetupCalibrationStateHandlerTest : public StateHandlerTest {
  public:
-  scoped_refptr<SetupCalibrationStateHandler> CreateStateHandler(
-      const std::set<RmadComponent>& probed_components) {
-    auto mock_runtime_probe_client =
-        std::make_unique<NiceMock<MockIioSensorProbeUtils>>();
-    ON_CALL(*mock_runtime_probe_client, Probe())
-        .WillByDefault(Return(probed_components));
-    return base::MakeRefCounted<SetupCalibrationStateHandler>(
-        json_store_, std::move(mock_runtime_probe_client));
+  scoped_refptr<SetupCalibrationStateHandler> CreateStateHandler() {
+    return base::MakeRefCounted<SetupCalibrationStateHandler>(json_store_);
   }
 };
 
-TEST_F(SetupCalibrationStateHandlerTest, InitializeState_SuccessSensorProbed) {
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  const std::map<std::string, std::map<std::string, std::string>>
-      target_calibration_map = {{kBaseInstructionName,
-                                 {{kBaseAccName, kStatusWaitingName},
-                                  {kBaseGyroName, kStatusWaitingName}}},
-                                {kLidInstructionName,
-                                 {{kLidAccName, kStatusWaitingName},
-                                  {kLidGyroName, kStatusWaitingName}}}};
-  std::map<std::string, std::map<std::string, std::string>> calibration_map;
-  EXPECT_TRUE(json_store_->GetValue(kCalibrationMap, &calibration_map));
-  EXPECT_EQ(target_calibration_map, calibration_map);
-}
-
-TEST_F(SetupCalibrationStateHandlerTest,
-       InitializeState_SuccessUnknownComponentProbed) {
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE,
-       RMAD_COMPONENT_UNKNOWN});
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  const std::map<std::string, std::map<std::string, std::string>>
-      target_calibration_map = {{kBaseInstructionName,
-                                 {{kBaseAccName, kStatusWaitingName},
-                                  {kBaseGyroName, kStatusWaitingName}}},
-                                {kLidInstructionName,
-                                 {{kLidAccName, kStatusWaitingName},
-                                  {kLidGyroName, kStatusWaitingName}}}};
-  std::map<std::string, std::map<std::string, std::string>> calibration_map;
-  EXPECT_TRUE(json_store_->GetValue(kCalibrationMap, &calibration_map));
-  EXPECT_EQ(target_calibration_map, calibration_map);
-}
-
-TEST_F(SetupCalibrationStateHandlerTest,
-       InitializeState_SuccessInvalidomponentProbed) {
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE,
-       RMAD_COMPONENT_BATTERY});
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  const std::map<std::string, std::map<std::string, std::string>>
-      target_calibration_map = {{kBaseInstructionName,
-                                 {{kBaseAccName, kStatusWaitingName},
-                                  {kBaseGyroName, kStatusWaitingName}}},
-                                {kLidInstructionName,
-                                 {{kLidAccName, kStatusWaitingName},
-                                  {kLidGyroName, kStatusWaitingName}}}};
-  std::map<std::string, std::map<std::string, std::string>> calibration_map;
-  EXPECT_TRUE(json_store_->GetValue(kCalibrationMap, &calibration_map));
-  EXPECT_EQ(target_calibration_map, calibration_map);
-}
-
-TEST_F(SetupCalibrationStateHandlerTest, InitializeState_SuccessPredefined) {
+TEST_F(SetupCalibrationStateHandlerTest, InitializeState_Success) {
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusWaitingName},
@@ -129,10 +64,15 @@ TEST_F(SetupCalibrationStateHandlerTest, InitializeState_SuccessPredefined) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+}
+
+TEST_F(SetupCalibrationStateHandlerTest,
+       InitializeState_FailedCalibrationMapNotSet) {
+  auto handler = CreateStateHandler();
+  EXPECT_EQ(handler->InitializeState(),
+            RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
 
 TEST_F(SetupCalibrationStateHandlerTest,
@@ -147,18 +87,26 @@ TEST_F(SetupCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(SetupCalibrationStateHandlerTest, InitializeState_JsonFailed) {
+  // Since we are not allowed to be in-progress in the setup state, we can set
+  // base acc to in-progress to ensure that the change (in-progress -> failed)
+  // will happen in the calibration map. Then, we can test the writing part of
+  // the json file.
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {{kBaseInstructionName,
+                                     {{kBaseAccName, kStatusInProgressName},
+                                      {kBaseGyroName, kStatusWaitingName}}},
+                                    {kLidInstructionName,
+                                     {{kLidAccName, kStatusWaitingName},
+                                      {kLidGyroName, kStatusWaitingName}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
   base::SetPosixFilePermissions(GetStateFilePath(), 0444);
-
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(),
             RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
 }
@@ -166,9 +114,17 @@ TEST_F(SetupCalibrationStateHandlerTest, InitializeState_JsonFailed) {
 TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {{kBaseInstructionName,
+                                     {{kBaseAccName, kStatusWaitingName},
+                                      {kBaseGyroName, kStatusWaitingName}}},
+                                    {kLidInstructionName,
+                                     {{kLidAccName, kStatusWaitingName},
+                                      {kLidGyroName, kStatusWaitingName}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState();
@@ -191,9 +147,7 @@ TEST_F(SetupCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState();
@@ -216,9 +170,7 @@ TEST_F(SetupCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState();
@@ -229,8 +181,9 @@ TEST_F(SetupCalibrationStateHandlerTest,
 
 TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_SuccessNoSensor) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(SetCalibrationMap(json_store_, {}));
 
-  auto handler = CreateStateHandler({});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState();
@@ -242,8 +195,9 @@ TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_SuccessNoSensor) {
 TEST_F(SetupCalibrationStateHandlerTest,
        GetNextStateCase_SuccessNoSensor_NoWipeDevice) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
+  EXPECT_TRUE(SetCalibrationMap(json_store_, {}));
 
-  auto handler = CreateStateHandler({});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState();
@@ -265,9 +219,7 @@ TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_SuccessNeedToCheck) {
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState();
@@ -290,9 +242,7 @@ TEST_F(SetupCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // Simulate the auto-transition scenario
@@ -305,10 +255,9 @@ TEST_F(SetupCalibrationStateHandlerTest,
 
 TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  EXPECT_TRUE(SetCalibrationMap(json_store_, {}));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No SetupCalibrationState.
@@ -333,9 +282,7 @@ TEST_F(SetupCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState();
@@ -348,9 +295,17 @@ TEST_F(SetupCalibrationStateHandlerTest,
        GetNextStateCase_ReadOnlyInstructionChanged) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {{kBaseInstructionName,
+                                     {{kBaseAccName, kStatusWaitingName},
+                                      {kBaseGyroName, kStatusWaitingName}}},
+                                    {kLidInstructionName,
+                                     {{kLidAccName, kStatusCompleteName},
+                                      {kLidGyroName, kStatusCompleteName}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state = handler->GetState();
@@ -368,9 +323,17 @@ TEST_F(SetupCalibrationStateHandlerTest,
 TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_NotInitialized) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {{kBaseInstructionName,
+                                     {{kBaseAccName, kStatusWaitingName},
+                                      {kBaseGyroName, kStatusWaitingName}}},
+                                    {kLidInstructionName,
+                                     {{kLidAccName, kStatusCompleteName},
+                                      {kLidGyroName, kStatusCompleteName}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
+  auto handler = CreateStateHandler();
 
   RmadState state;
   auto setup_calibration_state = std::make_unique<SetupCalibrationState>();
@@ -386,9 +349,17 @@ TEST_F(SetupCalibrationStateHandlerTest, GetNextStateCase_NotInitialized) {
 TEST_F(SetupCalibrationStateHandlerTest, TryGetNextStateCaseAtBoot_Success) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  const std::map<std::string, std::map<std::string, std::string>>
+      predefined_calibration_map = {{kBaseInstructionName,
+                                     {{kBaseAccName, kStatusWaitingName},
+                                      {kBaseGyroName, kStatusWaitingName}}},
+                                    {kLidInstructionName,
+                                     {{kLidAccName, kStatusWaitingName},
+                                      {kLidGyroName, kStatusWaitingName}}}};
+  EXPECT_TRUE(
+      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
+
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
@@ -410,9 +381,7 @@ TEST_F(SetupCalibrationStateHandlerTest,
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
 
-  auto handler = CreateStateHandler(
-      {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
-       RMAD_COMPONENT_BASE_GYROSCOPE, RMAD_COMPONENT_LID_GYROSCOPE});
+  auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();

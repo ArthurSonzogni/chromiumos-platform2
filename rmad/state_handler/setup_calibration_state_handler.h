@@ -13,17 +13,12 @@
 #include <base/timer/timer.h>
 
 #include "rmad/utils/calibration_utils.h"
-#include "rmad/utils/iio_sensor_probe_utils.h"
 
 namespace rmad {
 
 class SetupCalibrationStateHandler : public BaseStateHandler {
  public:
   explicit SetupCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject mocked |iio_sensor_probe_utils_| for testing.
-  SetupCalibrationStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kSetupCalibration);
   SET_REPEATABLE;
@@ -36,8 +31,6 @@ class SetupCalibrationStateHandler : public BaseStateHandler {
   ~SetupCalibrationStateHandler() override = default;
 
  private:
-  std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils_;
-
   // To ensure that calibration starts from a higher priority, we use an
   // ordered map to traverse it with it's number of the setup instruction.
   // Once we find the first sensor to be calibrated, we only calibrate those

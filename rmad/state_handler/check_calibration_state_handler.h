@@ -11,17 +11,12 @@
 #include <memory>
 
 #include "rmad/utils/calibration_utils.h"
-#include "rmad/utils/iio_sensor_probe_utils.h"
 
 namespace rmad {
 
 class CheckCalibrationStateHandler : public BaseStateHandler {
  public:
   explicit CheckCalibrationStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject mocked |iio_sensor_probe_utils_| for testing.
-  CheckCalibrationStateHandler(
-      scoped_refptr<JsonStore> json_store,
-      std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kCheckCalibration);
   SET_REPEATABLE;
@@ -38,8 +33,6 @@ class CheckCalibrationStateHandler : public BaseStateHandler {
   bool CheckIsCalibrationRequired(const RmadState& state,
                                   bool* need_calibration,
                                   RmadErrorCode* error_code);
-
-  std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils_;
 
   // To ensure that calibration starts from a higher priority, we use an
   // ordered map to traverse the enumerator of its setup instruction.

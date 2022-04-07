@@ -13,8 +13,6 @@
 
 #include "rmad/constants.h"
 #include "rmad/utils/calibration_utils.h"
-#include "rmad/utils/fake_iio_sensor_probe_utils.h"
-#include "rmad/utils/iio_sensor_probe_utils_impl.h"
 
 namespace rmad {
 
@@ -58,46 +56,24 @@ namespace fake {
 
 FakeCheckCalibrationStateHandler::FakeCheckCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : CheckCalibrationStateHandler(
-          json_store, std::make_unique<FakeIioSensorProbeUtils>()) {}
+    : CheckCalibrationStateHandler(json_store) {}
 
 }  // namespace fake
 
 CheckCalibrationStateHandler::CheckCalibrationStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store) {
-  iio_sensor_probe_utils_ = std::make_unique<IioSensorProbeUtilsImpl>();
-}
-
-CheckCalibrationStateHandler::CheckCalibrationStateHandler(
-    scoped_refptr<JsonStore> json_store,
-    std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils)
-    : BaseStateHandler(json_store),
-      iio_sensor_probe_utils_(std::move(iio_sensor_probe_utils)) {}
+    : BaseStateHandler(json_store) {}
 
 RmadErrorCode CheckCalibrationStateHandler::InitializeState() {
-  // Always probe again and use the probe results to update |state_|.
-  std::set<RmadComponent> probed_components = iio_sensor_probe_utils_->Probe();
-  // Update probeable components using runtime_probe results.
-  for (RmadComponent component : probed_components) {
-    // Ignore the components that cannot be calibrated.
-    if (std::find(kComponentsNeedManualCalibration.begin(),
-                  kComponentsNeedManualCalibration.end(),
-                  component) == kComponentsNeedManualCalibration.end()) {
-      continue;
-    }
-    calibration_map_[GetCalibrationSetupInstruction(component)][component] =
-        CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
+  // The calibration map should be initialized in the provisioning state.
+  if (!GetCalibrationMap(json_store_, &calibration_map_)) {
+    LOG(ERROR) << "Failed to get calibration status.";
+    return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
-
-  // Ignore the return value, since we can initialize state handler from an
-  // empty or fulfilled dictionary.
-  InstructionCalibrationStatusMap original_calibration_map;
-  GetCalibrationMap(json_store_, &original_calibration_map);
 
   // We mark all components with an unexpected status as failed because it may
   // have some errors.
-  for (auto [instruction, components] : original_calibration_map) {
+  for (auto [instruction, components] : calibration_map_) {
     for (auto [component, status] : components) {
       if (calibration_map_.count(instruction) &&
           calibration_map_[instruction].count(component)) {

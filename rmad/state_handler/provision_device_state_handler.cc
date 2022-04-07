@@ -86,7 +86,8 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store),
       provision_signal_sender_(base::DoNothing()),
-      should_calibrate_(false) {
+      should_calibrate_(false),
+      sensor_integrity_(false) {
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
@@ -118,7 +119,8 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       iio_sensor_probe_utils_(std::move(iio_sensor_probe_utils)),
       ssfc_utils_(std::move(ssfc_utils)),
       vpd_utils_(std::move(vpd_utils)),
-      should_calibrate_(false) {
+      should_calibrate_(false),
+      sensor_integrity_(false) {
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   status_.set_progress(kProgressInit);
   status_.set_error(ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
@@ -216,7 +218,12 @@ ProvisionDeviceStateHandler::TryGetNextStateCaseAtBoot() {
       [[fallthrough]];
     case ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_NON_BLOCKING:
       if (should_calibrate_) {
-        return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
+        if (sensor_integrity_) {
+          return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
+        } else {
+          // TODO(genechang): Go to kCheckCalibration for the user to check.
+          return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
+        }
       } else if (bool wipe_device;
                  json_store_->GetValue(kWipeDevice, &wipe_device) &&
                  !wipe_device) {
@@ -258,12 +265,9 @@ void ProvisionDeviceStateHandler::InitializeCalibrationTask() {
   // the sensor team, which is different from the runtime probe service.
   std::set<RmadComponent> probed_components = iio_sensor_probe_utils_->Probe();
 
-  if (ProvisionStatus::Error error; !CheckSensorStatusIntegrity(
-          replaced_components_need_calibration, probed_components, &error)) {
-    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                 kProgressFailedBlocking, error);
-    return;
-  }
+  sensor_integrity_ =
+      CheckSensorStatusIntegrity(replaced_components_need_calibration,
+                                 probed_components, &calibration_map);
 
   // Update probeable components using runtime_probe results.
   for (RmadComponent component : probed_components) {
@@ -285,19 +289,21 @@ void ProvisionDeviceStateHandler::InitializeCalibrationTask() {
           CalibrationComponentStatus::RMAD_CALIBRATION_SKIP;
     }
   }
+
+  if (!SetCalibrationMap(json_store_, calibration_map)) {
+    LOG(ERROR) << "Failed to set the calibration map.";
+  }
 }
 
 bool ProvisionDeviceStateHandler::CheckSensorStatusIntegrity(
     const std::set<RmadComponent>& replaced_components_need_calibration,
     const std::set<RmadComponent>& probed_components,
-    ProvisionStatus::Error* error) {
+    InstructionCalibrationStatusMap* calibration_map) {
   // There are several situations:
   // 1. replaced & probed -> calibrate
   // 2. probed only -> skip
   // 3. replaced only w/ mlb repair-> ignore
-  // 4. replaced only w/o mlb repair -> error
-
-  *error = ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN;
+  // 4. replaced only w/o mlb repair -> V1: log message, V2: let user check
 
   // Since if it's a mainboard repair, all components are marked as replaced
   // and all situations are valid (cases 1, 2, and 3). In this case, we don't
@@ -307,34 +313,19 @@ bool ProvisionDeviceStateHandler::CheckSensorStatusIntegrity(
     return true;
   }
 
+  bool component_integrity = true;
   // Handle sensors marked as replaced but not probed (case 4).
   for (RmadComponent component : replaced_components_need_calibration) {
     if (probed_components.count(component)) {
       continue;
     }
-    // 4. replaced only w/o mlb repair -> error
-    switch (component) {
-      case RMAD_COMPONENT_BASE_ACCELEROMETER:
-        *error =
-            ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_BASE_ACCELEROMETER;
-        break;
-      case RMAD_COMPONENT_LID_ACCELEROMETER:
-        *error =
-            ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_LID_ACCELEROMETER;
-        break;
-      case RMAD_COMPONENT_BASE_GYROSCOPE:
-        *error = ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_BASE_GYROSCOPE;
-        break;
-      case RMAD_COMPONENT_LID_GYROSCOPE:
-        *error = ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_LID_GYROSCOPE;
-        break;
-      default:
-        NOTREACHED();
-        break;
-    }
-    return false;
+    // 4. replaced only w/o mlb repair -> V1: log message, V2: let user check
+    // TODO(genechang): Set to a missing status for displaying messages in V2
+    StoreErrorCode(RMAD_ERROR_MISSING_COMPONENT);
+    component_integrity = false;
   }
-  return true;
+
+  return component_integrity;
 }
 
 void ProvisionDeviceStateHandler::SendStatusSignal() {

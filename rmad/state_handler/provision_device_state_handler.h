@@ -18,6 +18,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/system/power_manager_client.h"
+#include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/crossystem_utils.h"
@@ -73,7 +74,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   bool CheckSensorStatusIntegrity(
       const std::set<RmadComponent>& replaced_components_need_calibration,
       const std::set<RmadComponent>& probed_components,
-      ProvisionStatus::Error* error);
+      InstructionCalibrationStatusMap* calibration_map);
 
   void SendStatusSignal();
   void StartStatusTimer();
@@ -105,6 +106,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   base::OneShotTimer reboot_timer_;
   mutable base::Lock lock_;
   bool should_calibrate_;
+  bool sensor_integrity_;
 };
 
 namespace fake {

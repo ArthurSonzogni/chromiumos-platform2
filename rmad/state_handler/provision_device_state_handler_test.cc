@@ -282,7 +282,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_BaseAccNotProbedFailedBlocking) {
+       TryGetNextStateCaseAtBoot_BaseAccNotProbedComplete) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(
@@ -322,19 +322,34 @@ TEST_F(ProvisionDeviceStateHandlerTest,
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 2);
   EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_BASE_ACCELEROMETER);
+            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
   auto [error_try_boot, state_case_try_boot] =
       handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_TRANSITION_FAILED);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kProvisionDevice);
+  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
+
+  InstructionCalibrationStatusMap calibration_map;
+  EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                                RMAD_COMPONENT_BASE_ACCELEROMETER)]
+                .count(RMAD_COMPONENT_BASE_ACCELEROMETER),
+            0);
+  EXPECT_EQ(
+      calibration_map[GetCalibrationSetupInstruction(
+          RMAD_COMPONENT_LID_ACCELEROMETER)][RMAD_COMPONENT_LID_ACCELEROMETER],
+      CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                RMAD_COMPONENT_BASE_GYROSCOPE)][RMAD_COMPONENT_BASE_GYROSCOPE],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                RMAD_COMPONENT_LID_GYROSCOPE)][RMAD_COMPONENT_LID_GYROSCOPE],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
 
   RunHandlerTaskRunner(handler);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_LidAccNotProbedFailedBlocking) {
+       TryGetNextStateCaseAtBoot_LidAccNotProbedComplete) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(
@@ -374,19 +389,34 @@ TEST_F(ProvisionDeviceStateHandlerTest,
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 2);
   EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_LID_ACCELEROMETER);
+            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
   auto [error_try_boot, state_case_try_boot] =
       handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_TRANSITION_FAILED);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kProvisionDevice);
+  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
+
+  InstructionCalibrationStatusMap calibration_map;
+  EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                RMAD_COMPONENT_BASE_ACCELEROMETER)]
+                           [RMAD_COMPONENT_BASE_ACCELEROMETER],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                                RMAD_COMPONENT_LID_ACCELEROMETER)]
+                .count(RMAD_COMPONENT_LID_ACCELEROMETER),
+            0);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                RMAD_COMPONENT_BASE_GYROSCOPE)][RMAD_COMPONENT_BASE_GYROSCOPE],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                RMAD_COMPONENT_LID_GYROSCOPE)][RMAD_COMPONENT_LID_GYROSCOPE],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
 
   RunHandlerTaskRunner(handler);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_BaseGyroNotProbedFailedBlocking) {
+       TryGetNextStateCaseAtBoot_BaseGyroNotProbedComplete) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(
@@ -426,19 +456,36 @@ TEST_F(ProvisionDeviceStateHandlerTest,
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 2);
   EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_BASE_GYROSCOPE);
+            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
   auto [error_try_boot, state_case_try_boot] =
       handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_TRANSITION_FAILED);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kProvisionDevice);
+  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
+
+  InstructionCalibrationStatusMap calibration_map;
+  EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
+  EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                RMAD_COMPONENT_BASE_ACCELEROMETER)]
+                           [RMAD_COMPONENT_BASE_ACCELEROMETER],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(
+      calibration_map[GetCalibrationSetupInstruction(
+          RMAD_COMPONENT_LID_ACCELEROMETER)][RMAD_COMPONENT_LID_ACCELEROMETER],
+      CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                                RMAD_COMPONENT_BASE_GYROSCOPE)]
+                .count(RMAD_COMPONENT_BASE_GYROSCOPE),
+            0);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                RMAD_COMPONENT_LID_GYROSCOPE)][RMAD_COMPONENT_LID_GYROSCOPE],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
 
   RunHandlerTaskRunner(handler);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_LidGyroNotProbedFailedBlocking) {
+       TryGetNextStateCaseAtBoot_LidGyroNotProbedComplete) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(
@@ -478,13 +525,29 @@ TEST_F(ProvisionDeviceStateHandlerTest,
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 2);
   EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_MISSING_LID_GYROSCOPE);
+            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
   auto [error_try_boot, state_case_try_boot] =
       handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_TRANSITION_FAILED);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kProvisionDevice);
+  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
+
+  InstructionCalibrationStatusMap calibration_map;
+  EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                RMAD_COMPONENT_BASE_ACCELEROMETER)]
+                           [RMAD_COMPONENT_BASE_ACCELEROMETER],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(
+      calibration_map[GetCalibrationSetupInstruction(
+          RMAD_COMPONENT_LID_ACCELEROMETER)][RMAD_COMPONENT_LID_ACCELEROMETER],
+      CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                RMAD_COMPONENT_BASE_GYROSCOPE)][RMAD_COMPONENT_BASE_GYROSCOPE],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                                RMAD_COMPONENT_LID_GYROSCOPE)]
+                .count(RMAD_COMPONENT_LID_GYROSCOPE),
+            0);
 
   RunHandlerTaskRunner(handler);
 }
