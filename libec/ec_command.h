@@ -67,15 +67,19 @@ class EcCommandInterface {
 };
 
 // Helper to build and send the command structures for cros_fp.
-template <typename O, typename I>
+template <typename Params, typename Response>
 class EcCommand : public EcCommandInterface {
  public:
-  explicit EcCommand(uint32_t cmd, uint32_t ver = 0, const O& req = {})
+  explicit EcCommand(uint32_t cmd, uint32_t ver = 0, const Params& req = {})
       : data_({
             .cmd = {.version = ver,
                     .command = cmd,
-                    .outsize = realsizeof<O>(),
-                    .insize = realsizeof<I>(),
+                    // "outsize" is the number of bytes of data going "out"
+                    // to the EC.
+                    .outsize = realsizeof<Params>(),
+                    // "insize" is the number of bytes we can accept as the
+                    // "incoming" data from the EC.
+                    .insize = realsizeof<Response>(),
                     .result = kEcCommandUninitializedResult},
             .req = req,
         }) {}
@@ -86,7 +90,7 @@ class EcCommand : public EcCommandInterface {
 
   void SetRespSize(uint32_t insize) { data_.cmd.insize = insize; }
   void SetReqSize(uint32_t outsize) { data_.cmd.outsize = outsize; }
-  void SetReq(const O& req) { data_.req = req; }
+  void SetReq(const Params& req) { data_.req = req; }
 
   /**
    * Run an EC command.
@@ -102,11 +106,11 @@ class EcCommand : public EcCommandInterface {
 
   bool RunWithMultipleAttempts(int fd, int num_attempts) override;
 
-  virtual I* Resp() { return &data_.resp; }
-  virtual const I* Resp() const { return &data_.resp; }
+  virtual Response* Resp() { return &data_.resp; }
+  virtual const Response* Resp() const { return &data_.resp; }
   uint32_t RespSize() const { return data_.cmd.insize; }
-  O* Req() { return &data_.req; }
-  const O* Req() const { return &data_.req; }
+  Params* Req() { return &data_.req; }
+  const Params* Req() const { return &data_.req; }
   virtual uint32_t Result() const { return data_.cmd.result; }
 
   uint32_t Version() const override { return data_.cmd.version; }
@@ -115,8 +119,8 @@ class EcCommand : public EcCommandInterface {
   struct Data {
     struct cros_ec_command_v2 cmd;
     union {
-      O req;
-      I resp;
+      Params req;
+      Response resp;
     };
   };
 
@@ -130,8 +134,8 @@ class EcCommand : public EcCommandInterface {
   }
 };
 
-template <typename O, typename I>
-bool EcCommand<O, I>::Run(int ec_fd) {
+template <typename Params, typename Response>
+bool EcCommand<Params, Response>::Run(int ec_fd) {
   data_.cmd.result = kEcCommandUninitializedResult;
 
   // We rely on the ioctl preserving data_.req when the command fails.
@@ -149,8 +153,9 @@ bool EcCommand<O, I>::Run(int ec_fd) {
   return (static_cast<uint32_t>(ret) == data_.cmd.insize);
 }
 
-template <typename O, typename I>
-bool EcCommand<O, I>::RunWithMultipleAttempts(int fd, int num_attempts) {
+template <typename Params, typename Response>
+bool EcCommand<Params, Response>::RunWithMultipleAttempts(int fd,
+                                                          int num_attempts) {
   for (int retry = 0; retry < num_attempts; retry++) {
     bool ret = Run(fd);
 
@@ -176,8 +181,9 @@ bool EcCommand<O, I>::RunWithMultipleAttempts(int fd, int num_attempts) {
   return false;
 }
 
-template <typename O, typename I>
-bool EcCommand<O, I>::ErrorTypeCanBeRetried(uint32_t ec_cmd_result) {
+template <typename Params, typename Response>
+bool EcCommand<Params, Response>::ErrorTypeCanBeRetried(
+    uint32_t ec_cmd_result) {
   switch (ec_cmd_result) {
     case kEcCommandUninitializedResult:
     case EC_RES_TIMEOUT:
