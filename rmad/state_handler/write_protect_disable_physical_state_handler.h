@@ -48,6 +48,11 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
+  // Try to auto-transition at boot.
+  GetNextStateCaseReply TryGetNextStateCaseAtBoot() override {
+    return GetNextStateCase(state_);
+  }
+
  protected:
   ~WriteProtectDisablePhysicalStateHandler() override = default;
 

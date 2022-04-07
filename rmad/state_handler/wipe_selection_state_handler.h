@@ -30,11 +30,6 @@ class WipeSelectionStateHandler : public BaseStateHandler {
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
-  // Disable transition at boot.
-  GetNextStateCaseReply TryGetNextStateCaseAtBoot() override {
-    return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
-  }
-
  protected:
   ~WipeSelectionStateHandler() override = default;
 

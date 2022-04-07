@@ -46,6 +46,11 @@ class WriteProtectDisableRsuStateHandler : public BaseStateHandler {
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
+  // Try to auto-transition at boot.
+  GetNextStateCaseReply TryGetNextStateCaseAtBoot() override {
+    return GetNextStateCase(state_);
+  }
+
  protected:
   ~WriteProtectDisableRsuStateHandler() override = default;
 

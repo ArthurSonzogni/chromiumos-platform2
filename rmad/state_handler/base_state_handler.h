@@ -85,9 +85,10 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   virtual GetNextStateCaseReply GetNextStateCase(const RmadState& state) = 0;
 
   // Return the next RmadState::StateCase in the RMA flow at the boot time,
-  // depending on device status.
+  // depending on device status. Do nothing by default.
   virtual GetNextStateCaseReply TryGetNextStateCaseAtBoot() {
-    return GetNextStateCase(state_);
+    return {.error = RMAD_ERROR_TRANSITION_FAILED,
+            .state_case = GetStateCase()};
   }
 
   // Store the state to |json_store_|.
