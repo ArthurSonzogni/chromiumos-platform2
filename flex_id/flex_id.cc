@@ -27,6 +27,7 @@ constexpr char kLegacyClientIdFile[] =
 constexpr char kDmiSerialPath[] = "sys/devices/virtual/dmi/id/product_serial";
 constexpr char kNetworkInterfacesPath[] = "sys/class/net";
 constexpr int kMinSerialLength = 2;
+// note: strings are lower-cased prior to comparison
 const char* kBadSerials[] = {"to be filled by o.e.m.",
                              "to be filled by o.e.m",
                              "123456789",
@@ -155,7 +156,7 @@ std::optional<std::string> FlexIdGenerator::TrySerial() {
     return std::nullopt;
 
   // check if the serial is in the bad serials list.
-  if (base::Contains(kBadSerials, serial))
+  if (base::Contains(kBadSerials, base::ToLowerASCII(serial.value())))
     return std::nullopt;
 
   return serial;
