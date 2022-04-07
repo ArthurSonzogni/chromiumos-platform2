@@ -17,6 +17,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/kill.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
@@ -55,26 +56,21 @@ ReadResult ReadFD(int fd, std::string* data) {
 class StreamMerger {
  public:
   explicit StreamMerger(std::vector<std::string>* output) : output_(output) {}
-  StreamMerger(const StreamMerger&) = delete;
-  StreamMerger& operator=(const StreamMerger&) = delete;
 
   ~StreamMerger() {
     for (size_t i = 0; i < kStreamCount; ++i) {
-      const std::string& remaining = remaining_[i];
-      if (!remaining.empty())
-        output_->push_back(base::JoinString({kTags[i], ": ", remaining}, ""));
+      if (std::string& s = remaining_[i]; !s.empty())
+        output_->push_back(std::move(s));
     }
   }
 
-  void Append(const size_t stream, const base::StringPiece data) {
-    DCHECK_LT(stream, kStreamCount);
+  void Append(const size_t i, const base::StringPiece data) {
+    DCHECK_LT(i, kStreamCount);
 
-    if (data.empty()) {
+    if (data.empty())
       return;
-    }
 
-    std::string& remaining = remaining_[stream];
-    const base::StringPiece tag = kTags[stream];
+    std::string& remaining = remaining_[i];
 
     std::vector<base::StringPiece> lines = base::SplitStringPiece(
         data, "\n", base::WhitespaceHandling::KEEP_WHITESPACE,
@@ -83,7 +79,7 @@ class StreamMerger {
     lines.pop_back();
 
     for (const base::StringPiece line : lines) {
-      output_->push_back(base::JoinString({tag, ": ", remaining, line}, ""));
+      output_->push_back(base::StrCat({remaining, line}));
       remaining.clear();
     }
 
@@ -93,13 +89,11 @@ class StreamMerger {
  private:
   // Number of streams to interleave.
   static const size_t kStreamCount = 2;
-  static const base::StringPiece kTags[kStreamCount];
   std::vector<std::string>* const output_;
   std::string remaining_[kStreamCount];
 };
 
 const size_t StreamMerger::kStreamCount;
-const base::StringPiece StreamMerger::kTags[kStreamCount] = {"OUT", "ERR"};
 
 // Opens /dev/null. Dies in case of error.
 base::ScopedFD OpenNull() {
@@ -265,12 +259,11 @@ void Process::Communicate(std::vector<std::string>* output,
                           base::ScopedFD err_fd) {
   DCHECK(output);
 
-  if (out_fd.is_valid()) {
-    CHECK(base::SetNonBlocking(out_fd.get()));
-  }
-  if (err_fd.is_valid()) {
-    CHECK(base::SetNonBlocking(err_fd.get()));
-  }
+  if (out_fd.is_valid())
+    PCHECK(base::SetNonBlocking(out_fd.get()));
+
+  if (err_fd.is_valid())
+    PCHECK(base::SetNonBlocking(err_fd.get()));
 
   std::string data;
   StreamMerger merger(output);
@@ -295,16 +288,17 @@ void Process::Communicate(std::vector<std::string>* output,
       break;
     }
 
-    if (ret) {
-      for (size_t i = 0; i < fds.size(); ++i) {
-        auto& f = fds[i];
-        if (f.revents) {
-          if (ReadFD(f.fd, &data) == ReadResult::kFailure) {
-            // Failure.
-            f.fd = kInvalidFD;
-          } else {
-            merger.Append(i, data);
-          }
+    if (ret == 0)
+      continue;
+
+    for (size_t i = 0; i < fds.size(); ++i) {
+      auto& f = fds[i];
+      if (f.revents) {
+        if (ReadFD(f.fd, &data) == ReadResult::kFailure) {
+          // Failure.
+          f.fd = kInvalidFD;
+        } else {
+          merger.Append(i, data);
         }
       }
     }

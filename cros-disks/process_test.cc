@@ -385,17 +385,16 @@ TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
   process.AddArgument(R"(
-      printf 'Line 1\nLine ' >&1;
-      printf 'Line 2\nLine' >&2;
-      printf '3\nLine 4\n' >&1;
-      printf ' 5\nLine 6' >&2;
+      printf 'Line 1\nLine 2\n' >&1;
+      printf 'Line 3\nLine 4\n' >&2;
+      printf 'Line 5\n' >&1;
+      printf 'Line 6' >&2;
     )");
 
   std::vector<std::string> output;
   EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, UnorderedElementsAre("OUT: Line 1", "OUT: Line 3",
-                                           "OUT: Line 4", "ERR: Line 2",
-                                           "ERR: Line 5", "ERR: Line 6"));
+  EXPECT_THAT(output, UnorderedElementsAre("Line 1", "Line 2", "Line 3",
+                                           "Line 4", "Line 5", "Line 6"));
 }
 
 TEST_P(ProcessRunTest, CapturesLotsOfOutputData) {
@@ -470,7 +469,7 @@ TEST_P(ProcessRunTest, ReadsFromStdIn) {
 
   std::vector<std::string> output;
   EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, ElementsAre("OUT: Line 1", "OUT: Line 2", "OUT: Line 3"));
+  EXPECT_THAT(output, ElementsAre("Line 1", "Line 2", "Line 3"));
 }
 
 TEST_P(ProcessRunTest, ReadsLotsFromStdIn) {
@@ -484,7 +483,7 @@ TEST_P(ProcessRunTest, ReadsLotsFromStdIn) {
 
   std::vector<std::string> output;
   EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, ElementsAre("OUT: 4096"));
+  EXPECT_THAT(output, ElementsAre("4096"));
 }
 
 TEST_P(ProcessRunTest, TruncatesDataFromStdIn) {
@@ -497,7 +496,7 @@ TEST_P(ProcessRunTest, TruncatesDataFromStdIn) {
 
   std::vector<std::string> output;
   EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, ElementsAre(Not("OUT: 100000")));
+  EXPECT_THAT(output, ElementsAre(Not("100000")));
 }
 
 TEST_P(ProcessRunTest, WaitDoesNotBlockWhenReadingFromStdIn) {
@@ -545,8 +544,7 @@ TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
   LOG(INFO) << "Running launcher process";
   std::vector<std::string> output;
   EXPECT_EQ(process.Run(&output), 5);
-  EXPECT_THAT(output,
-              ElementsAre(StartsWith("OUT: Started background process")));
+  EXPECT_THAT(output, ElementsAre(StartsWith("Started background process")));
 
   LOG(INFO) << "Closing unused fds";
   to_continue.child_fd.reset();
@@ -666,8 +664,8 @@ TEST_P(ProcessRunTest, PassCurrentEnvironment) {
 
   std::vector<std::string> output;
   EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, Contains("OUT: OLD_VAR_1='Old 1'"));
-  EXPECT_THAT(output, Contains("OUT: OLD_VAR_2='Old 2'"));
+  EXPECT_THAT(output, Contains("OLD_VAR_1='Old 1'"));
+  EXPECT_THAT(output, Contains("OLD_VAR_2='Old 2'"));
   EXPECT_EQ(unsetenv("OLD_VAR_1"), 0);
   EXPECT_EQ(unsetenv("OLD_VAR_2"), 0);
 }
@@ -692,15 +690,14 @@ TEST_P(ProcessRunTest, AppendExtraEnvironment) {
 
   std::vector<std::string> output;
   EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, Contains("OUT: OLD_VAR_1='Old 1'"));
-  EXPECT_THAT(output, Contains("OUT: OLD_VAR_2='Old 2'"));
-  EXPECT_THAT(output, Contains("OUT: MY_VAR_1=''"));
-  EXPECT_THAT(output, Contains("OUT: MY_VAR_2=' '"));
-  EXPECT_THAT(output, Contains("OUT: MY_VAR_3='='"));
+  EXPECT_THAT(output, Contains("OLD_VAR_1='Old 1'"));
+  EXPECT_THAT(output, Contains("OLD_VAR_2='Old 2'"));
+  EXPECT_THAT(output, Contains("MY_VAR_1=''"));
+  EXPECT_THAT(output, Contains("MY_VAR_2=' '"));
+  EXPECT_THAT(output, Contains("MY_VAR_3='='"));
   EXPECT_THAT(
       output,
-      Contains(
-          R"(OUT: MY_VAR_4='abc 123 ~`!@#$%^&*()_-+={[}]|\:;"'"'"'<,>.?/')"));
+      Contains(R"(MY_VAR_4='abc 123 ~`!@#$%^&*()_-+={[}]|\:;"'"'"'<,>.?/')"));
   EXPECT_EQ(unsetenv("OLD_VAR_1"), 0);
   EXPECT_EQ(unsetenv("OLD_VAR_2"), 0);
 }
