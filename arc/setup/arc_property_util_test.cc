@@ -720,6 +720,21 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=Intel\nro.soc.model=i7-920\n"},
         {"nomatch\nnomatch\nnomatch\n", ""},
 
+        // For an Asuka board.
+        {"model name\t: Intel(R) Celeron(R) CPU 3855U @ 1.60GHz\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=3855U\n"},
+
+        // For a Bob board. Note additional space around model name.
+        {"model name\t: Intel(R) Celeron(R) CPU  N3060  @ 1.60GHz\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=N3060\n"},
+
+        // For a Dedede board (beetley). "CPU" is absent.
+        {"model name\t: Intel(R) Celeron(R) N4500 @ 1.10GHz\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=N4500\n"},
+
         // For a Zork board.
         {"line1\n"
          "model name\t: AMD Ryzen 3 3250C 15W with Radeon Graphics\n"

@@ -559,7 +559,10 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
   base::StringPiece manufacturer;
   if (re2::RE2::PartialMatch(
           model_field, R"(Intel\(R\) (?:Celeron\(R\)|Core\(TM\)) ([^ ]+) CPU)",
-          &model)) {
+          &model) ||
+      re2::RE2::PartialMatch(model_field,
+                             R"(Intel\(R\) Celeron\(R\)(?: CPU)? +([^ ]+) +@)",
+                             &model)) {
     manufacturer = "Intel";
   } else if (re2::RE2::PartialMatch(
                  model_field,
