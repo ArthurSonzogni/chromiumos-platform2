@@ -100,7 +100,7 @@ bool MeiClientCharDevice::Receive(std::string* data) {
   ssize_t rsize =
       syscaller_->Read(fd_, message_buffer_.data(), max_message_size_);
   if (rsize < 0) {
-    LOG(ERROR) << ": Error calling `read()`: " << errno;
+    PLOG(ERROR) << ": Error calling `read()`";
     return false;
   }
   data->assign(message_buffer_.begin(), message_buffer_.begin() + rsize);
@@ -112,7 +112,7 @@ bool MeiClientCharDevice::InitializeInternal() {
 
   fd_ = syscaller_->Open(mei_path_.c_str(), O_RDWR);
   if (fd_ == -1) {
-    LOG(ERROR) << __func__ << ": Error calling `open()`: " << errno;
+    PLOG(ERROR) << __func__ << ": Error calling `open()`";
     return false;
   }
   struct mei_connect_client_data data = {};
@@ -120,7 +120,7 @@ bool MeiClientCharDevice::InitializeInternal() {
 
   int result = syscaller_->Ioctl(fd_, IOCTL_MEI_CONNECT_CLIENT, &data);
   if (result) {
-    LOG(ERROR) << __func__ << ": Error calling `ioctl()`: " << errno;
+    PLOG(ERROR) << __func__ << ": Error calling `ioctl()`: " << result;
     Uninitialize();
     return false;
   }
@@ -149,7 +149,7 @@ bool MeiClientCharDevice::EnsureWriteSuccess() {
     return false;
   }
   if (rc < 0) {
-    LOG(ERROR) << __func__ << ": Error calling `select()`: " << errno;
+    PLOG(ERROR) << __func__ << ": Error calling `select()`";
     return false;
   }
   // Since only `fd_` is checked, rc > 0 means `fd_` must be ready.
