@@ -25,7 +25,7 @@ setup(
         'console_scripts': [
             '{0} = cros_config_host.{0}:main'.format(script) for script in (
                 'cros_config_host',
-                'cros_config_join_config_payloads',
+                'cros_config_merge_backfilled_config',
                 'cros_config_proto_converter',
                 'cros_config_schema',
             )
