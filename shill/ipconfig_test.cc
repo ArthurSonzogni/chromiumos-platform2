@@ -4,52 +4,30 @@
 
 #include "shill/ipconfig.h"
 
-#include <sys/time.h>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/logging.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/mock_log.h"
-#include "shill/net/mock_time.h"
 #include "shill/static_ip_parameters.h"
 
 using testing::_;
-using testing::DoAll;
-using testing::EndsWith;
 using testing::Mock;
 using testing::Return;
-using testing::SetArgPointee;
 using testing::Test;
 
 namespace shill {
 
 namespace {
 const char kDeviceName[] = "testdevice";
-const uint32_t kTimeNow = 10;
 }  // namespace
 
 class IPConfigTest : public Test {
  public:
-  IPConfigTest() : ipconfig_(new IPConfig(&control_, kDeviceName)) {
-    ipconfig_->time_ = &time_;
-  }
-
-  void SetUp() override {
-    ScopeLogger::GetInstance()->EnableScopesByName("inet");
-    ScopeLogger::GetInstance()->set_verbose_level(3);
-  }
-
-  void TearDown() override {
-    ScopeLogger::GetInstance()->EnableScopesByName("-inet");
-    ScopeLogger::GetInstance()->set_verbose_level(0);
-  }
+  IPConfigTest() : ipconfig_(new IPConfig(&control_, kDeviceName)) {}
 
  protected:
   IPConfigMockAdaptor* GetAdaptor() {
@@ -90,7 +68,6 @@ class IPConfigTest : public Test {
   }
 
   MockControl control_;
-  MockTime time_;
   IPConfigRefPtr ipconfig_;
 };
 
@@ -171,50 +148,6 @@ TEST_F(IPConfigTest, PropertyChanges) {
   EXPECT_CALL(*adaptor, EmitStringsChanged(kNameServersProperty, _));
   ipconfig_->ResetProperties();
   Mock::VerifyAndClearExpectations(adaptor);
-}
-
-TEST_F(IPConfigTest, UpdateLeaseExpirationTime) {
-  const struct timeval expected_time_now = {kTimeNow, 0};
-  uint32_t lease_duration = 1;
-  EXPECT_CALL(time_, GetTimeBoottime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(expected_time_now), Return(0)));
-  ipconfig_->UpdateLeaseExpirationTime(lease_duration);
-  EXPECT_EQ(kTimeNow + lease_duration,
-            ipconfig_->current_lease_expiration_time_->tv_sec);
-}
-
-TEST_F(IPConfigTest, TimeToLeaseExpiry_NoDHCPLease) {
-  ScopedMockLog log;
-  // |current_lease_expiration_time_| has not been set, so expect an error.
-  EXPECT_CALL(log, Log(_, _, EndsWith("No current DHCP lease")));
-  EXPECT_FALSE(ipconfig_->TimeToLeaseExpiry().has_value());
-}
-
-TEST_F(IPConfigTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
-  ScopedMockLog log;
-  const struct timeval time_now = {kTimeNow, 0};
-  // Set |current_lease_expiration_time_| so it is expired (i.e. earlier than
-  // current time).
-  ipconfig_->current_lease_expiration_time_ = {kTimeNow - 1, 0};
-  EXPECT_CALL(time_, GetTimeBoottime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(time_now), Return(0)));
-  EXPECT_CALL(log,
-              Log(_, _, EndsWith("Current DHCP lease has already expired")));
-  EXPECT_FALSE(ipconfig_->TimeToLeaseExpiry().has_value());
-}
-
-TEST_F(IPConfigTest, TimeToLeaseExpiry_Success) {
-  const uint32_t expected_time_to_expiry = 10;
-  const struct timeval time_now = {kTimeNow, 0};
-  // Set |current_lease_expiration_time_| so it appears like we already
-  // have obtained a DHCP lease before.
-  ipconfig_->current_lease_expiration_time_ = {
-      kTimeNow + expected_time_to_expiry, 0};
-  EXPECT_CALL(time_, GetTimeBoottime(_))
-      .WillOnce(DoAll(SetArgPointee<0>(time_now), Return(0)));
-  auto time_left = ipconfig_->TimeToLeaseExpiry();
-  EXPECT_TRUE(time_left.has_value());
-  EXPECT_EQ(base::Seconds(expected_time_to_expiry), time_left);
 }
 
 }  // namespace shill

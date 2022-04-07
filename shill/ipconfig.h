@@ -184,14 +184,14 @@ class IPConfig : public base::RefCounted<IPConfig> {
   friend class IPConfigTest;
   friend class ConnectionTest;
 
+  // TODO(b/227560694): Can be removed after moving lease fields into
+  // DHCPConfig.
+  friend class DHCPConfigTest;
+
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(DeviceTest, OnIPConfigExpired);
   FRIEND_TEST(IPConfigTest, UpdateProperties);
-  FRIEND_TEST(IPConfigTest, UpdateLeaseExpirationTime);
-  FRIEND_TEST(IPConfigTest, TimeToLeaseExpiry_NoDHCPLease);
-  FRIEND_TEST(IPConfigTest, TimeToLeaseExpiry_CurrentLeaseExpired);
-  FRIEND_TEST(IPConfigTest, TimeToLeaseExpiry_Success);
   FRIEND_TEST(ResolverTest, Empty);
   FRIEND_TEST(ResolverTest, NonEmpty);
   FRIEND_TEST(RoutingTableTest, RouteAddDelete);

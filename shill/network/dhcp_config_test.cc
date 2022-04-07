@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <sys/time.h>
 #include <utility>
 
 #include <base/bind.h>
@@ -14,8 +15,10 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/logging.h"
 #include "shill/mock_log.h"
 #include "shill/mock_process_manager.h"
+#include "shill/net/mock_time.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_dhcp_proxy.h"
 #include "shill/store/property_store_test.h"
@@ -26,17 +29,22 @@ using testing::_;
 using testing::AnyNumber;
 using testing::ByMove;
 using testing::ContainsRegex;
+using testing::DoAll;
+using testing::EndsWith;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
+using testing::SetArgPointee;
 
 namespace shill {
 
 namespace {
-const char kDeviceName[] = "eth0";
-const char kDhcpMethod[] = "dhcp";
-const char kLeaseFileSuffix[] = "leasefilesuffix";
-const bool kHasLeaseSuffix = true;
+constexpr char kDeviceName[] = "eth0";
+constexpr char kDhcpMethod[] = "dhcp";
+constexpr char kLeaseFileSuffix[] = "leasefilesuffix";
+constexpr bool kHasLeaseSuffix = true;
+constexpr uint32_t kTimeNow = 10;
+constexpr uint32_t kLeaseDuration = 5;
 }  // namespace
 
 class TestDHCPConfig : public DHCPConfig {
@@ -74,11 +82,34 @@ class DHCPConfigTest : public PropertyStoreTest {
                                    &provider_,
                                    kDeviceName,
                                    kDhcpMethod,
-                                   kLeaseFileSuffix)) {}
+                                   kLeaseFileSuffix)) {
+    config_->time_ = &time_;
+  }
 
-  void SetUp() override { config_->process_manager_ = &process_manager_; }
+  void SetUp() override {
+    config_->process_manager_ = &process_manager_;
+    ScopeLogger::GetInstance()->EnableScopesByName("inet");
+    ScopeLogger::GetInstance()->set_verbose_level(3);
+  }
+
+  void TearDown() override {
+    ScopeLogger::GetInstance()->EnableScopesByName("-inet");
+    ScopeLogger::GetInstance()->set_verbose_level(0);
+  }
+
+  // Sets the current time returned by time_.GetTimeBoottime() to |second|.
+  void SetCurrentTimeToSecond(uint32_t second) {
+    struct timeval current = {static_cast<__time_t>(second), 0};
+    EXPECT_CALL(time_, GetTimeBoottime(_))
+        .WillOnce(DoAll(SetArgPointee<0>(current), Return(0)));
+  }
 
   void StopInstance() { config_->Stop("In test"); }
+
+  void InvokeOnIPConfigUpdated(const IPConfig::Properties& properties,
+                               bool new_lease_acquired) {
+    config_->OnIPConfigUpdated(properties, new_lease_acquired);
+  }
 
   TestDHCPConfigRefPtr CreateMockMinijailConfig(
       const std::string& lease_suffix);
@@ -88,6 +119,7 @@ class DHCPConfigTest : public PropertyStoreTest {
 
   std::unique_ptr<MockDHCPProxy> proxy_;
   MockProcessManager process_manager_;
+  MockTime time_;
   TestDHCPConfigRefPtr config_;
   MockDHCPProvider provider_;
 };
@@ -146,6 +178,39 @@ TEST_F(DHCPConfigTest, StartWithoutLeaseSuffix) {
   EXPECT_FALSE(config->Start());
 }
 
+TEST_F(DHCPConfigTest, TimeToLeaseExpiry_Success) {
+  IPConfig::Properties properties;
+  properties.lease_duration_seconds = kLeaseDuration;
+  SetCurrentTimeToSecond(kTimeNow);
+  InvokeOnIPConfigUpdated(properties, true);
+
+  for (uint32_t i = 0; i < kLeaseDuration; i++) {
+    SetCurrentTimeToSecond(kTimeNow + i);
+    EXPECT_EQ(base::Seconds(kLeaseDuration - i), config_->TimeToLeaseExpiry());
+  }
+}
+
+TEST_F(DHCPConfigTest, TimeToLeaseExpiry_NoDHCPLease) {
+  ScopedMockLog log;
+  // |current_lease_expiration_time_| has not been set, so expect an error.
+  EXPECT_CALL(log, Log(_, _, EndsWith("No current DHCP lease")));
+  EXPECT_FALSE(config_->TimeToLeaseExpiry().has_value());
+}
+
+TEST_F(DHCPConfigTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
+  IPConfig::Properties properties;
+  properties.lease_duration_seconds = kLeaseDuration;
+  SetCurrentTimeToSecond(kTimeNow);
+  InvokeOnIPConfigUpdated(properties, true);
+
+  // Lease should expire at kTimeNow + kLeaseDuration.
+  ScopedMockLog log;
+  SetCurrentTimeToSecond(kTimeNow + kLeaseDuration + 1);
+  EXPECT_CALL(log,
+              Log(_, _, EndsWith("Current DHCP lease has already expired")));
+  EXPECT_FALSE(config_->TimeToLeaseExpiry().has_value());
+}
+
 namespace {
 
 class DHCPConfigCallbackTest : public DHCPConfigTest {
@@ -194,7 +259,7 @@ TEST_F(DHCPConfigCallbackTest, NotifyExpiry) {
   // triggered right after 1 second.
   IPConfig::Properties properties;
   properties.lease_duration_seconds = 1;
-  config_->OnIPConfigUpdated(properties, true);
+  InvokeOnIPConfigUpdated(properties, true);
 
   dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
 
@@ -225,7 +290,7 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
   // running inadvertently as a result.
   EXPECT_CALL(*this, UpdateCallback(ConfigRef(), true))
       .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
-  config_->OnIPConfigUpdated(properties, true);
+  InvokeOnIPConfigUpdated(properties, true);
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
@@ -240,7 +305,7 @@ TEST_F(DHCPConfigCallbackTest, NotifyUpdateWithDropRef) {
         config_ = nullptr;
         ip_config_ = nullptr;
       });
-  config_->OnIPConfigUpdated({}, true);
+  InvokeOnIPConfigUpdated({}, true);
 }
 
 TEST_F(DHCPConfigCallbackTest, ProcessAcquisitionTimeout) {
