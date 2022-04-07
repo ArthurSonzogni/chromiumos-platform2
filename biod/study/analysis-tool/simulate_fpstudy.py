@@ -127,8 +127,8 @@ def GenerateFARResults(
                        num_users=num_users,
                        far_decisions=df,
                        fa_list=None)
-        e.AddGroups(user_groups_tbl)
-        df = e.FARDecisions()
+        e.add_groups(user_groups_tbl)
+        df = e.far_decisions()
 
     time_end = time.perf_counter()
     if verbose:

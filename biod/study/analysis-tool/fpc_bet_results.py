@@ -121,7 +121,7 @@ class FPCBETResults:
             engine='python',
         )
 
-        for col in Experiment.FalseTableCols:
+        for col in Experiment.FALSE_TABLE_COLS:
             col_text = tbl[col].str.extract('= (\d+)', expand=False)
             tbl[col] = pd.to_numeric(col_text)
 

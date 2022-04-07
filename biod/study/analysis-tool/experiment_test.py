@@ -13,7 +13,7 @@ import simulate_fpstudy
 from experiment import Experiment
 
 
-class Test_FAQuery(unittest.TestCase):
+class Test_fa_query(unittest.TestCase):
     def setUp(self):
         # VerifyUser VerifyFinger VerifySample EnrollUser EnrollFinger Decision
         # This can take about 2 seconds.
@@ -31,32 +31,32 @@ class Test_FAQuery(unittest.TestCase):
             far_decisions=self.far_decisions,
         )
 
-    def test_benchmark_faquery1(self):
+    def test_benchmark_fa_query1(self):
         print('Query 1 Timing')
 
-        fpsutils.benchmark('self.exp.FAQuery(verify_user_id=10071)',
+        fpsutils.benchmark('self.exp.fa_query(verify_user_id=10071)',
                            globals={**globals(), **locals()})
-        fpsutils.benchmark('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0)',
+        fpsutils.benchmark('self.exp.fa_query(verify_user_id=10071, verify_finger_id=0)',
                            globals={**globals(), **locals()})
-        fpsutils.benchmark('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)',
+        fpsutils.benchmark('self.exp.fa_query(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)',
                            globals={**globals(), **locals()})
-        fpsutils.benchmark('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)',
+        fpsutils.benchmark('self.exp.fa_query(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)',
                            globals={**globals(), **locals()})
-        fpsutils.benchmark('self.exp.FAQuery(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)',
+        fpsutils.benchmark('self.exp.fa_query(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)',
                            globals={**globals(), **locals()})
 
-    def test_benchmark_faquery2(self):
+    def test_benchmark_fa_query2(self):
         print('Query 2 Timing')
 
-        fpsutils.benchmark('self.exp.FAQuery2(verify_user_id=10071)',
+        fpsutils.benchmark('self.exp.fa_query2(verify_user_id=10071)',
                            globals={**globals(), **locals()})
-        # fpsutils.autorange('self.exp.FAQuery2(verify_user_id=10071, verify_finger_id=0)',
+        # fpsutils.autorange('self.exp.fa_query2(verify_user_id=10071, verify_finger_id=0)',
         #                    globals={**globals(), **locals()})
-        # fpsutils.autorange('self.exp.FAQuery2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)',
+        # fpsutils.autorange('self.exp.fa_query2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60)',
         #                    globals={**globals(), **locals()})
-        # fpsutils.autorange('self.exp.FAQuery2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)',
+        # fpsutils.autorange('self.exp.fa_query2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057)',
         #                    globals={**globals(), **locals()})
-        fpsutils.benchmark('self.exp.FAQuery2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)',
+        fpsutils.benchmark('self.exp.fa_query2(verify_user_id=10071, verify_finger_id=0, verify_sample_index=60, enroll_user_id=10057, enroll_finger_id=4)',
                            globals={**globals(), **locals()})
 
 
