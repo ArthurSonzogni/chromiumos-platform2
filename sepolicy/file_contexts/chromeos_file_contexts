@@ -248,6 +248,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var                            u:object_r:cros_var:s0
 /var/cache                      u:object_r:cros_var_cache:s0
 /var/cache/shill(/.*)?          u:object_r:cros_var_cache_shill:s0
+/var/cache/modemfwd(/.*)?       u:object_r:cros_var_cache_modemfwd:s0
 /var/cache/modem-utilities(/.*)? u:object_r:cros_var_cache_modem_utilities:s0
 /var/cache/camera(/.*)?         u:object_r:cros_var_cache_camera:s0
 /var/cache/cups(/.*)?           u:object_r:cros_var_cache_cups:s0
@@ -268,6 +269,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/metrics(/.*)?          u:object_r:cros_metrics_file:s0
 /var/lib/metrics/uma-events     u:object_r:cros_metrics_uma_events_file:s0
 /var/lib/misc                   u:object_r:cros_var_lib_misc:s0
+/var/lib/modemfwd(/.*)?         u:object_r:cros_modemfwd_file:s0
 /var/lib/oemcrypto(/.*)?        u:object_r:cros_var_lib_oemcrypto:s0
 /var/lib/oobe_config_restore(/.*)? u:object_r:cros_var_lib_oobe_config_restore:s0
 /var/lib/power_manager(/.*)?    u:object_r:cros_var_lib_power_manager:s0
@@ -296,6 +298,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/log/hammerd.log            u:object_r:cros_hammerd_log:s0
 /var/log/messages               u:object_r:cros_syslog:s0
 /var/log/metrics(/.*)?          u:object_r:cros_var_log_metrics:s0
+/var/log/modemfwd(/.*)?         u:object_r:cros_var_log_modemfwd:s0
 /var/log/mount_options.log      u:object_r:chromeos_startup_mount_options_log_file:s0
 /var/log/net.log                u:object_r:cros_net_log:s0
 /var/log/powerd.out             u:object_r:cros_powerd_log:s0
