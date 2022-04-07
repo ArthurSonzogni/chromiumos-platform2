@@ -730,10 +730,20 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=Intel\n"
          "ro.soc.model=N3060\n"},
 
+        // For a Brya (primus) board.
+        {"model name\t: Intel(R) Pentium(R) Gold 8505\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=8505\n"},
+
         // For a Dedede board (beetley). "CPU" is absent.
         {"model name\t: Intel(R) Celeron(R) N4500 @ 1.10GHz\n",
          "ro.soc.manufacturer=Intel\n"
          "ro.soc.model=N4500\n"},
+
+        // For a Dedede board (blipper).
+        {"model name\t: Intel(R) Pentium(R) Silver N6000 @ 1.10GHz\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=N6000\n"},
 
         // For a Zork board.
         {"line1\n"
@@ -776,6 +786,18 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocPropertiesDoesNotOverwrite) {
   std::string dest = "xyz=123\n";
   AppendX86SocProperties(cpuinfo_path, &dest);
   EXPECT_THAT(dest, StartsWith("xyz=123\nro.soc."));
+}
+
+TEST_F(ArcPropertyUtilTest, AppendX86SocPropertiesPentiumWithSpaceInModel) {
+  // Make sure we don't support model names with spaces, rather than match them.
+  auto cpuinfo_path = GetTempDir().Append("cpuinfo");
+
+  ASSERT_TRUE(base::WriteFile(
+      cpuinfo_path, "model name : Intel(R) Pentium(R) Gold N1000 SecondEd\n"));
+
+  std::string dest;
+  AppendX86SocProperties(cpuinfo_path, &dest);
+  EXPECT_EQ(dest, "");
 }
 
 TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesNoMatch) {

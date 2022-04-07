@@ -543,7 +543,6 @@ void AppendArmSocProperties(const base::FilePath& sysfs_socinfo_devices_path,
 
 void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
                             std::string* dest) {
-  // TODO(b/175610620): Also support Intel Pentium devices.
   std::vector<char> buffer;
   auto cpuinfo = SafelyReadFile<re2::StringPiece>(cpuinfo_path, &buffer);
 
@@ -562,7 +561,13 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
           &model) ||
       re2::RE2::PartialMatch(model_field,
                              R"(Intel\(R\) Celeron\(R\)(?: CPU)? +([^ ]+) +@)",
-                             &model)) {
+                             &model) ||
+      // This one is tricky because the trailing "@ <clock frequency>" is
+      // optional.
+      re2::RE2::PartialMatch(
+          model_field,
+          R"(Intel\(R\) Pentium\(R\) (?:Gold|Silver) ([^ ]+)(?: @|$))",
+          &model)) {
     manufacturer = "Intel";
   } else if (re2::RE2::PartialMatch(
                  model_field,
