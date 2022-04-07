@@ -61,6 +61,7 @@ class CellularService : public Service {
   bool Unload() override;
   bool Save(StoreInterface* storage) override;
   bool IsVisible() const override;
+  void AutoConnect() override;
 
   // See matching method in cellular.h for details.
   const std::string& GetSimCardId() const;
@@ -139,6 +140,7 @@ class CellularService : public Service {
   void OnConnect(Error* error) override;
   void OnDisconnect(Error* error, const char* reason) override;
   bool IsAutoConnectable(const char** reason) const override;
+  base::TimeDelta GetMinAutoConnectCooldownTime() const override;
   base::TimeDelta GetMaxAutoConnectCooldownTime() const override;
   bool IsDisconnectable(Error* error) const override;
   bool IsMeteredByServiceProperties() const override;

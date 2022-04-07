@@ -63,8 +63,6 @@ const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 
 const int kCurrentApnCacheVersion = 2;
 
-constexpr base::TimeDelta kAutoConnectFailedTime = base::Seconds(20);
-
 bool GetNonEmptyField(const Stringmap& stringmap,
                       const std::string& fieldname,
                       std::string* value) {
@@ -583,6 +581,34 @@ void CellularService::OnDisconnect(Error* error, const char* reason) {
   cellular_->Disconnect(error, reason);
 }
 
+void CellularService::AutoConnect() {
+  const char* reason = nullptr;
+  if (!IsAutoConnectable(&reason)) {
+    if (reason == kAutoConnTechnologyNotAutoConnectable ||
+        reason == kAutoConnConnected) {
+      SLOG(this, 3) << "Suppressed autoconnect to " << log_name()
+                    << " Reason: " << reason;
+    } else if (reason == kAutoConnBusy ||
+               reason == kAutoConnMediumUnavailable) {
+      SLOG(this, 1) << "Suppressed autoconnect to " << log_name()
+                    << " Reason: " << reason;
+    } else if (reason == kAutoConnNotRegistered) {
+      SLOG(this, 1) << "Skip autoconnect attempt to " << log_name()
+                    << " Reason: " << reason;
+      ThrottleFutureAutoConnects();
+    } else {
+      LOG(INFO) << "Suppressed autoconnect to " << log_name()
+                << " Reason: " << reason;
+    }
+    return;
+  }
+
+  Error error;
+  LOG(INFO) << "Auto-connecting to " << log_name();
+  ThrottleFutureAutoConnects();
+  Connect(&error, __func__);
+}
+
 bool CellularService::IsAutoConnectable(const char** reason) const {
   if (!cellular_ || !cellular_->enabled()) {
     *reason = kAutoConnDeviceDisabled;
@@ -627,19 +653,15 @@ bool CellularService::IsAutoConnectable(const char** reason) const {
     *reason = kAutoConnBadPPPCredentials;
     return false;
   }
-  if (failure() == kFailureConnect) {
-    std::optional<base::TimeDelta> failed_time = GetTimeSinceFailed();
-    if (failed_time && *failed_time < kAutoConnectFailedTime) {
-      // For Cellular, do not immediately auto connect after a failure.
-      *reason = kAutoConnConnectFailed;
-      return false;
-    }
-  }
   if (out_of_credits_) {
     *reason = kAutoConnOutOfCredits;
     return false;
   }
   return true;
+}
+
+base::TimeDelta CellularService::GetMinAutoConnectCooldownTime() const {
+  return base::Seconds(10);
 }
 
 base::TimeDelta CellularService::GetMaxAutoConnectCooldownTime() const {

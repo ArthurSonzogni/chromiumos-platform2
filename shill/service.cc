@@ -610,7 +610,7 @@ void Service::ThrottleFutureAutoConnects() {
                                   auto_connect_cooldown_);
   }
   auto min_cooldown_time =
-      std::max(kMinAutoConnectCooldownTime,
+      std::max(GetMinAutoConnectCooldownTime(),
                auto_connect_cooldown_ * kAutoConnectCooldownBackoffFactor);
   auto_connect_cooldown_ =
       std::min(GetMaxAutoConnectCooldownTime(), min_cooldown_time);
@@ -1738,6 +1738,10 @@ bool Service::IsAutoConnectable(const char** reason) const {
   }
 
   return true;
+}
+
+base::TimeDelta Service::GetMinAutoConnectCooldownTime() const {
+  return kMinAutoConnectCooldownTime;
 }
 
 base::TimeDelta Service::GetMaxAutoConnectCooldownTime() const {

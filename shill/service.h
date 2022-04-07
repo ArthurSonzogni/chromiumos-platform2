@@ -684,6 +684,10 @@ class Service : public base::RefCounted<Service> {
   // point to C-string explaining why the service is not auto-connectable.
   virtual bool IsAutoConnectable(const char** reason) const;
 
+  // Returns minimum auto connect cooldown time for ThrottleFutureAutoConnects.
+  // May be overridden for types that require a longer cooldown period.
+  virtual base::TimeDelta GetMinAutoConnectCooldownTime() const;
+
   // Returns maximum auto connect cooldown time for ThrottleFutureAutoConnects.
   // May be overridden for types that require a longer cooldown period.
   virtual base::TimeDelta GetMaxAutoConnectCooldownTime() const;
@@ -763,6 +767,10 @@ class Service : public base::RefCounted<Service> {
   // Save the service's auto_connect value, without affecting its auto_connect
   // property itself. (cf. EnableAndRetainAutoConnect)
   void RetainAutoConnect();
+
+  // Disables autoconnect and posts a task to re-enable it after a cooldown.
+  // Note that autoconnect could be disabled for other reasons as well.
+  void ThrottleFutureAutoConnects();
 
   // Inform base class of the security properties for the service.
   //
@@ -931,10 +939,6 @@ class Service : public base::RefCounted<Service> {
   ONCSource ParseONCSourceFromUIData();
 
   void ReEnableAutoConnectTask();
-  // Disables autoconnect and posts a task to re-enable it after a cooldown.
-  // Note that autoconnect could be disabled for other reasons as well.
-  void ThrottleFutureAutoConnects();
-
   // Saves settings to current Profile, if we have one. Unlike
   // Manager::PersistService, SaveToProfile never assigns this Service to a
   // Profile.
