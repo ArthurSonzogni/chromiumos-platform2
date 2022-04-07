@@ -21,8 +21,11 @@ class FPCBETResults:
         """Identify which experiment test case."""
 
         TUDisabled = 'TC-01'
-        TUSpecificSamples = 'TC-02-TU'
-        TUEnabled = 'TC-03-TU-Continuous'
+        TUSpecificSamples_Disabled = 'TC-02-TU/EnableTemplateUpdating-0'
+        TUSpecificSamples_Enabled = 'TC-02-TU/EnableTemplateUpdating-0'
+        # The normal operating mode for production.
+        TUContinuous_Disabled = 'TC-03-TU-Continuous/EnableTemplateUpdating-0'
+        TUContinuous_Enabled = 'TC-03-TU-Continuous/EnableTemplateUpdating-1'
 
         @classmethod
         def all(cls) -> list:
