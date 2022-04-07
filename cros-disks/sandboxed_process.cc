@@ -190,7 +190,6 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
     base::ScopedFD ctrl_fd = SubprocessPipe::Open(
         SubprocessPipe::kChildToParent, &custom_init_control_fd_);
     PreserveFile(ctrl_fd.get());
-    SandboxedInit init(std::move(ctrl_fd));
 
     // Create child process.
     child_pid = minijail_fork(jail_);
@@ -201,8 +200,8 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd,
     }
 
     if (child_pid == 0) {
-      // In child process.
-      init.RunInsideSandboxNoReturn(base::BindOnce(Exec, args, env));
+      // In child 'init' process.
+      SandboxedInit(base::BindOnce(Exec, args, env), std::move(ctrl_fd)).Run();
       NOTREACHED();
     } else {
       // In parent process.

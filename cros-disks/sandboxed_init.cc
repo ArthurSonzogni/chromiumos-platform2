@@ -52,7 +52,7 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
   return std::move(p.child_fd);
 }
 
-[[noreturn]] void SandboxedInit::RunInsideSandboxNoReturn(Launcher launcher) {
+[[noreturn]] void SandboxedInit::Run() {
   // To run our custom init that handles daemonized processes inside the
   // sandbox we have to set up fork/exec ourselves. We do error-handling
   // the "minijail-style" - abort if something not right.
@@ -71,21 +71,15 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
     PLOG(FATAL) << "Cannot install SIGTERM signal handler";
 
   // PID of the launcher process inside the jail PID namespace (e.g. PID 2).
-  pid_t launcher_pid = StartLauncher(std::move(launcher));
-  CHECK_LT(0, launcher_pid);
+  const pid_t launcher_pid = StartLauncher();
 
-  _exit(RunInitLoop(launcher_pid, std::move(ctrl_fd_)));
-  NOTREACHED();
-}
-
-int SandboxedInit::RunInitLoop(pid_t launcher_pid, base::ScopedFD ctrl_fd) {
   // Set up the SIGPIPE signal handler. Since we write to the control pipe, we
   // don't want this 'init' process to be killed by a SIGPIPE.
   if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
     PLOG(FATAL) << "Cannot install SIGPIPE signal handler";
 
-  DCHECK(ctrl_fd.is_valid());
-  CHECK(base::SetNonBlocking(ctrl_fd.get()));
+  DCHECK(ctrl_fd_.is_valid());
+  CHECK(base::SetNonBlocking(ctrl_fd_.get()));
 
   // Close stdin and stdout. Keep stderr open, so that error messages can still
   // be logged.
@@ -104,10 +98,10 @@ int SandboxedInit::RunInitLoop(pid_t launcher_pid, base::ScopedFD ctrl_fd) {
     if (pid < 0) {
       if (errno == ECHILD) {
         // No more child. By then, we should have closed the control pipe.
-        DCHECK(!ctrl_fd.is_valid());
+        DCHECK(!ctrl_fd_.is_valid());
         VLOG(1) << "The 'init' process is finishing with exit code "
                 << last_failure_code;
-        return last_failure_code;
+        _exit(last_failure_code);
       }
 
       PLOG(FATAL) << "The 'init' process cannot wait for child processes";
@@ -128,35 +122,38 @@ int SandboxedInit::RunInitLoop(pid_t launcher_pid, base::ScopedFD ctrl_fd) {
       continue;
 
     // Write the 'launcher' process's exit code to the control pipe.
-    DCHECK(ctrl_fd.is_valid());
+    DCHECK(ctrl_fd_.is_valid());
     const ssize_t written =
-        HANDLE_EINTR(write(ctrl_fd.get(), &exit_code, sizeof(exit_code)));
+        HANDLE_EINTR(write(ctrl_fd_.get(), &exit_code, sizeof(exit_code)));
     if (written != sizeof(exit_code)) {
       PLOG(FATAL) << "Cannot write exit code " << exit_code
                   << " of the 'launcher' process " << launcher_pid
-                  << " to control pipe " << ctrl_fd.get();
+                  << " to control pipe " << ctrl_fd_.get();
     }
 
     // Close the control pipe.
-    ctrl_fd.reset();
+    ctrl_fd_.reset();
   }
+
+  NOTREACHED();
 }
 
-pid_t SandboxedInit::StartLauncher(Launcher launcher) {
-  const pid_t pid = fork();
-  if (pid < 0)
-    PLOG(FATAL) << "Cannot fork";
+pid_t SandboxedInit::StartLauncher() {
+  const pid_t launcher_pid = fork();
+  PLOG_IF(FATAL, launcher_pid < 0) << "Cannot create 'launcher' process";
 
-  if (pid > 0)
-    return pid;  // In parent process
+  if (launcher_pid > 0) {
+    // In parent (ie 'init') process.
+    return launcher_pid;
+  }
 
-  // In launcher process.
+  // In 'launcher' process.
   // Avoid leaking file descriptor into launcher process.
   DCHECK(ctrl_fd_.is_valid());
   ctrl_fd_.reset();
 
-  // Launch the invoked program.
-  _exit(std::move(launcher).Run());
+  // Run the launcher function.
+  _exit(std::move(launcher_).Run());
   NOTREACHED();
 }
 

@@ -55,11 +55,8 @@ class SandboxedInitTest : public testing::Test {
     SubprocessPipe out(SubprocessPipe::kChildToParent);
     SubprocessPipe ctrl(SubprocessPipe::kChildToParent);
 
-    SandboxedInit init(std::move(ctrl.child_fd));
-
     const pid_t pid = fork();
-    if (pid < 0)
-      PLOG(FATAL) << "Cannot fork";
+    PLOG_IF(FATAL, pid < 0) << "Cannot create 'init' process";
 
     if (pid > 0) {
       // In parent process.
@@ -102,8 +99,9 @@ class SandboxedInitTest : public testing::Test {
         << "Cannot set up SIGUSR1 handler";
 
     // Run the main 'init' process loop.
-    init.RunInsideSandboxNoReturn(
-        base::BindLambdaForTesting(std::move(launcher)));
+    SandboxedInit(base::BindLambdaForTesting(std::move(launcher)),
+                  std::move(ctrl.child_fd))
+        .Run();
     NOTREACHED();
   }
 

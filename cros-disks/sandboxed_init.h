@@ -32,21 +32,26 @@ struct SubprocessPipe {
   static base::ScopedFD Open(Direction direction, base::ScopedFD* parent_fd);
 };
 
-// To run daemons in a PID namespace under minijail we need to provide
-// an "init" process for the sandbox. As we rely on return code of the
-// launcher of the daemonized process we must send it through a side
-// channel back to the caller without waiting to the whole PID namespace
-// to terminate.
+// To run daemons in a PID namespace under minijail we need to provide an 'init'
+// process for the sandbox. As we rely on return code of the launcher of the
+// daemonized process we must send it through a side channel back to the caller
+// without waiting to the whole PID namespace to terminate.
 class SandboxedInit {
  public:
-  explicit SandboxedInit(base::ScopedFD ctrl_fd)
-      : ctrl_fd_(std::move(ctrl_fd)) {}
-
   // Function to run in the 'launcher' process.
   using Launcher = base::OnceCallback<int()>;
 
-  // To be run inside the jail. Never returns.
-  [[noreturn]] void RunInsideSandboxNoReturn(Launcher launcher);
+  SandboxedInit(Launcher launcher, base::ScopedFD ctrl_fd)
+      : launcher_(std::move(launcher)), ctrl_fd_(std::move(ctrl_fd)) {
+    DCHECK(launcher_);
+    DCHECK(ctrl_fd_.is_valid());
+  }
+
+  // This should be called in the 'init' process. Creates a child 'launcher'
+  // process in which the |launcher| function is run. Monitors child processes
+  // for termination. Terminates this 'init' process when there are no child
+  // process anymore.
+  [[noreturn]] void Run();
 
   // Reads and returns the exit code from |*ctrl_fd|. Returns -1 immediately if
   // no data is available yet. Closes |*ctrl_fd| once the exit code has been
@@ -67,8 +72,12 @@ class SandboxedInit {
   static int WaitStatusToExitCode(int wstatus);
 
  private:
-  static int RunInitLoop(pid_t launcher_pid, base::ScopedFD ctrl_fd);
-  pid_t StartLauncher(Launcher launcher);
+  // Creates a child 'launcher' process in which the launcher function is run.
+  // Returns the PID of this 'launcher' process.
+  pid_t StartLauncher();
+
+  // Function to run in the 'launcher' process.
+  Launcher launcher_;
 
   // Write end of the pipe into which the exit code of the launcher process is
   // written.
