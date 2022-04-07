@@ -200,7 +200,6 @@ class Suspender : public SuspendDelayObserver,
 
    private:
     Suspender* suspender_;  // weak
-
   };
 
   Suspender();
