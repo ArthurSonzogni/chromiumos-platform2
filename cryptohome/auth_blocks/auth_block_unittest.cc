@@ -1043,29 +1043,90 @@ TEST(LibScryptCompatAuthBlockTest, DeriveTest) {
             key_out_data.scrypt_wrapped_reset_seed_key->derived_key());
 }
 
-TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
-  brillo::SecureBlob mediator_pub_key;
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
-  brillo::SecureBlob epoch_pub_key;
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
-  cryptorecovery::CryptoRecoveryEpochResponse epoch_response;
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
+class CryptohomeRecoveryAuthBlockTest : public testing::Test {
+ public:
+  void SetUp() override {
+    ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
+        &mediator_pub_key_));
+    ASSERT_TRUE(
+        FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key_));
+    ASSERT_TRUE(
+        FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response_));
+  }
+
+  void PerformRecovery(
+      Tpm* tpm,
+      const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state,
+      cryptorecovery::CryptoRecoveryRpcResponse* response_proto,
+      brillo::SecureBlob* ephemeral_pub_key) {
+    ASSERT_TRUE(cryptohome_recovery_state.hsm_payload.has_value());
+    ASSERT_TRUE(
+        cryptohome_recovery_state.plaintext_destination_share.has_value());
+    ASSERT_TRUE(cryptohome_recovery_state.channel_priv_key.has_value());
+    ASSERT_TRUE(cryptohome_recovery_state.channel_pub_key.has_value());
+
+    brillo::SecureBlob channel_priv_key =
+        cryptohome_recovery_state.channel_priv_key.value();
+    brillo::SecureBlob channel_pub_key =
+        cryptohome_recovery_state.channel_pub_key.value();
+    brillo::SecureBlob hsm_payload_cbor =
+        cryptohome_recovery_state.hsm_payload.value();
+
+    // Deserialize HSM payload stored on disk.
+    cryptorecovery::HsmPayload hsm_payload;
+    EXPECT_TRUE(DeserializeHsmPayloadFromCbor(hsm_payload_cbor, &hsm_payload));
+
+    // Start recovery process.
+    std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
+        cryptorecovery::RecoveryCryptoImpl::Create(
+            tpm->GetRecoveryCryptoBackend());
+    ASSERT_TRUE(recovery);
+    brillo::SecureBlob rsa_priv_key;
+    cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
+    cryptorecovery::RequestMetadata request_metadata;
+    ASSERT_TRUE(recovery->GenerateRecoveryRequest(
+        hsm_payload, request_metadata, epoch_response_, rsa_priv_key,
+        channel_priv_key, channel_pub_key, &recovery_request,
+        ephemeral_pub_key));
+
+    // Simulate mediation (it will be done by Recovery Mediator service).
+    std::unique_ptr<FakeRecoveryMediatorCrypto> mediator =
+        FakeRecoveryMediatorCrypto::Create();
+    ASSERT_TRUE(mediator);
+    brillo::SecureBlob mediator_priv_key;
+    ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
+        &mediator_priv_key));
+    brillo::SecureBlob epoch_priv_key;
+    ASSERT_TRUE(
+        FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
+
+    ASSERT_TRUE(mediator->MediateRequestPayload(
+        epoch_pub_key_, epoch_priv_key, mediator_priv_key, recovery_request,
+        response_proto));
+  }
+
+ protected:
+  brillo::SecureBlob mediator_pub_key_;
+  brillo::SecureBlob epoch_pub_key_;
+  cryptorecovery::CryptoRecoveryEpochResponse epoch_response_;
+};
+
+TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   AuthInput auth_input;
   CryptohomeRecoveryAuthInput cryptohome_recovery_auth_input;
-  cryptohome_recovery_auth_input.mediator_pub_key = mediator_pub_key;
+  cryptohome_recovery_auth_input.mediator_pub_key = mediator_pub_key_;
   auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
 
-  // Create recovery key and generate Cryptohome Recovery secrets.
-  KeyBlobs created_key_blobs;
-
+  // Tpm::GetLECredentialBackend() returns `nullptr` -> revocation is not
+  // supported.
   cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
       recovery_crypto_fake_tpm_backend;
   NiceMock<MockTpm> tpm;
+  EXPECT_CALL(tpm, GetLECredentialBackend()).WillRepeatedly(Return(nullptr));
   EXPECT_CALL(tpm, GetRecoveryCryptoBackend())
       .WillRepeatedly(Return(&recovery_crypto_fake_tpm_backend));
+
+  KeyBlobs created_key_blobs;
   CryptohomeRecoveryAuthBlock auth_block(&tpm);
   AuthBlockState auth_state;
   EXPECT_EQ(CryptoError::CE_NONE,
@@ -1073,62 +1134,22 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   ASSERT_TRUE(created_key_blobs.vkk_key.has_value());
   ASSERT_TRUE(created_key_blobs.vkk_iv.has_value());
   ASSERT_TRUE(created_key_blobs.chaps_iv.has_value());
+  EXPECT_FALSE(auth_state.revocation_state.has_value());
+
   ASSERT_TRUE(std::holds_alternative<CryptohomeRecoveryAuthBlockState>(
       auth_state.state));
-
   const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state =
       std::get<CryptohomeRecoveryAuthBlockState>(auth_state.state);
-  ASSERT_TRUE(cryptohome_recovery_state.hsm_payload.has_value());
-  ASSERT_TRUE(
-      cryptohome_recovery_state.plaintext_destination_share.has_value());
-  ASSERT_TRUE(cryptohome_recovery_state.channel_priv_key.has_value());
-  ASSERT_TRUE(cryptohome_recovery_state.channel_pub_key.has_value());
 
-  brillo::SecureBlob channel_priv_key =
-      cryptohome_recovery_state.channel_priv_key.value();
-  brillo::SecureBlob channel_pub_key =
-      cryptohome_recovery_state.channel_pub_key.value();
-  brillo::SecureBlob hsm_payload_cbor =
-      cryptohome_recovery_state.hsm_payload.value();
-
-  // Deserialize HSM payload stored on disk.
-  cryptorecovery::HsmPayload hsm_payload;
-  EXPECT_TRUE(DeserializeHsmPayloadFromCbor(hsm_payload_cbor, &hsm_payload));
-
-  // Start recovery process.
-  std::unique_ptr<cryptorecovery::RecoveryCryptoImpl> recovery =
-      cryptorecovery::RecoveryCryptoImpl::Create(
-          tpm.GetRecoveryCryptoBackend());
-  ASSERT_TRUE(recovery);
   brillo::SecureBlob ephemeral_pub_key;
-  brillo::SecureBlob rsa_priv_key;
-  cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
-  cryptorecovery::RequestMetadata request_metadata;
-  ASSERT_TRUE(recovery->GenerateRecoveryRequest(
-      hsm_payload, request_metadata, epoch_response, rsa_priv_key,
-      channel_priv_key, channel_pub_key, &recovery_request,
-      &ephemeral_pub_key));
-
-  // Simulate mediation (it will be done by Recovery Mediator service).
-  std::unique_ptr<FakeRecoveryMediatorCrypto> mediator =
-      FakeRecoveryMediatorCrypto::Create();
-  ASSERT_TRUE(mediator);
-  brillo::SecureBlob mediator_priv_key;
-  ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
-      &mediator_priv_key));
-  brillo::SecureBlob epoch_priv_key;
-  ASSERT_TRUE(
-      FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
-
   cryptorecovery::CryptoRecoveryRpcResponse response_proto;
-  ASSERT_TRUE(mediator->MediateRequestPayload(
-      epoch_pub_key, epoch_priv_key, mediator_priv_key, recovery_request,
-      &response_proto));
+  PerformRecovery(&tpm, cryptohome_recovery_state, &response_proto,
+                  &ephemeral_pub_key);
 
   CryptohomeRecoveryAuthInput derive_cryptohome_recovery_auth_input;
   // Save data required for key derivation in auth_input.
   derive_cryptohome_recovery_auth_input.recovery_response = response_proto;
-  derive_cryptohome_recovery_auth_input.epoch_response = epoch_response;
+  derive_cryptohome_recovery_auth_input.epoch_response = epoch_response_;
   derive_cryptohome_recovery_auth_input.ephemeral_pub_key = ephemeral_pub_key;
   auth_input.cryptohome_recovery_auth_input =
       derive_cryptohome_recovery_auth_input;
@@ -1139,6 +1160,84 @@ TEST(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
   ASSERT_TRUE(derived_key_blobs.vkk_key.has_value());
   ASSERT_TRUE(derived_key_blobs.vkk_iv.has_value());
   ASSERT_TRUE(derived_key_blobs.chaps_iv.has_value());
+
+  // KeyBlobs generated by `Create` should be the same as KeyBlobs generated by
+  // `Derive`.
+  EXPECT_EQ(created_key_blobs.vkk_key, derived_key_blobs.vkk_key);
+  EXPECT_EQ(created_key_blobs.vkk_iv, derived_key_blobs.vkk_iv);
+  EXPECT_EQ(created_key_blobs.chaps_iv, derived_key_blobs.chaps_iv);
+}
+
+TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
+  AuthInput auth_input;
+  CryptohomeRecoveryAuthInput cryptohome_recovery_auth_input;
+  cryptohome_recovery_auth_input.mediator_pub_key = mediator_pub_key_;
+  auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
+
+  // Tpm::GetLECredentialBackend()::IsSupported() returns `true` -> revocation
+  // is supported.
+  cryptorecovery::RecoveryCryptoFakeTpmBackendImpl
+      recovery_crypto_fake_tpm_backend;
+  NiceMock<MockTpm> tpm;
+  NiceMock<MockLECredentialBackend> le_backend;
+  EXPECT_CALL(le_backend, IsSupported()).WillRepeatedly(Return(true));
+  EXPECT_CALL(tpm, GetLECredentialBackend())
+      .WillRepeatedly(Return(&le_backend));
+  EXPECT_CALL(tpm, GetRecoveryCryptoBackend())
+      .WillRepeatedly(Return(&recovery_crypto_fake_tpm_backend));
+  NiceMock<MockLECredentialManager> le_cred_manager;
+  brillo::SecureBlob le_secret, he_secret;
+  uint64_t le_label = 1;
+  EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
+      .WillOnce(DoAll(SaveArg<0>(&le_secret), SaveArg<1>(&he_secret),
+                      SetArgPointee<5>(le_label), Return(LE_CRED_SUCCESS)));
+
+  KeyBlobs created_key_blobs;
+  CryptohomeRecoveryAuthBlock auth_block(&tpm, &le_cred_manager);
+  AuthBlockState auth_state;
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Create(auth_input, &auth_state, &created_key_blobs));
+  ASSERT_TRUE(created_key_blobs.vkk_key.has_value());
+  ASSERT_TRUE(created_key_blobs.vkk_iv.has_value());
+  ASSERT_TRUE(created_key_blobs.chaps_iv.has_value());
+
+  // The revocation state should be created with the le_label returned by
+  // InsertCredential().
+  ASSERT_TRUE(auth_state.revocation_state.has_value());
+  EXPECT_EQ(le_label, auth_state.revocation_state.value().le_label);
+  EXPECT_FALSE(he_secret.empty());
+
+  ASSERT_TRUE(std::holds_alternative<CryptohomeRecoveryAuthBlockState>(
+      auth_state.state));
+  const CryptohomeRecoveryAuthBlockState& cryptohome_recovery_state =
+      std::get<CryptohomeRecoveryAuthBlockState>(auth_state.state);
+
+  brillo::SecureBlob ephemeral_pub_key;
+  cryptorecovery::CryptoRecoveryRpcResponse response_proto;
+  PerformRecovery(&tpm, cryptohome_recovery_state, &response_proto,
+                  &ephemeral_pub_key);
+
+  CryptohomeRecoveryAuthInput derive_cryptohome_recovery_auth_input;
+  // Save data required for key derivation in auth_input.
+  derive_cryptohome_recovery_auth_input.recovery_response = response_proto;
+  derive_cryptohome_recovery_auth_input.epoch_response = epoch_response_;
+  derive_cryptohome_recovery_auth_input.ephemeral_pub_key = ephemeral_pub_key;
+  auth_input.cryptohome_recovery_auth_input =
+      derive_cryptohome_recovery_auth_input;
+
+  brillo::SecureBlob le_secret_1;
+  EXPECT_CALL(le_cred_manager, CheckCredential(le_label, _, _, _))
+      .WillOnce(DoAll(SaveArg<1>(&le_secret_1), SetArgPointee<2>(he_secret),
+                      Return(LE_CRED_SUCCESS)));
+  KeyBlobs derived_key_blobs;
+  EXPECT_EQ(CryptoError::CE_NONE,
+            auth_block.Derive(auth_input, auth_state, &derived_key_blobs));
+  ASSERT_TRUE(derived_key_blobs.vkk_key.has_value());
+  ASSERT_TRUE(derived_key_blobs.vkk_iv.has_value());
+  ASSERT_TRUE(derived_key_blobs.chaps_iv.has_value());
+
+  // LE secret should be the same in InsertCredential and CheckCredential.
+  EXPECT_EQ(le_secret, le_secret_1);
 
   // KeyBlobs generated by `Create` should be the same as KeyBlobs generated by
   // `Derive`.

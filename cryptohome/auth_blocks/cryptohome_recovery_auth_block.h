@@ -21,6 +21,8 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
  public:
   // the `tpm` pointer must outlive `this`
   explicit CryptohomeRecoveryAuthBlock(Tpm* tpm);
+  explicit CryptohomeRecoveryAuthBlock(Tpm* tpm,
+                                       LECredentialManager* le_manager);
   CryptohomeRecoveryAuthBlock(const CryptohomeRecoveryAuthBlock&) = delete;
   CryptohomeRecoveryAuthBlock& operator=(const CryptohomeRecoveryAuthBlock&) =
       delete;
@@ -42,6 +44,8 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
 
  private:
   Tpm* const tpm_;
+  // Low Entropy credentials manager, needed for revocation support.
+  LECredentialManager* le_manager_;
 };
 
 }  // namespace cryptohome

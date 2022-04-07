@@ -17,6 +17,7 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/auth_blocks/auth_block_state.h"
+#include "cryptohome/auth_blocks/revocation.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_fake_tpm_backend_impl.h"
@@ -50,8 +51,14 @@ cryptorecovery::RecoveryCryptoTpmBackend* GetRecoveryCryptoTpmBackend(
 }  // namespace
 
 CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(Tpm* tpm)
-    : SyncAuthBlock(/*derivation_type=*/kCryptohomeRecovery), tpm_(tpm) {
-  DCHECK(tpm != nullptr);
+    : CryptohomeRecoveryAuthBlock(tpm, nullptr) {}
+
+CryptohomeRecoveryAuthBlock::CryptohomeRecoveryAuthBlock(
+    Tpm* tpm, LECredentialManager* le_manager)
+    : SyncAuthBlock(/*derivation_type=*/kCryptohomeRecovery),
+      tpm_(tpm),
+      le_manager_(le_manager) {
+  DCHECK(tpm_);
 }
 
 CryptoError CryptohomeRecoveryAuthBlock::Create(
@@ -118,6 +125,18 @@ CryptoError CryptohomeRecoveryAuthBlock::Create(
   auth_state.channel_pub_key = channel_pub_key;
   auth_state.salt = std::move(salt);
   *auth_block_state = AuthBlockState{.state = std::move(auth_state)};
+
+  if (revocation::IsRevocationSupported(tpm_)) {
+    DCHECK(le_manager_);
+    RevocationState revocation_state;
+    CryptoError err =
+        revocation::Create(le_manager_, &revocation_state, key_blobs);
+    if (err != CryptoError::CE_NONE) {
+      return err;
+    }
+    auth_block_state->revocation_state = revocation_state;
+  }
+
   return CryptoError::CE_NONE;
 }
 
@@ -180,6 +199,13 @@ CryptoError CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   key_blobs->vkk_key = aes_skey;
   key_blobs->vkk_iv = vkk_iv;
   key_blobs->chaps_iv = vkk_iv;
+
+  if (state.revocation_state.has_value()) {
+    DCHECK(revocation::IsRevocationSupported(tpm_));
+    DCHECK(le_manager_);
+    return revocation::Derive(le_manager_, state.revocation_state.value(),
+                              key_blobs);
+  }
 
   return CryptoError::CE_NONE;
 }
