@@ -281,7 +281,10 @@ class CellularCapability3gpp : public CellularCapability {
 
   void SetRoamingProperties(KeyValueStore* properties);
   bool SetApnProperties(const Stringmap& apn_info, KeyValueStore* properties);
-
+  // Disable dual-stack on FM350
+  // TODO(b/228528516) Remove this hack once the fix for
+  // b/228042798 lands.
+  bool IsDualStackSupported();
   void SetNextAttachApn();
   void FillInitialEpsBearerPropertyMap(KeyValueStore* properties);
 

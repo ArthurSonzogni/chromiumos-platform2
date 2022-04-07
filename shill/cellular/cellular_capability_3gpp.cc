@@ -758,6 +758,32 @@ void CellularCapability3gpp::SetRoamingProperties(KeyValueStore* properties) {
   properties->Set<bool>(kConnectAllowRoaming, cellular()->IsRoamingAllowed());
 }
 
+bool CellularCapability3gpp::IsDualStackSupported() {
+  if (!cellular()->device_id())
+    return true;
+
+  // Disable dual-stack on L850 + Verizon
+  const struct {
+    DeviceId device_id;
+    std::vector<std::string> operator_code;
+  } kAffectedDevices[] = {
+      {{DeviceId::BusType::kUsb, 0x2cb7, 0x0007},
+       {"310995", "311270", "311480"}},
+  };
+
+  for (const auto& affected_device : kAffectedDevices) {
+    if (cellular()->device_id()->Match(affected_device.device_id)) {
+      if (affected_device.operator_code.size() == 0 ||
+          std::find(affected_device.operator_code.begin(),
+                    affected_device.operator_code.end(),
+                    mobile_operator_info_->mccmnc()) !=
+              affected_device.operator_code.end())
+        return false;
+    }
+  }
+
+  return true;
+}
 bool CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
                                               KeyValueStore* properties) {
   if (!base::Contains(apn_info, kApnProperty)) {
@@ -787,7 +813,7 @@ bool CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
   if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
     properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
 
-  if (base::Contains(apn_info, kApnIpTypeProperty)) {
+  if (IsDualStackSupported() && base::Contains(apn_info, kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
         kConnectIpType,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
@@ -899,7 +925,7 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
   }
   if (allowed_auth != MM_BEARER_ALLOWED_AUTH_UNKNOWN)
     properties->Set<uint32_t>(kConnectAllowedAuth, allowed_auth);
-  if (base::Contains(apn_info, kApnIpTypeProperty)) {
+  if (IsDualStackSupported() && base::Contains(apn_info, kApnIpTypeProperty)) {
     properties->Set<uint32_t>(
         kConnectIpType,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
