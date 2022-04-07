@@ -17,6 +17,7 @@
 #include <google-lpa/lpa/data/proto/euicc_info_1.pb.h>
 
 #include "hermes/euicc.h"
+#include "hermes/euicc_cache.h"
 #include "hermes/executor.h"
 #include "hermes/hermes_common.h"
 #include "hermes/lpa_util.h"

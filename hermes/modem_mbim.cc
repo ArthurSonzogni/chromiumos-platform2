@@ -893,6 +893,8 @@ void ModemMbim::DeviceSlotStatusMappingRspCb(MbimDevice* device,
     modem_mbim->slot_info_.map_count_ = map_count;
     modem_mbim->slot_info_.cached_active_slot_ =
         slot_mappings[kExecutorIndex]->slot;
+    modem_mbim->slot_info_.get_slot_mapping_result_ =
+        slot_mappings[kExecutorIndex]->slot;
     VLOG(2) << "Map count:" << map_count
             << "& current active slot:" << slot_mappings[kExecutorIndex]->slot;
     modem_mbim->ProcessMbimResult(kModemSuccess);
@@ -1163,6 +1165,7 @@ void ModemMbim::ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) {
     return;
   }
   if (event.step == EuiccStep::END) {
+    slot_info_.get_slot_mapping_result_.reset();
     auto close_device_and_uninhibit = base::BindOnce(
         &ModemMbim::CloseDeviceAndUninhibit, weak_factory_.GetWeakPtr());
     // Close channel, followed by close device and uninhibit, and then execute
@@ -1213,7 +1216,18 @@ void ModemMbim::RestoreActiveSlot(ResultCallback cb) {
     std::move(cb).Run(kModemSuccess);
     return;
   }
-  OnEuiccEventStart(slot_info_.cached_active_slot_, true /* switch_slot_only */,
+  if (!slot_info_.get_slot_mapping_result_.has_value()) {
+    LOG(ERROR) << "Could not find slot number to switch to";
+    std::move(cb).Run(kModemMessageProcessingError);
+    return;
+  }
+  if (slot_info_.get_slot_mapping_result_ == slot_info_.cached_active_slot_) {
+    VLOG(2) << __func__ << "Already on the right slot";
+    std::move(cb).Run(kModemSuccess);
+    return;
+  }
+  OnEuiccEventStart(slot_info_.get_slot_mapping_result_.value(),
+                    true /* switch_slot_only */,
                     EuiccEventStep::GET_MBIM_DEVICE, std::move(cb));
 }
 

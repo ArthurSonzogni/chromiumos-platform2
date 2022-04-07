@@ -211,6 +211,12 @@ class ModemMbim : public Modem<MbimCmd> {
     guint32 map_count_;  // number of executors/ radio. 1 for DSSA
     guint32 slot_count_;
     int cached_active_slot_;
+    // cached_active_slot is updated when Hermes reads the slot mapping or when
+    // Hermes switches slots. It may be outdated if another daemon switches
+    // slots when Hermes is idle.
+    std::optional<int> get_slot_mapping_result_;
+    // get_slot_mapping_result_ may be used to  restore the active slot to that
+    // before a Hermes operation
     std::vector<MbimUiccSlotState> slot_state_;
     std::vector<std::string> eid_;
     bool IsEuicc(int slot) const;
