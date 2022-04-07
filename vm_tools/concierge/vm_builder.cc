@@ -537,6 +537,18 @@ base::Optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
          BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
   }
 
+  if (vm_memory_id_) {
+    std::string mms_control_socket =
+        "/run/mms_control_" + std::to_string(*vm_memory_id_) + ".sock";
+    cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(),
+                                 {"--balloon-control", mms_control_socket});
+  }
+
+  if (!memory_in_mib_.empty()) {
+    cmds.sibling_cmd_args.insert(cmds.sibling_cmd_args.end(),
+                                 {"--mem", memory_in_mib_});
+  }
+
   // TODO(b/215472603): Handle other parameters.
   return cmds;
 }
