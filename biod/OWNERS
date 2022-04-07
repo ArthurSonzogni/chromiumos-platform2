@@ -2,6 +2,8 @@
 # code. Do not set "noparent" or "per-file". See http://go/cros-shared-owners.
 # For bug components, see the DIR_METADATA file in this directory.
 
+agrandi@google.com
+bobbycasey@google.com
 hesling@chromium.org
 jora@google.com
 josienordrum@google.com
