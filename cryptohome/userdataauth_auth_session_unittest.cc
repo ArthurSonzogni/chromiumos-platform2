@@ -128,6 +128,12 @@ class AuthSessionInterfaceTest : public ::testing::Test {
     return userdataauth_.CreatePersistentUserImpl(auth_session_id);
   }
 
+  user_data_auth::CryptohomeErrorCode HandleAddCredentialForEphemeralVault(
+      AuthorizationRequest request, const AuthSession* auth_session) {
+    return userdataauth_.HandleAddCredentialForEphemeralVault(request,
+                                                              auth_session);
+  }
+
   AuthorizationRequest CreateAuthorization(const std::string& secret) {
     AuthorizationRequest req;
     req.mutable_key()->set_secret(secret);
@@ -223,12 +229,16 @@ TEST_F(AuthSessionInterfaceTest, PrepareEphemeralVault) {
   EXPECT_CALL(*user_session2, IsActive())
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*user_session2, IsEphemeral()).WillRepeatedly(Return(true));
   EXPECT_CALL(*user_session2, MountEphemeral(kUsername2))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   AuthSession* auth_session2 = auth_session_manager_->CreateAuthSession(
       kUsername2, AUTH_SESSION_FLAGS_EPHEMERAL_USER);
   ASSERT_THAT(PrepareEphemeralVaultImpl(auth_session2->serialized_token()),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  ASSERT_THAT(HandleAddCredentialForEphemeralVault(
+                  CreateAuthorization(kPassword3), auth_session2),
               Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
 
   // ... and so regular.

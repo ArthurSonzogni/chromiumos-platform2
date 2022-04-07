@@ -1091,6 +1091,11 @@ class UserDataAuth {
   user_data_auth::CryptohomeErrorCode CreatePersistentUserImpl(
       const std::string& auth_session_id);
 
+  // Handled add credentials for ephemeral users. This function does not save
+  // anything to the disk and just sets verifier in memory for screen unlock.
+  user_data_auth::CryptohomeErrorCode HandleAddCredentialForEphemeralVault(
+      AuthorizationRequest request, const AuthSession* auth_session);
+
   // =============== WebAuthn Related Helpers ===============
 
   bool PrepareWebAuthnSecret(const std::string& account_id,

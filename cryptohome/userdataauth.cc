@@ -3458,6 +3458,31 @@ bool UserDataAuth::StartAuthSession(
   return true;
 }
 
+user_data_auth::CryptohomeErrorCode
+UserDataAuth::HandleAddCredentialForEphemeralVault(
+    AuthorizationRequest request, const AuthSession* auth_session) {
+  scoped_refptr<UserSession> session =
+      GetOrCreateUserSession(auth_session->username());
+  // Check the user is already mounted and the session is ephemeral.
+  if (!session->IsActive()) {
+    LOG(ERROR) << "AddCredential failed as ephemeral user is not mounted: "
+               << auth_session->obfuscated_username();
+    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  }
+  if (!session->IsEphemeral()) {
+    LOG(ERROR) << "AddCredential failed as user Session is not ephemeral: "
+               << auth_session->obfuscated_username();
+    return user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED;
+  }
+
+  auto credentials = std::make_unique<Credentials>(
+      auth_session->username(), SecureBlob(request.key().secret()));
+  // Everything else can be the default.
+  credentials->set_key_data(request.key().data());
+  session->SetCredentials(*credentials);
+  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
 bool UserDataAuth::AddCredentials(
     user_data_auth::AddCredentialsRequest request,
     base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
@@ -3482,9 +3507,15 @@ bool UserDataAuth::AddCredentials(
     return false;
   }
 
-  // Add credentials using data in AuthorizationRequest and
-  // auth_session_token.
-  auth_session->AddCredentials(request, std::move(on_done));
+  if (auth_session->ephemeral_user()) {
+    reply.set_error(HandleAddCredentialForEphemeralVault(
+        request.authorization(), auth_session));
+    std::move(on_done).Run(reply);
+  } else {
+    // Add credentials using data in AuthorizationRequest and
+    // auth_session_token.
+    auth_session->AddCredentials(request, std::move(on_done));
+  }
   return true;
 }
 
