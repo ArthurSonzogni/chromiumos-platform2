@@ -21,6 +21,7 @@ class TRUNKS_EXPORT MeiClientSocket : public MeiClient {
  public:
   MeiClientSocket(const std::string& mei_path, const uuid_le& guid);
   ~MeiClientSocket() override;
+  bool IsSupport() override;
   bool Initialize() override;
   bool Send(const std::string& data, bool wait_for_response_ready) override;
   bool Receive(std::string* data) override;

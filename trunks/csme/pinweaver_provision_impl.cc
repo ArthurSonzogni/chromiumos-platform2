@@ -96,6 +96,13 @@ bool PinWeaverProvisionImpl::GetProvisionKeyContent(std::string& key_hash) {
 bool PinWeaverProvisionImpl::ProvisionSaltingKeyHash(
     const std::string& public_key_hash) {
   MeiClientFactory mei_client_factory;
+
+  // We don't need to provision salting key if the device doesn't support it.
+  if (GetPinwWeaverSaltingKeyType() == PinwWeaverSaltingKeyType::kNullKey &&
+      !mei_client_factory.CreateMeiClientForPinWeaverProvision()->IsSupport()) {
+    return true;
+  }
+
   PinWeaverProvisionClient client(&mei_client_factory);
 
   bool committed = false;

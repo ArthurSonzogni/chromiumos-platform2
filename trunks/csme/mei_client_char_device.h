@@ -28,6 +28,7 @@ class TRUNKS_EXPORT MeiClientCharDevice : public MeiClient {
                       const uuid_le& guid,
                       hwsec_foundation::Syscaller* syscaller);
   ~MeiClientCharDevice() override;
+  bool IsSupport() override;
   bool Initialize() override;
   // TODO(b/190621192): Avoid indefinite timeout for `Send()` and `Receive()`.
   bool Send(const std::string& data, bool wait_for_response_ready) override;

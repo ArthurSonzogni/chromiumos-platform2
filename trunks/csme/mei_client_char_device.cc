@@ -17,6 +17,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 
@@ -44,6 +45,10 @@ MeiClientCharDevice::MeiClientCharDevice(const std::string& mei_path,
 
 MeiClientCharDevice::~MeiClientCharDevice() {
   Uninitialize();
+}
+
+bool MeiClientCharDevice::IsSupport() {
+  return base::PathExists(base::FilePath(mei_path_));
 }
 
 bool MeiClientCharDevice::Initialize() {

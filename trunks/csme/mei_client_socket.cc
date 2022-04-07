@@ -17,6 +17,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 
 namespace trunks {
@@ -31,6 +32,10 @@ MeiClientSocket::MeiClientSocket(const std::string& mei_path,
 
 MeiClientSocket::~MeiClientSocket() {
   Uninitialize();
+}
+
+bool MeiClientSocket::IsSupport() {
+  return base::PathExists(base::FilePath(mei_path_));
 }
 
 bool MeiClientSocket::Initialize() {

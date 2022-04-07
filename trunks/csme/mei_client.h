@@ -12,11 +12,13 @@
 namespace trunks {
 namespace csme {
 
-// `MeiClient` provides the interfaces that conmmunicate with MEI. It is meant
+// `MeiClient` provides the interfaces that communicate with MEI. It is meant
 // to handle the connection and I/O of MEI.
 class TRUNKS_EXPORT MeiClient {
  public:
   virtual ~MeiClient() = default;
+  // Returns true when the device has MEI interface.
+  virtual bool IsSupport() = 0;
   // Initializes the connection to the device (or socket). Returns `true` iff
   // the reuired operations succeeds.
   virtual bool Initialize() = 0;
