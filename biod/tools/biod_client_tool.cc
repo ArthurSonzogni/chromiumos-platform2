@@ -460,8 +460,7 @@ int DoAuthenticate(base::WeakPtr<BiometricsManagerProxy> biometrics_manager) {
 int DoList(BiodProxy* biod, const std::string& user_id) {
   LOG(INFO) << biod::kBiodServicePath << " : BioD Root Object Path";
   for (const auto& biometrics_manager : biod->biometrics_managers()) {
-    base::StringPiece biometrics_manager_path =
-        biometrics_manager->path().value();
+    std::string biometrics_manager_path = biometrics_manager->path().value();
     if (base::StartsWith(biometrics_manager_path, biod::kBiodServicePath,
                          base::CompareCase::SENSITIVE)) {
       biometrics_manager_path =
@@ -478,7 +477,7 @@ int DoList(BiodProxy* biod, const std::string& user_id) {
 
     for (const RecordProxy& record :
          biometrics_manager->GetRecordsForUser(user_id)) {
-      base::StringPiece record_path(record.path().value());
+      std::string record_path(record.path().value());
       if (base::StartsWith(record_path, biometrics_manager_path,
                            base::CompareCase::SENSITIVE)) {
         record_path = record_path.substr(biometrics_manager_path.size() + 1);
