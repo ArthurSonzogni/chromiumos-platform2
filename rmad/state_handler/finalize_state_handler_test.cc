@@ -92,6 +92,7 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpDisabled_Success) {
         EXPECT_EQ(status.progress(), 1);
         EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
       }));
+  handler->RunState();
   task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
 }
 
@@ -106,6 +107,7 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_HwwpEnabled_Success) {
         EXPECT_EQ(status.progress(), 1);
         EXPECT_EQ(status.error(), FinalizeStatus::RMAD_FINALIZE_ERROR_UNKNOWN);
       }));
+  handler->RunState();
   task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
 }
 
@@ -121,6 +123,7 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_EnableSwwpFailed) {
         EXPECT_EQ(status.error(),
                   FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_SWWP);
       }));
+  handler->RunState();
   task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
 }
 
@@ -136,12 +139,14 @@ TEST_F(FinalizeStateHandlerTest, InitializeState_DisableFactoryModeFailed) {
         EXPECT_EQ(status.error(),
                   FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
       }));
+  handler->RunState();
   task_environment_.FastForwardBy(FinalizeStateHandler::kReportStatusInterval);
 }
 
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Success) {
   auto handler = CreateStateHandler(0, true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.RunUntilIdle();
 
   RmadState state;
@@ -156,6 +161,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_Success) {
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
   auto handler = CreateStateHandler(0, true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
 
   RmadState state;
   state.mutable_finalize()->set_choice(
@@ -171,6 +177,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_InProgress) {
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
   auto handler = CreateStateHandler(0, true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.RunUntilIdle();
 
   RmadState state;
@@ -183,6 +190,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingState) {
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
   auto handler = CreateStateHandler(0, true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.RunUntilIdle();
 
   RmadState state;
@@ -197,6 +205,7 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_MissingArgs) {
 TEST_F(FinalizeStateHandlerTest, GetNextStateCase_BlockingFailure_Retry) {
   auto handler = CreateStateHandler(0, true, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.RunUntilIdle();
 
   // Get blocking failure.

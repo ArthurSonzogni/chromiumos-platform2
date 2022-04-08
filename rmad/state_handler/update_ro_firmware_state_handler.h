@@ -51,6 +51,7 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
   }
 
   RmadErrorCode InitializeState() override;
+  void RunState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
@@ -60,8 +61,6 @@ class UpdateRoFirmwareStateHandler : public BaseStateHandler {
  private:
   bool CanSkipUpdate();
 
-  void StartTimers();
-  void StopTimers();
   void SendFirmwareUpdateStatusSignal();
   void WaitUsb();
   void OnMountCompleted(const rmad::MountEntry& entry);
@@ -125,6 +124,7 @@ class FakeUpdateRoFirmwareStateHandler : public BaseStateHandler {
   }
 
   RmadErrorCode InitializeState() override;
+  void RunState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 

@@ -45,6 +45,7 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   }
 
   RmadErrorCode InitializeState() override;
+  void RunState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
@@ -59,7 +60,6 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
  private:
   bool IsHwwpDisabled() const;
   bool CanSkipEnablingFactoryMode() const;
-  void PollUntilWriteProtectOff();
   void CheckWriteProtectOffTask();
 
   base::RepeatingTimer timer_;

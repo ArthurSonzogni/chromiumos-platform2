@@ -100,6 +100,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest, InitializeState_Success) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   auto handler = CreateStateHandler({0}, true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   EXPECT_TRUE(handler->GetState().wp_disable_physical().keep_device_open());
 
   bool signal_sent = false;
@@ -123,6 +124,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   auto handler = CreateStateHandler({0}, true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
 
   RmadState state;
   state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
@@ -142,6 +144,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   auto handler = CreateStateHandler({0, 0}, true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
 
   RmadState state;
   state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
@@ -171,6 +174,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   auto handler = CreateStateHandler({0, 0}, false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
 
   RmadState state;
   state.set_allocated_wp_disable_physical(new WriteProtectDisablePhysicalState);
@@ -202,6 +206,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   auto handler = CreateStateHandler({1, 1, 0}, false, true,
                                     &factory_mode_toggled, &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
 
   RmadState state;
@@ -237,6 +242,7 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   auto handler = CreateStateHandler({1, 1, 0}, false, false,
                                     &factory_mode_toggled, &reboot_toggled);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   EXPECT_FALSE(handler->GetState().wp_disable_physical().keep_device_open());
 
   RmadState state;

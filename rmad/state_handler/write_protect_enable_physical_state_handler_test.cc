@@ -113,6 +113,7 @@ TEST_F(WriteProtectEnablePhysicalStateHandlerTest,
 TEST_F(WriteProtectEnablePhysicalStateHandlerTest, GetNextStateCase_Wait) {
   auto handler = CreateStateHandler({0, 0, 0, 1}, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
 
   RmadState state;
   state.set_allocated_wp_enable_physical(new WriteProtectEnablePhysicalState);

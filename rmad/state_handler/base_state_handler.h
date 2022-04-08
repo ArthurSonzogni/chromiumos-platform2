@@ -43,6 +43,9 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   // Initialize the state. Used when entering or returning to the state.
   virtual RmadErrorCode InitializeState() = 0;
 
+  // Start the tasks of the state after initialization.
+  virtual void RunState() {}
+
   // Clean up the state. Called when leaving the state.
   virtual void CleanUpState() {}
 

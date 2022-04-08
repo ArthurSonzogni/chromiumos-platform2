@@ -42,10 +42,9 @@ class FinalizeStateHandler : public BaseStateHandler {
   }
 
   RmadErrorCode InitializeState() override;
+  void RunState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
-
-  void StartTasks();
 
  protected:
   ~FinalizeStateHandler() override = default;

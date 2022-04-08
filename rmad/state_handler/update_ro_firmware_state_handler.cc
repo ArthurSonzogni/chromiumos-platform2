@@ -101,14 +101,26 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
     poll_usb_ = true;
   }
   active_ = true;
-  StartTimers();
   return RMAD_ERROR_OK;
+}
+
+void UpdateRoFirmwareStateHandler::RunState() {
+  status_signal_timer_.Start(
+      FROM_HERE, kPollInterval, this,
+      &UpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal);
+  check_usb_timer_.Start(FROM_HERE, kTaskInterval, this,
+                         &UpdateRoFirmwareStateHandler::WaitUsb);
 }
 
 void UpdateRoFirmwareStateHandler::CleanUpState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   active_ = false;
-  StopTimers();
+  if (status_signal_timer_.IsRunning()) {
+    status_signal_timer_.Stop();
+  }
+  if (check_usb_timer_.IsRunning()) {
+    check_usb_timer_.Stop();
+  }
 }
 
 BaseStateHandler::GetNextStateCaseReply
@@ -164,23 +176,6 @@ bool UpdateRoFirmwareStateHandler::CanSkipUpdate() {
     return true;
   }
   return false;
-}
-
-void UpdateRoFirmwareStateHandler::StartTimers() {
-  status_signal_timer_.Start(
-      FROM_HERE, kPollInterval, this,
-      &UpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal);
-  check_usb_timer_.Start(FROM_HERE, kTaskInterval, this,
-                         &UpdateRoFirmwareStateHandler::WaitUsb);
-}
-
-void UpdateRoFirmwareStateHandler::StopTimers() {
-  if (status_signal_timer_.IsRunning()) {
-    status_signal_timer_.Stop();
-  }
-  if (check_usb_timer_.IsRunning()) {
-    check_usb_timer_.Stop();
-  }
 }
 
 void UpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal() {
@@ -358,11 +353,13 @@ RmadErrorCode FakeUpdateRoFirmwareStateHandler::InitializeState() {
     state_.set_allocated_update_ro_firmware(update_ro_firmware.release());
   }
 
+  return RMAD_ERROR_OK;
+}
+
+void FakeUpdateRoFirmwareStateHandler::RunState() {
   status_signal_timer_.Start(
       FROM_HERE, kPollInterval, this,
       &FakeUpdateRoFirmwareStateHandler::SendFirmwareUpdateStatusSignal);
-
-  return RMAD_ERROR_OK;
 }
 
 void FakeUpdateRoFirmwareStateHandler::CleanUpState() {

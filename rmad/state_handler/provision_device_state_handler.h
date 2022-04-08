@@ -58,6 +58,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   }
 
   RmadErrorCode InitializeState() override;
+  void RunState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
   GetNextStateCaseReply TryGetNextStateCaseAtBoot() override;

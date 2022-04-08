@@ -150,14 +150,14 @@ RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
     }
   }
 
-  if (provision_status == ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN) {
+  return RMAD_ERROR_OK;
+}
+
+void ProvisionDeviceStateHandler::RunState() {
+  if (status_.status() == ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN) {
     StartProvision();
   }
-
-  // We always send status signals when we initialize the handler to notify the
-  // Chrome side.
   StartStatusTimer();
-  return RMAD_ERROR_OK;
 }
 
 void ProvisionDeviceStateHandler::CleanUpState() {

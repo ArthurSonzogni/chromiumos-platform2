@@ -409,6 +409,8 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
               << current_state_case_;
     CHECK(next_state_case == current_state_case_)
         << "State transition should not happen with errors.";
+    // Staying at the same state. Run it again.
+    current_state_handler->RunState();
     reply.set_error(next_state_case_error);
     return reply;
   }
@@ -419,6 +421,8 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   if (RmadErrorCode error =
           GetInitializedStateHandler(next_state_case, &next_state_handler);
       error != RMAD_ERROR_OK) {
+    // Staying at the same state. Run it again.
+    current_state_handler->RunState();
     reply.set_error(error);
     return reply;
   }
@@ -433,8 +437,9 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
     // TODO(chenghan): Add error replies when failed to write |json_store_|.
     LOG(ERROR) << "Could not store history";
   }
-  // Update state.
+  // Update state and run it.
   current_state_case_ = next_state_case;
+  next_state_handler->RunState();
   // This is a one-way transition. |can_abort| cannot go from false to
   // true, unless we restart the whole RMA process.
   can_abort_ &= next_state_handler->IsRepeatable();
@@ -490,6 +495,8 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
 
   if (!CanGoBack()) {
     LOG(INFO) << "Cannot go back to previous state";
+    // Staying at the same state. Run it again.
+    current_state_handler->RunState();
     reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
     return reply;
   }
@@ -498,6 +505,8 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
   if (RmadErrorCode error =
           GetInitializedStateHandler(prev_state_case, &prev_state_handler);
       error != RMAD_ERROR_OK) {
+    // Staying at the same state. Run it again.
+    current_state_handler->RunState();
     reply.set_error(error);
     return reply;
   }
@@ -511,8 +520,9 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
   if (!StoreStateHistory()) {
     LOG(ERROR) << "Could not store history";
   }
-  // Update state.
+  // Update state and run it.
   current_state_case_ = prev_state_case;
+  prev_state_handler->RunState();
 
   reply.set_error(RMAD_ERROR_OK);
   reply.set_allocated_state(new RmadState(prev_state_handler->GetState(true)));

@@ -98,10 +98,14 @@ RmadErrorCode RepairCompleteStateHandler::InitializeState() {
                   &powerwash_count);
     json_store_->SetValue(kPowerwashCount, powerwash_count);
   }
+
+  return RMAD_ERROR_OK;
+}
+
+void RepairCompleteStateHandler::RunState() {
   power_cable_timer_.Start(
       FROM_HERE, kReportPowerCableInterval, this,
       &RepairCompleteStateHandler::SendPowerCableStateSignal);
-  return RMAD_ERROR_OK;
 }
 
 void RepairCompleteStateHandler::CleanUpState() {

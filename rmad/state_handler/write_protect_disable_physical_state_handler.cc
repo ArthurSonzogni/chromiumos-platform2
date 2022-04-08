@@ -71,8 +71,17 @@ RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
     state_.set_allocated_wp_disable_physical(wp_disable_physical.release());
   }
 
-  PollUntilWriteProtectOff();
   return RMAD_ERROR_OK;
+}
+
+void WriteProtectDisablePhysicalStateHandler::RunState() {
+  VLOG(1) << "Start polling write protection";
+  if (timer_.IsRunning()) {
+    timer_.Stop();
+  }
+  timer_.Start(
+      FROM_HERE, kPollInterval, this,
+      &WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask);
 }
 
 void WriteProtectDisablePhysicalStateHandler::CleanUpState() {
@@ -115,16 +124,6 @@ bool WriteProtectDisablePhysicalStateHandler::CanSkipEnablingFactoryMode()
     const {
   return cr50_utils_->IsFactoryModeEnabled() ||
          state_.wp_disable_physical().keep_device_open();
-}
-
-void WriteProtectDisablePhysicalStateHandler::PollUntilWriteProtectOff() {
-  VLOG(1) << "Start polling write protection";
-  if (timer_.IsRunning()) {
-    timer_.Stop();
-  }
-  timer_.Start(
-      FROM_HERE, kPollInterval, this,
-      &WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask);
 }
 
 void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {

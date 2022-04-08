@@ -158,12 +158,14 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 TEST_F(ProvisionDeviceStateHandlerTest, InitializeState_Success) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   RunHandlerTaskRunner(handler);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, Clenaup_Success) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   handler->CleanUpState();
   RunHandlerTaskRunner(handler);
 }
@@ -173,6 +175,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Success) {
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -197,6 +200,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, TryGetNextStateCaseAtBoot_Failed) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   auto [error, state] = handler->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error, RMAD_ERROR_TRANSITION_FAILED);
   EXPECT_EQ(state, RmadState::StateCase::kProvisionDevice);
@@ -218,6 +222,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
           RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE)});
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -237,6 +242,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler_after_reboot = CreateStateHandler();
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  handler_after_reboot->RunState();
   auto [error_try_boot, state_case_try_boot] =
       handler_after_reboot->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
@@ -254,6 +260,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
       std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_BATTERY)});
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -273,6 +280,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler_after_reboot = CreateStateHandler();
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  handler_after_reboot->RunState();
   auto [error_try_boot, state_case_try_boot] =
       handler_after_reboot->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
@@ -296,6 +304,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -318,6 +327,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
       {RMAD_COMPONENT_LID_ACCELEROMETER, RMAD_COMPONENT_BASE_GYROSCOPE,
        RMAD_COMPONENT_LID_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  handler_after_reboot->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 2);
@@ -363,6 +373,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -385,6 +396,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_BASE_GYROSCOPE,
        RMAD_COMPONENT_LID_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  handler_after_reboot->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 2);
@@ -430,6 +442,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -452,6 +465,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
        RMAD_COMPONENT_LID_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  handler_after_reboot->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 2);
@@ -499,6 +513,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   json_store_->SetValue(kMlbRepair, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -521,6 +536,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
        RMAD_COMPONENT_BASE_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  handler_after_reboot->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 2);
@@ -564,6 +580,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
           RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE)});
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -583,6 +600,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler_after_reboot = CreateStateHandler();
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  handler_after_reboot->RunState();
   auto [error_try_boot, state_case_try_boot] =
       handler_after_reboot->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
@@ -601,6 +619,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   json_store_->SetValue(kWipeDevice, false);
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -620,6 +639,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler_after_reboot = CreateStateHandler();
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  handler_after_reboot->RunState();
   auto [error_try_boot, state_case_try_boot] =
       handler_after_reboot->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
@@ -632,6 +652,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_UnknownDestinationFailedBlocking) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -655,6 +676,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -691,6 +713,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -707,6 +730,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   auto handler = CreateStateHandler(false, true, true, true, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -733,6 +757,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
           RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE)});
 
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -752,6 +777,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   auto handler_after_reboot = CreateStateHandler();
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
+  handler_after_reboot->RunState();
   auto [error_try_boot, state_case_try_boot] =
       handler_after_reboot->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
@@ -765,6 +791,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   auto handler = CreateStateHandler(true, false, true, true, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -779,6 +806,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   auto handler = CreateStateHandler(true, true, true, false, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -795,6 +823,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   auto handler = CreateStateHandler(true, true, true, false, true, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -811,6 +840,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   auto handler = CreateStateHandler(true, true, true, true, true, false);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
   task_environment_.FastForwardBy(
       ProvisionDeviceStateHandler::kReportStatusInterval);
   EXPECT_GE(status_history_.size(), 1);
@@ -826,6 +856,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingState) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
 
   // No WelcomeScreenState.
   RmadState state;
@@ -841,6 +872,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingArgs) {
   auto handler = CreateStateHandler();
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
 
   auto provision = std::make_unique<ProvisionDeviceState>();
   provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_UNKNOWN);

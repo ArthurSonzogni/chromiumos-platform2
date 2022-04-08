@@ -42,6 +42,7 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
   SET_UNREPEATABLE;
 
   RmadErrorCode InitializeState() override;
+  void RunState() override;
   void CleanUpState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
@@ -49,7 +50,6 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
   ~WriteProtectEnablePhysicalStateHandler() override = default;
 
  private:
-  void PollUntilWriteProtectOn();
   void CheckWriteProtectOnTask();
 
   base::RepeatingTimer timer_;

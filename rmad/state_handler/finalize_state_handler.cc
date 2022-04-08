@@ -64,11 +64,10 @@ RmadErrorCode FinalizeStateHandler::InitializeState() {
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   }
 
-  StartTasks();
   return RMAD_ERROR_OK;
 }
 
-void FinalizeStateHandler::StartTasks() {
+void FinalizeStateHandler::RunState() {
   StartStatusTimer();
   if (status_.status() == FinalizeStatus::RMAD_FINALIZE_STATUS_UNKNOWN) {
     StartFinalize();

@@ -60,8 +60,17 @@ RmadErrorCode WriteProtectEnablePhysicalStateHandler::InitializeState() {
     StoreState();
   }
 
-  PollUntilWriteProtectOn();
   return RMAD_ERROR_OK;
+}
+
+void WriteProtectEnablePhysicalStateHandler::RunState() {
+  LOG(INFO) << "Start polling write protection";
+  if (timer_.IsRunning()) {
+    timer_.Stop();
+  }
+  timer_.Start(
+      FROM_HERE, kPollInterval, this,
+      &WriteProtectEnablePhysicalStateHandler::CheckWriteProtectOnTask);
 }
 
 void WriteProtectEnablePhysicalStateHandler::CleanUpState() {
@@ -84,16 +93,6 @@ WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
     return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
   }
   return NextStateCaseWrapper(RMAD_ERROR_WAIT);
-}
-
-void WriteProtectEnablePhysicalStateHandler::PollUntilWriteProtectOn() {
-  LOG(INFO) << "Start polling write protection";
-  if (timer_.IsRunning()) {
-    timer_.Stop();
-  }
-  timer_.Start(
-      FROM_HERE, kPollInterval, this,
-      &WriteProtectEnablePhysicalStateHandler::CheckWriteProtectOnTask);
 }
 
 void WriteProtectEnablePhysicalStateHandler::CheckWriteProtectOnTask() {

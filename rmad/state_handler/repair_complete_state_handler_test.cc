@@ -121,6 +121,8 @@ TEST_F(RepairCompleteStateHandlerTest, InitializeState_CleanUpState_Success) {
   EXPECT_TRUE(json_store_->GetValue(kPowerwashCount, &powerwash_count));
   EXPECT_EQ(powerwash_count, 1);
 
+  handler->RunState();
+
   // Override signal sender mock.
   EXPECT_CALL(signal_sender_, SendPowerCableStateSignal(_))
       .WillOnce([](bool is_connected) {
@@ -153,6 +155,8 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Powerwash) {
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
 
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+
+  handler->RunState();
 
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
@@ -194,6 +198,8 @@ TEST_F(RepairCompleteStateHandlerTest,
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  handler->RunState();
 
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
@@ -246,6 +252,8 @@ TEST_F(RepairCompleteStateHandlerTest,
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 
+  handler->RunState();
+
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN);
@@ -296,6 +304,8 @@ TEST_F(RepairCompleteStateHandlerTest,
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  handler->RunState();
 
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
@@ -349,6 +359,8 @@ TEST_F(RepairCompleteStateHandlerTest,
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 
+  handler->RunState();
+
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
@@ -400,6 +412,8 @@ TEST_F(RepairCompleteStateHandlerTest,
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  handler->RunState();
 
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
@@ -453,6 +467,8 @@ TEST_F(RepairCompleteStateHandlerTest,
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  handler->RunState();
 
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
@@ -545,6 +561,8 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MetricsFailed) {
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 
+  handler->RunState();
+
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
@@ -583,6 +601,8 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_JsonFailed) {
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  handler->RunState();
 
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
