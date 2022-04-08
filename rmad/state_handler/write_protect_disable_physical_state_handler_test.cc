@@ -231,6 +231,11 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   // Third call to |mock_crossystem_utils_| during polling, get 0.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // Try to enable factory mode after a delay.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kRebootDelay);
   EXPECT_TRUE(factory_mode_toggled);
   EXPECT_FALSE(reboot_toggled);
 }
@@ -267,6 +272,11 @@ TEST_F(WriteProtectDisablePhysicalStateHandlerTest,
   // Third call to |mock_crossystem_utils_| during polling, get 0.
   task_environment_.FastForwardBy(
       WriteProtectDisablePhysicalStateHandler::kPollInterval);
+  EXPECT_FALSE(factory_mode_toggled);
+  EXPECT_FALSE(reboot_toggled);
+  // Try to enable factory mode after a delay.
+  task_environment_.FastForwardBy(
+      WriteProtectDisablePhysicalStateHandler::kRebootDelay);
   EXPECT_TRUE(factory_mode_toggled);
   EXPECT_TRUE(reboot_toggled);
 }

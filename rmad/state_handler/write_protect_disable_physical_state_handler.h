@@ -23,8 +23,8 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
  public:
   // Poll every 2 seconds.
   static constexpr base::TimeDelta kPollInterval = base::Seconds(2);
-  // Wait for 5 seconds before rebooting.
-  static constexpr base::TimeDelta kRebootDelay = base::Seconds(5);
+  // Wait for 2 seconds before enabling factory mode and rebooting.
+  static constexpr base::TimeDelta kRebootDelay = base::Seconds(2);
 
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store);
@@ -61,8 +61,10 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   bool IsHwwpDisabled() const;
   bool CanSkipEnablingFactoryMode() const;
   void CheckWriteProtectOffTask();
+  void EnableFactoryMode();
 
-  base::RepeatingTimer timer_;
+  base::OneShotTimer reboot_timer_;
+  base::RepeatingTimer signal_timer_;
   base::RepeatingCallback<void(bool)> write_protect_signal_sender_;
 
   std::unique_ptr<Cr50Utils> cr50_utils_;

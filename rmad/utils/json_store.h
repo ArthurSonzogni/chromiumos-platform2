@@ -98,6 +98,9 @@ class JsonStore : public base::RefCounted<JsonStore> {
   // file already exists but contains invalid JSON format.
   bool ReadOnly() const { return read_only_; }
 
+  // Sync the state file.
+  bool Sync() const;
+
  private:
   // Hide the destructor so we don't accidentally delete this while there are
   // references to it.

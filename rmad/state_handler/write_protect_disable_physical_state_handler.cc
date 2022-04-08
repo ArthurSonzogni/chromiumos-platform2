@@ -76,18 +76,18 @@ RmadErrorCode WriteProtectDisablePhysicalStateHandler::InitializeState() {
 
 void WriteProtectDisablePhysicalStateHandler::RunState() {
   VLOG(1) << "Start polling write protection";
-  if (timer_.IsRunning()) {
-    timer_.Stop();
+  if (signal_timer_.IsRunning()) {
+    signal_timer_.Stop();
   }
-  timer_.Start(
+  signal_timer_.Start(
       FROM_HERE, kPollInterval, this,
       &WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask);
 }
 
 void WriteProtectDisablePhysicalStateHandler::CleanUpState() {
   // Stop the polling loop.
-  if (timer_.IsRunning()) {
-    timer_.Stop();
+  if (signal_timer_.IsRunning()) {
+    signal_timer_.Stop();
   }
 }
 
@@ -130,21 +130,29 @@ void WriteProtectDisablePhysicalStateHandler::CheckWriteProtectOffTask() {
   VLOG(1) << "Check write protection";
 
   if (IsHwwpDisabled()) {
-    timer_.Stop();
+    signal_timer_.Stop();
     if (CanSkipEnablingFactoryMode()) {
       write_protect_signal_sender_.Run(false);
     } else {
-      // Enable cr50 factory mode.
-      if (cr50_utils_->EnableFactoryMode()) {
-        // cr50 triggers a reboot shortly after enabling factory mode.
-        return;
-      }
-      LOG(WARNING) << "WpDisablePhysical: Failed to enable factory mode.";
-      // Still do a reboot when failed to enable factory mode, just for
-      // consistent behavior.
-      power_manager_client_->Restart();
+      reboot_timer_.Start(
+          FROM_HERE, kRebootDelay, this,
+          &WriteProtectDisablePhysicalStateHandler::EnableFactoryMode);
     }
   }
+}
+
+void WriteProtectDisablePhysicalStateHandler::EnableFactoryMode() {
+  // Sync state file.
+  json_store_->Sync();
+  // Enable cr50 factory mode.
+  if (cr50_utils_->EnableFactoryMode()) {
+    // cr50 triggers a reboot shortly after enabling factory mode.
+    return;
+  }
+  LOG(WARNING) << "WpDisablePhysical: Failed to enable factory mode.";
+  // Still do a reboot when failed to enable factory mode, just for
+  // consistent behavior.
+  power_manager_client_->Restart();
 }
 
 }  // namespace rmad

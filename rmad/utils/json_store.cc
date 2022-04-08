@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/values.h>
+#include <brillo/file_utils.h>
 
 namespace rmad {
 
@@ -181,6 +182,10 @@ bool JsonStore::Clear() {
 
 bool JsonStore::ClearAndDeleteFile() {
   return Clear() && base::DeleteFile(file_path_);
+}
+
+bool JsonStore::Sync() const {
+  return brillo::SyncFileOrDirectory(file_path_, false, true);
 }
 
 bool JsonStore::InitFromFile() {
