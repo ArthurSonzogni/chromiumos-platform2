@@ -174,11 +174,20 @@ class KeysetManagement {
   virtual bool ReSaveKeysetIfNeeded(const Credentials& credentials,
                                     VaultKeyset* keyset) const;
 
+  // Check if the vault keyset needs re-encryption.
+  virtual bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
+
   // Record various metrics about all the VaultKeyset for a given user
   // obfuscated
   virtual void RecordAllVaultKeysetMetrics(const std::string& obfuscated) const;
 
   // ========== KeysetManagement methods with KeyBlobs ===============
+
+  // Resaves the vault keyset with |key_blobs|, restoring on failure.
+  virtual bool ReSaveKeysetWithKeyBlobs(
+      VaultKeyset& vault_keyset,
+      KeyBlobs key_blobs,
+      std::unique_ptr<AuthBlockState> auth_state) const;
 
   // Adds initial keyset for obfuscated username with |file_system_keyset|. Adds
   // the key data given by |key_data| and challenge credentials info given by
@@ -270,11 +279,14 @@ class KeysetManagement {
                                     EncryptVkCallback encrypt_vk_callback,
                                     bool clobber);
 
-  // Check if the vault keyset needs re-encryption.
-  bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
+  // Resaves the given |vault_keyset| with the credentials, restoring on error.
+  bool ReSaveKeyset(const Credentials& credentials,
+                    VaultKeyset* vault_keyset) const;
 
-  // Resaves the vault keyset, restoring on failure.
-  bool ReSaveKeyset(const Credentials& credentials, VaultKeyset* keyset) const;
+  // Implements the common functionality for resaving a keyset with restore on
+  // error.
+  bool ReSaveKeysetImpl(VaultKeyset& vault_keyset,
+                        EncryptVkCallback encrypt_vk_callback) const;
 
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   base::Time GetPerIndexTimestampFileData(const std::string& obfuscated,

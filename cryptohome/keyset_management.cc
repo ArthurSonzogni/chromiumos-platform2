@@ -402,6 +402,21 @@ std::unique_ptr<VaultKeyset> KeysetManagement::AddInitialKeysetImpl(
 }
 
 bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
+  // Calling EnsureTpm here handles the case where a user logged in while
+  // cryptohome was taking TPM ownership.  In that case, their vault keyset
+  // would be scrypt-wrapped and the TPM would not be connected.  If we're
+  // configured to use the TPM, calling EnsureTpm will try to connect, and
+  // if successful, the call to is_cryptohome_key_loaded() below will succeed,
+  // allowing re-wrapping (migration) using the TPM.
+  crypto_->EnsureTpm(false);
+
+  if (!vault_keyset->HasWrappedChapsKey()) {
+    vault_keyset->CreateRandomChapsKey();
+    LOG(INFO) << "Migrating keyset " << vault_keyset->GetLegacyIndex()
+              << " as Cryptohome has taken TPM ownership";
+    return true;
+  }
+
   // If the vault keyset's TPM state is not the same as that configured for
   // the device, re-save the keyset (this will save in the device's default
   // method).
@@ -475,32 +490,47 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
 }
 
 bool KeysetManagement::ReSaveKeyset(const Credentials& credentials,
-                                    VaultKeyset* keyset) const {
+                                    VaultKeyset* vault_keyset) const {
+  std::string obfuscated_username = credentials.GetObfuscatedUsername();
+
+  return ReSaveKeysetImpl(*vault_keyset,
+                          base::BindOnce(&EncryptWrapper, credentials.passkey(),
+                                         obfuscated_username));
+}
+
+bool KeysetManagement::ReSaveKeysetWithKeyBlobs(
+    VaultKeyset& vault_keyset,
+    KeyBlobs key_blobs,
+    std::unique_ptr<AuthBlockState> auth_state) const {
+  return ReSaveKeysetImpl(
+      vault_keyset, base::BindOnce(&EncryptExWrapper, std::move(key_blobs),
+                                   std::move(auth_state)));
+}
+
+bool KeysetManagement::ReSaveKeysetImpl(
+    VaultKeyset& vault_keyset, EncryptVkCallback encrypt_vk_callback) const {
   // Save the initial keyset so we can roll-back any changes if we
   // failed to re-save.
-  VaultKeyset old_keyset;
-  old_keyset = *keyset;
-
-  std::string obfuscated_username = credentials.GetObfuscatedUsername();
+  VaultKeyset old_keyset = vault_keyset;
 
   // We get the LE Label from keyset before we resave it. Once the keyset
   // is re-saved, a new label is generated making the old label obsolete.
   // It would be safe to delete that from PinWeaver tree after resave.
   std::optional<uint64_t> old_le_label;
-  if (keyset->HasLELabel()) {
-    old_le_label = keyset->GetLELabel();
+  if (vault_keyset.HasLELabel()) {
+    old_le_label = vault_keyset.GetLELabel();
   }
 
-  if (!keyset->Encrypt(credentials.passkey(), obfuscated_username) ||
-      !keyset->Save(keyset->GetSourceFile())) {
-    LOG(ERROR) << "Failed to encrypt and write the keyset.";
-    *keyset = old_keyset;
+  bool callback_result = std::move(encrypt_vk_callback).Run(&vault_keyset);
+  if (!callback_result || !vault_keyset.Save(vault_keyset.GetSourceFile())) {
+    LOG(ERROR) << "Failed to encrypt and write the vault_keyset.";
+    vault_keyset = old_keyset;
     return false;
   }
 
-  if ((keyset->GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL) != 0 &&
+  if ((vault_keyset.GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL) != 0 &&
       old_le_label.has_value()) {
-    CHECK_NE(old_le_label.value(), keyset->GetLELabel());
+    CHECK_NE(old_le_label.value(), vault_keyset.GetLELabel());
     if (!crypto_->RemoveLECredential(old_le_label.value())) {
       // This is non-fatal error.
       LOG(ERROR) << "Failed to remove label = " << old_le_label.value();
@@ -511,25 +541,10 @@ bool KeysetManagement::ReSaveKeyset(const Credentials& credentials,
 }
 
 bool KeysetManagement::ReSaveKeysetIfNeeded(const Credentials& credentials,
-                                            VaultKeyset* keyset) const {
-  // Calling EnsureTpm here handles the case where a user logged in while
-  // cryptohome was taking TPM ownership.  In that case, their vault keyset
-  // would be scrypt-wrapped and the TPM would not be connected.  If we're
-  // configured to use the TPM, calling EnsureTpm will try to connect, and
-  // if successful, the call to has_tpm() below will succeed, allowing
-  // re-wrapping (migration) using the TPM.
-  crypto_->EnsureTpm(false);
-
-  bool force_resave = false;
-  if (!keyset->HasWrappedChapsKey()) {
-    keyset->CreateRandomChapsKey();
-    force_resave = true;
+                                            VaultKeyset* vault_keyset) const {
+  if (ShouldReSaveKeyset(vault_keyset)) {
+    return ReSaveKeyset(credentials, vault_keyset);
   }
-
-  if (force_resave || ShouldReSaveKeyset(keyset)) {
-    return ReSaveKeyset(credentials, keyset);
-  }
-
   return true;
 }
 
