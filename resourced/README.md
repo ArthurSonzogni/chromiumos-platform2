@@ -8,3 +8,12 @@ Check go/resourced for details.
     *   Method GetAvailableMemoryKB - returns the available memory.
     *   Method GetMemoryMarginsKB - returns the margin (threshold) for critical
         and moderate memory pressure.
+
+## Debugging
+
+You can use the following to call the dbus service:
+
+```bash
+$ dbus-send --print-reply --system --dest=org.chromium.ResourceManager /org/chromium/ResourceManager org.chromium.ResourceManager.SetRTCAudioActive byte:1
+$ dbus-send --print-reply --system --dest=org.chromium.ResourceManager /org/chromium/ResourceManager org.chromium.ResourceManager.GetRTCAudioActive
+```
