@@ -113,7 +113,7 @@ Now the `src/base/verify_ro.rs` source file is ready to be written. Start with
 this minimal source file and verify that crosh compiles with `cargo build`:
 
 ```rust
-use crate::dispatcher::Dispatcher;
+use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
@@ -126,7 +126,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     );
 }
 
-fn execute_verify_ro(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> {
+fn execute_verify_ro(_cmd: &Command, _args: &Arguments) -> Result<(), dispatcher::Error> {
     unimplemented!();
 }
 ```
