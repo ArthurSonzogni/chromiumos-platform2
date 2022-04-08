@@ -36,8 +36,7 @@ class ModemMbim : public Modem<MbimCmd> {
   static std::unique_ptr<ModemMbim> Create(
       Logger* logger,
       Executor* executor,
-      std::unique_ptr<ModemManagerProxy> modem_manager_proxy,
-      bool enable_wwan0mbim0);
+      std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
   virtual ~ModemMbim();
   // EuiccInterface overrides
   void Initialize(EuiccManagerInterface* euicc_manager,
@@ -65,8 +64,7 @@ class ModemMbim : public Modem<MbimCmd> {
   };
   ModemMbim(Logger* logger,
             Executor* executor,
-            std::unique_ptr<ModemManagerProxy> modem_manager_proxy,
-            bool enable_wwan0mbim0);
+            std::unique_ptr<ModemManagerProxy> modem_manager_proxy);
   void Shutdown() override;
   void TransmitFromQueue() override;
   std::unique_ptr<MbimCmd> GetTagForSendApdu() override;
@@ -230,7 +228,6 @@ class ModemMbim : public Modem<MbimCmd> {
   friend std::ostream& operator<<(std::ostream& os, const SlotInfo& info);
   SlotInfo slot_info_;
   base::WeakPtrFactory<ModemMbim> weak_factory_;
-  bool enable_wwan0mbim0_;
 };
 
 }  // namespace hermes

@@ -10,10 +10,9 @@ int main(int argc, char** argv) {
   DEFINE_int32(log_level, 0,
                "Logging level - 0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR), "
                "-1: VLOG(1), -2: VLOG(2), ...");
-  DEFINE_bool(enable_wwan0mbim0, false, "enable eSIM for wwan0mbim0");
   brillo::FlagHelper::Init(argc, argv, "Chromium OS eSIM LPD Daemon");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   logging::SetMinLogLevel(FLAGS_log_level);
-  hermes::Daemon daemon(FLAGS_enable_wwan0mbim0);
+  hermes::Daemon daemon;
   return daemon.Run();
 }

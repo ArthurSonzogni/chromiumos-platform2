@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cstdlib>
 #include <utility>
 #include <base/bind.h>
 #include <base/logging.h>
@@ -80,24 +79,21 @@ namespace hermes {
 std::unique_ptr<ModemMbim> ModemMbim::Create(
     Logger* logger,
     Executor* executor,
-    std::unique_ptr<ModemManagerProxy> modem_manager_proxy,
-    bool enable_wwan0mbim0) {
+    std::unique_ptr<ModemManagerProxy> modem_manager_proxy) {
   VLOG(2) << __func__;
-  return std::unique_ptr<ModemMbim>(new ModemMbim(
-      logger, executor, std::move(modem_manager_proxy), enable_wwan0mbim0));
+  return std::unique_ptr<ModemMbim>(
+      new ModemMbim(logger, executor, std::move(modem_manager_proxy)));
 }
 
 ModemMbim::ModemMbim(Logger* logger,
                      Executor* executor,
-                     std::unique_ptr<ModemManagerProxy> modem_manager_proxy,
-                     bool enable_wwan0mbim0)
+                     std::unique_ptr<ModemManagerProxy> modem_manager_proxy)
     : Modem<MbimCmd>(logger, executor, std::move(modem_manager_proxy)),
       channel_(kInvalidChannel),
       is_ready_state_valid(false),
       ready_state_(MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED),
       slot_info_(),
-      weak_factory_(this),
-      enable_wwan0mbim0_(enable_wwan0mbim0) {}
+      weak_factory_(this) {}
 
 ModemMbim::~ModemMbim() {
   VLOG(2) << "~ModemMbim Destructor++";
@@ -256,14 +252,6 @@ void ModemMbim::InitializationStep(ModemMbim::State::Value next_state,
         std::move(init_done_cb_).Run(kModemManagerError);
         break;
       }
-
-      const char kWwan0Mbim0[] = "wwan0mbim0";
-      if (!enable_wwan0mbim0_ &&
-          modem_manager_proxy_->GetPrimaryPort() == kWwan0Mbim0) {
-        LOG(INFO) << "eSIM not supported on " << kWwan0Mbim0;
-        std::exit(EXIT_SUCCESS);
-      }
-
       std::string dev_path = "/dev/" + modem_manager_proxy_->GetPrimaryPort();
       const gchar* const path = dev_path.c_str();
       LOG(INFO) << __func__ << ": Opening path:" << path;
