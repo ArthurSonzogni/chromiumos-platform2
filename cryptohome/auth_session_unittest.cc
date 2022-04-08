@@ -557,6 +557,174 @@ TEST_F(AuthSessionTest, NoUssByDefault) {
             std::nullopt);
 }
 
+// Test if AuthenticateAuthFactor authenticates existing credentials for a
+// user with VK.
+TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
+  // Setup AuthSession.
+  AuthBlockState auth_block_state;
+  auth_block_state.state = TpmBoundToPcrAuthBlockState();
+  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
+  auth_factor_map.emplace(
+      kFakeLabel,
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), auth_block_state));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
+
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.user_exists());
+  auth_session.set_label_to_auth_factor_for_testing(std::move(auth_factor_map));
+
+  // Test
+  // Calling AuthenticateAuthFactor.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+
+  // Called within the converter_.PopulateKeyDataForVK()
+  KeyData key_data;
+  key_data.set_label(kFakeLabel);
+  auto vk = std::make_unique<VaultKeyset>();
+  vk->SetKeyData(key_data);
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
+      .WillOnce(Return(ByMove(std::move(vk))));
+
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+      .WillOnce(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_))
+      .WillOnce(Return(false));
+
+  auto key_blobs = std::make_unique<KeyBlobs>();
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
+        return true;
+      });
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
+      request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AuthenticateAuthFactorReply& reply) {
+            called = true;
+            error = reply.error();
+          },
+          std::ref(called), std::ref(error))));
+
+  // Verify.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+}
+
+// Test if AuthenticateAuthFactor authenticates existing credentials for a
+// user with VK and resaves it.
+TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave) {
+  // Setup AuthSession.
+  AuthBlockState auth_block_state;
+  auth_block_state.state = LibScryptCompatAuthBlockState();
+  std::map<std::string, std::unique_ptr<AuthFactor>> auth_factor_map;
+  auth_factor_map.emplace(
+      kFakeLabel,
+      std::make_unique<AuthFactor>(AuthFactorType::kPassword, kFakeLabel,
+                                   AuthFactorMetadata(), auth_block_state));
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(keyset_management_, GetVaultKeysetLabelsAndData(_, _));
+
+  AuthSession auth_session(kFakeUsername, flags,
+                           /*on_timeout=*/base::DoNothing(), &crypto_,
+                           &keyset_management_, &auth_block_utility_,
+                           &auth_factor_manager_, &user_secret_stash_storage_);
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session.GetStatus());
+  EXPECT_TRUE(auth_session.user_exists());
+  auth_session.set_label_to_auth_factor_for_testing(std::move(auth_factor_map));
+
+  // Test
+  // Calling AuthenticateAuthFactor.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kFakeLabel);
+  request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
+
+  // Called within the converter_.PopulateKeyDataForVK()
+  KeyData key_data;
+  key_data.set_label(kFakeLabel);
+  auto vk = std::make_unique<VaultKeyset>();
+  vk->SetKeyData(key_data);
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
+      .WillOnce(Return(ByMove(std::move(vk))));
+
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForDerivation(_, _))
+      .WillOnce(Return(AuthBlockType::kLibScryptCompat));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockStateFromVaultKeyset(_, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _, _))
+      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
+
+  EXPECT_CALL(keyset_management_, ShouldReSaveKeyset(_)).WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_, _))
+      .WillOnce(Return(AuthBlockType::kTpmBoundToPcr));
+  EXPECT_CALL(keyset_management_, ReSaveKeysetWithKeyBlobs(_, _, _));
+
+  auto key_blobs = std::make_unique<KeyBlobs>();
+  auto auth_block_state2 = std::make_unique<AuthBlockState>();
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    AuthBlock::CreateCallback create_callback) {
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state2));
+        return true;
+      });
+
+  auto key_blobs2 = std::make_unique<KeyBlobs>();
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
+        return true;
+      });
+
+  bool called = false;
+  user_data_auth::CryptohomeErrorCode error =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  EXPECT_TRUE(auth_session.AuthenticateAuthFactor(
+      request,
+      base::BindOnce(
+          [](bool& called, user_data_auth::CryptohomeErrorCode& error,
+             const user_data_auth::AuthenticateAuthFactorReply& reply) {
+            called = true;
+            error = reply.error();
+          },
+          std::ref(called), std::ref(error))));
+
+  // Verify.
+  EXPECT_TRUE(called);
+  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+}
+
 // A variant of the auth session test that has the UserSecretStash experiment
 // enabled.
 class AuthSessionWithUssExperimentTest : public AuthSessionTest {

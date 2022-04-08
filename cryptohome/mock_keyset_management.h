@@ -99,7 +99,14 @@ class MockKeysetManagement : public KeysetManagement {
               ReSaveKeysetIfNeeded,
               (const Credentials& credentials, VaultKeyset* keyset),
               (const, override));
-  MOCK_METHOD(bool, ShouldReSaveKeyset, (VaultKeyset * vault_keyset), (const));
+  MOCK_METHOD(bool,
+              ShouldReSaveKeyset,
+              (VaultKeyset * vault_keyset),
+              (const, override));
+  MOCK_METHOD(bool,
+              ReSaveKeysetWithKeyBlobs,
+              (VaultKeyset&, KeyBlobs, std::unique_ptr<AuthBlockState>),
+              (const, override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               GetValidKeysetWithKeyBlobs,
               (const std::string&,

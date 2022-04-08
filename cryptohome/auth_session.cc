@@ -747,8 +747,8 @@ bool AuthSession::AuthenticateAuthFactor(
     return true;
   }
 
-  // If user does not have AuthFactors, then we switch to authentication with
-  // Vaultkeyset. Status is flipped on the successful authentication.
+  // If user does not have USS AuthFactors, then we switch to authentication
+  // with Vaultkeyset. Status is flipped on the successful authentication.
   error = converter_->PopulateKeyDataForVK(
       username_, request.auth_factor_label(), key_data_);
   if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
@@ -806,10 +806,12 @@ bool AuthSession::AuthenticateViaVaultKeyset(
   return auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, auth_state,
       base::BindOnce(&AuthSession::LoadVaultKeysetAndFsKeys,
-                     base::Unretained(this), std::move(on_done)));
+                     base::Unretained(this), auth_input.user_input,
+                     std::move(on_done)));
 }
 
 void AuthSession::LoadVaultKeysetAndFsKeys(
+    const std::optional<brillo::SecureBlob> passkey,
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
         on_done,
     CryptoStatus callback_error,
@@ -876,13 +878,68 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     keyset_management_->ResetLECredentials(std::nullopt, *vault_keyset_,
                                            obfuscated_username_);
   }
-
+  ResaveVaultKeysetIfNeeded(passkey);
   file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
 
   // Flip the status on the successful authentication.
   SetAuthSessionAsAuthenticated();
 
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+}
+
+void AuthSession::ResaveVaultKeysetIfNeeded(
+    const std::optional<brillo::SecureBlob> user_input) {
+  // Check whether an update is needed for the VaultKeyset. If the user setup
+  // their account and the TPM was not owned, re-save it with the TPM.
+  VaultKeyset updated_vault_keyset = *vault_keyset_.get();
+  if (!keyset_management_->ShouldReSaveKeyset(&updated_vault_keyset)) {
+    // No change is needed for |vault_keyset_|
+    return;
+  }
+
+  // KeyBlobs needs to be re-created since there maybe a change in the
+  // AuthBlock type with the change in TPM state. Don't abort on failure.
+  // Only password and pin type credentials are evaluated for resave. Therefore
+  // we don't need the asynchronous KeyBlob creation.
+  AuthBlockType auth_block_type =
+      auth_block_utility_->GetAuthBlockTypeForCreation(
+          vault_keyset_->IsLECredential(), /*is_challenge_credential*/ false);
+  if (auth_block_type == AuthBlockType::kMaxValue) {
+    LOG(ERROR)
+        << "Error in creating obtaining AuthBlockType, can't resave keyset.";
+    return;
+  }
+  std::optional<brillo::SecureBlob> reset_secret;
+  if (auth_block_type == AuthBlockType::kPinWeaver) {
+    reset_secret = vault_keyset_->GetOrGenerateResetSecret();
+  }
+  // Create and initialize fields for AuthInput.
+  AuthInput auth_input = {user_input,
+                          /*locked_to_single_user=*/std::nullopt,
+                          obfuscated_username_, reset_secret};
+  AuthBlock::CreateCallback create_callback =
+      base::BindOnce(&AuthSession::ResaveKeysetOnKeyBlobsGenerated,
+                     base::Unretained(this), std::move(updated_vault_keyset));
+  auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
+      auth_block_type, auth_input,
+      /*CreateCallback*/ std::move(create_callback));
+}
+
+void AuthSession::ResaveKeysetOnKeyBlobsGenerated(
+    VaultKeyset updated_vault_keyset,
+    CryptoStatus error,
+    std::unique_ptr<KeyBlobs> key_blobs,
+    std::unique_ptr<AuthBlockState> auth_block_state) {
+  if (!error.ok() || key_blobs == nullptr || auth_block_state == nullptr) {
+    LOG(ERROR) << "Error in creating KeyBlobs, can't resave keyset.";
+    return;
+  }
+
+  keyset_management_->ReSaveKeysetWithKeyBlobs(
+      updated_vault_keyset, std::move(*key_blobs), std::move(auth_block_state));
+  // Updated ketyset is saved on the disk, it is safe to update
+  // |vault_keyset_|.
+  vault_keyset_ = std::make_unique<VaultKeyset>(updated_vault_keyset);
 }
 
 std::unique_ptr<CredentialVerifier> AuthSession::TakeCredentialVerifier() {

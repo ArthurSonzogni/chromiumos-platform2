@@ -217,6 +217,15 @@ class AuthSession final {
   MountStatusOr<std::unique_ptr<Credentials>> GetCredentials(
       const cryptohome::AuthorizationRequest& authorization_request);
 
+  // Helper function to update a keyset on disk on KeyBlobs generated. If update
+  // succeeds |vault_keyset_| is also updated. Failure doesn't return error and
+  // doesn't block authentication operations.
+  void ResaveKeysetOnKeyBlobsGenerated(
+      VaultKeyset updated_vault_keyset,
+      CryptoStatus error,
+      std::unique_ptr<KeyBlobs> key_blobs,
+      std::unique_ptr<AuthBlockState> auth_block_state);
+
   // Determines which AuthBlockType to use, instantiates an AuthBlock of that
   // type, and uses that AuthBlock to derive KeyBlobs for the AuthSession to
   // add a VaultKeyset.
@@ -293,10 +302,24 @@ class AuthSession final {
 
   // Loads and decrypts VaultKeyset with the given |key_blobs|.
   void LoadVaultKeysetAndFsKeys(
+      const std::optional<brillo::SecureBlob> passkey,
       base::OnceCallback<
           void(const user_data_auth::AuthenticateAuthFactorReply&)> on_done,
       CryptoStatus error,
       std::unique_ptr<KeyBlobs> key_blobs);
+
+  // Updates, wraps and resaves |vault_keyset_| and restores on failure.
+  // |user_input| is needed to generate the AuthInput used for key blob creation
+  // to wrap the updated keyset.
+  void ResaveVaultKeysetIfNeeded(
+      const std::optional<brillo::SecureBlob> user_input);
+
+  // Sets |label_to_auth_factor_| which maps existing AuthFactor labels to their
+  // corresponding AuthFactors for testing purpose.
+  void set_label_to_auth_factor_for_testing(
+      std::map<std::string, std::unique_ptr<AuthFactor>> value) {
+    label_to_auth_factor_ = std::move(value);
+  }
 
   const std::string username_;
   const std::string obfuscated_username_;
@@ -360,6 +383,8 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUserTwice);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewEphemeralUser);
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUser);
+  FRIEND_TEST(AuthSessionTest, AuthenticateAuthFactorExistingVKUserAndResave);
+  FRIEND_TEST(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave);
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
