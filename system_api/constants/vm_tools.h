@@ -16,6 +16,7 @@ constexpr int kArcHostClockServicePort = 9901;
 constexpr int kDefaultStartupListenerPort = 7777;
 constexpr int kTremplinListenerPort = 7778;
 constexpr int kCrashListenerPort = 7779;
+constexpr int kSftpServerPort = 7780;
 
 // All ports above this value are reserved for seneschal servers.
 constexpr uint32_t kFirstSeneschalServerPort = 16384;
