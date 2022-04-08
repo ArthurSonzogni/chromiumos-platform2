@@ -4,12 +4,29 @@
 
 //! Implements a basic power_manager client.
 
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context as AnyhowContext, Result};
 use dbus::blocking::Connection;
 use log::{debug, error, info};
+use sync::Mutex;
 use system_api::client::OrgChromiumPowerManager;
+
+/// Define the default maximum duration the powerd proxy will wait for method
+/// call responses.
+const POWERD_DBUS_PROXY_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Define the amount of time to process requests for before checking for a
+/// result. Make this long enough that we're not busy looping, but short enough
+/// that an extra period won't be noticeable to humans.
+const POWERD_PROCESS_PERIOD: Duration = Duration::from_millis(50);
+
+/// Define how long to wait around for powerd to finish the RequestSuspend
+/// method before printing impatiently that we're still waiting. This should be
+/// long enough that a correctly functioning run will not see it, but short
+/// enough that a confused developer at the console with a broken system will.
+const POWERD_REPRINT_PERIOD: Duration = Duration::from_secs(30);
 
 /// Values for the flavor parameter of powerd's RequestSuspend method.
 #[repr(u32)]
@@ -26,6 +43,7 @@ pub struct PowerdPendingResume {}
 impl PowerdPendingResume {
     pub fn new() -> Result<Self> {
         powerd_request_suspend(PowerdSuspendFlavor::FromDiskPrepare)?;
+        wait_for_hibernate_resume_ready()?;
         Ok(PowerdPendingResume {})
     }
 }
@@ -35,6 +53,61 @@ impl Drop for PowerdPendingResume {
         if let Err(e) = powerd_request_suspend(PowerdSuspendFlavor::FromDiskAbort) {
             error!("Failed to notify powerd of aborted resume: {}", e);
         }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct HibernateResumeReady {}
+
+impl dbus::arg::ReadAll for HibernateResumeReady {
+    fn read(_i: &mut dbus::arg::Iter) -> std::result::Result<Self, dbus::arg::TypeMismatchError> {
+        Ok(HibernateResumeReady {})
+    }
+}
+
+impl dbus::message::SignalArgs for HibernateResumeReady {
+    const NAME: &'static str = "HibernateResumeReady";
+    const INTERFACE: &'static str = "org.chromium.PowerManager";
+}
+
+/// Helper function to wait for a HibernateResumeReady signal to come in from powerd.
+fn wait_for_hibernate_resume_ready() -> Result<()> {
+    // First open up a connection to the session bus.
+    let conn = Connection::new_system().context("Failed to start system dbus connection")?;
+
+    // Second, create a wrapper struct around the connection that makes it easy
+    // to send method calls to a specific destination and path.
+    let proxy = conn.with_proxy(
+        "org.chromium.PowerManager",
+        "/org/chromium/PowerManager",
+        POWERD_DBUS_PROXY_TIMEOUT,
+    );
+
+    // Set up a handler to record every time a signal comes in.
+    let signals = Arc::new(Mutex::new(Vec::new()));
+    let signals_copy = signals.clone();
+    proxy.match_signal(
+        move |signal: HibernateResumeReady, _: &Connection, _: &dbus::Message| {
+            signals_copy.lock().push(signal);
+
+            // Return false to abandon the match.
+            false
+        },
+    )?;
+
+    info!("Waiting for HibernateResumeReady signal");
+    loop {
+        let end_time = Instant::now() + POWERD_REPRINT_PERIOD;
+        while Instant::now() < end_time {
+            // Wait for signals.
+            conn.process(POWERD_PROCESS_PERIOD).unwrap();
+            if signals.lock().len() != 0 {
+                debug!("Got HibernateResumeReady signal");
+                return Ok(());
+            }
+        }
+
+        info!("Still waiting for HibernateResumeReady signal");
     }
 }
 
@@ -48,7 +121,7 @@ fn powerd_request_suspend(flavor: PowerdSuspendFlavor) -> Result<()> {
     let proxy = conn.with_proxy(
         "org.chromium.PowerManager",
         "/org/chromium/PowerManager",
-        Duration::from_millis(60000),
+        POWERD_DBUS_PROXY_TIMEOUT,
     );
 
     let external_wakeup_count: u64 = u64::MAX;
