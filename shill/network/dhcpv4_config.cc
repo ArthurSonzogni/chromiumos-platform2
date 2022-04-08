@@ -20,6 +20,7 @@
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
 #include "shill/network/dhcp_provider.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -70,17 +71,19 @@ DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
                            const std::string& lease_file_suffix,
                            bool arp_gateway,
                            const std::string& hostname,
+                           Technology technology,
                            Metrics* metrics)
     : DHCPConfig(control_interface,
                  dispatcher,
                  provider,
                  device_name,
                  kType,
-                 lease_file_suffix),
+                 lease_file_suffix,
+                 technology,
+                 metrics),
       arp_gateway_(arp_gateway),
       is_gateway_arp_active_(false),
-      hostname_(hostname),
-      metrics_(metrics) {
+      hostname_(hostname) {
   SLOG(this, 2) << __func__ << ": " << device_name;
 }
 

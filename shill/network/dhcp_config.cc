@@ -25,6 +25,7 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcp_proxy_interface.h"
 #include "shill/process_manager.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -52,11 +53,14 @@ DHCPConfig::DHCPConfig(ControlInterface* control_interface,
                        DHCPProvider* provider,
                        const std::string& device_name,
                        const std::string& type,
-                       const std::string& lease_file_suffix)
+                       const std::string& lease_file_suffix,
+                       Technology technology,
+                       Metrics* metrics)
     : IPConfig(control_interface, device_name, type),
       control_interface_(control_interface),
       provider_(provider),
       lease_file_suffix_(lease_file_suffix),
+      technology_(technology),
       pid_(0),
       is_lease_active_(false),
       lease_acquisition_timeout_(kAcquisitionTimeout),
@@ -65,6 +69,7 @@ DHCPConfig::DHCPConfig(ControlInterface* control_interface,
       weak_ptr_factory_(this),
       dispatcher_(dispatcher),
       process_manager_(ProcessManager::GetInstance()),
+      metrics_(metrics),
       time_(Time::GetInstance()) {
   SLOG(this, 2) << __func__ << ": " << device_name;
   if (lease_file_suffix_.empty()) {
@@ -80,11 +85,9 @@ DHCPConfig::~DHCPConfig() {
 }
 
 void DHCPConfig::RegisterCallbacks(UpdateCallback update_callback,
-                                   FailureCallback failure_callback,
-                                   ExpireCallback expire_callback) {
+                                   FailureCallback failure_callback) {
   update_callback_ = update_callback;
   failure_callback_ = failure_callback;
-  expire_callback_ = expire_callback;
 }
 
 bool DHCPConfig::RequestIP() {
@@ -165,7 +168,7 @@ void DHCPConfig::OnIPConfigUpdated(const Properties& properties,
     StopAcquisitionTimeout();
     if (properties.lease_duration_seconds) {
       UpdateLeaseExpirationTime(properties.lease_duration_seconds);
-      StartExpirationTimeout(properties.lease_duration_seconds);
+      StartExpirationTimeout(base::Seconds(properties.lease_duration_seconds));
     } else {
       LOG(WARNING)
           << "Lease duration is zero; not starting an expiration timer.";
@@ -325,26 +328,33 @@ void DHCPConfig::ProcessAcquisitionTimeout() {
   }
 }
 
-void DHCPConfig::StartExpirationTimeout(uint32_t lease_duration_seconds) {
+void DHCPConfig::StartExpirationTimeout(base::TimeDelta lease_duration) {
   CHECK(lease_acquisition_timeout_callback_.IsCancelled());
   SLOG(this, 2) << __func__ << ": " << device_name() << ": "
-                << "Lease timeout is " << lease_duration_seconds << " seconds.";
-  lease_expiration_callback_.Reset(Bind(&DHCPConfig::ProcessExpirationTimeout,
-                                        weak_ptr_factory_.GetWeakPtr()));
+                << "Lease timeout is " << lease_duration.InSeconds()
+                << " seconds.";
+  lease_expiration_callback_.Reset(
+      BindOnce(&DHCPConfig::ProcessExpirationTimeout,
+               weak_ptr_factory_.GetWeakPtr(), lease_duration));
   dispatcher_->PostDelayedTask(FROM_HERE, lease_expiration_callback_.callback(),
-                               base::Seconds(lease_duration_seconds));
+                               lease_duration);
 }
 
 void DHCPConfig::StopExpirationTimeout() {
   lease_expiration_callback_.Cancel();
 }
 
-void DHCPConfig::ProcessExpirationTimeout() {
+void DHCPConfig::ProcessExpirationTimeout(base::TimeDelta lease_duration) {
   LOG(ERROR) << "DHCP lease expired on " << device_name()
              << "; restarting DHCP client instance.";
-  if (!expire_callback_.is_null()) {
-    expire_callback_.Run(this);
-  }
+
+  metrics_->SendToUMA(
+      metrics_->GetFullMetricName(
+          Metrics::kMetricExpiredLeaseLengthSecondsSuffix, technology_),
+      lease_duration.InSeconds(), Metrics::kMetricExpiredLeaseLengthSecondsMin,
+      Metrics::kMetricExpiredLeaseLengthSecondsMax,
+      Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets);
+
   if (!Restart()) {
     NotifyFailure();
   }

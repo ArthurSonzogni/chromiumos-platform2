@@ -17,7 +17,9 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
+#include "shill/metrics.h"
 #include "shill/store/key_value_store.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -44,16 +46,15 @@ class DHCPConfig : public IPConfig {
       base::RepeatingCallback<void(const IPConfigRefPtr&, bool)>;
   // Called when DHCP failed.
   using FailureCallback = base::RepeatingCallback<void(const IPConfigRefPtr&)>;
-  // Called when lease expires and this class is about to perform a restart to
-  // attempt to regain it.
-  using ExpireCallback = base::RepeatingCallback<void(const IPConfigRefPtr&)>;
 
   DHCPConfig(ControlInterface* control_interface,
              EventDispatcher* dispatcher,
              DHCPProvider* provider,
              const std::string& device_name,
              const std::string& type,
-             const std::string& lease_file_suffix);
+             const std::string& lease_file_suffix,
+             Technology technology,
+             Metrics* metrics);
   DHCPConfig(const DHCPConfig&) = delete;
   DHCPConfig& operator=(const DHCPConfig&) = delete;
 
@@ -61,8 +62,7 @@ class DHCPConfig : public IPConfig {
 
   // Registers callbacks for DHCP events.
   void RegisterCallbacks(UpdateCallback update_callback,
-                         FailureCallback failure_callback,
-                         ExpireCallback expire_callback);
+                         FailureCallback failure_callback);
 
   // Inherited from IPConfig.
   bool RequestIP() override;
@@ -177,14 +177,14 @@ class DHCPConfig : public IPConfig {
   void ProcessAcquisitionTimeout();
 
   // Initialize a callback that will invoke ProcessExpirationTimeout if we
-  // do not renew a lease in a |lease_duration_seconds|.
-  void StartExpirationTimeout(uint32_t lease_duration_seconds);
+  // do not renew a lease in a |lease_duration|.
+  void StartExpirationTimeout(base::TimeDelta lease_duration);
   // Cancel callback created by StartExpirationTimeout. One-liner included
   // for symmetry.
   void StopExpirationTimeout();
   // Called if we do not renew a DHCP lease by the time the lease expires.
   // Informs upper layers of the expiration and restarts the DHCP client.
-  void ProcessExpirationTimeout();
+  void ProcessExpirationTimeout(base::TimeDelta lease_duration);
 
   // Kills DHCP client process.
   void KillClient();
@@ -196,6 +196,9 @@ class DHCPConfig : public IPConfig {
   // DHCP lease file suffix, used to differentiate the lease of one interface
   // or network from another.
   std::string lease_file_suffix_;
+
+  // The technology of device which DHCP is running on.
+  Technology technology_;
 
   // The PID of the spawned DHCP client. May be 0 if no client has been spawned
   // yet or the client has died.
@@ -222,7 +225,6 @@ class DHCPConfig : public IPConfig {
   // Callbacks registered by RegisterCallbacks().
   UpdateCallback update_callback_;
   FailureCallback failure_callback_;
-  ExpireCallback expire_callback_;
 
   // The minimum MTU value this configuration will respect.
   int minimum_mtu_;

@@ -586,8 +586,9 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   DestroyIPConfig();
   StartIPv6();
   bool arp_gateway = manager_->GetArpGateway() && ShouldUseArpGateway();
-  DHCPConfigRefPtr dhcp_config = dhcp_provider_->CreateIPv4Config(
-      link_name_, lease_name, arp_gateway, manager_->dhcp_hostname());
+  DHCPConfigRefPtr dhcp_config =
+      dhcp_provider_->CreateIPv4Config(link_name_, lease_name, arp_gateway,
+                                       manager_->dhcp_hostname(), technology_);
   const int minimum_mtu = manager()->GetMinimumMTU();
   if (minimum_mtu != IPConfig::kUndefinedMTU) {
     dhcp_config->set_minimum_mtu(minimum_mtu);
@@ -595,8 +596,7 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
 
   dhcp_config->RegisterCallbacks(
       base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
-      base::BindRepeating(&Device::OnIPConfigFailed, AsWeakPtr()),
-      base::BindRepeating(&Device::OnIPConfigExpired, AsWeakPtr()));
+      base::BindRepeating(&Device::OnIPConfigFailed, AsWeakPtr()));
   ipconfig_ = dhcp_config;
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
@@ -963,16 +963,6 @@ void Device::OnIPConfigFailure() {
     selected_service_->DisconnectWithFailure(Service::kFailureDHCP, &error,
                                              __func__);
   }
-}
-
-void Device::OnIPConfigExpired(const IPConfigRefPtr& ipconfig) {
-  metrics()->SendToUMA(
-      metrics()->GetFullMetricName(
-          Metrics::kMetricExpiredLeaseLengthSecondsSuffix, technology()),
-      ipconfig->properties().lease_duration_seconds,
-      Metrics::kMetricExpiredLeaseLengthSecondsMin,
-      Metrics::kMetricExpiredLeaseLengthSecondsMax,
-      Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets);
 }
 
 void Device::OnConnected() {}

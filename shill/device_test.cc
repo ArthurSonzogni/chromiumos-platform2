@@ -160,10 +160,6 @@ class DeviceTest : public testing::Test {
     device_->OnIPConfigFailed(ipconfig);
   }
 
-  void OnIPConfigExpired(const IPConfigRefPtr& ipconfig) {
-    device_->OnIPConfigExpired(ipconfig);
-  }
-
   patchpanel::TrafficCounter CreateCounter(
       const std::valarray<uint64_t>& vals,
       patchpanel::TrafficCounter::Source source,
@@ -306,7 +302,8 @@ TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
   SelectService(service);
 
   EXPECT_CALL(*manager(), dhcp_hostname()).WillOnce(ReturnRef(dhcp_hostname));
-  EXPECT_CALL(*dhcp_provider, CreateIPv4Config(_, _, _, StrEq(dhcp_hostname)))
+  EXPECT_CALL(*dhcp_provider,
+              CreateIPv4Config(_, _, _, StrEq(dhcp_hostname), _))
       .WillOnce(Return(dhcp_config));
   EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(true));
   EXPECT_TRUE(device_->AcquireIPConfig());
@@ -324,7 +321,8 @@ TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
   const std::string dhcp_hostname = "chromeos";
 
   EXPECT_CALL(*manager(), dhcp_hostname()).WillOnce(ReturnRef(dhcp_hostname));
-  EXPECT_CALL(*dhcp_provider, CreateIPv4Config(_, _, _, StrEq(dhcp_hostname)))
+  EXPECT_CALL(*dhcp_provider,
+              CreateIPv4Config(_, _, _, StrEq(dhcp_hostname), _))
       .WillOnce(Return(dhcp_config));
   EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(true));
   EXPECT_TRUE(device_->AcquireIPConfig());
@@ -345,7 +343,7 @@ TEST_F(DeviceTest, ConfigWithMinimumMTU) {
 
   scoped_refptr<MockDHCPConfig> dhcp_config(
       new NiceMock<MockDHCPConfig>(control_interface(), kDeviceName));
-  EXPECT_CALL(*dhcp_provider, CreateIPv4Config(_, _, _, _))
+  EXPECT_CALL(*dhcp_provider, CreateIPv4Config(_, _, _, _, _))
       .WillOnce(Return(dhcp_config));
   EXPECT_CALL(*dhcp_config, set_minimum_mtu(minimum_mtu));
 
@@ -614,22 +612,6 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccessNoSelectedService) {
       new NiceMock<MockIPConfig>(control_interface(), kDeviceName);
   SelectService(nullptr);
   OnIPConfigUpdated(ipconfig.get());
-}
-
-TEST_F(DeviceTest, OnIPConfigExpired) {
-  scoped_refptr<MockIPConfig> ipconfig =
-      new NiceMock<MockIPConfig>(control_interface(), kDeviceName);
-  const int kLeaseLength = 1234;
-  ipconfig->properties_.lease_duration_seconds = kLeaseLength;
-
-  EXPECT_CALL(
-      *metrics(),
-      SendToUMA("Network.Shill.Unknown.ExpiredLeaseLengthSeconds2",
-                kLeaseLength, Metrics::kMetricExpiredLeaseLengthSecondsMin,
-                Metrics::kMetricExpiredLeaseLengthSecondsMax,
-                Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets));
-
-  OnIPConfigExpired(ipconfig.get());
 }
 
 TEST_F(DeviceTest, SetEnabledNonPersistent) {

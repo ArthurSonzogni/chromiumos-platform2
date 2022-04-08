@@ -20,6 +20,7 @@
 #include "shill/logging.h"
 #include "shill/network/dhcpcd_listener_interface.h"
 #include "shill/network/dhcpv4_config.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -78,10 +79,12 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
     const std::string& device_name,
     const std::string& lease_file_suffix,
     bool arp_gateway,
-    const std::string& hostname) {
+    const std::string& hostname,
+    Technology technology) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
   return new DHCPv4Config(control_interface_, dispatcher_, this, device_name,
-                          lease_file_suffix, arp_gateway, hostname, metrics_);
+                          lease_file_suffix, arp_gateway, hostname, technology,
+                          metrics_);
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {

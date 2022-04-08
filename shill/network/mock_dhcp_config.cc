@@ -4,6 +4,8 @@
 
 #include "shill/network/mock_dhcp_config.h"
 
+#include "shill/technology.h"
+
 namespace shill {
 
 MockDHCPConfig::MockDHCPConfig(ControlInterface* control_interface,
@@ -13,7 +15,9 @@ MockDHCPConfig::MockDHCPConfig(ControlInterface* control_interface,
                  nullptr,
                  device_name,
                  std::string(),
-                 std::string()) {}
+                 std::string(),
+                 Technology::kUnknown,
+                 nullptr) {}
 
 MockDHCPConfig::~MockDHCPConfig() = default;
 

@@ -48,8 +48,9 @@ class DHCPProviderTest : public Test {
 };
 
 TEST_F(DHCPProviderTest, CreateIPv4Config) {
-  DHCPConfigRefPtr config = provider_->CreateIPv4Config(
-      kDeviceName, kStorageIdentifier, kArpGateway, kDeviceName);
+  DHCPConfigRefPtr config =
+      provider_->CreateIPv4Config(kDeviceName, kStorageIdentifier, kArpGateway,
+                                  kDeviceName, Technology::kUnknown);
   EXPECT_NE(nullptr, config);
   EXPECT_EQ(kDeviceName, config->device_name());
   EXPECT_TRUE(provider_->configs_.empty());
@@ -74,8 +75,9 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 
-  DHCPConfigRefPtr config = provider_->CreateIPv4Config(
-      kDeviceName, kStorageIdentifier, kArpGateway, kDeviceName);
+  DHCPConfigRefPtr config =
+      provider_->CreateIPv4Config(kDeviceName, kStorageIdentifier, kArpGateway,
+                                  kDeviceName, Technology::kUnknown);
   provider_->BindPID(kPid, config);
   EXPECT_NE(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));

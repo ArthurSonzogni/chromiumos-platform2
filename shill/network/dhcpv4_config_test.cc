@@ -20,6 +20,7 @@
 #include "shill/network/mock_dhcp_proxy.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store_test.h"
+#include "shill/technology.h"
 #include "shill/testing.h"
 
 using testing::_;
@@ -53,6 +54,7 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
                                  kLeaseFileSuffix,
                                  kArpGateway,
                                  hostname_,
+                                 Technology::kUnknown,
                                  metrics())) {}
 
   void SetUp() override { config_->process_manager_ = &process_manager_; }
@@ -91,7 +93,7 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
     bool arp_gateway) {
   DHCPv4ConfigRefPtr config(new DHCPv4Config(
       control_interface(), dispatcher(), &provider_, kDeviceName, lease_suffix,
-      arp_gateway, kHostName, metrics()));
+      arp_gateway, kHostName, Technology::kUnknown, metrics()));
   config->process_manager_ = &process_manager_;
 
   return config;
@@ -103,7 +105,7 @@ DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
     bool arp_gateway) {
   DHCPv4ConfigRefPtr config(new DHCPv4Config(
       control_interface(), dispatcher(), &provider_, kDeviceName, lease_suffix,
-      arp_gateway, hostname, metrics()));
+      arp_gateway, hostname, Technology::kUnknown, metrics()));
   config->process_manager_ = &process_manager_;
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(kPID));
@@ -343,8 +345,7 @@ class DHCPv4ConfigCallbackTest : public DHCPv4ConfigTest {
         base::BindRepeating(&DHCPv4ConfigCallbackTest::SuccessCallback,
                             base::Unretained(this)),
         base::BindRepeating(&DHCPv4ConfigCallbackTest::FailureCallback,
-                            base::Unretained(this)),
-        base::DoNothing());
+                            base::Unretained(this)));
     ip_config_ = config_;
   }
 

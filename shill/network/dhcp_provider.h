@@ -15,6 +15,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/refptr_types.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -65,7 +66,8 @@ class DHCPProvider {
       const std::string& device_name,
       const std::string& lease_file_suffix,
       bool arp_gateway,
-      const std::string& hostname);
+      const std::string& hostname,
+      Technology technology);
 
   // Returns the DHCP configuration associated with DHCP client |pid|. Return
   // nullptr if |pid| is not bound to a configuration.

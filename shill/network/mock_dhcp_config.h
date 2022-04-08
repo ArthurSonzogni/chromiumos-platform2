@@ -10,6 +10,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/network/dhcp_config.h"
+#include "shill/technology.h"
 
 namespace shill {
 

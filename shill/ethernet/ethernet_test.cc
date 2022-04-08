@@ -360,7 +360,7 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   StartEthernet();
   SetLinkUp(false);
   EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _)).Times(0);
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);
   EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
@@ -373,7 +373,7 @@ TEST_F(EthernetTest, ConnectToFailure) {
   StartEthernet();
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(false));
   EXPECT_CALL(dispatcher_,
@@ -389,7 +389,7 @@ TEST_F(EthernetTest, ConnectToSuccess) {
   StartEthernet();
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(dispatcher_,

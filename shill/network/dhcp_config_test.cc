@@ -17,11 +17,13 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/mock_log.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_process_manager.h"
 #include "shill/net/mock_time.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/network/mock_dhcp_proxy.h"
 #include "shill/store/property_store_test.h"
+#include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
@@ -54,13 +56,17 @@ class TestDHCPConfig : public DHCPConfig {
                  DHCPProvider* provider,
                  const std::string& device_name,
                  const std::string& type,
-                 const std::string& lease_file_suffix)
+                 const std::string& lease_file_suffix,
+                 Technology technology,
+                 Metrics* metrics)
       : DHCPConfig(control_interface,
                    dispatcher,
                    provider,
                    device_name,
                    type,
-                   lease_file_suffix) {}
+                   lease_file_suffix,
+                   technology,
+                   metrics) {}
 
   ~TestDHCPConfig() override = default;
 
@@ -82,7 +88,9 @@ class DHCPConfigTest : public PropertyStoreTest {
                                    &provider_,
                                    kDeviceName,
                                    kDhcpMethod,
-                                   kLeaseFileSuffix)) {
+                                   kLeaseFileSuffix,
+                                   Technology::kUnknown,
+                                   &metrics_)) {
     config_->time_ = &time_;
   }
 
@@ -122,15 +130,16 @@ class DHCPConfigTest : public PropertyStoreTest {
   MockTime time_;
   TestDHCPConfigRefPtr config_;
   MockDHCPProvider provider_;
+  MockMetrics metrics_;
 };
 
 const int DHCPConfigTest::kPID = 123456;
 
 TestDHCPConfigRefPtr DHCPConfigTest::CreateMockMinijailConfig(
     const std::string& lease_suffix) {
-  TestDHCPConfigRefPtr config(
-      new TestDHCPConfig(control_interface(), dispatcher(), &provider_,
-                         kDeviceName, kDhcpMethod, lease_suffix));
+  TestDHCPConfigRefPtr config(new TestDHCPConfig(
+      control_interface(), dispatcher(), &provider_, kDeviceName, kDhcpMethod,
+      lease_suffix, Technology::kUnknown, &metrics_));
   config->process_manager_ = &process_manager_;
 
   return config;
@@ -211,6 +220,23 @@ TEST_F(DHCPConfigTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
   EXPECT_FALSE(config_->TimeToLeaseExpiry().has_value());
 }
 
+TEST_F(DHCPConfigTest, ExpiryMetrics) {
+  // Get a lease with duration of 1 second, the expiry callback should be
+  // triggered right after 1 second.
+  IPConfig::Properties properties;
+  properties.lease_duration_seconds = 1;
+  InvokeOnIPConfigUpdated(properties, true);
+
+  dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
+
+  EXPECT_CALL(metrics_,
+              SendToUMA("Network.Shill.Unknown.ExpiredLeaseLengthSeconds2", 1,
+                        Metrics::kMetricExpiredLeaseLengthSecondsMin,
+                        Metrics::kMetricExpiredLeaseLengthSecondsMax,
+                        Metrics::kMetricExpiredLeaseLengthSecondsNumBuckets));
+  dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
+}
+
 namespace {
 
 class DHCPConfigCallbackTest : public DHCPConfigTest {
@@ -221,8 +247,6 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
         base::BindRepeating(&DHCPConfigCallbackTest::UpdateCallback,
                             base::Unretained(this)),
         base::BindRepeating(&DHCPConfigCallbackTest::FailureCallback,
-                            base::Unretained(this)),
-        base::BindRepeating(&DHCPConfigCallbackTest::ExpireCallback,
                             base::Unretained(this)));
     ip_config_ = config_;
   }
@@ -252,19 +276,6 @@ TEST_F(DHCPConfigCallbackTest, NotifyFailure) {
   EXPECT_TRUE(config_->properties().address.empty());
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
-}
-
-TEST_F(DHCPConfigCallbackTest, NotifyExpiry) {
-  // Get a lease with duration of 1 second, the expiry callback should be
-  // triggered right after 1 second.
-  IPConfig::Properties properties;
-  properties.lease_duration_seconds = 1;
-  InvokeOnIPConfigUpdated(properties, true);
-
-  dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
-
-  EXPECT_CALL(*this, ExpireCallback(ConfigRef()));
-  dispatcher()->task_environment().FastForwardBy(base::Milliseconds(500));
 }
 
 TEST_F(DHCPConfigCallbackTest, StoppedDuringFailureCallback) {

@@ -571,11 +571,6 @@ class Device : public base::RefCounted<Device> {
   // service changed.
   void OnStaticIPConfigChanged();
 
-  // Callback invoked when an IPConfig restarts due to lease expiry.  This
-  // is advisory, since an "Updated" or "Failed" signal is guaranteed to
-  // follow.
-  void OnIPConfigExpired(const IPConfigRefPtr& ipconfig);
-
   // Return true if given IP configuration contain both IP address and DNS
   // servers. Hence, ready to be used for network connection.
   bool IPConfigCompleted(const IPConfigRefPtr& ipconfig);

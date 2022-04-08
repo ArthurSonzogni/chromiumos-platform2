@@ -11,6 +11,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/network/dhcp_config.h"
+#include "shill/technology.h"
 
 namespace shill {
 
@@ -29,6 +30,7 @@ class DHCPv4Config : public DHCPConfig {
                const std::string& lease_file_suffix,
                bool arp_gateway,
                const std::string& hostname,
+               Technology technology,
                Metrics* metrics);
   DHCPv4Config(const DHCPv4Config&) = delete;
   DHCPv4Config& operator=(const DHCPv4Config&) = delete;
