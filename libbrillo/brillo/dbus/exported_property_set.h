@@ -70,6 +70,8 @@ class BRILLO_EXPORT ExportedPropertyBase {
   // Called by ExportedPropertySet to register a callback.  This callback
   // triggers ExportedPropertySet to send a signal from the properties
   // interface of the exported object.
+  // This API is NOT designed to be used other than ExportedPropertySet.
+  // If so, the signal propergation will be blocked.
   virtual void SetUpdateCallback(const OnUpdateCallback& cb);
 
   // Clears the update callback that was previously set with SetUpdateCallback.

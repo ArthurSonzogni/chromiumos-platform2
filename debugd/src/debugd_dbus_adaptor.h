@@ -251,12 +251,12 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool DRMTraceAnnotateLog(brillo::ErrorPtr* error,
                            const std::string& log) override;
   bool DRMTraceSnapshot(brillo::ErrorPtr* error, uint32_t type_enum) override;
+  void SetCrashSenderTestMode(bool mode) override;
 
  private:
   void OnPacketCaptureStopped();
 
   brillo::dbus_utils::DBusObject dbus_object_;
-  brillo::dbus_utils::ExportedProperty<bool> crash_sender_test_mode_;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
 

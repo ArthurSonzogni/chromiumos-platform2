@@ -43,9 +43,8 @@ class CrashSenderTool : public SubprocessTool {
       brillo::ErrorPtr* error,
       bool consent_already_checked_by_crash_reporter);
 
-  // Called when the CrashSenderTestMode dbus property is changed.
-  void OnTestModeChanged(
-      const brillo::dbus_utils::ExportedPropertyBase* test_mode_property);
+  // Called when the SetCrashSenderTestMode dbus property is changed.
+  void SetTestMode(bool mode);
 
  private:
   int next_crash_directory_id_ = 1;

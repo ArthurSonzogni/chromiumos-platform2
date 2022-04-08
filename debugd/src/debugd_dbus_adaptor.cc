@@ -100,13 +100,6 @@ void DebugdDBusAdaptor::RegisterAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
   auto* my_interface = dbus_object_.AddOrGetInterface(kDebugdInterface);
   DCHECK(my_interface);
-  my_interface->AddProperty(kCrashSenderTestMode, &crash_sender_test_mode_);
-  crash_sender_test_mode_.SetUpdateCallback(
-      base::BindRepeating(&CrashSenderTool::OnTestModeChanged,
-                          base::Unretained(crash_sender_tool_.get())));
-  crash_sender_test_mode_.SetValue(false);
-  crash_sender_test_mode_.SetAccessMode(
-      brillo::dbus_utils::ExportedPropertyBase::Access::kReadWrite);
   RegisterWithDBusObject(&dbus_object_);
   dbus_object_.RegisterAsync(cb);
 }
@@ -708,6 +701,10 @@ bool DebugdDBusAdaptor::DRMTraceAnnotateLog(brillo::ErrorPtr* error,
 bool DebugdDBusAdaptor::DRMTraceSnapshot(brillo::ErrorPtr* error,
                                          uint32_t type_enum) {
   return drm_trace_tool_->Snapshot(error, type_enum);
+}
+
+void DebugdDBusAdaptor::SetCrashSenderTestMode(bool mode) {
+  crash_sender_tool_->SetTestMode(mode);
 }
 
 }  // namespace debugd
