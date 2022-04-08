@@ -6,8 +6,15 @@
 #include <utility>
 
 #include <base/containers/contains.h>
+#include <ModemManager/ModemManager.h>
 
 #include "hermes/modem_manager_proxy.h"
+
+namespace {
+
+constexpr auto kInhibitTimeout = base::Minutes(1);
+
+}
 
 namespace hermes {
 
@@ -116,6 +123,7 @@ void ModemManagerProxy::OnInterfaceRemoved(
   LOG(INFO) << "Clearing modem proxy for "
             << modem_proxy_->GetObjectPath().value();
   modem_proxy_.reset();
+  pending_inhibit_cb_.Reset();
 }
 
 void ModemManagerProxy::OnNewModemDetected(dbus::ObjectPath object_path) {
@@ -138,8 +146,15 @@ void ModemManagerProxy::OnPropertiesChanged(
   VLOG(3) << __func__ << " : " << prop << " changed.";
 
   // wait for all properties that we will be read by ModemMbim.
-  if (!modem_proxy_->GetProperties()->primary_port.is_valid())
+  if (!modem_proxy_->GetProperties()->primary_port.is_valid() ||
+      !modem_proxy_->GetProperties()->state.is_valid())
     return;
+
+  if (prop == MM_MODEM_PROPERTY_STATE && pending_inhibit_cb_ &&
+      IsModemSafeToInhibit()) {
+    std::move(pending_inhibit_cb_).Run();
+    return;
+  }
 
   // Ignore on_modem_appeared_cb if a property update on an existing
   // modem_proxy_ triggered this call.
@@ -210,14 +225,28 @@ void ModemManagerProxy::InhibitDevice(bool inhibit, ResultCallback cb) {
     return;
   }
 
-  auto uid = inhibit ? modem_proxy_->device() : inhibited_uid_.value();
-
-  constexpr int kInhibitTimeoutMilliseconds = 1000;
   // convert cb into a repeating callback, so that it can be used by either
-  // on_inhibit_success or on_inhibit_fail
+  // on_inhibit_success or on_inhibit_fail or FinalInhibitAttempt
   auto return_inhibit_result = base::BindRepeating(
       [](ResultCallback cb, int err) { std::move(cb).Run(err); },
       base::Passed(std::move(cb)));
+
+  if (inhibit && !IsModemSafeToInhibit()) {
+    LOG(INFO) << "Waiting for modem to become safe to inhibit";
+    pending_inhibit_cb_ = base::BindOnce(&ModemManagerProxy::InhibitDevice,
+                                         weak_factory_.GetWeakPtr(), inhibit,
+                                         return_inhibit_result);
+    base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&ModemManagerProxy::InhibitTimeout,
+                       weak_factory_.GetWeakPtr(), return_inhibit_result),
+        kInhibitTimeout);
+    return;
+  }
+
+  auto uid = inhibit ? modem_proxy_->device() : inhibited_uid_.value();
+
+  constexpr int kInhibitTimeoutMilliseconds = 1000;
 
   auto on_inhibit_success = base::BindOnce(&ModemManagerProxy::OnInhibitSuccess,
                                            weak_factory_.GetWeakPtr(), inhibit,
@@ -232,6 +261,16 @@ void ModemManagerProxy::InhibitDevice(bool inhibit, ResultCallback cb) {
   mm_proxy_->InhibitDeviceAsync(uid, inhibit, std::move(on_inhibit_success),
                                 std::move(on_inhibit_fail),
                                 kInhibitTimeoutMilliseconds);
+}
+
+void ModemManagerProxy::InhibitTimeout(ResultCallback cb) {
+  if (pending_inhibit_cb_ && !IsModemSafeToInhibit()) {
+    std::move(cb).Run(kModemManagerError);
+    return;
+  }
+  if (pending_inhibit_cb_) {
+    std::move(pending_inhibit_cb_).Run();
+  }
 }
 
 void ModemManagerProxy::OnInhibitSuccess(bool inhibit,
@@ -251,6 +290,37 @@ void ModemManagerProxy::OnInhibitSuccess(bool inhibit,
   }
 
   std::move(cb).Run(kSuccess);
+}
+
+bool ModemManagerProxy::IsModemSafeToInhibit() {
+  if (!modem_proxy_)
+    return false;
+
+  // modem_proxy_ seems to miss property updates at times. If property updates
+  // were working perfectly, one could check modem_proxy_->state() instead of
+  // reading the state from MM.
+  brillo::ErrorPtr error;
+  auto resp = brillo::dbus_utils::CallMethodAndBlock(
+      modem_proxy_->GetObjectProxy(), dbus::kDBusPropertiesInterface,
+      dbus::kDBusPropertiesGet, &error,
+      std::string(modemmanager::kModemManager1ModemInterface),
+      std::string(MM_MODEM_PROPERTY_STATE));
+  if (!resp)
+    return false;
+  std::int32_t state;
+  if (!brillo::dbus_utils::ExtractMethodCallResults(resp.get(), &error,
+                                                    &state)) {
+    return false;
+  }
+
+  if (state == MM_MODEM_STATE_ENABLING || state == MM_MODEM_STATE_DISABLING ||
+      state == MM_MODEM_STATE_INITIALIZING ||
+      state == MM_MODEM_STATE_CONNECTING ||
+      state == MM_MODEM_STATE_DISCONNECTING) {
+    LOG(INFO) << "Modem in a transitional state, state = " << state;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace hermes

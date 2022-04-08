@@ -59,10 +59,12 @@ class ModemManagerProxy {
       const std::string& prop);
 
   void Uninhibit();
+  bool IsModemSafeToInhibit();
   void InhibitDevice(bool inhibit, ResultCallback cb);
   void OnInhibitSuccess(bool inhibit,
                         std::basic_string<char> uid,
                         ResultCallback cb);
+  void InhibitTimeout(ResultCallback cb);
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::freedesktop::DBus::ObjectManagerProxy>
@@ -77,6 +79,7 @@ class ModemManagerProxy {
 
   std::optional<std::basic_string<char>> inhibited_uid_;
   base::CancelableOnceClosure uninhibit_cb_;
+  base::OnceClosure pending_inhibit_cb_;
 
   base::WeakPtrFactory<ModemManagerProxy> weak_factory_;
 };
