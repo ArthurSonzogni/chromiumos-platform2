@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <string>
+#include <string_view>
 
 #include <fcntl.h>
 #include <poll.h>
@@ -28,59 +29,113 @@
 namespace cros_disks {
 namespace {
 
-enum class ReadResult {
-  kSuccess,
-  kWouldBlock,
-  kFailure,
-};
-
-ReadResult ReadFD(int fd, std::string* data) {
-  const size_t kMaxSize = 4096;
-  char buffer[kMaxSize];
-  ssize_t bytes_read = HANDLE_EINTR(read(fd, buffer, kMaxSize));
-
-  if (bytes_read < 0) {
-    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      data->clear();
-      return ReadResult::kWouldBlock;
-    }
-    PLOG(ERROR) << "Read failed.";
-    return ReadResult::kFailure;
-  }
-
-  data->assign(buffer, bytes_read);
-  return ReadResult::kSuccess;
-}
-
-// Interleaves streams.
-class StreamMerger {
+// Reads chunks of data from a pipe and splits the read data into lines.
+class PipeReader {
  public:
-  explicit StreamMerger(std::vector<std::string>* output) : output_(output) {}
-
-  ~StreamMerger() {
-    if (!remaining_.empty())
-      output_->push_back(std::move(remaining_));
+  PipeReader(base::ScopedFD fd, std::vector<std::string>* output)
+      : fd_(std::move(fd)), output_(output) {
+    PCHECK(base::SetNonBlocking(fd_.get()));
   }
 
-  void Append(const base::StringPiece data) {
-    if (data.empty())
-      return;
+  ~PipeReader() {
+    if (!remaining_.empty()) {
+      LOG(INFO) << "Got line: " << quote(remaining_);
+      output_->push_back(remaining_);
+    }
+  }
 
-    std::vector<base::StringPiece> lines = base::SplitStringPiece(
-        data, "\n", base::WhitespaceHandling::KEEP_WHITESPACE,
-        base::SplitResult::SPLIT_WANT_ALL);
-    const base::StringPiece last_line = lines.back();
-    lines.pop_back();
-
-    for (const base::StringPiece line : lines) {
-      output_->push_back(base::StrCat({remaining_, line}));
+  void Append(std::string_view data) {
+    LOG(INFO) << ">> Processing: " << quote(data);
+    for (std::string_view::size_type i;
+         (i = data.find_first_of('\n')) != std::string_view::npos;) {
+      remaining_ += data.substr(0, i);
+      LOG(INFO) << "Got line: " << quote(remaining_);
+      output_->push_back(remaining_);
       remaining_.clear();
+
+      data.remove_prefix(i + 1);
     }
 
-    remaining_ = std::string(last_line);
+    remaining_ += data;
+  }
+
+  // Reads and processes as much data as possible from the given file
+  // descriptor. Returns true if there might be more data to read in the future,
+  // or false if the end of stream has definitely been reached.
+  bool Read() {
+    if (!fd_.is_valid())
+      return false;
+
+    const int fd = fd_.get();
+
+    while (true) {
+      char buffer[PIPE_BUF];
+      const ssize_t n = read(fd, buffer, PIPE_BUF);
+
+      if (n < 0) {
+        // Error reading.
+        switch (errno) {
+          case EAGAIN:
+          case EINTR:
+            // It's Ok to try again later.
+            PLOG(INFO) << "Nothing to read from file descriptor " << fd
+                       << " for the time being";
+            return true;
+        }
+
+        PLOG(ERROR) << "Cannot read from file descriptor " << fd;
+        fd_.reset();
+        return false;
+      }
+
+      if (n == 0) {
+        // End of stream.
+        LOG(INFO) << "End of stream from file descriptor " << fd;
+        fd_.reset();
+        return false;
+      }
+
+      DCHECK_GT(n, 0);
+      DCHECK_LE(n, PIPE_BUF);
+      Append(std::string_view(buffer, n));
+    }
+  }
+
+  // Waits for something to read from the given file descriptor (with a timeout
+  // of 100ms), and reads and processes as much data as possible. Returns true
+  // if there might be more data to read in the future, or false if the end of
+  // stream has definitely been reached.
+  bool WaitAndRead() {
+    if (!fd_.is_valid())
+      return false;
+
+    const int fd = fd_.get();
+
+    struct pollfd pfd {
+      fd, POLLIN, 0
+    };
+
+    const int ret = poll(&pfd, 1, 100 /* milliseconds */);
+
+    if (ret < 0) {
+      // Error.
+      PLOG(ERROR) << "Cannot poll file descriptor " << fd;
+      CHECK_EQ(errno, EINTR);
+      return true;
+    }
+
+    if (ret == 0) {
+      // Nothing to do / timeout.
+      LOG(INFO) << "Nothing to do with file descriptor " << fd
+                << " for the time being";
+      return true;
+    }
+
+    return Read();
   }
 
  private:
+  base::ScopedFD fd_;
   std::vector<std::string>* const output_;
   std::string remaining_;
 };
@@ -245,43 +300,17 @@ void Process::Communicate(std::vector<std::string>* output,
                           base::ScopedFD out_fd) {
   DCHECK(output);
 
-  if (out_fd.is_valid())
-    PCHECK(base::SetNonBlocking(out_fd.get()));
+  PipeReader reader(std::move(out_fd), output);
 
-  std::string data;
-  StreamMerger merger(output);
+  // Poll process and pipe. Read from pipe when possible.
+  while (!IsFinished() && reader.WaitAndRead())
+    continue;
 
-  while (!IsFinished() && out_fd.is_valid()) {
-    struct pollfd pfd {
-      out_fd.get(), POLLIN, 0
-    };
-    const int ret = HANDLE_EINTR(poll(&pfd, 1, 100 /* milliseconds */));
-
-    if (ret < 0) {
-      PLOG(ERROR) << "Cannot poll file descriptor " << out_fd.get();
-      break;
-    }
-
-    if (ret == 0)
-      continue;
-
-    if (ReadFD(out_fd.get(), &data) == ReadResult::kFailure) {
-      // Failure.
-      out_fd.reset();
-    } else {
-      merger.Append(data);
-    }
-  }
-
+  // Really wait for process to finish.
   Wait();
 
-  // Final read after process exited.
-  if (out_fd.is_valid()) {
-    while (ReadFD(out_fd.get(), &data) != ReadResult::kFailure &&
-           !data.empty()) {
-      merger.Append(data);
-    }
-  }
+  // Final read from pipe after process finished.
+  reader.Read();
 }
 
 }  // namespace cros_disks
