@@ -11,12 +11,13 @@ mod memory;
 mod test;
 
 use anyhow::{bail, Result};
-use sys_util::syslog;
+use sys_util::{info, syslog};
 
 fn main() -> Result<()> {
     if let Err(e) = syslog::init() {
         bail!("Failed to initiailize syslog: {}", e);
     }
 
+    info!("Starting resourced");
     dbus::service_main()
 }
