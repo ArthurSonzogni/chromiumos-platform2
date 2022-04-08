@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 
 #include "modemfwd/firmware_file_info.h"
+#include "modemfwd/firmware_manifest.h"
 
 namespace modemfwd {
 
@@ -52,9 +53,9 @@ class FirmwareDirectory {
 };
 
 std::unique_ptr<FirmwareDirectory> CreateFirmwareDirectory(
-    const base::FilePath& fw_manifest_directory);
-
-std::string GetModemFirmwareVariant();
+    std::unique_ptr<FirmwareIndex> index,
+    const base::FilePath& directory,
+    const std::string& variant);
 
 }  // namespace modemfwd
 

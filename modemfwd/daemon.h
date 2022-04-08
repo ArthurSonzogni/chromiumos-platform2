@@ -16,6 +16,7 @@
 #include <dbus/bus.h>
 
 #include "modemfwd/dbus_adaptors/org.chromium.Modemfwd.h"
+#include "modemfwd/dlc_manager.h"
 #include "modemfwd/journal.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
@@ -49,8 +50,6 @@ class DBusAdaptor : public org::chromium::ModemfwdInterface,
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  // Constructor for Daemon which loads the cellular DLC to get firmware.
-  Daemon(const std::string& journal_file, const std::string& helper_directory);
   // Constructor for Daemon which loads from already set-up
   // directories.
   Daemon(const std::string& journal_file,
@@ -69,16 +68,21 @@ class Daemon : public brillo::DBusServiceDaemon {
  protected:
   // brillo::Daemon overrides.
   int OnInit() override;
-  int OnEventLoopStarted() override;
 
   // brillo::DBusServiceDaemon overrides.
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
  private:
-  // Once we have a path for the firmware directory we can set up the
-  // journal and flasher.
-  int CompleteInitialization();
+  // Once we have a path for the firmware directory we can parse
+  // the manifest and set up the DLC manager.
+  int SetupFirmwareDirectory();
+
+  // Setup the journal, flasher, and post delayed tasks.
+  void CompleteInitialization();
+
+  // Install DLC callback.
+  void InstallDlcCompleted(const std::string&, const brillo::Error*);
 
   // Called when a modem gets its home operator carrier ID and might
   // need a new main firmware or carrier customization.
@@ -98,8 +102,12 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   base::FilePath journal_file_path_;
   base::FilePath helper_dir_path_;
-  base::FilePath firmware_dir_path_;
+  base::FilePath fw_manifest_dir_path_;
 
+  std::string variant_;
+  std::unique_ptr<DlcManager> dlc_manager_;
+  std::unique_ptr<FirmwareDirectory> fw_manifest_directory_;
+  std::unique_ptr<FirmwareIndex> fw_index_;
   std::unique_ptr<ModemHelperDirectory> helper_directory_;
 
   std::unique_ptr<ModemTracker> modem_tracker_;

@@ -27,6 +27,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libbrillo",
     "libcros_config",
+    "libdlcservice-client",
     "libshill-client",
     "liblzma",
     "ModemManager",
@@ -55,6 +56,8 @@ generate_dbus_adaptors("modemfwd_adaptors") {
 
 static_library("libmodemfw") {
   sources = [
+    "dlc_manager.cc",
+    "error.cc",
     "file_decompressor.cc",
     "firmware_directory.cc",
     "firmware_file.cc",
@@ -102,6 +105,8 @@ install_config("install_dbus_config") {
 if (use.test) {
   executable("modemfw_test") {
     sources = [
+      "dlc_manager_test.cc",
+      "error_test.cc",
       "file_decompressor_test.cc",
       "firmware_directory_stub.cc",
       "firmware_directory_test.cc",
@@ -114,7 +119,10 @@ if (use.test) {
       "//common-mk:test",
     ]
     run_test = true
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libchrome-test",
+      "libdlcservice-client-test",
+    ]
     deps = [
       ":libmodemfw",
       "//common-mk/testrunner:testrunner",

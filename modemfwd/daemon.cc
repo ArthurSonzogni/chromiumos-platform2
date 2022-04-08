@@ -21,6 +21,8 @@
 #include <cros_config/cros_config.h>
 #include <dbus/modemfwd/dbus-constants.h>
 
+#include "modemfwd/dlc_manager.h"
+#include "modemfwd/error.h"
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/logging.h"
 #include "modemfwd/modem.h"
@@ -31,10 +33,34 @@
 
 namespace {
 
+const char kManifestName[] = "firmware_manifest.prototxt";
 constexpr base::TimeDelta kWedgeCheckDelay = base::Minutes(5);
 constexpr base::TimeDelta kRebootCheckDelay = base::Minutes(1);
+constexpr base::TimeDelta kDlcRemovalDelay = base::Minutes(2);
 constexpr char kDisableAutoUpdatePref[] =
     "/var/lib/modemfwd/disable_auto_update";
+
+// Returns the modem firmware variant for the current model of the device by
+// reading the /modem/firmware-variant property of the current model via
+// chromeos-config. Returns an empty string if it fails to read the modem
+// firmware variant from chromeos-config or no modem firmware variant is
+// specified.
+std::string GetModemFirmwareVariant() {
+  brillo::CrosConfig config;
+  if (!config.Init()) {
+    LOG(WARNING) << "Failed to load Chrome OS configuration";
+    return std::string();
+  }
+
+  std::string variant;
+  if (!config.GetString("/modem", "firmware-variant", &variant)) {
+    LOG(INFO) << "No modem firmware variant is specified";
+    return std::string();
+  }
+
+  LOG(INFO) << "Use modem firmware variant: " << variant;
+  return variant;
+}
 
 std::string ToOnOffString(bool b) {
   return b ? "on" : "off";
@@ -114,16 +140,12 @@ bool DBusAdaptor::ForceFlash(const std::string& device_id,
 }
 
 Daemon::Daemon(const std::string& journal_file,
-               const std::string& helper_directory)
-    : Daemon(journal_file, helper_directory, "") {}
-
-Daemon::Daemon(const std::string& journal_file,
                const std::string& helper_directory,
                const std::string& firmware_directory)
     : DBusServiceDaemon(kModemfwdServiceName),
       journal_file_path_(journal_file),
       helper_dir_path_(helper_directory),
-      firmware_dir_path_(firmware_directory),
+      fw_manifest_dir_path_(firmware_directory),
       weak_ptr_factory_(this) {}
 
 int Daemon::OnInit() {
@@ -142,7 +164,8 @@ int Daemon::OnInit() {
     return EX_UNAVAILABLE;
   }
 
-  helper_directory_ = CreateModemHelperDirectory(helper_dir_path_);
+  helper_directory_ =
+      CreateModemHelperDirectory(helper_dir_path_, GetModemFirmwareVariant());
   if (!helper_directory_) {
     LOG(ERROR) << "No suitable helpers found in " << helper_dir_path_.value();
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
@@ -150,44 +173,83 @@ int Daemon::OnInit() {
     return EX_UNAVAILABLE;
   }
 
-  // If no firmware directory was supplied, we can't run yet. This will
-  // change when we get DLC functionality.
-  if (firmware_dir_path_.empty())
+  // If no firmware directory was supplied, we can't run.
+  if (fw_manifest_dir_path_.empty())
     return EX_UNAVAILABLE;
 
-  if (!base::DirectoryExists(firmware_dir_path_)) {
-    LOG(ERROR) << "Supplied firmware directory " << firmware_dir_path_.value()
-               << " does not exist";
+  if (!base::DirectoryExists(fw_manifest_dir_path_)) {
+    LOG(ERROR) << "Supplied firmware directory "
+               << fw_manifest_dir_path_.value() << " does not exist";
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
         kErrorResultInitFailure);
     return EX_UNAVAILABLE;
   }
 
-  return CompleteInitialization();
+  return SetupFirmwareDirectory();
 }
 
-int Daemon::CompleteInitialization() {
-  CHECK(!firmware_dir_path_.empty());
+int Daemon::SetupFirmwareDirectory() {
+  CHECK(!fw_manifest_dir_path_.empty());
 
-  auto firmware_directory = CreateFirmwareDirectory(firmware_dir_path_);
-  if (!firmware_directory) {
-    LOG(ERROR) << "Could not load firmware directory (bad manifest?)";
+  variant_ = GetModemFirmwareVariant();
+  std::map<std::string, std::string> dlc_per_variant;
+  fw_index_ = ParseFirmwareManifestV2(
+      fw_manifest_dir_path_.Append(kManifestName), dlc_per_variant);
+  if (!fw_index_) {
+    LOG(ERROR) << "Could not load firmware manifest directory (bad manifest?)";
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
         kErrorResultInitManifestFailure);
     return EX_UNAVAILABLE;
   }
 
-  auto journal = OpenJournal(journal_file_path_, firmware_directory.get(),
+  if (!dlc_per_variant.empty()) {
+    LOG(INFO) << "Creating DLC manager";
+    dlc_manager_ = std::make_unique<modemfwd::DlcManager>(
+        bus_, std::move(dlc_per_variant), variant_);
+    if (dlc_manager_->DlcId().empty()) {
+      LOG(ERROR) << "Unexpected empty DlcId value";
+    } else {
+      InstallModemDlcOnceCallback cb = base::BindOnce(
+          &Daemon::InstallDlcCompleted, weak_ptr_factory_.GetWeakPtr());
+      base::ThreadTaskRunnerHandle::Get()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&DlcManager::InstallModemDlc,
+                         base::Unretained(dlc_manager_.get()), std::move(cb)));
+      return EX_OK;
+    }
+  }
+  CompleteInitialization();
+  return EX_OK;
+}
+
+void Daemon::InstallDlcCompleted(const std::string& mount_path,
+                                 const brillo::Error* error) {
+  if (error || mount_path.empty()) {
+    LOG(INFO) << "Failed to install DLC. Falling back to rootfs";
+  } else {
+    fw_manifest_directory_ = CreateFirmwareDirectory(
+        std::move(fw_index_), base::FilePath(mount_path), std::move(variant_));
+  }
+  CompleteInitialization();
+}
+
+void Daemon::CompleteInitialization() {
+  if (!fw_manifest_directory_)
+    fw_manifest_directory_ = CreateFirmwareDirectory(
+        std::move(fw_index_), fw_manifest_dir_path_, std::move(variant_));
+  DCHECK(fw_manifest_directory_);
+
+  auto journal = OpenJournal(journal_file_path_, fw_manifest_directory_.get(),
                              helper_directory_.get());
   if (!journal) {
     LOG(ERROR) << "Could not open journal file";
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(
         kErrorResultInitJournalFailure);
-    return EX_UNAVAILABLE;
+    QuitWithExitCode(EX_UNAVAILABLE);
   }
 
   modem_flasher_ = std::make_unique<modemfwd::ModemFlasher>(
-      std::move(firmware_directory), std::move(journal),
+      fw_manifest_directory_.get(), std::move(journal),
       notification_mgr_.get());
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
@@ -197,18 +259,19 @@ int Daemon::CompleteInitialization() {
       base::BindRepeating(&Daemon::OnModemDeviceSeen,
                           weak_ptr_factory_.GetWeakPtr()));
 
+  if (dlc_manager_) {
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&DlcManager::RemoveUnecessaryModemDlcs,
+                       base::Unretained(dlc_manager_.get())),
+        kDlcRemovalDelay);
+  }
+
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Daemon::CheckForWedgedModems,
                      weak_ptr_factory_.GetWeakPtr()),
       GetModemWedgeCheckDelay());
-
-  return EX_OK;
-}
-
-int Daemon::OnEventLoopStarted() {
-  // Stub until DLC service is implemented.
-  return EX_OK;
 }
 
 void Daemon::OnModemDeviceSeen(std::string device_id,

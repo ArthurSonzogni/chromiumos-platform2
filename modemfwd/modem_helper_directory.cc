@@ -85,13 +85,11 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
 };
 
 std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
-    const base::FilePath& directory) {
+    const base::FilePath& directory, const std::string& variant) {
   HelperManifest parsed_manifest;
   if (!brillo::ReadTextProtobuf(directory.Append(kManifestName),
                                 &parsed_manifest))
     return nullptr;
-
-  std::string variant = GetModemFirmwareVariant();
 
   auto helper_dir = std::make_unique<ModemHelperDirectoryImpl>(
       parsed_manifest, directory, variant);

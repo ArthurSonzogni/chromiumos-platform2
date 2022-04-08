@@ -23,7 +23,7 @@ namespace modemfwd {
 // or not it should flash new firmware onto the modem.
 class ModemFlasher {
  public:
-  ModemFlasher(std::unique_ptr<FirmwareDirectory> firmware_directory,
+  ModemFlasher(FirmwareDirectory* firmware_directory,
                std::unique_ptr<Journal> journal,
                NotificationManager* notification_mgr);
   ModemFlasher(const ModemFlasher&) = delete;
@@ -96,12 +96,12 @@ class ModemFlasher {
     int tries_ = kDefaultTries;
   };
 
-  std::unique_ptr<FirmwareDirectory> firmware_directory_;
   std::unique_ptr<Journal> journal_;
 
   std::map<std::string, FlashState> modem_info_;
 
   // Owned by Daemon
+  FirmwareDirectory* firmware_directory_;
   NotificationManager* notification_mgr_;
 };
 

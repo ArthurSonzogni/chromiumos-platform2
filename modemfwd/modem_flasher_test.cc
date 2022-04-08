@@ -62,9 +62,8 @@ constexpr char kGenericCarrierFirmware2Version[] = "2017-10-14";
 class ModemFlasherTest : public ::testing::Test {
  public:
   ModemFlasherTest() {
-    auto firmware_directory =
+    firmware_directory_ =
         std::make_unique<FirmwareDirectoryStub>(base::FilePath());
-    firmware_directory_ = firmware_directory.get();
 
     auto journal = std::make_unique<MockJournal>();
     journal_ = journal.get();
@@ -72,8 +71,7 @@ class ModemFlasherTest : public ::testing::Test {
     notification_mgr_ = std::make_unique<MockNotificationManager>();
 
     modem_flasher_ = std::make_unique<ModemFlasher>(
-        std::move(firmware_directory), std::move(journal),
-        notification_mgr_.get());
+        firmware_directory_.get(), std::move(journal), notification_mgr_.get());
 
     only_main_ = {kFwMain};
     only_carrier_ = {kFwCarrier};
@@ -154,9 +152,7 @@ class ModemFlasherTest : public ::testing::Test {
   std::vector<std::string> only_carrier_;
 
  private:
-  // We pass this off to |modem_flasher_| but keep a reference to it to ensure
-  // we can set up the stub outputs.
-  FirmwareDirectoryStub* firmware_directory_;
+  std::unique_ptr<FirmwareDirectoryStub> firmware_directory_;
 };
 
 TEST_F(ModemFlasherTest, NothingToFlash) {

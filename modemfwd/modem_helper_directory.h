@@ -30,7 +30,7 @@ class ModemHelperDirectory {
 };
 
 std::unique_ptr<ModemHelperDirectory> CreateModemHelperDirectory(
-    const base::FilePath& directory);
+    const base::FilePath& directory, const std::string& variant);
 
 }  // namespace modemfwd
 

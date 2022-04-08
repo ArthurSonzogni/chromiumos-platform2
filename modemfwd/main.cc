@@ -37,15 +37,12 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_firmware_directory.empty()) {
-    LOG(INFO) << "Running modemfwd with firmware DLC (not yet supported)...";
-    modemfwd::Daemon d(FLAGS_journal_file, FLAGS_helper_directory);
-    return d.Run();
-  } else {
-    LOG(INFO) << "Running modemfwd with firmware directory...";
-    modemfwd::Daemon d(FLAGS_journal_file, FLAGS_helper_directory,
-                       FLAGS_firmware_directory);
-    return d.Run();
+    LOG(ERROR) << "Must supply firmware manifest directory";
+    return EX_USAGE;
   }
 
-  return EX_USAGE;
+  LOG(INFO) << "Running modemfwd with firmware directory...";
+  modemfwd::Daemon d(FLAGS_journal_file, FLAGS_helper_directory,
+                     FLAGS_firmware_directory);
+  return d.Run();
 }

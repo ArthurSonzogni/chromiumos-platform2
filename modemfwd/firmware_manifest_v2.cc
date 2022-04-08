@@ -20,7 +20,10 @@ namespace modemfwd {
 namespace {
 
 bool ParseDevice(const Device& device,
-                 DeviceFirmwareCache* out_cache) {
+                 DeviceFirmwareCache* out_cache,
+                 std::map<std::string, std::string>* dlc_per_variant) {
+  if (!device.variant().empty() && !device.dlc_id().empty())
+    dlc_per_variant->emplace(device.variant(), device.dlc_id());
   // Sort main firmware entries by version. Ensure the versions are
   // all separate.
   std::map<std::string, std::unique_ptr<FirmwareFileInfo>> main_firmware_infos;
@@ -207,32 +210,34 @@ bool ParseDevice(const Device& device,
 
 }  // namespace
 
-bool ParseFirmwareManifestV2(const base::FilePath& manifest,
-                             FirmwareIndex* index) {
+std::unique_ptr<FirmwareIndex> ParseFirmwareManifestV2(
+    const base::FilePath& manifest,
+    std::map<std::string, std::string>& dlc_per_variant) {
   FirmwareManifestV2 manifest_proto;
   if (!brillo::ReadTextProtobuf(manifest, &manifest_proto))
-    return false;
+    return nullptr;
 
+  FirmwareIndex index;
   for (const Device& device : manifest_proto.device()) {
     if (device.device_id().empty()) {
       LOG(ERROR) << "Empty device ID in device entry";
-      return false;
+      return nullptr;
     }
 
     DeviceType type{device.device_id(), device.variant()};
-    if (index->count(type) > 0) {
+    if (index.count(type) > 0) {
       LOG(ERROR) << "Duplicate device entry in manifest";
-      return false;
+      return nullptr;
     }
 
     DeviceFirmwareCache cache;
-    if (!ParseDevice(device, &cache))
-      return false;
+    if (!ParseDevice(device, &cache, &dlc_per_variant))
+      return nullptr;
 
-    (*index)[type] = std::move(cache);
+    index[type] = std::move(cache);
   }
 
-  return true;
+  return std::make_unique<FirmwareIndex>(std::move(index));
 }
 
 std::optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(

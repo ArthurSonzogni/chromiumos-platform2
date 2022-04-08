@@ -51,8 +51,9 @@ struct DeviceFirmwareCache {
 
 using FirmwareIndex = std::map<DeviceType, DeviceFirmwareCache>;
 
-bool ParseFirmwareManifestV2(const base::FilePath& manifest,
-                             FirmwareIndex* index);
+std::unique_ptr<FirmwareIndex> ParseFirmwareManifestV2(
+    const base::FilePath& manifest,
+    std::map<std::string, std::string>& dlc_per_variant);
 
 }  // namespace modemfwd
 

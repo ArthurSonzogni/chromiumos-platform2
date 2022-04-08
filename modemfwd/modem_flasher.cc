@@ -41,12 +41,11 @@ class InhibitMode {
 
 }  // namespace
 
-ModemFlasher::ModemFlasher(
-    std::unique_ptr<FirmwareDirectory> firmware_directory,
-    std::unique_ptr<Journal> journal,
-    NotificationManager* notification_mgr)
-    : firmware_directory_(std::move(firmware_directory)),
-      journal_(std::move(journal)),
+ModemFlasher::ModemFlasher(FirmwareDirectory* firmware_directory,
+                           std::unique_ptr<Journal> journal,
+                           NotificationManager* notification_mgr)
+    : journal_(std::move(journal)),
+      firmware_directory_(firmware_directory),
       notification_mgr_(notification_mgr) {}
 
 base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,

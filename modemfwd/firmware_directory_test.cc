@@ -4,6 +4,7 @@
 
 #include "modemfwd/firmware_directory.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -59,8 +60,12 @@ class FirmwareDirectoryTest : public ::testing::Test {
     base::FilePath manifest_in_dir =
         temp_dir_.GetPath().Append("firmware_manifest.prototxt");
     CHECK(base::CopyFile(manifest, manifest_in_dir));
-    firmware_directory_ = CreateFirmwareDirectory(temp_dir_.GetPath());
-    ASSERT_EQ(!!firmware_directory_, manifest_is_valid);
+    std::map<std::string, std::string> dlc_per_variant;
+    std::unique_ptr<FirmwareIndex> index =
+        ParseFirmwareManifestV2(manifest_in_dir, dlc_per_variant);
+    ASSERT_EQ(!!index, manifest_is_valid);
+    firmware_directory_ =
+        CreateFirmwareDirectory(std::move(index), temp_dir_.GetPath(), "");
   }
 
   std::unique_ptr<FirmwareDirectory> firmware_directory_;

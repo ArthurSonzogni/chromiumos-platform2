@@ -16,43 +16,16 @@
 
 namespace modemfwd {
 
-namespace {
-
-const char kManifestName[] = "firmware_manifest.prototxt";
-
-}  // namespace
-
 const char FirmwareDirectory::kGenericCarrierId[] = "generic";
-
-// Returns the modem firmware variant for the current model of the device by
-// reading the /modem/firmware-variant property of the current model via
-// chromeos-config. Returns an empty string if it fails to read the modem
-// firmware variant from chromeos-config or no modem firmware variant is
-// specified.
-std::string GetModemFirmwareVariant() {
-  brillo::CrosConfig config;
-  if (!config.Init()) {
-    LOG(WARNING) << "Failed to load Chrome OS configuration";
-    return std::string();
-  }
-
-  std::string variant;
-  if (!config.GetString("/modem", "firmware-variant", &variant)) {
-    LOG(INFO) << "No modem firmware variant is specified";
-    return std::string();
-  }
-
-  LOG(INFO) << "Use modem firmware variant: " << variant;
-  return variant;
-}
 
 class FirmwareDirectoryImpl : public FirmwareDirectory {
  public:
-  FirmwareDirectoryImpl(FirmwareIndex index,
-                        const base::FilePath& fw_manifest_directory)
+  FirmwareDirectoryImpl(std::unique_ptr<FirmwareIndex> index,
+                        const base::FilePath& fw_manifest_directory,
+                        std::string variant)
       : index_(std::move(index)),
         fw_manifest_directory_(fw_manifest_directory),
-        variant_(GetModemFirmwareVariant()) {}
+        variant_(variant) {}
   FirmwareDirectoryImpl(const FirmwareDirectoryImpl&) = delete;
   FirmwareDirectoryImpl& operator=(const FirmwareDirectoryImpl&) = delete;
 
@@ -62,8 +35,8 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     FirmwareDirectory::Files result;
 
     DeviceType type{device_id, variant_};
-    auto device_it = index_.find(type);
-    if (device_it == index_.end()) {
+    auto device_it = index_->find(type);
+    if (device_it == index_->end()) {
       ELOG(INFO) << "Firmware directory has no firmware for device ID ["
                  << device_id << "]";
       return result;
@@ -106,9 +79,9 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
       return true;
 
     DeviceType type{device_id, variant_};
-    auto device_it = index_.find(type);
+    auto device_it = index_->find(type);
     // no firmware for this device
-    if (device_it == index_.end())
+    if (device_it == index_->end())
       return true;
 
     const DeviceFirmwareCache& cache = device_it->second;
@@ -162,18 +135,17 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     return true;
   }
 
-  FirmwareIndex index_;
+  std::unique_ptr<FirmwareIndex> index_;
   base::FilePath fw_manifest_directory_;
   std::string variant_;
 };
 
 std::unique_ptr<FirmwareDirectory> CreateFirmwareDirectory(
-    const base::FilePath& directory) {
-  FirmwareIndex index;
-  if (!ParseFirmwareManifestV2(directory.Append(kManifestName), &index))
-    return nullptr;
-
-  return std::make_unique<FirmwareDirectoryImpl>(std::move(index), directory);
+    std::unique_ptr<FirmwareIndex> index,
+    const base::FilePath& directory,
+    const std::string& variant) {
+  return std::make_unique<FirmwareDirectoryImpl>(std::move(index), directory,
+                                                 variant);
 }
 
 }  // namespace modemfwd
