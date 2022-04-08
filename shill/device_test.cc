@@ -153,7 +153,7 @@ class DeviceTest : public testing::Test {
   static const int kDeviceInterfaceIndex;
 
   void OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
-    device_->OnIPConfigUpdated(ipconfig, true);
+    device_->OnIPConfigUpdated(ipconfig);
   }
 
   void OnIPConfigFailed(const IPConfigRefPtr& ipconfig) {

@@ -967,12 +967,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                         uint16_t frequency,
                         const char* mode,
                         const std::vector<uint8_t>& ies);
-  void ReportIPConfigComplete() {
-    wifi_->OnIPConfigUpdated(dhcp_config_, true);
-  }
-  void ReportIPConfigCompleteGatewayArpReceived() {
-    wifi_->OnIPConfigUpdated(dhcp_config_, false);
-  }
+  void ReportGetDHCPLease() { wifi_->OnGetDHCPLease(); }
 
   // Calls the delayed version of the BSS methods.
   void BSSAdded(const RpcIdentifier& bss_path,
@@ -3267,7 +3262,7 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
-  ReportIPConfigComplete();
+  ReportGetDHCPLease();
   // Similarly, rekeying events after we have an IP don't trigger L3
   // configuration.  However, we treat all transitions to completed as potential
   // reassociations, so we will reenable high rates again here.
@@ -4658,7 +4653,7 @@ TEST_F(WiFiMainTest, OnNewWiphy) {
   }
 }
 
-TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnConnectedAndReachable) {
+TEST_F(WiFiMainTest, OnGetDHCPLease_InvokesOnConnectedAndReachable) {
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
@@ -4666,7 +4661,7 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnConnectedAndReachable) {
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv4 DHCP lease obtained")));
   EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_));
   EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
-  ReportIPConfigComplete();
+  ReportGetDHCPLease();
 
   // We should not call WakeOnWiFi::OnConnectedAndReachable if we are not
   // actually connected to a service.
@@ -4682,12 +4677,6 @@ TEST_F(WiFiMainTest, OnIPConfigUpdated_InvokesOnConnectedAndReachable) {
   EXPECT_CALL(log, Log(_, _, HasSubstr("IPv6 configuration obtained")));
   EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_));
   ReportIPv6ConfigComplete();
-
-  // Do not call WakeOnWiFi::OnConnectedAndReachable if the IP config update was
-  // triggered by a gateway ARP.
-  EXPECT_CALL(log, Log(_, _, HasSubstr("Gateway ARP received")));
-  EXPECT_CALL(*wake_on_wifi_, OnConnectedAndReachable(_)).Times(0);
-  ReportIPConfigCompleteGatewayArpReceived();
 
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
   ScopeLogger::GetInstance()->set_verbose_level(0);

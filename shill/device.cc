@@ -594,7 +594,7 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   }
 
   dhcp_config->RegisterCallbacks(
-      base::BindRepeating(&Device::OnIPConfigUpdated, AsWeakPtr()),
+      base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
       base::BindRepeating(&Device::OnIPConfigFailed, AsWeakPtr()),
       base::BindRepeating(&Device::OnIPConfigExpired, AsWeakPtr()));
   ipconfig_ = dhcp_config;
@@ -646,9 +646,8 @@ void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   StartIPv6();
   ipconfig_ = new IPConfig(control_interface(), link_name_);
   ipconfig_->set_properties(properties);
-  dispatcher()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&Device::OnIPConfigUpdated, AsWeakPtr(), ipconfig_, true));
+  dispatcher()->PostTask(FROM_HERE, base::BindOnce(&Device::OnIPConfigUpdated,
+                                                   AsWeakPtr(), ipconfig_));
 }
 
 void Device::AssignIPv6Config(const IPConfig::Properties& properties) {
@@ -656,9 +655,8 @@ void Device::AssignIPv6Config(const IPConfig::Properties& properties) {
   StartIPv6();
   ip6config_ = new IPConfig(control_interface(), link_name_);
   ip6config_->set_properties(properties);
-  dispatcher()->PostTask(FROM_HERE,
-                         base::BindOnce(&Device::OnIPConfigUpdated, AsWeakPtr(),
-                                        ip6config_, true));
+  dispatcher()->PostTask(FROM_HERE, base::BindOnce(&Device::OnIPConfigUpdated,
+                                                   AsWeakPtr(), ip6config_));
 }
 
 void Device::DestroyIPConfigLease(const std::string& name) {
@@ -716,7 +714,7 @@ void Device::ConfigureStaticIPTask() {
     // If the parameters contain an IP address, apply them now and bring
     // the interface up.  When DHCP information arrives, it will supplement
     // the static information.
-    OnIPConfigUpdated(ipconfig_, true);
+    OnIPConfigUpdated(ipconfig_);
   } else {
     // Either |ipconfig_| has just been created in AcquireIPConfig() or
     // we're being called by OnIPConfigRefreshed().  In either case a
@@ -856,8 +854,17 @@ void Device::ConnectionDiagnosticsCallback(
   // TODO(samueltan): add connection diagnostics metrics.
 }
 
-void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
-                               bool /*new_lease_acquired*/) {
+void Device::OnIPConfigUpdatedFromDHCP(const IPConfigRefPtr& ipconfig,
+                                       bool new_lease_acquired) {
+  OnIPConfigUpdated(ipconfig);
+  if (new_lease_acquired) {
+    OnGetDHCPLease();
+  }
+}
+
+void Device::OnGetDHCPLease() {}
+
+void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
   SLOG(this, 2) << __func__;
   if (selected_service_) {
     ipconfig->ApplyStaticIPParameters(

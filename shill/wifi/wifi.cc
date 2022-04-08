@@ -3754,23 +3754,13 @@ void WiFi::RemoveSupplicantNetworks() {
   rpcid_by_service_.clear();
 }
 
-void WiFi::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
-                             bool new_lease_acquired) {
-  Device::OnIPConfigUpdated(ipconfig, new_lease_acquired);
+void WiFi::OnGetDHCPLease() {
   if (!wake_on_wifi_) {
     return;
   }
-  if (new_lease_acquired) {
-    SLOG(this, 3) << __func__ << ": "
-                  << "IPv4 DHCP lease obtained";
-    wake_on_wifi_->OnConnectedAndReachable(TimeToNextDHCPLeaseRenewal());
-  } else {
-    SLOG(this, 3) << __func__ << ": "
-                  << "Gateway ARP received";
-    // Do nothing since we are waiting until the DHCP lease is actually
-    // obtained.
-    return;
-  }
+  SLOG(this, 3) << __func__ << ": "
+                << "IPv4 DHCP lease obtained";
+  wake_on_wifi_->OnConnectedAndReachable(TimeToNextDHCPLeaseRenewal());
 }
 
 void WiFi::OnIPv6ConfigUpdated() {

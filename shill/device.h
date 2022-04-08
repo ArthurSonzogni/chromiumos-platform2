@@ -444,9 +444,18 @@ class Device : public base::RefCounted<Device> {
   // Assigns the IPv6 configuration |properties| to |ip6config_|.
   void AssignIPv6Config(const IPConfig::Properties& properties);
 
-  // Callback invoked on successful IP configuration updates.
-  virtual void OnIPConfigUpdated(const IPConfigRefPtr& ipconfig,
+  // Callback registered with DHCPConfig. Also see the comment for
+  // DHCPConfig::UpdateCallback.
+  void OnIPConfigUpdatedFromDHCP(const IPConfigRefPtr& ipconfig,
                                  bool new_lease_acquired);
+
+  // Called on when we get a new DHCP lease for this device. Derived class
+  // should implement this function to listen to this event. Base class does
+  // nothing.
+  virtual void OnGetDHCPLease();
+
+  // Callback invoked on successful IP configuration updates.
+  void OnIPConfigUpdated(const IPConfigRefPtr& ipconfig);
 
   // Called when IPv6 configuration changes.
   virtual void OnIPv6ConfigUpdated();
