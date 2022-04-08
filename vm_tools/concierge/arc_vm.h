@@ -20,6 +20,7 @@
 #include <base/sequence_checker.h>
 #include <base/threading/thread.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
+#include <libcrossystem/crossystem.h>
 #include <vm_concierge/proto_bindings/concierge_service.pb.h>
 
 #include "vm_tools/concierge/seneschal_server_proxy.h"
@@ -121,6 +122,10 @@ class ArcVm final : public VmBaseImpl {
   vm_tools::concierge::DiskImageStatus GetDiskResizeStatus(
       std::string* failure_reason) override;
   void VmIdChanged() override { vm_upgraded_ = true; }
+
+  // Returns the kernel parameters for the VM
+  static std::vector<std::string> GetKernelParams(
+      crossystem::Crossystem* cros_system, int seneschal_server_port);
 
   // Adjusts the amount of CPU the ARCVM processes are allowed to use. When
   // the state is CPU_RESTRICTION_BACKGROUND_WITH_CFS_QUOTA_ENFORCED, the

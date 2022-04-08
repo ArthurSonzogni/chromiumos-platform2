@@ -185,6 +185,23 @@ bool ShutdownArcVm(int cid) {
   return true;
 }
 
+// Returns the value of ChromeOS channel From Lsb Release
+// "unknown" if the value does not end with "-channel"
+std::string GetChromeOsChannelFromLsbRelease() {
+  constexpr const char kChromeOsReleaseTrack[] = "CHROMEOS_RELEASE_TRACK";
+  constexpr const char kUnknown[] = "unknown";
+  const std::string kChannelSuffix = "-channel";
+
+  std::string value;
+  base::SysInfo::GetLsbReleaseValue(kChromeOsReleaseTrack, &value);
+
+  if (!base::EndsWith(value, kChannelSuffix, base::CompareCase::SENSITIVE)) {
+    LOG(ERROR) << "Unknown ChromeOS channel: \"" << value << "\"";
+    return kUnknown;
+  }
+  return value.erase(value.find(kChannelSuffix), kChannelSuffix.size());
+}
+
 }  // namespace
 
 ArcVm::ArcVm(int32_t vsock_cid,
@@ -810,6 +827,33 @@ void ArcVm::HandleLmkdVsockRead() {
           {lmkd_read_buf, kLmkdKillDecisionReplyPacketSize})) {
     PLOG(ERROR) << "Failed to write to LMKD VSOCK";
   }
+}
+
+// static
+std::vector<std::string> ArcVm::GetKernelParams(
+    crossystem::Crossystem* cros_system, int seneschal_server_port) {
+  // Build the plugin params.
+  bool is_dev_mode = cros_system->VbGetSystemPropertyInt("cros_debug") == 1;
+  std::string channel = GetChromeOsChannelFromLsbRelease();
+  std::vector<std::string> params = {
+      "root=/dev/vda",
+      "init=/init",
+      // Note: Do not change the value "bertha". This string is checked in
+      // platform2/metrics/process_meter.cc to detect ARCVM's crosvm processes,
+      // for example.
+      "androidboot.hardware=bertha",
+      "androidboot.container=1",
+      base::StringPrintf("androidboot.dev_mode=%d", is_dev_mode),
+      base::StringPrintf("androidboot.disable_runas=%d", !is_dev_mode),
+      "androidboot.chromeos_channel=" + channel,
+      base::StringPrintf("androidboot.seneschal_server_port=%d",
+                         seneschal_server_port),
+  };
+  // We run vshd under a restricted domain on non-test images.
+  // (go/arcvm-android-sh-restricted)
+  if (channel == "testimage")
+    params.push_back("androidboot.vshd_service_override=vshd_for_test");
+  return params;
 }
 
 }  // namespace concierge

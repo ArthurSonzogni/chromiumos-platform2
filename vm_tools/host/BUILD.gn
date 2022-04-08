@@ -164,6 +164,7 @@ static_library("libconcierge") {
   all_dependent_pkg_deps = [
     "grpc++",
     "libarchive",
+    "libcrossystem",
     "libdlcservice-client",
     "libminijail",
     "libqcow_utils",
@@ -334,6 +335,7 @@ if (use.test) {
 
   executable("concierge_test") {
     sources = [
+      "../concierge/arc_vm_test.cc",
       "../concierge/balloon_policy_test.cc",
       "../concierge/dlc_helper_test.cc",
       "../concierge/future_test.cc",
@@ -349,6 +351,7 @@ if (use.test) {
     ]
     pkg_deps = [
       "libchrome-test",
+      "libcrossystem-test",
       "libdlcservice-client-test",
     ]
     deps = [

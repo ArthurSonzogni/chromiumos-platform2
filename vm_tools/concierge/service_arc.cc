@@ -10,6 +10,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <vboot/crossystem.h>
+#include <libcrossystem/crossystem.h>
 
 #include "vm_tools/common/pstore.h"
 #include "vm_tools/concierge/arc_vm.h"
@@ -100,7 +101,6 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
       "androidboot.arcvm_mount_debugfs=1",
       "androidboot.disable_download_provider=1",
       "androidboot.disable_media_store_maintenance=1",
-      "androidboot.vshd_service_override=vshd_for_test",
       "androidboot.arc.tts.caching=1",
       "androidboot.arc_enable_gmscore_lmk_protection=1",
       "rw",
@@ -115,9 +115,6 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
       "androidboot.arcvm_metrics_mem_psi_period=",
       "androidboot.arcvm_ureadahead_mode=",
       "androidboot.arcvm_virtio_blk_data=",
-      "androidboot.chromeos_channel=",
-      "androidboot.dev_mode=",
-      "androidboot.disable_runas=",
       "androidboot.disable_system_default_app=",
       "androidboot.enable_notifications_refresh=",
       "androidboot.host_is_in_vm=",
@@ -303,21 +300,12 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   uint32_t seneschal_server_handle = server_proxy->handle();
   vm_info->set_seneschal_server_handle(seneschal_server_handle);
 
-  // Build the plugin params.
-  std::vector<std::string> params = {
-      "root=/dev/vda",
-      "init=/init",
-      // Note: Do not change the value "bertha". This string is checked in
-      // platform2/metrics/process_meter.cc to detect ARCVM's crosvm processes,
-      // for example.
-      "androidboot.hardware=bertha",
-      "androidboot.container=1",
-  };
+  crossystem::CrossystemImpl cros_system;
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(&cros_system, seneschal_server_port);
   params.insert(params.end(),
                 std::make_move_iterator(request.mutable_params()->begin()),
                 std::make_move_iterator(request.mutable_params()->end()));
-  params.push_back(base::StringPrintf("androidboot.seneschal_server_port=%d",
-                                      seneschal_server_port));
 
   // Start the VM and build the response.
   ArcVmFeatures features;
