@@ -16,9 +16,12 @@ class BusFetcher final : public BaseFetcher {
  public:
   using BaseFetcher::BaseFetcher;
 
+  using FetchBusDevicesCallback =
+      base::OnceCallback<void(chromeos::cros_healthd::mojom::BusResultPtr)>;
+
   // Returns a structure with a list of data fields for each of the bus device
   // or the error that occurred fetching the information.
-  chromeos::cros_healthd::mojom::BusResultPtr FetchBusDevices();
+  void FetchBusDevices(FetchBusDevicesCallback&& callback);
 };
 
 }  // namespace diagnostics

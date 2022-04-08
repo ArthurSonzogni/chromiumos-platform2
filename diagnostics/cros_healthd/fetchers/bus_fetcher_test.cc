@@ -8,7 +8,10 @@
 #include <vector>
 
 #include <base/check_op.h>
+#include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
+#include <base/test/bind.h>
+#include <base/test/task_environment.h>
 
 #include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/common/mojo_type_utils.h"
@@ -278,8 +281,20 @@ class BusFetcherTest : public BaseFileTest {
     }
   }
 
-  void FetchBusDevices() {
-    auto res = bus_fetcher_.FetchBusDevices();
+  mojo_ipc::BusResultPtr FetchBusDevices() {
+    base::RunLoop run_loop;
+    mojo_ipc::BusResultPtr result;
+    bus_fetcher_.FetchBusDevices(
+        base::BindLambdaForTesting([&](mojo_ipc::BusResultPtr response) {
+          result = std::move(response);
+          run_loop.Quit();
+        }));
+    run_loop.Run();
+    return result;
+  }
+
+  void CheckBusDevices() {
+    auto res = FetchBusDevices();
     ASSERT_TRUE(res->is_bus_devices());
     const auto& bus_devices = res->get_bus_devices();
     const auto got = Sorted(bus_devices);
@@ -288,6 +303,8 @@ class BusFetcherTest : public BaseFileTest {
   }
 
  protected:
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   std::vector<mojo_ipc::BusDevicePtr> expected_bus_devices_;
   MockContext mock_context_;
   BusFetcher bus_fetcher_{&mock_context_};
@@ -296,19 +313,19 @@ class BusFetcherTest : public BaseFileTest {
 TEST_F(BusFetcherTest, TestFetchPci) {
   AddExpectedPciDevice();
   SetExpectedBusDevices();
-  FetchBusDevices();
+  CheckBusDevices();
 }
 
 TEST_F(BusFetcherTest, TestFetchUsbBusInfo) {
   AddExpectedUsbDevice(1);
   SetExpectedBusDevices();
-  FetchBusDevices();
+  CheckBusDevices();
 }
 
 TEST_F(BusFetcherTest, TestFetchThunderboltBusInfo) {
   AddExpectedThunderboltDevice(1);
   SetExpectedBusDevices();
-  FetchBusDevices();
+  CheckBusDevices();
 }
 
 TEST_F(BusFetcherTest, TestFetchMultiple) {
@@ -321,7 +338,7 @@ TEST_F(BusFetcherTest, TestFetchMultiple) {
   AddExpectedThunderboltDevice(1);
   AddExpectedThunderboltDevice(2);
   SetExpectedBusDevices();
-  FetchBusDevices();
+  CheckBusDevices();
 }
 
 }  // namespace

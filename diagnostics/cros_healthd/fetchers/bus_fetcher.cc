@@ -314,7 +314,7 @@ mojo_ipc::BusDevicePtr FetchThunderboltDevice(
 
 }  // namespace
 
-mojo_ipc::BusResultPtr BusFetcher::FetchBusDevices() {
+void BusFetcher::FetchBusDevices(FetchBusDevicesCallback&& callback) {
   const auto& root = context_->root_dir();
   std::vector<mojo_ipc::BusDevicePtr> res;
 
@@ -340,7 +340,7 @@ mojo_ipc::BusResultPtr BusFetcher::FetchBusDevices() {
       res.push_back(std::move(device));
     }
   }
-  return mojo_ipc::BusResult::NewBusDevices(std::move(res));
+  std::move(callback).Run(mojo_ipc::BusResult::NewBusDevices(std::move(res)));
 }
 
 }  // namespace diagnostics

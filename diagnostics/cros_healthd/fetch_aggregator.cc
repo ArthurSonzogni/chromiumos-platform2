@@ -143,8 +143,10 @@ void FetchAggregator::Run(
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kBus: {
-        WrapFetchProbeData(category, state, &info->bus_result,
-                           bus_fetcher_.FetchBusDevices());
+        bus_fetcher_.FetchBusDevices(base::BindOnce(
+            &FetchAggregator::WrapFetchProbeData<mojo_ipc::BusResultPtr>,
+            weak_factory_.GetWeakPtr(), category, std::cref(state),
+            &info->bus_result));
         break;
       }
       case mojo_ipc::ProbeCategoryEnum::kTpm: {
