@@ -37,7 +37,7 @@ void DarkResume::HandleSuccessfulResume(bool from_hibernate) {
   in_dark_resume_ = false;
 
   if (wakeup_source_identifier_->InputDeviceCausedLastWake()) {
-    VLOG(1) << "User triggered wake";
+    LOG(INFO) << "User triggered wake";
   } else {
     // Resumes from hibernate do not have a wake reason, so
     // look a lot to powerd like dark resume. Assume any resume
@@ -46,7 +46,7 @@ void DarkResume::HandleSuccessfulResume(bool from_hibernate) {
     if (from_hibernate) {
       LOG(INFO) << "Resumed from hibernate";
     } else {
-      VLOG(1) << "Wake not triggered by user";
+      LOG(INFO) << "Wake not triggered by user";
       if (enabled_) {
         LOG(INFO) << "In dark resume";
         in_dark_resume_ = true;
