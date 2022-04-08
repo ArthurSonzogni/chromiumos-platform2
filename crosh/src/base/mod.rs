@@ -7,6 +7,7 @@
 mod arc;
 mod ccd_pass;
 mod display_debug;
+mod dlc_install;
 mod dmesg;
 mod insert_coin;
 mod packet_capture;
@@ -20,6 +21,7 @@ use crate::dispatcher::Dispatcher;
 pub fn register(dispatcher: &mut Dispatcher) {
     arc::register(dispatcher);
     ccd_pass::register(dispatcher);
+    dlc_install::register(dispatcher);
     display_debug::register(dispatcher);
     dmesg::register(dispatcher);
     insert_coin::register(dispatcher);
