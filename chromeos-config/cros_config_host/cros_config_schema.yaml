@@ -372,6 +372,9 @@ properties:
             nnpalm:
               type: object
               properties:
+                model:
+                  description: Optional - model version to use, empty by default.
+                  type: string
                 touch-compatible:
                   description: Optional - false by default but should be true for compatible devices.
                   type: boolean

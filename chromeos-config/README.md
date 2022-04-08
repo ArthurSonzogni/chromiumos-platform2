@@ -713,6 +713,7 @@ In the tables below,
 ### nnpalm
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| model | string |  | False |  | False | Optional - model version to use, empty by default. |
 | radius-polynomial | string |  | False |  | False | Optional - empty by default. |
 | touch-compatible | boolean |  | False |  | False | Optional - false by default but should be true for compatible devices. |
 
