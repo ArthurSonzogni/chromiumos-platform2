@@ -35,6 +35,7 @@ static_library("libsecanomaly") {
     "mounts.cc",
     "processes.cc",
     "reporter.cc",
+    "system_context.cc",
   ]
   configs += [
     ":target_defaults",

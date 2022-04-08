@@ -5,6 +5,7 @@
 // Unit tests for MountEntry.
 
 #include "secanomalyd/mount_entry.h"
+#include "secanomalyd/system_context_mock.h"
 
 #include <gtest/gtest.h>
 
@@ -101,7 +102,20 @@ TEST(MountEntryTest, IsKnownMountIncludesRunArcSharedMountsData) {
       "/dev/mmcblk1p1 /run/arc/shared_mounts/data ext4 "
       "rw,seclabel,nosuid,nodev");
 
-  ASSERT_TRUE(e.IsKnownMount());
+  SystemContextMock c_login_screen(/*logged_in=*/false);
+  SystemContextMock c_logged_in(/*logged_in=*/true);
+
+  ASSERT_TRUE(e.IsKnownMount(c_login_screen));
+  ASSERT_FALSE(e.IsKnownMount(c_logged_in));
+}
+
+TEST(MountEntryTest, RandomMountIsNotKnown) {
+  MountEntry e(
+      "/dev/mmcblk1p1 /some/random/location ext4 "
+      "rw,seclabel,nosuid,nodev");
+
+  SystemContextMock c(/*logged_in=*/false);
+  ASSERT_FALSE(e.IsKnownMount(c));
 }
 
 }  // namespace secanomalyd

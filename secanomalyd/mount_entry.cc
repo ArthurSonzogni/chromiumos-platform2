@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
+#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
@@ -33,12 +35,19 @@ const std::vector<base::FilePath> kDestPathsToFilter = {
     base::FilePath("/media/removable"),
 };
 
-const std::vector<base::FilePath> kKnownMounts = {
+using ContextChecker = base::RepeatingCallback<bool(const SystemContext&)>;
+
+// For every known mount there is a callback that ensures mounts are only
+// ignored in the right context (e.g. only ignored on the login screen).
+const std::map<base::FilePath, ContextChecker> kKnownMounts{
     // b/219574442: Make /run/arc/shared_mounts/data not W+X.
     // /run/arc/shared_mounts/data exists temporarily after the ARC++
     // mini-container starts but before any users log in. Therefore, it's not
     // exposed to any user session.
-    base::FilePath("/run/arc/shared_mounts/data"),
+    {base::FilePath("/run/arc/shared_mounts/data"),
+     base::BindRepeating([](const SystemContext& context) {
+       return !context.IsUserLoggedIn();
+     })},
 };
 
 const base::FilePath kUsrLocal = base::FilePath("/usr/local");
@@ -100,9 +109,16 @@ bool MountEntry::IsNamespaceBindMount() const {
   return this->type() == "nsfs";
 }
 
-bool MountEntry::IsKnownMount() const {
-  return std::find(kKnownMounts.begin(), kKnownMounts.end(), this->dest()) !=
-         kKnownMounts.end();
+bool MountEntry::IsKnownMount(const SystemContext& context) const {
+  auto known_mount_entry = kKnownMounts.find(this->dest());
+  if (known_mount_entry != kKnownMounts.end()) {
+    // If there is a match in the list of known mounts, make sure the current
+    // system context matches expectations.
+    return known_mount_entry->second.Run(context);
+  }
+  // If there are no matches in the list of known mounts, the mount is not
+  // known.
+  return false;
 }
 
 std::string MountEntry::FullDescription() const {

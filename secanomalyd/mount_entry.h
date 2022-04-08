@@ -15,6 +15,8 @@
 #include <base/files/file_path.h>
 #include <base/strings/string_piece.h>
 
+#include "secanomalyd/system_context.h"
+
 namespace secanomalyd {
 
 class MountEntry;
@@ -40,7 +42,7 @@ class MountEntry {
   // IsKnownMount() allows us to avoid polluting our reports with W+X mounts
   // that we know are not high-risk. Each mount that we allow is covered by
   // a bug tracking its fix.
-  bool IsKnownMount() const;
+  bool IsKnownMount(const SystemContext& context) const;
 
   const base::FilePath& src() const { return src_; }
   const base::FilePath& dest() const { return dest_; }

@@ -25,6 +25,7 @@
 #include "secanomalyd/mounts.h"
 #include "secanomalyd/processes.h"
 #include "secanomalyd/reporter.h"
+#include "secanomalyd/system_context.h"
 
 namespace secanomalyd {
 
@@ -74,6 +75,9 @@ void Daemon::DoWXMountCheck() {
     return;
   }
 
+  // Recreated on every check to have the most up-to-date state.
+  SystemContext context;
+
   for (const auto& e : mount_entries.value()) {
     if (e.IsWX()) {
       // Have we seen the mount yet?
@@ -85,7 +89,7 @@ void Daemon::DoWXMountCheck() {
           continue;
         }
 
-        if (e.IsNamespaceBindMount() || e.IsKnownMount()) {
+        if (e.IsNamespaceBindMount() || e.IsKnownMount(context)) {
           // Namespace mounts happen when a namespace file in /proc/<pid>/ns/
           // gets bind-mounted somewhere else. These mounts can be W+X but are
           // not concerning since they consist of a single file and these files
