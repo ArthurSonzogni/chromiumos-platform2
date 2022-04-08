@@ -45,7 +45,6 @@ class IPP_EXPORT Package {
   std::vector<uint8_t>& Data() { return data_; }
   const std::vector<uint8_t>& Data() const { return data_; }
 
- protected:
   Package() = default;
 
  private:
@@ -86,7 +85,7 @@ class IPP_EXPORT Group {
   size_t GetSize() const { return groups_.size(); }
 
   // Resizes a sequence of IPP groups.
-  // Does nothing if (IsASet() == false) and (|new_size| > 1).
+  // Does nothing if (IsASet() == false) and (|new_size| > 0).
   void Resize(size_t new_size) {
     if (!is_a_set_ && new_size > 1)
       return;
