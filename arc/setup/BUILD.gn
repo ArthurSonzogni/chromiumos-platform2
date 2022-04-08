@@ -67,6 +67,7 @@ config("target_defaults") {
 }
 
 libarc_setup_sources = [
+  "android_binary_xml_tokenizer.cc",
   "arc_property_util.cc",
   "arc_setup.cc",
   "arc_setup_metrics.cc",
@@ -186,6 +187,7 @@ if (use.test) {
   }
   executable("arc-setup_testrunner") {
     sources = [
+      "android_binary_xml_tokenizer_test.cc",
       "arc_property_util_test.cc",
       "arc_setup_metrics_test.cc",
       "arc_setup_test.cc",
