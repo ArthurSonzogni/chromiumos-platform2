@@ -1363,5 +1363,102 @@ TEST_F(SuspenderTest, ShutdownFromSuspendHibernate) {
   EXPECT_EQ(true, delegate_.to_hibernate());
 }
 
+// Tests a normal hiberman resume and abort cycle.
+TEST_F(SuspenderTest, HibernateResumeAndAbort) {
+  Init();
+
+  // Suspender shouldn't run powerd_suspend until it receives notice that
+  // SuspendDelayController is ready.
+  const uint64_t kWakeupCount = 452;
+  delegate_.set_wakeup_count(kWakeupCount);
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
+                            SuspendFlavor::RESUME_FROM_DISK_PREPARE);
+  const int suspend_id = test_api_.suspend_id();
+  EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
+  EXPECT_EQ(SuspendImminent_Reason_OTHER, GetSuspendImminentReason(0));
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_TRUE(delegate_.suspend_announced());
+
+  // When Suspender receives notice that the system is ready to be suspended, it
+  // should transition to the RESUMING_FROM_HIBERNATE state.
+  AnnounceReadyForSuspend(suspend_id);
+  // Nothing should have happened to the delegate.
+  EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
+  dbus_wrapper_.ClearSentSignals();
+
+  // Now abort the resume.
+  suspender_.AbortResumeFromHibernate();
+  EXPECT_EQ(JoinActions(kUnprepare, nullptr), delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  // We don't actually try to do any suspends here, callbacks only.
+  EXPECT_EQ(0, delegate_.num_suspend_attempts());
+
+  // A SuspendDone signal should be emitted (but only the after abort request)
+  // to announce that the attempt is complete.
+  SuspendDone done_proto;
+  EXPECT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
+  EXPECT_EQ(suspend_id, done_proto.suspend_id());
+  EXPECT_EQ(test_api_.suspend_id(), suspend_id);
+  EXPECT_EQ(done_proto.wakeup_type(), SuspendDone_WakeupType_NOT_APPLICABLE);
+  EXPECT_FALSE(delegate_.suspend_announced());
+
+  // A resuspend timeout shouldn't be set.
+  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
+}
+
+// Tests a suspend request while in a resume state is ignored. Suspend requests
+// are not expected to be coming in during this transition, this tests that the
+// state machine does not go off the rails if an unexpected event occurs.
+TEST_F(SuspenderTest, HibernateResumeThenSuspendIsIgnored) {
+  Init();
+
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
+                            SuspendFlavor::RESUME_FROM_DISK_PREPARE);
+  const int suspend_id = test_api_.suspend_id();
+  EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
+  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_TRUE(delegate_.suspend_announced());
+  AnnounceReadyForSuspend(suspend_id);
+  EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
+  dbus_wrapper_.ClearSentSignals();
+
+  // Now attempt a wild suspend request, which should get ignored.
+  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED,
+                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
+
+  EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
+  EXPECT_EQ(suspend_id, test_api_.suspend_id());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
+
+  // Now abort the resume.
+  suspender_.AbortResumeFromHibernate();
+  EXPECT_EQ(JoinActions(kUnprepare, nullptr), delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_was_successful());
+  EXPECT_EQ(0, delegate_.num_suspend_attempts());
+
+  // A (single!) SuspendDone signal should be emitted after the abort request
+  // to announce that the attempt is complete.
+  EXPECT_EQ(1, dbus_wrapper_.num_sent_signals());
+  SuspendDone done_proto;
+  EXPECT_TRUE(
+      dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
+  EXPECT_EQ(suspend_id, done_proto.suspend_id());
+  EXPECT_EQ(done_proto.wakeup_type(), SuspendDone_WakeupType_NOT_APPLICABLE);
+  EXPECT_FALSE(delegate_.suspend_announced());
+}
+
+// Tests that a hibernate resume abort not prefaced by a prepare is properly
+// ignored.
+TEST_F(SuspenderTest, SpuriousResumeAbortIsIgnored) {
+  Init();
+
+  suspender_.AbortResumeFromHibernate();
+  EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
+  EXPECT_FALSE(delegate_.suspend_announced());
+  EXPECT_EQ(0, delegate_.num_suspend_attempts());
+  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
+}
+
 }  // namespace policy
 }  // namespace power_manager
