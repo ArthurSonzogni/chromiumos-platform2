@@ -19,7 +19,7 @@ readonly SRCDIRS=(
 )
 
 # Package to build to produce the generator executable.
-readonly GENERATOR_PKG="chromiumos/dbusbindings/cmd/generator"
+readonly GENERATOR_PKG="go.chromium.org/chromiumos/dbusbindings/cmd/generator"
 
 # Output filename for generator executable.
 readonly GENERATOR_OUT="${GOHOME}/bin/go-generate-chromeos-dbus-bindings"
