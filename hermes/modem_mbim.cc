@@ -127,6 +127,11 @@ void ModemMbim::TransmitFromQueue() {
   if (tx_queue_.empty() || retry_initialization_callback_) {
     return;
   }
+  if (!device_) {
+    LOG(ERROR) << "No MBIM device. Cannot transmit MBIM message";
+    ProcessMbimResult(kModemMessageProcessingError);
+    return;
+  }
 
   auto mbim_cmd = tx_queue_[0].msg_.get();
   switch (mbim_cmd->mbim_type()) {
