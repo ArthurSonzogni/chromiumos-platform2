@@ -99,7 +99,7 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
       if (errno == ECHILD) {
         // No more child. By then, we should have closed the control pipe.
         DCHECK(!ctrl_fd_.is_valid());
-        VLOG(1) << "The 'init' process is finishing with exit code "
+        VLOG(2) << "The 'init' process is finishing with exit code "
                 << last_failure_code;
         _exit(last_failure_code);
       }
@@ -111,7 +111,7 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
     // Convert wait status to exit code.
     const int exit_code = WaitStatusToExitCode(wstatus);
     DCHECK_GE(exit_code, 0);
-    VLOG(1) << "Child process " << pid
+    VLOG(2) << "Child process " << pid
             << " of the 'init' process finished with exit code " << exit_code;
 
     if (exit_code > 0)
@@ -161,9 +161,10 @@ int SandboxedInit::PollLauncher(base::ScopedFD* const ctrl_fd) {
   DCHECK(ctrl_fd);
   DCHECK(ctrl_fd->is_valid());
 
+  const int fd = ctrl_fd->get();
   int exit_code;
   const ssize_t read_bytes =
-      HANDLE_EINTR(read(ctrl_fd->get(), &exit_code, sizeof(exit_code)));
+      HANDLE_EINTR(read(fd, &exit_code, sizeof(exit_code)));
 
   // If an error occurs while reading from the pipe, consider that the init
   // process was killed before it could even write to the pipe.
@@ -172,23 +173,22 @@ int SandboxedInit::PollLauncher(base::ScopedFD* const ctrl_fd) {
   if (read_bytes < 0) {
     // Cannot read data from pipe.
     if (errno == EAGAIN) {
-      VLOG(1) << "No data is available from control pipe " << ctrl_fd->get()
-              << " yet";
+      VLOG(2) << "Nothing to read from control pipe " << fd;
       return -1;
     }
 
-    PLOG(ERROR) << "Cannot read from control pipe";
+    PLOG(ERROR) << "Cannot read from control pipe " << fd;
     exit_code = error_code;
   } else if (read_bytes < sizeof(exit_code)) {
     // Cannot read enough data from pipe.
     DCHECK_GE(read_bytes, 0);
     LOG(ERROR) << "Short read of " << read_bytes << " bytes from control pipe "
-               << ctrl_fd->get();
+               << fd;
     exit_code = error_code;
   } else {
     DCHECK_EQ(read_bytes, sizeof(exit_code));
-    VLOG(1) << "Received exit code " << exit_code << " from control pipe "
-            << ctrl_fd->get();
+    VLOG(2) << "Received exit code " << exit_code << " from control pipe "
+            << fd;
     DCHECK_GE(exit_code, 0);
     DCHECK_LE(exit_code, 255);
   }

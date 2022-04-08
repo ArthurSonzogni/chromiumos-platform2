@@ -99,6 +99,10 @@ class Process {
   virtual int WaitNonBlockingImpl() = 0;
 
  private:
+  // Gets the name of the program (from the first argument passed to
+  // AddArgument()).
+  std::string GetProgramName() const;
+
   // Starts the process. The started process has its stdin, stdout and stderr
   // redirected to the given file descriptors. Returns true in case of success.
   bool Start(base::ScopedFD in_fd, base::ScopedFD out_fd);

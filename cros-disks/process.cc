@@ -14,6 +14,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
@@ -32,24 +33,30 @@ namespace {
 // Reads chunks of data from a pipe and splits the read data into lines.
 class PipeReader {
  public:
-  PipeReader(base::ScopedFD fd, std::vector<std::string>* output)
-      : fd_(std::move(fd)), output_(output) {
+  PipeReader(base::ScopedFD fd,
+             std::string program_name,
+             std::vector<std::string>* output)
+      : fd_(std::move(fd)),
+        program_name_(std::move(program_name)),
+        output_(output) {
     PCHECK(base::SetNonBlocking(fd_.get()));
+    VLOG(1) << "Collecting output of program " << quote(program_name_) << "...";
   }
 
   ~PipeReader() {
     if (!remaining_.empty()) {
-      LOG(INFO) << "Got line: " << quote(remaining_);
+      LOG(INFO) << program_name_ << ": " << remaining_;
       output_->push_back(remaining_);
     }
+
+    VLOG(1) << "Finished collecting output of program " << quote(program_name_);
   }
 
   void Append(std::string_view data) {
-    LOG(INFO) << ">> Processing: " << quote(data);
     for (std::string_view::size_type i;
          (i = data.find_first_of('\n')) != std::string_view::npos;) {
       remaining_ += data.substr(0, i);
-      LOG(INFO) << "Got line: " << quote(remaining_);
+      LOG(INFO) << program_name_ << ": " << remaining_;
       output_->push_back(remaining_);
       remaining_.clear();
 
@@ -77,9 +84,8 @@ class PipeReader {
         switch (errno) {
           case EAGAIN:
           case EINTR:
-            // It's Ok to try again later.
-            PLOG(INFO) << "Nothing to read from file descriptor " << fd
-                       << " for the time being";
+            // Nothing for now, but it's Ok to try again later.
+            VPLOG(2) << "Nothing to read from file descriptor " << fd;
             return true;
         }
 
@@ -90,11 +96,12 @@ class PipeReader {
 
       if (n == 0) {
         // End of stream.
-        LOG(INFO) << "End of stream from file descriptor " << fd;
+        VLOG(2) << "End of stream from file descriptor " << fd;
         fd_.reset();
         return false;
       }
 
+      VLOG(2) << "Got " << n << " bytes from file descriptor " << fd;
       DCHECK_GT(n, 0);
       DCHECK_LE(n, PIPE_BUF);
       Append(std::string_view(buffer, n));
@@ -126,8 +133,7 @@ class PipeReader {
 
     if (ret == 0) {
       // Nothing to do / timeout.
-      LOG(INFO) << "Nothing to do with file descriptor " << fd
-                << " for the time being";
+      VLOG(2) << "Nothing to read from file descriptor " << fd;
       return true;
     }
 
@@ -135,8 +141,16 @@ class PipeReader {
   }
 
  private:
+  // Read end of the pipe.
   base::ScopedFD fd_;
+
+  // Program name. Used to prefix log traces.
+  const std::string program_name_;
+
+  // Collection of strings to append to.
   std::vector<std::string>* const output_;
+
+  // Last partially collected line.
   std::string remaining_;
 };
 
@@ -197,6 +211,11 @@ void Process::BuildArgumentsArray() {
   arguments_array_.push_back(nullptr);
 }
 
+std::string Process::GetProgramName() const {
+  DCHECK(!arguments_.empty());
+  return base::FilePath(arguments_.front()).BaseName().value();
+}
+
 void Process::AddEnvironmentVariable(const base::StringPiece name,
                                      const base::StringPiece value) {
   DCHECK(environment_array_.empty());
@@ -238,7 +257,7 @@ bool Process::Start(base::ScopedFD in_fd, base::ScopedFD out_fd) {
   CHECK_EQ(kInvalidProcessId, pid_);
   CHECK(!finished());
   CHECK(!arguments_.empty()) << "No arguments provided";
-  LOG(INFO) << "Starting program " << quote(arguments_.front())
+  LOG(INFO) << "Starting program " << quote(GetProgramName())
             << " with arguments " << quote(arguments_);
   LOG_IF(INFO, !environment_.empty())
       << "and extra environment " << quote(environment_);
@@ -283,24 +302,32 @@ int Process::Run(std::vector<std::string>* output) {
 
   Communicate(output, std::move(out_fd));
 
-  const int result = Wait();
+  const int exit_code = Wait();
 
-  LOG(INFO) << "Process finished with return code " << result;
-  if (LOG_IS_ON(INFO) && !output->empty()) {
-    LOG(INFO) << "Process outputted " << output->size() << " lines:";
-    for (const std::string& line : *output) {
-      LOG(INFO) << line;
+  if (exit_code != 0) {
+    const std::string program_name = GetProgramName();
+
+    if (!LOG_IS_ON(INFO)) {
+      for (const std::string& s : *output) {
+        LOG(ERROR) << program_name << ": " << s;
+      }
     }
+
+    LOG(ERROR) << "Program " << quote(program_name)
+               << " finished with exit code " << exit_code;
+  } else {
+    LOG(INFO) << "Program " << quote(GetProgramName())
+              << " finished successfully";
   }
 
-  return result;
+  return exit_code;
 }
 
 void Process::Communicate(std::vector<std::string>* output,
                           base::ScopedFD out_fd) {
   DCHECK(output);
 
-  PipeReader reader(std::move(out_fd), output);
+  PipeReader reader(std::move(out_fd), GetProgramName(), output);
 
   // Poll process and pipe. Read from pipe when possible.
   while (!IsFinished() && reader.WaitAndRead())

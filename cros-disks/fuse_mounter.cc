@@ -64,15 +64,15 @@ class FUSEMountPoint : public MountPoint {
                               const siginfo_t& info) {
     CHECK_EQ(SIGCHLD, info.si_signo);
     if (info.si_code != CLD_EXITED) {
-      LOG(WARNING) << "FUSE daemon for " << redact(mount_path)
-                   << " crashed with code " << info.si_code << " and status "
-                   << info.si_status;
+      LOG(ERROR) << "The 'init' process holding the FUSE daemon for "
+                 << redact(mount_path) << " was killed by signal "
+                 << info.si_status << ": " << strsignal(info.si_status);
     } else if (info.si_status != 0) {
-      LOG(WARNING) << "FUSE daemon for " << redact(mount_path)
-                   << " exited with status " << info.si_status;
+      LOG(ERROR) << "FUSE daemon for " << redact(mount_path)
+                 << " finished with exit code " << info.si_status;
     } else {
       LOG(INFO) << "FUSE daemon for " << quote(mount_path)
-                << " exited normally";
+                << " finished normally";
     }
 
     // If the MountPoint instance has been deleted, it was already unmounted and
@@ -344,8 +344,8 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     return nullptr;
   }
 
-  LOG(INFO) << "Started FUSE daemon for " << quote(target_path)
-            << " as PID namespace " << pid;
+  LOG(INFO) << "FUSE daemon for " << quote(target_path)
+            << " is running in PID namespace " << pid;
 
   // At this point, the FUSE daemon has successfully started.
   std::unique_ptr<FUSEMountPoint> mount_point =
@@ -380,23 +380,11 @@ pid_t FUSEMounter::StartDaemon(const base::File& fuse_file,
   mount_process->PreserveFile(fuse_file.GetPlatformFile());
 
   std::vector<std::string> output;
-  const int return_code = mount_process->Run(&output);
-  *error = InterpretReturnCode(return_code);
+  const int exit_code = mount_process->Run(&output);
+  *error = InterpretReturnCode(exit_code);
 
-  if (*error != MOUNT_ERROR_NONE) {
-    const std::string& executable = mount_process->arguments()[0];
-    if (!output.empty()) {
-      LOG(ERROR) << "FUSE mounter " << quote(executable) << " outputted "
-                 << output.size() << " lines:";
-      for (const std::string& line : output) {
-        LOG(ERROR) << line;
-      }
-    }
-
-    LOG(ERROR) << "FUSE mounter " << quote(executable)
-               << " returned error code " << return_code;
+  if (*error != MOUNT_ERROR_NONE)
     return Process::kInvalidProcessId;
-  }
 
   return mount_process->pid();
 }
