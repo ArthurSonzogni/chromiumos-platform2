@@ -24,7 +24,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   NDProxy ndproxy;
   ndproxy.Init();
-  ndproxy.TranslateNDPacket(data, size, guest_if_mac, nullptr, buffer);
+  ndproxy.TranslateNDPacket(data, size, guest_if_mac, nullptr, nullptr, buffer);
 
   memcpy(buffer, data, size);
   const nd_opt_prefix_info* prefix_info =

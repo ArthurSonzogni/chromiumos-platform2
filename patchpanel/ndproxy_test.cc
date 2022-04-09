@@ -285,6 +285,7 @@ TEST(NDProxyTest, TranslateFrame) {
     size_t input_frame_len;
     MacAddress local_mac;
     in6_addr* src_ip;
+    in6_addr* dst_ip;
     ssize_t expected_error;
     const uint8_t* expected_output_frame;
     size_t expected_output_frame_len;
@@ -295,6 +296,7 @@ TEST(NDProxyTest, TranslateFrame) {
           sizeof(tcp_frame),
           physical_if_mac,
           nullptr,
+          nullptr,
           NDProxy::kTranslateErrorNotICMPv6Packet,
       },
       {
@@ -302,6 +304,7 @@ TEST(NDProxyTest, TranslateFrame) {
           ping_frame,
           sizeof(ping_frame),
           physical_if_mac,
+          nullptr,
           nullptr,
           NDProxy::kTranslateErrorNotNDPacket,
       },
@@ -311,6 +314,7 @@ TEST(NDProxyTest, TranslateFrame) {
           sizeof(rs_frame_too_large_plen),
           physical_if_mac,
           nullptr,
+          nullptr,
           NDProxy::kTranslateErrorMismatchedIp6Length,
       },
       {
@@ -319,6 +323,7 @@ TEST(NDProxyTest, TranslateFrame) {
           sizeof(rs_frame_too_small_plen),
           physical_if_mac,
           nullptr,
+          nullptr,
           NDProxy::kTranslateErrorMismatchedIp6Length,
       },
       {
@@ -326,6 +331,7 @@ TEST(NDProxyTest, TranslateFrame) {
           rs_frame,
           sizeof(rs_frame),
           physical_if_mac,
+          nullptr,
           nullptr,
           0,  // no error
           rs_frame_translated,
@@ -337,6 +343,7 @@ TEST(NDProxyTest, TranslateFrame) {
           sizeof(ra_frame),
           guest_if_mac,
           nullptr,
+          nullptr,
           0,  // no error
           ra_frame_translated,
           sizeof(ra_frame_translated),
@@ -346,6 +353,7 @@ TEST(NDProxyTest, TranslateFrame) {
           ra_frame_option_reordered,
           sizeof(ra_frame_option_reordered),
           guest_if_mac,
+          nullptr,
           nullptr,
           0,  // no error
           ra_frame_option_reordered_translated,
@@ -357,6 +365,7 @@ TEST(NDProxyTest, TranslateFrame) {
           sizeof(ns_frame),
           physical_if_mac,
           nullptr,
+          nullptr,
           0,  // no error
           ns_frame_translated,
           sizeof(ns_frame_translated),
@@ -366,6 +375,7 @@ TEST(NDProxyTest, TranslateFrame) {
           na_frame,
           sizeof(na_frame),
           guest_if_mac,
+          nullptr,
           nullptr,
           0,  // no error
           na_frame_translated,
@@ -381,9 +391,9 @@ TEST(NDProxyTest, TranslateFrame) {
         test_case.expected_output_frame_len - ETHER_HDR_LEN;
 
     memcpy(in_buffer, test_case.input_frame + ETHER_HDR_LEN, packet_len);
-    result =
-        ndproxy.TranslateNDPacket(in_buffer, packet_len, test_case.local_mac,
-                                  test_case.src_ip, out_buffer);
+    result = ndproxy.TranslateNDPacket(in_buffer, packet_len,
+                                       test_case.local_mac, test_case.src_ip,
+                                       test_case.dst_ip, out_buffer);
 
     if (test_case.expected_error != 0) {
       EXPECT_EQ(test_case.expected_error, result);

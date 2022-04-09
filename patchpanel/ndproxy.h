@@ -51,17 +51,22 @@ class NDProxy {
   // it should be proxied. If so, fill the |out_packet| buffer with proxied
   // packet and return the length of proxied packet (usually same with input
   // frame length). Return a negative value if proxy is not needed or an error
-  // occurred. in_packet: buffer containing input IPv6 packet. packet_len: the
-  // length of input IPv6 packet; local_mac_addr: MAC address of interface that
-  // will be used to send the proxied packet; new_src_ip: if not null, address
-  // that will be used for the IP header source
-  //             address to send the proxied packet;
-  // out_packet: buffer for output IPv6 pacet; should have at least packet_len
-  // space.
+  // occurred.
+  //   in_packet: buffer containing input IPv6 packet.
+  //   packet_len: the length of input IPv6 packet;
+  //   local_mac_addr: MAC address of interface that will be used to send the
+  //       proxied packet;
+  //   new_src_ip: if not null, address that will be used for the IP header
+  //       source address to send the proxied packet;
+  //   new_dst_ip: if not null, address that will be used for the IP header
+  //       destination address to send the proxied packet;
+  //   out_packet: buffer for output IPv6 pacet; should have at least
+  //       packet_len space.
   ssize_t TranslateNDPacket(const uint8_t* in_packet,
                             ssize_t packet_len,
                             const MacAddress& local_mac_addr,
                             const in6_addr* new_src_ip,
+                            const in6_addr* new_dst_ip,
                             uint8_t* out_packet);
 
   // Given the ICMPv6 packet |icmp6| with header and options (payload) of total

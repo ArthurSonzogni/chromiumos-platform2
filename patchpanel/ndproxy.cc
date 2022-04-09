@@ -19,6 +19,7 @@
 #include <linux/rtnetlink.h>
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <netinet/icmp6.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
@@ -39,6 +40,8 @@ namespace {
 const unsigned char kZeroMacAddress[] = {0, 0, 0, 0, 0, 0};
 const unsigned char kBroadcastMacAddress[] = {0xff, 0xff, 0xff,
                                               0xff, 0xff, 0xff};
+const struct in6_addr kAllNodesMulticastAddress = {
+    {.__u6_addr8 = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01}}};
 
 // These filter instructions assume that the input is an IPv6 packet and check
 // that the packet is an ICMPv6 packet of whose ICMPv6 type is one of: neighbor
@@ -183,6 +186,7 @@ ssize_t NDProxy::TranslateNDPacket(const uint8_t* in_packet,
                                    ssize_t packet_len,
                                    const MacAddress& local_mac_addr,
                                    const in6_addr* new_src_ip,
+                                   const in6_addr* new_dst_ip,
                                    uint8_t* out_packet) {
   if (packet_len < sizeof(ip6_hdr) + sizeof(icmp6_hdr)) {
     return kTranslateErrorInsufficientLength;
@@ -237,8 +241,12 @@ ssize_t NDProxy::TranslateNDPacket(const uint8_t* in_packet,
       return kTranslateErrorNotNDPacket;
   }
 
-  if (new_src_ip != nullptr)
+  if (new_src_ip != nullptr) {
     memcpy(&ip6->ip6_src, new_src_ip, sizeof(in6_addr));
+  }
+  if (new_dst_ip != nullptr) {
+    memcpy(&ip6->ip6_dst, new_dst_ip, sizeof(in6_addr));
+  }
 
   // Recalculate the checksum. We need to clear the old checksum first so
   // checksum calculation does not wrongly take old checksum into account.
@@ -366,8 +374,11 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       continue;
 
     // b/187918638: Overwrite source IP address with host address to workaround
-    // irregular router address on Fibocom cell modem, as described above.
-    in6_addr* new_src_ip_p = nullptr;
+    // irregular router address on Fibocom L850 cell modem, as described above.
+    // b/228574659: Overwrite destination IP address with all nodes multicast
+    // address as well on L850.
+    const in6_addr* new_src_ip_p = nullptr;
+    const in6_addr* new_dst_ip_p = nullptr;
     in6_addr new_src_ip;
     if (irregular_router_ifs_.find(dst_addr.sll_ifindex) !=
         irregular_router_ifs_.end()) {
@@ -378,10 +389,13 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
         continue;
       }
       new_src_ip_p = &new_src_ip;
+      if (icmp6->icmp6_type == ND_ROUTER_ADVERT) {
+        new_dst_ip_p = &kAllNodesMulticastAddress;
+      }
     }
 
-    int result =
-        TranslateNDPacket(in_packet, len, local_mac, new_src_ip_p, out_packet);
+    int result = TranslateNDPacket(in_packet, len, local_mac, new_src_ip_p,
+                                   new_dst_ip_p, out_packet);
     if (result < 0) {
       switch (result) {
         case kTranslateErrorNotICMPv6Packet:
@@ -426,7 +440,8 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
         memcmp(&new_dst_addr.sll_addr, kBroadcastMacAddress, ETHER_ADDR_LEN) ==
             0) {
       MacAddress neighbor_mac;
-      if (GetNeighborMac(ip6->ip6_dst, &neighbor_mac)) {
+      ip6_hdr* new_ip6 = reinterpret_cast<ip6_hdr*>(out_packet);
+      if (GetNeighborMac(new_ip6->ip6_dst, &neighbor_mac)) {
         memcpy(&new_dst_addr.sll_addr, neighbor_mac.data(), ETHER_ADDR_LEN);
       } else {
         // If we can't resolve the destination IP into MAC from kernel neighbor
