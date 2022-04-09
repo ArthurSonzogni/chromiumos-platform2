@@ -266,17 +266,21 @@ if PARALLEL_BOOTSTRAP:
     print('# Initializing RNGs...')
     rngs = [np.random.default_rng(i) for i in range(BOOTSTRAP_SAMPLES)]
 
+    print('# Dispatching sampling over '
+          f'{multiprocessing.cpu_count()} processes...')
     start = time.time()
     with multiprocessing.Pool(processes=None) as pool:  # limit memory usage
-        output = pool.imap_unordered(bootstrap_full_naive, rngs)
-        boot_means = list(tqdm(output, total=BOOTSTRAP_SAMPLES))
+        boot_means = pool.map(bootstrap_full_naive, tqdm(rngs))
     end = time.time()
     print(f'This took {end-start:.6f}s.')
     # print(f'Samples: {list(boot_means)}')
 else:
     rng = np.random.default_rng()
+    start = time.time()
     for s in tqdm(range(BOOTSTRAP_SAMPLES)):
         boot_means.append(bootstrap_full_naive(rng))
+    end = time.time()
+    print(f'This took {end-start:.6f}s.')
 
 
 # %%
@@ -318,8 +322,7 @@ far_std = np.divide(boot_std, exp.fa_trials_count())
 plt.figure()
 # fpsutils.plt_discrete_hist(np.divide(boot_means, exp.FARMatches()))
 
-# Fit a normal distribution to
-# the data:
+# Fit a normal distribution to the data:
 # mean and standard deviation
 mu, std = norm.fit(boot_means_ratio)
 # Plot the histogram.
