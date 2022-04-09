@@ -158,7 +158,7 @@ fpsutils.plot_pd_hist_discrete(exp.fa_table(), title_prefix='False Accepts')
 # user id maps.
 
 print('# Loading caches...')
-rng = np.random.default_rng()
+
 fa_table = exp.fa_table()
 fa_set_tuple = [Experiment.TableCol.Verify_User.value,
                 Experiment.TableCol.Enroll_User.value,
@@ -173,7 +173,7 @@ fingers_list = exp.finger_list()
 samples_list = exp.sample_list()
 
 
-def bootstrap_full_naive(sample_number: int) -> int:
+def bootstrap_full_naive(rng: np.random.Generator) -> int:
     """Complete a single bootstrap sample.
 
     The important parts of this approach are the following:
@@ -248,20 +248,35 @@ PARALLEL_BOOTSTRAP = True
 print('# Starting bootstrap...')
 boot_means = list()
 if PARALLEL_BOOTSTRAP:
+    # All processes must have their own unique seed for their pseudo random
+    # number generator, otherwise they will all generate the same random values.
+    #
+    # For reproducibility and testing, you can use np.random.SeedSequence.spawn
+    # or [np.random.default_rng(i) for i in range(BOOTSTRAP_SAMPLES)]
+    # See https://numpy.org/doc/stable/reference/random/parallel.html .
+    #
+    # We could possible generate fewer random number generators, since we only
+    # need one per process. This might be achievable by using the Pool
+    # constructor's initializer function to add a process local global
+    # rng variable. For now, it is just safer to generate BOOTSTRAP_SAMPLES
+    # random number generators. Do note that you can't really parallelize
+    # the rng initialization, since the CPU doesn't produce enough entropy
+    # to satisfy threads concurrently. They end up just being blocked
+    # on IO.
+    print('# Initializing RNGs...')
+    rngs = [np.random.default_rng(i) for i in range(BOOTSTRAP_SAMPLES)]
+
     start = time.time()
     with multiprocessing.Pool(processes=None) as pool:  # limit memory usage
-        output = pool.imap_unordered(
-            bootstrap_full_naive, range(BOOTSTRAP_SAMPLES))
+        output = pool.imap_unordered(bootstrap_full_naive, rngs)
         boot_means = list(tqdm(output, total=BOOTSTRAP_SAMPLES))
     end = time.time()
     print(f'This took {end-start:.6f}s.')
     # print(f'Samples: {list(boot_means)}')
 else:
-    samples = []
+    rng = np.random.default_rng()
     for s in tqdm(range(BOOTSTRAP_SAMPLES)):
-        sample = bootstrap_full_naive(s)
-        samples.append(sample)
-# print(samples)
+        boot_means.append(bootstrap_full_naive(rng))
 
 
 # %%
