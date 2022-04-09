@@ -9,6 +9,11 @@
 
 #! %pip install pandas numpy matplotlib scipy tqdm ipympl
 
+# NOTE: Sometimes this autoreload/autoimport feature messes up the environment.
+#       If you see odd issues, like assert statements failing for TestCases,
+#       you need to restart your kernel. This is probably because it redefines
+#       the enums, which makes previous save enum values not equal to the new
+#       enum value.
 #! %load_ext autoreload
 #! %autoreload 1
 
