@@ -13,6 +13,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <brillo/process/process.h>
 
 namespace flex_id {
 
@@ -162,7 +163,27 @@ std::optional<std::string> FlexIdGenerator::TrySerial() {
   return serial;
 }
 
+void WaitForNetwork() {
+  // This udevadm command is required on some machines like VMs to ensure
+  // the network interfaces are all ready prior to attempting to find a
+  // mac address.
+  brillo::ProcessImpl udevadm_process;
+  udevadm_process.AddArg("/bin/udevadm");
+  udevadm_process.AddArg("trigger");
+  // -w flag waits for trigger to complete
+  udevadm_process.AddArg("-w");
+  udevadm_process.AddArg("--action=change");
+  udevadm_process.SetCloseUnusedFileDescriptors(true);
+
+  auto result = udevadm_process.Run();
+  if (result != 0) {
+    LOG(WARNING) << "Failed to wait for MAC address for flex id";
+  }
+}
+
 std::optional<std::string> FlexIdGenerator::TryMac() {
+  WaitForNetwork();
+
   std::map<std::string, std::string> interfaces;
 
   const base::FilePath interfaces_path =
