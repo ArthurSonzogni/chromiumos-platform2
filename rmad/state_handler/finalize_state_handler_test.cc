@@ -200,18 +200,6 @@ TEST_F(FinalizeStateHandlerTest, GetNextStateCase_BlockingFailure_Retry) {
     EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
   }
 
-  // In progress.
-  {
-    auto finalize = std::make_unique<FinalizeState>();
-    finalize->set_choice(FinalizeState::RMAD_FINALIZE_CHOICE_CONTINUE);
-    RmadState state;
-    state.set_allocated_finalize(finalize.release());
-
-    auto [error, state_case] = handler->GetNextStateCase(state);
-    EXPECT_EQ(error, RMAD_ERROR_WAIT);
-    EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
-  }
-
   task_environment_.RunUntilIdle();
 
   // Still fails.

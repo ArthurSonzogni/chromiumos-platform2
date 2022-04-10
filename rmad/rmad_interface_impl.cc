@@ -234,7 +234,7 @@ bool RmadInterfaceImpl::SetUp() {
                                                &components) &&
         components.size() > 0) {
       LOG(INFO) << "Disabling cellular network";
-      DCHECK(shill_client_->DisableCellular());
+      CHECK(shill_client_->DisableCellular());
     }
     if (test_mode_) {
       ClearTestRequests();

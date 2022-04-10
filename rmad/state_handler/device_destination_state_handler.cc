@@ -145,7 +145,7 @@ bool DeviceDestinationStateHandler::ReplacedComponentNeedHwwpDisabled() const {
   // component. It shouldn't affect performance a lot.
   for (const std::string& component_name : replaced_component_names) {
     RmadComponent component;
-    DCHECK(RmadComponent_Parse(component_name, &component));
+    CHECK(RmadComponent_Parse(component_name, &component));
     if (std::find(kComponentsNeedManualCalibration.begin(),
                   kComponentsNeedManualCalibration.end(),
                   component) != kComponentsNeedManualCalibration.end()) {

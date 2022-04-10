@@ -38,7 +38,7 @@ void StateHandlerManager::RegisterStateHandler(
   RmadState::StateCase state = handler->GetStateCase();
   auto res = state_handler_map_.insert(std::make_pair(state, handler));
   // Check if there are StateCase collisions.
-  DCHECK(res.second) << "Registered handlers should have unique RmadStates.";
+  CHECK(res.second) << "Registered handlers should have unique RmadStates.";
 }
 
 void StateHandlerManager::RegisterStateHandlers() {

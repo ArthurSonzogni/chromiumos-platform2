@@ -48,7 +48,7 @@ bool BaseStateHandler::RetrieveState() {
     auto it = state_map.find(key);
     if (it != state_map.end()) {
       std::string serialized_string;
-      DCHECK(base::Base64Decode(it->second, &serialized_string));
+      CHECK(base::Base64Decode(it->second, &serialized_string));
       return state_.ParseFromString(serialized_string);
     }
   }
