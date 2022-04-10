@@ -46,11 +46,6 @@ namespace cros_disks {
 
 namespace {
 
-const char kFuseDeviceFile[] = "/dev/fuse";
-const char kBaseFreezerCgroup[] = "/sys/fs/cgroup/freezer";
-const char kCgroupProcsFile[] = "cgroup.procs";
-const int kFUSEMountFlags = MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_DIRSYNC;
-
 class FUSEMountPoint : public MountPoint {
  public:
   using MountPoint::MountPoint;
@@ -145,23 +140,23 @@ FUSESandboxedProcessFactory::~FUSESandboxedProcessFactory() = default;
 
 std::unique_ptr<SandboxedProcess>
 FUSESandboxedProcessFactory::CreateSandboxedProcess() const {
-  auto sandbox = std::make_unique<SandboxedProcess>();
+  std::unique_ptr<SandboxedProcess> sandbox =
+      std::make_unique<SandboxedProcess>();
   if (!ConfigureSandbox(sandbox.get()))
-    return nullptr;
+    sandbox.reset();
   return sandbox;
 }
 
 bool FUSESandboxedProcessFactory::ConfigureSandbox(
     SandboxedProcess* sandbox) const {
-  base::FilePath cgroup = base::FilePath(kBaseFreezerCgroup)
-                              .Append(executable_.BaseName())
-                              .Append(kCgroupProcsFile);
   sandbox->SetCapabilities(0);
   sandbox->SetNoNewPrivileges();
 
   // The FUSE mount program is put under a new mount namespace, so mounts
   // inside that namespace don't normally propagate.
   sandbox->NewMountNamespace();
+  sandbox->NewIpcNamespace();
+  sandbox->NewPidNamespace();
   sandbox->SkipRemountPrivate();
 
   // TODO(benchan): Re-enable cgroup namespace when either Chrome OS
@@ -171,19 +166,19 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
 
   // Add the sandboxed process to its cgroup that should be setup. Return an
   // error if it's not there.
+  const base::FilePath cgroup = base::FilePath("/sys/fs/cgroup/freezer")
+                                    .Append(executable_.BaseName())
+                                    .Append("cgroup.procs");
+
   if (!platform_->PathExists(cgroup.value())) {
     LOG(ERROR) << "Freezer cgroup " << quote(cgroup) << " is missing";
-    return MOUNT_ERROR_INTERNAL;
+    return false;
   }
 
   if (!sandbox->AddToCgroup(cgroup.value())) {
     LOG(ERROR) << "Cannot add sandboxed process to cgroup " << quote(cgroup);
-    return MOUNT_ERROR_INTERNAL;
+    return false;
   }
-
-  sandbox->NewIpcNamespace();
-
-  sandbox->NewPidNamespace();
 
   // Prepare mounts for pivot_root.
   if (!sandbox->SetUpMinimalMounts()) {
@@ -207,6 +202,7 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
       LOG(ERROR) << "Cannot bind /run/shill";
       return false;
     }
+
     // Hardcoded hosts are mounted into /etc/hosts.d when Crostini is enabled.
     if (platform_->PathExists("/etc/hosts.d") &&
         !sandbox->BindMount("/etc/hosts.d", "/etc/hosts.d", false, false)) {
@@ -231,19 +227,19 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
 
   sandbox->SetUserId(run_as_.uid);
   sandbox->SetGroupId(run_as_.gid);
-  if (!supplementary_groups_.empty()) {
+
+  if (!supplementary_groups_.empty())
     sandbox->SetSupplementaryGroupIds(supplementary_groups_);
-  }
 
   // Enter mount namespace in the sandbox if necessary.
-  if (mount_namespace_) {
+  if (mount_namespace_)
     sandbox->EnterExistingMountNamespace(mount_namespace_.value().value());
-  }
 
   if (!platform_->PathExists(executable_.value())) {
     LOG(ERROR) << "Cannot find mounter program " << quote(executable_);
     return false;
   }
+
   sandbox->AddArgument(executable_.value());
 
   return true;
@@ -268,11 +264,12 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   // Read-only is the only parameter that has any effect at this layer.
   const bool read_only = config_.read_only || IsReadOnlyMount(params);
 
+  const base::FilePath fuse_device_path("/dev/fuse");
   const base::File fuse_file = base::File(
-      base::FilePath(kFuseDeviceFile),
+      fuse_device_path,
       base::File::FLAG_OPEN | base::File::FLAG_READ | base::File::FLAG_WRITE);
   if (!fuse_file.IsValid()) {
-    LOG(ERROR) << "Cannot open FUSE device " << quote(kFuseDeviceFile) << ": "
+    LOG(ERROR) << "Cannot open FUSE device " << quote(fuse_device_path) << ": "
                << base::File::ErrorToString(fuse_file.error_details());
     *error = MOUNT_ERROR_INTERNAL;
     return nullptr;
@@ -316,31 +313,41 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     fuse_type += filesystem_type_;
   }
 
-  MountPointData data = {
-      .mount_path = target_path,
-      .source = source_descr,
-      .filesystem_type = fuse_type,
-      .flags = kFUSEMountFlags | (read_only ? MS_RDONLY : 0) |
-               (config_.nosymfollow ? MS_NOSYMFOLLOW : 0),
-      .data = fuse_mount_options,
-  };
-  *error = platform_->Mount(data.source, data.mount_path.value(),
-                            data.filesystem_type, data.flags, data.data);
-  if (*error != MOUNT_ERROR_NONE) {
-    LOG(ERROR) << "Cannot perform unprivileged FUSE mount: " << *error;
+  // Prepare mount flags.
+  int mount_flags = MS_NODEV | MS_NOSUID | MS_NOEXEC | MS_DIRSYNC;
+
+  if (read_only)
+    mount_flags |= MS_RDONLY;
+
+  if (config_.nosymfollow)
+    mount_flags |= MS_NOSYMFOLLOW;
+
+  *error = platform_->Mount(source_descr, target_path.value(), fuse_type,
+                            mount_flags, fuse_mount_options);
+  if (*error) {
+    LOG(ERROR) << "Cannot mount " << redact(source) << " at mount point "
+               << redact(target_path) << ": " << *error;
     return nullptr;
   }
 
+  std::unique_ptr<FUSEMountPoint> mount_point =
+      std::make_unique<FUSEMountPoint>(
+          MountPointData{
+              .mount_path = target_path,
+              .source = source_descr,
+              .filesystem_type = fuse_type,
+              .flags = mount_flags,
+              .data = fuse_mount_options,
+          },
+          platform_);
+
+  // Start FUSE daemon.
   const pid_t pid =
       StartDaemon(fuse_file, source, target_path, std::move(params), error);
-  if (*error != MOUNT_ERROR_NONE || pid == Process::kInvalidProcessId) {
+  if (*error || pid == Process::kInvalidProcessId) {
     LOG(ERROR) << "Cannot start FUSE daemon for " << redact(source) << ": "
                << *error;
-    LOG(INFO) << "Forcefully unmounting " << quote(target_path) << "...";
-    const MountErrorType unmount_error =
-        platform_->Unmount(target_path.value(), MNT_FORCE | MNT_DETACH);
-    LOG_IF(ERROR, unmount_error)
-        << "Cannot unmount " << redact(target_path) << ": " << unmount_error;
+    mount_point->Unmount();
     return nullptr;
   }
 
@@ -348,9 +355,6 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
             << " is running in PID namespace " << pid;
 
   // At this point, the FUSE daemon has successfully started.
-  std::unique_ptr<FUSEMountPoint> mount_point =
-      std::make_unique<FUSEMountPoint>(std::move(data), platform_);
-
   // Add a watcher that cleans up the FUSE mount when the FUSE daemon exits.
   // This is detected when the in-jail "init" process |pid| terminates, which
   // happens only when the last daemon process in the jailed PID namespace
@@ -361,7 +365,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
                      mount_point->GetWeakPtr()));
 
   *error = MOUNT_ERROR_NONE;
-  return std::move(mount_point);
+  return mount_point;
 }
 
 pid_t FUSEMounter::StartDaemon(const base::File& fuse_file,

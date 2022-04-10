@@ -336,7 +336,7 @@ TEST_F(FUSEMounterTest, MountingUnprivileged_SandboxFailed) {
   EXPECT_CALL(mounter_, PrepareSandbox)
       .WillOnce(DoAll(SetArgPointee<3>(MOUNT_ERROR_INVALID_MOUNT_OPTIONS),
                       Return(ByMove(nullptr))));
-  EXPECT_CALL(platform_, Unmount(kMountDir, MNT_FORCE | MNT_DETACH))
+  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
@@ -354,7 +354,7 @@ TEST_F(FUSEMounterTest, MountingUnprivileged_AppFailed) {
   EXPECT_CALL(*process_ptr, WaitNonBlockingImpl).WillOnce(Return(1));
   EXPECT_CALL(mounter_, PrepareSandbox(_, base::FilePath(kMountDir), _, _))
       .WillOnce(Return(ByMove(std::move(process_ptr))));
-  EXPECT_CALL(platform_, Unmount(kMountDir, MNT_FORCE | MNT_DETACH))
+  EXPECT_CALL(platform_, Unmount(kMountDir, 0))
       .WillOnce(Return(MOUNT_ERROR_NONE));
 
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
