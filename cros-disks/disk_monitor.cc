@@ -116,13 +116,13 @@ void LogDevice(const UdevDevice& dev) {
   if (!VLOG_IS_ON(1))
     return;
 
-  VLOG(1) << "path: " << quote(dev.NativePath());
-  VLOG(1) << "  attributes: virtual=" << dev.IsVirtual()
-          << " loop=" << dev.IsLoopDevice() << " boot=" << dev.IsOnBootDevice()
-          << " removable=" << dev.IsOnRemovableDevice()
-          << " broadband=" << dev.IsMobileBroadbandDevice()
-          << " automount=" << dev.IsAutoMountable()
-          << " media=" << dev.IsMediaAvailable();
+  VLOG(1) << "Device " << quote(dev.NativePath());
+  VLOG(1) << " virtual:" << dev.IsVirtual() << " loop:" << dev.IsLoopDevice()
+          << " boot:" << dev.IsOnBootDevice()
+          << " removable:" << dev.IsOnRemovableDevice()
+          << " broadband:" << dev.IsMobileBroadbandDevice()
+          << " automount:" << dev.IsAutoMountable()
+          << " media:" << dev.IsMediaAvailable();
 }
 
 }  // namespace
@@ -334,7 +334,7 @@ bool DiskMonitor::GetDeviceEvents(DeviceEventList* events) {
 
 bool DiskMonitor::GetDiskByDevicePath(const base::FilePath& device_path,
                                       Disk* disk) const {
-  LOG(INFO) << "Get disk by path " << quote(device_path);
+  VLOG(1) << "Getting disk by path " << quote(device_path) << "...";
   if (device_path.empty())
     return false;
 

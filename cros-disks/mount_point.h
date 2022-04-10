@@ -20,13 +20,13 @@ struct MountPointData {
   // Mount point path.
   base::FilePath mount_path;
   // Source description used to mount.
-  std::string source = {};
+  std::string source;
   // Filesystem type of the mount.
-  std::string filesystem_type = {};
+  std::string filesystem_type;
   // Flags of the mount point.
   int flags = 0;
   // Additional data passed during mount.
-  std::string data = {};
+  std::string data;
 };
 
 class Platform;

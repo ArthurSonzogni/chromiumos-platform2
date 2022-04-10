@@ -43,7 +43,7 @@ bool USBDeviceInfo::RetrieveFromFile(const std::string& path) {
 
   FileReader reader;
   if (!reader.Open(base::FilePath(path))) {
-    LOG(ERROR) << "Cannot retrieve USB device info from " << quote(path) << "";
+    LOG(ERROR) << "Cannot open USB database " << quote(path);
     return false;
   }
 
@@ -72,8 +72,7 @@ bool USBDeviceInfo::GetVendorAndProductName(const std::string& ids_file,
 
   FileReader reader;
   if (!reader.Open(base::FilePath(ids_file))) {
-    LOG(ERROR) << "Cannot retrieve USB identifier database at "
-               << quote(ids_file);
+    LOG(ERROR) << "Cannot open USB database " << quote(ids_file);
     return false;
   }
 

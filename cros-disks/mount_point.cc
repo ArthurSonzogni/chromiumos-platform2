@@ -46,7 +46,7 @@ MountPoint::~MountPoint() {
     return;
 
   const MountErrorType error = Unmount();
-  LOG_IF(WARNING, error && error != MOUNT_ERROR_PATH_NOT_MOUNTED)
+  LOG_IF(ERROR, error && error != MOUNT_ERROR_PATH_NOT_MOUNTED)
       << "Cannot unmount " << quote(path()) << ": " << error;
 }
 
@@ -86,13 +86,12 @@ MountErrorType MountPoint::UnmountImpl() {
   // login/logout/suspend.
 
   const base::FilePath& mount_point = path();
-  LOG(INFO) << "Unmounting " << redact(mount_point) << "...";
   if (const MountErrorType error = platform_->Unmount(mount_point.value(), 0);
       error != MOUNT_ERROR_PATH_ALREADY_MOUNTED)
     return error;
 
   // The mount point couldn't be unmounted because it is BUSY.
-  LOG(WARNING) << "Mount point " << quote(mount_point) << " is busy";
+  LOG(INFO) << "Forcefully unmounting " << quote(mount_point) << "...";
 
   // For FUSE filesystems, MNT_FORCE will cause the kernel driver to immediately
   // close the channel to the user-space driver program and cancel all
@@ -102,7 +101,6 @@ MountErrorType MountPoint::UnmountImpl() {
   // to also force the mountpoint to be disconnected. On a non-FUSE filesystem
   // MNT_FORCE doesn't have effect, so it only handles MNT_DETACH, but it's OK
   // to pass MNT_FORCE too.
-  LOG(WARNING) << "Forcefully unmounting " << quote(mount_point) << "...";
   return platform_->Unmount(mount_point.value(), MNT_FORCE | MNT_DETACH);
 }
 

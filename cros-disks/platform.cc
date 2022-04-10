@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <iomanip>
 #include <memory>
 #include <vector>
 
@@ -30,7 +31,7 @@ Platform::Platform()
 
 bool Platform::GetRealPath(const std::string& path,
                            std::string* real_path) const {
-  CHECK(real_path) << "Invalid real_path argument";
+  DCHECK(real_path);
 
   std::unique_ptr<char, base::FreeDeleter> result(
       realpath(path.c_str(), nullptr));
@@ -40,6 +41,7 @@ bool Platform::GetRealPath(const std::string& path,
   }
 
   *real_path = result.get();
+  VLOG(1) << "Real path of " << quote(path) << " is " << quote(*real_path);
   return true;
 }
 
@@ -57,15 +59,16 @@ bool Platform::Lstat(const std::string& path, base::stat_wrapper_t* out) const {
 
 bool Platform::CreateDirectory(const std::string& path) const {
   if (!base::CreateDirectory(base::FilePath(path))) {
-    LOG(ERROR) << "Cannot create directory " << quote(path);
+    PLOG(ERROR) << "Cannot create directory " << redact(path);
     return false;
   }
-  LOG(INFO) << "Created directory " << quote(path);
+
+  VLOG(1) << "Created directory " << quote(path);
   return true;
 }
 
 bool Platform::CreateOrReuseEmptyDirectory(const std::string& path) const {
-  CHECK(!path.empty()) << "Invalid path argument";
+  DCHECK(!path.empty());
 
   // Reuse the target path if it already exists and is empty.
   // rmdir handles the cases when the target path exists but
@@ -75,6 +78,8 @@ bool Platform::CreateOrReuseEmptyDirectory(const std::string& path) const {
     PLOG(ERROR) << "Cannot create directory " << redact(path);
     return false;
   }
+
+  VLOG(1) << "Created directory " << quote(path);
   return true;
 }
 
@@ -82,7 +87,8 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
     std::string* path,
     unsigned max_suffix_to_retry,
     const std::unordered_set<std::string>& reserved_paths) const {
-  CHECK(path && !path->empty()) << "Invalid path argument";
+  DCHECK(path);
+  DCHECK(!path->empty());
 
   if (!base::Contains(reserved_paths, *path) &&
       CreateOrReuseEmptyDirectory(*path))
@@ -96,18 +102,25 @@ bool Platform::CreateOrReuseEmptyDirectoryWithFallback(
       return true;
     }
   }
+
   return false;
 }
 
 bool Platform::CreateTemporaryDirInDir(const std::string& dir,
                                        const std::string& prefix,
                                        std::string* path) const {
+  DCHECK(path);
+
   base::FilePath dest;
-  bool result =
-      base::CreateTemporaryDirInDir(base::FilePath(dir), prefix, &dest);
-  if (result && path)
-    *path = dest.value();
-  return result;
+  if (!base::CreateTemporaryDirInDir(base::FilePath(dir), prefix, &dest)) {
+    PLOG(ERROR) << "Cannot create temporary directory in " << quote(dir);
+    return false;
+  }
+
+  VLOG(1) << "Created temporary directory " << quote(dest);
+  *path = dest.value();
+
+  return true;
 }
 
 int Platform::WriteFile(const std::string& file,
@@ -142,30 +155,36 @@ bool Platform::GetUserAndGroupId(const std::string& user_name,
 bool Platform::GetOwnership(const std::string& path,
                             uid_t* user_id,
                             gid_t* group_id) const {
-  struct stat path_status;
-  if (stat(path.c_str(), &path_status) != 0) {
+  struct stat st;
+  if (stat(path.c_str(), &st) != 0) {
     PLOG(ERROR) << "Cannot get ownership info for " << quote(path);
     return false;
   }
 
+  VLOG(1) << "File " << redact(path) << " has UID " << st.st_uid << " and GID "
+          << st.st_gid;
+
   if (user_id)
-    *user_id = path_status.st_uid;
+    *user_id = st.st_uid;
 
   if (group_id)
-    *group_id = path_status.st_gid;
+    *group_id = st.st_gid;
 
   return true;
 }
 
 bool Platform::GetPermissions(const std::string& path, mode_t* mode) const {
-  CHECK(mode) << "Invalid mode argument";
+  DCHECK(mode);
 
-  struct stat path_status;
-  if (stat(path.c_str(), &path_status) != 0) {
-    PLOG(ERROR) << "Cannot get the permissions of " << quote(path);
+  struct stat st;
+  if (stat(path.c_str(), &st) != 0) {
+    PLOG(ERROR) << "Cannot get access mode of " << redact(path);
     return false;
   }
-  *mode = path_status.st_mode;
+
+  VLOG(1) << "File " << redact(path) << " has access mode 0" << std::oct
+          << std::setfill('0') << std::setw(3) << st.st_mode;
+  *mode = st.st_mode;
   return true;
 }
 
@@ -179,9 +198,11 @@ bool Platform::SetMountUser(const std::string& user_name) {
 
 bool Platform::RemoveEmptyDirectory(const std::string& path) const {
   if (rmdir(path.c_str()) != 0) {
-    PLOG(ERROR) << "Cannot remove directory " << quote(path);
+    PLOG(ERROR) << "Cannot remove directory " << redact(path);
     return false;
   }
+
+  VLOG(1) << "Removed directory " << quote(path);
   return true;
 }
 
@@ -189,33 +210,40 @@ bool Platform::SetOwnership(const std::string& path,
                             uid_t user_id,
                             gid_t group_id) const {
   if (chown(path.c_str(), user_id, group_id)) {
-    PLOG(ERROR) << "Cannot set ownership of " << quote(path) << " to uid "
-                << user_id << " and gid " << group_id;
+    PLOG(ERROR) << "Cannot change ownership of " << quote(path) << " to UID "
+                << user_id << " and GID " << group_id;
     return false;
   }
+
+  VLOG(1) << "Changed ownership of " << quote(path) << " to UID " << user_id
+          << " and GID " << group_id;
   return true;
 }
 
 bool Platform::SetPermissions(const std::string& path, mode_t mode) const {
   if (chmod(path.c_str(), mode)) {
-    PLOG(ERROR) << "Cannot set permissions of " << quote(path) << " to "
-                << base::StringPrintf("%04o", mode);
+    PLOG(ERROR) << "Cannot change access mode of " << quote(path) << " to 0"
+                << std::oct << std::setfill('0') << std::setw(3) << mode;
     return false;
   }
+
+  VLOG(1) << "Changed access mode of " << quote(path) << " to 0" << std::oct
+          << std::setfill('0') << std::setw(3) << mode;
   return true;
 }
 
 MountErrorType Platform::Unmount(const std::string& path, int flags) const {
-  error_t error = 0;
-  if (umount2(path.c_str(), flags) != 0) {
-    error = errno;
-    PLOG(ERROR) << "Cannot unmount " << quote(path) << " with flags " << flags;
-  } else {
-    LOG(INFO) << "Unmounted " << quote(path) << " with flags " << flags;
+  if (umount2(path.c_str(), flags) == 0) {
+    VLOG(1) << "Unmounted " << quote(path) << " with flags 0x" << std::hex
+            << flags << "...";
+    return MOUNT_ERROR_NONE;
   }
+
+  const error_t error = errno;
+  PLOG(ERROR) << "Cannot unmount " << redact(path) << " with flags 0x"
+              << std::hex << flags;
+
   switch (error) {
-    case 0:
-      return MOUNT_ERROR_NONE;
     case ENOENT:
       return MOUNT_ERROR_PATH_NOT_MOUNTED;
     case EPERM:
@@ -232,24 +260,22 @@ MountErrorType Platform::Mount(const std::string& source_path,
                                const std::string& filesystem_type,
                                const uint64_t flags,
                                const std::string& options) const {
-  error_t error = 0;
   if (mount(source_path.c_str(), target_path.c_str(), filesystem_type.c_str(),
-            flags, options.c_str()) != 0) {
-    error = errno;
-    PLOG(ERROR) << "Cannot create mount point " << quote(target_path) << " for "
-                << quote(source_path) << " as filesystem "
-                << quote(filesystem_type) << " with flags 0x" << std::hex
-                << flags << " and options " << quote(options);
-  } else {
-    LOG(INFO) << "Created mount point " << quote(target_path) << " for "
-              << quote(source_path) << " as filesystem "
-              << quote(filesystem_type) << " with flags 0x" << std::hex << flags
-              << " and options " << quote(options);
+            flags, options.c_str()) == 0) {
+    VLOG(1) << "Created mount point " << quote(target_path) << " for "
+            << quote(source_path) << " as filesystem " << quote(filesystem_type)
+            << " with flags 0x" << std::hex << flags << " and options "
+            << quote(options);
+    return MOUNT_ERROR_NONE;
   }
 
+  const error_t error = errno;
+  PLOG(ERROR) << "Cannot create mount point " << redact(target_path) << " for "
+              << redact(source_path) << " as filesystem "
+              << quote(filesystem_type) << " with flags 0x" << std::hex << flags
+              << " and options " << quote(options);
+
   switch (error) {
-    case 0:
-      return MOUNT_ERROR_NONE;
     case ENODEV:
       return MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
     case ENOENT:
