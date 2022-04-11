@@ -81,11 +81,14 @@ message AuthFactor {
   // only consisting of characters from the set {a-z, A-Z, 0-9, _, -}, and whose
   // length doesn't exceed 1000.
   string label = 2;
+  // is_active indicates if the AuthFactor can be used for Authenticating
+  // AuthFactor.
+  bool is_active_for_login = 3;
   // An AuthFactor could also carry with itself some metadata. Since an
   // AuthFactor could only be one type, oneof is used to define the usage of
   // metadata.
   oneof metadata {
-    PasswordMetadata password_metadata = 3;
-    PinMetadata pin_metadata = 4;
+    PasswordMetadata password_metadata = 4;
+    PinMetadata pin_metadata = 5;
   }
 }
