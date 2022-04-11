@@ -9,9 +9,12 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
+
+#include "cros-disks/sandboxed_process.h"
 
 namespace cros_disks {
 
@@ -62,6 +65,13 @@ class MountPoint {
   // Remount with specified ro/rw.
   MountErrorType Remount(bool read_only);
 
+  // Associates a SandboxedProcess object to this MountPoint.
+  void SetProcess(std::unique_ptr<SandboxedProcess> process) {
+    DCHECK(!process_);
+    process_ = std::move(process);
+    DCHECK(process_);
+  }
+
   const base::FilePath& path() const { return data_.mount_path; }
   const std::string& source() const { return data_.source; }
   const std::string& fstype() const { return data_.filesystem_type; }
@@ -82,6 +92,10 @@ class MountPoint {
   const Platform* platform_;
 
  private:
+  // SandboxedProcess object holding the FUSE mounter processes associated to
+  // this MountPoint.
+  std::unique_ptr<SandboxedProcess> process_;
+
   bool released_ = false;
 };
 

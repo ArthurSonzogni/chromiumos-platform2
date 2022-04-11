@@ -123,12 +123,14 @@ class FUSEMounter : public Mounter {
 
  private:
   // Performs necessary set up and launches FUSE daemon that communicates to
-  // FUSE kernel layer via the |fuse_file|. Returns PID of the daemon process.
-  pid_t StartDaemon(const base::File& fuse_file,
-                    const std::string& source,
-                    const base::FilePath& target_path,
-                    std::vector<std::string> params,
-                    MountErrorType* error) const;
+  // FUSE kernel layer via the |fuse_file|. Returns the Process holding the FUSE
+  // daemon.
+  std::unique_ptr<SandboxedProcess> StartDaemon(
+      const base::File& fuse_file,
+      const std::string& source,
+      const base::FilePath& target_path,
+      std::vector<std::string> params,
+      MountErrorType* error) const;
 
  private:
   const Platform* const platform_;

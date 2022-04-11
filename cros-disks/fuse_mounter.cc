@@ -342,17 +342,21 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
           platform_);
 
   // Start FUSE daemon.
-  const pid_t pid =
+  std::unique_ptr<SandboxedProcess> process =
       StartDaemon(fuse_file, source, target_path, std::move(params), error);
-  if (*error || pid == Process::kInvalidProcessId) {
+
+  if (*error || !process) {
     LOG(ERROR) << "Cannot start FUSE daemon for " << redact(source) << ": "
                << *error;
     mount_point->Unmount();
     return nullptr;
   }
 
+  const pid_t pid = process->pid();
   LOG(INFO) << "FUSE daemon for " << quote(target_path)
             << " is running in PID namespace " << pid;
+
+  mount_point->SetProcess(std::move(process));
 
   // At this point, the FUSE daemon has successfully started.
   // Add a watcher that cleans up the FUSE mount when the FUSE daemon exits.
@@ -368,16 +372,17 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   return mount_point;
 }
 
-pid_t FUSEMounter::StartDaemon(const base::File& fuse_file,
-                               const std::string& source,
-                               const base::FilePath& target_path,
-                               std::vector<std::string> params,
-                               MountErrorType* error) const {
+std::unique_ptr<SandboxedProcess> FUSEMounter::StartDaemon(
+    const base::File& fuse_file,
+    const std::string& source,
+    const base::FilePath& target_path,
+    std::vector<std::string> params,
+    MountErrorType* error) const {
   std::unique_ptr<SandboxedProcess> mount_process =
       PrepareSandbox(source, target_path, std::move(params), error);
 
   if (*error != MOUNT_ERROR_NONE)
-    return Process::kInvalidProcessId;
+    return nullptr;
 
   mount_process->AddArgument(
       base::StringPrintf("/dev/fd/%d", fuse_file.GetPlatformFile()));
@@ -388,9 +393,9 @@ pid_t FUSEMounter::StartDaemon(const base::File& fuse_file,
   *error = InterpretReturnCode(exit_code);
 
   if (*error != MOUNT_ERROR_NONE)
-    return Process::kInvalidProcessId;
+    return nullptr;
 
-  return mount_process->pid();
+  return mount_process;
 }
 
 MountErrorType FUSEMounter::InterpretReturnCode(int return_code) const {
