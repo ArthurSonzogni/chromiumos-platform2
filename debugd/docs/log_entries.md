@@ -393,6 +393,15 @@ Various virtual memory statistics.  See the `/proc/vmstat` section of the
 
 ## vpd_2.0
 
+## wakeup_sources
+
+Wakeup sources are devices capable of waking the system from a suspend. Contains
+various stats about each wakeup source. See `struct wakeup_source` in
+`include/linux/pm_wakeup.h` in the kernel for a description of fields in this
+file.
+
+Useful for debugging suspend issues.
+
 ## wifi_status_no_anonymize
 
 ## zram block device stat names

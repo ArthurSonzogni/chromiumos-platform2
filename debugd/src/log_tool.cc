@@ -406,6 +406,9 @@ const std::array kCommandLogs {
   Log{kFile, "vmlog.PREVIOUS", "/var/log/vmlog/vmlog.PREVIOUS"},
   Log{kFile, "vmstat", "/proc/vmstat"},
   Log{kFile, "vpd_2.0", "/var/log/vpd_2.0.txt"},
+  Log{kFile, "wakeup_sources", "/sys/kernel/debug/wakeup_sources",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
+    LogTool::Encoding::kUtf8},
   Log{kCommand, "zram block device stat names",
     "echo read_ios read_merges read_sectors read_ticks write_ios "
     "write_merges write_sectors write_ticks in_flight io_ticks "
