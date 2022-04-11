@@ -162,9 +162,8 @@ TEST_F(ProcessTest, Run_Success) {
   EXPECT_CALL(process_, StartImpl(_, _)).WillOnce(Return(123));
   EXPECT_CALL(process_, WaitImpl()).Times(0);
   EXPECT_CALL(process_, WaitNonBlockingImpl()).WillOnce(Return(42));
-  std::vector<std::string> output;
-  EXPECT_EQ(process_.Run(&output), 42);
-  EXPECT_THAT(output, IsEmpty());
+  EXPECT_EQ(process_.Run(), 42);
+  EXPECT_THAT(process_.GetCapturedOutput(), IsEmpty());
 }
 
 TEST_F(ProcessTest, Run_Fail) {
@@ -172,9 +171,8 @@ TEST_F(ProcessTest, Run_Fail) {
   EXPECT_CALL(process_, StartImpl(_, _)).WillOnce(Return(-1));
   EXPECT_CALL(process_, WaitImpl()).Times(0);
   EXPECT_CALL(process_, WaitNonBlockingImpl()).Times(0);
-  std::vector<std::string> output;
-  EXPECT_EQ(process_.Run(&output), -1);
-  EXPECT_THAT(output, IsEmpty());
+  EXPECT_EQ(process_.Run(), -1);
+  EXPECT_THAT(process_.GetCapturedOutput(), IsEmpty());
 }
 
 class ProcessRunTest : public ::testing::TestWithParam<ProcessFactory> {
@@ -194,9 +192,8 @@ TEST_P(ProcessRunTest, RunReturnsZero) {
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
   process.AddArgument("exit 0");
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, IsEmpty());
+  EXPECT_EQ(process.Run(), 0);
+  EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
 
 TEST_P(ProcessRunTest, WaitReturnsZero) {
@@ -213,9 +210,8 @@ TEST_P(ProcessRunTest, RunReturnsNonZero) {
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
   process.AddArgument("exit 42");
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 42);
-  EXPECT_THAT(output, IsEmpty());
+  EXPECT_EQ(process.Run(), 42);
+  EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
 
 TEST_P(ProcessRunTest, WaitReturnsNonZero) {
@@ -232,9 +228,8 @@ TEST_P(ProcessRunTest, RunKilledBySigKill) {
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
   process.AddArgument("kill -KILL $$; sleep 1000");
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), MINIJAIL_ERR_SIG_BASE + SIGKILL);
-  EXPECT_THAT(output, IsEmpty());
+  EXPECT_EQ(process.Run(), MINIJAIL_ERR_SIG_BASE + SIGKILL);
+  EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
 
 TEST_P(ProcessRunTest, WaitKilledBySigKill) {
@@ -251,9 +246,8 @@ TEST_P(ProcessRunTest, RunKilledBySigSys) {
   process.AddArgument("/bin/sh");
   process.AddArgument("-c");
   process.AddArgument("kill -SYS $$; sleep 1000");
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), MINIJAIL_ERR_JAIL);
-  EXPECT_THAT(output, IsEmpty());
+  EXPECT_EQ(process.Run(), MINIJAIL_ERR_JAIL);
+  EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
 
 TEST_P(ProcessRunTest, WaitKilledBySigSys) {
@@ -352,8 +346,7 @@ TEST_P(ProcessRunTest, ExternallyKilledBySigTerm) {
 TEST_P(ProcessRunTest, RunCannotFindCommand) {
   Process& process = *process_;
   process.AddArgument("non existing command");
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), MINIJAIL_ERR_NO_COMMAND);
+  EXPECT_EQ(process.Run(), MINIJAIL_ERR_NO_COMMAND);
 }
 
 TEST_P(ProcessRunTest, WaitCannotFindCommand) {
@@ -366,8 +359,7 @@ TEST_P(ProcessRunTest, WaitCannotFindCommand) {
 TEST_P(ProcessRunTest, RunCannotRunCommand) {
   Process& process = *process_;
   process.AddArgument("/dev/null");
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), MINIJAIL_ERR_NO_ACCESS);
+  EXPECT_EQ(process.Run(), MINIJAIL_ERR_NO_ACCESS);
 }
 
 TEST_P(ProcessRunTest, WaitCannotRunCommand) {
@@ -388,10 +380,10 @@ TEST_P(ProcessRunTest, CapturesInterleavedOutputs) {
       printf 'Line 6' >&2;
     )");
 
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, UnorderedElementsAre("Line 1", "Line 2", "Line 3",
-                                           "Line 4", "Line 5", "Line 6"));
+  EXPECT_EQ(process.Run(), 0);
+  EXPECT_THAT(process.GetCapturedOutput(),
+              UnorderedElementsAre("Line 1", "Line 2", "Line 3", "Line 4",
+                                   "Line 5", "Line 6"));
 }
 
 TEST_P(ProcessRunTest, CapturesLotsOfOutputData) {
@@ -405,9 +397,8 @@ TEST_P(ProcessRunTest, CapturesLotsOfOutputData) {
       done;
     )");
 
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, SizeIs(2000));
+  EXPECT_EQ(process.Run(), 0);
+  EXPECT_THAT(process.GetCapturedOutput(), SizeIs(2000));
 }
 
 TEST_P(ProcessRunTest, DoesNotBlockWhenNotCapturingOutput) {
@@ -450,9 +441,8 @@ TEST_P(ProcessRunTest, RunDoesNotBlockWhenReadingFromStdIn) {
   Process& process = *process_;
   process.AddArgument("/bin/cat");
 
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, IsEmpty());
+  EXPECT_EQ(process.Run(), 0);
+  EXPECT_THAT(process.GetCapturedOutput(), IsEmpty());
 }
 
 TEST_P(ProcessRunTest, ReadsFromStdIn) {
@@ -464,9 +454,9 @@ TEST_P(ProcessRunTest, ReadsFromStdIn) {
   process.SetStdIn(input);
   EXPECT_EQ(process.input(), input);
 
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, ElementsAre("Line 1", "Line 2", "Line 3"));
+  EXPECT_EQ(process.Run(), 0);
+  EXPECT_THAT(process.GetCapturedOutput(),
+              ElementsAre("Line 1", "Line 2", "Line 3"));
 }
 
 TEST_P(ProcessRunTest, ReadsLotsFromStdIn) {
@@ -478,9 +468,8 @@ TEST_P(ProcessRunTest, ReadsLotsFromStdIn) {
   process.SetStdIn(std::string(4096, 'x'));
   EXPECT_THAT(process.input(), SizeIs(4096));
 
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, ElementsAre("4096"));
+  EXPECT_EQ(process.Run(), 0);
+  EXPECT_THAT(process.GetCapturedOutput(), ElementsAre("4096"));
 }
 
 TEST_P(ProcessRunTest, TruncatesDataFromStdIn) {
@@ -491,9 +480,8 @@ TEST_P(ProcessRunTest, TruncatesDataFromStdIn) {
   // 100KB of data should be truncated.
   process.SetStdIn(std::string(100'000, 'x'));
 
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, ElementsAre(Not("100000")));
+  EXPECT_EQ(process.Run(), 0);
+  EXPECT_THAT(process.GetCapturedOutput(), ElementsAre(Not("100000")));
 }
 
 TEST_P(ProcessRunTest, WaitDoesNotBlockWhenReadingFromStdIn) {
@@ -539,9 +527,9 @@ TEST_P(ProcessRunTest, RunDoesNotWaitForBackgroundProcessToFinish) {
   process.PreserveFile(to_continue.child_fd.get());
 
   LOG(INFO) << "Running launcher process";
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 5);
-  EXPECT_THAT(output, ElementsAre(StartsWith("Started background process")));
+  EXPECT_EQ(process.Run(), 5);
+  EXPECT_THAT(process.GetCapturedOutput(),
+              ElementsAre(StartsWith("Started background process")));
 
   LOG(INFO) << "Closing unused fds";
   to_continue.child_fd.reset();
@@ -625,14 +613,12 @@ TEST_P(ProcessRunTest, RunUndisturbedBySignals) {
       exit 42;
     )");
 
-  std::vector<std::string> output;
-
   // Activate an interval timer.
   const AlarmGuard guard(13 /* milliseconds */);
-  EXPECT_EQ(process.Run(&output), 42);
+  EXPECT_EQ(process.Run(), 42);
   EXPECT_GT(AlarmGuard::count(), 0);
   // This checks that crbug.com/1005590 is fixed.
-  EXPECT_THAT(output, SizeIs(100));
+  EXPECT_THAT(process.GetCapturedOutput(), SizeIs(100));
 }
 
 TEST_P(ProcessRunTest, WaitUndisturbedBySignals) {
@@ -659,10 +645,9 @@ TEST_P(ProcessRunTest, PassCurrentEnvironment) {
   process.AddArgument("-c");
   process.AddArgument("set");
 
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, Contains("OLD_VAR_1='Old 1'"));
-  EXPECT_THAT(output, Contains("OLD_VAR_2='Old 2'"));
+  EXPECT_EQ(process.Run(), 0);
+  EXPECT_THAT(process.GetCapturedOutput(), Contains("OLD_VAR_1='Old 1'"));
+  EXPECT_THAT(process.GetCapturedOutput(), Contains("OLD_VAR_2='Old 2'"));
   EXPECT_EQ(unsetenv("OLD_VAR_1"), 0);
   EXPECT_EQ(unsetenv("OLD_VAR_2"), 0);
 }
@@ -685,15 +670,14 @@ TEST_P(ProcessRunTest, AppendExtraEnvironment) {
   process.AddArgument("-c");
   process.AddArgument("set");
 
-  std::vector<std::string> output;
-  EXPECT_EQ(process.Run(&output), 0);
-  EXPECT_THAT(output, Contains("OLD_VAR_1='Old 1'"));
-  EXPECT_THAT(output, Contains("OLD_VAR_2='Old 2'"));
-  EXPECT_THAT(output, Contains("MY_VAR_1=''"));
-  EXPECT_THAT(output, Contains("MY_VAR_2=' '"));
-  EXPECT_THAT(output, Contains("MY_VAR_3='='"));
+  EXPECT_EQ(process.Run(), 0);
+  EXPECT_THAT(process.GetCapturedOutput(), Contains("OLD_VAR_1='Old 1'"));
+  EXPECT_THAT(process.GetCapturedOutput(), Contains("OLD_VAR_2='Old 2'"));
+  EXPECT_THAT(process.GetCapturedOutput(), Contains("MY_VAR_1=''"));
+  EXPECT_THAT(process.GetCapturedOutput(), Contains("MY_VAR_2=' '"));
+  EXPECT_THAT(process.GetCapturedOutput(), Contains("MY_VAR_3='='"));
   EXPECT_THAT(
-      output,
+      process.GetCapturedOutput(),
       Contains(R"(MY_VAR_4='abc 123 ~`!@#$%^&*()_-+={[}]|\:;"'"'"'<,>.?/')"));
   EXPECT_EQ(unsetenv("OLD_VAR_1"), 0);
   EXPECT_EQ(unsetenv("OLD_VAR_2"), 0);

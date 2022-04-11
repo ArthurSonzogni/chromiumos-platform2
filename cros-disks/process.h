@@ -5,11 +5,15 @@
 #ifndef CROS_DISKS_PROCESS_H_
 #define CROS_DISKS_PROCESS_H_
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <base/callback.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/strings/string_piece.h>
 
 #include <gtest/gtest_prod.h>
@@ -23,8 +27,6 @@ class Process {
  public:
   // Invalid process ID assigned to a process that has not started.
   static const pid_t kInvalidProcessId;
-
-  static const int kInvalidFD;
 
   Process(const Process&) = delete;
   Process& operator=(const Process&) = delete;
@@ -45,8 +47,15 @@ class Process {
   // Precondition: Start() has not been called yet.
   void SetStdIn(std::string input) { input_ = std::move(input); }
 
-  // Starts the process. The started process has its stdin, stdout and stderr
-  // connected to /dev/null. Returns true in case of success. Once started, the
+  // Callback called when a line of message is captured from the process stdout
+  // or stderr. The final linefeed character '\n' is stripped.
+  using OutputCallback = base::RepeatingCallback<void(base::StringPiece)>;
+
+  // Sets the output callback to call when the process writes messages its
+  // stdout or stderr.
+  void SetOutputCallback(OutputCallback callback);
+
+  // Starts the process. Returns true in case of success. Once started, the
   // process can be waiting for to finish using Wait().
   bool Start();
 
@@ -58,9 +67,13 @@ class Process {
 
   // Starts a process, captures its output and waits for it to finish. Returns
   // the same exit code as Wait().
-  //
-  // Precondition: output is non-null
-  int Run(std::vector<std::string>* output);
+  int Run();
+
+  // Gets all the messages written by the subprocess to its stdout and stderr,
+  // split into lines.
+  const std::vector<std::string>& GetCapturedOutput() {
+    return captured_output_;
+  }
 
   pid_t pid() const { return pid_; }
 
@@ -101,21 +114,50 @@ class Process {
  private:
   // Gets the name of the program (from the first argument passed to
   // AddArgument()).
-  std::string GetProgramName() const;
+  std::string GetProgramName() const { return program_name_; }
 
   // Starts the process. The started process has its stdin, stdout and stderr
   // redirected to the given file descriptors. Returns true in case of success.
   bool Start(base::ScopedFD in_fd, base::ScopedFD out_fd);
 
-  // Waits for process to finish collecting process' stdout and stderr
-  // output and fills interleaved version of it.
-  void Communicate(std::vector<std::string>* output, base::ScopedFD out_fd);
+  // Called when one line of the subprocess output has been received. Stores
+  // this line in |captured_output_|, and calls |output_callback_| with it if
+  // necessary.
+  void StoreOutputLine(base::StringPiece line);
+
+  // Splits |data| into lines and calls |StoreOutputLine| as many times as
+  // necessary.
+  void SplitOutputIntoLines(base::StringPiece data);
+
+  // Reads data from |out_fd_|, and calls |SplitOutputIntoLines| with it.
+  //
+  // Returns true if there might be more data to read in the future, or false if
+  // the end of stream has definitely been reached.
+  bool CaptureOutput();
+
+  // Waits up to 100 ms for something to read from |out_fd_|, and calls
+  // |CaptureOutput()| if necessary.
+  //
+  // Returns true if there might be more data to read in the future, or false if
+  // the end of stream has definitely been reached.
+  bool WaitAndCaptureOutput();
+
+  // Flushes |remaining_| into |output_callback_| if necessary. Closes
+  // |out_fd_|.
+  void FlushOutput();
+
+  // Called when there is an asynchronous indication that some data is available
+  // in |out_fd_|. Calls |CaptureOutput|.
+  void OnOutputAvailable();
 
   // Builds |arguments_array_| from |arguments_|. Existing values of
   // |arguments_array_| are overridden.
   void BuildArgumentsArray();
 
   bool finished() const { return exit_code_ >= 0; }
+
+  // Program name.
+  std::string program_name_;
 
   // Process arguments.
   std::vector<std::string> arguments_;
@@ -135,6 +177,23 @@ class Process {
 
   // Exit code. A nonnegative value indicates that the process has finished.
   int exit_code_ = -1;
+
+  // Read end of the pipe that is collecting the stdout and stderr of the
+  // subprocess.
+  base::ScopedFD out_fd_;
+
+  // Captured subprocess output read from |out_fd_| and split into lines.
+  std::vector<std::string> captured_output_;
+
+  // Last partially collected line read from |out_fd_|.
+  std::string remaining_;
+
+  // Output callback to call when the subprocess writes messages to its stdout
+  // or stderr.
+  OutputCallback output_callback_;
+
+  std::unique_ptr<base::FileDescriptorWatcher::Controller>
+      output_callback_guard_;
 
   FRIEND_TEST(ProcessTest, GetArguments);
   FRIEND_TEST(ProcessTest, GetArgumentsWithNoArgumentsAdded);

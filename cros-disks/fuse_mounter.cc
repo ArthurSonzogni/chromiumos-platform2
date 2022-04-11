@@ -388,8 +388,7 @@ std::unique_ptr<SandboxedProcess> FUSEMounter::StartDaemon(
       base::StringPrintf("/dev/fd/%d", fuse_file.GetPlatformFile()));
   mount_process->PreserveFile(fuse_file.GetPlatformFile());
 
-  std::vector<std::string> output;
-  const int exit_code = mount_process->Run(&output);
+  const int exit_code = mount_process->Run();
   *error = InterpretReturnCode(exit_code);
 
   if (*error != MOUNT_ERROR_NONE)

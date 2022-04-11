@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <array>
 #include <string>
-#include <string_view>
 
 #include <fcntl.h>
 #include <poll.h>
@@ -16,7 +15,6 @@
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/kill.h>
 #include <base/strings/strcat.h>
@@ -30,134 +28,10 @@
 namespace cros_disks {
 namespace {
 
-// Reads chunks of data from a pipe and splits the read data into lines.
-class PipeReader {
- public:
-  PipeReader(base::ScopedFD fd,
-             std::string program_name,
-             std::vector<std::string>* output)
-      : fd_(std::move(fd)),
-        program_name_(std::move(program_name)),
-        output_(output) {
-    PCHECK(base::SetNonBlocking(fd_.get()));
-    VLOG(1) << "Collecting output of program " << quote(program_name_) << "...";
-  }
-
-  ~PipeReader() {
-    if (!remaining_.empty()) {
-      LOG(INFO) << program_name_ << ": " << remaining_;
-      output_->push_back(remaining_);
-    }
-
-    VLOG(1) << "Finished collecting output of program " << quote(program_name_);
-  }
-
-  void Append(std::string_view data) {
-    for (std::string_view::size_type i;
-         (i = data.find_first_of('\n')) != std::string_view::npos;) {
-      remaining_ += data.substr(0, i);
-      LOG(INFO) << program_name_ << ": " << remaining_;
-      output_->push_back(remaining_);
-      remaining_.clear();
-
-      data.remove_prefix(i + 1);
-    }
-
-    remaining_ += data;
-  }
-
-  // Reads and processes as much data as possible from the given file
-  // descriptor. Returns true if there might be more data to read in the future,
-  // or false if the end of stream has definitely been reached.
-  bool Read() {
-    if (!fd_.is_valid())
-      return false;
-
-    const int fd = fd_.get();
-
-    while (true) {
-      char buffer[PIPE_BUF];
-      const ssize_t n = read(fd, buffer, PIPE_BUF);
-
-      if (n < 0) {
-        // Error reading.
-        switch (errno) {
-          case EAGAIN:
-          case EINTR:
-            // Nothing for now, but it's Ok to try again later.
-            VPLOG(2) << "Nothing to read from file descriptor " << fd;
-            return true;
-        }
-
-        PLOG(ERROR) << "Cannot read from file descriptor " << fd;
-        fd_.reset();
-        return false;
-      }
-
-      if (n == 0) {
-        // End of stream.
-        VLOG(2) << "End of stream from file descriptor " << fd;
-        fd_.reset();
-        return false;
-      }
-
-      VLOG(2) << "Got " << n << " bytes from file descriptor " << fd;
-      DCHECK_GT(n, 0);
-      DCHECK_LE(n, PIPE_BUF);
-      Append(std::string_view(buffer, n));
-    }
-  }
-
-  // Waits for something to read from the given file descriptor (with a timeout
-  // of 100ms), and reads and processes as much data as possible. Returns true
-  // if there might be more data to read in the future, or false if the end of
-  // stream has definitely been reached.
-  bool WaitAndRead() {
-    if (!fd_.is_valid())
-      return false;
-
-    const int fd = fd_.get();
-
-    struct pollfd pfd {
-      fd, POLLIN, 0
-    };
-
-    const int ret = poll(&pfd, 1, 100 /* milliseconds */);
-
-    if (ret < 0) {
-      // Error.
-      PLOG(ERROR) << "Cannot poll file descriptor " << fd;
-      CHECK_EQ(errno, EINTR);
-      return true;
-    }
-
-    if (ret == 0) {
-      // Nothing to do / timeout.
-      VLOG(2) << "Nothing to read from file descriptor " << fd;
-      return true;
-    }
-
-    return Read();
-  }
-
- private:
-  // Read end of the pipe.
-  base::ScopedFD fd_;
-
-  // Program name. Used to prefix log traces.
-  const std::string program_name_;
-
-  // Collection of strings to append to.
-  std::vector<std::string>* const output_;
-
-  // Last partially collected line.
-  std::string remaining_;
-};
-
 // Opens /dev/null. Dies in case of error.
 base::ScopedFD OpenNull() {
   const int ret = open("/dev/null", O_WRONLY);
-  PLOG_IF(FATAL, ret < 0) << "Cannot open /dev/null";
+  PCHECK(ret >= 0) << "Cannot open /dev/null";
   return base::ScopedFD(ret);
 }
 
@@ -167,14 +41,15 @@ base::ScopedFD OpenNull() {
 base::ScopedFD WrapStdIn(const base::StringPiece in) {
   SubprocessPipe p(SubprocessPipe::kParentToChild);
 
-  CHECK(base::SetNonBlocking(p.parent_fd.get()));
+  const int fd = p.parent_fd.get();
+  PCHECK(base::SetNonBlocking(fd));
   const ssize_t n =
       HANDLE_EINTR(write(p.parent_fd.get(), in.data(), in.size()));
   if (n < 0) {
-    PLOG(ERROR) << "Cannot write to pipe";
+    PLOG(ERROR) << "Cannot write to pipe " << fd;
   } else if (n < in.size()) {
-    LOG(ERROR) << "Short write to pipe: Wrote " << n << " bytes instead of "
-               << in.size() << " bytes";
+    LOG(ERROR) << "Short write to pipe " << fd << ": Wrote " << n
+               << " bytes instead of " << in.size() << " bytes";
   }
 
   return std::move(p.child_fd);
@@ -184,15 +59,15 @@ base::ScopedFD WrapStdIn(const base::StringPiece in) {
 
 // static
 const pid_t Process::kInvalidProcessId = -1;
-const int Process::kInvalidFD = base::ScopedFD::traits_type::InvalidValue();
 
 Process::Process() = default;
-
 Process::~Process() = default;
 
 void Process::AddArgument(std::string argument) {
   DCHECK(arguments_array_.empty());
   arguments_.push_back(std::move(argument));
+  if (arguments_.size() == 1)
+    program_name_ = base::FilePath(arguments_.front()).BaseName().value();
 }
 
 char* const* Process::GetArguments() {
@@ -209,11 +84,6 @@ void Process::BuildArgumentsArray() {
   }
 
   arguments_array_.push_back(nullptr);
-}
-
-std::string Process::GetProgramName() const {
-  DCHECK(!arguments_.empty());
-  return base::FilePath(arguments_.front()).BaseName().value();
 }
 
 void Process::AddEnvironmentVariable(const base::StringPiece name,
@@ -253,12 +123,18 @@ char* const* Process::GetEnvironment() {
   return environment_array_.data();
 }
 
+void Process::SetOutputCallback(OutputCallback callback) {
+  DCHECK(!output_callback_);
+  output_callback_ = std::move(callback);
+  DCHECK(output_callback_);
+}
+
 bool Process::Start(base::ScopedFD in_fd, base::ScopedFD out_fd) {
   CHECK_EQ(kInvalidProcessId, pid_);
   CHECK(!finished());
   CHECK(!arguments_.empty()) << "No arguments provided";
-  LOG(INFO) << "Starting program " << quote(GetProgramName())
-            << " with arguments " << quote(arguments_);
+  LOG(INFO) << "Starting program " << quote(program_name_) << " with arguments "
+            << quote(arguments_);
   LOG_IF(INFO, !environment_.empty())
       << "and extra environment " << quote(environment_);
   pid_ = StartImpl(std::move(in_fd), std::move(out_fd));
@@ -266,7 +142,28 @@ bool Process::Start(base::ScopedFD in_fd, base::ScopedFD out_fd) {
 }
 
 bool Process::Start() {
-  return Start(WrapStdIn(input_), OpenNull());
+  base::ScopedFD out_child_fd = OpenNull();
+
+  if (output_callback_) {
+    SubprocessPipe out_pipe(SubprocessPipe::kChildToParent);
+    PCHECK(base::SetNonBlocking(out_pipe.parent_fd.get()));
+
+    DCHECK(!output_callback_guard_);
+    output_callback_guard_ = base::FileDescriptorWatcher::WatchReadable(
+        out_pipe.parent_fd.get(),
+        base::BindRepeating(&Process::OnOutputAvailable,
+                            base::Unretained(this)));
+    DCHECK(output_callback_guard_);
+
+    DCHECK(!out_fd_.is_valid());
+    out_fd_ = std::move(out_pipe.parent_fd);
+    DCHECK(out_fd_.is_valid());
+
+    out_child_fd = std::move(out_pipe.child_fd);
+  }
+
+  DCHECK(out_child_fd.is_valid());
+  return Start(WrapStdIn(input_), std::move(out_child_fd));
 }
 
 int Process::Wait() {
@@ -291,53 +188,156 @@ bool Process::IsFinished() {
   return finished();
 }
 
-int Process::Run(std::vector<std::string>* output) {
-  DCHECK(output);
-
-  base::ScopedFD out_fd;
-  if (!Start(WrapStdIn(input_),
-             SubprocessPipe::Open(SubprocessPipe::kChildToParent, &out_fd))) {
-    return -1;
-  }
-
-  Communicate(output, std::move(out_fd));
-
-  const int exit_code = Wait();
-
-  if (exit_code != 0) {
-    const std::string program_name = GetProgramName();
-
-    if (!LOG_IS_ON(INFO)) {
-      for (const std::string& s : *output) {
-        LOG(ERROR) << program_name << ": " << s;
-      }
-    }
-
-    LOG(ERROR) << "Program " << quote(program_name)
-               << " finished with exit code " << exit_code;
-  } else {
-    LOG(INFO) << "Program " << quote(GetProgramName())
-              << " finished successfully";
-  }
-
-  return exit_code;
+void Process::StoreOutputLine(const base::StringPiece line) {
+  DCHECK(!line.empty());
+  LOG(INFO) << program_name_ << ": " << line;
+  captured_output_.emplace_back(line);
+  if (output_callback_)
+    output_callback_.Run(line);
 }
 
-void Process::Communicate(std::vector<std::string>* output,
-                          base::ScopedFD out_fd) {
-  DCHECK(output);
+void Process::SplitOutputIntoLines(base::StringPiece data) {
+  size_t i;
+  while ((i = data.find_first_of('\n')) != base::StringPiece::npos) {
+    remaining_.append(data.data(), i);
+    data.remove_prefix(i + 1);
+    StoreOutputLine(remaining_);
+    remaining_.clear();
+  }
 
-  PipeReader reader(std::move(out_fd), GetProgramName(), output);
+  remaining_.append(data.data(), data.size());
+}
+
+bool Process::CaptureOutput() {
+  if (!out_fd_.is_valid())
+    return false;
+
+  const int fd = out_fd_.get();
+
+  while (true) {
+    char buffer[PIPE_BUF];
+    const ssize_t n = read(fd, buffer, PIPE_BUF);
+
+    if (n < 0) {
+      // Error reading.
+      switch (errno) {
+        case EAGAIN:
+        case EINTR:
+          // Nothing for now, but it's Ok to try again later.
+          VPLOG(2) << "Nothing to read from file descriptor " << fd;
+          return true;
+      }
+
+      PLOG(ERROR) << "Cannot read from file descriptor " << fd;
+      FlushOutput();
+      return false;
+    }
+
+    if (n == 0) {
+      // End of stream.
+      VLOG(2) << "End of stream from file descriptor " << fd;
+      FlushOutput();
+      return false;
+    }
+
+    VLOG(2) << "Got " << n << " bytes from file descriptor " << fd;
+    DCHECK_GT(n, 0);
+    DCHECK_LE(n, PIPE_BUF);
+    SplitOutputIntoLines(base::StringPiece(buffer, n));
+  }
+}
+
+bool Process::WaitAndCaptureOutput() {
+  if (!out_fd_.is_valid())
+    return false;
+
+  const int fd = out_fd_.get();
+
+  struct pollfd pfd {
+    fd, POLLIN, 0
+  };
+
+  const int ret = poll(&pfd, 1, 100 /* milliseconds */);
+
+  if (ret < 0) {
+    // Error.
+    PLOG(ERROR) << "Cannot poll file descriptor " << fd;
+    CHECK_EQ(errno, EINTR);
+    return true;
+  }
+
+  if (ret == 0) {
+    // Nothing to read because of timeout.
+    VLOG(2) << "Nothing to read from file descriptor " << fd;
+    return true;
+  }
+
+  return CaptureOutput();
+}
+
+void Process::FlushOutput() {
+  output_callback_guard_.reset();
+  out_fd_.reset();
+
+  if (!remaining_.empty()) {
+    StoreOutputLine(remaining_);
+    remaining_.clear();
+  }
+
+  output_callback_.Reset();
+}
+
+void Process::OnOutputAvailable() {
+  LOG(INFO) << "Process::OnOutputAvailable: Data might be available from "
+               "file descriptor "
+            << out_fd_.get();
+  CaptureOutput();
+}
+
+int Process::Run() {
+  SubprocessPipe out(SubprocessPipe::kChildToParent);
+  PCHECK(base::SetNonBlocking(out.parent_fd.get()));
+  DCHECK(!out_fd_.is_valid());
+  out_fd_ = std::move(out.parent_fd);
+  DCHECK(out_fd_.is_valid());
+
+  if (!Start(WrapStdIn(input_), std::move(out.child_fd)))
+    return -1;
+
+  VLOG(1) << "Collecting output of program " << quote(program_name_) << "...";
 
   // Poll process and pipe. Read from pipe when possible.
-  while (!IsFinished() && reader.WaitAndRead())
+  while (!IsFinished() && WaitAndCaptureOutput())
     continue;
 
   // Really wait for process to finish.
-  Wait();
+  const int exit_code = Wait();
 
   // Final read from pipe after process finished.
-  reader.Read();
+  CaptureOutput();
+  FlushOutput();
+  VLOG(1) << "Finished collecting output of program " << quote(program_name_);
+
+  if (exit_code == 0) {
+    LOG(INFO) << "Program " << quote(program_name_) << " finished successfully";
+    return exit_code;
+  }
+
+  // Process finished with a non-zero exit code.
+  DCHECK_GT(exit_code, 0);
+
+  // Log the captured output, if it hasn't been already logged as it was getting
+  // captured.
+  if (!LOG_IS_ON(INFO)) {
+    for (const std::string& s : captured_output_) {
+      LOG(ERROR) << program_name_ << ": " << s;
+    }
+  }
+
+  LOG(ERROR) << "Program " << quote(program_name_)
+             << " finished with exit code " << exit_code;
+
+  return exit_code;
 }
 
 }  // namespace cros_disks
