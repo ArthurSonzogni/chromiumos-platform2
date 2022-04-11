@@ -264,13 +264,14 @@ TEST_F(CrosFpDevice_ReadVersion, ValidVersionStringNulTerminated) {
   EXPECT_CALL(mock_cros_fp_device_, read)
       .WillOnce([kVersionStr](int, void* buf, size_t count) {
         EXPECT_GE(count, kVersionStr.size());
-        // Copy string, excluding terminating NUL.
+        // First, copy string, excluding terminating NUL.
         uint8_t* buffer = static_cast<uint8_t*>(buf);
         int num_bytes = kVersionStr.size();
         std::memcpy(buffer, kVersionStr.data(), num_bytes);
+        // Then add a terminating NUL.
+        buffer[num_bytes] = '\0';
         num_bytes += 1;
         EXPECT_EQ(num_bytes, 80);
-        buffer[num_bytes] = '\0';
         return num_bytes;
       });
   std::optional<std::string> version = mock_cros_fp_device_.ReadVersion();
