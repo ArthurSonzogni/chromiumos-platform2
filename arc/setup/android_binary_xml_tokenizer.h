@@ -28,6 +28,9 @@ class COMPONENT_EXPORT(LIBARC_SETUP) AndroidBinaryXmlTokenizer {
     kEndDocument = 1,
     kStartTag = 2,
     kEndTag = 3,
+
+    // This value is defined in Android's BinaryXmlSerializer.java.
+    kAttribute = 15,
   };
 
   // Type constants are defined in Android's BinaryXmlSerializer.java.
@@ -35,6 +38,19 @@ class COMPONENT_EXPORT(LIBARC_SETUP) AndroidBinaryXmlTokenizer {
     kNull = 1,
     kString = 2,
     kStringInterned = 3,
+    kBytesHex = 4,
+    kBytesBase64 = 5,
+    kInt = 6,
+    kIntHex = 7,
+    kLong = 8,
+    kLongHex = 9,
+    // Float and double are not supported because they don't appear in
+    // packages.xml.
+    // TODO(hashimoto): Handle these types when it becomes necessary.
+    // kFloat = 10,
+    // kDouble = 11,
+    kBooleanTrue = 12,
+    kBooleanFalse = 13,
   };
 
   static const char kMagicNumber[4];
@@ -66,12 +82,20 @@ class COMPONENT_EXPORT(LIBARC_SETUP) AndroidBinaryXmlTokenizer {
   // The name of the current token.
   const std::string& name() const { return name_; }
 
+  // Value of the current token.
+  // Check type() to know which value is the valid one.
+  const std::string& string_value() const { return string_value_; }
+  int64_t int_value() const { return int_value_; }
+  const std::vector<uint8_t>& bytes_value() const { return bytes_value_; }
+
  private:
   // Returns the current read position of the file.
   int64_t GetPosition();
 
   // Consumes the file contents and returns data.
   std::optional<uint16_t> ConsumeUint16();
+  std::optional<int32_t> ConsumeInt32();
+  std::optional<int64_t> ConsumeInt64();
   std::optional<std::string> ConsumeString();
   std::optional<std::string> ConsumeInternedString();
 
@@ -86,6 +110,9 @@ class COMPONENT_EXPORT(LIBARC_SETUP) AndroidBinaryXmlTokenizer {
   Type type_ = Type::kNull;
   int depth_ = 0;
   std::string name_;
+  std::string string_value_;
+  int64_t int_value_ = 0;
+  std::vector<uint8_t> bytes_value_;
 };
 
 }  // namespace arc
