@@ -49,6 +49,7 @@ class DHCPv4Config : public DHCPConfig {
   std::vector<std::string> GetFlags() override;
 
  private:
+  friend class DHCPConfigTest;
   friend class DHCPv4ConfigTest;
   friend class DHCPv4ConfigStaticRoutesFuzz;
   FRIEND_TEST(DHCPv4ConfigCallbackTest, ProcessEventSignalFail);

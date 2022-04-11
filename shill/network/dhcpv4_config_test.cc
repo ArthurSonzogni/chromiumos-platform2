@@ -37,8 +37,6 @@ const char kDeviceName[] = "eth0";
 const char kHostName[] = "hostname";
 const char kLeaseFileSuffix[] = "leasefilesuffix";
 const bool kArpGateway = true;
-const bool kHasHostname = true;
-const bool kHasLeaseSuffix = true;
 }  // namespace
 
 using DHCPv4ConfigRefPtr = scoped_refptr<DHCPv4Config>;
@@ -63,9 +61,6 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
 
   void StopInstance() { config_->Stop("In test"); }
 
-  DHCPv4ConfigRefPtr CreateMockMinijailConfig(const std::string& hostname,
-                                              const std::string& lease_suffix,
-                                              bool arp_gateway);
   DHCPv4ConfigRefPtr CreateRunningConfig(const std::string& hostname,
                                          const std::string& lease_suffix,
                                          bool arp_gateway);
@@ -86,18 +81,6 @@ class DHCPv4ConfigTest : public PropertyStoreTest {
 };
 
 const int DHCPv4ConfigTest::kPID = 123456;
-
-DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateMockMinijailConfig(
-    const std::string& hostname,
-    const std::string& lease_suffix,
-    bool arp_gateway) {
-  DHCPv4ConfigRefPtr config(new DHCPv4Config(
-      control_interface(), dispatcher(), &provider_, kDeviceName, lease_suffix,
-      arp_gateway, kHostName, Technology::kUnknown, metrics()));
-  config->process_manager_ = &process_manager_;
-
-  return config;
-}
 
 DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
     const std::string& hostname,
@@ -273,66 +256,6 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 577);
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(577, properties.mtu);
-}
-
-MATCHER_P3(IsDHCPCDArgs, has_hostname, has_arp_gateway, has_lease_suffix, "") {
-  if (arg[0] != "-B" || arg[1] != "-q" || arg[2] != "-4") {
-    return false;
-  }
-
-  int end_offset = 3;
-  if (has_hostname) {
-    if (arg[end_offset] != "-h" || arg[end_offset + 1] != kHostName) {
-      return false;
-    }
-    end_offset += 2;
-  }
-
-  if (has_arp_gateway) {
-    if (arg[end_offset] != "-R" || arg[end_offset + 1] != "--unicast") {
-      return false;
-    }
-    end_offset += 2;
-  }
-
-  std::string device_arg = has_lease_suffix ? std::string(kDeviceName) + "=" +
-                                                  std::string(kLeaseFileSuffix)
-                                            : kDeviceName;
-  return arg[end_offset] == device_arg;
-}
-
-TEST_F(DHCPv4ConfigTest, StartWithHostname) {
-  config_->hostname_ = kHostName;
-  EXPECT_CALL(
-      process_manager_,
-      StartProcessInMinijail(
-          _, _, IsDHCPCDArgs(kHasHostname, kArpGateway, kHasLeaseSuffix), _, _,
-          _))
-      .WillOnce(Return(-1));
-  EXPECT_FALSE(StartInstance(config_));
-}
-
-TEST_F(DHCPv4ConfigTest, StartWithEmptyHostname) {
-  config_->hostname_ = "";
-  EXPECT_CALL(
-      process_manager_,
-      StartProcessInMinijail(
-          _, _, IsDHCPCDArgs(!kHasHostname, kArpGateway, kHasLeaseSuffix), _, _,
-          _))
-      .WillOnce(Return(-1));
-  EXPECT_FALSE(StartInstance(config_));
-}
-
-TEST_F(DHCPv4ConfigTest, StartWithoutArpGateway) {
-  DHCPv4ConfigRefPtr config =
-      CreateMockMinijailConfig(kHostName, kLeaseFileSuffix, !kArpGateway);
-  EXPECT_CALL(
-      process_manager_,
-      StartProcessInMinijail(
-          _, _, IsDHCPCDArgs(kHasHostname, !kArpGateway, kHasLeaseSuffix), _, _,
-          _))
-      .WillOnce(Return(-1));
-  EXPECT_FALSE(StartInstance(config));
 }
 
 namespace {
