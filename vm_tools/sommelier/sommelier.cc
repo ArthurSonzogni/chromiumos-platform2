@@ -1710,7 +1710,8 @@ void sl_handle_focus_in(struct sl_context* ctx, xcb_focus_in_event_t* event) {
     if (parent && parent->xdg_toplevel && window->xdg_toplevel)
       xdg_toplevel_set_parent(window->xdg_toplevel, parent->xdg_toplevel);
   }
-  window->iconified = 0;
+  if (window)
+    window->iconified = 0;
 }
 
 static void sl_handle_focus_out(struct sl_context* ctx,
