@@ -11,6 +11,13 @@
 // MurmurHash3 was written by Austin Appleby, and is placed in the public
 // domain. The author hereby disclaims copyright to this source code.
 
+//-----------------------------------------------------------------------------
+// The functions in this file compute the MurmurHash3.
+// Note that the MurmurHash is not cryptographically secure, and should
+// definitely not be used in any situation that demands security.
+// It would be better to view the functions below as similar to std::hash,
+// but will remain stable across releases.
+
 #ifndef LIBBRILLO_BRILLO_HASH_MURMURHASH3_H_
 #define LIBBRILLO_BRILLO_HASH_MURMURHASH3_H_
 
