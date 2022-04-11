@@ -37,9 +37,14 @@ namespace cros_disks {
 
 namespace {
 
-constexpr char kOptionDirSync[] = "dirsync";
-constexpr char kOptionFlush[] = "flush";
-constexpr char kOptionUtf8[] = "utf8";
+// Options passed to the mount syscall for various filesystem types.
+constexpr char kMountOptionFlush[] = "flush";
+constexpr char kMountOptionUtf8[] = "utf8";
+
+// Options passed to the FUSE module for various filesystem types.
+constexpr char kFUSEOptionDirSync[] = "dirsync";
+constexpr char kFUSEOptionDmask[] = "dmask=0027";  // directory permissions 0750
+constexpr char kFUSEOptionFmask[] = "fmask=0027";  // file permissions 0750
 
 // Implementation of FUSEMounter aimed at removable storage with
 // exFAT or NTFS filesystems.
@@ -277,29 +282,33 @@ bool DiskManager::Initialize() {
 
   // FAT32 - typical USB stick/SD card filesystem.
   mounters_["vfat"] = std::make_unique<FATMounter>(
-      platform(), std::vector<std::string>{kOptionFlush, "shortname=mixed",
-                                           kOptionUtf8, uid, gid});
+      platform(), std::vector<std::string>{kMountOptionFlush, "shortname=mixed",
+                                           kMountOptionUtf8, uid, gid});
 
   // Fancier newer version of FAT used for new big SD cards and USB sticks.
   mounters_["exfat"] = std::make_unique<DiskFUSEMounter>(
       platform(), process_reaper(), "exfat", test_sandbox_factory_,
       SandboxedExecutable{base::FilePath("/usr/sbin/mount.exfat-fuse")},
-      run_as_exfat, std::vector<std::string>{kOptionDirSync, uid, gid});
+      run_as_exfat,
+      std::vector<std::string>{kFUSEOptionDirSync, kFUSEOptionDmask,
+                               kFUSEOptionFmask, uid, gid});
 
   // External drives and some big USB sticks would likely have NTFS.
   mounters_["ntfs"] = std::make_unique<DiskFUSEMounter>(
       platform(), process_reaper(), "ntfs", test_sandbox_factory_,
       SandboxedExecutable{base::FilePath("/usr/bin/ntfs-3g")}, run_as_ntfs,
-      std::vector<std::string>{kOptionDirSync, uid, gid});
+      std::vector<std::string>{kFUSEOptionDirSync, kFUSEOptionDmask,
+                               kFUSEOptionFmask, uid, gid});
 
   // Typical CD/DVD filesystem. Inherently read-only.
   mounters_["iso9660"] = std::make_unique<SystemMounter>(
       platform(), "iso9660", true,
-      std::vector<std::string>{kOptionUtf8, uid, gid});
+      std::vector<std::string>{kMountOptionUtf8, uid, gid});
 
   // Newer DVD filesystem. Inherently read-only.
   mounters_["udf"] = std::make_unique<SystemMounter>(
-      platform(), "udf", true, std::vector<std::string>{kOptionUtf8, uid, gid});
+      platform(), "udf", true,
+      std::vector<std::string>{kMountOptionUtf8, uid, gid});
 
   // MacOS's HFS+ is not properly/officially supported, but sort of works,
   // although with severe limitaions.

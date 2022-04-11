@@ -295,7 +295,8 @@ TEST_F(DiskManagerTest, MountExFAT) {
               AllOf(Contains("user_id=1000"), Contains("group_id=1001")));
   EXPECT_THAT(fuse_args_,
               ElementsAre("/usr/sbin/mount.exfat-fuse", "-o",
-                          HasSubstr("uid=1000,gid=1001"), "/dev/sda1", _));
+                          HasSubstr("dmask=0027,fmask=0027,uid=1000,gid=1001"),
+                          "/dev/sda1", _));
 
   EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
   err = manager_->Unmount("/dev/sda1");
@@ -323,7 +324,8 @@ TEST_F(DiskManagerTest, MountNTFS) {
               AllOf(Contains("user_id=1000"), Contains("group_id=1001")));
   EXPECT_THAT(fuse_args_,
               ElementsAre("/usr/bin/ntfs-3g", "-o",
-                          HasSubstr("uid=1000,gid=1001"), "/dev/sda1", _));
+                          HasSubstr("dmask=0027,fmask=0027,uid=1000,gid=1001"),
+                          "/dev/sda1", _));
 
   EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
   err = manager_->Unmount("/dev/sda1");
