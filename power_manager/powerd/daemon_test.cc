@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/daemon.h"
 
+#include <fcntl.h>
+
 #include <cmath>
 #include <memory>
 #include <string>
@@ -16,10 +18,11 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <cros_config/fake_cros_config.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <ml-client-test/ml/dbus-proxy-mocks.h>
 
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/fake_prefs.h"
@@ -27,6 +30,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/daemon_delegate.h"
 #include "power_manager/powerd/policy/backlight_controller_stub.h"
+#include "power_manager/powerd/policy/mock_adaptive_charging_controller.h"
 #include "power_manager/powerd/system/acpi_wakeup_helper_stub.h"
 #include "power_manager/powerd/system/ambient_light_sensor_manager_stub.h"
 #include "power_manager/powerd/system/ambient_light_sensor_watcher_stub.h"
@@ -54,7 +58,15 @@
 #include "power_manager/proto_bindings/backlight.pb.h"
 #include "power_manager/proto_bindings/switch_states.pb.h"
 
+using ::testing::_;
+using ::testing::Return;
+
 namespace power_manager {
+
+class MockChargeControlSetCommand : public ec::ChargeControlSetCommand {
+ public:
+  MOCK_METHOD(bool, Run, (int fd));
+};
 
 class DaemonTest : public ::testing::Test, public DaemonDelegate {
  public:
@@ -93,8 +105,13 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         passed_metrics_sender_(new MetricsSenderStub()),
         passed_charge_controller_helper_(
             new system::ChargeControllerHelperStub()),
+        passed_adaptive_charging_controller_(
+            new policy::MockAdaptiveChargingController()),
+        passed_adaptive_charging_proxy_(
+            new org::chromium::MachineLearning::AdaptiveChargingProxyMock()),
         passed_suspend_configurator_(new system::SuspendConfiguratorStub()),
         passed_suspend_freezer_(new system::SuspendFreezerStub()),
+        passed_charge_control_set_command_(new MockChargeControlSetCommand()),
         prefs_(passed_prefs_.get()),
         dbus_wrapper_(passed_dbus_wrapper_.get()),
         udev_(passed_udev_.get()),
@@ -124,6 +141,10 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
         lockfile_checker_(passed_lockfile_checker_.get()),
         machine_quirks_(passed_machine_quirks_.get()),
         metrics_sender_(passed_metrics_sender_.get()),
+        adaptive_charging_controller_(
+            passed_adaptive_charging_controller_.get()),
+        adaptive_charging_proxy_(passed_adaptive_charging_proxy_.get()),
+        charge_control_set_command_(passed_charge_control_set_command_.get()),
         pid_(2) {
     CHECK(run_dir_.CreateUniqueTempDir());
     CHECK(run_dir_.IsValid());
@@ -132,6 +153,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     CHECK(temp_dir_.IsValid());
     wakeup_count_path_ = temp_dir_.GetPath().Append("wakeup_count");
     oobe_completed_path_ = temp_dir_.GetPath().Append("oobe_completed");
+    cros_ec_path_ = temp_dir_.GetPath().Append("cros_ec");
     suspended_state_path_ = temp_dir_.GetPath().Append("suspended_state");
     hibernated_state_path_ = temp_dir_.GetPath().Append("hibernated_state");
     flashrom_lock_path_ = temp_dir_.GetPath().Append("flashrom_lock");
@@ -163,12 +185,17 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     // This pref is required by policy::ShutdownFromSuspend.
     prefs_->SetBool(kDisableHibernatePref, false);
 
+    // This external setting is required for policy::AdaptiveChargingController.
+    prefs_->set_external_string_for_testing("/hardware-properties", "psu-type",
+                                            "battery");
+
     resourced_call_count_ = 0;
     resourced_fail_ = 0;
 
     daemon_.reset(new Daemon(this, run_dir_.GetPath()));
     daemon_->set_wakeup_count_path_for_testing(wakeup_count_path_);
     daemon_->set_oobe_completed_path_for_testing(oobe_completed_path_);
+    daemon_->set_cros_ec_path_for_testing(cros_ec_path_);
     daemon_->set_suspended_state_path_for_testing(suspended_state_path_);
     daemon_->set_hibernated_state_path_for_testing(hibernated_state_path_);
     daemon_->Init();
@@ -375,6 +402,28 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   CreateChargeControllerHelper() override {
     return std::move(passed_charge_controller_helper_);
   }
+  std::unique_ptr<policy::AdaptiveChargingControllerInterface>
+  CreateAdaptiveChargingController(
+      policy::AdaptiveChargingControllerInterface::Delegate* delegate,
+      policy::BacklightController* backlight_controller,
+      system::InputWatcherInterface* input_watcher,
+      system::PowerSupplyInterface* power_supply,
+      PrefsInterface* prefs) override {
+    EXPECT_EQ(daemon_.get(), delegate);
+    // Sometimes the `display_backlight_controller_` in Daemon is NULL for
+    // tests (and factory mode).
+    if (backlight_controller)
+      EXPECT_EQ(internal_backlight_controller_, backlight_controller);
+    EXPECT_EQ(input_watcher_, input_watcher);
+    EXPECT_EQ(power_supply_, power_supply);
+    EXPECT_EQ(prefs_, prefs);
+    return std::move(passed_adaptive_charging_controller_);
+  }
+  std::unique_ptr<
+      org::chromium::MachineLearning::AdaptiveChargingProxyInterface>
+  CreateAdaptiveChargingProxy(const scoped_refptr<dbus::Bus>& bus) override {
+    return std::move(passed_adaptive_charging_proxy_);
+  }
   std::unique_ptr<system::SuspendConfiguratorInterface>
   CreateSuspendConfigurator(PrefsInterface* prefs) override {
     EXPECT_EQ(prefs_, prefs);
@@ -390,6 +439,10 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
     // Not using pass_* pattern because this is a vector, not just an
     // object.
     return std::vector<std::unique_ptr<system::ThermalDeviceInterface>>();
+  }
+  std::unique_ptr<ec::ChargeControlSetCommand> CreateChargeControlSetCommand(
+      uint32_t mode, uint8_t lower, uint8_t upper) override {
+    return std::move(passed_charge_control_set_command_);
   }
 
   pid_t GetPid() override { return pid_; }
@@ -491,9 +544,15 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   std::unique_ptr<MetricsSenderStub> passed_metrics_sender_;
   std::unique_ptr<system::ChargeControllerHelperInterface>
       passed_charge_controller_helper_;
+  std::unique_ptr<policy::MockAdaptiveChargingController>
+      passed_adaptive_charging_controller_;
+  std::unique_ptr<org::chromium::MachineLearning::AdaptiveChargingProxyMock>
+      passed_adaptive_charging_proxy_;
   std::unique_ptr<system::SuspendConfiguratorInterface>
       passed_suspend_configurator_;
   std::unique_ptr<system::SuspendFreezerInterface> passed_suspend_freezer_;
+  std::unique_ptr<MockChargeControlSetCommand>
+      passed_charge_control_set_command_;
 
   // Pointers to objects originally stored in |passed_*| members. These
   // allow continued access by tests even after the corresponding Create*
@@ -522,6 +581,10 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   system::LockfileCheckerStub* lockfile_checker_;
   system::MachineQuirksStub* machine_quirks_;
   MetricsSenderStub* metrics_sender_;
+  policy::MockAdaptiveChargingController* adaptive_charging_controller_;
+  org::chromium::MachineLearning::AdaptiveChargingProxyMock*
+      adaptive_charging_proxy_;
+  MockChargeControlSetCommand* charge_control_set_command_;
 
   // Run directory passed to |daemon_|.
   base::ScopedTempDir run_dir_;
@@ -530,6 +593,7 @@ class DaemonTest : public ::testing::Test, public DaemonDelegate {
   base::ScopedTempDir temp_dir_;
   base::FilePath wakeup_count_path_;
   base::FilePath oobe_completed_path_;
+  base::FilePath cros_ec_path_;
   base::FilePath suspended_state_path_;
   base::FilePath hibernated_state_path_;
   base::FilePath flashrom_lock_path_;
@@ -734,6 +798,8 @@ TEST_F(DaemonTest, RequestShutdown) {
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
   Init();
 
+  EXPECT_CALL(*adaptive_charging_controller_, HandleShutdown()).Times(1);
+
   async_commands_.clear();
   sync_commands_.clear();
   dbus::MethodCall method_call(kPowerManagerInterface, kRequestShutdownMethod);
@@ -757,6 +823,8 @@ TEST_F(DaemonTest, RequestShutdown) {
 
 TEST_F(DaemonTest, RequestRestart) {
   Init();
+
+  EXPECT_CALL(*adaptive_charging_controller_, HandleShutdown()).Times(1);
 
   async_commands_.clear();
   dbus::MethodCall method_call(kPowerManagerInterface, kRequestRestartMethod);
@@ -963,6 +1031,41 @@ TEST_F(DaemonTest, FactoryMode) {
   power_supply_->set_status(status);
   power_supply_->NotifyObservers();
   EXPECT_EQ(0, async_commands_.size());
+}
+
+TEST_F(DaemonTest, GetAdaptiveChargingPrediction) {
+  Init();
+
+  // Check that the proper DBus method is called for the ML Adaptive Charging
+  // Service, and that the
+  // `AdaptiveChargingControllerInterface::OnPredictionResponse` function is
+  // called, directly or indirectly, by the callback passed to
+  // `RequestAdaptiveChargingDecisionAsync`.
+  const std::vector<double> result;
+  EXPECT_CALL(*adaptive_charging_proxy_, RequestAdaptiveChargingDecisionAsync)
+      .WillOnce(
+          [&result](
+              const std::vector<uint8_t>& proto,
+              base::OnceCallback<void(bool, const std::vector<double>&)> cb,
+              base::OnceCallback<void(brillo::Error*)> fb,
+              int) { std::move(cb).Run(true, result); });
+  EXPECT_CALL(*adaptive_charging_controller_,
+              OnPredictionResponse(true, result))
+      .Times(1);
+
+  assist_ranker::RankerExample proto;
+  daemon_->GetAdaptiveChargingPrediction(proto, true);
+}
+
+TEST_F(DaemonTest, SetBatterySustain) {
+  Init();
+
+  // `Daemon::SetBatterySustain` expects `cros_ec_path_` to already exist.
+  EXPECT_EQ(0, base::WriteFile(cros_ec_path_, "", 0));
+
+  // Verify that the ChargeControlSetCommand is Run once.
+  EXPECT_CALL(*charge_control_set_command_, Run(_)).WillOnce(Return(true));
+  EXPECT_TRUE(daemon_->SetBatterySustain(70, 80));
 }
 
 // TODO(chromeos-power): Add more tests. Namely:

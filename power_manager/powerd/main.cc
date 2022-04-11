@@ -320,6 +320,27 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return std::make_unique<system::WilcoChargeControllerHelper>();
   }
 
+  std::unique_ptr<policy::AdaptiveChargingControllerInterface>
+  CreateAdaptiveChargingController(
+      policy::AdaptiveChargingControllerInterface::Delegate* delegate,
+      policy::BacklightController* backlight_controller,
+      system::InputWatcherInterface* input_watcher,
+      system::PowerSupplyInterface* power_supply,
+      PrefsInterface* prefs) override {
+    auto adaptive = std::make_unique<policy::AdaptiveChargingController>();
+    adaptive->Init(delegate, backlight_controller, input_watcher, power_supply,
+                   prefs);
+    return adaptive;
+  }
+
+  std::unique_ptr<
+      org::chromium::MachineLearning::AdaptiveChargingProxyInterface>
+  CreateAdaptiveChargingProxy(const scoped_refptr<dbus::Bus>& bus) override {
+    return std::make_unique<
+        org::chromium::MachineLearning::AdaptiveChargingProxy>(
+        bus, ml::kMachineLearningAdaptiveChargingServiceName);
+  }
+
   std::unique_ptr<system::SuspendConfiguratorInterface>
   CreateSuspendConfigurator(PrefsInterface* prefs) override {
     auto suspend_configurator = std::make_unique<system::SuspendConfigurator>();
@@ -337,6 +358,11 @@ class DaemonDelegateImpl : public DaemonDelegate {
   std::vector<std::unique_ptr<system::ThermalDeviceInterface>>
   CreateThermalDevices() override {
     return system::ThermalDeviceFactory::CreateThermalDevices();
+  }
+
+  std::unique_ptr<ec::ChargeControlSetCommand> CreateChargeControlSetCommand(
+      uint32_t mode, uint8_t lower, uint8_t upper) override {
+    return std::make_unique<ec::ChargeControlSetCommand>(mode, lower, upper);
   }
 
   pid_t GetPid() override { return getpid(); }

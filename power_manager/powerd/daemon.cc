@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/daemon.h"
 
+#include <fcntl.h>
 #include <inttypes.h>
 
 #include <algorithm>
@@ -28,6 +29,7 @@
 #include <chromeos/ec/ec_commands.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
+#include <libec/charge_control_set_command.h>
 
 #include "power_manager/common/activity_logger.h"
 #include "power_manager/common/battery_percentage_converter.h"
@@ -78,6 +80,7 @@
 #include "power_manager/powerd/system/wilco_charge_controller_helper.h"
 #include "power_manager/proto_bindings/idle.pb.h"
 #include "power_manager/proto_bindings/policy.pb.h"
+#include "power_manager/proto_bindings/user_charging_event.pb.h"
 
 namespace power_manager {
 namespace {
@@ -137,6 +140,27 @@ const int kLogUserActivityStoppedDelaySec = 20;
 // smaller than kKeyboardBacklightKeepOnMsPref; otherwise the backlight can be
 // turned off before the hover-off event that triggered it is logged.
 const int64_t kLogHoveringStoppedDelaySec = 20;
+
+// Domain for D-Bus error messages.
+const char kErrorDomain[] = "powerd";
+
+// Type for D-Bus error messages.
+const char kInternalError[] = "internal_error";
+
+// Cros Config path to search in for the PSU type.
+const char kHardwareProperties[] = "/hardware-properties";
+
+// Cros Config property to fetch to see if the system has a battery (not
+// counting back-up power supplies for short power outages).
+const char kPSUType[] = "psu-type";
+
+// PSU Type for Cros Config that refers to a system that is designed to run off
+// the battery as a primary use case.
+const char kBattery[] = "battery";
+
+// When we're making sync calls to the Adaptive Charging ML Service, use a
+// shorter timeout.
+const int kAdaptiveChargingSyncDBusTimeoutMs = 3000;
 
 // Passes |method_call| to |handler| and passes the response to
 // |response_sender|. If |handler| returns NULL, an empty response is
@@ -281,6 +305,7 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       retry_shutdown_for_lockfile_timer_(),
       wakeup_count_path_(kDefaultWakeupCountPath),
       oobe_completed_path_(kDefaultOobeCompletedPath),
+      cros_ec_path_(ec::kCrosEcPath),
       run_dir_(run_dir),
       suspended_state_path_(kDefaultSuspendedStatePath),
       hibernated_state_path_(kDefaultHibernatedStatePath),
@@ -431,6 +456,15 @@ void Daemon::Init() {
                            keyboard_backlight_controller_.get(), power_status,
                            first_run_after_boot_);
 
+  // Only create the Adaptive Charging Controller for battery powered systems.
+  std::string psu_type;
+  prefs_->GetExternalString(kHardwareProperties, kPSUType, &psu_type);
+  if (psu_type == kBattery) {
+    adaptive_charging_controller_ = delegate_->CreateAdaptiveChargingController(
+        this, display_backlight_controller_.get(), input_watcher_.get(),
+        power_supply_.get(), prefs_.get());
+  }
+
   dark_resume_ = delegate_->CreateDarkResume(prefs_.get(),
                                              wakeup_source_identifier_.get());
 
@@ -439,7 +473,8 @@ void Daemon::Init() {
 
   suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(),
                    display_watcher_.get(), wakeup_source_identifier_.get(),
-                   shutdown_from_suspend_.get(), prefs_.get(),
+                   shutdown_from_suspend_.get(),
+                   adaptive_charging_controller_.get(), prefs_.get(),
                    suspend_configurator_.get());
 
   input_event_handler_->Init(input_watcher_.get(), this, display_watcher_.get(),
@@ -904,6 +939,73 @@ void Daemon::SetCellularTransmitPower(RadioTransmitPower power,
   RunSetuidHelper("set_cellular_transmit_power", args, false);
 }
 
+bool Daemon::SetBatterySustain(int lower, int upper) {
+  base::ScopedFD ec_fd =
+      base::ScopedFD(open(cros_ec_path_.value().c_str(), O_RDWR));
+
+  if (!ec_fd.is_valid()) {
+    PLOG(ERROR) << "Failed to open " << cros_ec_path_;
+    return false;
+  }
+
+  std::unique_ptr<ec::ChargeControlSetCommand> cmd =
+      delegate_->CreateChargeControlSetCommand(CHARGE_CONTROL_NORMAL, lower,
+                                               upper);
+  if (!cmd->Run(ec_fd.get())) {
+    // This is expected if the EC doesn't support battery sustainer.
+    LOG(INFO) << "Setting battery sustain with lower = " << lower
+              << "% and upper = " << upper << "%  failed";
+    return false;
+  }
+
+  return true;
+}
+
+void Daemon::GetAdaptiveChargingPrediction(
+    const assist_ranker::RankerExample& proto, bool async) {
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> serialized(proto.ByteSizeLong());
+
+  if (!proto.SerializeToArray(serialized.data(), serialized.size())) {
+    error = brillo::Error::Create(FROM_HERE, kErrorDomain, kInternalError,
+                                  "Failed to serialize RankerExample");
+    adaptive_charging_controller_->OnPredictionFail(error.get());
+    return;
+  }
+
+  if (async) {
+    adaptive_charging_ml_proxy_->RequestAdaptiveChargingDecisionAsync(
+        serialized,
+        base::BindRepeating(
+            &policy::AdaptiveChargingControllerInterface::OnPredictionResponse,
+            base::Unretained(adaptive_charging_controller_.get())),
+        base::BindRepeating(
+            &policy::AdaptiveChargingControllerInterface::OnPredictionFail,
+            base::Unretained(adaptive_charging_controller_.get())));
+    return;
+  }
+
+  bool inference_done;
+  std::vector<double> result;
+  if (!adaptive_charging_ml_proxy_->RequestAdaptiveChargingDecision(
+          serialized, &inference_done, &result, &error,
+          kAdaptiveChargingSyncDBusTimeoutMs)) {
+    adaptive_charging_controller_->OnPredictionFail(error.get());
+    return;
+  }
+
+  if (!inference_done) {
+    error = brillo::Error::Create(
+        FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
+        "Adaptive Charging ML Proxy failed to finish inference");
+
+    adaptive_charging_controller_->OnPredictionFail(error.get());
+    return;
+  }
+
+  adaptive_charging_controller_->OnPredictionResponse(inference_done, result);
+}
+
 void Daemon::OnAudioStateChange(bool active) {
   if (active)
     audio_activity_logger_->OnActivityStarted();
@@ -1010,6 +1112,13 @@ void Daemon::InitDBus() {
   }
 
   const scoped_refptr<dbus::Bus>& bus = dbus_wrapper_->GetBus();
+
+  // We don't need to wait for this DBus proxy to init, since calls to it will
+  // block if it's not currently available.
+  // Also, create this before returning due to |bus| == NULL, since we mock out
+  // the adaptive_charging_ml_proxy_ for testing.
+  adaptive_charging_ml_proxy_ = delegate_->CreateAdaptiveChargingProxy(bus);
+
   // There's no underlying dbus::Bus object when we're being tested.
   if (!bus)
     return;
@@ -1316,6 +1425,10 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
     charge_controller_->HandlePolicyChange(policy);
   }
 
+  if (adaptive_charging_controller_) {
+    adaptive_charging_controller_->HandlePolicyChange(policy);
+  }
+
   for (auto controller : all_backlight_controllers_)
     controller->HandlePolicyChange(policy);
   return nullptr;
@@ -1439,6 +1552,8 @@ void Daemon::ShutDown(ShutdownMode mode, ShutdownReason reason) {
   retry_shutdown_for_lockfile_timer_.Stop();
   suspender_->HandleShutdown();
   metrics_collector_->HandleShutdown(reason);
+  if (adaptive_charging_controller_)
+    adaptive_charging_controller_->HandleShutdown();
 
   for (auto controller : all_backlight_controllers_) {
     // If we're going to display a low-battery alert while shutting down, don't

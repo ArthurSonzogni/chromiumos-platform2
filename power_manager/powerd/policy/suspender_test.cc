@@ -16,6 +16,7 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/policy/mock_adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/shutdown_from_suspend_stub.h"
 #include "power_manager/powerd/system/dark_resume_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
@@ -219,7 +220,8 @@ class SuspenderTest : public testing::Test {
     delegate_.set_clock(test_api_.clock());
     suspender_.Init(&delegate_, &dbus_wrapper_, &dark_resume_,
                     &display_watcher_, &wakeup_source_identifier_,
-                    &shutdown_from_suspend_, &prefs_, &configurator_stub_);
+                    &shutdown_from_suspend_, &adaptive_charging_controller_,
+                    &prefs_, &configurator_stub_);
   }
 
   // Returns the ID from a SuspendImminent signal at |position|.
@@ -281,6 +283,7 @@ class SuspenderTest : public testing::Test {
   system::DisplayWatcherStub display_watcher_;
   system::WakeupSourceIdentifierStub wakeup_source_identifier_;
   policy::ShutdownFromSuspendStub shutdown_from_suspend_;
+  MockAdaptiveChargingController adaptive_charging_controller_;
   system::SuspendConfiguratorStub configurator_stub_;
   Suspender suspender_;
   Suspender::TestApi test_api_;
@@ -304,6 +307,10 @@ TEST_F(SuspenderTest, SuspendResume) {
   EXPECT_EQ(SuspendImminent_Reason_IDLE, GetSuspendImminentReason(0));
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
+
+  // Make sure that Adaptive Charging is notified of the suspend.
+  EXPECT_CALL(adaptive_charging_controller_, PrepareForSuspendAttempt())
+      .Times(1);
 
   // Simulate suspending for 20 minutes.
   const base::TimeDelta kDuration = base::Minutes(20);
@@ -416,6 +423,12 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_EQ(SuspendImminent_Reason_LID_CLOSED, GetSuspendImminentReason(0));
   EXPECT_EQ(kPrepare, delegate_.GetActions());
   EXPECT_TRUE(delegate_.suspend_announced());
+
+  // AdaptiveChargingController's PrepareForSuspendAttempt should be called once
+  // for each attempt for the first request (3 attempts) and another time for
+  // the final request.
+  EXPECT_CALL(adaptive_charging_controller_, PrepareForSuspendAttempt())
+      .Times(4);
 
   const uint64_t kRetryWakeupCount = 67;
   delegate_.set_wakeup_count(kRetryWakeupCount);
@@ -791,6 +804,12 @@ TEST_F(SuspenderTest, SendSuspendDoneAtStartupForAbandonedAttempt) {
 
 TEST_F(SuspenderTest, DarkResume) {
   Init();
+
+  // We expect that AdaptiveChargingController's PrepareForSuspendAttempt will
+  // be called again for suspending from Dark Resume.
+  EXPECT_CALL(adaptive_charging_controller_, PrepareForSuspendAttempt())
+      .Times(2);
+
   const int kWakeupCount = 45;
   delegate_.set_wakeup_count(kWakeupCount);
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
@@ -1333,6 +1352,11 @@ TEST_F(SuspenderTest, ShutdownFromSuspendHibernate) {
   suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
                             SuspendFlavor::SUSPEND_DEFAULT);
   EXPECT_EQ(kPrepare, delegate_.GetActions());
+
+  // Make sure that HandleShutdown is called for hibernate, which is what
+  // Adaptive Charging expects, since we don't want to leave charge limited
+  // when there's no way to reenable it until the system boots again.
+  EXPECT_CALL(adaptive_charging_controller_, HandleShutdown()).Times(1);
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(JoinActions(kSuspend, kUnprepare, nullptr), delegate_.GetActions());
   EXPECT_EQ(true, delegate_.suspend_was_successful());

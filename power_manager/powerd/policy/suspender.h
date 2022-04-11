@@ -22,6 +22,7 @@
 #include <dbus/message.h>
 
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/policy/adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
@@ -214,6 +215,7 @@ class Suspender : public SuspendDelayObserver,
             system::DisplayWatcherInterface* display_watcher,
             system::WakeupSourceIdentifierInterface* wakeup_source_identifier,
             policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
+            AdaptiveChargingControllerInterface* adaptive_charging_controller,
             PrefsInterface* prefs,
             system::SuspendConfiguratorInterface* suspend_configurator);
 
@@ -387,6 +389,8 @@ class Suspender : public SuspendDelayObserver,
   system::WakeupSourceIdentifierInterface* wakeup_source_identifier_ =
       nullptr;  // weak
   policy::ShutdownFromSuspendInterface* shutdown_from_suspend_ =
+      nullptr;  // weak
+  AdaptiveChargingControllerInterface* adaptive_charging_controller_ =
       nullptr;  // weak
 
   PrefsInterface* prefs_ = nullptr;  // weak

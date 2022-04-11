@@ -18,6 +18,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/policy/adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/shutdown_from_suspend_interface.h"
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
 #include "power_manager/powerd/system/cros_ec_device_event.h"
@@ -66,6 +67,7 @@ void Suspender::Init(
     system::DisplayWatcherInterface* display_watcher,
     system::WakeupSourceIdentifierInterface* wakeup_source_identifier,
     policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
+    AdaptiveChargingControllerInterface* adaptive_charging_controller,
     PrefsInterface* prefs,
     system::SuspendConfiguratorInterface* suspend_configurator) {
   delegate_ = delegate;
@@ -73,6 +75,7 @@ void Suspender::Init(
   dark_resume_ = dark_resume;
   wakeup_source_identifier_ = wakeup_source_identifier;
   shutdown_from_suspend_ = shutdown_from_suspend;
+  adaptive_charging_controller_ = adaptive_charging_controller;
   prefs_ = prefs;
 
   const int initial_id = delegate_->GetInitialSuspendId();
@@ -671,7 +674,13 @@ Suspender::State Suspender::Suspend() {
       LOG(WARNING) << "Cannot hibernate because hibernation is "
                    << (hibernate_disabled ? "disabled" : "unavailable");
       hibernate = false;
+    } else if (adaptive_charging_controller_) {
+      // Since wake from RTC isn't available from hibernate, we treat this as a
+      // shutdown for AdaptiveCharging.
+      adaptive_charging_controller_->HandleShutdown();
     }
+  } else if (adaptive_charging_controller_) {
+    adaptive_charging_controller_->PrepareForSuspendAttempt();
   }
 
   if (suspend_duration_ != base::TimeDelta()) {

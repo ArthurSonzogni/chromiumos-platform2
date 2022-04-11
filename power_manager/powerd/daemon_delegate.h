@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <libec/charge_control_set_command.h>
 
 namespace power_manager {
 
@@ -180,6 +181,18 @@ class DaemonDelegate {
   virtual std::unique_ptr<system::ChargeControllerHelperInterface>
   CreateChargeControllerHelper() = 0;
 
+  virtual std::unique_ptr<policy::AdaptiveChargingControllerInterface>
+  CreateAdaptiveChargingController(
+      policy::AdaptiveChargingControllerInterface::Delegate* delegate,
+      policy::BacklightController* backlight_controller,
+      system::InputWatcherInterface* input_watcher,
+      system::PowerSupplyInterface* power_supply,
+      PrefsInterface* prefs) = 0;
+
+  virtual std::unique_ptr<
+      org::chromium::MachineLearning::AdaptiveChargingProxyInterface>
+  CreateAdaptiveChargingProxy(const scoped_refptr<dbus::Bus>& bus) = 0;
+
   virtual std::unique_ptr<system::SuspendConfiguratorInterface>
   CreateSuspendConfigurator(PrefsInterface* prefs) = 0;
 
@@ -188,6 +201,11 @@ class DaemonDelegate {
 
   virtual std::vector<std::unique_ptr<system::ThermalDeviceInterface>>
   CreateThermalDevices() = 0;
+
+  virtual std::unique_ptr<ec::ChargeControlSetCommand>
+  CreateChargeControlSetCommand(uint32_t mode,
+                                uint8_t lower,
+                                uint8_t upper) = 0;
 
   // Returns the process's PID.
   virtual pid_t GetPid() = 0;

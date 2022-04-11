@@ -20,10 +20,13 @@
 #if USE_IIOSERVICE
 #include <iioservice/libiioservice_ipc/sensor_client_dbus.h>
 #endif  // USE_IIOSERVICE
+#include <ml/dbus-proxies.h>
+#include "ml/proto_bindings/ranker_example.pb.h"
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "power_manager/common/prefs_observer.h"
+#include "power_manager/powerd/policy/adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/cellular_controller.h"
 #include "power_manager/powerd/policy/charge_controller.h"
 #include "power_manager/powerd/policy/input_event_handler.h"
@@ -99,6 +102,7 @@ class Daemon :
 #if USE_IIOSERVICE
     public iioservice::SensorClientDbus,
 #endif  // USE_IIOSERVICE
+    public policy::AdaptiveChargingControllerInterface::Delegate,
     public policy::InputEventHandler::Delegate,
     public policy::Suspender::Delegate,
     public policy::WifiController::Delegate,
@@ -123,6 +127,9 @@ class Daemon :
   }
   void set_oobe_completed_path_for_testing(const base::FilePath& path) {
     oobe_completed_path_ = path;
+  }
+  void set_cros_ec_path_for_testing(const base::FilePath& path) {
+    cros_ec_path_ = path;
   }
   void set_suspended_state_path_for_testing(const base::FilePath& path) {
     suspended_state_path_ = path;
@@ -176,6 +183,11 @@ class Daemon :
   // Overridden from policy::CellularController::Delegate:
   void SetCellularTransmitPower(RadioTransmitPower power,
                                 int64_t dpr_gpio_number) override;
+
+  // Overridden from policy::AdaptiveChargingControllerInterface::Delegate:
+  bool SetBatterySustain(int lower, int upper) override;
+  void GetAdaptiveChargingPrediction(const assist_ranker::RankerExample& proto,
+                                     bool async) override;
 
   // Overridden from system::AudioObserver:
   void OnAudioStateChange(bool active) override;
@@ -311,6 +323,10 @@ class Daemon :
   // DBus proxy for contacting tpm_managerd. May be null if the TPM status is
   // not needed.
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
+  // DBus proxy for contacting ml_service.
+  std::unique_ptr<
+      org::chromium::MachineLearning::AdaptiveChargingProxyInterface>
+      adaptive_charging_ml_proxy_;
 
   std::unique_ptr<BatteryPercentageConverter> battery_percentage_converter_;
   std::unique_ptr<StateControllerDelegate> state_controller_delegate_;
@@ -365,6 +381,9 @@ class Daemon :
       charge_controller_helper_;
   std::unique_ptr<policy::ChargeController> charge_controller_;
 
+  std::unique_ptr<policy::AdaptiveChargingControllerInterface>
+      adaptive_charging_controller_;
+
   // Object that manages all operations related to timers in the ARC instance.
   std::unique_ptr<system::ArcTimerManager> arc_timer_manager_;
 
@@ -404,6 +423,9 @@ class Daemon :
 
   // File that's created once the out-of-box experience has been completed.
   base::FilePath oobe_completed_path_;
+
+  // File for communicating with the Embedded Controller (EC).
+  base::FilePath cros_ec_path_;
 
   // Directory under /run that holds run-time data related to powerd.
   base::FilePath run_dir_;
