@@ -7,53 +7,19 @@
 #include <memory>
 #include <string>
 
-#include <chromeos/dbus/service_constants.h>
+#include <gtest/gtest.h>
 
-#include "shill/event_dispatcher.h"
-#include "shill/network/mock_dhcp_provider.h"
-#include "shill/store/fake_store.h"
-#include "shill/store/property_store_test.h"
-#include "shill/technology.h"
-#include "shill/testing.h"
-
-using testing::_;
-using testing::Mock;
+#include "shill/ipconfig.h"
 
 namespace shill {
 
-namespace {
-const char kDeviceName[] = "eth0";
-const char kLeaseFileSuffix[] = "leasefilesuffix";
-const bool kArpGateway = true;
-}  // namespace
-
-using DHCPv4ConfigRefPtr = scoped_refptr<DHCPv4Config>;
-
-class DHCPv4ConfigTest : public PropertyStoreTest {
- public:
-  DHCPv4ConfigTest()
-      : config_(new DHCPv4Config(control_interface(),
-                                 dispatcher(),
-                                 &provider_,
-                                 kDeviceName,
-                                 kLeaseFileSuffix,
-                                 kArpGateway,
-                                 "",
-                                 Technology::kUnknown,
-                                 metrics())) {}
-
- protected:
-  MockDHCPProvider provider_;
-  DHCPv4ConfigRefPtr config_;
-};
-
-TEST_F(DHCPv4ConfigTest, GetIPv4AddressString) {
+TEST(DHCPv4ConfigTest, GetIPv4AddressString) {
   EXPECT_EQ("255.255.255.255", DHCPv4Config::GetIPv4AddressString(0xffffffff));
   EXPECT_EQ("0.0.0.0", DHCPv4Config::GetIPv4AddressString(0));
   EXPECT_EQ("1.2.3.4", DHCPv4Config::GetIPv4AddressString(0x04030201));
 }
 
-TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
+TEST(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   const std::string kDefaultAddress = "0.0.0.0";
   const std::string kDefaultDestination = kDefaultAddress + "/0";
   const std::string kRouter0 = "10.0.0.254";
@@ -111,7 +77,7 @@ TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
   EXPECT_EQ(kRouter0, properties.gateway);
 }
 
-TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
+TEST(DHCPv4ConfigTest, ParseConfiguration) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 16);
@@ -134,7 +100,8 @@ TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
                                  isns_data);
 
   IPConfig::Properties properties;
-  ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
+  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, IPConfig::kMinIPv4MTU,
+                                               &properties));
   EXPECT_EQ("4.3.2.1", properties.address);
   EXPECT_EQ(16, properties.subnet_prefix);
   EXPECT_EQ("64.48.32.16", properties.broadcast_address);
@@ -153,27 +120,26 @@ TEST_F(DHCPv4ConfigTest, ParseConfiguration) {
       memcmp(&properties.isns_option_data[0], &isns_data[0], isns_data.size()));
 }
 
-TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
+TEST(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   // Even without a minimum MTU set, we should ignore a 576 value.
   KeyValueStore conf;
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 576);
 
   IPConfig::Properties properties;
-  ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
+  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, IPConfig::kMinIPv4MTU,
+                                               &properties));
   EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
 
   // With a minimum MTU set, values below the minimum should be ignored.
-  config_->set_minimum_mtu(1500);
   conf.Remove(DHCPv4Config::kConfigurationKeyMTU);
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 1499);
-  ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
+  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, 1500, &properties));
   EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
 
   // A value (other than 576) should be accepted if it is >= mimimum_mtu.
-  config_->set_minimum_mtu(577);
   conf.Remove(DHCPv4Config::kConfigurationKeyMTU);
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 577);
-  ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
+  ASSERT_TRUE(DHCPv4Config::ParseConfiguration(conf, 577, &properties));
   EXPECT_EQ(577, properties.mtu);
 }
 

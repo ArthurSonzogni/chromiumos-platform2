@@ -12,6 +12,7 @@
 #include <optional>
 
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -24,6 +25,7 @@
 #include "shill/net/ip_address.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcp_proxy_interface.h"
+#include "shill/network/dhcpv4_config.h"
 #include "shill/process_manager.h"
 #include "shill/technology.h"
 
@@ -45,6 +47,8 @@ constexpr base::TimeDelta kAcquisitionTimeout = base::Seconds(30);
 constexpr char kDHCPCDPath[] = "/sbin/dhcpcd";
 constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
+constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-4.pid";
+constexpr char kDHCPType[] = "dhcp";
 
 }  // namespace
 
@@ -52,17 +56,21 @@ DHCPConfig::DHCPConfig(ControlInterface* control_interface,
                        EventDispatcher* dispatcher,
                        DHCPProvider* provider,
                        const std::string& device_name,
-                       const std::string& type,
                        const std::string& lease_file_suffix,
+                       bool arp_gateway,
+                       const std::string& hostname,
                        Technology technology,
                        Metrics* metrics)
-    : IPConfig(control_interface, device_name, type),
+    : IPConfig(control_interface, device_name, kDHCPType),
       control_interface_(control_interface),
       provider_(provider),
       lease_file_suffix_(lease_file_suffix),
       technology_(technology),
       pid_(0),
       is_lease_active_(false),
+      arp_gateway_(arp_gateway),
+      is_gateway_arp_active_(false),
+      hostname_(hostname),
       lease_acquisition_timeout_(kAcquisitionTimeout),
       minimum_mtu_(kMinIPv4MTU),
       root_("/"),
@@ -146,6 +154,45 @@ void DHCPConfig::InitProxy(const std::string& service) {
     LOG(INFO) << "Init DHCP Proxy: " << device_name() << " at " << service;
     proxy_ = control_interface_->CreateDHCPProxy(service);
   }
+}
+
+void DHCPConfig::ProcessEventSignal(const std::string& reason,
+                                    const KeyValueStore& configuration) {
+  LOG(INFO) << "Event reason: " << reason;
+  if (reason == kReasonFail) {
+    LOG(ERROR) << "Received failure event from DHCP client.";
+    NotifyFailure();
+    return;
+  } else if (reason == kReasonNak) {
+    // If we got a NAK, this means the DHCP server is active, and any
+    // Gateway ARP state we have is no longer sufficient.
+    LOG_IF(ERROR, is_gateway_arp_active_)
+        << "Received NAK event for our gateway-ARP lease.";
+    is_gateway_arp_active_ = false;
+    return;
+  } else if (reason != kReasonBound && reason != kReasonRebind &&
+             reason != kReasonReboot && reason != kReasonRenew &&
+             reason != kReasonGatewayArp) {
+    LOG(WARNING) << "Event ignored.";
+    return;
+  }
+  IPConfig::Properties properties;
+  CHECK(DHCPv4Config::ParseConfiguration(configuration, minimum_mtu_,
+                                         &properties));
+
+  // This needs to be set before calling OnIPConfigUpdated() below since
+  // those functions may indirectly call other methods like ReleaseIP that
+  // depend on or change this value.
+  set_is_lease_active(true);
+
+  const bool is_gateway_arp = reason == kReasonGatewayArp;
+  // This is a non-authoritative confirmation that we or on the same
+  // network as the one we received a lease on previously.  The DHCP
+  // client is still running, so we should not cancel the timeout
+  // until that completes.  In the meantime, however, we can tentatively
+  // configure our network in anticipation of successful completion.
+  OnIPConfigUpdated(properties, /*new_lease_acquired=*/!is_gateway_arp);
+  is_gateway_arp_active_ = is_gateway_arp;
 }
 
 std::optional<base::TimeDelta> DHCPConfig::TimeToLeaseExpiry() {
@@ -295,12 +342,46 @@ void DHCPConfig::CleanupClientState() {
     provider_->UnbindPID(pid);
   }
   is_lease_active_ = false;
+
+  // Delete lease file if it is ephemeral.
+  if (IsEphemeralLease()) {
+    base::DeleteFile(root().Append(base::StringPrintf(
+        DHCPProvider::kDHCPCDPathFormatLease, device_name().c_str())));
+  }
+  base::DeleteFile(root().Append(
+      base::StringPrintf(kDHCPCDPathFormatPID, device_name().c_str())));
+  is_gateway_arp_active_ = false;
+}
+
+bool DHCPConfig::ShouldFailOnAcquisitionTimeout() const {
+  // Continue to use previous lease if gateway ARP is active.
+  return !is_gateway_arp_active_;
+}
+
+// Return true if we should keep the lease on disconnect.
+bool DHCPConfig::ShouldKeepLeaseOnDisconnect() const {
+  // If we are using gateway unicast ARP to speed up re-connect, don't
+  // give up our leases when we disconnect.
+  return arp_gateway_;
 }
 
 std::vector<std::string> DHCPConfig::GetFlags() {
   std::vector<std::string> flags;
   flags.push_back("-B");  // Run in foreground.
   flags.push_back("-q");  // Only warnings+errors to stderr.
+  flags.push_back("-4");  // IPv4 only.
+
+  // Apply options from DhcpProperties when applicable.
+  if (!hostname_.empty()) {
+    flags.push_back("-h");  // Request hostname from server
+    flags.push_back(hostname_);
+  }
+
+  if (arp_gateway_) {
+    flags.push_back("-R");         // ARP for default gateway.
+    flags.push_back("--unicast");  // Enable unicast ARP on renew.
+  }
+
   return flags;
 }
 

@@ -18,6 +18,7 @@
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
+#include "shill/mockable.h"
 #include "shill/store/key_value_store.h"
 #include "shill/technology.h"
 
@@ -37,6 +38,9 @@ class ProcessManager;
 // |device_name|, the lease is considered to be ephemeral, and the lease
 // file is removed whenever this DHCPConfig instance is no longer needed.
 // Otherwise, the lease file persists and will be re-used in future attempts.
+// If |hostname| is not empty, it will be used in the DHCP request as DHCP
+// option 12. This asks the DHCP server to register this hostname on our
+// behalf, for purposes of administration or creating a dynamic DNS entry.
 class DHCPConfig : public IPConfig {
  public:
   // Called when the IPConfig got from DHCP is updated. The second parameter of
@@ -47,12 +51,23 @@ class DHCPConfig : public IPConfig {
   // Called when DHCP failed.
   using FailureCallback = base::RepeatingCallback<void(const IPConfigRefPtr&)>;
 
+  // Constants used as event type got from dhcpcd. Used only
+  // internally, make them public for unit tests.
+  static constexpr char kReasonBound[] = "BOUND";
+  static constexpr char kReasonFail[] = "FAIL";
+  static constexpr char kReasonGatewayArp[] = "GATEWAY-ARP";
+  static constexpr char kReasonNak[] = "NAK";
+  static constexpr char kReasonRebind[] = "REBIND";
+  static constexpr char kReasonReboot[] = "REBOOT";
+  static constexpr char kReasonRenew[] = "RENEW";
+
   DHCPConfig(ControlInterface* control_interface,
              EventDispatcher* dispatcher,
              DHCPProvider* provider,
              const std::string& device_name,
-             const std::string& type,
              const std::string& lease_file_suffix,
+             bool arp_gateway,
+             const std::string& hostname,
              Technology technology,
              Metrics* metrics);
   DHCPConfig(const DHCPConfig&) = delete;
@@ -74,8 +89,8 @@ class DHCPConfig : public IPConfig {
   void InitProxy(const std::string& service);
 
   // Processes an Event signal from dhcpcd.
-  virtual void ProcessEventSignal(const std::string& reason,
-                                  const KeyValueStore& configuration) = 0;
+  mockable void ProcessEventSignal(const std::string& reason,
+                                   const KeyValueStore& configuration);
 
   // Returns the time left (in seconds) till the current DHCP lease is to be
   // renewed in |time_left|. Returns nullopt if an error occurs (i.e. current
@@ -83,7 +98,7 @@ class DHCPConfig : public IPConfig {
   std::optional<base::TimeDelta> TimeToLeaseExpiry() override;
 
   // Set the minimum MTU that this configuration will respect.
-  virtual void set_minimum_mtu(const int minimum_mtu) {
+  mockable void set_minimum_mtu(const int minimum_mtu) {
     minimum_mtu_ = minimum_mtu;
   }
 
@@ -100,8 +115,6 @@ class DHCPConfig : public IPConfig {
   // Notifies registered listeners that the lease has expired.
   void NotifyUpdate(bool new_lease_acquired);
 
-  int minimum_mtu() const { return minimum_mtu_; }
-
   void set_is_lease_active(bool active) { is_lease_active_ = active; }
 
   // Return true if the lease file is ephermeral, which means the lease file
@@ -110,13 +123,13 @@ class DHCPConfig : public IPConfig {
 
   // Cleans up remaining state from a running client, if any, including freeing
   // its GPid, exit watch callback, and state files.
-  virtual void CleanupClientState();
+  void CleanupClientState();
 
   // Return true if we should treat acquisition timeout as failure.
-  virtual bool ShouldFailOnAcquisitionTimeout() { return true; }
+  bool ShouldFailOnAcquisitionTimeout() const;
 
   // Return true if we should keep the lease on disconnect.
-  virtual bool ShouldKeepLeaseOnDisconnect() { return false; }
+  bool ShouldKeepLeaseOnDisconnect() const;
 
   // Updates |current_lease_expiration_time_| by adding |new_lease_duration| to
   // the current time.
@@ -132,7 +145,6 @@ class DHCPConfig : public IPConfig {
 
  private:
   friend class DHCPConfigTest;
-  friend class DHCPv4ConfigTest;
   FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalFail);
   FRIEND_TEST(DHCPConfigCallbackTest, ProcessAcquisitionTimeout);
   FRIEND_TEST(DHCPConfigCallbackTest, RequestIPTimeout);
@@ -208,6 +220,16 @@ class DHCPConfig : public IPConfig {
 
   // Whether a lease has been acquired from the DHCP server or gateway ARP.
   bool is_lease_active_;
+
+  // Specifies whether to supply an argument to the DHCP client to validate
+  // the acquired IP address using an ARP request to the gateway IP address.
+  bool arp_gateway_;
+
+  // Whether it is valid to retain the lease acquired via gateway ARP.
+  bool is_gateway_arp_active_;
+
+  // Hostname to be used in DHCP request.
+  std::string hostname_;
 
   // The proxy for communicating with the DHCP client.
   std::unique_ptr<DHCPProxyInterface> proxy_;

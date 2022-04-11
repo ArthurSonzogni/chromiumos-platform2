@@ -59,15 +59,15 @@ class DHCPConfigTest : public PropertyStoreTest {
  public:
   DHCPConfigTest()
       : proxy_(new MockDHCPProxy()),
-        config_(new DHCPv4Config(control_interface(),
-                                 dispatcher(),
-                                 &provider_,
-                                 kDeviceName,
-                                 kLeaseFileSuffix,
-                                 kArpGateway,
-                                 kHostName,
-                                 Technology::kUnknown,
-                                 &metrics_)) {
+        config_(new DHCPConfig(control_interface(),
+                               dispatcher(),
+                               &provider_,
+                               kDeviceName,
+                               kLeaseFileSuffix,
+                               kArpGateway,
+                               kHostName,
+                               Technology::kUnknown,
+                               &metrics_)) {
     config_->time_ = &time_;
   }
 
@@ -125,7 +125,7 @@ class DHCPConfigTest : public PropertyStoreTest {
   std::unique_ptr<MockDHCPProxy> proxy_;
   MockProcessManager process_manager_;
   MockTime time_;
-  scoped_refptr<DHCPv4Config> config_;
+  scoped_refptr<DHCPConfig> config_;
   MockDHCPProvider provider_;
   MockMetrics metrics_;
 };
@@ -135,9 +135,9 @@ class DHCPConfigTest : public PropertyStoreTest {
 void DHCPConfigTest::CreateMockMinijailConfig(const std::string& hostname,
                                               const std::string& lease_suffix,
                                               bool arp_gateway) {
-  config_ = new DHCPv4Config(control_interface(), dispatcher(), &provider_,
-                             kDeviceName, lease_suffix, arp_gateway, hostname,
-                             Technology::kUnknown, metrics());
+  config_ = new DHCPConfig(control_interface(), dispatcher(), &provider_,
+                           kDeviceName, lease_suffix, arp_gateway, hostname,
+                           Technology::kUnknown, metrics());
   config_->process_manager_ = &process_manager_;
 }
 
@@ -315,8 +315,8 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
 
 TEST_F(DHCPConfigCallbackTest, ProcessEventSignalSuccess) {
   for (const auto& reason :
-       {DHCPv4Config::kReasonBound, DHCPv4Config::kReasonRebind,
-        DHCPv4Config::kReasonReboot, DHCPv4Config::kReasonRenew}) {
+       {DHCPConfig::kReasonBound, DHCPConfig::kReasonRebind,
+        DHCPConfig::kReasonReboot, DHCPConfig::kReasonRenew}) {
     int address_octet = 0;
     for (const auto lease_time_given : {false, true}) {
       KeyValueStore conf;
@@ -348,7 +348,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalFail) {
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_callback_.Reset(base::DoNothing());
   config_->lease_expiration_callback_.Reset(base::DoNothing());
-  config_->ProcessEventSignal(DHCPv4Config::kReasonFail, conf);
+  config_->ProcessEventSignal(DHCPConfig::kReasonFail, conf);
   Mock::VerifyAndClearExpectations(this);
   EXPECT_TRUE(config_->properties().address.empty());
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
@@ -373,7 +373,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArp) {
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(0));
   StartInstance();
-  config_->ProcessEventSignal(DHCPv4Config::kReasonGatewayArp, conf);
+  config_->ProcessEventSignal(DHCPConfig::kReasonGatewayArp, conf);
   Mock::VerifyAndClearExpectations(this);
   EXPECT_EQ("4.3.2.1", config_->properties().address);
   // Will not fail on acquisition timeout since Gateway ARP is active.
@@ -382,7 +382,7 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArp) {
   // An official reply from a DHCP server should reset our GatewayArp state.
   EXPECT_CALL(*this, UpdateCallback(ConfigRef(), true));
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);
-  config_->ProcessEventSignal(DHCPv4Config::kReasonRenew, conf);
+  config_->ProcessEventSignal(DHCPConfig::kReasonRenew, conf);
   Mock::VerifyAndClearExpectations(this);
   // Will fail on acquisition timeout since Gateway ARP is not active.
   EXPECT_TRUE(ShouldFailOnAcquisitionTimeout());
@@ -394,11 +394,11 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArpNak) {
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(0));
   StartInstance();
-  config_->ProcessEventSignal(DHCPv4Config::kReasonGatewayArp, conf);
+  config_->ProcessEventSignal(DHCPConfig::kReasonGatewayArp, conf);
   EXPECT_FALSE(ShouldFailOnAcquisitionTimeout());
 
   // Sending a NAK should clear is_gateway_arp_active_.
-  config_->ProcessEventSignal(DHCPv4Config::kReasonNak, conf);
+  config_->ProcessEventSignal(DHCPConfig::kReasonNak, conf);
   // Will fail on acquisition timeout since Gateway ARP is not active.
   EXPECT_TRUE(ShouldFailOnAcquisitionTimeout());
   Mock::VerifyAndClearExpectations(this);
@@ -412,7 +412,7 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringFailureCallback) {
   // a result.
   EXPECT_CALL(*this, FailureCallback(ConfigRef()))
       .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
-  config_->ProcessEventSignal(DHCPv4Config::kReasonFail, conf);
+  config_->ProcessEventSignal(DHCPConfig::kReasonFail, conf);
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
@@ -430,7 +430,7 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
   // running inadvertently as a result.
   EXPECT_CALL(*this, UpdateCallback(ConfigRef(), true))
       .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
-  config_->ProcessEventSignal(DHCPv4Config::kReasonBound, conf);
+  config_->ProcessEventSignal(DHCPConfig::kReasonBound, conf);
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());

@@ -18,8 +18,8 @@
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/network/dhcp_config.h"
 #include "shill/network/dhcpcd_listener_interface.h"
-#include "shill/network/dhcpv4_config.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -82,9 +82,9 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
     const std::string& hostname,
     Technology technology) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
-  return new DHCPv4Config(control_interface_, dispatcher_, this, device_name,
-                          lease_file_suffix, arp_gateway, hostname, technology,
-                          metrics_);
+  return new DHCPConfig(control_interface_, dispatcher_, this, device_name,
+                        lease_file_suffix, arp_gateway, hostname, technology,
+                        metrics_);
 }
 
 DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {

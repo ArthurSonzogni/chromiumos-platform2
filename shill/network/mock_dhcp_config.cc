@@ -11,13 +11,14 @@ namespace shill {
 MockDHCPConfig::MockDHCPConfig(ControlInterface* control_interface,
                                const std::string& device_name)
     : DHCPConfig(control_interface,
-                 nullptr,
-                 nullptr,
+                 /*dispatcher=*/nullptr,
+                 /*provider=*/nullptr,
                  device_name,
-                 std::string(),
-                 std::string(),
+                 /*lease_file_suffix=*/"",
+                 /*arp_gateway=*/false,
+                 /*hostname=*/"",
                  Technology::kUnknown,
-                 nullptr) {}
+                 /*metrics=*/nullptr) {}
 
 MockDHCPConfig::~MockDHCPConfig() = default;
 

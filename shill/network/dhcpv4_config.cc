@@ -16,6 +16,7 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
@@ -26,126 +27,10 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static std::string ObjectID(const DHCPv4Config* d) {
-  if (d == nullptr)
-    return "(DHCPv4_config)";
-  else
-    return d->device_name();
+static std::string ObjectID(const void* d) {
+  return "(dhcp_config)";
 }
 }  // namespace Logging
-
-// static
-const char DHCPv4Config::kDHCPCDPathFormatPID[] =
-    "var/run/dhcpcd/dhcpcd-%s-4.pid";
-const char DHCPv4Config::kType[] = "dhcp";
-
-DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,
-                           EventDispatcher* dispatcher,
-                           DHCPProvider* provider,
-                           const std::string& device_name,
-                           const std::string& lease_file_suffix,
-                           bool arp_gateway,
-                           const std::string& hostname,
-                           Technology technology,
-                           Metrics* metrics)
-    : DHCPConfig(control_interface,
-                 dispatcher,
-                 provider,
-                 device_name,
-                 kType,
-                 lease_file_suffix,
-                 technology,
-                 metrics),
-      arp_gateway_(arp_gateway),
-      is_gateway_arp_active_(false),
-      hostname_(hostname) {
-  SLOG(this, 2) << __func__ << ": " << device_name;
-}
-
-DHCPv4Config::~DHCPv4Config() {
-  SLOG(this, 2) << __func__ << ": " << device_name();
-}
-
-void DHCPv4Config::ProcessEventSignal(const std::string& reason,
-                                      const KeyValueStore& configuration) {
-  LOG(INFO) << "Event reason: " << reason;
-  if (reason == kReasonFail) {
-    LOG(ERROR) << "Received failure event from DHCP client.";
-    NotifyFailure();
-    return;
-  } else if (reason == kReasonNak) {
-    // If we got a NAK, this means the DHCP server is active, and any
-    // Gateway ARP state we have is no longer sufficient.
-    LOG_IF(ERROR, is_gateway_arp_active_)
-        << "Received NAK event for our gateway-ARP lease.";
-    is_gateway_arp_active_ = false;
-    return;
-  } else if (reason != kReasonBound && reason != kReasonRebind &&
-             reason != kReasonReboot && reason != kReasonRenew &&
-             reason != kReasonGatewayArp) {
-    LOG(WARNING) << "Event ignored.";
-    return;
-  }
-  IPConfig::Properties properties;
-  CHECK(ParseConfiguration(configuration, &properties));
-
-  // This needs to be set before calling OnIPConfigUpdated() below since
-  // those functions may indirectly call other methods like ReleaseIP that
-  // depend on or change this value.
-  set_is_lease_active(true);
-
-  const bool is_gateway_arp = reason == kReasonGatewayArp;
-  // This is a non-authoritative confirmation that we or on the same
-  // network as the one we received a lease on previously.  The DHCP
-  // client is still running, so we should not cancel the timeout
-  // until that completes.  In the meantime, however, we can tentatively
-  // configure our network in anticipation of successful completion.
-  OnIPConfigUpdated(properties, /*new_lease_acquired=*/!is_gateway_arp);
-  is_gateway_arp_active_ = is_gateway_arp;
-}
-
-void DHCPv4Config::CleanupClientState() {
-  DHCPConfig::CleanupClientState();
-
-  // Delete lease file if it is ephemeral.
-  if (IsEphemeralLease()) {
-    base::DeleteFile(root().Append(base::StringPrintf(
-        DHCPProvider::kDHCPCDPathFormatLease, device_name().c_str())));
-  }
-  base::DeleteFile(root().Append(
-      base::StringPrintf(kDHCPCDPathFormatPID, device_name().c_str())));
-  is_gateway_arp_active_ = false;
-}
-
-bool DHCPv4Config::ShouldFailOnAcquisitionTimeout() {
-  // Continue to use previous lease if gateway ARP is active.
-  return !is_gateway_arp_active_;
-}
-
-bool DHCPv4Config::ShouldKeepLeaseOnDisconnect() {
-  // If we are using gateway unicast ARP to speed up re-connect, don't
-  // give up our leases when we disconnect.
-  return arp_gateway_;
-}
-
-std::vector<std::string> DHCPv4Config::GetFlags() {
-  // Get default flags first.
-  auto flags = DHCPConfig::GetFlags();
-
-  flags.push_back("-4");  // IPv4 only.
-
-  // Apply options from DhcpProperties when applicable.
-  if (!hostname_.empty()) {
-    flags.push_back("-h");  // Request hostname from server
-    flags.push_back(hostname_);
-  }
-
-  if (arp_gateway_) {
-    flags.push_back("-R");         // ARP for default gateway.
-    flags.push_back("--unicast");  // Enable unicast ARP on renew.
-  }
-  return flags;
-}
 
 // static
 std::string DHCPv4Config::GetIPv4AddressString(unsigned int address) {
@@ -227,6 +112,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
 
 // static
 bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
+                                      int minimum_mtu,
                                       IPConfig::Properties* properties) {
   SLOG(nullptr, 2) << __func__;
   properties->method = kTypeDHCP;
@@ -279,7 +165,7 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       properties->domain_search = value.Get<std::vector<std::string>>();
     } else if (key == kConfigurationKeyMTU) {
       int mtu = value.Get<uint16_t>();
-      if (mtu >= minimum_mtu() && mtu != kMinIPv4MTU) {
+      if (mtu >= minimum_mtu && mtu != IPConfig::kMinIPv4MTU) {
         properties->mtu = mtu;
       }
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {
