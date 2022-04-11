@@ -43,7 +43,9 @@ class FakeDevModeNoOwnerRestriction : public DevModeNoOwnerRestriction {
   bool fake_owner_user_exists_;
 
   // Reports the fake dev mode state.
-  bool InDevMode() const override { return fake_in_dev_mode_; }
+  bool InDevMode(brillo::ErrorPtr* error) const override {
+    return fake_in_dev_mode_;
+  }
 
   // Reports the fake owner and lockbox states.
   bool GetOwnerAndLockboxStatus(bool* owner_user_exists,

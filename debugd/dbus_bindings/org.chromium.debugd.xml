@@ -726,14 +726,13 @@
     <method name="SetCrashSenderTestMode">
       <tp:docstring>
         If set to true, any UploadSingleCrash call will invoke crash_sender
-        with --test_mode.
+        with --test_mode. Avaialble only on dev mode devices.
       </tp:docstring>
       <arg name="mode" type="b" direction="in">
         <tp:docstring>
           New mode to be set.
         </tp:docstring>
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="RemoveRootfsVerification">
       <tp:docstring>

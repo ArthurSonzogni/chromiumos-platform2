@@ -703,8 +703,13 @@ bool DebugdDBusAdaptor::DRMTraceSnapshot(brillo::ErrorPtr* error,
   return drm_trace_tool_->Snapshot(error, type_enum);
 }
 
-void DebugdDBusAdaptor::SetCrashSenderTestMode(bool mode) {
+bool DebugdDBusAdaptor::SetCrashSenderTestMode(brillo::ErrorPtr* error,
+                                               bool mode) {
+  if (!dev_features_tool_wrapper_->restriction().InDevMode())
+    return false;
+
   crash_sender_tool_->SetTestMode(mode);
+  return true;
 }
 
 }  // namespace debugd

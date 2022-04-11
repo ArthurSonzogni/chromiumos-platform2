@@ -35,7 +35,9 @@ class DevModeNoOwnerRestriction {
   bool AllowToolUse(brillo::ErrorPtr* error);
 
   // Virtual member functions to allow overrides for testing.
-  virtual bool InDevMode() const;
+  // Returns true if the system is in dev mode. If not, and if |error| is
+  // given, the error message is populated.
+  virtual bool InDevMode(brillo::ErrorPtr* error = nullptr) const;
   virtual bool GetOwnerAndLockboxStatus(bool* owner_user_exists,
                                         bool* boot_lockbox_finalized);
 

@@ -67,9 +67,7 @@ DevModeNoOwnerRestriction::DevModeNoOwnerRestriction(
 
 bool DevModeNoOwnerRestriction::AllowToolUse(brillo::ErrorPtr* error) {
   // Check dev mode first to avoid unnecessary cryptohome query delays.
-  if (!InDevMode()) {
-    DEBUGD_ADD_ERROR(error, kAccessDeniedErrorString,
-                     kDevModeAccessErrorString);
+  if (!InDevMode(error)) {
     return false;
   }
 
@@ -89,17 +87,22 @@ bool DevModeNoOwnerRestriction::AllowToolUse(brillo::ErrorPtr* error) {
   return true;
 }
 
-bool DevModeNoOwnerRestriction::InDevMode() const {
+bool DevModeNoOwnerRestriction::InDevMode(brillo::ErrorPtr* error) const {
   // The is_developer_end_user script provides a common way to access this
   // information rather than duplicating logic here.
-  return ProcessWithOutput::RunProcess("/usr/sbin/is_developer_end_user",
-                                       ProcessWithOutput::ArgList{},
-                                       true,     // needs root to run properly.
-                                       false,    // disable_sandbox.
-                                       nullptr,  // no stdin.
-                                       nullptr,  // no stdout.
-                                       nullptr,  // no stderr.
-                                       nullptr) == 0;  // no D-Bus error.
+  if (ProcessWithOutput::RunProcess("/usr/sbin/is_developer_end_user",
+                                    ProcessWithOutput::ArgList{},
+                                    true,     // needs root to run properly.
+                                    false,    // disable_sandbox.
+                                    nullptr,  // no stdin.
+                                    nullptr,  // no stdout.
+                                    nullptr,  // no stderr.
+                                    nullptr) != 0) {  // no D-Bus error.
+    DEBUGD_ADD_ERROR(error, kAccessDeniedErrorString,
+                     kDevModeAccessErrorString);
+    return false;
+  }
+  return true;
 }
 
 // Checks for owner user and boot lockbox status.

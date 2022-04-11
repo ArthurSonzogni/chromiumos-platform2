@@ -251,7 +251,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool DRMTraceAnnotateLog(brillo::ErrorPtr* error,
                            const std::string& log) override;
   bool DRMTraceSnapshot(brillo::ErrorPtr* error, uint32_t type_enum) override;
-  void SetCrashSenderTestMode(bool mode) override;
+  bool SetCrashSenderTestMode(brillo::ErrorPtr* error, bool mode) override;
 
  private:
   void OnPacketCaptureStopped();
