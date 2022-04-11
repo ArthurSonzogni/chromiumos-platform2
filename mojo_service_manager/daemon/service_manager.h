@@ -35,6 +35,8 @@ class ServiceManager : public mojom::ServiceManager {
   struct ServiceState {
     // The policy applied to this mojo service.
     ServicePolicy policy;
+    // The identity of the current owner process.
+    mojom::ProcessIdentityPtr owner;
   };
 
   // mojom::ServiceManager overrides.

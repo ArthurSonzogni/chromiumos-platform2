@@ -63,6 +63,7 @@ if (use.test) {
     sources = [
       "daemon_test.cc",
       "mojo_test_runner.cc",
+      "service_manager_test.cc",
       "service_policy_loader_test.cc",
       "service_policy_test.cc",
       "service_policy_test_util.cc",

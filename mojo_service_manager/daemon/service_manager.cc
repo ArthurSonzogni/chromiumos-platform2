@@ -41,7 +41,29 @@ void ServiceManager::Request(const std::string& service_name,
 
 void ServiceManager::Query(const std::string& service_name,
                            QueryCallback callback) {
-  NOTIMPLEMENTED();
+  auto it = service_map_.find(service_name);
+  if (it == service_map_.end()) {
+    std::move(callback).Run(mojom::ErrorOrServiceState::NewError(
+        mojom::Error::New(mojom::ErrorCode::kServiceNotFound,
+                          "Cannot find service: " + service_name)));
+    return;
+  }
+
+  const ServiceState& service_state = it->second;
+  const mojom::ProcessIdentityPtr& identity = receiver_set_.current_context();
+  if (!configuration_.is_permissive &&
+      !service_state.policy.IsRequester(identity->security_context)) {
+    std::move(callback).Run(
+        mojom::ErrorOrServiceState::NewError(mojom::Error::New(
+            mojom::ErrorCode::kPermissionDenied,
+            "The security context: " + identity->security_context +
+                " is not allowed to request the service: " + service_name)));
+    return;
+  }
+  std::move(callback).Run(
+      mojom::ErrorOrServiceState::NewState(mojom::ServiceState::New(
+          /*is_registered=*/!service_state.owner.is_null(),
+          /*owner=*/service_state.owner.Clone())));
 }
 
 void ServiceManager::AddServiceObserver(
