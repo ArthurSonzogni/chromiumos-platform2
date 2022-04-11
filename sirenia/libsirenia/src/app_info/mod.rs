@@ -12,11 +12,14 @@ use std::io;
 use std::io::BufReader;
 use std::io::Read;
 use std::ops::Deref;
+use std::ops::DerefMut;
 use std::path::Path;
 use std::path::PathBuf;
 use std::result::Result as StdResult;
 
-use libchromeos::chromeos::is_dev_mode;
+use libc::STDERR_FILENO;
+use libc::STDIN_FILENO;
+use libc::STDOUT_FILENO;
 use serde::Deserialize;
 use serde::Serialize;
 use thiserror::Error as ThisError;
@@ -91,6 +94,53 @@ pub struct SecretsParameters {
     pub encryption_key_version: usize,
 }
 
+/// Lists the file descriptor numbers that sockets inherited by the TEE app instance will be
+/// assigned to.
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[serde(from = "Vec<i32>", into = "Vec<i32>")]
+pub struct ChannelConfig {
+    fds_to_inherit: Vec<i32>,
+}
+
+impl From<Vec<i32>> for ChannelConfig {
+    fn from(fds_to_inherit: Vec<i32>) -> Self {
+        ChannelConfig { fds_to_inherit }
+    }
+}
+
+impl From<ChannelConfig> for Vec<i32> {
+    fn from(c: ChannelConfig) -> Self {
+        c.fds_to_inherit
+    }
+}
+
+impl Deref for ChannelConfig {
+    type Target = Vec<i32>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.fds_to_inherit
+    }
+}
+
+impl DerefMut for ChannelConfig {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.fds_to_inherit
+    }
+}
+
+impl ChannelConfig {
+    pub fn no_stderr() -> Self {
+        vec![STDIN_FILENO, STDOUT_FILENO].into()
+    }
+}
+
+impl Default for ChannelConfig {
+    fn default() -> Self {
+        // A separate socket for stdin, stdout, and stderr.
+        vec![STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO].into()
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum ExecutableInfo {
     // Hypervisor initramfs path
@@ -102,8 +152,15 @@ pub enum ExecutableInfo {
 }
 
 /// Specify how to handle the TEE app instance's stderr.
+///
+/// StdErrBehavior::Default has the following behavior:
+/// * If stderr (fd 2) is in ChannelConfig::InheritedSockets, do nothing.
+/// * Otherwise
+///   - if the device is in dev mode behave the same as StdErrBehavior::Syslog
+///   - otherwise behave the same as StdErrBehavior::Drop
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum StdErrBehavior {
+    Default,
     MergeWithStdout,
     Drop,
     Syslog,
@@ -111,11 +168,7 @@ pub enum StdErrBehavior {
 
 impl Default for StdErrBehavior {
     fn default() -> Self {
-        if is_dev_mode().unwrap_or(false) {
-            StdErrBehavior::Syslog
-        } else {
-            StdErrBehavior::Drop
-        }
+        StdErrBehavior::Default
     }
 }
 
@@ -124,6 +177,8 @@ impl Default for StdErrBehavior {
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub struct AppManifestEntry {
     pub app_name: String,
+    #[serde(default)]
+    pub channel_config: ChannelConfig,
     // devmode_only is false by default.
     #[serde(default)]
     pub devmode_only: bool,
@@ -139,6 +194,10 @@ pub struct AppManifestEntry {
 impl AppManifestEntry {
     pub fn app_id(&self) -> &str {
         self.app_name.as_str()
+    }
+
+    pub fn num_channels(&self) -> usize {
+        self.channel_config.len()
     }
 
     pub fn cros_path(&self) -> Option<PathBuf> {
@@ -159,33 +218,36 @@ impl AppManifest {
             // made based on app name since 'shell' is currently the only use case for a tty.
             AppManifestEntry {
                 app_name: "shell".to_string(),
+                channel_config: ChannelConfig::default(),
                 devmode_only: true,
                 exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
                 exec_args: None,
                 sandbox_type: SandboxType::DeveloperEnvironment,
                 secrets_parameters: None,
-                stderr_behavior: StdErrBehavior::MergeWithStdout,
+                stderr_behavior: StdErrBehavior::Default,
                 storage_parameters: None,
             },
             // Does not receive special treatment and is not allocated a pseudo terminal.
             AppManifestEntry {
                 app_name: "shell-notty".to_string(),
+                channel_config: ChannelConfig::default(),
                 devmode_only: true,
                 exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
                 exec_args: None,
                 sandbox_type: SandboxType::DeveloperEnvironment,
                 secrets_parameters: None,
-                stderr_behavior: StdErrBehavior::MergeWithStdout,
+                stderr_behavior: StdErrBehavior::Default,
                 storage_parameters: None,
             },
             AppManifestEntry {
                 app_name: "sandboxed-shell".to_string(),
+                channel_config: ChannelConfig::default(),
                 devmode_only: true,
                 exec_info: ExecutableInfo::Path("/bin/sh".to_string()),
                 exec_args: None,
                 sandbox_type: SandboxType::Container,
                 secrets_parameters: None,
-                stderr_behavior: StdErrBehavior::MergeWithStdout,
+                stderr_behavior: StdErrBehavior::Default,
                 storage_parameters: None,
             },
         ])
@@ -294,6 +356,7 @@ pub mod tests {
 
     const TEST_MANIFEST_ENTRY_JSON: &str = r#"{
   "app_name": "demo_app",
+  "channel_config": [0, 1],
   "exec_info": {
     "Path": "/usr/bin/demo_app"
   },
@@ -310,6 +373,7 @@ pub mod tests {
     fn get_test_manifest_entry() -> AppManifestEntry {
         AppManifestEntry {
             app_name: "demo_app".to_string(),
+            channel_config: ChannelConfig::no_stderr(),
             devmode_only: false,
             exec_info: ExecutableInfo::Path("/usr/bin/demo_app".to_string()),
             exec_args: None,

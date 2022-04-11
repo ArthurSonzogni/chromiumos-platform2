@@ -8,7 +8,9 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::cell::RefCell;
+use std::cmp::min;
 use std::collections::BTreeMap as Map;
+use std::collections::BTreeSet;
 use std::collections::VecDeque;
 use std::convert::TryFrom;
 use std::env;
@@ -22,8 +24,10 @@ use std::io::SeekFrom;
 use std::io::Write;
 use std::mem::replace;
 use std::mem::swap;
+use std::mem::take;
 use std::ops::Deref;
 use std::ops::DerefMut;
+use std::os::raw::c_int;
 use std::os::unix::io::AsRawFd;
 use std::os::unix::io::RawFd;
 use std::path::Path;
@@ -31,6 +35,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::result::Result as StdResult;
 use std::str::FromStr;
+use std::time::Duration;
+use std::time::Instant;
 
 use anyhow::anyhow;
 use anyhow::bail;
@@ -102,6 +108,7 @@ use libsirenia::secrets::PlatformSecret;
 use libsirenia::secrets::SecretManager;
 use libsirenia::secrets::VersionedSecret;
 use libsirenia::sys;
+use libsirenia::sys::dev_null;
 use libsirenia::sys::dup;
 use libsirenia::sys::get_a_pty;
 use libsirenia::sys::halt;
@@ -140,17 +147,33 @@ const LOG_TO_STDERR_LONG_NAME: &str = "log-to-stderr";
 
 const CROSVM_PATH: &str = "/bin/crosvm-direct";
 
+const APP_START_TIMEOUT: Duration = Duration::from_secs(30);
+
+enum InstanceState {
+    Pending {
+        // Expected incoming connections transition to established connections until
+        // pending_connections is empty and then the TEE app can be started.
+        pending_connections: Vec<(TransportType, c_int)>,
+        established_connections: Vec<(Transport, c_int)>,
+        expiration: Instant,
+    },
+    Running,
+}
+
 /* Holds the trichechus-relevant information for a TEEApp. */
-struct TeeApp {
+struct TeeAppInstance {
     sandbox: Box<dyn Sandbox>,
     app_info: AppManifestEntry,
     args: Vec<String>,
+
+    // Keep track of state specific information like expected connections.
+    state: InstanceState,
 }
 
 #[derive(Clone)]
 struct TeeAppHandler {
     state: Rc<RefCell<TrichechusState>>,
-    tee_app: Rc<RefCell<TeeApp>>,
+    tee_app: Rc<RefCell<TeeAppInstance>>,
 }
 
 impl TeeAppHandler {
@@ -242,8 +265,8 @@ impl TeeApi<Error> for TeeAppHandler {
 
 struct TrichechusState {
     expected_port: u32,
-    pending_apps: Map<TransportType, TeeApp>,
-    running_apps: Map<Pid, Rc<RefCell<TeeApp>>>,
+    pending_apps: Map<TransportType, Rc<RefCell<TeeAppInstance>>>,
+    running_apps: Map<Pid, Rc<RefCell<TeeAppInstance>>>,
     log_queue: VecDeque<Vec<u8>>,
     persistence_uri: TransportType,
     persistence: RefCell<Option<CronistaClient>>,
@@ -308,6 +331,30 @@ impl TrichechusState {
 
     fn drop_persistence(&self) {
         *self.persistence.borrow_mut().deref_mut() = None;
+    }
+
+    // Check for expired entries and return the next expiration time.
+    fn cleanup_expired(&mut self) -> Option<Instant> {
+        let now = Instant::now();
+        let mut next_expiration = None;
+        self.pending_apps.retain(|_, v| {
+            if let InstanceState::Pending {
+                pending_connections: _,
+                established_connections: _,
+                expiration,
+            } = v.borrow().state
+            {
+                if expiration < now {
+                    false
+                } else {
+                    next_expiration = Some(min(next_expiration.unwrap_or(expiration), expiration));
+                    true
+                }
+            } else {
+                false
+            }
+        });
+        next_expiration
     }
 }
 
@@ -394,12 +441,30 @@ impl TrichechusServerImpl {
 }
 
 impl Trichechus<Error> for TrichechusServerImpl {
-    fn start_session(&mut self, app_info: AppInfo, args: Vec<String>) -> Result<()> {
+    fn start_session(&mut self, app_info: AppInfo, args: Vec<String>) -> Result<u32> {
         info!("Received start session message: {:?}", &app_info);
         // The TEE app isn't started until its socket connection is accepted.
+
+        // Validate the port numbers.
+        let deduplicated_ports: BTreeSet<u32> = app_info.port_numbers.iter().cloned().collect();
+        if deduplicated_ports.len() != app_info.port_numbers.len() {
+            return log_error(
+                Err(trichechus::Error::DuplicateSourcePort).with_context(|| {
+                    format!(
+                        "start_session for app '{}' had duplicate port_numbers",
+                        app_info.app_id.as_str()
+                    )
+                }),
+            );
+        }
+
         Ok(log_error(start_session(
             self.state.borrow_mut().deref_mut(),
-            self.port_to_transport_type(app_info.port_number),
+            app_info
+                .port_numbers
+                .iter()
+                .map(|p| self.port_to_transport_type(*p))
+                .collect(),
             &app_info.app_id,
             args,
         ))?)
@@ -443,13 +508,48 @@ struct DugongConnectionHandler {
     state: Rc<RefCell<TrichechusState>>,
 }
 
-fn setup_pty(connection: &mut Transport) -> Result<[Box<dyn Mutator>; 4]> {
+fn get_stdio_indices(entries: &[(Transport, c_int)]) -> Option<(usize, usize)> {
+    let mut stdin = None;
+    let mut stdout = None;
+    for (i, entry) in entries.iter().enumerate() {
+        match entry.1 {
+            CROS_CONNECTION_R_FD => {
+                stdin = Some(i);
+            }
+            CROS_CONNECTION_W_FD => {
+                stdout = Some(i);
+            }
+            _ => {}
+        }
+    }
+    if let Some(stdin) = stdin {
+        if let Some(stdout) = stdout {
+            return Some((stdin, stdout));
+        }
+    }
+    None
+}
+
+fn setup_pty(connections: &mut Vec<(Transport, i32)>) -> Result<[Box<dyn Mutator>; 4]> {
+    let (stdin, stdout) =
+        get_stdio_indices(connections).ok_or_else(|| anyhow!("failed to identify stdio"))?;
     let (main, client) = get_a_pty().context("failed get a pty")?;
 
     let dup_main: File = dup(main.as_raw_fd()).context("failed dup pty main")?;
     let dup_client: File = dup(client.as_raw_fd()).context("failed dup pty client")?;
+    let dev_null = dev_null().context("failed to open /dev/null")?;
 
-    let Transport { r, w, id: _ } = replace(connection, Transport::from_files(client, dup_client));
+    let Transport { r, w: _, id: _ } = replace(
+        &mut connections[stdin].0,
+        Transport::from_files(
+            client,
+            dev_null.try_clone().context("Failed to clone /dev/null")?,
+        ),
+    );
+    let Transport { r: _, w, id: _ } = replace(
+        &mut connections[stdout].0,
+        Transport::from_files(dev_null, dup_client),
+    );
 
     let main_r: Box<dyn TransportRead> = Box::new(main);
     let main_w: Box<dyn TransportWrite> = Box::new(dup_main);
@@ -468,18 +568,69 @@ impl DugongConnectionHandler {
         DugongConnectionHandler { state }
     }
 
+    /// A helper function called by Self::handle_incoming_connection when the incoming connection is
+    /// found to be associated with a specific TEE app instance. The association is defined by the
+    /// source port numbers listed in a start_session call from the same source address as the
+    /// control connection.
+    ///
+    /// Since multiple ports may be listened, multiple connections may need to be established and
+    /// associated with a TEE app instance before executing the TEE app.
     fn connect_tee_app(
         &mut self,
-        app: TeeApp,
-        mut connection: Transport,
+        app_ref: Rc<RefCell<TeeAppInstance>>,
+        connection: Transport,
     ) -> Option<Box<dyn Mutator>> {
+        let mut app_ref_mut = app_ref.borrow_mut();
+        let app = app_ref_mut.deref_mut();
+        let app_name = app.app_info.app_id();
+        let mut established_connections = match &mut app.state {
+            InstanceState::Pending {
+                pending_connections,
+                established_connections,
+                expiration: _,
+            } => {
+                let mut fd = None;
+                pending_connections.retain(|p| {
+                    // Match the incoming connection against the expected list of connections and
+                    // set the corresponding fd number. An earlier check prevents the same source
+                    // port from being specified more than once.
+                    if p.0 == connection.id {
+                        if fd.is_some() {
+                            error!("TEE app '{}' has duplicate pending source port", app_name)
+                        }
+                        fd = Some(p.1);
+                        false
+                    } else {
+                        true
+                    }
+                });
+                let fd = match fd {
+                    Some(v) => v,
+                    None => {
+                        error!("missing pending connection: {}", app_name);
+                        return None;
+                    }
+                };
+                established_connections.push((connection, fd));
+                if !pending_connections.is_empty() {
+                    // Wait for the remaining connections before continuing.
+                    return None;
+                }
+                take(established_connections)
+            }
+            InstanceState::Running => {
+                error!("app in an unexpected state: {}", app_name);
+                return None;
+            }
+        };
+
         let state = self.state.clone();
         // Only borrow once.
         let mut trichechus_state = self.state.borrow_mut();
 
         let mut mutators: Vec<Box<dyn Mutator>> = Vec::new();
         if app.app_info.app_name == "shell" {
-            match setup_pty(&mut connection) {
+            match setup_pty(&mut established_connections) {
                 Ok(m) => mutators.extend(m),
                 Err(err) => {
                     error!("failed to set up pty: {}", err);
@@ -487,14 +638,16 @@ impl DugongConnectionHandler {
                 }
             }
         }
+        info!("starting instance of '{}'", app_name);
 
         let (add_event, log_forwarder): (Box<dyn Mutator>, Option<Box<dyn Mutator>>) =
-            match spawn_tee_app(&trichechus_state, app, connection) {
-                Ok((pid, app, transport, log_forwarder)) => {
-                    let tee_app = Rc::new(RefCell::new(app));
-                    trichechus_state.running_apps.insert(pid, tee_app.clone());
-                    let storage_server: Box<dyn TeeApiServer> =
-                        Box::new(TeeAppHandler { state, tee_app });
+            match spawn_tee_app(&trichechus_state, app, established_connections) {
+                Ok((pid, transport, log_forwarder)) => {
+                    trichechus_state.running_apps.insert(pid, app_ref.clone());
+                    let storage_server: Box<dyn TeeApiServer> = Box::new(TeeAppHandler {
+                        state,
+                        tee_app: app_ref.clone(),
+                    });
                     (
                         RpcDispatcher::new_as_boxed_mutator(storage_server, transport)?,
                         log_forwarder,
@@ -505,6 +658,7 @@ impl DugongConnectionHandler {
                     return None;
                 }
             };
+        app.state = InstanceState::Running;
 
         if let Some(m) = log_forwarder {
             mutators.push(m);
@@ -527,7 +681,10 @@ impl ConnectionHandler for DugongConnectionHandler {
         // application.
         let reservation = self.state.borrow_mut().pending_apps.remove(&connection.id);
         if let Some(app) = reservation {
-            info!("starting instance of '{}'", &app.app_info.app_name);
+            info!(
+                "associating connection with '{}'",
+                &app.borrow().app_info.app_name
+            );
             self.connect_tee_app(app, connection)
         } else {
             // Check if it is a control connection.
@@ -631,11 +788,12 @@ fn load_app(state: &TrichechusState, app_id: &str, elf: &[u8]) -> StdResult<(), 
 
 fn start_session(
     state: &mut TrichechusState,
-    key: TransportType,
+    connections: Vec<TransportType>,
     app_id: &str,
     args: Vec<String>,
-) -> StdResult<(), trichechus::Error> {
+) -> StdResult<u32, trichechus::Error> {
     let app_info = lookup_app_info(state, app_id)?.to_owned();
+    let fds: Vec<i32> = app_info.channel_config.deref().clone();
 
     if app_info.devmode_only && !is_dev_mode().unwrap_or(false) {
         return Err(trichechus::Error::RequiresDevmode);
@@ -677,40 +835,76 @@ fn start_session(
         }
     }
 
-    state.pending_apps.insert(
-        key,
-        TeeApp {
-            sandbox,
-            app_info,
-            args,
+    let app = Rc::new(RefCell::new(TeeAppInstance {
+        sandbox,
+        app_info,
+        args,
+        state: InstanceState::Pending {
+            pending_connections: connections
+                .iter()
+                .zip(fds.iter())
+                .map(|t| (t.0.to_owned(), t.1.to_owned()))
+                .collect(),
+            established_connections: Vec::new(),
+            expiration: Instant::now() + APP_START_TIMEOUT,
         },
-    );
-    Ok(())
+    }));
+    for key in connections {
+        state.pending_apps.insert(key, app.clone());
+    }
+    Ok(fds.len() as u32)
 }
 
 fn spawn_tee_app(
     state: &TrichechusState,
-    mut app: TeeApp,
-    transport: Transport,
-) -> Result<(Pid, TeeApp, Transport, Option<Box<dyn Mutator>>)> {
+    app: &mut TeeAppInstance,
+    transports: Vec<(Transport, i32)>,
+) -> Result<(Pid, Transport, Option<Box<dyn Mutator>>)> {
     let (trichechus_transport, tee_transport) =
         create_transport_from_pipes().context("failed create transport")?;
 
+    let mut has_stderr = false;
     let mut keep_fds: Vec<(RawFd, RawFd)> = vec![
-        (transport.r.as_raw_fd(), CROS_CONNECTION_R_FD),
-        (transport.w.as_raw_fd(), CROS_CONNECTION_W_FD),
         (tee_transport.r.as_raw_fd(), DEFAULT_CONNECTION_R_FD),
         (tee_transport.w.as_raw_fd(), DEFAULT_CONNECTION_W_FD),
     ];
+    let mut stdout = None;
+    keep_fds.extend(transports.iter().map(|t| {
+        if t.1 == CROS_CONNECTION_W_FD {
+            stdout = Some(t.0.as_raw_fd());
+            // Handle the DupStdio case where the transport for stdin is split in two.
+            (t.0.w.as_raw_fd(), CROS_CONNECTION_W_FD)
+        } else if t.1 == CROS_CONNECTION_ERR_FD {
+            has_stderr = true;
+            (t.0.w.as_raw_fd(), CROS_CONNECTION_ERR_FD)
+        } else {
+            (t.0.as_raw_fd(), t.1)
+        }
+    }));
 
     let mut mutator: Option<Box<dyn Mutator>> = None;
     let mut stderr_w: Option<File> = None;
-    match app.app_info.stderr_behavior {
+    let mut stderr_behavior = app.app_info.stderr_behavior.clone();
+
+    // Convert StdErrBehavior::Default to the appropriate replacement.
+    if stderr_behavior == StdErrBehavior::Default {
+        stderr_behavior = if has_stderr || !is_dev_mode().unwrap_or(false) {
+            StdErrBehavior::Drop
+        } else {
+            StdErrBehavior::Syslog
+        };
+    }
+
+    match stderr_behavior {
         StdErrBehavior::Drop => {
             // Minijail binds stdio to /dev/null if they aren't specified.
         }
         StdErrBehavior::MergeWithStdout => {
-            keep_fds.push((transport.w.as_raw_fd(), CROS_CONNECTION_ERR_FD));
+            if let Some(w) = stdout {
+                keep_fds.push((w, CROS_CONNECTION_ERR_FD));
+            } else {
+                error!("No stdout found to merge: {}", &app.app_info.app_name);
+            }
         }
         StdErrBehavior::Syslog => {
             let (r, w) = pipe(true).context("Failed to create stderr pipe.")?;
@@ -723,6 +917,9 @@ fn spawn_tee_app(
             // enough to pass it to the child process. It is explicitly dropped after it is no
             // longer needed.
             stderr_w = Some(w);
+        }
+        StdErrBehavior::Default => {
+            unreachable!("Default should have been replaced above.")
         }
     }
 
@@ -772,7 +969,7 @@ fn spawn_tee_app(
     // file which needs to live until it has been passed to the child process.
     drop(stderr_w);
 
-    Ok((pid, app, trichechus_transport, mutator))
+    Ok((pid, trichechus_transport, mutator))
 }
 
 fn system_event(event: SystemEvent) -> StdResult<(), String> {
@@ -990,11 +1187,15 @@ fn main() -> Result<()> {
     } else {
         info!("waiting for connection");
     }
+    let mut next_expiration = None;
     while !ctx.is_empty() {
         if let Err(e) = ctx.run_once() {
             error!("{}", e);
         };
         handle_closed_child_processes(state.deref());
+        if next_expiration.map(|e| e < Instant::now()).unwrap_or(true) {
+            next_expiration = state.borrow_mut().cleanup_expired();
+        }
     }
 
     Ok(())

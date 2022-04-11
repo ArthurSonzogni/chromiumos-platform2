@@ -37,7 +37,7 @@ use libsirenia::app_info::AppManifest;
 use libsirenia::build_info::BUILD_TIMESTAMP;
 use libsirenia::cli::trichechus::initialize_common_arguments;
 use libsirenia::communication::trichechus;
-use libsirenia::communication::trichechus::AppInfo;
+use libsirenia::communication::trichechus::start_application_helper;
 use libsirenia::communication::trichechus::Trichechus;
 use libsirenia::communication::trichechus::TrichechusClient;
 use libsirenia::rpc;
@@ -104,11 +104,11 @@ impl OrgChromiumManaTEEInterface for DugongState {
         &mut self,
         app_id: String,
         args: Vec<String>,
-    ) -> StdResult<(i32, OwnedFd, OwnedFd), MethodErr> {
+    ) -> StdResult<(i32, Vec<OwnedFd>), MethodErr> {
         info!("Got request to start up: {}", &app_id);
         let fds = request_start_tee_app(self, &app_id, args);
         match fds {
-            Ok(fds) => Ok((0, fds.0, fds.1)),
+            Ok(fds) => Ok((0, fds)),
             Err(e) => Err(MethodErr::failed(&e)),
         }
     }
@@ -161,35 +161,43 @@ fn request_start_tee_app(
     state: &DugongState,
     app_id: &str,
     args: Vec<String>,
-) -> Result<(OwnedFd, OwnedFd)> {
-    let mut transport = state
-        .transport_type()
-        .try_into_client(None)
-        .context("failed to get client for transport")?;
-    let addr = transport.bind().context("failed to bind to socket")?;
-    let app_info = AppInfo {
-        app_id: String::from(app_id),
-        port_number: addr.get_port().context("failed to get port")?,
-    };
-    info!("Requesting start {:?}", &app_info);
-    let mut trichechus_client = state.trichechus_client().lock().unwrap();
-    if let Err(err) = trichechus_client.start_session(app_info.clone(), args.clone()) {
-        match err.downcast() {
-            Ok(trichechus::Error::AppNotLoaded) => {
-                load_tee_app(&mut trichechus_client, state, app_id)?;
-                trichechus_client
-                    .start_session(app_info, args)
-                    .context(RPC_FAILURE_CONTEXT)?;
+) -> Result<Vec<OwnedFd>> {
+    let supported_apps = state.supported_apps().lock().unwrap();
+    let app = supported_apps
+        .get_app_manifest_entry(app_id)
+        .with_context(|| format!("app '{}' is not supported", app_id))?;
+    let num_channels = app.num_channels();
+    let mut trichechus_client_guard = state.trichechus_client().lock().unwrap();
+    let trichechus_client = trichechus_client_guard.deref_mut();
+
+    let transports = start_application_helper(
+        trichechus_client,
+        state.transport_type(),
+        app_id,
+        args,
+        num_channels,
+        |trichechus_client, app_info, args, err| {
+            match err {
+                trichechus::Error::AppNotLoaded => {
+                    load_tee_app(trichechus_client, state, app_id)?;
+                    trichechus_client
+                        .start_session(app_info.clone(), args.to_vec())
+                        .context(RPC_FAILURE_CONTEXT)?;
+                }
+                _ => Err(err).context(RPC_FAILURE_CONTEXT)?,
             }
-            Ok(err) => Err(err).context(RPC_FAILURE_CONTEXT)?,
-            Err(err) => Err(err).context(RPC_FAILURE_CONTEXT)?,
-        }
-    }
-    let Transport { r, w, id: _ } = transport.connect().context("failed to connect to socket")?;
-    // This is safe because into_raw_fd transfers the ownership to OwnedFd.
-    Ok((unsafe { OwnedFd::new(r.into_raw_fd()) }, unsafe {
-        OwnedFd::new(w.into_raw_fd())
-    }))
+            Ok(())
+        },
+    )?;
+
+    Ok(transports
+        .into_iter()
+        .map(|transport| {
+            let Transport { r, w: _, id: _ } = transport;
+            // This is safe because into_raw_fd transfers the ownership to OwnedFd.
+            unsafe { OwnedFd::new(r.into_raw_fd()) }
+        })
+        .collect())
 }
 
 fn handle_manatee_logs(dugong_state: &DugongState) -> Result<()> {
@@ -243,7 +251,7 @@ fn register_dbus_interface_for_app(
             b.method(
                 "StartInstance",
                 ("args",),
-                ("error_code", "fd_in", "fd_out"),
+                ("error_code", "fd"),
                 |_, t: &mut (DugongState, String), args: (Vec<String>,)| {
                     t.0.start_teeapplication(t.1.clone(), args.0)
                 },

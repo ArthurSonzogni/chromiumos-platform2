@@ -13,6 +13,7 @@ use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Read;
 use std::mem::replace;
+use std::ops::DerefMut;
 use std::os::unix::io::AsRawFd;
 use std::os::unix::io::FromRawFd;
 use std::path::Path;
@@ -47,7 +48,7 @@ use libsirenia::cli::VerbosityOption;
 use libsirenia::cli::DEFAULT_TRANSPORT_TYPE_LONG_NAME;
 use libsirenia::cli::DEFAULT_TRANSPORT_TYPE_SHORT_NAME;
 use libsirenia::communication::trichechus;
-use libsirenia::communication::trichechus::AppInfo;
+use libsirenia::communication::trichechus::start_application_helper;
 use libsirenia::communication::trichechus::Trichechus;
 use libsirenia::communication::trichechus::TrichechusClient;
 use libsirenia::linux::events::CopyFdEventSource;
@@ -129,36 +130,39 @@ impl Passthrough {
         &self,
         app_id: &str,
         args: Vec<&str>,
-    ) -> Result<(i32, OwnedFd, OwnedFd)> {
-        info!("Setting up app vsock.");
-        let mut app_transport = self
-            .uri
-            .try_into_client(None)
-            .context("failed to get client for transport")?;
-        let addr = app_transport.bind().context("failed to bind to socket")?;
-        let app_info = AppInfo {
-            app_id: app_id.to_string(),
-            port_number: addr.get_port().context("failed to get port")?,
-        };
+    ) -> Result<(i32, Vec<OwnedFd>)> {
+        let mut client_guard = self.client.lock().unwrap();
+        let client = client_guard.deref_mut();
+
+        let num_channels = client
+            .get_apps()
+            .context("failed to get supported apps")?
+            .get_app_manifest_entry(app_id)
+            .with_context(|| format!("app '{}' not supported", app_id))?
+            .num_channels();
 
         info!("Starting rpc.");
-        self.client
-            .lock()
-            .unwrap()
-            .start_session(app_info, args.iter().map(|s| s.to_string()).collect())
-            .context("start_session rpc failed")?;
-
-        info!("Starting TEE application: {}", app_id);
-        let Transport { r, w, id: _ } = app_transport
-            .connect()
-            .context("failed to connect to socket")?;
+        let transports = start_application_helper(
+            client,
+            &self.uri,
+            app_id,
+            args.iter().map(|s| s.to_string()).collect(),
+            num_channels,
+            |_client, _app_info, _args, err| Err(err).context("start_session rpc failed"),
+        )?;
 
         info!("Forwarding stdio.");
         // Safe because ownership of the file descriptors is transferred.
         Ok((
             0, /* error_code */
-            unsafe { OwnedFd::new(r.into_raw_fd()) },
-            unsafe { OwnedFd::new(w.into_raw_fd()) },
+            transports
+                .into_iter()
+                .map(|transport| {
+                    let Transport { r, w: _, id: _ } = transport;
+                    // This is safe because into_raw_fd transfers the ownership to OwnedFd.
+                    unsafe { OwnedFd::new(r.into_raw_fd()) }
+                })
+                .collect(),
         ))
     }
 }
@@ -168,7 +172,7 @@ impl OrgChromiumManaTEEInterface for Passthrough {
         &self,
         app_id: &str,
         args: Vec<&str>,
-    ) -> std::result::Result<(i32, OwnedFd, OwnedFd), dbus::Error> {
+    ) -> std::result::Result<(i32, Vec<OwnedFd>), dbus::Error> {
         self.start_teeapplication_impl(app_id, args)
             .map_err(to_dbus_error)
     }
@@ -202,16 +206,25 @@ fn connect_to_dugong<'a>(c: &'a Connection) -> Result<Proxy<'a, &Connection>> {
     ))
 }
 
-fn handle_app_fds(input: File, output: File) -> Result<()> {
+fn handle_app_fds(input: File, output: File, err: Option<File>) -> Result<()> {
     let mut ctx = EventMultiplexer::new().unwrap();
 
-    let copy_in = CopyFdEventSource::new(Box::new(input), Box::new(dup::<File>(1)?))?;
+    // Copy stdin to the input socket.
+    let copy_in = CopyFdEventSource::new(Box::new(dup::<File>(0)?), Box::new(input))?;
     ctx.add_event(Box::new(copy_in.0))?;
     ctx.add_event(Box::new(copy_in.1))?;
 
-    let copy_out = CopyFdEventSource::new(Box::new(dup::<File>(0)?), Box::new(output))?;
+    // Copy the output socket to stdout.
+    let copy_out = CopyFdEventSource::new(Box::new(output), Box::new(dup::<File>(1)?))?;
     ctx.add_event(Box::new(copy_out.0))?;
     ctx.add_event(Box::new(copy_out.1))?;
+
+    if let Some(err) = err {
+        // Copy the err socket to stderr.
+        let copy_err = CopyFdEventSource::new(Box::new(err), Box::new(dup::<File>(2)?))?;
+        ctx.add_event(Box::new(copy_err.0))?;
+        ctx.add_event(Box::new(copy_err.1))?;
+    }
 
     let start = ctx.len();
     while ctx.len() == start {
@@ -226,21 +239,40 @@ fn start_manatee_app(
     args: Vec<&str>,
 ) -> Result<()> {
     info!("Starting TEE application: {}", app_id);
-    let (fd_in, fd_out) = match api
+    let fds = match api
         .start_teeapplication(app_id, args)
         .context("failed to call start_teeapplication D-Bus method")?
     {
-        (0, fd_in, fd_out) => (fd_in, fd_out),
-        (code, _, _) => bail!("start app failed with code: {}", code),
+        (0, fds) => fds,
+        (code, _) => bail!("start app failed with code: {}", code),
+    };
+
+    let mut fds = fds.into_iter();
+    let file_in = match fds.next() {
+        Some(fd) => {
+            // Safe because ownership of the file descriptor is transferred.
+            unsafe { File::from_raw_fd(fd.into_fd()) }
+        }
+        None => {
+            return Ok(());
+        }
     };
     info!("Forwarding stdio.");
 
-    // Safe because ownership of the file descriptor is transferred.
-    let file_in = unsafe { File::from_raw_fd(fd_in.into_fd()) };
-    // Safe because ownership of the file descriptor is transferred.
-    let file_out = unsafe { File::from_raw_fd(fd_out.into_fd()) };
+    let file_out = match fds.next() {
+        Some(fd) => {
+            // Safe because ownership of the file descriptor is transferred.
+            unsafe { File::from_raw_fd(fd.into_fd()) }
+        }
+        None => dup(file_in.as_raw_fd())?,
+    };
 
-    handle_app_fds(file_in, file_out)
+    let file_err = fds.next().map(|fd| {
+        // Safe because ownership of the file descriptor is transferred.
+        unsafe { File::from_raw_fd(fd.into_fd()) }
+    });
+
+    handle_app_fds(file_in, file_out, file_err)
 }
 
 fn system_event(trichechus_uri: Option<TransportType>, event: &str) -> Result<()> {
