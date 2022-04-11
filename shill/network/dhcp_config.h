@@ -87,6 +87,8 @@ class DHCPConfig : public IPConfig {
     minimum_mtu_ = minimum_mtu;
   }
 
+  void set_root_for_testing(base::FilePath path) { root_ = path; }
+
  protected:
   // On we get a new IP config properties via DHCP. The second parameter
   // indicates whether this is an authoritative confirmation.

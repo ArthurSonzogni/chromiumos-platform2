@@ -7,34 +7,22 @@
 #include <memory>
 #include <string>
 
-#include <base/bind.h>
-#include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
-#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/mock_log.h"
-#include "shill/mock_process_manager.h"
 #include "shill/network/mock_dhcp_provider.h"
-#include "shill/network/mock_dhcp_proxy.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store_test.h"
 #include "shill/technology.h"
 #include "shill/testing.h"
 
 using testing::_;
-using testing::DoAll;
-using testing::InvokeWithoutArgs;
 using testing::Mock;
-using testing::Return;
-using testing::SetArgPointee;
 
 namespace shill {
 
 namespace {
 const char kDeviceName[] = "eth0";
-const char kHostName[] = "hostname";
 const char kLeaseFileSuffix[] = "leasefilesuffix";
 const bool kArpGateway = true;
 }  // namespace
@@ -44,92 +32,25 @@ using DHCPv4ConfigRefPtr = scoped_refptr<DHCPv4Config>;
 class DHCPv4ConfigTest : public PropertyStoreTest {
  public:
   DHCPv4ConfigTest()
-      : proxy_(new MockDHCPProxy()),
-        config_(new DHCPv4Config(control_interface(),
+      : config_(new DHCPv4Config(control_interface(),
                                  dispatcher(),
                                  &provider_,
                                  kDeviceName,
                                  kLeaseFileSuffix,
                                  kArpGateway,
-                                 hostname_,
+                                 "",
                                  Technology::kUnknown,
                                  metrics())) {}
 
-  void SetUp() override { config_->process_manager_ = &process_manager_; }
-
-  bool StartInstance(DHCPv4ConfigRefPtr config) { return config->Start(); }
-
-  void StopInstance() { config_->Stop("In test"); }
-
-  DHCPv4ConfigRefPtr CreateRunningConfig(const std::string& hostname,
-                                         const std::string& lease_suffix,
-                                         bool arp_gateway);
-  void StopRunningConfigAndExpect(DHCPv4ConfigRefPtr config,
-                                  bool lease_file_exists);
-
  protected:
-  static const int kPID;
-
-  base::FilePath lease_file_;
-  base::FilePath pid_file_;
-  base::ScopedTempDir temp_dir_;
-  std::unique_ptr<MockDHCPProxy> proxy_;
-  MockProcessManager process_manager_;
   MockDHCPProvider provider_;
-  std::string hostname_;
   DHCPv4ConfigRefPtr config_;
 };
 
-const int DHCPv4ConfigTest::kPID = 123456;
-
-DHCPv4ConfigRefPtr DHCPv4ConfigTest::CreateRunningConfig(
-    const std::string& hostname,
-    const std::string& lease_suffix,
-    bool arp_gateway) {
-  DHCPv4ConfigRefPtr config(new DHCPv4Config(
-      control_interface(), dispatcher(), &provider_, kDeviceName, lease_suffix,
-      arp_gateway, hostname, Technology::kUnknown, metrics()));
-  config->process_manager_ = &process_manager_;
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
-      .WillOnce(Return(kPID));
-  EXPECT_CALL(provider_, BindPID(kPID, IsRefPtrTo(config)));
-  EXPECT_TRUE(config->Start());
-  EXPECT_EQ(kPID, config->pid_);
-  EXPECT_EQ(config->hostname_, hostname);
-
-  EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
-  config->root_ = temp_dir_.GetPath();
-  base::FilePath varrun = temp_dir_.GetPath().Append("var/run/dhcpcd");
-  EXPECT_TRUE(base::CreateDirectory(varrun));
-  pid_file_ = varrun.Append(base::StringPrintf("dhcpcd-%s-4.pid", kDeviceName));
-  base::FilePath varlib = temp_dir_.GetPath().Append("var/lib/dhcpcd");
-  EXPECT_TRUE(base::CreateDirectory(varlib));
-  lease_file_ =
-      varlib.Append(base::StringPrintf("dhcpcd-%s.lease", kDeviceName));
-  EXPECT_EQ(0, base::WriteFile(pid_file_, "", 0));
-  EXPECT_EQ(0, base::WriteFile(lease_file_, "", 0));
-  EXPECT_TRUE(base::PathExists(pid_file_));
-  EXPECT_TRUE(base::PathExists(lease_file_));
-
-  return config;
-}
-
-void DHCPv4ConfigTest::StopRunningConfigAndExpect(DHCPv4ConfigRefPtr config,
-                                                  bool lease_file_exists) {
-  ScopedMockLog log;
-  // We use a non-zero exit status so that we get the log message.
-  EXPECT_CALL(log, Log(_, _, ::testing::EndsWith("status 10")));
-  EXPECT_CALL(provider_, UnbindPID(kPID));
-  config->OnProcessExited(10);
-
-  EXPECT_FALSE(base::PathExists(pid_file_));
-  EXPECT_EQ(lease_file_exists, base::PathExists(lease_file_));
-}
-
 TEST_F(DHCPv4ConfigTest, GetIPv4AddressString) {
-  EXPECT_EQ("255.255.255.255", config_->GetIPv4AddressString(0xffffffff));
-  EXPECT_EQ("0.0.0.0", config_->GetIPv4AddressString(0));
-  EXPECT_EQ("1.2.3.4", config_->GetIPv4AddressString(0x04030201));
+  EXPECT_EQ("255.255.255.255", DHCPv4Config::GetIPv4AddressString(0xffffffff));
+  EXPECT_EQ("0.0.0.0", DHCPv4Config::GetIPv4AddressString(0));
+  EXPECT_EQ("1.2.3.4", DHCPv4Config::GetIPv4AddressString(0x04030201));
 }
 
 TEST_F(DHCPv4ConfigTest, ParseClasslessStaticRoutes) {
@@ -240,7 +161,6 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   IPConfig::Properties properties;
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
-  Mock::VerifyAndClearExpectations(metrics());
 
   // With a minimum MTU set, values below the minimum should be ignored.
   config_->set_minimum_mtu(1500);
@@ -248,7 +168,6 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 1499);
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(IPConfig::kUndefinedMTU, properties.mtu);
-  Mock::VerifyAndClearExpectations(metrics());
 
   // A value (other than 576) should be accepted if it is >= mimimum_mtu.
   config_->set_minimum_mtu(577);
@@ -256,18 +175,6 @@ TEST_F(DHCPv4ConfigTest, ParseConfigurationWithMinimumMTU) {
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 577);
   ASSERT_TRUE(config_->ParseConfiguration(conf, &properties));
   EXPECT_EQ(577, properties.mtu);
-}
-
-TEST_F(DHCPv4ConfigTest, StartSuccessEphemeral) {
-  DHCPv4ConfigRefPtr config =
-      CreateRunningConfig(kHostName, kDeviceName, kArpGateway);
-  StopRunningConfigAndExpect(config, false);
-}
-
-TEST_F(DHCPv4ConfigTest, StartSuccessPersistent) {
-  DHCPv4ConfigRefPtr config =
-      CreateRunningConfig(kHostName, kLeaseFileSuffix, kArpGateway);
-  StopRunningConfigAndExpect(config, true);
 }
 
 }  // namespace shill
