@@ -22,7 +22,7 @@ import os
 import pathlib
 import time
 from math import sqrt
-from typing import List
+from typing import List, Optional
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -71,7 +71,7 @@ USE_SIMULATED_PROB = 1/155000.0
 # USE_SIMULATED_PROB = 1/175000.0
 # USE_SIMULATED_PROB = 1/200000.0
 
-exp: Experiment = None
+exp: Optional[Experiment] = None
 
 if USE_SIMULATED_DATA:
     # Load simulated data

@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from collection import Collection
@@ -74,12 +75,13 @@ class Experiment:
                            TableCol.Verify_Sample.value,
                            TableCol.Decision.value}
 
+    @staticmethod
     def _false_table_query(false_table: pd.DataFrame,
-                           enroll_user_id: int = None,
-                           enroll_finger_id: int = None,
-                           verify_user_id: int = None,
-                           verify_finger_id: int = None,
-                           verify_sample_index: int = None) -> pd.DataFrame:
+                           enroll_user_id: Optional[int] = None,
+                           enroll_finger_id: Optional[int] = None,
+                           verify_user_id: Optional[int] = None,
+                           verify_finger_id: Optional[int] = None,
+                           verify_sample_index: Optional[int] = None) -> pd.DataFrame:
         query_parts = []
 
         for arg, col in [
@@ -96,12 +98,13 @@ class Experiment:
 
         return false_table.query(query_str) if query_str else false_table
 
+    @staticmethod
     def _false_table_query2(false_table: pd.DataFrame,
-                            enroll_user_id: int = None,
-                            enroll_finger_id: int = None,
-                            verify_user_id: int = None,
-                            verify_finger_id: int = None,
-                            verify_sample_index: int = None) -> pd.DataFrame:
+                            enroll_user_id: Optional[int] = None,
+                            enroll_finger_id: Optional[int] = None,
+                            verify_user_id: Optional[int] = None,
+                            verify_finger_id: Optional[int] = None,
+                            verify_sample_index: Optional[int] = None) -> pd.DataFrame:
 
         query_cols = []
         query_vals = ()
@@ -123,6 +126,7 @@ class Experiment:
 
         return false_table
 
+    @staticmethod
     def _add_groups_to_table(tbl: pd.DataFrame,
                              user_groups: pd.DataFrame) -> pd.DataFrame:
         """Adds the appropriate group columns for any user columns in `tbl`.
@@ -163,6 +167,7 @@ class Experiment:
 
         return tbl
 
+    @staticmethod
     def _read_far_decision_file(csv_file_path: pathlib.Path) -> pd.DataFrame:
         far_decisions = pd.read_csv(csv_file_path)
         # Ensure that the required columns exist.
@@ -218,7 +223,7 @@ class Experiment:
     def far_decisions(self) -> pd.DataFrame:
         return self._tbl_far_decisions
 
-    def unique_list(self, column: TableCol) -> np.array:
+    def unique_list(self, column: TableCol) -> npt.NDArray:
         """Return a unique and sorted list of items for the given column.
 
         These items are discovered from the FAR decision table.
@@ -227,7 +232,7 @@ class Experiment:
 
         return np.sort(self._tbl_far_decisions[column.value].unique())
 
-    def user_list(self) -> np.array:
+    def user_list(self) -> npt.NDArray:
         """Return a unique set of sorted User IDs from the verification set.
 
         These are indexable from 0, since they are in a numpy array.
@@ -235,7 +240,7 @@ class Experiment:
 
         return self.unique_list(Experiment.TableCol.Verify_User)
 
-    def finger_list(self) -> np.array:
+    def finger_list(self) -> npt.NDArray:
         """Return a unique set of sorted Finger IDs from the verification sets.
 
         These are indexable from 0, since they are in a numpy array.
@@ -243,7 +248,7 @@ class Experiment:
 
         return self.unique_list(Experiment.TableCol.Verify_Finger)
 
-    def sample_list(self) -> np.array:
+    def sample_list(self) -> npt.NDArray:
         """Return a unique set of sorted Sample IDs from the verification sets.
 
         These are indexable from 0, since they are in a numpy array.
@@ -251,7 +256,7 @@ class Experiment:
 
         return self.unique_list(Experiment.TableCol.Verify_Sample)
 
-    def group_list(self) -> np.array:
+    def group_list(self) -> npt.NDArray:
         """Return a unique set of sorted Group IDs from the verification sets.
 
         Recall that these groups might have been added by this class itself.
@@ -262,11 +267,11 @@ class Experiment:
         return self.unique_list(Experiment.TableCol.Verify_Group)
 
     def fa_query(self,
-                 enroll_user_id: int = None,
-                 enroll_finger_id: int = None,
-                 verify_user_id: int = None,
-                 verify_finger_id: int = None,
-                 verify_sample_index: int = None) -> pd.DataFrame:
+                 enroll_user_id: Optional[int] = None,
+                 enroll_finger_id: Optional[int] = None,
+                 verify_user_id: Optional[int] = None,
+                 verify_finger_id: Optional[int] = None,
+                 verify_sample_index: Optional[int] = None) -> pd.DataFrame:
         return Experiment._false_table_query(false_table=self.fa_table(),
                                              enroll_user_id=enroll_user_id,
                                              enroll_finger_id=enroll_finger_id,
@@ -275,11 +280,11 @@ class Experiment:
                                              verify_sample_index=verify_sample_index)
 
     def fa_query2(self,
-                  enroll_user_id: int = None,
-                  enroll_finger_id: int = None,
-                  verify_user_id: int = None,
-                  verify_finger_id: int = None,
-                  verify_sample_index: int = None) -> pd.DataFrame:
+                  enroll_user_id: Optional[int] = None,
+                  enroll_finger_id: Optional[int] = None,
+                  verify_user_id: Optional[int] = None,
+                  verify_finger_id: Optional[int] = None,
+                  verify_sample_index: Optional[int] = None) -> pd.DataFrame:
         return Experiment._false_table_query2(false_table=self.fa_table(),
                                               enroll_user_id=enroll_user_id,
                                               enroll_finger_id=enroll_finger_id,

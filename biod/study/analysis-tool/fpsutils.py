@@ -7,10 +7,12 @@
 """Utilities needed for Fingerprint Study Analysis."""
 
 import timeit
-from typing import List, Optional, Tuple, Union
+from enum import Enum
+from typing import Iterable, List, Optional, Set, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from IPython.display import Markdown, display
 from scipy.stats import norm
@@ -24,7 +26,7 @@ class DataFrameSetAccess:
     tables, this order of magnitude difference is unacceptable.
     """
 
-    def __init__(self, table: pd.DataFrame, cols: List[str] = None):
+    def __init__(self, table: pd.DataFrame, cols: Optional[List[str]] = None):
 
         if not cols:
             cols = list(table.columns)
@@ -57,7 +59,7 @@ class DataFrameCountTrieAccess:
     tens of nanoseconds slower.
     """
 
-    def __init__(self, table: pd.DataFrame, cols: List[str] = None):
+    def __init__(self, table: pd.DataFrame, cols: Optional[List[str]] = None):
         """This is an expensive caching operation."""
 
         if not cols:
@@ -83,11 +85,11 @@ class DataFrameCountTrieAccess:
 
 def boot_sample(
     # This is the fastest input to rng.choice, other than a scalar.
-    a: np.array,
+    a: npt.NDArray,
     *,
     n: Optional[int] = None,
     rng: np.random.Generator = np.random.default_rng()
-) -> np.ndarray:
+) -> npt.NDArray:
     """Sample with replacement the same number of elements given.
 
     If `n` is given, do `n` number of repeat bootstrap samples
@@ -111,7 +113,7 @@ def boot_sample_range(
     range: int,
     n: Optional[int] = None,
     rng: np.random.Generator = np.random.default_rng()
-) -> np.ndarray:
+) -> npt.NDArray[np.int64]:
     """Sample with replacement `range` elements from `0` to `range`.
 
     This is slightly faster than `fpsutils.boot_sample`.
@@ -119,12 +121,12 @@ def boot_sample_range(
     Equivalent to `rng.choice(range, size=range, replace=True)`.
     """
 
-    return rng.choice(range, range, replace=True)
+    return rng.choice(range, size=range, replace=True)
 
 
 def plot_pd_hist_discrete(tbl: pd.DataFrame,
-                          title_prefix: str = None,
-                          figsize: tuple = None):
+                          title_prefix: Optional[str] = None,
+                          figsize: Optional[tuple] = None):
     """Plot the histograms of a DataFrame columns.
 
     This is different than `pd.DataFrame.hist`, because it ensures that all
@@ -150,7 +152,7 @@ def plot_pd_hist_discrete(tbl: pd.DataFrame,
     plt.show()
 
 
-def discrete_hist(data) -> Tuple[np.array, np.array]:
+def discrete_hist(data) -> Tuple[npt.NDArray, npt.NDArray]:
     """Return a tuple of unique items and their counts.
 
     Returns:
