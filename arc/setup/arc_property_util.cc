@@ -559,15 +559,21 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
   if (re2::RE2::PartialMatch(
           model_field, R"(Intel\(R\) (?:Celeron\(R\)|Core\(TM\)) ([^ ]+) CPU)",
           &model) ||
+
       re2::RE2::PartialMatch(model_field,
                              R"(Intel\(R\) Celeron\(R\)(?: CPU)? +([^ ]+) +@)",
                              &model) ||
+
       // This one is tricky because the trailing "@ <clock frequency>" is
       // optional.
       re2::RE2::PartialMatch(
           model_field,
           R"(Intel\(R\) Pentium\(R\) (?:Gold|Silver) ([^ ]+)(?: @|$))",
-          &model)) {
+          &model) ||
+
+      // For i5-1245U, the "C" in Core is missing.
+      re2::RE2::PartialMatch(
+          model_field, R"(12th Gen Intel\(R\) C?ore\(TM\) ([^ ]+)$)", &model)) {
     manufacturer = "Intel";
   } else if (re2::RE2::PartialMatch(
                  model_field,

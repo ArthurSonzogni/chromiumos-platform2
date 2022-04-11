@@ -730,6 +730,20 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=Intel\n"
          "ro.soc.model=N3060\n"},
 
+        // Many Brya boards use 12th-gen Intels, which have a new model name
+        // format.
+        {"model name\t: 12th Gen Intel(R) Core(TM) i3-1215U\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=i3-1215U\n"},
+        {"model name\t: 12th Gen Intel(R) Core(TM) i5-1250P\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=i5-1250P\n"},
+
+        // For a Brya (redrix) board. Note missing C in "Core".
+        {"model name\t: 12th Gen Intel(R) ore(TM) i5-1245U\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=i5-1245U\n"},
+
         // For a Brya (primus) board.
         {"model name\t: Intel(R) Pentium(R) Gold 8505\n",
          "ro.soc.manufacturer=Intel\n"
@@ -773,7 +787,9 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
     std::string actual;
     AppendX86SocProperties(cpuinfo_path, &actual);
 
-    EXPECT_EQ(expected, actual);
+    // Without the trailing `<< actual`, EXPECT_EQ treats `actual` as binary
+    // and truncates it.
+    EXPECT_EQ(expected, actual) << actual;
   }
 }
 
