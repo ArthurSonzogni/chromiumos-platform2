@@ -5,6 +5,10 @@
 #ifndef ARC_SETUP_ANDROID_BINARY_XML_TOKENIZER_H_
 #define ARC_SETUP_ANDROID_BINARY_XML_TOKENIZER_H_
 
+#include <optional>
+#include <string>
+#include <vector>
+
 #include <base/component_export.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
@@ -22,11 +26,15 @@ class COMPONENT_EXPORT(LIBARC_SETUP) AndroidBinaryXmlTokenizer {
   enum class Token {
     kStartDocument = 0,
     kEndDocument = 1,
+    kStartTag = 2,
+    kEndTag = 3,
   };
 
   // Type constants are defined in Android's BinaryXmlSerializer.java.
   enum class Type {
     kNull = 1,
+    kString = 2,
+    kStringInterned = 3,
   };
 
   static const char kMagicNumber[4];
@@ -52,14 +60,32 @@ class COMPONENT_EXPORT(LIBARC_SETUP) AndroidBinaryXmlTokenizer {
   // The data type of the current token.
   Type type() const { return type_; }
 
+  // The depth of the current token.
+  int depth() const { return depth_; }
+
+  // The name of the current token.
+  const std::string& name() const { return name_; }
+
  private:
+  // Returns the current read position of the file.
+  int64_t GetPosition();
+
+  // Consumes the file contents and returns data.
+  std::optional<uint16_t> ConsumeUint16();
+  std::optional<std::string> ConsumeString();
+  std::optional<std::string> ConsumeInternedString();
+
   // The binary XML file being read.
   base::File file_;
+
+  std::vector<std::string> interned_strings_;
 
   bool is_eof_ = false;
 
   Token token_ = Token::kStartDocument;
   Type type_ = Type::kNull;
+  int depth_ = 0;
+  std::string name_;
 };
 
 }  // namespace arc

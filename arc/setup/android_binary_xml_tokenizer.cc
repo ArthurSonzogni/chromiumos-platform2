@@ -44,9 +44,12 @@ bool AndroidBinaryXmlTokenizer::Next() {
     is_eof_ = true;
     return false;
   } else if (result != sizeof(value)) {  // Failed to read.
-    LOG(ERROR) << "Failed to read the token.";
+    LOG(ERROR) << "Failed to read the token at " << GetPosition();
     return false;
   }
+
+  // Reset fields.
+  name_.clear();
 
   // The lower four bits indicate the token type.
   token_ = static_cast<Token>(value & 0x0f);
@@ -58,9 +61,79 @@ bool AndroidBinaryXmlTokenizer::Next() {
 
     case Token::kEndDocument:
       return true;
+
+    case Token::kStartTag: {
+      std::optional<std::string> name = ConsumeInternedString();
+      if (!name) {
+        LOG(ERROR) << "Failed to read the tag name at " << GetPosition();
+        return false;
+      }
+      name_ = *name;
+      ++depth_;
+      return true;
+    }
+    case Token::kEndTag: {
+      std::optional<std::string> name = ConsumeInternedString();
+      if (!name) {
+        LOG(ERROR) << "Failed to read the tag name at " << GetPosition();
+        return false;
+      }
+      name_ = *name;
+      --depth_;
+      return true;
+    }
   }
-  LOG(ERROR) << "Unexpected token " << static_cast<int>(token_);
+  LOG(ERROR) << "Unexpected token " << static_cast<int>(token_) << " at "
+             << GetPosition();
   return false;
+}
+
+int64_t AndroidBinaryXmlTokenizer::GetPosition() {
+  return file_.Seek(base::File::Whence::FROM_CURRENT, 0);
+}
+
+std::optional<uint16_t> AndroidBinaryXmlTokenizer::ConsumeUint16() {
+  uint16_t value = 0;
+  if (file_.ReadAtCurrentPos(reinterpret_cast<char*>(&value), sizeof(value)) !=
+      sizeof(value)) {
+    return {};
+  }
+  return be16toh(value);
+}
+
+std::optional<std::string> AndroidBinaryXmlTokenizer::ConsumeString() {
+  std::optional<uint16_t> length = ConsumeUint16();
+  if (!length) {
+    return {};
+  }
+  std::string data(*length, 0);
+  if (file_.ReadAtCurrentPos(data.data(), data.size()) != data.size()) {
+    return {};
+  }
+  return data;
+}
+
+std::optional<std::string> AndroidBinaryXmlTokenizer::ConsumeInternedString() {
+  // An interned string is a string which is represented by an index.
+  std::optional<uint16_t> index = ConsumeUint16();
+  if (!index) {
+    return {};
+  }
+  // index != 0xffff means this string was already interned.
+  if (*index != 0xffff) {
+    if (*index >= interned_strings_.size()) {
+      return {};
+    }
+    return interned_strings_[*index];
+  }
+  // index == 0xffff means this is the first appearance of the string.
+  std::optional<std::string> data = ConsumeString();
+  if (!data) {
+    return {};
+  }
+  // Intern the string.
+  interned_strings_.push_back(*data);
+  return data;
 }
 
 }  // namespace arc

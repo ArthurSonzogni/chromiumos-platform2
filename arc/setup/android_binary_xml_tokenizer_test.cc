@@ -4,6 +4,8 @@
 
 #include "arc/setup/android_binary_xml_tokenizer.h"
 
+#include <map>
+
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
@@ -47,12 +49,37 @@ class AndroidBinaryXmlTokenizerTest : public testing::Test {
     return WriteData(&buf, sizeof(buf));
   }
 
+  // Writes a uint16 to the test file.
+  bool WriteUint16(uint16_t value) {
+    const uint16_t buf = htobe16(value);
+    return WriteData(&buf, sizeof(buf));
+  }
+
+  // Writes a string to the test file.
+  bool WriteString(const std::string& value) {
+    return WriteUint16(value.size()) && WriteData(value.data(), value.size());
+  }
+
+  // Writes an interned string to the test file.
+  bool WriteInternedString(const std::string& value) {
+    auto it = interned_strings_.find(value);
+    if (it != interned_strings_.end()) {
+      return WriteUint16(it->second);
+    }
+    const size_t index = interned_strings_.size();
+    interned_strings_[value] = index;
+    return WriteUint16(0xffff) && WriteString(value);
+  }
+
  protected:
   base::ScopedTempDir temp_dir_;
 
   // Test file.
   base::FilePath test_file_path_;
   base::File file_;
+
+  // Map from interned string to index.
+  std::map<std::string, int> interned_strings_;
 };
 
 TEST_F(AndroidBinaryXmlTokenizerTest, Empty) {
@@ -77,6 +104,36 @@ TEST_F(AndroidBinaryXmlTokenizerTest, StartAndEndDocument) {
   EXPECT_EQ(tokenizer.token(), Token::kStartDocument);
   ASSERT_TRUE(tokenizer.Next());
   EXPECT_EQ(tokenizer.token(), Token::kEndDocument);
+  EXPECT_FALSE(tokenizer.Next());
+  EXPECT_TRUE(tokenizer.is_eof());
+}
+
+TEST_F(AndroidBinaryXmlTokenizerTest, StartAndEndTag) {
+  constexpr char kTagName[] = "foo";
+
+  // A start tag consists of a token and name as an interned string.
+  // This is <foo> in text XML.
+  ASSERT_TRUE(WriteToken(Token::kStartTag, Type::kStringInterned));
+  ASSERT_TRUE(WriteInternedString(kTagName));
+
+  // An end tag consists of a token and name as an interned string.
+  // This is </foo> in text XML.
+  ASSERT_TRUE(WriteToken(Token::kEndTag, Type::kStringInterned));
+  ASSERT_TRUE(WriteInternedString(kTagName));
+
+  AndroidBinaryXmlTokenizer tokenizer;
+  ASSERT_TRUE(tokenizer.Init(test_file_path_));
+
+  ASSERT_TRUE(tokenizer.Next());
+  EXPECT_EQ(tokenizer.token(), Token::kStartTag);
+  EXPECT_EQ(tokenizer.name(), kTagName);
+  EXPECT_EQ(tokenizer.depth(), 1);  // depth++ when entering a tag.
+
+  ASSERT_TRUE(tokenizer.Next());
+  EXPECT_EQ(tokenizer.token(), Token::kEndTag);
+  EXPECT_EQ(tokenizer.name(), kTagName);
+  EXPECT_EQ(tokenizer.depth(), 0);  // depth-- when exiting a tag.
+
   EXPECT_FALSE(tokenizer.Next());
   EXPECT_TRUE(tokenizer.is_eof());
 }
