@@ -37,31 +37,6 @@ static std::string ObjectID(const DHCPv4Config* d) {
 // static
 const char DHCPv4Config::kDHCPCDPathFormatPID[] =
     "var/run/dhcpcd/dhcpcd-%s-4.pid";
-const char DHCPv4Config::kConfigurationKeyBroadcastAddress[] =
-    "BroadcastAddress";
-const char DHCPv4Config::kConfigurationKeyClasslessStaticRoutes[] =
-    "ClasslessStaticRoutes";
-const char DHCPv4Config::kConfigurationKeyDNS[] = "DomainNameServers";
-const char DHCPv4Config::kConfigurationKeyDomainName[] = "DomainName";
-const char DHCPv4Config::kConfigurationKeyDomainSearch[] = "DomainSearch";
-const char DHCPv4Config::kConfigurationKeyHostname[] = "Hostname";
-const char DHCPv4Config::kConfigurationKeyIPAddress[] = "IPAddress";
-const char DHCPv4Config::kConfigurationKeyiSNSOptionData[] = "iSNSOptionData";
-const char DHCPv4Config::kConfigurationKeyLeaseTime[] = "DHCPLeaseTime";
-const char DHCPv4Config::kConfigurationKeyMTU[] = "InterfaceMTU";
-const char DHCPv4Config::kConfigurationKeyRouters[] = "Routers";
-const char DHCPv4Config::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
-const char DHCPv4Config::kConfigurationKeyVendorEncapsulatedOptions[] =
-    "VendorEncapsulatedOptions";
-const char DHCPv4Config::kConfigurationKeyWebProxyAutoDiscoveryUrl[] =
-    "WebProxyAutoDiscoveryUrl";
-const char DHCPv4Config::kReasonBound[] = "BOUND";
-const char DHCPv4Config::kReasonFail[] = "FAIL";
-const char DHCPv4Config::kReasonGatewayArp[] = "GATEWAY-ARP";
-const char DHCPv4Config::kReasonNak[] = "NAK";
-const char DHCPv4Config::kReasonRebind[] = "REBIND";
-const char DHCPv4Config::kReasonReboot[] = "REBOOT";
-const char DHCPv4Config::kReasonRenew[] = "RENEW";
 const char DHCPv4Config::kType[] = "dhcp";
 
 DHCPv4Config::DHCPv4Config(ControlInterface* control_interface,

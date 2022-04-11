@@ -131,7 +131,7 @@ class DHCPConfig : public IPConfig {
  private:
   friend class DHCPConfigTest;
   friend class DHCPv4ConfigTest;
-  FRIEND_TEST(DHCPConfigCallbackTest, NotifyFailure);
+  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalFail);
   FRIEND_TEST(DHCPConfigCallbackTest, ProcessAcquisitionTimeout);
   FRIEND_TEST(DHCPConfigCallbackTest, RequestIPTimeout);
   FRIEND_TEST(DHCPConfigCallbackTest, StartTimeout);

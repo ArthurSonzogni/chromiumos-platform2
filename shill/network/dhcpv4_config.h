@@ -23,6 +23,37 @@ class Metrics;
 // behalf, for purposes of administration or creating a dynamic DNS entry.
 class DHCPv4Config : public DHCPConfig {
  public:
+  // Constants used as keys in the configuration got from dhcpcd. Used only
+  // internally, make them public for unit tests.
+  static constexpr char kConfigurationKeyBroadcastAddress[] =
+      "BroadcastAddress";
+  static constexpr char kConfigurationKeyClasslessStaticRoutes[] =
+      "ClasslessStaticRoutes";
+  static constexpr char kConfigurationKeyDNS[] = "DomainNameServers";
+  static constexpr char kConfigurationKeyDomainName[] = "DomainName";
+  static constexpr char kConfigurationKeyDomainSearch[] = "DomainSearch";
+  static constexpr char kConfigurationKeyHostname[] = "Hostname";
+  static constexpr char kConfigurationKeyIPAddress[] = "IPAddress";
+  static constexpr char kConfigurationKeyiSNSOptionData[] = "iSNSOptionData";
+  static constexpr char kConfigurationKeyLeaseTime[] = "DHCPLeaseTime";
+  static constexpr char kConfigurationKeyMTU[] = "InterfaceMTU";
+  static constexpr char kConfigurationKeyRouters[] = "Routers";
+  static constexpr char kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
+  static constexpr char kConfigurationKeyVendorEncapsulatedOptions[] =
+      "VendorEncapsulatedOptions";
+  static constexpr char kConfigurationKeyWebProxyAutoDiscoveryUrl[] =
+      "WebProxyAutoDiscoveryUrl";
+
+  // Constants used as event type got from dhcpcd. Used only
+  // internally, make them public for unit tests.
+  static constexpr char kReasonBound[] = "BOUND";
+  static constexpr char kReasonFail[] = "FAIL";
+  static constexpr char kReasonGatewayArp[] = "GATEWAY-ARP";
+  static constexpr char kReasonNak[] = "NAK";
+  static constexpr char kReasonRebind[] = "REBIND";
+  static constexpr char kReasonReboot[] = "REBOOT";
+  static constexpr char kReasonRenew[] = "RENEW";
+
   DHCPv4Config(ControlInterface* control_interface,
                EventDispatcher* dispatcher,
                DHCPProvider* provider,
@@ -72,29 +103,6 @@ class DHCPv4Config : public DHCPConfig {
   FRIEND_TEST(DHCPv4ConfigTest, StartWithoutVendorClass);
 
   static const char kDHCPCDPathFormatPID[];
-
-  static const char kConfigurationKeyBroadcastAddress[];
-  static const char kConfigurationKeyClasslessStaticRoutes[];
-  static const char kConfigurationKeyDNS[];
-  static const char kConfigurationKeyDomainName[];
-  static const char kConfigurationKeyDomainSearch[];
-  static const char kConfigurationKeyHostname[];
-  static const char kConfigurationKeyIPAddress[];
-  static const char kConfigurationKeyiSNSOptionData[];
-  static const char kConfigurationKeyLeaseTime[];
-  static const char kConfigurationKeyMTU[];
-  static const char kConfigurationKeyRouters[];
-  static const char kConfigurationKeySubnetCIDR[];
-  static const char kConfigurationKeyVendorEncapsulatedOptions[];
-  static const char kConfigurationKeyWebProxyAutoDiscoveryUrl[];
-
-  static const char kReasonBound[];
-  static const char kReasonFail[];
-  static const char kReasonGatewayArp[];
-  static const char kReasonNak[];
-  static const char kReasonRebind[];
-  static const char kReasonReboot[];
-  static const char kReasonRenew[];
 
   static const char kType[];
 

@@ -95,8 +95,16 @@ class DHCPConfigTest : public PropertyStoreTest {
     config_->OnIPConfigUpdated(properties, new_lease_acquired);
   }
 
+  bool ShouldFailOnAcquisitionTimeout() {
+    return config_->ShouldFailOnAcquisitionTimeout();
+  }
+
   void SetShouldFailOnAcquisitionTimeout(bool value) {
     config_->is_gateway_arp_active_ = !value;
+  }
+
+  bool ShouldKeepLeaseOnDisconnect() {
+    return config_->ShouldKeepLeaseOnDisconnect();
   }
 
   void SetShouldKeepLeaseOnDisconnect(bool value) {
@@ -285,7 +293,6 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
 
   MOCK_METHOD(void, UpdateCallback, (const IPConfigRefPtr&, bool));
   MOCK_METHOD(void, FailureCallback, (const IPConfigRefPtr&));
-  MOCK_METHOD(void, ExpireCallback, (const IPConfigRefPtr&));
 
   // The mock methods above take IPConfigRefPtr because this is the type
   // that the registered callbacks take.  This conversion of the DHCP
@@ -298,34 +305,116 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
 
 }  // namespace
 
-TEST_F(DHCPConfigCallbackTest, NotifyFailure) {
+TEST_F(DHCPConfigCallbackTest, ProcessEventSignalSuccess) {
+  for (const auto& reason :
+       {DHCPv4Config::kReasonBound, DHCPv4Config::kReasonRebind,
+        DHCPv4Config::kReasonReboot, DHCPv4Config::kReasonRenew}) {
+    int address_octet = 0;
+    for (const auto lease_time_given : {false, true}) {
+      KeyValueStore conf;
+      conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress,
+                         ++address_octet);
+      if (lease_time_given) {
+        const uint32_t kLeaseTime = 1;
+        conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyLeaseTime,
+                           kLeaseTime);
+      }
+      EXPECT_CALL(*this, UpdateCallback(ConfigRef(), true));
+      EXPECT_CALL(*this, FailureCallback(_)).Times(0);
+      config_->ProcessEventSignal(reason, conf);
+      std::string failure_message = std::string(reason) +
+                                    " failed with lease time " +
+                                    (lease_time_given ? "given" : "not given");
+      EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << failure_message;
+      EXPECT_EQ(base::StringPrintf("%d.0.0.0", address_octet),
+                config_->properties().address)
+          << failure_message;
+    }
+  }
+}
+
+TEST_F(DHCPConfigCallbackTest, ProcessEventSignalFail) {
+  KeyValueStore conf;
+  conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(ConfigRef()));
   config_->lease_acquisition_timeout_callback_.Reset(base::DoNothing());
   config_->lease_expiration_callback_.Reset(base::DoNothing());
-  config_->NotifyFailure();
+  config_->ProcessEventSignal(DHCPv4Config::kReasonFail, conf);
   Mock::VerifyAndClearExpectations(this);
   EXPECT_TRUE(config_->properties().address.empty());
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
 }
 
+TEST_F(DHCPConfigCallbackTest, ProcessEventSignalUnknown) {
+  KeyValueStore conf;
+  conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
+  EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
+  EXPECT_CALL(*this, FailureCallback(_)).Times(0);
+  config_->ProcessEventSignal("unknown", conf);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_TRUE(config_->properties().address.empty());
+}
+
+TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArp) {
+  KeyValueStore conf;
+  conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
+  EXPECT_CALL(*this, UpdateCallback(ConfigRef(), false));
+  EXPECT_CALL(*this, FailureCallback(_)).Times(0);
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
+      .WillOnce(Return(0));
+  StartInstance();
+  config_->ProcessEventSignal(DHCPv4Config::kReasonGatewayArp, conf);
+  Mock::VerifyAndClearExpectations(this);
+  EXPECT_EQ("4.3.2.1", config_->properties().address);
+  // Will not fail on acquisition timeout since Gateway ARP is active.
+  EXPECT_FALSE(ShouldFailOnAcquisitionTimeout());
+
+  // An official reply from a DHCP server should reset our GatewayArp state.
+  EXPECT_CALL(*this, UpdateCallback(ConfigRef(), true));
+  EXPECT_CALL(*this, FailureCallback(_)).Times(0);
+  config_->ProcessEventSignal(DHCPv4Config::kReasonRenew, conf);
+  Mock::VerifyAndClearExpectations(this);
+  // Will fail on acquisition timeout since Gateway ARP is not active.
+  EXPECT_TRUE(ShouldFailOnAcquisitionTimeout());
+}
+
+TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArpNak) {
+  KeyValueStore conf;
+  conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
+      .WillOnce(Return(0));
+  StartInstance();
+  config_->ProcessEventSignal(DHCPv4Config::kReasonGatewayArp, conf);
+  EXPECT_FALSE(ShouldFailOnAcquisitionTimeout());
+
+  // Sending a NAK should clear is_gateway_arp_active_.
+  config_->ProcessEventSignal(DHCPv4Config::kReasonNak, conf);
+  // Will fail on acquisition timeout since Gateway ARP is not active.
+  EXPECT_TRUE(ShouldFailOnAcquisitionTimeout());
+  Mock::VerifyAndClearExpectations(this);
+}
+
 TEST_F(DHCPConfigCallbackTest, StoppedDuringFailureCallback) {
+  KeyValueStore conf;
+  conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   // Stop the DHCP config while it is calling the failure callback.  We
   // need to ensure that no callbacks are left running inadvertently as
   // a result.
   EXPECT_CALL(*this, FailureCallback(ConfigRef()))
       .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
-  config_->NotifyFailure();
+  config_->ProcessEventSignal(DHCPv4Config::kReasonFail, conf);
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
 }
 
 TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
-  IPConfig::Properties properties;
-  properties.address = "1.2.3.4";
-  properties.lease_duration_seconds = 1;
+  KeyValueStore conf;
+  conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
+  conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyLeaseTime, kLeaseDuration);
+
   // Stop the DHCP config while it is calling the success callback.  This
   // can happen if the device has a static IP configuration and releases
   // the lease after accepting other network parameters from the DHCP
@@ -333,7 +422,7 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
   // running inadvertently as a result.
   EXPECT_CALL(*this, UpdateCallback(ConfigRef(), true))
       .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
-  InvokeOnIPConfigUpdated(properties, true);
+  config_->ProcessEventSignal(DHCPv4Config::kReasonBound, conf);
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
