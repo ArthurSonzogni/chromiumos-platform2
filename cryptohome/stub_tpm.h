@@ -147,10 +147,6 @@ class StubTpm : public Tpm {
     return hwsec_foundation::error::CreateError<hwsec::TPMError>(
         "stub tpm operation", hwsec::TPMRetryAction::kNoRetry);
   }
-  bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
-                               SecureBlob* key_blob) override {
-    return false;
-  }
   void CloseHandle(TpmKeyHandle key_handle) override{};
   void GetStatus(std::optional<TpmKeyHandle> key,
                  TpmStatusInfo* status) override {}

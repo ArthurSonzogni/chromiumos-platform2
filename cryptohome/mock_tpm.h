@@ -132,10 +132,6 @@ class MockTpm : public Tpm {
               LoadWrappedKey,
               (const brillo::SecureBlob&, ScopedKeyHandle*),
               (override));
-  MOCK_METHOD(bool,
-              LegacyLoadCryptohomeKey,
-              (ScopedKeyHandle*, brillo::SecureBlob*),
-              (override));
   MOCK_METHOD(void, CloseHandle, (TpmKeyHandle), (override));
   MOCK_METHOD(void,
               GetStatus,

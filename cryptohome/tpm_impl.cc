@@ -98,11 +98,6 @@ const unsigned char kSha256DigestInfo[] = {
     0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
     0x65, 0x03, 0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20};
 
-// This is the well known UUID present in TPM1.2 implemenations. It is used
-// to load the cryptohome key into a TPM1.2 in a legacy path.
-const TSS_UUID kCryptohomeWellKnownUuid = {0x0203040b, 0, 0,
-                                           0,          0, {0, 9, 8, 1, 0, 3}};
-
 // Creates a DER encoded RSA public key given a serialized TPM_PUBKEY.
 //
 // Parameters
@@ -1743,30 +1738,6 @@ hwsec::Status TpmImpl::LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
   }
   key_handle->reset(this, local_key_handle);
   return nullptr;
-}
-
-bool TpmImpl::LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
-                                      brillo::SecureBlob* key_blob) {
-  CHECK(key_handle);
-  TpmKeyHandle local_key_handle;
-  if (hwsec::Status err = HANDLE_TPM_COMM_ERROR(
-          CreateError<TPM1Error>(Tspi_Context_LoadKeyByUUID(
-              tpm_context_.value(), TSS_PS_TYPE_SYSTEM,
-              kCryptohomeWellKnownUuid, &local_key_handle)))) {
-    LOG(ERROR) << __func__ << ": failed LoadKeyByUUID: " << err;
-    return false;
-  }
-
-  if (key_blob) {
-    if (hwsec::Status err =
-            GetKeyBlob(tpm_context_.value(), local_key_handle, key_blob)) {
-      LOG(ERROR) << __func__ << ": failed to GetKeyBlob: " << err;
-      Tspi_Context_CloseObject(tpm_context_.value(), local_key_handle);
-      return false;
-    }
-  }
-  key_handle->reset(this, local_key_handle);
-  return true;
 }
 
 void TpmImpl::CloseHandle(TpmKeyHandle key_handle) {

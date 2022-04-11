@@ -457,15 +457,6 @@ class Tpm {
   virtual hwsec::Status LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
                                        ScopedKeyHandle* key_handle) = 0;
 
-  // Loads the Cryptohome Key using a pre-defined UUID. This method does
-  // nothing when using TPM2.0
-  //
-  // Parameters
-  //   key_handle (OUT) - A handle to the key loaded into the TPM.
-  //   key_blob (OUT) - If non-null, the blob representing this loaded key.
-  virtual bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
-                                       brillo::SecureBlob* key_blob) = 0;
-
   // Closes the TPM state associated with the given |key_handle|.
   virtual void CloseHandle(TpmKeyHandle key_handle) = 0;
 

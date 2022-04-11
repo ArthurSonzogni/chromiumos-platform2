@@ -738,12 +738,6 @@ hwsec::Status Tpm2Impl::LoadWrappedKey(const SecureBlob& wrapped_key,
   return nullptr;
 }
 
-bool Tpm2Impl::LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
-                                       SecureBlob* key_blob) {
-  // This doesn't apply to devices with TPM 2.0.
-  return false;
-}
-
 void Tpm2Impl::CloseHandle(TpmKeyHandle key_handle) {
   TrunksClientContext* trunks;
   if (!GetTrunksContext(&trunks)) {

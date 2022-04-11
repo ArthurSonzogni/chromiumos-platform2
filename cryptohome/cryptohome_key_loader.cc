@@ -34,30 +34,16 @@ bool CryptohomeKeyLoader::SaveCryptohomeKey(const SecureBlob& wrapped_key) {
 hwsec::Status CryptohomeKeyLoader::LoadCryptohomeKey(
     ScopedKeyHandle* key_handle) {
   CHECK(key_handle);
-  // First, try loading the key from the key file.
+
+  // Load the key from the key file.
   SecureBlob raw_key;
-  if (platform_->ReadFileToSecureBlob(cryptohome_key_path_, &raw_key)) {
-    if (hwsec::Status err = tpm_->LoadWrappedKey(raw_key, key_handle)) {
-      if (err->ToTPMRetryAction() == TPMRetryAction::kNoRetry) {
-        LOG(INFO) << "Using legacy upgrade path: " << err;
-        goto legacy_upgrade_path;
-      }
-      return WrapError<TPMError>(std::move(err), "Failed to load wrapped key");
-    }
-    return nullptr;
-  }
-
-legacy_upgrade_path:
-  // Then try loading the key by the UUID (this is a legacy upgrade path).
-  if (!tpm_->LegacyLoadCryptohomeKey(key_handle, &raw_key)) {
-    return CreateError<TPMError>("Failed to load legacy cryptohome key",
+  if (!platform_->ReadFileToSecureBlob(cryptohome_key_path_, &raw_key)) {
+    return CreateError<TPMError>("Failed to read cryptohome key from file",
                                  TPMRetryAction::kNoRetry);
   }
 
-  // Save the legacy cryptohome key to the well-known location.
-  if (!SaveCryptohomeKey(raw_key)) {
-    return CreateError<TPMError>("Couldn't save legacy cryptohome key",
-                                 TPMRetryAction::kNoRetry);
+  if (hwsec::Status err = tpm_->LoadWrappedKey(raw_key, key_handle)) {
+    return WrapError<TPMError>(std::move(err), "Failed to load wrapped key");
   }
 
   return nullptr;

@@ -104,8 +104,6 @@ class TpmImpl : public Tpm {
   bool CreateWrappedEccKey(brillo::SecureBlob* wrapped_key) override;
   hwsec::Status LoadWrappedKey(const brillo::SecureBlob& wrapped_key,
                                ScopedKeyHandle* key_handle) override;
-  bool LegacyLoadCryptohomeKey(ScopedKeyHandle* key_handle,
-                               brillo::SecureBlob* key_blob) override;
   void CloseHandle(TpmKeyHandle key_handle) override;
   void GetStatus(std::optional<TpmKeyHandle> key,
                  TpmStatusInfo* status) override;
