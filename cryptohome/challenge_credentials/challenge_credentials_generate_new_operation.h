@@ -46,9 +46,9 @@ class ChallengeCredentialsGenerateNewOperation final
   // created instance.
   // |public_key_info| describes the challenge-response public key information.
   //
-  // |default_pcr_map| and |extended_pcr_map| are the PCR values maps; the
-  // created credentials will be protected in a way that decrypting them back is
-  // possible iff at least one of these maps is satisfied.
+  // |obfuscated_username| is the binding username; the created credentials
+  // will be protected in a way that decrypting them back is possible iff
+  // the current user is correct.
   //
   // The result is reported via |completion_callback|.
   ChallengeCredentialsGenerateNewOperation(
@@ -58,8 +58,7 @@ class ChallengeCredentialsGenerateNewOperation final
       const brillo::Blob& delegate_secret,
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
-      const std::map<uint32_t, brillo::Blob>& default_pcr_map,
-      const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
+      const std::string& obfuscated_username,
       CompletionCallback completion_callback);
 
   ~ChallengeCredentialsGenerateNewOperation() override;
@@ -97,8 +96,7 @@ class ChallengeCredentialsGenerateNewOperation final
   const brillo::Blob delegate_secret_;
   const std::string account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
-  const std::map<uint32_t, brillo::Blob> default_pcr_map_;
-  const std::map<uint32_t, brillo::Blob> extended_pcr_map_;
+  const std::string obfuscated_username_;
   CompletionCallback completion_callback_;
   SignatureSealingBackend* const signature_sealing_backend_;
   brillo::Blob salt_;

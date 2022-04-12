@@ -261,8 +261,7 @@ SignatureSealingBackendTpm2Impl::~SignatureSealingBackendTpm2Impl() = default;
 hwsec::Status SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-    const std::map<uint32_t, brillo::Blob>& default_pcr_map,
-    const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
+    const std::string& obfuscated_username,
     const Blob& /* delegate_blob */,
     const Blob& /* delegate_secret */,
     SecureBlob* secret_value,
@@ -318,6 +317,11 @@ hwsec::Status SignatureSealingBackendTpm2Impl::CreateSealedSecret(
     return WrapError<TPMError>(std::move(err),
                                "Error starting a trial session");
   }
+
+  std::map<uint32_t, brillo::Blob> default_pcr_map =
+      tpm_->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/false);
+  std::map<uint32_t, brillo::Blob> extended_pcr_map =
+      tpm_->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/true);
 
   // Calculate policy digests for each of the sets of PCR restrictions
   // separately. Rewind each time the policy session back to the initial state.

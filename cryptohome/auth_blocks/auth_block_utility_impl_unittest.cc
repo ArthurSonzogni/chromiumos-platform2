@@ -815,8 +815,8 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
   Credentials credentials(kUser, passkey);
   crypto_.Init(&tpm_, &cryptohome_keys_manager_);
 
-  EXPECT_CALL(challenge_credentials_helper_, GenerateNew(kUser, _, _, _, _, _))
-      .WillOnce([&](auto&&, auto public_key_info, auto&&, auto&&, auto&&,
+  EXPECT_CALL(challenge_credentials_helper_, GenerateNew(kUser, _, _, _, _))
+      .WillOnce([&](auto&&, auto public_key_info, auto&&, auto&&,
                     auto&& callback) {
         auto info = std::make_unique<structure::SignatureChallengeInfo>();
         info->public_key_spki_der = public_key_info.public_key_spki_der;

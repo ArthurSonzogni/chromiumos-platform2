@@ -72,14 +72,8 @@ void AsyncChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
   const std::string& obfuscated_username =
       auth_input.obfuscated_username.value();
 
-  std::map<uint32_t, brillo::Blob> default_pcr_map =
-      tpm_->GetPcrMap(obfuscated_username, false /* use_extended_pcr */);
-  std::map<uint32_t, brillo::Blob> extended_pcr_map =
-      tpm_->GetPcrMap(obfuscated_username, true /* use_extended_pcr */);
-
   challenge_credentials_helper_->GenerateNew(
-      std::move(account_id_), std::move(public_key_info),
-      std::move(default_pcr_map), std::move(extended_pcr_map),
+      std::move(account_id_), std::move(public_key_info), obfuscated_username,
       std::move(key_challenge_service_),
       base::BindOnce(&AsyncChallengeCredentialAuthBlock::CreateContinue,
                      weak_factory_.GetWeakPtr(), std::move(callback)));

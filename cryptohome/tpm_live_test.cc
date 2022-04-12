@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 
+#include <deque>
 #include <map>
 #include <memory>
 #include <optional>
@@ -420,7 +421,7 @@ class SignatureSealedSecretTestCase final {
     return true;
   }
 
-  bool Run() {
+  bool RunStage1() {
     if (!param_.expect_success()) {
       if (!CheckSecretCreationFails()) {
         LOG(ERROR) << "Error: successfully created secret unexpectedly";
@@ -484,8 +485,7 @@ class SignatureSealedSecretTestCase final {
     }
     // Create and unseal another secret - it has a different value.
     SecureBlob another_secret_value;
-    structure::SignatureSealedData another_sealed_secret_data;
-    if (!CreateSecret(&another_secret_value, &another_sealed_secret_data)) {
+    if (!CreateSecret(&another_secret_value, &another_sealed_secret_data_)) {
       LOG(ERROR) << "Error creating another secret";
       return false;
     }
@@ -496,7 +496,7 @@ class SignatureSealedSecretTestCase final {
     Blob third_challenge_value;
     Blob third_challenge_signature;
     SecureBlob third_unsealed_value;
-    if (!Unseal(another_sealed_secret_data, &third_challenge_value,
+    if (!Unseal(another_sealed_secret_data_, &third_challenge_value,
                 &third_challenge_signature, &third_unsealed_value)) {
       LOG(ERROR) << "Error unsealing another secret";
       return false;
@@ -506,8 +506,16 @@ class SignatureSealedSecretTestCase final {
           << "Error: unsealing returned different value than at creation time";
       return false;
     }
+    return true;
+  }
+
+  bool RunStage2() {
+    if (!param_.expect_success()) {
+      return true;
+    }
+
     // Unsealing after PCRs change fails.
-    if (!CheckUnsealingFailsWithChangedPcrs(another_sealed_secret_data)) {
+    if (!CheckUnsealingFail(another_sealed_secret_data_)) {
       LOG(ERROR) << "Failed testing against changed PCRs";
       return false;
     }
@@ -515,8 +523,8 @@ class SignatureSealedSecretTestCase final {
   }
 
  private:
-  static constexpr uint32_t kPcrIndexToExtend = 15;
-  const std::set<uint32_t> kPcrIndexes{0, kPcrIndexToExtend};
+  const std::string kObfuscatedUsername = "obfuscated_username";
+  const std::set<uint32_t> kPcrIndexes{kTpmSingleUserPCR};
   static constexpr uint8_t kDelegateFamilyLabel = 100;
   static constexpr uint8_t kDelegateLabel = 101;
 
@@ -645,13 +653,8 @@ class SignatureSealedSecretTestCase final {
 
   bool CreateSecret(SecureBlob* secret_value,
                     structure::SignatureSealedData* sealed_secret_data) {
-    std::map<uint32_t, brillo::Blob> pcr_values;
-    if (!GetCurrentPcrValues(&pcr_values)) {
-      LOG(ERROR) << "Error reading PCR values";
-      return false;
-    }
     if (hwsec::Status err = backend()->CreateSealedSecret(
-            key_spki_der_, param_.supported_algorithms, pcr_values, pcr_values,
+            key_spki_der_, param_.supported_algorithms, kObfuscatedUsername,
             delegate_blob_, delegate_secret_, secret_value,
             sealed_secret_data)) {
       LOG(ERROR) << "Error creating signature-sealed secret: " << err;
@@ -661,15 +664,10 @@ class SignatureSealedSecretTestCase final {
   }
 
   bool CheckSecretCreationFails() {
-    std::map<uint32_t, brillo::Blob> pcr_values;
-    if (!GetCurrentPcrValues(&pcr_values)) {
-      LOG(ERROR) << "Error reading PCR values";
-      return false;
-    }
     SecureBlob secret_value;
     structure::SignatureSealedData sealed_secret_data;
     if (hwsec::Status err = backend()->CreateSealedSecret(
-            key_spki_der_, param_.supported_algorithms, pcr_values, pcr_values,
+            key_spki_der_, param_.supported_algorithms, kObfuscatedUsername,
             delegate_blob_, delegate_secret_, &secret_value,
             &sealed_secret_data)) {
       // TODO(b/174816474): check the error message is expected.
@@ -679,18 +677,6 @@ class SignatureSealedSecretTestCase final {
     }
     LOG(ERROR) << "Error: secret creation completed unexpectedly";
     return false;
-  }
-
-  bool GetCurrentPcrValues(std::map<uint32_t, brillo::Blob>* pcr_values) {
-    for (auto pcr_index : kPcrIndexes) {
-      Blob blob;
-      if (!tpm()->ReadPCR(pcr_index, &blob)) {
-        LOG(ERROR) << "Error reading PCR value " << pcr_index;
-        return false;
-      }
-      (*pcr_values)[pcr_index] = blob;
-    }
-    return true;
   }
 
   bool Unseal(const structure::SignatureSealedData& sealed_secret_data,
@@ -850,13 +836,8 @@ class SignatureSealedSecretTestCase final {
     }
   }
 
-  bool CheckUnsealingFailsWithChangedPcrs(
+  bool CheckUnsealingFail(
       const structure::SignatureSealedData& sealed_secret_data) {
-    if (!tpm()->ExtendPCR(kPcrIndexToExtend,
-                          BlobFromString("01234567890123456789"))) {
-      LOG(ERROR) << "Error extending PCR";
-      return false;
-    }
     std::unique_ptr<UnsealingSession> unsealing_session;
     if (hwsec::Status err = backend()->CreateUnsealingSession(
             sealed_secret_data, key_spki_der_, param_.supported_algorithms,
@@ -915,6 +896,8 @@ class SignatureSealedSecretTestCase final {
   Blob delegate_secret_;
   crypto::ScopedEVP_PKEY pkey_;
   Blob key_spki_der_;
+
+  structure::SignatureSealedData another_sealed_secret_data_;
 };
 
 }  // namespace
@@ -979,11 +962,28 @@ bool TpmLiveTest::SignatureSealedSecretTest() {
           NID_sha256));
     }
   }
+
+  std::deque<SignatureSealedSecretTestCase> test_cases;
+
   for (auto&& test_case_param : test_case_params) {
-    SignatureSealedSecretTestCase test_case(std::move(test_case_param));
-    if (!test_case.SetUp() || !test_case.Run())
+    test_cases.emplace_back(std::move(test_case_param));
+    if (!test_cases.back().SetUp() || !test_cases.back().RunStage1())
       return false;
   }
+
+  if (!tpm_->ExtendPCR(kTpmSingleUserPCR,
+                       BlobFromString("01234567890123456789"))) {
+    LOG(ERROR) << "Error extending PCR";
+    return false;
+  }
+
+  for (auto& test_case : test_cases) {
+    if (!test_case.RunStage2())
+      return false;
+  }
+
+  test_cases.clear();
+
   LOG(INFO) << "SignatureSealedSecretTest ended successfully.";
   return true;
 }

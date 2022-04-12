@@ -68,12 +68,9 @@ class SignatureSealingBackend {
   //                    Listed in the order of preference (starting from the
   //                    most preferred); however, the implementation is
   //                    permitted to ignore this order.
-  //   default_pcr_map - The default PCR values map; the created secret will be
-  //                     protected in a way that decrypting it back is possible
-  //                     iff at least one of the PCR value maps is satisfied.
-  //   extended_pcr_map - The extend PCR values map; the created secret will be
-  //                      protected in a way that decrypting it back is possible
-  //                      iff at least one of the PCR value maps is satisfied.
+  //   obfuscated_username - The obfuscated username; the created secret will be
+  //                         protected in a way that decrypting it back is
+  //                         possible iff the current user is satisfied.
   //   delegate_blob - The blob for the owner delegation.
   //   delegate_secret - The delegate secret for the delegate blob.
   //   secret_value - The created secret value.
@@ -81,8 +78,7 @@ class SignatureSealingBackend {
   virtual hwsec::Status CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-      const std::map<uint32_t, brillo::Blob>& default_pcr_map,
-      const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
+      const std::string& obfuscated_username,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       brillo::SecureBlob* secret_value,

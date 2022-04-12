@@ -75,16 +75,15 @@ class ChallengeCredentialsHelper {
   // be stored in the created vault keyset. This operation may involve making
   // challenge request(s) against the specified key.
   //
-  // |default_pcr_map| and |extended_pcr_map| are the PCR values maps; the
-  // created credentials will be protected in a way that decrypting them back is
-  // possible iff at least one of these maps is satisfied.
+  // |obfuscated_username| is the obfuscated username; the created credentials
+  // will be protected in a way that decrypting them back is possible iff the
+  // current user is satisfied.
   //
   // The result is reported via |callback|.
   virtual void GenerateNew(
       const std::string& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
-      const std::map<uint32_t, brillo::Blob>& default_pcr_map,
-      const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
+      const std::string& obfuscated_username,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       GenerateNewCallback callback) = 0;
 

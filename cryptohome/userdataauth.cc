@@ -1770,14 +1770,8 @@ void UserDataAuth::DoChallengeResponseMount(
       return;
     }
 
-    std::map<uint32_t, brillo::Blob> default_pcr_map =
-        tpm_->GetPcrMap(obfuscated_username, false /* use_extended_pcr */);
-    std::map<uint32_t, brillo::Blob> extended_pcr_map =
-        tpm_->GetPcrMap(obfuscated_username, true /* use_extended_pcr */);
-
     challenge_credentials_helper_->GenerateNew(
-        account_id, proto::FromProto(public_key_info),
-        std::move(default_pcr_map), std::move(extended_pcr_map),
+        account_id, proto::FromProto(public_key_info), obfuscated_username,
         std::move(key_challenge_service),
         base::BindOnce(
             &UserDataAuth::OnChallengeResponseMountCredentialsObtained,

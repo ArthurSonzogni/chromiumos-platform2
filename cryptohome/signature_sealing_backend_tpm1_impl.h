@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <vector>
 
 #include <brillo/secure_blob.h>
@@ -41,8 +42,7 @@ class SignatureSealingBackendTpm1Impl final : public SignatureSealingBackend {
   hwsec::Status CreateSealedSecret(
       const brillo::Blob& public_key_spki_der,
       const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-      const std::map<uint32_t, brillo::Blob>& default_pcr_map,
-      const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
+      const std::string& obfuscated_username,
       const brillo::Blob& delegate_blob,
       const brillo::Blob& delegate_secret,
       brillo::SecureBlob* secret_value,

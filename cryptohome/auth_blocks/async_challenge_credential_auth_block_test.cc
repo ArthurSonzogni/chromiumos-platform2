@@ -104,8 +104,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, Create) {
   };
 
   EXPECT_CALL(challenge_credentials_helper_,
-              GenerateNew(kFakeAccountId, _, _, _, _, _))
-      .WillOnce([&](auto&&, auto public_key_info, auto&&, auto&&, auto&&,
+              GenerateNew(kFakeAccountId, _, _, _, _))
+      .WillOnce([&](auto&&, auto public_key_info, auto&&, auto&&,
                     auto&& callback) {
         auto info = std::make_unique<structure::SignatureChallengeInfo>();
         info->public_key_spki_der = public_key_info.public_key_spki_der;
@@ -127,10 +127,11 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, Create) {
 // service failed.
 TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
   EXPECT_CALL(challenge_credentials_helper_,
-              GenerateNew(kFakeAccountId, _, _, _, _, _))
+              GenerateNew(kFakeAccountId, _, _, _, _))
       .WillOnce(
-          [&](auto&&, auto public_key_info, auto&&, auto&&, auto&&,
-              auto&& callback) { std::move(callback).Run(nullptr, nullptr); });
+          [&](auto&&, auto public_key_info, auto&&, auto&&, auto&& callback) {
+            std::move(callback).Run(nullptr, nullptr);
+          });
 
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
@@ -173,8 +174,8 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
   };
 
   EXPECT_CALL(challenge_credentials_helper_,
-              GenerateNew(kFakeAccountId, _, _, _, _, _))
-      .WillOnce([&](auto&&, auto public_key_info, auto&&, auto&&, auto&&,
+              GenerateNew(kFakeAccountId, _, _, _, _))
+      .WillOnce([&](auto&&, auto public_key_info, auto&&, auto&&,
                     auto&& callback) {
         auto info = std::make_unique<structure::SignatureChallengeInfo>();
         info->public_key_spki_der = public_key_info.public_key_spki_der;

@@ -101,7 +101,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
     const structure::ChallengePublicKeyInfo public_key_info =
         MakeChallengePublicKeyInfo(kPublicKeySpkiDer, key_algorithms);
     challenge_credentials_helper_.GenerateNew(
-        kUserEmail, public_key_info, kDefaultPcrMap, kExtendedPcrMap,
+        kUserEmail, public_key_info, kObfuscatedUsername,
         std::move(challenge_service_),
         MakeChallengeCredentialsGenerateNewResultWriter(generate_new_result));
   }
@@ -183,8 +183,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
         std::make_unique<SignatureSealedCreationMocker>(&sealing_backend_);
     mocker->set_public_key_spki_der(kPublicKeySpkiDer);
     mocker->set_key_algorithms(key_algorithms);
-    mocker->set_default_pcr_map(kDefaultPcrMap);
-    mocker->set_extended_pcr_map(kExtendedPcrMap);
+    mocker->set_obfuscated_username(kObfuscatedUsername);
     mocker->set_delegate_blob(kDelegateBlob);
     mocker->set_delegate_secret(kDelegateSecret);
     mocker->set_secret_value(kTpmProtectedSecret);
@@ -307,9 +306,11 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // via KeyChallengeService.
   const Blob kSalt = CombineBlobs(
       {GetChallengeCredentialsSaltConstantPrefix(), kSaltRandomPart});
-  // Fake PCR restrictions: a list of maps from PCR indexes to PCR values. It's
-  // supplied to the GenerateNew() operation. Then it's verified to be passed
-  // into the SignatureSealingBackend::CreateSealedSecret() method.
+  // Fake obfuscated username: It's supplied to the GenerateNew() operation.
+  // Then it's verified to be passed into the
+  // SignatureSealingBackend::CreateSealedSecret() method.
+  const std::string kObfuscatedUsername = "obfuscated_username";
+  // Fake PCR restrictions.
   const std::map<uint32_t, brillo::Blob> kDefaultPcrMap{{0, {9, 9, 9}},
                                                         {10, {11, 11, 11}}};
   const std::map<uint32_t, brillo::Blob> kExtendedPcrMap{{0, {9, 9, 9}},

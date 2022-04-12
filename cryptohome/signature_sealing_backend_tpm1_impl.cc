@@ -1116,8 +1116,7 @@ SignatureSealingBackendTpm1Impl::~SignatureSealingBackendTpm1Impl() = default;
 hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
     const Blob& public_key_spki_der,
     const std::vector<structure::ChallengeSignatureAlgorithm>& key_algorithms,
-    const std::map<uint32_t, brillo::Blob>& default_pcr_map,
-    const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
+    const std::string& obfuscated_username,
     const Blob& delegate_blob,
     const Blob& delegate_secret,
     SecureBlob* secret_value,
@@ -1214,6 +1213,11 @@ hwsec::Status SignatureSealingBackendTpm1Impl::CreateSealedSecret(
                                "Error generating random secret");
   }
   DCHECK_EQ(secret_value->size(), kSecretSizeBytes);
+
+  std::map<uint32_t, brillo::Blob> default_pcr_map =
+      tpm_->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/false);
+  std::map<uint32_t, brillo::Blob> extended_pcr_map =
+      tpm_->GetPcrMap(obfuscated_username, /*use_extended_pcr=*/true);
 
   // Bind the secret value to the default PCR map.
   brillo::Blob default_pcr_bound_secret;

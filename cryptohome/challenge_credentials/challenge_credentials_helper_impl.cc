@@ -53,8 +53,7 @@ ChallengeCredentialsHelperImpl::~ChallengeCredentialsHelperImpl() {
 void ChallengeCredentialsHelperImpl::GenerateNew(
     const std::string& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
-    const std::map<uint32_t, brillo::Blob>& default_pcr_map,
-    const std::map<uint32_t, brillo::Blob>& extended_pcr_map,
+    const std::string& obfuscated_username,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
     GenerateNewCallback callback) {
   DCHECK(thread_checker_.CalledOnValidThread());
@@ -63,7 +62,7 @@ void ChallengeCredentialsHelperImpl::GenerateNew(
   key_challenge_service_ = std::move(key_challenge_service);
   operation_ = std::make_unique<ChallengeCredentialsGenerateNewOperation>(
       key_challenge_service_.get(), tpm_, delegate_blob_, delegate_secret_,
-      account_id, public_key_info, default_pcr_map, extended_pcr_map,
+      account_id, public_key_info, obfuscated_username,
       base::BindOnce(&ChallengeCredentialsHelperImpl::OnGenerateNewCompleted,
                      base::Unretained(this), std::move(callback)));
   operation_->Start();

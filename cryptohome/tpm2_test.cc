@@ -1541,12 +1541,6 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
   const std::string kTrialPcrPolicyDigest(SHA256_DIGEST_LENGTH, '\1');
   const std::string kTrialExtPcrPolicyDigest(SHA256_DIGEST_LENGTH, '\3');
   const std::string kTrialPolicyDigest(SHA256_DIGEST_LENGTH, '\2');
-  std::map<uint32_t, brillo::Blob> pcr_values;
-  for (uint32_t pcr_index : kPcrIndexes)
-    pcr_values[pcr_index] = brillo::BlobFromString("fake PCR");
-  std::map<uint32_t, brillo::Blob> ext_pcr_values;
-  for (uint32_t pcr_index : kPcrIndexes)
-    ext_pcr_values[pcr_index] = brillo::BlobFromString("fake ext PCR");
 
   // Set up mock expectations for the secret creation.
   EXPECT_CALL(mock_tpm_utility_,
@@ -1591,11 +1585,12 @@ TEST_P(Tpm2RsaSignatureSecretSealingTest, Seal) {
   // Trigger the secret creation.
   SecureBlob secret_value;
   structure::SignatureSealedData sealed_data;
+  std::string obfuscated_username = "obfuscated_username";
   EXPECT_EQ(nullptr,
             signature_sealing_backend()->CreateSealedSecret(
-                key_spki_der_, supported_algorithms(), pcr_values,
-                ext_pcr_values, Blob() /* delegate_blob */,
-                Blob() /* delegate_secret */, &secret_value, &sealed_data));
+                key_spki_der_, supported_algorithms(), obfuscated_username,
+                Blob() /* delegate_blob */, Blob() /* delegate_secret */,
+                &secret_value, &sealed_data));
   EXPECT_EQ(secret_value, SecureBlob(kSecretValue));
   ASSERT_TRUE(
       std::holds_alternative<structure::Tpm2PolicySignedData>(sealed_data));

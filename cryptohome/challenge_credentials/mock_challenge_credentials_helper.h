@@ -29,8 +29,7 @@ class MockChallengeCredentialsHelper : public ChallengeCredentialsHelper {
               GenerateNew,
               (const std::string& account_id,
                const structure::ChallengePublicKeyInfo& public_key_info,
-               (const std::map<uint32_t, brillo::Blob>& default_pcr_map),
-               (const std::map<uint32_t, brillo::Blob>& extended_pcr_map),
+               const std::string& obfuscated_username,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                GenerateNewCallback callback),
               (override));

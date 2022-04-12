@@ -59,18 +59,18 @@ void SignatureSealedCreationMocker::SetUpSuccessfulMock() {
       MakeFakeSignatureSealedData(public_key_spki_der_);
   EXPECT_CALL(*mock_backend_,
               CreateSealedSecret(public_key_spki_der_, key_algorithms_,
-                                 default_pcr_map_, extended_pcr_map_,
-                                 delegate_blob_, delegate_secret_, _, _))
-      .WillOnce(DoAll(SetArgPointee<6>(SecureBlob(secret_value_)),
-                      SetArgPointee<7>(sealed_data_to_return),
+                                 obfuscated_username_, delegate_blob_,
+                                 delegate_secret_, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(SecureBlob(secret_value_)),
+                      SetArgPointee<6>(sealed_data_to_return),
                       ReturnError<TPMErrorBase>()));
 }
 
 void SignatureSealedCreationMocker::SetUpFailingMock() {
   EXPECT_CALL(*mock_backend_,
               CreateSealedSecret(public_key_spki_der_, key_algorithms_,
-                                 default_pcr_map_, extended_pcr_map_,
-                                 delegate_blob_, delegate_secret_, _, _))
+                                 obfuscated_username_, delegate_blob_,
+                                 delegate_secret_, _, _))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 }
 
