@@ -224,6 +224,14 @@ class DHCPConfig : public base::RefCounted<DHCPConfig> {
   // Kills DHCP client process.
   void KillClient();
 
+  // These two functions invoke corresponding callbacks and are executed via
+  // PostTask(), so it can be guaranteed that callbacks will not be invoked when
+  // this object has been destroyed, and the listener can safely destroy this
+  // object in the callback.
+  void InvokeUpdateCallback(const IPConfig::Properties properties,
+                            bool new_lease_acquired);
+  void InvokeFailureCallback();
+
   ControlInterface* control_interface_;
 
   DHCPProvider* provider_;

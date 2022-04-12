@@ -224,30 +224,19 @@ void DHCPConfig::OnIPConfigUpdated(const IPConfig::Properties& properties,
     }
   }
 
-  // Take a reference of this instance to make sure we don't get destroyed in
-  // the middle of this call. (The |update_callback_| may cause a reference
-  // to be dropped. See, e.g., EthernetService::Disconnect and
-  // Ethernet::DropConnection.)
-  DHCPConfigRefPtr me = this;
-
-  if (!update_callback_.is_null()) {
-    update_callback_.Run(this, properties, new_lease_acquired);
-  }
+  dispatcher_->PostTask(
+      FROM_HERE, base::BindOnce(&DHCPConfig::InvokeUpdateCallback,
+                                weak_ptr_factory_.GetWeakPtr(), properties,
+                                new_lease_acquired));
 }
 
 void DHCPConfig::NotifyFailure() {
   StopAcquisitionTimeout();
   StopExpirationTimeout();
 
-  // Take a reference of this instance to make sure we don't get destroyed in
-  // the middle of this call. (The |update_callback_| may cause a reference
-  // to be dropped. See, e.g., EthernetService::Disconnect and
-  // Ethernet::DropConnection.)
-  DHCPConfigRefPtr me = this;
-
-  if (!failure_callback_.is_null()) {
-    failure_callback_.Run(this);
-  }
+  dispatcher_->PostTask(FROM_HERE,
+                        base::BindOnce(&DHCPConfig::InvokeFailureCallback,
+                                       weak_ptr_factory_.GetWeakPtr()));
 }
 
 bool DHCPConfig::IsEphemeralLease() const {
@@ -310,11 +299,8 @@ void DHCPConfig::KillClient() {
 }
 
 bool DHCPConfig::Restart() {
-  // Take a reference of this instance to make sure we don't get destroyed in
-  // the middle of this call.
-  DHCPConfigRefPtr me = this;
-  me->Stop(__func__);
-  return me->Start();
+  Stop(__func__);
+  return Start();
 }
 
 void DHCPConfig::OnProcessExited(int exit_status) {
@@ -448,6 +434,19 @@ void DHCPConfig::UpdateLeaseExpirationTime(uint32_t new_lease_duration) {
 
 void DHCPConfig::ResetLeaseExpirationTime() {
   current_lease_expiration_time_ = std::nullopt;
+}
+
+void DHCPConfig::InvokeUpdateCallback(const IPConfig::Properties properties,
+                                      bool new_lease_acquired) {
+  if (!update_callback_.is_null()) {
+    update_callback_.Run(this, properties, new_lease_acquired);
+  }
+}
+
+void DHCPConfig::InvokeFailureCallback() {
+  if (!failure_callback_.is_null()) {
+    failure_callback_.Run(this);
+  }
 }
 
 }  // namespace shill
