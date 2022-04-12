@@ -47,6 +47,7 @@
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/shill_time.h"
+#include "shill/network/dhcp_config.h"
 #include "shill/scope_logger.h"
 #include "shill/store/property_accessor.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"
@@ -2316,9 +2317,9 @@ void WiFi::StateChanged(const std::string& new_state) {
         // AP is on a different subnet than where we started.
         // TODO(matthewmwang): Handle the IPv6 roam case.
         is_roaming_in_progress_ = false;
-        if (ipconfig()) {
+        if (dhcp_controller()) {
           LOG(INFO) << link_name() << " renewing L3 configuration after roam.";
-          ipconfig()->RenewIP();
+          dhcp_controller()->RenewIP();
           affected_service->SetRoamState(Service::kRoamStateConfiguring);
         }
       } else if (affected_service->is_rekey_in_progress()) {

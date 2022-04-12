@@ -75,18 +75,6 @@ TEST_F(IPConfigTest, DeviceName) {
   EXPECT_EQ(kDeviceName, ipconfig_->device_name());
 }
 
-TEST_F(IPConfigTest, RequestIP) {
-  EXPECT_FALSE(ipconfig_->RequestIP());
-}
-
-TEST_F(IPConfigTest, RenewIP) {
-  EXPECT_FALSE(ipconfig_->RenewIP());
-}
-
-TEST_F(IPConfigTest, ReleaseIP) {
-  EXPECT_FALSE(ipconfig_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
-}
-
 TEST_F(IPConfigTest, SetBlackholedUids) {
   std::vector<uint32_t> uids = {1000, 216};
   std::vector<uint32_t> empty_uids = {};

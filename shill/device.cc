@@ -387,8 +387,11 @@ void Device::ResetConnection() {
 void Device::DestroyIPConfig() {
   StopIPv6();
   bool ipconfig_changed = false;
+  if (dhcp_controller_) {
+    dhcp_controller_->ReleaseIP(DHCPConfig::kReleaseReasonDisconnect);
+    dhcp_controller_ = nullptr;
+  }
   if (ipconfig_) {
-    ipconfig_->ReleaseIP(IPConfig::kReleaseReasonDisconnect);
     ipconfig_ = nullptr;
     ipconfig_changed = true;
   }
@@ -547,9 +550,9 @@ void Device::SetUsbEthernetMacAddressSource(const std::string& source,
 void Device::RenewDHCPLease(bool from_dbus, Error* /*error*/) {
   LOG(INFO) << __func__;
 
-  if (ipconfig_) {
+  if (dhcp_controller_) {
     SLOG(this, 3) << "Renewing IPv4 Address";
-    ipconfig_->RenewIP();
+    dhcp_controller_->RenewIP();
   }
   if (ip6config_ && !from_dbus) {
     SLOG(this, 3) << "Waiting for new IPv6 configuration";
@@ -587,21 +590,21 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   DestroyIPConfig();
   StartIPv6();
   bool arp_gateway = manager_->GetArpGateway() && ShouldUseArpGateway();
-  DHCPConfigRefPtr dhcp_config =
+  dhcp_controller_ =
       dhcp_provider_->CreateIPv4Config(link_name_, lease_name, arp_gateway,
                                        manager_->dhcp_hostname(), technology_);
   const int minimum_mtu = manager()->GetMinimumMTU();
   if (minimum_mtu != IPConfig::kUndefinedMTU) {
-    dhcp_config->set_minimum_mtu(minimum_mtu);
+    dhcp_controller_->set_minimum_mtu(minimum_mtu);
   }
 
-  dhcp_config->RegisterCallbacks(
+  dhcp_controller_->RegisterCallbacks(
       base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
       base::BindRepeating(&Device::OnDHCPFailure, AsWeakPtr()));
-  ipconfig_ = dhcp_config;
+  ipconfig_ = dhcp_controller_;
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
-  return ipconfig_->RequestIP();
+  return dhcp_controller_->RequestIP();
 }
 
 void Device::UpdateBlackholeUserTraffic() {
@@ -858,7 +861,7 @@ void Device::ConnectionDiagnosticsCallback(
 void Device::OnIPConfigUpdatedFromDHCP(DHCPConfig* dhcp_config,
                                        const IPConfig::Properties& properties,
                                        bool new_lease_acquired) {
-  if (dhcp_config != ipconfig_) {
+  if (dhcp_config != dhcp_controller_) {
     LOG(WARNING) << __func__
                  << " invoked but |dhcp_config| is not owned by this Device";
     return;
@@ -879,7 +882,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
   if (selected_service_) {
     ipconfig->ApplyStaticIPParameters(
         selected_service_->mutable_static_ip_parameters());
-    if (IsUsingStaticIP()) {
+    if (IsUsingStaticIP() && dhcp_controller_) {
       // If we are using a statically configured IP address instead
       // of a leased IP address, release any acquired lease so it may
       // be used by others.  This allows us to merge other non-leased
@@ -887,7 +890,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
       // and not overridden by static parameters, but at the same time
       // we avoid taking up a dynamic IP address the DHCP server could
       // assign to someone else who might actually use it.
-      ipconfig->ReleaseIP(IPConfig::kReleaseReasonStaticIP);
+      dhcp_controller_->ReleaseIP(DHCPConfig::kReleaseReasonStaticIP);
     }
   }
   if (!IsUsingStaticNameServers()) {
@@ -900,7 +903,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
 
 void Device::OnDHCPFailure(DHCPConfig* dhcp_config) {
   SLOG(this, 2) << __func__;
-  if (dhcp_config != ipconfig_) {
+  if (dhcp_config != dhcp_controller_) {
     LOG(WARNING) << __func__
                  << " invoked but |dhcp_config| is not owned by this Device";
     return;
@@ -967,8 +970,10 @@ void Device::OnStaticIPConfigChanged() {
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
 
-  // Trigger DHCP renew.
-  ipconfig_->RenewIP();
+  if (dhcp_controller_) {
+    // Trigger DHCP renew.
+    dhcp_controller_->RenewIP();
+  }
 }
 
 void Device::OnIPConfigFailure() {
@@ -1257,10 +1262,10 @@ void Device::set_mac_address(const std::string& mac_address) {
 }
 
 std::optional<base::TimeDelta> Device::TimeToNextDHCPLeaseRenewal() {
-  if (!ipconfig()) {
+  if (!dhcp_controller()) {
     return std::nullopt;
   }
-  return ipconfig()->TimeToLeaseExpiry();
+  return dhcp_controller()->TimeToLeaseExpiry();
 }
 
 void Device::SetServiceConnectedState(Service::ConnectState state) {
@@ -1553,6 +1558,11 @@ EventDispatcher* Device::dispatcher() const {
 
 Metrics* Device::metrics() const {
   return manager_->metrics();
+}
+
+void Device::set_dhcp_controller_for_testing(
+    const DHCPConfigRefPtr& dhcp_controller) {
+  dhcp_controller_ = dhcp_controller;
 }
 
 }  // namespace shill

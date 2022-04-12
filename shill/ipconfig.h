@@ -6,7 +6,6 @@
 #define SHILL_IPCONFIG_H_
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -101,8 +100,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   enum Method { kMethodUnknown, kMethodPPP, kMethodStatic, kMethodDHCP };
 
-  enum ReleaseReason { kReleaseReasonDisconnect, kReleaseReasonStaticIP };
-
   // Define a default and a minimum viable MTU value.
   static const int kDefaultMTU;
   static const int kMinIPv4MTU;
@@ -137,17 +134,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // Updates the IP configuration properties and notifies listeners on D-Bus.
   void UpdateProperties(const Properties& properties);
 
-  // Request, renew and release IP configuration. Return true on success, false
-  // otherwise. The default implementation always returns false indicating a
-  // failure.  ReleaseIP is advisory: if we are no longer connected, it is not
-  // possible to properly vacate the lease on the remote server.  Also,
-  // depending on the configuration of the specific IPConfig subclass, we may
-  // end up holding on to the lease so we can resume to the network lease
-  // faster.
-  virtual bool RequestIP();
-  virtual bool RenewIP();
-  virtual bool ReleaseIP(ReleaseReason reason);
-
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
   void ApplyStaticIPParameters(StaticIPParameters* static_ip_parameters);
@@ -155,11 +141,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // Restore the fields of |properties_| to their original values before
   // static IP parameters were previously applied.
   void RestoreSavedIPParameters(StaticIPParameters* static_ip_parameters);
-
-  // See DHCPConfig::TimeToLeaseExpiry(). Returns base::nullopt in the base
-  // class.
-  // TODO(b/227560694): Remove this method.
-  virtual std::optional<base::TimeDelta> TimeToLeaseExpiry();
 
   // Returns whether the function call changed the configuration.
   bool SetBlackholedUids(const std::vector<uint32_t>& uids);

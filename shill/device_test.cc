@@ -156,9 +156,7 @@ class DeviceTest : public testing::Test {
     device_->OnIPConfigUpdated(ipconfig);
   }
 
-  void OnDHCPFailure() {
-    device_->OnDHCPFailure(reinterpret_cast<DHCPConfig*>(ipconfig_));
-  }
+  void OnDHCPFailure() { device_->OnDHCPFailure(dhcp_controller_); }
 
   patchpanel::TrafficCounter CreateCounter(
       const std::valarray<uint64_t>& vals,
@@ -195,6 +193,8 @@ class DeviceTest : public testing::Test {
   void SetupIPv4DHCPConfig() {
     ipconfig_ = new MockIPConfig(control_interface(), kDeviceName);
     device_->ipconfig_ = ipconfig_;
+    dhcp_controller_ = new MockDHCPConfig(control_interface(), kDeviceName);
+    device_->dhcp_controller_ = dhcp_controller_;
   }
 
   void SetupIPv6Config() {
@@ -234,7 +234,8 @@ class DeviceTest : public testing::Test {
   MockTime time_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
   patchpanel::FakeClient* patchpanel_client_;
-  MockIPConfig* ipconfig_;  // owned by |device_|
+  MockIPConfig* ipconfig_;           // owned by |device_|
+  MockDHCPConfig* dhcp_controller_;  // owned by |device_|
 };
 
 const char DeviceTest::kDeviceName[] = "testdevice";
@@ -544,10 +545,8 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
 TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
-  scoped_refptr<MockIPConfig> ipconfig =
-      new NiceMock<MockIPConfig>(control_interface(), kDeviceName);
+  SetupIPv4DHCPConfig();
   base::RepeatingClosure static_ip_cb;
-  device_->set_ipconfig(ipconfig);
   EXPECT_CALL(*service, IsConnected(nullptr))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -561,7 +560,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, HasStaticNameServers()).WillRepeatedly(Return(false));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
-  EXPECT_CALL(*service, SetIPConfig(ipconfig->GetRpcIdentifier(), _))
+  EXPECT_CALL(*service, SetIPConfig(ipconfig_->GetRpcIdentifier(), _))
       .WillOnce([&static_ip_cb](RpcIdentifier, base::RepeatingClosure cb) {
         static_ip_cb = cb;
       });
@@ -570,10 +569,10 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
 
-  OnIPConfigUpdated(ipconfig.get());
+  OnIPConfigUpdated(device_->ipconfig());
 
   // Verify static IP config change callback.
-  EXPECT_CALL(*ipconfig, RenewIP());
+  EXPECT_CALL(*dhcp_controller_, RenewIP());
   static_ip_cb.Run();
 }
 
@@ -822,10 +821,8 @@ TEST_F(DeviceTest, Reset) {
 }
 
 TEST_F(DeviceTest, ResumeWithIPConfig) {
-  scoped_refptr<MockIPConfig> ipconfig =
-      new MockIPConfig(control_interface(), kDeviceName);
-  device_->set_ipconfig(ipconfig);
-  EXPECT_CALL(*ipconfig, RenewIP());
+  SetupIPv4DHCPConfig();
+  EXPECT_CALL(*dhcp_controller_, RenewIP());
   device_->OnAfterResume();
 }
 

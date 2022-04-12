@@ -60,6 +60,8 @@ class DHCPConfig : public IPConfig {
   using FailureCallback =
       base::RepeatingCallback<void(DHCPConfig* dhcp_config)>;
 
+  enum ReleaseReason { kReleaseReasonDisconnect, kReleaseReasonStaticIP };
+
   // Constants used as event type got from dhcpcd. Used only
   // internally, make them public for unit tests.
   static constexpr char kReasonBound[] = "BOUND";
@@ -88,10 +90,16 @@ class DHCPConfig : public IPConfig {
   void RegisterCallbacks(UpdateCallback update_callback,
                          FailureCallback failure_callback);
 
-  // Inherited from IPConfig.
-  bool RequestIP() override;
-  bool RenewIP() override;
-  bool ReleaseIP(ReleaseReason reason) override;
+  // Request, renew and release IP configuration. Return true on success, false
+  // otherwise. The default implementation always returns false indicating a
+  // failure.  ReleaseIP is advisory: if we are no longer connected, it is not
+  // possible to properly vacate the lease on the remote server.  Also,
+  // depending on the configuration of the specific IPConfig subclass, we may
+  // end up holding on to the lease so we can resume to the network lease
+  // faster.
+  mockable bool RequestIP();
+  mockable bool RenewIP();
+  mockable bool ReleaseIP(ReleaseReason reason);
 
   // If |proxy_| is not initialized already, sets it to a new D-Bus proxy to
   // |service|.
@@ -104,7 +112,7 @@ class DHCPConfig : public IPConfig {
   // Returns the time left (in seconds) till the current DHCP lease is to be
   // renewed in |time_left|. Returns nullopt if an error occurs (i.e. current
   // lease has already expired or no current DHCP lease), true otherwise.
-  std::optional<base::TimeDelta> TimeToLeaseExpiry() override;
+  std::optional<base::TimeDelta> TimeToLeaseExpiry();
 
   // Set the minimum MTU that this configuration will respect.
   mockable void set_minimum_mtu(const int minimum_mtu) {

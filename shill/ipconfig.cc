@@ -7,7 +7,6 @@
 #include <sys/time.h>
 
 #include <limits>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -88,18 +87,6 @@ const RpcIdentifier& IPConfig::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
-bool IPConfig::RequestIP() {
-  return false;
-}
-
-bool IPConfig::RenewIP() {
-  return false;
-}
-
-bool IPConfig::ReleaseIP(ReleaseReason reason) {
-  return false;
-}
-
 void IPConfig::ApplyStaticIPParameters(
     StaticIPParameters* static_ip_parameters) {
   static_ip_parameters->ApplyTo(&properties_);
@@ -110,10 +97,6 @@ void IPConfig::RestoreSavedIPParameters(
     StaticIPParameters* static_ip_parameters) {
   static_ip_parameters->RestoreTo(&properties_);
   EmitChanges();
-}
-
-std::optional<base::TimeDelta> IPConfig::TimeToLeaseExpiry() {
-  return std::nullopt;
 }
 
 bool IPConfig::SetBlackholedUids(const std::vector<uint32_t>& uids) {

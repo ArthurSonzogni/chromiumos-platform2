@@ -1086,6 +1086,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   void SetIPConfig(const IPConfigRefPtr& ipconfig) {
     return wifi_->set_ipconfig(ipconfig);
   }
+  void SetDHCPController(const DHCPConfigRefPtr& dhcp_controller) {
+    return wifi_->set_dhcp_controller_for_testing(dhcp_controller);
+  }
   bool SetBgscanMethod(const std::string& method) {
     Error error;
     wifi_->mutable_store()->SetAnyProperty(kBgscanMethodProperty,
@@ -3027,13 +3030,13 @@ TEST_F(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint) {
 
   // If we report a "completed" state change on a connected service after
   // wpa_supplicant has roamed, we should renew our IPConfig.
-  scoped_refptr<MockIPConfig> ipconfig(
-      new MockIPConfig(control_interface(), kDeviceName));
-  SetIPConfig(ipconfig);
+  scoped_refptr<MockDHCPConfig> dhcp_controller(
+      new MockDHCPConfig(control_interface(), kDeviceName));
+  SetDHCPController(dhcp_controller);
   EXPECT_CALL(*service, IsConnected(nullptr)).WillOnce(Return(true));
-  EXPECT_CALL(*ipconfig, RenewIP());
+  EXPECT_CALL(*dhcp_controller, RenewIP());
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
-  Mock::VerifyAndClearExpectations(ipconfig.get());
+  Mock::VerifyAndClearExpectations(dhcp_controller.get());
   EXPECT_FALSE(GetIsRoamingInProgress());
 }
 

@@ -467,7 +467,7 @@ TEST_F(DHCPConfigTest, ReleaseIP) {
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
   SetShouldKeepLeaseOnDisconnect(false);
   config_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
+  EXPECT_TRUE(config_->ReleaseIP(DHCPConfig::kReleaseReasonDisconnect));
   config_->pid_ = 0;
 }
 
@@ -478,7 +478,7 @@ TEST_F(DHCPConfigTest, KeepLeaseOnDisconnect) {
   SetShouldKeepLeaseOnDisconnect(true);
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
   config_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
+  EXPECT_TRUE(config_->ReleaseIP(DHCPConfig::kReleaseReasonDisconnect));
   config_->pid_ = 0;
 }
 
@@ -489,7 +489,7 @@ TEST_F(DHCPConfigTest, ReleaseLeaseOnDisconnect) {
   SetShouldKeepLeaseOnDisconnect(false);
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
   config_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
+  EXPECT_TRUE(config_->ReleaseIP(DHCPConfig::kReleaseReasonDisconnect));
   config_->pid_ = 0;
 }
 
@@ -498,7 +498,7 @@ TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithLease) {
   config_->is_lease_active_ = true;
   EXPECT_CALL(*proxy_, Release(kDeviceName));
   config_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonStaticIP));
+  EXPECT_TRUE(config_->ReleaseIP(DHCPConfig::kReleaseReasonStaticIP));
   EXPECT_EQ(nullptr, config_->proxy_);
   config_->pid_ = 0;
 }
@@ -509,7 +509,7 @@ TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithoutLease) {
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
   MockDHCPProxy* proxy_pointer = proxy_.get();
   config_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonStaticIP));
+  EXPECT_TRUE(config_->ReleaseIP(DHCPConfig::kReleaseReasonStaticIP));
   // Expect that proxy has not been released.
   EXPECT_EQ(proxy_pointer, config_->proxy_.get());
   config_->pid_ = 0;

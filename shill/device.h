@@ -320,6 +320,8 @@ class Device : public base::RefCounted<Device> {
     selected_service_ = service;
   }
 
+  void set_dhcp_controller_for_testing(const DHCPConfigRefPtr& dhcp_controller);
+
  protected:
   friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
@@ -507,6 +509,7 @@ class Device : public base::RefCounted<Device> {
   bool enabled_pending() const { return enabled_pending_; }
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
+  DHCPConfig* dhcp_controller() const { return dhcp_controller_.get(); }
   bool fixed_ip_params() const { return fixed_ip_params_; }
 
   virtual void set_mac_address(const std::string& mac_address);
@@ -706,6 +709,9 @@ class Device : public base::RefCounted<Device> {
   const int interface_index_;
   const std::string link_name_;
   Manager* manager_;
+  // TODO(b/227560694): currently |dhcp_controller_| (if exists) points to the
+  // same object as |ipconfig_|.
+  DHCPConfigRefPtr dhcp_controller_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;
   std::unique_ptr<Connection> connection_;

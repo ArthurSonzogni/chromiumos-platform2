@@ -1513,7 +1513,7 @@ TEST_P(CellularTest, OnPPPDiedCleanupDevice) {
 }
 
 TEST_P(CellularTest, DropConnection) {
-  device_->set_ipconfig(dhcp_config_);
+  device_->set_dhcp_controller_for_testing(dhcp_config_);
   EXPECT_CALL(*dhcp_config_, ReleaseIP(_));
   device_->DropConnection();
   Mock::VerifyAndClearExpectations(dhcp_config_.get());  // verify before dtor
