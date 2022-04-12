@@ -41,8 +41,12 @@ class SandboxedInit {
   // Function to run in the 'launcher' process.
   using Launcher = base::OnceCallback<int()>;
 
-  SandboxedInit(Launcher launcher, base::ScopedFD ctrl_fd)
-      : launcher_(std::move(launcher)), ctrl_fd_(std::move(ctrl_fd)) {
+  SandboxedInit(Launcher launcher,
+                base::ScopedFD ctrl_fd,
+                base::ScopedFD termination_fd = {})
+      : launcher_(std::move(launcher)),
+        ctrl_fd_(std::move(ctrl_fd)),
+        termination_fd_(std::move(termination_fd)) {
     DCHECK(launcher_);
     DCHECK(ctrl_fd_.is_valid());
   }
@@ -82,6 +86,10 @@ class SandboxedInit {
   // Write end of the pipe into which the exit code of the launcher process is
   // written.
   base::ScopedFD ctrl_fd_;
+
+  // Read end of termination pipe. SandboxInit configures this pipe so that it
+  // terminates the init process when the write end is closed.
+  base::ScopedFD termination_fd_;
 };
 
 }  // namespace cros_disks

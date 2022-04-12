@@ -64,6 +64,7 @@ class SandboxedInitTest : public testing::Test {
       in_ = std::move(in.parent_fd);
       out_ = std::move(out.parent_fd);
       ctrl_ = std::move(ctrl.parent_fd);
+      termination_pipe_.child_fd.reset();
       PCHECK(base::SetNonBlocking(ctrl_.get()));
       return;
     }
@@ -82,6 +83,7 @@ class SandboxedInitTest : public testing::Test {
     out.child_fd.reset();
     out.parent_fd.reset();
     ctrl.parent_fd.reset();
+    termination_pipe_.parent_fd.reset();
 
     // Make the 'init' process a child subreaper, so that it adopts the orphaned
     // 'daemon' process.
@@ -100,7 +102,8 @@ class SandboxedInitTest : public testing::Test {
 
     // Run the main 'init' process loop.
     SandboxedInit(base::BindLambdaForTesting(std::move(launcher)),
-                  std::move(ctrl.child_fd))
+                  std::move(ctrl.child_fd),
+                  std::move(termination_pipe_.child_fd))
         .Run();
     NOTREACHED();
   }
@@ -168,6 +171,11 @@ class SandboxedInitTest : public testing::Test {
 
   // Parent-side of the pipes.
   base::ScopedFD in_, out_, ctrl_;
+
+  // Because one of the tests verifies that closing the parent's end of
+  // termination_pipe_ before the init process is even started, we must make it
+  // a member of the test class instead of creating it with the other pipes.
+  SubprocessPipe termination_pipe_{SubprocessPipe::kParentToChild};
 };
 
 }  // namespace
@@ -225,6 +233,135 @@ TEST_F(SandboxedInitTest, CtrlPipeIsClosed) {
 
   // Wait for the 'init' process to finish.
   EXPECT_EQ(128 + SIGABRT, WaitForInit());
+}
+
+TEST_F(SandboxedInitTest, TerminationPipeIsClosed) {
+  RunUnderInit([]() {
+    // Signal that the 'launcher' process started
+    Write(STDOUT_FILENO, "Begin");
+
+    // Wait to be unblocked
+    const std::string s = Read(STDIN_FILENO);
+    return 12;
+  });
+
+  // Wait for the 'launcher' process to start.
+  EXPECT_EQ("Begin", Read(out_));
+  EXPECT_EQ(-1, PollLauncher());
+
+  // Kill init by closing the write end of the termination pipe.
+  EXPECT_TRUE(termination_pipe_.parent_fd.is_valid());
+  termination_pipe_.parent_fd.reset();
+  EXPECT_FALSE(termination_pipe_.parent_fd.is_valid());
+
+  // Wait for the 'init' process to finish.
+  EXPECT_EQ(128 + SIGKILL, WaitForInit());
+}
+
+TEST_F(SandboxedInitTest, TerminationPipeIsWrittenTo) {
+  RunUnderInit([]() {
+    // Signal that the 'launcher' process started
+    Write(STDOUT_FILENO, "Begin");
+
+    // Wait to be unblocked
+    const std::string s = Read(STDIN_FILENO);
+    return 12;
+  });
+
+  // Wait for the 'launcher' process to start.
+  EXPECT_EQ("Begin", Read(out_));
+  EXPECT_EQ(-1, PollLauncher());
+
+  // Kill init by closing the write end of the termination pipe.
+  EXPECT_TRUE(termination_pipe_.parent_fd.is_valid());
+  Write(termination_pipe_.parent_fd.get(), "Test");
+
+  // Wait for the 'init' process to finish.
+  EXPECT_EQ(128 + SIGKILL, WaitForInit());
+}
+
+TEST_F(SandboxedInitTest, TerminationPipeIsWrittenToAndClosed) {
+  RunUnderInit([]() {
+    // Signal that the 'launcher' process started
+    Write(STDOUT_FILENO, "Begin");
+
+    // Wait to be unblocked
+    const std::string s = Read(STDIN_FILENO);
+    return 12;
+  });
+
+  // Wait for the 'launcher' process to start.
+  EXPECT_EQ("Begin", Read(out_));
+  EXPECT_EQ(-1, PollLauncher());
+
+  // Kill init by closing the write end of the termination pipe.
+  EXPECT_TRUE(termination_pipe_.parent_fd.is_valid());
+  Write(termination_pipe_.parent_fd.get(), "Test");
+  termination_pipe_.parent_fd.reset();
+  EXPECT_FALSE(termination_pipe_.parent_fd.is_valid());
+
+  // Wait for the 'init' process to finish.
+  EXPECT_EQ(128 + SIGKILL, WaitForInit());
+}
+
+TEST_F(SandboxedInitTest, TerminationPipeIsClosedBeforeInitStarts) {
+  // Request init to be terminated by closing the write end of the
+  // termination pipe (before init is even started).
+  EXPECT_TRUE(termination_pipe_.parent_fd.is_valid());
+  termination_pipe_.parent_fd.reset();
+  EXPECT_FALSE(termination_pipe_.parent_fd.is_valid());
+
+  RunUnderInit([]() {
+    // Signal that the 'launcher' process started
+    Write(STDOUT_FILENO, "Begin");
+
+    // Wait to be unblocked
+    const std::string s = Read(STDIN_FILENO);
+    return 12;
+  });
+
+  // Wait for the 'init' process to finish.
+  EXPECT_EQ(128 + SIGKILL, WaitForInit());
+}
+
+TEST_F(SandboxedInitTest, TerminationPipeIsWrittenToBeforeInitStarts) {
+  // Request init to be terminated by closing the write end of the
+  // termination pipe (before init is even started).
+  EXPECT_TRUE(termination_pipe_.parent_fd.is_valid());
+  Write(termination_pipe_.parent_fd.get(), "Test");
+
+  RunUnderInit([]() {
+    // Signal that the 'launcher' process started
+    Write(STDOUT_FILENO, "Begin");
+
+    // Wait to be unblocked
+    const std::string s = Read(STDIN_FILENO);
+    return 12;
+  });
+
+  // Wait for the 'init' process to finish.
+  EXPECT_EQ(128 + SIGKILL, WaitForInit());
+}
+
+TEST_F(SandboxedInitTest, TerminationPipeIsWrittenToAndClosedBeforeInitStarts) {
+  // Request init to be terminated by closing the write end of the
+  // termination pipe (before init is even started).
+  EXPECT_TRUE(termination_pipe_.parent_fd.is_valid());
+  Write(termination_pipe_.parent_fd.get(), "Test");
+  termination_pipe_.parent_fd.reset();
+  EXPECT_FALSE(termination_pipe_.parent_fd.is_valid());
+
+  RunUnderInit([]() {
+    // Signal that the 'launcher' process started
+    Write(STDOUT_FILENO, "Begin");
+
+    // Wait to be unblocked
+    const std::string s = Read(STDIN_FILENO);
+    return 12;
+  });
+
+  // Wait for the 'init' process to finish.
+  EXPECT_EQ(128 + SIGKILL, WaitForInit());
 }
 
 TEST_F(SandboxedInitTest, LauncherWritesToStdOut) {
@@ -313,6 +450,9 @@ TEST_F(SandboxedInitTest, InitUndisturbedBySignal) {
     // Send SIGPIPE to the 'init' process. This signal should be ignored, and it
     // shouldn't disturb or crash the 'init' process.
     EXPECT_EQ(0, kill(pid_, SIGPIPE));
+    // Send SIGIO to the 'init' process. This signal should be ignored, and it
+    // shouldn't disturb or crash the 'init' process.
+    EXPECT_EQ(0, kill(pid_, SIGIO));
     usleep(100'000);
   }
 

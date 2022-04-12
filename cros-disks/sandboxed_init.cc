@@ -4,6 +4,7 @@
 
 #include "cros-disks/sandboxed_init.h"
 
+#include <fcntl.h>
 #include <poll.h>
 #include <stdlib.h>
 #include <sys/prctl.h>
@@ -12,6 +13,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/file_descriptor_posix.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -31,6 +33,30 @@ void SigTerm(int sig) {
     RAW_LOG(ERROR, "Cannot broadcast SIGTERM");
     _exit(err + 64);
   }
+}
+
+static int termination_fd = base::kInvalidFd;
+
+// SIGIO handler supporting termination pipe mechanism.
+void SigIo(int sig) {
+  const int saved_errno = errno;
+
+  if (sig == SIGIO) {
+    RAW_LOG(INFO, "The 'init' process received SIGIO");
+  }
+
+  if (char buffer; read(termination_fd, &buffer, sizeof(buffer)) >= 0) {
+    RAW_LOG(INFO,
+            "The write end of the termination pipe has been closed or written "
+            "to. Raising SIGKILL.");
+    raise(SIGKILL);
+  } else if (sig == SIGIO) {
+    RAW_LOG(INFO,
+            "False alarm: The 'init' process received SIGIO but not from the "
+            "termination pipe");
+  }
+
+  errno = saved_errno;
 }
 
 }  // namespace
@@ -66,17 +92,42 @@ base::ScopedFD SubprocessPipe::Open(const Direction direction,
   if (prctl(PR_SET_NAME, "cros-disks-INIT") < 0)
     PLOG(WARNING) << "Cannot set init's process name";
 
-  // Setup the SIGTERM signal handler.
+  // Set up the SIGTERM signal handler.
   if (signal(SIGTERM, SigTerm) == SIG_ERR)
     PLOG(FATAL) << "Cannot install SIGTERM signal handler";
-
-  // PID of the launcher process inside the jail PID namespace (e.g. PID 2).
-  const pid_t launcher_pid = StartLauncher();
 
   // Set up the SIGPIPE signal handler. Since we write to the control pipe, we
   // don't want this 'init' process to be killed by a SIGPIPE.
   if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
     PLOG(FATAL) << "Cannot install SIGPIPE signal handler";
+
+  if (termination_fd_.is_valid()) {
+    // Save termination_fd to global variable to it's accessible from the signal
+    // handler.
+    termination_fd = termination_fd_.get();
+
+    // Set up the SIGIO signal handler.
+    if (signal(SIGIO, SigIo) == SIG_ERR) {
+      PLOG(FATAL) << "Cannot install SIGIO signal handler";
+    }
+
+    // Set init as the owner of the kill pipe.
+    if (fcntl(termination_fd_.get(), F_SETOWN, getpid()) < 0) {
+      PLOG(FATAL) << "Cannot own the termination pipe";
+    }
+
+    // Set O_ASYNC and O_NONBLOCK flag on kill pipe.
+    if (fcntl(termination_fd_.get(), F_SETFL, O_ASYNC | O_NONBLOCK) < 0) {
+      PLOG(FATAL) << "Cannot set O_ASYNC and O_NONBLOCK on the kill pipe";
+    }
+
+    // Call SigIo manually to kill init if the write end of termination pipe is
+    // already closed.
+    SigIo(-1);
+  }
+
+  // PID of the launcher process inside the jail PID namespace (e.g. PID 2).
+  const pid_t launcher_pid = StartLauncher();
 
   DCHECK(ctrl_fd_.is_valid());
   CHECK(base::SetNonBlocking(ctrl_fd_.get()));
