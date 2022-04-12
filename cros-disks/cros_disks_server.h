@@ -117,6 +117,12 @@ class CrosDisksServer : public org::chromium::CrosDisksAdaptor,
   void OnFormatCompleted(const std::string& device_path,
                          FormatErrorType error_type) override;
 
+  void OnMountCompleted(const std::string& source,
+                        MountSourceType source_type,
+                        const std::string& filesystem_type,
+                        const std::string& mount_path,
+                        MountErrorType error);
+
   // The callback called when a partitioning operation has completed.
   void OnPartitionCompleted(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<uint32_t>>

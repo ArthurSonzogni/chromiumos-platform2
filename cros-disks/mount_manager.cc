@@ -80,10 +80,12 @@ bool MountManager::StopSession() {
   return UnmountAll();
 }
 
-MountErrorType MountManager::Mount(const std::string& source_path,
-                                   const std::string& filesystem_type,
-                                   std::vector<std::string> options,
-                                   std::string* mount_path) {
+void MountManager::Mount(const std::string& source_path,
+                         const std::string& filesystem_type,
+                         std::vector<std::string> options,
+                         MountCallback callback) {
+  DCHECK(callback);
+
   // Source is not necessary a path, but if it is let's resolve it to
   // some real underlying object.
   std::string real_path;
@@ -92,20 +94,20 @@ MountErrorType MountManager::Mount(const std::string& source_path,
   }
 
   if (real_path.empty()) {
-    LOG(ERROR) << "Failed to mount an invalid path";
-    return MOUNT_ERROR_INVALID_ARGUMENT;
-  }
-  if (!mount_path) {
-    LOG(ERROR) << "Invalid mount path argument";
-    return MOUNT_ERROR_INVALID_ARGUMENT;
+    LOG(ERROR) << "Cannot mount an invalid path: " << redact(source_path);
+    std::move(callback).Run("", MOUNT_ERROR_INVALID_ARGUMENT);
+    return;
   }
 
-  if (RemoveParamsEqualTo(&options, kMountOptionRemount) == 0) {
-    return MountNewSource(real_path, filesystem_type, std::move(options),
-                          mount_path);
-  } else {
-    return Remount(real_path, filesystem_type, std::move(options), mount_path);
-  }
+  std::string mount_path;
+  const MountErrorType error =
+      (RemoveParamsEqualTo(&options, kMountOptionRemount) == 0)
+          ? MountNewSource(real_path, filesystem_type, std::move(options),
+                           &mount_path)
+          : Remount(real_path, filesystem_type, std::move(options),
+                    &mount_path);
+
+  std::move(callback).Run(mount_path, error);
 }
 
 MountErrorType MountManager::Remount(const std::string& source_path,

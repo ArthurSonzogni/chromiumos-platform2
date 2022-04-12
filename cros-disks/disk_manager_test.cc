@@ -12,6 +12,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/callback.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -179,6 +180,22 @@ class DiskManagerTest : public ::testing::Test, public SandboxedProcessFactory {
     return ptr;
   }
 
+  void OnMountCompleted(const std::string& path, MountErrorType error) {
+    EXPECT_FALSE(mount_completed_);
+    mount_path_ = path;
+    mount_error_ = error;
+    mount_completed_ = true;
+  }
+
+  MountManager::MountCallback GetMountCallback() {
+    mount_path_.clear();
+    mount_error_ = MOUNT_ERROR_NONE;
+    mount_completed_ = false;
+
+    return base::BindOnce(&DiskManagerTest::OnMountCompleted,
+                          base::Unretained(this));
+  }
+
   base::ScopedTempDir dir_;
   Metrics metrics_;
   MockPlatform platform_;
@@ -187,6 +204,9 @@ class DiskManagerTest : public ::testing::Test, public SandboxedProcessFactory {
   FakeDiskMonitor monitor_;
   std::unique_ptr<DiskManager> manager_;
   mutable std::vector<std::string> fuse_args_;
+  std::string mount_path_;
+  MountErrorType mount_error_;
+  bool mount_completed_;
 };
 
 MATCHER_P(HasBits, bits, "") {
@@ -196,16 +216,17 @@ MATCHER_P(HasBits, bits, "") {
 TEST_F(DiskManagerTest, MountBootDeviceNotAllowed) {
   EXPECT_CALL(platform_, Mount).Times(0);
   EXPECT_CALL(platform_, Unmount).Times(0);
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "vfat", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH, err);
+  manager_->Mount("/dev/sda1", "vfat", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH, mount_error_);
   monitor_.disks_.push_back({
       .is_on_boot_device = true,
       .device_file = "/dev/sda1",
       .filesystem_type = "vfat",
   });
-  err = manager_->Mount("/dev/sda1", "vfat", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH, err);
+  manager_->Mount("/dev/sda1", "vfat", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH, mount_error_);
 }
 
 TEST_F(DiskManagerTest, MountNonExistingDevice) {
@@ -217,9 +238,9 @@ TEST_F(DiskManagerTest, MountNonExistingDevice) {
       .filesystem_type = "vfat",
   });
   EXPECT_CALL(platform_, PathExists("/dev/sda1")).WillRepeatedly(Return(false));
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "vfat", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH, err);
+  manager_->Mount("/dev/sda1", "vfat", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_INVALID_DEVICE_PATH, mount_error_);
 }
 
 TEST_F(DiskManagerTest, MountUsesLabel) {
@@ -233,13 +254,14 @@ TEST_F(DiskManagerTest, MountUsesLabel) {
   std::string opts;
   EXPECT_CALL(platform_, Mount("/dev/sda1", _, "vfat", _, _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_NONE, err);
-  EXPECT_EQ("foo", base::FilePath(path).BaseName().value());
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
+  EXPECT_EQ("foo", base::FilePath(mount_path_).BaseName().value());
 
-  EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  err = manager_->Unmount("/dev/sda1");
+  EXPECT_CALL(platform_, Unmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  MountErrorType err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -260,17 +282,18 @@ TEST_F(DiskManagerTest, MountFAT) {
   EXPECT_CALL(platform_,
               Mount("/dev/sda1", _, "vfat", HasBits(kExpectedMountFlags), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_NONE, err);
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options,
               AllOf(Contains("uid=1000"), Contains("gid=1001"),
                     Contains("shortname=mixed"), Contains("time_offset=480")));
 
-  EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  err = manager_->Unmount("/dev/sda1");
+  EXPECT_CALL(platform_, Unmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  MountErrorType err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -286,9 +309,9 @@ TEST_F(DiskManagerTest, MountExFAT) {
   EXPECT_CALL(platform_, Mount("/dev/sda1", _, "fuseblk.exfat",
                                HasBits(kExpectedMountFlags), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_NONE, err);
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options,
@@ -298,8 +321,9 @@ TEST_F(DiskManagerTest, MountExFAT) {
                           HasSubstr("dmask=0027,fmask=0027,uid=1000,gid=1001"),
                           "/dev/sda1", _));
 
-  EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  err = manager_->Unmount("/dev/sda1");
+  EXPECT_CALL(platform_, Unmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  MountErrorType err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -315,9 +339,9 @@ TEST_F(DiskManagerTest, MountNTFS) {
   EXPECT_CALL(platform_, Mount("/dev/sda1", _, "fuseblk.ntfs",
                                HasBits(kExpectedMountFlags), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_NONE, err);
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options,
@@ -327,8 +351,9 @@ TEST_F(DiskManagerTest, MountNTFS) {
                           HasSubstr("dmask=0027,fmask=0027,uid=1000,gid=1001"),
                           "/dev/sda1", _));
 
-  EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  err = manager_->Unmount("/dev/sda1");
+  EXPECT_CALL(platform_, Unmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  MountErrorType err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -344,15 +369,16 @@ TEST_F(DiskManagerTest, MountCD) {
   EXPECT_CALL(platform_, Mount("/dev/sda1", _, "iso9660",
                                HasBits(kExpectedMountFlags | MS_RDONLY), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_NONE, err);
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options, AllOf(Contains("uid=1000"), Contains("gid=1001")));
 
-  EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  err = manager_->Unmount("/dev/sda1");
+  EXPECT_CALL(platform_, Unmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  MountErrorType err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -368,15 +394,16 @@ TEST_F(DiskManagerTest, MountDVD) {
   EXPECT_CALL(platform_, Mount("/dev/sda1", _, "udf",
                                HasBits(kExpectedMountFlags | MS_RDONLY), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_NONE, err);
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options, AllOf(Contains("uid=1000"), Contains("gid=1001")));
 
-  EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  err = manager_->Unmount("/dev/sda1");
+  EXPECT_CALL(platform_, Unmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  MountErrorType err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -392,15 +419,16 @@ TEST_F(DiskManagerTest, MountHFS) {
   EXPECT_CALL(platform_,
               Mount("/dev/sda1", _, "hfsplus", HasBits(kExpectedMountFlags), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_NONE, err);
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   auto options =
       base::SplitString(opts, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
   EXPECT_THAT(options, AllOf(Contains("uid=1000"), Contains("gid=1001")));
 
-  EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  err = manager_->Unmount("/dev/sda1");
+  EXPECT_CALL(platform_, Unmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  MountErrorType err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -417,12 +445,13 @@ TEST_F(DiskManagerTest, MountReadOnlyMedia) {
   EXPECT_CALL(platform_, Mount("/dev/sda1", _, "vfat",
                                HasBits(kExpectedMountFlags | MS_RDONLY), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_NONE, err);
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
 
-  EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  err = manager_->Unmount("/dev/sda1");
+  EXPECT_CALL(platform_, Unmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  MountErrorType err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -438,12 +467,13 @@ TEST_F(DiskManagerTest, MountForcedReadOnly) {
   EXPECT_CALL(platform_, Mount("/dev/sda1", _, "vfat",
                                HasBits(kExpectedMountFlags | MS_RDONLY), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "", {"ro"}, &path);
-  EXPECT_EQ(MOUNT_ERROR_NONE, err);
+  manager_->Mount("/dev/sda1", "", {"ro"}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
 
-  EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  err = manager_->Unmount("/dev/sda1");
+  EXPECT_CALL(platform_, Unmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  MountErrorType err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 
@@ -463,12 +493,13 @@ TEST_F(DiskManagerTest, MountRetryReadOnlyIfFailed) {
                                HasBits(kExpectedMountFlags | MS_RDONLY), _))
       .WillOnce(DoAll(SaveArg<4>(&opts), Return(MOUNT_ERROR_NONE)));
 
-  std::string path;
-  MountErrorType err = manager_->Mount("/dev/sda1", "", {}, &path);
-  EXPECT_EQ(MOUNT_ERROR_NONE, err);
+  manager_->Mount("/dev/sda1", "", {}, GetMountCallback());
+  EXPECT_TRUE(mount_completed_);
+  EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
 
-  EXPECT_CALL(platform_, Unmount(path, _)).WillOnce(Return(MOUNT_ERROR_NONE));
-  err = manager_->Unmount("/dev/sda1");
+  EXPECT_CALL(platform_, Unmount(mount_path_, _))
+      .WillOnce(Return(MOUNT_ERROR_NONE));
+  MountErrorType err = manager_->Unmount("/dev/sda1");
   EXPECT_EQ(MOUNT_ERROR_NONE, err);
 }
 

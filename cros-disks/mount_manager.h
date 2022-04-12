@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>
@@ -89,20 +90,22 @@ class MountManager {
   // it supports.
   virtual MountSourceType GetMountSourceType() const = 0;
 
-  // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
-  // If "remount" option exists in |options|, attempts to remount |source_path|
-  // to the mount path which it's currently mounted to. Content of |mount_path|
-  // will be ignored and |mount_path| is set to the existing mount path.
-  // Otherwise, attempts to mount a new source. When mounting a new source, if
-  // |mount_path| is an empty string, SuggestMountPath() is called to obtain a
-  // suggested mount path. |mount_path| is set to actual mount path on success.
-  // If an error occurs and ShouldReserveMountPathOnError() returns true for
-  // that type of error, the mount path is reserved and |mount_path| is set to
-  // the reserved mount path.
-  MountErrorType Mount(const std::string& source_path,
-                       const std::string& filesystem_type,
-                       std::vector<std::string> options,
-                       std::string* mount_path);
+  // Callback called when the mount operation succeeds or fails.
+  using MountCallback = base::OnceCallback<void(const std::string& mount_path,
+                                                MountErrorType error)>;
+
+  // Mounts |source_path| as |filesystem_type| with |options|. If "remount"
+  // option exists in |options|, attempts to remount |source_path| to the mount
+  // path which it's currently mounted to. Otherwise, attempts to mount a new
+  // source. When mounting a new source, |SuggestMountPath()| is called to
+  // obtain a suggested mount path. If an error occurs and
+  // |ShouldReserveMountPathOnError()| returns true for that type of error, the
+  // mount path is reserved and |mount_path| is set to the reserved mount path.
+  // On completion or on error, |callback| is called.
+  void Mount(const std::string& source_path,
+             const std::string& filesystem_type,
+             std::vector<std::string> options,
+             MountCallback callback);
 
   // Unmounts |path|, which can be a source path or a mount path. If the mount
   // path is reserved during Mount(), this method releases the reserved mount

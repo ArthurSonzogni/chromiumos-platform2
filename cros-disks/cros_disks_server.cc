@@ -125,6 +125,22 @@ MountManager* CrosDisksServer::FindMounter(
   return nullptr;
 }
 
+void CrosDisksServer::OnMountCompleted(const std::string& source,
+                                       MountSourceType source_type,
+                                       const std::string& filesystem_type,
+                                       const std::string& mount_path,
+                                       MountErrorType error) {
+  if (error) {
+    LOG(ERROR) << "Cannot mount " << redact(source) << " of type "
+               << quote(filesystem_type) << ": " << error;
+  } else {
+    LOG(INFO) << "Mounted " << redact(source) << " of type "
+              << quote(filesystem_type) << " on " << redact(mount_path);
+  }
+
+  SendMountCompletedSignal(error, source, source_type, mount_path);
+}
+
 void CrosDisksServer::Mount(const std::string& source,
                             const std::string& filesystem_type,
                             const std::vector<std::string>& options) {
@@ -141,19 +157,11 @@ void CrosDisksServer::Mount(const std::string& source,
   VLOG(1) << "Mounting " << redact(source) << " of type "
           << quote(filesystem_type) << " using mounter " << source_type;
 
-  std::string mount_path;
-  const MountErrorType error =
-      mounter->Mount(source, filesystem_type, options, &mount_path);
+  MountManager::MountCallback callback =
+      base::BindOnce(&CrosDisksServer::OnMountCompleted, base::Unretained(this),
+                     source, source_type, filesystem_type);
 
-  if (error) {
-    LOG(ERROR) << "Cannot mount " << redact(source) << " of type "
-               << quote(filesystem_type) << ": " << error;
-  } else {
-    LOG(INFO) << "Mounted " << redact(source) << " of type "
-              << quote(filesystem_type) << " on " << redact(mount_path);
-  }
-
-  SendMountCompletedSignal(error, source, source_type, mount_path);
+  mounter->Mount(source, filesystem_type, options, std::move(callback));
 }
 
 uint32_t CrosDisksServer::Unmount(const std::string& path,
