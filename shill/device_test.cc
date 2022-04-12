@@ -156,8 +156,8 @@ class DeviceTest : public testing::Test {
     device_->OnIPConfigUpdated(ipconfig);
   }
 
-  void OnIPConfigFailed(const IPConfigRefPtr& ipconfig) {
-    device_->OnIPConfigFailed(ipconfig);
+  void OnDHCPFailure() {
+    device_->OnDHCPFailure(reinterpret_cast<DHCPConfig*>(ipconfig_));
   }
 
   patchpanel::TrafficCounter CreateCounter(
@@ -191,6 +191,11 @@ class DeviceTest : public testing::Test {
   EventDispatcher* dispatcher() { return &dispatcher_; }
   MockMetrics* metrics() { return &metrics_; }
   MockManager* manager() { return &manager_; }
+
+  void SetupIPv4DHCPConfig() {
+    ipconfig_ = new MockIPConfig(control_interface(), kDeviceName);
+    device_->ipconfig_ = ipconfig_;
+  }
 
   void SetupIPv6Config() {
     const char kAddress[] = "2001:db8::1";
@@ -229,6 +234,7 @@ class DeviceTest : public testing::Test {
   MockTime time_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
   patchpanel::FakeClient* patchpanel_client_;
+  MockIPConfig* ipconfig_;  // owned by |device_|
 };
 
 const char DeviceTest::kDeviceName[] = "testdevice";
@@ -461,16 +467,15 @@ TEST_F(DeviceTest, ResetConnection) {
   EXPECT_EQ(nullptr, device_->selected_service_);
 }
 
-TEST_F(DeviceTest, IPConfigUpdatedFailure) {
-  scoped_refptr<MockIPConfig> ipconfig =
-      new MockIPConfig(control_interface(), kDeviceName);
+TEST_F(DeviceTest, DHCPFailure) {
+  SetupIPv4DHCPConfig();
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _,
                                               HasSubstr("OnIPConfigFailure")));
   EXPECT_CALL(*service, SetIPConfig(RpcIdentifier(), _));
-  EXPECT_CALL(*ipconfig, ResetProperties());
-  OnIPConfigFailed(ipconfig.get());
+  EXPECT_CALL(*ipconfig_, ResetProperties());
+  OnDHCPFailure();
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
@@ -479,14 +484,13 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
   EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
 
   // IPv4 configuration failed, fallback to use IPv6 configuration.
-  scoped_refptr<MockIPConfig> ipconfig =
-      new NiceMock<MockIPConfig>(control_interface(), kDeviceName);
+  SetupIPv4DHCPConfig();
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   auto* connection = new StrictMock<MockConnection>(&device_info_);
   SetConnection(std::unique_ptr<Connection>(connection));
 
-  EXPECT_CALL(*ipconfig, ResetProperties());
+  EXPECT_CALL(*ipconfig_, ResetProperties());
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
   EXPECT_CALL(*connection, UpdateFromIPConfig(device_->ip6config_));
   EXPECT_CALL(*service, IsConnected(nullptr))
@@ -496,8 +500,8 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
   EXPECT_CALL(*service, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service, SetState(Service::kStateOnline));
-  EXPECT_CALL(*service, SetIPConfig(ipconfig->GetRpcIdentifier(), _));
-  OnIPConfigFailed(ipconfig.get());
+  EXPECT_CALL(*service, SetIPConfig(ipconfig_->GetRpcIdentifier(), _));
+  OnDHCPFailure();
 }
 
 // IPv4 configuration failed with existing IPv6 connection.
@@ -506,25 +510,23 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Connection) {
   SetupIPv6Config();
   EXPECT_THAT(device_->ip6config_, NotNullRefPtr());
 
-  scoped_refptr<MockIPConfig> ipconfig =
-      new NiceMock<MockIPConfig>(control_interface(), kDeviceName);
+  SetupIPv4DHCPConfig();
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   auto* connection = new StrictMock<MockConnection>(&device_info_);
   SetConnection(std::unique_ptr<Connection>(connection));
 
-  EXPECT_CALL(*ipconfig, ResetProperties());
+  EXPECT_CALL(*ipconfig_, ResetProperties());
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(true));
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
   EXPECT_CALL(*service, SetIPConfig(RpcIdentifier(), _)).Times(0);
-  OnIPConfigFailed(ipconfig.get());
+  OnDHCPFailure();
   // Verify connection not teardown.
   EXPECT_NE(device_->connection(), nullptr);
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
-  scoped_refptr<MockIPConfig> ipconfig =
-      new MockIPConfig(control_interface(), kDeviceName);
+  SetupIPv4DHCPConfig();
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
   service->static_ip_parameters_.args_.Set<std::string>(kAddressProperty,
@@ -535,8 +537,8 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithStatic) {
   EXPECT_CALL(*service, DisconnectWithFailure(_, _, _)).Times(0);
   EXPECT_CALL(*service, SetIPConfig(_, _)).Times(0);
   // The IPConfig should retain the previous values.
-  EXPECT_CALL(*ipconfig, ResetProperties()).Times(0);
-  OnIPConfigFailed(ipconfig.get());
+  EXPECT_CALL(*ipconfig_, ResetProperties()).Times(0);
+  OnDHCPFailure();
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedSuccess) {

@@ -134,6 +134,9 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // Reset the IPConfig properties to their default values.
   mockable void ResetProperties();
 
+  // Updates the IP configuration properties and notifies listeners on D-Bus.
+  void UpdateProperties(const Properties& properties);
+
   // Request, renew and release IP configuration. Return true on success, false
   // otherwise. The default implementation always returns false indicating a
   // failure.  ReleaseIP is advisory: if we are no longer connected, it is not
@@ -161,10 +164,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // Returns whether the function call changed the configuration.
   bool SetBlackholedUids(const std::vector<uint32_t>& uids);
   bool ClearBlackholedUids();
-
- protected:
-  // Updates the IP configuration properties.
-  void UpdateProperties(const Properties& properties);
 
  private:
   friend class IPConfigAdaptorInterface;

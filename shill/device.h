@@ -446,7 +446,8 @@ class Device : public base::RefCounted<Device> {
 
   // Callback registered with DHCPConfig. Also see the comment for
   // DHCPConfig::UpdateCallback.
-  void OnIPConfigUpdatedFromDHCP(const IPConfigRefPtr& ipconfig,
+  void OnIPConfigUpdatedFromDHCP(DHCPConfig* dhcp_config,
+                                 const IPConfig::Properties& properties,
                                  bool new_lease_acquired);
 
   // Called on when we get a new DHCP lease for this device. Derived class
@@ -569,8 +570,8 @@ class Device : public base::RefCounted<Device> {
   // Called when the lifetime for IPv6 DNS server expires.
   void IPv6DNSServerExpired();
 
-  // Callback invoked on IP configuration failures.
-  void OnIPConfigFailed(const IPConfigRefPtr& ipconfig);
+  // Callback invoked on DHCP failures.
+  void OnDHCPFailure(DHCPConfig* dhcp_config);
 
   // Callback invoked when the static IP properties configured on the selected
   // service changed.

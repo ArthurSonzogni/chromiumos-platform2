@@ -597,7 +597,7 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
 
   dhcp_config->RegisterCallbacks(
       base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
-      base::BindRepeating(&Device::OnIPConfigFailed, AsWeakPtr()));
+      base::BindRepeating(&Device::OnDHCPFailure, AsWeakPtr()));
   ipconfig_ = dhcp_config;
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
@@ -855,9 +855,16 @@ void Device::ConnectionDiagnosticsCallback(
   // TODO(samueltan): add connection diagnostics metrics.
 }
 
-void Device::OnIPConfigUpdatedFromDHCP(const IPConfigRefPtr& ipconfig,
+void Device::OnIPConfigUpdatedFromDHCP(DHCPConfig* dhcp_config,
+                                       const IPConfig::Properties& properties,
                                        bool new_lease_acquired) {
-  OnIPConfigUpdated(ipconfig);
+  if (dhcp_config != ipconfig_) {
+    LOG(WARNING) << __func__
+                 << " invoked but |dhcp_config| is not owned by this Device";
+    return;
+  }
+  ipconfig_->UpdateProperties(properties);
+  OnIPConfigUpdated(ipconfig_);
   if (new_lease_acquired) {
     OnGetDHCPLease();
   }
@@ -891,10 +898,14 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
   UpdateIPConfigsProperty();
 }
 
-void Device::OnIPConfigFailed(const IPConfigRefPtr& ipconfig) {
+void Device::OnDHCPFailure(DHCPConfig* dhcp_config) {
   SLOG(this, 2) << __func__;
-  // TODO(pstew): This logic gets yet more complex when multiple
-  // IPConfig types are run in parallel (e.g. DHCP and DHCP6)
+  if (dhcp_config != ipconfig_) {
+    LOG(WARNING) << __func__
+                 << " invoked but |dhcp_config| is not owned by this Device";
+    return;
+  }
+
   if (selected_service_) {
     if (IsUsingStaticIP()) {
       // Consider three cases:
@@ -924,7 +935,7 @@ void Device::OnIPConfigFailed(const IPConfigRefPtr& ipconfig) {
     }
   }
 
-  ipconfig->ResetProperties();
+  ipconfig_->ResetProperties();
   UpdateIPConfigsProperty();
 
   // Fallback to IPv6 if possible.

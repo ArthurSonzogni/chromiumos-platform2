@@ -39,6 +39,7 @@ using testing::EndsWith;
 using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::Return;
+using testing::SaveArg;
 using testing::SetArgPointee;
 using testing::WithArg;
 
@@ -296,19 +297,26 @@ class DHCPConfigCallbackTest : public DHCPConfigTest {
                             base::Unretained(this)),
         base::BindRepeating(&DHCPConfigCallbackTest::FailureCallback,
                             base::Unretained(this)));
-    ip_config_ = config_;
   }
 
-  MOCK_METHOD(void, UpdateCallback, (const IPConfigRefPtr&, bool));
-  MOCK_METHOD(void, FailureCallback, (const IPConfigRefPtr&));
+  MOCK_METHOD(void,
+              UpdateCallback,
+              (DHCPConfig*, const IPConfig::Properties&, bool));
+  MOCK_METHOD(void, FailureCallback, (DHCPConfig*));
 
-  // The mock methods above take IPConfigRefPtr because this is the type
-  // that the registered callbacks take.  This conversion of the DHCP
-  // config ref pointer eases our work in setting up expectations.
-  const IPConfigRefPtr& ConfigRef() { return ip_config_; }
+  void ExpectUpdateCallback(bool new_lease_acquired) {
+    EXPECT_CALL(*this, UpdateCallback(config_.get(), _, new_lease_acquired))
+        .WillOnce(SaveArg<1>(&update_properties_));
+    EXPECT_CALL(*this, FailureCallback(_)).Times(0);
+  }
+
+  void ExpectFailureCallback() {
+    EXPECT_CALL(*this, UpdateCallback(_, _, _)).Times(0);
+    EXPECT_CALL(*this, FailureCallback(config_.get()));
+  }
 
  protected:
-  IPConfigRefPtr ip_config_;
+  IPConfig::Properties update_properties_;
 };
 
 }  // namespace
@@ -327,15 +335,14 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalSuccess) {
         conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyLeaseTime,
                            kLeaseTime);
       }
-      EXPECT_CALL(*this, UpdateCallback(ConfigRef(), true));
-      EXPECT_CALL(*this, FailureCallback(_)).Times(0);
+      ExpectUpdateCallback(true);
       config_->ProcessEventSignal(reason, conf);
       std::string failure_message = std::string(reason) +
                                     " failed with lease time " +
                                     (lease_time_given ? "given" : "not given");
       EXPECT_TRUE(Mock::VerifyAndClearExpectations(this)) << failure_message;
       EXPECT_EQ(base::StringPrintf("%d.0.0.0", address_octet),
-                config_->properties().address)
+                update_properties_.address)
           << failure_message;
     }
   }
@@ -344,13 +351,12 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalSuccess) {
 TEST_F(DHCPConfigCallbackTest, ProcessEventSignalFail) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
-  EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
-  EXPECT_CALL(*this, FailureCallback(ConfigRef()));
+  ExpectFailureCallback();
   config_->lease_acquisition_timeout_callback_.Reset(base::DoNothing());
   config_->lease_expiration_callback_.Reset(base::DoNothing());
   config_->ProcessEventSignal(DHCPConfig::kReasonFail, conf);
   Mock::VerifyAndClearExpectations(this);
-  EXPECT_TRUE(config_->properties().address.empty());
+  EXPECT_TRUE(update_properties_.address.empty());
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(config_->lease_expiration_callback_.IsCancelled());
 }
@@ -358,30 +364,27 @@ TEST_F(DHCPConfigCallbackTest, ProcessEventSignalFail) {
 TEST_F(DHCPConfigCallbackTest, ProcessEventSignalUnknown) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
-  EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
+  EXPECT_CALL(*this, UpdateCallback(_, _, _)).Times(0);
   EXPECT_CALL(*this, FailureCallback(_)).Times(0);
   config_->ProcessEventSignal("unknown", conf);
   Mock::VerifyAndClearExpectations(this);
-  EXPECT_TRUE(config_->properties().address.empty());
 }
 
 TEST_F(DHCPConfigCallbackTest, ProcessEventSignalGatewayArp) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
-  EXPECT_CALL(*this, UpdateCallback(ConfigRef(), false));
-  EXPECT_CALL(*this, FailureCallback(_)).Times(0);
+  ExpectUpdateCallback(false);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(0));
   StartInstance();
   config_->ProcessEventSignal(DHCPConfig::kReasonGatewayArp, conf);
   Mock::VerifyAndClearExpectations(this);
-  EXPECT_EQ("4.3.2.1", config_->properties().address);
+  EXPECT_EQ("4.3.2.1", update_properties_.address);
   // Will not fail on acquisition timeout since Gateway ARP is active.
   EXPECT_FALSE(ShouldFailOnAcquisitionTimeout());
 
   // An official reply from a DHCP server should reset our GatewayArp state.
-  EXPECT_CALL(*this, UpdateCallback(ConfigRef(), true));
-  EXPECT_CALL(*this, FailureCallback(_)).Times(0);
+  ExpectUpdateCallback(true);
   config_->ProcessEventSignal(DHCPConfig::kReasonRenew, conf);
   Mock::VerifyAndClearExpectations(this);
   // Will fail on acquisition timeout since Gateway ARP is not active.
@@ -410,7 +413,7 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringFailureCallback) {
   // Stop the DHCP config while it is calling the failure callback.  We
   // need to ensure that no callbacks are left running inadvertently as
   // a result.
-  EXPECT_CALL(*this, FailureCallback(ConfigRef()))
+  EXPECT_CALL(*this, FailureCallback(config_.get()))
       .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
   config_->ProcessEventSignal(DHCPConfig::kReasonFail, conf);
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
@@ -428,7 +431,7 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
   // the lease after accepting other network parameters from the DHCP
   // IPConfig properties.  We need to ensure that no callbacks are left
   // running inadvertently as a result.
-  EXPECT_CALL(*this, UpdateCallback(ConfigRef(), true))
+  EXPECT_CALL(*this, UpdateCallback(config_.get(), _, true))
       .WillOnce(InvokeWithoutArgs(this, &DHCPConfigTest::StopInstance));
   config_->ProcessEventSignal(DHCPConfig::kReasonBound, conf);
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
@@ -437,14 +440,9 @@ TEST_F(DHCPConfigCallbackTest, StoppedDuringSuccessCallback) {
 }
 
 TEST_F(DHCPConfigCallbackTest, NotifyUpdateWithDropRef) {
-  // The UpdateCallback should be able to drop a reference to the
-  // IPConfig object without crashing.
-  EXPECT_CALL(*this, UpdateCallback(ConfigRef(), true))
-      .WillOnce([this](const IPConfigRefPtr& /*ipconfig*/,
-                       bool /*new_lease_acquired*/) {
-        config_ = nullptr;
-        ip_config_ = nullptr;
-      });
+  // The UpdateCallback should be able to destroy the object.
+  EXPECT_CALL(*this, UpdateCallback(config_.get(), _, true))
+      .WillOnce(InvokeWithoutArgs([this]() { config_ = nullptr; }));
   InvokeOnIPConfigUpdated({}, true);
 }
 
@@ -549,8 +547,7 @@ TEST_F(DHCPConfigTest, RequestIP) {
 
 TEST_F(DHCPConfigCallbackTest, RequestIPTimeout) {
   SetShouldFailOnAcquisitionTimeout(true);
-  EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
-  EXPECT_CALL(*this, FailureCallback(ConfigRef()));
+  ExpectFailureCallback();
   config_->lease_acquisition_timeout_ = base::TimeDelta();
   config_->pid_ = 567;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
@@ -590,8 +587,7 @@ TEST_F(DHCPConfigTest, RestartNoClient) {
 
 TEST_F(DHCPConfigCallbackTest, StartTimeout) {
   SetShouldFailOnAcquisitionTimeout(true);
-  EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
-  EXPECT_CALL(*this, FailureCallback(ConfigRef()));
+  ExpectFailureCallback();
   config_->lease_acquisition_timeout_ = base::TimeDelta();
   config_->proxy_ = std::move(proxy_);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
