@@ -456,6 +456,15 @@ bool Port::CableLimitingUSBSpeed() {
   auto cable_speed = cable_->GetProductTypeVDO1() & kUSBSpeedBitMask;
   auto partner_speed = partner_->GetProductTypeVDO1() & kUSBSpeedBitMask;
 
+  // In USB PD Rev 2.0 and 3.0, 0x3 in the AMA VDO USB Highest speed field
+  // represents billboard only, and should not be compared against cable speed.
+  if ((partner_->GetPDRevision() == PDRevision::k20 ||
+       partner_->GetPDRevision() == PDRevision::k30) &&
+      partner_type == kIDHeaderVDOProductTypeUFPAMA &&
+      partner_speed == kAMAVDOUSBSpeedBillboard) {
+    return false;
+  }
+
   // Check for TBT supporting cables which signal as USB 3.2 Gen2 passive
   // cables in ID Header VDO and Passive Cable VDO, but can support USB4 with
   // TBT3 Gen3 speed.

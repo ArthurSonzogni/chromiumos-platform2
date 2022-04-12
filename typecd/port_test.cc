@@ -518,4 +518,18 @@ TEST_F(PortTest, TestUSB4LimitedByTBT4PassiveLRDCableFalse) {
   EXPECT_FALSE(port->CableLimitingUSBSpeed());
 }
 
+// Check that CableLimitingUSBSpeed works for a case with AMA VDO.
+// Case: WIMAXIT display connected with Anker USB 3.2 Gen2 cable.
+TEST_F(PortTest, TestBillboardOnlyDisplayNotLimitedByCable) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddWimaxitDisplay(*port);
+  AddAnkerUSB3p2Gen2Cable(*port);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
+  EXPECT_FALSE(port->CableLimitingUSBSpeed());
+}
+
 }  // namespace typecd
