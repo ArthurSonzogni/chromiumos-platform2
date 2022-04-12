@@ -219,12 +219,11 @@ fn get_supported_path(
     config: &DeviceGpuConfigParams,
     path_type: SupportedPaths,
 ) -> Result<PathBuf> {
-    let path;
-    match path_type {
-        SupportedPaths::GpuMax => path = &config.max_freq_path,
-        SupportedPaths::GpuTurbo => path = &config.turbo_freq_path,
-        SupportedPaths::PowerLimitCurrent => path = &config.power_limit_path,
-    }
+    let path = match path_type {
+        SupportedPaths::GpuMax => &config.max_freq_path,
+        SupportedPaths::GpuTurbo => &config.turbo_freq_path,
+        SupportedPaths::PowerLimitCurrent => &config.power_limit_path,
+    };
 
     Ok(PathBuf::from(path))
 }
