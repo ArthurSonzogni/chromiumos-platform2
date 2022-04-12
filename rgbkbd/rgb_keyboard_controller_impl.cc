@@ -4,12 +4,29 @@
 
 #include "rgbkbd/rgb_keyboard_controller_impl.h"
 
+#include <utility>
+
 namespace rgbkbd {
-RgbKeyboardControllerImpl::RgbKeyboardControllerImpl() = default;
+
+RgbKeyboardControllerImpl::RgbKeyboardControllerImpl(
+    std::unique_ptr<RgbKeyboard> keyboard)
+    : keyboard_(std::move(keyboard)),
+      background_color_(kDefaultBackgroundColor) {}
 RgbKeyboardControllerImpl::~RgbKeyboardControllerImpl() = default;
 
 uint32_t RgbKeyboardControllerImpl::GetRgbKeyboardCapabilities() {
   return static_cast<uint32_t>(keyboard_capabilities_);
+}
+
+void RgbKeyboardControllerImpl::SetKeyColor(uint32_t key, const Color& color) {
+  keyboard_->SetKeyColor(key, color.r, color.g, color.b);
+}
+
+void RgbKeyboardControllerImpl::SetCapsLockState(bool enabled) {
+  caps_lock_enabled_ = enabled;
+  const auto color = GetCurrentCapsLockColor();
+  SetKeyColor(kLeftShiftKey, color);
+  SetKeyColor(kRightShiftKey, color);
 }
 
 }  // namespace rgbkbd

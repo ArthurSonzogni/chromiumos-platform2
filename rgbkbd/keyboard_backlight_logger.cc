@@ -82,4 +82,8 @@ bool KeyboardBacklightLogger::WriteLogEntry(const std::string& log) {
   return (len == file_->WriteAtCurrentPos(to_write.data(), len));
 }
 
+bool KeyboardBacklightLogger::ResetLog() {
+  return InitializeFile();
+}
+
 }  // namespace rgbkbd

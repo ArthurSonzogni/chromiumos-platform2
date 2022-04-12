@@ -15,5 +15,16 @@
       <arg name="keyboard_capabilities" type="u" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SetCapsLockState">
+      <tp:docstring>
+        When caps lock is enabled, both shift keys are highlighted to a preset
+        caps lock highlight color. If the preset color conflicts with the
+        colors set for the rest of the keys, an alternate highlight color will
+        be chosen. When caps lock is disabled, the shift keys are restored to
+        the previously set background color.
+      </tp:docstring>
+      <arg name="enabled" type="b" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

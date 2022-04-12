@@ -29,6 +29,7 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
       const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb);
 
   uint32_t GetRgbKeyboardCapabilities() override;
+  void SetCapsLockState(bool enabled) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;

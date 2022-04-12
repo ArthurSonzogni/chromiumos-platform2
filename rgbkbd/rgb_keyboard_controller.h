@@ -15,6 +15,7 @@ class RgbKeyboardController {
   virtual ~RgbKeyboardController() = default;
 
   virtual uint32_t GetRgbKeyboardCapabilities() = 0;
+  virtual void SetCapsLockState(bool enabled) = 0;
 };
 
 }  // namespace rgbkbd

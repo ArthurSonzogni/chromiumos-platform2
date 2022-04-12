@@ -11,10 +11,13 @@
 #include <dbus/bus.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 
+#include "rgbkbd/keyboard_backlight_logger.h"
+
 namespace rgbkbd {
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::RgbkbdAdaptor(this),
-      dbus_object_(nullptr, bus, dbus::ObjectPath(kRgbkbdServicePath)) {}
+      dbus_object_(nullptr, bus, dbus::ObjectPath(kRgbkbdServicePath)),
+      rgb_keyboard_controller_(std::make_unique<KeyboardBacklightLogger>()) {}
 
 void DBusAdaptor::RegisterAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
@@ -26,6 +29,10 @@ uint32_t DBusAdaptor::GetRgbKeyboardCapabilities() {
   // TODO(michaelcheco): Shutdown DBus service if the keyboard is not
   // supported.
   return rgb_keyboard_controller_.GetRgbKeyboardCapabilities();
+}
+
+void DBusAdaptor::SetCapsLockState(bool enabled) {
+  rgb_keyboard_controller_.SetCapsLockState(enabled);
 }
 
 RgbkbdDaemon::RgbkbdDaemon() : DBusServiceDaemon(kRgbkbdServicePath) {}
