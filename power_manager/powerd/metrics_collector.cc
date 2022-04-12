@@ -507,6 +507,66 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
              kBatteryDischargeRateWhileSuspendedMax, kDefaultDischargeBuckets);
 }
 
+void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
+    const AdaptiveChargingState state,
+    const base::TimeTicks& target_time,
+    const base::TimeTicks& hold_start_time,
+    const base::TimeTicks& hold_end_time,
+    const base::TimeTicks& charge_finished_time,
+    double display_battery_percentage) {
+  base::TimeTicks now = clock_.GetCurrentTime();
+  std::string metric_name;
+
+  switch (state) {
+    case AdaptiveChargingState::ACTIVE:
+    case AdaptiveChargingState::INACTIVE:
+      metric_name = kAdaptiveChargingActiveMinutesDeltaName;
+      break;
+    case AdaptiveChargingState::HEURISTIC_DISABLED:
+      metric_name = kAdaptiveChargingHeuristicDisabledMinutesDeltaName;
+      break;
+    case AdaptiveChargingState::USER_CANCELED:
+      metric_name = kAdaptiveChargingUserCanceledMinutesDeltaName;
+      break;
+    case AdaptiveChargingState::USER_DISABLED:
+      metric_name = kAdaptiveChargingUserDisabledMinutesDeltaName;
+      break;
+    case AdaptiveChargingState::NOT_SUPPORTED:
+      metric_name = kAdaptiveChargingNotSupportedMinutesDeltaName;
+      break;
+    default:
+      LOG(ERROR) << "Invalid Adaptive Charging State for reporting to UMA: "
+                 << static_cast<int>(state);
+  }
+
+  SendMetric(metric_name, (now - target_time).InMinutes(),
+             kAdaptiveChargingMinutesDeltaMin, kAdaptiveChargingMinutesDeltaMax,
+             kDefaultBuckets);
+  SendEnumMetric(kAdaptiveChargingBatteryPercentageOnUnplugName,
+                 lround(display_battery_percentage), kMaxPercent);
+  if (charge_finished_time != base::TimeTicks()) {
+    SendMetric(kAdaptiveChargingMinutesToFullName,
+               (charge_finished_time - hold_end_time).InMinutes(),
+               kAdaptiveChargingMinutesToFullMin,
+               kAdaptiveChargingMinutesToFullMax, kDefaultBuckets);
+  }
+
+  base::TimeDelta delay_time = hold_start_time == base::TimeTicks()
+                                   ? base::TimeDelta()
+                                   : hold_end_time - hold_start_time;
+  SendMetric(kAdaptiveChargingDelayMinutesName, delay_time.InMinutes(),
+             kAdaptiveChargingDelayMinutesMin, kAdaptiveChargingDelayMinutesMax,
+             kAdaptiveChargingMinutesBuckets);
+
+  base::TimeDelta available_time = hold_start_time == base::TimeTicks()
+                                       ? base::TimeDelta()
+                                       : now - hold_start_time;
+  SendMetric(kAdaptiveChargingAvailableMinutesName, available_time.InMinutes(),
+             kAdaptiveChargingAvailableMinutesMin,
+             kAdaptiveChargingAvailableMinutesMax,
+             kAdaptiveChargingMinutesBuckets);
+}
+
 void MetricsCollector::IncrementNumOfSessionsPerChargeMetric() {
   int64_t num = 0;
   prefs_->GetInt64(kNumSessionsOnCurrentChargePref, &num);

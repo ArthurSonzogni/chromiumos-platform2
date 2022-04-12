@@ -41,6 +41,7 @@ void AdaptiveChargingController::Init(
   power_supply_ = power_supply;
   prefs_ = prefs;
   recheck_alarm_interval_ = kDefaultAlarmInterval;
+  report_charge_time_ = false;
   hold_percent_ = kDefaultHoldPercent;
   hold_delta_percent_ = 0;
   display_percent_ = kDefaultHoldPercent;
@@ -72,7 +73,11 @@ void AdaptiveChargingController::Init(
   adaptive_charging_supported_ = SetSustain(100, 100);
   if (!adaptive_charging_supported_) {
     adaptive_charging_enabled_ = false;
+    state_ = AdaptiveChargingState::NOT_SUPPORTED;
   }
+
+  state_ = adaptive_charging_enabled_ ? AdaptiveChargingState::INACTIVE
+                                      : AdaptiveChargingState::USER_DISABLED;
 
   LOG(INFO) << "Adaptive Charging is "
             << (adaptive_charging_supported_ ? "supported" : "not supported")
@@ -105,6 +110,8 @@ void AdaptiveChargingController::HandlePolicyChange(
     if (adaptive_charging_supported_) {
       adaptive_charging_enabled_ = policy.adaptive_charging_enabled();
       restart_adaptive = true;
+      if (!adaptive_charging_enabled_)
+        state_ = AdaptiveChargingState::USER_DISABLED;
     } else {
       LOG(ERROR) << "Policy Change attempted to enable Adaptive Charging "
                  << "without platform support.";
@@ -231,20 +238,55 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
   if (status.external_power != cached_external_power_) {
     if (status.external_power == PowerSupplyProperties_ExternalPower_AC &&
         status.battery_state != PowerSupplyProperties_BatteryState_FULL) {
+      report_charge_time_ = status.display_battery_percentage <= hold_percent_;
       StartAdaptiveCharging(UserChargingEvent::Event::CHARGER_PLUGGED_IN);
     } else if (cached_external_power_ ==
                PowerSupplyProperties_ExternalPower_AC) {
       StopAdaptiveCharging();
+
+      // Only generate metrics if we're above hold_percent_.
+      if (AtHoldPercent(status.display_battery_percentage) &&
+          status.external_power ==
+              PowerSupplyProperties_ExternalPower_DISCONNECTED) {
+        delegate_->GenerateAdaptiveChargingUnplugMetrics(
+            state_, target_full_charge_time_, hold_percent_start_time_,
+            hold_percent_end_time_, charge_finished_time_,
+            status.display_battery_percentage);
+      }
+
+      // Clear timestamps after reporting metrics.
+      target_full_charge_time_ = base::TimeTicks();
+      hold_percent_start_time_ = base::TimeTicks();
+      hold_percent_end_time_ = base::TimeTicks();
+      charge_finished_time_ = base::TimeTicks();
+      cached_external_power_ = status.external_power;
+      return;
     }
 
     cached_external_power_ = status.external_power;
   }
 
-  if (adaptive_charging_enabled_ && is_sustain_set_ &&
-      AtHoldPercent(status.display_battery_percentage)) {
-    power_supply_->SetAdaptiveCharging(target_full_charge_time_,
-                                       display_percent_);
+  // Only collect information for metrics, etc. if plugged into a full powered
+  // charge (denoted as PowerSupplyProperties_ExternalPower_AC) since that's the
+  // only time that Adaptive Charging will be active.
+  if (status.external_power != PowerSupplyProperties_ExternalPower_AC)
+    return;
+
+  if (AtHoldPercent(status.display_battery_percentage)) {
+    if (adaptive_charging_enabled_ && is_sustain_set_) {
+      power_supply_->SetAdaptiveCharging(target_full_charge_time_,
+                                         display_percent_);
+    }
+
+    // Since we report metrics on how well the ML model does even if Adaptive
+    // Charging isn't enabled, we still record this timestamp.
+    if (hold_percent_start_time_ == base::TimeTicks())
+      hold_percent_start_time_ = base::TimeTicks::Now();
   }
+
+  if (status.battery_state == PowerSupplyProperties_BatteryState_FULL &&
+      charge_finished_time_ == base::TimeTicks() && report_charge_time_)
+    charge_finished_time_ = base::TimeTicks::Now();
 }
 
 bool AdaptiveChargingController::SetSustain(int64_t lower, int64_t upper) {
@@ -259,6 +301,9 @@ bool AdaptiveChargingController::SetSustain(int64_t lower, int64_t upper) {
 
 void AdaptiveChargingController::StartAdaptiveCharging(
     const UserChargingEvent::Event::Reason& reason) {
+  if (adaptive_charging_enabled_)
+    state_ = AdaptiveChargingState::ACTIVE;
+
   UpdateAdaptiveCharging(reason, true /* async */);
 }
 
@@ -325,6 +370,11 @@ void AdaptiveChargingController::UpdateAdaptiveCharging(
 }
 
 void AdaptiveChargingController::StopAdaptiveCharging() {
+  if (state_ == AdaptiveChargingState::ACTIVE) {
+    state_ = AdaptiveChargingState::INACTIVE;
+    hold_percent_end_time_ = base::TimeTicks::Now();
+  }
+
   recheck_alarm_->Stop();
   charge_alarm_->Stop();
   SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);

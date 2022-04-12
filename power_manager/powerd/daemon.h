@@ -188,6 +188,13 @@ class Daemon :
   bool SetBatterySustain(int lower, int upper) override;
   void GetAdaptiveChargingPrediction(const assist_ranker::RankerExample& proto,
                                      bool async) override;
+  void GenerateAdaptiveChargingUnplugMetrics(
+      const metrics::AdaptiveChargingState state,
+      const base::TimeTicks& target_time,
+      const base::TimeTicks& hold_start_time,
+      const base::TimeTicks& hold_end_time,
+      const base::TimeTicks& charge_finished_time,
+      double display_battery_percentage) override;
 
   // Overridden from system::AudioObserver:
   void OnAudioStateChange(bool active) override;

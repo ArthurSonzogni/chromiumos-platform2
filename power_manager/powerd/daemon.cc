@@ -1006,6 +1006,18 @@ void Daemon::GetAdaptiveChargingPrediction(
   adaptive_charging_controller_->OnPredictionResponse(inference_done, result);
 }
 
+void Daemon::GenerateAdaptiveChargingUnplugMetrics(
+    const metrics::AdaptiveChargingState state,
+    const base::TimeTicks& target_time,
+    const base::TimeTicks& hold_start_time,
+    const base::TimeTicks& hold_end_time,
+    const base::TimeTicks& charge_finished_time,
+    double display_battery_percentage) {
+  metrics_collector_->GenerateAdaptiveChargingUnplugMetrics(
+      state, target_time, hold_start_time, hold_end_time, charge_finished_time,
+      display_battery_percentage);
+}
+
 void Daemon::OnAudioStateChange(bool active) {
   if (active)
     audio_activity_logger_->OnActivityStarted();

@@ -122,6 +122,18 @@ class MetricsCollector {
   void GenerateDimEventDurationMetrics(const std::string& event_name,
                                        base::TimeDelta duration);
 
+  // Generates UMA metric on number of Adaptive Charging Actives.
+  void GenerateAdaptiveChargingActiveMetrics(bool enabled);
+
+  // Generates UMA metrics about Adaptive Charging accuracy on AC unplug.
+  void GenerateAdaptiveChargingUnplugMetrics(
+      const AdaptiveChargingState state,
+      const base::TimeTicks& target_time,
+      const base::TimeTicks& hold_start_time,
+      const base::TimeTicks& hold_end_time,
+      const base::TimeTicks& charge_finished_time,
+      double display_battery_percent);
+
   // Handles the power button being pressed or released.
   void HandlePowerButtonEvent(ButtonState state);
 

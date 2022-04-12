@@ -68,6 +68,29 @@ extern const char kBatteryRemainingAtEndOfSessionName[];
 extern const char kBatteryRemainingAtStartOfSessionName[];
 extern const char kBatteryRemainingAtBootName[];
 
+extern const char kAdaptiveChargingActiveMinutesDeltaName[];
+extern const char kAdaptiveChargingHeuristicDisabledMinutesDeltaName[];
+extern const char kAdaptiveChargingUserCanceledMinutesDeltaName[];
+extern const char kAdaptiveChargingUserDisabledMinutesDeltaName[];
+extern const char kAdaptiveChargingNotSupportedMinutesDeltaName[];
+extern const int kAdaptiveChargingMinutesDeltaMin;
+extern const int kAdaptiveChargingMinutesDeltaMax;
+
+extern const char kAdaptiveChargingBatteryPercentageOnUnplugName[];
+
+extern const char kAdaptiveChargingMinutesToFullName[];
+extern const int kAdaptiveChargingMinutesToFullMin;
+extern const int kAdaptiveChargingMinutesToFullMax;
+
+extern const int kAdaptiveChargingMinutesBuckets;
+extern const char kAdaptiveChargingDelayMinutesName[];
+extern const int kAdaptiveChargingDelayMinutesMin;
+extern const int kAdaptiveChargingDelayMinutesMax;
+
+extern const char kAdaptiveChargingAvailableMinutesName[];
+extern const int kAdaptiveChargingAvailableMinutesMin;
+extern const int kAdaptiveChargingAvailableMinutesMax;
+
 extern const char kNumberOfAlsAdjustmentsPerSessionName[];
 extern const int kNumberOfAlsAdjustmentsPerSessionMin;
 extern const int kNumberOfAlsAdjustmentsPerSessionMax;
@@ -168,6 +191,17 @@ enum class DimEvent {
   QUICK_DIM_TRANSITIONED_TO_STANDARD_DIM,
   QUICK_DIM_REVERTED_BY_HPS,
   QUICK_DIM_REVERTED_BY_USER,
+  MAX
+};
+
+// Values for unplug metrics for AdaptiveChargingController.
+enum class AdaptiveChargingState {
+  ACTIVE,
+  INACTIVE,
+  HEURISTIC_DISABLED,
+  USER_CANCELED,
+  USER_DISABLED,
+  NOT_SUPPORTED,
   MAX
 };
 

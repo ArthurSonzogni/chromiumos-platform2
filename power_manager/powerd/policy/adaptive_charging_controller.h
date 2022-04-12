@@ -16,6 +16,7 @@
 
 #include "ml/proto_bindings/ranker_example.pb.h"
 
+#include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
@@ -31,6 +32,8 @@ namespace policy {
 
 class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
  public:
+  using AdaptiveChargingState = metrics::AdaptiveChargingState;
+
   class Delegate {
    public:
     // Set the battery sustain state to `lower`, `upper`. `lower` is the charge
@@ -54,6 +57,14 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
     // success and `OnPredictionFail` otherwise.
     virtual void GetAdaptiveChargingPrediction(
         const assist_ranker::RankerExample& proto, bool async) = 0;
+
+    virtual void GenerateAdaptiveChargingUnplugMetrics(
+        const AdaptiveChargingState state,
+        const base::TimeTicks& target_time,
+        const base::TimeTicks& hold_start_time,
+        const base::TimeTicks& hold_end_time,
+        const base::TimeTicks& charge_finished_time,
+        double display_battery_percentage) = 0;
   };
 
   AdaptiveChargingControllerInterface() {}
@@ -206,9 +217,27 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // Current target for when we plan to fully charge the battery.
   base::TimeTicks target_full_charge_time_;
 
+  // The time when we started delaying charge via the battery sustainer. Used
+  // for reporting metrics.
+  base::TimeTicks hold_percent_start_time_;
+
+  // The time when we stopped delaying charge. Used for reporting metrics.
+  base::TimeTicks hold_percent_end_time_;
+
+  // The time when we reached fill charge. Used for reporting metrics.
+  base::TimeTicks charge_finished_time_;
+
   // Interval for rechecking the prediction, and modifying whether charging is
   // delayed based on that prediction.
   base::TimeDelta recheck_alarm_interval_;
+
+  // Tracks the specific state of Adaptive Charging for UMA reporting.
+  AdaptiveChargingState state_;
+
+  // Whether we should report the AdaptiveChargingTimeToFull metric, which
+  // should only be done if charging started with the battery charge less than
+  // `hold_percent_`.
+  bool report_charge_time_;
 
   // The default upper percent for the battery sustainer. Not used if the
   // battery has a higher display battery percentage when the AC is connected.

@@ -36,6 +36,14 @@ class FakeDelegate : public AdaptiveChargingControllerInterface::Delegate {
     adaptive_charging_controller_->OnPredictionResponse(true, fake_result);
   }
 
+  void GenerateAdaptiveChargingUnplugMetrics(
+      const metrics::AdaptiveChargingState state,
+      const base::TimeTicks& target_time,
+      const base::TimeTicks& hold_start_time,
+      const base::TimeTicks& hold_end_time,
+      const base::TimeTicks& charge_finished_time,
+      double display_battery_percentage) override {}
+
   AdaptiveChargingController* adaptive_charging_controller_;
   // The vector of doubles that represent the probability of unplug for each
   // associated hour, except for the last result, which is the probability of
