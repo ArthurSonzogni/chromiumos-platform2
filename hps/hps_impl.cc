@@ -422,6 +422,11 @@ hps::HPS_impl::BootResult HPS_impl::CheckStage1() {
     hps_metrics_->SendHpsTurnOnResult(
         HpsTurnOnResult::kStage1NotStarted,
         base::TimeTicks::Now() - this->boot_start_time_);
+    if (status.value() & R2::kOneTimeInit) {
+      // One-time-init is a special stage1 payload used by hps-factory.
+      // If we see it, send an update to get back to the real stage1.
+      return BootResult::kUpdate;
+    }
     OnFatalError(FROM_HERE, "Stage 1 did not start");
   }
   VLOG(1) << "Stage 1 OK";
