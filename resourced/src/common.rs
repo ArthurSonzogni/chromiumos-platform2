@@ -11,6 +11,7 @@ use std::sync::Mutex;
 use anyhow::{bail, Context, Result};
 use glob::glob;
 use once_cell::sync::Lazy;
+use sys_util::error;
 
 // Extract the parsing function for unittest.
 pub fn parse_file_to_u64<R: BufRead>(reader: R) -> Result<u64> {
@@ -163,7 +164,10 @@ pub fn set_rtc_audio_active(mode: RTCAudioActive) -> Result<()> {
                 "balance_performance" // Default EPP
             };
             set_epp("/", epp_value).context("Failed to set EPP sysfs value!")?;
-            set_gt_boost_freq_mhz(mode)?;
+            /* TODO(b/226646450): set_gt_boost_freq_mhz fails on non-Intel platforms. */
+            if let Err(err) = set_gt_boost_freq_mhz(mode) {
+                error!("Failed to set boost freq: {:#}", err)
+            }
         }
         Err(_) => bail!("Failed to set RTC audio activity"),
     }
