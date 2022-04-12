@@ -15,7 +15,9 @@
 #include <base/task/thread_pool.h>
 
 #include "rmad/utils/cr50_utils_impl.h"
+#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/fake_cr50_utils.h"
+#include "rmad/utils/fake_crossystem_utils.h"
 #include "rmad/utils/fake_flashrom_utils.h"
 #include "rmad/utils/flashrom_utils_impl.h"
 
@@ -25,25 +27,30 @@ namespace fake {
 
 FakeFinalizeStateHandler::FakeFinalizeStateHandler(
     scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
-    : FinalizeStateHandler(json_store,
-                           std::make_unique<FakeCr50Utils>(working_dir_path),
-                           std::make_unique<FakeFlashromUtils>()) {}
+    : FinalizeStateHandler(
+          json_store,
+          std::make_unique<FakeCr50Utils>(working_dir_path),
+          std::make_unique<FakeCrosSystemUtils>(working_dir_path),
+          std::make_unique<FakeFlashromUtils>()) {}
 
 }  // namespace fake
 
 FinalizeStateHandler::FinalizeStateHandler(scoped_refptr<JsonStore> json_store)
     : BaseStateHandler(json_store), finalize_signal_sender_(base::DoNothing()) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
+  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
 }
 
 FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<JsonStore> json_store,
     std::unique_ptr<Cr50Utils> cr50_utils,
+    std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils)
     : BaseStateHandler(json_store),
       finalize_signal_sender_(base::DoNothing()),
       cr50_utils_(std::move(cr50_utils)),
+      crossystem_utils_(std::move(crossystem_utils)),
       flashrom_utils_(std::move(flashrom_utils)) {}
 
 RmadErrorCode FinalizeStateHandler::InitializeState() {
@@ -134,17 +141,21 @@ void FinalizeStateHandler::StartFinalize() {
 }
 
 void FinalizeStateHandler::FinalizeTask() {
+  // Enable SWWP if HWWP is still disabled.
+  if (int hwwp_status;
+      crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status == 0) {
+    if (!flashrom_utils_->EnableSoftwareWriteProtection()) {
+      LOG(ERROR) << "Failed to enable software write protection";
+      status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+      status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_SWWP);
+      return;
+    }
+  }
+  status_.set_progress(0.5);
   if (!cr50_utils_->DisableFactoryMode()) {
     LOG(ERROR) << "Failed to disable factory mode";
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
     status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);
-    return;
-  }
-  status_.set_progress(0.5);
-  if (!flashrom_utils_->EnableSoftwareWriteProtection()) {
-    LOG(ERROR) << "Failed to enable software write protection";
-    status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
-    status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_SWWP);
     return;
   }
   // TODO(chenghan): Check cr50 data (e.g. board ID) and GBB flags.

@@ -11,6 +11,8 @@
 
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/fake_crossystem_utils.h"
+#include "rmad/utils/fake_flashrom_utils.h"
+#include "rmad/utils/flashrom_utils_impl.h"
 
 #include <base/logging.h>
 
@@ -23,8 +25,9 @@ FakeWriteProtectEnablePhysicalStateHandler::
         scoped_refptr<JsonStore> json_store,
         const base::FilePath& working_dir_path)
     : WriteProtectEnablePhysicalStateHandler(
-          json_store, std::make_unique<FakeCrosSystemUtils>(working_dir_path)) {
-}
+          json_store,
+          std::make_unique<FakeCrosSystemUtils>(working_dir_path),
+          std::make_unique<FakeFlashromUtils>()) {}
 
 }  // namespace fake
 
@@ -33,19 +36,28 @@ WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     : BaseStateHandler(json_store),
       write_protect_signal_sender_(base::DoNothing()) {
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
 }
 
 WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils)
+    std::unique_ptr<CrosSystemUtils> crossystem_utils,
+    std::unique_ptr<FlashromUtils> flashrom_utils)
     : BaseStateHandler(json_store),
       write_protect_signal_sender_(base::DoNothing()),
-      crossystem_utils_(std::move(crossystem_utils)) {}
+      crossystem_utils_(std::move(crossystem_utils)),
+      flashrom_utils_(std::move(flashrom_utils)) {}
 
 RmadErrorCode WriteProtectEnablePhysicalStateHandler::InitializeState() {
-  if (!state_.has_wp_enable_physical()) {
+  if (!state_.has_wp_enable_physical() && !RetrieveState()) {
     state_.set_allocated_wp_enable_physical(
         new WriteProtectEnablePhysicalState);
+    // Enable SWWP when entering the state for the first time.
+    if (!flashrom_utils_->EnableSoftwareWriteProtection()) {
+      LOG(ERROR) << "Failed to enable software write protection";
+      return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+    }
+    StoreState();
   }
 
   PollUntilWriteProtectOn();

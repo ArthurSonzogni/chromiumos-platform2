@@ -13,6 +13,9 @@
 #include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
+#include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/flashrom_utils.h"
+
 namespace rmad {
 
 class CrosSystemUtils;
@@ -24,10 +27,11 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
 
   explicit WriteProtectEnablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |crossystem_utils_| for testing.
+  // Used to inject mock |crossystem_utils_| and |flashrom_utils_| for testing.
   WriteProtectEnablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
-      std::unique_ptr<CrosSystemUtils> crossystem_utils);
+      std::unique_ptr<CrosSystemUtils> crossystem_utils,
+      std::unique_ptr<FlashromUtils> flashrom_utils);
 
   void RegisterSignalSender(
       base::RepeatingCallback<void(bool)> callback) override {
@@ -35,7 +39,7 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
   }
 
   ASSIGN_STATE(RmadState::StateCase::kWpEnablePhysical);
-  SET_REPEATABLE;
+  SET_UNREPEATABLE;
 
   RmadErrorCode InitializeState() override;
   void CleanUpState() override;
@@ -52,6 +56,7 @@ class WriteProtectEnablePhysicalStateHandler : public BaseStateHandler {
   base::RepeatingCallback<void(bool)> write_protect_signal_sender_;
 
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<FlashromUtils> flashrom_utils_;
 };
 
 namespace fake {

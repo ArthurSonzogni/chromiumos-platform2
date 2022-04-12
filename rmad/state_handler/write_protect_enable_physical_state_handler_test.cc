@@ -15,6 +15,7 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_enable_physical_state_handler.h"
 #include "rmad/utils/mock_crossystem_utils.h"
+#include "rmad/utils/mock_flashrom_utils.h"
 
 using testing::_;
 using testing::Assign;
@@ -22,6 +23,7 @@ using testing::DoAll;
 using testing::Eq;
 using testing::InSequence;
 using testing::IsTrue;
+using testing::NiceMock;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
@@ -37,7 +39,7 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
   };
 
   scoped_refptr<WriteProtectEnablePhysicalStateHandler> CreateStateHandler(
-      const std::vector<int> wp_status_list) {
+      const std::vector<int> wp_status_list, bool enable_swwp_success) {
     // Mock |CrosSystemUtils|.
     auto mock_crossystem_utils =
         std::make_unique<StrictMock<MockCrosSystemUtils>>();
@@ -49,9 +51,14 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
             .WillOnce(DoAll(SetArgPointee<1>(wp_status_list[i]), Return(true)));
       }
     }
+    // Mock |FlashromUtils|.
+    auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
+    ON_CALL(*mock_flashrom_utils, EnableSoftwareWriteProtection())
+        .WillByDefault(Return(enable_swwp_success));
 
     auto handler = base::MakeRefCounted<WriteProtectEnablePhysicalStateHandler>(
-        json_store_, std::move(mock_crossystem_utils));
+        json_store_, std::move(mock_crossystem_utils),
+        std::move(mock_flashrom_utils));
     auto callback =
         base::BindRepeating(&SignalSender::SendHardwareWriteProtectSignal,
                             base::Unretained(&signal_sender_));
@@ -68,12 +75,18 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
 };
 
 TEST_F(WriteProtectEnablePhysicalStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler({});
+  auto handler = CreateStateHandler({}, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
+TEST_F(WriteProtectEnablePhysicalStateHandlerTest, InitializeState_Fail) {
+  auto handler = CreateStateHandler({}, false);
+  EXPECT_EQ(handler->InitializeState(),
+            RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
+}
+
 TEST_F(WriteProtectEnablePhysicalStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler({1});
+  auto handler = CreateStateHandler({1}, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -86,7 +99,7 @@ TEST_F(WriteProtectEnablePhysicalStateHandlerTest, GetNextStateCase_Success) {
 
 TEST_F(WriteProtectEnablePhysicalStateHandlerTest,
        GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler({});
+  auto handler = CreateStateHandler({}, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   // No WriteProtectEnablePhysicalState.
@@ -98,7 +111,7 @@ TEST_F(WriteProtectEnablePhysicalStateHandlerTest,
 }
 
 TEST_F(WriteProtectEnablePhysicalStateHandlerTest, GetNextStateCase_Wait) {
-  auto handler = CreateStateHandler({0, 0, 0, 1});
+  auto handler = CreateStateHandler({0, 0, 0, 1}, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;

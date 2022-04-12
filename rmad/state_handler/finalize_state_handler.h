@@ -16,6 +16,7 @@
 #include <base/timer/timer.h>
 
 #include "rmad/utils/cr50_utils.h"
+#include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/flashrom_utils.h"
 
 namespace rmad {
@@ -26,9 +27,11 @@ class FinalizeStateHandler : public BaseStateHandler {
   static constexpr base::TimeDelta kReportStatusInterval = base::Seconds(1);
 
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store);
-  // Used to inject mock |cr50_utils_| and |flashrom_utils_| for testing.
+  // Used to inject mock |cr50_utils_|, |crossystem_utils_| and
+  // |flashrom_utils_| for testing.
   FinalizeStateHandler(scoped_refptr<JsonStore> json_store,
                        std::unique_ptr<Cr50Utils> cr50_utils,
+                       std::unique_ptr<CrosSystemUtils> crossystem_utils,
                        std::unique_ptr<FlashromUtils> flashrom_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kFinalize);
@@ -58,6 +61,7 @@ class FinalizeStateHandler : public BaseStateHandler {
   FinalizeStatus status_;
   FinalizeSignalCallback finalize_signal_sender_;
   std::unique_ptr<Cr50Utils> cr50_utils_;
+  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<FlashromUtils> flashrom_utils_;
   base::RepeatingTimer status_timer_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
