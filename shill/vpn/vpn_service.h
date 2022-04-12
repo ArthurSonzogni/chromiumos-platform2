@@ -36,6 +36,7 @@ class VPNService : public Service,
   bool Save(StoreInterface* storage) override;
   bool Unload() override;
   void EnableAndRetainAutoConnect() override;
+  TetheringState GetTethering() const override;
   bool SetNameProperty(const std::string& name, Error* error) override;
   VirtualDeviceRefPtr GetVirtualDevice() const override;
 
@@ -74,7 +75,6 @@ class VPNService : public Service,
   void OnConnect(Error* error) override;
   void OnDisconnect(Error* error, const char* reason) override;
   bool IsAutoConnectable(const char** reason) const override;
-  std::string GetTethering(Error* error) const override;
 
  private:
   friend class VPNServiceTest;
@@ -82,7 +82,6 @@ class VPNService : public Service,
   FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi);
-  FRIEND_TEST(VPNServiceTest, GetTethering);
   FRIEND_TEST(VPNServiceTest, ConfigureDeviceAndCleanupDevice);
   FRIEND_TEST(VPNServiceTest, ConnectFlow);
 

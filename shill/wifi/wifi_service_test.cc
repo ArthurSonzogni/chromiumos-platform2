@@ -1812,12 +1812,12 @@ TEST_F(WiFiServiceTest, SuspectedCredentialFailure) {
 
 TEST_F(WiFiServiceTest, GetTethering) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityNone);
-  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
+  EXPECT_EQ(Service::TetheringState::kNotDetected, service->GetTethering());
 
   // Since the device isn't connected, we shouldn't even query the WiFi device.
   EXPECT_CALL(*wifi(), IsConnectedViaTether()).Times(0);
   SetWiFiForService(service, wifi());
-  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
+  EXPECT_EQ(Service::TetheringState::kNotDetected, service->GetTethering());
   Mock::VerifyAndClearExpectations(wifi().get());
 
   scoped_refptr<MockProfile> mock_profile(new NiceMock<MockProfile>(manager()));
@@ -1829,8 +1829,8 @@ TEST_F(WiFiServiceTest, GetTethering) {
   EXPECT_CALL(*wifi(), IsConnectedViaTether())
       .WillOnce(Return(true))
       .WillOnce(Return(false));
-  EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(nullptr));
-  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
+  EXPECT_EQ(Service::TetheringState::kConfirmed, service->GetTethering());
+  EXPECT_EQ(Service::TetheringState::kNotDetected, service->GetTethering());
   Mock::VerifyAndClearExpectations(wifi().get());
 
   // Add two endpoints that have a BSSID associated with some Android devices
@@ -1844,12 +1844,12 @@ TEST_F(WiFiServiceTest, GetTethering) {
 
   // Since there are two endpoints, we should not detect tethering mode.
   EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillOnce(Return(false));
-  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
+  EXPECT_EQ(Service::TetheringState::kNotDetected, service->GetTethering());
 
   // If the device reports that it is tethered, this should override any
   // findings gained from examining the endpoints.
   EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillOnce(Return(true));
-  EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(nullptr));
+  EXPECT_EQ(Service::TetheringState::kConfirmed, service->GetTethering());
 
   // Continue in the un-tethered device case for a few more tests below.
   Mock::VerifyAndClearExpectations(wifi().get());
@@ -1858,7 +1858,7 @@ TEST_F(WiFiServiceTest, GetTethering) {
   // Removing an endpoint so we only have one should put us in the "Suspected"
   // state.
   service->RemoveEndpoint(endpoint_android1);
-  EXPECT_EQ(kTetheringSuspectedState, service->GetTethering(nullptr));
+  EXPECT_EQ(Service::TetheringState::kSuspected, service->GetTethering());
 
   // Add a different endpoint which has a locally administered MAC address
   // but not one used by Android.
@@ -1866,20 +1866,20 @@ TEST_F(WiFiServiceTest, GetTethering) {
   WiFiEndpointRefPtr endpoint_ios =
       MakeOpenEndpoint("a", "02:00:00:00:00:01", 2412, 0);
   service->AddEndpoint(endpoint_ios);
-  EXPECT_EQ(kTetheringNotDetectedState, service->GetTethering(nullptr));
+  EXPECT_EQ(Service::TetheringState::kNotDetected, service->GetTethering());
 
   // If this endpoint reports the right vendor OUI, we should suspect
   // it to be tethered.  However since this evaluation normally only
   // happens in the endpoint constructor, we must force it to recalculate.
   endpoint_ios->vendor_information_.oui_set.insert(Tethering::kIosOui);
   endpoint_ios->CheckForTetheringSignature();
-  EXPECT_EQ(kTetheringSuspectedState, service->GetTethering(nullptr));
+  EXPECT_EQ(Service::TetheringState::kSuspected, service->GetTethering());
 
   // If the device reports that it is tethered, this should override any
   // findings gained from examining the endpoints.
   Mock::VerifyAndClearExpectations(wifi().get());
   EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillOnce(Return(true));
-  EXPECT_EQ(kTetheringConfirmedState, service->GetTethering(nullptr));
+  EXPECT_EQ(Service::TetheringState::kConfirmed, service->GetTethering());
 }
 
 TEST_F(WiFiServiceTest, IsVisible) {

@@ -260,7 +260,6 @@ Service::Service(Manager* manager, Technology technology)
   HelpRegisterDerivedString(kProxyConfigProperty, &Service::GetProxyConfig,
                             &Service::SetProxyConfig);
   store_.RegisterBool(kSaveCredentialsProperty, &save_credentials_);
-  HelpRegisterConstDerivedString(kTetheringProperty, &Service::GetTethering);
   HelpRegisterDerivedString(kTypeProperty, &Service::CalculateTechnology,
                             nullptr);
   // kSecurityProperty: Registered in WiFiService
@@ -1362,10 +1361,9 @@ bool Service::IsMetered() const {
     return true;
   }
 
-  Error unused_error;
-  std::string tethering = GetTethering(&unused_error);
-  return (tethering == kTetheringSuspectedState ||
-          tethering == kTetheringConfirmedState);
+  TetheringState tethering = GetTethering();
+  return tethering == TetheringState::kSuspected ||
+         tethering == TetheringState::kConfirmed;
 }
 
 bool Service::IsMeteredByServiceProperties() const {
@@ -1862,12 +1860,8 @@ std::string Service::CalculateTechnology(Error* /*error*/) {
   return GetTechnologyString();
 }
 
-std::string Service::GetTethering(Error* error) const {
-  // The "Tethering" property isn't supported by the Service base class, and
-  // therefore should not be listed in the properties returned by
-  // the GetProperties() RPC method.
-  error->Populate(Error::kNotSupported);
-  return "";
+Service::TetheringState Service::GetTethering() const {
+  return TetheringState::kUnknown;
 }
 
 void Service::IgnoreParameterForConfigure(const std::string& parameter) {

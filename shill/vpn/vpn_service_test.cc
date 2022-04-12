@@ -39,7 +39,6 @@ namespace {
 
 constexpr char kInterfaceName[] = "tun0";
 constexpr int kInterfaceIndex = 123;
-constexpr char kTethering[] = "moon unit";
 
 }  // namespace
 
@@ -71,9 +70,7 @@ class VPNServiceTest : public testing::Test {
     manager_.UpdateProviderMapping();
   }
 
-  void TearDown() override {
-    manager_.vpn_provider_.reset();
-  }
+  void TearDown() override { manager_.vpn_provider_.reset(); }
 
   void SetServiceState(Service::ConnectState state) {
     service_->state_ = state;
@@ -365,40 +362,21 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
 
 TEST_F(VPNServiceTest, GetTethering) {
   // Service is not connected.
-  {
-    Error error;
-    EXPECT_EQ("", service_->GetTethering(&error));
-    EXPECT_EQ(Error::kNotSupported, error.type());
-  }
+  EXPECT_EQ(Service::TetheringState::kUnknown, service_->GetTethering());
 
   service_->SetState(Service::kStateConnected);
   // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
   EXPECT_CALL(manager_, GetPrimaryPhysicalService()).WillOnce(Return(nullptr));
-  {
-    Error error;
-    EXPECT_EQ("", service_->GetTethering(&error));
-    EXPECT_EQ(Error::kOperationFailed, error.type());
-  }
+  EXPECT_EQ(Service::TetheringState::kUnknown, service_->GetTethering());
 
   auto underlying_service = new MockService(&manager_);
   EXPECT_CALL(manager_, GetPrimaryPhysicalService())
       .WillRepeatedly(Return(underlying_service));
-  EXPECT_CALL(*underlying_service, GetTethering(_))
-      .WillOnce([](Error* error) { return kTethering; })
-      .WillOnce([](Error* error) {
-        error->Populate(Error::kNotSupported);
-        return "";
-      });
-  {
-    Error error;
-    EXPECT_EQ(kTethering, service_->GetTethering(&error));
-    EXPECT_TRUE(error.IsSuccess());
-  }
-  {
-    Error error;
-    EXPECT_EQ("", service_->GetTethering(&error));
-    EXPECT_EQ(Error::kNotSupported, error.type());
-  }
+  EXPECT_CALL(*underlying_service, GetTethering())
+      .WillOnce([]() { return Service::TetheringState::kNotDetected; })
+      .WillOnce([]() { return Service::TetheringState::kUnknown; });
+  EXPECT_EQ(Service::TetheringState::kNotDetected, service_->GetTethering());
+  EXPECT_EQ(Service::TetheringState::kUnknown, service_->GetTethering());
 }
 
 TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {

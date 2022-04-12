@@ -93,7 +93,7 @@ class MockService : public Service {
               OnDefaultServiceStateChanged,
               (const ServiceRefPtr&),
               (override));
-  MOCK_METHOD(std::string, GetTethering, (Error*), (const, override));
+  MOCK_METHOD(TetheringState, GetTethering, (), (const, override));
 
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.

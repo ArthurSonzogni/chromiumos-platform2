@@ -110,6 +110,8 @@ class WiFiService : public Service {
   const std::string& security() const { return security_; }
   std::string security_class() const { return ComputeSecurityClass(security_); }
 
+  TetheringState GetTethering() const override;
+
   // WiFi services can load from profile entries other than their current
   // storage identifier.  Override the methods from the parent Service
   // class which pertain to whether this service may be loaded from |storage|.
@@ -248,7 +250,6 @@ class WiFiService : public Service {
   bool IsMeteredByServiceProperties() const override;
 
   void SetEAPKeyManagement(const std::string& key_management) override;
-  std::string GetTethering(Error* error) const override;
 
   bool CompareWithSameTechnology(const ServiceRefPtr& service,
                                  bool* decision) override;
@@ -264,7 +265,6 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
   FRIEND_TEST(WiFiServiceTest, ComputeCipher8021x);
-  FRIEND_TEST(WiFiServiceTest, GetTethering);
   FRIEND_TEST(WiFiServiceTest, CompareWithSameTechnology);
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);

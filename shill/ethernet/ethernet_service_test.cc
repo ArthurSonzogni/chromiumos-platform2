@@ -115,8 +115,8 @@ TEST_F(EthernetServiceTest, GetTethering) {
   EXPECT_CALL(*ethernet_, IsConnectedViaTether())
       .WillOnce(Return(true))
       .WillOnce(Return(false));
-  EXPECT_EQ(kTetheringConfirmedState, service_->GetTethering(nullptr));
-  EXPECT_EQ(kTetheringNotDetectedState, service_->GetTethering(nullptr));
+  EXPECT_EQ(Service::TetheringState::kConfirmed, service_->GetTethering());
+  EXPECT_EQ(Service::TetheringState::kNotDetected, service_->GetTethering());
 }
 
 TEST_F(EthernetServiceTest, IsVisible) {

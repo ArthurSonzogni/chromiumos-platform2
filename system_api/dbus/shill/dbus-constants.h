@@ -149,7 +149,6 @@ const char kSavedIPConfigProperty[] = "SavedIPConfig";
 const char kSignalStrengthProperty[] = "Strength";
 const char kStateProperty[] = "State";
 const char kStaticIPConfigProperty[] = "StaticIPConfig";
-const char kTetheringProperty[] = "Tethering";
 const char kTrafficCounterResetTimeProperty[] = "TrafficCounterResetTime";
 const char kTypeProperty[] = "Type";
 const char kUIDataProperty[] = "UIData";
@@ -738,11 +737,6 @@ const char kErrorEapRemoteTlsFailed[] = "eap-remote-tls-failed";
 const char kEapSubjectAlternativeNameMatchTypeEmail[] = "EMAIL";
 const char kEapSubjectAlternativeNameMatchTypeDNS[] = "DNS";
 const char kEapSubjectAlternativeNameMatchTypeURI[] = "URI";
-
-// Service Tethering property values.
-const char kTetheringNotDetectedState[] = "NotDetected";
-const char kTetheringSuspectedState[] = "Suspected";
-const char kTetheringConfirmedState[] = "Confirmed";
 
 // WiFi Device kLinkStatisticsProperty sub-property names.
 const char kAverageReceiveSignalDbmProperty[] = "AverageReceiveSignalDbm";

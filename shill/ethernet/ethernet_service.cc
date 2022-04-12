@@ -123,10 +123,10 @@ void EthernetService::OnVisibilityChanged() {
   NotifyIfVisibilityChanged();
 }
 
-std::string EthernetService::GetTethering(Error* /*error*/) const {
+Service::TetheringState EthernetService::GetTethering() const {
   return props_.ethernet_ && props_.ethernet_->IsConnectedViaTether()
-             ? kTetheringConfirmedState
-             : kTetheringNotDetectedState;
+             ? TetheringState::kConfirmed
+             : TetheringState::kNotDetected;
 }
 
 }  // namespace shill

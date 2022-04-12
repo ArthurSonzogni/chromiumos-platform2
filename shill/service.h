@@ -202,6 +202,13 @@ class Service : public base::RefCounted<Service> {
     kONCSourcesNum,  // Number of enum values above. Keep it last.
   };
 
+  enum class TetheringState {
+    kUnknown,
+    kNotDetected,
+    kSuspected,
+    kConfirmed,
+  };
+
   static const int kPriorityNone;
 
   // A constructor for the Service object
@@ -621,10 +628,10 @@ class Service : public base::RefCounted<Service> {
 
   std::string CalculateTechnology(Error* error);
 
-  // Return whether this service is suspected or confirmed to be
-  // provided by a mobile device, which is likely to be using a
-  // metered backhaul for internet connectivity.
-  virtual std::string GetTethering(Error* error) const;
+  // Return whether this service is suspected or confirmed to be provided by a
+  // mobile device, which is likely to be using a metered backhaul for internet
+  // connectivity.
+  virtual TetheringState GetTethering() const;
 
   // Initializes the traffic_counter_snapshot_ map to the counter values. The
   // snapshots should never be updated without also refreshing the counters.

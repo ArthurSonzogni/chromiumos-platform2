@@ -271,17 +271,15 @@ bool VPNService::IsAutoConnectable(const char** reason) const {
   return true;
 }
 
-std::string VPNService::GetTethering(Error* error) const {
+Service::TetheringState VPNService::GetTethering() const {
   if (!IsConnected()) {
-    return Service::GetTethering(error);
+    return TetheringState::kUnknown;
   }
-
   ServiceRefPtr underlying_service = manager()->GetPrimaryPhysicalService();
   if (!underlying_service) {
-    error->Populate(Error::kOperationFailed);
-    return "";
+    return TetheringState::kUnknown;
   }
-  return underlying_service->GetTethering(error);
+  return underlying_service->GetTethering();
 }
 
 bool VPNService::SetNameProperty(const std::string& name, Error* error) {

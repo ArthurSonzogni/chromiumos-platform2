@@ -2009,9 +2009,7 @@ TEST_F(ServiceTest, CustomSetterNoopChange) {
 }
 
 TEST_F(ServiceTest, GetTethering) {
-  Error error;
-  EXPECT_EQ("", service_->GetTethering(&error));
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ(Service::TetheringState::kUnknown, service_->GetTethering());
 }
 
 TEST_F(ServiceTest, MeteredOverride) {

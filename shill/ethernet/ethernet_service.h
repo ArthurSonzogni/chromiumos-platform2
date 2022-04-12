@@ -42,6 +42,7 @@ class EthernetService : public Service {
 
   void Remove(Error* error) override;
   bool IsVisible() const override;
+  TetheringState GetTethering() const override;
   bool IsAutoConnectable(const char** reason) const override;
 
   // Called by the Ethernet device when link state has caused the service
@@ -78,11 +79,8 @@ class EthernetService : public Service {
   void SetUp();
 
   Ethernet* ethernet() const { return props_.ethernet_.get(); }
-  std::string GetTethering(Error* error) const override;
 
  private:
-  FRIEND_TEST(EthernetServiceTest, GetTethering);
-
   RpcIdentifier GetDeviceRpcId(Error* error) const override;
 
   Properties props_;

@@ -440,19 +440,19 @@ bool WiFiService::SetMACPolicy(const std::string& policy, Error* error) {
   return true;
 }
 
-std::string WiFiService::GetTethering(Error* /*error*/) const {
+Service::Service::TetheringState WiFiService::GetTethering() const {
   if (IsConnected() && wifi_ && wifi_->IsConnectedViaTether()) {
-    return kTetheringConfirmedState;
+    return TetheringState::kConfirmed;
   }
 
   // Only perform BSSID tests if there is exactly one matching endpoint,
   // so we ignore campuses that may use locally administered BSSIDs.
   if (endpoints_.size() == 1 &&
       (*endpoints_.begin())->has_tethering_signature()) {
-    return kTetheringSuspectedState;
+    return TetheringState::kSuspected;
   }
 
-  return kTetheringNotDetectedState;
+  return TetheringState::kNotDetected;
 }
 
 std::string WiFiService::GetLoadableStorageIdentifier(
