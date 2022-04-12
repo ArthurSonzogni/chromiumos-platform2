@@ -13,9 +13,9 @@ int main(int argc, char** argv) {
 
   brillo::FlagHelper::Init(argc, argv, argv[0]);
   if (FLAGS_quiet) {
-    brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
-  } else {
     brillo::InitLog(brillo::kLogToSyslog);
+  } else {
+    brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   }
 
   LOG(INFO) << "Hello from ChromeOS! Gimme " << codelab::GiveFive();
