@@ -215,6 +215,11 @@ TEST_F(PlatformTest, GetExtFileAttributes) {
   const std::string content("blablabla");
   ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
 
+  // We need an extra sync() to ensure that the ioctl() will not fail.
+  // For some weird reasons, without the sync(), the FS_IOC_SETFLAGS could
+  // return -1 and EOPNOTSUPP.
+  platform_.Sync();
+
   int fd;
   ASSERT_GT(fd = HANDLE_EINTR(open(filename.value().c_str(), O_RDONLY)), 0);
   int flags = FS_UNRM_FL | FS_NODUMP_FL;
@@ -231,6 +236,9 @@ TEST_F(PlatformTest, SetExtFileAttributes) {
   const FilePath filename(GetTempName());
   const std::string content("blablabla");
   ASSERT_TRUE(platform_.WriteStringToFile(filename, content));
+
+  // See comment on sync above in Platform.GetExtFileAttributes.
+  platform_.Sync();
 
   int flags = FS_UNRM_FL | FS_NODUMP_FL;
   EXPECT_TRUE(platform_.SetExtFileAttributes(filename, flags));
