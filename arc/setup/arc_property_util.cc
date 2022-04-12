@@ -568,7 +568,7 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
       // optional.
       re2::RE2::PartialMatch(
           model_field,
-          R"(Intel\(R\) Pentium\(R\) (?:Gold|Silver) ([^ ]+)(?: @|$))",
+          R"(Intel\(R\) Pentium\(R\) (?:Gold|Silver|CPU) ([^ ]+)(?: @|$))",
           &model) ||
 
       // For i5-1245U, the "C" in Core is missing.

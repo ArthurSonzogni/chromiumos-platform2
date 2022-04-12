@@ -759,6 +759,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=Intel\n"
          "ro.soc.model=N6000\n"},
 
+        // For a Dedede board (kled).
+        {"model name\t: Intel(R) Pentium(R) CPU 6405U @ 2.40GHz\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=6405U\n"},
+
         // For a Zork board.
         {"line1\n"
          "model name\t: AMD Ryzen 3 3250C 15W with Radeon Graphics\n"
