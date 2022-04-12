@@ -112,10 +112,13 @@ class RepairCompleteStateHandlerTest : public StateHandlerTest {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
-TEST_F(RepairCompleteStateHandlerTest, InitializeState_CleanUpState_Success) {
+TEST_F(RepairCompleteStateHandlerTest,
+       InitializeState_PowerwashRequired_Success) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_TRUE(handler->GetState().repair_complete().powerwash_required());
 
   int powerwash_count;
   EXPECT_TRUE(json_store_->GetValue(kPowerwashCount, &powerwash_count));
@@ -137,30 +140,40 @@ TEST_F(RepairCompleteStateHandlerTest, InitializeState_CleanUpState_Success) {
       RepairCompleteStateHandler::kReportPowerCableInterval);
 }
 
-TEST_F(RepairCompleteStateHandlerTest, InitializeState_NoPowerwashCountFile) {
+TEST_F(RepairCompleteStateHandlerTest,
+       InitializeState_PowerwashNotRequired_NoPowerwashCountFile) {
   // powerwash_count not set.
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  EXPECT_FALSE(handler->GetState().repair_complete().powerwash_required());
 
   int powerwash_count;
   EXPECT_TRUE(json_store_->GetValue(kPowerwashCount, &powerwash_count));
   EXPECT_EQ(powerwash_count, 0);
 }
 
-TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Powerwash) {
+TEST_F(RepairCompleteStateHandlerTest, InitializeState_Fail) {
+  // |kWipeDevice| not set.
+  auto handler = CreateStateHandler();
+  EXPECT_EQ(handler->InitializeState(),
+            RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED);
+}
+
+TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_PowerwashRequired) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false;
   auto handler = CreateStateHandler(&reboot_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
 
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-
   handler->RunState();
 
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
+  state.mutable_repair_complete()->set_powerwash_required(true);
 
   {
     auto [error, state_case] = handler->GetNextStateCase(state);
@@ -186,15 +199,13 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_Powerwash) {
 
 TEST_F(RepairCompleteStateHandlerTest,
        GetNextStateCase_SkipPowerwash_PowerwashNotRequired_Reboot) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
       CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-
-  // No need to wipe device.
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
@@ -204,6 +215,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
+  state.mutable_repair_complete()->set_powerwash_required(false);
 
   {
     auto [error, state_case] = handler->GetNextStateCase(state);
@@ -239,15 +251,13 @@ TEST_F(RepairCompleteStateHandlerTest,
 
 TEST_F(RepairCompleteStateHandlerTest,
        GetNextStateCase_SkipPowerwash_PowerwashNotRequired_Shutdown) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
       CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-
-  // No need to wipe device.
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
@@ -257,6 +267,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_SHUTDOWN);
+  state.mutable_repair_complete()->set_powerwash_required(false);
 
   {
     auto [error, state_case] = handler->GetNextStateCase(state);
@@ -292,15 +303,13 @@ TEST_F(RepairCompleteStateHandlerTest,
 
 TEST_F(RepairCompleteStateHandlerTest,
        GetNextStateCase_SkipPowerwash_PowerwashNotRequired_Cutoff) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
       CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
-
-  // No need to wipe device.
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
@@ -310,6 +319,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_BATTERY_CUTOFF);
+  state.mutable_repair_complete()->set_powerwash_required(false);
 
   {
     auto [error, state_case] = handler->GetNextStateCase(state);
@@ -345,6 +355,7 @@ TEST_F(RepairCompleteStateHandlerTest,
 
 TEST_F(RepairCompleteStateHandlerTest,
        GetNextStateCase_SkipPowerwash_PowerwashComplete) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
@@ -352,8 +363,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
 
-  // Need to wipe device, and powerwash is complete.
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
+  // Powerwash is complete.
   base::WriteFile(GetPowerwashCountFilePath(), "2\n");
 
   // Check that the state file exists now.
@@ -364,6 +374,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
+  state.mutable_repair_complete()->set_powerwash_required(true);
 
   {
     auto [error, state_case] = handler->GetNextStateCase(state);
@@ -399,6 +410,7 @@ TEST_F(RepairCompleteStateHandlerTest,
 
 TEST_F(RepairCompleteStateHandlerTest,
        GetNextStateCase_SkipPowerwash_PowerwashDisabledManually) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
@@ -406,8 +418,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
 
-  // Need to wipe device, and powerwash is not done yet, but disabled manually.
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  // Powerwash is not done yet, but disabled manually.
   brillo::TouchFile(GetDisablePowerwashFilePath());
 
   // Check that the state file exists now.
@@ -418,6 +429,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
+  state.mutable_repair_complete()->set_powerwash_required(true);
 
   {
     auto [error, state_case] = handler->GetNextStateCase(state);
@@ -453,6 +465,7 @@ TEST_F(RepairCompleteStateHandlerTest,
 
 TEST_F(RepairCompleteStateHandlerTest,
        GetNextStateCase_SkipPowerwash_PowerwashDisabledInTestMode) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
@@ -460,9 +473,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   EXPECT_FALSE(base::PathExists(GetPowerwashRequestFilePath()));
 
-  // Need to wipe device, and powerwash is not done yet, but disabled in test
-  // mode.
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  // Powerwash is not done yet, but disabled in test mode.
   brillo::TouchFile(GetTestDirPath());
 
   // Check that the state file exists now.
@@ -473,6 +484,7 @@ TEST_F(RepairCompleteStateHandlerTest,
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
+  state.mutable_repair_complete()->set_powerwash_required(true);
 
   {
     auto [error, state_case] = handler->GetNextStateCase(state);
@@ -508,6 +520,7 @@ TEST_F(RepairCompleteStateHandlerTest,
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingState) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -527,15 +540,15 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingState) {
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingArgs) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-
   RmadState state;
   state.mutable_repair_complete()->set_shutdown(
       RepairCompleteState::RMAD_REPAIR_COMPLETE_UNKNOWN);
+  state.mutable_repair_complete()->set_powerwash_required(true);
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
@@ -548,15 +561,35 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MissingArgs) {
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
+TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_ArgsViolation) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
+  base::WriteFile(GetPowerwashCountFilePath(), "1\n");
+  auto handler = CreateStateHandler();
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  RmadState state;
+  state.mutable_repair_complete()->set_shutdown(
+      RepairCompleteState::RMAD_REPAIR_COMPLETE_REBOOT);
+  state.mutable_repair_complete()->set_powerwash_required(false);
+
+  // Check that the state file exists now.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  EXPECT_EQ(state_case, RmadState::StateCase::kRepairComplete);
+
+  // Check that the state file still exists.
+  EXPECT_TRUE(base::PathExists(GetStateFilePath()));
+}
+
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MetricsFailed) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler = CreateStateHandler(&reboot_called, &shutdown_called,
                                     &metrics_called, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  // No need to wipe device.
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
@@ -590,14 +623,12 @@ TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_MetricsFailed) {
 }
 
 TEST_F(RepairCompleteStateHandlerTest, GetNextStateCase_JsonFailed) {
+  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
   base::WriteFile(GetPowerwashCountFilePath(), "1\n");
   bool reboot_called = false, shutdown_called = false, metrics_called = false;
   auto handler =
       CreateStateHandler(&reboot_called, &shutdown_called, &metrics_called);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  // No need to wipe device.
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
 
   // Check that the state file exists now.
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));

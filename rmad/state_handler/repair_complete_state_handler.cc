@@ -88,7 +88,15 @@ RepairCompleteStateHandler::RepairCompleteStateHandler(
 
 RmadErrorCode RepairCompleteStateHandler::InitializeState() {
   if (!state_.has_repair_complete() && !RetrieveState()) {
-    state_.set_allocated_repair_complete(new RepairCompleteState);
+    auto repair_complete = std::make_unique<RepairCompleteState>();
+    // kWipeDevice should be set by previous states.
+    bool wipe_device;
+    if (!json_store_->GetValue(kWipeDevice, &wipe_device)) {
+      LOG(ERROR) << "Variable " << kWipeDevice << " not found";
+      return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
+    }
+    repair_complete->set_powerwash_required(wipe_device);
+    state_.set_allocated_repair_complete(repair_complete.release());
     // Record the current powerwash count during initialization. If the file
     // doesn't exist, set the value to 0. This file counter is incremented by
     // one after every powerwash. See platform2/init/clobber_state.cc for more
@@ -122,6 +130,10 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
       RepairCompleteState::RMAD_REPAIR_COMPLETE_UNKNOWN) {
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_MISSING);
   }
+  if (state.repair_complete().powerwash_required() !=
+      state_.repair_complete().powerwash_required()) {
+    return NextStateCaseWrapper(RMAD_ERROR_REQUEST_ARGS_VIOLATION);
+  }
   if (locked_error_ != RMAD_ERROR_NOT_SET) {
     return NextStateCaseWrapper(locked_error_);
   }
@@ -129,14 +141,7 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
   state_ = state;
   StoreState();
 
-  // kWipeDevice should be set by previous states.
-  bool wipe_device;
-  if (!json_store_->GetValue(kWipeDevice, &wipe_device)) {
-    LOG(ERROR) << "Variable " << kWipeDevice << " not found";
-    return NextStateCaseWrapper(RMAD_ERROR_TRANSITION_FAILED);
-  }
-
-  if (wipe_device && !IsPowerwashComplete() &&
+  if (state_.repair_complete().powerwash_required() && !IsPowerwashComplete() &&
       !base::PathExists(
           working_dir_path_.AppendASCII(kDisablePowerwashFilePath)) &&
       !base::PathExists(working_dir_path_.AppendASCII(kTestDirPath))) {
