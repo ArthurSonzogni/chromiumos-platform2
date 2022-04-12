@@ -978,7 +978,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->BSSRemoved(bss_path);
   }
 
-  void ReportIPv6ConfigComplete() { wifi_->OnIPv6ConfigUpdated(); }
+  void ReportIPv6ConfigComplete() { wifi_->OnGetSLAACAddress(); }
   void ReportIPConfigFailure() { wifi_->OnIPConfigFailure(); }
   void ReportConnected() { wifi_->OnConnected(); }
   void ReportSelectedServiceChanged(const ServiceRefPtr& old_service) {

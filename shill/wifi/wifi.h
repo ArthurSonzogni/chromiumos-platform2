@@ -307,7 +307,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;   // kNumFastScanAttempts, kFastScanInterval
-  friend class WiFiMainTest;   // ScanState, ScanMethod
+  friend class WiFiMainTest;    // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, BackgroundScan);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ConnectToServiceNotPending);  // ScanState
@@ -346,8 +346,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest,
               QueuedEnsuredScanInterruptedByUnexpectedIdleState);  // ScanState,
                                                                    // ScanMethod
-  FRIEND_TEST(WiFiMainTest, ScanRejected);            // ScanState
-  FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
+  FRIEND_TEST(WiFiMainTest, ScanRejected);                         // ScanState
+  FRIEND_TEST(WiFiMainTest, ScanResults);                // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanStateHandleDisconnect);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateNotScanningNoUma);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
@@ -654,7 +654,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // In addition to calling the implementations of these functions in Device,
   // calls WakeOnWiFi::PrepareForWakeOnWiFiBeforeSuspend.
   void OnGetDHCPLease() override;
-  void OnIPv6ConfigUpdated() override;
+  void OnGetSLAACAddress() override;
 
   // Returns true iff the WiFi device is connected to the current service.
   bool IsConnectedToCurrentService();

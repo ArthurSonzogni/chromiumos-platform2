@@ -454,6 +454,11 @@ class Device : public base::RefCounted<Device> {
   // nothing.
   virtual void OnGetDHCPLease();
 
+  // Called on when an IPv6 address is obtained from SLAAC. Derived class
+  // should implement this function to listen to this event. Base class does
+  // nothing.
+  virtual void OnGetSLAACAddress();
+
   // Callback invoked on successful IP configuration updates.
   void OnIPConfigUpdated(const IPConfigRefPtr& ipconfig);
 

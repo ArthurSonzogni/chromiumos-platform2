@@ -455,6 +455,7 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   ip6config_->set_properties(properties);
   UpdateIPConfigsProperty();
   OnIPv6ConfigUpdated();
+  OnGetSLAACAddress();
 }
 
 void Device::OnIPv6DnsServerAddressesChanged() {
@@ -863,6 +864,8 @@ void Device::OnIPConfigUpdatedFromDHCP(const IPConfigRefPtr& ipconfig,
 }
 
 void Device::OnGetDHCPLease() {}
+
+void Device::OnGetSLAACAddress() {}
 
 void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
   SLOG(this, 2) << __func__;

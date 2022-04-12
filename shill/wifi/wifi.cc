@@ -3767,8 +3767,7 @@ void WiFi::OnGetDHCPLease() {
   wake_on_wifi_->OnConnectedAndReachable(TimeToNextDHCPLeaseRenewal());
 }
 
-void WiFi::OnIPv6ConfigUpdated() {
-  Device::OnIPv6ConfigUpdated();
+void WiFi::OnGetSLAACAddress() {
   if (!IsConnectedToCurrentService()) {
     return;
   }
@@ -3776,8 +3775,8 @@ void WiFi::OnIPv6ConfigUpdated() {
     return;
   }
   SLOG(this, 3) << __func__ << ": "
-                << "IPv6 configuration obtained";
-  wake_on_wifi_->OnConnectedAndReachable(TimeToNextDHCPLeaseRenewal());
+                << "IPv6 configuration obtained through SLAAC";
+  wake_on_wifi_->OnConnectedAndReachable(std::nullopt);
 }
 
 bool WiFi::IsConnectedToCurrentService() {
