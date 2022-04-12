@@ -20,6 +20,7 @@
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
@@ -48,7 +49,6 @@ constexpr char kDHCPCDPath[] = "/sbin/dhcpcd";
 constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
 constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-4.pid";
-constexpr char kDHCPType[] = "dhcp";
 
 }  // namespace
 
@@ -61,9 +61,9 @@ DHCPConfig::DHCPConfig(ControlInterface* control_interface,
                        const std::string& hostname,
                        Technology technology,
                        Metrics* metrics)
-    : IPConfig(control_interface, device_name, kDHCPType),
-      control_interface_(control_interface),
+    : control_interface_(control_interface),
       provider_(provider),
+      device_name_(device_name),
       lease_file_suffix_(lease_file_suffix),
       technology_(technology),
       pid_(0),
@@ -72,7 +72,7 @@ DHCPConfig::DHCPConfig(ControlInterface* control_interface,
       is_gateway_arp_active_(false),
       hostname_(hostname),
       lease_acquisition_timeout_(kAcquisitionTimeout),
-      minimum_mtu_(kMinIPv4MTU),
+      minimum_mtu_(IPConfig::kMinIPv4MTU),
       root_("/"),
       weak_ptr_factory_(this),
       dispatcher_(dispatcher),
@@ -209,7 +209,7 @@ std::optional<base::TimeDelta> DHCPConfig::TimeToLeaseExpiry() {
   return base::Seconds(current_lease_expiration_time_->tv_sec - now.tv_sec);
 }
 
-void DHCPConfig::OnIPConfigUpdated(const Properties& properties,
+void DHCPConfig::OnIPConfigUpdated(const IPConfig::Properties& properties,
                                    bool new_lease_acquired) {
   if (new_lease_acquired) {
     StopAcquisitionTimeout();

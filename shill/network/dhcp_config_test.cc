@@ -626,16 +626,6 @@ TEST_F(DHCPConfigTest, StopDuringRequestIP) {
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
 }
 
-TEST_F(DHCPConfigTest, SetProperty) {
-  Error error;
-  std::string new_value = "new value";
-  // Ensure that an attempt to write a R/O property returns InvalidArgs error.
-  config_->mutable_store()->SetAnyProperty(kAddressProperty,
-                                           brillo::Any(new_value), &error);
-  EXPECT_TRUE(error.IsFailure());
-  EXPECT_EQ(Error::kInvalidArguments, error.type());
-}
-
 namespace {
 // Verifies the existence of pid file and lease file after dhcpcd exited.
 class DHCPConfigDHCPCDStoppedTest : public DHCPConfigTest {

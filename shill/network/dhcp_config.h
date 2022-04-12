@@ -12,6 +12,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
+#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -41,7 +42,7 @@ class ProcessManager;
 // If |hostname| is not empty, it will be used in the DHCP request as DHCP
 // option 12. This asks the DHCP server to register this hostname on our
 // behalf, for purposes of administration or creating a dynamic DNS entry.
-class DHCPConfig : public IPConfig {
+class DHCPConfig : public base::RefCounted<DHCPConfig> {
  public:
   // TODO(b/227560694): For these two callbacks |dhcp_config| points to this
   // object itself, and should only be used for checking if the callback is
@@ -84,7 +85,7 @@ class DHCPConfig : public IPConfig {
   DHCPConfig(const DHCPConfig&) = delete;
   DHCPConfig& operator=(const DHCPConfig&) = delete;
 
-  ~DHCPConfig() override;
+  virtual ~DHCPConfig();
 
   // Registers callbacks for DHCP events.
   void RegisterCallbacks(UpdateCallback update_callback,
@@ -119,12 +120,15 @@ class DHCPConfig : public IPConfig {
     minimum_mtu_ = minimum_mtu;
   }
 
+  std::string device_name() const { return device_name_; }
+
   void set_root_for_testing(base::FilePath path) { root_ = path; }
 
  protected:
   // On we get a new IP config properties via DHCP. The second parameter
   // indicates whether this is an authoritative confirmation.
-  void OnIPConfigUpdated(const Properties& properties, bool new_lease_acquired);
+  void OnIPConfigUpdated(const IPConfig::Properties& properties,
+                         bool new_lease_acquired);
 
   // Notifies registered listeners that the configuration process has failed.
   void NotifyFailure();
@@ -223,6 +227,9 @@ class DHCPConfig : public IPConfig {
   ControlInterface* control_interface_;
 
   DHCPProvider* provider_;
+
+  // The name of interface which this DHCP instance is running on.
+  std::string device_name_;
 
   // DHCP lease file suffix, used to differentiate the lease of one interface
   // or network from another.

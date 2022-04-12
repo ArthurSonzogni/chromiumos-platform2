@@ -1254,7 +1254,7 @@ TEST_P(CellularTest, StartPPPAlreadyStarted) {
 TEST_P(CellularTest, StartPPPAfterEthernetUp) {
   CellularService* service(SetService());
   device_->set_state_for_testing(Cellular::State::kLinked);
-  device_->set_ipconfig(dhcp_config_);
+  device_->set_dhcp_controller_for_testing(dhcp_config_);
   device_->SelectService(service);
   EXPECT_CALL(*dhcp_config_, ReleaseIP(_))
       .Times(AnyNumber())

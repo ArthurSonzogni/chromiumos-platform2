@@ -709,8 +709,6 @@ class Device : public base::RefCounted<Device> {
   const int interface_index_;
   const std::string link_name_;
   Manager* manager_;
-  // TODO(b/227560694): currently |dhcp_controller_| (if exists) points to the
-  // same object as |ipconfig_|.
   DHCPConfigRefPtr dhcp_controller_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;

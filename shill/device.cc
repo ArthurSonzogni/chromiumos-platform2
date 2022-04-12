@@ -601,7 +601,8 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   dhcp_controller_->RegisterCallbacks(
       base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
       base::BindRepeating(&Device::OnDHCPFailure, AsWeakPtr()));
-  ipconfig_ = dhcp_controller_;
+  ipconfig_ =
+      new IPConfig(control_interface(), link_name_, IPConfig::kTypeDHCP);
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
   return dhcp_controller_->RequestIP();

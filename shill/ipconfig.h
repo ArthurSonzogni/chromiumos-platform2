@@ -106,6 +106,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
   static const int kMinIPv6MTU;
   static const int kUndefinedMTU;
 
+  static constexpr char kTypeDHCP[] = "dhcp";
+
   IPConfig(ControlInterface* control_interface, const std::string& device_name);
   IPConfig(ControlInterface* control_interface,
            const std::string& device_name,
