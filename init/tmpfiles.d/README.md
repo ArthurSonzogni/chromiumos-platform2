@@ -1,8 +1,8 @@
 # tmpfiles.d Configuration Files
 
-These `.conf` files define filesystem operations that are needed to setup paths.
-This is commonly creating specific files and directories with specific
-permissions and ownership prior to running a system daemon. For example an
+These `.conf` files define filesystem operations that are needed to set up
+paths. This is commonly creating specific files and directories with specific
+permissions and ownership before running a system daemon. For example an
 upstart job with:
 
 ```bash
@@ -45,6 +45,14 @@ subdirectory of the parent project named `tmpfiles.d`.
 
 ## Configuration application timing
 
+There are three primary ways to apply a tmpfiles.d configuration on Chrome OS.
+1. As part of the early system start-up.
+2. By using a tmpfiles stanza in an upstart job.
+3. By calling systemd-tmpfiles directly on a configuration.
+
+Note that these are not mutually exclusive, so different combinations can be
+used if appropriate.
+
 ### Early startup
 
 Configurations intended to be applied from startup should have the `.conf`
@@ -74,10 +82,15 @@ make sure the parent paths are mounted before applying the configuration.
 
 ### Upstart job pre-start
 
-Configurations that should not be applied in early boot should be installed to
-`/usr/lib/tmpfiles.d/on-demand` using `doins` or `newins`. A `tmpfiles` stanza
-should be used to execute the tmpfiles configuration before `pre-start`. Here is
-an excerpt from [vm_concierge.conf] with an example:
+Adding a tmpfiles stanza to an upstart config applies the config before running
+the pre-start stanza. This does not prevent the config from also being applied
+at early boot.
+
+Some reasons you might want a tmpfiles stanza are for paths created dynamically,
+or to reduce the risk of a compromise persisting between user-sessions (without
+a reboot).
+
+Here is an excerpt from [vm_concierge.conf] with an example:
 
 ```
 start on start-user-session
@@ -93,13 +106,24 @@ The Chrome OS upstart patch that adds the tmpfiles stanza does not set the
 
 ### On demand
 
-Configurations that should not be applied in early boot should be installed to
-`/usr/lib/tmpfiles.d/on-demand` using `doins` or `newins`. Configurations can be
-applied on demand by invoking systemd-tmpfiles. Here is an example:
+Configurations that can not be applied in early boot should be installed to
+`/usr/lib/tmpfiles.d/on-demand` using `doins` or `newins`. These need either:
+* A tmpfiles stanza to the appropriate upstart config as shown in the previous
+section
+* A direct call to systemd-tmpfiles. Here is an example:
 
 ```
 systemd-tmpfiles --create --remove --clean <absolute path to your-tmpfiles-d.conf>
 ```
+
+***note
+**Note:**
+You may not need all the options `--create`, `--remove`, or `--clean` depending
+on the actions being applied. See the [upstream documentation] for more details.
+***
+
+One reason why this might be necessary is the cases a tmpfiles.d configuration
+has a path inside a mount that is created on demand.
 
 ## Testing
 
@@ -120,7 +144,7 @@ export SYSTEMD_LOG_LEVEL=debug
 
 ## Troubleshooting and Common Obstacles
 
-For tmpfiles.d configurations applied at startup, errors result in a clobber of
+For tmpfiles.d configurations applied at startup, errors cause a clobber of
 the stateful partition. Warnings and errors are logged to `/run/tmpfiles.log`
 because the system log is set up after [chromeos_startup] executes and writes to
 the stateful partition which may be clobbered. The [clobber_state_collector]
