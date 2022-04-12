@@ -1360,6 +1360,12 @@ void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
       .Record();
 
   bool adapter_supported = CanReportAdapterInfo(info);
+  if (enabled) {
+    // Monitor through UMA how often adapters are not in the allowlist.
+    WiFiAdapterInAllowlist allowed =
+        adapter_supported ? kInAVL : kNotInAllowlist;
+    SendEnumToUMA(kMetricAdapterInfoAllowlisted, allowed, kAllowlistMax);
+  }
 
   int v_id = adapter_supported ? info.vendor_id
                                : Metrics::kWiFiStructuredMetricsErrorValue;

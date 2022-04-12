@@ -650,6 +650,13 @@ class Metrics : public DefaultServiceObserver {
     kHS20SupportMax
   };
 
+  enum WiFiAdapterInAllowlist {
+    kNotInAllowlist = 0,
+    kInAVL = 1,
+    kInAllowlist = 2,
+    kAllowlistMax
+  };
+
   // Our disconnect enumeration values are 0 (System Disconnect) and
   // 1 (User Disconnect), see histograms.xml, but Chrome needs a minimum
   // enum value of 1 and the minimum number of buckets needs to be 3 (see
@@ -1062,6 +1069,11 @@ class Metrics : public DefaultServiceObserver {
   static constexpr int kMetricTimeFromRekeyToFailureSecondsMin = 0;
   static constexpr int kMetricTimeFromRekeyToFailureSecondsMax = 180;
   static constexpr int kMetricTimeFromRekeyToFailureSecondsNumBuckets = 30;
+
+  // Is the WiFi adapter detected on the system in the allowlist of adapters
+  // that can be reported through structured metrics or not?
+  static constexpr char kMetricAdapterInfoAllowlisted[] =
+      "Network.Shill.WiFi.AdapterAllowlisted";
 
   // Version number of the format of WiFi structured metrics. Changed when the
   // formatting of the metrics changes, so that the server-side code knows
