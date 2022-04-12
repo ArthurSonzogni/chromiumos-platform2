@@ -6,6 +6,10 @@
 
 #include <signal.h>
 
+#include <map>
+#include <string>
+#include <utility>
+
 #include <base/bind.h>
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
@@ -87,18 +91,23 @@ DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
                         metrics_);
 }
 
-DHCPConfigRefPtr DHCPProvider::GetConfig(int pid) {
+DHCPConfig* DHCPProvider::GetConfig(int pid) {
   SLOG(this, 2) << __func__ << " pid: " << pid;
   PIDConfigMap::const_iterator it = configs_.find(pid);
   if (it == configs_.end()) {
     return nullptr;
   }
-  return it->second;
+  if (!it->second) {
+    LOG(DFATAL) << "DHCPConfig bound to pid=" << pid << " has been destructed";
+    UnbindPID(pid);
+    return nullptr;
+  }
+  return it->second.get();
 }
 
-void DHCPProvider::BindPID(int pid, const DHCPConfigRefPtr& config) {
+void DHCPProvider::BindPID(int pid, base::WeakPtr<DHCPConfig> config) {
   SLOG(this, 2) << __func__ << " pid: " << pid;
-  configs_[pid] = config;
+  configs_[pid] = std::move(config);
 }
 
 void DHCPProvider::UnbindPID(int pid) {

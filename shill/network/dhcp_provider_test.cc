@@ -78,7 +78,7 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   DHCPConfigRefPtr config =
       provider_->CreateIPv4Config(kDeviceName, kStorageIdentifier, kArpGateway,
                                   kDeviceName, Technology::kUnknown);
-  provider_->BindPID(kPid, config);
+  provider_->BindPID(kPid, config->weak_ptr_factory_.GetWeakPtr());
   EXPECT_NE(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 
@@ -91,6 +91,13 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   RetireUnboundPID(kPid);  // Execute as if the PostDelayedTask() timer expired.
   EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
+
+  // Destroying the DHCPConfig object should also trigger an Unbind().
+  provider_->BindPID(kPid, config->weak_ptr_factory_.GetWeakPtr());
+  config->pid_ = kPid;
+  EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));
+  config = nullptr;
+  EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
 }
 
 }  // namespace shill

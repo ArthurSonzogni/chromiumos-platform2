@@ -187,6 +187,7 @@ class DHCPConfig : public base::RefCounted<DHCPConfig> {
   FRIEND_TEST(DHCPConfigTest, Stop);
   FRIEND_TEST(DHCPConfigTest, StopDuringRequestIP);
   FRIEND_TEST(DHCPProviderTest, CreateIPv4Config);
+  FRIEND_TEST(DHCPProviderTest, BindAndUnbind);
 
   // Starts dhcpcd, returns true on success and false otherwise.
   bool Start();

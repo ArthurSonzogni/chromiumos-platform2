@@ -135,7 +135,7 @@ void DHCPCDListener::EventSignal(
     uint32_t pid,
     const std::string& reason,
     const brillo::VariantDictionary& configuration) {
-  DHCPConfigRefPtr config = provider_->GetConfig(pid);
+  auto* config = provider_->GetConfig(pid);
   if (!config) {
     if (provider_->IsRecentlyUnbound(pid)) {
       SLOG(nullptr, 3) << __func__
@@ -155,7 +155,7 @@ void DHCPCDListener::EventSignal(
 void DHCPCDListener::StatusChangedSignal(const std::string& sender,
                                          uint32_t pid,
                                          const std::string& status) {
-  DHCPConfigRefPtr config = provider_->GetConfig(pid);
+  auto* config = provider_->GetConfig(pid);
   if (!config) {
     if (provider_->IsRecentlyUnbound(pid)) {
       SLOG(nullptr, 3) << __func__

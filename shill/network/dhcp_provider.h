@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <base/lazy_instance.h>
+#include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/refptr_types.h"
@@ -69,13 +70,14 @@ class DHCPProvider {
       const std::string& hostname,
       Technology technology);
 
-  // Returns the DHCP configuration associated with DHCP client |pid|. Return
-  // nullptr if |pid| is not bound to a configuration.
-  DHCPConfigRefPtr GetConfig(int pid);
+  // Returns the DHCP configuration associated with DHCP client |pid|. Returns
+  // nullptr if |pid| is not bound to a configuration. Caller should not hold
+  // this pointer.
+  DHCPConfig* GetConfig(int pid);
 
   // Binds a |pid| to a DHCP |config|. When a DHCP config spawns a new DHCP
   // client, it binds itself to that client's |pid|.
-  virtual void BindPID(int pid, const DHCPConfigRefPtr& config);
+  virtual void BindPID(int pid, base::WeakPtr<DHCPConfig> config);
 
   // Unbinds a |pid|. This method is used by a DHCP config to signal the
   // provider that the DHCP client has been terminated. This may result in
@@ -102,7 +104,7 @@ class DHCPProvider {
   FRIEND_TEST(DHCPProviderTest, CreateIPv4Config);
   FRIEND_TEST(DHCPProviderTest, DestroyLease);
 
-  using PIDConfigMap = std::map<int, DHCPConfigRefPtr>;
+  using PIDConfigMap = std::map<int, base::WeakPtr<DHCPConfig>>;
 
   // Retire |pid| from the set of recently retired PIDs.
   void RetireUnboundPID(int pid);

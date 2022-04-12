@@ -273,7 +273,7 @@ bool DHCPConfig::Start() {
   }
   pid_ = pid;
   LOG(INFO) << "Spawned " << kDHCPCDPath << " with pid: " << pid_;
-  provider_->BindPID(pid_, this);
+  provider_->BindPID(pid_, weak_ptr_factory_.GetWeakPtr());
   StartAcquisitionTimeout();
   return true;
 }
@@ -322,7 +322,6 @@ void DHCPConfig::CleanupClientState() {
   if (pid_) {
     int pid = pid_;
     pid_ = 0;
-    // |this| instance may be destroyed after this call.
     provider_->UnbindPID(pid);
   }
   is_lease_active_ = false;

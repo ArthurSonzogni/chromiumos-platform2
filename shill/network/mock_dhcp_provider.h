@@ -35,7 +35,7 @@ class MockDHCPProvider : public DHCPProvider {
                const std::string&,
                Technology),
               (override));
-  MOCK_METHOD(void, BindPID, (int, const DHCPConfigRefPtr&), (override));
+  MOCK_METHOD(void, BindPID, (int, base::WeakPtr<DHCPConfig>), (override));
   MOCK_METHOD(void, UnbindPID, (int), (override));
 };
 
