@@ -514,7 +514,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | marketing-name | string |  | False |  | False | Name of this model as it is called in the market, reported in 'ro.product.model'. This often starts with '{oem-name}'. |
-| oem-name | string |  | False |  | False | Original Equipment Manufacturer for this model. Generally this means the OEM name printed on the device. This info can only be included if: - The product has been publicly announced. - Or, the entire board is only used by one OEM (rare). Pre-launch products should populate this in CBI instead. Clients should first check cros_config for the value, and if not present, check CBI via means of SMBIOS or FDT.  |
+| oem-name | string |  | False |  | False | Original Equipment Manufacturer for this model. Generally this means the OEM name printed on the device. This field can only be included after the product has been publicly announced AND should be filled by OEM. It is recommended not to use this field directly, and use cros_healthd Mojo interface instead as a general solution.  |
 
 ### camera
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
