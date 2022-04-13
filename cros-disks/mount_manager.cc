@@ -281,43 +281,34 @@ MountErrorType MountManager::CreateMountPathForSource(
     const std::string& source,
     const std::string& label,
     base::FilePath* mount_path) {
-  base::FilePath actual_mount_path = *mount_path;
-  if (actual_mount_path.empty()) {
-    actual_mount_path = base::FilePath(SuggestMountPath(source));
-    if (!label.empty()) {
-      // Replace the basename(|actual_mount_path|) with |label|.
-      actual_mount_path = actual_mount_path.DirName().Append(label);
-    }
+  DCHECK(mount_path);
+  DCHECK(mount_path->empty());
+
+  *mount_path = base::FilePath(SuggestMountPath(source));
+  if (!label.empty()) {
+    // Replace the basename(|actual_mount_path|) with |label|.
+    *mount_path = mount_path->DirName().Append(label);
   }
 
-  if (!IsValidMountPath(base::FilePath(actual_mount_path))) {
-    LOG(ERROR) << "Mount path " << quote(actual_mount_path) << " is invalid";
+  if (!IsValidMountPath(*mount_path)) {
+    LOG(ERROR) << "Mount path " << quote(*mount_path) << " is invalid";
     return MOUNT_ERROR_INVALID_PATH;
   }
 
-  bool mount_path_created;
-  if (!mount_path->empty()) {
-    mount_path_created =
-        !IsMountPathReserved(actual_mount_path) &&
-        platform_->CreateOrReuseEmptyDirectory(actual_mount_path.value());
-  } else {
-    std::unordered_set<std::string> reserved_paths;
-    for (const auto& entry : reserved_mount_paths_) {
-      reserved_paths.insert(entry.first.value());
-    }
-    std::string path = actual_mount_path.value();
-    mount_path_created = platform_->CreateOrReuseEmptyDirectoryWithFallback(
-        &path, kMaxNumMountTrials, reserved_paths);
-    if (mount_path_created)
-      actual_mount_path = base::FilePath(path);
+  std::unordered_set<std::string> reserved_paths;
+  for (const auto& entry : reserved_mount_paths_) {
+    reserved_paths.insert(entry.first.value());
   }
-  if (!mount_path_created) {
-    LOG(ERROR) << "Cannot create directory " << quote(actual_mount_path)
+
+  std::string path = mount_path->value();
+  if (!platform_->CreateOrReuseEmptyDirectoryWithFallback(
+          &path, kMaxNumMountTrials, reserved_paths)) {
+    LOG(ERROR) << "Cannot create directory " << quote(*mount_path)
                << " to mount " << quote(source);
     return MOUNT_ERROR_DIRECTORY_CREATION_FAILED;
   }
 
-  *mount_path = actual_mount_path;
+  *mount_path = base::FilePath(path);
   return MOUNT_ERROR_NONE;
 }
 
