@@ -51,7 +51,7 @@ class RoutineService final {
     // the time this is called.
     virtual bool GetCrosHealthdDiagnosticsService(
         mojo::PendingReceiver<
-            chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+            ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
             service) = 0;
   };
 
@@ -75,17 +75,16 @@ class RoutineService final {
   // response.
   void ForwardGetAvailableRoutinesResponse(
       size_t callback_key,
-      const std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>&
+      const std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>&
           mojo_routines);
   // Forwards and wraps the result of a RunRoutine call into a gRPC response.
   void ForwardRunRoutineResponse(
       size_t callback_key,
-      chromeos::cros_healthd::mojom::RunRoutineResponsePtr response);
+      ash::cros_healthd::mojom::RunRoutineResponsePtr response);
   // Forwards and wraps the result of a GetRoutineUpdate call into a gRPC
   // response.
   void ForwardGetRoutineUpdateResponse(
-      size_t callback_key,
-      chromeos::cros_healthd::mojom::RoutineUpdatePtr response);
+      size_t callback_key, ash::cros_healthd::mojom::RoutineUpdatePtr response);
 
   // Binds |service_ptr_| to an implementation of CrosHealthdDiagnosticsService,
   // if it is not already bound. Returns false if wilco_dtc_supportd's mojo
@@ -102,7 +101,7 @@ class RoutineService final {
   // Mojo interface to the CrosHealthdDiagnosticsService endpoint.
   //
   // In production this interface is implemented by the cros_healthd process.
-  mojo::Remote<chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+  mojo::Remote<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       service_;
 
   // The following three maps each hold in flight callbacks to |service_ptr_|.

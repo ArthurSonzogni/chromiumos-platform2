@@ -86,8 +86,8 @@ class GrpcService final {
         base::OnceCallback<void(const std::string& json_configuration_data)>;
     using GetDriveSystemDataCallback =
         base::OnceCallback<void(const std::string& payload, bool success)>;
-    using ProbeTelemetryInfoCallback = base::OnceCallback<void(
-        chromeos::cros_healthd::mojom::TelemetryInfoPtr)>;
+    using ProbeTelemetryInfoCallback =
+        base::OnceCallback<void(ash::cros_healthd::mojom::TelemetryInfoPtr)>;
 
     virtual ~Delegate() = default;
 
@@ -163,8 +163,7 @@ class GrpcService final {
     //
     // Calls cros_healthd's probe service.
     virtual void ProbeTelemetryInfo(
-        std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
-            categories,
+        std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum> categories,
         ProbeTelemetryInfoCallback callback) = 0;
 
     // Gets a pointer to the EcService.

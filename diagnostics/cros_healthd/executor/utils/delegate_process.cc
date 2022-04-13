@@ -16,13 +16,15 @@
 #include "diagnostics/cros_healthd/executor/delegate_constants.h"
 #include "diagnostics/cros_healthd/executor/mojom/delegate.mojom.h"
 
+namespace diagnostics {
+
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kDelegateBinary[] = "/usr/libexec/diagnostics/executor-delegate";
 
 }  // namespace
-
-namespace diagnostics {
 
 DelegateProcess::DelegateProcess() = default;
 

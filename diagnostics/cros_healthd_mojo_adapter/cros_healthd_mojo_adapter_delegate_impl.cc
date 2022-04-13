@@ -86,8 +86,8 @@ CrosHealthdMojoAdapterDelegateImpl::CrosHealthdMojoAdapterDelegateImpl() {
 CrosHealthdMojoAdapterDelegateImpl::~CrosHealthdMojoAdapterDelegateImpl() =
     default;
 
-std::optional<mojo::PendingRemote<
-    chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>>
+std::optional<
+    mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdServiceFactory>>
 CrosHealthdMojoAdapterDelegateImpl::GetCrosHealthdServiceFactory() {
   mojo::PlatformChannel channel;
   std::string token;
@@ -113,7 +113,7 @@ CrosHealthdMojoAdapterDelegateImpl::GetCrosHealthdServiceFactory() {
 
   // Bind our end of |pipe| to a pending remote of CrosHealthdService.
   return mojo::PendingRemote<
-      chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>(
+      ash::cros_healthd::mojom::CrosHealthdServiceFactory>(
       invitation.ExtractMessagePipe(token), 0u /* version */);
 }
 

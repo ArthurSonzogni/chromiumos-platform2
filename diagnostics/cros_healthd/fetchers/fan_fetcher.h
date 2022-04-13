@@ -17,8 +17,6 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // Relative filepath used to determine whether a device has a Google EC.
 constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
 
@@ -26,7 +24,8 @@ constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
 // cros_healthd.
 class FanFetcher final : public BaseFetcher {
  public:
-  using FetchFanInfoCallback = base::OnceCallback<void(mojom::FanResultPtr)>;
+  using FetchFanInfoCallback =
+      base::OnceCallback<void(ash::cros_healthd::mojom::FanResultPtr)>;
 
   using BaseFetcher::BaseFetcher;
 
@@ -36,8 +35,9 @@ class FanFetcher final : public BaseFetcher {
 
  private:
   // Handles the executor's response to a GetFanSpeed IPC.
-  void HandleFanSpeedResponse(FetchFanInfoCallback callback,
-                              mojom::ExecutedProcessResultPtr result);
+  void HandleFanSpeedResponse(
+      FetchFanInfoCallback callback,
+      ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
 
   // Must be the last member of the class, so that it's destroyed first when an
   // instance of the class is destroyed. This will prevent any outstanding

@@ -34,6 +34,8 @@ namespace diagnostics {
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 // Regex used to parse a process's statm file.
 constexpr char kProcessStatmFileRegex[] =
     R"((\d+)\s+(\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+)";

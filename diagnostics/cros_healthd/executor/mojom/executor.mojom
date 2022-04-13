@@ -6,7 +6,7 @@
 // sandboxed cros_healthd daemon when it needs to perform a high-privilege
 // operation.
 
-module chromeos.cros_healthd.mojom;
+module ash.cros_healthd.mojom;
 
 import "diagnostics/mojom/public/nullable_primitives.mojom";
 

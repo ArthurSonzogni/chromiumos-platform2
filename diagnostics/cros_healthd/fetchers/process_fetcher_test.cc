@@ -25,12 +25,13 @@
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
-using testing::_;
-using ::testing::Invoke;
-using ::testing::WithArg;
-
 namespace diagnostics {
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::WithArg;
 
 // POD struct for ParseProcessStateTest.
 struct ParseProcessStateTestParams {

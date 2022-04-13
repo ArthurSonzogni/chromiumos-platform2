@@ -27,7 +27,7 @@ namespace diagnostics {
 
 // Production implementation of the CrosHealthdDiagnosticsService interface.
 class CrosHealthdRoutineService final
-    : public chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService {
+    : public ash::cros_healthd::mojom::CrosHealthdDiagnosticsService {
  public:
   CrosHealthdRoutineService(Context* context,
                             CrosHealthdRoutineFactory* routine_factory);
@@ -40,15 +40,15 @@ class CrosHealthdRoutineService final
   // already ready, |callback| will be run immediately.
   void RegisterServiceReadyCallback(base::OnceClosure callback);
 
-  // chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService overrides:
+  // ash::cros_healthd::mojom::CrosHealthdDiagnosticsService overrides:
   void GetAvailableRoutines(GetAvailableRoutinesCallback callback) override;
   void GetRoutineUpdate(
       int32_t id,
-      chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
+      ash::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
       bool include_output,
       GetRoutineUpdateCallback callback) override;
   void RunAcPowerRoutine(
-      chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+      ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type,
       RunAcPowerRoutineCallback callback) override;
   void RunBatteryCapacityRoutine(
@@ -66,13 +66,13 @@ class CrosHealthdRoutineService final
   void RunCaptivePortalRoutine(
       RunCaptivePortalRoutineCallback callback) override;
   void RunCpuCacheRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunCpuCacheRoutineCallback callback) override;
   void RunCpuStressRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunCpuStressRoutineCallback callback) override;
   void RunDiskReadRoutine(
-      chromeos::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
+      ash::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
       uint32_t length_seconds,
       uint32_t file_size_mb,
       RunDiskReadRoutineCallback callback) override;
@@ -82,7 +82,7 @@ class CrosHealthdRoutineService final
   void RunDnsResolverPresentRoutine(
       RunDnsResolverPresentRoutineCallback callback) override;
   void RunFloatingPointAccuracyRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunFloatingPointAccuracyRoutineCallback callback) override;
   void RunGatewayCanBePingedRoutine(
       RunGatewayCanBePingedRoutineCallback callback) override;
@@ -96,20 +96,20 @@ class CrosHealthdRoutineService final
       RunLanConnectivityRoutineCallback callback) override;
   void RunMemoryRoutine(RunMemoryRoutineCallback callback) override;
   void RunNvmeSelfTestRoutine(
-      chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type,
+      ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type,
       RunNvmeSelfTestRoutineCallback callback) override;
   void RunNvmeWearLevelRoutine(
       uint32_t wear_level_threshold,
       RunNvmeWearLevelRoutineCallback callback) override;
   void RunPrimeSearchRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunPrimeSearchRoutineCallback callback) override;
   void RunSignalStrengthRoutine(
       RunSignalStrengthRoutineCallback callback) override;
   void RunSmartctlCheckRoutine(
       RunSmartctlCheckRoutineCallback callback) override;
   void RunUrandomRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunUrandomRoutineCallback callback) override;
   void RunVideoConferencingRoutine(
       const std::optional<std::string>& stun_server_hostname,
@@ -122,9 +122,9 @@ class CrosHealthdRoutineService final
  private:
   void RunRoutine(
       std::unique_ptr<DiagnosticRoutine> routine,
-      chromeos::cros_healthd::mojom::DiagnosticRoutineEnum routine_enum,
-      base::OnceCallback<
-          void(chromeos::cros_healthd::mojom::RunRoutineResponsePtr)> callback);
+      ash::cros_healthd::mojom::DiagnosticRoutineEnum routine_enum,
+      base::OnceCallback<void(ash::cros_healthd::mojom::RunRoutineResponsePtr)>
+          callback);
 
   // Callback for checking whether nvme-self-test is supported.
   void HandleNvmeSelfTestSupportedResponse(bool supported);
@@ -150,8 +150,7 @@ class CrosHealthdRoutineService final
   int32_t next_id_ = 1;
   // Each of the supported diagnostic routines. Must be kept in sync with the
   // enums in diagnostics/mojo/cros_health_diagnostics.mojom.
-  std::set<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>
-      available_routines_;
+  std::set<ash::cros_healthd::mojom::DiagnosticRoutineEnum> available_routines_;
   // Unowned pointer that should outlive this instance.
   Context* const context_ = nullptr;
   // Responsible for making the routines. Unowned pointer that should outlive
@@ -160,8 +159,7 @@ class CrosHealthdRoutineService final
   // The callbacks to run when the service become ready.
   std::vector<base::OnceClosure> service_ready_callbacks_;
   // Mojo service provider to provide service to mojo service manager.
-  MojoServiceProvider<
-      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+  MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       provider_;
 
   // Must be the last class member.

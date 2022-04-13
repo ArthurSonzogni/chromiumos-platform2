@@ -21,8 +21,8 @@ class EglManager {
   virtual ~EglManager();
 
   static std::unique_ptr<EglManager> Create();
-  virtual chromeos::cros_healthd::mojom::GLESInfoPtr FetchGLESInfo();
-  virtual chromeos::cros_healthd::mojom::EGLInfoPtr FetchEGLInfo();
+  virtual ash::cros_healthd::mojom::GLESInfoPtr FetchGLESInfo();
+  virtual ash::cros_healthd::mojom::EGLInfoPtr FetchEGLInfo();
 
  protected:
   EglManager() = default;
@@ -40,17 +40,17 @@ class GraphicsFetcher final : public BaseFetcher {
 
   // Returns a structure with either the device's graphics data or the error
   // that occurred fetching the information.
-  chromeos::cros_healthd::mojom::GraphicsResultPtr FetchGraphicsInfo(
+  ash::cros_healthd::mojom::GraphicsResultPtr FetchGraphicsInfo(
       std::unique_ptr<EglManager> egl_manager = nullptr);
 
  private:
   using OptionalProbeErrorPtr =
-      std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
+      std::optional<ash::cros_healthd::mojom::ProbeErrorPtr>;
 
   OptionalProbeErrorPtr FetchGraphicsInfo(
       std::unique_ptr<EglManager> egl_manager,
-      chromeos::cros_healthd::mojom::GLESInfoPtr* out_gles_info,
-      chromeos::cros_healthd::mojom::EGLInfoPtr* out_egl_info);
+      ash::cros_healthd::mojom::GLESInfoPtr* out_gles_info,
+      ash::cros_healthd::mojom::EGLInfoPtr* out_egl_info);
 };
 
 }  // namespace diagnostics

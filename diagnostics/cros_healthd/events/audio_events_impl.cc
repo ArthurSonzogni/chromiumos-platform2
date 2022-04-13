@@ -43,7 +43,7 @@ AudioEventsImpl::AudioEventsImpl(Context* context) : context_(context) {
 }
 
 void AudioEventsImpl::AddObserver(
-    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
+    mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
         observer) {
   observers_.Add(std::move(observer));
 }

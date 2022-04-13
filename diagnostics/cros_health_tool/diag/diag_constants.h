@@ -7,49 +7,65 @@
 
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 namespace diagnostics {
 
 // Used for printing and parsing routine names.
 constexpr struct {
   const char* switch_name;
-  mojo_ipc::DiagnosticRoutineEnum routine;
+  ash::cros_healthd::mojom::DiagnosticRoutineEnum routine;
 } kDiagnosticRoutineSwitches[] = {
-    {"battery_capacity", mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity},
-    {"battery_health", mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth},
-    {"urandom", mojo_ipc::DiagnosticRoutineEnum::kUrandom},
-    {"smartctl_check", mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck},
-    {"ac_power", mojo_ipc::DiagnosticRoutineEnum::kAcPower},
-    {"cpu_cache", mojo_ipc::DiagnosticRoutineEnum::kCpuCache},
-    {"cpu_stress", mojo_ipc::DiagnosticRoutineEnum::kCpuStress},
+    {"battery_capacity",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryCapacity},
+    {"battery_health",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryHealth},
+    {"urandom", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kUrandom},
+    {"smartctl_check",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kSmartctlCheck},
+    {"ac_power", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kAcPower},
+    {"cpu_cache", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kCpuCache},
+    {"cpu_stress", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kCpuStress},
     {"floating_point_accuracy",
-     mojo_ipc::DiagnosticRoutineEnum::kFloatingPointAccuracy},
-    {"nvme_wear_level", mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel},
-    {"nvme_self_test", mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest},
-    {"disk_read", mojo_ipc::DiagnosticRoutineEnum::kDiskRead},
-    {"prime_search", mojo_ipc::DiagnosticRoutineEnum::kPrimeSearch},
-    {"battery_discharge", mojo_ipc::DiagnosticRoutineEnum::kBatteryDischarge},
-    {"battery_charge", mojo_ipc::DiagnosticRoutineEnum::kBatteryCharge},
-    {"memory", mojo_ipc::DiagnosticRoutineEnum::kMemory},
-    {"lan_connectivity", mojo_ipc::DiagnosticRoutineEnum::kLanConnectivity},
-    {"signal_strength", mojo_ipc::DiagnosticRoutineEnum::kSignalStrength},
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kFloatingPointAccuracy},
+    {"nvme_wear_level",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kNvmeWearLevel},
+    {"nvme_self_test",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kNvmeSelfTest},
+    {"disk_read", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kDiskRead},
+    {"prime_search",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kPrimeSearch},
+    {"battery_discharge",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryDischarge},
+    {"battery_charge",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryCharge},
+    {"memory", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kMemory},
+    {"lan_connectivity",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kLanConnectivity},
+    {"signal_strength",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kSignalStrength},
     {"gateway_can_be_pinged",
-     mojo_ipc::DiagnosticRoutineEnum::kGatewayCanBePinged},
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kGatewayCanBePinged},
     {"has_secure_wifi_connection",
-     mojo_ipc::DiagnosticRoutineEnum::kHasSecureWiFiConnection},
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kHasSecureWiFiConnection},
     {"dns_resolver_present",
-     mojo_ipc::DiagnosticRoutineEnum::kDnsResolverPresent},
-    {"dns_latency", mojo_ipc::DiagnosticRoutineEnum::kDnsLatency},
-    {"dns_resolution", mojo_ipc::DiagnosticRoutineEnum::kDnsResolution},
-    {"captive_portal", mojo_ipc::DiagnosticRoutineEnum::kCaptivePortal},
-    {"http_firewall", mojo_ipc::DiagnosticRoutineEnum::kHttpFirewall},
-    {"https_firewall", mojo_ipc::DiagnosticRoutineEnum::kHttpsFirewall},
-    {"https_latency", mojo_ipc::DiagnosticRoutineEnum::kHttpsLatency},
-    {"video_conferencing", mojo_ipc::DiagnosticRoutineEnum::kVideoConferencing},
-    {"arc_http", mojo_ipc::DiagnosticRoutineEnum::kArcHttp},
-    {"arc_ping", mojo_ipc::DiagnosticRoutineEnum::kArcPing},
-    {"arc_dns_resolution", mojo_ipc::DiagnosticRoutineEnum::kArcDnsResolution}};
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kDnsResolverPresent},
+    {"dns_latency",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kDnsLatency},
+    {"dns_resolution",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kDnsResolution},
+    {"captive_portal",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kCaptivePortal},
+    {"http_firewall",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kHttpFirewall},
+    {"https_firewall",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kHttpsFirewall},
+    {"https_latency",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kHttpsLatency},
+    {"video_conferencing",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kVideoConferencing},
+    {"arc_http", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kArcHttp},
+    {"arc_ping", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kArcPing},
+    {"arc_dns_resolution",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kArcDnsResolution}};
 
 }  // namespace diagnostics
 

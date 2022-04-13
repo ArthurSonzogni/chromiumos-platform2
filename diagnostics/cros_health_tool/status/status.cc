@@ -32,7 +32,7 @@ int status_main(int argc, char** argv) {
   std::unique_ptr<CrosHealthdMojoAdapter> adapter =
       CrosHealthdMojoAdapter::Create();
 
-  chromeos::cros_healthd::mojom::ServiceStatusPtr response =
+  ash::cros_healthd::mojom::ServiceStatusPtr response =
       adapter->GetServiceStatus();
 
   if (!response) {

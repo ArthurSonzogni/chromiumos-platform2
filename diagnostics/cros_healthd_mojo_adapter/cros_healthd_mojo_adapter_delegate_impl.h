@@ -27,8 +27,8 @@ class CrosHealthdMojoAdapterDelegateImpl final
   ~CrosHealthdMojoAdapterDelegateImpl() override;
 
   // CrosHealthdMojoAdapterDelegate overrides:
-  std::optional<mojo::PendingRemote<
-      chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>>
+  std::optional<
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdServiceFactory>>
   GetCrosHealthdServiceFactory() override;
 
  private:

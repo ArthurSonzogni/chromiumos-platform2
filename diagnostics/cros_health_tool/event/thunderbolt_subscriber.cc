@@ -48,7 +48,7 @@ void PrintThunderboltEvent(ThunderboltEventType event) {
 
 ThunderboltSubscriber::ThunderboltSubscriber(
     mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver> receiver)
+        ash::cros_healthd::mojom::CrosHealthdThunderboltObserver> receiver)
     : receiver_{this /* impl */, std::move(receiver)} {
   DCHECK(receiver_.is_bound());
 }

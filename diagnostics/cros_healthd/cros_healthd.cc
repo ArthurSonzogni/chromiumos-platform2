@@ -128,8 +128,7 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
 
   std::string token;
 
-  mojo::PendingReceiver<
-      chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>
+  mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdServiceFactory>
       receiver;
   if (is_chrome) {
     LOG(ERROR) << "Cannot bootstrap from chrome through dbus because service "
@@ -147,8 +146,7 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
         mojo::PlatformChannelEndpoint(
             mojo::PlatformHandle(std::move(mojo_fd_copy))));
     receiver = mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>(
-        std::move(pipe));
+        ash::cros_healthd::mojom::CrosHealthdServiceFactory>(std::move(pipe));
   }
   service_factory_receiver_set_.Add(this /* impl */, std::move(receiver),
                                     is_chrome);
@@ -158,14 +156,14 @@ std::string CrosHealthd::BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
 }
 
 void CrosHealthd::GetProbeService(
-    mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdProbeService> service) {
+    mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
+        service) {
   mojo_service_->AddProbeReceiver(std::move(service));
 }
 
 void CrosHealthd::GetDiagnosticsService(
     mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
+        ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
   // Bind the service after it becomes ready.
   routine_service_->RegisterServiceReadyCallback(
       base::BindOnce(&CrosHealthd::GetDiagnosticsServiceInternal,
@@ -173,14 +171,14 @@ void CrosHealthd::GetDiagnosticsService(
 }
 
 void CrosHealthd::GetEventService(
-    mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdEventService> service) {
+    mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdEventService>
+        service) {
   mojo_service_->AddEventReceiver(std::move(service));
 }
 
 void CrosHealthd::GetSystemService(
-    mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdSystemService> service) {
+    mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdSystemService>
+        service) {
   mojo_service_->AddSystemReceiver(std::move(service));
 }
 
@@ -195,8 +193,7 @@ void CrosHealthd::SendNetworkDiagnosticsRoutines(
 
 void CrosHealthd::SendChromiumDataCollector(
     mojo::PendingRemote<
-        chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
-        remote) {}
+        ash::cros_healthd::internal::mojom::ChromiumDataCollector> remote) {}
 
 void CrosHealthd::ShutDownDueToMojoError(const std::string& debug_reason) {
   // Our daemon has to be restarted to be prepared for future Mojo connection
@@ -217,7 +214,7 @@ void CrosHealthd::OnDisconnect() {
 
 void CrosHealthd::GetDiagnosticsServiceInternal(
     mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
+        ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
   diagnostics_receiver_set_.Add(routine_service_.get(), std::move(service));
 }
 

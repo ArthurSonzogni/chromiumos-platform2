@@ -9,9 +9,7 @@
 #include <base/check.h>
 #include <base/strings/string_split.h>
 
-namespace chromeos {
-namespace cros_healthd {
-namespace mojom {
+namespace ash::cros_healthd::mojom {
 
 bool operator<(const BusInfo& a, const BusInfo& b) {
   if (a.which() != b.which())
@@ -27,9 +25,8 @@ bool operator<(const BusInfo& a, const BusInfo& b) {
       return a.get_unmapped_field() < b.get_unmapped_field();
   }
 }
-}  // namespace mojom
-}  // namespace cros_healthd
-}  // namespace chromeos
+
+}  // namespace ash::cros_healthd::mojom
 
 namespace diagnostics {
 namespace internal {
@@ -58,7 +55,7 @@ using internal::StringCompareFormat;
 const auto kMissingMessage =
     "It is possible that some fields are missing in GetDiffString.";
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 template <typename MojoType>
 class CompareHelper {

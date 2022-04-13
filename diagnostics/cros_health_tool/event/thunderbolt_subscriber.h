@@ -15,17 +15,16 @@ namespace diagnostics {
 // This class subscribes to cros_healthd's Thunderbolt notifications and
 // outputs received notifications to stdout.
 class ThunderboltSubscriber final
-    : public chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver {
+    : public ash::cros_healthd::mojom::CrosHealthdThunderboltObserver {
  public:
   explicit ThunderboltSubscriber(
       mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
-          receiver);
+          ash::cros_healthd::mojom::CrosHealthdThunderboltObserver> receiver);
   ThunderboltSubscriber(const ThunderboltSubscriber&) = delete;
   ThunderboltSubscriber& operator=(const ThunderboltSubscriber&) = delete;
   ~ThunderboltSubscriber();
 
-  // chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver overrides:
+  // ash::cros_healthd::mojom::CrosHealthdThunderboltObserver overrides:
   void OnAdd() override;
   void OnRemove() override;
   void OnAuthorized() override;
@@ -34,8 +33,7 @@ class ThunderboltSubscriber final
  private:
   // Allows the remote cros_healthd to call ThunderboltSubscriber's
   // CrosHealthdThunderboltObserver methods.
-  const mojo::Receiver<
-      chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
+  const mojo::Receiver<ash::cros_healthd::mojom::CrosHealthdThunderboltObserver>
       receiver_;
 };
 

@@ -12,7 +12,8 @@
 
 namespace diagnostics {
 namespace wilco {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 ProbeServiceImpl::ProbeServiceImpl(Delegate* delegate) : delegate_(delegate) {
   DCHECK(delegate_);
@@ -23,7 +24,7 @@ ProbeServiceImpl::~ProbeServiceImpl() {
 }
 
 void ProbeServiceImpl::ProbeTelemetryInfo(
-    std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories,
+    std::vector<mojo_ipc::ProbeCategoryEnum> categories,
     ProbeTelemetryInfoCallback callback) {
   if (!BindCrosHealthdProbeServiceIfNeeded()) {
     LOG(WARNING) << "ProbeTelemetryInfo called before mojo was bootstrapped.";
@@ -42,8 +43,7 @@ void ProbeServiceImpl::ProbeTelemetryInfo(
 }
 
 void ProbeServiceImpl::ForwardProbeTelemetryInfoResponse(
-    size_t callback_key,
-    chromeos::cros_healthd::mojom::TelemetryInfoPtr telemetry_info) {
+    size_t callback_key, mojo_ipc::TelemetryInfoPtr telemetry_info) {
   auto it = callbacks_.find(callback_key);
   if (it == callbacks_.end()) {
     LOG(ERROR) << "Unknown callback_key for received mojo ProbeTelemetryInfo "

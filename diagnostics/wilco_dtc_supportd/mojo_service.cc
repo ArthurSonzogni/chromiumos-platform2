@@ -201,13 +201,13 @@ void MojoService::HandleEvent(const MojomWilcoDtcSupportdEvent event) {
 
 void MojoService::GetCrosHealthdDiagnosticsService(
     mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
+        ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
   client_->GetCrosHealthdDiagnosticsService(std::move(service));
 }
 
 void MojoService::GetCrosHealthdProbeService(
-    mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdProbeService> service) {
+    mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
+        service) {
   client_->GetCrosHealthdProbeService(std::move(service));
 }
 

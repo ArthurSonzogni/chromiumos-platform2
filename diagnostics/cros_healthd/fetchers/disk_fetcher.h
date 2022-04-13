@@ -23,7 +23,7 @@ class DiskFetcher final : public BaseFetcher {
 
   // Returns a structure with either the device's non-removable block device
   // info or the error that occurred fetching the information.
-  chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr
+  ash::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr
   FetchNonRemovableBlockDevicesInfo();
 
  private:

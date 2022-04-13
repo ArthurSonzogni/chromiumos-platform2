@@ -34,7 +34,7 @@ class Context;
 // Daemon class for cros_healthd.
 class CrosHealthd final
     : public brillo::DBusServiceDaemon,
-      public chromeos::cros_healthd::mojom::CrosHealthdServiceFactory {
+      public ash::cros_healthd::mojom::CrosHealthdServiceFactory {
  public:
   explicit CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
                        std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
@@ -48,20 +48,20 @@ class CrosHealthd final
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
-  // chromeos::cros_healthd::mojom::CrosHealthdServiceFactory overrides:
-  void GetProbeService(mojo::PendingReceiver<
-                       chromeos::cros_healthd::mojom::CrosHealthdProbeService>
-                           service) override;
+  // ash::cros_healthd::mojom::CrosHealthdServiceFactory overrides:
+  void GetProbeService(
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
+          service) override;
   void GetDiagnosticsService(
       mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service)
+          ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service)
       override;
-  void GetEventService(mojo::PendingReceiver<
-                       chromeos::cros_healthd::mojom::CrosHealthdEventService>
-                           service) override;
-  void GetSystemService(mojo::PendingReceiver<
-                        chromeos::cros_healthd::mojom::CrosHealthdSystemService>
-                            service) override;
+  void GetEventService(
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdEventService>
+          service) override;
+  void GetSystemService(
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdSystemService>
+          service) override;
   void SendNetworkHealthService(
       mojo::PendingRemote<chromeos::network_health::mojom::NetworkHealthService>
           remote) override;
@@ -71,8 +71,8 @@ class CrosHealthd final
           network_diagnostics_routines) override;
   void SendChromiumDataCollector(
       mojo::PendingRemote<
-          chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
-          remote) override;
+          ash::cros_healthd::internal::mojom::ChromiumDataCollector> remote)
+      override;
 
   // Implementation of the "org.chromium.CrosHealthdInterface" D-Bus interface
   // exposed by the cros_healthd daemon (see constants for the API methods at
@@ -92,8 +92,7 @@ class CrosHealthd final
 
   void GetDiagnosticsServiceInternal(
       mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
-          service);
+          ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service);
 
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
@@ -123,17 +122,15 @@ class CrosHealthd final
   // Maintains the Mojo connection with cros_healthd clients.
   std::unique_ptr<CrosHealthdMojoService> mojo_service_;
   // Receiver set that connects this instance (which is an implementation of
-  // chromeos::cros_healthd::mojom::CrosHealthdServiceFactory) with
+  // ash::cros_healthd::mojom::CrosHealthdServiceFactory) with
   // any message pipes set up on top of received file descriptors. A new
   // receiver is added whenever the BootstrapMojoConnection D-Bus method is
   // called.
-  mojo::ReceiverSet<chromeos::cros_healthd::mojom::CrosHealthdServiceFactory,
-                    bool>
+  mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdServiceFactory, bool>
       service_factory_receiver_set_;
   // Mojo receiver set that connects |routine_service_| with message pipes,
   // allowing the remote ends to call our methods.
-  mojo::ReceiverSet<
-      chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+  mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       diagnostics_receiver_set_;
 
   // Connects BootstrapMojoConnection with the methods of the D-Bus

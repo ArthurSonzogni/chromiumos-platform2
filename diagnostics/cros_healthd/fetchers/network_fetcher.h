@@ -17,7 +17,7 @@ namespace diagnostics {
 class NetworkFetcher final : public BaseFetcher {
  public:
   using FetchNetworkInfoCallback =
-      base::OnceCallback<void(chromeos::cros_healthd::mojom::NetworkResultPtr)>;
+      base::OnceCallback<void(ash::cros_healthd::mojom::NetworkResultPtr)>;
 
   using BaseFetcher::BaseFetcher;
 

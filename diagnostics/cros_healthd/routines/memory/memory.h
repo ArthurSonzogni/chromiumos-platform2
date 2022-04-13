@@ -21,8 +21,6 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // The memory routine checks that the device's memory is working correctly.
 class MemoryRoutine final : public DiagnosticRoutine {
  public:
@@ -37,16 +35,15 @@ class MemoryRoutine final : public DiagnosticRoutine {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(
-      chromeos::cros_healthd::mojom::RoutineUpdate* response,
-      bool include_output) override;
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus()
-      override;
+  void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
+                            bool include_output) override;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   // Takes the memtester result code from |process| and parses it to determine
   // whether or not the routine succeeded.
-  void DetermineRoutineResult(mojom::ExecutedProcessResultPtr process);
+  void DetermineRoutineResult(
+      ash::cros_healthd::mojom::ExecutedProcessResultPtr process);
 
   // Takes raw output from memtester and parses it into |output_dict_|.
   void ParseMemtesterOutput(const std::string& raw_output);
@@ -55,7 +52,7 @@ class MemoryRoutine final : public DiagnosticRoutine {
   Context* const context_ = nullptr;
 
   // Status of the routine, reported by GetStatus() or routine updates.
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
   // Details of the routine's status, reported in all status updates.
   std::string status_message_;
   // Details about the routine's execution. Reported in status updates when

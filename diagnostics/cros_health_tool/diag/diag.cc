@@ -26,11 +26,11 @@
 #include "diagnostics/cros_healthd/routines/urandom/urandom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 namespace diagnostics {
 
 namespace {
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 // Poll interval while waiting for a routine to finish.
 constexpr base::TimeDelta kRoutinePollIntervalTimeDelta =

@@ -19,7 +19,7 @@
 namespace diagnostics {
 namespace {
 
-using ::testing::_;
+namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::AnyNumber;
 using ::testing::Invoke;
 using ::testing::WithArg;

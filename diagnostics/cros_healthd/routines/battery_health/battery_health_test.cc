@@ -23,9 +23,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
-using ::testing::UnorderedElementsAreArray;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 constexpr int kMaximumCycleCount = 5;
 constexpr int kPercentBatteryWearAllowed = 10;

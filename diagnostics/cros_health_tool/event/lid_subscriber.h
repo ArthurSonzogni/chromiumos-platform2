@@ -15,23 +15,23 @@ namespace diagnostics {
 // This class subscribes to cros_healthd's lid notifications and outputs any
 // notifications received to stdout.
 class LidSubscriber final
-    : public chromeos::cros_healthd::mojom::CrosHealthdLidObserver {
+    : public ash::cros_healthd::mojom::CrosHealthdLidObserver {
  public:
   explicit LidSubscriber(
-      mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdLidObserver> receiver);
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdLidObserver>
+          receiver);
   LidSubscriber(const LidSubscriber&) = delete;
   LidSubscriber& operator=(const LidSubscriber&) = delete;
   ~LidSubscriber();
 
-  // chromeos::cros_healthd::mojom::CrosHealthdLidObserver overrides:
+  // ash::cros_healthd::mojom::CrosHealthdLidObserver overrides:
   void OnLidClosed() override;
   void OnLidOpened() override;
 
  private:
   // Allows the remote cros_healthd to call LidSubscriber's
   // CrosHealthdLidObserver methods.
-  const mojo::Receiver<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+  const mojo::Receiver<ash::cros_healthd::mojom::CrosHealthdLidObserver>
       receiver_;
 };
 

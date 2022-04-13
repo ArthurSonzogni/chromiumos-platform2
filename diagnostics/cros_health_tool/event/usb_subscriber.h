@@ -15,25 +15,23 @@ namespace diagnostics {
 // This class subscribes to cros_healthd's USB notifications and outputs
 // received notifications to stdout.
 class UsbSubscriber final
-    : public chromeos::cros_healthd::mojom::CrosHealthdUsbObserver {
+    : public ash::cros_healthd::mojom::CrosHealthdUsbObserver {
  public:
   explicit UsbSubscriber(
-      mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdUsbObserver> receiver);
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
+          receiver);
   UsbSubscriber(const UsbSubscriber&) = delete;
   UsbSubscriber& operator=(const UsbSubscriber&) = delete;
   ~UsbSubscriber();
 
-  // chromeos::cros_healthd::mojom::CrosHealthdUsbObserver overrides:
-  void OnAdd(
-      const chromeos::cros_healthd::mojom::UsbEventInfoPtr info) override;
-  void OnRemove(
-      const chromeos::cros_healthd::mojom::UsbEventInfoPtr info) override;
+  // ash::cros_healthd::mojom::CrosHealthdUsbObserver overrides:
+  void OnAdd(const ash::cros_healthd::mojom::UsbEventInfoPtr info) override;
+  void OnRemove(const ash::cros_healthd::mojom::UsbEventInfoPtr info) override;
 
  private:
   // Allows the remote cros_healthd to call UsbSubscriber's
   // CrosHealthdUsbObserver methods.
-  const mojo::Receiver<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+  const mojo::Receiver<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
       receiver_;
 };
 

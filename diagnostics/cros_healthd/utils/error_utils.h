@@ -13,13 +13,11 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // This helper function takes an error type and string error message and returns
 // a ProbeError. In addition, the error message is logged to LOG(ERROR).
-inline mojom::ProbeErrorPtr CreateAndLogProbeError(mojom::ErrorType type,
-                                                   const std::string& msg) {
-  auto error = mojom::ProbeError::New(type, msg);
+inline ash::cros_healthd::mojom::ProbeErrorPtr CreateAndLogProbeError(
+    ash::cros_healthd::mojom::ErrorType type, const std::string& msg) {
+  auto error = ash::cros_healthd::mojom::ProbeError::New(type, msg);
   LOG(ERROR) << msg;
   return error;
 }
@@ -27,9 +25,10 @@ inline mojom::ProbeErrorPtr CreateAndLogProbeError(mojom::ErrorType type,
 // Appends message to the error. This can be used to append information for the
 // error returned by a function. This join the message by ": " so don't add
 // period `.` at the end of the message.
-inline mojom::ProbeErrorPtr WrapProbeError(mojom::ProbeErrorPtr err,
-                                           const std::string& msg) {
-  return mojom::ProbeError::New(err->type, msg + ": " + err->msg);
+inline ash::cros_healthd::mojom::ProbeErrorPtr WrapProbeError(
+    ash::cros_healthd::mojom::ProbeErrorPtr err, const std::string& msg) {
+  return ash::cros_healthd::mojom::ProbeError::New(err->type,
+                                                   msg + ": " + err->msg);
 }
 
 }  // namespace diagnostics

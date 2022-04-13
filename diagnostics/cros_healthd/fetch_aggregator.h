@@ -31,8 +31,6 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // This class is responsible for aggregating probe data from various fetchers,
 // some of which may be asynchronous, and running the given callback when all
 // probe data has been fetched.
@@ -45,8 +43,10 @@ class FetchAggregator final {
 
   // Runs the aggregator, which will collect all relevant data and then run the
   // callback.
-  void Run(const std::vector<mojom::ProbeCategoryEnum>& categories_to_probe,
-           mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback);
+  void Run(const std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum>&
+               categories_to_probe,
+           ash::cros_healthd::mojom::CrosHealthdProbeService::
+               ProbeTelemetryInfoCallback callback);
 
  private:
   BacklightFetcher backlight_fetcher_;

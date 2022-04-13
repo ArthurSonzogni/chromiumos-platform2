@@ -17,7 +17,7 @@ class DisplayFetcher final : public BaseFetcher {
   using BaseFetcher::BaseFetcher;
 
   using FetchDisplayInfoCallback =
-      base::OnceCallback<void(chromeos::cros_healthd::mojom::DisplayResultPtr)>;
+      base::OnceCallback<void(ash::cros_healthd::mojom::DisplayResultPtr)>;
   // Returns a structure with either the device's display info or the error that
   // occurred fetching the information.
   void FetchDisplayInfo(FetchDisplayInfoCallback&& callback);

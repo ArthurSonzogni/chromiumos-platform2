@@ -21,7 +21,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 bool TestWearPercentage(
     const power_manager::PowerSupplyProperties& power_supply_proto,

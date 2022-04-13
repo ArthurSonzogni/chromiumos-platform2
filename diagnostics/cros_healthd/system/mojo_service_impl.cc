@@ -74,7 +74,7 @@ MojoServiceImpl::GetServiceManager() {
   return service_manager_.get();
 }
 
-chromeos::cros_healthd::internal::mojom::ChromiumDataCollector*
+ash::cros_healthd::internal::mojom::ChromiumDataCollector*
 MojoServiceImpl::GetChromiumDataCollector() {
   DCHECK(chromium_data_collector_.is_bound());
   return chromium_data_collector_.get();

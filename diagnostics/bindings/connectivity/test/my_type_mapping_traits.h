@@ -13,21 +13,15 @@
 #include "diagnostics/bindings/connectivity/test/my_type_mapping.h"
 #include "diagnostics/bindings/connectivity/test/test_common.mojom.h"
 
-namespace chromeos {
-namespace cros_healthd {
-namespace connectivity {
-namespace test {
+namespace ash::cros_healthd::connectivity::test {
 
-class MyTypeMappingGenerator
-    : public ::chromeos::cros_healthd::connectivity::DataGeneratorInterface<
-          MyTypeMapping> {
+class MyTypeMappingGenerator : public DataGeneratorInterface<MyTypeMapping> {
  public:
   MyTypeMappingGenerator(const MyTypeMappingGenerator&) = delete;
   MyTypeMappingGenerator& operator=(const MyTypeMappingGenerator&) = delete;
   virtual ~MyTypeMappingGenerator() = default;
 
-  static std::unique_ptr<MyTypeMappingGenerator> Create(
-      ::chromeos::cros_healthd::connectivity::Context*) {
+  static std::unique_ptr<MyTypeMappingGenerator> Create(Context*) {
     return std::unique_ptr<MyTypeMappingGenerator>(
         new MyTypeMappingGenerator());
   }
@@ -48,28 +42,23 @@ class MyTypeMappingGenerator
   int cnt_ = 42;
 };
 
-}  // namespace test
-}  // namespace connectivity
-}  // namespace cros_healthd
-}  // namespace chromeos
+}  // namespace ash::cros_healthd::connectivity::test
 
 namespace mojo {
 
 template <>
 struct StructTraits<
-    ::chromeos::cros_healthd::connectivity::test::common::mojom::
-        TypeMappingDataView,
-    ::chromeos::cros_healthd::connectivity::test::MyTypeMapping> {
-  static int32_t n(
-      const ::chromeos::cros_healthd::connectivity::test::MyTypeMapping&
-          my_type_mapping) {
+    ash::cros_healthd::connectivity::test::common::mojom::TypeMappingDataView,
+    ash::cros_healthd::connectivity::test::MyTypeMapping> {
+  static int32_t n(const ash::cros_healthd::connectivity::test::MyTypeMapping&
+                       my_type_mapping) {
     return 42;
   }
 
-  static bool Read(::chromeos::cros_healthd::connectivity::test::common::mojom::
-                       TypeMappingDataView data,
-                   ::chromeos::cros_healthd::connectivity::test::MyTypeMapping*
-                       my_type_mapping) {
+  static bool Read(
+      ash::cros_healthd::connectivity::test::common::mojom::TypeMappingDataView
+          data,
+      ash::cros_healthd::connectivity::test::MyTypeMapping* my_type_mapping) {
     return true;
   }
 };

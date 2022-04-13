@@ -26,11 +26,9 @@
 namespace diagnostics {
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
-using ::testing::DoAll;
 using ::testing::Invoke;
-using ::testing::Return;
-using ::testing::StrictMock;
 using ::testing::WithArg;
 
 // Test values for fan speed.
@@ -134,7 +132,7 @@ TEST_F(FanUtilsTest, CollectFanSpeedFailure) {
 
   ASSERT_TRUE(fan_result->is_error());
   EXPECT_EQ(fan_result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kSystemUtilityError);
+            mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test that fan speed is set to 0 RPM when a fan stalls.
@@ -176,8 +174,7 @@ TEST_F(FanUtilsTest, BadLine) {
   auto fan_result = FetchFanInfo();
 
   ASSERT_TRUE(fan_result->is_error());
-  EXPECT_EQ(fan_result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kParseError);
+  EXPECT_EQ(fan_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that failing to convert the first fan speed string to an integer fails
@@ -197,8 +194,7 @@ TEST_F(FanUtilsTest, BadValue) {
   auto fan_result = FetchFanInfo();
 
   ASSERT_TRUE(fan_result->is_error());
-  EXPECT_EQ(fan_result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kParseError);
+  EXPECT_EQ(fan_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that no fan info is fetched for a device that does not have a Google EC.
@@ -230,8 +226,7 @@ TEST_F(FanUtilsTest, OverflowingFanSpeedValue) {
   auto fan_result = FetchFanInfo();
 
   ASSERT_TRUE(fan_result->is_error());
-  EXPECT_EQ(fan_result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kParseError);
+  EXPECT_EQ(fan_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 }  // namespace

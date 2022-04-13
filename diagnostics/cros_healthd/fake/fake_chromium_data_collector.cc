@@ -8,7 +8,7 @@
 
 namespace diagnostics {
 
-namespace internal_mojom = chromeos::cros_healthd::internal::mojom;
+namespace internal_mojom = ::ash::cros_healthd::internal::mojom;
 
 FakeChromiumDataCollector::FakeChromiumDataCollector() : receiver_(this) {}
 

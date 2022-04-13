@@ -73,11 +73,9 @@ class SubprocRoutine final : public DiagnosticRoutine {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(
-      chromeos::cros_healthd::mojom::RoutineUpdate* response,
-      bool include_output) override;
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus()
-      override;
+  void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
+                            bool include_output) override;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
   // Registers a callback that will execute before processes start. The routine
   // will stop and set status to failure if this callback returns false.

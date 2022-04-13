@@ -20,7 +20,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
 
 // Parses the results of the has secure WiFi connection routine.

@@ -15,7 +15,7 @@ namespace diagnostics {
 namespace fwupd_utils {
 namespace {
 
-using FwupdVersionFormat = chromeos::cros_healthd::mojom::FwupdVersionFormat;
+using FwupdVersionFormat = ::ash::cros_healthd::mojom::FwupdVersionFormat;
 
 TEST(FwupdUtilsTest, DeviceContainsVendorId) {
   auto device_info = DeviceInfo();

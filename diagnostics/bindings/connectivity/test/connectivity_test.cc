@@ -23,10 +23,7 @@
 #include "diagnostics/bindings/connectivity/test/test_common.mojom-connectivity.h"
 #include "diagnostics/bindings/connectivity/test/test_server.mojom-connectivity.h"
 
-namespace chromeos {
-namespace cros_healthd {
-namespace connectivity {
-namespace test {
+namespace ash::cros_healthd::connectivity::test {
 namespace {
 
 class MojoConnectivityTest : public ::testing::Test {
@@ -207,7 +204,4 @@ FAILED_TEST(TestFailSubInterfaceForward);
 FAILED_TEST(TestFailSubInterfaceBackward);
 
 }  // namespace
-}  // namespace test
-}  // namespace connectivity
-}  // namespace cros_healthd
-}  // namespace chromeos
+}  // namespace ash::cros_healthd::connectivity::test

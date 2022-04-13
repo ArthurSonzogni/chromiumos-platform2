@@ -1,6 +1,6 @@
 {
   "c++": {
-    "chromeos.cros_healthd.internal.mojo_base.mojom.Time": {
+    "ash.cros_healthd.internal.mojo_base.mojom.Time": {
       "hashable": false,
       "typename": "base::Time",
       "forward_declaration": null,
@@ -16,7 +16,7 @@
         "base/time/time.h"
       ]
     },
-    "chromeos.cros_healthd.internal.mojo_base.mojom.TimeDelta": {
+    "ash.cros_healthd.internal.mojo_base.mojom.TimeDelta": {
       "hashable": false,
       "typename": "base::TimeDelta",
       "forward_declaration": null,

@@ -18,6 +18,8 @@
 
 namespace diagnostics {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 class DelegateDaemon : public brillo::Daemon {
  public:
   explicit DelegateDaemon(mojo::PlatformChannelEndpoint endpoint)

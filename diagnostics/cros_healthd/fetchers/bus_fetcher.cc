@@ -30,7 +30,10 @@
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 
 namespace diagnostics {
+
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
 
 template <typename T>
 bool HexToUInt(base::StringPiece in, T* out) {

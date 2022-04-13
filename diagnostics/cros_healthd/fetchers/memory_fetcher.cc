@@ -21,6 +21,8 @@ namespace diagnostics {
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 using OptionalProbeErrorPtr = std::optional<mojom::ProbeErrorPtr>;
 
 // Path to procfs, relative to the root directory.

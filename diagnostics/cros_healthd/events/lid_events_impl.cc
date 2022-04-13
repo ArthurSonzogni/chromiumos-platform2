@@ -21,7 +21,7 @@ LidEventsImpl::~LidEventsImpl() {
 }
 
 void LidEventsImpl::AddObserver(
-    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+    mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdLidObserver>
         observer) {
   if (!is_observing_powerd_) {
     context_->powerd_adapter()->AddLidObserver(this);

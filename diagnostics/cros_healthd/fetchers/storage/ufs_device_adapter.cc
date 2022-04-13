@@ -21,7 +21,8 @@
 namespace diagnostics {
 
 namespace {
-namespace mojom = chromeos::cros_healthd::mojom;
+
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kManfidFile[] = "device_descriptor/manufacturer_id";
 constexpr char kModelFile[] = "device/model";

@@ -18,11 +18,7 @@
 
 namespace diagnostics {
 
-namespace {
-
-namespace mojom = ::chromeos::cros_healthd::mojom;
-
-}  // namespace
+namespace mojom = ::ash::cros_healthd::mojom;
 
 ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint)
     : mojo_task_runner_(base::ThreadTaskRunnerHandle::Get()) {

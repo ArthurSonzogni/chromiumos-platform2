@@ -17,7 +17,7 @@ class TimezoneFetcher final : public BaseFetcher {
 
   // Returns a structure with either the device's timezone data or the error
   // that occurred fetching the information.
-  chromeos::cros_healthd::mojom::TimezoneResultPtr FetchTimezoneInfo();
+  ash::cros_healthd::mojom::TimezoneResultPtr FetchTimezoneInfo();
 };
 
 }  // namespace diagnostics

@@ -10,10 +10,10 @@
 
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
-#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 
 #include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
@@ -74,11 +74,11 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
 
 // Returns the parsed vulnerability status from reading the vulnerability
 // message. This function is exported for testing.
-chromeos::cros_healthd::mojom::VulnerabilityInfo::Status
+ash::cros_healthd::mojom::VulnerabilityInfo::Status
 GetVulnerabilityStatusFromMessage(const std::string& message);
 
 using FetchCpuInfoCallback =
-    base::OnceCallback<void(chromeos::cros_healthd::mojom::CpuResultPtr)>;
+    base::OnceCallback<void(ash::cros_healthd::mojom::CpuResultPtr)>;
 
 // Fetches cpu info and pass the result to the callback. Returns either a
 // structure with the cpu information or the error that occurred fetching the

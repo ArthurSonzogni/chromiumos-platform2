@@ -81,11 +81,10 @@ class MojoService final
   void HandleEvent(const MojomWilcoDtcSupportdEvent event);
   void GetCrosHealthdDiagnosticsService(
       mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
-          service);
+          ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service);
   void GetCrosHealthdProbeService(
-      mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdProbeService> service);
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
+          service);
 
  private:
   // Unowned. Adapter to connect to Wilco gRPC clients.

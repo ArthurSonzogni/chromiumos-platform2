@@ -19,7 +19,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 constexpr char kExpectedPowerType[] = "USB_PD";
 constexpr char kPowerSupplyDirectoryPath[] =
@@ -45,9 +45,9 @@ class AcPowerRoutineTest : public testing::Test {
     mojo_ipc::RoutineUpdate update{0, mojo::ScopedHandle(),
                                    mojo_ipc::RoutineUpdateUnionPtr()};
     routine_->PopulateStatusUpdate(&update, true);
-    return chromeos::cros_healthd::mojom::RoutineUpdate::New(
-        update.progress_percent, std::move(update.output),
-        std::move(update.routine_update_union));
+    return mojo_ipc::RoutineUpdate::New(update.progress_percent,
+                                        std::move(update.output),
+                                        std::move(update.routine_update_union));
   }
 
   void WriteOnlineFileContents(const std::string& file_contents) {

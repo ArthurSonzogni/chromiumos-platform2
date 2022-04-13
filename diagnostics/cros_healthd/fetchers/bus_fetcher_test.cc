@@ -28,6 +28,8 @@
 namespace diagnostics {
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 constexpr char kFakePathPciDevices[] = "sys/devices/pci0000:00";
 constexpr char kLinkPciDevices[] = "../../../devices/pci0000:00";
 constexpr char kFakePathUsbDevices[] =

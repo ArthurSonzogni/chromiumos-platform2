@@ -19,18 +19,15 @@
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
-using testing::_;
-using testing::Invoke;
-using testing::StrictMock;
-using testing::Values;
-using testing::WithArg;
-using testing::WithParamInterface;
-
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::Values;
+using ::testing::WithParamInterface;
 
 // POD struct for DnsResolverPresentProblemTest.
 struct DnsResolverPresentProblemTestParams {
@@ -55,9 +52,9 @@ class DnsResolverPresentRoutineTest : public testing::Test {
                                    mojo_ipc::RoutineUpdateUnionPtr()};
     routine_->Start();
     routine_->PopulateStatusUpdate(&update, true);
-    return chromeos::cros_healthd::mojom::RoutineUpdate::New(
-        update.progress_percent, std::move(update.output),
-        std::move(update.routine_update_union));
+    return mojo_ipc::RoutineUpdate::New(update.progress_percent,
+                                        std::move(update.output),
+                                        std::move(update.routine_update_union));
   }
 
   MockNetworkDiagnosticsAdapter* network_diagnostics_adapter() {

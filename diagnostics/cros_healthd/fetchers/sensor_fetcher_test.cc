@@ -21,6 +21,8 @@
 namespace diagnostics {
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::WithArg;
@@ -112,8 +114,7 @@ TEST_F(SensorFetcherTest, FetchLidAngleIncorrectlyFormatted) {
 
   auto sensor_result = FetchSensorInfoSync();
   ASSERT_TRUE(sensor_result->is_error());
-  EXPECT_EQ(sensor_result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kParseError);
+  EXPECT_EQ(sensor_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that acceptable error code can be handled and gets null lid_angle.
@@ -135,7 +136,7 @@ TEST_F(SensorFetcherTest, FetchLidAngleFailure) {
   auto sensor_result = FetchSensorInfoSync();
   ASSERT_TRUE(sensor_result->is_error());
   EXPECT_EQ(sensor_result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kSystemUtilityError);
+            mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test that without Google EC can be handled and gets null lid_angle.

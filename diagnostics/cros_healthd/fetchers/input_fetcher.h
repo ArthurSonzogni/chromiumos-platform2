@@ -12,14 +12,13 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // Fetches the input related information.
 class InputFetcher final : public BaseFetcher {
  public:
   using BaseFetcher::BaseFetcher;
 
-  using ResultCallback = base::OnceCallback<void(mojom::InputResultPtr)>;
+  using ResultCallback =
+      base::OnceCallback<void(ash::cros_healthd::mojom::InputResultPtr)>;
   void Fetch(ResultCallback callback);
 };
 

@@ -34,9 +34,9 @@ class MockMojoClient
       base::OnceCallback<void(const std::string&)>;
   using MojoCrosHealthdDiagnosticsServicePendingReceiver =
       mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>;
-  using MojoCrosHealthdProbeServicePendingReceiver = mojo::PendingReceiver<
-      chromeos::cros_healthd::mojom::CrosHealthdProbeService>;
+          ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>;
+  using MojoCrosHealthdProbeServicePendingReceiver =
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>;
 
   void SendWilcoDtcMessageToUi(
       mojo::ScopedHandle json_message,

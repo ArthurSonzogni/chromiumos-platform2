@@ -23,9 +23,10 @@
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
+
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 std::string GetString(const char* str) {
   if (str) {
@@ -138,9 +139,7 @@ void UdevEventsImpl::OnUdevEvent() {
 }
 
 void UdevEventsImpl::AddThunderboltObserver(
-    mojo::PendingRemote<
-        chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
-        observer) {
+    mojo::PendingRemote<mojo_ipc::CrosHealthdThunderboltObserver> observer) {
   thunderbolt_observers_.Add(std::move(observer));
 }
 
@@ -165,8 +164,7 @@ void UdevEventsImpl::OnThunderboltUnAuthorizedEvent() {
 }
 
 void UdevEventsImpl::AddUsbObserver(
-    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
-        observer) {
+    mojo::PendingRemote<mojo_ipc::CrosHealthdUsbObserver> observer) {
   usb_observers_.Add(std::move(observer));
 }
 

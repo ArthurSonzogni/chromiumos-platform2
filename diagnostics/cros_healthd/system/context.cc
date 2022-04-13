@@ -31,7 +31,10 @@
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
 
 namespace diagnostics {
+
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kFwupdServiceName[] = "org.freedesktop.fwupd";
 
@@ -48,6 +51,7 @@ mojo::PendingRemote<mojom::Executor> SendInvitationAndConnectToExecutor(
   return mojo::PendingRemote<mojom::Executor>(std::move(pipe),
                                               /*version=*/0);
 }
+
 }  // namespace
 
 Context::Context() = default;

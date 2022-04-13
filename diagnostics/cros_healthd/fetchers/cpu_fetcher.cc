@@ -35,7 +35,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 using PhysicalCpuMap = std::map<int, mojo_ipc::PhysicalCpuInfoPtr>;
 using VulnerabilityInfoMap =
@@ -431,26 +431,25 @@ class State {
                               bool is_all_callback_called);
 
   // Callback function to handle ReadMsr() call reading vmx registers.
-  void HandleVmxReadMsr(uint32_t index, mojom::NullableUint64Ptr val);
+  void HandleVmxReadMsr(uint32_t index, mojo_ipc::NullableUint64Ptr val);
 
   // Callback function to handle ReadMsr() call reading svm registers.
-  void HandleSvmReadMsr(uint32_t index, mojom::NullableUint64Ptr val);
+  void HandleSvmReadMsr(uint32_t index, mojo_ipc::NullableUint64Ptr val);
 
   // Calls ReadMsr based on the virtualization capability of each physical cpu.
   void FetchPhysicalCpusVirtualizationInfo(CallbackBarrier& barrier);
 
   // Logs |message| and sets |error_|. Only do the logging if |error_| has been
   // set.
-  void LogAndSetError(chromeos::cros_healthd::mojom::ErrorType type,
-                      const std::string& message);
+  void LogAndSetError(mojo_ipc::ErrorType type, const std::string& message);
 
   // Stores the context received from Fetch.
   Context* const context_;
   // Stores the error that will be returned. HandleCallbackComplete will report
   // error if this is set.
-  chromeos::cros_healthd::mojom::ProbeErrorPtr error_;
+  mojo_ipc::ProbeErrorPtr error_;
   // Stores the final cpu info that will be returned.
-  chromeos::cros_healthd::mojom::CpuInfoPtr cpu_info_;
+  mojo_ipc::CpuInfoPtr cpu_info_;
 
   // Maintains a map that maps each physical cpu id to its first corresponding
   // logical cpu id.
@@ -883,11 +882,11 @@ void State::HandleCallbackComplete(FetchCpuInfoCallback callback,
              : mojo_ipc::CpuResult::NewCpuInfo(std::move(cpu_info_)));
 }
 
-void State::LogAndSetError(chromeos::cros_healthd::mojom::ErrorType type,
+void State::LogAndSetError(mojo_ipc::ErrorType type,
                            const std::string& message) {
   LOG(ERROR) << message;
   if (error_.is_null())
-    error_ = chromeos::cros_healthd::mojom::ProbeError::New(type, message);
+    error_ = mojo_ipc::ProbeError::New(type, message);
 }
 
 void State::Fetch(Context* context, FetchCpuInfoCallback callback) {

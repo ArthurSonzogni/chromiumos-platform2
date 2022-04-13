@@ -22,7 +22,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 constexpr char kDevFsPrefix[] = "/dev/";
 constexpr char kSysBlockPath[] = "sys/block/";

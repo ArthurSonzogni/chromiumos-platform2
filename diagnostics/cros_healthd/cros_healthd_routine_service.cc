@@ -22,9 +22,9 @@
 
 namespace diagnostics {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 namespace {
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 void SetErrorRoutineUpdate(const std::string& status_message,
                            mojo_ipc::RoutineUpdate* response) {
@@ -171,7 +171,7 @@ void CrosHealthdRoutineService::RunCaptivePortalRoutine(
 }
 
 void CrosHealthdRoutineService::RunCpuCacheRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuCacheRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
@@ -181,7 +181,7 @@ void CrosHealthdRoutineService::RunCpuCacheRoutine(
 }
 
 void CrosHealthdRoutineService::RunCpuStressRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuStressRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
@@ -221,7 +221,7 @@ void CrosHealthdRoutineService::RunDnsResolverPresentRoutine(
 }
 
 void CrosHealthdRoutineService::RunFloatingPointAccuracyRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunFloatingPointAccuracyRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())
@@ -297,7 +297,7 @@ void CrosHealthdRoutineService::RunNvmeWearLevelRoutine(
 }
 
 void CrosHealthdRoutineService::RunPrimeSearchRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunPrimeSearchRoutineCallback callback) {
   std::optional<base::TimeDelta> exec_duration;
   if (!length_seconds.is_null())

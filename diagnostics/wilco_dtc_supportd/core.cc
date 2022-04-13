@@ -239,7 +239,7 @@ void Core::CreateDbusAdapters(const scoped_refptr<dbus::Bus>& bus) {
 
 bool Core::GetCrosHealthdDiagnosticsService(
     mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
+        ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service) {
   MojoService* mojo_service = mojo_service_factory_->Get();
   if (!mojo_service) {
     LOG(WARNING) << "GetCrosHealthdDiagnosticsService happens before Mojo "
@@ -252,8 +252,8 @@ bool Core::GetCrosHealthdDiagnosticsService(
 }
 
 bool Core::BindCrosHealthdProbeService(
-    mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdProbeService> service) {
+    mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
+        service) {
   MojoService* mojo_service = mojo_service_factory_->Get();
   if (!mojo_service) {
     LOG(WARNING) << "BindCrosHealthdProbeService happens before Mojo "
@@ -403,7 +403,7 @@ void Core::RequestBluetoothDataNotification() {
 }
 
 void Core::ProbeTelemetryInfo(
-    std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories,
+    std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum> categories,
     ProbeTelemetryInfoCallback callback) {
   VLOG(1) << "Core::ProbeTelemetryInfo";
   probe_service_->ProbeTelemetryInfo(std::move(categories),

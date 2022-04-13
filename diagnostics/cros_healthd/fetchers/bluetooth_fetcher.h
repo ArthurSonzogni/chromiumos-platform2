@@ -32,7 +32,7 @@ class BluezInfoManager {
   virtual std::vector<org::bluez::Battery1ProxyInterface*> batteries();
 
   // Convert std::string to |BluetoothDeviceType| enum.
-  chromeos::cros_healthd::mojom::BluetoothDeviceType GetDeviceType(
+  ash::cros_healthd::mojom::BluetoothDeviceType GetDeviceType(
       const std::string& type);
 
  protected:
@@ -40,20 +40,19 @@ class BluezInfoManager {
 
  private:
   // Parse the Bluetooth information.
-  chromeos::cros_healthd::mojom::BluetoothResultPtr ParseBluetoothInstance();
+  ash::cros_healthd::mojom::BluetoothResultPtr ParseBluetoothInstance();
 
   // Parse Bluetooth info from different interfaces and store in the map.
   void ParseDevicesInfo(
-      std::map<
-          dbus::ObjectPath,
-          std::vector<chromeos::cros_healthd::mojom::BluetoothDeviceInfoPtr>>&
+      std::map<dbus::ObjectPath,
+               std::vector<ash::cros_healthd::mojom::BluetoothDeviceInfoPtr>>&
           out_connected_devices);
   void ParseServiceAllowList(
       std::map<dbus::ObjectPath, std::vector<std::string>>&
           out_service_allow_list);
   void ParseSupportedCapabilities(
       std::map<dbus::ObjectPath,
-               chromeos::cros_healthd::mojom::SupportedCapabilitiesPtr>&
+               ash::cros_healthd::mojom::SupportedCapabilitiesPtr>&
           out_supported_capabilities);
   void ParseBatteryPercentage(
       std::map<dbus::ObjectPath, uint8_t>& out_battery_percentage);
@@ -74,7 +73,7 @@ class BluetoothFetcher final : public BaseFetcher {
   using BaseFetcher::BaseFetcher;
 
   // Returns the Bluetooth information.
-  chromeos::cros_healthd::mojom::BluetoothResultPtr FetchBluetoothInfo(
+  ash::cros_healthd::mojom::BluetoothResultPtr FetchBluetoothInfo(
       std::unique_ptr<BluezInfoManager> bluez_manager = nullptr);
 };
 

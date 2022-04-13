@@ -14,7 +14,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 void FillDisplaySize(const std::unique_ptr<LibdrmUtil>& libdrm_util,
                      const uint32_t connector_id,

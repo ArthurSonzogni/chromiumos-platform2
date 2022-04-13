@@ -32,10 +32,9 @@ extern const uint32_t kAcPowerRoutineWaitingProgressPercent;
 class AcPowerRoutine final : public DiagnosticRoutine {
  public:
   // Override |root_dir| for testing only.
-  AcPowerRoutine(
-      chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
-      const std::optional<std::string>& expected_power_type,
-      const base::FilePath& root_dir = base::FilePath("/"));
+  AcPowerRoutine(ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+                 const std::optional<std::string>& expected_power_type,
+                 const base::FilePath& root_dir = base::FilePath("/"));
   AcPowerRoutine(const AcPowerRoutine&) = delete;
   AcPowerRoutine& operator=(const AcPowerRoutine&) = delete;
 
@@ -44,24 +43,21 @@ class AcPowerRoutine final : public DiagnosticRoutine {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(
-      chromeos::cros_healthd::mojom::RoutineUpdate* response,
-      bool include_output) override;
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus()
-      override;
+  void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
+                            bool include_output) override;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   // Calculates the progress percent based on the current status.
   void CalculateProgressPercent();
   // Checks the machine state against the input parameters.
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum
-  RunAcPowerRoutine();
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum RunAcPowerRoutine();
 
   // Status of the routine, reported by GetStatus() or noninteractive routine
   // updates.
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
   // Expected status of the power supply.
-  chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_power_status_;
+  ash::cros_healthd::mojom::AcPowerStatusEnum expected_power_status_;
   // Expected type of the power supply.
   std::optional<std::string> expected_power_type_;
   // Details of the routine's status, reported in noninteractive status updates.

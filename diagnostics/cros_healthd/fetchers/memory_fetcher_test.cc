@@ -21,12 +21,9 @@
 namespace diagnostics {
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
-using ::testing::DoAll;
 using ::testing::Invoke;
-using ::testing::Return;
-using ::testing::StrictMock;
-using ::testing::WithArg;
 
 constexpr char kRelativeProcCpuInfoPath[] = "proc/cpuinfo";
 constexpr char kRelativeMeminfoPath[] = "proc/meminfo";

@@ -16,7 +16,8 @@
 namespace diagnostics {
 namespace {
 
-namespace internal_mojom = chromeos::cros_healthd::internal::mojom;
+namespace internal_mojom = ::ash::cros_healthd::internal::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 class InputFetcherTest : public ::testing::Test {
  protected:

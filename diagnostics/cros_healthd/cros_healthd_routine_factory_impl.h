@@ -27,12 +27,12 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
 
   // CrosHealthdRoutineFactory overrides:
   std::unique_ptr<DiagnosticRoutine> MakeUrandomRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds) override;
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds) override;
   std::unique_ptr<DiagnosticRoutine> MakeBatteryCapacityRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeBatteryHealthRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeSmartctlCheckRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
-      chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+      ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type) override;
   std::unique_ptr<DiagnosticRoutine> MakeCpuCacheRoutine(
       const std::optional<base::TimeDelta>& exec_duration) override;
@@ -45,10 +45,10 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
       uint32_t wear_level_threshold) override;
   std::unique_ptr<DiagnosticRoutine> MakeNvmeSelfTestRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy,
-      chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type)
+      ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type)
       override;
   std::unique_ptr<DiagnosticRoutine> MakeDiskReadRoutine(
-      chromeos::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
+      ash::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
       base::TimeDelta exec_duration,
       uint32_t file_size_mb) override;
   std::unique_ptr<DiagnosticRoutine> MakePrimeSearchRoutine(

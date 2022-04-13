@@ -150,20 +150,19 @@ class Core final : public GrpcService::Delegate,
                           GetDriveSystemDataCallback callback) override;
   void RequestBluetoothDataNotification() override;
   void ProbeTelemetryInfo(
-      std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories,
+      std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum> categories,
       ProbeTelemetryInfoCallback callback) override;
   EcService* GetEcService() override;
 
   // ProbeService::Delegate overrides:
   bool BindCrosHealthdProbeService(
-      mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdProbeService> service)
-      override;
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
+          service) override;
 
   // RoutineService::Delegate overrides:
   bool GetCrosHealthdDiagnosticsService(
       mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service)
+          ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service)
       override;
 
   // BluetoothEventService::Observer overrides:

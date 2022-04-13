@@ -30,7 +30,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 // The name of the Smart Battery manufacture date metric.
 constexpr char kManufactureDateSmart[] = "manufacture_date_smart";

@@ -15,14 +15,12 @@
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_platform.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
-using testing::_;
-using testing::Return;
-using testing::StrictMock;
-
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
+using ::testing::Return;
+using ::testing::StrictMock;
 
 TEST(StorageDeviceInfoTest, PopulateTest) {
   constexpr char kPath[] =

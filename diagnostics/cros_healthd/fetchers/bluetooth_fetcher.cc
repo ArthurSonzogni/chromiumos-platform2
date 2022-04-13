@@ -18,7 +18,8 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
+
 constexpr char kBluetoothTypeBrEdrName[] = "BR/EDR";
 constexpr char kBluetoothTypeLeName[] = "LE";
 constexpr char kBluetoothTypeDualName[] = "DUAL";
@@ -27,6 +28,7 @@ constexpr char kSupportedCapabilitiesMaxAdvLenKey[] = "MaxAdvLen";
 constexpr char kSupportedCapabilitiesMaxScnRspLenKey[] = "MaxScnRspLen";
 constexpr char kSupportedCapabilitiesMinTxPowerKey[] = "MinTxPower";
 constexpr char kSupportedCapabilitiesMaxTxPowerKey[] = "MaxTxPower";
+
 }  // namespace
 
 mojo_ipc::BluetoothResultPtr BluetoothFetcher::FetchBluetoothInfo(
@@ -156,12 +158,12 @@ void BluezInfoManager::ParseDevicesInfo(
 mojo_ipc::BluetoothDeviceType BluezInfoManager::GetDeviceType(
     const std::string& type) {
   if (type == kBluetoothTypeBrEdrName)
-    return mojom::BluetoothDeviceType::kBrEdr;
+    return mojo_ipc::BluetoothDeviceType::kBrEdr;
   else if (type == kBluetoothTypeLeName)
-    return mojom::BluetoothDeviceType::kLe;
+    return mojo_ipc::BluetoothDeviceType::kLe;
   else if (type == kBluetoothTypeDualName)
-    return mojom::BluetoothDeviceType::kDual;
-  return mojom::BluetoothDeviceType::kUnfound;
+    return mojo_ipc::BluetoothDeviceType::kDual;
+  return mojo_ipc::BluetoothDeviceType::kUnfound;
 }
 
 void BluezInfoManager::ParseServiceAllowList(

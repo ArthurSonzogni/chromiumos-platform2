@@ -14,8 +14,11 @@
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace diagnostics {
+
 namespace {
-namespace internal_mojom = chromeos::cros_healthd::internal::mojom;
+
+namespace mojom = ::ash::cros_healthd::mojom;
+namespace internal_mojom = ::ash::cros_healthd::internal::mojom;
 
 mojom::InputDevice::ConnectionType Convert(
     internal_mojom::InputDevice::ConnectionType enum_value) {

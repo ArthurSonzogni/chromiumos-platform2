@@ -25,9 +25,11 @@
 #include "diagnostics/cros_healthd/system/debugd_constants.h"
 
 namespace diagnostics {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
+
 mojo_ipc::DiagnosticRoutineStatusEnum CheckSelfTestPassed(uint8_t status) {
   // Bits 3:0: 0x0 means pass without an error; otherwise the index of error.
   return (status & 0xf) == 0 ? mojo_ipc::DiagnosticRoutineStatusEnum::kPassed
@@ -290,7 +292,7 @@ void NvmeSelfTestRoutine::ResetOutputDictToValue(const std::string& value) {
 }
 
 bool NvmeSelfTestRoutine::UpdateStatus(
-    chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
+    mojo_ipc::DiagnosticRoutineStatusEnum status,
     uint32_t percent,
     std::string msg) {
   // Final states (kPassed, kFailed, kError, kCancelled) cannot be updated.

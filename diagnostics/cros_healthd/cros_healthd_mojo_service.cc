@@ -16,7 +16,8 @@
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_health_ipc = ::chromeos::network_health::mojom;
 
 CrosHealthdMojoService::CrosHealthdMojoService(
@@ -55,20 +56,17 @@ CrosHealthdMojoService::CrosHealthdMojoService(
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;
 
 void CrosHealthdMojoService::AddBluetoothObserver(
-    mojo::PendingRemote<
-        chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer) {
+    mojo::PendingRemote<mojo_ipc::CrosHealthdBluetoothObserver> observer) {
   bluetooth_events_->AddObserver(std::move(observer));
 }
 
 void CrosHealthdMojoService::AddLidObserver(
-    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
-        observer) {
+    mojo::PendingRemote<mojo_ipc::CrosHealthdLidObserver> observer) {
   lid_events_->AddObserver(std::move(observer));
 }
 
 void CrosHealthdMojoService::AddPowerObserver(
-    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
-        observer) {
+    mojo::PendingRemote<mojo_ipc::CrosHealthdPowerObserver> observer) {
   power_events_->AddObserver(std::move(observer));
 }
 
@@ -78,21 +76,17 @@ void CrosHealthdMojoService::AddNetworkObserver(
 }
 
 void CrosHealthdMojoService::AddAudioObserver(
-    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
-        observer) {
+    mojo::PendingRemote<mojo_ipc::CrosHealthdAudioObserver> observer) {
   audio_events_->AddObserver(std::move(observer));
 }
 
 void CrosHealthdMojoService::AddThunderboltObserver(
-    mojo::PendingRemote<
-        chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
-        observer) {
+    mojo::PendingRemote<mojo_ipc::CrosHealthdThunderboltObserver> observer) {
   udev_events_->AddThunderboltObserver(std::move(observer));
 }
 
 void CrosHealthdMojoService::AddUsbObserver(
-    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
-        observer) {
+    mojo::PendingRemote<mojo_ipc::CrosHealthdUsbObserver> observer) {
   udev_events_->AddUsbObserver(std::move(observer));
 }
 
@@ -118,7 +112,7 @@ void CrosHealthdMojoService::ProbeMultipleProcessInfo(
 
 void CrosHealthdMojoService::GetServiceStatus(
     GetServiceStatusCallback callback) {
-  auto response = chromeos::cros_healthd::mojom::ServiceStatus::New();
+  auto response = mojo_ipc::ServiceStatus::New();
   response->network_health_bound =
       context_->network_health_adapter()->ServiceRemoteBound();
   response->network_diagnostics_bound =
@@ -127,20 +121,17 @@ void CrosHealthdMojoService::GetServiceStatus(
 }
 
 void CrosHealthdMojoService::AddProbeReceiver(
-    mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdProbeService> receiver) {
+    mojo::PendingReceiver<mojo_ipc::CrosHealthdProbeService> receiver) {
   probe_receiver_set_.Add(this /* impl */, std::move(receiver));
 }
 
 void CrosHealthdMojoService::AddEventReceiver(
-    mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdEventService> receiver) {
+    mojo::PendingReceiver<mojo_ipc::CrosHealthdEventService> receiver) {
   event_receiver_set_.Add(this /* impl */, std::move(receiver));
 }
 
 void CrosHealthdMojoService::AddSystemReceiver(
-    mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdSystemService> receiver) {
+    mojo::PendingReceiver<mojo_ipc::CrosHealthdSystemService> receiver) {
   system_receiver_set_.Add(this /* impl */, std::move(receiver));
 }
 

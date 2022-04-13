@@ -21,7 +21,7 @@ class StatefulPartitionFetcher final : public BaseFetcher {
 
   // Returns stateful partition data or the error
   // that occurred retrieving the information.
-  chromeos::cros_healthd::mojom::StatefulPartitionResultPtr
+  ash::cros_healthd::mojom::StatefulPartitionResultPtr
   FetchStatefulPartitionInfo();
 };
 

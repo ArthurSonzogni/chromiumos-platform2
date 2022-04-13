@@ -18,9 +18,11 @@
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
 
+namespace diagnostics {
+
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 constexpr char kTmpPath[] = "/var/cache/diagnostics";
 constexpr char kTestFileName[] = "fio-test-file";
@@ -30,10 +32,8 @@ constexpr uint32_t kSpaceLowMB = 1024;
 
 }  // namespace
 
-namespace diagnostics {
-
 std::unique_ptr<DiagnosticRoutine> CreateDiskReadRoutine(
-    chromeos::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
+    mojo_ipc::DiskReadRoutineTypeEnum type,
     base::TimeDelta exec_duration,
     uint32_t file_size_mb) {
   std::vector<std::string> prepare_cmd{

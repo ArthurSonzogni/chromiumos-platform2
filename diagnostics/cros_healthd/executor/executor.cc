@@ -33,6 +33,8 @@ namespace diagnostics {
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 // Amount of time we wait for a process to respond to SIGTERM before killing it.
 constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
 

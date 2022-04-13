@@ -20,7 +20,10 @@
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
+
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
 
 // Relative filepath used to determine whether a device has a Google EC.
 constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";

@@ -60,7 +60,7 @@ org::chromium::AttestationProxyMock* MockContext::mock_attestation_proxy()
       attestation_proxy_.get());
 }
 
-mojom::Executor* MockContext::executor() {
+ash::cros_healthd::mojom::Executor* MockContext::executor() {
   return &mock_executor_;
 }
 

@@ -16,35 +16,36 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // The MemoryFetcher class is responsible for gathering memory info.
 class MemoryFetcher final : public BaseFetcher {
  public:
   using FetchMemoryInfoCallback =
-      base::OnceCallback<void(mojom::MemoryResultPtr)>;
+      base::OnceCallback<void(ash::cros_healthd::mojom::MemoryResultPtr)>;
   using BaseFetcher::BaseFetcher;
   // Returns a structure with either the device's memory info or the error that
   // occurred fetching the information.
   void FetchMemoryInfo(FetchMemoryInfoCallback callback);
 
  private:
-  using OptionalProbeErrorPtr = std::optional<mojom::ProbeErrorPtr>;
+  using OptionalProbeErrorPtr =
+      std::optional<ash::cros_healthd::mojom::ProbeErrorPtr>;
   void FetchMemoryEncryptionInfo();
   void FetchMktmeInfo();
   void FetchTmeInfo();
-  void HandleReadTmeCapabilityMsr(mojom::NullableUint64Ptr val);
-  void HandleReadTmeActivateMsr(mojom::NullableUint64Ptr val);
+  void HandleReadTmeCapabilityMsr(
+      ash::cros_healthd::mojom::NullableUint64Ptr val);
+  void HandleReadTmeActivateMsr(
+      ash::cros_healthd::mojom::NullableUint64Ptr val);
   void ExtractTmeInfoFromMsr();
   void CreateResultAndSendBack();
-  void CreateErrorAndSendBack(mojom::ErrorType error_type,
+  void CreateErrorAndSendBack(ash::cros_healthd::mojom::ErrorType error_type,
                               const std::string& message);
-  void SendBackResult(mojom::MemoryResultPtr result);
-  void ParseProcMemInfo(mojom::MemoryInfo* info);
-  void ParseProcVmStat(mojom::MemoryInfo* info);
+  void SendBackResult(ash::cros_healthd::mojom::MemoryResultPtr result);
+  void ParseProcMemInfo(ash::cros_healthd::mojom::MemoryInfo* info);
+  void ParseProcVmStat(ash::cros_healthd::mojom::MemoryInfo* info);
   uint64_t tme_capability_value_;
   uint64_t tme_activate_value_;
-  mojom::MemoryInfo mem_info_;
+  ash::cros_healthd::mojom::MemoryInfo mem_info_;
   std::vector<FetchMemoryInfoCallback> pending_callbacks_;
   base::WeakPtrFactory<MemoryFetcher> weak_factory_{this};
 };

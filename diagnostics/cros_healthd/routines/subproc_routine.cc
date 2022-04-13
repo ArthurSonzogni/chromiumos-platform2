@@ -18,7 +18,8 @@
 #include "diagnostics/cros_healthd/routines/diag_process_adapter_impl.h"
 
 namespace diagnostics {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 constexpr char kSubprocRoutineCancelledMessage[] = "The routine was cancelled.";
 constexpr char kSubprocRoutineErrorMessage[] =

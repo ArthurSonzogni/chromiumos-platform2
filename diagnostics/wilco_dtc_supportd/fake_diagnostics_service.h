@@ -24,7 +24,7 @@ namespace wilco {
 // Helper class that allows testing of the routine service.
 class FakeDiagnosticsService final
     : public RoutineService::Delegate,
-      public chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService {
+      public ash::cros_healthd::mojom::CrosHealthdDiagnosticsService {
  public:
   FakeDiagnosticsService();
   FakeDiagnosticsService(const FakeDiagnosticsService&) = delete;
@@ -35,18 +35,18 @@ class FakeDiagnosticsService final
   // RoutineService::Delegate overrides:
   bool GetCrosHealthdDiagnosticsService(
       mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService> service)
+          ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service)
       override;
 
-  // chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService overrides:
+  // ash::cros_healthd::mojom::CrosHealthdDiagnosticsService overrides:
   void GetAvailableRoutines(GetAvailableRoutinesCallback callback) override;
   void GetRoutineUpdate(
       int32_t id,
-      chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
+      ash::cros_healthd::mojom::DiagnosticRoutineCommandEnum command,
       bool include_output,
       GetRoutineUpdateCallback callback) override;
   void RunUrandomRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunUrandomRoutineCallback callback) override;
   void RunBatteryCapacityRoutine(
       RunBatteryCapacityRoutineCallback callback) override;
@@ -55,31 +55,31 @@ class FakeDiagnosticsService final
   void RunSmartctlCheckRoutine(
       RunSmartctlCheckRoutineCallback callback) override;
   void RunAcPowerRoutine(
-      chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+      ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type,
       RunAcPowerRoutineCallback callback) override;
   void RunCpuCacheRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunCpuCacheRoutineCallback callback) override;
   void RunCpuStressRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunCpuStressRoutineCallback callback) override;
   void RunFloatingPointAccuracyRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunFloatingPointAccuracyRoutineCallback callback) override;
   void RunNvmeWearLevelRoutine(
       uint32_t wear_level_threshold,
       RunNvmeWearLevelRoutineCallback callback) override;
   void RunNvmeSelfTestRoutine(
-      chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type,
+      ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type,
       RunNvmeSelfTestRoutineCallback callback) override;
   void RunDiskReadRoutine(
-      chromeos::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
+      ash::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
       uint32_t length_seconds,
       uint32_t file_size_mb,
       RunDiskReadRoutineCallback callback) override;
   void RunPrimeSearchRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunPrimeSearchRoutineCallback callback) override;
   void RunBatteryDischargeRoutine(
       uint32_t length_seconds,
@@ -125,19 +125,18 @@ class FakeDiagnosticsService final
 
   // Sets the response to any GetAvailableRoutines IPCs received.
   void SetGetAvailableRoutinesResponse(
-      const std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>&
+      const std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>&
           available_routines);
 
   // Sets an interactive response to any GetRoutineUpdate IPCs received.
   void SetInteractiveUpdate(
-      chromeos::cros_healthd::mojom::DiagnosticRoutineUserMessageEnum
-          user_message,
+      ash::cros_healthd::mojom::DiagnosticRoutineUserMessageEnum user_message,
       uint32_t progress_percent,
       const std::string& output);
 
   // Sets a noninteractive response to any GetRoutineUpdate IPCs received.
   void SetNonInteractiveUpdate(
-      chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
+      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
       const std::string& status_message,
       uint32_t progress_percent,
       const std::string& output);
@@ -145,21 +144,21 @@ class FakeDiagnosticsService final
   // Sets the response to any RunSomeRoutine IPCs received.
   void SetRunSomeRoutineResponse(
       uint32_t id,
-      chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status);
+      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status);
 
  private:
-  mojo::Receiver<chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+  mojo::Receiver<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       service_receiver_{this /* impl */};
 
   // Used as the return value for any GetAvailableRoutines IPCs received.
-  std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>
+  std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>
       available_routines_;
   // Used as the return value for any GetRoutineUpdate IPCs received.
-  chromeos::cros_healthd::mojom::RoutineUpdate routine_update_response_{
+  ash::cros_healthd::mojom::RoutineUpdate routine_update_response_{
       0, mojo::ScopedHandle(),
-      chromeos::cros_healthd::mojom::RoutineUpdateUnionPtr()};
+      ash::cros_healthd::mojom::RoutineUpdateUnionPtr()};
   // Used as the return value for any RunSomeRoutine IPCs received.
-  chromeos::cros_healthd::mojom::RunRoutineResponse run_routine_response_;
+  ash::cros_healthd::mojom::RunRoutineResponse run_routine_response_;
 
   // Determines whether or not the service should present itself as available.
   bool is_available_ = true;

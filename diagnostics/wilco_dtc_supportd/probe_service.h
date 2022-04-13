@@ -20,7 +20,7 @@ namespace wilco {
 class ProbeService {
  public:
   using ProbeTelemetryInfoCallback =
-      base::OnceCallback<void(chromeos::cros_healthd::mojom::TelemetryInfoPtr)>;
+      base::OnceCallback<void(ash::cros_healthd::mojom::TelemetryInfoPtr)>;
 
   class Delegate {
    public:
@@ -30,8 +30,7 @@ class ProbeService {
     // production, the implementation is provided by cros_healthd. Returns
     // whether binding is successful.
     virtual bool BindCrosHealthdProbeService(
-        mojo::PendingReceiver<
-            chromeos::cros_healthd::mojom::CrosHealthdProbeService>
+        mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
             service) = 0;
   };
 
@@ -39,7 +38,7 @@ class ProbeService {
 
   // Requests telemetry info for categories.
   virtual void ProbeTelemetryInfo(
-      std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories,
+      std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum> categories,
       ProbeTelemetryInfoCallback callback) = 0;
 };
 

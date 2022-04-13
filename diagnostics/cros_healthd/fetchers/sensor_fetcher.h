@@ -10,11 +10,9 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // Fetch sensor info and pass the result to the callback.
 using FetchSensorInfoCallback =
-    base::OnceCallback<void(mojom::SensorResultPtr)>;
+    base::OnceCallback<void(ash::cros_healthd::mojom::SensorResultPtr)>;
 void FetchSensorInfo(Context* context, FetchSensorInfoCallback callback);
 
 }  // namespace diagnostics

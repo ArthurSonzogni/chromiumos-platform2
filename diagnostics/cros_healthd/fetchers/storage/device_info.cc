@@ -34,7 +34,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 // Creates a specific adapter for device's data retrieval.
 std::unique_ptr<StorageDeviceAdapter> CreateDeviceSpecificAdapter(

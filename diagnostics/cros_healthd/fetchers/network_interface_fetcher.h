@@ -17,15 +17,13 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 constexpr char kRelativeWirelessPowerSchemePath[] =
     "sys/module/iwlmvm/parameters/power_scheme";
 
 class NetworkInterfaceFetcher final : public BaseFetcher {
  public:
-  using FetchNetworkInterfaceInfoCallback =
-      base::OnceCallback<void(mojom::NetworkInterfaceResultPtr)>;
+  using FetchNetworkInterfaceInfoCallback = base::OnceCallback<void(
+      ash::cros_healthd::mojom::NetworkInterfaceResultPtr)>;
 
   using BaseFetcher::BaseFetcher;
   void FetchNetworkInterfaceInfo(FetchNetworkInterfaceInfoCallback callback);
@@ -33,24 +31,27 @@ class NetworkInterfaceFetcher final : public BaseFetcher {
  private:
   void CreateResultToSendBack(void);
 
-  void CreateErrorToSendBack(mojom::ErrorType error_type,
+  void CreateErrorToSendBack(ash::cros_healthd::mojom::ErrorType error_type,
                              const std::string& message);
 
-  void SendBackResult(mojom::NetworkInterfaceResultPtr result);
+  void SendBackResult(
+      ash::cros_healthd::mojom::NetworkInterfaceResultPtr result);
 
   void FetchWirelessInterfaceInfo(void);
 
   void HandleInterfaceNameAndExecuteGetLink(
-      mojom::ExecutedProcessResultPtr result);
+      ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
 
   void HandleLinkAndExecuteIwExecuteGetInfo(
-      mojom::ExecutedProcessResultPtr result);
+      ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
 
-  void HandleInfoAndExecuteGetScanDump(mojom::ExecutedProcessResultPtr result);
+  void HandleInfoAndExecuteGetScanDump(
+      ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
 
-  void HandleScanDump(mojom::ExecutedProcessResultPtr result);
+  void HandleScanDump(
+      ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
 
-  mojom::WirelessInterfaceInfoPtr wireless_info_;
+  ash::cros_healthd::mojom::WirelessInterfaceInfoPtr wireless_info_;
   std::vector<FetchNetworkInterfaceInfoCallback> pending_callbacks_;
   base::WeakPtrFactory<NetworkInterfaceFetcher> weak_factory_{this};
 };

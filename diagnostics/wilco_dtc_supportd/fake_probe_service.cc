@@ -17,13 +17,14 @@ namespace wilco {
 namespace {
 
 using ProbeTelemetryInfoCallback =
-    base::OnceCallback<void(chromeos::cros_healthd::mojom::TelemetryInfoPtr)>;
+    base::OnceCallback<void(ash::cros_healthd::mojom::TelemetryInfoPtr)>;
 
 void MissingProbeTelemetryInfoCallback(
-    std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>,
+    std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum>,
     ProbeTelemetryInfoCallback) {
   DCHECK(nullptr);
 }
+
 }  // namespace
 
 FakeProbeService::FakeProbeService()
@@ -33,13 +34,13 @@ FakeProbeService::~FakeProbeService() = default;
 
 void FakeProbeService::SetProbeTelemetryInfoCallback(
     base::OnceCallback<
-        void(std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>,
+        void(std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum>,
              ProbeTelemetryInfoCallback)> callback) {
   telemetry_callback_ = std::move(callback);
 }
 
 void FakeProbeService::ProbeTelemetryInfo(
-    std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories,
+    std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum> categories,
     ProbeTelemetryInfoCallback callback) {
   std::move(telemetry_callback_).Run(categories, std::move(callback));
 }

@@ -25,15 +25,12 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
-using testing::_;
-using testing::ByMove;
-using testing::DoAll;
-using testing::Return;
-using testing::SetArgPointee;
-using testing::StrictMock;
-using testing::UnorderedElementsAre;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
+using ::testing::_;
+using ::testing::ByMove;
+using ::testing::Return;
+using ::testing::StrictMock;
+using ::testing::UnorderedElementsAre;
 
 // Tests that the StorageDeviceInfo structures are correctly populated and
 // preserved between fetch calls.

@@ -27,11 +27,10 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 using testing::_;
 using testing::ByMove;
-using testing::DoAll;
 using testing::Invoke;
 using testing::Return;
 using testing::StrictMock;

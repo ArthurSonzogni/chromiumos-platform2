@@ -14,16 +14,16 @@ namespace diagnostics {
 
 // Fake implementation of the CrosHealthdProbeService interface.
 class FakeProbeService final
-    : public chromeos::cros_healthd::mojom::CrosHealthdProbeService {
+    : public ash::cros_healthd::mojom::CrosHealthdProbeService {
  public:
-  using ProbeCategoryEnum = chromeos::cros_healthd::mojom::ProbeCategoryEnum;
+  using ProbeCategoryEnum = ::ash::cros_healthd::mojom::ProbeCategoryEnum;
 
   FakeProbeService();
   FakeProbeService(const FakeProbeService&) = delete;
   FakeProbeService& operator=(const FakeProbeService&) = delete;
   ~FakeProbeService() override;
 
-  // chromeos::cros_healthd::mojom::CrosHealthdProbeService overrides:
+  // ash::cros_healthd::mojom::CrosHealthdProbeService overrides:
   void ProbeProcessInfo(uint32_t process_id,
                         ProbeProcessInfoCallback callback) override;
   void ProbeTelemetryInfo(const std::vector<ProbeCategoryEnum>& categories,

@@ -31,18 +31,17 @@ class BootPerformanceFetcher final : public BaseFetcher {
 
   // Returns a structure with either the device's boot performance info or the
   // error that occurred fetching the information.
-  chromeos::cros_healthd::mojom::BootPerformanceResultPtr
-  FetchBootPerformanceInfo();
+  ash::cros_healthd::mojom::BootPerformanceResultPtr FetchBootPerformanceInfo();
 
  private:
   using OptionalProbeErrorPtr =
-      std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
+      std::optional<ash::cros_healthd::mojom::ProbeErrorPtr>;
 
   OptionalProbeErrorPtr PopulateBootUpInfo(
-      chromeos::cros_healthd::mojom::BootPerformanceInfo* info);
+      ash::cros_healthd::mojom::BootPerformanceInfo* info);
 
   void PopulateShutdownInfo(
-      chromeos::cros_healthd::mojom::BootPerformanceInfo* info);
+      ash::cros_healthd::mojom::BootPerformanceInfo* info);
 
   OptionalProbeErrorPtr ParseBootFirmwareTime(double* firmware_time);
 

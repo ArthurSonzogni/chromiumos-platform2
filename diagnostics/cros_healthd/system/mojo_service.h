@@ -5,12 +5,12 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOJO_SERVICE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_MOJO_SERVICE_H_
 
-namespace chromeos::mojo_service_manager::mojom {
-class ServiceManager;
+namespace ash::cros_healthd::internal::mojom {
+class ChromiumDataCollector;
 }
 
-namespace chromeos::cros_healthd::internal::mojom {
-class ChromiumDataCollector;
+namespace chromeos::mojo_service_manager::mojom {
+class ServiceManager;
 }
 
 namespace chromeos::network_health::mojom {
@@ -40,7 +40,7 @@ class MojoService {
   GetServiceManager() = 0;
 
   // Returns the mojo interface to ChromiumDataCollector.
-  virtual chromeos::cros_healthd::internal::mojom::ChromiumDataCollector*
+  virtual ash::cros_healthd::internal::mojom::ChromiumDataCollector*
   GetChromiumDataCollector() = 0;
 
   // Returns the mojo interface to NetworkHealthService.

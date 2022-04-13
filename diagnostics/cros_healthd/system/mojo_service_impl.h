@@ -40,7 +40,7 @@ class MojoServiceImpl : public MojoService {
   // MojoService overrides.
   chromeos::mojo_service_manager::mojom::ServiceManager* GetServiceManager()
       override;
-  chromeos::cros_healthd::internal::mojom::ChromiumDataCollector*
+  ash::cros_healthd::internal::mojom::ChromiumDataCollector*
   GetChromiumDataCollector() override;
   chromeos::network_health::mojom::NetworkHealthService* GetNetworkHealth()
       override;
@@ -55,7 +55,7 @@ class MojoServiceImpl : public MojoService {
                   NetworkDiagnosticsAdapter* network_diagnostics_adapter);
 
   // Getters for subclass to modify the value.
-  mojo::Remote<chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>&
+  mojo::Remote<ash::cros_healthd::internal::mojom::ChromiumDataCollector>&
   chromium_data_collector() {
     return chromium_data_collector_;
   }
@@ -96,7 +96,7 @@ class MojoServiceImpl : public MojoService {
   // Mojo remotes or adaptors to access mojo interfaces.
   mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
       service_manager_;
-  mojo::Remote<chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
+  mojo::Remote<ash::cros_healthd::internal::mojom::ChromiumDataCollector>
       chromium_data_collector_;
   mojo::Remote<chromeos::network_health::mojom::NetworkHealthService>
       network_health_;

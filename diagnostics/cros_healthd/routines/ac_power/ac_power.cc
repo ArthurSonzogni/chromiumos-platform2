@@ -16,9 +16,9 @@
 
 namespace diagnostics {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 namespace {
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 // Path to the power_supply directory. All subdirectories will be searched to
 // try and find the path to a connected AC adapter.
@@ -53,7 +53,7 @@ const char kAcPowerRoutineCancelledMessage[] = "AC Power routine cancelled.";
 const uint32_t kAcPowerRoutineWaitingProgressPercent = 33;
 
 AcPowerRoutine::AcPowerRoutine(
-    chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+    mojo_ipc::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type,
     const base::FilePath& root_dir)
     : status_(mojo_ipc::DiagnosticRoutineStatusEnum::kReady),

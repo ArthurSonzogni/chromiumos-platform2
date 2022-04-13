@@ -16,7 +16,7 @@ class BacklightFetcher final : public BaseFetcher {
 
   // Returns a structure with either the device's backlight info or the error
   // that occurred fetching the information.
-  chromeos::cros_healthd::mojom::BacklightResultPtr FetchBacklightInfo();
+  ash::cros_healthd::mojom::BacklightResultPtr FetchBacklightInfo();
 };
 
 }  // namespace diagnostics

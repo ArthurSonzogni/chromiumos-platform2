@@ -21,9 +21,10 @@
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 
 namespace diagnostics {
+
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 // Tpm manager and attestation require a long timeout.
 const int64_t DBUS_TIMEOUT_MS = base::Minutes(2).InMilliseconds();
@@ -213,8 +214,7 @@ void TpmFetcher::SendError(const std::string& message) {
       mojo_ipc::ErrorType::kServiceUnavailable, message)));
 }
 
-void TpmFetcher::SendResult(
-    chromeos::cros_healthd::mojom::TpmResultPtr result) {
+void TpmFetcher::SendResult(mojo_ipc::TpmResultPtr result) {
   // Invalid all weak ptrs to prevent other callbacks to be run.
   weak_factory_.InvalidateWeakPtrs();
   if (pending_callbacks_.empty())

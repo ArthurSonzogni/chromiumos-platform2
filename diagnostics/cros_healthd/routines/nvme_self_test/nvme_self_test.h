@@ -66,11 +66,9 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(
-      chromeos::cros_healthd::mojom::RoutineUpdate* response,
-      bool include_output) override;
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus()
-      override;
+  void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
+                            bool include_output) override;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   bool CheckSelfTestCompleted(uint8_t progress, uint8_t status) const;
@@ -87,7 +85,7 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
   // Update percent_, status_message_, status_ at the same moment in case
   // misinformation occurring.
   bool UpdateStatus(
-      chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
+      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
       uint32_t percent,
       std::string msg);
 
@@ -95,8 +93,8 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
   org::chromium::debugdProxyInterface* const debugd_proxy_ = nullptr;
   const SelfTestType self_test_type_;
 
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
-      chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
+      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
   // On certain devices, routine will still be running even if percent_ reaches
   // 100. Hence, we cannot rely on percent_ to determine whether the routine is
   // completed. Use status_ instead.

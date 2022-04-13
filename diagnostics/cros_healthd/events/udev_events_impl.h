@@ -27,10 +27,10 @@ class UdevEventsImpl final : public UdevEvents {
   bool Initialize() override;
   void AddThunderboltObserver(
       mojo::PendingRemote<
-          chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
-          observer) override;
+          ash::cros_healthd::mojom::CrosHealthdThunderboltObserver> observer)
+      override;
   void AddUsbObserver(
-      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
           observer) override;
 
   void OnUdevEvent();
@@ -52,18 +52,18 @@ class UdevEventsImpl final : public UdevEvents {
 
   // Each observer in |thunderbolt_observers_| will be notified of any
   // thunderbolt event in the
-  // chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver interface.
+  // ash::cros_healthd::mojom::CrosHealthdThunderboltObserver interface.
   // The RemoteSet manages the lifetime of the endpoints, which are
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
-  mojo::RemoteSet<chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
+  mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdThunderboltObserver>
       thunderbolt_observers_;
   // Each observer in |usb_observers_| will be notified of any usb event in the
-  // chromeos::cros_healthd::mojom::CrosHealthdUsbObserver interface. The
+  // ash::cros_healthd::mojom::CrosHealthdUsbObserver interface. The
   // RemoteSet manages the lifetime of the endpoints, which are
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
-  mojo::RemoteSet<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+  mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
       usb_observers_;
 };
 

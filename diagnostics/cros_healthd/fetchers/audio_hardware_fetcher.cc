@@ -20,7 +20,10 @@
 #include "diagnostics/cros_healthd/utils/file_utils.h"
 
 namespace diagnostics {
+
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
 
 std::tuple<mojom::HDAudioCodecPtr, mojom::ProbeErrorPtr> FetchCodec(
     const base::FilePath& codec_file) {

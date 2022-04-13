@@ -26,7 +26,7 @@ class StorageDeviceResolver {
 
   virtual ~StorageDeviceResolver() = default;
 
-  virtual chromeos::cros_healthd::mojom::StorageDevicePurpose GetDevicePurpose(
+  virtual ash::cros_healthd::mojom::StorageDevicePurpose GetDevicePurpose(
       const std::string& dev_name) const;
 
  protected:

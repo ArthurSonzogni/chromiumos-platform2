@@ -21,7 +21,7 @@
 namespace diagnostics {
 namespace {
 
-using ::chromeos::cros_healthd::mojom::ErrorType;
+using ::ash::cros_healthd::mojom::ErrorType;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Invoke;

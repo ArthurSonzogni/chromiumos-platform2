@@ -19,14 +19,14 @@ class StorageDeviceAdapter {
   virtual ~StorageDeviceAdapter() = default;
 
   virtual std::string GetDeviceName() const = 0;
-  virtual StatusOr<chromeos::cros_healthd::mojom::BlockDeviceVendor>
-  GetVendorId() const = 0;
-  virtual StatusOr<chromeos::cros_healthd::mojom::BlockDeviceProduct>
-  GetProductId() const = 0;
-  virtual StatusOr<chromeos::cros_healthd::mojom::BlockDeviceRevision>
-  GetRevision() const = 0;
+  virtual StatusOr<ash::cros_healthd::mojom::BlockDeviceVendor> GetVendorId()
+      const = 0;
+  virtual StatusOr<ash::cros_healthd::mojom::BlockDeviceProduct> GetProductId()
+      const = 0;
+  virtual StatusOr<ash::cros_healthd::mojom::BlockDeviceRevision> GetRevision()
+      const = 0;
   virtual StatusOr<std::string> GetModel() const = 0;
-  virtual StatusOr<chromeos::cros_healthd::mojom::BlockDeviceFirmware>
+  virtual StatusOr<ash::cros_healthd::mojom::BlockDeviceFirmware>
   GetFirmwareVersion() const = 0;
 };
 

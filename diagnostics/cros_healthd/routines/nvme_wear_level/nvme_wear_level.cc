@@ -19,7 +19,8 @@
 #include "diagnostics/common/mojo_utils.h"
 
 namespace diagnostics {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 constexpr char NvmeWearLevelRoutine::kNvmeWearLevelRoutineThresholdError[] =
     "Wear-level status: ERROR, threshold in percentage should be under 100.";
@@ -73,7 +74,7 @@ void NvmeWearLevelRoutine::Resume() {}
 void NvmeWearLevelRoutine::Cancel() {}
 
 void NvmeWearLevelRoutine::UpdateStatus(
-    chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
+    mojo_ipc::DiagnosticRoutineStatusEnum status,
     uint32_t percent,
     std::string msg) {
   status_ = status;

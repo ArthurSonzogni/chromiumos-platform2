@@ -601,18 +601,18 @@ TEST_F(StartedCoreTest, MojoBootstrapSuccessThenAbort) {
 // ProbeService
 TEST_F(StartedCoreTest, ProbeTelemetryInfo) {
   using ProbeTelemetryInfoCallback =
-      base::OnceCallback<void(chromeos::cros_healthd::mojom::TelemetryInfoPtr)>;
+      base::OnceCallback<void(ash::cros_healthd::mojom::TelemetryInfoPtr)>;
   const auto kCategories =
-      std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>{
-          chromeos::cros_healthd::mojom::ProbeCategoryEnum::kFan,
-          chromeos::cros_healthd::mojom::ProbeCategoryEnum::kCpu,
-          chromeos::cros_healthd::mojom::ProbeCategoryEnum::kStatefulPartition};
+      std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum>{
+          ash::cros_healthd::mojom::ProbeCategoryEnum::kFan,
+          ash::cros_healthd::mojom::ProbeCategoryEnum::kCpu,
+          ash::cros_healthd::mojom::ProbeCategoryEnum::kStatefulPartition};
 
   core_delegate()->probe_service()->SetProbeTelemetryInfoCallback(
       base::BindOnce(
-          [](std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
+          [](std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum>
                  expected_categories,
-             std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
+             std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum>
                  received_categories,
              ProbeTelemetryInfoCallback received_callback) {
             EXPECT_EQ(expected_categories, received_categories);
@@ -624,7 +624,7 @@ TEST_F(StartedCoreTest, ProbeTelemetryInfo) {
   static_cast<GrpcService::Delegate*>(core())->ProbeTelemetryInfo(
       kCategories, base::BindOnce(
                        [](base::OnceClosure loop_closure,
-                          chromeos::cros_healthd::mojom::TelemetryInfoPtr) {
+                          ash::cros_healthd::mojom::TelemetryInfoPtr) {
                          std::move(loop_closure).Run();
                        },
                        run_loop.QuitClosure()));
@@ -873,15 +873,14 @@ TEST_F(BootstrappedCoreTest, GetCrosHealthdDiagnosticsService) {
   EXPECT_CALL(*wilco_dtc_supportd_client(), GetCrosHealthdDiagnosticsService(_))
       .WillOnce(WithArg<0>(
           [&](mojo::PendingReceiver<
-              chromeos::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+              ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
                   service) {
             fake_diagnostics_service.GetCrosHealthdDiagnosticsService(
                 std::move(service));
           }));
   fake_diagnostics_service.SetGetAvailableRoutinesResponse(
-      std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>{
-          chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::
-              kBatteryCapacity});
+      std::vector<ash::cros_healthd::mojom::DiagnosticRoutineEnum>{
+          ash::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryCapacity});
 
   std::vector<grpc_api::DiagnosticRoutine> received_routines;
   base::RunLoop run_loop;

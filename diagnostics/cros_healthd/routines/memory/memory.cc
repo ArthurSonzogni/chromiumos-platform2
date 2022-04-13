@@ -31,6 +31,8 @@ namespace diagnostics {
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 // Approximate number of microseconds per byte of memory tested. Derived from
 // testing on a nami device.
 constexpr double kMicrosecondsPerByte = 0.20;

@@ -27,7 +27,7 @@ class BluetoothEventsImpl final : public BluetoothEvents {
 
   // BluetoothEvents overrides:
   void AddObserver(mojo::PendingRemote<
-                   chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
+                   ash::cros_healthd::mojom::CrosHealthdBluetoothObserver>
                        observer) override;
 
  private:
@@ -49,11 +49,11 @@ class BluetoothEventsImpl final : public BluetoothEvents {
   FRIEND_TEST(BluetoothEventsImplTest, ReceiveDevicePropertyChangedEvent);
 
   // Each observer in |observers_| will be notified of any Bluetooth event in
-  // the chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver interface.
+  // the ash::cros_healthd::mojom::CrosHealthdBluetoothObserver interface.
   // The InterfacePtrSet manages the lifetime of the endpoints, which are
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
-  mojo::RemoteSet<chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
+  mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdBluetoothObserver>
       observers_;
 
   // Unowned pointer. Should outlive this instance.

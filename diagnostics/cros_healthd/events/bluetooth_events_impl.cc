@@ -20,8 +20,8 @@ BluetoothEventsImpl::BluetoothEventsImpl(Context* context)
 BluetoothEventsImpl::~BluetoothEventsImpl() {}
 
 void BluetoothEventsImpl::AddObserver(
-    mojo::PendingRemote<
-        chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer) {
+    mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdBluetoothObserver>
+        observer) {
   observers_.Add(std::move(observer));
 }
 

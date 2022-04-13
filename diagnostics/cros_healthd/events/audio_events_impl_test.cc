@@ -29,11 +29,11 @@ using ::testing::SaveArg;
 using ::testing::StrictMock;
 
 class MockAudioObserver
-    : public chromeos::cros_healthd::mojom::CrosHealthdAudioObserver {
+    : public ash::cros_healthd::mojom::CrosHealthdAudioObserver {
  public:
   explicit MockAudioObserver(
-      mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdAudioObserver> receiver)
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
+          receiver)
       : receiver_{this /* impl */, std::move(receiver)} {
     DCHECK(receiver_.is_bound());
   }
@@ -44,8 +44,7 @@ class MockAudioObserver
   MOCK_METHOD(void, OnSevereUnderrun, (), (override));
 
  private:
-  mojo::Receiver<chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
-      receiver_;
+  mojo::Receiver<ash::cros_healthd::mojom::CrosHealthdAudioObserver> receiver_;
 };
 
 // Tests for the AudioEventsImpl class.
@@ -65,7 +64,7 @@ class AudioEventsImplTest : public testing::Test {
 
     audio_events_impl_ = std::make_unique<AudioEventsImpl>(&mock_context_);
 
-    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
+    mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
         observer;
     observer_ = std::make_unique<StrictMock<MockAudioObserver>>(
         observer.InitWithNewPipeAndPassReceiver());

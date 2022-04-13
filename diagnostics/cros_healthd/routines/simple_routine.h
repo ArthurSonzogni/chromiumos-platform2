@@ -30,7 +30,7 @@ namespace diagnostics {
 // (Implementation file)
 // void DoRoutineWork(
 //   Params params,
-//   chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum* status,
+//   ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum* status,
 //   std::string* status_message,
 //   base::Value* output_dict) {
 //     // Routine-specific logic goes here.
@@ -43,7 +43,7 @@ namespace diagnostics {
 class SimpleRoutine final : public DiagnosticRoutine {
  public:
   using Task = base::OnceCallback<void(
-      chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum* status,
+      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum* status,
       std::string* status_message,
       base::Value* output_dict)>;
 
@@ -56,17 +56,15 @@ class SimpleRoutine final : public DiagnosticRoutine {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(
-      chromeos::cros_healthd::mojom::RoutineUpdate* response,
-      bool include_output) override;
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus()
-      override;
+  void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
+                            bool include_output) override;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   // Task encapsulating the logic of the routine to run.
   Task task_;
 
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
   std::string status_message_;
   base::Value output_dict_{base::Value::Type::DICTIONARY};
 };

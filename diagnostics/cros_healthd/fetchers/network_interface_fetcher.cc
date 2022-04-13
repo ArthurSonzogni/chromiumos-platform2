@@ -27,6 +27,8 @@ namespace diagnostics {
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 using OptionalProbeErrorPtr = std::optional<mojom::ProbeErrorPtr>;
 constexpr auto kInterfaceNameRegex = R"(\s*Interface\s+([A-Za-z0-9]+)\s*)";
 constexpr auto kLinkNoConnectionRegex = R"((Not\s+connected.)\s*)";

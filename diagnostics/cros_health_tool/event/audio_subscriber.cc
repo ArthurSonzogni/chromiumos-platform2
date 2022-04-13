@@ -13,8 +13,8 @@
 namespace diagnostics {
 
 AudioSubscriber::AudioSubscriber(
-    mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdAudioObserver> receiver)
+    mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
+        receiver)
     : receiver_{this /* impl */, std::move(receiver)} {
   DCHECK(receiver_.is_bound());
 }

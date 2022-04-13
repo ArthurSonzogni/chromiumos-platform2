@@ -19,9 +19,9 @@ namespace {
 
 // Saves |response| to |response_destination|.
 void OnGetNetworkInfoReceived(
-    chromeos::cros_healthd::mojom::NetworkResultPtr* response_destination,
+    ash::cros_healthd::mojom::NetworkResultPtr* response_destination,
     base::OnceClosure quit_closure,
-    chromeos::cros_healthd::mojom::NetworkResultPtr response) {
+    ash::cros_healthd::mojom::NetworkResultPtr response) {
   *response_destination = std::move(response);
   std::move(quit_closure).Run();
 }
@@ -30,9 +30,9 @@ class NetworkFetcherTest : public testing::Test {
  protected:
   NetworkFetcherTest() = default;
 
-  chromeos::cros_healthd::mojom::NetworkResultPtr FetchNetworkInfo() {
+  ash::cros_healthd::mojom::NetworkResultPtr FetchNetworkInfo() {
     base::RunLoop run_loop;
-    chromeos::cros_healthd::mojom::NetworkResultPtr result;
+    ash::cros_healthd::mojom::NetworkResultPtr result;
     network_fetcher_.FetchNetworkInfo(base::BindOnce(
         &OnGetNetworkInfoReceived, &result, run_loop.QuitClosure()));
 
@@ -56,7 +56,7 @@ TEST_F(NetworkFetcherTest, NoRemote) {
   auto result = FetchNetworkInfo();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kServiceUnavailable);
+            ash::cros_healthd::mojom::ErrorType::kServiceUnavailable);
 }
 
 // Test that if the remote is bound, the NetworkHealthState is returned.

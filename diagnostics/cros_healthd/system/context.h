@@ -51,8 +51,6 @@ class fwupdProxyInterface;
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // A context class for holding the helper objects used in cros_healthd, which
 // simplifies the passing of the helper objects to other objects. For instance,
 // instead of passing various helper objects to an object via its constructor,
@@ -118,7 +116,7 @@ class Context {
   SystemConfigInterface* system_config() const;
   // Use the interface returned by executor() to make calls to the root-level
   // executor.
-  virtual mojom::Executor* executor();
+  virtual ash::cros_healthd::mojom::Executor* executor();
   // Use the object returned by system_utils() to access system utilities.
   SystemUtilities* system_utils() const;
   // Use the object returned by tick_clock() to track the passage of time.
@@ -163,7 +161,7 @@ class Context {
   std::unique_ptr<NetworkDiagnosticsAdapter> network_diagnostics_adapter_;
   std::unique_ptr<PowerdAdapter> powerd_adapter_;
   std::unique_ptr<SystemConfigInterface> system_config_;
-  mojo::Remote<mojom::Executor> executor_;
+  mojo::Remote<ash::cros_healthd::mojom::Executor> executor_;
   std::unique_ptr<SystemUtilities> system_utils_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;

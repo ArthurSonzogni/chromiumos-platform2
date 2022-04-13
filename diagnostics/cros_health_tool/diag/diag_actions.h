@@ -43,7 +43,7 @@ class DiagActions final {
   // Note that this does not mean the routine succeeded, only that it started,
   // ran, and was removed.
   bool ActionRunAcPowerRoutine(
-      chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+      ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type);
   bool ActionRunBatteryCapacityRoutine();
   bool ActionRunBatteryChargeRoutine(base::TimeDelta exec_duration,
@@ -58,7 +58,7 @@ class DiagActions final {
   bool ActionRunCpuStressRoutine(
       const std::optional<base::TimeDelta>& exec_duration);
   bool ActionRunDiskReadRoutine(
-      chromeos::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
+      ash::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
       base::TimeDelta exec_duration,
       uint32_t file_size_mb);
   bool ActionRunDnsLatencyRoutine();
@@ -74,7 +74,7 @@ class DiagActions final {
   bool ActionRunLanConnectivityRoutine();
   bool ActionRunMemoryRoutine();
   bool ActionRunNvmeSelfTestRoutine(
-      chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type);
+      ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type);
   bool ActionRunNvmeWearLevelRoutine(uint32_t wear_level_threshold);
   bool ActionRunPrimeSearchRoutine(
       const std::optional<base::TimeDelta>& exec_duration);
@@ -98,7 +98,7 @@ class DiagActions final {
   // the routine and then polls for the routine's result. Returns true if the
   // routine was invoked without error, or false otherwise.
   bool ProcessRoutineResponse(
-      const chromeos::cros_healthd::mojom::RunRoutineResponsePtr& response);
+      const ash::cros_healthd::mojom::RunRoutineResponsePtr& response);
   // Helper function to determine when a routine has finished. Also does any
   // necessary cleanup.
   bool PollRoutineAndProcessResult();
@@ -106,24 +106,23 @@ class DiagActions final {
   // input. After receiving input, resets the polling time and continues to
   // poll.
   bool ProcessInteractiveResultAndContinue(
-      chromeos::cros_healthd::mojom::InteractiveRoutineUpdatePtr
-          interactive_result);
+      ash::cros_healthd::mojom::InteractiveRoutineUpdatePtr interactive_result);
   // Displays information from a noninteractive routine update and removes the
   // routine corresponding to |id_|.
   bool ProcessNonInteractiveResultAndEnd(
-      chromeos::cros_healthd::mojom::NonInteractiveRoutineUpdatePtr
+      ash::cros_healthd::mojom::NonInteractiveRoutineUpdatePtr
           noninteractive_result);
   // Attempts to remove the routine corresponding to |id_|.
   void RemoveRoutine();
   // Helper function to print a routine |status| to stdout. Returns true if
   // |status| is known and false otherwise.
   bool PrintStatus(
-      chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status);
+      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status);
 
   // Used to send mojo requests to cros_healthd.
   std::unique_ptr<CrosHealthdMojoAdapter> adapter_;
   // ID of the routine being run.
-  int32_t id_ = chromeos::cros_healthd::mojom::kFailedToStartId;
+  int32_t id_ = ash::cros_healthd::mojom::kFailedToStartId;
 
   // If |force_cancel_| is true, the next routine run will be cancelled when its
   // progress is greater than or equal to |cancellation_percent_|.

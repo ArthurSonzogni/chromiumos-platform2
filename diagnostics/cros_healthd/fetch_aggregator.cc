@@ -21,6 +21,8 @@ namespace diagnostics {
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 // Creates a callback which assigns the result to |target| and adds it to the
 // dependencies of barrier. The callers must make sure that |target| is valid
 // until the callback is called.

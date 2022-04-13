@@ -15,23 +15,23 @@ namespace diagnostics {
 // This class subscribes to cros_healthd's audio notifications and outputs
 // received notifications to stdout.
 class AudioSubscriber final
-    : public chromeos::cros_healthd::mojom::CrosHealthdAudioObserver {
+    : public ash::cros_healthd::mojom::CrosHealthdAudioObserver {
  public:
   explicit AudioSubscriber(
-      mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdAudioObserver> receiver);
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
+          receiver);
   AudioSubscriber(const AudioSubscriber&) = delete;
   AudioSubscriber& operator=(const AudioSubscriber&) = delete;
   ~AudioSubscriber();
 
-  // chromeos::cros_healthd::mojom::CrosHealthdAudioObserver overrides:
+  // ash::cros_healthd::mojom::CrosHealthdAudioObserver overrides:
   void OnUnderrun() override;
   void OnSevereUnderrun() override;
 
  private:
   // Allows the remote cros_healthd to call AudioSubscriber's
   // CrosHealthdAudioObserver methods.
-  const mojo::Receiver<chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
+  const mojo::Receiver<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
       receiver_;
 };
 

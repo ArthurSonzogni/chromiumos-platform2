@@ -18,7 +18,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 constexpr uint32_t kLowmAh = 1000;
 constexpr uint32_t kHighmAh = 10000;

@@ -18,16 +18,15 @@
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/probe_service_impl.h"
 
-using testing::_;
-using testing::Invoke;
-using testing::Return;
-using testing::StrictMock;
-
 namespace diagnostics {
 namespace wilco {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::Return;
+using ::testing::StrictMock;
 
 class MockCallback {
  public:

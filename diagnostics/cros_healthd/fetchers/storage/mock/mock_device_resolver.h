@@ -27,7 +27,7 @@ class MockStorageDeviceResolver : public StorageDeviceResolver {
   MockStorageDeviceResolver& operator=(MockStorageDeviceResolver&&) = delete;
   ~MockStorageDeviceResolver() override = default;
 
-  MOCK_METHOD(chromeos::cros_healthd::mojom::StorageDevicePurpose,
+  MOCK_METHOD(ash::cros_healthd::mojom::StorageDevicePurpose,
               GetDevicePurpose,
               (const std::string&),
               (const, override));

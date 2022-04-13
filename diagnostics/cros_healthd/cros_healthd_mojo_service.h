@@ -27,11 +27,11 @@ namespace diagnostics {
 // Implements the "CrosHealthdService" Mojo interface exposed by the
 // cros_healthd daemon (see the API definition at mojo/cros_healthd.mojom)
 class CrosHealthdMojoService final
-    : public chromeos::cros_healthd::mojom::CrosHealthdEventService,
-      public chromeos::cros_healthd::mojom::CrosHealthdProbeService,
-      public chromeos::cros_healthd::mojom::CrosHealthdSystemService {
+    : public ash::cros_healthd::mojom::CrosHealthdEventService,
+      public ash::cros_healthd::mojom::CrosHealthdProbeService,
+      public ash::cros_healthd::mojom::CrosHealthdSystemService {
  public:
-  using ProbeCategoryEnum = chromeos::cros_healthd::mojom::ProbeCategoryEnum;
+  using ProbeCategoryEnum = ::ash::cros_healthd::mojom::ProbeCategoryEnum;
 
   // |fetch_aggregator| - responsible for fulfilling probe requests.
   // |bluetooth_events| - BluetoothEvents implementation.
@@ -50,33 +50,33 @@ class CrosHealthdMojoService final
   CrosHealthdMojoService& operator=(const CrosHealthdMojoService&) = delete;
   ~CrosHealthdMojoService() override;
 
-  // chromeos::cros_healthd::mojom::CrosHealthdEventService overrides:
+  // ash::cros_healthd::mojom::CrosHealthdEventService overrides:
   void AddBluetoothObserver(
       mojo::PendingRemote<
-          chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer)
+          ash::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer)
       override;
   void AddLidObserver(
-      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdLidObserver>
           observer) override;
-  void AddPowerObserver(mojo::PendingRemote<
-                        chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
-                            observer) override;
+  void AddPowerObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
+          observer) override;
   void AddNetworkObserver(
       mojo::PendingRemote<
           chromeos::network_health::mojom::NetworkEventsObserver> observer)
       override;
-  void AddAudioObserver(mojo::PendingRemote<
-                        chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
-                            observer) override;
+  void AddAudioObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
+          observer) override;
   void AddThunderboltObserver(
       mojo::PendingRemote<
-          chromeos::cros_healthd::mojom::CrosHealthdThunderboltObserver>
-          observer) override;
+          ash::cros_healthd::mojom::CrosHealthdThunderboltObserver> observer)
+      override;
   void AddUsbObserver(
-      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
           observer) override;
 
-  // chromeos::cros_healthd::mojom::CrosHealthdProbeService overrides:
+  // ash::cros_healthd::mojom::CrosHealthdProbeService overrides:
   void ProbeProcessInfo(uint32_t process_id,
                         ProbeProcessInfoCallback callback) override;
   void ProbeTelemetryInfo(const std::vector<ProbeCategoryEnum>& categories,
@@ -86,35 +86,35 @@ class CrosHealthdMojoService final
       bool ignore_single_process_info,
       ProbeMultipleProcessInfoCallback callback) override;
 
-  // chromeos::cros_healthd::mojom::CrosHealthdSystemService overrides:
+  // ash::cros_healthd::mojom::CrosHealthdSystemService overrides:
   void GetServiceStatus(GetServiceStatusCallback callback) override;
 
   // Adds a new binding to the internal binding sets.
   void AddProbeReceiver(
-      mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdProbeService> receiver);
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
+          receiver);
   void AddEventReceiver(
-      mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdEventService> receiver);
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdEventService>
+          receiver);
   void AddSystemReceiver(
-      mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdSystemService> receiver);
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdSystemService>
+          receiver);
 
  private:
   // Mojo binding sets that connect |this| with message pipes, allowing the
   // remote ends to call our methods.
-  mojo::ReceiverSet<chromeos::cros_healthd::mojom::CrosHealthdProbeService>
+  mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdProbeService>
       probe_receiver_set_;
-  mojo::ReceiverSet<chromeos::cros_healthd::mojom::CrosHealthdEventService>
+  mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdEventService>
       event_receiver_set_;
-  mojo::ReceiverSet<chromeos::cros_healthd::mojom::CrosHealthdSystemService>
+  mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdSystemService>
       system_receiver_set_;
   // Mojo service providers to provide services to mojo service manager.
-  MojoServiceProvider<chromeos::cros_healthd::mojom::CrosHealthdProbeService>
+  MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdProbeService>
       probe_provider_;
-  MojoServiceProvider<chromeos::cros_healthd::mojom::CrosHealthdEventService>
+  MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdEventService>
       event_provider_;
-  MojoServiceProvider<chromeos::cros_healthd::mojom::CrosHealthdSystemService>
+  MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdSystemService>
       system_provider_;
 
   // Unowned. The following instances should outlive this instance.

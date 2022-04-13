@@ -22,18 +22,16 @@
 #include "diagnostics/cros_healthd/system/debugd_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
-using testing::_;
-using testing::Invoke;
-using testing::StrictMock;
-using testing::WithArg;
-
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 using OnceStringCallback = base::OnceCallback<void(const std::string& result)>;
 using OnceErrorCallback = base::OnceCallback<void(brillo::Error* error)>;
 using routine_status = mojo_ipc::DiagnosticRoutineStatusEnum;
+using ::testing::_;
+using ::testing::StrictMock;
+using ::testing::WithArg;
 
 // Success message from controller if launching is completed without errors.
 constexpr char kStartSuccess[] = "Device self-test started";
@@ -61,9 +59,9 @@ class NvmeSelfTestRoutineTest : public testing::Test {
                                    mojo_ipc::RoutineUpdateUnionPtr()};
 
     routine_->PopulateStatusUpdate(&update, true);
-    return chromeos::cros_healthd::mojom::RoutineUpdate::New(
-        update.progress_percent, std::move(update.output),
-        std::move(update.routine_update_union));
+    return mojo_ipc::RoutineUpdate::New(update.progress_percent,
+                                        std::move(update.output),
+                                        std::move(update.routine_update_union));
   }
 
   StrictMock<org::chromium::debugdProxyMock> debugd_proxy_;

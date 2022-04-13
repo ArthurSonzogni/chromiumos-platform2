@@ -45,11 +45,9 @@ class NvmeWearLevelRoutine final : public DiagnosticRoutine {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(
-      chromeos::cros_healthd::mojom::RoutineUpdate* response,
-      bool include_output) override;
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus()
-      override;
+  void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
+                            bool include_output) override;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   void OnDebugdResultCallback(const std::string& result);
@@ -57,15 +55,15 @@ class NvmeWearLevelRoutine final : public DiagnosticRoutine {
   // Updates status_, percent_, status_message_ at the same moment to ensure
   // each of them corresponds with the others.
   void UpdateStatus(
-      chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
+      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
       uint32_t percent,
       std::string msg);
 
   org::chromium::debugdProxyInterface* const debugd_proxy_ = nullptr;
   const uint32_t wear_level_threshold_ = 0;
 
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
-      chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
+      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
   uint32_t percent_ = 0;
   base::Value output_dict_{base::Value::Type::DICTIONARY};
   std::string status_message_;

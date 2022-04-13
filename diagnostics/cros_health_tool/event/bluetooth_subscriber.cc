@@ -23,7 +23,7 @@ const char kHumanReadableOnDevicePropertyChangedEvent[] =
 
 BluetoothSubscriber::BluetoothSubscriber(
     mojo::PendingReceiver<
-        chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver> receiver)
+        ash::cros_healthd::mojom::CrosHealthdBluetoothObserver> receiver)
     : receiver_{this /* impl */, std::move(receiver)} {
   DCHECK(receiver_.is_bound());
 }

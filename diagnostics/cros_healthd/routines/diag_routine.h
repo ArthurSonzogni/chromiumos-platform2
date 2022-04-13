@@ -30,10 +30,9 @@ class DiagnosticRoutine {
   virtual void Cancel() = 0;
   // Populates |response| with the current status of the diagnostic routine.
   virtual void PopulateStatusUpdate(
-      chromeos::cros_healthd::mojom::RoutineUpdate* response,
+      ash::cros_healthd::mojom::RoutineUpdate* response,
       bool include_output) = 0;
-  virtual chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum
-  GetStatus() = 0;
+  virtual ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() = 0;
 };
 
 }  // namespace diagnostics

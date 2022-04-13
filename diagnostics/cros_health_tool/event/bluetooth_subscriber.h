@@ -25,17 +25,16 @@ extern const char kHumanReadableOnDevicePropertyChangedEvent[];
 // This class subscribes to cros_healthd's Bluetooth events and outputs any
 // notifications received to stdout.
 class BluetoothSubscriber final
-    : public chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver {
+    : public ash::cros_healthd::mojom::CrosHealthdBluetoothObserver {
  public:
   explicit BluetoothSubscriber(
       mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
-          receiver);
+          ash::cros_healthd::mojom::CrosHealthdBluetoothObserver> receiver);
   BluetoothSubscriber(const BluetoothSubscriber&) = delete;
   BluetoothSubscriber& operator=(const BluetoothSubscriber&) = delete;
   ~BluetoothSubscriber();
 
-  // chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver overrides:
+  // ash::cros_healthd::mojom::CrosHealthdBluetoothObserver overrides:
   void OnAdapterAdded() override;
   void OnAdapterRemoved() override;
   void OnAdapterPropertyChanged() override;
@@ -75,8 +74,7 @@ class BluetoothSubscriber final
 
   // Allows the remote cros_healthd to call BluetoothSubscriber's
   // CrosHealthdBluetoothObserver methods.
-  const mojo::Receiver<
-      chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
+  const mojo::Receiver<ash::cros_healthd::mojom::CrosHealthdBluetoothObserver>
       receiver_;
 };
 

@@ -21,7 +21,7 @@ PowerEventsImpl::~PowerEventsImpl() {
 }
 
 void PowerEventsImpl::AddObserver(
-    mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+    mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
         observer) {
   if (!is_observing_powerd_) {
     context_->powerd_adapter()->AddPowerObserver(this);

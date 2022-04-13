@@ -26,16 +26,16 @@ class FakeProbeService : public ProbeService {
 
   void SetProbeTelemetryInfoCallback(
       base::OnceCallback<
-          void(std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>,
+          void(std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum>,
                ProbeTelemetryInfoCallback)> callback);
 
  private:
   void ProbeTelemetryInfo(
-      std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories,
+      std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum> categories,
       ProbeTelemetryInfoCallback callback) override;
 
   base::OnceCallback<void(
-      std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>,
+      std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum>,
       ProbeTelemetryInfoCallback)>
       telemetry_callback_;
 };

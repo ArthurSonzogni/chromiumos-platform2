@@ -26,20 +26,20 @@ class MockDeviceAdapter : public StorageDeviceAdapter {
   ~MockDeviceAdapter() override = default;
 
   MOCK_METHOD(std::string, GetDeviceName, (), (const override));
-  MOCK_METHOD(StatusOr<chromeos::cros_healthd::mojom::BlockDeviceVendor>,
+  MOCK_METHOD(StatusOr<ash::cros_healthd::mojom::BlockDeviceVendor>,
               GetVendorId,
               (),
               (const override));
-  MOCK_METHOD(StatusOr<chromeos::cros_healthd::mojom::BlockDeviceProduct>,
+  MOCK_METHOD(StatusOr<ash::cros_healthd::mojom::BlockDeviceProduct>,
               GetProductId,
               (),
               (const override));
-  MOCK_METHOD(StatusOr<chromeos::cros_healthd::mojom::BlockDeviceRevision>,
+  MOCK_METHOD(StatusOr<ash::cros_healthd::mojom::BlockDeviceRevision>,
               GetRevision,
               (),
               (const override));
   MOCK_METHOD(StatusOr<std::string>, GetModel, (), (const override));
-  MOCK_METHOD(StatusOr<chromeos::cros_healthd::mojom::BlockDeviceFirmware>,
+  MOCK_METHOD(StatusOr<ash::cros_healthd::mojom::BlockDeviceFirmware>,
               GetFirmwareVersion,
               (),
               (const override));

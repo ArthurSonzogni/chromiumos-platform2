@@ -18,7 +18,7 @@ class LidEvents {
 
   // Adds a new observer to be notified when lid-related events occur.
   virtual void AddObserver(
-      mojo::PendingRemote<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdLidObserver>
           observer) = 0;
 };
 

@@ -15,12 +15,8 @@
 
 namespace diagnostics {
 
-namespace {
-
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_health_ipc = ::chromeos::network_health::mojom;
-
-}  // namespace
 
 EventSubscriber::EventSubscriber()
     : mojo_adapter_(CrosHealthdMojoAdapter::Create()) {

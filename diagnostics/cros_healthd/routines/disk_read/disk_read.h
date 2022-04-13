@@ -17,7 +17,7 @@
 namespace diagnostics {
 
 std::unique_ptr<DiagnosticRoutine> CreateDiskReadRoutine(
-    chromeos::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
+    ash::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
     base::TimeDelta exec_duration,
     uint32_t file_size_mb);
 

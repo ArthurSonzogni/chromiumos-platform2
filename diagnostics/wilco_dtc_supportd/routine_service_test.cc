@@ -19,13 +19,12 @@
 #include "diagnostics/wilco_dtc_supportd/fake_diagnostics_service.h"
 #include "diagnostics/wilco_dtc_supportd/routine_service.h"
 
-using testing::ElementsAreArray;
-
 namespace diagnostics {
 namespace wilco {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
+using ::testing::ElementsAreArray;
 
 grpc_api::RunRoutineRequest MakeBatteryRoutineRequest() {
   grpc_api::RunRoutineRequest request;

@@ -39,9 +39,9 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-namespace network_config_mojom = chromeos::network_config::mojom;
-namespace network_health_mojom = chromeos::network_health::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
+namespace network_config_mojom = ::chromeos::network_config::mojom;
+namespace network_health_mojom = ::chromeos::network_health::mojom;
 
 constexpr std::pair<const char*, mojom::ProbeCategoryEnum> kCategorySwitches[] =
     {

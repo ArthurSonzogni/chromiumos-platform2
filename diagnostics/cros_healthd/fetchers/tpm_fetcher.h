@@ -25,7 +25,7 @@ class TpmFetcher final : public BaseFetcher {
   using BaseFetcher::BaseFetcher;
 
   using FetchTpmInfoCallback =
-      base::OnceCallback<void(chromeos::cros_healthd::mojom::TpmResultPtr)>;
+      base::OnceCallback<void(ash::cros_healthd::mojom::TpmResultPtr)>;
   // Returns a structure with either the device's tpm data or the error
   // that occurred fetching the information.
   void FetchTpmInfo(FetchTpmInfoCallback&& callback);
@@ -49,13 +49,13 @@ class TpmFetcher final : public BaseFetcher {
       brillo::Error* err, const tpm_manager::GetSupportedFeaturesReply& reply);
   void CheckAndSendInfo();
   void SendError(const std::string& message);
-  void SendResult(chromeos::cros_healthd::mojom::TpmResultPtr result);
+  void SendResult(ash::cros_healthd::mojom::TpmResultPtr result);
 
  private:
   // Pending callbacks to be fulfilled.
   std::vector<FetchTpmInfoCallback> pending_callbacks_;
   // The fetched info.
-  chromeos::cros_healthd::mojom::TpmInfoPtr info_;
+  ash::cros_healthd::mojom::TpmInfoPtr info_;
   // Must be the last member of the class, so that it's destroyed first when an
   // instance of the class is destroyed. This will prevent any outstanding
   // callbacks from being run and segfaulting.

@@ -18,8 +18,7 @@ class PowerEvents {
 
   // Adds a new observer to be notified when power-related events occur.
   virtual void AddObserver(
-      mojo::PendingRemote<
-          chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
           observer) = 0;
 };
 

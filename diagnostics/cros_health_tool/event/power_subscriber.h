@@ -23,16 +23,16 @@ extern const char kHumanReadableOnOsResumeEvent[];
 // This class subscribes to cros_healthd's power notifications and outputs any
 // notifications received to stdout.
 class PowerSubscriber final
-    : public chromeos::cros_healthd::mojom::CrosHealthdPowerObserver {
+    : public ash::cros_healthd::mojom::CrosHealthdPowerObserver {
  public:
   explicit PowerSubscriber(
-      mojo::PendingReceiver<
-          chromeos::cros_healthd::mojom::CrosHealthdPowerObserver> receiver);
+      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
+          receiver);
   PowerSubscriber(const PowerSubscriber&) = delete;
   PowerSubscriber& operator=(const PowerSubscriber&) = delete;
   ~PowerSubscriber();
 
-  // chromeos::cros_healthd::mojom::CrosHealthdPowerObserver overrides:
+  // ash::cros_healthd::mojom::CrosHealthdPowerObserver overrides:
   void OnAcInserted() override;
   void OnAcRemoved() override;
   void OnOsSuspend() override;
@@ -59,7 +59,7 @@ class PowerSubscriber final
 
   // Allows the remote cros_healthd to call PowerSubscriber's
   // CrosHealthdPowerObserver methods.
-  const mojo::Receiver<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+  const mojo::Receiver<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
       receiver_;
 };
 

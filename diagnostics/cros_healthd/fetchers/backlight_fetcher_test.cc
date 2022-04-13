@@ -19,10 +19,10 @@
 namespace diagnostics {
 namespace {
 
-using ::chromeos::cros_healthd::mojom::BacklightInfo;
-using ::chromeos::cros_healthd::mojom::BacklightInfoPtr;
-using ::chromeos::cros_healthd::mojom::BacklightResultPtr;
-using ::chromeos::cros_healthd::mojom::ErrorType;
+using ::ash::cros_healthd::mojom::BacklightInfo;
+using ::ash::cros_healthd::mojom::BacklightInfoPtr;
+using ::ash::cros_healthd::mojom::BacklightResultPtr;
+using ::ash::cros_healthd::mojom::ErrorType;
 using ::testing::UnorderedElementsAreArray;
 
 constexpr char kRelativeBacklightDirectoryPath[] = "sys/class/backlight";

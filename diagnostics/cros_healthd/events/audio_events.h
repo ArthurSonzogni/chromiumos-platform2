@@ -18,8 +18,7 @@ class AudioEvents {
 
   // Adds a new observer to be notified when audio-related events occur.
   virtual void AddObserver(
-      mojo::PendingRemote<
-          chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
           observer) = 0;
 };
 

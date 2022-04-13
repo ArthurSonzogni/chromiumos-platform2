@@ -18,15 +18,14 @@
 namespace mojo {
 
 template <>
-struct StructTraits<
-    chromeos::cros_healthd::internal::mojo_base::mojom::TimeDataView,
-    base::Time> {
+struct StructTraits<ash::cros_healthd::internal::mojo_base::mojom::TimeDataView,
+                    base::Time> {
   static int64_t internal_value(const base::Time& time) {
     return (time - base::Time()).InMicroseconds();
   }
 
   static bool Read(
-      chromeos::cros_healthd::internal::mojo_base::mojom::TimeDataView data,
+      ash::cros_healthd::internal::mojo_base::mojom::TimeDataView data,
       base::Time* time) {
     *time = base::Time() + base::Microseconds(data.internal_value());
     return true;
@@ -35,15 +34,14 @@ struct StructTraits<
 
 template <>
 struct StructTraits<
-    chromeos::cros_healthd::internal::mojo_base::mojom::TimeDeltaDataView,
+    ash::cros_healthd::internal::mojo_base::mojom::TimeDeltaDataView,
     base::TimeDelta> {
   static int64_t microseconds(const base::TimeDelta& delta) {
     return delta.InMicroseconds();
   }
 
   static bool Read(
-      chromeos::cros_healthd::internal::mojo_base::mojom::TimeDeltaDataView
-          data,
+      ash::cros_healthd::internal::mojo_base::mojom::TimeDeltaDataView data,
       base::TimeDelta* delta) {
     *delta = base::Microseconds(data.microseconds());
     return true;

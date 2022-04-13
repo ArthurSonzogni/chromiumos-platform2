@@ -27,18 +27,16 @@
 namespace diagnostics {
 bool IsValidWirelessInterfaceName(const std::string& interface_name);
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // Production implementation of the mojom::Executor Mojo interface.
-class Executor final : public mojom::Executor {
+class Executor final : public ash::cros_healthd::mojom::Executor {
  public:
   Executor(const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
-           mojo::PendingReceiver<mojom::Executor> receiver,
+           mojo::PendingReceiver<ash::cros_healthd::mojom::Executor> receiver,
            base::OnceClosure on_disconnect);
   Executor(const Executor&) = delete;
   Executor& operator=(const Executor&) = delete;
 
-  // mojom::Executor overrides:
+  // ash::cros_healthd::mojom::Executor overrides:
   void GetFanSpeed(GetFanSpeedCallback callback) override;
   void GetInterfaces(GetInterfacesCallback callback) override;
   void GetLink(const std::string& interface_name,
@@ -74,8 +72,9 @@ class Executor final : public mojom::Executor {
       const std::optional<std::string>& user,
       const base::FilePath& binary_path,
       const std::vector<std::string>& binary_args,
-      mojom::ExecutedProcessResult result,
-      base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback);
+      ash::cros_healthd::mojom::ExecutedProcessResult result,
+      base::OnceCallback<
+          void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback);
   // Like RunUntrackedBinary() above, but tracks the process internally so that
   // it can be cancelled if necessary.
   void RunTrackedBinary(
@@ -84,15 +83,16 @@ class Executor final : public mojom::Executor {
       const std::optional<std::string>& user,
       const base::FilePath& binary_path,
       const std::vector<std::string>& binary_args,
-      mojom::ExecutedProcessResult result,
-      base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback);
+      ash::cros_healthd::mojom::ExecutedProcessResult result,
+      base::OnceCallback<
+          void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback);
   // Helper function for RunUntrackedBinary() and RunTrackedBinary().
   int RunBinaryInternal(const base::FilePath& seccomp_policy_path,
                         const std::vector<std::string>& sandboxing_args,
                         const std::optional<std::string>& user,
                         const base::FilePath& binary_path,
                         const std::vector<std::string>& binary_args,
-                        mojom::ExecutedProcessResult* result,
+                        ash::cros_healthd::mojom::ExecutedProcessResult* result,
                         ProcessWithOutput* process);
 
   // Task runner for all Mojo callbacks.
@@ -100,7 +100,7 @@ class Executor final : public mojom::Executor {
 
   // Provides a Mojo endpoint that cros_healthd can call to access the
   // executor's Mojo methods.
-  mojo::Receiver<mojom::Executor> receiver_;
+  mojo::Receiver<ash::cros_healthd::mojom::Executor> receiver_;
 
   // Prevents multiple simultaneous writes to |processes_|.
   base::Lock lock_;

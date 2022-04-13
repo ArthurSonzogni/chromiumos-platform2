@@ -35,8 +35,8 @@ class StorageDeviceManager final {
   StorageDeviceManager& operator=(const StorageDeviceManager&) = delete;
   StorageDeviceManager& operator=(StorageDeviceManager&&) = delete;
 
-  StatusOr<std::vector<
-      chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>>
+  StatusOr<
+      std::vector<ash::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>>
   FetchDevicesInfo(const base::FilePath& root);
 
  private:

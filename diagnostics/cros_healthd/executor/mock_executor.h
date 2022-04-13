@@ -14,17 +14,15 @@
 
 namespace diagnostics {
 
-namespace mojom = ::chromeos::cros_healthd::mojom;
-
 // Mock implementation of the Executor interface.
-class MockExecutor final : public mojom::Executor {
+class MockExecutor final : public ash::cros_healthd::mojom::Executor {
  public:
   MockExecutor() = default;
   MockExecutor(const MockExecutor&) = delete;
   MockExecutor& operator=(const MockExecutor&) = delete;
   ~MockExecutor() override = default;
 
-  // mojom::Executor overrides:
+  // ash::cros_healthd::mojom::Executor overrides:
   MOCK_METHOD(void, GetFanSpeed, (GetFanSpeedCallback), (override));
   MOCK_METHOD(void, GetInterfaces, (GetInterfacesCallback), (override));
   MOCK_METHOD(void,

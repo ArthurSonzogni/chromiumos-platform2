@@ -60,8 +60,8 @@ void SetUpSystemFiles(const base::FilePath& root_dir,
 }
 
 void OnGetSystemInfoResponse(
-    chromeos::cros_healthd::mojom::SystemResultPtr* response_update,
-    chromeos::cros_healthd::mojom::SystemResultPtr response) {
+    ash::cros_healthd::mojom::SystemResultPtr* response_update,
+    ash::cros_healthd::mojom::SystemResultPtr response) {
   *response_update = std::move(response);
 }
 
@@ -106,7 +106,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   mock_context.fake_system_config()->SetCodeName("fake_code_name");
 
   base::RunLoop run_loop;
-  chromeos::cros_healthd::mojom::SystemResultPtr result;
+  ash::cros_healthd::mojom::SystemResultPtr result;
   FetchSystemInfo(&mock_context,
                   base::BindOnce(&OnGetSystemInfoResponse, &result));
   run_loop.RunUntilIdle();

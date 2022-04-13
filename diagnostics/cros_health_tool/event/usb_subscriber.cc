@@ -15,9 +15,8 @@
 namespace diagnostics {
 namespace {
 
-void OutputEventInfo(
-    const std::string& event,
-    const chromeos::cros_healthd::mojom::UsbEventInfoPtr& info) {
+void OutputEventInfo(const std::string& event,
+                     const ash::cros_healthd::mojom::UsbEventInfoPtr& info) {
   base::Value output{base::Value::Type::DICTIONARY};
 
   output.SetStringKey("event", event);
@@ -42,7 +41,7 @@ void OutputEventInfo(
 }  // namespace
 
 UsbSubscriber::UsbSubscriber(
-    mojo::PendingReceiver<chromeos::cros_healthd::mojom::CrosHealthdUsbObserver>
+    mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
         receiver)
     : receiver_{this /* impl */, std::move(receiver)} {
   DCHECK(receiver_.is_bound());
@@ -51,12 +50,12 @@ UsbSubscriber::UsbSubscriber(
 UsbSubscriber::~UsbSubscriber() = default;
 
 void UsbSubscriber::OnAdd(
-    const chromeos::cros_healthd::mojom::UsbEventInfoPtr info) {
+    const ash::cros_healthd::mojom::UsbEventInfoPtr info) {
   OutputEventInfo("Add", info);
 }
 
 void UsbSubscriber::OnRemove(
-    const chromeos::cros_healthd::mojom::UsbEventInfoPtr info) {
+    const ash::cros_healthd::mojom::UsbEventInfoPtr info) {
   OutputEventInfo("Remove", info);
 }
 

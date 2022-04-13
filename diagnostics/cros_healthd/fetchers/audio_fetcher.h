@@ -10,11 +10,10 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // Fetch audio info and pass the result to the callback. The result is either
 // the device's audio info or the error that occurred fetching the information.
-using FetchAudioInfoCallback = base::OnceCallback<void(mojom::AudioResultPtr)>;
+using FetchAudioInfoCallback =
+    base::OnceCallback<void(ash::cros_healthd::mojom::AudioResultPtr)>;
 void FetchAudioInfo(Context* context, FetchAudioInfoCallback callback);
 
 }  // namespace diagnostics

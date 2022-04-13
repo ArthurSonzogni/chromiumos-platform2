@@ -22,20 +22,20 @@ class AudioEventsImpl final : public AudioEvents {
   AudioEventsImpl& operator=(const AudioEventsImpl&) = delete;
   ~AudioEventsImpl() = default;
 
-  void AddObserver(mojo::PendingRemote<
-                   chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
-                       observer) override;
+  void AddObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
+          observer) override;
 
  private:
   void OnUnderrunSignal();
   void OnSevereUnderrunSignal();
 
   // Each observer in |observers_| will be notified of any audio event in the
-  // chromeos::cros_healthd::mojom::CrosHealthdAudioObserver interface. The
+  // ash::cros_healthd::mojom::CrosHealthdAudioObserver interface. The
   // RemoteSet manages the lifetime of the endpoints, which are
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
-  mojo::RemoteSet<chromeos::cros_healthd::mojom::CrosHealthdAudioObserver>
+  mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
       observers_;
 
   // Unowned pointer. Should outlive this instance.

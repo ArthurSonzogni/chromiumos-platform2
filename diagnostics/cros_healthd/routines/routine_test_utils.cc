@@ -9,8 +9,8 @@
 namespace diagnostics {
 
 void VerifyInteractiveUpdate(
-    const chromeos::cros_healthd::mojom::RoutineUpdateUnionPtr& update_union,
-    chromeos::cros_healthd::mojom::DiagnosticRoutineUserMessageEnum
+    const ash::cros_healthd::mojom::RoutineUpdateUnionPtr& update_union,
+    ash::cros_healthd::mojom::DiagnosticRoutineUserMessageEnum
         expected_user_message) {
   ASSERT_FALSE(update_union.is_null());
   ASSERT_TRUE(update_union->is_interactive_update());
@@ -19,8 +19,8 @@ void VerifyInteractiveUpdate(
 }
 
 void VerifyNonInteractiveUpdate(
-    const chromeos::cros_healthd::mojom::RoutineUpdateUnionPtr& update_union,
-    chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum expected_status,
+    const ash::cros_healthd::mojom::RoutineUpdateUnionPtr& update_union,
+    ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum expected_status,
     const std::string& expected_status_message) {
   ASSERT_FALSE(update_union.is_null());
   ASSERT_TRUE(update_union->is_noninteractive_update());

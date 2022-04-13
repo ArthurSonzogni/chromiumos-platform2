@@ -13,11 +13,7 @@
 
 namespace diagnostics {
 
-namespace {
-
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
-}  // namespace
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 FakeRoutineService::FakeRoutineService() = default;
 FakeRoutineService::~FakeRoutineService() = default;
@@ -64,19 +60,19 @@ void FakeRoutineService::RunAcPowerRoutine(
 }
 
 void FakeRoutineService::RunCpuCacheRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuCacheRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
 void FakeRoutineService::RunCpuStressRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuStressRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
 
 void FakeRoutineService::RunFloatingPointAccuracyRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunFloatingPointAccuracyRoutineCallback callback) {
   NOTIMPLEMENTED();
 }
@@ -101,7 +97,7 @@ void FakeRoutineService::RunDiskReadRoutine(
 }
 
 void FakeRoutineService::RunPrimeSearchRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunPrimeSearchRoutineCallback callback) {
   NOTIMPLEMENTED();
 }

@@ -16,8 +16,6 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // Run executor delegate.
 //
 // Argument definition can be found in the following header:
@@ -78,7 +76,7 @@ class DelegateProcess : public SandboxedProcess {
   virtual void RunDelegate();
 
   mojo::PlatformChannel channel_;
-  mojo::Remote<mojom::Delegate> remote_;
+  mojo::Remote<ash::cros_healthd::mojom::Delegate> remote_;
 };
 
 }  // namespace diagnostics

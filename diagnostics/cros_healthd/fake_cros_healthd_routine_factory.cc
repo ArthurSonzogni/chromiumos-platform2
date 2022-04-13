@@ -18,9 +18,10 @@
 #include <base/check.h>
 
 namespace diagnostics {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 // When any of a FakeDiagnosticRoutine's |num_expected_start_calls_|,
 // |num_expected_resume_calls_| or |num_expected_cancel_calls_| is this value,
@@ -203,7 +204,7 @@ void FakeCrosHealthdRoutineFactory::SetNonInteractiveStatus(
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeUrandomRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds) {
+    mojo_ipc::NullableUint32Ptr length_seconds) {
   return std::move(next_routine_);
 }
 
@@ -224,7 +225,7 @@ FakeCrosHealthdRoutineFactory::MakeSmartctlCheckRoutine() {
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeAcPowerRoutine(
-    chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+    mojo_ipc::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type) {
   return std::move(next_routine_);
 }
@@ -258,7 +259,7 @@ FakeCrosHealthdRoutineFactory::MakeNvmeWearLevelRoutine(
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeNvmeSelfTestRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
+    mojo_ipc::NvmeSelfTestTypeEnum nvme_self_test_type) {
   DCHECK(debugd_proxy);
   return std::move(next_routine_);
 }

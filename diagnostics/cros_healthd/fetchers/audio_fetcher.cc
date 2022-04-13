@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -9,11 +11,13 @@
 #include <chromeos/dbus/service_constants.h>
 #include <cras/dbus-proxies.h>
 
-#include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
+
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
 
 void PopulateMuteInfo(Context* context, mojom::AudioResultPtr& res) {
   mojom::AudioInfoPtr& info = res->get_audio_info();

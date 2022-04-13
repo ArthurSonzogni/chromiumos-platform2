@@ -18,16 +18,13 @@
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
-using testing::_;
-using testing::Invoke;
-using testing::StrictMock;
-using testing::WithArg;
-
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 namespace network_diagnostics_ipc = ::chromeos::network_diagnostics::mojom;
+using ::testing::_;
+using ::testing::Invoke;
 
 class LanConnectivityRoutineTest : public testing::Test {
  protected:

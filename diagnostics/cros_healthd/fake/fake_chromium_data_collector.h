@@ -17,7 +17,7 @@ namespace diagnostics {
 
 // Fake implementation of ChromiumDataCollector.
 class FakeChromiumDataCollector
-    : public chromeos::cros_healthd::internal::mojom::ChromiumDataCollector {
+    : public ash::cros_healthd::internal::mojom::ChromiumDataCollector {
  public:
   FakeChromiumDataCollector();
   FakeChromiumDataCollector(const FakeChromiumDataCollector&) = delete;
@@ -26,13 +26,12 @@ class FakeChromiumDataCollector
   ~FakeChromiumDataCollector() override;
 
   // Modifiers.
-  mojo::Receiver<
-      chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>&
+  mojo::Receiver<ash::cros_healthd::internal::mojom::ChromiumDataCollector>&
   receiver() {
     return receiver_;
   }
 
-  std::vector<chromeos::cros_healthd::internal::mojom::TouchscreenDevicePtr>&
+  std::vector<ash::cros_healthd::internal::mojom::TouchscreenDevicePtr>&
   touchscreen_devices() {
     return touchscreen_devices_;
   }
@@ -40,16 +39,15 @@ class FakeChromiumDataCollector
   std::string& touchpad_library_name() { return touchpad_library_name_; }
 
  private:
-  // chromeos::cros_healthd::internal::mojom::ChromiumDataCollector
-  // overrides.
+  // `ash::cros_healthd::internal::mojom::ChromiumDataCollector` overrides.
   void GetTouchscreenDevices(GetTouchscreenDevicesCallback callback) override;
   void GetTouchpadLibraryName(GetTouchpadLibraryNameCallback callback) override;
 
   // Mojo receiver for binding pipe.
-  mojo::Receiver<chromeos::cros_healthd::internal::mojom::ChromiumDataCollector>
+  mojo::Receiver<ash::cros_healthd::internal::mojom::ChromiumDataCollector>
       receiver_;
   // Expected touchscreen devices.
-  std::vector<chromeos::cros_healthd::internal::mojom::TouchscreenDevicePtr>
+  std::vector<ash::cros_healthd::internal::mojom::TouchscreenDevicePtr>
       touchscreen_devices_;
   // Expected touchpad library name.
   std::string touchpad_library_name_;

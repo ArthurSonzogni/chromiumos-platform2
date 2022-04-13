@@ -16,7 +16,7 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 const char kFakeMountSource[] = "/dev/mmcblk0p1";
 const char kFakeFilesystem[] = "ext4";

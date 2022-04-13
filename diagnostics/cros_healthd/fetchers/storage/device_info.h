@@ -29,26 +29,26 @@ class StorageDeviceInfo {
       const base::FilePath& dev_sys_path,
       const base::FilePath& dev_node_path,
       const std::string& subsystem,
-      chromeos::cros_healthd::mojom::StorageDevicePurpose purpose,
+      ash::cros_healthd::mojom::StorageDevicePurpose purpose,
       const Platform* platform);
 
   // PopulateDeviceInfo fills the fields of Mojo's data structure representing
   // a block device. It is responsible for population of most of the info.
   Status PopulateDeviceInfo(
-      chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfo* output_info);
+      ash::cros_healthd::mojom::NonRemovableBlockDeviceInfo* output_info);
 
   // PopulateLegaceInfo fills the fields of Mojo's data structure representing
   // a block device. It is responsible for population of fields which are kept
   // for compatibility with the existing applications and will be gradually
   // replaced.
   void PopulateLegacyFields(
-      chromeos::cros_healthd::mojom::NonRemovableBlockDeviceInfo* output_info);
+      ash::cros_healthd::mojom::NonRemovableBlockDeviceInfo* output_info);
 
  private:
   const base::FilePath dev_sys_path_;
   const base::FilePath dev_node_path_;
   const std::string subsystem_;
-  const chromeos::cros_healthd::mojom::StorageDevicePurpose purpose_;
+  const ash::cros_healthd::mojom::StorageDevicePurpose purpose_;
   const std::unique_ptr<const StorageDeviceAdapter> adapter_;
   // platform_ is owned by the StorageDeviceManager.
   const Platform* platform_;
@@ -58,7 +58,7 @@ class StorageDeviceInfo {
   StorageDeviceInfo(const base::FilePath& dev_sys_path,
                     const base::FilePath& dev_node_path,
                     const std::string& subsystem,
-                    chromeos::cros_healthd::mojom::StorageDevicePurpose purpose,
+                    ash::cros_healthd::mojom::StorageDevicePurpose purpose,
                     std::unique_ptr<StorageDeviceAdapter> adapter,
                     const Platform* platform);
   StorageDeviceInfo(const StorageDeviceInfo&) = delete;

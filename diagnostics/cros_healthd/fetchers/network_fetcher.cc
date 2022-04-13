@@ -18,7 +18,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace cros_healthd_ipc = ::chromeos::cros_healthd::mojom;
+namespace cros_healthd_ipc = ::ash::cros_healthd::mojom;
 namespace network_health_ipc = ::chromeos::network_health::mojom;
 
 // Forwards the response from Chrome's NetworkHealthService to the caller.

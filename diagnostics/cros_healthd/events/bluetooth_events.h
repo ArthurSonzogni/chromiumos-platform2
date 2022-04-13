@@ -19,8 +19,7 @@ class BluetoothEvents {
   // Adds a new observer to be notified when Bluetooth-related events occur.
   virtual void AddObserver(
       mojo::PendingRemote<
-          chromeos::cros_healthd::mojom::CrosHealthdBluetoothObserver>
-          observer) = 0;
+          ash::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer) = 0;
 };
 
 }  // namespace diagnostics

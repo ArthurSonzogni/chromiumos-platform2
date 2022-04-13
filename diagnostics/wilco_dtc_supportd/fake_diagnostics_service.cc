@@ -12,7 +12,8 @@
 
 namespace diagnostics {
 namespace wilco {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 FakeDiagnosticsService::FakeDiagnosticsService() = default;
 FakeDiagnosticsService::~FakeDiagnosticsService() = default;
@@ -52,7 +53,7 @@ void FakeDiagnosticsService::GetRoutineUpdate(
 }
 
 void FakeDiagnosticsService::RunUrandomRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunUrandomRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }
@@ -73,26 +74,26 @@ void FakeDiagnosticsService::RunSmartctlCheckRoutine(
 }
 
 void FakeDiagnosticsService::RunAcPowerRoutine(
-    chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+    mojo_ipc::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type,
     RunAcPowerRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
 void FakeDiagnosticsService::RunCpuCacheRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuCacheRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
 void FakeDiagnosticsService::RunCpuStressRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunCpuStressRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
 void FakeDiagnosticsService::RunFloatingPointAccuracyRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunFloatingPointAccuracyRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }
@@ -103,7 +104,7 @@ void FakeDiagnosticsService::RunNvmeWearLevelRoutine(
 }
 
 void FakeDiagnosticsService::RunNvmeSelfTestRoutine(
-    chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type,
+    mojo_ipc::NvmeSelfTestTypeEnum nvme_self_test_type,
     RunNvmeSelfTestRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }
@@ -117,7 +118,7 @@ void FakeDiagnosticsService::RunDiskReadRoutine(
 }
 
 void FakeDiagnosticsService::RunPrimeSearchRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+    mojo_ipc::NullableUint32Ptr length_seconds,
     RunPrimeSearchRoutineCallback callback) {
   std::move(callback).Run(run_routine_response_.Clone());
 }

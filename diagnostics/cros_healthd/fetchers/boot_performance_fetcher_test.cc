@@ -17,7 +17,7 @@
 namespace diagnostics {
 namespace {
 
-using ::chromeos::cros_healthd::mojom::ErrorType;
+using ::ash::cros_healthd::mojom::ErrorType;
 using ::testing::Return;
 
 const char kFakeBiosTimes[] = "texts\n...\n\nTotal Time: 10,111,111";
@@ -55,7 +55,7 @@ const char kShutdownReason[] = "other-request-to-powerd";
 const double kShutdownSeconds = 1.5;
 
 void VerifyDefaultShutdownInfo(
-    const chromeos::cros_healthd::mojom::BootPerformanceResultPtr& result) {
+    const ash::cros_healthd::mojom::BootPerformanceResultPtr& result) {
   ASSERT_TRUE(result->is_boot_performance_info());
 
   const auto& info = result->get_boot_performance_info();
@@ -117,7 +117,7 @@ class BootPerformanceFetcherTest : public ::testing::Test {
 
   const MockContext& mock_context() const { return mock_context_; }
 
-  chromeos::cros_healthd::mojom::BootPerformanceResultPtr
+  ash::cros_healthd::mojom::BootPerformanceResultPtr
   FetchBootPerformanceInfo() {
     return boot_performance_fetcher_.FetchBootPerformanceInfo();
   }

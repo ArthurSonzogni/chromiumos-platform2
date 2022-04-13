@@ -21,7 +21,7 @@
 namespace diagnostics {
 namespace {
 
-using ::chromeos::cros_healthd::mojom::ErrorType;
+namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::DoAll;
@@ -200,7 +200,8 @@ TEST_F(AudioFetcherTest, FetchAudioInfoGetVolumeStateFail) {
 
   auto audio_result = FetchAudioInfoSync();
   ASSERT_TRUE(audio_result->is_error());
-  EXPECT_EQ(audio_result->get_error()->type, ErrorType::kSystemUtilityError);
+  EXPECT_EQ(audio_result->get_error()->type,
+            mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test that when GetNodeInfos fails.
@@ -209,7 +210,8 @@ TEST_F(AudioFetcherTest, FetchAudioInfoGetNodeInfosFail) {
 
   auto audio_result = FetchAudioInfoSync();
   ASSERT_TRUE(audio_result->is_error());
-  EXPECT_EQ(audio_result->get_error()->type, ErrorType::kSystemUtilityError);
+  EXPECT_EQ(audio_result->get_error()->type,
+            mojom::ErrorType::kSystemUtilityError);
 }
 
 }  // namespace

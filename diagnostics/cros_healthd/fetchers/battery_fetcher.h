@@ -23,23 +23,23 @@ class BatteryFetcher final : public BaseFetcher {
 
   // Returns a structure with either the device's battery info or the error that
   // occurred fetching the information.
-  chromeos::cros_healthd::mojom::BatteryResultPtr FetchBatteryInfo();
+  ash::cros_healthd::mojom::BatteryResultPtr FetchBatteryInfo();
 
  private:
   using OptionalProbeErrorPtr =
-      std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>;
+      std::optional<ash::cros_healthd::mojom::ProbeErrorPtr>;
 
   // Populates general battery data fields in |info| obtained from the provided
   // |power_supply_proto|. Returns std::nullopt on success or a ProbeError
   // on failure.
   OptionalProbeErrorPtr PopulateBatteryInfoFromPowerdResponse(
       const power_manager::PowerSupplyProperties& power_supply_proto,
-      chromeos::cros_healthd::mojom::BatteryInfo* info);
+      ash::cros_healthd::mojom::BatteryInfo* info);
 
   // Populates the Smart Battery fields in |info| obtained by using ectool
   // via debugd. Returns std::nullopt on success or a ProbeError on failure.
   OptionalProbeErrorPtr PopulateSmartBatteryInfo(
-      chromeos::cros_healthd::mojom::BatteryInfo* info);
+      ash::cros_healthd::mojom::BatteryInfo* info);
 
   // Populates |metric_value| with the value obtained from requesting
   // |metric_name| from ectool via debugd. Returns std::nullopt on success or a

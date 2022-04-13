@@ -43,7 +43,7 @@ struct DeviceInfo {
   std::optional<std::string> version;
 
   // The format of device firmware version, e.g. PLAIN, HEX, BCD.
-  chromeos::cros_healthd::mojom::FwupdVersionFormat version_format;
+  ash::cros_healthd::mojom::FwupdVersionFormat version_format;
 
   // The device vendor IDs joined by '|', e.g. "USB:0x1234|PCI:0x5678".
   std::optional<std::string> joined_vendor_id;
@@ -87,9 +87,8 @@ std::optional<std::string> InstanceIdToGuid(const std::string& instance_id);
 //
 // Returns NULL if there are multiple firmware versions among the matched
 // devices or that no devices are matched.
-chromeos::cros_healthd::mojom::FwupdFirmwareVersionInfoPtr
-FetchUsbFirmwareVersion(const DeviceList& device_infos,
-                        const UsbDeviceFilter& target_usb_device);
+ash::cros_healthd::mojom::FwupdFirmwareVersionInfoPtr FetchUsbFirmwareVersion(
+    const DeviceList& device_infos, const UsbDeviceFilter& target_usb_device);
 
 }  // namespace fwupd_utils
 }  // namespace diagnostics

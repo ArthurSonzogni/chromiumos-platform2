@@ -5,16 +5,10 @@
 #ifndef DIAGNOSTICS_BINDINGS_CONNECTIVITY_TEST_MY_TYPE_MAPPING_H_
 #define DIAGNOSTICS_BINDINGS_CONNECTIVITY_TEST_MY_TYPE_MAPPING_H_
 
-namespace chromeos {
-namespace cros_healthd {
-namespace connectivity {
-namespace test {
+namespace ash::cros_healthd::connectivity::test {
 
 class MyTypeMapping {};
 
-}  // namespace test
-}  // namespace connectivity
-}  // namespace cros_healthd
-}  // namespace chromeos
+}  // namespace ash::cros_healthd::connectivity::test
 
 #endif  // DIAGNOSTICS_BINDINGS_CONNECTIVITY_TEST_MY_TYPE_MAPPING_H_

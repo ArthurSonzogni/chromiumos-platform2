@@ -240,7 +240,7 @@ void ForwardGetDriveSystemDataResponse(GetDriveSystemDataCallback callback,
 // and moves it into a gRPC response.
 void ForwardGetStatefulPartitionAvailableCapacity(
     GetStatefulPartitionAvailableCapacityCallback callback,
-    chromeos::cros_healthd::mojom::TelemetryInfoPtr info) {
+    ash::cros_healthd::mojom::TelemetryInfoPtr info) {
   auto reply = std::make_unique<
       grpc_api::GetStatefulPartitionAvailableCapacityResponse>();
 
@@ -781,8 +781,8 @@ void GrpcService::GetStatefulPartitionAvailableCapacity(
     GetStatefulPartitionAvailableCapacityCallback callback) {
   DCHECK(request);
 
-  std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories{
-      chromeos::cros_healthd::mojom::ProbeCategoryEnum::kStatefulPartition};
+  std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum> categories{
+      ash::cros_healthd::mojom::ProbeCategoryEnum::kStatefulPartition};
   delegate_->ProbeTelemetryInfo(
       std::move(categories),
       base::BindOnce(&ForwardGetStatefulPartitionAvailableCapacity,

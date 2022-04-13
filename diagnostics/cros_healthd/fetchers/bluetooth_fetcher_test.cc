@@ -22,7 +22,6 @@ namespace {
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::StrictMock;
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 std::unique_ptr<org::bluez::Adapter1Proxy::PropertySet> GetAdapterProperties() {
   auto properties = std::make_unique<org::bluez::Adapter1Proxy::PropertySet>(

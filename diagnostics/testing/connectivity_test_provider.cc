@@ -25,9 +25,11 @@
 #include "diagnostics/mojom/public/cros_healthd.mojom-connectivity.h"
 
 namespace diagnostics {
+
 namespace {
-namespace connectivity = ::chromeos::cros_healthd::connectivity;
-namespace mojom = ::chromeos::cros_healthd::mojom;
+
+namespace connectivity = ::ash::cros_healthd::connectivity;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kCrosHealthdServiceFactoryName[] = "CrosHealthdServiceFactory";
 

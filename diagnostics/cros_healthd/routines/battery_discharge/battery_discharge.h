@@ -43,17 +43,15 @@ class BatteryDischargeRoutine final : public DiagnosticRoutine {
   void Start() override;
   void Resume() override;
   void Cancel() override;
-  void PopulateStatusUpdate(
-      chromeos::cros_healthd::mojom::RoutineUpdate* response,
-      bool include_output) override;
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus()
-      override;
+  void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
+                            bool include_output) override;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   // Calculates the progress percent based on the current status.
   void CalculateProgressPercent();
   // Checks the machine state against the input parameters.
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum
   RunBatteryDischargeRoutine();
   // Determine success or failure for the routine.
   void DetermineRoutineResult(double beginning_discharge_percent);
@@ -62,7 +60,7 @@ class BatteryDischargeRoutine final : public DiagnosticRoutine {
   Context* const context_;
   // Status of the routine, reported by GetStatus() or noninteractive routine
   // updates.
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
+  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
   // Details of the routine's status, reported in noninteractive status updates.
   std::string status_message_;
   // Details about the routine's execution. Reported in all status updates.

@@ -26,18 +26,18 @@ class NvmeDeviceAdapter : public StorageDeviceAdapter {
   ~NvmeDeviceAdapter() override = default;
 
   std::string GetDeviceName() const override;
-  StatusOr<chromeos::cros_healthd::mojom::BlockDeviceVendor> GetVendorId()
+  StatusOr<ash::cros_healthd::mojom::BlockDeviceVendor> GetVendorId()
       const override;
-  StatusOr<chromeos::cros_healthd::mojom::BlockDeviceProduct> GetProductId()
+  StatusOr<ash::cros_healthd::mojom::BlockDeviceProduct> GetProductId()
       const override;
-  StatusOr<chromeos::cros_healthd::mojom::BlockDeviceRevision> GetRevision()
+  StatusOr<ash::cros_healthd::mojom::BlockDeviceRevision> GetRevision()
       const override;
   StatusOr<std::string> GetModel() const override;
-  StatusOr<chromeos::cros_healthd::mojom::BlockDeviceFirmware>
-  GetFirmwareVersion() const override;
+  StatusOr<ash::cros_healthd::mojom::BlockDeviceFirmware> GetFirmwareVersion()
+      const override;
 
  private:
-  StatusOr<chromeos::cros_healthd::mojom::BlockDeviceRevision>
+  StatusOr<ash::cros_healthd::mojom::BlockDeviceRevision>
   GetRevisionOnPre410Kernel() const;
 
   const base::FilePath dev_sys_path_;

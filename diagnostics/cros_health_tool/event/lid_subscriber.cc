@@ -41,7 +41,7 @@ void PrintLidNotification(LidEventType event) {
 }  // namespace
 
 LidSubscriber::LidSubscriber(
-    mojo::PendingReceiver<chromeos::cros_healthd::mojom::CrosHealthdLidObserver>
+    mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdLidObserver>
         receiver)
     : receiver_{this /* impl */, std::move(receiver)} {
   DCHECK(receiver_.is_bound());

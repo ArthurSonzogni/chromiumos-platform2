@@ -23,11 +23,7 @@
 
 namespace diagnostics {
 
-namespace {
-
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
-}  // namespace
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 BatteryDischargeRoutine::BatteryDischargeRoutine(
     Context* const context,

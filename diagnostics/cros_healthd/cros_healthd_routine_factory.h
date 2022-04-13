@@ -31,7 +31,7 @@ class CrosHealthdRoutineFactory {
   // Constructs a new instance of the urandom routine. See
   // diagnostics/routines/urandom for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeUrandomRoutine(
-      chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds) = 0;
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds) = 0;
   // Constructs a new instance of the battery capacity routine. See
   // diagnostics/routines/battery for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeBatteryCapacityRoutine() = 0;
@@ -44,7 +44,7 @@ class CrosHealthdRoutineFactory {
   // Constructs a new instance of the AC power routine. See
   // diagnostics/routines/battery_sysfs for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
-      chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+      ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type) = 0;
   // Constructs a new instance of the CPU cache routine. See
   // diagnostics/routines/cpu_cache for details on the routine itself.
@@ -67,12 +67,11 @@ class CrosHealthdRoutineFactory {
   // diagnostics/routines/nvme_self_test for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeNvmeSelfTestRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy,
-      chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum
-          nvme_self_test_type) = 0;
+      ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type) = 0;
   // Constructs a new instance of the disk read routine. See
   // diagnostics/routines/disk_read for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeDiskReadRoutine(
-      chromeos::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
+      ash::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
       base::TimeDelta exec_duration,
       uint32_t file_size_mb) = 0;
   // Constructs a new instance of the prime search routine. See

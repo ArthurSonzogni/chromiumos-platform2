@@ -21,57 +21,55 @@
 
 namespace diagnostics {
 namespace wilco {
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 namespace {
+
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 // Converts from mojo's DiagnosticRoutineStatusEnum to gRPC's
 // DiagnosticRoutineStatus.
 bool GetGrpcStatusFromMojoStatus(
-    chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum mojo_status,
+    mojo_ipc::DiagnosticRoutineStatusEnum mojo_status,
     grpc_api::DiagnosticRoutineStatus* grpc_status_out) {
   DCHECK(grpc_status_out);
   switch (mojo_status) {
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kReady:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_READY;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kRunning:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kRunning:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_RUNNING;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kWaiting:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_WAITING;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kPassed:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kPassed:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_PASSED;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kFailed:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kFailed:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_FAILED;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kError:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kError:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_ERROR;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kCancelled:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_CANCELLED;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::
-        kFailedToStart:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_FAILED_TO_START;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kRemoved:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_REMOVED;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::
-        kCancelling:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_CANCELLING;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::
-        kUnsupported:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_ERROR;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kNotRun:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun:
       *grpc_status_out = grpc_api::ROUTINE_STATUS_FAILED_TO_START;
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kUnknown:
+    case mojo_ipc::DiagnosticRoutineStatusEnum::kUnknown:
       LOG(ERROR) << "Unknown mojo routine status: "
                  << static_cast<int>(mojo_status);
       return false;
@@ -81,13 +79,11 @@ bool GetGrpcStatusFromMojoStatus(
 // Converts from mojo's DiagnosticRoutineUserMessageEnum to gRPC's
 // DiagnosticRoutineUserMessage.
 bool GetUserMessageFromMojoEnum(
-    chromeos::cros_healthd::mojom::DiagnosticRoutineUserMessageEnum
-        mojo_message,
+    mojo_ipc::DiagnosticRoutineUserMessageEnum mojo_message,
     grpc_api::DiagnosticRoutineUserMessage* grpc_message_out) {
   DCHECK(grpc_message_out);
   switch (mojo_message) {
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineUserMessageEnum::
-        kUnplugACPower:
+    case mojo_ipc::DiagnosticRoutineUserMessageEnum::kUnplugACPower:
       *grpc_message_out = grpc_api::ROUTINE_USER_MESSAGE_UNPLUG_AC_POWER;
       return true;
     default:
@@ -99,46 +95,45 @@ bool GetUserMessageFromMojoEnum(
 
 // Converts from mojo's DiagnosticRoutineEnum to gRPC's DiagnosticRoutine.
 bool GetGrpcRoutineEnumFromMojoRoutineEnum(
-    chromeos::cros_healthd::mojom::DiagnosticRoutineEnum mojo_enum,
+    mojo_ipc::DiagnosticRoutineEnum mojo_enum,
     std::vector<grpc_api::DiagnosticRoutine>* grpc_enum_out) {
   DCHECK(grpc_enum_out);
   switch (mojo_enum) {
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryCapacity:
+    case mojo_ipc::DiagnosticRoutineEnum::kBatteryCapacity:
       grpc_enum_out->push_back(grpc_api::ROUTINE_BATTERY);
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kBatteryHealth:
+    case mojo_ipc::DiagnosticRoutineEnum::kBatteryHealth:
       grpc_enum_out->push_back(grpc_api::ROUTINE_BATTERY_SYSFS);
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kUrandom:
+    case mojo_ipc::DiagnosticRoutineEnum::kUrandom:
       grpc_enum_out->push_back(grpc_api::ROUTINE_URANDOM);
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kSmartctlCheck:
+    case mojo_ipc::DiagnosticRoutineEnum::kSmartctlCheck:
       grpc_enum_out->push_back(grpc_api::ROUTINE_SMARTCTL_CHECK);
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kCpuCache:
+    case mojo_ipc::DiagnosticRoutineEnum::kCpuCache:
       grpc_enum_out->push_back(grpc_api::ROUTINE_CPU_CACHE);
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kCpuStress:
+    case mojo_ipc::DiagnosticRoutineEnum::kCpuStress:
       grpc_enum_out->push_back(grpc_api::ROUTINE_CPU_STRESS);
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::
-        kFloatingPointAccuracy:
+    case mojo_ipc::DiagnosticRoutineEnum::kFloatingPointAccuracy:
       grpc_enum_out->push_back(grpc_api::ROUTINE_FLOATING_POINT_ACCURACY);
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kNvmeWearLevel:
+    case mojo_ipc::DiagnosticRoutineEnum::kNvmeWearLevel:
       grpc_enum_out->push_back(grpc_api::ROUTINE_NVME_WEAR_LEVEL);
       return true;
     // There is only one mojo enum for self_test(short & extended share same
     // class), but there're 2 gRPC enum for self_test according to requirement.
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kNvmeSelfTest:
+    case mojo_ipc::DiagnosticRoutineEnum::kNvmeSelfTest:
       grpc_enum_out->push_back(grpc_api::ROUTINE_NVME_SHORT_SELF_TEST);
       grpc_enum_out->push_back(grpc_api::ROUTINE_NVME_LONG_SELF_TEST);
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kDiskRead:
+    case mojo_ipc::DiagnosticRoutineEnum::kDiskRead:
       grpc_enum_out->push_back(grpc_api::ROUTINE_DISK_LINEAR_READ);
       grpc_enum_out->push_back(grpc_api::ROUTINE_DISK_RANDOM_READ);
       return true;
-    case chromeos::cros_healthd::mojom::DiagnosticRoutineEnum::kPrimeSearch:
+    case mojo_ipc::DiagnosticRoutineEnum::kPrimeSearch:
       grpc_enum_out->push_back(grpc_api::ROUTINE_PRIME_SEARCH);
       return true;
     default:
@@ -149,15 +144,15 @@ bool GetGrpcRoutineEnumFromMojoRoutineEnum(
 
 // Converts from mojo's RoutineUpdate to gRPC's GetRoutineUpdateResponse.
 void SetGrpcUpdateFromMojoUpdate(
-    chromeos::cros_healthd::mojom::RoutineUpdatePtr mojo_update,
+    mojo_ipc::RoutineUpdatePtr mojo_update,
     grpc_api::GetRoutineUpdateResponse* grpc_update) {
   DCHECK(grpc_update);
   grpc_update->set_progress_percent(mojo_update->progress_percent);
   const auto& update_union = mojo_update->routine_update_union;
   if (update_union->is_interactive_update()) {
     grpc_api::DiagnosticRoutineUserMessage grpc_message;
-    chromeos::cros_healthd::mojom::DiagnosticRoutineUserMessageEnum
-        mojo_message = update_union->get_interactive_update()->user_message;
+    mojo_ipc::DiagnosticRoutineUserMessageEnum mojo_message =
+        update_union->get_interactive_update()->user_message;
     if (!GetUserMessageFromMojoEnum(mojo_message, &grpc_message)) {
       grpc_update->set_status(grpc_api::ROUTINE_STATUS_ERROR);
     } else {
@@ -198,25 +193,20 @@ void SetGrpcUpdateFromMojoUpdate(
 // DiagnosticRoutineCommandEnum.
 bool GetMojoCommandFromGrpcCommand(
     grpc_api::GetRoutineUpdateRequest::Command grpc_command,
-    chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum*
-        mojo_command_out) {
+    mojo_ipc::DiagnosticRoutineCommandEnum* mojo_command_out) {
   DCHECK(mojo_command_out);
   switch (grpc_command) {
     case grpc_api::GetRoutineUpdateRequest::RESUME:
-      *mojo_command_out = chromeos::cros_healthd::mojom::
-          DiagnosticRoutineCommandEnum::kContinue;
+      *mojo_command_out = mojo_ipc::DiagnosticRoutineCommandEnum::kContinue;
       return true;
     case grpc_api::GetRoutineUpdateRequest::CANCEL:
-      *mojo_command_out =
-          chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum::kCancel;
+      *mojo_command_out = mojo_ipc::DiagnosticRoutineCommandEnum::kCancel;
       return true;
     case grpc_api::GetRoutineUpdateRequest::GET_STATUS:
-      *mojo_command_out = chromeos::cros_healthd::mojom::
-          DiagnosticRoutineCommandEnum::kGetStatus;
+      *mojo_command_out = mojo_ipc::DiagnosticRoutineCommandEnum::kGetStatus;
       return true;
     case grpc_api::GetRoutineUpdateRequest::REMOVE:
-      *mojo_command_out =
-          chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum::kRemove;
+      *mojo_command_out = mojo_ipc::DiagnosticRoutineCommandEnum::kRemove;
       return true;
     default:
       LOG(ERROR) << "Unknown gRPC command: " << static_cast<int>(grpc_command);
@@ -286,7 +276,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kUrandomParams);
       service_->RunUrandomRoutine(
-          chromeos::cros_healthd::mojom::NullableUint32::New(
+          mojo_ipc::NullableUint32::New(
               request.urandom_params().length_seconds()),
           base::BindOnce(&RoutineService::ForwardRunRoutineResponse,
                          weak_ptr_factory_.GetWeakPtr(), callback_key));
@@ -302,8 +292,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kCpuParams);
       service_->RunCpuCacheRoutine(
-          chromeos::cros_healthd::mojom::NullableUint32::New(
-              request.cpu_params().length_seconds()),
+          mojo_ipc::NullableUint32::New(request.cpu_params().length_seconds()),
           base::BindOnce(&RoutineService::ForwardRunRoutineResponse,
                          weak_ptr_factory_.GetWeakPtr(), callback_key));
       break;
@@ -311,8 +300,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kCpuParams);
       service_->RunCpuStressRoutine(
-          chromeos::cros_healthd::mojom::NullableUint32::New(
-              request.cpu_params().length_seconds()),
+          mojo_ipc::NullableUint32::New(request.cpu_params().length_seconds()),
           base::BindOnce(&RoutineService::ForwardRunRoutineResponse,
                          weak_ptr_factory_.GetWeakPtr(), callback_key));
       break;
@@ -320,7 +308,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kFloatingPointAccuracyParams);
       service_->RunFloatingPointAccuracyRoutine(
-          chromeos::cros_healthd::mojom::NullableUint32::New(
+          mojo_ipc::NullableUint32::New(
               request.floating_point_accuracy_params().length_seconds()),
           base::BindOnce(&RoutineService::ForwardRunRoutineResponse,
                          weak_ptr_factory_.GetWeakPtr(), callback_key));
@@ -337,7 +325,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kNvmeShortSelfTestParams);
       service_->RunNvmeSelfTestRoutine(
-          chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum::kShortSelfTest,
+          mojo_ipc::NvmeSelfTestTypeEnum::kShortSelfTest,
           base::BindOnce(&RoutineService::ForwardRunRoutineResponse,
                          weak_ptr_factory_.GetWeakPtr(), callback_key));
       break;
@@ -345,7 +333,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kNvmeLongSelfTestParams);
       service_->RunNvmeSelfTestRoutine(
-          chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum::kLongSelfTest,
+          mojo_ipc::NvmeSelfTestTypeEnum::kLongSelfTest,
           base::BindOnce(&RoutineService::ForwardRunRoutineResponse,
                          weak_ptr_factory_.GetWeakPtr(), callback_key));
       break;
@@ -373,7 +361,7 @@ void RoutineService::RunRoutine(const grpc_api::RunRoutineRequest& request,
       DCHECK_EQ(request.parameters_case(),
                 grpc_api::RunRoutineRequest::kPrimeSearchParams);
       service_->RunPrimeSearchRoutine(
-          chromeos::cros_healthd::mojom::NullableUint32::New(
+          mojo_ipc::NullableUint32::New(
               request.prime_search_params().length_seconds()),
           base::BindOnce(&RoutineService::ForwardRunRoutineResponse,
                          weak_ptr_factory_.GetWeakPtr(), callback_key));
@@ -402,7 +390,7 @@ void RoutineService::GetRoutineUpdate(
     return;
   }
 
-  chromeos::cros_healthd::mojom::DiagnosticRoutineCommandEnum mojo_command;
+  mojo_ipc::DiagnosticRoutineCommandEnum mojo_command;
   if (!GetMojoCommandFromGrpcCommand(command, &mojo_command)) {
     std::move(callback).Run(
         uuid, grpc_api::ROUTINE_STATUS_INVALID_FIELD, 0 /* progress_percent */,
@@ -424,8 +412,7 @@ void RoutineService::GetRoutineUpdate(
 
 void RoutineService::ForwardGetAvailableRoutinesResponse(
     size_t callback_key,
-    const std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>&
-        mojo_routines) {
+    const std::vector<mojo_ipc::DiagnosticRoutineEnum>& mojo_routines) {
   auto it = get_available_routines_callbacks_.find(callback_key);
   if (it == get_available_routines_callbacks_.end()) {
     LOG(ERROR) << "Unknown callback_key for received mojo GetAvailableRoutines "
@@ -449,8 +436,7 @@ void RoutineService::ForwardGetAvailableRoutinesResponse(
 }
 
 void RoutineService::ForwardRunRoutineResponse(
-    size_t callback_key,
-    chromeos::cros_healthd::mojom::RunRoutineResponsePtr response) {
+    size_t callback_key, mojo_ipc::RunRoutineResponsePtr response) {
   auto it = run_routine_callbacks_.find(callback_key);
   if (it == run_routine_callbacks_.end()) {
     LOG(ERROR) << "Unknown callback_key for received mojo GetAvailableRoutines "
@@ -460,8 +446,7 @@ void RoutineService::ForwardRunRoutineResponse(
   }
 
   grpc_api::DiagnosticRoutineStatus grpc_status;
-  chromeos::cros_healthd::mojom::DiagnosticRoutineStatusEnum mojo_status =
-      response->status;
+  mojo_ipc::DiagnosticRoutineStatusEnum mojo_status = response->status;
   if (!GetGrpcStatusFromMojoStatus(mojo_status, &grpc_status)) {
     std::move(it->second)
         .Run(0 /* uuid */, grpc_api::ROUTINE_STATUS_ERROR,
@@ -474,8 +459,7 @@ void RoutineService::ForwardRunRoutineResponse(
 }
 
 void RoutineService::ForwardGetRoutineUpdateResponse(
-    size_t callback_key,
-    chromeos::cros_healthd::mojom::RoutineUpdatePtr response) {
+    size_t callback_key, mojo_ipc::RoutineUpdatePtr response) {
   auto it = get_routine_update_callbacks_.find(callback_key);
   if (it == get_routine_update_callbacks_.end()) {
     LOG(ERROR) << "Unknown callback_key for received mojo GetAvailableRoutines "

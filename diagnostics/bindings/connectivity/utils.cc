@@ -8,9 +8,8 @@
 
 #include <base/bind.h>
 
-namespace chromeos {
-namespace cros_healthd {
-namespace connectivity {
+namespace ash::cros_healthd::connectivity {
+
 namespace {
 
 void RunOrReturnCallback(
@@ -34,6 +33,7 @@ void RunSuccessOrFailedCallback(base::OnceClosure on_success,
     std::move(on_failed).Run();
   }
 }
+
 }  // namespace
 
 void RunOrReturn(
@@ -55,6 +55,4 @@ void RunSuccessOrFailed(
                           std::move(on_failed)));
 }
 
-}  // namespace connectivity
-}  // namespace cros_healthd
-}  // namespace chromeos
+}  // namespace ash::cros_healthd::connectivity

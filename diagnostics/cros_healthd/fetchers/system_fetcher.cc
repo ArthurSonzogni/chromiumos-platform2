@@ -27,6 +27,8 @@ namespace diagnostics {
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 class State {
  public:
   explicit State(Context* context);

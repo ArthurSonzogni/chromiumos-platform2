@@ -33,7 +33,7 @@ class ProbeServiceImpl final : public ProbeService {
 
   // ProbeService overrides:
   void ProbeTelemetryInfo(
-      std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories,
+      std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum> categories,
       ProbeTelemetryInfoCallback callback) override;
 
  private:
@@ -41,7 +41,7 @@ class ProbeServiceImpl final : public ProbeService {
   // callback.
   void ForwardProbeTelemetryInfoResponse(
       size_t callback_key,
-      chromeos::cros_healthd::mojom::TelemetryInfoPtr telemetry_info);
+      ash::cros_healthd::mojom::TelemetryInfoPtr telemetry_info);
 
   // Binds |service_| to an implementation of CrosHealthdProbeService,
   // if it is not already bound. Returns false if wilco_dtc_supportd's mojo
@@ -58,7 +58,7 @@ class ProbeServiceImpl final : public ProbeService {
   // Mojo interface to the CrosHealthdProbeService endpoint.
   //
   // In production this interface is implemented by the cros_healthd process.
-  mojo::Remote<chromeos::cros_healthd::mojom::CrosHealthdProbeService> service_;
+  mojo::Remote<ash::cros_healthd::mojom::CrosHealthdProbeService> service_;
 
   // The following map holds in flight callbacks to |service_|.
   // In case the remote mojo endpoint closes while there are any in flight

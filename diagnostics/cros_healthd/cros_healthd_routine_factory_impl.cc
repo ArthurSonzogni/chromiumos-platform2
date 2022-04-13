@@ -56,7 +56,7 @@ CrosHealthdRoutineFactoryImpl::~CrosHealthdRoutineFactoryImpl() = default;
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeUrandomRoutine(
-    chromeos::cros_healthd::mojom::NullableUint32Ptr length_seconds) {
+    ash::cros_healthd::mojom::NullableUint32Ptr length_seconds) {
   return CreateUrandomRoutine(length_seconds.is_null()
                                   ? std::nullopt
                                   : std::optional<base::TimeDelta>(
@@ -88,7 +88,7 @@ CrosHealthdRoutineFactoryImpl::MakeSmartctlCheckRoutine() {
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeAcPowerRoutine(
-    chromeos::cros_healthd::mojom::AcPowerStatusEnum expected_status,
+    ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type) {
   return std::make_unique<AcPowerRoutine>(expected_status, expected_power_type);
 }
@@ -123,12 +123,12 @@ CrosHealthdRoutineFactoryImpl::MakeNvmeWearLevelRoutine(
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeNvmeSelfTestRoutine(
     org::chromium::debugdProxyInterface* debugd_proxy,
-    chromeos::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
+    ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type) {
   DCHECK(debugd_proxy);
 
   NvmeSelfTestRoutine::SelfTestType type =
-      nvme_self_test_type == chromeos::cros_healthd::mojom::
-                                 NvmeSelfTestTypeEnum::kShortSelfTest
+      nvme_self_test_type ==
+              ash::cros_healthd::mojom::NvmeSelfTestTypeEnum::kShortSelfTest
           ? NvmeSelfTestRoutine::kRunShortSelfTest
           : NvmeSelfTestRoutine::kRunLongSelfTest;
 
@@ -137,7 +137,7 @@ CrosHealthdRoutineFactoryImpl::MakeNvmeSelfTestRoutine(
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeDiskReadRoutine(
-    chromeos::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
+    ash::cros_healthd::mojom::DiskReadRoutineTypeEnum type,
     base::TimeDelta exec_duration,
     uint32_t file_size_mb) {
   return CreateDiskReadRoutine(type, exec_duration, file_size_mb);

@@ -299,7 +299,7 @@ class MockGrpcServiceDelegate : public GrpcService::Delegate {
   MOCK_METHOD(
       void,
       ProbeTelemetryInfo,
-      (std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum> categories,
+      (std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum> categories,
        ProbeTelemetryInfoCallback callback),
       (override));
   EcService* GetEcService() override { return ec_service_.get(); }
@@ -884,15 +884,14 @@ TEST_F(GrpcServiceTest, RequestBluetoothDataNotification) {
 class GetStatefulPartitionAvailableCapacityTest
     : public GrpcServiceTest,
       public testing::WithParamInterface<std::tuple<
-          base::RepeatingCallback<
-              chromeos::cros_healthd::mojom::TelemetryInfoPtr()>,
+          base::RepeatingCallback<ash::cros_healthd::mojom::TelemetryInfoPtr()>,
           grpc_api::GetStatefulPartitionAvailableCapacityResponse::Status,
           int32_t>> {
  protected:
   // Accessors to individual test parameters from the test parameter tuple
   // returned by gtest's GetParam():
 
-  chromeos::cros_healthd::mojom::TelemetryInfoPtr get_probe_response() const {
+  ash::cros_healthd::mojom::TelemetryInfoPtr get_probe_response() const {
     return std::get<0>(GetParam()).Run();
   }
 
@@ -905,11 +904,11 @@ class GetStatefulPartitionAvailableCapacityTest
 };
 
 TEST_P(GetStatefulPartitionAvailableCapacityTest, All) {
-  const std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
+  const std::vector<ash::cros_healthd::mojom::ProbeCategoryEnum>
       kExpectedCategories{
-          chromeos::cros_healthd::mojom::ProbeCategoryEnum::kStatefulPartition};
+          ash::cros_healthd::mojom::ProbeCategoryEnum::kStatefulPartition};
 
-  chromeos::cros_healthd::mojom::TelemetryInfoPtr probe_response =
+  ash::cros_healthd::mojom::TelemetryInfoPtr probe_response =
       get_probe_response();
 
   EXPECT_CALL(*delegate(), ProbeTelemetryInfo(kExpectedCategories, _))
@@ -947,14 +946,14 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         std::make_tuple(
             base::BindRepeating([]() {
-              return chromeos::cros_healthd::mojom::TelemetryInfoPtr(nullptr);
+              return ash::cros_healthd::mojom::TelemetryInfoPtr(nullptr);
             }),
             grpc_api::GetStatefulPartitionAvailableCapacityResponse::
                 STATUS_ERROR_REQUEST_PROCESSING,
             0),
         std::make_tuple(
             base::BindRepeating([]() {
-              return chromeos::cros_healthd::mojom::TelemetryInfo::New();
+              return ash::cros_healthd::mojom::TelemetryInfo::New();
             }),
             grpc_api::GetStatefulPartitionAvailableCapacityResponse::
                 STATUS_ERROR_REQUEST_PROCESSING,
@@ -962,11 +961,11 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple(
             base::BindRepeating([]() {
               auto probe_response =
-                  chromeos::cros_healthd::mojom::TelemetryInfo::New();
+                  ash::cros_healthd::mojom::TelemetryInfo::New();
               probe_response->stateful_partition_result =
-                  chromeos::cros_healthd::mojom::StatefulPartitionResult::
-                      NewError(chromeos::cros_healthd::mojom::ProbeError::New(
-                          chromeos::cros_healthd::mojom::ErrorType::
+                  ash::cros_healthd::mojom::StatefulPartitionResult::NewError(
+                      ash::cros_healthd::mojom::ProbeError::New(
+                          ash::cros_healthd::mojom::ErrorType::
                               kSystemUtilityError,
                           ""));
               return probe_response;
@@ -980,11 +979,10 @@ INSTANTIATE_TEST_SUITE_P(
               constexpr auto kFakeFilesystem = "ext4";
               constexpr auto kFakeMountSource = "/dev/mmcblk0p1";
               auto probe_response =
-                  chromeos::cros_healthd::mojom::TelemetryInfo::New();
-              probe_response
-                  ->stateful_partition_result = chromeos::cros_healthd::mojom::
-                  StatefulPartitionResult::NewPartitionInfo(
-                      chromeos::cros_healthd::mojom::StatefulPartitionInfo::New(
+                  ash::cros_healthd::mojom::TelemetryInfo::New();
+              probe_response->stateful_partition_result = ash::cros_healthd::
+                  mojom::StatefulPartitionResult::NewPartitionInfo(
+                      ash::cros_healthd::mojom::StatefulPartitionInfo::New(
                           kAvailableBytes, 0, kFakeFilesystem,
                           kFakeMountSource));
               return probe_response;

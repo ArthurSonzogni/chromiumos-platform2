@@ -29,12 +29,13 @@
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
-using testing::_;
-using ::testing::Invoke;
-using ::testing::WithArg;
-
 namespace diagnostics {
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::WithArg;
 
 // Location of files containing test data (fake memtester output).
 constexpr char kTestDataRoot[] = "cros_healthd/routines/memory/testdata";
@@ -107,9 +108,9 @@ class MemoryRoutineTest : public BaseFileTest {
     mojom::RoutineUpdate update{0, mojo::ScopedHandle(),
                                 mojom::RoutineUpdateUnionPtr()};
     routine_->PopulateStatusUpdate(&update, true);
-    return chromeos::cros_healthd::mojom::RoutineUpdate::New(
-        update.progress_percent, std::move(update.output),
-        std::move(update.routine_update_union));
+    return mojom::RoutineUpdate::New(update.progress_percent,
+                                     std::move(update.output),
+                                     std::move(update.routine_update_union));
   }
 
   void SetMockMemoryInfo(const std::string& info) {

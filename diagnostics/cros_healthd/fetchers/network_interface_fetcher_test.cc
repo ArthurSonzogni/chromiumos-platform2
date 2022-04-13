@@ -29,11 +29,10 @@ namespace diagnostics {
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
-using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::Return;
-using ::testing::StrictMock;
 using ::testing::WithArg;
 
 constexpr char kFakePowerSchemeContent[] = "2\n";
@@ -198,8 +197,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetInterfacesReturnFailure) {
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kSystemUtilityError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test case: GetLink return failure.
@@ -209,8 +207,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetLinkReturnFailure) {
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kSystemUtilityError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test case: GetInfo return failure.
@@ -221,8 +218,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetInfoReturnFailure) {
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kSystemUtilityError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test case: GetScanDump return failure.
@@ -234,8 +230,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetScanDumpReturnFailure) {
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kSystemUtilityError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test case: wireless device not connected to an access point. Expecting only
@@ -268,8 +263,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestNoWirelessAdapterFound) {
 
   auto result = FetchNetworkInterfaceInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type,
-            chromeos::cros_healthd::mojom::ErrorType::kServiceUnavailable);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kServiceUnavailable);
 }
 
 // Test case: missing /sys/module/iwlmvm/parameters/power_scheme file.

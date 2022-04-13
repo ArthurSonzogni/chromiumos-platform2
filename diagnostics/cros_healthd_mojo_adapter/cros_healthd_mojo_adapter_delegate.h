@@ -20,8 +20,8 @@ class CrosHealthdMojoAdapterDelegate {
 
   // Bootstraps a mojo connection to cros_healthd, then returns one end of the
   // bound pipe.
-  virtual std::optional<mojo::PendingRemote<
-      chromeos::cros_healthd::mojom::CrosHealthdServiceFactory>>
+  virtual std::optional<
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdServiceFactory>>
   GetCrosHealthdServiceFactory() = 0;
 };
 

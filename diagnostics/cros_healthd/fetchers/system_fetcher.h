@@ -15,13 +15,11 @@
 
 namespace diagnostics {
 
-namespace mojom = chromeos::cros_healthd::mojom;
-
 // Fetches system info and pass the result to the callback. Returns either a
 // structure with the system information or the error that occurred fetching the
 // information.
 using FetchSystemInfoCallback =
-    base::OnceCallback<void(chromeos::cros_healthd::mojom::SystemResultPtr)>;
+    base::OnceCallback<void(ash::cros_healthd::mojom::SystemResultPtr)>;
 void FetchSystemInfo(Context* context, FetchSystemInfoCallback callback);
 
 }  // namespace diagnostics

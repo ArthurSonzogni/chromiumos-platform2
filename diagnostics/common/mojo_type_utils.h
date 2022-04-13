@@ -15,15 +15,11 @@
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
-namespace chromeos {
-namespace cros_healthd {
-namespace mojom {
+namespace ash::cros_healthd::mojom {
 // Union types don't have default operator<. Define them so we can use std::sort
 // to sort them.
 bool operator<(const BusInfo& a, const BusInfo& b);
-}  // namespace mojom
-}  // namespace cros_healthd
-}  // namespace chromeos
+}  // namespace ash::cros_healthd::mojom
 
 namespace diagnostics {
 namespace internal {
@@ -126,59 +122,59 @@ std::string GetDiffString<std::optional<std::string>>(
     const std::optional<std::string>& a, const std::optional<std::string>& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::NullableUint64>(
-    const ::chromeos::cros_healthd::mojom::NullableUint64& a,
-    const ::chromeos::cros_healthd::mojom::NullableUint64& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::NullableUint64>(
+    const ::ash::cros_healthd::mojom::NullableUint64& a,
+    const ::ash::cros_healthd::mojom::NullableUint64& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::VpdInfo>(
-    const ::chromeos::cros_healthd::mojom::VpdInfo& a,
-    const ::chromeos::cros_healthd::mojom::VpdInfo& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::VpdInfo>(
+    const ::ash::cros_healthd::mojom::VpdInfo& a,
+    const ::ash::cros_healthd::mojom::VpdInfo& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::DmiInfo>(
-    const ::chromeos::cros_healthd::mojom::DmiInfo& a,
-    const ::chromeos::cros_healthd::mojom::DmiInfo& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::DmiInfo>(
+    const ::ash::cros_healthd::mojom::DmiInfo& a,
+    const ::ash::cros_healthd::mojom::DmiInfo& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::OsVersion>(
-    const ::chromeos::cros_healthd::mojom::OsVersion& a,
-    const ::chromeos::cros_healthd::mojom::OsVersion& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::OsVersion>(
+    const ::ash::cros_healthd::mojom::OsVersion& a,
+    const ::ash::cros_healthd::mojom::OsVersion& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::OsInfo>(
-    const ::chromeos::cros_healthd::mojom::OsInfo& a,
-    const ::chromeos::cros_healthd::mojom::OsInfo& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::OsInfo>(
+    const ::ash::cros_healthd::mojom::OsInfo& a,
+    const ::ash::cros_healthd::mojom::OsInfo& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::SystemInfo>(
-    const ::chromeos::cros_healthd::mojom::SystemInfo& a,
-    const ::chromeos::cros_healthd::mojom::SystemInfo& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::SystemInfo>(
+    const ::ash::cros_healthd::mojom::SystemInfo& a,
+    const ::ash::cros_healthd::mojom::SystemInfo& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::BusDevice>(
-    const ::chromeos::cros_healthd::mojom::BusDevice& a,
-    const ::chromeos::cros_healthd::mojom::BusDevice& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::BusDevice>(
+    const ::ash::cros_healthd::mojom::BusDevice& a,
+    const ::ash::cros_healthd::mojom::BusDevice& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::BusInfo>(
-    const ::chromeos::cros_healthd::mojom::BusInfo& a,
-    const ::chromeos::cros_healthd::mojom::BusInfo& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::BusInfo>(
+    const ::ash::cros_healthd::mojom::BusInfo& a,
+    const ::ash::cros_healthd::mojom::BusInfo& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::PciBusInfo>(
-    const ::chromeos::cros_healthd::mojom::PciBusInfo& a,
-    const ::chromeos::cros_healthd::mojom::PciBusInfo& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::PciBusInfo>(
+    const ::ash::cros_healthd::mojom::PciBusInfo& a,
+    const ::ash::cros_healthd::mojom::PciBusInfo& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::UsbBusInfo>(
-    const ::chromeos::cros_healthd::mojom::UsbBusInfo& a,
-    const ::chromeos::cros_healthd::mojom::UsbBusInfo& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::UsbBusInfo>(
+    const ::ash::cros_healthd::mojom::UsbBusInfo& a,
+    const ::ash::cros_healthd::mojom::UsbBusInfo& b);
 
 template <>
-std::string GetDiffString<::chromeos::cros_healthd::mojom::UsbBusInterfaceInfo>(
-    const ::chromeos::cros_healthd::mojom::UsbBusInterfaceInfo& a,
-    const ::chromeos::cros_healthd::mojom::UsbBusInterfaceInfo& b);
+std::string GetDiffString<::ash::cros_healthd::mojom::UsbBusInterfaceInfo>(
+    const ::ash::cros_healthd::mojom::UsbBusInterfaceInfo& a,
+    const ::ash::cros_healthd::mojom::UsbBusInterfaceInfo& b);
 
 // Clones and sorts the vector.
 template <typename T, typename = std::enable_if_t<IsStructPtr<T>::value>>

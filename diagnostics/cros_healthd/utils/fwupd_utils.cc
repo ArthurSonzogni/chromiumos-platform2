@@ -24,7 +24,7 @@ namespace fwupd_utils {
 
 namespace {
 
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
+namespace mojo_ipc = ::ash::cros_healthd::mojom;
 
 // Returns whether some instance id of |device_info| starts with |instance_id|.
 bool MatchInstanceIdPrefix(const DeviceInfo& device_info,

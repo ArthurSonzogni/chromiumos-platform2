@@ -27,9 +27,9 @@ class PowerEventsImpl final : public PowerEvents,
   ~PowerEventsImpl() override;
 
   // PowerEvents overrides:
-  void AddObserver(mojo::PendingRemote<
-                   chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
-                       observer) override;
+  void AddObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
+          observer) override;
 
  private:
   // Mapping between powerd's PowerSupplyProperties and events that PowerEvents
@@ -69,11 +69,11 @@ class PowerEventsImpl final : public PowerEvents,
   std::optional<PowerEventType> external_power_ac_event_;
 
   // Each observer in |observers_| will be notified of any power event in the
-  // chromeos::cros_healthd::mojom::CrosHealthdPowerObserver interface. The
+  // ash::cros_healthd::mojom::CrosHealthdPowerObserver interface. The
   // InterfacePtrSet manages the lifetime of the endpoints, which are
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
-  mojo::RemoteSet<chromeos::cros_healthd::mojom::CrosHealthdPowerObserver>
+  mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
       observers_;
 
   // Unowned pointer. Should outlive this instance.
