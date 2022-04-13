@@ -118,6 +118,11 @@ void ModemManagerProxy::OnInterfaceRemoved(
     VLOG(2) << __func__ << "Interfaces removed, but not modem interface.";
     return;
   }
+  if (!modem_proxy_) {
+    VLOG(2) << "Not tracking any modem. Ignoring removal of modem interface on "
+            << object_path.value();
+    return;
+  }
   if (modem_proxy_->GetObjectPath() != object_path)
     return;
   LOG(INFO) << "Clearing modem proxy for "
