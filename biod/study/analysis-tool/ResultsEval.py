@@ -17,11 +17,8 @@
 #! %load_ext autoreload
 #! %autoreload 1
 
-import multiprocessing
 import os
 import pathlib
-import time
-from math import sqrt
 from typing import List, Optional
 
 import matplotlib
@@ -37,6 +34,7 @@ from scipy.stats import norm
 from tqdm.autonotebook import tqdm  # Auto detect notebook or console.
 
 #! %aimport fpsutils, simulate_fpstudy, experiment, fpc_bet_results
+import bootstrap
 import fpsutils
 import simulate_fpstudy
 from experiment import Experiment
@@ -149,139 +147,28 @@ or sample that has an unusually high false acceptable rate.
 '''))
 fpsutils.plot_pd_hist_discrete(exp.fa_table(), title_prefix='False Accepts')
 
-
-# %% Most naive approach
-#! %%time
-
-# This is the more advanced naive approach to demonstrate what we are doing.
-# This tries to use the faster boot_sample_range, but this requires setting up
-# user id maps.
-
-print('# Loading caches...')
-
-fa_table = exp.fa_table()
-fa_set_tuple = [Experiment.TableCol.Verify_User.value,
-                Experiment.TableCol.Enroll_User.value,
-                Experiment.TableCol.Verify_Finger.value,
-                Experiment.TableCol.Enroll_Finger.value,
-                Experiment.TableCol.Verify_Sample.value]
-fa_set = fpsutils.DataFrameSetAccess(fa_table, fa_set_tuple)
-fa_trie = fpsutils.DataFrameCountTrieAccess(fa_table, fa_set_tuple)
-
-users_list = exp.user_list()
-fingers_list = exp.finger_list()
-samples_list = exp.sample_list()
-
-
-def bootstrap_full_naive(rng: np.random.Generator) -> int:
-    """Complete a single bootstrap sample.
-
-    The important parts of this approach are the following:
-    * Avoiding DataFrame queryies during runtime. We use fa_set cache instead.
-      This is the difference between hundreds of _us_ vs. hundreds of _ns_
-      per query.
-    * Using rng.choice (now boot_sample) on either a scalar, np.array, or list
-      is important. Other methods are very slow.
-    * The big finale that gets the single bootstrap sample time down from
-      tens of _s_ to hundreds of _ms_ is checking for the loop abort path
-      using the fa_trie.
-
-    Additional Performance:
-    * Use boot_sample_range instead os boot_sample.
-    * Flatten loops.
-    """
-
-    sample = []
-    # 72 users
-    for v in fpsutils.boot_sample(users_list, rng=rng):
-        if not fa_trie.isin((v,)):
-            continue
-        # 72 other template users (same user with different finger is allowed)
-        for t in fpsutils.boot_sample(users_list, rng=rng):
-            if not fa_trie.isin((v, t)):
-                continue
-            # 6 fingers
-            for fv in fpsutils.boot_sample(fingers_list, rng=rng):
-                if not fa_trie.isin((v, t, fv)):
-                    continue
-                for ft in fpsutils.boot_sample(fingers_list, rng=rng):
-                    if not fa_trie.isin((v, t, fv, ft)):
-                        continue
-                    # 60 verification samples
-                    for a in fpsutils.boot_sample(samples_list, rng=rng):
-                        # We don't check for the invalid matching case,
-                        # (v == t) and (fv == ft), since it is slower than
-                        # simply querying for the results.
-                        # We actually don't care about omitting these
-                        # cases because it will always receive a 0 from the
-                        # query.
-                        # As long as we always use the sum operation to
-                        # aggregate all subsample data, no problems should
-                        # arise.
-                        query = (v, t, fv, ft, a)
-                        sample.append(fa_set.isin(query))
-                        # pass
-    return np.sum(sample)
-
-
 # %%
 
 # 1000 samples is 95%
 # 5000 samples is 99%
-# BOOTSTRAP_SAMPLES = 5000 # 5000 samples in 2 seconds (128 cores)
+# BOOTSTRAP_SAMPLES = 1000
+# BOOTSTRAP_SAMPLES = 5000  # 5000 samples in 2 seconds (128 cores)
 BOOTSTRAP_SAMPLES = 100000  # 100000 samples in 16 seconds (128 cores)
 CONFIDENCE_PERCENT = 95
 PARALLEL_BOOTSTRAP = True
 
-# %%
+# %% Run FAR bootstrap
 
-# boot_means = exp.far_bootstrap_samples(
-#     BOOTSTRAP_SAMPLES,
-#     # 10000,
-#     cores=0,
-#     progress_fn=lambda iter, total: tqdm(iter, total=total),
-#     verbose=True,
-# )
+boot = bootstrap.BootstrapFullFARHierarchy(exp, verbose=True)
+boot_means = boot.run(num_samples=BOOTSTRAP_SAMPLES,
+                      num_proc=0,
+                      progress=lambda it, total: tqdm(it, total=total))
 
 # %%
-#! %%time
-print('# Starting bootstrap...')
-boot_means = list()
-if PARALLEL_BOOTSTRAP:
-    # All processes must have their own unique seed for their pseudo random
-    # number generator, otherwise they will all generate the same random values.
-    #
-    # For reproducibility and testing, you can use np.random.SeedSequence.spawn
-    # or [np.random.default_rng(i) for i in range(BOOTSTRAP_SAMPLES)]
-    # See https://numpy.org/doc/stable/reference/random/parallel.html .
-    #
-    # We could possible generate fewer random number generators, since we only
-    # need one per process. This might be achievable by using the Pool
-    # constructor's initializer function to add a process local global
-    # rng variable. For now, it is just safer to generate BOOTSTRAP_SAMPLES
-    # random number generators. Do note that you can't really parallelize
-    # the rng initialization, since the CPU doesn't produce enough entropy
-    # to satisfy threads concurrently. They end up just being blocked
-    # on IO.
-    print('# Initializing RNGs...')
-    rngs = [np.random.default_rng(i) for i in range(BOOTSTRAP_SAMPLES)]
 
-    print('# Dispatching sampling over '
-          f'{multiprocessing.cpu_count()} processes...')
-    start = time.time()
-    with multiprocessing.Pool(processes=None) as pool:  # limit memory usage
-        boot_means = pool.map(bootstrap_full_naive, tqdm(rngs))
-    end = time.time()
-    print(f'This took {end-start:.6f}s.')
-    # print(f'Samples: {list(boot_means)}')
-else:
-    rng = np.random.default_rng()
-    start = time.time()
-    for s in tqdm(range(BOOTSTRAP_SAMPLES)):
-        boot_means.append(bootstrap_full_naive(rng))
-    end = time.time()
-    print(f'This took {end-start:.6f}s.')
-
+df = pd.DataFrame({'Sample Means': boot_means}, dtype=int)
+print(df)
+print(df.describe())
 
 # %%
 
