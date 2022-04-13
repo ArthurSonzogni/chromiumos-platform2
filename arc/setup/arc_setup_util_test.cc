@@ -37,6 +37,8 @@
 #include <brillo/files/safe_fd.h>
 #include <gtest/gtest.h>
 
+#include "arc/setup/android_binary_xml_tokenizer_test_util.h"
+
 namespace arc {
 
 namespace {
@@ -541,7 +543,8 @@ TEST(ArcSetupUtil, TestGetPropertiesFromFileBad) {
   EXPECT_TRUE(properties.empty());
 }
 
-TEST(ArcSetupUtil, TestGetFingerprintAndSdkVersionFromPackagesXml) {
+TEST(ArcSetupUtil, TestGetFingerprintAndSdkVersionFromPackagesXmlText) {
+  // Tests that GetFingerprintAndSdkVersionFromPackagesXml works for text XML.
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
   base::FilePath packages_file =
@@ -644,6 +647,138 @@ TEST(ArcSetupUtil, TestGetFingerprintAndSdkVersionFromPackagesXml) {
                           ""));
   EXPECT_FALSE(GetFingerprintAndSdkVersionFromPackagesXml(
       packages_file, &fingerprint, &sdk_version));
+}
+
+TEST(ArcSetupUtil, TestGetFingerprintAndSdkVersionFromBinaryPackagesXml) {
+  using Token = AndroidBinaryXmlTokenizer::Token;
+  using Type = AndroidBinaryXmlTokenizer::Type;
+
+  base::ScopedTempDir temp_directory;
+  ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
+  base::FilePath packages_file =
+      temp_directory.GetPath().Append("packages.xml");
+
+  AndroidBinaryXmlWriter writer;
+  ASSERT_TRUE(writer.Init(packages_file));
+
+  // <version> with volumeUuid should be ignored.
+  // <version
+  ASSERT_TRUE(writer.WriteToken(Token::kStartTag, Type::kNull));
+  ASSERT_TRUE(writer.WriteInternedString("version"));
+  // volumeUuid="primary_physical"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kString));
+  ASSERT_TRUE(writer.WriteInternedString("volumeUuid"));
+  ASSERT_TRUE(writer.WriteString("primary_physical"));
+  // sdkVersion="20"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kInt));
+  ASSERT_TRUE(writer.WriteInternedString("sdkVersion"));
+  ASSERT_TRUE(writer.WriteInt32(20));
+  // databaseVersion="3"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kInt));
+  ASSERT_TRUE(writer.WriteInternedString("databaseVersion"));
+  ASSERT_TRUE(writer.WriteInt32(3));
+  // fingerprint="fingerprint-volumeuuid"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kString));
+  ASSERT_TRUE(writer.WriteInternedString("fingerprint"));
+  ASSERT_TRUE(writer.WriteString("fingerprint-volumeuuid"));
+  // />
+  ASSERT_TRUE(writer.WriteToken(Token::kEndTag, Type::kNull));
+  ASSERT_TRUE(writer.WriteInternedString("version"));
+
+  // <version> without sdkVersion should be ignored.
+  // <version
+  ASSERT_TRUE(writer.WriteToken(Token::kStartTag, Type::kNull));
+  ASSERT_TRUE(writer.WriteInternedString("version"));
+  // databaseVersion="3"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kInt));
+  ASSERT_TRUE(writer.WriteInternedString("databaseVersion"));
+  ASSERT_TRUE(writer.WriteInt32(3));
+  // fingerprint="fingerprint-nosdkversion"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kString));
+  ASSERT_TRUE(writer.WriteInternedString("fingerprint"));
+  ASSERT_TRUE(writer.WriteString("fingerprint-nosdkversion"));
+  // />
+  ASSERT_TRUE(writer.WriteToken(Token::kEndTag, Type::kNull));
+  ASSERT_TRUE(writer.WriteInternedString("version"));
+
+  // <version> without databaseVesrion should be ignored.
+  // <version
+  ASSERT_TRUE(writer.WriteToken(Token::kStartTag, Type::kNull));
+  ASSERT_TRUE(writer.WriteInternedString("version"));
+  // sdkVersion="20"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kInt));
+  ASSERT_TRUE(writer.WriteInternedString("sdkVersion"));
+  ASSERT_TRUE(writer.WriteInt32(20));
+  // fingerprint="fingerprint-nodatabaseversion"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kString));
+  ASSERT_TRUE(writer.WriteInternedString("fingerprint"));
+  ASSERT_TRUE(writer.WriteString("fingerprint-nodatabaseversion"));
+  // />
+  ASSERT_TRUE(writer.WriteToken(Token::kEndTag, Type::kNull));
+  ASSERT_TRUE(writer.WriteInternedString("version"));
+
+  // <version> without fingerprint should be ignored.
+  // <version
+  ASSERT_TRUE(writer.WriteToken(Token::kStartTag, Type::kNull));
+  ASSERT_TRUE(writer.WriteInternedString("version"));
+  // sdkVersion="20"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kInt));
+  ASSERT_TRUE(writer.WriteInternedString("sdkVersion"));
+  ASSERT_TRUE(writer.WriteInt32(20));
+  // databaseVersion="3"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kInt));
+  ASSERT_TRUE(writer.WriteInternedString("databaseVersion"));
+  ASSERT_TRUE(writer.WriteInt32(3));
+  // />
+  ASSERT_TRUE(writer.WriteToken(Token::kEndTag, Type::kNull));
+  ASSERT_TRUE(writer.WriteInternedString("version"));
+
+  // This is the <version> tag we want.
+  // <version
+  ASSERT_TRUE(writer.WriteToken(Token::kStartTag, Type::kNull));
+  ASSERT_TRUE(writer.WriteInternedString("version"));
+  // sdkVersion="30"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kInt));
+  ASSERT_TRUE(writer.WriteInternedString("sdkVersion"));
+  ASSERT_TRUE(writer.WriteInt32(30));
+  // databaseVersion="3"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kInt));
+  ASSERT_TRUE(writer.WriteInternedString("databaseVersion"));
+  ASSERT_TRUE(writer.WriteInt32(3));
+  // fingerprint="fingerprint-ok"
+  ASSERT_TRUE(writer.WriteToken(Token::kAttribute, Type::kString));
+  ASSERT_TRUE(writer.WriteInternedString("fingerprint"));
+  ASSERT_TRUE(writer.WriteString("fingerprint-ok"));
+  // />
+  ASSERT_TRUE(writer.WriteToken(Token::kEndTag, Type::kNull));
+  ASSERT_TRUE(writer.WriteInternedString("version"));
+
+  std::string fingerprint;
+  std::string sdk_version;
+  EXPECT_TRUE(GetFingerprintAndSdkVersionFromBinaryPackagesXml(
+      packages_file, &fingerprint, &sdk_version));
+  EXPECT_EQ("fingerprint-ok", fingerprint);
+  EXPECT_EQ("30", sdk_version);
+}
+
+TEST(ArcSetupUtil,
+     TestGetFingerprintAndSdkVersionFromBinaryPackagesXmlWithFileR) {
+  // Tests GetFingerprintAndSdkVersionFromBinaryPackagesXml() with packages.xml
+  // generated by Android R.
+  const char* src_dir = getenv("SRC");
+  ASSERT_NE(src_dir, nullptr);
+  base::FilePath test_file = base::FilePath(src_dir)
+                                 .AppendASCII("testdata")
+                                 .AppendASCII("packages_binary_r.xml");
+
+  std::string fingerprint;
+  std::string sdk_version;
+  EXPECT_TRUE(GetFingerprintAndSdkVersionFromBinaryPackagesXml(
+      test_file, &fingerprint, &sdk_version));
+  EXPECT_EQ(
+      "google/hatch/hatch_cheets:11/R102-14650.0.0/8375693:user/release-keys",
+      fingerprint);
+  EXPECT_EQ("30", sdk_version);
 }
 
 TEST(ArcSetupUtil, TestFindLine) {

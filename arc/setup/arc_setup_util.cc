@@ -60,6 +60,8 @@
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 
+#include "arc/setup/android_binary_xml_tokenizer.h"
+
 using base::StringPiece;
 
 namespace arc {
@@ -613,12 +615,65 @@ bool GetFingerprintAndSdkVersionFromPackagesXml(
     const base::FilePath& packages_xml_path,
     std::string* out_fingerprint,
     std::string* out_sdk_version) {
+  if (USE_ARCVM) {
+    // Newer version Android uses binary XML format.
+    if (GetFingerprintAndSdkVersionFromBinaryPackagesXml(
+            packages_xml_path, out_fingerprint, out_sdk_version)) {
+      return true;
+    }
+    // Failure may mean that the file is a text XML.
+    // TODO(hashimoto): Remove this fallback after switching to binary XML.
+    LOG(INFO) << "Failed to interpret the file as a binary XML. "
+              << "Going to read the file as a text XML.";
+  }
   if (FindLine(packages_xml_path,
                base::Bind(&FindFingerprintAndSdkVersion, out_fingerprint,
                           out_sdk_version))) {
     return true;  // found it.
   }
   LOG(WARNING) << "No fingerprint found in " << packages_xml_path.value();
+  return false;
+}
+
+bool GetFingerprintAndSdkVersionFromBinaryPackagesXml(
+    const base::FilePath& packages_xml_path,
+    std::string* out_fingerprint,
+    std::string* out_sdk_version) {
+  AndroidBinaryXmlTokenizer tokenizer;
+  if (!tokenizer.Init(packages_xml_path)) {
+    LOG(ERROR) << "Failed to initialize the tokenizer with file "
+               << packages_xml_path.value();
+    return false;
+  }
+  using Token = AndroidBinaryXmlTokenizer::Token;
+  while (tokenizer.Next()) {
+    // Try to find a tag whose name is "version".
+    if (tokenizer.token() == Token::kStartTag &&
+        tokenizer.name() == "version") {
+      // Get attributes of the "version" tag.
+      std::optional<int> sdk_version, database_version;
+      std::string volume_uuid, fingerprint;
+      while (tokenizer.Next() && tokenizer.token() == Token::kAttribute) {
+        if (tokenizer.name() == "sdkVersion") {
+          sdk_version = tokenizer.int_value();
+        } else if (tokenizer.name() == "databaseVersion") {
+          database_version = tokenizer.int_value();
+        } else if (tokenizer.name() == "volumeUuid") {
+          volume_uuid = tokenizer.string_value();
+        } else if (tokenizer.name() == "fingerprint") {
+          fingerprint = tokenizer.string_value();
+        }
+      }
+      // If volume_uuid is not empty, it's for an external storage and
+      // should be ignored.
+      if (volume_uuid.empty() && !fingerprint.empty() &&
+          sdk_version.has_value() && database_version.has_value()) {
+        *out_fingerprint = fingerprint;
+        *out_sdk_version = base::NumberToString(*sdk_version);
+        return true;
+      }
+    }
+  }
   return false;
 }
 

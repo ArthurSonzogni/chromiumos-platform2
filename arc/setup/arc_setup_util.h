@@ -159,6 +159,16 @@ bool GetFingerprintAndSdkVersionFromPackagesXml(
     std::string* out_fingerprint,
     std::string* out_sdk_version);
 
+// Reads Android's binary-format packages.xml at |packages_xml_path|, fills
+// |out_fingerprint| and |out_sdk_version| with the OS fingerprint and the SDK
+// version for the internal storage found in the XML.
+// If the file does not exist or no fingerprint is found in the file, returns
+// false.
+bool GetFingerprintAndSdkVersionFromBinaryPackagesXml(
+    const base::FilePath& packages_xml_path,
+    std::string* out_fingerprint,
+    std::string* out_sdk_version);
+
 // Creates |file_path| with |mode|. If the file already exists, this function
 // sets the file size to 0 and mode to |mode|. Returns true on success.
 bool CreateOrTruncate(const base::FilePath& file_path, mode_t mode);
