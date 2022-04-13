@@ -74,11 +74,6 @@ pkg_config("target_defaults") {
   ]
   if (!use.cellular) {
     defines += [ "DISABLE_CELLULAR" ]
-  } else {
-    # TODO(chromium:954634) Temporarily disable tests that depend on
-    # CellularCapabilityClassic until they are ported to use
-    # CellularCapability3gpp.
-    defines += [ "DISABLE_CELLULAR_CAPABILITY_CLASSIC_TESTS" ]
   }
 
   if (use.test || use.fuzzer) {
