@@ -188,6 +188,7 @@ if (use.test) {
   executable("arc-setup_testrunner") {
     sources = [
       "android_binary_xml_tokenizer_test.cc",
+      "android_binary_xml_tokenizer_test_util.cc",
       "arc_property_util_test.cc",
       "arc_setup_metrics_test.cc",
       "arc_setup_test.cc",
