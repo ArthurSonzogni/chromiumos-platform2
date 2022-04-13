@@ -36,9 +36,10 @@
 #include "oobe_config/rollback_constants.h"
 
 namespace oobe_config {
+
 namespace {
 
-using chromeos::rollback_network_config::mojom::RollbackNetworkConfig;
+using ::ash::rollback_network_config::mojom::RollbackNetworkConfig;
 
 std::unique_ptr<brillo::BaseMessageLoop> InitMessageLoop() {
   DCHECK(!brillo::MessageLoop::ThreadHasCurrent());
