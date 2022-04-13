@@ -8,6 +8,7 @@
 
 import time  # Used in benchmark unit test.
 import unittest
+from enum import Enum
 
 import numpy as np
 import pandas as pd
@@ -129,6 +130,66 @@ class Test_DataFrameCountTrieAccess(unittest.TestCase):
         self.assertEqual(s.counts((501, 501, 501, 501)), 1)
         fpsutils.benchmark('s.isin((501, 501, 501, 501))',
                            globals={**locals(), **globals()})
+
+
+class Test_has_columns(unittest.TestCase):
+    class Cols(Enum):
+        C1 = 'Col1'
+        C2 = 'Col2'
+
+    def test_has_columns_true(self):
+        df = pd.DataFrame({
+            'Col1': [0, 1, 2],
+            'Col2': [3, 2, 1],
+        })
+
+        self.assertTrue(fpsutils.has_columns(
+            df,
+            [self.Cols.C1, self.Cols.C2])
+        )
+        self.assertTrue(fpsutils.has_columns(
+            df,
+            [self.Cols.C1])
+        )
+        self.assertTrue(fpsutils.has_columns(
+            df,
+            ['Col1', 'Col2'])
+        )
+        self.assertTrue(fpsutils.has_columns(
+            df,
+            ['Col1'])
+        )
+        self.assertTrue(fpsutils.has_columns(
+            df,
+            [])
+        )
+        self.assertTrue(fpsutils.has_columns(
+            df,
+            {self.Cols.C1, self.Cols.C2})
+        )
+
+    def test_has_columns_false(self):
+        df = pd.DataFrame({
+            'Col0': [0, 1, 2],
+            'Col2': [3, 2, 1],
+        })
+
+        self.assertFalse(fpsutils.has_columns(
+            df,
+            [self.Cols.C1, self.Cols.C2])
+        )
+        self.assertFalse(fpsutils.has_columns(
+            df,
+            [self.Cols.C1])
+        )
+        self.assertFalse(fpsutils.has_columns(
+            df,
+            ['Col1'])
+        )
+        self.assertFalse(fpsutils.has_columns(
+            df,
+            {self.Cols.C1})
+        )
 
 
 class Test_Simple_Functions(unittest.TestCase):

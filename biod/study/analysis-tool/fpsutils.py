@@ -162,6 +162,17 @@ def discrete_hist(data) -> Tuple[npt.NDArray, npt.NDArray]:
     return np.unique(data, return_counts=True)
 
 
+def has_columns(df: pd.DataFrame, cols: Iterable[Union[Enum, str]]) -> bool:
+    """Check if the DataFrame `df` contains all `cols`.
+
+    This allows for specifying a list of Enums, whose `value` is the column
+    name that is expected.
+    """
+
+    col_strings = {isinstance(c, Enum) and c.value or str(c) for c in cols}
+    return col_strings <= {c for c in df.columns}
+
+
 def plt_discrete_hist(data):
 
     counts = np.bincount(data)
