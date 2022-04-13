@@ -38,263 +38,224 @@ namespace diagnostics {
 
 namespace {
 
-using chromeos::cros_healthd::mojom::AudioResultPtr;
-using chromeos::cros_healthd::mojom::BacklightResultPtr;
-using chromeos::cros_healthd::mojom::BatteryResultPtr;
-using chromeos::cros_healthd::mojom::BluetoothResultPtr;
-using chromeos::cros_healthd::mojom::BootMode;
-using chromeos::cros_healthd::mojom::BootPerformanceResultPtr;
-using chromeos::cros_healthd::mojom::BusDeviceClass;
-using chromeos::cros_healthd::mojom::BusInfo;
-using chromeos::cros_healthd::mojom::BusResultPtr;
-using chromeos::cros_healthd::mojom::CpuArchitectureEnum;
-using chromeos::cros_healthd::mojom::CpuResultPtr;
-using chromeos::cros_healthd::mojom::CryptoAlgorithm;
-using chromeos::cros_healthd::mojom::DisplayResultPtr;
-using chromeos::cros_healthd::mojom::EncryptionState;
-using chromeos::cros_healthd::mojom::ErrorType;
-using chromeos::cros_healthd::mojom::FanResultPtr;
-using chromeos::cros_healthd::mojom::GraphicsResultPtr;
-using chromeos::cros_healthd::mojom::MemoryResultPtr;
-using chromeos::cros_healthd::mojom::NetworkInterfaceInfo;
-using chromeos::cros_healthd::mojom::NetworkInterfaceResultPtr;
-using chromeos::cros_healthd::mojom::NetworkResultPtr;
-using chromeos::cros_healthd::mojom::NonRemovableBlockDeviceResultPtr;
-using chromeos::cros_healthd::mojom::NullableDoublePtr;
-using chromeos::cros_healthd::mojom::NullableUint32Ptr;
-using chromeos::cros_healthd::mojom::NullableUint64Ptr;
-using chromeos::cros_healthd::mojom::OsInfoPtr;
-using chromeos::cros_healthd::mojom::ProbeCategoryEnum;
-using chromeos::cros_healthd::mojom::ProbeErrorPtr;
-using chromeos::cros_healthd::mojom::ProcessResultPtr;
-using chromeos::cros_healthd::mojom::ProcessState;
-using chromeos::cros_healthd::mojom::StatefulPartitionResultPtr;
-using chromeos::cros_healthd::mojom::SystemResultPtr;
-using chromeos::cros_healthd::mojom::SystemResultV2Ptr;
-using chromeos::cros_healthd::mojom::TelemetryInfoPtr;
-using chromeos::cros_healthd::mojom::ThunderboltSecurityLevel;
-using chromeos::cros_healthd::mojom::TimezoneResultPtr;
-using chromeos::cros_healthd::mojom::TpmGSCVersion;
-using chromeos::cros_healthd::mojom::TpmResultPtr;
-using chromeos::network_config::mojom::NetworkType;
-using chromeos::network_config::mojom::PortalState;
-using chromeos::network_health::mojom::NetworkState;
-using chromeos::network_health::mojom::SignalStrengthStatsPtr;
-using chromeos::network_health::mojom::UInt32ValuePtr;
+namespace mojom = chromeos::cros_healthd::mojom;
+namespace network_config_mojom = chromeos::network_config::mojom;
+namespace network_health_mojom = chromeos::network_health::mojom;
 
 // Value printed for optional fields when they aren't populated.
 constexpr char kNotApplicableString[] = "N/A";
 
-constexpr std::pair<const char*, ProbeCategoryEnum> kCategorySwitches[] = {
-    {"battery", ProbeCategoryEnum::kBattery},
-    {"storage", ProbeCategoryEnum::kNonRemovableBlockDevices},
-    {"cpu", ProbeCategoryEnum::kCpu},
-    {"timezone", ProbeCategoryEnum::kTimezone},
-    {"memory", ProbeCategoryEnum::kMemory},
-    {"backlight", ProbeCategoryEnum::kBacklight},
-    {"fan", ProbeCategoryEnum::kFan},
-    {"stateful_partition", ProbeCategoryEnum::kStatefulPartition},
-    {"bluetooth", ProbeCategoryEnum::kBluetooth},
-    {"system", ProbeCategoryEnum::kSystem},
-    {"system2", ProbeCategoryEnum::kSystem2},
-    {"network", ProbeCategoryEnum::kNetwork},
-    {"audio", ProbeCategoryEnum::kAudio},
-    {"boot_performance", ProbeCategoryEnum::kBootPerformance},
-    {"bus", ProbeCategoryEnum::kBus},
-    {"network_interface", ProbeCategoryEnum::kNetworkInterface},
-    {"tpm", ProbeCategoryEnum::kTpm},
-    {"graphics", ProbeCategoryEnum::kGraphics},
-    {"display", ProbeCategoryEnum::kDisplay},
+constexpr std::pair<const char*, mojom::ProbeCategoryEnum> kCategorySwitches[] =
+    {
+        {"battery", mojom::ProbeCategoryEnum::kBattery},
+        {"storage", mojom::ProbeCategoryEnum::kNonRemovableBlockDevices},
+        {"cpu", mojom::ProbeCategoryEnum::kCpu},
+        {"timezone", mojom::ProbeCategoryEnum::kTimezone},
+        {"memory", mojom::ProbeCategoryEnum::kMemory},
+        {"backlight", mojom::ProbeCategoryEnum::kBacklight},
+        {"fan", mojom::ProbeCategoryEnum::kFan},
+        {"stateful_partition", mojom::ProbeCategoryEnum::kStatefulPartition},
+        {"bluetooth", mojom::ProbeCategoryEnum::kBluetooth},
+        {"system", mojom::ProbeCategoryEnum::kSystem},
+        {"system2", mojom::ProbeCategoryEnum::kSystem2},
+        {"network", mojom::ProbeCategoryEnum::kNetwork},
+        {"audio", mojom::ProbeCategoryEnum::kAudio},
+        {"boot_performance", mojom::ProbeCategoryEnum::kBootPerformance},
+        {"bus", mojom::ProbeCategoryEnum::kBus},
+        {"network_interface", mojom::ProbeCategoryEnum::kNetworkInterface},
+        {"tpm", mojom::ProbeCategoryEnum::kTpm},
+        {"graphics", mojom::ProbeCategoryEnum::kGraphics},
+        {"display", mojom::ProbeCategoryEnum::kDisplay},
 };
 
-std::string EnumToString(ProcessState state) {
+std::string EnumToString(mojom::ProcessState state) {
   switch (state) {
-    case ProcessState::kUnknown:
+    case mojom::ProcessState::kUnknown:
       return "Unknown";
-    case ProcessState::kRunning:
+    case mojom::ProcessState::kRunning:
       return "Running";
-    case ProcessState::kSleeping:
+    case mojom::ProcessState::kSleeping:
       return "Sleeping";
-    case ProcessState::kWaiting:
+    case mojom::ProcessState::kWaiting:
       return "Waiting";
-    case ProcessState::kZombie:
+    case mojom::ProcessState::kZombie:
       return "Zombie";
-    case ProcessState::kStopped:
+    case mojom::ProcessState::kStopped:
       return "Stopped";
-    case ProcessState::kTracingStop:
+    case mojom::ProcessState::kTracingStop:
       return "Tracing Stop";
-    case ProcessState::kDead:
+    case mojom::ProcessState::kDead:
       return "Dead";
   }
 }
 
-std::string EnumToString(ErrorType type) {
+std::string EnumToString(mojom::ErrorType type) {
   switch (type) {
-    case ErrorType::kUnknown:
+    case mojom::ErrorType::kUnknown:
       return "Unknown Error";
-    case ErrorType::kFileReadError:
+    case mojom::ErrorType::kFileReadError:
       return "File Read Error";
-    case ErrorType::kParseError:
+    case mojom::ErrorType::kParseError:
       return "Parse Error";
-    case ErrorType::kSystemUtilityError:
+    case mojom::ErrorType::kSystemUtilityError:
       return "Error running system utility";
-    case ErrorType::kServiceUnavailable:
+    case mojom::ErrorType::kServiceUnavailable:
       return "External service not aviailable";
   }
 }
 
-std::string EnumToString(CpuArchitectureEnum architecture) {
+std::string EnumToString(mojom::CpuArchitectureEnum architecture) {
   switch (architecture) {
-    case CpuArchitectureEnum::kUnknown:
+    case mojom::CpuArchitectureEnum::kUnknown:
       return "unknown";
-    case CpuArchitectureEnum::kX86_64:
+    case mojom::CpuArchitectureEnum::kX86_64:
       return "x86_64";
-    case CpuArchitectureEnum::kAArch64:
+    case mojom::CpuArchitectureEnum::kAArch64:
       return "aarch64";
-    case CpuArchitectureEnum::kArmv7l:
+    case mojom::CpuArchitectureEnum::kArmv7l:
       return "armv7l";
   }
 }
 
-std::string EnumToString(NetworkType type) {
+std::string EnumToString(network_config_mojom::NetworkType type) {
   switch (type) {
-    case NetworkType::kAll:
+    case network_config_mojom::NetworkType::kAll:
       return "Unknown";
-    case NetworkType::kCellular:
+    case network_config_mojom::NetworkType::kCellular:
       return "Cellular";
-    case NetworkType::kEthernet:
+    case network_config_mojom::NetworkType::kEthernet:
       return "Ethernet";
-    case NetworkType::kMobile:
+    case network_config_mojom::NetworkType::kMobile:
       return "Mobile";
-    case NetworkType::kTether:
+    case network_config_mojom::NetworkType::kTether:
       return "Tether";
-    case NetworkType::kVPN:
+    case network_config_mojom::NetworkType::kVPN:
       return "VPN";
-    case NetworkType::kWireless:
+    case network_config_mojom::NetworkType::kWireless:
       return "Wireless";
-    case NetworkType::kWiFi:
+    case network_config_mojom::NetworkType::kWiFi:
       return "WiFi";
   }
 }
 
-std::string EnumToString(NetworkState state) {
+std::string EnumToString(network_health_mojom::NetworkState state) {
   switch (state) {
-    case NetworkState::kUninitialized:
+    case network_health_mojom::NetworkState::kUninitialized:
       return "Uninitialized";
-    case NetworkState::kDisabled:
+    case network_health_mojom::NetworkState::kDisabled:
       return "Disabled";
-    case NetworkState::kProhibited:
+    case network_health_mojom::NetworkState::kProhibited:
       return "Prohibited";
-    case NetworkState::kNotConnected:
+    case network_health_mojom::NetworkState::kNotConnected:
       return "Not Connected";
-    case NetworkState::kConnecting:
+    case network_health_mojom::NetworkState::kConnecting:
       return "Connecting";
-    case NetworkState::kPortal:
+    case network_health_mojom::NetworkState::kPortal:
       return "Portal";
-    case NetworkState::kConnected:
+    case network_health_mojom::NetworkState::kConnected:
       return "Connected";
-    case NetworkState::kOnline:
+    case network_health_mojom::NetworkState::kOnline:
       return "Online";
   }
 }
 
-std::string EnumToString(PortalState state) {
+std::string EnumToString(network_config_mojom::PortalState state) {
   switch (state) {
-    case PortalState::kUnknown:
+    case network_config_mojom::PortalState::kUnknown:
       return "Unknown";
-    case PortalState::kOnline:
+    case network_config_mojom::PortalState::kOnline:
       return "Online";
-    case PortalState::kPortalSuspected:
+    case network_config_mojom::PortalState::kPortalSuspected:
       return "Portal Suspected";
-    case PortalState::kPortal:
+    case network_config_mojom::PortalState::kPortal:
       return "Portal Detected";
-    case PortalState::kProxyAuthRequired:
+    case network_config_mojom::PortalState::kProxyAuthRequired:
       return "Proxy Auth Required";
-    case PortalState::kNoInternet:
+    case network_config_mojom::PortalState::kNoInternet:
       return "No Internet";
   }
 }
 
-std::string EnumToString(EncryptionState encryption_state) {
+std::string EnumToString(mojom::EncryptionState encryption_state) {
   switch (encryption_state) {
-    case EncryptionState::kEncryptionDisabled:
+    case mojom::EncryptionState::kEncryptionDisabled:
       return "Memory encryption disabled";
-    case EncryptionState::kTmeEnabled:
+    case mojom::EncryptionState::kTmeEnabled:
       return "TME enabled";
-    case EncryptionState::kMktmeEnabled:
+    case mojom::EncryptionState::kMktmeEnabled:
       return "MKTME enabled";
     default:
       return "Unknown state";
   }
 }
 
-std::string EnumToString(CryptoAlgorithm algorithm) {
+std::string EnumToString(mojom::CryptoAlgorithm algorithm) {
   switch (algorithm) {
-    case CryptoAlgorithm::kAesXts128:
+    case mojom::CryptoAlgorithm::kAesXts128:
       return "AES-XTS-128";
-    case CryptoAlgorithm::kAesXts256:
+    case mojom::CryptoAlgorithm::kAesXts256:
       return "AES-XTS-256";
     default:
       return "Invalid Algorithm";
   }
 }
 
-std::string EnumToString(BusDeviceClass device_class) {
+std::string EnumToString(mojom::BusDeviceClass device_class) {
   switch (device_class) {
-    case BusDeviceClass::kOthers:
+    case mojom::BusDeviceClass::kOthers:
       return "others";
-    case BusDeviceClass::kDisplayController:
+    case mojom::BusDeviceClass::kDisplayController:
       return "display controller";
-    case BusDeviceClass::kEthernetController:
+    case mojom::BusDeviceClass::kEthernetController:
       return "ethernet controller";
-    case BusDeviceClass::kWirelessController:
+    case mojom::BusDeviceClass::kWirelessController:
       return "wireless controller";
-    case BusDeviceClass::kBluetoothAdapter:
+    case mojom::BusDeviceClass::kBluetoothAdapter:
       return "bluetooth controller";
-    case BusDeviceClass::kThunderboltController:
+    case mojom::BusDeviceClass::kThunderboltController:
       return "thunderbolt controller";
   }
 }
 
-std::string EnumToString(BootMode mode) {
+std::string EnumToString(mojom::BootMode mode) {
   switch (mode) {
-    case BootMode::kUnknown:
+    case mojom::BootMode::kUnknown:
       return "Unknown";
-    case BootMode::kCrosSecure:
+    case mojom::BootMode::kCrosSecure:
       return "cros_secure";
-    case BootMode::kCrosEfi:
+    case mojom::BootMode::kCrosEfi:
       return "cros_efi";
-    case BootMode::kCrosLegacy:
+    case mojom::BootMode::kCrosLegacy:
       return "cros_legacy";
-    case BootMode::kCrosEfiSecure:
+    case mojom::BootMode::kCrosEfiSecure:
       return "cros_efi_secure";
   }
 }
 
-std::string EnumToString(TpmGSCVersion version) {
+std::string EnumToString(mojom::TpmGSCVersion version) {
   switch (version) {
-    case TpmGSCVersion::kNotGSC:
+    case mojom::TpmGSCVersion::kNotGSC:
       return "NotGSC";
-    case TpmGSCVersion::kCr50:
+    case mojom::TpmGSCVersion::kCr50:
       return "Cr50";
-    case TpmGSCVersion::kTi50:
+    case mojom::TpmGSCVersion::kTi50:
       return "Ti50";
   }
 }
 
-std::string EnumToString(ThunderboltSecurityLevel level) {
+std::string EnumToString(mojom::ThunderboltSecurityLevel level) {
   switch (level) {
-    case ThunderboltSecurityLevel::kNone:
+    case mojom::ThunderboltSecurityLevel::kNone:
       return "None";
-    case ThunderboltSecurityLevel::kUserLevel:
+    case mojom::ThunderboltSecurityLevel::kUserLevel:
       return "User";
-    case ThunderboltSecurityLevel::kSecureLevel:
+    case mojom::ThunderboltSecurityLevel::kSecureLevel:
       return "Secure";
-    case ThunderboltSecurityLevel::kDpOnlyLevel:
+    case mojom::ThunderboltSecurityLevel::kDpOnlyLevel:
       return "DpOnly";
-    case ThunderboltSecurityLevel::kUsbOnlyLevel:
+    case mojom::ThunderboltSecurityLevel::kUsbOnlyLevel:
       return "UsbOnly";
-    case ThunderboltSecurityLevel::kNoPcieLevel:
+    case mojom::ThunderboltSecurityLevel::kNoPcieLevel:
       return "NoPcie";
   }
 }
@@ -313,16 +274,19 @@ void SetJsonDictValue(const std::string& key,
   } else if constexpr (std::is_same_v<T, std::optional<std::string>>) {
     if (value.has_value())
       SetJsonDictValue(key, value.value(), output);
-  } else if constexpr (std::is_same_v<T, NullableDoublePtr>) {
+  } else if constexpr (std::is_same_v<T, mojom::NullableDoublePtr>) {
     if (value)
       SetJsonDictValue(key, value->value, output);
-  } else if constexpr (std::is_same_v<T, NullableUint32Ptr>) {
+  } else if constexpr (std::is_same_v<T, mojom::NullableUint32Ptr>) {
     if (value)
       SetJsonDictValue(key, value->value, output);
-  } else if constexpr (std::is_same_v<T, NullableUint64Ptr>) {
+  } else if constexpr (std::is_same_v<T, mojom::NullableUint64Ptr>) {
     if (value)
       SetJsonDictValue(key, value->value, output);
-  } else if constexpr (std::is_same_v<T, UInt32ValuePtr>) {
+    // TODO(b/194872701): This line cannot be broken because the linter issue.
+    // clang-format off
+  } else if constexpr (std::is_same_v<T, network_health_mojom::UInt32ValuePtr>){
+    // clang-format on
     if (value)
       SetJsonDictValue(key, value->value, output);
   } else if constexpr (std::is_enum_v<T>) {
@@ -361,7 +325,7 @@ void OutputJson(const base::Value& output) {
   std::cout << json << std::endl;
 }
 
-void DisplayError(const ProbeErrorPtr& error) {
+void DisplayError(const mojom::ProbeErrorPtr& error) {
   base::Value output{base::Value::Type::DICTIONARY};
   SET_DICT(type, error, &output);
   SET_DICT(msg, error, &output);
@@ -369,7 +333,7 @@ void DisplayError(const ProbeErrorPtr& error) {
   OutputJson(output);
 }
 
-void DisplayProcessInfo(const ProcessResultPtr& result) {
+void DisplayProcessInfo(const mojom::ProcessResultPtr& result) {
   if (result.is_null())
     return;
 
@@ -401,7 +365,7 @@ void DisplayProcessInfo(const ProcessResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayBatteryInfo(const BatteryResultPtr& result) {
+void DisplayBatteryInfo(const mojom::BatteryResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -437,7 +401,7 @@ void DisplayBatteryInfo(const BatteryResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayAudioInfo(const AudioResultPtr& audio_result) {
+void DisplayAudioInfo(const mojom::AudioResultPtr& audio_result) {
   if (audio_result->is_error()) {
     DisplayError(audio_result->get_error());
     return;
@@ -462,7 +426,7 @@ void DisplayAudioInfo(const AudioResultPtr& audio_result) {
   OutputJson(output);
 }
 
-void DisplayDisplayInfo(const DisplayResultPtr& display_result) {
+void DisplayDisplayInfo(const mojom::DisplayResultPtr& display_result) {
   if (display_result->is_error()) {
     DisplayError(display_result->get_error());
     return;
@@ -502,7 +466,7 @@ void DisplayDisplayInfo(const DisplayResultPtr& display_result) {
   OutputJson(output);
 }
 
-void DisplayBootPerformanceInfo(const BootPerformanceResultPtr& result) {
+void DisplayBootPerformanceInfo(const mojom::BootPerformanceResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -521,7 +485,8 @@ void DisplayBootPerformanceInfo(const BootPerformanceResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayBlockDeviceInfo(const NonRemovableBlockDeviceResultPtr& result) {
+void DisplayBlockDeviceInfo(
+    const mojom::NonRemovableBlockDeviceResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -555,7 +520,7 @@ void DisplayBlockDeviceInfo(const NonRemovableBlockDeviceResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayBluetoothInfo(const BluetoothResultPtr& result) {
+void DisplayBluetoothInfo(const mojom::BluetoothResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -579,7 +544,7 @@ void DisplayBluetoothInfo(const BluetoothResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayCpuInfo(const CpuResultPtr& result) {
+void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -648,7 +613,7 @@ void DisplayCpuInfo(const CpuResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayFanInfo(const FanResultPtr& result) {
+void DisplayFanInfo(const mojom::FanResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -668,7 +633,7 @@ void DisplayFanInfo(const FanResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayNetworkInfo(const NetworkResultPtr& result) {
+void DisplayNetworkInfo(const mojom::NetworkResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -708,7 +673,8 @@ void DisplayNetworkInfo(const NetworkResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayNetworkInterfaceInfo(const NetworkInterfaceResultPtr& result) {
+void DisplayNetworkInterfaceInfo(
+    const mojom::NetworkInterfaceResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -723,7 +689,7 @@ void DisplayNetworkInterfaceInfo(const NetworkInterfaceResultPtr& result) {
   for (const auto& network_interface : infos) {
     base::Value out_network_interface{base::Value::Type::DICTIONARY};
     switch (network_interface->which()) {
-      case NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
+      case mojom::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
         const auto& wireless_interface =
             network_interface->get_wireless_interface_info();
         auto* out_wireless_interface = out_network_interface.SetKey(
@@ -753,7 +719,7 @@ void DisplayNetworkInterfaceInfo(const NetworkInterfaceResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayTimezoneInfo(const TimezoneResultPtr& result) {
+void DisplayTimezoneInfo(const mojom::TimezoneResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -769,7 +735,7 @@ void DisplayTimezoneInfo(const TimezoneResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayMemoryInfo(const MemoryResultPtr& result) {
+void DisplayMemoryInfo(const mojom::MemoryResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -797,7 +763,7 @@ void DisplayMemoryInfo(const MemoryResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayBacklightInfo(const BacklightResultPtr& result) {
+void DisplayBacklightInfo(const mojom::BacklightResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -820,7 +786,8 @@ void DisplayBacklightInfo(const BacklightResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayStatefulPartitionInfo(const StatefulPartitionResultPtr& result) {
+void DisplayStatefulPartitionInfo(
+    const mojom::StatefulPartitionResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -838,7 +805,7 @@ void DisplayStatefulPartitionInfo(const StatefulPartitionResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplaySystemInfo(const SystemResultPtr& system_result) {
+void DisplaySystemInfo(const mojom::SystemResultPtr& system_result) {
   if (system_result->is_error()) {
     DisplayError(system_result->get_error());
     return;
@@ -882,7 +849,7 @@ void DisplaySystemInfo(const SystemResultPtr& system_result) {
   OutputCSV(headers, values);
 }
 
-void DisplaySystemInfoV2(const SystemResultV2Ptr& system_result) {
+void DisplaySystemInfoV2(const mojom::SystemResultV2Ptr& system_result) {
   if (system_result->is_error()) {
     DisplayError(system_result->get_error());
     return;
@@ -938,7 +905,7 @@ void DisplaySystemInfoV2(const SystemResultV2Ptr& system_result) {
   OutputJson(output);
 }
 
-void DisplayBusDevices(const BusResultPtr& bus_result) {
+void DisplayBusDevices(const mojom::BusResultPtr& bus_result) {
   if (bus_result->is_error()) {
     DisplayError(bus_result->get_error());
     return;
@@ -957,7 +924,7 @@ void DisplayBusDevices(const BusResultPtr& bus_result) {
     auto* out_bus_info = out_device.SetKey(
         "bus_info", base::Value{base::Value::Type::DICTIONARY});
     switch (device->bus_info->which()) {
-      case BusInfo::Tag::PCI_BUS_INFO: {
+      case mojom::BusInfo::Tag::PCI_BUS_INFO: {
         auto* out_pci_info = out_bus_info->SetKey(
             "pci_bus_info", base::Value{base::Value::Type::DICTIONARY});
         const auto& pci_info = device->bus_info->get_pci_bus_info();
@@ -969,7 +936,7 @@ void DisplayBusDevices(const BusResultPtr& bus_result) {
         SET_DICT(driver, pci_info, out_pci_info);
         break;
       }
-      case BusInfo::Tag::USB_BUS_INFO: {
+      case mojom::BusInfo::Tag::USB_BUS_INFO: {
         const auto& usb_info = device->bus_info->get_usb_bus_info();
         auto* out_usb_info = out_bus_info->SetKey(
             "usb_bus_info", base::Value{base::Value::Type::DICTIONARY});
@@ -991,7 +958,7 @@ void DisplayBusDevices(const BusResultPtr& bus_result) {
         }
         break;
       }
-      case BusInfo::Tag::THUNDERBOLT_BUS_INFO: {
+      case mojom::BusInfo::Tag::THUNDERBOLT_BUS_INFO: {
         const auto& thunderbolt_info =
             device->bus_info->get_thunderbolt_bus_info();
         auto* out_thunderbolt_info = out_bus_info->SetKey(
@@ -1030,7 +997,7 @@ void DisplayBusDevices(const BusResultPtr& bus_result) {
   OutputJson(output);
 }
 
-void DisplayTpmInfo(const TpmResultPtr& result) {
+void DisplayTpmInfo(const mojom::TpmResultPtr& result) {
   if (result->is_error()) {
     DisplayError(result->get_error());
     return;
@@ -1085,7 +1052,7 @@ void DisplayTpmInfo(const TpmResultPtr& result) {
   OutputJson(output);
 }
 
-void DisplayGraphicsInfo(const GraphicsResultPtr& graphics_result) {
+void DisplayGraphicsInfo(const mojom::GraphicsResultPtr& graphics_result) {
   if (graphics_result->is_error()) {
     DisplayError(graphics_result->get_error());
     return;
@@ -1126,7 +1093,7 @@ void DisplayGraphicsInfo(const GraphicsResultPtr& graphics_result) {
 }
 
 // Displays the retrieved telemetry information to the console.
-void DisplayTelemetryInfo(const TelemetryInfoPtr& info) {
+void DisplayTelemetryInfo(const mojom::TelemetryInfoPtr& info) {
   const auto& battery_result = info->battery_result;
   if (battery_result)
     DisplayBatteryInfo(battery_result);
@@ -1232,9 +1199,8 @@ int telem_main(int argc, char** argv) {
 
   base::AtExitManager at_exit_manager;
 
-  std::map<std::string, chromeos::cros_healthd::mojom::ProbeCategoryEnum>
-      switch_to_category(std::begin(kCategorySwitches),
-                         std::end(kCategorySwitches));
+  std::map<std::string, mojom::ProbeCategoryEnum> switch_to_category(
+      std::begin(kCategorySwitches), std::end(kCategorySwitches));
 
   logging::InitLogging(logging::LoggingSettings());
 
@@ -1258,8 +1224,7 @@ int telem_main(int argc, char** argv) {
   // Probe category info, if requested.
   if (FLAGS_category != "") {
     // Validate the category flag.
-    std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
-        categories_to_probe;
+    std::vector<mojom::ProbeCategoryEnum> categories_to_probe;
     std::vector<std::string> input_categories = base::SplitString(
         FLAGS_category, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     for (const auto& category : input_categories) {
@@ -1272,7 +1237,7 @@ int telem_main(int argc, char** argv) {
     }
 
     // Probe and display the category or categories.
-    chromeos::cros_healthd::mojom::TelemetryInfoPtr result =
+    mojom::TelemetryInfoPtr result =
         adapter->GetTelemetryInfo(categories_to_probe);
 
     if (!result) {
