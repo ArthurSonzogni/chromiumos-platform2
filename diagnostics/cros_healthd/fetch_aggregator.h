@@ -37,6 +37,8 @@
 
 namespace diagnostics {
 
+namespace mojom = chromeos::cros_healthd::mojom;
+
 // This class is responsible for aggregating probe data from various fetchers,
 // some of which may be asynchronous, and running the given callback when all
 // probe data has been fetched.
@@ -49,10 +51,8 @@ class FetchAggregator final {
 
   // Runs the aggregator, which will collect all relevant data and then run the
   // callback.
-  void Run(const std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>&
-               categories_to_probe,
-           chromeos::cros_healthd::mojom::CrosHealthdProbeService::
-               ProbeTelemetryInfoCallback callback);
+  void Run(const std::vector<mojom::ProbeCategoryEnum>& categories_to_probe,
+           mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback);
 
  private:
   // Each call of |Run()| creates a |ProbeState| and its lifecycle is bonded to
@@ -61,31 +61,26 @@ class FetchAggregator final {
   // calls.
   struct ProbeState {
     // Contains requested categories which have not been fetched yet.
-    std::set<chromeos::cros_healthd::mojom::ProbeCategoryEnum>
-        remaining_categories;
-    chromeos::cros_healthd::mojom::TelemetryInfoPtr result;
+    std::set<mojom::ProbeCategoryEnum> remaining_categories;
+    mojom::TelemetryInfoPtr result;
     // The callback to return the result.
-    chromeos::cros_healthd::mojom::CrosHealthdProbeService::
-        ProbeTelemetryInfoCallback callback;
+    mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback;
   };
 
   const std::unique_ptr<ProbeState>& CreateProbeState(
-      const std::vector<chromeos::cros_healthd::mojom::ProbeCategoryEnum>&
-          categories_to_probe,
-      chromeos::cros_healthd::mojom::CrosHealthdProbeService::
-          ProbeTelemetryInfoCallback callback);
+      const std::vector<mojom::ProbeCategoryEnum>& categories_to_probe,
+      mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback);
 
   // Wraps a fetch operation from either a synchronous or asynchronous fetcher.
   template <class T>
-  void WrapFetchProbeData(
-      chromeos::cros_healthd::mojom::ProbeCategoryEnum category,
-      const std::unique_ptr<ProbeState>& state,
-      T* response_data,
-      T fetched_data);
+  void WrapFetchProbeData(mojom::ProbeCategoryEnum category,
+                          const std::unique_ptr<ProbeState>& state,
+                          T* response_data,
+                          T fetched_data);
 
   // Completes a probe category of a probe state. If all the categories are
   // probed, call the callback.
-  void CompleteProbe(chromeos::cros_healthd::mojom::ProbeCategoryEnum category,
+  void CompleteProbe(mojom::ProbeCategoryEnum category,
                      const std::unique_ptr<ProbeState>& state);
 
  private:

@@ -16,12 +16,6 @@
 
 namespace diagnostics {
 
-namespace {
-
-namespace mojo_ipc = chromeos::cros_healthd::mojom;
-
-}  // namespace
-
 FetchAggregator::FetchAggregator(Context* context)
     : audio_fetcher_(context),
       backlight_fetcher_(context),
@@ -45,8 +39,8 @@ FetchAggregator::FetchAggregator(Context* context)
 FetchAggregator::~FetchAggregator() = default;
 
 void FetchAggregator::Run(
-    const std::vector<mojo_ipc::ProbeCategoryEnum>& categories_to_probe,
-    mojo_ipc::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback) {
+    const std::vector<mojom::ProbeCategoryEnum>& categories_to_probe,
+    mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback) {
   const auto& state =
       CreateProbeState(categories_to_probe, std::move(callback));
   auto& info = state->result;
@@ -55,123 +49,123 @@ void FetchAggregator::Run(
 
   for (const auto category : remaining_categories) {
     switch (category) {
-      case mojo_ipc::ProbeCategoryEnum::kUnknown: {
+      case mojom::ProbeCategoryEnum::kUnknown: {
         // Got unknown category. Just complete it and continue.
         CompleteProbe(category, state);
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kBattery: {
+      case mojom::ProbeCategoryEnum::kBattery: {
         WrapFetchProbeData(category, state, &info->battery_result,
                            battery_fetcher_.FetchBatteryInfo());
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kCpu: {
+      case mojom::ProbeCategoryEnum::kCpu: {
         WrapFetchProbeData(category, state, &info->cpu_result,
                            cpu_fetcher_.FetchCpuInfo());
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kNonRemovableBlockDevices: {
+      case mojom::ProbeCategoryEnum::kNonRemovableBlockDevices: {
         WrapFetchProbeData(category, state, &info->block_device_result,
                            disk_fetcher_.FetchNonRemovableBlockDevicesInfo());
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kTimezone: {
+      case mojom::ProbeCategoryEnum::kTimezone: {
         WrapFetchProbeData(category, state, &info->timezone_result,
                            timezone_fetcher_.FetchTimezoneInfo());
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kMemory: {
+      case mojom::ProbeCategoryEnum::kMemory: {
         memory_fetcher_.FetchMemoryInfo(base::BindOnce(
-            &FetchAggregator::WrapFetchProbeData<mojo_ipc::MemoryResultPtr>,
+            &FetchAggregator::WrapFetchProbeData<mojom::MemoryResultPtr>,
             weak_factory_.GetWeakPtr(), category, std::cref(state),
             &info->memory_result));
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kBacklight: {
+      case mojom::ProbeCategoryEnum::kBacklight: {
         WrapFetchProbeData(category, state, &info->backlight_result,
                            backlight_fetcher_.FetchBacklightInfo());
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kFan: {
+      case mojom::ProbeCategoryEnum::kFan: {
         fan_fetcher_.FetchFanInfo(base::BindOnce(
-            &FetchAggregator::WrapFetchProbeData<mojo_ipc::FanResultPtr>,
+            &FetchAggregator::WrapFetchProbeData<mojom::FanResultPtr>,
             weak_factory_.GetWeakPtr(), category, std::cref(state),
             &info->fan_result));
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kStatefulPartition: {
+      case mojom::ProbeCategoryEnum::kStatefulPartition: {
         WrapFetchProbeData(
             category, state, &info->stateful_partition_result,
             stateful_partition_fetcher_.FetchStatefulPartitionInfo());
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kBluetooth: {
+      case mojom::ProbeCategoryEnum::kBluetooth: {
         WrapFetchProbeData(category, state, &info->bluetooth_result,
                            bluetooth_fetcher_.FetchBluetoothInfo());
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kSystem: {
+      case mojom::ProbeCategoryEnum::kSystem: {
         system_fetcher_.FetchSystemInfo(base::BindOnce(
-            &FetchAggregator::WrapFetchProbeData<mojo_ipc::SystemResultPtr>,
+            &FetchAggregator::WrapFetchProbeData<mojom::SystemResultPtr>,
             weak_factory_.GetWeakPtr(), category, std::cref(state),
             &info->system_result));
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kSystem2: {
+      case mojom::ProbeCategoryEnum::kSystem2: {
         system_fetcher_.FetchSystemInfoV2(base::BindOnce(
-            &FetchAggregator::WrapFetchProbeData<mojo_ipc::SystemResultV2Ptr>,
+            &FetchAggregator::WrapFetchProbeData<mojom::SystemResultV2Ptr>,
             weak_factory_.GetWeakPtr(), category, std::cref(state),
             &info->system_result_v2));
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kNetwork: {
+      case mojom::ProbeCategoryEnum::kNetwork: {
         network_fetcher_.FetchNetworkInfo(base::BindOnce(
-            &FetchAggregator::WrapFetchProbeData<mojo_ipc::NetworkResultPtr>,
+            &FetchAggregator::WrapFetchProbeData<mojom::NetworkResultPtr>,
             weak_factory_.GetWeakPtr(), category, std::cref(state),
             &info->network_result));
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kAudio: {
+      case mojom::ProbeCategoryEnum::kAudio: {
         WrapFetchProbeData(category, state, &info->audio_result,
                            audio_fetcher_.FetchAudioInfo());
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kBootPerformance: {
+      case mojom::ProbeCategoryEnum::kBootPerformance: {
         WrapFetchProbeData(
             category, state, &info->boot_performance_result,
             boot_performance_fetcher_.FetchBootPerformanceInfo());
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kBus: {
+      case mojom::ProbeCategoryEnum::kBus: {
         bus_fetcher_.FetchBusDevices(base::BindOnce(
-            &FetchAggregator::WrapFetchProbeData<mojo_ipc::BusResultPtr>,
+            &FetchAggregator::WrapFetchProbeData<mojom::BusResultPtr>,
             weak_factory_.GetWeakPtr(), category, std::cref(state),
             &info->bus_result));
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kTpm: {
+      case mojom::ProbeCategoryEnum::kTpm: {
         tpm_fetcher_.FetchTpmInfo(base::BindOnce(
-            &FetchAggregator::WrapFetchProbeData<mojo_ipc::TpmResultPtr>,
+            &FetchAggregator::WrapFetchProbeData<mojom::TpmResultPtr>,
             weak_factory_.GetWeakPtr(), category, std::cref(state),
             &info->tpm_result));
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kNetworkInterface: {
+      case mojom::ProbeCategoryEnum::kNetworkInterface: {
         network_interface_fetcher_.FetchNetworkInterfaceInfo(
             base::BindOnce(&FetchAggregator::WrapFetchProbeData<
-                               mojo_ipc::NetworkInterfaceResultPtr>,
+                               mojom::NetworkInterfaceResultPtr>,
                            weak_factory_.GetWeakPtr(), category,
                            std::cref(state), &info->network_interface_result));
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kGraphics: {
+      case mojom::ProbeCategoryEnum::kGraphics: {
         WrapFetchProbeData(category, state, &info->graphics_result,
                            graphics_fetcher_.FetchGraphicsInfo());
         break;
       }
-      case mojo_ipc::ProbeCategoryEnum::kDisplay: {
+      case mojom::ProbeCategoryEnum::kDisplay: {
         display_fetcher_.FetchDisplayInfo(base::BindOnce(
-            &FetchAggregator::WrapFetchProbeData<mojo_ipc::DisplayResultPtr>,
+            &FetchAggregator::WrapFetchProbeData<mojom::DisplayResultPtr>,
             weak_factory_.GetWeakPtr(), category, std::cref(state),
             &info->display_result));
         break;
@@ -182,23 +176,23 @@ void FetchAggregator::Run(
 
 const std::unique_ptr<FetchAggregator::ProbeState>&
 FetchAggregator::CreateProbeState(
-    const std::vector<mojo_ipc::ProbeCategoryEnum>& categories_to_probe,
-    mojo_ipc::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback) {
+    const std::vector<mojom::ProbeCategoryEnum>& categories_to_probe,
+    mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback) {
   const auto [it, success] =
       probe_states_.insert(std::make_unique<ProbeState>());
   DCHECK(success);
   const auto& state = *it;
   DCHECK(state);
-  state->remaining_categories = std::set<mojo_ipc::ProbeCategoryEnum>(
+  state->remaining_categories = std::set<mojom::ProbeCategoryEnum>(
       categories_to_probe.begin(), categories_to_probe.end());
-  state->result = mojo_ipc::TelemetryInfo::New();
+  state->result = mojom::TelemetryInfo::New();
   state->callback = std::move(callback);
   return state;
 }
 
 template <class T>
 void FetchAggregator::WrapFetchProbeData(
-    mojo_ipc::ProbeCategoryEnum category,
+    mojom::ProbeCategoryEnum category,
     const std::unique_ptr<ProbeState>& state,
     T* response_data,
     T fetched_data) {
