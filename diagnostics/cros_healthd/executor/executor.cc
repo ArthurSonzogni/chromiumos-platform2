@@ -63,14 +63,9 @@ constexpr auto kWirelessInterfaceRegex = R"((wl[a-z][a-z0-9]{1,12}[0-9]))";
 constexpr char kMemtesterSeccompPolicyPath[] = "memtester-seccomp.policy";
 constexpr char kMemtesterBinary[] = "/usr/sbin/memtester";
 
-// Path to msr file. This file can be read by root only.
-// Values of MSR registers IA32_TME_CAPABILITY (0x981) and IA32_TME_ACTIVATE_MSR
-// (0x982) will be the same in all CPU cores. Therefore, we are only interested
-// in reading the values in CPU0.
-constexpr char kMsrPath[] = "/dev/cpu/0/msr";
-// Fetch encryption data from following MSR registers IA32_TME_CAPABILITY
-// (0x981) and IA32_TME_ACTIVATE_MSR (0x982) to report tme telemetry data.
-constexpr std::array<uint32_t, 2> kMsrAccessAllowList{0x981, 0x982};
+// Whitelist of msr registers that can be read by the ReadMsr call.
+constexpr uint32_t kMsrAccessAllowList[] = {cpu_msr::kIA32TmeCapability,
+                                            cpu_msr::kIA32TmeActivate};
 
 // Path to the UEFI SecureBoot file. This file can be read by root only.
 // It's one of EFI globally defined variables (EFI_GLOBAL_VARIABLE, fixed UUID
@@ -91,16 +86,6 @@ void RunMojoProcessResultCallback(
 
 bool IsValidWirelessInterfaceName(const std::string& interface_name) {
   return (RE2::FullMatch(interface_name, kWirelessInterfaceRegex, nullptr));
-}
-
-bool IsMsrAccessAllowed(uint32_t msr) {
-  for (auto it = kMsrAccessAllowList.begin(); it != kMsrAccessAllowList.end();
-       it++) {
-    if (*it == msr) {
-      return true;
-    }
-  }
-  return false;
 }
 
 }  // namespace
@@ -354,34 +339,35 @@ void Executor::GetProcessIOContents(const uint32_t pid,
   std::move(callback).Run(result);
 }
 
-void Executor::ReadMsr(const uint32_t msr_reg, ReadMsrCallback callback) {
-  mojom::ExecutedProcessResult status;
-  uint64_t val = 0;
-  if (!IsMsrAccessAllowed(msr_reg)) {
-    status.return_code = EXIT_FAILURE;
-    status.err = "MSR access not allowed";
-    std::move(callback).Run(status.Clone(), val);
+void Executor::ReadMsr(const uint32_t msr_reg,
+                       uint32_t cpu_index,
+                       ReadMsrCallback callback) {
+  if (std::find(std::begin(kMsrAccessAllowList), std::end(kMsrAccessAllowList),
+                msr_reg) == std::end(kMsrAccessAllowList)) {
+    LOG(ERROR) << "MSR access not allowed";
+    std::move(callback).Run(nullptr);
     return;
   }
-  base::File msr_fd(base::FilePath(kMsrPath),
-                    base::File::FLAG_OPEN | base::File::FLAG_READ);
+  base::FilePath msr_path = base::FilePath("/dev/cpu")
+                                .Append(std::to_string(cpu_index))
+                                .Append("msr");
+  base::File msr_fd(msr_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!msr_fd.IsValid()) {
-    status.return_code = EXIT_FAILURE;
-    status.err = "Could not open " + std::string(kMsrPath);
-    std::move(callback).Run(status.Clone(), val);
+    LOG(ERROR) << "Could not open " << msr_path.value();
+    std::move(callback).Run(nullptr);
     return;
   }
-  char msr_buf[sizeof(uint64_t)];
-  // Read MSR register.
-  if (sizeof(msr_buf) != msr_fd.Read(msr_reg, msr_buf, sizeof(msr_buf))) {
-    status.return_code = EXIT_FAILURE;
-    status.err = "Could not read MSR register from " + std::string(kMsrPath);
-    std::move(callback).Run(status.Clone(), val);
+  uint64_t val = 0;
+  // Read MSR register. See
+  // https://github.com/intel/msr-tools/blob/0fcbda4e47a2aab73904e19b3fc0a7a73135c415/rdmsr.c#L235
+  // for the use of reinterpret_case
+  if (sizeof(val) !=
+      msr_fd.Read(msr_reg, reinterpret_cast<char*>(&val), sizeof(val))) {
+    LOG(ERROR) << "Could not read MSR register from " << msr_path.value();
+    std::move(callback).Run(nullptr);
     return;
   }
-  val = *reinterpret_cast<uint64_t*>(&msr_buf[0]);
-  status.return_code = EXIT_SUCCESS;
-  std::move(callback).Run(status.Clone(), val);
+  std::move(callback).Run(mojom::NullableUint64::New(val));
 }
 
 void Executor::GetUEFISecureBootContent(

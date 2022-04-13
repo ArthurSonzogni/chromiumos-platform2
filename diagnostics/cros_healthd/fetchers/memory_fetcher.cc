@@ -31,11 +31,9 @@ constexpr char kMktmeActiveFile[] = "active";
 constexpr char kMktmeActiveAlgorithmFile[] = "active_algo";
 constexpr char kMktmeKeyCountFile[] = "keycnt";
 constexpr char kMktmeKeyLengthFile[] = "keylen";
-constexpr uint32_t kTmeCapabilityMsr = 0x981;
 constexpr uint64_t kTmeBypassAllowBit = (uint64_t)1 << 31;
 constexpr uint64_t kTmeAllowAesXts128 = 1;
 constexpr uint64_t kTmeAllowAesXts256 = (uint64_t)1 << 2;
-constexpr uint32_t kTmeActivateMsr = 0x982;
 constexpr uint64_t kTmeEnableBit = (uint64_t)1 << 1;
 constexpr uint64_t kTmeBypassBit = (uint64_t)1 << 31;
 // tme agorithm mask bits[7:4].
@@ -298,33 +296,32 @@ void MemoryFetcher::ExtractTmeInfoFromMsr() {
   CreateResultAndSendBack();
 }
 
-void MemoryFetcher::HandleReadTmeActivateMsr(
-    mojom::ExecutedProcessResultPtr status, uint64_t val) {
+void MemoryFetcher::HandleReadTmeActivateMsr(mojom::NullableUint64Ptr val) {
   DCHECK(mem_info_.memory_encryption_info);
-  if (!status->err.empty() || status->return_code != EXIT_SUCCESS) {
+  if (val.is_null()) {
     CreateErrorAndSendBack(mojom::ErrorType::kFileReadError,
-                           status->err + " with error code: " +
-                               std::to_string(status->return_code));
+                           "Error while reading tme activate msr");
     return;
   }
-  tme_activate_value_ = val;
+  tme_activate_value_ = val->value;
   ExtractTmeInfoFromMsr();
 }
 
-void MemoryFetcher::HandleReadTmeCapabilityMsr(
-    mojom::ExecutedProcessResultPtr status, uint64_t val) {
+void MemoryFetcher::HandleReadTmeCapabilityMsr(mojom::NullableUint64Ptr val) {
   DCHECK(mem_info_.memory_encryption_info);
-  if (!status->err.empty() || status->return_code != EXIT_SUCCESS) {
+  if (val.is_null()) {
     CreateErrorAndSendBack(mojom::ErrorType::kFileReadError,
-                           status->err + " with error code: " +
-                               std::to_string(status->return_code));
+                           "Error while reading tme capability msr");
     return;
   }
-  tme_capability_value_ = val;
-  // Read tme activate register.
+  tme_capability_value_ = val->value;
+  // Values of MSR registers IA32_TME_ACTIVATE_MSR (0x982) will be the same in
+  // all CPU cores. Therefore, we are only interested in reading the values in
+  // CPU0.
   context_->executor()->ReadMsr(
-      kTmeActivateMsr, base::BindOnce(&MemoryFetcher::HandleReadTmeActivateMsr,
-                                      weak_factory_.GetWeakPtr()));
+      cpu_msr::kIA32TmeActivate, 0,
+      base::BindOnce(&MemoryFetcher::HandleReadTmeActivateMsr,
+                     weak_factory_.GetWeakPtr()));
 }
 
 void MemoryFetcher::FetchTmeInfo() {
@@ -360,9 +357,10 @@ void MemoryFetcher::FetchTmeInfo() {
   }
 
   mem_info_.memory_encryption_info = mojom::MemoryEncryptionInfo::New();
-  // Read tme Capability Register.
+  // Values of MSR registers IA32_TME_CAPABILITY (0x981) will be the same in all
+  // CPU cores. Therefore, we are only interested in reading the values in CPU0.
   context_->executor()->ReadMsr(
-      kTmeCapabilityMsr,
+      cpu_msr::kIA32TmeCapability, 0,
       base::BindOnce(&MemoryFetcher::HandleReadTmeCapabilityMsr,
                      weak_factory_.GetWeakPtr()));
 }

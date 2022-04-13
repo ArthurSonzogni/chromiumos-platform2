@@ -19,8 +19,10 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/process/process_with_output.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 
@@ -47,7 +49,9 @@ class Executor final : public mojom::Executor {
   void KillMemtester() override;
   void GetProcessIOContents(const uint32_t pid,
                             GetProcessIOContentsCallback callback) override;
-  void ReadMsr(const uint32_t msr_reg, ReadMsrCallback callback) override;
+  void ReadMsr(const uint32_t msr_reg,
+               uint32_t cpu_index,
+               ReadMsrCallback callback) override;
   void GetUEFISecureBootContent(
       GetUEFISecureBootContentCallback callback) override;
 

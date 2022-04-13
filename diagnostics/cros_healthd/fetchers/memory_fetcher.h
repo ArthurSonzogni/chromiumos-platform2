@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -32,10 +33,8 @@ class MemoryFetcher final : public BaseFetcher {
   void FetchMemoryEncryptionInfo();
   void FetchMktmeInfo();
   void FetchTmeInfo();
-  void HandleReadTmeCapabilityMsr(mojom::ExecutedProcessResultPtr status,
-                                  uint64_t val);
-  void HandleReadTmeActivateMsr(mojom::ExecutedProcessResultPtr status,
-                                uint64_t val);
+  void HandleReadTmeCapabilityMsr(mojom::NullableUint64Ptr val);
+  void HandleReadTmeActivateMsr(mojom::NullableUint64Ptr val);
   void ExtractTmeInfoFromMsr();
   void CreateResultAndSendBack();
   void CreateErrorAndSendBack(mojom::ErrorType error_type,

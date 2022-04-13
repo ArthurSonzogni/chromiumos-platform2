@@ -8,6 +8,8 @@
 
 module chromeos.cros_healthd.mojom;
 
+import "diagnostics/mojom/public/nullable_primitives.mojom";
+
 // Provides the result of running a process.
 struct ExecutedProcessResult {
   // Return code received from the process (0=success). If this is non-zero then
@@ -76,11 +78,11 @@ interface Executor {
   // * |contents| - contains contents of the I/O file
   GetProcessIOContents(uint32 pid) => (string contents);
 
-  // Reads MSR register from /dev/cpu/0/msr file.
+  // Reads MSR register from /dev/cpu/|cpu_index|/msr file.
   //
   // The response:
   // * |contents| - contains the value of 64-bit MSR register value.
-  ReadMsr(uint32 msr_reg) => (ExecutedProcessResult result, uint64 value);
+  ReadMsr(uint32 msr_reg, uint32 cpu_index) => (NullableUint64? value);
 
   // Get UEFI Secure Boot variable file content
   GetUEFISecureBootContent() => (string contents);

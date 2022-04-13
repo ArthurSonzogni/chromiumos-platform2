@@ -9,6 +9,7 @@
 #include <gmock/gmock.h>
 
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 
@@ -43,7 +44,10 @@ class MockExecutor final : public mojom::Executor {
               GetProcessIOContents,
               (uint32_t pid, GetProcessIOContentsCallback),
               (override));
-  MOCK_METHOD(void, ReadMsr, (uint32_t msr_reg, ReadMsrCallback), (override));
+  MOCK_METHOD(void,
+              ReadMsr,
+              (uint32_t msr_reg, uint32_t cpu_index, ReadMsrCallback),
+              (override));
   MOCK_METHOD(void,
               GetUEFISecureBootContent,
               (GetUEFISecureBootContentCallback),

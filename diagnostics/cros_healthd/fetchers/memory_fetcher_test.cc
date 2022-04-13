@@ -11,10 +11,12 @@
 #include <utility>
 
 #include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -78,9 +80,7 @@ constexpr mojom::CryptoAlgorithm kExpectedActiveAlgorithm =
 constexpr int32_t kExpectedMktmeKeyCount = 3;
 constexpr int32_t kExpectedTmeKeyCount = 1;
 constexpr int32_t kExpectedEncryptionKeyLength = 256;
-constexpr uint32_t kTmeCapabilityMsr = 0x981;
 constexpr uint64_t kTmeCapabilityMsrValue = 0x000000f400000004;
-constexpr uint32_t kTmeActivateMsr = 0x982;
 constexpr uint64_t kTmeActivateMsrValue = 0x000400020000002b;
 constexpr char kFakeCpuInfoNoTmeContent[] =
     "cpu family\t: 6\n"
@@ -424,23 +424,23 @@ TEST_F(MemoryFetcherTest, TestFetchTmeInfo) {
       root_dir().Append(kRelativeProcCpuInfoPath), kFakeCpuInfoTmeContent));
 
   // Set the mock executor response for ReadMsr calls.
-  EXPECT_CALL(*mock_executor(), ReadMsr(_, _))
+  EXPECT_CALL(*mock_executor(), ReadMsr(_, _, _))
       .Times(2)
-      .WillRepeatedly(Invoke(
-          [](uint32_t msr_reg, mojom::Executor::ReadMsrCallback callback) {
-            mojom::ExecutedProcessResult status;
-            status.return_code = EXIT_SUCCESS;
-            int64_t val = 0;
-            if (msr_reg == kTmeCapabilityMsr) {
-              val = kTmeCapabilityMsrValue;
-            } else if (msr_reg == kTmeActivateMsr) {
-              val = kTmeActivateMsrValue;
-            } else {
-              status.return_code = EXIT_FAILURE;
-              status.err = "MSR access not allowed";
-            }
-            std::move(callback).Run(status.Clone(), val);
-          }));
+      .WillRepeatedly(Invoke([](uint32_t msr_reg, uint32_t cpu_index,
+                                mojom::Executor::ReadMsrCallback callback) {
+        switch (msr_reg) {
+          case cpu_msr::kIA32TmeCapability:
+            std::move(callback).Run(
+                mojom::NullableUint64::New(kTmeCapabilityMsrValue));
+            return;
+          case cpu_msr::kIA32TmeActivate:
+            std::move(callback).Run(
+                mojom::NullableUint64::New(kTmeActivateMsrValue));
+            return;
+          default:
+            std::move(callback).Run(nullptr);
+        }
+      }));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_memory_info());
