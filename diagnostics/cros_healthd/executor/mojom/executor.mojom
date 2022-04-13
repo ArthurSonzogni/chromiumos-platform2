@@ -6,10 +6,10 @@
 // sandboxed cros_healthd daemon when it needs to perform a high-privilege
 // operation.
 
-module chromeos.cros_healthd_executor.mojom;
+module chromeos.cros_healthd.mojom;
 
 // Provides the result of running a process.
-struct ProcessResult {
+struct ExecutedProcessResult {
   // Return code received from the process (0=success). If this is non-zero then
   // stdout and/or stderr may be empty.
   int32 return_code;
@@ -27,34 +27,34 @@ interface Executor {
   //
   // The response:
   // * |result| - contains information received from running the tool.
-  GetFanSpeed() => (ProcessResult result);
+  GetFanSpeed() => (ExecutedProcessResult result);
 
   // Obtains wireless interface by running "iw dev" and returns the result.
   //
   // The response:
   // * |result| - contains information received from running the tool.
-  GetInterfaces() => (ProcessResult result);
+  GetInterfaces() => (ExecutedProcessResult result);
 
   // Obtains wireless link by running "iw <interface> link" and returns
   // the result.
   //
   // The response:
   // * |result| - contains information received from running the tool.
-  GetLink(string interface_name) => (ProcessResult result);
+  GetLink(string interface_name) => (ExecutedProcessResult result);
 
   // Obtains wireless link info by running "iw <interface> info" and returns
   // the result.
   //
   // The response:
   // * |result| - contains information received from running the tool.
-  GetInfo(string interface_name) => (ProcessResult result);
+  GetInfo(string interface_name) => (ExecutedProcessResult result);
 
   // Obtains wireless scan dump by running "iw <interface> scan dump" and
   // returns the result.
   //
   // The response:
   // * |result| - contains information received from running the tool.
-  GetScanDump(string interface_name) => (ProcessResult result);
+  GetScanDump(string interface_name) => (ExecutedProcessResult result);
 
   // Runs memtester and returns the result. The executor can only run one
   // instance of the memtester process at a time, which is reasonable since
@@ -63,7 +63,7 @@ interface Executor {
   //
   // The response:
   // * |result| - contains information received from running memtester.
-  RunMemtester() => (ProcessResult result);
+  RunMemtester() => (ExecutedProcessResult result);
 
   // Kills an existing memtester process, which must have been started by the
   // executor.
@@ -80,7 +80,7 @@ interface Executor {
   //
   // The response:
   // * |contents| - contains the value of 64-bit MSR register value.
-  ReadMsr(uint32 msr_reg) => (ProcessResult result, uint64 value);
+  ReadMsr(uint32 msr_reg) => (ExecutedProcessResult result, uint64 value);
 
   // Get UEFI Secure Boot variable file content
   GetUEFISecureBootContent() => (string contents);

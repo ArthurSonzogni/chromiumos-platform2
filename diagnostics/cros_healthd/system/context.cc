@@ -33,9 +33,8 @@
 
 namespace diagnostics {
 namespace {
-namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
 
-mojo::PendingRemote<executor_ipc::Executor> SendInvitationAndConnectToExecutor(
+mojo::PendingRemote<mojom::Executor> SendInvitationAndConnectToExecutor(
     mojo::PlatformChannelEndpoint endpoint) {
   // This sends invitation to the executor process. Must be the outgoing
   // invitation because cros_healthd is the process which connects to the mojo
@@ -45,8 +44,8 @@ mojo::PendingRemote<executor_ipc::Executor> SendInvitationAndConnectToExecutor(
   mojo::ScopedMessagePipeHandle pipe = invitation.AttachMessagePipe(0);
   mojo::OutgoingInvitation::Send(std::move(invitation),
                                  base::kNullProcessHandle, std::move(endpoint));
-  return mojo::PendingRemote<executor_ipc::Executor>(std::move(pipe),
-                                                     /*version=*/0);
+  return mojo::PendingRemote<mojom::Executor>(std::move(pipe),
+                                              /*version=*/0);
 }
 }  // namespace
 
@@ -176,7 +175,7 @@ SystemConfigInterface* Context::system_config() const {
   return system_config_.get();
 }
 
-chromeos::cros_healthd_executor::mojom::Executor* Context::executor() {
+mojom::Executor* Context::executor() {
   return executor_.get();
 }
 

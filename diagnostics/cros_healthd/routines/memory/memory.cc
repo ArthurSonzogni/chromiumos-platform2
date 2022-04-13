@@ -31,9 +31,6 @@ namespace diagnostics {
 
 namespace {
 
-namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
-namespace mojo_ipc = chromeos::cros_healthd::mojom;
-
 // Approximate number of microseconds per byte of memory tested. Derived from
 // testing on a nami device.
 constexpr double kMicrosecondsPerByte = 0.20;
@@ -73,8 +70,7 @@ std::string ProcessBackspaces(const std::string& raw_string) {
 
 MemoryRoutine::MemoryRoutine(Context* context,
                              const base::TickClock* tick_clock)
-    : context_(context),
-      status_(mojo_ipc::DiagnosticRoutineStatusEnum::kReady) {
+    : context_(context), status_(mojom::DiagnosticRoutineStatusEnum::kReady) {
   DCHECK(context_);
 
   if (tick_clock) {
@@ -89,7 +85,7 @@ MemoryRoutine::MemoryRoutine(Context* context,
 MemoryRoutine::~MemoryRoutine() = default;
 
 void MemoryRoutine::Start() {
-  DCHECK_EQ(status_, mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
+  DCHECK_EQ(status_, mojom::DiagnosticRoutineStatusEnum::kReady);
 
   // Estimate the routine's duration based on the amount of free memory.
   expected_duration_us_ =
@@ -101,12 +97,12 @@ void MemoryRoutine::Start() {
   int64_t available_mem = base::SysInfo::AmountOfAvailablePhysicalMemory();
   available_mem /= (1024 * 1024);
   if (available_mem <= kMemoryRoutineReservedSizeMiB) {
-    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart;
+    status_ = mojom::DiagnosticRoutineStatusEnum::kFailedToStart;
     status_message_ = kMemoryRoutineAllocatingLockingInvokingFailureMessage;
     return;
   }
 
-  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
+  status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
   status_message_ = kMemoryRoutineRunningMessage;
   context_->executor()->RunMemtester(base::BindOnce(
       &MemoryRoutine::DetermineRoutineResult, weak_ptr_factory_.GetWeakPtr()));
@@ -117,7 +113,7 @@ void MemoryRoutine::Resume() {}
 
 void MemoryRoutine::Cancel() {
   // Only cancel if the routine is running.
-  if (status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kRunning)
+  if (status_ != mojom::DiagnosticRoutineStatusEnum::kRunning)
     return;
 
   // Make sure any other callbacks won't run - they would override the state
@@ -125,17 +121,17 @@ void MemoryRoutine::Cancel() {
   weak_ptr_factory_.InvalidateWeakPtrs();
 
   context_->executor()->KillMemtester();
-  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled;
+  status_ = mojom::DiagnosticRoutineStatusEnum::kCancelled;
   status_message_ = kMemoryRoutineCancelledMessage;
 }
 
-void MemoryRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
+void MemoryRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                          bool include_output) {
   DCHECK(response);
 
   // Because the memory routine is non-interactive, we will never include a user
   // message.
-  mojo_ipc::NonInteractiveRoutineUpdate update;
+  mojom::NonInteractiveRoutineUpdate update;
   update.status = status_;
   update.status_message = status_message_;
 
@@ -151,13 +147,13 @@ void MemoryRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
 
   // If the routine has finished, set the progress percent to 100 and don't take
   // the amount of time ran into account.
-  if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
-      status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed) {
+  if (status_ == mojom::DiagnosticRoutineStatusEnum::kPassed ||
+      status_ == mojom::DiagnosticRoutineStatusEnum::kFailed) {
     response->progress_percent = 100;
     return;
   }
 
-  if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kReady) {
+  if (status_ == mojom::DiagnosticRoutineStatusEnum::kReady) {
     // The routine has not started.
     response->progress_percent = 0;
     return;
@@ -171,22 +167,22 @@ void MemoryRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
                                                  expected_duration_us_ * 100));
 }
 
-mojo_ipc::DiagnosticRoutineStatusEnum MemoryRoutine::GetStatus() {
+mojom::DiagnosticRoutineStatusEnum MemoryRoutine::GetStatus() {
   return status_;
 }
 
 void MemoryRoutine::DetermineRoutineResult(
-    executor_ipc::ProcessResultPtr process) {
+    mojom::ExecutedProcessResultPtr process) {
   ParseMemtesterOutput(process->out);
 
   int32_t ret = process->return_code;
   if (ret == EXIT_SUCCESS) {
     status_message_ = kMemoryRoutineSucceededMessage;
-    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
+    status_ = mojom::DiagnosticRoutineStatusEnum::kPassed;
     return;
   }
 
-  auto status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
+  auto status = mojom::DiagnosticRoutineStatusEnum::kFailed;
   std::string status_message;
   if (ret & MemtesterErrorCodes::kAllocatingLockingInvokingError) {
     // Return the error message from executor if applicable
@@ -194,7 +190,7 @@ void MemoryRoutine::DetermineRoutineResult(
         !process->err.empty()
             ? process->err
             : kMemoryRoutineAllocatingLockingInvokingFailureMessage;
-    status = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+    status = mojom::DiagnosticRoutineStatusEnum::kError;
   }
 
   if (ret & MemtesterErrorCodes::kStuckAddressTestError)

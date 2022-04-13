@@ -19,6 +19,8 @@
 
 namespace diagnostics {
 
+namespace mojom = chromeos::cros_healthd::mojom;
+
 // The ProcessFetcher class is responsible for gathering information about a
 // particular process on the device.
 class ProcessFetcher final : public BaseFetcher {
@@ -32,15 +34,14 @@ class ProcessFetcher final : public BaseFetcher {
   // Returns information about a particular process on the device, or the error
   // that occurred retrieving the information.
   void FetchProcessInfo(
-      base::OnceCallback<void(chromeos::cros_healthd::mojom::ProcessResultPtr)>
-          callback);
+      base::OnceCallback<void(mojom::ProcessResultPtr)> callback);
 
  private:
   // Parses relevant fields from /proc/|process_id_|/stat. Returns the first
   // error encountered or std::nullopt if no errors occurred. |priority|,
   // |nice| and |start_time_ticks| are only valid if std::nullopt was returned.
-  std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> ParseProcPidStat(
-      chromeos::cros_healthd::mojom::ProcessState* state,
+  std::optional<mojom::ProbeErrorPtr> ParseProcPidStat(
+      mojom::ProcessState* state,
       int8_t* priority,
       int8_t* nice,
       uint64_t* start_time_ticks);
@@ -49,7 +50,7 @@ class ProcessFetcher final : public BaseFetcher {
   // error encountered or std::nullopt if no errors occurred.
   // |total_memory_kib|, |resident_memory_kib| and |free_memory_kib| are only
   // valid if std::nullopt was returned.
-  std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> ParseProcPidStatm(
+  std::optional<mojom::ProbeErrorPtr> ParseProcPidStatm(
       uint32_t* total_memory_kib,
       uint32_t* resident_memory_kib,
       uint32_t* free_memory_kib);
@@ -58,15 +59,13 @@ class ProcessFetcher final : public BaseFetcher {
   // |start_time_ticks|. Returns the first error encountered or std::nullopt if
   // no errors occurred. |process_uptime_ticks| is only valid if std::nullopt
   // was returned.
-  std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr>
-  CalculateProcessUptime(uint64_t start_time_ticks,
-                         uint64_t* process_uptime_ticks);
+  std::optional<mojom::ProbeErrorPtr> CalculateProcessUptime(
+      uint64_t start_time_ticks, uint64_t* process_uptime_ticks);
 
   // Fetches the real user ID of the process. Returns the first error
   // encountered or std::nullopt if no errors occurred. |user_id| is only
   // valid if std::nullopt was returned.
-  std::optional<chromeos::cros_healthd::mojom::ProbeErrorPtr> GetProcessUid(
-      uid_t* user_id);
+  std::optional<mojom::ProbeErrorPtr> GetProcessUid(uid_t* user_id);
 
   // File paths read will be relative to |root_dir_|. In production, this should
   // be "/", but it can be overridden for testing.

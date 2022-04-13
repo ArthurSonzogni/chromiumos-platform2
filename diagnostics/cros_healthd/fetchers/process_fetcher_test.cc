@@ -19,10 +19,10 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 using testing::_;
@@ -32,13 +32,10 @@ using ::testing::WithArg;
 namespace diagnostics {
 namespace {
 
-namespace executor_ipc = ::chromeos::cros_healthd_executor::mojom;
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 // POD struct for ParseProcessStateTest.
 struct ParseProcessStateTestParams {
   std::string raw_state;
-  mojo_ipc::ProcessState expected_mojo_state;
+  mojom::ProcessState expected_mojo_state;
 };
 
 // ID of the process to be probed.
@@ -54,8 +51,8 @@ constexpr char kFakeProcPidStatContents[] =
     "6098 (fake_exe) S 1 1015 1015 0 -1 4210944 1536 158 1 0 10956 17428 19 37 "
     "20 0 1 0 358 36884480 3515";
 // Data parsed from kFakeProcPidStatContents.
-constexpr mojo_ipc::ProcessState kExpectedMojoState =
-    mojo_ipc::ProcessState::kSleeping;
+constexpr mojom::ProcessState kExpectedMojoState =
+    mojom::ProcessState::kSleeping;
 constexpr int8_t kExpectedPriority = 20;
 constexpr int8_t kExpectedNice = 0;
 // Invalid /proc/|kPid|/stat: not enough tokens.
@@ -135,9 +132,9 @@ constexpr char kProcPidStatusContentsNegativeUidValue[] =
 constexpr char kFakeProcPidCmdlineContents[] = "/usr/bin/fake_exe --arg=yes";
 
 // Saves |response| to |response_destination|.
-void OnMojoResponseReceived(mojo_ipc::ProcessResultPtr* response_destination,
+void OnMojoResponseReceived(mojom::ProcessResultPtr* response_destination,
                             base::Closure quit_closure,
-                            mojo_ipc::ProcessResultPtr response) {
+                            mojom::ProcessResultPtr response) {
   DCHECK(response_destination);
   *response_destination = std::move(response);
   quit_closure.Run();
@@ -185,8 +182,8 @@ class ProcessFetcherTest : public testing::Test {
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
-  mojo_ipc::ProcessResultPtr FetchProcessInfo() {
-    mojo_ipc::ProcessResultPtr result;
+  mojom::ProcessResultPtr FetchProcessInfo() {
+    mojom::ProcessResultPtr result;
     base::RunLoop run_loop;
     ProcessFetcher(&mock_context_, kPid, temp_dir_path())
         .FetchProcessInfo(base::BindOnce(&OnMojoResponseReceived, &result,
@@ -222,8 +219,8 @@ class ProcessFetcherTest : public testing::Test {
       const std::string& io_contents) {
     // Set the mock executor response.
     EXPECT_CALL(*mock_context_.mock_executor(), GetProcessIOContents(_, _))
-        .WillOnce(WithArg<1>(Invoke(
-            [=](executor_ipc::Executor::GetProcessIOContentsCallback callback) {
+        .WillOnce(WithArg<1>(
+            Invoke([=](mojom::Executor::GetProcessIOContentsCallback callback) {
               std::string content;
               content = io_contents;
               std::move(callback).Run(content);
@@ -272,7 +269,7 @@ TEST_F(ProcessFetcherTest, MissingProcUptimeFile) {
 
   ASSERT_TRUE(process_result->is_error());
   EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kFileReadError);
+            mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle an incorrectly-formatted /proc/uptime file.
@@ -283,8 +280,7 @@ TEST_F(ProcessFetcherTest, IncorrectlyFormattedProcUptimeFile) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a missing /proc/|kPid|/cmdline file.
@@ -297,7 +293,7 @@ TEST_F(ProcessFetcherTest, MissingProcPidCmdlineFile) {
 
   ASSERT_TRUE(process_result->is_error());
   EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kFileReadError);
+            mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle a missing /proc/|kPid|/stat file.
@@ -310,7 +306,7 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatFile) {
 
   ASSERT_TRUE(process_result->is_error());
   EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kFileReadError);
+            mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle a missing /proc/|kPid|/statm file.
@@ -323,7 +319,7 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatmFile) {
 
   ASSERT_TRUE(process_result->is_error());
   EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kFileReadError);
+            mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle a missing /proc/|kPid|/io file.
@@ -337,7 +333,7 @@ TEST_F(ProcessFetcherTest, MissingProcPidIOFile) {
 
   ASSERT_TRUE(process_result->is_error());
   EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kFileReadError);
+            mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle a /proc/|kPid|/stat file with insufficient tokens.
@@ -350,8 +346,7 @@ TEST_F(ProcessFetcherTest, ProcPidStatFileInsufficientTokens) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle an invalid state read from the /proc/|kPid|/stat file.
@@ -362,8 +357,7 @@ TEST_F(ProcessFetcherTest, InvalidProcessStateRead) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle an invalid priority read from the /proc/|kPid|/stat file.
@@ -374,8 +368,7 @@ TEST_F(ProcessFetcherTest, InvalidProcessPriorityRead) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle an invalid nice value read from the /proc/|kPid|/stat
@@ -386,8 +379,7 @@ TEST_F(ProcessFetcherTest, InvalidProcessNiceRead) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we can handle an overflowing priority value from the
@@ -399,8 +391,7 @@ TEST_F(ProcessFetcherTest, OverflowingPriorityRead) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle an invalid starttime read from the /proc/|kPid|/stat
@@ -412,8 +403,7 @@ TEST_F(ProcessFetcherTest, InvalidProcessStarttimeRead) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a /proc/|kPid|/statm file with insufficient tokens.
@@ -426,8 +416,7 @@ TEST_F(ProcessFetcherTest, ProcPidStatmFileInsufficientTokens) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a /proc/|kPid|/statm file with an invalid total memory
@@ -441,8 +430,7 @@ TEST_F(ProcessFetcherTest, ProcPidStatmFileInvalidTotalMemory) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a /proc/|kPid|/statm file with an invalid resident memory
@@ -456,8 +444,7 @@ TEST_F(ProcessFetcherTest, ProcPidStatmFileInvalidResidentMemory) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a /proc/|kPid|/io file with insufficient fields.
@@ -471,8 +458,7 @@ TEST_F(ProcessFetcherTest, ProcPidIOFileInsufficientTokens) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a /proc/|kPid|/statm file with resident memory value
@@ -486,8 +472,7 @@ TEST_F(ProcessFetcherTest, ProcPidStatmFileExcessiveResidentMemory) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a missing /proc/|kPid|/status file.
@@ -500,7 +485,7 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatusFile) {
 
   ASSERT_TRUE(process_result->is_error());
   EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kFileReadError);
+            mojom::ErrorType::kFileReadError);
 }
 
 // Test that we handle a /proc/|kPid|/status file which doesn't have the Uid
@@ -514,8 +499,7 @@ TEST_F(ProcessFetcherTest, ProcPidStatusFileNoUidKey) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a /proc/|kPid|/status file with a Uid key with less than
@@ -529,8 +513,7 @@ TEST_F(ProcessFetcherTest, ProcPidStatusFileUidKeyInsufficientValues) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that we handle a /proc/|kPid|/status file with a Uid key with negative
@@ -544,8 +527,7 @@ TEST_F(ProcessFetcherTest, ProcPidStatusFileUidKeyWithNegativeValues) {
   auto process_result = FetchProcessInfo();
 
   ASSERT_TRUE(process_result->is_error());
-  EXPECT_EQ(process_result->get_error()->type,
-            mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(process_result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Tests that ProcessFetcher can correctly parse each process state.
@@ -579,21 +561,20 @@ TEST_P(ParseProcessStateTest, ParseState) {
 INSTANTIATE_TEST_SUITE_P(
     ,
     ParseProcessStateTest,
-    testing::Values(ParseProcessStateTestParams{
-                        /*raw_state=*/"R", mojo_ipc::ProcessState::kRunning},
+    testing::Values(ParseProcessStateTestParams{/*raw_state=*/"R",
+                                                mojom::ProcessState::kRunning},
+                    ParseProcessStateTestParams{/*raw_state=*/"S",
+                                                mojom::ProcessState::kSleeping},
+                    ParseProcessStateTestParams{/*raw_state=*/"D",
+                                                mojom::ProcessState::kWaiting},
+                    ParseProcessStateTestParams{/*raw_state=*/"Z",
+                                                mojom::ProcessState::kZombie},
+                    ParseProcessStateTestParams{/*raw_state=*/"T",
+                                                mojom::ProcessState::kStopped},
                     ParseProcessStateTestParams{
-                        /*raw_state=*/"S", mojo_ipc::ProcessState::kSleeping},
-                    ParseProcessStateTestParams{
-                        /*raw_state=*/"D", mojo_ipc::ProcessState::kWaiting},
-                    ParseProcessStateTestParams{
-                        /*raw_state=*/"Z", mojo_ipc::ProcessState::kZombie},
-                    ParseProcessStateTestParams{
-                        /*raw_state=*/"T", mojo_ipc::ProcessState::kStopped},
-                    ParseProcessStateTestParams{
-                        /*raw_state=*/"t",
-                        mojo_ipc::ProcessState::kTracingStop},
-                    ParseProcessStateTestParams{
-                        /*raw_state=*/"X", mojo_ipc::ProcessState::kDead}));
+                        /*raw_state=*/"t", mojom::ProcessState::kTracingStop},
+                    ParseProcessStateTestParams{/*raw_state=*/"X",
+                                                mojom::ProcessState::kDead}));
 
 }  // namespace
 }  // namespace diagnostics

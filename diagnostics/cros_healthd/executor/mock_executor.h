@@ -8,20 +8,21 @@
 #include <string>
 #include <gmock/gmock.h>
 
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 
 namespace diagnostics {
 
+namespace mojom = ::chromeos::cros_healthd::mojom;
+
 // Mock implementation of the Executor interface.
-class MockExecutor final
-    : public chromeos::cros_healthd_executor::mojom::Executor {
+class MockExecutor final : public mojom::Executor {
  public:
   MockExecutor() = default;
   MockExecutor(const MockExecutor&) = delete;
   MockExecutor& operator=(const MockExecutor&) = delete;
   ~MockExecutor() override = default;
 
-  // chromeos::cros_healthd_executor::mojom::Executor overrides:
+  // mojom::Executor overrides:
   MOCK_METHOD(void, GetFanSpeed, (GetFanSpeedCallback), (override));
   MOCK_METHOD(void, GetInterfaces, (GetInterfacesCallback), (override));
   MOCK_METHOD(void,

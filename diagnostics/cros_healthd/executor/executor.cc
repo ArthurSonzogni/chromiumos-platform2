@@ -25,16 +25,14 @@
 #include <brillo/process/process.h>
 #include <re2/re2.h>
 
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/cros_healthd/routines/memory/memory_constants.h"
 #include "diagnostics/cros_healthd/utils/file_utils.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 
 namespace diagnostics {
 
 namespace {
-
-namespace mojo_ipc = ::chromeos::cros_healthd_executor::mojom;
 
 // Amount of time we wait for a process to respond to SIGTERM before killing it.
 constexpr base::TimeDelta kTerminationTimeout = base::Seconds(2);
@@ -86,8 +84,8 @@ constexpr char kUEFISecureBootVarPath[] =
 // All Mojo callbacks need to be ran by the Mojo task runner, so this provides a
 // convenient wrapper that can be bound and ran by that specific task runner.
 void RunMojoProcessResultCallback(
-    mojo_ipc::ProcessResult mojo_result,
-    base::OnceCallback<void(mojo_ipc::ProcessResultPtr)> callback) {
+    mojom::ExecutedProcessResult mojo_result,
+    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback) {
   std::move(callback).Run(mojo_result.Clone());
 }
 
@@ -109,7 +107,7 @@ bool IsMsrAccessAllowed(uint32_t msr) {
 
 Executor::Executor(
     const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
-    mojo::PendingReceiver<mojo_ipc::Executor> receiver)
+    mojo::PendingReceiver<mojom::Executor> receiver)
     : mojo_task_runner_(mojo_task_runner),
       receiver_{this /* impl */, std::move(receiver)} {
   receiver_.set_disconnect_handler(
@@ -117,7 +115,7 @@ Executor::Executor(
 }
 
 void Executor::GetFanSpeed(GetFanSpeedCallback callback) {
-  mojo_ipc::ProcessResult result;
+  mojom::ExecutedProcessResult result;
 
   const auto seccomp_policy_path =
       base::FilePath(kSandboxDirPath).Append(kFanSpeedSeccompPolicyPath);
@@ -142,7 +140,7 @@ void Executor::GetFanSpeed(GetFanSpeedCallback callback) {
 }
 
 void Executor::GetInterfaces(GetInterfacesCallback callback) {
-  mojo_ipc::ProcessResult result;
+  mojom::ExecutedProcessResult result;
 
   const auto seccomp_policy_path =
       base::FilePath(kSandboxDirPath).Append(kIwSeccompPolicyPath);
@@ -168,7 +166,7 @@ void Executor::GetInterfaces(GetInterfacesCallback callback) {
 
 void Executor::GetLink(const std::string& interface_name,
                        GetLinkCallback callback) {
-  mojo_ipc::ProcessResult result;
+  mojom::ExecutedProcessResult result;
   // Sanitize against interface_name.
   if (!IsValidWirelessInterfaceName(interface_name)) {
     result.err = "Illegal interface name: " + interface_name;
@@ -204,7 +202,7 @@ void Executor::GetLink(const std::string& interface_name,
 
 void Executor::GetInfo(const std::string& interface_name,
                        GetInfoCallback callback) {
-  mojo_ipc::ProcessResult result;
+  mojom::ExecutedProcessResult result;
   // Sanitize against interface_name.
   if (!IsValidWirelessInterfaceName(interface_name)) {
     result.err = "Illegal interface name: " + interface_name;
@@ -240,7 +238,7 @@ void Executor::GetInfo(const std::string& interface_name,
 
 void Executor::GetScanDump(const std::string& interface_name,
                            GetScanDumpCallback callback) {
-  mojo_ipc::ProcessResult result;
+  mojom::ExecutedProcessResult result;
   // Sanitize against interface_name.
   if (!IsValidWirelessInterfaceName(interface_name)) {
     result.err = "Illegal interface name: " + interface_name;
@@ -276,7 +274,7 @@ void Executor::GetScanDump(const std::string& interface_name,
 }
 
 void Executor::RunMemtester(RunMemtesterCallback callback) {
-  mojo_ipc::ProcessResult result;
+  mojom::ExecutedProcessResult result;
 
   // TODO(b/193211343): Design a mechanism for multiple resource intensive task.
   // Only allow one instance of memtester at a time. This is reasonable, because
@@ -357,7 +355,7 @@ void Executor::GetProcessIOContents(const uint32_t pid,
 }
 
 void Executor::ReadMsr(const uint32_t msr_reg, ReadMsrCallback callback) {
-  mojo_ipc::ProcessResult status;
+  mojom::ExecutedProcessResult status;
   uint64_t val = 0;
   if (!IsMsrAccessAllowed(msr_reg)) {
     status.return_code = EXIT_FAILURE;
@@ -406,8 +404,8 @@ void Executor::RunUntrackedBinary(
     const std::optional<std::string>& user,
     const base::FilePath& binary_path,
     const std::vector<std::string>& binary_args,
-    mojo_ipc::ProcessResult result,
-    base::OnceCallback<void(mojo_ipc::ProcessResultPtr)> callback) {
+    mojom::ExecutedProcessResult result,
+    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback) {
   auto process = std::make_unique<ProcessWithOutput>();
   result.return_code =
       RunBinaryInternal(seccomp_policy_path, sandboxing_args, user, binary_path,
@@ -423,8 +421,8 @@ void Executor::RunTrackedBinary(
     const std::optional<std::string>& user,
     const base::FilePath& binary_path,
     const std::vector<std::string>& binary_args,
-    mojo_ipc::ProcessResult result,
-    base::OnceCallback<void(mojo_ipc::ProcessResultPtr)> callback) {
+    mojom::ExecutedProcessResult result,
+    base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback) {
   std::string binary_path_str = binary_path.value();
   DCHECK(!processes_.count(binary_path_str));
 
@@ -453,7 +451,7 @@ int Executor::RunBinaryInternal(const base::FilePath& seccomp_policy_path,
                                 const std::optional<std::string>& user,
                                 const base::FilePath& binary_path,
                                 const std::vector<std::string>& binary_args,
-                                mojo_ipc::ProcessResult* result,
+                                mojom::ExecutedProcessResult* result,
                                 ProcessWithOutput* process) {
   DCHECK(result);
   DCHECK(process);

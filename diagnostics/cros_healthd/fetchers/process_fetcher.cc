@@ -31,8 +31,6 @@ namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = chromeos::cros_healthd::mojom;
-
 // Regex used to parse a process's statm file.
 constexpr char kProcessStatmFileRegex[] =
     R"((\d+)\s+(\d+)\s+\d+\s+\d+\s+\d+\s+\d+\s+\d+)";
@@ -45,32 +43,32 @@ constexpr char kProcessIOFileRegex[] =
     R"(rchar:\s+(\d+)\nwchar:\s+(\d+)\nsyscr:\s+(\d+)\nsyscw:\s+(\d+)\nread)"
     R"(_bytes:\s+(\d+)\nwrite_bytes:\s+(\d+)\ncancelled_write_bytes:\s+(\d+))";
 
-// Converts the raw process state read from procfs to a mojo_ipc::ProcessState.
+// Converts the raw process state read from procfs to a mojom::ProcessState.
 // If the conversion is successful, returns std::nullopt and sets
 // |mojo_state_out| to the converted value. If the conversion fails,
 // |mojo_state_out| is invalid and an appropriate error is returned.
-std::optional<mojo_ipc::ProbeErrorPtr> GetProcessState(
-    base::StringPiece raw_state, mojo_ipc::ProcessState* mojo_state_out) {
+std::optional<mojom::ProbeErrorPtr> GetProcessState(
+    base::StringPiece raw_state, mojom::ProcessState* mojo_state_out) {
   DCHECK(mojo_state_out);
   // See https://man7.org/linux/man-pages/man5/proc.5.html for allowable raw
   // state values.
   if (raw_state == "R") {
-    *mojo_state_out = mojo_ipc::ProcessState::kRunning;
+    *mojo_state_out = mojom::ProcessState::kRunning;
   } else if (raw_state == "S") {
-    *mojo_state_out = mojo_ipc::ProcessState::kSleeping;
+    *mojo_state_out = mojom::ProcessState::kSleeping;
   } else if (raw_state == "D") {
-    *mojo_state_out = mojo_ipc::ProcessState::kWaiting;
+    *mojo_state_out = mojom::ProcessState::kWaiting;
   } else if (raw_state == "Z") {
-    *mojo_state_out = mojo_ipc::ProcessState::kZombie;
+    *mojo_state_out = mojom::ProcessState::kZombie;
   } else if (raw_state == "T") {
-    *mojo_state_out = mojo_ipc::ProcessState::kStopped;
+    *mojo_state_out = mojom::ProcessState::kStopped;
   } else if (raw_state == "t") {
-    *mojo_state_out = mojo_ipc::ProcessState::kTracingStop;
+    *mojo_state_out = mojom::ProcessState::kTracingStop;
   } else if (raw_state == "X") {
-    *mojo_state_out = mojo_ipc::ProcessState::kDead;
+    *mojo_state_out = mojom::ProcessState::kDead;
   } else {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Undefined process state: " + std::string(raw_state));
   }
 
@@ -80,20 +78,20 @@ std::optional<mojo_ipc::ProbeErrorPtr> GetProcessState(
 // Converts |str| to a signed, 8-bit integer. If the conversion is successful,
 // returns std::nullopt and sets |int_out| to the converted value. If the
 // conversion fails, |int_out| is invalid and an appropriate error is returned.
-std::optional<mojo_ipc::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
-                                                         int8_t* int_out) {
+std::optional<mojom::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
+                                                      int8_t* int_out) {
   DCHECK(int_out);
 
   int full_size_int;
   if (!base::StringToInt(str, &full_size_int)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to convert " + std::string(str) + " to int.");
   }
 
   if (full_size_int > std::numeric_limits<int8_t>::max()) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Integer too large for int8_t: " + std::to_string(full_size_int));
   }
 
@@ -103,12 +101,12 @@ std::optional<mojo_ipc::ProbeErrorPtr> GetInt8FromString(base::StringPiece str,
 }
 
 void FinishFetchingProcessInfo(
-    base::OnceCallback<void(mojo_ipc::ProcessResultPtr)> callback,
-    mojo_ipc::ProcessInfo process_info,
+    base::OnceCallback<void(mojom::ProcessResultPtr)> callback,
+    mojom::ProcessInfo process_info,
     const std::string& io_contents) {
   if (io_contents.empty()) {
-    std::move(callback).Run(mojo_ipc::ProcessResult::NewError(
-        CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
+    std::move(callback).Run(mojom::ProcessResult::NewError(
+        CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                "Failed to read process IO file")));
     return;
   }
@@ -125,23 +123,23 @@ void FinishFetchingProcessInfo(
                       &write_system_calls_str, &physical_bytes_read_str,
                       &physical_bytes_written_str,
                       &cancelled_bytes_written_str)) {
-    std::move(callback).Run(mojo_ipc::ProcessResult::NewError(
-        CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
-                               "Failed to parse process IO file")));
+    std::move(callback).Run(
+        mojom::ProcessResult::NewError(CreateAndLogProbeError(
+            mojom::ErrorType::kParseError, "Failed to parse process IO file")));
     return;
   }
 
   if (!base::StringToUint64(bytes_read_str, &process_info.bytes_read)) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(CreateAndLogProbeError(
-            mojo_ipc::ErrorType::kParseError,
+        mojom::ProcessResult::NewError(CreateAndLogProbeError(
+            mojom::ErrorType::kParseError,
             "Failed to convert bytes_read to uint64_t: " + bytes_read_str)));
     return;
   }
 
   if (!base::StringToUint64(bytes_written_str, &process_info.bytes_written)) {
-    std::move(callback).Run(mojo_ipc::ProcessResult::NewError(
-        CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
+    std::move(callback).Run(mojom::ProcessResult::NewError(
+        CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                "Failed to convert bytes_written to uint64_t: " +
                                    bytes_written_str)));
     return;
@@ -150,8 +148,8 @@ void FinishFetchingProcessInfo(
   if (!base::StringToUint64(read_system_calls_str,
                             &process_info.read_system_calls)) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(CreateAndLogProbeError(
-            mojo_ipc::ErrorType::kParseError,
+        mojom::ProcessResult::NewError(CreateAndLogProbeError(
+            mojom::ErrorType::kParseError,
             "Failed to convert read_system_calls to uint32_t: " +
                 read_system_calls_str)));
     return;
@@ -160,8 +158,8 @@ void FinishFetchingProcessInfo(
   if (!base::StringToUint64(write_system_calls_str,
                             &process_info.write_system_calls)) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(CreateAndLogProbeError(
-            mojo_ipc::ErrorType::kParseError,
+        mojom::ProcessResult::NewError(CreateAndLogProbeError(
+            mojom::ErrorType::kParseError,
             "Failed to convert write_system_calls to uint32_t: " +
                 write_system_calls_str)));
     return;
@@ -170,8 +168,8 @@ void FinishFetchingProcessInfo(
   if (!base::StringToUint64(physical_bytes_read_str,
                             &process_info.physical_bytes_read)) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(CreateAndLogProbeError(
-            mojo_ipc::ErrorType::kParseError,
+        mojom::ProcessResult::NewError(CreateAndLogProbeError(
+            mojom::ErrorType::kParseError,
             "Failed to convert physical_bytes_read to uint64_t: " +
                 physical_bytes_read_str)));
     return;
@@ -180,8 +178,8 @@ void FinishFetchingProcessInfo(
   if (!base::StringToUint64(physical_bytes_written_str,
                             &process_info.physical_bytes_written)) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(CreateAndLogProbeError(
-            mojo_ipc::ErrorType::kParseError,
+        mojom::ProcessResult::NewError(CreateAndLogProbeError(
+            mojom::ErrorType::kParseError,
             "Failed to convert physical_bytes_written to uint64_t: " +
                 physical_bytes_written_str)));
     return;
@@ -190,15 +188,15 @@ void FinishFetchingProcessInfo(
   if (!base::StringToUint64(cancelled_bytes_written_str,
                             &process_info.cancelled_bytes_written)) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(CreateAndLogProbeError(
-            mojo_ipc::ErrorType::kParseError,
+        mojom::ProcessResult::NewError(CreateAndLogProbeError(
+            mojom::ErrorType::kParseError,
             "Failed to convert cancelled_bytes_written to uint64_t: " +
                 cancelled_bytes_written_str)));
     return;
   }
 
   std::move(callback).Run(
-      mojo_ipc::ProcessResult::NewProcessInfo(process_info.Clone()));
+      mojom::ProcessResult::NewProcessInfo(process_info.Clone()));
   return;
 }
 
@@ -213,8 +211,8 @@ ProcessFetcher::ProcessFetcher(Context* context,
       process_id_(process_id) {}
 
 void ProcessFetcher::FetchProcessInfo(
-    base::OnceCallback<void(mojo_ipc::ProcessResultPtr)> callback) {
-  mojo_ipc::ProcessInfo process_info;
+    base::OnceCallback<void(mojom::ProcessResultPtr)> callback) {
+  mojom::ProcessInfo process_info;
 
   // Number of ticks after system boot that the process started.
   uint64_t start_time_ticks;
@@ -222,14 +220,14 @@ void ProcessFetcher::FetchProcessInfo(
                                 &process_info.nice, &start_time_ticks);
   if (error.has_value()) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(std::move(error.value())));
+        mojom::ProcessResult::NewError(std::move(error.value())));
     return;
   }
 
   error = CalculateProcessUptime(start_time_ticks, &process_info.uptime_ticks);
   if (error.has_value()) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(std::move(error.value())));
+        mojom::ProcessResult::NewError(std::move(error.value())));
     return;
   }
 
@@ -238,7 +236,7 @@ void ProcessFetcher::FetchProcessInfo(
                             &process_info.free_memory_kib);
   if (error.has_value()) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(std::move(error.value())));
+        mojom::ProcessResult::NewError(std::move(error.value())));
     return;
   }
 
@@ -246,7 +244,7 @@ void ProcessFetcher::FetchProcessInfo(
   error = GetProcessUid(&user_id);
   if (error.has_value()) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(std::move(error.value())));
+        mojom::ProcessResult::NewError(std::move(error.value())));
     return;
   }
 
@@ -255,8 +253,8 @@ void ProcessFetcher::FetchProcessInfo(
   if (!ReadAndTrimString(proc_pid_dir_, kProcessCmdlineFile,
                          &process_info.command)) {
     std::move(callback).Run(
-        mojo_ipc::ProcessResult::NewError(CreateAndLogProbeError(
-            mojo_ipc::ErrorType::kFileReadError,
+        mojom::ProcessResult::NewError(CreateAndLogProbeError(
+            mojom::ErrorType::kFileReadError,
             "Failed to read " +
                 proc_pid_dir_.Append(kProcessCmdlineFile).value())));
     return;
@@ -278,8 +276,8 @@ void ProcessFetcher::FetchProcessInfo(
                      std::move(process_info)));
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
-    mojo_ipc::ProcessState* state,
+std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
+    mojom::ProcessState* state,
     int8_t* priority,
     int8_t* nice,
     uint64_t* start_time_ticks) {
@@ -292,7 +290,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
   const base::FilePath kProcPidStatFile =
       proc_pid_dir_.Append(kProcessStatFile);
   if (!ReadAndTrimString(proc_pid_dir_, kProcessStatFile, &stat_contents)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
+    return CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                   "Failed to read " + kProcPidStatFile.value());
   }
 
@@ -302,7 +300,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
 
   if (stat_tokens.size() <= ProcPidStatIndices::kMaxValue) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to tokenize " + kProcPidStatFile.value());
   }
 
@@ -322,7 +320,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
   base::StringPiece start_time_str =
       stat_tokens[ProcPidStatIndices::kStartTime];
   if (!base::StringToUint64(start_time_str, start_time_ticks)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
+    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                   "Failed to convert starttime to uint64: " +
                                       std::string(start_time_str));
   }
@@ -330,7 +328,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStat(
   return std::nullopt;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
+std::optional<mojom::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
     uint32_t* total_memory_kib,
     uint32_t* resident_memory_kib,
     uint32_t* free_memory_kib) {
@@ -341,7 +339,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
   std::string statm_contents;
   if (!ReadAndTrimString(proc_pid_dir_, kProcessStatmFile, &statm_contents)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
+        mojom::ErrorType::kFileReadError,
         "Failed to read " + proc_pid_dir_.Append(kProcessStatmFile).value());
   }
 
@@ -350,14 +348,14 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
   if (!RE2::FullMatch(statm_contents, kProcessStatmFileRegex,
                       &total_memory_pages_str, &resident_memory_pages_str)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to parse process's statm file: " + statm_contents);
   }
 
   uint32_t total_memory_pages;
   if (!base::StringToUint(total_memory_pages_str, &total_memory_pages)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to convert total memory to uint32_t: " +
             total_memory_pages_str);
   }
@@ -365,14 +363,14 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
   uint32_t resident_memory_pages;
   if (!base::StringToUint(resident_memory_pages_str, &resident_memory_pages)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to convert resident memory to uint32_t: " +
             resident_memory_pages_str);
   }
 
   if (resident_memory_pages > total_memory_pages) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         base::StringPrintf("Process's resident memory (%u pages) higher than "
                            "total memory (%u pages).",
                            resident_memory_pages, total_memory_pages));
@@ -380,7 +378,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
 
   const auto kPageSizeInBytes = sysconf(_SC_PAGESIZE);
   if (kPageSizeInBytes == -1) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kSystemUtilityError,
+    return CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
                                   "Failed to run sysconf(_SC_PAGESIZE).");
   }
 
@@ -396,34 +394,34 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::ParseProcPidStatm(
   return std::nullopt;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::CalculateProcessUptime(
+std::optional<mojom::ProbeErrorPtr> ProcessFetcher::CalculateProcessUptime(
     uint64_t start_time_ticks, uint64_t* process_uptime_ticks) {
   DCHECK(process_uptime_ticks);
 
   std::string uptime_contents;
   base::FilePath uptime_path = GetProcUptimePath(root_dir_);
   if (!ReadAndTrimString(uptime_path, &uptime_contents)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
+    return CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                   "Failed to read " + uptime_path.value());
   }
 
   std::string system_uptime_str;
   if (!RE2::FullMatch(uptime_contents, kUptimeFileRegex, &system_uptime_str)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to parse uptime file: " + uptime_contents);
   }
 
   double system_uptime_seconds;
   if (!base::StringToDouble(system_uptime_str, &system_uptime_seconds)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to convert system uptime to double: " + system_uptime_str);
   }
 
   const auto kClockTicksPerSecond = sysconf(_SC_CLK_TCK);
   if (kClockTicksPerSecond == -1) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kSystemUtilityError,
+    return CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
                                   "Failed to run sysconf(_SC_CLK_TCK).");
   }
 
@@ -434,14 +432,14 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::CalculateProcessUptime(
   return std::nullopt;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
+std::optional<mojom::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
     uid_t* user_id) {
   DCHECK(user_id);
 
   std::string status_contents;
   if (!ReadAndTrimString(proc_pid_dir_, kProcessStatusFile, &status_contents)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
+        mojom::ErrorType::kFileReadError,
         "Failed to read " + proc_pid_dir_.Append(kProcessStatusFile).value());
   }
 
@@ -457,7 +455,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
     unsigned int user_id_uint;
     if (!base::StringToUint(uid_str, &user_id_uint)) {
       return CreateAndLogProbeError(
-          mojo_ipc::ErrorType::kParseError,
+          mojom::ErrorType::kParseError,
           "Failed to convert Uid to uint: " + uid_str);
     }
 
@@ -468,7 +466,7 @@ std::optional<mojo_ipc::ProbeErrorPtr> ProcessFetcher::GetProcessUid(
   }
 
   if (!uid_key_found) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
+    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                   "Failed to find Uid key.");
   }
 

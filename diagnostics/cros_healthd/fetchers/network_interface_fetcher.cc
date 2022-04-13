@@ -27,9 +27,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-using OptionalProbeErrorPtr = std::optional<mojo_ipc::ProbeErrorPtr>;
+using OptionalProbeErrorPtr = std::optional<mojom::ProbeErrorPtr>;
 constexpr auto kInterfaceNameRegex = R"(\s*Interface\s+([A-Za-z0-9]+)\s*)";
 constexpr auto kLinkNoConnectionRegex = R"((Not\s+connected.)\s*)";
 constexpr auto kAccessPointRegex =
@@ -61,7 +59,7 @@ bool GetDoubleValueWithUnit(const std::string& buffer,
 // This function handles the callback from executor()->GetScanDump. It will
 // extract data of tx power from "iw <interface> scan dump" command.
 void NetworkInterfaceFetcher::HandleScanDump(
-    executor_ipc::ProcessResultPtr result) {
+    mojom::ExecutedProcessResultPtr result) {
   DCHECK(wireless_info_);
   DCHECK(wireless_info_->wireless_link_info);
   std::string err = result->err;
@@ -69,7 +67,7 @@ void NetworkInterfaceFetcher::HandleScanDump(
   if (!err.empty() || return_code != EXIT_SUCCESS) {
     LOG(ERROR) << "executor()->GetScanDump failed with error code: "
                << return_code;
-    CreateErrorToSendBack(mojo_ipc::ErrorType::kSystemUtilityError,
+    CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
                           "executor()->GetScanDump failed with error code: " +
                               std::to_string(return_code));
     return;
@@ -101,14 +99,14 @@ void NetworkInterfaceFetcher::HandleScanDump(
 // This function handles the callback from executor()->GetInfo. It will
 // extract data of tx power from "iw <interface> info" command.
 void NetworkInterfaceFetcher::HandleInfoAndExecuteGetScanDump(
-    executor_ipc::ProcessResultPtr result) {
+    mojom::ExecutedProcessResultPtr result) {
   DCHECK(wireless_info_);
   DCHECK(wireless_info_->wireless_link_info);
   std::string err = result->err;
   int32_t return_code = result->return_code;
   if (!err.empty() || return_code != EXIT_SUCCESS) {
     LOG(ERROR) << "executor()->GetInfo failed with error code: " << return_code;
-    CreateErrorToSendBack(mojo_ipc::ErrorType::kSystemUtilityError,
+    CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
                           "executor()->GetInfo failed with error code: " +
                               std::to_string(return_code));
     return;
@@ -132,7 +130,7 @@ void NetworkInterfaceFetcher::HandleInfoAndExecuteGetScanDump(
   }
 
   if (!tx_power_found) {
-    CreateErrorToSendBack(mojo_ipc::ErrorType::kParseError,
+    CreateErrorToSendBack(mojom::ErrorType::kParseError,
                           std::string(__func__) + ": output parse error.");
     return;
   }
@@ -146,13 +144,13 @@ void NetworkInterfaceFetcher::HandleInfoAndExecuteGetScanDump(
 // extract data of access point, bit rates, signal level from
 // "iw <interface> link" command.
 void NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo(
-    executor_ipc::ProcessResultPtr result) {
+    mojom::ExecutedProcessResultPtr result) {
   DCHECK(wireless_info_);
   std::string err = result->err;
   int32_t return_code = result->return_code;
   if (!err.empty() || return_code != EXIT_SUCCESS) {
     LOG(ERROR) << "executor()->GetLink failed with error code: " << return_code;
-    CreateErrorToSendBack(mojo_ipc::ErrorType::kSystemUtilityError,
+    CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
                           "executor()->GetLink failed with error code: " +
                               std::to_string(return_code));
     return;
@@ -164,7 +162,7 @@ void NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo(
     CreateResultToSendBack();
     return;
   }
-  auto link_info = mojo_ipc::WirelessLinkInfo::New();
+  auto link_info = mojom::WirelessLinkInfo::New();
   std::vector<std::string> lines = base::SplitString(
       output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
@@ -172,7 +170,7 @@ void NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo(
   std::string first_line = lines[0];
   bool access_point_found = false;
   if (!RE2::FullMatch(first_line, kAccessPointRegex, &regex_result)) {
-    CreateErrorToSendBack(mojo_ipc::ErrorType::kParseError,
+    CreateErrorToSendBack(mojom::ErrorType::kParseError,
                           std::string(__func__) + ": output parse error.");
   }
   link_info->access_point_address_str = regex_result;
@@ -185,7 +183,7 @@ void NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo(
   std::string output_left = base::JoinString(lines, "\n");
   base::StringPairs keyVals;
   if (!base::SplitStringIntoKeyValuePairs(output_left, ':', '\n', &keyVals)) {
-    CreateErrorToSendBack(mojo_ipc::ErrorType::kParseError,
+    CreateErrorToSendBack(mojom::ErrorType::kParseError,
                           std::string(__func__) + ": output parse error.");
     return;
   }
@@ -220,7 +218,7 @@ void NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo(
 
   if (!access_point_found || !signal_found || !rx_bitrate_found ||
       !tx_bitrate_found) {
-    CreateErrorToSendBack(mojo_ipc::ErrorType::kParseError,
+    CreateErrorToSendBack(mojom::ErrorType::kParseError,
                           std::string(__func__) + ": output parse error.");
     return;
   }
@@ -234,13 +232,13 @@ void NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo(
 // This function handles the callback from executor()->GetInterfaces. It will
 // extract all the wireless interfacees from "iw dev" command.
 void NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink(
-    executor_ipc::ProcessResultPtr result) {
+    mojom::ExecutedProcessResultPtr result) {
   std::string err = result->err;
   int32_t return_code = result->return_code;
   if (!err.empty() || return_code != EXIT_SUCCESS) {
     LOG(ERROR) << "executor()->GetInterfaces failed with error code: "
                << return_code;
-    CreateErrorToSendBack(mojo_ipc::ErrorType::kSystemUtilityError,
+    CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
                           "executor()->GetInterfaces failed with error code: " +
                               std::to_string(return_code));
     return;
@@ -259,12 +257,12 @@ void NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink(
   }
 
   if (!interface_found) {
-    CreateErrorToSendBack(mojo_ipc::ErrorType::kServiceUnavailable,
+    CreateErrorToSendBack(mojom::ErrorType::kServiceUnavailable,
                           "No wireless adapter found on the system.");
   }
 
   if (wireless_info_.is_null()) {
-    wireless_info_ = mojo_ipc::WirelessInterfaceInfo::New();
+    wireless_info_ = mojom::WirelessInterfaceInfo::New();
   }
   wireless_info_->interface_name = interface_name;
 
@@ -276,7 +274,7 @@ void NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink(
     uint power_scheme;
     if (!base::StringToUint(file_contents, &power_scheme)) {
       CreateErrorToSendBack(
-          mojo_ipc::ErrorType::kParseError,
+          mojom::ErrorType::kParseError,
           "Failed to convert power scheme to integer: " + file_contents);
       return;
     }
@@ -295,16 +293,16 @@ void NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink(
 
 void NetworkInterfaceFetcher::CreateResultToSendBack(void) {
   DCHECK(wireless_info_);
-  std::vector<mojo_ipc::NetworkInterfaceInfoPtr> infos;
-  auto info = mojo_ipc::NetworkInterfaceInfo::NewWirelessInterfaceInfo(
+  std::vector<mojom::NetworkInterfaceInfoPtr> infos;
+  auto info = mojom::NetworkInterfaceInfo::NewWirelessInterfaceInfo(
       std::move(wireless_info_));
   infos.push_back(std::move(info));
-  SendBackResult(mojo_ipc::NetworkInterfaceResult::NewNetworkInterfaceInfo(
-      std::move(infos)));
+  SendBackResult(
+      mojom::NetworkInterfaceResult::NewNetworkInterfaceInfo(std::move(infos)));
 }
 
 void NetworkInterfaceFetcher::SendBackResult(
-    mojo_ipc::NetworkInterfaceResultPtr result) {
+    mojom::NetworkInterfaceResultPtr result) {
   // Invalid all weak ptrs to prevent other callbacks to be run.
   weak_factory_.InvalidateWeakPtrs();
   if (pending_callbacks_.empty())
@@ -317,8 +315,8 @@ void NetworkInterfaceFetcher::SendBackResult(
 }
 
 void NetworkInterfaceFetcher::CreateErrorToSendBack(
-    mojo_ipc::ErrorType error_type, const std::string& message) {
-  SendBackResult(mojo_ipc::NetworkInterfaceResult::NewError(
+    mojom::ErrorType error_type, const std::string& message) {
+  SendBackResult(mojom::NetworkInterfaceResult::NewError(
       CreateAndLogProbeError(error_type, message)));
 }
 

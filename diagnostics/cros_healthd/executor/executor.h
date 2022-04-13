@@ -19,23 +19,22 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/process/process_with_output.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 
 namespace diagnostics {
 
-// Production implementation of the
-// chromeos::cros_healthd_executor::mojom::Executor Mojo interface.
-class Executor final : public chromeos::cros_healthd_executor::mojom::Executor {
+namespace mojom = chromeos::cros_healthd::mojom;
+
+// Production implementation of the mojom::Executor Mojo interface.
+class Executor final : public mojom::Executor {
  public:
-  Executor(
-      const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
-      mojo::PendingReceiver<chromeos::cros_healthd_executor::mojom::Executor>
-          receiver);
+  Executor(const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
+           mojo::PendingReceiver<mojom::Executor> receiver);
   Executor(const Executor&) = delete;
   Executor& operator=(const Executor&) = delete;
 
-  // chromeos::cros_healthd_executor::mojom::Executor overrides:
+  // mojom::Executor overrides:
   void GetFanSpeed(GetFanSpeedCallback callback) override;
   void GetInterfaces(GetInterfacesCallback callback) override;
   void GetLink(const std::string& interface_name,
@@ -65,9 +64,8 @@ class Executor final : public chromeos::cros_healthd_executor::mojom::Executor {
       const std::optional<std::string>& user,
       const base::FilePath& binary_path,
       const std::vector<std::string>& binary_args,
-      chromeos::cros_healthd_executor::mojom::ProcessResult result,
-      base::OnceCallback<void(
-          chromeos::cros_healthd_executor::mojom::ProcessResultPtr)> callback);
+      mojom::ExecutedProcessResult result,
+      base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback);
   // Like RunUntrackedBinary() above, but tracks the process internally so that
   // it can be cancelled if necessary.
   void RunTrackedBinary(
@@ -76,25 +74,23 @@ class Executor final : public chromeos::cros_healthd_executor::mojom::Executor {
       const std::optional<std::string>& user,
       const base::FilePath& binary_path,
       const std::vector<std::string>& binary_args,
-      chromeos::cros_healthd_executor::mojom::ProcessResult result,
-      base::OnceCallback<void(
-          chromeos::cros_healthd_executor::mojom::ProcessResultPtr)> callback);
+      mojom::ExecutedProcessResult result,
+      base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback);
   // Helper function for RunUntrackedBinary() and RunTrackedBinary().
-  int RunBinaryInternal(
-      const base::FilePath& seccomp_policy_path,
-      const std::vector<std::string>& sandboxing_args,
-      const std::optional<std::string>& user,
-      const base::FilePath& binary_path,
-      const std::vector<std::string>& binary_args,
-      chromeos::cros_healthd_executor::mojom::ProcessResult* result,
-      ProcessWithOutput* process);
+  int RunBinaryInternal(const base::FilePath& seccomp_policy_path,
+                        const std::vector<std::string>& sandboxing_args,
+                        const std::optional<std::string>& user,
+                        const base::FilePath& binary_path,
+                        const std::vector<std::string>& binary_args,
+                        mojom::ExecutedProcessResult* result,
+                        ProcessWithOutput* process);
 
   // Task runner for all Mojo callbacks.
   const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner_;
 
   // Provides a Mojo endpoint that cros_healthd can call to access the
   // executor's Mojo methods.
-  mojo::Receiver<chromeos::cros_healthd_executor::mojom::Executor> receiver_;
+  mojo::Receiver<mojom::Executor> receiver_;
 
   // Prevents multiple simultaneous writes to |processes_|.
   base::Lock lock_;

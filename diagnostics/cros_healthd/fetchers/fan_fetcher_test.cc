@@ -18,16 +18,13 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace {
-
-namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
-namespace mojo_ipc = chromeos::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -42,9 +39,9 @@ constexpr uint32_t kSecondFanSpeedRpm = 1263;
 constexpr uint64_t kOverflowingValue = 0xFFFFFFFFFF;
 
 // Saves |response| to |response_destination|.
-void OnGetFanSpeedResponseReceived(mojo_ipc::FanResultPtr* response_destination,
+void OnGetFanSpeedResponseReceived(mojom::FanResultPtr* response_destination,
                                    base::Closure quit_closure,
-                                   mojo_ipc::FanResultPtr response) {
+                                   mojom::FanResultPtr response) {
   *response_destination = std::move(response);
   quit_closure.Run();
 }
@@ -61,9 +58,9 @@ class FanUtilsTest : public ::testing::Test {
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
-  mojo_ipc::FanResultPtr FetchFanInfo() {
+  mojom::FanResultPtr FetchFanInfo() {
     base::RunLoop run_loop;
-    mojo_ipc::FanResultPtr result;
+    mojom::FanResultPtr result;
     fan_fetcher_.FetchFanInfo(base::BindOnce(&OnGetFanSpeedResponseReceived,
                                              &result, run_loop.QuitClosure()));
 
@@ -83,9 +80,9 @@ class FanUtilsTest : public ::testing::Test {
 TEST_F(FanUtilsTest, FetchFanInfo) {
   // Set the mock executor response.
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetFanSpeedCallback callback) {
-            executor_ipc::ProcessResult result;
+      .WillOnce(
+          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
+            mojom::ExecutedProcessResult result;
             result.return_code = EXIT_SUCCESS;
             result.out =
                 base::StringPrintf("Fan 0 RPM: %u\nFan 1 RPM: %u\n",
@@ -106,9 +103,9 @@ TEST_F(FanUtilsTest, FetchFanInfo) {
 TEST_F(FanUtilsTest, NoFan) {
   // Set the mock executor response.
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetFanSpeedCallback callback) {
-            executor_ipc::ProcessResult result;
+      .WillOnce(
+          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
+            mojom::ExecutedProcessResult result;
             result.return_code = EXIT_SUCCESS;
             result.out = "";
             std::move(callback).Run(result.Clone());
@@ -125,9 +122,9 @@ TEST_F(FanUtilsTest, NoFan) {
 TEST_F(FanUtilsTest, CollectFanSpeedFailure) {
   // Set the mock executor response.
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetFanSpeedCallback callback) {
-            executor_ipc::ProcessResult result;
+      .WillOnce(
+          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
+            mojom::ExecutedProcessResult result;
             result.return_code = EXIT_FAILURE;
             result.err = "Some error happened!";
             std::move(callback).Run(result.Clone());
@@ -144,9 +141,9 @@ TEST_F(FanUtilsTest, CollectFanSpeedFailure) {
 TEST_F(FanUtilsTest, FanStalled) {
   // Set the mock executor response.
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetFanSpeedCallback callback) {
-            executor_ipc::ProcessResult result;
+      .WillOnce(
+          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
+            mojom::ExecutedProcessResult result;
             result.return_code = EXIT_SUCCESS;
             result.out = base::StringPrintf("Fan 0 stalled!\nFan 1 RPM: %u\n",
                                             kSecondFanSpeedRpm);
@@ -167,9 +164,9 @@ TEST_F(FanUtilsTest, FanStalled) {
 TEST_F(FanUtilsTest, BadLine) {
   // Set the mock executor response.
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetFanSpeedCallback callback) {
-            executor_ipc::ProcessResult result;
+      .WillOnce(
+          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
+            mojom::ExecutedProcessResult result;
             result.return_code = EXIT_SUCCESS;
             result.out = base::StringPrintf("Fan 0 RPM: bad\nFan 1 RPM: %u\n",
                                             kSecondFanSpeedRpm);
@@ -188,9 +185,9 @@ TEST_F(FanUtilsTest, BadLine) {
 TEST_F(FanUtilsTest, BadValue) {
   // Set the mock executor response.
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetFanSpeedCallback callback) {
-            executor_ipc::ProcessResult result;
+      .WillOnce(
+          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
+            mojom::ExecutedProcessResult result;
             result.return_code = EXIT_SUCCESS;
             result.out = base::StringPrintf("Fan 0 RPM: -115\nFan 1 RPM: %u\n",
                                             kSecondFanSpeedRpm);
@@ -220,9 +217,9 @@ TEST_F(FanUtilsTest, NoGoogleEc) {
 TEST_F(FanUtilsTest, OverflowingFanSpeedValue) {
   // Set the mock executor response.
   EXPECT_CALL(*mock_executor(), GetFanSpeed(_))
-      .WillOnce(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetFanSpeedCallback callback) {
-            executor_ipc::ProcessResult result;
+      .WillOnce(
+          WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
+            mojom::ExecutedProcessResult result;
             result.return_code = EXIT_SUCCESS;
             result.out =
                 base::StringPrintf("Fan 0 RPM: %u\nFan 1 RPM: %" PRId64 "\n",

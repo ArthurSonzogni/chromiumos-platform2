@@ -14,12 +14,14 @@
 #include <base/time/time.h>
 #include <base/values.h>
 
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
+
+namespace mojom = chromeos::cros_healthd::mojom;
 
 // The memory routine checks that the device's memory is working correctly.
 class MemoryRoutine final : public DiagnosticRoutine {
@@ -44,8 +46,7 @@ class MemoryRoutine final : public DiagnosticRoutine {
  private:
   // Takes the memtester result code from |process| and parses it to determine
   // whether or not the routine succeeded.
-  void DetermineRoutineResult(
-      chromeos::cros_healthd_executor::mojom::ProcessResultPtr process);
+  void DetermineRoutineResult(mojom::ExecutedProcessResultPtr process);
 
   // Takes raw output from memtester and parses it into |output_dict_|.
   void ParseMemtesterOutput(const std::string& raw_output);

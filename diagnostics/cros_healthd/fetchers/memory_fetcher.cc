@@ -21,9 +21,7 @@ namespace diagnostics {
 
 namespace {
 
-namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-using OptionalProbeErrorPtr = std::optional<mojo_ipc::ProbeErrorPtr>;
+using OptionalProbeErrorPtr = std::optional<mojom::ProbeErrorPtr>;
 
 // Path to procfs, relative to the root directory.
 constexpr char kRelativeProcCpuInfoPath[] = "proc/cpuinfo";
@@ -53,11 +51,11 @@ constexpr uint64_t kTmeAlgorithmAesXts256 = (uint64_t)2 << 4;
 // |info| with information read from proc/meminfo. Returns any error
 // encountered probing the memory information. |info| is valid iff no error
 // occurred.
-void MemoryFetcher::ParseProcMeminfo(mojo_ipc::MemoryInfo* info) {
+void MemoryFetcher::ParseProcMeminfo(mojom::MemoryInfo* info) {
   std::string file_contents;
   if (!ReadAndTrimString(context_->root_dir().Append(kRelativeProcPath),
                          "meminfo", &file_contents)) {
-    CreateErrorAndSendBack(mojo_ipc::ErrorType::kFileReadError,
+    CreateErrorAndSendBack(mojom::ErrorType::kFileReadError,
                            "Unable to read /proc/meminfo");
     return;
   }
@@ -66,7 +64,7 @@ void MemoryFetcher::ParseProcMeminfo(mojo_ipc::MemoryInfo* info) {
   // claiming to be in kB.
   base::StringPairs keyVals;
   if (!base::SplitStringIntoKeyValuePairs(file_contents, ':', '\n', &keyVals)) {
-    CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+    CreateErrorAndSendBack(mojom::ErrorType::kParseError,
                            "Incorrectly formatted /proc/meminfo");
     return;
   }
@@ -83,7 +81,7 @@ void MemoryFetcher::ParseProcMeminfo(mojo_ipc::MemoryInfo* info) {
         info->total_memory_kib = memtotal;
         memtotal_found = true;
       } else {
-        CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+        CreateErrorAndSendBack(mojom::ErrorType::kParseError,
                                "Incorrectly formatted MemTotal");
         return;
       }
@@ -95,7 +93,7 @@ void MemoryFetcher::ParseProcMeminfo(mojo_ipc::MemoryInfo* info) {
         info->free_memory_kib = memfree;
         memfree_found = true;
       } else {
-        CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+        CreateErrorAndSendBack(mojom::ErrorType::kParseError,
                                "Incorrectly formatted MemFree");
         return;
       }
@@ -108,7 +106,7 @@ void MemoryFetcher::ParseProcMeminfo(mojo_ipc::MemoryInfo* info) {
         info->available_memory_kib = memavailable;
         memavailable_found = true;
       } else {
-        CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+        CreateErrorAndSendBack(mojom::ErrorType::kParseError,
                                "Incorrectly formatted MemAvailable");
         return;
       }
@@ -121,8 +119,7 @@ void MemoryFetcher::ParseProcMeminfo(mojo_ipc::MemoryInfo* info) {
     error_msg += !memavailable_found ? "MemAvailable " : "";
     error_msg += "not found in /proc/meminfo";
 
-    CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
-                           std::move(error_msg));
+    CreateErrorAndSendBack(mojom::ErrorType::kParseError, std::move(error_msg));
     return;
   }
 }
@@ -130,11 +127,11 @@ void MemoryFetcher::ParseProcMeminfo(mojo_ipc::MemoryInfo* info) {
 // Sets the page_faults_per_second field of |info| with information read from
 // /proc/vmstat. Returns any error encountered probing the memory information.
 // |info| is valid iff no error occurred.
-void MemoryFetcher::ParseProcVmStat(mojo_ipc::MemoryInfo* info) {
+void MemoryFetcher::ParseProcVmStat(mojom::MemoryInfo* info) {
   std::string file_contents;
   if (!ReadAndTrimString(context_->root_dir().Append(kRelativeProcPath),
                          "vmstat", &file_contents)) {
-    CreateErrorAndSendBack(mojo_ipc::ErrorType::kFileReadError,
+    CreateErrorAndSendBack(mojom::ErrorType::kFileReadError,
                            "Unable to read /proc/vmstat");
     return;
   }
@@ -142,7 +139,7 @@ void MemoryFetcher::ParseProcVmStat(mojo_ipc::MemoryInfo* info) {
   // Parse the vmstat contents for pgfault.
   base::StringPairs keyVals;
   if (!base::SplitStringIntoKeyValuePairs(file_contents, ' ', '\n', &keyVals)) {
-    CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+    CreateErrorAndSendBack(mojom::ErrorType::kParseError,
                            "Incorrectly formatted /proc/vmstat");
     return;
   }
@@ -156,7 +153,7 @@ void MemoryFetcher::ParseProcVmStat(mojo_ipc::MemoryInfo* info) {
         pgfault_found = true;
         break;
       } else {
-        CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+        CreateErrorAndSendBack(mojom::ErrorType::kParseError,
                                "Incorrectly formatted pgfault");
         return;
       }
@@ -164,23 +161,23 @@ void MemoryFetcher::ParseProcVmStat(mojo_ipc::MemoryInfo* info) {
   }
 
   if (!pgfault_found) {
-    CreateErrorAndSendBack(mojo_ipc::ErrorType::kParseError,
+    CreateErrorAndSendBack(mojom::ErrorType::kParseError,
                            "pgfault not found in /proc/vmstat");
     return;
   }
 }
 
 void MemoryFetcher::CreateResultAndSendBack() {
-  SendBackResult(mojo_ipc::MemoryResult::NewMemoryInfo(mem_info_.Clone()));
+  SendBackResult(mojom::MemoryResult::NewMemoryInfo(mem_info_.Clone()));
 }
 
-void MemoryFetcher::CreateErrorAndSendBack(mojo_ipc::ErrorType error_type,
+void MemoryFetcher::CreateErrorAndSendBack(mojom::ErrorType error_type,
                                            const std::string& message) {
-  SendBackResult(mojo_ipc::MemoryResult::NewError(
+  SendBackResult(mojom::MemoryResult::NewError(
       CreateAndLogProbeError(error_type, message)));
 }
 
-void MemoryFetcher::SendBackResult(mojo_ipc::MemoryResultPtr result) {
+void MemoryFetcher::SendBackResult(mojom::MemoryResultPtr result) {
   // Invalid all weak ptrs to prevent other callbacks to be run.
   weak_factory_.InvalidateWeakPtrs();
   if (pending_callbacks_.empty())
@@ -200,38 +197,38 @@ void MemoryFetcher::FetchMktmeInfo() {
     CreateResultAndSendBack();
     return;
   }
-  auto memory_encryption_info = mojo_ipc::MemoryEncryptionInfo::New();
+  auto memory_encryption_info = mojom::MemoryEncryptionInfo::New();
   std::string file_contents;
 
   // Check if mktme enabled or not.
   if (!ReadAndTrimString(mktme_path, kMktmeActiveFile, &file_contents)) {
     CreateErrorAndSendBack(
-        mojo_ipc::ErrorType::kFileReadError,
+        mojom::ErrorType::kFileReadError,
         "Unable to read " + mktme_path.Append(kMktmeActiveFile).value());
     return;
   }
   uint32_t value;
   if (!base::StringToUint(file_contents, &value)) {
     CreateErrorAndSendBack(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to convert mktme enable state to integer: " + file_contents);
     return;
   }
   memory_encryption_info->encryption_state =
-      (value != 0) ? mojo_ipc::EncryptionState::kMktmeEnabled
-                   : mojo_ipc::EncryptionState::kEncryptionDisabled;
+      (value != 0) ? mojom::EncryptionState::kMktmeEnabled
+                   : mojom::EncryptionState::kEncryptionDisabled;
 
   // Get max number of key support.
   if (!ReadAndTrimString(mktme_path, kMktmeKeyCountFile, &file_contents)) {
     CreateErrorAndSendBack(
-        mojo_ipc::ErrorType::kFileReadError,
+        mojom::ErrorType::kFileReadError,
         "Unable to read " + mktme_path.Append(kMktmeKeyCountFile).value());
     return;
   }
   if (!base::StringToUint(file_contents,
                           &memory_encryption_info->max_key_number)) {
     CreateErrorAndSendBack(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to convert mktme maximum key number to integer: " +
             file_contents);
     return;
@@ -240,13 +237,13 @@ void MemoryFetcher::FetchMktmeInfo() {
   // Get key length.
   if (!ReadAndTrimString(mktme_path, kMktmeKeyLengthFile, &file_contents)) {
     CreateErrorAndSendBack(
-        mojo_ipc::ErrorType::kFileReadError,
+        mojom::ErrorType::kFileReadError,
         "Unable to read " + mktme_path.Append(kMktmeKeyLengthFile).value());
     return;
   }
   if (!base::StringToUint(file_contents, &memory_encryption_info->key_length)) {
     CreateErrorAndSendBack(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to convert mktme key length to integer: " + file_contents);
     return;
   }
@@ -255,47 +252,46 @@ void MemoryFetcher::FetchMktmeInfo() {
   if (!ReadAndTrimString(mktme_path, kMktmeActiveAlgorithmFile,
                          &file_contents)) {
     CreateErrorAndSendBack(
-        mojo_ipc::ErrorType::kFileReadError,
+        mojom::ErrorType::kFileReadError,
         "Unable to read " +
             mktme_path.Append(kMktmeActiveAlgorithmFile).value());
     return;
   }
   if (file_contents == "AES_XTS_256") {
     memory_encryption_info->active_algorithm =
-        mojo_ipc::CryptoAlgorithm::kAesXts256;
+        mojom::CryptoAlgorithm::kAesXts256;
   } else if (file_contents == "AES_XTS_128") {
     memory_encryption_info->active_algorithm =
-        mojo_ipc::CryptoAlgorithm::kAesXts128;
+        mojom::CryptoAlgorithm::kAesXts128;
   } else {
-    memory_encryption_info->active_algorithm =
-        mojo_ipc::CryptoAlgorithm::kUnknown;
+    memory_encryption_info->active_algorithm = mojom::CryptoAlgorithm::kUnknown;
   }
   mem_info_.memory_encryption_info = std::move(memory_encryption_info);
   CreateResultAndSendBack();
 }
 
 void MemoryFetcher::ExtractTmeInfoFromMsr() {
-  mojo_ipc::MemoryEncryptionInfo info;
+  mojom::MemoryEncryptionInfo info;
   // tme enabled when hardware tme enabled and tme encryption not bypassed.
   bool tme_enable = ((tme_activate_value_ & kTmeEnableBit) &&
                      (!(tme_capability_value_ & kTmeBypassAllowBit) ||
                       !(tme_activate_value_ & kTmeBypassBit)));
   info.encryption_state = tme_enable
-                              ? mojo_ipc::EncryptionState::kTmeEnabled
-                              : mojo_ipc::EncryptionState::kEncryptionDisabled;
+                              ? mojom::EncryptionState::kTmeEnabled
+                              : mojom::EncryptionState::kEncryptionDisabled;
   info.max_key_number = 1;
 
   if (((tme_activate_value_ & kTmeAlgorithmMask) == kTmeAlgorithmAesXts128) &&
       (tme_capability_value_ & kTmeAllowAesXts128)) {
-    info.active_algorithm = mojo_ipc::CryptoAlgorithm::kAesXts128;
+    info.active_algorithm = mojom::CryptoAlgorithm::kAesXts128;
     info.key_length = 128;
   } else if (((tme_activate_value_ & kTmeAlgorithmMask) ==
               kTmeAlgorithmAesXts256) &&
              (tme_capability_value_ & kTmeAllowAesXts256)) {
-    info.active_algorithm = mojo_ipc::CryptoAlgorithm::kAesXts256;
+    info.active_algorithm = mojom::CryptoAlgorithm::kAesXts256;
     info.key_length = 256;
   } else {
-    info.active_algorithm = mojo_ipc::CryptoAlgorithm::kUnknown;
+    info.active_algorithm = mojom::CryptoAlgorithm::kUnknown;
     info.key_length = 0;
   }
   mem_info_.memory_encryption_info = info.Clone();
@@ -303,10 +299,10 @@ void MemoryFetcher::ExtractTmeInfoFromMsr() {
 }
 
 void MemoryFetcher::HandleReadTmeActivateMsr(
-    executor_ipc::ProcessResultPtr status, uint64_t val) {
+    mojom::ExecutedProcessResultPtr status, uint64_t val) {
   DCHECK(mem_info_.memory_encryption_info);
   if (!status->err.empty() || status->return_code != EXIT_SUCCESS) {
-    CreateErrorAndSendBack(mojo_ipc::ErrorType::kFileReadError,
+    CreateErrorAndSendBack(mojom::ErrorType::kFileReadError,
                            status->err + " with error code: " +
                                std::to_string(status->return_code));
     return;
@@ -316,10 +312,10 @@ void MemoryFetcher::HandleReadTmeActivateMsr(
 }
 
 void MemoryFetcher::HandleReadTmeCapabilityMsr(
-    executor_ipc::ProcessResultPtr status, uint64_t val) {
+    mojom::ExecutedProcessResultPtr status, uint64_t val) {
   DCHECK(mem_info_.memory_encryption_info);
   if (!status->err.empty() || status->return_code != EXIT_SUCCESS) {
-    CreateErrorAndSendBack(mojo_ipc::ErrorType::kFileReadError,
+    CreateErrorAndSendBack(mojom::ErrorType::kFileReadError,
                            status->err + " with error code: " +
                                std::to_string(status->return_code));
     return;
@@ -337,7 +333,7 @@ void MemoryFetcher::FetchTmeInfo() {
   if (!ReadAndTrimString(context_->root_dir().Append(kRelativeProcCpuInfoPath),
                          &file_content)) {
     CreateErrorAndSendBack(
-        mojo_ipc::ErrorType::kFileReadError,
+        mojom::ErrorType::kFileReadError,
         "Unable to read " +
             context_->root_dir().Append(kRelativeProcCpuInfoPath).value());
     return;
@@ -363,7 +359,7 @@ void MemoryFetcher::FetchTmeInfo() {
     return;
   }
 
-  mem_info_.memory_encryption_info = mojo_ipc::MemoryEncryptionInfo::New();
+  mem_info_.memory_encryption_info = mojom::MemoryEncryptionInfo::New();
   // Read tme Capability Register.
   context_->executor()->ReadMsr(
       kTmeCapabilityMsr,

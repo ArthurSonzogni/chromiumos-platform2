@@ -26,9 +26,6 @@
 namespace diagnostics {
 namespace {
 
-namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::WithArg;
@@ -38,20 +35,19 @@ std::optional<std::string> GetMockValue(const T& value) {
   return value;
 }
 
-std::optional<std::string> GetMockValue(
-    const mojo_ipc::NullableUint64Ptr& ptr) {
+std::optional<std::string> GetMockValue(const mojom::NullableUint64Ptr& ptr) {
   if (ptr)
     return std::to_string(ptr->value);
   return std::nullopt;
 }
 
-void OnGetSystemInfoResponse(mojo_ipc::SystemResultPtr* response_update,
-                             mojo_ipc::SystemResultPtr response) {
+void OnGetSystemInfoResponse(mojom::SystemResultPtr* response_update,
+                             mojom::SystemResultPtr response) {
   *response_update = std::move(response);
 }
 
-void OnGetSystemInfoV2Response(mojo_ipc::SystemResultV2Ptr* response_update,
-                               mojo_ipc::SystemResultV2Ptr response) {
+void OnGetSystemInfoV2Response(mojom::SystemResultV2Ptr* response_update,
+                               mojom::SystemResultV2Ptr response) {
   *response_update = std::move(response);
 }
 
@@ -64,9 +60,9 @@ class SystemUtilsTest : public BaseFileTest {
   void SetUp() override {
     SetTestRoot(mock_context_.root_dir());
 
-    expected_system_info_ = mojo_ipc::SystemInfoV2::New();
+    expected_system_info_ = mojom::SystemInfoV2::New();
     auto& vpd_info = expected_system_info_->vpd_info;
-    vpd_info = mojo_ipc::VpdInfo::New();
+    vpd_info = mojom::VpdInfo::New();
     vpd_info->activate_date = "2020-40";
     vpd_info->mfg_date = "2019-01-01";
     vpd_info->model_name = "XX ModelName 007 XY";
@@ -74,26 +70,26 @@ class SystemUtilsTest : public BaseFileTest {
     vpd_info->serial_number = "8607G03EDF";
     vpd_info->sku_number = "ABCD&^A";
     auto& dmi_info = expected_system_info_->dmi_info;
-    dmi_info = mojo_ipc::DmiInfo::New();
+    dmi_info = mojom::DmiInfo::New();
     dmi_info->bios_vendor = "Google";
     dmi_info->bios_version = "Google_BoardName.12200.68.0";
     dmi_info->board_name = "BoardName";
     dmi_info->board_vendor = "Google";
     dmi_info->board_version = "rev1234";
     dmi_info->chassis_vendor = "Google";
-    dmi_info->chassis_type = mojo_ipc::NullableUint64::New(9);
+    dmi_info->chassis_type = mojom::NullableUint64::New(9);
     dmi_info->product_family = "FooFamily";
     dmi_info->product_name = "BarProductName";
     dmi_info->product_version = "rev1234";
     dmi_info->sys_vendor = "Google";
     auto& os_info = expected_system_info_->os_info;
-    os_info = mojo_ipc::OsInfo::New();
+    os_info = mojom::OsInfo::New();
     os_info->code_name = "CodeName";
     os_info->marketing_name = "Latitude 1234 Chromebook Enterprise";
     os_info->oem_name = "FooOEM";
-    os_info->boot_mode = mojo_ipc::BootMode::kCrosSecure;
+    os_info->boot_mode = mojom::BootMode::kCrosSecure;
     auto& os_version = os_info->os_version;
-    os_version = mojo_ipc::OsVersion::New();
+    os_version = mojom::OsVersion::New();
     os_version->release_milestone = "87";
     os_version->build_number = "13544";
     os_version->patch_number = "59.0";
@@ -103,13 +99,13 @@ class SystemUtilsTest : public BaseFileTest {
     SetHasSkuNumber(true);
   }
 
-  void SetSystemInfo(const mojo_ipc::SystemInfoV2Ptr& system_info) {
+  void SetSystemInfo(const mojom::SystemInfoV2Ptr& system_info) {
     SetVpdInfo(system_info->vpd_info);
     SetDmiInfo(system_info->dmi_info);
     SetOsInfo(system_info->os_info);
   }
 
-  void SetVpdInfo(const mojo_ipc::VpdInfoPtr& vpd_info) {
+  void SetVpdInfo(const mojom::VpdInfoPtr& vpd_info) {
     const auto& ro = kRelativePathVpdRo;
     const auto& rw = kRelativePathVpdRw;
     if (vpd_info.is_null()) {
@@ -125,7 +121,7 @@ class SystemUtilsTest : public BaseFileTest {
     SetMockFile({ro, kFileNameSkuNumber}, vpd_info->sku_number);
   }
 
-  void SetDmiInfo(const mojo_ipc::DmiInfoPtr& dmi_info) {
+  void SetDmiInfo(const mojom::DmiInfoPtr& dmi_info) {
     const auto& dmi = kRelativePathDmiInfo;
     if (dmi_info.is_null()) {
       UnsetPath(dmi);
@@ -144,7 +140,7 @@ class SystemUtilsTest : public BaseFileTest {
     SetMockFile({dmi, kFileNameSysVendor}, dmi_info->sys_vendor);
   }
 
-  void SetOsInfo(const mojo_ipc::OsInfoPtr& os_info) {
+  void SetOsInfo(const mojom::OsInfoPtr& os_info) {
     ASSERT_FALSE(os_info.is_null());
     mock_context_.fake_system_config()->SetMarketingName(
         os_info->marketing_name);
@@ -154,7 +150,7 @@ class SystemUtilsTest : public BaseFileTest {
     SetBootModeInProcCmd(os_info->boot_mode);
   }
 
-  void SetOsVersion(const mojo_ipc::OsVersionPtr& os_version) {
+  void SetOsVersion(const mojom::OsVersionPtr& os_version) {
     PopulateLsbRelease(base::StringPrintf(
         "CHROMEOS_RELEASE_CHROME_MILESTONE=%s\n"
         "CHROMEOS_RELEASE_BUILD_NUMBER=%s\n"
@@ -164,22 +160,22 @@ class SystemUtilsTest : public BaseFileTest {
         os_version->patch_number.c_str(), os_version->release_channel.c_str()));
   }
 
-  void SetBootModeInProcCmd(const mojo_ipc::BootMode& boot_mode) {
+  void SetBootModeInProcCmd(const mojom::BootMode& boot_mode) {
     std::optional<std::string> proc_cmd;
     switch (boot_mode) {
-      case mojo_ipc::BootMode::kCrosSecure:
+      case mojom::BootMode::kCrosSecure:
         proc_cmd = "Foo Bar=1 cros_secure Foo Bar=1";
         break;
-      case mojo_ipc::BootMode::kCrosEfi:
+      case mojom::BootMode::kCrosEfi:
         proc_cmd = "Foo Bar=1 cros_efi Foo Bar=1";
         break;
-      case mojo_ipc::BootMode::kCrosEfiSecure:
+      case mojom::BootMode::kCrosEfiSecure:
         proc_cmd = "Foo Bar=1 cros_efi Foo Bar=1";
         break;
-      case mojo_ipc::BootMode::kCrosLegacy:
+      case mojom::BootMode::kCrosLegacy:
         proc_cmd = "Foo Bar=1 cros_legacy Foo Bar=1";
         break;
-      case mojo_ipc::BootMode::kUnknown:
+      case mojom::BootMode::kUnknown:
         proc_cmd = "Foo Bar=1 Foo Bar=1";
         break;
     }
@@ -191,8 +187,10 @@ class SystemUtilsTest : public BaseFileTest {
     EXPECT_CALL(*mock_executor(), GetUEFISecureBootContent(_))
         .Times(2)
         .WillRepeatedly(WithArg<0>(Invoke(
-            [content](executor_ipc::Executor::GetUEFISecureBootContentCallback
-                          callback) { std::move(callback).Run(content); })));
+            [content](
+                mojom::Executor::GetUEFISecureBootContentCallback callback) {
+              std::move(callback).Run(content);
+            })));
   }
 
   // Sets the mock file with |value|. If the |value| is omitted, deletes the
@@ -236,26 +234,26 @@ class SystemUtilsTest : public BaseFileTest {
               SystemFetcher::ConvertToSystemInfo(expected_system_info_));
   }
 
-  void ExpectFetchProbeError(const mojo_ipc::ErrorType& expected) {
+  void ExpectFetchProbeError(const mojom::ErrorType& expected) {
     auto system_result = FetchSystemInfo();
     ASSERT_TRUE(system_result->is_error());
     EXPECT_EQ(system_result->get_error()->type, expected);
   }
 
  protected:
-  mojo_ipc::SystemInfoV2Ptr expected_system_info_;
+  mojom::SystemInfoV2Ptr expected_system_info_;
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
-  mojo_ipc::SystemResultPtr FetchSystemInfo() {
+  mojom::SystemResultPtr FetchSystemInfo() {
     base::RunLoop run_loop;
-    mojo_ipc::SystemResultPtr result;
+    mojom::SystemResultPtr result;
     system_fetcher_.FetchSystemInfo(
         base::BindOnce(&OnGetSystemInfoResponse, &result));
     run_loop.RunUntilIdle();
     return result;
   }
-  mojo_ipc::SystemResultV2Ptr FetchSystemInfoV2() {
+  mojom::SystemResultV2Ptr FetchSystemInfoV2() {
     base::RunLoop run_loop;
-    mojo_ipc::SystemResultV2Ptr result;
+    mojom::SystemResultV2Ptr result;
     system_fetcher_.FetchSystemInfoV2(
         base::BindOnce(&OnGetSystemInfoV2Response, &result));
     run_loop.RunUntilIdle();
@@ -289,7 +287,7 @@ TEST_F(SystemUtilsTest, TestNoVpdDir) {
   expected_system_info_->vpd_info = nullptr;
   SetSystemInfo(expected_system_info_);
   SetHasSkuNumber(true);
-  ExpectFetchProbeError(mojo_ipc::ErrorType::kFileReadError);
+  ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 
   SetHasSkuNumber(false);
   ExpectFetchSystemInfo();
@@ -309,7 +307,7 @@ TEST_F(SystemUtilsTest, TestNoSkuNumber) {
 
   // Sku number file doesn't exist but should have.
   SetHasSkuNumber(true);
-  ExpectFetchProbeError(mojo_ipc::ErrorType::kFileReadError);
+  ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
 TEST_MISSING_FIELD(vpd_info, activate_date);
@@ -347,12 +345,12 @@ TEST_F(SystemUtilsTest, TestBadChassisType) {
   // that cannot be parsed into an unsigned integer.
   std::string bad_chassis_type = "bad chassis type";
   SetMockFile({kRelativePathDmiInfo, kFileNameChassisType}, bad_chassis_type);
-  ExpectFetchProbeError(mojo_ipc::ErrorType::kParseError);
+  ExpectFetchProbeError(mojom::ErrorType::kParseError);
 }
 
 TEST_F(SystemUtilsTest, TestNoOsVersion) {
   PopulateLsbRelease("");
-  ExpectFetchProbeError(mojo_ipc::ErrorType::kFileReadError);
+  ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
 TEST_F(SystemUtilsTest, TestBadOsVersion) {
@@ -361,29 +359,28 @@ TEST_F(SystemUtilsTest, TestBadOsVersion) {
       "CHROMEOS_RELEASE_BUILD_NUMBER=1\n"
       "CHROMEOS_RELEASE_PATCH_NUMBER=2\n"
       "CHROMEOS_RELEASE_TRACK=3\n");
-  ExpectFetchProbeError(mojo_ipc::ErrorType::kFileReadError);
+  ExpectFetchProbeError(mojom::ErrorType::kFileReadError);
 }
 
 TEST_F(SystemUtilsTest, TestBootMode) {
-  expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kCrosSecure;
+  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosSecure;
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
-  expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kCrosEfi;
+  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   SetUEFISceureBootResponse("\x00");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
-  expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kCrosLegacy;
+  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosLegacy;
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
-  expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kUnknown;
+  expected_system_info_->os_info->boot_mode = mojom::BootMode::kUnknown;
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
-  expected_system_info_->os_info->boot_mode =
-      mojo_ipc::BootMode::kCrosEfiSecure;
+  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
   SetUEFISceureBootResponse("\x01");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
@@ -392,12 +389,13 @@ TEST_F(SystemUtilsTest, TestBootMode) {
 // Test that the executor fails to read UEFISecureBoot file content and returns
 // kCrosEfi as default value
 TEST_F(SystemUtilsTest, TestUEFISceureBootFailure) {
-  expected_system_info_->os_info->boot_mode = mojo_ipc::BootMode::kCrosEfi;
+  expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   EXPECT_CALL(*mock_executor(), GetUEFISecureBootContent(_))
       .Times(2)
-      .WillRepeatedly(WithArg<0>(
-          Invoke([](executor_ipc::Executor::GetUEFISecureBootContentCallback
-                        callback) { std::move(callback).Run(""); })));
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](mojom::Executor::GetUEFISecureBootContentCallback callback) {
+            std::move(callback).Run("");
+          })));
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }

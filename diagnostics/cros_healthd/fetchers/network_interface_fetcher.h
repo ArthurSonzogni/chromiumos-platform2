@@ -11,18 +11,21 @@
 #include <string>
 #include <vector>
 
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+
+namespace mojom = chromeos::cros_healthd::mojom;
+
 constexpr char kRelativeWirelessPowerSchemePath[] =
     "sys/module/iwlmvm/parameters/power_scheme";
 
 class NetworkInterfaceFetcher final : public BaseFetcher {
  public:
-  using FetchNetworkInterfaceInfoCallback = base::OnceCallback<void(
-      chromeos::cros_healthd::mojom::NetworkInterfaceResultPtr)>;
+  using FetchNetworkInterfaceInfoCallback =
+      base::OnceCallback<void(mojom::NetworkInterfaceResultPtr)>;
 
   using BaseFetcher::BaseFetcher;
   void FetchNetworkInterfaceInfo(FetchNetworkInterfaceInfoCallback callback);
@@ -30,28 +33,24 @@ class NetworkInterfaceFetcher final : public BaseFetcher {
  private:
   void CreateResultToSendBack(void);
 
-  void CreateErrorToSendBack(
-      chromeos::cros_healthd::mojom::ErrorType error_type,
-      const std::string& message);
+  void CreateErrorToSendBack(mojom::ErrorType error_type,
+                             const std::string& message);
 
-  void SendBackResult(
-      chromeos::cros_healthd::mojom::NetworkInterfaceResultPtr result);
+  void SendBackResult(mojom::NetworkInterfaceResultPtr result);
 
   void FetchWirelessInterfaceInfo(void);
 
   void HandleInterfaceNameAndExecuteGetLink(
-      chromeos::cros_healthd_executor::mojom::ProcessResultPtr result);
+      mojom::ExecutedProcessResultPtr result);
 
   void HandleLinkAndExecuteIwExecuteGetInfo(
-      chromeos::cros_healthd_executor::mojom::ProcessResultPtr result);
+      mojom::ExecutedProcessResultPtr result);
 
-  void HandleInfoAndExecuteGetScanDump(
-      chromeos::cros_healthd_executor::mojom::ProcessResultPtr result);
+  void HandleInfoAndExecuteGetScanDump(mojom::ExecutedProcessResultPtr result);
 
-  void HandleScanDump(
-      chromeos::cros_healthd_executor::mojom::ProcessResultPtr result);
+  void HandleScanDump(mojom::ExecutedProcessResultPtr result);
 
-  chromeos::cros_healthd::mojom::WirelessInterfaceInfoPtr wireless_info_;
+  mojom::WirelessInterfaceInfoPtr wireless_info_;
   std::vector<FetchNetworkInterfaceInfoCallback> pending_callbacks_;
   base::WeakPtrFactory<NetworkInterfaceFetcher> weak_factory_{this};
 };

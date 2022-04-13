@@ -53,7 +53,7 @@ class MockContext final : public Context {
   std::unique_ptr<LibdrmUtil> CreateLibdrmUtil() override;
   std::unique_ptr<PciUtil> CreatePciUtil() override;
 
-  chromeos::cros_healthd_executor::mojom::Executor* executor() override;
+  mojom::Executor* executor() override;
 
   // Accessors to the fake and mock objects held by MockContext:
   org::chromium::AttestationProxyMock* mock_attestation_proxy() const;

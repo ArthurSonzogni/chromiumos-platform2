@@ -21,6 +21,7 @@
 #include "diagnostics/common/system/bluetooth_client.h"
 #include "diagnostics/common/system/debugd_adapter.h"
 #include "diagnostics/common/system/powerd_adapter.h"
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/libdrm_util.h"
@@ -29,7 +30,6 @@
 #include "diagnostics/cros_healthd/system/system_utilities.h"
 #include "diagnostics/cros_healthd/utils/mojo_relay.h"
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 
 namespace brillo {
 class Udev;
@@ -48,6 +48,8 @@ class ControlProxyInterface;
 }  // namespace org
 
 namespace diagnostics {
+
+namespace mojom = chromeos::cros_healthd::mojom;
 
 // A context class for holding the helper objects used in cros_healthd, which
 // simplifies the passing of the helper objects to other objects. For instance,
@@ -113,7 +115,7 @@ class Context {
   SystemConfigInterface* system_config() const;
   // Use the interface returned by executor() to make calls to the root-level
   // executor.
-  virtual chromeos::cros_healthd_executor::mojom::Executor* executor();
+  virtual mojom::Executor* executor();
   // Use the object returned by system_utils() to access system utilities.
   SystemUtilities* system_utils() const;
   // Use the object returned by tick_clock() to track the passage of time.
@@ -161,7 +163,7 @@ class Context {
   std::unique_ptr<NetworkDiagnosticsAdapter> network_diagnostics_adapter_;
   std::unique_ptr<PowerdAdapter> powerd_adapter_;
   std::unique_ptr<SystemConfigInterface> system_config_;
-  mojo::Remote<chromeos::cros_healthd_executor::mojom::Executor> executor_;
+  mojo::Remote<mojom::Executor> executor_;
   std::unique_ptr<SystemUtilities> system_utils_;
   std::unique_ptr<base::TickClock> tick_clock_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;

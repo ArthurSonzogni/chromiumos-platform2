@@ -11,11 +11,13 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+
+namespace mojom = chromeos::cros_healthd::mojom;
 
 // Relative filepath used to determine whether a device has a Google EC.
 constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
@@ -24,8 +26,7 @@ constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
 // cros_healthd.
 class FanFetcher final : public BaseFetcher {
  public:
-  using FetchFanInfoCallback =
-      base::OnceCallback<void(chromeos::cros_healthd::mojom::FanResultPtr)>;
+  using FetchFanInfoCallback = base::OnceCallback<void(mojom::FanResultPtr)>;
 
   using BaseFetcher::BaseFetcher;
 
@@ -35,9 +36,8 @@ class FanFetcher final : public BaseFetcher {
 
  private:
   // Handles the executor's response to a GetFanSpeed IPC.
-  void HandleFanSpeedResponse(
-      FetchFanInfoCallback callback,
-      chromeos::cros_healthd_executor::mojom::ProcessResultPtr result);
+  void HandleFanSpeedResponse(FetchFanInfoCallback callback,
+                              mojom::ExecutedProcessResultPtr result);
 
   // Must be the last member of the class, so that it's destroyed first when an
   // instance of the class is destroyed. This will prevent any outstanding

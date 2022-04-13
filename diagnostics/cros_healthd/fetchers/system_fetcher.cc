@@ -24,17 +24,14 @@ namespace diagnostics {
 
 namespace {
 
-namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
-
 // Fetches information from DMI. Since there are several devices that do not
 // provide DMI information, these fields are optional in SystemInfo. As a
 // result, a missing DMI file does not indicate a ProbeError. A ProbeError is
 // reported when the "chassis_type" field cannot be successfully parsed into an
 // unsigned integer.
 bool FetchDmiInfo(const base::FilePath& root_dir,
-                  mojo_ipc::DmiInfoPtr* out_dmi_info,
-                  mojo_ipc::ProbeErrorPtr* out_error) {
+                  mojom::DmiInfoPtr* out_dmi_info,
+                  mojom::ProbeErrorPtr* out_error) {
   const auto& dmi_path = root_dir.Append(kRelativePathDmiInfo);
   // If dmi path doesn't exist, the device doesn't support dmi at all. It is
   // considered as successful.
@@ -43,7 +40,7 @@ bool FetchDmiInfo(const base::FilePath& root_dir,
     return true;
   }
 
-  auto dmi_info = mojo_ipc::DmiInfo::New();
+  auto dmi_info = mojom::DmiInfo::New();
   ReadAndTrimString(dmi_path, kFileNameBiosVendor, &dmi_info->bios_vendor);
   ReadAndTrimString(dmi_path, kFileNameBiosVersion, &dmi_info->bios_version);
   ReadAndTrimString(dmi_path, kFileNameBoardName, &dmi_info->board_name);
@@ -62,10 +59,10 @@ bool FetchDmiInfo(const base::FilePath& root_dir,
   if (ReadAndTrimString(dmi_path, kFileNameChassisType, &chassis_type_str)) {
     uint64_t chassis_type;
     if (base::StringToUint64(chassis_type_str, &chassis_type)) {
-      dmi_info->chassis_type = mojo_ipc::NullableUint64::New(chassis_type);
+      dmi_info->chassis_type = mojom::NullableUint64::New(chassis_type);
     } else {
       *out_error = CreateAndLogProbeError(
-          mojo_ipc::ErrorType::kParseError,
+          mojom::ErrorType::kParseError,
           base::StringPrintf("Failed to convert chassis_type: %s",
                              chassis_type_str.c_str()));
       return false;
@@ -78,9 +75,9 @@ bool FetchDmiInfo(const base::FilePath& root_dir,
 
 bool FetchCachedVpdInfo(const base::FilePath& root_dir,
                         bool has_sku_number,
-                        mojo_ipc::VpdInfoPtr* out_vpd_info,
-                        mojo_ipc::ProbeErrorPtr* out_error) {
-  auto vpd_info = mojo_ipc::VpdInfo::New();
+                        mojom::VpdInfoPtr* out_vpd_info,
+                        mojom::ProbeErrorPtr* out_error) {
+  auto vpd_info = mojom::VpdInfo::New();
 
   const auto ro_path = root_dir.Append(kRelativePathVpdRo);
   ReadAndTrimString(ro_path, kFileNameMfgDate, &vpd_info->mfg_date);
@@ -90,7 +87,7 @@ bool FetchCachedVpdInfo(const base::FilePath& root_dir,
   if (has_sku_number &&
       !ReadAndTrimString(ro_path, kFileNameSkuNumber, &vpd_info->sku_number)) {
     *out_error = CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kFileReadError,
+        mojom::ErrorType::kFileReadError,
         base::StringPrintf("Unable to read VPD file \"%s\" at path: %s",
                            kFileNameSkuNumber, ro_path.value().c_str()));
     return false;
@@ -112,20 +109,20 @@ bool FetchCachedVpdInfo(const base::FilePath& root_dir,
 
 bool GetLsbReleaseValue(const std::string& field,
                         std::string* out_str,
-                        mojo_ipc::ProbeErrorPtr* out_error) {
+                        mojom::ProbeErrorPtr* out_error) {
   if (base::SysInfo::GetLsbReleaseValue(field, out_str))
     return true;
 
   *out_error = CreateAndLogProbeError(
-      mojo_ipc::ErrorType::kFileReadError,
+      mojom::ErrorType::kFileReadError,
       base::StringPrintf("Unable to read %s from /etc/lsb-release",
                          field.c_str()));
   return false;
 }
 
-bool FetchOsVersion(mojo_ipc::OsVersionPtr* out_os_version,
-                    mojo_ipc::ProbeErrorPtr* out_error) {
-  auto os_version = mojo_ipc::OsVersion::New();
+bool FetchOsVersion(mojom::OsVersionPtr* out_os_version,
+                    mojom::ProbeErrorPtr* out_error) {
+  auto os_version = mojom::OsVersion::New();
   if (!GetLsbReleaseValue("CHROMEOS_RELEASE_CHROME_MILESTONE",
                           &os_version->release_milestone, out_error))
     return false;
@@ -160,46 +157,46 @@ bool IsUEFISecureBoot(const std::string& s) {
 }
 
 void HandleSecureBootResponse(SystemFetcher::FetchSystemInfoV2Callback callback,
-                              mojo_ipc::SystemInfoV2Ptr system_info_v2,
+                              mojom::SystemInfoV2Ptr system_info_v2,
                               const std::string& content) {
   DCHECK(system_info_v2);
 
   system_info_v2->os_info->boot_mode = !IsUEFISecureBoot(content)
-                                           ? mojo_ipc::BootMode::kCrosEfi
-                                           : mojo_ipc::BootMode::kCrosEfiSecure;
+                                           ? mojom::BootMode::kCrosEfi
+                                           : mojom::BootMode::kCrosEfiSecure;
 
   std::move(callback).Run(
-      mojo_ipc::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
+      mojom::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
 }
 
 void HandleSystemInfoV2Response(SystemFetcher::FetchSystemInfoCallback callback,
-                                mojo_ipc::SystemResultV2Ptr result) {
+                                mojom::SystemResultV2Ptr result) {
   if (result->is_error()) {
     std::move(callback).Run(
-        mojo_ipc::SystemResult::NewError(result->get_error()->Clone()));
+        mojom::SystemResult::NewError(result->get_error()->Clone()));
     return;
   }
   CHECK(result->is_system_info_v2());
   auto system_info =
       SystemFetcher::ConvertToSystemInfo(result->get_system_info_v2());
   std::move(callback).Run(
-      mojo_ipc::SystemResult::NewSystemInfo(std::move(system_info)));
+      mojom::SystemResult::NewSystemInfo(std::move(system_info)));
 }
 
 }  // namespace
 
-void SystemFetcher::FetchBootMode(mojo_ipc::SystemInfoV2Ptr system_info_v2,
+void SystemFetcher::FetchBootMode(mojom::SystemInfoV2Ptr system_info_v2,
                                   const base::FilePath& root_dir,
                                   FetchSystemInfoV2Callback callback) {
-  mojo_ipc::BootMode* boot_mode = &system_info_v2->os_info->boot_mode;
+  mojom::BootMode* boot_mode = &system_info_v2->os_info->boot_mode;
   // default unknown if there's no match
-  *boot_mode = mojo_ipc::BootMode::kUnknown;
+  *boot_mode = mojom::BootMode::kUnknown;
 
   std::string cmdline;
   const auto path = root_dir.Append(kFilePathProcCmdline);
   if (!ReadAndTrimString(path, &cmdline)) {
     std::move(callback).Run(
-        mojo_ipc::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
+        mojom::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
     return;
   }
 
@@ -207,7 +204,7 @@ void SystemFetcher::FetchBootMode(mojo_ipc::SystemInfoV2Ptr system_info_v2,
                                   base::SPLIT_WANT_NONEMPTY);
   for (const auto& token : tokens) {
     if (token == "cros_secure") {
-      *boot_mode = mojo_ipc::BootMode::kCrosSecure;
+      *boot_mode = mojom::BootMode::kCrosSecure;
       break;
     }
     if (token == "cros_efi") {
@@ -217,18 +214,18 @@ void SystemFetcher::FetchBootMode(mojo_ipc::SystemInfoV2Ptr system_info_v2,
       return;
     }
     if (token == "cros_legacy") {
-      *boot_mode = mojo_ipc::BootMode::kCrosLegacy;
+      *boot_mode = mojom::BootMode::kCrosLegacy;
       break;
     }
   }
 
   std::move(callback).Run(
-      mojo_ipc::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
+      mojom::SystemResultV2::NewSystemInfoV2(std::move(system_info_v2)));
 }
 
 bool SystemFetcher::FetchOsInfoWithoutBootMode(
-    mojo_ipc::OsInfoPtr* out_os_info, mojo_ipc::ProbeErrorPtr* out_error) {
-  auto os_info = mojo_ipc::OsInfo::New();
+    mojom::OsInfoPtr* out_os_info, mojom::ProbeErrorPtr* out_error) {
+  auto os_info = mojom::OsInfo::New();
   os_info->code_name = context_->system_config()->GetCodeName();
   os_info->marketing_name = context_->system_config()->GetMarketingName();
   os_info->oem_name = context_->system_config()->GetOemName();
@@ -240,8 +237,8 @@ bool SystemFetcher::FetchOsInfoWithoutBootMode(
 
 void SystemFetcher::FetchSystemInfoV2(FetchSystemInfoV2Callback callback) {
   const auto& root_dir = context_->root_dir();
-  mojo_ipc::ProbeErrorPtr error;
-  auto system_info_v2 = mojo_ipc::SystemInfoV2::New();
+  mojom::ProbeErrorPtr error;
+  auto system_info_v2 = mojom::SystemInfoV2::New();
 
   auto& vpd_info = system_info_v2->vpd_info;
   auto& dmi_info = system_info_v2->dmi_info;
@@ -250,8 +247,7 @@ void SystemFetcher::FetchSystemInfoV2(FetchSystemInfoV2Callback callback) {
                           &vpd_info, &error) ||
       !FetchDmiInfo(root_dir, &dmi_info, &error) ||
       !FetchOsInfoWithoutBootMode(&os_info, &error)) {
-    std::move(callback).Run(
-        mojo_ipc::SystemResultV2::NewError(std::move(error)));
+    std::move(callback).Run(mojom::SystemResultV2::NewError(std::move(error)));
     return;
   }
 
@@ -260,12 +256,12 @@ void SystemFetcher::FetchSystemInfoV2(FetchSystemInfoV2Callback callback) {
                 std::move(callback));
 }
 
-mojo_ipc::SystemInfoPtr SystemFetcher::ConvertToSystemInfo(
-    const mojo_ipc::SystemInfoV2Ptr& system_info_v2) {
+mojom::SystemInfoPtr SystemFetcher::ConvertToSystemInfo(
+    const mojom::SystemInfoV2Ptr& system_info_v2) {
   if (system_info_v2.is_null())
     return nullptr;
 
-  auto system_info = mojo_ipc::SystemInfo::New();
+  auto system_info = mojom::SystemInfo::New();
 
   const auto& vpd_info = system_info_v2->vpd_info;
   if (vpd_info) {

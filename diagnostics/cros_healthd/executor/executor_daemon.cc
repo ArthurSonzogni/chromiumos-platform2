@@ -14,13 +14,13 @@
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 
 namespace diagnostics {
 
 namespace {
 
-namespace executor_ipc = ::chromeos::cros_healthd_executor::mojom;
+namespace mojom = ::chromeos::cros_healthd::mojom;
 
 }  // namespace
 
@@ -48,7 +48,7 @@ ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint)
 
   mojo_service_ = std::make_unique<Executor>(
       mojo_task_runner_,
-      mojo::PendingReceiver<executor_ipc::Executor>(std::move(pipe)));
+      mojo::PendingReceiver<mojom::Executor>(std::move(pipe)));
 }
 
 ExecutorDaemon::~ExecutorDaemon() = default;

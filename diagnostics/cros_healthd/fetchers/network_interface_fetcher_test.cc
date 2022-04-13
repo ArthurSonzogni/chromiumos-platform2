@@ -19,17 +19,14 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
 namespace {
-
-namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
-namespace mojo_ipc = chromeos::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -71,8 +68,8 @@ constexpr int32_t kExpectedSignalLevel = -50;
 
 // Saves |response| to |response_destination|.
 void OnGetNetworkInterfaceResponse(
-    mojo_ipc::NetworkInterfaceResultPtr* response_update,
-    mojo_ipc::NetworkInterfaceResultPtr response) {
+    mojom::NetworkInterfaceResultPtr* response_update,
+    mojom::NetworkInterfaceResultPtr response) {
   *response_update = std::move(response);
 }
 
@@ -92,9 +89,9 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
-  mojo_ipc::NetworkInterfaceResultPtr FetchNetworkInterfaceInfo() {
+  mojom::NetworkInterfaceResultPtr FetchNetworkInterfaceInfo() {
     base::RunLoop run_loop;
-    mojo_ipc::NetworkInterfaceResultPtr result;
+    mojom::NetworkInterfaceResultPtr result;
     network_interface_fetcher_.FetchNetworkInterfaceInfo(
         base::BindOnce(&OnGetNetworkInterfaceResponse, &result));
     run_loop.RunUntilIdle();
@@ -105,9 +102,9 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
   void MockGetInterfaces(const int32_t return_code, const std::string& output) {
     EXPECT_CALL(*mock_executor(), GetInterfaces(_))
         .WillOnce(WithArg<0>(
-            Invoke([return_code, output](
-                       executor_ipc::Executor::GetInterfacesCallback callback) {
-              executor_ipc::ProcessResult result;
+            Invoke([return_code,
+                    output](mojom::Executor::GetInterfacesCallback callback) {
+              mojom::ExecutedProcessResult result;
               result.return_code = return_code;
               result.out = output;
               std::move(callback).Run(result.Clone());
@@ -117,41 +114,40 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
   // Set the mock executor response for GetLink.
   void MockGetLink(const int32_t return_code, const std::string& output) {
     EXPECT_CALL(*mock_executor(), GetLink(_, _))
-        .WillOnce(Invoke([return_code, output](
-                             const std::string& interface_name,
-                             executor_ipc::Executor::GetLinkCallback callback) {
-          executor_ipc::ProcessResult result;
-          result.return_code = return_code;
-          result.out = output;
-          std::move(callback).Run(result.Clone());
-        }));
+        .WillOnce(Invoke(
+            [return_code, output](const std::string& interface_name,
+                                  mojom::Executor::GetLinkCallback callback) {
+              mojom::ExecutedProcessResult result;
+              result.return_code = return_code;
+              result.out = output;
+              std::move(callback).Run(result.Clone());
+            }));
   }
 
   // Set the mock executor response for GetInfo.
   void MockGetInfo(const int32_t return_code, const std::string& output) {
     EXPECT_CALL(*mock_executor(), GetInfo(_, _))
-        .WillOnce(Invoke([return_code, output](
-                             const std::string& interface_name,
-                             executor_ipc::Executor::GetInfoCallback callback) {
-          executor_ipc::ProcessResult result;
-          result.return_code = return_code;
-          result.out = output;
-          std::move(callback).Run(result.Clone());
-        }));
+        .WillOnce(Invoke(
+            [return_code, output](const std::string& interface_name,
+                                  mojom::Executor::GetInfoCallback callback) {
+              mojom::ExecutedProcessResult result;
+              result.return_code = return_code;
+              result.out = output;
+              std::move(callback).Run(result.Clone());
+            }));
   }
 
   // Set the mock executor response for GetScanDump.
   void MockGetScanDump(const int32_t return_code, const std::string& output) {
     EXPECT_CALL(*mock_executor(), GetScanDump(_, _))
-        .WillOnce(
-            Invoke([return_code, output](
-                       const std::string& interface_name,
-                       executor_ipc::Executor::GetScanDumpCallback callback) {
-              executor_ipc::ProcessResult result;
-              result.return_code = return_code;
-              result.out = output;
-              std::move(callback).Run(result.Clone());
-            }));
+        .WillOnce(Invoke([return_code, output](
+                             const std::string& interface_name,
+                             mojom::Executor::GetScanDumpCallback callback) {
+          mojom::ExecutedProcessResult result;
+          result.return_code = return_code;
+          result.out = output;
+          std::move(callback).Run(result.Clone());
+        }));
   }
 
  private:
@@ -176,7 +172,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestFetchNetworkInterfaceInfo) {
 
   ASSERT_FALSE(network_info.is_null());
   switch (network_info->which()) {
-    case mojo_ipc::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
+    case mojom::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
       const auto& wireless_info = network_info->get_wireless_interface_info();
       ASSERT_FALSE(wireless_info.is_null());
       EXPECT_EQ(wireless_info->interface_name, kExpectedInterfaceName);
@@ -253,7 +249,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestWirelessNotConnected) {
   const auto& network_info = network_infos.at(0);
   ASSERT_FALSE(network_info.is_null());
   switch (network_info->which()) {
-    case mojo_ipc::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
+    case mojom::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
       const auto& wireless_info = network_info->get_wireless_interface_info();
       ASSERT_FALSE(wireless_info.is_null());
       EXPECT_EQ(wireless_info->interface_name, kExpectedInterfaceName);
@@ -291,7 +287,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestMissingPowerSchemeFile) {
 
   ASSERT_FALSE(network_info.is_null());
   switch (network_info->which()) {
-    case mojo_ipc::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
+    case mojom::NetworkInterfaceInfo::Tag::WIRELESS_INTERFACE_INFO: {
       const auto& wireless_info = network_info->get_wireless_interface_info();
       EXPECT_FALSE(wireless_info->power_management_on);
       break;

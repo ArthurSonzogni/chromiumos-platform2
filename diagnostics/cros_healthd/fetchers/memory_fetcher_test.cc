@@ -11,16 +11,13 @@
 #include <utility>
 
 #include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
-#include "diagnostics/mojom/private/cros_healthd_executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace {
-
-namespace executor_ipc = chromeos::cros_healthd_executor::mojom;
-namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -72,12 +69,12 @@ constexpr char kFakeMktmeActiveAlgorithmFileContent[] = "AES_XTS_256\n";
 constexpr char kFakeMktmeKeyCountFileContent[] = "3\n";
 constexpr char kFakeMktmeKeyLengthFileContent[] = "256\n";
 
-constexpr mojo_ipc::EncryptionState kExpectedMktmeState =
-    mojo_ipc::EncryptionState::kMktmeEnabled;
-constexpr mojo_ipc::EncryptionState kExpectedTmeState =
-    mojo_ipc::EncryptionState::kTmeEnabled;
-constexpr mojo_ipc::CryptoAlgorithm kExpectedActiveAlgorithm =
-    mojo_ipc::CryptoAlgorithm::kAesXts256;
+constexpr mojom::EncryptionState kExpectedMktmeState =
+    mojom::EncryptionState::kMktmeEnabled;
+constexpr mojom::EncryptionState kExpectedTmeState =
+    mojom::EncryptionState::kTmeEnabled;
+constexpr mojom::CryptoAlgorithm kExpectedActiveAlgorithm =
+    mojom::CryptoAlgorithm::kAesXts256;
 constexpr int32_t kExpectedMktmeKeyCount = 3;
 constexpr int32_t kExpectedTmeKeyCount = 1;
 constexpr int32_t kExpectedEncryptionKeyLength = 256;
@@ -98,15 +95,15 @@ constexpr char kFakeCpuInfoTmeContent[] =
     "\0";
 
 // Saves |response| to |response_destination|.
-void OnGetMemoryResponse(mojo_ipc::MemoryResultPtr* response_update,
-                         mojo_ipc::MemoryResultPtr response) {
+void OnGetMemoryResponse(mojom::MemoryResultPtr* response_update,
+                         mojom::MemoryResultPtr response) {
   *response_update = std::move(response);
 }
 
 void VerifyMemoryEncryptionInfo(
-    const mojo_ipc::MemoryEncryptionInfoPtr& actual_data,
-    mojo_ipc::EncryptionState expected_state,
-    mojo_ipc::CryptoAlgorithm expected_algorithm,
+    const mojom::MemoryEncryptionInfoPtr& actual_data,
+    mojom::EncryptionState expected_state,
+    mojom::CryptoAlgorithm expected_algorithm,
     uint32_t expected_key_count,
     uint32_t expected_key_length) {
   ASSERT_FALSE(actual_data.is_null());
@@ -153,9 +150,9 @@ class MemoryFetcherTest : public ::testing::Test {
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
-  mojo_ipc::MemoryResultPtr FetchMemoryInfo() {
+  mojom::MemoryResultPtr FetchMemoryInfo() {
     base::RunLoop run_loop;
-    mojo_ipc::MemoryResultPtr result;
+    mojom::MemoryResultPtr result;
     memory_fetcher_.FetchMemoryInfo(
         base::BindOnce(&OnGetMemoryResponse, &result));
     run_loop.RunUntilIdle();
@@ -193,7 +190,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoNoProcMeminfo) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that fetching memory info returns an error when /proc/meminfo is
@@ -205,7 +202,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoFormattedIncorrectly) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that fetching memory info returns an error when /proc/meminfo doesn't
@@ -219,7 +216,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoNoMemTotal) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that fetching memory info returns an error when /proc/meminfo doesn't
@@ -233,7 +230,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoNoMemFree) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that fetching memory info returns an error when /proc/meminfo doesn't
@@ -247,7 +244,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcMeminfoNoMemAvailable) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that fetching memory info returns an error when /proc/meminfo contains
@@ -262,7 +259,7 @@ TEST_F(MemoryFetcherTest,
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that fetching memory info returns an error when /proc/meminfo contains
@@ -277,7 +274,7 @@ TEST_F(MemoryFetcherTest,
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that fetching memory info returns an error when /proc/meminfo contains
@@ -292,7 +289,7 @@ TEST_F(MemoryFetcherTest,
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that fetching memory info returns an error when /proc/vmstat doesn't
@@ -303,7 +300,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoNoProcVmStat) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test that fetching memory info returns an error when /proc/vmstat is
@@ -317,7 +314,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatFormattedIncorrectly) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that fetching memory info returns an error when /proc/vmstat doesn't
@@ -331,7 +328,7 @@ TEST_F(MemoryFetcherTest, TestFetchMemoryInfoProcVmStatNoPgfault) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test that fetching memory info returns an error when /proc/vmstat contains
@@ -346,7 +343,7 @@ TEST_F(MemoryFetcherTest,
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kParseError);
 }
 
 // Test to handle missing /sys/kernel/mm/mktme directory.
@@ -382,7 +379,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeActiveFile) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test to handle missing /sys/kernel/mm/mktme/active_algo file.
@@ -393,7 +390,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeActiveAlgorithmFile) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test to handle missing /sys/kernel/mm/mktme/key_cnt file.
@@ -403,7 +400,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeKeyCountFile) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test to handle missing /sys/kernel/mm/mktme/key_len file.
@@ -413,7 +410,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeKeyLengthFile) {
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
-  EXPECT_EQ(result->get_error()->type, mojo_ipc::ErrorType::kFileReadError);
+  EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kFileReadError);
 }
 
 // Test to verify TME info.
@@ -429,10 +426,9 @@ TEST_F(MemoryFetcherTest, TestFetchTmeInfo) {
   // Set the mock executor response for ReadMsr calls.
   EXPECT_CALL(*mock_executor(), ReadMsr(_, _))
       .Times(2)
-      .WillRepeatedly(
-          Invoke([](uint32_t msr_reg,
-                    executor_ipc::Executor::ReadMsrCallback callback) {
-            executor_ipc::ProcessResult status;
+      .WillRepeatedly(Invoke(
+          [](uint32_t msr_reg, mojom::Executor::ReadMsrCallback callback) {
+            mojom::ExecutedProcessResult status;
             status.return_code = EXIT_SUCCESS;
             int64_t val = 0;
             if (msr_reg == kTmeCapabilityMsr) {
