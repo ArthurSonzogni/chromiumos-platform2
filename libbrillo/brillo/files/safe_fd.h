@@ -112,6 +112,24 @@ class SafeFD {
   // returns kNoError on success. Note the file will be truncated to the
   // size of the content.
   //
+  // Intended use cases:
+  // * Making a file that contains exactly |data|.
+  //
+  // Parameters
+  //  data - The buffer to write to the file.
+  //  size - The number of bytes to write.
+  BRILLO_EXPORT Error Replace(const char* data, size_t size) WARN_UNUSED_RESULT;
+
+  // Writes |size| bytes from |data| to the file and returns kNoError on
+  // success. Note the file will **NOT** be truncated to the size of the
+  // content, and the data will be written to the current file cursor position.
+  //
+  // Intended use cases:
+  // * Writing to FIFOs, sockets, etc. where seek or truncate are not
+  //   available.
+  // * To append to a file (e.g. opened with O_APPEND or
+  //   lseek(fd.get(), 0, SEEK_END).
+  //
   // Parameters
   //  data - The buffer to write to the file.
   //  size - The number of bytes to write.

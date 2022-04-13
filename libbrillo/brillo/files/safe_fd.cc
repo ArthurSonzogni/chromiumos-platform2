@@ -179,7 +179,7 @@ SafeFD::Error SeekToBeginning(int fd) {
   return SafeFD::Error::kNoError;
 }
 
-SafeFD::Error AppendImpl(int fd, const char* data, size_t size) {
+SafeFD::Error WriteImpl(int fd, const char* data, size_t size) {
   errno = 0;
   if (!base::WriteFileDescriptor(fd, base::StringPiece(data, size))) {
     PLOG(ERROR) << "Failed to write to file";
@@ -216,7 +216,7 @@ SafeFD::Error CopyContentsToFallback(SafeFD* source,
     }
 
     SafeFD::Error err =
-        AppendImpl(destination->get(), buffer.data(), read_count);
+        WriteImpl(destination->get(), buffer.data(), read_count);
     if (err != SafeFD::Error::kNoError) {
       return err;
     }
@@ -267,7 +267,7 @@ void SafeFD::UnsafeReset(int fd) {
   return fd_.reset(fd);
 }
 
-SafeFD::Error SafeFD::Write(const char* data, size_t size) {
+SafeFD::Error SafeFD::Replace(const char* data, size_t size) {
   if (!fd_.is_valid()) {
     return SafeFD::Error::kNotInitialized;
   }
@@ -277,12 +277,19 @@ SafeFD::Error SafeFD::Write(const char* data, size_t size) {
     return error;
   }
 
-  error = AppendImpl(fd_.get(), data, size);
+  error = WriteImpl(fd_.get(), data, size);
   if (IsError(error)) {
     return error;
   }
 
   return TruncateImpl(fd_.get(), size);
+}
+
+SafeFD::Error SafeFD::Write(const char* data, size_t size) {
+  if (!fd_.is_valid()) {
+    return SafeFD::Error::kNotInitialized;
+  }
+  return WriteImpl(fd_.get(), data, size);
 }
 
 std::pair<std::vector<char>, SafeFD::Error> SafeFD::ReadContents(

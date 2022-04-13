@@ -90,6 +90,50 @@ TEST_F(SafeFDTest, UnsafeReset) {
   EXPECT_EQ(error, EBADF);
 }
 
+TEST_F(SafeFDTest, Replace_Success) {
+  std::string random_data = GetRandomSuffix();
+  {
+    SafeFD::SafeFDResult file = root_.MakeFile(file_path_);
+    EXPECT_EQ(file.second, SafeFD::Error::kNoError);
+    ASSERT_TRUE(file.first.is_valid());
+
+    EXPECT_EQ(file.first.Replace(random_data.data(), random_data.size()),
+              SafeFD::Error::kNoError);
+  }
+
+  ExpectFileContains(random_data);
+  ExpectPermissions(file_path_, SafeFD::kDefaultFilePermissions);
+}
+
+TEST_F(SafeFDTest, Replace_NotInitialized) {
+  SafeFD invalid;
+  ASSERT_FALSE(invalid.is_valid());
+
+  std::string random_data = GetRandomSuffix();
+  EXPECT_EQ(invalid.Replace(random_data.data(), random_data.size()),
+            SafeFD::Error::kNotInitialized);
+}
+
+TEST_F(SafeFDTest, Replace_VerifyTruncate) {
+  std::string random_data = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(random_data));
+
+  {
+    SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
+    EXPECT_EQ(file.second, SafeFD::Error::kNoError);
+    ASSERT_TRUE(file.first.is_valid());
+
+    EXPECT_EQ(file.first.Replace("", 0), SafeFD::Error::kNoError);
+  }
+
+  ExpectFileContains("");
+}
+
+TEST_F(SafeFDTest, Replace_Failure) {
+  std::string random_data = GetRandomSuffix();
+  EXPECT_EQ(root_.Replace("", 1), SafeFD::Error::kIOError);
+}
+
 TEST_F(SafeFDTest, Write_Success) {
   std::string random_data = GetRandomSuffix();
   {
@@ -114,19 +158,22 @@ TEST_F(SafeFDTest, Write_NotInitialized) {
             SafeFD::Error::kNotInitialized);
 }
 
-TEST_F(SafeFDTest, Write_VerifyTruncate) {
-  std::string random_data = GetRandomSuffix();
-  ASSERT_TRUE(WriteFile(random_data));
+TEST_F(SafeFDTest, Write_VerifyAppend) {
+  std::string random_start = GetRandomSuffix();
+  std::string random_end = GetRandomSuffix();
+  ASSERT_TRUE(WriteFile(random_start));
 
   {
-    SafeFD::SafeFDResult file = root_.OpenExistingFile(file_path_);
+    SafeFD::SafeFDResult file =
+        root_.OpenExistingFile(file_path_, O_RDWR | O_CLOEXEC | O_APPEND);
     EXPECT_EQ(file.second, SafeFD::Error::kNoError);
     ASSERT_TRUE(file.first.is_valid());
 
-    EXPECT_EQ(file.first.Write("", 0), SafeFD::Error::kNoError);
+    EXPECT_EQ(file.first.Write(random_end.data(), random_end.size()),
+              SafeFD::Error::kNoError);
   }
 
-  ExpectFileContains("");
+  ExpectFileContains((random_start + random_end).data());
 }
 
 TEST_F(SafeFDTest, Write_Failure) {
