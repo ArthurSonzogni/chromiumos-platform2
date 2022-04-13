@@ -187,6 +187,13 @@ static bool is_v4l2_4k_device_enc_vp9(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
                            V4L2_PIX_FMT_VP9);
 }
+
+// Determines if is_v4l2_4k_device() for HEVC decoding.
+static bool is_v4l2_4k_device_dec_hevc(int fd) {
+  return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                           V4L2_PIX_FMT_HEVC);
+}
+
 #endif  // defined(USE_V4L2_CODEC)
 
 /* Determines "4k_video_h264". Return true, if either the VAAPI device
@@ -281,6 +288,11 @@ bool detect_4k_device_hevc(void) {
   if (is_any_device(kDRMDevicePattern, is_vaapi_4k_device_dec_hevc))
     return true;
 #endif  // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_hevc))
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
 
   return false;
 }
