@@ -7,6 +7,7 @@
 
 #include "diagnostics/cros_healthd/network/network_health_adapter.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
+#include "diagnostics/mojom/external/network_health_types.mojom.h"
 
 namespace diagnostics {
 

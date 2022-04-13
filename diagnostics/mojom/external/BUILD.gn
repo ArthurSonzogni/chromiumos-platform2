@@ -34,6 +34,7 @@ generate_mojom_bindings("network_health_mojo_bindings") {
   standalone = true
   sources = [
     "network_health.mojom",
+    "network_health_types.mojom",
     "network_types.mojom",
   ]
 }

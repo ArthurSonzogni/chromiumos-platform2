@@ -7,13 +7,9 @@
 #include <optional>
 #include <utility>
 
-#include "diagnostics/mojom/external/network_health.mojom.h"
+#include "diagnostics/mojom/external/network_health_types.mojom.h"
 
-namespace {
-
-using chromeos::network_health::mojom::NetworkHealthStatePtr;
-
-}  // namespace
+using ::chromeos::network_health::mojom::NetworkHealthStatePtr;
 
 namespace diagnostics {
 

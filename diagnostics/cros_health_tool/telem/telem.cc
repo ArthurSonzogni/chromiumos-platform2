@@ -30,7 +30,7 @@
 #include <mojo/service_constants.h>
 
 #include "diagnostics/cros_health_tool/mojo_util.h"
-#include "diagnostics/mojom/external/network_health.mojom.h"
+#include "diagnostics/mojom/external/network_health_types.mojom.h"
 #include "diagnostics/mojom/external/network_types.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"

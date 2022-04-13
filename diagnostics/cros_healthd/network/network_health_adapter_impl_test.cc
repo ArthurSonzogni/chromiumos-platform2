@@ -18,6 +18,7 @@
 
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
+#include "diagnostics/mojom/external/network_health_types.mojom.h"
 
 namespace diagnostics {
 namespace {
@@ -204,8 +205,7 @@ TEST_F(NetworkHealthAdapterImplTest, ReceiveConnectionStateChangeEvent) {
   auto network_state = network_health_ipc::NetworkState::kConnected;
   EXPECT_CALL(mock_observer, OnConnectionStateChanged(kFakeGuid, network_state))
       .WillOnce(testing::Invoke(
-          [&](const std::string& guid,
-              chromeos::network_health::mojom::NetworkState state) {
+          [&](const std::string& guid, network_health_ipc::NetworkState state) {
             run_loop.Quit();
           }));
 
