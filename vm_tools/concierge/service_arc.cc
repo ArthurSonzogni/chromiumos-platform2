@@ -153,11 +153,13 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
     return false;
   }
   // Disk #3 must be a valid data image path or /dev/null.
-  if (request->disks().size() >= 4 &&
-      !IsValidDataImagePath(base::FilePath(request->disks()[3].path())) &&
-      request->disks()[3].path() != kEmptyDiskPath) {
-    LOG(ERROR) << "Disk #3 has invalid path: " << request->disks()[3].path();
-    return false;
+  if (request->disks().size() >= kDataDiskIndex + 1) {
+    const std::string& disk_path = request->disks()[kDataDiskIndex].path();
+    if (!IsValidDataImagePath(base::FilePath(disk_path)) &&
+        disk_path != kEmptyDiskPath) {
+      LOG(ERROR) << "Disk #3 has invalid path: " << disk_path;
+      return false;
+    }
   }
   return true;
 }
@@ -240,6 +242,13 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
     }
 
     disks.push_back(Disk(path, config));
+  }
+
+  base::FilePath data_disk_path;
+  if (request.disks().size() > kDataDiskIndex) {
+    const std::string disk_path = request.disks()[kDataDiskIndex].path();
+    if (IsValidDataImagePath(base::FilePath(disk_path)))
+      data_disk_path = base::FilePath(disk_path);
   }
 
   // Create the runtime directory.
@@ -419,8 +428,8 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
 
   auto vm = ArcVm::Create(base::FilePath(kKernelPath), vsock_cid,
                           std::move(network_client), std::move(server_proxy),
-                          std::move(runtime_dir), vm_memory_id, features,
-                          std::move(vm_builder));
+                          std::move(runtime_dir), std::move(data_disk_path),
+                          vm_memory_id, features, std::move(vm_builder));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 

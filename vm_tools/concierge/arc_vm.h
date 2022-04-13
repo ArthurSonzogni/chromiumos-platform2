@@ -27,6 +27,9 @@
 namespace vm_tools {
 namespace concierge {
 
+// Disk index of the /data disk. It is the 4th disk in request.disks().
+constexpr unsigned int kDataDiskIndex = 3;
+
 // The CPU cgroup where all the ARCVM's main crosvm process and its vCPU threads
 // should belong to.
 constexpr char kArcvmVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/arcvm-vcpus";
@@ -60,6 +63,7 @@ class ArcVm final : public VmBaseImpl {
       std::unique_ptr<patchpanel::Client> network_client,
       std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
       base::FilePath runtime_dir,
+      base::FilePath data_disk_path,
       VmMemoryId vm_memory_id,
       ArcVmFeatures features,
       VmBuilder vm_builder);
@@ -125,6 +129,7 @@ class ArcVm final : public VmBaseImpl {
         std::unique_ptr<patchpanel::Client> network_client,
         std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
         base::FilePath runtime_dir,
+        base::FilePath data_disk_path,
         VmMemoryId vm_memory_id,
         ArcVmFeatures features);
   ArcVm(const ArcVm&) = delete;
@@ -148,6 +153,10 @@ class ArcVm final : public VmBaseImpl {
 
   // Proxy to the server providing shared directory access for this VM.
   std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy_;
+
+  // Path to the virtio-blk disk image for /data.
+  // An empty path is set if /data is not backed by virtio-blk.
+  const base::FilePath data_disk_path_;
 
   // Flags passed to vmc start.
   ArcVmFeatures features_;

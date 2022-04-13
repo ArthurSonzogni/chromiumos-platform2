@@ -175,6 +175,7 @@ ArcVm::ArcVm(int32_t vsock_cid,
              std::unique_ptr<patchpanel::Client> network_client,
              std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
              base::FilePath runtime_dir,
+             base::FilePath data_disk_path,
              VmMemoryId vm_memory_id,
              ArcVmFeatures features)
     : VmBaseImpl(std::move(network_client),
@@ -183,6 +184,7 @@ ArcVm::ArcVm(int32_t vsock_cid,
                  kCrosvmSocket,
                  std::move(runtime_dir),
                  vm_memory_id),
+      data_disk_path_(data_disk_path),
       features_(features),
       balloon_refresh_time_(base::Time::Now() + kBalloonRefreshTime) {}
 
@@ -196,12 +198,14 @@ std::unique_ptr<ArcVm> ArcVm::Create(
     std::unique_ptr<patchpanel::Client> network_client,
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
     base::FilePath runtime_dir,
+    base::FilePath data_image_path,
     VmMemoryId vm_memory_id,
     ArcVmFeatures features,
     VmBuilder vm_builder) {
-  auto vm = std::unique_ptr<ArcVm>(new ArcVm(
-      vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
-      std::move(runtime_dir), vm_memory_id, features));
+  auto vm = std::unique_ptr<ArcVm>(
+      new ArcVm(vsock_cid, std::move(network_client),
+                std::move(seneschal_server_proxy), std::move(runtime_dir),
+                std::move(data_image_path), vm_memory_id, features));
 
   if (!vm->Start(std::move(kernel), std::move(vm_builder))) {
     vm.reset();
@@ -584,12 +588,51 @@ bool ArcVm::GetVmEnterpriseReportingInfo(
 
 vm_tools::concierge::DiskImageStatus ArcVm::ResizeDisk(
     uint64_t new_size, std::string* failure_reason) {
-  *failure_reason = "Not implemented";
-  return DiskImageStatus::DISK_STATUS_FAILED;
+  if (data_disk_path_.empty()) {
+    *failure_reason = "Disk doesn't exist";
+    LOG(ERROR) << "ArcVm::ResizeDisk failed: " << *failure_reason;
+    return DiskImageStatus::DISK_STATUS_DOES_NOT_EXIST;
+  }
+
+  int64_t current_size = -1;
+  if (!base::GetFileSize(data_disk_path_, &current_size)) {
+    *failure_reason = "Unable to get current disk size";
+    LOG(ERROR) << "ArcVm::ResizeDisk failed: " << *failure_reason;
+    return DiskImageStatus::DISK_STATUS_FAILED;
+  }
+
+  LOG(INFO) << "ArcVm::ResizeDisk: current_size=" << current_size
+            << " requested_size=" << new_size;
+
+  if (new_size == current_size) {
+    LOG(INFO) << "ArcVm::ResizeDisk: Disk is already requested size";
+    return DiskImageStatus::DISK_STATUS_RESIZED;
+  }
+
+  if (new_size < current_size) {
+    *failure_reason = "Disk shrinking is not supported yet";
+    LOG(ERROR) << "ArcVm::ResizeDisk failed: " << *failure_reason;
+    return DiskImageStatus::DISK_STATUS_FAILED;
+  }
+
+  DCHECK_GT(new_size, current_size);
+
+  // CrosvmDiskResize takes a 1-based index.
+  if (!CrosvmDiskResize(GetVmSocketPath(), kDataDiskIndex + 1, new_size)) {
+    *failure_reason = "\"crosvm disk resize\" failed";
+    LOG(ERROR) << "ArcVm::ResizeDisk failed: " << *failure_reason;
+    return DiskImageStatus::DISK_STATUS_FAILED;
+  }
+
+  LOG(INFO) << "ArcVm::ResizeDisk succeeded";
+  return DiskImageStatus::DISK_STATUS_RESIZED;
 }
 
 vm_tools::concierge::DiskImageStatus ArcVm::GetDiskResizeStatus(
     std::string* failure_reason) {
+  // No need to implement this for now because ArcVm::ResizeDisk synchronously
+  // executes the resizing operation.
+  // We will need to implement this when we support asynchronous disk resizing.
   *failure_reason = "Not implemented";
   return DiskImageStatus::DISK_STATUS_FAILED;
 }
