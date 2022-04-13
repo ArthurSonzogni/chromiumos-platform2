@@ -38,6 +38,7 @@ const char* kBadSerials[] = {"to be filled by o.e.m.",
                              "default string",
                              "not applicable",
                              "na",
+                             "n/a",
                              "ssn12345678901234567",
                              "system serial#",
                              "1234567",
@@ -45,6 +46,7 @@ const char* kBadSerials[] = {"to be filled by o.e.m.",
                              "serial#",
                              "oem",
                              "default_string",
+                             "91.WTx00.xPxx",  // This is a device model number.
                              "$serialnumber$"};
 constexpr char kInterfaceAddressFile[] = "address";
 constexpr char kInterfaceModAliasFile[] = "device/modalias";
