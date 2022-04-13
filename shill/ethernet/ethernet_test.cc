@@ -86,9 +86,7 @@ class EthernetTest : public testing::Test {
   EthernetTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
         device_info_(&manager_),
-        ethernet_(new TestEthernet(
-            &manager_, ifname_, hwaddr_, ifindex_)),
-        dhcp_config_(new MockDHCPConfig(&control_interface_, ifname_)),
+        ethernet_(new TestEthernet(&manager_, ifname_, hwaddr_, ifindex_)),
 #if !defined(DISABLE_WIRED_8021X)
         eap_listener_(new MockEapListener()),
         mock_eap_service_(new MockService(&manager_)),
@@ -156,13 +154,11 @@ class EthernetTest : public testing::Test {
   }
   const PropertyStore& GetStore() { return ethernet_->store(); }
   void StartEthernet() {
-    ON_CALL(manager_, dhcp_hostname())
-        .WillByDefault(ReturnRef(dhcp_hostname_));
+    ON_CALL(manager_, dhcp_hostname()).WillByDefault(ReturnRef(dhcp_hostname_));
     EXPECT_CALL(ethernet_provider_, CreateService(_))
         .WillOnce(Return(mock_service_));
     EXPECT_CALL(ethernet_provider_, RegisterService(Eq(mock_service_)));
-    EXPECT_CALL(rtnl_handler_,
-                SetInterfaceFlags(ifindex_, IFF_UP, IFF_UP));
+    EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(ifindex_, IFF_UP, IFF_UP));
     ethernet_->Start(nullptr, EnabledStateChangedCallback());
   }
   void StopEthernet() {
@@ -243,7 +239,6 @@ class EthernetTest : public testing::Test {
   MockDeviceInfo device_info_;
   scoped_refptr<TestEthernet> ethernet_;
   MockDHCPProvider dhcp_provider_;
-  scoped_refptr<MockDHCPConfig> dhcp_config_;
 
 #if !defined(DISABLE_WIRED_8021X)
   MockEthernetEapProvider ethernet_eap_provider_;
@@ -361,7 +356,6 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   SetLinkUp(false);
   EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _, _)).Times(0);
-  EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);
   EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
   ethernet_->ConnectTo(mock_service_.get());
@@ -370,12 +364,13 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
 }
 
 TEST_F(EthernetTest, ConnectToFailure) {
+  auto dhcp_config = new MockDHCPConfig(&control_interface_, ifname_);
   StartEthernet();
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _, _))
-      .WillOnce(Return(dhcp_config_));
-  EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(false));
+      .WillOnce(Return(ByMove(std::unique_ptr<DHCPConfig>(dhcp_config))));
+  EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(false));
   EXPECT_CALL(dispatcher_,
               PostDelayedTask(
                   _, _, base::TimeDelta()));  // Posts ConfigureStaticIPTask.
@@ -386,12 +381,13 @@ TEST_F(EthernetTest, ConnectToFailure) {
 }
 
 TEST_F(EthernetTest, ConnectToSuccess) {
+  auto dhcp_config = new MockDHCPConfig(&control_interface_, ifname_);
   StartEthernet();
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _, _))
-      .WillOnce(Return(dhcp_config_));
-  EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
+      .WillOnce(Return(ByMove(std::unique_ptr<DHCPConfig>(dhcp_config))));
+  EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(dispatcher_,
               PostDelayedTask(
                   _, _, base::TimeDelta()));  // Posts ConfigureStaticIPTask.
@@ -487,8 +483,7 @@ TEST_F(EthernetTest, StartSupplicantWithInterfaceExistsException) {
 TEST_F(EthernetTest, StartSupplicantWithUnknownException) {
   MockSupplicantProcessProxy* process_proxy = supplicant_process_proxy_;
   EXPECT_CALL(*process_proxy, CreateInterface(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*process_proxy, GetInterface(ifname_, _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*process_proxy, GetInterface(ifname_, _)).WillOnce(Return(false));
   EXPECT_FALSE(InvokeStartSupplicant());
   EXPECT_EQ(nullptr, GetSupplicantInterfaceProxy());
   EXPECT_EQ(RpcIdentifier(""), GetSupplicantInterfacePath());

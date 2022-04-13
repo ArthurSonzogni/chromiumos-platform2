@@ -862,7 +862,7 @@ void Device::ConnectionDiagnosticsCallback(
 void Device::OnIPConfigUpdatedFromDHCP(DHCPConfig* dhcp_config,
                                        const IPConfig::Properties& properties,
                                        bool new_lease_acquired) {
-  if (dhcp_config != dhcp_controller_) {
+  if (dhcp_config != dhcp_controller_.get()) {
     LOG(WARNING) << __func__
                  << " invoked but |dhcp_config| is not owned by this Device";
     return;
@@ -904,7 +904,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
 
 void Device::OnDHCPFailure(DHCPConfig* dhcp_config) {
   SLOG(this, 2) << __func__;
-  if (dhcp_config != dhcp_controller_) {
+  if (dhcp_config != dhcp_controller_.get()) {
     LOG(WARNING) << __func__
                  << " invoked but |dhcp_config| is not owned by this Device";
     return;
@@ -1559,11 +1559,6 @@ EventDispatcher* Device::dispatcher() const {
 
 Metrics* Device::metrics() const {
   return manager_->metrics();
-}
-
-void Device::set_dhcp_controller_for_testing(
-    const DHCPConfigRefPtr& dhcp_controller) {
-  dhcp_controller_ = dhcp_controller;
 }
 
 }  // namespace shill

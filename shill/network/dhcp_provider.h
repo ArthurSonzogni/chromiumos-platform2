@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/network/dhcp_config.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
 
@@ -63,7 +64,7 @@ class DHCPProvider {
   // |arp_gateway| is true, the DHCP client will ARP for the gateway IP
   // address as an additional safeguard against the issued IP address being
   // in-use by another station.
-  virtual DHCPConfigRefPtr CreateIPv4Config(
+  virtual std::unique_ptr<DHCPConfig> CreateIPv4Config(
       const std::string& device_name,
       const std::string& lease_file_suffix,
       bool arp_gateway,

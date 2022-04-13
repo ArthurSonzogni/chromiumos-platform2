@@ -5,6 +5,7 @@
 #ifndef SHILL_NETWORK_MOCK_DHCP_PROVIDER_H_
 #define SHILL_NETWORK_MOCK_DHCP_PROVIDER_H_
 
+#include <memory>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -27,7 +28,7 @@ class MockDHCPProvider : public DHCPProvider {
               Init,
               (ControlInterface*, EventDispatcher*, Metrics*),
               (override));
-  MOCK_METHOD(DHCPConfigRefPtr,
+  MOCK_METHOD(std::unique_ptr<DHCPConfig>,
               CreateIPv4Config,
               (const std::string&,
                const std::string&,

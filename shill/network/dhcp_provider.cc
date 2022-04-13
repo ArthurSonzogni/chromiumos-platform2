@@ -79,16 +79,16 @@ void DHCPProvider::Stop() {
   configs_.clear();
 }
 
-DHCPConfigRefPtr DHCPProvider::CreateIPv4Config(
+std::unique_ptr<DHCPConfig> DHCPProvider::CreateIPv4Config(
     const std::string& device_name,
     const std::string& lease_file_suffix,
     bool arp_gateway,
     const std::string& hostname,
     Technology technology) {
   SLOG(this, 2) << __func__ << " device: " << device_name;
-  return new DHCPConfig(control_interface_, dispatcher_, this, device_name,
-                        lease_file_suffix, arp_gateway, hostname, technology,
-                        metrics_);
+  return std::make_unique<DHCPConfig>(
+      control_interface_, dispatcher_, this, device_name, lease_file_suffix,
+      arp_gateway, hostname, technology, metrics_);
 }
 
 DHCPConfig* DHCPProvider::GetConfig(int pid) {

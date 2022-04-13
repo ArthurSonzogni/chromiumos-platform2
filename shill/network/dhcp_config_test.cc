@@ -54,6 +54,10 @@ constexpr bool kHasHostname = true;
 constexpr bool kHasLeaseSuffix = true;
 constexpr uint32_t kTimeNow = 10;
 constexpr uint32_t kLeaseDuration = 5;
+
+MATCHER_P(IsWeakPtrTo, address, "") {
+  return arg.get() == address;
+}
 }  // namespace
 
 class DHCPConfigTest : public PropertyStoreTest {
@@ -126,7 +130,7 @@ class DHCPConfigTest : public PropertyStoreTest {
   std::unique_ptr<MockDHCPProxy> proxy_;
   MockProcessManager process_manager_;
   MockTime time_;
-  scoped_refptr<DHCPConfig> config_;
+  std::unique_ptr<DHCPConfig> config_;
   MockDHCPProvider provider_;
   MockMetrics metrics_;
 };
@@ -136,9 +140,9 @@ class DHCPConfigTest : public PropertyStoreTest {
 void DHCPConfigTest::CreateMockMinijailConfig(const std::string& hostname,
                                               const std::string& lease_suffix,
                                               bool arp_gateway) {
-  config_ = new DHCPConfig(control_interface(), dispatcher(), &provider_,
-                           kDeviceName, lease_suffix, arp_gateway, hostname,
-                           Technology::kUnknown, metrics());
+  config_.reset(new DHCPConfig(control_interface(), dispatcher(), &provider_,
+                               kDeviceName, lease_suffix, arp_gateway, hostname,
+                               Technology::kUnknown, metrics()));
   config_->process_manager_ = &process_manager_;
 }
 
@@ -566,7 +570,7 @@ TEST_F(DHCPConfigTest, Restart) {
       .WillOnce(Return(true));
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(kPID2));
-  EXPECT_CALL(provider_, BindPID(kPID2, IsRefPtrTo(config_)));
+  EXPECT_CALL(provider_, BindPID(kPID2, IsWeakPtrTo(config_.get())));
   EXPECT_TRUE(config_->Restart());
   EXPECT_EQ(kPID2, config_->pid_);
   config_->pid_ = 0;
@@ -577,7 +581,7 @@ TEST_F(DHCPConfigTest, RestartNoClient) {
   EXPECT_CALL(process_manager_, StopProcessAndBlock(_)).Times(0);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(kPID));
-  EXPECT_CALL(provider_, BindPID(kPID, IsRefPtrTo(config_)));
+  EXPECT_CALL(provider_, BindPID(kPID, IsWeakPtrTo(config_.get())));
   EXPECT_TRUE(config_->Restart());
   EXPECT_EQ(kPID, config_->pid_);
   config_->pid_ = 0;
@@ -634,7 +638,7 @@ class DHCPConfigDHCPCDStoppedTest : public DHCPConfigTest {
           exit_callback_ = std::move(cb);
           return kPID;
         }));
-    EXPECT_CALL(provider_, BindPID(kPID, IsRefPtrTo(config_)));
+    EXPECT_CALL(provider_, BindPID(kPID, IsWeakPtrTo(config_.get())));
     StartInstance();
   }
 

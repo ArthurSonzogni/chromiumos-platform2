@@ -55,6 +55,7 @@ using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
+using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Ref;
@@ -190,11 +191,16 @@ class DeviceTest : public testing::Test {
   MockMetrics* metrics() { return &metrics_; }
   MockManager* manager() { return &manager_; }
 
+  std::unique_ptr<MockDHCPConfig> CreateDHCPController() {
+    return std::make_unique<MockDHCPConfig>(&control_interface_, kDeviceName);
+  }
+
   void SetupIPv4DHCPConfig() {
     ipconfig_ = new MockIPConfig(control_interface(), kDeviceName);
     device_->ipconfig_ = ipconfig_;
-    dhcp_controller_ = new MockDHCPConfig(control_interface(), kDeviceName);
-    device_->dhcp_controller_ = dhcp_controller_;
+    auto controller = CreateDHCPController();
+    dhcp_controller_ = controller.get();
+    device_->dhcp_controller_ = std::move(controller);
   }
 
   void SetupIPv6Config() {
@@ -301,8 +307,6 @@ TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
   device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
-  scoped_refptr<MockDHCPConfig> dhcp_config(
-      new MockDHCPConfig(control_interface(), kDeviceName));
   const std::string dhcp_hostname = "chromeos";
 
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
@@ -311,8 +315,11 @@ TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
   EXPECT_CALL(*manager(), dhcp_hostname()).WillOnce(ReturnRef(dhcp_hostname));
   EXPECT_CALL(*dhcp_provider,
               CreateIPv4Config(_, _, _, StrEq(dhcp_hostname), _))
-      .WillOnce(Return(dhcp_config));
-  EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(true));
+      .WillOnce(InvokeWithoutArgs([this]() {
+        auto controller = CreateDHCPController();
+        EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
+        return controller;
+      }));
   EXPECT_TRUE(device_->AcquireIPConfig());
   ASSERT_NE(nullptr, device_->ipconfig_);
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
@@ -323,15 +330,16 @@ TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
   device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
-  scoped_refptr<MockDHCPConfig> dhcp_config(
-      new MockDHCPConfig(control_interface(), kDeviceName));
   const std::string dhcp_hostname = "chromeos";
 
   EXPECT_CALL(*manager(), dhcp_hostname()).WillOnce(ReturnRef(dhcp_hostname));
   EXPECT_CALL(*dhcp_provider,
               CreateIPv4Config(_, _, _, StrEq(dhcp_hostname), _))
-      .WillOnce(Return(dhcp_config));
-  EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(true));
+      .WillOnce(InvokeWithoutArgs([this]() {
+        auto controller = CreateDHCPController();
+        EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
+        return controller;
+      }));
   EXPECT_TRUE(device_->AcquireIPConfig());
   ASSERT_NE(nullptr, device_->ipconfig_);
   EXPECT_EQ(kDeviceName, device_->ipconfig_->device_name());
@@ -348,12 +356,12 @@ TEST_F(DeviceTest, ConfigWithMinimumMTU) {
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
 
-  scoped_refptr<MockDHCPConfig> dhcp_config(
-      new NiceMock<MockDHCPConfig>(control_interface(), kDeviceName));
   EXPECT_CALL(*dhcp_provider, CreateIPv4Config(_, _, _, _, _))
-      .WillOnce(Return(dhcp_config));
-  EXPECT_CALL(*dhcp_config, set_minimum_mtu(minimum_mtu));
-
+      .WillOnce(InvokeWithoutArgs([this]() {
+        auto controller = CreateDHCPController();
+        EXPECT_CALL(*controller, set_minimum_mtu(minimum_mtu));
+        return controller;
+      }));
   device_->AcquireIPConfig();
 }
 

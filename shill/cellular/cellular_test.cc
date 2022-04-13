@@ -74,6 +74,7 @@ using testing::AnyNumber;
 using testing::AtLeast;
 using testing::DoAll;
 using testing::Invoke;
+using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -166,7 +167,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
         modem_info_(&control_interface_, &manager_),
         device_info_(&manager_),
         dhcp_hostname_("chromeos"),
-        dhcp_config_(new MockDHCPConfig(&control_interface_, kTestDeviceName)),
         mock_home_provider_info_(nullptr),
         mock_serving_operator_info_(nullptr),
         profile_(new NiceMock<MockProfile>(&manager_)) {
@@ -435,6 +435,13 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     device_->SetSimProperties(properties, static_cast<int>(primary));
   }
 
+  std::unique_ptr<MockDHCPConfig> CreateMockDHCPController() {
+    auto controller =
+        std::make_unique<MockDHCPConfig>(&control_interface_, kTestDeviceName);
+    ON_CALL(*controller, ReleaseIP(_)).WillByDefault(Return(true));
+    return controller;
+  }
+
   MOCK_METHOD(void, TestCallback, (const Error&));
 
  protected:
@@ -603,7 +610,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
 
   MockDHCPProvider dhcp_provider_;
   std::string dhcp_hostname_;
-  scoped_refptr<MockDHCPConfig> dhcp_config_;
 
   bool create_gsm_card_proxy_from_factory_;
   std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;
@@ -1088,7 +1094,8 @@ TEST_P(CellularTest, LinkEventInterfaceDown) {
 
 TEST_P(CellularTest, UseNoArpGateway) {
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestDeviceName, _, false, _, _))
-      .WillOnce(Return(dhcp_config_));
+      .WillOnce(
+          InvokeWithoutArgs([this]() { return CreateMockDHCPController(); }));
   device_->AcquireIPConfig();
 }
 
@@ -1223,7 +1230,6 @@ TEST_P(CellularTest, LinkEventUpWithPPP) {
   device_->set_state_for_testing(Cellular::State::kConnected);
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestDeviceName, _, _, _, _))
       .Times(0);
-  EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
   device_->LinkEvent(IFF_UP, 0);
 }
 
@@ -1231,9 +1237,12 @@ TEST_P(CellularTest, LinkEventUpWithoutPPP) {
   // If PPP is not running, fire up DHCP.
   device_->set_state_for_testing(Cellular::State::kConnected);
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestDeviceName, _, _, _, _))
-      .WillOnce(Return(dhcp_config_));
-  EXPECT_CALL(*dhcp_config_, RequestIP());
-  EXPECT_CALL(*dhcp_config_, ReleaseIP(_)).Times(AnyNumber());
+      .WillOnce(InvokeWithoutArgs([this]() {
+        auto controller = CreateMockDHCPController();
+        EXPECT_CALL(*controller, RequestIP());
+        EXPECT_CALL(*controller, ReleaseIP(_)).Times(AnyNumber());
+        return controller;
+      }));
   device_->LinkEvent(IFF_UP, 0);
 }
 
@@ -1254,11 +1263,8 @@ TEST_P(CellularTest, StartPPPAlreadyStarted) {
 TEST_P(CellularTest, StartPPPAfterEthernetUp) {
   CellularService* service(SetService());
   device_->set_state_for_testing(Cellular::State::kLinked);
-  device_->set_dhcp_controller_for_testing(dhcp_config_);
+  device_->set_dhcp_controller_for_testing(CreateMockDHCPController());
   device_->SelectService(service);
-  EXPECT_CALL(*dhcp_config_, ReleaseIP(_))
-      .Times(AnyNumber())
-      .WillRepeatedly(Return(true));
   const int kPID = 234;
   EXPECT_EQ(nullptr, device_->ppp_task_);
   StartPPP(kPID);
@@ -1513,10 +1519,12 @@ TEST_P(CellularTest, OnPPPDiedCleanupDevice) {
 }
 
 TEST_P(CellularTest, DropConnection) {
-  device_->set_dhcp_controller_for_testing(dhcp_config_);
-  EXPECT_CALL(*dhcp_config_, ReleaseIP(_));
+  auto dhcp_controller = CreateMockDHCPController();
+  auto* dhcp_controller_ptr = dhcp_controller.get();
+  device_->set_dhcp_controller_for_testing(std::move(dhcp_controller));
+  EXPECT_CALL(*dhcp_controller_ptr, ReleaseIP(_));
   device_->DropConnection();
-  Mock::VerifyAndClearExpectations(dhcp_config_.get());  // verify before dtor
+  Mock::VerifyAndClearExpectations(dhcp_controller_ptr);  // verify before dtor
   EXPECT_FALSE(device_->ipconfig());
 }
 
@@ -1873,8 +1881,11 @@ TEST_P(CellularTest, EstablishLinkDHCP) {
   EXPECT_CALL(device_info_, GetFlags(device_->interface_index(), _))
       .WillOnce(DoAll(SetArgPointee<1>(IFF_UP), Return(true)));
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kTestDeviceName, _, _, _, _))
-      .WillOnce(Return(dhcp_config_));
-  EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
+      .WillOnce(InvokeWithoutArgs([this]() {
+        auto controller = CreateMockDHCPController();
+        EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
+        return controller;
+      }));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   device_->EstablishLink();
   EXPECT_EQ(service, device_->selected_service());

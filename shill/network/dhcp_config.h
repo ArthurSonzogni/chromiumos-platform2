@@ -12,13 +12,11 @@
 
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/ipconfig.h"
-#include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/store/key_value_store.h"
 #include "shill/technology.h"
@@ -42,7 +40,7 @@ class ProcessManager;
 // If |hostname| is not empty, it will be used in the DHCP request as DHCP
 // option 12. This asks the DHCP server to register this hostname on our
 // behalf, for purposes of administration or creating a dynamic DNS entry.
-class DHCPConfig : public base::RefCounted<DHCPConfig> {
+class DHCPConfig {
  public:
   // TODO(b/227560694): For these two callbacks |dhcp_config| points to this
   // object itself, and should only be used for checking if the callback is

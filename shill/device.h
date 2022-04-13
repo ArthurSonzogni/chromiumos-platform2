@@ -10,6 +10,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/memory/ref_counted.h>
@@ -27,6 +28,7 @@
 #include "shill/geolocation_info.h"
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
+#include "shill/network/dhcp_config.h"
 #include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -320,7 +322,10 @@ class Device : public base::RefCounted<Device> {
     selected_service_ = service;
   }
 
-  void set_dhcp_controller_for_testing(const DHCPConfigRefPtr& dhcp_controller);
+  void set_dhcp_controller_for_testing(
+      std::unique_ptr<DHCPConfig> dhcp_controller) {
+    dhcp_controller_ = std::move(dhcp_controller);
+  }
 
  protected:
   friend class base::RefCounted<Device>;
@@ -709,7 +714,7 @@ class Device : public base::RefCounted<Device> {
   const int interface_index_;
   const std::string link_name_;
   Manager* manager_;
-  DHCPConfigRefPtr dhcp_controller_;
+  std::unique_ptr<DHCPConfig> dhcp_controller_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;
   std::unique_ptr<Connection> connection_;
