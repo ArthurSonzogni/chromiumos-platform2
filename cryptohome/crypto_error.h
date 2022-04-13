@@ -7,6 +7,8 @@
 
 #include <iostream>
 
+#include "cryptohome/le_credential_manager.h"
+
 namespace cryptohome {
 
 enum class CryptoError {
@@ -37,6 +39,8 @@ void PopulateError(ErrorType* error, ErrorType error_code) {
   if (error)
     *error = error_code;
 }
+
+CryptoError LECredErrorToCryptoError(LECredError le_error);
 
 }  // namespace cryptohome
 

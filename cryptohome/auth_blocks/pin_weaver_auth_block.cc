@@ -39,28 +39,6 @@ namespace {
 
 constexpr int kDefaultSecretSize = 32;
 
-CryptoError ConvertLeError(int le_error) {
-  switch (le_error) {
-    case LE_CRED_ERROR_INVALID_LE_SECRET:
-      return CryptoError::CE_LE_INVALID_SECRET;
-    case LE_CRED_ERROR_TOO_MANY_ATTEMPTS:
-      return CryptoError::CE_TPM_DEFEND_LOCK;
-    case LE_CRED_ERROR_INVALID_LABEL:
-      return CryptoError::CE_OTHER_CRYPTO;
-    case LE_CRED_ERROR_HASH_TREE:
-      // TODO(b/195473713): This should be CE_OTHER_FATAL, but return
-      // CE_OTHER_CRYPTO here to prevent unintended user homedir removal.
-      return CryptoError::CE_OTHER_CRYPTO;
-    case LE_CRED_ERROR_PCR_NOT_MATCH:
-      // We might want to return an error here that will make the device
-      // reboot.
-      LOG(ERROR) << "PCR in unexpected state.";
-      return CryptoError::CE_LE_INVALID_SECRET;
-    default:
-      return CryptoError::CE_OTHER_CRYPTO;
-  }
-}
-
 void LogLERetCode(int le_error) {
   switch (le_error) {
     case LE_CRED_ERROR_NO_FREE_LABEL:
@@ -213,12 +191,12 @@ CryptoError PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   }
 
   uint64_t label;
-  int ret =
+  LECredError ret =
       le_manager_->InsertCredential(le_secret, he_secret, reset_secret,
                                     delay_sched, valid_pcr_criteria, &label);
   if (ret != LE_CRED_SUCCESS) {
     LogLERetCode(ret);
-    return ConvertLeError(ret);
+    return LECredErrorToCryptoError(ret);
   }
 
   PinWeaverAuthBlockState pin_auth_state;
@@ -268,12 +246,12 @@ CryptoError PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
 
   // Try to obtain the High Entropy Secret from the LECredentialManager.
   brillo::SecureBlob he_secret;
-  int ret = le_manager_->CheckCredential(auth_state->le_label.value(),
-                                         le_secret, &he_secret,
-                                         &key_blobs->reset_secret.value());
+  LECredError ret = le_manager_->CheckCredential(
+      auth_state->le_label.value(), le_secret, &he_secret,
+      &key_blobs->reset_secret.value());
 
   if (ret != LE_CRED_SUCCESS) {
-    return ConvertLeError(ret);
+    return LECredErrorToCryptoError(ret);
   }
 
   brillo::SecureBlob vkk_seed =

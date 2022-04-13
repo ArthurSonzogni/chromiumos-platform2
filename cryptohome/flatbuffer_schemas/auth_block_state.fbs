@@ -139,8 +139,14 @@ union AuthBlockStateUnion (secure) {
   TpmEccAuthBlockState
 }
 
+table RevocationState (secure) {
+  // The label for the credential in the LE hash tree.
+  le_label:ulong = null (id: 0, optional);
+}
+
 table AuthBlockState (serializable, secure) {
   state:AuthBlockStateUnion (id:1);
+  revocation_state:RevocationState (id: 2, optional);
 }
 
 root_type AuthBlockState;
