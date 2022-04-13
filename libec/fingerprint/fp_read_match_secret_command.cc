@@ -4,15 +4,17 @@
 
 #include "libec/fingerprint/fp_read_match_secret_command.h"
 
+#include <optional>
+
 namespace ec {
 
 FpReadMatchSecretCommand::~FpReadMatchSecretCommand() {
   ClearSecretBuffer();
 }
 
-base::Optional<brillo::SecureVector> FpReadMatchSecretCommand::Secret() {
+std::optional<brillo::SecureVector> FpReadMatchSecretCommand::Secret() {
   if (!secret_is_valid_) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   brillo::SecureVector secret(sizeof(Resp()->positive_match_secret));

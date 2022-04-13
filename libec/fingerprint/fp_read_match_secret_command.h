@@ -5,7 +5,8 @@
 #ifndef LIBEC_FINGERPRINT_FP_READ_MATCH_SECRET_COMMAND_H_
 #define LIBEC_FINGERPRINT_FP_READ_MATCH_SECRET_COMMAND_H_
 
-#include <base/optional.h>
+#include <optional>
+
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 #include "libec/ec_command.h"
@@ -25,7 +26,7 @@ class BRILLO_EXPORT FpReadMatchSecretCommand
 
   bool Run(int fd) override;
 
-  base::Optional<brillo::SecureVector> Secret();
+  std::optional<brillo::SecureVector> Secret();
 
  protected:
   void ClearSecretBuffer();

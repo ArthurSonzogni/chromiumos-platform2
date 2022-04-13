@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 
 #include "libec/fingerprint/fp_read_match_secret_command.h"
 
@@ -71,7 +72,7 @@ TEST_F(FpReadMatchSecretCommandTest, Success) {
 
   // The second time we read the secret, it should have been cleared, so is no
   // longer valid.
-  EXPECT_EQ(mock_command.Secret(), base::nullopt);
+  EXPECT_EQ(mock_command.Secret(), std::nullopt);
 }
 
 }  // namespace
