@@ -74,6 +74,9 @@ extern const char kOzoneNNPalmPropertiesPath[];
 // Property for compatibility with NNPalm in Ozone.
 extern const char kOzoneNNPalmCompatibleProperty[];
 
+// Property for model version in NNPalm for Ozone.
+extern const char kOzoneNNPalmModelVersionProperty[];
+
 // Property for radius polynomial in NNPalm for Ozone.
 extern const char kOzoneNNPalmRadiusProperty[];
 

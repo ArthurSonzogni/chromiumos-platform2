@@ -74,9 +74,11 @@ constexpr char kDisableInstantTetheringProperty[] = "disable-instant-tethering";
 
 constexpr char kOzoneNNPalmPropertiesPath[] = "/nnpalm";
 constexpr char kOzoneNNPalmCompatibleProperty[] = "touch-compatible";
+constexpr char kOzoneNNPalmModelVersionProperty[] = "model";
 constexpr char kOzoneNNPalmRadiusProperty[] = "radius-polynomial";
-constexpr std::array<const char*, 2> kOzoneNNPalmOptionalProperties = {
-    kOzoneNNPalmCompatibleProperty, kOzoneNNPalmRadiusProperty};
+constexpr std::array<const char*, 3> kOzoneNNPalmOptionalProperties = {
+    kOzoneNNPalmCompatibleProperty, kOzoneNNPalmModelVersionProperty,
+    kOzoneNNPalmRadiusProperty};
 
 const char kPowerPath[] = "/power";
 const char kAllowAmbientEQField[] = "allow-ambient-eq";
