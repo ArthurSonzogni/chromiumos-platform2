@@ -101,7 +101,6 @@ LEGACYLIST = {
     'minios',
     'missive',
     'mist',
-    'ml',
     'ml_benchmark',
     'modemfwd',
     'modem-utilities',
