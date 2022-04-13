@@ -122,10 +122,8 @@ void MurmurHash3_x86_32(const void* key, int len, uint32_t seed, void* out) {
   //----------
   // body
 
-  const uint8_t* blocks = &data[nblocks * 4];
-
-  for (int i = -nblocks; i; i++) {
-    uint32_t k1 = getblock32(blocks, i);
+  for (int i = 0; i < nblocks; i++) {
+    uint32_t k1 = getblock32(data, i);
 
     k1 *= c1;
     k1 = ROTL32(k1, 15);
