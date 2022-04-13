@@ -15,7 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
 
@@ -56,15 +56,15 @@ class DHCPProvider {
   void Stop();
 
   // Creates a new DHCPv4Config for |device_name|. The DHCP configuration for
-  // the device can then be initiated through DHCPConfig::Request and
-  // DHCPConfig::Renew.  If |host_name| is not-empty, it is placed in the DHCP
-  // request to allow the server to map the request to a specific user-named
-  // origin.  The DHCP lease file will contain the suffix supplied
-  // in |lease_file_suffix| if non-empty, otherwise |device_name|.  If
+  // the device can then be initiated through DHCPController::Request and
+  // DHCPController::Renew.  If |host_name| is not-empty, it is placed in the
+  // DHCP request to allow the server to map the request to a specific
+  // user-named origin.  The DHCP lease file will contain the suffix supplied in
+  // |lease_file_suffix| if non-empty, otherwise |device_name|.  If
   // |arp_gateway| is true, the DHCP client will ARP for the gateway IP
   // address as an additional safeguard against the issued IP address being
   // in-use by another station.
-  virtual std::unique_ptr<DHCPConfig> CreateIPv4Config(
+  virtual std::unique_ptr<DHCPController> CreateIPv4Config(
       const std::string& device_name,
       const std::string& lease_file_suffix,
       bool arp_gateway,
@@ -74,11 +74,11 @@ class DHCPProvider {
   // Returns the DHCP configuration associated with DHCP client |pid|. Returns
   // nullptr if |pid| is not bound to a configuration. Caller should not hold
   // this pointer.
-  DHCPConfig* GetConfig(int pid);
+  DHCPController* GetConfig(int pid);
 
   // Binds a |pid| to a DHCP |config|. When a DHCP config spawns a new DHCP
   // client, it binds itself to that client's |pid|.
-  virtual void BindPID(int pid, base::WeakPtr<DHCPConfig> config);
+  virtual void BindPID(int pid, base::WeakPtr<DHCPController> config);
 
   // Unbinds a |pid|. This method is used by a DHCP config to signal the
   // provider that the DHCP client has been terminated. This may result in
@@ -105,17 +105,17 @@ class DHCPProvider {
   FRIEND_TEST(DHCPProviderTest, CreateIPv4Config);
   FRIEND_TEST(DHCPProviderTest, DestroyLease);
 
-  using PIDConfigMap = std::map<int, base::WeakPtr<DHCPConfig>>;
+  using PIDControllerMap = std::map<int, base::WeakPtr<DHCPController>>;
 
   // Retire |pid| from the set of recently retired PIDs.
   void RetireUnboundPID(int pid);
 
   // A single listener is used to catch signals from all DHCP clients and
-  // dispatch them to the appropriate DHCP configuration instance.
+  // dispatch them to the appropriate DHCPController instance.
   std::unique_ptr<DHCPCDListenerInterface> listener_;
 
-  // A map that binds PIDs to DHCP configuration instances.
-  PIDConfigMap configs_;
+  // A map that binds PIDs to DHCPController instances.
+  PIDControllerMap controllers_;
 
   base::FilePath root_;
   ControlInterface* control_interface_;

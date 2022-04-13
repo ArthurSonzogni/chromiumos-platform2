@@ -59,7 +59,7 @@ extern "C" {
 #include "shill/mock_process_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/net/mock_rtnl_handler.h"
-#include "shill/network/mock_dhcp_config.h"
+#include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/ppp_device.h"
 #include "shill/rpc_task.h"  // for RpcTaskDelegate
@@ -435,9 +435,9 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     device_->SetSimProperties(properties, static_cast<int>(primary));
   }
 
-  std::unique_ptr<MockDHCPConfig> CreateMockDHCPController() {
-    auto controller =
-        std::make_unique<MockDHCPConfig>(&control_interface_, kTestDeviceName);
+  std::unique_ptr<MockDHCPController> CreateMockDHCPController() {
+    auto controller = std::make_unique<MockDHCPController>(&control_interface_,
+                                                           kTestDeviceName);
     ON_CALL(*controller, ReleaseIP(_)).WillByDefault(Return(true));
     return controller;
   }

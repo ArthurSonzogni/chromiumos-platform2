@@ -10,7 +10,7 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/refptr_types.h"
 
@@ -28,7 +28,7 @@ class MockDHCPProvider : public DHCPProvider {
               Init,
               (ControlInterface*, EventDispatcher*, Metrics*),
               (override));
-  MOCK_METHOD(std::unique_ptr<DHCPConfig>,
+  MOCK_METHOD(std::unique_ptr<DHCPController>,
               CreateIPv4Config,
               (const std::string&,
                const std::string&,
@@ -36,7 +36,7 @@ class MockDHCPProvider : public DHCPProvider {
                const std::string&,
                Technology),
               (override));
-  MOCK_METHOD(void, BindPID, (int, base::WeakPtr<DHCPConfig>), (override));
+  MOCK_METHOD(void, BindPID, (int, base::WeakPtr<DHCPController>), (override));
   MOCK_METHOD(void, UnbindPID, (int), (override));
 };
 

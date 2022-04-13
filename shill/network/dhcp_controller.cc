@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_controller.h"
 
 #include <arpa/inet.h>
 #include <stdlib.h>
@@ -34,9 +34,9 @@ namespace shill {
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
-static std::string ObjectID(const DHCPConfig* d) {
+static std::string ObjectID(const DHCPController* d) {
   if (d == nullptr)
-    return "(dhcp_config)";
+    return "(dhcp_controller)";
   else
     return d->device_name();
 }
@@ -52,15 +52,15 @@ constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-4.pid";
 
 }  // namespace
 
-DHCPConfig::DHCPConfig(ControlInterface* control_interface,
-                       EventDispatcher* dispatcher,
-                       DHCPProvider* provider,
-                       const std::string& device_name,
-                       const std::string& lease_file_suffix,
-                       bool arp_gateway,
-                       const std::string& hostname,
-                       Technology technology,
-                       Metrics* metrics)
+DHCPController::DHCPController(ControlInterface* control_interface,
+                               EventDispatcher* dispatcher,
+                               DHCPProvider* provider,
+                               const std::string& device_name,
+                               const std::string& lease_file_suffix,
+                               bool arp_gateway,
+                               const std::string& hostname,
+                               Technology technology,
+                               Metrics* metrics)
     : control_interface_(control_interface),
       provider_(provider),
       device_name_(device_name),
@@ -85,20 +85,20 @@ DHCPConfig::DHCPConfig(ControlInterface* control_interface,
   }
 }
 
-DHCPConfig::~DHCPConfig() {
+DHCPController::~DHCPController() {
   SLOG(this, 2) << __func__ << ": " << device_name();
 
   // Don't leave behind dhcpcd running.
   Stop(__func__);
 }
 
-void DHCPConfig::RegisterCallbacks(UpdateCallback update_callback,
-                                   FailureCallback failure_callback) {
+void DHCPController::RegisterCallbacks(UpdateCallback update_callback,
+                                       FailureCallback failure_callback) {
   update_callback_ = update_callback;
   failure_callback_ = failure_callback;
 }
 
-bool DHCPConfig::RequestIP() {
+bool DHCPController::RequestIP() {
   SLOG(this, 2) << __func__ << ": " << device_name();
   if (!pid_) {
     return Start();
@@ -110,7 +110,7 @@ bool DHCPConfig::RequestIP() {
   return RenewIP();
 }
 
-bool DHCPConfig::RenewIP() {
+bool DHCPController::RenewIP() {
   SLOG(this, 2) << __func__ << ": " << device_name();
   if (!pid_) {
     return Start();
@@ -125,7 +125,7 @@ bool DHCPConfig::RenewIP() {
   return true;
 }
 
-bool DHCPConfig::ReleaseIP(ReleaseReason reason) {
+bool DHCPController::ReleaseIP(ReleaseReason reason) {
   SLOG(this, 2) << __func__ << ": " << device_name();
   if (!pid_) {
     return true;
@@ -149,15 +149,15 @@ bool DHCPConfig::ReleaseIP(ReleaseReason reason) {
   return true;
 }
 
-void DHCPConfig::InitProxy(const std::string& service) {
+void DHCPController::InitProxy(const std::string& service) {
   if (!proxy_) {
     LOG(INFO) << "Init DHCP Proxy: " << device_name() << " at " << service;
     proxy_ = control_interface_->CreateDHCPProxy(service);
   }
 }
 
-void DHCPConfig::ProcessEventSignal(const std::string& reason,
-                                    const KeyValueStore& configuration) {
+void DHCPController::ProcessEventSignal(const std::string& reason,
+                                        const KeyValueStore& configuration) {
   LOG(INFO) << "Event reason: " << reason;
   if (reason == kReasonFail) {
     LOG(ERROR) << "Received failure event from DHCP client.";
@@ -195,7 +195,7 @@ void DHCPConfig::ProcessEventSignal(const std::string& reason,
   is_gateway_arp_active_ = is_gateway_arp;
 }
 
-std::optional<base::TimeDelta> DHCPConfig::TimeToLeaseExpiry() {
+std::optional<base::TimeDelta> DHCPController::TimeToLeaseExpiry() {
   if (!current_lease_expiration_time_.has_value()) {
     SLOG(this, 2) << __func__ << ": No current DHCP lease";
     return std::nullopt;
@@ -209,8 +209,8 @@ std::optional<base::TimeDelta> DHCPConfig::TimeToLeaseExpiry() {
   return base::Seconds(current_lease_expiration_time_->tv_sec - now.tv_sec);
 }
 
-void DHCPConfig::OnIPConfigUpdated(const IPConfig::Properties& properties,
-                                   bool new_lease_acquired) {
+void DHCPController::OnIPConfigUpdated(const IPConfig::Properties& properties,
+                                       bool new_lease_acquired) {
   if (new_lease_acquired) {
     StopAcquisitionTimeout();
     if (properties.lease_duration_seconds) {
@@ -225,25 +225,25 @@ void DHCPConfig::OnIPConfigUpdated(const IPConfig::Properties& properties,
   }
 
   dispatcher_->PostTask(
-      FROM_HERE, base::BindOnce(&DHCPConfig::InvokeUpdateCallback,
+      FROM_HERE, base::BindOnce(&DHCPController::InvokeUpdateCallback,
                                 weak_ptr_factory_.GetWeakPtr(), properties,
                                 new_lease_acquired));
 }
 
-void DHCPConfig::NotifyFailure() {
+void DHCPController::NotifyFailure() {
   StopAcquisitionTimeout();
   StopExpirationTimeout();
 
   dispatcher_->PostTask(FROM_HERE,
-                        base::BindOnce(&DHCPConfig::InvokeFailureCallback,
+                        base::BindOnce(&DHCPController::InvokeFailureCallback,
                                        weak_ptr_factory_.GetWeakPtr()));
 }
 
-bool DHCPConfig::IsEphemeralLease() const {
+bool DHCPController::IsEphemeralLease() const {
   return lease_file_suffix_ == device_name();
 }
 
-bool DHCPConfig::Start() {
+bool DHCPController::Start() {
   SLOG(this, 2) << __func__ << ": " << device_name();
 
   // Setup program arguments.
@@ -266,7 +266,7 @@ bool DHCPConfig::Start() {
   minijail_options.close_nonstd_fds = false;
   pid_t pid = process_manager_->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kDHCPCDPath), args, {}, minijail_options,
-      base::BindOnce(&DHCPConfig::OnProcessExited,
+      base::BindOnce(&DHCPController::OnProcessExited,
                      weak_ptr_factory_.GetWeakPtr()));
   if (pid < 0) {
     return false;
@@ -278,7 +278,7 @@ bool DHCPConfig::Start() {
   return true;
 }
 
-void DHCPConfig::Stop(const char* reason) {
+void DHCPController::Stop(const char* reason) {
   LOG_IF(INFO, pid_) << "Stopping " << pid_ << " (" << reason << ")";
   KillClient();
   // KillClient waits for the client to terminate so it's safe to cleanup the
@@ -286,7 +286,7 @@ void DHCPConfig::Stop(const char* reason) {
   CleanupClientState();
 }
 
-void DHCPConfig::KillClient() {
+void DHCPController::KillClient() {
   if (!pid_) {
     return;
   }
@@ -298,12 +298,12 @@ void DHCPConfig::KillClient() {
   process_manager_->StopProcessAndBlock(pid_);
 }
 
-bool DHCPConfig::Restart() {
+bool DHCPController::Restart() {
   Stop(__func__);
   return Start();
 }
 
-void DHCPConfig::OnProcessExited(int exit_status) {
+void DHCPController::OnProcessExited(int exit_status) {
   CHECK(pid_);
   if (exit_status == EXIT_SUCCESS) {
     SLOG(nullptr, 2) << "pid " << pid_ << " exit status " << exit_status;
@@ -313,7 +313,7 @@ void DHCPConfig::OnProcessExited(int exit_status) {
   CleanupClientState();
 }
 
-void DHCPConfig::CleanupClientState() {
+void DHCPController::CleanupClientState() {
   SLOG(this, 2) << __func__ << ": " << device_name();
   StopAcquisitionTimeout();
   StopExpirationTimeout();
@@ -336,19 +336,19 @@ void DHCPConfig::CleanupClientState() {
   is_gateway_arp_active_ = false;
 }
 
-bool DHCPConfig::ShouldFailOnAcquisitionTimeout() const {
+bool DHCPController::ShouldFailOnAcquisitionTimeout() const {
   // Continue to use previous lease if gateway ARP is active.
   return !is_gateway_arp_active_;
 }
 
 // Return true if we should keep the lease on disconnect.
-bool DHCPConfig::ShouldKeepLeaseOnDisconnect() const {
+bool DHCPController::ShouldKeepLeaseOnDisconnect() const {
   // If we are using gateway unicast ARP to speed up re-connect, don't
   // give up our leases when we disconnect.
   return arp_gateway_;
 }
 
-std::vector<std::string> DHCPConfig::GetFlags() {
+std::vector<std::string> DHCPController::GetFlags() {
   std::vector<std::string> flags;
   flags.push_back("-B");  // Run in foreground.
   flags.push_back("-q");  // Only warnings+errors to stderr.
@@ -368,20 +368,21 @@ std::vector<std::string> DHCPConfig::GetFlags() {
   return flags;
 }
 
-void DHCPConfig::StartAcquisitionTimeout() {
+void DHCPController::StartAcquisitionTimeout() {
   CHECK(lease_expiration_callback_.IsCancelled());
-  lease_acquisition_timeout_callback_.Reset(Bind(
-      &DHCPConfig::ProcessAcquisitionTimeout, weak_ptr_factory_.GetWeakPtr()));
+  lease_acquisition_timeout_callback_.Reset(
+      Bind(&DHCPController::ProcessAcquisitionTimeout,
+           weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                lease_acquisition_timeout_callback_.callback(),
                                lease_acquisition_timeout_);
 }
 
-void DHCPConfig::StopAcquisitionTimeout() {
+void DHCPController::StopAcquisitionTimeout() {
   lease_acquisition_timeout_callback_.Cancel();
 }
 
-void DHCPConfig::ProcessAcquisitionTimeout() {
+void DHCPController::ProcessAcquisitionTimeout() {
   LOG(ERROR) << "Timed out waiting for DHCP lease on " << device_name() << " "
              << "(after " << lease_acquisition_timeout_.InSeconds()
              << " seconds).";
@@ -392,23 +393,23 @@ void DHCPConfig::ProcessAcquisitionTimeout() {
   }
 }
 
-void DHCPConfig::StartExpirationTimeout(base::TimeDelta lease_duration) {
+void DHCPController::StartExpirationTimeout(base::TimeDelta lease_duration) {
   CHECK(lease_acquisition_timeout_callback_.IsCancelled());
   SLOG(this, 2) << __func__ << ": " << device_name() << ": "
                 << "Lease timeout is " << lease_duration.InSeconds()
                 << " seconds.";
   lease_expiration_callback_.Reset(
-      BindOnce(&DHCPConfig::ProcessExpirationTimeout,
+      BindOnce(&DHCPController::ProcessExpirationTimeout,
                weak_ptr_factory_.GetWeakPtr(), lease_duration));
   dispatcher_->PostDelayedTask(FROM_HERE, lease_expiration_callback_.callback(),
                                lease_duration);
 }
 
-void DHCPConfig::StopExpirationTimeout() {
+void DHCPController::StopExpirationTimeout() {
   lease_expiration_callback_.Cancel();
 }
 
-void DHCPConfig::ProcessExpirationTimeout(base::TimeDelta lease_duration) {
+void DHCPController::ProcessExpirationTimeout(base::TimeDelta lease_duration) {
   LOG(ERROR) << "DHCP lease expired on " << device_name()
              << "; restarting DHCP client instance.";
 
@@ -424,25 +425,25 @@ void DHCPConfig::ProcessExpirationTimeout(base::TimeDelta lease_duration) {
   }
 }
 
-void DHCPConfig::UpdateLeaseExpirationTime(uint32_t new_lease_duration) {
+void DHCPController::UpdateLeaseExpirationTime(uint32_t new_lease_duration) {
   struct timeval new_expiration_time;
   time_->GetTimeBoottime(&new_expiration_time);
   new_expiration_time.tv_sec += new_lease_duration;
   current_lease_expiration_time_ = new_expiration_time;
 }
 
-void DHCPConfig::ResetLeaseExpirationTime() {
+void DHCPController::ResetLeaseExpirationTime() {
   current_lease_expiration_time_ = std::nullopt;
 }
 
-void DHCPConfig::InvokeUpdateCallback(const IPConfig::Properties properties,
-                                      bool new_lease_acquired) {
+void DHCPController::InvokeUpdateCallback(const IPConfig::Properties properties,
+                                          bool new_lease_acquired) {
   if (!update_callback_.is_null()) {
     update_callback_.Run(this, properties, new_lease_acquired);
   }
 }
 
-void DHCPConfig::InvokeFailureCallback() {
+void DHCPController::InvokeFailureCallback() {
   if (!failure_callback_.is_null()) {
     failure_callback_.Run(this);
   }

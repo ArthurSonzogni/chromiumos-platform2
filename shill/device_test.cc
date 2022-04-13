@@ -39,7 +39,7 @@
 #include "shill/net/mock_time.h"
 #include "shill/net/ndisc.h"
 #include "shill/network/dhcp_provider.h"
-#include "shill/network/mock_dhcp_config.h"
+#include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/portal_detector.h"
 #include "shill/routing_table.h"
@@ -191,8 +191,9 @@ class DeviceTest : public testing::Test {
   MockMetrics* metrics() { return &metrics_; }
   MockManager* manager() { return &manager_; }
 
-  std::unique_ptr<MockDHCPConfig> CreateDHCPController() {
-    return std::make_unique<MockDHCPConfig>(&control_interface_, kDeviceName);
+  std::unique_ptr<MockDHCPController> CreateDHCPController() {
+    return std::make_unique<MockDHCPController>(&control_interface_,
+                                                kDeviceName);
   }
 
   void SetupIPv4DHCPConfig() {
@@ -241,7 +242,7 @@ class DeviceTest : public testing::Test {
   StrictMock<MockRTNLHandler> rtnl_handler_;
   patchpanel::FakeClient* patchpanel_client_;
   MockIPConfig* ipconfig_;           // owned by |device_|
-  MockDHCPConfig* dhcp_controller_;  // owned by |device_|
+  MockDHCPController* dhcp_controller_;  // owned by |device_|
 };
 
 const char DeviceTest::kDeviceName[] = "testdevice";

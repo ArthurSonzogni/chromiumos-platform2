@@ -10,7 +10,7 @@
 
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_controller.h"
 
 using testing::_;
 using testing::StrictMock;
@@ -35,7 +35,7 @@ class DHCPProviderTest : public Test {
     // DHCPProvider is a singleton, there is no guarentee that it is
     // not setup/used elsewhere, so reset its state before running our
     // tests.
-    provider_->configs_.clear();
+    provider_->controllers_.clear();
     provider_->recently_unbound_pids_.clear();
   }
 
@@ -53,7 +53,7 @@ TEST_F(DHCPProviderTest, CreateIPv4Config) {
                                   kDeviceName, Technology::kUnknown);
   EXPECT_NE(nullptr, config);
   EXPECT_EQ(kDeviceName, config->device_name());
-  EXPECT_TRUE(provider_->configs_.empty());
+  EXPECT_TRUE(provider_->controllers_.empty());
 }
 
 TEST_F(DHCPProviderTest, DestroyLease) {
@@ -92,7 +92,7 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 
-  // Destroying the DHCPConfig object should also trigger an Unbind().
+  // Destroying the DHCPController object should also trigger an Unbind().
   provider_->BindPID(kPid, config->weak_ptr_factory_.GetWeakPtr());
   config->pid_ = kPid;
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));

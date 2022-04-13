@@ -2,26 +2,26 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_MOCK_DHCP_CONFIG_H_
-#define SHILL_NETWORK_MOCK_DHCP_CONFIG_H_
+#ifndef SHILL_NETWORK_MOCK_DHCP_CONTROLLER_H_
+#define SHILL_NETWORK_MOCK_DHCP_CONTROLLER_H_
 
 #include <string>
 
 #include <gmock/gmock.h>
 
-#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/technology.h"
 
 namespace shill {
 
-class MockDHCPConfig : public DHCPConfig {
+class MockDHCPController : public DHCPController {
  public:
-  MockDHCPConfig(ControlInterface* control_interface,
-                 const std::string& device_name);
-  MockDHCPConfig(const MockDHCPConfig&) = delete;
-  MockDHCPConfig& operator=(const MockDHCPConfig&) = delete;
+  MockDHCPController(ControlInterface* control_interface,
+                     const std::string& device_name);
+  MockDHCPController(const MockDHCPController&) = delete;
+  MockDHCPController& operator=(const MockDHCPController&) = delete;
 
-  ~MockDHCPConfig() override;
+  ~MockDHCPController() override;
 
   void ProcessEventSignal(const std::string& reason,
                           const KeyValueStore& configuration) override;
@@ -34,4 +34,4 @@ class MockDHCPConfig : public DHCPConfig {
 
 }  // namespace shill
 
-#endif  // SHILL_NETWORK_MOCK_DHCP_CONFIG_H_
+#endif  // SHILL_NETWORK_MOCK_DHCP_CONTROLLER_H_

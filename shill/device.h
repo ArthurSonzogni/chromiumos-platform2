@@ -28,7 +28,7 @@
 #include "shill/geolocation_info.h"
 #include "shill/ipconfig.h"
 #include "shill/net/ip_address.h"
-#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -323,7 +323,7 @@ class Device : public base::RefCounted<Device> {
   }
 
   void set_dhcp_controller_for_testing(
-      std::unique_ptr<DHCPConfig> dhcp_controller) {
+      std::unique_ptr<DHCPController> dhcp_controller) {
     dhcp_controller_ = std::move(dhcp_controller);
   }
 
@@ -449,9 +449,9 @@ class Device : public base::RefCounted<Device> {
   // Assigns the IPv6 configuration |properties| to |ip6config_|.
   void AssignIPv6Config(const IPConfig::Properties& properties);
 
-  // Callback registered with DHCPConfig. Also see the comment for
-  // DHCPConfig::UpdateCallback.
-  void OnIPConfigUpdatedFromDHCP(DHCPConfig* dhcp_config,
+  // Callback registered with DHCPController. Also see the comment for
+  // DHCPController::UpdateCallback.
+  void OnIPConfigUpdatedFromDHCP(DHCPController* dhcp_controller,
                                  const IPConfig::Properties& properties,
                                  bool new_lease_acquired);
 
@@ -512,7 +512,7 @@ class Device : public base::RefCounted<Device> {
   bool enabled_pending() const { return enabled_pending_; }
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
-  DHCPConfig* dhcp_controller() const { return dhcp_controller_.get(); }
+  DHCPController* dhcp_controller() const { return dhcp_controller_.get(); }
   bool fixed_ip_params() const { return fixed_ip_params_; }
 
   virtual void set_mac_address(const std::string& mac_address);
@@ -577,7 +577,7 @@ class Device : public base::RefCounted<Device> {
   void IPv6DNSServerExpired();
 
   // Callback invoked on DHCP failures.
-  void OnDHCPFailure(DHCPConfig* dhcp_config);
+  void OnDHCPFailure(DHCPController* dhcp_controller);
 
   // Callback invoked when the static IP properties configured on the selected
   // service changed.
@@ -701,7 +701,7 @@ class Device : public base::RefCounted<Device> {
   const int interface_index_;
   const std::string link_name_;
   Manager* manager_;
-  std::unique_ptr<DHCPConfig> dhcp_controller_;
+  std::unique_ptr<DHCPController> dhcp_controller_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;
   std::unique_ptr<Connection> connection_;

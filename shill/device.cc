@@ -45,7 +45,7 @@
 #include "shill/net/ip_address.h"
 #include "shill/net/ndisc.h"
 #include "shill/net/rtnl_handler.h"
-#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/refptr_types.h"
 #include "shill/routing_table.h"
@@ -388,7 +388,7 @@ void Device::DestroyIPConfig() {
   StopIPv6();
   bool ipconfig_changed = false;
   if (dhcp_controller_) {
-    dhcp_controller_->ReleaseIP(DHCPConfig::kReleaseReasonDisconnect);
+    dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonDisconnect);
     dhcp_controller_ = nullptr;
   }
   if (ipconfig_) {
@@ -826,12 +826,13 @@ void Device::ConnectionDiagnosticsCallback(
   // TODO(samueltan): add connection diagnostics metrics.
 }
 
-void Device::OnIPConfigUpdatedFromDHCP(DHCPConfig* dhcp_config,
+void Device::OnIPConfigUpdatedFromDHCP(DHCPController* dhcp_controller,
                                        const IPConfig::Properties& properties,
                                        bool new_lease_acquired) {
-  if (dhcp_config != dhcp_controller_.get()) {
-    LOG(WARNING) << __func__
-                 << " invoked but |dhcp_config| is not owned by this Device";
+  if (dhcp_controller != dhcp_controller_.get()) {
+    LOG(WARNING)
+        << __func__
+        << " invoked but |dhcp_controller| is not owned by this Device";
     return;
   }
   ipconfig_->UpdateProperties(properties);
@@ -858,7 +859,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
       // and not overridden by static parameters, but at the same time
       // we avoid taking up a dynamic IP address the DHCP server could
       // assign to someone else who might actually use it.
-      dhcp_controller_->ReleaseIP(DHCPConfig::kReleaseReasonStaticIP);
+      dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
     }
   }
 
@@ -866,11 +867,12 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
   UpdateIPConfigsProperty();
 }
 
-void Device::OnDHCPFailure(DHCPConfig* dhcp_config) {
+void Device::OnDHCPFailure(DHCPController* dhcp_controller) {
   SLOG(this, 2) << __func__;
-  if (dhcp_config != dhcp_controller_.get()) {
-    LOG(WARNING) << __func__
-                 << " invoked but |dhcp_config| is not owned by this Device";
+  if (dhcp_controller != dhcp_controller_.get()) {
+    LOG(WARNING)
+        << __func__
+        << " invoked but |dhcp_controller| is not owned by this Device";
     return;
   }
 

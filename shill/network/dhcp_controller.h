@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_DHCP_CONFIG_H_
-#define SHILL_NETWORK_DHCP_CONFIG_H_
+#ifndef SHILL_NETWORK_DHCP_CONTROLLER_H_
+#define SHILL_NETWORK_DHCP_CONTROLLER_H_
 
 #include <memory>
 #include <optional>
@@ -35,16 +35,16 @@ class ProcessManager;
 // The DHPCConfig instance asks the DHCP client to create a lease file
 // containing the name |lease_file_suffix|.  If this suffix is the same as
 // |device_name|, the lease is considered to be ephemeral, and the lease
-// file is removed whenever this DHCPConfig instance is no longer needed.
+// file is removed whenever this DHCPController instance is no longer needed.
 // Otherwise, the lease file persists and will be re-used in future attempts.
 // If |hostname| is not empty, it will be used in the DHCP request as DHCP
 // option 12. This asks the DHCP server to register this hostname on our
 // behalf, for purposes of administration or creating a dynamic DNS entry.
-class DHCPConfig {
+class DHCPController {
  public:
-  // TODO(b/227560694): For these two callbacks |dhcp_config| points to this
+  // TODO(b/227560694): For these two callbacks |dhcp_controller| points to this
   // object itself, and should only be used for checking if the callback is
-  // invoked on the correct object. Since DHCPConfig is a ref-counted object
+  // invoked on the correct object. Since DHCPController is a ref-counted object
   // now, it's possible that callback is invoked when Device does not own this
   // object actually. We can safely remove this parameter once Device is the
   // only owner.
@@ -52,12 +52,12 @@ class DHCPConfig {
   // all the parameters we get from DHCP. |new_lease_acquired| indicates whether
   // or not a DHCP lease was acquired from the server.
   using UpdateCallback =
-      base::RepeatingCallback<void(DHCPConfig* dhcp_config,
+      base::RepeatingCallback<void(DHCPController* dhcp_controller,
                                    const IPConfig::Properties& properties,
                                    bool new_lease_acquired)>;
   // Called when DHCP failed.
   using FailureCallback =
-      base::RepeatingCallback<void(DHCPConfig* dhcp_config)>;
+      base::RepeatingCallback<void(DHCPController* dhcp_controller)>;
 
   enum ReleaseReason { kReleaseReasonDisconnect, kReleaseReasonStaticIP };
 
@@ -71,19 +71,19 @@ class DHCPConfig {
   static constexpr char kReasonReboot[] = "REBOOT";
   static constexpr char kReasonRenew[] = "RENEW";
 
-  DHCPConfig(ControlInterface* control_interface,
-             EventDispatcher* dispatcher,
-             DHCPProvider* provider,
-             const std::string& device_name,
-             const std::string& lease_file_suffix,
-             bool arp_gateway,
-             const std::string& hostname,
-             Technology technology,
-             Metrics* metrics);
-  DHCPConfig(const DHCPConfig&) = delete;
-  DHCPConfig& operator=(const DHCPConfig&) = delete;
+  DHCPController(ControlInterface* control_interface,
+                 EventDispatcher* dispatcher,
+                 DHCPProvider* provider,
+                 const std::string& device_name,
+                 const std::string& lease_file_suffix,
+                 bool arp_gateway,
+                 const std::string& hostname,
+                 Technology technology,
+                 Metrics* metrics);
+  DHCPController(const DHCPController&) = delete;
+  DHCPController& operator=(const DHCPController&) = delete;
 
-  virtual ~DHCPConfig();
+  virtual ~DHCPController();
 
   // Registers callbacks for DHCP events.
   void RegisterCallbacks(UpdateCallback update_callback,
@@ -163,27 +163,27 @@ class DHCPConfig {
   base::FilePath root() const { return root_; }
 
  private:
-  friend class DHCPConfigTest;
-  FRIEND_TEST(DHCPConfigCallbackTest, ProcessEventSignalFail);
-  FRIEND_TEST(DHCPConfigCallbackTest, ProcessAcquisitionTimeout);
-  FRIEND_TEST(DHCPConfigCallbackTest, RequestIPTimeout);
-  FRIEND_TEST(DHCPConfigCallbackTest, StartTimeout);
-  FRIEND_TEST(DHCPConfigCallbackTest, StoppedDuringFailureCallback);
-  FRIEND_TEST(DHCPConfigCallbackTest, StoppedDuringSuccessCallback);
-  FRIEND_TEST(DHCPConfigTest, InitProxy);
-  FRIEND_TEST(DHCPConfigTest, KeepLeaseOnDisconnect);
-  FRIEND_TEST(DHCPConfigTest, ReleaseIP);
-  FRIEND_TEST(DHCPConfigTest, ReleaseIPStaticIPWithLease);
-  FRIEND_TEST(DHCPConfigTest, ReleaseIPStaticIPWithoutLease);
-  FRIEND_TEST(DHCPConfigTest, ReleaseLeaseOnDisconnect);
-  FRIEND_TEST(DHCPConfigTest, RenewIP);
-  FRIEND_TEST(DHCPConfigTest, RequestIP);
-  FRIEND_TEST(DHCPConfigTest, Restart);
-  FRIEND_TEST(DHCPConfigTest, RestartNoClient);
-  FRIEND_TEST(DHCPConfigTest, StartFail);
-  FRIEND_TEST(DHCPConfigTest, StartWithoutLeaseSuffix);
-  FRIEND_TEST(DHCPConfigTest, Stop);
-  FRIEND_TEST(DHCPConfigTest, StopDuringRequestIP);
+  friend class DHCPControllerTest;
+  FRIEND_TEST(DHCPControllerCallbackTest, ProcessEventSignalFail);
+  FRIEND_TEST(DHCPControllerCallbackTest, ProcessAcquisitionTimeout);
+  FRIEND_TEST(DHCPControllerCallbackTest, RequestIPTimeout);
+  FRIEND_TEST(DHCPControllerCallbackTest, StartTimeout);
+  FRIEND_TEST(DHCPControllerCallbackTest, StoppedDuringFailureCallback);
+  FRIEND_TEST(DHCPControllerCallbackTest, StoppedDuringSuccessCallback);
+  FRIEND_TEST(DHCPControllerTest, InitProxy);
+  FRIEND_TEST(DHCPControllerTest, KeepLeaseOnDisconnect);
+  FRIEND_TEST(DHCPControllerTest, ReleaseIP);
+  FRIEND_TEST(DHCPControllerTest, ReleaseIPStaticIPWithLease);
+  FRIEND_TEST(DHCPControllerTest, ReleaseIPStaticIPWithoutLease);
+  FRIEND_TEST(DHCPControllerTest, ReleaseLeaseOnDisconnect);
+  FRIEND_TEST(DHCPControllerTest, RenewIP);
+  FRIEND_TEST(DHCPControllerTest, RequestIP);
+  FRIEND_TEST(DHCPControllerTest, Restart);
+  FRIEND_TEST(DHCPControllerTest, RestartNoClient);
+  FRIEND_TEST(DHCPControllerTest, StartFail);
+  FRIEND_TEST(DHCPControllerTest, StartWithoutLeaseSuffix);
+  FRIEND_TEST(DHCPControllerTest, Stop);
+  FRIEND_TEST(DHCPControllerTest, StopDuringRequestIP);
   FRIEND_TEST(DHCPProviderTest, CreateIPv4Config);
   FRIEND_TEST(DHCPProviderTest, BindAndUnbind);
 
@@ -287,7 +287,7 @@ class DHCPConfig {
   // Root file path, used for testing.
   base::FilePath root_;
 
-  base::WeakPtrFactory<DHCPConfig> weak_ptr_factory_;
+  base::WeakPtrFactory<DHCPController> weak_ptr_factory_;
   EventDispatcher* dispatcher_;
   ProcessManager* process_manager_;
   Metrics* metrics_;
@@ -296,4 +296,4 @@ class DHCPConfig {
 
 }  // namespace shill
 
-#endif  // SHILL_NETWORK_DHCP_CONFIG_H_
+#endif  // SHILL_NETWORK_DHCP_CONTROLLER_H_

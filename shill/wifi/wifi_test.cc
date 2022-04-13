@@ -54,7 +54,7 @@
 #include "shill/net/netlink_packet.h"
 #include "shill/net/nl80211_attribute.h"
 #include "shill/net/nl80211_message.h"
-#include "shill/network/mock_dhcp_config.h"
+#include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store_test.h"
@@ -1085,11 +1085,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   void SetIPConfig(const IPConfigRefPtr& ipconfig) {
     return wifi_->set_ipconfig(ipconfig);
   }
-  void SetDHCPController(std::unique_ptr<DHCPConfig> dhcp_controller) {
+  void SetDHCPController(std::unique_ptr<DHCPController> dhcp_controller) {
     return wifi_->set_dhcp_controller_for_testing(std::move(dhcp_controller));
   }
-  std::unique_ptr<MockDHCPConfig> CreateMockDHCPController() {
-    return std::make_unique<MockDHCPConfig>(control_interface(), kDeviceName);
+  std::unique_ptr<MockDHCPController> CreateMockDHCPController() {
+    return std::make_unique<MockDHCPController>(control_interface(),
+                                                kDeviceName);
   }
   bool SetBgscanMethod(const std::string& method) {
     Error error;

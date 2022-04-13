@@ -47,7 +47,7 @@
 #include "shill/net/nl80211_message.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/net/shill_time.h"
-#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/scope_logger.h"
 #include "shill/store/property_accessor.h"
 #include "shill/supplicant/supplicant_eap_state_handler.h"

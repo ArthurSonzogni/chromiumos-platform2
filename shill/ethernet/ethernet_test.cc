@@ -32,7 +32,7 @@
 #include "shill/mock_service.h"
 #include "shill/net/mock_rtnl_handler.h"
 #include "shill/net/mock_sockets.h"
-#include "shill/network/mock_dhcp_config.h"
+#include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/testing.h"
 
@@ -364,13 +364,14 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
 }
 
 TEST_F(EthernetTest, ConnectToFailure) {
-  auto dhcp_config = new MockDHCPConfig(&control_interface_, ifname_);
+  auto dhcp_controller = new MockDHCPController(&control_interface_, ifname_);
   StartEthernet();
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _, _))
-      .WillOnce(Return(ByMove(std::unique_ptr<DHCPConfig>(dhcp_config))));
-  EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(false));
+      .WillOnce(
+          Return(ByMove(std::unique_ptr<DHCPController>(dhcp_controller))));
+  EXPECT_CALL(*dhcp_controller, RequestIP()).WillOnce(Return(false));
   EXPECT_CALL(dispatcher_,
               PostDelayedTask(
                   _, _, base::TimeDelta()));  // Posts ConfigureStaticIPTask.
@@ -381,13 +382,14 @@ TEST_F(EthernetTest, ConnectToFailure) {
 }
 
 TEST_F(EthernetTest, ConnectToSuccess) {
-  auto dhcp_config = new MockDHCPConfig(&control_interface_, ifname_);
+  auto dhcp_controller = new MockDHCPController(&control_interface_, ifname_);
   StartEthernet();
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateIPv4Config(_, _, _, _, _))
-      .WillOnce(Return(ByMove(std::unique_ptr<DHCPConfig>(dhcp_config))));
-  EXPECT_CALL(*dhcp_config, RequestIP()).WillOnce(Return(true));
+      .WillOnce(
+          Return(ByMove(std::unique_ptr<DHCPController>(dhcp_controller))));
+  EXPECT_CALL(*dhcp_controller, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(dispatcher_,
               PostDelayedTask(
                   _, _, base::TimeDelta()));  // Posts ConfigureStaticIPTask.

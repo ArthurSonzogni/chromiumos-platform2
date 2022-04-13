@@ -16,7 +16,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/network/dhcp_config.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
 
 namespace shill {
