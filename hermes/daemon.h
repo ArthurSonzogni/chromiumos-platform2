@@ -6,6 +6,7 @@
 #define HERMES_DAEMON_H_
 
 #include <memory>
+#include <string>
 
 #include <brillo/daemons/dbus_daemon.h>
 #include <glib-bridge/glib_bridge.h>
@@ -25,7 +26,7 @@ namespace hermes {
 
 class Daemon : public brillo::DBusServiceDaemon {
  public:
-  Daemon();
+  explicit Daemon(const std::string& fw_path);
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
@@ -44,6 +45,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   AdaptorFactory adaptor_factory_;
   std::unique_ptr<Manager> manager_;
   std::unique_ptr<glib_bridge::GlibBridge> glib_bridge_;
+  base::FilePath fw_path_;
 };
 
 }  // namespace hermes

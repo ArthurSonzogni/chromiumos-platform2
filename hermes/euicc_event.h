@@ -13,7 +13,7 @@ enum class EuiccStep {
   END,
 };
 
-enum class EuiccOp { UNKNOWN, DISABLE, ENABLE };
+enum class EuiccOp { UNKNOWN, DISABLE, ENABLE, FW_UPDATE };
 
 struct EuiccEvent {
   uint32_t slot;

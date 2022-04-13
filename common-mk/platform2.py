@@ -85,6 +85,7 @@ _IUSE = [
     'iioservice',
     'inference_accuracy_eval',
     'intel_oemcrypto',
+    'internal',
     'ipu6',
     'ipu6ep',
     'ipu6se',

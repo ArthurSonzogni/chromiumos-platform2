@@ -6,6 +6,7 @@
 #define HERMES_CONTEXT_H_
 
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <dbus/bus.h>
 #include <google-lpa/lpa/core/lpa.h>
 
@@ -28,7 +29,8 @@ class Context {
                          lpa::core::Lpa* lpa,
                          Executor* executor,
                          AdaptorFactoryInterface* adaptor_factory,
-                         ModemControlInterface* modem_control);
+                         ModemControlInterface* modem_control,
+                         base::FilePath fw_path);
   // Returns initialized Context singleton. Initialize() must have been invoked
   // prior to calls to this.
   static Context* Get() {
@@ -41,13 +43,15 @@ class Context {
   Executor* executor() { return executor_; }
   AdaptorFactoryInterface* adaptor_factory() { return adaptor_factory_; }
   ModemControlInterface* modem_control() { return modem_control_; }
+  base::FilePath fw_path_;
 
  private:
   Context(const scoped_refptr<dbus::Bus>& bus,
           lpa::core::Lpa* lpa,
           Executor* executor,
           AdaptorFactoryInterface* adaptor_factory,
-          ModemControlInterface* modem_control);
+          ModemControlInterface* modem_control,
+          base::FilePath fw_path);
   Context(const Context&) = delete;
   Context& operator=(const Context&) = delete;
 

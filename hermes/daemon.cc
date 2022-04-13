@@ -23,11 +23,12 @@
 #endif
 
 namespace hermes {
-Daemon::Daemon()
+Daemon::Daemon(const std::string& fw_path)
     : DBusServiceDaemon(kHermesServiceName),
       executor_(base::ThreadTaskRunnerHandle::Get()),
       smdp_(&logger_, &executor_),
-      glib_bridge_(std::make_unique<glib_bridge::GlibBridge>()) {
+      glib_bridge_(std::make_unique<glib_bridge::GlibBridge>()),
+      fw_path_(fw_path) {
   glib_bridge::ForwardLogs();
 }
 
@@ -52,7 +53,7 @@ void Daemon::RegisterDBusObjectsAsync(
   lpa_ = b.Build();
 
   Context::Initialize(bus_, lpa_.get(), &executor_, &adaptor_factory_,
-                      modem_.get());
+                      modem_.get(), fw_path_);
   manager_ = std::make_unique<Manager>();
   auto cb = base::BindOnce([](int err) {
     if (err) {

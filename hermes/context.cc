@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <utility>
+
 #include "hermes/context.h"
 
 #include <base/check.h>
@@ -16,17 +18,21 @@ void Context::Initialize(const scoped_refptr<dbus::Bus>& bus,
                          lpa::core::Lpa* lpa,
                          Executor* executor,
                          AdaptorFactoryInterface* adaptor_factory,
-                         ModemControlInterface* modem_control) {
+                         ModemControlInterface* modem_control,
+                         base::FilePath fw_path) {
   CHECK(!context_);
-  context_ = new Context(bus, lpa, executor, adaptor_factory, modem_control);
+  context_ = new Context(bus, lpa, executor, adaptor_factory, modem_control,
+                         std::move(fw_path));
 }
 
 Context::Context(const scoped_refptr<dbus::Bus>& bus,
                  lpa::core::Lpa* lpa,
                  Executor* executor,
                  AdaptorFactoryInterface* adaptor_factory,
-                 ModemControlInterface* modem_control)
-    : bus_(bus),
+                 ModemControlInterface* modem_control,
+                 base::FilePath fw_path)
+    : fw_path_(std::move(fw_path)),
+      bus_(bus),
       lpa_(lpa),
       executor_(executor),
       adaptor_factory_(adaptor_factory),

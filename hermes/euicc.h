@@ -96,20 +96,6 @@ class Euicc {
   void SetTestMode(bool is_test_mode, DbusResult<> dbus_result);
   void ResetMemory(int reset_options, DbusResult<> dbus_result);
   void GetEuiccInfo1(DbusResult<bool> dbus_result);
-
-  const uint8_t physical_slot_;
-  EuiccSlotInfo slot_info_;
-  bool is_test_mode_;
-  bool use_test_certs_;
-
-  Context* context_;
-  std::unique_ptr<EuiccAdaptorInterface> dbus_adaptor_;
-
-  std::vector<std::unique_ptr<Profile>> installed_profiles_;
-  std::vector<std::unique_ptr<Profile>> pending_profiles_;
-
-  base::WeakPtrFactory<Euicc> weak_factory_;
-
   template <typename... T>
   void EndEuiccOp(DbusResult<T...> dbus_result, T... object);
   template <typename... T>
@@ -120,8 +106,34 @@ class Euicc {
                     DbusResult<T...> dbus_result,
                     int err);
   template <typename... T>
-  void GetCardVersion(base::OnceCallback<void(DbusResult<T...>)> cb,
-                      DbusResult<T...> dbus_result);
+  void OnFWUpdated(base::OnceCallback<void(DbusResult<T...>)> cb,
+                   DbusResult<T...> dbus_result,
+                   int os_update_result);
+  enum class InitEuiccStep {
+    CHECK_IF_INITIALIZED,
+    UPDATE_FW,
+    START_GET_CARD_VERSION,
+    GET_CARD_VERSION,
+  };
+  template <typename... T>
+  void InitEuicc(InitEuiccStep step,
+                 base::OnceCallback<void(DbusResult<T...>)> cb,
+                 DbusResult<T...> dbus_result);
+
+  const uint8_t physical_slot_;
+  EuiccSlotInfo slot_info_;
+  bool is_test_mode_;
+  bool use_test_certs_;
+  bool euicc_initialized_ = false;
+  std::string os_update_path_;
+
+  Context* context_;
+  std::unique_ptr<EuiccAdaptorInterface> dbus_adaptor_;
+
+  std::vector<std::unique_ptr<Profile>> installed_profiles_;
+  std::vector<std::unique_ptr<Profile>> pending_profiles_;
+
+  base::WeakPtrFactory<Euicc> weak_factory_;
 };
 
 }  // namespace hermes

@@ -10,9 +10,11 @@ int main(int argc, char** argv) {
   DEFINE_int32(log_level, 0,
                "Logging level - 0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR), "
                "-1: VLOG(1), -2: VLOG(2), ...");
+  DEFINE_string(fw_path, "/opt/google/gemalto/cosupdate.xml",
+                "Path to eSIM fw update file if eOS needs to be updated");
   brillo::FlagHelper::Init(argc, argv, "Chromium OS eSIM LPD Daemon");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   logging::SetMinLogLevel(FLAGS_log_level);
-  hermes::Daemon daemon;
+  hermes::Daemon daemon(FLAGS_fw_path);
   return daemon.Run();
 }

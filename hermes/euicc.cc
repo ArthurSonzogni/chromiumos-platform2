@@ -10,11 +10,17 @@
 
 #include <base/callback.h>
 #include <base/check.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>
 #include <google-lpa/lpa/core/lpa.h>
 #include <google-lpa/lpa/data/proto/euicc_info_1.pb.h>
+
+// USE_INTERNAL is set if ChromeOS is being compiled.
+#if USE_INTERNAL
+#include <ThalesCOSUpdate/COSUpdateHermesManager.h>
+#endif
 
 #include "hermes/euicc.h"
 #include "hermes/euicc_cache.h"
@@ -86,14 +92,8 @@ void Euicc::InstallProfileFromActivationCode(
   auto download_profile =
       base::BindOnce(&Euicc::DownloadProfile, weak_factory_.GetWeakPtr(),
                      std::move(activation_code), std::move(confirmation_code));
-  auto get_card_version =
-      base::BindOnce(&Euicc::GetCardVersion<dbus::ObjectPath>,
-                     weak_factory_.GetWeakPtr(), std::move(download_profile));
-  context_->modem_control()->ProcessEuiccEvent(
-      {physical_slot_, EuiccStep::START},
-      base::BindOnce(&Euicc::RunOnSuccess<dbus::ObjectPath>,
-                     weak_factory_.GetWeakPtr(), std::move(get_card_version),
-                     std::move(dbus_result)));
+  InitEuicc(InitEuiccStep::CHECK_IF_INITIALIZED, std::move(download_profile),
+            std::move(dbus_result));
 }
 
 void Euicc::DownloadProfile(std::string activation_code,
@@ -332,13 +332,8 @@ void Euicc::RefreshInstalledProfiles(bool restore_slot,
   }
   auto get_installed_profiles = base::BindOnce(
       &Euicc::GetInstalledProfiles, weak_factory_.GetWeakPtr(), restore_slot);
-  auto get_card_version =
-      base::BindOnce(&Euicc::GetCardVersion<>, weak_factory_.GetWeakPtr(),
-                     std::move(get_installed_profiles));
-  context_->modem_control()->ProcessEuiccEvent(
-      {physical_slot_, EuiccStep::START},
-      base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
-                     std::move(get_card_version), std::move(dbus_result)));
+  InitEuicc(InitEuiccStep::CHECK_IF_INITIALIZED,
+            std::move(get_installed_profiles), std::move(dbus_result));
 }
 
 void Euicc::GetInstalledProfiles(bool restore_slot, DbusResult<> dbus_result) {
@@ -406,13 +401,8 @@ void Euicc::RequestPendingProfiles(DbusResult<> dbus_result,
   auto get_pending_profiles_from_smds =
       base::BindOnce(&Euicc::GetPendingProfilesFromSmds,
                      weak_factory_.GetWeakPtr(), std::move(root_smds));
-  auto get_card_version =
-      base::BindOnce(&Euicc::GetCardVersion<>, weak_factory_.GetWeakPtr(),
-                     std::move(get_pending_profiles_from_smds));
-  context_->modem_control()->ProcessEuiccEvent(
-      {physical_slot_, EuiccStep::START},
-      base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
-                     std::move(get_card_version), std::move(dbus_result)));
+  InitEuicc(InitEuiccStep::CHECK_IF_INITIALIZED,
+            std::move(get_pending_profiles_from_smds), std::move(dbus_result));
 }
 
 void Euicc::GetPendingProfilesFromSmds(std::string root_smds,
@@ -503,13 +493,8 @@ void Euicc::ResetMemoryHelper(DbusResult<> dbus_result, int reset_options) {
 
   auto reset_memory_internal = base::BindOnce(
       &Euicc::ResetMemory, weak_factory_.GetWeakPtr(), reset_options);
-  auto get_card_version =
-      base::BindOnce(&Euicc::GetCardVersion<>, weak_factory_.GetWeakPtr(),
-                     std::move(reset_memory_internal));
-  context_->modem_control()->ProcessEuiccEvent(
-      {physical_slot_, EuiccStep::START},
-      base::BindOnce(&Euicc::RunOnSuccess<>, weak_factory_.GetWeakPtr(),
-                     std::move(get_card_version), std::move(dbus_result)));
+  InitEuicc(InitEuiccStep::CHECK_IF_INITIALIZED,
+            std::move(reset_memory_internal), std::move(dbus_result));
 }
 
 void Euicc::ResetMemory(int reset_options, DbusResult<> dbus_result) {
@@ -610,30 +595,112 @@ void Euicc::RunOnSuccess(base::OnceCallback<void(DbusResult<T...>)> cb,
 }
 
 template <typename... T>
-void Euicc::GetCardVersion(base::OnceCallback<void(DbusResult<T...>)> next_step,
-                           DbusResult<T...> dbus_result) {
-  // convert next_step into a copyable type (repeating callback), so that it can
-  // be captured in a lambda.
-  auto copyable_next_step = base::BindRepeating(
-      [](base::OnceCallback<void(DbusResult<T...>)> next_step,
-         DbusResult<T...> dbus_result) {
-        std::move(next_step).Run(std::move(dbus_result));
-      },
-      base::Passed(std::move(next_step)));
-  context_->lpa()->GetEuiccInfo1(
-      context_->executor(),
-      [this, dbus_result{std::move(dbus_result)}, copyable_next_step](
-          lpa::proto::EuiccInfo1& euicc_info_1, int error) {
-        LOG(INFO) << "euicc_info_1:" << euicc_info_1.DebugString();
-        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
-        if (decoded_error) {
-          EndEuiccOp(dbus_result, std::move(decoded_error));
-          return;
-        }
-        context_->modem_control()->SetCardVersion(
-            euicc_info_1.euicc_spec_version());
-        copyable_next_step.Run(std::move(dbus_result));
-      });
+void Euicc::OnFWUpdated(
+    base::OnceCallback<void(DbusResult<T...>)> passthrough_cb,
+    DbusResult<T...> dbus_result,
+    int os_update_result) {
+  VLOG(2) << __func__ << os_update_result;
+  auto start_get_card_version = base::BindOnce(
+      &Euicc::InitEuicc<T...>, weak_factory_.GetWeakPtr(),
+      InitEuiccStep::START_GET_CARD_VERSION, std::move(passthrough_cb));
+  context_->modem_control()->ProcessEuiccEvent(
+      {physical_slot_, EuiccStep::END, EuiccOp::FW_UPDATE},
+      base::BindOnce(&Euicc::RunOnSuccess<T...>, weak_factory_.GetWeakPtr(),
+                     std::move(start_get_card_version),
+                     std::move(dbus_result)));
+}
+
+template <typename... T>
+void Euicc::InitEuicc(InitEuiccStep step,
+                      base::OnceCallback<void(DbusResult<T...>)> cb,
+                      DbusResult<T...> dbus_result) {
+  LOG(INFO) << __func__;
+  switch (step) {
+    case InitEuiccStep::CHECK_IF_INITIALIZED:
+      if (euicc_initialized_) {
+        context_->modem_control()->ProcessEuiccEvent(
+            {physical_slot_, EuiccStep::START},
+            base::BindOnce(&Euicc::RunOnSuccess<T...>,
+                           weak_factory_.GetWeakPtr(), std::move(cb),
+                           std::move(dbus_result)));
+        return;
+      }
+
+      // Check for eSIM fw updates. As of Feb 2022, no eSIM OS updates are
+      // required.
+      if (base::PathExists(context_->fw_path_)) {
+#if USE_INTERNAL
+        // Thales's FW updater is closed source. ifdef it out for chromiumos.
+        auto update_fw =
+            base::BindOnce(&Euicc::InitEuicc<T...>, weak_factory_.GetWeakPtr(),
+                           InitEuiccStep::UPDATE_FW, std::move(cb));
+        context_->modem_control()->ProcessEuiccEvent(
+            {physical_slot_, EuiccStep::START, EuiccOp::FW_UPDATE},
+            base::BindOnce(&Euicc::RunOnSuccess<T...>,
+                           weak_factory_.GetWeakPtr(), std::move(update_fw),
+                           std::move(dbus_result)));
+        return;
+#else
+        LOG(ERROR) << "FW path specified but fw update library does not exist";
+#endif
+      }
+
+      InitEuicc(InitEuiccStep::START_GET_CARD_VERSION, std::move(cb),
+                std::move(dbus_result));
+      break;
+    case InitEuiccStep::UPDATE_FW: {
+#if USE_INTERNAL
+      // Thales's FW updater is closed source. ifdef it out for chromiumos.
+      Thales::Device::COS::COSUpdateHermesManager cos_update_hermes_manager;
+      auto on_fw_updated =
+          base::BindOnce(&Euicc::OnFWUpdated<T...>, weak_factory_.GetWeakPtr(),
+                         std::move(cb), std::move(dbus_result));
+      // on_fw_updated will call
+      // InitEuicc(InitEuiccStep::START_GET_CARD_VERSION)
+      cos_update_hermes_manager.doUpdate(
+          context_->executor(), context_->modem_control(),
+          context_->fw_path_.value(), std::move(on_fw_updated));
+#else
+      CHECK(false) << "fw update library unavailable";
+#endif
+      return;
+    }
+    case InitEuiccStep::START_GET_CARD_VERSION: {
+      auto get_card_version =
+          base::BindOnce(&Euicc::InitEuicc<T...>, weak_factory_.GetWeakPtr(),
+                         InitEuiccStep::GET_CARD_VERSION, std::move(cb));
+      context_->modem_control()->ProcessEuiccEvent(
+          {physical_slot_, EuiccStep::START},
+          base::BindOnce(&Euicc::RunOnSuccess<T...>, weak_factory_.GetWeakPtr(),
+                         std::move(get_card_version), std::move(dbus_result)));
+      return;
+    }
+    case InitEuiccStep::GET_CARD_VERSION: {
+      // convert next_step into a copyable type (repeating callback), so that it
+      // can be captured in a lambda.
+      auto copyable_next_step = base::BindRepeating(
+          [](base::OnceCallback<void(DbusResult<T...>)> next_step,
+             DbusResult<T...> dbus_result) {
+            std::move(next_step).Run(std::move(dbus_result));
+          },
+          base::Passed(std::move(cb)));
+      context_->lpa()->GetEuiccInfo1(
+          context_->executor(),
+          [this, dbus_result{std::move(dbus_result)}, copyable_next_step](
+              lpa::proto::EuiccInfo1& euicc_info_1, int error) {
+            LOG(INFO) << "euicc_info_1:" << euicc_info_1.DebugString();
+            auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
+            if (decoded_error) {
+              EndEuiccOp(dbus_result, std::move(decoded_error));
+              return;
+            }
+            euicc_initialized_ = true;
+            context_->modem_control()->SetCardVersion(
+                euicc_info_1.euicc_spec_version());
+            copyable_next_step.Run(std::move(dbus_result));
+          });
+    }
+  }
 }
 
 }  // namespace hermes

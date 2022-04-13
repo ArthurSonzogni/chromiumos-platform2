@@ -43,6 +43,9 @@ std::ostream& operator<<(std::ostream& os, const EuiccOp& rhs) {
     case (EuiccOp::DISABLE):
       os << "DISABLE";
       break;
+    case (EuiccOp::FW_UPDATE):
+      os << "FW_UPDATE";
+      break;
     default:
       os << rhs;
       break;
