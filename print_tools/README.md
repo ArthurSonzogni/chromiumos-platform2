@@ -6,15 +6,8 @@ This tool sends to a given printer (or other IPP endpoint)
 Get-Printer-Attributes request and returns the received response. The response
 is parsed and can be saved both as JSON file or as a raw binary file.
 
-`printer_diag` is not included in ChromeOS. You can install it manually on the
-device with test image from `cros_sdk`:
-
-```
-emerge-${BOARD} print_tools
-cros deploy --board=${BOARD} ${IP} print_tools
-```
-
-Then, it may be run on the device from the console level:
+`printer_diag` is included in every ChromeOS image but you can access it only
+in development mode. It may be run on the device from the console level:
 
 ```
 printer_diag --url "ipp://example.org/printer" --version=2.0 --jsonf=out.json --binary=out.raw
