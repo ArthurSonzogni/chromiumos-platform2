@@ -14,25 +14,37 @@
 
 namespace diagnostics {
 
-// Calls a |base::OnceClosure| after all the dependent |base::OnceCallback<T>|
+// Calls |base::OnceClosure| after all the dependent |base::OnceCallback<T>|
 // are called. This is useful when tracking multiple async calls.
+//
+// It takes two arguments as the final callbacks, |on_success| and |on_error|.
+// |on_success| will be called after all the dependencies are called.
+// |on_error| will be called if there is a dependency being dropped. This could
+// happen if the callback is passed to a mojo interface and the interface is
+// disconnected.
+//
+// The CallbackBarrier and each dependencies holds a shared reference to the
+// final callbacks. So the final callbacks are valid until all the dependencies
+// are called / destructed. This means the dependencies can use the objects
+// holded by the final callbacks without worry about the objects' lifetime.
+// Once all the references are gone (includes the one in CallbackBarrier), the
+// internal state is checked to determine which final callbacks to be called.
 //
 // Caveat:
 //   1. This is not thread-safe.
-//   2. Make sure that the |CallbackBarrier| will be destructed after all
-//      dependencies are added. Otherwise, it cannot know whether there will be
-//      another dependency or not.
+//   2. |CallbackBarrier| should be dropped once we add all the dependencies.
+//      Otherwise, it will keep the last reference to the final callbacks and
+//      they won't be called.
 //
 // Example:
+//   // Use local variable to ensure that |barrier| will be destructed
 //   CallbackBarrier barrier{/*on_success*/base::BindOnce(...),
 //                           /*on_error=*/base::BindOnce(...)};
 //   foo->DoSomeThing(barrier.Depend(base::BindOnce(...)));
 //   foo->DoOtherThing(barrier.Depend(base::BindOnce(...)));
+//
 class CallbackBarrier {
  public:
-  // |on_success| is called when all the dependencies are called.
-  // |on_error| is called when there is a dependency which is dropped without
-  // being called.
   CallbackBarrier(base::OnceClosure on_success, base::OnceClosure on_error);
   CallbackBarrier(const CallbackBarrier&) = delete;
   const CallbackBarrier& operator=(const CallbackBarrier&) = delete;
