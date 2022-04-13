@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/compiler_specific.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <gmock/gmock.h>
@@ -275,6 +276,7 @@ TEST(StatusOr, TestBinding) {
 TEST(StatusOr, TestAbort) {
   StatusOr<int> thing1(Status(error::UNKNOWN, "Unknown"));
   int v1;
+  ALLOW_UNUSED_LOCAL(v1);
   EXPECT_DEATH_IF_SUPPORTED(v1 = thing1.ValueOrDie(), "");
 
   StatusOr<std::unique_ptr<int>> thing2(Status(error::UNKNOWN, "Unknown"));
