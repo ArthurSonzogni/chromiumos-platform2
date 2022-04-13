@@ -5,13 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCH_AGGREGATOR_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCH_AGGREGATOR_H_
 
-#include <cstdint>
-#include <map>
-#include <memory>
-#include <set>
 #include <vector>
-
-#include <base/memory/weak_ptr.h>
 
 #include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/backlight_fetcher.h"
@@ -55,38 +49,6 @@ class FetchAggregator final {
            mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback);
 
  private:
-  // Each call of |Run()| creates a |ProbeState| and its lifecycle is bonded to
-  // |FetchAggregator|. This allows a single |FetchAggregator| instance to have
-  // multiple pending asynchronous fetches corresponding to distinct Run()
-  // calls.
-  struct ProbeState {
-    // Contains requested categories which have not been fetched yet.
-    std::set<mojom::ProbeCategoryEnum> remaining_categories;
-    mojom::TelemetryInfoPtr result;
-    // The callback to return the result.
-    mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback;
-  };
-
-  const std::unique_ptr<ProbeState>& CreateProbeState(
-      const std::vector<mojom::ProbeCategoryEnum>& categories_to_probe,
-      mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback);
-
-  // Wraps a fetch operation from either a synchronous or asynchronous fetcher.
-  template <class T>
-  void WrapFetchProbeData(mojom::ProbeCategoryEnum category,
-                          const std::unique_ptr<ProbeState>& state,
-                          T* response_data,
-                          T fetched_data);
-
-  // Completes a probe category of a probe state. If all the categories are
-  // probed, call the callback.
-  void CompleteProbe(mojom::ProbeCategoryEnum category,
-                     const std::unique_ptr<ProbeState>& state);
-
- private:
-  // The set to keep the instances of |ProbeState|.
-  std::set<std::unique_ptr<ProbeState>> probe_states_;
-
   AudioFetcher audio_fetcher_;
   BacklightFetcher backlight_fetcher_;
   BatteryFetcher battery_fetcher_;
@@ -105,9 +67,6 @@ class FetchAggregator final {
   TimezoneFetcher timezone_fetcher_;
   TpmFetcher tpm_fetcher_;
   NetworkInterfaceFetcher network_interface_fetcher_;
-
-  // Must be the last member of the class.
-  base::WeakPtrFactory<FetchAggregator> weak_factory_{this};
 };
 
 }  // namespace diagnostics
