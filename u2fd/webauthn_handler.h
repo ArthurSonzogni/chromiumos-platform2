@@ -147,6 +147,13 @@ class WebAuthnHandler {
   // will only contain one entry.
   GetAlgorithmsResponse GetAlgorithms(const GetAlgorithmsRequest& request);
 
+  // Get the supported features of u2fd. currently it only contains whether
+  // WebAuthn is enabled on Lacros. This is equivalent to whether the request_id
+  // field in WebAuthn requests has changed to str type currently, which is
+  // always true.
+  GetSupportedFeaturesResponse GetSupportedFeatures(
+      const GetSupportedFeaturesRequest& request);
+
   void SetWebAuthnStorageForTesting(std::unique_ptr<WebAuthnStorage> storage);
 
   void SetCryptohomeInterfaceProxyForTesting(

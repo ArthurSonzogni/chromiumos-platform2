@@ -1156,6 +1156,13 @@ GetAlgorithmsResponse WebAuthnHandler::GetAlgorithms(
   return response;
 }
 
+GetSupportedFeaturesResponse WebAuthnHandler::GetSupportedFeatures(
+    const GetSupportedFeaturesRequest& request) {
+  GetSupportedFeaturesResponse response;
+  response.set_support_lacros(true);
+  return response;
+}
+
 bool WebAuthnHandler::HasPin(const std::string& account_id) {
   user_data_auth::GetKeyDataRequest request;
   request.mutable_account_id()->set_account_id(account_id);

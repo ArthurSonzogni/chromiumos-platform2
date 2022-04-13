@@ -258,3 +258,10 @@ message GetAlgorithmsResponse {
   GetAlgorithmsStatus status = 1;
   repeated int32 algorithm = 2;
 }
+
+message GetSupportedFeaturesRequest {}
+
+message GetSupportedFeaturesResponse {
+  // Whether the WebAuthn APIs are supported on lacros.
+  bool support_lacros = 1;
+}
