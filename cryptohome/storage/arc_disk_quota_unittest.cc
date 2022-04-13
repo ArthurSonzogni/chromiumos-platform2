@@ -490,4 +490,48 @@ TEST_F(ArcDiskQuotaTest, SetMediaRWDataFileProjectId_UnexpectedSELinuxContext) {
   EXPECT_EQ(error, EPERM);
 }
 
+TEST_F(ArcDiskQuotaTest, SetMediaRWDataFileProjectInheritanceFlag_Succeeds) {
+  constexpr bool kEnable = true;
+  constexpr int kFd = 1234;
+  int error = 0;
+
+  EXPECT_CALL(platform_, GetSELinuxContextOfFD(kFd))
+      .WillOnce(Return(kMediaRWDataFileSELinuxContext));
+  EXPECT_CALL(platform_,
+              SetQuotaProjectInheritanceFlagWithFd(kEnable, kFd, &error))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(arc_disk_quota_.SetMediaRWDataFileProjectInheritanceFlag(
+      kEnable, kFd, &error));
+}
+
+TEST_F(ArcDiskQuotaTest,
+       SetMediaRWDataFileProjectInheritanceFlag_GetSELinuxContextFails) {
+  constexpr bool kEnable = true;
+  constexpr int kFd = 1234;
+  int error = 0;
+
+  EXPECT_CALL(platform_, GetSELinuxContextOfFD(kFd))
+      .WillOnce(Return(std::nullopt));
+
+  EXPECT_FALSE(arc_disk_quota_.SetMediaRWDataFileProjectInheritanceFlag(
+      kEnable, kFd, &error));
+  EXPECT_EQ(error, EIO);
+}
+
+TEST_F(ArcDiskQuotaTest,
+       SetMediaRWDataFileProjectInheritanceFlag_UnexpectedSELinuxContext) {
+  constexpr bool kEnable = true;
+  constexpr int kFd = 1234;
+  int error = 0;
+
+  constexpr char kUnexpectedSELinuxContext[] = "u:object_r:cros_home_shadow:s0";
+  EXPECT_CALL(platform_, GetSELinuxContextOfFD(kFd))
+      .WillOnce(Return(kUnexpectedSELinuxContext));
+
+  EXPECT_FALSE(arc_disk_quota_.SetMediaRWDataFileProjectInheritanceFlag(
+      kEnable, kFd, &error));
+  EXPECT_EQ(error, EPERM);
+}
+
 }  // namespace cryptohome

@@ -570,6 +570,30 @@ bool Platform::SetQuotaProjectIdWithFd(int project_id,
   return SetQuotaProjectIdInternal(project_id, fd, out_error);
 }
 
+bool Platform::SetQuotaProjectInheritanceFlagWithFd(bool enable,
+                                                    int fd,
+                                                    int* out_error) const {
+  uint32_t flags;
+  if (ioctl(fd, FS_IOC_GETFLAGS, &flags) < 0) {
+    *out_error = errno;
+    PLOG(ERROR) << "ioctl(FS_IOC_GETFLAGS) failed";
+    return false;
+  }
+
+  if (enable) {
+    flags |= FS_PROJINHERIT_FL;
+  } else {
+    flags &= ~FS_PROJINHERIT_FL;
+  }
+
+  if (ioctl(fd, FS_IOC_SETFLAGS, reinterpret_cast<void*>(&flags)) < 0) {
+    *out_error = errno;
+    PLOG(ERROR) << "ioctl(FS_IOC_SETFLAGS) failed";
+    return false;
+  }
+  return true;
+}
+
 bool Platform::FileExists(const FilePath& path) const {
   return base::PathExists(path);
 }

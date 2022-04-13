@@ -946,6 +946,22 @@ message SetMediaRWDataFileProjectIdReply {
   int32 error = 2;
 }
 
+// Input parameters to SetMediaRWDataFileProjectInheritanceFlag().
+message SetMediaRWDataFileProjectInheritanceFlagRequest {
+  // Set to true if we are setting the project inheritance flag.
+  bool enable = 1;
+}
+
+// Output parameters for SetMediaRWDataFileProjectInheritanceFlag().
+message SetMediaRWDataFileProjectInheritanceFlagReply {
+  // Set to true if ioctl syscall for setting the project inheritance flag
+  // succeeds.
+  bool success = 1;
+
+  // Errno if success == false.
+  int32 error = 2;
+}
+
 // ------------------------- PKCS#11 Interface -------------------------
 
 // Represents the information about a token in PKCS#11, used by

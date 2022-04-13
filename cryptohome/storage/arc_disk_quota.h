@@ -42,6 +42,7 @@ constexpr char kMediaRWDataFileSELinuxContext[] =
 // since the device file won't change throughout Cryptohome lifetime. On the
 // other hand, IsQuotaSupported is not cached here (please see the comments in
 // IsQuotaSupported for the more detailed explanation).
+// TODO(b/229122701): Move this to spaced.
 class ArcDiskQuota {
  public:
   // Parameters
@@ -115,6 +116,12 @@ class ArcDiskQuota {
   virtual bool SetMediaRWDataFileProjectId(int project_id,
                                            int fd,
                                            int* out_error) const;
+
+  // Set or reset the project inheritance flags of a media_rw_data_file.
+  // Returns true if ioctl succeeds.
+  virtual bool SetMediaRWDataFileProjectInheritanceFlag(bool enable,
+                                                        int fd,
+                                                        int* out_error) const;
 
   // The constants below describes the ranges of valid ID to query (based on
   // what is tracked by installd).These numbers are from

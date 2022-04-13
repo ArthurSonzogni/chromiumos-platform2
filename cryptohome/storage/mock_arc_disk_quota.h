@@ -35,6 +35,10 @@ class MockArcDiskQuota : public ArcDiskQuota {
               SetMediaRWDataFileProjectId,
               (int, int, int*),
               (const, override));
+  MOCK_METHOD(bool,
+              SetMediaRWDataFileProjectInheritanceFlag,
+              (bool, int, int*),
+              (const, override));
 };
 
 }  // namespace cryptohome

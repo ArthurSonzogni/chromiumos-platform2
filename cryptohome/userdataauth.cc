@@ -3151,6 +3151,14 @@ bool UserDataAuth::SetMediaRWDataFileProjectId(int project_id,
                                                       out_error);
 }
 
+bool UserDataAuth::SetMediaRWDataFileProjectInheritanceFlag(bool enable,
+                                                            int fd,
+                                                            int* out_error) {
+  AssertOnOriginThread();
+  return arc_disk_quota_->SetMediaRWDataFileProjectInheritanceFlag(enable, fd,
+                                                                   out_error);
+}
+
 bool UserDataAuth::Pkcs11IsTpmTokenReady() {
   AssertOnMountThread();
   // We touched the sessions_ object, so we need to be on mount thread.

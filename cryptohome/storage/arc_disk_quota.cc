@@ -198,6 +198,22 @@ bool ArcDiskQuota::SetMediaRWDataFileProjectId(int project_id,
   return platform_->SetQuotaProjectIdWithFd(project_id, fd, out_error);
 }
 
+bool ArcDiskQuota::SetMediaRWDataFileProjectInheritanceFlag(
+    bool enable, int fd, int* out_error) const {
+  std::optional<std::string> context = platform_->GetSELinuxContextOfFD(fd);
+  if (!context) {
+    LOG(ERROR) << "Failed to get the SELinux context of FD.";
+    *out_error = EIO;
+    return false;
+  }
+  if (*context != kMediaRWDataFileSELinuxContext) {
+    LOG(ERROR) << "Unexpected SELinux context: " << *context;
+    *out_error = EPERM;
+    return false;
+  }
+  return platform_->SetQuotaProjectInheritanceFlagWithFd(enable, fd, out_error);
+}
+
 base::FilePath ArcDiskQuota::GetDevice() const {
   std::string device;
   if (!platform_->FindFilesystemDevice(home_, &device)) {

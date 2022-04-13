@@ -332,6 +332,10 @@ class MockPlatform : public Platform {
               SetQuotaProjectIdWithFd,
               (int, int, int*),
               (const, override));
+  MOCK_METHOD(bool,
+              SetQuotaProjectInheritanceFlagWithFd,
+              (bool, int, int*),
+              (const, override));
   MOCK_METHOD(int64_t,
               ComputeDirectoryDiskUsage,
               (const base::FilePath&),

@@ -299,6 +299,12 @@ class UserDataAuth {
   // See cryptohome/arc_disk_quota.h for more details.
   bool SetMediaRWDataFileProjectId(int project_id, int fd, int* out_error);
 
+  // Sets the project inheritance flag of a media_rw_data_file.
+  // See cryptohome/arc_disk_quota.h for more details.
+  bool SetMediaRWDataFileProjectInheritanceFlag(bool enable,
+                                                int fd,
+                                                int* out_error);
+
   // =============== PKCS#11 Related Public Methods ===============
 
   // Returns true if and only if PKCS#11 tokens are ready for all mounts.

@@ -386,6 +386,17 @@ class Platform {
                                        int fd,
                                        int* out_error) const;
 
+  // Sets or resets the Quota Inheritance flags on |fd|.
+  // Returns true if ioctl syscall succeeds.
+  //
+  // Parameters
+  //   enable - Whether we want to enable the project inheritance flag.
+  //   fd - The FD
+  //   out_error - errno when ioctl fails
+  virtual bool SetQuotaProjectInheritanceFlagWithFd(bool enable,
+                                                    int fd,
+                                                    int* out_error) const;
+
   // Returns true if the specified file exists.
   //
   // Parameters

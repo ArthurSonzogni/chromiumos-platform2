@@ -613,6 +613,20 @@ do.
                     value="user_data_auth::SetMediaRWDataFileProjectIdReply" />
       </arg>
     </method>
+
+    <method name="SetMediaRWDataFileProjectInheritanceFlag">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="fd" type="h" direction="in" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::SetMediaRWDataFileProjectInheritanceFlagRequest" />
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::SetMediaRWDataFileProjectInheritanceFlagReply" />
+      </arg>
+    </method>
   </interface>
 
   <interface name="org.chromium.CryptohomePkcs11Interface">

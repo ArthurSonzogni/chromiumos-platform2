@@ -1395,6 +1395,19 @@ TEST_F(UserDataAuthTest, SetMediaRWDataFileProjectId) {
       userdataauth_->SetMediaRWDataFileProjectId(kProjectId, kFd, &error));
 }
 
+TEST_F(UserDataAuthTest, SetMediaRWDataFileProjectInheritanceFlag) {
+  TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
+  constexpr bool kEnable = true;
+  constexpr int kFd = 1234;
+  int error = 0;
+
+  EXPECT_CALL(arc_disk_quota_,
+              SetMediaRWDataFileProjectInheritanceFlag(kEnable, kFd, &error))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(userdataauth_->SetMediaRWDataFileProjectInheritanceFlag(
+      kEnable, kFd, &error));
+}
+
 TEST_F(UserDataAuthTestNotInitialized, SeedUrandomInitialize) {
   TaskGuard guard(this, UserDataAuth::TestThreadId::kOriginThread);
   // Should Get Random from TPM
