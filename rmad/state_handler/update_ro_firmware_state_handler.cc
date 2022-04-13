@@ -284,7 +284,7 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
   bool update_success = false;
   std::string output;
   if (cmd_utils_->GetOutputAndError(
-          {"futility", "update", "-a", firmware_updater_path, "--mode=factory",
+          {"futility", "update", "-a", firmware_updater_path, "--mode=recovery",
            "--force"},
           &output)) {
     LOG(INFO) << "Firmware updater success";
