@@ -72,8 +72,10 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
       "androidboot.disable_download_provider=1",
       "androidboot.disable_media_store_maintenance=1",
       "androidboot.vshd_service_override=vshd_for_test",
+      "androidboot.arc.tts.caching=1",
       "rw",
   };
+
   // List of allowed kernel parameter prefixes.
   const std::vector<std::string> kAllowedKernelParamPrefixes = {
       "androidboot.arc_custom_tabs=",
