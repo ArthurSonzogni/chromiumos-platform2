@@ -56,9 +56,9 @@ bool CreateNonblockingPipe(base::ScopedFD* read_fd, base::ScopedFD* write_fd) {
   return true;
 }
 
-bool DirectoryOrSymlinkExists(const base::FilePath& path) {
+bool PathOrSymlinkExists(const base::FilePath& path) {
   auto abs_path = base::MakeAbsoluteFilePath(path);
-  return base::DirectoryExists(abs_path);
+  return base::PathExists(abs_path);
 }
 
 bool GetFunctionNameFromProbeStatement(brillo::ErrorPtr* error,
@@ -197,7 +197,7 @@ bool ProbeTool::GetValidMinijailArguments(brillo::ErrorPtr* error,
         args_out->clear();
         return false;
       }
-      if (DirectoryOrSymlinkExists(base::FilePath(bind_args[0]))) {
+      if (PathOrSymlinkExists(base::FilePath(bind_args[0]))) {
         args_out->push_back(kMinijailBindFlag);
         args_out->push_back(curr_arg);
       }

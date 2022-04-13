@@ -109,7 +109,7 @@ TEST(ProbeToolTest, GetValidMinijailArguments_BindSymbolicLink) {
   EXPECT_EQ(args[2], symlink_dir.value());
 }
 
-TEST(ProbeToolTest, GetValidMinijailArguments_SkipBindingNormalFile) {
+TEST(ProbeToolTest, GetValidMinijailArguments_BindNormalFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   auto file = temp_dir.GetPath().Append("file");
@@ -122,8 +122,10 @@ TEST(ProbeToolTest, GetValidMinijailArguments_SkipBindingNormalFile) {
   ProbeToolForTesting probe_tool(json_str);
   std::vector<std::string> args;
   EXPECT_TRUE(probe_tool.GetValidMinijailArguments(nullptr, "func1", &args));
-  EXPECT_EQ(args.size(), 1);
+  EXPECT_EQ(args.size(), 3);
   EXPECT_EQ(args[0], "-A");
+  EXPECT_EQ(args[1], "-b");
+  EXPECT_EQ(args[2], file.value());
 }
 
 TEST(ProbeToolTest, GetValidMinijailArguments_BindWithArguments) {
