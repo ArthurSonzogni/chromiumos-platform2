@@ -252,6 +252,9 @@ bool DRMTraceTool::WriteToFile(brillo::ErrorPtr* error,
     return false;
   }
 
+  // SafeFD::Replace is not used here because
+  // /sys/kernel/debug/tracing/instances/drm/trace_marker
+  // does not support seek (b/227339558).
   brillo::SafeFD::Error safefd_error =
       result.first.Write(contents.c_str(), contents.size());
   if (brillo::SafeFD::IsError(safefd_error)) {

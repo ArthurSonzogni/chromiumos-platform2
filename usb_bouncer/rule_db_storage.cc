@@ -62,7 +62,7 @@ bool RuleDBStorage::Persist() {
   }
 
   std::string serialized = val_->SerializeAsString();
-  if (fd_.Write(serialized.data(), serialized.size()) !=
+  if (fd_.Replace(serialized.data(), serialized.size()) !=
       SafeFD::Error::kNoError) {
     PLOG(ERROR) << "Failed to write proto to file!";
     return false;

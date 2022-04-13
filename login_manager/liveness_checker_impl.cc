@@ -273,8 +273,8 @@ void LivenessCheckerImpl::RequestKernelTraces() {
     return;
   }
 
-  // Don't use SafeFD::Write here; we don't want to try and truncate the
-  // sysrq-trigger file (which SafeFD::Write does).
+  // Don't use SafeFD::Replace here; we don't want to try and truncate the
+  // sysrq-trigger file (which SafeFD::Replace does).
   // Order is important: w and m are synchronous, l is not, so if we do l before
   // one of the others, all the lines get mixed together.
   const char kShowMemoryRequest[] = "m";
