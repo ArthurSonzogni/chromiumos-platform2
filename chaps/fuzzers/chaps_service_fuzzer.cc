@@ -735,9 +735,10 @@ class ChapsServiceFuzzer {
       // Thus setting this bit with high probability.
       flags |= CKF_SERIAL_SESSION;
     }
-    chaps_service_->OpenSession(GetIsolateCredential(), GetSlotId(), flags,
-                                &session_id);
-    generated_session_ids_.push_back(session_id);
+    if (chaps_service_->OpenSession(GetIsolateCredential(), GetSlotId(), flags,
+                                    &session_id) == CKR_OK) {
+      generated_session_ids_.push_back(session_id);
+    }
   }
 
   void CreateObject(std::vector<uint8_t> attributes) {
