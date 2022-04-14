@@ -115,34 +115,19 @@ void AmbientLightSensorManagerMojo::SensorServiceConnected() {
   if (num_sensors_ <= 0)
     return;
 
-  bool need_device_ids = false;
   if (num_sensors_ == 1) {
     if (lid_sensor_.iio_device_id.has_value()) {
       // Use the original device.
       SetSensorDeviceMojo(&lid_sensor_, allow_ambient_eq_);
-
-      auto& light = lights_[lid_sensor_.iio_device_id.value()];
-      if (!light.name.has_value() ||
-          light.name.value().compare(kCrosECLightName) != 0) {
-        // Even though this device is not cros-ec-light, cros-ec-light may
-        // exist, so we will still look for cros-ec-light later.
-        need_device_ids = true;
-      }
-    } else {
-      need_device_ids = true;
     }
   } else {  // num_sensors_ >= 2
     // The two cros-ec-lights on lid and base should exist. Therefore, the
     // potential existing acpi-als is ignored.
     if (lid_sensor_.iio_device_id.has_value())
       SetSensorDeviceMojo(&lid_sensor_, allow_ambient_eq_);
-    else
-      need_device_ids = true;
 
     if (base_sensor_.iio_device_id.has_value())
       SetSensorDeviceMojo(&base_sensor_, /*allow_ambient_eq=*/false);
-    else
-      need_device_ids = true;
   }
 }
 
