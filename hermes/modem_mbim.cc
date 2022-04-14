@@ -116,6 +116,7 @@ void ModemMbim::Shutdown() {
   ready_state_ = MBIM_SUBSCRIBER_READY_STATE_NOT_INITIALIZED;
   current_state_.Transition(State::kMbimUninitialized);
   slot_info_.Clear();
+  modem_manager_proxy_->ScheduleUninhibit(base::Seconds(0));
 }
 
 void ModemMbim::TransmitFromQueue() {
@@ -1130,8 +1131,6 @@ void ModemMbim::OnEuiccEventStart(const uint32_t physical_slot,
       break;
     case EuiccEventStep::EUICC_EVENT_STEP_LAST:
       OnEuiccUpdated();
-      if (switch_slot_only)
-        CloseDevice();
       std::move(cb).Run(kModemSuccess);
       break;
   }

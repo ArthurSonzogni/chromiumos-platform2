@@ -59,6 +59,7 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
   void SetNicknameProperty(std::string nickname);
   void SetNicknameMethod(std::string nickname,
                          std::unique_ptr<DBusResponse<>> response);
+  void OnRestoreActiveSlot(std::shared_ptr<DBusResponse<>> response, int error);
 
   // Used to set other profiles as disabled when a new profile is enabled
   base::RepeatingCallback<void(const std::string&)> on_profile_enabled_cb_;

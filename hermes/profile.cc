@@ -354,22 +354,32 @@ void Profile::SetNicknameMethod(std::string nickname,
         }
         this->SetNickname(nickname);
 
-        auto restore_slot_and_dbus_return = base::BindOnce(
-            [](ModemControlInterface* modem_control,
-               std::shared_ptr<DBusResponse<>> response, int error) {
-              auto report_success =
-                  base::BindOnce([](std::shared_ptr<DBusResponse<>> response) {
-                    response->Return();
-                  });
-              modem_control->RestoreActiveSlot(base::BindOnce(
-                  &RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
-                  std::move(report_success), std::move(response)));
-            },
-            context_->modem_control(), response);
-        context_->modem_control()->ProcessEuiccEvent(
-            {physical_slot_, EuiccStep::END},
-            std::move(restore_slot_and_dbus_return));
+        context_->modem_control()->RestoreActiveSlot(
+            base::BindOnce(&Profile::OnRestoreActiveSlot,
+                           weak_factory_.GetWeakPtr(), std::move(response)));
       });
+}
+
+void Profile::OnRestoreActiveSlot(std::shared_ptr<DBusResponse<>> response,
+                                  int error) {
+  if (error) {
+    auto decoded_error = brillo::Error::Create(
+        FROM_HERE, brillo::errors::dbus::kDomain, kErrorUnknown,
+        "QMI/MBIM operation failed with code: " + std::to_string(error));
+    LOG(ERROR) << "Failed to restore slot: " << object_path_.value() << " ("
+               << decoded_error << ")";
+    context_->modem_control()->ProcessEuiccEvent(
+        {physical_slot_, EuiccStep::END},
+        base::BindOnce(&SendDBusError, std::move(response),
+                       std::move(decoded_error)));
+    return;
+  }
+  auto return_dbus_success = base::BindOnce(
+      [](std::shared_ptr<DBusResponse<>> response) { response->Return(); });
+  context_->modem_control()->ProcessEuiccEvent(
+      {physical_slot_, EuiccStep::END},
+      base::BindOnce(&RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
+                     std::move(return_dbus_success), std::move(response)));
 }
 
 bool Profile::ValidateNickname(brillo::ErrorPtr* /*error*/,
