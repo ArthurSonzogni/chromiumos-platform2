@@ -73,6 +73,7 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
       "androidboot.disable_media_store_maintenance=1",
       "androidboot.vshd_service_override=vshd_for_test",
       "androidboot.arc.tts.caching=1",
+      "androidboot.arc_enable_gmscore_lmk_protection=1",
       "rw",
   };
 
