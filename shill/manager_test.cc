@@ -4296,33 +4296,6 @@ TEST_F(ManagerTest, AcceptHostnameFrom) {
   EXPECT_FALSE(manager()->ShouldAcceptHostnameFrom("wlan0"));
 }
 
-TEST_F(ManagerTest, FilterPrependDNSServersByFamily) {
-  const struct {
-    IPAddress::Family family;
-    std::string prepend_value;
-    std::vector<std::string> output_list;
-  } expectations[] = {
-      {IPAddress::kFamilyIPv4, "", {}},
-      {IPAddress::kFamilyIPv4, "8.8.8.8", {"8.8.8.8"}},
-      {IPAddress::kFamilyIPv4, "8.8.8.8,2001:4860:4860::8888", {"8.8.8.8"}},
-      {IPAddress::kFamilyIPv4, "2001:4860:4860::8844", {}},
-      {IPAddress::kFamilyIPv6, "", {}},
-      {IPAddress::kFamilyIPv6, "8.8.8.8", {}},
-      {IPAddress::kFamilyIPv6,
-       "2001:4860:4860::8844",
-       {"2001:4860:4860::8844"}},
-      {IPAddress::kFamilyIPv6,
-       "8.8.8.8,2001:4860:4860::8888",
-       {"2001:4860:4860::8888"}}};
-
-  for (const auto& expectation : expectations) {
-    manager()->SetPrependDNSServers(expectation.prepend_value);
-    auto dns_servers =
-        manager()->FilterPrependDNSServersByFamily(expectation.family);
-    EXPECT_EQ(expectation.output_list, dns_servers);
-  }
-}
-
 TEST_F(ManagerTest, SetAlwaysOnVpnPackage) {
   const std::string kPackage = "com.example.test.vpn";
   EXPECT_EQ("", manager()->GetAlwaysOnVpnPackage(nullptr));

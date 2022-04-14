@@ -1246,31 +1246,12 @@ void Manager::SetIgnoreUnknownEthernet(bool ignore) {
   ignore_unknown_ethernet_ = ignore;
 }
 
-void Manager::SetPrependDNSServers(const std::string& prepend_dns_servers) {
-  props_.prepend_dns_servers = prepend_dns_servers;
-}
-
 void Manager::SetAcceptHostnameFrom(const std::string& hostname_from) {
   accept_hostname_from_ = hostname_from;
 }
 
 bool Manager::ShouldAcceptHostnameFrom(const std::string& device_name) const {
   return base::MatchPattern(device_name, accept_hostname_from_);
-}
-
-std::vector<std::string> Manager::FilterPrependDNSServersByFamily(
-    IPAddress::Family family) const {
-  std::vector<std::string> dns_servers;
-  std::vector<std::string> split_servers =
-      base::SplitString(props_.prepend_dns_servers, ",", base::TRIM_WHITESPACE,
-                        base::SPLIT_WANT_ALL);
-  for (const auto& server : split_servers) {
-    const IPAddress address(server);
-    if (address.family() == family) {
-      dns_servers.push_back(server);
-    }
-  }
-  return dns_servers;
 }
 
 bool Manager::IsSuspending() {

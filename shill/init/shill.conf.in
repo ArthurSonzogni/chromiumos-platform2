@@ -24,7 +24,6 @@ env SHILL_LOG_SCOPES=
 # Disable noisy libchrome and libbrillo VLOGs by default
 env SHILL_LOG_VMODULES="object_proxy=0,dbus_object=0,bus=0"
 env SHILL_PASSIVE_MODE=
-env SHILL_PREPEND_DNS_SERVERS=
 env SHILL_ACCEPT_HOSTNAME_FROM=
 env SHILL_MINIMUM_MTU=
 env ALLOWED_DEVICES=
@@ -44,7 +43,6 @@ import SHILL_LOG_SCOPES
 import SHILL_LOG_VMODULES
 import SHILL_MINIMUM_MTU
 import SHILL_PASSIVE_MODE
-import SHILL_PREPEND_DNS_SERVERS
 import SHILL_TEST_DEVICES
 
 # Make shill killable, because if it has a leak it's better to

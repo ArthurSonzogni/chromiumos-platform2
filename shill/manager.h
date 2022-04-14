@@ -98,8 +98,6 @@ struct ManagerProperties {
   std::string prohibited_technologies;
   // Comma-separated list of DNS search paths to be ignored.
   std::string ignored_dns_search_paths;
-  // Comma-separated list of DNS servers to prepend to resolver list.
-  std::string prepend_dns_servers;
   // The minimum MTU value that will be respected in DHCP responses.
   int minimum_mtu = IPConfig::kUndefinedMTU;
   // Name of Android VPN package that should be enforced for user traffic.
@@ -492,18 +490,9 @@ class Manager {
     return ignore_unknown_ethernet_;
   }
 
-  // Set the list of prepended DNS servers to |prepend_dns_servers|.
-  virtual void SetPrependDNSServers(const std::string& prepend_dns_servers);
-
   // Accept hostname from DHCP server for devices matching |hostname_from|.
   virtual void SetAcceptHostnameFrom(const std::string& hostname_from);
   virtual bool ShouldAcceptHostnameFrom(const std::string& device_name) const;
-
-  // Filter the list of prepended DNS servers, copying only those that match
-  // |family| into |dns_servers|.  |dns_servers| is cleared, regardless of
-  // whether or not there are any addresses that match |family|.
-  virtual std::vector<std::string> FilterPrependDNSServersByFamily(
-      IPAddress::Family family) const;
 
   // Returns true iff |power_manager_| exists and is suspending (i.e.
   // power_manager->suspending() is true), false otherwise.

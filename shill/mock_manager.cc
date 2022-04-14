@@ -28,8 +28,6 @@ MockManager::MockManager(ControlInterface* control_interface,
       .WillRepeatedly(Return(mock_ethernet_provider_.get()));
   EXPECT_CALL(*this, device_info())
       .WillRepeatedly(Invoke(this, &MockManager::mock_device_info));
-  ON_CALL(*this, FilterPrependDNSServersByFamily(_))
-      .WillByDefault(Return(std::vector<std::string>()));
   ON_CALL(*this, GetSuspendDurationUsecs())
       .WillByDefault(Return(kSuspendDurationUsecs));
 }

@@ -351,8 +351,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, OnIPv6AddressChanged);
   FRIEND_TEST(DeviceTest, OnIPv6ConfigurationCompleted);
   FRIEND_TEST(DeviceTest, OnIPv6DnsServerAddressesChanged);
-  FRIEND_TEST(DeviceTest, PrependIPv4DNSServers);
-  FRIEND_TEST(DeviceTest, PrependIPv6DNSServers);
   FRIEND_TEST(DeviceTest, ResetConnection);
   FRIEND_TEST(DeviceTest, Save);
   FRIEND_TEST(DeviceTest, SelectedService);
@@ -603,17 +601,6 @@ class Device : public base::RefCounted<Device> {
   // do so.  If |hostname| is too long, truncate this parameter to fit within
   // the maximum hostname size.
   bool SetHostname(const std::string& hostname);
-
-  // Prepend the Manager's configured list of DNS servers into |ipconfig|
-  // ensuring that only DNS servers of the same address family as |ipconfig| are
-  // included in the final list.
-  void PrependDNSServersIntoIPConfig(const IPConfigRefPtr& ipconfig);
-
-  // Mutate |servers| to include the Manager's prepended list of DNS servers for
-  // |family|.  On return, it is guaranteed that there are no duplicate entries
-  // in |servers|.
-  void PrependDNSServers(const IPAddress::Family family,
-                         std::vector<std::string>* servers);
 
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected

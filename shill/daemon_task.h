@@ -52,7 +52,6 @@ class DaemonTask {
     int minimum_mtu;
     bool passive_mode;
     std::string portal_list;
-    std::string prepend_dns_servers;
     bool use_portal_list;
   };
 

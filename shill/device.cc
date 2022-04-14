@@ -454,7 +454,6 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   // It is possible for device to receive DNS server notification before IP
   // address notification, so preserve the saved DNS server if it exist.
   properties.dns_servers = ip6config_->properties().dns_servers;
-  PrependDNSServers(IPAddress::kFamilyIPv6, &properties.dns_servers);
   ip6config_->set_properties(properties);
   UpdateIPConfigsProperty();
   OnIPv6ConfigUpdated();
@@ -495,8 +494,6 @@ void Device::OnIPv6DnsServerAddressesChanged() {
     base::TimeDelta delay = base::Seconds(lifetime);
     StartIPv6DNSServerTimer(delay);
   }
-
-  PrependDNSServers(IPAddress::kFamilyIPv6, &addresses_str);
 
   // Done if no change in server addresses.
   if (ip6config_->properties().dns_servers == addresses_str) {
@@ -821,36 +818,6 @@ bool Device::SetHostname(const std::string& hostname) {
   return manager_->device_info()->SetHostname(fixed_hostname);
 }
 
-void Device::PrependDNSServersIntoIPConfig(const IPConfigRefPtr& ipconfig) {
-  const auto& properties = ipconfig->properties();
-
-  std::vector<std::string> servers(properties.dns_servers.begin(),
-                                   properties.dns_servers.end());
-  PrependDNSServers(properties.address_family, &servers);
-  if (servers == properties.dns_servers) {
-    // If the server list is the same after being augmented then there's no need
-    // to update the config's list of servers.
-    return;
-  }
-
-  ipconfig->UpdateDNSServers(std::move(servers));
-}
-
-void Device::PrependDNSServers(const IPAddress::Family family,
-                               std::vector<std::string>* servers) {
-  std::vector<std::string> output_servers =
-      manager_->FilterPrependDNSServersByFamily(family);
-
-  std::set<std::string> unique(output_servers.begin(), output_servers.end());
-  for (const auto& server : *servers) {
-    if (unique.find(server) == unique.end()) {
-      output_servers.push_back(server);
-      unique.insert(server);
-    }
-  }
-  servers->swap(output_servers);
-}
-
 void Device::ConnectionDiagnosticsCallback(
     const std::string& connection_issue,
     const std::vector<ConnectionDiagnostics::Event>& diagnostic_events) {
@@ -893,9 +860,6 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
       // assign to someone else who might actually use it.
       dhcp_controller_->ReleaseIP(DHCPConfig::kReleaseReasonStaticIP);
     }
-  }
-  if (!IsUsingStaticNameServers()) {
-    PrependDNSServersIntoIPConfig(ipconfig);
   }
 
   SetupConnection(ipconfig);

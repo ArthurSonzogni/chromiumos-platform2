@@ -192,7 +192,6 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
   EXPECT_CALL(*manager_, SetStartupPortalList(_)).Times(0);
   EXPECT_CALL(*manager_, SetPassiveMode()).Times(0);
-  EXPECT_CALL(*manager_, SetPrependDNSServers(""));
   EXPECT_CALL(*manager_, SetMinimumMTU(_)).Times(0);
   EXPECT_CALL(*manager_, SetAcceptHostnameFrom(""));
   ApplySettings(settings);
@@ -205,7 +204,6 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   settings.portal_list = "cellular";
   settings.use_portal_list = true;
   settings.passive_mode = true;
-  settings.prepend_dns_servers = "8.8.8.8,8.8.4.4";
   settings.minimum_mtu = 256;
   settings.accept_hostname_from = "eth*";
   EXPECT_CALL(*manager_, SetBlockedDevices(kBlockedDevices));
@@ -213,7 +211,6 @@ TEST_F(DaemonTaskTest, ApplySettings) {
   EXPECT_CALL(*manager_, SetIgnoreUnknownEthernet(false));
   EXPECT_CALL(*manager_, SetStartupPortalList("cellular"));
   EXPECT_CALL(*manager_, SetPassiveMode());
-  EXPECT_CALL(*manager_, SetPrependDNSServers("8.8.8.8,8.8.4.4"));
   EXPECT_CALL(*manager_, SetMinimumMTU(256));
   EXPECT_CALL(*manager_, SetAcceptHostnameFrom("eth*"));
   ApplySettings(settings);

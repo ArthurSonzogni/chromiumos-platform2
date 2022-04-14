@@ -64,7 +64,6 @@ void DaemonTask::ApplySettings() {
   if (settings_.passive_mode) {
     manager_->SetPassiveMode();
   }
-  manager_->SetPrependDNSServers(settings_.prepend_dns_servers);
   if (settings_.minimum_mtu) {
     manager_->SetMinimumMTU(settings_.minimum_mtu);
   }

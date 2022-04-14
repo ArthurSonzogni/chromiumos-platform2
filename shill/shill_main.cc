@@ -45,8 +45,6 @@ const char kPortalList[] = "portal-list";
 const char kPassiveMode[] = "passive-mode";
 // Default priority order of the technologies.
 const char kTechnologyOrder[] = "default-technology-order";
-// Comma-separated list of DNS servers to prepend to the resolver list.
-const char kPrependDNSServers[] = "prepend-dns-servers";
 // The minimum MTU value that will be respected in DHCP responses.
 const char kMinimumMTU[] = "minimum-mtu";
 // Accept hostname from the DHCP server for the specified devices.
@@ -79,8 +77,6 @@ const char kHelpMessage[] =
     "    Do not manage any devices by default\n"
     "  --default-technology-order=technology1,technology2\n"
     "    Specify the default priority order of the technologies.\n"
-    "  --prepend-dns-servers=server1,server2,...\n"
-    "    Prepend the provided DNS servers to the resolver list.\n"
     "  --accept-hostname-from=eth0 or --accept-hostname-from=eth*\n"
     "    Accept a hostname from the DHCP server for the matching devices.\n"
     "  --minimum-mtu=mtu\n"
@@ -182,11 +178,6 @@ int main(int argc, char** argv) {
   }
 
   settings.passive_mode = cl->HasSwitch(switches::kPassiveMode);
-
-  if (cl->HasSwitch(switches::kPrependDNSServers)) {
-    settings.prepend_dns_servers =
-        cl->GetSwitchValueASCII(switches::kPrependDNSServers);
-  }
 
   if (cl->HasSwitch(switches::kMinimumMTU)) {
     int mtu;

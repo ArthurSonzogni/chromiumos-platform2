@@ -128,14 +128,9 @@ class MockManager : public Manager {
   MOCK_METHOD(void, SetIgnoreUnknownEthernet, (bool), (override));
   MOCK_METHOD(void, SetStartupPortalList, (const std::string&), (override));
   MOCK_METHOD(void, SetPassiveMode, (), (override));
-  MOCK_METHOD(void, SetPrependDNSServers, (const std::string&), (override));
   MOCK_METHOD(void, SetMinimumMTU, (const int), (override));
   MOCK_METHOD(void, SetAcceptHostnameFrom, (const std::string&), (override));
   MOCK_METHOD(bool, ignore_unknown_ethernet, (), (const, override));
-  MOCK_METHOD(std::vector<std::string>,
-              FilterPrependDNSServersByFamily,
-              (IPAddress::Family),
-              (const, override));
   MOCK_METHOD(int64_t, GetSuspendDurationUsecs, (), (const, override));
   MOCK_METHOD(void, OnInnerDevicesChanged, (), (override));
   MOCK_METHOD(void,

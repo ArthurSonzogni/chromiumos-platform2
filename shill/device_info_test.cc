@@ -86,8 +86,6 @@ class DeviceInfoTest : public Test {
 #endif  // DISABLE_WIFI
     device_info_.time_ = &time_;
     manager_.set_mock_device_info(&device_info_);
-    EXPECT_CALL(manager_, FilterPrependDNSServersByFamily(_))
-        .WillRepeatedly(Return(std::vector<std::string>()));
     patchpanel_client_ = new patchpanel::FakeClient();
     manager_.patchpanel_client_.reset(patchpanel_client_);
     CreateSysfsRoot();
