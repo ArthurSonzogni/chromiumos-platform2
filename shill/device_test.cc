@@ -157,7 +157,7 @@ class DeviceTest : public testing::Test {
     device_->OnIPConfigUpdated(ipconfig);
   }
 
-  void OnDHCPFailure() { device_->OnDHCPFailure(dhcp_controller_); }
+  void OnDHCPFailure() { device_->OnDHCPFailure(); }
 
   patchpanel::TrafficCounter CreateCounter(
       const std::valarray<uint64_t>& vals,

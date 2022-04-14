@@ -439,13 +439,13 @@ void DHCPController::ResetLeaseExpirationTime() {
 void DHCPController::InvokeUpdateCallback(const IPConfig::Properties properties,
                                           bool new_lease_acquired) {
   if (!update_callback_.is_null()) {
-    update_callback_.Run(this, properties, new_lease_acquired);
+    update_callback_.Run(properties, new_lease_acquired);
   }
 }
 
 void DHCPController::InvokeFailureCallback() {
   if (!failure_callback_.is_null()) {
-    failure_callback_.Run(this);
+    failure_callback_.Run();
   }
 }
 

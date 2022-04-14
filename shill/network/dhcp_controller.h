@@ -42,22 +42,13 @@ class ProcessManager;
 // behalf, for purposes of administration or creating a dynamic DNS entry.
 class DHCPController {
  public:
-  // TODO(b/227560694): For these two callbacks |dhcp_controller| points to this
-  // object itself, and should only be used for checking if the callback is
-  // invoked on the correct object. Since DHCPController is a ref-counted object
-  // now, it's possible that callback is invoked when Device does not own this
-  // object actually. We can safely remove this parameter once Device is the
-  // only owner.
   // Called when the IPConfig got from DHCP is updated. |properties| contains
   // all the parameters we get from DHCP. |new_lease_acquired| indicates whether
   // or not a DHCP lease was acquired from the server.
-  using UpdateCallback =
-      base::RepeatingCallback<void(DHCPController* dhcp_controller,
-                                   const IPConfig::Properties& properties,
-                                   bool new_lease_acquired)>;
+  using UpdateCallback = base::RepeatingCallback<void(
+      const IPConfig::Properties& properties, bool new_lease_acquired)>;
   // Called when DHCP failed.
-  using FailureCallback =
-      base::RepeatingCallback<void(DHCPController* dhcp_controller)>;
+  using FailureCallback = base::RepeatingCallback<void()>;
 
   enum ReleaseReason { kReleaseReasonDisconnect, kReleaseReasonStaticIP };
 

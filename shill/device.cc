@@ -826,15 +826,11 @@ void Device::ConnectionDiagnosticsCallback(
   // TODO(samueltan): add connection diagnostics metrics.
 }
 
-void Device::OnIPConfigUpdatedFromDHCP(DHCPController* dhcp_controller,
-                                       const IPConfig::Properties& properties,
+void Device::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
                                        bool new_lease_acquired) {
-  if (dhcp_controller != dhcp_controller_.get()) {
-    LOG(WARNING)
-        << __func__
-        << " invoked but |dhcp_controller| is not owned by this Device";
-    return;
-  }
+  // |dhcp_controller_| cannot be empty when the callback is invoked.
+  DCHECK(dhcp_controller_);
+  DCHECK(ipconfig_);
   ipconfig_->UpdateProperties(properties);
   OnIPConfigUpdated(ipconfig_);
   if (new_lease_acquired) {
@@ -867,15 +863,12 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
   UpdateIPConfigsProperty();
 }
 
-void Device::OnDHCPFailure(DHCPController* dhcp_controller) {
+void Device::OnDHCPFailure() {
   SLOG(this, 2) << __func__;
-  if (dhcp_controller != dhcp_controller_.get()) {
-    LOG(WARNING)
-        << __func__
-        << " invoked but |dhcp_controller| is not owned by this Device";
-    return;
-  }
 
+  // |dhcp_controller_| cannot be empty when the callback is invoked.
+  DCHECK(dhcp_controller_);
+  DCHECK(ipconfig_);
   if (selected_service_) {
     if (IsUsingStaticIP()) {
       // Consider three cases:
