@@ -60,6 +60,16 @@ constexpr char kLsbChromeosReleaseBoard[] = "CHROMEOS_RELEASE_BOARD";
 constexpr char kDefaultBinhostPrefix[] =
     "https://commondatastorage.googleapis.com/chromeos-dev-installer/board";
 
+// Portage binpkgs append metadata to the end of the bzip2 file which makes
+// bzip2 warn "trailing garbage after EOF ignored".  This is harmless, but
+// can be confusing & noisy, so suppress it with -q.
+constexpr char kBzip2Cmd[] = "bzip2 -q";
+constexpr uint8_t kBzip2Magic[] = {0x42, 0x5a, 0x68};
+
+// Similarly, use zstd's -f to ignore that trailing data.
+constexpr char kZstdCmd[] = "zstd -f";
+constexpr uint8_t kZstdMagic[] = {0x28, 0xb5, 0x2f, 0xfd};
+
 }  // namespace
 
 DevInstall::DevInstall()
@@ -294,6 +304,25 @@ void DevInstall::InitializeBinhost() {
              binhost_version_ + "/packages";
 }
 
+std::string DevInstall::DetectCompression(const base::FilePath& pkg) {
+  char bytes[4];
+  if (ReadFile(pkg, bytes, sizeof(bytes)) == -1) {
+    // TODO(vapier): Switch this to zstd by 2022 Q4.
+    PLOG(WARNING) << "Unable to detect compression; assuming bzip2";
+    return kBzip2Cmd;
+  }
+
+  if (memcmp(bytes, kZstdMagic, sizeof(kZstdMagic)) == 0) {
+    return kZstdCmd;
+  } else if (memcmp(bytes, kBzip2Magic, sizeof(kBzip2Magic)) == 0) {
+    return kBzip2Cmd;
+  } else {
+    // TODO(vapier): Switch this to zstd by 2022 Q4.
+    LOG(WARNING) << "Unknown magic signature; assuming bzip2";
+    return kBzip2Cmd;
+  }
+}
+
 bool DevInstall::DownloadAndInstallBootstrapPackage(
     const std::string& package) {
   const std::string url(binhost_ + "/" + package + ".tbz2");
@@ -321,10 +350,7 @@ bool DevInstall::DownloadAndInstallBootstrapPackage(
   tar.SetSearchPath(true);
   tar.AddArg("tar");
   tar.AddStringOption("-C", state_dir_.value());
-  // Portage binpkgs append metadata to the end of the bzip2 file which makes
-  // bzip2 warn "trailing garbage after EOF ignored".  This is harmless, but
-  // can be confusing & noisy, so suppress it with -q.
-  tar.AddStringOption("-I", "bzip2 -q");
+  tar.AddStringOption("-I", DetectCompression(pkg));
   tar.AddArg("-xkf");
   tar.AddArg(pkg.value());
   if (tar.Run() != 0) {

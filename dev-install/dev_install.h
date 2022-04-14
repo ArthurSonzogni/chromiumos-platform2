@@ -59,6 +59,9 @@ class DevInstall {
   // Initialize binhost_ setting from other settings.
   void InitializeBinhost();
 
+  // Detect the compression format used by |pkg|.
+  std::string DetectCompression(const base::FilePath& pkg);
+
   // Download & manually install the bootstrap packages.
   virtual bool DownloadAndInstallBootstrapPackage(const std::string& package);
   virtual bool DownloadAndInstallBootstrapPackages(
