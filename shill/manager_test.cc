@@ -479,6 +479,23 @@ class ManagerTest : public PropertyStoreTest {
     return false;
   }
 
+  std::unique_ptr<NiceMock<MockConnection>> CreateMockConnection(
+      MockDevice* mock_device, const std::string& interface_name) {
+    const IPAddress ip_addr = IPAddress("1.2.3.4");
+    const std::vector<std::string> kDNSServers;
+    auto mock_connection =
+        std::make_unique<NiceMock<MockConnection>>(device_info_.get());
+    EXPECT_CALL(*mock_connection, interface_name())
+        .WillRepeatedly(ReturnRefOfCopy(interface_name));
+    EXPECT_CALL(*mock_connection, local())
+        .WillRepeatedly(ReturnRefOfCopy(ip_addr));
+    EXPECT_CALL(*mock_connection, dns_servers())
+        .WillRepeatedly(ReturnRefOfCopy(kDNSServers));
+    EXPECT_CALL(*mock_device, connection())
+        .WillRepeatedly(Return(mock_connection.get()));
+    return mock_connection;
+  }
+
   std::unique_ptr<MockPowerManager> power_manager_;
   std::vector<scoped_refptr<MockDevice>> mock_devices_;
   std::unique_ptr<MockDeviceInfo> device_info_;
@@ -502,7 +519,7 @@ class ManagerTest : public PropertyStoreTest {
 #endif  // DISABLE_WIFI
   MockThrottler* throttler_;
   MockUpstart* upstart_;
-  MockResolver resolver_;
+  NiceMock<MockResolver> resolver_;
   patchpanel::FakeClient* patchpanel_client_;
 };
 
@@ -3490,26 +3507,28 @@ TEST_F(ManagerTest, ConnectToBestServices) {
 }
 
 TEST_F(ManagerTest, CreateConnectivityReport) {
-  // Add devices
-  // WiFi
-  auto wifi_device =
-      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "null", "addr", 0);
-  manager()->RegisterDevice(wifi_device);
-  // Cell
-  auto cell_device =
-      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "null", "addr", 1);
-  manager()->RegisterDevice(cell_device);
-  // Ethernet
-  auto eth_device =
-      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "null", "addr", 3);
-  manager()->RegisterDevice(eth_device);
-  // VPN Device -- base device for a service that will not be connected
-  auto vpn_device =
-      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "null", "addr", 4);
-  manager()->RegisterDevice(vpn_device);
+  manager()->props_.portal_http_url = PortalDetector::kDefaultHttpUrl;
+  manager()->props_.portal_https_url = PortalDetector::kDefaultHttpsUrl;
 
-  // Add service for multiple devices
-  // WiFi
+  // Add devices
+  auto wifi_device =
+      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "wifi0", "addr", 0);
+  manager()->RegisterDevice(wifi_device);
+  auto wifi_connection =
+      CreateMockConnection(wifi_device.get(), "wifi_interface");
+
+  auto cell_device =
+      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "cell0", "addr", 1);
+  manager()->RegisterDevice(cell_device);
+  auto cell_connection =
+      CreateMockConnection(cell_device.get(), "cell_interface");
+
+  // Ethernet does not have a connection so no connectivity report will be run.
+  auto eth_device =
+      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "eth0", "addr", 3);
+  manager()->RegisterDevice(eth_device);
+
+  // Add services
   MockServiceRefPtr wifi_service = new NiceMock<MockService>(manager());
   manager()->RegisterService(wifi_service);
   EXPECT_CALL(*wifi_service, state())
@@ -3520,7 +3539,6 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   EXPECT_CALL(*wifi_device, IsConnectedToService(IsRefPtrTo(wifi_service)))
       .WillRepeatedly(Return(true));
 
-  // Cell
   MockServiceRefPtr cell_service = new NiceMock<MockService>(manager());
   manager()->RegisterService(cell_service);
   EXPECT_CALL(*cell_service, state())
@@ -3531,29 +3549,9 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   EXPECT_CALL(*cell_device, IsConnectedToService(IsRefPtrTo(cell_service)))
       .WillRepeatedly(Return(true));
 
-  // Ethernet
-  MockServiceRefPtr eth_service = new NiceMock<MockService>(manager());
-  manager()->RegisterService(eth_service);
-  EXPECT_CALL(*eth_service, state())
-      .WillRepeatedly(Return(Service::kStateConnected));
-  EXPECT_CALL(*eth_service, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*eth_device, IsConnectedToService(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*eth_device, IsConnectedToService(IsRefPtrTo(eth_service)))
-      .WillRepeatedly(Return(true));
-
-  // VPN: Service exists but is not connected and will not trigger a
-  // connectivity report.
-  MockServiceRefPtr vpn_service = new NiceMock<MockService>(manager());
-  manager()->RegisterService(vpn_service);
-  EXPECT_CALL(*vpn_service, state())
-      .WillRepeatedly(Return(Service::kStateIdle));
-  EXPECT_CALL(*vpn_service, IsConnected(nullptr)).WillRepeatedly(Return(false));
-
-  EXPECT_CALL(*wifi_device, StartConnectivityTest()).WillOnce(Return(true));
-  EXPECT_CALL(*cell_device, StartConnectivityTest()).WillOnce(Return(true));
-  EXPECT_CALL(*eth_device, StartConnectivityTest()).WillOnce(Return(true));
-  EXPECT_CALL(*vpn_device, StartConnectivityTest()).Times(0);
+  // PortalDetector sends UMA results on completion, ensure it is called twice,
+  // once for wifi and once for cell.
+  EXPECT_CALL(*metrics(), NotifyPortalDetectionMultiProbeResult(_)).Times(2);
   manager()->CreateConnectivityReport(nullptr);
   dispatcher()->DispatchPendingEvents();
 }

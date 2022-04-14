@@ -528,7 +528,6 @@ void Device::IPv6DNSServerExpired() {
 
 void Device::StopAllActivities() {
   StopPortalDetection();
-  StopConnectivityTest();
   StopConnectionDiagnostics();
   StopIPv6DNSServerTimer();
 }
@@ -691,15 +690,6 @@ void Device::HelpRegisterConstDerivedUint64(const std::string& name,
   store_.RegisterDerivedUint64(
       name,
       Uint64Accessor(new CustomAccessor<Device, uint64_t>(this, get, nullptr)));
-}
-
-void Device::ConnectionTesterCallback(const PortalDetector::Result& result) {
-  LOG(INFO)
-      << "Device " << link_name()
-      << " ConnectionTester completed connectivity test with HTTP probe phase="
-      << result.http_phase << ", status=" << result.http_status
-      << " and HTTPS probe phase=" << result.https_phase
-      << ", status=" << result.https_status;
 }
 
 void Device::ConfigureStaticIPTask() {
@@ -1168,14 +1158,14 @@ void Device::StopPortalDetection() {
 }
 
 bool Device::StartConnectionDiagnosticsAfterPortalDetection(
-    const PortalDetector::Result& result) {
+    const PortalDetector::Result& portal_result) {
   connection_diagnostics_.reset(new ConnectionDiagnostics(
       connection_->interface_name(), connection_->interface_index(),
       connection_->local(), connection_->gateway(), connection_->dns_servers(),
       dispatcher(), metrics(), manager_->device_info(),
       base::Bind(&Device::ConnectionDiagnosticsCallback, AsWeakPtr())));
   if (!connection_diagnostics_->StartAfterPortalDetection(
-          manager_->GetProperties().portal_http_url, result)) {
+          manager_->GetProperties().portal_http_url, portal_result)) {
     LOG(ERROR) << link_name() << ": Connection diagnostics failed to start.";
     connection_diagnostics_.reset();
     return false;
@@ -1188,23 +1178,6 @@ bool Device::StartConnectionDiagnosticsAfterPortalDetection(
 void Device::StopConnectionDiagnostics() {
   SLOG(this, 2) << link_name() << ": Connection diagnostics stopping.";
   connection_diagnostics_.reset();
-}
-
-bool Device::StartConnectivityTest() {
-  LOG(INFO) << link_name() << " starting connectivity test.";
-
-  connection_tester_.reset(new PortalDetector(
-      dispatcher(), metrics(),
-      base::Bind(&Device::ConnectionTesterCallback, AsWeakPtr())));
-  connection_tester_->Start(manager_->GetProperties(),
-                            connection_->interface_name(), connection_->local(),
-                            connection_->dns_servers());
-  return true;
-}
-
-void Device::StopConnectivityTest() {
-  SLOG(this, 2) << link_name() << ": Connectivity test stopping.";
-  connection_tester_.reset();
 }
 
 void Device::EmitMACAddress(const std::string& mac_address) {

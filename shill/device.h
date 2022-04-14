@@ -163,10 +163,6 @@ class Device : public base::RefCounted<Device> {
   // Returns true if portal detection was started.
   mockable bool RestartPortalDetection();
 
-  // Called by the manager to start a single connectivity test.  This is used to
-  // log connection state triggered by a user feedback log request.
-  mockable bool StartConnectivityTest();
-
   // Requests that portal detection be done, if this device has the default
   // connection.  Returns true if portal detection was started.
   mockable bool RequestPortalDetection();
@@ -333,7 +329,6 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, UseNoArpGateway);
   FRIEND_TEST(DevicePortalDetectionTest, PortalIntervalIsZero);
-  FRIEND_TEST(DevicePortalDetectionTest, RequestStartConnectivityTest);
   FRIEND_TEST(DevicePortalDetectionTest, RestartPortalDetection);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithoutSelectedService);
   FRIEND_TEST(DeviceTest, AcquireIPConfigWithDHCPProperties);
@@ -615,21 +610,15 @@ class Device : public base::RefCounted<Device> {
   // Initiate connection diagnostics with the |result| from a completed portal
   // detection attempt.
   mockable bool StartConnectionDiagnosticsAfterPortalDetection(
-      const PortalDetector::Result& result);
+      const PortalDetector::Result& portal_result);
 
   // Stop connection diagnostics if it is running.
   void StopConnectionDiagnostics();
-
-  // Stop connectivity tester if it exists.
-  void StopConnectivityTest();
 
   // Called by |connection_diagnostics| after diagnostics have finished.
   void ConnectionDiagnosticsCallback(
       const std::string& connection_issue,
       const std::vector<ConnectionDiagnostics::Event>& diagnostic_events);
-
-  // Called by the ConnectionTester whenever a connectivity test completes.
-  void ConnectionTesterCallback(const PortalDetector::Result& result);
 
   // Stop all monitoring/testing activities on this device. Called when tearing
   // down or changing network connection on the device.
@@ -720,8 +709,6 @@ class Device : public base::RefCounted<Device> {
   DHCPProvider* dhcp_provider_;
   RoutingTable* routing_table_;
   RTNLHandler* rtnl_handler_;
-
-  std::unique_ptr<PortalDetector> connection_tester_;
 
   // Track the current same-net multi-home state.
   bool is_multi_homed_;

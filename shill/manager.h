@@ -32,6 +32,7 @@
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
+#include "shill/portal_detector.h"
 #include "shill/power_manager.h"
 #include "shill/profile.h"
 #include "shill/provider_interface.h"
@@ -812,6 +813,10 @@ class Manager {
   // current DeviceClaimer.  Returns an empty vector if no DeviceClaimer is set.
   std::vector<std::string> ClaimedDevices(Error* error);
 
+  void StartConnectivityTest(Connection* connection);
+  void ConnectivityTestCallback(const std::string& interface_name,
+                                const PortalDetector::Result& result);
+
   EventDispatcher* dispatcher_;
   ControlInterface* control_interface_;
   Metrics* metrics_;
@@ -968,6 +973,11 @@ class Manager {
   // shill/manager.cc.
   bool should_blackhole_user_traffic_;
   std::vector<uint32_t> user_traffic_uids_;
+  // Map of active portal detectors for CreateConnectivityReport, indexed by
+  // the Connection interface name.
+  std::map<std::string, std::unique_ptr<PortalDetector>>
+      connectivity_test_portal_detectors_;
+
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };
 

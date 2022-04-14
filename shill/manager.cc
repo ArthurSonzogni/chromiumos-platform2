@@ -312,6 +312,8 @@ Manager::~Manager() {
   // Clear Device references.
   device_geolocation_info_.clear();
 
+  connectivity_test_portal_detectors_.clear();
+
   // Log an error if Service references beyond |services_| still exist.
   for (ServiceRefPtr& service : services_) {
     if (!service->HasOneRef()) {
@@ -2258,28 +2260,12 @@ void Manager::ConnectToBestServicesTask() {
 void Manager::CreateConnectivityReport(Error* /*error*/) {
   LOG(INFO) << "Creating Connectivity Report";
 
-  // For each of the connected services, perform a single portal detection
-  // test to assess connectivity.  The results should be written to the log.
-  for (const auto& service : services_) {
-    if (!service->IsConnected()) {
-      // Service sort order guarantees that no service beyond this one will be
-      // connected either.
-      break;
-    }
-    // Get the underlying device for this service and perform connectivity test.
-    for (const auto& device : devices_) {
-      if (device->IsConnectedToService(service)) {
-        if (device->StartConnectivityTest()) {
-          SLOG(this, 3) << "Started connectivity test for service "
-                        << service->log_name();
-        } else {
-          SLOG(this, 3) << "Failed to start connectivity test for service "
-                        << service->log_name()
-                        << " device not reporting IsConnected.";
-        }
-        break;
-      }
-    }
+  // Abort any pending connectivity tests and clear results.
+  connectivity_test_portal_detectors_.clear();
+
+  for (const auto& device : devices_) {
+    if (device->connection())
+      StartConnectivityTest(device->connection());
   }
 }
 
@@ -3282,6 +3268,35 @@ const std::vector<uint32_t>& Manager::GetUserTrafficUids() {
     user_traffic_uids_ = ComputeUserTrafficUids();
   }
   return user_traffic_uids_;
+}
+
+void Manager::StartConnectivityTest(Connection* connection) {
+  std::string interface_name = connection->interface_name();
+  auto portal_detector = std::make_unique<PortalDetector>(
+      dispatcher(), metrics_,
+      base::BindRepeating(&Manager::ConnectivityTestCallback,
+                          weak_factory_.GetWeakPtr(), interface_name));
+  auto iter =
+      connectivity_test_portal_detectors_
+          .insert(std::make_pair(interface_name, std::move(portal_detector)))
+          .first;
+  if (!iter->second->Start(GetProperties(), interface_name, connection->local(),
+                           connection->dns_servers())) {
+    LOG(WARNING) << "Failed to start connectivity test for interface: "
+                 << interface_name;
+  } else {
+    LOG(INFO) << "Started connectivity test for interface: " << interface_name;
+  }
+}
+
+void Manager::ConnectivityTestCallback(const std::string& interface_name,
+                                       const PortalDetector::Result& result) {
+  LOG(INFO) << "Completed connectivity test for: " << interface_name
+            << ". HTTP probe phase=" << result.http_phase
+            << ", status=" << result.http_status
+            << ". HTTPS probe phase=" << result.https_phase
+            << ", status=" << result.https_status;
+  connectivity_test_portal_detectors_.erase(interface_name);
 }
 
 }  // namespace shill

@@ -1510,25 +1510,6 @@ TEST_F(DevicePortalDetectionTest, RequestPortalDetectionStarts) {
   EXPECT_TRUE(RequestPortalDetection());
 }
 
-TEST_F(DevicePortalDetectionTest, RequestStartConnectivityTest) {
-  const IPAddress ip_addr = IPAddress("1.2.3.4");
-  const std::string kInterfaceName("int0");
-  const auto props = MakePortalProperties();
-  const std::vector<std::string> kDNSServers;
-
-  EXPECT_CALL(*connection_, interface_name())
-      .WillRepeatedly(ReturnRef(kInterfaceName));
-  EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(ip_addr));
-  EXPECT_CALL(*connection_, IsIPv6()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*connection_, dns_servers())
-      .WillRepeatedly(ReturnRef(kDNSServers));
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
-
-  EXPECT_EQ(nullptr, device_->connection_tester_);
-  EXPECT_TRUE(device_->StartConnectivityTest());
-  EXPECT_NE(nullptr, device_->connection_tester_);
-}
-
 TEST_F(DevicePortalDetectionTest, NotConnected) {
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(false));
   SetServiceConnectedState(Service::kStateNoConnectivity);
@@ -1851,7 +1832,6 @@ TEST_F(DevicePortalDetectionTest, DestroyConnection) {
   EXPECT_CALL(*connection, dns_servers())
       .WillRepeatedly(ReturnRef(kDNSServers));
 
-  EXPECT_TRUE(device_->StartConnectivityTest());
   EXPECT_TRUE(StartPortalDetection());
 
   // Ensure that the DestroyConnection method removes all connection references
