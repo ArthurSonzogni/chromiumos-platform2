@@ -43,9 +43,8 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   void Initialize(EuiccManagerInterface* euicc_manager,
                   ResultCallback cb) override;
 
+  void StoreAndSetActiveSlot(uint32_t physical_slot, ResultCallback cb);
   // ModemControlInterface overrides
-  void StoreAndSetActiveSlot(uint32_t physical_slot,
-                             ResultCallback cb) override;
   void RestoreActiveSlot(ResultCallback cb) override;
   void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) override;
 

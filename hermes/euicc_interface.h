@@ -32,8 +32,6 @@ class EuiccInterface : public lpa::card::EuiccCard,
   //
 
   // from ModemControlInterface
-  virtual void StoreAndSetActiveSlot(uint32_t physical_slot,
-                                     ResultCallback cb) = 0;
   virtual void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) = 0;
   virtual void RestoreActiveSlot(ResultCallback cb) = 0;
   virtual void SetCardVersion(

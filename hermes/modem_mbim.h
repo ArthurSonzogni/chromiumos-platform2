@@ -41,8 +41,6 @@ class ModemMbim : public Modem<MbimCmd> {
   // EuiccInterface overrides
   void Initialize(EuiccManagerInterface* euicc_manager,
                   ResultCallback cb) override;
-  void StoreAndSetActiveSlot(const uint32_t physical_slot,
-                             ResultCallback cb) override;
   void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) override;
   void RestoreActiveSlot(ResultCallback cb) override;
   bool IsSimValidAfterEnable() override;

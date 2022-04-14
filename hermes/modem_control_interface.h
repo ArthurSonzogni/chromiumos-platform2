@@ -16,11 +16,7 @@ namespace hermes {
 
 class ModemControlInterface {
  public:
-  // Stores the current active slot, and switches to physical_slot
-  // Use this function to perform temporary slot switches
-  virtual void StoreAndSetActiveSlot(uint32_t physical_slot,
-                                     ResultCallback cb) = 0;
-  // Restore the value stored by StoreAndSetActiveSlot
+  // Switch to the slot value before the last hermes operation
   virtual void RestoreActiveSlot(ResultCallback cb) = 0;
 
   virtual void ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) = 0;

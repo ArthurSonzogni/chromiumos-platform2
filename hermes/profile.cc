@@ -306,36 +306,6 @@ void Profile::Rename(std::unique_ptr<DBusResponse<>> response,
                      std::move(set_nickname), std::move(response)));
 }
 
-void Profile::SetProfileNickname(std::string nickname) {
-  LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
-  if (!context_->lpa()->IsLpaIdle()) {
-    context_->executor()->PostDelayedTask(
-        FROM_HERE,
-        base::BindOnce(&Profile::SetProfileNickname, weak_factory_.GetWeakPtr(),
-                       std::move(nickname)),
-        kLpaRetryDelay);
-    return;
-  }
-  auto set_nickname_property =
-      base::BindOnce(&Profile::SetNicknameProperty, weak_factory_.GetWeakPtr(),
-                     std::move(nickname));
-  context_->modem_control()->StoreAndSetActiveSlot(
-      physical_slot_,
-      base::BindOnce(&IgnoreErrorRunClosure, std::move(set_nickname_property)));
-}
-
-void Profile::SetNicknameProperty(std::string nickname) {
-  context_->lpa()->SetProfileNickname(
-      GetIccid(), nickname, context_->executor(), [this](int error) {
-        auto decoded_error = LpaErrorToBrillo(FROM_HERE, error);
-        if (decoded_error) {
-          LOG(ERROR) << "Failed to set profile nickname: "
-                     << decoded_error->GetMessage();
-        }
-        context_->modem_control()->RestoreActiveSlot(base::DoNothing());
-      });
-}
-
 void Profile::SetNicknameMethod(std::string nickname,
                                 std::unique_ptr<DBusResponse<>> response) {
   LOG(INFO) << __func__ << " Nickname: " << nickname << " "
@@ -380,12 +350,6 @@ void Profile::OnRestoreActiveSlot(std::shared_ptr<DBusResponse<>> response,
       {physical_slot_, EuiccStep::END},
       base::BindOnce(&RunOnSuccess<std::shared_ptr<DBusResponse<>>>,
                      std::move(return_dbus_success), std::move(response)));
-}
-
-bool Profile::ValidateNickname(brillo::ErrorPtr* /*error*/,
-                               const std::string& value) {
-  SetProfileNickname(value);
-  return true;
 }
 
 Profile::~Profile() {

@@ -1134,11 +1134,6 @@ void ModemMbim::OnEuiccEventStart(const uint32_t physical_slot,
   }
 }
 
-void ModemMbim::StoreAndSetActiveSlot(const uint32_t physical_slot,
-                                      ResultCallback cb) {
-  LOG(INFO) << __func__ << ": physical_slot:" << physical_slot;
-}
-
 void ModemMbim::ProcessEuiccEvent(EuiccEvent event, ResultCallback cb) {
   LOG(INFO) << __func__ << ": " << event;
   if (event.step == EuiccStep::START) {

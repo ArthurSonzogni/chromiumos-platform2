@@ -44,11 +44,6 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
   void OnEnabled(int error, std::shared_ptr<DBusResponse<>> response);
   void OnDisabled(int error, std::shared_ptr<DBusResponse<>> response);
 
-  // org::chromium::Hermes::ProfileAdaptor override.
-  bool ValidateNickname(brillo::ErrorPtr* error,
-                        const std::string& value) override;
-  void SetProfileNickname(std::string nickname);
-
   // Functions that call eponymous LPA methods. Called after channel acquisition
   void EnableProfile(std::unique_ptr<DBusResponse<>> response);
   void DisableProfile(std::unique_ptr<DBusResponse<>> response);
@@ -56,7 +51,6 @@ class Profile : public org::chromium::Hermes::ProfileInterface,
   // Sends notifications to smdp if !err. Always returns success on dbus
   void FinishProfileOpCb(std::shared_ptr<DBusResponse<>> response, int err);
 
-  void SetNicknameProperty(std::string nickname);
   void SetNicknameMethod(std::string nickname,
                          std::unique_ptr<DBusResponse<>> response);
   void OnRestoreActiveSlot(std::shared_ptr<DBusResponse<>> response, int error);
