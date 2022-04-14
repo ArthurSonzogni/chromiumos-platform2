@@ -49,11 +49,14 @@ type MethodArg struct {
 }
 
 // Method represents method provided by a object through a interface.
+// TODO(crbug.com/983008): Some xml files are missing tp namespace; add
+// "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0" xml tag to DocString after
+// fixing.
 type Method struct {
 	Name        string       `xml:"name,attr"`
 	Args        []MethodArg  `xml:"arg"`
 	Annotations []Annotation `xml:"annotation"`
-	DocString   string       `xml:"http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0 docstring"`
+	DocString   string       `xml:"docstring"`
 }
 
 // SignalArg represents signal message.
@@ -66,27 +69,36 @@ type SignalArg struct {
 }
 
 // Signal represents signal provided by a object through a interface.
+// TODO(crbug.com/983008): Some xml files are missing tp namespace; add
+// "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0" xml tag to DocString after
+// fixing.
 type Signal struct {
 	Name      string      `xml:"name,attr"`
 	Args      []SignalArg `xml:"arg"`
-	DocString string      `xml:"http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0 docstring"`
+	DocString string      `xml:"docstring"`
 }
 
 // Property represents property provided by a object through a interface.
+// TODO(crbug.com/983008): Some xml files are missing tp namespace; add
+// "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0" xml tag to DocString after
+// fixing.
 type Property struct {
 	Name      string `xml:"name,attr"`
 	Type      string `xml:"type,attr"`
 	Access    string `xml:"access,attr"`
-	DocString string `xml:"http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0 docstring"`
+	DocString string `xml:"docstring"`
 }
 
 // Interface represents interface provided by a object.
+// TODO(crbug.com/983008): Some xml files are missing tp namespace; add
+// "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0" xml tag to DocString after
+// fixing.
 type Interface struct {
 	Name       string     `xml:"name,attr"`
 	Methods    []Method   `xml:"method"`
 	Signals    []Signal   `xml:"signal"`
 	Properties []Property `xml:"property"`
-	DocString  string     `xml:"http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0 docstring"`
+	DocString  string     `xml:"docstring"`
 }
 
 // Introspection represents object specification required for generating
