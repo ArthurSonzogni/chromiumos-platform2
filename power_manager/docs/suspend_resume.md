@@ -122,11 +122,11 @@ the system. Otherwise, it re-suspends immediately.
 ## Dark Resume to Hibernate
 
 On some systems, instead of shutting down after a certain amount of time as
-described above, the system may opt to suspend to disk instead (AKA hibernate).
-Hibernate represents a compromise between staying in suspend and shutting down.
-User state is perfectly preserved, much like a regular suspend, and power usage
-is identical to shutdown. The cost of this power savings is additional latency at
-resume, expected to be similar in latency to a fresh boot.
+described above, the system may opt to suspend to disk instead (AKA
+[hibernate]). Hibernate represents a compromise between staying in suspend and
+shutting down. User state is perfectly preserved, much like a regular suspend,
+and power usage is identical to shutdown. The cost of this power savings is
+additional latency at resume, expected to be similar in latency to a fresh boot.
 
 ## Enable console during suspend
 
@@ -189,3 +189,4 @@ The value is specified in seconds, and its default is 0 (which disables it).
 [/sys/power/wakeup_count]: https://lwn.net/Articles/393314/
 [flashrom]: https://dev.chromium.org/chromium-os/packages/cros-flashrom
 [power states]: https://www.kernel.org/doc/Documentation/power/states.txt
+[hibernate]: ./hibernation.md

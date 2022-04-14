@@ -13,7 +13,7 @@ configurable time.
 Chrome OS devices usually support at least 14 days of standby. Users that return
 to the device tend to do so in the first 3 days. Thus instead of sitting in
 standby until the battery is completely discharged, this feature suspends to disk
-(hibernates) or shuts down the device proactively after spending configured time
+([hibernates]) or shuts down the device proactively after spending configured time
 in standby. This helps in reducing battery degradation due to deep discharge.
 This can also reduce the frequency of trickle charges during boot.
 
@@ -77,4 +77,5 @@ Perform the following steps to disable hibernate or shutdown from suspend:
 ```
 
 [Dark Resume]: ./dark_resume.md
+[hibernates]: ./hibernation.md
 [Enable Dark Resume]: ./dark_resume.md#enabling-dark-resume
