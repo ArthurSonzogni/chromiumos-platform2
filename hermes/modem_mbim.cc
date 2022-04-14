@@ -486,7 +486,7 @@ void ModemMbim::TransmitSlotInfoStatus() {
   g_autoptr(GError) error = NULL;
   auto switch_slot_tx_info =
       dynamic_cast<SwitchSlotTxInfo*>(tx_queue_[0].info_.get());
-  VLOG(2) << __func__ << ": slot:" << switch_slot_tx_info->physical_slot_ + 1;
+  VLOG(2) << __func__ << ": slot:" << switch_slot_tx_info->physical_slot_;
   message =
       (mbim_message_ms_basic_connect_extensions_slot_info_status_query_new(
           switch_slot_tx_info->physical_slot_, &error));
@@ -835,7 +835,7 @@ void ModemMbim::DeviceSlotStatusInfoRspCb(MbimDevice* device,
       mbim_message_ms_basic_connect_extensions_slot_info_status_response_parse(
           response, &slot_index, &slot_status, &error)) {
     modem_mbim->slot_info_.slot_state_[slot_index] = slot_status;
-    VLOG(2) << "Response received with slot_index:" << slot_index + 1
+    VLOG(2) << "Response received with slot_index:" << slot_index
             << " & status:" << slot_status;
     modem_mbim->ProcessMbimResult(kModemSuccess);
     return;
@@ -915,14 +915,12 @@ void ModemMbim::SetDeviceSlotMappingsRspCb(MbimDevice* device,
           response, MBIM_MESSAGE_TYPE_COMMAND_DONE, &error) ||
       !mbim_message_ms_basic_connect_extensions_device_slot_mappings_response_parse(
           response, &map_count, &slot_mappings, &error)) {
-    LOG(ERROR) << "Sim slot switch to " << physical_switch_slot + 1
-               << " failed";
+    LOG(ERROR) << "Sim slot switch to " << physical_switch_slot << " failed";
     modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
   if (physical_switch_slot != slot_mappings[kExecutorIndex]->slot) {
-    LOG(ERROR) << "Sim slot switch to " << physical_switch_slot + 1
-               << " failed";
+    LOG(ERROR) << "Sim slot switch to " << physical_switch_slot << " failed";
     modem_mbim->ProcessMbimResult(kModemMessageProcessingError);
     return;
   }
@@ -937,7 +935,7 @@ void ModemMbim::SetDeviceSlotMappingsRspCb(MbimDevice* device,
         modem_mbim->slot_info_.cached_active_slot_, kExecutorIndex);
   }
   LOG(INFO) << "Sim switch was successful to:"
-            << slot_mappings[kExecutorIndex]->slot + 1;
+            << slot_mappings[kExecutorIndex]->slot;
   modem_mbim->ProcessMbimResult(kModemSuccess);
 }
 
