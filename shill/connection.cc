@@ -169,10 +169,9 @@ bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
   return true;
 }
 
-void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
+void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
   SLOG(this, 2) << __func__ << " " << interface_name_;
 
-  const IPConfig::Properties& properties = config->properties();
   allowed_dsts_ = properties.included_dsts;
   use_if_addrs_ =
       properties.use_if_addrs || technology_.IsPrimaryConnectivityTechnology();
@@ -274,16 +273,16 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   UpdateRoutingPolicy();
 
   // Save a copy of the last non-null DNS config.
-  if (!config->properties().dns_servers.empty()) {
-    dns_servers_ = config->properties().dns_servers;
+  if (!properties.dns_servers.empty()) {
+    dns_servers_ = properties.dns_servers;
   }
 
-  if (!config->properties().domain_search.empty()) {
-    dns_domain_search_ = config->properties().domain_search;
+  if (!properties.domain_search.empty()) {
+    dns_domain_search_ = properties.domain_search;
   }
 
-  if (!config->properties().domain_name.empty()) {
-    dns_domain_name_ = config->properties().domain_name;
+  if (!properties.domain_name.empty()) {
+    dns_domain_name_ = properties.domain_name;
   }
 
   PushDNSConfig();
@@ -292,8 +291,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr& config) {
   gateway_ = gateway;
 }
 
-void Connection::UpdateGatewayMetric(const IPConfigRefPtr& config) {
-  const IPConfig::Properties& properties = config->properties();
+void Connection::UpdateGatewayMetric(const IPConfig::Properties& properties) {
   IPAddress gateway(properties.address_family);
 
   if (!properties.gateway.empty() &&

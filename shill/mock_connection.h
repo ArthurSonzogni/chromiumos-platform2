@@ -22,7 +22,10 @@ class MockConnection : public Connection {
 
   ~MockConnection() override;
 
-  MOCK_METHOD(void, UpdateFromIPConfig, (const IPConfigRefPtr&), (override));
+  MOCK_METHOD(void,
+              UpdateFromIPConfig,
+              (const IPConfig::Properties& properties),
+              (override));
   MOCK_METHOD(bool, IsDefault, (), (const, override));
   MOCK_METHOD(void, SetPriority, (uint32_t, bool), (override));
   MOCK_METHOD(void, SetUseDNS, (bool), (override));

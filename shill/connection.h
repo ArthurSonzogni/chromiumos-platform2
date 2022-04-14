@@ -54,14 +54,14 @@ class Connection {
   Connection& operator=(const Connection&) = delete;
   virtual ~Connection();
 
-  // Add the contents of an IPConfig reference to the list of managed state.
+  // Add the contents of an IPConfig::Properties to the list of managed state.
   // This will replace all previous state for this address family.
-  virtual void UpdateFromIPConfig(const IPConfigRefPtr& config);
+  virtual void UpdateFromIPConfig(const IPConfig::Properties& properties);
 
-  // Update the metric on the default route in |config|, if any.  This
+  // Update the metric on the default route in |properties|, if any.  This
   // should be called after the kernel notifies shill that a new IPv6
   // address+gateway have been configured.
-  virtual void UpdateGatewayMetric(const IPConfigRefPtr& config);
+  void UpdateGatewayMetric(const IPConfig::Properties& properties);
 
   // Routing policy rules have priorities, which establishes the order in which
   // policy rules will be matched against the current traffic. The higher the

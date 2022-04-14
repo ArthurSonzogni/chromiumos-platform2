@@ -734,7 +734,7 @@ bool Device::IPConfigCompleted(const IPConfigRefPtr& ipconfig) {
 
 void Device::OnIPv6ConfigUpdated() {
   if (ip6config_ && connection_) {
-    connection_->UpdateGatewayMetric(ip6config_);
+    connection_->UpdateGatewayMetric(ip6config_->properties());
   }
 
   // Setup connection using IPv6 configuration only if the IPv6 configuration
@@ -754,7 +754,7 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   } else {
     ipconfig->ClearBlackholedUids();
   }
-  connection_->UpdateFromIPConfig(ipconfig);
+  connection_->UpdateFromIPConfig(ipconfig->properties());
 
   // Report connection type.
   Metrics::NetworkConnectionIPType ip_type =

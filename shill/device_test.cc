@@ -241,7 +241,7 @@ class DeviceTest : public testing::Test {
   MockTime time_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
   patchpanel::FakeClient* patchpanel_client_;
-  MockIPConfig* ipconfig_;           // owned by |device_|
+  MockIPConfig* ipconfig_;               // owned by |device_|
   MockDHCPController* dhcp_controller_;  // owned by |device_|
 };
 
@@ -502,7 +502,8 @@ TEST_F(DeviceTest, IPConfigUpdatedFailureWithIPv6Config) {
 
   EXPECT_CALL(*ipconfig_, ResetProperties());
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(false));
-  EXPECT_CALL(*connection, UpdateFromIPConfig(device_->ip6config_));
+  EXPECT_CALL(*connection,
+              UpdateFromIPConfig(Ref(device_->ip6config_->properties())));
   EXPECT_CALL(*service, IsConnected(nullptr))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -1108,7 +1109,8 @@ TEST_F(DeviceTest, OnIPv6ConfigurationCompleted) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
   EXPECT_CALL(*connection, IsIPv6()).WillRepeatedly(Return(true));
-  EXPECT_CALL(*connection, UpdateFromIPConfig(device_->ip6config_));
+  EXPECT_CALL(*connection,
+              UpdateFromIPConfig(Ref(device_->ip6config_->properties())));
   EXPECT_CALL(*metrics(), NotifyNetworkConnectionIPType(
                               device_->technology(),
                               Metrics::kNetworkConnectionIPTypeIPv6));
