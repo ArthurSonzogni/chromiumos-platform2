@@ -8,6 +8,7 @@ package introspect
 
 import (
 	"chromiumos/dbusbindings/dbustype"
+	"encoding/xml"
 	"fmt"
 )
 
@@ -38,11 +39,28 @@ type Annotation struct {
 	Value string `xml:"value,attr"`
 }
 
+// encoding/xml package cannot handle conflicting attributes
+// in different namespaces, specificaly if one of them is root namespace. But we have such cases,
+// e.g. a method argument may contain both type and tp:type, and we have to select type.
+// cf: https://github.com/golang/go/issues/11724
+// TODO(chromium:983008): Remove the workaround when go xml package is fixed.
+
+// NonNamespaceString represents string of a XML tag in root namespace.
+type NonNamespaceString string
+
+// UnmarshalXMLAttr selects a XML tag in root namespace.
+func (s *NonNamespaceString) UnmarshalXMLAttr(attr xml.Attr) error {
+	if attr.Name.Space == "" {
+		*s = NonNamespaceString(attr.Value)
+	}
+	return nil
+}
+
 // MethodArg represents method argument or return value.
 type MethodArg struct {
-	Name      string `xml:"name,attr"`
-	Type      string `xml:"type,attr"`
-	Direction string `xml:"direction,attr"`
+	Name      string             `xml:"name,attr"`
+	Type      NonNamespaceString `xml:"type,attr"`
+	Direction string             `xml:"direction,attr"`
 	// For now, MethodArg supports only ProtobufClass annotation only,
 	// so it can have at most one annotation.
 	Annotation Annotation `xml:"annotation"`
@@ -177,19 +195,19 @@ func (m *Method) Const() bool {
 
 // BaseType returns the C++ type corresponding to the type that the argument describes.
 func (a *MethodArg) BaseType(dir dbustype.Direction) (string, error) {
-	return baseTypeInternal(a.Type, dir, &a.Annotation)
+	return baseTypeInternal(string(a.Type), dir, &a.Annotation)
 }
 
 // InArgType returns the C++ type corresponding to the type that the argument describes
 // for an in argument.
 func (a *MethodArg) InArgType(receiver dbustype.Receiver) (string, error) {
-	return inArgTypeInternal(a.Type, receiver, &a.Annotation)
+	return inArgTypeInternal(string(a.Type), receiver, &a.Annotation)
 }
 
 // OutArgType returns the C++ type corresponding to the type that the argument describes
 // for an out argument.
 func (a *MethodArg) OutArgType(receiver dbustype.Receiver) (string, error) {
-	return outArgTypeInternal(a.Type, receiver, &a.Annotation)
+	return outArgTypeInternal(string(a.Type), receiver, &a.Annotation)
 }
 
 // BaseType returns the C++ type corresponding to the type that the argument describes.
