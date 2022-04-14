@@ -129,6 +129,22 @@ class AuthBlockUtility {
       Tpm* tpm,
       brillo::SecureBlob* out_recovery_request,
       brillo::SecureBlob* out_ephemeral_pub_key) const = 0;
+
+  // Provides a KeyChallengeService for ChallengeCredentials to
+  // either create or derive KeyBlobs.
+  virtual void SetSingleUseKeyChallengeService(
+      std::unique_ptr<KeyChallengeService> key_challenge_service,
+      const std::string& account_id) = 0;
+
+  // Initializes ChallengeCredentialsHelper for
+  // AuthBlockType::kChallengeCredential
+  virtual void InitializeForChallengeCredentials(
+      ChallengeCredentialsHelper* challenge_credentials_helper) = 0;
+
+  // Returns if the AuthBlockUtility has called
+  // InitializeForChallengeCredentials and has a valid
+  // challenge_credentials_helper_.
+  virtual bool IsChallengeCredentialReady() const = 0;
 };
 
 }  // namespace cryptohome

@@ -847,9 +847,12 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
       std::make_unique<NiceMock<MockKeyChallengeService>>();
 
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_,
-      &challenge_credentials_helper_, std::move(mock_key_challenge_service),
-      credentials.username());
+      keyset_management_.get(), &crypto_, &platform_);
+
+  auth_block_utility_impl_->InitializeForChallengeCredentials(
+      &challenge_credentials_helper_);
+  auth_block_utility_impl_->SetSingleUseKeyChallengeService(
+      std::move(mock_key_challenge_service), credentials.username());
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
       [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -1051,9 +1054,12 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
       std::make_unique<NiceMock<MockKeyChallengeService>>();
 
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_,
-      &challenge_credentials_helper_, std::move(mock_key_challenge_service),
-      credentials.username());
+      keyset_management_.get(), &crypto_, &platform_);
+
+  auth_block_utility_impl_->InitializeForChallengeCredentials(
+      &challenge_credentials_helper_);
+  auth_block_utility_impl_->SetSingleUseKeyChallengeService(
+      std::move(mock_key_challenge_service), credentials.username());
 
   EXPECT_CALL(challenge_credentials_helper_,
               Decrypt(kUser, _, _, /*locked_to_single_user=*/false, _, _))
@@ -1583,9 +1589,13 @@ TEST_F(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType) {
       std::make_unique<NiceMock<MockKeyChallengeService>>();
 
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
-      keyset_management_.get(), &crypto_, &platform_,
-      &challenge_credentials_helper_, std::move(mock_key_challenge_service),
-      credentials.username());
+      keyset_management_.get(), &crypto_, &platform_);
+
+  auth_block_utility_impl_->InitializeForChallengeCredentials(
+      &challenge_credentials_helper_);
+  auth_block_utility_impl_->SetSingleUseKeyChallengeService(
+      std::move(mock_key_challenge_service), credentials.username());
+
   // Test. All fields are valid to get an AsyncChallengeCredentialAuthBlock.
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       auth_block_utility_impl_->GetAsyncAuthBlockWithType(

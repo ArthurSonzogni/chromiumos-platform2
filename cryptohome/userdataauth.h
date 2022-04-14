@@ -875,6 +875,13 @@ class UserDataAuth {
   bool InitForChallengeResponseAuth(
       user_data_auth::CryptohomeErrorCode* error_code);
 
+  // After lazy initialization through InitForChallengeResponseAuth,
+  // it updates the existing auth_block_utility_ to have a valid
+  // challenge_credentials_helper and refreshes the key_challenge_service
+  // for adding, updating and authenticating with ChallengeCredentials.
+  bool InitAuthBlockUtilityForChallengeResponse(
+      const AuthorizationRequest& authorization, const std::string& username);
+
   // This is a utility function used by DoMount(). It is called if the request
   // mounting operation requires challenge response authentication. i.e. The key
   // for the storage is sealed.
@@ -1283,6 +1290,17 @@ class UserDataAuth {
   // only because there's no guarantee on thread safety of the HomeDirs object.
   KeysetManagement* keyset_management_;
 
+  // Default challenge credential helper utility object. This object is required
+  // for doing a challenge response style login, and is only lazily created when
+  // mounting a mount that requires challenge response login type is performed.
+  std::unique_ptr<ChallengeCredentialsHelper>
+      default_challenge_credentials_helper_;
+
+  // Actual challenge credential helper utility object used by this class.
+  // Usually set to |default_challenge_credentials_helper_|, but can be
+  // overridden for testing.
+  ChallengeCredentialsHelper* challenge_credentials_helper_ = nullptr;
+
   // The object used to instantiate AuthBlocks.
   std::unique_ptr<AuthBlockUtility> default_auth_block_utility_;
   // This holds the object that records information about the
@@ -1348,17 +1366,6 @@ class UserDataAuth {
 
   // This holds the salt that is used to derive the passkey for public mounts.
   brillo::SecureBlob public_mount_salt_;
-
-  // Default challenge credential helper utility object. This object is required
-  // for doing a challenge response style login, and is only lazily created when
-  // mounting a mount that requires challenge response login type is performed.
-  std::unique_ptr<ChallengeCredentialsHelper>
-      default_challenge_credentials_helper_;
-
-  // Actual challenge credential helper utility object used by this class.
-  // Usually set to |default_challenge_credentials_helper_|, but can be
-  // overridden for testing.
-  ChallengeCredentialsHelper* challenge_credentials_helper_ = nullptr;
 
   // Default factory of key challenge services. This object is required for
   // doing a challenge response style login.

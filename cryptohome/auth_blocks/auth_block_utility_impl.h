@@ -40,13 +40,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   AuthBlockUtilityImpl(KeysetManagement* keyset_management,
                        Crypto* crypto,
                        Platform* platform);
-  AuthBlockUtilityImpl(
-      KeysetManagement* keyset_management,
-      Crypto* crypto,
-      Platform* platform,
-      ChallengeCredentialsHelper* credentials_helper,
-      std::unique_ptr<KeyChallengeService> key_challenge_service,
-      const std::string& account_id);
+
   AuthBlockUtilityImpl(const AuthBlockUtilityImpl&) = delete;
   AuthBlockUtilityImpl& operator=(const AuthBlockUtilityImpl&) = delete;
   ~AuthBlockUtilityImpl() override;
@@ -121,6 +115,15 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       brillo::SecureBlob* out_recovery_request,
       brillo::SecureBlob* out_ephemeral_pub_key) const override;
 
+  void SetSingleUseKeyChallengeService(
+      std::unique_ptr<KeyChallengeService> key_challenge_service,
+      const std::string& username) override;
+
+  void InitializeForChallengeCredentials(
+      ChallengeCredentialsHelper* challenge_credentials_helper) override;
+
+  bool IsChallengeCredentialReady() const override;
+
  private:
   // This helper function serves as a factory method to return the authblock
   // used in authentication.
@@ -146,14 +149,18 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   // Challenge credential helper utility object. This object is required
   // for using a challenge response authblock.
-  ChallengeCredentialsHelper* const challenge_credentials_helper_;
+  ChallengeCredentialsHelper* challenge_credentials_helper_;
 
   // KeyChallengeService is tasked with contacting the challenge response D-Bus
   // service that'll provide the response once we send the challenge.
+  // This unique_ptr is validated through SetSingleUseKeyChallengeService(),
+  // and is invalidated through Create/DeriveKeyBlobsWithAsyncAuthBlock().
+  // This means |key_challenge_service_| must be validated through a call to
+  // SetSingleUseKeyChallengeSerive() before deriving key_blobs.
   std::unique_ptr<KeyChallengeService> key_challenge_service_;
 
-  // Account ID for AsyncChallengeCredentialAuthBlock.
-  std::optional<std::string> account_id_;
+  // Username for AsyncChallengeCredentialAuthBlock.
+  std::optional<std::string> username_;
 
   friend class AuthBlockUtilityImplTest;
   FRIEND_TEST(AuthBlockUtilityImplTest, GetAsyncAuthBlockWithType);

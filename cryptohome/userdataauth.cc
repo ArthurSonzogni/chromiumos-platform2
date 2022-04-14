@@ -1794,7 +1794,49 @@ bool UserDataAuth::InitForChallengeResponseAuth(
       std::make_unique<ChallengeCredentialsHelperImpl>(tpm_, delegate_blob,
                                                        delegate_secret);
   challenge_credentials_helper_ = default_challenge_credentials_helper_.get();
+  auth_block_utility_->InitializeForChallengeCredentials(
+      challenge_credentials_helper_);
+  return true;
+}
 
+bool UserDataAuth::InitAuthBlockUtilityForChallengeResponse(
+    const AuthorizationRequest& authorization, const std::string& username) {
+  // challenge_credential_helper_ must initialized to process
+  // AuthBlockType::kChallengeCredential.
+  // Update AuthBlockUtility with challenge_credentials_helper_.
+  user_data_auth::CryptohomeErrorCode error_code =
+      user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+  if (!InitForChallengeResponseAuth(&error_code)) {
+    return false;
+  }
+
+  if (!authorization.has_key_delegate() ||
+      !authorization.key_delegate().has_dbus_service_name()) {
+    LOG(ERROR) << "Cannot do challenge-response authentication without key "
+                  "delegate information";
+    return false;
+  }
+  if (!authorization.key().data().challenge_response_key_size()) {
+    LOG(ERROR) << "Missing challenge-response key information";
+    return false;
+  }
+  if (authorization.key().data().challenge_response_key_size() > 1) {
+    LOG(ERROR)
+        << "Using multiple challenge-response keys at once is unsupported";
+    return false;
+  }
+
+  // KeyChallengeService is tasked with contacting the challenge response
+  // D-Bus service that'll provide the response once we send the challenge.
+  std::unique_ptr<KeyChallengeService> key_challenge_service =
+      key_challenge_service_factory_->New(
+          mount_thread_bus_, authorization.key_delegate().dbus_service_name());
+  if (!key_challenge_service) {
+    LOG(ERROR) << "Failed to create key challenge service";
+    return false;
+  }
+  auth_block_utility_->SetSingleUseKeyChallengeService(
+      std::move(key_challenge_service), username);
   return true;
 }
 
@@ -3923,6 +3965,16 @@ void UserDataAuth::AddCredentials(
     return;
   }
 
+  if (request.authorization().key().data().type() ==
+      KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    if (!InitAuthBlockUtilityForChallengeResponse(request.authorization(),
+                                                  auth_session->username())) {
+      reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
+      std::move(on_done).Run(reply);
+      return;
+    }
+  }
+
   // Additional check if the user wants to add new credentials for an existing
   // user.
   if (request.add_more_credentials() && !auth_session->user_exists()) {
@@ -3985,6 +4037,23 @@ void UserDataAuth::AuthenticateAuthSession(
                        user_data_auth::CryptohomeErrorCode::
                            CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
     return;
+  }
+
+  if (request.authorization().key().data().type() ==
+      KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    if (!InitAuthBlockUtilityForChallengeResponse(request.authorization(),
+                                                  auth_session->username())) {
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocUserDataAuthAuthBlockUtilityNotValidForChallenge),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                              ErrorAction::kReboot}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_ERROR_MOUNT_FATAL));
+      return;
+    }
   }
 
   // Perform authentication using data in AuthorizationRequest and

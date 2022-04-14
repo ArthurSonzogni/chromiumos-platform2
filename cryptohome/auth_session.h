@@ -234,6 +234,13 @@ class AuthSession final {
   MountStatusOr<std::unique_ptr<Credentials>> GetCredentials(
       const cryptohome::AuthorizationRequest& authorization_request);
 
+  // Initializes the auth_input.challenge_credential_auth_input
+  // {.public_key_spki_der, .challenge_signature_algorithms} from
+  // the challenge_response_key values in in authorization
+  bool ConstructAuthInputForChallengeCredentials(
+      const cryptohome::AuthorizationRequest& authorization,
+      AuthInput& auth_input);
+
   // This function sets the credential_verifier_ based on the passkey parameter.
   void SetCredentialVerifier(const brillo::SecureBlob& passkey);
 
@@ -250,6 +257,7 @@ class AuthSession final {
   // type, and uses that AuthBlock to derive KeyBlobs for the AuthSession to
   // add a VaultKeyset.
   void CreateKeyBlobsToAddKeyset(
+      const user_data_auth::AddCredentialsRequest& request,
       const Credentials& credentials,
       bool initial_keyset,
       base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>

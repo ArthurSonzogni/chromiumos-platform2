@@ -427,7 +427,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNotAuthedYetInAddCred = 300,
   /* ./auth_session.cc */
   kLocAuthSessionInvalidBlockTypeInAddKeyset = 301,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionChalCredUnsupportedInAddKeyset = 302,
   /* ./auth_session.cc */
   kLocAuthSessionPinweaverUnsupportedInAddKeyset = 303,
@@ -897,6 +897,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocWrongAuthFactorInGetRecoveryRequest = 535,
   /* ./auth_session.cc */
   kLocAuthSessionEmptyKeyLabelInAuth = 536,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthAuthBlockUtilityNotValidForChallenge = 537,
+  /* ./auth_session.cc */
+  kLocAuthSessionAddCredentialInvalidAuthInput = 538,
+  /* ./auth_session.cc */
+  kLocAuthSessionAuthenticateInvalidAuthInput = 539,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

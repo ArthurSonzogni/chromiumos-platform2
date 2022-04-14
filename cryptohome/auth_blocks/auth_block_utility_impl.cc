@@ -71,25 +71,6 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(KeysetManagement* keyset_management,
   DCHECK(platform_);
 }
 
-AuthBlockUtilityImpl::AuthBlockUtilityImpl(
-    KeysetManagement* keyset_management,
-    Crypto* crypto,
-    Platform* platform,
-    ChallengeCredentialsHelper* credentials_helper,
-    std::unique_ptr<KeyChallengeService> key_challenge_service,
-    const std::string& account_id)
-    : keyset_management_(keyset_management),
-      crypto_(crypto),
-      platform_(platform),
-      challenge_credentials_helper_(credentials_helper),
-      key_challenge_service_(std::move(key_challenge_service)),
-      account_id_(account_id) {
-  DCHECK(keyset_management);
-  DCHECK(crypto_);
-  DCHECK(platform_);
-  DCHECK(challenge_credentials_helper_);
-  DCHECK(key_challenge_service_);
-}
 AuthBlockUtilityImpl::~AuthBlockUtilityImpl() = default;
 
 bool AuthBlockUtilityImpl::GetLockedToSingleUser() const {
@@ -155,12 +136,24 @@ bool AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
   }
   ReportCreateAuthBlock(auth_block_type);
 
-  auth_block.value()->Create(auth_input, std::move(create_callback));
-
   // TODO(b/225001347): Move this report to the caller. Here this is always
   // reported independent of the error status.
   ReportWrappingKeyDerivationType(auth_block.value()->derivation_type(),
                                   CryptohomePhase::kCreated);
+
+  // This lambda functions to keep the auth_block reference valid until
+  // the results are returned through create_callback.
+  AuthBlock* auth_block_ptr = auth_block->get();
+  auto managed_callback = base::BindOnce(
+      [](std::unique_ptr<AuthBlock> owned_auth_block,
+         AuthBlock::CreateCallback callback, CryptoStatus error,
+         std::unique_ptr<KeyBlobs> key_blobs,
+         std::unique_ptr<AuthBlockState> auth_block_state) {
+        std::move(callback).Run(std::move(error), std::move(key_blobs),
+                                std::move(auth_block_state));
+      },
+      std::move(auth_block.value()), std::move(create_callback));
+  auth_block_ptr->Create(auth_input, std::move(managed_callback));
   return true;
 }
 
@@ -247,9 +240,18 @@ bool AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
   }
   ReportCreateAuthBlock(auth_block_type);
 
-  auth_block.value()->Derive(auth_input, auth_state,
-                             std::move(derive_callback));
+  // This lambda functions to keep the auth_block reference valid until
+  // the results are returned through derive_callback.
+  AuthBlock* auth_block_ptr = auth_block->get();
+  auto managed_callback = base::BindOnce(
+      [](std::unique_ptr<AuthBlock> owned_auth_block,
+         AuthBlock::DeriveCallback callback, CryptoStatus error,
+         std::unique_ptr<KeyBlobs> key_blobs) {
+        std::move(callback).Run(std::move(error), std::move(key_blobs));
+      },
+      std::move(auth_block.value()), std::move(derive_callback));
 
+  auth_block_ptr->Derive(auth_input, auth_state, std::move(managed_callback));
   return true;
 }
 
@@ -374,11 +376,10 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
               crypto_->le_manager(), crypto_->cryptohome_keys_manager()));
 
     case AuthBlockType::kChallengeCredential:
-      if (key_challenge_service_ && challenge_credentials_helper_ &&
-          account_id_.has_value()) {
+      if (IsChallengeCredentialReady()) {
         return std::make_unique<AsyncChallengeCredentialAuthBlock>(
             crypto_->tpm(), challenge_credentials_helper_,
-            std::move(key_challenge_service_), account_id_.value());
+            std::move(key_challenge_service_), username_.value());
       }
       LOG(ERROR) << "No valid ChallengeCredentialsHelper, "
                     "KeyChallengeService, or account id in AuthBlockUtility";
@@ -438,6 +439,28 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
       ErrorActionSet(
           {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
       CryptoError::CE_OTHER_CRYPTO);
+}
+
+void AuthBlockUtilityImpl::SetSingleUseKeyChallengeService(
+    std::unique_ptr<KeyChallengeService> key_challenge_service,
+    const std::string& username) {
+  key_challenge_service_ = std::move(key_challenge_service);
+  username_ = username;
+}
+
+void AuthBlockUtilityImpl::InitializeForChallengeCredentials(
+    ChallengeCredentialsHelper* challenge_credentials_helper) {
+  if (!challenge_credentials_helper_) {
+    challenge_credentials_helper_ = challenge_credentials_helper;
+  } else {
+    LOG(WARNING) << "challenge_credentials_helper already initialized in "
+                    "AuthBlockUtility.";
+  }
+}
+
+bool AuthBlockUtilityImpl::IsChallengeCredentialReady() const {
+  return (key_challenge_service_ && challenge_credentials_helper_ &&
+          username_.has_value());
 }
 
 bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(

@@ -28,6 +28,7 @@
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/keyset_management.h"
+#include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/user_secret_stash.h"
@@ -310,13 +311,14 @@ void AuthSession::AddCredentials(
     }
   }
 
-  CreateKeyBlobsToAddKeyset(*credentials.get(),
+  CreateKeyBlobsToAddKeyset(request, *credentials.get(),
                             /*initial_keyset=*/!user_has_configured_credential_,
                             std::move(on_done));
   return;
 }
 
 void AuthSession::CreateKeyBlobsToAddKeyset(
+    const user_data_auth::AddCredentialsRequest& request,
     const Credentials& credentials,
     bool initial_keyset,
     base::OnceCallback<void(const user_data_auth::AddCredentialsReply&)>
@@ -339,16 +341,6 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
             ErrorActionSet(
                 {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
             user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
-    return;
-  }
-  if (auth_block_type == AuthBlockType::kChallengeCredential) {
-    LOG(ERROR) << "AddCredentials: ChallengeCredential not supported";
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionChalCredUnsupportedInAddKeyset),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
     return;
   }
 
@@ -390,6 +382,18 @@ void AuthSession::CreateKeyBlobsToAddKeyset(
   AuthInput auth_input = {credentials.passkey(),
                           /*locked_to_single_user=*/std::nullopt,
                           obfuscated_username_, reset_secret};
+  if (auth_block_type == AuthBlockType::kChallengeCredential) {
+    if (!ConstructAuthInputForChallengeCredentials(request.authorization(),
+                                                   auth_input)) {
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionAddCredentialInvalidAuthInput),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+      return;
+    }
+  }
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, auth_input, std::move(create_callback));
   return;
@@ -801,8 +805,10 @@ void AuthSession::Authenticate(
   }
 
   if (authorization_request.key().data().type() != KeyData::KEY_TYPE_PASSWORD &&
-      authorization_request.key().data().type() != KeyData::KEY_TYPE_KIOSK) {
-    // AuthSession::Authenticate is only supported for two types of cases
+      authorization_request.key().data().type() != KeyData::KEY_TYPE_KIOSK &&
+      authorization_request.key().data().type() !=
+          KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    // AuthSession::Authenticate is only supported for three types of cases
     err = MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionUnsupportedKeyTypesInAuth),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
@@ -851,6 +857,19 @@ void AuthSession::Authenticate(
   AuthInput auth_input = {credentials->passkey(),
                           /*locked_to_single_user=*/
                           auth_block_utility_->GetLockedToSingleUser()};
+  if (authorization_request.key().data().type() ==
+      KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
+    if (!ConstructAuthInputForChallengeCredentials(authorization_request,
+                                                   auth_input)) {
+      ReplyWithError(
+          std::move(on_done), reply,
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionAuthenticateInvalidAuthInput),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+      return;
+    }
+  }
   AuthenticateViaVaultKeyset<user_data_auth::AuthenticateAuthSessionReply>(
       auth_input, std::move(on_done));
 }
@@ -1146,6 +1165,25 @@ MountStatusOr<std::unique_ptr<Credentials>> AuthSession::GetCredentials(
   }
 
   return credentials;
+}
+
+bool AuthSession::ConstructAuthInputForChallengeCredentials(
+    const cryptohome::AuthorizationRequest& authorization,
+    AuthInput& auth_input) {
+  // There should only ever have 1 challenge response key in the request
+  // and having 0 or more than 1 element is considered invalid.
+  if (authorization.key().data().challenge_response_key_size() != 1) {
+    return false;
+  }
+  const ChallengePublicKeyInfo& public_key_info =
+      authorization.key().data().challenge_response_key(0);
+  auto struct_public_key_info = cryptohome::proto::FromProto(public_key_info);
+  auth_input.challenge_credential_auth_input = ChallengeCredentialAuthInput{
+      .public_key_spki_der = struct_public_key_info.public_key_spki_der,
+      .challenge_signature_algorithms =
+          struct_public_key_info.signature_algorithm,
+  };
+  return true;
 }
 
 CryptohomeStatus AuthSession::AddAuthFactor(

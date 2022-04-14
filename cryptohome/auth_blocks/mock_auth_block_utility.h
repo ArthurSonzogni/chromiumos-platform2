@@ -101,6 +101,16 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                brillo::SecureBlob* out_recovery_request,
                brillo::SecureBlob* out_ephemeral_pub_key),
               (const, override));
+  MOCK_METHOD(void,
+              SetSingleUseKeyChallengeService,
+              (std::unique_ptr<KeyChallengeService> key_challenge_service,
+               const std::string& account_id),
+              (override));
+  MOCK_METHOD(void,
+              InitializeForChallengeCredentials,
+              (ChallengeCredentialsHelper* const challenge_credentials_helper),
+              (override));
+  MOCK_METHOD(bool, IsChallengeCredentialReady, (), (const, override));
 };
 
 }  // namespace cryptohome
