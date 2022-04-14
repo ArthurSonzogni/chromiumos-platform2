@@ -62,6 +62,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   }
 
   void SetKeyColor(uint32_t key, const Color& color);
+  void SetAllKeyColors(const Color& color);
 
   RgbKeyboardCapabilities keyboard_capabilities_ =
       RgbKeyboardCapabilities::kNone;

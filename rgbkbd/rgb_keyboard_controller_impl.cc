@@ -22,6 +22,10 @@ void RgbKeyboardControllerImpl::SetKeyColor(uint32_t key, const Color& color) {
   keyboard_->SetKeyColor(key, color.r, color.g, color.b);
 }
 
+void RgbKeyboardControllerImpl::SetAllKeyColors(const Color& color) {
+  keyboard_->SetAllKeyColors(color.r, color.g, color.b);
+}
+
 void RgbKeyboardControllerImpl::SetCapsLockState(bool enabled) {
   caps_lock_enabled_ = enabled;
   const auto color = GetCurrentCapsLockColor();
@@ -29,10 +33,17 @@ void RgbKeyboardControllerImpl::SetCapsLockState(bool enabled) {
   SetKeyColor(kRightShiftKey, color);
 }
 
-// TODO(jimmyxgong): Implement this stub.
 void RgbKeyboardControllerImpl::SetStaticBackgroundColor(uint32_t r,
                                                          uint32_t g,
-                                                         uint32_t b) {}
+                                                         uint32_t b) {
+  background_color_ = Color(r, g, b);
+  SetAllKeyColors(background_color_);
+
+  // If Capslock was enabled, re-color the highlight keys.
+  if (caps_lock_enabled_) {
+    SetCapsLockState(caps_lock_enabled_);
+  }
+}
 
 // TODO(jimmyxgong): Implement this stub.
 void RgbKeyboardControllerImpl::SetRainbowMode() {}

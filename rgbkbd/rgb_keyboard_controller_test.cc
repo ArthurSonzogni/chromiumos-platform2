@@ -31,20 +31,26 @@ const std::string CreateSetKeyColorLogEntry(uint32_t key, const Color& color) {
                        ",", std::to_string(color.b), "\n"});
 }
 
-bool ValidateLog(const std::string& expected) {
-  std::string file_contents;
-  return base::ReadFileToString(kTempLogFilePath, &file_contents) &&
-         expected == file_contents;
+const std::string CreateSetAllKeyColorsLogEntry(const Color& color) {
+  return base::StrCat({"RGB::SetAllKeyColors - ", std::to_string(color.r), ",",
+                       std::to_string(color.g), ",", std::to_string(color.b),
+                       "\n"});
 }
 
-bool ValidateLog(const std::vector<const KeyColor>& expected) {
+void ValidateLog(const std::string& expected) {
+  std::string file_contents;
+  EXPECT_TRUE(base::ReadFileToString(kTempLogFilePath, &file_contents) &&
+              expected == file_contents);
+}
+
+void ValidateLog(const std::vector<const KeyColor>& expected) {
   std::string expected_string;
   for (const auto& key_color : expected) {
     expected_string +=
         CreateSetKeyColorLogEntry(key_color.key, key_color.color);
   }
 
-  return ValidateLog(expected_string);
+  ValidateLog(expected_string);
 }
 
 }  // namespace
@@ -89,4 +95,50 @@ TEST_F(RgbKeyboardControllerTest, SetCapsLockState) {
                {kRightShiftKey, kDefaultBackgroundColor}});
 }
 
+TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColor) {
+  const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
+
+  controller_->SetStaticBackgroundColor(expected_color.r, expected_color.g,
+                                        expected_color.b);
+
+  const std::string expected_log =
+      CreateSetAllKeyColorsLogEntry(expected_color);
+  ValidateLog(expected_log);
+}
+
+TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColorWithCapsLock) {
+  // Simulate enabling Capslock.
+  EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
+  controller_->SetCapsLockState(/*enabled=*/true);
+  EXPECT_TRUE(controller_->IsCapsLockEnabledForTesting());
+
+  std::string shift_key_logs =
+      CreateSetKeyColorLogEntry(kLeftShiftKey, kCapsLockHighlightDefault) +
+      CreateSetKeyColorLogEntry(kRightShiftKey, kCapsLockHighlightDefault);
+
+  ValidateLog(shift_key_logs);
+  EXPECT_TRUE(logger_->ResetLog());
+
+  // Set static background color.
+  const Color expected_color(/*r=*/100, /*g=*/150, /*b=*/200);
+  controller_->SetStaticBackgroundColor(expected_color.r, expected_color.g,
+                                        expected_color.b);
+
+  // Since Capslock was enabled, it is re-highlighted when the background is
+  // set.
+  const std::string background_log =
+      CreateSetAllKeyColorsLogEntry(expected_color);
+  ValidateLog(background_log + shift_key_logs);
+  EXPECT_TRUE(logger_->ResetLog());
+
+  // Disable Capslock.
+  EXPECT_TRUE(controller_->IsCapsLockEnabledForTesting());
+  controller_->SetCapsLockState(/*enabled=*/false);
+  EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
+
+  // Since background was set, expect disabling Capslock reverts to the set
+  // background color.
+  ValidateLog(CreateSetKeyColorLogEntry(kLeftShiftKey, expected_color) +
+              CreateSetKeyColorLogEntry(kRightShiftKey, expected_color));
+}
 }  // namespace rgbkbd
