@@ -133,7 +133,11 @@ void ModemManagerProxy::OnInterfaceRemoved(
 
 void ModemManagerProxy::OnNewModemDetected(dbus::ObjectPath object_path) {
   LOG(INFO) << __func__ << ": New modem detected at " << object_path.value();
-  if (modem_proxy_) {
+  // TODO(b/229183415): Listen for dbus name owner changes instead of
+  // kFirstModemAfterRestart
+  const char kFirstModemAfterMMRestart[] =
+      "/org/freedesktop/ModemManager1/Modem/0";
+  if (modem_proxy_ && object_path.value() != kFirstModemAfterMMRestart) {
     LOG(INFO) << "Already tracking " << modem_proxy_->GetObjectPath().value()
               << ". Ignoring " << object_path.value();
     return;
