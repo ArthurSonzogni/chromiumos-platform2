@@ -3,13 +3,16 @@
 # found in the LICENSE file.
 
 brk: 1
+chdir: 1
 clock_gettime: 1
+clone: 1
 close: 1
 connect: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_pwait: 1
 execve: 1
+exit: 1
 exit_group: 1
 faccessat: 1
 fcntl: 1
@@ -26,14 +29,18 @@ gettid: 1
 gettimeofday: 1
 getuid: 1
 ioctl: arg1 == TCGETS
+kill: arg1 == SIGTERM
 lseek: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mremap: 1
 munmap: 1
 newfstatat: 1
 openat: 1
 pipe2: 1
+pipe: 1
 ppoll: 1
+prctl: arg0 == PR_SET_NAME
 pread64: 1
 prlimit64: 1
 read: 1
@@ -46,7 +53,12 @@ sendmsg: 1
 sendto: 1
 set_robust_list: 1
 set_tid_address: 1
+setgroups: 1
+setresgid: 1
+setresuid: 1
+setsid: 1
 signalfd4: 1
 socket: arg0 == AF_UNIX
+wait4: 1
 write: 1
 writev: 1

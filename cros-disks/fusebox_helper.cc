@@ -23,6 +23,7 @@ namespace {
 
 const char kType[] = "fusebox";
 const char kHelperTool[] = "/usr/bin/fusebox";
+const char kSeccompPolicyFile[] = "/usr/share/policy/fusebox-seccomp.policy";
 const char kOwnerUserName[] = "fuse-fusebox";
 const char kDbusSocketPath[] = "/run/dbus";
 
@@ -36,7 +37,8 @@ FuseBoxHelper::FuseBoxHelper(const Platform* platform,
                         /* nosymfollow= */ true,
                         &sandbox_factory_),
       sandbox_factory_(platform,
-                       SandboxedExecutable{base::FilePath(kHelperTool)},
+                       SandboxedExecutable{base::FilePath(kHelperTool),
+                                           base::FilePath{kSeccompPolicyFile}},
                        ResolveFuseBoxOwnerUser(platform),
                        /* has_network_access= */ false) {}
 
