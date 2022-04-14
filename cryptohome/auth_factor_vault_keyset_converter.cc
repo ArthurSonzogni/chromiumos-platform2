@@ -98,6 +98,20 @@ AuthFactorVaultKeysetConverter::AuthFactorVaultKeysetConverter(
 }
 AuthFactorVaultKeysetConverter::~AuthFactorVaultKeysetConverter() = default;
 
+std::unique_ptr<AuthFactor>
+AuthFactorVaultKeysetConverter::VaultKeysetToAuthFactor(
+    const std::string& username, const std::string& label) {
+  std::string obfuscated_username =
+      brillo::cryptohome::home::SanitizeUserName(username);
+  std::unique_ptr<VaultKeyset> vk =
+      keyset_management_->GetVaultKeyset(obfuscated_username, label);
+  if (!vk) {
+    LOG(ERROR) << "No keyset found for the given label: " << label;
+    return nullptr;
+  }
+  return ConvertToAuthFactor(*vk);
+}
+
 user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactors(
     const std::string& username,
@@ -151,6 +165,27 @@ AuthFactorVaultKeysetConverter::PopulateKeyDataForVK(
   out_vk_key_data = vk->GetKeyData();
 
   return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+}
+
+user_data_auth::CryptohomeErrorCode
+AuthFactorVaultKeysetConverter::AuthFactorToKeyData(
+    const std::string& auth_factor_label,
+    const AuthFactorType& auth_factor_type,
+    KeyData& out_key_data) {
+  out_key_data.set_label(auth_factor_label);
+
+  switch (auth_factor_type) {
+    case AuthFactorType::kPassword:
+      out_key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    case AuthFactorType::kPin:
+      out_key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+      out_key_data.mutable_policy()->set_low_entropy_credential(true);
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    case AuthFactorType::kUnspecified:
+      LOG(ERROR) << "Unimplemented AuthFactorType.";
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED;
+  }
 }
 
 }  // namespace cryptohome

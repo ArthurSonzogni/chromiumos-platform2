@@ -36,6 +36,10 @@ class AuthFactorVaultKeysetConverter {
       const AuthFactorVaultKeysetConverter&) = delete;
   ~AuthFactorVaultKeysetConverter();
 
+  // Generates and returns an AuthFactor type with the |key_data|
+  std::unique_ptr<AuthFactor> VaultKeysetToAuthFactor(
+      const std::string& username, const std::string& label);
+
   // Returns all the existing VaultKeyset data on disk mapped to their labels
   // and converted into AuthFactor format.
   user_data_auth::CryptohomeErrorCode VaultKeysetsToAuthFactors(
@@ -48,6 +52,13 @@ class AuthFactorVaultKeysetConverter {
   user_data_auth::CryptohomeErrorCode PopulateKeyDataForVK(
       const std::string& username,
       const std::string& auth_factor_label,
+      KeyData& out_vk_key_data);
+
+  // Generates a KeyData structure using the |auth_factor_label| and
+  // |auth_factor_type|
+  user_data_auth::CryptohomeErrorCode AuthFactorToKeyData(
+      const std::string& auth_factor_label,
+      const AuthFactorType& auth_factor_type,
       KeyData& out_vk_key_data);
 
  private:

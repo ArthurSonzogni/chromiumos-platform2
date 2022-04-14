@@ -38,6 +38,7 @@ using ::testing::NiceMock;
 
 namespace {
 constexpr char kUsername[] = "user";
+constexpr char kPinLabel[] = "pin";
 constexpr char kLabel[] = "label0";
 constexpr char kLabel1[] = "label1";
 constexpr char kLabel2[] = "label2";
@@ -202,7 +203,7 @@ TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToVaultKeysetDataSuccess) {
   EXPECT_EQ(kLabel, key_data.label());
 }
 
-// Test that PopulateKeyDataForVK returns correct KeyData for the given
+// Test that PopulateKeyDataForVK fails to return KeyData for a wrong given
 // label.
 TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToVaultKeysetDataFail) {
   KeyData test_key_data = SetKeyData(kLabel);
@@ -213,6 +214,71 @@ TEST_F(AuthFactorVaultKeysetConverterTest, ConvertToVaultKeysetDataFail) {
   EXPECT_EQ(
       user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND,
       converter_->PopulateKeyDataForVK(kUsername, auth_factor_label, key_data));
+}
+
+// Test that AuthFactorToKeyData generates correct KeyData for the given
+// password label and type.
+TEST_F(AuthFactorVaultKeysetConverterTest, GenerateKeyDataPassword) {
+  KeyData key_data = SetKeyData(kLabel);
+  key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+
+  KeyData test_key_data;
+  std::string auth_factor_label = kLabel;
+  AuthFactorType auth_factor_type = AuthFactorType::kPassword;
+
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+            converter_->AuthFactorToKeyData(auth_factor_label, auth_factor_type,
+                                            test_key_data));
+  EXPECT_EQ(key_data.label(), test_key_data.label());
+  EXPECT_EQ(key_data.type(), test_key_data.type());
+  EXPECT_FALSE(test_key_data.policy().low_entropy_credential());
+}
+
+// Test that AuthFactorToKeyData generates correct KeyData for the given
+// password label and type.
+TEST_F(AuthFactorVaultKeysetConverterTest, GenerateKeyDataPin) {
+  KeyData key_data = SetKeyData(kPinLabel);
+  key_data.set_type(KeyData::KEY_TYPE_PASSWORD);
+  key_data.mutable_policy()->set_low_entropy_credential(true);
+
+  KeyData test_key_data;
+  std::string auth_factor_label = kPinLabel;
+  AuthFactorType auth_factor_type = AuthFactorType::kPin;
+
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+            converter_->AuthFactorToKeyData(auth_factor_label, auth_factor_type,
+                                            test_key_data));
+  EXPECT_EQ(key_data.label(), test_key_data.label());
+  EXPECT_EQ(key_data.type(), test_key_data.type());
+  EXPECT_TRUE(test_key_data.policy().low_entropy_credential());
+}
+
+// Test that VaultKeysetToAuthFactor returns correct AuthFactor for the given
+// label.
+TEST_F(AuthFactorVaultKeysetConverterTest, VaultKeysetToAuthFactorSuccess) {
+  KeyData test_key_data = SetKeyData(kLabel);
+  KeysetSetUpWithKeyData(test_key_data, kFirstIndice);
+
+  KeyData key_data;
+  std::string auth_factor_label = kLabel;
+  std::unique_ptr<AuthFactor> auth_factor =
+      converter_->VaultKeysetToAuthFactor(kUsername, auth_factor_label);
+  EXPECT_NE(nullptr, auth_factor);
+  EXPECT_EQ(kLabel, auth_factor->label());
+  EXPECT_EQ(AuthFactorType::kPassword, auth_factor->type());
+}
+
+// Test that VaultKeysetToAuthFactor fails to return AuthFactor for a wrong
+// given label.
+TEST_F(AuthFactorVaultKeysetConverterTest, VaultKeysetToAuthFactorFail) {
+  KeyData test_key_data = SetKeyData(kLabel);
+  KeysetSetUpWithKeyData(test_key_data, kFirstIndice);
+
+  KeyData key_data;
+  std::string auth_factor_label = kLabel1;
+  std::unique_ptr<AuthFactor> auth_factor =
+      converter_->VaultKeysetToAuthFactor(kUsername, auth_factor_label);
+  EXPECT_EQ(nullptr, auth_factor);
 }
 
 }  // namespace cryptohome
