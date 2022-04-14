@@ -4013,9 +4013,14 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply.auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
-                  auth_session_id.value()),
-              NotNull());
+
+  AuthSession* auth_session =
+      userdataauth_->auth_session_manager_->FindAuthSession(
+          auth_session_id.value());
+  EXPECT_THAT(auth_session, NotNull());
+
+  // Extension only happens for authenticated auth session.
+  auth_session->SetAuthSessionAsAuthenticated();
 
   // Test.
   user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
@@ -4041,9 +4046,8 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
   }
 
   // Verify that timer has changed, within a resaonsable degree of error.
-  AuthSession* auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
+  auth_session = userdataauth_->auth_session_manager_->FindAuthSession(
+      auth_session_id.value());
   auto requested_delay = auth_session->timer_.GetCurrentDelay();
   auto time_difference =
       (kAuthSessionTimeout + kAuthSessionExtension) - requested_delay;

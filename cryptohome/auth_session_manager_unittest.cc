@@ -19,7 +19,15 @@
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/user_secret_stash_storage.h"
 
+using base::test::TaskEnvironment;
+using ::testing::_;
+using ::testing::ByMove;
+using ::testing::Eq;
+using ::testing::IsNull;
 using testing::NiceMock;
+using ::testing::NiceMock;
+using ::testing::NotNull;
+using ::testing::Return;
 
 namespace cryptohome {
 
@@ -36,18 +44,6 @@ class AuthSessionManagerTest : public ::testing::Test {
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
 };
-
-namespace {
-
-using ::testing::_;
-using ::testing::ByMove;
-using ::testing::Eq;
-using ::testing::IsNull;
-using ::testing::NiceMock;
-using ::testing::NotNull;
-using ::testing::Return;
-
-using base::test::TaskEnvironment;
 
 TEST_F(AuthSessionManagerTest, CreateFindRemove) {
   TaskEnvironment task_environment(
@@ -99,11 +95,9 @@ TEST_F(AuthSessionManagerTest, CreateExpire) {
   ASSERT_THAT(auth_session, NotNull());
   base::UnguessableToken token = auth_session->token();
   ASSERT_THAT(auth_session_manager.FindAuthSession(token), Eq(auth_session));
-
+  auth_session->SetAuthSessionAsAuthenticated();
   task_environment.FastForwardUntilNoTasksRemain();
   ASSERT_THAT(auth_session_manager.FindAuthSession(token), IsNull());
 }
-
-}  // namespace
 
 }  // namespace cryptohome

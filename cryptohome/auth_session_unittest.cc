@@ -104,6 +104,7 @@ TEST_F(AuthSessionTest, TimeoutTest) {
                            &auth_factor_manager_, &user_secret_stash_storage_);
   EXPECT_EQ(auth_session.GetStatus(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
+  auth_session.SetAuthSessionAsAuthenticated();
   ASSERT_TRUE(auth_session.timer_.IsRunning());
   auth_session.timer_.FireNow();
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
@@ -159,10 +160,7 @@ TEST_F(AuthSessionTest, GetCredentialRegularUser) {
             AuthStatus::kAuthStatusFurtherFactorRequired);
 
   // TEST
-  ASSERT_TRUE(auth_session.timer_.IsRunning());
-  auth_session.timer_.FireNow();
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
-  EXPECT_TRUE(called);
+  EXPECT_FALSE(called);
   cryptohome::AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->set_secret(kFakePass);
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
@@ -202,10 +200,7 @@ TEST_F(AuthSessionTest, GetCredentialKioskUser) {
             AuthStatus::kAuthStatusFurtherFactorRequired);
 
   // TEST
-  ASSERT_TRUE(auth_session.timer_.IsRunning());
-  auth_session.timer_.FireNow();
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
-  EXPECT_TRUE(called);
+  EXPECT_FALSE(called);
   cryptohome::AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->mutable_data()->set_label(kFakeLabel);
   authorization_request.mutable_key()->mutable_data()->set_type(
@@ -250,7 +245,6 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_FALSE(auth_session.user_exists());
-  ASSERT_TRUE(auth_session.timer_.IsRunning());
 
   user_data_auth::AddCredentialsRequest add_cred_request;
   cryptohome::AuthorizationRequest* authorization_request =
@@ -272,6 +266,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUser) {
   // Verify.
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               auth_session.OnUserCreated());
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   auth_session.AddCredentials(add_cred_request, std::move(on_done));
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
@@ -306,7 +301,6 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_FALSE(auth_session.user_exists());
-  ASSERT_TRUE(auth_session.timer_.IsRunning());
 
   user_data_auth::AddCredentialsRequest add_cred_request;
   cryptohome::AuthorizationRequest* authorization_request =
@@ -320,6 +314,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
 
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               auth_session.OnUserCreated());
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
   auth_session.AddCredentials(add_cred_request, std::move(on_done));
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
@@ -342,6 +337,7 @@ TEST_F(AuthSessionTest, AddCredentialNewUserTwice) {
       .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
   auth_session.AddCredentials(add_other_cred_request, std::move(other_on_done));
   EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
 }
 
 // Test if AuthSession correctly authenticates existing credentials for a
@@ -364,7 +360,6 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
               auth_session.GetStatus());
   EXPECT_TRUE(auth_session.user_exists());
-  ASSERT_TRUE(auth_session.timer_.IsRunning());
 
   cryptohome::AuthorizationRequest authorization_request;
   authorization_request.mutable_key()->set_secret(kFakePass);
@@ -379,6 +374,7 @@ TEST_F(AuthSessionTest, AuthenticateExistingUser) {
   // Verify.
   EXPECT_THAT(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
               auth_session.Authenticate(authorization_request));
+  ASSERT_TRUE(auth_session.timer_.IsRunning());
   EXPECT_EQ(AuthStatus::kAuthStatusAuthenticated, auth_session.GetStatus());
   EXPECT_TRUE(auth_session.TakeCredentialVerifier()->Verify(
       brillo::SecureBlob(kFakePass)));

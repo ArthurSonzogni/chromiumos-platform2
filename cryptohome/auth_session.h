@@ -198,6 +198,10 @@ class AuthSession final {
   // this |AuthSession| reference from |UserDataAuth|.
   void AuthSessionTimedOut();
 
+  // SetAuthSessionAsAuthenticated to authenticated sets the status to
+  // authenticated and start the timer.
+  void SetAuthSessionAsAuthenticated();
+
   // This function returns credentials based on the state of the current
   // |AuthSession|.
   std::unique_ptr<Credentials> GetCredentials(
@@ -339,6 +343,8 @@ class AuthSession final {
   std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor_;
 
   friend class AuthSessionTest;
+  friend class AuthSessionManagerTest;
+  FRIEND_TEST(AuthSessionManagerTest, CreateExpire);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUserTwice);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewEphemeralUser);

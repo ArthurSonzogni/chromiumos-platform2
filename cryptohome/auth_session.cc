@@ -108,9 +108,6 @@ AuthSession::AuthSession(
   DCHECK(user_secret_stash_storage_);
 
   LOG(INFO) << "AuthSession Flags: is_ephemeral_user_  " << is_ephemeral_user_;
-  timer_.Start(FROM_HERE, kAuthSessionTimeout,
-               base::BindOnce(&AuthSession::AuthSessionTimedOut,
-                              base::Unretained(this)));
 
   // TODO(hardikgoyal): make a factory function for AuthSession so the
   // constructor doesn't need to do work
@@ -143,7 +140,7 @@ AuthSession::AuthSession(
   // If the Auth Session is started for an ephemeral user, we always start in an
   // authenticated state.
   if (is_ephemeral_user_) {
-    status_ = AuthStatus::kAuthStatusAuthenticated;
+    SetAuthSessionAsAuthenticated();
   }
 }
 
@@ -151,6 +148,13 @@ void AuthSession::AuthSessionTimedOut() {
   status_ = AuthStatus::kAuthStatusTimedOut;
   // After this call back to |UserDataAuth|, |this| object will be deleted.
   std::move(on_timeout_).Run(token_);
+}
+
+void AuthSession::SetAuthSessionAsAuthenticated() {
+  status_ = AuthStatus::kAuthStatusAuthenticated;
+  timer_.Start(FROM_HERE, kAuthSessionTimeout,
+               base::BindOnce(&AuthSession::AuthSessionTimedOut,
+                              base::Unretained(this)));
 }
 
 user_data_auth::CryptohomeErrorCode AuthSession::ExtendTimer(
@@ -183,7 +187,7 @@ user_data_auth::CryptohomeErrorCode AuthSession::OnUserCreated() {
     }
     // Since this function is called for a new user, it is safe to put the
     // AuthSession in an authenticated state.
-    status_ = AuthStatus::kAuthStatusAuthenticated;
+    SetAuthSessionAsAuthenticated();
     user_exists_ = true;
     if (IsUserSecretStashExperimentEnabled()) {
       // Check invariants.
@@ -543,8 +547,7 @@ user_data_auth::CryptohomeErrorCode AuthSession::Authenticate(
   credential_verifier_.reset(new ScryptVerifier());
   credential_verifier_->Set(credentials->passkey());
 
-  status_ = AuthStatus::kAuthStatusAuthenticated;
-
+  SetAuthSessionAsAuthenticated();
   return MountErrorToCryptohomeError(code);
 }
 
@@ -707,7 +710,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
 
   // Flip the status on the successful authentication.
-  status_ = AuthStatus::kAuthStatusAuthenticated;
+  SetAuthSessionAsAuthenticated();
   reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::move(on_done).Run(reply);
 }
