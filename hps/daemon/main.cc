@@ -63,6 +63,7 @@ int main(int argc, char* argv[]) {
     // features can be enabled/disabled.
     auto fake = std::make_unique<hps::FakeDev>();
     fake->SkipBoot();
+    fake->SetVersion(version);
     dev = std::move(fake);
   } else {
     dev = hps::I2CDev::Create(FLAGS_bus, addr, FLAGS_hps_dev);
