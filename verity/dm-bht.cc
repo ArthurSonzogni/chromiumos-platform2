@@ -270,7 +270,6 @@ int dm_bht_initialize_entries(struct dm_bht* bht) {
    */
   unsigned int last_index =
       base::bits::AlignUp(bht->block_count, bht->node_count) - 1;
-  unsigned int total_entries = 0;
   struct dm_bht_level* level = NULL;
   int depth;
 
@@ -305,7 +304,6 @@ int dm_bht_initialize_entries(struct dm_bht* bht) {
       /* let the caller clean up the mess */
       return -ENOMEM;
     }
-    total_entries += level->count;
     level->sector = bht->sectors;
     /* number of sectors per entry * entries at this level */
     bht->sectors += level->count * to_sector(PAGE_SIZE);
