@@ -10,6 +10,26 @@ what it means and how to parse it.
 
 ## LOGDATE
 
+## amd_pmc_idlemask
+
+Value of the SMU idlemask
+
+## amd_s0ix_stats
+
+Contains the time when the system last entered/exited S0ix and how long it
+remained in that state.
+
+## amd_smu_fw_info
+
+Contains additional timing information about the last S0ix suspend including
+how long it took to enter and exit that state.
+
+## amd_stb
+
+Base64 encoded contents of the smart trace buffer, contains timestamped POST
+codes and logs from various other systems. Requires an AMD specific tool to
+decode.
+
 ## amdgpu_gem_info
 
 ## amdgpu_gtt_mm

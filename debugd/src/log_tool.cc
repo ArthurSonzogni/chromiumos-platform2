@@ -485,6 +485,15 @@ const std::array kExtraLogs {
 // clang-format off
 const std::array kFeedbackLogs {
   Log{kFile, "auth_failure", "/var/log/tcsd/auth_failure.permanent"},
+  Log{kFile, "amd_pmc_idlemask", "/sys/kernel/debug/amd_pmc/amd_pmc_idlemask",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  Log{kFile, "amd_s0ix_stats", "/sys/kernel/debug/amd_pmc/s0ix_stats",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  Log{kFile, "amd_smu_fw_info", "/sys/kernel/debug/amd_pmc/smu_fw_info",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  Log{kCommand, "amd_stb", "hexdump -e '2/4 \"%08x \" \"\n\"' "
+    "/sys/kernel/debug/amd_pmc/stb_read",
+    kRoot, kRoot},
   Log{kCommand, "borealis_frames", "timeout -s KILL 5s /usr/bin/borealis-sh "
     "-- /usr/bin/get-frame-log.sh", kRoot, kRoot},
   Log{kCommand, "borealis_proton_crash_reports", "timeout -s KILL 5s "
