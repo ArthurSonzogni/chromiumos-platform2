@@ -938,7 +938,18 @@ TEST_F(NetlinkManagerTest, PendingDump_Timeout) {
             netlink_manager_->PendingDumpSequenceNumber());
 
   // Timeout waiting for responses to the first get station message. This
-  // should cause the second get station message to be sent.
+  // should cause the first get station message to be resent.
+  netlink_manager_->pending_messages_.front().retries_left = 1;
+  EXPECT_CALL(auxilliary_handler, OnErrorHandler(_, _)).Times(0);
+  EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  netlink_manager_->OnPendingDumpTimeout();
+  EXPECT_TRUE(netlink_manager_->IsDumpPending());
+  EXPECT_EQ(2, netlink_manager_->pending_messages_.size());
+  EXPECT_EQ(get_station_message_1_seq_num,
+            netlink_manager_->PendingDumpSequenceNumber());
+
+  // Another timeout waiting for responses to the first get station message.
+  // This should cause the second get station message to be sent.
   EXPECT_CALL(auxilliary_handler,
               OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, _));
   EXPECT_CALL(*netlink_socket_, SendMessage(_)).WillOnce(Return(true));

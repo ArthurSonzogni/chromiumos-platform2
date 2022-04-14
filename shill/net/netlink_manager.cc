@@ -583,6 +583,11 @@ NetlinkMessage::MessageContext NetlinkManager::InferMessageContext(
 void NetlinkManager::OnPendingDumpTimeout() {
   SLOG(this, 3) << "Timed out waiting for replies to NL dump message "
                 << PendingDumpSequenceNumber();
+  if (IsDumpPending() && pending_messages_.front().retries_left > 0) {
+    SLOG(this, 3) << "Resending NL dump message";
+    ResendPendingDumpMessage();
+    return;
+  }
   CallErrorHandler(PendingDumpSequenceNumber(), kTimeoutWaitingForResponse,
                    nullptr);
   OnPendingDumpComplete();
