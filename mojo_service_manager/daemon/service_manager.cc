@@ -4,6 +4,7 @@
 
 #include "mojo_service_manager/daemon/service_manager.h"
 
+#include <set>
 #include <string>
 #include <utility>
 
@@ -83,7 +84,10 @@ void ServiceManager::Register(
                      weak_factory_.GetWeakPtr(), service_name));
 
   service_state.owner = identity.Clone();
-  // TODO(chungsheng): Send register event.
+  SendServiceEvent(
+      service_state.policy.requesters(),
+      mojom::ServiceEvent::New(mojom::ServiceEvent::Type::kRegistered,
+                               service_name, identity.Clone()));
 
   for (ServiceRequestQueue::ServiceRequest& request :
        service_state.request_queue.TakeAllRequests()) {
@@ -132,7 +136,8 @@ void ServiceManager::Query(const std::string& service_name,
 
 void ServiceManager::AddServiceObserver(
     mojo::PendingRemote<mojom::ServiceObserver> observer) {
-  NOTIMPLEMENTED();
+  const mojom::ProcessIdentityPtr& identity = receiver_set_.current_context();
+  service_observer_map_[identity->security_context].Add(std::move(observer));
 }
 
 void ServiceManager::ServiceProviderDisconnectHandler(
@@ -141,8 +146,33 @@ void ServiceManager::ServiceProviderDisconnectHandler(
   CHECK(it != service_map_.end());
   ServiceState& service_state = it->second;
   service_state.service_provider.reset();
-  service_state.owner.reset();
-  // TODO(chungsheng): Send unregister event.
+  mojom::ProcessIdentityPtr dispatcher;
+  dispatcher.Swap(&service_state.owner);
+  SendServiceEvent(
+      service_state.policy.requesters(),
+      mojom::ServiceEvent::New(mojom::ServiceEvent::Type::kUnRegistered,
+                               service_name, std::move(dispatcher)));
+}
+
+void ServiceManager::SendServiceEvent(const std::set<std::string>& requesters,
+                                      mojom::ServiceEventPtr event) {
+  if (configuration_.is_permissive) {
+    // In permissive mode, all the observer can receive the event.
+    for (const auto& item : service_observer_map_) {
+      for (const mojo::Remote<mojom::ServiceObserver>& remote : item.second) {
+        remote->OnServiceEvent(event.Clone());
+      }
+    }
+    return;
+  }
+  for (const std::string& security_context : requesters) {
+    auto it = service_observer_map_.find(security_context);
+    if (it == service_observer_map_.end())
+      continue;
+    for (const mojo::Remote<mojom::ServiceObserver>& remote : it->second) {
+      remote->OnServiceEvent(event.Clone());
+    }
+  }
 }
 
 }  // namespace mojo_service_manager

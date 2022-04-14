@@ -88,6 +88,30 @@ void ExpectServiceProviderDisconnectWithError(FakeServcieProvider* provider,
   run_loop.Run();
 }
 
+class FakeServcieObserver : public mojom::ServiceObserver {
+ public:
+  // Overrides mojom::ServiceObserver.
+  void OnServiceEvent(mojom::ServiceEventPtr event) override {
+    last_event_ = std::move(event);
+    if (callback_) {
+      std::move(callback_).Run();
+      callback_.Reset();
+    }
+  }
+
+  mojo::Receiver<mojom::ServiceObserver> receiver_{this};
+
+  base::OnceClosure callback_;
+
+  mojom::ServiceEventPtr last_event_;
+};
+
+void ExpectServiceEvent(FakeServcieObserver* observer) {
+  base::RunLoop run_loop;
+  observer->callback_ = run_loop.QuitClosure();
+  run_loop.Run();
+}
+
 TEST_F(ServiceManagerTest, RegisterAndUnregister) {
   FakeServcieProvider povider;
   ConnectServiceManagerAs("owner")->Register(
@@ -153,6 +177,45 @@ TEST_F(ServiceManagerTest, QueryError) {
             mojom::ErrorCode::kPermissionDenied);
 }
 
+TEST_F(ServiceManagerTest, ServiceObserverGetEvent) {
+  FakeServcieObserver observer;
+  ConnectServiceManagerAs("requester")
+      ->AddServiceObserver(observer.receiver_.BindNewPipeAndPassRemote());
+
+  FakeServcieProvider povider;
+  ConnectServiceManagerAs("owner")->Register(
+      "FooService", povider.receiver_.BindNewPipeAndPassRemote());
+  ExpectServiceEvent(&observer);
+  EXPECT_EQ(observer.last_event_,
+            mojom::ServiceEvent::New(
+                mojom::ServiceEvent::Type::kRegistered, "FooService",
+                mojom::ProcessIdentity::New("owner", 0, 0, 0)));
+
+  // Reset the receiver to unregister from service manager.
+  povider.receiver_.reset();
+  ExpectServiceEvent(&observer);
+  EXPECT_EQ(observer.last_event_,
+            mojom::ServiceEvent::New(
+                mojom::ServiceEvent::Type::kUnRegistered, "FooService",
+                mojom::ProcessIdentity::New("owner", 0, 0, 0)));
+}
+
+TEST_F(ServiceManagerTest, ServiceObserverNotRequester) {
+  FakeServcieObserver observer_not_a_requester;
+  ConnectServiceManagerAs("not_requester")
+      ->AddServiceObserver(
+          observer_not_a_requester.receiver_.BindNewPipeAndPassRemote());
+
+  // Register a service and the observer should not receiver the event.
+  FakeServcieProvider provider;
+  ConnectServiceManagerAs("owner")->Register(
+      "FooService", provider.receiver_.BindNewPipeAndPassRemote());
+
+  // Run until all the async mojo operations are fulfilled.
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(observer_not_a_requester.last_event_.is_null());
+}
+
 TEST_F(PermissiveServiceManagerTest, RegisterPermissive) {
   {
     // Test normal case.
@@ -201,6 +264,23 @@ TEST_F(PermissiveServiceManagerTest, QueryPermissive) {
   // Test normal requester.
   EXPECT_FALSE(
       Query(ConnectServiceManagerAs("requester"), "FooService")->is_error());
+}
+
+TEST_F(PermissiveServiceManagerTest, ServiceObserverPermissive) {
+  // Test if observer can receive events from services which it is not a
+  // requester.
+  FakeServcieObserver observer;
+  ConnectServiceManagerAs("not_requester")
+      ->AddServiceObserver(observer.receiver_.BindNewPipeAndPassRemote());
+
+  FakeServcieProvider povider;
+  ConnectServiceManagerAs("owner")->Register(
+      "FooService", povider.receiver_.BindNewPipeAndPassRemote());
+  ExpectServiceEvent(&observer);
+
+  // Reset the receiver to unregister from service manager.
+  povider.receiver_.reset();
+  ExpectServiceEvent(&observer);
 }
 
 }  // namespace
