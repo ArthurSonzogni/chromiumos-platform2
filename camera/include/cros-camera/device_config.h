@@ -111,9 +111,7 @@ class CROS_CAMERA_EXPORT DeviceConfig {
   // or nullopt if the information is not available.
   std::optional<int> GetOrientationFromFacing(LensFacing facing) const;
 
-  base::span<const PlatformCameraInfo> GetPlatformCameraInfo() const {
-    return platform_cameras_;
-  }
+  base::span<const PlatformCameraInfo> GetPlatformCameraInfo();
 
  private:
   DeviceConfig() = default;
@@ -124,9 +122,9 @@ class CROS_CAMERA_EXPORT DeviceConfig {
   void ProbeMediaController(int media_fd);
   void AddV4L2Sensors();
   void AddCameraEeproms();
+  void PopulatePlatformCameraInfo();
 
   static bool PopulateCrosConfigCameraInfo(DeviceConfig* dev_conf);
-  static void PopulatePlatformCameraInfo(DeviceConfig* dev_conf);
 
   bool is_v1_device_;
   std::string model_name_;
@@ -140,7 +138,7 @@ class CROS_CAMERA_EXPORT DeviceConfig {
   // empty.
   std::vector<CrosConfigCameraInfo> cros_config_cameras_;
 
-  std::vector<PlatformCameraInfo> platform_cameras_;
+  std::optional<std::vector<PlatformCameraInfo>> platform_cameras_;
   std::vector<EepromInfo> eeproms_;
   std::vector<V4L2SensorInfo> v4l2_sensors_;
 };

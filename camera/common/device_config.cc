@@ -112,7 +112,6 @@ std::optional<DeviceConfig> DeviceConfig::Create() {
   if (!PopulateCrosConfigCameraInfo(&res)) {
     return std::nullopt;
   }
-  PopulatePlatformCameraInfo(&res);
 
   return std::make_optional<DeviceConfig>(res);
 }
@@ -139,6 +138,14 @@ std::optional<int> DeviceConfig::GetOrientationFromFacing(
   if (iter == cros_config_cameras_.end())
     return std::nullopt;
   return iter->orientation;
+}
+
+base::span<const PlatformCameraInfo> DeviceConfig::GetPlatformCameraInfo() {
+  if (!platform_cameras_.has_value()) {
+    platform_cameras_.emplace();
+    PopulatePlatformCameraInfo();
+  }
+  return *platform_cameras_;
 }
 
 void DeviceConfig::ProbeSensorSubdev(struct media_entity_desc* desc,
@@ -306,6 +313,46 @@ void DeviceConfig::AddCameraEeproms() {
   }
 }
 
+void DeviceConfig::PopulatePlatformCameraInfo() {
+  AddCameraEeproms();
+  AddV4L2Sensors();
+
+  // Associate probed nvmems and v4l-subdevs by their absolute sysfs device
+  // paths. When both devices exist, they are expected to locate on the same
+  // I2C bus. For example:
+  //   /path/to/i2c/sysfs - i2c-2 - 2-0010 - video4linux - v4l-subdev6
+  //                             \- 2-0058 - 2-00580 - nvmem
+  std::set<const V4L2SensorInfo*> associated_sensors;
+  for (const EepromInfo& eeprom : eeproms_) {
+    std::vector<std::string> path;
+    eeprom.nvmem_path.GetComponents(&path);
+    CHECK_GE(path.size(), 4u);
+    auto iter = std::find_if(v4l2_sensors_.begin(), v4l2_sensors_.end(),
+                             [&](const V4L2SensorInfo& sensor) {
+                               std::vector<std::string> p;
+                               sensor.subdev_path.GetComponents(&p);
+                               return std::equal(path.begin(), path.end() - 3,
+                                                 p.begin());
+                             });
+    auto info = PlatformCameraInfo{
+        .eeprom = eeprom,
+        .sysfs_name = path[path.size() - 4] + '/' + path[path.size() - 3],
+    };
+    if (iter != v4l2_sensors_.end()) {
+      info.v4l2_sensor = *iter;
+      associated_sensors.insert(&*iter);
+    }
+    platform_cameras_->push_back(std::move(info));
+  }
+  for (const V4L2SensorInfo& sensor : v4l2_sensors_) {
+    if (!base::Contains(associated_sensors, &sensor)) {
+      platform_cameras_->push_back(PlatformCameraInfo{
+          .v4l2_sensor = sensor,
+      });
+    }
+  }
+}
+
 // static
 bool DeviceConfig::PopulateCrosConfigCameraInfo(DeviceConfig* dev_conf) {
   CHECK(dev_conf);
@@ -361,49 +408,6 @@ bool DeviceConfig::PopulateCrosConfigCameraInfo(DeviceConfig* dev_conf) {
   }
 
   return true;
-}
-
-// static
-void DeviceConfig::PopulatePlatformCameraInfo(DeviceConfig* dev_conf) {
-  CHECK(dev_conf);
-
-  dev_conf->AddCameraEeproms();
-  dev_conf->AddV4L2Sensors();
-
-  // Associate probed nvmems and v4l-subdevs by their absolute sysfs device
-  // paths. When both devices exist, they are expected to locate on the same
-  // I2C bus. For example:
-  //   /path/to/i2c/sysfs - i2c-2 - 2-0010 - video4linux - v4l-subdev6
-  //                             \- 2-0058 - 2-00580 - nvmem
-  std::set<const V4L2SensorInfo*> associated_sensors;
-  for (const EepromInfo& eeprom : dev_conf->eeproms_) {
-    std::vector<std::string> path;
-    eeprom.nvmem_path.GetComponents(&path);
-    CHECK_GE(path.size(), 4u);
-    auto iter = std::find_if(
-        dev_conf->v4l2_sensors_.begin(), dev_conf->v4l2_sensors_.end(),
-        [&](const V4L2SensorInfo& sensor) {
-          std::vector<std::string> p;
-          sensor.subdev_path.GetComponents(&p);
-          return std::equal(path.begin(), path.end() - 3, p.begin());
-        });
-    auto info = PlatformCameraInfo{
-        .eeprom = eeprom,
-        .sysfs_name = path[path.size() - 4] + '/' + path[path.size() - 3],
-    };
-    if (iter != dev_conf->v4l2_sensors_.end()) {
-      info.v4l2_sensor = *iter;
-      associated_sensors.insert(&*iter);
-    }
-    dev_conf->platform_cameras_.push_back(std::move(info));
-  }
-  for (const V4L2SensorInfo& sensor : dev_conf->v4l2_sensors_) {
-    if (!base::Contains(associated_sensors, &sensor)) {
-      dev_conf->platform_cameras_.push_back(PlatformCameraInfo{
-          .v4l2_sensor = sensor,
-      });
-    }
-  }
 }
 
 }  // namespace cros
