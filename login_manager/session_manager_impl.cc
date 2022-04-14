@@ -1395,6 +1395,7 @@ bool SessionManagerImpl::StartArcMiniContainer(
       base::StringPrintf("DISABLE_UREADAHEAD=%d", request.disable_ureadahead()),
       base::StringPrintf("ENABLE_NOTIFICATIONS_REFRESH=%d",
                          request.enable_notifications_refresh()),
+      base::StringPrintf("ENABLE_TTS_CACHING=%d", request.enable_tts_caching()),
   };
 
   if (request.arc_generate_pai())
