@@ -11,13 +11,13 @@
 #include <dbus/bus.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 
-#include "rgbkbd/keyboard_backlight_logger.h"
+#include "rgbkbd/internal_rgb_keyboard.h"
 
 namespace rgbkbd {
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::RgbkbdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kRgbkbdServicePath)),
-      rgb_keyboard_controller_(std::make_unique<KeyboardBacklightLogger>()) {}
+      rgb_keyboard_controller_(std::make_unique<InternalRgbKeyboard>()) {}
 
 void DBusAdaptor::RegisterAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {

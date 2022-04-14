@@ -39,6 +39,8 @@ generate_dbus_adaptors("rgbkbd-adaptor") {
 
 static_library("librgbkbd") {
   sources = [
+    "internal_rgb_keyboard.cc",
+    "internal_rgb_keyboard.h",
     "keyboard_backlight_logger.cc",
     "keyboard_backlight_logger.h",
     "rgb_keyboard_controller.h",
@@ -79,6 +81,7 @@ install_config("install_dbus_activation") {
 if (use.test) {
   executable("rgbkbd_test") {
     sources = [
+      "internal_rgb_keyboard_test.cc",
       "keyboard_backlight_logger_test.cc",
       "rgb_keyboard_controller_test.cc",
     ]
