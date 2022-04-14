@@ -77,7 +77,10 @@ message StartArcMiniContainerRequest {
   // Enables use of new notifications ui.
   optional bool enable_notifications_refresh = 13 [default = false];
 
-  // Next ID to use: 14
+  // Option to enable TTS caching
+  optional bool enable_tts_caching = 14 [default = false];
+
+  // Next ID to use: 15
 }
 
 // ARC upgrade options sent from Chrome to session manager. This message is used
