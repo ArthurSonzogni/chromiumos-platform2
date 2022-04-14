@@ -67,6 +67,11 @@ void QueryImpl::GetAllDeviceIdsCallback(
         iio_device_ids_types) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
+  if (iio_device_ids_types.empty()) {
+    LOGF(WARNING) << "No device found";
+    Reset();
+  }
+
   for (const auto& [id, types] : iio_device_ids_types) {
     mojo::Remote<cros::mojom::SensorDevice> remote;
     sensor_service_remote_->GetDevice(id, remote.BindNewPipeAndPassReceiver());
@@ -82,6 +87,11 @@ void QueryImpl::GetAllDeviceIdsCallback(
 void QueryImpl::GetDeviceIdsCallback(
     const std::vector<int32_t>& iio_device_ids) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+
+  if (iio_device_ids.empty()) {
+    LOGF(WARNING) << "No device found for type: " << device_type_;
+    Reset();
+  }
 
   for (const int32_t& id : iio_device_ids) {
     mojo::Remote<cros::mojom::SensorDevice> remote;
