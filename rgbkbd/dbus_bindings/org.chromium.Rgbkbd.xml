@@ -26,5 +26,26 @@
       <arg name="enabled" type="b" direction="in"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SetStaticBackgroundColor">
+      <tp:docstring>
+        Sets the static background RGB color for the keyboard. If CapsLock is
+        enabled, this will not override the Capslock highlight keys. If
+        Capslock is disabled, the Capslock highlight keys will reflect this
+        background color.
+      </tp:docstring>
+      <arg name="r" type="u" direction="in"/>
+      <arg name="g" type="u" direction="in"/>
+      <arg name="b" type="u" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="SetRainbowMode">
+      <tp:docstring>
+        Sets the backlight RGB keys of the keyboard to a rainbow color scheme.
+        If CapsLock is enabled, this will not override the Capslock highlight
+        keys. If Capslock is disabled, the Capslock highlight keys will reflect
+        this background color.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

@@ -35,6 +35,14 @@ void DBusAdaptor::SetCapsLockState(bool enabled) {
   rgb_keyboard_controller_.SetCapsLockState(enabled);
 }
 
+void DBusAdaptor::SetStaticBackgroundColor(uint32_t r, uint32_t g, uint32_t b) {
+  rgb_keyboard_controller_.SetStaticBackgroundColor(r, g, b);
+}
+
+void DBusAdaptor::SetRainbowMode() {
+  rgb_keyboard_controller_.SetRainbowMode();
+}
+
 RgbkbdDaemon::RgbkbdDaemon() : DBusServiceDaemon(kRgbkbdServicePath) {}
 
 void RgbkbdDaemon::RegisterDBusObjectsAsync(

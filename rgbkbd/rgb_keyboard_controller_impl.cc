@@ -29,4 +29,12 @@ void RgbKeyboardControllerImpl::SetCapsLockState(bool enabled) {
   SetKeyColor(kRightShiftKey, color);
 }
 
+// TODO(jimmyxgong): Implement this stub.
+void RgbKeyboardControllerImpl::SetStaticBackgroundColor(uint32_t r,
+                                                         uint32_t g,
+                                                         uint32_t b) {}
+
+// TODO(jimmyxgong): Implement this stub.
+void RgbKeyboardControllerImpl::SetRainbowMode() {}
+
 }  // namespace rgbkbd
