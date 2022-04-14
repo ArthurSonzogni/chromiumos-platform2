@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 
+#include <base/memory/weak_ptr.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "mojo_service_manager/daemon/configuration.h"
@@ -41,6 +42,8 @@ class ServiceManager : public mojom::ServiceManager {
     // The queue to keep the service request before the service is available.
     // Note that this is not moveable.
     ServiceRequestQueue request_queue;
+    // The mojo remote to the service provider.
+    mojo::Remote<mojom::ServiceProvider> service_provider;
   };
 
   // mojom::ServiceManager overrides.
@@ -54,6 +57,9 @@ class ServiceManager : public mojom::ServiceManager {
   void AddServiceObserver(
       mojo::PendingRemote<mojom::ServiceObserver> observer) override;
 
+  // Handles the disconnect of a service provider.
+  void ServiceProviderDisconnectHandler(const std::string& service_name);
+
   // The service manager configuration.
   const Configuration configuration_;
   // Maps each service name to a ServiceState.
@@ -63,6 +69,8 @@ class ServiceManager : public mojom::ServiceManager {
   // handle the requests.
   mojo::ReceiverSet<mojom::ServiceManager, mojom::ProcessIdentityPtr>
       receiver_set_;
+  // Must be the last member.
+  base::WeakPtrFactory<ServiceManager> weak_factory_{this};
 };
 
 }  // namespace mojo_service_manager

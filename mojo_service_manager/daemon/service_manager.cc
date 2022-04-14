@@ -7,8 +7,23 @@
 #include <string>
 #include <utility>
 
+#include <base/check.h>
+
 namespace chromeos {
 namespace mojo_service_manager {
+namespace {
+
+template <typename T>
+void ResetRemoteWithReason(mojo::PendingRemote<T> pending_remote,
+                           mojom::ErrorCode error,
+                           const std::string& message) {
+  // TODO(crbug/1310274): Currently |PendingRemote| doesn't support
+  // ResetWithReason.
+  mojo::Remote<T> remote(std::move(pending_remote));
+  remote.ResetWithReason(static_cast<uint32_t>(error), message);
+}
+
+}  // namespace
 
 ServiceManager::ServiceManager(Configuration configuration,
                                ServicePolicyMap policy_map)
@@ -30,7 +45,56 @@ void ServiceManager::AddReceiver(
 void ServiceManager::Register(
     const std::string& service_name,
     mojo::PendingRemote<mojom::ServiceProvider> service_provider) {
-  NOTIMPLEMENTED();
+  auto it = service_map_.find(service_name);
+  if (it == service_map_.end()) {
+    if (!configuration_.is_permissive) {
+      ResetRemoteWithReason(std::move(service_provider),
+                            mojom::ErrorCode::kServiceNotFound,
+                            "Cannot find service: " + service_name);
+      return;
+    }
+    // In permissive mode, users are allowed to register a service which is not
+    // in the policy. In this case, a new ServiceState needs to be created.
+    auto [it_new, success] = service_map_.try_emplace(service_name);
+    CHECK(success);
+    it = it_new;
+  }
+
+  ServiceState& service_state = it->second;
+  const mojom::ProcessIdentityPtr& identity = receiver_set_.current_context();
+  if (!configuration_.is_permissive &&
+      !service_state.policy.IsOwner(identity->security_context)) {
+    ResetRemoteWithReason(
+        std::move(service_provider), mojom::ErrorCode::kPermissionDenied,
+        "The security context: " + identity->security_context +
+            " is not allowed to own the service: " + service_name);
+    return;
+  }
+  if (service_state.service_provider.is_bound()) {
+    ResetRemoteWithReason(
+        std::move(service_provider),
+        mojom::ErrorCode::kServiceHasBeenRegistered,
+        "The service: " + service_name + " has already been registered.");
+    return;
+  }
+  service_state.service_provider.Bind(std::move(service_provider));
+  service_state.service_provider.set_disconnect_handler(
+      base::BindOnce(&ServiceManager::ServiceProviderDisconnectHandler,
+                     weak_factory_.GetWeakPtr(), service_name));
+
+  service_state.owner = identity.Clone();
+  // TODO(chungsheng): Send register event.
+
+  for (ServiceRequestQueue::ServiceRequest& request :
+       service_state.request_queue.TakeAllRequests()) {
+    // If a receiver become invalid before being posted, don't send it because
+    // the mojo will complain about sending invalid handles and reset the
+    // connection of service provider.
+    if (!request.receiver.is_valid())
+      continue;
+    service_state.service_provider->Request(std::move(request.identity),
+                                            std::move(request.receiver));
+  }
 }
 
 void ServiceManager::Request(const std::string& service_name,
@@ -69,6 +133,16 @@ void ServiceManager::Query(const std::string& service_name,
 void ServiceManager::AddServiceObserver(
     mojo::PendingRemote<mojom::ServiceObserver> observer) {
   NOTIMPLEMENTED();
+}
+
+void ServiceManager::ServiceProviderDisconnectHandler(
+    const std::string& service_name) {
+  auto it = service_map_.find(service_name);
+  CHECK(it != service_map_.end());
+  ServiceState& service_state = it->second;
+  service_state.service_provider.reset();
+  service_state.owner.reset();
+  // TODO(chungsheng): Send unregister event.
 }
 
 }  // namespace mojo_service_manager
