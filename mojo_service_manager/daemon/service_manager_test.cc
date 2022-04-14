@@ -13,6 +13,7 @@
 #include "mojo_service_manager/daemon/mojo_test_environment.h"
 #include "mojo_service_manager/daemon/service_manager.h"
 #include "mojo_service_manager/daemon/service_policy_test_util.h"
+#include "mojo_service_manager/daemon/test.mojom.h"
 
 namespace chromeos {
 namespace mojo_service_manager {
@@ -36,7 +37,7 @@ class ServiceManagerTestBase : public ::testing::Test {
     return remote;
   }
 
-  MojoTaskEnvironment env_;
+  MojoTaskEnvironment env_{base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   ServiceManager service_manager_;
 };
@@ -67,13 +68,25 @@ mojom::ErrorOrServiceStatePtr Query(
   return result;
 }
 
-class FakeServcieProvider : public mojom::ServiceProvider {
+class FakeServcieProvider : public mojom::ServiceProvider, public mojom::Foo {
  public:
   // Overrides mojom::ServiceProvider.
   void Request(mojom::ProcessIdentityPtr client_identity,
-               mojo::ScopedMessagePipeHandle receiver) override {}
+               mojo::ScopedMessagePipeHandle receiver) override {
+    CHECK(receiver.is_valid()) << "Receiver pipe is not valid.";
+    last_client_identity_ = std::move(client_identity);
+    foo_receiver_set_.Add(
+        this, mojo::PendingReceiver<mojom::Foo>(std::move(receiver)));
+  }
+
+  // Overrides mojom::Foo.
+  void Ping(PingCallback callback) override { std::move(callback).Run(); }
 
   mojo::Receiver<mojom::ServiceProvider> receiver_{this};
+
+  mojo::ReceiverSet<mojom::Foo> foo_receiver_set_;
+
+  mojom::ProcessIdentityPtr last_client_identity_;
 };
 
 void ExpectServiceProviderDisconnectWithError(FakeServcieProvider* provider,
@@ -109,6 +122,31 @@ class FakeServcieObserver : public mojom::ServiceObserver {
 void ExpectServiceEvent(FakeServcieObserver* observer) {
   base::RunLoop run_loop;
   observer->callback_ = run_loop.QuitClosure();
+  run_loop.Run();
+}
+
+void ExpectFooServiceConnected(mojo::Remote<mojom::Foo>* service) {
+  service->set_disconnect_with_reason_handler(base::BindLambdaForTesting(
+      [&](uint32_t error, const std::string& message) {
+        CHECK(false) << "Reset with error: " << error
+                     << ",message: " << message;
+      }));
+  service->FlushForTesting();
+  CHECK(service->is_connected()) << "Foo service is disconnected.";
+  service->set_disconnect_with_reason_handler(base::DoNothing());
+  base::RunLoop run_loop;
+  service->get()->Ping(run_loop.QuitClosure());
+  run_loop.Run();
+}
+
+void ExpectFooServiceDisconnectWithError(mojo::Remote<mojom::Foo>* service,
+                                         mojom::ErrorCode expected_error) {
+  base::RunLoop run_loop;
+  service->set_disconnect_with_reason_handler(base::BindLambdaForTesting(
+      [&](uint32_t error, const std::string& message) {
+        EXPECT_EQ(error, static_cast<uint32_t>(expected_error));
+        run_loop.Quit();
+      }));
   run_loop.Run();
 }
 
@@ -155,6 +193,84 @@ TEST_F(ServiceManagerTest, RegisterError) {
     ExpectServiceProviderDisconnectWithError(
         &povider2, mojom::ErrorCode::kServiceHasBeenRegistered);
   }
+}
+
+TEST_F(ServiceManagerTest, Request) {
+  FakeServcieProvider provider;
+  ConnectServiceManagerAs("owner")->Register(
+      "FooService", provider.receiver_.BindNewPipeAndPassRemote());
+
+  mojo::Remote<mojom::Foo> foo;
+  ConnectServiceManagerAs("requester")
+      ->Request("FooService", std::nullopt,
+                foo.BindNewPipeAndPassReceiver().PassPipe());
+  ExpectFooServiceConnected(&foo);
+  EXPECT_EQ(provider.last_client_identity_->security_context, "requester");
+}
+
+TEST_F(ServiceManagerTest, RequestBeforeRegister) {
+  // Request without a timeout (set timeout to std::nullopt) so it will wait
+  // until the service is registered.
+  mojo::Remote<mojom::Foo> foo;
+  ConnectServiceManagerAs("requester")
+      ->Request("FooService", std::nullopt,
+                foo.BindNewPipeAndPassReceiver().PassPipe());
+
+  FakeServcieProvider provider;
+  ConnectServiceManagerAs("owner")->Register(
+      "FooService", provider.receiver_.BindNewPipeAndPassRemote());
+  ExpectFooServiceConnected(&foo);
+  EXPECT_EQ(provider.last_client_identity_->security_context, "requester");
+}
+
+TEST_F(ServiceManagerTest, RequestError) {
+  {
+    // Test service not found.
+    mojo::Remote<mojom::Foo> foo;
+    ConnectServiceManagerAs("requester")
+        ->Request("NotFoundService", std::nullopt,
+                  foo.BindNewPipeAndPassReceiver().PassPipe());
+    ExpectFooServiceDisconnectWithError(&foo,
+                                        mojom::ErrorCode::kServiceNotFound);
+  }
+  {
+    // Test permission denied.
+    mojo::Remote<mojom::Foo> foo;
+    ConnectServiceManagerAs("not_a_requester")
+        ->Request("FooService", std::nullopt,
+                  foo.BindNewPipeAndPassReceiver().PassPipe());
+    ExpectFooServiceDisconnectWithError(&foo,
+                                        mojom::ErrorCode::kPermissionDenied);
+  }
+}
+
+TEST_F(ServiceManagerTest, RequestTimeout) {
+  auto remote = ConnectServiceManagerAs("requester");
+  mojo::Remote<mojom::Foo> foo1;
+  remote->Request("FooService", base::Seconds(0),
+                  foo1.BindNewPipeAndPassReceiver().PassPipe());
+  mojo::Remote<mojom::Foo> foo2;
+  remote->Request("FooService", base::Seconds(5),
+                  foo2.BindNewPipeAndPassReceiver().PassPipe());
+  mojo::Remote<mojom::Foo> foo3;
+  remote->Request("FooService", base::Seconds(10),
+                  foo3.BindNewPipeAndPassReceiver().PassPipe());
+  // No timeout.
+  mojo::Remote<mojom::Foo> foo4;
+  remote->Request("FooService", std::nullopt,
+                  foo4.BindNewPipeAndPassReceiver().PassPipe());
+
+  // Wait for the first two timeout.
+  ExpectFooServiceDisconnectWithError(&foo1, mojom::ErrorCode::kTimeout);
+  ExpectFooServiceDisconnectWithError(&foo2, mojom::ErrorCode::kTimeout);
+
+  // Now it is at 5 seconds. Register the service so the rest of them can
+  // connected successfully.
+  FakeServcieProvider provider;
+  ConnectServiceManagerAs("owner")->Register(
+      "FooService", provider.receiver_.BindNewPipeAndPassRemote());
+  ExpectFooServiceConnected(&foo3);
+  ExpectFooServiceConnected(&foo4);
 }
 
 TEST_F(ServiceManagerTest, Query) {
@@ -247,6 +363,76 @@ TEST_F(PermissiveServiceManagerTest, RegisterPermissive) {
               mojom::ErrorOrServiceState::NewState(mojom::ServiceState::New(
                   /*is_registered=*/true,
                   /*owner=*/mojom::ProcessIdentity::New("owner", 0, 0, 0))));
+  }
+}
+
+TEST_F(PermissiveServiceManagerTest, RequestPermissive) {
+  {
+    // Test normal case.
+    FakeServcieProvider provider;
+    ConnectServiceManagerAs("owner")->Register(
+        "FooService", provider.receiver_.BindNewPipeAndPassRemote());
+
+    mojo::Remote<mojom::Foo> foo;
+    ConnectServiceManagerAs("requester")
+        ->Request("FooService", std::nullopt,
+                  foo.BindNewPipeAndPassReceiver().PassPipe());
+    ExpectFooServiceConnected(&foo);
+    EXPECT_EQ(provider.last_client_identity_->security_context, "requester");
+  }
+  {
+    // Test request by not_requester.
+    FakeServcieProvider provider;
+    ConnectServiceManagerAs("owner")->Register(
+        "FooService", provider.receiver_.BindNewPipeAndPassRemote());
+
+    mojo::Remote<mojom::Foo> foo;
+    ConnectServiceManagerAs("not_requester")
+        ->Request("FooService", std::nullopt,
+                  foo.BindNewPipeAndPassReceiver().PassPipe());
+    ExpectFooServiceConnected(&foo);
+    EXPECT_EQ(provider.last_client_identity_->security_context,
+              "not_requester");
+  }
+  {
+    // Test request NotInPolicyService.
+    FakeServcieProvider provider;
+    ConnectServiceManagerAs("owner")->Register(
+        "NotInPolicyService", provider.receiver_.BindNewPipeAndPassRemote());
+
+    mojo::Remote<mojom::Foo> foo;
+    ConnectServiceManagerAs("requester")
+        ->Request("NotInPolicyService", std::nullopt,
+                  foo.BindNewPipeAndPassReceiver().PassPipe());
+    ExpectFooServiceConnected(&foo);
+    EXPECT_EQ(provider.last_client_identity_->security_context, "requester");
+  }
+}
+
+TEST_F(PermissiveServiceManagerTest, RequestTimeoutPermissive) {
+  {
+    // Test normal case.
+    mojo::Remote<mojom::Foo> foo;
+    ConnectServiceManagerAs("requester")
+        ->Request("FooService", base::Seconds(5),
+                  foo.BindNewPipeAndPassReceiver().PassPipe());
+    ExpectFooServiceDisconnectWithError(&foo, mojom::ErrorCode::kTimeout);
+  }
+  {
+    // Test request by not_requester.
+    mojo::Remote<mojom::Foo> foo;
+    ConnectServiceManagerAs("not_requester")
+        ->Request("FooService", base::Seconds(5),
+                  foo.BindNewPipeAndPassReceiver().PassPipe());
+    ExpectFooServiceDisconnectWithError(&foo, mojom::ErrorCode::kTimeout);
+  }
+  {
+    // Test request NotInPolicyService.
+    mojo::Remote<mojom::Foo> foo;
+    ConnectServiceManagerAs("requester")
+        ->Request("NotInPolicyService", base::Seconds(5),
+                  foo.BindNewPipeAndPassReceiver().PassPipe());
+    ExpectFooServiceDisconnectWithError(&foo, mojom::ErrorCode::kTimeout);
   }
 }
 

@@ -10,6 +10,8 @@
 
 #include <base/check.h>
 
+#include "mojo_service_manager/daemon/mojo_error_util.h"
+
 namespace chromeos {
 namespace mojo_service_manager {
 namespace {
@@ -102,9 +104,40 @@ void ServiceManager::Register(
 }
 
 void ServiceManager::Request(const std::string& service_name,
-                             absl::optional<base::TimeDelta> timeout,
+                             std::optional<base::TimeDelta> timeout,
                              mojo::ScopedMessagePipeHandle receiver) {
-  NOTIMPLEMENTED();
+  auto it = service_map_.find(service_name);
+  if (it == service_map_.end()) {
+    if (!configuration_.is_permissive) {
+      ResetMojoReceiverPipeWithReason(std::move(receiver),
+                                      mojom::ErrorCode::kServiceNotFound,
+                                      "Cannot find service: " + service_name);
+      return;
+    }
+    // In permissive mode, users are allowed to request a service which is not
+    // in the policy. In this case, a new ServiceState needs to be created.
+    auto [it_new, success] = service_map_.try_emplace(service_name);
+    CHECK(success);
+    it = it_new;
+  }
+
+  ServiceState& service_state = it->second;
+  const mojom::ProcessIdentityPtr& identity = receiver_set_.current_context();
+  if (!configuration_.is_permissive &&
+      !service_state.policy.IsRequester(identity->security_context)) {
+    ResetMojoReceiverPipeWithReason(
+        std::move(receiver), mojom::ErrorCode::kPermissionDenied,
+        "The security context: " + identity->security_context +
+            " is not allowed to request the service: " + service_name);
+    return;
+  }
+  if (service_state.service_provider.is_bound()) {
+    service_state.service_provider->Request(identity.Clone(),
+                                            std::move(receiver));
+    return;
+  }
+  service_state.request_queue.Push(identity.Clone(), std::move(timeout),
+                                   std::move(receiver));
 }
 
 void ServiceManager::Query(const std::string& service_name,

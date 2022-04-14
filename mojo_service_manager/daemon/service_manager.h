@@ -6,6 +6,7 @@
 #define MOJO_SERVICE_MANAGER_DAEMON_SERVICE_MANAGER_H_
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -53,7 +54,7 @@ class ServiceManager : public mojom::ServiceManager {
       const std::string& service_name,
       mojo::PendingRemote<mojom::ServiceProvider> service_provider) override;
   void Request(const std::string& service_name,
-               absl::optional<base::TimeDelta> timeout,
+               std::optional<base::TimeDelta> timeout,
                mojo::ScopedMessagePipeHandle receiver) override;
   void Query(const std::string& service_name, QueryCallback callback) override;
   void AddServiceObserver(
