@@ -28,8 +28,10 @@ fstat64: 1
 fstatat64: 1
 fstatfs64: 1
 fstatfs: 1
-futex: arg1 == 0x0 || arg1 == 0x80 || arg1 == 0x81 || arg1 == 0x189
-futex_time64: arg1 == 0x0 || arg1 == 0x80 || arg1 == 0x81 || arg1 == 0x189
+futex: arg1 == 0x0 || arg1 == 0x80 || arg1 == 0x81 || arg1 == 0x109 || \
+       arg1 == 0x189
+futex_time64: arg1 == 0x0 || arg1 == 0x80 || arg1 == 0x81 || arg1 == 0x109 || \
+              arg1 == 0x189
 getdents64: 1
 getegid32: 1
 geteuid32: 1
@@ -45,7 +47,8 @@ ioctl: arg1 == SIOCGIFFLAGS || arg1 == SIOCSIFFLAGS || arg1 == TCGETS || \
        arg1 == 0x40048001 || arg1 == 0x40088007 || arg1 == 0x40088026 || \
        arg1 == 0x40108002 || arg1 == 0x40108003 || arg1 == 0x40108014 || \
        arg1 == 0x4010801b || arg1 == 0x4020800f || arg1 == 0x40208018 || \
-       arg1 == 0x80048011 || arg1 == 0xc0048000 || arg1 == 0xc0208005
+       arg1 == 0x80048011 || arg1 == 0xc0018036 || arg1 == 0xc0048000 || \
+       arg1 == 0xc0208005
 kill: 1
 listen: 1
 _llseek: 1
