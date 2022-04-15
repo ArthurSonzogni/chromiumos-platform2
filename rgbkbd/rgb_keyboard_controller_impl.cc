@@ -18,8 +18,9 @@ uint32_t RgbKeyboardControllerImpl::GetRgbKeyboardCapabilities() {
   return static_cast<uint32_t>(keyboard_capabilities_);
 }
 
-void RgbKeyboardControllerImpl::SetKeyColor(uint32_t key, const Color& color) {
-  keyboard_->SetKeyColor(key, color.r, color.g, color.b);
+void RgbKeyboardControllerImpl::SetKeyColor(const KeyColor& key_color) {
+  keyboard_->SetKeyColor(key_color.key, key_color.color.r, key_color.color.g,
+                         key_color.color.b);
 }
 
 void RgbKeyboardControllerImpl::SetAllKeyColors(const Color& color) {
@@ -29,8 +30,8 @@ void RgbKeyboardControllerImpl::SetAllKeyColors(const Color& color) {
 void RgbKeyboardControllerImpl::SetCapsLockState(bool enabled) {
   caps_lock_enabled_ = enabled;
   const auto color = GetCurrentCapsLockColor();
-  SetKeyColor(kLeftShiftKey, color);
-  SetKeyColor(kRightShiftKey, color);
+  SetKeyColor({kLeftShiftKey, color});
+  SetKeyColor({kRightShiftKey, color});
 }
 
 void RgbKeyboardControllerImpl::SetStaticBackgroundColor(uint32_t r,

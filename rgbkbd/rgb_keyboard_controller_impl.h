@@ -61,7 +61,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
     return caps_lock_enabled_ ? GetCapsLockHighlightColor() : background_color_;
   }
 
-  void SetKeyColor(uint32_t key, const Color& color);
+  void SetKeyColor(const KeyColor& key_color);
   void SetAllKeyColors(const Color& color);
 
   RgbKeyboardCapabilities keyboard_capabilities_ =
