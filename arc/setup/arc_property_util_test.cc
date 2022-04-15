@@ -777,7 +777,7 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.model=3015Ce\n"},
 
         // For a Grunt board.
-        {"model name:\t: AMD A4-9120C RADEON R4, 5 COMPUTE CORES 2C+3G\n",
+        {"model name\t: AMD A4-9120C RADEON R4, 5 COMPUTE CORES 2C+3G\n",
          "ro.soc.manufacturer=AMD\n"
          "ro.soc.model=A4-9120C\n"},
 
