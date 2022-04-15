@@ -43,6 +43,14 @@ chromeos_startup will trigger a cleanup of the stateful partition.
 The preferred location of these config files in the source tree is a
 subdirectory of the parent project named `tmpfiles.d`.
 
+## When not to use tmpfiles.d
+
+Not all paths should be used with the tmpfiles.d mechanism.
+
+For device-related paths under `/dev` and `/sys`, use udev rules instead to
+set ownership & permissions.  These react well according to when the kernel
+finishes initialization and avoid race conditions with userland.
+
 ## Configuration application timing
 
 There are three primary ways to apply a tmpfiles.d configuration on Chrome OS.
