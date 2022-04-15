@@ -245,14 +245,7 @@ is_arc_vm(`
     remount
     unmount
   };
-  allow cros_cryptohomed arc_files:{
-      file
-      blk_file
-      chr_file
-      fifo_file
-      lnk_file
-      sock_file
-    } { relabelfrom relabelto };
+  allow cros_cryptohomed arc_files:file relabelfrom;
 
   # cryptohomed needs to remove files and directories when removing a user profile.
   allow cros_cryptohomed { file_type -cros_system_file_type }:dir rmdir;
@@ -292,15 +285,7 @@ is_arc_vm(`
       remount
       unmount
     };
-
-    allow cros_cryptohomed arc_files:{
-      file
-      blk_file
-      chr_file
-      fifo_file
-      lnk_file
-      sock_file
-    } { relabelfrom relabelto };
+    allow cros_cryptohomed arc_files:file relabelfrom;
 
     # cryptohomed needs to remove files and directories when removing a user profile.
     allow cros_cryptohomed { file_type -cros_system_file_type }:dir rmdir;
