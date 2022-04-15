@@ -575,18 +575,20 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
       re2::RE2::PartialMatch(
           model_field, R"(12th Gen Intel\(R\) C?ore\(TM\) ([^ ]+)$)", &model)) {
     manufacturer = "Intel";
-  } else if (re2::RE2::PartialMatch(
-                 model_field,
-                 R"(AMD (Ryzen 3 [A-Z0-9]+) [0-9]+W with Radeon Graphics)",
-                 &model) ||
+  } else if (
+      // Some Ryzen CPU models have a watt value, some do not.
+      // The "Ryzen # " portion is part of the ro.soc.model value.
+      re2::RE2::PartialMatch(
+          model_field,
+          R"(AMD (Ryzen [3-9] [A-Z0-9]+) (?:[0-9]+W )?with Radeon Graphics)",
+          &model) ||
 
-             // Simpler AMD model names missing a watt value.
-             re2::RE2::PartialMatch(
-                 model_field, R"(AMD ([0-9A-Za-z]+) with Radeon Graphics)",
-                 &model) ||
+      // Simpler AMD model names missing Ryzen name and a watt value.
+      re2::RE2::PartialMatch(
+          model_field, R"(AMD ([0-9A-Za-z]+) with Radeon Graphics)", &model) ||
 
-             re2::RE2::PartialMatch(model_field,
-                                    R"(AMD ([-0-9A-Za-z]+) RADEON R4,)", &model)
+      re2::RE2::PartialMatch(model_field, R"(AMD ([-0-9A-Za-z]+) RADEON R4,)",
+                             &model)
 
   ) {
     manufacturer = "AMD";
