@@ -1356,15 +1356,21 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
     LOG(INFO) << link_name() << " is up.";
     SetState(State::kLinked);
 
-    // b/182524993, b/185750211 - Currently we only support 1 config method
-    // (either IPv4 or IPv6) per bearer. On IPv4 only and IPv6 only network,
-    // we will pick the corresponding method from the bearer. For dual stack
-    // networks, IPv4 config will be used here and Ipv6 config will be
-    // populated using the kernel path.
     CHECK(capability_);
     CellularBearer* bearer = capability_->GetActiveBearer();
+    bool ipv6_configured = false;
+
+    // Some modems use kMethodStatic and some use kMethodDHCP for IPv6 config
+    if (bearer && bearer->ipv6_config_method() != IPConfig::kMethodUnknown) {
+      SLOG(this, 2) << "Assign static IPv6 configuration from bearer.";
+      SelectService(service_);
+      SetServiceState(Service::kStateConfiguring);
+      AssignStaticIPv6Config(*bearer->ipv6_config_properties());
+      ipv6_configured = true;
+    }
+
     if (bearer && bearer->ipv4_config_method() == IPConfig::kMethodStatic) {
-      SLOG(this, 2) << "Assign static IP configuration from bearer.";
+      SLOG(this, 2) << "Assign static IPv4 configuration from bearer.";
       SelectService(service_);
       SetServiceState(Service::kStateConfiguring);
       // Override the MTU with a given limit for a specific serving operator
@@ -1380,24 +1386,16 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
       return;
     }
 
-    if (bearer && bearer->ipv6_config_method() == IPConfig::kMethodStatic) {
-      LOG(INFO) << "Assign static IPv6 configuration from bearer.";
-      SelectService(service_);
-      SetServiceState(Service::kStateConfiguring);
-      IPConfig::Properties properties = *bearer->ipv6_config_properties();
-      // TODO(b:176060170): Combine values from IPv6 as well..
-      AssignIPv6Config(properties);
-      return;
+    if (!ipv6_configured ||
+        (bearer && bearer->ipv4_config_method() == IPConfig::kMethodDHCP)) {
+      if (AcquireIPConfig()) {
+        SLOG(this, 2) << "Start DHCP to acquire IPv4 configuration.";
+        SelectService(service_);
+        SetServiceState(Service::kStateConfiguring);
+      } else {
+        LOG(ERROR) << "Unable to acquire IPv4 configuration over DHCP.";
+      }
     }
-
-    if (AcquireIPConfig()) {
-      SLOG(this, 2) << "Start DHCP to acquire IP configuration.";
-      SelectService(service_);
-      SetServiceState(Service::kStateConfiguring);
-      return;
-    }
-
-    LOG(ERROR) << "Unable to acquire IP configuration over DHCP.";
     return;
   }
 

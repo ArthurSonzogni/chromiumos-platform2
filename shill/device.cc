@@ -454,6 +454,10 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   // It is possible for device to receive DNS server notification before IP
   // address notification, so preserve the saved DNS server if it exist.
   properties.dns_servers = ip6config_->properties().dns_servers;
+  if (ipv6_static_properties_ &&
+      !ipv6_static_properties_->dns_servers.empty()) {
+    properties.dns_servers = ipv6_static_properties_->dns_servers;
+  }
   ip6config_->set_properties(properties);
   UpdateIPConfigsProperty();
   OnIPv6ConfigUpdated();
@@ -651,13 +655,14 @@ void Device::AssignIPConfig(const IPConfig::Properties& properties) {
                                                    AsWeakPtr(), ipconfig_));
 }
 
-void Device::AssignIPv6Config(const IPConfig::Properties& properties) {
-  DestroyIPConfig();
+void Device::AssignStaticIPv6Config(const IPConfig::Properties& properties) {
   StartIPv6();
-  ip6config_ = new IPConfig(control_interface(), link_name_);
-  ip6config_->set_properties(properties);
-  dispatcher()->PostTask(FROM_HERE, base::BindOnce(&Device::OnIPConfigUpdated,
-                                                   AsWeakPtr(), ip6config_));
+  ipv6_static_properties_ = properties;
+  dispatcher()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Device::ConfigureStaticIPv6Address, AsWeakPtr()));
+  // UpdateIPConfigsProperty() will be called later when SLAAC finishes, that
+  // is also where static DNS configuration will be applied.
 }
 
 void Device::DestroyIPConfigLease(const std::string& name) {
@@ -737,6 +742,22 @@ void Device::OnIPv6ConfigUpdated() {
   }
 }
 
+void Device::ConfigureStaticIPv6Address() {
+  if (!ipv6_static_properties_ || ipv6_static_properties_->address.empty()) {
+    return;
+  }
+  IPAddress local(IPAddress::kFamilyIPv6);
+  if (!local.SetAddressFromString(ipv6_static_properties_->address)) {
+    LOG(ERROR) << "Local address " << ipv6_static_properties_->address
+               << " is invalid";
+    return;
+  }
+  local.set_prefix(ipv6_static_properties_->subnet_prefix);
+  rtnl_handler_->AddInterfaceAddress(interface_index_, local,
+                                     local.GetDefaultBroadcast(),
+                                     IPAddress(IPAddress::kFamilyIPv6));
+}
+
 void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   CreateConnection();
   if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
@@ -744,7 +765,9 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   } else {
     ipconfig->ClearBlackholedUids();
   }
+
   connection_->UpdateFromIPConfig(ipconfig->properties());
+  ConfigureStaticIPv6Address();
 
   // Report connection type.
   Metrics::NetworkConnectionIPType ip_type =

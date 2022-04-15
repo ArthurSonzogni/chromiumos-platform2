@@ -441,8 +441,9 @@ class Device : public base::RefCounted<Device> {
   // Assigns the IPv4 configuration |properties| to |ipconfig_|.
   void AssignIPConfig(const IPConfig::Properties& properties);
 
-  // Assigns the IPv6 configuration |properties| to |ip6config_|.
-  void AssignIPv6Config(const IPConfig::Properties& properties);
+  // Applies the static address from IPv6 configuration |properties|.
+  // |ip6config_| will be created later when SLAAC address is available.
+  void AssignStaticIPv6Config(const IPConfig::Properties& properties);
 
   // Callback registered with DHCPController. Also see the comment for
   // DHCPController::UpdateCallback.
@@ -538,6 +539,9 @@ class Device : public base::RefCounted<Device> {
 
   // Configure static IP address parameters if the service provides them.
   void ConfigureStaticIPTask();
+
+  // Configure static IP address received from cellular bearer.
+  void ConfigureStaticIPv6Address();
 
   // Set an IP configuration flag on the device. |family| should be "ipv6" or
   // "ipv4". |flag| should be the name of the flag to be set and |value| is
@@ -692,6 +696,12 @@ class Device : public base::RefCounted<Device> {
   std::unique_ptr<DHCPController> dhcp_controller_;
   IPConfigRefPtr ipconfig_;
   IPConfigRefPtr ip6config_;
+  // TODO(b/227563210): We currently use ip6config_ for IPv6 network properties
+  // from SLAAC and this separated |ipv6_static_properties_| for static
+  // configurations from cellular. This is temporary and only works because we
+  // always expect a SLAAC configu to be available (which will not be true for
+  // VPN). Will come back to rework after the Device-Network refactor.
+  std::optional<IPConfig::Properties> ipv6_static_properties_;
   std::unique_ptr<Connection> connection_;
   std::unique_ptr<DeviceAdaptorInterface> adaptor_;
   std::unique_ptr<PortalDetector> portal_detector_;
