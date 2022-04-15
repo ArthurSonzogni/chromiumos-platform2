@@ -215,6 +215,12 @@ TEST_F(CrosFpDevice_DeadPixelCount, OneDeadPixel) {
 
 class CrosFpDevice_ReadVersion : public testing::Test {
  public:
+  static inline const std::string kValidVersionStr =
+      "1.0.0\n"
+      "bloonchipper_v2.0.4277-9f652bb3\n"
+      "bloonchipper_v2.0.4277-9f652bb3\n"
+      "read-write\n";
+
   class MockCrosFpDevice : public CrosFpDevice {
    public:
     MockCrosFpDevice(
@@ -231,22 +237,22 @@ class CrosFpDevice_ReadVersion : public testing::Test {
       &mock_biod_metrics_, std::make_unique<ec::MockEcCommandFactory>()};
 };
 
+// Test reading the version string where the string returned by the driver is
+// not NUL terminated. The driver won't do this unless the "count" requested
+// by userspace in the "read" system call does not have enough space. This test
+// doesn't exactly replicate that condition exactly since we don't change
+// "count".
 TEST_F(CrosFpDevice_ReadVersion, ValidVersionStringNotNulTerminated) {
-  const std::string kVersionStr =
-      "1.0.0\n"
-      "bloonchipper_v2.0.4277-9f652bb3\n"
-      "bloonchipper_v2.0.4277-9f652bb3\n"
-      "read-writ\n";
-  EXPECT_EQ(kVersionStr.size(), 80);
+  EXPECT_EQ(kValidVersionStr.size(), 81);
 
   EXPECT_CALL(mock_cros_fp_device_, read)
-      .WillOnce([kVersionStr](int, void* buf, size_t count) {
-        EXPECT_EQ(count, kVersionStr.size());
+      .WillOnce([](int, void* buf, size_t count) {
         // Copy string, excluding terminating NUL.
+        int num_bytes_to_copy = kValidVersionStr.size();
+        EXPECT_GE(count, num_bytes_to_copy);
         uint8_t* buffer = static_cast<uint8_t*>(buf);
-        int num_bytes = kVersionStr.size();
-        std::memcpy(buffer, kVersionStr.data(), num_bytes);
-        return num_bytes;
+        std::memcpy(buffer, kValidVersionStr.data(), num_bytes_to_copy);
+        return num_bytes_to_copy;
       });
   std::optional<std::string> version = mock_cros_fp_device_.ReadVersion();
   EXPECT_TRUE(version.has_value());
@@ -254,25 +260,17 @@ TEST_F(CrosFpDevice_ReadVersion, ValidVersionStringNotNulTerminated) {
 }
 
 TEST_F(CrosFpDevice_ReadVersion, ValidVersionStringNulTerminated) {
-  const std::string kVersionStr =
-      "1.0.0\n"
-      "bloonchipper_v2.0.4277-9f652bb3\n"
-      "bloonchipper_v2.0.4277-9f652bb3\n"
-      "read-writ";
-  EXPECT_EQ(kVersionStr.size(), 79);
+  EXPECT_EQ(kValidVersionStr.size(), 81);
 
   EXPECT_CALL(mock_cros_fp_device_, read)
-      .WillOnce([kVersionStr](int, void* buf, size_t count) {
-        EXPECT_GE(count, kVersionStr.size());
-        // First, copy string, excluding terminating NUL.
+      .WillOnce([](int, void* buf, size_t count) {
+        // Copy entire string, including terminating NUL.
+        int num_bytes_to_copy = kValidVersionStr.size() + 1;
+        EXPECT_EQ(num_bytes_to_copy, 82);
+        EXPECT_GE(count, num_bytes_to_copy);
         uint8_t* buffer = static_cast<uint8_t*>(buf);
-        int num_bytes = kVersionStr.size();
-        std::memcpy(buffer, kVersionStr.data(), num_bytes);
-        // Then add a terminating NUL.
-        buffer[num_bytes] = '\0';
-        num_bytes += 1;
-        EXPECT_EQ(num_bytes, 80);
-        return num_bytes;
+        std::memcpy(buffer, kValidVersionStr.data(), num_bytes_to_copy);
+        return num_bytes_to_copy;
       });
   std::optional<std::string> version = mock_cros_fp_device_.ReadVersion();
   EXPECT_TRUE(version.has_value());
@@ -280,16 +278,16 @@ TEST_F(CrosFpDevice_ReadVersion, ValidVersionStringNulTerminated) {
 }
 
 TEST_F(CrosFpDevice_ReadVersion, InvalidVersionStringNoNewline) {
-  const std::string kVersionStr = "1.0.0";
+  const std::string kInvalidVersionStr = "1.0.0";
 
   EXPECT_CALL(mock_cros_fp_device_, read)
-      .WillOnce([kVersionStr](int, void* buf, size_t count) {
-        EXPECT_GE(count, kVersionStr.size());
-        // Copy string, excluding terminating NUL.
+      .WillOnce([kInvalidVersionStr](int, void* buf, size_t count) {
+        // Copy string, including terminating NUL.
+        int num_bytes_to_copy = kInvalidVersionStr.size() + 1;
+        EXPECT_GE(count, num_bytes_to_copy);
         uint8_t* buffer = static_cast<uint8_t*>(buf);
-        int num_bytes = kVersionStr.size();
-        std::memcpy(buffer, kVersionStr.data(), num_bytes);
-        return num_bytes;
+        std::memcpy(buffer, kInvalidVersionStr.data(), num_bytes_to_copy);
+        return num_bytes_to_copy;
       });
   std::optional<std::string> version = mock_cros_fp_device_.ReadVersion();
   EXPECT_FALSE(version.has_value());

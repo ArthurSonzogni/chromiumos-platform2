@@ -77,7 +77,7 @@ std::optional<CrosFpDevice::EcProtocolInfo> CrosFpDevice::EcProtoInfo() {
 
 std::optional<std::string> CrosFpDevice::ReadVersion() {
   // TODO(b/131438292): Remove the hardcoded size for the version buffer.
-  std::array<uint8_t, 80> version_buf;
+  std::array<uint8_t, 82> version_buf;
   for (int retry = 0; retry < kMaxIoAttempts; retry++) {
     ssize_t bytes_read =
         read(cros_fd_.get(), version_buf.data(), version_buf.size());
