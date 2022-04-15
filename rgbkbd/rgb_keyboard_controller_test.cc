@@ -13,6 +13,7 @@
 #include "rgbkbd/keyboard_backlight_logger.h"
 #include "rgbkbd/rgb_keyboard_controller_impl.h"
 
+#include "base/containers/span.h"
 #include "base/files/file.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
@@ -44,13 +45,24 @@ void ValidateLog(const std::string& expected) {
               expected == file_contents);
 }
 
-void ValidateLog(const std::vector<const KeyColor>& expected) {
+void ValidateLog(base::span<const KeyColor> expected) {
   std::string expected_string;
   for (const auto& key_color : expected) {
     expected_string += CreateSetKeyColorLogEntry(key_color);
   }
 
   ValidateLog(expected_string);
+}
+
+std::vector<KeyColor> GetRainbowModeColorsWithoutCapsLockKeys() {
+  std::vector<KeyColor> vec;
+  for (const auto& entry : kRainbowMode) {
+    if (entry.key == kLeftShiftKey || entry.key == kRightShiftKey) {
+      continue;
+    }
+    vec.push_back(entry);
+  }
+  return vec;
 }
 
 }  // namespace
@@ -82,15 +94,52 @@ TEST_F(RgbKeyboardControllerTest, SetCapsLockState) {
   EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
   controller_->SetCapsLockState(/*enabled=*/true);
   EXPECT_TRUE(controller_->IsCapsLockEnabledForTesting());
-  ValidateLog({{kLeftShiftKey, kCapsLockHighlightDefault},
-               {kRightShiftKey, kCapsLockHighlightDefault}});
+  const std::vector<KeyColor> caps_lock_colors = {
+      {kLeftShiftKey, kCapsLockHighlightDefault},
+      {kRightShiftKey, kCapsLockHighlightDefault}};
+  ValidateLog(std::move(caps_lock_colors));
 
   // Disable caps lock and verify that the background color is restored.
   EXPECT_TRUE(logger_->ResetLog());
   controller_->SetCapsLockState(/*enabled=*/false);
+  const std::vector<KeyColor> default_colors = {
+      {kLeftShiftKey, kDefaultBackgroundColor},
+      {kRightShiftKey, kDefaultBackgroundColor}};
+
   EXPECT_FALSE(controller_->IsCapsLockEnabledForTesting());
-  ValidateLog({{kLeftShiftKey, kDefaultBackgroundColor},
-               {kRightShiftKey, kDefaultBackgroundColor}});
+  ValidateLog(std::move(default_colors));
+}
+
+TEST_F(RgbKeyboardControllerTest, SetRainbowMode) {
+  controller_->SetRainbowMode();
+  ValidateLog(kRainbowMode);
+}
+
+TEST_F(RgbKeyboardControllerTest, SetRainbowModeCapsLockEnabled) {
+  controller_->SetCapsLockState(/*enabled=*/true);
+  EXPECT_TRUE(logger_->ResetLog());
+  controller_->SetRainbowMode();
+  ValidateLog(GetRainbowModeColorsWithoutCapsLockKeys());
+}
+
+TEST_F(RgbKeyboardControllerTest, SetRainbowModeWithCapsLock) {
+  // Simulate enabling caps lock.
+  controller_->SetCapsLockState(/*enabled=*/true);
+  EXPECT_TRUE(logger_->ResetLog());
+
+  // Set rainbow mode.
+  controller_->SetRainbowMode();
+
+  ValidateLog(GetRainbowModeColorsWithoutCapsLockKeys());
+  EXPECT_TRUE(logger_->ResetLog());
+
+  // Disable caps lock.
+  controller_->SetCapsLockState(/*enabled=*/false);
+  // Since rainbow mode was set, expect disabling caps lock reverts to the
+  // correct color
+  ValidateLog(
+      CreateSetKeyColorLogEntry({kLeftShiftKey, kCapsLockHighlightDefault}) +
+      CreateSetKeyColorLogEntry({kRightShiftKey, kCapsLockHighlightDefault}));
 }
 
 TEST_F(RgbKeyboardControllerTest, SetStaticBackgroundColor) {

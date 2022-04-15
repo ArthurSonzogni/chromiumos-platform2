@@ -37,12 +37,13 @@ void RgbKeyboardControllerImpl::SetCapsLockState(bool enabled) {
 void RgbKeyboardControllerImpl::SetStaticBackgroundColor(uint32_t r,
                                                          uint32_t g,
                                                          uint32_t b) {
+  background_type_ = BackgroundType::kStaticSingleColor;
   background_color_ = Color(r, g, b);
   SetAllKeyColors(background_color_);
 
   // If Capslock was enabled, re-color the highlight keys.
   if (caps_lock_enabled_) {
-    SetCapsLockState(caps_lock_enabled_);
+    SetCapsLockState(/*caps_lock_enabled_=*/true);
   }
 }
 
@@ -51,7 +52,33 @@ void RgbKeyboardControllerImpl::SetKeyboardClient(RgbKeyboard* keyboard) {
   keyboard_ = keyboard;
 }
 
-// TODO(jimmyxgong): Implement this stub.
-void RgbKeyboardControllerImpl::SetRainbowMode() {}
+void RgbKeyboardControllerImpl::SetRainbowMode() {
+  background_type_ = BackgroundType::kStaticRainbow;
+  for (const auto& entry : kRainbowMode) {
+    // Check if caps lock is enabled to avoid overriding the caps lock
+    // highlight keys.
+    if (caps_lock_enabled_ && IsShiftKey(entry.key)) {
+      continue;
+    }
+    keyboard_->SetKeyColor(entry.key, entry.color.r, entry.color.g,
+                           entry.color.b);
+  }
+}
+
+Color RgbKeyboardControllerImpl::GetColorForBackgroundType() const {
+  switch (background_type_) {
+    case BackgroundType::kStaticSingleColor:
+      return background_color_;
+    case BackgroundType::kStaticRainbow:
+      // TODO(michaelcheco): Determine colors for caps lock keys when rainbow
+      // mode is enabled.
+      return kCapsLockHighlightDefault;
+  }
+}
+
+Color RgbKeyboardControllerImpl::GetCurrentCapsLockColor() const {
+  return caps_lock_enabled_ ? GetCapsLockHighlightColor()
+                            : GetColorForBackgroundType();
+}
 
 }  // namespace rgbkbd
