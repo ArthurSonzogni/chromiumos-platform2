@@ -62,7 +62,8 @@ void ReloadableConfigFile::ReadConfigFileLocked(
     LOGF(ERROR) << "Config file does not exist: " << file_path;
     return;
   }
-  constexpr size_t kConfigFileMaxSize = 1024;
+  // Limiting config file size to 64KB. Increase this if needed.
+  constexpr size_t kConfigFileMaxSize = 65536;
   std::string contents;
   CHECK(base::ReadFileToStringWithMaxSize(file_path, &contents,
                                           kConfigFileMaxSize));
