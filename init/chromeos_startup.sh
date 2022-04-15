@@ -323,12 +323,14 @@ if [ "$ROOTDEV_RET_CODE" = "0" ] && [ "$ROOTDEV_TYPE" != "/dev/ram" ]; then
 
   if [ "${USE_LVM_STATEFUL_PARTITION}" -eq "1" ]; then
     # Attempt to get a valid volume group name.
+    bootstat pre-lvm-activation
     vg_name="$(get_volume_group "${STATE_DEV}")"
     if [ -n "${vg_name}" ]; then
-      vgchange -ay "${vg_name}"
+      lvchange -ay "${vg_name}/unencrypted"
       STATE_DEV="/dev/${vg_name}/unencrypted"
       DEV_IMAGE="/dev/${vg_name}/dev-image"
     fi
+    boostat lvm-activation-complete
   fi
 
   # Check if we enable ext4 features.

@@ -181,6 +181,7 @@ dev_mount_packages() {
   fi
 
   # Mount the dev image if there is a separate device available.
+  lvchange -ay "${device}"
   if [ -n "${device}" ]; then
     mount -n "${device}" "${STATEFUL_PARTITION}/dev_image" \
         -o "nodev,noexec,nosuid,noatime,discard"
