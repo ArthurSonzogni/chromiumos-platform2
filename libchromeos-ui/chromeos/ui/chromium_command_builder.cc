@@ -554,6 +554,9 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("disable_spectre_variant2_mitigation"))
     AddFeatureDisableOverride("SpectreVariant2Mitigation");
 
+  if (UseFlagIsSet("prefer_libyuv_image_processor"))
+    AddFeatureEnableOverride("PreferLibYUVImageProcessor");
+
   // Allow Chrome to access GPU memory information despite /sys/kernel/debug
   // being owned by debugd. This limits the security attack surface versus
   // leaving the whole debug directory world-readable: http://crbug.com/175828
