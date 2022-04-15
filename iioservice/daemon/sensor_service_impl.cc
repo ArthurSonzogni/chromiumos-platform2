@@ -42,6 +42,11 @@ constexpr char kChnPrefixes[][12] = {
     "magn_",        // MAGN
     "angl",         // ANGL
     "pressure",     // BARO
+    "",             // ACCEL_UNCALIBRATED
+    "",             // ANGLVEL_UNCALIBRATED
+    "",             // MAGN_UNCALIBRATED
+    "",             // GRAVITY
+    "proximity",    // PROXIMITY
 };
 
 bool DeviceHasType(libmems::IioDevice* iio_device,
@@ -64,6 +69,7 @@ bool DeviceHasType(libmems::IioDevice* iio_device,
     case cros::mojom::DeviceType::COUNT:
     case cros::mojom::DeviceType::ANGL:
     case cros::mojom::DeviceType::BARO:
+    case cros::mojom::DeviceType::PROXIMITY:
       for (auto chn : channels) {
         if (strcmp(chn->GetId(), kChnPrefixes[type_int]) == 0)
           return true;
