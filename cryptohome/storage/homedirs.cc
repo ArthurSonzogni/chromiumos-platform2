@@ -374,18 +374,9 @@ bool HomeDirs::GetTrackedDirectoryForDirCrypto(const FilePath& mount_dir,
 EncryptedContainerType HomeDirs::ChooseVaultType() {
 // TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
 #if USE_LVM_STATEFUL_PARTITION
-  // Validate stateful partition thinpool.
-  std::optional<brillo::PhysicalVolume> pv =
-      lvm_->GetPhysicalVolume(platform_->GetStatefulDevice());
-  if (pv && pv->IsValid()) {
-    std::optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
-    if (vg && vg->IsValid()) {
-      std::optional<brillo::Thinpool> thinpool =
-          lvm_->GetThinpool(*vg, "thinpool");
-      if (thinpool && thinpool->IsValid())
-        return EncryptedContainerType::kDmcrypt;
-    }
-  }
+  // Validate stateful partition logical volume support.
+  if (platform_->IsStatefulLogicalVolumeSupported())
+    return EncryptedContainerType::kDmcrypt;
 #endif  // USE_LVM_STATEFUL_PARTITION
 
   dircrypto::KeyState state = platform_->GetDirCryptoKeyState(ShadowRoot());

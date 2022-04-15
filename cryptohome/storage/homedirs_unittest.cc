@@ -437,9 +437,6 @@ class HomeDirsVaultTest : public ::testing::Test {
       HomeDirs* homedirs,
       const std::string& obfuscated_username,
       bool existing_cryptohome) {
-    brillo::PhysicalVolume pv(base::FilePath("/dev/mmcblk0p1"), nullptr);
-    brillo::VolumeGroup vg("stateful", nullptr);
-    brillo::Thinpool thinpool("thinpool", "stateful", nullptr);
     brillo::LogicalVolume lv(LogicalVolumePrefix(obfuscated_username)
                                  .append(kDmcryptDataContainerSuffix),
                              "stateful", nullptr);
@@ -451,9 +448,8 @@ class HomeDirsVaultTest : public ::testing::Test {
     EXPECT_CALL(*platform, GetBlkSize(_, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
-    EXPECT_CALL(*lvm.get(), GetPhysicalVolume(_)).WillRepeatedly(Return(pv));
-    EXPECT_CALL(*lvm.get(), GetVolumeGroup(_)).WillRepeatedly(Return(vg));
-    EXPECT_CALL(*lvm.get(), GetThinpool(_, _)).WillRepeatedly(Return(thinpool));
+    EXPECT_CALL(*platform, IsStatefulLogicalVolumeSupported())
+        .WillRepeatedly(Return(true));
     if (existing_cryptohome) {
       EXPECT_CALL(*lvm.get(), GetLogicalVolume(_, _))
           .WillRepeatedly(Return(lv));

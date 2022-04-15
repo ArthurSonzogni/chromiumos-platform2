@@ -94,6 +94,10 @@ const base::TimeDelta kLongSync = base::Seconds(10);
 // Hibernation stateful device: keep in sync with chromeos_startup.sh.
 constexpr char kStatefulHibernationDevice[] = "/dev/mapper/stateful-rw";
 
+constexpr ssize_t kLvmSignatureOffset = 512;
+constexpr ssize_t kLvmSignatureSize = 8;
+constexpr char kLvmSignature[] = "LABELONE";
+
 class ScopedPath {
  public:
   ScopedPath(cryptohome::Platform* platform, const FilePath& dir)
@@ -840,6 +844,24 @@ bool Platform::UdevAdmSettle(const base::FilePath& device_path,
     return false;
 
   return true;
+}
+
+bool Platform::IsStatefulLogicalVolumeSupported() {
+  base::FilePath stateful_device = GetStatefulDevice();
+
+  base::ScopedFD fd(HANDLE_EINTR(open(stateful_device.value().c_str(),
+                                      O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
+
+  if (!fd.is_valid())
+    return false;
+
+  char lvm_signature[kLvmSignatureSize + 1];
+
+  if (HANDLE_EINTR(pread(fd.get(), &lvm_signature, kLvmSignatureSize,
+                         kLvmSignatureOffset)) != kLvmSignatureSize)
+    return false;
+
+  return std::string(lvm_signature) == kLvmSignature;
 }
 
 base::FilePath Platform::GetStatefulDevice() {

@@ -965,6 +965,9 @@ class Platform {
   virtual bool UdevAdmSettle(const base::FilePath& device_path,
                              bool wait_for_device);
 
+  // Checks the header of the stateful partition for LVM metadata.
+  virtual bool IsStatefulLogicalVolumeSupported();
+
   // Gets the block device for the underlying stateful partition.
   virtual base::FilePath GetStatefulDevice();
 

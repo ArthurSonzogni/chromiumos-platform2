@@ -410,6 +410,7 @@ class MockPlatform : public Platform {
               (const base::FilePath&, const std::string&),
               (override));
   MOCK_METHOD(bool, UdevAdmSettle, (const base::FilePath&, bool), (override));
+  MOCK_METHOD(bool, IsStatefulLogicalVolumeSupported, (), (override));
   MOCK_METHOD(base::FilePath, GetStatefulDevice, (), (override));
 
   brillo::ProcessMock* mock_process() { return mock_process_.get(); }

@@ -230,8 +230,6 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
       rootdir.Append(STATEFUL_MNT "/encrypted.block");
 
   base::FilePath stateful_device = platform->GetStatefulDevice();
-  std::optional<brillo::PhysicalVolume> pv =
-      lvm->GetPhysicalVolume(stateful_device);
 
   // Use the loopback sparse file in 2 cases:
   // 1. If the device is set up using an ext4 stateful partition.
@@ -241,7 +239,8 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
   // TODO(sarthakkukreti@): Loopback backing devices use size in bytes whereas
   // logical volume backing devices use size in megabytes. Fix this
   // inconsistency.
-  if (!pv || !pv->IsValid() || base::PathExists(sparse_backing_file)) {
+  if (!platform->IsStatefulLogicalVolumeSupported() ||
+      base::PathExists(sparse_backing_file)) {
     backing_device_config = {
         .type = cryptohome::BackingDeviceType::kLoopbackDevice,
         .name = dmcrypt_name,
