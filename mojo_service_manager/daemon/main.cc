@@ -47,6 +47,9 @@ int main(int argc, char* argv[]) {
               "Indicates whether the service manager daemon is in the "
               "permissive mode. In permissive mode, the requests with wrong "
               "identity won't be rejected.");
+  DEFINE_bool(check_policy, false,
+              "Try to load the policy files and exit. If there is any error "
+              "during loading, the exit code will be 1.");
 
   brillo::FlagHelper::Init(argc, argv, "ChromeOS mojo service manager.");
 
@@ -56,13 +59,25 @@ int main(int argc, char* argv[]) {
   mojo::core::Init(mojo::core::Configuration{.is_broker_process = true});
 
   service_manager::ServicePolicyMap policy_map;
-  service_manager::LoadAllServicePolicyFileFromDirectory(
+  bool is_load_success = service_manager::LoadAllServicePolicyFileFromDirectory(
       base::FilePath{kPolicyDirectoryPath}, &policy_map);
   if (IsDevMode()) {
     LOG(INFO) << "DevMode is enabled, load extra configs from "
               << kExtraPolicyDirectoryPathInDevMode;
-    service_manager::LoadAllServicePolicyFileFromDirectory(
-        base::FilePath{kExtraPolicyDirectoryPathInDevMode}, &policy_map);
+    if (!service_manager::LoadAllServicePolicyFileFromDirectory(
+            base::FilePath{kExtraPolicyDirectoryPathInDevMode}, &policy_map)) {
+      is_load_success = false;
+    }
+  }
+  if (FLAGS_check_policy) {
+    LOG(INFO) << "We are in --check-policy mode, will exit after checking the "
+                 "policy.";
+    if (is_load_success) {
+      LOG(INFO) << "Check policy result: Pass.";
+      return 0;
+    }
+    LOG(ERROR) << "Check policy result: Error detected.";
+    return 1;
   }
 
   service_manager::Configuration configuration{};
