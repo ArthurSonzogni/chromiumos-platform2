@@ -53,6 +53,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
           mtu(kUndefinedMTU),
           lease_duration_seconds(0) {}
 
+    // Whether this struct contains both IP address and DNS, and thus is ready
+    // to be used for network connection.
+    bool HasIPAddressAndDNS() const;
+
     IPAddress::Family address_family;
     std::string address;
     int32_t subnet_prefix;

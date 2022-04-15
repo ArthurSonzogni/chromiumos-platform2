@@ -722,13 +722,13 @@ void Device::ConfigureStaticIPTask() {
   }
 }
 
-bool Device::IPConfigCompleted(const IPConfigRefPtr& ipconfig) {
-  return ipconfig && !ipconfig->properties().address.empty() &&
-         !ipconfig->properties().dns_servers.empty();
-}
-
 void Device::OnIPv6ConfigUpdated() {
-  if (ip6config_ && connection_) {
+  if (!ip6config_) {
+    LOG(WARNING) << __func__ << " called but |ip6config_| is empty";
+    return;
+  }
+
+  if (connection_) {
     connection_->UpdateGatewayMetric(ip6config_->properties());
   }
 
@@ -736,7 +736,7 @@ void Device::OnIPv6ConfigUpdated() {
   // is ready for connection (contained both IP address and DNS servers), and
   // there is no existing IPv4 connection. We always prefer IPv4
   // configuration over IPv6.
-  if (IPConfigCompleted(ip6config_) &&
+  if (ip6config_->properties().HasIPAddressAndDNS() &&
       (!connection_ || connection_->IsIPv6())) {
     SetupConnection(ip6config_);
   }
@@ -776,7 +776,8 @@ void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
   metrics()->NotifyNetworkConnectionIPType(technology_, ip_type);
 
   // Report if device have IPv6 connectivity
-  bool ipv6_connectivity = IPConfigCompleted(ip6config_);
+  bool ipv6_connectivity =
+      ip6config_ && ip6config_->properties().HasIPAddressAndDNS();
   metrics()->NotifyIPv6ConnectivityStatus(technology_, ipv6_connectivity);
 
   if (selected_service_) {
@@ -915,7 +916,7 @@ void Device::OnDHCPFailure() {
   UpdateIPConfigsProperty();
 
   // Fallback to IPv6 if possible.
-  if (IPConfigCompleted(ip6config_)) {
+  if (ip6config_ && ip6config_->properties().HasIPAddressAndDNS()) {
     if (!connection_ || !connection_->IsIPv6()) {
       // Setup IPv6 connection.
       SetupConnection(ip6config_);

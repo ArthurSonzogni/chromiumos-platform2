@@ -581,10 +581,6 @@ class Device : public base::RefCounted<Device> {
   // service changed.
   void OnStaticIPConfigChanged();
 
-  // Return true if given IP configuration contain both IP address and DNS
-  // servers. Hence, ready to be used for network connection.
-  bool IPConfigCompleted(const IPConfigRefPtr& ipconfig);
-
   // Setup network connection with given IP configuration, and start portal
   // detection on that connection.
   void SetupConnection(const IPConfigRefPtr& ipconfig);

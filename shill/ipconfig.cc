@@ -32,6 +32,10 @@ static std::string ObjectID(const IPConfig* i) {
 }
 }  // namespace Logging
 
+bool IPConfig::Properties::HasIPAddressAndDNS() const {
+  return !address.empty() && !dns_servers.empty();
+}
+
 // static
 const int IPConfig::kDefaultMTU = 1500;
 const int IPConfig::kMinIPv4MTU = 576;
