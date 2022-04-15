@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"unicode"
+
+	"chromiumos/dbusbindings/introspect"
 )
 
 // GenerateHeaderGuard generates a string of a header guard.
@@ -64,8 +66,8 @@ var indentRE = regexp.MustCompile(`^[ \t]+`)
 // FormatComment removes extraneous white space, inserts a double slash and adds an indent of |indent| characters
 // to each line for the string.
 // This function tries to retain indentation in the comments to maintain the comment layout.
-func FormatComment(docString string, indent int) string {
-	lines := strings.Split(docString, "\n")
+func FormatComment(docString introspect.DocString, indent int) string {
+	lines := strings.Split(string(docString), "\n")
 
 	for i, line := range lines {
 		lines[i] = strings.TrimRight(line, " \t")

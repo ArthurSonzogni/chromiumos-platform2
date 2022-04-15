@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"chromiumos/dbusbindings/generate/genutil"
+	"chromiumos/dbusbindings/introspect"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -80,8 +81,9 @@ func TestReverse(t *testing.T) {
 
 func TestFormatComment(t *testing.T) {
 	cases := []struct {
-		indent      int
-		input, want string
+		indent int
+		input  introspect.DocString
+		want   string
 	}{
 		{2, "", ""},
 		{2, " \tcomment\t ", "  // comment\n"},

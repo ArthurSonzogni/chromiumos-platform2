@@ -66,6 +66,18 @@ type MethodArg struct {
 	Annotation Annotation `xml:"annotation"`
 }
 
+// TODO(chromium:983008): Remove the workaround for docstring tags that repeatedly appeared in
+// lorgnette and hermes package.
+
+// DocString represents a string of a document tag.
+type DocString string
+
+// UnmarshalText unmarshal all text even if it repeatedly appeared.
+func (s *DocString) UnmarshalText(text []byte) error {
+	*s += DocString(text)
+	return nil
+}
+
 // Method represents method provided by a object through a interface.
 // TODO(crbug.com/983008): Some xml files are missing tp namespace; add
 // "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0" xml tag to DocString after
@@ -74,7 +86,7 @@ type Method struct {
 	Name        string       `xml:"name,attr"`
 	Args        []MethodArg  `xml:"arg"`
 	Annotations []Annotation `xml:"annotation"`
-	DocString   string       `xml:"docstring"`
+	DocString   DocString    `xml:"docstring"`
 }
 
 // SignalArg represents signal message.
@@ -93,7 +105,7 @@ type SignalArg struct {
 type Signal struct {
 	Name      string      `xml:"name,attr"`
 	Args      []SignalArg `xml:"arg"`
-	DocString string      `xml:"docstring"`
+	DocString DocString   `xml:"docstring"`
 }
 
 // Property represents property provided by a object through a interface.
@@ -101,10 +113,10 @@ type Signal struct {
 // "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0" xml tag to DocString after
 // fixing.
 type Property struct {
-	Name      string `xml:"name,attr"`
-	Type      string `xml:"type,attr"`
-	Access    string `xml:"access,attr"`
-	DocString string `xml:"docstring"`
+	Name      string    `xml:"name,attr"`
+	Type      string    `xml:"type,attr"`
+	Access    string    `xml:"access,attr"`
+	DocString DocString `xml:"docstring"`
 }
 
 // Interface represents interface provided by a object.
@@ -116,7 +128,7 @@ type Interface struct {
 	Methods    []Method   `xml:"method"`
 	Signals    []Signal   `xml:"signal"`
 	Properties []Property `xml:"property"`
-	DocString  string     `xml:"docstring"`
+	DocString  DocString  `xml:"docstring"`
 }
 
 // Introspection represents object specification required for generating
