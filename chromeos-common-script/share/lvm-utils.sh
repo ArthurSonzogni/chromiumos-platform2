@@ -12,7 +12,7 @@
 get_volume_group() {
   local physical_volume="$1"
 
-  pvdisplay -C --quiet --noheadings --separator '|' \
+  pvdisplay -C --quiet --readonly --noheadings --separator '|' \
     -o vg_name "${physical_volume}" | tr -d '[:space:]'
 }
 
