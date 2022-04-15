@@ -243,7 +243,7 @@ void AuthSession::AddCredentials(
   std::unique_ptr<Credentials> credentials =
       std::move(credentials_or_err).value();
 
-  if (user_has_configured_credential_) {
+  if (user_has_configured_credential_) {  // AddKeyset
     // Can't add kiosk key for an existing user.
     if (credentials->key_data().type() == KeyData::KEY_TYPE_KIOSK) {
       LOG(WARNING) << "Add Credentials: tried adding kiosk auth for user";
@@ -268,30 +268,27 @@ void AuthSession::AddCredentials(
               user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
       return;
     }
+  } else {  // AddInitialKeyset
+    // If AuthSession is not configured as an ephemeral user, then we save the
+    // key to the disk.
+    if (is_ephemeral_user_) {
+      ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
+      return;
+    }
 
-    CreateKeyBlobsToAddKeyset(*credentials.get(),
-                              /*initial_keyset=*/false, std::move(on_done));
-    return;
-  }
-
-  // If AuthSession is not configured as an ephemeral user, then we save the
-  // key to the disk.
-  if (is_ephemeral_user_) {
-    ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
-    return;
-  }
-
-  DCHECK(!vault_keyset_);
-  if (!file_system_keyset_.has_value()) {
-    // Creating file_system_keyset to the prepareVault call next.
-    // This is needed to support the old case where authentication happened
-    // before creation of user and will be temporary as it is an intermediate
-    // milestone.
-    file_system_keyset_ = FileSystemKeyset::CreateRandom();
+    DCHECK(!vault_keyset_);
+    if (!file_system_keyset_.has_value()) {
+      // Creating file_system_keyset to the prepareVault call next.
+      // This is needed to support the old case where authentication happened
+      // before creation of user and will be temporary as it is an intermediate
+      // milestone.
+      file_system_keyset_ = FileSystemKeyset::CreateRandom();
+    }
   }
 
   CreateKeyBlobsToAddKeyset(*credentials.get(),
-                            /*initial_keyset=*/true, std::move(on_done));
+                            /*initial_keyset=*/!user_has_configured_credential_,
+                            std::move(on_done));
   return;
 }
 
