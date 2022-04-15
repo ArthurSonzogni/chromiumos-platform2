@@ -275,12 +275,16 @@ TEST_P(SensorServiceImplTestDeviceTypesWithParam, DeviceTypes) {
       [](base::OnceClosure closure,
          const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
              iio_device_ids_types) {
-        EXPECT_EQ(iio_device_ids_types.size(), 1);
-        auto it = iio_device_ids_types.find(kFakeAccelId);
-        EXPECT_TRUE(it != iio_device_ids_types.end());
-        EXPECT_EQ(it->second.size(), GetParam().second.size());
-        for (size_t i = 0; i < it->second.size(); ++i)
-          EXPECT_EQ(it->second[i], GetParam().second[i]);
+        if (GetParam().second.empty()) {
+          EXPECT_TRUE(iio_device_ids_types.empty());
+        } else {
+          EXPECT_EQ(iio_device_ids_types.size(), 1);
+          auto it = iio_device_ids_types.find(kFakeAccelId);
+          EXPECT_TRUE(it != iio_device_ids_types.end());
+          EXPECT_EQ(it->second.size(), GetParam().second.size());
+          for (size_t i = 0; i < it->second.size(); ++i)
+            EXPECT_EQ(it->second[i], GetParam().second[i]);
+        }
 
         std::move(closure).Run();
       },

@@ -329,6 +329,13 @@ void SensorServiceImpl::AddDevice(libmems::IioDevice* device) {
       types.push_back(type);
   }
 
+  if (types.empty()) {
+    LOGF(WARNING) << "Ignoring device id: " << id << ", name: "
+                  << (device->GetName() ? device->GetName() : "null")
+                  << ", with no valid type";
+    return;
+  }
+
   Location location = GetLocation(device);
   AddDevice(id, types, location);
   sensor_device_->OnDeviceAdded(
