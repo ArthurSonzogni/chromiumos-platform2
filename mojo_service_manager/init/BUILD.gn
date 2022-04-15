@@ -1,0 +1,32 @@
+# Copyright 2022 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/install_config.gni")
+import("//common-mk/install_seccomp_policy.gni")
+
+group("init") {
+  deps = [
+    ":install_init_config",
+    ":install_seccomp",
+    ":install_tmpfiles_config",
+  ]
+}
+
+install_seccomp_policy("install_seccomp") {
+  _arch = getenv("ARCH")
+  sources = [ rebase_path("seccomp/${_arch}/mojo_service_manager.policy",
+                          root_build_dir) ]
+  install_path = "/usr/share/policy"
+}
+
+install_config("install_init_config") {
+  sources = [ rebase_path("mojo_service_manager.conf", root_build_dir) ]
+  install_path = "/etc/init"
+}
+
+install_config("install_tmpfiles_config") {
+  sources =
+      [ rebase_path("tmpfiles.d/mojo_service_manager.conf", root_build_dir) ]
+  install_path = "/usr/lib/tmpfiles.d/on-demand"
+}

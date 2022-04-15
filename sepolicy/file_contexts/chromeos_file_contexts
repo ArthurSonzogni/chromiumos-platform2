@@ -110,6 +110,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/ml_service             u:object_r:cros_ml_service_exec:s0
 /usr/bin/mmdata_mgr             u:object_r:cros_mmdata_mgr_exec:s0
 /usr/bin/modemfwd               u:object_r:cros_modemfwd_exec:s0
+/usr/bin/mojo_service_manager   u:object_r:cros_mojo_service_manager_exec:s0
 /usr/bin/mount-passthrough      u:object_r:cros_mount_passthrough_exec:s0
 /usr/bin/mount-passthrough-jailed       u:object_r:cros_mount_passthrough_jailed_exec:s0
 /usr/bin/mount-passthrough-jailed-media u:object_r:cros_mount_passthrough_jailed_media_exec:s0
@@ -394,6 +395,8 @@ has_arc(`
 /run/log                        u:object_r:cros_run_log:s0
 /run/metrics                    u:object_r:cros_run_metrics:s0
 /run/metrics/external           u:object_r:cros_run_metrics_external:s0
+/run/mojo                       u:object_r:cros_run_mojo:s0
+/run/mojo/service_manager.sock  u:object_r:cros_mojo_service_manager_socket:s0
 /run/mount_encrypted            u:object_r:cros_run_mount_encrypted:s0
 /run/perfetto                   u:object_r:cros_run_perfetto:s0
 /run/pvm                        u:object_r:cros_run_pvm:s0

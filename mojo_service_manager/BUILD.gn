@@ -3,5 +3,8 @@
 # found in the LICENSE file.
 
 group("all") {
-  deps = [ "//mojo_service_manager/daemon" ]
+  deps = [
+    "//mojo_service_manager/daemon",
+    "//mojo_service_manager/init",
+  ]
 }
