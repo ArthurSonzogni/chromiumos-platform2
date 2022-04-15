@@ -19,10 +19,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time.h>
-// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
-#if USE_LVM_STATEFUL_PARTITION
 #include <brillo/blkdev_utils/lvm.h>
-#endif  // USE_LVM_STATEFUL_PARTITION
 #include <brillo/secure_blob.h>
 #include <chaps/token_manager_client.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
@@ -185,13 +182,10 @@ class HomeDirs {
     return vault_factory_.get();
   }
 
-// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
-#if USE_LVM_STATEFUL_PARTITION
   void SetLogicalVolumeManagerForTesting(
       std::unique_ptr<brillo::LogicalVolumeManager> lvm) {
     lvm_ = std::move(lvm);
   }
-#endif  // USE_LVM_STATEFUL_PARTITION
 
  private:
   // Choose the vault type for new vaults.
@@ -261,10 +255,7 @@ class HomeDirs {
 
   // The container a not-shifted system UID in ARC++ container (AID_SYSTEM).
   static constexpr uid_t kAndroidSystemUid = 1000;
-// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
-#if USE_LVM_STATEFUL_PARTITION
   std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
-#endif  // USE_LVM_STATEFUL_PARTITION
 
   friend class HomeDirsTest;
   FRIEND_TEST(HomeDirsTest, GetTrackedDirectoryForDirCrypto);

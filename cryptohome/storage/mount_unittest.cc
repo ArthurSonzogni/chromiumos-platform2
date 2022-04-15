@@ -1149,8 +1149,6 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToFscrypt) {
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
 }
 
-#if USE_LVM_STATEFUL_PARTITION
-
 TEST_F(PersistentSystemTest, MigrateEcryptfsToDmcrypt) {
   // Verify ecryptfs->dircrypto migration.
   const std::string kContent{"some_content"};
@@ -1290,8 +1288,6 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
   ASSERT_TRUE(mount_->UnmountCryptohome());
   VerifyFS(kUser, MountType::DMCRYPT, /*expect_present=*/false);
 }
-
-#endif  // USE_LVM_STATEFUL_PARTITION
 
 }  // namespace
 

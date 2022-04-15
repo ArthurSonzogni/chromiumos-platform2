@@ -13,10 +13,7 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
-// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
-#if USE_LVM_STATEFUL_PARTITION
 #include <brillo/blkdev_utils/mock_lvm.h>
-#endif  // USE_LVM_STATEFUL_PARTITION
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -430,8 +427,6 @@ class HomeDirsVaultTest : public ::testing::Test {
         key_reference_({.fek_sig = brillo::SecureBlob("random keyref")}) {}
   ~HomeDirsVaultTest() override = default;
 
-// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
-#if USE_LVM_STATEFUL_PARTITION
   void ExpectLogicalVolumeStatefulPartition(
       MockPlatform* platform,
       HomeDirs* homedirs,
@@ -460,7 +455,6 @@ class HomeDirsVaultTest : public ::testing::Test {
 
     homedirs->SetLogicalVolumeManagerForTesting(std::move(lvm));
   }
-#endif  // USE_LVM_STATEFUL_PARTITION
 
  protected:
   struct HomedirsTestCase {
@@ -480,7 +474,6 @@ class HomeDirsVaultTest : public ::testing::Test {
   void PrepareTestCase(const HomedirsTestCase& test_case,
                        MockPlatform* platform,
                        HomeDirs* homedirs) {
-#if USE_LVM_STATEFUL_PARTITION
     if (test_case.lvm_supported) {
       auto type = test_case.existing_container_type;
       ExpectLogicalVolumeStatefulPartition(
@@ -488,7 +481,6 @@ class HomeDirsVaultTest : public ::testing::Test {
           type == EncryptedContainerType::kDmcrypt);
       homedirs->set_lvm_migration_enabled(true);
     }
-#endif  // USE_LVM_STATEFUL_PARTITION
 
     dircrypto::KeyState root_keystate =
         test_case.fscrypt_supported ? dircrypto::KeyState::NO_KEY
@@ -638,7 +630,6 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
         .expected_type = EncryptedContainerType::kUnknown,
         .expected_error = MOUNT_ERROR_PREVIOUS_MIGRATION_INCOMPLETE,
     },
-#if USE_LVM_STATEFUL_PARTITION
     {
         .name = "existing_fscrypt_migrate",
         .lvm_supported = true,
@@ -675,7 +666,6 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
         .expected_type = EncryptedContainerType::kDmcrypt,
         .expected_error = MOUNT_ERROR_NONE,
     },
-#endif  // USE_LVM_STATEFUL_PARTITION
   };
 
   for (const auto& test_case : test_cases) {

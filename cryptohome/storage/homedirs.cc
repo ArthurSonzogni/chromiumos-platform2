@@ -19,10 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/cryptohome.h>
-// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
-#if USE_LVM_STATEFUL_PARTITION
 #include <brillo/blkdev_utils/lvm.h>
-#endif  // USE_LVM_STATEFUL_PARTITION
 #include <brillo/scoped_umask.h>
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
@@ -83,12 +80,8 @@ HomeDirs::HomeDirs(Platform* platform,
       enterprise_owned_(false),
       lvm_migration_enabled_(false),
       vault_factory_(std::move(vault_factory)),
-      remove_callback_(remove_callback) {
-// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
-#if USE_LVM_STATEFUL_PARTITION
-  lvm_ = std::make_unique<brillo::LogicalVolumeManager>();
-#endif  // USE_LVM_STATEFUL_PARTITION
-}
+      remove_callback_(remove_callback),
+      lvm_(std::make_unique<brillo::LogicalVolumeManager>()) {}
 
 HomeDirs::~HomeDirs() {}
 
@@ -200,8 +193,6 @@ bool HomeDirs::DircryptoCryptohomeExists(const std::string& obfuscated_username,
 bool HomeDirs::DmcryptContainerExists(
     const std::string& obfuscated_username,
     const std::string& container_suffix) const {
-// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
-#if USE_LVM_STATEFUL_PARTITION
   // Check for the presence of the logical volume for the user's data container.
   std::string logical_volume_container =
       LogicalVolumePrefix(obfuscated_username).append(container_suffix);
@@ -221,9 +212,6 @@ bool HomeDirs::DmcryptContainerExists(
     return false;
 
   return lvm_->GetLogicalVolume(*vg, logical_volume_container) != std::nullopt;
-#else
-  return false;
-#endif  // USE_LVM_STATEFUL_PARTITION
 }
 
 bool HomeDirs::DmcryptCryptohomeExists(
@@ -372,12 +360,9 @@ bool HomeDirs::GetTrackedDirectoryForDirCrypto(const FilePath& mount_dir,
 }
 
 EncryptedContainerType HomeDirs::ChooseVaultType() {
-// TODO(b/177929620): Cleanup once lvm utils are built unconditionally.
-#if USE_LVM_STATEFUL_PARTITION
   // Validate stateful partition logical volume support.
   if (platform_->IsStatefulLogicalVolumeSupported())
     return EncryptedContainerType::kDmcrypt;
-#endif  // USE_LVM_STATEFUL_PARTITION
 
   dircrypto::KeyState state = platform_->GetDirCryptoKeyState(ShadowRoot());
   switch (state) {
@@ -427,11 +412,9 @@ EncryptedContainerType HomeDirs::PickVaultType(
       vault_type = EncryptedContainerType::kEcryptfsToFscrypt;
     }
   }
-#if USE_LVM_STATEFUL_PARTITION
   if (vault_type == EncryptedContainerType::kFscrypt && options.migrate) {
     vault_type = EncryptedContainerType::kFscryptToDmcrypt;
   }
-#endif
 
   // Validate exiting vault options.
   if (vault_type != EncryptedContainerType::kUnknown) {
