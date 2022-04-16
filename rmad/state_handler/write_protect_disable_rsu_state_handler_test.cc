@@ -7,11 +7,13 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "rmad/constants.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
 #include "rmad/system/mock_power_manager_client.h"
@@ -76,7 +78,7 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
     }
 
     return base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(
-        json_store_, std::move(mock_cr50_utils),
+        json_store_, GetTempDirPath(), std::move(mock_cr50_utils),
         std::move(mock_crossystem_utils), std::move(mock_power_manager_client));
   }
 
@@ -119,6 +121,8 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableComplete);
+  EXPECT_FALSE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Success_Rsu) {
@@ -147,6 +151,8 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_Success_Rsu) {
   task_environment_.FastForwardBy(
       WriteProtectDisableRsuStateHandler::kRebootDelay);
   EXPECT_TRUE(reboot_called);
+  EXPECT_TRUE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_MissingState) {
@@ -159,6 +165,8 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest, GetNextStateCase_MissingState) {
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
+  EXPECT_FALSE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
 }
 
 TEST_F(WriteProtectDisableRsuStateHandlerTest,
@@ -172,6 +180,8 @@ TEST_F(WriteProtectDisableRsuStateHandlerTest,
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
+  EXPECT_FALSE(base::PathExists(
+      GetTempDirPath().AppendASCII(kPowerwashRequestFilePath)));
 }
 
 }  // namespace rmad

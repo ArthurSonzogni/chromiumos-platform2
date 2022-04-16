@@ -10,7 +10,9 @@
 #include <utility>
 
 #include <base/strings/string_util.h>
+#include <brillo/file_utils.h>
 
+#include "rmad/constants.h"
 #include "rmad/system/fake_power_manager_client.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
@@ -38,6 +40,7 @@ FakeWriteProtectDisableRsuStateHandler::FakeWriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store, const base::FilePath& working_dir_path)
     : WriteProtectDisableRsuStateHandler(
           json_store,
+          working_dir_path,
           std::make_unique<FakeCr50Utils>(working_dir_path),
           std::make_unique<FakeCrosSystemUtils>(working_dir_path),
           std::make_unique<FakePowerManagerClient>(working_dir_path)) {}
@@ -46,7 +49,9 @@ FakeWriteProtectDisableRsuStateHandler::FakeWriteProtectDisableRsuStateHandler(
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store)
-    : BaseStateHandler(json_store), reboot_scheduled_(false) {
+    : BaseStateHandler(json_store),
+      working_dir_path_(kDefaultWorkingDirPath),
+      reboot_scheduled_(false) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   power_manager_client_ =
@@ -55,10 +60,12 @@ WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
 
 WriteProtectDisableRsuStateHandler::WriteProtectDisableRsuStateHandler(
     scoped_refptr<JsonStore> json_store,
+    const base::FilePath& working_dir_path,
     std::unique_ptr<Cr50Utils> cr50_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store),
+      working_dir_path_(working_dir_path),
       cr50_utils_(std::move(cr50_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       power_manager_client_(std::move(power_manager_client)),
@@ -126,6 +133,13 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
     LOG(ERROR) << "Incorrect unlock code.";
     return NextStateCaseWrapper(
         RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);
+  }
+
+  // Inject rma-mode powerwash.
+  if (!brillo::TouchFile(
+          working_dir_path_.AppendASCII(kPowerwashRequestFilePath))) {
+    LOG(ERROR) << "Failed to request powerwash";
+    return NextStateCaseWrapper(RMAD_ERROR_POWERWASH_FAILED);
   }
 
   // Schedule a reboot after |kRebootDelay| seconds and return.
