@@ -181,6 +181,9 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, GetLoopDeviceManager())
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::GetLoopDeviceManager));
+  ON_CALL(*this, GetLogicalVolumeManager())
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::GetLogicalVolumeManager));
 
   ON_CALL(*this, AmountOfFreeDiskSpace(_))
       .WillByDefault(

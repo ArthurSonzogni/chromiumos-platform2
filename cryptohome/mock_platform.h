@@ -297,6 +297,10 @@ class MockPlatform : public Platform {
               (override));
 
   MOCK_METHOD(brillo::LoopDeviceManager*, GetLoopDeviceManager, (), (override));
+  MOCK_METHOD(brillo::LogicalVolumeManager*,
+              GetLogicalVolumeManager,
+              (),
+              (override));
 
   // Calls which do not have a corresponding fake in FakePlatform.
 

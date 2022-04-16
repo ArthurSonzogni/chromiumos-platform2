@@ -182,11 +182,6 @@ class HomeDirs {
     return vault_factory_.get();
   }
 
-  void SetLogicalVolumeManagerForTesting(
-      std::unique_ptr<brillo::LogicalVolumeManager> lvm) {
-    lvm_ = std::move(lvm);
-  }
-
  private:
   // Choose the vault type for new vaults.
   EncryptedContainerType ChooseVaultType();
@@ -255,7 +250,6 @@ class HomeDirs {
 
   // The container a not-shifted system UID in ARC++ container (AID_SYSTEM).
   static constexpr uid_t kAndroidSystemUid = 1000;
-  std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
 
   friend class HomeDirsTest;
   FRIEND_TEST(HomeDirsTest, GetTrackedDirectoryForDirCrypto);

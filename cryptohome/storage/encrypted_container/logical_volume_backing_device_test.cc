@@ -43,10 +43,10 @@ class LogicalVolumeBackingDeviceTest : public ::testing::Test {
                                     .physical_volume =
                                         base::FilePath("/dev/mmcblk0p1")}}),
         lvm_command_runner_(std::make_shared<brillo::MockLvmCommandRunner>()),
+        mock_lvm_(std::make_unique<brillo::LogicalVolumeManager>(
+            lvm_command_runner_)),
         backing_device_(std::make_unique<LogicalVolumeBackingDevice>(
-            config_,
-            std::make_unique<brillo::LogicalVolumeManager>(
-                lvm_command_runner_))) {}
+            config_, mock_lvm_.get())) {}
   ~LogicalVolumeBackingDeviceTest() override = default;
 
   void ExpectVolumeGroup() {
@@ -79,6 +79,7 @@ class LogicalVolumeBackingDeviceTest : public ::testing::Test {
  protected:
   BackingDeviceConfig config_;
   std::shared_ptr<brillo::MockLvmCommandRunner> lvm_command_runner_;
+  std::unique_ptr<brillo::LogicalVolumeManager> mock_lvm_;
 
   std::unique_ptr<BackingDevice> backing_device_;
 };

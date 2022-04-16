@@ -27,7 +27,6 @@
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
-#include "cryptohome/storage/encrypted_container/fake_backing_device.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mount_constants.h"
 
@@ -103,7 +102,7 @@ class HomeDirsTest
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
             &platform_, std::make_unique<FakeKeyring>(),
-            std::make_unique<FakeBackingDeviceFactory>(&platform_));
+            std::make_unique<BackingDeviceFactory>(&platform_));
     HomeDirs::RemoveCallback remove_callback =
         base::BindRepeating(&MockKeysetManagement::RemoveLECredentials,
                             base::Unretained(&keyset_management_));
@@ -435,8 +434,6 @@ class HomeDirsVaultTest : public ::testing::Test {
     brillo::LogicalVolume lv(LogicalVolumePrefix(obfuscated_username)
                                  .append(kDmcryptDataContainerSuffix),
                              "stateful", nullptr);
-    std::unique_ptr<brillo::MockLogicalVolumeManager> lvm(
-        new brillo::MockLogicalVolumeManager());
 
     EXPECT_CALL(*platform, GetStatefulDevice())
         .WillRepeatedly(Return(base::FilePath("/dev/mmcblk0")));
@@ -445,15 +442,14 @@ class HomeDirsVaultTest : public ::testing::Test {
             DoAll(SetArgPointee<1>(1024 * 1024 * 1024), Return(true)));
     EXPECT_CALL(*platform, IsStatefulLogicalVolumeSupported())
         .WillRepeatedly(Return(true));
+    brillo::MockLogicalVolumeManager* lvm =
+        platform->GetFake()->GetMockLogicalVolumeManager();
     if (existing_cryptohome) {
-      EXPECT_CALL(*lvm.get(), GetLogicalVolume(_, _))
-          .WillRepeatedly(Return(lv));
+      EXPECT_CALL(*lvm, GetLogicalVolume(_, _)).WillRepeatedly(Return(lv));
     } else {
-      EXPECT_CALL(*lvm.get(), GetLogicalVolume(_, _))
+      EXPECT_CALL(*lvm, GetLogicalVolume(_, _))
           .WillRepeatedly(Return(std::nullopt));
     }
-
-    homedirs->SetLogicalVolumeManagerForTesting(std::move(lvm));
   }
 
  protected:

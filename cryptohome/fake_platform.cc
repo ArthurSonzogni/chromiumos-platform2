@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/blkdev_utils/loop_device_fake.h>
+#include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 
@@ -139,7 +140,8 @@ void FakePlatform::FakeExtendedAttributes::Remove(const std::string& name) {
 FakePlatform::FakePlatform()
     : Platform(),
       fake_loop_device_manager_(
-          std::make_unique<brillo::fake::FakeLoopDeviceManager>()) {
+          std::make_unique<brillo::fake::FakeLoopDeviceManager>()),
+      mock_lvm_(std::make_unique<brillo::MockLogicalVolumeManager>()) {
   base::GetTempDir(&tmpfs_rootfs_);
   tmpfs_rootfs_ = tmpfs_rootfs_.Append(GetRandomSuffix());
   if (!real_platform_.CreateDirectory(tmpfs_rootfs_)) {
@@ -193,6 +195,14 @@ void FakePlatform::RemoveFakeEntriesRecursive(const base::FilePath& path) {
 
 brillo::LoopDeviceManager* FakePlatform::GetLoopDeviceManager() {
   return fake_loop_device_manager_.get();
+}
+
+brillo::LogicalVolumeManager* FakePlatform::GetLogicalVolumeManager() {
+  return mock_lvm_.get();
+}
+
+brillo::MockLogicalVolumeManager* FakePlatform::GetMockLogicalVolumeManager() {
+  return mock_lvm_.get();
 }
 
 bool FakePlatform::Rename(const base::FilePath& from,

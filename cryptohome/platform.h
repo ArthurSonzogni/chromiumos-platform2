@@ -24,6 +24,7 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <brillo/blkdev_utils/loop_device.h>
+#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 #include <gtest/gtest_prod.h>
@@ -973,6 +974,8 @@ class Platform {
 
   virtual brillo::LoopDeviceManager* GetLoopDeviceManager();
 
+  virtual brillo::LogicalVolumeManager* GetLogicalVolumeManager();
+
  private:
   // Returns true if child is a file or folder below or equal to parent.  If
   // parent is a directory, it should end with a '/' character.
@@ -1051,6 +1054,7 @@ class Platform {
 
   base::FilePath mount_info_path_;
   std::unique_ptr<brillo::LoopDeviceManager> loop_device_manager_;
+  std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
 
   friend class PlatformTest;
   FRIEND_TEST(PlatformTest, ReadMountInfoFileCorruptedMountInfo);

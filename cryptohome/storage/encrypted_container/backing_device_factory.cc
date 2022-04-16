@@ -25,7 +25,8 @@ std::unique_ptr<BackingDevice> BackingDeviceFactory::Generate(
       return RamdiskDevice::Generate(config.ramdisk.backing_file_name,
                                      platform_);
     case BackingDeviceType::kLogicalVolumeBackingDevice:
-      return std::make_unique<LogicalVolumeBackingDevice>(config);
+      return std::make_unique<LogicalVolumeBackingDevice>(
+          config, platform_->GetLogicalVolumeManager());
     default:
       return nullptr;
   }

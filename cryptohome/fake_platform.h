@@ -18,6 +18,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <brillo/blkdev_utils/loop_device_fake.h>
+#include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/fake_platform/fake_mount_mapper.h"
@@ -189,6 +190,8 @@ class FakePlatform final : public Platform {
       const std::vector<base::FilePath>& directories) override;
 
   brillo::LoopDeviceManager* GetLoopDeviceManager() override;
+  brillo::LogicalVolumeManager* GetLogicalVolumeManager() override;
+  brillo::MockLogicalVolumeManager* GetMockLogicalVolumeManager();
 
   // Test API
 
@@ -240,6 +243,8 @@ class FakePlatform final : public Platform {
   Platform real_platform_;
   std::unique_ptr<brillo::fake::FakeLoopDeviceManager>
       fake_loop_device_manager_;
+
+  std::unique_ptr<brillo::MockLogicalVolumeManager> mock_lvm_;
 
   std::string* old_salt_ = nullptr;
 };

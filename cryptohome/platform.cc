@@ -64,6 +64,7 @@
 #include <base/time/time.h>
 #include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/blkdev_utils/loop_device.h>
+#include <brillo/blkdev_utils/lvm.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/process/process.h>
@@ -189,16 +190,23 @@ const std::vector<std::string> kDefaultExt4FormatOpts(
      // Assume that the storage device is already zeroed out.
      "-E", "discard,assume_storage_prezeroed=1"});
 
+// TODO(b/232566569): Pass dependencies (lvm, loop device manager) into platform
+// explicitly instead of creating in place.
 Platform::Platform()
     : mount_info_path_(FilePath(kProcDir)
                            .Append(std::to_string(getpid()))
                            .Append(kMountInfoFile)),
-      loop_device_manager_(std::make_unique<brillo::LoopDeviceManager>()) {}
+      loop_device_manager_(std::make_unique<brillo::LoopDeviceManager>()),
+      lvm_(std::make_unique<brillo::LogicalVolumeManager>()) {}
 
 Platform::~Platform() {}
 
 brillo::LoopDeviceManager* Platform::GetLoopDeviceManager() {
   return loop_device_manager_.get();
+}
+
+brillo::LogicalVolumeManager* Platform::GetLogicalVolumeManager() {
+  return lvm_.get();
 }
 
 std::vector<DecodedProcMountInfo> Platform::ReadMountInfoFile() {

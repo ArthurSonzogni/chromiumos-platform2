@@ -27,8 +27,7 @@ class LogicalVolumeBackingDevice : public BackingDevice {
   //                      set up.
   // - `size`: Size of thin logical volume.
   LogicalVolumeBackingDevice(const BackingDeviceConfig& config,
-                             std::unique_ptr<brillo::LogicalVolumeManager> lvm);
-  explicit LogicalVolumeBackingDevice(const BackingDeviceConfig& config);
+                             brillo::LogicalVolumeManager* lvm);
   ~LogicalVolumeBackingDevice() = default;
 
   // Creates the thin logical volume.
@@ -63,7 +62,7 @@ class LogicalVolumeBackingDevice : public BackingDevice {
   const base::FilePath physical_volume_;
   const std::string thinpool_name_;
 
-  std::unique_ptr<brillo::LogicalVolumeManager> lvm_;
+  brillo::LogicalVolumeManager* lvm_;
 };
 
 }  // namespace cryptohome

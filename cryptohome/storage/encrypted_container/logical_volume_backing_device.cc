@@ -21,18 +21,12 @@
 namespace cryptohome {
 
 LogicalVolumeBackingDevice::LogicalVolumeBackingDevice(
-    const BackingDeviceConfig& config,
-    std::unique_ptr<brillo::LogicalVolumeManager> lvm)
+    const BackingDeviceConfig& config, brillo::LogicalVolumeManager* lvm)
     : name_(config.name),
       size_(config.size),
       physical_volume_(config.logical_volume.physical_volume),
       thinpool_name_(config.logical_volume.thinpool_name),
-      lvm_(std::move(lvm)) {}
-
-LogicalVolumeBackingDevice::LogicalVolumeBackingDevice(
-    const BackingDeviceConfig& config)
-    : LogicalVolumeBackingDevice(
-          config, std::make_unique<brillo::LogicalVolumeManager>()) {}
+      lvm_(lvm) {}
 
 std::optional<brillo::LogicalVolume>
 LogicalVolumeBackingDevice::GetLogicalVolume() {

@@ -80,8 +80,7 @@ HomeDirs::HomeDirs(Platform* platform,
       enterprise_owned_(false),
       lvm_migration_enabled_(false),
       vault_factory_(std::move(vault_factory)),
-      remove_callback_(remove_callback),
-      lvm_(std::make_unique<brillo::LogicalVolumeManager>()) {}
+      remove_callback_(remove_callback) {}
 
 HomeDirs::~HomeDirs() {}
 
@@ -203,15 +202,17 @@ bool HomeDirs::DmcryptContainerExists(
   if (physical_volume.empty())
     return false;
 
-  auto pv = lvm_->GetPhysicalVolume(physical_volume);
+  brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
+
+  auto pv = lvm->GetPhysicalVolume(physical_volume);
   if (!pv || !pv->IsValid())
     return false;
 
-  auto vg = lvm_->GetVolumeGroup(*pv);
+  auto vg = lvm->GetVolumeGroup(*pv);
   if (!vg || !vg->IsValid())
     return false;
 
-  return lvm_->GetLogicalVolume(*vg, logical_volume_container) != std::nullopt;
+  return lvm->GetLogicalVolume(*vg, logical_volume_container) != std::nullopt;
 }
 
 bool HomeDirs::DmcryptCryptohomeExists(
