@@ -79,11 +79,6 @@ class TpmImpl : public Tpm {
   bool IsNvramLocked(uint32_t index) override;
   bool WriteLockNvram(uint32_t index) override;
   unsigned int GetNvramSize(uint32_t index) override;
-  bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
-                      uint8_t delegate_family_label,
-                      uint8_t delegate_label,
-                      brillo::Blob* delegate_blob,
-                      brillo::Blob* delegate_secret) override;
   bool Sign(const brillo::SecureBlob& key_blob,
             const brillo::SecureBlob& input,
             uint32_t bound_pcr_index,

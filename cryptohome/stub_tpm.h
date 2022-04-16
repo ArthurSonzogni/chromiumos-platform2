@@ -105,13 +105,6 @@ class StubTpm : public Tpm {
     return false;
   }
   bool WriteLockNvram(uint32_t index) override { return false; }
-  bool CreateDelegate(const std::set<uint32_t>& bound_pcrs,
-                      uint8_t delegate_family_label,
-                      uint8_t delegate_label,
-                      brillo::Blob* delegate_blob,
-                      brillo::Blob* delegate_secret) override {
-    return false;
-  }
   bool Sign(const SecureBlob& key_blob,
             const SecureBlob& der_encoded_input,
             uint32_t bound_pcr_index,

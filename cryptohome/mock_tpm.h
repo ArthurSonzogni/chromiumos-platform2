@@ -91,14 +91,6 @@ class MockTpm : public Tpm {
   MOCK_METHOD(bool, WriteLockNvram, (uint32_t), (override));
   MOCK_METHOD(unsigned int, GetNvramSize, (uint32_t), (override));
   MOCK_METHOD(bool,
-              CreateDelegate,
-              (const std::set<uint32_t>&,
-               uint8_t,
-               uint8_t,
-               brillo::Blob*,
-               brillo::Blob*),
-              (override));
-  MOCK_METHOD(bool,
               Sign,
               (const brillo::SecureBlob&,
                const brillo::SecureBlob&,

@@ -397,15 +397,6 @@ unsigned int Tpm2Impl::GetNvramSize(uint32_t index) {
   return size;
 }
 
-bool Tpm2Impl::CreateDelegate(const std::set<uint32_t>& bound_pcrs,
-                              uint8_t delegate_family_label,
-                              uint8_t delegate_label,
-                              Blob* delegate_blob,
-                              Blob* delegate_secret) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
 bool Tpm2Impl::Sign(const SecureBlob& key_blob,
                     const SecureBlob& input,
                     uint32_t bound_pcr_index,
