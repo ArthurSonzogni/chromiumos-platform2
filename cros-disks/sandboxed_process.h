@@ -12,8 +12,10 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/containers/span.h>
 #include <base/files/file.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 
 #include "cros-disks/process.h"
 
@@ -97,16 +99,26 @@ class SandboxedProcess : public Process {
   // process.
   void PreserveFile(int fd);
 
- protected:
+ private:
   // Process overrides:
   pid_t StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) override;
   int WaitImpl() override;
   int WaitNonBlockingImpl() override;
 
- private:
+  void OnLauncherExit();
+
+  // Minijail object.
   minijail* jail_;
-  bool run_custom_init_ = false;
-  base::ScopedFD custom_init_control_fd_;
+
+  // Does this SandboxedProcess use a PID namespace?
+  bool use_pid_namespace_ = false;
+
+  // Read end of the pipe through which the exit code of the 'launcher' process
+  // will be communicated. Only used when |use_pid_namespace_| is true.
+  base::ScopedFD launcher_fd_;
+
+  // Watch controller for |launcher_fd_|.
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> launcher_watch_;
 };
 
 // Interface for creating preconfigured instances of |SandboxedProcess|.

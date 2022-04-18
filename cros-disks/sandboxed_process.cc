@@ -73,7 +73,7 @@ void SandboxedProcess::NewPidNamespace() {
   minijail_run_as_init(jail_);
   minijail_reset_signal_mask(jail_);
   minijail_reset_signal_handlers(jail_);
-  run_custom_init_ = true;
+  use_pid_namespace_ = true;
 }
 
 bool SandboxedProcess::SetUpMinimalMounts() {
@@ -176,34 +176,51 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
   CHECK_EQ(minijail_preserve_fd(jail_, out_fd.get(), STDOUT_FILENO), 0);
   CHECK_EQ(minijail_preserve_fd(jail_, out_fd.get(), STDERR_FILENO), 0);
 
-  if (!run_custom_init_) {
-    const int ret = minijail_run_env_pid_pipes(
-        jail_, args[0], args, env, &child_pid, nullptr, nullptr, nullptr);
-    if (ret < 0) {
-      LOG(ERROR) << "Cannot start minijail process: "
-                 << base::safe_strerror(-ret);
+  if (!use_pid_namespace_) {
+    if (const int ret = minijail_run_env_pid_pipes(
+            jail_, args[0], args, env, &child_pid, nullptr, nullptr, nullptr);
+        ret < 0) {
+      errno = -ret;
+      PLOG(ERROR) << "Cannot start minijail process";
       return kInvalidProcessId;
     }
   } else {
-    base::ScopedFD ctrl_fd = SubprocessPipe::Open(
-        SubprocessPipe::kChildToParent, &custom_init_control_fd_);
-    PreserveFile(ctrl_fd.get());
+    // The sandboxed process will run in a PID namespace.
 
-    // Create child process.
+    // Create pipe that will communicate the exit code of the 'launcher'
+    // process.
+    SubprocessPipe launcher_pipe(SubprocessPipe::kChildToParent);
+    PreserveFile(launcher_pipe.child_fd.get());
+
+    // Create child 'init' process in the PID namespace.
     child_pid = minijail_fork(jail_);
     if (child_pid < 0) {
-      LOG(ERROR) << "Cannot run minijail_fork: "
-                 << base::safe_strerror(-child_pid);
+      errno = -child_pid;
+      PLOG(ERROR) << "Cannot run minijail_fork";
       return kInvalidProcessId;
     }
 
     if (child_pid == 0) {
       // In child 'init' process.
-      SandboxedInit(base::BindOnce(Exec, args, env), std::move(ctrl_fd)).Run();
+      SandboxedInit(base::BindOnce(Exec, args, env),
+                    std::move(launcher_pipe.child_fd))
+          .Run();
       NOTREACHED();
     } else {
       // In parent process.
-      CHECK(base::SetNonBlocking(custom_init_control_fd_.get()));
+      PCHECK(base::SetNonBlocking(launcher_pipe.parent_fd.get()));
+      DCHECK(!launcher_fd_.is_valid());
+      launcher_fd_ = std::move(launcher_pipe.parent_fd);
+      DCHECK(launcher_fd_.is_valid());
+
+      if (launcher_exit_callback_) {
+        DCHECK(!launcher_watch_);
+        launcher_watch_ = base::FileDescriptorWatcher::WatchReadable(
+            launcher_fd_.get(),
+            base::BindRepeating(&SandboxedProcess::OnLauncherExit,
+                                base::Unretained(this)));
+        DCHECK(launcher_watch_);
+      }
     }
   }
 
@@ -211,8 +228,10 @@ pid_t SandboxedProcess::StartImpl(base::ScopedFD in_fd, base::ScopedFD out_fd) {
 }
 
 int SandboxedProcess::WaitImpl() {
-  if (run_custom_init_)
-    return SandboxedInit::WaitForLauncher(&custom_init_control_fd_);
+  if (use_pid_namespace_) {
+    launcher_watch_.reset();
+    return SandboxedInit::WaitForLauncher(&launcher_fd_);
+  }
 
   while (true) {
     const int status = minijail_wait(jail_);
@@ -228,8 +247,12 @@ int SandboxedProcess::WaitImpl() {
 }
 
 int SandboxedProcess::WaitNonBlockingImpl() {
-  if (run_custom_init_)
-    return SandboxedInit::PollLauncher(&custom_init_control_fd_);
+  if (use_pid_namespace_) {
+    const int exit_code = SandboxedInit::PollLauncher(&launcher_fd_);
+    if (exit_code >= 0)
+      launcher_watch_.reset();
+    return exit_code;
+  }
 
   // TODO(chromium:971667) Use Minijail's non-blocking wait once it exists.
   int wstatus;
@@ -246,6 +269,17 @@ int SandboxedProcess::WaitNonBlockingImpl() {
   }
 
   return SandboxedInit::WaitStatusToExitCode(wstatus);
+}
+
+void SandboxedProcess::OnLauncherExit() {
+  if (!IsFinished()) {
+    LOG(WARNING) << "Spurious call to OnLauncherExit";
+    return;
+  }
+
+  // By then, |launcher_exit_callback_| should have been called.
+  DCHECK(!launcher_exit_callback_);
+  launcher_watch_.reset();
 }
 
 int FakeSandboxedProcess::OnProcessLaunch(

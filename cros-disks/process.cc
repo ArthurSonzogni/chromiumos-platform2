@@ -129,6 +129,12 @@ void Process::SetOutputCallback(OutputCallback callback) {
   DCHECK(output_callback_);
 }
 
+void Process::SetLauncherExitCallback(LauncherExitCallback callback) {
+  DCHECK(!launcher_exit_callback_);
+  launcher_exit_callback_ = std::move(callback);
+  DCHECK(launcher_exit_callback_);
+}
+
 bool Process::Start(base::ScopedFD in_fd, base::ScopedFD out_fd) {
   CHECK_EQ(kInvalidProcessId, pid_);
   CHECK(!finished());
@@ -148,12 +154,12 @@ bool Process::Start() {
     SubprocessPipe out_pipe(SubprocessPipe::kChildToParent);
     PCHECK(base::SetNonBlocking(out_pipe.parent_fd.get()));
 
-    DCHECK(!output_callback_guard_);
-    output_callback_guard_ = base::FileDescriptorWatcher::WatchReadable(
+    DCHECK(!output_watch_);
+    output_watch_ = base::FileDescriptorWatcher::WatchReadable(
         out_pipe.parent_fd.get(),
         base::BindRepeating(&Process::OnOutputAvailable,
                             base::Unretained(this)));
-    DCHECK(output_callback_guard_);
+    DCHECK(output_watch_);
 
     DCHECK(!out_fd_.is_valid());
     out_fd_ = std::move(out_pipe.parent_fd);
@@ -167,25 +173,32 @@ bool Process::Start() {
 }
 
 int Process::Wait() {
-  if (finished()) {
+  if (finished())
     return exit_code_;
-  }
 
-  CHECK_NE(kInvalidProcessId, pid_);
+  DCHECK_NE(kInvalidProcessId, pid_);
   exit_code_ = WaitImpl();
-  CHECK(finished());
+  DCHECK(finished());
+
+  if (launcher_exit_callback_)
+    std::move(launcher_exit_callback_).Run(exit_code_);
+
   pid_ = kInvalidProcessId;
   return exit_code_;
 }
 
 bool Process::IsFinished() {
-  if (finished()) {
+  if (finished())
     return true;
-  }
 
   CHECK_NE(kInvalidProcessId, pid_);
   exit_code_ = WaitNonBlockingImpl();
-  return finished();
+  if (!finished())
+    return false;
+
+  if (launcher_exit_callback_)
+    std::move(launcher_exit_callback_).Run(exit_code_);
+  return true;
 }
 
 void Process::StoreOutputLine(const base::StringPiece line) {
@@ -276,7 +289,7 @@ bool Process::WaitAndCaptureOutput() {
 }
 
 void Process::FlushOutput() {
-  output_callback_guard_.reset();
+  output_watch_.reset();
   out_fd_.reset();
 
   if (!remaining_.empty()) {

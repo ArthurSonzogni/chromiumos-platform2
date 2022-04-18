@@ -20,9 +20,7 @@
 
 namespace cros_disks {
 
-// A base class for executing a process.
-//
-// TODO(crbug.com/1003654) This base class is not feature complete yet.
+// A base class for executing and monitoring a process.
 class Process {
  public:
   // Invalid process ID assigned to a process that has not started.
@@ -55,14 +53,20 @@ class Process {
   // stdout or stderr.
   void SetOutputCallback(OutputCallback callback);
 
-  // Starts the process. Returns true in case of success. Once started, the
-  // process can be waiting for to finish using Wait().
+  // Callback called when the 'launcher' process finished.
+  using LauncherExitCallback = base::OnceCallback<void(int exit_code)>;
+
+  // Sets the callback to call when the 'launcher' process finished.
+  void SetLauncherExitCallback(LauncherExitCallback callback);
+
+  // Starts the 'launcher' process. Returns true in case of success. Once
+  // started, the process can be waiting for to finish using Wait().
   bool Start();
 
-  // Waits for the process to finish and returns its exit code.
+  // Waits for the 'launcher' process to finish and returns its exit code.
   int Wait();
 
-  // Checks if the process finished.
+  // Checks if the 'launcher' process finished, in a non-blocking way.
   bool IsFinished();
 
   // Starts a process, captures its output and waits for it to finish. Returns
@@ -75,6 +79,11 @@ class Process {
     return captured_output_;
   }
 
+  // Gets the Process ID (PID) of the subprocess. If the subprocess is running
+  // in a PID namespace (see class SandboxedProcess), then this gets the PID of
+  // the 'init' process of the PID namespace, not the PID of the 'launcher'
+  // process or the 'daemon' process. If the subprocess is not running in a PID
+  // namespace, then this gets the PID of the 'launcher' process.
   pid_t pid() const { return pid_; }
 
   const std::vector<std::string>& arguments() const { return arguments_; }
@@ -110,6 +119,9 @@ class Process {
   // Checks if the process has finished and returns its nonnegative exit code,
   // or -1 if the process is still running.
   virtual int WaitNonBlockingImpl() = 0;
+
+  // Callback to call when the 'launcher' process finished.
+  LauncherExitCallback launcher_exit_callback_;
 
  private:
   // Gets the name of the program (from the first argument passed to
@@ -192,8 +204,7 @@ class Process {
   // or stderr.
   OutputCallback output_callback_;
 
-  std::unique_ptr<base::FileDescriptorWatcher::Controller>
-      output_callback_guard_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> output_watch_;
 
   FRIEND_TEST(ProcessTest, GetArguments);
   FRIEND_TEST(ProcessTest, GetArgumentsWithNoArgumentsAdded);
