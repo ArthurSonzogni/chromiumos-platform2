@@ -145,6 +145,8 @@ std::unique_ptr<NetlinkAttribute> NetlinkAttribute::NewNl80211AttributeFromId(
       return std::make_unique<Nl80211AttributeWiphyAntennaTx>();
     case NL80211_ATTR_WIPHY_BANDS:
       return std::make_unique<Nl80211AttributeWiphyBands>();
+    case NL80211_ATTR_INTERFACE_COMBINATIONS:
+      return std::make_unique<Nl80211AttributeInterfaceCombinations>();
     case NL80211_ATTR_WIPHY_COVERAGE_CLASS:
       return std::make_unique<Nl80211AttributeWiphyCoverageClass>();
     case NL80211_ATTR_WIPHY_FRAG_THRESHOLD:

@@ -285,6 +285,76 @@ Nl80211AttributeWiphyBands::Nl80211AttributeWiphyBands()
   nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, bands));
 }
 
+const int Nl80211AttributeInterfaceCombinations::kName =
+    NL80211_ATTR_INTERFACE_COMBINATIONS;
+const char Nl80211AttributeInterfaceCombinations::kNameString[] =
+    "NL80211_ATTR_INTERFACE_COMBINATIONS";
+
+Nl80211AttributeInterfaceCombinations::Nl80211AttributeInterfaceCombinations()
+    : NetlinkNestedAttribute(kName, kNameString) {
+  // Interface types
+  NestedData types(kTypeNested, "NL80211_IFACE_LIMIT_TYPES", false);
+  types.deeper_nesting.insert(
+      AttrDataPair(NL80211_IFTYPE_ADHOC,
+                   NestedData(kTypeFlag, "NL80211_IFTYPE_ADHOC", false)));
+  types.deeper_nesting.insert(
+      AttrDataPair(NL80211_IFTYPE_STATION,
+                   NestedData(kTypeFlag, "NL80211_IFTYPE_STATION", false)));
+  types.deeper_nesting.insert(AttrDataPair(
+      NL80211_IFTYPE_AP, NestedData(kTypeFlag, "NL80211_IFTYPE_AP", false)));
+  types.deeper_nesting.insert(
+      AttrDataPair(NL80211_IFTYPE_AP_VLAN,
+                   NestedData(kTypeFlag, "NL80211_IFTYPE_AP_VLAN", false)));
+  types.deeper_nesting.insert(AttrDataPair(
+      NL80211_IFTYPE_WDS, NestedData(kTypeFlag, "NL80211_IFTYPE_WDS", false)));
+  types.deeper_nesting.insert(
+      AttrDataPair(NL80211_IFTYPE_MONITOR,
+                   NestedData(kTypeFlag, "NL80211_IFTYPE_MONITOR", false)));
+  types.deeper_nesting.insert(
+      AttrDataPair(NL80211_IFTYPE_MESH_POINT,
+                   NestedData(kTypeFlag, "NL80211_IFTYPE_MESH_POINT", false)));
+  types.deeper_nesting.insert(
+      AttrDataPair(NL80211_IFTYPE_P2P_CLIENT,
+                   NestedData(kTypeFlag, "NL80211_IFTYPE_P2P_CLIENT", false)));
+  types.deeper_nesting.insert(
+      AttrDataPair(NL80211_IFTYPE_P2P_GO,
+                   NestedData(kTypeFlag, "NL80211_IFTYPE_P2P_GO", false)));
+  types.deeper_nesting.insert(
+      AttrDataPair(NL80211_IFTYPE_P2P_DEVICE,
+                   NestedData(kTypeFlag, "NL80211_IFTYPE_P2P_DEVICE", false)));
+  types.deeper_nesting.insert(AttrDataPair(
+      NL80211_IFTYPE_OCB, NestedData(kTypeFlag, "NL80211_IFTYPE_OCB", false)));
+  types.deeper_nesting.insert(AttrDataPair(
+      NL80211_IFTYPE_NAN, NestedData(kTypeFlag, "NL80211_IFTYPE_NAN", false)));
+
+  // A "Limit" contains a set of interface types and a cap on the concurrent
+  // number of those interface types.
+  NestedData limit(kTypeNested, "Limit", true);
+  limit.deeper_nesting.insert(
+      AttrDataPair(NL80211_IFACE_LIMIT_MAX,
+                   NestedData(kTypeU32, "NL80211_IFACE_LIMIT_MAX", false)));
+  limit.deeper_nesting.insert(AttrDataPair(NL80211_IFACE_LIMIT_TYPES, types));
+
+  // An array of "Limit" values.
+  NestedData limits(kTypeNested, "NL80211_IFACE_COMB_LIMITS", false);
+  limits.deeper_nesting.insert(AttrDataPair(kArrayAttrEnumVal, limit));
+
+  // A "Combination" represents a valid combination of interfaces, along with
+  // some data about how they may behave such as the maximum number of total
+  // interfaces.
+  NestedData comb(kTypeNested, "Combination", true);
+  comb.deeper_nesting.insert(AttrDataPair(NL80211_IFACE_COMB_LIMITS, limits));
+  comb.deeper_nesting.insert(
+      AttrDataPair(NL80211_IFACE_COMB_MAXNUM,
+                   NestedData(kTypeU32, "NL80211_IFACE_COMB_MAXNUM", false)));
+  comb.deeper_nesting.insert(AttrDataPair(
+      NL80211_IFACE_COMB_NUM_CHANNELS,
+      NestedData(kTypeU32, "NL80211_IFACE_COMB_NUM_CHANNELS", false)));
+
+  // The main body of this attribute is an array of "Combination" values.
+  nested_template_.insert(AttrDataPair(kArrayAttrEnumVal, comb));
+}
+
 const int Nl80211AttributeWowlanTriggers::kName = NL80211_ATTR_WOWLAN_TRIGGERS;
 const char Nl80211AttributeWowlanTriggers::kNameString[] =
     "NL80211_ATTR_WOWLAN_TRIGGERS";

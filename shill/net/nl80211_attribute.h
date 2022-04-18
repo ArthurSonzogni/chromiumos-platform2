@@ -659,6 +659,17 @@ class Nl80211AttributeWiphyBands : public NetlinkNestedAttribute {
       delete;
 };
 
+class Nl80211AttributeInterfaceCombinations : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeInterfaceCombinations();
+  Nl80211AttributeInterfaceCombinations(
+      const Nl80211AttributeInterfaceCombinations&) = delete;
+  Nl80211AttributeInterfaceCombinations& operator=(
+      const Nl80211AttributeInterfaceCombinations&) = delete;
+};
+
 class Nl80211AttributeWowlanTriggers : public NetlinkNestedAttribute {
  public:
   static const int kName;
