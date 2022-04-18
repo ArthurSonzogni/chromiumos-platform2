@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <base/strings/string_number_conversions.h>
 #include <glib-bridge/glib_bridge.h>
 #include <glib-bridge/glib_logger.h>
 #include <glib-bridge/glib_scopers.h>
@@ -47,10 +48,9 @@ class ModemMbim : public Modem<MbimCmd> {
   bool IsSimValidAfterDisable() override;
   void OpenConnection(
       const std::vector<uint8_t>& aid,
-      base::OnceCallback<void(std::vector<uint8_t>)> cb) override{};
-  void TransmitApdu(
-      const std::vector<uint8_t>& apduCommand,
-      base::OnceCallback<void(std::vector<uint8_t>)> cb) override{};
+      base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
+  void TransmitApdu(const std::vector<uint8_t>& apduCommand,
+                    base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
   static bool ParseEidApduResponseForTesting(const MbimMessage* response,
                                              std::string* eid);
 
@@ -150,7 +150,9 @@ class ModemMbim : public Modem<MbimCmd> {
     EUICC_EVENT_STEP_LAST,
   };
 
-  void ReacquireChannel(EuiccEventStep step, ResultCallback cb);
+  void ReacquireChannel(EuiccEventStep step,
+                        std::vector<uint8_t> aid,
+                        ResultCallback cb);
   void OnEuiccEventStart(uint32_t physical_slot,
                          bool switch_slot_only,
                          EuiccEventStep step,

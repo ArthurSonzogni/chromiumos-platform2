@@ -158,20 +158,6 @@ void ModemQrtr::RestoreActiveSlot(ResultCallback cb) {
   TransmitFromQueue();
 }
 
-void ModemQrtr::TransmitApduResponse(
-    base::OnceCallback<void(std::vector<uint8_t>)> cb, int err) {
-  if (responses_.size() != 1) {
-    LOG(ERROR) << "responses.size != 1";
-    std::move(cb).Run(std::vector<uint8_t>());
-    return;
-  }
-  std::vector<uint8_t> response = responses_[0].Release();
-  responses_.clear();
-  LOG(INFO) << __func__ << ": response="
-            << base::HexEncode(response.data(), response.size());
-  std::move(cb).Run(std::move(response));
-}
-
 void ModemQrtr::TransmitApdu(
     const std::vector<uint8_t>& apduCommand,
     base::OnceCallback<void(std::vector<uint8_t>)> cb) {
@@ -222,14 +208,6 @@ void ModemQrtr::OpenConnection(
   AcquireChannel(aid,
                  base::BindOnce(&ModemQrtr::OpenConnectionResponse,
                                 weak_factory_.GetWeakPtr(), std::move(cb)));
-}
-
-void ModemQrtr::OpenConnectionResponse(
-    base::OnceCallback<void(std::vector<uint8_t>)> cb, int err) {
-  LOG(INFO) << __func__ << "Open Channel Response: "
-            << base::HexEncode(open_channel_raw_response_.data(),
-                               open_channel_raw_response_.size());
-  std::move(cb).Run(std::move(open_channel_raw_response_));
 }
 
 void ModemQrtr::AcquireChannelToIsdr(base::OnceCallback<void(int)> cb) {

@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/strings/string_number_conversions.h>
 #include <google-lpa/lpa/card/euicc_card.h>
 
 #include "hermes/apdu.h"
@@ -106,6 +107,11 @@ class Modem : public EuiccInterface {
     CommandApdu apdu_;
   };
 
+  struct OpenChannelTxInfo : public TxInfo {
+    explicit OpenChannelTxInfo(const std::vector<uint8_t>& aid) : aid_(aid) {}
+    std::vector<uint8_t> aid_;
+  };
+
   struct TxElement {
     // TxInfo stores any parameters that msg_ takes
     std::unique_ptr<TxInfo> info_;
@@ -126,6 +132,13 @@ class Modem : public EuiccInterface {
   virtual std::unique_ptr<T> GetTagForSendApdu() = 0;
   // Convenience function that runs the lpa callback if err==0
   virtual void SendApdusResponse(ResponseCallback callback, int err);
+  // OpenConnectionResponse calls cb with open_channel_raw_response_
+  void OpenConnectionResponse(base::OnceCallback<void(std::vector<uint8_t>)> cb,
+                              int err);
+  // TransmitApduResponse calls cb with responses_[0]
+  void TransmitApduResponse(base::OnceCallback<void(std::vector<uint8_t>)> cb,
+                            int err);
+
   // SendApdus will queue APDU's on tx_queue_ and call TransmitFromQueue()
   // In the QMI and MBIM implementations, TransmitFromQueue also processes
   // other messages like reset, close channel, open channel etc.
@@ -140,6 +153,7 @@ class Modem : public EuiccInterface {
   // processed.
   std::vector<ResponseApdu> responses_;
   std::deque<TxElement> tx_queue_;
+  std::vector<uint8_t> open_channel_raw_response_;
 
   // Used to send notifications about eSIM slot changes.
   EuiccManagerInterface* euicc_manager_;
@@ -192,6 +206,31 @@ void Modem<T>::SendApdusResponse(EuiccInterface::ResponseCallback callback,
   // ResponseCallback interface does not indicate a change in ownership of
   // |responses_|, but all callbacks should transfer ownership.
   CHECK(responses_vec.empty());
+}
+
+template <typename T>
+void Modem<T>::OpenConnectionResponse(
+    base::OnceCallback<void(std::vector<uint8_t>)> cb, int err) {
+  LOG(INFO) << __func__ << "Open Channel Response: "
+            << base::HexEncode(open_channel_raw_response_.data(),
+                               open_channel_raw_response_.size());
+  DCHECK(!open_channel_raw_response_.empty());
+  std::move(cb).Run(std::move(open_channel_raw_response_));
+}
+
+template <typename T>
+void Modem<T>::TransmitApduResponse(
+    base::OnceCallback<void(std::vector<uint8_t>)> cb, int err) {
+  if (responses_.size() != 1) {
+    LOG(ERROR) << "responses.size != 1";
+    std::move(cb).Run(std::vector<uint8_t>());
+    return;
+  }
+  std::vector<uint8_t> response = responses_[0].Release();
+  responses_.clear();
+  LOG(INFO) << __func__ << ": response="
+            << base::HexEncode(response.data(), response.size());
+  std::move(cb).Run(std::move(response));
 }
 
 template <typename T>

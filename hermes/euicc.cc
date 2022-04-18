@@ -27,6 +27,7 @@
 #include "hermes/executor.h"
 #include "hermes/hermes_common.h"
 #include "hermes/lpa_util.h"
+#include "hermes/type_traits.h"
 
 using lpa::proto::ProfileInfo;
 
@@ -614,7 +615,7 @@ template <typename... T>
 void Euicc::InitEuicc(InitEuiccStep step,
                       base::OnceCallback<void(DbusResult<T...>)> cb,
                       DbusResult<T...> dbus_result) {
-  LOG(INFO) << __func__;
+  LOG(INFO) << __func__ << ": step=" << to_underlying(step);
   switch (step) {
     case InitEuiccStep::CHECK_IF_INITIALIZED:
       if (euicc_initialized_) {

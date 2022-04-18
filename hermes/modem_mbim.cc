@@ -7,7 +7,6 @@
 #include <utility>
 #include <base/bind.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
 #include <glib.h>
 #include <gio/gio.h>
 #include <gmodule.h>
@@ -32,6 +31,9 @@ const std::array<uint8_t, 12> kMbimEidReqApdu = {
 
 // ModemManager uses channel_group=1. Make Hermes use 2 just to be cautious.
 constexpr int kChannelGroupId = 2;
+std::vector<uint8_t> AidIsdr() {
+  return {hermes::kAidIsdr.begin(), hermes::kAidIsdr.end()};
+}
 
 bool GetReadyState(MbimDevice* device,
                    bool is_notification,
@@ -327,7 +329,7 @@ void ModemMbim::InitializationStep(ModemMbim::State::Value next_state,
       break;
     case State::kOpenChannel:
       SendMessage(MbimCmd::MbimType::kMbimOpenChannel,
-                  std::unique_ptr<TxInfo>(), std::move(cb),
+                  std::make_unique<OpenChannelTxInfo>(AidIsdr()), std::move(cb),
                   &ModemMbim::InitializationStep, State::kReadEid);
       break;
     case State::kReadEid:
@@ -446,11 +448,14 @@ void ModemMbim::TransmitCloseChannel() {
 
 void ModemMbim::TransmitOpenChannel() {
   VLOG(2) << __func__;
+  auto open_channel_tx_info =
+      dynamic_cast<OpenChannelTxInfo*>(tx_queue_[0].info_.get());
   guint8 appId[16];
-  guint32 appIdSize = kAidIsdr.size();
+  guint32 appIdSize = open_channel_tx_info->aid_.size();
   g_autoptr(GError) error = NULL;
   g_autoptr(MbimMessage) message = NULL;
-  std::copy(kAidIsdr.begin(), kAidIsdr.end(), appId);
+  std::copy(open_channel_tx_info->aid_.begin(),
+            open_channel_tx_info->aid_.end(), appId);
   message = mbim_message_ms_uicc_low_level_access_open_channel_set_new(
       appIdSize, appId, /* selectP2arg */ 4, kChannelGroupId, &error);
   if (!message) {
@@ -567,19 +572,22 @@ void ModemMbim::TransmitMbimSendApdu(TxElement* tx_element) {
   return;
 }
 
-void ModemMbim::ReacquireChannel(EuiccEventStep step, ResultCallback cb) {
+void ModemMbim::ReacquireChannel(EuiccEventStep step,
+                                 std::vector<uint8_t> aid,
+                                 ResultCallback cb) {
   LOG(INFO) << __func__ << ":" << to_underlying(step);
   switch (step) {
     case EuiccEventStep::CLOSE_CHANNEL:
       SendMessage(MbimCmd::MbimType::kMbimCloseChannel,
                   std::unique_ptr<TxInfo>(), std::move(cb),
-                  &ModemMbim::ReacquireChannel, EuiccEventStep::OPEN_CHANNEL);
+                  &ModemMbim::ReacquireChannel, EuiccEventStep::OPEN_CHANNEL,
+                  std::move(aid));
       break;
     case EuiccEventStep::OPEN_CHANNEL:
       SendMessage(MbimCmd::MbimType::kMbimOpenChannel,
-                  std::unique_ptr<TxInfo>(), std::move(cb),
-                  &ModemMbim::ReacquireChannel,
-                  EuiccEventStep::EUICC_EVENT_STEP_LAST);
+                  std::make_unique<OpenChannelTxInfo>(std::move(aid)),
+                  std::move(cb), &ModemMbim::ReacquireChannel,
+                  EuiccEventStep::EUICC_EVENT_STEP_LAST, std::move(aid));
       break;
     case EuiccEventStep::EUICC_EVENT_STEP_LAST:
       std::move(cb).Run(kModemSuccess);
@@ -692,6 +700,14 @@ void ModemMbim::UiccLowLevelAccessOpenChannelSetCb(MbimDevice* device,
     }
     VLOG(2) << "Successfully opened channel:" << chl;
     modem_mbim->channel_ = chl;
+    modem_mbim->open_channel_raw_response_.clear();
+    for (int i = 0; i < rsp_size; i++)
+      modem_mbim->open_channel_raw_response_.push_back(rsp[i]);
+    modem_mbim->open_channel_raw_response_.push_back(status & 0xFF);
+    modem_mbim->open_channel_raw_response_.push_back((status >> 8) & 0xFF);
+    VLOG(2) << __func__ << " Open Channel Response: "
+            << base::HexEncode(modem_mbim->open_channel_raw_response_.data(),
+                               modem_mbim->open_channel_raw_response_.size());
     modem_mbim->ProcessMbimResult(kModemSuccess);
     return;
   }
@@ -1117,7 +1133,7 @@ void ModemMbim::OnEuiccEventStart(const uint32_t physical_slot,
       break;
     case EuiccEventStep::OPEN_CHANNEL:
       SendMessage(MbimCmd::MbimType::kMbimOpenChannel,
-                  std::unique_ptr<TxInfo>(), std::move(cb),
+                  std::make_unique<OpenChannelTxInfo>(AidIsdr()), std::move(cb),
                   &ModemMbim::OnEuiccEventStart, physical_slot,
                   switch_slot_only, EuiccEventStep::GET_EID);
       break;
@@ -1186,7 +1202,7 @@ void ModemMbim::AcquireChannelAfterCardReady(EuiccEvent event,
     return;
   }
   retry_count_ = 0;
-  ReacquireChannel(EuiccEventStep::OPEN_CHANNEL, std::move(cb));
+  ReacquireChannel(EuiccEventStep::OPEN_CHANNEL, AidIsdr(), std::move(cb));
 }
 
 void ModemMbim::CloseDeviceAndUninhibit(ResultCallback cb) {
@@ -1233,6 +1249,31 @@ bool ModemMbim::IsSimValidAfterEnable() {
 bool ModemMbim::IsSimValidAfterDisable() {
   VLOG(2) << __func__;
   return false;
+}
+
+void ModemMbim::OpenConnection(
+    const std::vector<uint8_t>& aid,
+    base::OnceCallback<void(std::vector<uint8_t>)> cb) {
+  LOG(INFO) << __func__ << base::HexEncode(aid.data(), aid.size());
+  ReacquireChannel(EuiccEventStep::CLOSE_CHANNEL, aid,
+                   base::BindOnce(&ModemMbim::OpenConnectionResponse,
+                                  weak_factory_.GetWeakPtr(), std::move(cb)));
+}
+
+void ModemMbim::TransmitApdu(
+    const std::vector<uint8_t>& apduCommand,
+    base::OnceCallback<void(std::vector<uint8_t>)> cb) {
+  LOG(INFO) << __func__ << ": APDU command="
+            << base::HexEncode(apduCommand.data(), apduCommand.size());
+  DCHECK(apduCommand.size() > 2) << "APDU does not have a header.";
+  CommandApdu apdu(apduCommand);
+  auto transmit_apdu_resp =
+      base::BindOnce(&ModemMbim::TransmitApduResponse,
+                     weak_factory_.GetWeakPtr(), std::move(cb));
+  tx_queue_.push_back({std::make_unique<ApduTxInfo>(std::move(apdu)),
+                       AllocateId(), GetTagForSendApdu(),
+                       std::move(transmit_apdu_resp)});
+  TransmitFromQueue();
 }
 
 /* static */

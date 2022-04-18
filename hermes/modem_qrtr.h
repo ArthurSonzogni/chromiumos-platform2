@@ -55,11 +55,6 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
                     base::OnceCallback<void(std::vector<uint8_t>)> cb) override;
 
  private:
-  struct OpenChannelTxInfo : public TxInfo {
-    explicit OpenChannelTxInfo(const std::vector<uint8_t>& aid) : aid_(aid) {}
-    std::vector<uint8_t> aid_;
-  };
-
   struct SwitchSlotTxInfo : public TxInfo {
     explicit SwitchSlotTxInfo(const uint32_t physical_slot,
                               const uint8_t logical_slot)
@@ -147,10 +142,6 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
   void AcquireChannelToIsdr(base::OnceCallback<void(int)> cb);
   void AcquireChannel(const std::vector<uint8_t>& aid,
                       base::OnceCallback<void(int)> cb);
-  void OpenConnectionResponse(base::OnceCallback<void(std::vector<uint8_t>)> cb,
-                              int err);
-  void TransmitApduResponse(base::OnceCallback<void(std::vector<uint8_t>)> cb,
-                            int err);
 
   friend class ModemQrtrTest;
 
@@ -243,8 +234,6 @@ class ModemQrtr : public Modem<QmiCmdInterface> {
 
   // Buffer for storing data from the QRTR socket
   std::vector<uint8_t> buffer_;
-
-  std::vector<uint8_t> open_channel_raw_response_;
 
   std::map<std::pair<QmiCmdInterface::Service, uint16_t>,
            base::Callback<int(const qrtr_packet&)>>
