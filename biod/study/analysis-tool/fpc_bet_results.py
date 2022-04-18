@@ -77,7 +77,7 @@ class FPCBETResults:
         Target_500K = 'FPC_BIO_SECURITY_LEVEL_HIGH'
 
         @classmethod
-        def all(cls) -> list:
+        def all(cls) -> List[FPCBETResults.SecLevel]:
             return list(level for level in cls)
 
         @classmethod
