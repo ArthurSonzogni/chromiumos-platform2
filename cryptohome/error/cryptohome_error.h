@@ -22,8 +22,6 @@ namespace error {
 
 class CryptohomeError : public hwsec_foundation::status::Error {
  public:
-  using MakeStatusTrait =
-      hwsec_foundation::status::DefaultMakeStatus<CryptohomeError>;
   using BaseErrorType = CryptohomeError;
 
   // Note that while ErrorLocation is represented as an integer, the error
@@ -53,6 +51,38 @@ class CryptohomeError : public hwsec_foundation::status::Error {
    private:
     const ErrorLocation loc_;
     const std::string name_;
+  };
+
+  struct MakeStatusTrait {
+    // |Unactioned| represents an intermediate state, when we create an error
+    // without fully specifying that error. That allows to require Wrap to be
+    // called, or otherwise a type mismatch error will be raised.
+    class Unactioned {
+     public:
+      Unactioned(const ErrorLocationPair& loc,
+                 const std::optional<user_data_auth::CryptohomeErrorCode> ec);
+
+      hwsec_foundation::status::StatusChain<CryptohomeError> Wrap(
+          hwsec_foundation::status::StatusChain<CryptohomeError> status) &&;
+
+     private:
+      const ErrorLocationPair loc_;
+      const std::optional<user_data_auth::CryptohomeErrorCode> ec_;
+    };
+
+    // Create a stub with no recommended error action. We need to wrap another
+    // |CryptohomeError| for it to become a valid status chain.
+    Unactioned operator()(
+        const ErrorLocationPair& loc,
+        const std::optional<user_data_auth::CryptohomeErrorCode> ec =
+            std::nullopt);
+
+    // Direct creation.
+    hwsec_foundation::status::StatusChain<CryptohomeError> operator()(
+        const ErrorLocationPair& loc,
+        const std::set<Action>& actions,
+        const std::optional<user_data_auth::CryptohomeErrorCode> ec =
+            std::nullopt);
   };
 
   // Standard constructor taking the error location and actions.

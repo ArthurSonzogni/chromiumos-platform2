@@ -13,9 +13,37 @@
 #include <base/strings/string_util.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
+using hwsec_foundation::status::NewStatus;
+using hwsec_foundation::status::StatusChain;
+
 namespace cryptohome {
 
 namespace error {
+
+CryptohomeError::MakeStatusTrait::Unactioned::Unactioned(
+    const ErrorLocationPair& loc,
+    const std::optional<user_data_auth::CryptohomeErrorCode> ec)
+    : loc_(loc), ec_(ec) {}
+
+CryptohomeError::MakeStatusTrait::Unactioned
+CryptohomeError::MakeStatusTrait::operator()(
+    const ErrorLocationPair& loc,
+    const std::optional<user_data_auth::CryptohomeErrorCode> ec) {
+  return CryptohomeError::MakeStatusTrait::Unactioned(loc, ec);
+}
+
+StatusChain<CryptohomeError> CryptohomeError::MakeStatusTrait::Unactioned::Wrap(
+    hwsec_foundation::status::StatusChain<CryptohomeError> status) && {
+  return NewStatus<CryptohomeError>(loc_, NoErrorAction(), ec_)
+      .Wrap(std::move(status));
+}
+
+StatusChain<CryptohomeError> CryptohomeError::MakeStatusTrait::operator()(
+    const ErrorLocationPair& loc,
+    const std::set<Action>& actions,
+    const std::optional<user_data_auth::CryptohomeErrorCode> ec) {
+  return NewStatus<CryptohomeError>(loc, std::move(actions), ec);
+}
 
 CryptohomeError::CryptohomeError(
     const ErrorLocationPair& loc,

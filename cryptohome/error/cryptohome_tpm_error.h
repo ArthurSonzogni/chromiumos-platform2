@@ -48,6 +48,11 @@ class CryptohomeTPMError : public CryptohomeCryptoError {
     Unactioned operator()(const ErrorLocationPair& loc,
                           const std::set<CryptohomeError::Action>& actions);
 
+    // Creates a stub which has to wrap another |hwsec::TPMErrorBase| or
+    // |CryptohomeTPMError| to become a valid status chain.
+    // This variant doesn't have any ErrorAction.
+    Unactioned operator()(const ErrorLocationPair& loc);
+
     // Create an error directly.
     hwsec_foundation::status::StatusChain<CryptohomeTPMError> operator()(
         const ErrorLocationPair& loc,

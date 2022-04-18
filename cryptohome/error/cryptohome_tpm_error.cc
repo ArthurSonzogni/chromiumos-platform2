@@ -125,6 +125,11 @@ CryptohomeTPMError::MakeStatusTrait::operator()(
                                                          std::move(actions));
 }
 
+CryptohomeTPMError::MakeStatusTrait::Unactioned
+CryptohomeTPMError::MakeStatusTrait::operator()(const ErrorLocationPair& loc) {
+  return CryptohomeTPMError::MakeStatusTrait::Unactioned(loc, NoErrorAction());
+}
+
 CryptohomeTPMError::MakeStatusTrait::Unactioned::Unactioned(
     const ErrorLocationPair& loc,
     const std::set<CryptohomeError::Action>& actions)
