@@ -8,7 +8,7 @@
 
 import timeit
 from enum import Enum
-from typing import Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -85,7 +85,7 @@ class DataFrameCountTrieAccess:
 
 def boot_sample(
     # This is the fastest input to rng.choice, other than a scalar.
-    a: npt.NDArray,
+    a: npt.NDArray[Any],
     *,
     n: Optional[int] = None,
     rng: np.random.Generator = np.random.default_rng()
@@ -252,6 +252,8 @@ def elapsed_time_str(sec: float) -> str:
 
     Example: elapsed_time_str(0.003) -> "3ms"
     """
+
+    # TODO: See if numpy.timedelta64 can be used.
 
     hour = int(sec / 60.0**2)
     sec -= hour * 60**2
