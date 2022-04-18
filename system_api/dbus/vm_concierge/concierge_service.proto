@@ -1198,6 +1198,9 @@ message ReclaimVmMemoryRequest {
 
   // The current cyptohome id of this VM.
   string owner_id = 2;
+
+  // number of pages allowed to be reclaimed in this round - 0 means unlimited
+  int32 page_limit = 3;
 }
 
 // Response to a ReclaimVmMemoryRequest.

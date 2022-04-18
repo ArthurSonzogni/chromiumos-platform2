@@ -649,13 +649,20 @@ string RemoveCloseOnExec(int raw_fd) {
 // /proc/<pid>/reclaim. Since this function may block 10 seconds or more, do
 // not call on the main thread.
 std::unique_ptr<dbus::Response> ReclaimVmMemoryInternal(
-    pid_t pid, std::unique_ptr<dbus::Response> dbus_response) {
+    pid_t pid,
+    int32_t page_limit,
+    std::unique_ptr<dbus::Response> dbus_response) {
   dbus::MessageWriter writer(dbus_response.get());
   ReclaimVmMemoryResponse response;
   response.set_success(false);
 
+  if (page_limit < 0) {
+    LOG(ERROR) << "Invalid negative page_limit " << page_limit;
+    response.set_failure_reason("Negative page_limit");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
   const std::string path = base::StringPrintf("/proc/%d/reclaim", pid);
-  const std::string value = "shmem";
   base::ScopedFD fd(
       HANDLE_EINTR(open(path.c_str(), O_WRONLY | O_CLOEXEC | O_NOFOLLOW)));
   if (!fd.is_valid()) {
@@ -664,9 +671,33 @@ std::unique_ptr<dbus::Response> ReclaimVmMemoryInternal(
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
-  if (HANDLE_EINTR(write(fd.get(), value.c_str(), value.size())) !=
-      value.size()) {
-    PLOG(ERROR) << "Failed to write to " << path;
+
+  const std::string reclaim = "shmem";
+  std::list commands = {reclaim};
+  if (page_limit != 0) {
+    LOG(INFO) << "per-process reclaim active: [" << page_limit << "] pages";
+    commands.push_front(reclaim + " " + base::NumberToString(page_limit));
+  }
+  ssize_t bytes_written = 0;
+  int attempts = 0;
+  bool write_ok = false;
+  for (const auto& v : commands) {
+    ++attempts;
+    // We want to open the file only once, and write two times to it,
+    // different values.  WriteFile() and its variants would
+    // open/close/write,  which would cause an unnecessary open/close
+    // cycle, so we use write() directly.
+    bytes_written = HANDLE_EINTR(write(fd.get(), v.c_str(), v.size()));
+    write_ok = (bytes_written == v.size());
+    if (write_ok || (errno != EINVAL)) {
+      break;
+    }
+  }
+
+  if (!write_ok) {
+    PLOG(ERROR) << "Failed to write to " << path
+                << " bytes_written: " << bytes_written
+                << " attempts: " << attempts;
     response.set_failure_reason("Failed to write to /proc filesystem");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -3883,9 +3914,11 @@ void Service::ReclaimVmMemory(
   }
 
   const pid_t pid = iter->second->GetInfo().pid;
+  const auto page_limit = request.page_limit();
   reclaim_thread_.task_runner()->PostTaskAndReplyWithResult(
       FROM_HERE,
-      base::BindOnce(&ReclaimVmMemoryInternal, pid, std::move(dbus_response)),
+      base::BindOnce(&ReclaimVmMemoryInternal, pid, page_limit,
+                     std::move(dbus_response)),
       base::BindOnce(&Service::OnReclaimVmMemory,
                      weak_ptr_factory_.GetWeakPtr(),
                      std::move(response_sender)));
