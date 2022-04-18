@@ -15,12 +15,21 @@ import (
 	"chromiumos/dbusbindings/generate/adaptor"
 	"chromiumos/dbusbindings/generate/methodnames"
 	"chromiumos/dbusbindings/introspect"
+	"chromiumos/dbusbindings/serviceconfig"
 )
 
 func main() {
-	methodNamesFilePath := flag.String("method-names", "", "the output header file with string constants for each method name")
-	adaptorFilePath := flag.String("adaptor", "", "the output header file name containing the DBus adaptor class")
+	serviceConfigPath := flag.String("service-config", "", "the DBus service configuration file for the generator.")
+	methodNamesPath := flag.String("method-names", "", "the output header file with string constants for each method name")
+	adaptorPath := flag.String("adaptor", "", "the output header file name containing the DBus adaptor class")
 	flag.Parse()
+
+	if *serviceConfigPath != "" {
+		_, err := serviceconfig.Load(*serviceConfigPath)
+		if err != nil {
+			log.Fatalf("Failed to read config file %s: %v", *serviceConfigPath, err)
+		}
+	}
 
 	var introspections []introspect.Introspection
 	for _, path := range flag.Args() {
@@ -37,14 +46,14 @@ func main() {
 		introspections = append(introspections, introspection)
 	}
 
-	if *methodNamesFilePath != "" {
-		f, err := os.Create(*methodNamesFilePath)
+	if *methodNamesPath != "" {
+		f, err := os.Create(*methodNamesPath)
 		if err != nil {
-			log.Fatalf("Failed to create file %s: %v\n", *methodNamesFilePath, err)
+			log.Fatalf("Failed to create file %s: %v\n", *methodNamesPath, err)
 		}
 		defer func() {
 			if err := f.Close(); err != nil {
-				log.Fatalf("Failed to close file %s: %v\n", *methodNamesFilePath, err)
+				log.Fatalf("Failed to close file %s: %v\n", *methodNamesPath, err)
 			}
 		}()
 
@@ -53,18 +62,18 @@ func main() {
 		}
 	}
 
-	if *adaptorFilePath != "" {
-		f, err := os.Create(*adaptorFilePath)
+	if *adaptorPath != "" {
+		f, err := os.Create(*adaptorPath)
 		if err != nil {
-			log.Fatalf("Failed to create file %s: %v\n", *adaptorFilePath, err)
+			log.Fatalf("Failed to create file %s: %v\n", *adaptorPath, err)
 		}
 		defer func() {
 			if err := f.Close(); err != nil {
-				log.Fatalf("Failed to close file %s: %v\n", *adaptorFilePath, err)
+				log.Fatalf("Failed to close file %s: %v\n", *adaptorPath, err)
 			}
 		}()
 
-		if err := adaptor.Generate(introspections, f, *adaptorFilePath); err != nil {
+		if err := adaptor.Generate(introspections, f, *adaptorPath); err != nil {
 			log.Fatalf("Failed to generate adaptor: %v\n", err)
 		}
 	}
