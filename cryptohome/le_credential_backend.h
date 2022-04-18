@@ -11,6 +11,8 @@
 
 #include <brillo/secure_blob.h>
 
+#include "cryptohome/le_credential_error.h"
+
 namespace cryptohome {
 
 // Constants used to define the hash tree. Currently we place them here,
@@ -18,29 +20,6 @@ namespace cryptohome {
 const uint32_t kLengthLabels = 14;
 const uint32_t kNumChildren = 4;
 const uint32_t kBitsPerLevel = 2;
-
-// List of error values returned from TPM for the Low Entropy Credential
-// check routine.
-enum LECredBackendError {
-  // Credential check was successful.
-  LE_TPM_SUCCESS = 0,
-  // Check failed due to incorrect Low Entropy credential provided.
-  LE_TPM_ERROR_INVALID_LE_SECRET,
-  // Reset failed due to incorrect Reset credential provided.
-  LE_TPM_ERROR_INVALID_RESET_SECRET,
-  // Check failed since the credential has been locked out due to too many
-  // attempts per the delay schedule.
-  LE_TPM_ERROR_TOO_MANY_ATTEMPTS,
-  // Check failed due to the hash tree being out of sync. This should
-  // prompt a hash tree resynchronization and retry.
-  LE_TPM_ERROR_HASH_TREE_SYNC,
-  // Check failed due to an operation failing on the TPM side. This should
-  // prompt a hash tree resynchronization and retry.
-  LE_TPM_ERROR_TPM_OP_FAILED,
-  // The PCR is in unexpected state. The basic way to proceed from here is to
-  // reboot the device.
-  LE_TPM_ERROR_PCR_NOT_MATCH,
-};
 
 // Enum used to denote the LE log entry type.
 enum LELogEntryType {

@@ -7,6 +7,8 @@
 #include <iostream>
 #include <type_traits>
 
+#include <base/logging.h>
+
 namespace cryptohome {
 
 std::ostream& operator<<(std::ostream& os, const CryptoError& obj) {
