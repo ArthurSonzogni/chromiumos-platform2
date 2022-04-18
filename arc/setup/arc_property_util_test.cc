@@ -730,8 +730,17 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=Intel\n"
          "ro.soc.model=N3060\n"},
 
-        // Many Brya boards use 12th-gen Intels, which have a new model name
-        // format.
+        // Apparently starting from 11th-gen Intel i#'s, we see the gen no. is
+        // called out explicitly.
+
+        // For a Volteer (copano) board.
+        {"model name\t: 11th Gen Intel(R) Core(TM) i3-1110G4 @ 1.80GHz\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=i3-1110G4\n"},
+
+        // Many Brya boards use 12th-gen Intels, which actually end the model
+        // name line with the important part (the actual ID), without a clock
+        // freq. following.
         {"model name\t: 12th Gen Intel(R) Core(TM) i3-1215U\n",
          "ro.soc.manufacturer=Intel\n"
          "ro.soc.model=i3-1215U\n"},

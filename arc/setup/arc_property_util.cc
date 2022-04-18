@@ -575,6 +575,11 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
                              R"(Intel\(R\) Pentium\(R\) Silver ([^ ]+) CPU @)",
                              &model) ||
 
+      // 11th Gen starts calling out the generation no. explicitly.
+      re2::RE2::PartialMatch(
+          model_field, R"(11th Gen Intel\(R\) Core\(TM\) ([^ ]+) @)", &model) ||
+
+      // 12th Gen doesn't have trailing clock freq in field.
       // For i5-1245U, the "C" in Core is missing.
       re2::RE2::PartialMatch(
           model_field, R"(12th Gen Intel\(R\) C?ore\(TM\) ([^ ]+)$)", &model)) {
