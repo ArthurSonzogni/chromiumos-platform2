@@ -15,9 +15,8 @@ import pandas as pd
 from collection import Collection
 
 
-
 class Experiment:
-    """Represents a fincgerprint study experimetn that is being analyzed."""
+    """Represents a fingerprint study experiment that is being analyzed."""
 
     class Finger(Enum):
 
