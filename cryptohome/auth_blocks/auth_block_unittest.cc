@@ -41,6 +41,10 @@
 
 using cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using cryptohome::cryptorecovery::RecoveryCryptoImpl;
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::CryptohomeLECredError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
 
 using ::hwsec::EllipticCurveError;
 using ::hwsec::EllipticCurveErrorCode;
@@ -316,7 +320,8 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
   EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<0>(&le_secret), Return(LE_CRED_SUCCESS)));
+      .WillOnce(
+          DoAll(SaveArg<0>(&le_secret), ReturnError<CryptohomeLECredError>()));
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
@@ -340,6 +345,11 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
 }
 
 TEST(PinWeaverAuthBlockTest, CreateFailTest) {
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+
   brillo::SecureBlob vault_key(20, 'C');
   std::string obfuscated_username = "OBFUSCATED_USERNAME";
   brillo::SecureBlob reset_secret(32, 'S');
@@ -348,7 +358,9 @@ TEST(PinWeaverAuthBlockTest, CreateFailTest) {
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_fail;
   NiceMock<MockLECredentialManager> le_cred_manager_fail;
   ON_CALL(le_cred_manager_fail, InsertCredential(_, _, _, _, _, _))
-      .WillByDefault(Return(LE_CRED_ERROR_HASH_TREE));
+      .WillByDefault(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LECredError::LE_CRED_ERROR_HASH_TREE));
 
   PinWeaverAuthBlock auth_block_fail(&le_cred_manager_fail,
                                      &cryptohome_keys_manager_fail);
@@ -424,7 +436,7 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
   NiceMock<MockLECredentialManager> le_cred_manager;
 
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
-      .WillByDefault(Return(LE_CRED_SUCCESS));
+      .WillByDefault(ReturnError<CryptohomeLECredError>());
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
 
@@ -470,7 +482,7 @@ TEST(PinWeaverAuthBlockTest, DeriveOptionalValuesTest) {
   NiceMock<MockLECredentialManager> le_cred_manager;
 
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
-      .WillByDefault(Return(LE_CRED_SUCCESS));
+      .WillByDefault(ReturnError<CryptohomeLECredError>());
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
 
@@ -502,6 +514,11 @@ TEST(PinWeaverAuthBlockTest, DeriveOptionalValuesTest) {
 }
 
 TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+
   brillo::SecureBlob vault_key(20, 'C');
   brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
@@ -513,7 +530,9 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
   NiceMock<MockLECredentialManager> le_cred_manager;
 
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
-      .WillByDefault(Return(LE_CRED_ERROR_INVALID_LE_SECRET));
+      .WillByDefault(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LECredError::LE_CRED_ERROR_INVALID_LE_SECRET));
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
 
@@ -542,6 +561,11 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
 }
 
 TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
+
   brillo::SecureBlob vault_key(20, 'C');
   brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
   brillo::SecureBlob chaps_iv(kAesBlockSize, 'F');
@@ -553,18 +577,40 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   NiceMock<MockLECredentialManager> le_cred_manager;
 
   ON_CALL(le_cred_manager, CheckCredential(_, _, _, _))
-      .WillByDefault(Return(LE_CRED_ERROR_HASH_TREE));
+      .WillByDefault(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_HASH_TREE));
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
-      .WillOnce(Return(LE_CRED_ERROR_INVALID_LE_SECRET))
-      .WillOnce(Return(LE_CRED_ERROR_INVALID_RESET_SECRET))
-      .WillOnce(Return(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))
-      .WillOnce(Return(LE_CRED_ERROR_HASH_TREE))
-      .WillOnce(Return(LE_CRED_ERROR_INVALID_LABEL))
-      .WillOnce(Return(LE_CRED_ERROR_NO_FREE_LABEL))
-      .WillOnce(Return(LE_CRED_ERROR_INVALID_METADATA))
-      .WillOnce(Return(LE_CRED_ERROR_UNCLASSIFIED))
-      .WillOnce(Return(LE_CRED_ERROR_LE_LOCKED))
-      .WillOnce(Return(LE_CRED_ERROR_PCR_NOT_MATCH));
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_INVALID_LE_SECRET))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_INVALID_RESET_SECRET))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_TOO_MANY_ATTEMPTS))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_HASH_TREE))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_INVALID_LABEL))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_NO_FREE_LABEL))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_INVALID_METADATA))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_UNCLASSIFIED))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_LE_LOCKED))
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_PCR_NOT_MATCH));
 
   NiceMock<MockTpm> tpm;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
@@ -1197,7 +1243,8 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   uint64_t le_label = 1;
   EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
       .WillOnce(DoAll(SaveArg<0>(&le_secret), SaveArg<1>(&he_secret),
-                      SetArgPointee<5>(le_label), Return(LE_CRED_SUCCESS)));
+                      SetArgPointee<5>(le_label),
+                      ReturnError<CryptohomeLECredError>()));
 
   KeyBlobs created_key_blobs;
   CryptohomeRecoveryAuthBlock auth_block(&tpm, &le_cred_manager);
@@ -1235,7 +1282,7 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   brillo::SecureBlob le_secret_1;
   EXPECT_CALL(le_cred_manager, CheckCredential(le_label, _, _, _))
       .WillOnce(DoAll(SaveArg<1>(&le_secret_1), SetArgPointee<2>(he_secret),
-                      Return(LE_CRED_SUCCESS)));
+                      ReturnError<CryptohomeLECredError>()));
   KeyBlobs derived_key_blobs;
   EXPECT_TRUE(
       auth_block.Derive(auth_input, auth_state, &derived_key_blobs).ok());

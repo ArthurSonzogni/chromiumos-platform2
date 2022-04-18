@@ -15,8 +15,15 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/location_utils.h"
 
+using ::cryptohome::error::CryptohomeLECredError;
+using ::cryptohome::error::ErrorAction;
+using ::cryptohome::error::ErrorActionSet;
 using ::hwsec_foundation::GetSecureRandom;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+using ::hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
@@ -43,7 +50,7 @@ LECredentialManagerImpl::LECredentialManagerImpl(
   }
 }
 
-LECredError LECredentialManagerImpl::InsertCredential(
+LECredStatus LECredentialManagerImpl::InsertCredential(
     const brillo::SecureBlob& le_secret,
     const brillo::SecureBlob& he_secret,
     const brillo::SecureBlob& reset_secret,
@@ -51,7 +58,10 @@ LECredError LECredentialManagerImpl::InsertCredential(
     const ValidPcrCriteria& valid_pcr_criteria,
     uint64_t* ret_label) {
   if (!hash_tree_->IsValid() || !Sync()) {
-    return LE_CRED_ERROR_HASH_TREE;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInInsertCred),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
   SignInHashTree::Label label = hash_tree_->GetFreeLabel();
@@ -59,14 +69,20 @@ LECredError LECredentialManagerImpl::InsertCredential(
     LOG(ERROR) << "No free labels available.";
     ReportLEResult(kLEOpInsert, kLEActionLoadFromDisk,
                    LE_CRED_ERROR_NO_FREE_LABEL);
-    return LE_CRED_ERROR_NO_FREE_LABEL;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManLabelUnavailableInInsertCred),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_NO_FREE_LABEL);
   }
 
   std::vector<std::vector<uint8_t>> h_aux = GetAuxHashes(label);
   if (h_aux.empty()) {
     LOG(ERROR) << "Error getting aux hashes for label: " << label.value();
     ReportLEResult(kLEOpInsert, kLEActionLoadFromDisk, LE_CRED_ERROR_HASH_TREE);
-    return LE_CRED_ERROR_HASH_TREE;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManEmptyAuxInInsertCred),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
   ReportLEResult(kLEOpInsert, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
@@ -78,7 +94,10 @@ LECredError LECredentialManagerImpl::InsertCredential(
   if (!success) {
     LOG(ERROR) << "Error executing TPM InsertCredential command.";
     ReportLEResult(kLEOpInsert, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
-    return LE_CRED_ERROR_HASH_TREE;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManTpmFailedInInsertCred),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
   ReportLEResult(kLEOpInsert, kLEActionBackend, LE_CRED_SUCCESS);
@@ -103,16 +122,19 @@ LECredError LECredentialManagerImpl::InsertCredential(
       is_locked_ = true;
       // TODO(crbug.com/809749): Report failure to UMA.
     }
-    return LE_CRED_ERROR_HASH_TREE;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManStoreFailedInInsertCred),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
   ReportLEResult(kLEOpInsert, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
   *ret_label = label.value();
-  return LE_CRED_SUCCESS;
+  return OkStatus<CryptohomeLECredError>();
 }
 
-LECredError LECredentialManagerImpl::CheckCredential(
+LECredStatus LECredentialManagerImpl::CheckCredential(
     const uint64_t& label,
     const brillo::SecureBlob& le_secret,
     brillo::SecureBlob* he_secret,
@@ -120,25 +142,31 @@ LECredError LECredentialManagerImpl::CheckCredential(
   return CheckSecret(label, le_secret, he_secret, reset_secret, true);
 }
 
-LECredError LECredentialManagerImpl::ResetCredential(
+LECredStatus LECredentialManagerImpl::ResetCredential(
     const uint64_t& label, const brillo::SecureBlob& reset_secret) {
   return CheckSecret(label, reset_secret, nullptr, nullptr, false);
 }
 
-LECredError LECredentialManagerImpl::RemoveCredential(const uint64_t& label) {
+LECredStatus LECredentialManagerImpl::RemoveCredential(const uint64_t& label) {
   if (!hash_tree_->IsValid() || !Sync()) {
-    return LE_CRED_ERROR_HASH_TREE;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInRemoveCred),
+        ErrorActionSet({ErrorAction::kReboot}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
   SignInHashTree::Label label_object(label, kLengthLabels, kBitsPerLevel);
   std::vector<uint8_t> orig_cred, orig_mac;
   std::vector<std::vector<uint8_t>> h_aux;
   bool metadata_lost;
-  LECredError ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
-                                      &h_aux, &metadata_lost);
-  if (ret != LE_CRED_SUCCESS) {
-    ReportLEResult(kLEOpRemove, kLEActionLoadFromDisk, ret);
-    return ret;
+  LECredStatus ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
+                                       &h_aux, &metadata_lost);
+  if (!ret.ok()) {
+    ReportLEResult(kLEOpRemove, kLEActionLoadFromDisk,
+                   ret->local_lecred_error());
+    return MakeStatus<CryptohomeLECredError>(
+               CRYPTOHOME_ERR_LOC(kLocLECredManRetrieveLabelFailedInRemoveCred))
+        .Wrap(std::move(ret));
   }
 
   bool success =
@@ -146,7 +174,10 @@ LECredError LECredentialManagerImpl::RemoveCredential(const uint64_t& label) {
   if (!success) {
     ReportLEResult(kLEOpRemove, kLEActionBackend, LE_CRED_ERROR_HASH_TREE);
     LOG(ERROR) << "Error executing TPM RemoveCredential command.";
-    return LE_CRED_ERROR_HASH_TREE;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManRemoveCredFailedInRemoveCred),
+        ErrorActionSet({ErrorAction::kReboot}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
   }
   ReportLEResult(kLEOpRemove, kLEActionBackend, LE_CRED_SUCCESS);
 
@@ -161,21 +192,27 @@ LECredError LECredentialManagerImpl::RemoveCredential(const uint64_t& label) {
     // The hope is that on reboot, the disk operations start working. In that
     // case, we will be able to replay this operation from the TPM log.
     is_locked_ = true;
-    return LE_CRED_ERROR_HASH_TREE;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManRemoveLabelFailedInRemoveCred),
+        ErrorActionSet({ErrorAction::kReboot}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
   }
   ReportLEResult(kLEOpRemove, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
-  return LE_CRED_SUCCESS;
+  return OkStatus<CryptohomeLECredError>();
 }
 
-LECredError LECredentialManagerImpl::CheckSecret(
+LECredStatus LECredentialManagerImpl::CheckSecret(
     const uint64_t& label,
     const brillo::SecureBlob& secret,
     brillo::SecureBlob* he_secret,
     brillo::SecureBlob* reset_secret,
     bool is_le_secret) {
   if (!hash_tree_->IsValid() || !Sync()) {
-    return LE_CRED_ERROR_HASH_TREE;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidTreeInCheckSecret),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
   }
 
   const char* uma_log_op = is_le_secret ? kLEOpCheck : kLEOpReset;
@@ -185,10 +222,11 @@ LECredError LECredentialManagerImpl::CheckSecret(
   std::vector<uint8_t> orig_cred, orig_mac;
   std::vector<std::vector<uint8_t>> h_aux;
   bool metadata_lost;
-  LECredError ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
-                                      &h_aux, &metadata_lost);
-  if (ret != LE_CRED_SUCCESS) {
-    ReportLEResult(uma_log_op, kLEActionLoadFromDisk, ret);
+  LECredStatus ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
+                                       &h_aux, &metadata_lost);
+  if (!ret.ok()) {
+    ReportLEResult(uma_log_op, kLEActionLoadFromDisk,
+                   ret->local_lecred_error());
     return ret;
   }
 
@@ -196,7 +234,10 @@ LECredError LECredentialManagerImpl::CheckSecret(
     LOG(ERROR) << "Invalid cred metadata for label: " << label;
     ReportLEResult(uma_log_op, kLEActionLoadFromDisk,
                    LE_CRED_ERROR_INVALID_METADATA);
-    return LE_CRED_ERROR_INVALID_METADATA;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManInvalidMetadataInCheckSecret),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_INVALID_METADATA);
   }
 
   ReportLEResult(uma_log_op, kLEActionLoadFromDisk, LE_CRED_SUCCESS);
@@ -213,7 +254,7 @@ LECredError LECredentialManagerImpl::CheckSecret(
                                      &new_mac, &err, &root_hash_);
   }
 
-  ReportLEResult(uma_log_op, kLEActionBackend, ConvertTpmError(err));
+  ReportLEResult(uma_log_op, kLEActionBackend, BackendErrorToCredError(err));
 
   // Store the new credential meta data and MAC in case the backend performed a
   // state change. Note that this might also be needed for some failure cases.
@@ -229,13 +270,23 @@ LECredError LECredentialManagerImpl::CheckSecret(
       // case, we will be able to replay this operation from the TPM log.
       is_locked_ = true;
       // TODO(crbug.com/809749): Report failure to UMA.
-      return LE_CRED_ERROR_HASH_TREE;
+      return MakeStatus<CryptohomeLECredError>(
+          CRYPTOHOME_ERR_LOC(kLocLECredManStoreLabelFailedInCheckSecret),
+          ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+          LECredError::LE_CRED_ERROR_HASH_TREE);
     }
   }
 
   ReportLEResult(uma_log_op, kLEActionSaveToDisk, LE_CRED_SUCCESS);
 
-  return ConvertTpmError(err);
+  LECredStatus converted = ConvertTpmError(err);
+  if (converted.ok())
+    return OkStatus<CryptohomeLECredError>();
+
+  return MakeStatus<CryptohomeLECredError>(
+             CRYPTOHOME_ERR_LOC(kLocLECredManTpmFailedInCheckSecret),
+             ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}))
+      .Wrap(std::move(converted));
 }
 
 bool LECredentialManagerImpl::NeedsPcrBinding(const uint64_t& label) {
@@ -247,9 +298,9 @@ bool LECredentialManagerImpl::NeedsPcrBinding(const uint64_t& label) {
   std::vector<uint8_t> orig_cred, orig_mac;
   std::vector<std::vector<uint8_t>> h_aux;
   bool metadata_lost;
-  LECredError ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
-                                      &h_aux, &metadata_lost);
-  if (ret != LE_CRED_SUCCESS)
+  LECredStatus ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
+                                       &h_aux, &metadata_lost);
+  if (!ret.ok())
     return false;
 
   return le_tpm_backend_->NeedsPCRBinding(orig_cred);
@@ -264,15 +315,15 @@ int LECredentialManagerImpl::GetWrongAuthAttempts(const uint64_t& label) {
   std::vector<uint8_t> orig_cred, orig_mac;
   std::vector<std::vector<uint8_t>> h_aux;
   bool metadata_lost;
-  LECredError ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
-                                      &h_aux, &metadata_lost);
-  if (ret != LE_CRED_SUCCESS)
+  LECredStatus ret = RetrieveLabelInfo(label_object, &orig_cred, &orig_mac,
+                                       &h_aux, &metadata_lost);
+  if (!ret.ok())
     return -1;
 
   return le_tpm_backend_->GetWrongAuthAttempts(orig_cred);
 }
 
-LECredError LECredentialManagerImpl::RetrieveLabelInfo(
+LECredStatus LECredentialManagerImpl::RetrieveLabelInfo(
     const SignInHashTree::Label& label,
     std::vector<uint8_t>* cred_metadata,
     std::vector<uint8_t>* mac,
@@ -281,22 +332,31 @@ LECredError LECredentialManagerImpl::RetrieveLabelInfo(
   if (!hash_tree_->GetLabelData(label, mac, cred_metadata, metadata_lost)) {
     LOG(ERROR) << "Failed to get the credential in disk hash tree for label: "
                << label.value();
-    return LE_CRED_ERROR_INVALID_LABEL;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManTreeGetDataFailedInRetrieveLabel),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_INVALID_LABEL);
   }
 
   // Any empty |cred_metadata| means the label isn't present in the hash tree.
   if (cred_metadata->empty()) {
     LOG(ERROR) << "Label doesn't exist in hash tree: " << label.value();
-    return LE_CRED_ERROR_INVALID_LABEL;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManNonexistentInRetrieveLabel),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_INVALID_LABEL);
   }
 
   *h_aux = GetAuxHashes(label);
   if (h_aux->empty()) {
     LOG(ERROR) << "Error retrieving aux hashes from hash tree for label: "
                << label.value();
-    return LE_CRED_ERROR_HASH_TREE;
+    return MakeStatus<CryptohomeLECredError>(
+        CRYPTOHOME_ERR_LOC(kLocLECredManEmptyAuxInRetrieveLabel),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}),
+        LECredError::LE_CRED_ERROR_HASH_TREE);
   }
-  return LE_CRED_SUCCESS;
+  return OkStatus<CryptohomeLECredError>();
 }
 
 std::vector<std::vector<uint8_t>> LECredentialManagerImpl::GetAuxHashes(
@@ -325,7 +385,17 @@ std::vector<std::vector<uint8_t>> LECredentialManagerImpl::GetAuxHashes(
   return h_aux;
 }
 
-LECredError LECredentialManagerImpl::ConvertTpmError(LECredBackendError err) {
+LECredStatus LECredentialManagerImpl::ConvertTpmError(LECredBackendError err) {
+  LECredError conv_err = BackendErrorToCredError(err);
+  if (conv_err == LE_CRED_SUCCESS)
+    return OkStatus<CryptohomeLECredError>();
+  return MakeStatus<CryptohomeLECredError>(
+      CRYPTOHOME_ERR_LOC(kLocLECredManConvertTpmError), ErrorActionSet({}),
+      conv_err);
+}
+
+LECredError LECredentialManagerImpl::BackendErrorToCredError(
+    LECredBackendError err) {
   switch (err) {
     case LE_TPM_SUCCESS:
       return LE_CRED_SUCCESS;
@@ -439,8 +509,9 @@ bool LECredentialManagerImpl::ReplayCheck(
   std::vector<uint8_t> orig_cred, orig_mac;
   std::vector<std::vector<uint8_t>> h_aux;
   bool metadata_lost;
-  if (RetrieveLabelInfo(label_obj, &orig_cred, &orig_mac, &h_aux,
-                        &metadata_lost) != LE_CRED_SUCCESS) {
+  if (!RetrieveLabelInfo(label_obj, &orig_cred, &orig_mac, &h_aux,
+                         &metadata_lost)
+           .ok()) {
     ReportLEResult(kLEOpSync, kLEActionLoadFromDisk, LE_CRED_ERROR_HASH_TREE);
     return false;
   }
@@ -580,7 +651,7 @@ bool LECredentialManagerImpl::ReplayLogEntries(
 
   // Remove any inserted leaves since they are unusable.
   for (const auto& label : inserted_leaves) {
-    if (RemoveCredential(label) != LE_CRED_SUCCESS) {
+    if (!RemoveCredential(label).ok()) {
       LOG(ERROR) << "Failed to remove re-inserted label: " << label;
       return false;
     }

@@ -126,15 +126,15 @@ CryptoError Create(LECredentialManager* le_manager,
   // schedule).
   // - We don't set valid_pcr_criteria because PCR binding is expected to be
   // already done by the AuthBlock.
-  LECredError ret = le_manager->InsertCredential(
+  LECredStatus ret = le_manager->InsertCredential(
       /*le_secret=*/le_secret,
       /*he_secret=*/he_secret,
       /*reset_secret=*/brillo::SecureBlob(),
       /*delay_sched=*/GetDelaySchedule(),
       /*valid_pcr_criteria=*/ValidPcrCriteria(), &label);
 
-  if (ret != LE_CRED_SUCCESS)
-    return LECredErrorToCryptoError(ret);
+  if (!ret.ok())
+    return ret->local_crypto_error();
 
   revocation_state->le_label = label;
 
@@ -184,14 +184,14 @@ CryptoError Derive(LECredentialManager* le_manager,
   brillo::SecureBlob he_secret;
   // Note: reset_secret is not used, see Create().
   brillo::SecureBlob reset_secret;
-  LECredError ret = le_manager->CheckCredential(
+  LECredStatus ret = le_manager->CheckCredential(
       /*label=*/revocation_state.le_label.value(),
       /*le_secret=*/le_secret,
       /*he_secret=*/&he_secret,
       /*reset_secret=*/&reset_secret);
 
-  if (ret != LE_CRED_SUCCESS)
-    return LECredErrorToCryptoError(ret);
+  if (!ret.ok())
+    return ret->local_crypto_error();
 
   // Combine he_secret with kdf_skey:
   brillo::SecureBlob vkk_key;
@@ -217,12 +217,12 @@ CryptoError Revoke(LECredentialManager* le_manager,
     return CryptoError::CE_OTHER_CRYPTO;
   }
 
-  LECredError ret = le_manager->RemoveCredential(
+  LECredStatus ret = le_manager->RemoveCredential(
       /*label=*/revocation_state.le_label.value());
 
-  if (ret != LE_CRED_SUCCESS) {
+  if (!ret.ok()) {
     LOG(ERROR) << "RemoveCredential failed with error: " << ret;
-    return RevokeLECredErrorToCryptoError(ret);
+    return RevokeLECredErrorToCryptoError(ret->local_lecred_error());
   }
 
   return CryptoError::CE_NONE;

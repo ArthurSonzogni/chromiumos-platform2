@@ -204,17 +204,15 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
   }
 
   uint64_t label;
-  LECredError ret =
+  LECredStatus ret =
       le_manager_->InsertCredential(le_secret, he_secret, reset_secret,
                                     delay_sched, valid_pcr_criteria, &label);
-  if (ret != LE_CRED_SUCCESS) {
-    LogLERetCode(ret);
-    // TODO(b/229569661): Convert LeCredential related stuff to use
-    // CryptohomeError.
+  if (!ret.ok()) {
+    LogLERetCode(ret->local_lecred_error());
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocPinWeaverAuthBlockInsertCredentialFailedInCreate),
-        ErrorActionSet({ErrorAction::kReboot}), LECredErrorToCryptoError(ret));
+               CRYPTOHOME_ERR_LOC(
+                   kLocPinWeaverAuthBlockInsertCredentialFailedInCreate))
+        .Wrap(std::move(ret));
   }
 
   PinWeaverAuthBlockState pin_auth_state;
@@ -279,17 +277,15 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
 
   // Try to obtain the High Entropy Secret from the LECredentialManager.
   brillo::SecureBlob he_secret;
-  LECredError ret = le_manager_->CheckCredential(
+  LECredStatus ret = le_manager_->CheckCredential(
       auth_state->le_label.value(), le_secret, &he_secret,
       &key_blobs->reset_secret.value());
 
-  if (ret != LE_CRED_SUCCESS) {
-    // TODO(b/229569664): Be more specific about the incorrect auth error. i.e.
-    // Exclude false positives.
+  if (!ret.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockCheckCredFailedInDerive),
-        ErrorActionSet({ErrorAction::kIncorrectAuth}),
-        LECredErrorToCryptoError(ret));
+               CRYPTOHOME_ERR_LOC(
+                   kLocPinWeaverAuthBlockCheckCredFailedInDerive))
+        .Wrap(std::move(ret));
   }
 
   brillo::SecureBlob vkk_seed =

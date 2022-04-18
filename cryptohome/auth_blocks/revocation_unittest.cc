@@ -7,9 +7,12 @@
 #include <gtest/gtest.h>
 
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/mock_le_credential_manager.h"
 
+using cryptohome::error::CryptohomeLECredError;
+using hwsec_foundation::error::testing::ReturnError;
 using testing::_;
 using testing::DoAll;
 using testing::NiceMock;
@@ -31,7 +34,7 @@ TEST(RevocationTest, Create) {
   RevocationState state;
   KeyBlobs key_blobs = {.vkk_key = per_credential_secret};
   EXPECT_CALL(le_cred_manager, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(Return(LE_CRED_SUCCESS));
+      .WillOnce(ReturnError<CryptohomeLECredError>());
   EXPECT_EQ(CryptoError::CE_NONE, Create(&le_cred_manager, &state, &key_blobs));
 }
 
@@ -42,7 +45,8 @@ TEST(RevocationTest, Derive) {
   RevocationState state = {.le_label = 0};
   KeyBlobs key_blobs = {.vkk_key = per_credential_secret};
   EXPECT_CALL(le_cred_manager, CheckCredential(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<2>(he_secret), Return(LE_CRED_SUCCESS)));
+      .WillOnce(DoAll(SetArgPointee<2>(he_secret),
+                      ReturnError<CryptohomeLECredError>()));
   EXPECT_EQ(CryptoError::CE_NONE, Derive(&le_cred_manager, state, &key_blobs));
 }
 
@@ -60,7 +64,8 @@ TEST(RevocationTest, Revoke) {
   RevocationState state = {.le_label = 0};
   uint64_t label;
   EXPECT_CALL(le_cred_manager, RemoveCredential(_))
-      .WillOnce(DoAll(SaveArg<0>(&label), Return(LE_CRED_SUCCESS)));
+      .WillOnce(
+          DoAll(SaveArg<0>(&label), ReturnError<CryptohomeLECredError>()));
   EXPECT_EQ(CryptoError::CE_NONE, Revoke(&le_cred_manager, state));
   EXPECT_EQ(label, state.le_label.value());
 }

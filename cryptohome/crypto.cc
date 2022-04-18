@@ -172,9 +172,10 @@ bool Crypto::ResetLeCredentialEx(const uint64_t le_label,
     return false;
   }
 
-  int ret = le_manager_->ResetCredential(le_label, reset_secret);
-  if (ret != LE_CRED_SUCCESS) {
-    PopulateError(&out_error, ret == LE_CRED_ERROR_INVALID_RESET_SECRET
+  LECredStatus ret = le_manager_->ResetCredential(le_label, reset_secret);
+  if (!ret.ok()) {
+    PopulateError(&out_error, ret->local_lecred_error() ==
+                                      LE_CRED_ERROR_INVALID_RESET_SECRET
                                   ? CryptoError::CE_LE_INVALID_SECRET
                                   : CryptoError::CE_OTHER_FATAL);
     return false;
@@ -200,7 +201,7 @@ bool Crypto::RemoveLECredential(uint64_t label) const {
     return false;
   }
 
-  return le_manager_->RemoveCredential(label) == LE_CRED_SUCCESS;
+  return le_manager_->RemoveCredential(label).ok();
 }
 
 bool Crypto::is_cryptohome_key_loaded() const {

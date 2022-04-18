@@ -82,16 +82,19 @@ class LECredentialManagerImplUnitTest : public testing::Test {
     brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                      std::end(kResetSecret1Array));
 
-    EXPECT_EQ(
-        LE_CRED_SUCCESS,
-        le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
-                                  stub_delay_sched, stub_pcr_criteria, &label));
+    EXPECT_TRUE(le_mgr_
+                    ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                       stub_delay_sched, stub_pcr_criteria,
+                                       &label)
+                    .ok());
+
     brillo::SecureBlob he_secret;
     brillo::SecureBlob reset_secret;
     for (int i = 0; i < LE_MAX_INCORRECT_ATTEMPTS; i++) {
-      EXPECT_EQ(LE_CRED_ERROR_INVALID_LE_SECRET,
-                le_mgr_->CheckCredential(label, kHeSecret1, &he_secret,
-                                         &reset_secret));
+      EXPECT_EQ(
+          LE_CRED_ERROR_INVALID_LE_SECRET,
+          le_mgr_->CheckCredential(label, kHeSecret1, &he_secret, &reset_secret)
+              ->local_lecred_error());
     }
     return label;
   }
@@ -166,24 +169,29 @@ TEST_F(LECredentialManagerImplUnitTest, BasicInsertAndCheck) {
   brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                    std::end(kResetSecret1Array));
 
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret2, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label2));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label2)
+                  .ok());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          .ok());
   EXPECT_EQ(he_secret, kHeSecret1);
   EXPECT_EQ(
       LE_CRED_ERROR_INVALID_LE_SECRET,
-      le_mgr_->CheckCredential(label2, kLeSecret1, &he_secret, &reset_secret));
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label2, kLeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret)
+          .ok());
   EXPECT_EQ(he_secret, kHeSecret1);
 }
 
@@ -208,30 +216,32 @@ TEST_F(LECredentialManagerImplUnitTest, CheckPcrAuth) {
   brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                    std::end(kResetSecret1Array));
 
-  ASSERT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
-                                stub_delay_sched, valid_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, valid_pcr_criteria,
+                                     &label1)
+                  .ok());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          .ok());
 
   EXPECT_EQ(he_secret, kHeSecret1);
   EXPECT_EQ(reset_secret, kResetSecret1);
 
   fake_backend_.ExtendArcPCR("digest");
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          .ok());
   EXPECT_EQ(he_secret, kHeSecret1);
   EXPECT_EQ(reset_secret, kResetSecret1);
 
   fake_backend_.ExtendArcPCR("obfuscated_username");
   EXPECT_EQ(
       LE_CRED_ERROR_PCR_NOT_MATCH,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
   fake_backend_.ResetArcPCR();
 }
 
@@ -249,13 +259,15 @@ TEST_F(LECredentialManagerImplUnitTest, LockedOutSecret) {
   brillo::SecureBlob reset_secret;
   EXPECT_EQ(
       LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
 
   // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
   // right metadata is stored.
   EXPECT_EQ(
       LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
 }
 
 // Insert a label. Then ensure that a CheckCredential on another non-existent
@@ -271,21 +283,27 @@ TEST_F(LECredentialManagerImplUnitTest, InvalidLabelCheck) {
   brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                    std::end(kResetSecret1Array));
 
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
   // First try a badly encoded label.
   uint64_t invalid_label = ~label1;
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   EXPECT_EQ(LE_CRED_ERROR_INVALID_LABEL,
-            le_mgr_->CheckCredential(invalid_label, kLeSecret1, &he_secret,
-                                     &reset_secret));
+            le_mgr_
+                ->CheckCredential(invalid_label, kLeSecret1, &he_secret,
+                                  &reset_secret)
+                ->local_lecred_error());
   // Next check a valid, but absent label.
   invalid_label = label1 ^ 0x1;
   EXPECT_EQ(LE_CRED_ERROR_INVALID_LABEL,
-            le_mgr_->CheckCredential(invalid_label, kLeSecret1, &he_secret,
-                                     &reset_secret));
+            le_mgr_
+                ->CheckCredential(invalid_label, kLeSecret1, &he_secret,
+                                  &reset_secret)
+                ->local_lecred_error());
 }
 
 // Insert a credential and then remove it.
@@ -302,15 +320,18 @@ TEST_F(LECredentialManagerImplUnitTest, BasicInsertRemove) {
   brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                    std::end(kResetSecret1Array));
 
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
+  ASSERT_TRUE(le_mgr_->RemoveCredential(label1).ok());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   EXPECT_EQ(
       LE_CRED_ERROR_INVALID_LABEL,
-      le_mgr_->CheckCredential(label1, kHeSecret1, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label1, kHeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
 }
 
 // Check that a reset unlocks a locked out credential.
@@ -329,15 +350,16 @@ TEST_F(LECredentialManagerImplUnitTest, ResetSecret) {
   brillo::SecureBlob reset_secret;
   ASSERT_EQ(
       LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
 
-  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->ResetCredential(label1, kResetSecret1));
+  EXPECT_TRUE(le_mgr_->ResetCredential(label1, kResetSecret1).ok());
 
   he_secret.clear();
   // Make sure we can Check successfully, post reset.
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          .ok());
   EXPECT_EQ(he_secret, kHeSecret1);
 }
 
@@ -353,15 +375,17 @@ TEST_F(LECredentialManagerImplUnitTest, ResetSecretNegative) {
   brillo::SecureBlob reset_secret;
   ASSERT_EQ(
       LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
 
   EXPECT_EQ(LE_CRED_ERROR_INVALID_RESET_SECRET,
-            le_mgr_->ResetCredential(label1, kLeSecret1));
+            le_mgr_->ResetCredential(label1, kLeSecret1)->local_lecred_error());
 
   // Make sure that Check still fails.
   EXPECT_EQ(
       LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
 }
 
 // Corrupt the hash cache, and see if subsequent LE operations succeed.
@@ -378,9 +402,11 @@ TEST_F(LECredentialManagerImplUnitTest, InsertRemoveCorruptHashCache) {
   brillo::SecureBlob kResetSecret1(std::begin(kResetSecret1Array),
                                    std::end(kResetSecret1Array));
 
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
 
   le_mgr_.reset();
   CorruptLeafCache();
@@ -388,12 +414,14 @@ TEST_F(LECredentialManagerImplUnitTest, InsertRemoveCorruptHashCache) {
   InitLEManager();
 
   // We should be able to regenerate the HashCache.
-  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
+  EXPECT_TRUE(le_mgr_->RemoveCredential(label1).ok());
 
   // Now let's reinsert the same credential.
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
 
   le_mgr_.reset();
   CorruptLeafCache();
@@ -402,16 +430,18 @@ TEST_F(LECredentialManagerImplUnitTest, InsertRemoveCorruptHashCache) {
 
   // Let's make sure future operations work.
   uint64_t label2;
-  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label2));
+  EXPECT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label2)
+                  .ok());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
-  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
-  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label2));
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          .ok());
+  EXPECT_TRUE(le_mgr_->RemoveCredential(label1).ok());
+  EXPECT_TRUE(le_mgr_->RemoveCredential(label2).ok());
 }
 
 // Initialize the LECredManager and take a snapshot after 1 operation,
@@ -429,9 +459,11 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsert) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
 
   base::ScopedTempDir snapshot;
   ASSERT_TRUE(snapshot.CreateUniqueTempDir());
@@ -439,9 +471,11 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsert) {
 
   // Another Insert & Remove after taking the snapshot.
   uint64_t label2;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label2));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label2)
+                  .ok());
 
   le_mgr_.reset();
   RestoreSnapshot(snapshot.GetPath());
@@ -450,9 +484,9 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsert) {
   // Subsequent operation should work.
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          .ok());
 }
 
 // Initialize the LECredManager and take a snapshot after an operation,
@@ -471,18 +505,22 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsertRemove) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
 
   std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
 
   // Another Insert & Remove after taking the snapshot.
   uint64_t label2;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label2));
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label2)
+                  .ok());
+  ASSERT_TRUE(le_mgr_->RemoveCredential(label1).ok());
 
   le_mgr_.reset();
   RestoreSnapshot(snapshot->GetPath());
@@ -490,9 +528,11 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInsertRemove) {
 
   // Subsequent operation should work.
   uint64_t label3;
-  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label3));
+  EXPECT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label3)
+                  .ok());
 }
 
 // Initialize the LECredManager and take a snapshot after 2 operations,
@@ -513,13 +553,17 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostChecks) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
   uint64_t label2;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret2, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label2));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label2)
+                  .ok());
 
   std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
 
@@ -527,9 +571,10 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostChecks) {
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   for (int i = 0; i < kFakeLogSize; i++) {
-    ASSERT_EQ(LE_CRED_ERROR_INVALID_LE_SECRET,
-              le_mgr_->CheckCredential(label1, kLeSecret2, &he_secret,
-                                       &reset_secret));
+    ASSERT_EQ(
+        LE_CRED_ERROR_INVALID_LE_SECRET,
+        le_mgr_->CheckCredential(label1, kLeSecret2, &he_secret, &reset_secret)
+            ->local_lecred_error());
   }
 
   le_mgr_.reset();
@@ -537,12 +582,12 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostChecks) {
   InitLEManager();
 
   // Subsequent operations should work.
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret));
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          .ok());
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret)
+          .ok());
 }
 
 // Initialize the LECredManager and take a snapshot after 2 operations,
@@ -563,23 +608,28 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInserts) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
   uint64_t label2;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret2, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label2));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label2)
+                  .ok());
 
   std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
 
   // Perform inserts to fill up the replay log.
   uint64_t temp_label;
   for (int i = 0; i < kFakeLogSize; i++) {
-    ASSERT_EQ(LE_CRED_SUCCESS,
-              le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
-                                        stub_delay_sched, stub_pcr_criteria,
-                                        &temp_label));
+    ASSERT_TRUE(le_mgr_
+                    ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                       stub_delay_sched, stub_pcr_criteria,
+                                       &temp_label)
+                    .ok());
   }
 
   le_mgr_.reset();
@@ -589,17 +639,18 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostInserts) {
   // Subsequent operations should work.
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret));
-  EXPECT_EQ(LE_CRED_SUCCESS,
-            le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
-                                      stub_delay_sched, stub_pcr_criteria,
-                                      &temp_label));
-  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          .ok());
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret)
+          .ok());
+  EXPECT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &temp_label)
+                  .ok());
+  EXPECT_TRUE(le_mgr_->RemoveCredential(label1).ok());
 }
 
 // Initialize the LECredManager, insert 2 base credentials. Then, insert
@@ -621,22 +672,27 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostRemoves) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
   uint64_t label2;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret2, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label2));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label2)
+                  .ok());
 
   // Perform |kLogSize| credential inserts.
   std::vector<uint64_t> labels_to_remove;
   uint64_t temp_label;
   for (int i = 0; i < kFakeLogSize; i++) {
-    ASSERT_EQ(LE_CRED_SUCCESS,
-              le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
-                                        stub_delay_sched, stub_pcr_criteria,
-                                        &temp_label));
+    ASSERT_TRUE(le_mgr_
+                    ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                       stub_delay_sched, stub_pcr_criteria,
+                                       &temp_label)
+                    .ok());
     labels_to_remove.push_back(temp_label);
   }
 
@@ -644,7 +700,7 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostRemoves) {
 
   // Fill the replay log with |kLogSize| RemoveCredential operations.
   for (int i = 0; i < kFakeLogSize; i++) {
-    ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(labels_to_remove[i]));
+    ASSERT_TRUE(le_mgr_->RemoveCredential(labels_to_remove[i]).ok());
   }
 
   le_mgr_.reset();
@@ -656,23 +712,26 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostRemoves) {
   brillo::SecureBlob reset_secret;
   for (int i = 0; i < kFakeLogSize; i++) {
     EXPECT_EQ(LE_CRED_ERROR_INVALID_LABEL,
-              le_mgr_->CheckCredential(labels_to_remove[i], kLeSecret1,
-                                       &he_secret, &reset_secret));
+              le_mgr_
+                  ->CheckCredential(labels_to_remove[i], kLeSecret1, &he_secret,
+                                    &reset_secret)
+                  ->local_lecred_error());
   }
 
   // Subsequent operations should work.
   he_secret.clear();
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
-  EXPECT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret));
-  EXPECT_EQ(LE_CRED_SUCCESS,
-            le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
-                                      stub_delay_sched, stub_pcr_criteria,
-                                      &temp_label));
-  EXPECT_EQ(LE_CRED_SUCCESS, le_mgr_->RemoveCredential(label1));
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          .ok());
+  EXPECT_TRUE(
+      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret)
+          .ok());
+  EXPECT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &temp_label)
+                  .ok());
+  EXPECT_TRUE(le_mgr_->RemoveCredential(label1).ok());
 }
 
 // Verify behaviour when more operations are lost than the log can save.
@@ -692,13 +751,17 @@ TEST_F(LECredentialManagerImplUnitTest, FailedLogReplayTooManyOps) {
 
   // Perform insert.
   uint64_t label1;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
   uint64_t label2;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret2, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label2));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label2)
+                  .ok());
 
   std::unique_ptr<base::ScopedTempDir> snapshot = CaptureSnapshot();
 
@@ -706,14 +769,17 @@ TEST_F(LECredentialManagerImplUnitTest, FailedLogReplayTooManyOps) {
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   for (int i = 0; i < kFakeLogSize + 1; i++) {
-    ASSERT_EQ(LE_CRED_ERROR_INVALID_LE_SECRET,
-              le_mgr_->CheckCredential(label1, kLeSecret2, &he_secret,
-                                       &reset_secret));
+    ASSERT_EQ(
+        LE_CRED_ERROR_INVALID_LE_SECRET,
+        le_mgr_->CheckCredential(label1, kLeSecret2, &he_secret, &reset_secret)
+            ->local_lecred_error());
   }
   uint64_t label3;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret2, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label3));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label3)
+                  .ok());
 
   le_mgr_.reset();
   RestoreSnapshot(snapshot->GetPath());
@@ -723,10 +789,12 @@ TEST_F(LECredentialManagerImplUnitTest, FailedLogReplayTooManyOps) {
   // TODO(crbug.com/809710): Should we reset the tree in this case?
   EXPECT_EQ(
       LE_CRED_ERROR_HASH_TREE,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
   EXPECT_EQ(
       LE_CRED_ERROR_HASH_TREE,
-      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret)
+          ->local_lecred_error());
 }
 
 // Verify behaviour when there is an unsalvageable disk corruption.
@@ -743,18 +811,22 @@ TEST_F(LECredentialManagerImplUnitTest, FailedSyncDiskCorrupted) {
                                    std::end(kResetSecret1Array));
 
   uint64_t label1;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label1));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label1)
+                  .ok());
   uint64_t label2;
-  ASSERT_EQ(LE_CRED_SUCCESS, le_mgr_->InsertCredential(
-                                 kLeSecret1, kHeSecret1, kResetSecret1,
-                                 stub_delay_sched, stub_pcr_criteria, &label2));
+  ASSERT_TRUE(le_mgr_
+                  ->InsertCredential(kLeSecret1, kHeSecret1, kResetSecret1,
+                                     stub_delay_sched, stub_pcr_criteria,
+                                     &label2)
+                  .ok());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  ASSERT_EQ(
-      LE_CRED_SUCCESS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+  ASSERT_TRUE(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          .ok());
 
   // Corrupt the content of two label folders and the cache file.
   le_mgr_.reset();
@@ -770,14 +842,17 @@ TEST_F(LECredentialManagerImplUnitTest, FailedSyncDiskCorrupted) {
   he_secret.clear();
   EXPECT_EQ(
       LE_CRED_ERROR_HASH_TREE,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret));
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
   EXPECT_EQ(
       LE_CRED_ERROR_HASH_TREE,
-      le_mgr_->CheckCredential(label2, kLeSecret1, &he_secret, &reset_secret));
-  EXPECT_EQ(
-      LE_CRED_ERROR_HASH_TREE,
-      le_mgr_->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
-                                stub_delay_sched, stub_pcr_criteria, &label2));
+      le_mgr_->CheckCredential(label2, kLeSecret1, &he_secret, &reset_secret)
+          ->local_lecred_error());
+  EXPECT_EQ(LE_CRED_ERROR_HASH_TREE,
+            le_mgr_
+                ->InsertCredential(kLeSecret2, kHeSecret1, kResetSecret1,
+                                   stub_delay_sched, stub_pcr_criteria, &label2)
+                ->local_lecred_error());
 }
 
 }  // namespace cryptohome

@@ -48,6 +48,7 @@
 #include "cryptohome/vault_keyset.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
+using ::cryptohome::error::CryptohomeLECredError;
 using ::hwsec::TPMErrorBase;
 using ::hwsec_foundation::DeriveSecretsScrypt;
 using ::hwsec_foundation::error::testing::ReturnError;
@@ -106,7 +107,8 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
   MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
 
   EXPECT_CALL(*le_cred_manager, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(DoAll(SaveArg<0>(&le_secret), Return(LE_CRED_SUCCESS)));
+      .WillOnce(
+          DoAll(SaveArg<0>(&le_secret), ReturnError<CryptohomeLECredError>()));
   crypto_.set_le_manager_for_testing(
       std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager));
   crypto_.Init(&tpm_, &cryptohome_keys_manager_);
@@ -149,7 +151,7 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
   ASSERT_TRUE(DeriveSecretsScrypt(passkey, salt, {&le_secret}));
 
   ON_CALL(*le_cred_manager, CheckCredential(_, _, _, _))
-      .WillByDefault(Return(LE_CRED_SUCCESS));
+      .WillByDefault(ReturnError<CryptohomeLECredError>());
   EXPECT_CALL(*le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
 

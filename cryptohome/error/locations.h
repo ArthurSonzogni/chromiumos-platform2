@@ -359,6 +359,40 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocScryptCompatAuthBlockChapsKeyInDerive = 266,
   /* ./auth_blocks/libscrypt_compat_auth_block.cc */
   kLocScryptCompatAuthBlockResetKeyInDerive = 267,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidTreeInInsertCred = 268,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManLabelUnavailableInInsertCred = 269,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManEmptyAuxInInsertCred = 270,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManTpmFailedInInsertCred = 271,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManStoreFailedInInsertCred = 272,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidTreeInRemoveCred = 273,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManRetrieveLabelFailedInRemoveCred = 274,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManRemoveCredFailedInRemoveCred = 275,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManRemoveLabelFailedInRemoveCred = 276,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidTreeInCheckSecret = 277,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManInvalidMetadataInCheckSecret = 278,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManStoreLabelFailedInCheckSecret = 279,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManTpmFailedInCheckSecret = 280,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManTreeGetDataFailedInRetrieveLabel = 281,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManNonexistentInRetrieveLabel = 282,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManEmptyAuxInRetrieveLabel = 283,
+  /* ./le_credential_manager_impl.cc */
+  kLocLECredManConvertTpmError = 284,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

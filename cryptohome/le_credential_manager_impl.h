@@ -34,22 +34,22 @@ class LECredentialManagerImpl : public LECredentialManager {
 
   virtual ~LECredentialManagerImpl() {}
 
-  LECredError InsertCredential(const brillo::SecureBlob& le_secret,
-                               const brillo::SecureBlob& he_secret,
-                               const brillo::SecureBlob& reset_secret,
-                               const DelaySchedule& delay_sched,
-                               const ValidPcrCriteria& valid_pcr_criteria,
-                               uint64_t* ret_label) override;
+  LECredStatus InsertCredential(const brillo::SecureBlob& le_secret,
+                                const brillo::SecureBlob& he_secret,
+                                const brillo::SecureBlob& reset_secret,
+                                const DelaySchedule& delay_sched,
+                                const ValidPcrCriteria& valid_pcr_criteria,
+                                uint64_t* ret_label) override;
 
-  LECredError CheckCredential(const uint64_t& label,
-                              const brillo::SecureBlob& le_secret,
-                              brillo::SecureBlob* he_secret,
-                              brillo::SecureBlob* reset_secret) override;
+  LECredStatus CheckCredential(const uint64_t& label,
+                               const brillo::SecureBlob& le_secret,
+                               brillo::SecureBlob* he_secret,
+                               brillo::SecureBlob* reset_secret) override;
 
-  LECredError ResetCredential(const uint64_t& label,
-                              const brillo::SecureBlob& reset_secret) override;
+  LECredStatus ResetCredential(const uint64_t& label,
+                               const brillo::SecureBlob& reset_secret) override;
 
-  LECredError RemoveCredential(const uint64_t& label) override;
+  LECredStatus RemoveCredential(const uint64_t& label) override;
 
   bool NeedsPcrBinding(const uint64_t& label) override;
 
@@ -68,9 +68,9 @@ class LECredentialManagerImpl : public LECredentialManager {
   // |is_le_secret| is used to signal whether the secret being checked is the LE
   // secret (true) or the reset secret (false).
   //
-  // Returns LE_CRED_SUCCESS on success.
+  // Returns OkStatus on success.
   //
-  // On failure, returns:
+  // On failure, returns a status with:
   // - LE_CRED_ERROR_INVALID_LE_SECRET for incorrect LE authentication attempt.
   // - LE_CRED_ERROR_INVALID_RESET_SECRET for incorrect reset secret.
   // incorrect attempts).
@@ -79,27 +79,27 @@ class LECredentialManagerImpl : public LECredentialManager {
   // - LE_CRED_ERROR_INVALID_METADATA for invalid credential metadata.
   // - LE_CRED_ERROR_PCR_NOT_MATCH if the PCR registers from TPM have unexpected
   // values, in which case only reboot will allow this user to authenticate.
-  LECredError CheckSecret(const uint64_t& label,
-                          const brillo::SecureBlob& secret,
-                          brillo::SecureBlob* he_secret,
-                          brillo::SecureBlob* reset_secret,
-                          bool is_le_secret);
+  LECredStatus CheckSecret(const uint64_t& label,
+                           const brillo::SecureBlob& secret,
+                           brillo::SecureBlob* he_secret,
+                           brillo::SecureBlob* reset_secret,
+                           bool is_le_secret);
 
   // Helper function to retrieve the credential metadata, MAC, and auxiliary
   // hashes associated with a label |label| (stored in |cred_metadata|, |mac|
   // and |h_aux| respectively). |metadata_lost| will denote whether the label
   // contains valid metadata (false) or not (true).
   //
-  // Returns LE_CRED_SUCCESS on success.
-  // On failure, returns:
+  // Returns OkStatus on success.
+  // On failure, returns a status with:
   // - LE_CRED_ERROR_INVALID_LABEL if the label provided doesn't exist.
   // - LE_CRED_ERROR_HASH_TREE if there was hash tree error (possibly out of
   // sync).
-  LECredError RetrieveLabelInfo(const SignInHashTree::Label& label,
-                                std::vector<uint8_t>* cred_metadata,
-                                std::vector<uint8_t>* mac,
-                                std::vector<std::vector<uint8_t>>* h_aux,
-                                bool* metadata_lost);
+  LECredStatus RetrieveLabelInfo(const SignInHashTree::Label& label,
+                                 std::vector<uint8_t>* cred_metadata,
+                                 std::vector<uint8_t>* mac,
+                                 std::vector<std::vector<uint8_t>>* h_aux,
+                                 bool* metadata_lost);
 
   // Given a label, gets the list of auxiliary hashes for that label.
   // On failure, returns an empty vector.
@@ -108,7 +108,10 @@ class LECredentialManagerImpl : public LECredentialManager {
 
   // Converts the error returned from LECredentialBackend to the equivalent
   // LECredError.
-  LECredError ConvertTpmError(LECredBackendError err);
+  LECredError BackendErrorToCredError(LECredBackendError err);
+
+  // Converts the error returned from LECredentialBackend to a LECredStatus.
+  LECredStatus ConvertTpmError(LECredBackendError err);
 
   // Performs checks to ensure the SignInHashTree is in sync with the tree
   // state in the LECredentialBackend. If there is an out-of-sync situation,

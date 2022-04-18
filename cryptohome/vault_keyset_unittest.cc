@@ -23,6 +23,7 @@
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_state.h"
@@ -42,11 +43,16 @@ namespace cryptohome {
 using base::FilePath;
 using brillo::SecureBlob;
 using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::CryptohomeError;
+using cryptohome::error::CryptohomeLECredError;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::CreateSecureRandomBlob;
 using hwsec_foundation::GetSecureRandom;
 using hwsec_foundation::HmacSha256;
 using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::SecureBlobToHex;
+using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::status::OkStatus;
 
 using ::testing::_;
@@ -811,7 +817,7 @@ class LeCredentialsManagerTest : public ::testing::Test {
             SetArgPointee<2>(
                 brillo::SecureBlob(HexDecode(kHexHighEntropySecret))),
             SetArgPointee<3>(brillo::SecureBlob(HexDecode(kHexResetSecret))),
-            Return(LE_CRED_SUCCESS)));
+            ReturnError<CryptohomeLECredError>()));
     crypto_.set_le_manager_for_testing(
         std::unique_ptr<cryptohome::LECredentialManager>(le_cred_manager_));
 
@@ -836,11 +842,16 @@ class LeCredentialsManagerTest : public ::testing::Test {
   MockLECredentialManager* le_cred_manager_;
 
   VaultKeyset pin_vault_keyset_;
+
+  const CryptohomeError::ErrorLocationPair kErrorLocationForTesting1 =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
+          std::string("Testing1"));
 };
 
 TEST_F(LeCredentialsManagerTest, Encrypt) {
   EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(Return(LE_CRED_SUCCESS));
+      .WillOnce(ReturnError<CryptohomeLECredError>());
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());
@@ -864,7 +875,9 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
 
 TEST_F(LeCredentialsManagerTest, EncryptFail) {
   EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(Return(LE_CRED_ERROR_NO_FREE_LABEL));
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_NO_FREE_LABEL));
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());
@@ -912,7 +925,7 @@ TEST_F(LeCredentialsManagerTest, Decrypt) {
 // re-saved.
 TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
   EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(Return(LE_CRED_SUCCESS));
+      .WillOnce(ReturnError<CryptohomeLECredError>());
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());
@@ -965,7 +978,9 @@ TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
   // Have le_cred_manager inject a
   // CryptoError::CE_TPM_DEFEND_LOCK error
   EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
-      .WillOnce(Return(LE_CRED_ERROR_TOO_MANY_ATTEMPTS));
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_TOO_MANY_ATTEMPTS));
 
   CryptoError crypto_error;
   ASSERT_FALSE(new_keyset.Decrypt(key, false, &crypto_error));
@@ -975,7 +990,7 @@ TEST_F(LeCredentialsManagerTest, DecryptTPMDefendLock) {
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
   EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(Return(LE_CRED_SUCCESS));
+      .WillOnce(ReturnError<CryptohomeLECredError>());
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());
@@ -1002,7 +1017,9 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
   EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _))
-      .WillOnce(Return(LE_CRED_ERROR_NO_FREE_LABEL));
+      .WillOnce(ReturnError<CryptohomeLECredError>(
+          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
+          LE_CRED_ERROR_NO_FREE_LABEL));
 
   pin_vault_keyset_.CreateFromFileSystemKeyset(
       FileSystemKeyset::CreateRandom());
