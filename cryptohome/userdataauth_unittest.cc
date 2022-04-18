@@ -70,7 +70,8 @@ using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeMountError;
-using cryptohome::error::NoErrorAction;
+using cryptohome::error::ErrorAction;
+using cryptohome::error::ErrorActionSet;
 
 using ::hwsec::TPMError;
 using ::hwsec::TPMErrorBase;
@@ -2698,8 +2699,8 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
         EXPECT_CALL(*session_, MountGuest()).WillOnce(Invoke([this]() {
           // |this| is captured for kErrorLocationPlaceholder.
           return MakeStatus<CryptohomeMountError>(
-              kErrorLocationPlaceholder, NoErrorAction(), MOUNT_ERROR_FATAL,
-              base::nullopt);
+              kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
+              MOUNT_ERROR_FATAL, base::nullopt);
         }));
         return session_;
       }));

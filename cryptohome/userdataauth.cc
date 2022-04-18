@@ -77,7 +77,6 @@ using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
-using cryptohome::error::NoErrorAction;
 using hwsec::TPMErrorBase;
 using hwsec_foundation::Sha1;
 using hwsec_foundation::status::MakeStatus;
@@ -1414,7 +1413,7 @@ void UserDataAuth::MountGuest(
       LOG(ERROR) << "Could not initialize guest session.";
       status = MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountGuestSessionMountFailed),
-          NoErrorAction(),
+          ErrorActionSet({ErrorAction::kReboot}),
           user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL);
     }
   }
