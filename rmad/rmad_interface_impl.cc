@@ -390,7 +390,7 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   if (RmadErrorCode error = GetInitializedStateHandler(current_state_case_,
                                                        &current_state_handler);
       error != RMAD_ERROR_OK) {
-    DLOG(FATAL) << "Current state initialization failed";
+    LOG(ERROR) << "Current state initialization failed";
     reply.set_error(error);
     return reply;
   }
@@ -482,7 +482,7 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
   if (RmadErrorCode error = GetInitializedStateHandler(current_state_case_,
                                                        &current_state_handler);
       error != RMAD_ERROR_OK) {
-    DLOG(FATAL) << "Current state initialization failed";
+    LOG(ERROR) << "Current state initialization failed";
     reply.set_error(error);
     return reply;
   }

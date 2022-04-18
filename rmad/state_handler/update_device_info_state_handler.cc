@@ -91,7 +91,7 @@ RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
 
   // Make sure HWWP is off before initializing the state.
   if (int hwwp_status;
-      crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status != 0) {
+      !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status != 0) {
     return RMAD_ERROR_WP_ENABLED;
   }
 
@@ -214,7 +214,7 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
     vpd_utils_->ClearRoVpdCache();
     vpd_utils_->ClearRwVpdCache();
     if (int hwwp_status;
-        crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status != 0) {
+        !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status != 0) {
       return NextStateCaseWrapper(RMAD_ERROR_WP_ENABLED);
     }
     return NextStateCaseWrapper(RMAD_ERROR_CANNOT_WRITE);

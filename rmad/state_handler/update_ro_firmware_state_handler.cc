@@ -77,6 +77,12 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
 RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  // Make sure HWWP is off before initializing the state.
+  if (int hwwp_status;
+      !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status != 0) {
+    return RMAD_ERROR_WP_ENABLED;
+  }
+
   if (!state_.has_update_ro_firmware()) {
     auto update_ro_firmware = std::make_unique<UpdateRoFirmwareState>();
     update_ro_firmware->set_optional(CanSkipUpdate());
@@ -262,7 +268,7 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater(
 
   // Make sure HWWP is off.
   if (int hwwp_status;
-      !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status == 1) {
+      !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status != 0) {
     LOG(ERROR) << "HWWP is enabled. Aborting firmware update.";
     return false;
   }
