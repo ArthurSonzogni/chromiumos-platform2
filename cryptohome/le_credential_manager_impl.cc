@@ -492,7 +492,7 @@ bool LECredentialManagerImpl::ReplayResetTree() {
   if (!new_hash_tree->IsValid()) {
     return false;
   }
-  hash_tree_ = move(new_hash_tree);
+  hash_tree_ = std::move(new_hash_tree);
   hash_tree_->GenerateAndStoreHashCache();
   return true;
 }
