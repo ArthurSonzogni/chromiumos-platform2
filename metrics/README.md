@@ -117,8 +117,8 @@ boot sessions, so that the quantities can be accumulated over stretches of time
 version changes, and then reported as samples.  For this purpose, some
 persistent state (i.e. partial accumulations) is maintained as files on the
 device.  These "backing files" are typically placed in
-/var/lib/<daemon-name>/metrics.  (The metrics daemon is an exception, with its
-backing files being in /var/lib/metrics.)
+`/var/lib/<daemon-name>/metrics`.  (The metrics daemon is an exception, with its
+backing files being in `/var/lib/metrics`.)
 
 ## Memory Daemon
 
