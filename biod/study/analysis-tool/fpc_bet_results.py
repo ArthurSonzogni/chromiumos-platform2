@@ -14,6 +14,7 @@ from typing import List, Optional, Tuple, TypeVar, Union
 
 import pandas as pd
 
+from cached_data_file import CachedCSVFile
 from experiment import Experiment
 
 
@@ -153,7 +154,9 @@ class FPCBETResults:
                               self.TableType.FRR_Decision]
 
         file_name = self._file_name(test_case, table_type)
-        tbl = pd.read_csv(file_name)
+        with CachedCSVFile(file_name) as csv:
+            csv.prune()
+            tbl = csv.get(disable_cache=False)
 
         tbl.rename(
             columns={
