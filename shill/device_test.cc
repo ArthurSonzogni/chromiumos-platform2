@@ -161,9 +161,7 @@ class DeviceTest : public testing::Test {
   static const char kDeviceAddress[];
   static const int kDeviceInterfaceIndex;
 
-  void OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
-    device_->OnIPConfigUpdated(ipconfig);
-  }
+  void OnIPv4ConfigUpdated() { device_->OnIPv4ConfigUpdated(); }
 
   void OnDHCPFailure() { device_->OnDHCPFailure(); }
 
@@ -210,7 +208,7 @@ class DeviceTest : public testing::Test {
 
   void SetupIPv4DHCPConfig() {
     ipconfig_ = new MockIPConfig(control_interface(), kDeviceName);
-    device_->ipconfig_ = ipconfig_;
+    device_->ipconfig_ = std::unique_ptr<MockIPConfig>(ipconfig_);
     auto controller = CreateDHCPController();
     dhcp_controller_ = controller.get();
     device_->dhcp_controller_ = std::move(controller);
@@ -224,8 +222,8 @@ class DeviceTest : public testing::Test {
     properties.address = kAddress;
     properties.dns_servers = {kDnsServer1, kDnsServer2};
 
-    device_->ip6config_ =
-        new NiceMock<MockIPConfig>(control_interface(), kDeviceName);
+    device_->ip6config_ = std::make_unique<NiceMock<MockIPConfig>>(
+        control_interface(), kDeviceName);
     device_->ip6config_->set_properties(properties);
   }
 
@@ -301,8 +299,10 @@ TEST_F(DeviceTest, ClearReadOnlyDerivedProperty) {
 
 TEST_F(DeviceTest, DestroyIPConfig) {
   ASSERT_EQ(nullptr, device_->ipconfig_);
-  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
-  device_->ip6config_ = new IPConfig(control_interface(), kDeviceName);
+  device_->set_ipconfig(
+      std::make_unique<IPConfig>(control_interface(), kDeviceName));
+  device_->set_ip6config(
+      std::make_unique<IPConfig>(control_interface(), kDeviceName));
   device_->DestroyIPConfig();
   ASSERT_EQ(nullptr, device_->ipconfig_);
   ASSERT_EQ(nullptr, device_->ip6config_);
@@ -317,7 +317,8 @@ TEST_F(DeviceTest, DestroyIPConfigNULL) {
 }
 
 TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
-  device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
+  device_->set_ipconfig(
+      std::make_unique<IPConfig>(control_interface(), "randomname"));
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
   const std::string dhcp_hostname = "chromeos";
@@ -340,7 +341,8 @@ TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
 }
 
 TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
-  device_->ipconfig_ = new IPConfig(control_interface(), "randomname");
+  device_->set_ipconfig(
+      std::make_unique<IPConfig>(control_interface(), "randomname"));
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
   const std::string dhcp_hostname = "chromeos";
@@ -365,7 +367,8 @@ TEST_F(DeviceTest, ConfigWithMinimumMTU) {
   EXPECT_CALL(*manager(), GetMinimumMTU()).WillOnce(Return(minimum_mtu));
   EXPECT_CALL(*manager(), dhcp_hostname()).WillOnce(ReturnRef(dhcp_hostname));
 
-  device_->ipconfig_ = new IPConfig(control_interface(), "anothername");
+  device_->set_ipconfig(
+      std::make_unique<IPConfig>(control_interface(), "anothername"));
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
 
@@ -591,7 +594,7 @@ TEST_F(DeviceTest, IPConfigUpdatedSuccess) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
 
-  OnIPConfigUpdated(device_->ipconfig());
+  OnIPv4ConfigUpdated();
 
   // Verify static IP config change callback.
   EXPECT_CALL(*dhcp_controller_, RenewIP());
@@ -603,9 +606,8 @@ TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
   // back to Connected.
   scoped_refptr<MockService> service(new StrictMock<MockService>(manager()));
   SelectService(service);
-  scoped_refptr<MockIPConfig> ipconfig =
-      new NiceMock<MockIPConfig>(control_interface(), kDeviceName);
-  device_->set_ipconfig(ipconfig);
+  auto ipconfig = std::make_unique<NiceMock<MockIPConfig>>(control_interface(),
+                                                           kDeviceName);
   EXPECT_CALL(*service, SetState(Service::kStateConnected)).Times(0);
   EXPECT_CALL(*metrics(), NotifyNetworkConnectionIPType(
                               device_->technology(),
@@ -625,16 +627,18 @@ TEST_F(DeviceTest, IPConfigUpdatedAlreadyOnline) {
                   kIPConfigsProperty,
                   std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
 
-  OnIPConfigUpdated(ipconfig.get());
+  device_->set_ipconfig(std::move(ipconfig));
+  OnIPv4ConfigUpdated();
 }
 
 TEST_F(DeviceTest, IPConfigUpdatedSuccessNoSelectedService) {
   // Make sure shill doesn't crash if a service is disabled immediately
   // after receiving its IP config (selected_service_ is nullptr in this case).
-  scoped_refptr<MockIPConfig> ipconfig =
-      new NiceMock<MockIPConfig>(control_interface(), kDeviceName);
+  auto ipconfig = std::make_unique<NiceMock<MockIPConfig>>(control_interface(),
+                                                           kDeviceName);
   SelectService(nullptr);
-  OnIPConfigUpdated(ipconfig.get());
+  device_->set_ipconfig(std::move(ipconfig));
+  OnIPv4ConfigUpdated();
 }
 
 TEST_F(DeviceTest, SetEnabledNonPersistent) {
@@ -758,7 +762,8 @@ TEST_F(DeviceTest, Start) {
 TEST_F(DeviceTest, Stop) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
-  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
+  device_->set_ipconfig(
+      std::make_unique<IPConfig>(control_interface(), kDeviceName));
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
@@ -778,7 +783,8 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
   device_->SetFixedIpParams(true);
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
-  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
+  device_->set_ipconfig(
+      std::make_unique<IPConfig>(control_interface(), kDeviceName));
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
@@ -797,7 +803,8 @@ TEST_F(DeviceTest, StopWithFixedIpParams) {
 TEST_F(DeviceTest, StopWithNetworkInterfaceDisabledAfterward) {
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
-  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
+  device_->set_ipconfig(
+      std::make_unique<IPConfig>(control_interface(), kDeviceName));
   scoped_refptr<MockService> service(new NiceMock<MockService>(manager()));
   SelectService(service);
 
@@ -862,7 +869,8 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
   EXPECT_FALSE(device_->IsConnectedViaTether());
 
   // An empty ipconfig doesn't mean we're tethered.
-  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
+  device_->set_ipconfig(
+      std::make_unique<IPConfig>(control_interface(), kDeviceName));
   EXPECT_FALSE(device_->IsConnectedViaTether());
 
   // Add an ipconfig property that indicates this is an Android tether.
@@ -884,10 +892,12 @@ TEST_F(DeviceTest, IsConnectedViaTether) {
 
 TEST_F(DeviceTest, AvailableIPConfigs) {
   EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
-  device_->ipconfig_ = new IPConfig(control_interface(), kDeviceName);
+  device_->set_ipconfig(
+      std::make_unique<IPConfig>(control_interface(), kDeviceName));
   EXPECT_EQ(std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId},
             device_->AvailableIPConfigs(nullptr));
-  device_->ip6config_ = new IPConfig(control_interface(), kDeviceName);
+  device_->set_ip6config(
+      std::make_unique<IPConfig>(control_interface(), kDeviceName));
 
   // We don't really care that the RPC IDs for all IPConfig mock adaptors
   // are the same, or their ordering.  We just need to see that there are two

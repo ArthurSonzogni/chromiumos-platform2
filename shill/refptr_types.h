@@ -62,9 +62,6 @@ class WiFiService;
 using WiFiServiceConstRefPtr = scoped_refptr<const WiFiService>;
 using WiFiServiceRefPtr = scoped_refptr<WiFiService>;
 
-class IPConfig;
-using IPConfigRefPtr = scoped_refptr<IPConfig>;
-
 class Profile;
 using ProfileConstRefPtr = scoped_refptr<const Profile>;
 using ProfileRefPtr = scoped_refptr<Profile>;

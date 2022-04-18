@@ -440,7 +440,7 @@ void Device::OnIPv6AddressChanged(const IPAddress* address) {
   }
 
   if (!ip6config_) {
-    ip6config_ = new IPConfig(control_interface(), link_name_);
+    ip6config_ = std::make_unique<IPConfig>(control_interface(), link_name_);
   } else if (properties.address == ip6config_->properties().address &&
              properties.subnet_prefix ==
                  ip6config_->properties().subnet_prefix) {
@@ -490,7 +490,7 @@ void Device::OnIPv6DnsServerAddressesChanged() {
   }
 
   if (!ip6config_) {
-    ip6config_ = new IPConfig(control_interface(), link_name_);
+    ip6config_ = std::make_unique<IPConfig>(control_interface(), link_name_);
   }
 
   if (lifetime != ND_OPT_LIFETIME_INFINITY) {
@@ -601,8 +601,8 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   dhcp_controller_->RegisterCallbacks(
       base::BindRepeating(&Device::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
       base::BindRepeating(&Device::OnDHCPFailure, AsWeakPtr()));
-  ipconfig_ =
-      new IPConfig(control_interface(), link_name_, IPConfig::kTypeDHCP);
+  ipconfig_ = std::make_unique<IPConfig>(control_interface(), link_name_,
+                                         IPConfig::kTypeDHCP);
   dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(&Device::ConfigureStaticIPTask, AsWeakPtr()));
   return dhcp_controller_->RequestIP();
@@ -618,7 +618,7 @@ void Device::UpdateBlackholeUserTraffic() {
       updated = ipconfig_->ClearBlackholedUids();
     }
     if (updated) {
-      SetupConnection(ipconfig_);
+      SetupConnection(ipconfig_.get());
     }
   }
 }
@@ -649,10 +649,10 @@ void Device::OnNeighborReachabilityEvent(
 void Device::AssignIPConfig(const IPConfig::Properties& properties) {
   DestroyIPConfig();
   StartIPv6();
-  ipconfig_ = new IPConfig(control_interface(), link_name_);
+  ipconfig_ = std::make_unique<IPConfig>(control_interface(), link_name_);
   ipconfig_->set_properties(properties);
-  dispatcher()->PostTask(FROM_HERE, base::BindOnce(&Device::OnIPConfigUpdated,
-                                                   AsWeakPtr(), ipconfig_));
+  dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(&Device::OnIPv4ConfigUpdated, AsWeakPtr()));
 }
 
 void Device::AssignStaticIPv6Config(const IPConfig::Properties& properties) {
@@ -711,12 +711,12 @@ void Device::ConfigureStaticIPTask() {
     // If the parameters contain an IP address, apply them now and bring
     // the interface up.  When DHCP information arrives, it will supplement
     // the static information.
-    OnIPConfigUpdated(ipconfig_);
+    OnIPv4ConfigUpdated();
   } else {
     // Either |ipconfig_| has just been created in AcquireIPConfig() or
     // we're being called by OnIPConfigRefreshed().  In either case a
     // DHCP client has been started, and will take care of calling
-    // OnIPConfigUpdated() when it completes.
+    // OnIPv4ConfigUpdated() when it completes.
     SLOG(this, 2) << __func__ << " "
                   << " no static IP address.";
   }
@@ -738,7 +738,7 @@ void Device::OnIPv6ConfigUpdated() {
   // configuration over IPv6.
   if (ip6config_->properties().HasIPAddressAndDNS() &&
       (!connection_ || connection_->IsIPv6())) {
-    SetupConnection(ip6config_);
+    SetupConnection(ip6config_.get());
   }
 }
 
@@ -758,7 +758,8 @@ void Device::ConfigureStaticIPv6Address() {
                                      IPAddress(IPAddress::kFamilyIPv6));
 }
 
-void Device::SetupConnection(const IPConfigRefPtr& ipconfig) {
+void Device::SetupConnection(IPConfig* ipconfig) {
+  DCHECK(ipconfig);
   CreateConnection();
   if (manager_->ShouldBlackholeUserTraffic(UniqueName())) {
     ipconfig->SetBlackholedUids(manager_->GetUserTrafficUids());
@@ -846,7 +847,7 @@ void Device::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
   DCHECK(dhcp_controller_);
   DCHECK(ipconfig_);
   ipconfig_->UpdateProperties(properties);
-  OnIPConfigUpdated(ipconfig_);
+  OnIPv4ConfigUpdated();
   if (new_lease_acquired) {
     OnGetDHCPLease();
   }
@@ -856,10 +857,10 @@ void Device::OnGetDHCPLease() {}
 
 void Device::OnGetSLAACAddress() {}
 
-void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
+void Device::OnIPv4ConfigUpdated() {
   SLOG(this, 2) << __func__;
   if (selected_service_) {
-    ipconfig->ApplyStaticIPParameters(
+    ipconfig_->ApplyStaticIPParameters(
         selected_service_->mutable_static_ip_parameters());
     if (IsUsingStaticIP() && dhcp_controller_) {
       // If we are using a statically configured IP address instead
@@ -873,7 +874,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr& ipconfig) {
     }
   }
 
-  SetupConnection(ipconfig);
+  SetupConnection(ipconfig_.get());
   UpdateIPConfigsProperty();
 }
 
@@ -919,7 +920,7 @@ void Device::OnDHCPFailure() {
   if (ip6config_ && ip6config_->properties().HasIPAddressAndDNS()) {
     if (!connection_ || !connection_->IsIPv6()) {
       // Setup IPv6 connection.
-      SetupConnection(ip6config_);
+      SetupConnection(ip6config_.get());
     } else {
       // Ignore IPv4 config failure, since IPv6 is up.
     }

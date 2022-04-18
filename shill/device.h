@@ -197,10 +197,14 @@ class Device : public base::RefCounted<Device> {
   mockable Technology technology() const { return technology_; }
   std::string GetTechnologyString(Error* error);
 
-  const IPConfigRefPtr& ipconfig() const { return ipconfig_; }
-  const IPConfigRefPtr& ip6config() const { return ip6config_; }
-  void set_ipconfig(const IPConfigRefPtr& config) { ipconfig_ = config; }
-  void set_ip6config(const IPConfigRefPtr& config) { ip6config_ = config; }
+  IPConfig* ipconfig() const { return ipconfig_.get(); }
+  IPConfig* ip6config() const { return ip6config_.get(); }
+  void set_ipconfig(std::unique_ptr<IPConfig> config) {
+    ipconfig_ = std::move(config);
+  }
+  void set_ip6config(std::unique_ptr<IPConfig> config) {
+    ip6config_ = std::move(config);
+  }
 
   // Returns a string that is guaranteed to uniquely identify this Device
   // instance.
@@ -460,8 +464,8 @@ class Device : public base::RefCounted<Device> {
   // nothing.
   virtual void OnGetSLAACAddress();
 
-  // Callback invoked on successful IP configuration updates.
-  void OnIPConfigUpdated(const IPConfigRefPtr& ipconfig);
+  // Callback invoked on successful IPv4 configuration updates.
+  void OnIPv4ConfigUpdated();
 
   // Called when IPv6 configuration changes.
   virtual void OnIPv6ConfigUpdated();
@@ -583,7 +587,7 @@ class Device : public base::RefCounted<Device> {
 
   // Setup network connection with given IP configuration, and start portal
   // detection on that connection.
-  void SetupConnection(const IPConfigRefPtr& ipconfig);
+  void SetupConnection(IPConfig* ipconfig);
 
   // Maintain connection state (Routes, IP Addresses and DNS) in the OS.
   void CreateConnection();
@@ -690,8 +694,8 @@ class Device : public base::RefCounted<Device> {
   const std::string link_name_;
   Manager* manager_;
   std::unique_ptr<DHCPController> dhcp_controller_;
-  IPConfigRefPtr ipconfig_;
-  IPConfigRefPtr ip6config_;
+  std::unique_ptr<IPConfig> ipconfig_;
+  std::unique_ptr<IPConfig> ip6config_;
   // TODO(b/227563210): We currently use ip6config_ for IPv6 network properties
   // from SLAAC and this separated |ipv6_static_properties_| for static
   // configurations from cellular. This is temporary and only works because we

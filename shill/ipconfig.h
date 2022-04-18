@@ -10,14 +10,12 @@
 #include <vector>
 
 #include <base/callback.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
-#include "shill/refptr_types.h"
 #include "shill/routing_policy_entry.h"
 #include "shill/store/property_store.h"
 
@@ -28,9 +26,7 @@ class IPConfigAdaptorInterface;
 class StaticIPParameters;
 class Time;
 
-// IPConfig superclass. Individual IP configuration types will inherit from this
-// class.
-class IPConfig : public base::RefCounted<IPConfig> {
+class IPConfig {
  public:
   struct Route {
     Route() : prefix(0) {}

@@ -68,7 +68,7 @@ class IPConfigTest : public Test {
   }
 
   MockControl control_;
-  IPConfigRefPtr ipconfig_;
+  std::unique_ptr<IPConfig> ipconfig_;
 };
 
 TEST_F(IPConfigTest, DeviceName) {

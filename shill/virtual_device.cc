@@ -7,6 +7,9 @@
 #include <netinet/ether.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 
+#include <memory>
+#include <string>
+
 #include "shill/logging.h"
 #include "shill/net/rtnl_handler.h"
 
@@ -69,10 +72,10 @@ void VirtualDevice::Stop(Error* error,
 void VirtualDevice::UpdateIPConfig(const IPConfig::Properties& properties) {
   SLOG(this, 2) << __func__ << " on " << link_name();
   if (!ipconfig()) {
-    set_ipconfig(new IPConfig(control_interface(), link_name()));
+    set_ipconfig(std::make_unique<IPConfig>(control_interface(), link_name()));
   }
   ipconfig()->set_properties(properties);
-  OnIPConfigUpdated(ipconfig());
+  OnIPv4ConfigUpdated();
 }
 
 void VirtualDevice::DropConnection() {

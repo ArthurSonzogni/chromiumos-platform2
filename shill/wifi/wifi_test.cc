@@ -1082,9 +1082,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   void SetIsRoamingInProgress(bool is_roaming_in_progress) {
     wifi_->is_roaming_in_progress_ = is_roaming_in_progress;
   }
-  void SetIPConfig(const IPConfigRefPtr& ipconfig) {
-    return wifi_->set_ipconfig(ipconfig);
-  }
   void SetDHCPController(std::unique_ptr<DHCPController> dhcp_controller) {
     return wifi_->set_dhcp_controller_for_testing(std::move(dhcp_controller));
   }
@@ -1145,14 +1142,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   // Used by tests for link status (L2 failure, reliability).
   void SetupConnectionAndIPConfig(const std::string& ipv4_gateway_address) {
     wifi_->connection_ = std::make_unique<MockConnection>(device_info());
-    scoped_refptr<MockIPConfig> ipconfig(
-        new MockIPConfig(control_interface(), kDeviceName));
-    SetIPConfig(ipconfig);
+    auto ipconfig =
+        std::make_unique<MockIPConfig>(control_interface(), kDeviceName);
     // We use ReturnRef() below for this object so use `static` here.
     static IPConfig::Properties ip_props;
     ip_props.address_family = IPAddress::kFamilyIPv4;
     ip_props.gateway = ipv4_gateway_address;
     EXPECT_CALL(*ipconfig, properties()).WillRepeatedly(ReturnRef(ip_props));
+    wifi_->set_ipconfig(std::move(ipconfig));
   }
 
   bool SetBgscanShortInterval(const uint16_t& interval, Error* error) {
