@@ -25,6 +25,7 @@
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
+bool IsValidWirelessInterfaceName(const std::string& interface_name);
 
 namespace mojom = chromeos::cros_healthd::mojom;
 

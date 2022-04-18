@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/common/file_test_utils.h"
+#include "diagnostics/cros_healthd/executor/executor.h"
 #include "diagnostics/cros_healthd/executor/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -293,6 +294,22 @@ TEST_F(NetworkInterfaceFetcherTest, TestMissingPowerSchemeFile) {
       break;
     }
   }
+}
+
+// Test case: test wireless device name
+TEST_F(NetworkInterfaceFetcherTest, TestInterfaceName) {
+  EXPECT_TRUE(IsValidWirelessInterfaceName("wlan0"));
+  EXPECT_TRUE(IsValidWirelessInterfaceName("mlan0"));
+  EXPECT_TRUE(IsValidWirelessInterfaceName("wlan8"));
+  EXPECT_TRUE(IsValidWirelessInterfaceName("mlan8"));
+  EXPECT_TRUE(IsValidWirelessInterfaceName("wlan10"));
+  EXPECT_FALSE(IsValidWirelessInterfaceName("xlan0"));
+  EXPECT_FALSE(IsValidWirelessInterfaceName("Wlan0"));
+  EXPECT_FALSE(IsValidWirelessInterfaceName("mlan-0"));
+  EXPECT_FALSE(IsValidWirelessInterfaceName("wlanwaywaytolong0"));
+  EXPECT_FALSE(IsValidWirelessInterfaceName("wln0"));
+  EXPECT_FALSE(IsValidWirelessInterfaceName("man0"));
+  EXPECT_FALSE(IsValidWirelessInterfaceName("wlan"));
 }
 
 }  // namespace diagnostics

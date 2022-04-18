@@ -55,9 +55,9 @@ constexpr char kIwInterfaceCommand[] = "dev";
 constexpr char kIwInfoCommand[] = "info";
 constexpr char kIwLinkCommand[] = "link";
 constexpr std::array<const char*, 2> kIwScanDumpCommand{"scan", "dump"};
-// wireless interface name start with "wl" and end it with a number. All
+// wireless interface name start with "wl" or "ml" and end it with a number. All
 // characters are in lowercase.  Max length is 16 characters.
-constexpr auto kWirelessInterfaceRegex = R"((wl[a-z][a-z0-9]{1,12}[0-9]))";
+constexpr auto kWirelessInterfaceRegex = R"(([wm]l[a-z][a-z0-9]{1,12}[0-9]))";
 
 // SECCOMP policy for memtester, relative to kSandboxDirPath.
 constexpr char kMemtesterSeccompPolicyPath[] = "memtester-seccomp.policy";
@@ -85,11 +85,12 @@ void RunMojoProcessResultCallback(
   std::move(callback).Run(mojo_result.Clone());
 }
 
+}  // namespace
+
+// Exported for testing.
 bool IsValidWirelessInterfaceName(const std::string& interface_name) {
   return (RE2::FullMatch(interface_name, kWirelessInterfaceRegex, nullptr));
 }
-
-}  // namespace
 
 Executor::Executor(
     const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner,
