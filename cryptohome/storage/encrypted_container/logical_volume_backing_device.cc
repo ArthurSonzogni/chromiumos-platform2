@@ -24,26 +24,13 @@ LogicalVolumeBackingDevice::LogicalVolumeBackingDevice(
     const BackingDeviceConfig& config, brillo::LogicalVolumeManager* lvm)
     : name_(config.name),
       size_(config.size),
-      physical_volume_(config.logical_volume.physical_volume),
-      thinpool_name_(config.logical_volume.thinpool_name),
+      vg_(config.logical_volume.vg),
+      thinpool_(config.logical_volume.thinpool),
       lvm_(lvm) {}
 
 std::optional<brillo::LogicalVolume>
 LogicalVolumeBackingDevice::GetLogicalVolume() {
-  std::optional<brillo::PhysicalVolume> pv =
-      lvm_->GetPhysicalVolume(physical_volume_);
-
-  if (!pv || !pv->IsValid()) {
-    return std::nullopt;
-  }
-
-  std::optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
-
-  if (!vg || !vg->IsValid()) {
-    return std::nullopt;
-  }
-
-  return lvm_->GetLogicalVolume(*vg, name_);
+  return lvm_->GetLogicalVolume(*vg_.get(), name_);
 }
 
 bool LogicalVolumeBackingDevice::Purge() {
@@ -57,31 +44,12 @@ bool LogicalVolumeBackingDevice::Purge() {
 }
 
 bool LogicalVolumeBackingDevice::Create() {
-  std::optional<brillo::PhysicalVolume> pv =
-      lvm_->GetPhysicalVolume(physical_volume_);
-
-  if (!pv || !pv->IsValid()) {
-    return false;
-  }
-
-  std::optional<brillo::VolumeGroup> vg = lvm_->GetVolumeGroup(*pv);
-
-  if (!vg || !vg->IsValid()) {
-    return false;
-  }
-
-  std::optional<brillo::Thinpool> thinpool =
-      lvm_->GetThinpool(*vg, thinpool_name_);
-  if (!thinpool || !thinpool->IsValid()) {
-    return false;
-  }
-
   base::Value lv_config(base::Value::Type::DICTIONARY);
   lv_config.SetStringKey("name", name_);
   lv_config.SetStringKey("size", base::NumberToString(size_));
 
   std::optional<brillo::LogicalVolume> lv =
-      lvm_->CreateLogicalVolume(*vg, *thinpool, lv_config);
+      lvm_->CreateLogicalVolume(*vg_.get(), *thinpool_.get(), lv_config);
   if (!lv || !lv->IsValid()) {
     return false;
   }

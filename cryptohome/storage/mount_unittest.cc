@@ -410,11 +410,20 @@ class PersistentSystemTest : public ::testing::Test {
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<FakeEncryptedContainerFactory>(
             &platform_, std::make_unique<FakeKeyring>());
+
+    std::unique_ptr<CryptohomeVaultFactory> vault_factory =
+        std::make_unique<CryptohomeVaultFactory>(&platform_,
+                                                 std::move(container_factory));
+    std::shared_ptr<brillo::LvmCommandRunner> command_runner =
+        std::make_shared<brillo::MockLvmCommandRunner>();
+    brillo::VolumeGroup vg("STATEFUL", command_runner);
+    brillo::Thinpool thinpool("thinpool", "STATEFUL", command_runner);
+    vault_factory->CacheLogicalVolumeObjects(vg, thinpool);
+
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, std::make_unique<policy::PolicyProvider>(),
         base::BindRepeating([](const std::string& unused) {}),
-        std::make_unique<CryptohomeVaultFactory>(&platform_,
-                                                 std::move(container_factory)));
+        std::move(vault_factory));
 
     mount_ =
         new Mount(&platform_, homedirs_.get(), /*legacy_mount=*/true,

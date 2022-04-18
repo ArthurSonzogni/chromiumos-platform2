@@ -37,6 +37,10 @@ class CryptohomeVaultFactory {
     enable_application_containers_ = value;
   }
 
+  // Cache objects for volume group and thinpool.
+  void CacheLogicalVolumeObjects(std::optional<brillo::VolumeGroup> vg,
+                                 std::optional<brillo::Thinpool> thinpool);
+
  private:
   struct DmOptions {
     bool keylocker_enabled = false;
@@ -53,6 +57,8 @@ class CryptohomeVaultFactory {
   Platform* platform_;
   std::unique_ptr<EncryptedContainerFactory> encrypted_container_factory_;
   bool enable_application_containers_;
+  std::shared_ptr<brillo::VolumeGroup> vg_;
+  std::shared_ptr<brillo::Thinpool> thinpool_;
 };
 
 }  // namespace cryptohome

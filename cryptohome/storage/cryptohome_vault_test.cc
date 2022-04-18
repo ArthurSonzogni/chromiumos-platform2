@@ -89,9 +89,11 @@ class CryptohomeVaultTest
                     {.type = BackingDeviceType::kLogicalVolumeBackingDevice,
                      .name = name,
                      .size = 100 * 1024 * 1024,
-                     .logical_volume = {.thinpool_name = "thinpool",
-                                        .physical_volume =
-                                            base::FilePath("/dev/sda1")}},
+                     .logical_volume =
+                         {.vg = std::make_shared<brillo::VolumeGroup>("vg",
+                                                                      nullptr),
+                          .thinpool = std::make_shared<brillo::Thinpool>(
+                              "thinpool", "vg", nullptr)}},
                 .dmcrypt_device_name = "dmcrypt-" + name,
                 .dmcrypt_cipher = "aes-xts-plain64",
                 .mkfs_opts = {"-O", "^huge_file,^flex_bg,", "-E",

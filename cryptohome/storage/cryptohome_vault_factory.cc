@@ -72,6 +72,9 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
       config.type = EncryptedContainerType::kFscrypt;
       break;
     case EncryptedContainerType::kDmcrypt:
+      if (!vg_ || !vg_->IsValid() || !thinpool_ || !thinpool_->IsValid())
+        return nullptr;
+
       // Calculate size for dm-crypt partition.
       stateful_device = platform_->GetStatefulDevice();
       if (stateful_device.empty())
@@ -92,8 +95,7 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
                .size = static_cast<int64_t>(
                    (stateful_size * kLogicalVolumeSizePercent) /
                    (100 * 1024 * 1024)),
-               .logical_volume = {.thinpool_name = "thinpool",
-                                  .physical_volume = stateful_device}},
+               .logical_volume = {.vg = vg_, .thinpool = thinpool_}},
           .dmcrypt_device_name =
               DmcryptVolumePrefix(obfuscated_username) + container_identifier,
           .dmcrypt_cipher = dm_options.keylocker_enabled
@@ -205,6 +207,18 @@ std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
   return std::make_unique<CryptohomeVault>(
       obfuscated_username, std::move(container), std::move(migrating_container),
       std::move(cache_container), std::move(application_containers), platform_);
+}
+
+void CryptohomeVaultFactory::CacheLogicalVolumeObjects(
+    std::optional<brillo::VolumeGroup> vg,
+    std::optional<brillo::Thinpool> thinpool) {
+  if (!vg || !thinpool) {
+    LOG(WARNING) << "Attempting to cache invalid logical volume objects.";
+    return;
+  }
+
+  vg_ = std::make_shared<brillo::VolumeGroup>(*vg);
+  thinpool_ = std::make_shared<brillo::Thinpool>(*thinpool);
 }
 
 }  // namespace cryptohome

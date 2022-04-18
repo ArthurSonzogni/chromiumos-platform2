@@ -11,6 +11,7 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
+#include <brillo/blkdev_utils/lvm.h>
 
 #include "cryptohome/platform.h"
 
@@ -37,8 +38,8 @@ struct BackingDeviceConfig {
     std::string backing_file_name;
   } ramdisk;
   struct {
-    std::string thinpool_name;
-    base::FilePath physical_volume;
+    std::shared_ptr<brillo::VolumeGroup> vg;
+    std::shared_ptr<brillo::Thinpool> thinpool;
   } logical_volume;
 };
 

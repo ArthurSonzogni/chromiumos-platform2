@@ -22,9 +22,8 @@ class LogicalVolumeBackingDevice : public BackingDevice {
  public:
   // `LogicalVolumeBackingDevice` are defined by the following config values:
   // - `name`: Name of the logical volume.
-  // - `thinpool_name`: Name of thinpool on which the logical volume resides.
-  // - `physical_volume`: Name of device on which the logical volume should be
-  //                      set up.
+  // - `vg`: Object of volume group on which the logical volume resides.
+  // - `thinpool`: Object of thinpool which backs the logical volume.
   // - `size`: Size of thin logical volume.
   LogicalVolumeBackingDevice(const BackingDeviceConfig& config,
                              brillo::LogicalVolumeManager* lvm);
@@ -59,8 +58,9 @@ class LogicalVolumeBackingDevice : public BackingDevice {
 
   const std::string name_;
   const int64_t size_;
-  const base::FilePath physical_volume_;
-  const std::string thinpool_name_;
+
+  const std::shared_ptr<brillo::VolumeGroup> vg_;
+  const std::shared_ptr<brillo::Thinpool> thinpool_;
 
   brillo::LogicalVolumeManager* lvm_;
 };

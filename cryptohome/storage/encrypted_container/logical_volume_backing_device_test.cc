@@ -22,12 +22,6 @@ using ::testing::DoAll;
 namespace cryptohome {
 
 namespace {
-constexpr char kPhysicalVolumeReport[] =
-    "{\"report\": [{ \"pv\": [ {\"pv_name\":\"/dev/mmcblk0p1\", "
-    "\"vg_name\":\"stateful\"}]}]}";
-constexpr char kThinpoolReport[] =
-    "{\"report\": [{ \"lv\": [ {\"lv_name\":\"thinpool\", "
-    "\"vg_name\":\"stateful\"}]}]}";
 constexpr char kLogicalVolumeReport[] =
     "{\"report\": [{ \"lv\": [ {\"lv_name\":\"foo\", "
     "\"vg_name\":\"stateful\"}]}]}";
@@ -36,37 +30,21 @@ constexpr char kLogicalVolumeReport[] =
 class LogicalVolumeBackingDeviceTest : public ::testing::Test {
  public:
   LogicalVolumeBackingDeviceTest()
-      : config_({.type = BackingDeviceType::kLogicalVolumeBackingDevice,
-                 .name = "foo",
-                 .size = 1024,
-                 .logical_volume = {.thinpool_name = "thinpool",
-                                    .physical_volume =
-                                        base::FilePath("/dev/mmcblk0p1")}}),
-        lvm_command_runner_(std::make_shared<brillo::MockLvmCommandRunner>()),
+      : lvm_command_runner_(std::make_shared<brillo::MockLvmCommandRunner>()),
         mock_lvm_(std::make_unique<brillo::LogicalVolumeManager>(
             lvm_command_runner_)),
+        config_({.type = BackingDeviceType::kLogicalVolumeBackingDevice,
+                 .name = "foo",
+                 .size = 1024,
+                 .logical_volume =
+                     {.vg = std::make_shared<brillo::VolumeGroup>(
+                          "stateful", lvm_command_runner_),
+                      .thinpool = std::make_shared<brillo::Thinpool>(
+                          "thinpool", "stateful", lvm_command_runner_)}}),
         backing_device_(std::make_unique<LogicalVolumeBackingDevice>(
             config_, mock_lvm_.get())) {}
   ~LogicalVolumeBackingDeviceTest() override = default;
 
-  void ExpectVolumeGroup() {
-    std::vector<std::string> pvdisplay = {
-        "/sbin/pvdisplay", "-C", "--reportformat", "json",
-        config_.logical_volume.physical_volume.value()};
-    EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(pvdisplay, _))
-        .WillRepeatedly(
-            DoAll(SetArgPointee<1>(std::string(kPhysicalVolumeReport)),
-                  Return(true)));
-  }
-
-  void ExpectThinpool() {
-    std::vector<std::string> thinpool_display = {
-        "/sbin/lvdisplay", "-S",   "pool_lv=\"\"",     "-C",
-        "--reportformat",  "json", "stateful/thinpool"};
-    EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(thinpool_display, _))
-        .WillRepeatedly(DoAll(SetArgPointee<1>(std::string(kThinpoolReport)),
-                              Return(true)));
-  }
   void ExpectLogicalVolume() {
     std::vector<std::string> thinpool_display = {
         "/sbin/lvdisplay", "-S",   "pool_lv!=\"\"",           "-C",
@@ -77,15 +55,14 @@ class LogicalVolumeBackingDeviceTest : public ::testing::Test {
   }
 
  protected:
-  BackingDeviceConfig config_;
   std::shared_ptr<brillo::MockLvmCommandRunner> lvm_command_runner_;
   std::unique_ptr<brillo::LogicalVolumeManager> mock_lvm_;
+  BackingDeviceConfig config_;
 
   std::unique_ptr<BackingDevice> backing_device_;
 };
 
 TEST_F(LogicalVolumeBackingDeviceTest, LogicalVolumeDeviceSetup) {
-  ExpectVolumeGroup();
   ExpectLogicalVolume();
 
   std::vector<std::string> lv_enable = {"lvchange", "-ay", "stateful/foo"};
@@ -97,9 +74,6 @@ TEST_F(LogicalVolumeBackingDeviceTest, LogicalVolumeDeviceSetup) {
 }
 
 TEST_F(LogicalVolumeBackingDeviceTest, LogicalVolumeDeviceCreate) {
-  ExpectVolumeGroup();
-  ExpectThinpool();
-
   std::vector<std::string> lv_create = {
       "lvcreate",   "--thin",           "-V", "1024M", "-n",
       config_.name, "stateful/thinpool"};
@@ -111,7 +85,6 @@ TEST_F(LogicalVolumeBackingDeviceTest, LogicalVolumeDeviceCreate) {
 }
 
 TEST_F(LogicalVolumeBackingDeviceTest, LogicalVolumeDeviceTeardown) {
-  ExpectVolumeGroup();
   ExpectLogicalVolume();
 
   std::vector<std::string> lv_disable = {"lvchange", "-an", "stateful/foo"};
@@ -123,7 +96,6 @@ TEST_F(LogicalVolumeBackingDeviceTest, LogicalVolumeDeviceTeardown) {
 }
 
 TEST_F(LogicalVolumeBackingDeviceTest, LogicalVolumeDevicePurge) {
-  ExpectVolumeGroup();
   ExpectLogicalVolume();
 
   std::vector<std::string> lv_disable = {"lvremove", "--force", "stateful/foo"};

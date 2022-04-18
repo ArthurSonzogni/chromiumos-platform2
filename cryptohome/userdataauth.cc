@@ -437,6 +437,26 @@ bool UserDataAuth::Initialize() {
         platform_, std::move(container_factory));
     vault_factory->set_enable_application_containers(
         enable_application_containers_);
+
+    if (platform_->IsStatefulLogicalVolumeSupported()) {
+      base::FilePath stateful_device = platform_->GetStatefulDevice();
+      brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
+      brillo::PhysicalVolume pv(stateful_device,
+                                std::make_shared<brillo::LvmCommandRunner>());
+
+      std::optional<brillo::VolumeGroup> vg;
+      std::optional<brillo::Thinpool> thinpool;
+
+      vg = lvm->GetVolumeGroup(pv);
+      if (vg && vg->IsValid()) {
+        thinpool = lvm->GetThinpool(*vg, "thinpool");
+      }
+
+      if (thinpool && vg) {
+        vault_factory->CacheLogicalVolumeObjects(vg, thinpool);
+      }
+    }
+
     // This callback runs in HomeDirs::Remove on |this.homedirs_|. Since
     // |this.keyset_management_| won't be destroyed upon call of Remove(),
     // base::Unretained(keyset_management_) will be valid when the callback

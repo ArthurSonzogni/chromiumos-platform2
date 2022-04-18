@@ -248,12 +248,28 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
         .loopback = {.backing_file_path =
                          rootdir.Append(STATEFUL_MNT "/encrypted.block")}};
   } else {
+    brillo::PhysicalVolume pv(stateful_device,
+                              std::make_shared<brillo::LvmCommandRunner>());
+    std::optional<brillo::VolumeGroup> vg = lvm->GetVolumeGroup(pv);
+    if (!vg || !vg->IsValid()) {
+      LOG(WARNING) << "Failed to get volume group.";
+      return nullptr;
+    }
+
+    std::optional<brillo::Thinpool> thinpool =
+        lvm->GetThinpool(*vg, "thinpool");
+    if (!thinpool || !thinpool->IsValid()) {
+      LOG(WARNING) << "Failed to get thinpool.";
+      return nullptr;
+    }
+
     backing_device_config = {
         .type = cryptohome::BackingDeviceType::kLogicalVolumeBackingDevice,
         .name = dmcrypt_name,
         .size = fs_bytes_max / (1024 * 1024),
-        .logical_volume = {.thinpool_name = "thinpool",
-                           .physical_volume = stateful_device}};
+        .logical_volume = {
+            .vg = std::make_shared<brillo::VolumeGroup>(*vg),
+            .thinpool = std::make_shared<brillo::Thinpool>(*thinpool)}};
   }
 
   cryptohome::EncryptedContainerConfig container_config(
