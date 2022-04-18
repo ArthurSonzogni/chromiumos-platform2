@@ -68,16 +68,16 @@ const char kBatteryRemainingAtStartOfSessionName[] =
     "Power.BatteryRemainingAtStartOfSession";                               // %
 const char kBatteryRemainingAtBootName[] = "Power.BatteryRemainingAtBoot";  // %
 
-const char kAdaptiveChargingActiveMinutesDeltaName[] =
-    "Power.AdaptiveChargingActiveMinutesDelta";
-const char kAdaptiveChargingHeuristicDisabledMinutesDeltaName[] =
-    "Power.AdaptiveChargingHeuristicDisabledMinutesDelta";
-const char kAdaptiveChargingUserCanceledMinutesDeltaName[] =
-    "Power.AdaptiveChargingUserCanceledMinutesDelta";
-const char kAdaptiveChargingUserDisabledMinutesDeltaName[] =
-    "Power.AdaptiveChargingUserDisabledMinutesDelta";
-const char kAdaptiveChargingNotSupportedMinutesDeltaName[] =
-    "Power.AdaptiveChargingNotSupportedMinutesDelta";
+const char kAdaptiveChargingMinutesDeltaActiveName[] =
+    "Power.AdaptiveChargingMinutesDelta.Active";
+const char kAdaptiveChargingMinutesDeltaHeuristicDisabledName[] =
+    "Power.AdaptiveChargingMinutesDelta.HeuristicDisabled";
+const char kAdaptiveChargingMinutesDeltaUserCanceledName[] =
+    "Power.AdaptiveChargingMinutesDelta.UserCanceled";
+const char kAdaptiveChargingMinutesDeltaUserDisabledName[] =
+    "Power.AdaptiveChargingMinutesDelta.UserDisabled";
+const char kAdaptiveChargingMinutesDeltaNotSupportedName[] =
+    "Power.AdaptiveChargingMinutesDelta.NotSupported";
 // Sets the range to -12 hours to 12 hours. If our prediction is too late, the
 // result is a negative number between 0 and 8 hours (in minutes) or a very
 // large negative number (no prediction made). For too early predictions, we
@@ -100,15 +100,12 @@ const int kAdaptiveChargingMinutesToFullMax = 4 * 60;
 // Set the max limit for the delay time to 3 days. If we start hitting that
 // often, we can consider increasing it.
 const int kAdaptiveChargingMinutesBuckets = 100;
-const char kAdaptiveChargingDelayMinutesName[] =
-    "Power.AdaptiveChargingDelayMinutes";
-const int kAdaptiveChargingDelayMinutesMin = 0;
-const int kAdaptiveChargingDelayMinutesMax = 3 * 24 * 60;
-
-const char kAdaptiveChargingAvailableMinutesName[] =
-    "Power.AdaptiveChargingAvailableMinutes";
-const int kAdaptiveChargingAvailableMinutesMin = 0;
-const int kAdaptiveChargingAvailableMinutesMax = 3 * 24 * 60;
+const char kAdaptiveChargingMinutesDelayName[] =
+    "Power.AdaptiveChargingMinutes.Delay";
+const char kAdaptiveChargingMinutesAvailableName[] =
+    "Power.AdaptiveChargingMinutes.Available";
+const int kAdaptiveChargingMinutesMin = 0;
+const int kAdaptiveChargingMinutesMax = 3 * 24 * 60;
 
 const char kNumberOfAlsAdjustmentsPerSessionName[] =
     "Power.NumberOfAlsAdjustmentsPerSession";

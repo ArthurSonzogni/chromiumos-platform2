@@ -68,11 +68,11 @@ extern const char kBatteryRemainingAtEndOfSessionName[];
 extern const char kBatteryRemainingAtStartOfSessionName[];
 extern const char kBatteryRemainingAtBootName[];
 
-extern const char kAdaptiveChargingActiveMinutesDeltaName[];
-extern const char kAdaptiveChargingHeuristicDisabledMinutesDeltaName[];
-extern const char kAdaptiveChargingUserCanceledMinutesDeltaName[];
-extern const char kAdaptiveChargingUserDisabledMinutesDeltaName[];
-extern const char kAdaptiveChargingNotSupportedMinutesDeltaName[];
+extern const char kAdaptiveChargingMinutesDeltaActiveName[];
+extern const char kAdaptiveChargingMinutesDeltaHeuristicDisabledName[];
+extern const char kAdaptiveChargingMinutesDeltaUserCanceledName[];
+extern const char kAdaptiveChargingMinutesDeltaUserDisabledName[];
+extern const char kAdaptiveChargingMinutesDeltaNotSupportedName[];
 extern const int kAdaptiveChargingMinutesDeltaMin;
 extern const int kAdaptiveChargingMinutesDeltaMax;
 
@@ -83,13 +83,10 @@ extern const int kAdaptiveChargingMinutesToFullMin;
 extern const int kAdaptiveChargingMinutesToFullMax;
 
 extern const int kAdaptiveChargingMinutesBuckets;
-extern const char kAdaptiveChargingDelayMinutesName[];
-extern const int kAdaptiveChargingDelayMinutesMin;
-extern const int kAdaptiveChargingDelayMinutesMax;
-
-extern const char kAdaptiveChargingAvailableMinutesName[];
-extern const int kAdaptiveChargingAvailableMinutesMin;
-extern const int kAdaptiveChargingAvailableMinutesMax;
+extern const char kAdaptiveChargingMinutesDelayName[];
+extern const char kAdaptiveChargingMinutesAvailableName[];
+extern const int kAdaptiveChargingMinutesMin;
+extern const int kAdaptiveChargingMinutesMax;
 
 extern const char kNumberOfAlsAdjustmentsPerSessionName[];
 extern const int kNumberOfAlsAdjustmentsPerSessionMin;

@@ -520,19 +520,19 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
   switch (state) {
     case AdaptiveChargingState::ACTIVE:
     case AdaptiveChargingState::INACTIVE:
-      metric_name = kAdaptiveChargingActiveMinutesDeltaName;
+      metric_name = kAdaptiveChargingMinutesDeltaActiveName;
       break;
     case AdaptiveChargingState::HEURISTIC_DISABLED:
-      metric_name = kAdaptiveChargingHeuristicDisabledMinutesDeltaName;
+      metric_name = kAdaptiveChargingMinutesDeltaHeuristicDisabledName;
       break;
     case AdaptiveChargingState::USER_CANCELED:
-      metric_name = kAdaptiveChargingUserCanceledMinutesDeltaName;
+      metric_name = kAdaptiveChargingMinutesDeltaUserCanceledName;
       break;
     case AdaptiveChargingState::USER_DISABLED:
-      metric_name = kAdaptiveChargingUserDisabledMinutesDeltaName;
+      metric_name = kAdaptiveChargingMinutesDeltaUserDisabledName;
       break;
     case AdaptiveChargingState::NOT_SUPPORTED:
-      metric_name = kAdaptiveChargingNotSupportedMinutesDeltaName;
+      metric_name = kAdaptiveChargingMinutesDeltaNotSupportedName;
       break;
     default:
       LOG(ERROR) << "Invalid Adaptive Charging State for reporting to UMA: "
@@ -554,16 +554,15 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
   base::TimeDelta delay_time = hold_start_time == base::TimeTicks()
                                    ? base::TimeDelta()
                                    : hold_end_time - hold_start_time;
-  SendMetric(kAdaptiveChargingDelayMinutesName, delay_time.InMinutes(),
-             kAdaptiveChargingDelayMinutesMin, kAdaptiveChargingDelayMinutesMax,
+  SendMetric(kAdaptiveChargingMinutesDelayName, delay_time.InMinutes(),
+             kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
              kAdaptiveChargingMinutesBuckets);
 
   base::TimeDelta available_time = hold_start_time == base::TimeTicks()
                                        ? base::TimeDelta()
                                        : now - hold_start_time;
-  SendMetric(kAdaptiveChargingAvailableMinutesName, available_time.InMinutes(),
-             kAdaptiveChargingAvailableMinutesMin,
-             kAdaptiveChargingAvailableMinutesMax,
+  SendMetric(kAdaptiveChargingMinutesAvailableName, available_time.InMinutes(),
+             kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
              kAdaptiveChargingMinutesBuckets);
 }
 

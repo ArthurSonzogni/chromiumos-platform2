@@ -796,8 +796,8 @@ class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
     metrics_to_test_ = {
         kAdaptiveChargingBatteryPercentageOnUnplugName,
         kAdaptiveChargingMinutesToFullName,
-        kAdaptiveChargingDelayMinutesName,
-        kAdaptiveChargingAvailableMinutesName,
+        kAdaptiveChargingMinutesDelayName,
+        kAdaptiveChargingMinutesAvailableName,
     };
     metrics_to_test_.insert(metric_name);
     base::TimeTicks now = GetCurrentTime();
@@ -816,15 +816,13 @@ class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
                  (charge_finished_time - hold_end_time).InMinutes(),
                  kAdaptiveChargingMinutesToFullMin,
                  kAdaptiveChargingMinutesToFullMax, kDefaultBuckets);
-    ExpectMetric(kAdaptiveChargingDelayMinutesName,
+    ExpectMetric(kAdaptiveChargingMinutesDelayName,
                  (hold_end_time - hold_start_time).InMinutes(),
-                 kAdaptiveChargingDelayMinutesMin,
-                 kAdaptiveChargingDelayMinutesMax,
+                 kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
                  kAdaptiveChargingMinutesBuckets);
-    ExpectMetric(kAdaptiveChargingAvailableMinutesName,
+    ExpectMetric(kAdaptiveChargingMinutesAvailableName,
                  (now - hold_start_time).InMinutes(),
-                 kAdaptiveChargingAvailableMinutesMin,
-                 kAdaptiveChargingAvailableMinutesMax,
+                 kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
                  kAdaptiveChargingMinutesBuckets);
     collector_.GenerateAdaptiveChargingUnplugMetrics(
         state, target_time, hold_start_time, hold_end_time,
@@ -835,17 +833,17 @@ class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
 TEST_F(AdaptiveChargingMetricsTest, AdaptiveChargingUnplugMetrics) {
   Init();
   TestMetricsForState(AdaptiveChargingState::ACTIVE,
-                      kAdaptiveChargingActiveMinutesDeltaName);
+                      kAdaptiveChargingMinutesDeltaActiveName);
   TestMetricsForState(AdaptiveChargingState::INACTIVE,
-                      kAdaptiveChargingActiveMinutesDeltaName);
+                      kAdaptiveChargingMinutesDeltaActiveName);
   TestMetricsForState(AdaptiveChargingState::HEURISTIC_DISABLED,
-                      kAdaptiveChargingHeuristicDisabledMinutesDeltaName);
+                      kAdaptiveChargingMinutesDeltaHeuristicDisabledName);
   TestMetricsForState(AdaptiveChargingState::USER_CANCELED,
-                      kAdaptiveChargingUserCanceledMinutesDeltaName);
+                      kAdaptiveChargingMinutesDeltaUserCanceledName);
   TestMetricsForState(AdaptiveChargingState::USER_DISABLED,
-                      kAdaptiveChargingUserDisabledMinutesDeltaName);
+                      kAdaptiveChargingMinutesDeltaUserDisabledName);
   TestMetricsForState(AdaptiveChargingState::NOT_SUPPORTED,
-                      kAdaptiveChargingNotSupportedMinutesDeltaName);
+                      kAdaptiveChargingMinutesDeltaNotSupportedName);
 }
 
 // Base class for S0ix residency rate related tests.
