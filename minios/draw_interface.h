@@ -86,6 +86,9 @@ class DrawInterface {
   // repainting the screen. Called after `LanguageDropdown` is done.
   virtual void LocaleChange(int selected_locale) = 0;
 
+  // Show an empty progress bar.
+  virtual void ShowProgressBar() = 0;
+
   // Show progress bar at percentage given.
   virtual void ShowProgressPercentage(double progress) = 0;
 

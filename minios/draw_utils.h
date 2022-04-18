@@ -36,11 +36,13 @@ extern const int kMonospaceGlyphWidth;
 extern const int kDefaultButtonWidth;
 extern const int kSmallCanvasSize;
 extern const int kProgressBarYScale;
+extern const int kProgressBarHeight;
 
 // Frecon constants
 extern const char kScreens[];
 extern const int kFreconScalingFactor;
 extern const int kCanvasSize;
+extern const int kFreconNoOffset;
 
 // `DrawUtils` contains all the different components needed to show MiniOS
 // Screens.
@@ -106,6 +108,8 @@ class DrawUtils : public DrawInterface {
 
   void LocaleChange(int selected_locale) override;
 
+  void ShowProgressBar() override;
+
   void ShowProgressPercentage(double progress) override;
 
   int GetSupportedLocalesSize() override { return supported_locales_.size(); }
@@ -143,6 +147,10 @@ class DrawUtils : public DrawInterface {
   FRIEND_TEST(DrawUtilsTest, GetFreconConstNoInt);
   FRIEND_TEST(DrawUtilsTest, GetFreconConstNoFile);
   FRIEND_TEST(DrawUtilsTestMocks, ShowFooter);
+
+  // Shows a progress bar (box of a predetermined location) at the given offset
+  // with the given size. Color should be given as a hex string.
+  void ShowProgressBar(int offset_x, int size_x, const std::string& color);
 
   // Clears full screen except the footer.
   void ClearMainArea();

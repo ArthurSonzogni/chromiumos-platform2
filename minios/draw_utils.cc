@@ -31,12 +31,14 @@ const int kMonospaceGlyphHeight = 20;
 const int kMonospaceGlyphWidth = 10;
 const int kDefaultButtonWidth = 80;
 const int kProgressBarYScale = 12;
+constexpr int kProgressBarHeight = 4;
 
 // Frecon constants
 constexpr char kScreens[] = "etc/screens";
 constexpr int kFreconScalingFactor = 1;
 constexpr int kCanvasSize = 1080;
 constexpr int kSmallCanvasSize = 900;
+constexpr int kFreconNoOffset = 0;
 
 namespace {
 constexpr char kConsole0[] = "dev/pts/0";
@@ -196,6 +198,17 @@ int DrawUtils::FindLocaleIndex(int current_index) {
   return std::distance(supported_locales_.begin(), locale);
 }
 
+void DrawUtils::ShowProgressBar(int offset_x,
+                                int size_x,
+                                const std::string& color) {
+  const int offset_y = -frecon_canvas_size_ / kProgressBarYScale;
+  ShowBox(offset_x, offset_y, size_x, kProgressBarHeight, color);
+}
+
+void DrawUtils::ShowProgressBar() {
+  ShowProgressBar(kFreconNoOffset, frecon_canvas_size_, kMenuGrey);
+}
+
 void DrawUtils::ShowProgressPercentage(double progress) {
   if (progress < 0 || progress > 1) {
     LOG(WARNING) << "Invalid value of progress: " << progress;
@@ -203,12 +216,10 @@ void DrawUtils::ShowProgressPercentage(double progress) {
   }
   // Should be at canvas width at 100%.
   const double kProgressIncrement = frecon_canvas_size_ / 100.0;
-  constexpr int kProgressHeight = 4;
   const int kLeftIncrement = -frecon_canvas_size_ / 2;
   int progress_length = kProgressIncrement * progress * 100;
-  ShowBox(kLeftIncrement + progress_length / 2,
-          -frecon_canvas_size_ / kProgressBarYScale, progress_length,
-          kProgressHeight, kMenuBlue);
+  ShowProgressBar(kLeftIncrement + progress_length / 2, progress_length,
+                  kMenuBlue);
 }
 
 void DrawUtils::ClearMainArea() {
