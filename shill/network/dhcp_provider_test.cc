@@ -47,9 +47,9 @@ class DHCPProviderTest : public Test {
   StrictMock<MockEventDispatcher> dispatcher_;
 };
 
-TEST_F(DHCPProviderTest, CreateIPv4Config) {
+TEST_F(DHCPProviderTest, CreateController) {
   auto config =
-      provider_->CreateIPv4Config(kDeviceName, kStorageIdentifier, kArpGateway,
+      provider_->CreateController(kDeviceName, kStorageIdentifier, kArpGateway,
                                   kDeviceName, Technology::kUnknown);
   EXPECT_NE(nullptr, config);
   EXPECT_EQ(kDeviceName, config->device_name());
@@ -72,24 +72,24 @@ TEST_F(DHCPProviderTest, DestroyLease) {
 
 TEST_F(DHCPProviderTest, BindAndUnbind) {
   int kPid = 999;
-  EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
+  EXPECT_EQ(nullptr, provider_->GetController(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 
   auto config =
-      provider_->CreateIPv4Config(kDeviceName, kStorageIdentifier, kArpGateway,
+      provider_->CreateController(kDeviceName, kStorageIdentifier, kArpGateway,
                                   kDeviceName, Technology::kUnknown);
   provider_->BindPID(kPid, config->weak_ptr_factory_.GetWeakPtr());
-  EXPECT_NE(nullptr, provider_->GetConfig(kPid));
+  EXPECT_NE(nullptr, provider_->GetController(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 
   // TODO(pstew): crbug.com/502320
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));
   provider_->UnbindPID(kPid);
-  EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
+  EXPECT_EQ(nullptr, provider_->GetController(kPid));
   EXPECT_TRUE(provider_->IsRecentlyUnbound(kPid));
 
   RetireUnboundPID(kPid);  // Execute as if the PostDelayedTask() timer expired.
-  EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
+  EXPECT_EQ(nullptr, provider_->GetController(kPid));
   EXPECT_FALSE(provider_->IsRecentlyUnbound(kPid));
 
   // Destroying the DHCPController object should also trigger an Unbind().
@@ -97,7 +97,7 @@ TEST_F(DHCPProviderTest, BindAndUnbind) {
   config->pid_ = kPid;
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _));
   config = nullptr;
-  EXPECT_EQ(nullptr, provider_->GetConfig(kPid));
+  EXPECT_EQ(nullptr, provider_->GetController(kPid));
 }
 
 }  // namespace shill

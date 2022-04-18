@@ -327,7 +327,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithDHCPProperties) {
 
   EXPECT_CALL(*manager(), dhcp_hostname()).WillOnce(ReturnRef(dhcp_hostname));
   EXPECT_CALL(*dhcp_provider,
-              CreateIPv4Config(_, _, _, StrEq(dhcp_hostname), _))
+              CreateController(_, _, _, StrEq(dhcp_hostname), _))
       .WillOnce(InvokeWithoutArgs([this]() {
         auto controller = CreateDHCPController();
         EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
@@ -347,7 +347,7 @@ TEST_F(DeviceTest, AcquireIPConfigWithoutSelectedService) {
 
   EXPECT_CALL(*manager(), dhcp_hostname()).WillOnce(ReturnRef(dhcp_hostname));
   EXPECT_CALL(*dhcp_provider,
-              CreateIPv4Config(_, _, _, StrEq(dhcp_hostname), _))
+              CreateController(_, _, _, StrEq(dhcp_hostname), _))
       .WillOnce(InvokeWithoutArgs([this]() {
         auto controller = CreateDHCPController();
         EXPECT_CALL(*controller, RequestIP()).WillOnce(Return(true));
@@ -369,7 +369,7 @@ TEST_F(DeviceTest, ConfigWithMinimumMTU) {
   auto dhcp_provider = std::make_unique<MockDHCPProvider>();
   device_->dhcp_provider_ = dhcp_provider.get();
 
-  EXPECT_CALL(*dhcp_provider, CreateIPv4Config(_, _, _, _, _))
+  EXPECT_CALL(*dhcp_provider, CreateController(_, _, _, _, _))
       .WillOnce(InvokeWithoutArgs([this]() {
         auto controller = CreateDHCPController();
         EXPECT_CALL(*controller, set_minimum_mtu(minimum_mtu));

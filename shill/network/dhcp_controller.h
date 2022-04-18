@@ -175,7 +175,7 @@ class DHCPController {
   FRIEND_TEST(DHCPControllerTest, StartWithoutLeaseSuffix);
   FRIEND_TEST(DHCPControllerTest, Stop);
   FRIEND_TEST(DHCPControllerTest, StopDuringRequestIP);
-  FRIEND_TEST(DHCPProviderTest, CreateIPv4Config);
+  FRIEND_TEST(DHCPProviderTest, CreateController);
   FRIEND_TEST(DHCPProviderTest, BindAndUnbind);
 
   // Starts dhcpcd, returns true on success and false otherwise.

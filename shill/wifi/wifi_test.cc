@@ -626,7 +626,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         .WillByDefault(Return(true));
 
     ON_CALL(manager_, dhcp_hostname()).WillByDefault(ReturnRef(dhcp_hostname_));
-    EXPECT_CALL(*dhcp_provider(), CreateIPv4Config(_, _, _, _, _))
+    EXPECT_CALL(*dhcp_provider(), CreateController(_, _, _, _, _))
         .WillRepeatedly(InvokeWithoutArgs([this]() {
           auto controller = CreateMockDHCPController();
           ON_CALL(*controller, RequestIP()).WillByDefault(Return(true));
@@ -1613,7 +1613,7 @@ TEST_F(WiFiMainTest, UseArpGateway) {
 
   // With no selected service.
   EXPECT_TRUE(wifi()->ShouldUseArpGateway());
-  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kDeviceName, _, true, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateController(kDeviceName, _, true, _, _))
       .WillOnce(Return(ByMove(CreateMockDHCPController())));
   const_cast<WiFi*>(wifi().get())->AcquireIPConfig();
 
@@ -1623,7 +1623,7 @@ TEST_F(WiFiMainTest, UseArpGateway) {
   // Selected service that does not have a static IP address.
   EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(false));
   EXPECT_TRUE(wifi()->ShouldUseArpGateway());
-  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kDeviceName, _, true, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateController(kDeviceName, _, true, _, _))
       .WillOnce(Return(ByMove(CreateMockDHCPController())));
   const_cast<WiFi*>(wifi().get())->AcquireIPConfig();
   Mock::VerifyAndClearExpectations(service.get());
@@ -1631,7 +1631,7 @@ TEST_F(WiFiMainTest, UseArpGateway) {
   // Selected service that has a static IP address.
   EXPECT_CALL(*service, HasStaticIPAddress()).WillRepeatedly(Return(true));
   EXPECT_FALSE(wifi()->ShouldUseArpGateway());
-  EXPECT_CALL(dhcp_provider_, CreateIPv4Config(kDeviceName, _, false, _, _))
+  EXPECT_CALL(dhcp_provider_, CreateController(kDeviceName, _, false, _, _))
       .WillOnce(Return(ByMove(CreateMockDHCPController())));
   const_cast<WiFi*>(wifi().get())->AcquireIPConfig();
 }

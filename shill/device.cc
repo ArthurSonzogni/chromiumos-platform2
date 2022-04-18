@@ -591,7 +591,7 @@ bool Device::AcquireIPConfigWithLeaseName(const std::string& lease_name) {
   StartIPv6();
   bool arp_gateway = manager_->GetArpGateway() && ShouldUseArpGateway();
   dhcp_controller_ =
-      dhcp_provider_->CreateIPv4Config(link_name_, lease_name, arp_gateway,
+      dhcp_provider_->CreateController(link_name_, lease_name, arp_gateway,
                                        manager_->dhcp_hostname(), technology_);
   const int minimum_mtu = manager()->GetMinimumMTU();
   if (minimum_mtu != IPConfig::kUndefinedMTU) {

@@ -29,7 +29,7 @@ class MockDHCPProvider : public DHCPProvider {
               (ControlInterface*, EventDispatcher*, Metrics*),
               (override));
   MOCK_METHOD(std::unique_ptr<DHCPController>,
-              CreateIPv4Config,
+              CreateController,
               (const std::string&,
                const std::string&,
                bool,

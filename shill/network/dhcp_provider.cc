@@ -79,7 +79,7 @@ void DHCPProvider::Stop() {
   controllers_.clear();
 }
 
-std::unique_ptr<DHCPController> DHCPProvider::CreateIPv4Config(
+std::unique_ptr<DHCPController> DHCPProvider::CreateController(
     const std::string& device_name,
     const std::string& lease_file_suffix,
     bool arp_gateway,
@@ -91,7 +91,7 @@ std::unique_ptr<DHCPController> DHCPProvider::CreateIPv4Config(
       arp_gateway, hostname, technology, metrics_);
 }
 
-DHCPController* DHCPProvider::GetConfig(int pid) {
+DHCPController* DHCPProvider::GetController(int pid) {
   SLOG(this, 2) << __func__ << " pid: " << pid;
   const auto it = controllers_.find(pid);
   if (it == controllers_.end()) {
