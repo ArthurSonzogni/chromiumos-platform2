@@ -19,6 +19,7 @@
 
 #include "rmad/rmad_interface.h"
 #include "rmad/system/tpm_manager_client.h"
+#include "rmad/utils/cros_config_utils.h"
 
 namespace brillo {
 namespace dbus_utils {
@@ -52,7 +53,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   DBusService(const scoped_refptr<dbus::Bus>& bus,
               RmadInterface* rmad_interface,
               const base::FilePath& state_file_path,
-              std::unique_ptr<TpmManagerClient> tpm_manager_client);
+              std::unique_ptr<TpmManagerClient> tpm_manager_client,
+              std::unique_ptr<CrosConfigUtils> cros_config_utils);
   DBusService(const DBusService&) = delete;
   DBusService& operator=(const DBusService&) = delete;
 
@@ -100,16 +102,23 @@ class DBusService : public brillo::DBusServiceDaemon {
   void DelegateToInterface(
       std::unique_ptr<DBusMethodResponse<ReplyProtobufType>> response,
       const RequestType& request) {
-    if (is_rma_required_ && !SetUpInterface()) {
-      // Reply messages should always contain an error field.
+    // Reply messages should always contain an error field.
+    if (!is_rma_required_) {
+      ReplyProtobufType reply;
+      reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
+      RequestQuit();
+      SendReply(std::move(response), reply);
+    } else if (!SetUpInterface()) {
       ReplyProtobufType reply;
       reply.set_error(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
+      RequestQuit();
       SendReply(std::move(response), reply);
       return;
+    } else {
+      (rmad_interface_->*func)(
+          request, base::BindOnce(&DBusService::SendReply<ReplyProtobufType>,
+                                  base::Unretained(this), std::move(response)));
     }
-    (rmad_interface_->*func)(
-        request, base::BindOnce(&DBusService::SendReply<ReplyProtobufType>,
-                                base::Unretained(this), std::move(response)));
   }
 
   // Template for handling D-Bus methods without a request.
@@ -121,16 +130,22 @@ class DBusService : public brillo::DBusServiceDaemon {
             DBusService::HandlerFunctionEmptyRequest<ReplyProtobufType> func>
   void DelegateToInterface(
       std::unique_ptr<DBusMethodResponse<ReplyProtobufType>> response) {
-    if (is_rma_required_ && !SetUpInterface()) {
-      // Reply messages should always contain an error field.
+    // Reply messages should always contain an error field.
+    if (!is_rma_required_) {
+      ReplyProtobufType reply;
+      reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
+      RequestQuit();
+      SendReply(std::move(response), reply);
+    } else if (!SetUpInterface()) {
       ReplyProtobufType reply;
       reply.set_error(RMAD_ERROR_DAEMON_INITIALIZATION_FAILED);
+      RequestQuit();
       SendReply(std::move(response), reply);
-      return;
+    } else {
+      (rmad_interface_->*func)(
+          base::BindOnce(&DBusService::SendReply<ReplyProtobufType>,
+                         base::Unretained(this), std::move(response)));
     }
-    (rmad_interface_->*func)(
-        base::BindOnce(&DBusService::SendReply<ReplyProtobufType>,
-                       base::Unretained(this), std::move(response)));
   }
 
   void HandleIsRmaRequiredMethod(
@@ -182,6 +197,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   base::FilePath state_file_path_;
   // External utils to communicate with tpm_manager.
   std::unique_ptr<TpmManagerClient> tpm_manager_client_;
+  // External utils to get cros_config data.
+  std::unique_ptr<CrosConfigUtils> cros_config_utils_;
   // External utils initialization status.
   bool is_external_utils_initialized_;
   // RMA interface setup status. Only set up the interface when RMA is required

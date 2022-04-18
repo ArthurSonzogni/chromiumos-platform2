@@ -19,6 +19,7 @@
 #include "rmad/dbus_service.h"
 #include "rmad/mock_rmad_interface.h"
 #include "rmad/system/mock_tpm_manager_client.h"
+#include "rmad/utils/mock_cros_config_utils.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::PopValueFromReader;
@@ -104,9 +105,13 @@ class DBusServiceTest : public testing::Test {
     ON_CALL(*mock_tpm_manager_client, GetRoVerificationStatus(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(ro_verification_status), Return(true)));
+    auto mock_cros_config_utils =
+        std::make_unique<NiceMock<MockCrosConfigUtils>>();
+    ON_CALL(*mock_cros_config_utils, GetModelName(_))
+        .WillByDefault(DoAll(SetArgPointee<0>("fleex"), Return(true)));
     dbus_service_ = std::make_unique<DBusService>(
         mock_bus_, &mock_rmad_service_, state_file_path,
-        std::move(mock_tpm_manager_client));
+        std::move(mock_tpm_manager_client), std::move(mock_cros_config_utils));
     ASSERT_EQ(dbus_service_->OnEventLoopStarted(), EX_OK);
 
     auto sequencer = base::MakeRefCounted<AsyncEventSequencer>();
@@ -282,20 +287,6 @@ TEST_F(DBusServiceTest, IsRmaRequired_InterfaceSetUpFailed) {
   EXPECT_TRUE(base::PathExists(GetStateFilePath()));
 }
 
-TEST_F(DBusServiceTest, GetCurrentStats_RmaNotRequired) {
-  SetUpDBusService(false, RoVerificationStatus::NOT_TRIGGERED, true);
-  EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
-      .WillOnce(Invoke([](RmadInterface::GetStateCallback callback) {
-        GetStateReply reply;
-        reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
-        std::move(callback).Run(reply);
-      }));
-  GetStateReply reply;
-  ExecuteMethod(kGetCurrentStateMethod, &reply);
-  EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
-  EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
-}
-
 TEST_F(DBusServiceTest, GetCurrentState_Success) {
   SetUpDBusService(true, RoVerificationStatus::NOT_TRIGGERED, true);
   EXPECT_CALL(mock_rmad_service_, GetCurrentState(_))
@@ -304,6 +295,15 @@ TEST_F(DBusServiceTest, GetCurrentState_Success) {
         reply.set_error(RMAD_ERROR_RMA_NOT_REQUIRED);
         std::move(callback).Run(reply);
       }));
+
+  GetStateReply reply;
+  ExecuteMethod(kGetCurrentStateMethod, &reply);
+  EXPECT_EQ(RMAD_ERROR_RMA_NOT_REQUIRED, reply.error());
+  EXPECT_EQ(RmadState::STATE_NOT_SET, reply.state().state_case());
+}
+
+TEST_F(DBusServiceTest, GetCurrentState_RmaNotRequired) {
+  SetUpDBusService(false, RoVerificationStatus::NOT_TRIGGERED, true);
 
   GetStateReply reply;
   ExecuteMethod(kGetCurrentStateMethod, &reply);
