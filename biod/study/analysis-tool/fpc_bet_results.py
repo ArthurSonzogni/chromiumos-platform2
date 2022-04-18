@@ -252,3 +252,15 @@ class FPCBETResults:
             return self.read_decision_file(test_case, table_type)
         else:
             return None
+
+    def read_files(self, case_table_pairs: List[Tuple[TestCase, TableType]]) \
+            -> List[Optional[pd.DataFrame]]:
+        """Read all test-case/table-type pairs as fast as possible.
+
+        This may be parallelizied in the future.
+        """
+
+        dfs = list()
+        for c in case_table_pairs:
+            dfs.append(self.read_file(*c))
+        return dfs
