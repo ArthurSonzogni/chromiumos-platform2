@@ -207,7 +207,7 @@ void DrawUtils::ShowProgressPercentage(double progress) {
   const int kLeftIncrement = -frecon_canvas_size_ / 2;
   int progress_length = kProgressIncrement * progress * 100;
   ShowBox(kLeftIncrement + progress_length / 2,
-          frecon_canvas_size_ / kProgressBarYScale, progress_length,
+          -frecon_canvas_size_ / kProgressBarYScale, progress_length,
           kProgressHeight, kMenuBlue);
 }
 
