@@ -215,29 +215,32 @@ def plt_discrete_hist(data):
 
 
 def plt_discrete_hist2(data):
+    """Plot a histogram of `data`, where all values are represented on x-axis.
+
+    It also fit a normal curve and places vertical lines for the mean
+    and 2x standard deviation limits.
+    """
     vals, counts = np.unique(data, return_counts=True)
     plt.bar(vals, counts)
     plt.xticks(vals, rotation='vertical', fontsize=5)
     # plt.xlabel(col)
-    plt.ylabel('Count')
+    plt.ylabel('Frequency')
     # plt.show()
 
-    # Overlay Norm Curve
-    mu, std = norm.fit(data)
-    mean = np.mean(data)
-    # print(f'first={first_index} last={last_index}')
-    print(f'mu={mu} , std={std} 3*std={3*std}, np.mean(data) = {np.mean(data)}')
-
+    # Overlay normal curve that spans 3x standard deviations.
+    mean, std = norm.fit(data)
     x_curve = np.linspace(mean - 3*std, mean + 3*std, 50)
-    p = norm.pdf(x_curve, mu, std)
+    p = norm.pdf(x_curve, mean, std)
     p_scaled = p * np.sum(counts)
     plt.plot(x_curve, p_scaled, 'k', linewidth=2)
+
+    # Place 2x standard deviation confidence lines and mean.
     mid_y = np.max(counts) / 2
     for ci_x, ci_label in [(mean - 2*std, 'lower 2*std'),
                            (mean, 'mean'),
                            (mean + 2*std, 'upper 2*std')]:
         plt.axvline(ci_x, color='red')
-        plt.text(ci_x + 0.2,
+        plt.text(ci_x + 1,
                  mid_y,
                  f'{ci_x:.3f} is {ci_label}',
                  rotation=90,
