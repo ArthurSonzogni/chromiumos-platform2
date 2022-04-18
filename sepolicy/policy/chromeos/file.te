@@ -398,6 +398,7 @@ type cros_var_lib_trim, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_ui, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_update_engine, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_ureadahead, file_type, cros_file_type, cros_var_file_type;
+type cros_var_lib_vtpm, file_type, cros_file_type, cros_var_file_type;
 type cros_var_lib_devicesettings, file_type, cros_file_type, cros_var_file_type;
 
 # /var/lock
