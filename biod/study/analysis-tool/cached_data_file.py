@@ -44,7 +44,7 @@ class CachedDataFile:
     def __init__(self,
                  data_file_path: Union[pathlib.Path, str],
                  verbose: bool = False) -> None:
-        self._ver = None
+        self._ver = ''
         self._orig_file_path = pathlib.Path(data_file_path)
         self._verbose = verbose
 
