@@ -776,7 +776,8 @@ int main(int argc, char* argv[]) {
                 "Trigger source for wifi transmit power"
                 "Options: init, tablet_mode, reg_domain,"
                 " proximity, udev_event, unknown");
-  brillo::FlagHelper::Init(argc, argv, "Set wifi transmit power mode");
+  CHECK(brillo::FlagHelper::Init(argc, argv, "Set wifi transmit power mode",
+                                 brillo::FlagHelper::InitFuncType::kReturn));
 
   base::AtExitManager at_exit_manager;
   power_manager::WifiRegDomain domain = power_manager::WifiRegDomain::NONE;

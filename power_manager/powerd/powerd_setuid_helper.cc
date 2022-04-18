@@ -89,7 +89,8 @@ int main(int argc, char* argv[]) {
   DEFINE_int64(cellular_transmit_power_gpio, -1,
                "GPIO pin to write to for changing cellular transmit power");
 
-  brillo::FlagHelper::Init(argc, argv, "powerd setuid helper");
+  CHECK(brillo::FlagHelper::Init(argc, argv, "powerd setuid helper",
+                                 brillo::FlagHelper::InitFuncType::kReturn));
 
   if (FLAGS_action == "eventlog_add") {
     CHECK(FLAGS_eventlog_code.size() == 4 && FLAGS_eventlog_code[0] == '0' &&
