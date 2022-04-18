@@ -30,14 +30,19 @@ LogicalVolumeBackingDevice::LogicalVolumeBackingDevice(
 
 std::optional<brillo::LogicalVolume>
 LogicalVolumeBackingDevice::GetLogicalVolume() {
-  return lvm_->GetLogicalVolume(*vg_.get(), name_);
+  if (!lv_) {
+    lv_ = lvm_->GetLogicalVolume(*vg_.get(), name_);
+  }
+  return lv_;
 }
 
 bool LogicalVolumeBackingDevice::Purge() {
   std::optional<brillo::LogicalVolume> lv = GetLogicalVolume();
 
   if (lv && lv->IsValid()) {
-    return lv->Remove();
+    bool ret = lv->Remove();
+    lv_ = std::nullopt;
+    return ret;
   }
 
   return false;
@@ -48,9 +53,8 @@ bool LogicalVolumeBackingDevice::Create() {
   lv_config.SetStringKey("name", name_);
   lv_config.SetStringKey("size", base::NumberToString(size_));
 
-  std::optional<brillo::LogicalVolume> lv =
-      lvm_->CreateLogicalVolume(*vg_.get(), *thinpool_.get(), lv_config);
-  if (!lv || !lv->IsValid()) {
+  lv_ = lvm_->CreateLogicalVolume(*vg_.get(), *thinpool_.get(), lv_config);
+  if (!lv_ || !lv_->IsValid()) {
     return false;
   }
 

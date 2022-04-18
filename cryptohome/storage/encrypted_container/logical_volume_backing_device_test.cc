@@ -50,8 +50,8 @@ class LogicalVolumeBackingDeviceTest : public ::testing::Test {
         "/sbin/lvdisplay", "-S",   "pool_lv!=\"\"",           "-C",
         "--reportformat",  "json", "stateful/" + config_.name};
     EXPECT_CALL(*lvm_command_runner_.get(), RunProcess(thinpool_display, _))
-        .WillRepeatedly(DoAll(
-            SetArgPointee<1>(std::string(kLogicalVolumeReport)), Return(true)));
+        .WillOnce(DoAll(SetArgPointee<1>(std::string(kLogicalVolumeReport)),
+                        Return(true)));
   }
 
  protected:
@@ -104,6 +104,34 @@ TEST_F(LogicalVolumeBackingDeviceTest, LogicalVolumeDevicePurge) {
       .WillOnce(Return(true));
 
   EXPECT_TRUE(backing_device_->Purge());
+}
+
+TEST_F(LogicalVolumeBackingDeviceTest, LogicalVolumeDeviceCaching) {
+  // Expect logical volume object to be fetched once.
+  ExpectLogicalVolume();
+
+  std::vector<std::string> lv_enable = {"lvchange", "-ay", "stateful/foo"};
+  std::vector<std::string> lv_purge = {"lvremove", "--force", "stateful/foo"};
+
+  EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(lv_enable))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(backing_device_->Setup());
+  EXPECT_EQ(backing_device_->GetPath(), base::FilePath("/dev/stateful/foo"));
+
+  EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(lv_purge))
+      .Times(1)
+      .WillOnce(Return(true));
+  EXPECT_TRUE(backing_device_->Purge());
+
+  // Post purge, the logical volume object will be re-fetched.
+  ExpectLogicalVolume();
+  EXPECT_CALL(*lvm_command_runner_.get(), RunCommand(lv_enable))
+      .Times(1)
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(backing_device_->Setup());
 }
 
 }  // namespace cryptohome

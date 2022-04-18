@@ -62,6 +62,8 @@ class LogicalVolumeBackingDevice : public BackingDevice {
   const std::shared_ptr<brillo::VolumeGroup> vg_;
   const std::shared_ptr<brillo::Thinpool> thinpool_;
 
+  std::optional<brillo::LogicalVolume> lv_;
+
   brillo::LogicalVolumeManager* lvm_;
 };
 
