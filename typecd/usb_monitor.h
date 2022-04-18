@@ -21,7 +21,7 @@ namespace typecd {
 // This class is used to manage connected USB devices.
 class UsbMonitor : public UdevMonitor::UsbObserver {
  public:
-  UsbMonitor() = default;
+  UsbMonitor();
 
   void SetMetrics(Metrics* metrics) { metrics_ = metrics; }
 

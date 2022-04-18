@@ -68,6 +68,8 @@ typecd::UsbVersion ConvertToUsbVersion(std::string version) {
 
 namespace typecd {
 
+UsbMonitor::UsbMonitor() : metrics_(nullptr) {}
+
 void UsbMonitor::OnDeviceAddedOrRemoved(const base::FilePath& path,
                                         bool added) {
   auto key = path.BaseName().value();
