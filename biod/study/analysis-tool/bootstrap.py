@@ -202,6 +202,8 @@ class Bootstrap:
 
         Args:
             num_samples: Number of bootstrap samples should be acquired.
+                         1000 samples for 95% CI
+                         5000 samples for 99% CI
             num_proc: Number of simultaneous processes to use.
                       (None = Sequential | 0 = Max Processors | # = Specific #)
             progress: An interable function that can track the samples progress.
