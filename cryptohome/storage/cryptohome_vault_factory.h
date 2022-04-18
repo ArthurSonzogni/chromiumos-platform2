@@ -41,6 +41,8 @@ class CryptohomeVaultFactory {
   void CacheLogicalVolumeObjects(std::optional<brillo::VolumeGroup> vg,
                                  std::optional<brillo::Thinpool> thinpool);
 
+  bool ContainerExists(const std::string& container);
+
  private:
   struct DmOptions {
     bool keylocker_enabled = false;

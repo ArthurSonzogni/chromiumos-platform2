@@ -667,10 +667,27 @@ TEST_F(HomeDirsVaultTest, PickVaultType) {
   for (const auto& test_case : test_cases) {
     NiceMock<MockPlatform> platform;
     Crypto crypto(&platform);
+    std::unique_ptr<EncryptedContainerFactory> container_factory =
+        std::make_unique<EncryptedContainerFactory>(
+            &platform, std::make_unique<FakeKeyring>(),
+            std::make_unique<BackingDeviceFactory>(&platform));
+
+    std::unique_ptr<CryptohomeVaultFactory> vault_factory =
+        std::make_unique<CryptohomeVaultFactory>(&platform,
+                                                 std::move(container_factory));
+
+    if (test_case.lvm_supported) {
+      std::shared_ptr<brillo::LvmCommandRunner> command_runner =
+          std::make_shared<brillo::MockLvmCommandRunner>();
+      brillo::VolumeGroup vg("STATEFUL", command_runner);
+      brillo::Thinpool thinpool("thinpool", "STATEFUL", command_runner);
+      vault_factory->CacheLogicalVolumeObjects(vg, thinpool);
+    }
+
     HomeDirs homedirs(&platform,
                       std::make_unique<policy::PolicyProvider>(
                           std::make_unique<policy::MockDevicePolicy>()),
-                      HomeDirs::RemoveCallback());
+                      HomeDirs::RemoveCallback(), std::move(vault_factory));
 
     PrepareTestCase(test_case, &platform, &homedirs);
     MountError error = MOUNT_ERROR_NONE;

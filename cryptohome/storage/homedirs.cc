@@ -196,23 +196,7 @@ bool HomeDirs::DmcryptContainerExists(
   std::string logical_volume_container =
       LogicalVolumePrefix(obfuscated_username).append(container_suffix);
 
-  // Attempt to check if the stateful partition is setup with a valid physical
-  // volume.
-  base::FilePath physical_volume = platform_->GetStatefulDevice();
-  if (physical_volume.empty())
-    return false;
-
-  brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
-
-  auto pv = lvm->GetPhysicalVolume(physical_volume);
-  if (!pv || !pv->IsValid())
-    return false;
-
-  auto vg = lvm->GetVolumeGroup(*pv);
-  if (!vg || !vg->IsValid())
-    return false;
-
-  return lvm->GetLogicalVolume(*vg, logical_volume_container) != std::nullopt;
+  return vault_factory_->ContainerExists(logical_volume_container);
 }
 
 bool HomeDirs::DmcryptCryptohomeExists(

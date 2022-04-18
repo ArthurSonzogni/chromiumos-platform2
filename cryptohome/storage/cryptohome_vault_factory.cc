@@ -221,4 +221,13 @@ void CryptohomeVaultFactory::CacheLogicalVolumeObjects(
   thinpool_ = std::make_shared<brillo::Thinpool>(*thinpool);
 }
 
+bool CryptohomeVaultFactory::ContainerExists(const std::string& container) {
+  brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
+
+  if (!vg_ || !vg_->IsValid())
+    return false;
+
+  return lvm->GetLogicalVolume(*vg_.get(), container) != std::nullopt;
+}
+
 }  // namespace cryptohome
