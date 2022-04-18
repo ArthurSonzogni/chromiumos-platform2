@@ -24,6 +24,7 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
+#include "shill/net/shill_time.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcp_proxy_interface.h"
 #include "shill/network/dhcpv4_config.h"

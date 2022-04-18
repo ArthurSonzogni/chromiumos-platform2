@@ -4,21 +4,17 @@
 
 #include "shill/ipconfig.h"
 
-#include <sys/time.h>
-
 #include <limits>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
-#include "shill/net/shill_time.h"
 #include "shill/static_ip_parameters.h"
 
 #include <base/logging.h>
@@ -32,23 +28,20 @@ static std::string ObjectID(const IPConfig* i) {
 }
 }  // namespace Logging
 
+namespace {
+constexpr char kTypeIP[] = "ip";
+}
+
 bool IPConfig::Properties::HasIPAddressAndDNS() const {
   return !address.empty() && !dns_servers.empty();
 }
-
-// static
-const int IPConfig::kDefaultMTU = 1500;
-const int IPConfig::kMinIPv4MTU = 576;
-const int IPConfig::kMinIPv6MTU = 1280;
-const int IPConfig::kUndefinedMTU = 0;
-const char IPConfig::kType[] = "ip";
 
 // static
 uint32_t IPConfig::global_serial_ = 0;
 
 IPConfig::IPConfig(ControlInterface* control_interface,
                    const std::string& device_name)
-    : IPConfig(control_interface, device_name, kType) {}
+    : IPConfig(control_interface, device_name, kTypeIP) {}
 
 IPConfig::IPConfig(ControlInterface* control_interface,
                    const std::string& device_name,
@@ -56,8 +49,7 @@ IPConfig::IPConfig(ControlInterface* control_interface,
     : device_name_(device_name),
       type_(type),
       serial_(global_serial_++),
-      adaptor_(control_interface->CreateIPConfigAdaptor(this)),
-      weak_ptr_factory_(this) {
+      adaptor_(control_interface->CreateIPConfigAdaptor(this)) {
   store_.RegisterConstString(kAddressProperty, &properties_.address);
   store_.RegisterConstString(kBroadcastProperty,
                              &properties_.broadcast_address);

@@ -9,11 +9,6 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
-#include <base/memory/weak_ptr.h>
-#include <base/time/time.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
-
 #include "shill/mockable.h"
 #include "shill/net/ip_address.h"
 #include "shill/routing_policy_entry.h"
@@ -24,38 +19,28 @@ class ControlInterface;
 class Error;
 class IPConfigAdaptorInterface;
 class StaticIPParameters;
-class Time;
 
 class IPConfig {
  public:
   struct Route {
-    Route() : prefix(0) {}
+    Route() {}
     Route(const std::string& host_in,
           int prefix_in,
           const std::string& gateway_in)
         : host(host_in), prefix(prefix_in), gateway(gateway_in) {}
     std::string host;
-    int prefix;
+    int prefix = 0;
     std::string gateway;
   };
 
   struct Properties {
-    Properties()
-        : address_family(IPAddress::kFamilyUnknown),
-          subnet_prefix(0),
-          default_route(true),
-          blackhole_ipv6(false),
-          use_if_addrs(false),
-          mtu(kUndefinedMTU),
-          lease_duration_seconds(0) {}
-
     // Whether this struct contains both IP address and DNS, and thus is ready
     // to be used for network connection.
     bool HasIPAddressAndDNS() const;
 
-    IPAddress::Family address_family;
+    IPAddress::Family address_family = IPAddress::kFamilyUnknown;
     std::string address;
-    int32_t subnet_prefix;
+    int32_t subnet_prefix = 0;
     std::string broadcast_address;
     std::vector<std::string> dns_servers;
     std::string domain_name;
@@ -74,18 +59,18 @@ class IPConfig {
     std::vector<uint32_t> blackholed_uids;
     // Set the flag to true when the interface should be set as the default
     // route.
-    bool default_route;
+    bool default_route = true;
     // A list of IP blocks in CIDR format that should be excluded from VPN.
     std::vector<std::string> exclusion_list;
     // Block IPv6 traffic.  Used if connected to an IPv4-only VPN.
-    bool blackhole_ipv6;
+    bool blackhole_ipv6 = false;
     // Should traffic whose source address matches one of this interface's
     // addresses be sent to the interface's per-device table. This field is only
     // used for non-physical interfaces--physical interfaces will always act as
     // if this were true.
-    bool use_if_addrs;
-    // MTU to set on the interface.  If unset, defaults to |kDefaultMTU|.
-    int32_t mtu;
+    bool use_if_addrs = false;
+    // MTU to set on the interface.  If unset, defaults to |kUndefinedMTU|.
+    int32_t mtu = kUndefinedMTU;
     // A list of (host,prefix,gateway) tuples for this connection.
     std::vector<Route> routes;
     // Vendor encapsulated option string gained from DHCP.
@@ -95,16 +80,16 @@ class IPConfig {
     // Web Proxy Auto Discovery (WPAD) URL gained from DHCP.
     std::string web_proxy_auto_discovery;
     // Length of time the lease was granted.
-    uint32_t lease_duration_seconds;
+    uint32_t lease_duration_seconds = 0;
   };
 
   enum Method { kMethodUnknown, kMethodPPP, kMethodStatic, kMethodDHCP };
 
   // Define a default and a minimum viable MTU value.
-  static const int kDefaultMTU;
-  static const int kMinIPv4MTU;
-  static const int kMinIPv6MTU;
-  static const int kUndefinedMTU;
+  static constexpr int kDefaultMTU = 1500;
+  static constexpr int kMinIPv4MTU = 576;
+  static constexpr int kMinIPv6MTU = 1280;
+  static constexpr int kUndefinedMTU = 0;
 
   static constexpr char kTypeDHCP[] = "dhcp";
 
@@ -149,19 +134,7 @@ class IPConfig {
   bool ClearBlackholedUids();
 
  private:
-  friend class IPConfigAdaptorInterface;
   friend class IPConfigTest;
-  friend class ConnectionTest;
-
-  FRIEND_TEST(DeviceTest, DestroyIPConfig);
-  FRIEND_TEST(DeviceTest, IsConnectedViaTether);
-  FRIEND_TEST(DeviceTest, OnIPConfigExpired);
-  FRIEND_TEST(IPConfigTest, UpdateProperties);
-  FRIEND_TEST(ResolverTest, Empty);
-  FRIEND_TEST(ResolverTest, NonEmpty);
-  FRIEND_TEST(RoutingTableTest, RouteAddDelete);
-
-  static const char kType[];
 
   // Inform RPC listeners of changes to our properties. MAY emit
   // changes even on unchanged properties.
@@ -174,7 +147,6 @@ class IPConfig {
   const uint32_t serial_;
   std::unique_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
-  base::WeakPtrFactory<IPConfig> weak_ptr_factory_;
 };
 
 }  // namespace shill
