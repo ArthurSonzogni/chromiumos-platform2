@@ -966,7 +966,6 @@ class Service : public base::RefCounted<Service> {
   // Refreshes and processes the traffic counters using |counters| and returns
   // the result through |callback|.
   void RequestTrafficCountersCallback(
-      Error* error,
       const ResultVariantDictionariesCallback& callback,
       const std::vector<patchpanel::TrafficCounter>& counters);
 

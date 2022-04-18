@@ -1400,7 +1400,6 @@ void Service::RefreshTrafficCounters(
 }
 
 void Service::RequestTrafficCountersCallback(
-    Error* error,
     const ResultVariantDictionariesCallback& callback,
     const std::vector<patchpanel::TrafficCounter>& counters) {
   RefreshTrafficCounters(counters);
@@ -1414,8 +1413,7 @@ void Service::RequestTrafficCountersCallback(
     dict.emplace("tx_bytes", counters[TrafficCounterVals::kTxBytes]);
     traffic_counters.push_back(std::move(dict));
   }
-  error->Populate(Error::kSuccess);
-  callback.Run(*error, std::move(traffic_counters));
+  callback.Run(Error(Error::kSuccess), std::move(traffic_counters));
 }
 
 void Service::RequestTrafficCounters(
@@ -1436,7 +1434,7 @@ void Service::RequestTrafficCounters(
   }
   client->GetTrafficCounters(
       devices, BindOnce(&Service::RequestTrafficCountersCallback,
-                        weak_ptr_factory_.GetWeakPtr(), error, callback));
+                        weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
 void Service::ResetTrafficCounters(Error* /*error*/) {
