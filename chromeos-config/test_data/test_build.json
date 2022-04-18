@@ -430,6 +430,17 @@
             "ucm-suffix": "another"
           }
         },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
         "fingerprint": {
           "board": "dartmonkey",
           "ro-version": "VERSION3"

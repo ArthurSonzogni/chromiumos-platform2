@@ -208,6 +208,13 @@ chromeos:
             audio:
               <<: *audio
               $topology-name: "another"
+            displays:
+              - connector-type: 14
+                rounded-corners:
+                  top-left: 15
+                  top-right: 15
+                  bottom-left: 15
+                  bottom-right: 15
             hardware-properties:
               is-lid-convertible: true
             identity:

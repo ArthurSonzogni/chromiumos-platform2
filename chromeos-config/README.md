@@ -419,6 +419,7 @@ In the tables below,
 | cross-device | [cross-device](#cross_device) |  | False |  | False | Contains properties to configure cross-device features between ChromeOS devices and other devices, such as Instant Tethering and Smart Lock. |
 | demo-mode | [demo-mode](#demo_mode) |  | False |  | False | Properties related to the ChromeOS Demo Mode, defining the user experience when the device is used in retail. |
 | detachable-base | [detachable-base](#detachable_base) |  | False |  | False | Contains the configuration for the hammerd which is used to update the detachable base firmware. |
+| displays | array - [displays](#displays) |  | False |  | False | Additional display properties beyond what is available thru standards such as EDID.  The display matches based on the libdrm connector type. |
 | efi | [efi](#efi) |  | False |  | False | Contains settings related to EFI firmware. |
 | fingerprint | [fingerprint](#fingerprint) |  | False |  | False | Contains details about the model's fingerprint implementation. |
 | firmware | [firmware](#firmware) |  | False |  | False |  |
@@ -596,6 +597,20 @@ In the tables below,
 | destination | string |  | False |  | True | Installation path for the file on the system image. |
 | source | string |  | False |  | True | Source of the file relative to the build system ${FILESDIR} |
 | symlink | string |  | False |  | True | Symlink file that will be installed pointing to the destination. |
+
+### displays
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| connector-type | integer |  | False |  | False | The libdrm connector type that must match for the properties to apply to this display.  For example, specify 14 for eDP.  See drm_mode.h included with libdrm for all possible values. Minimum value: 0x0. Maximum value: 0x14. |
+| rounded-corners | [rounded-corners](#rounded_corners) |  | False |  | False | Specify the radius of each corner. |
+
+### rounded-corners
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| bottom-left | integer |  | False |  | False | The radius, in physical pixels, of the rounded corner. Minimum value: 0x0. |
+| bottom-right | integer |  | False |  | False | The radius, in physical pixels, of the rounded corner. Minimum value: 0x0. |
+| top-left | integer |  | False |  | False | The radius, in physical pixels, of the rounded corner. Minimum value: 0x0. |
+| top-right | integer |  | False |  | False | The radius, in physical pixels, of the rounded corner. Minimum value: 0x0. |
 
 ### efi
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

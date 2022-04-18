@@ -54,6 +54,11 @@ typeDefs:
         type: string
         pattern: "^[0-9.]+$"
     additionalProperties: false
+  rounded-corner: &rounded_corner
+    type: integer
+    minimum: 0
+    description: >-
+      The radius, in physical pixels, of the rounded corner.
   # TODO(shapiroc): Migrate to use system-file-v2 instead
   system-file: &system_file
     type: object
@@ -770,6 +775,35 @@ properties:
                   build-only-element: true
                   items: *firmware_file
               additionalProperties: false
+            displays:
+              type: array
+              items:
+                type: object
+                additionalProperties: false
+                description: >-
+                  Additional display properties beyond what is
+                  available thru standards such as EDID.  The display
+                  matches based on the libdrm connector type.
+                properties:
+                  connector-type:
+                    type: integer
+                    additionalProperties: false
+                    description: >-
+                      The libdrm connector type that must match for
+                      the properties to apply to this display.  For
+                      example, specify 14 for eDP.  See drm_mode.h
+                      included with libdrm for all possible values.
+                    minimum: 0
+                    maximum: 20
+                  rounded-corners:
+                    type: object
+                    additionalProperties: false
+                    description: Specify the radius of each corner.
+                    properties:
+                      top-left: *rounded_corner
+                      top-right: *rounded_corner
+                      bottom-left: *rounded_corner
+                      bottom-right: *rounded_corner
             identity:
               type: object
               description: Defines attributes that are used by cros_config to detect the identity

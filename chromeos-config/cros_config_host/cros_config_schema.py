@@ -372,6 +372,10 @@ def _GenerateInferredAshSwitches(device_config):
   if has_numpad:
     ash_switches.add('--has-number-pad')
 
+  display_properties = device_config.get('displays')
+  if display_properties:
+    ash_switches.add('--display-properties=%s' % json.dumps(display_properties))
+
   if not ash_switches:
     return device_config
 
