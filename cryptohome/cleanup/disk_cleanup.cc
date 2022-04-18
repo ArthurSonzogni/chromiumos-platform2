@@ -136,8 +136,9 @@ bool DiskCleanup::FreeDiskSpace() {
     return false;
   }
 
-  auto cleaned_in_mb =
-      MAX(0, after_cleanup.value() - free_space.value()) / 1024 / 1024;
+  auto cleaned_in_mb = std::max(static_cast<int64_t>(0),
+                                after_cleanup.value() - free_space.value()) /
+                       1024 / 1024;
   ReportFreeDiskSpaceTotalFreedInMb(cleaned_in_mb);
 
   VLOG(1) << "Disk cleanup cleared " << cleaned_in_mb << "MB.";
@@ -205,8 +206,9 @@ bool DiskCleanup::FreeDiskSpaceDuringLogin(const std::string& obfuscated) {
     return false;
   }
 
-  auto cleaned_in_mb =
-      MAX(0, after_cleanup.value() - free_space.value()) / 1024 / 1024;
+  auto cleaned_in_mb = std::max(static_cast<int64_t>(0),
+                                after_cleanup.value() - free_space.value()) /
+                       1024 / 1024;
 
   VLOG(1) << "Login disk cleanup cleared " << cleaned_in_mb << "MB.";
 
@@ -445,7 +447,9 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     }
 
     auto cleaned_in_mb =
-        MAX(0, after_cleanup.value() - before_cleanup.value()) / 1024 / 1024;
+        std::max(static_cast<int64_t>(0),
+                 after_cleanup.value() - before_cleanup.value()) /
+        1024 / 1024;
     LOG(INFO) << "Removing user " << dir->obfuscated << " freed "
               << cleaned_in_mb << " MiB";
 
