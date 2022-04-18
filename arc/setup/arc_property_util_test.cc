@@ -786,6 +786,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=AMD\n"
          "ro.soc.model=Ryzen 5 5625C\n"},
 
+        // For an Octopus board (blooguard).
+        {"model name\t: Intel(R) Pentium(R) Silver N5000 CPU @ 1.10GHz\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=N5000\n"},
+
         // For an Octopus board.
         {"model name: Intel(R) Celeron(R) N4000 CPU @ 1.10GHz\n",
          "ro.soc.manufacturer=Intel\nro.soc.model=N4000\n"}}) {
