@@ -6,9 +6,11 @@
 
 """Read and parse output artifacts from FPC's Biometric Evaluation Tool."""
 
+from __future__ import annotations
+
 import pathlib
 from enum import Enum
-from typing import List, Union
+from typing import List, Optional, Tuple, TypeVar, Union
 
 import pandas as pd
 
@@ -28,7 +30,7 @@ class FPCBETResults:
         TUContinuous_Enabled = 'TC-03-TU-Continuous/EnableTemplateUpdating-1'
 
         @classmethod
-        def all(cls) -> list:
+        def all(cls) -> List[FPCBETResults.TestCase]:
             return list(level for level in cls)
 
         @classmethod
@@ -45,7 +47,7 @@ class FPCBETResults:
         FRR_Decision = 'FRR_decisions.csv'
 
         @classmethod
-        def all(cls) -> list:
+        def all(cls) -> List[FPCBETResults.TableType]:
             return list(level for level in cls)
 
         @classmethod
@@ -96,7 +98,7 @@ class FPCBETResults:
         return self._dir.joinpath(test_case.value).joinpath(table_type.value)
 
     @staticmethod
-    def _find_blank_lines(file_name: str) -> int:
+    def _find_blank_lines(file_name: pathlib.Path) -> List[int]:
         with open(file_name, 'r') as f:
             return list(i for i, l in enumerate(f.readlines()) if l.isspace())
 
@@ -173,7 +175,8 @@ class FPCBETResults:
     def read_far_frr_file(self,
                           test_case: TestCase,
                           table_type: TableType,
-                          sec_levels: List[SecLevel] = SecLevel.all()) -> pd.DataFrame:
+                          sec_levels: List[SecLevel] = SecLevel.all()) \
+            -> Optional[pd.DataFrame]:
         """Read `TableType.FAR` and `TableType.FRR` (F[AR]R_stats_4level.txt) file.
 
         This only reads the last/bottom table of the file.
@@ -231,7 +234,7 @@ class FPCBETResults:
 
     def read_file(self,
                   test_case: TestCase,
-                  table_type: TableType) -> pd.DataFrame:
+                  table_type: TableType) -> Optional[pd.DataFrame]:
         """Read specified BET generated table for the specified `test_case`.
 
         This is an interface that calls on the correct read file function for
