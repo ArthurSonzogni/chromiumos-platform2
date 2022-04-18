@@ -4,9 +4,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import mmap
+import fcntl
 import glob
 import hashlib
+import mmap
 import pathlib
 import pickle
 from typing import Any, List, Union
@@ -15,6 +16,12 @@ import pandas as pd
 
 
 class CachedDataFile:
+    """A data file parsing handler that will automatically cache the results.
+
+    This handler implementation is thread safe through the use of a lock on
+    the source data file.
+    """
+
     def _cache_file_path(self, ver: str) -> pathlib.Path:
         """Build the path to the file's cache file with the given version."""
         orig_path = self._orig_file_path
@@ -42,9 +49,15 @@ class CachedDataFile:
         self._verbose = verbose
 
     def open(self):
-        self._f = open(self._orig_file_path, 'r+b')
-        # memory-map the file, size 0 means whole file
-        self._mm = mmap.mmap(self._f.fileno(), 0)
+        self._f = open(self._orig_file_path, 'rb')
+        # We lock the original data file to ensure that we will not collide
+        # with another instance of this object when listing/reading/writing
+        # cache files.
+        fcntl.flock(self._f, fcntl.LOCK_EX)
+        # Memory map the entire file to serve as a file cache between
+        # reading for the checksum and reading for parsing.
+        # Size 0 means the whole file.
+        self._mm = mmap.mmap(self._f.fileno(), 0, access=mmap.ACCESS_READ)
 
     def close(self):
         self._mm.close()
