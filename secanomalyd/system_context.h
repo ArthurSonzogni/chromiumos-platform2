@@ -5,9 +5,15 @@
 #ifndef SECANOMALYD_SYSTEM_CONTEXT_H_
 #define SECANOMALYD_SYSTEM_CONTEXT_H_
 
+#include <session_manager/dbus-proxies.h>
+
+using SessionManagerProxy = org::chromium::SessionManagerInterfaceProxy;
+using SessionManagerProxyInterface =
+    org::chromium::SessionManagerInterfaceProxyInterface;
+
 class SystemContext {
  public:
-  SystemContext();
+  explicit SystemContext(SessionManagerProxyInterface* session_manager);
   virtual ~SystemContext() = default;
 
   // Update all signals.
@@ -16,9 +22,14 @@ class SystemContext {
   bool IsUserLoggedIn() const { return logged_in_; }
 
  protected:
+  SystemContext() = default;
   void set_logged_in(bool logged_in) { logged_in_ = logged_in; }
 
  private:
+  bool UpdateLoggedInState();
+
+  // Un-owned.
+  SessionManagerProxyInterface* session_manager_;
   bool logged_in_ = false;
 };
 

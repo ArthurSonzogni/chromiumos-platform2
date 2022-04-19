@@ -4,6 +4,8 @@
 
 #include "secanomalyd/daemon.h"
 
+#include <sysexits.h>
+
 #include <string>
 #include <vector>
 
@@ -40,11 +42,24 @@ constexpr base::TimeDelta kReportWXMountCountInterval = base::Hours(2);
 
 }  // namespace
 
+int Daemon::OnInit() {
+  // DBusDaemon::OnInit() initializes the D-Bus connection, making sure |bus_|
+  // is populated.
+  int ret = brillo::DBusDaemon::OnInit();
+  if (ret != EX_OK) {
+    return ret;
+  }
+
+  session_manager_proxy_.reset(new SessionManagerProxy(bus_));
+
+  return EX_OK;
+}
+
 int Daemon::OnEventLoopStarted() {
   CheckWXMounts();
   ReportWXMountCount();
 
-  return 0;
+  return EX_OK;
 }
 
 void Daemon::CheckWXMounts() {
@@ -76,7 +91,9 @@ void Daemon::DoWXMountCheck() {
   }
 
   // Recreated on every check to have the most up-to-date state.
-  SystemContext context;
+  // The raw SessionManagerProxy pointer is un-owned by the SystemContext
+  // object.
+  SystemContext context(session_manager_proxy_.get());
 
   for (const auto& e : mount_entries.value()) {
     if (e.IsWX()) {
