@@ -58,7 +58,7 @@ class MountPoint {
   // Releases (leaks) the ownership of the mount point.
   // Until all places handle ownership of mount points properly
   // it's necessary to be able to leave the mount alone.
-  virtual void Release();
+  void Release();
 
   // Unmounts right now.
   MountErrorType Unmount();
@@ -88,19 +88,18 @@ class MountPoint {
   const std::string& data() const { return data_.data; }
   bool is_read_only() const { return (data_.flags & MS_RDONLY) != 0; }
 
- protected:
+ private:
   // Unmounts the mount point. If MOUNT_ERROR_NONE is returned, will only be
   // called once, regardless of the number of times Unmount() is called. If
   // Release() is called, this function will not be called.
-  virtual MountErrorType UnmountImpl();
+  MountErrorType UnmountImpl();
 
   // Remounts with new flags. Only called if mount is assumed to be mounted.
-  virtual MountErrorType RemountImpl(int flags);
+  MountErrorType RemountImpl(int flags);
 
   MountPointData data_;
-  const Platform* platform_;
+  const Platform* const platform_;
 
- private:
   // SandboxedProcess object holding the FUSE mounter processes associated to
   // this MountPoint.
   std::unique_ptr<SandboxedProcess> process_;

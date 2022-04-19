@@ -74,19 +74,10 @@ class FUSEMountPoint : public MountPoint {
     // cleaned up due to a request from the browser (or logout). In this case,
     // there's nothing to do.
     if (ptr)
-      ptr->CleanUp();
+      ptr->Unmount();
   }
 
  private:
-  void CleanUp() {
-    if (const MountErrorType error = Unmount())
-      LOG(ERROR) << "Cannot unmount " << redact(path()) << ": " << error;
-
-    LOG(INFO) << "Removing " << redact(path()) << "...";
-    if (!platform_->RemoveEmptyDirectory(path().value()))
-      PLOG(ERROR) << "Cannot remove " << redact(path());
-  }
-
   base::WeakPtrFactory<FUSEMountPoint> weak_factory_{this};
 };
 
