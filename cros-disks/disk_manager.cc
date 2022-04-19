@@ -325,26 +325,26 @@ std::unique_ptr<MountPoint> DiskManager::DoMount(
   metrics()->RecordDeviceMediaType(disk.media_type);
   metrics()->RecordFilesystemType(device_filesystem_type);
   if (device_filesystem_type.empty()) {
-    LOG(ERROR) << "Cannot determine the file system type of device "
+    LOG(ERROR) << "Cannot determine filesystem type of device "
                << quote(source_path);
     *error = MOUNT_ERROR_UNKNOWN_FILESYSTEM;
     return nullptr;
   }
 
-  auto it = mounters_.find(device_filesystem_type);
+  const auto it = mounters_.find(device_filesystem_type);
   if (it == mounters_.end()) {
-    LOG(ERROR) << "Unsupported file system type "
+    LOG(ERROR) << "Cannot handle filesystem type "
                << quote(device_filesystem_type) << " of device "
                << quote(source_path);
     *error = MOUNT_ERROR_UNSUPPORTED_FILESYSTEM;
     return nullptr;
   }
 
-  const Mounter* mounter = it->second.get();
+  const Mounter* const mounter = it->second.get();
 
   auto applied_options = options;
-  bool media_read_only = disk.is_read_only || disk.IsOpticalDisk();
-  if (media_read_only && !IsReadOnlyMount(applied_options)) {
+  if (const bool media_read_only = disk.is_read_only || disk.IsOpticalDisk();
+      media_read_only && !IsReadOnlyMount(applied_options)) {
     applied_options.push_back("ro");
   }
 
