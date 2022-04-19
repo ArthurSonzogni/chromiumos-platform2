@@ -12,13 +12,14 @@ use std::collections::{BTreeMap as Map, VecDeque};
 use std::convert::TryFrom;
 use std::env;
 use std::fs::{remove_file, File};
-use std::io::{IoSlice, Seek, SeekFrom, Write};
+use std::io::{BufWriter, IoSlice, Seek, SeekFrom, Write};
 use std::mem::{replace, swap};
 use std::ops::{Deref, DerefMut};
 use std::os::unix::io::{AsRawFd, RawFd};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::result::Result as StdResult;
+use std::str::FromStr;
 
 use anyhow::{anyhow, bail, Context, Error, Result};
 use getopts::Options;
@@ -40,6 +41,7 @@ use libsirenia::{
         events::{
             AddEventSourceMutator, ComboMutator, CopyFdEventSource, EventMultiplexer, Mutator,
         },
+        kmsg::{self, SyslogForwarderMut},
         syslog::{Syslog, SyslogReceiverMut, SYSLOG_PATH},
     },
     rpc::{ConnectionHandler, RpcDispatcher, TransportServer},
@@ -73,8 +75,10 @@ const PSTORE_PATH_LONG_NAME: &str = "pstore-path";
 const SAVE_PSTORE_LONG_NAME: &str = "save-pstore";
 const RESTORE_PSTORE_LONG_NAME: &str = "restore-pstore";
 const MMS_BRIDGE_SHORT_NAME: &str = "M";
+const LOG_TO_STDERR_LONG_NAME: &str = "log-to-stderr";
 
 const CROSVM_PATH: &str = "/bin/crosvm-direct";
+const KMSG_PATH: &str = "/dev/kmsg";
 
 /* Holds the trichechus-relevant information for a TEEApp. */
 struct TeeApp {
@@ -188,6 +192,7 @@ struct TrichechusState {
     loaded_apps: RefCell<Map<Digest, SharedMemory>>,
     mms_bridge: Option<UnixSeqpacket>,
     pending_mms_port: Option<u32>,
+    kmsg: RefCell<Option<BufWriter<File>>>,
 }
 
 impl TrichechusState {
@@ -212,6 +217,18 @@ impl TrichechusState {
             loaded_apps: RefCell::new(Map::new()),
             mms_bridge: None,
             pending_mms_port: None,
+            kmsg: RefCell::new(match File::options().write(true).open(KMSG_PATH) {
+                Err(e) => {
+                    eprintln!(
+                        "Unable to open /dev/kmsg for writing. \
+                               Syslog messages will be missing from kernel \
+                               crash reports: {}",
+                        e
+                    );
+                    None
+                }
+                Ok(f) => Some(BufWriter::new(f)),
+            }),
         }
     }
 
@@ -234,8 +251,57 @@ impl TrichechusState {
     }
 }
 
+// Parse raw message written to syslog socket and get severity and message.
+// Returns severity of "Invalid" and the raw message on parse failure.
+fn get_severity_and_msg(s: &str) -> (&str, &str) {
+    let mut sev: u8 = 255;
+    let mut msg: &str = s;
+    if msg.starts_with('<') {
+        if let Some(gtpos) = msg.find('>') {
+            if let Ok(i) = u8::from_str(&s[1..gtpos]) {
+                sev = i & 7;
+                msg = &s[gtpos + 1..];
+            }
+        }
+    }
+    (
+        match sev {
+            0 => "Emergency",
+            1 => "Alert",
+            2 => "Critical",
+            3 => "Error",
+            4 => "Warning",
+            5 => "Notice",
+            6 => "Info",
+            7 => "Debug",
+            255 => "Invalid",
+            _ => "Unknown",
+        },
+        msg,
+    )
+}
+
 impl SyslogReceiverMut for TrichechusState {
+    // Before forwarding syslog messages to the Chrome OS rsyslog daemon, write
+    // them to /dev/kmsg so that (1) they appear on the console, and (2) they
+    // are included in kernel panic crash reports.
     fn receive(&mut self, data: Vec<u8>) {
+        if let Some(kmsgf) = self.kmsg.borrow_mut().deref_mut() {
+            let rawmsg = String::from_utf8_lossy(&data);
+            let (sev, msg) = get_severity_and_msg(&rawmsg);
+            let r = writeln!(kmsgf, "syslog: [{}] {}", sev, msg.escape_default())
+                .and_then(|_| kmsgf.flush());
+            if let Err(e) = r {
+                eprintln!("syslog: {}", rawmsg.escape_default());
+                eprintln!("Can't write to /dev/kmsg: {}", e);
+            }
+        }
+        self.log_queue.push_back(data);
+    }
+}
+
+impl SyslogForwarderMut for TrichechusState {
+    fn forward(&mut self, data: Vec<u8>) {
         self.log_queue.push_back(data);
     }
 }
@@ -689,11 +755,18 @@ fn handle_closed_child_processes(state: &RefCell<TrichechusState>) {
 
 // Before logging is initialized eprintln(...) and println(...) should be used.
 // Afterward, info!(...), and error!(...) should be used instead.
-fn init_logging() -> Result<()> {
-    syslog::init().or_else(|e| {
-        eprintln!("Failed to initialize syslog: {}", e);
-        bail!("failed to initialize the syslog: {}", e);
-    })
+fn init_logging(log_to_stderr: bool) -> Result<()> {
+    match syslog::init() {
+        Ok(()) => {
+            // Don't log to stderr, since we forward syslog to /dev/kmsg
+            // which causes messages to be printed on the console.
+            if !log_to_stderr {
+                syslog::echo_stderr(false);
+            }
+            Ok(())
+        }
+        Err(e) => bail!("failed to initialize the syslog: {}", e),
+    }
 }
 
 // TODO: Figure out rate limiting and prevention against DOS attacks
@@ -737,10 +810,16 @@ fn main() -> Result<()> {
         RESTORE_PSTORE_LONG_NAME,
         "copy ramoops memory to pstore file, then exit.",
     );
+    opts.optflag(
+        "",
+        LOG_TO_STDERR_LONG_NAME,
+        "write log messages to stderr in addition to syslog.",
+    );
     let (config, matches) = initialize_common_arguments(opts, &args[1..]).unwrap();
+    let log_to_stderr = matches.opt_present(LOG_TO_STDERR_LONG_NAME);
 
     if matches.opt_present(SAVE_PSTORE_LONG_NAME) {
-        init_logging()?;
+        init_logging(log_to_stderr)?;
         if let Some(pstore_path) = matches.opt_str(PSTORE_PATH_LONG_NAME) {
             return pstore::save_pstore(&pstore_path);
         } else {
@@ -749,7 +828,7 @@ fn main() -> Result<()> {
     }
 
     if matches.opt_present(RESTORE_PSTORE_LONG_NAME) {
-        init_logging()?;
+        init_logging(log_to_stderr)?;
         if let Some(pstore_path) = matches.opt_str(PSTORE_PATH_LONG_NAME) {
             return pstore::restore_pstore(&pstore_path);
         } else {
@@ -793,7 +872,7 @@ fn main() -> Result<()> {
         None
     };
 
-    init_logging()?;
+    init_logging(log_to_stderr)?;
     info!("starting trichechus: {}", BUILD_TIMESTAMP);
 
     if let Some(path) = matches.opt_str(MMS_BRIDGE_SHORT_NAME) {
@@ -837,6 +916,11 @@ fn main() -> Result<()> {
     let mut ctx = EventMultiplexer::new().unwrap();
     if let Some(event_source) = syslog {
         ctx.add_event(Box::new(event_source)).unwrap();
+    }
+
+    match kmsg::KmsgReader::new(KMSG_PATH, state.clone()) {
+        Ok(km) => ctx.add_event(Box::new(km)).unwrap(),
+        Err(e) => error!("Unable to open /dev/kmsg for reading: {}", e),
     }
 
     let server = TransportServer::new(
