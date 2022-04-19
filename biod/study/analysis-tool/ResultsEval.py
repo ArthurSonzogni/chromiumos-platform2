@@ -104,30 +104,24 @@ else:
 
     bet = FPCBETResults(REPORT_DIR)
 
-    tc0_far_decisions: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUDisabled,
-                                                    FPCBETResults.TableType.FAR_Decision)
-    tc1_dis_far_decisions: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUSpecificSamples_Disabled,
-                                                        FPCBETResults.TableType.FAR_Decision)
-    tc1_en_far_decisions: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUSpecificSamples_Enabled,
-                                                       FPCBETResults.TableType.FAR_Decision)
-    tc2_dis_far_decisions: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUContinuous_Disabled,
-                                                        FPCBETResults.TableType.FAR_Decision)
-    tc2_en_far_decisions: pd.DataFrame = bet.read_file(FPCBETResults.TestCase.TUContinuous_Enabled,
-                                                       FPCBETResults.TableType.FAR_Decision)
+    decisions_cases = FPCBETResults.TestCase.all()
 
-# %%
+    far_decisions = bet.read_files(list(zip(
+        decisions_cases,
+        [FPCBETResults.TableType.FAR_Decision]*len(decisions_cases)
+    )))
 
-#  far_decisions=tc0_far_decisions
-#  far_decisions=tc1_dis_far_decisions
-#  far_decisions=tc1_en_far_decisions
-#  far_decisions=tc2_dis_far_decisions
-far_decisions = tc2_en_far_decisions
+    frr_decisions = bet.read_files(list(zip(
+        decisions_cases,
+        [FPCBETResults.TableType.FRR_Decision]*len(decisions_cases)
+    )))
 
-exp = Experiment(num_verification=60,
-                 num_fingers=6,
-                 num_users=72,
-                 far_decisions=far_decisions,
-                 )
+    exp = Experiment(num_verification=60,
+                     num_fingers=6,
+                     num_users=72,
+                     far_decisions=far_decisions[0],
+                     )
+
 
 exp.add_groups_from_collection_dir(COLLECTION_DIR)
 # exp._tbl_far_decisions = exp._tbl_far_decisions[exp._tbl_far_decisions['VerifyGroup'] == 'A']
