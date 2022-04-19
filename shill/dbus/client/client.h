@@ -273,6 +273,17 @@ class BRILLO_EXPORT Client {
   virtual std::unique_ptr<ManagerPropertyAccessor> ManagerProperties(
       const base::TimeDelta& timeout = kDefaultDBusTimeout) const;
 
+  // Returns a manipulator interface for Default service properties.
+  virtual std::unique_ptr<ServicePropertyAccessor>
+  DefaultServicePropertyAccessor(
+      const base::TimeDelta& timeout = kDefaultDBusTimeout) const;
+
+  // Returns a snapshot of all the default service properties. It may return
+  // a nullptr.
+  virtual std::unique_ptr<brillo::VariantDictionary>
+  GetDefaultServiceProperties(
+      const base::TimeDelta& timeout = kDefaultDBusTimeout) const;
+
   // Returns the default device.
   // If |exclude_vpn| is true, then the device returned will be associated with
   // the highest priority service that is not of type "vpn".

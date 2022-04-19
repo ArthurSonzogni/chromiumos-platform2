@@ -757,6 +757,28 @@ std::unique_ptr<Client::ManagerPropertyAccessor> Client::ManagerProperties(
       manager_proxy_.get(), timeout);
 }
 
+std::unique_ptr<Client::ServicePropertyAccessor>
+Client::DefaultServicePropertyAccessor(const base::TimeDelta& timeout) const {
+  if (default_service_proxy_.get() == nullptr) {
+    return nullptr;
+  }
+  return std::make_unique<PropertyAccessor<ServiceProxyInterface>>(
+      default_service_proxy_.get(), timeout);
+}
+
+std::unique_ptr<brillo::VariantDictionary> Client::GetDefaultServiceProperties(
+    const base::TimeDelta& timeout) const {
+  brillo::ErrorPtr error;
+  brillo::VariantDictionary properties;
+  if (!DefaultServicePropertyAccessor(timeout)->Get(&properties, &error)) {
+    LOG(ERROR) << "Failed to obtain default service properties: "
+               << error->GetMessage();
+    return nullptr;
+  }
+
+  return std::make_unique<brillo::VariantDictionary>(std::move(properties));
+}
+
 std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
   brillo::ErrorPtr error;
   brillo::VariantDictionary properties;
