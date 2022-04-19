@@ -19,13 +19,24 @@ group("all") {
 
 pkg_config("target_defaults") {
   pkg_deps = [
+    "absl",
     "libbrillo",
     "libchrome",
+    "libtpm_manager-client",
+    "openssl",
+    "system_api",
   ]
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+
   libs = [
     "hwsec-foundation",
     "tpm_manager",
   ]
+
   defines = [
     "USE_TPM_DYNAMIC=${use.tpm_dynamic}",
     "USE_TPM1=${use.tpm}",
@@ -103,11 +114,36 @@ config("libhwsec_tpm2_config") {
   libs = [ "trunks" ]
 }
 
+source_set("hardware_abstraction_library") {
+  sources = [
+    "proxy/proxy.cc",
+    "proxy/proxy_impl.cc",
+  ]
+
+  libs = []
+
+  configs += [
+    ":target_defaults",
+    "//common-mk:pic",
+  ]
+
+  if (use.tpm) {
+    libs += [ "tspi" ]
+  }
+
+  if (use.tpm2) {
+    libs += [ "trunks" ]
+  }
+}
+
 shared_library("libhwsec") {
   configs += [ ":target_defaults" ]
   all_dependent_configs = []
   install_path = "lib"
-  deps = [ ":error_library" ]
+  deps = [
+    ":error_library",
+    ":hardware_abstraction_library",
+  ]
   if (use.tpm2 || use.fuzzer) {
     all_dependent_configs += [ ":libhwsec_tpm2_config" ]
   }
@@ -137,7 +173,10 @@ install_config("install_error_h") {
 
 if (use.test) {
   pkg_config("test_config") {
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libchrome-test",
+      "libtpm_manager-client-test",
+    ]
   }
 
   executable("hwsec_testrunner") {
@@ -153,7 +192,8 @@ if (use.test) {
     ]
     run_test = true
     deps = [
-      ":libhwsec",
+      ":error_library",
+      ":hardware_abstraction_library",
       ":libhwsec_test",
       "//common-mk/testrunner",
     ]
@@ -163,6 +203,7 @@ if (use.test) {
         "overalls/overalls_api_test.cc",
         "overalls/overalls_singleton_test.cc",
       ]
+      deps += [ ":overalls_library" ]
     }
     if (use.tpm2) {
       sources += [ "error/tpm2_error_test.cc" ]
