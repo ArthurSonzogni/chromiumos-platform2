@@ -930,7 +930,7 @@ void ModemMbim::SetDeviceSlotMappingsRspCb(MbimDevice* device,
   for (int i = 0; i < modem_mbim->slot_info_.slot_count_; i++) {
     if (i != physical_switch_slot) {
       modem_mbim->euicc_manager_->OnLogicalSlotUpdated(
-          modem_mbim->slot_info_.cached_active_slot_, base::nullopt);
+          modem_mbim->slot_info_.cached_active_slot_, std::nullopt);
       continue;
     }
     modem_mbim->euicc_manager_->OnLogicalSlotUpdated(
