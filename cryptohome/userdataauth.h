@@ -1090,8 +1090,7 @@ class UserDataAuth {
       const std::string& auth_session_id,
       const CryptohomeVault::Options& vault_options);
 
-  user_data_auth::CryptohomeErrorCode CreatePersistentUserImpl(
-      const std::string& auth_session_id);
+  CryptohomeStatus CreatePersistentUserImpl(const std::string& auth_session_id);
 
   // Handled add credentials for ephemeral users. This function does not save
   // anything to the disk and just sets verifier in memory for screen unlock.

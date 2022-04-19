@@ -393,6 +393,28 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManEmptyAuxInRetrieveLabel = 283,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManConvertTpmError = 284,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthCreateFailedInStartAuthSession = 285,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInAuthAuthSession = 286,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthAuthFailedInAuthAuthSession = 287,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInExtendAuthSession = 288,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthExtendFailedInExtendAuthSession = 289,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInCreatePersistentUser = 290,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthUserExistsInCreatePersistentUser = 291,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthCheckExistsFailedInCreatePersistentUser = 292,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthCreateFailedInCreatePersistentUser = 293,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthFinalizeFailedInCreatePersistentUser = 294,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFoundInAuthAuthFactor = 295,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

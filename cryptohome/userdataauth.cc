@@ -3665,8 +3665,13 @@ bool UserDataAuth::StartAuthSession(
   AuthSession* auth_session = auth_session_manager_->CreateAuthSession(
       request.account_id().account_id(), request.flags());
   if (!auth_session) {
-    reply.set_error(user_data_auth::CRYPTOHOME_ERROR_MOUNT_FATAL);
-    std::move(on_done).Run(reply);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthCreateFailedInStartAuthSession),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_MOUNT_FATAL));
     return false;
   }
 
@@ -3684,7 +3689,8 @@ bool UserDataAuth::StartAuthSession(
       *reply.add_auth_factors() = std::move(proto_factor.value());
     }
   }
-  std::move(on_done).Run(reply);
+
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 
   return true;
 }
@@ -3783,18 +3789,34 @@ bool UserDataAuth::AuthenticateAuthSession(
   AuthSession* auth_session =
       auth_session_manager_->FindAuthSession(request.auth_session_id());
   if (!auth_session) {
-    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-    std::move(on_done).Run(reply);
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthSessionNotFoundInAuthAuthSession),
+                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                                       ErrorAction::kReboot}),
+                       user_data_auth::CryptohomeErrorCode::
+                           CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
     return false;
   }
 
   // Perform authentication using data in AuthorizationRequest and
   // auth_session_token.
   // TODO(crbug.com/1157622) : Complete the API with actual authentication.
-  reply.set_error(auth_session->Authenticate(request.authorization()));
+  user_data_auth::CryptohomeErrorCode ret =
+      auth_session->Authenticate(request.authorization());
+
+  StatusChain<CryptohomeError> err = OkStatus<CryptohomeError>();
+  if (ret != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    // TODO(b/229688435): Wrap the error after AuthSession is migrated to use
+    // CryptohomeError.
+    err = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthAuthFailedInAuthAuthSession),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kAuth}), ret);
+  }
   reply.set_authenticated(auth_session->GetStatus() ==
                           AuthStatus::kAuthStatusAuthenticated);
-  std::move(on_done).Run(reply);
+  ReplyWithError(std::move(on_done), reply, std::move(err));
   return false;
 }
 
@@ -3806,8 +3828,8 @@ bool UserDataAuth::InvalidateAuthSession(
 
   user_data_auth::InvalidateAuthSessionReply reply;
   auth_session_manager_->RemoveAuthSession(request.auth_session_id());
-  reply.set_error(user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  std::move(on_done).Run(reply);
+
+  ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
   return true;
 }
 
@@ -3822,15 +3844,31 @@ bool UserDataAuth::ExtendAuthSession(
   user_data_auth::ExtendAuthSessionReply reply;
   if (!auth_session) {
     // Token lookup failed.
-    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-    std::move(on_done).Run(reply);
+    ReplyWithError(std::move(on_done), reply,
+                   MakeStatus<CryptohomeError>(
+                       CRYPTOHOME_ERR_LOC(
+                           kLocUserDataAuthSessionNotFoundInExtendAuthSession),
+                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                                       ErrorAction::kReboot}),
+                       user_data_auth::CryptohomeErrorCode::
+                           CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
     return false;
   }
 
   // Extend specified AuthSession.
   auto timer_extension = base::Seconds(request.extension_duration());
-  reply.set_error(auth_session->ExtendTimer(timer_extension));
-  std::move(on_done).Run(reply);
+  user_data_auth::CryptohomeErrorCode ret =
+      auth_session->ExtendTimer(timer_extension);
+
+  StatusChain<CryptohomeError> err = OkStatus<CryptohomeError>();
+  if (ret != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    // TODO(b/229688435): Wrap the error after AuthSession is migrated to use
+    // CryptohomeError.
+    err = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthExtendFailedInExtendAuthSession),
+        ErrorActionSet({ErrorAction::kReboot}), ret);
+  }
+  ReplyWithError(std::move(on_done), reply, std::move(err));
   return true;
 }
 
@@ -4023,10 +4061,11 @@ void UserDataAuth::CreatePersistentUser(
 
   LOG(INFO) << "Creating persistent user";
   user_data_auth::CreatePersistentUserReply reply;
-  reply.set_error(CreatePersistentUserImpl(request.auth_session_id()));
+  StatusChain<CryptohomeError> ret =
+      CreatePersistentUserImpl(request.auth_session_id());
   reply.set_sanitized_username(
       SanitizedUserNameForSession(request.auth_session_id()));
-  std::move(on_done).Run(reply);
+  ReplyWithError(std::move(on_done), reply, ret);
 }
 
 user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareGuestVaultImpl() {
@@ -4120,7 +4159,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::PreparePersistentVaultImpl(
   return MountErrorToCryptohomeError(mount_error);
 }
 
-user_data_auth::CryptohomeErrorCode UserDataAuth::CreatePersistentUserImpl(
+CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
     const std::string& auth_session_id) {
   AssertOnMountThread();
 
@@ -4128,7 +4167,13 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::CreatePersistentUserImpl(
       auth_session_manager_->FindAuthSession(auth_session_id);
   if (!auth_session) {
     LOG(ERROR) << "AuthSession not found.";
-    return user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthSessionNotFoundInCreatePersistentUser),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
   }
 
   const std::string& obfuscated_username = auth_session->obfuscated_username();
@@ -4139,14 +4184,22 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::CreatePersistentUserImpl(
   if (homedirs_->CryptohomeExists(obfuscated_username, &mount_error)) {
     LOG(ERROR) << "User already exists: " << obfuscated_username;
     // TODO(b/208898186, dlunev): replace with a more appropriate error
-    return user_data_auth::CryptohomeErrorCode::
-        CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthUserExistsInCreatePersistentUser),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
 
   if (mount_error != MOUNT_ERROR_NONE) {
     LOG(ERROR) << "Failed to query vault existance for: " << obfuscated_username
                << ", code: " << mount_error;
-    return MountErrorToCryptohomeError(mount_error);
+    return MakeStatus<CryptohomeMountError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthCheckExistsFailedInCreatePersistentUser),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        mount_error, MountErrorToCryptohomeError(mount_error));
   }
 
   // This checks and creates if missing the user's directory in shadow root.
@@ -4163,13 +4216,24 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::CreatePersistentUserImpl(
       !homedirs_->Create(auth_session->username())) {
     LOG(ERROR) << "Failed to create shadow directory for: "
                << obfuscated_username;
-    return user_data_auth::CryptohomeErrorCode::
-        CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthCreateFailedInCreatePersistentUser),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                        ErrorAction::kReboot, ErrorAction::kPowerwash}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   // Let the auth session perform any finalization operations for a newly
   // created user.
-  return auth_session->OnUserCreated();
+  user_data_auth::CryptohomeErrorCode ret = auth_session->OnUserCreated();
+  if (ret != user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocUserDataAuthFinalizeFailedInCreatePersistentUser),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), ret);
+  }
+  return OkStatus<CryptohomeError>();
 }
 
 bool UserDataAuth::AddAuthFactor(
@@ -4205,9 +4269,15 @@ bool UserDataAuth::AuthenticateAuthFactor(
   AuthSession* const auth_session =
       auth_session_manager_->FindAuthSession(request.auth_session_id());
   if (!auth_session) {
-    reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
     LOG(ERROR) << "Invalid AuthSession token provided.";
-    std::move(on_done).Run(reply);
+    ReplyWithError(
+        std::move(on_done), reply,
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInAuthAuthFactor),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
     return false;
   }
   return auth_session->AuthenticateAuthFactor(request, std::move(on_done));

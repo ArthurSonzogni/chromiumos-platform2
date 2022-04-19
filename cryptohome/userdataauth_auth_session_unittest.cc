@@ -126,7 +126,7 @@ class AuthSessionInterfaceTest : public ::testing::Test {
                                                     vault_options);
   }
 
-  user_data_auth::CryptohomeErrorCode CreatePersistentUserImpl(
+  CryptohomeStatus CreatePersistentUserImpl(
       const std::string& auth_session_id) {
     return userdataauth_.CreatePersistentUserImpl(auth_session_id);
   }
@@ -358,7 +358,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVault) {
 
 TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
   // No auth session.
-  ASSERT_THAT(CreatePersistentUserImpl(""),
+  ASSERT_THAT(CreatePersistentUserImpl("")->local_legacy_error().value(),
               Eq(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
 
   // Auth session not authed.
@@ -371,7 +371,9 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
   // Vault already exists.
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername), _))
       .WillOnce(Return(true));
-  ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token()),
+  ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token())
+                  ->local_legacy_error()
+                  .value(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY));
 
   // User doesn't exist and failed to create.
@@ -380,7 +382,9 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(false));
-  ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token()),
+  ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token())
+                  ->local_legacy_error()
+                  .value(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
   // User doesn't exist and created.
@@ -389,16 +393,14 @@ TEST_F(AuthSessionInterfaceTest, CreatePersistentUser) {
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(true));
-  ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token()),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());
 
   // User exists but vault doesn't.
   EXPECT_CALL(homedirs_, CryptohomeExists(SanitizeUserName(kUsername), _))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
       .WillOnce(Return(true));
-  ASSERT_THAT(CreatePersistentUserImpl(auth_session->serialized_token()),
-              Eq(user_data_auth::CRYPTOHOME_ERROR_NOT_SET));
+  ASSERT_TRUE(CreatePersistentUserImpl(auth_session->serialized_token()).ok());
 }
 
 }  // namespace

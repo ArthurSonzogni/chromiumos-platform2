@@ -223,6 +223,36 @@ template void ReplyWithError(
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done,
     const user_data_auth::MountReply& reply,
     const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>
+        on_done,
+    const user_data_auth::StartAuthSessionReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<
+        void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done,
+    const user_data_auth::AuthenticateAuthSessionReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::InvalidateAuthSessionReply&)>
+        on_done,
+    const user_data_auth::InvalidateAuthSessionReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::ExtendAuthSessionReply&)>
+        on_done,
+    const user_data_auth::ExtendAuthSessionReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::CreatePersistentUserReply&)>
+        on_done,
+    const user_data_auth::CreatePersistentUserReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
+template void ReplyWithError(
+    base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
+        on_done,
+    const user_data_auth::AuthenticateAuthFactorReply& reply,
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& err);
 
 }  // namespace error
 
