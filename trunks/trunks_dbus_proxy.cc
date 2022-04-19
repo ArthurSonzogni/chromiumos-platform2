@@ -32,6 +32,10 @@ TrunksDBusProxy::TrunksDBusProxy()
                       kTrunksInterface,
                       /*bus=*/nullptr) {}
 
+TrunksDBusProxy::TrunksDBusProxy(scoped_refptr<dbus::Bus> bus)
+    : TrunksDBusProxy(
+          kTrunksServiceName, kTrunksServicePath, kTrunksInterface, bus) {}
+
 TrunksDBusProxy::TrunksDBusProxy(const std::string& name,
                                  const std::string& path,
                                  const std::string& interface)
@@ -45,10 +49,6 @@ TrunksDBusProxy::TrunksDBusProxy(const std::string& name,
       dbus_path_(path),
       dbus_interface_(interface),
       bus_(bus) {}
-
-TrunksDBusProxy::TrunksDBusProxy(dbus::Bus* bus)
-    : TrunksDBusProxy(
-          kTrunksServiceName, kTrunksServicePath, kTrunksInterface, bus) {}
 
 TrunksDBusProxy::~TrunksDBusProxy() {
   if (bus_) {

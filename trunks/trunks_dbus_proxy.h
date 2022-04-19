@@ -25,6 +25,7 @@ namespace trunks {
 class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
  public:
   TrunksDBusProxy();
+  explicit TrunksDBusProxy(scoped_refptr<dbus::Bus> bus);
   TrunksDBusProxy(const std::string& name,
                   const std::string& path,
                   const std::string& interface);
@@ -63,8 +64,6 @@ class TRUNKS_EXPORT TrunksDBusProxy : public CommandTransceiver {
  private:
   friend class TrunksDBusProxyTest;
 
-  // Constructor for mock bus injection in unit tests.
-  explicit TrunksDBusProxy(dbus::Bus* bus);
   TrunksDBusProxy(const TrunksDBusProxy&) = delete;
   TrunksDBusProxy& operator=(const TrunksDBusProxy&) = delete;
 

@@ -105,7 +105,7 @@ class TrunksDBusProxyTest : public testing::Test {
  protected:
   scoped_refptr<FakeObjectProxy> object_proxy_ = new FakeObjectProxy();
   scoped_refptr<NiceMock<MockDBusBus>> bus_ = new NiceMock<MockDBusBus>();
-  TrunksDBusProxy proxy_{bus_.get()};
+  TrunksDBusProxy proxy_{bus_};
 };
 
 TEST_F(TrunksDBusProxyTest, InitSuccess) {
