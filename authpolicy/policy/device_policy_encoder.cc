@@ -193,7 +193,7 @@ void DevicePolicyEncoder::EncodeLoginPolicies(
     policy->mutable_show_user_names()->set_show_user_names(value.value());
   if (std::optional<bool> value = EncodeBoolean(key::kDeviceAllowNewUsers))
     policy->mutable_allow_new_users()->set_allow_new_users(value.value());
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kDeviceUserAllowlist)) {
     *policy->mutable_user_allowlist()->mutable_user_allowlist() = {
         values.value().begin(), values.value().end()};
@@ -734,7 +734,7 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         value.value());
   }
 
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kUsbDetachableAllowlist)) {
     auto list = policy->mutable_usb_detachable_allowlist();
     DCHECK(!list->id_size());
@@ -820,17 +820,17 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
   if (std::optional<std::string> value = EncodeString(key::kCastReceiverName))
     policy->mutable_cast_receiver_name()->set_name(value.value());
 
-  if (base::Optional<std::string> value = EncodeString(key::kDevicePrinters))
+  if (std::optional<std::string> value = EncodeString(key::kDevicePrinters))
     policy->mutable_device_printers()->set_external_policy(value.value());
-  if (base::Optional<int> value = EncodeInteger(key::kDevicePrintersAccessMode))
+  if (std::optional<int> value = EncodeInteger(key::kDevicePrintersAccessMode))
     policy->mutable_device_printers_access_mode()->set_access_mode(
         static_cast<em::DevicePrintersAccessModeProto_AccessMode>(
             value.value()));
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kDevicePrintersAllowlist))
     *policy->mutable_device_printers_allowlist()->mutable_allowlist() = {
         values.value().begin(), values.value().end()};
-  if (base::Optional<std::vector<std::string>> values =
+  if (std::optional<std::vector<std::string>> values =
           EncodeStringList(key::kDevicePrintersBlocklist))
     *policy->mutable_device_printers_blocklist()->mutable_blocklist() = {
         values.value().begin(), values.value().end()};
