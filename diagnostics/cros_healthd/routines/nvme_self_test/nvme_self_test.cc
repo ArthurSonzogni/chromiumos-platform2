@@ -98,15 +98,15 @@ void NvmeSelfTestRoutine::Start() {
   status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
 
   auto result_callback =
-      base::Bind(&NvmeSelfTestRoutine::OnDebugdNvmeSelfTestStartCallback,
-                 weak_ptr_routine_.GetWeakPtr());
+      base::BindOnce(&NvmeSelfTestRoutine::OnDebugdNvmeSelfTestStartCallback,
+                     weak_ptr_routine_.GetWeakPtr());
 
   switch (self_test_type_) {
     case kRunShortSelfTest:
-      debugd_adapter_->RunNvmeShortSelfTest(result_callback);
+      debugd_adapter_->RunNvmeShortSelfTest(std::move(result_callback));
       break;
     case kRunLongSelfTest:
-      debugd_adapter_->RunNvmeLongSelfTest(result_callback);
+      debugd_adapter_->RunNvmeLongSelfTest(std::move(result_callback));
       break;
   }
 }
@@ -118,21 +118,21 @@ void NvmeSelfTestRoutine::Cancel() {
     return;
   }
   auto result_callback =
-      base::Bind(&NvmeSelfTestRoutine::OnDebugdNvmeSelfTestCancelCallback,
-                 weak_ptr_routine_.GetWeakPtr());
-  debugd_adapter_->StopNvmeSelfTest(result_callback);
+      base::BindOnce(&NvmeSelfTestRoutine::OnDebugdNvmeSelfTestCancelCallback,
+                     weak_ptr_routine_.GetWeakPtr());
+  debugd_adapter_->StopNvmeSelfTest(std::move(result_callback));
 }
 
 void NvmeSelfTestRoutine::PopulateStatusUpdate(
     mojo_ipc::RoutineUpdate* response, bool include_output) {
   if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kRunning) {
     auto result_callback =
-        base::Bind(&NvmeSelfTestRoutine::OnDebugdResultCallback,
-                   weak_ptr_routine_.GetWeakPtr());
+        base::BindOnce(&NvmeSelfTestRoutine::OnDebugdResultCallback,
+                       weak_ptr_routine_.GetWeakPtr());
     debugd_adapter_->GetNvmeLog(/*page_id=*/kNvmeLogPageId,
                                 /*length=*/kNvmeLogDataLength,
                                 /*raw_binary=*/kNvmeLogRawBinary,
-                                result_callback);
+                                std::move(result_callback));
   }
 
   mojo_ipc::NonInteractiveRoutineUpdate update;

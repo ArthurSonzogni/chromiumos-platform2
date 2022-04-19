@@ -133,11 +133,11 @@ constexpr char kFakeProcPidCmdlineContents[] = "/usr/bin/fake_exe --arg=yes";
 
 // Saves |response| to |response_destination|.
 void OnMojoResponseReceived(mojom::ProcessResultPtr* response_destination,
-                            base::Closure quit_closure,
+                            base::OnceClosure quit_closure,
                             mojom::ProcessResultPtr response) {
   DCHECK(response_destination);
   *response_destination = std::move(response);
-  quit_closure.Run();
+  std::move(quit_closure).Run();
 }
 
 class ProcessFetcherTest : public testing::Test {

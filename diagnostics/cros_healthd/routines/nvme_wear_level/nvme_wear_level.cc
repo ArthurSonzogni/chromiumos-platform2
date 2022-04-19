@@ -55,12 +55,12 @@ void NvmeWearLevelRoutine::Start() {
   status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
 
   auto result_callback =
-      base::Bind(&NvmeWearLevelRoutine::OnDebugdResultCallback,
-                 weak_ptr_routine_.GetWeakPtr());
+      base::BindOnce(&NvmeWearLevelRoutine::OnDebugdResultCallback,
+                     weak_ptr_routine_.GetWeakPtr());
   debugd_adapter_->GetNvmeLog(/*page_id=*/kNvmeLogPageId,
                               /*length=*/kNvmeLogDataLength,
                               /*raw_binary=*/kNvmeLogRawBinary,
-                              result_callback);
+                              std::move(result_callback));
 }
 
 // The wear-level check can only be started.

@@ -20,10 +20,10 @@ namespace {
 // Saves |response| to |response_destination|.
 void OnGetNetworkInfoReceived(
     chromeos::cros_healthd::mojom::NetworkResultPtr* response_destination,
-    base::Closure quit_closure,
+    base::OnceClosure quit_closure,
     chromeos::cros_healthd::mojom::NetworkResultPtr response) {
   *response_destination = std::move(response);
-  quit_closure.Run();
+  std::move(quit_closure).Run();
 }
 
 class NetworkFetcherTest : public testing::Test {

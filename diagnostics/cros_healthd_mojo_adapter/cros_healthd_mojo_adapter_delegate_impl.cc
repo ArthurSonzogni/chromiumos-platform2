@@ -99,7 +99,7 @@ CrosHealthdMojoAdapterDelegateImpl::GetCrosHealthdServiceFactory() {
   bool success = false;
   dbus_thread_.task_runner()->PostTask(
       FROM_HERE,
-      base::Bind(
+      base::BindOnce(
           &DoDBusBootstrap,
           channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD().release(),
           &event, &token, &success));

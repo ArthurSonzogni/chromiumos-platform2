@@ -39,7 +39,7 @@ void PropertyChanged(const std::string& property_name) {}
 
 std::unique_ptr<BluetoothClient::AdapterProperties> GetAdapterProperties() {
   auto properties = std::make_unique<BluetoothClient::AdapterProperties>(
-      nullptr, base::Bind(&PropertyChanged));
+      nullptr, base::BindRepeating(&PropertyChanged));
   properties->address.ReplaceValue("aa:bb:cc:dd:ee:ff");
   properties->name.ReplaceValue("sarien-laptop");
   properties->powered.ReplaceValue(true);
@@ -51,7 +51,7 @@ std::unique_ptr<BluetoothClient::AdapterProperties> GetAdapterProperties() {
 
 std::unique_ptr<BluetoothClient::DeviceProperties> GetDeviceProperties() {
   auto properties = std::make_unique<BluetoothClient::DeviceProperties>(
-      nullptr, base::Bind(&PropertyChanged));
+      nullptr, base::BindRepeating(&PropertyChanged));
   properties->address.ReplaceValue("70:88:6B:92:34:70");
   properties->name.ReplaceValue("GID6B");
   properties->connected.ReplaceValue(true);

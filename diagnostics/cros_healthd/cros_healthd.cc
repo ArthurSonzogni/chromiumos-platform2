@@ -82,7 +82,7 @@ CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
       udev_events_.get());
 
   service_factory_receiver_set_.set_disconnect_handler(
-      base::Bind(&CrosHealthd::OnDisconnect, base::Unretained(this)));
+      base::BindRepeating(&CrosHealthd::OnDisconnect, base::Unretained(this)));
 }
 
 CrosHealthd::~CrosHealthd() = default;

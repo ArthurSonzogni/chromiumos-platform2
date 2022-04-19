@@ -81,7 +81,7 @@ class BatteryDischargeRoutine final : public DiagnosticRoutine {
   // clock to be overridden for testing.
   const base::TickClock* tick_clock_;
   // Wraps DetermineRoutineResult in a cancellable callback.
-  base::CancelableClosure callback_;
+  base::CancelableOnceClosure callback_;
 
   // Must be the last class member.
   base::WeakPtrFactory<BatteryDischargeRoutine> weak_ptr_factory_{this};

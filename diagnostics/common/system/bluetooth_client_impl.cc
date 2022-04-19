@@ -101,9 +101,9 @@ dbus::PropertySet* BluetoothClientImpl::CreateProperties(
     const std::string& interface_name) {
   VLOG(3) << __func__ << " " << object_path.value() << " " << interface_name;
 
-  auto callback =
-      base::Bind(&BluetoothClientImpl::PropertyChanged,
-                 weak_ptr_factory_.GetWeakPtr(), object_path, interface_name);
+  auto callback = base::BindRepeating(&BluetoothClientImpl::PropertyChanged,
+                                      weak_ptr_factory_.GetWeakPtr(),
+                                      object_path, interface_name);
   if (interface_name == bluetooth_adapter::kBluetoothAdapterInterface) {
     return new AdapterProperties(object_proxy, callback);
   }

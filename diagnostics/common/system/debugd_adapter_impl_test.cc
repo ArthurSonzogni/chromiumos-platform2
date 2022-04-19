@@ -70,7 +70,7 @@ TEST_F(DebugdAdapterImplTest, GetSmartAttributes) {
             std::move(success_callback).Run(kResult);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
-  debugd_adapter_->GetSmartAttributes(base::Bind(
+  debugd_adapter_->GetSmartAttributes(base::BindOnce(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
@@ -84,7 +84,7 @@ TEST_F(DebugdAdapterImplTest, GetSmartAttributesError) {
             std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
-  debugd_adapter_->GetSmartAttributes(base::Bind(
+  debugd_adapter_->GetSmartAttributes(base::BindOnce(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
@@ -98,7 +98,7 @@ TEST_F(DebugdAdapterImplTest, GetNvmeIdentity) {
             std::move(success_callback).Run(kResult);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
-  debugd_adapter_->GetNvmeIdentity(base::Bind(
+  debugd_adapter_->GetNvmeIdentity(base::BindOnce(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
@@ -112,7 +112,7 @@ TEST_F(DebugdAdapterImplTest, GetNvmeIdentityError) {
             std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
-  debugd_adapter_->GetNvmeIdentity(base::Bind(
+  debugd_adapter_->GetNvmeIdentity(base::BindOnce(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
@@ -152,7 +152,7 @@ TEST_F(DebugdAdapterImplTest, RunNvmeShortSelfTest) {
             std::move(success_callback).Run(kResult);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
-  debugd_adapter_->RunNvmeShortSelfTest(base::Bind(
+  debugd_adapter_->RunNvmeShortSelfTest(base::BindOnce(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
@@ -166,7 +166,7 @@ TEST_F(DebugdAdapterImplTest, RunNvmeShortSelfTestError) {
             std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
-  debugd_adapter_->RunNvmeShortSelfTest(base::Bind(
+  debugd_adapter_->RunNvmeShortSelfTest(base::BindOnce(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
@@ -180,7 +180,7 @@ TEST_F(DebugdAdapterImplTest, RunNvmeLongSelfTest) {
             std::move(success_callback).Run(kResult);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
-  debugd_adapter_->RunNvmeLongSelfTest(base::Bind(
+  debugd_adapter_->RunNvmeLongSelfTest(base::BindOnce(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
@@ -194,7 +194,7 @@ TEST_F(DebugdAdapterImplTest, RunNvmeLongSelfTestError) {
             std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
-  debugd_adapter_->RunNvmeLongSelfTest(base::Bind(
+  debugd_adapter_->RunNvmeLongSelfTest(base::BindOnce(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
@@ -208,7 +208,7 @@ TEST_F(DebugdAdapterImplTest, StopNvmeSelfTest) {
             std::move(success_callback).Run(kResult);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
-  debugd_adapter_->StopNvmeSelfTest(base::Bind(
+  debugd_adapter_->StopNvmeSelfTest(base::BindOnce(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
@@ -222,7 +222,7 @@ TEST_F(DebugdAdapterImplTest, StopNvmeSelfTestError) {
             std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
-  debugd_adapter_->StopNvmeSelfTest(base::Bind(
+  debugd_adapter_->StopNvmeSelfTest(base::BindOnce(
       &MockCallback::OnStringResultCallback, base::Unretained(&callback_)));
 }
 
@@ -238,10 +238,10 @@ TEST_F(DebugdAdapterImplTest, GetNvmeLog) {
             std::move(success_callback).Run(kResult);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback(kResult, nullptr));
-  debugd_adapter_->GetNvmeLog(kNvmeGetLogPageId, kNvmeGetLogDataLength,
-                              kNvmeGetLogRawBinary,
-                              base::Bind(&MockCallback::OnStringResultCallback,
-                                         base::Unretained(&callback_)));
+  debugd_adapter_->GetNvmeLog(
+      kNvmeGetLogPageId, kNvmeGetLogDataLength, kNvmeGetLogRawBinary,
+      base::BindOnce(&MockCallback::OnStringResultCallback,
+                     base::Unretained(&callback_)));
 }
 
 // Tests that GetNvmeLog calls callback with error on failure.
@@ -256,10 +256,10 @@ TEST_F(DebugdAdapterImplTest, GetNvmeLogError) {
             std::move(error_callback).Run(error);
           })));
   EXPECT_CALL(callback_, OnStringResultCallback("", kError.get()));
-  debugd_adapter_->GetNvmeLog(kNvmeGetLogPageId, kNvmeGetLogDataLength,
-                              kNvmeGetLogRawBinary,
-                              base::Bind(&MockCallback::OnStringResultCallback,
-                                         base::Unretained(&callback_)));
+  debugd_adapter_->GetNvmeLog(
+      kNvmeGetLogPageId, kNvmeGetLogDataLength, kNvmeGetLogRawBinary,
+      base::BindOnce(&MockCallback::OnStringResultCallback,
+                     base::Unretained(&callback_)));
 }
 
 }  // namespace

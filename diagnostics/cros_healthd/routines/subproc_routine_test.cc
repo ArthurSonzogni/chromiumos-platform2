@@ -209,7 +209,7 @@ TEST_F(SubprocRoutineTest, InvokeSubprocWithPreStartCallbackFailure) {
   StrictMock<MockCallback>* mock_callback = new StrictMock<MockCallback>();
   EXPECT_CALL(*mock_callback, PreStart()).WillOnce(Return(false));
   base::OnceCallback<bool()> cb =
-      base::Bind(&MockCallback::PreStart, base::Owned(mock_callback));
+      base::BindOnce(&MockCallback::PreStart, base::Owned(mock_callback));
   RegisterPreStartCallback(std::move(cb));
 
   routine()->Start();

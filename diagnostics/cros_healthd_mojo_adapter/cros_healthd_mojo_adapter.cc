@@ -268,10 +268,10 @@ class CrosHealthdMojoAdapterImpl final : public CrosHealthdMojoAdapter {
 // Saves |response| to |response_destination|.
 template <class T>
 void OnMojoResponseReceived(T* response_destination,
-                            base::Closure quit_closure,
+                            base::OnceClosure quit_closure,
                             T response) {
   *response_destination = std::move(response);
-  quit_closure.Run();
+  std::move(quit_closure).Run();
 }
 
 CrosHealthdMojoAdapterImpl::CrosHealthdMojoAdapterImpl(
@@ -295,7 +295,7 @@ CrosHealthdMojoAdapterImpl::GetServiceStatus() {
 
   chromeos::cros_healthd::mojom::ServiceStatusPtr response;
   base::RunLoop run_loop;
-  cros_healthd_system_service_->GetServiceStatus(base::Bind(
+  cros_healthd_system_service_->GetServiceStatus(base::BindOnce(
       &OnMojoResponseReceived<chromeos::cros_healthd::mojom::ServiceStatusPtr>,
       &response, run_loop.QuitClosure()));
   run_loop.Run();
@@ -314,9 +314,9 @@ CrosHealthdMojoAdapterImpl::GetTelemetryInfo(
   base::RunLoop run_loop;
   cros_healthd_probe_service_->ProbeTelemetryInfo(
       categories_to_probe,
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::TelemetryInfoPtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::TelemetryInfoPtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -330,9 +330,9 @@ CrosHealthdMojoAdapterImpl::GetProcessInfo(pid_t pid) {
   chromeos::cros_healthd::mojom::ProcessResultPtr response;
   base::RunLoop run_loop;
   cros_healthd_probe_service_->ProbeProcessInfo(
-      pid, base::Bind(&OnMojoResponseReceived<
-                          chromeos::cros_healthd::mojom::ProcessResultPtr>,
-                      &response, run_loop.QuitClosure()));
+      pid, base::BindOnce(&OnMojoResponseReceived<
+                              chromeos::cros_healthd::mojom::ProcessResultPtr>,
+                          &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -354,9 +354,9 @@ CrosHealthdMojoAdapterImpl::RunUrandomRoutine(
   }
   cros_healthd_diagnostics_service_->RunUrandomRoutine(
       std::move(length_seconds_parameter),
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -370,9 +370,9 @@ CrosHealthdMojoAdapterImpl::RunBatteryCapacityRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunBatteryCapacityRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -386,9 +386,9 @@ CrosHealthdMojoAdapterImpl::RunBatteryHealthRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunBatteryHealthRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -402,9 +402,9 @@ CrosHealthdMojoAdapterImpl::RunSmartctlCheckRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunSmartctlCheckRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -421,9 +421,9 @@ CrosHealthdMojoAdapterImpl::RunAcPowerRoutine(
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunAcPowerRoutine(
       expected_status, expected_power_type,
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -445,9 +445,9 @@ CrosHealthdMojoAdapterImpl::RunCpuCacheRoutine(
   }
   cros_healthd_diagnostics_service_->RunCpuCacheRoutine(
       std::move(exec_duration_parameter),
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -469,9 +469,9 @@ CrosHealthdMojoAdapterImpl::RunCpuStressRoutine(
   }
   cros_healthd_diagnostics_service_->RunCpuStressRoutine(
       std::move(exec_duration_parameter),
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -493,9 +493,9 @@ CrosHealthdMojoAdapterImpl::RunFloatingPointAccuracyRoutine(
   }
   cros_healthd_diagnostics_service_->RunFloatingPointAccuracyRoutine(
       std::move(exec_duration_parameter),
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -511,9 +511,9 @@ CrosHealthdMojoAdapterImpl::RunNvmeWearLevelRoutine(
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunNvmeWearLevelRoutine(
       wear_level_threshold,
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -529,9 +529,9 @@ CrosHealthdMojoAdapterImpl::RunNvmeSelfTestRoutine(
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunNvmeSelfTestRoutine(
       nvme_self_test_type,
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -549,9 +549,9 @@ CrosHealthdMojoAdapterImpl::RunDiskReadRoutine(
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunDiskReadRoutine(
       type, exec_duration.InSeconds(), file_size_mb,
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -573,9 +573,9 @@ CrosHealthdMojoAdapterImpl::RunPrimeSearchRoutine(
   }
   cros_healthd_diagnostics_service_->RunPrimeSearchRoutine(
       std::move(exec_duration_parameter),
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -591,9 +591,9 @@ CrosHealthdMojoAdapterImpl::RunBatteryDischargeRoutine(
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunBatteryDischargeRoutine(
       exec_duration.InSeconds(), maximum_discharge_percent_allowed,
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -609,9 +609,9 @@ CrosHealthdMojoAdapterImpl::RunBatteryChargeRoutine(
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunBatteryChargeRoutine(
       exec_duration.InSeconds(), minimum_charge_percent_required,
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -625,9 +625,9 @@ CrosHealthdMojoAdapterImpl::RunLanConnectivityRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunLanConnectivityRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -641,9 +641,9 @@ CrosHealthdMojoAdapterImpl::RunSignalStrengthRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunSignalStrengthRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -657,9 +657,9 @@ CrosHealthdMojoAdapterImpl::RunMemoryRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunMemoryRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -673,9 +673,9 @@ CrosHealthdMojoAdapterImpl::RunGatewayCanBePingedRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunGatewayCanBePingedRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -689,9 +689,9 @@ CrosHealthdMojoAdapterImpl::RunHasSecureWiFiConnectionRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunHasSecureWiFiConnectionRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -705,9 +705,9 @@ CrosHealthdMojoAdapterImpl::RunDnsResolverPresentRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunDnsResolverPresentRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -721,9 +721,9 @@ CrosHealthdMojoAdapterImpl::RunDnsLatencyRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunDnsLatencyRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -737,9 +737,9 @@ CrosHealthdMojoAdapterImpl::RunDnsResolutionRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunDnsResolutionRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -753,9 +753,9 @@ CrosHealthdMojoAdapterImpl::RunCaptivePortalRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunCaptivePortalRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -769,9 +769,9 @@ CrosHealthdMojoAdapterImpl::RunHttpFirewallRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunHttpFirewallRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -785,9 +785,9 @@ CrosHealthdMojoAdapterImpl::RunHttpsFirewallRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunHttpsFirewallRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -801,9 +801,9 @@ CrosHealthdMojoAdapterImpl::RunHttpsLatencyRoutine() {
   chromeos::cros_healthd::mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunHttpsLatencyRoutine(
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -819,9 +819,9 @@ CrosHealthdMojoAdapterImpl::RunVideoConferencingRoutine(
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunVideoConferencingRoutine(
       stun_server_hostname,
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;
@@ -882,13 +882,13 @@ CrosHealthdMojoAdapterImpl::GetAvailableRoutines() {
 
   std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum> response;
   base::RunLoop run_loop;
-  cros_healthd_diagnostics_service_->GetAvailableRoutines(base::Bind(
+  cros_healthd_diagnostics_service_->GetAvailableRoutines(base::BindOnce(
       [](std::vector<chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>* out,
-         base::Closure quit_closure,
+         base::OnceClosure quit_closure,
          const std::vector<
              chromeos::cros_healthd::mojom::DiagnosticRoutineEnum>& routines) {
         *out = routines;
-        quit_closure.Run();
+        std::move(quit_closure).Run();
       },
       &response, run_loop.QuitClosure()));
   run_loop.Run();
@@ -908,9 +908,9 @@ CrosHealthdMojoAdapterImpl::GetRoutineUpdate(
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->GetRoutineUpdate(
       id, command, include_output,
-      base::Bind(&OnMojoResponseReceived<
-                     chromeos::cros_healthd::mojom::RoutineUpdatePtr>,
-                 &response, run_loop.QuitClosure()));
+      base::BindOnce(&OnMojoResponseReceived<
+                         chromeos::cros_healthd::mojom::RoutineUpdatePtr>,
+                     &response, run_loop.QuitClosure()));
   run_loop.Run();
 
   return response;

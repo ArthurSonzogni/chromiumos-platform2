@@ -149,9 +149,9 @@ BatteryDischargeRoutine::RunBatteryDischargeRoutine() {
 
   start_ticks_ = tick_clock_->NowTicks();
 
-  callback_.Reset(base::Bind(&BatteryDischargeRoutine::DetermineRoutineResult,
-                             weak_ptr_factory_.GetWeakPtr(),
-                             beginning_charge_percent));
+  callback_.Reset(
+      base::BindOnce(&BatteryDischargeRoutine::DetermineRoutineResult,
+                     weak_ptr_factory_.GetWeakPtr(), beginning_charge_percent));
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, callback_.callback(), exec_duration_);
 

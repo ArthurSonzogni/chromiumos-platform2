@@ -40,10 +40,10 @@ constexpr uint64_t kOverflowingValue = 0xFFFFFFFFFF;
 
 // Saves |response| to |response_destination|.
 void OnGetFanSpeedResponseReceived(mojom::FanResultPtr* response_destination,
-                                   base::Closure quit_closure,
+                                   base::OnceClosure quit_closure,
                                    mojom::FanResultPtr response) {
   *response_destination = std::move(response);
-  quit_closure.Run();
+  std::move(quit_closure).Run();
 }
 
 class FanUtilsTest : public ::testing::Test {
