@@ -110,8 +110,8 @@ class VmBuilder {
   base::StringPairs BuildVmArgs() const;
 
   // Returns the command line arguments to start a sibling VM as well as the VVU
-  // devices associated with it. Returns base::nullopt in case of any error.
-  base::Optional<SiblingStartCommands> BuildSiblingCmds(
+  // devices associated with it. Returns std::nullopt in case of any error.
+  std::optional<SiblingStartCommands> BuildSiblingCmds(
       std::vector<VvuDeviceInfo> vvu_devices_info) const;
 
  private:

@@ -429,7 +429,7 @@ base::StringPairs VmBuilder::BuildVmArgs() const {
   return args;
 }
 
-base::Optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
+std::optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
     std::vector<VvuDeviceInfo> vvu_devices_info) const {
   VmBuilder::SiblingStartCommands cmds;
   cmds.sibling_cmd_args = BuildBaseSiblingArgs();
@@ -440,7 +440,7 @@ base::Optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
   if (vvu_devices_info.size() <
       ((index - kVvuProxyMinIndex) + serial_devices_.size())) {
     LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   for (size_t i = 0; i < serial_devices_.size(); ++i) {
@@ -460,7 +460,7 @@ base::Optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
     // There need to be enough socket indices to support all VVU devices.
     if (vvu_devices_info.size() < ((index - kVvuProxyMinIndex) + 1)) {
       LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
-      return base::nullopt;
+      return std::nullopt;
     }
 
     const VvuDeviceInfo& vvu_device_info = vvu_devices_info[index++];
@@ -483,7 +483,7 @@ base::Optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
   // There need to be enough socket indices to support all VVU devices.
   if (vvu_devices_info.size() < ((index - kVvuProxyMinIndex) + disks_.size())) {
     LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   for (const auto& d : disks_) {
@@ -504,7 +504,7 @@ base::Optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
     // There need to be enough socket indices to support all VVU devices.
     if (vvu_devices_info.size() < ((index - kVvuProxyMinIndex) + 1)) {
       LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
-      return base::nullopt;
+      return std::nullopt;
     }
 
     const VvuDeviceInfo& vvu_device_info = vvu_devices_info[index++];
@@ -523,7 +523,7 @@ base::Optional<VmBuilder::SiblingStartCommands> VmBuilder::BuildSiblingCmds(
   if (vvu_devices_info.size() <
       ((index - kVvuProxyMinIndex) + tap_fds_.size())) {
     LOG(ERROR) << "Not enough socket indices: " << vvu_devices_info.size();
-    return base::nullopt;
+    return std::nullopt;
   }
 
   for (const auto& tap_fd : tap_fds_) {

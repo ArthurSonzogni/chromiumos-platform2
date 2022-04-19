@@ -83,14 +83,14 @@ struct __attribute__((packed)) VvuProxyDeviceConfig {
 };
 
 // Returns the vendor ID for the PCI device at |pci_device|. Returns
-// base::nullopt in case of any parsing errors.
-base::Optional<int64_t> GetPciDeviceVendorId(const base::FilePath& pci_device) {
+// std::nullopt in case of any parsing errors.
+std::optional<int64_t> GetPciDeviceVendorId(const base::FilePath& pci_device) {
   base::FilePath vendor_id_path = pci_device.Append(kPciVendorIdFileName);
 
   std::string vendor_id;
   if (!base::ReadFileToString(vendor_id_path, &vendor_id)) {
     LOG(ERROR) << "Failed to read vendor id for: " << pci_device;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // sysfs adds a newline to this value. Remove it.
@@ -99,21 +99,21 @@ base::Optional<int64_t> GetPciDeviceVendorId(const base::FilePath& pci_device) {
   int64_t parsed_vendor_id;
   if (!base::HexStringToInt64(vendor_id, &parsed_vendor_id)) {
     LOG(ERROR) << "Failed to parse vendor id for: " << pci_device;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return parsed_vendor_id;
 }
 
 // Returns the device ID for the PCI device at |pci_device|. Returns
-// base::nullopt in case of any parsing errors.
-base::Optional<int64_t> GetPciDeviceDeviceId(const base::FilePath& pci_device) {
+// std::nullopt in case of any parsing errors.
+std::optional<int64_t> GetPciDeviceDeviceId(const base::FilePath& pci_device) {
   base::FilePath device_id_path = pci_device.Append(kPciDeviceIdFileName);
 
   std::string device_id;
   if (!base::ReadFileToString(device_id_path, &device_id)) {
     LOG(ERROR) << "Failed to read device id for: " << pci_device;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // sysfs adds a newline to this value. Remove it.
@@ -122,7 +122,7 @@ base::Optional<int64_t> GetPciDeviceDeviceId(const base::FilePath& pci_device) {
   int64_t parsed_device_id;
   if (!base::HexStringToInt64(device_id, &parsed_device_id)) {
     LOG(ERROR) << "Failed to parse device id for: " << pci_device;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   return parsed_device_id;
@@ -161,9 +161,9 @@ base::File OpenVfioGroup(const base::FilePath& pci_device) {
 // Walks all the PCI capabilities of |vfio_device| and tries to find the bar
 // and offset corresponding to the device's configuration.
 //
-// Returns base::nullopt if there is a parsing error or it can't find the
+// Returns std::nullopt if there is a parsing error or it can't find the
 // location.
-base::Optional<PciDeviceConfigLocation> FindPciDeviceConfigLocation(
+std::optional<PciDeviceConfigLocation> FindPciDeviceConfigLocation(
     base::File* vfio_device) {
   uint8_t config[kPciDeviceConfigurationSize] = {0};
 
@@ -174,13 +174,13 @@ base::Optional<PciDeviceConfigLocation> FindPciDeviceConfigLocation(
       ioctl(vfio_device->GetPlatformFile(), VFIO_DEVICE_GET_REGION_INFO, &reg);
   if (ret != 0) {
     LOG(ERROR) << "Failed to get config region info: " << ret;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (!vfio_device->ReadAndCheck(
           reg.offset, base::make_span(config).subspan(0, reg.size))) {
     PLOG(ERROR) << "Failed to read config";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Location of the first capability is at offset |kFirstCapabilityOffset|
@@ -195,7 +195,7 @@ base::Optional<PciDeviceConfigLocation> FindPciDeviceConfigLocation(
     // malicious or malformed device. Bail in this situation.
     if (num_tries >= kMaxPciCapabilities) {
       LOG(ERROR) << "Maxed out capability walk iterations for PCI devices";
-      return base::nullopt;
+      return std::nullopt;
     }
 
     virtio_pci_cap virtio_pci_cap = {0};
@@ -204,7 +204,7 @@ base::Optional<PciDeviceConfigLocation> FindPciDeviceConfigLocation(
     if (capability_offset + sizeof(virtio_pci_cap) >=
         kPciDeviceConfigurationSize) {
       LOG(ERROR) << "Encountered bad capability offset: " << capability_offset;
-      return base::nullopt;
+      return std::nullopt;
     }
     memcpy(&virtio_pci_cap, &config[capability_offset], sizeof(virtio_pci_cap));
 
@@ -222,14 +222,14 @@ base::Optional<PciDeviceConfigLocation> FindPciDeviceConfigLocation(
     num_tries++;
   }
 
-  return base::nullopt;
+  return std::nullopt;
 }
 
 // This function returns the device configuration corresponding to |pci_device|.
-// Returns base::nullopt if there's an error reading the device configuration.
+// Returns std::nullopt if there's an error reading the device configuration.
 //
 // The caller must ensure that |pci_device| is a VVU device.
-base::Optional<VvuProxyDeviceConfig> ReadVvuProxyDeviceConfig(
+std::optional<VvuProxyDeviceConfig> ReadVvuProxyDeviceConfig(
     const base::FilePath& pci_device) {
   // Initialize VFIO access to |pci_device|.
   base::File vfio_container(base::FilePath("/dev/vfio/vfio"),
@@ -238,18 +238,18 @@ base::Optional<VvuProxyDeviceConfig> ReadVvuProxyDeviceConfig(
                                 base::File::Flags::FLAG_WRITE);
   if (!vfio_container.IsValid()) {
     PLOG(ERROR) << "Failed to open vfio container";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   if (ioctl(vfio_container.GetPlatformFile(), VFIO_GET_API_VERSION) !=
       VFIO_API_VERSION) {
     LOG(ERROR) << "VFIO API version mismatch";
-    return base::nullopt;
+    return std::nullopt;
   }
 
   base::File vfio_group = OpenVfioGroup(pci_device);
   if (!vfio_group.IsValid()) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Store the fd in a local variable because VFIO_GROUP_SET_CONTAINER
@@ -259,7 +259,7 @@ base::Optional<VvuProxyDeviceConfig> ReadVvuProxyDeviceConfig(
                   &container_fd);
   if (ret != 0) {
     LOG(ERROR) << "Failed to set container: " << ret;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // We're not doing any IO, but we still can't get the device fd
@@ -268,14 +268,14 @@ base::Optional<VvuProxyDeviceConfig> ReadVvuProxyDeviceConfig(
       ioctl(vfio_container.GetPlatformFile(), VFIO_SET_IOMMU, VFIO_TYPE1_IOMMU);
   if (ret != 0) {
     LOG(ERROR) << "Failed to set VFIO IOMMU: " << ret;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   ret = ioctl(vfio_group.GetPlatformFile(), VFIO_GROUP_GET_DEVICE_FD,
               pci_device.BaseName().MaybeAsASCII().c_str());
   if (ret < 0) {
     LOG(ERROR) << "Failed to get device fd: " << ret;
-    return base::nullopt;
+    return std::nullopt;
   }
   base::File vfio_device(ret);
 
@@ -283,7 +283,7 @@ base::Optional<VvuProxyDeviceConfig> ReadVvuProxyDeviceConfig(
   auto device_config_location = FindPciDeviceConfigLocation(&vfio_device);
   if (!device_config_location) {
     LOG(ERROR) << "Failed to find device config for " << pci_device;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   // Read the bar at the offset calculated above to get the VVU device's
@@ -294,7 +294,7 @@ base::Optional<VvuProxyDeviceConfig> ReadVvuProxyDeviceConfig(
   ret = ioctl(vfio_device.GetPlatformFile(), VFIO_DEVICE_GET_REGION_INFO, &reg);
   if (ret != 0) {
     LOG(ERROR) << "Failed to get config region info: " << ret;
-    return base::nullopt;
+    return std::nullopt;
   }
 
   VvuProxyDeviceConfig vvu_proxy_device_config;
@@ -303,7 +303,7 @@ base::Optional<VvuProxyDeviceConfig> ReadVvuProxyDeviceConfig(
           base::as_writable_bytes(
               base::make_span(&vvu_proxy_device_config, 1)))) {
     PLOG(ERROR) << "Failed to read device config";
-    return base::nullopt;
+    return std::nullopt;
   }
   return vvu_proxy_device_config;
 }
@@ -361,16 +361,16 @@ bool RebindDevice(const base::FilePath& pci_device, std::string driver) {
 // index from the VVU device's UUID.
 //
 // The caller must ensure that |pci_device| is a VVU device.
-base::Optional<int32_t> GetVvuDeviceSocketIndex(
+std::optional<int32_t> GetVvuDeviceSocketIndex(
     const base::FilePath& pci_device) {
   // Rebind so we can access VVU device via VFIO.
   if (!RebindDevice(pci_device, "vfio-pci")) {
-    return base::nullopt;
+    return std::nullopt;
   }
 
   auto vvu_proxy_device_config = ReadVvuProxyDeviceConfig(pci_device);
   if (!vvu_proxy_device_config) {
-    return base::nullopt;
+    return std::nullopt;
   }
   // The socket index is placed in the UUID at byte index |kVvuSocketIndexByte|.
   return vvu_proxy_device_config->uuid[kVvuSocketIndexByte];
@@ -379,7 +379,7 @@ base::Optional<int32_t> GetVvuDeviceSocketIndex(
 // Returns true iff |pci_device| is a VVU device by comparing it's vendor id and
 // device id.
 bool IsVvuPciDevice(const base::FilePath& pci_device) {
-  base::Optional<int64_t> vendor_id = GetPciDeviceVendorId(pci_device);
+  std::optional<int64_t> vendor_id = GetPciDeviceVendorId(pci_device);
   if (!vendor_id) {
     return false;
   }
@@ -389,7 +389,7 @@ bool IsVvuPciDevice(const base::FilePath& pci_device) {
     return false;
   }
 
-  base::Optional<int64_t> device_id = GetPciDeviceDeviceId(pci_device);
+  std::optional<int64_t> device_id = GetPciDeviceDeviceId(pci_device);
   if (!device_id) {
     return false;
   }
