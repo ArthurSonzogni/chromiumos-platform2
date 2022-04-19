@@ -248,7 +248,7 @@ void WebPlatformModelImpl::Compute(
   if (interpreter_->inputs().size() != name_tensors.size()) {
     std::move(callback).Run(
         model_loader::mojom::ComputeResult::kIncorrectNumberOfInputs,
-        base::nullopt);
+        std::nullopt);
     return;
   }
 
@@ -258,13 +258,13 @@ void WebPlatformModelImpl::Compute(
     auto iter = name_tensors.find(tensor_name);
     if (iter == name_tensors.end()) {
       std::move(callback).Run(model_loader::mojom::ComputeResult::kMissingInput,
-                              base::nullopt);
+                              std::nullopt);
       return;
     }
     if (iter->second.size() != interpreter_->tensor(tensor_idx)->bytes) {
       std::move(callback).Run(
           model_loader::mojom::ComputeResult::kInvalidInputBufferSize,
-          base::nullopt);
+          std::nullopt);
       return;
     }
   }
@@ -280,7 +280,7 @@ void WebPlatformModelImpl::Compute(
   // Does the computation.
   if (interpreter_->Invoke() != kTfLiteOk) {
     std::move(callback).Run(model_loader::mojom::ComputeResult::kUnknownError,
-                            base::nullopt);
+                            std::nullopt);
     return;
   }
 

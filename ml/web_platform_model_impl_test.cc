@@ -293,7 +293,7 @@ TEST(WebPlatformModelTest, LoadAndComputeWithSharedBufferInput) {
         base::BindOnce(
             [](bool* compute_callback_done,
                model_loader::mojom::ComputeResult result,
-               const absl::optional<base::flat_map<
+               const std::optional<base::flat_map<
                    std::string, std::vector<uint8_t>>>& output_tensors) {
               ASSERT_EQ(result, model_loader::mojom::ComputeResult::kOk);
               ASSERT_TRUE(output_tensors.has_value());
@@ -328,7 +328,7 @@ TEST(WebPlatformModelTest, LoadAndComputeWithSharedBufferInput) {
         base::BindOnce(
             [](bool* compute_callback_done,
                model_loader::mojom::ComputeResult result,
-               const absl::optional<base::flat_map<
+               const std::optional<base::flat_map<
                    std::string, std::vector<uint8_t>>>& output_tensors) {
               ASSERT_EQ(
                   result,
@@ -360,7 +360,7 @@ TEST(WebPlatformModelTest, LoadAndComputeWithSharedBufferInput) {
         base::BindOnce(
             [](bool* compute_callback_done,
                model_loader::mojom::ComputeResult result,
-               const absl::optional<base::flat_map<
+               const std::optional<base::flat_map<
                    std::string, std::vector<uint8_t>>>& output_tensors) {
               ASSERT_EQ(result,
                         model_loader::mojom::ComputeResult::kMissingInput);
@@ -394,7 +394,7 @@ TEST(WebPlatformModelTest, LoadAndComputeWithSharedBufferInput) {
         base::BindOnce(
             [](bool* compute_callback_done,
                model_loader::mojom::ComputeResult result,
-               const absl::optional<base::flat_map<
+               const std::optional<base::flat_map<
                    std::string, std::vector<uint8_t>>>& output_tensors) {
               ASSERT_EQ(
                   result,
@@ -509,7 +509,7 @@ TEST(WebPlatformModelTest, LoadAndComputeWithBytesInput) {
         base::BindOnce(
             [](bool* compute_callback_done,
                model_loader::mojom::ComputeResult result,
-               const absl::optional<base::flat_map<
+               const std::optional<base::flat_map<
                    std::string, std::vector<uint8_t>>>& output_tensors) {
               ASSERT_EQ(result, model_loader::mojom::ComputeResult::kOk);
               ASSERT_TRUE(output_tensors.has_value());
@@ -543,7 +543,7 @@ TEST(WebPlatformModelTest, LoadAndComputeWithBytesInput) {
         base::BindOnce(
             [](bool* compute_callback_done,
                model_loader::mojom::ComputeResult result,
-               const absl::optional<base::flat_map<
+               const std::optional<base::flat_map<
                    std::string, std::vector<uint8_t>>>& output_tensors) {
               ASSERT_EQ(
                   result,
@@ -575,7 +575,7 @@ TEST(WebPlatformModelTest, LoadAndComputeWithBytesInput) {
         base::BindOnce(
             [](bool* compute_callback_done,
                model_loader::mojom::ComputeResult result,
-               const absl::optional<base::flat_map<
+               const std::optional<base::flat_map<
                    std::string, std::vector<uint8_t>>>& output_tensors) {
               ASSERT_EQ(result,
                         model_loader::mojom::ComputeResult::kMissingInput);
@@ -609,7 +609,7 @@ TEST(WebPlatformModelTest, LoadAndComputeWithBytesInput) {
         base::BindOnce(
             [](bool* compute_callback_done,
                model_loader::mojom::ComputeResult result,
-               const absl::optional<base::flat_map<
+               const std::optional<base::flat_map<
                    std::string, std::vector<uint8_t>>>& output_tensors) {
               ASSERT_EQ(
                   result,

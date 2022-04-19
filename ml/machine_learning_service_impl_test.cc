@@ -1863,7 +1863,7 @@ TEST(WebPlatformModelTest, ValidInputs) {
       std::move(inputs),
       base::BindOnce(
           [](bool* callback_done, model_loader::mojom::ComputeResult result,
-             const absl::optional<
+             const std::optional<
                  base::flat_map<std::string, std::vector<uint8_t>>>& outputs) {
             ASSERT_EQ(result, model_loader::mojom::ComputeResult::kOk);
             ASSERT_TRUE(outputs.has_value());
