@@ -18,9 +18,6 @@
 #include <dbus/bus.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
-#include "diagnostics/common/system/bluetooth_client.h"
-#include "diagnostics/common/system/debugd_adapter.h"
-#include "diagnostics/common/system/powerd_adapter.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
@@ -32,6 +29,9 @@
 #include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/utils/system/bluetooth_client.h"
+#include "diagnostics/wilco_dtc_supportd/utils/system/debugd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/utils/system/powerd_adapter.h"
 #include "wilco_dtc.grpc.pb.h"           // NOLINT(build/include_directory)
 #include "wilco_dtc_supportd.grpc.pb.h"  // NOLINT(build/include_directory)
 

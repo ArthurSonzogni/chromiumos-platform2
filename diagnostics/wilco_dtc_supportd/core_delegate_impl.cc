@@ -10,13 +10,13 @@
 #include <base/logging.h>
 
 #include "debugd/dbus-proxies.h"
-#include "diagnostics/common/system/bluetooth_client_impl.h"
-#include "diagnostics/common/system/debugd_adapter_impl.h"
-#include "diagnostics/common/system/powerd_adapter_impl.h"
 #include "diagnostics/wilco_dtc_supportd/probe_service_impl.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service_impl.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service_impl.h"
+#include "diagnostics/wilco_dtc_supportd/utils/system/bluetooth_client_impl.h"
+#include "diagnostics/wilco_dtc_supportd/utils/system/debugd_adapter_impl.h"
+#include "diagnostics/wilco_dtc_supportd/utils/system/powerd_adapter_impl.h"
 
 namespace diagnostics {
 namespace wilco {

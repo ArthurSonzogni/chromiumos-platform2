@@ -18,12 +18,12 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/buffer.h>
 
-#include "diagnostics/common/mojo_test_utils.h"
-#include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/grpc_client_manager.h"
 #include "diagnostics/wilco_dtc_supportd/mock_mojo_client.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_grpc_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_service.h"
+#include "diagnostics/wilco_dtc_supportd/utils/mojo_test_utils.h"
+#include "diagnostics/wilco_dtc_supportd/utils/mojo_utils.h"
 
 #include "diagnostics/mojom/public/wilco_dtc_supportd.mojom.h"
 

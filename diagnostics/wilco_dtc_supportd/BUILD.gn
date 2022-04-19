@@ -17,7 +17,7 @@ source_set("libwilco_dtc_supportd") {
   configs += [ ":common_pkg_deps" ]
   deps = [
     "telemetry:libtelemetry",
-    "//diagnostics/common:libcommon",
+    "utils:libutils",
     "//diagnostics/constants:libconstants",
     "//diagnostics/grpc:wilco_dtc_grpc_protos",
     "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
@@ -76,7 +76,7 @@ if (use.test) {
     deps = [
       ":libwilco_dtc_supportd",
       "telemetry:telemetry_test",
-      "//diagnostics/common:mojo_testrunner",
+      "utils:mojo_testrunner",
     ]
   }
 }

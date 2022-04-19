@@ -25,13 +25,13 @@
 #include <google/protobuf/repeated_field.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/file_test_utils.h"
-#include "diagnostics/common/protobuf_test_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/wilco_dtc_supportd/ec_constants.h"
 #include "diagnostics/wilco_dtc_supportd/grpc_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/mock_system_files_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/mock_system_info_service.h"
+#include "diagnostics/wilco_dtc_supportd/utils/file_test_utils.h"
+#include "diagnostics/wilco_dtc_supportd/utils/protobuf_test_utils.h"
 #include "wilco_dtc_supportd.pb.h"  // NOLINT(build/include_directory)
 
 using testing::_;

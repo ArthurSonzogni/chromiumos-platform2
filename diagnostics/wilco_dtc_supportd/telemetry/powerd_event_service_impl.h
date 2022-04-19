@@ -10,8 +10,8 @@
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 #include <power_manager/proto_bindings/suspend.pb.h>
 
-#include "diagnostics/common/system/powerd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/utils/system/powerd_adapter.h"
 
 namespace diagnostics {
 namespace wilco {

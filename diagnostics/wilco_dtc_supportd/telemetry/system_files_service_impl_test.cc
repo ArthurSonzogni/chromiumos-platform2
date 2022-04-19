@@ -15,8 +15,8 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "diagnostics/common/file_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/system_files_service.h"
+#include "diagnostics/wilco_dtc_supportd/utils/file_test_utils.h"
 
 using testing::AnyOf;
 using testing::StrEq;

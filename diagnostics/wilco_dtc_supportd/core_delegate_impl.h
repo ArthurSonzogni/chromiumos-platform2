@@ -7,14 +7,14 @@
 
 #include <memory>
 
-#include "diagnostics/common/system/bluetooth_client.h"
-#include "diagnostics/common/system/debugd_adapter.h"
-#include "diagnostics/common/system/powerd_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/core.h"
 #include "diagnostics/wilco_dtc_supportd/probe_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/bluetooth_event_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/ec_service.h"
 #include "diagnostics/wilco_dtc_supportd/telemetry/powerd_event_service.h"
+#include "diagnostics/wilco_dtc_supportd/utils/system/bluetooth_client.h"
+#include "diagnostics/wilco_dtc_supportd/utils/system/debugd_adapter.h"
+#include "diagnostics/wilco_dtc_supportd/utils/system/powerd_adapter.h"
 
 namespace diagnostics {
 namespace wilco {

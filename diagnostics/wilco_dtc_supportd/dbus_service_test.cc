@@ -11,11 +11,11 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/common/mojo_test_utils.h"
 #include "diagnostics/wilco_dtc_supportd/dbus_service.h"
 #include "diagnostics/wilco_dtc_supportd/grpc_client_manager.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_grpc_adapter.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_service_factory.h"
+#include "diagnostics/wilco_dtc_supportd/utils/mojo_test_utils.h"
 
 using testing::StrictMock;
 using testing::Truly;

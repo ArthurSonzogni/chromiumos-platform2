@@ -10,8 +10,8 @@
 #include <base/check.h>
 #include <base/logging.h>
 
-#include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/wilco_dtc_supportd/json_utils.h"
+#include "diagnostics/wilco_dtc_supportd/utils/mojo_utils.h"
 
 namespace diagnostics {
 namespace wilco {
