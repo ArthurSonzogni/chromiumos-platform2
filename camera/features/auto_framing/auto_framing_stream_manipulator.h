@@ -62,7 +62,7 @@ class AutoFramingStreamManipulator : public StreamManipulator {
     FilterMode output_filter_mode = FilterMode::kBicubic;
 
     // Whether the CrOS Auto Framing is enabled.
-    absl::optional<bool> enable;
+    std::optional<bool> enable;
 
     // Whether to enable debug mode. In debug mode the frame is not cropped.
     // Instead the ROIs and active crop area is piggybacked in the
