@@ -119,6 +119,7 @@ source_set("hardware_abstraction_library") {
     "middleware/middleware.cc",
     "proxy/proxy.cc",
     "proxy/proxy_impl.cc",
+    "structures/key.cc",
   ]
 
   libs = []
