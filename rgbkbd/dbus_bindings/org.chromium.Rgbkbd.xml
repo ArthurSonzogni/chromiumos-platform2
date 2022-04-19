@@ -47,5 +47,15 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="SetTestingMode">
+      <tp:docstring>
+        Used for testing purposes only. If `enable_testing` is true, the Rgbkbd
+        daemon will be configured to a testing mode in which will write Rgbkbd
+        calls to logs. If `enable_testing` is false, the Rgbkbd daemon will be
+        configured to the non-testing mode.
+      </tp:docstring>
+      <arg name="enable_testing" type="b" direction="in"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
   </interface>
 </node>

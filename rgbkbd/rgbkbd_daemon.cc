@@ -11,13 +11,16 @@
 #include <dbus/bus.h>
 #include <dbus/rgbkbd/dbus-constants.h>
 
+#include "base/check.h"
 #include "rgbkbd/internal_rgb_keyboard.h"
+#include "rgbkbd/keyboard_backlight_logger.h"
 
 namespace rgbkbd {
 DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus)
     : org::chromium::RgbkbdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kRgbkbdServicePath)),
-      rgb_keyboard_controller_(std::make_unique<InternalRgbKeyboard>()) {}
+      internal_keyboard_(std::make_unique<InternalRgbKeyboard>()),
+      rgb_keyboard_controller_(internal_keyboard_.get()) {}
 
 void DBusAdaptor::RegisterAsync(
     const brillo::dbus_utils::AsyncEventSequencer::CompletionAction& cb) {
@@ -41,6 +44,18 @@ void DBusAdaptor::SetStaticBackgroundColor(uint32_t r, uint32_t g, uint32_t b) {
 
 void DBusAdaptor::SetRainbowMode() {
   rgb_keyboard_controller_.SetRainbowMode();
+}
+
+void DBusAdaptor::SetTestingMode(bool enable_testing) {
+  if (enable_testing) {
+    if (!logger_keyboard_) {
+      logger_keyboard_ = std::make_unique<KeyboardBacklightLogger>();
+    }
+    rgb_keyboard_controller_.SetKeyboardClient(logger_keyboard_.get());
+  } else {
+    DCHECK(internal_keyboard_);
+    rgb_keyboard_controller_.SetKeyboardClient(internal_keyboard_.get());
+  }
 }
 
 RgbkbdDaemon::RgbkbdDaemon() : DBusServiceDaemon(kRgbkbdServicePath) {}

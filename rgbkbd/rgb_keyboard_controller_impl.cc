@@ -6,12 +6,12 @@
 
 #include <utility>
 
+#include "base/check.h"
+
 namespace rgbkbd {
 
-RgbKeyboardControllerImpl::RgbKeyboardControllerImpl(
-    std::unique_ptr<RgbKeyboard> keyboard)
-    : keyboard_(std::move(keyboard)),
-      background_color_(kDefaultBackgroundColor) {}
+RgbKeyboardControllerImpl::RgbKeyboardControllerImpl(RgbKeyboard* keyboard)
+    : keyboard_(keyboard), background_color_(kDefaultBackgroundColor) {}
 RgbKeyboardControllerImpl::~RgbKeyboardControllerImpl() = default;
 
 uint32_t RgbKeyboardControllerImpl::GetRgbKeyboardCapabilities() {
@@ -44,6 +44,11 @@ void RgbKeyboardControllerImpl::SetStaticBackgroundColor(uint32_t r,
   if (caps_lock_enabled_) {
     SetCapsLockState(caps_lock_enabled_);
   }
+}
+
+void RgbKeyboardControllerImpl::SetKeyboardClient(RgbKeyboard* keyboard) {
+  DCHECK(keyboard);
+  keyboard_ = keyboard;
 }
 
 // TODO(jimmyxgong): Implement this stub.

@@ -12,6 +12,8 @@
 #include <dbus/rgbkbd/dbus-constants.h>
 
 #include "rgbkbd/dbus_adaptors/org.chromium.Rgbkbd.h"
+#include "rgbkbd/internal_rgb_keyboard.h"
+#include "rgbkbd/keyboard_backlight_logger.h"
 #include "rgbkbd/rgb_keyboard_controller_impl.h"
 
 namespace rgbkbd {
@@ -32,9 +34,12 @@ class DBusAdaptor : public org::chromium::RgbkbdInterface,
   void SetCapsLockState(bool enabled) override;
   void SetStaticBackgroundColor(uint32_t r, uint32_t g, uint32_t b) override;
   void SetRainbowMode() override;
+  void SetTestingMode(bool enable_testing) override;
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
+  std::unique_ptr<InternalRgbKeyboard> internal_keyboard_;
+  std::unique_ptr<KeyboardBacklightLogger> logger_keyboard_;
   RgbKeyboardControllerImpl rgb_keyboard_controller_;
 };
 

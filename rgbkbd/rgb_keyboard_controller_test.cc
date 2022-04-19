@@ -58,10 +58,8 @@ void ValidateLog(const std::vector<const KeyColor>& expected) {
 class RgbKeyboardControllerTest : public testing::Test {
  public:
   RgbKeyboardControllerTest() {
-    auto logger = std::make_unique<KeyboardBacklightLogger>();
-    logger_ = logger.get();
-    controller_ =
-        std::make_unique<RgbKeyboardControllerImpl>(std::move(logger));
+    logger_ = std::make_unique<KeyboardBacklightLogger>();
+    controller_ = std::make_unique<RgbKeyboardControllerImpl>(logger_.get());
   }
 
   RgbKeyboardControllerTest(const RgbKeyboardControllerTest&) = delete;
@@ -71,7 +69,7 @@ class RgbKeyboardControllerTest : public testing::Test {
 
  protected:
   std::unique_ptr<RgbKeyboardControllerImpl> controller_;
-  KeyboardBacklightLogger* logger_;
+  std::unique_ptr<KeyboardBacklightLogger> logger_;
 };
 
 // TODO(michaelcheco): Update when we are able to test the real implementation.

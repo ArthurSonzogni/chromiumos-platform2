@@ -15,6 +15,7 @@ const char kGetRgbKeyboardCapabilities[] = "GetRgbKeyboardCapabilities";
 const char kSetCapsLockState[] = "SetCapsLockState";
 const char kSetStaticBackgroundColor[] = "SetStaticBackgroundColor";
 const char kSetRainbowMode[] = "SetRainbowMode";
+const char kSetTestingMode[] = "SetTestingMode";
 
 enum class RgbKeyboardCapabilities {
   kNone = 0,

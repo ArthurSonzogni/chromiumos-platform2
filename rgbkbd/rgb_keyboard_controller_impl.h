@@ -38,7 +38,7 @@ static constexpr uint32_t kRightShiftKey = 20;
 
 class RgbKeyboardControllerImpl : public RgbKeyboardController {
  public:
-  explicit RgbKeyboardControllerImpl(std::unique_ptr<RgbKeyboard> keyboard);
+  explicit RgbKeyboardControllerImpl(RgbKeyboard* keyboard);
   ~RgbKeyboardControllerImpl();
   RgbKeyboardControllerImpl(const RgbKeyboardControllerImpl&) = delete;
   RgbKeyboardControllerImpl& operator=(const RgbKeyboardControllerImpl&) =
@@ -48,6 +48,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
   void SetCapsLockState(bool enabled) override;
   void SetStaticBackgroundColor(uint32_t r, uint32_t g, uint32_t b) override;
   void SetRainbowMode() override;
+  void SetKeyboardClient(RgbKeyboard* keyboard) override;
 
   bool IsCapsLockEnabledForTesting() const { return caps_lock_enabled_; }
 
@@ -66,8 +67,7 @@ class RgbKeyboardControllerImpl : public RgbKeyboardController {
 
   RgbKeyboardCapabilities keyboard_capabilities_ =
       RgbKeyboardCapabilities::kNone;
-  // TODO(michaelcheco): Add setter to switch between interface implementations.
-  std::unique_ptr<RgbKeyboard> keyboard_;
+  RgbKeyboard* keyboard_;
   Color background_color_;
   bool caps_lock_enabled_ = false;
 };
