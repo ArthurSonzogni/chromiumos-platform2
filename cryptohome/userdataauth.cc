@@ -1395,7 +1395,7 @@ void UserDataAuth::MountGuest(
   }
   ReportTimerStart(kMountGuestExTimer);
 
-  StatusChain<CryptohomeError> status;
+  CryptohomeStatus status;
 
   // Create a ref-counted guest mount for async use and then throw it away.
   scoped_refptr<UserSession> guest_session =
@@ -4041,7 +4041,7 @@ user_data_auth::CryptohomeErrorCode UserDataAuth::PrepareGuestVaultImpl() {
 
   LOG(INFO) << "Started mounting for guest";
   ReportTimerStart(kMountGuestExTimer);
-  StatusChain<CryptohomeMountError> status = session->MountGuest();
+  MountStatus status = session->MountGuest();
   ReportTimerStop(kMountGuestExTimer);
   if (!status.ok()) {
     DCHECK(status->mount_error() != MOUNT_ERROR_NONE);

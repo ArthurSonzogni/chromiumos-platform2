@@ -102,7 +102,7 @@ MountError RealUserSession::MountEphemeral(const std::string username) {
   return error;
 }
 
-StatusChain<CryptohomeMountError> RealUserSession::MountGuest() {
+MountStatus RealUserSession::MountGuest() {
   MountError mount_error = mount_->MountEphemeralCryptohome(kGuestUserName);
   if (mount_error == MOUNT_ERROR_NONE) {
     return OkStatus<CryptohomeMountError>();

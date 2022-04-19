@@ -121,6 +121,10 @@ class CryptohomeError : public hwsec_foundation::status::Error {
 
 }  // namespace error
 
+// Define an alias in the cryptohome namespace for easier access.
+using CryptohomeStatus =
+    hwsec_foundation::status::StatusChain<error::CryptohomeError>;
+
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_ERROR_CRYPTOHOME_ERROR_H_

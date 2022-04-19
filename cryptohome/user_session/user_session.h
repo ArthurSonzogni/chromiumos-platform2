@@ -64,9 +64,7 @@ class UserSession : public base::RefCountedThreadSafe<UserSession> {
 
   // Creates and mounts a ramdisk backed ephemeral session for an anonymous
   // user.
-  virtual hwsec_foundation::status::StatusChain<
-      cryptohome::error::CryptohomeMountError>
-  MountGuest() = 0;
+  virtual MountStatus MountGuest() = 0;
 
   // Unmounts the session.
   virtual bool Unmount() = 0;

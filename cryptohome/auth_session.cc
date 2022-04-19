@@ -490,7 +490,7 @@ void AuthSession::UpdateVaultKeyset(
   user_data_auth::UpdateCredentialReply reply;
   if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
     LOG(ERROR) << "KeyBlobs derivation failed before updating keyset.";
-    StatusChain<CryptohomeError> cryptohome_error = std::move(callback_error);
+    CryptohomeStatus cryptohome_error = std::move(callback_error);
     reply.set_error(error::LegacyErrorCodeFromStack(cryptohome_error));
     std::move(on_done).Run(reply);
     return;

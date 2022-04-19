@@ -75,8 +75,7 @@ class RealUserSession : public UserSession {
 
   // Creates and mounts a ramdisk backed ephemeral session for an anonymous
   // user.
-  hwsec_foundation::status::StatusChain<cryptohome::error::CryptohomeMountError>
-  MountGuest() override;
+  MountStatus MountGuest() override;
 
   // Unmounts the session.
   bool Unmount() override;

@@ -44,6 +44,10 @@ class CryptohomeMountError : public CryptohomeError {
 
 }  // namespace error
 
+// Define an alias in the cryptohome namespace for easier access.
+using MountStatus =
+    hwsec_foundation::status::StatusChain<error::CryptohomeMountError>;
+
 }  // namespace cryptohome
 
 #endif  // CRYPTOHOME_ERROR_CRYPTOHOME_MOUNT_ERROR_H_

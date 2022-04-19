@@ -61,7 +61,7 @@ user_data_auth::CryptohomeErrorCode AuthFactor::Authenticate(
   CryptoStatus crypto_error = auth_block_utility->DeriveKeyBlobs(
       auth_input, auth_block_state_, out_key_blobs);
   if (!crypto_error.ok()) {
-    StatusChain<CryptohomeError> cryptohome_error = std::move(crypto_error);
+    CryptohomeStatus cryptohome_error = std::move(crypto_error);
     user_data_auth::CryptohomeErrorCode error =
         error::LegacyErrorCodeFromStack(cryptohome_error);
     LOG(ERROR) << "Auth factor authentication failed: error " << error
