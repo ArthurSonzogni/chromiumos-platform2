@@ -155,7 +155,6 @@ class FPCBETResults:
 
         file_name = self._file_name(test_case, table_type)
         with CachedCSVFile(file_name) as csv:
-            csv.prune()
             tbl = csv.get(disable_cache=False)
 
         tbl.rename(
