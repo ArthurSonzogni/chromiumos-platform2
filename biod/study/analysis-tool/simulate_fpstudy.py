@@ -164,7 +164,7 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
                         help='divisor of the Probability of False Positive'
                         ' (p = 1/prob_div)'
                         ' (default: 100000)')
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     csv_path = pathlib.Path(args.output_csv_file)
     if not csv_path.parents[0].is_dir():
