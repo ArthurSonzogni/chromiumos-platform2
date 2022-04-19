@@ -33,10 +33,6 @@ namespace {
 // Permissions to set on the mount root directory (u+rwx,og+rx).
 const mode_t kMountRootDirectoryPermissions =
     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
-// Prefix of the mount label option.
-const char kMountOptionMountLabelPrefix[] = "mountlabel";
-// Literal for mount option: "remount".
-const char kMountOptionRemount[] = "remount";
 // Maximum number of trials on creating a mount directory using
 // Platform::CreateOrReuseEmptyDirectoryWithFallback().
 // A value of 100 seems reasonable and enough to handle directory name
@@ -99,15 +95,17 @@ void MountManager::Mount(const std::string& source_path,
     return;
   }
 
-  std::string mount_path;
-  const MountErrorType error =
-      (RemoveParamsEqualTo(&options, kMountOptionRemount) == 0)
-          ? MountNewSource(real_path, filesystem_type, std::move(options),
-                           &mount_path)
-          : Remount(real_path, filesystem_type, std::move(options),
-                    &mount_path);
+  if (RemoveParamsEqualTo(&options, "remount")) {
+    // Remount an already-mounted drive.
+    std::string mount_path;
+    const MountErrorType error =
+        Remount(real_path, filesystem_type, std::move(options), &mount_path);
+    return std::move(callback).Run(mount_path, error);
+  }
 
-  std::move(callback).Run(mount_path, error);
+  // Mount a new drive.
+  MountNewSource(real_path, filesystem_type, std::move(options),
+                 std::move(callback));
 }
 
 MountErrorType MountManager::Remount(const std::string& source_path,
@@ -134,61 +132,56 @@ MountErrorType MountManager::Remount(const std::string& source_path,
   return MOUNT_ERROR_NONE;
 }
 
-MountErrorType MountManager::MountNewSource(const std::string& source_path,
-                                            const std::string& filesystem_type,
-                                            std::vector<std::string> options,
-                                            std::string* mount_path) {
+void MountManager::MountNewSource(const std::string& source_path,
+                                  const std::string& filesystem_type,
+                                  std::vector<std::string> options,
+                                  MountCallback callback) {
+  DCHECK(callback);
+
   if (const MountPoint* const mp = FindMountBySource(source_path)) {
-    // TODO(dats): Some obscure legacy. Why is this even needed?
-    if (mount_path->empty() || mp->path().value() == *mount_path) {
-      LOG(WARNING) << "Source " << redact(source_path)
-                   << " is already mounted to " << redact(mp->path());
-      *mount_path = mp->path().value();
-      return GetMountErrorOfReservedMountPath(mp->path());
-    }
     LOG(ERROR) << redact(source_path) << " is already mounted on "
                << redact(mp->path());
-    return MOUNT_ERROR_PATH_ALREADY_MOUNTED;
+    return std::move(callback).Run(
+        mp->path().value(), GetMountErrorOfReservedMountPath(mp->path()));
   }
 
-  std::string mount_label;
-  if (GetParamValue(options, kMountOptionMountLabelPrefix, &mount_label)) {
-    RemoveParamsWithSameName(&options, kMountOptionMountLabelPrefix);
-  }
+  // Extract the mount label string from the passed options.
+  std::string label;
+  if (const base::StringPiece key = "mountlabel";
+      GetParamValue(options, key, &label))
+    RemoveParamsWithSameName(&options, key);
 
   // Create a directory and set up its ownership/permissions for mounting
   // the source path. If an error occurs, ShouldReserveMountPathOnError()
   // is not called to reserve the mount path as a reserved mount path still
   // requires a proper mount directory.
-  base::FilePath actual_mount_path(*mount_path);
-  if (MountErrorType error = CreateMountPathForSource(source_path, mount_label,
-                                                      &actual_mount_path))
-    return error;
+  base::FilePath mount_path;
+  if (const MountErrorType error =
+          CreateMountPathForSource(source_path, label, &mount_path))
+    return std::move(callback).Run("", error);
 
   // Perform the underlying mount operation. If an error occurs,
   // ShouldReserveMountPathOnError() is called to check if the mount path
   // should be reserved.
   MountErrorType error = MOUNT_ERROR_UNKNOWN;
-  std::unique_ptr<MountPoint> mount_point =
-      DoMount(source_path, filesystem_type, std::move(options),
-              base::FilePath(actual_mount_path), &error);
+  std::unique_ptr<MountPoint> mount_point = DoMount(
+      source_path, filesystem_type, std::move(options), mount_path, &error);
   if (!error) {
     DCHECK(mount_point);
   } else if (ShouldReserveMountPathOnError(error)) {
-    LOG(INFO) << "Reserving mount path " << quote(actual_mount_path) << " for "
+    LOG(INFO) << "Reserving mount path " << quote(mount_path) << " for "
               << quote(source_path);
     DCHECK(!mount_point);
-    ReserveMountPath(actual_mount_path, error);
+    ReserveMountPath(mount_path, error);
     // Create dummy mount point to associate with the mount path.
-    mount_point = MountPoint::CreateLeaking(base::FilePath(actual_mount_path));
+    mount_point = MountPoint::CreateLeaking(mount_path);
   } else {
-    platform_->RemoveEmptyDirectory(actual_mount_path.value());
-    return error;
+    platform_->RemoveEmptyDirectory(mount_path.value());
+    return std::move(callback).Run("", error);
   }
 
   mount_states_.insert({source_path, std::move(mount_point)});
-  *mount_path = actual_mount_path.value();
-  return error;
+  return std::move(callback).Run(mount_path.value(), error);
 }
 
 MountErrorType MountManager::Unmount(const std::string& path) {

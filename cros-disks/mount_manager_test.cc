@@ -525,21 +525,21 @@ TEST_F(MountManagerTest, MountWithAlreadyMountedSourcePath) {
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  // Mount an already-mounted source path without specifying a mount path
-  mount_path_.clear();
+  // Mount an already-mounted source path
   manager_.Mount(kSourcePath, filesystem_type_, options_, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
-  // Mount an already-mounted source path to the same mount path
+  // Mount an already-mounted source path
   manager_.Mount(kSourcePath, filesystem_type_, options_, GetMountCallback());
   EXPECT_TRUE(mount_completed_);
   EXPECT_EQ(MOUNT_ERROR_NONE, mount_error_);
   EXPECT_EQ(kMountPath, mount_path_);
   EXPECT_TRUE(manager_.IsMountPathInCache(mount_path_));
 
+  // Unmount
   EXPECT_CALL(platform_, Unmount(kMountPath, _))
       .WillOnce(Return(MOUNT_ERROR_NONE));
   EXPECT_CALL(platform_, RemoveEmptyDirectory(kMountPath))

@@ -137,11 +137,11 @@ class MountManager {
   // it.
   virtual bool ResolvePath(const std::string& path, std::string* real_path);
 
-  // Mounts |source_path| to |mount_path| as |filesystem_type| with |options|.
-  MountErrorType MountNewSource(const std::string& source_path,
-                                const std::string& filesystem_type,
-                                std::vector<std::string> options,
-                                std::string* mount_path);
+  // Mounts |source_path| as |filesystem_type| with |options|.
+  void MountNewSource(const std::string& source_path,
+                      const std::string& filesystem_type,
+                      std::vector<std::string> options,
+                      MountCallback callback);
 
   // Remounts |source_path| on |mount_path| as |filesystem_type| with |options|.
   MountErrorType Remount(const std::string& source_path,
