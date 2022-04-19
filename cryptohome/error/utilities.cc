@@ -14,6 +14,10 @@ bool ContainsActionInStack(
     const hwsec_foundation::status::StatusChain<ErrorType>& error,
     const ErrorAction action) {
   for (const auto& err : error.const_range()) {
+    // NOTE(b/229708597) The underlying StatusChain will prohibit the iteration
+    // of the stack soon, and therefore other users of StatusChain should avoid
+    // iterating through the StatusChain without consulting the owner of the
+    // bug.
     const auto actions = err->local_actions();
     if (actions.count(action) != 0) {
       return true;

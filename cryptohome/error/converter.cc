@@ -97,6 +97,10 @@ void ActionsFromStack(
   // Check to see if we've any PrimaryAction in the stack.
   *primary = user_data_auth::PrimaryAction::PRIMARY_NONE;
   for (const auto& err : stack.const_range()) {
+    // NOTE(b/229708597) The underlying StatusChain will prohibit the iteration
+    // of the stack soon, and therefore other users of StatusChain should avoid
+    // iterating through the StatusChain without consulting the owner of the
+    // bug.
     for (const auto& a : err->local_actions()) {
       auto primary_result = ErrorActionToPrimaryAction(a);
       if (primary_result.has_value()) {
@@ -134,6 +138,10 @@ user_data_auth::CryptohomeErrorCode LegacyErrorCodeFromStack(
     const hwsec_foundation::status::StatusChain<CryptohomeError>& stack) {
   // Traverse down the stack for the first error
   for (const auto& err : stack.const_range()) {
+    // NOTE(b/229708597) The underlying StatusChain will prohibit the iteration
+    // of the stack soon, and therefore other users of StatusChain should avoid
+    // iterating through the StatusChain without consulting the owner of the
+    // bug.
     auto current_legacy_err = err->local_legacy_error();
     if (current_legacy_err) {
       return current_legacy_err.value();
