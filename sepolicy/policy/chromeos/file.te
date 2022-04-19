@@ -421,6 +421,7 @@ type cros_var_log_chrome, file_type, cros_log_type, cros_file_type, cros_var_fil
 type cros_var_log_audit, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_eventlog, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_faillog, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
+type cros_var_log_hypervisor, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_metrics, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_modemfwd, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_os_install_service, file_type, cros_log_type, cros_file_type, cros_var_file_type;
