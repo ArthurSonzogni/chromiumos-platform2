@@ -30,16 +30,23 @@ func GenerateHeaderGuard(path string) string {
 	return strings.Map(mapping, s)
 }
 
+func makeNameWithSuffix(itfName, suffix string) string {
+	s := strings.Split(itfName, ".")
+	return s[len(s)-1] + suffix
+}
+
 // MakeInterfaceName makes a name of the class defining the interface.
 func MakeInterfaceName(introspectItfName string) string {
-	s := strings.Split(introspectItfName, ".")
-	return s[len(s)-1] + "Interface"
+	return makeNameWithSuffix(introspectItfName, "Interface")
 }
 
 // MakeAdaptorName makes a name of the class serving as a adaptor.
 func MakeAdaptorName(introspectItfName string) string {
-	s := strings.Split(introspectItfName, ".")
-	return s[len(s)-1] + "Adaptor"
+	return makeNameWithSuffix(introspectItfName, "Adaptor")
+}
+
+func MakeProxyName(introspectItfName string) string {
+	return makeNameWithSuffix(introspectItfName, "Proxy")
 }
 
 // MakeFullItfName makes a full name of interface in C++ style.

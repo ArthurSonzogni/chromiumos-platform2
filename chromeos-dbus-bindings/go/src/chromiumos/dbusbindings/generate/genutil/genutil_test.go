@@ -37,6 +37,14 @@ func TestMakeAdaptorName(t *testing.T) {
 	}
 }
 
+func TestMakeProxyName(t *testing.T) {
+	got := genutil.MakeProxyName("foo.bar.BazQux")
+	want := "BazQuxProxy"
+	if diff := cmp.Diff(got, want); diff != "" {
+		t.Errorf("MakeProxyName diff (-got +want):\n%s", diff)
+	}
+}
+
 func TestMakeFullItfName(t *testing.T) {
 	got := genutil.MakeFullItfName("foo.bar.BazQux")
 	want := "foo::bar::BazQux"
