@@ -10,7 +10,6 @@
 #include <string>
 #include <utility>
 
-#include <base/optional.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "cryptohome/error/cryptohome_error.h"
@@ -34,7 +33,7 @@ class CryptohomeMountError : public CryptohomeError {
       const ErrorLocationPair& loc,
       const std::set<Action>& actions,
       const MountError mount_err,
-      const base::Optional<user_data_auth::CryptohomeErrorCode> ec);
+      const std::optional<user_data_auth::CryptohomeErrorCode> ec);
 
   MountError mount_error() const { return mount_error_; }
 

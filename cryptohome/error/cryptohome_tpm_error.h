@@ -85,7 +85,7 @@ class CryptohomeTPMError : public CryptohomeCryptoError {
  private:
   hwsec::TPMRetryAction retry_;
 
-  base::Optional<hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>>
+  std::optional<hwsec_foundation::status::StatusChain<hwsec::TPMErrorBase>>
       tpm_error_;
 };
 

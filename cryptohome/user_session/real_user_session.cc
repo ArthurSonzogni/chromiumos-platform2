@@ -111,7 +111,7 @@ MountStatus RealUserSession::MountGuest() {
       CRYPTOHOME_ERR_LOC(kLocUserSessionMountEphemeralFailed),
       ErrorActionSet(
           {ErrorAction::kRetry, ErrorAction::kReboot, ErrorAction::kPowerwash}),
-      mount_error, base::nullopt);
+      mount_error, std::nullopt);
 }
 
 bool RealUserSession::Unmount() {

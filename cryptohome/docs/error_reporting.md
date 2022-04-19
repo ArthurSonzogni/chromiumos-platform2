@@ -145,13 +145,13 @@ error for it to bubble up the callstack, we can:
   if (error) {
     // Logging and etc...
     return MakeStatus<CryptohomeError>(CRYPTOHOME_ERR_LOC(kLocXXX), NoErrorAction(),
-        base::nullopt).Wrap(std::move(error));
+        std::nullopt).Wrap(std::move(error));
   }
 ```
 
 In which `kLocXXX` is the location ID that is the same as above. The
 `NoErrorAction()` can be replaced with any recommended actions that the current
-layer feels appropriate, and `base::nullopt` can be replaced with any
+layer feels appropriate, and `std::nullopt` can be replaced with any
 CryptohomeErrorCode if the layer original intends to return any legacy
 CryptohomeErrorCode.
 
@@ -188,7 +188,7 @@ bubble up the call stack, we can:
   if (err) {
     auto converted = MakeStatus<CryptohomeTPMError>(err);
     return MakeStatus<CryptohomeTPMError>(CRYPTOHOME_ERR_LOC(kLocXXX),
-        NoErrorAction(), base::nullopt, TPMRetryAction::kNoRetry)
+        NoErrorAction(), std::nullopt, TPMRetryAction::kNoRetry)
             .Wrap(std::move(converted));
   }
 ```
@@ -210,7 +210,7 @@ Also, if bubbling up the result from the the a function that produces
 
 ```
   return MakeStatus<CryptohomeTPMError>(CRYPTOHOME_ERR_LOC(kLocXXX),
-      NoErrorAction(), base::nullopt, TPMRetryAction::kNoRetry)
+      NoErrorAction(), std::nullopt, TPMRetryAction::kNoRetry)
           .Wrap(std::move(err));
 ```
 

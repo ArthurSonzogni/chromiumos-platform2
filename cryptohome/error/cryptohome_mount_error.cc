@@ -19,7 +19,7 @@ CryptohomeMountError::CryptohomeMountError(
     const ErrorLocationPair& loc,
     const std::set<Action>& actions,
     const MountError mount_error,
-    const base::Optional<user_data_auth::CryptohomeErrorCode> ec)
+    const std::optional<user_data_auth::CryptohomeErrorCode> ec)
     : CryptohomeError(std::move(loc), actions, ec), mount_error_(mount_error) {}
 
 }  // namespace error

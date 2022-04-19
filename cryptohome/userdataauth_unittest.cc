@@ -2700,7 +2700,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
           // |this| is captured for kErrorLocationPlaceholder.
           return MakeStatus<CryptohomeMountError>(
               kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
-              MOUNT_ERROR_FATAL, base::nullopt);
+              MOUNT_ERROR_FATAL, std::nullopt);
         }));
         return session_;
       }));
