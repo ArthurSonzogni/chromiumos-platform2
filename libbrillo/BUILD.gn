@@ -117,7 +117,7 @@ libbrillo_sublibs = [
   },
 
   {
-    library_name = "brillo-blockdeviceutils"
+    library_name = "brillo-storage"
     deps = [ ":libbrillo-core" ]
     sources = [ "brillo/blkdev_utils/loop_device.cc" ]
     if (use.device_mapper) {
@@ -130,6 +130,7 @@ libbrillo_sublibs = [
         "brillo/blkdev_utils/lvm_device.cc",
       ]
     }
+    sources += [ "brillo/storage_balloon.cc" ]
   },
 
   {
@@ -477,6 +478,7 @@ if (use.test) {
       "brillo/scoped_umask_test.cc",
       "brillo/secure_blob_test.cc",
       "brillo/secure_string_test.cc",
+      "brillo/storage_balloon_test.cc",
       "brillo/streams/fake_stream_test.cc",
       "brillo/streams/file_stream_test.cc",
       "brillo/streams/input_stream_set_test.cc",
