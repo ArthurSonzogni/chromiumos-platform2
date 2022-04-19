@@ -6,10 +6,12 @@
 
 import glob
 import pathlib
-import time
-import pandas as pd
-import unittest
 import tempfile
+import time
+import unittest
+
+import pandas as pd
+
 import simulate_fpstudy
 from cached_data_file import CachedCSVFile
 
@@ -38,6 +40,21 @@ class Test_CachedCSVFile(unittest.TestCase):
             verbose=False,
         )
         self.far_decisions.to_csv(self.temp_csv, index=False)
+
+    def _setup_two_cache_files(self):
+        """Setup the directory with two cache files.
+
+        This requires the csv file to change once and a new cache file be
+        generated.
+        """
+        with CachedCSVFile(self.temp_csv, verbose=False) as c:
+            _ = c.get()
+        self._generate_decisions_file()
+        with CachedCSVFile(self.temp_csv, verbose=False) as c:
+            _ = c.get()
+
+        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / '*.pickle'))
+        self.assertEqual(len(pickles), 2)
 
     def test_benchmark(self):
         # Get timing for running the alternative pd.read_csv.
@@ -119,14 +136,7 @@ class Test_CachedCSVFile(unittest.TestCase):
         self.assertFalse(first.equals(second))
 
     def test_prune(self):
-        with CachedCSVFile(self.temp_csv, verbose=False) as c:
-            _ = c.get()
-        self._generate_decisions_file()
-        with CachedCSVFile(self.temp_csv, verbose=False) as c:
-            _ = c.get()
-
-        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / '*.pickle'))
-        self.assertEqual(len(pickles), 2)
+        self._setup_two_cache_files()
 
         with CachedCSVFile(self.temp_csv, verbose=False) as c:
             c.prune()
@@ -134,12 +144,17 @@ class Test_CachedCSVFile(unittest.TestCase):
         pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / '*.pickle'))
         self.assertEqual(len(pickles), 1)
 
+    def test_prune_shred(self):
+        self._setup_two_cache_files()
+
+        with CachedCSVFile(self.temp_csv, verbose=True) as c:
+            c.prune(rm_cmd='shred', rm_cmd_opts=['-v', '-u'])
+
+        pickles = glob.glob(str(pathlib.Path(self.temp_dir.name) / '*.pickle'))
+        self.assertEqual(len(pickles), 1)
+
     def test_remove(self):
-        with CachedCSVFile(self.temp_csv, verbose=False) as c:
-            _ = c.get()
-        self._generate_decisions_file()
-        with CachedCSVFile(self.temp_csv, verbose=False) as c:
-            _ = c.get()
+        self._setup_two_cache_files()
 
         with CachedCSVFile(self.temp_csv, verbose=False) as c:
             c.remove()

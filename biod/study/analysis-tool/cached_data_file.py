@@ -10,7 +10,8 @@ import hashlib
 import mmap
 import pathlib
 import pickle
-from typing import Any, List, Union
+import subprocess
+from typing import Any, List, Optional, Union
 
 import pandas as pd
 
@@ -23,7 +24,12 @@ class CachedDataFile:
     """
 
     def _cache_file_path(self, ver: str) -> pathlib.Path:
-        """Build the path to the file's cache file with the given version."""
+        """Build the path to the file's cache file with the given version.
+
+        In the event that we are caching sensitive data, the cache fil should
+        be co-located near the original file to ensure the same backup
+        policies and storage medium are used.
+        """
         orig_path = self._orig_file_path
         name_parts = orig_path.name.split('.')
         assert len(name_parts) >= 2
@@ -69,19 +75,59 @@ class CachedDataFile:
             self._ver = hashlib.md5(self._mm).hexdigest()
         return self._ver
 
-    def prune(self):
+    def _delete_file(self,
+                     file: pathlib.Path,
+                     rm_cmd: Optional[str] = None,
+                     rm_cmd_opts: Optional[List[str]] = None):
+        """Delete a cache file.
+
+        This can be used to simply `unlink` the file or invoke another removal
+        program to wipe out the contents.
+
+        Example Args:
+            rm_cmd = 'shred'
+            rm_cmd_opts = ['-v', '-u']
+
+        WARNING: I do not believe the `shred` command with `-u` is thread-safe.
+                 This is because it also shreds the file name, which relies on
+                 it repeatedly renaming the file to a common name of all 0's.
+                 I believe these names will collide if being done on more than
+                 one file simultaneously.
+        """
+        if self._verbose:
+            print(f'Removing {file}.')
+        if rm_cmd:
+            cmd = [rm_cmd]
+            if rm_cmd_opts:
+                cmd.extend(rm_cmd_opts)
+            cmd.append(str(file))
+            if self._verbose:
+                print(f'Running {cmd}.')
+            s = subprocess.run(
+                cmd,
+                stderr=subprocess.STDOUT,
+            )
+            s.check_returncode()
+        else:
+            file.unlink()
+
+    def prune(self,
+              rm_cmd: Optional[str] = None,
+              rm_cmd_opts: Optional[List[str]] = None):
         """Remove obsolete cache files."""
         ver = self.version()
         cached_file_path = self._cache_file_path(ver)
         cache_files = self._find_cache_files()
 
         for cache_file in (set(cache_files) - {cached_file_path}):
-            cache_file.unlink()
+            self._delete_file(cache_file, rm_cmd, rm_cmd_opts)
 
-    def remove(self):
+    def remove(self,
+               rm_cmd: Optional[str] = None,
+               rm_cmd_opts: Optional[List[str]] = None):
         """Remove all cache files."""
         for cache_file in self._find_cache_files():
-            cache_file.unlink()
+            self._delete_file(cache_file, rm_cmd, rm_cmd_opts)
 
     def _parse(self) -> Any:
         """Parse the original file into a usable object.
