@@ -150,10 +150,6 @@ ConnectionDiagnostics::ConnectionDiagnostics(
                     DnsClient::kDnsTimeoutMilliseconds, dispatcher_,
                     Bind(&ConnectionDiagnostics::OnDNSResolutionComplete,
                          weak_ptr_factory_.GetWeakPtr())));
-  portal_detector_.reset(new PortalDetector(
-      dispatcher_, metrics_,
-      base::Bind(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
-                 weak_ptr_factory_.GetWeakPtr())));
   for (size_t i = 0; i < dns_list_.size(); i++) {
     id_to_pending_dns_server_icmp_session_[i] =
         std::make_unique<IcmpSession>(dispatcher_);
@@ -164,33 +160,8 @@ ConnectionDiagnostics::~ConnectionDiagnostics() {
   Stop();
 }
 
-bool ConnectionDiagnostics::Start(const ManagerProperties& props) {
-  SLOG(this, 3) << __func__ << "(" << props.portal_http_url << ")";
-
-  if (running()) {
-    LOG(ERROR) << "Connection diagnostics already started";
-    return false;
-  }
-
-  target_url_.reset(new HttpUrl());
-  if (!target_url_->ParseFromString(props.portal_http_url)) {
-    LOG(ERROR) << "Failed to parse URL string: " << props.portal_http_url;
-    Stop();
-    return false;
-  }
-
-  if (!portal_detector_->Start(props, iface_name_, ip_address_, dns_list_)) {
-    Stop();
-    return false;
-  }
-
-  running_ = true;
-  AddEvent(kTypePortalDetection, kPhaseStart, kResultSuccess);
-  return true;
-}
-
-bool ConnectionDiagnostics::StartAfterPortalDetection(
-    const std::string& url_string, const PortalDetector::Result& result) {
+bool ConnectionDiagnostics::Start(const std::string& url_string,
+                                  const PortalDetector::Result& result) {
   SLOG(this, 3) << __func__ << "(" << url_string << ")";
 
   if (running()) {
@@ -206,10 +177,9 @@ bool ConnectionDiagnostics::StartAfterPortalDetection(
   }
 
   running_ = true;
-  dispatcher_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&ConnectionDiagnostics::StartAfterPortalDetectionInternal,
-                     weak_ptr_factory_.GetWeakPtr(), result));
+  dispatcher_->PostTask(FROM_HERE,
+                        base::BindOnce(&ConnectionDiagnostics::StartInternal,
+                                       weak_ptr_factory_.GetWeakPtr(), result));
   return true;
 }
 
@@ -222,7 +192,6 @@ void ConnectionDiagnostics::Stop() {
   dns_client_.reset();
   arp_client_->Stop();
   icmp_session_->Stop();
-  portal_detector_.reset();
   receive_response_handler_.reset();
   neighbor_msg_listener_.reset();
   id_to_pending_dns_server_icmp_session_.clear();
@@ -271,7 +240,7 @@ void ConnectionDiagnostics::ReportResultAndStop(const std::string& issue) {
   Stop();
 }
 
-void ConnectionDiagnostics::StartAfterPortalDetectionInternal(
+void ConnectionDiagnostics::StartInternal(
     const PortalDetector::Result& result) {
   SLOG(this, 3) << __func__;
 

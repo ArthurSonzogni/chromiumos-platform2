@@ -1169,8 +1169,8 @@ bool Device::StartConnectionDiagnosticsAfterPortalDetection(
       connection_->local(), connection_->gateway(), connection_->dns_servers(),
       dispatcher(), metrics(), manager_->device_info(),
       base::Bind(&Device::ConnectionDiagnosticsCallback, AsWeakPtr())));
-  if (!connection_diagnostics_->StartAfterPortalDetection(
-          manager_->GetProperties().portal_http_url, portal_result)) {
+  if (!connection_diagnostics_->Start(manager_->GetProperties().portal_http_url,
+                                      portal_result)) {
     LOG(ERROR) << link_name() << ": Connection diagnostics failed to start.";
     connection_diagnostics_.reset();
     return false;

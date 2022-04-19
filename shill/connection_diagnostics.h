@@ -37,14 +37,13 @@ struct RoutingTableEntry;
 class RTNLHandler;
 class RTNLListener;
 class RTNLMessage;
-struct ManagerProperties;
 
 // The ConnectionDiagnostics class implements facilities to diagnose problems
 // that a connection encounters reaching a specific URL.
 //
 // Given a connection and a URL, ConnectionDiagnostics performs the following
-// actions:
-// (A) Start portal detection on the connection using the given URL.
+// actions based on the result of portal detection for a connected Service:
+// (A) Receives the results from the latest portal detection attempt.
 //     (B) If portal detection ends in the content phase, the connection is
 //         either functioning, or we are trapped in a captive portal. END.
 //     (C) If the portal detection ends in the DNS phase and failed for any
@@ -200,15 +199,10 @@ class ConnectionDiagnostics {
 
   ~ConnectionDiagnostics();
 
-  // Starts diagnosing problems encountered when reaching |url_string|.
-  bool Start(const ManagerProperties& props);
-
-  // Skips the portal detection initiated in ConnectionDiagnostics::Start and
-  // performs further diagnostics based on the |result| from a completed portal
-  // detection attempt.
-  bool StartAfterPortalDetection(const std::string& url_string,
-                                 const PortalDetector::Result& result);
-
+  // Performs connectivity diagnostics based on the |result| from a completed
+  // portal detection attempt.
+  bool Start(const std::string& url_string,
+             const PortalDetector::Result& result);
   void Stop();
 
   // Returns a string representation of |event|.
@@ -241,7 +235,7 @@ class ConnectionDiagnostics {
   // |result_callback_| to report the results of the diagnostics.
   void ReportResultAndStop(const std::string& issue);
 
-  void StartAfterPortalDetectionInternal(const PortalDetector::Result& result);
+  void StartInternal(const PortalDetector::Result& result);
 
   // Attempts to resolve the IP address of |target_url_| using |dns_list|.
   void ResolveTargetServerIPAddress(const std::vector<std::string>& dns_list);
@@ -347,7 +341,6 @@ class ConnectionDiagnostics {
   ByteString mac_address_;
 
   std::unique_ptr<DnsClient> dns_client_;
-  std::unique_ptr<PortalDetector> portal_detector_;
   std::unique_ptr<ArpClient> arp_client_;
   std::unique_ptr<IcmpSession> icmp_session_;
 
