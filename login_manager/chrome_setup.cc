@@ -21,6 +21,7 @@
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/values.h>
@@ -83,6 +84,21 @@ constexpr std::array<const char*, 3> kOzoneNNPalmOptionalProperties = {
 const char kPowerPath[] = "/power";
 const char kAllowAmbientEQField[] = "allow-ambient-eq";
 const char kAllowAmbientEQFeature[] = "AllowAmbientEQ";
+
+constexpr char kHibernateField[] = "disable-hibernate";
+constexpr char kHibernateFeature[] = "Hibernate";
+
+constexpr char kPowerdHibernateExperimentFlag[] =
+    "/var/lib/power_manager/enable_hibernate_experiment";
+
+constexpr char kPowerdRoPrefPath[] = "/usr/share/power_manager";
+constexpr char kPowerdBoardSpecificPrefPath[] =
+    "/usr/share/power_manager/board_specific";
+
+constexpr std::array<const char*, 2> kPowerdPrefPaths = {
+    kPowerdBoardSpecificPrefPath,
+    kPowerdRoPrefPath,
+};
 
 constexpr char kEnableCrashpadFlag[] = "--enable-crashpad";
 constexpr char kEnableBreakpadFlag[] = "--no-enable-crashpad";
@@ -589,6 +605,7 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
   SetUpOzoneNNPalmPropertiesFlag(builder, cros_config);
   SetUpAutoNightLightFlag(builder, cros_config);
   SetUpAllowAmbientEQFlag(builder, cros_config);
+  SetUpHibernateFlag(builder, cros_config);
   SetUpInstantTetheringFlag(builder, cros_config);
   SetUpModemFlag(builder, cros_config);
 }
@@ -816,6 +833,57 @@ void SetUpAllowAmbientEQFlag(ChromiumCommandBuilder* builder,
     return;
 
   builder->AddFeatureEnableOverride("AllowAmbientEQ");
+}
+
+// Gets a powerd pref from |cros_config|, falling back on searching the
+// file-based powerd preferences if not found. Powerd has a hierarchy of
+// preferences it searches for a given key, so search both the core defaults
+// set by boxster as well as file-based preferences customized by different
+// overlays.
+bool GetPowerdPref(const char* pref_name,
+                   brillo::CrosConfigInterface* cros_config,
+                   std::string* val_out) {
+  if (cros_config && cros_config->GetString(kPowerPath, pref_name, val_out)) {
+    return true;
+  }
+
+  std::string pref_name_underscores;
+  base::ReplaceChars(pref_name, "-", "_", &pref_name_underscores);
+  for (const char* pref_dir : kPowerdPrefPaths) {
+    base::FilePath dir_path = base::FilePath(pref_dir);
+    base::FilePath pref_path =
+        base::FilePath(dir_path.Append(pref_name_underscores));
+
+    if (base::PathExists(pref_path)) {
+      if (base::ReadFileToString(pref_path, val_out)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+// Enables the "Hibernate" feature if "disable-hibernate" is set to 0 in
+// the powerd preferences or the experimental flag is enabled.
+void SetUpHibernateFlag(ChromiumCommandBuilder* builder,
+                        brillo::CrosConfigInterface* cros_config) {
+  std::string hibernate_str;
+
+  // If the experimental flag is set, enable resume from hibernation.
+  if (base::PathExists(base::FilePath(kPowerdHibernateExperimentFlag))) {
+    builder->AddFeatureEnableOverride(kHibernateFeature);
+    return;
+  }
+
+  if (!GetPowerdPref(kHibernateField, cros_config, &hibernate_str)) {
+    return;
+  }
+
+  base::TrimWhitespaceASCII(hibernate_str, base::TRIM_ALL, &hibernate_str);
+  if (hibernate_str == "0") {
+    builder->AddFeatureEnableOverride(kHibernateFeature);
+  }
 }
 
 void SetUpInstantTetheringFlag(ChromiumCommandBuilder* builder,

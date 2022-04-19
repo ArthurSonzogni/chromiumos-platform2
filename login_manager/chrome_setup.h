@@ -177,6 +177,17 @@ void SetUpOzoneNNPalmPropertiesFlag(
 void SetUpAllowAmbientEQFlag(chromeos::ui::ChromiumCommandBuilder* builder,
                              brillo::CrosConfigInterface* cros_config);
 
+// Gets a powerd pref from |cros_config|, falling back on searching the
+// file-based powerd preferences if not found.
+bool GetPowerdPref(const char* pref_name,
+                   brillo::CrosConfigInterface* cros_config,
+                   std::string* val_out);
+
+// Add "Hibernate" feature flag if the disable-hibernate powerd pref is set to
+// 0 in |cros_config| or the powerd file-based prefs.
+void SetUpHibernateFlag(chromeos::ui::ChromiumCommandBuilder* builder,
+                        brillo::CrosConfigInterface* cros_config);
+
 // Disable instant tethering flag with value read from |cros_config| or USE
 // flags.
 void SetUpInstantTetheringFlag(chromeos::ui::ChromiumCommandBuilder* builder,
