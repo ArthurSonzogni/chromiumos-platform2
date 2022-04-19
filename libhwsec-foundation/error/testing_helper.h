@@ -93,6 +93,15 @@ auto ReturnError(Args&&... args) {
                          std::forward<Args>(args)...);
 }
 
+template <typename ErrType>
+auto ReturnOk() {
+  return ReturnErrorType(static_cast<ErrType*>(nullptr));
+}
+
+ACTION_P(ReturnValue, p1) {
+  return p1;
+}
+
 }  // namespace testing
 }  // namespace error
 }  // namespace hwsec_foundation

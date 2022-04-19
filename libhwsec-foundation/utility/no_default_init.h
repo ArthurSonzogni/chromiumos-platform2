@@ -42,7 +42,7 @@ class NoDefault : public T {
 template <typename T>
 class NoDefault<T, std::enable_if_t<std::is_scalar_v<T>>> {
  public:
-  NoDefault(T v) : value_(v) {}  // NOLINT(runtime/explicit)
+  constexpr NoDefault(T v) : value_(v) {}  // NOLINT(runtime/explicit)
   NoDefault() = delete;
 
   ~NoDefault() = default;
