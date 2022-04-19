@@ -23,11 +23,14 @@ enum class Code {
   kOK,                 // success (no errors)
   kDataTooLong,        // the payload of the frame is too large
   kInvalidGroupTag,    // provided GroupTag is invalid
+  kInvalidValueTag,    // provided ValueTag is invalid
   kIndexOutOfRange,    // parameter 'index' is wrong
   kTooManyGroups,      // reached the threshold
   kTooManyAttributes,  // reached the threshold
-  kIncorrectName,      // incorrect attribute name
+  kInvalidName,        // incorrect attribute name
   kNameConflict,       // attribute with this name already exists
+  kIncompatibleType,   // conversion between C++ type and value is not supported
+  kValueOutOfRange     // given C++ value is out of range (invalid)
 };
 
 // The correct values of GroupTag are 0x01, 0x02, 0x04-0x0f. This array

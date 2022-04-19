@@ -20,6 +20,7 @@ group("all") {
 
 shared_library("libipp") {
   sources = [
+    "attribute.h",
     "frame.cc",
     "frame.h",
     "ipp.h",
@@ -69,6 +70,7 @@ install_config("install_headers") {
 if (use.test) {
   executable("libipp_test") {
     sources = [
+      "attribute_test.cc",
       "frame_test.cc",
       "ipp_attribute_test.cc",
       "ipp_encoding_test.cc",

@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "frame.h"  // needed for ipp::Code
+
 namespace {
 
 ipp::InternalType InternalTypeForUnknownAttribute(ipp::AttrType type) {
@@ -423,6 +425,57 @@ bool SaveValueTyped(std::map<AttrName, void*>* values,
   return true;
 }
 
+// Tries to add a new attribute to `coll`. `coll` must not be nullptr. This
+// function does not check validity of `tag`. All other constraints are
+// enforced. If `tag` is Out-Of-Band the parameter `values` is ignored.
+template <typename ApiType>
+Code AddAttributeToCollection(Collection* coll,
+                              const std::string& name,
+                              ValueTag tag,
+                              const std::vector<ApiType>& values) {
+  // Check all constraints.
+  if (name.empty() ||
+      name.size() > static_cast<size_t>(std::numeric_limits<int16_t>::max())) {
+    return Code::kInvalidName;
+  }
+  if (coll->GetAttribute(name) != nullptr) {
+    return Code::kNameConflict;
+  }
+  if (values.empty() && !IsOutOfBand(tag)) {
+    return Code::kValueOutOfRange;
+  }
+
+  // Translate ValueTag to AttrType (enum class used in the old API).
+  AttrType attrType;
+  if (IsOutOfBand(tag)) {
+    // In the old API, Out-Of-Band tags are stored as AttrState.
+    // Value of AttrType does not matter.
+    attrType = AttrType::integer;
+  } else if (tag == ValueTag::nameWithoutLanguage) {
+    attrType = AttrType::name;
+  } else if (tag == ValueTag::textWithoutLanguage) {
+    attrType = AttrType::text;
+  } else {
+    attrType = static_cast<AttrType>(tag);
+  }
+
+  // Create a new attribute. For Out-Of-Band tags set the state.
+  // For other tags set the values.
+  auto attr = coll->AddUnknownAttribute(name, true, attrType);
+  if (attr == nullptr) {
+    return Code::kTooManyAttributes;
+  }
+  if (IsOutOfBand(tag)) {
+    attr->SetState(static_cast<AttrState>(tag));
+  } else {
+    attr->Resize(values.size());
+    for (size_t i = 0; i < values.size(); ++i)
+      attr->SetValue(values[i], i);
+  }
+
+  return Code::kOK;
+}
+
 }  // end of namespace
 
 std::string ToString(AttrState s) {
@@ -612,6 +665,14 @@ AttrState Attribute::GetState() const {
   if (it != coll->states_.end())
     return it->second;
   return AttrState::unset;
+}
+
+ValueTag Attribute::Tag() const {
+  const AttrState state = GetState();
+  if (state >= static_cast<AttrState>(0x10)) {
+    return static_cast<ValueTag>(state);
+  }
+  return static_cast<ValueTag>(GetType());
 }
 
 void Attribute::SetState(AttrState status) {
@@ -885,6 +946,154 @@ Attribute* Collection::AddUnknownAttribute(const std::string& name,
     };
   }
   return unknown_attributes[an].object;
+}
+
+Code Collection::AddAttr(const std::string& name, ValueTag tag) {
+  if (IsOutOfBand(tag)) {
+    return AddAttributeToCollection(this, name, tag, std::vector<int32_t>());
+  }
+  return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
+}
+
+Code Collection::AddAttr(const std::string& name, ValueTag tag, int32_t value) {
+  return AddAttr(name, tag, std::vector<int32_t>{value});
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         const std::string& value) {
+  return AddAttr(name, tag, std::vector<std::string>{value});
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         const StringWithLanguage& value) {
+  return AddAttr(name, tag, std::vector<StringWithLanguage>{value});
+}
+
+Code Collection::AddAttr(const std::string& name, bool value) {
+  return AddAttr(name, std::vector<bool>{value});
+}
+
+Code Collection::AddAttr(const std::string& name, int32_t value) {
+  return AddAttr(name, std::vector<int32_t>{value});
+}
+
+Code Collection::AddAttr(const std::string& name, DateTime value) {
+  return AddAttr(name, std::vector<DateTime>{value});
+}
+
+Code Collection::AddAttr(const std::string& name, Resolution value) {
+  return AddAttr(name, std::vector<Resolution>{value});
+}
+
+Code Collection::AddAttr(const std::string& name, RangeOfInteger value) {
+  return AddAttr(name, std::vector<RangeOfInteger>{value});
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         const std::vector<int32_t>& values) {
+  switch (tag) {
+    case ValueTag::integer:
+      break;
+    case ValueTag::enum_:  // see rfc8011-5.1.5
+      for (int32_t v : values) {
+        if (v < 1 || v > std::numeric_limits<int16_t>::max()) {
+          return Code::kValueOutOfRange;
+        }
+      }
+      break;
+    case ValueTag::boolean:
+      for (int32_t v : values) {
+        if (v != 0 && v != 1) {
+          return Code::kValueOutOfRange;
+        }
+      }
+      break;
+    default:
+      return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
+  }
+  return AddAttributeToCollection(this, name, tag, values);
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         const std::vector<std::string>& values) {
+  if (tag == ValueTag::octetString || IsString(tag)) {
+    return AddAttributeToCollection(this, name, tag, values);
+  }
+  return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         ValueTag tag,
+                         const std::vector<StringWithLanguage>& values) {
+  if (tag == ValueTag::nameWithLanguage || tag == ValueTag::textWithLanguage) {
+    return AddAttributeToCollection(this, name, tag, values);
+  }
+  return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         const std::vector<bool>& values) {
+  return AddAttributeToCollection(this, name, ValueTag::boolean, values);
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         const std::vector<int32_t>& values) {
+  return AddAttributeToCollection(this, name, ValueTag::integer, values);
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         const std::vector<DateTime>& values) {
+  return AddAttributeToCollection(this, name, ValueTag::dateTime, values);
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         const std::vector<Resolution>& values) {
+  return AddAttributeToCollection(this, name, ValueTag::resolution, values);
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         const std::vector<RangeOfInteger>& values) {
+  return AddAttributeToCollection(this, name, ValueTag::rangeOfInteger, values);
+}
+
+Code Collection::AddAttr(const std::string& name, Collection*& value) {
+  std::vector<Collection*> values(1);
+  Code err = AddAttr(name, values);
+  if (err == Code::kOK) {
+    value = values.front();
+  }
+  return err;
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         std::vector<Collection*>& values) {
+  // Check all constraints.
+  if (name.empty() ||
+      name.size() > static_cast<size_t>(std::numeric_limits<int16_t>::max())) {
+    return Code::kInvalidName;
+  }
+  if (GetAttribute(name) != nullptr) {
+    return Code::kNameConflict;
+  }
+  if (values.empty()) {
+    return Code::kValueOutOfRange;
+  }
+
+  // Create the attribute and retrieve the pointers.
+  auto attr = AddUnknownAttribute(name, true, AttrType::collection);
+  if (attr == nullptr) {
+    return Code::kTooManyAttributes;
+  }
+  attr->Resize(values.size());
+  for (size_t i = 0; i < values.size(); ++i) {
+    values[i] = attr->GetCollection(i);
+  }
+
+  return Code::kOK;
 }
 
 std::vector<Attribute*> Collection::GetAllAttributes() {
