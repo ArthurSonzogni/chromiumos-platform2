@@ -266,7 +266,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialUninitialized) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const MakeCredentialResponse& resp) {
         EXPECT_EQ(resp.status(), MakeCredentialResponse::INTERNAL_ERROR);
         *called_ptr = true;
@@ -282,7 +282,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialEmptyRpId) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const MakeCredentialResponse& resp) {
         EXPECT_EQ(resp.status(), MakeCredentialResponse::INVALID_REQUEST);
         *called_ptr = true;
@@ -309,7 +309,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialNoAuthTimeSecretHash) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const MakeCredentialResponse& resp) {
         EXPECT_EQ(resp.status(), MakeCredentialResponse::INTERNAL_ERROR);
         *called_ptr = true;
@@ -387,7 +387,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeCredentialVerificationSuccess) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const std::string& expected_authenticator_data,
          const MakeCredentialResponse& resp) {
         EXPECT_EQ(resp.status(), MakeCredentialResponse::SUCCESS);
@@ -410,7 +410,7 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionUninitialized) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const GetAssertionResponse& resp) {
         EXPECT_EQ(resp.status(), GetAssertionResponse::INTERNAL_ERROR);
         *called_ptr = true;
@@ -426,7 +426,7 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionEmptyRpId) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const GetAssertionResponse& resp) {
         EXPECT_EQ(resp.status(), GetAssertionResponse::INVALID_REQUEST);
         *called_ptr = true;
@@ -444,7 +444,7 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionWrongClientDataHashLength) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const GetAssertionResponse& resp) {
         EXPECT_EQ(resp.status(), GetAssertionResponse::INVALID_REQUEST);
         *called_ptr = true;
@@ -484,7 +484,7 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionNoCredentialSecret) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const GetAssertionResponse& resp) {
         EXPECT_EQ(resp.status(), GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
         *called_ptr = true;
@@ -520,7 +520,7 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionInvalidKeyHandle) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const GetAssertionResponse& resp) {
         EXPECT_EQ(resp.status(), GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
         *called_ptr = true;
@@ -609,7 +609,7 @@ TEST_F(WebAuthnHandlerTestBase, GetAssertionVerificationSuccess) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const std::string& expected_credential_id,
          const GetAssertionResponse& resp) {
         auto rp_id_hash = GetRpIdHash();
@@ -998,7 +998,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, MakeCredentialPresenceSuccess) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const std::string& expected_authenticator_data,
          const MakeCredentialResponse& resp) {
         EXPECT_EQ(resp.status(), MakeCredentialResponse::SUCCESS);
@@ -1054,7 +1054,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialNoPresence) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const GetAssertionResponse& resp) {
         EXPECT_EQ(resp.status(), GetAssertionResponse::VERIFICATION_FAILED);
         *called_ptr = true;
@@ -1093,7 +1093,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialSuccess) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const GetAssertionResponse& resp) {
         EXPECT_EQ(resp.status(), GetAssertionResponse::SUCCESS);
         ASSERT_EQ(resp.assertion_size(), 1);
@@ -1154,7 +1154,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialAppIdMatch) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const GetAssertionResponse& resp) {
         EXPECT_EQ(resp.status(), GetAssertionResponse::SUCCESS);
         ASSERT_EQ(resp.assertion_size(), 1);
@@ -1216,7 +1216,7 @@ TEST_F(WebAuthnHandlerTestU2fMode,
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const std::string& expected_credential_id,
          const GetAssertionResponse& resp) {
         auto rp_id_hash = GetRpIdHash();
@@ -1290,7 +1290,7 @@ TEST_F(WebAuthnHandlerTestU2fMode,
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<GetAssertionResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const std::string& expected_credential_id,
          const GetAssertionResponse& resp) {
         auto rp_id_hash = GetRpIdHash();
@@ -1393,7 +1393,7 @@ TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialPresenceSuccess) {
   auto mock_method_response =
       std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();
   bool called = false;
-  mock_method_response->set_return_callback(base::Bind(
+  mock_method_response->set_return_callback(base::BindRepeating(
       [](bool* called_ptr, const MakeCredentialResponse& resp) {
         EXPECT_EQ(resp.status(), MakeCredentialResponse::SUCCESS);
         EXPECT_EQ(resp.attestation_format(), "fido-u2f");

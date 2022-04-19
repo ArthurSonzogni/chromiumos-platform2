@@ -156,8 +156,8 @@ int U2fDaemon::OnInit() {
       sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0);
 
   sm_proxy_->RegisterPropertyChangeCompleteSignalHandler(
-      base::Bind(&U2fDaemon::TryStartService, base::Unretained(this)),
-      base::Bind(&OnPolicySignalConnected));
+      base::BindRepeating(&U2fDaemon::TryStartService, base::Unretained(this)),
+      base::BindOnce(&OnPolicySignalConnected));
 
   bool policy_ready = U2fPolicyReady();
 

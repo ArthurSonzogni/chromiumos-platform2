@@ -53,9 +53,9 @@ UserState::UserState(org::chromium::SessionManagerInterfaceProxy* sm_proxy,
       weak_ptr_factory_(this),
       counter_min_(std::max(kCounterMinB186431345, counter_min)) {
   sm_proxy_->RegisterSessionStateChangedSignalHandler(
-      base::Bind(&UserState::OnSessionStateChanged,
-                 weak_ptr_factory_.GetWeakPtr()),
-      base::Bind(&OnSignalConnected));
+      base::BindRepeating(&UserState::OnSessionStateChanged,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&OnSignalConnected));
 
   LoadState();
 }

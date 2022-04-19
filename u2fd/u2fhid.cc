@@ -205,7 +205,7 @@ U2fHid::U2fHid(std::unique_ptr<HidInterface> hid,
       msg_handler_(msg_handler) {
   transaction_ = std::make_unique<Transaction>();
   hid_->SetOutputReportHandler(
-      base::Bind(&U2fHid::ProcessReport, base::Unretained(this)));
+      base::BindRepeating(&U2fHid::ProcessReport, base::Unretained(this)));
 }
 
 U2fHid::~U2fHid() = default;
@@ -316,7 +316,7 @@ int U2fHid::CmdLock(std::string* resp) {
     locked_cid_ = transaction_->cid;
     lock_timeout_.Start(
         FROM_HERE, base::Seconds(duration),
-        base::Bind(&U2fHid::LockTimeout, base::Unretained(this)));
+        base::BindOnce(&U2fHid::LockTimeout, base::Unretained(this)));
   }
   return 0;
 }
@@ -426,7 +426,7 @@ void U2fHid::ProcessReport(const std::string& report) {
 
     transaction_->timeout.Start(
         FROM_HERE, kU2fHidTimeout,
-        base::Bind(&U2fHid::TransactionTimeout, base::Unretained(this)));
+        base::BindOnce(&U2fHid::TransactionTimeout, base::Unretained(this)));
 
     // record transaction parameters
     transaction_->cid = pkt.ChannelId();
@@ -450,7 +450,7 @@ void U2fHid::ProcessReport(const std::string& report) {
     // reload timeout
     transaction_->timeout.Start(
         FROM_HERE, kU2fHidTimeout,
-        base::Bind(&U2fHid::TransactionTimeout, base::Unretained(this)));
+        base::BindOnce(&U2fHid::TransactionTimeout, base::Unretained(this)));
     // record the payload
     transaction_->payload += report.substr(pkt.PayloadIndex());
     transaction_->seq++;

@@ -130,10 +130,10 @@ void WebAuthnHandler::Initialize(
 
   metrics_ = metrics;
   user_state_ = user_state;
-  user_state_->SetSessionStartedCallback(
-      base::Bind(&WebAuthnHandler::OnSessionStarted, base::Unretained(this)));
-  user_state_->SetSessionStoppedCallback(
-      base::Bind(&WebAuthnHandler::OnSessionStopped, base::Unretained(this)));
+  user_state_->SetSessionStartedCallback(base::BindRepeating(
+      &WebAuthnHandler::OnSessionStarted, base::Unretained(this)));
+  user_state_->SetSessionStoppedCallback(base::BindRepeating(
+      &WebAuthnHandler::OnSessionStopped, base::Unretained(this)));
   u2f_mode_ = u2f_mode;
   allowlisting_util_ = std::move(allowlisting_util);
   bus_ = bus;
@@ -285,8 +285,8 @@ void WebAuthnHandler::MakeCredential(
     pending_uv_make_credential_session_ = std::move(session);
     auth_dialog_dbus_proxy_->CallMethod(
         &call, dbus::ObjectProxy::TIMEOUT_INFINITE,
-        base::Bind(&WebAuthnHandler::HandleUVFlowResultMakeCredential,
-                   base::Unretained(this)));
+        base::BindOnce(&WebAuthnHandler::HandleUVFlowResultMakeCredential,
+                       base::Unretained(this)));
     return;
   }
 
@@ -795,8 +795,8 @@ void WebAuthnHandler::GetAssertion(
     pending_uv_get_assertion_session_ = std::move(session);
     auth_dialog_dbus_proxy_->CallMethod(
         &call, dbus::ObjectProxy::TIMEOUT_INFINITE,
-        base::Bind(&WebAuthnHandler::HandleUVFlowResultGetAssertion,
-                   base::Unretained(this)));
+        base::BindOnce(&WebAuthnHandler::HandleUVFlowResultGetAssertion,
+                       base::Unretained(this)));
     return;
   }
 

@@ -30,7 +30,8 @@ class HidInterface {
 
   // Callback invoked when the HID device client sends an output report.
   // The raw report prefixed by the report ID is passed in |report|.
-  using OutputReportCallback = base::Callback<void(const std::string& report)>;
+  using OutputReportCallback =
+      base::RepeatingCallback<void(const std::string& report)>;
   virtual void SetOutputReportHandler(
       const OutputReportCallback& on_output_report) = 0;
 };
