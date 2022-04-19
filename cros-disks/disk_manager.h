@@ -76,9 +76,6 @@ class DiskManager : public MountManager {
   bool ShouldReserveMountPathOnError(MountErrorType error_type) const override;
 
  private:
-  // MountPoint implementation that ejects the device on unmount.
-  class EjectingMountPoint;
-
   // Ejects media for the device |device_file|. Return true if the eject process
   // has started or |eject_device_on_unmount_| is false, or false if the eject
   // process failed.
@@ -97,10 +94,6 @@ class DiskManager : public MountManager {
 
   // Set to true if devices should be ejected upon unmount.
   bool eject_device_on_unmount_;
-
-  // A mapping from a mount path to the corresponding device that should
-  // be ejected on unmount.
-  std::unordered_map<std::string, Disk> devices_to_eject_on_unmount_;
 
   // Mapping of filesystem types to corresponding mounters.
   std::unordered_map<std::string, std::unique_ptr<Mounter>> mounters_;

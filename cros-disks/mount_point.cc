@@ -42,12 +42,7 @@ MountPoint::MountPoint(MountPointData data, const Platform* platform)
 }
 
 MountPoint::~MountPoint() {
-  if (released_)
-    return;
-
-  const MountErrorType error = Unmount();
-  LOG_IF(ERROR, error && error != MOUNT_ERROR_PATH_NOT_MOUNTED)
-      << "Cannot unmount " << quote(path()) << ": " << error;
+  Unmount();
 }
 
 void MountPoint::Release() {
@@ -61,6 +56,9 @@ MountErrorType MountPoint::Unmount() {
   const MountErrorType error = UnmountImpl();
   released_ = !error || error == MOUNT_ERROR_PATH_NOT_MOUNTED;
 
+  if (released_ && eject_)
+    std::move(eject_).Run();
+
   return error;
 }
 
@@ -68,11 +66,16 @@ MountErrorType MountPoint::Remount(bool read_only) {
   if (released_)
     return MOUNT_ERROR_PATH_NOT_MOUNTED;
 
-  const int new_flags =
-      (data_.flags & ~MS_RDONLY) | (read_only ? MS_RDONLY : 0);
-  const MountErrorType error = RemountImpl(new_flags);
+  int flags = data_.flags;
+  if (read_only) {
+    flags |= MS_RDONLY;
+  } else {
+    flags &= ~MS_RDONLY;
+  }
+
+  const MountErrorType error = RemountImpl(flags);
   if (!error)
-    data_.flags = new_flags;
+    data_.flags = flags;
 
   return error;
 }

@@ -11,6 +11,7 @@
 #include <string>
 #include <utility>
 
+#include <base/callback_forward.h>
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -72,12 +73,20 @@ class MountPoint {
     DCHECK(process_);
   }
 
+  // Sets the eject action, that will be called when this mount point is
+  // successfully unmounted.
+  void SetEject(base::OnceClosure eject) {
+    DCHECK(!eject_);
+    eject_ = std::move(eject);
+    DCHECK(eject_);
+  }
+
   const base::FilePath& path() const { return data_.mount_path; }
   const std::string& source() const { return data_.source; }
   const std::string& fstype() const { return data_.filesystem_type; }
   int flags() const { return data_.flags; }
   const std::string& data() const { return data_.data; }
-  bool is_read_only() const { return (data_.flags & MS_RDONLY) == MS_RDONLY; }
+  bool is_read_only() const { return (data_.flags & MS_RDONLY) != 0; }
 
  protected:
   // Unmounts the mount point. If MOUNT_ERROR_NONE is returned, will only be
@@ -95,6 +104,9 @@ class MountPoint {
   // SandboxedProcess object holding the FUSE mounter processes associated to
   // this MountPoint.
   std::unique_ptr<SandboxedProcess> process_;
+
+  // Eject action called after successfully unmounting this mount point.
+  base::OnceClosure eject_;
 
   bool released_ = false;
 };
