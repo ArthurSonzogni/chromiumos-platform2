@@ -890,7 +890,7 @@ void AddVmodulePatterns(ChromiumCommandBuilder* builder) {
   builder->AddVmodulePattern("*/ui/ozone/*=1");
 
   // Turn on basic logging for full restore.
-  builder->AddVmodulePattern("*/browser/ash/full_restore/*=1");
+  builder->AddVmodulePattern("*/browser/ash/app_restore/*=1");
 
   // Turn on OOBE/Login logs.
   builder->AddVmodulePattern("*/browser/ash/login/screens/*=1");
