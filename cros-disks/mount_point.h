@@ -13,6 +13,7 @@
 
 #include <base/callback_forward.h>
 #include <base/files/file_path.h>
+#include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "cros-disks/sandboxed_process.h"
@@ -36,7 +37,7 @@ struct MountPointData {
 class Platform;
 
 // Class representing a mount created by a mounter.
-class MountPoint {
+class MountPoint final {
  public:
   // Creates a MountPoint that does nothing on unmount and 'leaks' the mount
   // point.
@@ -53,7 +54,9 @@ class MountPoint {
 
   // Unmounts the mount point as a last resort, but as it's unable to handle
   // errors an explicit call to Unmount() is the better alternative.
-  virtual ~MountPoint();
+  ~MountPoint();
+
+  base::WeakPtr<MountPoint> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
 
   // Releases (leaks) the ownership of the mount point.
   // Until all places handle ownership of mount points properly
@@ -108,6 +111,8 @@ class MountPoint {
   base::OnceClosure eject_;
 
   bool released_ = false;
+
+  base::WeakPtrFactory<MountPoint> weak_factory_{this};
 };
 
 }  // namespace cros_disks

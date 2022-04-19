@@ -43,43 +43,31 @@
 #include "cros-disks/uri.h"
 
 namespace cros_disks {
-
 namespace {
 
-class FUSEMountPoint : public MountPoint {
- public:
-  using MountPoint::MountPoint;
-
-  base::WeakPtr<FUSEMountPoint> GetWeakPtr() {
-    return weak_factory_.GetWeakPtr();
+// Callback called when a FUSE daemon finishes.
+void CleanUpCallback(const base::FilePath& mount_path,
+                     const base::WeakPtr<MountPoint> mount_point,
+                     const siginfo_t& info) {
+  DCHECK_EQ(SIGCHLD, info.si_signo);
+  if (info.si_code != CLD_EXITED) {
+    LOG(ERROR) << "The 'init' process holding the FUSE daemon for "
+               << redact(mount_path) << " was killed by signal "
+               << info.si_status << ": " << strsignal(info.si_status);
+  } else if (info.si_status != 0) {
+    LOG(ERROR) << "FUSE daemon for " << redact(mount_path)
+               << " finished with exit code " << info.si_status;
+  } else {
+    LOG(INFO) << "FUSE daemon for " << quote(mount_path)
+              << " finished normally";
   }
 
-  static void CleanUpCallback(const base::FilePath& mount_path,
-                              const base::WeakPtr<FUSEMountPoint> ptr,
-                              const siginfo_t& info) {
-    CHECK_EQ(SIGCHLD, info.si_signo);
-    if (info.si_code != CLD_EXITED) {
-      LOG(ERROR) << "The 'init' process holding the FUSE daemon for "
-                 << redact(mount_path) << " was killed by signal "
-                 << info.si_status << ": " << strsignal(info.si_status);
-    } else if (info.si_status != 0) {
-      LOG(ERROR) << "FUSE daemon for " << redact(mount_path)
-                 << " finished with exit code " << info.si_status;
-    } else {
-      LOG(INFO) << "FUSE daemon for " << quote(mount_path)
-                << " finished normally";
-    }
-
-    // If the MountPoint instance has been deleted, it was already unmounted and
-    // cleaned up due to a request from the browser (or logout). In this case,
-    // there's nothing to do.
-    if (ptr)
-      ptr->Unmount();
-  }
-
- private:
-  base::WeakPtrFactory<FUSEMountPoint> weak_factory_{this};
-};
+  // If the MountPoint instance has been deleted, it was already unmounted and
+  // cleaned up due to a request from the browser (or logout). In this case,
+  // there's nothing to do.
+  if (mount_point)
+    mount_point->Unmount();
+}
 
 // Gets the physical block size of the given block device.
 // Returns 0 in case of error.
@@ -321,28 +309,27 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     return nullptr;
   }
 
-  std::unique_ptr<FUSEMountPoint> mount_point =
-      std::make_unique<FUSEMountPoint>(
-          MountPointData{
-              .mount_path = target_path,
-              .source = source_descr,
-              .filesystem_type = fuse_type,
-              .flags = mount_flags,
-              .data = fuse_mount_options,
-          },
-          platform_);
+  std::unique_ptr<MountPoint> mount_point = std::make_unique<MountPoint>(
+      MountPointData{
+          .mount_path = target_path,
+          .source = source_descr,
+          .filesystem_type = fuse_type,
+          .flags = mount_flags,
+          .data = fuse_mount_options,
+      },
+      platform_);
 
   // Start FUSE daemon.
   std::unique_ptr<SandboxedProcess> process =
       StartDaemon(fuse_file, source, target_path, std::move(params), error);
 
-  if (*error || !process) {
+  if (*error) {
     LOG(ERROR) << "Cannot start FUSE daemon for " << redact(source) << ": "
                << *error;
-    mount_point->Unmount();
     return nullptr;
   }
 
+  DCHECK(process);
   const pid_t pid = process->pid();
   LOG(INFO) << "FUSE daemon for " << quote(target_path)
             << " is running in PID namespace " << pid;
@@ -356,8 +343,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   // terminates.
   process_reaper_->WatchForChild(
       FROM_HERE, pid,
-      base::BindOnce(&FUSEMountPoint::CleanUpCallback, target_path,
-                     mount_point->GetWeakPtr()));
+      base::BindOnce(&CleanUpCallback, target_path, mount_point->GetWeakPtr()));
 
   *error = MOUNT_ERROR_NONE;
   return mount_point;
