@@ -112,6 +112,15 @@ bool FileExistsCommand::Execute() {
   return base::PathExists(base::FilePath(file_name_));
 }
 
+FileNotExistsCommand::FileNotExistsCommand(const std::string& file_name)
+    : FeatureCommand("FileNotExists") {
+  file_name_ = file_name;
+}
+
+bool FileNotExistsCommand::Execute() {
+  return !base::PathExists(base::FilePath(file_name_));
+}
+
 bool PlatformFeature::Execute() const {
   for (auto& cmd : exec_cmds_) {
     if (!cmd->Execute()) {
@@ -214,16 +223,23 @@ std::optional<PlatformFeature> JsonFeatureParser::MakeFeatureObject(
         return std::nullopt;
       }
 
-      if (cmd_name == "FileExists") {
+      if (cmd_name == "FileExists" || cmd_name == "FileNotExists") {
         std::string file_name;
 
-        VLOG(1) << "featured: command is FileExists";
+        VLOG(1) << "featured: command is " << cmd_name;
         if (!GetStringFromKey(item, "path", &file_name)) {
           LOG(ERROR) << "JSON contains invalid path!";
           return std::nullopt;
         }
 
-        query_cmds.push_back(std::make_unique<FileExistsCommand>(file_name));
+        std::unique_ptr<FeatureCommand> cmd;
+        if (cmd_name == "FileExists") {
+          cmd = std::make_unique<FileExistsCommand>(file_name);
+        } else {
+          cmd = std::make_unique<FileNotExistsCommand>(file_name);
+        }
+
+        query_cmds.push_back(std::move(cmd));
       } else {
         LOG(ERROR) << "Invalid support command name in features config: "
                    << cmd_name;

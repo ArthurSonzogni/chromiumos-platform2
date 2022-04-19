@@ -75,6 +75,16 @@ class FileExistsCommand : public FeatureCommand {
   std::string file_name_;
 };
 
+class FileNotExistsCommand : public FeatureCommand {
+ public:
+  explicit FileNotExistsCommand(const std::string& file_name);
+  FileNotExistsCommand(FileNotExistsCommand&& other) = default;
+  bool Execute() override;
+
+ private:
+  std::string file_name_;
+};
+
 class AlwaysSupportedCommand : public FeatureCommand {
  public:
   AlwaysSupportedCommand() : FeatureCommand("AlwaysSupported") {}
