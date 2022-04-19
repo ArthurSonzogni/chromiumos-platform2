@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 
-#include <base/optional.h>
 #include <libhwsec-foundation/error/error.h>
 
 #include "libhwsec/error/tpm_retry_action.h"
