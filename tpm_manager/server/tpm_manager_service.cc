@@ -647,6 +647,11 @@ TpmManagerService::GetDictionaryAttackInfoTask(
 
   auto reply = std::make_unique<GetDictionaryAttackInfoReply>();
 
+  if (!tpm_allowed_) {
+    reply->set_status(STATUS_NOT_AVAILABLE);
+    return reply;
+  }
+
   if (!tpm_status_) {
     LOG(ERROR) << __func__ << ": tpm status is uninitialized.";
     reply->set_status(STATUS_NOT_AVAILABLE);
