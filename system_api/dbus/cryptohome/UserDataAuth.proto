@@ -728,6 +728,12 @@ message AddCredentialsRequest {
 message AddCredentialsReply {
   // Error if any to add new credentials with the Auth Session.
   CryptohomeErrorCode error = 1;
+
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
 }
 
 message AuthenticateAuthSessionRequest {
@@ -807,6 +813,12 @@ message UpdateCredentialRequest {
 message UpdateCredentialReply {
   // Error if any to update credential.
   CryptohomeErrorCode error = 1;
+
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
 }
 
 message CreatePersistentUserRequest {
