@@ -335,11 +335,6 @@ message WriteProtectDisableRsuState {
   string unlock_code = 5;
 }
 
-// Verify if RSU succeeds.
-message VerifyRsuState {
-  bool success = 1;
-}
-
 // Wait for tech to physically disable HWWP.
 message WriteProtectDisablePhysicalState {
   // Provided by daemon.
@@ -533,7 +528,7 @@ message RmadState {
     DeviceDestinationState device_destination = 3;
     WriteProtectDisableMethodState wp_disable_method = 4;
     WriteProtectDisableRsuState wp_disable_rsu = 5;
-    VerifyRsuState verify_rsu = 6;
+    // Deleted |VerifyRsuState|.
     WriteProtectDisablePhysicalState wp_disable_physical = 7;
     WriteProtectDisableCompleteState wp_disable_complete = 8;
     UpdateRoFirmwareState update_ro_firmware = 9;

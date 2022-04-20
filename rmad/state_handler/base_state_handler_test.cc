@@ -18,19 +18,7 @@
 
 namespace {
 
-const std::vector<rmad::RmadState::StateCase> kAllStateCases = {
-    rmad::RmadState::kWelcome,           rmad::RmadState::kComponentsRepair,
-    rmad::RmadState::kDeviceDestination, rmad::RmadState::kWpDisableMethod,
-    rmad::RmadState::kWpDisableRsu,      rmad::RmadState::kVerifyRsu,
-    rmad::RmadState::kWpDisablePhysical, rmad::RmadState::kWpDisableComplete,
-    rmad::RmadState::kUpdateRoFirmware,  rmad::RmadState::kRestock,
-    rmad::RmadState::kUpdateDeviceInfo,  rmad::RmadState::kCheckCalibration,
-    rmad::RmadState::kSetupCalibration,  rmad::RmadState::kRunCalibration,
-    rmad::RmadState::kProvisionDevice,   rmad::RmadState::kWpEnablePhysical,
-    rmad::RmadState::kFinalize,          rmad::RmadState::kRepairComplete,
-    rmad::RmadState::STATE_NOT_SET};
-
-constexpr double kDelayTimeInSec = 1.0;
+constexpr int kDelayTimeInSec = 1;
 
 }  // namespace
 
