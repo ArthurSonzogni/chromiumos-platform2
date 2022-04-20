@@ -80,6 +80,7 @@ std::unique_ptr<Context> Context::Create(
   context->attestation_proxy_ =
       std::make_unique<org::chromium::AttestationProxy>(dbus_bus);
   context->bluetooth_client_ = std::make_unique<BluetoothClientImpl>(dbus_bus);
+  context->bluetooth_proxy_ = std::make_unique<org::bluezProxy>(dbus_bus);
   context->cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
       dbus_bus, cras::kCrasServiceName,
       dbus::ObjectPath(cras::kCrasServicePath));
@@ -134,6 +135,10 @@ org::chromium::AttestationProxyInterface* Context::attestation_proxy() const {
 
 BluetoothClient* Context::bluetooth_client() const {
   return bluetooth_client_.get();
+}
+
+org::bluezProxy* Context::bluetooth_proxy() const {
+  return bluetooth_proxy_.get();
 }
 
 brillo::CrosConfigInterface* Context::cros_config() const {

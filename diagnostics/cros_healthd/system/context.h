@@ -29,6 +29,7 @@
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
 #include "diagnostics/cros_healthd/utils/mojo_relay.h"
+#include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
 
 namespace brillo {
@@ -83,6 +84,9 @@ class Context {
   // Use the object returned by bluetooth_client() to subscribe to notifications
   // for D-Bus objects representing Bluetooth adapters and devices.
   BluetoothClient* bluetooth_client() const;
+  // Use the object returned by bluetooth_proxy() to subscribe to notifications
+  // for D-Bus objects representing Bluetooth adapters and devices.
+  org::bluezProxy* bluetooth_proxy() const;
   // Use the object returned by cros_config() to query the device's
   // configuration file.
   brillo::CrosConfigInterface* cros_config() const;
@@ -160,6 +164,7 @@ class Context {
   // Members accessed via the accessor functions defined above.
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
   std::unique_ptr<BluetoothClient> bluetooth_client_;
+  std::unique_ptr<org::bluezProxy> bluetooth_proxy_;
   std::unique_ptr<org::chromium::cras::ControlProxyInterface> cras_proxy_;
   std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy_;
   std::unique_ptr<DebugdAdapter> debugd_adapter_;

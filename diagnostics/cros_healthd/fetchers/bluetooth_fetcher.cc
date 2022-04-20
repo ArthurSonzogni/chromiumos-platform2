@@ -6,15 +6,11 @@
 
 #include <cstdint>
 #include <map>
-#include <string>
 #include <utility>
 #include <vector>
 
 #include <base/check.h>
 #include <dbus/object_path.h>
-
-#include "diagnostics/common/system/bluetooth_client.h"
-#include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
 
@@ -24,43 +20,64 @@ namespace mojo_ipc = ::chromeos::cros_healthd::mojom;
 
 }  // namespace
 
+std::vector<org::bluez::Adapter1ProxyInterface*>
+BluetoothFetcher::GetAdapterInstances() {
+  DCHECK(context_->bluetooth_proxy());
+  return context_->bluetooth_proxy()->GetAdapter1Instances();
+}
+
+std::vector<org::bluez::Device1ProxyInterface*>
+BluetoothFetcher::GetDeviceInstances() {
+  DCHECK(context_->bluetooth_proxy());
+  return context_->bluetooth_proxy()->GetDevice1Instances();
+}
+
 mojo_ipc::BluetoothResultPtr BluetoothFetcher::FetchBluetoothInfo() {
-  BluetoothClient* bluetooth_client = context_->bluetooth_client();
-  DCHECK(bluetooth_client);
+  return FetchBluetoothInfo(GetAdapterInstances(), GetDeviceInstances());
+}
 
+mojo_ipc::BluetoothResultPtr BluetoothFetcher::FetchBluetoothInfo(
+    std::vector<org::bluez::Adapter1ProxyInterface*> adapters,
+    std::vector<org::bluez::Device1ProxyInterface*> devices) {
+  std::vector<mojo_ipc::BluetoothAdapterInfoPtr> adapter_infos;
+
+  // Map from the adapter's ObjectPath to the number of connected devices.
   std::map<dbus::ObjectPath, uint32_t> num_connected_devices;
-  std::vector<dbus::ObjectPath> devices = bluetooth_client->GetDevices();
-  for (const auto& device : devices) {
-    const BluetoothClient::DeviceProperties* device_properties =
-        bluetooth_client->GetDeviceProperties(device);
-    if (!device_properties || !device_properties->connected.value())
-      continue;
+  FetchDevicesInfo(devices, num_connected_devices);
 
-    const dbus::ObjectPath& adapter_path = device_properties->adapter.value();
-    num_connected_devices[adapter_path]++;
-  }
-
-  std::vector<mojo_ipc::BluetoothAdapterInfoPtr> adapter_info;
-  std::vector<dbus::ObjectPath> adapters = bluetooth_client->GetAdapters();
   for (const auto& adapter : adapters) {
-    const BluetoothClient::AdapterProperties* adapter_properties =
-        bluetooth_client->GetAdapterProperties(adapter);
-    if (!adapter_properties)
+    if (!adapter)
       continue;
-
     mojo_ipc::BluetoothAdapterInfo info;
-    info.name = adapter_properties->name.value();
-    info.address = adapter_properties->address.value();
-    info.powered = adapter_properties->powered.value();
-    const auto it = num_connected_devices.find(adapter);
+
+    info.name = adapter->name();
+    info.address = adapter->address();
+    info.powered = adapter->powered();
+    info.discoverable = adapter->discoverable();
+    info.discovering = adapter->discovering();
+    info.uuids = adapter->uuids();
+    info.modalias = adapter->modalias();
+
+    info.num_connected_devices = 0;
+    const auto it = num_connected_devices.find(adapter->GetObjectPath());
     if (it != num_connected_devices.end())
       info.num_connected_devices = it->second;
 
-    adapter_info.push_back(info.Clone());
+    adapter_infos.push_back(info.Clone());
   }
 
   return mojo_ipc::BluetoothResult::NewBluetoothAdapterInfo(
-      std::move(adapter_info));
+      std::move(adapter_infos));
+}
+
+void BluetoothFetcher::FetchDevicesInfo(
+    std::vector<org::bluez::Device1ProxyInterface*> devices,
+    std::map<dbus::ObjectPath, uint32_t>& num_connected_devices) {
+  for (const auto& device : devices) {
+    if (!device || !device->connected())
+      continue;
+    num_connected_devices[device->adapter()]++;
+  }
 }
 
 }  // namespace diagnostics
