@@ -109,7 +109,7 @@ bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
                                 brillo::dbus_utils::FileDescriptor* out_fd) {
   VLOG(1) << "Received OpenPath request";
   return OpenPathImpl(error, in_path, kAllInterfacesMask, kInvalidLifelineFD,
-                      out_fd);
+                      /*to_detach*/ true, out_fd, /*client_id*/ nullptr);
 }
 
 bool PermissionBroker::ClaimDevicePath(
@@ -119,8 +119,12 @@ bool PermissionBroker::ClaimDevicePath(
     const base::ScopedFD& in_lifeline_fd,
     brillo::dbus_utils::FileDescriptor* out_fd) {
   VLOG(1) << "Received ClaimDevicePath request";
+  // Pass down a client_id to watch the lifeline of this request (i.e.
+  // reattach interfaces when requester terminates).
+  std::string client_id;
   return OpenPathImpl(error, in_path, drop_privileges_mask,
-                      in_lifeline_fd.get(), out_fd);
+                      in_lifeline_fd.get(),
+                      /*to_detach*/ true, out_fd, &client_id);
 }
 
 bool PermissionBroker::RequestLoopbackTcpPortLockdown(
@@ -202,12 +206,13 @@ void PermissionBroker::PowerCycleUsbPorts(
       in_vid, in_pid, base::TimeDelta::FromInternalValue(in_delay));
 }
 
-bool PermissionBroker::OpenPathImpl(
-    brillo::ErrorPtr* error,
-    const std::string& in_path,
-    uint32_t drop_privileges_mask,
-    int lifeline_fd,
-    brillo::dbus_utils::FileDescriptor* out_fd) {
+bool PermissionBroker::OpenPathImpl(brillo::ErrorPtr* error,
+                                    const std::string& in_path,
+                                    uint32_t drop_privileges_mask,
+                                    int lifeline_fd,
+                                    bool to_detach,
+                                    brillo::dbus_utils::FileDescriptor* out_fd,
+                                    std::string* client_id) {
   Rule::Result rule_result = rule_engine_.ProcessPath(in_path);
   if (rule_result != Rule::ALLOW && rule_result != Rule::ALLOW_WITH_LOCKDOWN &&
       rule_result != Rule::ALLOW_WITH_DETACH) {
@@ -226,10 +231,33 @@ bool PermissionBroker::OpenPathImpl(
     return false;
   }
 
+  // Initialize |client_id| to an empty string (i.e. not a 128bits token) for
+  // the client to identify the case of Rule::ALLOW, so it doesn't need to send
+  // any detach/reattach for future claiming/releasing interfaces.
+  if (client_id) {
+    *client_id = std::string();
+  }
+
   if (rule_result == Rule::ALLOW_WITH_DETACH) {
-    if (!usb_driver_tracker_.DetachPathFromKernel(fd.get(), lifeline_fd,
-                                                  in_path))
+    base::FilePath file_path(in_path);
+    // Assign |client_id| when the rule is ALLOW_WITH_DETACH, as it indicates
+    // the |in_path| is a legit USB device path.
+    if (client_id) {
+      auto maybe_client_id =
+          usb_driver_tracker_.RegisterClient(lifeline_fd, file_path);
+      if (!maybe_client_id.has_value()) {
+        LOG(ERROR) << "Failed to register client with lifeline_fd "
+                   << lifeline_fd << " for path " << in_path;
+        return false;
+      }
+      *client_id = maybe_client_id.value();
+    }
+
+    if (to_detach && !usb_driver_tracker_.DetachPathFromKernel(
+                         fd.get(), client_id, file_path)) {
+      LOG(ERROR) << "Failed to detach path " << file_path << " from kernel";
       return false;
+    }
   }
 
   // When the rule result is ALLOW_WITH_LOCKDOWN and the mask is

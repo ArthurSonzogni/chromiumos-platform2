@@ -88,7 +88,9 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                     const std::string& in_path,
                     uint32_t drop_privileges_mask,
                     int lifeline_fd,
-                    brillo::dbus_utils::FileDescriptor* out_fd);
+                    bool to_detach,
+                    brillo::dbus_utils::FileDescriptor* out_fd,
+                    std::string* out_client_id);
 
   RuleEngine rule_engine_;
   brillo::dbus_utils::DBusObject dbus_object_;
