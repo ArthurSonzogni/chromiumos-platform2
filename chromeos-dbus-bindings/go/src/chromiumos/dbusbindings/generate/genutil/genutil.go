@@ -45,8 +45,14 @@ func MakeAdaptorName(introspectItfName string) string {
 	return makeNameWithSuffix(introspectItfName, "Adaptor")
 }
 
+// MakeProxyName makes a name of the proxy class.
 func MakeProxyName(introspectItfName string) string {
 	return makeNameWithSuffix(introspectItfName, "Proxy")
+}
+
+// MakeFullProxyName returns a fully qualified name of the proxy class.
+func MakeFullProxyName(introspectItfName string) string {
+	return MakeFullItfName(introspectItfName) + "Proxy"
 }
 
 // MakeFullItfName makes a full name of interface in C++ style.
