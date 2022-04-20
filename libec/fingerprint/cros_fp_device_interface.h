@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef BIOD_CROS_FP_DEVICE_INTERFACE_H_
-#define BIOD_CROS_FP_DEVICE_INTERFACE_H_
+#ifndef LIBEC_FINGERPRINT_CROS_FP_DEVICE_INTERFACE_H_
+#define LIBEC_FINGERPRINT_CROS_FP_DEVICE_INTERFACE_H_
 
 #include <bitset>
 #include <memory>
@@ -23,7 +23,7 @@
  */
 using VendorTemplate = std::vector<uint8_t>;
 
-namespace biod {
+namespace ec {
 
 class CrosFpDeviceInterface {
  public:
@@ -76,6 +76,6 @@ class CrosFpDeviceInterface {
                                                               uint32_t ver) = 0;
 };
 
-}  // namespace biod
+}  // namespace ec
 
-#endif  // BIOD_CROS_FP_DEVICE_INTERFACE_H_
+#endif  // LIBEC_FINGERPRINT_CROS_FP_DEVICE_INTERFACE_H_

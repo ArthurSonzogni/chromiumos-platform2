@@ -48,7 +48,8 @@ class CrosFpDevice_ResetContext : public testing::Test {
   class MockFpContextFactory : public ec::MockEcCommandFactory {
    public:
     std::unique_ptr<EcCommandInterface> FpContextCommand(
-        CrosFpDeviceInterface* cros_fp, const std::string& user_id) override {
+        ec::CrosFpDeviceInterface* cros_fp,
+        const std::string& user_id) override {
       auto cmd = std::make_unique<MockEcCommandInterface>();
       EXPECT_CALL(*cmd, Run).WillOnce(testing::Return(true));
       return cmd;
@@ -106,7 +107,8 @@ class CrosFpDevice_SetContext : public testing::Test {
   class MockFpContextFactory : public ec::MockEcCommandFactory {
    public:
     std::unique_ptr<EcCommandInterface> FpContextCommand(
-        CrosFpDeviceInterface* cros_fp, const std::string& user_id) override {
+        ec::CrosFpDeviceInterface* cros_fp,
+        const std::string& user_id) override {
       auto cmd = std::make_unique<MockEcCommandInterface>();
       EXPECT_CALL(*cmd, Run).WillOnce(testing::Return(true));
       return cmd;

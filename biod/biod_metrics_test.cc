@@ -99,7 +99,7 @@ TEST_F(BiodMetricsTest, SendFpLatencyStatsOnNoMatch) {
 }
 
 TEST_F(BiodMetricsTest, SendFpLatencyStatsValues) {
-  constexpr CrosFpDeviceInterface::FpStats stats = {
+  constexpr ec::CrosFpDeviceInterface::FpStats stats = {
       .capture_ms = 70,
       .matcher_ms = 187,
       .overall_ms = 223,

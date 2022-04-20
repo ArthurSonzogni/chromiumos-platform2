@@ -13,17 +13,17 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
+#include <libec/fingerprint/cros_fp_device_interface.h>
 #include <libec/ec_command_factory.h>
 #include <libec/fingerprint/fp_info_command.h>
 #include <libec/fingerprint/fp_mode.h>
 
 #include "biod/biod_metrics.h"
-#include "biod/cros_fp_device_interface.h"
 #include "biod/uinput_device.h"
 
 namespace biod {
 
-class CrosFpDevice : public CrosFpDeviceInterface {
+class CrosFpDevice : public ec::CrosFpDeviceInterface {
  public:
   static std::unique_ptr<CrosFpDevice> Create(
       BiodMetricsInterface* biod_metrics,
@@ -48,7 +48,7 @@ class CrosFpDevice : public CrosFpDeviceInterface {
   // Run a simple command to get the version information from FP MCU.
   static std::optional<EcVersion> GetVersion(const base::ScopedFD& cros_fp_fd);
 
-  // CrosFpDeviceInterface overrides:
+  // ec::CrosFpDeviceInterface overrides:
   ~CrosFpDevice() override;
 
   bool SetFpMode(const ec::FpMode& mode) override;

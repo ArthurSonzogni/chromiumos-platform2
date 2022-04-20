@@ -11,9 +11,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include <libec/fingerprint/cros_fp_device_interface.h>
+
 #include "biod/biod_storage.h"
 #include "biod/biometrics_manager.h"
-#include "biod/cros_fp_device_interface.h"
 
 namespace biod {
 

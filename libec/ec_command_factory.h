@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include "biod/cros_fp_device_interface.h"
+#include "libec/fingerprint/cros_fp_device_interface.h"
 #include "libec/fingerprint/fp_context_command_factory.h"
 #include "libec/fingerprint/fp_flashprotect_command.h"
 #include "libec/fingerprint/fp_frame_command.h"
@@ -24,7 +24,7 @@ class EcCommandFactoryInterface {
   virtual ~EcCommandFactoryInterface() = default;
 
   virtual std::unique_ptr<EcCommandInterface> FpContextCommand(
-      biod::CrosFpDeviceInterface* cros_fp, const std::string& user_id) = 0;
+      CrosFpDeviceInterface* cros_fp, const std::string& user_id) = 0;
 
   virtual std::unique_ptr<FpFlashProtectCommand> FpFlashProtectCommand(
       const uint32_t flags, const uint32_t mask) = 0;
@@ -70,8 +70,7 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
   EcCommandFactory& operator=(const EcCommandFactory&) = delete;
 
   std::unique_ptr<EcCommandInterface> FpContextCommand(
-      biod::CrosFpDeviceInterface* cros_fp,
-      const std::string& user_id) override;
+      CrosFpDeviceInterface* cros_fp, const std::string& user_id) override;
 
   std::unique_ptr<ec::FpFlashProtectCommand> FpFlashProtectCommand(
       const uint32_t flags, const uint32_t mask) override;

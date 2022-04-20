@@ -13,7 +13,7 @@
 namespace ec {
 
 std::unique_ptr<EcCommandInterface> EcCommandFactory::FpContextCommand(
-    biod::CrosFpDeviceInterface* cros_fp, const std::string& user_id) {
+    CrosFpDeviceInterface* cros_fp, const std::string& user_id) {
   return FpContextCommandFactory::Create(cros_fp, user_id);
 }
 

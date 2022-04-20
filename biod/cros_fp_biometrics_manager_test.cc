@@ -10,14 +10,14 @@
 
 #include <base/base64.h>
 #include <base/bind.h>
+#include <base/test/task_environment.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
-#include <base/test/task_environment.h>
+#include <libec/fingerprint/cros_fp_device_interface.h>
 
 #include "biod/biod_crypto.h"
 #include "biod/biod_crypto_test_data.h"
-#include "biod/cros_fp_device_interface.h"
 #include "biod/mock_biod_metrics.h"
 #include "biod/mock_cros_fp_biometrics_manager.h"
 #include "biod/mock_cros_fp_device.h"

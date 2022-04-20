@@ -337,7 +337,7 @@ void CrosFpBiometricsManager::KillMcuSession() {
 
 CrosFpBiometricsManager::CrosFpBiometricsManager(
     std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
-    std::unique_ptr<CrosFpDeviceInterface> cros_fp_device,
+    std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
     std::unique_ptr<BiodMetricsInterface> biod_metrics,
     std::unique_ptr<CrosFpRecordManagerInterface> record_manager)
     : biod_metrics_(std::move(biod_metrics)),
@@ -736,7 +736,8 @@ void CrosFpBiometricsManager::DoMatchEvent(int attempt, uint32_t event) {
   // Send back the result directly (as we are running on the main thread).
   OnAuthScanDone(std::move(result), std::move(matches));
 
-  std::optional<CrosFpDeviceInterface::FpStats> stats = cros_dev_->GetFpStats();
+  std::optional<ec::CrosFpDeviceInterface::FpStats> stats =
+      cros_dev_->GetFpStats();
   if (stats) {
     biod_metrics_->SendFpLatencyStats(matched_record_meta.has_value(), *stats);
   }

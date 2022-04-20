@@ -26,7 +26,8 @@ namespace biod {
 class CrosFpDeviceUpdate {
  public:
   virtual ~CrosFpDeviceUpdate() = default;
-  virtual std::optional<CrosFpDeviceInterface::EcVersion> GetVersion() const;
+  virtual std::optional<ec::CrosFpDeviceInterface::EcVersion> GetVersion()
+      const;
   virtual bool IsFlashProtectEnabled(bool* status) const;
   virtual bool Flash(const CrosFpFirmware& fw, enum ec_image image) const;
   static std::string EcCurrentImageToString(enum ec_image image);

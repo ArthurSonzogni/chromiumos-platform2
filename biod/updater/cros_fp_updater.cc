@@ -90,8 +90,8 @@ std::string CrosFpDeviceUpdate::EcCurrentImageToString(enum ec_image image) {
   NOTREACHED();
 }
 
-std::optional<CrosFpDeviceInterface::EcVersion> CrosFpDeviceUpdate::GetVersion()
-    const {
+std::optional<ec::CrosFpDeviceInterface::EcVersion>
+CrosFpDeviceUpdate::GetVersion() const {
   auto fd = base::ScopedFD(open(CrosFpDevice::kCrosFpPath, O_RDWR | O_CLOEXEC));
   if (!fd.is_valid()) {
     LOG(ERROR) << "Failed to open fingerprint device, while fetching version.";

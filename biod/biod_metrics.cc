@@ -74,7 +74,7 @@ bool BiodMetrics::SendFpUnlockEnabled(bool enabled) {
 }
 
 bool BiodMetrics::SendFpLatencyStats(
-    bool matched, const CrosFpDeviceInterface::FpStats& stats) {
+    bool matched, const ec::CrosFpDeviceInterface::FpStats& stats) {
   bool rc = true;
   rc = metrics_lib_->SendToUMA(matched ? metrics::kFpMatchDurationCapture
                                        : metrics::kFpNoMatchDurationCapture,

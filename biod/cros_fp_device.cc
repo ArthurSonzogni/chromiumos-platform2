@@ -254,7 +254,7 @@ bool CrosFpDevice::UpdateFpInfo() {
   return true;
 }
 
-std::optional<CrosFpDeviceInterface::FpStats> CrosFpDevice::GetFpStats() {
+std::optional<ec::CrosFpDeviceInterface::FpStats> CrosFpDevice::GetFpStats() {
   EcCommand<EmptyParam, struct ec_response_fp_stats> cmd(EC_CMD_FP_STATS);
   if (!cmd.Run(cros_fd_.get())) {
     return std::nullopt;
@@ -303,7 +303,7 @@ bool CrosFpDevice::WaitOnEcBoot(const base::ScopedFD& cros_fp_fd,
 }
 
 // static
-std::optional<CrosFpDeviceInterface::EcVersion> CrosFpDevice::GetVersion(
+std::optional<ec::CrosFpDeviceInterface::EcVersion> CrosFpDevice::GetVersion(
     const base::ScopedFD& cros_fp_fd) {
   EcCommand<EmptyParam, struct ec_response_get_version> cmd(EC_CMD_GET_VERSION);
   if (!cmd.Run(cros_fp_fd.get())) {
