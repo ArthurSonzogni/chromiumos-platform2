@@ -32,7 +32,23 @@ group("all") {
 }
 
 group("dbus-proxies") {
-  deps = [ ":cras-proxies" ]
+  deps = [
+    ":bluetooth-proxies",
+    ":cras-proxies",
+  ]
+}
+
+generate_dbus_proxies("bluetooth-proxies") {
+  dbus_service_config = "dbus_bindings/bluetooth/dbus-service-config.json"
+  proxy_output_file =
+      "include/diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
+  mock_output_file =
+      "include/diagnostics/dbus_bindings/bluetooth/dbus-proxy-mocks.h"
+  proxy_path_in_mocks = "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
+  sources = [
+    "dbus_bindings/bluetooth/org.bluez.Adapter1.xml",
+    "dbus_bindings/bluetooth/org.bluez.Device1.xml",
+  ]
 }
 
 generate_dbus_proxies("cras-proxies") {
