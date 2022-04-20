@@ -27,6 +27,7 @@
 
 #include <base/bind.h>
 #include <base/callback_helpers.h>
+#include <base/containers/contains.h>
 #include <base/files/file.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
@@ -239,7 +240,7 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
     const std::string& source,
     const base::FilePath& target_path,
     std::vector<std::string> params,
-    MountErrorType* error) const {
+    MountErrorType* const error) const {
   // Read-only is the only parameter that has any effect at this layer.
   const bool read_only = config_.read_only || IsReadOnlyMount(params);
 
@@ -323,13 +324,13 @@ std::unique_ptr<MountPoint> FUSEMounter::Mount(
   std::unique_ptr<SandboxedProcess> process =
       StartDaemon(fuse_file, source, target_path, std::move(params), error);
 
-  if (*error) {
+  if (!process) {
+    DCHECK(*error);
     LOG(ERROR) << "Cannot start FUSE daemon for " << redact(source) << ": "
                << *error;
     return nullptr;
   }
 
-  DCHECK(process);
   const pid_t pid = process->pid();
   LOG(INFO) << "FUSE daemon for " << quote(target_path)
             << " is running in PID namespace " << pid;
@@ -354,30 +355,46 @@ std::unique_ptr<SandboxedProcess> FUSEMounter::StartDaemon(
     const std::string& source,
     const base::FilePath& target_path,
     std::vector<std::string> params,
-    MountErrorType* error) const {
-  std::unique_ptr<SandboxedProcess> mount_process =
+    MountErrorType* const error) const {
+  DCHECK(error);
+
+  std::unique_ptr<SandboxedProcess> process =
       PrepareSandbox(source, target_path, std::move(params), error);
 
-  if (*error != MOUNT_ERROR_NONE)
+  if (!process) {
+    DCHECK(*error);
+    return nullptr;
+  }
+
+  const int fd = fuse_file.GetPlatformFile();
+  process->AddArgument(base::StringPrintf("/dev/fd/%d", fd));
+  process->PreserveFile(fd);
+
+  const int exit_code = process->Run();
+
+  // Record the FUSE launcher's exit code in Metrics.
+  if (config_.metrics && !config_.metrics_name.empty()) {
+    config_.metrics->RecordFuseMounterErrorCode(config_.metrics_name,
+                                                exit_code);
+  }
+
+  *error = ConvertLauncherExitCodeToMountError(exit_code);
+
+  if (*error)
     return nullptr;
 
-  mount_process->AddArgument(
-      base::StringPrintf("/dev/fd/%d", fuse_file.GetPlatformFile()));
-  mount_process->PreserveFile(fuse_file.GetPlatformFile());
-
-  const int exit_code = mount_process->Run();
-  *error = InterpretReturnCode(exit_code);
-
-  if (*error != MOUNT_ERROR_NONE)
-    return nullptr;
-
-  return mount_process;
+  return process;
 }
 
-MountErrorType FUSEMounter::InterpretReturnCode(int return_code) const {
-  if (return_code != 0)
-    return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
-  return MOUNT_ERROR_NONE;
+MountErrorType FUSEMounter::ConvertLauncherExitCodeToMountError(
+    const int exit_code) const {
+  if (exit_code == 0)
+    return MOUNT_ERROR_NONE;
+
+  if (base::Contains(config_.password_needed_exit_codes, exit_code))
+    return MOUNT_ERROR_NEED_PASSWORD;
+
+  return MOUNT_ERROR_MOUNT_PROGRAM_FAILED;
 }
 
 FUSEMounterHelper::FUSEMounterHelper(
@@ -398,17 +415,21 @@ std::unique_ptr<SandboxedProcess> FUSEMounterHelper::PrepareSandbox(
     const std::string& source,
     const base::FilePath& target_path,
     std::vector<std::string> params,
-    MountErrorType* error) const {
-  auto sandbox = sandbox_factory_->CreateSandboxedProcess();
+    MountErrorType* const error) const {
+  DCHECK(error);
+
+  std::unique_ptr<SandboxedProcess> sandbox =
+      sandbox_factory_->CreateSandboxedProcess();
   if (!sandbox) {
     *error = MOUNT_ERROR_INTERNAL;
     return nullptr;
   }
+
   *error =
       ConfigureSandbox(source, target_path, std::move(params), sandbox.get());
-  if (*error != MOUNT_ERROR_NONE) {
+  if (*error)
     return nullptr;
-  }
+
   return sandbox;
 }
 

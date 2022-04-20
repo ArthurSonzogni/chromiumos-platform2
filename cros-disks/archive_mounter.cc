@@ -6,7 +6,6 @@
 
 #include <utility>
 
-#include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
@@ -57,12 +56,16 @@ ArchiveMounter::ArchiveMounter(
     std::unique_ptr<SandboxedProcessFactory> sandbox_factory,
     std::vector<std::string> extra_command_line_options)
     : FUSEMounter(
-          platform, process_reaper, archive_type + "fs", {.read_only = true}),
+          platform,
+          process_reaper,
+          archive_type + "fs",
+          {.metrics = metrics,
+           .metrics_name = std::move(metrics_name),
+           .password_needed_exit_codes = std::move(password_needed_exit_codes),
+           .read_only = true}),
       archive_type_(archive_type),
       extension_("." + archive_type),
       metrics_(metrics),
-      metrics_name_(std::move(metrics_name)),
-      password_needed_exit_codes_(std::move(password_needed_exit_codes)),
       sandbox_factory_(std::move(sandbox_factory)),
       extra_command_line_options_(std::move(extra_command_line_options)),
       format_raw_(IsFormatRaw(archive_type)) {}
@@ -79,15 +82,6 @@ bool ArchiveMounter::CanMount(const std::string& source,
     return true;
   }
   return false;
-}
-
-MountErrorType ArchiveMounter::InterpretReturnCode(int return_code) const {
-  if (metrics_ && !metrics_name_.empty())
-    metrics_->RecordFuseMounterErrorCode(metrics_name_, return_code);
-
-  if (base::Contains(password_needed_exit_codes_, return_code))
-    return MOUNT_ERROR_NEED_PASSWORD;
-  return FUSEMounter::InterpretReturnCode(return_code);
 }
 
 std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
@@ -139,9 +133,9 @@ std::unique_ptr<SandboxedProcess> ArchiveMounter::PrepareSandbox(
   }
 
   // Is the process "password-aware"?
-  if (!password_needed_exit_codes_.empty()) {
-    std::string password;
-    if (GetParamValue(params, kOptionPassword, &password)) {
+  if (AcceptsPassword()) {
+    if (std::string password;
+        GetParamValue(params, kOptionPassword, &password)) {
       sandbox->SetStdIn(password);
     }
   }

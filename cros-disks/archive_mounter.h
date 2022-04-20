@@ -41,8 +41,6 @@ class ArchiveMounter : public FUSEMounter {
 
  protected:
   // FUSEMounter overrides:
-  MountErrorType InterpretReturnCode(int return_code) const override;
-
   std::unique_ptr<SandboxedProcess> PrepareSandbox(
       const std::string& source,
       const base::FilePath& target_path,
@@ -58,8 +56,6 @@ class ArchiveMounter : public FUSEMounter {
   const std::string archive_type_;
   const std::string extension_;
   Metrics* const metrics_;
-  const std::string metrics_name_;
-  const std::vector<int> password_needed_exit_codes_;
   const std::unique_ptr<SandboxedProcessFactory> sandbox_factory_;
   const std::vector<std::string> extra_command_line_options_;
 

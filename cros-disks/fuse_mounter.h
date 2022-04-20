@@ -82,6 +82,14 @@ class FUSESandboxedProcessFactory : public SandboxedProcessFactory {
 class FUSEMounter : public Mounter {
  public:
   struct Config {
+    // Metrics object and name used to record the FUSE launcher exit code.
+    Metrics* const metrics = nullptr;
+    std::string metrics_name;
+
+    // Set of FUSE launcher exit codes that are interpreted as
+    // MOUNT_ERROR_NEED_PASSWORD.
+    std::vector<int> password_needed_exit_codes;
+
     bool nosymfollow = true;
     bool read_only = false;
   };
@@ -104,11 +112,13 @@ class FUSEMounter : public Mounter {
                                     MountErrorType* error) const final;
 
  protected:
-  // Translates mount app's return codes into errors. The base
-  // implementation just assumes any non-zero return code to be a
-  // MOUNT_ERROR_MOUNT_PROGRAM_FAILED, but subclasses can implement more
-  // elaborate mappings.
-  virtual MountErrorType InterpretReturnCode(int return_code) const;
+  // Is this FUSE mounter password-aware?
+  bool AcceptsPassword() const {
+    return !config_.password_needed_exit_codes.empty();
+  }
+
+  // Converts the FUSE launcher's exit code into a MountErrorType.
+  MountErrorType ConvertLauncherExitCodeToMountError(int exit_code) const;
 
   // Performs necessary set up and makes a SandboxedProcess ready to be
   // launched to serve a mount. The returned instance will have one more

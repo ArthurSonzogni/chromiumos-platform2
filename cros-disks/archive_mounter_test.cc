@@ -64,7 +64,7 @@ class ArchiveMounterTest : public ::testing::Test {
 
   MountErrorType InterpretReturnCode(const ArchiveMounter& mounter,
                                      int exit_code) const {
-    return mounter.InterpretReturnCode(exit_code);
+    return mounter.ConvertLauncherExitCodeToMountError(exit_code);
   }
 
   std::unique_ptr<FakeSandboxedProcess> PrepareSandbox(
@@ -132,6 +132,9 @@ TEST_F(ArchiveMounterTest, AppNeedsPassword) {
   auto mounter = CreateMounter({kPasswordNeededCode});
   EXPECT_EQ(MOUNT_ERROR_NEED_PASSWORD,
             InterpretReturnCode(*mounter, kPasswordNeededCode));
+  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED,
+            InterpretReturnCode(*mounter, kPasswordNeededCode + 1));
+  EXPECT_EQ(MOUNT_ERROR_NONE, InterpretReturnCode(*mounter, 0));
 }
 
 TEST_F(ArchiveMounterTest, WithPassword) {
